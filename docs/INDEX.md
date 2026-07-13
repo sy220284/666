@@ -36,6 +36,12 @@
 
 - [`roadmap/V1.0_ROADMAP.md`](roadmap/V1.0_ROADMAP.md)：M0—M5实施顺序、进入与退出条件。
 
+### 工程架构
+
+- [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md)：Main、Preload、Renderer、Core、数据真源和并发模型。
+- [`architecture/MODULE_BOUNDARIES.md`](architecture/MODULE_BOUNDARIES.md)：包职责、允许依赖和禁止跨层调用。
+- [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md)：编辑、AI、候选、定稿、导入导出和恢复的数据流。
+
 ### 架构决策
 
 - [`decisions/README.md`](decisions/README.md)
@@ -48,6 +54,7 @@
 ### 数据库
 
 - [`database/DATABASE_SCHEMA.md`](database/DATABASE_SCHEMA.md)
+- [`database/DATA_DICTIONARY.md`](database/DATA_DICTIONARY.md)
 - [`database/MIGRATION_POLICY.md`](database/MIGRATION_POLICY.md)
 - [`database/SCHEMA_COMPATIBILITY.md`](database/SCHEMA_COMPATIBILITY.md)
 
@@ -72,14 +79,33 @@
 
 - [`testing/TEST_STRATEGY.md`](testing/TEST_STRATEGY.md)
 - [`testing/P0_ACCEPTANCE_MATRIX.md`](testing/P0_ACCEPTANCE_MATRIX.md)
+- [`testing/PERFORMANCE_BUDGETS.md`](testing/PERFORMANCE_BUDGETS.md)
+- [`testing/SECURITY_TEST_CASES.md`](testing/SECURITY_TEST_CASES.md)
 
 ### 任务卡
 
 - [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)
 - [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)
-- `tasks/M0_TASKS.md`—`tasks/M5_TASKS.md`
+- [`tasks/M0_TASKS.md`](tasks/M0_TASKS.md)
+- [`tasks/M1_TASKS.md`](tasks/M1_TASKS.md)
+- [`tasks/M2_TASKS.md`](tasks/M2_TASKS.md)
+- [`tasks/M3_TASKS.md`](tasks/M3_TASKS.md)
+- [`tasks/M4_TASKS.md`](tasks/M4_TASKS.md)
+- [`tasks/M5_TASKS.md`](tasks/M5_TASKS.md)
 
-## 3. 文档状态定义
+## 3. 后续文档阶段
+
+P0完成后，根据真实代码和UI再生成：
+
+- UI组件、页面与交互状态规格。
+- 编辑器算法、Prompt注册表和AI Eval细则。
+- 本地开发、调试、构建和安装指南。
+- 用户快速开始、用户手册、备份恢复指南和FAQ。
+- LICENSE、CONTRIBUTING、CHANGELOG、第三方许可证和发布检查。
+
+后续文档不得提前虚构尚未实现的页面、命令和构建结果。
+
+## 4. 文档状态定义
 
 | 状态 | 含义 |
 |---|---|
@@ -91,10 +117,10 @@
 
 本目录新增文档默认状态为 **Approved**；五项ADR、V1范围和安全硬约束为 **Frozen**。
 
-## 4. 维护规则
+## 5. 维护规则
 
 1. 新增或删除P0功能时，同步修改功能清单、追踪矩阵、路线图和任务卡。
-2. 数据库字段变化时，同步修改Schema、兼容策略、Migration任务和测试。
+2. 数据库字段变化时，同步修改Schema、数据字典、兼容策略、Migration任务和测试。
 3. IPC变化时，同步修改契约、错误码、事件协议、Preload白名单与测试。
 4. Prompt、模型适配或约束包变化时，必须更新AI规格和Eval记录。
 5. 文档与代码冲突时不得静默以代码为准，应先明确哪一方需要修正。

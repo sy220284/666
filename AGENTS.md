@@ -7,8 +7,8 @@ The repository implements the frozen V6.5 design baseline.
 
 Primary references:
 
-1. `docs/specs/WorldForge_V6.5_实施安全并发与高分屏适配冻结最终工程设计文档.docx`
-2. `docs/WorldForge_Codex_全流程技术开发指南.md`
+1. `WorldForge_V6.5_实施安全并发与高分屏适配冻结最终工程设计文档.docx`
+2. `WorldForge_Codex_全流程技术开发指南.md`
 3. The active task file under `docs/tasks/`
 
 Do not invent product scope outside these documents.

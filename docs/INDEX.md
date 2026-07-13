@@ -42,6 +42,20 @@
 - [`architecture/MODULE_BOUNDARIES.md`](architecture/MODULE_BOUNDARIES.md)：包职责、允许依赖和禁止跨层调用。
 - [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md)：编辑、AI、候选、定稿、导入导出和恢复的数据流。
 
+### UI与交互
+
+- [`ui/README.md`](ui/README.md)：UI文档索引、实现顺序与统一原则。
+- [`ui/UI_SYSTEM.md`](ui/UI_SYSTEM.md)：视觉方向、Design Token、颜色、字体、间距、图标、组件与主题。
+- [`ui/INFORMATION_ARCHITECTURE.md`](ui/INFORMATION_ARCHITECTURE.md)：页面地图、一级入口、工作台和导航层级。
+- [`ui/SCREEN_SPECIFICATIONS.md`](ui/SCREEN_SPECIFICATIONS.md)：全部核心页面结构、操作、数据与状态。
+- [`ui/INTERACTION_STATES.md`](ui/INTERACTION_STATES.md)：空、加载、保存、失败、取消、冲突、只读和恢复状态。
+- [`ui/EDITOR_INTERACTION_SPEC.md`](ui/EDITOR_INTERACTION_SPEC.md)：编辑、锁定、自动保存、撤销、快速改写和场景联动。
+- [`ui/CANDIDATE_REVIEW_SPEC.md`](ui/CANDIDATE_REVIEW_SPEC.md)：候选比较、Diff、融合、采用、冲突和回退。
+- [`ui/ONBOARDING_SPEC.md`](ui/ONBOARDING_SPEC.md)：新建向导、轻量脚手架、模式切换与帮助。
+- [`ui/RESPONSIVE_AND_DPI.md`](ui/RESPONSIVE_AND_DPI.md)：1280×800、2K、21:9曲面/超宽屏与混合DPI。
+- [`ui/ACCESSIBILITY.md`](ui/ACCESSIBILITY.md)：键盘、焦点、读屏、对比度、中文输入与减少动效。
+- [`ui/UI_ACCEPTANCE_CHECKLIST.md`](ui/UI_ACCEPTANCE_CHECKLIST.md)：UI专项验收清单与发布阻断项。
+
 ### 架构决策
 
 - [`decisions/README.md`](decisions/README.md)
@@ -95,15 +109,14 @@
 
 ## 3. 后续文档阶段
 
-P0完成后，根据真实代码和UI再生成：
+P0完成后，根据真实代码和界面再生成：
 
-- UI组件、页面与交互状态规格。
-- 编辑器算法、Prompt注册表和AI Eval细则。
+- 编辑器底层算法实现说明、Prompt注册表和AI Eval细则。
 - 本地开发、调试、构建和安装指南。
 - 用户快速开始、用户手册、备份恢复指南和FAQ。
 - LICENSE、CONTRIBUTING、CHANGELOG、第三方许可证和发布检查。
 
-后续文档不得提前虚构尚未实现的页面、命令和构建结果。
+后续文档不得提前虚构尚未实现的命令、构建结果和平台兼容结论。
 
 ## 4. 文档状态定义
 
@@ -115,13 +128,14 @@ P0完成后，根据真实代码和UI再生成：
 | Frozen | 版本内冻结，变更必须同步更新追踪矩阵与验收 |
 | Superseded | 已被新文档替代，只保留历史记录 |
 
-本目录新增文档默认状态为 **Approved**；五项ADR、V1范围和安全硬约束为 **Frozen**。
+本目录新增文档默认状态为 **Approved**；五项ADR、V1范围、安全硬约束和UI核心交互边界为 **Frozen**。
 
 ## 5. 维护规则
 
 1. 新增或删除P0功能时，同步修改功能清单、追踪矩阵、路线图和任务卡。
 2. 数据库字段变化时，同步修改Schema、数据字典、兼容策略、Migration任务和测试。
 3. IPC变化时，同步修改契约、错误码、事件协议、Preload白名单与测试。
-4. Prompt、模型适配或约束包变化时，必须更新AI规格和Eval记录。
-5. 文档与代码冲突时不得静默以代码为准，应先明确哪一方需要修正。
-6. 不创建云部署、Kubernetes、云运维、SLA、账号后台、云同步、多人协作、插件市场和平台发布文档。
+4. UI页面、组件、交互或高分屏规则变化时，同步修改`docs/ui/`对应规格与UI验收清单。
+5. Prompt、模型适配或约束包变化时，必须更新AI规格和Eval记录。
+6. 文档与代码冲突时不得静默以代码为准，应先明确哪一方需要修正。
+7. 不创建云部署、Kubernetes、云运维、SLA、账号后台、云同步、多人协作、插件市场和平台发布文档。

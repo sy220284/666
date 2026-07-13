@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+out/
+release/
+artifacts/
+coverage/
+playwright-report/
+test-results/
+
+# Electron / native builds
+*.node
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+
+# Local databases and workspaces
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.worldforge/
+*.wfproj
+backups/
+logs/
+
+# Local credentials and environment
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+~$*

@@ -1,16 +1,16 @@
-# WorldForge IPC契约规格
+# WorldForge V1.0 IPC契约规格
 
-> 状态：Approved  
+> 状态：Frozen  
 > 适用：Electron Main、Preload、Renderer与Core Service
 
-## 1. 设计原则
+## 1. 原则
 
-1. Renderer不获得原始`ipcRenderer`，只调用Preload暴露的具名白名单方法。
-2. 所有请求、响应和事件使用`packages/contracts`中的Zod Schema验证。
-3. 所有项目命令携带`projectId`，Core验证活动项目和路径边界。
-4. 命令与流式事件分离：普通请求使用IPC invoke；AI增量使用MessagePort。
-5. IPC错误使用稳定错误码，不向Renderer暴露堆栈和内部路径。
-6. 协议变更遵守独立`protocolVersion`。
+1. Renderer只调用Preload具名白名单方法。
+2. 请求、响应和事件均由`packages/contracts`中的strict Zod Schema验证。
+3. 项目命令携带`projectId`，Core校验活动项目、实体归属和路径边界。
+4. 普通命令使用IPC invoke；长任务增量使用MessagePort。
+5. Renderer只依据稳定错误码判断业务行为。
+6. 协议使用独立整数`protocolVersion`。
 
 ## 2. 通用信封
 
@@ -37,12 +37,13 @@ interface CommandFailure {
     code: string;
     message: string;
     retryable: boolean;
+    userAction?: string;
     details?: Record<string, unknown>;
   };
 }
 ```
 
-`requestId`用于命令级追踪和重复提交保护，不代替GenerationRun ID。
+`requestId`用于命令幂等与追踪，不代替GenerationRun或Task ID。
 
 ## 3. Preload命名空间
 
@@ -50,133 +51,173 @@ interface CommandFailure {
 window.worldforge = {
   app: {},
   project: {},
+  planning: {},
   draft: {},
   version: {},
   candidate: {},
-  planning: {},
+  entity: {},
+  canon: {},
   continuity: {},
+  arc: {},
   ai: {},
   validation: {},
+  rhythm: {},
+  todo: {},
+  comment: {},
   search: {},
+  dictionary: {},
   transfer: {},
   backup: {},
+  trash: {},
+  task: {},
   settings: {}
 }
 ```
 
-禁止暴露：
+禁止暴露通用`send(channel,payload)`、Node模块、文件系统、数据库连接、环境变量和任意URL请求。
 
-- 通用`send(channel, payload)`。
-- Node模块、文件系统对象、数据库连接和环境变量。
-- 任意URL请求能力。
-
-## 4. P0命令目录
+## 4. 命令目录
 
 ### 4.1 应用与项目
 
-| 命令 | 输入 | 输出 | 说明 |
-|---|---|---|---|
-| `app.getInfo` | 空 | 版本、平台、协议版本 | 不含敏感路径 |
-| `app.getDisplays` | 空 | 显示器DIP信息 | 窗口恢复使用 |
-| `project.create` | 名称、目录、模式、最小初始化数据 | 项目摘要 | 创建工作空间和数据库 |
-| `project.open` | 项目路径 | 项目摘要、兼容状态 | 检查Schema和完整性 |
-| `project.close` | projectId | 保存与关闭结果 | 完成待提交写入 |
-| `project.move` | projectId、目标目录 | 新路径 | 关闭、复制、校验、注册 |
-| `project.listRecent` | 空 | 最近项目列表 | 来自`app.sqlite` |
+| 命令 | 输入 | 输出 |
+|---|---|---|
+| `app.getInfo` | 空 | 版本、平台、协议版本 |
+| `app.getDisplays` | 空 | 显示器DIP信息 |
+| `project.create` | 名称、目录、模式、初始化计划 | 项目摘要 |
+| `project.open` | 项目路径 | 项目摘要、兼容与只读状态 |
+| `project.close` | projectId | flush与关闭结果 |
+| `project.move` | projectId、目标目录 | 新路径与校验结果 |
+| `project.listRecent` | 空 | 最近项目列表 |
+| `project.relocateRecent` | projectId、新路径 | 更新结果 |
+| `project.removeRecent` | projectId | 更新结果 |
 
-### 4.2 Draft与编辑器
+### 4.2 规划与卷章
+
+- `planning.getBrief/updateBrief`
+- `planning.createVolume/updateVolume/moveVolume/deleteVolume`
+- `planning.createChapter/updateChapter/moveChapter/deleteChapter`
+- `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`
+- `planning.createSceneBeat/updateSceneBeat/moveSceneBeat/deleteSceneBeat`
+- `planning.splitChapter/mergeChapters/moveSceneAcrossChapters`
+
+规划变更不得自动发送正文Patch。
+
+### 4.3 Draft与编辑器
 
 | 命令 | 输入 | 输出 |
 |---|---|---|
-| `draft.get` | projectId、chapterId | Draft与Blocks |
-| `draft.applyPatch` | draftId、baseRevision、Patch列表 | 新Revision、修改摘要 |
+| `draft.get` | chapterId | 活动Draft与Blocks |
+| `draft.applyPatch` | draftId、baseRevision、operations | 新Revision、修改摘要 |
+| `draft.flush` | draftId、baseRevision | 新Revision或无变化 |
 | `draft.undoPersistentOperation` | applyRecordId | 新Revision |
 | `draft.setBlockLock` | draftId、logicalBlockId、locked、baseRevision | 新Revision |
 | `draft.searchCurrent` | chapterId、query、options | 命中锚点 |
+| `draft.replaceCurrent` | chapterId、query、replacement、options | 新Revision |
 | `draft.getWordStats` | chapterId | 字符数、纯文字字数、目标进度 |
 
-`draft.applyPatch`必须校验Revision、`expectedHash`和锁定块。
+`draft.applyPatch`必须校验项目、Revision、expectedHash和锁定块。
 
-### 4.3 Version与Candidate
+### 4.4 Version与Candidate
 
 | 命令 | 输入 | 输出 |
 |---|---|---|
 | `version.create` | chapterId、draftRevision、type、label | Version摘要 |
 | `version.list` | chapterId | Version列表 |
-| `version.restoreToDraft` | versionId | 新Draft/新Revision |
+| `version.get` | versionId | Version与Blocks |
+| `version.restoreToDraft` | versionId | 新活动Draft与Revision |
 | `candidate.list` | chapterId、筛选 | Candidate列表 |
 | `candidate.get` | candidateId | Candidate与Blocks |
-| `candidate.diff` | candidateId、currentRevision、viewOptions | Diff摘要或流式任务ID |
-| `candidate.apply` | candidateId、baseRevision、选择映射 | 新Revision、ApplyRecord或冲突集 |
+| `candidate.diff` | candidateId、currentRevision、viewOptions | Diff或Task ID |
+| `candidate.apply` | candidateId、baseRevision、选择映射 | 新Revision、ApplyRecord或ConflictSet |
 | `candidate.discard` | candidateId | 状态更新 |
 
-### 4.4 规划与连续性
+### 4.5 实体、Canon与连续性
 
-- `planning.createVolume/updateVolume/moveVolume`
-- `planning.createChapter/updateChapter/moveChapter`
-- `planning.createPlotNode/updatePlotNode/movePlotNode`
-- `planning.createSceneBeat/updateSceneBeat/moveSceneBeat`
-- `planning.splitChapter/mergeChapters/moveSceneAcrossChapters`
-- `entity.create/update/list/get`
-- `canon.create/update/archive`
-- `state.listCurrent/listHistory`
-- `stateProposal.list/accept/editAndAccept/reject`
-- `timeline.create/update/list`
-- `knowledge.create/update/list`
-- `foreshadowing.create/update/list`
-- `snapshot.get/markStale/rebuild`
+- `entity.create/update/archive/list/get`
+- `canon.create/update/archive/list`
+- `continuity.state.listCurrent/listHistory`
+- `continuity.stateProposal.list/accept/editAndAccept/reject`
+- `continuity.timeline.create/update/archive/list`
+- `continuity.knowledge.create/update/archive/list`
+- `continuity.foreshadowing.create/update/archive/list`
+- `continuity.snapshot.get/markStale/rebuild`
 
-规划变更不得自动发送正文Patch。
+### 4.6 人物弧光
 
-### 4.5 AI
+- `arc.create/update/archive/list/get`
+- `arc.createMilestone/updateMilestone/moveMilestone/archiveMilestone`
+- `arc.listMilestones`
+
+AI不能调用直接推进里程碑状态的命令。里程碑状态只能通过`continuity.stateProposal.accept/editAndAccept`更新。
+
+### 4.7 AI与Provider
 
 | 命令 | 输入 | 输出 |
 |---|---|---|
+| `ai.provider.create/update/remove/list/get` | Provider元数据 | 配置摘要 |
+| `ai.provider.setCredential` | providerId、凭据 | credentialRef，不返回凭据 |
 | `ai.testProvider` | providerId | 连接诊断 |
-| `ai.startGeneration` | runType、chapterId、baseRevision、配置 | runId、MessagePort |
-| `ai.cancelGeneration` | runId | 接收取消结果 |
+| `ai.startGeneration` | runType、chapterId、baseRevision、配置 | runId、taskId、MessagePort |
+| `ai.cancelGeneration` | runId | 取消接收状态 |
 | `ai.listRuns` | chapterId | Run列表 |
 | `ai.savePartialCandidate` | runId | partial Candidate ID |
-| `ai.getModelSupport` | providerId、model | 支持档案 |
+| `ai.getModelSupport` | providerId、model、taskType、promptId | 支持档案 |
 
-### 4.6 校验、搜索、导入导出和备份
+### 4.8 校验、节奏、待办与批注
 
-- `validation.run/list/resolve/silence`
-- `search.project/previewReplace/applyReplace`
+- `validation.run/list/resolve/ignore/silence/downgrade/markFalsePositive`
+- `rhythm.getProfile/updateProfile/run/getResults`
+- `todo.create/update/complete/reopen/list/delete`
+- `comment.create/update/list/delete`
+
+RHY结果为建议级，不能通过IPC标记为发布阻断。
+
+### 4.9 搜索、导入导出与备份
+
+- `search.project/previewReplace/applyReplace/getIndexStatus/rebuildIndex`
 - `dictionary.add/update/remove/list`
-- `import.preview/commit/cancel`
-- `export.preview/execute`
+- `transfer.importPreview/importCommit/importCancel`
+- `transfer.exportPreview/exportExecute`
 - `backup.create/list/verify/restoreToCopy/delete`
 - `trash.list/restore/permanentDelete`
 - `settings.get/set/reset`
 
+### 4.10 通用长任务
+
+| 命令 | 输入 | 输出 |
+|---|---|---|
+| `task.getSnapshot` | taskId | TaskSnapshot |
+| `task.cancel` | taskId | 接收取消状态 |
+| `task.listActive` | 可选项目筛选 | 活动任务列表 |
+
 ## 5. 幂等与重复提交
 
-- 写命令必须带`requestId`。
-- Core保存短期命令结果，重复`requestId`返回原结果，不重复执行。
-- 用户主动重新生成AI必须创建新`requestId`和新GenerationRun。
+- 所有写命令必须带`requestId`。
+- Core保存短期命令结果；重复requestId返回原结果，不重复执行。
+- 用户主动重新生成AI创建新requestId和GenerationRun。
 - 查询命令无需持久化幂等结果。
 
 ## 6. 权限和范围校验
 
 每条项目命令至少验证：
 
-1. `projectId`与当前Core上下文匹配。
-2. 目标实体属于该项目。
+1. projectId与当前Core上下文匹配。
+2. 目标实体属于该项目且未被无效引用。
 3. 文件路径位于项目目录或用户明确选择的目标目录。
-4. 操作没有越过锁定、Revision和不可变Version边界。
-5. Renderer不能通过传入任意表名、SQL、路径或URL扩展能力。
+4. 操作没有越过锁定、Revision、Hash和不可变Version。
+5. Renderer不能传入表名、SQL、任意路径、URL或代码扩展能力。
 
-## 7. 超时与取消
+## 7. 超时、取消与重启
 
-- 普通查询默认30秒以内；长任务返回任务ID并走事件协议。
-- AI、导入、导出、备份、Diff和重建索引必须支持取消或明确不可取消阶段。
-- 取消只停止未来工作，不回滚已经原子提交的事务。
-- 取消前尚未提交的数据不得留下半成品。
+- 普通查询默认30秒以内；长任务返回taskId。
+- AI、导入、导出、备份、Diff和索引重建支持取消或明确不可取消阶段。
+- 取消只停止未来工作，不回滚已原子提交的事务。
+- 应用关闭前按任务类型处理取消、等待或保留已持久化结果。
 
 ## 8. 契约测试
 
-- 每条Preload方法必须对应输入Schema、输出Schema和错误Schema。
-- Renderer与Core运行不同协议版本时拒绝业务命令。
-- 未注册命令、额外字段、非法枚举和跨项目ID必须被拒绝。
-- 契约快照变化需同步更新追踪矩阵和任务卡。
+- 每条Preload方法对应输入Schema、输出Schema和错误Schema。
+- 协议版本不匹配时只允许健康检查和安全退出。
+- 未注册命令、额外字段、非法枚举和跨项目ID被拒绝。
+- 命令目录与任务卡、数据流和事件协议双向检查。

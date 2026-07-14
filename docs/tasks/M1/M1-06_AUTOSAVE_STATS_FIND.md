@@ -35,7 +35,6 @@ M1-05
 - `docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`
 - `docs/decisions/IMPLEMENTATION_DECISIONS.md`
 - `docs/ui/EDITOR_INTERACTION_SPEC.md`
-- `docs/decisions/IMPLEMENTATION_DECISIONS.md`
 - `docs/testing/PERFORMANCE_BUDGETS.md`
 
 ## 主要影响范围

@@ -35,7 +35,6 @@ M1-04
 - `docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`
 - `docs/decisions/IMPLEMENTATION_DECISIONS.md`
 - `docs/decisions/ADR-005-lock-revision-backup.md`
-- `docs/decisions/IMPLEMENTATION_DECISIONS.md`
 - `docs/contracts/ERROR_CODES.md`
 - `docs/database/DATABASE_SCHEMA.md`
 

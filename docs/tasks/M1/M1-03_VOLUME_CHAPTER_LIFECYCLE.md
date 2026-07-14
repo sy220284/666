@@ -36,7 +36,6 @@ M1-02
 - `docs/decisions/IMPLEMENTATION_DECISIONS.md`
 - `docs/database/DATABASE_SCHEMA.md`
 - `docs/database/DATA_DICTIONARY.md`
-- `docs/decisions/IMPLEMENTATION_DECISIONS.md`
 - `docs/ui/SCREEN_SPECIFICATIONS.md`
 
 ## 主要影响范围

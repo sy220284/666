@@ -25,29 +25,28 @@ AGENTS.md
 ```text
 作者最新明确指令
 > ACTIVE_TASK已批准范围与验收
-> product/WORLDFORGE_V6.5_FULL_SPEC.md（产品、架构和功能语义）
+> product/WORLDFORGE_V6.5_FULL_SPEC.md（产品原则、总体架构和功能边界）
 > product/V1_TASK_SYSTEM_REBASE.md（任务阶段、编号、依赖和阶段门）
-> 专项冻结规格、ADR、Schema、IPC、UI、安全和P0验收
-> decisions/IMPLEMENTATION_DECISIONS.md
+> 对应专项唯一真源、ADR和IMPLEMENTATION_DECISIONS
 > AGENTS.md、执行手册和开发指南
 > 现有实现
 ```
 
-`WORLDFORGE_V6.5_FULL_SPEC.md`第10章旧M0—M5/M0.5任务路线已由`V1_TASK_SYSTEM_REBASE.md`、`TASK_INDEX.md`和`V1.0_ROADMAP.md`取代；其余产品与架构内容继续有效。
+`WORLDFORGE_V6.5_FULL_SPEC.md`已直接采用M0—M8九阶段和统一功能基线；任务明细只在任务索引、路线图和追踪矩阵维护。完整规格列出的专项唯一真源负责具体Schema、IPC、AI、UI和验收细节。
 
 ## 3. 产品、范围与路线
 
-- [`product/WORLDFORGE_V6.5_FULL_SPEC.md`](product/WORLDFORGE_V6.5_FULL_SPEC.md)：完整产品、架构与功能规格。
-- [`product/V1_TASK_SYSTEM_REBASE.md`](product/V1_TASK_SYSTEM_REBASE.md)：九阶段、48张任务卡的重排依据与取代范围。
-- [`product/V1_SCOPE_AND_ACCEPTANCE.md`](product/V1_SCOPE_AND_ACCEPTANCE.md)：V1.0范围、V1.5延期项和关闭条件。
-- [`product/FUNCTION_CATALOG.md`](product/FUNCTION_CATALOG.md)：全功能设计与关系。
+- [`product/WORLDFORGE_V6.5_FULL_SPEC.md`](product/WORLDFORGE_V6.5_FULL_SPEC.md)：产品原则、总体架构、完整功能边界和唯一真源路由。
+- [`product/V1_TASK_SYSTEM_REBASE.md`](product/V1_TASK_SYSTEM_REBASE.md)：九阶段、48张任务卡的重排依据与历史取代范围。
+- [`product/V1_SCOPE_AND_ACCEPTANCE.md`](product/V1_SCOPE_AND_ACCEPTANCE.md)：V1.0 P0/P1、V1.5延期项和关闭条件。
+- [`product/FUNCTION_CATALOG.md`](product/FUNCTION_CATALOG.md)：功能ID、设计语义和版本归属。
 - [`product/V1.0_TRACEABILITY_MATRIX.md`](product/V1.0_TRACEABILITY_MATRIX.md)：需求、任务和验收追踪。
 - [`roadmap/V1.0_ROADMAP.md`](roadmap/V1.0_ROADMAP.md)：M0—M8九阶段路线图。
 
 ## 4. 任务体系
 
 - [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：48张独立任务卡、依赖和状态。
-- [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)：任务卡统一字段。
+- [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)：Planned任务卡和ACTIVE执行附件规则。
 - [`tasks/ACTIVE_TASK.md`](tasks/ACTIVE_TASK.md)：任务控制文件。
 - [`tasks/M0_TASKS.md`](tasks/M0_TASKS.md)至[`tasks/M8_TASKS.md`](tasks/M8_TASKS.md)：阶段摘要，仅用于导航。
 

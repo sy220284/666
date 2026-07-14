@@ -4,7 +4,7 @@
 
 WorldForge is a local-first desktop writing workstation for a single author. The repository implements the frozen WorldForge V6.5 baseline.
 
-Do not invent product scope, architecture, features, dependencies, or cloud services outside the approved documents.
+Do not invent product scope, architecture, features, dependencies, cloud services, or task order outside the approved documents.
 
 ## 2. Mandatory startup order
 
@@ -23,13 +23,11 @@ Rules:
 
 - `docs/tasks/ACTIVE_TASK.md` is the only authority for which coding task may run now.
 - If it says `NO_ACTIVE_CODING_TASK`, do not select and implement the next task yourself.
-- Milestone summaries such as `M0_TASKS.md` are indexes, not executable task cards.
-- Every active task must point to exactly one file under `docs/tasks/M0/` through `docs/tasks/M5/`.
-- `agent.md` is a human-readable mirror. This file remains the Codex repository instruction authority.
+- Milestone summaries are indexes, not executable task cards.
+- Every active task must point to exactly one file under `docs/tasks/M0/` through `docs/tasks/M8/`.
+- `agent.md` is a human-readable mirror. This file remains the repository instruction authority.
 
 ## 3. Document authority
-
-When documents conflict, use this order:
 
 ```text
 latest explicit author instruction
@@ -41,76 +39,95 @@ latest explicit author instruction
 > existing implementation
 ```
 
-Do not silently choose one conflicting source. Report the conflict, affected files, and implementation impact before continuing.
+Do not silently choose one conflicting source. Report the conflict, affected files, and implementation impact.
 
-## 4. Unified documentation routes
+## 4. V1.0 task stages
 
-Use `docs/PROJECT_EXECUTION_ENTRY.md` as the routing table.
+The V1.0 task system contains 48 independent task cards across nine stages:
 
-Primary references:
+```text
+M0 Engineering, security, and runtime foundation
+→ M1 Basic writing MVP
+→ M2 Editing safety and version core
+→ M3 Planning, canon, and continuity
+→ M4 Retrieval and AI infrastructure
+→ M5 AI generation and Candidate review
+→ M6 Validation, search, and delivery
+→ M7 Complete UI and experience integration
+→ M8 Release hardening and acceptance
+```
 
-- Full product and architecture baseline: `docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`
-- Full function catalog: `docs/product/FUNCTION_CATALOG.md`
+Stage rules:
+
+- M1 must deliver a usable non-AI writing product: project, volume/chapter, editor, autosave, version, TXT/Markdown transfer, and recovery.
+- Do not count future AI schemas, prompts, or domain placeholders as completed product progress.
+- Do not use a table, command, model, recovery mechanism, or UI state before its upstream task is Verified.
+- Every user-facing task includes a minimum usable UI. M7 integrates and unifies; it is not the first time business functions become operable.
+- Shared foundations such as recovery, FTS, Candidate, Prompt, and backup are implemented once and reused.
+- V1.5 remains separate and must not block V1.0.
+
+## 5. Primary references
+
+- Full product baseline: `docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`
+- Function catalog: `docs/product/FUNCTION_CATALOG.md`
 - Requirement/task/acceptance mapping: `docs/product/V1.0_TRACEABILITY_MATRIX.md`
+- Roadmap: `docs/roadmap/V1.0_ROADMAP.md`
+- Task index: `docs/tasks/TASK_INDEX.md`
 - Architecture: `docs/architecture/`
 - Database: `docs/database/`
 - IPC and events: `docs/contracts/`
-- AI and Prompt Eval: `docs/ai/`
+- AI and Eval: `docs/ai/`
 - UI and interaction: `docs/ui/`
 - Security and privacy: `SECURITY.md`, `docs/security/`
 - Tests and acceptance: `docs/testing/`
-- Tasks: `docs/tasks/`
 - Frozen implementation choices: `docs/decisions/IMPLEMENTATION_DECISIONS.md`
-- Closed-loop working method: `docs/process/CODEX_EXECUTION_PLAYBOOK.md`
-- Long-form engineering reference: `WorldForge_Codex_全流程技术开发指南.md`
+- Closed-loop process: `docs/process/CODEX_EXECUTION_PLAYBOOK.md`
 
-## 5. Before editing
+## 6. Before editing
 
 State:
 
 1. task ID;
 2. goal and non-goals;
-3. allowed and forbidden paths;
-4. affected packages and entry points;
-5. database, IPC, Prompt, UI, security, and performance impact;
-6. risks and unresolved decisions;
-7. implementation sequence;
-8. verification commands.
-
-For complex work, produce a plan and wait for confirmation. A small, explicit bug fix may proceed directly within the active task scope.
+3. verified dependencies;
+4. allowed and forbidden paths;
+5. affected packages and entry points;
+6. database, IPC, Prompt, UI, security, recovery, and performance impact;
+7. risks and unresolved decisions;
+8. implementation sequence;
+9. verification commands.
 
 Inspect the real repository before coding:
 
-- existing implementation;
+- implementation and disconnected paths;
 - tests and current failures;
-- migrations;
+- migrations and schema history;
 - IPC schemas and preload APIs;
-- repositories and use cases;
+- repositories and Use Cases;
 - UI pages and states;
-- mocks, TODOs, disconnected paths;
+- mocks, TODOs, and fake success paths;
 - recent relevant changes.
 
-## 6. During implementation
+## 7. During implementation
 
 - Write or update a failing test or stable reproduction first when practical.
 - Make the smallest complete end-to-end change.
-- Do not refactor unrelated code.
 - Do not modify files outside `ACTIVE_TASK.allowed_paths`.
+- Do not refactor unrelated code.
 - Do not add production dependencies without explicit approval.
 - Do not use TODOs, empty implementations, fake success responses, or hard-coded demo data to claim completion.
-- Do not silently change frozen architecture, product scope, database semantics, or UI behavior.
+- Do not silently change frozen architecture, product scope, data semantics, or UI behavior.
 - Do not suppress errors to make tests pass.
 - Do not continue to the next task automatically.
 
-## 7. Frozen product boundaries
+## 8. Frozen product boundaries
 
 V1.0 contains the local single-author writing loop only.
 
 Do not implement in V1.0:
 
-- cloud storage or synchronization;
+- cloud storage, synchronization, accounts, or hosted backends;
 - WorldForge request proxying;
-- account or hosted backends;
 - model downloading, installation, container, GPU, or runtime management;
 - vector databases, embeddings, reranking, or speculative retrieval adapters;
 - MCP, CRDT, collaboration, or plugin marketplace;
@@ -119,9 +136,7 @@ Do not implement in V1.0:
 - unattended bulk generation;
 - community, achievements, or commercial operations systems.
 
-V1.5 work remains in separate epics and must not block V1.0.
-
-## 8. Non-negotiable invariants
+## 9. Non-negotiable invariants
 
 ### INV-001 Local data
 
@@ -133,19 +148,19 @@ AI output is persisted as a Candidate first. It may enter the active Draft only 
 
 ### INV-003 Single source of truth
 
-`project.sqlite` is the only authoritative project data source. Renderer state, Tiptap JSON, caches, FTS indexes, exports, summaries, and diary entries are derived data.
+`project.sqlite` is the only authoritative project data source. Renderer state, Tiptap JSON, caches, FTS indexes, exports, summaries, and diary entries are derived.
 
 ### INV-004 Code-enforced safety
 
-Locked blocks, revisions, immutable versions, project boundaries, path boundaries, and transaction integrity are enforced in code. Prompts are not security controls.
+Locked blocks, revisions, hashes, immutable versions, project boundaries, path boundaries, and transaction integrity are enforced in code. Prompts are not security controls.
 
 ### INV-005 Author authority
 
-AI may propose text, validation findings, state changes, summaries, and diary entries. It must not directly alter canonical facts, final text, or authoritative state.
+AI may propose text, validation findings, state changes, summaries, and diary entries. It must not directly alter Canon, final text, or authoritative state.
 
 Any failure against these invariants blocks merge and release.
 
-## 9. Architecture boundaries
+## 10. Architecture boundaries
 
 ```text
 Electron Main
@@ -155,7 +170,7 @@ Preload
   named whitelist APIs, boundary validation, MessagePort bridge
 
 Renderer
-  React, Tiptap, Zustand, user interaction and temporary stream display
+  React, Tiptap, Zustand, user interaction, temporary stream display
   no Node, SQLite, filesystem, environment, or credentials
 
 Core Service Utility Process
@@ -163,96 +178,31 @@ Core Service Utility Process
   files, FTS5, providers, validation, import/export, backups, recovery
 ```
 
-Keep the initial Core as one Utility Process, separated internally into:
+Repository responsibilities:
 
-- asynchronous AI streaming;
-- serialized SQLite write queue;
-- CPU-heavy jobs.
-
-Do not split processes without measured thresholds and an approved task.
-
-## 10. Repository boundaries
-
-```text
-apps/desktop/main
-apps/desktop/preload
-apps/desktop/renderer
-
-packages/contracts
-packages/domain
-packages/core-service
-packages/editor-core
-packages/prompts
-packages/testkit
-
-migrations/app
-migrations/project
-tests
-evals
-docs
-scripts
-```
-
-- `contracts`: Zod schemas, IPC types, events, error codes; no business implementation.
+- `contracts`: strict Zod schemas, IPC types, events, error codes; no business implementation.
 - `domain`: pure entities and invariants; no Electron, React, SQLite, filesystem, or network.
 - `core-service`: repositories, migrations, write queue, providers, FTS, validation, backup/import/export.
 - `editor-core`: Tiptap schema, Block Patch, locking, block mapping, Chinese editor algorithms.
-- `prompts`: versioned prompts, constraint serialization, structured parsing and cleaners.
-- `testkit`: fixtures, provider stubs, fault injection, temporary projects; no production dependency.
+- `prompts`: versioned prompts, constraint serialization, parsing, and cleaners.
+- `testkit`: fixtures, stubs, fault injection, temporary projects; no production dependency.
 
-Follow `docs/architecture/MODULE_BOUNDARIES.md`.
+## 11. Database and writing rules
 
-## 11. Frozen implementation decisions
-
-Use `docs/decisions/IMPLEMENTATION_DECISIONS.md`.
-
-Key decisions include:
-
-- IDs use `crypto.randomUUID()`.
-- order keys use 64-bit integer gaps with local rebalance.
-- content hashes use SHA-256 over normalized semantic content.
-- Draft Patch is an ordered atomic operation list.
-- split keeps the original logical ID on the left; merge keeps the previous block ID.
-- FTS5 uses trigram for Chinese when supported, with explicit short-query fallback.
-- StyleProfile JSON is versioned and Zod-validated.
-- automatic save defaults to 800 ms and never commits during IME composition.
-- prompts have stable IDs and integer versions.
-
-Do not make a different choice inside a feature task. Changing a frozen decision requires evidence, author approval, synchronized docs, and a separate task.
-
-## 12. Database rules
-
-Initialize project databases with:
-
-```sql
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000;
-PRAGMA synchronous = NORMAL;
-```
-
+- `app.sqlite` stores application settings, recent projects, provider metadata, and window/UI preferences; never project text.
+- Each project has one authoritative `project.sqlite`.
 - All writes pass through one serialized Core write queue.
-- Cross-table business transactions are controlled by Use Cases, not UI components.
-- Required atomic boundaries include Draft Patch, Candidate acceptance, Version creation, state proposal resolution, structural operations, import commit, and migration.
 - Migrations are append-only after merge.
-- Automatic save increments Draft revision once per committed transaction.
-- Revision is not a full snapshot.
+- Draft Patch, Candidate acceptance, Version creation, state proposal resolution, structural operations, import, and migration are atomic.
+- Automatic save increments Draft Revision once per committed transaction.
 - Version and VersionBlock have no business update path.
-- FTS, summaries, statistics, and caches are rebuildable derived data.
-
-## 13. Draft, Candidate, Version, and locking
-
+- FTS, statistics, summaries, and caches are rebuildable.
 - One active Draft per chapter.
 - Candidate never overwrites Draft.
-- Version is immutable.
-- `logicalBlockId` tracks logical identity across Draft, Candidate, and Version.
-- Candidate acceptance checks project, base revision, hashes, locked blocks, status, and completeness.
-- Candidate acceptance is one atomic transaction and is undoable.
-- Partial streamed output may only be stored as a partial Candidate.
-- Lock protection is enforced in the editor and Core LockGuard.
-- AI, replacement, split, merge, and move operations all respect locks.
+- All AI, replacement, split, merge, and move operations respect LockGuard, Revision, and Hash.
+- High-risk operations use the shared recovery-point foundation.
 
-## 14. Electron and IPC security
+## 12. Electron, IPC, Provider, and Prompt rules
 
 Required BrowserWindow settings:
 
@@ -264,54 +214,27 @@ webSecurity: true
 ```
 
 - Preload exposes named minimal APIs only.
-- Never expose raw `ipcRenderer.send`.
-- Validate every IPC input with Zod.
-- Use strict CSP.
-- Block in-app remote navigation and new windows.
-- Open approved external links in the OS browser.
-- Normalize and validate paths against the active project or an explicit user-selected directory.
-- Do not weaken security settings to fix development problems.
-
-## 15. AI, Prompt, and Provider rules
-
-V1 provider capability fields are limited to:
-
-```ts
-streaming
-structuredOutput
-maxContextTokens
-maxOutputTokens
-```
-
-- Do not add speculative capability flags.
+- Validate every IPC and external model payload with strict Zod schemas.
+- Block remote navigation and new windows; approved external links open in the OS browser.
 - Providers convert protocols only; they do not query project data or persist Candidates.
-- Prompts live under `packages/prompts` and are registered by stable ID and version.
-- Prompt, schema, constraint, cleaner, or provider changes require the corresponding Eval.
-- Stream deltas are batched; do not send one IPC message per token.
-- Renderer displays temporary output only.
-- Persist Candidate after completion or explicit partial-save handling.
-- Switching chapters must not cancel or mix runs.
-- AI stages shown to users map to real program stages; do not fake countdowns.
+- Credentials stay in the OS Credential Store; SQLite stores only `credentialRef`.
+- Prompts live under `packages/prompts`, have stable IDs and integer versions, and bind input/output schemas.
+- Prompt changes require corresponding Eval.
+- Stream deltas are batched; never emit one IPC message per token.
+- AI stages shown to users must map to real program stages.
 
-## 16. UI rules
+## 13. UI rules
 
-Visual direction: quiet editorial workspace.
-
-- Keep the manuscript as the visual center.
-- Do not use large AI-blue backgrounds.
+- The manuscript remains the visual center.
+- User-facing functions are operable in their own task; M7 unifies navigation and visual systems.
+- New-user and professional modes share data and commands.
+- Theme A and Theme B never fork business logic.
+- Cover empty, loading, success, failure, cancellation, conflict, read-only, and recovery states.
+- Support the frozen target viewports and DPI matrix.
 - Do not use green to imply AI text is better.
-- Use cards mainly for Candidates, conflicts, recovery, and risk.
-- Support light, dark, eye-comfort, and high-contrast themes.
-- Use SVG icons.
-- Body column widths are 680/760/860 CSS px.
-- Support 1280×800 minimum, 2560×1440 at 100/125/150%, and 21:9 ultrawide.
-- Below 1100 CSS px use a right drawer; below 900 use drawers for both sides.
-- Do not create page-level horizontal scrolling.
-- Keep dangerous and high-frequency actions near active content on ultrawide displays.
-- Cover empty, loading, failure, cancellation, conflict, read-only, and recovery states.
-- New-user and professional modes share data and capabilities.
+- Unimplemented functions are not shown as usable.
 
-## 17. Required tests by change type
+## 14. Required tests
 
 Always run:
 
@@ -343,14 +266,14 @@ pnpm test:integration
 pnpm test:e2e
 ```
 
-Prompt, constraint, provider, or AI schema:
+Prompt, constraints, Provider, or AI schema:
 
 ```bash
 pnpm test:eval
 pnpm test:integration
 ```
 
-Performance-sensitive or high-DPI work:
+Performance or high-DPI:
 
 ```bash
 pnpm test:perf
@@ -359,45 +282,18 @@ pnpm test:e2e
 
 If a command does not yet exist, state that truthfully. Only the assigned foundation task may create it.
 
-## 18. Completion and evidence
+## 15. Completion and evidence
 
 A task is complete only when:
 
+- its dependencies are Verified;
 - behavior and non-goals match the individual task card;
+- the feature is reachable through its minimum UI when user-facing;
 - success, failure, cancellation, conflict, read-only, and recovery paths are addressed as applicable;
 - tests were actually run and results recorded;
 - migrations, IPC, schemas, Prompt versions, UI docs, and implementation are synchronized;
-- required evidence exists under `docs/test-evidence/<TASK-ID>/`;
+- evidence exists under `docs/test-evidence/<TASK-ID>/`;
 - `TASK_INDEX.md` and `V1.0_TRACEABILITY_MATRIX.md` are updated;
-- no unrelated refactor, TODO, fake data, or empty implementation remains;
-- remaining limitations and risks are stated.
+- no unrelated refactor, TODO, fake data, or empty implementation remains.
 
-`Implemented` means the feature is truly connected. `Verified` requires automated tests, manual checks, and evidence.
-
-## 19. Closing an active task
-
-Follow `docs/process/CODEX_EXECUTION_PLAYBOOK.md`:
-
-1. update the individual task card;
-2. update task index and traceability matrix;
-3. save evidence;
-4. record commit and risks in `ACTIVE_TASK.md`;
-5. return `ACTIVE_TASK.md` to `NO_ACTIVE_CODING_TASK`;
-6. wait for the author to activate the next task.
-
-Never continue automatically to the next milestone or task.
-
-## 20. Stop conditions
-
-Stop and report when:
-
-- there is no active coding task;
-- documents conflict;
-- a new production dependency is required but not approved;
-- frozen scope or architecture must change;
-- migration or recovery has irreversible risk;
-- tests prove a hard guarantee cannot be met;
-- the work would introduce a V1.0 excluded capability;
-- required files or verification tools are unavailable.
-
-Do not hide a blocked condition with a temporary workaround.
+Task closure returns `ACTIVE_TASK.md` to `NO_ACTIVE_CODING_TASK`. Never begin the next task automatically.

@@ -1,13 +1,15 @@
 # WorldForge V1.0 任务索引
 
 > 状态：Frozen  
+> 基线：WorldForge V6.5  
+> 任务体系：M0—M8九阶段，共48张独立任务卡。  
 > 原则：同一时间一个活动任务；一任务一文件；一任务一分支；完成必须有证据。
 
-## 唯一执行入口
+## 1. 唯一执行入口
 
 1. [`ACTIVE_TASK.md`](ACTIVE_TASK.md)：当前唯一允许执行的任务。
-2. 当前任务对应的一任务一文件任务卡。
-3. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：按任务类型查询专项文档。
+2. ACTIVE_TASK指向的独立任务卡。
+3. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
 
@@ -16,80 +18,160 @@ Planned → In Progress → Implemented → Verified
 Blocked / Deferred / Removed
 ```
 
-## M0 工程与安全底座
+## 2. 阶段总览
+
+| 阶段 | 定位 | 任务数 | 阶段退出结果 |
+|---|---|---:|---|
+| M0 | 工程、安全与运行底座 | 7 | 应用可安全启动、Core可监管、SQLite/IPC/测试底座可用，关键技术风险有量化结论。 |
+| M1 | 基础写作MVP | 9 | 交付无AI也能长期写作、自动保存、版本、导入导出和恢复的基础产品。 |
+| M2 | 编辑安全与版本核心 | 4 | 所有正文修改统一受Patch、Revision、Hash、锁定、Candidate隔离和恢复保护。 |
+| M3 | 规划、设定与连续性 | 6 | 建立规划、设定与连续性权威数据，作者确认后才改变状态。 |
+| M4 | 检索与AI基础设施 | 5 | 建立FTS、约束包、Provider、Prompt和GenerationRun等可复用AI基础设施。 |
+| M5 | AI生成与候选审阅 | 5 | 完成T0/T1、改写、融合、候选审阅、采用和撤销的作者可控AI闭环。 |
+| M6 | 校验、搜索与交付 | 6 | 补齐校验、全项目搜索、节奏指标、DOCX和三轨备份恢复。 |
+| M7 | 完整UI与体验整合 | 3 | 统一工作台、新手/专业模式、主题、无障碍和目标显示环境。 |
+| M8 | 发布硬化与验收 | 3 | 完成安全、数据、性能、E2E、跨平台构建、P0追踪和发布关闭。 |
+
+```text
+M0 安全可运行
+→ M1 基础写作MVP
+→ M2 编辑安全与版本核心
+→ M3 规划设定与连续性
+→ M4 检索与AI基础设施
+→ M5 AI生成与候选审阅
+→ M6 校验搜索与交付
+→ M7 完整UI与体验整合
+→ M8 发布硬化与验收
+```
+
+M1是明确的基础产品门：没有AI时也必须能够创建项目、建卷章、写作、自动保存、查看字数、查找、保存历史版本、导入导出和恢复。
+
+## M0 工程、安全与运行底座
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M0-01 | [`Monorepo与质量工具`](M0/M0-01_MONOREPO_FOUNDATION.md) | 无 | Planned |
-| M0-02 | [`Electron安全基线`](M0/M0-02_ELECTRON_SECURITY.md) | M0-01 | Planned |
-| M0-03 | [`SQLite、Migration与单写队列`](M0/M0-03_SQLITE_WRITE_QUEUE.md) | M0-01 | Planned |
-| M0-04 | [`IPC与流式事件协议`](M0/M0-04_IPC_STREAMING.md) | M0-01、M0-02 | Planned |
-| M0-05 | [`2K、曲面屏与窗口恢复Spike`](M0/M0-05_DISPLAY_SCALING_SPIKE.md) | M0-01 | Planned |
-| M0-06 | [`AI质量与中文Diff Spike`](M0/M0-06_AI_DIFF_SPIKE.md) | M0-03、M0-04 | Planned |
+| M0-01 | [`Monorepo、质量工具与CI`](M0/M0-01_MONOREPO_QUALITY_CI.md) | 无 | Planned |
+| M0-02 | [`Electron安全壳与Core生命周期`](M0/M0-02_ELECTRON_CORE_LIFECYCLE.md) | M0-01 | Planned |
+| M0-03 | [`SQLite、Migration与单写队列`](M0/M0-03_SQLITE_MIGRATION_WRITE_QUEUE.md) | M0-01 | Planned |
+| M0-04 | [`IPC、错误码、事件与任务协议`](M0/M0-04_IPC_EVENT_TASK_PROTOCOL.md) | M0-02、M0-03 | Planned |
+| M0-05 | [`测试基建、Fixture与故障注入`](M0/M0-05_TESTKIT_FAULT_INJECTION.md) | M0-01、M0-02、M0-03、M0-04 | Planned |
+| M0-06 | [`显示、DPI与窗口恢复Spike`](M0/M0-06_DISPLAY_WINDOW_SPIKE.md) | M0-02、M0-03、M0-05 | Planned |
+| M0-07 | [`AI输出协议与中文Diff Spike`](M0/M0-07_AI_DIFF_SPIKE.md) | M0-03、M0-04、M0-05 | Planned |
 
 里程碑摘要：[`M0_TASKS.md`](M0_TASKS.md)。
 
-## M1 编辑与版本核心
+## M1 基础写作MVP
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M1-01 | [`项目工作空间与路径边界`](M1/M1-01_PROJECT_WORKSPACE.md) | M0 | Planned |
-| M1-02 | [`Draft、Tiptap与自动保存`](M1/M1-02_DRAFT_EDITOR.md) | M1-01 | Planned |
-| M1-03 | [`锁定、Block Patch与Revision`](M1/M1-03_LOCK_REVISION.md) | M1-02 | Planned |
-| M1-04 | [`Candidate、Version与采用撤销`](M1/M1-04_CANDIDATE_VERSION.md) | M1-03 | Planned |
-| M1-05 | [`回收站、拆章、并章与跨章移动`](M1/M1-05_STRUCTURE_RECOVERY.md) | M1-04 | Planned |
+| M1-01 | [`app.sqlite、应用设置与最近项目`](M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md) | M0 | Planned |
+| M1-02 | [`项目工作空间、路径边界与只读打开`](M1/M1-02_PROJECT_WORKSPACE_PATHS.md) | M1-01 | Planned |
+| M1-03 | [`卷与章节基础生命周期`](M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md) | M1-02 | Planned |
+| M1-04 | [`Draft、Tiptap与中文输入`](M1/M1-04_DRAFT_EDITOR_IME.md) | M1-03 | Planned |
+| M1-05 | [`Block Patch、内容Hash与Revision`](M1/M1-05_BLOCK_PATCH_REVISION.md) | M1-04 | Planned |
+| M1-06 | [`自动保存、字数与当前章查找`](M1/M1-06_AUTOSAVE_STATS_FIND.md) | M1-05 | Planned |
+| M1-07 | [`手动Version、定稿与历史恢复`](M1/M1-07_MANUAL_VERSION_FINALIZE.md) | M1-06 | Planned |
+| M1-08 | [`基础恢复点、完整性检查与只读恢复`](M1/M1-08_RECOVERY_READONLY_FOUNDATION.md) | M1-02、M0-03 | Planned |
+| M1-09 | [`TXT与Markdown基础导入导出`](M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md) | M1-07、M1-08 | Planned |
 
 里程碑摘要：[`M1_TASKS.md`](M1_TASKS.md)。
 
-## M2 规划与连续性
+## M2 编辑安全与版本核心
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M2-01 | [`任务书、大纲、章节与SceneBeat`](M2/M2-01_PLANNING_MODEL.md) | M1 | Planned |
-| M2-02 | [`实体、Canon与动态状态`](M2/M2-02_CANON_STATE.md) | M2-01 | Planned |
-| M2-03 | [`时间线、知情信息与伏笔`](M2/M2-03_CONTINUITY_MODELS.md) | M2-02 | Planned |
-| M2-04 | [`定稿、状态提案、尾快照与失效传播`](M2/M2-04_STATE_PROPOSALS_SNAPSHOTS.md) | M2-03、M1-04 | Planned |
+| M2-01 | [`锁定块与Core LockGuard`](M2/M2-01_LOCK_GUARD.md) | M1-05 | Planned |
+| M2-02 | [`Candidate与完整Version模型`](M2/M2-02_CANDIDATE_VERSION_MODEL.md) | M1-07、M2-01 | Planned |
+| M2-03 | [`Diff、冲突、采用与持久化撤销`](M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md) | M2-02 | Planned |
+| M2-04 | [`回收站、拆章、并章与结构恢复`](M2/M2-04_TRASH_STRUCTURE_RECOVERY.md) | M2-03、M1-08 | Planned |
 
 里程碑摘要：[`M2_TASKS.md`](M2_TASKS.md)。
 
-## M3 AI生成闭环
+## M3 规划、设定与连续性
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M3-01 | [`Provider、连接测试与凭据`](M3/M3-01_PROVIDER_LAYER.md) | M0-06、M2 | Planned |
-| M3-02 | [`约束包与FTS5检索`](M3/M3-02_CONSTRAINT_PACKAGE.md) | M2-04、M3-01 | Planned |
-| M3-03 | [`T0/T1、快速改写、融合与取消`](M3/M3-03_GENERATION_WORKFLOWS.md) | M3-01、M3-02、M0-04 | Planned |
-| M3-04 | [`候选Diff、冲突、采用与回退`](M3/M3-04_CANDIDATE_REVIEW.md) | M1-04、M3-03、M0-06 | Planned |
+| M3-01 | [`作品任务书与大纲树`](M3/M3-01_PROJECT_BRIEF_OUTLINE.md) | M2 | Planned |
+| M3-02 | [`SceneBeat、场景关联与跨章移动`](M3/M3-02_SCENE_BEAT_CROSS_CHAPTER.md) | M3-01、M2-04 | Planned |
+| M3-03 | [`通用实体与静态Canon`](M3/M3-03_ENTITY_CANON.md) | M3-01 | Planned |
+| M3-04 | [`动态状态、时间线与知情信息`](M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md) | M3-02、M3-03 | Planned |
+| M3-05 | [`伏笔生命周期与人物弧光`](M3/M3-05_FORESHADOWING_CHARACTER_ARC.md) | M3-04 | Planned |
+| M3-06 | [`状态提案、定稿、尾快照与失效传播`](M3/M3-06_STATE_PROPOSAL_SNAPSHOT.md) | M3-04、M3-05、M1-07、M2-03 | Planned |
 
 里程碑摘要：[`M3_TASKS.md`](M3_TASKS.md)。
 
-## M4 完整交付
+## M4 检索与AI基础设施
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M4-01 | [`校验、问题降噪与修订待办`](M4/M4-01_VALIDATION_REVISION.md) | M3 | Planned |
-| M4-02 | [`当前章搜索、FTS5、替换与词典`](M4/M4-02_SEARCH_DICTIONARY.md) | M3、M1 | Planned |
-| M4-03 | [`TXT、Markdown与DOCX导入导出`](M4/M4-03_IMPORT_EXPORT.md) | M1、M2 | Planned |
-| M4-04 | [`三轨备份、完整性检查与恢复`](M4/M4-04_BACKUP_RECOVERY.md) | M1、M0-03 | Planned |
-| M4-05 | [`新手/专业模式、工作台与完整视觉交互`](M4/M4-05_COMPLETE_UI.md) | M1—M4-04 | Planned |
+| M4-01 | [`FTS5公共索引、队列与项目词典`](M4/M4-01_FTS_INDEX_DICTIONARY.md) | M3 | Planned |
+| M4-02 | [`P0—P4约束包与裁剪追溯`](M4/M4-02_CONSTRAINT_PACKAGE.md) | M4-01、M3-06 | Planned |
+| M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md) | M3、M0-02、M0-04、M0-05 | Planned |
+| M4-04 | [`Prompt Registry、输出Schema与Cleaner`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-02、M4-03 | Planned |
+| M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md) | M4-04、M0-07 | Planned |
 
 里程碑摘要：[`M4_TASKS.md`](M4_TASKS.md)。
 
-## M5 发布硬化
+## M5 AI生成与候选审阅
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M5-01 | [`安全、Migration、数据损坏与隐私硬化`](M5/M5-01_SECURITY_DATA_HARDENING.md) | M4 | Planned |
-| M5-02 | [`性能、高分屏、AI Eval与长场景验收`](M5/M5-02_PERFORMANCE_EVAL.md) | M4 | Planned |
-| M5-03 | [`跨平台构建、P0验收与发布关闭`](M5/M5-03_RELEASE_ACCEPTANCE.md) | M5-01、M5-02 | Planned |
+| M5-01 | [`T0多候选骨架`](M5/M5-01_T0_SKELETON.md) | M4 | Planned |
+| M5-02 | [`T1章节扩写`](M5/M5-02_T1_CHAPTER_GENERATION.md) | M5-01 | Planned |
+| M5-03 | [`快速改写与结构性改写`](M5/M5-03_REWRITE_WORKFLOWS.md) | M5-02、M2-03 | Planned |
+| M5-04 | [`多候选融合与部分结果恢复`](M5/M5-04_CANDIDATE_MERGE_PARTIAL.md) | M5-02、M5-03 | Planned |
+| M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md) | M5-01、M5-02、M5-03、M5-04、M2-03 | Planned |
 
 里程碑摘要：[`M5_TASKS.md`](M5_TASKS.md)。
 
-## 执行规则
+## M6 校验、搜索与交付
+
+| ID | 任务卡 | 依赖 | 状态 |
+|---|---|---|---|
+| M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATS_VALIDATION_TODOS.md) | M5、M3 | Planned |
+| M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md) | M6-01、M4-05、M3-05 | Planned |
+| M6-03 | [`全项目搜索与安全批量替换`](M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md) | M4-01、M2-01、M1-08 | Planned |
+| M6-04 | [`网文节奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md) | M3-02、M6-01、M6-02 | Planned |
+| M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md) | M1-09、M1-08 | Planned |
+| M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md) | M1-08、M2-04、M6-03、M6-05 | Planned |
+
+里程碑摘要：[`M6_TASKS.md`](M6_TASKS.md)。
+
+## M7 完整UI与体验整合
+
+| ID | 任务卡 | 依赖 | 状态 |
+|---|---|---|---|
+| M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md) | M1—M6 | Planned |
+| M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md) | M7-01 | Planned |
+| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md) | M7-02、M0-06 | Planned |
+
+里程碑摘要：[`M7_TASKS.md`](M7_TASKS.md)。
+
+## M8 发布硬化与验收
+
+| ID | 任务卡 | 依赖 | 状态 |
+|---|---|---|---|
+| M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md) | M7、M6 | Planned |
+| M8-02 | [`性能、E2E、显示与AI Eval验收`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M8-01、M7-03 | Planned |
+| M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | M8-01、M8-02 | Planned |
+
+里程碑摘要：[`M8_TASKS.md`](M8_TASKS.md)。
+
+## 3. 阶段门规则
+
+1. 不允许跳过M0直接开发业务页面。
+2. M1未Verified前，不得把AI、人物弧光、节奏检测或完整主题当作主线进度。
+3. 后一阶段不得使用尚未由前一阶段建立的表、命令、模型或恢复能力。
+4. 每个用户功能任务必须包含最小可操作UI；M7只做统一整合，不负责第一次接通业务。
+5. 恢复点、FTS、Candidate、Prompt等公共能力分为基础底座和上层使用，禁止重复实现。
+6. 同一阶段内只有依赖满足的任务可并行；不得并行修改同一权威Schema、Migration序列、IPC命令或核心模型。
+7. 阶段退出必须有真实业务场景证据，不能只以文件、接口或Mock数量判断。
+
+## 4. 执行规则
 
 1. 作者明确激活任务后，先更新`ACTIVE_TASK.md`和本索引状态。
 2. Codex只能修改活动任务允许路径；范围变化先改活动任务文件。
-3. 一个分支只完成一个任务卡。
-4. `Implemented`表示真实接通；只有验收、人工复查和证据完成后才标记`Verified`。
+3. 一个分支只完成一张任务卡。
+4. `Implemented`表示真实接通；自动化、人工验收和证据完成后才标记`Verified`。
 5. 任务关闭后将`ACTIVE_TASK.md`恢复为无活动任务，等待作者激活下一项。
 6. V1.5任务不进入本索引，满足启动门后单独建立Epic和任务目录。

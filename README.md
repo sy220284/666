@@ -303,6 +303,10 @@ WorldForge 创世工坊
 | FSH-001 | 伏笔系统 | 管理埋设、强化、揭示和超期 | Foreshadowing关系表 | SceneBeat、约束包、校验 |
 | SNP-001 | 章节尾快照 | 保存下一章需要的最小连续性入口 | EndingSnapshot | 下一章生成优先读取 |
 | STA-002 | 状态提案 | AI提出变化，作者确认后写入 | StateProposal状态机 | 定稿、日记、尾快照 |
+| ARC-001 | 人物弧光定义 | 为人物创建成长/黑化/觉醒等类型弧光 | CharacterArc表 | 与EntityState、时间线同层 |
+| ARC-002 | 弧光节点与状态机 | 里程碑节点planned/hit/skipped | ArcMilestone表 | 命中经StateProposal确认（ADR-006） |
+| ARC-003 | 弧光一致性校验 | 检测性格标签与弧光阶段是否矛盾 | 并入VAL-003 | 避免人物无预警反差 |
+| ARC-004 | 弧光时间线关联 | 弧光节点可依赖TimelineEvent | ArcMilestone.depends_on | 时间线校验联动 |
 
 ### 正文编辑与版本
 
@@ -352,7 +356,11 @@ WorldForge 创世工坊
 | SRC-001 | 当前章搜索 | 普通编辑器式查找替换 | Tiptap搜索插件 | 写作工作台 |
 | SRC-002 | 全项目搜索 | 检索正文、设定、版本和笔记 | SQLite FTS5 | 约束包也使用 |
 | SRC-003 | 安全批量替换 | 预览后批量修改 | ReplacePlan + 恢复点 | 锁定块默认跳过 |
-| REV-001 | StoryTodo/批注 | 管理轻量修订问题 | Todo、Comment | 校验结果可转待办 |
+| REV-001 | StoryTodo/批注 | 管理轻量修订问题，完成后自动重新触发来源校验 | Todo、Comment | 校验结果可转待办 |
+| RHY-001 | 爽点密度分析 | 按品类参考区间提示节奏密度，建议级 | GenreRhythmProfile | 与VAL-002同管线 |
+| RHY-002 | 章末钩子检测 | 提示结尾悬念/信息释放是否偏弱 | 规则+语义联合检测 | 挂载VAL-003 |
+| RHY-003 | 更新节奏跟踪 | 日更字数目标与实际速度对比 | Draft历史统计 | 独立展示 |
+| RHY-004 | 黄金三章检测 | 仅前3章生效的开篇质量检查点 | 复用RHY-001口径 | 建议级，可关闭 |
 
 ### 导入、导出、备份与恢复
 

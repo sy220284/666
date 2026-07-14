@@ -119,6 +119,20 @@ current | historical | superseded | invalid
 pending | accepted | edited | rejected
 ```
 
+### StateProposal类型
+
+```text
+entity_state | arc_milestone
+```
+
+弧光节点命中经`arc_milestone`类型的StateProposal确认，见ADR-006。
+
+### ArcMilestone状态
+
+```text
+planned | hit | skipped
+```
+
 ### KnowledgeState状态
 
 ```text

@@ -5,11 +5,13 @@
 WorldForge is a local-first desktop writing workstation for a single author.  
 The repository implements the frozen V6.5 design baseline.
 
-Primary references:
+Primary references, read in this order:
 
-1. `docs/product/WORLDFORGE_V6.5_FULL_SPEC.md` (V6.5最高权威设计依据)
+1. `docs/product/WORLDFORGE_V6.5_EXECUTABLE_SPEC.md` (engineering source of truth; `WORLDFORGE_V6.5_FULL_SPEC.md` is background context only)
 2. `WorldForge_Codex_全流程技术开发指南.md`
 3. The active task file under `docs/tasks/`
+
+Full conflict-priority order lives in `docs/INDEX.md` §1 (single authoritative statement, do not duplicate it here).
 
 Do not invent product scope outside these documents.
 

@@ -1,6 +1,6 @@
 # WorldForge 架构决策记录
 
-> 本目录只保留五项决定产品安全边界和核心数据模型的ADR。其余技术选择写入对应工程规格，不建立庞大的审批体系。
+> 本目录只保留决定产品安全边界和核心数据模型的ADR。其余技术选择写入对应工程规格，不建立庞大的审批体系。
 
 | ADR | 决策 | 状态 |
 |---|---|---|
@@ -9,6 +9,8 @@
 | [ADR-003](ADR-003-draft-candidate-version.md) | Draft、Candidate、Version三层分离 | Frozen |
 | [ADR-004](ADR-004-ai-cannot-overwrite-draft.md) | AI不得直接覆盖作者正文或权威设定 | Frozen |
 | [ADR-005](ADR-005-lock-revision-backup.md) | 锁定、Revision、事务和备份共同保护正文 | Frozen |
+| [ADR-006](ADR-006-character-arc-via-state-proposal.md) | 人物弧光节点变化经StateProposal确认，不单独开写入通道 | Frozen |
+| [ADR-007](ADR-007-theme-logic-separation.md) | 主题只影响视觉层，不得分叉业务逻辑 | Frozen |
 
 ## ADR变更规则
 

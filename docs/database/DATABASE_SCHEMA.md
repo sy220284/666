@@ -189,9 +189,9 @@ PRAGMA synchronous = NORMAL;
 
 #### `state_proposals`
 
-`id, chapter_id, entity_id, state_key, old_value_json, proposed_value_json, evidence_json, confidence_level, status, resolved_at`
+`id, chapter_id, entity_id, proposal_type, state_key, old_value_json, proposed_value_json, evidence_json, confidence_level, status, resolved_at`
 
-状态：pending/accepted/edited/rejected。
+状态：pending/accepted/edited/rejected。`proposal_type`：entity_state（默认）/arc_milestone。`arc_milestone`类型下`state_key`存`arc_milestones.id`。
 
 #### `timeline_events`
 
@@ -215,6 +215,33 @@ PRAGMA synchronous = NORMAL;
 
 `id, chapter_id UNIQUE, source_version_id, snapshot_json, content_hash, stale, created_at`
 
+#### `character_arcs`
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | TEXT PK | 弧光记录 |
+| entity_id | TEXT FK | 所属人物实体 |
+| title | TEXT | 弧光标题 |
+| arc_type | TEXT | 成长/黑化/觉醒/堕落/救赎/自定义标签 |
+| status | TEXT | planning/developing/resolved |
+| description | TEXT | 作者意图说明 |
+| created_at | TEXT | — |
+
+#### `arc_milestones`
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | TEXT PK | 里程碑节点 |
+| arc_id | TEXT FK | 所属弧光 |
+| chapter_id | TEXT FK NULL | 关联章节 |
+| milestone_type | TEXT | 转折点类型（作者自定义） |
+| description | TEXT | 节点描述 |
+| status | TEXT | planned/hit/skipped |
+| depends_on_json | TEXT | 依赖的其他milestone_id或timeline_event_id |
+| resolved_at | TEXT NULL | 状态确认时间 |
+
+命中状态变化必须经`state_proposals`确认（`proposal_type='arc_milestone'`），pending不修改`status`，见ADR-006。
+
 ### 3.4 AI与约束
 
 #### `generation_runs`
@@ -232,6 +259,12 @@ PRAGMA synchronous = NORMAL;
 #### `style_profiles`
 
 保存文风参数、来源、锁定范围和指纹；参数放`parameters_json`，避免Schema为每个指标频繁扩展。
+
+#### `genre_rhythm_profiles`
+
+`id, project_id, channel, hook_density_target_json, chapter_ending_hook_required, update_pace_target_words, golden_chapters_threshold_json, enabled, updated_at`
+
+作者可编辑的品类节奏参考区间；RHY-001—004读取本表作为建议阈值来源，禁止硬编码魔法数字。所有RHY校验结果均为P3建议级，不写入`validation_issues`的阻断类别。
 
 ### 3.5 搜索、笔记与日记
 

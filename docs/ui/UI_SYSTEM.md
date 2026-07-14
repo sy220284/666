@@ -1,8 +1,9 @@
-# WorldForge UI视觉系统
+# WorldForge UI视觉系统 — Theme A：安静编辑部
 
 > 状态：Frozen  
 > 视觉定位：安静编辑部  
 > 目标：形成长期写作时低干扰、清晰、稳定、具有编辑质感的桌面界面。
+> 本文件是Theme A的Design Token定义。Theme B（水墨印章）Token定义见[`UI_SYSTEM_THEME_B.md`](UI_SYSTEM_THEME_B.md)。两套主题共用本文件§2的Token命名结构和§X组件规范，只替换Token取值和候选采纳的动画表现，不改变业务逻辑（ADR-007）。
 
 ## 1. 视觉目标
 

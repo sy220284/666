@@ -8,7 +8,8 @@
 
 | 文档 | 用途 |
 |---|---|
-| [`UI_SYSTEM.md`](UI_SYSTEM.md) | 视觉方向、Design Token、颜色、字体、间距、图标、组件和主题规则 |
+| [`UI_SYSTEM.md`](UI_SYSTEM.md) | Theme A（安静编辑部）视觉方向、Design Token命名结构、颜色、字体、间距、图标、组件和主题规则 |
+| [`UI_SYSTEM_THEME_B.md`](UI_SYSTEM_THEME_B.md) | Theme B（水墨印章）完整Token取值与印章动效设计，状态Frozen |
 | [`INFORMATION_ARCHITECTURE.md`](INFORMATION_ARCHITECTURE.md) | 页面地图、一级入口、工作台层级和导航规则 |
 | [`SCREEN_SPECIFICATIONS.md`](SCREEN_SPECIFICATIONS.md) | 首页、规划、写作、候选、检查、导入导出、设置等页面规格 |
 | [`INTERACTION_STATES.md`](INTERACTION_STATES.md) | 空、加载、运行、成功、失败、取消、冲突、只读、恢复等状态规范 |

@@ -6,23 +6,26 @@
 
 ## 1. 权威基线
 
-| 优先级 | 文档 | 用途 |
-|---|---|---|
-| 1 | [`../WorldForge_V6.5_实施安全并发与高分屏适配冻结最终工程设计文档.docx`](../WorldForge_V6.5_实施安全并发与高分屏适配冻结最终工程设计文档.docx) | 产品、架构、功能、UI、安全、并发、高分屏与验收总纲 |
-| 2 | [`../WorldForge_Codex_全流程技术开发指南.md`](../WorldForge_Codex_全流程技术开发指南.md) | Codex 从初始化到开发、测试、审查、验收的执行路径 |
-| 3 | [`../AGENTS.md`](../AGENTS.md) | 仓库级不可变规则与编码约束 |
-| 4 | 当前任务卡 | 当前任务目标、非目标、影响范围与验收条件 |
+> 本节是全仓库唯一的权威顺序声明。其余任何文档（AGENTS.md、PROJECT_EXECUTION_ENTRY.md、Codex全流程技术开发指南、FULL_SPEC/EXECUTABLE_SPEC）如提到权威顺序，一律引用本节，不得各自重复定义，避免多处描述不一致后失去同步。
 
-冲突优先级：
+冲突优先级（唯一权威声明）：
 
 ```text
 作者最新明确指令
-> 已批准任务卡
-> V6.5冻结方案与P0验收
-> AGENTS.md
-> Codex全流程技术开发指南
+> 已批准任务卡范围（docs/tasks/ACTIVE_TASK.md）
+> WORLDFORGE_V6.5_EXECUTABLE_SPEC.md 及其链接的专项冻结规格（ADR、DEC、DATABASE_SCHEMA等）
+> AGENTS.md 与 Codex全流程技术开发指南（二者同级，冲突时以AGENTS.md不可变规则为准）
+> .docx 冻结文档（仅用于产品阅读与归档，不作为工程实现依据）
 > 现有代码实现
 ```
+
+| 文档 | 用途 |
+|---|---|
+| [`product/WORLDFORGE_V6.5_EXECUTABLE_SPEC.md`](product/WORLDFORGE_V6.5_EXECUTABLE_SPEC.md) | 工程实现直接依据的可执行总规格 |
+| [`../WorldForge_V6.5_实施安全并发与高分屏适配冻结最终工程设计文档.docx`](../WorldForge_V6.5_实施安全并发与高分屏适配冻结最终工程设计文档.docx) | 产品阅读与归档，不用于工程裁决 |
+| [`../WorldForge_Codex_全流程技术开发指南.md`](../WorldForge_Codex_全流程技术开发指南.md) | Codex 从初始化到开发、测试、审查、验收的执行路径 |
+| [`../AGENTS.md`](../AGENTS.md) | 仓库级不可变规则与编码约束 |
+| 当前任务卡 | 当前任务目标、非目标、影响范围与验收条件 |
 
 ## 2. P0：正式编码前必须具备
 

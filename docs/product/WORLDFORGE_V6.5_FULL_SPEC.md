@@ -3,7 +3,7 @@
 > 状态：Frozen  
 > 基线：WorldForge V6.5  
 > 日期：2026-07-13  
-> 目的：将完整方案转成可开发、可测试、可追踪的统一设计规格，作为`WORLDFORGE_V6.5_EXECUTABLE_SPEC.md`的背景说明。权威顺序见`docs/INDEX.md`§1，本文件不作为工程执行的直接依据。
+> 目的：将完整方案转成可开发、可测试、可追踪的统一设计规格。权威顺序见`docs/INDEX.md`§2。
 
 ---
 
@@ -708,7 +708,7 @@ CandidateCard, ConflictRow, ValidationIssueRow, RecoveryCard
 
 ---
 
-**附录**：本文件整合自以下文档，作为背景参考（权威顺序见`docs/INDEX.md`§1）：
+**附录**：本文件整合自以下文档（权威顺序见`docs/INDEX.md`§2）：
 - ARCHITECTURE.md
 - MODULE_BOUNDARIES.md
 - DATA_FLOW.md

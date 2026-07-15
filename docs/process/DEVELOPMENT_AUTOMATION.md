@@ -46,6 +46,8 @@
 - `pnpm check:workspaces`：包清单、入口和构建脚本。
 - `pnpm check:boundaries`：跨层依赖和 Renderer/Domain/Contracts 的 Node 边界。
 - `pnpm task:verify`：证据目录最低结构。
+- `pnpm task:activate -- <TASK-ID>`：校验依赖并从任务卡生成下一张活动任务。
+- `pnpm task:close -- --ci=success --commit=<SHA>`：关闭Implemented任务并自动激活下一张依赖已满足的任务。
 - GitHub `Task Governance`：任务状态与修改范围。
 - GitHub `Quality`：安装、格式、Lint、类型、测试、边界和构建。
 

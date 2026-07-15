@@ -77,6 +77,69 @@ export function validateActiveState(state, taskIndex) {
   return errors;
 }
 
+export function extractBacktickBullets(markdown, heading) {
+  const start = markdown.indexOf(`## ${heading}`);
+  if (start < 0) return [];
+  const remainder = markdown.slice(start + heading.length + 3);
+  const nextHeading = remainder.search(/^##\s/m);
+  const section = nextHeading >= 0 ? remainder.slice(0, nextHeading) : remainder;
+  return [...section.matchAll(/^\s*-\s+`([^`]+)`/gm)].map((match) => match[1]).filter(Boolean);
+}
+
+export function dependenciesSatisfied(task, taskIndex) {
+  const dependencyText = task.dependencyText.trim();
+  if (dependencyText === '无') return true;
+
+  const requiredIds = new Set(dependencyText.match(/M\d-\d{2}/g) ?? []);
+  for (const requiredId of requiredIds) {
+    if (taskIndex.get(requiredId)?.status !== 'Verified') return false;
+  }
+
+  const stageNumbers = new Set();
+  for (const match of dependencyText.matchAll(/M(\d)(?!-)/g)) {
+    if (match[1]) stageNumbers.add(Number(match[1]));
+  }
+  for (const match of dependencyText.matchAll(/M(\d)\s*[—–]\s*M?(\d)(?!\d)/g)) {
+    const start = Number(match[1]);
+    const end = Number(match[2]);
+    for (let stage = start; stage <= end; stage += 1) stageNumbers.add(stage);
+  }
+
+  for (const stage of stageNumbers) {
+    const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
+    if (stageTasks.length === 0 || stageTasks.some(({ status }) => status !== 'Verified'))
+      return false;
+  }
+
+  return true;
+}
+
+export function findNextReadyTask(taskIndex) {
+  return [...taskIndex.values()].find(
+    (task) => task.status === 'Planned' && dependenciesSatisfied(task, taskIndex),
+  );
+}
+
+export function replaceTaskIndexStatus(markdown, taskId, nextStatus) {
+  const matcher = new RegExp(`^(\\|\\s*${taskId}\\s*\\|[^\\n]*\\|\\s*)([^|]+?)(\\s*\\|\\s*)$`, 'm');
+  if (!matcher.test(markdown)) throw new Error(`Cannot find ${taskId} row in TASK_INDEX`);
+  return markdown.replace(matcher, `$1${nextStatus}$3`);
+}
+
+export function verificationForTask(card) {
+  const commands = ['pnpm lint', 'pnpm typecheck', 'pnpm test'];
+  if (/数据库|SQLite|Migration/i.test(card))
+    commands.push('pnpm test:migration', 'pnpm test:integration');
+  if (/Electron|IPC|路径|安全/i.test(card)) commands.push('pnpm test:security', 'pnpm test:e2e');
+  if (/Editor|Candidate|锁定|Revision|Patch/i.test(card)) {
+    commands.push('pnpm test:unit', 'pnpm test:integration', 'pnpm test:e2e');
+  }
+  if (/Prompt|Provider|约束包/i.test(card))
+    commands.push('pnpm test:eval', 'pnpm test:integration');
+  if (/性能|DPI|高分屏/i.test(card)) commands.push('pnpm test:perf', 'pnpm test:e2e');
+  return [...new Set(commands)];
+}
+
 export function renderActiveTask(state) {
   const task = state.activeTask;
   const list = (values) => values.map((value) => `  - ${value}`).join('\n');

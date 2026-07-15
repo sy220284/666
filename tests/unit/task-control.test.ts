@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isPathInside,
+  dependenciesSatisfied,
+  extractBacktickBullets,
+  findNextReadyTask,
   parseTaskIndex,
+  replaceTaskIndexStatus,
   validateActiveState,
   validateChangedPaths,
 } from '../../scripts/task-control-lib.mjs';
@@ -71,5 +75,25 @@ describe('task control', () => {
       },
     };
     expect(validateActiveState(state, parseTaskIndex(implementedIndex))).toEqual([]);
+  });
+
+  it('extracts task paths and advances only after dependencies verify', () => {
+    const card = `## 必读文档\n\n- \`AGENTS.md\`\n\n## 主要影响范围\n\n- \`apps/\`\n- \`packages/\`\n`;
+    expect(extractBacktickBullets(card, '必读文档')).toEqual(['AGENTS.md']);
+    expect(extractBacktickBullets(card, '主要影响范围')).toEqual(['apps/', 'packages/']);
+
+    const pending = parseTaskIndex(indexFixture);
+    expect(dependenciesSatisfied(pending.get('M0-02')!, pending)).toBe(false);
+    expect(findNextReadyTask(pending)?.id).toBeUndefined();
+
+    const verified = parseTaskIndex(indexFixture.replace('In Progress', 'Verified'));
+    expect(dependenciesSatisfied(verified.get('M0-02')!, verified)).toBe(true);
+    expect(findNextReadyTask(verified)?.id).toBe('M0-02');
+  });
+
+  it('updates exactly one task index status', () => {
+    expect(replaceTaskIndexStatus(indexFixture, 'M0-01', 'Verified')).toContain(
+      '| M0-01 | [Monorepo](M0/M0-01_MONOREPO_QUALITY_CI.md) | 无 | Verified |',
+    );
   });
 });

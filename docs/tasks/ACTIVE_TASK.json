@@ -9,26 +9,28 @@
     "autoActivateNext": true
   },
   "activeTask": {
-    "id": "M0-05",
-    "status": "IMPLEMENTED",
-    "source": "docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md",
+    "id": "M0-06",
+    "status": "IN_PROGRESS",
+    "source": "docs/tasks/M0/M0-06_DISPLAY_WINDOW_SPIKE.md",
     "branch": "main",
     "startedAt": "2026-07-15",
     "allowedPaths": [
-      "packages/testkit/",
-      "tests/",
-      "evals/",
-      "scripts/",
-      "docs/test-evidence/",
+      "apps/desktop/main/",
+      "apps/desktop/renderer/",
+      "packages/core-service/",
+      "migrations/app/",
+      "tests/e2e/",
+      "tests/performance/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
+      "docs/tasks/M0/M0-06_DISPLAY_WINDOW_SPIKE.md",
       "docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M0-05/"
+      "docs/test-evidence/M0-06/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -36,10 +38,9 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/testing/TEST_STRATEGY.md",
-      "docs/testing/SECURITY_TEST_CASES.md",
-      "docs/testing/PERFORMANCE_BUDGETS.md",
-      "docs/ai/PROMPT_AND_EVAL_SPEC.md"
+      "docs/ui/RESPONSIVE_AND_DPI.md",
+      "docs/ui/UI_SYSTEM.md",
+      "docs/testing/PERFORMANCE_BUDGETS.md"
     ],
     "verification": [
       "pnpm lint",
@@ -48,12 +49,13 @@
       "pnpm test:migration",
       "pnpm test:integration",
       "pnpm test:security",
-      "pnpm test:e2e"
+      "pnpm test:e2e",
+      "pnpm test:perf"
     ]
   },
   "lastVerifiedTask": {
-    "id": "M0-04",
-    "commit": "9908d57f97d71e6cdea2249e52e1430b7301c02d",
-    "verifiedAt": "2026-07-15T04:41:51.626Z"
+    "id": "M0-05",
+    "commit": "c27eedbef2ca09bd463282249b6f16d755753445",
+    "verifiedAt": "2026-07-15T05:16:39.073Z"
   }
 }

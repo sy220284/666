@@ -1,0 +1,16 @@
+id: structured-envelope-001
+language: zh-CN
+channel: unspecified
+task: skeleton
+metadata:
+  source: synthetic-public-test-data
+  license: CC0-1.0
+  contains_private_data: false
+input:
+  wrapper: registered-json-code-fence
+  payload: 公开合成T0骨架
+assertions:
+  first_parse: invalid_json_syntax
+  repair_attempts: 1
+  repaired_parse: valid
+  unregistered_rewrite: false

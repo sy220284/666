@@ -18,6 +18,7 @@ import {
 } from './task-protocol.js';
 
 export * from './error-codes.js';
+export * from './ai-output-protocol.js';
 export * from './task-protocol.js';
 
 export const contractsLayer = {

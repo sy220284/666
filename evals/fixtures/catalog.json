@@ -1,8 +1,13 @@
 {
   "schemaVersion": 1,
-  "fixtureSetVersion": "m0-05-v1",
+  "fixtureSetVersion": "m0-07-v1",
   "source": "synthetic-public-test-data",
   "license": "CC0-1.0",
   "containsPrivateData": false,
-  "fixtures": ["common/chapter-continuity-001.yaml", "safety/knowledge-boundary-001.yaml"]
+  "fixtures": [
+    "common/chapter-continuity-001.yaml",
+    "protocol/skeleton-output-001.yaml",
+    "protocol/structured-envelope-001.yaml",
+    "safety/knowledge-boundary-001.yaml"
+  ]
 }

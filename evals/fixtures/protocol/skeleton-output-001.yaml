@@ -1,0 +1,20 @@
+id: skeleton-output-001
+language: zh-CN
+channel: unspecified
+task: skeleton
+metadata:
+  source: synthetic-public-test-data
+  license: CC0-1.0
+  contains_private_data: false
+input:
+  chapter_goal: 核对来信年代并在旧渡口找到第二条线索
+  required_beats:
+    - beat_id: beat-tide
+      event: 林澈核对潮汐日期
+  tendency: 因果优先
+assertions:
+  schema_valid: true
+  required_beat_coverage: 1
+  forbidden_events:
+    - 直接揭晓寄信人身份
+  outputs_chapter_prose: false

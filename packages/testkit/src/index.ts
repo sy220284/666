@@ -3,6 +3,7 @@ export const testkitLayer = {
   responsibility: 'fixtures-stubs-and-fault-injection',
 } as const;
 
+export * from './ai-protocol-harness.js';
 export * from './determinism.js';
 export * from './evidence.js';
 export * from './faults.js';

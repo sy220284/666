@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-07",
+  "provider": "deterministic-stub",
+  "model": "deterministic-v1",
+  "taskType": "skeleton",
+  "promptId": "m0.spike.skeleton",
+  "promptVersion": 1,
+  "fixtureSetVersion": "m0-07-v1",
+  "status": "verified",
+  "metrics": {
+    "schemaValidityRate": 1,
+    "requiredBeatCoverageRate": 1,
+    "forbiddenEventLeakageRate": 0,
+    "maximumRepairAttempts": 1
+  },
+  "containsPrivateData": false,
+  "interpretation": "确定性Provider Stub只验证协议、Schema、Cleaner和降级路径，不代表任何真实模型的写作质量。"
+}

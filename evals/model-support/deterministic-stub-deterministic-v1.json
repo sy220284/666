@@ -1,0 +1,19 @@
+{
+  "providerId": "deterministic-stub",
+  "model": "deterministic-v1",
+  "taskType": "skeleton",
+  "promptId": "m0.spike.skeleton",
+  "promptVersion": 1,
+  "status": "verified",
+  "evaluatedAt": "2026-07-15T00:00:00.000Z",
+  "fixtureSetVersion": "m0-07-v1",
+  "metrics": {
+    "structuredSchemaRate": 1,
+    "requiredBeatCoverageRate": 1,
+    "forbiddenEventLeakageRate": 0
+  },
+  "limitations": [
+    "仅验证确定性协议行为，不代表真实模型质量。",
+    "真实Provider与模型必须在M4/M8使用独立Eval生成自己的支持档案。"
+  ]
+}

@@ -1,0 +1,2 @@
+{"fixtureId":"skeleton-output-001","status":"passed","schemaValid":true,"requiredBeatCoverage":1,"forbiddenEventLeakage":false}
+{"fixtureId":"structured-envelope-001","status":"passed","repairAttempts":1,"unregisteredRewrite":false}

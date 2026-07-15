@@ -104,7 +104,11 @@ importers:
 
   packages/editor-core: {}
 
-  packages/prompts: {}
+  packages/prompts:
+    dependencies:
+      '@worldforge/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/testkit:
     dependencies:
@@ -114,6 +118,9 @@ importers:
       '@worldforge/core-service':
         specifier: workspace:*
         version: link:../core-service
+      '@worldforge/prompts':
+        specifier: workspace:*
+        version: link:../prompts
     devDependencies:
       '@types/node':
         specifier: 26.1.1

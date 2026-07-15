@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-07",
+  "fixtureSetVersion": "m0-07-v1",
+  "provider": "deterministic-stub",
+  "model": "deterministic-v1",
+  "promptId": "m0.spike.skeleton",
+  "promptVersion": 1,
+  "minimums": {
+    "schemaValidityRate": 1,
+    "requiredBeatCoverageRate": 0.95,
+    "maximumForbiddenEventLeakageRate": 0.02,
+    "maximumRepairAttempts": 1
+  },
+  "containsPrivateData": false
+}

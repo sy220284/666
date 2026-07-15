@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@worldforge/contracts": "workspace:*",
-    "@worldforge/core-service": "workspace:*"
+    "@worldforge/core-service": "workspace:*",
+    "@worldforge/prompts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.1.1"

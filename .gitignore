@@ -1,9 +1,20 @@
 node_modules/
+.pnpm-store/
 dist/
+out/
+release/
 coverage/
 artifacts/
 playwright-report/
 test-results/
+
+# Electron and native build output
+*.node
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
 
 # Local WorldForge data and generated project material
 *.sqlite
@@ -12,6 +23,7 @@ test-results/
 *.db
 *.db-shm
 *.db-wal
+*.worldforge/
 *.wfproj
 projects/
 backups/
@@ -33,6 +45,10 @@ secrets.json
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 *.swp
 *.tmp
+*.temp
+~$*

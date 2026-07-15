@@ -5,11 +5,11 @@
 ## 当前状态
 
 ```text
-IMPLEMENTED
+IN_PROGRESS
 ```
 
-- 任务ID：`M0-06`
-- 唯一任务卡：`docs/tasks/M0/M0-06_DISPLAY_WINDOW_SPIKE.md`
+- 任务ID：`M0-07`
+- 唯一任务卡：`docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md`
 - 工作分支：`main`
 - 开始时间：`2026-07-15`
 - 授权模式：`continuous-mainline`
@@ -19,30 +19,23 @@ IMPLEMENTED
 
 ```yaml
 allowed_paths:
-  - apps/desktop/main/
-  - apps/desktop/preload/
-  - apps/desktop/renderer/
   - packages/contracts/
-  - packages/core-service/
-  - migrations/app/
-  - tests/e2e/
-  - tests/migration/
+  - packages/prompts/
+  - packages/editor-core/
+  - packages/testkit/
+  - evals/
   - tests/performance/
-  - tests/security/
-  - .github/workflows/quality.yml
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/ui/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md
   - docs/tasks/M0/M0-06_DISPLAY_WINDOW_SPIKE.md
+  - docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M0-06/
+  - docs/ui/DISPLAY_SPIKE_RESULTS.md
+  - docs/test-evidence/M0-07/
 forbidden_paths:
 
 required_docs:
@@ -50,8 +43,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/ui/RESPONSIVE_AND_DPI.md
-  - docs/ui/UI_SYSTEM.md
+  - docs/ai/PROMPT_AND_EVAL_SPEC.md
+  - docs/ai/PROVIDER_PROTOCOL.md
+  - docs/ui/CANDIDATE_REVIEW_SPEC.md
   - docs/testing/PERFORMANCE_BUDGETS.md
 verification:
   - pnpm lint
@@ -61,6 +55,8 @@ verification:
   - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
+  - pnpm test:unit
+  - pnpm test:eval
   - pnpm test:perf
 ```
 

@@ -1,6 +1,6 @@
 # M0-06 显示、DPI与窗口恢复Spike结论
 
-> 状态：Implemented，main分支远端Electron矩阵验收通过  
+> 状态：Verified（证据提交`6dabe3d`，main分支远端双门禁通过）  
 > 任务：M0-06  
 > 决策适用：后续所有桌面工作台、编辑器、抽屉、浮层与显示设置
 
@@ -54,6 +54,6 @@ Renderer中的“安静编辑部”界面是显示技术原型，只承载公开
 
 本地无DISPLAY环境只执行纯函数、SQLite、契约、安全、性能和构建验证。真实Electron窗口与截图矩阵由GitHub Actions在3840×2160 Xvfb中执行：[Task Governance](https://github.com/sy220284/666/actions/runs/29393712442)与[Quality（含4/4 Playwright Electron E2E）](https://github.com/sy220284/666/actions/runs/29393712416)均通过。最终`display-dpi-matrix` Artifact（ID `8334265245`）包含7张截图，已人工复核中文字体、三栏/抽屉切换、右栏完整性及无水平溢出；150%截图的物理宽度因分数DIP舍入为2562px，误差1个有效CSS px且无裁切。
 
-正式证据位于`docs/test-evidence/M0-06/`，包含逐文件SHA-256清单、测试结果、截图清单、性能记录和已知风险。状态提交通过远端门禁后，本任务可关闭为Verified。
+正式证据位于`docs/test-evidence/M0-06/`，包含逐文件SHA-256清单、测试结果、截图清单、性能记录和已知风险。证据提交`6dabe3d`的远端双门禁通过后，任务已关闭为Verified。
 
 M1开始后，应用设置页面应复用相同外观契约，不另建窗口状态存储。M7可替换原型视觉与业务区域，但不得改变本文件冻结的坐标、断点、版心和独立缩放语义。

@@ -1,9 +1,9 @@
 # M0-07 AI输出协议与中文Diff Spike
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M0 工程、安全与运行底座  
 > 优先级：P0  
-> 建议分支：`spike/m0-ai-diff`
+> 工作分支：`main`（作者预授权连续主线模式）
 
 ## 目标
 

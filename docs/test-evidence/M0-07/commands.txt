@@ -1,0 +1,1 @@
+2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=6dabe3dbcb397f3de7f68b6eb3a704517e7e964c | M0-06 Verified; M0-07 activated

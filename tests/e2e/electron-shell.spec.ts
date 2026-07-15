@@ -14,6 +14,12 @@ import type { AppearancePreferences, WorldforgeBridge } from '@worldforge/contra
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
+const defaultAppearance: AppearancePreferences = {
+  workspaceAlignment: 'center',
+  uiScalePercent: 100,
+  bodyFontSize: 18,
+  contentWidth: 'normal',
+};
 
 async function temporaryUserData(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-electron-e2e-'));
@@ -21,9 +27,16 @@ async function temporaryUserData(): Promise<string> {
   return directory;
 }
 
-async function launch(userDataPath: string): Promise<ElectronApplication> {
-  const electronArguments = [path.join(root, 'apps/desktop/main')];
-  if (process.getuid?.() === 0) electronArguments.unshift('--no-sandbox');
+async function launch(
+  userDataPath: string,
+  forceDeviceScaleFactor?: number,
+): Promise<ElectronApplication> {
+  const electronArguments: string[] = [];
+  if (process.getuid?.() === 0) electronArguments.push('--no-sandbox');
+  if (forceDeviceScaleFactor) {
+    electronArguments.push(`--force-device-scale-factor=${forceDeviceScaleFactor}`);
+  }
+  electronArguments.push(path.join(root, 'apps/desktop/main'));
   return electron.launch({
     args: electronArguments,
     env: {
@@ -46,19 +59,36 @@ async function setContentViewport(
   application: ElectronApplication,
   width: number,
   height: number,
-  zoomFactor: number,
 ): Promise<void> {
   await application.evaluate(
     ({ BrowserWindow }, input) => {
       const window = BrowserWindow.getAllWindows()[0];
       if (!window) throw new Error('E2E_WINDOW_MISSING');
       if (window.isMaximized()) window.unmaximize();
-      window.webContents.setZoomFactor(input.zoomFactor);
+      window.webContents.setZoomFactor(1);
       window.setPosition(0, 0, false);
       window.setContentSize(input.width, input.height, false);
     },
-    { width, height, zoomFactor },
+    { width, height },
   );
+}
+
+async function captureMatrixScreenshot(
+  page: Page,
+  directory: string | null,
+  name: string,
+  expectedPhysicalWidth: number,
+  expectedPhysicalHeight: number,
+): Promise<void> {
+  if (!directory) return;
+  const screenshot = await page.screenshot({
+    path: path.join(directory, `${name}.png`),
+    animations: 'disabled',
+    scale: 'device',
+  });
+  expect(screenshot.subarray(1, 4).toString('ascii')).toBe('PNG');
+  expect(Math.abs(screenshot.readUInt32BE(16) - expectedPhysicalWidth)).toBeLessThanOrEqual(2);
+  expect(Math.abs(screenshot.readUInt32BE(20) - expectedPhysicalHeight)).toBeLessThanOrEqual(2);
 }
 
 async function setAppearance(page: Page, appearance: AppearancePreferences): Promise<void> {
@@ -250,24 +280,16 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
       : null;
     if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
     const matrix = [
-      { name: '1280x800-100', width: 1_280, height: 800, zoom: 1, mode: 'standard' },
-      { name: '2560x1440-100', width: 2_560, height: 1_440, zoom: 1, mode: 'ultrawide' },
-      { name: '2560x1440-125', width: 2_560, height: 1_440, zoom: 1.25, mode: 'wide' },
-      { name: '2560x1440-150', width: 2_560, height: 1_440, zoom: 1.5, mode: 'two-k' },
-      { name: '3440x1440-100', width: 3_440, height: 1_440, zoom: 1, mode: 'ultrawide' },
-      { name: '3840x1600-100', width: 3_840, height: 1_600, zoom: 1, mode: 'ultrawide' },
-      { name: 'effective-1024x640', width: 1_024, height: 640, zoom: 1, mode: 'narrow' },
+      { name: '1280x800-100', width: 1_280, height: 800, mode: 'standard' },
+      { name: '2560x1440-100', width: 2_560, height: 1_440, mode: 'ultrawide' },
+      { name: '3440x1440-100', width: 3_440, height: 1_440, mode: 'ultrawide' },
+      { name: '3840x1600-100', width: 3_840, height: 1_600, mode: 'ultrawide' },
+      { name: 'effective-1024x640', width: 1_024, height: 640, mode: 'narrow' },
     ] as const;
-    const defaultAppearance: AppearancePreferences = {
-      workspaceAlignment: 'center',
-      uiScalePercent: 100,
-      bodyFontSize: 18,
-      contentWidth: 'normal',
-    };
     await setAppearance(page, defaultAppearance);
 
     for (const scenario of matrix) {
-      await setContentViewport(application, scenario.width, scenario.height, scenario.zoom);
+      await setContentViewport(application, scenario.width, scenario.height);
       await page.waitForFunction(
         (expectedMode) => document.body.dataset.layoutMode === expectedMode,
         scenario.mode,
@@ -277,6 +299,15 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
         const frame = document.querySelector<HTMLElement>('[data-workspace-frame]');
         const paperBounds = paper?.getBoundingClientRect();
         const frameBounds = frame?.getBoundingClientRect();
+        const leftBounds = document
+          .querySelector<HTMLElement>('[data-left-sidebar]')
+          ?.getBoundingClientRect();
+        const rightBounds = document
+          .querySelector<HTMLElement>('[data-right-sidebar]')
+          ?.getBoundingClientRect();
+        const actionBounds = document
+          .querySelector<HTMLElement>('.top-bar__actions')
+          ?.getBoundingClientRect();
         return {
           innerWidth: window.innerWidth,
           innerHeight: window.innerHeight,
@@ -288,6 +319,15 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
             window.innerWidth,
           paperWidth: paperBounds?.width ?? 0,
           frameWidth: frameBounds?.width ?? 0,
+          frameLeft: frameBounds?.left ?? -1,
+          frameRight: frameBounds?.right ?? Number.POSITIVE_INFINITY,
+          leftBounds: leftBounds
+            ? { left: leftBounds.left, right: leftBounds.right, width: leftBounds.width }
+            : null,
+          rightBounds: rightBounds
+            ? { left: rightBounds.left, right: rightBounds.right, width: rightBounds.width }
+            : null,
+          actionRight: actionBounds?.right ?? Number.POSITIVE_INFINITY,
           bodyFontSize: paper ? Number.parseFloat(getComputedStyle(paper).fontSize) : 0,
         };
       });
@@ -296,17 +336,31 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
       expect(layout.paperWidth).toBeGreaterThan(500);
       expect(layout.paperWidth).toBeLessThanOrEqual(861);
       expect(layout.bodyFontSize).toBeCloseTo(18, 0);
+      expect(layout.frameLeft).toBeGreaterThanOrEqual(-1);
+      expect(layout.frameRight).toBeLessThanOrEqual(layout.innerWidth + 1);
+      expect(layout.actionRight).toBeLessThanOrEqual(layout.innerWidth + 1);
+      if (layout.leftPanel === 'sidebar') {
+        expect(layout.leftBounds?.width ?? 0).toBeGreaterThanOrEqual(220);
+        expect(layout.leftBounds?.left ?? -1).toBeGreaterThanOrEqual(-1);
+      }
+      if (layout.rightPanel === 'sidebar') {
+        expect(layout.rightBounds?.width ?? 0).toBeGreaterThanOrEqual(300);
+        expect(layout.rightBounds?.right ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+          layout.innerWidth + 1,
+        );
+      }
       if (scenario.mode === 'ultrawide') expect(layout.frameWidth).toBeLessThanOrEqual(1_762);
       if (scenario.mode === 'narrow') expect(layout.rightPanel).toBe('drawer');
-      if (screenshotDirectory) {
-        await page.screenshot({
-          path: path.join(screenshotDirectory, `${scenario.name}.png`),
-          animations: 'disabled',
-        });
-      }
+      await captureMatrixScreenshot(
+        page,
+        screenshotDirectory,
+        scenario.name,
+        scenario.width,
+        scenario.height,
+      );
     }
 
-    await setContentViewport(application, 1_280, 800, 1);
+    await setContentViewport(application, 1_280, 800);
     await setAppearance(page, { ...defaultAppearance, uiScalePercent: 150 });
     await page.waitForFunction(() => document.body.dataset.layoutMode === 'compact');
     expect(await page.locator('body').getAttribute('data-left-panel')).toBe('drawer');
@@ -347,7 +401,7 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
     );
     await page.locator('[data-boundary-dialog] button[value="cancel"]').click();
 
-    await setContentViewport(application, 3_440, 1_440, 1);
+    await setContentViewport(application, 3_440, 1_440);
     for (const workspaceAlignment of ['left', 'center', 'right'] as const) {
       await setAppearance(page, { ...defaultAppearance, workspaceAlignment });
       await page.waitForFunction(
@@ -365,5 +419,64 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
     }
   } finally {
     await closeGracefully(application);
+  }
+});
+
+test('uses real Chromium device scaling for the 2560×1440 DPI matrix', async () => {
+  test.setTimeout(90_000);
+  const screenshotDirectory = process.env.WORLDFORGE_CAPTURE_MATRIX_DIR
+    ? path.resolve(process.env.WORLDFORGE_CAPTURE_MATRIX_DIR)
+    : null;
+  if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
+
+  for (const scenario of [
+    { name: '2560x1440-125', scaleFactor: 1.25, mode: 'wide' },
+    { name: '2560x1440-150', scaleFactor: 1.5, mode: 'two-k' },
+  ] as const) {
+    const application = await launch(await temporaryUserData(), scenario.scaleFactor);
+    try {
+      const page = await application.firstWindow();
+      const effectiveWidth = Math.round(2_560 / scenario.scaleFactor);
+      const effectiveHeight = Math.round(1_440 / scenario.scaleFactor);
+      await setContentViewport(application, effectiveWidth, effectiveHeight);
+      await setAppearance(page, defaultAppearance);
+      await page.waitForFunction(
+        (expectedMode) => document.body.dataset.layoutMode === expectedMode,
+        scenario.mode,
+      );
+      const rendererMetrics = await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>('[data-workspace-frame]');
+        const right = document.querySelector<HTMLElement>('[data-right-sidebar]');
+        return {
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+          devicePixelRatio: window.devicePixelRatio,
+          horizontalOverflow:
+            Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) -
+            window.innerWidth,
+          frameRight: frame?.getBoundingClientRect().right ?? Number.POSITIVE_INFINITY,
+          rightPanelMode: document.body.dataset.rightPanel,
+          rightPanelRight: right?.getBoundingClientRect().right ?? Number.POSITIVE_INFINITY,
+          paperWidth:
+            document.querySelector<HTMLElement>('[data-editor-paper]')?.getBoundingClientRect()
+              .width ?? 0,
+        };
+      });
+      const displayScaleFactor = await application.evaluate(
+        ({ screen }) => screen.getPrimaryDisplay().scaleFactor,
+      );
+      expect(rendererMetrics.innerWidth).toBe(effectiveWidth);
+      expect(rendererMetrics.innerHeight).toBe(effectiveHeight);
+      expect(rendererMetrics.devicePixelRatio).toBeCloseTo(scenario.scaleFactor, 2);
+      expect(displayScaleFactor).toBeCloseTo(scenario.scaleFactor, 2);
+      expect(rendererMetrics.horizontalOverflow).toBeLessThanOrEqual(1);
+      expect(rendererMetrics.frameRight).toBeLessThanOrEqual(rendererMetrics.innerWidth + 1);
+      expect(rendererMetrics.rightPanelMode).toBe('sidebar');
+      expect(rendererMetrics.rightPanelRight).toBeLessThanOrEqual(rendererMetrics.innerWidth + 1);
+      expect(rendererMetrics.paperWidth).toBeLessThanOrEqual(861);
+      await captureMatrixScreenshot(page, screenshotDirectory, scenario.name, 2_560, 1_440);
+    } finally {
+      await closeGracefully(application);
+    }
   }
 });

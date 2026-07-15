@@ -1,0 +1,2 @@
+2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=3239001e3365cea290675af36c20f2b6528ffdd1 | M0-03 Verified; M0-04 activated
+2026-07-15 | exit 0 | required-document review | IPC_CONTRACTS, EVENT_PROTOCOL, ERROR_CODES, THREAT_MODEL

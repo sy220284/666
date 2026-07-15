@@ -1,9 +1,9 @@
 # M0-05 测试基建、Fixture与故障注入
 
-> 状态：Planned  
+> 状态：In Progress
 > 里程碑：M0 工程、安全与运行底座  
 > 优先级：P0  
-> 建议分支：`test/m0-testkit-fault-injection`
+> 工作分支：`main`（作者预授权连续主线模式）
 
 ## 目标
 

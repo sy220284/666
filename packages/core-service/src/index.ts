@@ -7,3 +7,5 @@ export const coreRuntime = {
   protocol: 'parentPort-message',
   lifecycle: ['ready', 'health', 'drain', 'shutdown'],
 } as const;
+
+export * from './database/index.js';

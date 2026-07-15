@@ -14,3 +14,5 @@
 2026-07-15 | exit 0 | pnpm task:preflight | commit 455c74a
 2026-07-15 | environment exit 2 | pnpm test:e2e | local container has no DISPLAY or xvfb-run; no result claimed
 2026-07-15 | remote success | pnpm test via GitHub Quality, including Vitest 30/30 and Playwright Electron E2E 1/1 | https://github.com/sy220284/666/actions/runs/29386475766
+2026-07-15 | remote success | GitHub Task Governance | https://github.com/sy220284/666/actions/runs/29386603319
+2026-07-15 | remote success | GitHub Quality, including Playwright Electron E2E | https://github.com/sy220284/666/actions/runs/29386603310

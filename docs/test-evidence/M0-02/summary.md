@@ -1,7 +1,7 @@
 # M0-02 验证摘要
 
 日期：2026-07-15  
-状态：Implemented；本地安全、类型、构建和打包门禁通过，提交`455c74a`的GitHub Quality远程复验通过。
+状态：Verified；本地安全、类型、构建和打包门禁通过，GitHub Task Governance与Quality远程复验均通过。
 
 ## 已实现
 
@@ -23,7 +23,8 @@
 - Build：Main、沙箱Preload、Renderer和Core Utility Process均生成真实构建产物。
 - Package：9个编译入口进入基础构建清单。
 - Playwright Electron E2E：GitHub Ubuntu/Xvfb下1项真实窗口测试通过，验证Renderer无`require/process`、最小Bridge、Core为healthy及安全webPreferences。
-- GitHub Quality：<https://github.com/sy220284/666/actions/runs/29386475766>。
+- GitHub Task Governance：<https://github.com/sy220284/666/actions/runs/29386603319>。
+- GitHub Quality：<https://github.com/sy220284/666/actions/runs/29386603310>。
 
 ## 验收边界
 

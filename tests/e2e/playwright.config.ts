@@ -8,5 +8,6 @@ export default defineConfig({
   timeout: 30_000,
   retries: 0,
   reporter: 'line',
-  use: { trace: 'retain-on-failure' },
+  outputDir: process.env.WORLDFORGE_E2E_OUTPUT_DIR ?? 'test-results/electron',
+  use: { trace: 'retain-on-failure', screenshot: 'only-on-failure' },
 });

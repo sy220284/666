@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "fixtureSetVersion": "m0-05-v1",
+  "source": "synthetic-public-test-data",
+  "license": "CC0-1.0",
+  "containsPrivateData": false,
+  "fixtures": ["common/chapter-continuity-001.yaml", "safety/knowledge-boundary-001.yaml"]
+}

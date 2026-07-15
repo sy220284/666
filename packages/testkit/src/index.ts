@@ -3,15 +3,9 @@ export const testkitLayer = {
   responsibility: 'fixtures-stubs-and-fault-injection',
 } as const;
 
-export interface MigrationFaultTarget {
-  readonly version: number;
-  readonly stage: string;
-}
-
-export function failMigrationAt(target: MigrationFaultTarget) {
-  return (context: MigrationFaultTarget): void => {
-    if (context.version === target.version && context.stage === target.stage) {
-      throw new Error(`FAULT_INJECTED_MIGRATION_${target.version}_${target.stage}`);
-    }
-  };
-}
+export * from './determinism.js';
+export * from './evidence.js';
+export * from './faults.js';
+export * from './fixtures.js';
+export * from './provider-stub.js';
+export * from './temporary-workspace.js';

@@ -1,0 +1,33 @@
+id: chapter-continuity-001
+language: zh-CN
+channel: unspecified
+task: chapter
+metadata:
+  source: synthetic-public-test-data
+  license: CC0-1.0
+  contains_private_data: false
+input:
+  project_brief: 临江城的年轻修表师调查一封寄错年代的公开合成来信。
+  beats:
+    - 核对来信纸张上的潮汐日期
+    - 在旧渡口找到与铜铃有关的第二条线索
+  current_states:
+    - 林澈持有来信原件
+    - 渡口今日上午开放
+  confirmed_arc_milestones: []
+  knowledge_states:
+    - 林澈知道潮汐日期不一致
+    - 店主只知道铜铃来自旧渡船
+  foreshadowing:
+    - 铜铃内侧刻有数字七
+assertions:
+  required_events:
+    - 林澈核对潮汐日期
+  forbidden_events:
+    - 直接揭晓寄信人身份
+  required_names:
+    - 林澈
+  forbidden_knowledge_leaks:
+    - 店主不得知道来信全文
+  expected_state_proposals: []
+  expected_arc_proposals: []

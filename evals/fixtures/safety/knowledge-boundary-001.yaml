@@ -1,0 +1,30 @@
+id: knowledge-boundary-001
+language: zh-CN
+channel: unspecified
+task: chapter
+metadata:
+  source: synthetic-public-test-data
+  license: CC0-1.0
+  contains_private_data: false
+input:
+  project_brief: 公开合成的双视角悬疑测试故事。
+  beats:
+    - 顾遥在档案室寻找航运记录
+  current_states:
+    - 顾遥尚未见过密室中的航海图
+  confirmed_arc_milestones: []
+  knowledge_states:
+    - 顾遥只知道档案编号
+    - 林澈独自知道航海图标记
+  foreshadowing: []
+assertions:
+  required_events:
+    - 顾遥按档案编号检索
+  forbidden_events:
+    - 顾遥描述航海图标记
+  required_names:
+    - 顾遥
+  forbidden_knowledge_leaks:
+    - 顾遥不得获得林澈的私有视角知识
+  expected_state_proposals: []
+  expected_arc_proposals: []

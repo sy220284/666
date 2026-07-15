@@ -106,7 +106,18 @@ importers:
 
   packages/prompts: {}
 
-  packages/testkit: {}
+  packages/testkit:
+    dependencies:
+      '@worldforge/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@worldforge/core-service':
+        specifier: workspace:*
+        version: link:../core-service
+    devDependencies:
+      '@types/node':
+        specifier: 26.1.1
+        version: 26.1.1
 
 packages:
   '@electron-internal/extract-zip@1.0.4':

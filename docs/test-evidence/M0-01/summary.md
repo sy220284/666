@@ -1,7 +1,7 @@
 # M0-01 验证摘要
 
 日期：2026-07-15  
-状态：本地实现与验证完成，等待 `main` GitHub Actions 复验后关闭任务。
+状态：Implemented；本地实现与验证完成，等待 `main` GitHub Actions 复验后标记Verified。
 
 ## 已验证
 

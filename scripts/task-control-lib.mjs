@@ -42,6 +42,10 @@ export function validateChangedPaths(changedFiles, allowedPaths, forbiddenPaths)
 
 export function validateActiveState(state, taskIndex) {
   const errors = [];
+  const activeStatusMap = new Map([
+    ['IN_PROGRESS', 'In Progress'],
+    ['IMPLEMENTED', 'Implemented'],
+  ]);
   if (state.schemaVersion !== 1) errors.push('Unsupported ACTIVE_TASK schemaVersion');
   if (state.authorization?.mode !== 'continuous-mainline') {
     errors.push('Continuous execution requires authorization.mode=continuous-mainline');
@@ -49,8 +53,9 @@ export function validateActiveState(state, taskIndex) {
   if (state.authorization?.branch !== 'main') errors.push('Authorized work branch must be main');
 
   const active = state.activeTask;
-  if (!active || active.status !== 'IN_PROGRESS')
-    errors.push('Exactly one IN_PROGRESS task is required');
+  if (!active || !activeStatusMap.has(active.status)) {
+    errors.push('Exactly one IN_PROGRESS or IMPLEMENTED task is required');
+  }
   if (!active?.id || !/^M\d-\d{2}$/.test(active.id)) errors.push('Invalid active task id');
 
   const indexed = active?.id ? taskIndex.get(active.id) : undefined;
@@ -58,8 +63,9 @@ export function validateActiveState(state, taskIndex) {
   if (indexed && indexed.source !== active.source) {
     errors.push(`Active task source differs from TASK_INDEX: ${indexed.source}`);
   }
-  if (indexed && indexed.status !== 'In Progress') {
-    errors.push(`TASK_INDEX status must be In Progress, found ${indexed.status}`);
+  const expectedIndexStatus = activeStatusMap.get(active?.status);
+  if (indexed && expectedIndexStatus && indexed.status !== expectedIndexStatus) {
+    errors.push(`TASK_INDEX status must be ${expectedIndexStatus}, found ${indexed.status}`);
   }
   if (!Array.isArray(active?.allowedPaths) || active.allowedPaths.length === 0) {
     errors.push('Active task must declare allowedPaths');

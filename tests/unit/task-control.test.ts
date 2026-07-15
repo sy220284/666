@@ -56,4 +56,20 @@ describe('task control', () => {
     };
     expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual([]);
   });
+
+  it('keeps an implemented task active while remote verification is pending', () => {
+    const implementedIndex = indexFixture.replace('In Progress', 'Implemented');
+    const state = {
+      schemaVersion: 1,
+      authorization: { mode: 'continuous-mainline', branch: 'main' },
+      activeTask: {
+        id: 'M0-01',
+        status: 'IMPLEMENTED',
+        source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
+        allowedPaths: ['packages/'],
+        verification: ['pnpm test'],
+      },
+    };
+    expect(validateActiveState(state, parseTaskIndex(implementedIndex))).toEqual([]);
+  });
 });

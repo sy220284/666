@@ -261,6 +261,7 @@ async function refresh(): Promise<void> {
   }
   setFormValues(appearance);
   applyLayout();
+  document.body.dataset.rendererReady = 'true';
 }
 
 restartButton?.addEventListener('click', async () => {

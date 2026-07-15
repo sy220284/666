@@ -62,11 +62,30 @@ async function setContentViewport(
 }
 
 async function setAppearance(page: Page, appearance: AppearancePreferences): Promise<void> {
-  const result = await page.evaluate(async (value) => {
-    const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;
-    return bridge.app.setAppearancePreferences(value);
+  await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+  await page.locator('[data-appearance-form]').evaluate((form, value) => {
+    const root = form as HTMLFormElement;
+    const setSelect = (name: string, selectedValue: string): void => {
+      const control = root.elements.namedItem(name);
+      if (!(control instanceof HTMLSelectElement)) throw new Error(`E2E_CONTROL_MISSING_${name}`);
+      control.value = selectedValue;
+    };
+    setSelect('uiScalePercent', String(value.uiScalePercent));
+    setSelect('bodyFontSize', String(value.bodyFontSize));
+    setSelect('contentWidth', value.contentWidth);
+    const alignment = root.querySelector<HTMLInputElement>(
+      `input[name="workspaceAlignment"][value="${value.workspaceAlignment}"]`,
+    );
+    if (!alignment) throw new Error('E2E_CONTROL_MISSING_workspaceAlignment');
+    alignment.checked = true;
+    root.dispatchEvent(new Event('change', { bubbles: true }));
   }, appearance);
-  expect(result).toMatchObject({ ok: true });
+  await expect(page.locator('[data-preference-status]')).toHaveText('已由 Core 保存到应用数据库');
+  const stored = await page.evaluate(async () => {
+    const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;
+    return bridge.app.getWindowPreferences();
+  });
+  expect(stored).toMatchObject({ ok: true, data: appearance });
 }
 
 test.afterEach(async () => {

@@ -88,6 +88,9 @@ async function writeActiveState(state, indexSource) {
 
 async function activate(taskId) {
   const { state, taskIndex } = await load();
+  if (state.activeTask) {
+    throw new Error(`Cannot activate ${taskId} while ${state.activeTask.id} is still active`);
+  }
   const task = taskIndex.get(taskId);
   if (!task) throw new Error(`Unknown task: ${taskId}`);
   if (task.status !== 'Planned') throw new Error(`${taskId} must be Planned, found ${task.status}`);
@@ -102,6 +105,9 @@ async function activate(taskId) {
   }
 
   const controlPaths = [
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
     'docs/tasks/ACTIVE_TASK.json',
     'docs/tasks/ACTIVE_TASK.md',
     'docs/tasks/TASK_INDEX.md',

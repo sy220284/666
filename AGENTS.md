@@ -299,4 +299,4 @@ A task is complete only when:
 - `TASK_INDEX.md` and `V1.0_TRACEABILITY_MATRIX.md` are updated;
 - no unrelated refactor, TODO, fake data, or empty implementation remains.
 
-Task closure follows `docs/process/DEVELOPMENT_AUTOMATION.md`. In continuous-mainline mode it atomically closes the current task and activates the next dependency-ready task; otherwise it returns to `NO_ACTIVE_CODING_TASK`.
+Task closure follows `docs/process/DEVELOPMENT_AUTOMATION.md`. In continuous-mainline mode it closes the current task and activates the next dependency-ready task in one controlled transition; otherwise it returns to `NO_ACTIVE_CODING_TASK`.

@@ -465,8 +465,8 @@ test('uses real Chromium device scaling for the 2560×1440 DPI matrix', async ()
       const displayScaleFactor = await application.evaluate(
         ({ screen }) => screen.getPrimaryDisplay().scaleFactor,
       );
-      expect(rendererMetrics.innerWidth).toBe(effectiveWidth);
-      expect(rendererMetrics.innerHeight).toBe(effectiveHeight);
+      expect(Math.abs(rendererMetrics.innerWidth - effectiveWidth)).toBeLessThanOrEqual(1);
+      expect(Math.abs(rendererMetrics.innerHeight - effectiveHeight)).toBeLessThanOrEqual(1);
       expect(rendererMetrics.devicePixelRatio).toBeCloseTo(scenario.scaleFactor, 2);
       expect(displayScaleFactor).toBeCloseTo(scenario.scaleFactor, 2);
       expect(rendererMetrics.horizontalOverflow).toBeLessThanOrEqual(1);

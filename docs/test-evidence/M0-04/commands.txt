@@ -1,2 +1,21 @@
 2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=3239001e3365cea290675af36c20f2b6528ffdd1 | M0-03 Verified; M0-04 activated
 2026-07-15 | exit 0 | required-document review | IPC_CONTRACTS, EVENT_PROTOCOL, ERROR_CODES, THREAT_MODEL
+2026-07-15 | exit 0 | pnpm format
+2026-07-15 | exit 0 | pnpm format:check
+2026-07-15 | exit 0 | pnpm lint
+2026-07-15 | exit 0 | pnpm typecheck | all eligible workspace packages passed
+2026-07-15 | exit 0 | pnpm test | 15 files, 53 tests passed
+2026-07-15 | exit 0 | pnpm test:integration | 5 files, 12 tests passed
+2026-07-15 | exit 0 | pnpm test:security | 4 files, 18 tests passed
+2026-07-15 | exit 0 | pnpm check:workspaces | 10 workspace packages
+2026-07-15 | exit 0 | pnpm check:boundaries | 9 process/package layers
+2026-07-15 | exit 0 | pnpm build
+2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged
+2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified
+2026-07-15 | exit 0 | documented error-code audit | documented=65; implemented=65; missing=0; extra=0
+2026-07-15 | exit 0 | 10,000-chunk protocol benchmark | deltaBatches=20; recoveredPreviewCharacters=10000; cancelAckMs=1.012; eventsAfterCancel=0; slowConsumerDeliveredWithoutAck=32
+2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit b7410b4
+2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit 23ebb34
+2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit ad3770f
+2026-07-15 | remote success | GitHub Task Governance | https://github.com/sy220284/666/actions/runs/29389389684
+2026-07-15 | remote success | GitHub Quality with Playwright Electron MessagePort E2E | https://github.com/sy220284/666/actions/runs/29389389683

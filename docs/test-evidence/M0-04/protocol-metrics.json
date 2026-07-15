@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-07-15",
+  "runtime": {
+    "node": "24.14.0"
+  },
+  "providerBatching": {
+    "inputChunks": 10000,
+    "inputCharacters": 10000,
+    "enqueueMs": 3.953,
+    "deltaBatches": 20,
+    "deliveredCharacters": 10000,
+    "maximumBatchCharacters": 512
+  },
+  "snapshotRecovery": {
+    "recoveredPreviewCharacters": 10000,
+    "previewTruncated": false
+  },
+  "cancellation": {
+    "acknowledgementMs": 1.012,
+    "eventsAfterCancellation": 0
+  },
+  "slowConsumer": {
+    "producedEvents": 10001,
+    "deliveredWithoutAck": 32
+  }
+}

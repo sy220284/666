@@ -21,6 +21,7 @@ export {
   type MigrationFaultContext,
   type MigrationFaultInjector,
   type MigrationFaultStage,
+  type MigrationRecoveryContext,
   type OpenDatabaseOptions,
   type SqliteCapabilities,
   type SqlMigration,

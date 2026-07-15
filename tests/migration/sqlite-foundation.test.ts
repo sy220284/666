@@ -159,10 +159,19 @@ describe('SQLite foundation migrations', () => {
     });
     await database.close();
 
+    await expect(
+      ProjectDatabase.open({
+        path: databasePath,
+        migrations: [first, second],
+        appVersion: '0.1.0',
+      }),
+    ).rejects.toMatchObject({ code: 'MIGRATION_RECOVERY_POINT_REQUIRED' });
+
     const interrupted = await ProjectDatabase.open({
       path: databasePath,
       migrations: [first, second],
       appVersion: '0.1.0',
+      prepareRecoveryPoint: async () => undefined,
       faultInjector: failMigrationAt({ version: 2, stage: 'after-sql' }),
     });
     expect(interrupted).toMatchObject({
@@ -184,6 +193,14 @@ describe('SQLite foundation migrations', () => {
       path: databasePath,
       migrations: [first, second],
       appVersion: '0.1.0',
+      prepareRecoveryPoint: async (context) => {
+        expect(context).toMatchObject({
+          kind: 'project',
+          databasePath,
+          fromVersion: 1,
+          toVersion: 2,
+        });
+      },
     });
     expect(recovered.schemaVersion).toBe(2);
     await recovered.close();

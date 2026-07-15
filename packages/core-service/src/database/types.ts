@@ -23,6 +23,8 @@ export type DatabaseErrorCode =
   | 'MIGRATION_SEQUENCE_INVALID'
   | 'MIGRATION_HISTORY_INVALID'
   | 'MIGRATION_CHECKSUM_MISMATCH'
+  | 'MIGRATION_RECOVERY_POINT_REQUIRED'
+  | 'MIGRATION_RECOVERY_POINT_FAILED'
   | 'MIGRATION_FAILED';
 
 export class DatabaseFoundationError extends Error {
@@ -56,12 +58,20 @@ export interface DatabaseClock {
   now(): Date;
 }
 
+export interface MigrationRecoveryContext {
+  readonly kind: DatabaseKind;
+  readonly databasePath: string;
+  readonly fromVersion: number;
+  readonly toVersion: number;
+}
+
 export interface OpenDatabaseOptions {
   readonly path: string;
   readonly migrations: readonly SqlMigration[];
   readonly appVersion: string;
   readonly clock?: DatabaseClock;
   readonly faultInjector?: MigrationFaultInjector;
+  readonly prepareRecoveryPoint?: (context: MigrationRecoveryContext) => Promise<void>;
 }
 
 export interface SqliteCapabilities {

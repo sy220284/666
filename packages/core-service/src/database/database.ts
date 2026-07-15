@@ -212,6 +212,29 @@ async function openDatabaseState(
 
     const inspection = inspectMigrations(writer, migrations);
     migrationStartVersion = inspection.schemaVersion;
+    const targetVersion = migrations.at(-1)?.version ?? 0;
+    if (inspection.status === 'migration-required' && inspection.schemaVersion > 0) {
+      if (!options.prepareRecoveryPoint) {
+        throw new DatabaseFoundationError(
+          'MIGRATION_RECOVERY_POINT_REQUIRED',
+          'An existing database must have a recovery point before migration.',
+        );
+      }
+      try {
+        await options.prepareRecoveryPoint({
+          kind,
+          databasePath: options.path,
+          fromVersion: inspection.schemaVersion,
+          toVersion: targetVersion,
+        });
+      } catch (error) {
+        throw new DatabaseFoundationError(
+          'MIGRATION_RECOVERY_POINT_FAILED',
+          'The pre-migration recovery point could not be created.',
+          { cause: error },
+        );
+      }
+    }
     const appliedCount = applyPendingMigrations(writer, migrations, inspection, {
       appVersion: options.appVersion,
       clock: options.clock ?? systemClock,
@@ -226,7 +249,7 @@ async function openDatabaseState(
         kind,
         mode: 'read-only',
         compatibility: 'integrity-failed',
-        schemaVersion: migrations.at(-1)?.version ?? 0,
+        schemaVersion: targetVersion,
         capabilities,
         lastErrorCode: 'DATABASE_INTEGRITY_FAILED',
         reader,
@@ -238,7 +261,7 @@ async function openDatabaseState(
       kind,
       mode: 'read-write',
       compatibility: appliedCount > 0 ? 'migrated' : 'current',
-      schemaVersion: migrations.at(-1)?.version ?? 0,
+      schemaVersion: targetVersion,
       capabilities,
       reader,
       writer,

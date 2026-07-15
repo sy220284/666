@@ -20,19 +20,27 @@ IN_PROGRESS
 ```yaml
 allowed_paths:
   - apps/desktop/main/
+  - apps/desktop/preload/
   - apps/desktop/renderer/
+  - packages/contracts/
   - packages/core-service/
   - migrations/app/
   - tests/e2e/
+  - tests/migration/
   - tests/performance/
+  - tests/security/
+  - .github/workflows/quality.yml
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/ui/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M0/M0-06_DISPLAY_WINDOW_SPIKE.md
   - docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md
+  - docs/tasks/M0/M0-06_DISPLAY_WINDOW_SPIKE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M0-06/
 forbidden_paths:

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -10,19 +10,233 @@
     <title>WorldForge</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body>
-    <main class="shell">
-      <p class="eyebrow">LOCAL-FIRST WRITING WORKSTATION</p>
-      <h1>WorldForge</h1>
-      <p class="lede">The secure desktop shell is connected to its supervised Core service.</p>
-      <section class="status-card" aria-live="polite">
-        <span>Core status</span>
-        <strong data-core-status>starting</strong>
-        <small data-diagnostic-id></small>
-      </section>
-      <button type="button" data-restart-core>Restart Core</button>
-      <footer data-app-version>WorldForge</footer>
-    </main>
+  <body data-layout-mode="standard" data-left-panel="sidebar" data-right-panel="sidebar">
+    <div class="app-shell">
+      <header class="top-bar">
+        <div class="top-bar__leading">
+          <button
+            class="icon-button panel-toggle"
+            type="button"
+            data-toggle-left
+            aria-controls="project-panel"
+            aria-expanded="false"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M4 5.5h16M4 12h16M4 18.5h16" />
+            </svg>
+            <span class="sr-only">打开项目导航</span>
+          </button>
+          <div class="brand">
+            <span class="brand__mark">W</span>
+            <span>
+              <strong>WorldForge</strong>
+              <small>显示与窗口恢复 Spike</small>
+            </span>
+          </div>
+        </div>
+        <div class="top-bar__status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Core</span>
+          <strong data-core-status>正在启动</strong>
+          <small data-diagnostic-id></small>
+        </div>
+        <div class="top-bar__actions">
+          <button class="quiet-button" type="button" data-boundary-popover aria-expanded="false">
+            浮层边界
+          </button>
+          <button class="quiet-button" type="button" data-open-dialog>对话框</button>
+          <button class="quiet-button" type="button" data-restart-core>重启 Core</button>
+          <button
+            class="icon-button panel-toggle"
+            type="button"
+            data-toggle-right
+            aria-controls="context-panel"
+            aria-expanded="false"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"
+              />
+            </svg>
+            <span class="sr-only">打开显示设置</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="workspace-canvas">
+        <div class="workspace-frame" data-workspace-frame>
+          <aside class="side-panel side-panel--left" id="project-panel" data-left-sidebar>
+            <div class="panel-heading">
+              <span>
+                <small>验证导航</small>
+                <strong>布局样本</strong>
+              </span>
+              <button class="icon-button drawer-close" type="button" data-close-left>
+                <span aria-hidden="true">×</span><span class="sr-only">关闭项目导航</span>
+              </button>
+            </div>
+            <nav aria-label="显示验证场景">
+              <p class="nav-label">M0-06 场景</p>
+              <button class="nav-row is-active" type="button" aria-current="page">
+                <span aria-hidden="true">Aa</span>
+                <span><strong>正文与版心</strong><small>680 / 760 / 860 px</small></span>
+              </button>
+              <button class="nav-row" type="button">
+                <span aria-hidden="true">▣</span>
+                <span><strong>抽屉与断点</strong><small>900 / 1100 CSS px</small></span>
+              </button>
+              <button class="nav-row" type="button">
+                <span aria-hidden="true">◎</span>
+                <span><strong>跨屏恢复</strong><small>DIP 与混合缩放</small></span>
+              </button>
+            </nav>
+            <div class="panel-note">
+              <strong>原型边界</strong>
+              <p>本页只验证显示策略，不读写项目正文，也不展示未实现业务入口。</p>
+            </div>
+          </aside>
+
+          <main class="editor-region">
+            <header class="workspace-header">
+              <div>
+                <p class="eyebrow">DISPLAY PROTOTYPE · M0-06</p>
+                <h1>安静编辑部 · 版心验证稿</h1>
+              </div>
+              <span class="prototype-badge">非项目内容</span>
+            </header>
+            <div class="paper-stage">
+              <article class="editor-paper" data-editor-paper tabindex="0">
+                <p class="chapter-kicker">布局样文</p>
+                <h2>正文始终停留在视线中心</h2>
+                <p>
+                  窗口变宽时，WorldForge 增加上下文空间与安全留白，而不是无限拉长正文。版心以 CSS
+                  像素计量，在不同系统缩放与显示器之间保持稳定的阅读节奏。
+                </p>
+                <p>
+                  界面缩放只改变控件、侧栏和 UI
+                  字体；正文字号与正文宽度由各自设置控制。跨屏后重新判断断点，窗口坐标则以 DIP
+                  保存并校验可见区域。
+                </p>
+                <blockquote>
+                  这是一段用于截图与边界测试的公开布局样文，不会写入作者项目或应用数据库的正文区域。
+                </blockquote>
+                <p>
+                  当有效视口低于 1100 像素，右侧设置进入抽屉；低于 900
+                  像素时，左右两侧都成为可由键盘关闭的抽屉。整页保持无水平滚动，浮层与对话框也会重新定位到可见范围内。
+                </p>
+              </article>
+            </div>
+          </main>
+
+          <aside class="side-panel side-panel--right" id="context-panel" data-right-sidebar>
+            <div class="panel-heading">
+              <span>
+                <small>本地偏好</small>
+                <strong>显示设置</strong>
+              </span>
+              <button class="icon-button drawer-close" type="button" data-close-right>
+                <span aria-hidden="true">×</span><span class="sr-only">关闭显示设置</span>
+              </button>
+            </div>
+            <form class="settings-form" data-appearance-form>
+              <label>
+                <span>界面缩放</span>
+                <select name="uiScalePercent" data-ui-scale>
+                  <option value="90">90%</option>
+                  <option value="100">100%</option>
+                  <option value="110">110%</option>
+                  <option value="120">120%</option>
+                  <option value="130">130%</option>
+                  <option value="140">140%</option>
+                  <option value="150">150%</option>
+                </select>
+              </label>
+              <label>
+                <span>正文字号</span>
+                <select name="bodyFontSize" data-body-font-size>
+                  <option value="14">14 px</option>
+                  <option value="16">16 px</option>
+                  <option value="18">18 px</option>
+                  <option value="20">20 px</option>
+                  <option value="22">22 px</option>
+                  <option value="24">24 px</option>
+                  <option value="26">26 px</option>
+                  <option value="28">28 px</option>
+                </select>
+              </label>
+              <label>
+                <span>正文宽度</span>
+                <select name="contentWidth" data-content-width>
+                  <option value="narrow">窄 · 680 px</option>
+                  <option value="normal">标准 · 760 px</option>
+                  <option value="wide">宽 · 860 px</option>
+                  <option value="adaptive">自适应 · 680—860 px</option>
+                </select>
+              </label>
+              <fieldset>
+                <legend>超宽屏工作区</legend>
+                <div class="segmented-control" data-alignment-controls>
+                  <label><input type="radio" name="workspaceAlignment" value="left" />偏左</label>
+                  <label><input type="radio" name="workspaceAlignment" value="center" />居中</label>
+                  <label><input type="radio" name="workspaceAlignment" value="right" />偏右</label>
+                </div>
+              </fieldset>
+              <p class="save-state" data-preference-status role="status">
+                偏好由 Core 写入应用数据库
+              </p>
+            </form>
+            <dl class="layout-readout">
+              <div>
+                <dt>布局模式</dt>
+                <dd data-layout-readout>—</dd>
+              </div>
+              <div>
+                <dt>有效视口</dt>
+                <dd data-viewport-readout>—</dd>
+              </div>
+              <div>
+                <dt>实际版心</dt>
+                <dd data-content-readout>—</dd>
+              </div>
+            </dl>
+          </aside>
+        </div>
+      </div>
+
+      <footer class="status-bar">
+        <span data-app-version>WorldForge</span>
+        <span>显示策略：CSS px / 窗口状态：DIP</span>
+        <span>仅本地</span>
+      </footer>
+    </div>
+
+    <button class="drawer-scrim" type="button" data-drawer-scrim aria-label="关闭抽屉"></button>
+
+    <div class="boundary-popover" data-popover role="dialog" aria-label="浮层边界验证" hidden>
+      <strong>已限制在可见区域</strong>
+      <p>调整窗口或跨屏时，这个浮层会重新定位。</p>
+      <button type="button" data-close-popover>关闭</button>
+    </div>
+
+    <dialog class="boundary-dialog" data-boundary-dialog aria-labelledby="boundary-dialog-title">
+      <form method="dialog">
+        <div>
+          <p class="eyebrow">BOUNDARY CHECK</p>
+          <h2 id="boundary-dialog-title">对话框保持在有效视口内</h2>
+          <p>
+            最大宽度与高度均由视口约束；在 1024×640 有效视口中，正文区域可滚动，底部操作始终可见。
+          </p>
+          <div class="dialog-sample-lines" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <footer>
+          <button class="quiet-button" value="cancel">关闭</button>
+        </footer>
+      </form>
+    </dialog>
+
     <script type="module" src="./index.js"></script>
   </body>
 </html>

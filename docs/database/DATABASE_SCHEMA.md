@@ -52,6 +52,26 @@ PRAGMA synchronous = NORMAL;
 
 不得保存凭据正文。
 
+### 2.4 `window_preferences`
+
+单例表，只保存应用窗口和本地显示偏好，不保存项目正文：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| singleton_id | INTEGER PK | 固定为1 |
+| display_id | TEXT | Electron显示器ID |
+| bounds_x_dip / bounds_y_dip | INTEGER | 窗口左上角DIP坐标 |
+| bounds_width_dip / bounds_height_dip | INTEGER | 非最大化窗口DIP尺寸 |
+| scale_factor | REAL | 保存时显示器缩放因子，范围0.5—8.0 |
+| maximized | INTEGER | 0/1 |
+| workspace_alignment | TEXT | center/left/right |
+| ui_scale_percent | INTEGER | 90—150，步进10 |
+| body_font_size | INTEGER | 14—28 CSS px |
+| content_width | TEXT | narrow/normal/wide/adaptive |
+| updated_at | TEXT | UTC ISO-8601毫秒时间 |
+
+该表由`0002_window_preferences.sql`创建。Electron Main负责读取窗口状态并处理显示器事件，Core Service通过单写队列执行唯一持久化写入；Renderer和Main均不得直接打开`app.sqlite`。从已有Schema升级前创建经`quick_check`验证、合并WAL并设为`0600`的SQLite恢复点。
+
 ## 3. `project.sqlite`
 
 ### 3.1 迁移与项目

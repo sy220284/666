@@ -31,6 +31,8 @@ export const IPC_CHANNELS = {
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
+  appGetWindowPreferences: 'worldforge:app:get-window-preferences',
+  appSetAppearancePreferences: 'worldforge:app:set-appearance-preferences',
   aiSetCredential: 'worldforge:ai:set-credential',
   aiRemoveCredential: 'worldforge:ai:remove-credential',
   aiHasCredential: 'worldforge:ai:has-credential',
@@ -44,6 +46,8 @@ export const APP_COMMANDS = {
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
+  getWindowPreferences: 'app.getWindowPreferences',
+  setAppearancePreferences: 'app.setAppearancePreferences',
   setCredential: 'ai.provider.setCredential',
   removeCredential: 'ai.provider.removeCredential',
   hasCredential: 'ai.provider.hasCredential',
@@ -64,6 +68,40 @@ export const CredentialRefSchema = z
   .min(1)
   .max(128)
   .regex(/^cred_[0-9a-f-]{36}$/);
+
+export const WorkspaceAlignmentSchema = z.enum(['center', 'left', 'right']);
+export const ContentWidthPreferenceSchema = z.enum(['narrow', 'normal', 'wide', 'adaptive']);
+export const UiScalePercentSchema = z
+  .number()
+  .int()
+  .min(90)
+  .max(150)
+  .refine((value) => value % 10 === 0, 'UI scale must use 10% steps.');
+export const AppearancePreferencesSchema = z.strictObject({
+  workspaceAlignment: WorkspaceAlignmentSchema,
+  uiScalePercent: UiScalePercentSchema,
+  bodyFontSize: z.number().int().min(14).max(28),
+  contentWidth: ContentWidthPreferenceSchema,
+});
+export const WindowBoundsDipSchema = z.strictObject({
+  x: z.number().int().min(-100_000).max(100_000),
+  y: z.number().int().min(-100_000).max(100_000),
+  width: z.number().int().min(320).max(16_384),
+  height: z.number().int().min(240).max(16_384),
+});
+export const WindowPreferencesSchema = AppearancePreferencesSchema.extend({
+  displayId: z.string().min(1).max(128),
+  boundsDip: WindowBoundsDipSchema,
+  scaleFactor: z.number().finite().min(0.5).max(8),
+  maximized: z.boolean(),
+}).strict();
+
+export const DEFAULT_APPEARANCE_PREFERENCES = {
+  workspaceAlignment: 'center',
+  uiScalePercent: 100,
+  bodyFontSize: 18,
+  contentWidth: 'normal',
+} as const satisfies z.infer<typeof AppearancePreferencesSchema>;
 
 const envelopeBase = {
   protocolVersion: z.literal(PROTOCOL_VERSION),
@@ -87,6 +125,18 @@ export const AppRestartCoreCommandSchema = z.strictObject({
   ...envelopeBase,
   command: z.literal(APP_COMMANDS.restartCore),
   payload: EmptyPayloadSchema,
+});
+
+export const AppGetWindowPreferencesCommandSchema = z.strictObject({
+  ...envelopeBase,
+  command: z.literal(APP_COMMANDS.getWindowPreferences),
+  payload: EmptyPayloadSchema,
+});
+
+export const AppSetAppearancePreferencesCommandSchema = z.strictObject({
+  ...envelopeBase,
+  command: z.literal(APP_COMMANDS.setAppearancePreferences),
+  payload: AppearancePreferencesSchema,
 });
 
 export const AiSetCredentialCommandSchema = z.strictObject({
@@ -114,6 +164,8 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   AppGetInfoCommandSchema,
   AppGetCoreStatusCommandSchema,
   AppRestartCoreCommandSchema,
+  AppGetWindowPreferencesCommandSchema,
+  AppSetAppearancePreferencesCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiHasCredentialCommandSchema,
@@ -184,6 +236,7 @@ export function commandResultSchema<DataSchema extends z.ZodType>(dataSchema: Da
 export const AppInfoResultSchema = commandResultSchema(AppInfoSchema);
 export const CoreStatusResultSchema = commandResultSchema(CoreStatusSchema);
 export const CoreOperationResultSchema = commandResultSchema(CoreOperationSchema);
+export const WindowPreferencesResultSchema = commandResultSchema(WindowPreferencesSchema);
 export const CredentialReferenceResultSchema = commandResultSchema(CredentialReferenceSchema);
 export const CredentialPresenceResultSchema = commandResultSchema(CredentialPresenceSchema);
 export const TaskSnapshotResultSchema = commandResultSchema(TaskSnapshotSchema);
@@ -193,6 +246,11 @@ export const TaskCommandResultSchema = z.union([
   TaskSnapshotResultSchema,
   TaskCancelResultSchema,
   TaskListActiveResultSchema,
+]);
+
+export const CoreWindowPreferencesResultSchema = z.discriminatedUnion('ok', [
+  z.strictObject({ ok: z.literal(true), preferences: WindowPreferencesSchema.nullable() }),
+  z.strictObject({ ok: z.literal(false), errorCode: ErrorCodeSchema }),
 ]);
 
 export const CoreControlMessageSchema = z.discriminatedUnion('type', [
@@ -221,6 +279,17 @@ export const CoreControlMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('core.attach-task-port'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     connection: TaskPortConnectSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.window-preferences.get'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.window-preferences.set'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    preferences: WindowPreferencesSchema,
   }),
 ]);
 
@@ -254,11 +323,21 @@ export const CoreEventSchema = z.discriminatedUnion('type', [
     requestId: RequestIdSchema,
     result: TaskCommandResultSchema,
   }),
+  z.strictObject({
+    type: z.literal('core.window-preferences-result'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    result: CoreWindowPreferencesResultSchema,
+  }),
 ]);
 
 export type AppInfo = z.infer<typeof AppInfoSchema>;
 export type CoreStatus = z.infer<typeof CoreStatusSchema>;
 export type CoreOperation = z.infer<typeof CoreOperationSchema>;
+export type AppearancePreferences = z.infer<typeof AppearancePreferencesSchema>;
+export type WindowBoundsDip = z.infer<typeof WindowBoundsDipSchema>;
+export type WindowPreferences = z.infer<typeof WindowPreferencesSchema>;
+export type CoreWindowPreferencesResult = z.infer<typeof CoreWindowPreferencesResultSchema>;
 export type CommandFailure = z.infer<typeof CommandFailureSchema>;
 export type CoreControlMessage = z.infer<typeof CoreControlMessageSchema>;
 export type CoreEvent = z.infer<typeof CoreEventSchema>;
@@ -282,6 +361,10 @@ export interface WorldforgeBridge {
     readonly getInfo: () => Promise<CommandResult<AppInfo>>;
     readonly getCoreStatus: () => Promise<CommandResult<CoreStatus>>;
     readonly restartCore: () => Promise<CommandResult<CoreOperation>>;
+    readonly getWindowPreferences: () => Promise<CommandResult<WindowPreferences>>;
+    readonly setAppearancePreferences: (
+      preferences: AppearancePreferences,
+    ) => Promise<CommandResult<WindowPreferences>>;
   };
   readonly ai: {
     readonly setCredential: (

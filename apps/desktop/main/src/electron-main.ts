@@ -6,10 +6,12 @@ import {
   BrowserWindow,
   ipcMain,
   safeStorage,
+  screen,
   shell,
   utilityProcess,
   type MessagePortMain,
 } from 'electron';
+import type { AppearancePreferences, WindowPreferences } from '@worldforge/contracts';
 
 import { CoreSupervisor, type UtilityProcessHandle } from './core-supervisor.js';
 import { CredentialBroker } from './credential-broker.js';
@@ -17,6 +19,11 @@ import { registerIpcHandlers } from './ipc-handlers.js';
 import { installNavigationPolicy, type NavigationWebContents } from './navigation-policy.js';
 import { createDiagnosticId, PrivacyLogger } from './privacy-logger.js';
 import { buildSecureWebPreferences, CONTENT_SECURITY_POLICY } from './security-policy.js';
+import {
+  captureWindowPreferences,
+  restoreWindowPreferences,
+  type DisplaySnapshot,
+} from './window-state.js';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const preloadPath = path.resolve(currentDirectory, '../../preload/dist/index.cjs');
@@ -26,6 +33,14 @@ const coreEntryPath = path.resolve(
   currentDirectory,
   '../../../../packages/core-service/dist/utility-entry.js',
 );
+const developmentMigrationsPath = path.resolve(currentDirectory, '../../../../migrations/app');
+
+if (process.env.WORLDFORGE_E2E === '1' && process.env.WORLDFORGE_E2E_USER_DATA) {
+  if (!path.isAbsolute(process.env.WORLDFORGE_E2E_USER_DATA)) {
+    throw new Error('WORLDFORGE_E2E_USER_DATA_MUST_BE_ABSOLUTE');
+  }
+  app.setPath('userData', process.env.WORLDFORGE_E2E_USER_DATA);
+}
 
 let mainWindow: BrowserWindow | null = null;
 let allowQuit = false;
@@ -35,9 +50,22 @@ let startupLogger: PrivacyLogger | null = null;
 let startupStage = 'module';
 
 function spawnCore(): UtilityProcessHandle {
-  const child = utilityProcess.fork(coreEntryPath, [], {
-    serviceName: 'WorldForge Core Service',
-  });
+  const userDataPath = app.getPath('userData');
+  const migrationsPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'migrations', 'app')
+    : developmentMigrationsPath;
+  const child = utilityProcess.fork(
+    coreEntryPath,
+    [
+      `--app-database=${path.join(userDataPath, 'app.sqlite')}`,
+      `--app-migrations=${migrationsPath}`,
+      `--app-recovery=${path.join(userDataPath, 'recovery', 'app')}`,
+      `--app-version=${app.getVersion()}`,
+    ],
+    {
+      serviceName: 'WorldForge Core Service',
+    },
+  );
   return {
     ...(child.pid ? { pid: child.pid } : {}),
     postMessage: (message, transfer) =>
@@ -50,6 +78,30 @@ function spawnCore(): UtilityProcessHandle {
       child.on('exit', listener);
       return () => child.off('exit', listener);
     },
+  };
+}
+
+function displaySnapshots(): readonly DisplaySnapshot[] {
+  const primaryId = screen.getPrimaryDisplay().id;
+  return screen.getAllDisplays().map((display) => ({
+    id: String(display.id),
+    scaleFactor: display.scaleFactor,
+    workArea: {
+      x: display.workArea.x,
+      y: display.workArea.y,
+      width: display.workArea.width,
+      height: display.workArea.height,
+    },
+    primary: display.id === primaryId,
+  }));
+}
+
+function appearanceOf(preferences: WindowPreferences): AppearancePreferences {
+  return {
+    workspaceAlignment: preferences.workspaceAlignment,
+    uiScalePercent: preferences.uiScalePercent,
+    bodyFontSize: preferences.bodyFontSize,
+    contentWidth: preferences.contentWidth,
   };
 }
 
@@ -82,19 +134,102 @@ async function bootstrap(): Promise<void> {
   );
 
   startupStage = 'core-start';
-  await supervisor.start();
+  const coreStart = await supervisor.start();
+  if (!coreStart.ok) throw new Error(coreStart.errorCode ?? 'CORE_START_FAILED');
+
+  const loadedPreferences = await supervisor.getWindowPreferences();
+  let activeWindowPreferences = restoreWindowPreferences(
+    loadedPreferences.ok ? loadedPreferences.preferences : null,
+    displaySnapshots(),
+  );
 
   startupStage = 'window-create';
   mainWindow = new BrowserWindow({
-    width: 1120,
-    height: 760,
+    ...activeWindowPreferences.boundsDip,
     minWidth: 720,
     minHeight: 520,
     show: false,
-    backgroundColor: '#111318',
+    backgroundColor: '#F5F4F1',
     autoHideMenuBar: true,
     webPreferences: buildSecureWebPreferences(preloadPath, app.isPackaged),
   });
+  if (activeWindowPreferences.maximized) mainWindow.maximize();
+
+  let saveTimer: NodeJS.Timeout | undefined;
+  let saveChain = Promise.resolve();
+  const currentPreferences = (
+    appearance: AppearancePreferences = appearanceOf(activeWindowPreferences),
+  ): WindowPreferences => {
+    const window = mainWindow;
+    if (!window) return activeWindowPreferences;
+    return captureWindowPreferences(
+      window.getNormalBounds(),
+      window.isMaximized(),
+      displaySnapshots(),
+      appearance,
+    );
+  };
+  const persist = (preferences: WindowPreferences): Promise<boolean> => {
+    activeWindowPreferences = preferences;
+    const operation = saveChain.then(async () => {
+      const result = await supervisor.setWindowPreferences(preferences);
+      if (result.ok && result.preferences) {
+        activeWindowPreferences = result.preferences;
+        return true;
+      }
+      await logger.log('error', 'window.preferences.persist.failed', {
+        errorCode: result.ok ? 'COMMON_INTERNAL_999' : result.errorCode,
+        processStatus: supervisor.getStatus().status,
+      });
+      return false;
+    });
+    saveChain = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  };
+  const schedulePersist = (): void => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveTimer = undefined;
+      void persist(currentPreferences());
+    }, 250);
+  };
+  const flushWindowPreferences = async (): Promise<void> => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = undefined;
+    await persist(currentPreferences());
+  };
+  const updateAppearancePreferences = async (
+    appearance: AppearancePreferences,
+  ): Promise<WindowPreferences> => {
+    const preferences = currentPreferences(appearance);
+    if (!(await persist(preferences))) throw new Error('WINDOW_PREFERENCES_SAVE_FAILED');
+    return activeWindowPreferences;
+  };
+  mainWindow.on('move', schedulePersist);
+  mainWindow.on('resize', schedulePersist);
+  mainWindow.on('maximize', schedulePersist);
+  mainWindow.on('unmaximize', schedulePersist);
+  const restoreForCurrentDisplays = (): void => {
+    const window = mainWindow;
+    if (!window) return;
+    activeWindowPreferences = restoreWindowPreferences(
+      {
+        ...activeWindowPreferences,
+        boundsDip: window.getNormalBounds(),
+        maximized: window.isMaximized(),
+      },
+      displaySnapshots(),
+    );
+    window.setBounds(activeWindowPreferences.boundsDip);
+    if (activeWindowPreferences.maximized && !window.isMaximized()) window.maximize();
+    schedulePersist();
+  };
+  screen.on('display-added', restoreForCurrentDisplays);
+  screen.on('display-removed', restoreForCurrentDisplays);
+  screen.on('display-metrics-changed', restoreForCurrentDisplays);
 
   mainWindow.webContents.session.webRequest.onHeadersReceived(
     { urls: ['file://*/*'] },
@@ -126,11 +261,14 @@ async function bootstrap(): Promise<void> {
     version: app.getVersion(),
     platform: process.platform,
     logger,
+    getWindowPreferences: () => activeWindowPreferences,
+    setAppearancePreferences: updateAppearancePreferences,
   });
 
   const gracefulShutdown = (): Promise<void> => {
     if (shutdownInFlight) return shutdownInFlight;
     shutdownInFlight = (async () => {
+      await flushWindowPreferences();
       const result = await supervisor.shutdown();
       if (!result.ok) {
         await logger.log('error', 'app.shutdown.blocked', {
@@ -143,6 +281,9 @@ async function bootstrap(): Promise<void> {
         return;
       }
       allowQuit = true;
+      screen.off('display-added', restoreForCurrentDisplays);
+      screen.off('display-removed', restoreForCurrentDisplays);
+      screen.off('display-metrics-changed', restoreForCurrentDisplays);
       unregisterIpc?.();
       unregisterIpc = null;
       mainWindow?.destroy();
@@ -170,6 +311,9 @@ async function bootstrap(): Promise<void> {
 
   startupStage = 'renderer-load';
   await mainWindow.loadFile(rendererPath);
+  if (!loadedPreferences.ok || loadedPreferences.preferences === null) {
+    await persist(currentPreferences());
+  }
   startupStage = 'ready';
 }
 

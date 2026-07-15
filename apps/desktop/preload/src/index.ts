@@ -5,8 +5,10 @@ import {
   APP_COMMANDS,
   AppGetCoreStatusCommandSchema,
   AppGetInfoCommandSchema,
+  AppGetWindowPreferencesCommandSchema,
   AppInfoResultSchema,
   AppRestartCoreCommandSchema,
+  AppSetAppearancePreferencesCommandSchema,
   CoreOperationResultSchema,
   CoreStatusResultSchema,
   CredentialPresenceResultSchema,
@@ -23,6 +25,7 @@ import {
   TaskListActiveResultSchema,
   TaskPortConnectSchema,
   TaskSnapshotResultSchema,
+  WindowPreferencesResultSchema,
   type WorldforgeBridge,
 } from '@worldforge/contracts';
 import { contextBridge, ipcRenderer } from 'electron';
@@ -88,6 +91,20 @@ const bridge: WorldforgeBridge = {
         IPC_CHANNELS.appRestartCore,
         AppRestartCoreCommandSchema.parse(envelope(APP_COMMANDS.restartCore, {})),
         CoreOperationResultSchema,
+      ),
+    getWindowPreferences: () =>
+      invoke(
+        IPC_CHANNELS.appGetWindowPreferences,
+        AppGetWindowPreferencesCommandSchema.parse(envelope(APP_COMMANDS.getWindowPreferences, {})),
+        WindowPreferencesResultSchema,
+      ),
+    setAppearancePreferences: (preferences) =>
+      invoke(
+        IPC_CHANNELS.appSetAppearancePreferences,
+        AppSetAppearancePreferencesCommandSchema.parse(
+          envelope(APP_COMMANDS.setAppearancePreferences, preferences),
+        ),
+        WindowPreferencesResultSchema,
       ),
   },
   ai: {

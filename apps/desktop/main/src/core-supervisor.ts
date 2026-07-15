@@ -4,11 +4,14 @@ import {
   CoreEventSchema,
   PROTOCOL_VERSION,
   TaskCommandResultSchema,
+  WindowPreferencesSchema,
   type CoreControlMessage,
   type CoreEvent,
   type CoreStatus,
+  type CoreWindowPreferencesResult,
   type TaskCommand,
   type TaskCommandResult,
+  type WindowPreferences,
 } from '@worldforge/contracts';
 
 import { createDiagnosticId, type LogFields, type LogLevel } from './privacy-logger.js';
@@ -174,6 +177,50 @@ export class CoreSupervisor {
         retryable: true,
       },
     });
+  }
+
+  async getWindowPreferences(): Promise<CoreWindowPreferencesResult> {
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return { ok: false, errorCode: 'COMMON_INTERNAL_999' };
+    }
+    const requestId = randomUUID();
+    const response = this.#waitForMessage(
+      (message) =>
+        message.type === 'core.window-preferences-result' && message.requestId === requestId,
+      this.#commandTimeoutMs,
+    );
+    process.postMessage({
+      type: 'core.window-preferences.get',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+    });
+    const result = await response;
+    if (result?.type === 'core.window-preferences-result') return result.result;
+    return { ok: false, errorCode: 'COMMON_TIMEOUT_005' };
+  }
+
+  async setWindowPreferences(input: WindowPreferences): Promise<CoreWindowPreferencesResult> {
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return { ok: false, errorCode: 'COMMON_INTERNAL_999' };
+    }
+    const preferences = WindowPreferencesSchema.parse(input);
+    const requestId = randomUUID();
+    const response = this.#waitForMessage(
+      (message) =>
+        message.type === 'core.window-preferences-result' && message.requestId === requestId,
+      this.#commandTimeoutMs,
+    );
+    process.postMessage({
+      type: 'core.window-preferences.set',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      preferences,
+    });
+    const result = await response;
+    if (result?.type === 'core.window-preferences-result') return result.result;
+    return { ok: false, errorCode: 'COMMON_TIMEOUT_005' };
   }
 
   attachTaskPort(connectionId: string, port: unknown): SupervisorOperationResult {

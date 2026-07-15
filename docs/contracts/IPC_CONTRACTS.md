@@ -83,6 +83,10 @@ window.worldforge = {
 | 命令 | 输入 | 输出 |
 |---|---|---|
 | `app.getInfo` | 空 | 版本、平台、协议版本 |
+| `app.getCoreStatus` | 空 | Core状态、PID、重启次数与安全诊断ID |
+| `app.restartCore` | 空 | 接收状态与最新Core状态 |
+| `app.getWindowPreferences` | 空 | 当前DIP窗口状态与显示偏好 |
+| `app.setAppearancePreferences` | 工作区对齐、UI缩放、正文字号、正文宽度 | 合并窗口状态后的完整本地偏好 |
 | `app.getDisplays` | 空 | 显示器DIP信息 |
 | `project.create` | 名称、目录、模式、初始化计划 | 项目摘要 |
 | `project.open` | 项目路径 | 项目摘要、兼容与只读状态 |
@@ -190,6 +194,21 @@ RHY结果为建议级，不能通过IPC标记为发布阻断。
 | `task.getSnapshot` | taskId | TaskSnapshot |
 | `task.cancel` | taskId | 接收取消状态 |
 | `task.listActive` | 可选项目筛选 | 活动任务列表 |
+
+### 4.11 窗口偏好边界
+
+Renderer只允许写入以下外观字段：
+
+```ts
+interface AppearancePreferences {
+  workspaceAlignment: 'center' | 'left' | 'right';
+  uiScalePercent: 90 | 100 | 110 | 120 | 130 | 140 | 150;
+  bodyFontSize: number; // 14—28，整数
+  contentWidth: 'narrow' | 'normal' | 'wide' | 'adaptive';
+}
+```
+
+`displayId`、DIP坐标、`scaleFactor`和最大化状态由Electron Main读取操作系统窗口后生成，Renderer不能传入或覆盖。Main不连接SQLite；它通过私有、同样由strict Zod Schema验证的`core.window-preferences.get/set`消息委托Core读写`app.sqlite`。Preload只暴露`getWindowPreferences()`和`setAppearancePreferences()`具名方法。
 
 ## 5. 幂等与重复提交
 

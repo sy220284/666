@@ -41,11 +41,16 @@ M0-02、M0-03、M0-05
 ## 主要影响范围
 
 - `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
+- `packages/contracts/`
 - `packages/core-service/`
 - `migrations/app/`
 - `tests/e2e/`
+- `tests/migration/`
 - `tests/performance/`
+- `tests/security/`
+- `docs/ui/`
 
 ## 实施内容
 

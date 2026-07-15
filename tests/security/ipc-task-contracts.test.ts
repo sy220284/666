@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  AppSetAppearancePreferencesCommandSchema,
   ErrorCodeSchema,
   PROTOCOL_VERSION,
   RegisteredCommandSchema,
   TaskEventEnvelopeSchema,
   TaskListActiveCommandSchema,
+  type WindowPreferences,
 } from '@worldforge/contracts';
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import { describe, expect, it, vi } from 'vitest';
@@ -20,6 +22,17 @@ const base = {
   requestId: '550e8400-e29b-41d4-a716-446655440000',
   sentAt: '2026-07-15T00:00:00.000Z',
 } as const;
+
+const windowPreferences: WindowPreferences = {
+  displayId: 'display-1',
+  boundsDip: { x: 40, y: 30, width: 1_280, height: 800 },
+  scaleFactor: 1.25,
+  maximized: false,
+  workspaceAlignment: 'center',
+  uiScalePercent: 100,
+  bodyFontSize: 18,
+  contentWidth: 'normal',
+};
 
 describe('frozen command and error contracts', () => {
   it('rejects unregistered commands, version mismatches, and extra fields', () => {
@@ -63,6 +76,38 @@ describe('frozen command and error contracts', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('allows only appearance fields and frozen value ranges through the Renderer command', () => {
+    const command = {
+      ...base,
+      command: 'app.setAppearancePreferences',
+      payload: {
+        workspaceAlignment: 'center',
+        uiScalePercent: 100,
+        bodyFontSize: 18,
+        contentWidth: 'normal',
+      },
+    };
+    expect(AppSetAppearancePreferencesCommandSchema.safeParse(command).success).toBe(true);
+    expect(
+      AppSetAppearancePreferencesCommandSchema.safeParse({
+        ...command,
+        payload: { ...command.payload, displayId: 'attacker-controlled' },
+      }).success,
+    ).toBe(false);
+    expect(
+      AppSetAppearancePreferencesCommandSchema.safeParse({
+        ...command,
+        payload: { ...command.payload, uiScalePercent: 105 },
+      }).success,
+    ).toBe(false);
+    expect(
+      AppSetAppearancePreferencesCommandSchema.safeParse({
+        ...command,
+        payload: { ...command.payload, bodyFontSize: 42 },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe('Main IPC task whitelist', () => {
@@ -98,6 +143,7 @@ describe('Main IPC task whitelist', () => {
       has: vi.fn(),
     } as unknown as CredentialBroker;
     const logger = { log: vi.fn() } as unknown as PrivacyLogger;
+    const setAppearancePreferences = vi.fn(async () => windowPreferences);
 
     registerIpcHandlers({
       ipcMain,
@@ -107,6 +153,8 @@ describe('Main IPC task whitelist', () => {
       version: '0.1.0',
       platform: 'test',
       logger,
+      getWindowPreferences: () => windowPreferences,
+      setAppearancePreferences,
     });
 
     const handler = handlers.get('worldforge:task:list-active');
@@ -143,5 +191,38 @@ describe('Main IPC task whitelist', () => {
     expect(accepted).toEqual({ ok: true, requestId: base.requestId, data: { tasks: [] } });
     expect(invokeTaskCommand).toHaveBeenCalledOnce();
     expect(listeners.has('worldforge:task:connect-events')).toBe(true);
+
+    const appearanceHandler = handlers.get('worldforge:app:set-appearance-preferences');
+    expect(appearanceHandler).toBeDefined();
+    const appearanceCommand = {
+      ...base,
+      command: 'app.setAppearancePreferences',
+      payload: {
+        workspaceAlignment: 'right',
+        uiScalePercent: 120,
+        bodyFontSize: 20,
+        contentWidth: 'wide',
+      },
+    };
+    const rejectedAppearance = await appearanceHandler?.(
+      { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+      { ...appearanceCommand, payload: { ...appearanceCommand.payload, boundsDip: command } },
+    );
+    expect(rejectedAppearance).toMatchObject({
+      ok: false,
+      error: { code: 'COMMON_INVALID_INPUT_001' },
+    });
+    expect(setAppearancePreferences).not.toHaveBeenCalled();
+
+    const acceptedAppearance = await appearanceHandler?.(
+      { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+      appearanceCommand,
+    );
+    expect(acceptedAppearance).toEqual({
+      ok: true,
+      requestId: base.requestId,
+      data: windowPreferences,
+    });
+    expect(setAppearancePreferences).toHaveBeenCalledWith(appearanceCommand.payload);
   });
 });

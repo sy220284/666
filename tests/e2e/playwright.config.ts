@@ -5,7 +5,7 @@ export default defineConfig({
   testMatch: 'electron-shell.spec.ts',
   fullyParallel: false,
   workers: 1,
-  timeout: 30_000,
+  timeout: 90_000,
   retries: 0,
   reporter: 'line',
   outputDir: process.env.WORLDFORGE_E2E_OUTPUT_DIR ?? 'test-results/electron',

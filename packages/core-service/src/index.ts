@@ -9,4 +9,6 @@ export const coreRuntime = {
 } as const;
 
 export * from './database/index.js';
+export * from './app-runtime.js';
 export * from './task-protocol.js';
+export * from './window-preferences.js';

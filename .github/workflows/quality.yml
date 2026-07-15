@@ -29,6 +29,17 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      - name: Test with the display/DPI screenshot matrix
+        run: xvfb-run -a -s "-screen 0 3840x2160x24" pnpm test
+        env:
+          WORLDFORGE_CAPTURE_MATRIX_DIR: test-results/display-matrix
+      - name: Upload display/DPI matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: display-dpi-matrix
+          path: test-results/display-matrix
+          if-no-files-found: warn
+          retention-days: 14
       - run: pnpm build
       - run: pnpm package

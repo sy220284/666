@@ -5,6 +5,7 @@ import {
   TaskListActiveCommandSchema,
   type CoreControlMessage,
   type CoreEvent,
+  type WindowPreferences,
 } from '@worldforge/contracts';
 import { describe, expect, it } from 'vitest';
 
@@ -22,6 +23,7 @@ class FakeUtilityProcess implements UtilityProcessHandle {
   respondToShutdown = true;
   exited = false;
   lastTransfer: readonly unknown[] = [];
+  windowPreferences: WindowPreferences | null = null;
 
   constructor(pid: number) {
     this.pid = pid;
@@ -60,6 +62,23 @@ class FakeUtilityProcess implements UtilityProcessHandle {
         protocolVersion: PROTOCOL_VERSION,
         requestId: message.requestId,
         result: { ok: true, requestId: message.requestId, data: { tasks: [] } },
+      });
+    }
+    if (message.type === 'core.window-preferences.get') {
+      this.emitMessage({
+        type: 'core.window-preferences-result',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId: message.requestId,
+        result: { ok: true, preferences: this.windowPreferences },
+      });
+    }
+    if (message.type === 'core.window-preferences.set') {
+      this.windowPreferences = message.preferences;
+      this.emitMessage({
+        type: 'core.window-preferences-result',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId: message.requestId,
+        result: { ok: true, preferences: this.windowPreferences },
       });
     }
   }
@@ -166,6 +185,40 @@ describe('Core Utility Process supervision', () => {
     const port = { name: 'renderer-task-port' };
     expect(supervisor.attachTaskPort(randomUUID(), port)).toEqual({ ok: true });
     expect(processes[0]?.lastTransfer).toEqual([port]);
+  });
+
+  it('round-trips validated window preferences over the private Main-to-Core protocol', async () => {
+    const processes: FakeUtilityProcess[] = [];
+    const supervisor = new CoreSupervisor({
+      spawn: spawnReady(processes),
+      logger: quietLogger,
+      startupTimeoutMs: 50,
+      commandTimeoutMs: 50,
+    });
+    const preferences: WindowPreferences = {
+      displayId: 'display-150',
+      boundsDip: { x: 1_920, y: -40, width: 1_280, height: 800 },
+      scaleFactor: 1.5,
+      maximized: false,
+      workspaceAlignment: 'right',
+      uiScalePercent: 120,
+      bodyFontSize: 20,
+      contentWidth: 'wide',
+    };
+
+    await supervisor.start();
+    await expect(supervisor.getWindowPreferences()).resolves.toEqual({
+      ok: true,
+      preferences: null,
+    });
+    await expect(supervisor.setWindowPreferences(preferences)).resolves.toEqual({
+      ok: true,
+      preferences,
+    });
+    await expect(supervisor.getWindowPreferences()).resolves.toEqual({
+      ok: true,
+      preferences,
+    });
   });
 
   it('keeps a non-draining process alive and reports a diagnostic instead of force-killing it', async () => {

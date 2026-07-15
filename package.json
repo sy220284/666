@@ -28,7 +28,7 @@
     "test:e2e": "pnpm build && node scripts/run-electron-e2e.mjs",
     "test:security": "vitest run tests/security",
     "test:migration": "pnpm test:prepare && vitest run tests/migration",
-    "test:perf": "node scripts/not-ready.mjs M0-06 test:perf",
+    "test:perf": "pnpm test:prepare && vitest run tests/performance",
     "test:eval": "node scripts/not-ready.mjs M0-07 test:eval",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:workspaces": "node scripts/check-workspaces.mjs",

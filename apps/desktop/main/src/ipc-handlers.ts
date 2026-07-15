@@ -6,7 +6,9 @@ import {
   AiSetCredentialCommandSchema,
   AppGetCoreStatusCommandSchema,
   AppGetInfoCommandSchema,
+  AppGetWindowPreferencesCommandSchema,
   AppRestartCoreCommandSchema,
+  AppSetAppearancePreferencesCommandSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   RequestIdSchema,
@@ -17,6 +19,8 @@ import {
   type CommandFailure,
   type CommandResult,
   type ErrorCode,
+  type AppearancePreferences,
+  type WindowPreferences,
 } from '@worldforge/contracts';
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 
@@ -32,6 +36,10 @@ interface IpcHandlerOptions {
   readonly version: string;
   readonly platform: string;
   readonly logger: PrivacyLogger;
+  readonly getWindowPreferences: () => WindowPreferences;
+  readonly setAppearancePreferences: (
+    preferences: AppearancePreferences,
+  ) => Promise<WindowPreferences>;
 }
 
 function success<T>(requestId: string, data: T): CommandResult<T> {
@@ -74,6 +82,8 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.appGetInfo,
     IPC_CHANNELS.appGetCoreStatus,
     IPC_CHANNELS.appRestartCore,
+    IPC_CHANNELS.appGetWindowPreferences,
+    IPC_CHANNELS.appSetAppearancePreferences,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -131,6 +141,40 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       accepted: result.ok,
       status: options.supervisor.getStatus(),
     });
+  });
+
+  register(IPC_CHANNELS.appGetWindowPreferences, (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = AppGetWindowPreferencesCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return success(parsed.data.requestId, options.getWindowPreferences());
+  });
+
+  register(IPC_CHANNELS.appSetAppearancePreferences, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = AppSetAppearancePreferencesCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    try {
+      return success(
+        parsed.data.requestId,
+        await options.setAppearancePreferences(parsed.data.payload),
+      );
+    } catch {
+      const diagnosticId = createDiagnosticId();
+      await options.logger.log('error', 'window.preferences.save.failed', {
+        errorCode: 'COMMON_INTERNAL_999',
+        diagnosticId,
+      });
+      return failure(
+        parsed.data.requestId,
+        'COMMON_INTERNAL_999',
+        'The window preferences could not be saved.',
+        true,
+        diagnosticId,
+      );
+    }
   });
 
   register(IPC_CHANNELS.aiSetCredential, async (event, raw) => {

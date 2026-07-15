@@ -48,7 +48,7 @@ describe('SQLite foundation migrations', () => {
 
     expect(database.mode).toBe('read-write');
     expect(database.compatibility).toBe('migrated');
-    expect(database.schemaVersion).toBe(1);
+    expect(database.schemaVersion).toBe(2);
     expect(
       database.read((connection) => ({
         journalMode: scalar(connection, 'PRAGMA journal_mode'),
@@ -71,6 +71,7 @@ describe('SQLite foundation migrations', () => {
       'provider_configs',
       'recent_projects',
       'schema_migrations',
+      'window_preferences',
     ]);
     expect(tables).not.toEqual(expect.arrayContaining(['drafts', 'candidates', 'versions']));
 
@@ -87,16 +88,27 @@ describe('SQLite foundation migrations', () => {
     expect(
       database.read((connection) =>
         connection
-          .prepare('SELECT version, name, checksum, applied_at, app_version FROM schema_migrations')
-          .get(),
+          .prepare(
+            'SELECT version, name, checksum, applied_at, app_version FROM schema_migrations ORDER BY version',
+          )
+          .all(),
       ),
-    ).toEqual({
-      version: 1n,
-      name: 'initial',
-      checksum: migrations[0]?.checksum,
-      applied_at: '2026-07-15T01:02:03.456Z',
-      app_version: '0.1.0',
-    });
+    ).toEqual([
+      {
+        version: 1n,
+        name: 'initial',
+        checksum: migrations[0]?.checksum,
+        applied_at: '2026-07-15T01:02:03.456Z',
+        app_version: '0.1.0',
+      },
+      {
+        version: 2n,
+        name: 'window_preferences',
+        checksum: migrations[1]?.checksum,
+        applied_at: '2026-07-15T01:02:03.456Z',
+        app_version: '0.1.0',
+      },
+    ]);
     await database.close();
   });
 

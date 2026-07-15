@@ -46,13 +46,13 @@ describe('temporary WorldForge workspace', () => {
     const workspace = await createTemporaryWorldforgeWorkspace({ parentDirectory });
     expect(workspace.appDatabase.mode).toBe('read-write');
     expect(workspace.projectDatabase.mode).toBe('read-write');
-    expect(workspace.appDatabase.schemaVersion).toBe(1);
+    expect(workspace.appDatabase.schemaVersion).toBe(2);
     expect(workspace.projectDatabase.schemaVersion).toBe(1);
     expect(
       workspace.appDatabase.read((database) =>
         database.prepare('SELECT count(*) AS count FROM schema_migrations').get(),
       ),
-    ).toEqual({ count: 1n });
+    ).toEqual({ count: 2n });
 
     await workspace.cleanup();
     await workspace.cleanup();

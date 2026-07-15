@@ -3,10 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./dist/index.js",
+  "exports": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && esbuild src/index.ts --bundle --platform=node --format=cjs --target=node22 --external:electron --outfile=dist/index.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@worldforge/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "electron": "43.1.1",
+    "esbuild": "0.28.1"
   }
 }

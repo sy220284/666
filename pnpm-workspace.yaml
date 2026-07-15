@@ -3,5 +3,12 @@ packages:
   - apps/desktop/*
   - packages/*
 
+allowBuilds:
+  electron: true
+  esbuild: true
+
 catalog:
   typescript: 6.0.3
+
+minimumReleaseAgeExclude:
+  - electron@43.1.1

@@ -8,5 +8,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@worldforge/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1"
   }
 }

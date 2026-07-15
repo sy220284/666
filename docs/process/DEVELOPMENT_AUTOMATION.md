@@ -63,6 +63,15 @@
 | Prompt、Provider、约束包 | `test:eval`、`test:integration` |
 | 性能、DPI | `test:perf`、`test:e2e` |
 
-## 6. 证据
+## 6. 发布自动化
+
+- `pnpm release:check`只验证发布工具、任务索引和工作流配置，可以在开发阶段持续运行。
+- `.github/workflows/release.yml`只允许从`main`手工触发，默认创建Draft Release。
+- `pnpm release:gate -- --version <SEMVER>`强制输入版本等于`package.json`版本，并要求M8-03已经`Verified`。
+- 发布门通过后，Linux、Windows和macOS分别执行平台打包，产物汇总后生成`SHA256SUMS.txt`。
+- 已存在的GitHub Release不会被覆盖；Draft、Prerelease和Stable均使用`v<SEMVER>`标签。
+- 当前基础阶段不得绕过M8-03门禁发布`artifacts/foundation`或其他非产品产物。
+
+## 7. 证据
 
 每张任务保留 `summary.md`、`commands.txt`、`known-risks.md`；专项任务再加入测试结果、截图和性能报告。未运行、失败或环境限制必须如实写入。

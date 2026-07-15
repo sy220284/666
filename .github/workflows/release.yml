@@ -1,0 +1,159 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact package.json SemVer without a leading v
+        required: true
+        type: string
+      release_kind:
+        description: GitHub Release visibility
+        required: true
+        default: draft
+        type: choice
+        options:
+          - draft
+          - prerelease
+          - stable
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Release gate and quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Enforce main and release acceptance gate
+        shell: bash
+        run: |
+          test "$GITHUB_REF_NAME" = "main"
+          pnpm release:gate -- --version "$RELEASE_VERSION"
+      - run: pnpm release:check
+      - run: pnpm check:workspaces
+      - run: pnpm check:boundaries
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  build:
+    name: Package (${{ matrix.platform }})
+    needs: validate
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build platform package
+        shell: bash
+        run: >-
+          pnpm package --
+          --platform "${{ matrix.platform }}"
+          --version "$RELEASE_VERSION"
+          --output "release/${{ matrix.platform }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: worldforge-${{ matrix.platform }}
+          path: release/${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_KIND: ${{ inputs.release_kind }}
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: worldforge-*
+          path: release
+      - name: Recheck gate and create checksums
+        shell: bash
+        run: |
+          node scripts/release-tool.mjs gate --version "$RELEASE_VERSION"
+          node scripts/release-tool.mjs checksums \
+            --version "$RELEASE_VERSION" \
+            --assets release \
+            --output release/SHA256SUMS.txt
+      - name: Create immutable GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v$RELEASE_VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists; refusing to publish against an ambiguous commit." >&2
+            exit 1
+          fi
+
+          mapfile -d '' assets < <(find release -type f -print0 | sort -z)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets found." >&2
+            exit 1
+          fi
+
+          release_args=(
+            --target "$GITHUB_SHA"
+            --title "WorldForge $tag"
+            --generate-notes
+          )
+          case "$RELEASE_KIND" in
+            draft) release_args+=(--draft --latest=false) ;;
+            prerelease) release_args+=(--prerelease --latest=false) ;;
+            stable) ;;
+            *)
+              echo "Unsupported release kind: $RELEASE_KIND" >&2
+              exit 1
+              ;;
+          esac
+
+          gh release create "$tag" "${assets[@]}" "${release_args[@]}"

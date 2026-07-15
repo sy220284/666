@@ -23,6 +23,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm task:validate
+      - run: pnpm release:check
       - run: pnpm check:workspaces
       - run: pnpm check:boundaries
       - run: pnpm format:check

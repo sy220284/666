@@ -10,3 +10,10 @@
 2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged
 2026-07-15 | expected exit 1 | pnpm check:boundaries with Renderer importing node:fs/promises
 2026-07-15 | exit 0 | pnpm check:boundaries after negative fixture removal
+2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified
+2026-07-15 | expected exit 1 | pnpm release:gate -- --version 0.1.0 | M8-03 is Planned
+2026-07-15 | exit 0 | pnpm test | 6 files, 16 tests passed
+2026-07-15 | exit 0 | pnpm lint
+2026-07-15 | exit 0 | pnpm typecheck | 9 process/architecture packages
+2026-07-15 | exit 0 | pnpm build
+2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged

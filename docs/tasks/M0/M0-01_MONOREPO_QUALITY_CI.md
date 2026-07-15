@@ -61,6 +61,7 @@
 7. 恢复并验证本地数据库、工作区、备份、密钥和环境文件的.gitignore规则。
 8. 建立机器可读活动任务、允许路径、文档依赖、证据目录和连续主线授权校验。
 9. 建立Task Governance与Quality工作流，确保自动执行仍受任务范围和质量门约束。
+10. 配置受M8-03验收门保护的跨平台GitHub Release入口，开发阶段只能检查配置，不能提前发布基础骨架。
 
 ## 测试与证据
 
@@ -69,6 +70,7 @@
 - 故意加入一次非法跨层import，确认边界检查失败。
 - 确认每个workspace包均被pnpm识别且入口真实存在。
 - 验证越界路径与非法跨层import均会使门禁失败。
+- 执行`pnpm release:check`，并确认M8-03未Verified时`release:gate`明确拒绝发布。
 
 证据保存到：`docs/test-evidence/M0-01/`
 

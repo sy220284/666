@@ -11,10 +11,12 @@
 - Renderer导入Node内置模块的负向夹具被边界门禁正确拒绝，移除夹具后门禁恢复通过。
 - 活动任务JSON、Markdown镜像、允许/禁止路径、必读文档和证据目录可自动校验。
 - GitHub Task Governance与Quality工作流已建立。
+- GitHub Release工作流、严格SemVer、main分支限制、M8-03验收门、跨平台产物汇总和SHA-256清单已配置。
+- M8-03仍为Planned时，真实发布门按预期返回失败，基础骨架不会被误发布。
 
 ## 测试结果
 
-- Vitest：5个测试文件、12项测试通过。
+- Vitest：6个测试文件、16项测试通过。
 - Typecheck：9个进程/架构包通过。
 - Build：9个进程/架构包成功生成dist。
 - Package：生成包含9个编译入口及SHA-256的基础构建清单。

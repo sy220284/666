@@ -68,6 +68,7 @@ required_docs:
   - docs/testing/TEST_STRATEGY.md
 verification:
   - pnpm install --frozen-lockfile
+  - pnpm release:check
   - pnpm check:workspaces
   - pnpm check:boundaries
   - pnpm format:check

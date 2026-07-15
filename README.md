@@ -169,6 +169,16 @@ AGENTS.md
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 
+## 发布工具
+
+发布配置使用GitHub Actions手工触发，默认创建Draft Release。发布前可在本地检查配置：
+
+```bash
+pnpm release:check
+```
+
+真实发布只允许从`main`执行，并同时要求输入版本与`package.json`一致、M8-03已经`Verified`。通过门禁后，工作流会在Linux、Windows和macOS分别打包，生成`SHA256SUMS.txt`，再创建不可覆盖的GitHub Release。当前M8-03仍为`Planned`，因此发布入口会明确失败而不会提前分发基础骨架。
+
 ## 关键文档
 
 - [`docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`](./docs/product/WORLDFORGE_V6.5_FULL_SPEC.md)：完整产品与架构基线。

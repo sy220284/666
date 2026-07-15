@@ -1,7 +1,7 @@
 # M0-01 验证摘要
 
 日期：2026-07-15  
-状态：Implemented；本地实现与验证完成，等待 `main` GitHub Actions 复验后标记Verified。
+状态：Verified；本地验证与 `main` GitHub Actions远程复验均通过。
 
 ## 已验证
 
@@ -13,6 +13,7 @@
 - GitHub Task Governance与Quality工作流已建立。
 - GitHub Release工作流、严格SemVer、main分支限制、M8-03验收门、跨平台产物汇总和SHA-256清单已配置。
 - M8-03仍为Planned时，真实发布门按预期返回失败，基础骨架不会被误发布。
+- 提交`c3d8307c4ac5d13e9accc2d579b2e87b49d002eb`的Task Governance #7与Quality #7均成功。
 
 ## 测试结果
 

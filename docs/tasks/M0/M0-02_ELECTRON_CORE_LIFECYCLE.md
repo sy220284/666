@@ -1,9 +1,9 @@
 # M0-02 Electron安全壳与Core生命周期
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M0 工程、安全与运行底座  
 > 优先级：P0  
-> 建议分支：`feat/m0-electron-core-lifecycle`
+> 工作分支：`main`（作者预授权连续主线模式）
 
 ## 目标
 

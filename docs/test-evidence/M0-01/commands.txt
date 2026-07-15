@@ -8,6 +8,8 @@
 2026-07-15 | exit 0 | pnpm test | 5 files, 12 tests passed
 2026-07-15 | exit 0 | pnpm build
 2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged
+2026-07-15 | remote success | GitHub Task Governance #7 | https://github.com/sy220284/666/actions/runs/29384844269
+2026-07-15 | remote success | GitHub Quality #7 | https://github.com/sy220284/666/actions/runs/29384844270
 2026-07-15 | expected exit 1 | pnpm check:boundaries with Renderer importing node:fs/promises
 2026-07-15 | exit 0 | pnpm check:boundaries after negative fixture removal
 2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified

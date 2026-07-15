@@ -1,6 +1,6 @@
 # M0-03 SQLite、Migration与单写队列
 
-> 状态：In Progress
+> 状态：Implemented
 > 里程碑：M0 工程、安全与运行底座  
 > 优先级：P0  
 > 工作分支：`main`（作者预授权连续主线模式）

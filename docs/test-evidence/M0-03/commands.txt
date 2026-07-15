@@ -1,2 +1,18 @@
 2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=09abab1 | M0-02 Verified; M0-03 activated
 2026-07-15 | exit 0 | node scripts/taskctl.mjs validate | M0-03 IN_PROGRESS
+2026-07-15 | exit 0 | pnpm format
+2026-07-15 | exit 0 | pnpm lint
+2026-07-15 | exit 0 | pnpm typecheck | all eligible workspace packages passed
+2026-07-15 | exit 0 | pnpm test | 13 files, 41 tests passed
+2026-07-15 | exit 0 | pnpm test:migration | 2 files, 9 tests passed
+2026-07-15 | exit 0 | pnpm test:integration | 4 files, 4 tests passed
+2026-07-15 | exit 0 | pnpm build
+2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged
+2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified
+2026-07-15 | exit 0 | host node:sqlite capability probe | Node 24.14.0; SQLite 3.51.2; FTS5=true; trigram=true
+2026-07-15 | exit 0 | Electron node:sqlite capability probe | Electron 43.1.1; Node 24.18.0; SQLite 3.53.1; FTS5=true; trigram=true
+2026-07-15 | exit 0 | 100-write SQLite benchmark | 7.26 ms; rows=100; lostWrites=0; WAL; integrityOk=true
+2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit 3869bd2
+2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit 5f42edc
+2026-07-15 | remote success | GitHub Task Governance | https://github.com/sy220284/666/actions/runs/29387901730
+2026-07-15 | remote success | GitHub Quality | https://github.com/sy220284/666/actions/runs/29387901747

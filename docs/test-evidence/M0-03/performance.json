@@ -1,0 +1,19 @@
+{
+  "recordedAt": "2026-07-15",
+  "runtime": {
+    "node": "24.14.0",
+    "sqlite": "3.51.2"
+  },
+  "workload": {
+    "concurrentRequests": 100,
+    "operation": "single-row insert through ProjectDatabase.write"
+  },
+  "result": {
+    "durationMs": 7.26,
+    "rows": 100,
+    "lostWrites": 0,
+    "databaseBytes": 45056,
+    "journalMode": "wal",
+    "integrityOk": true
+  }
+}

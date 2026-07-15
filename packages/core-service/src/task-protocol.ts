@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   AIStageSchema,
   ErrorCodeSchema,
+  MAX_TASK_PREVIEW_CHARACTERS,
   PROTOCOL_VERSION,
   ProjectIdSchema,
   TaskCommandResultSchema,
@@ -160,6 +161,8 @@ interface TaskRecord {
   errorCode?: ErrorCode;
   cancellable: boolean;
   partialAvailable: boolean;
+  previewText: string;
+  previewTruncated: boolean;
   pendingDelta: string;
   deltaTimer: ReturnType<typeof setTimeout> | undefined;
 }
@@ -190,6 +193,7 @@ export interface TaskProtocolOptions {
   readonly batchIntervalMs?: number;
   readonly batchCharacterThreshold?: number;
   readonly maximumBatchCharacters?: number;
+  readonly maximumPreviewCharacters?: number;
   readonly maximumRetainedTasks?: number;
   readonly now?: () => number;
 }
@@ -212,6 +216,7 @@ export class TaskProtocol {
   readonly #batchIntervalMs: number;
   readonly #batchCharacterThreshold: number;
   readonly #maximumBatchCharacters: number;
+  readonly #maximumPreviewCharacters: number;
   readonly #maximumRetainedTasks: number;
   readonly #now: () => number;
   readonly #drainWaiters = new Set<() => void>();
@@ -222,6 +227,8 @@ export class TaskProtocol {
     this.#batchIntervalMs = options.batchIntervalMs ?? 30;
     this.#batchCharacterThreshold = options.batchCharacterThreshold ?? 512;
     this.#maximumBatchCharacters = options.maximumBatchCharacters ?? 65_536;
+    this.#maximumPreviewCharacters =
+      options.maximumPreviewCharacters ?? MAX_TASK_PREVIEW_CHARACTERS;
     this.#maximumRetainedTasks = options.maximumRetainedTasks ?? 1_000;
     this.#now = options.now ?? Date.now;
     if (
@@ -229,6 +236,8 @@ export class TaskProtocol {
       this.#batchIntervalMs > 50 ||
       this.#batchCharacterThreshold < 1 ||
       this.#maximumBatchCharacters < this.#batchCharacterThreshold ||
+      this.#maximumPreviewCharacters < 1 ||
+      this.#maximumPreviewCharacters > MAX_TASK_PREVIEW_CHARACTERS ||
       this.#maximumRetainedTasks < 1
     ) {
       throw new Error('TASK_PROTOCOL_CONFIGURATION_INVALID');
@@ -277,6 +286,8 @@ export class TaskProtocol {
       receivedChars: 0,
       cancellable: options.cancellable ?? true,
       partialAvailable: false,
+      previewText: '',
+      previewTruncated: false,
       pendingDelta: '',
       deltaTimer: undefined,
     };
@@ -388,6 +399,12 @@ export class TaskProtocol {
   #pushDelta(task: TaskRecord, text: string): boolean {
     if (!this.#isActive(task) || !task.runId || text.length === 0) return false;
     task.receivedChars += text.length;
+    const remainingPreviewCharacters = Math.max(
+      0,
+      this.#maximumPreviewCharacters - task.previewText.length,
+    );
+    task.previewText += text.slice(0, remainingPreviewCharacters);
+    task.previewTruncated ||= text.length > remainingPreviewCharacters;
     task.pendingDelta += text;
     while (task.pendingDelta.length >= this.#batchCharacterThreshold) {
       this.#flushPendingDelta(task, this.#maximumBatchCharacters);
@@ -516,6 +533,9 @@ export class TaskProtocol {
       startedAt: new Date(task.startedAtMs).toISOString(),
       elapsedMs: Math.max(0, Math.floor(this.#now() - task.startedAtMs)),
       ...(task.receivedChars > 0 ? { receivedChars: task.receivedChars } : {}),
+      ...(task.receivedChars > 0
+        ? { previewText: task.previewText, previewTruncated: task.previewTruncated }
+        : {}),
       ...(task.resultIds ? { resultIds: task.resultIds } : {}),
       ...(task.errorCode ? { errorCode: task.errorCode } : {}),
     });

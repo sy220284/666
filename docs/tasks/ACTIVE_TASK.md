@@ -26,6 +26,7 @@ allowed_paths:
   - tests/integration/
   - tests/security/
   - tests/e2e/
+  - docs/contracts/EVENT_PROTOCOL.md
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml

@@ -129,7 +129,25 @@ describe('task event protocol', () => {
       status: 'cancelled',
       lastSequence: 3,
       receivedChars: 100,
+      previewText: '字'.repeat(100),
+      previewTruncated: false,
     });
+  });
+
+  it('marks an intentionally bounded recovery preview as truncated', () => {
+    const protocol = new TaskProtocol({ maximumPreviewCharacters: 4 });
+    const task = protocol.startTask({
+      taskType: 'ai.generation',
+      runId: randomUUID(),
+      initialStage: 'queued',
+    });
+    expect(task.pushDelta('一二三四五六')).toBe(true);
+    expect(protocol.getSnapshot(task.taskId)).toMatchObject({
+      receivedChars: 6,
+      previewText: '一二三四',
+      previewTruncated: true,
+    });
+    protocol.cancel(task.taskId);
   });
 
   it('bounds slow-consumer delivery and resumes with a detectable sequence gap', () => {

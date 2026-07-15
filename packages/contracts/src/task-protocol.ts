@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ErrorCodeSchema, type ErrorCode } from './error-codes.js';
 
 export const TASK_PROTOCOL_VERSION = 1 as const;
+export const MAX_TASK_PREVIEW_CHARACTERS = 2_000_000 as const;
 export const TaskIdSchema = z.uuid();
 export const TaskEventIdSchema = z.uuid();
 export const ProjectIdSchema = z.uuid();
@@ -38,6 +39,8 @@ export const TaskSnapshotSchema = z.strictObject({
   startedAt: z.iso.datetime(),
   elapsedMs: z.number().int().nonnegative(),
   receivedChars: z.number().int().nonnegative().optional(),
+  previewText: z.string().max(MAX_TASK_PREVIEW_CHARACTERS).optional(),
+  previewTruncated: z.boolean().optional(),
   resultIds: z.array(z.uuid()).max(1_000).optional(),
   errorCode: ErrorCodeSchema.optional(),
 });

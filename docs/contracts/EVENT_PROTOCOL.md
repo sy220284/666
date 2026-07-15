@@ -141,12 +141,16 @@ interface TaskSnapshot {
   startedAt: string;
   elapsedMs: number;
   receivedChars?: number;
+  previewText?: string;
+  previewTruncated?: boolean;
   resultIds?: string[];
   errorCode?: string;
 }
 ```
 
 Renderer重连、页面恢复或发现序号缺失时调用`task.getSnapshot`。
+
+`previewText`是Core内存中的有界临时流，用于页面切换或事件缺号后的预览恢复，不是权威正文，也不写入普通日志。超过内存上限时`previewTruncated=true`，Renderer必须明确显示预览不完整，不能猜测缺失文本；最终权威结果仍以已持久化Candidate或其他任务结果为准。
 
 ## 10. 测试
 

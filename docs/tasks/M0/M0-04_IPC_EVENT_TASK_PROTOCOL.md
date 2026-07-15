@@ -48,6 +48,7 @@ M0-02、M0-03
 - `tests/integration/`
 - `tests/security/`
 - `tests/e2e/`
+- `docs/contracts/EVENT_PROTOCOL.md`
 
 ## 实施内容
 

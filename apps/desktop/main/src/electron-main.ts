@@ -1,7 +1,15 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { app, BrowserWindow, ipcMain, safeStorage, shell, utilityProcess } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  safeStorage,
+  shell,
+  utilityProcess,
+  type MessagePortMain,
+} from 'electron';
 
 import { CoreSupervisor, type UtilityProcessHandle } from './core-supervisor.js';
 import { CredentialBroker } from './credential-broker.js';
@@ -32,7 +40,8 @@ function spawnCore(): UtilityProcessHandle {
   });
   return {
     ...(child.pid ? { pid: child.pid } : {}),
-    postMessage: (message) => child.postMessage(message),
+    postMessage: (message, transfer) =>
+      child.postMessage(message, transfer ? ([...transfer] as MessagePortMain[]) : undefined),
     onMessage: (listener) => {
       child.on('message', listener);
       return () => child.off('message', listener);

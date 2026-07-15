@@ -1,4 +1,11 @@
-import { PROTOCOL_VERSION, type CoreControlMessage, type CoreEvent } from '@worldforge/contracts';
+import { randomUUID } from 'node:crypto';
+
+import {
+  PROTOCOL_VERSION,
+  TaskListActiveCommandSchema,
+  type CoreControlMessage,
+  type CoreEvent,
+} from '@worldforge/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -14,12 +21,14 @@ class FakeUtilityProcess implements UtilityProcessHandle {
   respondToDrain = true;
   respondToShutdown = true;
   exited = false;
+  lastTransfer: readonly unknown[] = [];
 
   constructor(pid: number) {
     this.pid = pid;
   }
 
-  postMessage(message: CoreControlMessage): void {
+  postMessage(message: CoreControlMessage, transfer: readonly unknown[] = []): void {
+    this.lastTransfer = transfer;
     if (message.type === 'core.ping') {
       this.emitMessage({
         type: 'core.health',
@@ -44,6 +53,14 @@ class FakeUtilityProcess implements UtilityProcessHandle {
         requestId: message.requestId,
       });
       this.exit(0);
+    }
+    if (message.type === 'core.command' && message.envelope.command === 'task.listActive') {
+      this.emitMessage({
+        type: 'core.command-result',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId: message.requestId,
+        result: { ok: true, requestId: message.requestId, data: { tasks: [] } },
+      });
     }
   }
 
@@ -123,6 +140,32 @@ describe('Core Utility Process supervision', () => {
     await expect(supervisor.restart()).resolves.toEqual({ ok: true });
     expect(processes).toHaveLength(2);
     expect(supervisor.getStatus()).toMatchObject({ status: 'healthy', restartCount: 1 });
+  });
+
+  it('routes strict task commands and transfers event ports to Core', async () => {
+    const processes: FakeUtilityProcess[] = [];
+    const supervisor = new CoreSupervisor({
+      spawn: spawnReady(processes),
+      logger: quietLogger,
+      startupTimeoutMs: 50,
+      commandTimeoutMs: 50,
+    });
+    await supervisor.start();
+    const command = TaskListActiveCommandSchema.parse({
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: randomUUID(),
+      command: 'task.listActive',
+      payload: {},
+      sentAt: new Date().toISOString(),
+    });
+
+    await expect(supervisor.invokeTaskCommand(command)).resolves.toMatchObject({
+      ok: true,
+      data: { tasks: [] },
+    });
+    const port = { name: 'renderer-task-port' };
+    expect(supervisor.attachTaskPort(randomUUID(), port)).toEqual({ ok: true });
+    expect(processes[0]?.lastTransfer).toEqual([port]);
   });
 
   it('keeps a non-draining process alive and reports a diagnostic instead of force-killing it', async () => {

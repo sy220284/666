@@ -1,0 +1,147 @@
+import { randomUUID } from 'node:crypto';
+
+import {
+  ErrorCodeSchema,
+  PROTOCOL_VERSION,
+  RegisteredCommandSchema,
+  TaskEventEnvelopeSchema,
+  TaskListActiveCommandSchema,
+} from '@worldforge/contracts';
+import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
+import { describe, expect, it, vi } from 'vitest';
+
+import type { CoreSupervisor } from '../../apps/desktop/main/src/core-supervisor.js';
+import type { CredentialBroker } from '../../apps/desktop/main/src/credential-broker.js';
+import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
+import type { PrivacyLogger } from '../../apps/desktop/main/src/privacy-logger.js';
+
+const base = {
+  protocolVersion: PROTOCOL_VERSION,
+  requestId: '550e8400-e29b-41d4-a716-446655440000',
+  sentAt: '2026-07-15T00:00:00.000Z',
+} as const;
+
+describe('frozen command and error contracts', () => {
+  it('rejects unregistered commands, version mismatches, and extra fields', () => {
+    expect(
+      RegisteredCommandSchema.safeParse({
+        ...base,
+        command: 'system.executeSql',
+        payload: { sql: 'DROP TABLE projects' },
+      }).success,
+    ).toBe(false);
+    expect(
+      TaskListActiveCommandSchema.safeParse({
+        ...base,
+        protocolVersion: 2,
+        command: 'task.listActive',
+        payload: {},
+      }).success,
+    ).toBe(false);
+    expect(
+      TaskListActiveCommandSchema.safeParse({
+        ...base,
+        command: 'task.listActive',
+        payload: {},
+        path: '/private/project.sqlite',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts only documented stable error codes and strict event payloads', () => {
+    expect(ErrorCodeSchema.safeParse('TASK_EVENT_GAP_002').success).toBe(true);
+    expect(ErrorCodeSchema.safeParse('ARBITRARY_PROVIDER_ERROR').success).toBe(false);
+    expect(
+      TaskEventEnvelopeSchema.safeParse({
+        protocolVersion: PROTOCOL_VERSION,
+        eventId: randomUUID(),
+        taskId: randomUUID(),
+        sequence: 1,
+        type: 'task.started',
+        payload: { taskType: 'backup.verify', stage: 'queued', secret: 'leak' },
+        emittedAt: '2026-07-15T00:00:00.000Z',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('Main IPC task whitelist', () => {
+  it('rejects untrusted and malformed task commands before they reach Core', async () => {
+    const handlers = new Map<string, (event: IpcMainInvokeEvent, input: unknown) => unknown>();
+    const listeners = new Map<string, (event: IpcMainEvent, input: unknown) => void>();
+    const ipcMain = {
+      handle: vi.fn(
+        (channel: string, handler: (event: IpcMainInvokeEvent, input: unknown) => unknown) => {
+          handlers.set(channel, handler);
+        },
+      ),
+      removeHandler: vi.fn(),
+      on: vi.fn((channel: string, listener: (event: IpcMainEvent, input: unknown) => void) => {
+        listeners.set(channel, listener);
+      }),
+      removeListener: vi.fn(),
+    } as unknown as IpcMain;
+    const invokeTaskCommand = vi.fn(async (command: { readonly requestId: string }) => ({
+      ok: true as const,
+      requestId: command.requestId,
+      data: { tasks: [] },
+    }));
+    const supervisor = {
+      getStatus: vi.fn(),
+      restart: vi.fn(),
+      invokeTaskCommand,
+      attachTaskPort: vi.fn(() => ({ ok: true })),
+    } as unknown as CoreSupervisor;
+    const credentialBroker = {
+      store: vi.fn(),
+      remove: vi.fn(),
+      has: vi.fn(),
+    } as unknown as CredentialBroker;
+    const logger = { log: vi.fn() } as unknown as PrivacyLogger;
+
+    registerIpcHandlers({
+      ipcMain,
+      supervisor,
+      credentialBroker,
+      rendererUrl: 'file:///trusted/index.html',
+      version: '0.1.0',
+      platform: 'test',
+      logger,
+    });
+
+    const handler = handlers.get('worldforge:task:list-active');
+    expect(handler).toBeDefined();
+    const command = {
+      ...base,
+      command: 'task.listActive',
+      payload: {},
+    };
+    const untrusted = await handler?.(
+      { senderFrame: { url: 'https://attacker.invalid' } } as unknown as IpcMainInvokeEvent,
+      command,
+    );
+    expect(untrusted).toMatchObject({
+      ok: false,
+      error: { code: 'COMMON_INVALID_INPUT_001' },
+    });
+    expect(invokeTaskCommand).not.toHaveBeenCalled();
+
+    const malformed = await handler?.(
+      { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+      { ...command, table: 'projects' },
+    );
+    expect(malformed).toMatchObject({
+      ok: false,
+      error: { code: 'COMMON_INVALID_INPUT_001' },
+    });
+    expect(invokeTaskCommand).not.toHaveBeenCalled();
+
+    const accepted = await handler?.(
+      { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+      command,
+    );
+    expect(accepted).toEqual({ ok: true, requestId: base.requestId, data: { tasks: [] } });
+    expect(invokeTaskCommand).toHaveBeenCalledOnce();
+    expect(listeners.has('worldforge:task:connect-events')).toBe(true);
+  });
+});

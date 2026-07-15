@@ -32,7 +32,6 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
   - docs/tasks/M0/M0-04_IPC_EVENT_TASK_PROTOCOL.md
-  - docs/tasks/M0/M0-03_SQLITE_MIGRATION_WRITE_QUEUE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M0-04/
 forbidden_paths:

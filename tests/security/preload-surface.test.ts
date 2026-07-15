@@ -13,5 +13,8 @@ describe('Preload capability surface', () => {
     expect(source).not.toContain('process.env');
     expect(source).not.toContain('database');
     expect(source).not.toMatch(/send\s*:\s*\(/);
+    expect(source).toContain('ipcRenderer.postMessage');
+    expect(source).toContain('TaskEventEnvelopeSchema.safeParse');
+    expect(source).toContain('task: {');
   });
 });

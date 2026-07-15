@@ -1,11 +1,31 @@
 import { z } from 'zod';
 
+import { ErrorCodeSchema, type ErrorCode } from './error-codes.js';
+import {
+  ProjectIdSchema,
+  TASK_PROTOCOL_VERSION,
+  TaskCancelCommandSchema,
+  TaskCancelDataSchema,
+  TaskCommandSchema,
+  TaskEventEnvelopeSchema,
+  TaskGetSnapshotCommandSchema,
+  TaskListActiveCommandSchema,
+  TaskListActiveDataSchema,
+  TaskPortConnectSchema,
+  TaskSnapshotSchema,
+  type TaskEventEnvelope,
+  type TaskSnapshot,
+} from './task-protocol.js';
+
+export * from './error-codes.js';
+export * from './task-protocol.js';
+
 export const contractsLayer = {
   name: '@worldforge/contracts',
   responsibility: 'cross-process-schemas-and-types',
 } as const;
 
-export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_VERSION = TASK_PROTOCOL_VERSION;
 
 export const IPC_CHANNELS = {
   appGetInfo: 'worldforge:app:get-info',
@@ -14,6 +34,10 @@ export const IPC_CHANNELS = {
   aiSetCredential: 'worldforge:ai:set-credential',
   aiRemoveCredential: 'worldforge:ai:remove-credential',
   aiHasCredential: 'worldforge:ai:has-credential',
+  taskGetSnapshot: 'worldforge:task:get-snapshot',
+  taskCancel: 'worldforge:task:cancel',
+  taskListActive: 'worldforge:task:list-active',
+  taskConnectEvents: 'worldforge:task:connect-events',
 } as const;
 
 export const APP_COMMANDS = {
@@ -23,6 +47,9 @@ export const APP_COMMANDS = {
   setCredential: 'ai.provider.setCredential',
   removeCredential: 'ai.provider.removeCredential',
   hasCredential: 'ai.provider.hasCredential',
+  taskGetSnapshot: 'task.getSnapshot',
+  taskCancel: 'task.cancel',
+  taskListActive: 'task.listActive',
 } as const;
 
 export const RequestIdSchema = z.uuid();
@@ -83,6 +110,18 @@ export const AiHasCredentialCommandSchema = z.strictObject({
   payload: z.strictObject({ credentialRef: CredentialRefSchema }),
 });
 
+export const RegisteredCommandSchema = z.discriminatedUnion('command', [
+  AppGetInfoCommandSchema,
+  AppGetCoreStatusCommandSchema,
+  AppRestartCoreCommandSchema,
+  AiSetCredentialCommandSchema,
+  AiRemoveCredentialCommandSchema,
+  AiHasCredentialCommandSchema,
+  TaskGetSnapshotCommandSchema,
+  TaskCancelCommandSchema,
+  TaskListActiveCommandSchema,
+]);
+
 export const AppInfoSchema = z.strictObject({
   version: z.string().min(1),
   platform: z.string().min(1),
@@ -110,15 +149,24 @@ export const CredentialPresenceSchema = z.strictObject({
   exists: z.boolean(),
 });
 
+export const SafeErrorDetailsSchema = z.strictObject({
+  taskId: z.uuid().optional(),
+  expectedProtocolVersion: z.number().int().positive().optional(),
+  expectedSequence: z.number().int().positive().optional(),
+  receivedSequence: z.number().int().positive().optional(),
+  field: z.string().min(1).max(128).optional(),
+});
+
 export const CommandFailureSchema = z.strictObject({
   ok: z.literal(false),
   requestId: RequestIdSchema,
   error: z.strictObject({
-    code: z.string().min(1),
-    message: z.string().min(1),
+    code: ErrorCodeSchema,
+    message: z.string().min(1).max(512),
     retryable: z.boolean(),
-    userAction: z.string().min(1).optional(),
-    diagnosticId: z.string().min(1).optional(),
+    userAction: z.string().min(1).max(512).optional(),
+    diagnosticId: z.string().min(1).max(128).optional(),
+    details: SafeErrorDetailsSchema.optional(),
   }),
 });
 
@@ -138,6 +186,14 @@ export const CoreStatusResultSchema = commandResultSchema(CoreStatusSchema);
 export const CoreOperationResultSchema = commandResultSchema(CoreOperationSchema);
 export const CredentialReferenceResultSchema = commandResultSchema(CredentialReferenceSchema);
 export const CredentialPresenceResultSchema = commandResultSchema(CredentialPresenceSchema);
+export const TaskSnapshotResultSchema = commandResultSchema(TaskSnapshotSchema);
+export const TaskCancelResultSchema = commandResultSchema(TaskCancelDataSchema);
+export const TaskListActiveResultSchema = commandResultSchema(TaskListActiveDataSchema);
+export const TaskCommandResultSchema = z.union([
+  TaskSnapshotResultSchema,
+  TaskCancelResultSchema,
+  TaskListActiveResultSchema,
+]);
 
 export const CoreControlMessageSchema = z.discriminatedUnion('type', [
   z.strictObject({
@@ -154,6 +210,17 @@ export const CoreControlMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('core.shutdown'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.command'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    envelope: TaskCommandSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.attach-task-port'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    connection: TaskPortConnectSchema,
   }),
 ]);
 
@@ -174,12 +241,18 @@ export const CoreEventSchema = z.discriminatedUnion('type', [
     type: z.literal('core.drained'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
-    pendingTasks: z.literal(0),
+    pendingTasks: z.number().int().nonnegative(),
   }),
   z.strictObject({
     type: z.literal('core.shutdown-complete'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.command-result'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    result: TaskCommandResultSchema,
   }),
 ]);
 
@@ -189,8 +262,20 @@ export type CoreOperation = z.infer<typeof CoreOperationSchema>;
 export type CommandFailure = z.infer<typeof CommandFailureSchema>;
 export type CoreControlMessage = z.infer<typeof CoreControlMessageSchema>;
 export type CoreEvent = z.infer<typeof CoreEventSchema>;
+export type RegisteredCommand = z.infer<typeof RegisteredCommandSchema>;
+export type TaskCancelData = z.infer<typeof TaskCancelDataSchema>;
+export type TaskListActiveData = z.infer<typeof TaskListActiveDataSchema>;
+export type TaskCommandResult = z.infer<typeof TaskCommandResultSchema>;
 export type CommandResult<T> =
   { readonly ok: true; readonly requestId: string; readonly data: T } | CommandFailure;
+
+export type TaskStreamUpdate =
+  | { readonly kind: 'event'; readonly event: TaskEventEnvelope }
+  | {
+      readonly kind: 'snapshot';
+      readonly snapshot: TaskSnapshot;
+      readonly reason: 'sequence-gap';
+    };
 
 export interface WorldforgeBridge {
   readonly app: {
@@ -210,4 +295,20 @@ export interface WorldforgeBridge {
       credentialRef: string,
     ) => Promise<CommandResult<{ readonly exists: boolean }>>;
   };
+  readonly task: {
+    readonly getSnapshot: (
+      taskId: string,
+      projectId?: string,
+    ) => Promise<CommandResult<TaskSnapshot>>;
+    readonly cancel: (taskId: string, projectId?: string) => Promise<CommandResult<TaskCancelData>>;
+    readonly listActive: (projectId?: string) => Promise<CommandResult<TaskListActiveData>>;
+    readonly subscribe: (
+      listener: (update: TaskStreamUpdate) => void,
+      projectId?: string,
+    ) => () => void;
+  };
 }
+
+export type StableErrorCode = ErrorCode;
+export const ProtocolProjectIdSchema = ProjectIdSchema;
+export const ProtocolTaskEventSchema = TaskEventEnvelopeSchema;

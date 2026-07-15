@@ -9,3 +9,4 @@ export const coreRuntime = {
 } as const;
 
 export * from './database/index.js';
+export * from './task-protocol.js';

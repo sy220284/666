@@ -3,16 +3,19 @@ import { randomUUID } from 'node:crypto';
 import {
   CoreEventSchema,
   PROTOCOL_VERSION,
+  TaskCommandResultSchema,
   type CoreControlMessage,
   type CoreEvent,
   type CoreStatus,
+  type TaskCommand,
+  type TaskCommandResult,
 } from '@worldforge/contracts';
 
 import { createDiagnosticId, type LogFields, type LogLevel } from './privacy-logger.js';
 
 export interface UtilityProcessHandle {
   readonly pid?: number;
-  postMessage(message: CoreControlMessage): void;
+  postMessage(message: CoreControlMessage, transfer?: readonly unknown[]): void;
   onMessage(listener: (message: unknown) => void): () => void;
   onExit(listener: (exitCode: number | null) => void): () => void;
 }
@@ -135,6 +138,64 @@ export class CoreSupervisor {
     return this.start();
   }
 
+  async invokeTaskCommand(envelope: TaskCommand): Promise<TaskCommandResult> {
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return TaskCommandResultSchema.parse({
+        ok: false,
+        requestId: envelope.requestId,
+        error: {
+          code: 'COMMON_INTERNAL_999',
+          message: 'The Core service is not available.',
+          retryable: true,
+        },
+      });
+    }
+
+    const response = this.#waitForMessage(
+      (message) =>
+        message.type === 'core.command-result' && message.requestId === envelope.requestId,
+      this.#commandTimeoutMs,
+    );
+    process.postMessage({
+      type: 'core.command',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: envelope.requestId,
+      envelope,
+    });
+    const result = await response;
+    if (result?.type === 'core.command-result') return result.result;
+    return TaskCommandResultSchema.parse({
+      ok: false,
+      requestId: envelope.requestId,
+      error: {
+        code: 'COMMON_TIMEOUT_005',
+        message: 'The task command timed out.',
+        retryable: true,
+      },
+    });
+  }
+
+  attachTaskPort(connectionId: string, port: unknown): SupervisorOperationResult {
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return this.#fail('CORE_NOT_HEALTHY', 'core.task-port.rejected');
+    }
+    try {
+      process.postMessage(
+        {
+          type: 'core.attach-task-port',
+          protocolVersion: PROTOCOL_VERSION,
+          connection: { protocolVersion: PROTOCOL_VERSION, connectionId },
+        },
+        [port],
+      );
+      return { ok: true };
+    } catch {
+      return this.#fail('CORE_PORT_TRANSFER_FAILED', 'core.task-port.failed');
+    }
+  }
+
   async shutdown(): Promise<SupervisorOperationResult> {
     const process = this.#process;
     if (!process) {
@@ -145,7 +206,10 @@ export class CoreSupervisor {
     this.#state = 'draining';
     const drainRequestId = randomUUID();
     const drained = this.#waitForMessage(
-      (message) => message.type === 'core.drained' && message.requestId === drainRequestId,
+      (message) =>
+        message.type === 'core.drained' &&
+        message.requestId === drainRequestId &&
+        message.pendingTasks === 0,
       this.#commandTimeoutMs,
     );
     process.postMessage({

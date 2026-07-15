@@ -8,6 +8,7 @@
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
+→ docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
 → ACTIVE_TASK指向的独立任务卡
 → 任务卡列出的专项文档
@@ -17,8 +18,10 @@ AGENTS.md
 - [`../AGENTS.md`](../AGENTS.md)：仓库级强制规则。
 - [`../agent.md`](../agent.md)：人工和通用代理快速入口。
 - [`PROJECT_EXECUTION_ENTRY.md`](PROJECT_EXECUTION_ENTRY.md)：任务类型与专项文档路由。
-- [`tasks/ACTIVE_TASK.md`](tasks/ACTIVE_TASK.md)：当前唯一允许执行的开发任务。
+- [`tasks/ACTIVE_TASK.json`](tasks/ACTIVE_TASK.json)：机器可读的活动任务与连续执行授权真源。
+- [`tasks/ACTIVE_TASK.md`](tasks/ACTIVE_TASK.md)：由JSON生成的人类可读镜像。
 - [`process/CODEX_EXECUTION_PLAYBOOK.md`](process/CODEX_EXECUTION_PLAYBOOK.md)：任务启动到关闭的闭环。
+- [`process/DEVELOPMENT_AUTOMATION.md`](process/DEVELOPMENT_AUTOMATION.md)：自动推进、主线提交和质量门禁。
 
 ## 2. 权威层级
 

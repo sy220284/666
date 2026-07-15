@@ -7,13 +7,14 @@
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
+→ docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
 → ACTIVE_TASK指向的独立任务卡
 → 任务卡列出的专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-`ACTIVE_TASK.md`显示`NO_ACTIVE_CODING_TASK`时，不得自行开始生产代码。
+`ACTIVE_TASK.json`是机器真源，`ACTIVE_TASK.md`是其镜像。当前作者已授权`continuous-mainline`模式：一张任务Verified后可自动激活下一张依赖已满足的任务，失败时必须阻断。
 
 ## 2. V1.0任务阶段
 

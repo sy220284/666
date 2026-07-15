@@ -8,16 +8,14 @@
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
+→ docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
 → ACTIVE_TASK指向的独立任务卡
 → 任务卡列出的专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-`ACTIVE_TASK.md`为`NO_ACTIVE_CODING_TASK`时：
-
-- 可以检查仓库、分析问题、补文档和制定计划。
-- 不得自行选择下一张生产代码任务卡。
+`ACTIVE_TASK.json`声明授权模式与唯一活动任务。`manual`模式在无活动任务时只允许分析和规划；`continuous-mainline`模式在当前任务Verified后，可自动激活下一张依赖已满足的任务。两种模式均禁止并行任务和越过失败门。
 
 ## 2. 阶段与依赖检查
 
@@ -316,5 +314,6 @@ docs/test-evidence/<TASK-ID>/
 2. 更新`TASK_INDEX.md`。
 3. 更新追踪矩阵。
 4. 保存证据。
-5. 将`ACTIVE_TASK.md`恢复为`NO_ACTIVE_CODING_TASK`。
-6. 等待作者激活下一任务。
+5. 同步`ACTIVE_TASK.json`与`ACTIVE_TASK.md`。
+6. `manual`模式恢复为`NO_ACTIVE_CODING_TASK`；`continuous-mainline`模式自动激活下一张依赖已满足的任务。
+7. 自动推进前再次执行任务依赖、允许路径、追踪和证据校验。

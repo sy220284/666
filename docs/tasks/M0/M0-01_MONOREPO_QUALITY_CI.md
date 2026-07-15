@@ -1,9 +1,9 @@
 # M0-01 Monorepo、质量工具与CI
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M0 工程、安全与运行底座  
 > 优先级：P0  
-> 建议分支：`feat/m0-monorepo-quality-ci`
+> 工作分支：`main`（作者预授权连续主线模式）
 
 ## 目标
 
@@ -59,6 +59,8 @@
 5. 建立模块边界静态检查，禁止Renderer、Domain、Contracts越权依赖。
 6. 建立CI，执行锁文件安装、lint、typecheck、test、build和边界检查。
 7. 恢复并验证本地数据库、工作区、备份、密钥和环境文件的.gitignore规则。
+8. 建立机器可读活动任务、允许路径、文档依赖、证据目录和连续主线授权校验。
+9. 建立Task Governance与Quality工作流，确保自动执行仍受任务范围和质量门约束。
 
 ## 测试与证据
 
@@ -66,6 +68,7 @@
 - 执行pnpm lint、pnpm typecheck、pnpm test、pnpm build。
 - 故意加入一次非法跨层import，确认边界检查失败。
 - 确认每个workspace包均被pnpm识别且入口真实存在。
+- 验证越界路径与非法跨层import均会使门禁失败。
 
 证据保存到：`docs/test-evidence/M0-01/`
 

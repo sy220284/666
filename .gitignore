@@ -1,49 +1,38 @@
-# Dependencies
 node_modules/
-.pnpm-store/
-
-# Build output
 dist/
-out/
-release/
-artifacts/
 coverage/
+artifacts/
 playwright-report/
 test-results/
 
-# Electron / native builds
-*.node
-*.dmg
-*.exe
-*.AppImage
-*.deb
-*.rpm
-
-# Local databases and workspaces
+# Local WorldForge data and generated project material
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
-*.worldforge/
+*.db
+*.db-shm
+*.db-wal
 *.wfproj
+projects/
 backups/
+recovery/
 logs/
 
-# Local credentials and environment
+# Credentials and local environment
 .env
 .env.*
 !.env.example
-*.key
 *.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
 
-# IDE / OS
+# OS and editor files
 .DS_Store
 Thumbs.db
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
 .idea/
-
-# Temporary files
+.vscode/
+*.swp
 *.tmp
-*.temp
-~$*

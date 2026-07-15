@@ -13,16 +13,19 @@ Before any coding, refactoring, bug fix, test, migration, prompt, UI, or release
 ```text
 1. AGENTS.md
 2. docs/PROJECT_EXECUTION_ENTRY.md
-3. docs/tasks/ACTIVE_TASK.md
-4. the individual task file referenced by ACTIVE_TASK
-5. the task-specific documents listed there
-6. existing code, tests, migrations, IPC contracts, and traceability state
+3. docs/tasks/ACTIVE_TASK.json
+4. docs/tasks/ACTIVE_TASK.md
+5. the individual task file referenced by ACTIVE_TASK
+6. the task-specific documents listed there
+7. existing code, tests, migrations, IPC contracts, and traceability state
 ```
 
 Rules:
 
-- `docs/tasks/ACTIVE_TASK.md` is the only authority for which coding task may run now.
-- If it says `NO_ACTIVE_CODING_TASK`, do not select and implement the next task yourself.
+- `docs/tasks/ACTIVE_TASK.json` is the machine-readable authority for which coding task may run now.
+- `docs/tasks/ACTIVE_TASK.md` is generated from that JSON and must remain synchronized.
+- In `continuous-mainline` mode, a Verified task may automatically advance to the next dependency-ready task on `main`.
+- Automatic advancement never permits overlapping tasks, skipped failures, or bypassed evidence.
 - Milestone summaries are indexes, not executable task cards.
 - Every active task must point to exactly one file under `docs/tasks/M0/` through `docs/tasks/M8/`.
 - `agent.md` is a human-readable mirror. This file remains the repository instruction authority.
@@ -118,7 +121,7 @@ Inspect the real repository before coding:
 - Do not use TODOs, empty implementations, fake success responses, or hard-coded demo data to claim completion.
 - Do not silently change frozen architecture, product scope, data semantics, or UI behavior.
 - Do not suppress errors to make tests pass.
-- Do not continue to the next task automatically.
+- Under `continuous-mainline` authorization, continue only after the current task is Verified and its evidence and traceability are complete.
 
 ## 8. Frozen product boundaries
 
@@ -296,4 +299,4 @@ A task is complete only when:
 - `TASK_INDEX.md` and `V1.0_TRACEABILITY_MATRIX.md` are updated;
 - no unrelated refactor, TODO, fake data, or empty implementation remains.
 
-Task closure returns `ACTIVE_TASK.md` to `NO_ACTIVE_CODING_TASK`. Never begin the next task automatically.
+Task closure follows `docs/process/DEVELOPMENT_AUTOMATION.md`. In continuous-mainline mode it atomically closes the current task and activates the next dependency-ready task; otherwise it returns to `NO_ACTIVE_CODING_TASK`.

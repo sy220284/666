@@ -1,0 +1,7 @@
+packages:
+  - apps/desktop
+  - apps/desktop/*
+  - packages/*
+
+catalog:
+  typescript: 6.0.3

@@ -1,4 +1,8 @@
 # M0-05 已知限制
 
-- 本文件是任务激活时建立的证据骨架；Fixture、Provider Stub、数据库故障、证据生成与清理自测尚未完成验证。
-- 在专项门禁完成前，M0-05不得标记Implemented或Verified。
+- Provider Stub是确定性协议测试替身，不验证真实模型质量、供应商认证、网络代理、重定向或计费；真实Provider连接由M4-03及后续AI任务验收。
+- 恶意DOCX是SEC-042—049的公开输入设施。生产导入解析器尚未实现，当前不能宣称应用已经拒绝这些文档；相关安全断言必须在导入任务中复用Fixture后闭环。
+- SQLite磁盘不足通过真实`max_page_count`触发`SQLITE_FULL`，可稳定验证事务错误路径，但不模拟所有文件系统配额、断电和设备I/O错误。
+- 1,500,000字Fixture的P95是当前Linux容器诊断值，不是编辑、搜索或渲染产品预算；正式产品性能门由M0-06及对应功能任务按`PERFORMANCE_BUDGETS.md`执行。
+- 本地容器没有DISPLAY/Xvfb，启动器按设计拒绝伪造桌面通过；真实Electron证据来自GitHub Ubuntu/Xvfb。Windows、macOS、DPI、IME和签名安装包仍由M0-06与M8覆盖。
+- 证据工具会拦截常见凭据形状并以0600写入暂存文件，但不能判断任意自然语言是否来自私人作品；调用方仍必须只使用登记为公开合成的数据。

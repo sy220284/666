@@ -1,1 +1,18 @@
 2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=9908d57f97d71e6cdea2249e52e1430b7301c02d | M0-04 Verified; M0-05 activated
+2026-07-15 | exit 0 | required-document review | TEST_STRATEGY, SECURITY_TEST_CASES, PERFORMANCE_BUDGETS, PROMPT_AND_EVAL_SPEC
+2026-07-15 | exit 0 | pnpm format:check
+2026-07-15 | exit 0 | pnpm lint
+2026-07-15 | exit 0 | pnpm typecheck | all eligible workspace packages passed
+2026-07-15 | exit 0 | pnpm test | 19 files, 72 tests passed
+2026-07-15 | exit 0 | targeted M0-05 Vitest | 4 files, 19 tests passed
+2026-07-15 | exit 0 | pnpm test:migration | 3 files, 16 tests passed
+2026-07-15 | exit 0 | pnpm test:integration | 5 files, 12 tests passed
+2026-07-15 | exit 0 | pnpm test:security | 4 files, 18 tests passed
+2026-07-15 | exit 0 | pnpm check:workspaces | 10 workspace packages
+2026-07-15 | exit 0 | pnpm check:boundaries | 9 process/package layers
+2026-07-15 | exit 0 | pnpm build | 10 workspace projects selected; testkit built
+2026-07-15 | exit 2 | pnpm test:e2e | local container intentionally failed closed: DISPLAY and xvfb-run unavailable
+2026-07-15 | exit 0 | 25-sample public fixture benchmark | 1,500,000 chars; p95=85.647ms; DOCX SEC-042—049 generated
+2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit a3d07ec
+2026-07-15 | remote success | GitHub Task Governance | https://github.com/sy220284/666/actions/runs/29390711628
+2026-07-15 | remote success | GitHub Quality with Playwright Electron E2E | https://github.com/sy220284/666/actions/runs/29390711632

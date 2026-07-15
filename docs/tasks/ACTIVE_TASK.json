@@ -10,7 +10,7 @@
   },
   "activeTask": {
     "id": "M0-05",
-    "status": "IN_PROGRESS",
+    "status": "IMPLEMENTED",
     "source": "docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md",
     "branch": "main",
     "startedAt": "2026-07-15",

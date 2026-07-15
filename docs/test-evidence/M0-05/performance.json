@@ -1,0 +1,41 @@
+{
+  "taskId": "M0-05",
+  "commit": "a3d07ecb928c1618148ca94ee70f00e1cfc04d4e",
+  "recordedAt": "2026-07-15",
+  "environment": {
+    "os": "linux 6.12.47",
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "memoryGb": 15.93,
+    "display": "headless-local"
+  },
+  "searchFixture": {
+    "dataset": "zh-search-1500000-v1",
+    "characters": 1500000,
+    "chapters": 500,
+    "matches": 5,
+    "samples": 25,
+    "metric": "fixture_generation_p95_ms",
+    "result": 85.647,
+    "maximum": 85.762,
+    "selfTestGuard": 250,
+    "passed": true,
+    "sha256": "c751c4c5838d8a91f389f0feba6bc86c622911573d46feb637bf8c349852024a"
+  },
+  "docxFixtures": {
+    "count": 8,
+    "securityCases": [
+      "SEC-042",
+      "SEC-043",
+      "SEC-044",
+      "SEC-045",
+      "SEC-046",
+      "SEC-047",
+      "SEC-048",
+      "SEC-049"
+    ],
+    "generationMs": 538.704,
+    "maximumCompressionRatio": 714.84,
+    "maximumEntries": 1028
+  },
+  "interpretation": "Diagnostic fixture-generation measurement only; this is not an editor, search, render, or import product performance budget."
+}

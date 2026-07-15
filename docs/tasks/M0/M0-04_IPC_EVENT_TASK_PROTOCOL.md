@@ -47,6 +47,7 @@ M0-02、M0-03
 - `packages/core-service/`
 - `tests/integration/`
 - `tests/security/`
+- `tests/e2e/`
 
 ## 实施内容
 

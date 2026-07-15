@@ -25,6 +25,7 @@ allowed_paths:
   - packages/core-service/
   - tests/integration/
   - tests/security/
+  - tests/e2e/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml

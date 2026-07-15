@@ -22,11 +22,20 @@ test('runs a sandboxed renderer against a healthy supervised Core', async () => 
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
         .worldforge;
       const status = await bridge.app.getCoreStatus();
+      const activeTasks = await bridge.task.listActive();
+      const unsubscribe = bridge.task.subscribe(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      unsubscribe();
+      const statusAfterPortTransfer = await bridge.app.getCoreStatus();
       return {
         hasRequire: typeof globals.require !== 'undefined',
         hasProcess: typeof globals.process !== 'undefined',
-        hasBridge: Boolean(bridge.app && bridge.ai),
+        hasBridge: Boolean(bridge.app && bridge.ai && bridge.task),
         status: status.ok ? status.data.status : status.error.code,
+        activeTaskCount: activeTasks.ok ? activeTasks.data.tasks.length : -1,
+        statusAfterPortTransfer: statusAfterPortTransfer.ok
+          ? statusAfterPortTransfer.data.status
+          : statusAfterPortTransfer.error.code,
         csp: document
           .querySelector('meta[http-equiv="Content-Security-Policy"]')
           ?.getAttribute('content'),
@@ -38,6 +47,8 @@ test('runs a sandboxed renderer against a healthy supervised Core', async () => 
       hasProcess: false,
       hasBridge: true,
       status: 'healthy',
+      activeTaskCount: 0,
+      statusAfterPortTransfer: 'healthy',
     });
     expect(runtime.csp).toContain("default-src 'none'");
     expect(runtime.csp).not.toContain('unsafe-eval');

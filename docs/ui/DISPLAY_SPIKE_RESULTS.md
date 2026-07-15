@@ -1,6 +1,6 @@
 # M0-06 显示、DPI与窗口恢复Spike结论
 
-> 状态：Implemented，等待main分支远端Electron矩阵验收  
+> 状态：Implemented，main分支远端Electron矩阵验收通过  
 > 任务：M0-06  
 > 决策适用：后续所有桌面工作台、编辑器、抽屉、浮层与显示设置
 
@@ -47,11 +47,13 @@ Renderer中的“安静编辑部”界面是显示技术原型，只承载公开
 | Security | Renderer不能写displayId/坐标/scaleFactor/最大化状态；非法步进、额外字段被strict Schema拒绝 |
 | Performance | 10,000次断点、版心和混合DPI恢复计算，P95及总耗时受一秒恢复预算约束 |
 | Electron E2E | 沙箱边界、Core健康、app.sqlite持久化、关闭/重启恢复、无窗口JSON旁路 |
-| Display matrix | 1280×800、2560×1440 @100/125/150%、3440×1440、3840×1600、有效1024×640 |
+| Display matrix | 1280×800、2560×1440 @100/125/150%、3440×1440、3840×1600、有效1024×640；125%与150%使用Electron原生device scale factor |
 | Interaction | 无整页水平滚动、双抽屉、Esc与焦点恢复、Popover/Dialog不越界、超宽左中右对齐 |
 
 ## 5. 验收与后续复用
 
-本地无DISPLAY环境只执行纯函数、SQLite、契约、安全、性能和构建验证。真实Electron窗口与截图矩阵由GitHub Actions在3840×2160 Xvfb中执行并上传`display-dpi-matrix`证据；远端检查通过后将本文件、任务卡与追踪矩阵更新为Verified。
+本地无DISPLAY环境只执行纯函数、SQLite、契约、安全、性能和构建验证。真实Electron窗口与截图矩阵由GitHub Actions在3840×2160 Xvfb中执行：[Task Governance](https://github.com/sy220284/666/actions/runs/29393712442)与[Quality（含4/4 Playwright Electron E2E）](https://github.com/sy220284/666/actions/runs/29393712416)均通过。最终`display-dpi-matrix` Artifact（ID `8334265245`）包含7张截图，已人工复核中文字体、三栏/抽屉切换、右栏完整性及无水平溢出；150%截图的物理宽度因分数DIP舍入为2562px，误差1个有效CSS px且无裁切。
+
+正式证据位于`docs/test-evidence/M0-06/`，包含逐文件SHA-256清单、测试结果、截图清单、性能记录和已知风险。状态提交通过远端门禁后，本任务可关闭为Verified。
 
 M1开始后，应用设置页面应复用相同外观契约，不另建窗口状态存储。M7可替换原型视觉与业务区域，但不得改变本文件冻结的坐标、断点、版心和独立缩放语义。

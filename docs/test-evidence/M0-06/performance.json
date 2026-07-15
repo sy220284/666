@@ -1,0 +1,34 @@
+[
+  {
+    "taskId": "M0-06",
+    "commit": "98613c0d48dec23414b1598761c0a8e9e6c302f2",
+    "environment": {
+      "os": "linux 6.12.47",
+      "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+      "memoryGb": 15.93,
+      "display": "headless pure-function benchmark"
+    },
+    "dataset": "mixed-dpi-layout-restore-10000",
+    "metric": "p95_ms",
+    "samples": 10000,
+    "result": 0.02006,
+    "budget": 1,
+    "passed": true
+  },
+  {
+    "taskId": "M0-06",
+    "commit": "98613c0d48dec23414b1598761c0a8e9e6c302f2",
+    "environment": {
+      "os": "linux 6.12.47",
+      "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+      "memoryGb": 15.93,
+      "display": "headless pure-function benchmark"
+    },
+    "dataset": "mixed-dpi-layout-restore-10000",
+    "metric": "total_ms",
+    "samples": 10000,
+    "result": 67.147,
+    "budget": 1000,
+    "passed": true
+  }
+]

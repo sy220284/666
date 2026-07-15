@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-06",
+  "commit": "98613c0d48dec23414b1598761c0a8e9e6c302f2",
+  "generatedAt": "2026-07-15T06:22:07Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1195,
+      "sha256": "712667168319becb3f446aacc9415dbb6241bbf861c784ab0747dd80cfc302d0"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 731,
+      "sha256": "677e6c814e06c630c817af3fcef7967e57c120b9ea9f5f20319a88cabea66281"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 887,
+      "sha256": "b99587de85196a3c1ba707bf820b962b155d9c31714501cca490d6cb67d859c1"
+    },
+    {
+      "path": "screenshots/1280x800-100.png",
+      "bytes": 180558,
+      "sha256": "1dbc5b8ab9054a359bb9df76be126fc02f1aef0c05b1742ec16ad0cf6b12f988"
+    },
+    {
+      "path": "screenshots/2560x1440-100.png",
+      "bytes": 208508,
+      "sha256": "a4684d858d3309c1165e118d203e1a718899276de9ae5dff0f519dc153204111"
+    },
+    {
+      "path": "screenshots/2560x1440-125.png",
+      "bytes": 275984,
+      "sha256": "1222aa56d8a2f9d39d21131fda21775398ed9e80f515ba2949da21fab6d0743f"
+    },
+    {
+      "path": "screenshots/2560x1440-150.png",
+      "bytes": 315793,
+      "sha256": "e5fff67e326646cadba9f8d81658e2c84da50745026ef836e5995e97e1564023"
+    },
+    {
+      "path": "screenshots/3440x1440-100.png",
+      "bytes": 215753,
+      "sha256": "f9146951e770844d5f7d3a8809cfc5bdb65782bcff594338a52808626ad8d836"
+    },
+    {
+      "path": "screenshots/3840x1600-100.png",
+      "bytes": 222769,
+      "sha256": "5d93b6c35b5adbf3c2a9139fb6ce87fe9fb3fd6555e2bb294d11d1a69db76b59"
+    },
+    {
+      "path": "screenshots/effective-1024x640.png",
+      "bytes": 124223,
+      "sha256": "c1c720ce15ce4a8f36e3365cb63faec43dc6651eb457164facc464ca519d80bf"
+    },
+    {
+      "path": "screenshots/manifest.json",
+      "bytes": 1166,
+      "sha256": "4909e33da11d636d40cb6402579e4682afd082361411e1783b7187a8c5da43b8"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 942,
+      "sha256": "d1fefdc0527054d3211004115be0053d4b8e4c1293e2c8237a996ba57a02e9c7"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 2250,
+      "sha256": "2f88018d2d99d3ff4347bf6f99047015df9784fa061a6a2f5204f2333a85295a"
+    }
+  ]
+}

@@ -1,1 +1,42 @@
-2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=c27eedbef2ca09bd463282249b6f16d755753445 | M0-05 Verified; M0-06 activated
+required-document review: AGENTS, PROJECT_EXECUTION_ENTRY, V6.5_FULL_SPEC, IMPLEMENTATION_DECISIONS, RESPONSIVE_AND_DPI, UI_SYSTEM, PERFORMANCE_BUDGETS
+exit=0 duration_ms=0 fixtures=M0-06-DOCS
+
+pnpm format:check
+exit=0 duration_ms=0 fixtures=M0-06-STATIC
+
+pnpm lint
+exit=0 duration_ms=0 fixtures=M0-06-STATIC
+
+pnpm typecheck
+exit=0 duration_ms=0 fixtures=M0-06-STATIC
+
+pnpm test
+exit=0 duration_ms=0 fixtures=M0-06-UNIT
+
+pnpm test:migration
+exit=0 duration_ms=0 fixtures=M0-06-MIGRATION
+
+pnpm test:integration
+exit=0 duration_ms=0 fixtures=M0-06-INTEGRATION
+
+pnpm test:security
+exit=0 duration_ms=0 fixtures=M0-06-SECURITY
+
+pnpm test:perf
+exit=0 duration_ms=0 fixtures=M0-06-PERF
+
+pnpm check:workspaces && pnpm check:boundaries
+exit=0 duration_ms=0 fixtures=M0-06-BOUNDARIES
+
+pnpm build && pnpm package
+exit=0 duration_ms=0 fixtures=M0-06-BUILD
+
+pnpm test:e2e (local headless container)
+exit=2 duration_ms=0 fixtures=LOCAL-DISPLAY-UNAVAILABLE
+
+GitHub Actions Task Governance run 29393712442
+exit=0 duration_ms=0 fixtures=M0-06-GOVERNANCE
+
+GitHub Actions Quality run 29393712416: Playwright Electron E2E 4/4
+exit=0 duration_ms=20900 fixtures=M0-06-ELECTRON,M0-06-DISPLAY-MATRIX,M0-06-NATIVE-DPI
+

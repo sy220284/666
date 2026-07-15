@@ -5,11 +5,11 @@
 ## 当前状态
 
 ```text
-IMPLEMENTED
+IN_PROGRESS
 ```
 
-- 任务ID：`M0-02`
-- 唯一任务卡：`docs/tasks/M0/M0-02_ELECTRON_CORE_LIFECYCLE.md`
+- 任务ID：`M0-03`
+- 唯一任务卡：`docs/tasks/M0/M0-03_SQLITE_MIGRATION_WRITE_QUEUE.md`
 - 工作分支：`main`
 - 开始时间：`2026-07-15`
 - 授权模式：`continuous-mainline`
@@ -19,13 +19,13 @@ IMPLEMENTED
 
 ```yaml
 allowed_paths:
-  - apps/desktop/main/
-  - apps/desktop/preload/
-  - apps/desktop/renderer/
-  - packages/contracts/
   - packages/core-service/
-  - tests/security/
-  - tests/e2e/
+  - packages/contracts/
+  - packages/testkit/
+  - migrations/app/
+  - migrations/project/
+  - tests/migration/
+  - tests/integration/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
@@ -33,8 +33,9 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
   - docs/tasks/M0/M0-02_ELECTRON_CORE_LIFECYCLE.md
+  - docs/tasks/M0/M0-03_SQLITE_MIGRATION_WRITE_QUEUE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M0-02/
+  - docs/test-evidence/M0-03/
 forbidden_paths:
 
 required_docs:
@@ -42,18 +43,16 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - SECURITY.md
-  - docs/security/THREAT_MODEL.md
-  - docs/security/PRIVACY_AND_LOGGING.md
-  - docs/architecture/ARCHITECTURE.md
-  - docs/contracts/IPC_CONTRACTS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/MIGRATION_POLICY.md
+  - docs/database/SCHEMA_COMPATIBILITY.md
+  - docs/decisions/ADR-002-sqlite-source-of-truth.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
+  - pnpm test:migration
   - pnpm test:integration
-  - pnpm test:security
-  - pnpm test:e2e
 ```
 
 ## 连续执行规则

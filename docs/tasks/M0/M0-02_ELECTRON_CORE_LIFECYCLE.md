@@ -1,6 +1,6 @@
 # M0-02 Electron安全壳与Core生命周期
 
-> 状态：Implemented
+> 状态：Verified
 > 里程碑：M0 工程、安全与运行底座  
 > 优先级：P0  
 > 工作分支：`main`（作者预授权连续主线模式）

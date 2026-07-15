@@ -1,0 +1,2 @@
+2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=09abab1 | M0-02 Verified; M0-03 activated
+2026-07-15 | exit 0 | node scripts/taskctl.mjs validate | M0-03 IN_PROGRESS

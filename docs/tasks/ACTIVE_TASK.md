@@ -32,7 +32,6 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M0/M0-02_ELECTRON_CORE_LIFECYCLE.md
   - docs/tasks/M0/M0-03_SQLITE_MIGRATION_WRITE_QUEUE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M0-03/

@@ -29,6 +29,11 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      - name: Install the CJK font used by visual evidence
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          fc-match "Noto Serif CJK SC"
       - name: Test with the display/DPI screenshot matrix
         run: xvfb-run -a -s "-screen 0 3840x2160x24" pnpm test
         env:

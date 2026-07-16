@@ -44,9 +44,18 @@ M1-04
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
+- `apps/desktop/renderer/`
 - `migrations/project/`
 - `tests/unit/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
+- `tests/e2e/`
+- `docs/contracts/`
+- `docs/database/`
+- `docs/ui/`
 
 ## 实施内容
 

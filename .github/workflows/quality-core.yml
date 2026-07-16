@@ -1,0 +1,226 @@
+name: Quality Core
+
+on:
+  workflow_call:
+    inputs:
+      package_smoke:
+        description: Run the Linux package smoke job
+        required: false
+        type: boolean
+        default: true
+      enforce_release_gate:
+        description: Enforce the release acceptance gate
+        required: false
+        type: boolean
+        default: false
+      release_version:
+        description: Exact release version used by the release gate
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+
+jobs:
+  static-checks:
+    name: static-checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate active task and mirror
+        run: pnpm task:validate
+      - name: Enforce release acceptance gate
+        if: ${{ inputs.enforce_release_gate }}
+        run: pnpm release:gate -- --version "${{ inputs.release_version }}"
+      - run: pnpm release:check
+      - run: pnpm check:workspaces
+      - run: pnpm check:boundaries
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  tests:
+    name: tests-${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - unit
+          - integration
+          - migration
+          - security
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:prepare
+      - name: Run ${{ matrix.suite }} tests
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm exec vitest run "tests/${{ matrix.suite }}" 2>&1 | tee "test-results/ci/${{ matrix.suite }}.log"
+      - name: Upload ${{ matrix.suite }} test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ matrix.suite }}-diagnostics
+          path: |
+            test-results/ci/${{ matrix.suite }}.log
+            test-results/${{ matrix.suite }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+  desktop-e2e:
+    name: desktop-e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Electron display dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
+      - name: Run Electron E2E and capture diagnostics
+        shell: bash
+        env:
+          WORLDFORGE_E2E_OUTPUT_DIR: test-results/electron
+          WORLDFORGE_CAPTURE_MATRIX_DIR: test-results/display-matrix
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
+      - name: Upload Electron and display evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-e2e-evidence
+          path: |
+            test-results/ci/desktop-e2e.log
+            test-results/electron/
+            test-results/display-matrix/
+          if-no-files-found: warn
+          retention-days: 14
+
+  build:
+    name: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build all workspaces
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm build 2>&1 | tee test-results/ci/build.log
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics
+          path: test-results/ci/build.log
+          if-no-files-found: error
+          retention-days: 14
+
+  package-smoke:
+    name: package-smoke
+    if: ${{ inputs.package_smoke }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run package smoke test
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm package 2>&1 | tee test-results/ci/package-smoke.log
+      - name: Upload package smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-smoke-diagnostics
+          path: |
+            test-results/ci/package-smoke.log
+            artifacts/
+          if-no-files-found: warn
+          retention-days: 14
+
+  quality:
+    name: quality
+    if: always()
+    needs:
+      - static-checks
+      - tests
+      - desktop-e2e
+      - build
+      - package-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      STATIC_RESULT: ${{ needs.static-checks.result }}
+      TEST_RESULT: ${{ needs.tests.result }}
+      E2E_RESULT: ${{ needs.desktop-e2e.result }}
+      BUILD_RESULT: ${{ needs.build.result }}
+      PACKAGE_RESULT: ${{ needs.package-smoke.result }}
+    steps:
+      - name: Enforce aggregate quality result
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'static=%s\ntests=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
+            "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
+          for result in "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
+            test "$result" = "success"
+          done
+          case "$PACKAGE_RESULT" in
+            success|skipped) ;;
+            *) exit 1 ;;
+          esac

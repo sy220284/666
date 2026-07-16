@@ -1,0 +1,39 @@
+name: M1-05 Lint Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capture lint output
+        shell: bash
+        run: |
+          set +e
+          pnpm lint > lint.log 2>&1
+          code=$?
+          cat lint.log
+          echo "$code" > lint-exit.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m1-05-lint-log
+          path: |
+            lint.log
+            lint-exit.txt
+          if-no-files-found: error

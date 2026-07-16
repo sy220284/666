@@ -126,7 +126,7 @@ describe('Draft schema migration', () => {
 
     const upgraded = await ProjectDatabase.open({
       path: databasePath,
-      migrations,
+      migrations: migrations.slice(0, 4),
       appVersion: '0.1.0',
       clock,
       prepareRecoveryPoint: async () => undefined,

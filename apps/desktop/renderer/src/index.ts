@@ -2019,3 +2019,157 @@ Object.defineProperty(globalThis, 'worldforgeFlushDraft', {
   configurable: true,
   value: () => draftAutosave?.flush() ?? Promise.resolve(true),
 });
+
+const createVersionButton = document.querySelector<HTMLButtonElement>('[data-create-version]');
+const openVersionsButton = document.querySelector<HTMLButtonElement>('[data-open-versions]');
+const versionDialog = document.querySelector<HTMLDialogElement>('[data-version-dialog]');
+const versionTitleInput = document.querySelector<HTMLInputElement>('[data-version-title]');
+const versionLabelInput = document.querySelector<HTMLInputElement>('[data-version-label]');
+const versionDescriptionInput = document.querySelector<HTMLInputElement>(
+  '[data-version-description]',
+);
+const confirmVersionButton = document.querySelector<HTMLButtonElement>('[data-confirm-version]');
+const closeVersionsButton = document.querySelector<HTMLButtonElement>('[data-close-versions]');
+const versionStatus = document.querySelector<HTMLElement>('[data-version-status]');
+const versionList = document.querySelector<HTMLElement>('[data-version-list]');
+const versionPreview = document.querySelector<HTMLElement>('[data-version-preview]');
+
+function setVersionStatus(message: string, error = false): void {
+  if (!versionStatus) return;
+  versionStatus.textContent = message;
+  versionStatus.classList.toggle('is-error', error);
+}
+
+async function flushVersionDraft(): Promise<boolean> {
+  const flush = (globalThis as unknown as { worldforgeFlushDraft?: () => Promise<boolean> })
+    .worldforgeFlushDraft;
+  return flush ? flush() : true;
+}
+
+async function refreshVersions(): Promise<void> {
+  const project = activeProject;
+  const chapter = activeChapter;
+  if (!project || !chapter || !versionList) return;
+  const result = await window.worldforge.version.list(project.projectId, chapter.id);
+  versionList.replaceChildren();
+  if (!result.ok) {
+    setVersionStatus(`读取版本失败 · ${result.error.code}`, true);
+    return;
+  }
+  if (result.data.versions.length === 0) {
+    versionList.textContent = '还没有手动版本。';
+    return;
+  }
+  for (const version of result.data.versions) {
+    const row = document.createElement('article');
+    row.className = 'version-row';
+    row.dataset.versionRow = '';
+    row.dataset.versionId = version.versionId;
+    row.innerHTML = `<div><strong></strong><small></small></div><div class="version-row__actions"></div>`;
+    row.querySelector('strong')!.textContent = version.title;
+    row.querySelector('small')!.textContent =
+      `${version.wordCount}字 · Revision ${version.sourceRevision}${version.label ? ` · ${version.label}` : ''}${version.finalized ? ' · 定稿' : ''}`;
+    const actions = row.querySelector<HTMLElement>('.version-row__actions')!;
+    for (const [label, action] of [
+      ['预览', 'preview'],
+      ['设为定稿', 'final'],
+      ['恢复为新草稿', 'restore'],
+    ] as const) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.dataset.versionAction = action;
+      button.dataset.versionId = version.versionId;
+      button.disabled = activeProject?.databaseMode !== 'read-write' && action !== 'preview';
+      actions.append(button);
+    }
+    versionList.append(row);
+  }
+}
+
+async function handleVersionAction(action: string, versionId: string): Promise<void> {
+  const project = activeProject;
+  const chapter = activeChapter;
+  if (!project || !chapter) return;
+  const input = { projectId: project.projectId, chapterId: chapter.id, versionId };
+  if (action === 'preview') {
+    const result = await window.worldforge.version.get(input);
+    if (!result.ok) return setVersionStatus(`预览失败 · ${result.error.code}`, true);
+    if (versionPreview) {
+      versionPreview.textContent = result.data.blocks.map((block) => block.text).join('\n');
+    }
+    setVersionStatus(`正在预览：${result.data.title}`);
+    return;
+  }
+  if (project.databaseMode !== 'read-write') return;
+  if (action === 'final') {
+    const result = await window.worldforge.version.setFinal(input);
+    if (!result.ok) return setVersionStatus(`定稿失败 · ${result.error.code}`, true);
+    setVersionStatus(`已将“${result.data.title}”设为定稿。`);
+    await refreshVersions();
+    await refreshProjectStructure();
+    return;
+  }
+  if (action === 'restore') {
+    if (!(await flushVersionDraft())) return setVersionStatus('自动保存失败，已阻止恢复。', true);
+    const result = await window.worldforge.version.restore(input);
+    if (!result.ok) return setVersionStatus(`恢复失败 · ${result.error.code}`, true);
+    activeDraft = result.data;
+    lastSavedRevision = result.data.revision;
+    synchronizingDraftMetadata = true;
+    draftEditor?.commands.setContent(documentToTiptapJson(persistedBlocks(result.data)), {
+      emitUpdate: false,
+    });
+    synchronizingDraftMetadata = false;
+    draftDirty = false;
+    updateDraftStatistics();
+    setVersionStatus(`已从版本恢复为新 Draft · Revision ${result.data.revision}`);
+    setDraftState('已从只读版本恢复为新草稿。');
+    await refreshProjectStructure();
+  }
+}
+
+createVersionButton?.addEventListener('click', () => {
+  versionDialog?.showModal();
+  versionTitleInput?.focus();
+  void refreshVersions();
+});
+openVersionsButton?.addEventListener('click', () => {
+  versionDialog?.showModal();
+  void refreshVersions();
+});
+closeVersionsButton?.addEventListener('click', () => versionDialog?.close());
+confirmVersionButton?.addEventListener('click', () => {
+  void (async () => {
+    const project = activeProject;
+    const chapter = activeChapter;
+    if (!project || !chapter || !activeDraft || project.databaseMode !== 'read-write') return;
+    const title = versionTitleInput?.value.trim() ?? '';
+    if (!title) return setVersionStatus('请输入版本标题。', true);
+    if (!(await flushVersionDraft())) return setVersionStatus('自动保存失败，未创建版本。', true);
+    if (!activeDraft) return;
+    confirmVersionButton.disabled = true;
+    const result = await window.worldforge.version.create({
+      projectId: project.projectId,
+      chapterId: chapter.id,
+      draftId: activeDraft.draftId,
+      baseRevision: activeDraft.revision,
+      title,
+      label: versionLabelInput?.value.trim() || null,
+      description: versionDescriptionInput?.value.trim() ?? '',
+    });
+    confirmVersionButton.disabled = false;
+    if (!result.ok) return setVersionStatus(`创建版本失败 · ${result.error.code}`, true);
+    if (versionTitleInput) versionTitleInput.value = '';
+    if (versionLabelInput) versionLabelInput.value = '';
+    if (versionDescriptionInput) versionDescriptionInput.value = '';
+    setVersionStatus(`版本“${result.data.title}”已创建，内容不可修改。`);
+    await refreshVersions();
+  })();
+});
+versionList?.addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-version-action]');
+  const action = button?.dataset.versionAction;
+  const versionId = button?.dataset.versionId;
+  if (action && versionId) void handleVersionAction(action, versionId);
+});

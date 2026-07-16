@@ -161,6 +161,12 @@
                     <div class="draft-workspace__actions">
                       <button class="quiet-button" type="button" data-back-project>返回项目</button>
                       <button class="quiet-button" type="button" data-copy-draft>复制正文</button>
+                      <button class="quiet-button" type="button" data-create-version>
+                        保存版本
+                      </button>
+                      <button class="quiet-button" type="button" data-open-versions>
+                        版本历史
+                      </button>
                       <button class="primary-button" type="button" data-save-draft>手动保存</button>
                     </div>
                   </header>
@@ -504,6 +510,50 @@
         <footer>
           <span></span><span></span><span></span>
           <button class="quiet-button" type="button" data-close-trash>关闭</button>
+        </footer>
+      </div>
+    </dialog>
+
+    <dialog
+      class="settings-dialog version-dialog"
+      data-version-dialog
+      aria-labelledby="version-dialog-title"
+    >
+      <div class="dialog-list-layout">
+        <div class="settings-dialog__body">
+          <p class="eyebrow">IMMUTABLE VERSIONS</p>
+          <h2 id="version-dialog-title">版本历史</h2>
+          <p>版本一经创建即只读。恢复操作会创建新 Draft，现有 Draft 保留为归档。</p>
+          <div class="version-create-grid">
+            <input
+              data-version-title
+              maxlength="240"
+              placeholder="版本标题"
+              aria-label="版本标题"
+            />
+            <input
+              data-version-label
+              maxlength="120"
+              placeholder="标签（可选）"
+              aria-label="版本标签"
+            />
+            <input
+              data-version-description
+              maxlength="2000"
+              placeholder="说明（可选）"
+              aria-label="版本说明"
+            />
+            <button class="primary-button" type="button" data-confirm-version>创建版本</button>
+          </div>
+          <p class="save-state" data-version-status role="status"></p>
+          <div class="version-history-layout">
+            <div class="version-list" data-version-list></div>
+            <pre class="version-preview" data-version-preview>选择版本查看只读预览</pre>
+          </div>
+        </div>
+        <footer>
+          <span></span><span></span><span></span>
+          <button class="quiet-button" type="button" data-close-versions>关闭</button>
         </footer>
       </div>
     </dialog>

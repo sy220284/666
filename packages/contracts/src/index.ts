@@ -82,6 +82,17 @@ import {
   type DraftDocument,
   type DraftOpenInput,
 } from './draft.js';
+import {
+  VERSION_COMMANDS,
+  VERSION_IPC_CHANNELS,
+  type VersionCreateInput,
+  type VersionDocument,
+  type VersionGetInput,
+  type VersionList,
+  type VersionRestoreInput,
+  type VersionSetFinalInput,
+  type VersionSummary,
+} from './version.js';
 
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
@@ -90,6 +101,7 @@ export * from './app-data.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './draft.js';
+export * from './version.js';
 
 export const contractsLayer = {
   name: '@worldforge/contracts',
@@ -103,6 +115,7 @@ export const IPC_CHANNELS = {
   ...PROJECT_WORKSPACE_IPC_CHANNELS,
   ...PROJECT_STRUCTURE_IPC_CHANNELS,
   ...DRAFT_IPC_CHANNELS,
+  ...VERSION_IPC_CHANNELS,
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
@@ -122,6 +135,7 @@ export const APP_COMMANDS = {
   ...PROJECT_WORKSPACE_COMMANDS,
   ...PROJECT_STRUCTURE_COMMANDS,
   ...DRAFT_COMMANDS,
+  ...VERSION_COMMANDS,
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
@@ -532,6 +546,13 @@ export interface WorldforgeBridge {
   readonly draft: {
     readonly open: (input: DraftOpenInput) => Promise<CommandResult<DraftDocument>>;
     readonly applyPatch: (input: DraftApplyPatchInput) => Promise<CommandResult<DraftDocument>>;
+  };
+  readonly version: {
+    readonly create: (input: VersionCreateInput) => Promise<CommandResult<VersionDocument>>;
+    readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<VersionList>>;
+    readonly get: (input: VersionGetInput) => Promise<CommandResult<VersionDocument>>;
+    readonly setFinal: (input: VersionSetFinalInput) => Promise<CommandResult<VersionSummary>>;
+    readonly restore: (input: VersionRestoreInput) => Promise<CommandResult<DraftDocument>>;
   };
   readonly ai: {
     readonly setCredential: (

@@ -904,3 +904,82 @@ test('uses real Chromium device scaling for the 2560×1440 DPI matrix', async ()
     }
   }
 });
+
+test('creates immutable Versions, finalizes one, and restores it as a new Draft', async () => {
+  test.setTimeout(90_000);
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'version-projects');
+  await mkdir(createParent, { recursive: true });
+  const application = await launch(userDataPath, undefined, {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+  });
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-create-project]').click();
+    await page.locator('[data-project-name]').fill('版本项目');
+    await page.locator('[data-project-channel]').fill('长篇');
+    await page.locator('[data-confirm-create-project]').click();
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    const editor = page.locator('[data-draft-content]');
+    await editor.click();
+    await page.keyboard.type('首稿正文');
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+      timeout: 3_000,
+    });
+    const originalDraftId = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const active = await bridge.project.getActive();
+      if (!active.ok || !active.data) return null;
+      const structure = await bridge.planning.listStructure(active.data.projectId);
+      const chapter = structure.ok ? structure.data.volumes[0]?.chapters[0] : undefined;
+      if (!chapter) return null;
+      const draft = await bridge.draft.open({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+      });
+      return draft.ok ? draft.data.draftId : null;
+    });
+
+    await page.locator('[data-create-version]').click();
+    await page.locator('[data-version-title]').fill('首稿');
+    await page.locator('[data-version-label]').fill('第一阶段');
+    await page.locator('[data-version-description]').fill('阶段留档');
+    await page.locator('[data-confirm-version]').click();
+    await expect(page.locator('[data-version-status]')).toContainText('内容不可修改');
+    await expect(page.locator('[data-version-row]')).toHaveCount(1);
+    await expect(page.locator('[data-version-row]')).toContainText('第一阶段');
+    await page.locator('[data-version-action="final"]').click();
+    await expect(page.locator('[data-version-row]')).toContainText('定稿');
+    await page.locator('[data-close-versions]').click();
+
+    await editor.click();
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type('后续修改');
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+      timeout: 3_000,
+    });
+    await page.locator('[data-open-versions]').click();
+    await page.locator('[data-version-action="restore"]').click();
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从只读版本恢复为新草稿。');
+    await expect(editor).toHaveText('首稿正文');
+    const restoredDraftId = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const active = await bridge.project.getActive();
+      if (!active.ok || !active.data) return null;
+      const structure = await bridge.planning.listStructure(active.data.projectId);
+      const chapter = structure.ok ? structure.data.volumes[0]?.chapters[0] : undefined;
+      if (!chapter) return null;
+      const draft = await bridge.draft.open({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+      });
+      return draft.ok ? draft.data.draftId : null;
+    });
+    expect(restoredDraftId).not.toBe(originalDraftId);
+  } finally {
+    await closeGracefully(application);
+  }
+});

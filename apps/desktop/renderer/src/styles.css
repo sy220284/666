@@ -1544,3 +1544,67 @@ body[data-motion-preference='reduced'] *::after {
   color: var(--color-text-secondary);
   cursor: pointer;
 }
+
+.version-dialog {
+  width: min(920px, calc(100vw - 32px));
+}
+.version-create-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr auto;
+  gap: 8px;
+}
+.version-create-grid input {
+  min-height: 36px;
+  padding: 6px 10px;
+}
+.version-history-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+  gap: 12px;
+  min-height: 260px;
+}
+.version-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow: auto;
+}
+.version-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+}
+.version-row div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.version-row small {
+  color: var(--color-text-muted);
+}
+.version-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.version-row__actions button {
+  min-height: 30px;
+}
+.version-preview {
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  background: var(--color-bg-elevated);
+}
+@media (max-width: 760px) {
+  .version-create-grid,
+  .version-history-layout {
+    grid-template-columns: 1fr;
+  }
+}

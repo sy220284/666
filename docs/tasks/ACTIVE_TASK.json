@@ -11,29 +11,29 @@
     "modeAdjustedAt": "2026-07-16"
   },
   "activeTask": {
-    "id": "M1-06",
+    "id": "M1-07",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md",
+    "source": "docs/tasks/M1/M1-07_MANUAL_VERSION_FINALIZE.md",
     "branch": "main",
     "startedAt": "2026-07-16",
     "allowedPaths": [
-      "packages/editor-core/",
+      "migrations/project/",
+      "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
       "apps/desktop/renderer/",
       "tests/integration/",
       "tests/e2e/",
-      "tests/performance/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md",
+      "docs/tasks/M1/M1-07_MANUAL_VERSION_FINALIZE.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M1-06/",
-      "docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md"
+      "docs/test-evidence/M1-07/",
+      "docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -41,17 +41,19 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/ui/EDITOR_INTERACTION_SPEC.md",
-      "docs/testing/PERFORMANCE_BUDGETS.md"
+      "docs/decisions/ADR-003-draft-candidate-version.md",
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/ui/SCREEN_SPECIFICATIONS.md"
     ],
     "verification": [
       "pnpm lint",
       "pnpm typecheck",
       "pnpm test",
+      "pnpm test:migration",
+      "pnpm test:integration",
       "pnpm test:security",
       "pnpm test:e2e",
-      "pnpm test:unit",
-      "pnpm test:integration"
+      "pnpm test:unit"
     ]
   },
   "lastVerifiedTask": {
@@ -114,11 +116,22 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M1-06",
+      "implementationCommit": "c95d6b38fdd49c4418d42c64c95b9c91c43e3d4a",
+      "deferredAt": "2026-07-16T23:28:38.615Z",
+      "pending": [
+        "standard evidence package and screenshots",
+        "manual acceptance and exhaustive quality matrix",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "lastImplementedTask": {
-    "id": "M1-05",
-    "commit": "5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4",
-    "implementedAt": "2026-07-16T17:16:18.341Z"
+    "id": "M1-06",
+    "commit": "c95d6b38fdd49c4418d42c64c95b9c91c43e3d4a",
+    "implementedAt": "2026-07-16T23:28:38.615Z"
   }
 }

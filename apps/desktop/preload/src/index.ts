@@ -17,6 +17,15 @@ import {
   DraftApplyPatchCommandSchema,
   DraftDocumentResultSchema,
   DraftOpenCommandSchema,
+  VersionCreateCommandSchema,
+  VersionDocumentResultSchema,
+  VersionGetCommandSchema,
+  VersionListCommandSchema,
+  VersionListResultSchema,
+  VersionRestoreCommandSchema,
+  VersionRestoreResultSchema,
+  VersionSetFinalCommandSchema,
+  VersionSummaryResultSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   ProjectActiveResultSchema,
@@ -309,6 +318,40 @@ const bridge: WorldforgeBridge = {
         IPC_CHANNELS.applyPatch,
         DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
         DraftDocumentResultSchema,
+      ),
+  },
+  version: {
+    create: (input) =>
+      invoke(
+        IPC_CHANNELS.createVersion,
+        VersionCreateCommandSchema.parse(envelope(APP_COMMANDS.createVersion, input)),
+        VersionDocumentResultSchema,
+      ),
+    list: (projectId, chapterId) =>
+      invoke(
+        IPC_CHANNELS.listVersions,
+        VersionListCommandSchema.parse(
+          envelope(APP_COMMANDS.listVersions, { projectId, chapterId }),
+        ),
+        VersionListResultSchema,
+      ),
+    get: (input) =>
+      invoke(
+        IPC_CHANNELS.getVersion,
+        VersionGetCommandSchema.parse(envelope(APP_COMMANDS.getVersion, input)),
+        VersionDocumentResultSchema,
+      ),
+    setFinal: (input) =>
+      invoke(
+        IPC_CHANNELS.setFinalVersion,
+        VersionSetFinalCommandSchema.parse(envelope(APP_COMMANDS.setFinalVersion, input)),
+        VersionSummaryResultSchema,
+      ),
+    restore: (input) =>
+      invoke(
+        IPC_CHANNELS.restoreVersion,
+        VersionRestoreCommandSchema.parse(envelope(APP_COMMANDS.restoreVersion, input)),
+        VersionRestoreResultSchema,
       ),
   },
   ai: {

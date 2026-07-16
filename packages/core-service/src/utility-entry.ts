@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   APP_DATA_COMMANDS,
   DRAFT_COMMANDS,
+  VERSION_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
@@ -21,6 +22,7 @@ import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
 import { DraftService, DraftServiceError } from './draft.js';
+import { VersionService, VersionServiceError } from './version.js';
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
@@ -88,6 +90,7 @@ const projectWorkspace = new ProjectWorkspaceService({
 });
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
+const versions = new VersionService(projectWorkspace);
 
 function send(message: CoreEvent): void {
   parentPort?.postMessage(message);
@@ -137,6 +140,13 @@ function appDataError(error: unknown): ErrorCode {
 }
 
 function projectWorkspaceError(error: unknown): ErrorCode {
+  if (error instanceof VersionServiceError) {
+    if (error.code === 'VERSION_NOT_FOUND' || error.code === 'VERSION_DRAFT_NOT_FOUND')
+      return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'VERSION_REVISION_CONFLICT') return 'DRAFT_REVISION_CONFLICT_001';
+    if (error.code === 'VERSION_TITLE_CONFLICT' || error.code === 'VERSION_CHAPTER_MISMATCH')
+      return 'COMMON_CONFLICT_003';
+  }
   if (error instanceof DraftServiceError) {
     switch (error.code) {
       case 'DRAFT_NOT_FOUND':
@@ -374,6 +384,36 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await drafts.applyPatch(requestId, operation.input),
+        });
+      case VERSION_COMMANDS.createVersion:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await versions.create(requestId, operation.input),
+        });
+      case VERSION_COMMANDS.listVersions:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: versions.list(operation.input),
+        });
+      case VERSION_COMMANDS.getVersion:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: versions.get(operation.input),
+        });
+      case VERSION_COMMANDS.setFinalVersion:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await versions.setFinal(requestId, operation.input),
+        });
+      case VERSION_COMMANDS.restoreVersion:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await versions.restore(requestId, operation.input),
         });
     }
   } catch (error) {

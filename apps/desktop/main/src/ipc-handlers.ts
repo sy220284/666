@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   APP_COMMANDS,
   DRAFT_COMMANDS,
+  VERSION_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
@@ -15,6 +16,11 @@ import {
   AppSetAppearancePreferencesCommandSchema,
   DraftApplyPatchCommandSchema,
   DraftOpenCommandSchema,
+  VersionCreateCommandSchema,
+  VersionGetCommandSchema,
+  VersionListCommandSchema,
+  VersionRestoreCommandSchema,
+  VersionSetFinalCommandSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   RequestIdSchema,
@@ -142,6 +148,11 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.restoreTrashEntry,
     IPC_CHANNELS.openDraft,
     IPC_CHANNELS.applyPatch,
+    IPC_CHANNELS.createVersion,
+    IPC_CHANNELS.listVersions,
+    IPC_CHANNELS.getVersion,
+    IPC_CHANNELS.setFinalVersion,
+    IPC_CHANNELS.restoreVersion,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -582,6 +593,25 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       input: parsed.data.payload,
     });
   });
+
+  for (const [channel, schema, operation] of [
+    [IPC_CHANNELS.createVersion, VersionCreateCommandSchema, VERSION_COMMANDS.createVersion],
+    [IPC_CHANNELS.listVersions, VersionListCommandSchema, VERSION_COMMANDS.listVersions],
+    [IPC_CHANNELS.getVersion, VersionGetCommandSchema, VERSION_COMMANDS.getVersion],
+    [IPC_CHANNELS.setFinalVersion, VersionSetFinalCommandSchema, VERSION_COMMANDS.setFinalVersion],
+    [IPC_CHANNELS.restoreVersion, VersionRestoreCommandSchema, VERSION_COMMANDS.restoreVersion],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        input: parsed.data.payload,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
 
   register(IPC_CHANNELS.aiSetCredential, async (event, raw) => {
     const rejected = rejectUntrusted(event, raw);

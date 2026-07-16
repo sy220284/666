@@ -28,42 +28,45 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Register the Patch command schema
+      - name: Canonicalize import and register Patch schema
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path('packages/contracts/src/index.ts')
           content = path.read_text()
-          marker = '  DraftOpenCommandSchema,\n  DraftSaveSnapshotCommandSchema,'
-          replacement = (
-              '  DraftOpenCommandSchema,\n'
-              '  DraftApplyPatchCommandSchema,\n'
-              '  DraftSaveSnapshotCommandSchema,'
-          )
-          if marker in content:
-              content = content.replace(marker, replacement, 1)
-          elif replacement not in content:
-              raise SystemExit('RegisteredCommandSchema Draft anchor not found')
+
+          lines = content.splitlines()
+          seen = False
+          normalized = []
+          for line in lines:
+              if line == '  DraftApplyPatchCommandSchema,':
+                  if seen:
+                      continue
+                  seen = True
+              normalized.append(line)
+          content = '\n'.join(normalized) + '\n'
+
+          start_marker = "export const RegisteredCommandSchema = z.discriminatedUnion('command', ["
+          start = content.index(start_marker)
+          end = content.index('\n]);', start)
+          registered = content[start:end]
+          if '  DraftApplyPatchCommandSchema,' not in registered:
+              anchor = '  DraftOpenCommandSchema,\n'
+              if anchor not in registered:
+                  raise SystemExit('RegisteredCommandSchema DraftOpen anchor not found')
+              registered = registered.replace(
+                  anchor,
+                  anchor + '  DraftApplyPatchCommandSchema,\n',
+                  1,
+              )
+              content = content[:start] + registered + content[end:]
+
           path.write_text(content)
           PY
       - run: pnpm exec prettier --write packages/contracts/src/index.ts
-      - name: Capture lint output
-        shell: bash
-        run: |
-          set +e
-          pnpm lint > lint.log 2>&1
-          echo "$?" > lint-exit.txt
-          cat lint.log
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: m1-05-post-registration-lint
-          path: |
-            lint.log
-            lint-exit.txt
-          if-no-files-found: error
-      - name: Commit command registration
+      - run: pnpm lint
+      - name: Commit lint fix
         run: |
           if git diff --quiet -- packages/contracts/src/index.ts; then
             exit 0

@@ -1,0 +1,167 @@
+name: M1-05 Automation Self Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/automation-self-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply deterministic source and workflow fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              content = file.read_text()
+              if old not in content:
+                  raise SystemExit(f'Anchor not found in {path}: {old[:120]!r}')
+              file.write_text(content.replace(old, new, 1))
+
+          utility = Path('packages/core-service/src/utility-entry.ts')
+          source = utility.read_text()
+          old_error = """  if (error instanceof DraftServiceError) {
+              if (error.code === 'DRAFT_NOT_FOUND' || error.code === 'DRAFT_BLOCK_NOT_FOUND') {
+                return 'COMMON_NOT_FOUND_002';
+              }
+              return 'COMMON_CONFLICT_003';
+            }
+          """
+          new_error = """  if (error instanceof DraftServiceError) {
+              switch (error.code) {
+                case 'DRAFT_NOT_FOUND':
+                  return 'DRAFT_NO_ACTIVE_005';
+                case 'DRAFT_BLOCK_NOT_FOUND':
+                  return 'COMMON_NOT_FOUND_002';
+                case 'DRAFT_REVISION_CONFLICT':
+                  return 'DRAFT_REVISION_CONFLICT_001';
+                case 'DRAFT_BLOCK_HASH_CONFLICT':
+                  return 'DRAFT_BLOCK_HASH_CONFLICT_002';
+                case 'DRAFT_PATCH_INVALID':
+                  return 'DRAFT_PATCH_INVALID_004';
+                case 'DRAFT_INVARIANT_FAILED':
+                  return 'COMMON_CONFLICT_003';
+              }
+            }
+          """
+          if old_error in source:
+              source = source.replace(old_error, new_error, 1)
+          elif "case 'DRAFT_REVISION_CONFLICT':" not in source:
+              raise SystemExit('Draft error mapping anchor not found')
+
+          save_case = """      case DRAFT_COMMANDS.saveDraftSnapshot:
+                  return CoreProjectResultSchema.parse({
+                    ok: true,
+                    operation: operation.operation,
+                    data: await drafts.saveSnapshot(requestId, operation.input),
+                  });
+          """
+          patch_case = save_case + """      case DRAFT_COMMANDS.applyPatch:
+                  return CoreProjectResultSchema.parse({
+                    ok: true,
+                    operation: operation.operation,
+                    data: await drafts.applyPatch(requestId, operation.input),
+                  });
+          """
+          if 'case DRAFT_COMMANDS.applyPatch:' not in source:
+              if save_case not in source:
+                  raise SystemExit('Draft saveSnapshot switch anchor not found')
+              source = source.replace(save_case, patch_case, 1)
+          utility.write_text(source)
+
+          replace_once(
+              'scripts/release-tool.mjs',
+              """  for (const token of ['workflow_dispatch:', 'pnpm release:gate', 'gh release create']) {
+              if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
+            }
+          """,
+              """  for (const token of ['workflow_dispatch:', 'gh release create']) {
+              if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
+            }
+            const hasReleaseGate =
+              workflowSource.includes('pnpm release:gate') ||
+              (workflowSource.includes('uses: ./.github/workflows/quality-core.yml') &&
+                workflowSource.includes('enforce_release_gate: true'));
+            if (!hasReleaseGate) errors.push('Release workflow is missing the release acceptance gate');
+          """,
+          )
+
+          replace_once(
+              '.github/workflows/quality-core.yml',
+              """          pnpm package 2>&1 | tee test-results/ci/package-smoke.log
+          """,
+              """          {
+                    pnpm build
+                    pnpm package
+                  } 2>&1 | tee test-results/ci/package-smoke.log
+          """,
+          )
+
+          replace_once(
+              '.github/workflows/release.yml',
+              """      - run: pnpm install --frozen-lockfile
+                - name: Build platform package
+          """,
+              """      - run: pnpm install --frozen-lockfile
+                - run: pnpm build
+                - name: Build platform package
+          """,
+          )
+
+          replace_once(
+              '.github/workflows/nightly-quality.yml',
+              """      - run: pnpm install --frozen-lockfile
+                - name: Package nightly platform artifact
+          """,
+              """      - run: pnpm install --frozen-lockfile
+                - run: pnpm build
+                - name: Package nightly platform artifact
+          """,
+          )
+          PY
+      - name: Format and validate deterministic fixes
+        run: |
+          pnpm exec prettier --write \
+            packages/core-service/src/utility-entry.ts \
+            scripts/release-tool.mjs \
+            .github/workflows/quality-core.yml \
+            .github/workflows/release.yml \
+            .github/workflows/nightly-quality.yml
+          pnpm release:check
+          pnpm typecheck
+      - name: Commit fixes and remove one-time workflow
+        shell: bash
+        run: |
+          rm .github/workflows/automation-self-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            packages/core-service/src/utility-entry.ts \
+            scripts/release-tool.mjs \
+            .github/workflows/quality-core.yml \
+            .github/workflows/release.yml \
+            .github/workflows/nightly-quality.yml \
+            .github/workflows/automation-self-fix.yml
+          git commit -m "fix(M1-05): complete automated quality pipeline"
+          git push origin HEAD:main

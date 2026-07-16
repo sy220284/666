@@ -1,0 +1,91 @@
+name: Nightly Quality
+
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-quality
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    uses: ./.github/workflows/quality-core.yml
+    with:
+      package_smoke: false
+
+  performance:
+    name: performance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run performance regression suite
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm test:perf 2>&1 | tee test-results/ci/performance.log
+      - name: Upload performance diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-performance
+          path: |
+            test-results/ci/performance.log
+            test-results/performance/
+          if-no-files-found: warn
+          retention-days: 30
+
+  package-matrix:
+    name: nightly-package-${{ matrix.platform }}
+    needs:
+      - quality
+      - performance
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Package nightly platform artifact
+        shell: bash
+        run: >-
+          pnpm package --
+          --platform "${{ matrix.platform }}"
+          --version "${{ github.sha }}"
+          --output "nightly/${{ matrix.platform }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nightly-worldforge-${{ matrix.platform }}
+          path: nightly/${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 14

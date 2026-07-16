@@ -35,6 +35,7 @@ allowed_paths:
   - docs/contracts/
   - docs/database/
   - docs/ui/
+  - .github/workflows/task-governance.yml
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml

@@ -13,6 +13,7 @@ import {
   AppGetWindowPreferencesCommandSchema,
   AppRestartCoreCommandSchema,
   AppSetAppearancePreferencesCommandSchema,
+  DraftApplyPatchCommandSchema,
   DraftOpenCommandSchema,
   DraftSaveSnapshotCommandSchema,
   IPC_CHANNELS,
@@ -141,6 +142,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.listTrash,
     IPC_CHANNELS.restoreTrashEntry,
     IPC_CHANNELS.openDraft,
+    IPC_CHANNELS.applyPatch,
     IPC_CHANNELS.saveDraftSnapshot,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
@@ -568,6 +570,17 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     if (!parsed.success) return invalidRequest(raw);
     return invokeProject(parsed.data.requestId, {
       operation: DRAFT_COMMANDS.openDraft,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.applyPatch, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = DraftApplyPatchCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: DRAFT_COMMANDS.applyPatch,
       input: parsed.data.payload,
     });
   });

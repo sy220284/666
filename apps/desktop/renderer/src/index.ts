@@ -1,6 +1,7 @@
 import {
   Editor,
   assertEditorNodeMetadata,
+  buildDraftPatchOperations,
   createWorldforgeEditorExtensions,
   documentToTiptapJson,
   redoWorldforgeEditor,
@@ -486,16 +487,23 @@ async function saveActiveDraft(): Promise<void> {
     return;
   }
   saveDraftButton?.setAttribute('disabled', '');
-  setDraftState('正在以单事务保存 DraftBlock 快照…');
+  setDraftState('正在以单事务应用 Block Patch…');
   try {
     const json = editor.getJSON();
     assertEditorNodeMetadata(json);
     const blocks = tiptapJsonToDraftSnapshot(json, temporaryClientBlockId);
-    const result = await window.worldforge.draft.saveSnapshot({
+    const operations = buildDraftPatchOperations(persistedBlocks(draft), blocks);
+    if (operations.length === 0) {
+      draftDirty = false;
+      setDraftState('正文没有需要保存的变化。');
+      return;
+    }
+    const result = await window.worldforge.draft.applyPatch({
       projectId: project.projectId,
       chapterId: chapter.id,
       draftId: draft.draftId,
-      blocks,
+      baseRevision: draft.revision,
+      operations,
     });
     if (result.ok) {
       activeDraft = result.data;
@@ -508,7 +516,7 @@ async function saveActiveDraft(): Promise<void> {
       }
       synchronizingDraftMetadata = false;
       draftDirty = false;
-      setDraftState('已手动保存到 project.sqlite。');
+      setDraftState(`已提交 Revision ${result.data.revision} 到 project.sqlite。`);
       void refreshProjectStructure();
     } else {
       setDraftState(`保存失败 · ${result.error.code}；窗口内容仍保留。`, true);

@@ -35,6 +35,25 @@ jobs:
           path.write_text(content)
           PY
       - run: python .github/m1-05-ipc-patch.py
+      - name: Remove duplicate imports from overlapping insert anchors
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for filename in (
+              'packages/contracts/src/index.ts',
+              'apps/desktop/main/src/ipc-handlers.ts',
+              'apps/desktop/preload/src/index.ts',
+          ):
+              path = Path(filename)
+              content = path.read_text()
+              while '  DraftApplyPatchCommandSchema,\n  DraftApplyPatchCommandSchema,\n' in content:
+                  content = content.replace(
+                      '  DraftApplyPatchCommandSchema,\n  DraftApplyPatchCommandSchema,\n',
+                      '  DraftApplyPatchCommandSchema,\n',
+                      1,
+                  )
+              path.write_text(content)
+          PY
       - run: pnpm exec prettier --write packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts apps/desktop/renderer/src/index.ts
       - name: Commit IPC chain
         run: |
@@ -44,5 +63,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts apps/desktop/renderer/src/index.ts
-          git commit -m "feat(M1-05): route editor writes through Block Patch"
+          git commit -m "fix(M1-05): normalize Block Patch IPC imports"
           git push origin HEAD:validate/m1-05-core-20260716

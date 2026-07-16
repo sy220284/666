@@ -37,6 +37,7 @@ allowed_paths:
   - docs/ui/
   - .github/workflows/
   - scripts/taskctl.mjs
+  - scripts/release-tool.mjs
   - docs/process/DEVELOPMENT_AUTOMATION.md
   - package.json
   - pnpm-lock.yaml

@@ -59,7 +59,7 @@ describe('Draft schema migration', () => {
 
     const upgraded = await ProjectDatabase.open({
       path: databasePath,
-      migrations,
+      migrations: migrations.slice(0, 3),
       appVersion: '0.1.0',
       clock,
       prepareRecoveryPoint: async () => undefined,
@@ -108,6 +108,53 @@ describe('Draft schema migration', () => {
     expect(
       upgraded.read((database) => database.prepare('SELECT schema_version FROM projects').get()),
     ).toEqual({ schema_version: 3n });
+    await upgraded.close();
+  });
+
+  it('upgrades v3 to v4 with a persistent requestId Patch log', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-patch-migration-'));
+    temporaryDirectories.push(root);
+    const databasePath = path.join(root, 'project.sqlite');
+    const migrations = await loadMigrations('migrations/project', 'project');
+    const v3 = await ProjectDatabase.open({
+      path: databasePath,
+      migrations: migrations.slice(0, 3),
+      appVersion: '0.1.0',
+      clock,
+    });
+    await v3.close();
+
+    const upgraded = await ProjectDatabase.open({
+      path: databasePath,
+      migrations,
+      appVersion: '0.1.0',
+      clock,
+      prepareRecoveryPoint: async () => undefined,
+    });
+    expect(upgraded).toMatchObject({ schemaVersion: 4, compatibility: 'migrated' });
+    expect(
+      upgraded.read((database) =>
+        database
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='draft_patch_log'",
+          )
+          .get(),
+      ),
+    ).toEqual({ name: 'draft_patch_log' });
+    expect(
+      upgraded.read((database) =>
+        database
+          .prepare('PRAGMA index_list(draft_patch_log)')
+          .all()
+          .map((row) => row.name),
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'idx_draft_patch_log_draft_revision',
+        'sqlite_autoindex_draft_patch_log_2',
+      ]),
+    );
+    expect(upgraded.foreignKeyCheck()).toEqual([]);
     await upgraded.close();
   });
 

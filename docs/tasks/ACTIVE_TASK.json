@@ -11,38 +11,29 @@
     "modeAdjustedAt": "2026-07-16"
   },
   "activeTask": {
-    "id": "M1-04",
+    "id": "M1-05",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md",
+    "source": "docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md",
     "branch": "main",
     "startedAt": "2026-07-16",
     "allowedPaths": [
-      "migrations/project/",
       "packages/editor-core/",
       "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
-      "apps/desktop/main/",
-      "apps/desktop/preload/",
-      "apps/desktop/renderer/",
-      "tests/migration/",
+      "migrations/project/",
       "tests/unit/",
       "tests/integration/",
-      "tests/security/",
-      "tests/e2e/",
-      "docs/database/",
-      "docs/contracts/",
-      "docs/ui/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md",
+      "docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M1-04/",
-      "docs/tasks/M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md"
+      "docs/test-evidence/M1-05/",
+      "docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -50,9 +41,9 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/ui/EDITOR_INTERACTION_SPEC.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/testing/PERFORMANCE_BUDGETS.md"
+      "docs/decisions/ADR-005-lock-revision-backup.md",
+      "docs/contracts/ERROR_CODES.md",
+      "docs/database/DATABASE_SCHEMA.md"
     ],
     "verification": [
       "pnpm lint",
@@ -103,11 +94,22 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M1-04",
+      "implementationCommit": "8719d4f3a477235e5bf65eba9e345a9169e9359e",
+      "deferredAt": "2026-07-16T11:23:32.999Z",
+      "pending": [
+        "standard evidence package and screenshots",
+        "manual acceptance and exhaustive quality matrix",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "lastImplementedTask": {
-    "id": "M1-03",
-    "commit": "4084a84ce585a7b5c810d33aaccf730713db6258",
-    "implementedAt": "2026-07-16T10:05:59.545Z"
+    "id": "M1-04",
+    "commit": "8719d4f3a477235e5bf65eba9e345a9169e9359e",
+    "implementedAt": "2026-07-16T11:23:32.999Z"
   }
 }

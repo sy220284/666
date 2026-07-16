@@ -1,6 +1,6 @@
 # M1-05 Block Patch、内容Hash与Revision
 
-> 状态：Planned  
+> 状态：In Progress
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
 > 建议分支：`feat/m1-block-patch-revision`

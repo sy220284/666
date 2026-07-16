@@ -8,8 +8,8 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M1-04`
-- 唯一任务卡：`docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md`
+- 任务ID：`M1-05`
+- 唯一任务卡：`docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md`
 - 工作分支：`main`
 - 开始时间：`2026-07-16`
 - 授权模式：`implementation-mainline`
@@ -19,32 +19,23 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - migrations/project/
   - packages/editor-core/
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
-  - apps/desktop/main/
-  - apps/desktop/preload/
-  - apps/desktop/renderer/
-  - tests/migration/
+  - migrations/project/
   - tests/unit/
   - tests/integration/
-  - tests/security/
-  - tests/e2e/
-  - docs/database/
-  - docs/contracts/
-  - docs/ui/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md
+  - docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M1-04/
-  - docs/tasks/M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md
+  - docs/test-evidence/M1-05/
+  - docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md
 forbidden_paths:
 
 required_docs:
@@ -52,9 +43,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/ui/EDITOR_INTERACTION_SPEC.md
+  - docs/decisions/ADR-005-lock-revision-backup.md
+  - docs/contracts/ERROR_CODES.md
   - docs/database/DATABASE_SCHEMA.md
-  - docs/testing/PERFORMANCE_BUDGETS.md
 verification:
   - pnpm lint
   - pnpm typecheck

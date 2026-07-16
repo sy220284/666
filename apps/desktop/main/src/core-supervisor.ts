@@ -1,11 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  CoreAppDataOperationSchema,
+  CoreAppDataResultSchema,
   CoreEventSchema,
   PROTOCOL_VERSION,
   TaskCommandResultSchema,
   WindowPreferencesSchema,
   type CoreControlMessage,
+  type CoreAppDataOperation,
+  type CoreAppDataResult,
   type CoreEvent,
   type CoreStatus,
   type CoreWindowPreferencesResult,
@@ -176,6 +180,39 @@ export class CoreSupervisor {
         message: 'The task command timed out.',
         retryable: true,
       },
+    });
+  }
+
+  async invokeAppDataOperation(
+    requestId: string,
+    input: CoreAppDataOperation,
+  ): Promise<CoreAppDataResult> {
+    const operation = CoreAppDataOperationSchema.parse(input);
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return CoreAppDataResultSchema.parse({
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'COMMON_INTERNAL_999',
+      });
+    }
+
+    const response = this.#waitForMessage(
+      (message) => message.type === 'core.app-data.result' && message.requestId === requestId,
+      this.#commandTimeoutMs,
+    );
+    process.postMessage({
+      type: 'core.app-data.command',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      operation,
+    });
+    const result = await response;
+    if (result?.type === 'core.app-data.result') return result.result;
+    return CoreAppDataResultSchema.parse({
+      ok: false,
+      operation: operation.operation,
+      errorCode: 'COMMON_TIMEOUT_005',
     });
   }
 

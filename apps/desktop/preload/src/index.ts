@@ -1,4 +1,5 @@
 import {
+  AppSettingsSnapshotResultSchema,
   AiHasCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiSetCredentialCommandSchema,
@@ -15,6 +16,15 @@ import {
   CredentialReferenceResultSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
+  ProjectListRecentCommandSchema,
+  ProjectRelocateRecentCommandSchema,
+  ProjectRemoveRecentCommandSchema,
+  RecentProjectRemovalResultSchema,
+  RecentProjectResultSchema,
+  RecentProjectsResultSchema,
+  SettingsGetCommandSchema,
+  SettingsResetCommandSchema,
+  SettingsSetCommandSchema,
   TaskCancelCommandSchema,
   TaskCancelResultSchema,
   TaskEventAckSchema,
@@ -105,6 +115,50 @@ const bridge: WorldforgeBridge = {
           envelope(APP_COMMANDS.setAppearancePreferences, preferences),
         ),
         WindowPreferencesResultSchema,
+      ),
+  },
+  settings: {
+    get: () =>
+      invoke(
+        IPC_CHANNELS.settingsGet,
+        SettingsGetCommandSchema.parse(envelope(APP_COMMANDS.settingsGet, {})),
+        AppSettingsSnapshotResultSchema,
+      ),
+    set: (settings) =>
+      invoke(
+        IPC_CHANNELS.settingsSet,
+        SettingsSetCommandSchema.parse(envelope(APP_COMMANDS.settingsSet, settings)),
+        AppSettingsSnapshotResultSchema,
+      ),
+    reset: () =>
+      invoke(
+        IPC_CHANNELS.settingsReset,
+        SettingsResetCommandSchema.parse(envelope(APP_COMMANDS.settingsReset, {})),
+        AppSettingsSnapshotResultSchema,
+      ),
+  },
+  project: {
+    listRecent: () =>
+      invoke(
+        IPC_CHANNELS.projectListRecent,
+        ProjectListRecentCommandSchema.parse(envelope(APP_COMMANDS.projectListRecent, {})),
+        RecentProjectsResultSchema,
+      ),
+    relocateRecent: (projectId) =>
+      invoke(
+        IPC_CHANNELS.projectRelocateRecent,
+        ProjectRelocateRecentCommandSchema.parse(
+          envelope(APP_COMMANDS.projectRelocateRecent, { projectId }),
+        ),
+        RecentProjectResultSchema,
+      ),
+    removeRecent: (projectId) =>
+      invoke(
+        IPC_CHANNELS.projectRemoveRecent,
+        ProjectRemoveRecentCommandSchema.parse(
+          envelope(APP_COMMANDS.projectRemoveRecent, { projectId }),
+        ),
+        RecentProjectRemovalResultSchema,
       ),
   },
   ai: {

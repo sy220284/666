@@ -155,6 +155,7 @@ describe('Main IPC task whitelist', () => {
       logger,
       getWindowPreferences: () => windowPreferences,
       setAppearancePreferences,
+      chooseRecentLocation: vi.fn(async () => null),
     });
 
     const handler = handlers.get('worldforge:task:list-active');

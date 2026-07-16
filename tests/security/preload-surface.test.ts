@@ -16,5 +16,8 @@ describe('Preload capability surface', () => {
     expect(source).toContain('ipcRenderer.postMessage');
     expect(source).toContain('TaskEventEnvelopeSchema.safeParse');
     expect(source).toContain('task: {');
+    expect(source).toContain('settings: {');
+    expect(source).toContain('project: {');
+    expect(source).not.toContain('workspacePath');
   });
 });

@@ -10,6 +10,9 @@ import {
   type DatabaseClock,
   type MigrationRecoveryContext,
 } from './database/index.js';
+import { AppSettingsRepository } from './app-settings.js';
+import { ProviderConfigsRepository } from './provider-configs.js';
+import { RecentProjectsRepository } from './recent-projects.js';
 import { WindowPreferencesRepository } from './window-preferences.js';
 
 export interface AppRuntimeOptions {
@@ -23,6 +26,9 @@ export interface AppRuntimeOptions {
 
 export interface AppRuntime {
   readonly database: AppDatabase;
+  readonly appSettings: AppSettingsRepository;
+  readonly recentProjects: RecentProjectsRepository;
+  readonly providerConfigs: ProviderConfigsRepository;
   readonly windowPreferences: WindowPreferencesRepository;
   close(): Promise<void>;
 }
@@ -119,6 +125,9 @@ export async function openAppRuntime(options: AppRuntimeOptions): Promise<AppRun
   });
   return {
     database,
+    appSettings: new AppSettingsRepository(database, options.clock),
+    recentProjects: new RecentProjectsRepository(database, options.clock),
+    providerConfigs: new ProviderConfigsRepository(database, options.clock),
     windowPreferences: new WindowPreferencesRepository(database, options.clock),
     close: () => database.close(),
   };

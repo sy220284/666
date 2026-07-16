@@ -10,5 +10,9 @@ export const coreRuntime = {
 
 export * from './database/index.js';
 export * from './app-runtime.js';
+export * from './app-data-errors.js';
+export * from './app-settings.js';
+export * from './provider-configs.js';
+export * from './recent-projects.js';
 export * from './task-protocol.js';
 export * from './window-preferences.js';

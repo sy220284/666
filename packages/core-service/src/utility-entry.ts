@@ -1,14 +1,19 @@
 import path from 'node:path';
 
 import {
+  APP_DATA_COMMANDS,
+  CoreAppDataResultSchema,
   CoreControlMessageSchema,
   PROTOCOL_VERSION,
   type CoreEvent,
+  type CoreAppDataOperation,
+  type CoreAppDataResult,
   type ErrorCode,
 } from '@worldforge/contracts';
 
 import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
+import { AppDataRepositoryError } from './app-data-errors.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 
 interface TransferredPort {
@@ -44,6 +49,8 @@ const startedAt = Date.now();
 const taskProtocol = new TaskProtocol();
 const taskCommands = new TaskCommandRouter(taskProtocol);
 let shuttingDown = false;
+let acceptingAppDataOperations = true;
+const activeAppDataOperations = new Set<Promise<void>>();
 
 function requiredArgument(name: string): string {
   const prefix = `--${name}=`;
@@ -97,6 +104,77 @@ function windowPreferencesError(error: unknown): ErrorCode {
     if (error.code === 'DATABASE_WRITE_FAILED') return 'DB_BUSY_TIMEOUT_002';
   }
   return 'DB_OPEN_FAILED_001';
+}
+
+function appDataError(error: unknown): ErrorCode {
+  if (error instanceof AppDataRepositoryError) {
+    if (error.code === 'RECENT_PROJECT_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'RECENT_PROJECT_PATH_MISSING') return 'PROJECT_PATH_MISSING_002';
+    if (error.code === 'RECENT_PROJECT_PATH_CONFLICT') return 'COMMON_CONFLICT_003';
+  }
+  if (error instanceof DatabaseFoundationError && error.code === 'REQUEST_ID_INVALID') {
+    return 'COMMON_INVALID_INPUT_001';
+  }
+  if (error instanceof Error && error.name === 'ZodError') return 'COMMON_INVALID_INPUT_001';
+  return windowPreferencesError(error);
+}
+
+async function executeAppDataOperation(
+  requestId: string,
+  operation: CoreAppDataOperation,
+): Promise<CoreAppDataResult> {
+  try {
+    switch (operation.operation) {
+      case APP_DATA_COMMANDS.settingsGet:
+        return CoreAppDataResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: appRuntime.appSettings.get(),
+        });
+      case APP_DATA_COMMANDS.settingsSet:
+        return CoreAppDataResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await appRuntime.appSettings.update(requestId, operation.settings),
+        });
+      case APP_DATA_COMMANDS.settingsReset:
+        return CoreAppDataResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await appRuntime.appSettings.reset(requestId),
+        });
+      case APP_DATA_COMMANDS.projectListRecent:
+        return CoreAppDataResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: { projects: await appRuntime.recentProjects.list(requestId) },
+        });
+      case APP_DATA_COMMANDS.projectRelocateRecent:
+        return CoreAppDataResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await appRuntime.recentProjects.relocate(
+            requestId,
+            operation.projectId,
+            operation.workspacePath,
+          ),
+        });
+      case APP_DATA_COMMANDS.projectRemoveRecent:
+        return CoreAppDataResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: {
+            removed: await appRuntime.recentProjects.remove(requestId, operation.projectId),
+          },
+        });
+    }
+  } catch (error) {
+    return CoreAppDataResultSchema.parse({
+      ok: false,
+      operation: operation.operation,
+      errorCode: appDataError(error),
+    });
+  }
 }
 
 parentPort.on('message', ({ data, ports }) => {
@@ -166,9 +244,39 @@ parentPort.on('message', ({ data, ports }) => {
         });
       break;
     }
-    case 'core.drain': {
+    case 'core.app-data.command': {
       const requestId = parsed.data.requestId;
-      void taskProtocol.beginDrain().then(() => {
+      const operation = parsed.data.operation;
+      if (!acceptingAppDataOperations) {
+        send({
+          type: 'core.app-data.result',
+          protocolVersion: PROTOCOL_VERSION,
+          requestId,
+          result: CoreAppDataResultSchema.parse({
+            ok: false,
+            operation: operation.operation,
+            errorCode: 'COMMON_CANCELLED_004',
+          }),
+        });
+        break;
+      }
+      const active = executeAppDataOperation(requestId, operation)
+        .then((result) => {
+          send({
+            type: 'core.app-data.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          });
+        })
+        .finally(() => activeAppDataOperations.delete(active));
+      activeAppDataOperations.add(active);
+      break;
+    }
+    case 'core.drain': {
+      acceptingAppDataOperations = false;
+      const requestId = parsed.data.requestId;
+      void Promise.all([taskProtocol.beginDrain(), ...activeAppDataOperations]).then(() => {
         send({
           type: 'core.drained',
           protocolVersion: PROTOCOL_VERSION,
@@ -179,7 +287,15 @@ parentPort.on('message', ({ data, ports }) => {
       break;
     }
     case 'core.shutdown': {
-      if (taskProtocol.accepting || taskProtocol.activeTaskCount > 0 || shuttingDown) return;
+      if (
+        taskProtocol.accepting ||
+        taskProtocol.activeTaskCount > 0 ||
+        acceptingAppDataOperations ||
+        activeAppDataOperations.size > 0 ||
+        shuttingDown
+      ) {
+        return;
+      }
       shuttingDown = true;
       taskProtocol.close();
       const requestId = parsed.data.requestId;

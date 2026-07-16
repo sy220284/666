@@ -30,7 +30,7 @@
             <span class="brand__mark">W</span>
             <span>
               <strong>WorldForge</strong>
-              <small>显示与窗口恢复 Spike</small>
+              <small>本地写作工作台</small>
             </span>
           </div>
         </div>
@@ -41,6 +41,7 @@
           <small data-diagnostic-id></small>
         </div>
         <div class="top-bar__actions">
+          <button class="quiet-button" type="button" data-open-settings>通用设置</button>
           <button class="quiet-button" type="button" data-boundary-popover aria-expanded="false">
             浮层边界
           </button>
@@ -70,61 +71,63 @@
             <div class="panel-heading">
               <span>
                 <small>验证导航</small>
-                <strong>布局样本</strong>
+                <strong>应用首页</strong>
               </span>
               <button class="icon-button drawer-close" type="button" data-close-left>
                 <span aria-hidden="true">×</span><span class="sr-only">关闭项目导航</span>
               </button>
             </div>
             <nav aria-label="显示验证场景">
-              <p class="nav-label">M0-06 场景</p>
+              <p class="nav-label">本地工作区</p>
               <button class="nav-row is-active" type="button" aria-current="page">
+                <span aria-hidden="true">⌂</span>
+                <span><strong>首页</strong><small>最近项目与本地设置</small></span>
+              </button>
+              <button class="nav-row" type="button">
                 <span aria-hidden="true">Aa</span>
-                <span><strong>正文与版心</strong><small>680 / 760 / 860 px</small></span>
-              </button>
-              <button class="nav-row" type="button">
-                <span aria-hidden="true">▣</span>
-                <span><strong>抽屉与断点</strong><small>900 / 1100 CSS px</small></span>
-              </button>
-              <button class="nav-row" type="button">
-                <span aria-hidden="true">◎</span>
-                <span><strong>跨屏恢复</strong><small>DIP 与混合缩放</small></span>
+                <span><strong>显示验证</strong><small>沿用 M0-06 响应式矩阵</small></span>
               </button>
             </nav>
             <div class="panel-note">
               <strong>原型边界</strong>
-              <p>本页只验证显示策略，不读写项目正文，也不展示未实现业务入口。</p>
+              <p>首页读取 app.sqlite 的真实应用级记录，不读取或缓存任何项目正文。</p>
             </div>
           </aside>
 
           <main class="editor-region">
             <header class="workspace-header">
               <div>
-                <p class="eyebrow">DISPLAY PROTOTYPE · M0-06</p>
-                <h1>安静编辑部 · 版心验证稿</h1>
+                <p class="eyebrow">LOCAL FIRST · APPLICATION HOME</p>
+                <h1>继续你的本地写作</h1>
               </div>
-              <span class="prototype-badge">非项目内容</span>
+              <span class="prototype-badge">应用级数据</span>
             </header>
             <div class="paper-stage">
               <article class="editor-paper" data-editor-paper tabindex="0">
-                <p class="chapter-kicker">布局样文</p>
-                <h2>正文始终停留在视线中心</h2>
-                <p>
-                  窗口变宽时，WorldForge 增加上下文空间与安全留白，而不是无限拉长正文。版心以 CSS
-                  像素计量，在不同系统缩放与显示器之间保持稳定的阅读节奏。
-                </p>
-                <p>
-                  界面缩放只改变控件、侧栏和 UI
-                  字体；正文字号与正文宽度由各自设置控制。跨屏后重新判断断点，窗口坐标则以 DIP
-                  保存并校验可见区域。
-                </p>
-                <blockquote>
-                  这是一段用于截图与边界测试的公开布局样文，不会写入作者项目或应用数据库的正文区域。
-                </blockquote>
-                <p>
-                  当有效视口低于 1100 像素，右侧设置进入抽屉；低于 900
-                  像素时，左右两侧都成为可由键盘关闭的抽屉。整页保持无水平滚动，浮层与对话框也会重新定位到可见范围内。
-                </p>
+                <div class="home-intro">
+                  <p class="chapter-kicker">只保存在这台设备</p>
+                  <h2>最近项目</h2>
+                  <p>
+                    这里仅显示 Core 从应用数据库读取的项目登记；项目正文仍属于各自的
+                    project.sqlite。
+                  </p>
+                </div>
+                <section class="recent-projects" aria-labelledby="recent-projects-heading">
+                  <header>
+                    <div>
+                      <h3 id="recent-projects-heading">本地记录</h3>
+                      <p>路径失效时可重新定位，移除记录不会删除项目文件。</p>
+                    </div>
+                    <button class="quiet-button" type="button" data-refresh-recent>刷新</button>
+                  </header>
+                  <p class="recent-state" data-recent-loading>正在读取最近项目…</p>
+                  <div class="recent-empty" data-recent-empty hidden>
+                    <strong>还没有最近项目</strong>
+                    <p>创建和打开项目将在后续任务接通；这里不会用演示数据填充。</p>
+                  </div>
+                  <p class="recent-state is-error" data-recent-error role="alert" hidden></p>
+                  <div class="recent-list" data-recent-list></div>
+                </section>
               </article>
             </div>
           </main>
@@ -206,7 +209,7 @@
 
       <footer class="status-bar">
         <span data-app-version>WorldForge</span>
-        <span>显示策略：CSS px / 窗口状态：DIP</span>
+        <span>应用设置与最近项目：app.sqlite / 正文：项目独立</span>
         <span>仅本地</span>
       </footer>
     </div>
@@ -233,6 +236,65 @@
         </div>
         <footer>
           <button class="quiet-button" value="cancel">关闭</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="settings-dialog" data-settings-dialog aria-labelledby="settings-dialog-title">
+      <form data-settings-form>
+        <div class="settings-dialog__body">
+          <p class="eyebrow">APPLICATION SETTINGS</p>
+          <h2 id="settings-dialog-title">通用设置</h2>
+          <p>这些偏好属于应用，不会写入任何项目数据库。</p>
+          <div class="general-settings-grid">
+            <label>
+              <span>语言</span>
+              <select name="language" data-language>
+                <option value="zh-CN">简体中文</option>
+              </select>
+            </label>
+            <label>
+              <span>启动行为</span>
+              <select name="startupBehavior" data-startup-behavior>
+                <option value="show-home">显示首页</option>
+                <option value="reopen-last">重新打开最近项目</option>
+              </select>
+            </label>
+            <label>
+              <span>默认模式</span>
+              <select name="defaultMode" data-default-mode>
+                <option value="beginner">新手模式</option>
+                <option value="professional">专业模式</option>
+              </select>
+            </label>
+            <label>
+              <span>视觉方向</span>
+              <select name="themeId" data-theme-id>
+                <option value="theme-a">Theme A · 安静编辑部</option>
+                <option value="theme-b">Theme B · 水墨印章</option>
+              </select>
+            </label>
+            <label>
+              <span>主题模式</span>
+              <select name="themeVariant" data-theme-variant>
+                <option value="light">浅色</option>
+                <option value="dark">深色</option>
+                <option value="eye-care">护眼</option>
+                <option value="high-contrast">高对比</option>
+              </select>
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="reduceMotion" data-reduce-motion />
+              <span>减少动态效果</span>
+            </label>
+          </div>
+          <p class="save-state" data-settings-status role="status"></p>
+        </div>
+        <footer>
+          <button class="quiet-button" type="button" data-reset-settings>恢复默认</button>
+          <span></span>
+          <button class="quiet-button" type="button" data-close-settings>关闭</button>
+          <button class="primary-button" type="button" data-save-settings>保存</button>
         </footer>
       </form>
     </dialog>

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  APP_COMMANDS,
   AiHasCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiSetCredentialCommandSchema,
@@ -12,6 +13,12 @@ import {
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   RequestIdSchema,
+  ProjectListRecentCommandSchema,
+  ProjectRelocateRecentCommandSchema,
+  ProjectRemoveRecentCommandSchema,
+  SettingsGetCommandSchema,
+  SettingsResetCommandSchema,
+  SettingsSetCommandSchema,
   TaskCancelCommandSchema,
   TaskGetSnapshotCommandSchema,
   TaskListActiveCommandSchema,
@@ -40,6 +47,7 @@ interface IpcHandlerOptions {
   readonly setAppearancePreferences: (
     preferences: AppearancePreferences,
   ) => Promise<WindowPreferences>;
+  readonly chooseRecentLocation: () => Promise<string | null>;
 }
 
 function success<T>(requestId: string, data: T): CommandResult<T> {
@@ -84,6 +92,12 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.appRestartCore,
     IPC_CHANNELS.appGetWindowPreferences,
     IPC_CHANNELS.appSetAppearancePreferences,
+    IPC_CHANNELS.settingsGet,
+    IPC_CHANNELS.settingsSet,
+    IPC_CHANNELS.settingsReset,
+    IPC_CHANNELS.projectListRecent,
+    IPC_CHANNELS.projectRelocateRecent,
+    IPC_CHANNELS.projectRemoveRecent,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -175,6 +189,110 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
         diagnosticId,
       );
     }
+  });
+
+  const appDataFailure = (requestId: string, code: ErrorCode): CommandFailure =>
+    failure(
+      requestId,
+      code,
+      'The local application data operation could not be completed.',
+      ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+    );
+
+  register(IPC_CHANNELS.settingsGet, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = SettingsGetCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    const result = await options.supervisor.invokeAppDataOperation(parsed.data.requestId, {
+      operation: APP_COMMANDS.settingsGet,
+    });
+    return result.ok
+      ? success(parsed.data.requestId, result.data)
+      : appDataFailure(parsed.data.requestId, result.errorCode);
+  });
+
+  register(IPC_CHANNELS.settingsSet, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = SettingsSetCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    const result = await options.supervisor.invokeAppDataOperation(parsed.data.requestId, {
+      operation: APP_COMMANDS.settingsSet,
+      settings: parsed.data.payload,
+    });
+    return result.ok
+      ? success(parsed.data.requestId, result.data)
+      : appDataFailure(parsed.data.requestId, result.errorCode);
+  });
+
+  register(IPC_CHANNELS.settingsReset, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = SettingsResetCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    const result = await options.supervisor.invokeAppDataOperation(parsed.data.requestId, {
+      operation: APP_COMMANDS.settingsReset,
+    });
+    return result.ok
+      ? success(parsed.data.requestId, result.data)
+      : appDataFailure(parsed.data.requestId, result.errorCode);
+  });
+
+  register(IPC_CHANNELS.projectListRecent, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectListRecentCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    const result = await options.supervisor.invokeAppDataOperation(parsed.data.requestId, {
+      operation: APP_COMMANDS.projectListRecent,
+    });
+    return result.ok
+      ? success(parsed.data.requestId, result.data)
+      : appDataFailure(parsed.data.requestId, result.errorCode);
+  });
+
+  register(IPC_CHANNELS.projectRelocateRecent, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectRelocateRecentCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let workspacePath: string | null;
+    try {
+      workspacePath = await options.chooseRecentLocation();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!workspacePath) {
+      return failure(
+        parsed.data.requestId,
+        'COMMON_CANCELLED_004',
+        'The relocation was cancelled.',
+        false,
+      );
+    }
+    const result = await options.supervisor.invokeAppDataOperation(parsed.data.requestId, {
+      operation: APP_COMMANDS.projectRelocateRecent,
+      projectId: parsed.data.payload.projectId,
+      workspacePath,
+    });
+    return result.ok
+      ? success(parsed.data.requestId, result.data)
+      : appDataFailure(parsed.data.requestId, result.errorCode);
+  });
+
+  register(IPC_CHANNELS.projectRemoveRecent, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectRemoveRecentCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    const result = await options.supervisor.invokeAppDataOperation(parsed.data.requestId, {
+      operation: APP_COMMANDS.projectRemoveRecent,
+      projectId: parsed.data.payload.projectId,
+    });
+    return result.ok
+      ? success(parsed.data.requestId, result.data)
+      : appDataFailure(parsed.data.requestId, result.errorCode);
   });
 
   register(IPC_CHANNELS.aiSetCredential, async (event, raw) => {

@@ -1,11 +1,27 @@
 import { contentWidthPixels, layoutPolicyForViewport } from './layout-model.js';
-import type { AppearancePreferences } from './types.js';
+import type {
+  AppearancePreferences,
+  AppSettings,
+  AppSettingsSnapshot,
+  AppSettingsUpdate,
+  RecentProject,
+} from './types.js';
 
 const defaultAppearance: AppearancePreferences = {
   workspaceAlignment: 'center',
   uiScalePercent: 100,
   bodyFontSize: 18,
   contentWidth: 'normal',
+};
+
+const defaultSettings: AppSettings = {
+  schemaVersion: 1,
+  language: 'zh-CN',
+  startupBehavior: 'show-home',
+  defaultMode: 'beginner',
+  themeId: 'theme-a',
+  themeVariant: 'light',
+  reduceMotion: false,
 };
 
 const statusElement = document.querySelector<HTMLElement>('[data-core-status]');
@@ -25,8 +41,21 @@ const contentReadout = document.querySelector<HTMLElement>('[data-content-readou
 const popover = document.querySelector<HTMLElement>('[data-popover]');
 const popoverTrigger = document.querySelector<HTMLButtonElement>('[data-boundary-popover]');
 const boundaryDialog = document.querySelector<HTMLDialogElement>('[data-boundary-dialog]');
+const recentLoading = document.querySelector<HTMLElement>('[data-recent-loading]');
+const recentEmpty = document.querySelector<HTMLElement>('[data-recent-empty]');
+const recentError = document.querySelector<HTMLElement>('[data-recent-error]');
+const recentList = document.querySelector<HTMLElement>('[data-recent-list]');
+const refreshRecentButton = document.querySelector<HTMLButtonElement>('[data-refresh-recent]');
+const settingsDialog = document.querySelector<HTMLDialogElement>('[data-settings-dialog]');
+const settingsForm = document.querySelector<HTMLFormElement>('[data-settings-form]');
+const settingsStatus = document.querySelector<HTMLElement>('[data-settings-status]');
+const openSettingsButton = document.querySelector<HTMLButtonElement>('[data-open-settings]');
+const saveSettingsButton = document.querySelector<HTMLButtonElement>('[data-save-settings]');
+const resetSettingsButton = document.querySelector<HTMLButtonElement>('[data-reset-settings]');
+const closeSettingsButton = document.querySelector<HTMLButtonElement>('[data-close-settings]');
 
 let appearance = defaultAppearance;
+let applicationSettings = defaultSettings;
 let resizeFrame: number | null = null;
 let drawerRestoreTarget: HTMLElement | null = null;
 
@@ -49,6 +78,204 @@ function setFormValues(value: AppearancePreferences): void {
     'input[name="workspaceAlignment"]',
   )) {
     input.checked = input.value === value.workspaceAlignment;
+  }
+}
+
+function settingsControl(name: string): HTMLSelectElement | HTMLInputElement | null {
+  if (!settingsForm) return null;
+  const control = settingsForm.elements.namedItem(name);
+  return control instanceof HTMLSelectElement || control instanceof HTMLInputElement
+    ? control
+    : null;
+}
+
+function updateThemeVariantAvailability(): void {
+  const themeId = settingsControl('themeId');
+  const themeVariant = settingsControl('themeVariant');
+  if (!(themeId instanceof HTMLSelectElement) || !(themeVariant instanceof HTMLSelectElement)) {
+    return;
+  }
+  const themeB = themeId.value === 'theme-b';
+  for (const option of themeVariant.options) {
+    option.disabled = themeB && ['eye-care', 'high-contrast'].includes(option.value);
+  }
+  if (themeB && ['eye-care', 'high-contrast'].includes(themeVariant.value)) {
+    themeVariant.value = 'light';
+  }
+}
+
+function applyApplicationSettings(settings: AppSettings): void {
+  applicationSettings = settings;
+  document.body.dataset.authorMode = settings.defaultMode;
+  document.body.dataset.themeId = settings.themeId;
+  document.body.dataset.themeVariant = settings.themeVariant;
+  document.body.dataset.reduceMotion = String(settings.reduceMotion);
+}
+
+function setSettingsFormValues(settings: AppSettings): void {
+  if (!settingsForm) return;
+  for (const [name, value] of [
+    ['language', settings.language],
+    ['startupBehavior', settings.startupBehavior],
+    ['defaultMode', settings.defaultMode],
+    ['themeId', settings.themeId],
+    ['themeVariant', settings.themeVariant],
+  ] as const) {
+    const control = settingsControl(name);
+    if (control instanceof HTMLSelectElement) control.value = value;
+  }
+  const reduceMotion = settingsControl('reduceMotion');
+  if (reduceMotion instanceof HTMLInputElement) reduceMotion.checked = settings.reduceMotion;
+  updateThemeVariantAvailability();
+}
+
+function readSettingsForm(): AppSettingsUpdate | null {
+  const language = settingsControl('language');
+  const startupBehavior = settingsControl('startupBehavior');
+  const defaultMode = settingsControl('defaultMode');
+  const themeId = settingsControl('themeId');
+  const themeVariant = settingsControl('themeVariant');
+  const reduceMotion = settingsControl('reduceMotion');
+  if (
+    !(language instanceof HTMLSelectElement) ||
+    !(startupBehavior instanceof HTMLSelectElement) ||
+    !(defaultMode instanceof HTMLSelectElement) ||
+    !(themeId instanceof HTMLSelectElement) ||
+    !(themeVariant instanceof HTMLSelectElement) ||
+    !(reduceMotion instanceof HTMLInputElement) ||
+    language.value !== 'zh-CN' ||
+    !['show-home', 'reopen-last'].includes(startupBehavior.value) ||
+    !['beginner', 'professional'].includes(defaultMode.value) ||
+    !['theme-a', 'theme-b'].includes(themeId.value) ||
+    !['light', 'dark', 'eye-care', 'high-contrast'].includes(themeVariant.value) ||
+    (themeId.value === 'theme-b' && !['light', 'dark'].includes(themeVariant.value))
+  ) {
+    return null;
+  }
+  return {
+    language: language.value,
+    startupBehavior: startupBehavior.value as AppSettings['startupBehavior'],
+    defaultMode: defaultMode.value as AppSettings['defaultMode'],
+    themeId: themeId.value as AppSettings['themeId'],
+    themeVariant: themeVariant.value as AppSettings['themeVariant'],
+    reduceMotion: reduceMotion.checked,
+  };
+}
+
+function showSettingsSnapshot(snapshot: AppSettingsSnapshot): void {
+  applyApplicationSettings(snapshot.settings);
+  setSettingsFormValues(snapshot.settings);
+  if (!settingsStatus) return;
+  settingsStatus.classList.remove('is-error');
+  settingsStatus.textContent =
+    snapshot.source === 'recovered' ? '检测到不兼容或损坏的设置，已安全恢复默认值' : '';
+}
+
+function showRecentFailure(message: string): void {
+  if (recentLoading) recentLoading.hidden = true;
+  if (recentEmpty) recentEmpty.hidden = true;
+  if (recentError) {
+    recentError.hidden = false;
+    recentError.textContent = message;
+  }
+}
+
+function recentAction(label: string, attribute: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'quiet-button';
+  button.textContent = label;
+  button.setAttribute(attribute, '');
+  return button;
+}
+
+async function removeRecentProject(projectId: string, button: HTMLButtonElement): Promise<void> {
+  button.disabled = true;
+  const result = await window.worldforge.project.removeRecent(projectId);
+  if (!result.ok) {
+    button.disabled = false;
+    showRecentFailure(`移除失败 · ${result.error.code}`);
+    return;
+  }
+  await refreshRecentProjects();
+}
+
+async function relocateRecentProject(projectId: string, button: HTMLButtonElement): Promise<void> {
+  button.disabled = true;
+  const result = await window.worldforge.project.relocateRecent(projectId);
+  if (!result.ok) {
+    button.disabled = false;
+    if (result.error.code !== 'COMMON_CANCELLED_004') {
+      showRecentFailure(`重新定位失败 · ${result.error.code}`);
+    }
+    return;
+  }
+  await refreshRecentProjects();
+}
+
+function renderRecentProjects(projects: readonly RecentProject[]): void {
+  recentList?.replaceChildren();
+  if (recentLoading) recentLoading.hidden = true;
+  if (recentError) recentError.hidden = true;
+  if (recentEmpty) recentEmpty.hidden = projects.length > 0;
+  if (!recentList) return;
+
+  for (const project of projects) {
+    const card = document.createElement('article');
+    card.className = 'recent-project-card';
+    card.setAttribute('data-recent-card', '');
+    card.dataset.projectMissing = String(project.missingSince !== null);
+
+    const content = document.createElement('div');
+    content.className = 'recent-project-card__content';
+    const name = document.createElement('strong');
+    name.textContent = project.displayName;
+    const workspacePath = document.createElement('span');
+    workspacePath.className = 'recent-project-card__path';
+    workspacePath.textContent = project.workspacePath;
+    workspacePath.title = project.workspacePath;
+    const metadata = document.createElement('span');
+    metadata.className = 'recent-project-card__meta';
+    metadata.textContent = `最近打开：${new Date(project.lastOpenedAt).toLocaleString('zh-CN')}`;
+    content.append(name, workspacePath, metadata);
+    if (project.missingSince) {
+      const warning = document.createElement('span');
+      warning.className = 'recent-project-card__meta recent-project-card__warning';
+      warning.textContent = '路径已丢失';
+      content.append(warning);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'recent-project-card__actions';
+    if (project.missingSince) {
+      const relocate = recentAction('重新定位', 'data-relocate-recent');
+      relocate.addEventListener('click', () => {
+        void relocateRecentProject(project.projectId, relocate);
+      });
+      actions.append(relocate);
+    }
+    const remove = recentAction('移除记录', 'data-remove-recent');
+    remove.addEventListener('click', () => {
+      void removeRecentProject(project.projectId, remove);
+    });
+    actions.append(remove);
+    card.append(content, actions);
+    recentList.append(card);
+  }
+}
+
+async function refreshRecentProjects(): Promise<void> {
+  if (recentLoading) recentLoading.hidden = false;
+  if (recentError) recentError.hidden = true;
+  refreshRecentButton?.setAttribute('disabled', '');
+  try {
+    const result = await window.worldforge.project.listRecent();
+    if (result.ok) renderRecentProjects(result.data.projects);
+    else showRecentFailure(`最近项目读取失败 · ${result.error.code}`);
+  } catch {
+    showRecentFailure('最近项目读取失败 · COMMON_INTERNAL_999');
+  } finally {
+    refreshRecentButton?.removeAttribute('disabled');
   }
 }
 
@@ -237,31 +464,57 @@ async function saveAppearance(next: AppearancePreferences): Promise<void> {
   }
 }
 
+async function refreshApplicationSettings(): Promise<void> {
+  try {
+    const result = await window.worldforge.settings.get();
+    if (result.ok) {
+      showSettingsSnapshot(result.data);
+      return;
+    }
+    if (settingsStatus) {
+      settingsStatus.classList.add('is-error');
+      settingsStatus.textContent = `设置读取失败 · ${result.error.code}`;
+    }
+  } catch {
+    if (settingsStatus) {
+      settingsStatus.classList.add('is-error');
+      settingsStatus.textContent = '设置读取失败 · COMMON_INTERNAL_999';
+    }
+  }
+}
+
 async function refresh(): Promise<void> {
-  const [info, core, preferences] = await Promise.all([
-    window.worldforge.app.getInfo(),
-    window.worldforge.app.getCoreStatus(),
-    window.worldforge.app.getWindowPreferences(),
-  ]);
-  if (info.ok && versionElement) {
-    versionElement.textContent = `WorldForge ${info.data.version} · ${info.data.platform}`;
+  try {
+    const [info, core, preferences] = await Promise.all([
+      window.worldforge.app.getInfo(),
+      window.worldforge.app.getCoreStatus(),
+      window.worldforge.app.getWindowPreferences(),
+    ]);
+    if (info.ok && versionElement) {
+      versionElement.textContent = `WorldForge ${info.data.version} · ${info.data.platform}`;
+    }
+    if (core.ok) {
+      setStatus(core.data.status, core.data.diagnosticId);
+    } else {
+      setStatus(core.error.code, core.error.diagnosticId ?? null);
+    }
+    if (preferences.ok) {
+      appearance = {
+        workspaceAlignment: preferences.data.workspaceAlignment,
+        uiScalePercent: preferences.data.uiScalePercent,
+        bodyFontSize: preferences.data.bodyFontSize,
+        contentWidth: preferences.data.contentWidth,
+      };
+    }
+    await Promise.all([refreshApplicationSettings(), refreshRecentProjects()]);
+  } catch {
+    setStatus('COMMON_INTERNAL_999', null);
+    showRecentFailure('最近项目读取失败 · COMMON_INTERNAL_999');
+  } finally {
+    setFormValues(appearance);
+    applyLayout();
+    document.body.dataset.rendererReady = 'true';
   }
-  if (core.ok) {
-    setStatus(core.data.status, core.data.diagnosticId);
-  } else {
-    setStatus(core.error.code, core.error.diagnosticId ?? null);
-  }
-  if (preferences.ok) {
-    appearance = {
-      workspaceAlignment: preferences.data.workspaceAlignment,
-      uiScalePercent: preferences.data.uiScalePercent,
-      bodyFontSize: preferences.data.bodyFontSize,
-      contentWidth: preferences.data.contentWidth,
-    };
-  }
-  setFormValues(appearance);
-  applyLayout();
-  document.body.dataset.rendererReady = 'true';
 }
 
 restartButton?.addEventListener('click', async () => {
@@ -273,6 +526,7 @@ restartButton?.addEventListener('click', async () => {
     setStatus(result.error.code, result.error.diagnosticId ?? null);
   }
   restartButton.disabled = false;
+  if (result.ok) await Promise.all([refreshApplicationSettings(), refreshRecentProjects()]);
 });
 
 leftToggle?.addEventListener('click', () => openDrawer(leftPanel, leftToggle));
@@ -285,6 +539,71 @@ document.addEventListener('keydown', trapDrawerFocus);
 appearanceForm?.addEventListener('change', () => {
   const next = readForm();
   if (next) void saveAppearance(next);
+});
+
+refreshRecentButton?.addEventListener('click', () => {
+  void refreshRecentProjects();
+});
+
+openSettingsButton?.addEventListener('click', () => {
+  setSettingsFormValues(applicationSettings);
+  settingsDialog?.showModal();
+});
+closeSettingsButton?.addEventListener('click', () => settingsDialog?.close());
+settingsForm?.addEventListener('change', updateThemeVariantAvailability);
+
+saveSettingsButton?.addEventListener('click', async () => {
+  const next = readSettingsForm();
+  if (!next) {
+    if (settingsStatus) {
+      settingsStatus.classList.add('is-error');
+      settingsStatus.textContent = '设置值无效';
+    }
+    return;
+  }
+  saveSettingsButton.disabled = true;
+  if (settingsStatus) {
+    settingsStatus.classList.remove('is-error');
+    settingsStatus.textContent = '正在保存…';
+  }
+  try {
+    const result = await window.worldforge.settings.set(next);
+    if (result.ok) {
+      showSettingsSnapshot(result.data);
+      if (settingsStatus) settingsStatus.textContent = '设置已保存到应用数据库';
+    } else if (settingsStatus) {
+      settingsStatus.classList.add('is-error');
+      settingsStatus.textContent = `设置保存失败 · ${result.error.code}`;
+    }
+  } catch {
+    if (settingsStatus) {
+      settingsStatus.classList.add('is-error');
+      settingsStatus.textContent = '设置保存失败 · COMMON_INTERNAL_999';
+    }
+  } finally {
+    saveSettingsButton.disabled = false;
+  }
+});
+
+resetSettingsButton?.addEventListener('click', async () => {
+  resetSettingsButton.disabled = true;
+  try {
+    const result = await window.worldforge.settings.reset();
+    if (result.ok) {
+      showSettingsSnapshot(result.data);
+      if (settingsStatus) settingsStatus.textContent = '已恢复默认设置';
+    } else if (settingsStatus) {
+      settingsStatus.classList.add('is-error');
+      settingsStatus.textContent = `恢复失败 · ${result.error.code}`;
+    }
+  } catch {
+    if (settingsStatus) {
+      settingsStatus.classList.add('is-error');
+      settingsStatus.textContent = '恢复失败 · COMMON_INTERNAL_999';
+    }
+  } finally {
+    resetSettingsButton.disabled = false;
+  }
 });
 
 popoverTrigger?.addEventListener('click', () => {

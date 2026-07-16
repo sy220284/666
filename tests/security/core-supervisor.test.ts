@@ -81,6 +81,21 @@ class FakeUtilityProcess implements UtilityProcessHandle {
         result: { ok: true, preferences: this.windowPreferences },
       });
     }
+    if (
+      message.type === 'core.app-data.command' &&
+      message.operation.operation === 'project.listRecent'
+    ) {
+      this.emitMessage({
+        type: 'core.app-data.result',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId: message.requestId,
+        result: {
+          ok: true,
+          operation: 'project.listRecent',
+          data: { projects: [] },
+        },
+      });
+    }
   }
 
   onMessage(listener: (message: unknown) => void): () => void {
@@ -218,6 +233,25 @@ describe('Core Utility Process supervision', () => {
     await expect(supervisor.getWindowPreferences()).resolves.toEqual({
       ok: true,
       preferences,
+    });
+  });
+
+  it('round-trips named application-data operations over the private Core protocol', async () => {
+    const processes: FakeUtilityProcess[] = [];
+    const supervisor = new CoreSupervisor({
+      spawn: spawnReady(processes),
+      logger: quietLogger,
+      startupTimeoutMs: 50,
+      commandTimeoutMs: 50,
+    });
+    await supervisor.start();
+
+    await expect(
+      supervisor.invokeAppDataOperation(randomUUID(), { operation: 'project.listRecent' }),
+    ).resolves.toEqual({
+      ok: true,
+      operation: 'project.listRecent',
+      data: { projects: [] },
     });
   });
 

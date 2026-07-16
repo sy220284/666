@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   safeStorage,
   screen,
@@ -263,6 +264,16 @@ async function bootstrap(): Promise<void> {
     logger,
     getWindowPreferences: () => activeWindowPreferences,
     setAppearancePreferences: updateAppearancePreferences,
+    chooseRecentLocation: async () => {
+      const window = mainWindow;
+      if (!window) return null;
+      const selection = await dialog.showOpenDialog(window, {
+        title: '重新定位项目文件夹',
+        buttonLabel: '选择此文件夹',
+        properties: ['openDirectory'],
+      });
+      return selection.canceled ? null : (selection.filePaths[0] ?? null);
+    },
   });
 
   const gracefulShutdown = (): Promise<void> => {

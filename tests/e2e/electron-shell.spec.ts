@@ -192,6 +192,74 @@ test('runs a sandboxed Renderer against a healthy supervised Core', async () => 
   }
 });
 
+test('renders only persisted recent projects and restores general settings after restart', async () => {
+  test.setTimeout(60_000);
+  const userDataPath = await temporaryUserData();
+  const existingProjectPath = path.join(userDataPath, 'existing-project');
+  const missingProjectPath = path.join(userDataPath, 'missing-project');
+  await mkdir(existingProjectPath, { recursive: true });
+
+  const first = await launch(userDataPath);
+  const firstWindow = await first.firstWindow();
+  await firstWindow.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+  await expect(firstWindow.locator('[data-recent-empty]')).toBeVisible();
+  await expect(firstWindow.locator('[data-recent-card]')).toHaveCount(0);
+  await firstWindow.locator('[data-open-settings]').click();
+  await expect(firstWindow.locator('[data-settings-dialog]')).toBeVisible();
+  await firstWindow.locator('[data-default-mode]').selectOption('professional');
+  await firstWindow.locator('[data-theme-id]').selectOption('theme-b');
+  await firstWindow.locator('[data-theme-variant]').selectOption('dark');
+  await firstWindow.locator('[data-reduce-motion]').check();
+  await firstWindow.locator('[data-save-settings]').click();
+  await expect(firstWindow.locator('[data-settings-status]')).toHaveText('设置已保存到应用数据库');
+  await closeGracefully(first);
+
+  const database = new DatabaseSync(path.join(userDataPath, 'app.sqlite'));
+  database
+    .prepare(
+      `INSERT INTO recent_projects(
+         project_id, workspace_path, display_name, last_opened_at, missing_since
+       ) VALUES(?, ?, ?, ?, NULL), (?, ?, ?, ?, NULL)`,
+    )
+    .run(
+      'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      existingProjectPath,
+      '真实存在的项目',
+      '2026-07-16T08:00:00.000Z',
+      'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+      missingProjectPath,
+      '路径已丢失的项目',
+      '2026-07-16T07:00:00.000Z',
+    );
+  database.close();
+
+  const reopened = await launch(userDataPath);
+  try {
+    const page = await reopened.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await expect(page.locator('[data-recent-card]')).toHaveCount(2);
+    await expect(page.locator('[data-project-missing="true"]')).toContainText('路径已丢失');
+    await page.locator('[data-open-settings]').click();
+    await expect(page.locator('[data-default-mode]')).toHaveValue('professional');
+    await expect(page.locator('[data-theme-id]')).toHaveValue('theme-b');
+    await expect(page.locator('[data-theme-variant]')).toHaveValue('dark');
+    await expect(page.locator('[data-reduce-motion]')).toBeChecked();
+    await page.locator('[data-close-settings]').click();
+
+    await page.locator('[data-project-missing="true"] [data-remove-recent]').click();
+    await expect(page.locator('[data-recent-card]')).toHaveCount(1);
+    const storedCount = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const result = await bridge.project.listRecent();
+      return result.ok ? result.data.projects.length : -1;
+    });
+    expect(storedCount).toBe(1);
+  } finally {
+    await closeGracefully(reopened);
+  }
+});
+
 test('persists DIP bounds and independent appearance preferences only in app.sqlite', async () => {
   test.setTimeout(60_000);
   const userDataPath = await temporaryUserData();

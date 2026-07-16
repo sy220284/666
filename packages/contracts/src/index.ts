@@ -2,6 +2,21 @@ import { z } from 'zod';
 
 import { ErrorCodeSchema, type ErrorCode } from './error-codes.js';
 import {
+  APP_DATA_COMMANDS,
+  APP_DATA_IPC_CHANNELS,
+  CoreAppDataOperationSchema,
+  CoreAppDataResultSchema,
+  ProjectListRecentCommandSchema,
+  ProjectRelocateRecentCommandSchema,
+  ProjectRemoveRecentCommandSchema,
+  SettingsGetCommandSchema,
+  SettingsResetCommandSchema,
+  SettingsSetCommandSchema,
+  type AppSettingsSnapshot,
+  type AppSettingsUpdate,
+  type RecentProject,
+} from './app-data.js';
+import {
   ProjectIdSchema,
   TASK_PROTOCOL_VERSION,
   TaskCancelCommandSchema,
@@ -20,6 +35,7 @@ import {
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
 export * from './task-protocol.js';
+export * from './app-data.js';
 
 export const contractsLayer = {
   name: '@worldforge/contracts',
@@ -29,6 +45,7 @@ export const contractsLayer = {
 export const PROTOCOL_VERSION = TASK_PROTOCOL_VERSION;
 
 export const IPC_CHANNELS = {
+  ...APP_DATA_IPC_CHANNELS,
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
@@ -44,6 +61,7 @@ export const IPC_CHANNELS = {
 } as const;
 
 export const APP_COMMANDS = {
+  ...APP_DATA_COMMANDS,
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
@@ -167,6 +185,12 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   AppRestartCoreCommandSchema,
   AppGetWindowPreferencesCommandSchema,
   AppSetAppearancePreferencesCommandSchema,
+  SettingsGetCommandSchema,
+  SettingsSetCommandSchema,
+  SettingsResetCommandSchema,
+  ProjectListRecentCommandSchema,
+  ProjectRelocateRecentCommandSchema,
+  ProjectRemoveRecentCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiHasCredentialCommandSchema,
@@ -292,6 +316,12 @@ export const CoreControlMessageSchema = z.discriminatedUnion('type', [
     requestId: RequestIdSchema,
     preferences: WindowPreferencesSchema,
   }),
+  z.strictObject({
+    type: z.literal('core.app-data.command'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    operation: CoreAppDataOperationSchema,
+  }),
 ]);
 
 export const CoreEventSchema = z.discriminatedUnion('type', [
@@ -330,6 +360,12 @@ export const CoreEventSchema = z.discriminatedUnion('type', [
     requestId: RequestIdSchema,
     result: CoreWindowPreferencesResultSchema,
   }),
+  z.strictObject({
+    type: z.literal('core.app-data.result'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    result: CoreAppDataResultSchema,
+  }),
 ]);
 
 export type AppInfo = z.infer<typeof AppInfoSchema>;
@@ -366,6 +402,18 @@ export interface WorldforgeBridge {
     readonly setAppearancePreferences: (
       preferences: AppearancePreferences,
     ) => Promise<CommandResult<WindowPreferences>>;
+  };
+  readonly settings: {
+    readonly get: () => Promise<CommandResult<AppSettingsSnapshot>>;
+    readonly set: (settings: AppSettingsUpdate) => Promise<CommandResult<AppSettingsSnapshot>>;
+    readonly reset: () => Promise<CommandResult<AppSettingsSnapshot>>;
+  };
+  readonly project: {
+    readonly listRecent: () => Promise<CommandResult<{ readonly projects: RecentProject[] }>>;
+    readonly relocateRecent: (projectId: string) => Promise<CommandResult<RecentProject>>;
+    readonly removeRecent: (
+      projectId: string,
+    ) => Promise<CommandResult<{ readonly removed: boolean }>>;
   };
   readonly ai: {
     readonly setCredential: (

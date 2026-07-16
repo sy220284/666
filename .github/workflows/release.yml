@@ -25,45 +25,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
+  quality:
     name: Release gate and quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      RELEASE_VERSION: ${{ inputs.version }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 11.13.0
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Enforce main and release acceptance gate
-        shell: bash
-        run: |
-          test "$GITHUB_REF_NAME" = "main"
-          pnpm release:gate -- --version "$RELEASE_VERSION"
-      - run: pnpm release:check
-      - run: pnpm check:workspaces
-      - run: pnpm check:boundaries
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+    uses: ./.github/workflows/quality-core.yml
+    with:
+      package_smoke: false
+      enforce_release_gate: true
+      release_version: ${{ inputs.version }}
 
   build:
     name: Package (${{ matrix.platform }})
-    needs: validate
+    needs: quality
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             platform: linux
           - os: windows-latest
             platform: windows
@@ -73,11 +51,11 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
@@ -89,7 +67,7 @@ jobs:
           --platform "${{ matrix.platform }}"
           --version "$RELEASE_VERSION"
           --output "release/${{ matrix.platform }}"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v4
         with:
           name: worldforge-${{ matrix.platform }}
           path: release/${{ matrix.platform }}/
@@ -99,7 +77,7 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
@@ -108,8 +86,8 @@ jobs:
       RELEASE_KIND: ${{ inputs.release_kind }}
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           pattern: worldforge-*
           path: release

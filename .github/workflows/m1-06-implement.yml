@@ -34,7 +34,25 @@ jobs:
       - name: Activate M1-06
         run: pnpm task:advance -- --ci=success --commit=5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4
       - name: Apply M1-06 implementation
-        run: python /tmp/m1-06-implement.py
+        shell: bash
+        run: |
+          set +e
+          python /tmp/m1-06-implement.py > /tmp/m1-06-apply.log 2>&1
+          code=$?
+          cat /tmp/m1-06-apply.log
+          echo "$code" > /tmp/m1-06-apply-code
+          exit 0
+      - name: Upload implementation diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-06-implementation-diagnostics
+          path: |
+            /tmp/m1-06-apply.log
+            /tmp/m1-06-apply-code
+          if-no-files-found: error
+          retention-days: 1
+      - name: Enforce implementation result
+        run: test "$(cat /tmp/m1-06-apply-code)" = "0"
       - name: Format
         run: |
           pnpm exec prettier --write \

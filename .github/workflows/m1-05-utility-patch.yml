@@ -26,20 +26,20 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Patch Core operation dispatch
+      - name: Patch Core dispatch and v4 expectations
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
 
-          path = Path('packages/core-service/src/utility-entry.ts')
-          content = path.read_text()
-          old_error = """  if (error instanceof DraftServiceError) {
-            if (error.code === 'DRAFT_NOT_FOUND' || error.code === 'DRAFT_BLOCK_NOT_FOUND') {
-              return 'COMMON_NOT_FOUND_002';
-            }
-            return 'COMMON_CONFLICT_003';
-          }"""
-          new_error = """  if (error instanceof DraftServiceError) {
+          utility = Path('packages/core-service/src/utility-entry.ts')
+          content = utility.read_text()
+
+          error_pattern = re.compile(
+              r"  if \(error instanceof DraftServiceError\) \{\n.*?^  \}\n(?=  if \(error instanceof ProjectStructureError\))",
+              re.MULTILINE | re.DOTALL,
+          )
+          error_replacement = """  if (error instanceof DraftServiceError) {
             switch (error.code) {
               case 'DRAFT_NOT_FOUND':
                 return 'DRAFT_NO_ACTIVE_005';
@@ -54,39 +54,64 @@ jobs:
               case 'DRAFT_INVARIANT_FAILED':
                 return 'COMMON_CONFLICT_003';
             }
-          }"""
-          old_dispatch = """      case DRAFT_COMMANDS.saveDraftSnapshot:
-                return CoreProjectResultSchema.parse({
-                  ok: true,
-                  operation: operation.operation,
-                  data: await drafts.saveSnapshot(requestId, operation.input),
-                });"""
-          new_dispatch = """      case DRAFT_COMMANDS.saveDraftSnapshot:
-                return CoreProjectResultSchema.parse({
-                  ok: true,
-                  operation: operation.operation,
-                  data: await drafts.saveSnapshot(requestId, operation.input),
-                });
+          }
+          """
+          content, error_count = error_pattern.subn(error_replacement, content, count=1)
+
+          dispatch_pattern = re.compile(
+              r"(      case DRAFT_COMMANDS\.saveDraftSnapshot:\n.*?data: await drafts\.saveSnapshot\(requestId, operation\.input\),\n        \}\);)\n(?=    \})",
+              re.DOTALL,
+          )
+          dispatch_replacement = r"""\1
               case DRAFT_COMMANDS.applyPatch:
                 return CoreProjectResultSchema.parse({
                   ok: true,
                   operation: operation.operation,
                   data: await drafts.applyPatch(requestId, operation.input),
-                });"""
-          if old_error not in content:
-              raise SystemExit('Draft error mapping anchor not found')
-          if old_dispatch not in content:
-              raise SystemExit('Draft dispatch anchor not found')
-          path.write_text(content.replace(old_error, new_error).replace(old_dispatch, new_dispatch))
+                });
+          """
+          content, dispatch_count = dispatch_pattern.subn(dispatch_replacement, content, count=1)
+
+          if error_count != 1:
+              raise SystemExit(f'Draft error mapping replacements: {error_count}')
+          if dispatch_count != 1:
+              raise SystemExit(f'Draft dispatch replacements: {dispatch_count}')
+          utility.write_text(content)
+
+          security = Path('tests/security/project-workspace.test.ts')
+          security_content = security.read_text()
+          security_content, summary_count = re.subn(
+              r"(compatibility: 'current',\n\s+schemaVersion: )3,",
+              r"\g<1>4,",
+              security_content,
+              count=1,
+          )
+          security_content, manifest_count = re.subn(
+              r"projectSchemaVersion: 3,",
+              "projectSchemaVersion: 4,",
+              security_content,
+              count=1,
+          )
+          security_content, db_count = re.subn(
+              r"schema_version: 3,",
+              "schema_version: 4,",
+              security_content,
+              count=1,
+          )
+          if (summary_count, manifest_count, db_count) != (1, 1, 1):
+              raise SystemExit(
+                  f'v4 expectation replacements: summary={summary_count}, manifest={manifest_count}, db={db_count}'
+              )
+          security.write_text(security_content)
           PY
-      - run: pnpm exec prettier --write packages/core-service/src/utility-entry.ts
-      - name: Commit utility patch
+      - run: pnpm exec prettier --write packages/core-service/src/utility-entry.ts tests/security/project-workspace.test.ts
+      - name: Commit fixes
         run: |
           if git diff --quiet; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/core-service/src/utility-entry.ts
-          git commit -m "fix(M1-05): dispatch Patch and map conflicts [skip ci]"
+          git add packages/core-service/src/utility-entry.ts tests/security/project-workspace.test.ts
+          git commit -m "fix(M1-05): dispatch Patch and advance schema checks [skip ci]"
           git push origin HEAD:validate/m1-05-core-20260716

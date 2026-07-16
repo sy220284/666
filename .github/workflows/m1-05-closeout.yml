@@ -1,0 +1,183 @@
+name: M1-05 Closeout
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/m1-05-closeout.yml
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    if: ${{ github.head_ref == 'automation/m1-05-closeout-20260716' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Apply validated M1-05 product patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin validate/m1-05-core-20260716
+          merge_base="$(git merge-base HEAD FETCH_HEAD)"
+          git diff --binary "$merge_base" FETCH_HEAD -- \
+            apps/desktop/main/src/ipc-handlers.ts \
+            apps/desktop/preload/src/index.ts \
+            apps/desktop/renderer/src/index.ts \
+            packages/contracts/src/index.ts \
+            packages/core-service/src/draft.ts \
+            packages/core-service/src/utility-entry.ts \
+            packages/editor-core/src/draft-patch.ts \
+            tests/migration/draft-migration.test.ts \
+            tests/migration/sqlite-foundation.test.ts \
+            tests/migration/testkit-faults.test.ts \
+            tests/security/draft-ipc.test.ts \
+            tests/security/project-workspace.test.ts \
+            tests/unit/draft-semantic.test.ts \
+            > /tmp/m1-05.patch
+          git apply --3way /tmp/m1-05.patch
+      - name: Remove public snapshot write bypass
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def update(path: str, transform):
+              file = Path(path)
+              before = file.read_text()
+              after = transform(before)
+              if after == before:
+                  raise SystemExit(f'No change produced for {path}')
+              file.write_text(after)
+
+          def contracts_draft(text: str) -> str:
+              text = re.sub(r"\n  saveDraftSnapshot: 'worldforge:draft:save-snapshot',", '', text)
+              text = re.sub(r"\n  saveDraftSnapshot: 'draft\.saveSnapshot',", '', text)
+              text = re.sub(
+                  r"\nexport const DraftSaveSnapshotCommandSchema = z\.strictObject\(\{.*?\n\}\);\n",
+                  '\n', text, flags=re.S,
+              )
+              text = re.sub(
+                  r"\n  z\.strictObject\(\{\n    operation: z\.literal\(DRAFT_COMMANDS\.saveDraftSnapshot\),\n    input: DraftSaveSnapshotInputSchema,\n  \}\),",
+                  '', text,
+              )
+              text = text.replace("\n  coreDraftSuccess(DRAFT_COMMANDS.saveDraftSnapshot),", '')
+              return text
+
+          update('packages/contracts/src/draft.ts', contracts_draft)
+
+          def contracts_index(text: str) -> str:
+              text = text.replace('  DraftSaveSnapshotCommandSchema,\n', '')
+              text = text.replace('  type DraftSaveSnapshotInput,\n', '')
+              text = text.replace('  DraftSaveSnapshotCommandSchema,\n', '')
+              text = text.replace(
+                  '    readonly saveSnapshot: (input: DraftSaveSnapshotInput) => Promise<CommandResult<DraftDocument>>;\n',
+                  '',
+              )
+              return text
+
+          update('packages/contracts/src/index.ts', contracts_index)
+
+          def ipc(text: str) -> str:
+              text = text.replace('  DraftSaveSnapshotCommandSchema,\n', '')
+              text = text.replace('    IPC_CHANNELS.saveDraftSnapshot,\n', '')
+              text = re.sub(
+                  r"\n  register\(IPC_CHANNELS\.saveDraftSnapshot, async \(event, raw\) => \{.*?\n  \}\);\n",
+                  '\n', text, flags=re.S,
+              )
+              return text
+
+          update('apps/desktop/main/src/ipc-handlers.ts', ipc)
+
+          def preload(text: str) -> str:
+              text = text.replace('  DraftSaveSnapshotCommandSchema,\n', '')
+              text = re.sub(
+                  r"\n    saveSnapshot: \(input\) =>\n      invoke\(\n        IPC_CHANNELS\.saveDraftSnapshot,\n        DraftSaveSnapshotCommandSchema\.parse\(envelope\(APP_COMMANDS\.saveDraftSnapshot, input\)\),\n        DraftDocumentResultSchema,\n      \),",
+                  '', text,
+              )
+              return text
+
+          update('apps/desktop/preload/src/index.ts', preload)
+
+          def utility(text: str) -> str:
+              text = re.sub(
+                  r"\n      case DRAFT_COMMANDS\.saveDraftSnapshot:\n        return CoreProjectResultSchema\.parse\(\{\n          ok: true,\n          operation: operation\.operation,\n          data: await drafts\.saveSnapshot\(requestId, operation\.input\),\n        \}\);",
+                  '', text,
+              )
+              return text
+
+          update('packages/core-service/src/utility-entry.ts', utility)
+          PY
+      - run: pnpm install --frozen-lockfile
+      - name: Format affected files
+        run: |
+          pnpm exec prettier --write \
+            packages/contracts/src/draft.ts \
+            packages/contracts/src/index.ts \
+            packages/core-service/src/draft.ts \
+            packages/core-service/src/utility-entry.ts \
+            packages/editor-core/src/draft-patch.ts \
+            apps/desktop/main/src/ipc-handlers.ts \
+            apps/desktop/preload/src/index.ts \
+            apps/desktop/renderer/src/index.ts \
+            tests/migration/draft-migration.test.ts \
+            tests/migration/sqlite-foundation.test.ts \
+            tests/migration/testkit-faults.test.ts \
+            tests/security/draft-ipc.test.ts \
+            tests/security/project-workspace.test.ts \
+            tests/unit/draft-semantic.test.ts
+      - name: Validate M1-05
+        shell: bash
+        env:
+          WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
+          WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          pnpm task:validate
+          pnpm check:workspaces
+          pnpm check:boundaries
+          pnpm format:check
+          pnpm lint
+          pnpm typecheck
+          pnpm test:unit
+          pnpm test:integration
+          pnpm test:migration
+          pnpm test:security
+          pnpm test:e2e
+          pnpm build
+      - name: Commit M1-05 closeout
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/desktop/main/src/ipc-handlers.ts \
+            apps/desktop/preload/src/index.ts \
+            apps/desktop/renderer/src/index.ts \
+            packages/contracts/src/draft.ts \
+            packages/contracts/src/index.ts \
+            packages/core-service/src/draft.ts \
+            packages/core-service/src/utility-entry.ts \
+            packages/editor-core/src/draft-patch.ts \
+            tests/migration/draft-migration.test.ts \
+            tests/migration/sqlite-foundation.test.ts \
+            tests/migration/testkit-faults.test.ts \
+            tests/security/draft-ipc.test.ts \
+            tests/security/project-workspace.test.ts \
+            tests/unit/draft-semantic.test.ts
+          git commit -m "fix(M1-05): complete Patch write path"
+          git push origin HEAD:main

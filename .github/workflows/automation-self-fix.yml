@@ -31,6 +31,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           def replace_once(path: str, old: str, new: str) -> None:
               file = Path(path)
@@ -41,14 +42,12 @@ jobs:
 
           utility = Path('packages/core-service/src/utility-entry.ts')
           source = utility.read_text()
-          old_error = """  if (error instanceof DraftServiceError) {
-              if (error.code === 'DRAFT_NOT_FOUND' || error.code === 'DRAFT_BLOCK_NOT_FOUND') {
-                return 'COMMON_NOT_FOUND_002';
-              }
-              return 'COMMON_CONFLICT_003';
-            }
-          """
-          new_error = """  if (error instanceof DraftServiceError) {
+          if "case 'DRAFT_REVISION_CONFLICT':" not in source:
+              pattern = re.compile(
+                  r"  if \(error instanceof DraftServiceError\) \{.*?\n  \}\n  if \(error instanceof ProjectStructureError\)",
+                  re.DOTALL,
+              )
+              replacement = """  if (error instanceof DraftServiceError) {
               switch (error.code) {
                 case 'DRAFT_NOT_FOUND':
                   return 'DRAFT_NO_ACTIVE_005';
@@ -64,39 +63,40 @@ jobs:
                   return 'COMMON_CONFLICT_003';
               }
             }
-          """
-          if old_error in source:
-              source = source.replace(old_error, new_error, 1)
-          elif "case 'DRAFT_REVISION_CONFLICT':" not in source:
-              raise SystemExit('Draft error mapping anchor not found')
+            if (error instanceof ProjectStructureError)"""
+              source, count = pattern.subn(replacement, source, count=1)
+              if count != 1:
+                  raise SystemExit('Draft error mapping block was not found exactly once')
 
-          save_case = """      case DRAFT_COMMANDS.saveDraftSnapshot:
-                  return CoreProjectResultSchema.parse({
-                    ok: true,
-                    operation: operation.operation,
-                    data: await drafts.saveSnapshot(requestId, operation.input),
-                  });
-          """
-          patch_case = save_case + """      case DRAFT_COMMANDS.applyPatch:
+          if 'case DRAFT_COMMANDS.applyPatch:' not in source:
+              pattern = re.compile(
+                  r"(      case DRAFT_COMMANDS\.saveDraftSnapshot:\n"
+                  r"        return CoreProjectResultSchema\.parse\(\{\n"
+                  r"          ok: true,\n"
+                  r"          operation: operation\.operation,\n"
+                  r"          data: await drafts\.saveSnapshot\(requestId, operation\.input\),\n"
+                  r"        \}\);\n)"
+              )
+              addition = """      case DRAFT_COMMANDS.applyPatch:
                   return CoreProjectResultSchema.parse({
                     ok: true,
                     operation: operation.operation,
                     data: await drafts.applyPatch(requestId, operation.input),
                   });
           """
-          if 'case DRAFT_COMMANDS.applyPatch:' not in source:
-              if save_case not in source:
-                  raise SystemExit('Draft saveSnapshot switch anchor not found')
-              source = source.replace(save_case, patch_case, 1)
+              source, count = pattern.subn(lambda match: match.group(1) + addition, source, count=1)
+              if count != 1:
+                  raise SystemExit('Draft saveSnapshot switch case was not found exactly once')
           utility.write_text(source)
 
-          replace_once(
-              'scripts/release-tool.mjs',
-              """  for (const token of ['workflow_dispatch:', 'pnpm release:gate', 'gh release create']) {
+          release_tool = Path('scripts/release-tool.mjs')
+          release_source = release_tool.read_text()
+          if "Release workflow is missing the release acceptance gate" not in release_source:
+              old = """  for (const token of ['workflow_dispatch:', 'pnpm release:gate', 'gh release create']) {
               if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
             }
-          """,
-              """  for (const token of ['workflow_dispatch:', 'gh release create']) {
+          """
+              new = """  for (const token of ['workflow_dispatch:', 'gh release create']) {
               if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
             }
             const hasReleaseGate =
@@ -104,43 +104,44 @@ jobs:
               (workflowSource.includes('uses: ./.github/workflows/quality-core.yml') &&
                 workflowSource.includes('enforce_release_gate: true'));
             if (!hasReleaseGate) errors.push('Release workflow is missing the release acceptance gate');
-          """,
-          )
+          """
+              if old not in release_source:
+                  raise SystemExit('Release validator token loop was not found')
+              release_tool.write_text(release_source.replace(old, new, 1))
 
-          replace_once(
-              '.github/workflows/quality-core.yml',
-              """          pnpm package 2>&1 | tee test-results/ci/package-smoke.log
-          """,
-              """          {
+          quality = Path('.github/workflows/quality-core.yml')
+          quality_source = quality.read_text()
+          old_package = '          pnpm package 2>&1 | tee test-results/ci/package-smoke.log\n'
+          if old_package in quality_source:
+              quality_source = quality_source.replace(
+                  old_package,
+                  """          {
                     pnpm build
                     pnpm package
                   } 2>&1 | tee test-results/ci/package-smoke.log
           """,
-          )
+                  1,
+              )
+              quality.write_text(quality_source)
+          elif 'pnpm build\n                    pnpm package' not in quality_source:
+              raise SystemExit('Package smoke command was not found')
 
-          replace_once(
-              '.github/workflows/release.yml',
-              """      - run: pnpm install --frozen-lockfile
-                - name: Build platform package
-          """,
-              """      - run: pnpm install --frozen-lockfile
-                - run: pnpm build
-                - name: Build platform package
-          """,
-          )
-
-          replace_once(
-              '.github/workflows/nightly-quality.yml',
-              """      - run: pnpm install --frozen-lockfile
-                - name: Package nightly platform artifact
-          """,
-              """      - run: pnpm install --frozen-lockfile
-                - run: pnpm build
-                - name: Package nightly platform artifact
-          """,
-          )
+          for workflow in ['.github/workflows/release.yml', '.github/workflows/nightly-quality.yml']:
+              file = Path(workflow)
+              content = file.read_text()
+              anchor = '      - run: pnpm install --frozen-lockfile\n      - name:'
+              if anchor in content:
+                  content = content.replace(
+                      anchor,
+                      '      - run: pnpm install --frozen-lockfile\n      - run: pnpm build\n      - name:',
+                      1,
+                  )
+                  file.write_text(content)
+              elif '      - run: pnpm build\n      - name:' not in content:
+                  raise SystemExit(f'Package build insertion point not found in {workflow}')
           PY
-      - name: Format and validate deterministic fixes
+      - name: Format and validate affected automation
+        shell: bash
         run: |
           pnpm exec prettier --write \
             packages/core-service/src/utility-entry.ts \
@@ -149,7 +150,9 @@ jobs:
             .github/workflows/release.yml \
             .github/workflows/nightly-quality.yml
           pnpm release:check
-          pnpm typecheck
+          pnpm --filter @worldforge/domain build
+          pnpm --filter @worldforge/contracts build
+          pnpm --filter @worldforge/core-service build
       - name: Commit fixes and remove one-time workflow
         shell: bash
         run: |

@@ -124,6 +124,28 @@ def finish() -> None:
     ]);
   });""",
     )
+    replace_once(
+        "tests/e2e/electron-shell.spec.ts",
+        """    await page.waitForTimeout(600);
+    await page.keyboard.type('终');""",
+        """    await page.waitForTimeout(600);
+    await blocks.first().evaluate((element) => {
+      const textNode = element.firstChild;
+      const text = textNode?.textContent ?? '';
+      const offset = text.indexOf('风又起。');
+      if (!textNode || offset < 0) throw new Error('E2E_FIND_REPLACEMENT_TEXT_MISSING');
+      (element as HTMLElement).focus();
+      const range = document.createRange();
+      range.setStart(textNode, offset);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+    });
+    await page.waitForTimeout(50);
+    await page.keyboard.type('终');""",
+    )
 
 
 if __name__ == "__main__":

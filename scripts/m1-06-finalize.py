@@ -146,6 +146,15 @@ def finish() -> None:
     await page.waitForTimeout(50);
     await page.keyboard.type('终');""",
     )
+    replace_once(
+        "tests/e2e/electron-shell.spec.ts",
+        """    await expect(page.locator('[data-draft-state]')).toHaveText(
+      /^已提交 Revision \\d+ 到 project\\.sqlite。$/u,
+    );""",
+        """    await expect(page.locator('[data-draft-state]')).toHaveText(
+      /^已手动保存 · Revision \\d+$/u,
+    );""",
+    )
 
 
 if __name__ == "__main__":

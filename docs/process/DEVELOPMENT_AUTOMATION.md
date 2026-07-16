@@ -65,19 +65,19 @@
 - `pnpm task:advance -- --ci=success --commit=<SHA>`：实现优先模式下把当前卡登记为Implemented、记录延期验证并激活下一张实现依赖已满足的任务。
 - `pnpm task:close -- --ci=success --commit=<SHA>`：关闭Implemented任务并自动激活下一张依赖已满足的任务。
 - GitHub `Task Governance`：按需拉取比较基准，验证任务状态、镜像、修改范围和证据结构。
-- GitHub `Quality`：调用统一的`.github/workflows/quality-core.yml`，以聚合检查`quality`作为最终判据。
+- GitHub `Quality`：调用`.github/workflows/quality-core.yml`，以聚合检查`quality`作为开发合并判据。
 
 PR产生新提交时，旧的Quality和Task Governance运行会自动取消；`main`运行不会取消。每个作业设置独立超时，避免Runner无界挂起。
 
-## 5. 质量核心工作流
+## 5. 开发质量核心
 
-`.github/workflows/quality-core.yml`是日常CI、定时回归和发布前验证的唯一质量实现，包含：
+`.github/workflows/quality-core.yml`只服务开发阶段的PR与`main`质量验证，包含：
 
 ```text
 static-checks
-├─ task:validate / release:check
+├─ task:validate
 ├─ workspace / boundary
-├─ format / lint / typecheck
+└─ format / lint / typecheck
 
 tests（并行矩阵）
 ├─ unit
@@ -91,7 +91,7 @@ desktop-e2e
 └─ 失败截图、trace与显示证据
 
 build
-package-smoke（按调用场景启用）
+package-smoke
 
 quality
 └─ 聚合全部结果；任一必要作业失败则失败
@@ -113,27 +113,12 @@ quality
 
 PR和`main`使用并行专项测试；`pnpm test`保留为本地完整回归命令，不再作为CI中混合所有故障域的单一步骤。
 
-## 7. 定时回归
+## 7. 发布边界
 
-`.github/workflows/nightly-quality.yml`每天18:00 UTC（新加坡时间次日02:00）自动执行，也支持手工触发：
+Release保持冻结且仅允许手工触发，不接入开发PR质量门，不建立夜间构建或自动发布。发布流程继续由`.github/workflows/release.yml`和M8-03验收任务控制；未到发布阶段不得由日常开发自动化触发。
 
-1. 调用统一质量核心。
-2. 执行性能回归。
-3. 在Linux、Windows、macOS上生成夜间打包产物。
-4. 保存性能、测试、E2E和平台产物，供后续批量验收使用。
-
-同一时间只保留最新一次夜间运行，旧运行自动取消。
-
-## 8. 发布自动化
-
-- `.github/workflows/release.yml`只允许从`main`手工触发，默认创建Draft Release。
-- 发布验证直接调用统一质量核心，并额外执行`pnpm release:gate -- --version <SEMVER>`。
-- Linux、Windows和macOS分别执行平台打包，产物汇总后生成`SHA256SUMS.txt`。
-- 已存在的GitHub Release不会被覆盖；Draft、Prerelease和Stable均使用`v<SEMVER>`标签。
-- 当前基础阶段不得绕过M8-03门禁发布`artifacts/foundation`或其他非产品产物。
-
-## 9. 证据
+## 8. 证据
 
 每张任务保留 `summary.md`、`commands.txt`、`known-risks.md`；专项任务再加入测试结果、截图和性能报告。未运行、失败或环境限制必须如实写入。
 
-GitHub Actions诊断产物默认保留14天，夜间性能产物保留30天。自动上传产物用于定位与复核，不自动等同于任务卡的最终Verified证据。
+GitHub Actions诊断产物默认保留14天。自动上传产物用于定位与复核，不自动等同于任务卡的最终Verified证据。

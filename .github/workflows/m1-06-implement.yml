@@ -59,11 +59,18 @@ jobs:
         run: pnpm task:advance -- --ci=success --commit=5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4
       - name: Apply M1-06 implementation
         run: python /tmp/m1-06-implement.py
-      - name: Normalize runtime declarations and test imports
+      - name: Preserve logical IDs across block type changes
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              source = file.read_text()
+              if old not in source:
+                  raise SystemExit(f'Anchor missing in {path}: {old[:100]!r}')
+              file.write_text(source.replace(old, new, 1))
 
           autosave = Path('packages/editor-core/src/autosave.ts')
           source = autosave.read_text()
@@ -85,18 +92,115 @@ jobs:
                       "from '../../packages/editor-core/src/index.js';",
                   )
               )
+
+          replace_once(
+              'packages/contracts/src/draft.ts',
+              "  expectedHash: DraftContentHashValueSchema,\n  content: DraftBlockTextSchema,",
+              "  expectedHash: DraftContentHashValueSchema,\n  blockType: DraftBlockTypeSchema.optional(),\n  content: DraftBlockTextSchema,",
+          )
+          replace_once(
+              'packages/editor-core/src/draft-patch.ts',
+              "      readonly expectedHash: string;\n      readonly content: string;",
+              "      readonly expectedHash: string;\n      readonly blockType?: WorldforgeBlockType | undefined;\n      readonly content: string;",
+          )
+          replace_once(
+              'packages/editor-core/src/draft-patch.ts',
+              "        return previous !== undefined && previous.blockType === block.blockType;",
+              "        return previous !== undefined;",
+          )
+          replace_once(
+              'packages/editor-core/src/draft-patch.ts',
+              """    const attributesChanged = !attributesEqual(
+              block.blockType,
+              previous.attributes,
+              block.attributes,
+            );
+            if (previous.text === block.text && !attributesChanged) continue;
+            updates.push({
+              type: 'update',
+              logicalBlockId: block.logicalBlockId,
+              expectedHash: requiredHash(previous),
+              content: block.text,
+              ...(attributesChanged
+                ? { attributes: normalizedAttributes(block.blockType, block.attributes) }
+                : {}),
+            });""",
+              """    const blockTypeChanged = previous.blockType !== block.blockType;
+            const attributesChanged =
+              blockTypeChanged ||
+              !attributesEqual(block.blockType, previous.attributes, block.attributes);
+            if (previous.text === block.text && !attributesChanged && !blockTypeChanged) continue;
+            updates.push({
+              type: 'update',
+              logicalBlockId: block.logicalBlockId,
+              expectedHash: requiredHash(previous),
+              ...(blockTypeChanged ? { blockType: block.blockType } : {}),
+              content: block.text,
+              ...(attributesChanged
+                ? { attributes: normalizedAttributes(block.blockType, block.attributes) }
+                : {}),
+            });""",
+          )
+          replace_once(
+              'packages/core-service/src/draft.ts',
+              "        blockType: current.blockType,",
+              "        blockType: operation.blockType ?? current.blockType,",
+          )
+          replace_once(
+              'tests/unit/editor-draft-patch.test.ts',
+              """  it('represents a block type change as delete plus insert', () => {
+                const operations = buildDraftPatchOperations(
+                  [persisted(firstId, '旧正文', firstHash)],
+                  [current(firstId, firstId, '新标题', 'heading')],
+                );
+
+                expect(operations).toEqual([
+                  { type: 'delete', logicalBlockId: firstId, expectedHash: firstHash },
+                  {
+                    type: 'insert',
+                    afterLogicalBlockId: null,
+                    block: {
+                      blockType: 'heading',
+                      content: '新标题',
+                      attributes: { headingLevel: 2 },
+                    },
+                  },
+                ]);
+              });""",
+              """  it('preserves logical identity when a block type changes', () => {
+                const operations = buildDraftPatchOperations(
+                  [persisted(firstId, '旧正文', firstHash)],
+                  [current(firstId, firstId, '新标题', 'heading')],
+                );
+
+                expect(operations).toEqual([
+                  {
+                    type: 'update',
+                    logicalBlockId: firstId,
+                    expectedHash: firstHash,
+                    blockType: 'heading',
+                    content: '新标题',
+                    attributes: { headingLevel: 2 },
+                  },
+                ]);
+              });""",
+          )
           PY
       - name: Format
         run: |
           pnpm exec prettier --write \
+            packages/contracts/src/draft.ts \
+            packages/core-service/src/draft.ts \
             packages/editor-core/src/autosave.ts \
             packages/editor-core/src/writing-tools.ts \
+            packages/editor-core/src/draft-patch.ts \
             packages/editor-core/src/index.ts \
             apps/desktop/main/src/electron-main.ts \
             apps/desktop/renderer/src/index.ts \
             apps/desktop/renderer/src/index.html \
             apps/desktop/renderer/src/styles.css \
             tests/unit/autosave-writing-tools.test.ts \
+            tests/unit/editor-draft-patch.test.ts \
             tests/performance/writing-tools-performance.test.ts \
             tests/e2e/electron-shell.spec.ts \
             docs/tasks/ACTIVE_TASK.json \
@@ -125,31 +229,11 @@ jobs:
         run: pnpm test:security
       - name: Performance tests
         run: pnpm test:perf
-      - name: Capture Electron E2E diagnostics
-        shell: bash
+      - name: Electron E2E
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
           WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
-        run: |
-          mkdir -p test-results/ci
-          set +e
-          pnpm test:e2e > test-results/ci/m1-06-e2e.log 2>&1
-          code=$?
-          cat test-results/ci/m1-06-e2e.log
-          echo "$code" > test-results/ci/m1-06-e2e-code
-          exit 0
-      - name: Upload Electron E2E diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: m1-06-e2e-diagnostics
-          path: |
-            test-results/ci/
-            test-results/electron/
-            test-results/display-matrix/
-          if-no-files-found: warn
-          retention-days: 1
-      - name: Enforce Electron E2E result
-        run: test "$(cat test-results/ci/m1-06-e2e-code)" = "0"
+        run: pnpm test:e2e
       - name: Build
         run: pnpm build
       - name: Commit M1-06 implementation
@@ -158,14 +242,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            packages/contracts/src/draft.ts \
+            packages/core-service/src/draft.ts \
             packages/editor-core/src/autosave.ts \
             packages/editor-core/src/writing-tools.ts \
+            packages/editor-core/src/draft-patch.ts \
             packages/editor-core/src/index.ts \
             apps/desktop/main/src/electron-main.ts \
             apps/desktop/renderer/src/index.ts \
             apps/desktop/renderer/src/index.html \
             apps/desktop/renderer/src/styles.css \
             tests/unit/autosave-writing-tools.test.ts \
+            tests/unit/editor-draft-patch.test.ts \
             tests/performance/writing-tools-performance.test.ts \
             tests/e2e/electron-shell.spec.ts \
             docs/tasks/ACTIVE_TASK.json \

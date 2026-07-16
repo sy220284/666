@@ -77,8 +77,25 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests
         run: pnpm test:unit
-      - name: Integration tests
-        run: pnpm test:integration
+      - name: Capture integration tests
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set +e
+          pnpm test:integration > test-results/ci/m1-06-integration.log 2>&1
+          code=$?
+          cat test-results/ci/m1-06-integration.log
+          printf '%s' "$code" > test-results/ci/m1-06-integration-code
+          exit 0
+      - name: Upload integration diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-06-integration-diagnostics
+          path: test-results/ci/m1-06-integration*
+          if-no-files-found: error
+          retention-days: 1
+      - name: Enforce integration result
+        run: test "$(cat test-results/ci/m1-06-integration-code)" = "0"
       - name: Security tests
         run: pnpm test:security
       - name: Performance tests

@@ -34,7 +34,11 @@ const coreEntryPath = path.resolve(
   currentDirectory,
   '../../../../packages/core-service/dist/utility-entry.js',
 );
-const developmentMigrationsPath = path.resolve(currentDirectory, '../../../../migrations/app');
+const developmentAppMigrationsPath = path.resolve(currentDirectory, '../../../../migrations/app');
+const developmentProjectMigrationsPath = path.resolve(
+  currentDirectory,
+  '../../../../migrations/project',
+);
 
 if (process.env.WORLDFORGE_E2E === '1' && process.env.WORLDFORGE_E2E_USER_DATA) {
   if (!path.isAbsolute(process.env.WORLDFORGE_E2E_USER_DATA)) {
@@ -52,14 +56,18 @@ let startupStage = 'module';
 
 function spawnCore(): UtilityProcessHandle {
   const userDataPath = app.getPath('userData');
-  const migrationsPath = app.isPackaged
+  const appMigrationsPath = app.isPackaged
     ? path.join(process.resourcesPath, 'migrations', 'app')
-    : developmentMigrationsPath;
+    : developmentAppMigrationsPath;
+  const projectMigrationsPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'migrations', 'project')
+    : developmentProjectMigrationsPath;
   const child = utilityProcess.fork(
     coreEntryPath,
     [
       `--app-database=${path.join(userDataPath, 'app.sqlite')}`,
-      `--app-migrations=${migrationsPath}`,
+      `--app-migrations=${appMigrationsPath}`,
+      `--project-migrations=${projectMigrationsPath}`,
       `--app-recovery=${path.join(userDataPath, 'recovery', 'app')}`,
       `--app-version=${app.getVersion()}`,
     ],
@@ -254,6 +262,29 @@ async function bootstrap(): Promise<void> {
   );
 
   startupStage = 'ipc-register';
+  const e2eSelection = (name: string): string | null => {
+    if (process.env.WORLDFORGE_E2E !== '1') return null;
+    const value = process.env[name];
+    if (!value) return null;
+    if (!path.isAbsolute(value)) throw new Error(`${name}_MUST_BE_ABSOLUTE`);
+    return value;
+  };
+  const chooseDirectory = async (
+    title: string,
+    buttonLabel: string,
+    e2eVariable: string,
+  ): Promise<string | null> => {
+    const injected = e2eSelection(e2eVariable);
+    if (injected) return injected;
+    const window = mainWindow;
+    if (!window) return null;
+    const selection = await dialog.showOpenDialog(window, {
+      title,
+      buttonLabel,
+      properties: ['openDirectory'],
+    });
+    return selection.canceled ? null : (selection.filePaths[0] ?? null);
+  };
   unregisterIpc = registerIpcHandlers({
     ipcMain,
     supervisor,
@@ -264,6 +295,12 @@ async function bootstrap(): Promise<void> {
     logger,
     getWindowPreferences: () => activeWindowPreferences,
     setAppearancePreferences: updateAppearancePreferences,
+    chooseProjectCreateParent: () =>
+      chooseDirectory('选择项目保存位置', '在此创建', 'WORLDFORGE_E2E_CREATE_PARENT'),
+    chooseProjectToOpen: () =>
+      chooseDirectory('打开 WorldForge 项目', '打开项目', 'WORLDFORGE_E2E_OPEN_WORKSPACE'),
+    chooseProjectMoveParent: () =>
+      chooseDirectory('选择项目的新位置', '移动到这里', 'WORLDFORGE_E2E_MOVE_PARENT'),
     chooseRecentLocation: async () => {
       const window = mainWindow;
       if (!window) return null;

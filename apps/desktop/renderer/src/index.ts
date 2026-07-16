@@ -4,6 +4,7 @@ import type {
   AppSettings,
   AppSettingsSnapshot,
   AppSettingsUpdate,
+  ProjectWorkspaceSummary,
   RecentProject,
 } from './types.js';
 
@@ -53,9 +54,39 @@ const openSettingsButton = document.querySelector<HTMLButtonElement>('[data-open
 const saveSettingsButton = document.querySelector<HTMLButtonElement>('[data-save-settings]');
 const resetSettingsButton = document.querySelector<HTMLButtonElement>('[data-reset-settings]');
 const closeSettingsButton = document.querySelector<HTMLButtonElement>('[data-close-settings]');
+const workspaceTitle = document.querySelector<HTMLElement>('[data-workspace-title]');
+const workspaceBadge = document.querySelector<HTMLElement>('[data-workspace-badge]');
+const activeProjectPanel = document.querySelector<HTMLElement>('[data-active-project]');
+const activeProjectName = document.querySelector<HTMLElement>('[data-active-project-name]');
+const activeProjectPath = document.querySelector<HTMLElement>('[data-active-project-path]');
+const activeProjectMode = document.querySelector<HTMLElement>('[data-active-project-mode]');
+const activeProjectReadOnly = document.querySelector<HTMLElement>('[data-active-project-readonly]');
+const projectOperationStatus = document.querySelector<HTMLElement>(
+  '[data-project-operation-status]',
+);
+const moveProjectButton = document.querySelector<HTMLButtonElement>('[data-move-project]');
+const closeProjectButton = document.querySelector<HTMLButtonElement>('[data-close-project]');
+const createProjectButtons = document.querySelectorAll<HTMLButtonElement>(
+  '[data-open-create-project], [data-create-project]',
+);
+const openProjectButtons = document.querySelectorAll<HTMLButtonElement>(
+  '[data-open-project], [data-select-project]',
+);
+const createProjectDialog = document.querySelector<HTMLDialogElement>(
+  '[data-create-project-dialog]',
+);
+const createProjectForm = document.querySelector<HTMLFormElement>('[data-create-project-form]');
+const createProjectStatus = document.querySelector<HTMLElement>('[data-create-project-status]');
+const confirmCreateProjectButton = document.querySelector<HTMLButtonElement>(
+  '[data-confirm-create-project]',
+);
+const cancelCreateProjectButton = document.querySelector<HTMLButtonElement>(
+  '[data-cancel-create-project]',
+);
 
 let appearance = defaultAppearance;
 let applicationSettings = defaultSettings;
+let activeProject: ProjectWorkspaceSummary | null = null;
 let resizeFrame: number | null = null;
 let drawerRestoreTarget: HTMLElement | null = null;
 
@@ -171,6 +202,92 @@ function showSettingsSnapshot(snapshot: AppSettingsSnapshot): void {
     snapshot.source === 'recovered' ? '检测到不兼容或损坏的设置，已安全恢复默认值' : '';
 }
 
+function setProjectOperationStatus(message: string, error = false): void {
+  if (!projectOperationStatus) return;
+  projectOperationStatus.textContent = message;
+  projectOperationStatus.classList.toggle('is-error', error);
+}
+
+function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
+  activeProject = project;
+  document.body.dataset.projectState = project
+    ? project.databaseMode === 'read-only'
+      ? 'read-only'
+      : 'open'
+    : 'closed';
+  for (const button of createProjectButtons) button.disabled = project !== null;
+  for (const button of openProjectButtons) button.disabled = project !== null;
+  if (activeProjectPanel) activeProjectPanel.hidden = project === null;
+  if (!project) {
+    if (workspaceTitle) workspaceTitle.textContent = '继续你的本地写作';
+    if (workspaceBadge) workspaceBadge.textContent = '应用级数据';
+    setProjectOperationStatus('');
+    return;
+  }
+  if (workspaceTitle) workspaceTitle.textContent = project.name;
+  if (workspaceBadge) {
+    workspaceBadge.textContent = project.databaseMode === 'read-only' ? '只读项目' : '本地项目';
+  }
+  if (activeProjectName) activeProjectName.textContent = project.name;
+  if (activeProjectPath) {
+    activeProjectPath.textContent = project.workspacePath;
+    activeProjectPath.title = project.workspacePath;
+  }
+  if (activeProjectMode) {
+    activeProjectMode.textContent =
+      project.databaseMode === 'read-only' ? '只读兼容模式' : '可写 · 本地数据库';
+  }
+  if (activeProjectReadOnly) {
+    activeProjectReadOnly.hidden = project.databaseMode !== 'read-only';
+    activeProjectReadOnly.textContent =
+      project.databaseMode === 'read-only'
+        ? `数据库以只读方式打开（${project.readOnlyReason ?? '兼容性保护'}），原文件未被修改；写入和移动已禁用。`
+        : '';
+  }
+  if (moveProjectButton) moveProjectButton.disabled = project.databaseMode === 'read-only';
+  if (closeProjectButton) closeProjectButton.disabled = false;
+  setProjectOperationStatus('项目身份和路径边界已由 Core 验证。');
+}
+
+async function refreshActiveProject(): Promise<void> {
+  try {
+    const result = await window.worldforge.project.getActive();
+    if (result.ok) renderActiveProject(result.data);
+    else setProjectOperationStatus(`项目状态读取失败 · ${result.error.code}`, true);
+  } catch {
+    setProjectOperationStatus('项目状态读取失败 · COMMON_INTERNAL_999', true);
+  }
+}
+
+async function openRecentProject(projectId: string, button: HTMLButtonElement): Promise<void> {
+  button.disabled = true;
+  const result = await window.worldforge.project.openRecent(projectId);
+  if (!result.ok) {
+    button.disabled = false;
+    showRecentFailure(`打开失败 · ${result.error.code}`);
+    return;
+  }
+  renderActiveProject(result.data);
+  await refreshRecentProjects();
+}
+
+async function openSelectedProject(button: HTMLButtonElement): Promise<void> {
+  button.disabled = true;
+  try {
+    const result = await window.worldforge.project.openSelected();
+    if (result.ok) {
+      renderActiveProject(result.data);
+      await refreshRecentProjects();
+    } else if (result.error.code !== 'COMMON_CANCELLED_004') {
+      showRecentFailure(`打开失败 · ${result.error.code}`);
+    }
+  } catch {
+    showRecentFailure('打开失败 · COMMON_INTERNAL_999');
+  } finally {
+    button.disabled = activeProject !== null;
+  }
+}
+
 function showRecentFailure(message: string): void {
   if (recentLoading) recentLoading.hidden = true;
   if (recentEmpty) recentEmpty.hidden = true;
@@ -247,7 +364,14 @@ function renderRecentProjects(projects: readonly RecentProject[]): void {
 
     const actions = document.createElement('div');
     actions.className = 'recent-project-card__actions';
-    if (project.missingSince) {
+    if (!project.missingSince) {
+      const open = recentAction('打开', 'data-open-recent');
+      open.disabled = activeProject !== null;
+      open.addEventListener('click', () => {
+        void openRecentProject(project.projectId, open);
+      });
+      actions.append(open);
+    } else {
       const relocate = recentAction('重新定位', 'data-relocate-recent');
       relocate.addEventListener('click', () => {
         void relocateRecentProject(project.projectId, relocate);
@@ -506,6 +630,7 @@ async function refresh(): Promise<void> {
         contentWidth: preferences.data.contentWidth,
       };
     }
+    await refreshActiveProject();
     await Promise.all([refreshApplicationSettings(), refreshRecentProjects()]);
   } catch {
     setStatus('COMMON_INTERNAL_999', null);
@@ -526,7 +651,10 @@ restartButton?.addEventListener('click', async () => {
     setStatus(result.error.code, result.error.diagnosticId ?? null);
   }
   restartButton.disabled = false;
-  if (result.ok) await Promise.all([refreshApplicationSettings(), refreshRecentProjects()]);
+  if (result.ok) {
+    await refreshActiveProject();
+    await Promise.all([refreshApplicationSettings(), refreshRecentProjects()]);
+  }
 });
 
 leftToggle?.addEventListener('click', () => openDrawer(leftPanel, leftToggle));
@@ -543,6 +671,119 @@ appearanceForm?.addEventListener('change', () => {
 
 refreshRecentButton?.addEventListener('click', () => {
   void refreshRecentProjects();
+});
+
+for (const button of createProjectButtons) {
+  button.addEventListener('click', () => {
+    if (activeProject) return;
+    if (createProjectStatus) {
+      createProjectStatus.classList.remove('is-error');
+      createProjectStatus.textContent = '';
+    }
+    createProjectDialog?.showModal();
+    createProjectForm?.querySelector<HTMLInputElement>('[data-project-name]')?.focus();
+  });
+}
+
+for (const button of openProjectButtons) {
+  button.addEventListener('click', () => {
+    if (!activeProject) void openSelectedProject(button);
+  });
+}
+
+cancelCreateProjectButton?.addEventListener('click', () => createProjectDialog?.close());
+createProjectForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (activeProject || !createProjectForm) return;
+  const nameInput = createProjectForm.elements.namedItem('name');
+  const channelInput = createProjectForm.elements.namedItem('channel');
+  if (!(nameInput instanceof HTMLInputElement) || !(channelInput instanceof HTMLInputElement)) {
+    return;
+  }
+  const name = nameInput.value.trim();
+  const channel = channelInput.value.trim();
+  if (!name || !channel) {
+    if (createProjectStatus) {
+      createProjectStatus.classList.add('is-error');
+      createProjectStatus.textContent = '请填写项目名称和创作频道。';
+    }
+    return;
+  }
+  if (confirmCreateProjectButton) confirmCreateProjectButton.disabled = true;
+  if (createProjectStatus) {
+    createProjectStatus.classList.remove('is-error');
+    createProjectStatus.textContent = '请选择保存位置…';
+  }
+  try {
+    const result = await window.worldforge.project.create({ name, channel });
+    if (result.ok) {
+      createProjectDialog?.close();
+      createProjectForm.reset();
+      channelInput.value = '未分类';
+      renderActiveProject(result.data);
+      await refreshRecentProjects();
+    } else if (result.error.code !== 'COMMON_CANCELLED_004' && createProjectStatus) {
+      createProjectStatus.classList.add('is-error');
+      createProjectStatus.textContent = `创建失败 · ${result.error.code}`;
+    } else if (createProjectStatus) {
+      createProjectStatus.textContent = '';
+    }
+  } catch {
+    if (createProjectStatus) {
+      createProjectStatus.classList.add('is-error');
+      createProjectStatus.textContent = '创建失败 · COMMON_INTERNAL_999';
+    }
+  } finally {
+    if (confirmCreateProjectButton) confirmCreateProjectButton.disabled = false;
+  }
+});
+
+closeProjectButton?.addEventListener('click', async () => {
+  const project = activeProject;
+  if (!project) return;
+  closeProjectButton.disabled = true;
+  setProjectOperationStatus('正在安全关闭并清空活动上下文…');
+  try {
+    const result = await window.worldforge.project.close(project.projectId);
+    if (result.ok) {
+      renderActiveProject(null);
+      await refreshRecentProjects();
+    } else {
+      setProjectOperationStatus(`关闭失败 · ${result.error.code}`, true);
+      closeProjectButton.disabled = false;
+    }
+  } catch {
+    setProjectOperationStatus('关闭失败 · COMMON_INTERNAL_999', true);
+    closeProjectButton.disabled = false;
+  }
+});
+
+moveProjectButton?.addEventListener('click', async () => {
+  const project = activeProject;
+  if (!project || project.databaseMode === 'read-only') return;
+  moveProjectButton.disabled = true;
+  setProjectOperationStatus('请选择新位置；Core 将复制、校验后再切换。');
+  try {
+    const result = await window.worldforge.project.move(project.projectId);
+    if (result.ok) {
+      renderActiveProject(result.data);
+      setProjectOperationStatus(
+        result.data.sourceRetained
+          ? '移动已完成；原位置未能清理，请确认后手动处理。'
+          : '移动已完成，哈希与数据库完整性校验通过。',
+      );
+      await refreshRecentProjects();
+    } else if (result.error.code === 'COMMON_CANCELLED_004') {
+      setProjectOperationStatus('已取消移动。');
+      moveProjectButton.disabled = false;
+    } else {
+      setProjectOperationStatus(`移动失败 · ${result.error.code}；原项目保持可用。`, true);
+      moveProjectButton.disabled = false;
+    }
+  } catch {
+    setProjectOperationStatus('移动失败 · COMMON_INTERNAL_999；原项目保持可用。', true);
+    moveProjectButton.disabled = false;
+  }
 });
 
 openSettingsButton?.addEventListener('click', () => {

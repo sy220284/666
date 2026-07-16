@@ -41,6 +41,8 @@
           <small data-diagnostic-id></small>
         </div>
         <div class="top-bar__actions">
+          <button class="primary-button" type="button" data-open-create-project>新建项目</button>
+          <button class="quiet-button" type="button" data-open-project>打开项目</button>
           <button class="quiet-button" type="button" data-open-settings>通用设置</button>
           <button class="quiet-button" type="button" data-boundary-popover aria-expanded="false">
             浮层边界
@@ -98,9 +100,9 @@
             <header class="workspace-header">
               <div>
                 <p class="eyebrow">LOCAL FIRST · APPLICATION HOME</p>
-                <h1>继续你的本地写作</h1>
+                <h1 data-workspace-title>继续你的本地写作</h1>
               </div>
-              <span class="prototype-badge">应用级数据</span>
+              <span class="prototype-badge" data-workspace-badge>应用级数据</span>
             </header>
             <div class="paper-stage">
               <article class="editor-paper" data-editor-paper tabindex="0">
@@ -111,7 +113,31 @@
                     这里仅显示 Core 从应用数据库读取的项目登记；项目正文仍属于各自的
                     project.sqlite。
                   </p>
+                  <div class="home-actions">
+                    <button class="primary-button" type="button" data-create-project>
+                      新建本地项目
+                    </button>
+                    <button class="quiet-button" type="button" data-select-project>
+                      打开已有项目
+                    </button>
+                  </div>
                 </div>
+                <section class="active-project" data-active-project hidden aria-live="polite">
+                  <div class="active-project__heading">
+                    <div>
+                      <p class="chapter-kicker">当前工作区</p>
+                      <h3 data-active-project-name>—</h3>
+                      <p data-active-project-path></p>
+                    </div>
+                    <span class="prototype-badge" data-active-project-mode>—</span>
+                  </div>
+                  <p class="active-project__notice" data-active-project-readonly hidden></p>
+                  <p class="active-project__status" data-project-operation-status role="status"></p>
+                  <div class="active-project__actions">
+                    <button class="quiet-button" type="button" data-move-project>移动项目</button>
+                    <button class="quiet-button" type="button" data-close-project>关闭项目</button>
+                  </div>
+                </section>
                 <section class="recent-projects" aria-labelledby="recent-projects-heading">
                   <header>
                     <div>
@@ -123,7 +149,7 @@
                   <p class="recent-state" data-recent-loading>正在读取最近项目…</p>
                   <div class="recent-empty" data-recent-empty hidden>
                     <strong>还没有最近项目</strong>
-                    <p>创建和打开项目将在后续任务接通；这里不会用演示数据填充。</p>
+                    <p>新建或打开一个 .worldforge 本地项目后，它会出现在这里。</p>
                   </div>
                   <p class="recent-state is-error" data-recent-error role="alert" hidden></p>
                   <div class="recent-list" data-recent-list></div>
@@ -295,6 +321,45 @@
           <span></span>
           <button class="quiet-button" type="button" data-close-settings>关闭</button>
           <button class="primary-button" type="button" data-save-settings>保存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog
+      class="settings-dialog"
+      data-create-project-dialog
+      aria-labelledby="create-project-title"
+    >
+      <form data-create-project-form>
+        <div class="settings-dialog__body">
+          <p class="eyebrow">LOCAL PROJECT</p>
+          <h2 id="create-project-title">新建 WorldForge 项目</h2>
+          <p>输入项目资料后，再通过系统目录选择器决定保存位置。</p>
+          <div class="general-settings-grid project-create-grid">
+            <label>
+              <span>项目名称</span>
+              <input name="name" data-project-name maxlength="240" required autocomplete="off" />
+            </label>
+            <label>
+              <span>创作频道</span>
+              <input
+                name="channel"
+                data-project-channel
+                maxlength="120"
+                value="未分类"
+                required
+                autocomplete="off"
+              />
+            </label>
+          </div>
+          <p class="save-state" data-create-project-status role="status"></p>
+        </div>
+        <footer>
+          <span></span><span></span>
+          <button class="quiet-button" type="button" data-cancel-create-project>取消</button>
+          <button class="primary-button" type="submit" data-confirm-create-project>
+            选择位置并创建
+          </button>
         </footer>
       </form>
     </dialog>

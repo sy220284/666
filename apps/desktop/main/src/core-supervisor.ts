@@ -4,6 +4,8 @@ import {
   CoreAppDataOperationSchema,
   CoreAppDataResultSchema,
   CoreEventSchema,
+  CoreProjectOperationSchema,
+  CoreProjectResultSchema,
   PROTOCOL_VERSION,
   TaskCommandResultSchema,
   WindowPreferencesSchema,
@@ -11,6 +13,8 @@ import {
   type CoreAppDataOperation,
   type CoreAppDataResult,
   type CoreEvent,
+  type CoreProjectOperation,
+  type CoreProjectResult,
   type CoreStatus,
   type CoreWindowPreferencesResult,
   type TaskCommand,
@@ -210,6 +214,39 @@ export class CoreSupervisor {
     const result = await response;
     if (result?.type === 'core.app-data.result') return result.result;
     return CoreAppDataResultSchema.parse({
+      ok: false,
+      operation: operation.operation,
+      errorCode: 'COMMON_TIMEOUT_005',
+    });
+  }
+
+  async invokeProjectOperation(
+    requestId: string,
+    input: CoreProjectOperation,
+  ): Promise<CoreProjectResult> {
+    const operation = CoreProjectOperationSchema.parse(input);
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return CoreProjectResultSchema.parse({
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'COMMON_INTERNAL_999',
+      });
+    }
+
+    const response = this.#waitForMessage(
+      (message) => message.type === 'core.project.result' && message.requestId === requestId,
+      Math.max(this.#commandTimeoutMs, 120_000),
+    );
+    process.postMessage({
+      type: 'core.project.command',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      operation,
+    });
+    const result = await response;
+    if (result?.type === 'core.project.result') return result.result;
+    return CoreProjectResultSchema.parse({
       ok: false,
       operation: operation.operation,
       errorCode: 'COMMON_TIMEOUT_005',

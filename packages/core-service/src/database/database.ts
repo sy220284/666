@@ -185,6 +185,29 @@ async function openDatabaseState(
         reader: probe,
       };
     }
+    try {
+      if (probe.prepare('PRAGMA foreign_key_check').all().length > 0) {
+        return {
+          kind,
+          mode: 'read-only',
+          compatibility: 'integrity-failed',
+          schemaVersion: inspection.schemaVersion,
+          capabilities: detectCapabilities(probe),
+          lastErrorCode: 'DATABASE_INTEGRITY_FAILED',
+          reader: probe,
+        };
+      }
+    } catch {
+      return {
+        kind,
+        mode: 'read-only',
+        compatibility: 'integrity-failed',
+        schemaVersion: inspection.schemaVersion,
+        capabilities: detectCapabilities(probe),
+        lastErrorCode: 'DATABASE_INTEGRITY_FAILED',
+        reader: probe,
+      };
+    }
     probe.close();
   } else {
     await mkdir(path.dirname(options.path), { recursive: true, mode: 0o700 });

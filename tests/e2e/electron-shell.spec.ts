@@ -30,6 +30,7 @@ async function temporaryUserData(): Promise<string> {
 async function launch(
   userDataPath: string,
   forceDeviceScaleFactor?: number,
+  projectEnvironment: Readonly<Record<string, string>> = {},
 ): Promise<ElectronApplication> {
   const electronArguments: string[] = [];
   if (process.getuid?.() === 0) electronArguments.push('--no-sandbox');
@@ -43,6 +44,7 @@ async function launch(
       ...process.env,
       WORLDFORGE_E2E: '1',
       WORLDFORGE_E2E_USER_DATA: userDataPath,
+      ...projectEnvironment,
     },
   });
 }
@@ -255,6 +257,84 @@ test('renders only persisted recent projects and restores general settings after
       return result.ok ? result.data.projects.length : -1;
     });
     expect(storedCount).toBe(1);
+  } finally {
+    await closeGracefully(reopened);
+  }
+});
+
+test('creates, reopens, moves, and protects a future-schema project through the desktop UI', async () => {
+  test.setTimeout(90_000);
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'project-source');
+  const moveParent = path.join(userDataPath, 'project-target');
+  await Promise.all([
+    mkdir(createParent, { recursive: true }),
+    mkdir(moveParent, { recursive: true }),
+  ]);
+  const environment = {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+    WORLDFORGE_E2E_MOVE_PARENT: moveParent,
+  };
+  const sourceWorkspace = path.join(createParent, '夜航.worldforge');
+  const movedWorkspace = path.join(moveParent, '夜航.worldforge');
+
+  const application = await launch(userDataPath, undefined, environment);
+  let applicationClosed = false;
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-create-project]').click();
+    await expect(page.locator('[data-create-project-dialog]')).toBeVisible();
+    await page.locator('[data-project-name]').fill('夜航');
+    await page.locator('[data-project-channel]').fill('悬疑');
+    await page.locator('[data-confirm-create-project]').click();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await expect(page.locator('[data-active-project-name]')).toHaveText('夜航');
+    await expect(page.locator('[data-active-project-path]')).toHaveText(sourceWorkspace);
+    expect(await readdir(sourceWorkspace)).toEqual(
+      expect.arrayContaining(['manifest.json', 'project.sqlite']),
+    );
+
+    await page.locator('[data-close-project]').click();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'closed');
+    await expect(page.locator('[data-recent-card]')).toHaveCount(1);
+    await page.locator('[data-open-recent]').click();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+
+    await page.locator('[data-move-project]').click();
+    await expect(page.locator('[data-active-project-path]')).toHaveText(movedWorkspace);
+    await expect(page.locator('[data-project-operation-status]')).toContainText('校验通过');
+    expect(await readdir(moveParent)).toContain('夜航.worldforge');
+    expect(await readdir(createParent)).not.toContain('夜航.worldforge');
+    await page.locator('[data-close-project]').click();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'closed');
+    await closeGracefully(application);
+    applicationClosed = true;
+  } finally {
+    if (!applicationClosed) await closeGracefully(application);
+  }
+
+  const projectDatabase = new DatabaseSync(path.join(movedWorkspace, 'project.sqlite'));
+  projectDatabase
+    .prepare(
+      `INSERT INTO schema_migrations(version, name, checksum, applied_at, app_version)
+       VALUES(99, 'future', 'future-checksum', ?, '9.0.0')`,
+    )
+    .run('2026-07-16T09:00:00.000Z');
+  projectDatabase.close();
+
+  const reopened = await launch(userDataPath, undefined, environment);
+  try {
+    const reopenedPage = await reopened.firstWindow();
+    await reopenedPage.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await reopenedPage.locator('[data-open-recent]').click();
+    await expect(reopenedPage.locator('body')).toHaveAttribute('data-project-state', 'read-only');
+    await expect(reopenedPage.locator('[data-active-project-readonly]')).toContainText(
+      'future-schema',
+    );
+    await expect(reopenedPage.locator('[data-move-project]')).toBeDisabled();
+    await reopenedPage.locator('[data-close-project]').click();
+    await expect(reopenedPage.locator('body')).toHaveAttribute('data-project-state', 'closed');
   } finally {
     await closeGracefully(reopened);
   }

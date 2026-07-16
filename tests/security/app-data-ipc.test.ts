@@ -1,10 +1,14 @@
 import {
   APP_COMMANDS,
+  PROJECT_WORKSPACE_COMMANDS,
   PROTOCOL_VERSION,
+  ProjectCreateCommandSchema,
   ProjectRelocateRecentCommandSchema,
   SettingsSetCommandSchema,
   type CoreAppDataOperation,
   type CoreAppDataResult,
+  type CoreProjectOperation,
+  type CoreProjectResult,
   type WindowPreferences,
 } from '@worldforge/contracts';
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
@@ -117,11 +121,34 @@ describe('application-data IPC contracts', () => {
     const invokeAppDataOperation = vi.fn(
       async (_requestId: string, operation: CoreAppDataOperation) => successFor(operation),
     );
+    const invokeProjectOperation = vi.fn(
+      async (_requestId: string, operation: CoreProjectOperation): Promise<CoreProjectResult> => {
+        if (operation.operation !== PROJECT_WORKSPACE_COMMANDS.create) {
+          return { ok: false, operation: operation.operation, errorCode: 'COMMON_INTERNAL_999' };
+        }
+        return {
+          ok: true,
+          operation: operation.operation,
+          data: {
+            projectId,
+            name: operation.input.name,
+            channel: operation.input.channel,
+            workspacePath: `${operation.parentDirectory}/真实项目.worldforge`,
+            schemaVersion: 1,
+            databaseMode: 'read-write',
+            compatibility: 'current',
+            readOnlyReason: null,
+            createdAt: '2026-07-16T06:00:00.000Z',
+          },
+        };
+      },
+    );
     const supervisor = {
       getStatus: vi.fn(),
       restart: vi.fn(),
       invokeTaskCommand: vi.fn(),
       invokeAppDataOperation,
+      invokeProjectOperation,
       attachTaskPort: vi.fn(() => ({ ok: true })),
     } as unknown as CoreSupervisor;
     const credentialBroker = {
@@ -142,6 +169,9 @@ describe('application-data IPC contracts', () => {
       getWindowPreferences: () => preferences,
       setAppearancePreferences: vi.fn(async () => preferences),
       chooseRecentLocation,
+      chooseProjectCreateParent: vi.fn(async () => selectedPath),
+      chooseProjectToOpen: vi.fn(async () => null),
+      chooseProjectMoveParent: vi.fn(async () => null),
     });
 
     const listHandler = handlers.get('worldforge:project:list-recent');
@@ -194,6 +224,36 @@ describe('application-data IPC contracts', () => {
       operation: APP_COMMANDS.projectRelocateRecent,
       projectId,
       workspacePath: selectedPath,
+    });
+
+    const createHandler = handlers.get('worldforge:project:create');
+    const createCommand = {
+      ...base,
+      command: PROJECT_WORKSPACE_COMMANDS.create,
+      payload: { name: '真实项目', channel: '悬疑' },
+    };
+    expect(ProjectCreateCommandSchema.safeParse(createCommand).success).toBe(true);
+    await expect(
+      createHandler?.(
+        { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+        { ...createCommand, payload: { ...createCommand.payload, parentDirectory: '/injected' } },
+      ),
+    ).resolves.toMatchObject({ ok: false, error: { code: 'COMMON_INVALID_INPUT_001' } });
+    expect(invokeProjectOperation).not.toHaveBeenCalled();
+
+    await expect(
+      createHandler?.(
+        { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+        createCommand,
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { projectId, name: '真实项目', workspacePath: `${selectedPath}/真实项目.worldforge` },
+    });
+    expect(invokeProjectOperation).toHaveBeenCalledWith(base.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.create,
+      input: createCommand.payload,
+      parentDirectory: selectedPath,
     });
   });
 });

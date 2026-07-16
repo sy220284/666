@@ -2,18 +2,23 @@ import path from 'node:path';
 
 import {
   APP_DATA_COMMANDS,
+  PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
+  CoreProjectResultSchema,
   PROTOCOL_VERSION,
   type CoreEvent,
   type CoreAppDataOperation,
   type CoreAppDataResult,
+  type CoreProjectOperation,
+  type CoreProjectResult,
   type ErrorCode,
 } from '@worldforge/contracts';
 
 import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
+import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 
 interface TransferredPort {
@@ -71,6 +76,11 @@ const appRuntime = await openAppRuntime({
   recoveryDirectory: requiredAbsolutePath('app-recovery'),
   appVersion: requiredArgument('app-version'),
 });
+const projectWorkspace = new ProjectWorkspaceService({
+  projectMigrationsDirectory: requiredAbsolutePath('project-migrations'),
+  appVersion: requiredArgument('app-version'),
+  recentProjects: appRuntime.recentProjects,
+});
 
 function send(message: CoreEvent): void {
   parentPort?.postMessage(message);
@@ -114,6 +124,34 @@ function appDataError(error: unknown): ErrorCode {
   }
   if (error instanceof DatabaseFoundationError && error.code === 'REQUEST_ID_INVALID') {
     return 'COMMON_INVALID_INPUT_001';
+  }
+  if (error instanceof Error && error.name === 'ZodError') return 'COMMON_INVALID_INPUT_001';
+  return windowPreferencesError(error);
+}
+
+function projectWorkspaceError(error: unknown): ErrorCode {
+  if (error instanceof ProjectWorkspaceError) {
+    switch (error.code) {
+      case 'PROJECT_ALREADY_ACTIVE':
+        return 'PROJECT_ALREADY_OPEN_001';
+      case 'PROJECT_PATH_MISSING':
+        return 'PROJECT_PATH_MISSING_002';
+      case 'PROJECT_PATH_OUTSIDE_SCOPE':
+        return 'PROJECT_PATH_OUTSIDE_SCOPE_003';
+      case 'PROJECT_ID_MISMATCH':
+        return 'PROJECT_ID_MISMATCH_004';
+      case 'PROJECT_READ_ONLY':
+      case 'PROJECT_DIRECTORY_READ_ONLY':
+        return 'PROJECT_READ_ONLY_005';
+      case 'PROJECT_MOVE_FAILED':
+        return 'PROJECT_MOVE_FAILED_006';
+      case 'PROJECT_TARGET_CONFLICT':
+        return 'COMMON_CONFLICT_003';
+      case 'PROJECT_MANIFEST_INVALID':
+      case 'PROJECT_OPEN_FAILED':
+      case 'PROJECT_CREATE_FAILED':
+        return 'DB_OPEN_FAILED_001';
+    }
   }
   if (error instanceof Error && error.name === 'ZodError') return 'COMMON_INVALID_INPUT_001';
   return windowPreferencesError(error);
@@ -173,6 +211,70 @@ async function executeAppDataOperation(
       ok: false,
       operation: operation.operation,
       errorCode: appDataError(error),
+    });
+  }
+}
+
+async function executeProjectOperation(
+  requestId: string,
+  operation: CoreProjectOperation,
+): Promise<CoreProjectResult> {
+  try {
+    switch (operation.operation) {
+      case PROJECT_WORKSPACE_COMMANDS.getActive:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: projectWorkspace.activeProject,
+        });
+      case PROJECT_WORKSPACE_COMMANDS.create:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectWorkspace.create(
+            requestId,
+            operation.input,
+            operation.parentDirectory,
+          ),
+        });
+      case PROJECT_WORKSPACE_COMMANDS.openSelected:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectWorkspace.open(requestId, {
+            workspacePath: operation.workspacePath,
+          }),
+        });
+      case PROJECT_WORKSPACE_COMMANDS.openRecent:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectWorkspace.open(requestId, {
+            recentProjectId: operation.projectId,
+          }),
+        });
+      case PROJECT_WORKSPACE_COMMANDS.close:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectWorkspace.close(requestId, operation.projectId),
+        });
+      case PROJECT_WORKSPACE_COMMANDS.move:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectWorkspace.move(
+            requestId,
+            operation.projectId,
+            operation.targetParentDirectory,
+          ),
+        });
+    }
+  } catch (error) {
+    return CoreProjectResultSchema.parse({
+      ok: false,
+      operation: operation.operation,
+      errorCode: projectWorkspaceError(error),
     });
   }
 }
@@ -273,6 +375,35 @@ parentPort.on('message', ({ data, ports }) => {
       activeAppDataOperations.add(active);
       break;
     }
+    case 'core.project.command': {
+      const requestId = parsed.data.requestId;
+      const operation = parsed.data.operation;
+      if (!acceptingAppDataOperations) {
+        send({
+          type: 'core.project.result',
+          protocolVersion: PROTOCOL_VERSION,
+          requestId,
+          result: CoreProjectResultSchema.parse({
+            ok: false,
+            operation: operation.operation,
+            errorCode: 'COMMON_CANCELLED_004',
+          }),
+        });
+        break;
+      }
+      const active = executeProjectOperation(requestId, operation)
+        .then((result) => {
+          send({
+            type: 'core.project.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          });
+        })
+        .finally(() => activeAppDataOperations.delete(active));
+      activeAppDataOperations.add(active);
+      break;
+    }
     case 'core.drain': {
       acceptingAppDataOperations = false;
       const requestId = parsed.data.requestId;
@@ -299,8 +430,9 @@ parentPort.on('message', ({ data, ports }) => {
       shuttingDown = true;
       taskProtocol.close();
       const requestId = parsed.data.requestId;
-      void appRuntime
-        .close()
+      void projectWorkspace
+        .shutdown()
+        .then(() => appRuntime.close())
         .then(() => {
           send({
             type: 'core.shutdown-complete',

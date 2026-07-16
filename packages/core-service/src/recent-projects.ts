@@ -51,6 +51,26 @@ export class RecentProjectsRepository {
     this.#clock = clock;
   }
 
+  get(projectId: string): RecentProject {
+    const validProjectId = ProjectIdSchema.parse(projectId);
+    const project = this.#database.read((database) =>
+      database
+        .prepare(
+          `SELECT project_id, workspace_path, display_name, last_opened_at, missing_since
+             FROM recent_projects
+            WHERE project_id = ?`,
+        )
+        .get(validProjectId),
+    );
+    if (!project) {
+      throw new AppDataRepositoryError(
+        'RECENT_PROJECT_NOT_FOUND',
+        'The recent project record does not exist.',
+      );
+    }
+    return rowToRecentProject(project);
+  }
+
   async register(requestId: string, input: RecentProjectRegistration): Promise<RecentProject> {
     const registration = RecentProjectRegistrationSchema.parse(input);
     const workspacePath = normalizedAbsolutePath(registration.workspacePath);

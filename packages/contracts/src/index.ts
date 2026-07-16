@@ -31,11 +31,28 @@ import {
   type TaskEventEnvelope,
   type TaskSnapshot,
 } from './task-protocol.js';
+import {
+  PROJECT_WORKSPACE_COMMANDS,
+  PROJECT_WORKSPACE_IPC_CHANNELS,
+  CoreProjectOperationSchema,
+  CoreProjectResultSchema,
+  ProjectCloseCommandSchema,
+  ProjectCreateCommandSchema,
+  ProjectGetActiveCommandSchema,
+  ProjectMoveCommandSchema,
+  ProjectOpenRecentCommandSchema,
+  ProjectOpenSelectedCommandSchema,
+  type ProjectCloseResult,
+  type ProjectCreateInput,
+  type ProjectMoveResult,
+  type ProjectWorkspaceSummary,
+} from './project-workspace.js';
 
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
 export * from './task-protocol.js';
 export * from './app-data.js';
+export * from './project-workspace.js';
 
 export const contractsLayer = {
   name: '@worldforge/contracts',
@@ -46,6 +63,7 @@ export const PROTOCOL_VERSION = TASK_PROTOCOL_VERSION;
 
 export const IPC_CHANNELS = {
   ...APP_DATA_IPC_CHANNELS,
+  ...PROJECT_WORKSPACE_IPC_CHANNELS,
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
@@ -62,6 +80,7 @@ export const IPC_CHANNELS = {
 
 export const APP_COMMANDS = {
   ...APP_DATA_COMMANDS,
+  ...PROJECT_WORKSPACE_COMMANDS,
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
@@ -191,6 +210,12 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectListRecentCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
+  ProjectGetActiveCommandSchema,
+  ProjectCreateCommandSchema,
+  ProjectOpenSelectedCommandSchema,
+  ProjectOpenRecentCommandSchema,
+  ProjectCloseCommandSchema,
+  ProjectMoveCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiHasCredentialCommandSchema,
@@ -322,6 +347,12 @@ export const CoreControlMessageSchema = z.discriminatedUnion('type', [
     requestId: RequestIdSchema,
     operation: CoreAppDataOperationSchema,
   }),
+  z.strictObject({
+    type: z.literal('core.project.command'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    operation: CoreProjectOperationSchema,
+  }),
 ]);
 
 export const CoreEventSchema = z.discriminatedUnion('type', [
@@ -365,6 +396,12 @@ export const CoreEventSchema = z.discriminatedUnion('type', [
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
     result: CoreAppDataResultSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.project.result'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    result: CoreProjectResultSchema,
   }),
 ]);
 
@@ -414,6 +451,12 @@ export interface WorldforgeBridge {
     readonly removeRecent: (
       projectId: string,
     ) => Promise<CommandResult<{ readonly removed: boolean }>>;
+    readonly getActive: () => Promise<CommandResult<ProjectWorkspaceSummary | null>>;
+    readonly create: (input: ProjectCreateInput) => Promise<CommandResult<ProjectWorkspaceSummary>>;
+    readonly openSelected: () => Promise<CommandResult<ProjectWorkspaceSummary>>;
+    readonly openRecent: (projectId: string) => Promise<CommandResult<ProjectWorkspaceSummary>>;
+    readonly close: (projectId: string) => Promise<CommandResult<ProjectCloseResult>>;
+    readonly move: (projectId: string) => Promise<CommandResult<ProjectMoveResult>>;
   };
   readonly ai: {
     readonly setCredential: (

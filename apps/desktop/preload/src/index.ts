@@ -16,12 +16,22 @@ import {
   CredentialReferenceResultSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
+  ProjectActiveResultSchema,
+  ProjectCloseCommandResultSchema,
+  ProjectCloseCommandSchema,
+  ProjectCreateCommandSchema,
+  ProjectGetActiveCommandSchema,
   ProjectListRecentCommandSchema,
+  ProjectMoveCommandResultSchema,
+  ProjectMoveCommandSchema,
+  ProjectOpenRecentCommandSchema,
+  ProjectOpenSelectedCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
   RecentProjectRemovalResultSchema,
   RecentProjectResultSchema,
   RecentProjectsResultSchema,
+  ProjectWorkspaceResultSchema,
   SettingsGetCommandSchema,
   SettingsResetCommandSchema,
   SettingsSetCommandSchema,
@@ -159,6 +169,42 @@ const bridge: WorldforgeBridge = {
           envelope(APP_COMMANDS.projectRemoveRecent, { projectId }),
         ),
         RecentProjectRemovalResultSchema,
+      ),
+    getActive: () =>
+      invoke(
+        IPC_CHANNELS.getActive,
+        ProjectGetActiveCommandSchema.parse(envelope(APP_COMMANDS.getActive, {})),
+        ProjectActiveResultSchema,
+      ),
+    create: (input) =>
+      invoke(
+        IPC_CHANNELS.create,
+        ProjectCreateCommandSchema.parse(envelope(APP_COMMANDS.create, input)),
+        ProjectWorkspaceResultSchema,
+      ),
+    openSelected: () =>
+      invoke(
+        IPC_CHANNELS.openSelected,
+        ProjectOpenSelectedCommandSchema.parse(envelope(APP_COMMANDS.openSelected, {})),
+        ProjectWorkspaceResultSchema,
+      ),
+    openRecent: (projectId) =>
+      invoke(
+        IPC_CHANNELS.openRecent,
+        ProjectOpenRecentCommandSchema.parse(envelope(APP_COMMANDS.openRecent, { projectId })),
+        ProjectWorkspaceResultSchema,
+      ),
+    close: (projectId) =>
+      invoke(
+        IPC_CHANNELS.close,
+        ProjectCloseCommandSchema.parse(envelope(APP_COMMANDS.close, { projectId })),
+        ProjectCloseCommandResultSchema,
+      ),
+    move: (projectId) =>
+      invoke(
+        IPC_CHANNELS.move,
+        ProjectMoveCommandSchema.parse(envelope(APP_COMMANDS.move, { projectId })),
+        ProjectMoveCommandResultSchema,
       ),
   },
   ai: {

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   APP_COMMANDS,
+  PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiSetCredentialCommandSchema,
@@ -14,6 +15,12 @@ import {
   PROTOCOL_VERSION,
   RequestIdSchema,
   ProjectListRecentCommandSchema,
+  ProjectCloseCommandSchema,
+  ProjectCreateCommandSchema,
+  ProjectGetActiveCommandSchema,
+  ProjectMoveCommandSchema,
+  ProjectOpenRecentCommandSchema,
+  ProjectOpenSelectedCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
   SettingsGetCommandSchema,
@@ -48,6 +55,9 @@ interface IpcHandlerOptions {
     preferences: AppearancePreferences,
   ) => Promise<WindowPreferences>;
   readonly chooseRecentLocation: () => Promise<string | null>;
+  readonly chooseProjectCreateParent: () => Promise<string | null>;
+  readonly chooseProjectToOpen: () => Promise<string | null>;
+  readonly chooseProjectMoveParent: () => Promise<string | null>;
 }
 
 function success<T>(requestId: string, data: T): CommandResult<T> {
@@ -98,6 +108,12 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.projectListRecent,
     IPC_CHANNELS.projectRelocateRecent,
     IPC_CHANNELS.projectRemoveRecent,
+    IPC_CHANNELS.getActive,
+    IPC_CHANNELS.create,
+    IPC_CHANNELS.openSelected,
+    IPC_CHANNELS.openRecent,
+    IPC_CHANNELS.close,
+    IPC_CHANNELS.move,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -293,6 +309,107 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     return result.ok
       ? success(parsed.data.requestId, result.data)
       : appDataFailure(parsed.data.requestId, result.errorCode);
+  });
+
+  const cancelledSelection = (requestId: string): CommandFailure =>
+    failure(requestId, 'COMMON_CANCELLED_004', 'The folder selection was cancelled.', false);
+
+  const invokeProject = async (
+    requestId: string,
+    operation: Parameters<CoreSupervisor['invokeProjectOperation']>[1],
+  ): Promise<CommandResult<unknown>> => {
+    const result = await options.supervisor.invokeProjectOperation(requestId, operation);
+    return result.ok
+      ? success(requestId, result.data)
+      : appDataFailure(requestId, result.errorCode);
+  };
+
+  register(IPC_CHANNELS.getActive, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectGetActiveCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.getActive,
+    });
+  });
+
+  register(IPC_CHANNELS.create, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectCreateCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let parentDirectory: string | null;
+    try {
+      parentDirectory = await options.chooseProjectCreateParent();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!parentDirectory) return cancelledSelection(parsed.data.requestId);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.create,
+      input: parsed.data.payload,
+      parentDirectory,
+    });
+  });
+
+  register(IPC_CHANNELS.openSelected, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectOpenSelectedCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let workspacePath: string | null;
+    try {
+      workspacePath = await options.chooseProjectToOpen();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!workspacePath) return cancelledSelection(parsed.data.requestId);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.openSelected,
+      workspacePath,
+    });
+  });
+
+  register(IPC_CHANNELS.openRecent, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectOpenRecentCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.openRecent,
+      projectId: parsed.data.payload.projectId,
+    });
+  });
+
+  register(IPC_CHANNELS.close, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectCloseCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.close,
+      projectId: parsed.data.payload.projectId,
+    });
+  });
+
+  register(IPC_CHANNELS.move, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectMoveCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let targetParentDirectory: string | null;
+    try {
+      targetParentDirectory = await options.chooseProjectMoveParent();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!targetParentDirectory) return cancelledSelection(parsed.data.requestId);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.move,
+      projectId: parsed.data.payload.projectId,
+      targetParentDirectory,
+    });
   });
 
   register(IPC_CHANNELS.aiSetCredential, async (event, raw) => {

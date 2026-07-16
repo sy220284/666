@@ -3,6 +3,7 @@ import type {
   AppSettings,
   AppSettingsSnapshot,
   AppSettingsUpdate,
+  ProjectWorkspaceSummary,
   RecentProject,
 } from '@worldforge/contracts';
 
@@ -13,5 +14,6 @@ export type {
   AppSettings,
   AppSettingsSnapshot,
   AppSettingsUpdate,
+  ProjectWorkspaceSummary,
   RecentProject,
 };

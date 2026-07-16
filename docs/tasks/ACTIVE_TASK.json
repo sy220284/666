@@ -33,6 +33,7 @@
       "docs/contracts/",
       "docs/database/",
       "docs/ui/",
+      ".github/workflows/task-governance.yml",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
@@ -73,7 +74,7 @@
   "deferredVerification": [
     {
       "id": "M1-01",
-      "implementationCommit": "dc3911c2c8fdedaedcd4074f7aeb6025926c22a4",
+      "implementationCommit": "dc3911c2c8fdeda78daf010a9a968b3a082c825035",
       "deferredAt": "2026-07-16T06:35:19.336Z",
       "pending": [
         "standard evidence package and screenshots",

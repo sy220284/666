@@ -173,11 +173,35 @@
                     <button type="button" data-undo-draft title="Ctrl/Cmd+Z">撤销</button>
                     <button type="button" data-redo-draft title="Shift+Ctrl/Cmd+Z">重做</button>
                   </div>
+                  <div class="draft-metrics" aria-label="正文统计">
+                    <span>字符 <strong data-draft-character-count>0</strong></span>
+                    <span>纯文字 <strong data-draft-text-count>0</strong></span>
+                    <span>段落 <strong data-draft-paragraph-count>0</strong></span>
+                    <span data-draft-progress>未设置目标</span>
+                  </div>
+                  <div class="draft-find" aria-label="当前章节查找替换">
+                    <input
+                      type="search"
+                      data-draft-find
+                      placeholder="查找当前章节"
+                      aria-label="查找文本"
+                    />
+                    <button type="button" data-draft-find-previous>上一个</button>
+                    <button type="button" data-draft-find-next>下一个</button>
+                    <span data-draft-find-status aria-live="polite"></span>
+                    <input
+                      type="text"
+                      data-draft-replace
+                      placeholder="替换为"
+                      aria-label="替换文本"
+                    />
+                    <button type="button" data-draft-replace-current>替换</button>
+                    <button type="button" data-draft-replace-all>全部替换</button>
+                  </div>
                   <p class="draft-state" data-draft-state role="status" aria-live="polite"></p>
                   <div class="draft-editor-host" data-draft-editor-host></div>
                   <p class="draft-workspace__hint">
-                    当前任务提供显式保存；800ms 自动保存将在 M1-06
-                    接入。中文输入组合期间不会执行拆分、合并或保存。
+                    正文修改空闲800ms后自动保存；切换章节、返回项目与关闭应用前会强制刷新。中文输入组合期间暂停保存。
                   </p>
                 </section>
                 <section

@@ -107,22 +107,20 @@ describe('M1-05 editor Patch generation', () => {
     ]);
   });
 
-  it('represents a block type change as delete plus insert', () => {
+  it('preserves logical identity when a block type changes', () => {
     const operations = buildDraftPatchOperations(
       [persisted(firstId, '旧正文', firstHash)],
       [current(firstId, firstId, '新标题', 'heading')],
     );
 
     expect(operations).toEqual([
-      { type: 'delete', logicalBlockId: firstId, expectedHash: firstHash },
       {
-        type: 'insert',
-        afterLogicalBlockId: null,
-        block: {
-          blockType: 'heading',
-          content: '新标题',
-          attributes: { headingLevel: 2 },
-        },
+        type: 'update',
+        logicalBlockId: firstId,
+        expectedHash: firstHash,
+        blockType: 'heading',
+        content: '新标题',
+        attributes: { headingLevel: 2 },
       },
     ]);
   });

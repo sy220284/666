@@ -1,6 +1,6 @@
 # M1-06 自动保存、字数与当前章查找
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
 > 建议分支：`feat/m1-autosave-stats-find`

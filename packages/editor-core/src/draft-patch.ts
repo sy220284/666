@@ -21,6 +21,7 @@ export type DraftEditorPatchOperation =
       readonly type: 'update';
       readonly logicalBlockId: string;
       readonly expectedHash: string;
+      readonly blockType?: WorldforgeBlockType | undefined;
       readonly content: string;
       readonly attributes?: WorldforgeBlockAttributes | undefined;
     }
@@ -100,7 +101,7 @@ export function buildDraftPatchOperations(
     current
       .filter((block) => {
         const previous = block.logicalBlockId ? persistedById.get(block.logicalBlockId) : undefined;
-        return previous !== undefined && previous.blockType === block.blockType;
+        return previous !== undefined;
       })
       .map((block) => block.logicalBlockId as string),
   );
@@ -169,16 +170,15 @@ export function buildDraftPatchOperations(
     if (!block.logicalBlockId || !retainedIds.has(block.logicalBlockId)) continue;
     const previous = persistedById.get(block.logicalBlockId);
     if (!previous) throw new RangeError(`Unknown persisted DraftBlock: ${block.logicalBlockId}`);
-    const attributesChanged = !attributesEqual(
-      block.blockType,
-      previous.attributes,
-      block.attributes,
-    );
-    if (previous.text === block.text && !attributesChanged) continue;
+    const blockTypeChanged = previous.blockType !== block.blockType;
+    const attributesChanged =
+      blockTypeChanged || !attributesEqual(block.blockType, previous.attributes, block.attributes);
+    if (previous.text === block.text && !attributesChanged && !blockTypeChanged) continue;
     updates.push({
       type: 'update',
       logicalBlockId: block.logicalBlockId,
       expectedHash: requiredHash(previous),
+      ...(blockTypeChanged ? { blockType: block.blockType } : {}),
       content: block.text,
       ...(attributesChanged
         ? { attributes: normalizedAttributes(block.blockType, block.attributes) }

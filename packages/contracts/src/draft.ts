@@ -147,6 +147,7 @@ export const DraftPatchUpdateOperationSchema = z.strictObject({
   type: z.literal('update'),
   logicalBlockId: DraftEntityIdSchema,
   expectedHash: DraftContentHashValueSchema,
+  blockType: DraftBlockTypeSchema.optional(),
   content: DraftBlockTextSchema,
   attributes: DraftBlockAttributesSchema.optional(),
 });

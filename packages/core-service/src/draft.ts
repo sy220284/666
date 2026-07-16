@@ -425,7 +425,7 @@ function applyOperation(
       const current = blocks[index]!;
       assertExpectedHash(current, operation.expectedHash);
       const normalized = normalizeBlock({
-        blockType: current.blockType,
+        blockType: operation.blockType ?? current.blockType,
         content: operation.content,
         attributes: operation.attributes ?? current.attributes,
       });

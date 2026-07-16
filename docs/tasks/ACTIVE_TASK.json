@@ -11,43 +11,29 @@
     "modeAdjustedAt": "2026-07-16"
   },
   "activeTask": {
-    "id": "M1-05",
+    "id": "M1-06",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md",
+    "source": "docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md",
     "branch": "main",
     "startedAt": "2026-07-16",
     "allowedPaths": [
       "packages/editor-core/",
-      "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
-      "apps/desktop/main/",
-      "apps/desktop/preload/",
       "apps/desktop/renderer/",
-      "migrations/project/",
-      "tests/unit/",
       "tests/integration/",
-      "tests/migration/",
-      "tests/security/",
       "tests/e2e/",
-      "docs/contracts/",
-      "docs/database/",
-      "docs/ui/",
-      ".github/workflows/quality.yml",
-      ".github/workflows/quality-core.yml",
-      ".github/workflows/task-governance.yml",
-      "scripts/taskctl.mjs",
-      "docs/process/DEVELOPMENT_AUTOMATION.md",
+      "tests/performance/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md",
+      "docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M1-05/",
-      "docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md"
+      "docs/test-evidence/M1-06/",
+      "docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -55,20 +41,17 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/decisions/ADR-005-lock-revision-backup.md",
-      "docs/contracts/ERROR_CODES.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/process/DEVELOPMENT_AUTOMATION.md"
+      "docs/ui/EDITOR_INTERACTION_SPEC.md",
+      "docs/testing/PERFORMANCE_BUDGETS.md"
     ],
     "verification": [
       "pnpm lint",
       "pnpm typecheck",
       "pnpm test",
-      "pnpm test:migration",
-      "pnpm test:integration",
       "pnpm test:security",
       "pnpm test:e2e",
-      "pnpm test:unit"
+      "pnpm test:unit",
+      "pnpm test:integration"
     ]
   },
   "lastVerifiedTask": {
@@ -120,11 +103,22 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M1-05",
+      "implementationCommit": "5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4",
+      "deferredAt": "2026-07-16T17:16:18.341Z",
+      "pending": [
+        "standard evidence package and screenshots",
+        "manual acceptance and exhaustive quality matrix",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "lastImplementedTask": {
-    "id": "M1-04",
-    "commit": "8719d4f3a477235e5bf65eba9e345a9169e9359e",
-    "implementedAt": "2026-07-16T11:23:32.999Z"
+    "id": "M1-05",
+    "commit": "5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4",
+    "implementedAt": "2026-07-16T17:16:18.341Z"
   }
 }

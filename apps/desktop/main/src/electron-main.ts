@@ -314,9 +314,33 @@ async function bootstrap(): Promise<void> {
     },
   });
 
+  const flushRendererDraft = async (): Promise<boolean> => {
+    const window = mainWindow;
+    if (!window || window.isDestroyed()) return true;
+    try {
+      return Boolean(
+        await window.webContents.executeJavaScript(
+          'globalThis.worldforgeFlushDraft ? globalThis.worldforgeFlushDraft() : true',
+          true,
+        ),
+      );
+    } catch {
+      return false;
+    }
+  };
+
   const gracefulShutdown = (): Promise<void> => {
     if (shutdownInFlight) return shutdownInFlight;
     shutdownInFlight = (async () => {
+      if (!(await flushRendererDraft())) {
+        await logger.log('error', 'draft.autosave.flush.failed', {
+          errorCode: 'DB_WRITE_FAILED_004',
+          processStatus: supervisor.getStatus().status,
+        });
+        mainWindow?.show();
+        shutdownInFlight = null;
+        return;
+      }
       await flushWindowPreferences();
       const result = await supervisor.shutdown();
       if (!result.ok) {

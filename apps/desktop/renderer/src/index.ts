@@ -1,8 +1,11 @@
 import {
+  DraftAutosaveCoordinator,
   Editor,
   assertEditorNodeMetadata,
   buildDraftPatchOperations,
+  calculateWritingStatistics,
   createWorldforgeEditorExtensions,
+  findTextRanges,
   documentToTiptapJson,
   redoWorldforgeEditor,
   synchronizePersistedBlockMetadata,
@@ -140,6 +143,19 @@ const undoDraftButton = document.querySelector<HTMLButtonElement>('[data-undo-dr
 const redoDraftButton = document.querySelector<HTMLButtonElement>('[data-redo-draft]');
 const insertSeparatorButton = document.querySelector<HTMLButtonElement>('[data-insert-separator]');
 const blockTypeButtons = document.querySelectorAll<HTMLButtonElement>('[data-set-block-type]');
+const draftCharacterCount = document.querySelector<HTMLElement>('[data-draft-character-count]');
+const draftTextCount = document.querySelector<HTMLElement>('[data-draft-text-count]');
+const draftParagraphCount = document.querySelector<HTMLElement>('[data-draft-paragraph-count]');
+const draftProgress = document.querySelector<HTMLElement>('[data-draft-progress]');
+const draftFindInput = document.querySelector<HTMLInputElement>('[data-draft-find]');
+const draftReplaceInput = document.querySelector<HTMLInputElement>('[data-draft-replace]');
+const draftFindPrevious = document.querySelector<HTMLButtonElement>('[data-draft-find-previous]');
+const draftFindNext = document.querySelector<HTMLButtonElement>('[data-draft-find-next]');
+const draftReplaceCurrent = document.querySelector<HTMLButtonElement>(
+  '[data-draft-replace-current]',
+);
+const draftReplaceAll = document.querySelector<HTMLButtonElement>('[data-draft-replace-all]');
+const draftFindStatus = document.querySelector<HTMLElement>('[data-draft-find-status]');
 
 let appearance = defaultAppearance;
 let applicationSettings = defaultSettings;
@@ -151,6 +167,10 @@ let draftEditor: Editor | null = null;
 let draftDirty = false;
 let draftComposing = false;
 let synchronizingDraftMetadata = false;
+let draftAutosave: DraftAutosaveCoordinator | null = null;
+let lastSavedRevision = 0;
+let currentFindIndex = -1;
+let draftFindMatches: { readonly from: number; readonly to: number }[] = [];
 const chapterSelections = new Map<string, { readonly from: number; readonly to: number }>();
 let resizeFrame: number | null = null;
 let drawerRestoreTarget: HTMLElement | null = null;
@@ -345,6 +365,84 @@ function sanitizePastedHtml(html: string): string {
   return clean.innerHTML;
 }
 
+function updateDraftStatistics(): void {
+  const editor = draftEditor;
+  if (!editor) {
+    if (draftCharacterCount) draftCharacterCount.textContent = '0';
+    if (draftTextCount) draftTextCount.textContent = '0';
+    if (draftParagraphCount) draftParagraphCount.textContent = '0';
+    if (draftProgress) draftProgress.textContent = '未设置目标';
+    return;
+  }
+  const statistics = calculateWritingStatistics(
+    editor.getText({ blockSeparator: '\n' }),
+    editor.state.doc.childCount,
+    activeChapter?.targetWordMax,
+  );
+  if (draftCharacterCount) draftCharacterCount.textContent = String(statistics.characterCount);
+  if (draftTextCount) draftTextCount.textContent = String(statistics.textCount);
+  if (draftParagraphCount) draftParagraphCount.textContent = String(statistics.paragraphCount);
+  if (draftProgress) {
+    draftProgress.textContent =
+      statistics.progressPercent === null
+        ? '未设置目标'
+        : `目标进度 ${statistics.progressPercent}%`;
+  }
+}
+
+function refreshDraftFindMatches(selectCurrent = false): void {
+  const editor = draftEditor;
+  const query = draftFindInput?.value ?? '';
+  draftFindMatches = [];
+  if (editor && query) {
+    editor.state.doc.descendants((node, position) => {
+      if (!node.isText || !node.text) return;
+      for (const range of findTextRanges(node.text, query)) {
+        draftFindMatches.push({ from: position + range.from, to: position + range.to });
+      }
+    });
+  }
+  if (draftFindMatches.length === 0) currentFindIndex = -1;
+  else if (currentFindIndex < 0 || currentFindIndex >= draftFindMatches.length)
+    currentFindIndex = 0;
+  if (draftFindStatus) {
+    draftFindStatus.textContent =
+      draftFindMatches.length === 0
+        ? query
+          ? '未找到'
+          : ''
+        : `${currentFindIndex + 1}/${draftFindMatches.length}`;
+  }
+  if (selectCurrent && editor && currentFindIndex >= 0) {
+    editor.commands.setTextSelection(draftFindMatches[currentFindIndex]!);
+    editor.commands.focus();
+  }
+}
+
+function moveDraftFind(direction: 1 | -1): void {
+  refreshDraftFindMatches();
+  if (!draftEditor || draftFindMatches.length === 0) return;
+  currentFindIndex =
+    (currentFindIndex + direction + draftFindMatches.length) % draftFindMatches.length;
+  refreshDraftFindMatches(true);
+}
+
+function replaceDraftFind(all: boolean): void {
+  const editor = draftEditor;
+  if (!editor || activeProject?.databaseMode !== 'read-write') return;
+  refreshDraftFindMatches();
+  if (draftFindMatches.length === 0) return;
+  const replacement = draftReplaceInput?.value ?? '';
+  const selected = all ? draftFindMatches : [draftFindMatches[currentFindIndex]!];
+  let transaction = editor.state.tr;
+  for (const match of [...selected].reverse()) {
+    transaction = transaction.insertText(replacement, match.from, match.to);
+  }
+  editor.view.dispatch(transaction);
+  currentFindIndex = 0;
+  refreshDraftFindMatches(true);
+}
+
 function showProjectOverview(): void {
   if (homeIntro) homeIntro.hidden = false;
   if (recentProjectsPanel) recentProjectsPanel.hidden = false;
@@ -372,6 +470,8 @@ function rememberDraftSelection(): void {
 
 function destroyDraftEditor(): void {
   rememberDraftSelection();
+  draftAutosave?.destroy();
+  draftAutosave = null;
   draftEditor?.destroy();
   draftEditor = null;
   draftEditorHost?.replaceChildren();
@@ -380,6 +480,10 @@ function destroyDraftEditor(): void {
   draftDirty = false;
   draftComposing = false;
   synchronizingDraftMetadata = false;
+  currentFindIndex = -1;
+  draftFindMatches = [];
+  updateDraftStatistics();
+  if (draftFindStatus) draftFindStatus.textContent = '';
   if (saveDraftButton) saveDraftButton.disabled = true;
 }
 
@@ -423,7 +527,10 @@ function mountDraftEditor(draft: DraftDocument, chapter: Chapter): void {
     onUpdate: () => {
       if (synchronizingDraftMetadata) return;
       draftDirty = true;
-      setDraftState(draftComposing ? '输入法组合中；保存与结构键已暂停。' : '有未保存修改。');
+      updateDraftStatistics();
+      refreshDraftFindMatches();
+      draftAutosave?.markDirty();
+      if (draftComposing) setDraftState('输入法组合中；自动保存与结构键已暂停。');
     },
     onSelectionUpdate: ({ editor }) => {
       chapterSelections.set(chapter.id, {
@@ -432,6 +539,20 @@ function mountDraftEditor(draft: DraftDocument, chapter: Chapter): void {
       });
     },
   });
+  lastSavedRevision = draft.revision;
+  draftAutosave = new DraftAutosaveCoordinator({
+    delayMs: 800,
+    save: persistActiveDraft,
+    onState: (state) => {
+      if (state === 'waiting') setDraftState('等待自动保存…');
+      else if (state === 'saving') setDraftState('正在自动保存…');
+      else if (state === 'saved') setDraftState(`自动保存完成 · Revision ${lastSavedRevision}`);
+      else if (state === 'failed') setDraftState('自动保存失败；窗口内容仍保留。', true);
+      else if (state === 'paused') setDraftState('输入法组合中；自动保存与结构键已暂停。');
+    },
+  });
+  updateDraftStatistics();
+  refreshDraftFindMatches();
   const savedSelection = chapterSelections.get(chapter.id);
   if (savedSelection) {
     const maximum = Math.max(1, draftEditor.state.doc.content.size);
@@ -455,7 +576,10 @@ function mountDraftEditor(draft: DraftDocument, chapter: Chapter): void {
 async function openChapterDraft(chapter: Chapter): Promise<void> {
   const project = activeProject;
   if (!project || activeChapter?.id === chapter.id) return;
-  if (draftDirty && !window.confirm('当前正文尚未手动保存。放弃修改并切换章节？')) return;
+  if (draftAutosave?.hasPendingWork && !(await draftAutosave.flush())) {
+    setDraftState('自动保存失败，已阻止切换章节。', true);
+    return;
+  }
   showDraftWorkspace();
   if (draftChapterTitle) draftChapterTitle.textContent = chapter.title;
   setDraftState('正在从项目数据库读取 DraftBlock…');
@@ -476,27 +600,24 @@ async function openChapterDraft(chapter: Chapter): Promise<void> {
   }
 }
 
-async function saveActiveDraft(): Promise<void> {
+async function persistActiveDraft(): Promise<boolean> {
   const project = activeProject;
   const chapter = activeChapter;
   const draft = activeDraft;
   const editor = draftEditor;
-  if (!project || !chapter || !draft || !editor || project.databaseMode !== 'read-write') return;
-  if (draftComposing || editor.view.composing) {
-    setDraftState('输入法组合尚未结束，已暂停保存。');
-    return;
-  }
+  if (!project || !chapter || !draft || !editor || project.databaseMode !== 'read-write')
+    return true;
+  if (draftComposing || editor.view.composing) return false;
   saveDraftButton?.setAttribute('disabled', '');
-  setDraftState('正在以单事务应用 Block Patch…');
   try {
     const json = editor.getJSON();
+    const signature = JSON.stringify(json);
     assertEditorNodeMetadata(json);
     const blocks = tiptapJsonToDraftSnapshot(json, temporaryClientBlockId);
     const operations = buildDraftPatchOperations(persistedBlocks(draft), blocks);
     if (operations.length === 0) {
       draftDirty = false;
-      setDraftState('正文没有需要保存的变化。');
-      return;
+      return true;
     }
     const result = await window.worldforge.draft.applyPatch({
       projectId: project.projectId,
@@ -505,30 +626,44 @@ async function saveActiveDraft(): Promise<void> {
       baseRevision: draft.revision,
       operations,
     });
-    if (result.ok) {
-      activeDraft = result.data;
-      synchronizingDraftMetadata = true;
-      const synchronized = synchronizePersistedBlockMetadata(editor, persistedBlocks(result.data));
-      if (!synchronized) {
-        editor.commands.setContent(documentToTiptapJson(persistedBlocks(result.data)), {
-          emitUpdate: false,
-        });
-      }
-      synchronizingDraftMetadata = false;
-      draftDirty = false;
-      setDraftState(`已提交 Revision ${result.data.revision} 到 project.sqlite。`);
-      void refreshProjectStructure();
-    } else {
-      setDraftState(`保存失败 · ${result.error.code}；窗口内容仍保留。`, true);
+    if (!result.ok) return false;
+    if (
+      activeProject?.projectId !== project.projectId ||
+      activeChapter?.id !== chapter.id ||
+      activeDraft?.draftId !== draft.draftId ||
+      draftEditor !== editor
+    ) {
+      return true;
     }
+    activeDraft = result.data;
+    lastSavedRevision = result.data.revision;
+    synchronizingDraftMetadata = true;
+    const synchronized = synchronizePersistedBlockMetadata(editor, persistedBlocks(result.data));
+    if (!synchronized) {
+      editor.commands.setContent(documentToTiptapJson(persistedBlocks(result.data)), {
+        emitUpdate: false,
+      });
+    }
+    synchronizingDraftMetadata = false;
+    draftDirty = JSON.stringify(editor.getJSON()) !== signature;
+    updateDraftStatistics();
+    void refreshProjectStructure();
+    return true;
   } catch {
     synchronizingDraftMetadata = false;
-    setDraftState('保存失败 · COMMON_INTERNAL_999；窗口内容仍保留。', true);
+    return false;
   } finally {
     if (saveDraftButton) {
       saveDraftButton.disabled = draftComposing || activeProject?.databaseMode !== 'read-write';
     }
   }
+}
+
+async function saveActiveDraft(): Promise<boolean> {
+  const completed = await (draftAutosave?.flush() ?? Promise.resolve(true));
+  if (completed) setDraftState(`已手动保存 · Revision ${lastSavedRevision}`);
+  else setDraftState('手动保存失败；窗口内容仍保留。', true);
+  return completed;
 }
 
 function treeAction(label: string, title: string, attribute: string): HTMLButtonElement {
@@ -1499,10 +1634,15 @@ saveDraftButton?.addEventListener('click', () => {
 });
 
 backProjectButton?.addEventListener('click', () => {
-  if (draftDirty && !window.confirm('当前正文尚未手动保存。放弃修改并返回项目？')) return;
-  destroyDraftEditor();
-  showProjectOverview();
-  renderProjectStructure(activeStructure);
+  void (async () => {
+    if (draftAutosave?.hasPendingWork && !(await draftAutosave.flush())) {
+      setDraftState('自动保存失败，已阻止返回项目。', true);
+      return;
+    }
+    destroyDraftEditor();
+    showProjectOverview();
+    renderProjectStructure(activeStructure);
+  })();
 });
 
 copyDraftButton?.addEventListener('click', async () => {
@@ -1573,6 +1713,15 @@ insertSeparatorButton?.addEventListener('click', () => {
     .run();
 });
 
+draftFindInput?.addEventListener('input', () => {
+  currentFindIndex = 0;
+  refreshDraftFindMatches(true);
+});
+draftFindPrevious?.addEventListener('click', () => moveDraftFind(-1));
+draftFindNext?.addEventListener('click', () => moveDraftFind(1));
+draftReplaceCurrent?.addEventListener('click', () => replaceDraftFind(false));
+draftReplaceAll?.addEventListener('click', () => replaceDraftFind(true));
+
 undoDraftButton?.addEventListener('click', () => {
   if (draftEditor && !draftComposing) undoWorldforgeEditor(draftEditor);
 });
@@ -1583,6 +1732,7 @@ redoDraftButton?.addEventListener('click', () => {
 
 draftEditorHost?.addEventListener('compositionstart', () => {
   draftComposing = true;
+  draftAutosave?.pause();
   if (saveDraftButton) saveDraftButton.disabled = true;
   setDraftState('输入法组合中；保存与结构键已暂停。');
 });
@@ -1591,7 +1741,8 @@ draftEditorHost?.addEventListener('compositionend', () => {
   draftComposing = false;
   draftDirty = true;
   if (saveDraftButton) saveDraftButton.disabled = activeProject?.databaseMode !== 'read-write';
-  setDraftState('输入法组合已完成，有未保存修改。');
+  draftAutosave?.resume();
+  if (draftDirty) draftAutosave?.markDirty();
 });
 
 document.addEventListener('keydown', (event) => {
@@ -1727,6 +1878,10 @@ closeTrashButton?.addEventListener('click', () => trashDialog?.close());
 
 closeProjectButton?.addEventListener('click', async () => {
   const project = activeProject;
+  if (draftAutosave?.hasPendingWork && !(await draftAutosave.flush())) {
+    setDraftState('自动保存失败，已阻止关闭项目。', true);
+    return;
+  }
   if (!project) return;
   closeProjectButton.disabled = true;
   setProjectOperationStatus('正在安全关闭并清空活动上下文…');
@@ -1859,3 +2014,8 @@ export const rendererLayer = {
   name: '@worldforge/renderer',
   responsibility: 'sandboxed-user-interface',
 } as const;
+
+Object.defineProperty(globalThis, 'worldforgeFlushDraft', {
+  configurable: true,
+  value: () => draftAutosave?.flush() ?? Promise.resolve(true),
+});

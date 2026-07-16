@@ -8,8 +8,8 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M1-05`
-- 唯一任务卡：`docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md`
+- 任务ID：`M1-06`
+- 唯一任务卡：`docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md`
 - 工作分支：`main`
 - 开始时间：`2026-07-16`
 - 授权模式：`implementation-mainline`
@@ -20,36 +20,22 @@ IN_PROGRESS
 ```yaml
 allowed_paths:
   - packages/editor-core/
-  - packages/domain/
   - packages/core-service/
   - packages/contracts/
-  - apps/desktop/main/
-  - apps/desktop/preload/
   - apps/desktop/renderer/
-  - migrations/project/
-  - tests/unit/
   - tests/integration/
-  - tests/migration/
-  - tests/security/
   - tests/e2e/
-  - docs/contracts/
-  - docs/database/
-  - docs/ui/
-  - .github/workflows/quality.yml
-  - .github/workflows/quality-core.yml
-  - .github/workflows/task-governance.yml
-  - scripts/taskctl.mjs
-  - docs/process/DEVELOPMENT_AUTOMATION.md
+  - tests/performance/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md
+  - docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M1-05/
-  - docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md
+  - docs/test-evidence/M1-06/
+  - docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md
 forbidden_paths:
 
 required_docs:
@@ -57,19 +43,16 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/decisions/ADR-005-lock-revision-backup.md
-  - docs/contracts/ERROR_CODES.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/process/DEVELOPMENT_AUTOMATION.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
+  - docs/testing/PERFORMANCE_BUDGETS.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
-  - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
+  - pnpm test:integration
 ```
 
 ## 连续执行规则

@@ -1508,3 +1508,39 @@ body[data-motion-preference='reduced'] *::after {
   transition-duration: 0.01ms !important;
   animation-duration: 0.01ms !important;
 }
+
+.draft-metrics,
+.draft-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.68em;
+}
+
+.draft-metrics {
+  color: var(--color-text-muted);
+}
+.draft-metrics strong {
+  color: var(--color-text-primary);
+}
+.draft-find input {
+  min-width: 120px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 5px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+.draft-find button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 5px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}

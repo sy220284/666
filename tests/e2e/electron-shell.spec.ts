@@ -456,8 +456,36 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(blocks).toHaveCount(1);
     await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);
     await expect(blocks.first()).toHaveText('雨落在旧站台。风起。');
+    await expect(page.locator('[data-draft-character-count]')).toHaveText('10');
+    await expect(page.locator('[data-draft-text-count]')).toHaveText('8');
+    await expect(page.locator('[data-draft-paragraph-count]')).toHaveText('1');
+    await expect(page.locator('[data-draft-state]')).toContainText('等待自动保存');
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+      timeout: 3_000,
+    });
+    await page.locator('[data-draft-find]').fill('风起');
+    await page.locator('[data-draft-find-next]').click();
+    await expect(page.locator('[data-draft-find-status]')).toHaveText('1/1');
+    await page.locator('[data-draft-replace]').fill('风又起');
+    await page.locator('[data-draft-replace-current]').click();
+    await expect(blocks.first()).toHaveText('雨落在旧站台。风又起。');
 
     await page.waitForTimeout(600);
+    await blocks.first().evaluate((element) => {
+      const textNode = element.firstChild;
+      const text = textNode?.textContent ?? '';
+      const offset = text.indexOf('风又起。');
+      if (!textNode || offset < 0) throw new Error('E2E_FIND_REPLACEMENT_TEXT_MISSING');
+      (element as HTMLElement).focus();
+      const range = document.createRange();
+      range.setStart(textNode, offset);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+    });
+    await page.waitForTimeout(50);
     await page.keyboard.type('终');
     await expect(blocks.first()).toContainText('终');
     await page.locator('[data-undo-draft]').click();
@@ -484,7 +512,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.waitForTimeout(50);
     await page.keyboard.press('Enter');
     await expect(blocks).toHaveCount(2);
-    await expect(blocks.first()).toHaveText('雨落在旧站台。终风起。');
+    await expect(blocks.first()).toHaveText('雨落在旧站台。终风又起。');
     await expect(blocks.nth(1)).toHaveText('');
     await page.keyboard.type('“谁在那里？”');
     await page.locator('[data-set-block-type="dialogue"]').click();
@@ -538,9 +566,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     }
 
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(
-      /^已提交 Revision \d+ 到 project\.sqlite。$/u,
-    );
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
     const persisted = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
         .worldforge;
@@ -578,7 +604,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.locator('[data-open-recent]').click();
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
-    await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。终风起。');
+    await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。终风又起。');
     const reopenedIds = await page
       .locator('[data-draft-content] > [data-logical-block-id]')
       .evaluateAll((elements) =>

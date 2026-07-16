@@ -78,6 +78,7 @@ import {
   DRAFT_IPC_CHANNELS,
   DraftApplyPatchCommandSchema,
   DraftOpenCommandSchema,
+  DraftApplyPatchCommandSchema,
   DraftSaveSnapshotCommandSchema,
   type DraftApplyPatchInput,
   type DraftDocument,

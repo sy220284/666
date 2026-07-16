@@ -59,6 +59,7 @@ M1-04
 - `docs/ui/`
 - `.github/workflows/`
 - `scripts/taskctl.mjs`
+- `scripts/release-tool.mjs`
 - `docs/process/DEVELOPMENT_AUTOMATION.md`
 
 ## 实施内容
@@ -66,7 +67,7 @@ M1-04
 1. 实现语义内容标准化和SHA-256 contentHash。
 2. 实现insert、update、delete、move有序操作数组和strict Schema。
 3. 每批Patch携带requestId与baseRevision，update/delete/move携带expectedHash。
-4. Core先在内存工作集按顺序验证，全部通过后单事务提交。
+4. Core先在内存工作集按顺序完成全部Revision、Hash、归属、锚点和最终非空校验，全部通过后才在单写队列的一次事务中落库；成功Revision只加1。
 5. 一次成功事务Revision只增加1，失败整批回滚。
 6. 记录必要Patch日志，为后续高风险inverse patch和审计提供基础。
 7. 禁止任何Renderer或Repository旁路直接修改DraftBlock。
@@ -74,6 +75,7 @@ M1-04
 9. 将质量门拆分为静态检查、专项测试、桌面E2E、构建与打包烟测并行作业，统一聚合结果、日志证据、超时和并发取消。
 10. 复用同一质量核心工作流执行PR、主分支、定时回归与发布前验证，避免门禁标准分裂。
 11. 自动校验`ACTIVE_TASK.json`与`ACTIVE_TASK.md`镜像一致性，杜绝任务账本静默漂移。
+12. 发布配置验证器必须识别复用质量工作流和显式发布门输入，避免自动化升级后产生假失败。
 
 ## 测试与证据
 

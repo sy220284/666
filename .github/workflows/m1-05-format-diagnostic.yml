@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - validate/m1-05-core-20260716
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read

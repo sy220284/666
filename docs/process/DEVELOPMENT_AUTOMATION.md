@@ -15,7 +15,7 @@
 - `docs/tasks/TASK_INDEX.md`：任务依赖和完成状态。
 - 独立任务卡：目标、非目标、实现范围和验收要求。
 
-若 JSON 与 Markdown 镜像不一致，CI 失败并以 JSON 为准重新生成镜像。
+`pnpm task:validate`会重新生成预期镜像并与`ACTIVE_TASK.md`逐字比较。JSON与Markdown不一致时CI直接失败，必须运行`pnpm task:sync`修复，禁止手工维持两个状态源。
 
 ## 3. 连续主线模式
 
@@ -56,7 +56,7 @@
 
 ## 4. 自动门禁
 
-- `pnpm task:validate`：活动任务、任务索引、授权和必读文件。
+- `pnpm task:validate`：活动任务、任务索引、授权、必读文件及JSON/Markdown镜像一致性。
 - `pnpm task:preflight`：本次变更是否越过允许路径或命中禁止路径。
 - `pnpm check:workspaces`：包清单、入口和构建脚本。
 - `pnpm check:boundaries`：跨层依赖和 Renderer/Domain/Contracts 的 Node 边界。
@@ -64,10 +64,42 @@
 - `pnpm task:activate -- <TASK-ID>`：校验依赖并从任务卡生成下一张活动任务。
 - `pnpm task:advance -- --ci=success --commit=<SHA>`：实现优先模式下把当前卡登记为Implemented、记录延期验证并激活下一张实现依赖已满足的任务。
 - `pnpm task:close -- --ci=success --commit=<SHA>`：关闭Implemented任务并自动激活下一张依赖已满足的任务。
-- GitHub `Task Governance`：任务状态与修改范围。
-- GitHub `Quality`：安装、格式、Lint、类型、测试、边界和构建。
+- GitHub `Task Governance`：按需拉取比较基准，验证任务状态、镜像、修改范围和证据结构。
+- GitHub `Quality`：调用统一的`.github/workflows/quality-core.yml`，以聚合检查`quality`作为最终判据。
 
-## 5. 测试路由
+PR产生新提交时，旧的Quality和Task Governance运行会自动取消；`main`运行不会取消。每个作业设置独立超时，避免Runner无界挂起。
+
+## 5. 质量核心工作流
+
+`.github/workflows/quality-core.yml`是日常CI、定时回归和发布前验证的唯一质量实现，包含：
+
+```text
+static-checks
+├─ task:validate / release:check
+├─ workspace / boundary
+├─ format / lint / typecheck
+
+tests（并行矩阵）
+├─ unit
+├─ integration
+├─ migration
+└─ security
+
+desktop-e2e
+├─ Electron Playwright
+├─ xvfb显示环境
+└─ 失败截图、trace与显示证据
+
+build
+package-smoke（按调用场景启用）
+
+quality
+└─ 聚合全部结果；任一必要作业失败则失败
+```
+
+所有测试、E2E、构建和打包作业都会上传独立诊断产物。中间作业失败不会阻止其他并行作业执行，因此一次CI即可暴露全部独立问题。
+
+## 6. 测试路由
 
 基础命令由 M0-01 建立。专项测试只能在对应底座任务完成后启用；尚未建立的命令必须明确返回“未就绪”，不能以空测试假装通过。
 
@@ -79,15 +111,29 @@
 | Prompt、Provider、约束包 | `test:eval`、`test:integration` |
 | 性能、DPI | `test:perf`、`test:e2e` |
 
-## 6. 发布自动化
+PR和`main`使用并行专项测试；`pnpm test`保留为本地完整回归命令，不再作为CI中混合所有故障域的单一步骤。
 
-- `pnpm release:check`只验证发布工具、任务索引和工作流配置，可以在开发阶段持续运行。
+## 7. 定时回归
+
+`.github/workflows/nightly-quality.yml`每天18:00 UTC（新加坡时间次日02:00）自动执行，也支持手工触发：
+
+1. 调用统一质量核心。
+2. 执行性能回归。
+3. 在Linux、Windows、macOS上生成夜间打包产物。
+4. 保存性能、测试、E2E和平台产物，供后续批量验收使用。
+
+同一时间只保留最新一次夜间运行，旧运行自动取消。
+
+## 8. 发布自动化
+
 - `.github/workflows/release.yml`只允许从`main`手工触发，默认创建Draft Release。
-- `pnpm release:gate -- --version <SEMVER>`强制输入版本等于`package.json`版本，并要求M8-03已经`Verified`。
-- 发布门通过后，Linux、Windows和macOS分别执行平台打包，产物汇总后生成`SHA256SUMS.txt`。
+- 发布验证直接调用统一质量核心，并额外执行`pnpm release:gate -- --version <SEMVER>`。
+- Linux、Windows和macOS分别执行平台打包，产物汇总后生成`SHA256SUMS.txt`。
 - 已存在的GitHub Release不会被覆盖；Draft、Prerelease和Stable均使用`v<SEMVER>`标签。
 - 当前基础阶段不得绕过M8-03门禁发布`artifacts/foundation`或其他非产品产物。
 
-## 7. 证据
+## 9. 证据
 
 每张任务保留 `summary.md`、`commands.txt`、`known-risks.md`；专项任务再加入测试结果、截图和性能报告。未运行、失败或环境限制必须如实写入。
+
+GitHub Actions诊断产物默认保留14天，夜间性能产物保留30天。自动上传产物用于定位与复核，不自动等同于任务卡的最终Verified证据。

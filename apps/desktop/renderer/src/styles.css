@@ -1048,9 +1048,9 @@ body.has-open-drawer .drawer-scrim {
   }
 }
 
-body[data-reduce-motion='true'] *,
-body[data-reduce-motion='true'] *::before,
-body[data-reduce-motion='true'] *::after {
+body[data-motion-preference='reduced'] *,
+body[data-motion-preference='reduced'] *::before,
+body[data-motion-preference='reduced'] *::after {
   scroll-behavior: auto !important;
   transition-duration: 0.01ms !important;
   animation-duration: 0.01ms !important;

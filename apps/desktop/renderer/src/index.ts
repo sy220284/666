@@ -107,9 +107,9 @@ function updateThemeVariantAvailability(): void {
 function applyApplicationSettings(settings: AppSettings): void {
   applicationSettings = settings;
   document.body.dataset.authorMode = settings.defaultMode;
-  document.body.dataset.themeId = settings.themeId;
-  document.body.dataset.themeVariant = settings.themeVariant;
-  document.body.dataset.reduceMotion = String(settings.reduceMotion);
+  document.body.dataset.visualThemeId = settings.themeId;
+  document.body.dataset.visualThemeVariant = settings.themeVariant;
+  document.body.dataset.motionPreference = settings.reduceMotion ? 'reduced' : 'standard';
 }
 
 function setSettingsFormValues(settings: AppSettings): void {

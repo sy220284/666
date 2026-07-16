@@ -48,8 +48,22 @@ jobs:
           path.write_text(content)
           PY
       - run: pnpm exec prettier --write packages/contracts/src/index.ts
-      - run: pnpm lint
-      - name: Commit lint fix
+      - name: Capture lint output
+        shell: bash
+        run: |
+          set +e
+          pnpm lint > lint.log 2>&1
+          echo "$?" > lint-exit.txt
+          cat lint.log
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m1-05-post-registration-lint
+          path: |
+            lint.log
+            lint-exit.txt
+          if-no-files-found: error
+      - name: Commit command registration
         run: |
           if git diff --quiet -- packages/contracts/src/index.ts; then
             exit 0

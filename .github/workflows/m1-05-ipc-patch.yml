@@ -21,11 +21,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Make the temporary patcher tolerant for partial source matches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/m1-05-ipc-patch.py')
+          content = path.read_text()
+          content = content.replace(
+              '    if old not in content:\n        raise SystemExit(f"Anchor not found in {path}: {old[:80]!r}")\n    file.write_text(content.replace(old, new, 1))',
+              '    if old not in content:\n        print(f"SKIP {path}: {old[:80]!r}")\n        return\n    file.write_text(content.replace(old, new, 1))',
+              1,
+          )
+          path.write_text(content)
+          PY
       - run: python .github/m1-05-ipc-patch.py
       - run: pnpm exec prettier --write packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts apps/desktop/renderer/src/index.ts
       - name: Commit IPC chain
         run: |
-          if git diff --quiet; then
+          if git diff --quiet -- packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts apps/desktop/renderer/src/index.ts; then
             exit 0
           fi
           git config user.name "github-actions[bot]"

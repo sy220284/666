@@ -63,23 +63,33 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
-      - name: Validate M1-06
+      - name: Validate task state
+        run: pnpm task:validate
+      - name: Validate workspaces
+        run: pnpm check:workspaces
+      - name: Validate boundaries
+        run: pnpm check:boundaries
+      - name: Validate formatting
+        run: pnpm format:check
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test:unit
+      - name: Integration tests
+        run: pnpm test:integration
+      - name: Security tests
+        run: pnpm test:security
+      - name: Performance tests
+        run: pnpm test:perf
+      - name: Electron E2E
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
           WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
-        run: |
-          pnpm task:validate
-          pnpm check:workspaces
-          pnpm check:boundaries
-          pnpm format:check
-          pnpm lint
-          pnpm typecheck
-          pnpm test:unit
-          pnpm test:integration
-          pnpm test:security
-          pnpm test:perf
-          pnpm test:e2e
-          pnpm build
+        run: pnpm test:e2e
+      - name: Build
+        run: pnpm build
       - name: Commit M1-06
         run: |
           git config user.name "github-actions[bot]"

@@ -1,0 +1,41 @@
+name: M1-05 Typecheck Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capture typecheck output
+        id: typecheck
+        shell: bash
+        run: |
+          set +e
+          pnpm typecheck > typecheck.log 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          cat typecheck.log
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m1-05-typecheck-log
+          path: typecheck.log
+          if-no-files-found: error
+      - name: Preserve failure status
+        if: steps.typecheck.outputs.exit_code != '0'
+        run: exit 1

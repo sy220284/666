@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-07",
+  "commit": "9b10fdb2f07124ef2491198aacc39d08bc69305b",
+  "generatedAt": "2026-07-16T05:24:13Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1386,
+      "sha256": "ea182ade6bbeb2927c1dc9bf252eae56b6aa846e00f92a943a2d8b1d5f035dd2"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 714,
+      "sha256": "916772a6d506815b6dbf8af6683e846499404492497aee04dbd699bc6964d537"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 2235,
+      "sha256": "8ff7077ae624343672b1e832336cf0a45905ab69fa65034961161d1d77f01a89"
+    },
+    {
+      "path": "screenshots/manifest.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 1108,
+      "sha256": "828bf4d5fdcd5dbc456acf94d473cca91b5cc29cc4295bc9ac97b091a18a7278"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 2106,
+      "sha256": "9560d176c29af654da7e3b08b002e1d40f2fd8c47415581a45e7ea6dafa8aaf6"
+    }
+  ]
+}

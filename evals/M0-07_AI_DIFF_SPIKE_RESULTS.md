@@ -1,7 +1,9 @@
 # M0-07 AI输出协议与中文Diff Spike结论
 
-> 状态：Implemented，等待`main`远端门禁复核
+> 状态：Implemented；`main`实现基线的 Task Governance 与 Quality 门禁均通过
 > 适用范围：M4 Provider/Prompt/GenerationRun与M5 Candidate生成、审阅和Diff
+
+实现基线：`9b10fdb2f07124ef2491198aacc39d08bc69305b`。远端证据：[Task Governance](https://github.com/sy220284/666/actions/runs/29473622555)、[Quality](https://github.com/sy220284/666/actions/runs/29473622578)。
 
 ## 1. 采用与降级决策
 

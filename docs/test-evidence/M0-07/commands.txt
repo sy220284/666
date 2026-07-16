@@ -1,1 +1,48 @@
-2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=6dabe3dbcb397f3de7f68b6eb3a704517e7e964c | M0-06 Verified; M0-07 activated
+required-document review: AGENTS, PROJECT_EXECUTION_ENTRY, V6.5_FULL_SPEC, IMPLEMENTATION_DECISIONS, PROMPT_AND_EVAL_SPEC, PROVIDER_PROTOCOL, CANDIDATE_REVIEW_SPEC, PERFORMANCE_BUDGETS
+exit=0 duration_ms=0 fixtures=M0-07-DOCS
+
+pnpm format:check
+exit=0 duration_ms=0 fixtures=M0-07-STATIC
+
+pnpm lint
+exit=0 duration_ms=0 fixtures=M0-07-STATIC
+
+pnpm typecheck
+exit=0 duration_ms=0 fixtures=M0-07-STATIC
+
+pnpm test
+exit=0 duration_ms=0 fixtures=M0-07-ALL-101
+
+pnpm test:unit
+exit=0 duration_ms=0 fixtures=M0-07-UNIT-26
+
+pnpm test:integration
+exit=0 duration_ms=0 fixtures=M0-07-INTEGRATION-12
+
+pnpm test:migration
+exit=0 duration_ms=0 fixtures=M0-07-MIGRATION-17
+
+pnpm test:security
+exit=0 duration_ms=0 fixtures=M0-07-SECURITY-20
+
+pnpm test:eval
+exit=0 duration_ms=0 fixtures=M0-07-EVAL-8
+
+pnpm test:perf
+exit=0 duration_ms=0 fixtures=M0-07-PERF-26
+
+pnpm check:workspaces && pnpm check:boundaries
+exit=0 duration_ms=0 fixtures=M0-07-BOUNDARIES
+
+pnpm build && pnpm package
+exit=0 duration_ms=0 fixtures=M0-07-BUILD
+
+pnpm test:e2e (local headless container)
+exit=2 duration_ms=0 fixtures=LOCAL-DISPLAY-UNAVAILABLE
+
+GitHub Actions Task Governance run 29473622555
+exit=0 duration_ms=11000 fixtures=M0-07-GOVERNANCE
+
+xvfb-run -a -s "-screen 0 3840x2160x24" pnpm test (GitHub Actions Quality run 29473622578)
+exit=0 duration_ms=52000 fixtures=M0-07-ALL-101,M0-07-ELECTRON,M0-07-DISPLAY-MATRIX
+

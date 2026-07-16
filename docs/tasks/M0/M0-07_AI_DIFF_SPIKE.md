@@ -1,6 +1,6 @@
 # M0-07 AI输出协议与中文Diff Spike
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M0 工程、安全与运行底座  
 > 优先级：P0  
 > 工作分支：`main`（作者预授权连续主线模式）
@@ -65,6 +65,11 @@ M0-03、M0-04、M0-05
 - T0/T1无法稳定时有明确绕过或降级路径。
 
 证据保存到：`docs/test-evidence/M0-07/`
+
+- 实现基线：`9b10fdb2f07124ef2491198aacc39d08bc69305b`
+- 技术结论：`evals/M0-07_AI_DIFF_SPIKE_RESULTS.md`
+- GitHub Task Governance：`https://github.com/sy220284/666/actions/runs/29473622555`
+- GitHub Quality（Xvfb 全量测试与 Electron 显示矩阵）：`https://github.com/sy220284/666/actions/runs/29473622578`
 
 ## 完成条件
 

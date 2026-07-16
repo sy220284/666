@@ -10,7 +10,7 @@
   },
   "activeTask": {
     "id": "M0-07",
-    "status": "IN_PROGRESS",
+    "status": "IMPLEMENTED",
     "source": "docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md",
     "branch": "main",
     "startedAt": "2026-07-15",

@@ -1,0 +1,68 @@
+[
+  {
+    "suite": "static",
+    "fixtureId": "M0-07-STATIC",
+    "status": "passed",
+    "details": "Format, ESLint and TypeScript checks passed."
+  },
+  {
+    "suite": "all",
+    "fixtureId": "M0-07-ALL-101",
+    "status": "passed",
+    "details": "24 test files and 101 tests passed locally; the same pnpm test entrypoint passed under GitHub Xvfb."
+  },
+  {
+    "suite": "unit",
+    "fixtureId": "M0-07-UNIT-26",
+    "status": "passed",
+    "details": "7 files and 26 unit tests passed."
+  },
+  {
+    "suite": "integration",
+    "fixtureId": "M0-07-INTEGRATION-12",
+    "status": "passed",
+    "details": "5 files and 12 integration tests passed."
+  },
+  {
+    "suite": "migration",
+    "fixtureId": "M0-07-MIGRATION-17",
+    "status": "passed",
+    "details": "4 files and 17 migration tests passed; M0-07 introduced no migration."
+  },
+  {
+    "suite": "security",
+    "fixtureId": "M0-07-SECURITY-20",
+    "status": "passed",
+    "details": "4 files and 20 security tests passed; strict parsing rejects extra fields and invalid provenance."
+  },
+  {
+    "suite": "eval",
+    "fixtureId": "M0-07-EVAL-8",
+    "status": "passed",
+    "details": "2 files and 8 deterministic protocol Eval tests passed."
+  },
+  {
+    "suite": "performance",
+    "fixtureId": "M0-07-PERF-26",
+    "status": "passed",
+    "details": "4 files and 26 performance tests passed; all frozen Diff budgets passed."
+  },
+  {
+    "suite": "electron-e2e-local",
+    "fixtureId": "LOCAL-DISPLAY-UNAVAILABLE",
+    "status": "skipped",
+    "details": "The local container has no DISPLAY or xvfb-run; the unchanged Electron entrypoint passed in GitHub Xvfb."
+  },
+  {
+    "suite": "electron-e2e-remote",
+    "fixtureId": "M0-07-ELECTRON",
+    "status": "passed",
+    "details": "GitHub Quality run 29473622578 completed the display/DPI screenshot matrix and full pnpm test command successfully."
+  },
+  {
+    "suite": "task-governance",
+    "fixtureId": "M0-07-GOVERNANCE",
+    "status": "passed",
+    "details": "GitHub Task Governance run 29473622555 passed task validation, path preflight and evidence-structure verification."
+  }
+]

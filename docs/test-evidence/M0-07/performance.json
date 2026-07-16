@@ -1,0 +1,82 @@
+[
+  {
+    "taskId": "M0-07",
+    "commit": "9b10fdb2f07124ef2491198aacc39d08bc69305b",
+    "environment": {
+      "os": "linux 6.12.47",
+      "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+      "memoryGb": 15.93,
+      "display": "headless pure-function benchmark"
+    },
+    "dataset": "chinese-diff-5000-structure",
+    "metric": "p95_ms",
+    "samples": 100,
+    "result": 0.115419,
+    "budget": 500,
+    "passed": true
+  },
+  {
+    "taskId": "M0-07",
+    "commit": "9b10fdb2f07124ef2491198aacc39d08bc69305b",
+    "environment": {
+      "os": "linux 6.12.47",
+      "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+      "memoryGb": 15.93,
+      "display": "headless pure-function benchmark"
+    },
+    "dataset": "chinese-diff-5000-complete",
+    "metric": "p95_ms",
+    "samples": 100,
+    "result": 1.053144,
+    "budget": 1200,
+    "passed": true
+  },
+  {
+    "taskId": "M0-07",
+    "commit": "9b10fdb2f07124ef2491198aacc39d08bc69305b",
+    "environment": {
+      "os": "linux 6.12.47",
+      "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+      "memoryGb": 15.93,
+      "display": "headless pure-function benchmark"
+    },
+    "dataset": "chinese-diff-20000-progressive-complete",
+    "metric": "p95_ms",
+    "samples": 25,
+    "result": 1.2651,
+    "budget": 3000,
+    "passed": true
+  },
+  {
+    "taskId": "M0-07",
+    "commit": "9b10fdb2f07124ef2491198aacc39d08bc69305b",
+    "environment": {
+      "os": "linux 6.12.47",
+      "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+      "memoryGb": 15.93,
+      "display": "headless pure-function benchmark"
+    },
+    "dataset": "chinese-diff-20000-progressive-slice",
+    "metric": "max_slice_ms",
+    "samples": 25,
+    "result": 0.541835,
+    "budget": 100,
+    "passed": true
+  },
+  {
+    "taskId": "M0-07",
+    "commit": "9b10fdb2f07124ef2491198aacc39d08bc69305b",
+    "environment": {
+      "os": "linux 6.12.47",
+      "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+      "memoryGb": 15.93,
+      "display": "headless pure-function benchmark"
+    },
+    "dataset": "chinese-diff-20000-cancellation",
+    "metric": "cancel_confirmation_ms",
+    "samples": 1,
+    "result": 0.230695,
+    "budget": 500,
+    "passed": true
+  }
+]

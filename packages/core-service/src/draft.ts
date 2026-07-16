@@ -353,7 +353,9 @@ export function initializeChapterDraft(
       JSON.stringify(initial.attributes),
       initial.contentHash,
     );
-  connection.prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?').run(draftId, chapterId);
+  connection
+    .prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?')
+    .run(draftId, chapterId);
   return draftId;
 }
 
@@ -377,7 +379,10 @@ function assertExpectedHash(block: WorkingBlock, expectedHash: string): void {
   }
 }
 
-function insertionIndex(blocks: readonly WorkingBlock[], afterLogicalBlockId: string | null): number {
+function insertionIndex(
+  blocks: readonly WorkingBlock[],
+  afterLogicalBlockId: string | null,
+): number {
   return afterLogicalBlockId === null ? 0 : blockIndex(blocks, afterLogicalBlockId) + 1;
 }
 
@@ -507,8 +512,7 @@ export class DraftService {
   readonly #clock: DatabaseClock;
   readonly #idFactory: () => string;
   readonly #faultInjector:
-    | ((stage: 'after-block-delete' | 'after-patch-persist') => void)
-    | undefined;
+    ((stage: 'after-block-delete' | 'after-patch-persist') => void) | undefined;
 
   constructor(workspace: ProjectWorkspaceService, options: DraftServiceOptions = {}) {
     this.#workspace = workspace;

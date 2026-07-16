@@ -29,79 +29,58 @@ jobs:
       - name: Patch Core dispatch and v4 expectations
         run: |
           python - <<'PY'
-          import re
           from pathlib import Path
 
           utility = Path('packages/core-service/src/utility-entry.ts')
-          content = utility.read_text()
+          lines = utility.read_text().splitlines()
 
-          error_pattern = re.compile(
-              r"  if \(error instanceof DraftServiceError\) \{\n.*?^  \}\n(?=  if \(error instanceof ProjectStructureError\))",
-              re.MULTILINE | re.DOTALL,
+          draft_start = lines.index('  if (error instanceof DraftServiceError) {')
+          structure_start = lines.index('  if (error instanceof ProjectStructureError) {', draft_start)
+          replacement = [
+              '  if (error instanceof DraftServiceError) {',
+              '    switch (error.code) {',
+              "      case 'DRAFT_NOT_FOUND':",
+              "        return 'DRAFT_NO_ACTIVE_005';",
+              "      case 'DRAFT_BLOCK_NOT_FOUND':",
+              "        return 'COMMON_NOT_FOUND_002';",
+              "      case 'DRAFT_REVISION_CONFLICT':",
+              "        return 'DRAFT_REVISION_CONFLICT_001';",
+              "      case 'DRAFT_BLOCK_HASH_CONFLICT':",
+              "        return 'DRAFT_BLOCK_HASH_CONFLICT_002';",
+              "      case 'DRAFT_PATCH_INVALID':",
+              "        return 'DRAFT_PATCH_INVALID_004';",
+              "      case 'DRAFT_INVARIANT_FAILED':",
+              "        return 'COMMON_CONFLICT_003';",
+              '    }',
+              '  }',
+          ]
+          lines[draft_start:structure_start] = replacement
+
+          save_case = lines.index('      case DRAFT_COMMANDS.saveDraftSnapshot:')
+          switch_end = next(
+              index for index in range(save_case + 1, len(lines)) if lines[index] == '    }'
           )
-          error_replacement = """  if (error instanceof DraftServiceError) {
-            switch (error.code) {
-              case 'DRAFT_NOT_FOUND':
-                return 'DRAFT_NO_ACTIVE_005';
-              case 'DRAFT_BLOCK_NOT_FOUND':
-                return 'COMMON_NOT_FOUND_002';
-              case 'DRAFT_REVISION_CONFLICT':
-                return 'DRAFT_REVISION_CONFLICT_001';
-              case 'DRAFT_BLOCK_HASH_CONFLICT':
-                return 'DRAFT_BLOCK_HASH_CONFLICT_002';
-              case 'DRAFT_PATCH_INVALID':
-                return 'DRAFT_PATCH_INVALID_004';
-              case 'DRAFT_INVARIANT_FAILED':
-                return 'COMMON_CONFLICT_003';
-            }
-          }
-          """
-          content, error_count = error_pattern.subn(error_replacement, content, count=1)
-
-          dispatch_pattern = re.compile(
-              r"(      case DRAFT_COMMANDS\.saveDraftSnapshot:\n.*?data: await drafts\.saveSnapshot\(requestId, operation\.input\),\n        \}\);)\n(?=    \})",
-              re.DOTALL,
-          )
-          dispatch_replacement = r"""\1
-              case DRAFT_COMMANDS.applyPatch:
-                return CoreProjectResultSchema.parse({
-                  ok: true,
-                  operation: operation.operation,
-                  data: await drafts.applyPatch(requestId, operation.input),
-                });
-          """
-          content, dispatch_count = dispatch_pattern.subn(dispatch_replacement, content, count=1)
-
-          if error_count != 1:
-              raise SystemExit(f'Draft error mapping replacements: {error_count}')
-          if dispatch_count != 1:
-              raise SystemExit(f'Draft dispatch replacements: {dispatch_count}')
-          utility.write_text(content)
+          patch_case = [
+              '      case DRAFT_COMMANDS.applyPatch:',
+              '        return CoreProjectResultSchema.parse({',
+              '          ok: true,',
+              '          operation: operation.operation,',
+              '          data: await drafts.applyPatch(requestId, operation.input),',
+              '        });',
+          ]
+          lines[switch_end:switch_end] = patch_case
+          utility.write_text('\n'.join(lines) + '\n')
 
           security = Path('tests/security/project-workspace.test.ts')
           security_content = security.read_text()
-          security_content, summary_count = re.subn(
-              r"(compatibility: 'current',\n\s+schemaVersion: )3,",
-              r"\g<1>4,",
-              security_content,
-              count=1,
+          if security_content.count('projectSchemaVersion: 3,') != 1:
+              raise SystemExit('Expected one projectSchemaVersion: 3 assertion')
+          if security_content.count('schema_version: 3,') != 1:
+              raise SystemExit('Expected one schema_version: 3 assertion')
+          security_content = security_content.replace(
+              'projectSchemaVersion: 3,', 'projectSchemaVersion: 4,', 1
           )
-          security_content, manifest_count = re.subn(
-              r"projectSchemaVersion: 3,",
-              "projectSchemaVersion: 4,",
-              security_content,
-              count=1,
-          )
-          security_content, db_count = re.subn(
-              r"schema_version: 3,",
-              "schema_version: 4,",
-              security_content,
-              count=1,
-          )
-          if (summary_count, manifest_count, db_count) != (1, 1, 1):
-              raise SystemExit(
-                  f'v4 expectation replacements: summary={summary_count}, manifest={manifest_count}, db={db_count}'
-              )
+          security_content = security_content.replace('schema_version: 3,', 'schema_version: 4,', 1)
           security.write_text(security_content)
           PY
       - run: pnpm exec prettier --write packages/core-service/src/utility-entry.ts tests/security/project-workspace.test.ts

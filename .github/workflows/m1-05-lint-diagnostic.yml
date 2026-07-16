@@ -1,18 +1,25 @@
-name: M1-05 Lint Diagnostic
+name: M1-05 Lint Fix
 
 on:
   pull_request:
     branches:
       - main
 
+concurrency:
+  group: m1-05-lint-fix
+  cancel-in-progress: true
+
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  lint:
+  fix:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: validate/m1-05-core-20260716
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
@@ -21,19 +28,36 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Capture lint output
-        shell: bash
+      - name: Register the Patch command schema
         run: |
-          set +e
-          pnpm lint > lint.log 2>&1
-          code=$?
-          cat lint.log
-          echo "$code" > lint-exit.txt
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: m1-05-lint-log
-          path: |
-            lint.log
-            lint-exit.txt
-          if-no-files-found: error
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/contracts/src/index.ts')
+          content = path.read_text()
+          marker = '  DraftOpenCommandSchema,\n  DraftSaveSnapshotCommandSchema,'
+          replacement = (
+              '  DraftOpenCommandSchema,\n'
+              '  DraftApplyPatchCommandSchema,\n'
+              '  DraftSaveSnapshotCommandSchema,'
+          )
+          if marker in content:
+              content = content.replace(marker, replacement, 1)
+          elif replacement not in content:
+              raise SystemExit('RegisteredCommandSchema Draft anchor not found')
+          path.write_text(content)
+          PY
+      - run: pnpm exec prettier --write packages/contracts/src/index.ts
+      - run: pnpm lint
+      - name: Commit lint fix
+        run: |
+          if git diff --quiet -- packages/contracts/src/index.ts; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/contracts/src/index.ts
+          git commit -m "fix(M1-05): register Block Patch command schema"
+          git fetch origin validate/m1-05-core-20260716
+          git rebase origin/validate/m1-05-core-20260716
+          git push origin HEAD:validate/m1-05-core-20260716

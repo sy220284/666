@@ -1,0 +1,39 @@
+name: M1-05 Governance Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Capture governance inputs
+        shell: bash
+        env:
+          TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: |
+          {
+            echo "BASE=$TASK_BASE_REF"
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "--- CHANGED FILES ---"
+            git diff --name-only "$TASK_BASE_REF" HEAD
+            echo "--- PREFLIGHT ---"
+            node scripts/taskctl.mjs preflight
+          } > governance.log 2>&1 || true
+          cat governance.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m1-05-governance-log
+          path: governance.log
+          if-no-files-found: error

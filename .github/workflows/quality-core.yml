@@ -100,8 +100,8 @@ jobs:
       - name: Run Electron E2E and capture diagnostics
         shell: bash
         env:
-          WORLDFORGE_E2E_OUTPUT_DIR: test-results/electron
-          WORLDFORGE_CAPTURE_MATRIX_DIR: test-results/display-matrix
+          WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
+          WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
         run: |
           mkdir -p test-results/ci
           set -o pipefail

@@ -99,9 +99,7 @@ export function buildDraftPatchOperations(
   const retainedIds = new Set(
     current
       .filter((block) => {
-        const previous = block.logicalBlockId
-          ? persistedById.get(block.logicalBlockId)
-          : undefined;
+        const previous = block.logicalBlockId ? persistedById.get(block.logicalBlockId) : undefined;
         return previous !== undefined && previous.blockType === block.blockType;
       })
       .map((block) => block.logicalBlockId as string),
@@ -120,8 +118,9 @@ export function buildDraftPatchOperations(
     .map((block) => block.logicalBlockId);
   const desiredRetainedOrder = current
     .map((block) => block.logicalBlockId)
-    .filter((logicalBlockId): logicalBlockId is string =>
-      logicalBlockId !== null && retainedIds.has(logicalBlockId),
+    .filter(
+      (logicalBlockId): logicalBlockId is string =>
+        logicalBlockId !== null && retainedIds.has(logicalBlockId),
     );
   const moves: DraftEditorPatchOperation[] = [];
   for (const [targetIndex, logicalBlockId] of desiredRetainedOrder.entries()) {

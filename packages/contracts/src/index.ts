@@ -272,6 +272,7 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectListTrashCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
   DraftOpenCommandSchema,
+  DraftApplyPatchCommandSchema,
   DraftSaveSnapshotCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,

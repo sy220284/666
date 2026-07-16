@@ -471,8 +471,21 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(blocks.first()).toHaveAttribute('data-block-type', 'paragraph');
     await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);
 
-    await page.keyboard.press('End');
+    await editor.evaluate((element) => {
+      (element as HTMLElement).focus();
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+    });
+    await page.waitForTimeout(50);
     await page.keyboard.press('Enter');
+    await expect(blocks).toHaveCount(2);
+    await expect(blocks.first()).toHaveText('雨落在旧站台。终风起。');
+    await expect(blocks.nth(1)).toHaveText('');
     await page.keyboard.type('“谁在那里？”');
     await page.locator('[data-set-block-type="dialogue"]').click();
     await expect(editor.locator('[data-block-type="dialogue"]')).toHaveText('“谁在那里？”');
@@ -563,7 +576,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.locator('[data-open-recent]').click();
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
-    await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。风起。终');
+    await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。终风起。');
     const reopenedIds = await page
       .locator('[data-draft-content] > [data-logical-block-id]')
       .evaluateAll((elements) =>

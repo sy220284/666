@@ -35,9 +35,10 @@ allowed_paths:
   - docs/contracts/
   - docs/database/
   - docs/ui/
-  - .github/workflows/
+  - .github/workflows/quality.yml
+  - .github/workflows/quality-core.yml
+  - .github/workflows/task-governance.yml
   - scripts/taskctl.mjs
-  - scripts/release-tool.mjs
   - docs/process/DEVELOPMENT_AUTOMATION.md
   - package.json
   - pnpm-lock.yaml

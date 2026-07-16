@@ -8,8 +8,8 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M1-02`
-- 唯一任务卡：`docs/tasks/M1/M1-02_PROJECT_WORKSPACE_PATHS.md`
+- 任务ID：`M1-03`
+- 唯一任务卡：`docs/tasks/M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md`
 - 工作分支：`main`
 - 开始时间：`2026-07-16`
 - 授权模式：`implementation-mainline`
@@ -19,13 +19,12 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
+  - migrations/project/
+  - packages/domain/
   - packages/core-service/
   - packages/contracts/
-  - apps/desktop/main/
-  - apps/desktop/preload/
   - apps/desktop/renderer/
-  - migrations/project/
-  - tests/security/
+  - tests/integration/
   - tests/e2e/
   - package.json
   - pnpm-lock.yaml
@@ -33,10 +32,10 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M1/M1-02_PROJECT_WORKSPACE_PATHS.md
+  - docs/tasks/M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M1-02/
-  - docs/tasks/M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md
+  - docs/test-evidence/M1-03/
+  - docs/tasks/M1/M1-02_PROJECT_WORKSPACE_PATHS.md
 forbidden_paths:
 
 required_docs:
@@ -44,10 +43,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/architecture/ARCHITECTURE.md
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/database/SCHEMA_COMPATIBILITY.md
-  - docs/security/THREAT_MODEL.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
 verification:
   - pnpm lint
   - pnpm typecheck

@@ -1,4 +1,4 @@
-name: M1-05 IPC Patch
+name: M1-05 IPC Canonicalize
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  patch:
+  canonicalize:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -21,47 +21,94 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Make the temporary patcher tolerant for partial source matches
+      - name: Canonicalize Patch imports and handlers
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
-          path = Path('.github/m1-05-ipc-patch.py')
-          content = path.read_text()
-          content = content.replace(
-              '    if old not in content:\n        raise SystemExit(f"Anchor not found in {path}: {old[:80]!r}")\n    file.write_text(content.replace(old, new, 1))',
-              '    if old not in content:\n        print(f"SKIP {path}: {old[:80]!r}")\n        return\n    file.write_text(content.replace(old, new, 1))',
-              1,
+
+          def keep_first_line(content: str, line: str) -> str:
+              seen = False
+              output = []
+              for current in content.splitlines():
+                  if current == line:
+                      if seen:
+                          continue
+                      seen = True
+                  output.append(current)
+              return '\n'.join(output) + '\n'
+
+          contracts = Path('packages/contracts/src/index.ts')
+          contracts_content = keep_first_line(
+              contracts.read_text(), '  DraftApplyPatchCommandSchema,'
           )
-          path.write_text(content)
+          contracts.write_text(contracts_content)
+
+          main = Path('apps/desktop/main/src/ipc-handlers.ts')
+          main_content = keep_first_line(
+              main.read_text(), '  DraftApplyPatchCommandSchema,'
+          )
+          main_content = re.sub(
+              r"\n  register\(IPC_CHANNELS\.applyPatch, async \(event, raw\) => \{\n.*?\n  \}\);\n",
+              '\n',
+              main_content,
+              flags=re.DOTALL,
+          )
+          canonical_handler = """
+          register(IPC_CHANNELS.applyPatch, async (event, raw) => {
+            const rejected = rejectUntrusted(event, raw);
+            if (rejected) return rejected;
+            const parsed = DraftApplyPatchCommandSchema.safeParse(raw);
+            if (!parsed.success) return invalidRequest(raw);
+            return invokeProject(parsed.data.requestId, {
+              operation: DRAFT_COMMANDS.applyPatch,
+              input: parsed.data.payload,
+            });
+          });
+
+          """
+          anchor = '  register(IPC_CHANNELS.saveDraftSnapshot, async (event, raw) => {'
+          if anchor not in main_content:
+              raise SystemExit('Main saveSnapshot handler anchor not found')
+          main_content = main_content.replace(anchor, canonical_handler + anchor, 1)
+          main.write_text(main_content)
+
+          preload = Path('apps/desktop/preload/src/index.ts')
+          preload_content = keep_first_line(
+              preload.read_text(), '  DraftApplyPatchCommandSchema,'
+          )
+          method_pattern = re.compile(
+              r"    applyPatch: \(input\) =>\n"
+              r"      invoke\(\n"
+              r"        IPC_CHANNELS\.applyPatch,\n"
+              r"        DraftApplyPatchCommandSchema\.parse\(envelope\(APP_COMMANDS\.applyPatch, input\)\),\n"
+              r"        DraftDocumentResultSchema,\n"
+              r"      \),\n"
+          )
+          preload_content = method_pattern.sub('', preload_content)
+          canonical_method = """    applyPatch: (input) =>
+              invoke(
+                IPC_CHANNELS.applyPatch,
+                DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
+                DraftDocumentResultSchema,
+              ),
+          """
+          preload_anchor = '    saveSnapshot: (input) =>\n'
+          if preload_anchor not in preload_content:
+              raise SystemExit('Preload saveSnapshot method anchor not found')
+          preload_content = preload_content.replace(
+              preload_anchor, canonical_method + preload_anchor, 1
+          )
+          preload.write_text(preload_content)
           PY
-      - run: python .github/m1-05-ipc-patch.py
-      - name: Remove duplicate imports from overlapping insert anchors
+      - run: pnpm exec prettier --write packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts
+      - name: Commit canonical Patch surface
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          for filename in (
-              'packages/contracts/src/index.ts',
-              'apps/desktop/main/src/ipc-handlers.ts',
-              'apps/desktop/preload/src/index.ts',
-          ):
-              path = Path(filename)
-              content = path.read_text()
-              while '  DraftApplyPatchCommandSchema,\n  DraftApplyPatchCommandSchema,\n' in content:
-                  content = content.replace(
-                      '  DraftApplyPatchCommandSchema,\n  DraftApplyPatchCommandSchema,\n',
-                      '  DraftApplyPatchCommandSchema,\n',
-                      1,
-                  )
-              path.write_text(content)
-          PY
-      - run: pnpm exec prettier --write packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts apps/desktop/renderer/src/index.ts
-      - name: Commit IPC chain
-        run: |
-          if git diff --quiet -- packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts apps/desktop/renderer/src/index.ts; then
+          if git diff --quiet -- packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts apps/desktop/renderer/src/index.ts
-          git commit -m "fix(M1-05): normalize Block Patch IPC imports"
+          git add packages/contracts/src/index.ts apps/desktop/main/src/ipc-handlers.ts apps/desktop/preload/src/index.ts
+          git commit -m "fix(M1-05): canonicalize Block Patch IPC surface"
           git push origin HEAD:validate/m1-05-core-20260716

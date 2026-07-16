@@ -48,7 +48,7 @@ jobs:
             tests/unit/draft-semantic.test.ts \
             > /tmp/m1-05.patch
           git apply --3way /tmp/m1-05.patch
-      - name: Remove public snapshot write bypass
+      - name: Remove public snapshot write bypass and align E2E
         shell: bash
         run: |
           python - <<'PY'
@@ -119,6 +119,15 @@ jobs:
               return text
 
           update('packages/core-service/src/utility-entry.ts', utility)
+
+          def e2e(text: str) -> str:
+              old = "await expect(page.locator('[data-draft-state]')).toHaveText('已手动保存到 project.sqlite。');"
+              new = "await expect(page.locator('[data-draft-state]')).toHaveText(/^已提交 Revision \\d+ 到 project\\.sqlite。$/u);"
+              if old not in text:
+                  raise SystemExit('M1-05 E2E save-state anchor missing')
+              return text.replace(old, new, 1)
+
+          update('tests/e2e/electron-shell.spec.ts', e2e)
           PY
       - run: pnpm install --frozen-lockfile
       - name: Format affected files
@@ -132,6 +141,7 @@ jobs:
             apps/desktop/main/src/ipc-handlers.ts \
             apps/desktop/preload/src/index.ts \
             apps/desktop/renderer/src/index.ts \
+            tests/e2e/electron-shell.spec.ts \
             tests/migration/draft-migration.test.ts \
             tests/migration/sqlite-foundation.test.ts \
             tests/migration/testkit-faults.test.ts \
@@ -183,6 +193,7 @@ jobs:
             packages/core-service/src/draft.ts \
             packages/core-service/src/utility-entry.ts \
             packages/editor-core/src/draft-patch.ts \
+            tests/e2e/electron-shell.spec.ts \
             tests/migration/draft-migration.test.ts \
             tests/migration/sqlite-foundation.test.ts \
             tests/migration/testkit-faults.test.ts \

@@ -1,6 +1,6 @@
 # M1-03 卷与章节基础生命周期
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
 > 建议分支：`feat/m1-volume-chapter-lifecycle`

@@ -59,20 +59,32 @@ jobs:
         run: pnpm task:advance -- --ci=success --commit=5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4
       - name: Apply M1-06 implementation
         run: python /tmp/m1-06-implement.py
-      - name: Add environment-neutral timer declarations
+      - name: Normalize runtime declarations and test imports
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          path = Path('packages/editor-core/src/autosave.ts')
-          source = path.read_text()
+          autosave = Path('packages/editor-core/src/autosave.ts')
+          source = autosave.read_text()
           declarations = (
               "declare function setTimeout(handler: () => void, timeout: number): unknown;\n"
               "declare function clearTimeout(handle: unknown): void;\n\n"
           )
           if not source.startswith('declare function setTimeout'):
-              path.write_text(declarations + source)
+              autosave.write_text(declarations + source)
+
+          for name in [
+              'tests/unit/autosave-writing-tools.test.ts',
+              'tests/performance/writing-tools-performance.test.ts',
+          ]:
+              path = Path(name)
+              path.write_text(
+                  path.read_text().replace(
+                      "from '@worldforge/editor-core';",
+                      "from '../../packages/editor-core/src/index.js';",
+                  )
+              )
           PY
       - name: Format
         run: |
@@ -105,26 +117,8 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
-      - name: Capture unit diagnostics
-        shell: bash
-        run: |
-          set +e
-          pnpm test:unit > /tmp/m1-06-unit.log 2>&1
-          code=$?
-          cat /tmp/m1-06-unit.log
-          echo "$code" > /tmp/m1-06-unit-code
-          exit 0
-      - name: Upload unit diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: m1-06-unit-diagnostics
-          path: |
-            /tmp/m1-06-unit.log
-            /tmp/m1-06-unit-code
-          if-no-files-found: error
-          retention-days: 1
-      - name: Enforce unit result
-        run: test "$(cat /tmp/m1-06-unit-code)" = "0"
+      - name: Unit tests
+        run: pnpm test:unit
       - name: Integration tests
         run: pnpm test:integration
       - name: Security tests

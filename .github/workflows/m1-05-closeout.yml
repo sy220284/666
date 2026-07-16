@@ -82,7 +82,6 @@ jobs:
           def contracts_index(text: str) -> str:
               text = text.replace('  DraftSaveSnapshotCommandSchema,\n', '')
               text = text.replace('  type DraftSaveSnapshotInput,\n', '')
-              text = text.replace('  DraftSaveSnapshotCommandSchema,\n', '')
               text = text.replace(
                   '    readonly saveSnapshot: (input: DraftSaveSnapshotInput) => Promise<CommandResult<DraftDocument>>;\n',
                   '',
@@ -139,26 +138,37 @@ jobs:
             tests/security/draft-ipc.test.ts \
             tests/security/project-workspace.test.ts \
             tests/unit/draft-semantic.test.ts
-      - name: Validate M1-05
-        shell: bash
-        env:
-          WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
-          WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
+      - name: Install Electron display dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
-          pnpm task:validate
-          pnpm check:workspaces
-          pnpm check:boundaries
-          pnpm format:check
-          pnpm lint
-          pnpm typecheck
-          pnpm test:unit
-          pnpm test:integration
-          pnpm test:migration
-          pnpm test:security
-          pnpm test:e2e
-          pnpm build
+      - name: Validate task state
+        run: pnpm task:validate
+      - name: Validate workspaces
+        run: pnpm check:workspaces
+      - name: Validate boundaries
+        run: pnpm check:boundaries
+      - name: Validate formatting
+        run: pnpm format:check
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test:unit
+      - name: Integration tests
+        run: pnpm test:integration
+      - name: Migration tests
+        run: pnpm test:migration
+      - name: Security tests
+        run: pnpm test:security
+      - name: Electron E2E
+        env:
+          WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
+          WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
+        run: pnpm test:e2e
+      - name: Build
+        run: pnpm build
       - name: Commit M1-05 closeout
         shell: bash
         run: |

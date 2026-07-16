@@ -35,7 +35,9 @@ allowed_paths:
   - docs/contracts/
   - docs/database/
   - docs/ui/
-  - .github/workflows/task-governance.yml
+  - .github/workflows/
+  - scripts/taskctl.mjs
+  - docs/process/DEVELOPMENT_AUTOMATION.md
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
@@ -56,6 +58,7 @@ required_docs:
   - docs/decisions/ADR-005-lock-revision-backup.md
   - docs/contracts/ERROR_CODES.md
   - docs/database/DATABASE_SCHEMA.md
+  - docs/process/DEVELOPMENT_AUTOMATION.md
 verification:
   - pnpm lint
   - pnpm typecheck

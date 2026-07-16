@@ -354,6 +354,7 @@ export class ProjectWorkspaceService {
               connection,
               projectId,
               project.initialStructure ?? 'starter',
+              createdAt,
               this.#idFactory,
             );
           });

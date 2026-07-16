@@ -416,6 +416,165 @@ test('creates an explicit professional blank project and exposes the first struc
   }
 });
 
+test('edits, sanitizes, saves, and rebuilds a four-block Draft through the desktop UI', async () => {
+  test.setTimeout(90_000);
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'draft-projects');
+  await mkdir(createParent, { recursive: true });
+  const application = await launch(userDataPath, undefined, {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+  });
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-create-project]').click();
+    await page.locator('[data-project-name]').fill('雨夜正文');
+    await page.locator('[data-project-channel]').fill('悬疑');
+    await page.locator('[data-confirm-create-project]').click();
+    await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();
+
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    await expect(page.locator('[data-draft-workspace]')).toBeVisible();
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
+    const editor = page.locator('[data-draft-content]');
+    const blocks = editor.locator(':scope > [data-block-type]');
+    await expect(editor).toHaveAttribute('contenteditable', 'true');
+    await expect(blocks).toHaveCount(1);
+    const originalLogicalId = await blocks.first().getAttribute('data-logical-block-id');
+    expect(originalLogicalId).toMatch(/^[0-9a-f-]{36}$/u);
+
+    await editor.click();
+    await page.keyboard.type('雨落在旧站台。');
+    await page.keyboard.press('Enter');
+    await expect(blocks).toHaveCount(2);
+    await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);
+    expect(await blocks.nth(1).getAttribute('data-logical-block-id')).toBeNull();
+    expect(await blocks.nth(1).getAttribute('data-client-block-id')).toMatch(/^temporary-/u);
+    await page.keyboard.type('风起。');
+    await page.keyboard.press('Home');
+    await page.keyboard.press('Backspace');
+    await expect(blocks).toHaveCount(1);
+    await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);
+    await expect(blocks.first()).toHaveText('雨落在旧站台。风起。');
+
+    await page.waitForTimeout(600);
+    await page.keyboard.type('终');
+    await expect(blocks.first()).toContainText('终');
+    await page.locator('[data-undo-draft]').click();
+    await expect(blocks.first()).not.toContainText('终');
+    await page.locator('[data-redo-draft]').click();
+    await expect(blocks.first()).toContainText('终');
+    await page.locator('[data-set-block-type="heading"]').click();
+    await expect(blocks.first()).toHaveAttribute('data-block-type', 'heading');
+    await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);
+    await page.locator('[data-set-block-type="paragraph"]').click();
+    await expect(blocks.first()).toHaveAttribute('data-block-type', 'paragraph');
+    await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);
+
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('“谁在那里？”');
+    await page.locator('[data-set-block-type="dialogue"]').click();
+    await expect(editor.locator('[data-block-type="dialogue"]')).toHaveText('“谁在那里？”');
+    await page.keyboard.press('End');
+    await page.locator('[data-insert-separator]').click();
+    await expect(editor.locator('[data-block-type="separator"]')).toHaveCount(1);
+    await page.keyboard.type('第二节');
+    await page.locator('[data-set-block-type="heading"]').click();
+    await expect(editor.locator('[data-block-type="heading"]')).toContainText('第二节');
+
+    await editor.evaluate((element) => {
+      const clipboard = new DataTransfer();
+      clipboard.setData(
+        'text/html',
+        '<h3 style="color:red" onclick="alert(1)">网页标题</h3><script>恶意脚本</script><p hidden>隐藏正文</p><blockquote class="remote">“安全网页正文”</blockquote><svg><text>恶意图形</text></svg>',
+      );
+      clipboard.setData('text/plain', '网页标题\n“安全网页正文”');
+      element.dispatchEvent(
+        new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }),
+      );
+    });
+    await expect(editor).toContainText('网页标题');
+    await expect(editor).toContainText('“安全网页正文”');
+    await expect(editor).not.toContainText('恶意脚本');
+    await expect(editor).not.toContainText('恶意图形');
+    await expect(editor).not.toContainText('隐藏正文');
+    await expect(editor.locator('script, style, svg, [style], [onclick]')).toHaveCount(0);
+    await editor.evaluate((element) => {
+      const clipboard = new DataTransfer();
+      clipboard.setData('text/plain', '纯文本甲\r\n纯文本乙');
+      element.dispatchEvent(
+        new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }),
+      );
+    });
+    await expect(editor).toContainText('纯文本甲');
+    await expect(editor).toContainText('纯文本乙');
+
+    for (const composition of [
+      { keystrokes: 'yu', committed: '雨' },
+      { keystrokes: 'tggg', committed: '一' },
+    ]) {
+      await editor.dispatchEvent('compositionstart', { data: composition.keystrokes });
+      await expect(page.locator('[data-save-draft]')).toBeDisabled();
+      await expect(page.locator('[data-draft-state]')).toContainText('输入法组合中');
+      const composingBlockCount = await blocks.count();
+      await page.locator('[data-insert-separator]').dispatchEvent('click');
+      await expect(blocks).toHaveCount(composingBlockCount);
+      await editor.dispatchEvent('compositionend', { data: composition.committed });
+      await expect(page.locator('[data-save-draft]')).toBeEnabled();
+    }
+
+    await page.locator('[data-save-draft]').click();
+    await expect(page.locator('[data-draft-state]')).toHaveText('已手动保存到 project.sqlite。');
+    const persisted = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const active = await bridge.project.getActive();
+      if (!active.ok || !active.data) return null;
+      const structure = await bridge.planning.listStructure(active.data.projectId);
+      const chapter = structure.ok ? structure.data.volumes[0]?.chapters[0] : undefined;
+      if (!chapter) return null;
+      const draft = await bridge.draft.open({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+      });
+      return draft.ok ? draft.data : null;
+    });
+    expect(persisted).not.toBeNull();
+    expect(persisted?.blocks.map((block) => block.blockType)).toEqual(
+      expect.arrayContaining(['paragraph', 'dialogue', 'heading', 'separator']),
+    );
+    expect(new Set(persisted?.blocks.map((block) => block.logicalBlockId)).size).toBe(
+      persisted?.blocks.length,
+    );
+
+    await editor.click();
+    await page.keyboard.press('Home');
+    const selectionBeforeBack = await page.evaluate(() => document.getSelection()?.anchorOffset);
+    await page.locator('[data-back-project]').click();
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    await expect(page.locator('[data-draft-workspace]')).toBeVisible();
+    expect(await page.evaluate(() => document.getSelection()?.anchorOffset)).toBe(
+      selectionBeforeBack,
+    );
+
+    await page.locator('[data-back-project]').click();
+    await page.locator('[data-close-project]').click();
+    await page.locator('[data-open-recent]').click();
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
+    await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。风起。终');
+    const reopenedIds = await page
+      .locator('[data-draft-content] > [data-logical-block-id]')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('data-logical-block-id')),
+      );
+    expect(reopenedIds).toEqual(persisted?.blocks.map((block) => block.logicalBlockId));
+  } finally {
+    await closeGracefully(application);
+  }
+});
+
 test('persists DIP bounds and independent appearance preferences only in app.sqlite', async () => {
   test.setTimeout(60_000);
   const userDataPath = await temporaryUserData();

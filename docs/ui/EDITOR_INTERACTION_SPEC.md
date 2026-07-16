@@ -298,3 +298,12 @@ Candidate Diff必须理解拆分和合并关系。
 - 长章节性能。
 - 切章、重开和窗口恢复。
 - 2K 125%与深色主题下选区工具定位。
+
+## 21. M1-04实现映射
+
+- Renderer使用Tiptap/ProseMirror呈现paragraph、dialogue、heading、separator四类顶层正文块；Tiptap JSON仅为窗口状态，关闭重开时始终从DraftBlock重建。
+- Enter拆分保留左块logicalBlockId，右块使用临时clientBlockId并在保存时由Core生成logicalBlockId；块首Backspace合并后保留前块logicalBlockId。
+- composition期间禁用Enter、Backspace、Delete等破坏性结构键和保存；composition结束后只标记未保存，不在每个输入增量上跨IPC提交。
+- 网页粘贴移除脚本、样式、布局节点和任意属性，只保留段落、标题、对话与分隔线语义；纯文本换行映射为正文段落。
+- 本地撤销/重做和每章选区位置保存在ProseMirror/Renderer会话中；保存成功后只同步Core返回的块ID元数据，不清空本地历史与选区。
+- 本任务UI只提供明确的手动保存和只读复制。800ms自动保存、Block Patch、Revision/Hash、锁定与冲突恢复分别由后续任务交付，当前UI不显示为已实现。

@@ -68,12 +68,12 @@ describe('project structure migration', () => {
     const upgraded = await upgradedService.open(randomUUID(), {
       workspacePath: legacy.workspacePath,
     });
-    expect(upgraded).toMatchObject({ schemaVersion: 2, compatibility: 'migrated' });
+    expect(upgraded).toMatchObject({ schemaVersion: 3, compatibility: 'migrated' });
 
     const recoveryProjectDirectory = path.join(recoveryRoot, legacy.projectId);
     const recoveryFiles = await readdir(recoveryProjectDirectory);
     expect(recoveryFiles).toHaveLength(1);
-    expect(recoveryFiles[0]).toMatch(/^project-v1-to-v2-[0-9a-f-]+\.sqlite$/u);
+    expect(recoveryFiles[0]).toMatch(/^project-v1-to-v3-[0-9a-f-]+\.sqlite$/u);
     const recoveryPath = path.join(recoveryProjectDirectory, recoveryFiles[0]!);
     expect((await stat(recoveryProjectDirectory)).mode & 0o777).toBe(0o700);
     expect((await stat(recoveryPath)).mode & 0o777).toBe(0o600);
@@ -99,10 +99,10 @@ describe('project structure migration', () => {
       readBigInts: true,
     });
     expect(current.prepare('SELECT max(version) AS version FROM schema_migrations').get()).toEqual({
-      version: 2n,
+      version: 3n,
     });
     expect(current.prepare('SELECT schema_version FROM projects').get()).toEqual({
-      schema_version: 2n,
+      schema_version: 3n,
     });
     expect(
       current
@@ -115,7 +115,7 @@ describe('project structure migration', () => {
     expect(
       JSON.parse(await readFile(path.join(legacy.workspacePath, 'manifest.json'), 'utf8')),
     ).toMatchObject({
-      projectSchemaVersion: 2,
+      projectSchemaVersion: 3,
     });
 
     await upgradedService.shutdown();
@@ -183,10 +183,19 @@ describe('project structure migration', () => {
       clock,
       prepareRecoveryPoint: async () => undefined,
     });
-    expect(recovered).toMatchObject({ schemaVersion: 2, compatibility: 'migrated' });
+    expect(recovered).toMatchObject({ schemaVersion: 3, compatibility: 'migrated' });
     expect(
       recovered.read((database) => database.prepare('SELECT schema_version FROM projects').get()),
-    ).toEqual({ schema_version: 2n });
+    ).toEqual({ schema_version: 3n });
+    expect(
+      recovered.read((database) =>
+        database
+          .prepare(
+            "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='drafts'",
+          )
+          .get(),
+      ),
+    ).toEqual({ count: 1n });
     await recovered.close();
   });
 });

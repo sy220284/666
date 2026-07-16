@@ -85,7 +85,7 @@ describe('volume and chapter lifecycle', () => {
                 status: 'pending',
                 targetWordMin: null,
                 targetWordMax: null,
-                activeDraftId: null,
+                activeDraftId: expect.any(String),
                 finalVersionId: null,
               }),
             ],

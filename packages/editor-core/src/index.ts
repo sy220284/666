@@ -5,3 +5,4 @@ export const editorCoreLayer = {
 
 export * from './candidate-diff.js';
 export * from './character-diff.js';
+export * from './draft-document.js';

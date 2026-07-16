@@ -116,7 +116,7 @@ M1-03由`migrations/project/0002_volume_chapter_lifecycle.sql`建立。当前具
 | final_version_id | TEXT FK NULL | 当前定稿Version |
 | deleted_at | TEXT NULL | 软删除 |
 
-M1-03先建立`active_draft_id`和`final_version_id`可空引用字段；其目标表分别由M1-04和M1-07建立。在目标表存在前不得写入非空引用，后续任务通过追加Migration补齐数据库级外键，不预建空Draft或Version表。
+M1-03先建立`active_draft_id`和`final_version_id`可空引用字段。M1-04通过追加Migration `0003_draft_editor.sql`建立Draft目标表并补齐`chapters.active_draft_id → drafts.id`数据库外键；`final_version_id`仍保持可空且不写入，直到M1-07建立Version目标表。
 
 #### `plot_nodes`
 
@@ -163,10 +163,14 @@ WHERE status = 'active';
 | attributes_json | TEXT | 语义属性 |
 | source | TEXT | manual/ai/mixed/imported |
 | locked | INTEGER | 0/1 |
-| content_hash | TEXT | SHA-256 |
+| content_hash | TEXT NULL | SHA-256 |
 | revision | INTEGER | 最近修改Revision |
 
 索引：`UNIQUE(draft_id, logical_block_id)`、`INDEX(draft_id, order_key)`。
+
+M1-04实现映射：新建章节在同一事务创建一个`status='active'`的Draft和一个空paragraph DraftBlock；旧v2项目第一次打开尚无Draft的章节时按需创建同样结构。`chapters.active_draft_id`、`drafts.chapter_id`和`draft_blocks.draft_id`形成数据库级归属约束，每章活动Draft由部分唯一索引保证。编辑器保存的是有序DraftBlock快照，Tiptap JSON只在Renderer内重建，不持久化为第二真源。
+
+M1-04尚未提前实现M1-05的Block Patch、Revision递增与内容Hash：当前Draft和DraftBlock的`revision`保持0，`content_hash`明确保存为NULL；不得以占位Hash冒充已验证内容。M1-05将以追加实现替换过渡快照入口并补齐这些不变量。
 
 #### `candidates`
 

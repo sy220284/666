@@ -1,0 +1,69 @@
+2026-07-16 M1-04 local verification
+
+Environment used for pnpm commands:
+XDG_DATA_HOME=/tmp/worldforge-xdg
+XDG_CACHE_HOME=/tmp/worldforge-xdg-cache
+ELECTRON_CACHE=/tmp/worldforge-electron-cache
+
+pnpm install --frozen-lockfile
+PASS: lockfile passed supply-chain policies (223 entries)
+
+pnpm lint
+PASS
+
+pnpm typecheck
+PASS
+
+pnpm test
+PASS: 34 files, 143 passed, 1 skipped (root-only permission case)
+
+pnpm test:migration
+PASS: 6 files, 21 passed
+
+pnpm test:integration
+PASS: 8 files, 24 passed
+
+pnpm test:security
+PASS: 8 files, 38 passed, 1 skipped (root-only permission case)
+
+pnpm test:unit
+PASS: 8 files, 34 passed
+
+pnpm test:perf
+PASS: 4 files, 26 passed
+
+pnpm build
+PASS
+
+pnpm test:e2e
+ENVIRONMENT BLOCKED after successful build: E2E_DISPLAY_UNAVAILABLE; DISPLAY unset and xvfb-run unavailable; exit 2
+
+pnpm exec playwright test tests/e2e/electron-shell.spec.ts --list
+PASS: 8 Electron desktop scenarios parsed
+
+pnpm format:check
+PASS
+
+pnpm check:boundaries
+PASS: 9 process/package layers
+
+pnpm check:workspaces
+PASS: 10 workspace packages
+
+pnpm task:validate
+PASS: M1-04 IN_PROGRESS
+
+pnpm task:preflight
+PASS: changes remain inside the approved M1-04 paths
+
+pnpm release:check
+PASS: tooling configured; publishing correctly BLOCKED while M8-03 is Planned
+
+pnpm package
+PASS: 9 compiled foundation entries
+
+Renderer bundle bare-import check
+PASS: no @worldforge or @tiptap bare imports remain in renderer/dist/index.js
+
+git diff --check
+PASS

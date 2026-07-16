@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   APP_COMMANDS,
+  DRAFT_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
@@ -12,6 +13,8 @@ import {
   AppGetWindowPreferencesCommandSchema,
   AppRestartCoreCommandSchema,
   AppSetAppearancePreferencesCommandSchema,
+  DraftOpenCommandSchema,
+  DraftSaveSnapshotCommandSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   RequestIdSchema,
@@ -137,6 +140,8 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.deleteChapter,
     IPC_CHANNELS.listTrash,
     IPC_CHANNELS.restoreTrashEntry,
+    IPC_CHANNELS.openDraft,
+    IPC_CHANNELS.saveDraftSnapshot,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -552,6 +557,28 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     if (!parsed.success) return invalidRequest(raw);
     return invokeProject(parsed.data.requestId, {
       operation: PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.openDraft, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = DraftOpenCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: DRAFT_COMMANDS.openDraft,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.saveDraftSnapshot, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = DraftSaveSnapshotCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: DRAFT_COMMANDS.saveDraftSnapshot,
       input: parsed.data.payload,
     });
   });

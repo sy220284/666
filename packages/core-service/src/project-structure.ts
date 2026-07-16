@@ -31,6 +31,7 @@ import {
 import { planOrderKey, type OrderedSibling } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
+import { draftTablesAvailable, initializeChapterDraft } from './draft.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
@@ -333,6 +334,7 @@ export function initializeProjectStructure(
   connection: DatabaseSync,
   projectId: string,
   mode: 'starter' | 'blank',
+  createdAt: string,
   idFactory: () => string = randomUUID,
 ): void {
   if (mode === 'blank') return;
@@ -352,6 +354,9 @@ export function initializeProjectStructure(
        ) VALUES(?, ?, '第一章', 1024, 'pending', NULL, NULL, NULL, NULL, NULL)`,
     )
     .run(chapterId, volumeId);
+  if (draftTablesAvailable(connection)) {
+    initializeChapterDraft(connection, chapterId, createdAt, idFactory);
+  }
 }
 
 export class ProjectStructureService {
@@ -453,6 +458,7 @@ export class ProjectStructureService {
         valid.placement ?? { kind: 'end' },
       );
       applyRebalance(connection, 'chapters', plan.rebalanced);
+      const chapterId = this.#idFactory();
       connection
         .prepare(
           `INSERT INTO chapters(
@@ -460,7 +466,13 @@ export class ProjectStructureService {
              active_draft_id, final_version_id, deleted_at
            ) VALUES(?, ?, ?, ?, 'pending', NULL, NULL, NULL, NULL, NULL)`,
         )
-        .run(this.#idFactory(), valid.volumeId, valid.title, plan.orderKey);
+        .run(chapterId, valid.volumeId, valid.title, plan.orderKey);
+      initializeChapterDraft(
+        connection,
+        chapterId,
+        this.#clock.now().toISOString(),
+        this.#idFactory,
+      );
       return readStructure(connection, valid.projectId);
     });
   }

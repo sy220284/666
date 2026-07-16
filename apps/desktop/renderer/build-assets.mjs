@@ -1,6 +1,8 @@
 import { copyFile, mkdir } from 'node:fs/promises';
 import { URL } from 'node:url';
 
+import { build } from 'esbuild';
+
 await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
 await Promise.all([
   copyFile(
@@ -12,3 +14,14 @@ await Promise.all([
     new URL('./dist/styles.css', import.meta.url),
   ),
 ]);
+
+await build({
+  entryPoints: [new URL('./src/index.ts', import.meta.url).pathname],
+  outfile: new URL('./dist/index.js', import.meta.url).pathname,
+  bundle: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2023',
+  sourcemap: false,
+  logLevel: 'warning',
+});

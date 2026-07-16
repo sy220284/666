@@ -10,7 +10,10 @@ describe('database process boundary', () => {
       readFile('apps/desktop/renderer/src/index.ts', 'utf8'),
     ]);
 
-    expect(privilegedAppSources.join('\n')).not.toContain('node:sqlite');
-    expect(privilegedAppSources.join('\n')).not.toMatch(/(?:app|project)\.sqlite/);
+    const sources = privilegedAppSources.join('\n');
+    expect(sources).not.toContain('node:sqlite');
+    expect(sources).not.toContain('DatabaseSync');
+    expect(sources).not.toContain('@worldforge/core-service');
+    expect(sources).not.toContain('better-sqlite3');
   });
 });

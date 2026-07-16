@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ErrorCodeSchema } from './error-codes.js';
+import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
 import {
   CoreProjectStructureOperationSchema,
   CoreProjectStructureResultSchema,
@@ -168,6 +169,7 @@ const CoreProjectWorkspaceOperationSchema = z.discriminatedUnion('operation', [
 export const CoreProjectOperationSchema = z.union([
   CoreProjectWorkspaceOperationSchema,
   CoreProjectStructureOperationSchema,
+  CoreDraftOperationSchema,
 ]);
 
 const coreSuccess = <Operation extends string, DataSchema extends z.ZodType>(
@@ -197,6 +199,7 @@ const CoreProjectWorkspaceResultSchema = z.union([
 export const CoreProjectResultSchema = z.union([
   CoreProjectWorkspaceResultSchema,
   CoreProjectStructureResultSchema,
+  CoreDraftResultSchema,
 ]);
 
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInputSchema>;

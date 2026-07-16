@@ -120,7 +120,7 @@
             </header>
             <div class="paper-stage">
               <article class="editor-paper" data-editor-paper tabindex="0">
-                <div class="home-intro">
+                <div class="home-intro" data-home-intro>
                   <p class="chapter-kicker">只保存在这台设备</p>
                   <h2>最近项目</h2>
                   <p>
@@ -152,7 +152,39 @@
                     <button class="quiet-button" type="button" data-close-project>关闭项目</button>
                   </div>
                 </section>
-                <section class="recent-projects" aria-labelledby="recent-projects-heading">
+                <section class="draft-workspace" data-draft-workspace hidden>
+                  <header class="draft-workspace__header">
+                    <div>
+                      <p class="chapter-kicker">DRAFT · PROJECT.SQLITE</p>
+                      <h2 data-draft-chapter-title>章节正文</h2>
+                    </div>
+                    <div class="draft-workspace__actions">
+                      <button class="quiet-button" type="button" data-back-project>返回项目</button>
+                      <button class="quiet-button" type="button" data-copy-draft>复制正文</button>
+                      <button class="primary-button" type="button" data-save-draft>手动保存</button>
+                    </div>
+                  </header>
+                  <div class="draft-toolbar" role="toolbar" aria-label="正文块工具">
+                    <button type="button" data-set-block-type="paragraph">正文</button>
+                    <button type="button" data-set-block-type="dialogue">对话</button>
+                    <button type="button" data-set-block-type="heading">小标题</button>
+                    <button type="button" data-insert-separator>分隔线</button>
+                    <span aria-hidden="true"></span>
+                    <button type="button" data-undo-draft title="Ctrl/Cmd+Z">撤销</button>
+                    <button type="button" data-redo-draft title="Shift+Ctrl/Cmd+Z">重做</button>
+                  </div>
+                  <p class="draft-state" data-draft-state role="status" aria-live="polite"></p>
+                  <div class="draft-editor-host" data-draft-editor-host></div>
+                  <p class="draft-workspace__hint">
+                    当前任务提供显式保存；800ms 自动保存将在 M1-06
+                    接入。中文输入组合期间不会执行拆分、合并或保存。
+                  </p>
+                </section>
+                <section
+                  class="recent-projects"
+                  data-recent-projects
+                  aria-labelledby="recent-projects-heading"
+                >
                   <header>
                     <div>
                       <h3 id="recent-projects-heading">本地记录</h3>

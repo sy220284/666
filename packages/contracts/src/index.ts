@@ -73,6 +73,15 @@ import {
   type VolumeMoveInput,
   type VolumeUpdateInput,
 } from './project-structure.js';
+import {
+  DRAFT_COMMANDS,
+  DRAFT_IPC_CHANNELS,
+  DraftOpenCommandSchema,
+  DraftSaveSnapshotCommandSchema,
+  type DraftDocument,
+  type DraftOpenInput,
+  type DraftSaveSnapshotInput,
+} from './draft.js';
 
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
@@ -80,6 +89,7 @@ export * from './task-protocol.js';
 export * from './app-data.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
+export * from './draft.js';
 
 export const contractsLayer = {
   name: '@worldforge/contracts',
@@ -92,6 +102,7 @@ export const IPC_CHANNELS = {
   ...APP_DATA_IPC_CHANNELS,
   ...PROJECT_WORKSPACE_IPC_CHANNELS,
   ...PROJECT_STRUCTURE_IPC_CHANNELS,
+  ...DRAFT_IPC_CHANNELS,
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
@@ -110,6 +121,7 @@ export const APP_COMMANDS = {
   ...APP_DATA_COMMANDS,
   ...PROJECT_WORKSPACE_COMMANDS,
   ...PROJECT_STRUCTURE_COMMANDS,
+  ...DRAFT_COMMANDS,
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
@@ -256,6 +268,8 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectDeleteChapterCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
+  DraftOpenCommandSchema,
+  DraftSaveSnapshotCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiHasCredentialCommandSchema,
@@ -514,6 +528,10 @@ export interface WorldforgeBridge {
       projectId: string,
     ) => Promise<CommandResult<{ readonly entries: TrashEntry[] }>>;
     readonly restore: (input: TrashRestoreInput) => Promise<CommandResult<ProjectStructure>>;
+  };
+  readonly draft: {
+    readonly open: (input: DraftOpenInput) => Promise<CommandResult<DraftDocument>>;
+    readonly saveSnapshot: (input: DraftSaveSnapshotInput) => Promise<CommandResult<DraftDocument>>;
   };
   readonly ai: {
     readonly setCredential: (

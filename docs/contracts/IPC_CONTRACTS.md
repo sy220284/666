@@ -125,7 +125,8 @@ Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`或`fin
 
 | 命令 | 输入 | 输出 |
 |---|---|---|
-| `draft.get` | chapterId | 活动Draft与Blocks |
+| `draft.get` | projectId、chapterId | 活动Draft与有序DraftBlocks |
+| `draft.saveSnapshot`（M1-04过渡） | projectId、chapterId、draftId、仅含可编辑字段的Blocks | 保存后的活动Draft与有序DraftBlocks |
 | `draft.applyPatch` | draftId、baseRevision、operations | 新Revision、修改摘要 |
 | `draft.flush` | draftId、baseRevision | 新Revision或无变化 |
 | `draft.undoPersistentOperation` | applyRecordId | 新Revision |
@@ -135,6 +136,10 @@ Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`或`fin
 | `draft.getWordStats` | chapterId | 字符数、纯文字字数、目标进度 |
 
 `draft.applyPatch`必须校验项目、Revision、expectedHash和锁定块。
+
+M1-04的Preload具名方法为`draft.open(input)`和`draft.saveSnapshot(input)`；前者发送冻结命令值`draft.get`。`draft.saveSnapshot`仅用于M1-05 Block Patch入口可用前的显式手动保存，不执行自动保存调度，不递增Revision，也不宣称Hash已建立。快照在Core单写事务内整体替换DraftBlock；任一校验、归属检查或写入故障都会回滚。
+
+Renderer只可为快照块传入`clientBlockId`、可空`logicalBlockId`、`blockType`、`text`和严格`attributes`。`id`、`orderKey`、`source`、`locked`、`contentHash`和`revision`均为Core权威字段，IPC附加这些字段会被strict Schema拒绝。新logicalBlockId和记录ID只能由Core生成；已有logicalBlockId必须属于当前活动Draft。
 
 ### 4.4 Version与Candidate
 

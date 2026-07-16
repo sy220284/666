@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import {
   APP_DATA_COMMANDS,
+  DRAFT_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
@@ -19,6 +20,7 @@ import {
 import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
+import { DraftService, DraftServiceError } from './draft.js';
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
@@ -85,6 +87,7 @@ const projectWorkspace = new ProjectWorkspaceService({
   recentProjects: appRuntime.recentProjects,
 });
 const projectStructure = new ProjectStructureService(projectWorkspace);
+const drafts = new DraftService(projectWorkspace);
 
 function send(message: CoreEvent): void {
   parentPort?.postMessage(message);
@@ -134,6 +137,12 @@ function appDataError(error: unknown): ErrorCode {
 }
 
 function projectWorkspaceError(error: unknown): ErrorCode {
+  if (error instanceof DraftServiceError) {
+    if (error.code === 'DRAFT_NOT_FOUND' || error.code === 'DRAFT_BLOCK_NOT_FOUND') {
+      return 'COMMON_NOT_FOUND_002';
+    }
+    return 'COMMON_CONFLICT_003';
+  }
   if (error instanceof ProjectStructureError) {
     if (error.code === 'STRUCTURE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'STRUCTURE_CONFLICT') return 'COMMON_CONFLICT_003';
@@ -343,6 +352,18 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await projectStructure.restoreTrashEntry(requestId, operation.input),
+        });
+      case DRAFT_COMMANDS.openDraft:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await drafts.open(requestId, operation.input),
+        });
+      case DRAFT_COMMANDS.saveDraftSnapshot:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await drafts.saveSnapshot(requestId, operation.input),
         });
     }
   } catch (error) {

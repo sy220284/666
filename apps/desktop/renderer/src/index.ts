@@ -1,3 +1,14 @@
+import {
+  Editor,
+  assertEditorNodeMetadata,
+  createWorldforgeEditorExtensions,
+  documentToTiptapJson,
+  redoWorldforgeEditor,
+  synchronizePersistedBlockMetadata,
+  tiptapJsonToDraftSnapshot,
+  undoWorldforgeEditor,
+} from '@worldforge/editor-core';
+
 import { contentWidthPixels, layoutPolicyForViewport } from './layout-model.js';
 import type {
   AppearancePreferences,
@@ -5,6 +16,7 @@ import type {
   AppSettingsSnapshot,
   AppSettingsUpdate,
   Chapter,
+  DraftDocument,
   LifecycleStatus,
   ProjectStructure,
   ProjectWorkspaceSummary,
@@ -114,11 +126,31 @@ const trashDialog = document.querySelector<HTMLDialogElement>('[data-trash-dialo
 const trashList = document.querySelector<HTMLElement>('[data-trash-list]');
 const trashStatus = document.querySelector<HTMLElement>('[data-trash-status]');
 const closeTrashButton = document.querySelector<HTMLButtonElement>('[data-close-trash]');
+const homeIntro = document.querySelector<HTMLElement>('[data-home-intro]');
+const recentProjectsPanel = document.querySelector<HTMLElement>('[data-recent-projects]');
+const draftWorkspace = document.querySelector<HTMLElement>('[data-draft-workspace]');
+const draftEditorHost = document.querySelector<HTMLElement>('[data-draft-editor-host]');
+const draftState = document.querySelector<HTMLElement>('[data-draft-state]');
+const draftChapterTitle = document.querySelector<HTMLElement>('[data-draft-chapter-title]');
+const saveDraftButton = document.querySelector<HTMLButtonElement>('[data-save-draft]');
+const copyDraftButton = document.querySelector<HTMLButtonElement>('[data-copy-draft]');
+const backProjectButton = document.querySelector<HTMLButtonElement>('[data-back-project]');
+const undoDraftButton = document.querySelector<HTMLButtonElement>('[data-undo-draft]');
+const redoDraftButton = document.querySelector<HTMLButtonElement>('[data-redo-draft]');
+const insertSeparatorButton = document.querySelector<HTMLButtonElement>('[data-insert-separator]');
+const blockTypeButtons = document.querySelectorAll<HTMLButtonElement>('[data-set-block-type]');
 
 let appearance = defaultAppearance;
 let applicationSettings = defaultSettings;
 let activeProject: ProjectWorkspaceSummary | null = null;
 let activeStructure: ProjectStructure | null = null;
+let activeChapter: Chapter | null = null;
+let activeDraft: DraftDocument | null = null;
+let draftEditor: Editor | null = null;
+let draftDirty = false;
+let draftComposing = false;
+let synchronizingDraftMetadata = false;
+const chapterSelections = new Map<string, { readonly from: number; readonly to: number }>();
 let resizeFrame: number | null = null;
 let drawerRestoreTarget: HTMLElement | null = null;
 
@@ -254,6 +286,243 @@ function setStructureState(message: string, error = false): void {
   structureState.classList.toggle('is-error', error);
 }
 
+function setDraftState(message: string, error = false): void {
+  if (!draftState) return;
+  draftState.textContent = message;
+  draftState.classList.toggle('is-error', error);
+}
+
+function temporaryClientBlockId(): string {
+  return `temporary-${globalThis.crypto.randomUUID()}`;
+}
+
+function sanitizePastedHtml(html: string): string {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  parsed
+    .querySelectorAll(
+      'script, style, noscript, template, iframe, object, embed, svg, canvas, [hidden], [aria-hidden="true"]',
+    )
+    .forEach((element) => element.remove());
+  parsed.querySelectorAll<HTMLElement>('[style]').forEach((element) => {
+    if (/\b(?:display\s*:\s*none|visibility\s*:\s*hidden)\b/iu.test(element.style.cssText)) {
+      element.remove();
+    }
+  });
+  const clean = document.createElement('div');
+  const appendTextBlock = (tag: 'p' | 'blockquote' | `h${number}`, value: string): void => {
+    const element = document.createElement(tag);
+    element.textContent = value;
+    clean.append(element);
+  };
+  const visit = (root: ParentNode): void => {
+    for (const child of root.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const value = child.textContent?.trim() ?? '';
+        if (value) appendTextBlock('p', value);
+        continue;
+      }
+      if (!(child instanceof HTMLElement)) continue;
+      const tag = child.tagName.toLowerCase();
+      if (/^h[1-6]$/u.test(tag)) {
+        appendTextBlock(tag as `h${number}`, child.textContent ?? '');
+      } else if (tag === 'blockquote') {
+        appendTextBlock('blockquote', child.textContent ?? '');
+      } else if (tag === 'hr') {
+        clean.append(document.createElement('hr'));
+      } else if (tag === 'p' || tag === 'li' || tag === 'pre') {
+        appendTextBlock('p', child.textContent ?? '');
+      } else if (child.querySelector('p, li, blockquote, h1, h2, h3, h4, h5, h6, hr')) {
+        visit(child);
+      } else {
+        const value = child.textContent ?? '';
+        if (value.trim()) appendTextBlock('p', value);
+      }
+    }
+  };
+  visit(parsed.body);
+  if (!clean.hasChildNodes()) clean.append(document.createElement('p'));
+  return clean.innerHTML;
+}
+
+function showProjectOverview(): void {
+  if (homeIntro) homeIntro.hidden = false;
+  if (recentProjectsPanel) recentProjectsPanel.hidden = false;
+  if (activeProjectPanel) activeProjectPanel.hidden = activeProject === null;
+  if (draftWorkspace) draftWorkspace.hidden = true;
+  if (activeProject && workspaceTitle) workspaceTitle.textContent = activeProject.name;
+  if (activeProject && workspaceBadge) {
+    workspaceBadge.textContent =
+      activeProject.databaseMode === 'read-only' ? '只读项目' : '本地项目';
+  }
+}
+
+function showDraftWorkspace(): void {
+  if (homeIntro) homeIntro.hidden = true;
+  if (recentProjectsPanel) recentProjectsPanel.hidden = true;
+  if (activeProjectPanel) activeProjectPanel.hidden = true;
+  if (draftWorkspace) draftWorkspace.hidden = false;
+}
+
+function rememberDraftSelection(): void {
+  if (!draftEditor || !activeChapter) return;
+  const { from, to } = draftEditor.state.selection;
+  chapterSelections.set(activeChapter.id, { from, to });
+}
+
+function destroyDraftEditor(): void {
+  rememberDraftSelection();
+  draftEditor?.destroy();
+  draftEditor = null;
+  draftEditorHost?.replaceChildren();
+  activeDraft = null;
+  activeChapter = null;
+  draftDirty = false;
+  draftComposing = false;
+  synchronizingDraftMetadata = false;
+  if (saveDraftButton) saveDraftButton.disabled = true;
+}
+
+function persistedBlocks(draft: DraftDocument) {
+  return draft.blocks.map((block) => ({
+    logicalBlockId: block.logicalBlockId,
+    blockType: block.blockType,
+    text: block.text,
+    attributes: block.attributes,
+    source: block.source,
+    locked: block.locked,
+    contentHash: block.contentHash,
+  }));
+}
+
+function mountDraftEditor(draft: DraftDocument, chapter: Chapter): void {
+  if (!draftEditorHost || !activeProject) return;
+  draftEditor?.destroy();
+  draftEditorHost.replaceChildren();
+  activeChapter = chapter;
+  activeDraft = draft;
+  draftDirty = false;
+  const readOnly = activeProject.databaseMode !== 'read-write';
+  draftEditor = new Editor({
+    element: draftEditorHost,
+    extensions: createWorldforgeEditorExtensions(temporaryClientBlockId),
+    content: documentToTiptapJson(persistedBlocks(draft)),
+    editable: !readOnly,
+    injectCSS: false,
+    enableCoreExtensions: { keymap: false },
+    editorProps: {
+      attributes: {
+        class: 'worldforge-editor',
+        role: 'textbox',
+        'aria-label': `${chapter.title}正文`,
+        'data-draft-content': '',
+      },
+      transformPastedHTML: sanitizePastedHtml,
+      transformPastedText: (text) => text.replaceAll('\r\n', '\n').replaceAll('\r', '\n'),
+    },
+    onUpdate: () => {
+      if (synchronizingDraftMetadata) return;
+      draftDirty = true;
+      setDraftState(draftComposing ? '输入法组合中；保存与结构键已暂停。' : '有未保存修改。');
+    },
+    onSelectionUpdate: ({ editor }) => {
+      chapterSelections.set(chapter.id, {
+        from: editor.state.selection.from,
+        to: editor.state.selection.to,
+      });
+    },
+  });
+  const savedSelection = chapterSelections.get(chapter.id);
+  if (savedSelection) {
+    const maximum = Math.max(1, draftEditor.state.doc.content.size);
+    draftEditor.commands.setTextSelection({
+      from: Math.min(Math.max(1, savedSelection.from), maximum),
+      to: Math.min(Math.max(1, savedSelection.to), maximum),
+    });
+  }
+  if (draftChapterTitle) draftChapterTitle.textContent = chapter.title;
+  if (workspaceTitle) workspaceTitle.textContent = `${activeProject.name} · ${chapter.title}`;
+  if (workspaceBadge) workspaceBadge.textContent = readOnly ? '只读正文' : '活动 Draft';
+  if (saveDraftButton) saveDraftButton.disabled = readOnly;
+  for (const button of blockTypeButtons) button.disabled = readOnly;
+  if (insertSeparatorButton) insertSeparatorButton.disabled = readOnly;
+  if (undoDraftButton) undoDraftButton.disabled = readOnly;
+  if (redoDraftButton) redoDraftButton.disabled = readOnly;
+  setDraftState(readOnly ? '只读浏览：可选择和复制，正文写入已禁用。' : '已从 DraftBlock 重建。');
+  showDraftWorkspace();
+}
+
+async function openChapterDraft(chapter: Chapter): Promise<void> {
+  const project = activeProject;
+  if (!project || activeChapter?.id === chapter.id) return;
+  if (draftDirty && !window.confirm('当前正文尚未手动保存。放弃修改并切换章节？')) return;
+  showDraftWorkspace();
+  if (draftChapterTitle) draftChapterTitle.textContent = chapter.title;
+  setDraftState('正在从项目数据库读取 DraftBlock…');
+  try {
+    const result = await window.worldforge.draft.open({
+      projectId: project.projectId,
+      chapterId: chapter.id,
+    });
+    if (activeProject?.projectId !== project.projectId) return;
+    if (result.ok) {
+      mountDraftEditor(result.data, chapter);
+      renderProjectStructure(activeStructure);
+    } else {
+      setDraftState(`正文读取失败 · ${result.error.code}`, true);
+    }
+  } catch {
+    setDraftState('正文读取失败 · COMMON_INTERNAL_999', true);
+  }
+}
+
+async function saveActiveDraft(): Promise<void> {
+  const project = activeProject;
+  const chapter = activeChapter;
+  const draft = activeDraft;
+  const editor = draftEditor;
+  if (!project || !chapter || !draft || !editor || project.databaseMode !== 'read-write') return;
+  if (draftComposing || editor.view.composing) {
+    setDraftState('输入法组合尚未结束，已暂停保存。');
+    return;
+  }
+  saveDraftButton?.setAttribute('disabled', '');
+  setDraftState('正在以单事务保存 DraftBlock 快照…');
+  try {
+    const json = editor.getJSON();
+    assertEditorNodeMetadata(json);
+    const blocks = tiptapJsonToDraftSnapshot(json, temporaryClientBlockId);
+    const result = await window.worldforge.draft.saveSnapshot({
+      projectId: project.projectId,
+      chapterId: chapter.id,
+      draftId: draft.draftId,
+      blocks,
+    });
+    if (result.ok) {
+      activeDraft = result.data;
+      synchronizingDraftMetadata = true;
+      const synchronized = synchronizePersistedBlockMetadata(editor, persistedBlocks(result.data));
+      if (!synchronized) {
+        editor.commands.setContent(documentToTiptapJson(persistedBlocks(result.data)), {
+          emitUpdate: false,
+        });
+      }
+      synchronizingDraftMetadata = false;
+      draftDirty = false;
+      setDraftState('已手动保存到 project.sqlite。');
+      void refreshProjectStructure();
+    } else {
+      setDraftState(`保存失败 · ${result.error.code}；窗口内容仍保留。`, true);
+    }
+  } catch {
+    synchronizingDraftMetadata = false;
+    setDraftState('保存失败 · COMMON_INTERNAL_999；窗口内容仍保留。', true);
+  } finally {
+    if (saveDraftButton) {
+      saveDraftButton.disabled = draftComposing || activeProject?.databaseMode !== 'read-write';
+    }
+  }
+}
+
 function treeAction(label: string, title: string, attribute: string): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
@@ -354,6 +623,22 @@ function openChapterEditor(volume: Volume, chapter?: Chapter): void {
 
 function renderProjectStructure(structure: ProjectStructure | null): void {
   activeStructure = structure;
+  const refreshedActiveChapter = activeChapter
+    ? structure?.volumes
+        .flatMap((volume) => volume.chapters)
+        .find((chapter) => chapter.id === activeChapter?.id)
+    : undefined;
+  if (activeChapter && structure && !refreshedActiveChapter) {
+    destroyDraftEditor();
+    showProjectOverview();
+    setStructureState('当前章节已不在活动目录中，正文编辑已安全停止。');
+  } else if (refreshedActiveChapter && activeProject) {
+    activeChapter = refreshedActiveChapter;
+    if (draftChapterTitle) draftChapterTitle.textContent = refreshedActiveChapter.title;
+    if (workspaceTitle) {
+      workspaceTitle.textContent = `${activeProject.name} · ${refreshedActiveChapter.title}`;
+    }
+  }
   structureTree?.replaceChildren();
   if (!structureTree || !structure) return;
   if (structure.volumes.length === 0) {
@@ -418,7 +703,12 @@ function renderProjectStructure(structure: ProjectStructure | null): void {
     const remove = treeAction('删', '移入废纸篓', 'data-delete-volume');
     remove.addEventListener('click', () => {
       const project = activeProject;
-      if (!project || !window.confirm(`将“${volume.title}”移入废纸篓？`)) return;
+      const includesDirtyChapter =
+        draftDirty && volume.chapters.some((chapter) => chapter.id === activeChapter?.id);
+      const warning = includesDirtyChapter
+        ? `“${volume.title}”包含当前编辑章节。移入废纸篓会丢弃窗口内尚未保存的正文，是否继续？`
+        : `将“${volume.title}”移入废纸篓？`;
+      if (!project || !window.confirm(warning)) return;
       void runStructureMutation(
         window.worldforge.planning.deleteVolume({
           projectId: project.projectId,
@@ -436,12 +726,20 @@ function renderProjectStructure(structure: ProjectStructure | null): void {
     for (const [chapterIndex, chapter] of volume.chapters.entries()) {
       const chapterNode = document.createElement('li');
       chapterNode.className = 'chapter-node';
+      chapterNode.classList.toggle('is-active', activeChapter?.id === chapter.id);
       chapterNode.dataset.chapterId = chapter.id;
       chapterNode.dataset.chapterTitle = chapter.title;
       const chapterLabel = document.createElement('div');
       chapterLabel.className = 'chapter-node__label';
-      const chapterTitle = document.createElement('strong');
+      const chapterTitle = document.createElement('button');
+      chapterTitle.type = 'button';
+      chapterTitle.className = 'chapter-node__open';
+      chapterTitle.setAttribute('data-open-chapter', '');
+      chapterTitle.setAttribute('aria-pressed', String(activeChapter?.id === chapter.id));
       chapterTitle.textContent = chapter.title;
+      chapterTitle.addEventListener('click', () => {
+        void openChapterDraft(chapter);
+      });
       const chapterMetadata = document.createElement('small');
       const target =
         chapter.targetWordMin === null && chapter.targetWordMax === null
@@ -488,7 +786,11 @@ function renderProjectStructure(structure: ProjectStructure | null): void {
       const removeChapter = treeAction('删', '移入废纸篓', 'data-delete-chapter');
       removeChapter.addEventListener('click', () => {
         const project = activeProject;
-        if (!project || !window.confirm(`将“${chapter.title}”移入废纸篓？`)) return;
+        const warning =
+          draftDirty && activeChapter?.id === chapter.id
+            ? `“${chapter.title}”有尚未保存的窗口正文。移入废纸篓会丢弃这些修改，是否继续？`
+            : `将“${chapter.title}”移入废纸篓？`;
+        if (!project || !window.confirm(warning)) return;
         void runStructureMutation(
           window.worldforge.planning.deleteChapter({
             projectId: project.projectId,
@@ -639,6 +941,10 @@ function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
   if (structurePanel) structurePanel.hidden = project === null;
   if (createVolumeButton) createVolumeButton.disabled = project?.databaseMode !== 'read-write';
   if (!project) {
+    destroyDraftEditor();
+    if (homeIntro) homeIntro.hidden = false;
+    if (recentProjectsPanel) recentProjectsPanel.hidden = false;
+    if (draftWorkspace) draftWorkspace.hidden = true;
     if (workspaceTitle) workspaceTitle.textContent = '继续你的本地写作';
     if (workspaceBadge) workspaceBadge.textContent = '应用级数据';
     renderProjectStructure(null);
@@ -646,6 +952,7 @@ function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
     setProjectOperationStatus('');
     return;
   }
+  showProjectOverview();
   if (workspaceTitle) workspaceTitle.textContent = project.name;
   if (workspaceBadge) {
     workspaceBadge.textContent = project.databaseMode === 'read-only' ? '只读项目' : '本地项目';
@@ -1178,6 +1485,112 @@ createProjectForm?.addEventListener('submit', async (event) => {
 
 createVolumeButton?.addEventListener('click', () => openVolumeEditor());
 cancelStructureButton?.addEventListener('click', () => structureDialog?.close());
+
+saveDraftButton?.addEventListener('click', () => {
+  void saveActiveDraft();
+});
+
+backProjectButton?.addEventListener('click', () => {
+  if (draftDirty && !window.confirm('当前正文尚未手动保存。放弃修改并返回项目？')) return;
+  destroyDraftEditor();
+  showProjectOverview();
+  renderProjectStructure(activeStructure);
+});
+
+copyDraftButton?.addEventListener('click', async () => {
+  if (!draftEditor) return;
+  try {
+    await navigator.clipboard.writeText(draftEditor.getText({ blockSeparator: '\n' }));
+    setDraftState('正文已复制到剪贴板。');
+  } catch {
+    setDraftState('复制失败；请在编辑器内全选后复制。', true);
+  }
+});
+
+for (const button of blockTypeButtons) {
+  button.addEventListener('click', () => {
+    const type = button.dataset.setBlockType;
+    if (
+      !draftEditor ||
+      draftComposing ||
+      activeProject?.databaseMode !== 'read-write' ||
+      !type ||
+      !['paragraph', 'dialogue', 'heading'].includes(type)
+    ) {
+      return;
+    }
+    const current = draftEditor.state.selection.$from.parent;
+    const preserved = {
+      logicalBlockId: current.attrs.logicalBlockId,
+      clientBlockId: current.attrs.clientBlockId,
+      source: current.attrs.source,
+      locked: current.attrs.locked,
+      contentHash: current.attrs.contentHash,
+    };
+    draftEditor
+      .chain()
+      .focus()
+      .setNode(type, type === 'heading' ? { ...preserved, headingLevel: 2 } : preserved)
+      .run();
+  });
+}
+
+insertSeparatorButton?.addEventListener('click', () => {
+  if (!draftEditor || draftComposing || activeProject?.databaseMode !== 'read-write') return;
+  draftEditor
+    .chain()
+    .focus()
+    .insertContent([
+      {
+        type: 'separator',
+        attrs: {
+          logicalBlockId: null,
+          clientBlockId: temporaryClientBlockId(),
+          source: 'manual',
+          locked: false,
+          contentHash: null,
+        },
+      },
+      {
+        type: 'paragraph',
+        attrs: {
+          logicalBlockId: null,
+          clientBlockId: temporaryClientBlockId(),
+          source: 'manual',
+          locked: false,
+          contentHash: null,
+        },
+      },
+    ])
+    .run();
+});
+
+undoDraftButton?.addEventListener('click', () => {
+  if (draftEditor && !draftComposing) undoWorldforgeEditor(draftEditor);
+});
+
+redoDraftButton?.addEventListener('click', () => {
+  if (draftEditor && !draftComposing) redoWorldforgeEditor(draftEditor);
+});
+
+draftEditorHost?.addEventListener('compositionstart', () => {
+  draftComposing = true;
+  if (saveDraftButton) saveDraftButton.disabled = true;
+  setDraftState('输入法组合中；保存与结构键已暂停。');
+});
+
+draftEditorHost?.addEventListener('compositionend', () => {
+  draftComposing = false;
+  draftDirty = true;
+  if (saveDraftButton) saveDraftButton.disabled = activeProject?.databaseMode !== 'read-write';
+  setDraftState('输入法组合已完成，有未保存修改。');
+});
+
+document.addEventListener('keydown', (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's' || !draftEditor) return;
+  event.preventDefault();
+  if (!draftComposing && !event.isComposing) void saveActiveDraft();
+});
 
 structureForm?.addEventListener('submit', async (event) => {
   event.preventDefault();

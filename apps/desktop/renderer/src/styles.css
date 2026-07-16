@@ -516,6 +516,7 @@ nav {
 .volume-node__label strong,
 .volume-node__label small,
 .chapter-node__label strong,
+.chapter-node__open,
 .chapter-node__label small {
   display: block;
   overflow: hidden;
@@ -524,7 +525,8 @@ nav {
 }
 
 .volume-node__label strong,
-.chapter-node__label strong {
+.chapter-node__label strong,
+.chapter-node__open {
   color: var(--color-text-primary);
   font-size: 0.76em;
 }
@@ -564,9 +566,171 @@ nav {
   border-top: 1px solid var(--color-border-subtle);
 }
 
-.chapter-node__label strong::before {
+.chapter-node__open::before {
   content: '§ ';
   color: var(--color-text-muted);
+}
+
+.chapter-node__open {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chapter-node__open:hover {
+  color: var(--color-accent-primary);
+}
+
+.chapter-node.is-active {
+  background: #edf1f4;
+}
+
+.draft-workspace {
+  min-height: 420px;
+}
+
+.draft-workspace__header,
+.draft-workspace__actions,
+.draft-toolbar {
+  display: flex;
+  align-items: center;
+}
+
+.draft-workspace__header {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.draft-workspace__header h2,
+.draft-workspace__header p {
+  margin: 0;
+}
+
+.draft-workspace__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.draft-toolbar {
+  position: sticky;
+  z-index: 2;
+  top: -1px;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 8px;
+  padding: 7px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgb(255 253 252 / 96%);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.draft-toolbar > span {
+  flex: 1;
+}
+
+.draft-toolbar button {
+  min-height: 29px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 5px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.7em;
+  cursor: pointer;
+}
+
+.draft-state {
+  min-height: 1.5em;
+  margin: 0 0 8px !important;
+  color: var(--color-text-muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.68em;
+}
+
+.draft-state.is-error {
+  color: var(--color-danger);
+}
+
+.draft-editor-host {
+  min-height: 380px;
+}
+
+.worldforge-editor {
+  min-height: 380px;
+  padding: 12px 2px 120px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.worldforge-editor:focus {
+  outline: none;
+}
+
+.worldforge-editor > * {
+  position: relative;
+}
+
+.worldforge-editor p[data-block-type='dialogue'] {
+  margin-inline: 1.5em;
+  color: var(--color-text-secondary);
+}
+
+.worldforge-editor h1,
+.worldforge-editor h2,
+.worldforge-editor h3,
+.worldforge-editor h4,
+.worldforge-editor h5,
+.worldforge-editor h6 {
+  margin: 1.25em 0 0.7em;
+  font-size: 1.08em;
+  font-weight: 680;
+}
+
+.worldforge-editor hr {
+  width: 34%;
+  margin: 1.8em auto;
+  border: 0;
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.worldforge-editor p:empty::before {
+  content: '在这里开始写作…';
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.draft-workspace__hint {
+  margin-top: 18px !important;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.65em;
+  line-height: 1.6;
+}
+
+body[data-project-state='read-only'] .worldforge-editor {
+  cursor: text;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 12px,
+    rgb(63 95 125 / 2%) 12px,
+    rgb(63 95 125 / 2%) 24px
+  );
 }
 
 .editor-region {

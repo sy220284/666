@@ -1,8 +1,8 @@
 import {
   DRAFT_COMMANDS,
   DRAFT_IPC_CHANNELS,
+  DraftApplyPatchCommandSchema,
   DraftOpenCommandSchema,
-  DraftSaveSnapshotCommandSchema,
   PROTOCOL_VERSION,
   type CoreProjectOperation,
   type CoreProjectResult,
@@ -22,22 +22,23 @@ const projectId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 const chapterId = '931b82aa-9c6f-4fc8-b7fd-2d201ceaa95d';
 const draftId = '48ee4f14-d049-401a-8f21-991c769b1b86';
 const logicalBlockId = 'd60c2f63-7f2c-4605-bf2d-bf8cd433bca6';
+const contentHash = '1'.repeat(64);
 const command = {
   protocolVersion: PROTOCOL_VERSION,
   requestId,
   sentAt: '2026-07-16T14:00:00.000Z',
-  command: DRAFT_COMMANDS.saveDraftSnapshot,
+  command: DRAFT_COMMANDS.applyPatch,
   payload: {
     projectId,
     chapterId,
     draftId,
-    blocks: [
+    baseRevision: 0,
+    operations: [
       {
-        clientBlockId: logicalBlockId,
+        type: 'update',
         logicalBlockId,
-        blockType: 'paragraph',
-        text: '正文',
-        attributes: {},
+        expectedHash: contentHash,
+        content: '正文更新',
       },
     ],
   },
@@ -47,17 +48,17 @@ const document: DraftDocument = {
   chapterId,
   draftId,
   status: 'active',
-  revision: 0,
+  revision: 1,
   blocks: [
     {
       logicalBlockId,
       orderKey: '1024',
       blockType: 'paragraph',
-      text: '正文',
+      text: '正文更新',
       attributes: {},
       source: 'manual',
       locked: false,
-      contentHash: null,
+      contentHash: '2'.repeat(64),
     },
   ],
 };
@@ -73,9 +74,10 @@ const preferences: WindowPreferences = {
 };
 
 describe('Draft IPC authority boundary', () => {
-  it('accepts editable snapshot fields and rejects renderer-supplied authority fields', () => {
+  it('accepts strict Patch fields and rejects renderer-supplied authority fields', () => {
     expect(DRAFT_COMMANDS.openDraft).toBe('draft.get');
-    expect(DRAFT_IPC_CHANNELS.openDraft).toBe('worldforge:draft:get');
+    expect(DRAFT_COMMANDS.applyPatch).toBe('draft.applyPatch');
+    expect(DRAFT_IPC_CHANNELS.applyPatch).toBe('worldforge:draft:apply-patch');
     expect(
       DraftOpenCommandSchema.safeParse({
         protocolVersion: PROTOCOL_VERSION,
@@ -85,28 +87,36 @@ describe('Draft IPC authority boundary', () => {
         payload: { projectId, chapterId },
       }).success,
     ).toBe(true);
-    expect(DraftSaveSnapshotCommandSchema.safeParse(command).success).toBe(true);
+    expect(DraftApplyPatchCommandSchema.safeParse(command).success).toBe(true);
+
     for (const authority of [
-      { id: logicalBlockId },
       { orderKey: '1' },
       { source: 'ai' },
       { locked: true },
-      { contentHash: '0'.repeat(64) },
       { revision: 7 },
     ]) {
       expect(
-        DraftSaveSnapshotCommandSchema.safeParse({
+        DraftApplyPatchCommandSchema.safeParse({
           ...command,
           payload: {
             ...command.payload,
-            blocks: [{ ...command.payload.blocks[0], ...authority }],
+            operations: [{ ...command.payload.operations[0], ...authority }],
           },
         }).success,
       ).toBe(false);
     }
+    expect(
+      DraftApplyPatchCommandSchema.safeParse({
+        ...command,
+        payload: {
+          ...command.payload,
+          operations: [{ ...command.payload.operations[0], expectedHash: undefined }],
+        },
+      }).success,
+    ).toBe(false);
   });
 
-  it('validates origin and strict payload before forwarding the named operation', async () => {
+  it('validates origin and strict payload before forwarding the Patch operation', async () => {
     const handlers = new Map<string, (event: IpcMainInvokeEvent, raw: unknown) => unknown>();
     const ipcMain = {
       handle: vi.fn(
@@ -121,7 +131,7 @@ describe('Draft IPC authority boundary', () => {
     const invokeProjectOperation = vi.fn(
       async (_requestId: string, operation: CoreProjectOperation): Promise<CoreProjectResult> => ({
         ok: true,
-        operation: operation.operation as typeof DRAFT_COMMANDS.saveDraftSnapshot,
+        operation: operation.operation as typeof DRAFT_COMMANDS.applyPatch,
         data: document,
       }),
     );
@@ -153,7 +163,7 @@ describe('Draft IPC authority boundary', () => {
       chooseProjectMoveParent: vi.fn(async () => null),
     });
 
-    const handler = handlers.get('worldforge:draft:save-snapshot');
+    const handler = handlers.get(DRAFT_IPC_CHANNELS.applyPatch);
     await expect(
       handler?.(
         { senderFrame: { url: 'https://attacker.invalid' } } as unknown as IpcMainInvokeEvent,
@@ -169,7 +179,7 @@ describe('Draft IPC authority boundary', () => {
           ...command,
           payload: {
             ...command.payload,
-            blocks: [{ ...command.payload.blocks[0], orderKey: '9' }],
+            operations: [{ ...command.payload.operations[0], orderKey: '9' }],
           },
         },
       ),
@@ -183,7 +193,7 @@ describe('Draft IPC authority boundary', () => {
       ),
     ).resolves.toEqual({ ok: true, requestId, data: document });
     expect(invokeProjectOperation).toHaveBeenCalledWith(requestId, {
-      operation: DRAFT_COMMANDS.saveDraftSnapshot,
+      operation: DRAFT_COMMANDS.applyPatch,
       input: command.payload,
     });
   });

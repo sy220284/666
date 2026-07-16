@@ -1,0 +1,40 @@
+name: M1-05 Format Diagnostic
+
+on:
+  push:
+    branches:
+      - validate/m1-05-core-20260716
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format
+      - run: git diff --name-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m1-05-formatted-source
+          if-no-files-found: error
+          path: |
+            packages/domain/src/draft-semantic.ts
+            packages/contracts/src/draft.ts
+            packages/core-service/src/draft.ts
+            packages/editor-core/src/draft-patch.ts
+            packages/editor-core/src/index.ts
+            tests/unit/draft-semantic.test.ts
+            tests/unit/editor-draft-patch.test.ts
+            tests/integration/draft-patch.test.ts
+            tests/migration/draft-migration.test.ts
+            tests/migration/project-structure-migration.test.ts

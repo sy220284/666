@@ -125,11 +125,31 @@ jobs:
         run: pnpm test:security
       - name: Performance tests
         run: pnpm test:perf
-      - name: Electron E2E
+      - name: Capture Electron E2E diagnostics
+        shell: bash
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
           WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
-        run: pnpm test:e2e
+        run: |
+          mkdir -p test-results/ci
+          set +e
+          pnpm test:e2e > test-results/ci/m1-06-e2e.log 2>&1
+          code=$?
+          cat test-results/ci/m1-06-e2e.log
+          echo "$code" > test-results/ci/m1-06-e2e-code
+          exit 0
+      - name: Upload Electron E2E diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-06-e2e-diagnostics
+          path: |
+            test-results/ci/
+            test-results/electron/
+            test-results/display-matrix/
+          if-no-files-found: warn
+          retention-days: 1
+      - name: Enforce Electron E2E result
+        run: test "$(cat test-results/ci/m1-06-e2e-code)" = "0"
       - name: Build
         run: pnpm build
       - name: Commit M1-06 implementation

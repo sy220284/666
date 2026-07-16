@@ -19,17 +19,30 @@ const statePath = path.join(root, 'docs/tasks/ACTIVE_TASK.json');
 const mirrorPath = path.join(root, 'docs/tasks/ACTIVE_TASK.md');
 const indexPath = path.join(root, 'docs/tasks/TASK_INDEX.md');
 
+function normalizeText(value) {
+  return value.replaceAll('\r\n', '\n');
+}
+
 async function load() {
-  const [stateSource, indexSource] = await Promise.all([
+  const [stateSource, indexSource, mirrorSource] = await Promise.all([
     readFile(statePath, 'utf8'),
     readFile(indexPath, 'utf8'),
+    readFile(mirrorPath, 'utf8'),
   ]);
-  return { state: JSON.parse(stateSource), taskIndex: parseTaskIndex(indexSource) };
+  return {
+    state: JSON.parse(stateSource),
+    taskIndex: parseTaskIndex(indexSource),
+    mirrorSource,
+  };
 }
 
 async function validate() {
-  const { state, taskIndex } = await load();
+  const { state, taskIndex, mirrorSource } = await load();
   const errors = validateActiveState(state, taskIndex);
+  const expectedMirror = renderActiveTask(state);
+  if (normalizeText(mirrorSource) !== normalizeText(expectedMirror)) {
+    errors.push('ACTIVE_TASK.md is out of sync with ACTIVE_TASK.json; run pnpm task:sync');
+  }
   const required = [state.activeTask.source, ...state.activeTask.requiredDocs];
   for (const file of required) {
     try {

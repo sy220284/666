@@ -5,11 +5,13 @@ import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const DRAFT_IPC_CHANNELS = {
   openDraft: 'worldforge:draft:get',
+  saveDraftSnapshot: 'worldforge:draft:save-snapshot',
   applyPatch: 'worldforge:draft:apply-patch',
 } as const;
 
 export const DRAFT_COMMANDS = {
   openDraft: 'draft.get',
+  saveDraftSnapshot: 'draft.saveSnapshot',
   applyPatch: 'draft.applyPatch',
 } as const;
 
@@ -21,6 +23,11 @@ export const DraftOrderKeySchema = z.string().regex(/^-?\d+$/u);
 export const DraftBlockTextSchema = z.string().max(2_000_000);
 export const DraftContentHashValueSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 export const DraftContentHashSchema = DraftContentHashValueSchema.nullable();
+export const DraftClientBlockIdSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/u);
 export const DraftBlockAttributesSchema = z.strictObject({
   headingLevel: z.number().int().min(1).max(6).optional(),
 });
@@ -81,6 +88,48 @@ export const DraftOpenInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   chapterId: DraftEntityIdSchema,
 });
+
+export const DraftSnapshotBlockInputSchema = z
+  .strictObject({
+    clientBlockId: DraftClientBlockIdSchema,
+    logicalBlockId: DraftEntityIdSchema.nullable(),
+    blockType: DraftBlockTypeSchema,
+    text: DraftBlockTextSchema,
+    attributes: DraftBlockAttributesSchema,
+  })
+  .superRefine(validateBlockSemantics);
+
+export const DraftSaveSnapshotInputSchema = z
+  .strictObject({
+    projectId: ProjectIdSchema,
+    chapterId: DraftEntityIdSchema,
+    draftId: DraftEntityIdSchema,
+    blocks: z.array(DraftSnapshotBlockInputSchema).min(1).max(50_000),
+  })
+  .superRefine((input, context) => {
+    const clientIds = new Set<string>();
+    const logicalIds = new Set<string>();
+    for (const [index, block] of input.blocks.entries()) {
+      if (clientIds.has(block.clientBlockId)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['blocks', index, 'clientBlockId'],
+          message: 'clientBlockId must be unique within a snapshot.',
+        });
+      }
+      clientIds.add(block.clientBlockId);
+      if (block.logicalBlockId) {
+        if (logicalIds.has(block.logicalBlockId)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['blocks', index, 'logicalBlockId'],
+            message: 'logicalBlockId must be unique within a snapshot.',
+          });
+        }
+        logicalIds.add(block.logicalBlockId);
+      }
+    }
+  });
 
 export const DraftPatchNewBlockSchema = z
   .strictObject({
@@ -144,6 +193,12 @@ export const DraftOpenCommandSchema = z.strictObject({
   payload: DraftOpenInputSchema,
 });
 
+export const DraftSaveSnapshotCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(DRAFT_COMMANDS.saveDraftSnapshot),
+  payload: DraftSaveSnapshotInputSchema,
+});
+
 export const DraftApplyPatchCommandSchema = z.strictObject({
   ...commandEnvelope,
   command: z.literal(DRAFT_COMMANDS.applyPatch),
@@ -170,6 +225,10 @@ export const DraftDocumentResultSchema = z.union([
 export const CoreDraftOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({ operation: z.literal(DRAFT_COMMANDS.openDraft), input: DraftOpenInputSchema }),
   z.strictObject({
+    operation: z.literal(DRAFT_COMMANDS.saveDraftSnapshot),
+    input: DraftSaveSnapshotInputSchema,
+  }),
+  z.strictObject({
     operation: z.literal(DRAFT_COMMANDS.applyPatch),
     input: DraftApplyPatchInputSchema,
   }),
@@ -184,6 +243,7 @@ const coreDraftSuccess = <Operation extends string>(operation: Operation) =>
 
 export const CoreDraftResultSchema = z.union([
   coreDraftSuccess(DRAFT_COMMANDS.openDraft),
+  coreDraftSuccess(DRAFT_COMMANDS.saveDraftSnapshot),
   coreDraftSuccess(DRAFT_COMMANDS.applyPatch),
   z.strictObject({
     ok: z.literal(false),
@@ -197,6 +257,8 @@ export type DraftBlockAttributes = z.infer<typeof DraftBlockAttributesSchema>;
 export type DraftBlock = z.infer<typeof DraftBlockSchema>;
 export type DraftDocument = z.infer<typeof DraftDocumentSchema>;
 export type DraftOpenInput = z.infer<typeof DraftOpenInputSchema>;
+export type DraftSnapshotBlockInput = z.infer<typeof DraftSnapshotBlockInputSchema>;
+export type DraftSaveSnapshotInput = z.infer<typeof DraftSaveSnapshotInputSchema>;
 export type DraftPatchNewBlock = z.infer<typeof DraftPatchNewBlockSchema>;
 export type DraftPatchInsertOperation = z.infer<typeof DraftPatchInsertOperationSchema>;
 export type DraftPatchUpdateOperation = z.infer<typeof DraftPatchUpdateOperationSchema>;

@@ -1,0 +1,92 @@
+name: M1-05 Utility Patch
+
+on:
+  push:
+    branches:
+      - validate/m1-05-core-20260716
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: validate/m1-05-core-20260716
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch Core operation dispatch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('packages/core-service/src/utility-entry.ts')
+          content = path.read_text()
+          old_error = """  if (error instanceof DraftServiceError) {
+            if (error.code === 'DRAFT_NOT_FOUND' || error.code === 'DRAFT_BLOCK_NOT_FOUND') {
+              return 'COMMON_NOT_FOUND_002';
+            }
+            return 'COMMON_CONFLICT_003';
+          }
+          """
+          new_error = """  if (error instanceof DraftServiceError) {
+            switch (error.code) {
+              case 'DRAFT_NOT_FOUND':
+                return 'DRAFT_NO_ACTIVE_005';
+              case 'DRAFT_BLOCK_NOT_FOUND':
+                return 'COMMON_NOT_FOUND_002';
+              case 'DRAFT_REVISION_CONFLICT':
+                return 'DRAFT_REVISION_CONFLICT_001';
+              case 'DRAFT_BLOCK_HASH_CONFLICT':
+                return 'DRAFT_BLOCK_HASH_CONFLICT_002';
+              case 'DRAFT_PATCH_INVALID':
+                return 'DRAFT_PATCH_INVALID_004';
+              case 'DRAFT_INVARIANT_FAILED':
+                return 'COMMON_CONFLICT_003';
+            }
+          }
+          """
+          old_dispatch = """      case DRAFT_COMMANDS.saveDraftSnapshot:
+                return CoreProjectResultSchema.parse({
+                  ok: true,
+                  operation: operation.operation,
+                  data: await drafts.saveSnapshot(requestId, operation.input),
+                });
+            }
+          """
+          new_dispatch = """      case DRAFT_COMMANDS.saveDraftSnapshot:
+                return CoreProjectResultSchema.parse({
+                  ok: true,
+                  operation: operation.operation,
+                  data: await drafts.saveSnapshot(requestId, operation.input),
+                });
+              case DRAFT_COMMANDS.applyPatch:
+                return CoreProjectResultSchema.parse({
+                  ok: true,
+                  operation: operation.operation,
+                  data: await drafts.applyPatch(requestId, operation.input),
+                });
+            }
+          """
+          if old_error not in content:
+              raise SystemExit('Draft error mapping anchor not found')
+          if old_dispatch not in content:
+              raise SystemExit('Draft dispatch anchor not found')
+          path.write_text(content.replace(old_error, new_error).replace(old_dispatch, new_dispatch))
+          PY
+      - run: pnpm exec prettier --write packages/core-service/src/utility-entry.ts
+      - name: Commit utility patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/core-service/src/utility-entry.ts
+          git commit -m "fix(M1-05): dispatch Patch and map conflicts [skip ci]"
+          git push origin HEAD:validate/m1-05-core-20260716

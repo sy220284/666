@@ -33,7 +33,9 @@
       "docs/contracts/",
       "docs/database/",
       "docs/ui/",
-      ".github/workflows/task-governance.yml",
+      ".github/workflows/",
+      "scripts/taskctl.mjs",
+      "docs/process/DEVELOPMENT_AUTOMATION.md",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
@@ -53,7 +55,8 @@
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
       "docs/decisions/ADR-005-lock-revision-backup.md",
       "docs/contracts/ERROR_CODES.md",
-      "docs/database/DATABASE_SCHEMA.md"
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/process/DEVELOPMENT_AUTOMATION.md"
     ],
     "verification": [
       "pnpm lint",

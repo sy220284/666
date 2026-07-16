@@ -25,6 +25,7 @@ Rules:
 - `docs/tasks/ACTIVE_TASK.json` is the machine-readable authority for which coding task may run now.
 - `docs/tasks/ACTIVE_TASK.md` is generated from that JSON and must remain synchronized.
 - In `continuous-mainline` mode, a Verified task may automatically advance to the next dependency-ready task on `main`.
+- In author-approved `implementation-mainline` mode, a task whose real code, required focused tests, and remote quality gate pass may be recorded as Implemented and advance to the next implementation-ready task. Evidence packaging, screenshots, exhaustive acceptance, traceability verification, and final Verified closure must be recorded in `deferredVerification` and completed in a later batch.
 - Automatic advancement never permits overlapping tasks, skipped failures, or bypassed evidence.
 - Milestone summaries are indexes, not executable task cards.
 - Every active task must point to exactly one file under `docs/tasks/M0/` through `docs/tasks/M8/`.
@@ -64,7 +65,7 @@ Stage rules:
 
 - M1 must deliver a usable non-AI writing product: project, volume/chapter, editor, autosave, version, TXT/Markdown transfer, and recovery.
 - Do not count future AI schemas, prompts, or domain placeholders as completed product progress.
-- Do not use a table, command, model, recovery mechanism, or UI state before its upstream task is Verified.
+- Do not use a table, command, model, recovery mechanism, or UI state before its upstream task is Verified. In `implementation-mainline` mode only, an upstream Implemented task may satisfy a coding dependency; it does not satisfy acceptance, release, or Verified claims.
 - Every user-facing task includes a minimum usable UI. M7 integrates and unifies; it is not the first time business functions become operable.
 - Shared foundations such as recovery, FTS, Candidate, Prompt, and backup are implemented once and reused.
 - V1.5 remains separate and must not block V1.0.
@@ -122,6 +123,7 @@ Inspect the real repository before coding:
 - Do not silently change frozen architecture, product scope, data semantics, or UI behavior.
 - Do not suppress errors to make tests pass.
 - Under `continuous-mainline` authorization, continue only after the current task is Verified and its evidence and traceability are complete.
+- Under `implementation-mainline` authorization, continue only after the current card has a real end-to-end implementation, its required focused tests and remote quality gate pass, and its deferred verification work is recorded. Any code, test, security, data-boundary, or migration failure still blocks advancement.
 
 ## 8. Frozen product boundaries
 
@@ -300,3 +302,5 @@ A task is complete only when:
 - no unrelated refactor, TODO, fake data, or empty implementation remains.
 
 Task closure follows `docs/process/DEVELOPMENT_AUTOMATION.md`. In continuous-mainline mode it closes the current task and activates the next dependency-ready task in one controlled transition; otherwise it returns to `NO_ACTIVE_CODING_TASK`.
+
+In `implementation-mainline` mode, `taskctl advance` records the current card as Implemented without claiming completion, appends the postponed evidence and acceptance work to `deferredVerification`, and activates exactly one next implementation-ready card. Release remains blocked until all required cards are Verified.

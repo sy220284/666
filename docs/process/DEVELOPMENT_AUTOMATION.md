@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 适用分支：`main`  
-> 授权来源：作者于 2026-07-15 明确预授权连续执行。
+> 授权来源：作者于 2026-07-15 明确预授权连续执行，并于2026-07-16调整为实现优先顺序推进。
 
 ## 1. 目标
 
@@ -39,6 +39,21 @@
 4. 不允许跳过失败测试、伪造证据、绕开阶段门或提前实现未来任务。
 5. 冻结架构发生真实冲突时暂停受影响任务，只处理冲突本身。
 
+### 3.1 实现优先主线模式
+
+`implementation-mainline`用于先完成各任务卡的真实编程，再统一处理非编程验收：
+
+```text
+唯一活动任务
+→ 最小完整端到端实现
+→ 必要专项测试
+→ main实现提交与GitHub质量门
+→ 标记Implemented并登记deferredVerification
+→ 激活下一张实现依赖已满足的任务
+```
+
+延期项统一包括标准证据包、截图、人工与穷尽质量矩阵、追踪矩阵Verified状态和最终关闭。延期不等于省略：`Implemented`只能满足本模式下的后续编程依赖，不能用于发布、P0验收或Verified声明。代码、测试、Migration、安全和数据边界失败不得延期，必须立即阻断。
+
 ## 4. 自动门禁
 
 - `pnpm task:validate`：活动任务、任务索引、授权和必读文件。
@@ -47,6 +62,7 @@
 - `pnpm check:boundaries`：跨层依赖和 Renderer/Domain/Contracts 的 Node 边界。
 - `pnpm task:verify`：证据目录最低结构。
 - `pnpm task:activate -- <TASK-ID>`：校验依赖并从任务卡生成下一张活动任务。
+- `pnpm task:advance -- --ci=success --commit=<SHA>`：实现优先模式下把当前卡登记为Implemented、记录延期验证并激活下一张实现依赖已满足的任务。
 - `pnpm task:close -- --ci=success --commit=<SHA>`：关闭Implemented任务并自动激活下一张依赖已满足的任务。
 - GitHub `Task Governance`：任务状态与修改范围。
 - GitHub `Quality`：安装、格式、Lint、类型、测试、边界和构建。

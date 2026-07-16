@@ -64,6 +64,12 @@ async function preflight() {
 
 async function verify() {
   const state = await validate();
+  if (state.authorization.mode === 'implementation-mainline') {
+    console.log(
+      `Evidence verification is deferred for ${state.activeTask.id} in implementation-mainline mode.`,
+    );
+    return state;
+  }
   const evidence = path.join(root, 'docs/test-evidence', state.activeTask.id);
   for (const file of ['summary.md', 'commands.txt', 'known-risks.md']) {
     await access(path.join(evidence, file));
@@ -86,7 +92,7 @@ async function writeActiveState(state, indexSource) {
   ]);
 }
 
-async function activate(taskId) {
+async function activate(taskId, additionalAllowedPaths = []) {
   const { state, taskIndex } = await load();
   if (state.activeTask) {
     throw new Error(`Cannot activate ${taskId} while ${state.activeTask.id} is still active`);
@@ -94,8 +100,12 @@ async function activate(taskId) {
   const task = taskIndex.get(taskId);
   if (!task) throw new Error(`Unknown task: ${taskId}`);
   if (task.status !== 'Planned') throw new Error(`${taskId} must be Planned, found ${task.status}`);
-  if (!dependenciesSatisfied(task, taskIndex))
-    throw new Error(`${taskId} dependencies are not Verified`);
+  const allowImplemented = state.authorization.mode === 'implementation-mainline';
+  if (!dependenciesSatisfied(task, taskIndex, { allowImplemented })) {
+    throw new Error(
+      `${taskId} dependencies are not ${allowImplemented ? 'Implemented or Verified' : 'Verified'}`,
+    );
+  }
 
   const card = await readFile(path.join(root, task.source), 'utf8');
   const allowedPaths = extractBacktickBullets(card, '主要影响范围');
@@ -121,7 +131,7 @@ async function activate(taskId) {
     source: task.source,
     branch: state.authorization.branch,
     startedAt: new Date().toISOString().slice(0, 10),
-    allowedPaths: [...new Set([...allowedPaths, ...controlPaths])],
+    allowedPaths: [...new Set([...allowedPaths, ...controlPaths, ...additionalAllowedPaths])],
     forbiddenPaths: [],
     requiredDocs,
     verification: verificationForTask(card),
@@ -144,6 +154,9 @@ async function close() {
     throw new Error('close requires --commit=<sha>');
 
   const state = await verify();
+  if (state.authorization.mode !== 'continuous-mainline') {
+    throw new Error('close is only available in continuous-mainline mode');
+  }
   if (state.activeTask.status !== 'IMPLEMENTED') {
     throw new Error(`Only an IMPLEMENTED task can close, found ${state.activeTask.status}`);
   }
@@ -168,10 +181,72 @@ async function close() {
   const next = findNextReadyTask(refreshedIndex);
   if (!next) throw new Error('No dependency-ready Planned task remains');
 
+  const previousSource = state.activeTask.source;
   state.activeTask = null;
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-  await activate(next.id);
+  await activate(next.id, [previousSource]);
   console.log(`Closed ${state.lastVerifiedTask.id}; continuous mode advanced to ${next.id}.`);
+}
+
+async function advanceImplementation() {
+  const ciStatus = process.argv.find((value) => value.startsWith('--ci='))?.slice(5);
+  const commit = process.argv.find((value) => value.startsWith('--commit='))?.slice(9);
+  if (ciStatus !== 'success') throw new Error('advance requires --ci=success');
+  if (!commit || !/^[0-9a-f]{7,40}$/i.test(commit)) {
+    throw new Error('advance requires --commit=<sha>');
+  }
+
+  const state = await validate();
+  if (state.authorization.mode !== 'implementation-mainline') {
+    throw new Error('advance requires authorization.mode=implementation-mainline');
+  }
+  if (state.activeTask.status !== 'IN_PROGRESS') {
+    throw new Error(`Only an IN_PROGRESS task can advance, found ${state.activeTask.status}`);
+  }
+
+  const indexSource = await readFile(indexPath, 'utf8');
+  const implementedIndex = replaceTaskIndexStatus(indexSource, state.activeTask.id, 'Implemented');
+  const cardPath = path.join(root, state.activeTask.source);
+  const card = await readFile(cardPath, 'utf8');
+  const implementedCard = card.replace(/^> 状态：In Progress[^\n]*$/m, '> 状态：Implemented  ');
+  if (implementedCard === card) throw new Error('Task card is not in In Progress state');
+
+  const refreshedIndex = parseTaskIndex(implementedIndex);
+  const next = findNextReadyTask(refreshedIndex, { allowImplemented: true });
+  if (!next) throw new Error('No implementation-ready Planned task remains');
+
+  const implementedAt = new Date().toISOString();
+  const previousSource = state.activeTask.source;
+  state.lastImplementedTask = {
+    id: state.activeTask.id,
+    commit,
+    implementedAt,
+  };
+  state.deferredVerification = [
+    ...(state.deferredVerification ?? []),
+    {
+      id: state.activeTask.id,
+      implementationCommit: commit,
+      deferredAt: implementedAt,
+      pending: [
+        'standard evidence package and screenshots',
+        'manual acceptance and exhaustive quality matrix',
+        'final traceability verification status',
+        'Verified closure',
+      ],
+    },
+  ];
+
+  await Promise.all([
+    writeFile(indexPath, implementedIndex, 'utf8'),
+    writeFile(cardPath, implementedCard, 'utf8'),
+  ]);
+  state.activeTask = null;
+  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+  await activate(next.id, [previousSource]);
+  console.log(
+    `Recorded ${state.lastImplementedTask.id} as Implemented with deferred verification; advanced to ${next.id}.`,
+  );
 }
 
 async function main() {
@@ -194,6 +269,7 @@ async function main() {
     if (!taskId) throw new Error('activate requires a task id');
     return activate(taskId);
   }
+  if (command === 'advance') return advanceImplementation();
   if (command === 'close') return close();
   throw new Error(`Unknown taskctl command: ${command}`);
 }

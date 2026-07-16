@@ -5,37 +5,46 @@
 ## 当前状态
 
 ```text
-IMPLEMENTED
+IN_PROGRESS
 ```
 
-- 任务ID：`M0-07`
-- 唯一任务卡：`docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md`
+- 任务ID：`M1-01`
+- 唯一任务卡：`docs/tasks/M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md`
 - 工作分支：`main`
-- 开始时间：`2026-07-15`
-- 授权模式：`continuous-mainline`
+- 开始时间：`2026-07-16`
+- 授权模式：`implementation-mainline`
 - 授权人：`author`
 
 ## 执行范围
 
 ```yaml
 allowed_paths:
+  - migrations/app/
+  - packages/core-service/
   - packages/contracts/
-  - packages/prompts/
-  - packages/editor-core/
-  - packages/testkit/
-  - evals/
-  - tests/performance/
+  - apps/desktop/renderer/
+  - apps/desktop/main/
+  - apps/desktop/preload/
+  - tests/integration/
+  - tests/e2e/
+  - tests/security/
+  - tests/unit/task-control.test.ts
+  - AGENTS.md
+  - docs/PROJECT_EXECUTION_ENTRY.md
+  - docs/process/DEVELOPMENT_AUTOMATION.md
+  - docs/process/CODEX_EXECUTION_PLAYBOOK.md
+  - docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md
+  - scripts/task-control-lib.mjs
+  - scripts/taskctl.mjs
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M0/M0-06_DISPLAY_WINDOW_SPIKE.md
-  - docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md
+  - docs/tasks/M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/ui/DISPLAY_SPIKE_RESULTS.md
-  - docs/test-evidence/M0-07/
+  - docs/test-evidence/M1-01/
 forbidden_paths:
 
 required_docs:
@@ -43,10 +52,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/ai/PROMPT_AND_EVAL_SPEC.md
-  - docs/ai/PROVIDER_PROTOCOL.md
-  - docs/ui/CANDIDATE_REVIEW_SPEC.md
-  - docs/testing/PERFORMANCE_BUDGETS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
 verification:
   - pnpm lint
   - pnpm typecheck
@@ -57,9 +65,8 @@ verification:
   - pnpm test:e2e
   - pnpm test:unit
   - pnpm test:eval
-  - pnpm test:perf
 ```
 
 ## 连续执行规则
 
-当前作者已预授权在 `main` 上连续执行。每次仍只允许一张任务卡；当前任务达到 Verified、证据完整且依赖门通过后，可自动激活下一张依赖已满足的任务。失败时必须转为 Blocked，禁止跳过失败或伪造通过。
+当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。

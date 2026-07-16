@@ -1,9 +1,9 @@
 # M1-01 app.sqlite、应用设置与最近项目
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
-> 建议分支：`feat/m1-app-settings-recent-projects`
+> 工作分支：`main`（作者预授权实现优先模式）
 
 ## 目标
 
@@ -44,8 +44,11 @@ M0
 - `packages/core-service/`
 - `packages/contracts/`
 - `apps/desktop/renderer/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `tests/integration/`
 - `tests/e2e/`
+- `tests/security/`
 
 ## 实施内容
 

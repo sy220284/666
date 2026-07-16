@@ -38,6 +38,7 @@
     "task:verify": "node scripts/taskctl.mjs verify",
     "task:sync": "node scripts/taskctl.mjs sync",
     "task:activate": "node scripts/taskctl.mjs activate",
+    "task:advance": "node scripts/taskctl.mjs advance",
     "task:close": "node scripts/taskctl.mjs close"
   },
   "devDependencies": {

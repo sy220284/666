@@ -69,3 +69,65 @@ describe('continuous task lifecycle', () => {
     expect(updatedIndex).toContain('| M0-02 | [运行时](M0/M0-02.md) | M0-01 | In Progress |');
   });
 });
+
+describe('implementation-first task lifecycle', () => {
+  it('records deferred verification and advances after code and CI complete', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-implementation-task-'));
+    temporaryDirectories.push(root);
+    await mkdir(path.join(root, 'docs/tasks/M1'), { recursive: true });
+
+    const state = {
+      schemaVersion: 1,
+      authorization: {
+        mode: 'implementation-mainline',
+        branch: 'main',
+        deferVerificationUntilBatch: true,
+      },
+      activeTask: {
+        id: 'M1-01',
+        status: 'IN_PROGRESS',
+        source: 'docs/tasks/M1/M1-01.md',
+        branch: 'main',
+        startedAt: '2026-07-16',
+        allowedPaths: ['packages/core-service/'],
+        forbiddenPaths: [],
+        requiredDocs: [],
+        verification: ['pnpm test'],
+      },
+      deferredVerification: [],
+    };
+    const index = `| ID | 任务卡 | 依赖 | 状态 |\n|---|---|---|---|\n| M1-01 | [设置](M1/M1-01.md) | M0 | In Progress |\n| M1-02 | [项目](M1/M1-02.md) | M1-01 | Planned |\n`;
+    const currentCard = '# M1-01\n\n> 状态：In Progress  \n';
+    const nextCard =
+      '# M1-02\n\n> 状态：Planned  \n\n## 必读文档\n\n- `AGENTS.md`\n\n## 主要影响范围\n\n- `packages/core-service/`\n';
+
+    await Promise.all([
+      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), JSON.stringify(state), 'utf8'),
+      writeFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), index, 'utf8'),
+      writeFile(path.join(root, 'docs/tasks/M1/M1-01.md'), currentCard, 'utf8'),
+      writeFile(path.join(root, 'docs/tasks/M1/M1-02.md'), nextCard, 'utf8'),
+      writeFile(path.join(root, 'AGENTS.md'), '# fixture', 'utf8'),
+    ]);
+
+    execFileSync(
+      process.execPath,
+      [path.resolve('scripts/taskctl.mjs'), 'advance', '--ci=success', '--commit=abcdef1'],
+      { cwd: root },
+    );
+
+    const updatedState = JSON.parse(
+      await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8'),
+    );
+    const updatedIndex = await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8');
+    const updatedCard = await readFile(path.join(root, 'docs/tasks/M1/M1-01.md'), 'utf8');
+    expect(updatedState.lastImplementedTask).toMatchObject({ id: 'M1-01', commit: 'abcdef1' });
+    expect(updatedState.deferredVerification).toEqual([
+      expect.objectContaining({ id: 'M1-01', implementationCommit: 'abcdef1' }),
+    ]);
+    expect(updatedState.activeTask).toMatchObject({ id: 'M1-02', status: 'IN_PROGRESS' });
+    expect(updatedState.activeTask.allowedPaths).toContain('docs/tasks/M1/M1-01.md');
+    expect(updatedIndex).toContain('| M1-01 | [设置](M1/M1-01.md) | M0 | Implemented |');
+    expect(updatedIndex).toContain('| M1-02 | [项目](M1/M1-02.md) | M1-01 | In Progress |');
+    expect(updatedCard).toContain('> 状态：Implemented  ');
+  });
+});

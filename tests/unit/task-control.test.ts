@@ -61,6 +61,26 @@ describe('task control', () => {
     expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual([]);
   });
 
+  it('accepts the author-approved implementation-mainline state', () => {
+    const state = {
+      schemaVersion: 1,
+      authorization: {
+        mode: 'implementation-mainline',
+        branch: 'main',
+        deferVerificationUntilBatch: true,
+      },
+      activeTask: {
+        id: 'M0-01',
+        status: 'IN_PROGRESS',
+        source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
+        allowedPaths: ['packages/'],
+        verification: ['pnpm test'],
+      },
+      deferredVerification: [],
+    };
+    expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual([]);
+  });
+
   it('keeps an implemented task active while remote verification is pending', () => {
     const implementedIndex = indexFixture.replace('In Progress', 'Implemented');
     const state = {
@@ -89,6 +109,14 @@ describe('task control', () => {
     const verified = parseTaskIndex(indexFixture.replace('In Progress', 'Verified'));
     expect(dependenciesSatisfied(verified.get('M0-02')!, verified)).toBe(true);
     expect(findNextReadyTask(verified)?.id).toBe('M0-02');
+  });
+
+  it('allows code-complete dependencies only when implementation-first mode opts in', () => {
+    const implemented = parseTaskIndex(indexFixture.replace('In Progress', 'Implemented'));
+    const next = implemented.get('M0-02')!;
+    expect(dependenciesSatisfied(next, implemented)).toBe(false);
+    expect(dependenciesSatisfied(next, implemented, { allowImplemented: true })).toBe(true);
+    expect(findNextReadyTask(implemented, { allowImplemented: true })?.id).toBe('M0-02');
   });
 
   it('updates exactly one task index status', () => {

@@ -47,8 +47,21 @@ export function validateActiveState(state, taskIndex) {
     ['IMPLEMENTED', 'Implemented'],
   ]);
   if (state.schemaVersion !== 1) errors.push('Unsupported ACTIVE_TASK schemaVersion');
-  if (state.authorization?.mode !== 'continuous-mainline') {
-    errors.push('Continuous execution requires authorization.mode=continuous-mainline');
+  const authorizationModes = new Set(['continuous-mainline', 'implementation-mainline']);
+  if (!authorizationModes.has(state.authorization?.mode)) {
+    errors.push('Unsupported task authorization mode');
+  }
+  if (
+    state.authorization?.mode === 'implementation-mainline' &&
+    state.authorization?.deferVerificationUntilBatch !== true
+  ) {
+    errors.push('Implementation-first execution must explicitly defer verification until batch');
+  }
+  if (
+    state.authorization?.mode === 'implementation-mainline' &&
+    !Array.isArray(state.deferredVerification)
+  ) {
+    errors.push('Implementation-first execution requires a deferredVerification ledger');
   }
   if (state.authorization?.branch !== 'main') errors.push('Authorized work branch must be main');
 
@@ -86,13 +99,16 @@ export function extractBacktickBullets(markdown, heading) {
   return [...section.matchAll(/^\s*-\s+`([^`]+)`/gm)].map((match) => match[1]).filter(Boolean);
 }
 
-export function dependenciesSatisfied(task, taskIndex) {
+export function dependenciesSatisfied(task, taskIndex, options = {}) {
   const dependencyText = task.dependencyText.trim();
   if (dependencyText === '无') return true;
 
+  const dependencyReady = (status) =>
+    status === 'Verified' || (options.allowImplemented === true && status === 'Implemented');
+
   const requiredIds = new Set(dependencyText.match(/M\d-\d{2}/g) ?? []);
   for (const requiredId of requiredIds) {
-    if (taskIndex.get(requiredId)?.status !== 'Verified') return false;
+    if (!dependencyReady(taskIndex.get(requiredId)?.status)) return false;
   }
 
   const stageNumbers = new Set();
@@ -107,16 +123,16 @@ export function dependenciesSatisfied(task, taskIndex) {
 
   for (const stage of stageNumbers) {
     const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
-    if (stageTasks.length === 0 || stageTasks.some(({ status }) => status !== 'Verified'))
+    if (stageTasks.length === 0 || stageTasks.some(({ status }) => !dependencyReady(status)))
       return false;
   }
 
   return true;
 }
 
-export function findNextReadyTask(taskIndex) {
+export function findNextReadyTask(taskIndex, options = {}) {
   return [...taskIndex.values()].find(
-    (task) => task.status === 'Planned' && dependenciesSatisfied(task, taskIndex),
+    (task) => task.status === 'Planned' && dependenciesSatisfied(task, taskIndex, options),
   );
 }
 
@@ -143,6 +159,10 @@ export function verificationForTask(card) {
 export function renderActiveTask(state) {
   const task = state.activeTask;
   const list = (values) => values.map((value) => `  - ${value}`).join('\n');
+  const continuationRule =
+    state.authorization.mode === 'implementation-mainline'
+      ? '当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。'
+      : '当前作者已预授权在 `main` 上连续执行。每次仍只允许一张任务卡；当前任务达到 Verified、证据完整且依赖门通过后，可自动激活下一张依赖已满足的任务。失败时必须转为 Blocked，禁止跳过失败或伪造通过。';
   return `# WorldForge 当前活动任务
 
 > 本文件由 \`docs/tasks/ACTIVE_TASK.json\` 生成，请勿手工维护任务字段。
@@ -175,6 +195,6 @@ ${list(task.verification)}
 
 ## 连续执行规则
 
-当前作者已预授权在 \`main\` 上连续执行。每次仍只允许一张任务卡；当前任务达到 Verified、证据完整且依赖门通过后，可自动激活下一张依赖已满足的任务。失败时必须转为 Blocked，禁止跳过失败或伪造通过。
+${continuationRule}
 `;
 }

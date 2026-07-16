@@ -15,14 +15,14 @@ AGENTS.md
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-`ACTIVE_TASK.json`声明授权模式与唯一活动任务。`manual`模式在无活动任务时只允许分析和规划；`continuous-mainline`模式在当前任务Verified后，可自动激活下一张依赖已满足的任务。两种模式均禁止并行任务和越过失败门。
+`ACTIVE_TASK.json`声明授权模式与唯一活动任务。`manual`模式在无活动任务时只允许分析和规划；`continuous-mainline`模式在当前任务Verified后，可自动激活下一张依赖已满足的任务；作者授权的`implementation-mainline`模式在真实编程、必要专项测试和远端质量门通过后记录Implemented与延期验证，再推进下一张实现依赖已满足的任务。所有模式均禁止并行任务和越过代码、安全、数据或测试失败门。
 
 ## 2. 阶段与依赖检查
 
 V1.0按M0—M8执行。收到任务后先确认：
 
 1. 活动任务是否存在且与用户命令一致。
-2. 任务卡列出的前置任务是否均为`Verified`。
+2. 任务卡列出的前置任务是否均为`Verified`；仅在`implementation-mainline`中，`Implemented`可满足后续编程依赖，但不能满足验收或发布。
 3. 任务是否引用尚未建立的表、命令、模型、恢复点或UI入口。
 4. 当前工作是否属于本阶段，是否提前混入未来阶段。
 5. 是否存在同一权威契约的并行修改。
@@ -315,5 +315,5 @@ docs/test-evidence/<TASK-ID>/
 3. 更新追踪矩阵。
 4. 保存证据。
 5. 同步`ACTIVE_TASK.json`与`ACTIVE_TASK.md`。
-6. `manual`模式恢复为`NO_ACTIVE_CODING_TASK`；`continuous-mainline`模式自动激活下一张依赖已满足的任务。
+6. `manual`模式恢复为`NO_ACTIVE_CODING_TASK`；`continuous-mainline`模式自动激活下一张依赖已满足的任务；`implementation-mainline`模式登记延期验证后激活下一张实现依赖已满足的任务。
 7. 自动推进前再次执行任务依赖、允许路径、追踪和证据校验。

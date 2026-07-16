@@ -1,6 +1,6 @@
 # M1-01 app.sqlite、应用设置与最近项目
 
-> 状态：In Progress  
+> 状态：Implemented
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
 > 工作分支：`main`（作者预授权实现优先模式）

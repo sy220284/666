@@ -105,8 +105,26 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
-      - name: Unit tests
-        run: pnpm test:unit
+      - name: Capture unit diagnostics
+        shell: bash
+        run: |
+          set +e
+          pnpm test:unit > /tmp/m1-06-unit.log 2>&1
+          code=$?
+          cat /tmp/m1-06-unit.log
+          echo "$code" > /tmp/m1-06-unit-code
+          exit 0
+      - name: Upload unit diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-06-unit-diagnostics
+          path: |
+            /tmp/m1-06-unit.log
+            /tmp/m1-06-unit-code
+          if-no-files-found: error
+          retention-days: 1
+      - name: Enforce unit result
+        run: test "$(cat /tmp/m1-06-unit-code)" = "0"
       - name: Integration tests
         run: pnpm test:integration
       - name: Security tests

@@ -64,13 +64,22 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           def replace_once(path: str, old: str, new: str) -> None:
               file = Path(path)
               source = file.read_text()
               if old not in source:
-                  raise SystemExit(f'Anchor missing in {path}: {old[:100]!r}')
+                  raise SystemExit(f'Anchor missing in {path}: {old!r}')
               file.write_text(source.replace(old, new, 1))
+
+          def regex_once(path: str, pattern: str, replacement: str) -> None:
+              file = Path(path)
+              source = file.read_text()
+              updated, count = re.subn(pattern, replacement, source, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'Pattern matched {count} times in {path}: {pattern[:80]!r}')
+              file.write_text(updated)
 
           autosave = Path('packages/editor-core/src/autosave.ts')
           source = autosave.read_text()
@@ -86,104 +95,70 @@ jobs:
               'tests/performance/writing-tools-performance.test.ts',
           ]:
               path = Path(name)
-              path.write_text(
-                  path.read_text().replace(
-                      "from '@worldforge/editor-core';",
-                      "from '../../packages/editor-core/src/index.js';",
-                  )
-              )
+              path.write_text(path.read_text().replace(
+                  "from '@worldforge/editor-core';",
+                  "from '../../packages/editor-core/src/index.js';",
+              ))
 
           replace_once(
               'packages/contracts/src/draft.ts',
-              "  expectedHash: DraftContentHashValueSchema,\n  content: DraftBlockTextSchema,",
-              "  expectedHash: DraftContentHashValueSchema,\n  blockType: DraftBlockTypeSchema.optional(),\n  content: DraftBlockTextSchema,",
+              '  expectedHash: DraftContentHashValueSchema,\n  content: DraftBlockTextSchema,',
+              '  expectedHash: DraftContentHashValueSchema,\n  blockType: DraftBlockTypeSchema.optional(),\n  content: DraftBlockTextSchema,',
           )
           replace_once(
               'packages/editor-core/src/draft-patch.ts',
-              "      readonly expectedHash: string;\n      readonly content: string;",
-              "      readonly expectedHash: string;\n      readonly blockType?: WorldforgeBlockType | undefined;\n      readonly content: string;",
+              '      readonly expectedHash: string;\n      readonly content: string;',
+              '      readonly expectedHash: string;\n      readonly blockType?: WorldforgeBlockType | undefined;\n      readonly content: string;',
           )
           replace_once(
               'packages/editor-core/src/draft-patch.ts',
-              "        return previous !== undefined && previous.blockType === block.blockType;",
-              "        return previous !== undefined;",
+              '        return previous !== undefined && previous.blockType === block.blockType;',
+              '        return previous !== undefined;',
           )
-          replace_once(
+          regex_once(
               'packages/editor-core/src/draft-patch.ts',
-              """    const attributesChanged = !attributesEqual(
-              block.blockType,
-              previous.attributes,
-              block.attributes,
-            );
-            if (previous.text === block.text && !attributesChanged) continue;
-            updates.push({
-              type: 'update',
-              logicalBlockId: block.logicalBlockId,
-              expectedHash: requiredHash(previous),
-              content: block.text,
-              ...(attributesChanged
-                ? { attributes: normalizedAttributes(block.blockType, block.attributes) }
-                : {}),
-            });""",
+              r"    const attributesChanged = !attributesEqual\(.*?    updates\.push\(\{.*?    \}\);",
               """    const blockTypeChanged = previous.blockType !== block.blockType;
-            const attributesChanged =
-              blockTypeChanged ||
-              !attributesEqual(block.blockType, previous.attributes, block.attributes);
-            if (previous.text === block.text && !attributesChanged && !blockTypeChanged) continue;
-            updates.push({
-              type: 'update',
-              logicalBlockId: block.logicalBlockId,
-              expectedHash: requiredHash(previous),
-              ...(blockTypeChanged ? { blockType: block.blockType } : {}),
-              content: block.text,
-              ...(attributesChanged
-                ? { attributes: normalizedAttributes(block.blockType, block.attributes) }
-                : {}),
-            });""",
+    const attributesChanged =
+      blockTypeChanged ||
+      !attributesEqual(block.blockType, previous.attributes, block.attributes);
+    if (previous.text === block.text && !attributesChanged && !blockTypeChanged) continue;
+    updates.push({
+      type: 'update',
+      logicalBlockId: block.logicalBlockId,
+      expectedHash: requiredHash(previous),
+      ...(blockTypeChanged ? { blockType: block.blockType } : {}),
+      content: block.text,
+      ...(attributesChanged
+        ? { attributes: normalizedAttributes(block.blockType, block.attributes) }
+        : {}),
+    });""",
           )
           replace_once(
               'packages/core-service/src/draft.ts',
-              "        blockType: current.blockType,",
-              "        blockType: operation.blockType ?? current.blockType,",
+              '        blockType: current.blockType,',
+              '        blockType: operation.blockType ?? current.blockType,',
           )
-          replace_once(
+          regex_once(
               'tests/unit/editor-draft-patch.test.ts',
-              """  it('represents a block type change as delete plus insert', () => {
-                const operations = buildDraftPatchOperations(
-                  [persisted(firstId, '旧正文', firstHash)],
-                  [current(firstId, firstId, '新标题', 'heading')],
-                );
-
-                expect(operations).toEqual([
-                  { type: 'delete', logicalBlockId: firstId, expectedHash: firstHash },
-                  {
-                    type: 'insert',
-                    afterLogicalBlockId: null,
-                    block: {
-                      blockType: 'heading',
-                      content: '新标题',
-                      attributes: { headingLevel: 2 },
-                    },
-                  },
-                ]);
-              });""",
+              r"  it\('represents a block type change as delete plus insert'.*?\n  \}\);",
               """  it('preserves logical identity when a block type changes', () => {
-                const operations = buildDraftPatchOperations(
-                  [persisted(firstId, '旧正文', firstHash)],
-                  [current(firstId, firstId, '新标题', 'heading')],
-                );
+    const operations = buildDraftPatchOperations(
+      [persisted(firstId, '旧正文', firstHash)],
+      [current(firstId, firstId, '新标题', 'heading')],
+    );
 
-                expect(operations).toEqual([
-                  {
-                    type: 'update',
-                    logicalBlockId: firstId,
-                    expectedHash: firstHash,
-                    blockType: 'heading',
-                    content: '新标题',
-                    attributes: { headingLevel: 2 },
-                  },
-                ]);
-              });""",
+    expect(operations).toEqual([
+      {
+        type: 'update',
+        logicalBlockId: firstId,
+        expectedHash: firstHash,
+        blockType: 'heading',
+        content: '新标题',
+        attributes: { headingLevel: 2 },
+      },
+    ]);
+  });""",
           )
           PY
       - name: Format
@@ -209,33 +184,23 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
-      - name: Validate task state
-        run: pnpm task:validate
-      - name: Validate workspaces
-        run: pnpm check:workspaces
-      - name: Validate boundaries
-        run: pnpm check:boundaries
-      - name: Validate formatting
-        run: pnpm format:check
-      - name: Lint
-        run: pnpm lint
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: Unit tests
-        run: pnpm test:unit
-      - name: Integration tests
-        run: pnpm test:integration
-      - name: Security tests
-        run: pnpm test:security
-      - name: Performance tests
-        run: pnpm test:perf
-      - name: Electron E2E
+      - name: Validate M1-06
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
           WORLDFORGE_CAPTURE_MATRIX_DIR: ${{ github.workspace }}/test-results/display-matrix
-        run: pnpm test:e2e
-      - name: Build
-        run: pnpm build
+        run: |
+          pnpm task:validate
+          pnpm check:workspaces
+          pnpm check:boundaries
+          pnpm format:check
+          pnpm lint
+          pnpm typecheck
+          pnpm test:unit
+          pnpm test:integration
+          pnpm test:security
+          pnpm test:perf
+          pnpm test:e2e
+          pnpm build
       - name: Commit M1-06 implementation
         shell: bash
         run: |

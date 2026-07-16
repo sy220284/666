@@ -18,6 +18,8 @@ describe('Preload capability surface', () => {
     expect(source).toContain('task: {');
     expect(source).toContain('settings: {');
     expect(source).toContain('project: {');
+    expect(source).toContain('planning: {');
+    expect(source).toContain('trash: {');
     expect(source).not.toContain('workspacePath');
   });
 });

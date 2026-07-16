@@ -1,0 +1,49 @@
+2026-07-16 M1-03 local verification
+
+Environment prefix used for pnpm commands:
+PNPM_HOME=/tmp/worldforge-pnpm XDG_DATA_HOME=/tmp/worldforge-xdg-data XDG_CACHE_HOME=/tmp/worldforge-xdg-cache HOME=/tmp/worldforge-home
+
+pnpm lint
+PASS
+
+pnpm typecheck
+PASS
+
+pnpm test
+PASS: 30 files, 131 passed, 1 skipped (root-only permission case)
+
+pnpm test:migration
+PASS (final): 5 files, 19 passed
+
+pnpm test:integration
+PASS: 7 files, 22 passed
+
+pnpm test:security
+PASS: 7 files, 36 passed, 1 skipped (root-only permission case)
+
+pnpm build
+PASS
+
+pnpm test:e2e
+ENVIRONMENT BLOCKED after successful build: E2E_DISPLAY_UNAVAILABLE; DISPLAY unset and xvfb-run unavailable; exit 2
+
+pnpm format:check
+PASS
+
+pnpm check:boundaries
+PASS: 9 process/package layers
+
+pnpm check:workspaces
+PASS: 10 workspace packages
+
+pnpm task:validate
+PASS: M1-03 IN_PROGRESS
+
+pnpm release:check
+PASS: tooling configured; publishing correctly BLOCKED while M8-03 is Planned
+
+pnpm package
+PASS: 9 compiled foundation entries
+
+git diff --check
+PASS

@@ -100,6 +100,8 @@ PRAGMA synchronous = NORMAL;
 
 `id TEXT PK, project_id TEXT FK, title TEXT, order_key INTEGER, status TEXT, deleted_at TEXT NULL`
 
+M1-03由`migrations/project/0002_volume_chapter_lifecycle.sql`建立。当前具名契约对卷状态采用与章节一致的`pending/outlined/writing/reviewing/finalized`最小生命周期；数据库保留`TEXT`列，避免在缺少独立冻结卷状态枚举时加入不可逆约束。
+
 #### `chapters`
 
 | 字段 | 类型 | 说明 |
@@ -113,6 +115,8 @@ PRAGMA synchronous = NORMAL;
 | active_draft_id | TEXT FK NULL | 当前活动Draft |
 | final_version_id | TEXT FK NULL | 当前定稿Version |
 | deleted_at | TEXT NULL | 软删除 |
+
+M1-03先建立`active_draft_id`和`final_version_id`可空引用字段；其目标表分别由M1-04和M1-07建立。在目标表存在前不得写入非空引用，后续任务通过追加Migration补齐数据库级外键，不预建空Draft或Version表。
 
 #### `plot_nodes`
 
@@ -332,6 +336,8 @@ RHY结果为P3建议级，不写入阻断严重度。
 
 - `backup_records(id, backup_type, path, hash, verified, label, notes, created_at, deleted_at)`
 - `trash_entries(id, entity_type, entity_id, original_parent_id, original_order_key INTEGER, deleted_at)`
+
+`0002_volume_chapter_lifecycle.sql`仅允许`volume/chapter`两类最小回收记录，并对`(entity_type, entity_id)`去重。软删除对象仍保留在权威业务表；恢复在Core单事务内重新分配同级64位排序键并删除对应TrashEntry。
 
 ## 4. FTS5
 

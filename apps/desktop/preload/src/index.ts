@@ -17,21 +17,34 @@ import {
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   ProjectActiveResultSchema,
+  ProjectCreateChapterCommandSchema,
+  ProjectCreateVolumeCommandSchema,
   ProjectCloseCommandResultSchema,
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
+  ProjectDeleteChapterCommandSchema,
+  ProjectDeleteVolumeCommandSchema,
   ProjectGetActiveCommandSchema,
   ProjectListRecentCommandSchema,
+  ProjectListStructureCommandSchema,
+  ProjectListTrashCommandSchema,
   ProjectMoveCommandResultSchema,
   ProjectMoveCommandSchema,
+  ProjectMoveChapterCommandSchema,
+  ProjectMoveVolumeCommandSchema,
   ProjectOpenRecentCommandSchema,
   ProjectOpenSelectedCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
+  ProjectRestoreTrashEntryCommandSchema,
   RecentProjectRemovalResultSchema,
   RecentProjectResultSchema,
   RecentProjectsResultSchema,
   ProjectWorkspaceResultSchema,
+  ProjectStructureResultSchema,
+  ProjectTrashEntriesResultSchema,
+  ProjectUpdateChapterCommandSchema,
+  ProjectUpdateVolumeCommandSchema,
   SettingsGetCommandSchema,
   SettingsResetCommandSchema,
   SettingsSetCommandSchema,
@@ -205,6 +218,80 @@ const bridge: WorldforgeBridge = {
         IPC_CHANNELS.move,
         ProjectMoveCommandSchema.parse(envelope(APP_COMMANDS.move, { projectId })),
         ProjectMoveCommandResultSchema,
+      ),
+  },
+  planning: {
+    listStructure: (projectId) =>
+      invoke(
+        IPC_CHANNELS.listStructure,
+        ProjectListStructureCommandSchema.parse(
+          envelope(APP_COMMANDS.listStructure, { projectId }),
+        ),
+        ProjectStructureResultSchema,
+      ),
+    createVolume: (input) =>
+      invoke(
+        IPC_CHANNELS.createVolume,
+        ProjectCreateVolumeCommandSchema.parse(envelope(APP_COMMANDS.createVolume, input)),
+        ProjectStructureResultSchema,
+      ),
+    updateVolume: (input) =>
+      invoke(
+        IPC_CHANNELS.updateVolume,
+        ProjectUpdateVolumeCommandSchema.parse(envelope(APP_COMMANDS.updateVolume, input)),
+        ProjectStructureResultSchema,
+      ),
+    moveVolume: (input) =>
+      invoke(
+        IPC_CHANNELS.moveVolume,
+        ProjectMoveVolumeCommandSchema.parse(envelope(APP_COMMANDS.moveVolume, input)),
+        ProjectStructureResultSchema,
+      ),
+    deleteVolume: (input) =>
+      invoke(
+        IPC_CHANNELS.deleteVolume,
+        ProjectDeleteVolumeCommandSchema.parse(envelope(APP_COMMANDS.deleteVolume, input)),
+        ProjectStructureResultSchema,
+      ),
+    createChapter: (input) =>
+      invoke(
+        IPC_CHANNELS.createChapter,
+        ProjectCreateChapterCommandSchema.parse(envelope(APP_COMMANDS.createChapter, input)),
+        ProjectStructureResultSchema,
+      ),
+    updateChapter: (input) =>
+      invoke(
+        IPC_CHANNELS.updateChapter,
+        ProjectUpdateChapterCommandSchema.parse(envelope(APP_COMMANDS.updateChapter, input)),
+        ProjectStructureResultSchema,
+      ),
+    moveChapter: (input) =>
+      invoke(
+        IPC_CHANNELS.moveChapter,
+        ProjectMoveChapterCommandSchema.parse(envelope(APP_COMMANDS.moveChapter, input)),
+        ProjectStructureResultSchema,
+      ),
+    deleteChapter: (input) =>
+      invoke(
+        IPC_CHANNELS.deleteChapter,
+        ProjectDeleteChapterCommandSchema.parse(envelope(APP_COMMANDS.deleteChapter, input)),
+        ProjectStructureResultSchema,
+      ),
+  },
+  trash: {
+    list: (projectId) =>
+      invoke(
+        IPC_CHANNELS.listTrash,
+        ProjectListTrashCommandSchema.parse(envelope(APP_COMMANDS.listTrash, { projectId })),
+        ProjectTrashEntriesResultSchema,
+      ),
+    restore: (input) =>
+      invoke(
+        IPC_CHANNELS.restoreTrashEntry,
+        ProjectRestoreTrashEntryCommandSchema.parse(
+          envelope(APP_COMMANDS.restoreTrashEntry, input),
+        ),
+        ProjectStructureResultSchema,
       ),
   },
   ai: {

@@ -4,8 +4,13 @@ import type {
   AppSettings,
   AppSettingsSnapshot,
   AppSettingsUpdate,
+  Chapter,
+  LifecycleStatus,
+  ProjectStructure,
   ProjectWorkspaceSummary,
   RecentProject,
+  TrashEntry,
+  Volume,
 } from './types.js';
 
 const defaultAppearance: AppearancePreferences = {
@@ -83,10 +88,37 @@ const confirmCreateProjectButton = document.querySelector<HTMLButtonElement>(
 const cancelCreateProjectButton = document.querySelector<HTMLButtonElement>(
   '[data-cancel-create-project]',
 );
+const projectInitialStructure = document.querySelector<HTMLSelectElement>(
+  '[data-project-initial-structure]',
+);
+const homeNavigation = document.querySelector<HTMLElement>('[data-home-navigation]');
+const homePanelNote = document.querySelector<HTMLElement>('[data-home-panel-note]');
+const structurePanel = document.querySelector<HTMLElement>('[data-structure-panel]');
+const structureTree = document.querySelector<HTMLElement>('[data-structure-tree]');
+const structureState = document.querySelector<HTMLElement>('[data-structure-state]');
+const createVolumeButton = document.querySelector<HTMLButtonElement>('[data-create-volume]');
+const openTrashButton = document.querySelector<HTMLButtonElement>('[data-open-trash]');
+const structureDialog = document.querySelector<HTMLDialogElement>('[data-structure-dialog]');
+const structureForm = document.querySelector<HTMLFormElement>('[data-structure-form]');
+const structureDialogTitle = document.querySelector<HTMLElement>('[data-structure-dialog-title]');
+const structureTitleInput = document.querySelector<HTMLInputElement>('[data-structure-title]');
+const structureStatusSelect = document.querySelector<HTMLSelectElement>('[data-structure-status]');
+const structureStatusField = document.querySelector<HTMLElement>('[data-structure-status-field]');
+const structureVolumeField = document.querySelector<HTMLElement>('[data-structure-volume-field]');
+const structureVolumeSelect = document.querySelector<HTMLSelectElement>('[data-structure-volume]');
+const structureWordFields = document.querySelector<HTMLElement>('[data-structure-word-fields]');
+const structureFormStatus = document.querySelector<HTMLElement>('[data-structure-form-status]');
+const saveStructureButton = document.querySelector<HTMLButtonElement>('[data-save-structure]');
+const cancelStructureButton = document.querySelector<HTMLButtonElement>('[data-cancel-structure]');
+const trashDialog = document.querySelector<HTMLDialogElement>('[data-trash-dialog]');
+const trashList = document.querySelector<HTMLElement>('[data-trash-list]');
+const trashStatus = document.querySelector<HTMLElement>('[data-trash-status]');
+const closeTrashButton = document.querySelector<HTMLButtonElement>('[data-close-trash]');
 
 let appearance = defaultAppearance;
 let applicationSettings = defaultSettings;
 let activeProject: ProjectWorkspaceSummary | null = null;
+let activeStructure: ProjectStructure | null = null;
 let resizeFrame: number | null = null;
 let drawerRestoreTarget: HTMLElement | null = null;
 
@@ -208,6 +240,390 @@ function setProjectOperationStatus(message: string, error = false): void {
   projectOperationStatus.classList.toggle('is-error', error);
 }
 
+const lifecycleLabels: Record<LifecycleStatus, string> = {
+  pending: '待规划',
+  outlined: '已规划',
+  writing: '写作中',
+  reviewing: '审阅中',
+  finalized: '已定稿',
+};
+
+function setStructureState(message: string, error = false): void {
+  if (!structureState) return;
+  structureState.textContent = message;
+  structureState.classList.toggle('is-error', error);
+}
+
+function treeAction(label: string, title: string, attribute: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'tree-action';
+  button.textContent = label;
+  button.title = title;
+  button.setAttribute(attribute, '');
+  button.disabled = activeProject?.databaseMode !== 'read-write';
+  return button;
+}
+
+async function runStructureMutation(
+  operation: Promise<{
+    readonly ok: boolean;
+    readonly data?: ProjectStructure;
+    readonly error?: { readonly code: string };
+  }>,
+  progress: string,
+): Promise<ProjectStructure | null> {
+  setStructureState(progress);
+  try {
+    const result = await operation;
+    if (result.ok && result.data) {
+      renderProjectStructure(result.data);
+      setStructureState('卷章结构已保存到项目数据库。');
+      return result.data;
+    }
+    setStructureState(`操作失败 · ${result.error?.code ?? 'COMMON_INTERNAL_999'}`, true);
+  } catch {
+    setStructureState('操作失败 · COMMON_INTERNAL_999', true);
+  }
+  return null;
+}
+
+function openVolumeEditor(volume?: Volume): void {
+  if (!structureForm || !structureDialog || activeProject?.databaseMode !== 'read-write') return;
+  structureForm.reset();
+  structureForm.dataset.entityType = 'volume';
+  structureForm.dataset.mode = volume ? 'edit' : 'create';
+  structureForm.dataset.entityId = volume?.id ?? '';
+  if (structureDialogTitle) structureDialogTitle.textContent = volume ? '编辑卷' : '新建卷';
+  if (structureTitleInput) structureTitleInput.value = volume?.title ?? '';
+  if (structureStatusSelect) structureStatusSelect.value = volume?.status ?? 'pending';
+  if (structureStatusField) structureStatusField.hidden = !volume;
+  if (structureVolumeField) structureVolumeField.hidden = true;
+  if (structureWordFields) structureWordFields.hidden = true;
+  if (structureFormStatus) {
+    structureFormStatus.textContent = '';
+    structureFormStatus.classList.remove('is-error');
+  }
+  structureDialog.showModal();
+  structureTitleInput?.focus();
+}
+
+function fillVolumeChoices(selectedVolumeId: string): void {
+  if (!structureVolumeSelect) return;
+  structureVolumeSelect.replaceChildren();
+  for (const volume of activeStructure?.volumes ?? []) {
+    const option = document.createElement('option');
+    option.value = volume.id;
+    option.textContent = volume.title;
+    option.selected = volume.id === selectedVolumeId;
+    structureVolumeSelect.append(option);
+  }
+}
+
+function openChapterEditor(volume: Volume, chapter?: Chapter): void {
+  if (!structureForm || !structureDialog || activeProject?.databaseMode !== 'read-write') return;
+  structureForm.reset();
+  structureForm.dataset.entityType = 'chapter';
+  structureForm.dataset.mode = chapter ? 'edit' : 'create';
+  structureForm.dataset.entityId = chapter?.id ?? '';
+  structureForm.dataset.originalVolumeId = volume.id;
+  if (structureDialogTitle) structureDialogTitle.textContent = chapter ? '编辑章节' : '新建章节';
+  if (structureTitleInput) structureTitleInput.value = chapter?.title ?? '';
+  if (structureStatusSelect) structureStatusSelect.value = chapter?.status ?? 'pending';
+  if (structureStatusField) structureStatusField.hidden = !chapter;
+  if (structureVolumeField) structureVolumeField.hidden = false;
+  if (structureWordFields) structureWordFields.hidden = !chapter;
+  fillVolumeChoices(volume.id);
+  const minimum = structureForm.elements.namedItem('targetWordMin');
+  const maximum = structureForm.elements.namedItem('targetWordMax');
+  if (minimum instanceof HTMLInputElement) {
+    minimum.value =
+      chapter?.targetWordMin === null || !chapter ? '' : String(chapter.targetWordMin);
+  }
+  if (maximum instanceof HTMLInputElement) {
+    maximum.value =
+      chapter?.targetWordMax === null || !chapter ? '' : String(chapter.targetWordMax);
+  }
+  if (structureFormStatus) {
+    structureFormStatus.textContent = '';
+    structureFormStatus.classList.remove('is-error');
+  }
+  structureDialog.showModal();
+  structureTitleInput?.focus();
+}
+
+function renderProjectStructure(structure: ProjectStructure | null): void {
+  activeStructure = structure;
+  structureTree?.replaceChildren();
+  if (!structureTree || !structure) return;
+  if (structure.volumes.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'structure-empty';
+    empty.textContent = '这是一个专业空白项目。点击“新建卷”开始建立目录。';
+    empty.setAttribute('data-structure-empty', '');
+    structureTree.append(empty);
+    return;
+  }
+
+  structure.volumes.forEach((volume, volumeIndex) => {
+    const node = document.createElement('section');
+    node.className = 'volume-node';
+    node.dataset.volumeId = volume.id;
+    node.dataset.volumeTitle = volume.title;
+    const row = document.createElement('div');
+    row.className = 'volume-node__row';
+    const label = document.createElement('div');
+    label.className = 'volume-node__label';
+    const title = document.createElement('strong');
+    title.textContent = volume.title;
+    const metadata = document.createElement('small');
+    metadata.textContent = `${lifecycleLabels[volume.status]} · ${volume.chapters.length} 章`;
+    label.append(title, metadata);
+    const actions = document.createElement('div');
+    actions.className = 'tree-actions';
+    const addChapter = treeAction('+章', '在本卷新建章节', 'data-add-chapter');
+    addChapter.addEventListener('click', () => openChapterEditor(volume));
+    const edit = treeAction('编', '编辑卷', 'data-edit-volume');
+    edit.addEventListener('click', () => openVolumeEditor(volume));
+    const up = treeAction('↑', '上移卷', 'data-move-volume-up');
+    up.disabled ||= volumeIndex === 0;
+    up.addEventListener('click', () => {
+      const previous = structure.volumes[volumeIndex - 1];
+      const project = activeProject;
+      if (!previous || !project) return;
+      void runStructureMutation(
+        window.worldforge.planning.moveVolume({
+          projectId: project.projectId,
+          volumeId: volume.id,
+          placement: { kind: 'before', siblingId: previous.id },
+        }),
+        '正在调整卷顺序…',
+      );
+    });
+    const down = treeAction('↓', '下移卷', 'data-move-volume-down');
+    down.disabled ||= volumeIndex === structure.volumes.length - 1;
+    down.addEventListener('click', () => {
+      const next = structure.volumes[volumeIndex + 1];
+      const project = activeProject;
+      if (!next || !project) return;
+      void runStructureMutation(
+        window.worldforge.planning.moveVolume({
+          projectId: project.projectId,
+          volumeId: volume.id,
+          placement: { kind: 'after', siblingId: next.id },
+        }),
+        '正在调整卷顺序…',
+      );
+    });
+    const remove = treeAction('删', '移入废纸篓', 'data-delete-volume');
+    remove.addEventListener('click', () => {
+      const project = activeProject;
+      if (!project || !window.confirm(`将“${volume.title}”移入废纸篓？`)) return;
+      void runStructureMutation(
+        window.worldforge.planning.deleteVolume({
+          projectId: project.projectId,
+          volumeId: volume.id,
+        }),
+        '正在移入废纸篓…',
+      );
+    });
+    actions.append(addChapter, edit, up, down, remove);
+    row.append(label, actions);
+    node.append(row);
+
+    const chapterList = document.createElement('ol');
+    chapterList.className = 'chapter-list';
+    for (const [chapterIndex, chapter] of volume.chapters.entries()) {
+      const chapterNode = document.createElement('li');
+      chapterNode.className = 'chapter-node';
+      chapterNode.dataset.chapterId = chapter.id;
+      chapterNode.dataset.chapterTitle = chapter.title;
+      const chapterLabel = document.createElement('div');
+      chapterLabel.className = 'chapter-node__label';
+      const chapterTitle = document.createElement('strong');
+      chapterTitle.textContent = chapter.title;
+      const chapterMetadata = document.createElement('small');
+      const target =
+        chapter.targetWordMin === null && chapter.targetWordMax === null
+          ? '未设目标'
+          : `${chapter.targetWordMin ?? 0}—${chapter.targetWordMax ?? '∞'} 字`;
+      chapterMetadata.textContent = `${lifecycleLabels[chapter.status]} · ${target}`;
+      chapterLabel.append(chapterTitle, chapterMetadata);
+      const chapterActions = document.createElement('div');
+      chapterActions.className = 'tree-actions';
+      const editChapter = treeAction('编', '编辑章节', 'data-edit-chapter');
+      editChapter.addEventListener('click', () => openChapterEditor(volume, chapter));
+      const chapterUp = treeAction('↑', '上移章节', 'data-move-chapter-up');
+      chapterUp.disabled ||= chapterIndex === 0;
+      chapterUp.addEventListener('click', () => {
+        const previous = volume.chapters[chapterIndex - 1];
+        const project = activeProject;
+        if (!previous || !project) return;
+        void runStructureMutation(
+          window.worldforge.planning.moveChapter({
+            projectId: project.projectId,
+            chapterId: chapter.id,
+            targetVolumeId: volume.id,
+            placement: { kind: 'before', siblingId: previous.id },
+          }),
+          '正在调整章节顺序…',
+        );
+      });
+      const chapterDown = treeAction('↓', '下移章节', 'data-move-chapter-down');
+      chapterDown.disabled ||= chapterIndex === volume.chapters.length - 1;
+      chapterDown.addEventListener('click', () => {
+        const next = volume.chapters[chapterIndex + 1];
+        const project = activeProject;
+        if (!next || !project) return;
+        void runStructureMutation(
+          window.worldforge.planning.moveChapter({
+            projectId: project.projectId,
+            chapterId: chapter.id,
+            targetVolumeId: volume.id,
+            placement: { kind: 'after', siblingId: next.id },
+          }),
+          '正在调整章节顺序…',
+        );
+      });
+      const removeChapter = treeAction('删', '移入废纸篓', 'data-delete-chapter');
+      removeChapter.addEventListener('click', () => {
+        const project = activeProject;
+        if (!project || !window.confirm(`将“${chapter.title}”移入废纸篓？`)) return;
+        void runStructureMutation(
+          window.worldforge.planning.deleteChapter({
+            projectId: project.projectId,
+            chapterId: chapter.id,
+          }),
+          '正在移入废纸篓…',
+        );
+      });
+      chapterActions.append(editChapter, chapterUp, chapterDown, removeChapter);
+      chapterNode.append(chapterLabel, chapterActions);
+      chapterList.append(chapterNode);
+    }
+    node.append(chapterList);
+    structureTree.append(node);
+  });
+}
+
+async function refreshProjectStructure(): Promise<void> {
+  const project = activeProject;
+  if (!project) {
+    renderProjectStructure(null);
+    setStructureState('');
+    return;
+  }
+  setStructureState('正在读取卷章结构…');
+  try {
+    const result = await window.worldforge.planning.listStructure(project.projectId);
+    if (activeProject?.projectId !== project.projectId) return;
+    if (result.ok) {
+      renderProjectStructure(result.data);
+      setStructureState(
+        project.databaseMode === 'read-only' ? '只读浏览；结构修改已禁用。' : '结构已同步。',
+      );
+    } else {
+      renderProjectStructure(null);
+      setStructureState(`结构读取失败 · ${result.error.code}`, true);
+    }
+  } catch {
+    if (activeProject?.projectId !== project.projectId) return;
+    renderProjectStructure(null);
+    setStructureState('结构读取失败 · COMMON_INTERNAL_999', true);
+  }
+}
+
+function setTrashStatus(message: string, error = false): void {
+  if (!trashStatus) return;
+  trashStatus.textContent = message;
+  trashStatus.classList.toggle('is-error', error);
+}
+
+function renderTrashEntries(entries: readonly TrashEntry[]): void {
+  trashList?.replaceChildren();
+  if (!trashList) return;
+  if (entries.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'structure-empty';
+    empty.textContent = '废纸篓为空。';
+    empty.setAttribute('data-trash-empty', '');
+    trashList.append(empty);
+    return;
+  }
+  for (const entry of entries) {
+    const row = document.createElement('article');
+    row.className = 'trash-entry';
+    row.dataset.trashEntryId = entry.id;
+    const content = document.createElement('div');
+    content.className = 'trash-entry__content';
+    const title = document.createElement('strong');
+    title.textContent = entry.title;
+    const metadata = document.createElement('small');
+    metadata.textContent = `${entry.entityType === 'volume' ? '卷' : '章节'} · ${new Date(
+      entry.deletedAt,
+    ).toLocaleString('zh-CN')}`;
+    content.append(title, metadata);
+    const actions = document.createElement('div');
+    actions.className = 'trash-entry__actions';
+    const restoreOriginal = recentAction('恢复原位', 'data-restore-original');
+    const restoreEnd = recentAction('恢复到末尾', 'data-restore-end');
+    const readOnly = activeProject?.databaseMode !== 'read-write';
+    restoreOriginal.disabled = readOnly;
+    restoreEnd.disabled = readOnly;
+    restoreOriginal.addEventListener('click', () => {
+      void restoreTrash(entry, 'original');
+    });
+    restoreEnd.addEventListener('click', () => {
+      void restoreTrash(entry, { kind: 'end' });
+    });
+    actions.append(restoreOriginal, restoreEnd);
+    row.append(content, actions);
+    trashList.append(row);
+  }
+}
+
+async function refreshTrashEntries(): Promise<void> {
+  const project = activeProject;
+  if (!project) return;
+  setTrashStatus('正在读取废纸篓…');
+  try {
+    const result = await window.worldforge.trash.list(project.projectId);
+    if (result.ok) {
+      renderTrashEntries(result.data.entries);
+      setTrashStatus(result.data.entries.length === 0 ? '' : `共 ${result.data.entries.length} 项`);
+    } else {
+      setTrashStatus(`废纸篓读取失败 · ${result.error.code}`, true);
+    }
+  } catch {
+    setTrashStatus('废纸篓读取失败 · COMMON_INTERNAL_999', true);
+  }
+}
+
+async function restoreTrash(
+  entry: TrashEntry,
+  placement: 'original' | { readonly kind: 'end' },
+): Promise<void> {
+  const project = activeProject;
+  if (!project || project.databaseMode !== 'read-write') return;
+  setTrashStatus('正在恢复…');
+  try {
+    const result = await window.worldforge.trash.restore({
+      projectId: project.projectId,
+      trashEntryId: entry.id,
+      placement,
+    });
+    if (result.ok) {
+      renderProjectStructure(result.data);
+      setStructureState('已从废纸篓恢复。');
+      await refreshTrashEntries();
+    } else {
+      setTrashStatus(`恢复失败 · ${result.error.code}`, true);
+    }
+  } catch {
+    setTrashStatus('恢复失败 · COMMON_INTERNAL_999', true);
+  }
+}
+
 function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
   activeProject = project;
   document.body.dataset.projectState = project
@@ -218,9 +634,15 @@ function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
   for (const button of createProjectButtons) button.disabled = project !== null;
   for (const button of openProjectButtons) button.disabled = project !== null;
   if (activeProjectPanel) activeProjectPanel.hidden = project === null;
+  if (homeNavigation) homeNavigation.hidden = project !== null;
+  if (homePanelNote) homePanelNote.hidden = project !== null;
+  if (structurePanel) structurePanel.hidden = project === null;
+  if (createVolumeButton) createVolumeButton.disabled = project?.databaseMode !== 'read-write';
   if (!project) {
     if (workspaceTitle) workspaceTitle.textContent = '继续你的本地写作';
     if (workspaceBadge) workspaceBadge.textContent = '应用级数据';
+    renderProjectStructure(null);
+    setStructureState('');
     setProjectOperationStatus('');
     return;
   }
@@ -247,6 +669,7 @@ function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
   if (moveProjectButton) moveProjectButton.disabled = project.databaseMode === 'read-only';
   if (closeProjectButton) closeProjectButton.disabled = false;
   setProjectOperationStatus('项目身份和路径边界已由 Core 验证。');
+  void refreshProjectStructure();
 }
 
 async function refreshActiveProject(): Promise<void> {
@@ -680,6 +1103,10 @@ for (const button of createProjectButtons) {
       createProjectStatus.classList.remove('is-error');
       createProjectStatus.textContent = '';
     }
+    if (projectInitialStructure) {
+      projectInitialStructure.value =
+        applicationSettings.defaultMode === 'professional' ? 'blank' : 'starter';
+    }
     createProjectDialog?.showModal();
     createProjectForm?.querySelector<HTMLInputElement>('[data-project-name]')?.focus();
   });
@@ -697,12 +1124,18 @@ createProjectForm?.addEventListener('submit', async (event) => {
   if (activeProject || !createProjectForm) return;
   const nameInput = createProjectForm.elements.namedItem('name');
   const channelInput = createProjectForm.elements.namedItem('channel');
-  if (!(nameInput instanceof HTMLInputElement) || !(channelInput instanceof HTMLInputElement)) {
+  const initialStructureInput = createProjectForm.elements.namedItem('initialStructure');
+  if (
+    !(nameInput instanceof HTMLInputElement) ||
+    !(channelInput instanceof HTMLInputElement) ||
+    !(initialStructureInput instanceof HTMLSelectElement)
+  ) {
     return;
   }
   const name = nameInput.value.trim();
   const channel = channelInput.value.trim();
-  if (!name || !channel) {
+  const initialStructure = initialStructureInput.value;
+  if (!name || !channel || !['starter', 'blank'].includes(initialStructure)) {
     if (createProjectStatus) {
       createProjectStatus.classList.add('is-error');
       createProjectStatus.textContent = '请填写项目名称和创作频道。';
@@ -715,11 +1148,16 @@ createProjectForm?.addEventListener('submit', async (event) => {
     createProjectStatus.textContent = '请选择保存位置…';
   }
   try {
-    const result = await window.worldforge.project.create({ name, channel });
+    const result = await window.worldforge.project.create({
+      name,
+      channel,
+      initialStructure: initialStructure as 'starter' | 'blank',
+    });
     if (result.ok) {
       createProjectDialog?.close();
       createProjectForm.reset();
       channelInput.value = '未分类';
+      initialStructureInput.value = 'starter';
       renderActiveProject(result.data);
       await refreshRecentProjects();
     } else if (result.error.code !== 'COMMON_CANCELLED_004' && createProjectStatus) {
@@ -737,6 +1175,134 @@ createProjectForm?.addEventListener('submit', async (event) => {
     if (confirmCreateProjectButton) confirmCreateProjectButton.disabled = false;
   }
 });
+
+createVolumeButton?.addEventListener('click', () => openVolumeEditor());
+cancelStructureButton?.addEventListener('click', () => structureDialog?.close());
+
+structureForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const project = activeProject;
+  if (
+    !project ||
+    project.databaseMode !== 'read-write' ||
+    !structureForm ||
+    !structureTitleInput ||
+    !structureStatusSelect ||
+    !structureVolumeSelect
+  ) {
+    return;
+  }
+  const entityType = structureForm.dataset.entityType;
+  const mode = structureForm.dataset.mode;
+  const entityId = structureForm.dataset.entityId ?? '';
+  const title = structureTitleInput.value.trim();
+  const status = structureStatusSelect.value as LifecycleStatus;
+  if (
+    !title ||
+    !['volume', 'chapter'].includes(entityType ?? '') ||
+    !['create', 'edit'].includes(mode ?? '') ||
+    !Object.hasOwn(lifecycleLabels, status)
+  ) {
+    if (structureFormStatus) {
+      structureFormStatus.classList.add('is-error');
+      structureFormStatus.textContent = '请检查标题和状态。';
+    }
+    return;
+  }
+
+  const minimumInput = structureForm.elements.namedItem('targetWordMin');
+  const maximumInput = structureForm.elements.namedItem('targetWordMax');
+  const minimum =
+    minimumInput instanceof HTMLInputElement && minimumInput.value !== ''
+      ? Number(minimumInput.value)
+      : null;
+  const maximum =
+    maximumInput instanceof HTMLInputElement && maximumInput.value !== ''
+      ? Number(maximumInput.value)
+      : null;
+  if (
+    (minimum !== null && (!Number.isInteger(minimum) || minimum < 0)) ||
+    (maximum !== null && (!Number.isInteger(maximum) || maximum < 0)) ||
+    (minimum !== null && maximum !== null && minimum > maximum)
+  ) {
+    if (structureFormStatus) {
+      structureFormStatus.classList.add('is-error');
+      structureFormStatus.textContent = '目标字数必须为非负整数，且下限不能超过上限。';
+    }
+    return;
+  }
+
+  if (saveStructureButton) saveStructureButton.disabled = true;
+  if (structureFormStatus) {
+    structureFormStatus.classList.remove('is-error');
+    structureFormStatus.textContent = '正在保存…';
+  }
+  try {
+    let result: Awaited<ReturnType<typeof window.worldforge.planning.createVolume>>;
+    if (entityType === 'volume' && mode === 'create') {
+      result = await window.worldforge.planning.createVolume({
+        projectId: project.projectId,
+        title,
+        placement: { kind: 'end' },
+      });
+    } else if (entityType === 'volume') {
+      result = await window.worldforge.planning.updateVolume({
+        projectId: project.projectId,
+        volumeId: entityId,
+        patch: { title, status },
+      });
+    } else if (mode === 'create') {
+      result = await window.worldforge.planning.createChapter({
+        projectId: project.projectId,
+        volumeId: structureVolumeSelect.value,
+        title,
+        placement: { kind: 'end' },
+      });
+    } else {
+      result = await window.worldforge.planning.updateChapter({
+        projectId: project.projectId,
+        chapterId: entityId,
+        patch: {
+          title,
+          status,
+          targetWordMin: minimum,
+          targetWordMax: maximum,
+        },
+      });
+      const originalVolumeId = structureForm.dataset.originalVolumeId;
+      if (result.ok && originalVolumeId !== structureVolumeSelect.value) {
+        result = await window.worldforge.planning.moveChapter({
+          projectId: project.projectId,
+          chapterId: entityId,
+          targetVolumeId: structureVolumeSelect.value,
+          placement: { kind: 'end' },
+        });
+      }
+    }
+    if (result.ok) {
+      renderProjectStructure(result.data);
+      setStructureState('卷章结构已保存到项目数据库。');
+      structureDialog?.close();
+    } else if (structureFormStatus) {
+      structureFormStatus.classList.add('is-error');
+      structureFormStatus.textContent = `保存失败 · ${result.error.code}`;
+    }
+  } catch {
+    if (structureFormStatus) {
+      structureFormStatus.classList.add('is-error');
+      structureFormStatus.textContent = '保存失败 · COMMON_INTERNAL_999';
+    }
+  } finally {
+    if (saveStructureButton) saveStructureButton.disabled = false;
+  }
+});
+
+openTrashButton?.addEventListener('click', () => {
+  if (!activeProject) return;
+  trashDialog?.showModal();
+  void refreshTrashEntries();
+});
+closeTrashButton?.addEventListener('click', () => trashDialog?.close());
 
 closeProjectButton?.addEventListener('click', async () => {
   const project = activeProject;

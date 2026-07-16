@@ -15,5 +15,7 @@ export * from './app-settings.js';
 export * from './provider-configs.js';
 export * from './recent-projects.js';
 export * from './project-workspace.js';
+export * from './project-structure.js';
+export * from './migration-recovery.js';
 export * from './task-protocol.js';
 export * from './window-preferences.js';

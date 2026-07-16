@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@worldforge/contracts": "workspace:*"
+    "@worldforge/contracts": "workspace:*",
+    "@worldforge/domain": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.1.1"

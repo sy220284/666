@@ -17,6 +17,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import {
   ProjectWorkspaceService,
   type ProjectWorkspaceError,
@@ -60,6 +61,7 @@ async function createHarness(
   });
   const service = new ProjectWorkspaceService({
     projectMigrationsDirectory: 'migrations/project',
+    projectMigrationRecoveryDirectory: path.join(root, 'project-migration-recovery'),
     appVersion: '0.1.0',
     recentProjects: appRuntime.recentProjects,
     clock,
@@ -102,7 +104,7 @@ describe('project workspace lifecycle', () => {
         projectId: summary.projectId,
         displayName: '长夜灯火',
         databaseFile: 'project.sqlite',
-        projectSchemaVersion: 1,
+        projectSchemaVersion: 2,
         createdAt: '2026-07-16T09:00:00.000Z',
       });
 
@@ -112,7 +114,7 @@ describe('project workspace lifecycle', () => {
         name: '长夜灯火',
         channel: '网络小说',
         active_style_profile_id: null,
-        schema_version: 1,
+        schema_version: 2,
         created_at: '2026-07-16T09:00:00.000Z',
         updated_at: '2026-07-16T09:00:00.000Z',
       });
@@ -377,6 +379,12 @@ describe('read-only project compatibility', () => {
       expect(() => harness.service.assertActiveProject(created.projectId, true)).toThrowError(
         expect.objectContaining({ code: 'PROJECT_READ_ONLY' }),
       );
+      await expect(
+        new ProjectStructureService(harness.service).createVolume(randomUUID(), {
+          projectId: created.projectId,
+          title: '禁止写入',
+        }),
+      ).rejects.toMatchObject({ code: 'PROJECT_READ_ONLY' });
       const target = path.join(harness.root, 'read-only-move');
       await mkdir(target);
       await expect(

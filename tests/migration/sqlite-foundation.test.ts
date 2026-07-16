@@ -138,10 +138,17 @@ describe('SQLite foundation migrations', () => {
           .all()
           .map((row) => row.name),
       ),
-    ).toEqual(['migration_journal', 'projects', 'schema_migrations']);
+    ).toEqual([
+      'chapters',
+      'migration_journal',
+      'projects',
+      'schema_migrations',
+      'trash_entries',
+      'volumes',
+    ]);
     expect(
       second.read((connection) => scalar(connection, 'SELECT count(*) FROM schema_migrations')),
-    ).toBe(1n);
+    ).toBe(2n);
     expect(second.capabilities).toEqual({ fts5: true, trigram: true });
     expect(second.quickCheck()).toEqual({ ok: true, messages: ['ok'] });
     expect(second.integrityCheck()).toEqual({ ok: true, messages: ['ok'] });

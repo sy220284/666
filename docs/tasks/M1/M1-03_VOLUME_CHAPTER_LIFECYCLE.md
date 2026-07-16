@@ -44,9 +44,15 @@ M1-02
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
+- `tests/migration/`
 - `tests/integration/`
+- `tests/security/`
 - `tests/e2e/`
+- `docs/database/`
+- `docs/contracts/`
 
 ## 实施内容
 

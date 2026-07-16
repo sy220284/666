@@ -414,6 +414,161 @@ nav {
   line-height: 1.55;
 }
 
+.structure-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-height: calc(100% - 62px * var(--ui-scale));
+}
+
+.structure-panel__header,
+.structure-panel > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(12px * var(--ui-scale));
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.structure-panel__header small,
+.structure-panel__header strong {
+  display: block;
+}
+
+.structure-panel__header small {
+  color: var(--color-text-muted);
+  font-size: 0.62em;
+  letter-spacing: 0.08em;
+}
+
+.structure-panel__header strong {
+  margin-top: 2px;
+  color: var(--color-text-primary);
+  font-size: 0.86em;
+}
+
+.structure-panel > footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 0;
+}
+
+.structure-state {
+  min-height: 1.2em;
+  margin: 0;
+  padding: 9px 12px 0;
+  color: var(--color-text-muted);
+  font-size: 0.7em;
+}
+
+.structure-state.is-error {
+  color: var(--color-danger);
+}
+
+.structure-tree {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
+.structure-empty {
+  padding: 18px 10px;
+  color: var(--color-text-muted);
+  font-size: 0.74em;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.volume-node {
+  margin-bottom: 9px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+}
+
+.volume-node__row,
+.chapter-node,
+.tree-actions,
+.trash-entry,
+.trash-entry__actions {
+  display: flex;
+  align-items: center;
+}
+
+.volume-node__row,
+.chapter-node {
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.volume-node__row {
+  background: var(--color-bg-panel);
+}
+
+.volume-node__label,
+.chapter-node__label {
+  min-width: 0;
+}
+
+.volume-node__label strong,
+.volume-node__label small,
+.chapter-node__label strong,
+.chapter-node__label small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.volume-node__label strong,
+.chapter-node__label strong {
+  color: var(--color-text-primary);
+  font-size: 0.76em;
+}
+
+.volume-node__label small,
+.chapter-node__label small {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 0.62em;
+}
+
+.tree-actions {
+  flex: none;
+  gap: 3px;
+}
+
+.tree-action {
+  min-width: 25px;
+  min-height: 25px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 4px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: 0.65em;
+  cursor: pointer;
+}
+
+.chapter-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter-node {
+  padding-left: 16px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.chapter-node__label strong::before {
+  content: '§ ';
+  color: var(--color-text-muted);
+}
+
 .editor-region {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -887,6 +1042,21 @@ nav {
   max-height: calc(100vh - 34px);
 }
 
+.dialog-list-layout {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  max-height: calc(100vh - 34px);
+}
+
+.dialog-list-layout > footer {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-panel);
+}
+
 .settings-dialog__body {
   overflow: auto;
   padding: clamp(22px, 5vw, 44px);
@@ -930,6 +1100,54 @@ nav {
 
 .project-create-grid {
   grid-template-columns: 1fr;
+}
+
+.word-target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.word-target-grid label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-text-secondary);
+  font-size: 0.84em;
+}
+
+.trash-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.trash-entry {
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-panel);
+}
+
+.trash-entry__content {
+  min-width: 0;
+}
+
+.trash-entry__content strong,
+.trash-entry__content small {
+  display: block;
+}
+
+.trash-entry__content small {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 0.72em;
+}
+
+.trash-entry__actions {
+  flex: none;
+  gap: 6px;
 }
 
 .checkbox-row {

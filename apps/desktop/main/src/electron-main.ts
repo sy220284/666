@@ -69,6 +69,7 @@ function spawnCore(): UtilityProcessHandle {
       `--app-migrations=${appMigrationsPath}`,
       `--project-migrations=${projectMigrationsPath}`,
       `--app-recovery=${path.join(userDataPath, 'recovery', 'app')}`,
+      `--project-migration-recovery=${path.join(userDataPath, 'recovery', 'project-migrations')}`,
       `--app-version=${app.getVersion()}`,
     ],
     {

@@ -16,6 +16,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
 import {
   ProjectCreateInputSchema,
@@ -28,6 +29,9 @@ import {
 } from '@worldforge/contracts';
 
 import { ProjectDatabase, loadMigrations, type DatabaseClock } from './database/index.js';
+import type { DatabaseReadOperation, DatabaseWriteOperation } from './database/index.js';
+import { createSqliteMigrationRecoveryPoint } from './migration-recovery.js';
+import { initializeProjectStructure } from './project-structure.js';
 import type { RecentProjectsRepository } from './recent-projects.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
@@ -57,6 +61,7 @@ export class ProjectWorkspaceError extends Error {
 
 export interface ProjectWorkspaceServiceOptions {
   readonly projectMigrationsDirectory: string;
+  readonly projectMigrationRecoveryDirectory: string;
   readonly appVersion: string;
   readonly recentProjects: RecentProjectsRepository;
   readonly clock?: DatabaseClock;
@@ -100,6 +105,34 @@ function isInside(root: string, candidate: string): boolean {
     relative === '' ||
     (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
   );
+}
+
+function assertManifestDatabaseIdentity(databasePath: string, manifestProjectId: string): void {
+  let database: DatabaseSync | undefined;
+  try {
+    database = new DatabaseSync(databasePath, {
+      readOnly: true,
+      allowExtension: false,
+      enableForeignKeyConstraints: true,
+      readBigInts: true,
+    });
+    const hasProjects = database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'projects'")
+      .get();
+    if (!hasProjects) return;
+    const rows = database.prepare('SELECT id FROM projects ORDER BY created_at LIMIT 2').all();
+    if (rows.length !== 1 || String(rows[0]?.id) !== manifestProjectId) {
+      throw new ProjectWorkspaceError(
+        'PROJECT_ID_MISMATCH',
+        'The project manifest does not match the project database.',
+      );
+    }
+  } catch (error) {
+    if (error instanceof ProjectWorkspaceError) throw error;
+    // The database foundation performs authoritative integrity and compatibility checks below.
+  } finally {
+    database?.close();
+  }
 }
 
 function validWorkspaceName(name: string): string {
@@ -235,6 +268,7 @@ async function defaultFreeBytes(directory: string): Promise<bigint> {
 export class ProjectWorkspaceService {
   readonly #migrationsDirectory: string;
   readonly #appVersion: string;
+  readonly #projectMigrationRecoveryDirectory: string;
   readonly #recentProjects: RecentProjectsRepository;
   readonly #clock: DatabaseClock;
   readonly #copyWorkspace: (source: string, target: string) => Promise<void>;
@@ -248,6 +282,7 @@ export class ProjectWorkspaceService {
   constructor(options: ProjectWorkspaceServiceOptions) {
     this.#migrationsDirectory = options.projectMigrationsDirectory;
     this.#appVersion = options.appVersion;
+    this.#projectMigrationRecoveryDirectory = options.projectMigrationRecoveryDirectory;
     this.#recentProjects = options.recentProjects;
     this.#clock = options.clock ?? systemClock;
     this.#copyWorkspace = options.copyWorkspace ?? defaultCopyWorkspace;
@@ -315,6 +350,12 @@ export class ProjectWorkspaceService {
                 createdAt,
                 createdAt,
               );
+            initializeProjectStructure(
+              connection,
+              projectId,
+              project.initialStructure ?? 'starter',
+              this.#idFactory,
+            );
           });
           await database.checkpoint('TRUNCATE');
         } finally {
@@ -518,6 +559,19 @@ export class ProjectWorkspaceService {
     return this.#assertActiveContext(projectId, requireWrite).summary;
   }
 
+  readProject<T>(projectId: string, operation: DatabaseReadOperation<T>): T {
+    return this.#assertActiveContext(projectId).database.read(operation);
+  }
+
+  async writeProject<T>(
+    requestId: string,
+    projectId: string,
+    operation: DatabaseWriteOperation<T>,
+  ): Promise<T> {
+    const context = this.#assertActiveContext(projectId, true);
+    return (await context.database.write(requestId, operation)).value;
+  }
+
   async resolveProjectPath(projectId: string, relativePath: string): Promise<string> {
     const context = this.#assertActiveContext(projectId);
     if (
@@ -677,6 +731,7 @@ export class ProjectWorkspaceService {
     }
 
     const migrations = await loadMigrations(this.#migrationsDirectory, 'project');
+    assertManifestDatabaseIdentity(databasePath, manifest.projectId);
     let database: ProjectDatabase;
     try {
       database = await ProjectDatabase.open({
@@ -684,6 +739,13 @@ export class ProjectWorkspaceService {
         migrations,
         appVersion: this.#appVersion,
         clock: this.#clock,
+        prepareRecoveryPoint: async (context) => {
+          await createSqliteMigrationRecoveryPoint(
+            context,
+            path.join(this.#projectMigrationRecoveryDirectory, manifest.projectId),
+            this.#idFactory(),
+          );
+        },
       });
     } catch (error) {
       throw new ProjectWorkspaceError(
@@ -694,6 +756,27 @@ export class ProjectWorkspaceService {
     }
 
     try {
+      let activeManifest = manifest;
+      if (
+        database.mode === 'read-write' &&
+        manifest.projectSchemaVersion !== database.schemaVersion
+      ) {
+        activeManifest = ProjectWorkspaceManifestSchema.parse({
+          ...manifest,
+          projectSchemaVersion: database.schemaVersion,
+        });
+        const temporaryManifestPath = `${manifestPath}.update-${this.#idFactory()}`;
+        try {
+          await writeFile(temporaryManifestPath, `${JSON.stringify(activeManifest, null, 2)}\n`, {
+            encoding: 'utf8',
+            mode: 0o600,
+            flag: 'wx',
+          });
+          await rename(temporaryManifestPath, manifestPath);
+        } finally {
+          await rm(temporaryManifestPath, { force: true });
+        }
+      }
       const row = this.#readProjectRow(database);
       if (row && row.id !== manifest.projectId) {
         throw new ProjectWorkspaceError(
@@ -719,7 +802,7 @@ export class ProjectWorkspaceService {
         readOnlyReason,
         createdAt: row?.createdAt ?? manifest.createdAt,
       };
-      return { database, manifest, summary };
+      return { database, manifest: activeManifest, summary };
     } catch (error) {
       await database.close();
       throw error;

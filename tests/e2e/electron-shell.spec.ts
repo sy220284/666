@@ -294,12 +294,59 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     expect(await readdir(sourceWorkspace)).toEqual(
       expect.arrayContaining(['manifest.json', 'project.sqlite']),
     );
+    await expect(page.locator('[data-volume-id]')).toHaveCount(1);
+    await expect(page.locator('[data-volume-title="第一卷"]')).toBeVisible();
+    await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();
+
+    await page.locator('[data-create-volume]').click();
+    await expect(page.locator('[data-structure-dialog]')).toBeVisible();
+    await page.locator('[data-structure-title]').fill('第二卷');
+    await page.locator('[data-save-structure]').click();
+    await expect(page.locator('[data-volume-id]')).toHaveCount(2);
+
+    await page.locator('[data-volume-title="第一卷"] [data-add-chapter]').click();
+    await page.locator('[data-structure-title]').fill('第二章');
+    await page.locator('[data-save-structure]').click();
+    await expect(page.locator('[data-chapter-title="第二章"]')).toBeVisible();
+
+    await page.locator('[data-chapter-title="第二章"] [data-edit-chapter]').click();
+    await page.locator('[data-structure-status]').selectOption('writing');
+    await page.locator('[data-structure-volume]').selectOption({ label: '第二卷' });
+    await page.locator('input[name="targetWordMin"]').fill('2000');
+    await page.locator('input[name="targetWordMax"]').fill('3000');
+    await page.locator('[data-save-structure]').click();
+    await expect(
+      page.locator('[data-volume-title="第二卷"] [data-chapter-title="第二章"]'),
+    ).toContainText('写作中 · 2000—3000 字');
+
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.locator('[data-chapter-title="第二章"] [data-delete-chapter]').click();
+    await expect(page.locator('[data-chapter-title="第二章"]')).toHaveCount(0);
+    await page.locator('[data-open-trash]').click();
+    await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);
+    await page.locator('[data-restore-original]').click();
+    await expect(page.locator('[data-trash-empty]')).toBeVisible();
+    await page.locator('[data-close-trash]').click();
+    await expect(
+      page.locator('[data-volume-title="第二卷"] [data-chapter-title="第二章"]'),
+    ).toBeVisible();
+
+    await page.locator('[data-volume-title="第二卷"] [data-move-volume-up]').click();
+    await expect(page.locator('[data-volume-id]').first()).toHaveAttribute(
+      'data-volume-title',
+      '第二卷',
+    );
 
     await page.locator('[data-close-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'closed');
     await expect(page.locator('[data-recent-card]')).toHaveCount(1);
     await page.locator('[data-open-recent]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await expect(page.locator('[data-volume-id]').first()).toHaveAttribute(
+      'data-volume-title',
+      '第二卷',
+    );
+    await expect(page.locator('[data-chapter-title="第二章"]')).toBeVisible();
 
     await page.locator('[data-move-project]').click();
     await expect(page.locator('[data-active-project-path]')).toHaveText(movedWorkspace);
@@ -337,6 +384,35 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await expect(reopenedPage.locator('body')).toHaveAttribute('data-project-state', 'closed');
   } finally {
     await closeGracefully(reopened);
+  }
+});
+
+test('creates an explicit professional blank project and exposes the first structure action', async () => {
+  test.setTimeout(60_000);
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'blank-projects');
+  await mkdir(createParent, { recursive: true });
+  const application = await launch(userDataPath, undefined, {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+  });
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-create-project]').click();
+    await page.locator('[data-project-name]').fill('空白长篇');
+    await page.locator('[data-project-channel]').fill('历史');
+    await page.locator('[data-project-initial-structure]').selectOption('blank');
+    await page.locator('[data-confirm-create-project]').click();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await expect(page.locator('[data-structure-empty]')).toContainText('专业空白项目');
+    await expect(page.locator('[data-volume-id]')).toHaveCount(0);
+
+    await page.locator('[data-create-volume]').click();
+    await page.locator('[data-structure-title]').fill('正文卷');
+    await page.locator('[data-save-structure]').click();
+    await expect(page.locator('[data-volume-title="正文卷"]')).toBeVisible();
+  } finally {
+    await closeGracefully(application);
   }
 });
 

@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import {
   APP_DATA_COMMANDS,
+  PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
@@ -19,6 +20,7 @@ import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
+import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 
 interface TransferredPort {
@@ -78,9 +80,11 @@ const appRuntime = await openAppRuntime({
 });
 const projectWorkspace = new ProjectWorkspaceService({
   projectMigrationsDirectory: requiredAbsolutePath('project-migrations'),
+  projectMigrationRecoveryDirectory: requiredAbsolutePath('project-migration-recovery'),
   appVersion: requiredArgument('app-version'),
   recentProjects: appRuntime.recentProjects,
 });
+const projectStructure = new ProjectStructureService(projectWorkspace);
 
 function send(message: CoreEvent): void {
   parentPort?.postMessage(message);
@@ -130,6 +134,11 @@ function appDataError(error: unknown): ErrorCode {
 }
 
 function projectWorkspaceError(error: unknown): ErrorCode {
+  if (error instanceof ProjectStructureError) {
+    if (error.code === 'STRUCTURE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'STRUCTURE_CONFLICT') return 'COMMON_CONFLICT_003';
+    return 'COMMON_INVALID_INPUT_001';
+  }
   if (error instanceof ProjectWorkspaceError) {
     switch (error.code) {
       case 'PROJECT_ALREADY_ACTIVE':
@@ -268,6 +277,72 @@ async function executeProjectOperation(
             operation.projectId,
             operation.targetParentDirectory,
           ),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.listStructure:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: projectStructure.list(operation.projectId),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.createVolume:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.createVolume(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.updateVolume:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.updateVolume(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.moveVolume:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.moveVolume(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.deleteVolume:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.deleteVolume(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.createChapter:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.createChapter(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.updateChapter:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.updateChapter(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.moveChapter:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.moveChapter(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.deleteChapter:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.deleteChapter(requestId, operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.listTrash:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: projectStructure.listTrash(operation.projectId),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectStructure.restoreTrashEntry(requestId, operation.input),
         });
     }
   } catch (error) {

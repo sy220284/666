@@ -4,6 +4,11 @@ import type {
   AppSettingsSnapshot,
   AppSettingsUpdate,
   ProjectWorkspaceSummary,
+  ProjectStructure,
+  Volume,
+  Chapter,
+  LifecycleStatus,
+  TrashEntry,
   RecentProject,
 } from '@worldforge/contracts';
 
@@ -15,5 +20,10 @@ export type {
   AppSettingsSnapshot,
   AppSettingsUpdate,
   ProjectWorkspaceSummary,
+  ProjectStructure,
+  Volume,
+  Chapter,
+  LifecycleStatus,
+  TrashEntry,
   RecentProject,
 };

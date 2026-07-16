@@ -47,7 +47,7 @@ describe('temporary WorldForge workspace', () => {
     expect(workspace.appDatabase.mode).toBe('read-write');
     expect(workspace.projectDatabase.mode).toBe('read-write');
     expect(workspace.appDatabase.schemaVersion).toBe(2);
-    expect(workspace.projectDatabase.schemaVersion).toBe(1);
+    expect(workspace.projectDatabase.schemaVersion).toBe(2);
     expect(
       workspace.appDatabase.read((database) =>
         database.prepare('SELECT count(*) AS count FROM schema_migrations').get(),

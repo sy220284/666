@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 import { ErrorCodeSchema } from './error-codes.js';
+import {
+  CoreProjectStructureOperationSchema,
+  CoreProjectStructureResultSchema,
+} from './project-structure.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -27,6 +31,7 @@ export const ProjectChannelSchema = z.string().trim().min(1).max(120);
 export const ProjectCreateInputSchema = z.strictObject({
   name: ProjectNameSchema,
   channel: ProjectChannelSchema,
+  initialStructure: z.enum(['starter', 'blank']).optional(),
 });
 
 export const ProjectWorkspaceManifestSchema = z.strictObject({
@@ -134,7 +139,7 @@ export const ProjectWorkspaceResultSchema = projectResultSchema(ProjectWorkspace
 export const ProjectMoveCommandResultSchema = projectResultSchema(ProjectMoveResultSchema);
 export const ProjectCloseCommandResultSchema = projectResultSchema(ProjectCloseResultSchema);
 
-export const CoreProjectOperationSchema = z.discriminatedUnion('operation', [
+const CoreProjectWorkspaceOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({ operation: z.literal(PROJECT_WORKSPACE_COMMANDS.getActive) }),
   z.strictObject({
     operation: z.literal(PROJECT_WORKSPACE_COMMANDS.create),
@@ -160,6 +165,11 @@ export const CoreProjectOperationSchema = z.discriminatedUnion('operation', [
   }),
 ]);
 
+export const CoreProjectOperationSchema = z.union([
+  CoreProjectWorkspaceOperationSchema,
+  CoreProjectStructureOperationSchema,
+]);
+
 const coreSuccess = <Operation extends string, DataSchema extends z.ZodType>(
   operation: Operation,
   data: DataSchema,
@@ -170,7 +180,7 @@ const coreSuccess = <Operation extends string, DataSchema extends z.ZodType>(
     data,
   });
 
-export const CoreProjectResultSchema = z.union([
+const CoreProjectWorkspaceResultSchema = z.union([
   coreSuccess(PROJECT_WORKSPACE_COMMANDS.getActive, ProjectWorkspaceSummarySchema.nullable()),
   coreSuccess(PROJECT_WORKSPACE_COMMANDS.create, ProjectWorkspaceSummarySchema),
   coreSuccess(PROJECT_WORKSPACE_COMMANDS.openSelected, ProjectWorkspaceSummarySchema),
@@ -182,6 +192,11 @@ export const CoreProjectResultSchema = z.union([
     operation: z.enum(PROJECT_WORKSPACE_COMMANDS),
     errorCode: ErrorCodeSchema,
   }),
+]);
+
+export const CoreProjectResultSchema = z.union([
+  CoreProjectWorkspaceResultSchema,
+  CoreProjectStructureResultSchema,
 ]);
 
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInputSchema>;

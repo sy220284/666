@@ -95,6 +95,9 @@ importers:
       '@worldforge/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@worldforge/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       '@types/node':
         specifier: 26.1.1

@@ -79,7 +79,7 @@
                 <span aria-hidden="true">×</span><span class="sr-only">关闭项目导航</span>
               </button>
             </div>
-            <nav aria-label="显示验证场景">
+            <nav aria-label="显示验证场景" data-home-navigation>
               <p class="nav-label">本地工作区</p>
               <button class="nav-row is-active" type="button" aria-current="page">
                 <span aria-hidden="true">⌂</span>
@@ -90,7 +90,21 @@
                 <span><strong>显示验证</strong><small>沿用 M0-06 响应式矩阵</small></span>
               </button>
             </nav>
-            <div class="panel-note">
+            <section class="structure-panel" data-structure-panel hidden aria-label="卷章目录">
+              <header class="structure-panel__header">
+                <span>
+                  <small>PROJECT STRUCTURE</small>
+                  <strong>卷章目录</strong>
+                </span>
+                <button class="quiet-button" type="button" data-create-volume>新建卷</button>
+              </header>
+              <p class="structure-state" data-structure-state role="status"></p>
+              <div class="structure-tree" data-structure-tree></div>
+              <footer>
+                <button class="quiet-button" type="button" data-open-trash>废纸篓</button>
+              </footer>
+            </section>
+            <div class="panel-note" data-home-panel-note>
               <strong>原型边界</strong>
               <p>首页读取 app.sqlite 的真实应用级记录，不读取或缓存任何项目正文。</p>
             </div>
@@ -351,6 +365,13 @@
                 autocomplete="off"
               />
             </label>
+            <label>
+              <span>初始结构</span>
+              <select name="initialStructure" data-project-initial-structure>
+                <option value="starter">快速开始 · 创建第一卷与第一章</option>
+                <option value="blank">专业空白 · 稍后手动创建</option>
+              </select>
+            </label>
           </div>
           <p class="save-state" data-create-project-status role="status"></p>
         </div>
@@ -362,6 +383,73 @@
           </button>
         </footer>
       </form>
+    </dialog>
+
+    <dialog class="settings-dialog" data-structure-dialog aria-labelledby="structure-dialog-title">
+      <form data-structure-form>
+        <div class="settings-dialog__body">
+          <p class="eyebrow">PROJECT STRUCTURE</p>
+          <h2 id="structure-dialog-title" data-structure-dialog-title>编辑卷章</h2>
+          <div class="general-settings-grid project-create-grid">
+            <label>
+              <span>标题</span>
+              <input
+                name="title"
+                data-structure-title
+                maxlength="240"
+                required
+                autocomplete="off"
+              />
+            </label>
+            <label data-structure-status-field>
+              <span>状态</span>
+              <select name="status" data-structure-status>
+                <option value="pending">待规划</option>
+                <option value="outlined">已规划</option>
+                <option value="writing">写作中</option>
+                <option value="reviewing">审阅中</option>
+                <option value="finalized">已定稿</option>
+              </select>
+            </label>
+            <label data-structure-volume-field hidden>
+              <span>所属卷</span>
+              <select name="volumeId" data-structure-volume></select>
+            </label>
+            <div class="word-target-grid" data-structure-word-fields hidden>
+              <label>
+                <span>目标字数下限</span>
+                <input name="targetWordMin" type="number" min="0" max="10000000" />
+              </label>
+              <label>
+                <span>目标字数上限</span>
+                <input name="targetWordMax" type="number" min="0" max="10000000" />
+              </label>
+            </div>
+          </div>
+          <p class="save-state" data-structure-form-status role="status"></p>
+        </div>
+        <footer>
+          <span></span><span></span>
+          <button class="quiet-button" type="button" data-cancel-structure>取消</button>
+          <button class="primary-button" type="submit" data-save-structure>保存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="settings-dialog" data-trash-dialog aria-labelledby="trash-dialog-title">
+      <div class="dialog-list-layout">
+        <div class="settings-dialog__body">
+          <p class="eyebrow">LOCAL TRASH</p>
+          <h2 id="trash-dialog-title">废纸篓</h2>
+          <p>恢复会保留原对象；原排序位置被占用时，Core 会在同级范围内安全重排。</p>
+          <p class="save-state" data-trash-status role="status"></p>
+          <div class="trash-list" data-trash-list></div>
+        </div>
+        <footer>
+          <span></span><span></span><span></span>
+          <button class="quiet-button" type="button" data-close-trash>关闭</button>
+        </footer>
+      </div>
     </dialog>
 
     <script type="module" src="./index.js"></script>

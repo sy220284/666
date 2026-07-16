@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   APP_COMMANDS,
+  PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
@@ -15,12 +16,23 @@ import {
   PROTOCOL_VERSION,
   RequestIdSchema,
   ProjectListRecentCommandSchema,
+  ProjectListStructureCommandSchema,
+  ProjectListTrashCommandSchema,
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
   ProjectGetActiveCommandSchema,
   ProjectMoveCommandSchema,
+  ProjectMoveChapterCommandSchema,
+  ProjectMoveVolumeCommandSchema,
   ProjectOpenRecentCommandSchema,
   ProjectOpenSelectedCommandSchema,
+  ProjectCreateChapterCommandSchema,
+  ProjectCreateVolumeCommandSchema,
+  ProjectDeleteChapterCommandSchema,
+  ProjectDeleteVolumeCommandSchema,
+  ProjectRestoreTrashEntryCommandSchema,
+  ProjectUpdateChapterCommandSchema,
+  ProjectUpdateVolumeCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
   SettingsGetCommandSchema,
@@ -114,6 +126,17 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.openRecent,
     IPC_CHANNELS.close,
     IPC_CHANNELS.move,
+    IPC_CHANNELS.listStructure,
+    IPC_CHANNELS.createVolume,
+    IPC_CHANNELS.updateVolume,
+    IPC_CHANNELS.moveVolume,
+    IPC_CHANNELS.deleteVolume,
+    IPC_CHANNELS.createChapter,
+    IPC_CHANNELS.updateChapter,
+    IPC_CHANNELS.moveChapter,
+    IPC_CHANNELS.deleteChapter,
+    IPC_CHANNELS.listTrash,
+    IPC_CHANNELS.restoreTrashEntry,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -409,6 +432,127 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       operation: PROJECT_WORKSPACE_COMMANDS.move,
       projectId: parsed.data.payload.projectId,
       targetParentDirectory,
+    });
+  });
+
+  register(IPC_CHANNELS.listStructure, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectListStructureCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.listStructure,
+      projectId: parsed.data.payload.projectId,
+    });
+  });
+
+  register(IPC_CHANNELS.createVolume, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectCreateVolumeCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.createVolume,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.updateVolume, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectUpdateVolumeCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.updateVolume,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.moveVolume, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectMoveVolumeCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.moveVolume,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.deleteVolume, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectDeleteVolumeCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.deleteVolume,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.createChapter, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectCreateChapterCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.createChapter,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.updateChapter, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectUpdateChapterCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.updateChapter,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.moveChapter, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectMoveChapterCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.moveChapter,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.deleteChapter, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectDeleteChapterCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.deleteChapter,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.listTrash, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectListTrashCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.listTrash,
+      projectId: parsed.data.payload.projectId,
+    });
+  });
+
+  register(IPC_CHANNELS.restoreTrashEntry, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectRestoreTrashEntryCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry,
+      input: parsed.data.payload,
     });
   });
 

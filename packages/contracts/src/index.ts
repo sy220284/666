@@ -47,12 +47,39 @@ import {
   type ProjectMoveResult,
   type ProjectWorkspaceSummary,
 } from './project-workspace.js';
+import {
+  PROJECT_STRUCTURE_COMMANDS,
+  PROJECT_STRUCTURE_IPC_CHANNELS,
+  ProjectCreateChapterCommandSchema,
+  ProjectCreateVolumeCommandSchema,
+  ProjectDeleteChapterCommandSchema,
+  ProjectDeleteVolumeCommandSchema,
+  ProjectListStructureCommandSchema,
+  ProjectListTrashCommandSchema,
+  ProjectMoveChapterCommandSchema,
+  ProjectMoveVolumeCommandSchema,
+  ProjectRestoreTrashEntryCommandSchema,
+  ProjectUpdateChapterCommandSchema,
+  ProjectUpdateVolumeCommandSchema,
+  type ChapterCreateInput,
+  type ChapterDeleteInput,
+  type ChapterMoveInput,
+  type ChapterUpdateInput,
+  type ProjectStructure,
+  type TrashEntry,
+  type TrashRestoreInput,
+  type VolumeCreateInput,
+  type VolumeDeleteInput,
+  type VolumeMoveInput,
+  type VolumeUpdateInput,
+} from './project-structure.js';
 
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
 export * from './task-protocol.js';
 export * from './app-data.js';
 export * from './project-workspace.js';
+export * from './project-structure.js';
 
 export const contractsLayer = {
   name: '@worldforge/contracts',
@@ -64,6 +91,7 @@ export const PROTOCOL_VERSION = TASK_PROTOCOL_VERSION;
 export const IPC_CHANNELS = {
   ...APP_DATA_IPC_CHANNELS,
   ...PROJECT_WORKSPACE_IPC_CHANNELS,
+  ...PROJECT_STRUCTURE_IPC_CHANNELS,
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
@@ -81,6 +109,7 @@ export const IPC_CHANNELS = {
 export const APP_COMMANDS = {
   ...APP_DATA_COMMANDS,
   ...PROJECT_WORKSPACE_COMMANDS,
+  ...PROJECT_STRUCTURE_COMMANDS,
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
@@ -216,6 +245,17 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectOpenRecentCommandSchema,
   ProjectCloseCommandSchema,
   ProjectMoveCommandSchema,
+  ProjectListStructureCommandSchema,
+  ProjectCreateVolumeCommandSchema,
+  ProjectUpdateVolumeCommandSchema,
+  ProjectMoveVolumeCommandSchema,
+  ProjectDeleteVolumeCommandSchema,
+  ProjectCreateChapterCommandSchema,
+  ProjectUpdateChapterCommandSchema,
+  ProjectMoveChapterCommandSchema,
+  ProjectDeleteChapterCommandSchema,
+  ProjectListTrashCommandSchema,
+  ProjectRestoreTrashEntryCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiHasCredentialCommandSchema,
@@ -457,6 +497,23 @@ export interface WorldforgeBridge {
     readonly openRecent: (projectId: string) => Promise<CommandResult<ProjectWorkspaceSummary>>;
     readonly close: (projectId: string) => Promise<CommandResult<ProjectCloseResult>>;
     readonly move: (projectId: string) => Promise<CommandResult<ProjectMoveResult>>;
+  };
+  readonly planning: {
+    readonly listStructure: (projectId: string) => Promise<CommandResult<ProjectStructure>>;
+    readonly createVolume: (input: VolumeCreateInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly updateVolume: (input: VolumeUpdateInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly moveVolume: (input: VolumeMoveInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly deleteVolume: (input: VolumeDeleteInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly createChapter: (input: ChapterCreateInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly updateChapter: (input: ChapterUpdateInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly moveChapter: (input: ChapterMoveInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly deleteChapter: (input: ChapterDeleteInput) => Promise<CommandResult<ProjectStructure>>;
+  };
+  readonly trash: {
+    readonly list: (
+      projectId: string,
+    ) => Promise<CommandResult<{ readonly entries: TrashEntry[] }>>;
+    readonly restore: (input: TrashRestoreInput) => Promise<CommandResult<ProjectStructure>>;
   };
   readonly ai: {
     readonly setCredential: (

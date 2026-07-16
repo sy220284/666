@@ -88,7 +88,7 @@ window.worldforge = {
 | `app.getWindowPreferences` | 空 | 当前DIP窗口状态与显示偏好 |
 | `app.setAppearancePreferences` | 工作区对齐、UI缩放、正文字号、正文宽度 | 合并窗口状态后的完整本地偏好 |
 | `app.getDisplays` | 空 | 显示器DIP信息 |
-| `project.create` | 名称、目录、模式、初始化计划 | 项目摘要 |
+| `project.create` | 名称、频道、`starter/blank`初始化结构；目录由Main系统选择器提供 | 项目摘要 |
 | `project.open` | 项目路径 | 项目摘要、兼容与只读状态 |
 | `project.close` | projectId | flush与关闭结果 |
 | `project.move` | projectId、目标目录 | 新路径与校验结果 |
@@ -98,9 +98,23 @@ window.worldforge = {
 
 ### 4.2 规划与卷章
 
+| 命令 | Renderer输入 | 输出 |
+|---|---|---|
+| `planning.listStructure` | projectId | 按orderKey排序的卷章树 |
+| `planning.createVolume` | projectId、标题、可选锚点位置 | 最新卷章树 |
+| `planning.updateVolume` | projectId、volumeId、标题/状态Patch | 最新卷章树 |
+| `planning.moveVolume` | projectId、volumeId、同级锚点位置 | 最新卷章树 |
+| `planning.deleteVolume` | projectId、volumeId | 软删除后的卷章树 |
+| `planning.createChapter` | projectId、volumeId、标题、可选锚点位置 | 最新卷章树 |
+| `planning.updateChapter` | projectId、chapterId、标题/状态/目标字数Patch | 最新卷章树 |
+| `planning.moveChapter` | projectId、chapterId、targetVolumeId、锚点位置 | 最新卷章树 |
+| `planning.deleteChapter` | projectId、chapterId | 软删除后的卷章树 |
+| `trash.list` | projectId | 最小TrashEntry列表 |
+| `trash.restore` | projectId、trashEntryId、原位或新锚点位置、可选目标卷 | 最新卷章树 |
+
+Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`或`finalVersionId`。实体ID由Core生成；排序位置只使用`start/end/before/after`及同级实体ID表达，Core在单写事务内计算64位整数键和必要的局部重排。
+
 - `planning.getBrief/updateBrief`
-- `planning.createVolume/updateVolume/moveVolume/deleteVolume`
-- `planning.createChapter/updateChapter/moveChapter/deleteChapter`
 - `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`
 - `planning.createSceneBeat/updateSceneBeat/moveSceneBeat/deleteSceneBeat`
 - `planning.splitChapter/mergeChapters/moveSceneAcrossChapters`

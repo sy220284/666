@@ -23,6 +23,30 @@ jobs:
           cp scripts/m1-06-implement.py /tmp/m1-06-implement.py
           git fetch --no-tags origin main
           git checkout -B main origin/main
+      - name: Normalize multiline hint anchor
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('/tmp/m1-06-implement.py')
+          source = path.read_text()
+          start = source.index('replace_once(html, "当前任务提供显式保存')
+          end = source.index('\n\nstyles =', start)
+          replacement = '''html_path = Path(html)
+          html_source = html_path.read_text()
+          old_hint_start = html_source.index("当前任务提供显式保存；800ms 自动保存将在 M1-06")
+          old_hint_end = html_source.index("</p>", old_hint_start)
+          old_hint = html_source[old_hint_start:old_hint_end]
+          html_path.write_text(
+              html_source.replace(
+                  old_hint,
+                  "正文修改空闲800ms后自动保存；切换章节、返回项目与关闭应用前会强制刷新。中文输入组合期间暂停保存。",
+                  1,
+              )
+          )'''
+          path.write_text(source[:start] + replacement + source[end:])
+          PY
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0

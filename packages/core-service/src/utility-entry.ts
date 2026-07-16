@@ -138,10 +138,20 @@ function appDataError(error: unknown): ErrorCode {
 
 function projectWorkspaceError(error: unknown): ErrorCode {
   if (error instanceof DraftServiceError) {
-    if (error.code === 'DRAFT_NOT_FOUND' || error.code === 'DRAFT_BLOCK_NOT_FOUND') {
-      return 'COMMON_NOT_FOUND_002';
+    switch (error.code) {
+      case 'DRAFT_NOT_FOUND':
+        return 'DRAFT_NO_ACTIVE_005';
+      case 'DRAFT_BLOCK_NOT_FOUND':
+        return 'COMMON_NOT_FOUND_002';
+      case 'DRAFT_REVISION_CONFLICT':
+        return 'DRAFT_REVISION_CONFLICT_001';
+      case 'DRAFT_BLOCK_HASH_CONFLICT':
+        return 'DRAFT_BLOCK_HASH_CONFLICT_002';
+      case 'DRAFT_PATCH_INVALID':
+        return 'DRAFT_PATCH_INVALID_004';
+      case 'DRAFT_INVARIANT_FAILED':
+        return 'COMMON_CONFLICT_003';
     }
-    return 'COMMON_CONFLICT_003';
   }
   if (error instanceof ProjectStructureError) {
     if (error.code === 'STRUCTURE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
@@ -364,6 +374,12 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await drafts.saveSnapshot(requestId, operation.input),
+        });
+      case DRAFT_COMMANDS.applyPatch:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await drafts.applyPatch(requestId, operation.input),
         });
     }
   } catch (error) {

@@ -56,6 +56,7 @@ M1-04
 - `docs/contracts/`
 - `docs/database/`
 - `docs/ui/`
+- `.github/workflows/task-governance.yml`
 
 ## 实施内容
 
@@ -66,6 +67,7 @@ M1-04
 5. 一次成功事务Revision只增加1，失败整批回滚。
 6. 记录必要Patch日志，为后续高风险inverse patch和审计提供基础。
 7. 禁止任何Renderer或Repository旁路直接修改DraftBlock。
+8. 修复任务治理对旧基准SHA的浅克隆失效，确保质量门能准确验证本任务范围。
 
 ## 测试与证据
 

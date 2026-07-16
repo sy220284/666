@@ -585,28 +585,6 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     });
   });
 
-  register(IPC_CHANNELS.applyPatch, async (event, raw) => {
-    const rejected = rejectUntrusted(event, raw);
-    if (rejected) return rejected;
-    const parsed = DraftApplyPatchCommandSchema.safeParse(raw);
-    if (!parsed.success) return invalidRequest(raw);
-    return invokeProject(parsed.data.requestId, {
-      operation: DRAFT_COMMANDS.applyPatch,
-      input: parsed.data.payload,
-    });
-  });
-
-  register(IPC_CHANNELS.applyPatch, async (event, raw) => {
-    const rejected = rejectUntrusted(event, raw);
-    if (rejected) return rejected;
-    const parsed = DraftApplyPatchCommandSchema.safeParse(raw);
-    if (!parsed.success) return invalidRequest(raw);
-    return invokeProject(parsed.data.requestId, {
-      operation: DRAFT_COMMANDS.applyPatch,
-      input: parsed.data.payload,
-    });
-  });
-
   register(IPC_CHANNELS.saveDraftSnapshot, async (event, raw) => {
     const rejected = rejectUntrusted(event, raw);
     if (rejected) return rejected;

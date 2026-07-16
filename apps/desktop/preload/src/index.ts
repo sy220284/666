@@ -311,18 +311,6 @@ const bridge: WorldforgeBridge = {
         DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
         DraftDocumentResultSchema,
       ),
-    applyPatch: (input) =>
-      invoke(
-        IPC_CHANNELS.applyPatch,
-        DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
-        DraftDocumentResultSchema,
-      ),
-    applyPatch: (input) =>
-      invoke(
-        IPC_CHANNELS.applyPatch,
-        DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
-        DraftDocumentResultSchema,
-      ),
     saveSnapshot: (input) =>
       invoke(
         IPC_CHANNELS.saveDraftSnapshot,

@@ -9,42 +9,12 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   quality:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.13.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm task:validate
-      - run: pnpm release:check
-      - run: pnpm check:workspaces
-      - run: pnpm check:boundaries
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - name: Install the CJK font used by visual evidence
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
-          fc-match "Noto Serif CJK SC"
-      - name: Test with the display/DPI screenshot matrix
-        run: xvfb-run -a -s "-screen 0 3840x2160x24" pnpm test
-        env:
-          WORLDFORGE_CAPTURE_MATRIX_DIR: test-results/display-matrix
-      - name: Upload display/DPI matrix
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: display-dpi-matrix
-          path: test-results/display-matrix
-          if-no-files-found: warn
-          retention-days: 14
-      - run: pnpm build
-      - run: pnpm package
+    uses: ./.github/workflows/quality-core.yml
+    with:
+      package_smoke: true

@@ -14,9 +14,9 @@ import {
   CoreStatusResultSchema,
   CredentialPresenceResultSchema,
   CredentialReferenceResultSchema,
+  DraftApplyPatchCommandSchema,
   DraftDocumentResultSchema,
   DraftOpenCommandSchema,
-  DraftSaveSnapshotCommandSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   ProjectActiveResultSchema,
@@ -304,10 +304,10 @@ const bridge: WorldforgeBridge = {
         DraftOpenCommandSchema.parse(envelope(APP_COMMANDS.openDraft, input)),
         DraftDocumentResultSchema,
       ),
-    saveSnapshot: (input) =>
+    applyPatch: (input) =>
       invoke(
-        IPC_CHANNELS.saveDraftSnapshot,
-        DraftSaveSnapshotCommandSchema.parse(envelope(APP_COMMANDS.saveDraftSnapshot, input)),
+        IPC_CHANNELS.applyPatch,
+        DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
         DraftDocumentResultSchema,
       ),
   },

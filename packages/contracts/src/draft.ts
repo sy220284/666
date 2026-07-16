@@ -5,13 +5,11 @@ import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const DRAFT_IPC_CHANNELS = {
   openDraft: 'worldforge:draft:get',
-  saveDraftSnapshot: 'worldforge:draft:save-snapshot',
   applyPatch: 'worldforge:draft:apply-patch',
 } as const;
 
 export const DRAFT_COMMANDS = {
   openDraft: 'draft.get',
-  saveDraftSnapshot: 'draft.saveSnapshot',
   applyPatch: 'draft.applyPatch',
 } as const;
 
@@ -193,12 +191,6 @@ export const DraftOpenCommandSchema = z.strictObject({
   payload: DraftOpenInputSchema,
 });
 
-export const DraftSaveSnapshotCommandSchema = z.strictObject({
-  ...commandEnvelope,
-  command: z.literal(DRAFT_COMMANDS.saveDraftSnapshot),
-  payload: DraftSaveSnapshotInputSchema,
-});
-
 export const DraftApplyPatchCommandSchema = z.strictObject({
   ...commandEnvelope,
   command: z.literal(DRAFT_COMMANDS.applyPatch),
@@ -225,10 +217,6 @@ export const DraftDocumentResultSchema = z.union([
 export const CoreDraftOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({ operation: z.literal(DRAFT_COMMANDS.openDraft), input: DraftOpenInputSchema }),
   z.strictObject({
-    operation: z.literal(DRAFT_COMMANDS.saveDraftSnapshot),
-    input: DraftSaveSnapshotInputSchema,
-  }),
-  z.strictObject({
     operation: z.literal(DRAFT_COMMANDS.applyPatch),
     input: DraftApplyPatchInputSchema,
   }),
@@ -243,7 +231,6 @@ const coreDraftSuccess = <Operation extends string>(operation: Operation) =>
 
 export const CoreDraftResultSchema = z.union([
   coreDraftSuccess(DRAFT_COMMANDS.openDraft),
-  coreDraftSuccess(DRAFT_COMMANDS.saveDraftSnapshot),
   coreDraftSuccess(DRAFT_COMMANDS.applyPatch),
   z.strictObject({
     ok: z.literal(false),

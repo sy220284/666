@@ -538,7 +538,9 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     }
 
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已手动保存到 project.sqlite。');
+    await expect(page.locator('[data-draft-state]')).toHaveText(
+      /^已提交 Revision \d+ 到 project\.sqlite。$/u,
+    );
     const persisted = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
         .worldforge;

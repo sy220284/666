@@ -369,12 +369,6 @@ async function executeProjectOperation(
           operation: operation.operation,
           data: await drafts.open(requestId, operation.input),
         });
-      case DRAFT_COMMANDS.saveDraftSnapshot:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await drafts.saveSnapshot(requestId, operation.input),
-        });
       case DRAFT_COMMANDS.applyPatch:
         return CoreProjectResultSchema.parse({
           ok: true,

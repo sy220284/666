@@ -76,11 +76,11 @@ import {
 import {
   DRAFT_COMMANDS,
   DRAFT_IPC_CHANNELS,
+  DraftApplyPatchCommandSchema,
   DraftOpenCommandSchema,
-  DraftSaveSnapshotCommandSchema,
+  type DraftApplyPatchInput,
   type DraftDocument,
   type DraftOpenInput,
-  type DraftSaveSnapshotInput,
 } from './draft.js';
 
 export * from './error-codes.js';
@@ -269,7 +269,7 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectListTrashCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
   DraftOpenCommandSchema,
-  DraftSaveSnapshotCommandSchema,
+  DraftApplyPatchCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiHasCredentialCommandSchema,
@@ -531,7 +531,7 @@ export interface WorldforgeBridge {
   };
   readonly draft: {
     readonly open: (input: DraftOpenInput) => Promise<CommandResult<DraftDocument>>;
-    readonly saveSnapshot: (input: DraftSaveSnapshotInput) => Promise<CommandResult<DraftDocument>>;
+    readonly applyPatch: (input: DraftApplyPatchInput) => Promise<CommandResult<DraftDocument>>;
   };
   readonly ai: {
     readonly setCredential: (

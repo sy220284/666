@@ -88,8 +88,26 @@ jobs:
         run: pnpm format:check
       - name: Lint
         run: pnpm lint
-      - name: Typecheck
-        run: pnpm typecheck
+      - name: Capture typecheck diagnostics
+        shell: bash
+        run: |
+          set +e
+          pnpm typecheck > /tmp/m1-06-typecheck.log 2>&1
+          code=$?
+          cat /tmp/m1-06-typecheck.log
+          echo "$code" > /tmp/m1-06-typecheck-code
+          exit 0
+      - name: Upload typecheck diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-06-typecheck-diagnostics
+          path: |
+            /tmp/m1-06-typecheck.log
+            /tmp/m1-06-typecheck-code
+          if-no-files-found: error
+          retention-days: 1
+      - name: Enforce typecheck result
+        run: test "$(cat /tmp/m1-06-typecheck-code)" = "0"
       - name: Unit tests
         run: pnpm test:unit
       - name: Integration tests
@@ -108,7 +126,7 @@ jobs:
       - name: Commit M1-06 implementation
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name "github-actions[bot]]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             packages/editor-core/src/autosave.ts \

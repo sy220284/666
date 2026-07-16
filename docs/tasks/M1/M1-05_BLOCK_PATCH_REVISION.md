@@ -17,6 +17,7 @@
 
 - 不实现锁定块。
 - 不实现Candidate比较和采用。
+- 不启用自动发布、夜间构建或发布阶段流水线。
 
 ## 依赖
 
@@ -57,9 +58,10 @@ M1-04
 - `docs/contracts/`
 - `docs/database/`
 - `docs/ui/`
-- `.github/workflows/`
+- `.github/workflows/quality.yml`
+- `.github/workflows/quality-core.yml`
+- `.github/workflows/task-governance.yml`
 - `scripts/taskctl.mjs`
-- `scripts/release-tool.mjs`
 - `docs/process/DEVELOPMENT_AUTOMATION.md`
 
 ## 实施内容
@@ -72,10 +74,10 @@ M1-04
 6. 记录必要Patch日志，为后续高风险inverse patch和审计提供基础。
 7. 禁止任何Renderer或Repository旁路直接修改DraftBlock。
 8. 修复任务治理对旧基准SHA的浅克隆失效，确保质量门能准确验证本任务范围。
-9. 将质量门拆分为静态检查、专项测试、桌面E2E、构建与打包烟测并行作业，统一聚合结果、日志证据、超时和并发取消。
-10. 复用同一质量核心工作流执行PR、主分支、定时回归与发布前验证，避免门禁标准分裂。
+9. 将开发质量门拆分为静态检查、Unit、Integration、Migration、Security、桌面E2E、构建与打包烟测并行作业。
+10. 为各故障域上传独立日志和证据，并以唯一`quality`聚合作业作为开发合并判据。
 11. 自动校验`ACTIVE_TASK.json`与`ACTIVE_TASK.md`镜像一致性，杜绝任务账本静默漂移。
-12. 发布配置验证器必须识别复用质量工作流和显式发布门输入，避免自动化升级后产生假失败。
+12. PR新提交自动取消旧运行，主分支运行不取消；所有作业设置显式超时。
 
 ## 测试与证据
 
@@ -83,7 +85,7 @@ M1-04
 - 拆分、合并、移动后的logicalBlockId和Hash稳定。
 - 事务故障、应用关闭和重启后无半提交。
 - 任一质量作业失败时保留独立日志与E2E证据，聚合门必须失败。
-- PR新提交自动取消旧运行，main与发布运行不得被取消。
+- 任务治理必须验证比较基准、活动任务镜像、允许路径和证据结构。
 
 证据保存到：`docs/test-evidence/M1-05/`
 
@@ -91,6 +93,7 @@ M1-04
 
 - 编辑、自动保存和后续所有正文写入可复用同一Patch入口。
 - 静默覆盖率为0。
-- 质量门可并行执行、精确定位、自动重跑并以唯一聚合检查作为合并判据。
+- 开发质量门可并行执行、精确定位并以唯一聚合检查作为合并判据。
+- Release保持冻结、仅手动触发，日常CI不建立夜间构建或自动发布。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全、自动化或测试文档。

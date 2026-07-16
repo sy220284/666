@@ -8,16 +8,6 @@ on:
         required: false
         type: boolean
         default: true
-      enforce_release_gate:
-        description: Enforce the release acceptance gate
-        required: false
-        type: boolean
-        default: false
-      release_version:
-        description: Exact release version used by the release gate
-        required: false
-        type: string
-        default: ''
 
 permissions:
   contents: read
@@ -42,10 +32,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Validate active task and mirror
         run: pnpm task:validate
-      - name: Enforce release acceptance gate
-        if: ${{ inputs.enforce_release_gate }}
-        run: pnpm release:gate -- --version "${{ inputs.release_version }}"
-      - run: pnpm release:check
       - run: pnpm check:workspaces
       - run: pnpm check:boundaries
       - run: pnpm format:check

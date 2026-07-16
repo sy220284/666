@@ -26,9 +26,9 @@ describe('M1-05 Draft semantic normalization', () => {
         attributes: {},
       }),
     );
-    expect(
-      draftContentHash({ blockType: 'paragraph', content: decomposed, attributes: {} }),
-    ).toBe(draftContentHash({ blockType: 'paragraph', content: composed, attributes: {} }));
+    expect(draftContentHash({ blockType: 'paragraph', content: decomposed, attributes: {} })).toBe(
+      draftContentHash({ blockType: 'paragraph', content: composed, attributes: {} }),
+    );
   });
 
   it('preserves meaningful whitespace and includes semantic block attributes in the hash', () => {

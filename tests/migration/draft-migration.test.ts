@@ -135,9 +135,7 @@ describe('Draft schema migration', () => {
     expect(
       upgraded.read((database) =>
         database
-          .prepare(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='draft_patch_log'",
-          )
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='draft_patch_log'")
           .get(),
       ),
     ).toEqual({ name: 'draft_patch_log' });

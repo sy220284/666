@@ -53,14 +53,9 @@ export function validateReleaseConfiguration({ packageJson, taskIndexMarkdown, w
   if (!parseTaskIndex(taskIndexMarkdown).has('M8-03')) {
     errors.push('TASK_INDEX must contain the M8-03 release task');
   }
-  for (const token of ['workflow_dispatch:', 'gh release create']) {
+  for (const token of ['workflow_dispatch:', 'pnpm release:gate', 'gh release create']) {
     if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
   }
-  const hasReleaseGate =
-    workflowSource.includes('pnpm release:gate') ||
-    (workflowSource.includes('uses: ./.github/workflows/quality-core.yml') &&
-      workflowSource.includes('enforce_release_gate: true'));
-  if (!hasReleaseGate) errors.push('Release workflow is missing the release acceptance gate');
   return errors;
 }
 

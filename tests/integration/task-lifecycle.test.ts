@@ -5,6 +5,8 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { renderActiveTask } from '../../scripts/task-control-lib.mjs';
+
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
@@ -44,6 +46,7 @@ describe('continuous task lifecycle', () => {
 
     await Promise.all([
       writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), JSON.stringify(state), 'utf8'),
+      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), renderActiveTask(state), 'utf8'),
       writeFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), index, 'utf8'),
       writeFile(path.join(root, 'docs/tasks/M0/M0-01.md'), currentCard, 'utf8'),
       writeFile(path.join(root, 'docs/tasks/M0/M0-02.md'), nextCard, 'utf8'),
@@ -103,6 +106,7 @@ describe('implementation-first task lifecycle', () => {
 
     await Promise.all([
       writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), JSON.stringify(state), 'utf8'),
+      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), renderActiveTask(state), 'utf8'),
       writeFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), index, 'utf8'),
       writeFile(path.join(root, 'docs/tasks/M1/M1-01.md'), currentCard, 'utf8'),
       writeFile(path.join(root, 'docs/tasks/M1/M1-02.md'), nextCard, 'utf8'),

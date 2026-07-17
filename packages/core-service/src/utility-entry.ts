@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   APP_DATA_COMMANDS,
   DRAFT_COMMANDS,
+  CANDIDATE_COMMANDS,
   VERSION_COMMANDS,
   RECOVERY_COMMANDS,
   TEXT_IO_COMMANDS,
@@ -23,6 +24,7 @@ import {
 import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
+import { CandidateService, CandidateServiceError } from './candidate.js';
 import { DraftService, DraftServiceError } from './draft.js';
 import { VersionService, VersionServiceError } from './version.js';
 import { RecoveryService, RecoveryServiceError } from './recovery.js';
@@ -97,6 +99,7 @@ const recovery = new RecoveryService(projectWorkspace, {
 });
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
+const candidates = new CandidateService(projectWorkspace);
 const versions = new VersionService(projectWorkspace);
 const textIo = new ImportExportService(projectWorkspace, recovery);
 
@@ -191,6 +194,20 @@ function projectWorkspaceError(error: unknown): ErrorCode {
         return 'EXPORT_TARGET_EXISTS_002';
       case 'EXPORT_WRITE_FAILED':
         return 'EXPORT_WRITE_FAILED_003';
+    }
+  }
+  if (error instanceof CandidateServiceError) {
+    switch (error.code) {
+      case 'CANDIDATE_NOT_FOUND':
+      case 'CANDIDATE_DRAFT_NOT_FOUND':
+        return 'COMMON_NOT_FOUND_002';
+      case 'CANDIDATE_REVISION_CONFLICT':
+      case 'CANDIDATE_SOURCE_CONFLICT':
+        return 'CANDIDATE_BASE_CONFLICT_002';
+      case 'CANDIDATE_STATUS_CONFLICT':
+        return 'CANDIDATE_ALREADY_RESOLVED_001';
+      case 'CANDIDATE_INVALID':
+        return 'COMMON_INVALID_INPUT_001';
     }
   }
   if (error instanceof VersionServiceError) {
@@ -437,6 +454,30 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await drafts.applyPatch(requestId, operation.input),
+        });
+      case CANDIDATE_COMMANDS.createFixtureCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidates.createFixture(requestId, operation.input),
+        });
+      case CANDIDATE_COMMANDS.listCandidates:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidates.list(operation.input),
+        });
+      case CANDIDATE_COMMANDS.getCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidates.get(operation.input),
+        });
+      case CANDIDATE_COMMANDS.discardCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidates.discard(requestId, operation.input),
         });
       case VERSION_COMMANDS.createVersion:
         return CoreProjectResultSchema.parse({

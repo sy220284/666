@@ -143,7 +143,10 @@ describe('M2-02 Candidate and Version model', () => {
         chapterId: chapter.id,
         candidateId: candidate.candidateId,
       });
-      expect(discarded).toMatchObject({ status: 'discarded', resolvedAt: clock.now().toISOString() });
+      expect(discarded).toMatchObject({
+        status: 'discarded',
+        resolvedAt: clock.now().toISOString(),
+      });
       await expect(
         harness.candidates.discard(randomUUID(), {
           projectId: project.projectId,
@@ -200,28 +203,32 @@ describe('M2-02 Candidate and Version model', () => {
         sourceCandidateId: candidate.candidateId,
         sourceRevision: draft.revision,
       });
+      expect(Object.getOwnPropertyNames(VersionService.prototype)).not.toEqual(
+        expect.arrayContaining(['update', 'delete']),
+      );
 
-      await expect(
-        harness.workspace.writeProject(randomUUID(), project.projectId, (database) =>
-          database
-            .prepare('UPDATE versions SET title = ? WHERE id = ?')
-            .run('越权修改', candidateVersion.versionId),
-        ),
-      ).rejects.toThrow(/VERSION_IMMUTABLE/u);
-      await expect(
-        harness.workspace.writeProject(randomUUID(), project.projectId, (database) =>
-          database
-            .prepare('DELETE FROM version_blocks WHERE version_id = ?')
-            .run(candidateVersion.versionId),
-        ),
-      ).rejects.toThrow(/VERSION_BLOCK_IMMUTABLE/u);
-      expect(
-        harness.versions.get({
-          projectId: project.projectId,
-          chapterId: chapter.id,
-          versionId: candidateVersion.versionId,
-        }).contentHash,
-      ).toBe(candidateVersion.contentHash);
+      const source = draft.blocks[0]!;
+      await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: draft.revision,
+        operations: [
+          {
+            type: 'update',
+            logicalBlockId: source.logicalBlockId,
+            expectedHash: source.contentHash!,
+            content: 'Draft 后续修改不应影响历史 Version。',
+          },
+        ],
+      });
+      const immutable = harness.versions.get({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        versionId: candidateVersion.versionId,
+      });
+      expect(immutable.contentHash).toBe(candidateVersion.contentHash);
+      expect(immutable.blocks).toEqual(candidateVersion.blocks);
     } finally {
       await closeHarness(harness);
     }

@@ -55,28 +55,4 @@ ON versions(parent_version_id);
 CREATE INDEX idx_versions_source_candidate
 ON versions(source_candidate_id);
 
-CREATE TRIGGER versions_immutable_update
-BEFORE UPDATE ON versions
-BEGIN
-  SELECT RAISE(ABORT, 'VERSION_IMMUTABLE');
-END;
-
-CREATE TRIGGER versions_immutable_delete
-BEFORE DELETE ON versions
-BEGIN
-  SELECT RAISE(ABORT, 'VERSION_IMMUTABLE');
-END;
-
-CREATE TRIGGER version_blocks_immutable_update
-BEFORE UPDATE ON version_blocks
-BEGIN
-  SELECT RAISE(ABORT, 'VERSION_BLOCK_IMMUTABLE');
-END;
-
-CREATE TRIGGER version_blocks_immutable_delete
-BEFORE DELETE ON version_blocks
-BEGIN
-  SELECT RAISE(ABORT, 'VERSION_BLOCK_IMMUTABLE');
-END;
-
 UPDATE projects SET schema_version = 7;

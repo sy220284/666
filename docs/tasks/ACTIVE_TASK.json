@@ -6,7 +6,6 @@
     "approvedAt": "2026-07-17",
     "branch": "main",
     "allowDirectMainCommits": false,
-    "autoMergeAfterChecks": true,
     "autoActivateNext": true,
     "deferVerificationUntilBatch": true,
     "modeAdjustedAt": "2026-07-17"
@@ -14,8 +13,6 @@
   "activeTask": {
     "id": "M2-01",
     "status": "IN_PROGRESS",
-    "phase": "IMPLEMENTING",
-    "requireEvidence": false,
     "source": "docs/tasks/M2/M2-01_LOCK_GUARD.md",
     "branch": "work/m2-01-lock-guard",
     "startedAt": "2026-07-17",
@@ -39,21 +36,8 @@
       "docs/test-evidence/M2-01/",
       "docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md",
       "docs/tasks/M1_TASKS.md",
-      ".github/CODEOWNERS",
-      ".github/governance/",
-      ".github/pull_request_template.md",
-      ".github/workflows/",
-      "scripts/automerge.mjs",
-      "scripts/branch-hygiene.mjs",
-      "scripts/ci-policy.mjs",
-      "scripts/evidence-policy.mjs",
-      "scripts/ruleset-policy.mjs",
-      "scripts/scan-secrets.mjs",
       "scripts/task-control-lib.mjs",
-      "scripts/taskctl.mjs",
-      "docs/process/CI_WORKFLOW_ARCHITECTURE.md",
-      "docs/process/DEVELOPMENT_AUTOMATION.md",
-      "docs/process/MAIN_BRANCH_PROTECTION.md"
+      "docs/process/DEVELOPMENT_AUTOMATION.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [

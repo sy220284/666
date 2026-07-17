@@ -1,0 +1,45 @@
+name: Lint Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/lint-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  lint-diagnostic:
+    if: ${{ github.head_ref == 'policy/pr-only-workflow' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Capture lint output
+        shell: bash
+        run: |
+          set +e
+          pnpm lint > lint.log 2>&1
+          code=$?
+          cat lint.log
+          printf '%s\n' "$code" > lint-exit-code.txt
+          exit 0
+      - uses: actions/upload-artifact@v7
+        with:
+          name: governance-lint-diagnostics
+          path: |
+            lint.log
+            lint-exit-code.txt
+          if-no-files-found: error
+          retention-days: 7

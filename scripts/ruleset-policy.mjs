@@ -7,9 +7,11 @@ const token = process.env.REPO_ADMIN_TOKEN || process.env.GITHUB_TOKEN;
 const output = path.resolve(
   process.env.RULESET_REPORT ?? 'artifacts/repository-governance/report.json',
 );
+const githubFetch = globalThis.fetch;
 
 async function api(pathname, options = {}) {
-  const response = await fetch(`https://api.github.com${pathname}`, {
+  if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
+  const response = await githubFetch(`https://api.github.com${pathname}`, {
     ...options,
     headers: {
       Accept: 'application/vnd.github+json',

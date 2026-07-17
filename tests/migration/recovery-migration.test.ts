@@ -53,7 +53,9 @@ describe('M1-08 BackupRecord migration', () => {
     ).toContainEqual({ table: 'projects', from: 'project_id', to: 'id' });
     expect(
       upgraded.read((database) =>
-        database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='candidates'").get(),
+        database
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='candidates'")
+          .get(),
       ),
     ).toEqual({ name: 'candidates' });
     await upgraded.close();

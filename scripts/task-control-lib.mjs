@@ -1,5 +1,19 @@
 import path from 'node:path';
 
+export const GOVERNANCE_ALLOWED_PATHS = [
+  '.github/workflows/',
+  'scripts/task-control-lib.mjs',
+  'scripts/taskctl.mjs',
+  'scripts/ci-policy.mjs',
+  'scripts/scan-secrets.mjs',
+  'scripts/branch-hygiene.mjs',
+  'docs/process/DEVELOPMENT_AUTOMATION.md',
+  'docs/process/CI_WORKFLOW_ARCHITECTURE.md',
+  'docs/process/MAIN_BRANCH_PROTECTION.md',
+  'docs/tasks/ACTIVE_TASK.json',
+  'docs/tasks/ACTIVE_TASK.md',
+];
+
 export function parseTaskIndex(markdown) {
   const tasks = new Map();
   const rowPattern =
@@ -38,6 +52,20 @@ export function validateChangedPaths(changedFiles, allowedPaths, forbiddenPaths)
     }
   }
   return violations;
+}
+
+export function isGovernanceOnlyPullRequest(branch, changedFiles) {
+  const governanceBranch = /^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(branch ?? '');
+  return (
+    governanceBranch &&
+    changedFiles.length > 0 &&
+    changedFiles.every((file) => GOVERNANCE_ALLOWED_PATHS.some((allowed) => isPathInside(file, allowed)))
+  );
+}
+
+export function taskBranchFor(task) {
+  const cardName = path.posix.basename(task.source, '.md').toLowerCase().replaceAll('_', '-');
+  return `work/${cardName}`;
 }
 
 export function validateActiveState(state, taskIndex) {
@@ -138,8 +166,9 @@ export function dependenciesSatisfied(task, taskIndex, options = {}) {
 
   for (const stage of stageNumbers) {
     const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
-    if (stageTasks.length === 0 || stageTasks.some(({ status }) => !dependencyReady(status)))
+    if (stageTasks.length === 0 || stageTasks.some(({ status }) => !dependencyReady(status))) {
       return false;
+    }
   }
 
   return true;
@@ -159,14 +188,16 @@ export function replaceTaskIndexStatus(markdown, taskId, nextStatus) {
 
 export function verificationForTask(card) {
   const commands = ['pnpm lint', 'pnpm typecheck', 'pnpm test'];
-  if (/数据库|SQLite|Migration/i.test(card))
+  if (/数据库|SQLite|Migration/i.test(card)) {
     commands.push('pnpm test:migration', 'pnpm test:integration');
+  }
   if (/Electron|IPC|路径|安全/i.test(card)) commands.push('pnpm test:security', 'pnpm test:e2e');
   if (/Editor|Candidate|锁定|Revision|Patch/i.test(card)) {
     commands.push('pnpm test:unit', 'pnpm test:integration', 'pnpm test:e2e');
   }
-  if (/Prompt|Provider|约束包/i.test(card))
+  if (/Prompt|Provider|约束包/i.test(card)) {
     commands.push('pnpm test:eval', 'pnpm test:integration');
+  }
   if (/性能|DPI|高分屏/i.test(card)) commands.push('pnpm test:perf', 'pnpm test:e2e');
   return [...new Set(commands)];
 }
@@ -177,7 +208,7 @@ export function renderActiveTask(state) {
   let continuationRule;
   if (state.authorization.mode === 'implementation-pr') {
     continuationRule =
-      '当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；Quality与Task Governance全部通过后，由作者或维护者审查并合并。机器人和GitHub Actions不得直接推送main、不得自动合并PR。实现通过后可在同一PR中登记Implemented或Verified并激活下一任务；任何代码、测试、安全或数据边界失败立即阻断。';
+      '当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security与Quality全部通过后，由作者或维护者审查并合并。机器人和GitHub Actions不得直接推送main、不得自动合并PR。实现通过后可在同一PR中登记Implemented或Verified并激活下一任务；任何代码、测试、安全或数据边界失败立即阻断。';
   } else if (state.authorization.mode === 'implementation-mainline') {
     continuationRule =
       '当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。';

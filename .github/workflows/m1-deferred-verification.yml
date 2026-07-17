@@ -36,6 +36,17 @@ jobs:
           cp tests/e2e/m1-deferred-acceptance.spec.ts /tmp/m1-deferred-acceptance.spec.ts
           cp tests/e2e/m1-acceptance.playwright.config.ts /tmp/m1-acceptance.playwright.config.ts
           cp tests/performance/m1-writing-performance.test.ts /tmp/m1-writing-performance.test.ts
+          python - <<'PY'
+          from pathlib import Path
+
+          finalizer = Path('/tmp/m1-deferred-finalize.py')
+          source = finalizer.read_text(encoding='utf-8')
+          old = '[f"docs/tasks/M1/{task_id}_", f"docs/test-evidence/{task_id}/"]'
+          new = '["docs/tasks/M1/", f"docs/test-evidence/{task_id}/"]'
+          if old not in source:
+              raise SystemExit('M1 deferred finalizer task-path anchor missing')
+          finalizer.write_text(source.replace(old, new, 1), encoding='utf-8')
+          PY
           git fetch --no-tags origin main verify/m1-deferred-closure
           git checkout -B main origin/main
           cp /tmp/m1-deferred-acceptance.spec.ts tests/e2e/m1-deferred-acceptance.spec.ts

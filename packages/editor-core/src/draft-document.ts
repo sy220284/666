@@ -2,8 +2,8 @@ import { Editor, Extension, Node, getSchema, type JSONContent } from '@tiptap/co
 import { baseKeymap, joinBackward, splitBlockAs } from '@tiptap/pm/commands';
 import { history, redo, undo } from '@tiptap/pm/history';
 import { keymap } from '@tiptap/pm/keymap';
-import type { Schema } from '@tiptap/pm/model';
-import type { Command } from '@tiptap/pm/state';
+import type { Node as ProseMirrorNode, Schema } from '@tiptap/pm/model';
+import { Plugin, type Command } from '@tiptap/pm/state';
 
 export { EditorState, TextSelection } from '@tiptap/pm/state';
 export { Editor };
@@ -31,6 +31,7 @@ export interface DraftSnapshotEditorBlock {
   readonly blockType: WorldforgeBlockType;
   readonly text: string;
   readonly attributes: WorldforgeBlockAttributes;
+  readonly locked?: boolean | undefined;
 }
 
 const supportedBlockTypes = new Set<WorldforgeBlockType>([
@@ -39,8 +40,8 @@ const supportedBlockTypes = new Set<WorldforgeBlockType>([
   'heading',
   'separator',
 ]);
-
 const supportedSources = new Set<WorldforgeBlockSource>(['manual', 'ai', 'mixed', 'imported']);
+const LOCK_COMMAND_META = 'worldforgeLockCommand';
 
 function blockAttributes() {
   return {
@@ -78,6 +79,7 @@ function blockAttributes() {
         element.getAttribute('data-locked') === 'true',
       renderHTML: (attributes: Record<string, unknown>) => ({
         'data-locked': attributes.locked === true ? 'true' : 'false',
+        ...(attributes.locked === true ? { 'aria-label': '已锁定正文块' } : {}),
       }),
     },
     contentHash: {
@@ -97,9 +99,7 @@ const ChapterDocument = Node.create({
   topNode: true,
   content: '(paragraph | dialogue | heading | separator)+',
 });
-
 const TextNode = Node.create({ name: 'text', group: 'inline' });
-
 const ParagraphBlock = Node.create({
   name: 'paragraph',
   group: 'block',
@@ -112,7 +112,6 @@ const ParagraphBlock = Node.create({
     0,
   ],
 });
-
 const DialogueBlock = Node.create({
   name: 'dialogue',
   group: 'block',
@@ -125,7 +124,6 @@ const DialogueBlock = Node.create({
     0,
   ],
 });
-
 const HeadingBlock = Node.create({
   name: 'heading',
   group: 'block',
@@ -150,7 +148,6 @@ const HeadingBlock = Node.create({
     return [tag, { ...HTMLAttributes, 'data-block-type': 'heading' }, 0];
   },
 });
-
 const SeparatorBlock = Node.create({
   name: 'separator',
   group: 'block',
@@ -162,11 +159,113 @@ const SeparatorBlock = Node.create({
 });
 
 let temporaryIdSequence = 0;
-
 function temporaryClientBlockId(): string {
   temporaryIdSequence += 1;
   return `temporary-${Date.now().toString(36)}-${temporaryIdSequence.toString(36)}`;
 }
+
+function logicalBlockId(node: ProseMirrorNode): string | null {
+  return typeof node.attrs.logicalBlockId === 'string' && node.attrs.logicalBlockId.length > 0
+    ? node.attrs.logicalBlockId
+    : null;
+}
+
+function persistedOrder(document: ProseMirrorNode): readonly string[] {
+  const result: string[] = [];
+  document.forEach((node) => {
+    const id = logicalBlockId(node);
+    if (id) result.push(id);
+  });
+  return result;
+}
+
+function lockedBlocksPreserved(
+  previous: ProseMirrorNode,
+  next: ProseMirrorNode,
+  allowLockToggle: boolean,
+): boolean {
+  const nextById = new Map<string, ProseMirrorNode>();
+  next.forEach((node) => {
+    const id = logicalBlockId(node);
+    if (id) nextById.set(id, node);
+  });
+  const previousOrder = persistedOrder(previous);
+  const nextOrder = persistedOrder(next);
+  const nextIndex = new Map(nextOrder.map((id, index) => [id, index]));
+
+  let valid = true;
+  previous.forEach((node) => {
+    if (!valid || node.attrs.locked !== true) return;
+    const id = logicalBlockId(node);
+    const candidate = id ? nextById.get(id) : undefined;
+    if (!id || !candidate) {
+      valid = false;
+      return;
+    }
+    const sameSemanticContent =
+      node.type.name === candidate.type.name &&
+      node.textContent === candidate.textContent &&
+      node.attrs.source === candidate.attrs.source &&
+      (node.type.name !== 'heading' || node.attrs.headingLevel === candidate.attrs.headingLevel);
+    if (!sameSemanticContent || (!allowLockToggle && candidate.attrs.locked !== true)) {
+      valid = false;
+      return;
+    }
+    const oldIndex = previousOrder.indexOf(id);
+    const newIndex = nextIndex.get(id);
+    if (newIndex === undefined) {
+      valid = false;
+      return;
+    }
+    for (const otherId of previousOrder) {
+      const otherNewIndex = nextIndex.get(otherId);
+      if (otherId === id || otherNewIndex === undefined) continue;
+      if (Math.sign(oldIndex - previousOrder.indexOf(otherId)) !== Math.sign(newIndex - otherNewIndex)) {
+        valid = false;
+        return;
+      }
+    }
+  });
+  return valid;
+}
+
+function createWorldforgeLockGuardPlugin(): Plugin {
+  return new Plugin({
+    filterTransaction(transaction, state) {
+      if (!transaction.docChanged) return true;
+      return lockedBlocksPreserved(
+        state.doc,
+        transaction.doc,
+        transaction.getMeta(LOCK_COMMAND_META) === true,
+      );
+    },
+  });
+}
+
+export const toggleWorldforgeBlockLock: Command = (state, dispatch) => {
+  const selectionPosition = state.selection.from;
+  let target: { readonly node: ProseMirrorNode; readonly offset: number } | null = null;
+  state.doc.forEach((node, offset) => {
+    if (
+      !target &&
+      supportedBlockTypes.has(node.type.name as WorldforgeBlockType) &&
+      selectionPosition >= offset &&
+      selectionPosition <= offset + node.nodeSize
+    ) {
+      target = { node, offset };
+    }
+  });
+  if (!target || !logicalBlockId(target.node)) return false;
+  if (dispatch) {
+    const transaction = state.tr.setNodeMarkup(target.offset, undefined, {
+      ...target.node.attrs,
+      locked: target.node.attrs.locked !== true,
+    });
+    transaction.setMeta(LOCK_COMMAND_META, true);
+    dispatch(transaction);
+  }
+  return true;
+};
 
 export function splitWorldforgeBlock(
   clientBlockIdFactory: () => string = temporaryClientBlockId,
@@ -183,6 +282,7 @@ export function splitWorldforgeBlock(
         logicalBlockId: null,
         clientBlockId: clientBlockIdFactory(),
         source,
+        locked: false,
         contentHash: null,
       },
     };
@@ -211,7 +311,6 @@ function compositionSafe(command: Command): Command {
 
 export const undoWorldforgeCommand: Command = undo;
 export const redoWorldforgeCommand: Command = redo;
-
 export function createWorldforgeHistoryPlugin() {
   return history();
 }
@@ -219,6 +318,12 @@ export function createWorldforgeHistoryPlugin() {
 export function createWorldforgeEditorExtensions(
   clientBlockIdFactory: () => string = temporaryClientBlockId,
 ) {
+  const LockGuard = Extension.create({
+    name: 'worldforgeLockGuard',
+    addProseMirrorPlugins() {
+      return [createWorldforgeLockGuardPlugin()];
+    },
+  });
   const EditingHistory = Extension.create({
     name: 'worldforgeEditingHistory',
     addProseMirrorPlugins() {
@@ -234,6 +339,7 @@ export function createWorldforgeEditorExtensions(
       commands['Mod-z'] = undoWorldforgeCommand;
       commands['Shift-Mod-z'] = redoWorldforgeCommand;
       commands['Mod-y'] = redoWorldforgeCommand;
+      commands['Mod-Shift-l'] = compositionSafe(toggleWorldforgeBlockLock);
       return [createWorldforgeHistoryPlugin(), keymap(commands)];
     },
   });
@@ -244,6 +350,7 @@ export function createWorldforgeEditorExtensions(
     DialogueBlock,
     HeadingBlock,
     SeparatorBlock,
+    LockGuard,
     EditingHistory,
   ];
 }
@@ -318,14 +425,13 @@ export function tiptapJsonToDraftSnapshot(
     }
     const blockType = node.type as WorldforgeBlockType;
     const attrs = node.attrs ?? {};
-    const logicalBlockId = optionalString(attrs.logicalBlockId);
-    const clientBlockId =
-      optionalString(attrs.clientBlockId) ?? logicalBlockId ?? clientBlockIdFactory();
+    const logicalId = optionalString(attrs.logicalBlockId);
+    const clientBlockId = optionalString(attrs.clientBlockId) ?? logicalId ?? clientBlockIdFactory();
     const text = blockType === 'separator' ? '' : textContent(node);
     const headingLevel = Number(attrs.headingLevel);
     return {
       clientBlockId,
-      logicalBlockId,
+      logicalBlockId: logicalId,
       blockType,
       text,
       attributes:
@@ -335,6 +441,7 @@ export function tiptapJsonToDraftSnapshot(
         headingLevel <= 6
           ? { headingLevel }
           : {},
+      locked: attrs.locked === true,
     };
   });
 }
@@ -382,6 +489,7 @@ export function synchronizePersistedBlockMetadata(
   });
   if (!matches) return false;
   transaction.setMeta('addToHistory', false);
+  transaction.setMeta(LOCK_COMMAND_META, true);
   editor.view.dispatch(transaction);
   return true;
 }
@@ -389,7 +497,6 @@ export function synchronizePersistedBlockMetadata(
 export function undoWorldforgeEditor(editor: Editor): boolean {
   return undoWorldforgeCommand(editor.state, editor.view.dispatch);
 }
-
 export function redoWorldforgeEditor(editor: Editor): boolean {
   return redoWorldforgeCommand(editor.state, editor.view.dispatch);
 }
@@ -402,6 +509,10 @@ export function assertEditorNodeMetadata(document: JSONContent): void {
     const source = node.attrs?.source;
     if (source !== undefined && !supportedSources.has(source as WorldforgeBlockSource)) {
       throw new RangeError(`Unsupported editor source: ${String(source)}`);
+    }
+    const locked = node.attrs?.locked;
+    if (locked !== undefined && typeof locked !== 'boolean') {
+      throw new RangeError('Editor locked metadata must be boolean.');
     }
   }
 }

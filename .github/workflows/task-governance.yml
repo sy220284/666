@@ -24,28 +24,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Ensure task comparison base is available
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git cat-file -e "$TASK_BASE_REF^{commit}" 2>/dev/null; then
-            exit 0
-          fi
-          if git fetch --no-tags --depth=1 origin "$TASK_BASE_REF"; then
-            git cat-file -e "$TASK_BASE_REF^{commit}"
-            exit 0
-          fi
-          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
-            git fetch --no-tags --unshallow origin
-          else
-            git fetch --no-tags origin main
-          fi
-          git cat-file -e "$TASK_BASE_REF^{commit}"
       - name: Validate active task and generated mirror
         run: node scripts/taskctl.mjs validate
       - name: Validate real PR branch

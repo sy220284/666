@@ -64,7 +64,7 @@ describe('M2-03 delivery baseline outputs', () => {
         output,
         'schema_version: 7n',
         'schema_version: 8n',
-        2,
+        1,
         'tests/migration/project-structure-migration.test.ts',
       );
       return replaceExact(

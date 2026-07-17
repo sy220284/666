@@ -198,6 +198,15 @@ roundtrip_block = r"""
 test_source = test_source.replace(roundtrip_marker, roundtrip_marker + roundtrip_block, 1)
 test.write_text(test_source, encoding='utf-8')
 
+playwright_config = Path('tests/e2e/playwright.config.ts')
+config_source = playwright_config.read_text(encoding='utf-8')
+config_source = config_source.replace(
+    "  testMatch: 'electron-shell.spec.ts',",
+    "  testMatch: ['electron-shell.spec.ts', 'm1-09-import-export.spec.ts'],",
+    1,
+)
+playwright_config.write_text(config_source, encoding='utf-8')
+
 renderer = Path('apps/desktop/renderer/src/index.ts')
 source = renderer.read_text(encoding='utf-8')
 marker = 'function setTextIoStatus(message: string, error = false): void {'

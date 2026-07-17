@@ -17,6 +17,15 @@ import {
   DraftApplyPatchCommandSchema,
   DraftDocumentResultSchema,
   DraftOpenCommandSchema,
+  CANDIDATE_COMMANDS,
+  CANDIDATE_IPC_CHANNELS,
+  CandidateCreateFixtureCommandSchema,
+  CandidateDiscardCommandSchema,
+  CandidateDocumentResultSchema,
+  CandidateGetCommandSchema,
+  CandidateListCommandSchema,
+  CandidateListResultSchema,
+  CandidateSummaryResultSchema,
   VersionCreateCommandSchema,
   VersionDocumentResultSchema,
   VersionGetCommandSchema,
@@ -87,6 +96,13 @@ import {
   TaskPortConnectSchema,
   TaskSnapshotResultSchema,
   WindowPreferencesResultSchema,
+  type CandidateCreateFixtureInput,
+  type CandidateDiscardInput,
+  type CandidateDocument,
+  type CandidateGetInput,
+  type CandidateList,
+  type CandidateSummary,
+  type CommandResult,
   type WorldforgeBridge,
 } from '@worldforge/contracts';
 import { contextBridge, ipcRenderer } from 'electron';
@@ -133,7 +149,21 @@ async function invoke<Result>(
   return resultSchema.parse(raw);
 }
 
-const bridge: WorldforgeBridge = {
+type CandidateBridge = {
+  readonly candidate: {
+    readonly createFixture: (
+      input: CandidateCreateFixtureInput,
+    ) => Promise<CommandResult<CandidateDocument>>;
+    readonly list: (
+      projectId: string,
+      chapterId: string,
+    ) => Promise<CommandResult<CandidateList>>;
+    readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
+    readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
+  };
+};
+
+const bridge: WorldforgeBridge & CandidateBridge = {
   app: {
     getInfo: () =>
       invoke(
@@ -388,6 +418,36 @@ const bridge: WorldforgeBridge = {
         IPC_CHANNELS.applyPatch,
         DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
         DraftDocumentResultSchema,
+      ),
+  },
+  candidate: {
+    createFixture: (input) =>
+      invoke(
+        CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
+        CandidateCreateFixtureCommandSchema.parse(
+          envelope(CANDIDATE_COMMANDS.createFixtureCandidate, input),
+        ),
+        CandidateDocumentResultSchema,
+      ),
+    list: (projectId, chapterId) =>
+      invoke(
+        CANDIDATE_IPC_CHANNELS.listCandidates,
+        CandidateListCommandSchema.parse(
+          envelope(CANDIDATE_COMMANDS.listCandidates, { projectId, chapterId }),
+        ),
+        CandidateListResultSchema,
+      ),
+    get: (input) =>
+      invoke(
+        CANDIDATE_IPC_CHANNELS.getCandidate,
+        CandidateGetCommandSchema.parse(envelope(CANDIDATE_COMMANDS.getCandidate, input)),
+        CandidateDocumentResultSchema,
+      ),
+    discard: (input) =>
+      invoke(
+        CANDIDATE_IPC_CHANNELS.discardCandidate,
+        CandidateDiscardCommandSchema.parse(envelope(CANDIDATE_COMMANDS.discardCandidate, input)),
+        CandidateSummaryResultSchema,
       ),
   },
   version: {

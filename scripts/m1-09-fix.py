@@ -32,14 +32,31 @@ replace(
 )
 replace(
     'tests/integration/import-export-service.test.ts',
-    "      const gbBytes = new TextEncoder().encode('=== 第一章 ===\\n旧稿正文');\n      await writeFile(gbPath, gbBytes);\n      const manual = await value.service.previewImport(\n        { projectId: value.project.projectId, encoding: 'utf-8' },\n        gbPath,\n      );\n      expect(manual.confidence).toBe('high');\n",
-    "      const gbBytes = Buffer.concat([\n        Buffer.from('=== 第一章 ===\\n', 'ascii'),\n        Buffer.from([0xbe, 0xc9, 0xb8, 0xe5, 0xd5, 0xfd, 0xce, 0xc4]),\n      ]);\n      await writeFile(gbPath, gbBytes);\n      const automatic = await value.service.previewImport(\n        { projectId: value.project.projectId },\n        gbPath,\n      );\n      expect(automatic.detectedEncoding).toBe('gb18030');\n      expect(automatic.confidence).toBe('low');\n      expect(automatic.warnings).toHaveLength(1);\n      const manual = await value.service.previewImport(\n        { projectId: value.project.projectId, encoding: 'gb18030' },\n        gbPath,\n      );\n      expect(manual.confidence).toBe('high');\n      expect(manual.chapters[0]?.blocks[0]?.text).toBe('旧稿正文');\n",
+    "      const gbBytes = new TextEncoder().encode('=== 第一章 ===\n旧稿正文');\n      await writeFile(gbPath, gbBytes);\n      const manual = await value.service.previewImport(\n        { projectId: value.project.projectId, encoding: 'utf-8' },\n        gbPath,\n      );\n      expect(manual.confidence).toBe('high');\n",
+    "      const gbBytes = Buffer.concat([\n        Buffer.from('=== 第一章 ===\n', 'ascii'),\n        Buffer.from([0xbe, 0xc9, 0xb8, 0xe5, 0xd5, 0xfd, 0xce, 0xc4]),\n      ]);\n      await writeFile(gbPath, gbBytes);\n      const automatic = await value.service.previewImport(\n        { projectId: value.project.projectId },\n        gbPath,\n      );\n      expect(automatic.detectedEncoding).toBe('gb18030');\n      expect(automatic.confidence).toBe('low');\n      expect(automatic.warnings).toHaveLength(1);\n      const manual = await value.service.previewImport(\n        { projectId: value.project.projectId, encoding: 'gb18030' },\n        gbPath,\n      );\n      expect(manual.confidence).toBe('high');\n      expect(manual.chapters[0]?.blocks[0]?.text).toBe('旧稿正文');\n",
 )
 replace(
     'tests/integration/import-export-service.test.ts',
     "      expect(exported.sha256).toMatch(/^[a-f0-9]{64}$/u);\n      await expect(\n",
     "      expect(exported.sha256).toMatch(/^[a-f0-9]{64}$/u);\n\n      const txtExport = await value.service.exportVersions(\n        {\n          projectId: value.project.projectId,\n          versionIds: catalog.versions.map((version) => version.versionId),\n          format: 'txt',\n          fileName: '稳定稿往返',\n        },\n        value.exportDirectory,\n      );\n      const roundtrip = await value.service.previewImport(\n        { projectId: value.project.projectId },\n        txtExport.filePath,\n      );\n      expect(roundtrip.chapters.map((chapter) => chapter.title)).toEqual(['第一章', '第二章']);\n      expect(roundtrip.chapters[0]?.blocks.map((block) => block.text).join('\\n')).toContain(\n        '雨落旧站。',\n      );\n      expect(roundtrip.chapters[1]?.blocks[0]?.text).toBe('天将破晓。');\n\n      await expect(\n",
 )
+
+contracts = Path('packages/contracts/src/import-export.ts')
+contracts_source = contracts.read_text(encoding='utf-8')
+contracts_source = contracts_source.replace(
+    "        !/[<>:\"|?*\\u0000-\\u001f]/u.test(value),",
+    "        !/[<>:\"|?*]/u.test(value) &&\n        !Array.from(value).some((character) => (character.codePointAt(0) ?? 0) < 32),",
+)
+contracts.write_text(contracts_source, encoding='utf-8')
+
+core = Path('packages/core-service/src/import-export.ts')
+core_source = core.read_text(encoding='utf-8')
+core_source = core_source.replace('let paragraph: string[] = [];', 'const paragraph: string[] = [];', 2)
+core_source = core_source.replace(
+    '/[<>:\"/\\\\|?*\\u0000-\\u001f]/u.test(base)',
+    '/[<>:\"/\\\\|?*]/u.test(base) ||\n    Array.from(base).some((character) => (character.codePointAt(0) ?? 0) < 32)',
+)
+core.write_text(core_source, encoding='utf-8')
 
 renderer = Path('apps/desktop/renderer/src/index.ts')
 source = renderer.read_text(encoding='utf-8')

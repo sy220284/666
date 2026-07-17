@@ -15,44 +15,46 @@ const applyRecordId = '55555555-5555-4555-8555-555555555555';
 
 describe('M2-03 Candidate apply contract exports', () => {
   it('exports strict preview, apply and undo schemas from the contracts barrel', () => {
-    expect(
-      CandidatePreviewInputSchema.parse({ projectId, chapterId, candidateId }),
-    ).toEqual({ projectId, chapterId, candidateId });
-    expect(
-      CandidateApplyInputSchema.parse({
-        projectId,
-        chapterId,
-        candidateId,
-        draftId,
-        baseRevision: 1,
-        selection: { mode: 'all' },
-      }),
-    ).toMatchObject({ draftId, baseRevision: 1 });
-    expect(
-      CandidateUndoPreviewInputSchema.parse({ projectId, chapterId, applyRecordId }),
-    ).toEqual({ projectId, chapterId, applyRecordId });
-    expect(
-      CandidateUndoInputSchema.parse({
-        projectId,
-        chapterId,
-        applyRecordId,
-        draftId,
-        baseRevision: 2,
-      }),
-    ).toMatchObject({ draftId, baseRevision: 2 });
+    const preview = CandidatePreviewInputSchema.parse({ projectId, chapterId, candidateId });
+    expect(preview).toEqual({ projectId, chapterId, candidateId });
+
+    const apply = CandidateApplyInputSchema.parse({
+      projectId,
+      chapterId,
+      candidateId,
+      draftId,
+      baseRevision: 1,
+      selection: { mode: 'all' },
+    });
+    expect(apply).toMatchObject({ draftId, baseRevision: 1 });
+
+    const undoPreview = CandidateUndoPreviewInputSchema.parse({
+      projectId,
+      chapterId,
+      applyRecordId,
+    });
+    expect(undoPreview).toEqual({ projectId, chapterId, applyRecordId });
+
+    const undo = CandidateUndoInputSchema.parse({
+      projectId,
+      chapterId,
+      applyRecordId,
+      draftId,
+      baseRevision: 2,
+    });
+    expect(undo).toMatchObject({ draftId, baseRevision: 2 });
   });
 
   it('rejects authority fields that are not part of the renderer input', () => {
-    expect(() =>
-      CandidateApplyInputSchema.parse({
-        projectId,
-        chapterId,
-        candidateId,
-        draftId,
-        baseRevision: 1,
-        selection: { mode: 'all' },
-        status: 'accepted',
-      }),
-    ).toThrow();
+    const raw = {
+      projectId,
+      chapterId,
+      candidateId,
+      draftId,
+      baseRevision: 1,
+      selection: { mode: 'all' },
+      status: 'accepted',
+    };
+    expect(() => CandidateApplyInputSchema.parse(raw)).toThrow();
   });
 });

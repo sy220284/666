@@ -5,7 +5,7 @@ import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
 import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
 import { CoreRecoveryOperationSchema, CoreRecoveryResultSchema } from './recovery.js';
 import { CoreTextIoOperationSchema, CoreTextIoResultSchema } from './import-export.js';
-import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate.js';
+import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate-base.js';
 import {
   CoreProjectStructureOperationSchema,
   CoreProjectStructureResultSchema,

@@ -27,6 +27,8 @@ import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
+type ParsedVersionCreateInput = ReturnType<typeof VersionCreateInputSchema.parse>;
+
 export type VersionServiceErrorCode =
   | 'VERSION_NOT_FOUND'
   | 'VERSION_TITLE_CONFLICT'
@@ -178,7 +180,7 @@ function versionSelect(where: string): string {
 
 function assertParentVersion(
   database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-  input: VersionCreateInput,
+  input: ParsedVersionCreateInput,
 ): void {
   if (!input.parentVersionId) return;
   const parent = database
@@ -194,7 +196,7 @@ function assertParentVersion(
 
 function assertSourceCandidate(
   database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-  input: VersionCreateInput,
+  input: ParsedVersionCreateInput,
 ): void {
   if (input.versionType === 'candidate' && !input.sourceCandidateId) {
     throw new VersionServiceError(

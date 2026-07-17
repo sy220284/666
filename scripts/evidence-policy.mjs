@@ -49,7 +49,11 @@ async function validateTaskEvidence(taskId) {
   }
 
   const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
-  if (manifest.schemaVersion !== 1 || manifest.taskId !== taskId || !Array.isArray(manifest.files)) {
+  if (
+    manifest.schemaVersion !== 1 ||
+    manifest.taskId !== taskId ||
+    !Array.isArray(manifest.files)
+  ) {
     throw new Error(`${taskId} evidence manifest is invalid`);
   }
   if (manifest.files.length === 0) throw new Error(`${taskId} evidence manifest is empty`);

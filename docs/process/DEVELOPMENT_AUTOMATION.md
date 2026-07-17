@@ -26,7 +26,7 @@
 → 最小完整实现
 → 本地验证
 → 提交Pull Request
-→ Task Governance与Quality门禁
+→ PR Policy、Task Governance、Security与Quality门禁
 → 作者或维护者审查
 → 人工合并到main
 → 证据与追踪回写
@@ -39,7 +39,7 @@
 2. 每张任务使用独立非`main`分支，分支名使用`work/`、`feat/`、`fix/`、`refactor/`、`test/`、`docs/`或`chore/`前缀。
 3. 所有代码、文档、任务状态和证据变更必须通过Pull Request进入`main`。
 4. 机器人和GitHub Actions只能更新PR头分支，不得直接推送`main`，不得自动合并PR。
-5. PR必须通过`Task Governance`和聚合`quality`门；任一必要检查失败即禁止合并。
+5. PR必须通过`pr-policy`、`task-governance`、`security`和聚合`quality / quality`门；任一必要检查失败即禁止合并。
 6. 每张任务使用独立原子提交或连续提交组，提交信息必须包含任务ID。
 7. 任何失败转为`BLOCKED`，保留复现、日志、数据安全状态和回退方式。
 8. 不允许跳过失败测试、伪造证据、绕开阶段门或提前实现未来任务。
@@ -76,10 +76,12 @@
 - `pnpm task:activate -- <TASK-ID>`：校验依赖并从任务卡生成下一张活动任务。
 - `pnpm task:advance -- --ci=success --commit=<SHA>`：实现优先模式下在PR分支登记当前卡为Implemented、记录延期验证并准备下一任务状态。
 - `pnpm task:close -- --ci=success --commit=<SHA>`：在PR分支关闭Implemented任务并准备下一张依赖已满足的任务。
-- GitHub `Task Governance`：按需拉取比较基准，验证任务状态、镜像、修改范围和证据结构。
-- GitHub `Quality`：调用`.github/workflows/quality-core.yml`，以聚合检查`quality`作为合并判据。
+- GitHub `PR Policy`：验证真实PR头分支、治理白名单及永久工作流策略。
+- GitHub `Task Governance`：验证任务状态、镜像、修改范围和证据结构。
+- GitHub `Security`：执行高危依赖审计和仓库凭据扫描。
+- GitHub `Quality`：调用`.github/workflows/quality-core.yml`，以聚合检查`quality / quality`作为合并判据。
 
-PR产生新提交时，旧的Quality和Task Governance运行会自动取消。每个作业设置独立超时，避免Runner无界挂起。`main`合并后的质量运行仅作回归确认，不代替PR合并前门禁。
+PR产生新提交时，旧的四类门禁运行会自动取消。每个作业设置独立超时，避免Runner无界挂起。`main`合并后的质量运行仅作回归确认，不代替PR合并前门禁。
 
 ## 5. 开发质量核心
 
@@ -97,6 +99,10 @@ tests（并行矩阵）
 ├─ migration
 └─ security
 
+performance-eval
+├─ 性能预算
+└─ AI输出协议与评估基线
+
 desktop-e2e
 ├─ Electron Playwright
 ├─ xvfb显示环境
@@ -109,7 +115,7 @@ quality
 └─ 聚合全部结果；任一必要作业失败则失败
 ```
 
-所有测试、E2E、构建和打包作业都会上传独立诊断产物。中间作业失败不会阻止其他并行作业执行，因此一次CI即可暴露全部独立问题。
+所有测试、性能、E2E、构建和打包作业都会上传独立诊断产物。中间作业失败不会阻止其他并行作业执行，因此一次CI即可暴露全部独立问题。
 
 ## 6. 测试路由
 
@@ -123,7 +129,7 @@ quality
 | Prompt、Provider、约束包 | `test:eval`、`test:integration` |
 | 性能、DPI | `test:perf`、`test:e2e` |
 
-PR使用并行专项测试；`pnpm test`保留为本地完整回归命令，不再作为CI中混合所有故障域的单一步骤。
+Quality永久执行`test:perf`，其范围同时覆盖性能目录和AI输出协议基线；任务卡仍应在`verification`中明确专项命令，便于本地复现和证据登记。`pnpm test`保留为本地完整回归命令，不再作为CI中混合所有故障域的单一步骤。
 
 ## 7. 发布边界
 

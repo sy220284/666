@@ -104,6 +104,21 @@ import {
   type RecoveryRestoreInput,
   type RecoveryVersionExport,
 } from './recovery.js';
+import {
+  TEXT_IO_COMMANDS,
+  TEXT_IO_IPC_CHANNELS,
+  ImportPreviewCommandSchema,
+  ImportCommitCommandSchema,
+  ExportVersionListCommandSchema,
+  ExportVersionsCommandSchema,
+  type ImportPreviewInput,
+  type ImportPlan,
+  type ImportCommitInput,
+  type ImportCommitResult,
+  type ExportVersionCatalog,
+  type ExportVersionsInput,
+  type ExportVersionsResult,
+} from './import-export.js';
 
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
@@ -114,6 +129,7 @@ export * from './project-structure.js';
 export * from './draft.js';
 export * from './version.js';
 export * from './recovery.js';
+export * from './import-export.js';
 
 export const contractsLayer = {
   name: '@worldforge/contracts',
@@ -129,6 +145,7 @@ export const IPC_CHANNELS = {
   ...DRAFT_IPC_CHANNELS,
   ...VERSION_IPC_CHANNELS,
   ...RECOVERY_IPC_CHANNELS,
+  ...TEXT_IO_IPC_CHANNELS,
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
@@ -150,6 +167,7 @@ export const APP_COMMANDS = {
   ...DRAFT_COMMANDS,
   ...VERSION_COMMANDS,
   ...RECOVERY_COMMANDS,
+  ...TEXT_IO_COMMANDS,
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
@@ -298,6 +316,10 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectRestoreTrashEntryCommandSchema,
   DraftOpenCommandSchema,
   DraftApplyPatchCommandSchema,
+  ImportPreviewCommandSchema,
+  ImportCommitCommandSchema,
+  ExportVersionListCommandSchema,
+  ExportVersionsCommandSchema,
   AiSetCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
   AiHasCredentialCommandSchema,
@@ -549,6 +571,16 @@ export interface WorldforgeBridge {
     readonly exportVersion: (
       input: RecoveryExportInput,
     ) => Promise<CommandResult<RecoveryVersionExport>>;
+  };
+  readonly textIo: {
+    readonly previewImport: (input: ImportPreviewInput) => Promise<CommandResult<ImportPlan>>;
+    readonly commitImport: (input: ImportCommitInput) => Promise<CommandResult<ImportCommitResult>>;
+    readonly listExportVersions: (
+      projectId: string,
+    ) => Promise<CommandResult<ExportVersionCatalog>>;
+    readonly exportVersions: (
+      input: ExportVersionsInput,
+    ) => Promise<CommandResult<ExportVersionsResult>>;
   };
   readonly planning: {
     readonly listStructure: (projectId: string) => Promise<CommandResult<ProjectStructure>>;

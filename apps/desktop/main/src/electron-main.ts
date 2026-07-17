@@ -271,6 +271,23 @@ async function bootstrap(): Promise<void> {
     if (!path.isAbsolute(value)) throw new Error(`${name}_MUST_BE_ABSOLUTE`);
     return value;
   };
+  const chooseFile = async (
+    title: string,
+    buttonLabel: string,
+    e2eVariable: string,
+  ): Promise<string | null> => {
+    const injected = e2eSelection(e2eVariable);
+    if (injected) return injected;
+    const window = mainWindow;
+    if (!window) return null;
+    const selection = await dialog.showOpenDialog(window, {
+      title,
+      buttonLabel,
+      properties: ['openFile'],
+      filters: [{ name: '文本文件', extensions: ['txt', 'md', 'markdown'] }],
+    });
+    return selection.canceled ? null : (selection.filePaths[0] ?? null);
+  };
   const chooseDirectory = async (
     title: string,
     buttonLabel: string,
@@ -311,6 +328,10 @@ async function bootstrap(): Promise<void> {
         '导出到这里',
         'WORLDFORGE_E2E_RECOVERY_EXPORT_DIRECTORY',
       ),
+    chooseTextImportFile: () =>
+      chooseFile('选择TXT或Markdown旧稿', '预览导入', 'WORLDFORGE_E2E_IMPORT_FILE'),
+    chooseTextExportDirectory: () =>
+      chooseDirectory('选择文本导出位置', '导出到这里', 'WORLDFORGE_E2E_TEXT_EXPORT_DIRECTORY'),
     chooseRecentLocation: async () => {
       const window = mainWindow;
       if (!window) return null;

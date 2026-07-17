@@ -5,6 +5,7 @@ import {
   DRAFT_COMMANDS,
   VERSION_COMMANDS,
   RECOVERY_COMMANDS,
+  TEXT_IO_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
@@ -26,6 +27,10 @@ import {
   RecoveryOverviewCommandSchema,
   RecoveryRestoreCommandSchema,
   RecoveryExportCommandSchema,
+  ImportPreviewCommandSchema,
+  ImportCommitCommandSchema,
+  ExportVersionListCommandSchema,
+  ExportVersionsCommandSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   RequestIdSchema,
@@ -86,6 +91,8 @@ interface IpcHandlerOptions {
   readonly chooseProjectMoveParent: () => Promise<string | null>;
   readonly chooseRecoveryRestoreParent: () => Promise<string | null>;
   readonly chooseRecoveryExportDirectory: () => Promise<string | null>;
+  readonly chooseTextImportFile: () => Promise<string | null>;
+  readonly chooseTextExportDirectory: () => Promise<string | null>;
 }
 
 function success<T>(requestId: string, data: T): CommandResult<T> {
@@ -164,6 +171,10 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.getOverview,
     IPC_CHANNELS.restoreCheckpoint,
     IPC_CHANNELS.exportVersion,
+    IPC_CHANNELS.previewImport,
+    IPC_CHANNELS.commitImport,
+    IPC_CHANNELS.listExportVersions,
+    IPC_CHANNELS.exportVersions,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -517,6 +528,66 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     if (!targetDirectory) return cancelledSelection(parsed.data.requestId);
     return invokeProject(parsed.data.requestId, {
       operation: RECOVERY_COMMANDS.exportVersion,
+      input: parsed.data.payload,
+      targetDirectory,
+    });
+  });
+
+  register(IPC_CHANNELS.previewImport, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ImportPreviewCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let sourcePath: string | null;
+    try {
+      sourcePath = await options.chooseTextImportFile();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!sourcePath) return cancelledSelection(parsed.data.requestId);
+    return invokeProject(parsed.data.requestId, {
+      operation: TEXT_IO_COMMANDS.previewImport,
+      input: parsed.data.payload,
+      sourcePath,
+    });
+  });
+
+  register(IPC_CHANNELS.commitImport, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ImportCommitCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: TEXT_IO_COMMANDS.commitImport,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.listExportVersions, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ExportVersionListCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: TEXT_IO_COMMANDS.listExportVersions,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.exportVersions, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ExportVersionsCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let targetDirectory: string | null;
+    try {
+      targetDirectory = await options.chooseTextExportDirectory();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!targetDirectory) return cancelledSelection(parsed.data.requestId);
+    return invokeProject(parsed.data.requestId, {
+      operation: TEXT_IO_COMMANDS.exportVersions,
       input: parsed.data.payload,
       targetDirectory,
     });

@@ -4,6 +4,7 @@ import { ErrorCodeSchema } from './error-codes.js';
 import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
 import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
 import { CoreRecoveryOperationSchema, CoreRecoveryResultSchema } from './recovery.js';
+import { CoreTextIoOperationSchema, CoreTextIoResultSchema } from './import-export.js';
 import {
   CoreProjectStructureOperationSchema,
   CoreProjectStructureResultSchema,
@@ -174,6 +175,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreDraftOperationSchema,
   CoreVersionOperationSchema,
   CoreRecoveryOperationSchema,
+  CoreTextIoOperationSchema,
 ]);
 
 const coreSuccess = <Operation extends string, DataSchema extends z.ZodType>(
@@ -206,6 +208,7 @@ export const CoreProjectResultSchema = z.union([
   CoreDraftResultSchema,
   CoreVersionResultSchema,
   CoreRecoveryResultSchema,
+  CoreTextIoResultSchema,
 ]);
 
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInputSchema>;

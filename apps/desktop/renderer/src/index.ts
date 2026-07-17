@@ -12,6 +12,7 @@ import {
   tiptapJsonToDraftSnapshot,
   undoWorldforgeEditor,
 } from '@worldforge/editor-core';
+import type { ImportPlan, ImportPlanChapter, ExportVersionChoice } from '@worldforge/contracts';
 
 import { contentWidthPixels, layoutPolicyForViewport } from './layout-model.js';
 import type {
@@ -86,6 +87,22 @@ const projectOperationStatus = document.querySelector<HTMLElement>(
   '[data-project-operation-status]',
 );
 const moveProjectButton = document.querySelector<HTMLButtonElement>('[data-move-project]');
+const openTextIoButton = document.querySelector<HTMLButtonElement>('[data-open-text-io]');
+const textIoDialog = document.querySelector<HTMLDialogElement>('[data-text-io-dialog]');
+const textIoStatus = document.querySelector<HTMLElement>('[data-text-io-status]');
+const importEncoding = document.querySelector<HTMLSelectElement>('[data-import-encoding]');
+const previewImportButton = document.querySelector<HTMLButtonElement>('[data-preview-import]');
+const commitImportButton = document.querySelector<HTMLButtonElement>('[data-commit-import]');
+const importVolumeTitle = document.querySelector<HTMLInputElement>('[data-import-volume-title]');
+const importPlanList = document.querySelector<HTMLElement>('[data-import-plan-list]');
+const refreshExportVersionsButton = document.querySelector<HTMLButtonElement>(
+  '[data-refresh-export-versions]',
+);
+const exportVersionList = document.querySelector<HTMLElement>('[data-export-version-list]');
+const exportFormat = document.querySelector<HTMLSelectElement>('[data-export-format]');
+const exportFileName = document.querySelector<HTMLInputElement>('[data-export-file-name]');
+const exportVersionsButton = document.querySelector<HTMLButtonElement>('[data-export-versions]');
+const closeTextIoButton = document.querySelector<HTMLButtonElement>('[data-close-text-io]');
 const closeProjectButton = document.querySelector<HTMLButtonElement>('[data-close-project]');
 const createProjectButtons = document.querySelectorAll<HTMLButtonElement>(
   '[data-open-create-project], [data-create-project]',
@@ -170,6 +187,8 @@ let synchronizingDraftMetadata = false;
 let draftAutosave: DraftAutosaveCoordinator | null = null;
 let lastSavedRevision = 0;
 let currentFindIndex = -1;
+let activeImportPlan: ImportPlan | null = null;
+let exportVersionChoices: ExportVersionChoice[] = [];
 let draftFindMatches: { readonly from: number; readonly to: number }[] = [];
 const chapterSelections = new Map<string, { readonly from: number; readonly to: number }>();
 let resizeFrame: number | null = null;
@@ -2320,5 +2339,265 @@ recoveryVersionList?.addEventListener('click', (event) => {
     button.disabled = false;
     if (!result.ok) return setRecoveryStatus(`Version导出失败 · ${result.error.code}`, true);
     setRecoveryStatus(`已导出 ${result.data.fileName}，Hash验证完成。`);
+  })();
+});
+
+function setTextIoStatus(message: string, error = false): void {
+  if (!textIoStatus) return;
+  textIoStatus.textContent = message;
+  textIoStatus.classList.toggle('is-error', error);
+}
+
+function planBody(chapter: ImportPlanChapter): string {
+  return chapter.blocks
+    .map((block) => (block.blockType === 'separator' ? '***' : block.text))
+    .join('\n\n');
+}
+
+function bodyBlocks(value: string): ImportPlanChapter['blocks'] {
+  const blocks = value
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\r', '\n')
+    .split(/\n\s*\n/gu)
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .map((text) =>
+      text === '***'
+        ? ({ blockType: 'separator', text: '' } as const)
+        : ({ blockType: 'paragraph', text } as const),
+    );
+  return blocks.length ? blocks : [{ blockType: 'paragraph', text: '' }];
+}
+
+function renderImportPlan(): void {
+  if (!importPlanList) return;
+  importPlanList.replaceChildren();
+  const plan = activeImportPlan;
+  if (!plan) {
+    importPlanList.textContent = '请选择TXT或Markdown文件生成预览。';
+    if (commitImportButton) commitImportButton.disabled = true;
+    return;
+  }
+  plan.chapters.forEach((chapter, index) => {
+    const row = document.createElement('article');
+    row.className = 'text-io-plan-row';
+    row.dataset.importPlanChapter = chapter.planChapterId;
+    row.innerHTML = `<header><strong>章节 ${index + 1}</strong><div></div></header><input data-import-chapter-title maxlength="240" /><textarea data-import-chapter-body rows="6"></textarea>`;
+    const title = row.querySelector<HTMLInputElement>('[data-import-chapter-title]')!;
+    const body = row.querySelector<HTMLTextAreaElement>('[data-import-chapter-body]')!;
+    title.value = chapter.title;
+    body.value = planBody(chapter);
+    const actions = row.querySelector<HTMLElement>('header div')!;
+    for (const [label, action] of [
+      ['上移', 'up'],
+      ['下移', 'down'],
+      ['拆分', 'split'],
+      ['合并下一章', 'merge'],
+      ['移除', 'remove'],
+    ] as const) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'quiet-button';
+      button.textContent = label;
+      button.dataset.importPlanAction = action;
+      button.dataset.importPlanChapterId = chapter.planChapterId;
+      button.disabled =
+        (action === 'up' && index === 0) ||
+        ((action === 'down' || action === 'merge') && index === plan.chapters.length - 1) ||
+        (action === 'remove' && plan.chapters.length === 1);
+      actions.append(button);
+    }
+    importPlanList.append(row);
+  });
+  if (commitImportButton)
+    commitImportButton.disabled = activeProject?.databaseMode !== 'read-write';
+}
+
+function chaptersFromPlanEditor(): ImportPlanChapter[] {
+  const plan = activeImportPlan;
+  if (!plan || !importPlanList) return [];
+  return plan.chapters.map((chapter) => {
+    const row = importPlanList.querySelector<HTMLElement>(
+      `[data-import-plan-chapter="${chapter.planChapterId}"]`,
+    );
+    const title = row?.querySelector<HTMLInputElement>('[data-import-chapter-title]')?.value.trim();
+    const body = row?.querySelector<HTMLTextAreaElement>('[data-import-chapter-body]')?.value ?? '';
+    return {
+      planChapterId: chapter.planChapterId,
+      title: title || chapter.title,
+      blocks: body === planBody(chapter) ? chapter.blocks : bodyBlocks(body),
+    };
+  });
+}
+
+function updatePlanFromEditor(): void {
+  if (!activeImportPlan) return;
+  activeImportPlan = { ...activeImportPlan, chapters: chaptersFromPlanEditor() };
+}
+
+async function refreshExportCatalog(): Promise<void> {
+  const project = activeProject;
+  if (!project || !exportVersionList) return;
+  const result = await window.worldforge.textIo.listExportVersions(project.projectId);
+  exportVersionList.replaceChildren();
+  if (!result.ok) {
+    setTextIoStatus(`Version读取失败 · ${result.error.code}`, true);
+    return;
+  }
+  exportVersionChoices = result.data.versions;
+  if (!exportVersionChoices.length) {
+    exportVersionList.textContent = '当前项目没有可导出的Version。';
+    return;
+  }
+  for (const version of exportVersionChoices) {
+    const label = document.createElement('label');
+    label.className = 'text-io-export-row';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = version.versionId;
+    checkbox.dataset.exportVersionChoice = '';
+    checkbox.checked = version.finalized;
+    const detail = document.createElement('span');
+    detail.textContent = `${version.volumeTitle} / ${version.chapterTitle} · ${version.versionTitle} · ${version.wordCount}字${version.finalized ? ' · 定稿' : ''}`;
+    label.append(checkbox, detail);
+    exportVersionList.append(label);
+  }
+}
+
+openTextIoButton?.addEventListener('click', () => {
+  textIoDialog?.showModal();
+  setTextIoStatus('预览不会修改项目；确认导入前会创建已验证恢复点。');
+  renderImportPlan();
+  void refreshExportCatalog();
+});
+closeTextIoButton?.addEventListener('click', () => textIoDialog?.close());
+previewImportButton?.addEventListener('click', () => {
+  void (async () => {
+    const project = activeProject;
+    if (!project) return;
+    previewImportButton.disabled = true;
+    setTextIoStatus('请选择TXT或Markdown文件…');
+    const encoding = importEncoding?.value ?? 'auto';
+    const result = await window.worldforge.textIo.previewImport({
+      projectId: project.projectId,
+      encoding: encoding as 'auto' | 'utf-8' | 'utf-16le' | 'utf-16be' | 'gb18030',
+    });
+    previewImportButton.disabled = false;
+    if (!result.ok) {
+      if (result.error.code === 'COMMON_CANCELLED_004') return setTextIoStatus('已取消选择。');
+      return setTextIoStatus(`预览失败 · ${result.error.code}`, true);
+    }
+    activeImportPlan = result.data;
+    if (importVolumeTitle && importVolumeTitle.value === '导入稿') {
+      importVolumeTitle.value = result.data.fileName.replace(/\.(?:txt|md|markdown)$/iu, '');
+    }
+    setTextIoStatus(
+      `已识别 ${result.data.format.toUpperCase()} · ${result.data.detectedEncoding} · ${result.data.confidence} · ${result.data.chapters.length}章`,
+    );
+    renderImportPlan();
+  })();
+});
+
+importPlanList?.addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    '[data-import-plan-action]',
+  );
+  const action = button?.dataset.importPlanAction;
+  const id = button?.dataset.importPlanChapterId;
+  if (!activeImportPlan || !action || !id) return;
+  updatePlanFromEditor();
+  const chapters = [...activeImportPlan.chapters];
+  const index = chapters.findIndex((chapter) => chapter.planChapterId === id);
+  if (index < 0) return;
+  if (action === 'up' && index > 0)
+    [chapters[index - 1], chapters[index]] = [chapters[index]!, chapters[index - 1]!];
+  if (action === 'down' && index < chapters.length - 1)
+    [chapters[index + 1], chapters[index]] = [chapters[index]!, chapters[index + 1]!];
+  if (action === 'remove' && chapters.length > 1) chapters.splice(index, 1);
+  if (action === 'merge' && index < chapters.length - 1) {
+    const current = chapters[index]!;
+    const next = chapters[index + 1]!;
+    chapters.splice(index, 2, { ...current, blocks: [...current.blocks, ...next.blocks] });
+  }
+  if (action === 'split') {
+    const current = chapters[index]!;
+    const midpoint = Math.max(1, Math.floor(current.blocks.length / 2));
+    let left = current.blocks.slice(0, midpoint);
+    let right = current.blocks.slice(midpoint);
+    if (!right.length) {
+      const block = left[0]!;
+      const text = block.text;
+      const point = Math.max(1, Math.floor(text.length / 2));
+      left = [{ ...block, text: text.slice(0, point) }];
+      right = [{ ...block, text: text.slice(point) }];
+    }
+    chapters.splice(
+      index,
+      1,
+      { ...current, blocks: left },
+      {
+        planChapterId: crypto.randomUUID(),
+        title: `${current.title}（下）`,
+        blocks: right,
+      },
+    );
+  }
+  activeImportPlan = { ...activeImportPlan, chapters };
+  renderImportPlan();
+});
+
+commitImportButton?.addEventListener('click', () => {
+  void (async () => {
+    const project = activeProject;
+    if (!project || !activeImportPlan || project.databaseMode !== 'read-write') return;
+    updatePlanFromEditor();
+    const volumeTitle = importVolumeTitle?.value.trim() ?? '';
+    if (!volumeTitle) return setTextIoStatus('请输入新卷标题。', true);
+    commitImportButton.disabled = true;
+    setTextIoStatus('正在创建恢复点并以单事务导入…');
+    const result = await window.worldforge.textIo.commitImport({
+      projectId: project.projectId,
+      planId: activeImportPlan.planId,
+      volumeTitle,
+      chapters: activeImportPlan.chapters,
+    });
+    commitImportButton.disabled = false;
+    if (!result.ok) return setTextIoStatus(`导入失败 · ${result.error.code}`, true);
+    setTextIoStatus(
+      `已导入 ${result.data.importedChapterCount} 章；恢复点与导入基线Version已创建。`,
+    );
+    activeImportPlan = null;
+    renderImportPlan();
+    await refreshProjectStructure();
+    await refreshExportCatalog();
+  })();
+});
+
+refreshExportVersionsButton?.addEventListener('click', () => void refreshExportCatalog());
+exportVersionsButton?.addEventListener('click', () => {
+  void (async () => {
+    const project = activeProject;
+    if (!project || !exportVersionList) return;
+    const versionIds = Array.from(
+      exportVersionList.querySelectorAll<HTMLInputElement>('[data-export-version-choice]:checked'),
+      (input) => input.value,
+    );
+    if (!versionIds.length) return setTextIoStatus('请至少选择一个Version。', true);
+    const format = exportFormat?.value === 'markdown' ? 'markdown' : 'txt';
+    const fileName = exportFileName?.value.trim() ?? '';
+    if (!fileName) return setTextIoStatus('请输入导出文件名。', true);
+    exportVersionsButton.disabled = true;
+    const result = await window.worldforge.textIo.exportVersions({
+      projectId: project.projectId,
+      versionIds,
+      format,
+      fileName,
+    });
+    exportVersionsButton.disabled = false;
+    if (!result.ok) {
+      if (result.error.code === 'COMMON_CANCELLED_004') return setTextIoStatus('已取消导出。');
+      return setTextIoStatus(`导出失败 · ${result.error.code}`, true);
+    }
+    setTextIoStatus(`已原子导出 ${result.data.fileName} · ${result.data.sha256.slice(0, 12)}…`);
   })();
 });

@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@worldforge/contracts": "workspace:*",
-    "@worldforge/domain": "workspace:*"
+    "@worldforge/domain": "workspace:*",
+    "iconv-lite": "0.7.3"
   },
   "devDependencies": {
     "@types/node": "26.1.1"

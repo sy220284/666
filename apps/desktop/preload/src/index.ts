@@ -34,6 +34,14 @@ import {
   RecoveryRestoreResultSchema,
   RecoveryExportCommandSchema,
   RecoveryExportResultSchema,
+  ImportPreviewCommandSchema,
+  ImportPlanResultSchema,
+  ImportCommitCommandSchema,
+  ImportCommitResultEnvelopeSchema,
+  ExportVersionListCommandSchema,
+  ExportVersionCatalogResultSchema,
+  ExportVersionsCommandSchema,
+  ExportVersionsResultEnvelopeSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   ProjectActiveResultSchema,
@@ -204,6 +212,34 @@ const bridge: WorldforgeBridge = {
         IPC_CHANNELS.exportVersion,
         RecoveryExportCommandSchema.parse(envelope(APP_COMMANDS.exportVersion, input)),
         RecoveryExportResultSchema,
+      ),
+  },
+  textIo: {
+    previewImport: (input) =>
+      invoke(
+        IPC_CHANNELS.previewImport,
+        ImportPreviewCommandSchema.parse(envelope(APP_COMMANDS.previewImport, input)),
+        ImportPlanResultSchema,
+      ),
+    commitImport: (input) =>
+      invoke(
+        IPC_CHANNELS.commitImport,
+        ImportCommitCommandSchema.parse(envelope(APP_COMMANDS.commitImport, input)),
+        ImportCommitResultEnvelopeSchema,
+      ),
+    listExportVersions: (projectId) =>
+      invoke(
+        IPC_CHANNELS.listExportVersions,
+        ExportVersionListCommandSchema.parse(
+          envelope(APP_COMMANDS.listExportVersions, { projectId }),
+        ),
+        ExportVersionCatalogResultSchema,
+      ),
+    exportVersions: (input) =>
+      invoke(
+        IPC_CHANNELS.exportVersions,
+        ExportVersionsCommandSchema.parse(envelope(APP_COMMANDS.exportVersions, input)),
+        ExportVersionsResultEnvelopeSchema,
       ),
   },
   project: {

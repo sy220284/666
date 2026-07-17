@@ -5,6 +5,7 @@ import {
   DRAFT_COMMANDS,
   VERSION_COMMANDS,
   RECOVERY_COMMANDS,
+  TEXT_IO_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
@@ -25,6 +26,7 @@ import { AppDataRepositoryError } from './app-data-errors.js';
 import { DraftService, DraftServiceError } from './draft.js';
 import { VersionService, VersionServiceError } from './version.js';
 import { RecoveryService, RecoveryServiceError } from './recovery.js';
+import { ImportExportService, ImportExportServiceError } from './import-export.js';
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
@@ -96,6 +98,7 @@ const recovery = new RecoveryService(projectWorkspace, {
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
 const versions = new VersionService(projectWorkspace);
+const textIo = new ImportExportService(projectWorkspace, recovery);
 
 function send(message: CoreEvent): void {
   parentPort?.postMessage(message);
@@ -145,6 +148,28 @@ function appDataError(error: unknown): ErrorCode {
 }
 
 function projectWorkspaceError(error: unknown): ErrorCode {
+  if (error instanceof ImportExportServiceError) {
+    switch (error.code) {
+      case 'IMPORT_FORMAT_UNSUPPORTED':
+        return 'IMPORT_FORMAT_UNSUPPORTED_001';
+      case 'IMPORT_ENCODING_UNCERTAIN':
+        return 'IMPORT_ENCODING_UNCERTAIN_002';
+      case 'IMPORT_ARCHIVE_LIMIT':
+        return 'IMPORT_ARCHIVE_LIMIT_003';
+      case 'IMPORT_CONTENT_EMPTY':
+        return 'IMPORT_CONTENT_EMPTY_004';
+      case 'IMPORT_PLAN_STALE':
+        return 'IMPORT_PLAN_STALE_005';
+      case 'IMPORT_COMMIT_FAILED':
+        return 'IMPORT_COMMIT_FAILED_006';
+      case 'EXPORT_VERSION_REQUIRED':
+        return 'EXPORT_VERSION_REQUIRED_001';
+      case 'EXPORT_TARGET_EXISTS':
+        return 'EXPORT_TARGET_EXISTS_002';
+      case 'EXPORT_WRITE_FAILED':
+        return 'EXPORT_WRITE_FAILED_003';
+    }
+  }
   if (error instanceof RecoveryServiceError) {
     switch (error.code) {
       case 'BACKUP_CREATE_FAILED':
@@ -470,6 +495,30 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await recovery.exportVersion(operation.input, operation.targetDirectory),
+        });
+      case TEXT_IO_COMMANDS.previewImport:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await textIo.previewImport(operation.input, operation.sourcePath),
+        });
+      case TEXT_IO_COMMANDS.commitImport:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await textIo.commitImport(requestId, operation.input),
+        });
+      case TEXT_IO_COMMANDS.listExportVersions:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: textIo.listExportVersions(operation.input.projectId),
+        });
+      case TEXT_IO_COMMANDS.exportVersions:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await textIo.exportVersions(operation.input, operation.targetDirectory),
         });
     }
   } catch (error) {

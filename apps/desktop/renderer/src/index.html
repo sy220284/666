@@ -151,6 +151,7 @@
                     <button class="quiet-button" type="button" data-open-recovery>
                       恢复与导出
                     </button>
+                    <button class="quiet-button" type="button" data-open-text-io>导入导出</button>
                     <button class="quiet-button" type="button" data-move-project>移动项目</button>
                     <button class="quiet-button" type="button" data-close-project>关闭项目</button>
                   </div>
@@ -326,6 +327,65 @@
       <p>调整窗口或跨屏时，这个浮层会重新定位。</p>
       <button type="button" data-close-popover>关闭</button>
     </div>
+
+    <dialog
+      class="settings-dialog text-io-dialog"
+      data-text-io-dialog
+      aria-labelledby="text-io-title"
+    >
+      <div class="settings-dialog__body text-io-dialog__body">
+        <p class="eyebrow">TXT · MARKDOWN · VERSION</p>
+        <h2 id="text-io-title">旧稿导入与稳定稿导出</h2>
+        <p data-text-io-status role="status"></p>
+        <section class="text-io-section">
+          <header>
+            <h3>导入预览</h3>
+            <span>预览阶段不写项目数据库</span>
+          </header>
+          <div class="text-io-controls">
+            <label
+              >编码
+              <select data-import-encoding>
+                <option value="auto">自动识别</option>
+                <option value="utf-8">UTF-8</option>
+                <option value="utf-16le">UTF-16 LE</option>
+                <option value="utf-16be">UTF-16 BE</option>
+                <option value="gb18030">GB18030</option>
+              </select>
+            </label>
+            <button class="quiet-button" type="button" data-preview-import>选择文件并预览</button>
+            <label>新卷标题<input data-import-volume-title value="导入稿" maxlength="240" /></label>
+            <button class="primary-button" type="button" data-commit-import disabled>
+              确认导入
+            </button>
+          </div>
+          <div class="text-io-plan" data-import-plan-list></div>
+        </section>
+        <section class="text-io-section">
+          <header>
+            <h3>从Version导出</h3>
+            <span>只导出明确选择的不可变Version</span>
+          </header>
+          <div class="text-io-controls">
+            <label
+              >格式<select data-export-format>
+                <option value="txt">TXT</option>
+                <option value="markdown">Markdown</option>
+              </select></label
+            >
+            <label
+              >文件名<input data-export-file-name value="WorldForge-稳定稿" maxlength="240"
+            /></label>
+            <button class="quiet-button" type="button" data-refresh-export-versions>
+              刷新Version
+            </button>
+            <button class="primary-button" type="button" data-export-versions>导出所选</button>
+          </div>
+          <div class="text-io-export-list" data-export-version-list></div>
+        </section>
+      </div>
+      <footer><button class="quiet-button" type="button" data-close-text-io>关闭</button></footer>
+    </dialog>
 
     <dialog class="boundary-dialog" data-boundary-dialog aria-labelledby="boundary-dialog-title">
       <form method="dialog">

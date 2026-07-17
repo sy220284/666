@@ -41,14 +41,24 @@ M2-02
 
 ## 主要影响范围
 
+- `migrations/project/`
 - `packages/editor-core/`
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `packages/testkit/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
+- `tests/unit/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
 - `tests/e2e/`
 - `tests/performance/`
+- `docs/database/DATABASE_SCHEMA.md`
+- `docs/contracts/IPC_CONTRACTS.md`
+- `docs/ui/CANDIDATE_REVIEW_SPEC.md`
 
 ## 实施内容
 
@@ -59,12 +69,14 @@ M2-02
 5. 单事务应用Patch、Revision+1并创建ApplyRecord和Checkpoint。
 6. 支持即时整体撤销和重启后回退预览。
 7. 冲突进入ConflictSet，不用普通Toast代替。
+8. 通过Core、IPC、Preload和最小审阅交互接通Fixture Candidate全链路。
 
 ## 测试与证据
 
 - 旧Revision、Hash变化、锁定、缺失块、结构冲突和重复采用。
 - 5000字Diff首屏≤500ms、完整≤1.2s。
 - 采用事务故障回滚，撤销后正文逐块一致。
+- Migration、IPC来源校验、Electron E2E和重启后回退路径。
 
 证据保存到：`docs/test-evidence/M2-03/`
 
@@ -72,5 +84,6 @@ M2-02
 
 - Candidate采用无静默覆盖且可审计、可撤销。
 - 所有采用路径复用Block Patch和LockGuard。
+- Fixture Candidate可经真实桌面链路预览、采用、冲突处理和撤销。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

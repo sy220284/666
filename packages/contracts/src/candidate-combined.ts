@@ -9,5 +9,6 @@ import {
   CoreCandidateApplyResultSchema as ApplyResultSchema,
 } from './candidate-apply.js';
 
+// prettier-ignore
 export const CandidateCombinedOperationSchema = z.union([BaseOperationSchema, ApplyOperationSchema]);
 export const CandidateCombinedResultSchema = z.union([BaseResultSchema, ApplyResultSchema]);

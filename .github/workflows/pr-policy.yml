@@ -22,17 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Ensure comparison base is available
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch --no-tags --depth=1 origin "$TASK_BASE_REF"
-          git cat-file -e "$TASK_BASE_REF^{commit}"
       - name: Validate real PR branch
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate permanent CI policy

@@ -1,0 +1,86 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Audit high-severity dependency vulnerabilities
+        run: pnpm audit --audit-level=high
+
+  secret-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Scan tracked files for credentials
+        run: node scripts/scan-secrets.mjs
+
+  application-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm test:prepare
+      - name: Run IPC, path, renderer and database security tests
+        run: pnpm test:security
+
+  security:
+    name: security
+    if: always()
+    needs:
+      - dependency-audit
+      - secret-scan
+      - application-security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      AUDIT_RESULT: ${{ needs.dependency-audit.result }}
+      SECRET_RESULT: ${{ needs.secret-scan.result }}
+      APP_RESULT: ${{ needs.application-security.result }}
+    steps:
+      - name: Enforce security result
+        run: |
+          test "$AUDIT_RESULT" = success
+          test "$SECRET_RESULT" = success
+          test "$APP_RESULT" = success

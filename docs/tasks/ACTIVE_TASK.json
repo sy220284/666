@@ -1,20 +1,20 @@
 {
   "schemaVersion": 1,
   "authorization": {
-    "mode": "implementation-mainline",
+    "mode": "implementation-pr",
     "approvedBy": "author",
-    "approvedAt": "2026-07-15",
+    "approvedAt": "2026-07-17",
     "branch": "main",
-    "allowDirectMainCommits": true,
+    "allowDirectMainCommits": false,
     "autoActivateNext": true,
     "deferVerificationUntilBatch": true,
-    "modeAdjustedAt": "2026-07-16"
+    "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
     "id": "M2-01",
     "status": "IN_PROGRESS",
     "source": "docs/tasks/M2/M2-01_LOCK_GUARD.md",
-    "branch": "main",
+    "branch": "work/m2-01-lock-guard",
     "startedAt": "2026-07-17",
     "allowedPaths": [
       "packages/editor-core/",
@@ -35,7 +35,9 @@
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
       "docs/test-evidence/M2-01/",
       "docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md",
-      "docs/tasks/M1_TASKS.md"
+      "docs/tasks/M1_TASKS.md",
+      "scripts/task-control-lib.mjs",
+      "docs/process/DEVELOPMENT_AUTOMATION.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [

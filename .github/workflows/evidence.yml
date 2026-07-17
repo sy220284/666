@@ -1,0 +1,44 @@
+name: Evidence
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  evidence:
+    name: evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Detect active-task evidence changes
+        id: scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          task_id="$(node -p "JSON.parse(require('fs').readFileSync('docs/tasks/ACTIVE_TASK.json','utf8')).activeTask.id")"
+          if git diff --name-only "$BASE_SHA" HEAD | grep -q "^docs/test-evidence/$task_id/"; then
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'required=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Enforce evidence completeness when evidence changes
+        env:
+          EVIDENCE_REQUIRED: ${{ steps.scope.outputs.required }}
+        run: node scripts/evidence-policy.mjs

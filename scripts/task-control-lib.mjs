@@ -1,5 +1,26 @@
 import path from 'node:path';
 
+export const GOVERNANCE_ALLOWED_PATHS = [
+  '.github/CODEOWNERS',
+  '.github/governance/',
+  '.github/pull_request_template.md',
+  '.github/workflows/',
+  'package.json',
+  'scripts/automerge.mjs',
+  'scripts/branch-hygiene.mjs',
+  'scripts/ci-policy.mjs',
+  'scripts/evidence-policy.mjs',
+  'scripts/ruleset-policy.mjs',
+  'scripts/scan-secrets.mjs',
+  'scripts/task-control-lib.mjs',
+  'scripts/taskctl.mjs',
+  'docs/process/DEVELOPMENT_AUTOMATION.md',
+  'docs/process/CI_WORKFLOW_ARCHITECTURE.md',
+  'docs/process/MAIN_BRANCH_PROTECTION.md',
+  'docs/tasks/ACTIVE_TASK.json',
+  'docs/tasks/ACTIVE_TASK.md',
+];
+
 export function parseTaskIndex(markdown) {
   const tasks = new Map();
   const rowPattern =
@@ -40,6 +61,22 @@ export function validateChangedPaths(changedFiles, allowedPaths, forbiddenPaths)
   return violations;
 }
 
+export function isGovernanceOnlyPullRequest(branch, changedFiles) {
+  const governanceBranch = /^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(branch ?? '');
+  return (
+    governanceBranch &&
+    changedFiles.length > 0 &&
+    changedFiles.every((file) =>
+      GOVERNANCE_ALLOWED_PATHS.some((allowed) => isPathInside(file, allowed)),
+    )
+  );
+}
+
+export function taskBranchFor(task) {
+  const cardName = path.posix.basename(task.source, '.md').toLowerCase().replaceAll('_', '-');
+  return `work/${cardName}`;
+}
+
 export function validateActiveState(state, taskIndex) {
   const errors = [];
   const activeStatusMap = new Map([
@@ -47,29 +84,46 @@ export function validateActiveState(state, taskIndex) {
     ['IMPLEMENTED', 'Implemented'],
   ]);
   if (state.schemaVersion !== 1) errors.push('Unsupported ACTIVE_TASK schemaVersion');
-  const authorizationModes = new Set(['continuous-mainline', 'implementation-mainline']);
+  const authorizationModes = new Set([
+    'continuous-mainline',
+    'implementation-mainline',
+    'implementation-pr',
+  ]);
   if (!authorizationModes.has(state.authorization?.mode)) {
     errors.push('Unsupported task authorization mode');
   }
-  if (
-    state.authorization?.mode === 'implementation-mainline' &&
-    state.authorization?.deferVerificationUntilBatch !== true
-  ) {
+  const implementationFirst = ['implementation-mainline', 'implementation-pr'].includes(
+    state.authorization?.mode,
+  );
+  if (implementationFirst && state.authorization?.deferVerificationUntilBatch !== true) {
     errors.push('Implementation-first execution must explicitly defer verification until batch');
   }
-  if (
-    state.authorization?.mode === 'implementation-mainline' &&
-    !Array.isArray(state.deferredVerification)
-  ) {
+  if (implementationFirst && !Array.isArray(state.deferredVerification)) {
     errors.push('Implementation-first execution requires a deferredVerification ledger');
   }
-  if (state.authorization?.branch !== 'main') errors.push('Authorized work branch must be main');
+
+  const pullRequestOnly = state.authorization?.mode === 'implementation-pr';
+  if (state.authorization?.branch !== 'main') {
+    errors.push('Authorized integration branch must be main');
+  }
+  if (pullRequestOnly && state.authorization?.allowDirectMainCommits !== false) {
+    errors.push('PR-only execution must disable direct main commits');
+  }
 
   const active = state.activeTask;
   if (!active || !activeStatusMap.has(active.status)) {
     errors.push('Exactly one IN_PROGRESS or IMPLEMENTED task is required');
   }
   if (!active?.id || !/^M\d-\d{2}$/.test(active.id)) errors.push('Invalid active task id');
+  if (pullRequestOnly) {
+    if (!active?.branch || active.branch === 'main') {
+      errors.push('PR-only execution requires a non-main task branch');
+    } else if (
+      !/^(?:work|feat|fix|refactor|test|docs|chore)\/[a-z0-9._/-]+$/u.test(active.branch)
+    ) {
+      errors.push('PR-only task branch must use an approved work prefix');
+    }
+  }
 
   const indexed = active?.id ? taskIndex.get(active.id) : undefined;
   if (!indexed) errors.push(`Active task ${active?.id ?? '<missing>'} is absent from TASK_INDEX`);
@@ -123,8 +177,9 @@ export function dependenciesSatisfied(task, taskIndex, options = {}) {
 
   for (const stage of stageNumbers) {
     const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
-    if (stageTasks.length === 0 || stageTasks.some(({ status }) => !dependencyReady(status)))
+    if (stageTasks.length === 0 || stageTasks.some(({ status }) => !dependencyReady(status))) {
       return false;
+    }
   }
 
   return true;
@@ -144,14 +199,16 @@ export function replaceTaskIndexStatus(markdown, taskId, nextStatus) {
 
 export function verificationForTask(card) {
   const commands = ['pnpm lint', 'pnpm typecheck', 'pnpm test'];
-  if (/数据库|SQLite|Migration/i.test(card))
+  if (/数据库|SQLite|Migration/i.test(card)) {
     commands.push('pnpm test:migration', 'pnpm test:integration');
+  }
   if (/Electron|IPC|路径|安全/i.test(card)) commands.push('pnpm test:security', 'pnpm test:e2e');
   if (/Editor|Candidate|锁定|Revision|Patch/i.test(card)) {
     commands.push('pnpm test:unit', 'pnpm test:integration', 'pnpm test:e2e');
   }
-  if (/Prompt|Provider|约束包/i.test(card))
+  if (/Prompt|Provider|约束包/i.test(card)) {
     commands.push('pnpm test:eval', 'pnpm test:integration');
+  }
   if (/性能|DPI|高分屏/i.test(card)) commands.push('pnpm test:perf', 'pnpm test:e2e');
   return [...new Set(commands)];
 }
@@ -159,10 +216,17 @@ export function verificationForTask(card) {
 export function renderActiveTask(state) {
   const task = state.activeTask;
   const list = (values) => values.map((value) => `  - ${value}`).join('\n');
-  const continuationRule =
-    state.authorization.mode === 'implementation-mainline'
-      ? '当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。'
-      : '当前作者已预授权在 `main` 上连续执行。每次仍只允许一张任务卡；当前任务达到 Verified、证据完整且依赖门通过后，可自动激活下一张依赖已满足的任务。失败时必须转为 Blocked，禁止跳过失败或伪造通过。';
+  let continuationRule;
+  if (state.authorization.mode === 'implementation-pr') {
+    continuationRule =
+      '当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。';
+  } else if (state.authorization.mode === 'implementation-mainline') {
+    continuationRule =
+      '当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。';
+  } else {
+    continuationRule =
+      '当前作者已预授权在 `main` 上连续执行。每次仍只允许一张任务卡；当前任务达到 Verified、证据完整且依赖门通过后，可自动激活下一张依赖已满足的任务。失败时必须转为 Blocked，禁止跳过失败或伪造通过。';
+  }
   return `# WorldForge 当前活动任务
 
 > 本文件由 \`docs/tasks/ACTIVE_TASK.json\` 生成，请勿手工维护任务字段。

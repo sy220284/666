@@ -10,9 +10,9 @@ IN_PROGRESS
 
 - 任务ID：`M2-01`
 - 唯一任务卡：`docs/tasks/M2/M2-01_LOCK_GUARD.md`
-- 工作分支：`main`
+- 工作分支：`work/m2-01-lock-guard`
 - 开始时间：`2026-07-17`
-- 授权模式：`implementation-mainline`
+- 授权模式：`implementation-pr`
 - 授权人：`author`
 
 ## 执行范围
@@ -38,6 +38,8 @@ allowed_paths:
   - docs/test-evidence/M2-01/
   - docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md
   - docs/tasks/M1_TASKS.md
+  - scripts/task-control-lib.mjs
+  - docs/process/DEVELOPMENT_AUTOMATION.md
 forbidden_paths:
 
 required_docs:
@@ -60,4 +62,4 @@ verification:
 
 ## 连续执行规则
 
-当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。
+当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。

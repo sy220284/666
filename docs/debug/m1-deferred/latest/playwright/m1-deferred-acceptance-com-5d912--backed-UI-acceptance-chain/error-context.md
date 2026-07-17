@@ -17,8 +17,8 @@ Error: expect(locator).toContainText(expected) failed
 Locator: locator('[data-draft-content]').locator('[data-block-type="paragraph"]')
 Expected substring: "雨落在旧站台。"
 Error: strict mode violation: locator('[data-draft-content]').locator('[data-block-type="paragraph"]') resolved to 2 elements:
-    1) <p data-locked="false" data-source="manual" data-block-type="paragraph" data-client-block-id="cf0d253d-06b1-4afc-9479-6838d896ac65" data-logical-block-id="cf0d253d-06b1-4afc-9479-6838d896ac65" data-content-hash="1c22b1eb95cb390db98b92fa4647d5fe0b46b49686a228dfe0822ef5899fa5ac">雨落在旧站台。</p> aka getByText('雨落在旧站台。')
-    2) <p data-locked="false" data-source="manual" data-block-type="paragraph" data-client-block-id="84be9470-6545-47f7-8a58-c0f242127dde" data-logical-block-id="84be9470-6545-47f7-8a58-c0f242127dde" data-content-hash="84ae9c309a980e32d8475b76738e09de3ecf1dd36aa156e23dab53cf37c1e462">…</p> aka getByRole('paragraph').filter({ hasText: /^$/ })
+    1) <p data-locked="false" data-source="manual" data-block-type="paragraph" data-client-block-id="5900492f-7601-4071-b0a1-0027b39bf43d" data-logical-block-id="5900492f-7601-4071-b0a1-0027b39bf43d" data-content-hash="1c22b1eb95cb390db98b92fa4647d5fe0b46b49686a228dfe0822ef5899fa5ac">雨落在旧站台。</p> aka getByText('雨落在旧站台。')
+    2) <p data-locked="false" data-source="manual" data-block-type="paragraph" data-client-block-id="cb8f7885-4bc7-4420-8386-2da7fafa47ae" data-logical-block-id="cb8f7885-4bc7-4420-8386-2da7fafa47ae" data-content-hash="84ae9c309a980e32d8475b76738e09de3ecf1dd36aa156e23dab53cf37c1e462">…</p> aka getByRole('paragraph').filter({ hasText: /^$/ })
 
 Call log:
   - Expect "toContainText" with timeout 5000ms

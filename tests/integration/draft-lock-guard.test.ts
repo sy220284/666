@@ -162,6 +162,40 @@ describe('M2-01 Core LockGuard', () => {
     }
   });
 
+  it('allows content update followed by lock in one atomic Patch', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, chapter, draft } = await createOpenedDraft(harness);
+      const initial = draft.blocks[0]!;
+      const updatedAndLocked = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: draft.revision,
+        operations: [
+          {
+            type: 'update',
+            logicalBlockId: initial.logicalBlockId,
+            expectedHash: initial.contentHash!,
+            content: '修改后立即锁定',
+          },
+          {
+            type: 'set-lock',
+            logicalBlockId: initial.logicalBlockId,
+            expectedHash: initial.contentHash!,
+            locked: true,
+          },
+        ],
+      });
+      expect(updatedAndLocked.blocks[0]).toMatchObject({
+        text: '修改后立即锁定',
+        locked: true,
+      });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('blocks direct snapshot deletion, modification and movement of locked blocks', async () => {
     const harness = await createHarness();
     try {

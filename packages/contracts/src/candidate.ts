@@ -52,6 +52,7 @@ function validateCandidateBlock(
 export const CandidateBlockInputSchema = z
   .strictObject({
     logicalBlockId: DraftEntityIdSchema.nullable().optional(),
+    sourceLogicalBlockIds: z.array(DraftEntityIdSchema).max(50_000).optional(),
     blockType: DraftBlockTypeSchema,
     text: DraftBlockTextSchema,
     attributes: DraftBlockAttributesSchema.default({}),
@@ -64,6 +65,7 @@ export const CandidateBlockSchema = z
   .strictObject({
     candidateBlockId: DraftEntityIdSchema,
     logicalBlockId: DraftEntityIdSchema,
+    sourceLogicalBlockIds: z.array(DraftEntityIdSchema).max(50_000).optional(),
     orderKey: DraftOrderKeySchema,
     blockType: DraftBlockTypeSchema,
     text: DraftBlockTextSchema,

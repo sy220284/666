@@ -29,9 +29,14 @@ async function main() {
       missing.push(relative);
     }
   }
-  if (missing.length > 0) throw new Error(`${task.id} evidence is incomplete: ${missing.join(', ')}`);
+  if (missing.length > 0)
+    throw new Error(`${task.id} evidence is incomplete: ${missing.join(', ')}`);
   const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
-  if (manifest.taskId !== task.id || !Array.isArray(manifest.files) || manifest.files.length === 0) {
+  if (
+    manifest.taskId !== task.id ||
+    !Array.isArray(manifest.files) ||
+    manifest.files.length === 0
+  ) {
     throw new Error(`${task.id} evidence manifest is invalid`);
   }
   console.log(`Evidence gate passed for ${task.id}.`);

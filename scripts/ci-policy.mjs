@@ -65,7 +65,8 @@ async function main() {
     }
     for (const match of source.matchAll(/uses:\s*([^@\s]+)@([^\s#]+)/gu)) {
       const expected = actionVersions.get(match[1]);
-      if (expected && match[2] !== expected) errors.push(`${file}: ${match[1]} must use ${expected}`);
+      if (expected && match[2] !== expected)
+        errors.push(`${file}: ${match[1]} must use ${expected}`);
     }
     const checkouts = count(source, /uses:\s*actions\/checkout@v6/gu);
     const safeCheckouts = count(source, /persist-credentials:\s*false/gu);
@@ -74,8 +75,14 @@ async function main() {
 
   const tokenRequirements = new Map([
     ['pr-policy.yml', ['taskctl.mjs pr-policy', 'ci-policy.mjs']],
-    ['task-governance.yml', ['taskctl.mjs validate', 'taskctl.mjs preflight', 'taskctl.mjs verify']],
-    ['quality-core.yml', ['static-checks:', 'tests:', 'desktop-e2e:', 'build:', 'package-smoke:', 'quality:']],
+    [
+      'task-governance.yml',
+      ['taskctl.mjs validate', 'taskctl.mjs preflight', 'taskctl.mjs verify'],
+    ],
+    [
+      'quality-core.yml',
+      ['static-checks:', 'tests:', 'desktop-e2e:', 'build:', 'package-smoke:', 'quality:'],
+    ],
     ['security.yml', ['pnpm audit', 'scan-secrets.mjs', 'pnpm test:security', 'name: security']],
     ['performance.yml', ['pnpm test:perf', 'name: performance']],
     ['evidence.yml', ['evidence-policy.mjs', 'name: evidence']],
@@ -83,12 +90,14 @@ async function main() {
   ]);
   for (const [file, tokens] of tokenRequirements) {
     const source = workflows.get(file) ?? '';
-    for (const token of tokens) if (!source.includes(token)) errors.push(`${file}: missing ${token}`);
+    for (const token of tokens)
+      if (!source.includes(token)) errors.push(`${file}: missing ${token}`);
   }
 
   const release = workflows.get('release.yml') ?? '';
   if (!release.includes('workflow_dispatch:')) errors.push('release.yml must be manual-only');
-  if (!release.includes('environment: release')) errors.push('release publish must use environment: release');
+  if (!release.includes('environment: release'))
+    errors.push('release publish must use environment: release');
   const buildIndex = release.indexOf('pnpm build');
   const packageIndex = release.indexOf('pnpm package --');
   if (buildIndex < 0 || packageIndex < 0 || buildIndex > packageIndex) {

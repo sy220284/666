@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.REPO_ADMIN_TOKEN || process.env.GITHUB_TOKEN;
-const output = path.resolve(process.env.RULESET_REPORT ?? 'artifacts/repository-governance/report.json');
+const output = path.resolve(
+  process.env.RULESET_REPORT ?? 'artifacts/repository-governance/report.json',
+);
 
 async function api(pathname, options = {}) {
   const response = await fetch(`https://api.github.com${pathname}`, {
@@ -80,18 +82,29 @@ async function main() {
     if (!process.env.REPO_ADMIN_TOKEN) {
       throw new Error('REPO_ADMIN_TOKEN is required to apply repository rulesets');
     }
-    await api(existing ? `/repos/${owner}/${repo}/rulesets/${existing.id}` : `/repos/${owner}/${repo}/rulesets`, {
-      method: existing ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(desired),
-    });
+    await api(
+      existing
+        ? `/repos/${owner}/${repo}/rulesets/${existing.id}`
+        : `/repos/${owner}/${repo}/rulesets`,
+      {
+        method: existing ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(desired),
+      },
+    );
   }
 
   const refreshed = await api(`/repos/${owner}/${repo}/rulesets?includes_parents=false`);
   const active = refreshed.find((ruleset) => ruleset.name === desired.name);
-  const compliant = Boolean(active && active.enforcement === 'active' && checkContexts(active, desired));
+  const compliant = Boolean(
+    active && active.enforcement === 'active' && checkContexts(active, desired),
+  );
   await mkdir(path.dirname(output), { recursive: true });
-  await writeFile(output, `${JSON.stringify({ compliant, desired: desired.name, active: active ?? null }, null, 2)}\n`, 'utf8');
+  await writeFile(
+    output,
+    `${JSON.stringify({ compliant, desired: desired.name, active: active ?? null }, null, 2)}\n`,
+    'utf8',
+  );
   if (!compliant) {
     const message = 'Native main ruleset is missing or drifted.';
     if (process.env.RULESET_STRICT === 'true') throw new Error(message);

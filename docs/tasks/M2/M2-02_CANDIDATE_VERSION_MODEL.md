@@ -50,6 +50,7 @@ M1-07、M2-01
 - `packages/testkit/`
 - `tests/unit/`
 - `tests/integration/`
+- `tests/migration/`
 - `tests/e2e/`
 - `docs/database/DATABASE_SCHEMA.md`
 

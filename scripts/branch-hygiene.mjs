@@ -8,9 +8,11 @@ const repository = process.env.GITHUB_REPOSITORY;
 const outputDirectory = path.resolve(
   process.env.BRANCH_HYGIENE_OUTPUT ?? 'artifacts/branch-hygiene',
 );
+const githubFetch = globalThis.fetch;
 
 async function github(pathname) {
-  const response = await fetch(`https://api.github.com${pathname}`, {
+  if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
+  const response = await githubFetch(`https://api.github.com${pathname}`, {
     headers: {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${token}`,

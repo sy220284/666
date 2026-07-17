@@ -22,11 +22,6 @@ replace(
 )
 replace(
     'packages/core-service/src/import-export.ts',
-    "        confidence: 'medium',\n        candidates: ['gb18030', 'utf-8'],\n",
-    "        confidence: 'low',\n        candidates: ['gb18030', 'utf-8'],\n",
-)
-replace(
-    'packages/core-service/src/import-export.ts',
     "          const versionBlocks: ImportPlanBlock[] = [];\n          chapter.blocks.forEach((block, blockIndex) => {\n            const logicalBlockId = this.#idFactory();\n            const hash = blockHash(block);\n            const orderKey = BigInt(blockIndex + 1) * ORDER_STEP;\n            insertDraftBlock.run(\n              this.#idFactory(),\n              draftId,\n              logicalBlockId,\n              orderKey,\n              block.blockType,\n              block.text,\n              hash,\n            );\n            insertVersionBlock.run(\n              versionId,\n              logicalBlockId,\n              orderKey,\n              block.blockType,\n              block.text,\n              hash,\n            );\n            versionBlocks.push(block);\n          });\n          insertVersion.run(\n            versionId,\n            chapterId,\n            draftId,\n            wordCount(versionBlocks),\n            versionHash(versionBlocks),\n            now,\n          );\n",
     "          const versionBlocks: ImportedVersionBlock[] = chapter.blocks.map(\n            (block, blockIndex) => {\n              const logicalBlockId = this.#idFactory();\n              const contentHash = blockHash(block);\n              const orderKey = BigInt(blockIndex + 1) * ORDER_STEP;\n              insertDraftBlock.run(\n                this.#idFactory(),\n                draftId,\n                logicalBlockId,\n                orderKey,\n                block.blockType,\n                block.text,\n                contentHash,\n              );\n              return {\n                logicalBlockId,\n                orderKey: String(orderKey),\n                blockType: block.blockType,\n                text: block.text,\n                attributes: {},\n                source: 'imported',\n                locked: false,\n                contentHash,\n              };\n            },\n          );\n          insertVersion.run(\n            versionId,\n            chapterId,\n            draftId,\n            wordCount(chapter.blocks),\n            versionHash(versionBlocks),\n            now,\n          );\n          for (const block of versionBlocks) {\n            insertVersionBlock.run(\n              versionId,\n              block.logicalBlockId,\n              BigInt(block.orderKey),\n              block.blockType,\n              block.text,\n              block.contentHash,\n            );\n          }\n",
 )
@@ -41,10 +36,113 @@ contracts.write_text(contracts_source, encoding='utf-8')
 
 core = Path('packages/core-service/src/import-export.ts')
 core_source = core.read_text(encoding='utf-8')
+core_source = core_source.replace(
+    "import path from 'node:path';\n",
+    "import path from 'node:path';\n\nimport * as iconv from 'iconv-lite';\n",
+    1,
+)
 core_source = core_source.replace('let paragraph: string[] = [];', 'const paragraph: string[] = [];', 2)
 core_source = core_source.replace(
     '/[<>:\"/\\\\|?*\\u0000-\\u001f]/u.test(base)',
     '/[<>:\"/\\\\|?*]/u.test(base) ||\n    Array.from(base).some((character) => (character.codePointAt(0) ?? 0) < 32)',
+)
+decode_start = core_source.index('function decode(buffer: Buffer, encoding: DetectedTextEncoding): string {')
+decode_end = core_source.index('\nfunction detectEncoding', decode_start)
+decode_function = r"""function decode(buffer: Buffer, encoding: DetectedTextEncoding): string {
+  try {
+    const decoded =
+      encoding === 'gb18030'
+        ? iconv.decode(buffer, 'gb18030')
+        : new TextDecoder(encoding, { fatal: true }).decode(buffer);
+    if (decoded.includes('\uFFFD')) {
+      throw new Error(`Invalid byte sequence for ${encoding}.`);
+    }
+    return decoded
+      .replace(/^\uFEFF/u, '')
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n');
+  } catch (error) {
+    throw new ImportExportServiceError(
+      'IMPORT_ENCODING_UNCERTAIN',
+      `The file could not be decoded as ${encoding}.`,
+      { cause: error },
+    );
+  }
+}
+"""
+core_source = core_source[:decode_start] + decode_function + core_source[decode_end:]
+detect_start = core_source.index('function detectEncoding(buffer: Buffer): {')
+detect_end = core_source.index('\nfunction flushParagraph', detect_start)
+detect_function = r"""function detectEncoding(buffer: Buffer): {
+  readonly encoding: DetectedTextEncoding;
+  readonly confidence: ImportPlan['confidence'];
+  readonly candidates: DetectedTextEncoding[];
+} {
+  if (buffer.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf]))) {
+    return { encoding: 'utf-8', confidence: 'high', candidates: ['utf-8'] };
+  }
+  if (buffer.subarray(0, 2).equals(Buffer.from([0xff, 0xfe]))) {
+    return { encoding: 'utf-16le', confidence: 'high', candidates: ['utf-16le'] };
+  }
+  if (buffer.subarray(0, 2).equals(Buffer.from([0xfe, 0xff]))) {
+    return { encoding: 'utf-16be', confidence: 'high', candidates: ['utf-16be'] };
+  }
+  const sample = buffer.subarray(0, Math.min(buffer.length, 4096));
+  let evenZero = 0;
+  let oddZero = 0;
+  for (let index = 0; index < sample.length; index += 1) {
+    if (sample[index] !== 0) continue;
+    if (index % 2 === 0) evenZero += 1;
+    else oddZero += 1;
+  }
+  if (oddZero > sample.length / 8 && oddZero > evenZero * 4) {
+    return {
+      encoding: 'utf-16le',
+      confidence: 'medium',
+      candidates: ['utf-16le', 'utf-8', 'gb18030'],
+    };
+  }
+  if (evenZero > sample.length / 8 && evenZero > oddZero * 4) {
+    return {
+      encoding: 'utf-16be',
+      confidence: 'medium',
+      candidates: ['utf-16be', 'utf-8', 'gb18030'],
+    };
+  }
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    return { encoding: 'utf-8', confidence: 'high', candidates: ['utf-8', 'gb18030'] };
+  } catch {
+    const decoded = iconv.decode(buffer, 'gb18030');
+    if (!decoded.includes('\uFFFD')) {
+      return {
+        encoding: 'gb18030',
+        confidence: 'low',
+        candidates: ['gb18030', 'utf-8'],
+      };
+    }
+    throw new ImportExportServiceError(
+      'IMPORT_ENCODING_UNCERTAIN',
+      'The file encoding could not be identified safely.',
+    );
+  }
+}
+"""
+core_source = core_source[:detect_start] + detect_function + core_source[detect_end:]
+core_source = core_source.replace(
+    ") VALUES(?, ?, ?, ?, 'writing', NULL, NULL, ?, NULL, NULL)`,",
+    ") VALUES(?, ?, ?, ?, 'writing', NULL, NULL, NULL, NULL, NULL)`,",
+    1,
+)
+core_source = core_source.replace(
+    "        const insertDraft = database.prepare(\n          `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)\n           VALUES(?, ?, 'active', 0, ?, ?)`,\n        );\n",
+    "        const insertDraft = database.prepare(\n          `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)\n           VALUES(?, ?, 'active', 0, ?, ?)`,\n        );\n        const activateDraft = database.prepare(\n          'UPDATE chapters SET active_draft_id = ? WHERE id = ?',\n        );\n",
+    1,
+)
+core_source = core_source.replace(
+    "          insertChapter.run(\n            chapterId,\n            volumeId,\n            chapter.title,\n            BigInt(chapterIndex + 1) * ORDER_STEP,\n            draftId,\n          );\n          insertDraft.run(draftId, chapterId, now, now);\n",
+    "          insertChapter.run(\n            chapterId,\n            volumeId,\n            chapter.title,\n            BigInt(chapterIndex + 1) * ORDER_STEP,\n          );\n          insertDraft.run(draftId, chapterId, now, now);\n          activateDraft.run(draftId, chapterId);\n",
+    1,
 )
 core.write_text(core_source, encoding='utf-8')
 

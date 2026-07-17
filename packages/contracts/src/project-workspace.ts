@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { ErrorCodeSchema } from './error-codes.js';
+import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate.js';
 import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
-import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
+import { ErrorCodeSchema } from './error-codes.js';
 import { CoreRecoveryOperationSchema, CoreRecoveryResultSchema } from './recovery.js';
 import { CoreTextIoOperationSchema, CoreTextIoResultSchema } from './import-export.js';
 import {
@@ -10,6 +10,7 @@ import {
   CoreProjectStructureResultSchema,
 } from './project-structure.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
+import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
   getActive: 'worldforge:project:get-active',
@@ -173,6 +174,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreProjectWorkspaceOperationSchema,
   CoreProjectStructureOperationSchema,
   CoreDraftOperationSchema,
+  CoreCandidateOperationSchema,
   CoreVersionOperationSchema,
   CoreRecoveryOperationSchema,
   CoreTextIoOperationSchema,
@@ -206,6 +208,7 @@ export const CoreProjectResultSchema = z.union([
   CoreProjectWorkspaceResultSchema,
   CoreProjectStructureResultSchema,
   CoreDraftResultSchema,
+  CoreCandidateResultSchema,
   CoreVersionResultSchema,
   CoreRecoveryResultSchema,
   CoreTextIoResultSchema,

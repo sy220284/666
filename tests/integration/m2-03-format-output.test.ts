@@ -1,18 +1,16 @@
 import { readFile } from 'node:fs/promises';
 
-import { format, resolveConfig } from 'prettier';
 import { describe, expect, it } from 'vitest';
 
-const targets = ['apps/desktop/preload/src/index.ts', 'apps/desktop/renderer/src/global.d.ts'] as const;
+describe('M2-03 Candidate bridge surface', () => {
+  it('keeps Candidate commands on the typed preload bridge', async () => {
+    const preload = await readFile('apps/desktop/preload/src/index.ts', 'utf8');
+    const rendererTypes = await readFile('apps/desktop/renderer/src/global.d.ts', 'utf8');
 
-describe('M2-03 bridge formatting', () => {
-  it('emits repository-configured formatting', async () => {
-    const config = (await resolveConfig(process.cwd())) ?? {};
-    for (const target of targets) {
-      const source = await readFile(target, 'utf8');
-      const formatted = await format(source, { ...config, filepath: target });
-      console.log(`M203_FORMAT:${target}:${Buffer.from(formatted, 'utf8').toString('base64')}`);
-      expect(formatted.length).toBeGreaterThan(0);
-    }
+    expect(preload).toContain('CANDIDATE_IPC_CHANNELS.createFixtureCandidate');
+    expect(preload).toContain('CandidateCreateFixtureCommandSchema.parse');
+    expect(rendererTypes).toContain('RendererCandidateBridge');
+    expect(rendererTypes).not.toContain('ipcRenderer');
+    expect(rendererTypes).not.toContain('invoke(channel');
   });
 });

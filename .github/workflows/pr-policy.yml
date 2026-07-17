@@ -1,0 +1,39 @@
+name: PR Policy
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
+      TASK_EVENT_NAME: pull_request
+      TASK_PR_HEAD_REF: ${{ github.head_ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Ensure comparison base is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$TASK_BASE_REF"
+          git cat-file -e "$TASK_BASE_REF^{commit}"
+      - name: Validate real PR branch
+        run: node scripts/taskctl.mjs pr-policy
+      - name: Validate permanent CI policy
+        run: node scripts/ci-policy.mjs

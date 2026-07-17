@@ -4,9 +4,15 @@ on:
   schedule:
     - cron: '0 2 * * 0'
   workflow_dispatch:
+    inputs:
+      apply:
+        description: Delete only branches classified as safely obsolete
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 
 concurrency:
@@ -16,7 +22,7 @@ concurrency:
 jobs:
   branch-hygiene:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
@@ -24,10 +30,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Audit branches without deleting them
+      - name: Classify branches and safely delete obsolete branches
         env:
           GITHUB_TOKEN: ${{ github.token }}
           BRANCH_HYGIENE_OUTPUT: artifacts/branch-hygiene
+          BRANCH_HYGIENE_APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
         run: node scripts/branch-hygiene.mjs
       - name: Upload branch report
         if: always()

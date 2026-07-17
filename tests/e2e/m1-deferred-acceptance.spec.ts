@@ -148,8 +148,14 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await page.keyboard.press('Enter');
     await page.keyboard.type('“谁在那里？”');
     await page.locator('[data-set-block-type="dialogue"]').click();
+    const dialogueBlock = editor.locator('[data-block-type="dialogue"]');
+    await expect(dialogueBlock).toContainText('谁在那里');
+    await dialogueBlock.click();
     await page.keyboard.press('End');
     await page.locator('[data-insert-separator]').click();
+    await expect(editor.locator('[data-block-type="separator"]')).toHaveCount(1);
+    const trailingParagraph = editor.locator('[data-block-type="paragraph"]').last();
+    await trailingParagraph.click();
     await page.keyboard.type('第二节');
     await page.locator('[data-set-block-type="heading"]').click();
     await expect(blocks).toHaveCount(4);

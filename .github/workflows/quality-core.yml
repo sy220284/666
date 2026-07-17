@@ -78,6 +78,39 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  performance-eval:
+    name: performance-eval
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Run performance and AI protocol baselines
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm test:perf 2>&1 | tee test-results/ci/performance-eval.log
+      - name: Upload performance and eval diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: performance-eval-diagnostics
+          path: |
+            test-results/ci/performance-eval.log
+            test-results/performance/
+          if-no-files-found: warn
+          retention-days: 14
+
   desktop-e2e:
     name: desktop-e2e
     runs-on: ubuntu-24.04
@@ -189,12 +222,13 @@ jobs:
   quality:
     name: quality
     if: always()
-    needs: [static-checks, tests, desktop-e2e, build, package-smoke]
+    needs: [static-checks, tests, performance-eval, desktop-e2e, build, package-smoke]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       STATIC_RESULT: ${{ needs.static-checks.result }}
       TEST_RESULT: ${{ needs.tests.result }}
+      PERFORMANCE_RESULT: ${{ needs.performance-eval.result }}
       E2E_RESULT: ${{ needs.desktop-e2e.result }}
       BUILD_RESULT: ${{ needs.build.result }}
       PACKAGE_RESULT: ${{ needs.package-smoke.result }}
@@ -203,9 +237,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'static=%s\ntests=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
-            "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
-          for result in "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
+          printf 'static=%s\ntests=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
+            "$STATIC_RESULT" "$TEST_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
+          for result in "$STATIC_RESULT" "$TEST_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
             test "$result" = success
           done
           case "$PACKAGE_RESULT" in

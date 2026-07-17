@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M2-01`
-- 唯一任务卡：`docs/tasks/M2/M2-01_LOCK_GUARD.md`
-- 工作分支：`work/m2-01-lock-guard`
+- 任务ID：`M2-02`
+- 唯一任务卡：`docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md`
+- 工作分支：`work/m2-02-candidate-version-model`
 - 开始时间：`2026-07-17`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -19,27 +19,23 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - packages/editor-core/
+  - migrations/project/
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
   - apps/desktop/renderer/
-  - tests/unit/
+  - packages/testkit/
   - tests/integration/
-  - tests/e2e/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M2/M2-01_LOCK_GUARD.md
+  - docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M2-01/
-  - docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md
-  - docs/tasks/M1_TASKS.md
-  - scripts/task-control-lib.mjs
-  - docs/process/DEVELOPMENT_AUTOMATION.md
+  - docs/test-evidence/M2-02/
+  - docs/tasks/M2/M2-01_LOCK_GUARD.md
 forbidden_paths:
 
 required_docs:
@@ -47,9 +43,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/ui/EDITOR_INTERACTION_SPEC.md
-  - docs/decisions/ADR-005-lock-revision-backup.md
-  - docs/contracts/ERROR_CODES.md
+  - docs/decisions/ADR-003-draft-candidate-version.md
+  - docs/decisions/ADR-004-ai-cannot-overwrite-draft.md
+  - docs/database/DATABASE_SCHEMA.md
 verification:
   - pnpm lint
   - pnpm typecheck
@@ -58,6 +54,8 @@ verification:
   - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
+  - pnpm test:unit
+  - pnpm test:eval
 ```
 
 ## 连续执行规则

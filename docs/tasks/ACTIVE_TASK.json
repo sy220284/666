@@ -11,33 +11,29 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M2-01",
+    "id": "M2-02",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M2/M2-01_LOCK_GUARD.md",
-    "branch": "work/m2-01-lock-guard",
+    "source": "docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md",
+    "branch": "work/m2-02-candidate-version-model",
     "startedAt": "2026-07-17",
     "allowedPaths": [
-      "packages/editor-core/",
+      "migrations/project/",
       "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
       "apps/desktop/renderer/",
-      "tests/unit/",
+      "packages/testkit/",
       "tests/integration/",
-      "tests/e2e/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M2/M2-01_LOCK_GUARD.md",
+      "docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M2-01/",
-      "docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md",
-      "docs/tasks/M1_TASKS.md",
-      "scripts/task-control-lib.mjs",
-      "docs/process/DEVELOPMENT_AUTOMATION.md"
+      "docs/test-evidence/M2-02/",
+      "docs/tasks/M2/M2-01_LOCK_GUARD.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -45,9 +41,9 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/ui/EDITOR_INTERACTION_SPEC.md",
-      "docs/decisions/ADR-005-lock-revision-backup.md",
-      "docs/contracts/ERROR_CODES.md"
+      "docs/decisions/ADR-003-draft-candidate-version.md",
+      "docs/decisions/ADR-004-ai-cannot-overwrite-draft.md",
+      "docs/database/DATABASE_SCHEMA.md"
     ],
     "verification": [
       "pnpm lint",
@@ -56,7 +52,9 @@
       "pnpm test:migration",
       "pnpm test:integration",
       "pnpm test:security",
-      "pnpm test:e2e"
+      "pnpm test:e2e",
+      "pnpm test:unit",
+      "pnpm test:eval"
     ]
   },
   "lastVerifiedTask": {
@@ -64,10 +62,22 @@
     "commit": "1d83d3f158d0498355f90689ad25d73cf7e3be11",
     "verifiedAt": "2026-07-17T04:49:48.588181Z"
   },
-  "deferredVerification": [],
+  "deferredVerification": [
+    {
+      "id": "M2-01",
+      "implementationCommit": "08fb04a1c228bae96de712f52a09b0e89ac6fbfb",
+      "deferredAt": "2026-07-17T09:50:25.275Z",
+      "pending": [
+        "standard evidence package and screenshots",
+        "manual acceptance and exhaustive quality matrix",
+        "final traceability verification status",
+        "Verified closure"
+      ]
+    }
+  ],
   "lastImplementedTask": {
-    "id": "M1-09",
-    "commit": "1d83d3f158d0498355f90689ad25d73cf7e3be11",
-    "implementedAt": "2026-07-17T04:49:48.588181Z"
+    "id": "M2-01",
+    "commit": "08fb04a1c228bae96de712f52a09b0e89ac6fbfb",
+    "implementedAt": "2026-07-17T09:50:25.275Z"
   }
 }

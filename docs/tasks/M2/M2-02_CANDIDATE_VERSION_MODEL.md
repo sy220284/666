@@ -1,6 +1,6 @@
 # M2-02 Candidate与完整Version模型
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M2 编辑安全与版本核心  
 > 优先级：P0  
 > 建议分支：`feat/m2-candidate-version-model`

@@ -112,7 +112,7 @@ test('previews, restructures, imports and atomically exports selected Versions',
     await expect(page.locator('[data-text-io-dialog]')).toBeVisible();
     await page.locator('[data-preview-import]').click();
     await expect(page.locator('[data-import-plan-chapter]')).toHaveCount(2);
-    await expect(page.locator('[data-text-io-status]')).toContainText('UTF-8');
+    await expect(page.locator('[data-text-io-status]')).toContainText('utf-8');
 
     const previewCounts = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;

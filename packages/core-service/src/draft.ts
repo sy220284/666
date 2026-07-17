@@ -354,7 +354,9 @@ export function initializeChapterDraft(
       JSON.stringify(initial.attributes),
       initial.contentHash,
     );
-  connection.prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?').run(draftId, chapterId);
+  connection
+    .prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?')
+    .run(draftId, chapterId);
   return draftId;
 }
 
@@ -502,7 +504,8 @@ function applyOperation(
     case 'set-lock': {
       const index = blockIndex(blocks, operation.logicalBlockId);
       const current = blocks[index]!;
-      assertExpectedHash(current, operation.expectedHash);
+      const followsSamePatchUpdate = operation.locked && current.revision === committedRevision;
+      if (!followsSamePatchUpdate) assertExpectedHash(current, operation.expectedHash);
       blocks[index] = { ...current, locked: operation.locked, revision: committedRevision };
       return;
     }

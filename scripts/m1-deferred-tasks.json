@@ -1,0 +1,104 @@
+{
+  "M1-01": {
+    "title": "app.sqlite、应用设置与最近项目",
+    "implementationCommit": "dc3911c2c8fdedaedcd4074f7aeb6025926c22a4",
+    "summary": "应用级设置、窗口偏好与最近项目已在 app.sqlite 中持久化；首页仅读取应用级登记，不缓存项目正文。",
+    "screenshots": ["m1-01-settings-recent.png"],
+    "acceptance": [
+      ["P0-009", "真实UI创建项目后，最近项目在重启后恢复，应用设置持久化。"],
+      ["APP-DATA-BOUNDARY", "app.sqlite 不包含 Draft、Candidate、Version 或正文业务表。"],
+      ["RECENT-PROJECTS", "路径缺失、重新定位、移除和排序路径由Integration/E2E覆盖。"]
+    ],
+    "risks": ["完整主题视觉与设置中心属于M7任务，不是M1-01遗留缺陷。"]
+  },
+  "M1-02": {
+    "title": "项目工作空间、路径边界与只读打开",
+    "implementationCommit": "ee2dbf6f99c2d6611935199caa5435c35f89f643",
+    "summary": "项目创建、打开、关闭、移动、路径归属校验和异常只读打开形成完整Core与桌面UI闭环。",
+    "screenshots": ["m1-02-project-workspace.png", "m1-02-read-only.png"],
+    "acceptance": [
+      ["P0-008", "跨项目ID、路径越界和符号链接逃逸被安全测试拒绝。"],
+      ["P0-009", "工作空间、manifest、project.sqlite、首卷章和活动Draft完整。"],
+      ["P0-010", "项目移动校验后更新路径，失败路径保留原项目。"],
+      ["P0-011", "高版本或完整性异常项目只读打开，写命令被阻止。"]
+    ],
+    "risks": ["完整备份保留与空间清理策略属于M6-06，不在本任务范围。"]
+  },
+  "M1-03": {
+    "title": "卷与章节基础生命周期",
+    "implementationCommit": "4084a84ce585a7b5c810d33aaccf730713db6258",
+    "summary": "Volume与Chapter支持创建、重命名、排序、跨卷移动、状态/目标字数、软删除和恢复，重启后顺序稳定。",
+    "screenshots": ["m1-03-volume-chapter-trash.png"],
+    "acceptance": [
+      ["P0-034", "卷章可创建、排序、移动和软删除。"],
+      ["P0-056-FOUNDATION", "TrashEntry可恢复原位置，冲突时安全重排。"],
+      ["ORDER-KEY", "64位间隔键和局部事务重排通过Migration与Integration测试。"]
+    ],
+    "risks": ["拆章、并章、跨章正文移动属于M2-04与M3-02。"]
+  },
+  "M1-04": {
+    "title": "Draft、Tiptap与中文输入",
+    "implementationCommit": "8719d4f3a477235e5bf65eba9e345a9169e9359e",
+    "summary": "DraftBlock作为正文真源，编辑器支持四种块、中文composition、拆分合并、粘贴清理和重启重建。",
+    "screenshots": ["m1-04-chinese-block-editor.png"],
+    "acceptance": [
+      ["P0-013", "拼音/五笔composition期间禁止破坏性提交，不丢字或重复。"],
+      ["P0-015", "网页脚本、样式、SVG和隐藏内容被清理，纯文本保留。"],
+      ["DRAFT-REBUILD", "关闭重开后由DraftBlock完整重建编辑器正文。"],
+      ["BLOCK-MODEL", "paragraph/dialogue/heading/separator与logicalBlockId规则通过。"]
+    ],
+    "risks": ["锁定块和Candidate编辑隔离分别属于M2-01与M2-02。"]
+  },
+  "M1-05": {
+    "title": "Block Patch、内容Hash与Revision",
+    "implementationCommit": "5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4",
+    "summary": "正文写入统一经过strict Block Patch、baseRevision、expectedHash和单事务提交；失败整批回滚。",
+    "screenshots": ["m1-05-patch-revision.png"],
+    "acceptance": [
+      ["P0-018", "旧Revision和Hash冲突被拒绝，不发生静默覆盖。"],
+      ["P0-019", "insert/update/delete/move按序在一次事务提交，Revision只增加1。"],
+      ["PATCH-ROLLBACK", "非法顺序、部分失败、重复requestId和故障注入无半提交。"],
+      ["QUALITY-GATE", "静态、Unit、Integration、Migration、Security、E2E和Build全量通过。"]
+    ],
+    "risks": ["锁定块Patch保护和Candidate采用将在M2/M5复用本任务唯一写入口。"]
+  },
+  "M1-06": {
+    "title": "自动保存、字数与当前章查找",
+    "implementationCommit": "c95d6b38fdd49c4418d42c64c95b9c91c43e3d4a",
+    "summary": "800ms自动保存、composition暂停、强制flush、统一字数统计和当前章查找替换均可离线使用。",
+    "screenshots": ["m1-06-autosave-stats-find.png"],
+    "acceptance": [
+      ["P0-013", "composition期间自动保存暂停，结束后恢复。"],
+      ["P0-014", "自动保存合并并发本地修改，关闭重开正文一致，事务P95达标。"],
+      ["P0-016", "字符、纯文字、段落和目标进度使用统一算法。"],
+      ["P0-045", "当前章查找与安全替换符合普通编辑器预期。"]
+    ],
+    "risks": ["全项目FTS与批量替换属于M4-01和M6-03。"]
+  },
+  "M1-07": {
+    "title": "手动Version、定稿与历史恢复",
+    "implementationCommit": "56f55d8f5d08c35fbff11360fe2ce46464193d98",
+    "summary": "作者可创建不可变Version、设置定稿、只读查看并恢复为新Draft；历史Version不被修改。",
+    "screenshots": ["m1-07-version-history.png"],
+    "acceptance": [
+      ["P0-020", "Version与VersionBlock无业务UPDATE/DELETE路径，恢复生成新Draft。"],
+      ["P0-021-ISOLATION", "M1阶段不存在Candidate直写Draft路径，版本创建仅读取已提交Draft。"],
+      ["P0-050-FOUNDATION", "导出入口只选择明确Version，TXT紧急导出由M1-08验证。"],
+      ["VERSION-PERSISTENCE", "定稿指针、标签和版本列表重启后保持一致。"]
+    ],
+    "risks": ["Candidate完整模型与DOCX导出分别属于M2-02和M6-05。"]
+  },
+  "M1-08": {
+    "title": "基础恢复点、完整性检查与只读恢复",
+    "implementationCommit": "5e6c40ec5b7792c4e48318db65cb69608eaa4374",
+    "summary": "重大操作恢复点使用SQLite Online Backup，登记前完成完整性、外键和Hash验证；恢复始终生成新副本。",
+    "screenshots": ["m1-08-recovery-center.png", "m1-08-readonly-recovery.png"],
+    "acceptance": [
+      ["P0-011", "损坏或高版本数据库停止写入，仍可读取恢复点和Version。"],
+      ["P0-052", "统一createOperationCheckpoint覆盖导入、替换、拆并章和Migration操作类型。"],
+      ["P0-055", "恢复到新目录和新项目ID，原项目不覆盖，失败清理临时副本。"],
+      ["RECOVERY-METADATA", "恢复点文件名、Hash、项目ID和路径边界均双层校验。"]
+    ],
+    "risks": ["14份日常滚动、命名快照、最后备份保护和完整恢复中心属于M6-06。"]
+  }
+}

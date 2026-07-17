@@ -152,7 +152,7 @@ gb_start = test_source.index("      const gbPath = path.join(value.importDirecto
 gb_end = test_source.index("      await writeFile(gbPath, '=== 第一章", gb_start)
 gb_block = r"""      const gbPath = path.join(value.importDirectory, 'gb.txt');
       const gbBytes = Buffer.concat([
-        Buffer.from('=== 第一章 ===\n', 'ascii'),
+        Buffer.from('=== Chapter 1 ===\n', 'ascii'),
         Buffer.from([0xbe, 0xc9, 0xb8, 0xe5, 0xd5, 0xfd, 0xce, 0xc4]),
       ]);
       await writeFile(gbPath, gbBytes);

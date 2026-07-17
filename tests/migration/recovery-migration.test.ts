@@ -16,7 +16,7 @@ afterEach(async () => {
 });
 
 describe('M1-08 BackupRecord migration', () => {
-  it('upgrades v5 to v6 with project-owned verified backup records', async () => {
+  it('upgrades v5 through current project schema with verified backup records', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-recovery-migration-'));
     temporaryDirectories.push(root);
     const databasePath = path.join(root, 'project.sqlite');
@@ -35,7 +35,7 @@ describe('M1-08 BackupRecord migration', () => {
       clock,
       prepareRecoveryPoint: async () => undefined,
     });
-    expect(upgraded).toMatchObject({ schemaVersion: 6, compatibility: 'migrated' });
+    expect(upgraded).toMatchObject({ schemaVersion: 7, compatibility: 'migrated' });
     expect(
       upgraded.read((database) =>
         database
@@ -51,6 +51,13 @@ describe('M1-08 BackupRecord migration', () => {
           .map((row) => ({ table: row.table, from: row.from, to: row.to })),
       ),
     ).toContainEqual({ table: 'projects', from: 'project_id', to: 'id' });
+    expect(
+      upgraded.read((database) =>
+        database
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='candidates'")
+          .get(),
+      ),
+    ).toEqual({ name: 'candidates' });
     await upgraded.close();
   });
 

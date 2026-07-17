@@ -13,6 +13,8 @@ import {
 import { ErrorCodeSchema } from './error-codes.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
+export * from './candidate.js';
+
 export const VERSION_IPC_CHANNELS = {
   createVersion: 'worldforge:version:create',
   listVersions: 'worldforge:version:list',
@@ -29,6 +31,7 @@ export const VERSION_COMMANDS = {
   restoreVersion: 'version.restore',
 } as const;
 
+export const VersionTypeSchema = z.enum(['manual', 'candidate', 'checkpoint', 'imported']);
 export const VersionTitleSchema = z.string().trim().min(1).max(240);
 export const VersionDescriptionSchema = z.string().trim().max(2_000);
 export const VersionLabelSchema = z.string().trim().min(1).max(120).nullable();
@@ -50,6 +53,9 @@ export const VersionSummarySchema = z.strictObject({
   chapterId: DraftEntityIdSchema,
   sourceDraftId: DraftEntityIdSchema,
   sourceRevision: z.number().int().nonnegative(),
+  versionType: VersionTypeSchema,
+  parentVersionId: DraftEntityIdSchema.nullable(),
+  sourceCandidateId: DraftEntityIdSchema.nullable(),
   title: VersionTitleSchema,
   description: VersionDescriptionSchema,
   label: VersionLabelSchema,
@@ -73,6 +79,9 @@ export const VersionCreateInputSchema = z.strictObject({
   chapterId: DraftEntityIdSchema,
   draftId: DraftEntityIdSchema,
   baseRevision: z.number().int().nonnegative(),
+  versionType: VersionTypeSchema.default('manual'),
+  parentVersionId: DraftEntityIdSchema.nullable().optional(),
+  sourceCandidateId: DraftEntityIdSchema.nullable().optional(),
   title: VersionTitleSchema,
   description: VersionDescriptionSchema.optional(),
   label: VersionLabelSchema.optional(),
@@ -197,6 +206,7 @@ export const CoreVersionResultSchema = z.union([
   }),
 ]);
 
+export type VersionType = z.infer<typeof VersionTypeSchema>;
 export type VersionBlock = z.infer<typeof VersionBlockSchema>;
 export type VersionSummary = z.infer<typeof VersionSummarySchema>;
 export type VersionDocument = z.infer<typeof VersionDocumentSchema>;

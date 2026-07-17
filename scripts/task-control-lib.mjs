@@ -1,12 +1,19 @@
 import path from 'node:path';
 
 export const GOVERNANCE_ALLOWED_PATHS = [
+  '.github/CODEOWNERS',
+  '.github/governance/',
+  '.github/pull_request_template.md',
   '.github/workflows/',
+  'package.json',
+  'scripts/automerge.mjs',
+  'scripts/branch-hygiene.mjs',
+  'scripts/ci-policy.mjs',
+  'scripts/evidence-policy.mjs',
+  'scripts/ruleset-policy.mjs',
+  'scripts/scan-secrets.mjs',
   'scripts/task-control-lib.mjs',
   'scripts/taskctl.mjs',
-  'scripts/ci-policy.mjs',
-  'scripts/scan-secrets.mjs',
-  'scripts/branch-hygiene.mjs',
   'docs/process/DEVELOPMENT_AUTOMATION.md',
   'docs/process/CI_WORKFLOW_ARCHITECTURE.md',
   'docs/process/MAIN_BRANCH_PROTECTION.md',
@@ -212,7 +219,7 @@ export function renderActiveTask(state) {
   let continuationRule;
   if (state.authorization.mode === 'implementation-pr') {
     continuationRule =
-      '当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security与Quality全部通过后，由作者或维护者审查并合并。机器人和GitHub Actions不得直接推送main、不得自动合并PR。实现通过后可在同一PR中登记Implemented或Verified并激活下一任务；任何代码、测试、安全或数据边界失败立即阻断。';
+      '当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。';
   } else if (state.authorization.mode === 'implementation-mainline') {
     continuationRule =
       '当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。';

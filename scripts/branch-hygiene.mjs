@@ -60,14 +60,23 @@ async function main() {
     }
     const pull = latestPullByBranch.get(name);
     if (pull?.state === 'open') {
-      report.push({ branch: name, classification: 'open-pr', pullNumber: pull.number, action: 'keep' });
+      report.push({
+        branch: name,
+        classification: 'open-pr',
+        pullNumber: pull.number,
+        action: 'keep',
+      });
       continue;
     }
-    const comparison = await api(`/repos/${owner}/${repo}/compare/main...${encodeURIComponent(name)}`);
+    const comparison = await api(
+      `/repos/${owner}/${repo}/compare/main...${encodeURIComponent(name)}`,
+    );
     const safeDelete = Boolean(pull?.merged_at || comparison.ahead_by === 0);
     let action = safeDelete ? 'delete-candidate' : 'manual-review';
     if (safeDelete && apply) {
-      await api(`/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      await api(`/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(name)}`, {
+        method: 'DELETE',
+      });
       action = 'deleted';
     }
     report.push({
@@ -88,13 +97,20 @@ async function main() {
     '',
     '| Branch | Classification | Ahead | Behind | Action |',
     '|---|---|---:|---:|---|',
-    ...report.map((item) => `| ${item.branch} | ${item.classification} | ${item.aheadBy ?? '-'} | ${item.behindBy ?? '-'} | ${item.action}${item.pullNumber ? ` (#${item.pullNumber})` : ''} |`),
+    ...report.map(
+      (item) =>
+        `| ${item.branch} | ${item.classification} | ${item.aheadBy ?? '-'} | ${item.behindBy ?? '-'} | ${item.action}${item.pullNumber ? ` (#${item.pullNumber})` : ''} |`,
+    ),
     '',
   ];
   await mkdir(outputDirectory, { recursive: true });
   await Promise.all([
     writeFile(path.join(outputDirectory, 'report.md'), `${lines.join('\n')}\n`, 'utf8'),
-    writeFile(path.join(outputDirectory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8'),
+    writeFile(
+      path.join(outputDirectory, 'report.json'),
+      `${JSON.stringify(report, null, 2)}\n`,
+      'utf8',
+    ),
   ]);
 }
 

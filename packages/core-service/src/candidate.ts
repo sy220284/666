@@ -252,10 +252,7 @@ export class CandidateService {
     this.#idFactory = options.idFactory ?? randomUUID;
   }
 
-  createFixture(
-    requestId: string,
-    raw: CandidateCreateFixtureInput,
-  ): Promise<CandidateDocument> {
+  createFixture(requestId: string, raw: CandidateCreateFixtureInput): Promise<CandidateDocument> {
     const input = CandidateCreateFixtureInputSchema.parse(raw);
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
       const base = draftBase(database, input);

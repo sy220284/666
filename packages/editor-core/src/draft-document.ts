@@ -220,7 +220,10 @@ function lockedBlocksPreserved(
     for (const otherId of previousOrder) {
       const otherNewIndex = nextIndex.get(otherId);
       if (otherId === id || otherNewIndex === undefined) continue;
-      if (Math.sign(oldIndex - previousOrder.indexOf(otherId)) !== Math.sign(newIndex - otherNewIndex)) {
+      if (
+        Math.sign(oldIndex - previousOrder.indexOf(otherId)) !==
+        Math.sign(newIndex - otherNewIndex)
+      ) {
         valid = false;
         return;
       }
@@ -243,23 +246,19 @@ function createWorldforgeLockGuardPlugin(): Plugin {
 }
 
 export const toggleWorldforgeBlockLock: Command = (state, dispatch) => {
-  const selectionPosition = state.selection.from;
-  let target: { readonly node: ProseMirrorNode; readonly offset: number } | null = null;
-  state.doc.forEach((node, offset) => {
-    if (
-      !target &&
-      supportedBlockTypes.has(node.type.name as WorldforgeBlockType) &&
-      selectionPosition >= offset &&
-      selectionPosition <= offset + node.nodeSize
-    ) {
-      target = { node, offset };
-    }
-  });
-  if (!target || !logicalBlockId(target.node)) return false;
+  const { $from } = state.selection;
+  if ($from.depth < 1) return false;
+  const targetNode = $from.node(1);
+  if (
+    !supportedBlockTypes.has(targetNode.type.name as WorldforgeBlockType) ||
+    !logicalBlockId(targetNode)
+  ) {
+    return false;
+  }
   if (dispatch) {
-    const transaction = state.tr.setNodeMarkup(target.offset, undefined, {
-      ...target.node.attrs,
-      locked: target.node.attrs.locked !== true,
+    const transaction = state.tr.setNodeMarkup($from.before(1), undefined, {
+      ...targetNode.attrs,
+      locked: targetNode.attrs.locked !== true,
     });
     transaction.setMeta(LOCK_COMMAND_META, true);
     dispatch(transaction);
@@ -426,7 +425,8 @@ export function tiptapJsonToDraftSnapshot(
     const blockType = node.type as WorldforgeBlockType;
     const attrs = node.attrs ?? {};
     const logicalId = optionalString(attrs.logicalBlockId);
-    const clientBlockId = optionalString(attrs.clientBlockId) ?? logicalId ?? clientBlockIdFactory();
+    const clientBlockId =
+      optionalString(attrs.clientBlockId) ?? logicalId ?? clientBlockIdFactory();
     const text = blockType === 'separator' ? '' : textContent(node);
     const headingLevel = Number(attrs.headingLevel);
     return {

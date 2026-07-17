@@ -1,0 +1,40 @@
+name: Auto Merge
+
+on:
+  workflow_run:
+    workflows:
+      - PR Policy
+      - Task Governance
+      - Quality
+      - Security
+      - Performance
+      - Evidence
+    types: [completed]
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: automerge-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  automerge:
+    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Merge eligible pull request after every permanent check succeeds
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/automerge.mjs

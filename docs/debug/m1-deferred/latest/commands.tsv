@@ -1,0 +1,13 @@
+pnpm task:validate	0	555	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+pnpm check:workspaces	0	575	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+pnpm check:boundaries	0	548	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+pnpm format:check	0	5151	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+pnpm lint	0	6295	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+pnpm typecheck	0	26873	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+pnpm test:unit	0	15331	M1-04,M1-05,M1-06
+pnpm test:integration	0	7793	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+pnpm test:migration	0	15379	M1-01,M1-02,M1-03,M1-04,M1-05,M1-07,M1-08
+pnpm test:security	0	4433	M1-01,M1-02,M1-04,M1-05,M1-08
+pnpm test:perf	0	14930	M1-06
+pnpm test:e2e	0	201887	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+M1 acceptance E2E	1	36776	M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08

@@ -29,6 +29,7 @@ allowed_paths:
   - packages/testkit/
   - tests/unit/
   - tests/integration/
+  - tests/migration/
   - tests/e2e/
   - docs/database/DATABASE_SCHEMA.md
   - package.json

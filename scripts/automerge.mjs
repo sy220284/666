@@ -4,9 +4,11 @@ import { fileURLToPath } from 'node:url';
 const token = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
 const eventPath = process.env.GITHUB_EVENT_PATH;
+const githubFetch = globalThis.fetch;
 
 async function api(pathname, options = {}) {
-  const response = await fetch(`https://api.github.com${pathname}`, {
+  if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
+  const response = await githubFetch(`https://api.github.com${pathname}`, {
     ...options,
     headers: {
       Accept: 'application/vnd.github+json',
@@ -35,8 +37,9 @@ async function latestCheckRuns(owner, repo, sha) {
   const latest = new Map();
   for (const run of response.check_runs ?? []) {
     const previous = latest.get(run.name);
-    if (!previous || new Date(run.started_at) > new Date(previous.started_at))
+    if (!previous || new Date(run.started_at) > new Date(previous.started_at)) {
       latest.set(run.name, run);
+    }
   }
   return latest;
 }
@@ -76,14 +79,16 @@ async function main() {
   if (!sha) throw new Error('workflow_run head SHA is missing');
   const config = JSON.parse(await readFile('.github/governance/required-checks.json', 'utf8'));
   let pulls = event.workflow_run.pull_requests ?? [];
-  if (pulls.length === 0)
+  if (pulls.length === 0) {
     pulls = await api(`/repos/${owner}/${repo}/commits/${sha}/pulls?per_page=20`);
+  }
 
   for (const item of pulls) {
     const number = item.number;
     const pull = await api(`/repos/${owner}/${repo}/pulls/${number}`);
-    if (pull.state !== 'open' || pull.base.ref !== config.baseBranch || pull.head.sha !== sha)
+    if (pull.state !== 'open' || pull.base.ref !== config.baseBranch || pull.head.sha !== sha) {
       continue;
+    }
     if (config.blockDrafts && pull.draft) continue;
     if (pull.head.repo.full_name !== repository) continue;
 
@@ -94,8 +99,9 @@ async function main() {
     });
     if (!eligible) continue;
     if (config.blockChangesRequested && (await hasChangesRequested(owner, repo, number))) continue;
-    if (config.blockUnresolvedThreads && (await hasUnresolvedThreads(owner, repo, number)))
+    if (config.blockUnresolvedThreads && (await hasUnresolvedThreads(owner, repo, number))) {
       continue;
+    }
 
     const merged = await api(`/repos/${owner}/${repo}/pulls/${number}/merge`, {
       method: 'PUT',

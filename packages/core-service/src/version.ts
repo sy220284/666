@@ -32,10 +32,13 @@ export type VersionServiceErrorCode =
   | 'VERSION_TITLE_CONFLICT'
   | 'VERSION_DRAFT_NOT_FOUND'
   | 'VERSION_REVISION_CONFLICT'
-  | 'VERSION_CHAPTER_MISMATCH';
+  | 'VERSION_CHAPTER_MISMATCH'
+  | 'VERSION_PARENT_CONFLICT'
+  | 'VERSION_CANDIDATE_CONFLICT';
 
 export class VersionServiceError extends Error {
   readonly code: VersionServiceErrorCode;
+
   constructor(code: VersionServiceErrorCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'VersionServiceError';
@@ -52,6 +55,7 @@ interface DraftRow {
   readonly draftId: string;
   readonly revision: number | bigint;
 }
+
 interface BlockRow {
   readonly logicalBlockId: string;
   readonly orderKey: number | bigint;
@@ -62,12 +66,16 @@ interface BlockRow {
   readonly locked: number | bigint;
   readonly contentHash: string | null;
 }
+
 interface VersionRow {
   readonly versionId: string;
   readonly projectId: string;
   readonly chapterId: string;
   readonly sourceDraftId: string;
   readonly sourceRevision: number | bigint;
+  readonly versionType: string;
+  readonly parentVersionId: string | null;
+  readonly sourceCandidateId: string | null;
   readonly title: string;
   readonly description: string;
   readonly label: string | null;
@@ -75,6 +83,11 @@ interface VersionRow {
   readonly contentHash: string;
   readonly createdAt: string;
   readonly finalized: number | bigint;
+}
+
+interface CandidateSourceRow {
+  readonly baseDraftId: string;
+  readonly baseDraftRevision: number | bigint;
 }
 
 function stable(value: unknown): string {
@@ -122,6 +135,9 @@ function mapVersion(row: VersionRow): VersionSummary {
     chapterId: row.chapterId,
     sourceDraftId: row.sourceDraftId,
     sourceRevision: Number(row.sourceRevision),
+    versionType: row.versionType,
+    parentVersionId: row.parentVersionId,
+    sourceCandidateId: row.sourceCandidateId,
     title: row.title,
     description: row.description,
     label: row.label,
@@ -145,6 +161,78 @@ function mapBlock(row: BlockRow): VersionBlock {
   };
 }
 
+function versionSelect(where: string): string {
+  return `SELECT v.id AS versionId, p.id AS projectId, v.chapter_id AS chapterId,
+                 v.source_draft_id AS sourceDraftId, v.source_revision AS sourceRevision,
+                 v.version_type AS versionType, v.parent_version_id AS parentVersionId,
+                 v.source_candidate_id AS sourceCandidateId, v.title, v.description,
+                 v.label, v.word_count AS wordCount, v.content_hash AS contentHash,
+                 v.created_at AS createdAt,
+                 CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized
+          FROM versions v
+          JOIN chapters c ON c.id = v.chapter_id
+          JOIN volumes vo ON vo.id = c.volume_id
+          JOIN projects p ON p.id = vo.project_id
+         WHERE ${where}`;
+}
+
+function assertParentVersion(
+  database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
+  input: VersionCreateInput,
+): void {
+  if (!input.parentVersionId) return;
+  const parent = database
+    .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
+    .get(input.parentVersionId, input.chapterId, input.projectId);
+  if (!parent) {
+    throw new VersionServiceError(
+      'VERSION_PARENT_CONFLICT',
+      'The parent Version does not belong to this chapter and project.',
+    );
+  }
+}
+
+function assertSourceCandidate(
+  database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
+  input: VersionCreateInput,
+): void {
+  if (input.versionType === 'candidate' && !input.sourceCandidateId) {
+    throw new VersionServiceError(
+      'VERSION_CANDIDATE_CONFLICT',
+      'Candidate Versions require a source Candidate.',
+    );
+  }
+  if (!input.sourceCandidateId) return;
+  if (!['candidate', 'checkpoint'].includes(input.versionType)) {
+    throw new VersionServiceError(
+      'VERSION_CANDIDATE_CONFLICT',
+      'Only candidate or checkpoint Versions may reference a Candidate.',
+    );
+  }
+  const source = database
+    .prepare(
+      `SELECT ca.base_draft_id AS baseDraftId,
+              ca.base_draft_revision AS baseDraftRevision
+         FROM candidates ca
+         JOIN chapters ch ON ch.id = ca.chapter_id
+         JOIN volumes vo ON vo.id = ch.volume_id
+        WHERE ca.id = ? AND ca.chapter_id = ? AND vo.project_id = ?`,
+    )
+    .get(input.sourceCandidateId, input.chapterId, input.projectId) as
+    | CandidateSourceRow
+    | undefined;
+  if (
+    !source ||
+    source.baseDraftId !== input.draftId ||
+    Number(source.baseDraftRevision) !== input.baseRevision
+  ) {
+    throw new VersionServiceError(
+      'VERSION_CANDIDATE_CONFLICT',
+      'The source Candidate does not match this Draft and Revision.',
+    );
+  }
+}
+
 export class VersionService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
@@ -164,11 +252,12 @@ export class VersionService {
       const draft = database
         .prepare(
           `SELECT d.id AS draftId, d.revision AS revision
-           FROM chapters c
-           JOIN drafts d ON d.id = c.active_draft_id
-           WHERE c.id = ? AND c.deleted_at IS NULL`,
+             FROM chapters c
+             JOIN volumes vo ON vo.id = c.volume_id
+             JOIN drafts d ON d.id = c.active_draft_id
+            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL`,
         )
-        .get(input.chapterId) as DraftRow | undefined;
+        .get(input.chapterId, input.projectId) as DraftRow | undefined;
       if (!draft || draft.draftId !== input.draftId) {
         throw new VersionServiceError('VERSION_DRAFT_NOT_FOUND', 'The active Draft was not found.');
       }
@@ -178,12 +267,15 @@ export class VersionService {
           'The Draft Revision changed before Version creation.',
         );
       }
+      assertParentVersion(database, input);
+      assertSourceCandidate(database, input);
+
       const rows = database
         .prepare(
           `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
                   block_type AS blockType, text, attributes_json AS attributesJson,
                   source, locked, content_hash AS contentHash
-           FROM draft_blocks WHERE draft_id = ? ORDER BY order_key`,
+             FROM draft_blocks WHERE draft_id = ? ORDER BY order_key`,
         )
         .all(input.draftId) as unknown as BlockRow[];
       if (rows.length === 0) {
@@ -203,15 +295,19 @@ export class VersionService {
         database
           .prepare(
             `INSERT INTO versions(
-               id, chapter_id, source_draft_id, source_revision, title, description,
+               id, chapter_id, source_draft_id, source_revision, version_type,
+               parent_version_id, source_candidate_id, title, description,
                label, word_count, content_hash, created_at
-             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             versionId,
             input.chapterId,
             input.draftId,
             input.baseRevision,
+            input.versionType,
+            input.parentVersionId ?? null,
+            input.sourceCandidateId ?? null,
             input.title,
             input.description ?? '',
             input.label ?? null,
@@ -254,6 +350,9 @@ export class VersionService {
         chapterId: input.chapterId,
         sourceDraftId: input.draftId,
         sourceRevision: input.baseRevision,
+        versionType: input.versionType,
+        parentVersionId: input.parentVersionId ?? null,
+        sourceCandidateId: input.sourceCandidateId ?? null,
         title: input.title,
         description: input.description ?? '',
         label: input.label ?? null,
@@ -271,25 +370,21 @@ export class VersionService {
     return this.#workspace.readProject(input.projectId, (database) => {
       const chapter = database
         .prepare(
-          'SELECT final_version_id AS finalVersionId FROM chapters WHERE id = ? AND deleted_at IS NULL',
+          `SELECT c.final_version_id AS finalVersionId
+             FROM chapters c
+             JOIN volumes vo ON vo.id = c.volume_id
+            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL`,
         )
-        .get(input.chapterId) as { finalVersionId: string | null } | undefined;
-      if (!chapter)
+        .get(input.chapterId, input.projectId) as { finalVersionId: string | null } | undefined;
+      if (!chapter) {
         throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The chapter was not found.');
+      }
       const rows = database
         .prepare(
-          `SELECT v.id AS versionId, p.id AS projectId, v.chapter_id AS chapterId,
-                  v.source_draft_id AS sourceDraftId, v.source_revision AS sourceRevision,
-                  v.title, v.description, v.label, v.word_count AS wordCount,
-                  v.content_hash AS contentHash, v.created_at AS createdAt,
-                  CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized
-           FROM versions v
-           JOIN chapters c ON c.id = v.chapter_id
-           JOIN volumes vo ON vo.id = c.volume_id
-           JOIN projects p ON p.id = vo.project_id
-           WHERE v.chapter_id = ? ORDER BY v.created_at DESC, v.id DESC`,
+          `${versionSelect('v.chapter_id = ? AND p.id = ?')}
+           ORDER BY v.created_at DESC, v.id DESC`,
         )
-        .all(input.chapterId) as unknown as VersionRow[];
+        .all(input.chapterId, input.projectId) as unknown as VersionRow[];
       return VersionListSchema.parse({
         versions: rows.map(mapVersion),
         finalVersionId: chapter.finalVersionId,
@@ -301,26 +396,15 @@ export class VersionService {
     const input = VersionGetInputSchema.parse(raw);
     return this.#workspace.readProject(input.projectId, (database) => {
       const row = database
-        .prepare(
-          `SELECT v.id AS versionId, p.id AS projectId, v.chapter_id AS chapterId,
-                  v.source_draft_id AS sourceDraftId, v.source_revision AS sourceRevision,
-                  v.title, v.description, v.label, v.word_count AS wordCount,
-                  v.content_hash AS contentHash, v.created_at AS createdAt,
-                  CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized
-           FROM versions v
-           JOIN chapters c ON c.id = v.chapter_id
-           JOIN volumes vo ON vo.id = c.volume_id
-           JOIN projects p ON p.id = vo.project_id
-           WHERE v.id = ? AND v.chapter_id = ?`,
-        )
-        .get(input.versionId, input.chapterId) as VersionRow | undefined;
+        .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
+        .get(input.versionId, input.chapterId, input.projectId) as VersionRow | undefined;
       if (!row) throw new VersionServiceError('VERSION_NOT_FOUND', 'The Version was not found.');
       const blocks = database
         .prepare(
           `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
                   block_type AS blockType, text, attributes_json AS attributesJson,
                   source, locked, content_hash AS contentHash
-           FROM version_blocks WHERE version_id = ? ORDER BY order_key`,
+             FROM version_blocks WHERE version_id = ? ORDER BY order_key`,
         )
         .all(input.versionId) as unknown as BlockRow[];
       return VersionDocumentSchema.parse({ ...mapVersion(row), blocks: blocks.map(mapBlock) });
@@ -333,9 +417,12 @@ export class VersionService {
       const existing = this.#summaryFromDatabase(database, input);
       const changed = database
         .prepare(
-          'UPDATE chapters SET final_version_id = ?, status = ? WHERE id = ? AND deleted_at IS NULL',
+          `UPDATE chapters
+              SET final_version_id = ?, status = ?
+            WHERE id = ? AND deleted_at IS NULL
+              AND volume_id IN (SELECT id FROM volumes WHERE project_id = ?)`,
         )
-        .run(input.versionId, 'finalized', input.chapterId);
+        .run(input.versionId, 'finalized', input.chapterId, input.projectId);
       if (Number(changed.changes) !== 1) {
         throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The chapter was not found.');
       }
@@ -351,11 +438,15 @@ export class VersionService {
       const version = this.get(input);
       const current = database
         .prepare(
-          'SELECT active_draft_id AS draftId FROM chapters WHERE id = ? AND deleted_at IS NULL',
+          `SELECT c.active_draft_id AS draftId
+             FROM chapters c
+             JOIN volumes vo ON vo.id = c.volume_id
+            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL`,
         )
-        .get(input.chapterId) as { draftId: string | null } | undefined;
-      if (!current)
+        .get(input.chapterId, input.projectId) as { draftId: string | null } | undefined;
+      if (!current) {
         throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The chapter was not found.');
+      }
       if (current.draftId) {
         database
           .prepare("UPDATE drafts SET status = 'archived', updated_at = ? WHERE id = ?")
@@ -406,19 +497,8 @@ export class VersionService {
     input: VersionGetInput,
   ): VersionSummary {
     const row = database
-      .prepare(
-        `SELECT v.id AS versionId, p.id AS projectId, v.chapter_id AS chapterId,
-                v.source_draft_id AS sourceDraftId, v.source_revision AS sourceRevision,
-                v.title, v.description, v.label, v.word_count AS wordCount,
-                v.content_hash AS contentHash, v.created_at AS createdAt,
-                CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized
-         FROM versions v
-         JOIN chapters c ON c.id = v.chapter_id
-         JOIN volumes vo ON vo.id = c.volume_id
-         JOIN projects p ON p.id = vo.project_id
-         WHERE v.id = ? AND v.chapter_id = ?`,
-      )
-      .get(input.versionId, input.chapterId) as VersionRow | undefined;
+      .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
+      .get(input.versionId, input.chapterId, input.projectId) as VersionRow | undefined;
     if (!row) throw new VersionServiceError('VERSION_NOT_FOUND', 'The Version was not found.');
     return mapVersion(row);
   }

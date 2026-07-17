@@ -8,8 +8,8 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M1-09`
-- 唯一任务卡：`docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md`
+- 任务ID：`M2-01`
+- 唯一任务卡：`docs/tasks/M2/M2-01_LOCK_GUARD.md`
 - 工作分支：`main`
 - 开始时间：`2026-07-17`
 - 授权模式：`implementation-mainline`
@@ -19,11 +19,12 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
+  - packages/editor-core/
+  - packages/domain/
   - packages/core-service/
   - packages/contracts/
-  - apps/desktop/main/
-  - apps/desktop/preload/
   - apps/desktop/renderer/
+  - tests/unit/
   - tests/integration/
   - tests/e2e/
   - package.json
@@ -32,15 +33,11 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md
+  - docs/tasks/M2/M2-01_LOCK_GUARD.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M1-09/
-  - docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/security/THREAT_MODEL.md
-  - docs/ui/SCREEN_SPECIFICATIONS.md
-  - docs/testing/P0_ACCEPTANCE_MATRIX.md
+  - docs/test-evidence/M2-01/
+  - docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md
+  - docs/tasks/M1_TASKS.md
 forbidden_paths:
 
 required_docs:
@@ -48,9 +45,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/security/THREAT_MODEL.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
+  - docs/decisions/ADR-005-lock-revision-backup.md
   - docs/contracts/ERROR_CODES.md
-  - docs/ui/SCREEN_SPECIFICATIONS.md
 verification:
   - pnpm lint
   - pnpm typecheck

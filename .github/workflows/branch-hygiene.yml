@@ -1,0 +1,39 @@
+name: Branch Hygiene
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: branch-hygiene
+  cancel-in-progress: true
+
+jobs:
+  branch-hygiene:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Audit branches without deleting them
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BRANCH_HYGIENE_OUTPUT: artifacts/branch-hygiene
+        run: node scripts/branch-hygiene.mjs
+      - name: Upload branch report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: branch-hygiene-report
+          path: artifacts/branch-hygiene/
+          if-no-files-found: error
+          retention-days: 30

@@ -14,10 +14,19 @@ const changedFiles = [
   'tests/unit/m2-format-artifact.test.ts',
 ] as const;
 
+const repositoryFormat = {
+  printWidth: 100,
+  singleQuote: true,
+  trailingComma: 'all' as const,
+};
+
 describe('M2-01 formatting diagnostics', () => {
   it('emits the repository Prettier result for changed files', async () => {
     for (const file of changedFiles) {
-      const formatted = await prettier.format(await readFile(file, 'utf8'), { filepath: file });
+      const formatted = await prettier.format(await readFile(file, 'utf8'), {
+        filepath: file,
+        ...repositoryFormat,
+      });
       const output = path.join('test-results/unit/m2-formatted', file);
       await mkdir(path.dirname(output), { recursive: true });
       await writeFile(output, formatted, 'utf8');

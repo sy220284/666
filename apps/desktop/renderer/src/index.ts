@@ -2173,3 +2173,152 @@ versionList?.addEventListener('click', (event) => {
   const versionId = button?.dataset.versionId;
   if (action && versionId) void handleVersionAction(action, versionId);
 });
+
+const openRecoveryButton = document.querySelector<HTMLButtonElement>('[data-open-recovery]');
+const recoveryDialog = document.querySelector<HTMLDialogElement>('[data-recovery-dialog]');
+const createCheckpointButton = document.querySelector<HTMLButtonElement>(
+  '[data-create-checkpoint]',
+);
+const refreshRecoveryButton = document.querySelector<HTMLButtonElement>('[data-refresh-recovery]');
+const closeRecoveryButton = document.querySelector<HTMLButtonElement>('[data-close-recovery]');
+const recoveryStatus = document.querySelector<HTMLElement>('[data-recovery-status]');
+const recoveryCheckpointList = document.querySelector<HTMLElement>('[data-recovery-checkpoints]');
+const recoveryVersionList = document.querySelector<HTMLElement>('[data-recovery-versions]');
+
+function setRecoveryStatus(message: string, error = false): void {
+  if (!recoveryStatus) return;
+  recoveryStatus.textContent = message;
+  recoveryStatus.classList.toggle('is-error', error);
+}
+
+async function refreshRecoveryOverview(): Promise<void> {
+  const project = activeProject;
+  if (!project || !recoveryCheckpointList || !recoveryVersionList) return;
+  if (createCheckpointButton)
+    createCheckpointButton.disabled = project.databaseMode !== 'read-write';
+  setRecoveryStatus(
+    project.databaseMode === 'read-only'
+      ? `当前数据库只读 · ${project.readOnlyReason ?? 'unknown'}；可恢复外部副本。`
+      : '正在读取恢复点…',
+  );
+  const result = await window.worldforge.recovery.getOverview(project.projectId);
+  recoveryCheckpointList.replaceChildren();
+  recoveryVersionList.replaceChildren();
+  if (!result.ok) {
+    setRecoveryStatus(`读取恢复信息失败 · ${result.error.code}`, true);
+    return;
+  }
+  if (result.data.checkpoints.length === 0) {
+    recoveryCheckpointList.textContent = '还没有已验证恢复点。';
+  } else {
+    for (const checkpoint of result.data.checkpoints) {
+      const row = document.createElement('article');
+      row.className = 'recovery-row';
+      row.dataset.backupId = checkpoint.backupId;
+      const detail = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = checkpoint.operation;
+      const meta = document.createElement('small');
+      meta.textContent = `${new Date(checkpoint.createdAt).toLocaleString()} · ${checkpoint.sizeBytes} bytes`;
+      detail.append(title, meta);
+      const restore = document.createElement('button');
+      restore.type = 'button';
+      restore.className = 'quiet-button';
+      restore.dataset.restoreCheckpoint = checkpoint.backupId;
+      restore.textContent = '恢复为新项目';
+      row.append(detail, restore);
+      recoveryCheckpointList.append(row);
+    }
+  }
+  if (result.data.exportableVersions.length === 0) {
+    recoveryVersionList.textContent = '当前数据库没有可读取的Version。';
+  } else {
+    for (const version of result.data.exportableVersions) {
+      const row = document.createElement('article');
+      row.className = 'recovery-row';
+      const detail = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = `${version.chapterTitle} · ${version.title}`;
+      const meta = document.createElement('small');
+      meta.textContent = `${version.wordCount}字${version.finalized ? ' · 定稿' : ''}`;
+      detail.append(title, meta);
+      const exportButton = document.createElement('button');
+      exportButton.type = 'button';
+      exportButton.className = 'quiet-button';
+      exportButton.dataset.exportRecoveryVersion = version.versionId;
+      exportButton.textContent = '导出TXT';
+      row.append(detail, exportButton);
+      recoveryVersionList.append(row);
+    }
+  }
+  setRecoveryStatus(
+    project.databaseMode === 'read-only'
+      ? '只读保护已生效；写入命令被阻止。'
+      : '恢复点与Version信息已更新。',
+  );
+}
+
+openRecoveryButton?.addEventListener('click', () => {
+  recoveryDialog?.showModal();
+  void refreshRecoveryOverview();
+});
+closeRecoveryButton?.addEventListener('click', () => recoveryDialog?.close());
+refreshRecoveryButton?.addEventListener('click', () => void refreshRecoveryOverview());
+createCheckpointButton?.addEventListener('click', () => {
+  void (async () => {
+    const project = activeProject;
+    if (!project || project.databaseMode !== 'read-write') return;
+    if (draftAutosave?.hasPendingWork && !(await draftAutosave.flush())) {
+      setRecoveryStatus('自动保存失败，已阻止创建恢复点。', true);
+      return;
+    }
+    createCheckpointButton.disabled = true;
+    setRecoveryStatus('正在创建并验证SQLite在线备份…');
+    const result = await window.worldforge.recovery.createCheckpoint({
+      projectId: project.projectId,
+      operation: 'manual-protection',
+    });
+    createCheckpointButton.disabled = false;
+    if (!result.ok) return setRecoveryStatus(`恢复点创建失败 · ${result.error.code}`, true);
+    setRecoveryStatus('恢复点已通过完整性、外键与Hash验证。');
+    await refreshRecoveryOverview();
+  })();
+});
+recoveryCheckpointList?.addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    '[data-restore-checkpoint]',
+  );
+  const project = activeProject;
+  const backupId = button?.dataset.restoreCheckpoint;
+  if (!project || !backupId) return;
+  void (async () => {
+    button.disabled = true;
+    setRecoveryStatus('请选择新目录；恢复不会覆盖源项目。');
+    const result = await window.worldforge.recovery.restoreCheckpoint({
+      projectId: project.projectId,
+      backupId,
+    });
+    button.disabled = false;
+    if (!result.ok) return setRecoveryStatus(`恢复失败 · ${result.error.code}`, true);
+    setRecoveryStatus(`恢复副本“${result.data.name}”已注册到最近项目。`);
+    await refreshRecentProjects();
+  })();
+});
+recoveryVersionList?.addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    '[data-export-recovery-version]',
+  );
+  const project = activeProject;
+  const versionId = button?.dataset.exportRecoveryVersion;
+  if (!project || !versionId) return;
+  void (async () => {
+    button.disabled = true;
+    const result = await window.worldforge.recovery.exportVersion({
+      projectId: project.projectId,
+      versionId,
+    });
+    button.disabled = false;
+    if (!result.ok) return setRecoveryStatus(`Version导出失败 · ${result.error.code}`, true);
+    setRecoveryStatus(`已导出 ${result.data.fileName}，Hash验证完成。`);
+  })();
+});

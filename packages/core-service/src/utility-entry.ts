@@ -4,6 +4,7 @@ import {
   APP_DATA_COMMANDS,
   DRAFT_COMMANDS,
   VERSION_COMMANDS,
+  RECOVERY_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
@@ -23,6 +24,7 @@ import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
 import { DraftService, DraftServiceError } from './draft.js';
 import { VersionService, VersionServiceError } from './version.js';
+import { RecoveryService, RecoveryServiceError } from './recovery.js';
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
@@ -88,6 +90,9 @@ const projectWorkspace = new ProjectWorkspaceService({
   appVersion: requiredArgument('app-version'),
   recentProjects: appRuntime.recentProjects,
 });
+const recovery = new RecoveryService(projectWorkspace, {
+  backupRootDirectory: requiredAbsolutePath('project-operation-recovery'),
+});
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
 const versions = new VersionService(projectWorkspace);
@@ -140,6 +145,29 @@ function appDataError(error: unknown): ErrorCode {
 }
 
 function projectWorkspaceError(error: unknown): ErrorCode {
+  if (error instanceof RecoveryServiceError) {
+    switch (error.code) {
+      case 'BACKUP_CREATE_FAILED':
+        return 'BACKUP_CREATE_FAILED_001';
+      case 'BACKUP_VERIFY_FAILED':
+        return 'BACKUP_VERIFY_FAILED_002';
+      case 'BACKUP_SPACE_LOW':
+        return 'BACKUP_SPACE_LOW_003';
+      case 'BACKUP_NOT_FOUND':
+      case 'RESTORE_SOURCE_INVALID':
+        return 'RESTORE_SOURCE_INVALID_001';
+      case 'RESTORE_TARGET_CONFLICT':
+        return 'RESTORE_TARGET_CONFLICT_002';
+      case 'RESTORE_VERIFY_FAILED':
+        return 'RESTORE_VERIFY_FAILED_003';
+      case 'EXPORT_VERSION_REQUIRED':
+        return 'EXPORT_VERSION_REQUIRED_001';
+      case 'EXPORT_TARGET_EXISTS':
+        return 'EXPORT_TARGET_EXISTS_002';
+      case 'EXPORT_WRITE_FAILED':
+        return 'EXPORT_WRITE_FAILED_003';
+    }
+  }
   if (error instanceof VersionServiceError) {
     if (error.code === 'VERSION_NOT_FOUND' || error.code === 'VERSION_DRAFT_NOT_FOUND')
       return 'COMMON_NOT_FOUND_002';
@@ -414,6 +442,34 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await versions.restore(requestId, operation.input),
+        });
+      case RECOVERY_COMMANDS.createCheckpoint:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await recovery.createOperationCheckpoint(requestId, operation.input),
+        });
+      case RECOVERY_COMMANDS.getOverview:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await recovery.getOverview(operation.input.projectId),
+        });
+      case RECOVERY_COMMANDS.restoreCheckpoint:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await recovery.restoreCheckpoint(
+            requestId,
+            operation.input,
+            operation.targetParentDirectory,
+          ),
+        });
+      case RECOVERY_COMMANDS.exportVersion:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await recovery.exportVersion(operation.input, operation.targetDirectory),
         });
     }
   } catch (error) {

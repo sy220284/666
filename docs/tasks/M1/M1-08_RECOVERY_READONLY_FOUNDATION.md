@@ -43,8 +43,11 @@ M1-02、M0-03
 - `migrations/project/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/integration/`
+- `tests/migration/`
 - `tests/security/`
 - `tests/e2e/`
 

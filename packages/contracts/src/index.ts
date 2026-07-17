@@ -93,6 +93,17 @@ import {
   type VersionSetFinalInput,
   type VersionSummary,
 } from './version.js';
+import {
+  RECOVERY_COMMANDS,
+  RECOVERY_IPC_CHANNELS,
+  type BackupRecord,
+  type RecoveryCreateInput,
+  type RecoveryExportInput,
+  type RecoveryOverview,
+  type RecoveryRestoredProject,
+  type RecoveryRestoreInput,
+  type RecoveryVersionExport,
+} from './recovery.js';
 
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
@@ -102,6 +113,7 @@ export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './draft.js';
 export * from './version.js';
+export * from './recovery.js';
 
 export const contractsLayer = {
   name: '@worldforge/contracts',
@@ -116,6 +128,7 @@ export const IPC_CHANNELS = {
   ...PROJECT_STRUCTURE_IPC_CHANNELS,
   ...DRAFT_IPC_CHANNELS,
   ...VERSION_IPC_CHANNELS,
+  ...RECOVERY_IPC_CHANNELS,
   appGetInfo: 'worldforge:app:get-info',
   appGetCoreStatus: 'worldforge:app:get-core-status',
   appRestartCore: 'worldforge:app:restart-core',
@@ -136,6 +149,7 @@ export const APP_COMMANDS = {
   ...PROJECT_STRUCTURE_COMMANDS,
   ...DRAFT_COMMANDS,
   ...VERSION_COMMANDS,
+  ...RECOVERY_COMMANDS,
   getInfo: 'app.getInfo',
   getCoreStatus: 'app.getCoreStatus',
   restartCore: 'app.restartCore',
@@ -525,6 +539,16 @@ export interface WorldforgeBridge {
     readonly openRecent: (projectId: string) => Promise<CommandResult<ProjectWorkspaceSummary>>;
     readonly close: (projectId: string) => Promise<CommandResult<ProjectCloseResult>>;
     readonly move: (projectId: string) => Promise<CommandResult<ProjectMoveResult>>;
+  };
+  readonly recovery: {
+    readonly createCheckpoint: (input: RecoveryCreateInput) => Promise<CommandResult<BackupRecord>>;
+    readonly getOverview: (projectId: string) => Promise<CommandResult<RecoveryOverview>>;
+    readonly restoreCheckpoint: (
+      input: RecoveryRestoreInput,
+    ) => Promise<CommandResult<RecoveryRestoredProject>>;
+    readonly exportVersion: (
+      input: RecoveryExportInput,
+    ) => Promise<CommandResult<RecoveryVersionExport>>;
   };
   readonly planning: {
     readonly listStructure: (projectId: string) => Promise<CommandResult<ProjectStructure>>;

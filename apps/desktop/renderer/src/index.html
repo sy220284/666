@@ -148,6 +148,9 @@
                   <p class="active-project__notice" data-active-project-readonly hidden></p>
                   <p class="active-project__status" data-project-operation-status role="status"></p>
                   <div class="active-project__actions">
+                    <button class="quiet-button" type="button" data-open-recovery>
+                      恢复与导出
+                    </button>
                     <button class="quiet-button" type="button" data-move-project>移动项目</button>
                     <button class="quiet-button" type="button" data-close-project>关闭项目</button>
                   </div>
@@ -554,6 +557,41 @@
         <footer>
           <span></span><span></span><span></span>
           <button class="quiet-button" type="button" data-close-versions>关闭</button>
+        </footer>
+      </div>
+    </dialog>
+
+    <dialog
+      class="settings-dialog recovery-dialog"
+      data-recovery-dialog
+      aria-labelledby="recovery-dialog-title"
+    >
+      <div class="dialog-list-layout">
+        <div class="settings-dialog__body">
+          <p class="eyebrow">RECOVERY FOUNDATION</p>
+          <h2 id="recovery-dialog-title">恢复点与只读导出</h2>
+          <p>恢复始终创建新项目副本，不覆盖当前项目。数据库只读时仍可恢复已验证副本。</p>
+          <div class="recovery-actions">
+            <button class="primary-button" type="button" data-create-checkpoint>
+              创建保护恢复点
+            </button>
+            <button class="quiet-button" type="button" data-refresh-recovery>刷新</button>
+          </div>
+          <p class="save-state" data-recovery-status role="status"></p>
+          <div class="recovery-columns">
+            <section>
+              <h3>已验证恢复点</h3>
+              <div class="recovery-list" data-recovery-checkpoints></div>
+            </section>
+            <section>
+              <h3>可导出Version</h3>
+              <div class="recovery-list" data-recovery-versions></div>
+            </section>
+          </div>
+        </div>
+        <footer>
+          <span></span><span></span><span></span>
+          <button class="quiet-button" type="button" data-close-recovery>关闭</button>
         </footer>
       </div>
     </dialog>

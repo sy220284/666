@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ProjectDatabase, loadMigrations } from '../../packages/core-service/src/database/index.js';
 
 const temporaryDirectories: string[] = [];
-const clock = { now: () => new Date('2026-07-16T18:30:00.000Z') };
+const clock = { now: () => new Date('2026-07-17T02:30:00.000Z') };
 
 afterEach(async () => {
   await Promise.all(
@@ -15,83 +15,77 @@ afterEach(async () => {
   );
 });
 
-describe('M1-07 Version schema migration', () => {
-  it('upgrades v4 to v5 with Version and VersionBlock ownership constraints', async () => {
-    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-version-migration-'));
+describe('M1-08 BackupRecord migration', () => {
+  it('upgrades v5 to v6 with project-owned verified backup records', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-recovery-migration-'));
     temporaryDirectories.push(root);
     const databasePath = path.join(root, 'project.sqlite');
     const migrations = await loadMigrations('migrations/project', 'project');
-    const v4 = await ProjectDatabase.open({
+    const v5 = await ProjectDatabase.open({
       path: databasePath,
-      migrations: migrations.slice(0, 4),
+      migrations: migrations.slice(0, 5),
       appVersion: '0.1.0',
       clock,
     });
-    await v4.close();
-
+    await v5.close();
     const upgraded = await ProjectDatabase.open({
       path: databasePath,
-      migrations: migrations.slice(0, 5),
+      migrations,
       appVersion: '0.1.0',
       clock,
       prepareRecoveryPoint: async () => undefined,
     });
-    expect(upgraded).toMatchObject({ schemaVersion: 5, compatibility: 'migrated' });
+    expect(upgraded).toMatchObject({ schemaVersion: 6, compatibility: 'migrated' });
     expect(
       upgraded.read((database) =>
         database
-          .prepare(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('versions','version_blocks') ORDER BY name",
-          )
-          .all()
-          .map((row) => row.name),
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='backup_records'")
+          .get(),
       ),
-    ).toEqual(['version_blocks', 'versions']);
+    ).toEqual({ name: 'backup_records' });
     expect(
       upgraded.read((database) =>
         database
-          .prepare('PRAGMA foreign_key_list(version_blocks)')
+          .prepare('PRAGMA foreign_key_list(backup_records)')
           .all()
           .map((row) => ({ table: row.table, from: row.from, to: row.to })),
       ),
-    ).toContainEqual({ table: 'versions', from: 'version_id', to: 'id' });
-    expect(upgraded.foreignKeyCheck()).toEqual([]);
+    ).toContainEqual({ table: 'projects', from: 'project_id', to: 'id' });
     await upgraded.close();
   });
 
-  it('rolls back all Version tables when v5 is interrupted', async () => {
-    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-version-migration-fault-'));
+  it('rolls back the complete v6 table when migration is interrupted', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-recovery-migration-fault-'));
     temporaryDirectories.push(root);
     const databasePath = path.join(root, 'project.sqlite');
     const migrations = await loadMigrations('migrations/project', 'project');
-    const v4 = await ProjectDatabase.open({
+    const v5 = await ProjectDatabase.open({
       path: databasePath,
-      migrations: migrations.slice(0, 4),
+      migrations: migrations.slice(0, 5),
       appVersion: '0.1.0',
       clock,
     });
-    await v4.close();
-
+    await v5.close();
     const interrupted = await ProjectDatabase.open({
       path: databasePath,
-      migrations: migrations.slice(0, 5),
+      migrations,
       appVersion: '0.1.0',
       clock,
       prepareRecoveryPoint: async () => undefined,
       faultInjector: ({ version, stage }) => {
-        if (version === 5 && stage === 'after-sql') throw new Error('injected-v5-interruption');
+        if (version === 6 && stage === 'after-sql') throw new Error('injected-v6-interruption');
       },
     });
     expect(interrupted).toMatchObject({
       mode: 'read-only',
       compatibility: 'migration-failed',
-      schemaVersion: 4,
+      schemaVersion: 5,
     });
     expect(
       interrupted.read((database) =>
         database
           .prepare(
-            "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name IN ('versions','version_blocks')",
+            "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='backup_records'",
           )
           .get(),
       ),

@@ -4,6 +4,7 @@ import {
   APP_COMMANDS,
   DRAFT_COMMANDS,
   VERSION_COMMANDS,
+  RECOVERY_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
@@ -21,6 +22,10 @@ import {
   VersionListCommandSchema,
   VersionRestoreCommandSchema,
   VersionSetFinalCommandSchema,
+  RecoveryCreateCommandSchema,
+  RecoveryOverviewCommandSchema,
+  RecoveryRestoreCommandSchema,
+  RecoveryExportCommandSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   RequestIdSchema,
@@ -79,6 +84,8 @@ interface IpcHandlerOptions {
   readonly chooseProjectCreateParent: () => Promise<string | null>;
   readonly chooseProjectToOpen: () => Promise<string | null>;
   readonly chooseProjectMoveParent: () => Promise<string | null>;
+  readonly chooseRecoveryRestoreParent: () => Promise<string | null>;
+  readonly chooseRecoveryExportDirectory: () => Promise<string | null>;
 }
 
 function success<T>(requestId: string, data: T): CommandResult<T> {
@@ -153,6 +160,10 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.getVersion,
     IPC_CHANNELS.setFinalVersion,
     IPC_CHANNELS.restoreVersion,
+    IPC_CHANNELS.createCheckpoint,
+    IPC_CHANNELS.getOverview,
+    IPC_CHANNELS.restoreCheckpoint,
+    IPC_CHANNELS.exportVersion,
     IPC_CHANNELS.aiSetCredential,
     IPC_CHANNELS.aiRemoveCredential,
     IPC_CHANNELS.aiHasCredential,
@@ -448,6 +459,66 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       operation: PROJECT_WORKSPACE_COMMANDS.move,
       projectId: parsed.data.payload.projectId,
       targetParentDirectory,
+    });
+  });
+
+  register(IPC_CHANNELS.createCheckpoint, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryCreateCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.createCheckpoint,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.getOverview, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryOverviewCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.getOverview,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.restoreCheckpoint, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryRestoreCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let targetParentDirectory: string | null;
+    try {
+      targetParentDirectory = await options.chooseRecoveryRestoreParent();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!targetParentDirectory) return cancelledSelection(parsed.data.requestId);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.restoreCheckpoint,
+      input: parsed.data.payload,
+      targetParentDirectory,
+    });
+  });
+
+  register(IPC_CHANNELS.exportVersion, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryExportCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    let targetDirectory: string | null;
+    try {
+      targetDirectory = await options.chooseRecoveryExportDirectory();
+    } catch {
+      return appDataFailure(parsed.data.requestId, 'COMMON_INTERNAL_999');
+    }
+    if (!targetDirectory) return cancelledSelection(parsed.data.requestId);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.exportVersion,
+      input: parsed.data.payload,
+      targetDirectory,
     });
   });
 

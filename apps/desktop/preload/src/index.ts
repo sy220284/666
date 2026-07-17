@@ -26,6 +26,14 @@ import {
   VersionRestoreResultSchema,
   VersionSetFinalCommandSchema,
   VersionSummaryResultSchema,
+  RecoveryCreateCommandSchema,
+  RecoveryCheckpointResultSchema,
+  RecoveryOverviewCommandSchema,
+  RecoveryOverviewResultSchema,
+  RecoveryRestoreCommandSchema,
+  RecoveryRestoreResultSchema,
+  RecoveryExportCommandSchema,
+  RecoveryExportResultSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   ProjectActiveResultSchema,
@@ -170,6 +178,32 @@ const bridge: WorldforgeBridge = {
         IPC_CHANNELS.settingsReset,
         SettingsResetCommandSchema.parse(envelope(APP_COMMANDS.settingsReset, {})),
         AppSettingsSnapshotResultSchema,
+      ),
+  },
+  recovery: {
+    createCheckpoint: (input) =>
+      invoke(
+        IPC_CHANNELS.createCheckpoint,
+        RecoveryCreateCommandSchema.parse(envelope(APP_COMMANDS.createCheckpoint, input)),
+        RecoveryCheckpointResultSchema,
+      ),
+    getOverview: (projectId) =>
+      invoke(
+        IPC_CHANNELS.getOverview,
+        RecoveryOverviewCommandSchema.parse(envelope(APP_COMMANDS.getOverview, { projectId })),
+        RecoveryOverviewResultSchema,
+      ),
+    restoreCheckpoint: (input) =>
+      invoke(
+        IPC_CHANNELS.restoreCheckpoint,
+        RecoveryRestoreCommandSchema.parse(envelope(APP_COMMANDS.restoreCheckpoint, input)),
+        RecoveryRestoreResultSchema,
+      ),
+    exportVersion: (input) =>
+      invoke(
+        IPC_CHANNELS.exportVersion,
+        RecoveryExportCommandSchema.parse(envelope(APP_COMMANDS.exportVersion, input)),
+        RecoveryExportResultSchema,
       ),
   },
   project: {

@@ -556,6 +556,25 @@ export class ProjectWorkspaceService {
     });
   }
 
+  registerRecoveredWorkspace(
+    requestId: string,
+    workspacePath: string,
+  ): Promise<ProjectWorkspaceSummary> {
+    return this.#idempotent(requestId, async () => {
+      const context = await this.#loadWorkspace(workspacePath);
+      try {
+        await this.#recentProjects.register(requestId, {
+          projectId: context.summary.projectId,
+          workspacePath: context.summary.workspacePath,
+          displayName: context.summary.name,
+        });
+        return context.summary;
+      } finally {
+        await this.#closeContext(context);
+      }
+    });
+  }
+
   assertActiveProject(projectId: string, requireWrite = false): ProjectWorkspaceSummary {
     return this.#assertActiveContext(projectId, requireWrite).summary;
   }

@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -979,6 +979,67 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
       return draft.ok ? draft.data.draftId : null;
     });
     expect(restoredDraftId).not.toBe(originalDraftId);
+  } finally {
+    await closeGracefully(application);
+  }
+});
+
+test('creates a verified recovery point, restores a new project and exports a Version', async () => {
+  test.setTimeout(120_000);
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'recovery-projects');
+  const restoreParent = path.join(userDataPath, 'recovered-projects');
+  const exportDirectory = path.join(userDataPath, 'recovery-exports');
+  await Promise.all([
+    mkdir(createParent, { recursive: true }),
+    mkdir(restoreParent, { recursive: true }),
+    mkdir(exportDirectory, { recursive: true }),
+  ]);
+  const application = await launch(userDataPath, undefined, {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+    WORLDFORGE_E2E_RESTORE_PARENT: restoreParent,
+    WORLDFORGE_E2E_RECOVERY_EXPORT_DIRECTORY: exportDirectory,
+  });
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-create-project]').click();
+    await page.locator('[data-project-name]').fill('恢复E2E');
+    await page.locator('[data-project-channel]').fill('长篇');
+    await page.locator('[data-confirm-create-project]').click();
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    const editor = page.locator('[data-draft-content]');
+    await editor.click();
+    await page.keyboard.type('恢复前正文');
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+      timeout: 3_000,
+    });
+    await page.locator('[data-create-version]').click();
+    await page.locator('[data-version-title]').fill('恢复导出版本');
+    await page.locator('[data-confirm-version]').click();
+    await expect(page.locator('[data-version-row]')).toHaveCount(1);
+    await page.locator('[data-close-versions]').click();
+
+    await page.locator('[data-back-project]').click();
+    await page.locator('[data-open-recovery]').click();
+    await page.locator('[data-create-checkpoint]').click();
+    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {
+      timeout: 10_000,
+    });
+    await page.locator('[data-export-recovery-version]').click();
+    await expect(page.locator('[data-recovery-status]')).toContainText('已导出');
+    expect(await readdir(exportDirectory)).toEqual(['第一章-恢复导出版本.txt']);
+    expect(await readFile(path.join(exportDirectory, '第一章-恢复导出版本.txt'), 'utf8')).toContain(
+      '恢复前正文',
+    );
+
+    await page.locator('[data-restore-checkpoint]').click();
+    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近项目', {
+      timeout: 15_000,
+    });
+    expect(
+      (await readdir(restoreParent)).filter((name) => name.endsWith('.worldforge')),
+    ).toHaveLength(1);
   } finally {
     await closeGracefully(application);
   }

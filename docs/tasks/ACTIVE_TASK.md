@@ -36,6 +36,11 @@ allowed_paths:
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M1-08/
   - docs/tasks/M1/M1-07_MANUAL_VERSION_FINALIZE.md
+  - apps/desktop/main/
+  - apps/desktop/preload/
+  - tests/migration/
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/testing/SECURITY_TEST_CASES.md
 forbidden_paths:
 
 required_docs:

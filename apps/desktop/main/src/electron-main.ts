@@ -70,6 +70,7 @@ function spawnCore(): UtilityProcessHandle {
       `--project-migrations=${projectMigrationsPath}`,
       `--app-recovery=${path.join(userDataPath, 'recovery', 'app')}`,
       `--project-migration-recovery=${path.join(userDataPath, 'recovery', 'project-migrations')}`,
+      `--project-operation-recovery=${path.join(userDataPath, 'recovery', 'project-operations')}`,
       `--app-version=${app.getVersion()}`,
     ],
     {
@@ -302,6 +303,14 @@ async function bootstrap(): Promise<void> {
       chooseDirectory('打开 WorldForge 项目', '打开项目', 'WORLDFORGE_E2E_OPEN_WORKSPACE'),
     chooseProjectMoveParent: () =>
       chooseDirectory('选择项目的新位置', '移动到这里', 'WORLDFORGE_E2E_MOVE_PARENT'),
+    chooseRecoveryRestoreParent: () =>
+      chooseDirectory('选择恢复副本保存位置', '恢复到这里', 'WORLDFORGE_E2E_RESTORE_PARENT'),
+    chooseRecoveryExportDirectory: () =>
+      chooseDirectory(
+        '选择Version导出位置',
+        '导出到这里',
+        'WORLDFORGE_E2E_RECOVERY_EXPORT_DIRECTORY',
+      ),
     chooseRecentLocation: async () => {
       const window = mainWindow;
       if (!window) return null;

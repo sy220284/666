@@ -3,7 +3,7 @@
 > 状态：In Progress  
 > 里程碑：M2 编辑安全与版本核心  
 > 优先级：P0  
-> 建议分支：`feat/m2-candidate-version-model`
+> 建议分支：`work/m2-02-candidate-version-model`
 
 ## 目标
 
@@ -47,6 +47,8 @@ M1-07、M2-01
 - `apps/desktop/renderer/`
 - `packages/testkit/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
 
 ## 实施内容
 

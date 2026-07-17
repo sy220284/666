@@ -2,67 +2,62 @@
 
 ## 1. 正式工作流
 
-| 工作流 | 触发 | 职责 | 是否建议设为必需检查 |
+| 工作流 | 触发 | 职责 | 必需检查 |
 |---|---|---|---|
-| `PR Policy` | PR→main | 校验真实PR分支、治理例外范围、工作流权限和禁止直推/自动合并规则 | 是：`pr-policy` |
-| `Task Governance` | PR→main、main合并后 | 校验活动任务、状态镜像、修改路径和证据结构 | 是：`task-governance` |
-| `Quality` | PR→main、main合并后 | 静态检查、四类测试、性能与AI协议基线、Electron E2E、Build、Package Smoke及唯一聚合门 | 是：`quality / quality` |
-| `Security` | PR→main、main合并后 | 锁文件高危依赖审计与仓库凭据扫描 | 是：`security` |
-| `Branch Hygiene` | 每周、手动 | 只读列出已合并、过期和无PR分支，生成清理报告；不自动删除 | 否 |
-| `Release` | 手动 | 复用Quality，执行发布门、三平台独立Build+Package、校验和及GitHub Release | 否，使用`release`环境人工审批 |
+| `PR Policy` | PR→main | 校验真实PR分支、治理白名单和CI策略漂移 | `pr-policy` |
+| `Task Governance` | PR→main、main | 校验任务状态、镜像、修改范围和证据规则 | `task-governance` |
+| `Quality` | PR→main、main | 静态检查、Unit、Integration、Migration、E2E、Build和Package Smoke | `quality / quality` |
+| `Security` | PR→main、main | 高危依赖、凭据、IPC、路径、Renderer和数据库安全 | `security` |
+| `Performance` | PR→main、main、手动 | 性能预算和AI评估基线 | `performance` |
+| `Evidence` | PR→main、main | 未改证据时允许延期；修改证据时要求完整证据包 | `evidence` |
+| `Repository Governance` | 每周、手动 | 审计GitHub原生main规则是否缺失或漂移 | 否 |
+| `Branch Hygiene` | 每周、手动 | 分类活动、开放PR、已合并和孤立分支 | 否 |
+| `Release` | 手动 | 发布门、三平台Build+Package、校验和与Release | 否 |
 
-`quality-core.yml`是可复用实现，不单独配置为分支必需检查。性能与AI协议回归属于Quality内部必要作业，不额外制造容易漂移的状态检查名称。
+`quality-core.yml`是可复用实现，不单独设置为必需检查。
 
-## 2. PR合并门
+## 2. 永久合并判据
 
-所有进入`main`的PR必须同时满足：
+进入`main`前必须同时通过：
 
 ```text
 pr-policy
 + task-governance
 + quality / quality
 + security
-= 允许人工合并
++ performance
++ evidence
 ```
 
-机器人和GitHub Actions不得：
+同时要求PR不是Draft、头分支基于最新main、没有Changes Requested、没有未解决审查线程，并且合并时头SHA与已检查SHA完全一致。
 
-- 直接推送`main`；
-- 自动合并PR；
-- 使用`pull_request_target`或`workflow_run`间接取得高权限；
-- 在开发工作流中申请`contents: write`；
-- 使用保留凭据的Checkout。
+代码和常规工作流不得执行`git push main`。合并操作只能针对已满足上述条件的Pull Request，并固定使用squash方式。
 
-唯一写权限例外是手动Release的发布Job，用于创建不可变GitHub Release。
+## 3. 权限边界
 
-## 3. 私有仓库安全策略
+- 常规工作流默认`contents: read`。
+- Checkout统一设置`persist-credentials: false`。
+- 禁止`pull_request_target`、`repository_dispatch`及业务工作流直写main。
+- Release发布Job使用独立`release`环境和最小写权限。
+- 仓库原生Ruleset负责阻止管理员、本地Git或外部工具绕过CI。
 
-当前仓库是个人私有仓库。GitHub CodeQL和Dependency Review在未购买并启用GitHub Code Security时不可作为稳定必需门，因此采用：
+## 4. 证据策略
 
-- `pnpm audit --audit-level=high`阻断高危依赖；
-- 强模式凭据扫描阻断GitHub、AWS、Google、Slack及私钥；
-- 现有`tests/security`验证IPC、路径、只读和数据库安全边界；
-- `pnpm test:perf`持续验证性能预算和AI输出协议基线；
-- GitHub账户侧继续启用Dependabot alerts和security updates。
+- 实现PR未修改活动任务证据目录时，Evidence门记录为延期通过。
+- 一旦修改`docs/test-evidence/<ACTIVE_TASK>/`，必须同时提供摘要、命令、风险、人工复核、质量矩阵、测试结果、截图清单及总清单。
+- 任务关闭和追踪矩阵更新必须与完整证据在同一PR中完成。
 
-获得GitHub Code Security授权后，可另行增加CodeQL和Dependency Review，但不得在功能不可用时把它们配置成必需检查。
+## 5. 安全与性能
 
-## 4. 分支治理
+- `pnpm audit --audit-level=high`阻断高危依赖。
+- 凭据扫描阻断GitHub、云厂商、Slack和私钥模式。
+- `tests/security`验证IPC、路径、只读、Renderer边界及数据库安全。
+- `pnpm test:perf`作为独立永久检查，避免性能问题被普通测试矩阵掩盖。
 
-- 当前任务分支必须与`ACTIVE_TASK.json.activeTask.branch`一致。
-- 任务PR完成并激活下一任务时，PR头分支可匹配合并前活动任务分支。
-- `policy/`、`chore/governance-`、`fix/governance-`仅允许修改治理白名单路径。
-- 每周Branch Hygiene报告将分支分类为：默认分支、活动任务、开放PR、可删除候选、孤立工作。
-- 分支删除必须人工执行；自动化不得删除分支。
+## 6. 分支生命周期
 
-## 5. Release约束
+永久保留`main`、当前活动任务分支、开放PR分支和`release/*`。已合并、已关闭或相对main没有独有提交的分支可安全删除；存在独有提交且无PR的分支只报告，不自动删除。
 
-Release仅允许`workflow_dispatch`手工触发，并要求：
+## 7. Release
 
-1. 当前引用为`main`；
-2. M8-03发布验收门通过；
-3. 完整Quality通过；
-4. Linux、Windows、macOS各自在本Job内执行`pnpm build`后再`pnpm package`；
-5. 发布Job进入`release`环境；
-6. 已存在的Tag或Release拒绝覆盖；
-7. 所有资产生成SHA-256清单。
+Release只允许手动触发，要求当前引用为main、发布任务门通过、完整Quality通过、三个平台各自在本Job内Build后Package、发布Job进入`release`环境、已有Tag或Release拒绝覆盖，并生成SHA-256资产清单。

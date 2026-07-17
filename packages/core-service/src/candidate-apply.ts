@@ -38,7 +38,7 @@ import {
   readDraftBlocks,
   snapshotHash,
   stable,
-} from './candidate-apply-store.js';
+} from './candidate-state.js';
 import {
   buildCandidatePreview,
   buildCandidateTarget,

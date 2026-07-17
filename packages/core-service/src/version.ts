@@ -221,8 +221,7 @@ function assertSourceCandidate(
         WHERE ca.id = ? AND ca.chapter_id = ? AND vo.project_id = ?`,
     )
     .get(input.sourceCandidateId, input.chapterId, input.projectId) as
-    | CandidateSourceRow
-    | undefined;
+    CandidateSourceRow | undefined;
   if (
     !source ||
     source.baseDraftId !== input.draftId ||

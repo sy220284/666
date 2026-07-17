@@ -88,7 +88,7 @@ describe('M2-03 delivery baselines', () => {
     );
 
     await assertBaseline('tests/migration/sqlite-foundation.test.ts', (source) => {
-      let output = replaceExact(
+      const output = replaceExact(
         source,
         "      'backup_records',\n      'candidate_apply_checkpoints',\n      'candidate_apply_records',\n      'candidate_block_sources',\n      'candidate_blocks',\n      'candidate_conflict_sets',",
         "      'backup_records',\n      'candidate_apply_checkpoints',\n      'candidate_apply_records',\n      'candidate_block_sources',\n      'candidate_blocks',\n      'candidate_conflict_sets',",
@@ -115,7 +115,7 @@ describe('M2-03 delivery baselines', () => {
     );
 
     await assertBaseline('tests/security/project-workspace.test.ts', (source) => {
-      let output = replaceExact(
+      const output = replaceExact(
         source,
         'projectSchemaVersion: 8,',
         'projectSchemaVersion: 8,',

@@ -33,22 +33,7 @@
       "docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
       "docs/test-evidence/M1-09/",
-      "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md",
-      "tests/e2e/m1-deferred-acceptance.spec.ts",
-      "tests/e2e/m1-acceptance.playwright.config.ts",
-      "tests/performance/m1-writing-performance.test.ts",
-      "docs/testing/M1_DEFERRED_ACCEPTANCE_REPORT.md",
-      "docs/testing/M1_QUALITY_MATRIX.md",
-      "docs/testing/P0_ACCEPTANCE_MATRIX.md",
-      "docs/tasks/M1/",
-      "docs/test-evidence/M1-01/",
-      "docs/test-evidence/M1-02/",
-      "docs/test-evidence/M1-03/",
-      "docs/test-evidence/M1-04/",
-      "docs/test-evidence/M1-05/",
-      "docs/test-evidence/M1-06/",
-      "docs/test-evidence/M1-07/",
-      "docs/test-evidence/M1-08/"
+      "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -72,8 +57,8 @@
   },
   "lastVerifiedTask": {
     "id": "M1-08",
-    "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
-    "verifiedAt": "2026-07-17T03:02:51Z"
+    "commit": "268764c00f1f5c0b9622c67954719d1376123f36",
+    "verifiedAt": "2026-07-17T03:03:27.139970Z"
   },
   "deferredVerification": [],
   "lastImplementedTask": {

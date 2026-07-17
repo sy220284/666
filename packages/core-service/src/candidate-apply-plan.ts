@@ -10,7 +10,7 @@ import {
 } from '@worldforge/contracts';
 import { computeCandidateDiff, type StructureDiffEntry } from '@worldforge/editor-core';
 
-import type { MutableDraftBlock } from './candidate-apply-store.js';
+import type { MutableDraftBlock } from './candidate-state.js';
 
 function normalizedStructure(entry: StructureDiffEntry) {
   switch (entry.kind) {

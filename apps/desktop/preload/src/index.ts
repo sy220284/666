@@ -17,13 +17,6 @@ import {
   DraftApplyPatchCommandSchema,
   DraftDocumentResultSchema,
   DraftOpenCommandSchema,
-  CandidateCreateFixtureCommandSchema,
-  CandidateDiscardCommandSchema,
-  CandidateDocumentResultSchema,
-  CandidateGetCommandSchema,
-  CandidateListCommandSchema,
-  CandidateListResultSchema,
-  CandidateSummaryResultSchema,
   VersionCreateCommandSchema,
   VersionDocumentResultSchema,
   VersionGetCommandSchema,
@@ -395,36 +388,6 @@ const bridge: WorldforgeBridge = {
         IPC_CHANNELS.applyPatch,
         DraftApplyPatchCommandSchema.parse(envelope(APP_COMMANDS.applyPatch, input)),
         DraftDocumentResultSchema,
-      ),
-  },
-  candidate: {
-    createFixture: (input) =>
-      invoke(
-        IPC_CHANNELS.createFixtureCandidate,
-        CandidateCreateFixtureCommandSchema.parse(
-          envelope(APP_COMMANDS.createFixtureCandidate, input),
-        ),
-        CandidateDocumentResultSchema,
-      ),
-    list: (projectId, chapterId) =>
-      invoke(
-        IPC_CHANNELS.listCandidates,
-        CandidateListCommandSchema.parse(
-          envelope(APP_COMMANDS.listCandidates, { projectId, chapterId }),
-        ),
-        CandidateListResultSchema,
-      ),
-    get: (input) =>
-      invoke(
-        IPC_CHANNELS.getCandidate,
-        CandidateGetCommandSchema.parse(envelope(APP_COMMANDS.getCandidate, input)),
-        CandidateDocumentResultSchema,
-      ),
-    discard: (input) =>
-      invoke(
-        IPC_CHANNELS.discardCandidate,
-        CandidateDiscardCommandSchema.parse(envelope(APP_COMMANDS.discardCandidate, input)),
-        CandidateSummaryResultSchema,
       ),
   },
   version: {

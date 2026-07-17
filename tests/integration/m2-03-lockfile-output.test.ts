@@ -9,16 +9,19 @@ const prettier = {
   trailingComma: 'all' as const,
 };
 
-function replaceExact(source: string, before: string, after: string, expected: number, path: string) {
+function replaceExact(
+  source: string,
+  before: string,
+  after: string,
+  expected: number,
+  path: string,
+) {
   const matches = source.split(before).length - 1;
   expect(matches, `${path}: ${before}`).toBe(expected);
   return source.replaceAll(before, after);
 }
 
-async function assertBaseline(
-  path: string,
-  transform: (source: string) => string,
-): Promise<void> {
+async function assertBaseline(path: string, transform: (source: string) => string): Promise<void> {
   const source = await readFile(path, 'utf8');
   const transformed = transform(source);
   const output = path.endsWith('.ts')
@@ -62,7 +65,7 @@ describe('M2-03 delivery baselines', () => {
         output,
         'schema_version: 8n',
         'schema_version: 8n',
-        1,
+        2,
         'tests/migration/project-structure-migration.test.ts',
       );
       return replaceExact(

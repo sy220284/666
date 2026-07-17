@@ -35,6 +35,12 @@ export type DraftEditorPatchOperation =
       readonly logicalBlockId: string;
       readonly expectedHash: string;
       readonly afterLogicalBlockId: string | null;
+    }
+  | {
+      readonly type: 'set-lock';
+      readonly logicalBlockId: string;
+      readonly expectedHash: string;
+      readonly locked: boolean;
     };
 
 function normalizedAttributes(
@@ -83,8 +89,8 @@ function assertUniqueCurrentIds(blocks: readonly DraftSnapshotEditorBlock[]): vo
 
 /**
  * Builds a DEC-004 compatible Patch from the last persisted Draft and current editor state.
- * Operations are deliberately ordered as delete -> move -> reverse insert -> update so every
- * anchor is stable while Core validates the batch sequentially.
+ * Unlocks must run before destructive operations; new locks run after content and structure
+ * changes so one autosave can safely persist an unlock-edit or edit-lock sequence.
  */
 export function buildDraftPatchOperations(
   persisted: readonly PersistedEditorBlock[],
@@ -97,6 +103,13 @@ export function buildDraftPatchOperations(
   assertUniqueCurrentIds(current);
 
   const persistedById = new Map(persisted.map((block) => [block.logicalBlockId, block]));
+  const currentById = new Map(
+    current
+      .filter((block): block is DraftSnapshotEditorBlock & { logicalBlockId: string } =>
+        Boolean(block.logicalBlockId),
+      )
+      .map((block) => [block.logicalBlockId, block]),
+  );
   const retainedIds = new Set(
     current
       .filter((block) => {
@@ -105,6 +118,15 @@ export function buildDraftPatchOperations(
       })
       .map((block) => block.logicalBlockId as string),
   );
+
+  const unlocks: DraftEditorPatchOperation[] = persisted
+    .filter((block) => block.locked && currentById.get(block.logicalBlockId)?.locked === false)
+    .map((block) => ({
+      type: 'set-lock' as const,
+      logicalBlockId: block.logicalBlockId,
+      expectedHash: requiredHash(block),
+      locked: false,
+    }));
 
   const deletions: DraftEditorPatchOperation[] = persisted
     .filter((block) => !retainedIds.has(block.logicalBlockId))
@@ -186,5 +208,14 @@ export function buildDraftPatchOperations(
     });
   }
 
-  return [...deletions, ...moves, ...inserts, ...updates];
+  const locks: DraftEditorPatchOperation[] = persisted
+    .filter((block) => !block.locked && currentById.get(block.logicalBlockId)?.locked === true)
+    .map((block) => ({
+      type: 'set-lock' as const,
+      logicalBlockId: block.logicalBlockId,
+      expectedHash: requiredHash(block),
+      locked: true,
+    }));
+
+  return [...unlocks, ...deletions, ...moves, ...inserts, ...updates, ...locks];
 }

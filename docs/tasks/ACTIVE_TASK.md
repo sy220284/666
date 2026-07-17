@@ -19,12 +19,19 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
+  - migrations/project/
   - packages/editor-core/
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
+  - packages/testkit/
+  - apps/desktop/main/
+  - apps/desktop/preload/
   - apps/desktop/renderer/
+  - tests/unit/
   - tests/integration/
+  - tests/migration/
+  - tests/security/
   - tests/e2e/
   - tests/performance/
   - package.json
@@ -35,6 +42,9 @@ allowed_paths:
   - docs/tasks/TASK_INDEX.md
   - docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/ui/CANDIDATE_REVIEW_SPEC.md
   - docs/test-evidence/M2-03/
   - docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md
 forbidden_paths:
@@ -52,10 +62,12 @@ verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
+  - pnpm test:migration
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
   - pnpm test:integration
+  - pnpm test:perf
 ```
 
 ## 连续执行规则

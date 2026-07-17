@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M2-02`
-- 唯一任务卡：`docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md`
-- 工作分支：`work/m2-02-candidate-version-model`
+- 任务ID：`M2-03`
+- 唯一任务卡：`docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md`
+- 工作分支：`work/m2-03-diff-apply-conflict-undo`
 - 开始时间：`2026-07-17`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -19,25 +19,24 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - migrations/project/
+  - packages/editor-core/
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
   - apps/desktop/renderer/
-  - packages/testkit/
   - tests/integration/
-  - tests/migration/
-  - tests/security/
+  - tests/e2e/
+  - tests/performance/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md
+  - docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M2-02/
-  - docs/tasks/M2/M2-01_LOCK_GUARD.md
+  - docs/test-evidence/M2-03/
+  - docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md
 forbidden_paths:
 
 required_docs:
@@ -45,19 +44,18 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/decisions/ADR-003-draft-candidate-version.md
+  - docs/ui/CANDIDATE_REVIEW_SPEC.md
   - docs/decisions/ADR-004-ai-cannot-overwrite-draft.md
-  - docs/database/DATABASE_SCHEMA.md
+  - docs/decisions/ADR-005-lock-revision-backup.md
+  - docs/testing/PERFORMANCE_BUDGETS.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
-  - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
-  - pnpm test:eval
+  - pnpm test:integration
 ```
 
 ## 连续执行规则

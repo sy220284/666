@@ -1,16 +1,16 @@
 import { z } from 'zod';
 
-import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate.js';
-import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
 import { ErrorCodeSchema } from './error-codes.js';
+import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
+import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
 import { CoreRecoveryOperationSchema, CoreRecoveryResultSchema } from './recovery.js';
 import { CoreTextIoOperationSchema, CoreTextIoResultSchema } from './import-export.js';
+import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate.js';
 import {
   CoreProjectStructureOperationSchema,
   CoreProjectStructureResultSchema,
 } from './project-structure.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
-import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
   getActive: 'worldforge:project:get-active',
@@ -221,3 +221,6 @@ export type ProjectMoveResult = z.infer<typeof ProjectMoveResultSchema>;
 export type ProjectCloseResult = z.infer<typeof ProjectCloseResultSchema>;
 export type CoreProjectOperation = z.infer<typeof CoreProjectOperationSchema>;
 export type CoreProjectResult = z.infer<typeof CoreProjectResultSchema>;
+
+export * from './candidate.js';
+export * from './candidate-apply.js';

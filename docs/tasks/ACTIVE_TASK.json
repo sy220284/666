@@ -11,18 +11,18 @@
     "modeAdjustedAt": "2026-07-16"
   },
   "activeTask": {
-    "id": "M1-08",
+    "id": "M1-09",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md",
+    "source": "docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md",
     "branch": "main",
-    "startedAt": "2026-07-16",
+    "startedAt": "2026-07-17",
     "allowedPaths": [
-      "migrations/project/",
       "packages/core-service/",
       "packages/contracts/",
+      "apps/desktop/main/",
+      "apps/desktop/preload/",
       "apps/desktop/renderer/",
       "tests/integration/",
-      "tests/security/",
       "tests/e2e/",
       "package.json",
       "pnpm-lock.yaml",
@@ -30,15 +30,10 @@
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md",
+      "docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M1-08/",
-      "docs/tasks/M1/M1-07_MANUAL_VERSION_FINALIZE.md",
-      "apps/desktop/main/",
-      "apps/desktop/preload/",
-      "tests/migration/",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/testing/SECURITY_TEST_CASES.md"
+      "docs/test-evidence/M1-09/",
+      "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -46,9 +41,9 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/decisions/ADR-005-lock-revision-backup.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/testing/SECURITY_TEST_CASES.md"
+      "docs/security/THREAT_MODEL.md",
+      "docs/contracts/ERROR_CODES.md",
+      "docs/ui/SCREEN_SPECIFICATIONS.md"
     ],
     "verification": [
       "pnpm lint",
@@ -57,8 +52,7 @@
       "pnpm test:migration",
       "pnpm test:integration",
       "pnpm test:security",
-      "pnpm test:e2e",
-      "pnpm test:unit"
+      "pnpm test:e2e"
     ]
   },
   "lastVerifiedTask": {
@@ -143,11 +137,22 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M1-08",
+      "implementationCommit": "5e6c40ec5b7792c4e48318db65cb69608eaa4374",
+      "deferredAt": "2026-07-17T01:12:02.480Z",
+      "pending": [
+        "standard evidence package and screenshots",
+        "manual acceptance and exhaustive quality matrix",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "lastImplementedTask": {
-    "id": "M1-07",
-    "commit": "56f55d8f5d08c35fbff11360fe2ce46464193d98",
-    "implementedAt": "2026-07-16T23:33:23.592Z"
+    "id": "M1-08",
+    "commit": "5e6c40ec5b7792c4e48318db65cb69608eaa4374",
+    "implementedAt": "2026-07-17T01:12:02.480Z"
   }
 }

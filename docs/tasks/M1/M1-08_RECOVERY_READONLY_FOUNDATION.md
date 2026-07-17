@@ -1,6 +1,6 @@
 # M1-08 基础恢复点、完整性检查与只读恢复
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
 > 建议分支：`feat/m1-recovery-readonly-foundation`

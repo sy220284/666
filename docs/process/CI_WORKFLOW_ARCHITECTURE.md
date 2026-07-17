@@ -6,12 +6,12 @@
 |---|---|---|---|
 | `PR Policy` | PR→main | 校验真实PR分支、治理例外范围、工作流权限和禁止直推/自动合并规则 | 是：`pr-policy` |
 | `Task Governance` | PR→main、main合并后 | 校验活动任务、状态镜像、修改路径和证据结构 | 是：`task-governance` |
-| `Quality` | PR→main、main合并后 | 静态检查、四类测试、Electron E2E、Build、Package Smoke与唯一聚合门 | 是：`quality / quality` |
+| `Quality` | PR→main、main合并后 | 静态检查、四类测试、性能与AI协议基线、Electron E2E、Build、Package Smoke及唯一聚合门 | 是：`quality / quality` |
 | `Security` | PR→main、main合并后 | 锁文件高危依赖审计与仓库凭据扫描 | 是：`security` |
-| `Branch Hygiene` | 每周、手动 | 只读列出已合并/过期/无PR分支，生成清理报告；不自动删除 | 否 |
+| `Branch Hygiene` | 每周、手动 | 只读列出已合并、过期和无PR分支，生成清理报告；不自动删除 | 否 |
 | `Release` | 手动 | 复用Quality，执行发布门、三平台独立Build+Package、校验和及GitHub Release | 否，使用`release`环境人工审批 |
 
-`quality-core.yml`是可复用实现，不单独配置为分支必需检查。
+`quality-core.yml`是可复用实现，不单独配置为分支必需检查。性能与AI协议回归属于Quality内部必要作业，不额外制造容易漂移的状态检查名称。
 
 ## 2. PR合并门
 
@@ -42,6 +42,7 @@ pr-policy
 - `pnpm audit --audit-level=high`阻断高危依赖；
 - 强模式凭据扫描阻断GitHub、AWS、Google、Slack及私钥；
 - 现有`tests/security`验证IPC、路径、只读和数据库安全边界；
+- `pnpm test:perf`持续验证性能预算和AI输出协议基线；
 - GitHub账户侧继续启用Dependabot alerts和security updates。
 
 获得GitHub Code Security授权后，可另行增加CodeQL和Dependency Review，但不得在功能不可用时把它们配置成必需检查。

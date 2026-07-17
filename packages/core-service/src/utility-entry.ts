@@ -4,6 +4,7 @@ import {
   APP_DATA_COMMANDS,
   DRAFT_COMMANDS,
   CANDIDATE_COMMANDS,
+  CANDIDATE_APPLY_COMMANDS,
   VERSION_COMMANDS,
   RECOVERY_COMMANDS,
   TEXT_IO_COMMANDS,
@@ -24,6 +25,8 @@ import {
 import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
+import { CandidateApplyService } from './candidate-apply.js';
+import { CandidateApplyServiceError } from './candidate-state.js';
 import { CandidateService, CandidateServiceError } from './candidate.js';
 import { DraftService, DraftServiceError } from './draft.js';
 import { VersionService, VersionServiceError } from './version.js';
@@ -100,6 +103,7 @@ const recovery = new RecoveryService(projectWorkspace, {
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
 const candidates = new CandidateService(projectWorkspace);
+const candidateApply = new CandidateApplyService(projectWorkspace);
 const versions = new VersionService(projectWorkspace);
 const textIo = new ImportExportService(projectWorkspace, recovery);
 
@@ -195,6 +199,11 @@ function projectWorkspaceError(error: unknown): ErrorCode {
       case 'EXPORT_WRITE_FAILED':
         return 'EXPORT_WRITE_FAILED_003';
     }
+  }
+  if (error instanceof CandidateApplyServiceError) {
+    if (error.code === 'CANDIDATE_APPLY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'CANDIDATE_APPLY_INVALID') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
   }
   if (error instanceof CandidateServiceError) {
     switch (error.code) {
@@ -478,6 +487,12 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await candidates.discard(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.previewCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidateApply.preview(operation.input),
         });
       case VERSION_COMMANDS.createVersion:
         return CoreProjectResultSchema.parse({

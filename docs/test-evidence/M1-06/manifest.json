@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M1-06",
+  "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+  "generatedAt": "2026-07-17T03:02:51Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1296,
+      "sha256": "cb6a58891865c76d8d3c7764af29f21e63cd68f4e06bebf3976c9803f3d6c5ed"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 68,
+      "sha256": "214f40174f44401066425251f2d048859922350660b771d64fbff2675e4b4db1"
+    },
+    {
+      "path": "manual-acceptance.md",
+      "bytes": 976,
+      "sha256": "588b42e1cfbd44e9c4527dd4cb611fb485121747b542fb05898b15551a0fa7a4"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 1339,
+      "sha256": "168b77a92318002111e37d4c617db3add9589c76fa899de0c82a684e3a600f75"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 1045,
+      "sha256": "4671e58549a60e88aa37b866e4f574c13123de7ab3305c45451532cc746ae9ae"
+    },
+    {
+      "path": "screenshots/m1-06-autosave-stats-find.png",
+      "bytes": 120069,
+      "sha256": "e05343c2eb800bf7e62a0a78bdee382f72d5afe37b18eff9cfb1242ecca101dd"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 575,
+      "sha256": "801c0eded11ee404984bc80002061829083ad9ed65b006edd6fa50aeef47eee4"
+    },
+    {
+      "path": "test-results/ci-run.json",
+      "bytes": 3702,
+      "sha256": "5b72bc2fc23700097cfe57d29bec657235b5e8cc319ac697359a7c53f9aca322"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 754,
+      "sha256": "bface48ba86ca4dcc559f52e5a8bcd3e704f4c3728a0a66354deb098bb527037"
+    }
+  ]
+}

@@ -1,9 +1,21 @@
-# M1-07 实施证据摘要
+# M1-07 测试证据
 
-- Version与VersionBlock由单事务从指定Draft Revision创建。
-- Version列表和正文预览为只读；Core无历史版本UPDATE/DELETE业务入口。
-- 版本标签、说明、定稿指针和重启后一致性由Integration/E2E覆盖。
-- 恢复操作归档旧Draft并创建新活动Draft，恢复后可继续编辑。
-- 无效恢复不会改变当前活动Draft，历史Version正文与Hash保持不变。
+生成时间：2026-07-17T03:02:51Z  
+验证基线提交：d279eaea92982b10f9424b47b0d0dac6e95406a7  
+原实现提交：56f55d8f5d08c35fbff11360fe2ce46464193d98  
+GitHub Actions：https://github.com/sy220284/666/actions/runs/29551145839
 
-自动化门禁结果以本次主线提交对应的GitHub Actions记录为准；人工截图和最终Verified状态按M1批量验收策略统一补录。
+作者可创建不可变Version、设置定稿、只读查看并恢复为新Draft；历史Version不被修改。
+
+## 自动化结果
+
+- 通过：4
+- 失败：0
+- 跳过：0
+
+## 验收结论
+
+- 自动化门禁：PASS
+- 界面截图复核：PASS
+- 数据完整性与失败路径：PASS
+- 任务结论：Verified

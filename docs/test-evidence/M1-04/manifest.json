@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M1-04",
+  "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+  "generatedAt": "2026-07-17T03:02:51Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1296,
+      "sha256": "cb6a58891865c76d8d3c7764af29f21e63cd68f4e06bebf3976c9803f3d6c5ed"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 80,
+      "sha256": "4f4e82fdb50dc2272790520caff6c577113294770fe8b812f6daf9478189a0e3"
+    },
+    {
+      "path": "manual-acceptance.md",
+      "bytes": 989,
+      "sha256": "308821eddd889336a38fb7d45b12f6c91bce95b921bd880f32575752a100d242"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 1035,
+      "sha256": "3213f631a33ff85a252e46325e7b7c85552942400d9b429b079bd76f8912506a"
+    },
+    {
+      "path": "screenshots/m1-04-chinese-block-editor.png",
+      "bytes": 120252,
+      "sha256": "66f5ef9eab10a5ca3992e598ceb65541b3fcd755deb718bca4eb7c9ccbf6d65b"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 581,
+      "sha256": "ed61330d2dcab23f8a4c8d07e2c40d2206fea965f22698bd379b678e47f8ce9f"
+    },
+    {
+      "path": "test-results/ci-run.json",
+      "bytes": 3702,
+      "sha256": "5b72bc2fc23700097cfe57d29bec657235b5e8cc319ac697359a7c53f9aca322"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 776,
+      "sha256": "f796f6040919b28a9ebd39c0dd54375ab7d52fb259f7eccf93a5931ce6d48481"
+    }
+  ]
+}

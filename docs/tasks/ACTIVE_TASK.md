@@ -36,6 +36,21 @@ allowed_paths:
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M1-09/
   - docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md
+  - tests/e2e/m1-deferred-acceptance.spec.ts
+  - tests/e2e/m1-acceptance.playwright.config.ts
+  - tests/performance/m1-writing-performance.test.ts
+  - docs/testing/M1_DEFERRED_ACCEPTANCE_REPORT.md
+  - docs/testing/M1_QUALITY_MATRIX.md
+  - docs/testing/P0_ACCEPTANCE_MATRIX.md
+  - docs/tasks/M1/
+  - docs/test-evidence/M1-01/
+  - docs/test-evidence/M1-02/
+  - docs/test-evidence/M1-03/
+  - docs/test-evidence/M1-04/
+  - docs/test-evidence/M1-05/
+  - docs/test-evidence/M1-06/
+  - docs/test-evidence/M1-07/
+  - docs/test-evidence/M1-08/
 forbidden_paths:
 
 required_docs:

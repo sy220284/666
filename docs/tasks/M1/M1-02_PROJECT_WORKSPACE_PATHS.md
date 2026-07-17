@@ -1,6 +1,6 @@
 # M1-02 项目工作空间、路径边界与只读打开
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
 > 建议分支：`feat/m1-project-workspace-paths`

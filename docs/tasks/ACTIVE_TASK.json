@@ -33,7 +33,22 @@
       "docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
       "docs/test-evidence/M1-09/",
-      "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md"
+      "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md",
+      "tests/e2e/m1-deferred-acceptance.spec.ts",
+      "tests/e2e/m1-acceptance.playwright.config.ts",
+      "tests/performance/m1-writing-performance.test.ts",
+      "docs/testing/M1_DEFERRED_ACCEPTANCE_REPORT.md",
+      "docs/testing/M1_QUALITY_MATRIX.md",
+      "docs/testing/P0_ACCEPTANCE_MATRIX.md",
+      "docs/tasks/M1/",
+      "docs/test-evidence/M1-01/",
+      "docs/test-evidence/M1-02/",
+      "docs/test-evidence/M1-03/",
+      "docs/test-evidence/M1-04/",
+      "docs/test-evidence/M1-05/",
+      "docs/test-evidence/M1-06/",
+      "docs/test-evidence/M1-07/",
+      "docs/test-evidence/M1-08/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -56,100 +71,11 @@
     ]
   },
   "lastVerifiedTask": {
-    "id": "M0-07",
-    "commit": "04077a08a2819044787432d039a81dedca214cfd",
-    "verifiedAt": "2026-07-16T05:37:30.532Z"
+    "id": "M1-08",
+    "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+    "verifiedAt": "2026-07-17T03:02:51Z"
   },
-  "deferredVerification": [
-    {
-      "id": "M1-01",
-      "implementationCommit": "dc3911c2c8fdedaedcd4074f7aeb6025926c22a4",
-      "deferredAt": "2026-07-16T06:35:19.336Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M1-02",
-      "implementationCommit": "ee2dbf6f99c2d6611935199caa5435c35f89f643",
-      "deferredAt": "2026-07-16T09:06:28.954Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M1-03",
-      "implementationCommit": "4084a84ce585a7b5c810d33aaccf730713db6258",
-      "deferredAt": "2026-07-16T10:05:59.545Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M1-04",
-      "implementationCommit": "8719d4f3a477235e5bf65eba9e345a9169e9359e",
-      "deferredAt": "2026-07-16T11:23:32.999Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M1-05",
-      "implementationCommit": "5902c140ff2be1a0cdd0b7fec6cd40c3902d0ba4",
-      "deferredAt": "2026-07-16T17:16:18.341Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M1-06",
-      "implementationCommit": "c95d6b38fdd49c4418d42c64c95b9c91c43e3d4a",
-      "deferredAt": "2026-07-16T23:28:38.615Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M1-07",
-      "implementationCommit": "56f55d8f5d08c35fbff11360fe2ce46464193d98",
-      "deferredAt": "2026-07-16T23:33:23.592Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M1-08",
-      "implementationCommit": "5e6c40ec5b7792c4e48318db65cb69608eaa4374",
-      "deferredAt": "2026-07-17T01:12:02.480Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    }
-  ],
+  "deferredVerification": [],
   "lastImplementedTask": {
     "id": "M1-08",
     "commit": "5e6c40ec5b7792c4e48318db65cb69608eaa4374",

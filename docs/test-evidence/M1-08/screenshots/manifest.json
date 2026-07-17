@@ -1,0 +1,12 @@
+[
+  {
+    "fileName": "m1-08-recovery-center.png",
+    "fixtureId": "M1-08",
+    "sha256": "457cabc0297b1d7b687faf4030a7c068e7a4496eab22b8be9a451de0f124c38b"
+  },
+  {
+    "fileName": "m1-08-readonly-recovery.png",
+    "fixtureId": "M1-08",
+    "sha256": "8b9c7f5425708590e4a16df7794c4fe358d1d88fa09da9be65a52592bd12313f"
+  }
+]

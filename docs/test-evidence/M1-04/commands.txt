@@ -1,69 +1,41 @@
-2026-07-16 M1-04 local verification
-
-Environment used for pnpm commands:
-XDG_DATA_HOME=/tmp/worldforge-xdg
-XDG_CACHE_HOME=/tmp/worldforge-xdg-cache
-ELECTRON_CACHE=/tmp/worldforge-electron-cache
-
-pnpm install --frozen-lockfile
-PASS: lockfile passed supply-chain policies (223 entries)
-
-pnpm lint
-PASS
-
-pnpm typecheck
-PASS
-
-pnpm test
-PASS: 34 files, 143 passed, 1 skipped (root-only permission case)
-
-pnpm test:migration
-PASS: 6 files, 21 passed
-
-pnpm test:integration
-PASS: 8 files, 24 passed
-
-pnpm test:security
-PASS: 8 files, 38 passed, 1 skipped (root-only permission case)
-
-pnpm test:unit
-PASS: 8 files, 34 passed
-
-pnpm test:perf
-PASS: 4 files, 26 passed
-
-pnpm build
-PASS
-
-pnpm test:e2e
-ENVIRONMENT BLOCKED after successful build: E2E_DISPLAY_UNAVAILABLE; DISPLAY unset and xvfb-run unavailable; exit 2
-
-pnpm exec playwright test tests/e2e/electron-shell.spec.ts --list
-PASS: 8 Electron desktop scenarios parsed
-
-pnpm format:check
-PASS
-
-pnpm check:boundaries
-PASS: 9 process/package layers
+pnpm task:validate
+exit=0 duration_ms=510 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
 
 pnpm check:workspaces
-PASS: 10 workspace packages
+exit=0 duration_ms=507 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
 
-pnpm task:validate
-PASS: M1-04 IN_PROGRESS
+pnpm check:boundaries
+exit=0 duration_ms=530 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
 
-pnpm task:preflight
-PASS: changes remain inside the approved M1-04 paths
+pnpm format:check
+exit=0 duration_ms=4859 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
 
-pnpm release:check
-PASS: tooling configured; publishing correctly BLOCKED while M8-03 is Planned
+pnpm lint
+exit=0 duration_ms=5171 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
 
-pnpm package
-PASS: 9 compiled foundation entries
+pnpm typecheck
+exit=0 duration_ms=26979 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
 
-Renderer bundle bare-import check
-PASS: no @worldforge or @tiptap bare imports remain in renderer/dist/index.js
+pnpm test:unit
+exit=0 duration_ms=14691 fixtures=M1-04,M1-05,M1-06
 
-git diff --check
-PASS
+pnpm test:integration
+exit=0 duration_ms=7409 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+
+pnpm test:migration
+exit=0 duration_ms=14936 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-07,M1-08
+
+pnpm test:security
+exit=0 duration_ms=4210 fixtures=M1-01,M1-02,M1-04,M1-05,M1-08
+
+pnpm test:perf
+exit=0 duration_ms=16095 fixtures=M1-06
+
+pnpm test:e2e
+exit=0 duration_ms=196348 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+
+M1 acceptance E2E
+exit=0 duration_ms=58531 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08
+
+pnpm build
+exit=0 duration_ms=16489 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08

@@ -1,0 +1,50 @@
+[
+  {
+    "taskId": "M1-06",
+    "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+    "environment": {
+      "os": "Linux-6.17.0-1020-azure-x86_64-with-glibc2.39",
+      "cpu": "x86_64",
+      "memoryGb": 7.75,
+      "display": "Xvfb 1440x900@100%"
+    },
+    "metric": "typing_latency_p95_ms",
+    "dataset": "2k-draft-local-statistics-path",
+    "samples": 60,
+    "result": 0.3715480000000184,
+    "budget": 50,
+    "passed": true
+  },
+  {
+    "taskId": "M1-06",
+    "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+    "environment": {
+      "os": "Linux-6.17.0-1020-azure-x86_64-with-glibc2.39",
+      "cpu": "x86_64",
+      "memoryGb": 7.75,
+      "display": "Xvfb 1440x900@100%"
+    },
+    "metric": "chapter_find_p95_ms",
+    "dataset": "2k-draft-current-chapter-find",
+    "samples": 60,
+    "result": 0.044214000000010856,
+    "budget": 100,
+    "passed": true
+  },
+  {
+    "taskId": "M1-06",
+    "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+    "environment": {
+      "os": "Linux-6.17.0-1020-azure-x86_64-with-glibc2.39",
+      "cpu": "x86_64",
+      "memoryGb": 7.75,
+      "display": "Xvfb 1440x900@100%"
+    },
+    "metric": "autosave_transaction_p95_ms",
+    "dataset": "2k-draft-sqlite-patch-transaction",
+    "samples": 40,
+    "result": 1.1238790000002155,
+    "budget": 150,
+    "passed": true
+  }
+]

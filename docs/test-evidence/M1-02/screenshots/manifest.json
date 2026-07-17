@@ -1,0 +1,12 @@
+[
+  {
+    "fileName": "m1-02-project-workspace.png",
+    "fixtureId": "M1-02",
+    "sha256": "7e3b5d4ce72bc20ff9fed35689a3e1a15da0ded5f5a10a7328523716ca480506"
+  },
+  {
+    "fileName": "m1-02-read-only.png",
+    "fixtureId": "M1-02",
+    "sha256": "0fc3a2926ab7a0db977501a7015bd481048c14226b89feb45497732eedbf3b91"
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M1-08",
+  "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+  "generatedAt": "2026-07-17T03:02:51Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1296,
+      "sha256": "cb6a58891865c76d8d3c7764af29f21e63cd68f4e06bebf3976c9803f3d6c5ed"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 107,
+      "sha256": "1d61cc4d0782595533db539966db27e6f09e6a7e5ca8a34bebe0e816c14ca19e"
+    },
+    {
+      "path": "manual-acceptance.md",
+      "bytes": 1092,
+      "sha256": "0abdf6bb6177db3c3cf7ca66788cd258813a0d8fe10d52119bde7f8d67d7dff4"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 1054,
+      "sha256": "369eee415b098a9d349883288825bc0124c81433afff52ec9b6ae3b9e8986c0f"
+    },
+    {
+      "path": "screenshots/m1-08-readonly-recovery.png",
+      "bytes": 163475,
+      "sha256": "8b9c7f5425708590e4a16df7794c4fe358d1d88fa09da9be65a52592bd12313f"
+    },
+    {
+      "path": "screenshots/m1-08-recovery-center.png",
+      "bytes": 160752,
+      "sha256": "457cabc0297b1d7b687faf4030a7c068e7a4496eab22b8be9a451de0f124c38b"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 587,
+      "sha256": "cbfe7704da1db48e811e3d7fc84616714162a80202dc44d6db0a72c56f064559"
+    },
+    {
+      "path": "test-results/ci-run.json",
+      "bytes": 3702,
+      "sha256": "5b72bc2fc23700097cfe57d29bec657235b5e8cc319ac697359a7c53f9aca322"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 821,
+      "sha256": "bc0ef26d4bd223650cf7463725a45eb19619b71d0db004c19cc63442ad6565cc"
+    }
+  ]
+}

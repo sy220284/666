@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M1-02",
+  "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+  "generatedAt": "2026-07-17T03:02:51Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1296,
+      "sha256": "cb6a58891865c76d8d3c7764af29f21e63cd68f4e06bebf3976c9803f3d6c5ed"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 96,
+      "sha256": "ed63ebd1d0449b591589d1f7e0652e3f62041f81de54dda9ab50271c58bd0835"
+    },
+    {
+      "path": "manual-acceptance.md",
+      "bytes": 1037,
+      "sha256": "c1dbe60a588cba4cbf3d59a699ab50684c1b75e5d397cb518ac439855c266626"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 1054,
+      "sha256": "515fdf87d6d1d528f777d53d6144c46b38800f3f1eda2fc8b441050c1fd4b69e"
+    },
+    {
+      "path": "screenshots/m1-02-project-workspace.png",
+      "bytes": 138582,
+      "sha256": "7e3b5d4ce72bc20ff9fed35689a3e1a15da0ded5f5a10a7328523716ca480506"
+    },
+    {
+      "path": "screenshots/m1-02-read-only.png",
+      "bytes": 155538,
+      "sha256": "0fc3a2926ab7a0db977501a7015bd481048c14226b89feb45497732eedbf3b91"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 575,
+      "sha256": "a4d929968bbbc7a875377086b41083b5448738434809322d442ba04abd9f78a8"
+    },
+    {
+      "path": "test-results/ci-run.json",
+      "bytes": 3702,
+      "sha256": "5b72bc2fc23700097cfe57d29bec657235b5e8cc319ac697359a7c53f9aca322"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 772,
+      "sha256": "c94dc8d3e5ab777ce65601552799b943a08d34134d692f157d6b9e06d6a6571c"
+    }
+  ]
+}

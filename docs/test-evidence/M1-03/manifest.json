@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M1-03",
+  "commit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+  "generatedAt": "2026-07-17T03:02:51Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1296,
+      "sha256": "cb6a58891865c76d8d3c7764af29f21e63cd68f4e06bebf3976c9803f3d6c5ed"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 77,
+      "sha256": "81c30042fb15d00bfdcb47a5e5afa0e000d36fc50cf185e7dfd5414da9f2ed5b"
+    },
+    {
+      "path": "manual-acceptance.md",
+      "bytes": 874,
+      "sha256": "6bf075925807a875472814954be94be37d0db807ede2ac9a9d363aa336cc5260"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 1036,
+      "sha256": "65350f566db999e589301e8469608694aea602bd801e1c0e44b109e2a8215dd7"
+    },
+    {
+      "path": "screenshots/m1-03-volume-chapter-trash.png",
+      "bytes": 146483,
+      "sha256": "2e5c7a98dcae9f6ef59cd691c79a0ff4aa6726dd799acb67874990f074e40f12"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 592,
+      "sha256": "21cff0234023064a9daf3281b56235d8213670e23a2e25b1c43d6fd594ad4530"
+    },
+    {
+      "path": "test-results/ci-run.json",
+      "bytes": 3702,
+      "sha256": "5b72bc2fc23700097cfe57d29bec657235b5e8cc319ac697359a7c53f9aca322"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 559,
+      "sha256": "a9a1d6e53161777e25e89ce3c0dca873d626577ebc06a0eb2c95cf25d59a83dd"
+    }
+  ]
+}

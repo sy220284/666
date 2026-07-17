@@ -1,6 +1,6 @@
 # M1-04 Draft、Tiptap与中文输入
 
-> 状态：Implemented
+> 状态：Verified  
 > 里程碑：M1 基础写作MVP  
 > 优先级：P0  
 > 建议分支：`feat/m1-draft-editor-ime`

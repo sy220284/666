@@ -41,6 +41,7 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
   - docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md
+  - docs/tasks/M5/M5-05_CANDIDATE_REVIEW_APPLY.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/database/DATABASE_SCHEMA.md
   - docs/contracts/IPC_CONTRACTS.md

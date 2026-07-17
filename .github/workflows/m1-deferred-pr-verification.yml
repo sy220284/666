@@ -1,0 +1,40 @@
+name: M1 Deferred PR Verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/m1-deferred-pr-verification.yml
+      - scripts/run-m1-deferred-verification.sh
+      - scripts/m1-deferred-finalize.py
+      - scripts/m1-deferred-tasks.json
+      - tests/e2e/m1-deferred-acceptance.spec.ts
+      - tests/e2e/m1-acceptance.playwright.config.ts
+      - tests/performance/m1-writing-performance.test.ts
+
+concurrency:
+  group: m1-deferred-pr-verification
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-close:
+    if: ${{ github.head_ref == 'verify/m1-deferred-closure' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: verify/m1-deferred-closure
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Execute M1 deferred verification
+        run: bash scripts/run-m1-deferred-verification.sh

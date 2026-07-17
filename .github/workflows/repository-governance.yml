@@ -1,0 +1,38 @@
+name: Repository Governance
+
+on:
+  schedule:
+    - cron: '30 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-governance
+  cancel-in-progress: true
+
+jobs:
+  repository-governance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Audit native main-branch protection
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RULESET_REPORT: artifacts/repository-governance/report.json
+        run: node scripts/ruleset-policy.mjs check
+      - name: Upload ruleset drift report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: repository-governance-report
+          path: artifacts/repository-governance/
+          if-no-files-found: error
+          retention-days: 30

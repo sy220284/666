@@ -206,7 +206,9 @@ async function activate(taskId, additionalAllowedPaths = []) {
     `docs/test-evidence/${taskId}/`,
   ];
   const taskBranch =
-    state.authorization.mode === 'implementation-pr' ? taskBranchFor(task) : state.authorization.branch;
+    state.authorization.mode === 'implementation-pr'
+      ? taskBranchFor(task)
+      : state.authorization.branch;
   state.activeTask = {
     id: taskId,
     status: 'IN_PROGRESS',

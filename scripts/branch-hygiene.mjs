@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 const root = process.cwd();
 const token = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
-const outputDirectory = path.resolve(process.env.BRANCH_HYGIENE_OUTPUT ?? 'artifacts/branch-hygiene');
+const outputDirectory = path.resolve(
+  process.env.BRANCH_HYGIENE_OUTPUT ?? 'artifacts/branch-hygiene',
+);
 
 async function github(pathname) {
   const response = await fetch(`https://api.github.com${pathname}`, {
@@ -91,7 +93,11 @@ async function main() {
   await mkdir(outputDirectory, { recursive: true });
   await Promise.all([
     writeFile(path.join(outputDirectory, 'report.md'), `${lines.join('\n')}\n`, 'utf8'),
-    writeFile(path.join(outputDirectory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8'),
+    writeFile(
+      path.join(outputDirectory, 'report.json'),
+      `${JSON.stringify(report, null, 2)}\n`,
+      'utf8',
+    ),
   ]);
   console.log(`Branch audit completed for ${report.length} branches.`);
   if (orphaned.length > 0) process.exitCode = 1;

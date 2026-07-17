@@ -59,7 +59,9 @@ export function isGovernanceOnlyPullRequest(branch, changedFiles) {
   return (
     governanceBranch &&
     changedFiles.length > 0 &&
-    changedFiles.every((file) => GOVERNANCE_ALLOWED_PATHS.some((allowed) => isPathInside(file, allowed)))
+    changedFiles.every((file) =>
+      GOVERNANCE_ALLOWED_PATHS.some((allowed) => isPathInside(file, allowed)),
+    )
   );
 }
 
@@ -109,7 +111,9 @@ export function validateActiveState(state, taskIndex) {
   if (pullRequestOnly) {
     if (!active?.branch || active.branch === 'main') {
       errors.push('PR-only execution requires a non-main task branch');
-    } else if (!/^(?:work|feat|fix|refactor|test|docs|chore)\/[a-z0-9._/-]+$/u.test(active.branch)) {
+    } else if (
+      !/^(?:work|feat|fix|refactor|test|docs|chore)\/[a-z0-9._/-]+$/u.test(active.branch)
+    ) {
       errors.push('PR-only task branch must use an approved work prefix');
     }
   }

@@ -15,10 +15,7 @@ const patterns = [
 
 function trackedFiles() {
   const output = execFileSync('git', ['ls-files', '-z'], { cwd: root });
-  return output
-    .toString('utf8')
-    .split('\0')
-    .filter(Boolean);
+  return output.toString('utf8').split('\0').filter(Boolean);
 }
 
 async function main() {

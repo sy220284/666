@@ -52,7 +52,11 @@ function validateWorkflow(fileName, source, errors) {
   if (/pull_request_target\s*:|workflow_run\s*:|repository_dispatch\s*:/u.test(source)) {
     errors.push(`${fileName}: privileged or indirect trigger is forbidden`);
   }
-  if (/git\s+push[^\n]*(?:HEAD:main|\bmain\b)|gh\s+pr\s+merge|merge_pull_request|enablePullRequestAutoMerge/iu.test(source)) {
+  if (
+    /git\s+push[^\n]*(?:HEAD:main|\bmain\b)|gh\s+pr\s+merge|merge_pull_request|enablePullRequestAutoMerge/iu.test(
+      source,
+    )
+  ) {
     errors.push(`${fileName}: direct main push or automatic PR merge is forbidden`);
   }
   if (fileName !== 'release.yml' && /contents:\s*write/iu.test(source)) {
@@ -62,9 +66,7 @@ function validateWorkflow(fileName, source, errors) {
 }
 
 async function main() {
-  const files = (await readdir(workflowDirectory))
-    .filter((name) => /\.ya?ml$/u.test(name))
-    .sort();
+  const files = (await readdir(workflowDirectory)).filter((name) => /\.ya?ml$/u.test(name)).sort();
   const errors = [];
   for (const required of requiredWorkflows) {
     if (!files.includes(required)) errors.push(`Missing required workflow: ${required}`);
@@ -78,7 +80,14 @@ async function main() {
   }
 
   const quality = workflows.get('quality-core.yml') ?? '';
-  for (const token of ['static-checks:', 'tests:', 'desktop-e2e:', 'build:', 'package-smoke:', 'quality:']) {
+  for (const token of [
+    'static-checks:',
+    'tests:',
+    'desktop-e2e:',
+    'build:',
+    'package-smoke:',
+    'quality:',
+  ]) {
     if (!quality.includes(token)) errors.push(`quality-core.yml is missing ${token}`);
   }
 

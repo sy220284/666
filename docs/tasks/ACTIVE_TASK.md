@@ -26,6 +26,7 @@ allowed_paths:
   - apps/desktop/renderer/
   - packages/testkit/
   - tests/integration/
+  - tests/migration/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml

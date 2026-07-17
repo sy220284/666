@@ -3,7 +3,12 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@worldforge/editor-core": ["../editor-core/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

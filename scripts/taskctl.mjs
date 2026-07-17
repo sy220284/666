@@ -3,12 +3,14 @@ import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  parseTaskIndex,
   dependenciesSatisfied,
   extractBacktickBullets,
   findNextReadyTask,
+  isGovernanceOnlyPullRequest,
+  parseTaskIndex,
   renderActiveTask,
   replaceTaskIndexStatus,
+  taskBranchFor,
   validateActiveState,
   validateChangedPaths,
   verificationForTask,
@@ -64,10 +66,73 @@ function changedFiles() {
   return output.split(/\r?\n/).filter(Boolean);
 }
 
+function pullRequestBranch() {
+  return process.env.TASK_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF ?? '';
+}
+
+function isPullRequestEvent() {
+  return (process.env.TASK_EVENT_NAME ?? process.env.GITHUB_EVENT_NAME) === 'pull_request';
+}
+
+function loadBaseState() {
+  const base = process.env.TASK_BASE_REF;
+  if (!base) return null;
+  try {
+    const source = execFileSync('git', ['show', `${base}:docs/tasks/ACTIVE_TASK.json`], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    return JSON.parse(source);
+  } catch {
+    return null;
+  }
+}
+
+async function prPolicy() {
+  const state = await validate();
+  if (!isPullRequestEvent()) {
+    console.log('PR branch policy skipped outside pull_request events.');
+    return state;
+  }
+  if (state.authorization.mode !== 'implementation-pr') {
+    throw new Error('Pull requests require authorization.mode=implementation-pr');
+  }
+
+  const headBranch = pullRequestBranch();
+  if (!headBranch || headBranch === 'main') {
+    throw new Error('Pull request head branch must be a named non-main branch');
+  }
+  const files = changedFiles();
+  if (isGovernanceOnlyPullRequest(headBranch, files)) {
+    console.log(`Governance-only pull request accepted from ${headBranch}.`);
+    return state;
+  }
+
+  const baseState = loadBaseState();
+  const allowedBranches = new Set(
+    [state.activeTask?.branch, baseState?.activeTask?.branch].filter(Boolean),
+  );
+  if (!allowedBranches.has(headBranch)) {
+    throw new Error(
+      `Pull request head ${headBranch} does not match the active task branch: ${[
+        ...allowedBranches,
+      ].join(', ')}`,
+    );
+  }
+  console.log(`Pull request branch matches the active task: ${headBranch}.`);
+  return state;
+}
+
 async function preflight() {
   const state = await validate();
+  const files = changedFiles();
+  const headBranch = pullRequestBranch();
+  if (isPullRequestEvent() && isGovernanceOnlyPullRequest(headBranch, files)) {
+    console.log(`Governance-only preflight passed for ${headBranch}.`);
+    return;
+  }
   const violations = validateChangedPaths(
-    changedFiles(),
+    files,
     state.activeTask.allowedPaths,
     state.activeTask.forbiddenPaths,
   );
@@ -77,9 +142,9 @@ async function preflight() {
 
 async function verify() {
   const state = await validate();
-  if (state.authorization.mode === 'implementation-mainline') {
+  if (['implementation-mainline', 'implementation-pr'].includes(state.authorization.mode)) {
     console.log(
-      `Evidence verification is deferred for ${state.activeTask.id} in implementation-mainline mode.`,
+      `Evidence verification is deferred for ${state.activeTask.id} in ${state.authorization.mode} mode.`,
     );
     return state;
   }
@@ -113,7 +178,9 @@ async function activate(taskId, additionalAllowedPaths = []) {
   const task = taskIndex.get(taskId);
   if (!task) throw new Error(`Unknown task: ${taskId}`);
   if (task.status !== 'Planned') throw new Error(`${taskId} must be Planned, found ${task.status}`);
-  const allowImplemented = state.authorization.mode === 'implementation-mainline';
+  const allowImplemented = ['implementation-mainline', 'implementation-pr'].includes(
+    state.authorization.mode,
+  );
   if (!dependenciesSatisfied(task, taskIndex, { allowImplemented })) {
     throw new Error(
       `${taskId} dependencies are not ${allowImplemented ? 'Implemented or Verified' : 'Verified'}`,
@@ -138,11 +205,13 @@ async function activate(taskId, additionalAllowedPaths = []) {
     'docs/product/V1.0_TRACEABILITY_MATRIX.md',
     `docs/test-evidence/${taskId}/`,
   ];
+  const taskBranch =
+    state.authorization.mode === 'implementation-pr' ? taskBranchFor(task) : state.authorization.branch;
   state.activeTask = {
     id: taskId,
     status: 'IN_PROGRESS',
     source: task.source,
-    branch: state.authorization.branch,
+    branch: taskBranch,
     startedAt: new Date().toISOString().slice(0, 10),
     allowedPaths: [...new Set([...allowedPaths, ...controlPaths, ...additionalAllowedPaths])],
     forbiddenPaths: [],
@@ -156,15 +225,16 @@ async function activate(taskId, additionalAllowedPaths = []) {
   if (updatedCard === card) throw new Error(`${taskId} card status is not Planned`);
   await writeFile(path.join(root, task.source), updatedCard, 'utf8');
   await writeActiveState(state, updatedIndex);
-  console.log(`Activated ${taskId} on ${state.authorization.branch}.`);
+  console.log(`Activated ${taskId} on ${taskBranch}.`);
 }
 
 async function close() {
   const ciStatus = process.argv.find((value) => value.startsWith('--ci='))?.slice(5);
   const commit = process.argv.find((value) => value.startsWith('--commit='))?.slice(9);
   if (ciStatus !== 'success') throw new Error('close requires --ci=success');
-  if (!commit || !/^[0-9a-f]{7,40}$/i.test(commit))
+  if (!commit || !/^[0-9a-f]{7,40}$/i.test(commit)) {
     throw new Error('close requires --commit=<sha>');
+  }
 
   const state = await verify();
   if (state.authorization.mode !== 'continuous-mainline') {
@@ -210,8 +280,8 @@ async function advanceImplementation() {
   }
 
   const state = await validate();
-  if (state.authorization.mode !== 'implementation-mainline') {
-    throw new Error('advance requires authorization.mode=implementation-mainline');
+  if (!['implementation-mainline', 'implementation-pr'].includes(state.authorization.mode)) {
+    throw new Error('advance requires an implementation-first authorization mode');
   }
   if (state.activeTask.status !== 'IN_PROGRESS') {
     throw new Error(`Only an IN_PROGRESS task can advance, found ${state.activeTask.status}`);
@@ -274,6 +344,7 @@ async function main() {
     console.log(`Task control is valid: ${state.activeTask.id} ${state.activeTask.status}.`);
     return;
   }
+  if (command === 'pr-policy') return prPolicy();
   if (command === 'preflight') return preflight();
   if (command === 'verify') return verify();
   if (command === 'sync') return sync();

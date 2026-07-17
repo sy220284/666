@@ -44,15 +44,9 @@ M1-07、M2-01
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
-- `apps/desktop/main/`
-- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `packages/testkit/`
-- `tests/unit/`
 - `tests/integration/`
-- `tests/migration/`
-- `tests/e2e/`
-- `docs/database/DATABASE_SCHEMA.md`
 
 ## 实施内容
 

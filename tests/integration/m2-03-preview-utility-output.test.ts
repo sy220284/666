@@ -60,7 +60,12 @@ describe('M2-03 Preview Utility routing output', () => {
         });
       case VERSION_COMMANDS.createVersion:`,
     );
-    const output = await format(source, { filepath: path });
+    const output = await format(source, {
+      filepath: path,
+      printWidth: 100,
+      singleQuote: true,
+      trailingComma: 'all',
+    });
     console.log(`M203_PREVIEW_UTILITY_BASE64=${Buffer.from(output).toString('base64')}`);
   });
 });

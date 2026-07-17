@@ -35,7 +35,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/m1-09
+          mkdir -p /tmp/m1-09 test-results/m1-09/logs test-results/m1-09/screenshots test-results/m1-09/playwright
+          : > test-results/m1-09/commands.tsv
           cp packages/contracts/src/import-export.ts /tmp/m1-09/contracts-import-export.ts
           cp packages/core-service/src/import-export.ts /tmp/m1-09/core-import-export.ts
           cp tests/integration/import-export-service.test.ts /tmp/m1-09/import-export-service.test.ts
@@ -49,10 +50,10 @@ jobs:
           cp /tmp/m1-09/core-import-export.ts packages/core-service/src/import-export.ts
           cp /tmp/m1-09/import-export-service.test.ts tests/integration/import-export-service.test.ts
           cp /tmp/m1-09/m1-09-import-export.spec.ts tests/e2e/m1-09-import-export.spec.ts
-          python /tmp/m1-09/apply.py
-          python /tmp/m1-09/fix.py
-          mkdir -p test-results/m1-09/logs test-results/m1-09/screenshots test-results/m1-09/playwright
-          : > test-results/m1-09/commands.tsv
+          {
+            python /tmp/m1-09/apply.py
+            python /tmp/m1-09/fix.py
+          } 2>&1 | tee test-results/m1-09/logs/00-prepare.log
 
       - uses: pnpm/action-setup@v4
         with:

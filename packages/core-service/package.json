@@ -12,6 +12,7 @@
   "dependencies": {
     "@worldforge/contracts": "workspace:*",
     "@worldforge/domain": "workspace:*",
+    "@worldforge/editor-core": "workspace:*",
     "iconv-lite": "0.7.3"
   },
   "devDependencies": {

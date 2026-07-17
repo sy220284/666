@@ -8,6 +8,16 @@ on:
         required: false
         type: boolean
         default: true
+      security_suite:
+        description: Run application security tests inside the reusable release gate
+        required: false
+        type: boolean
+        default: false
+      performance_eval:
+        description: Run performance baselines inside the reusable release gate
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,7 +46,20 @@ jobs:
         run: pnpm task:validate
       - run: pnpm check:workspaces
       - run: pnpm check:boundaries
-      - run: pnpm format:check
+      - name: Check formatting
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm format:check 2>&1 | tee test-results/ci/format-check.log
+      - name: Upload static diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: static-check-diagnostics
+          path: test-results/ci/format-check.log
+          if-no-files-found: error
+          retention-days: 14
       - run: pnpm lint
       - run: pnpm typecheck
 
@@ -47,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [unit, integration, migration, security]
+        suite: [unit, integration, migration]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -78,8 +101,44 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  security-tests:
+    name: security-tests
+    if: ${{ inputs.security_suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm test:prepare
+      - name: Run application security tests
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm test:security 2>&1 | tee test-results/ci/security.log
+      - name: Upload security diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-security-diagnostics
+          path: |
+            test-results/ci/security.log
+            test-results/security/
+          if-no-files-found: warn
+          retention-days: 14
+
   performance-eval:
     name: performance-eval
+    if: ${{ inputs.performance_eval }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -104,7 +163,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: performance-eval-diagnostics
+          name: release-performance-eval-diagnostics
           path: |
             test-results/ci/performance-eval.log
             test-results/performance/
@@ -222,12 +281,20 @@ jobs:
   quality:
     name: quality
     if: always()
-    needs: [static-checks, tests, performance-eval, desktop-e2e, build, package-smoke]
+    needs:
+      - static-checks
+      - tests
+      - security-tests
+      - performance-eval
+      - desktop-e2e
+      - build
+      - package-smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       STATIC_RESULT: ${{ needs.static-checks.result }}
       TEST_RESULT: ${{ needs.tests.result }}
+      SECURITY_RESULT: ${{ needs.security-tests.result }}
       PERFORMANCE_RESULT: ${{ needs.performance-eval.result }}
       E2E_RESULT: ${{ needs.desktop-e2e.result }}
       BUILD_RESULT: ${{ needs.build.result }}
@@ -237,12 +304,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'static=%s\ntests=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
-            "$STATIC_RESULT" "$TEST_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
-          for result in "$STATIC_RESULT" "$TEST_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
+          printf 'static=%s\ntests=%s\nsecurity=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
+            "$STATIC_RESULT" "$TEST_RESULT" "$SECURITY_RESULT" "$PERFORMANCE_RESULT" \
+            "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
+          for result in "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
             test "$result" = success
           done
-          case "$PACKAGE_RESULT" in
-            success|skipped) ;;
-            *) exit 1 ;;
-          esac
+          for result in "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$PACKAGE_RESULT"; do
+            case "$result" in
+              success|skipped) ;;
+              *) exit 1 ;;
+            esac
+          done

@@ -23,10 +23,12 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Audit native main-branch protection
+      - name: Audit complete native main-branch protection
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
           RULESET_REPORT: artifacts/repository-governance/report.json
+          RULESET_STRICT: true
         run: node scripts/ruleset-policy.mjs check
       - name: Upload ruleset drift report
         if: always()

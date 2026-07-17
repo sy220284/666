@@ -36,6 +36,11 @@ allowed_paths:
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M1-09/
   - docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/security/THREAT_MODEL.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - docs/testing/P0_ACCEPTANCE_MATRIX.md
 forbidden_paths:
 
 required_docs:

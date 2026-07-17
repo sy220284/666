@@ -1,0 +1,44 @@
+pnpm task:validate
+exit=0 duration_ms=562 fixtures=M1-09,P0-048,P0-050
+
+pnpm check:workspaces
+exit=0 duration_ms=499 fixtures=M1-09,P0-048,P0-050
+
+pnpm check:boundaries
+exit=0 duration_ms=512 fixtures=M1-09,P0-048,P0-050
+
+pnpm format:check
+exit=0 duration_ms=4824 fixtures=M1-09,P0-048,P0-050
+
+pnpm lint
+exit=0 duration_ms=4492 fixtures=M1-09,P0-048,P0-050
+
+pnpm typecheck
+exit=0 duration_ms=24668 fixtures=M1-09,P0-048,P0-050
+
+pnpm test:unit
+exit=0 duration_ms=14368 fixtures=M1-09-regression
+
+pnpm test:integration
+exit=0 duration_ms=8124 fixtures=M1-09,P0-048,P0-050
+
+pnpm test:migration
+exit=0 duration_ms=14537 fixtures=M1-09-schema-regression
+
+pnpm test:security
+exit=0 duration_ms=4132 fixtures=M1-09-path-boundary
+
+pnpm test:perf
+exit=0 duration_ms=14207 fixtures=M1-09-regression
+
+pnpm test:e2e
+exit=0 duration_ms=197274 fixtures=M1-09-regression
+
+M1-09 desktop acceptance
+exit=0 duration_ms=22941 fixtures=M1-09,P0-048,P0-050
+
+pnpm build
+exit=0 duration_ms=15802 fixtures=M1-09,P0-048,P0-050
+
+pnpm package
+exit=0 duration_ms=503 fixtures=M1-09-package-smoke

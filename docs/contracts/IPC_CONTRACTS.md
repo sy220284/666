@@ -70,8 +70,8 @@ window.worldforge = {
   backup: {},
   trash: {},
   task: {},
-  settings: {}
-}
+  settings: {},
+};
 ```
 
 禁止暴露通用`send(channel,payload)`、Node模块、文件系统、数据库连接、环境变量和任意URL请求。
@@ -80,37 +80,37 @@ window.worldforge = {
 
 ### 4.1 应用与项目
 
-| 命令 | 输入 | 输出 |
-|---|---|---|
-| `app.getInfo` | 空 | 版本、平台、协议版本 |
-| `app.getCoreStatus` | 空 | Core状态、PID、重启次数与安全诊断ID |
-| `app.restartCore` | 空 | 接收状态与最新Core状态 |
-| `app.getWindowPreferences` | 空 | 当前DIP窗口状态与显示偏好 |
-| `app.setAppearancePreferences` | 工作区对齐、UI缩放、正文字号、正文宽度 | 合并窗口状态后的完整本地偏好 |
-| `app.getDisplays` | 空 | 显示器DIP信息 |
-| `project.create` | 名称、频道、`starter/blank`初始化结构；目录由Main系统选择器提供 | 项目摘要 |
-| `project.open` | 项目路径 | 项目摘要、兼容与只读状态 |
-| `project.close` | projectId | flush与关闭结果 |
-| `project.move` | projectId、目标目录 | 新路径与校验结果 |
-| `project.listRecent` | 空 | 最近项目列表 |
-| `project.relocateRecent` | projectId、新路径 | 更新结果 |
-| `project.removeRecent` | projectId | 更新结果 |
+| 命令                           | 输入                                                            | 输出                                |
+| ------------------------------ | --------------------------------------------------------------- | ----------------------------------- |
+| `app.getInfo`                  | 空                                                              | 版本、平台、协议版本                |
+| `app.getCoreStatus`            | 空                                                              | Core状态、PID、重启次数与安全诊断ID |
+| `app.restartCore`              | 空                                                              | 接收状态与最新Core状态              |
+| `app.getWindowPreferences`     | 空                                                              | 当前DIP窗口状态与显示偏好           |
+| `app.setAppearancePreferences` | 工作区对齐、UI缩放、正文字号、正文宽度                          | 合并窗口状态后的完整本地偏好        |
+| `app.getDisplays`              | 空                                                              | 显示器DIP信息                       |
+| `project.create`               | 名称、频道、`starter/blank`初始化结构；目录由Main系统选择器提供 | 项目摘要                            |
+| `project.open`                 | 项目路径                                                        | 项目摘要、兼容与只读状态            |
+| `project.close`                | projectId                                                       | flush与关闭结果                     |
+| `project.move`                 | projectId、目标目录                                             | 新路径与校验结果                    |
+| `project.listRecent`           | 空                                                              | 最近项目列表                        |
+| `project.relocateRecent`       | projectId、新路径                                               | 更新结果                            |
+| `project.removeRecent`         | projectId                                                       | 更新结果                            |
 
 ### 4.2 规划与卷章
 
-| 命令 | Renderer输入 | 输出 |
-|---|---|---|
-| `planning.listStructure` | projectId | 按orderKey排序的卷章树 |
-| `planning.createVolume` | projectId、标题、可选锚点位置 | 最新卷章树 |
-| `planning.updateVolume` | projectId、volumeId、标题/状态Patch | 最新卷章树 |
-| `planning.moveVolume` | projectId、volumeId、同级锚点位置 | 最新卷章树 |
-| `planning.deleteVolume` | projectId、volumeId | 软删除后的卷章树 |
-| `planning.createChapter` | projectId、volumeId、标题、可选锚点位置 | 最新卷章树 |
-| `planning.updateChapter` | projectId、chapterId、标题/状态/目标字数Patch | 最新卷章树 |
-| `planning.moveChapter` | projectId、chapterId、targetVolumeId、锚点位置 | 最新卷章树 |
-| `planning.deleteChapter` | projectId、chapterId | 软删除后的卷章树 |
-| `trash.list` | projectId | 最小TrashEntry列表 |
-| `trash.restore` | projectId、trashEntryId、原位或新锚点位置、可选目标卷 | 最新卷章树 |
+| 命令                     | Renderer输入                                          | 输出                   |
+| ------------------------ | ----------------------------------------------------- | ---------------------- |
+| `planning.listStructure` | projectId                                             | 按orderKey排序的卷章树 |
+| `planning.createVolume`  | projectId、标题、可选锚点位置                         | 最新卷章树             |
+| `planning.updateVolume`  | projectId、volumeId、标题/状态Patch                   | 最新卷章树             |
+| `planning.moveVolume`    | projectId、volumeId、同级锚点位置                     | 最新卷章树             |
+| `planning.deleteVolume`  | projectId、volumeId                                   | 软删除后的卷章树       |
+| `planning.createChapter` | projectId、volumeId、标题、可选锚点位置               | 最新卷章树             |
+| `planning.updateChapter` | projectId、chapterId、标题/状态/目标字数Patch         | 最新卷章树             |
+| `planning.moveChapter`   | projectId、chapterId、targetVolumeId、锚点位置        | 最新卷章树             |
+| `planning.deleteChapter` | projectId、chapterId                                  | 软删除后的卷章树       |
+| `trash.list`             | projectId                                             | 最小TrashEntry列表     |
+| `trash.restore`          | projectId、trashEntryId、原位或新锚点位置、可选目标卷 | 最新卷章树             |
 
 Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`或`finalVersionId`。实体ID由Core生成；排序位置只使用`start/end/before/after`及同级实体ID表达，Core在单写事务内计算64位整数键和必要的局部重排。
 
@@ -123,17 +123,17 @@ Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`或`fin
 
 ### 4.3 Draft与编辑器
 
-| 命令 | 输入 | 输出 |
-|---|---|---|
-| `draft.get` | projectId、chapterId | 活动Draft与有序DraftBlocks |
+| 命令                              | 输入                                                  | 输出                               |
+| --------------------------------- | ----------------------------------------------------- | ---------------------------------- |
+| `draft.get`                       | projectId、chapterId                                  | 活动Draft与有序DraftBlocks         |
 | `draft.saveSnapshot`（M1-04过渡） | projectId、chapterId、draftId、仅含可编辑字段的Blocks | 保存后的活动Draft与有序DraftBlocks |
-| `draft.applyPatch` | draftId、baseRevision、operations | 新Revision、修改摘要 |
-| `draft.flush` | draftId、baseRevision | 新Revision或无变化 |
-| `draft.undoPersistentOperation` | applyRecordId | 新Revision |
-| `draft.setBlockLock` | draftId、logicalBlockId、locked、baseRevision | 新Revision |
-| `draft.searchCurrent` | chapterId、query、options | 命中锚点 |
-| `draft.replaceCurrent` | chapterId、query、replacement、options | 新Revision |
-| `draft.getWordStats` | chapterId | 字符数、纯文字字数、目标进度 |
+| `draft.applyPatch`                | draftId、baseRevision、operations                     | 新Revision、修改摘要               |
+| `draft.flush`                     | draftId、baseRevision                                 | 新Revision或无变化                 |
+| `draft.undoPersistentOperation`   | applyRecordId                                         | 新Revision                         |
+| `draft.setBlockLock`              | draftId、logicalBlockId、locked、baseRevision         | 新Revision                         |
+| `draft.searchCurrent`             | chapterId、query、options                             | 命中锚点                           |
+| `draft.replaceCurrent`            | chapterId、query、replacement、options                | 新Revision                         |
+| `draft.getWordStats`              | chapterId                                             | 字符数、纯文字字数、目标进度       |
 
 `draft.applyPatch`必须校验项目、Revision、expectedHash和锁定块。
 
@@ -143,17 +143,17 @@ Renderer只可为快照块传入`clientBlockId`、可空`logicalBlockId`、`bloc
 
 ### 4.4 Version与Candidate
 
-| 命令 | 输入 | 输出 |
-|---|---|---|
-| `version.create` | chapterId、draftRevision、type、label | Version摘要 |
-| `version.list` | chapterId | Version列表 |
-| `version.get` | versionId | Version与Blocks |
-| `version.restoreToDraft` | versionId | 新活动Draft与Revision |
-| `candidate.list` | chapterId、筛选 | Candidate列表 |
-| `candidate.get` | candidateId | Candidate与Blocks |
-| `candidate.diff` | candidateId、currentRevision、viewOptions | Diff或Task ID |
-| `candidate.apply` | candidateId、baseRevision、选择映射 | 新Revision、ApplyRecord或ConflictSet |
-| `candidate.discard` | candidateId | 状态更新 |
+| 命令                     | 输入                                      | 输出                                 |
+| ------------------------ | ----------------------------------------- | ------------------------------------ |
+| `version.create`         | chapterId、draftRevision、type、label     | Version摘要                          |
+| `version.list`           | chapterId                                 | Version列表                          |
+| `version.get`            | versionId                                 | Version与Blocks                      |
+| `version.restoreToDraft` | versionId                                 | 新活动Draft与Revision                |
+| `candidate.list`         | chapterId、筛选                           | Candidate列表                        |
+| `candidate.get`          | candidateId                               | Candidate与Blocks                    |
+| `candidate.diff`         | candidateId、currentRevision、viewOptions | Diff或Task ID                        |
+| `candidate.apply`        | candidateId、baseRevision、选择映射       | 新Revision、ApplyRecord或ConflictSet |
+| `candidate.discard`      | candidateId                               | 状态更新                             |
 
 ### 4.5 实体、Canon与连续性
 
@@ -176,16 +176,16 @@ AI不能调用直接推进里程碑状态的命令。里程碑状态只能通过
 
 ### 4.7 AI与Provider
 
-| 命令 | 输入 | 输出 |
-|---|---|---|
-| `ai.provider.create/update/remove/list/get` | Provider元数据 | 配置摘要 |
-| `ai.provider.setCredential` | providerId、凭据 | credentialRef，不返回凭据 |
-| `ai.testProvider` | providerId | 连接诊断 |
-| `ai.startGeneration` | runType、chapterId、baseRevision、配置 | runId、taskId、MessagePort |
-| `ai.cancelGeneration` | runId | 取消接收状态 |
-| `ai.listRuns` | chapterId | Run列表 |
-| `ai.savePartialCandidate` | runId | partial Candidate ID |
-| `ai.getModelSupport` | providerId、model、taskType、promptId | 支持档案 |
+| 命令                                        | 输入                                   | 输出                       |
+| ------------------------------------------- | -------------------------------------- | -------------------------- |
+| `ai.provider.create/update/remove/list/get` | Provider元数据                         | 配置摘要                   |
+| `ai.provider.setCredential`                 | providerId、凭据                       | credentialRef，不返回凭据  |
+| `ai.testProvider`                           | providerId                             | 连接诊断                   |
+| `ai.startGeneration`                        | runType、chapterId、baseRevision、配置 | runId、taskId、MessagePort |
+| `ai.cancelGeneration`                       | runId                                  | 取消接收状态               |
+| `ai.listRuns`                               | chapterId                              | Run列表                    |
+| `ai.savePartialCandidate`                   | runId                                  | partial Candidate ID       |
+| `ai.getModelSupport`                        | providerId、model、taskType、promptId  | 支持档案                   |
 
 ### 4.8 校验、节奏、待办与批注
 
@@ -208,11 +208,11 @@ RHY结果为建议级，不能通过IPC标记为发布阻断。
 
 ### 4.10 通用长任务
 
-| 命令 | 输入 | 输出 |
-|---|---|---|
-| `task.getSnapshot` | taskId | TaskSnapshot |
-| `task.cancel` | taskId | 接收取消状态 |
-| `task.listActive` | 可选项目筛选 | 活动任务列表 |
+| 命令               | 输入         | 输出         |
+| ------------------ | ------------ | ------------ |
+| `task.getSnapshot` | taskId       | TaskSnapshot |
+| `task.cancel`      | taskId       | 接收取消状态 |
+| `task.listActive`  | 可选项目筛选 | 活动任务列表 |
 
 ### 4.11 窗口偏好边界
 
@@ -259,3 +259,14 @@ interface AppearancePreferences {
 - 协议版本不匹配时只允许健康检查和安全退出。
 - 未注册命令、额外字段、非法枚举和跨项目ID被拒绝。
 - 命令目录与任务卡、数据流和事件协议双向检查。
+
+## M1-09 文本导入导出命令
+
+| 命令                        | 文件系统参数来源   | Core行为                                                           |
+| --------------------------- | ------------------ | ------------------------------------------------------------------ |
+| `textIo.previewImport`      | Main系统文件选择器 | 读取TXT/Markdown、识别编码、生成内存ImportPlan，不写项目库         |
+| `textIo.commitImport`       | 已生成Plan ID      | 复核源Hash，先建恢复点，再以单事务创建Volume/Chapter/Draft/Version |
+| `textIo.listExportVersions` | 无外部路径         | 只返回当前项目不可变Version目录                                    |
+| `textIo.exportVersions`     | Main系统目录选择器 | 读取指定Version，临时写入、Hash校验、原子重命名                    |
+
+Renderer不得提交任意源路径或目标目录；Preload只暴露结构化输入，Main负责系统选择器，Core再次验证普通文件、目录、文件名、项目归属和Version归属。

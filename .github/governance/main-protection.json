@@ -1,0 +1,10 @@
+{
+  "name": "worldforge-main-protection",
+  "branch": "main",
+  "requirePullRequest": true,
+  "requireLinearHistory": true,
+  "blockDeletion": true,
+  "blockForcePush": true,
+  "resolveReviewThreads": true,
+  "requiredChecksFile": ".github/governance/required-checks.json"
+}

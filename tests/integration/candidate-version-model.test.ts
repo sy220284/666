@@ -122,8 +122,9 @@ describe('M2-02 Candidate and Version model', () => {
         baseDraftRevision: draft.revision,
         blockCount: 1,
       });
-      expect(harness.candidates.list({ projectId: project.projectId, chapterId: chapter.id }))
-        .toMatchObject({ candidates: [{ candidateId: candidate.candidateId, status: 'pending' }] });
+      expect(
+        harness.candidates.list({ projectId: project.projectId, chapterId: chapter.id }),
+      ).toMatchObject({ candidates: [{ candidateId: candidate.candidateId, status: 'pending' }] });
       expect(
         harness.candidates.get({
           projectId: project.projectId,

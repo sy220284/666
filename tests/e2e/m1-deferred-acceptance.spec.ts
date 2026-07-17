@@ -153,7 +153,9 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await page.keyboard.type('第二节');
     await page.locator('[data-set-block-type="heading"]').click();
     await expect(blocks).toHaveCount(4);
-    await expect(editor.locator('[data-block-type="paragraph"]')).toContainText('雨落在旧站台。');
+    await expect(
+      editor.locator('[data-block-type="paragraph"]').filter({ hasText: '雨落在旧站台。' }),
+    ).toHaveCount(1);
     await expect(editor.locator('[data-block-type="dialogue"]')).toContainText('谁在那里');
     await expect(editor.locator('[data-block-type="separator"]')).toHaveCount(1);
     await expect(editor.locator('[data-block-type="heading"]')).toContainText('第二节');

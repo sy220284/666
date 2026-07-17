@@ -1,9 +1,9 @@
 # M2-03 Diff、冲突、采用与持久化撤销
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M2 编辑安全与版本核心  
 > 优先级：P0  
-> 建议分支：`feat/m2-diff-apply-conflict-undo`
+> 建议分支：`work/m2-03-diff-apply-conflict-undo`
 
 ## 目标
 

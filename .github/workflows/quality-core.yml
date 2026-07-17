@@ -46,7 +46,20 @@ jobs:
         run: pnpm task:validate
       - run: pnpm check:workspaces
       - run: pnpm check:boundaries
-      - run: pnpm format:check
+      - name: Check formatting
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm format:check 2>&1 | tee test-results/ci/format-check.log
+      - name: Upload static diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: static-check-diagnostics
+          path: test-results/ci/format-check.log
+          if-no-files-found: error
+          retention-days: 14
       - run: pnpm lint
       - run: pnpm typecheck
 

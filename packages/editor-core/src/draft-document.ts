@@ -221,8 +221,7 @@ function lockedBlocksPreserved(
       const otherNewIndex = nextIndex.get(otherId);
       if (otherId === id || otherNewIndex === undefined) continue;
       if (
-        Math.sign(oldIndex - previousOrder.indexOf(otherId)) !==
-        Math.sign(newIndex - otherNewIndex)
+        Math.sign(oldIndex - previousOrder.indexOf(otherId)) !== Math.sign(newIndex - otherNewIndex)
       ) {
         valid = false;
         return;

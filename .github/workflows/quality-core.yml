@@ -21,15 +21,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Validate active task and mirror
         run: pnpm task:validate
       - run: pnpm check:workspaces
@@ -45,21 +47,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite:
-          - unit
-          - integration
-          - migration
-          - security
+        suite: [unit, integration, migration, security]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm test:prepare
       - name: Run ${{ matrix.suite }} tests
         shell: bash
@@ -69,7 +69,7 @@ jobs:
           pnpm exec vitest run "tests/${{ matrix.suite }}" 2>&1 | tee "test-results/ci/${{ matrix.suite }}.log"
       - name: Upload ${{ matrix.suite }} test diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-${{ matrix.suite }}-diagnostics
           path: |
@@ -83,15 +83,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Install Electron display dependencies
         run: |
           sudo apt-get update -qq
@@ -108,7 +110,7 @@ jobs:
           pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
       - name: Upload Electron and display evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-e2e-evidence
           path: |
@@ -123,15 +125,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Build all workspaces
         shell: bash
         run: |
@@ -140,7 +144,7 @@ jobs:
           pnpm build 2>&1 | tee test-results/ci/build.log
       - name: Upload build diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-diagnostics
           path: test-results/ci/build.log
@@ -153,27 +157,27 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run package smoke test
         shell: bash
         run: |
           mkdir -p test-results/ci
           set -o pipefail
-          {
-            pnpm build
-            pnpm package
-          } 2>&1 | tee test-results/ci/package-smoke.log
+          pnpm build 2>&1 | tee test-results/ci/package-smoke.log
+          pnpm package 2>&1 | tee -a test-results/ci/package-smoke.log
       - name: Upload package smoke diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package-smoke-diagnostics
           path: |
@@ -185,12 +189,7 @@ jobs:
   quality:
     name: quality
     if: always()
-    needs:
-      - static-checks
-      - tests
-      - desktop-e2e
-      - build
-      - package-smoke
+    needs: [static-checks, tests, desktop-e2e, build, package-smoke]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
@@ -207,7 +206,7 @@ jobs:
           printf 'static=%s\ntests=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
             "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
           for result in "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
-            test "$result" = "success"
+            test "$result" = success
           done
           case "$PACKAGE_RESULT" in
             success|skipped) ;;

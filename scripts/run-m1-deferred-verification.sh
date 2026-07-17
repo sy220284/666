@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+branch='verify/m1-deferred-closure'
+workdir="$GITHUB_WORKSPACE"
+results="$workdir/test-results/m1-deferred"
+
+persist_failure() {
+  set +e
+  mkdir -p /tmp/m1-deferred-diagnostics
+  cp -R "$results"/. /tmp/m1-deferred-diagnostics/ 2>/dev/null || true
+  git reset --hard
+  git clean -fdx
+  git checkout "$branch"
+  rm -rf docs/debug/m1-deferred/latest
+  mkdir -p docs/debug/m1-deferred/latest
+  cp -R /tmp/m1-deferred-diagnostics/. docs/debug/m1-deferred/latest/ 2>/dev/null || true
+  printf 'Generated from failed M1 deferred verification.\n' > docs/debug/m1-deferred/latest/README.md
+  git config user.name 'github-actions[bot]'
+  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+  git add docs/debug/m1-deferred/latest
+  git commit -m 'debug(M1): persist deferred verification diagnostics' || true
+  git push origin "HEAD:$branch" || true
+}
+trap persist_failure ERR
+
+cp scripts/m1-deferred-finalize.py /tmp/m1-deferred-finalize.py
+cp scripts/m1-deferred-tasks.json /tmp/m1-deferred-tasks.json
+cp tests/e2e/m1-deferred-acceptance.spec.ts /tmp/m1-deferred-acceptance.spec.ts
+cp tests/e2e/m1-acceptance.playwright.config.ts /tmp/m1-acceptance.playwright.config.ts
+cp tests/performance/m1-writing-performance.test.ts /tmp/m1-writing-performance.test.ts
+
+python - <<'PY'
+from pathlib import Path
+path = Path('/tmp/m1-deferred-finalize.py')
+source = path.read_text(encoding='utf-8')
+old = '[f"docs/tasks/M1/{task_id}_", f"docs/test-evidence/{task_id}/"]'
+new = '["docs/tasks/M1/", f"docs/test-evidence/{task_id}/"]'
+if old not in source:
+    raise SystemExit('M1 deferred finalizer task-path anchor missing')
+path.write_text(source.replace(old, new, 1), encoding='utf-8')
+PY
+
+git fetch --no-tags origin main "$branch"
+git checkout -B main origin/main
+cp /tmp/m1-deferred-acceptance.spec.ts tests/e2e/m1-deferred-acceptance.spec.ts
+cp /tmp/m1-acceptance.playwright.config.ts tests/e2e/m1-acceptance.playwright.config.ts
+cp /tmp/m1-writing-performance.test.ts tests/performance/m1-writing-performance.test.ts
+mkdir -p "$results/logs" "$results/screenshots"
+: > "$results/commands.tsv"
+
+pnpm install --frozen-lockfile
+pnpm exec prettier --write \
+  tests/e2e/m1-deferred-acceptance.spec.ts \
+  tests/e2e/m1-acceptance.playwright.config.ts \
+  tests/performance/m1-writing-performance.test.ts
+
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+
+index=0
+run_step() {
+  local display="$1"
+  local fixtures="$2"
+  shift 2
+  index=$((index + 1))
+  local log="$results/logs/$(printf '%02d' "$index").log"
+  local started ended code
+  started=$(date +%s%3N)
+  set +e
+  "$@" >"$log" 2>&1
+  code=$?
+  set -e
+  ended=$(date +%s%3N)
+  cat "$log"
+  printf '%s\t%s\t%s\t%s\n' "$display" "$code" "$((ended - started))" "$fixtures" >> "$results/commands.tsv"
+  if [ "$code" -ne 0 ]; then
+    return "$code"
+  fi
+}
+
+all='M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08'
+run_step 'pnpm task:validate' "$all" pnpm task:validate
+run_step 'pnpm check:workspaces' "$all" pnpm check:workspaces
+run_step 'pnpm check:boundaries' "$all" pnpm check:boundaries
+run_step 'pnpm format:check' "$all" pnpm format:check
+run_step 'pnpm lint' "$all" pnpm lint
+run_step 'pnpm typecheck' "$all" pnpm typecheck
+run_step 'pnpm test:unit' 'M1-04,M1-05,M1-06' pnpm test:unit
+run_step 'pnpm test:integration' "$all" pnpm test:integration
+run_step 'pnpm test:migration' 'M1-01,M1-02,M1-03,M1-04,M1-05,M1-07,M1-08' pnpm test:migration
+run_step 'pnpm test:security' 'M1-01,M1-02,M1-04,M1-05,M1-08' pnpm test:security
+run_step 'pnpm test:perf' 'M1-06' env WORLDFORGE_M1_PERF_OUTPUT="$results/performance.json" pnpm test:perf
+run_step 'pnpm test:e2e' "$all" env WORLDFORGE_CAPTURE_MATRIX_DIR="$results/display-matrix" pnpm test:e2e
+run_step 'M1 acceptance E2E' "$all" env WORLDFORGE_M1_ACCEPTANCE_SCREENSHOTS="$results/screenshots" WORLDFORGE_E2E_OUTPUT_DIR="$results/playwright" xvfb-run -a pnpm exec playwright test --config tests/e2e/m1-acceptance.playwright.config.ts
+run_step 'pnpm build' "$all" pnpm build
+
+verified_commit="$(git rev-parse HEAD)"
+generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+python /tmp/m1-deferred-finalize.py finalize \
+  --commit="$verified_commit" \
+  --generated-at="$generated_at" \
+  --run-url="$run_url" \
+  --command-results="$results/commands.tsv" \
+  --screenshots="$results/screenshots" \
+  --performance="$results/performance.json"
+
+pnpm task:sync
+pnpm task:validate
+pnpm format:check
+pnpm lint
+pnpm typecheck
+
+git config user.name 'github-actions[bot]'
+git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+git add \
+  tests/e2e/m1-deferred-acceptance.spec.ts \
+  tests/e2e/m1-acceptance.playwright.config.ts \
+  tests/performance/m1-writing-performance.test.ts \
+  docs/test-evidence/M1-01 \
+  docs/test-evidence/M1-02 \
+  docs/test-evidence/M1-03 \
+  docs/test-evidence/M1-04 \
+  docs/test-evidence/M1-05 \
+  docs/test-evidence/M1-06 \
+  docs/test-evidence/M1-07 \
+  docs/test-evidence/M1-08 \
+  docs/testing/M1_DEFERRED_ACCEPTANCE_REPORT.md \
+  docs/testing/M1_QUALITY_MATRIX.md \
+  docs/testing/P0_ACCEPTANCE_MATRIX.md \
+  docs/product/V1.0_TRACEABILITY_MATRIX.md \
+  docs/tasks/M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md \
+  docs/tasks/M1/M1-02_PROJECT_WORKSPACE_PATHS.md \
+  docs/tasks/M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md \
+  docs/tasks/M1/M1-04_DRAFT_EDITOR_IME.md \
+  docs/tasks/M1/M1-05_BLOCK_PATCH_REVISION.md \
+  docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md \
+  docs/tasks/M1/M1-07_MANUAL_VERSION_FINALIZE.md \
+  docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md \
+  docs/tasks/TASK_INDEX.md \
+  docs/tasks/ACTIVE_TASK.json \
+  docs/tasks/ACTIVE_TASK.md
+
+git commit -m 'test(M1): complete deferred verification evidence'
+evidence_commit="$(git rev-parse HEAD)"
+python /tmp/m1-deferred-finalize.py stamp --commit="$evidence_commit"
+pnpm task:sync
+pnpm task:validate
+git add docs/tasks/ACTIVE_TASK.json docs/tasks/ACTIVE_TASK.md
+git commit -m 'chore(M1): close deferred verification ledger'
+git push origin HEAD:main
+trap - ERR

@@ -397,6 +397,12 @@ export class RecoveryService {
     );
     if (!metadata)
       throw new RecoveryServiceError('BACKUP_NOT_FOUND', 'The checkpoint was not found.');
+    if (path.basename(metadata.backupFileName) !== metadata.backupFileName) {
+      throw new RecoveryServiceError(
+        'RESTORE_SOURCE_INVALID',
+        'The checkpoint file name is invalid.',
+      );
+    }
     const backupPath = path.join(
       this.#backupRootDirectory,
       input.projectId,

@@ -30,7 +30,11 @@ export const BackupRecordSchema = z.strictObject({
   backupId: z.uuid(),
   projectId: ProjectIdSchema,
   operation: RecoveryOperationSchema,
-  backupFileName: z.string().min(1).max(512),
+  backupFileName: z
+    .string()
+    .min(1)
+    .max(512)
+    .regex(/^[A-Za-z0-9._-]+\.sqlite$/),
   sizeBytes: z.number().int().nonnegative(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   createdAt: z.iso.datetime(),

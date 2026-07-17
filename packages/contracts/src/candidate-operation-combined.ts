@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 import {
-  CoreCandidateOperationSchema as CandidateOperationSchema,
-  CoreCandidateResultSchema as CandidateResultSchema,
+  CoreCandidateOperationSchema as BaseCandidateOperationSchema,
+  CoreCandidateResultSchema as BaseCandidateResultSchema,
 } from './candidate-base.js';
 import {
   CoreCandidateApplyOperationSchema as CandidateApplyOperationSchema,
@@ -10,11 +10,11 @@ import {
 } from './candidate-apply.js';
 
 export const CandidateOperationSchema = z.union([
-  CandidateOperationSchema,
+  BaseCandidateOperationSchema,
   CandidateApplyOperationSchema,
 ]);
 
 export const CandidateResultSchema = z.union([
-  CandidateResultSchema,
+  BaseCandidateResultSchema,
   CandidateApplyResultSchema,
 ]);

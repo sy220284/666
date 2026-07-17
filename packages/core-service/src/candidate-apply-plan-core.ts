@@ -246,14 +246,21 @@ export function collectApplyConflicts(
 ): CandidateConflictItem[] {
   const conflicts: CandidateConflictItem[] = [];
   if (duplicate) {
-    conflicts.push(candidateConflict('duplicate-apply', 'This Candidate already has an ApplyRecord.'));
+    conflicts.push(
+      candidateConflict('duplicate-apply', 'This Candidate already has an ApplyRecord.'),
+    );
   }
   if (candidate.status !== 'pending') {
-    conflicts.push(candidateConflict('candidate-status', `Candidate status is ${candidate.status}.`));
+    conflicts.push(
+      candidateConflict('candidate-status', `Candidate status is ${candidate.status}.`),
+    );
   }
   if (candidate.completeness === 'partial' && input.selection.mode === 'all') {
     conflicts.push(
-      candidateConflict('partial-restricted', 'An incomplete Candidate cannot replace the whole Draft.'),
+      candidateConflict(
+        'partial-restricted',
+        'An incomplete Candidate cannot replace the whole Draft.',
+      ),
     );
   }
   if (
@@ -351,7 +358,9 @@ export function collectApplyConflicts(
     target.length === 0 ||
     new Set(target.map((block) => block.logicalBlockId)).size !== target.length
   ) {
-    conflicts.push(candidateConflict('structure', 'Candidate selection produced an invalid Draft structure.'));
+    conflicts.push(
+      candidateConflict('structure', 'Candidate selection produced an invalid Draft structure.'),
+    );
   }
   return conflicts;
 }

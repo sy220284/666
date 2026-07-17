@@ -131,7 +131,8 @@ function characterDiff(before: string, after: string): CharacterDiffResult {
   const left = Array.from(before);
   const right = Array.from(after);
   let prefix = 0;
-  while (prefix < left.length && prefix < right.length && left[prefix] === right[prefix]) prefix += 1;
+  while (prefix < left.length && prefix < right.length && left[prefix] === right[prefix])
+    prefix += 1;
   let suffix = 0;
   while (
     suffix < left.length - prefix &&
@@ -152,8 +153,14 @@ function characterDiff(before: string, after: string): CharacterDiffResult {
   return { segments, coarse: false };
 }
 
-function executionPlan(current: readonly DraftDiffBlock[], candidate: readonly CandidateDiffBlock[]) {
-  const currentCharacters = current.reduce((sum, block) => sum + Array.from(block.content).length, 0);
+function executionPlan(
+  current: readonly DraftDiffBlock[],
+  candidate: readonly CandidateDiffBlock[],
+) {
+  const currentCharacters = current.reduce(
+    (sum, block) => sum + Array.from(block.content).length,
+    0,
+  );
   const candidateCharacters = candidate.reduce(
     (sum, block) => sum + Array.from(block.content).length,
     0,
@@ -251,7 +258,8 @@ export function computeCandidateDiff(
   const matches: DirectMatch[] = [];
   for (const [candidateIndex, block] of candidate.entries()) {
     if (consumedCandidate.has(candidateIndex)) continue;
-    const source = block.sourceLogicalBlockIds?.length === 1 ? block.sourceLogicalBlockIds[0] : undefined;
+    const source =
+      block.sourceLogicalBlockIds?.length === 1 ? block.sourceLogicalBlockIds[0] : undefined;
     const logicalBlockId = block.logicalBlockId ?? source;
     if (!logicalBlockId) continue;
     const record = currentById.get(logicalBlockId);

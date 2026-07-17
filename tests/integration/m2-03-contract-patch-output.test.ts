@@ -16,37 +16,17 @@ function replaceOnce(source: string, before: string, after: string, path: string
   return source.slice(0, first) + after + source.slice(first + before.length);
 }
 
-async function emit(path: string, transform: (source: string) => string): Promise<void> {
-  const source = await readFile(path, 'utf8');
-  const patched = await format(transform(source), { ...prettier, filepath: path });
-  console.log(`M203_PATCH:${path}:${Buffer.from(patched, 'utf8').toString('base64')}`);
-}
-
-describe('M2-03 contract patch output', () => {
-  it('emits Candidate provenance and contract exports', async () => {
-    await emit('packages/contracts/src/candidate.ts', (source) => {
-      let result = replaceOnce(
-        source,
-        '    logicalBlockId: DraftEntityIdSchema.nullable().optional(),\n    blockType:',
-        '    logicalBlockId: DraftEntityIdSchema.nullable().optional(),\n    sourceLogicalBlockIds: z.array(DraftEntityIdSchema).max(50_000).optional(),\n    blockType:',
-        'packages/contracts/src/candidate.ts',
-      );
-      result = replaceOnce(
-        result,
-        '    logicalBlockId: DraftEntityIdSchema,\n    orderKey:',
-        '    logicalBlockId: DraftEntityIdSchema,\n    sourceLogicalBlockIds: z.array(DraftEntityIdSchema).max(50_000).optional(),\n    orderKey:',
-        'packages/contracts/src/candidate.ts',
-      );
-      return result;
-    });
-
-    await emit('packages/contracts/src/index.ts', (source) =>
-      replaceOnce(
-        source,
-        "export * from './candidate.js';\n",
-        "export * from './candidate.js';\nexport * from './candidate-apply.js';\n",
-        'packages/contracts/src/index.ts',
-      ),
+describe('M2-03 contract barrel patch output', () => {
+  it('emits Candidate contract exports', async () => {
+    const path = 'packages/contracts/src/index.ts';
+    const source = await readFile(path, 'utf8');
+    const patched = replaceOnce(
+      source,
+      "export * from './draft.js';\n",
+      "export * from './draft.js';\nexport * from './candidate.js';\nexport * from './candidate-apply.js';\n",
+      path,
     );
+    const formatted = await format(patched, { ...prettier, filepath: path });
+    console.log(`M203_PATCH:${path}:${Buffer.from(formatted, 'utf8').toString('base64')}`);
   });
 });

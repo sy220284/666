@@ -62,4 +62,4 @@ verification:
 
 ## 连续执行规则
 
-当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；Quality与Task Governance全部通过后，由作者或维护者审查并合并。机器人和GitHub Actions不得直接推送main、不得自动合并PR。实现通过后可在同一PR中登记Implemented或Verified并激活下一任务；任何代码、测试、安全或数据边界失败立即阻断。
+当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security与Quality全部通过后，由作者或维护者审查并合并。机器人和GitHub Actions不得直接推送main、不得自动合并PR。实现通过后可在同一PR中登记Implemented或Verified并激活下一任务；任何代码、测试、安全或数据边界失败立即阻断。

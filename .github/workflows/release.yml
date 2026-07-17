@@ -25,45 +25,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
-    name: Release gate and quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  quality:
+    name: Release quality
+    uses: ./.github/workflows/quality-core.yml
+    with:
+      package_smoke: false
+
+  release-gate:
+    name: Release acceptance gate
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Enforce main and release acceptance gate
         shell: bash
         run: |
-          test "$GITHUB_REF_NAME" = "main"
+          test "$GITHUB_REF_NAME" = main
           pnpm release:gate -- --version "$RELEASE_VERSION"
       - run: pnpm release:check
-      - run: pnpm check:workspaces
-      - run: pnpm check:boundaries
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
 
   build:
     name: Package (${{ matrix.platform }})
-    needs: validate
+    needs: release-gate
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             platform: linux
           - os: windows-latest
             platform: windows
@@ -74,14 +76,17 @@ jobs:
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm build
       - name: Build platform package
         shell: bash
         run: >-
@@ -99,8 +104,9 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
+    environment: release
     permissions:
       contents: write
     env:
@@ -109,6 +115,8 @@ jobs:
       RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
           pattern: worldforge-*

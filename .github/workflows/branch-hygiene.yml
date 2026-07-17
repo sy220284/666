@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: Delete only branches classified as safely obsolete
+        description: Delete only branches already classified as safe obsolete
         required: false
         default: false
         type: boolean
@@ -30,11 +30,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Classify branches and safely delete obsolete branches
+      - name: Classify branches and optionally delete obsolete branches
         env:
           GITHUB_TOKEN: ${{ github.token }}
           BRANCH_HYGIENE_OUTPUT: artifacts/branch-hygiene
-          BRANCH_HYGIENE_APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+          BRANCH_HYGIENE_APPLY: ${{ inputs.apply == true }}
         run: node scripts/branch-hygiene.mjs
       - name: Upload branch report
         if: always()

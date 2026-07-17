@@ -5,7 +5,7 @@ import {
   CandidateCompletenessSchema,
   CandidateDocumentSchema,
   CandidateStatusSchema,
-} from './candidate.js';
+} from './candidate-base.js';
 import {
   DraftBlockAttributesSchema,
   DraftBlockSchema,

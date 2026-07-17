@@ -165,11 +165,19 @@ export const DraftPatchMoveOperationSchema = z.strictObject({
   afterLogicalBlockId: DraftEntityIdSchema.nullable(),
 });
 
+export const DraftPatchSetLockOperationSchema = z.strictObject({
+  type: z.literal('set-lock'),
+  logicalBlockId: DraftEntityIdSchema,
+  expectedHash: DraftContentHashValueSchema,
+  locked: z.boolean(),
+});
+
 export const DraftPatchOperationSchema = z.discriminatedUnion('type', [
   DraftPatchInsertOperationSchema,
   DraftPatchUpdateOperationSchema,
   DraftPatchDeleteOperationSchema,
   DraftPatchMoveOperationSchema,
+  DraftPatchSetLockOperationSchema,
 ]);
 
 export const DraftApplyPatchInputSchema = z.strictObject({
@@ -252,6 +260,7 @@ export type DraftPatchInsertOperation = z.infer<typeof DraftPatchInsertOperation
 export type DraftPatchUpdateOperation = z.infer<typeof DraftPatchUpdateOperationSchema>;
 export type DraftPatchDeleteOperation = z.infer<typeof DraftPatchDeleteOperationSchema>;
 export type DraftPatchMoveOperation = z.infer<typeof DraftPatchMoveOperationSchema>;
+export type DraftPatchSetLockOperation = z.infer<typeof DraftPatchSetLockOperationSchema>;
 export type DraftPatchOperation = z.infer<typeof DraftPatchOperationSchema>;
 export type DraftApplyPatchInput = z.infer<typeof DraftApplyPatchInputSchema>;
 export type CoreDraftOperation = z.infer<typeof CoreDraftOperationSchema>;

@@ -19,11 +19,14 @@ jobs:
     timeout-minutes: 10
     env:
       TASK_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      TASK_EVENT_NAME: ${{ github.event_name }}
+      TASK_PR_HEAD_REF: ${{ github.head_ref }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+          persist-credentials: false
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
       - name: Ensure task comparison base is available
@@ -37,7 +40,7 @@ jobs:
             git cat-file -e "$TASK_BASE_REF^{commit}"
             exit 0
           fi
-          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
             git fetch --no-tags --unshallow origin
           else
             git fetch --no-tags origin main
@@ -45,6 +48,9 @@ jobs:
           git cat-file -e "$TASK_BASE_REF^{commit}"
       - name: Validate active task and generated mirror
         run: node scripts/taskctl.mjs validate
+      - name: Validate real PR branch
+        if: ${{ github.event_name == 'pull_request' }}
+        run: node scripts/taskctl.mjs pr-policy
       - name: Validate changed paths
         run: node scripts/taskctl.mjs preflight
       - name: Validate evidence structure

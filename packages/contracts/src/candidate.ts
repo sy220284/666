@@ -65,7 +65,7 @@ export const CandidateBlockSchema = z
   .strictObject({
     candidateBlockId: DraftEntityIdSchema,
     logicalBlockId: DraftEntityIdSchema,
-    sourceLogicalBlockIds: z.array(DraftEntityIdSchema).max(50_000).optional(),
+    sourceLogicalBlockIds: z.array(DraftEntityIdSchema).max(50_000).default([]),
     orderKey: DraftOrderKeySchema,
     blockType: DraftBlockTypeSchema,
     text: DraftBlockTextSchema,

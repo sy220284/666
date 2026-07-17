@@ -14,24 +14,157 @@
 ```
 Error: expect(locator).toContainText(expected) failed
 
-Locator: locator('[data-draft-content]').locator('[data-block-type="paragraph"]')
-Expected substring: "雨落在旧站台。"
-Error: strict mode violation: locator('[data-draft-content]').locator('[data-block-type="paragraph"]') resolved to 2 elements:
-    1) <p data-locked="false" data-source="manual" data-block-type="paragraph" data-client-block-id="5900492f-7601-4071-b0a1-0027b39bf43d" data-logical-block-id="5900492f-7601-4071-b0a1-0027b39bf43d" data-content-hash="1c22b1eb95cb390db98b92fa4647d5fe0b46b49686a228dfe0822ef5899fa5ac">雨落在旧站台。</p> aka getByText('雨落在旧站台。')
-    2) <p data-locked="false" data-source="manual" data-block-type="paragraph" data-client-block-id="cb8f7885-4bc7-4420-8386-2da7fafa47ae" data-logical-block-id="cb8f7885-4bc7-4420-8386-2da7fafa47ae" data-content-hash="84ae9c309a980e32d8475b76738e09de3ecf1dd36aa156e23dab53cf37c1e462">…</p> aka getByRole('paragraph').filter({ hasText: /^$/ })
+Locator: locator('[data-draft-content]').locator('[data-block-type="dialogue"]')
+Expected substring: "谁在那里"
+Timeout: 5000ms
+Error: element(s) not found
 
 Call log:
   - Expect "toContainText" with timeout 5000ms
-  - waiting for locator('[data-draft-content]').locator('[data-block-type="paragraph"]')
+  - waiting for locator('[data-draft-content]').locator('[data-block-type="dialogue"]')
 
+```
+
+```yaml
+- banner:
+  - text: W
+  - strong: WorldForge
+  - text: 本地写作工作台 Core
+  - strong: healthy
+  - button "新建项目" [disabled]
+  - button "打开项目" [disabled]
+  - button "通用设置"
+  - button "浮层边界"
+  - button "对话框"
+  - button "重启 Core"
+- complementary:
+  - text: 验证导航
+  - strong: 应用首页
+  - region "卷章目录":
+    - text: PROJECT STRUCTURE
+    - strong: 卷章目录
+    - button "新建卷"
+    - status: 结构已同步。
+    - strong: 第一卷
+    - text: 待规划 · 1 章
+    - button "+章"
+    - button "编"
+    - button "↑" [disabled]
+    - button "↓"
+    - button "删"
+    - list:
+      - listitem:
+        - button "§ 第一章" [pressed]
+        - text: 待规划 · 未设目标
+        - button "编"
+        - button "↑" [disabled]
+        - button "↓" [disabled]
+        - button "删"
+    - strong: 第二卷
+    - text: 待规划 · 1 章
+    - button "+章"
+    - button "编"
+    - button "↑"
+    - button "↓" [disabled]
+    - button "删"
+    - list:
+      - listitem:
+        - button "§ 第二章"
+        - text: 写作中 · 2000—3000 字
+        - button "编"
+        - button "↑" [disabled]
+        - button "↓" [disabled]
+        - button "删"
+    - button "废纸篓"
+- main:
+  - paragraph: LOCAL FIRST · APPLICATION HOME
+  - heading "M1验收项目 · 第一章" [level=1]
+  - text: 活动 Draft
+  - article:
+    - paragraph: DRAFT · PROJECT.SQLITE
+    - heading "第一章" [level=2]
+    - button "返回项目"
+    - button "复制正文"
+    - button "保存版本"
+    - button "版本历史"
+    - button "手动保存"
+    - toolbar "正文块工具":
+      - button "正文"
+      - button "对话"
+      - button "小标题"
+      - button "分隔线"
+      - button "撤销"
+      - button "重做"
+    - text: 字符
+    - strong: "17"
+    - text: 纯文字
+    - strong: "13"
+    - text: 段落
+    - strong: "4"
+    - text: 未设置目标
+    - searchbox "查找文本"
+    - button "上一个"
+    - button "下一个"
+    - textbox "替换文本":
+      - /placeholder: 替换为
+    - button "替换"
+    - button "全部替换"
+    - status: 自动保存完成 · Revision 4
+    - textbox "第一章正文":
+      - paragraph: 雨落在旧站台。
+      - heading "“谁在那里？”第二节" [level=2]
+      - separator
+      - paragraph
+    - paragraph: 正文修改空闲800ms后自动保存；切换章节、返回项目与关闭应用前会强制刷新。中文输入组合期间暂停保存。
+- complementary:
+  - text: 本地偏好
+  - strong: 显示设置
+  - text: 界面缩放
+  - combobox "界面缩放":
+    - option "90%"
+    - option "100%" [selected]
+    - option "110%"
+    - option "120%"
+    - option "130%"
+    - option "140%"
+    - option "150%"
+  - text: 正文字号
+  - combobox "正文字号":
+    - option "14 px"
+    - option "16 px"
+    - option "18 px" [selected]
+    - option "20 px"
+    - option "22 px"
+    - option "24 px"
+    - option "26 px"
+    - option "28 px"
+  - text: 正文宽度
+  - combobox "正文宽度":
+    - option "窄 · 680 px"
+    - option "标准 · 760 px" [selected]
+    - option "宽 · 860 px"
+    - option "自适应 · 680—860 px"
+  - group "超宽屏工作区":
+    - text: 超宽屏工作区
+    - radio "偏左"
+    - text: 偏左
+    - radio "居中" [checked]
+    - text: 居中
+    - radio "偏右"
+    - text: 偏右
+  - status: 偏好由 Core 写入应用数据库
+  - term: 布局模式
+  - definition: 2K 标准 · 三栏
+  - term: 有效视口
+  - definition: 1440 × 900 CSS px
+  - term: 实际版心
+  - definition: 760 px
+- contentinfo: WorldForge 0.1.0 · linux 应用设置与最近项目：app.sqlite / 正文：项目独立 仅本地
 ```
 
 # Test source
 
 ```ts
-  56  |   const image = await page.screenshot({
-  57  |     path: path.join(directory, name),
-  58  |     animations: 'disabled',
   59  |     fullPage: false,
   60  |     scale: 'device',
   61  |   });
@@ -129,93 +262,95 @@ Call log:
   153 |     await page.keyboard.type('第二节');
   154 |     await page.locator('[data-set-block-type="heading"]').click();
   155 |     await expect(blocks).toHaveCount(4);
-> 156 |     await expect(editor.locator('[data-block-type="paragraph"]')).toContainText('雨落在旧站台。');
-      |                                                                   ^ Error: expect(locator).toContainText(expected) failed
-  157 |     await expect(editor.locator('[data-block-type="dialogue"]')).toContainText('谁在那里');
-  158 |     await expect(editor.locator('[data-block-type="separator"]')).toHaveCount(1);
-  159 |     await expect(editor.locator('[data-block-type="heading"]')).toContainText('第二节');
-  160 |     await capture(page, 'm1-04-chinese-block-editor.png');
-  161 | 
-  162 |     await page.locator('[data-save-draft]').click();
-  163 |     await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
-  164 |     const revision = await page.evaluate(async () => {
-  165 |       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
-  166 |         .worldforge;
-  167 |       const active = await bridge.project.getActive();
-  168 |       if (!active.ok || !active.data) return -1;
-  169 |       const structure = await bridge.planning.listStructure(active.data.projectId);
-  170 |       const chapter = structure.ok ? structure.data.volumes[0]?.chapters[0] : undefined;
-  171 |       if (!chapter) return -1;
-  172 |       const draft = await bridge.draft.open({
-  173 |         projectId: active.data.projectId,
-  174 |         chapterId: chapter.id,
-  175 |       });
-  176 |       return draft.ok ? draft.data.revision : -1;
-  177 |     });
-  178 |     expect(revision).toBeGreaterThan(0);
-  179 |     await capture(page, 'm1-05-patch-revision.png');
-  180 | 
-  181 |     await page.locator('[data-draft-find]').fill('雨');
-  182 |     await page.locator('[data-draft-find-next]').click();
-  183 |     await expect(page.locator('[data-draft-find-status]')).toContainText('1');
-  184 |     await expect(page.locator('[data-draft-character-count]')).not.toHaveText('0');
-  185 |     await expect(page.locator('[data-draft-text-count]')).not.toHaveText('0');
-  186 |     await capture(page, 'm1-06-autosave-stats-find.png');
-  187 | 
-  188 |     await page.locator('[data-create-version]').click();
-  189 |     await page.locator('[data-version-title]').fill('M1验收版本');
-  190 |     await page.locator('[data-version-label]').fill('阶段定稿');
-  191 |     await page.locator('[data-version-description]').fill('延期验收固定版本');
-  192 |     await page.locator('[data-confirm-version]').click();
-  193 |     await expect(page.locator('[data-version-row]')).toHaveCount(1);
-  194 |     await page.locator('[data-version-action="final"]').click();
-  195 |     await expect(page.locator('[data-version-row]')).toContainText('定稿');
-  196 |     await capture(page, 'm1-07-version-history.png');
-  197 |     await page.locator('[data-close-versions]').click();
-  198 | 
-  199 |     await page.locator('[data-back-project]').click();
-  200 |     await page.locator('[data-open-recovery]').click();
-  201 |     await page.locator('[data-create-checkpoint]').click();
-  202 |     await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {
-  203 |       timeout: 10_000,
-  204 |     });
-  205 |     await page.locator('[data-export-recovery-version]').click();
-  206 |     await expect(page.locator('[data-recovery-status]')).toContainText('已导出');
-  207 |     await capture(page, 'm1-08-recovery-center.png');
-  208 |     await page.locator('[data-close-recovery]').click();
-  209 |     await page.locator('[data-close-project]').click();
-  210 |     await closeGracefully(application);
-  211 |     closed = true;
-  212 |   } finally {
-  213 |     if (!closed) await closeGracefully(application);
-  214 |   }
-  215 | 
-  216 |   const projectDatabase = new DatabaseSync(path.join(workspacePath, 'project.sqlite'));
-  217 |   projectDatabase
-  218 |     .prepare(
-  219 |       `INSERT INTO schema_migrations(version, name, checksum, applied_at, app_version)
-  220 |        VALUES(99, 'm1-acceptance-future', 'm1-acceptance-future-checksum', ?, '9.0.0')`,
-  221 |     )
-  222 |     .run('2026-07-17T02:30:00.000Z');
-  223 |   projectDatabase.close();
-  224 | 
-  225 |   const readOnlyApplication = await launch(userDataPath, environment);
-  226 |   try {
-  227 |     const page = await readOnlyApplication.firstWindow();
-  228 |     await setViewport(readOnlyApplication);
-  229 |     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
-  230 |     await page.locator('[data-open-recent]').click();
-  231 |     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'read-only');
-  232 |     await expect(page.locator('[data-active-project-readonly]')).toContainText('future-schema');
-  233 |     await expect(page.locator('[data-move-project]')).toBeDisabled();
-  234 |     await capture(page, 'm1-02-read-only.png');
-  235 |     await page.locator('[data-open-recovery]').click();
-  236 |     await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1);
-  237 |     await expect(page.locator('[data-create-checkpoint]')).toBeDisabled();
-  238 |     await capture(page, 'm1-08-readonly-recovery.png');
-  239 |   } finally {
-  240 |     await closeGracefully(readOnlyApplication);
-  241 |   }
-  242 | });
-  243 | 
+  156 |     await expect(
+  157 |       editor.locator('[data-block-type="paragraph"]').filter({ hasText: '雨落在旧站台。' }),
+  158 |     ).toHaveCount(1);
+> 159 |     await expect(editor.locator('[data-block-type="dialogue"]')).toContainText('谁在那里');
+      |                                                                  ^ Error: expect(locator).toContainText(expected) failed
+  160 |     await expect(editor.locator('[data-block-type="separator"]')).toHaveCount(1);
+  161 |     await expect(editor.locator('[data-block-type="heading"]')).toContainText('第二节');
+  162 |     await capture(page, 'm1-04-chinese-block-editor.png');
+  163 | 
+  164 |     await page.locator('[data-save-draft]').click();
+  165 |     await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
+  166 |     const revision = await page.evaluate(async () => {
+  167 |       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+  168 |         .worldforge;
+  169 |       const active = await bridge.project.getActive();
+  170 |       if (!active.ok || !active.data) return -1;
+  171 |       const structure = await bridge.planning.listStructure(active.data.projectId);
+  172 |       const chapter = structure.ok ? structure.data.volumes[0]?.chapters[0] : undefined;
+  173 |       if (!chapter) return -1;
+  174 |       const draft = await bridge.draft.open({
+  175 |         projectId: active.data.projectId,
+  176 |         chapterId: chapter.id,
+  177 |       });
+  178 |       return draft.ok ? draft.data.revision : -1;
+  179 |     });
+  180 |     expect(revision).toBeGreaterThan(0);
+  181 |     await capture(page, 'm1-05-patch-revision.png');
+  182 | 
+  183 |     await page.locator('[data-draft-find]').fill('雨');
+  184 |     await page.locator('[data-draft-find-next]').click();
+  185 |     await expect(page.locator('[data-draft-find-status]')).toContainText('1');
+  186 |     await expect(page.locator('[data-draft-character-count]')).not.toHaveText('0');
+  187 |     await expect(page.locator('[data-draft-text-count]')).not.toHaveText('0');
+  188 |     await capture(page, 'm1-06-autosave-stats-find.png');
+  189 | 
+  190 |     await page.locator('[data-create-version]').click();
+  191 |     await page.locator('[data-version-title]').fill('M1验收版本');
+  192 |     await page.locator('[data-version-label]').fill('阶段定稿');
+  193 |     await page.locator('[data-version-description]').fill('延期验收固定版本');
+  194 |     await page.locator('[data-confirm-version]').click();
+  195 |     await expect(page.locator('[data-version-row]')).toHaveCount(1);
+  196 |     await page.locator('[data-version-action="final"]').click();
+  197 |     await expect(page.locator('[data-version-row]')).toContainText('定稿');
+  198 |     await capture(page, 'm1-07-version-history.png');
+  199 |     await page.locator('[data-close-versions]').click();
+  200 | 
+  201 |     await page.locator('[data-back-project]').click();
+  202 |     await page.locator('[data-open-recovery]').click();
+  203 |     await page.locator('[data-create-checkpoint]').click();
+  204 |     await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {
+  205 |       timeout: 10_000,
+  206 |     });
+  207 |     await page.locator('[data-export-recovery-version]').click();
+  208 |     await expect(page.locator('[data-recovery-status]')).toContainText('已导出');
+  209 |     await capture(page, 'm1-08-recovery-center.png');
+  210 |     await page.locator('[data-close-recovery]').click();
+  211 |     await page.locator('[data-close-project]').click();
+  212 |     await closeGracefully(application);
+  213 |     closed = true;
+  214 |   } finally {
+  215 |     if (!closed) await closeGracefully(application);
+  216 |   }
+  217 | 
+  218 |   const projectDatabase = new DatabaseSync(path.join(workspacePath, 'project.sqlite'));
+  219 |   projectDatabase
+  220 |     .prepare(
+  221 |       `INSERT INTO schema_migrations(version, name, checksum, applied_at, app_version)
+  222 |        VALUES(99, 'm1-acceptance-future', 'm1-acceptance-future-checksum', ?, '9.0.0')`,
+  223 |     )
+  224 |     .run('2026-07-17T02:30:00.000Z');
+  225 |   projectDatabase.close();
+  226 | 
+  227 |   const readOnlyApplication = await launch(userDataPath, environment);
+  228 |   try {
+  229 |     const page = await readOnlyApplication.firstWindow();
+  230 |     await setViewport(readOnlyApplication);
+  231 |     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+  232 |     await page.locator('[data-open-recent]').click();
+  233 |     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'read-only');
+  234 |     await expect(page.locator('[data-active-project-readonly]')).toContainText('future-schema');
+  235 |     await expect(page.locator('[data-move-project]')).toBeDisabled();
+  236 |     await capture(page, 'm1-02-read-only.png');
+  237 |     await page.locator('[data-open-recovery]').click();
+  238 |     await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1);
+  239 |     await expect(page.locator('[data-create-checkpoint]')).toBeDisabled();
+  240 |     await capture(page, 'm1-08-readonly-recovery.png');
+  241 |   } finally {
+  242 |     await closeGracefully(readOnlyApplication);
+  243 |   }
+  244 | });
+  245 | 
 ```

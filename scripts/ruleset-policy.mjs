@@ -60,25 +60,79 @@ async function desiredRuleset() {
   };
 }
 
-function checkContexts(current, desired) {
-  const currentRule = current.rules?.find((rule) => rule.type === 'required_status_checks');
-  const desiredRule = desired.rules.find((rule) => rule.type === 'required_status_checks');
-  const currentChecks = (currentRule?.parameters?.required_status_checks ?? [])
-    .map((entry) => entry.context)
-    .sort();
-  const desiredChecks = desiredRule.parameters.required_status_checks
-    .map((entry) => entry.context)
-    .sort();
-  return JSON.stringify(currentChecks) === JSON.stringify(desiredChecks);
+function sameStrings(left = [], right = []) {
+  return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+}
+
+function ruleByType(rules, type) {
+  return rules?.find((rule) => rule.type === type) ?? null;
+}
+
+function complianceReasons(current, desired) {
+  const reasons = [];
+  if (!current) return ['ruleset is missing'];
+  if (current.name !== desired.name) reasons.push(`name is ${current.name}`);
+  if (current.target !== desired.target) reasons.push(`target is ${current.target}`);
+  if (current.enforcement !== 'active') reasons.push(`enforcement is ${current.enforcement}`);
+
+  const currentInclude = current.conditions?.ref_name?.include ?? [];
+  const currentExclude = current.conditions?.ref_name?.exclude ?? [];
+  if (!sameStrings(currentInclude, desired.conditions.ref_name.include)) {
+    reasons.push(`branch include differs: ${currentInclude.join(', ') || '<none>'}`);
+  }
+  if (!sameStrings(currentExclude, desired.conditions.ref_name.exclude)) {
+    reasons.push(`branch exclude differs: ${currentExclude.join(', ') || '<none>'}`);
+  }
+  if ((current.bypass_actors ?? []).length > 0) reasons.push('bypass actors are configured');
+
+  const desiredTypes = desired.rules.map((rule) => rule.type);
+  const currentTypes = (current.rules ?? []).map((rule) => rule.type);
+  for (const type of desiredTypes) {
+    if (!currentTypes.includes(type)) reasons.push(`missing rule: ${type}`);
+  }
+
+  const pullRequest = ruleByType(current.rules, 'pull_request');
+  const desiredPullRequest = ruleByType(desired.rules, 'pull_request');
+  for (const [name, value] of Object.entries(desiredPullRequest.parameters)) {
+    if (pullRequest?.parameters?.[name] !== value) {
+      reasons.push(`pull_request.${name} is ${String(pullRequest?.parameters?.[name])}`);
+    }
+  }
+
+  const statusChecks = ruleByType(current.rules, 'required_status_checks');
+  const desiredStatusChecks = ruleByType(desired.rules, 'required_status_checks');
+  if (statusChecks?.parameters?.strict_required_status_checks_policy !== true) {
+    reasons.push('required status checks do not require the branch to be current');
+  }
+  if (statusChecks?.parameters?.do_not_enforce_on_create !== false) {
+    reasons.push('required status checks are not enforced on branch creation');
+  }
+  const currentContexts = (statusChecks?.parameters?.required_status_checks ?? []).map(
+    (entry) => entry.context,
+  );
+  const desiredContexts = desiredStatusChecks.parameters.required_status_checks.map(
+    (entry) => entry.context,
+  );
+  if (!sameStrings(currentContexts, desiredContexts)) {
+    reasons.push(`required checks differ: ${currentContexts.join(', ') || '<none>'}`);
+  }
+
+  return reasons;
+}
+
+async function findRuleset(owner, repo, name) {
+  const rulesets = await api(`/repos/${owner}/${repo}/rulesets?includes_parents=false`);
+  const summary = rulesets.find((ruleset) => ruleset.name === name);
+  if (!summary) return null;
+  return api(`/repos/${owner}/${repo}/rulesets/${summary.id}`);
 }
 
 async function main() {
   if (!repository || !token) throw new Error('GITHUB_REPOSITORY and token are required');
   const [owner, repo] = repository.split('/');
   const desired = await desiredRuleset();
-  const rulesets = await api(`/repos/${owner}/${repo}/rulesets?includes_parents=false`);
-  const existing = rulesets.find((ruleset) => ruleset.name === desired.name);
   const command = process.argv[2] ?? 'check';
+  const existing = await findRuleset(owner, repo, desired.name);
 
   if (command === 'apply') {
     if (!process.env.REPO_ADMIN_TOKEN) {
@@ -94,26 +148,23 @@ async function main() {
         body: JSON.stringify(desired),
       },
     );
+  } else if (command !== 'check') {
+    throw new Error(`Unknown ruleset-policy command: ${command}`);
   }
 
-  const refreshed = await api(`/repos/${owner}/${repo}/rulesets?includes_parents=false`);
-  const active = refreshed.find((ruleset) => ruleset.name === desired.name);
-  const compliant = Boolean(
-    active && active.enforcement === 'active' && checkContexts(active, desired),
-  );
+  const active = await findRuleset(owner, repo, desired.name);
+  const reasons = complianceReasons(active, desired);
+  const compliant = reasons.length === 0;
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(
     output,
-    `${JSON.stringify({ compliant, desired: desired.name, active: active ?? null }, null, 2)}\n`,
+    `${JSON.stringify({ compliant, desired: desired.name, reasons, active }, null, 2)}\n`,
     'utf8',
   );
   if (!compliant) {
-    const message = 'Native main ruleset is missing or drifted.';
-    if (process.env.RULESET_STRICT === 'true') throw new Error(message);
-    console.warn(`::warning::${message}`);
-  } else {
-    console.log(`Repository ruleset ${desired.name} is compliant.`);
+    throw new Error(`Native main ruleset is missing or drifted:\n- ${reasons.join('\n- ')}`);
   }
+  console.log(`Repository ruleset ${desired.name} is fully compliant.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

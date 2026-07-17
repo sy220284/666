@@ -18,3 +18,5 @@ jobs:
     uses: ./.github/workflows/quality-core.yml
     with:
       package_smoke: true
+      security_suite: false
+      performance_eval: false

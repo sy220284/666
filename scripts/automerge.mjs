@@ -36,19 +36,29 @@ async function latestCheckRuns(owner, repo, sha) {
   const latest = new Map();
   for (const run of response.check_runs ?? []) {
     const previous = latest.get(run.name);
-    if (!previous || new Date(run.started_at) > new Date(previous.started_at)) latest.set(run.name, run);
+    if (!previous || new Date(run.started_at) > new Date(previous.started_at))
+      latest.set(run.name, run);
   }
   return latest;
 }
 
 async function hasUnresolvedThreads(owner, repo, number) {
-  const data = await graphql(`query ($owner: String!, $repo: String!, $number: Int!) {
-    repository(owner: $owner, name: $repo) {
-      pullRequest(number: $number) {
-        reviewThreads(first: 100) { nodes { isResolved } }
+  const data = await graphql(
+    `
+      query ($owner: String!, $repo: String!, $number: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $number) {
+            reviewThreads(first: 100) {
+              nodes {
+                isResolved
+              }
+            }
+          }
+        }
       }
-    }
-  }`, { owner, repo, number });
+    `,
+    { owner, repo, number },
+  );
   return data.repository.pullRequest.reviewThreads.nodes.some((thread) => !thread.isResolved);
 }
 
@@ -67,7 +77,8 @@ async function main() {
   if (!sha) throw new Error('workflow_run head SHA is missing');
   const config = JSON.parse(await readFile('.github/governance/required-checks.json', 'utf8'));
   let pulls = event.workflow_run.pull_requests ?? [];
-  if (pulls.length === 0) pulls = await api(`/repos/${owner}/${repo}/commits/${sha}/pulls?per_page=20`);
+  if (pulls.length === 0)
+    pulls = await api(`/repos/${owner}/${repo}/commits/${sha}/pulls?per_page=20`);
 
   const mainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/main`);
   const mainSha = mainRef.object.sha;
@@ -75,7 +86,8 @@ async function main() {
   for (const item of pulls) {
     const number = item.number;
     const pull = await api(`/repos/${owner}/${repo}/pulls/${number}`);
-    if (pull.state !== 'open' || pull.base.ref !== config.baseBranch || pull.head.sha !== sha) continue;
+    if (pull.state !== 'open' || pull.base.ref !== config.baseBranch || pull.head.sha !== sha)
+      continue;
     if (config.blockDrafts && pull.draft) continue;
     if (pull.head.repo.full_name !== repository) continue;
 
@@ -83,17 +95,25 @@ async function main() {
     if (comparison.behind_by > 0) continue;
 
     const checks = await latestCheckRuns(owner, repo, sha);
-    if (!config.requiredChecks.every((name) => {
-      const check = checks.get(name);
-      return check?.status === 'completed' && check.conclusion === 'success';
-    })) continue;
+    if (
+      !config.requiredChecks.every((name) => {
+        const check = checks.get(name);
+        return check?.status === 'completed' && check.conclusion === 'success';
+      })
+    )
+      continue;
     if (config.blockChangesRequested && (await hasChangesRequested(owner, repo, number))) continue;
-    if (config.blockUnresolvedThreads && await hasUnresolvedThreads(owner, repo, number)) continue;
+    if (config.blockUnresolvedThreads && (await hasUnresolvedThreads(owner, repo, number)))
+      continue;
 
     const merged = await api(`/repos/${owner}/${repo}/pulls/${number}/merge`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sha, merge_method: config.mergeMethod, commit_title: `${pull.title} (#${number})` }),
+      body: JSON.stringify({
+        sha,
+        merge_method: config.mergeMethod,
+        commit_title: `${pull.title} (#${number})`,
+      }),
     });
     if (!merged.merged) throw new Error(`GitHub refused to merge #${number}: ${merged.message}`);
   }

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = process.cwd();
 const workflowDirectory = path.join(root, '.github/workflows');
 const requiredWorkflows = [
+  'automerge.yml',
   'branch-hygiene.yml',
   'evidence.yml',
   'performance.yml',
@@ -19,8 +20,11 @@ const requiredWorkflows = [
 const requiredFiles = [
   '.github/governance/main-protection.json',
   '.github/governance/required-checks.json',
+  'scripts/automerge.mjs',
+  'scripts/branch-hygiene.mjs',
   'scripts/evidence-policy.mjs',
   'scripts/ruleset-policy.mjs',
+  'scripts/scan-secrets.mjs',
 ];
 const actionVersions = new Map([
   ['actions/checkout', 'v6'],
@@ -32,6 +36,12 @@ const actionVersions = new Map([
 
 function count(source, pattern) {
   return [...source.matchAll(pattern)].length;
+}
+
+function requireTokens(errors, file, source, tokens) {
+  for (const token of tokens) {
+    if (!source.includes(token)) errors.push(`${file}: missing ${token}`);
+  }
 }
 
 async function main() {
@@ -65,8 +75,9 @@ async function main() {
     }
     for (const match of source.matchAll(/uses:\s*([^@\s]+)@([^\s#]+)/gu)) {
       const expected = actionVersions.get(match[1]);
-      if (expected && match[2] !== expected)
+      if (expected && match[2] !== expected) {
         errors.push(`${file}: ${match[1]} must use ${expected}`);
+      }
     }
     const checkouts = count(source, /uses:\s*actions\/checkout@v6/gu);
     const safeCheckouts = count(source, /persist-credentials:\s*false/gu);
@@ -74,6 +85,14 @@ async function main() {
   }
 
   const tokenRequirements = new Map([
+    [
+      'automerge.yml',
+      ['workflow_run:', 'scripts/automerge.mjs', 'contents: write', 'pull-requests: write'],
+    ],
+    [
+      'branch-hygiene.yml',
+      ['workflow_dispatch:', 'BRANCH_HYGIENE_APPLY: ${{ inputs.apply == true }}'],
+    ],
     ['pr-policy.yml', ['taskctl.mjs pr-policy', 'ci-policy.mjs']],
     [
       'task-governance.yml',
@@ -81,23 +100,67 @@ async function main() {
     ],
     [
       'quality-core.yml',
-      ['static-checks:', 'tests:', 'desktop-e2e:', 'build:', 'package-smoke:', 'quality:'],
+      [
+        'static-checks:',
+        'tests:',
+        'security-tests:',
+        'performance-eval:',
+        'desktop-e2e:',
+        'build:',
+        'package-smoke:',
+        'quality:',
+      ],
     ],
+    ['quality.yml', ['security_suite: false', 'performance_eval: false']],
     ['security.yml', ['pnpm audit', 'scan-secrets.mjs', 'pnpm test:security', 'name: security']],
     ['performance.yml', ['pnpm test:perf', 'name: performance']],
-    ['evidence.yml', ['evidence-policy.mjs', 'name: evidence']],
-    ['repository-governance.yml', ['ruleset-policy.mjs']],
+    ['evidence.yml', ['EVIDENCE_BASE_SHA:', 'evidence-policy.mjs', 'name: evidence']],
+    [
+      'repository-governance.yml',
+      ['ruleset-policy.mjs check', 'RULESET_STRICT: true', 'REPO_ADMIN_TOKEN:'],
+    ],
   ]);
   for (const [file, tokens] of tokenRequirements) {
-    const source = workflows.get(file) ?? '';
-    for (const token of tokens)
-      if (!source.includes(token)) errors.push(`${file}: missing ${token}`);
+    requireTokens(errors, file, workflows.get(file) ?? '', tokens);
   }
+
+  const automerge = await readFile(path.join(root, 'scripts/automerge.mjs'), 'utf8');
+  requireTokens(errors, 'scripts/automerge.mjs', automerge, [
+    'compare/${mainSha}...${sha}',
+    'comparison.behind_by > 0',
+    'pull.head.sha !== sha',
+    "check.conclusion === 'success'",
+  ]);
+
+  const branchHygiene = await readFile(path.join(root, 'scripts/branch-hygiene.mjs'), 'utf8');
+  requireTokens(errors, 'scripts/branch-hygiene.mjs', branchHygiene, [
+    'pull?.merged_at || comparison.ahead_by === 0',
+    "classification: safeDelete ? 'obsolete' : 'orphaned-work'",
+  ]);
+  if (branchHygiene.includes("pull?.state === 'closed'")) {
+    errors.push('scripts/branch-hygiene.mjs: closed PR state must not authorize deletion');
+  }
+
+  const evidencePolicy = await readFile(path.join(root, 'scripts/evidence-policy.mjs'), 'utf8');
+  requireTokens(errors, 'scripts/evidence-policy.mjs', evidencePolicy, [
+    'changedEvidenceTasks',
+    'for (const taskId of taskIds)',
+    'EVIDENCE_BASE_SHA',
+  ]);
+
+  const rulesetPolicy = await readFile(path.join(root, 'scripts/ruleset-policy.mjs'), 'utf8');
+  requireTokens(errors, 'scripts/ruleset-policy.mjs', rulesetPolicy, [
+    'bypass actors are configured',
+    'required status checks do not require the branch to be current',
+    'throw new Error(`Native main ruleset is missing or drifted:',
+  ]);
 
   const release = workflows.get('release.yml') ?? '';
   if (!release.includes('workflow_dispatch:')) errors.push('release.yml must be manual-only');
-  if (!release.includes('environment: release'))
+  if (!release.includes('environment: release')) {
     errors.push('release publish must use environment: release');
+  }
+  requireTokens(errors, 'release.yml', release, ['security_suite: true', 'performance_eval: true']);
   const buildIndex = release.indexOf('pnpm build');
   const packageIndex = release.indexOf('pnpm package --');
   if (buildIndex < 0 || packageIndex < 0 || buildIndex > packageIndex) {

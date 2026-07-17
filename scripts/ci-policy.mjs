@@ -129,7 +129,7 @@ async function main() {
     'compare/${mainSha}...${sha}',
     'comparison.behind_by > 0',
     'pull.head.sha !== sha',
-    'check.conclusion === \'success\'',
+    "check.conclusion === 'success'",
   ]);
 
   const branchHygiene = await readFile(path.join(root, 'scripts/branch-hygiene.mjs'), 'utf8');
@@ -160,10 +160,7 @@ async function main() {
   if (!release.includes('environment: release')) {
     errors.push('release publish must use environment: release');
   }
-  requireTokens(errors, 'release.yml', release, [
-    'security_suite: true',
-    'performance_eval: true',
-  ]);
+  requireTokens(errors, 'release.yml', release, ['security_suite: true', 'performance_eval: true']);
   const buildIndex = release.indexOf('pnpm build');
   const packageIndex = release.indexOf('pnpm package --');
   if (buildIndex < 0 || packageIndex < 0 || buildIndex > packageIndex) {

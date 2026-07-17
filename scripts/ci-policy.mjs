@@ -83,6 +83,7 @@ async function main() {
   for (const token of [
     'static-checks:',
     'tests:',
+    'performance-eval:',
     'desktop-e2e:',
     'build:',
     'package-smoke:',

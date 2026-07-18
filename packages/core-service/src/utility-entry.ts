@@ -494,6 +494,12 @@ async function executeProjectOperation(
           operation: operation.operation,
           data: candidateApply.preview(operation.input),
         });
+      case CANDIDATE_APPLY_COMMANDS.applyCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidateApply.apply(requestId, operation.input),
+        });
       case VERSION_COMMANDS.createVersion:
         return CoreProjectResultSchema.parse({
           ok: true,

@@ -1,4 +1,6 @@
 import type {
+  CandidateApplyInput,
+  CandidateApplyOutcome,
   CandidateCreateFixtureInput,
   CandidateDiscardInput,
   CandidateDocument,
@@ -34,14 +36,15 @@ type RendererWorldforgeBridge = Omit<WorldforgeBridge, 'version'> & {
   };
 };
 
-type RendererCandidatePreviewBridge = {
+type RendererCandidateActionBridge = {
   readonly preview: (input: CandidatePreviewInput) => Promise<CommandResult<CandidatePreview>>;
+  readonly apply: (input: CandidateApplyInput) => Promise<CommandResult<CandidateApplyOutcome>>;
 };
 
 declare global {
   interface Window {
     readonly worldforge: RendererWorldforgeBridge;
-    readonly worldforgeCandidatePreview: RendererCandidatePreviewBridge;
+    readonly worldforgeCandidatePreview: RendererCandidateActionBridge;
   }
 }
 

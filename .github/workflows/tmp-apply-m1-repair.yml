@@ -26,17 +26,33 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Apply audited repair patch
+      - name: Decode and verify repair payload
         shell: bash
         run: |
           set -euo pipefail
           base64 -d .repair-patch/m1-repair.patch.gz.b64 | gzip -d > /tmp/m1-repair.patch
           echo "27a33534d0248af91a073ade7b5ecfe31f49aedb03039f29013f775a2ea87c2f  /tmp/m1-repair.patch" | sha256sum -c -
-          git apply --index /tmp/m1-repair.patch
-          git rm .repair-patch/m1-repair.patch.gz.b64
-          node scripts/taskctl.mjs validate
-          git diff --cached --check
+
+      - name: Check patch applicability
+        run: git apply --check /tmp/m1-repair.patch
+
+      - name: Apply repair patch
+        run: git apply --index /tmp/m1-repair.patch
+
+      - name: Remove repair payload
+        run: git rm .repair-patch/m1-repair.patch.gz.b64
+
+      - name: Validate task control
+        run: node scripts/taskctl.mjs validate
+
+      - name: Validate staged diff
+        run: git diff --cached --check
+
+      - name: Commit repair
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "fix(M1-08): recover physically unreadable projects"
-          git push origin HEAD:fix/m1-08-unreadable-recovery
+
+      - name: Push repair
+        run: git push origin HEAD:fix/m1-08-unreadable-recovery

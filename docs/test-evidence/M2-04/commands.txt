@@ -1,18 +1,8 @@
-pnpm task:sync
-exit=0 duration_ms=2200 fixtures=M2-04
-
+pnpm format:check
 pnpm lint
-exit=0 duration_ms=11600 fixtures=M2-04
-
 pnpm typecheck
-exit=0 duration_ms=11600 fixtures=M2-04
-
+pnpm test:unit
+pnpm test:integration
 pnpm test:migration
-exit=0 duration_ms=11600 fixtures=M2-04
-
-pnpm test
-exit=0 duration_ms=10400 fixtures=M2-04
-
+pnpm test:security
 pnpm test:e2e
-exit=2 duration_ms=6800 fixtures=M2-04
-

@@ -43,6 +43,7 @@ import {
   type MutableDraftBlock,
 } from './candidate-state.js';
 import type { DatabaseClock } from './database/index.js';
+import { collectLockGuardViolations } from './draft-lock-guard.js';
 import { ProjectStructureError, readStructure } from './project-structure.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
@@ -352,7 +353,14 @@ export class StructureOperationService {
           'A chapter split requires at least one block after the anchor.',
         );
       }
-      const locked = moved.filter((block) => block.locked).map((block) => block.logicalBlockId);
+      const sourceAfter = blocks.slice(0, splitIndex + 1);
+      const locked = [
+        ...new Set(
+          collectLockGuardViolations(blocks, sourceAfter).map(
+            (violation) => violation.logicalBlockId,
+          ),
+        ),
+      ];
       const titleConflict = Boolean(
         database
           .prepare(
@@ -413,9 +421,11 @@ export class StructureOperationService {
       assertRevision(target.revision, input.targetBaseRevision);
       const sourceBlocks = readDraftBlocks(database, source.draftId);
       const targetBlocks = readDraftBlocks(database, target.draftId);
-      const locked = sourceBlocks
-        .filter((block) => block.locked)
-        .map((block) => block.logicalBlockId);
+      const locked = [
+        ...new Set(
+          collectLockGuardViolations(sourceBlocks, []).map((violation) => violation.logicalBlockId),
+        ),
+      ];
       return makePreview(
         {
           operation: 'merge-chapter',
@@ -485,7 +495,26 @@ export class StructureOperationService {
       const duplicateIds = moved
         .filter((block) => targetIds.has(block.logicalBlockId))
         .map((block) => block.logicalBlockId);
-      const locked = moved.filter((block) => block.locked).map((block) => block.logicalBlockId);
+      const sourceAfter = sourceBlocks.filter((block) => !selected.has(block.logicalBlockId));
+      const insertionIndex =
+        input.afterTargetLogicalBlockId === null
+          ? 0
+          : targetBlocks.findIndex(
+              (block) => block.logicalBlockId === input.afterTargetLogicalBlockId,
+            ) + 1;
+      const targetAfter = [
+        ...targetBlocks.slice(0, insertionIndex),
+        ...moved,
+        ...targetBlocks.slice(insertionIndex),
+      ];
+      const locked = [
+        ...new Set(
+          [
+            ...collectLockGuardViolations(sourceBlocks, sourceAfter),
+            ...collectLockGuardViolations(targetBlocks, targetAfter),
+          ].map((violation) => violation.logicalBlockId),
+        ),
+      ];
       const leavesSourceEmpty = moved.length === sourceBlocks.length;
       const warnings = [
         ...(locked.length ? ['移动范围包含锁定块，必须先解锁。'] : []),

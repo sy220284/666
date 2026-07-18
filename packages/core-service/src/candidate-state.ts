@@ -27,7 +27,8 @@ import { normalizeDraftBlockSemantic } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
 import { candidateBlockContentHash, candidateDocumentContentHash } from './candidate-integrity.js';
-import { draftContentHash } from './draft.js';
+import { collectLockGuardViolations } from './draft-lock-guard.js';
+import { draftContentHash, DraftServiceError } from './draft.js';
 
 export type CandidateApplyServiceErrorCode =
   | 'CANDIDATE_APPLY_NOT_FOUND'
@@ -433,6 +434,13 @@ export function persistBlocks(
   before: readonly MutableDraftBlock[],
   after: readonly MutableDraftBlock[],
 ): void {
+  const lockViolations = collectLockGuardViolations(before, after);
+  if (lockViolations.length > 0) {
+    throw new DraftServiceError(
+      'DRAFT_BLOCK_LOCKED',
+      `LockGuard rejected ${lockViolations.length} locked DraftBlock change(s).`,
+    );
+  }
   const afterIds = new Set(after.map((block) => block.logicalBlockId));
   const remove = database.prepare(
     'DELETE FROM draft_blocks WHERE draft_id = ? AND logical_block_id = ?',

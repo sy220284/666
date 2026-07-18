@@ -1,0 +1,168 @@
+name: M2-04 Correction Diagnostic
+
+on:
+  push:
+    branches:
+      - work/m2-04-quality-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  correct:
+    if: ${{ !contains(github.event.head_commit.message, '[m2-04-correction-result]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Apply correction with diagnostics
+        shell: bash
+        run: |
+          set +e
+          python3 <<'PY' > .m2-04-correction-log 2>&1
+          from pathlib import Path
+          import datetime, hashlib, json, traceback
+          try:
+              path = Path('tests/integration/structure-operations.test.ts')
+              text = path.read_text(encoding='utf-8')
+              start = text.index("  it('blocks indirect movement of locked blocks in source and target Drafts'")
+              end = text.index("\n\n  it('blocks Candidate references during permanent-delete preview'", start)
+              replacement = '''  it('reuses LockGuard without blocking unrelated insertions around locked blocks', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, first, firstDraft } = await createProject(harness, '锁定语义复用');
+      const prepared = await addBlocks(harness, project.projectId, first.id, firstDraft, [
+        '可移动正文块',
+        '锁定正文块',
+      ]);
+      const lockedSourceBlock = prepared.blocks.at(-1)!;
+      const sourceLocked = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: first.id,
+        draftId: prepared.draftId,
+        baseRevision: prepared.revision,
+        operations: [
+          {
+            type: 'set-lock',
+            logicalBlockId: lockedSourceBlock.logicalBlockId,
+            expectedHash: lockedSourceBlock.contentHash!,
+            locked: true,
+          },
+        ],
+      });
+      const targetStructure = await harness.structure.createChapter(randomUUID(), {
+        projectId: project.projectId,
+        volumeId: first.volumeId,
+        title: '目标章',
+      });
+      const target = targetStructure.volumes[0]!.chapters[1]!;
+      const targetDraft = await harness.drafts.open(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: target.id,
+      });
+      const lockedMove = harness.operations.previewMove({
+        projectId: project.projectId,
+        sourceChapterId: first.id,
+        sourceDraftId: sourceLocked.draftId,
+        sourceBaseRevision: sourceLocked.revision,
+        targetChapterId: target.id,
+        targetDraftId: targetDraft.draftId,
+        targetBaseRevision: targetDraft.revision,
+        logicalBlockIds: [lockedSourceBlock.logicalBlockId],
+        afterTargetLogicalBlockId: targetDraft.blocks.at(-1)!.logicalBlockId,
+      });
+      expect(lockedMove.canExecute).toBe(false);
+      expect(lockedMove.lockedLogicalBlockIds).toContain(lockedSourceBlock.logicalBlockId);
+      const targetLockBlock = targetDraft.blocks[0]!;
+      const targetLocked = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: target.id,
+        draftId: targetDraft.draftId,
+        baseRevision: targetDraft.revision,
+        operations: [
+          {
+            type: 'set-lock',
+            logicalBlockId: targetLockBlock.logicalBlockId,
+            expectedHash: targetLockBlock.contentHash!,
+            locked: true,
+          },
+        ],
+      });
+      const unrelatedMoveBlock = sourceLocked.blocks[0]!;
+      const allowed = harness.operations.previewMove({
+        projectId: project.projectId,
+        sourceChapterId: first.id,
+        sourceDraftId: sourceLocked.draftId,
+        sourceBaseRevision: sourceLocked.revision,
+        targetChapterId: target.id,
+        targetDraftId: targetLocked.draftId,
+        targetBaseRevision: targetLocked.revision,
+        logicalBlockIds: [unrelatedMoveBlock.logicalBlockId],
+        afterTargetLogicalBlockId: null,
+      });
+      expect(allowed.canExecute).toBe(true);
+      expect(allowed.lockedLogicalBlockIds).toEqual([]);
+      const checkpoint = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: project.projectId,
+        operation: 'move-blocks',
+      });
+      const result = await harness.operations.executeMove(
+        randomUUID(),
+        {
+          projectId: project.projectId,
+          sourceChapterId: first.id,
+          sourceDraftId: sourceLocked.draftId,
+          sourceBaseRevision: sourceLocked.revision,
+          targetChapterId: target.id,
+          targetDraftId: targetLocked.draftId,
+          targetBaseRevision: targetLocked.revision,
+          logicalBlockIds: [unrelatedMoveBlock.logicalBlockId],
+          afterTargetLogicalBlockId: null,
+          planHash: allowed.planHash,
+        },
+        checkpoint.backupId,
+      );
+      expect(result.drafts[1]!.blocks[0]!.logicalBlockId).toBe(unrelatedMoveBlock.logicalBlockId);
+      expect(
+        result.drafts[1]!.blocks.find(
+          (block) => block.logicalBlockId === targetLockBlock.logicalBlockId,
+        )?.locked,
+      ).toBe(true);
+    } finally {
+      await closeHarness(harness);
+    }
+  });'''
+              path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+
+              edits = {
+                  'docs/test-evidence/M2-04/summary.md': [
+                      ('结构预览和公共 Draft 持久化边界均检测锁定块的删除、修改与间接位移。新增源Draft相邻锁定块、目标Draft锁定块、Candidate引用阻断和永久删除故障回滚覆盖。',
+                       '结构预览和公共 Draft 持久化边界均检测锁定块自身的删除、修改与相对重排。新增锁定块自身跨章移动阻断、周边非锁定内容调整不误伤、Candidate引用阻断和永久删除故障回滚覆盖。')],
+                  'docs/test-evidence/M2-04/manual-acceptance.md': [('源/目标锁定块间接位移阻断', '锁定块自身移动阻断及周边非锁定内容调整不误伤')],
+                  'docs/test-evidence/M2-04/quality-matrix.md': [('覆盖直接及间接位移', '覆盖锁定块删除、修改和相对重排，并避免误伤周边非锁定调整')],
+              }
+              for name, replacements in edits.items():
+                  target = Path(name)
+                  value = target.read_text(encoding='utf-8')
+                  for old, new in replacements:
+                      value = value.replace(old, new)
+                  target.write_text(value, encoding='utf-8')
+
+              evidence = Path('docs/test-evidence/M2-04')
+              entries = []
+              for relative in ['commands.txt','known-risks.md','manual-acceptance.md','performance.json','quality-matrix.md','screenshots/manifest.json','summary.md','test-results/results.json']:
+                  data = (evidence / relative).read_bytes()
+                  entries.append({'path': relative, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+              (evidence / 'manifest.json').write_text(json.dumps({'schemaVersion':1,'taskId':'M2-04','commit':'working-tree','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00','Z'),'files':entries}, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              print('CORRECTION_OK')
+          except BaseException:
+              traceback.print_exc()
+              raise
+          PY
+          status=$?
+          echo "status=$status" >> .m2-04-correction-log
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tests/integration/structure-operations.test.ts docs/test-evidence/M2-04 .m2-04-correction-log
+          git commit -m "chore(M2-04): record correction result [m2-04-correction-result]"
+          git push
+          exit 0

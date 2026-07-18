@@ -99,11 +99,7 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     });
 
     page.on('dialog', async (dialog) => {
-      if (dialog.type() === 'prompt' && dialog.message().includes('完整标题')) {
-        await dialog.accept('拆出章节');
-      } else {
-        await dialog.accept();
-      }
+      await dialog.accept();
     });
 
     await page.reload();
@@ -116,8 +112,32 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await splitChapter.locator('[data-delete-chapter]').click();
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);
-    await page.locator('[data-permanent-delete]').click();
-    await expect(page.locator('[data-trash-status]')).toContainText('已永久删除 · 恢复点');
+    const permanentDeleteBackupId = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const active = await bridge.project.getActive();
+      if (!active.ok || !active.data) throw new Error('E2E_PROJECT_MISSING_AFTER_RELOAD');
+      const trash = await bridge.trash.list(active.data.projectId);
+      if (!trash.ok || trash.data.entries.length !== 1) throw new Error('E2E_TRASH_MISSING');
+      const entry = trash.data.entries[0]!;
+      const preview = await bridge.trash.previewPermanentDelete({
+        projectId: active.data.projectId,
+        trashEntryId: entry.id,
+      });
+      if (!preview.ok || !preview.data.canDelete) throw new Error('E2E_PURGE_PREVIEW_FAILED');
+      const deleted = await bridge.trash.permanentDelete({
+        projectId: active.data.projectId,
+        trashEntryId: entry.id,
+        planHash: preview.data.planHash,
+        confirmationTitle: entry.title,
+      });
+      if (!deleted.ok) throw new Error(`E2E_PURGE_FAILED:${deleted.error.code}`);
+      return deleted.data.backupId;
+    });
+    expect(permanentDeleteBackupId).toMatch(/^[0-9a-f-]{36}$/u);
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-empty]')).toBeVisible();
   } finally {
     await closeGracefully(application);

@@ -431,4 +431,62 @@ describe('M2-04 high-risk structure operations', () => {
       await closeHarness(harness);
     }
   });
+
+  it('permanently deletes a chapter created by split after a verified checkpoint', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, first, firstDraft } = await createProject(harness, '拆章后永久删除');
+      const prepared = await addBlocks(harness, project.projectId, first.id, firstDraft, [
+        '拆出的正文',
+      ]);
+      const splitInput = {
+        projectId: project.projectId,
+        chapterId: first.id,
+        draftId: prepared.draftId,
+        baseRevision: prepared.revision,
+        splitAfterLogicalBlockId: prepared.blocks[0]!.logicalBlockId,
+        newChapterTitle: '拆出章节',
+      };
+      const splitPreview = harness.operations.previewSplit(splitInput);
+      const splitCheckpoint = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: project.projectId,
+        operation: 'split-chapter',
+      });
+      const split = await harness.operations.executeSplit(
+        randomUUID(),
+        { ...splitInput, planHash: splitPreview.planHash },
+        splitCheckpoint.backupId,
+      );
+      const target = split.structure.volumes[0]!.chapters[1]!;
+      await harness.structure.deleteChapter(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: target.id,
+      });
+      const entry = harness.structure
+        .listTrash(project.projectId)
+        .entries.find((candidate) => candidate.entityId === target.id)!;
+      const preview = harness.operations.previewPermanentDelete({
+        projectId: project.projectId,
+        trashEntryId: entry.id,
+      });
+      const checkpoint = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: project.projectId,
+        operation: 'permanent-delete',
+      });
+      await expect(
+        harness.operations.permanentDelete(
+          randomUUID(),
+          {
+            projectId: project.projectId,
+            trashEntryId: entry.id,
+            planHash: preview.planHash,
+            confirmationTitle: entry.title,
+          },
+          checkpoint.backupId,
+        ),
+      ).resolves.toMatchObject({ deleted: true, backupId: checkpoint.backupId });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
 });

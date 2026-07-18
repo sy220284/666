@@ -14,7 +14,13 @@ import {
   undoWorldforgeEditor,
   toggleWorldforgeEditorBlockLock,
 } from '@worldforge/editor-core';
-import type { ImportPlan, ImportPlanChapter, ExportVersionChoice } from '@worldforge/contracts';
+import type {
+  ExportVersionChoice,
+  ImportPlan,
+  ImportPlanChapter,
+  StructureOperationPreview,
+  StructureOperationResult,
+} from '@worldforge/contracts';
 
 import { contentWidthPixels, layoutPolicyForViewport } from './layout-model.js';
 import type {
@@ -738,6 +744,177 @@ async function runStructureMutation(
   return null;
 }
 
+async function operationDraft(chapter: Chapter): Promise<DraftDocument | null> {
+  const project = activeProject;
+  if (!project) return null;
+  if (draftAutosave?.hasPendingWork && !(await draftAutosave.flush())) {
+    setStructureState('自动保存失败，已阻止结构操作。', true);
+    return null;
+  }
+  if (activeChapter?.id === chapter.id && activeDraft) return activeDraft;
+  const result = await window.worldforge.draft.open({
+    projectId: project.projectId,
+    chapterId: chapter.id,
+  });
+  if (!result.ok) {
+    setStructureState(`正文读取失败 · ${result.error.code}`, true);
+    return null;
+  }
+  return result.data;
+}
+
+function confirmStructurePreview(preview: StructureOperationPreview): boolean {
+  const warning = preview.warnings.length ? `\n\n${preview.warnings.join('\n')}` : '';
+  return window.confirm(
+    `影响预览：移动 ${preview.movedLogicalBlockIds.length} 个正文块（${preview.movedCharacterCount} 字符）。\n` +
+      `源 Draft：${preview.sourceBlockCount} → ${preview.resultingSourceBlockCount} 块\n` +
+      `目标 Draft：${preview.targetBlockCount} → ${preview.resultingTargetBlockCount} 块\n` +
+      `执行前将创建已验证恢复点。${warning}\n\n继续执行？`,
+  );
+}
+
+function showStructureOperationResult(
+  result: StructureOperationResult,
+  preferredChapterId: string,
+): void {
+  renderProjectStructure(result.structure);
+  setStructureState(`结构操作完成 · 恢复点 ${result.backupId.slice(0, 8)}`);
+  const chapter = result.structure.volumes
+    .flatMap((volume) => volume.chapters)
+    .find((candidate) => candidate.id === preferredChapterId);
+  const draft = result.drafts.find((candidate) => candidate.chapterId === preferredChapterId);
+  if (chapter && draft) mountDraftEditor(draft, chapter);
+}
+
+async function splitChapterWithPreview(chapter: Chapter): Promise<void> {
+  const project = activeProject;
+  if (!project || project.databaseMode !== 'read-write') return;
+  const draft = await operationDraft(chapter);
+  if (!draft || draft.blocks.length < 2) {
+    setStructureState('拆章至少需要两个正文块。', true);
+    return;
+  }
+  const title = window.prompt('新章节标题', `${chapter.title}（下）`)?.trim();
+  if (!title) return;
+  const requested = window.prompt(
+    `在第几个正文块后拆分？请输入 1—${draft.blocks.length - 1}`,
+    String(Math.max(1, Math.floor(draft.blocks.length / 2))),
+  );
+  const blockNumber = Number(requested);
+  if (!Number.isInteger(blockNumber) || blockNumber < 1 || blockNumber >= draft.blocks.length) {
+    setStructureState('拆分位置无效。', true);
+    return;
+  }
+  const input = {
+    projectId: project.projectId,
+    chapterId: chapter.id,
+    draftId: draft.draftId,
+    baseRevision: draft.revision,
+    splitAfterLogicalBlockId: draft.blocks[blockNumber - 1]!.logicalBlockId,
+    newChapterTitle: title,
+  };
+  setStructureState('正在生成拆章影响预览…');
+  const preview = await window.worldforge.planning.previewSplitChapter(input);
+  if (!preview.ok) return setStructureState(`拆章预览失败 · ${preview.error.code}`, true);
+  if (!preview.data.canExecute || !confirmStructurePreview(preview.data)) return;
+  setStructureState('正在创建恢复点并拆章…');
+  const result = await window.worldforge.planning.splitChapter({
+    ...input,
+    planHash: preview.data.planHash,
+  });
+  if (!result.ok) return setStructureState(`拆章失败 · ${result.error.code}`, true);
+  showStructureOperationResult(result.data, chapter.id);
+}
+
+async function mergeChapterWithPreview(
+  volume: Volume,
+  chapter: Chapter,
+  chapterIndex: number,
+): Promise<void> {
+  const project = activeProject;
+  const target = volume.chapters[chapterIndex - 1] ?? volume.chapters[chapterIndex + 1] ?? null;
+  if (!project || !target || project.databaseMode !== 'read-write') {
+    setStructureState('合章需要同卷中的另一章节。', true);
+    return;
+  }
+  const sourceDraft = await operationDraft(chapter);
+  const targetDraft = await operationDraft(target);
+  if (!sourceDraft || !targetDraft) return;
+  const input = {
+    projectId: project.projectId,
+    sourceChapterId: chapter.id,
+    sourceDraftId: sourceDraft.draftId,
+    sourceBaseRevision: sourceDraft.revision,
+    targetChapterId: target.id,
+    targetDraftId: targetDraft.draftId,
+    targetBaseRevision: targetDraft.revision,
+  };
+  setStructureState('正在生成合章影响预览…');
+  const preview = await window.worldforge.planning.previewMergeChapters(input);
+  if (!preview.ok) return setStructureState(`合章预览失败 · ${preview.error.code}`, true);
+  if (!preview.data.canExecute || !confirmStructurePreview(preview.data)) return;
+  setStructureState('正在创建恢复点并合章…');
+  const result = await window.worldforge.planning.mergeChapters({
+    ...input,
+    planHash: preview.data.planHash,
+  });
+  if (!result.ok) return setStructureState(`合章失败 · ${result.error.code}`, true);
+  showStructureOperationResult(result.data, target.id);
+}
+
+async function moveBlocksWithPreview(
+  volume: Volume,
+  chapter: Chapter,
+  chapterIndex: number,
+): Promise<void> {
+  const project = activeProject;
+  const target = volume.chapters[chapterIndex + 1] ?? volume.chapters[chapterIndex - 1] ?? null;
+  if (!project || !target || project.databaseMode !== 'read-write') {
+    setStructureState('跨章移动需要同卷中的另一章节。', true);
+    return;
+  }
+  const sourceDraft = await operationDraft(chapter);
+  const targetDraft = await operationDraft(target);
+  if (!sourceDraft || !targetDraft) return;
+  const raw = window.prompt(
+    `移动到“${target.title}”。请输入正文块编号（1—${sourceDraft.blocks.length}，可用逗号分隔）`,
+    String(sourceDraft.blocks.length),
+  );
+  if (!raw) return;
+  const indexes = [...new Set(raw.split(/[,，\s]+/u).map(Number))];
+  if (
+    indexes.length === 0 ||
+    indexes.some(
+      (index) => !Number.isInteger(index) || index < 1 || index > sourceDraft.blocks.length,
+    )
+  ) {
+    setStructureState('正文块编号无效。', true);
+    return;
+  }
+  const input = {
+    projectId: project.projectId,
+    sourceChapterId: chapter.id,
+    sourceDraftId: sourceDraft.draftId,
+    sourceBaseRevision: sourceDraft.revision,
+    targetChapterId: target.id,
+    targetDraftId: targetDraft.draftId,
+    targetBaseRevision: targetDraft.revision,
+    logicalBlockIds: indexes.map((index) => sourceDraft.blocks[index - 1]!.logicalBlockId),
+    afterTargetLogicalBlockId: targetDraft.blocks.at(-1)?.logicalBlockId ?? null,
+  };
+  setStructureState('正在生成跨章移动影响预览…');
+  const preview = await window.worldforge.planning.previewMoveBlocks(input);
+  if (!preview.ok) return setStructureState(`移动预览失败 · ${preview.error.code}`, true);
+  if (!preview.data.canExecute || !confirmStructurePreview(preview.data)) return;
+  setStructureState('正在创建恢复点并移动正文块…');
+  const result = await window.worldforge.planning.moveBlocks({
+    ...input,
+    planHash: preview.data.planHash,
+  });
+  if (!result.ok) return setStructureState(`跨章移动失败 · ${result.error.code}`, true);
+  showStructureOperationResult(result.data, chapter.id);
+}
+
 function openVolumeEditor(volume?: Volume): void {
   if (!structureForm || !structureDialog || activeProject?.databaseMode !== 'read-write') return;
   structureForm.reset();
@@ -932,6 +1109,20 @@ function renderProjectStructure(structure: ProjectStructure | null): void {
       chapterActions.className = 'tree-actions';
       const editChapter = treeAction('编', '编辑章节', 'data-edit-chapter');
       editChapter.addEventListener('click', () => openChapterEditor(volume, chapter));
+      const splitChapter = treeAction('拆', '预览并拆分章节', 'data-split-chapter');
+      splitChapter.addEventListener('click', () => {
+        void splitChapterWithPreview(chapter);
+      });
+      const mergeChapter = treeAction('并', '预览并合并到相邻章节', 'data-merge-chapter');
+      mergeChapter.disabled ||= volume.chapters.length < 2;
+      mergeChapter.addEventListener('click', () => {
+        void mergeChapterWithPreview(volume, chapter, chapterIndex);
+      });
+      const moveBlocks = treeAction('移', '预览并跨章移动正文块', 'data-move-blocks');
+      moveBlocks.disabled ||= volume.chapters.length < 2;
+      moveBlocks.addEventListener('click', () => {
+        void moveBlocksWithPreview(volume, chapter, chapterIndex);
+      });
       const chapterUp = treeAction('↑', '上移章节', 'data-move-chapter-up');
       chapterUp.disabled ||= chapterIndex === 0;
       chapterUp.addEventListener('click', () => {
@@ -980,7 +1171,15 @@ function renderProjectStructure(structure: ProjectStructure | null): void {
           '正在移入废纸篓…',
         );
       });
-      chapterActions.append(editChapter, chapterUp, chapterDown, removeChapter);
+      chapterActions.append(
+        editChapter,
+        splitChapter,
+        mergeChapter,
+        moveBlocks,
+        chapterUp,
+        chapterDown,
+        removeChapter,
+      );
       chapterNode.append(chapterLabel, chapterActions);
       chapterList.append(chapterNode);
     }
@@ -1050,16 +1249,38 @@ function renderTrashEntries(entries: readonly TrashEntry[]): void {
     actions.className = 'trash-entry__actions';
     const restoreOriginal = recentAction('恢复原位', 'data-restore-original');
     const restoreEnd = recentAction('恢复到末尾', 'data-restore-end');
+    const restoreElsewhere = recentAction('恢复到其他卷', 'data-restore-elsewhere');
+    const permanentDelete = recentAction('永久删除', 'data-permanent-delete');
     const readOnly = activeProject?.databaseMode !== 'read-write';
     restoreOriginal.disabled = readOnly;
     restoreEnd.disabled = readOnly;
+    restoreElsewhere.disabled =
+      readOnly || entry.entityType !== 'chapter' || (activeStructure?.volumes.length ?? 0) === 0;
+    permanentDelete.disabled = readOnly;
     restoreOriginal.addEventListener('click', () => {
       void restoreTrash(entry, 'original');
     });
     restoreEnd.addEventListener('click', () => {
       void restoreTrash(entry, { kind: 'end' });
     });
-    actions.append(restoreOriginal, restoreEnd);
+    restoreElsewhere.addEventListener('click', () => {
+      const volumes = activeStructure?.volumes ?? [];
+      const requested = window.prompt(
+        `请选择目标卷：\n${volumes.map((volume, index) => `${index + 1}. ${volume.title}`).join('\n')}`,
+        '1',
+      );
+      const index = Number(requested) - 1;
+      const target = volumes[index];
+      if (!target) {
+        if (requested !== null) setTrashStatus('目标卷无效，未恢复。', true);
+        return;
+      }
+      void restoreTrash(entry, { kind: 'end' }, target.id);
+    });
+    permanentDelete.addEventListener('click', () => {
+      void permanentlyDeleteTrash(entry);
+    });
+    actions.append(restoreOriginal, restoreEnd, restoreElsewhere, permanentDelete);
     row.append(content, actions);
     trashList.append(row);
   }
@@ -1085,6 +1306,7 @@ async function refreshTrashEntries(): Promise<void> {
 async function restoreTrash(
   entry: TrashEntry,
   placement: 'original' | { readonly kind: 'end' },
+  targetVolumeId?: string,
 ): Promise<void> {
   const project = activeProject;
   if (!project || project.databaseMode !== 'read-write') return;
@@ -1094,6 +1316,7 @@ async function restoreTrash(
       projectId: project.projectId,
       trashEntryId: entry.id,
       placement,
+      ...(targetVolumeId ? { targetVolumeId } : {}),
     });
     if (result.ok) {
       renderProjectStructure(result.data);
@@ -1104,6 +1327,52 @@ async function restoreTrash(
     }
   } catch {
     setTrashStatus('恢复失败 · COMMON_INTERNAL_999', true);
+  }
+}
+
+async function permanentlyDeleteTrash(entry: TrashEntry): Promise<void> {
+  const project = activeProject;
+  if (!project || project.databaseMode !== 'read-write') return;
+  setTrashStatus('正在检查永久删除影响…');
+  try {
+    const preview = await window.worldforge.trash.previewPermanentDelete({
+      projectId: project.projectId,
+      trashEntryId: entry.id,
+    });
+    if (!preview.ok) return setTrashStatus(`影响检查失败 · ${preview.error.code}`, true);
+    if (!preview.data.canDelete) {
+      const blockers = preview.data.blockers
+        .map((blocker) => `${blocker.kind} ${blocker.count} 项`)
+        .join('、');
+      setTrashStatus(`不可永久删除：${blockers}仍在引用该对象。`, true);
+      return;
+    }
+    const impact = preview.data.impact;
+    const confirmation = window.prompt(
+      `永久删除“${entry.title}”将删除 ${impact.volumes} 卷、${impact.chapters} 章、` +
+        `${impact.drafts} 份Draft和 ${impact.draftBlocks} 个正文块。\n` +
+        `执行前会创建已验证恢复点。请输入完整标题以确认：`,
+      '',
+    );
+    if (confirmation !== entry.title) {
+      setTrashStatus(
+        confirmation === null ? '已取消永久删除。' : '标题不匹配，未删除。',
+        confirmation !== null,
+      );
+      return;
+    }
+    setTrashStatus('正在创建恢复点并永久删除…');
+    const result = await window.worldforge.trash.permanentDelete({
+      projectId: project.projectId,
+      trashEntryId: entry.id,
+      planHash: preview.data.planHash,
+      confirmationTitle: confirmation,
+    });
+    if (!result.ok) return setTrashStatus(`永久删除失败 · ${result.error.code}`, true);
+    await refreshTrashEntries();
+    setTrashStatus(`已永久删除 · 恢复点 ${result.data.backupId.slice(0, 8)}`);
+  } catch {
+    setTrashStatus('永久删除失败 · COMMON_INTERNAL_999', true);
   }
 }
 

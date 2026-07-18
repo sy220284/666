@@ -23,6 +23,8 @@ export const RecoveryOperationSchema = z.enum([
   'replace',
   'split-chapter',
   'merge-chapter',
+  'move-blocks',
+  'permanent-delete',
   'migration',
 ]);
 

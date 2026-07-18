@@ -370,10 +370,14 @@ RHY结果为P3建议级，不写入阻断严重度。
 
 ### 3.7 备份与回收站
 
-- `backup_records(id, backup_type, path, hash, verified, label, notes, created_at, deleted_at)`
+- `backup_records(id, project_id, operation, backup_file_name, size_bytes, sha256, created_at, verified_at)`
 - `trash_entries(id, entity_type, entity_id, original_parent_id, original_order_key INTEGER, deleted_at)`
 
 `0002_volume_chapter_lifecycle.sql`仅允许`volume/chapter`两类最小回收记录，并对`(entity_type, entity_id)`去重。软删除对象仍保留在权威业务表；恢复在Core单事务内重新分配同级64位排序键并删除对应TrashEntry。
+
+`0009_structure_operation_recovery.sql`扩展恢复点操作为`move-blocks/permanent-delete`。永久删除预览统计卷、章、Draft、DraftBlock、Version与Candidate；存在Version或Candidate引用时拒绝执行。无阻断引用时，Core先创建已验证恢复点，再按PatchLog→DraftBlock→Draft→Chapter→Volume的引用顺序在单事务内清理。
+
+拆章和跨章移动保留被移动块的`logicalBlockId`，源/目标Draft分别写入`draft_patch_log`并递增一次Revision。合章将源正文复制到目标Draft后把源章移入回收站，因而原章仍可恢复；历史Version/VersionBlock始终不更改。
 
 ## 4. FTS5
 

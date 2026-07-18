@@ -1,0 +1,50 @@
+[
+  {
+    "suite": "structure split and verified recovery checkpoint",
+    "fixtureId": "M2-04-SPLIT",
+    "status": "passed",
+    "details": "Fresh preview, revisions, block ownership, immutable Version and checkpoint verified."
+  },
+  {
+    "suite": "lock, stale plan and transaction rollback",
+    "fixtureId": "M2-04-ATOMIC",
+    "status": "passed",
+    "details": "Locked/stale requests rejected and injected mid-transaction failure rolled back."
+  },
+  {
+    "suite": "cross-chapter move and merge",
+    "fixtureId": "M2-04-MOVE-MERGE",
+    "status": "passed",
+    "details": "Counts, ordering, logical IDs and source TrashEntry verified."
+  },
+  {
+    "suite": "permanent delete reference and confirmation guard",
+    "fixtureId": "M2-04-PURGE",
+    "status": "passed",
+    "details": "Version blocker, title cancellation, checkpoint and deletion verified."
+  },
+  {
+    "suite": "strict structure IPC authority",
+    "fixtureId": "M2-04-IPC",
+    "status": "passed",
+    "details": "Renderer-owned outcome fields rejected; named preview operation forwarded."
+  },
+  {
+    "suite": "project schema migration v9",
+    "fixtureId": "M2-04-MIGRATION",
+    "status": "passed",
+    "details": "Nine migration files and schema version 9 verified."
+  },
+  {
+    "suite": "full Vitest regression",
+    "fixtureId": "M2-04-REGRESSION",
+    "status": "passed",
+    "details": "63 files passed; 236 tests passed and 1 conditional test skipped."
+  },
+  {
+    "suite": "real Electron structure recovery",
+    "fixtureId": "M2-04-ELECTRON",
+    "status": "skipped",
+    "details": "E2E_DISPLAY_UNAVAILABLE; PR Linux display workflow is required."
+  }
+]

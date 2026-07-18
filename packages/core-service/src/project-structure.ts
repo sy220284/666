@@ -140,7 +140,7 @@ function chapterRow(row: Record<string, unknown>): ChapterRow {
   };
 }
 
-function readStructure(connection: DatabaseSync, projectId: string): ProjectStructure {
+export function readStructure(connection: DatabaseSync, projectId: string): ProjectStructure {
   const volumes = connection
     .prepare(
       `SELECT id, project_id, title, order_key, status, deleted_at

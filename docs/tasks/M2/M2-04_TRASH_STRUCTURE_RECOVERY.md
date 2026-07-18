@@ -1,6 +1,6 @@
 # M2-04 回收站、拆章、并章与结构恢复
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M2 编辑安全与版本核心  
 > 优先级：P0  
 > 建议分支：`feat/m2-trash-structure-recovery`

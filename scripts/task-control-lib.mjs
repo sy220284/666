@@ -25,6 +25,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
   'tests/unit/evidence-policy.test.ts',
+  'tests/unit/task-control.test.ts',
   'tests/unit/testkit-fixtures-evidence.test.ts',
 ];
 
@@ -66,6 +67,17 @@ export function validateChangedPaths(changedFiles, allowedPaths, forbiddenPaths)
     }
   }
   return violations;
+}
+
+export function validateChangedPathsForTransition(changedFiles, state, baseState = null) {
+  const states = [state, baseState].filter(Boolean);
+  const allowedPaths = states.flatMap((value) => value.activeTask?.allowedPaths ?? []);
+  const forbiddenPaths = states.flatMap((value) => value.activeTask?.forbiddenPaths ?? []);
+  return validateChangedPaths(
+    changedFiles,
+    [...new Set(allowedPaths)],
+    [...new Set(forbiddenPaths)],
+  );
 }
 
 export function isGovernanceOnlyPullRequest(branch, changedFiles) {

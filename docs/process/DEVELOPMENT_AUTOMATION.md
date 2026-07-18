@@ -74,6 +74,7 @@
 - `pnpm check:boundaries`：跨层依赖和Renderer/Domain/Contracts的Node边界。
 - `pnpm task:verify`：证据目录最低结构。
 - `pnpm task:activate -- <TASK-ID>`：校验依赖并从任务卡生成下一张活动任务。
+- `pnpm task:reopen -- <TASK-ID>`：暂停尚未编程的当前任务，重新打开已登记到`deferredVerification`的Implemented任务处理审计缺口。
 - `pnpm task:advance -- --ci=success --commit=<SHA>`：实现优先模式下在PR分支登记当前卡为Implemented、记录延期验证并准备下一任务状态。
 - `pnpm task:close -- --ci=success --commit=<SHA>`：在PR分支关闭Implemented任务并准备下一张依赖已满足的任务。
 - GitHub `PR Policy`：验证真实PR头分支、治理白名单及永久工作流策略。
@@ -121,13 +122,13 @@ quality
 
 基础命令由M0-01建立。专项测试只能在对应底座任务完成后启用；尚未建立的命令必须明确返回“未就绪”，不能以空测试假装通过。
 
-| 变更 | 追加验证 |
-|---|---|
-| Migration、Repository | `test:migration`、`test:integration` |
-| Electron、IPC、路径、安全 | `test:security`、`test:e2e` |
+| 变更                              | 追加验证                                    |
+| --------------------------------- | ------------------------------------------- |
+| Migration、Repository             | `test:migration`、`test:integration`        |
+| Electron、IPC、路径、安全         | `test:security`、`test:e2e`                 |
 | Editor、Candidate、Revision、Lock | `test:unit`、`test:integration`、`test:e2e` |
-| Prompt、Provider、约束包 | `test:eval`、`test:integration` |
-| 性能、DPI | `test:perf`、`test:e2e` |
+| Prompt、Provider、约束包          | `test:eval`、`test:integration`             |
+| 性能、DPI                         | `test:perf`、`test:e2e`                     |
 
 Quality永久执行`test:perf`，其范围同时覆盖性能目录和AI输出协议基线；任务卡仍应在`verification`中明确专项命令，便于本地复现和证据登记。`pnpm test`保留为本地完整回归命令，不再作为CI中混合所有故障域的单一步骤。
 

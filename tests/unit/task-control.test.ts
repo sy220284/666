@@ -9,6 +9,7 @@ import {
   replaceTaskIndexStatus,
   validateActiveState,
   validateChangedPaths,
+  validateChangedPathsForTransition,
 } from '../../scripts/task-control-lib.mjs';
 
 const indexFixture = `
@@ -43,6 +44,25 @@ describe('task control', () => {
     ).toEqual([
       'docs/tasks/M1/example.md: forbidden by active task',
       'random.txt: outside active task allowed paths',
+    ]);
+  });
+
+  it('accepts paths from either side of an authorized task transition', () => {
+    const state = {
+      activeTask: { allowedPaths: ['packages/new/'], forbiddenPaths: [] },
+    };
+    const baseState = {
+      activeTask: { allowedPaths: ['packages/previous/'], forbiddenPaths: [] },
+    };
+    expect(
+      validateChangedPathsForTransition(
+        ['packages/previous/index.ts', 'packages/new/index.ts'],
+        state,
+        baseState,
+      ),
+    ).toEqual([]);
+    expect(validateChangedPathsForTransition(['outside.ts'], state, baseState)).toEqual([
+      'outside.ts: outside active task allowed paths',
     ]);
   });
 

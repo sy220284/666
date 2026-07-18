@@ -11,41 +11,29 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M2-03",
+    "id": "M2-04",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md",
-    "branch": "work/m2-03-diff-apply-conflict-undo",
-    "startedAt": "2026-07-17",
+    "source": "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
+    "branch": "work/m2-04-trash-structure-recovery",
+    "startedAt": "2026-07-18",
     "allowedPaths": [
       "migrations/project/",
-      "packages/editor-core/",
       "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
-      "packages/testkit/",
-      "apps/desktop/main/",
-      "apps/desktop/preload/",
       "apps/desktop/renderer/",
-      "tests/unit/",
       "tests/integration/",
-      "tests/migration/",
-      "tests/security/",
       "tests/e2e/",
-      "tests/performance/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md",
-      "docs/tasks/M5/M5-05_CANDIDATE_REVIEW_APPLY.md",
+      "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/contracts/IPC_CONTRACTS.md",
-      "docs/ui/CANDIDATE_REVIEW_SPEC.md",
-      "docs/test-evidence/M2-03/",
-      "docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md"
+      "docs/test-evidence/M2-04/",
+      "docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -53,21 +41,20 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/ui/CANDIDATE_REVIEW_SPEC.md",
-      "docs/decisions/ADR-004-ai-cannot-overwrite-draft.md",
       "docs/decisions/ADR-005-lock-revision-backup.md",
-      "docs/testing/PERFORMANCE_BUDGETS.md"
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/ui/INTERACTION_STATES.md",
+      "docs/testing/SECURITY_TEST_CASES.md"
     ],
     "verification": [
       "pnpm lint",
       "pnpm typecheck",
       "pnpm test",
       "pnpm test:migration",
+      "pnpm test:integration",
       "pnpm test:security",
       "pnpm test:e2e",
-      "pnpm test:unit",
-      "pnpm test:integration",
-      "pnpm test:perf"
+      "pnpm test:unit"
     ]
   },
   "lastVerifiedTask": {
@@ -97,11 +84,22 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M2-03",
+      "implementationCommit": "bf794d695b8a1d9d648254d536517b539777b473",
+      "deferredAt": "2026-07-18T06:58:35.887Z",
+      "pending": [
+        "standard evidence package and screenshots",
+        "manual acceptance and exhaustive quality matrix",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "lastImplementedTask": {
-    "id": "M2-02",
-    "commit": "5f6b05f3193f57dec5ed63ea4a6f8fd1099ab2d7",
-    "implementedAt": "2026-07-17T11:08:43.455Z"
+    "id": "M2-03",
+    "commit": "bf794d695b8a1d9d648254d536517b539777b473",
+    "implementedAt": "2026-07-18T06:58:35.887Z"
   }
 }

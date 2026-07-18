@@ -12,6 +12,8 @@ import {
   validateChangedPaths,
   validateChangedPathsForTransition,
 } from '../../scripts/task-control-lib.mjs';
+import { mainVerificationDispatchBody } from '../../scripts/automerge.mjs';
+import { validateMainVerification } from '../../scripts/main-verification.mjs';
 
 const indexFixture = `
 | ID | 任务卡 | 依赖 | 状态 |
@@ -156,5 +158,119 @@ describe('task control', () => {
     expect(replaceTaskIndexStatus(indexFixture, 'M0-01', 'Verified')).toContain(
       '| M0-01 | [Monorepo](M0/M0-01_MONOREPO_QUALITY_CI.md) | 无 | Verified |',
     );
+  });
+});
+
+describe('post-merge main verification', () => {
+  const expectedSha = 'a'.repeat(40);
+  const sourceHeadSha = 'b'.repeat(40);
+  const requiredChecks = [
+    'pr-policy',
+    'task-governance',
+    'quality / quality',
+    'security',
+    'performance',
+    'evidence',
+  ];
+  const successfulChecks = () =>
+    requiredChecks.map((name, index) => ({
+      name,
+      status: 'completed',
+      conclusion: 'success',
+      started_at: `2026-07-18T00:00:0${index}Z`,
+    }));
+
+  it('builds an explicit dispatch for the controlled main commit', () => {
+    expect(
+      mainVerificationDispatchBody(
+        { baseBranch: 'main', mainVerificationWorkflow: 'main-verification.yml' },
+        expectedSha,
+        42,
+        sourceHeadSha,
+      ),
+    ).toEqual({
+      ref: 'main',
+      inputs: {
+        expected_sha: expectedSha,
+        source_pr: '42',
+        source_head_sha: sourceHeadSha,
+      },
+    });
+  });
+
+  it('accepts matching PR provenance and successful permanent checks', () => {
+    expect(() =>
+      validateMainVerification({
+        repository: 'sy220284/666',
+        baseBranch: 'main',
+        expectedSha,
+        sourcePr: 42,
+        sourceHeadSha,
+        githubRef: 'refs/heads/main',
+        githubSha: expectedSha,
+        pull: {
+          merged: true,
+          merged_at: '2026-07-18T00:10:00Z',
+          base: { ref: 'main' },
+          head: { sha: sourceHeadSha },
+          merge_commit_sha: expectedSha,
+        },
+        requiredChecks,
+        checkRuns: successfulChecks(),
+      }),
+    ).not.toThrow();
+  });
+
+  it('uses the latest run for each permanent check and rejects a later failure', () => {
+    const checkRuns = successfulChecks();
+    checkRuns.push({
+      name: 'security',
+      status: 'completed',
+      conclusion: 'failure',
+      started_at: '2026-07-18T00:20:00Z',
+    });
+    expect(() =>
+      validateMainVerification({
+        repository: 'sy220284/666',
+        baseBranch: 'main',
+        expectedSha,
+        sourcePr: 42,
+        sourceHeadSha,
+        githubRef: 'refs/heads/main',
+        githubSha: expectedSha,
+        pull: {
+          merged: true,
+          merged_at: '2026-07-18T00:10:00Z',
+          base: { ref: 'main' },
+          head: { sha: sourceHeadSha },
+          merge_commit_sha: expectedSha,
+        },
+        requiredChecks,
+        checkRuns,
+      }),
+    ).toThrow('Source PR permanent checks are not successful: security');
+  });
+
+  it('rejects a dispatch attached to a different main commit', () => {
+    expect(() =>
+      validateMainVerification({
+        repository: 'sy220284/666',
+        baseBranch: 'main',
+        expectedSha,
+        sourcePr: 42,
+        sourceHeadSha,
+        githubRef: 'refs/heads/main',
+        githubSha: 'c'.repeat(40),
+        pull: {
+          merged: true,
+          merged_at: '2026-07-18T00:10:00Z',
+          base: { ref: 'main' },
+          head: { sha: sourceHeadSha },
+          merge_commit_sha: expectedSha,
+        },
+        requiredChecks,
+        checkRuns: successfulChecks(),
+      }),
+    ).toThrow('does not match expected main SHA');
   });
 });

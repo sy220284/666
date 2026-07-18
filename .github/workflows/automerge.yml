@@ -12,13 +12,13 @@ on:
     types: [completed]
 
 permissions:
-  actions: read
+  actions: write
   checks: read
   contents: write
   pull-requests: write
 
 concurrency:
-  group: automerge-${{ github.event.workflow_run.head_sha }}
+  group: automerge-main
   cancel-in-progress: false
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Merge eligible pull request after every permanent check succeeds
+      - name: Merge eligible pull request and schedule final main verification
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/automerge.mjs

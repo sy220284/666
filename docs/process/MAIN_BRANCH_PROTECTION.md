@@ -32,6 +32,8 @@ evidence
 
 矩阵子Job不单独设置为必需检查，由各自聚合门负责统一判定。
 
+`main-verification`是合并后附着到最终squash提交的复核状态，不加入PR Ruleset必需检查。将它加入合并前检查会造成循环依赖：PR必须先合并才能产生该检查，但Ruleset又会等待该检查后才允许合并。
+
 ## 合并方式
 
 - Allow squash merging：开启
@@ -41,6 +43,16 @@ evidence
 - Automatically delete head branches：开启
 
 自动合并仍受全部必需检查、Draft状态、Changes Requested、未解决线程、头SHA一致性以及“未落后于当前main”限制，不得成为绕过Ruleset的旁路。
+
+Auto Merge使用全仓库串行并发组，避免两个已通过PR同时读取同一main基线并竞争合并。合并成功后只允许通过固定的`main-verification.yml`进行`workflow_dispatch`；该工作流只读校验最终SHA、来源PR和历史门禁，再运行完整Linux复核。
+
+## Main Verification权限
+
+- Auto Merge：`actions: write`仅用于调度固定工作流；同时保留`checks: read`、`contents: write`和`pull-requests: write`。
+- Main Verification：仅`contents: read`、`checks: read`和`pull-requests: read`。
+- 不使用PAT，不使用`repository_dispatch`，不允许工作流直接推送main。
+- 工作流输入必须包含最终main SHA、来源PR编号和来源头SHA。
+- 工作流运行SHA、PR的`merge_commit_sha`、来源头SHA及六项永久检查必须相互一致。
 
 ## Release环境
 
@@ -70,5 +82,7 @@ evidence
 4. 落后于当前`main`的PR即使历史检查成功，也不得自动合并。
 5. Actions Token尝试直接写`main`应被规则集拒绝。
 6. Ruleset缺失、状态非Active、检查名单漂移或存在Bypass actor时，治理审计必须失败。
+7. Auto Merge成功后未产生针对最终SHA的`main-verification`运行，应视为主线复核链路故障。
+8. Main Verification输入SHA、来源PR、来源头SHA或永久检查任一不一致时必须失败。
 
 仓库代码不能自行授予管理员级权限；Ruleset和仓库Auto-merge开关必须由仓库管理员实际启用。

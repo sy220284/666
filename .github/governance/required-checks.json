@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "baseBranch": "main",
   "mergeMethod": "squash",
+  "mainVerificationWorkflow": "main-verification.yml",
   "requiredChecks": [
     "pr-policy",
     "task-governance",

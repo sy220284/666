@@ -6,7 +6,7 @@
 
 ## 1. 目标
 
-把任务选择、依赖检查、修改范围、质量验证、证据归档和状态回写组成可执行闭环。自动化只替代重复操作，不降低任务卡、测试、安全、数据边界和人工合并控制。
+把任务选择、依赖检查、修改范围、质量验证、证据归档、受控合并、主线复核和状态回写组成可执行闭环。自动化只替代重复操作，不降低任务卡、测试、安全、数据边界和审查控制。
 
 ## 2. 权威状态
 
@@ -26,9 +26,10 @@
 → 最小完整实现
 → 本地验证
 → 提交Pull Request
-→ PR Policy、Task Governance、Security与Quality门禁
-→ 作者或维护者审查
-→ 人工合并到main
+→ 六项永久门禁
+→ 审查条件复核
+→ Auto Merge通过Merge API执行squash
+→ Main Verification复核最终main提交
 → 证据与追踪回写
 → 激活下一张依赖已满足的任务
 ```
@@ -38,17 +39,19 @@
 1. 同一时刻只有一张`IN_PROGRESS`任务。
 2. 每张任务使用独立非`main`分支，分支名使用`work/`、`feat/`、`fix/`、`refactor/`、`test/`、`docs/`或`chore/`前缀。
 3. 所有代码、文档、任务状态和证据变更必须通过Pull Request进入`main`。
-4. 机器人和GitHub Actions只能更新PR头分支，不得直接推送`main`，不得自动合并PR。
-5. PR必须通过`pr-policy`、`task-governance`、`security`和聚合`quality / quality`门；任一必要检查失败即禁止合并。
-6. 每张任务使用独立原子提交或连续提交组，提交信息必须包含任务ID。
-7. 任何失败转为`BLOCKED`，保留复现、日志、数据安全状态和回退方式。
-8. 不允许跳过失败测试、伪造证据、绕开阶段门或提前实现未来任务。
-9. 冻结架构发生真实冲突时暂停受影响任务，只处理冲突本身。
-10. `main`上的提交只允许来自作者或维护者执行的PR合并操作。
+4. 机器人和GitHub Actions不得执行`git push main`；只有仓库内已审计的Auto Merge脚本可在六项门禁全部成功后调用Pull Request Merge API。
+5. PR必须通过`pr-policy`、`task-governance`、`quality / quality`、`security`、`performance`和`evidence`；任一必要检查失败即禁止合并。
+6. Auto Merge必须阻止Draft、Changes Requested、未解决线程、头SHA变化和落后于当前main的分支。
+7. 每张任务使用独立原子提交或连续提交组，提交信息必须包含任务ID。
+8. 任何失败转为`BLOCKED`，保留复现、日志、数据安全状态和回退方式。
+9. 不允许跳过失败测试、伪造证据、绕开阶段门或提前实现未来任务。
+10. 冻结架构发生真实冲突时暂停受影响任务，只处理冲突本身。
+11. `main`上的提交只允许来自满足Ruleset的PR合并。
+12. 合并后必须产生针对最终squash SHA的`main-verification`状态；空白状态不视为主线复核完成。
 
 ### 3.1 实现优先PR模式
 
-`implementation-pr`用于先完成各任务卡的真实编程，再统一处理明确延期的非编程验收，同时保留PR审查和人工合并控制：
+`implementation-pr`用于先完成各任务卡的真实编程，再统一处理明确延期的非编程验收，同时保留PR审查和受控合并：
 
 ```text
 唯一活动任务
@@ -56,15 +59,20 @@
 → 最小完整端到端实现
 → 必要专项测试
 → 创建或更新PR
-→ 远端质量门全部通过
+→ 六项远端门禁全部通过
 → 在PR中登记Implemented及deferredVerification
-→ 作者或维护者合并
+→ 受控squash合并
+→ 最终main提交复核
 → 下一任务另开分支和PR
 ```
 
 延期项统一包括标准证据包、截图、人工与穷尽质量矩阵、追踪矩阵Verified状态和最终关闭。延期不等于省略：`Implemented`只能满足本模式下的后续编程依赖，不能用于发布、P0验收或Verified声明。代码、测试、Migration、安全和数据边界失败不得延期，必须立即阻断。
 
-任务完成及下一任务激活可以包含在同一PR中，但只有PR被人工合并后才成为`main`权威状态。禁止工作流在门禁通过后自行推送`main`或调用自动合并。
+任务完成及下一任务激活可以包含在同一PR中，但只有PR完成受控合并后才成为`main`权威状态。工作流不得直接推送main。
+
+### 3.2 治理型PR
+
+`policy/`、`chore/governance-`和`fix/governance-`分支可以修改治理白名单中的工作流、策略脚本、门禁文档与固定治理测试。治理型PR仍必须通过六项永久门禁，不得借治理白名单修改产品代码。
 
 ## 4. 自动门禁
 
@@ -79,14 +87,20 @@
 - `pnpm task:close -- --ci=success --commit=<SHA>`：在PR分支关闭Implemented任务并准备下一张依赖已满足的任务。
 - GitHub `PR Policy`：验证真实PR头分支、治理白名单及永久工作流策略。
 - GitHub `Task Governance`：验证任务状态、镜像、修改范围和证据结构。
-- GitHub `Security`：执行高危依赖审计和仓库凭据扫描。
+- GitHub `Security`：执行高危依赖审计、仓库凭据扫描和应用安全测试。
+- GitHub `Performance`：执行性能预算及AI协议与评估基线。
+- GitHub `Evidence`：验证发生变化的每个任务证据包及Manifest完整性。
 - GitHub `Quality`：调用`.github/workflows/quality-core.yml`，以聚合检查`quality / quality`作为合并判据。
+- GitHub `Auto Merge`：从main读取已审计脚本，串行复核全部门禁和审查状态，调用Merge API完成squash。
+- GitHub `Main Verification`：由Auto Merge显式调度，验证最终main SHA、来源PR和来源门禁，再运行完整Linux质量复核。
 
-PR产生新提交时，旧的四类门禁运行会自动取消。每个作业设置独立超时，避免Runner无界挂起。`main`合并后的质量运行仅作回归确认，不代替PR合并前门禁。
+PR产生新提交时，同一PR旧门禁运行会自动取消。每个作业设置独立超时，避免Runner无界挂起。
+
+GitHub不会因仓库`GITHUB_TOKEN`产生的普通push事件递归启动新工作流，因此Auto Merge合并后必须使用受支持的`workflow_dispatch`显式调度`Main Verification`。该工作流运行在新main提交上，不依赖没有产生的push检查。
 
 ## 5. 开发质量核心
 
-`.github/workflows/quality-core.yml`服务开发PR与`main`合并后回归验证，包含：
+`.github/workflows/quality-core.yml`服务开发PR、合并后主线复核与Release，包含：
 
 ```text
 static-checks
@@ -97,12 +111,10 @@ static-checks
 tests（并行矩阵）
 ├─ unit
 ├─ integration
-├─ migration
-└─ security
+└─ migration
 
-performance-eval
-├─ 性能预算
-└─ AI输出协议与评估基线
+security-tests（按调用方开关）
+performance-eval（按调用方开关）
 
 desktop-e2e
 ├─ Electron Playwright
@@ -115,6 +127,8 @@ package-smoke
 quality
 └─ 聚合全部结果；任一必要作业失败则失败
 ```
+
+日常PR的独立`Security`与`Performance`负责对应永久检查，`Quality`调用时关闭重复套件。`Main Verification`和`Release`调用时重新启用安全与性能，确保最终提交和发布产物不只依赖历史结果。
 
 所有测试、性能、E2E、构建和打包作业都会上传独立诊断产物。中间作业失败不会阻止其他并行作业执行，因此一次CI即可暴露全部独立问题。
 
@@ -130,11 +144,11 @@ quality
 | Prompt、Provider、约束包          | `test:eval`、`test:integration`             |
 | 性能、DPI                         | `test:perf`、`test:e2e`                     |
 
-Quality永久执行`test:perf`，其范围同时覆盖性能目录和AI输出协议基线；任务卡仍应在`verification`中明确专项命令，便于本地复现和证据登记。`pnpm test`保留为本地完整回归命令，不再作为CI中混合所有故障域的单一步骤。
+当前PR门禁仍采用全量关键套件。风险分级跳过只有在统一影响分类器经过影子验证且漏判为零后才能另行实施。
 
 ## 7. 发布边界
 
-Release保持冻结且仅允许手工触发，不接入开发PR质量门，不建立夜间构建或自动发布。发布流程继续由`.github/workflows/release.yml`和M8-03验收任务控制；未到发布阶段不得由日常开发自动化触发。
+Release保持冻结且仅允许手工触发，不接入开发PR自动发布，不建立夜间发布。发布流程继续由`.github/workflows/release.yml`和M8-03验收任务控制；未到发布阶段不得由日常开发自动化创建Release。
 
 ## 8. 证据
 

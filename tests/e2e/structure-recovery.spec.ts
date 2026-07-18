@@ -4,7 +4,6 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
-import type { WorldforgeBridge } from '@worldforge/contracts';
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
@@ -52,43 +51,22 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();
 
-    await page.evaluate(async () => {
-      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
-        .worldforge;
-      const active = await bridge.project.getActive();
-      if (!active.ok || !active.data) throw new Error('E2E_PROJECT_MISSING');
-      const structure = await bridge.planning.listStructure(active.data.projectId);
-      if (!structure.ok) throw new Error('E2E_STRUCTURE_MISSING');
-      const chapter = structure.data.volumes[0]?.chapters[0];
-      if (!chapter) throw new Error('E2E_CHAPTER_MISSING');
-      const draft = await bridge.draft.open({
-        projectId: active.data.projectId,
-        chapterId: chapter.id,
-      });
-      if (!draft.ok) throw new Error('E2E_DRAFT_MISSING');
-      const inserted = await bridge.draft.applyPatch({
-        projectId: active.data.projectId,
-        chapterId: chapter.id,
-        draftId: draft.data.draftId,
-        baseRevision: draft.data.revision,
-        operations: [
-          {
-            type: 'insert',
-            afterLogicalBlockId: draft.data.blocks[0]!.logicalBlockId,
-            block: { blockType: 'paragraph', content: '拆分后进入新章节。', attributes: {} },
-          },
-        ],
-      });
-      if (!inserted.ok) throw new Error('E2E_DRAFT_PREPARE_FAILED');
-    });
-
-    // The fixture write bypasses Renderer state. Reload before exercising the real UI so
-    // operationDraft reads the persisted two-block Draft rather than the stale initial snapshot.
-    await page.reload();
-    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
-    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
-    await expect(page.locator('.chapter-node')).toHaveCount(1);
+    // Prepare the two-block Draft through the actual editor so Renderer and Core share one state path.
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    await expect(page.locator('[data-draft-workspace]')).toBeVisible();
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
+    const editor = page.locator('[data-draft-content]');
+    const blocks = editor.locator(':scope > [data-block-type]');
+    await expect(blocks).toHaveCount(1);
+    await editor.click();
+    await page.keyboard.type('保留在第一章。');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('拆分后进入新章节。');
+    await expect(blocks).toHaveCount(2);
+    await page.locator('[data-save-draft]').click();
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
 
     page.on('dialog', async (dialog) => {
       const message = dialog.message();
@@ -108,6 +86,7 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     });
 
     await page.locator('.chapter-node').first().locator('[data-split-chapter]').click();
+    await expect(page.locator('[data-structure-state]')).toContainText('结构操作完成 · 恢复点');
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 

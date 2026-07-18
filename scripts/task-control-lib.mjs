@@ -1,11 +1,13 @@
 import path from 'node:path';
 
 export const GOVERNANCE_ALLOWED_PATHS = [
+  '.gitignore',
   '.github/CODEOWNERS',
   '.github/governance/',
   '.github/pull_request_template.md',
   '.github/workflows/',
   'package.json',
+  'agent.md',
   'scripts/automerge.mjs',
   'scripts/branch-hygiene.mjs',
   'scripts/ci-policy.mjs',
@@ -14,11 +16,14 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'scripts/scan-secrets.mjs',
   'scripts/task-control-lib.mjs',
   'scripts/taskctl.mjs',
+  'docs/PROJECT_EXECUTION_ENTRY.md',
+  'docs/process/CODEX_EXECUTION_PLAYBOOK.md',
   'docs/process/DEVELOPMENT_AUTOMATION.md',
   'docs/process/CI_WORKFLOW_ARCHITECTURE.md',
   'docs/process/MAIN_BRANCH_PROTECTION.md',
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
+  'tests/unit/evidence-policy.test.ts',
 ];
 
 export function parseTaskIndex(markdown) {

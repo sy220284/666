@@ -63,6 +63,12 @@ M2
 4. 规划字段均可跳过、后补和关闭提示。
 5. 规划变化只更新规划数据，不产生正文Patch。
 
+## 实现约束落地
+
+- PlotNode同级重排采用临时排序键与最终排序键两阶段写入，避免唯一键在事务中产生瞬时冲突。
+- Renderer规划读取采用刷新代次防护，旧异步响应不得覆盖较新的ProjectBrief或PlotNode状态。
+- 规划命令只写入`project_briefs`与`plot_nodes`，不得生成Draft Patch或改变Version、Candidate。
+
 ## 测试与证据
 
 - 空白项目、跳过任务书、后补、树节点拖动和事务失败。

@@ -1,9 +1,9 @@
 name: Temporary Source Export
 
 on:
-  push:
+  pull_request:
     branches:
-      - work/m3-02-scene-beat-cross-chapter
+      - main
 
 permissions:
   contents: read

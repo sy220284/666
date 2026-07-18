@@ -4,7 +4,7 @@ interface CandidatePreviewContext {
 }
 
 interface CandidatePreviewUiOptions {
-  readonly context: () => CandidatePreviewContext | null;
+  readonly context: () => Promise<CandidatePreviewContext | null>;
   readonly flushDraft: () => Promise<boolean>;
 }
 
@@ -44,6 +44,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   close.type = 'button';
   const status = element('p', '选择候选后读取差异。');
   status.dataset.candidatePreviewStatus = '';
+  status.setAttribute('role', 'status');
   const warning = element('p');
   warning.dataset.candidatePreviewWarning = '';
   warning.setAttribute('role', 'status');
@@ -78,38 +79,43 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   document.body.append(dialog);
 
   const loadPreview = async (): Promise<void> => {
-    const context = options.context();
+    const context = await options.context();
     const candidateId = select.value;
     if (!context || !candidateId) return;
     select.disabled = true;
     status.textContent = '正在计算结构与中文字符差异…';
-    const result = await window.worldforge.candidate.preview({ ...context, candidateId });
-    select.disabled = false;
-    if (!result.ok) {
-      status.textContent = `预览失败 · ${result.error.code}`;
-      return;
+    try {
+      const result = await window.worldforgeCandidatePreview.preview({ ...context, candidateId });
+      if (!result.ok) {
+        status.textContent = `预览失败 · ${result.error.code}`;
+        return;
+      }
+      const preview = result.data;
+      const counts = new Map<string, number>();
+      for (const entry of preview.structure) {
+        counts.set(entry.kind, (counts.get(entry.kind) ?? 0) + 1);
+      }
+      status.textContent = `基础 Revision ${preview.candidate.baseDraftRevision} · ${preview.execution.strategy}`;
+      warning.textContent =
+        preview.candidate.completeness === 'partial'
+          ? '不完整建议稿：只允许阅读和后续局部采用，不能整稿定稿。'
+          : '';
+      summary.textContent = [
+        `结构差异：${[...counts.entries()].map(([kind, count]) => `${kind} ${count}`).join(' · ') || '无'}`,
+        `字符差异块：${preview.characterDiffs.length}`,
+        `章节字符：${preview.execution.chapterCharacters}`,
+      ].join('\n');
+      currentText.textContent = blocksText(preview.draft.blocks);
+      candidateText.textContent = blocksText(preview.candidate.blocks);
+    } catch {
+      status.textContent = '预览失败 · COMMON_INTERNAL_999';
+    } finally {
+      select.disabled = false;
     }
-    const preview = result.data;
-    const counts = new Map<string, number>();
-    for (const entry of preview.structure) {
-      counts.set(entry.kind, (counts.get(entry.kind) ?? 0) + 1);
-    }
-    status.textContent = `基础 Revision ${preview.candidate.baseDraftRevision} · ${preview.execution.strategy}`;
-    warning.textContent =
-      preview.candidate.completeness === 'partial'
-        ? '不完整建议稿：只允许阅读和后续局部采用，不能整稿定稿。'
-        : '';
-    summary.textContent = [
-      `结构差异：${[...counts.entries()].map(([kind, count]) => `${kind} ${count}`).join(' · ') || '无'}`,
-      `字符差异块：${preview.characterDiffs.length}`,
-      `章节字符：${preview.execution.chapterCharacters}`,
-    ].join('\n');
-    currentText.textContent = blocksText(preview.draft.blocks);
-    candidateText.textContent = blocksText(preview.candidate.blocks);
   };
 
   const open = async (): Promise<void> => {
-    const context = options.context();
+    const context = await options.context();
     if (!context) {
       window.alert('请先打开一个章节。');
       return;
@@ -124,22 +130,26 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
     currentText.textContent = '';
     candidateText.textContent = '';
     dialog.showModal();
-    const result = await window.worldforge.candidate.list(context.projectId, context.chapterId);
-    select.replaceChildren();
-    if (!result.ok) {
-      status.textContent = `候选列表读取失败 · ${result.error.code}`;
-      return;
+    try {
+      const result = await window.worldforge.candidate.list(context.projectId, context.chapterId);
+      select.replaceChildren();
+      if (!result.ok) {
+        status.textContent = `候选列表读取失败 · ${result.error.code}`;
+        return;
+      }
+      for (const candidate of result.data.candidates) {
+        const option = element('option', `${candidate.title} · ${candidate.status}`);
+        option.value = candidate.candidateId;
+        select.append(option);
+      }
+      if (select.options.length === 0) {
+        status.textContent = '当前章节没有 Fixture Candidate。';
+        return;
+      }
+      await loadPreview();
+    } catch {
+      status.textContent = '候选列表读取失败 · COMMON_INTERNAL_999';
     }
-    for (const candidate of result.data.candidates) {
-      const option = element('option', `${candidate.title} · ${candidate.status}`);
-      option.value = candidate.candidateId;
-      select.append(option);
-    }
-    if (select.options.length === 0) {
-      status.textContent = '当前章节没有 Fixture Candidate。';
-      return;
-    }
-    await loadPreview();
   };
 
   button.addEventListener('click', () => void open());

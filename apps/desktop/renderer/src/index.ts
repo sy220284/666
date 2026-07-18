@@ -216,7 +216,6 @@ let activeProject: ProjectWorkspaceSummary | null = null;
 let activeStructure: ProjectStructure | null = null;
 let activeBrief: ProjectBrief | null = null;
 let activePlotNodes: PlotNode[] = [];
-let planningMode: 'beginner' | 'professional' = 'beginner';
 let briefExpanded = true;
 let editingPlotNodeId: string | null = null;
 let editingPlotNodeParentId: string | null = null;
@@ -416,7 +415,6 @@ function setPlotNodeStatus(message: string, error = false): void {
 }
 
 function setPlanningMode(mode: 'beginner' | 'professional'): void {
-  planningMode = mode;
   const labels = mode === 'beginner' ? beginnerBriefLabels : professionalBriefLabels;
   for (const element of document.querySelectorAll<HTMLElement>('[data-brief-label]')) {
     const key = element.dataset.briefLabel as keyof typeof labels | undefined;

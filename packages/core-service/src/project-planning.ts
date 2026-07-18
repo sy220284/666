@@ -13,7 +13,6 @@ import {
   ProjectBriefSchema,
   ProjectBriefUpdateInputSchema,
   ProjectIdSchema,
-  type PlotNode,
   type PlotNodeCreateInput,
   type PlotNodeDeleteInput,
   type PlotNodeList,

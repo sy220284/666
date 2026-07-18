@@ -8,10 +8,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
 import { CandidateService } from '../../packages/core-service/src/candidate.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
-import {
-  ProjectPlanningError,
-  ProjectPlanningService,
-} from '../../packages/core-service/src/project-planning.js';
+import { ProjectPlanningService } from '../../packages/core-service/src/project-planning.js';
+import type { ProjectPlanningError } from '../../packages/core-service/src/project-planning.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { VersionService } from '../../packages/core-service/src/version.js';

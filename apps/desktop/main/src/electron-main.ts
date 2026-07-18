@@ -16,6 +16,7 @@ import type { AppearancePreferences, WindowPreferences } from '@worldforge/contr
 
 import { CoreSupervisor, type UtilityProcessHandle } from './core-supervisor.js';
 import { CredentialBroker } from './credential-broker.js';
+import { registerCandidatePreviewIpc } from './candidate-preview-ipc.js';
 import { registerIpcHandlers } from './ipc-handlers.js';
 import { installNavigationPolicy, type NavigationWebContents } from './navigation-policy.js';
 import { createDiagnosticId, PrivacyLogger } from './privacy-logger.js';
@@ -304,7 +305,7 @@ async function bootstrap(): Promise<void> {
     });
     return selection.canceled ? null : (selection.filePaths[0] ?? null);
   };
-  unregisterIpc = registerIpcHandlers({
+  const unregisterBaseIpc = registerIpcHandlers({
     ipcMain,
     supervisor,
     credentialBroker,
@@ -343,6 +344,15 @@ async function bootstrap(): Promise<void> {
       return selection.canceled ? null : (selection.filePaths[0] ?? null);
     },
   });
+  const unregisterPreviewIpc = registerCandidatePreviewIpc({
+    ipcMain,
+    supervisor,
+    rendererUrl,
+  });
+  unregisterIpc = () => {
+    unregisterPreviewIpc();
+    unregisterBaseIpc();
+  };
 
   const flushRendererDraft = async (): Promise<boolean> => {
     const window = mainWindow;

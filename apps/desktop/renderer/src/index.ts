@@ -188,6 +188,7 @@ let applicationSettings = defaultSettings;
 let activeProject: ProjectWorkspaceSummary | null = null;
 let activeStructure: ProjectStructure | null = null;
 let structureRefreshVersion = 0;
+let latestStructureOperationStatus: string | null = null;
 let activeChapter: Chapter | null = null;
 let activeDraft: DraftDocument | null = null;
 let draftEditor: Editor | null = null;
@@ -330,7 +331,8 @@ const lifecycleLabels: Record<LifecycleStatus, string> = {
   finalized: '已定稿',
 };
 
-function setStructureState(message: string, error = false): void {
+function setStructureState(message: string, error = false, preserveOperationStatus = false): void {
+  if (!preserveOperationStatus) latestStructureOperationStatus = null;
   if (!structureState) return;
   structureState.textContent = message;
   structureState.classList.toggle('is-error', error);
@@ -781,7 +783,9 @@ function showStructureOperationResult(
 ): void {
   structureRefreshVersion += 1;
   renderProjectStructure(result.structure);
-  setStructureState(`结构操作完成 · 恢复点 ${result.backupId.slice(0, 8)}`);
+  const completionStatus = `结构操作完成 · 恢复点 ${result.backupId.slice(0, 8)}`;
+  setStructureState(completionStatus);
+  latestStructureOperationStatus = completionStatus;
   const chapter = result.structure.volumes
     .flatMap((volume) => volume.chapters)
     .find((candidate) => candidate.id === preferredChapterId);
@@ -1199,7 +1203,7 @@ async function refreshProjectStructure(): Promise<void> {
     setStructureState('');
     return;
   }
-  setStructureState('正在读取卷章结构…');
+  if (!latestStructureOperationStatus) setStructureState('正在读取卷章结构…');
   try {
     const result = await window.worldforge.planning.listStructure(project.projectId);
     if (
@@ -1210,7 +1214,10 @@ async function refreshProjectStructure(): Promise<void> {
     if (result.ok) {
       renderProjectStructure(result.data);
       setStructureState(
-        project.databaseMode === 'read-only' ? '只读浏览；结构修改已禁用。' : '结构已同步。',
+        latestStructureOperationStatus ??
+          (project.databaseMode === 'read-only' ? '只读浏览；结构修改已禁用。' : '结构已同步。'),
+        false,
+        true,
       );
     } else {
       renderProjectStructure(null);

@@ -23,7 +23,6 @@ type RendererCandidateBridge = {
   readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
   readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
   readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
-  readonly preview: (input: CandidatePreviewInput) => Promise<CommandResult<CandidatePreview>>;
 };
 
 type RendererWorldforgeBridge = Omit<WorldforgeBridge, 'version'> & {
@@ -35,9 +34,14 @@ type RendererWorldforgeBridge = Omit<WorldforgeBridge, 'version'> & {
   };
 };
 
+type RendererCandidatePreviewBridge = {
+  readonly preview: (input: CandidatePreviewInput) => Promise<CommandResult<CandidatePreview>>;
+};
+
 declare global {
   interface Window {
     readonly worldforge: RendererWorldforgeBridge;
+    readonly worldforgeCandidatePreview: RendererCandidatePreviewBridge;
   }
 }
 

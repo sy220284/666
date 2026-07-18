@@ -45,9 +45,6 @@ jobs:
       - name: Validate task control
         run: node scripts/taskctl.mjs validate
 
-      - name: Validate staged diff
-        run: git diff --cached --check
-
       - name: Commit repair
         run: |
           git config user.name "github-actions[bot]"

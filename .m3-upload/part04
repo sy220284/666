@@ -1,0 +1,445 @@
+NNING_COMMANDS.movePlotNode),
++    input: PlotNodeMoveInputSchema,
++  }),
++  z.strictObject({
++    operation: z.literal(PROJECT_PLANNING_COMMANDS.deletePlotNode),
++    input: PlotNodeDeleteInputSchema,
++  }),
++]);
++
++const coreSuccess = <Operation extends string, DataSchema extends z.ZodType>(
++  operation: Operation,
++  data: DataSchema,
++) => z.strictObject({ ok: z.literal(true), operation: z.literal(operation), data });
++
++export const CoreProjectPlanningResultSchema = z.union([
++  coreSuccess(PROJECT_PLANNING_COMMANDS.getBrief, ProjectBriefSchema),
++  coreSuccess(PROJECT_PLANNING_COMMANDS.updateBrief, ProjectBriefSchema),
++  coreSuccess(PROJECT_PLANNING_COMMANDS.listPlotNodes, PlotNodeListSchema),
++  coreSuccess(PROJECT_PLANNING_COMMANDS.createPlotNode, PlotNodeListSchema),
++  coreSuccess(PROJECT_PLANNING_COMMANDS.updatePlotNode, PlotNodeListSchema),
++  coreSuccess(PROJECT_PLANNING_COMMANDS.movePlotNode, PlotNodeListSchema),
++  coreSuccess(PROJECT_PLANNING_COMMANDS.deletePlotNode, PlotNodeListSchema),
++  z.strictObject({
++    ok: z.literal(false),
++    operation: z.enum(PROJECT_PLANNING_COMMANDS),
++    errorCode: ErrorCodeSchema,
++  }),
++]);
++
++export type ProjectBrief = z.infer<typeof ProjectBriefSchema>;
++export type ProjectBriefUpdateInput = z.infer<typeof ProjectBriefUpdateInputSchema>;
++export type PlotNodeType = z.infer<typeof PlotNodeTypeSchema>;
++export type PlotNode = z.infer<typeof PlotNodeSchema>;
++export type PlotNodeList = z.infer<typeof PlotNodeListSchema>;
++export type PlotNodeCreateInput = z.infer<typeof PlotNodeCreateInputSchema>;
++export type PlotNodeUpdateInput = z.infer<typeof PlotNodeUpdateInputSchema>;
++export type PlotNodeMoveInput = z.infer<typeof PlotNodeMoveInputSchema>;
++export type PlotNodeDeleteInput = z.infer<typeof PlotNodeDeleteInputSchema>;
++export type CoreProjectPlanningOperation = z.infer<typeof CoreProjectPlanningOperationSchema>;
++export type CoreProjectPlanningResult = z.infer<typeof CoreProjectPlanningResultSchema>;
+diff -ruN '--exclude=.github' m3repo_base/packages/contracts/src/project-workspace.ts m3repo/packages/contracts/src/project-workspace.ts
+--- m3repo_base/packages/contracts/src/project-workspace.ts	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/packages/contracts/src/project-workspace.ts	2026-07-18 12:04:02.457112995 +0000
+@@ -14,6 +14,10 @@
+   CoreProjectStructureOperationSchema,
+   CoreProjectStructureResultSchema,
+ } from './project-structure.js';
++import {
++  CoreProjectPlanningOperationSchema,
++  CoreProjectPlanningResultSchema,
++} from './project-planning.js';
+ import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
+ 
+ export const PROJECT_WORKSPACE_IPC_CHANNELS = {
+@@ -177,6 +181,7 @@
+ export const CoreProjectOperationSchema = z.union([
+   CoreProjectWorkspaceOperationSchema,
+   CoreProjectStructureOperationSchema,
++  CoreProjectPlanningOperationSchema,
+   CoreDraftOperationSchema,
+   CoreCandidateOperationSchema,
+   CoreCandidateApplyOperationSchema,
+@@ -212,6 +217,7 @@
+ export const CoreProjectResultSchema = z.union([
+   CoreProjectWorkspaceResultSchema,
+   CoreProjectStructureResultSchema,
++  CoreProjectPlanningResultSchema,
+   CoreDraftResultSchema,
+   CoreCandidateResultSchema,
+   CoreCandidateApplyResultSchema,
+diff -ruN '--exclude=.github' m3repo_base/packages/core-service/src/index.ts m3repo/packages/core-service/src/index.ts
+--- m3repo_base/packages/core-service/src/index.ts	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/packages/core-service/src/index.ts	2026-07-18 12:03:22.454056841 +0000
+@@ -16,6 +16,7 @@
+ export * from './recent-projects.js';
+ export * from './project-workspace.js';
+ export * from './project-structure.js';
++export * from './project-planning.js';
+ export * from './draft.js';
+ export * from './candidate.js';
+ export * from './version.js';
+diff -ruN '--exclude=.github' m3repo_base/packages/core-service/src/project-planning.ts m3repo/packages/core-service/src/project-planning.ts
+--- m3repo_base/packages/core-service/src/project-planning.ts	1970-01-01 00:00:00.000000000 +0000
++++ m3repo/packages/core-service/src/project-planning.ts	2026-07-18 12:21:58.476400148 +0000
+@@ -0,0 +1,553 @@
++import { randomUUID } from 'node:crypto';
++import type { DatabaseSync } from 'node:sqlite';
++
++import {
++  LifecycleStatusSchema,
++  PlotNodeCreateInputSchema,
++  PlotNodeDeleteInputSchema,
++  PlotNodeListSchema,
++  PlotNodeMoveInputSchema,
++  PlotNodeSchema,
++  PlotNodeUpdateInputSchema,
++  ProjectBriefRulesSchema,
++  ProjectBriefSchema,
++  ProjectBriefUpdateInputSchema,
++  ProjectIdSchema,
++  type PlotNode,
++  type PlotNodeCreateInput,
++  type PlotNodeDeleteInput,
++  type PlotNodeList,
++  type PlotNodeMoveInput,
++  type PlotNodeUpdateInput,
++  type ProjectBrief,
++  type ProjectBriefUpdateInput,
++} from '@worldforge/contracts';
++import {
++  SQLITE_INTEGER_MAX,
++  SQLITE_INTEGER_MIN,
++  planOrderKey,
++  type OrderedSibling,
++  type OrderPlacement,
++} from '@worldforge/domain';
++
++import type { DatabaseClock } from './database/index.js';
++import type { ProjectWorkspaceService } from './project-workspace.js';
++
++const systemClock: DatabaseClock = { now: () => new Date() };
++
++export type ProjectPlanningErrorCode =
++  | 'PLANNING_NOT_FOUND'
++  | 'PLANNING_CONFLICT'
++  | 'PLANNING_INVALID_POSITION'
++  | 'PLANNING_INVARIANT';
++
++export class ProjectPlanningError extends Error {
++  readonly code: ProjectPlanningErrorCode;
++
++  constructor(code: ProjectPlanningErrorCode, message: string, options?: ErrorOptions) {
++    super(message, options);
++    this.name = 'ProjectPlanningError';
++    this.code = code;
++  }
++}
++
++export interface ProjectPlanningServiceOptions {
++  readonly clock?: DatabaseClock;
++  readonly idFactory?: () => string;
++  readonly faultInjector?: (
++    stage: 'after-brief-upsert' | 'after-node-write' | 'after-node-move' | 'after-node-delete',
++  ) => void;
++}
++
++interface BriefRow {
++  readonly id: string;
++  readonly projectId: string;
++  readonly concept: string;
++  readonly readingPromise: string;
++  readonly protagonistGoal: string;
++  readonly coreConflict: string;
++  readonly endingIntent: string;
++  readonly requiredJson: string;
++  readonly forbiddenJson: string;
++  readonly updatedAt: string;
++}
++
++interface PlotNodeRow {
++  readonly id: string;
++  readonly projectId: string;
++  readonly parentId: string | null;
++  readonly nodeType: string;
++  readonly title: string;
++  readonly goal: string;
++  readonly coreConflict: string;
++  readonly expectedResult: string;
++  readonly orderKey: number | bigint;
++  readonly status: string;
++}
++
++function text(value: unknown): string {
++  if (typeof value !== 'string') {
++    throw new ProjectPlanningError('PLANNING_INVARIANT', 'Persisted planning text is invalid.');
++  }
++  return value;
++}
++
++function integer(value: unknown): bigint {
++  if (typeof value === 'bigint') return value;
++  if (typeof value === 'number' && Number.isSafeInteger(value)) return BigInt(value);
++  throw new ProjectPlanningError('PLANNING_INVARIANT', 'Persisted planning order is invalid.');
++}
++
++function rules(raw: string): string[] {
++  try {
++    return ProjectBriefRulesSchema.parse(JSON.parse(raw));
++  } catch (error) {
++    throw new ProjectPlanningError('PLANNING_INVARIANT', 'Persisted ProjectBrief rules are invalid.', {
++      cause: error,
++    });
++  }
++}
++
++function assertProject(connection: DatabaseSync, projectId: string): void {
++  if (!connection.prepare('SELECT 1 FROM projects WHERE id = ?').get(projectId)) {
++    throw new ProjectPlanningError('PLANNING_NOT_FOUND', 'The project was not found.');
++  }
++}
++
++function emptyBrief(projectId: string): ProjectBrief {
++  return ProjectBriefSchema.parse({
++    id: null,
++    projectId,
++    concept: '',
++    readingPromise: '',
++    protagonistGoal: '',
++    coreConflict: '',
++    endingIntent: '',
++    required: [],
++    forbidden: [],
++    updatedAt: null,
++  });
++}
++
++function readBrief(connection: DatabaseSync, projectId: string): ProjectBrief {
++  assertProject(connection, projectId);
++  const row = connection
++    .prepare(
++      `SELECT id, project_id AS projectId, concept, reading_promise AS readingPromise,
++              protagonist_goal AS protagonistGoal, core_conflict AS coreConflict,
++              ending_intent AS endingIntent, required_json AS requiredJson,
++              forbidden_json AS forbiddenJson, updated_at AS updatedAt
++         FROM project_briefs WHERE project_id = ?`,
++    )
++    .get(projectId) as BriefRow | undefined;
++  if (!row) return emptyBrief(projectId);
++  return ProjectBriefSchema.parse({
++    id: text(row.id),
++    projectId: text(row.projectId),
++    concept: text(row.concept),
++    readingPromise: text(row.readingPromise),
++    protagonistGoal: text(row.protagonistGoal),
++    coreConflict: text(row.coreConflict),
++    endingIntent: text(row.endingIntent),
++    required: rules(text(row.requiredJson)),
++    forbidden: rules(text(row.forbiddenJson)),
++    updatedAt: text(row.updatedAt),
++  });
++}
++
++function readPlotNodes(connection: DatabaseSync, projectId: string): PlotNodeList {
++  assertProject(connection, projectId);
++  const rows = connection
++    .prepare(
++      `SELECT id, project_id AS projectId, parent_id AS parentId, node_type AS nodeType,
++              title, goal, core_conflict AS coreConflict, expected_result AS expectedResult,
++              order_key AS orderKey, status
++         FROM plot_nodes
++        WHERE project_id = ?
++        ORDER BY parent_id IS NOT NULL, parent_id, order_key, id`,
++    )
++    .all(projectId) as unknown as PlotNodeRow[];
++  return PlotNodeListSchema.parse({
++    projectId,
++    nodes: rows.map((row) =>
++      PlotNodeSchema.parse({
++        id: text(row.id),
++        projectId: text(row.projectId),
++        parentId: row.parentId === null ? null : text(row.parentId),
++        nodeType: text(row.nodeType),
++        title: text(row.title),
++        goal: text(row.goal),
++        coreConflict: text(row.coreConflict),
++        expectedResult: text(row.expectedResult),
++        orderKey: integer(row.orderKey).toString(),
++        status: LifecycleStatusSchema.parse(text(row.status)),
++      }),
++    ),
++  });
++}
++
++function nodeRow(connection: DatabaseSync, projectId: string, nodeId: string): PlotNodeRow {
++  const row = connection
++    .prepare(
++      `SELECT id, project_id AS projectId, parent_id AS parentId, node_type AS nodeType,
++              title, goal, core_conflict AS coreConflict, expected_result AS expectedResult,
++              order_key AS orderKey, status
++         FROM plot_nodes WHERE id = ? AND project_id = ?`,
++    )
++    .get(nodeId, projectId) as PlotNodeRow | undefined;
++  if (!row) throw new ProjectPlanningError('PLANNING_NOT_FOUND', 'The PlotNode was not found.');
++  return row;
++}
++
++function assertParent(connection: DatabaseSync, projectId: string, parentId: string | null): void {
++  if (parentId === null) return;
++  nodeRow(connection, projectId, parentId);
++}
++
++function orderedSiblings(
++  connection: DatabaseSync,
++  projectId: string,
++  parentId: string | null,
++  excludedId?: string,
++): OrderedSibling[] {
++  return (
++    connection
++      .prepare(
++        `SELECT id, order_key AS orderKey
++           FROM plot_nodes
++          WHERE project_id = ?
++            AND ((parent_id IS NULL AND ? IS NULL) OR parent_id = ?)
++            AND (? IS NULL OR id <> ?)
++          ORDER BY order_key, id`,
++      )
++      .all(projectId, parentId, parentId, excludedId ?? null, excludedId ?? null) as unknown as Array<{
++      readonly id: string;
++      readonly orderKey: number | bigint;
++    }>
++  ).map((row) => ({ id: text(row.id), orderKey: integer(row.orderKey) }));
++}
++
++function orderPlan(siblings: readonly OrderedSibling[], placement: OrderPlacement) {
++  try {
++    return planOrderKey(siblings, placement);
++  } catch (error) {
++    throw new ProjectPlanningError(
++      'PLANNING_INVALID_POSITION',
++      'The requested PlotNode position is not available.',
++      { cause: error },
++    );
++  }
++}
++
++function temporaryOrderKeys(
++  connection: DatabaseSync,
++  projectId: string,
++  parentId: string | null,
++  count: number,
++): bigint[] {
++  if (count === 0) return [];
++  const range = connection
++    .prepare(
++      `SELECT MIN(order_key) AS minimum, MAX(order_key) AS maximum
++         FROM plot_nodes
++        WHERE project_id = ?
++          AND ((parent_id IS NULL AND ? IS NULL) OR parent_id = ?)`,
++    )
++    .get(projectId, parentId, parentId) as
++    | { readonly minimum: number | bigint | null; readonly maximum: number | bigint | null }
++    | undefined;
++  const minimum = range?.minimum === null || range?.minimum === undefined ? 0n : integer(range.minimum);
++  const maximum = range?.maximum === null || range?.maximum === undefined ? 0n : integer(range.maximum);
++  const required = BigInt(count);
++  if (minimum - required >= SQLITE_INTEGER_MIN) {
++    return Array.from({ length: count }, (_, index) => minimum - BigInt(index + 1));
++  }
++  if (maximum + required <= SQLITE_INTEGER_MAX) {
++    return Array.from({ length: count }, (_, index) => maximum + BigInt(index + 1));
++  }
++  throw new ProjectPlanningError(
++    'PLANNING_INVARIANT',
++    'PlotNode order keys cannot reserve a temporary rebalance range.',
++  );
++}
++
++function applyRebalance(
++  connection: DatabaseSync,
++  projectId: string,
++  parentId: string | null,
++  updates: ReadonlyArray<OrderedSibling>,
++): void {
++  if (updates.length === 0) return;
++  const update = connection.prepare(
++    'UPDATE plot_nodes SET order_key = ? WHERE id = ? AND project_id = ?',
++  );
++  const temporary = temporaryOrderKeys(connection, projectId, parentId, updates.length);
++  for (const [index, item] of updates.entries()) {
++    const result = update.run(temporary[index]!, item.id, projectId);
++    if (Number(result.changes) !== 1) {
++      throw new ProjectPlanningError(
++        'PLANNING_INVARIANT',
++        'A PlotNode could not enter the temporary rebalance range.',
++      );
++    }
++  }
++  for (const item of updates) {
++    const result = update.run(item.orderKey, item.id, projectId);
++    if (Number(result.changes) !== 1) {
++      throw new ProjectPlanningError('PLANNING_INVARIANT', 'A PlotNode could not be rebalanced.');
++    }
++  }
++}
++
++function assertUniqueTitle(
++  connection: DatabaseSync,
++  projectId: string,
++  parentId: string | null,
++  title: string,
++  excludedId?: string,
++): void {
++  const found = connection
++    .prepare(
++      `SELECT 1 FROM plot_nodes
++        WHERE project_id = ?
++          AND ((parent_id IS NULL AND ? IS NULL) OR parent_id = ?)
++          AND title = ?
++          AND (? IS NULL OR id <> ?)
++        LIMIT 1`,
++    )
++    .get(projectId, parentId, parentId, title, excludedId ?? null, excludedId ?? null);
++  if (found) {
++    throw new ProjectPlanningError(
++      'PLANNING_CONFLICT',
++      'A sibling PlotNode with the same title already exists.',
++    );
++  }
++}
++
++function assertNoCycle(
++  connection: DatabaseSync,
++  projectId: string,
++  nodeId: string,
++  targetParentId: string | null,
++): void {
++  if (targetParentId === null) return;
++  if (targetParentId === nodeId) {
++    throw new ProjectPlanningError('PLANNING_INVALID_POSITION', 'A PlotNode cannot parent itself.');
++  }
++  const descendant = connection
++    .prepare(
++      `WITH RECURSIVE descendants(id) AS (
++         SELECT id FROM plot_nodes WHERE parent_id = ? AND project_id = ?
++         UNION ALL
++         SELECT child.id
++           FROM plot_nodes child
++           JOIN descendants parent ON child.parent_id = parent.id
++          WHERE child.project_id = ?
++       )
++       SELECT 1 FROM descendants WHERE id = ? LIMIT 1`,
++    )
++    .get(nodeId, projectId, projectId, targetParentId);
++  if (descendant) {
++    throw new ProjectPlanningError(
++      'PLANNING_INVALID_POSITION',
++      'A PlotNode cannot move below one of its descendants.',
++    );
++  }
++}
++
++export class ProjectPlanningService {
++  readonly #workspace: ProjectWorkspaceService;
++  r

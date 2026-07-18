@@ -65,8 +65,20 @@ import {
   type ChapterDeleteInput,
   type ChapterMoveInput,
   type ChapterUpdateInput,
+  type ChapterSplitPreviewInput,
+  type ChapterSplitExecuteInput,
+  type ChaptersMergePreviewInput,
+  type ChaptersMergeExecuteInput,
+  type CrossChapterMovePreviewInput,
+  type CrossChapterMoveExecuteInput,
   type ProjectStructure,
+  type StructureOperationPreview,
+  type StructureOperationResult,
   type TrashEntry,
+  type TrashPermanentDeleteInput,
+  type TrashPermanentDeletePreview,
+  type TrashPermanentDeletePreviewInput,
+  type TrashPermanentDeleteResult,
   type TrashRestoreInput,
   type VolumeCreateInput,
   type VolumeDeleteInput,
@@ -596,12 +608,36 @@ export interface WorldforgeBridge {
     readonly updateChapter: (input: ChapterUpdateInput) => Promise<CommandResult<ProjectStructure>>;
     readonly moveChapter: (input: ChapterMoveInput) => Promise<CommandResult<ProjectStructure>>;
     readonly deleteChapter: (input: ChapterDeleteInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly previewSplitChapter: (
+      input: ChapterSplitPreviewInput,
+    ) => Promise<CommandResult<StructureOperationPreview>>;
+    readonly splitChapter: (
+      input: ChapterSplitExecuteInput,
+    ) => Promise<CommandResult<StructureOperationResult>>;
+    readonly previewMergeChapters: (
+      input: ChaptersMergePreviewInput,
+    ) => Promise<CommandResult<StructureOperationPreview>>;
+    readonly mergeChapters: (
+      input: ChaptersMergeExecuteInput,
+    ) => Promise<CommandResult<StructureOperationResult>>;
+    readonly previewMoveBlocks: (
+      input: CrossChapterMovePreviewInput,
+    ) => Promise<CommandResult<StructureOperationPreview>>;
+    readonly moveBlocks: (
+      input: CrossChapterMoveExecuteInput,
+    ) => Promise<CommandResult<StructureOperationResult>>;
   };
   readonly trash: {
     readonly list: (
       projectId: string,
     ) => Promise<CommandResult<{ readonly entries: TrashEntry[] }>>;
     readonly restore: (input: TrashRestoreInput) => Promise<CommandResult<ProjectStructure>>;
+    readonly previewPermanentDelete: (
+      input: TrashPermanentDeletePreviewInput,
+    ) => Promise<CommandResult<TrashPermanentDeletePreview>>;
+    readonly permanentDelete: (
+      input: TrashPermanentDeleteInput,
+    ) => Promise<CommandResult<TrashPermanentDeleteResult>>;
   };
   readonly draft: {
     readonly open: (input: DraftOpenInput) => Promise<CommandResult<DraftDocument>>;

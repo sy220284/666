@@ -160,7 +160,7 @@ describe('SQLite foundation migrations', () => {
     ]);
     expect(
       second.read((connection) => scalar(connection, 'SELECT count(*) FROM schema_migrations')),
-    ).toBe(8n);
+    ).toBe(9n);
     expect(second.capabilities).toEqual({ fts5: true, trigram: true });
     expect(second.quickCheck()).toEqual({ ok: true, messages: ['ok'] });
     expect(second.integrityCheck()).toEqual({ ok: true, messages: ['ok'] });

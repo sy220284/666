@@ -45,8 +45,16 @@ M2-03、M1-08
 - `packages/core-service/`
 - `packages/contracts/`
 - `apps/desktop/renderer/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `tests/integration/`
 - `tests/e2e/`
+- `tests/migration/`
+- `tests/security/`
+- `docs/contracts/IPC_CONTRACTS.md`
+- `docs/database/DATABASE_SCHEMA.md`
+- `docs/ui/INTERACTION_STATES.md`
+- `docs/testing/SECURITY_TEST_CASES.md`
 
 ## 实施内容
 

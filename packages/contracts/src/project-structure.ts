@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { ErrorCodeSchema } from './error-codes.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
+import { DraftContentHashValueSchema, DraftDocumentSchema, DraftEntityIdSchema } from './draft.js';
 
 export const PROJECT_STRUCTURE_IPC_CHANNELS = {
   listStructure: 'worldforge:planning:list-structure',
@@ -15,6 +16,14 @@ export const PROJECT_STRUCTURE_IPC_CHANNELS = {
   deleteChapter: 'worldforge:planning:delete-chapter',
   listTrash: 'worldforge:trash:list',
   restoreTrashEntry: 'worldforge:trash:restore',
+  previewPermanentDelete: 'worldforge:trash:preview-permanent-delete',
+  permanentDelete: 'worldforge:trash:permanent-delete',
+  previewSplitChapter: 'worldforge:planning:preview-split-chapter',
+  splitChapter: 'worldforge:planning:split-chapter',
+  previewMergeChapters: 'worldforge:planning:preview-merge-chapters',
+  mergeChapters: 'worldforge:planning:merge-chapters',
+  previewMoveBlocks: 'worldforge:planning:preview-move-blocks',
+  moveBlocks: 'worldforge:planning:move-blocks',
 } as const;
 
 export const PROJECT_STRUCTURE_COMMANDS = {
@@ -29,6 +38,14 @@ export const PROJECT_STRUCTURE_COMMANDS = {
   deleteChapter: 'planning.deleteChapter',
   listTrash: 'trash.list',
   restoreTrashEntry: 'trash.restore',
+  previewPermanentDelete: 'trash.previewPermanentDelete',
+  permanentDelete: 'trash.permanentDelete',
+  previewSplitChapter: 'planning.previewSplitChapter',
+  splitChapter: 'planning.splitChapter',
+  previewMergeChapters: 'planning.previewMergeChapters',
+  mergeChapters: 'planning.mergeChapters',
+  previewMoveBlocks: 'planning.previewMoveBlocks',
+  moveBlocks: 'planning.moveBlocks',
 } as const;
 
 export const StructureEntityIdSchema = z.uuid();
@@ -163,6 +180,149 @@ export const TrashRestoreInputSchema = z.strictObject({
   targetVolumeId: StructureEntityIdSchema.optional(),
 });
 
+export const StructurePlanHashSchema = DraftContentHashValueSchema;
+export const StructureOperationKindSchema = z.enum([
+  'split-chapter',
+  'merge-chapter',
+  'move-blocks',
+]);
+
+const revisionedDraft = {
+  draftId: DraftEntityIdSchema,
+  baseRevision: z.number().int().nonnegative(),
+};
+
+export const ChapterSplitPreviewInputSchema = z.strictObject({
+  projectId: ProjectIdSchema,
+  chapterId: StructureEntityIdSchema,
+  ...revisionedDraft,
+  splitAfterLogicalBlockId: DraftEntityIdSchema,
+  newChapterTitle: StructureTitleSchema,
+});
+export const ChapterSplitExecuteInputSchema = ChapterSplitPreviewInputSchema.extend({
+  planHash: StructurePlanHashSchema,
+}).strict();
+
+const chaptersMergeInput = {
+  projectId: ProjectIdSchema,
+  sourceChapterId: StructureEntityIdSchema,
+  sourceDraftId: DraftEntityIdSchema,
+  sourceBaseRevision: z.number().int().nonnegative(),
+  targetChapterId: StructureEntityIdSchema,
+  targetDraftId: DraftEntityIdSchema,
+  targetBaseRevision: z.number().int().nonnegative(),
+};
+const differentMergeChapters = (input: {
+  readonly sourceChapterId: string;
+  readonly targetChapterId: string;
+}) => input.sourceChapterId !== input.targetChapterId;
+export const ChaptersMergePreviewInputSchema = z
+  .strictObject(chaptersMergeInput)
+  .refine(differentMergeChapters, {
+    message: 'Merge source and target chapters must differ.',
+  });
+export const ChaptersMergeExecuteInputSchema = z
+  .strictObject({ ...chaptersMergeInput, planHash: StructurePlanHashSchema })
+  .refine(differentMergeChapters, {
+    message: 'Merge source and target chapters must differ.',
+  });
+
+const crossChapterMoveInput = {
+  projectId: ProjectIdSchema,
+  sourceChapterId: StructureEntityIdSchema,
+  sourceDraftId: DraftEntityIdSchema,
+  sourceBaseRevision: z.number().int().nonnegative(),
+  targetChapterId: StructureEntityIdSchema,
+  targetDraftId: DraftEntityIdSchema,
+  targetBaseRevision: z.number().int().nonnegative(),
+  logicalBlockIds: z.array(DraftEntityIdSchema).min(1).max(50_000),
+  afterTargetLogicalBlockId: DraftEntityIdSchema.nullable(),
+};
+function validateCrossChapterMove(
+  input: {
+    readonly sourceChapterId: string;
+    readonly targetChapterId: string;
+    readonly logicalBlockIds: readonly string[];
+  },
+  context: z.core.$RefinementCtx,
+): void {
+  if (input.sourceChapterId === input.targetChapterId) {
+    context.addIssue({ code: 'custom', message: 'Cross-chapter move requires two chapters.' });
+  }
+  if (new Set(input.logicalBlockIds).size !== input.logicalBlockIds.length) {
+    context.addIssue({ code: 'custom', message: 'Moved logicalBlockIds must be unique.' });
+  }
+}
+export const CrossChapterMovePreviewInputSchema = z
+  .strictObject(crossChapterMoveInput)
+  .superRefine(validateCrossChapterMove);
+export const CrossChapterMoveExecuteInputSchema = z
+  .strictObject({ ...crossChapterMoveInput, planHash: StructurePlanHashSchema })
+  .superRefine(validateCrossChapterMove);
+
+export const StructureOperationPreviewSchema = z.strictObject({
+  operation: StructureOperationKindSchema,
+  planHash: StructurePlanHashSchema,
+  sourceChapterId: StructureEntityIdSchema,
+  targetChapterId: StructureEntityIdSchema.nullable(),
+  sourceDraftId: DraftEntityIdSchema,
+  targetDraftId: DraftEntityIdSchema.nullable(),
+  sourceRevision: z.number().int().nonnegative(),
+  targetRevision: z.number().int().nonnegative().nullable(),
+  movedLogicalBlockIds: z.array(DraftEntityIdSchema).min(1).max(50_000),
+  lockedLogicalBlockIds: z.array(DraftEntityIdSchema).max(50_000),
+  sourceBlockCount: z.number().int().positive(),
+  targetBlockCount: z.number().int().nonnegative(),
+  resultingSourceBlockCount: z.number().int().nonnegative(),
+  resultingTargetBlockCount: z.number().int().positive(),
+  movedCharacterCount: z.number().int().nonnegative(),
+  warnings: z.array(z.string().min(1).max(512)).max(20),
+  canExecute: z.boolean(),
+});
+
+export const StructureOperationResultSchema = z.strictObject({
+  operation: StructureOperationKindSchema,
+  planHash: StructurePlanHashSchema,
+  backupId: DraftEntityIdSchema,
+  structure: ProjectStructureSchema,
+  drafts: z.array(DraftDocumentSchema).min(1).max(2),
+  deletedChapterId: StructureEntityIdSchema.nullable(),
+});
+
+export const TrashPermanentDeletePreviewInputSchema = z.strictObject({
+  projectId: ProjectIdSchema,
+  trashEntryId: StructureEntityIdSchema,
+});
+export const TrashDeleteBlockerSchema = z.strictObject({
+  kind: z.enum(['version', 'candidate']),
+  count: z.number().int().positive(),
+});
+export const TrashDeleteImpactSchema = z.strictObject({
+  volumes: z.number().int().nonnegative(),
+  chapters: z.number().int().nonnegative(),
+  drafts: z.number().int().nonnegative(),
+  draftBlocks: z.number().int().nonnegative(),
+  versions: z.number().int().nonnegative(),
+  candidates: z.number().int().nonnegative(),
+});
+export const TrashPermanentDeletePreviewSchema = z.strictObject({
+  planHash: StructurePlanHashSchema,
+  entry: TrashEntrySchema,
+  impact: TrashDeleteImpactSchema,
+  blockers: z.array(TrashDeleteBlockerSchema).max(2),
+  canDelete: z.boolean(),
+});
+export const TrashPermanentDeleteInputSchema = TrashPermanentDeletePreviewInputSchema.extend({
+  planHash: StructurePlanHashSchema,
+  confirmationTitle: StructureTitleSchema,
+}).strict();
+export const TrashPermanentDeleteResultSchema = z.strictObject({
+  deleted: z.literal(true),
+  trashEntryId: StructureEntityIdSchema,
+  backupId: DraftEntityIdSchema,
+  impact: TrashDeleteImpactSchema,
+});
+
 const commandEnvelope = {
   protocolVersion: z.literal(TASK_PROTOCOL_VERSION),
   requestId: z.uuid(),
@@ -225,6 +385,46 @@ export const ProjectRestoreTrashEntryCommandSchema = z.strictObject({
   command: z.literal(PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry),
   payload: TrashRestoreInputSchema,
 });
+export const ProjectPreviewPermanentDeleteCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete),
+  payload: TrashPermanentDeletePreviewInputSchema,
+});
+export const ProjectPermanentDeleteCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.permanentDelete),
+  payload: TrashPermanentDeleteInputSchema,
+});
+export const ProjectPreviewSplitChapterCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.previewSplitChapter),
+  payload: ChapterSplitPreviewInputSchema,
+});
+export const ProjectSplitChapterCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.splitChapter),
+  payload: ChapterSplitExecuteInputSchema,
+});
+export const ProjectPreviewMergeChaptersCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.previewMergeChapters),
+  payload: ChaptersMergePreviewInputSchema,
+});
+export const ProjectMergeChaptersCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.mergeChapters),
+  payload: ChaptersMergeExecuteInputSchema,
+});
+export const ProjectPreviewMoveBlocksCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks),
+  payload: CrossChapterMovePreviewInputSchema,
+});
+export const ProjectMoveBlocksCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_STRUCTURE_COMMANDS.moveBlocks),
+  payload: CrossChapterMoveExecuteInputSchema,
+});
 
 export const ProjectStructureCommandSchema = z.discriminatedUnion('command', [
   ProjectListStructureCommandSchema,
@@ -238,6 +438,14 @@ export const ProjectStructureCommandSchema = z.discriminatedUnion('command', [
   ProjectDeleteChapterCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
+  ProjectPreviewPermanentDeleteCommandSchema,
+  ProjectPermanentDeleteCommandSchema,
+  ProjectPreviewSplitChapterCommandSchema,
+  ProjectSplitChapterCommandSchema,
+  ProjectPreviewMergeChaptersCommandSchema,
+  ProjectMergeChaptersCommandSchema,
+  ProjectPreviewMoveBlocksCommandSchema,
+  ProjectMoveBlocksCommandSchema,
 ]);
 
 const projectFailureSchema = z.strictObject({
@@ -259,6 +467,18 @@ const commandResultSchema = <DataSchema extends z.ZodType>(data: DataSchema) =>
 
 export const ProjectStructureResultSchema = commandResultSchema(ProjectStructureSchema);
 export const ProjectTrashEntriesResultSchema = commandResultSchema(TrashEntriesSchema);
+export const ProjectStructureOperationPreviewResultSchema = commandResultSchema(
+  StructureOperationPreviewSchema,
+);
+export const ProjectStructureOperationResultSchema = commandResultSchema(
+  StructureOperationResultSchema,
+);
+export const ProjectTrashPermanentDeletePreviewResultSchema = commandResultSchema(
+  TrashPermanentDeletePreviewSchema,
+);
+export const ProjectTrashPermanentDeleteResultSchema = commandResultSchema(
+  TrashPermanentDeleteResultSchema,
+);
 
 export const CoreProjectStructureOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({
@@ -305,6 +525,38 @@ export const CoreProjectStructureOperationSchema = z.discriminatedUnion('operati
     operation: z.literal(PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry),
     input: TrashRestoreInputSchema,
   }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete),
+    input: TrashPermanentDeletePreviewInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.permanentDelete),
+    input: TrashPermanentDeleteInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.previewSplitChapter),
+    input: ChapterSplitPreviewInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.splitChapter),
+    input: ChapterSplitExecuteInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.previewMergeChapters),
+    input: ChaptersMergePreviewInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.mergeChapters),
+    input: ChaptersMergeExecuteInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks),
+    input: CrossChapterMovePreviewInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_STRUCTURE_COMMANDS.moveBlocks),
+    input: CrossChapterMoveExecuteInputSchema,
+  }),
 ]);
 
 const coreStructureSuccess = <Operation extends string, DataSchema extends z.ZodType>(
@@ -324,6 +576,29 @@ export const CoreProjectStructureResultSchema = z.union([
   coreStructureSuccess(PROJECT_STRUCTURE_COMMANDS.deleteChapter, ProjectStructureSchema),
   coreStructureSuccess(PROJECT_STRUCTURE_COMMANDS.listTrash, TrashEntriesSchema),
   coreStructureSuccess(PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry, ProjectStructureSchema),
+  coreStructureSuccess(
+    PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete,
+    TrashPermanentDeletePreviewSchema,
+  ),
+  coreStructureSuccess(
+    PROJECT_STRUCTURE_COMMANDS.permanentDelete,
+    TrashPermanentDeleteResultSchema,
+  ),
+  coreStructureSuccess(
+    PROJECT_STRUCTURE_COMMANDS.previewSplitChapter,
+    StructureOperationPreviewSchema,
+  ),
+  coreStructureSuccess(PROJECT_STRUCTURE_COMMANDS.splitChapter, StructureOperationResultSchema),
+  coreStructureSuccess(
+    PROJECT_STRUCTURE_COMMANDS.previewMergeChapters,
+    StructureOperationPreviewSchema,
+  ),
+  coreStructureSuccess(PROJECT_STRUCTURE_COMMANDS.mergeChapters, StructureOperationResultSchema),
+  coreStructureSuccess(
+    PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks,
+    StructureOperationPreviewSchema,
+  ),
+  coreStructureSuccess(PROJECT_STRUCTURE_COMMANDS.moveBlocks, StructureOperationResultSchema),
   z.strictObject({
     ok: z.literal(false),
     operation: z.enum(PROJECT_STRUCTURE_COMMANDS),
@@ -346,5 +621,20 @@ export type ChapterUpdateInput = z.infer<typeof ChapterUpdateInputSchema>;
 export type ChapterMoveInput = z.infer<typeof ChapterMoveInputSchema>;
 export type ChapterDeleteInput = z.infer<typeof ChapterDeleteInputSchema>;
 export type TrashRestoreInput = z.infer<typeof TrashRestoreInputSchema>;
+export type ChapterSplitPreviewInput = z.infer<typeof ChapterSplitPreviewInputSchema>;
+export type ChapterSplitExecuteInput = z.infer<typeof ChapterSplitExecuteInputSchema>;
+export type ChaptersMergePreviewInput = z.infer<typeof ChaptersMergePreviewInputSchema>;
+export type ChaptersMergeExecuteInput = z.infer<typeof ChaptersMergeExecuteInputSchema>;
+export type CrossChapterMovePreviewInput = z.infer<typeof CrossChapterMovePreviewInputSchema>;
+export type CrossChapterMoveExecuteInput = z.infer<typeof CrossChapterMoveExecuteInputSchema>;
+export type StructureOperationPreview = z.infer<typeof StructureOperationPreviewSchema>;
+export type StructureOperationResult = z.infer<typeof StructureOperationResultSchema>;
+export type TrashPermanentDeletePreviewInput = z.infer<
+  typeof TrashPermanentDeletePreviewInputSchema
+>;
+export type TrashPermanentDeleteInput = z.infer<typeof TrashPermanentDeleteInputSchema>;
+export type TrashPermanentDeletePreview = z.infer<typeof TrashPermanentDeletePreviewSchema>;
+export type TrashPermanentDeleteResult = z.infer<typeof TrashPermanentDeleteResultSchema>;
+export type TrashDeleteImpact = z.infer<typeof TrashDeleteImpactSchema>;
 export type CoreProjectStructureOperation = z.infer<typeof CoreProjectStructureOperationSchema>;
 export type CoreProjectStructureResult = z.infer<typeof CoreProjectStructureResultSchema>;

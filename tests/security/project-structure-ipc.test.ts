@@ -3,6 +3,9 @@ import {
   PROJECT_STRUCTURE_COMMANDS,
   ProjectCreateVolumeCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
+  ProjectPermanentDeleteCommandSchema,
+  ProjectSplitChapterCommandSchema,
+  ProjectPreviewSplitChapterCommandSchema,
   ProjectUpdateChapterCommandSchema,
   type CoreProjectOperation,
   type CoreProjectResult,
@@ -26,6 +29,9 @@ const projectId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 const volumeId = '99b815c1-19ae-4aa9-b14b-6e1329830c4c';
 const chapterId = '931b82aa-9c6f-4fc8-b7fd-2d201ceaa95d';
 const trashEntryId = '48ee4f14-d049-401a-8f21-991c769b1b86';
+const draftId = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+const logicalBlockId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const planHash = '1'.repeat(64);
 const preferences: WindowPreferences = {
   displayId: 'display-1',
   boundsDip: { x: 0, y: 0, width: 1_280, height: 800 },
@@ -50,6 +56,45 @@ describe('project structure IPC contracts', () => {
       ProjectCreateVolumeCommandSchema.safeParse({
         ...create,
         payload: { ...create.payload, orderKey: '1', id: volumeId, deletedAt: null },
+      }).success,
+    ).toBe(false);
+
+    const split = {
+      ...base,
+      command: PROJECT_STRUCTURE_COMMANDS.splitChapter,
+      payload: {
+        projectId,
+        chapterId,
+        draftId,
+        baseRevision: 3,
+        splitAfterLogicalBlockId: logicalBlockId,
+        newChapterTitle: '新章',
+        planHash,
+      },
+    };
+    expect(ProjectSplitChapterCommandSchema.safeParse(split).success).toBe(true);
+    expect(
+      ProjectSplitChapterCommandSchema.safeParse({
+        ...split,
+        payload: { ...split.payload, backupId: trashEntryId, committedRevision: 4 },
+      }).success,
+    ).toBe(false);
+
+    const permanentDelete = {
+      ...base,
+      command: PROJECT_STRUCTURE_COMMANDS.permanentDelete,
+      payload: {
+        projectId,
+        trashEntryId,
+        planHash,
+        confirmationTitle: '待删章节',
+      },
+    };
+    expect(ProjectPermanentDeleteCommandSchema.safeParse(permanentDelete).success).toBe(true);
+    expect(
+      ProjectPermanentDeleteCommandSchema.safeParse({
+        ...permanentDelete,
+        payload: { ...permanentDelete.payload, canDelete: true, impact: {} },
       }).success,
     ).toBe(false);
 
@@ -171,6 +216,29 @@ describe('project structure IPC contracts', () => {
     expect(invokeProjectOperation).toHaveBeenCalledWith(base.requestId, {
       operation: PROJECT_STRUCTURE_COMMANDS.createVolume,
       input: command.payload,
+    });
+
+    const previewHandler = handlers.get('worldforge:planning:preview-split-chapter');
+    const previewCommand = {
+      ...base,
+      command: PROJECT_STRUCTURE_COMMANDS.previewSplitChapter,
+      payload: {
+        projectId,
+        chapterId,
+        draftId,
+        baseRevision: 3,
+        splitAfterLogicalBlockId: logicalBlockId,
+        newChapterTitle: '新章',
+      },
+    };
+    expect(ProjectPreviewSplitChapterCommandSchema.safeParse(previewCommand).success).toBe(true);
+    await previewHandler?.(
+      { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+      previewCommand,
+    );
+    expect(invokeProjectOperation).toHaveBeenLastCalledWith(base.requestId, {
+      operation: PROJECT_STRUCTURE_COMMANDS.previewSplitChapter,
+      input: previewCommand.payload,
     });
   });
 });

@@ -56,6 +56,14 @@ import {
   ProjectDeleteChapterCommandSchema,
   ProjectDeleteVolumeCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
+  ProjectPreviewPermanentDeleteCommandSchema,
+  ProjectPermanentDeleteCommandSchema,
+  ProjectPreviewSplitChapterCommandSchema,
+  ProjectSplitChapterCommandSchema,
+  ProjectPreviewMergeChaptersCommandSchema,
+  ProjectMergeChaptersCommandSchema,
+  ProjectPreviewMoveBlocksCommandSchema,
+  ProjectMoveBlocksCommandSchema,
   ProjectUpdateChapterCommandSchema,
   ProjectUpdateVolumeCommandSchema,
   ProjectRelocateRecentCommandSchema,
@@ -735,6 +743,60 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       input: parsed.data.payload,
     });
   });
+
+  for (const [channel, schema, operation] of [
+    [
+      IPC_CHANNELS.previewPermanentDelete,
+      ProjectPreviewPermanentDeleteCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete,
+    ],
+    [
+      IPC_CHANNELS.permanentDelete,
+      ProjectPermanentDeleteCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.permanentDelete,
+    ],
+    [
+      IPC_CHANNELS.previewSplitChapter,
+      ProjectPreviewSplitChapterCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.previewSplitChapter,
+    ],
+    [
+      IPC_CHANNELS.splitChapter,
+      ProjectSplitChapterCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.splitChapter,
+    ],
+    [
+      IPC_CHANNELS.previewMergeChapters,
+      ProjectPreviewMergeChaptersCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.previewMergeChapters,
+    ],
+    [
+      IPC_CHANNELS.mergeChapters,
+      ProjectMergeChaptersCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.mergeChapters,
+    ],
+    [
+      IPC_CHANNELS.previewMoveBlocks,
+      ProjectPreviewMoveBlocksCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks,
+    ],
+    [
+      IPC_CHANNELS.moveBlocks,
+      ProjectMoveBlocksCommandSchema,
+      PROJECT_STRUCTURE_COMMANDS.moveBlocks,
+    ],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        input: parsed.data.payload,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
 
   register(IPC_CHANNELS.openDraft, async (event, raw) => {
     const rejected = rejectUntrusted(event, raw);

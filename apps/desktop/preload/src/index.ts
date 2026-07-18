@@ -74,12 +74,24 @@ import {
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
+  ProjectPreviewPermanentDeleteCommandSchema,
+  ProjectPermanentDeleteCommandSchema,
+  ProjectPreviewSplitChapterCommandSchema,
+  ProjectSplitChapterCommandSchema,
+  ProjectPreviewMergeChaptersCommandSchema,
+  ProjectMergeChaptersCommandSchema,
+  ProjectPreviewMoveBlocksCommandSchema,
+  ProjectMoveBlocksCommandSchema,
   RecentProjectRemovalResultSchema,
   RecentProjectResultSchema,
   RecentProjectsResultSchema,
   ProjectWorkspaceResultSchema,
   ProjectStructureResultSchema,
   ProjectTrashEntriesResultSchema,
+  ProjectStructureOperationPreviewResultSchema,
+  ProjectStructureOperationResultSchema,
+  ProjectTrashPermanentDeletePreviewResultSchema,
+  ProjectTrashPermanentDeleteResultSchema,
   ProjectUpdateChapterCommandSchema,
   ProjectUpdateVolumeCommandSchema,
   SettingsGetCommandSchema,
@@ -386,6 +398,48 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         ProjectDeleteChapterCommandSchema.parse(envelope(APP_COMMANDS.deleteChapter, input)),
         ProjectStructureResultSchema,
       ),
+    previewSplitChapter: (input) =>
+      invoke(
+        IPC_CHANNELS.previewSplitChapter,
+        ProjectPreviewSplitChapterCommandSchema.parse(
+          envelope(APP_COMMANDS.previewSplitChapter, input),
+        ),
+        ProjectStructureOperationPreviewResultSchema,
+      ),
+    splitChapter: (input) =>
+      invoke(
+        IPC_CHANNELS.splitChapter,
+        ProjectSplitChapterCommandSchema.parse(envelope(APP_COMMANDS.splitChapter, input)),
+        ProjectStructureOperationResultSchema,
+      ),
+    previewMergeChapters: (input) =>
+      invoke(
+        IPC_CHANNELS.previewMergeChapters,
+        ProjectPreviewMergeChaptersCommandSchema.parse(
+          envelope(APP_COMMANDS.previewMergeChapters, input),
+        ),
+        ProjectStructureOperationPreviewResultSchema,
+      ),
+    mergeChapters: (input) =>
+      invoke(
+        IPC_CHANNELS.mergeChapters,
+        ProjectMergeChaptersCommandSchema.parse(envelope(APP_COMMANDS.mergeChapters, input)),
+        ProjectStructureOperationResultSchema,
+      ),
+    previewMoveBlocks: (input) =>
+      invoke(
+        IPC_CHANNELS.previewMoveBlocks,
+        ProjectPreviewMoveBlocksCommandSchema.parse(
+          envelope(APP_COMMANDS.previewMoveBlocks, input),
+        ),
+        ProjectStructureOperationPreviewResultSchema,
+      ),
+    moveBlocks: (input) =>
+      invoke(
+        IPC_CHANNELS.moveBlocks,
+        ProjectMoveBlocksCommandSchema.parse(envelope(APP_COMMANDS.moveBlocks, input)),
+        ProjectStructureOperationResultSchema,
+      ),
   },
   trash: {
     list: (projectId) =>
@@ -401,6 +455,20 @@ const bridge: WorldforgeBridge & CandidateBridge = {
           envelope(APP_COMMANDS.restoreTrashEntry, input),
         ),
         ProjectStructureResultSchema,
+      ),
+    previewPermanentDelete: (input) =>
+      invoke(
+        IPC_CHANNELS.previewPermanentDelete,
+        ProjectPreviewPermanentDeleteCommandSchema.parse(
+          envelope(APP_COMMANDS.previewPermanentDelete, input),
+        ),
+        ProjectTrashPermanentDeletePreviewResultSchema,
+      ),
+    permanentDelete: (input) =>
+      invoke(
+        IPC_CHANNELS.permanentDelete,
+        ProjectPermanentDeleteCommandSchema.parse(envelope(APP_COMMANDS.permanentDelete, input)),
+        ProjectTrashPermanentDeleteResultSchema,
       ),
   },
   draft: {

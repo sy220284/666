@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 import {
   APP_DATA_COMMANDS,
@@ -34,6 +35,7 @@ import { RecoveryService, RecoveryServiceError } from './recovery.js';
 import { ImportExportService, ImportExportServiceError } from './import-export.js';
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
+import { StructureOperationService } from './structure-operations.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 
 interface TransferredPort {
@@ -101,11 +103,20 @@ const recovery = new RecoveryService(projectWorkspace, {
   backupRootDirectory: requiredAbsolutePath('project-operation-recovery'),
 });
 const projectStructure = new ProjectStructureService(projectWorkspace);
+const structureOperations = new StructureOperationService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
 const candidates = new CandidateService(projectWorkspace);
 const candidateApply = new CandidateApplyService(projectWorkspace);
 const versions = new VersionService(projectWorkspace);
 const textIo = new ImportExportService(projectWorkspace, recovery);
+
+function checkpointRequestId(requestId: string): string {
+  const hex = createHash('sha256')
+    .update(`${requestId}:checkpoint`, 'utf8')
+    .digest('hex')
+    .slice(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20)}`;
+}
 
 function send(message: CoreEvent): void {
   parentPort?.postMessage(message);
@@ -455,6 +466,106 @@ async function executeProjectOperation(
           operation: operation.operation,
           data: await projectStructure.restoreTrashEntry(requestId, operation.input),
         });
+      case PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: structureOperations.previewPermanentDelete(operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.permanentDelete: {
+        structureOperations.assertPermanentDeleteExecutable(operation.input);
+        const checkpoint = await recovery.createOperationCheckpoint(
+          checkpointRequestId(requestId),
+          {
+            projectId: operation.input.projectId,
+            operation: 'permanent-delete',
+          },
+        );
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await structureOperations.permanentDelete(
+            requestId,
+            operation.input,
+            checkpoint.backupId,
+          ),
+        });
+      }
+      case PROJECT_STRUCTURE_COMMANDS.previewSplitChapter:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: structureOperations.previewSplit(operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.splitChapter: {
+        structureOperations.assertSplitExecutable(operation.input);
+        const checkpoint = await recovery.createOperationCheckpoint(
+          checkpointRequestId(requestId),
+          {
+            projectId: operation.input.projectId,
+            operation: 'split-chapter',
+          },
+        );
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await structureOperations.executeSplit(
+            requestId,
+            operation.input,
+            checkpoint.backupId,
+          ),
+        });
+      }
+      case PROJECT_STRUCTURE_COMMANDS.previewMergeChapters:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: structureOperations.previewMerge(operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.mergeChapters: {
+        structureOperations.assertMergeExecutable(operation.input);
+        const checkpoint = await recovery.createOperationCheckpoint(
+          checkpointRequestId(requestId),
+          {
+            projectId: operation.input.projectId,
+            operation: 'merge-chapter',
+          },
+        );
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await structureOperations.executeMerge(
+            requestId,
+            operation.input,
+            checkpoint.backupId,
+          ),
+        });
+      }
+      case PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: structureOperations.previewMove(operation.input),
+        });
+      case PROJECT_STRUCTURE_COMMANDS.moveBlocks: {
+        structureOperations.assertMoveExecutable(operation.input);
+        const checkpoint = await recovery.createOperationCheckpoint(
+          checkpointRequestId(requestId),
+          {
+            projectId: operation.input.projectId,
+            operation: 'move-blocks',
+          },
+        );
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await structureOperations.executeMove(
+            requestId,
+            operation.input,
+            checkpoint.backupId,
+          ),
+        });
+      }
       case DRAFT_COMMANDS.openDraft:
         return CoreProjectResultSchema.parse({
           ok: true,

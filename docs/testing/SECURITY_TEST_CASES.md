@@ -127,3 +127,10 @@
 - 数据库外键或完整性损坏时项目只能只读打开，全部写命令失败；外部已验证恢复点仍可恢复到新目录。
 - 恢复副本必须重新生成项目ID并注册为独立最近项目，源工作区与源数据库不被覆盖。
 - 只读状态下允许将仍可读取的不可变Version导出为UTF-8 TXT，目标文件存在时不得覆盖。
+
+## M2-04 结构操作与永久删除基线
+
+- Renderer不得提交`backupId`、影响数量、权威排序键或提交Revision；Main在可信来源检查后使用strict Schema再转发。
+- 拆章、合章和跨章移动在创建恢复点前执行读预检，恢复点后在事务内再校验`planHash`、Revision、Hash与LockGuard。
+- 锁定块、过期预览、非源Draft块、目标logicalBlockId冲突和事务中断均保持原Draft、Revision、PatchLog和结构不变。
+- 永久删除在Version/Candidate引用存在、`planHash`过期、完整标题不匹配或用户取消时拒绝；成功路径必须返回已验证`backupId`并通过`foreign_key_check`。

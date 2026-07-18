@@ -8,6 +8,7 @@ export default defineConfig({
     'candidate-action.spec.ts',
     'candidate-protection.spec.ts',
     'candidate-undo.spec.ts',
+    'structure-recovery.spec.ts',
   ],
   fullyParallel: false,
   workers: 1,

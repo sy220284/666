@@ -98,26 +98,36 @@ window.worldforge = {
 
 ### 4.2 规划与卷章
 
-| 命令                     | Renderer输入                                          | 输出                   |
-| ------------------------ | ----------------------------------------------------- | ---------------------- |
-| `planning.listStructure` | projectId                                             | 按orderKey排序的卷章树 |
-| `planning.createVolume`  | projectId、标题、可选锚点位置                         | 最新卷章树             |
-| `planning.updateVolume`  | projectId、volumeId、标题/状态Patch                   | 最新卷章树             |
-| `planning.moveVolume`    | projectId、volumeId、同级锚点位置                     | 最新卷章树             |
-| `planning.deleteVolume`  | projectId、volumeId                                   | 软删除后的卷章树       |
-| `planning.createChapter` | projectId、volumeId、标题、可选锚点位置               | 最新卷章树             |
-| `planning.updateChapter` | projectId、chapterId、标题/状态/目标字数Patch         | 最新卷章树             |
-| `planning.moveChapter`   | projectId、chapterId、targetVolumeId、锚点位置        | 最新卷章树             |
-| `planning.deleteChapter` | projectId、chapterId                                  | 软删除后的卷章树       |
-| `trash.list`             | projectId                                             | 最小TrashEntry列表     |
-| `trash.restore`          | projectId、trashEntryId、原位或新锚点位置、可选目标卷 | 最新卷章树             |
+| 命令                            | Renderer输入                                          | 输出                                        |
+| ------------------------------- | ----------------------------------------------------- | ------------------------------------------- |
+| `planning.listStructure`        | projectId                                             | 按orderKey排序的卷章树                      |
+| `planning.createVolume`         | projectId、标题、可选锚点位置                         | 最新卷章树                                  |
+| `planning.updateVolume`         | projectId、volumeId、标题/状态Patch                   | 最新卷章树                                  |
+| `planning.moveVolume`           | projectId、volumeId、同级锚点位置                     | 最新卷章树                                  |
+| `planning.deleteVolume`         | projectId、volumeId                                   | 软删除后的卷章树                            |
+| `planning.createChapter`        | projectId、volumeId、标题、可选锚点位置               | 最新卷章树                                  |
+| `planning.updateChapter`        | projectId、chapterId、标题/状态/目标字数Patch         | 最新卷章树                                  |
+| `planning.moveChapter`          | projectId、chapterId、targetVolumeId、锚点位置        | 最新卷章树                                  |
+| `planning.deleteChapter`        | projectId、chapterId                                  | 软删除后的卷章树                            |
+| `trash.list`                    | projectId                                             | 最小TrashEntry列表                          |
+| `trash.restore`                 | projectId、trashEntryId、原位或新锚点位置、可选目标卷 | 最新卷章树                                  |
+| `trash.previewPermanentDelete`  | projectId、trashEntryId                               | 影响数量、Version/Candidate阻断项与planHash |
+| `trash.permanentDelete`         | projectId、trashEntryId、planHash、完整标题确认       | 删除结果、影响数量与backupId                |
+| `planning.previewSplitChapter`  | 源Draft/Revision、拆分锚点、新章标题                  | 块数/字符数、锁定冲突与planHash             |
+| `planning.splitChapter`         | 同预览输入+planHash                                   | 新结构、两份Draft与backupId                 |
+| `planning.previewMergeChapters` | 源/目标章节、Draft和Revision                          | 合章影响、锁定冲突与planHash                |
+| `planning.mergeChapters`        | 同预览输入+planHash                                   | 新结构、目标Draft、回收源章与backupId       |
+| `planning.previewMoveBlocks`    | 源/目标Draft与Revision、logicalBlockIds、目标锚点     | 跨章移动影响与planHash                      |
+| `planning.moveBlocks`           | 同预览输入+planHash                                   | 两份新Revision Draft与backupId              |
 
-Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`或`finalVersionId`。实体ID由Core生成；排序位置只使用`start/end/before/after`及同级实体ID表达，Core在单写事务内计算64位整数键和必要的局部重排。
+Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`、`finalVersionId`、`backupId`或影响数量。实体ID由Core生成；排序位置只使用`start/end/before/after`及同级实体ID表达，Core在单写事务内计算64位整数键和必要的局部重排。
+
+高风险结构执行前先重算预览并校验`planHash`、Draft Revision、块Hash、归属和LockGuard；预检通过后创建已验证恢复点，再在单个项目库事务中提交结构与Draft Revision。任一重校验失败都不修改原结构。
 
 - `planning.getBrief/updateBrief`
 - `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`
 - `planning.createSceneBeat/updateSceneBeat/moveSceneBeat/deleteSceneBeat`
-- `planning.splitChapter/mergeChapters/moveSceneAcrossChapters`
+- `planning.moveSceneAcrossChapters`（M3-02）
 
 规划变更不得自动发送正文Patch。
 
@@ -143,21 +153,21 @@ Renderer只可传入严格Schema允许的Patch字段。`id`、`orderKey`、`sour
 
 ### 4.4 Version与Candidate
 
-| 命令                       | 输入                                                                  | 输出                                      |
-| -------------------------- | --------------------------------------------------------------------- | ----------------------------------------- |
-| `version.create`           | chapterId、draftRevision、type、label                                   | Version摘要                               |
-| `version.list`             | chapterId                                                             | Version列表                               |
-| `version.get`              | versionId                                                             | Version与Blocks                           |
-| `version.restoreToDraft`   | versionId                                                             | 新活动Draft与Revision                     |
-| `candidate.list`           | projectId、chapterId                                                   | Candidate列表                             |
-| `candidate.get`            | projectId、chapterId、candidateId                                      | Candidate与Blocks                         |
-| `candidate.preview`        | projectId、chapterId、candidateId                                      | Draft、Candidate、结构/字符Diff与执行策略 |
-| `candidate.cancelPreview`  | previewRequestId                                                       | 是否接收取消                              |
-| `candidate.apply`          | projectId、chapterId、candidateId、draftId、baseRevision、选择映射     | ApplyRecord+Checkpoint+Draft或ConflictSet |
-| `candidate.findUndoRecord` | projectId、chapterId、candidateId                                      | applyRecordId                             |
-| `candidate.previewUndo`    | projectId、chapterId、applyRecordId                                    | 回退预览、当前Draft、Checkpoint或冲突     |
-| `candidate.undoApply`      | projectId、chapterId、applyRecordId、draftId、baseRevision             | 新Revision或ConflictSet                   |
-| `candidate.discard`        | projectId、chapterId、candidateId                                      | 状态更新                                  |
+| 命令                       | 输入                                                               | 输出                                      |
+| -------------------------- | ------------------------------------------------------------------ | ----------------------------------------- |
+| `version.create`           | chapterId、draftRevision、type、label                              | Version摘要                               |
+| `version.list`             | chapterId                                                          | Version列表                               |
+| `version.get`              | versionId                                                          | Version与Blocks                           |
+| `version.restoreToDraft`   | versionId                                                          | 新活动Draft与Revision                     |
+| `candidate.list`           | projectId、chapterId                                               | Candidate列表                             |
+| `candidate.get`            | projectId、chapterId、candidateId                                  | Candidate与Blocks                         |
+| `candidate.preview`        | projectId、chapterId、candidateId                                  | Draft、Candidate、结构/字符Diff与执行策略 |
+| `candidate.cancelPreview`  | previewRequestId                                                   | 是否接收取消                              |
+| `candidate.apply`          | projectId、chapterId、candidateId、draftId、baseRevision、选择映射 | ApplyRecord+Checkpoint+Draft或ConflictSet |
+| `candidate.findUndoRecord` | projectId、chapterId、candidateId                                  | applyRecordId                             |
+| `candidate.previewUndo`    | projectId、chapterId、applyRecordId                                | 回退预览、当前Draft、Checkpoint或冲突     |
+| `candidate.undoApply`      | projectId、chapterId、applyRecordId、draftId、baseRevision         | 新Revision或ConflictSet                   |
+| `candidate.discard`        | projectId、chapterId、candidateId                                  | 状态更新                                  |
 
 M2-03桌面最小审阅面使用窄桥`window.worldforgeCandidatePreview`，对应IPC频道为`worldforge:candidate:preview`、`cancel-preview`、`apply`、`find-undo-record`、`preview-undo`和`undo-apply`。Preload只暴露上述具名方法；Main同时校验strict命令Schema和可信Renderer URL，额外字段、非法ID与非可信来源在进入Core前拒绝。
 

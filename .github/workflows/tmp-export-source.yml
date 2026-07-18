@@ -1,0 +1,23 @@
+name: Temporary Source Export
+
+on:
+  push:
+    branches:
+      - work/m3-02-scene-beat-cross-chapter
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Archive source
+        run: |
+          tar --exclude=.git --exclude=node_modules -czf /tmp/worldforge-source.tar.gz .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: worldforge-source
+          path: /tmp/worldforge-source.tar.gz
+          retention-days: 1

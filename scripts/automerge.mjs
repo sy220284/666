@@ -109,6 +109,13 @@ async function hasMainVerificationRun(owner, repo, workflow, sha) {
 }
 
 async function ensureMainVerification(owner, repo, config, mergeSha, number, sourceHeadSha) {
+  const mainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`);
+  if (mainRef.object.sha !== mergeSha) {
+    console.log(
+      `Skipping obsolete main verification for ${mergeSha}; ${config.baseBranch} is ${mainRef.object.sha}.`,
+    );
+    return;
+  }
   if (await hasMainVerificationRun(owner, repo, config.mainVerificationWorkflow, mergeSha)) {
     console.log(`Main verification already exists for ${mergeSha}.`);
     return;

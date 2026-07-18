@@ -161,6 +161,29 @@ describe('M2-02 Candidate and Version model', () => {
           candidateId: candidate.candidateId,
         }),
       ).rejects.toMatchObject<CandidateServiceError>({ code: 'CANDIDATE_STATUS_CONFLICT' });
+
+      await harness.workspace.close(randomUUID(), project.projectId);
+      await harness.workspace.open(randomUUID(), { workspacePath: project.workspacePath });
+      const reopenedCandidates = new CandidateService(harness.workspace, { clock });
+      const reopenedDrafts = new DraftService(harness.workspace, { clock });
+      expect(
+        reopenedCandidates.get({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          candidateId: candidate.candidateId,
+        }),
+      ).toMatchObject({
+        candidateId: candidate.candidateId,
+        status: 'discarded',
+        resolvedAt: clock.now().toISOString(),
+        blocks: candidate.blocks,
+      });
+      await expect(
+        reopenedDrafts.open(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+        }),
+      ).resolves.toEqual(draft);
     } finally {
       await closeHarness(harness);
     }
@@ -236,6 +259,17 @@ describe('M2-02 Candidate and Version model', () => {
       });
       expect(immutable.contentHash).toBe(candidateVersion.contentHash);
       expect(immutable.blocks).toEqual(candidateVersion.blocks);
+
+      await harness.workspace.close(randomUUID(), project.projectId);
+      await harness.workspace.open(randomUUID(), { workspacePath: project.workspacePath });
+      const reopenedVersions = new VersionService(harness.workspace, { clock });
+      expect(
+        reopenedVersions.get({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          versionId: candidateVersion.versionId,
+        }),
+      ).toEqual(candidateVersion);
     } finally {
       await closeHarness(harness);
     }

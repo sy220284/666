@@ -1,0 +1,50 @@
+[
+  {
+    "suite": "candidate-core-integration",
+    "fixtureId": "M2-02",
+    "status": "passed",
+    "details": "Fixture Candidate isolation, complete/partial, pending/discarded, hash integrity and reopen persistence passed."
+  },
+  {
+    "suite": "version-core-integration",
+    "fixtureId": "M2-02",
+    "status": "passed",
+    "details": "Version type, parent/source provenance, immutable content, reopen persistence and cross-project rejection passed."
+  },
+  {
+    "suite": "candidate-ipc-security",
+    "fixtureId": "M2-02",
+    "status": "passed",
+    "details": "Strict create/discard authority fields and trusted Renderer forwarding passed."
+  },
+  {
+    "suite": "full-vitest",
+    "fixtureId": "M2-02",
+    "status": "passed",
+    "details": "62 files, 232 passed and 1 pre-existing platform skip."
+  },
+  {
+    "suite": "migration",
+    "fixtureId": "M2-02",
+    "status": "passed",
+    "details": "9 migration files and 26 tests passed."
+  },
+  {
+    "suite": "ai-eval-baseline",
+    "fixtureId": "M2-02",
+    "status": "passed",
+    "details": "2 files and 8 tests passed without changing Candidate semantics."
+  },
+  {
+    "suite": "electron-build",
+    "fixtureId": "M2-02",
+    "status": "passed",
+    "details": "All desktop and package targets built successfully."
+  },
+  {
+    "suite": "electron-e2e",
+    "fixtureId": "M2-02",
+    "status": "skipped",
+    "details": "Runner stopped with E2E_DISPLAY_UNAVAILABLE because DISPLAY and xvfb-run are absent."
+  }
+]

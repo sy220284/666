@@ -46,6 +46,10 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   cancel.dataset.cancelCandidatePreview = '';
   cancel.hidden = true;
   cancel.disabled = true;
+  const discard = element('button', '丢弃候选');
+  discard.type = 'button';
+  discard.dataset.discardCandidate = '';
+  discard.disabled = true;
   const close = element('button', '关闭');
   close.type = 'button';
   const status = element('p', '选择候选后读取已保存正文的差异。');
@@ -54,7 +58,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   const warning = element('p');
   warning.dataset.candidatePreviewWarning = '';
   warning.setAttribute('role', 'status');
-  controls.append(select, cancel, close);
+  controls.append(select, cancel, discard, close);
 
   const summary = element('pre');
   summary.dataset.candidatePreviewSummary = '';
@@ -85,6 +89,9 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   document.body.append(dialog);
   let activePreviewRequestId: string | null = null;
 
+  const selectedCandidateIsPending = (): boolean =>
+    select.selectedOptions[0]?.dataset.status === 'pending';
+
   const dispatchLoading = (): void => {
     dialog.dispatchEvent(new CustomEvent('worldforge:candidate-preview-loading'));
   };
@@ -104,6 +111,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
     const requestId = globalThis.crypto.randomUUID();
     activePreviewRequestId = requestId;
     select.disabled = true;
+    discard.disabled = true;
     cancel.hidden = false;
     cancel.disabled = false;
     status.textContent = '正在计算结构与中文字符差异…';
@@ -150,9 +158,44 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
       if (activePreviewRequestId === requestId) {
         activePreviewRequestId = null;
         select.disabled = false;
+        discard.disabled = !selectedCandidateIsPending();
         cancel.hidden = true;
         cancel.disabled = true;
       }
+    }
+  };
+
+  const discardCandidate = async (): Promise<void> => {
+    const context = await options.context();
+    const candidateId = select.value;
+    if (!context || !candidateId || !selectedCandidateIsPending()) return;
+    if (!window.confirm('丢弃后不能再采用这份候选，Draft 不会改变。继续吗？')) return;
+    discard.disabled = true;
+    select.disabled = true;
+    status.textContent = '正在丢弃候选…';
+    try {
+      const result = await window.worldforge.candidate.discard({
+        ...context,
+        candidateId,
+      });
+      if (!result.ok) {
+        status.textContent = `丢弃失败 · ${result.error.code}`;
+        discard.disabled = !selectedCandidateIsPending();
+        return;
+      }
+      const option = select.selectedOptions[0];
+      if (option) {
+        option.dataset.status = result.data.status;
+        option.textContent = `${result.data.title} · ${result.data.status}`;
+      }
+      await loadPreview();
+      status.textContent = '候选已丢弃，Draft 未改变。';
+    } catch {
+      status.textContent = '丢弃失败 · COMMON_INTERNAL_999';
+      discard.disabled = !selectedCandidateIsPending();
+    } finally {
+      select.disabled = false;
+      discard.disabled = !selectedCandidateIsPending();
     }
   };
 
@@ -181,6 +224,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
       return;
     }
     status.textContent = '正在读取候选列表…';
+    discard.disabled = true;
     warning.textContent = '预览只读取已持久化Draft，不会写入项目数据库。';
     summary.textContent = '';
     currentText.textContent = '';
@@ -196,6 +240,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
       for (const candidate of result.data.candidates) {
         const option = element('option', `${candidate.title} · ${candidate.status}`);
         option.value = candidate.candidateId;
+        option.dataset.status = candidate.status;
         select.append(option);
       }
       if (select.options.length === 0) {
@@ -211,6 +256,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   button.addEventListener('click', () => void open());
   select.addEventListener('change', () => void loadPreview());
   cancel.addEventListener('click', () => void cancelPreview());
+  discard.addEventListener('click', () => void discardCandidate());
   close.addEventListener('click', () => {
     if (activePreviewRequestId) {
       void window.worldforgeCandidatePreview

@@ -2,6 +2,7 @@ import {
   CANDIDATE_COMMANDS,
   CANDIDATE_IPC_CHANNELS,
   CandidateCreateFixtureCommandSchema,
+  CandidateDiscardCommandSchema,
   PROTOCOL_VERSION,
   type CandidateDocument,
   type CoreProjectOperation,
@@ -49,6 +50,14 @@ const command = {
       },
     ],
   },
+} as const;
+
+const discardCommand = {
+  protocolVersion: PROTOCOL_VERSION,
+  requestId,
+  sentAt,
+  command: CANDIDATE_COMMANDS.discardCandidate,
+  payload: { projectId, chapterId, candidateId },
 } as const;
 
 const candidate: CandidateDocument = {
@@ -106,11 +115,21 @@ function registerCandidateHandler() {
     removeListener: vi.fn(),
   } as unknown as IpcMain;
   const invokeProjectOperation = vi.fn(
-    async (_id: string, operation: CoreProjectOperation): Promise<CoreProjectResult> => ({
-      ok: true,
-      operation: operation.operation as typeof CANDIDATE_COMMANDS.createFixtureCandidate,
-      data: candidate,
-    }),
+    async (_id: string, operation: CoreProjectOperation): Promise<CoreProjectResult> => {
+      if (operation.operation === CANDIDATE_COMMANDS.discardCandidate) {
+        const { blocks: _blocks, ...summary } = candidate;
+        return {
+          ok: true,
+          operation: CANDIDATE_COMMANDS.discardCandidate,
+          data: { ...summary, status: 'discarded', resolvedAt: sentAt },
+        };
+      }
+      return {
+        ok: true,
+        operation: CANDIDATE_COMMANDS.createFixtureCandidate,
+        data: candidate,
+      };
+    },
   );
   registerIpcHandlers({
     ipcMain,
@@ -161,6 +180,13 @@ describe('Candidate IPC authority boundary', () => {
         }).success,
       ).toBe(false);
     }
+    expect(CandidateDiscardCommandSchema.safeParse(discardCommand).success).toBe(true);
+    expect(
+      CandidateDiscardCommandSchema.safeParse({
+        ...discardCommand,
+        payload: { ...discardCommand.payload, status: 'discarded' },
+      }).success,
+    ).toBe(false);
   });
 
   it('validates sender origin and strict schema before forwarding to Core', async () => {
@@ -192,6 +218,22 @@ describe('Candidate IPC authority boundary', () => {
     expect(invokeProjectOperation).toHaveBeenCalledWith(requestId, {
       operation: CANDIDATE_COMMANDS.createFixtureCandidate,
       input: command.payload,
+    });
+
+    const discardHandler = handlers.get(CANDIDATE_IPC_CHANNELS.discardCandidate);
+    await expect(
+      discardHandler?.(
+        { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+        discardCommand,
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      requestId,
+      data: { candidateId, status: 'discarded' },
+    });
+    expect(invokeProjectOperation).toHaveBeenLastCalledWith(requestId, {
+      operation: CANDIDATE_COMMANDS.discardCandidate,
+      input: discardCommand.payload,
     });
   });
 });

@@ -66,6 +66,7 @@ M2
 ## 实现约束落地
 
 - PlotNode同级重排采用临时排序键与最终排序键两阶段写入，避免唯一键在事务中产生瞬时冲突。
+- PlotNode父子归属通过`(parent_id, project_id)`复合外键在数据库层阻断跨项目挂接，不依赖触发器事务。
 - Renderer规划读取采用刷新代次防护，旧异步响应不得覆盖较新的ProjectBrief或PlotNode状态。
 - 规划命令只写入`project_briefs`与`plot_nodes`，不得生成Draft Patch或改变Version、Candidate。
 

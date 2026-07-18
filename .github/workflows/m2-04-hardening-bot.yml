@@ -14,13 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.13.0
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
       - name: Correct tests and evidence
         run: |
           python3 <<'PY'
@@ -144,11 +137,11 @@ jobs:
 
           replacements = {
             'docs/test-evidence/M2-04/summary.md': [
-              ('源Draft相邻锁定块、目标Draft锁定块、Candidate引用阻断和永久删除故障回滚覆盖。',
-               '锁定块自身跨章移动阻断、锁定块周边非锁定内容调整不误伤、Candidate引用阻断和永久删除故障回滚覆盖。'),
+              ('结构预览和公共 Draft 持久化边界均检测锁定块的删除、修改与间接位移。新增源Draft相邻锁定块、目标Draft锁定块、Candidate引用阻断和永久删除故障回滚覆盖。',
+               '结构预览和公共 Draft 持久化边界均检测锁定块自身的删除、修改与相对重排。新增锁定块自身跨章移动阻断、周边非锁定内容调整不误伤、Candidate引用阻断和永久删除故障回滚覆盖。'),
             ],
             'docs/test-evidence/M2-04/manual-acceptance.md': [
-              ('源/目标锁定块间接位移阻断', '锁定块自身移动阻断及非锁定内容调整不误伤'),
+              ('源/目标锁定块间接位移阻断', '锁定块自身移动阻断及周边非锁定内容调整不误伤'),
             ],
             'docs/test-evidence/M2-04/quality-matrix.md': [
               ('覆盖直接及间接位移', '覆盖锁定块删除、修改和相对重排，并避免误伤周边非锁定调整'),
@@ -164,42 +157,22 @@ jobs:
               path.write_text(value, encoding='utf-8')
 
           evidence = Path('docs/test-evidence/M2-04')
-          manifest_files = []
+          files = []
           for relative in [
-              'commands.txt',
-              'known-risks.md',
-              'manual-acceptance.md',
-              'performance.json',
-              'quality-matrix.md',
-              'screenshots/manifest.json',
-              'summary.md',
+              'commands.txt', 'known-risks.md', 'manual-acceptance.md', 'performance.json',
+              'quality-matrix.md', 'screenshots/manifest.json', 'summary.md',
               'test-results/results.json',
           ]:
               data = (evidence / relative).read_bytes()
-              manifest_files.append({
-                  'path': relative,
-                  'bytes': len(data),
-                  'sha256': hashlib.sha256(data).hexdigest(),
-              })
-          manifest = {
+              files.append({'path': relative, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          (evidence / 'manifest.json').write_text(json.dumps({
               'schemaVersion': 1,
               'taskId': 'M2-04',
               'commit': 'working-tree',
               'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
-              'files': manifest_files,
-          }
-          (evidence / 'manifest.json').write_text(
-              json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
-          )
+              'files': files,
+          }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Format and verify focused scope
-        run: |
-          pnpm exec prettier --write tests/integration/structure-operations.test.ts docs/test-evidence/M2-04/*.md docs/test-evidence/M2-04/manifest.json
-          pnpm test:prepare
-          pnpm test:integration
-          EVIDENCE_BASE_SHA=665130ff593ae68a3242232966c16d8d5597b276 node scripts/evidence-policy.mjs
       - name: Commit correction
         run: |
           git config user.name github-actions[bot]

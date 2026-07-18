@@ -60,7 +60,11 @@ describe('M2-03 Candidate action transaction', () => {
                   candidateBlockIds: [candidate.blocks[0]!.candidateBlockId],
                   deleteLogicalBlockIds: [],
                 } as const)
-              : ({ mode: 'scene-beats', beatIds: [secondBeatId], deleteLogicalBlockIds: [] } as const);
+              : ({
+                  mode: 'scene-beats',
+                  beatIds: [secondBeatId],
+                  deleteLogicalBlockIds: [],
+                } as const);
         const beforeCounts = applyTableCounts(harness, project.projectId);
 
         const result = await harness.candidateApply.apply(randomUUID(), {
@@ -95,11 +99,13 @@ describe('M2-03 Candidate action transaction', () => {
               ? ['候选第一段', '当前第二段']
               : ['当前第一段', '候选第二段'],
         );
-        expect(harness.candidates.get({
-          projectId: project.projectId,
-          chapterId: chapter.id,
-          candidateId: candidate.candidateId,
-        }).status).toBe('accepted');
+        expect(
+          harness.candidates.get({
+            projectId: project.projectId,
+            chapterId: chapter.id,
+            candidateId: candidate.candidateId,
+          }).status,
+        ).toBe('accepted');
         expect(applyTableCounts(harness, project.projectId)).toEqual({
           patchLog: beforeCounts.patchLog + 1,
           checkpoints: 1,
@@ -227,16 +233,22 @@ describe('M2-03 Candidate action transaction', () => {
       expect(stale.conflictSet.conflicts.map((conflict) => conflict.kind)).toEqual(
         expect.arrayContaining(['revision', 'hash']),
       );
-      expect((await harness.drafts.open(randomUUID(), {
-        projectId: project.projectId,
-        chapterId: chapter.id,
-      })).blocks[0]).toMatchObject({ text: '人工后续修改', locked: false });
+      expect(
+        (
+          await harness.drafts.open(randomUUID(), {
+            projectId: project.projectId,
+            chapterId: chapter.id,
+          })
+        ).blocks[0],
+      ).toMatchObject({ text: '人工后续修改', locked: false });
       expect(changed.revision).toBe(lockedDraft.revision + 1);
-      expect(harness.candidates.get({
-        projectId: project.projectId,
-        chapterId: chapter.id,
-        candidateId: candidate.candidateId,
-      }).status).toBe('pending');
+      expect(
+        harness.candidates.get({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          candidateId: candidate.candidateId,
+        }).status,
+      ).toBe('pending');
     } finally {
       await closeCandidateApplyHarness(harness);
     }
@@ -286,11 +298,13 @@ describe('M2-03 Candidate action transaction', () => {
       });
       expect(current).toMatchObject({ revision: draft.revision });
       expect(current.blocks.map((block) => block.text)).toEqual(['当前第一段', '当前第二段']);
-      expect(harness.candidates.get({
-        projectId: project.projectId,
-        chapterId: chapter.id,
-        candidateId: candidate.candidateId,
-      }).status).toBe('pending');
+      expect(
+        harness.candidates.get({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          candidateId: candidate.candidateId,
+        }).status,
+      ).toBe('pending');
       expect(applyTableCounts(harness, project.projectId)).toEqual(beforeCounts);
     } finally {
       await closeCandidateApplyHarness(harness);

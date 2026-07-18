@@ -39,6 +39,7 @@ allowed_paths:
   - docs/tasks/M3/M3-03_ENTITY_CANON.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M1-08/
+  - scripts/taskctl.mjs
 forbidden_paths:
 
 required_docs:

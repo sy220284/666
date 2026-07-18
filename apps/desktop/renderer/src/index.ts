@@ -32,6 +32,9 @@ import type {
   DraftDocument,
   LifecycleStatus,
   ProjectStructure,
+  ProjectBrief,
+  PlotNode,
+  PlotNodeType,
   ProjectWorkspaceSummary,
   RecentProject,
   TrashEntry,
@@ -96,6 +99,30 @@ const projectOperationStatus = document.querySelector<HTMLElement>(
 );
 const moveProjectButton = document.querySelector<HTMLButtonElement>('[data-move-project]');
 const openTextIoButton = document.querySelector<HTMLButtonElement>('[data-open-text-io]');
+const openPlanningButton = document.querySelector<HTMLButtonElement>('[data-open-planning]');
+const planningDialog = document.querySelector<HTMLDialogElement>('[data-planning-dialog]');
+const closePlanningButton = document.querySelector<HTMLButtonElement>('[data-close-planning]');
+const planningStatus = document.querySelector<HTMLElement>('[data-planning-status]');
+const planningModeButtons = document.querySelectorAll<HTMLButtonElement>('[data-planning-mode]');
+const briefPanel = document.querySelector<HTMLElement>('[data-brief-panel]');
+const briefSkippedPanel = document.querySelector<HTMLElement>('[data-brief-skipped]');
+const briefModeHelp = document.querySelector<HTMLElement>('[data-brief-mode-help]');
+const briefForm = document.querySelector<HTMLFormElement>('[data-brief-form]');
+const briefUpdated = document.querySelector<HTMLElement>('[data-brief-updated]');
+const saveBriefButton = document.querySelector<HTMLButtonElement>('[data-save-brief]');
+const skipBriefButton = document.querySelector<HTMLButtonElement>('[data-skip-brief]');
+const restoreBriefButton = document.querySelector<HTMLButtonElement>('[data-restore-brief]');
+const outlineTree = document.querySelector<HTMLElement>('[data-outline-tree]');
+const outlineRootDrop = document.querySelector<HTMLElement>('[data-outline-root-drop]');
+const createRootPlotNodeButton = document.querySelector<HTMLButtonElement>(
+  '[data-create-root-plot-node]',
+);
+const plotNodeDialog = document.querySelector<HTMLDialogElement>('[data-plot-node-dialog]');
+const plotNodeDialogTitle = document.querySelector<HTMLElement>('[data-plot-node-dialog-title]');
+const plotNodeForm = document.querySelector<HTMLFormElement>('[data-plot-node-form]');
+const plotNodeStatus = document.querySelector<HTMLElement>('[data-plot-node-status]');
+const savePlotNodeButton = document.querySelector<HTMLButtonElement>('[data-save-plot-node]');
+const cancelPlotNodeButton = document.querySelector<HTMLButtonElement>('[data-cancel-plot-node]');
 const textIoDialog = document.querySelector<HTMLDialogElement>('[data-text-io-dialog]');
 const textIoStatus = document.querySelector<HTMLElement>('[data-text-io-status]');
 const importEncoding = document.querySelector<HTMLSelectElement>('[data-import-encoding]');
@@ -187,6 +214,14 @@ let appearance = defaultAppearance;
 let applicationSettings = defaultSettings;
 let activeProject: ProjectWorkspaceSummary | null = null;
 let activeStructure: ProjectStructure | null = null;
+let activeBrief: ProjectBrief | null = null;
+let activePlotNodes: PlotNode[] = [];
+let planningMode: 'beginner' | 'professional' = 'beginner';
+let briefExpanded = true;
+let editingPlotNodeId: string | null = null;
+let editingPlotNodeParentId: string | null = null;
+let draggedPlotNodeId: string | null = null;
+let planningRefreshGeneration = 0;
 let structureRefreshGeneration = 0;
 let activeChapter: Chapter | null = null;
 let activeDraft: DraftDocument | null = null;
@@ -340,6 +375,343 @@ function setDraftState(message: string, error = false): void {
   if (!draftState) return;
   draftState.textContent = message;
   draftState.classList.toggle('is-error', error);
+}
+
+
+const plotNodeTypeLabels: Record<PlotNodeType, string> = {
+  volume: '卷规划',
+  arc: '剧情弧',
+  chapter: '章节规划',
+};
+
+const beginnerBriefLabels = {
+  concept: '这部作品最核心的一句话是什么？',
+  readingPromise: '读者持续阅读时能稳定获得什么体验？',
+  protagonistGoal: '主角最想达成什么目标？',
+  coreConflict: '阻止主角的核心矛盾是什么？',
+  endingIntent: '你希望故事最终落在哪里？',
+  required: '必须出现或始终遵守（每行一项）',
+  forbidden: '明确禁止（每行一项）',
+} as const;
+
+const professionalBriefLabels = {
+  concept: '高概念',
+  readingPromise: '阅读承诺',
+  protagonistGoal: '主角目标',
+  coreConflict: '核心冲突',
+  endingIntent: '终局意图',
+  required: '必须项（每行一项）',
+  forbidden: '禁止项（每行一项）',
+} as const;
+
+function setPlanningStatus(message: string, error = false): void {
+  if (!planningStatus) return;
+  planningStatus.textContent = message;
+  planningStatus.classList.toggle('is-error', error);
+}
+
+function setPlotNodeStatus(message: string, error = false): void {
+  if (!plotNodeStatus) return;
+  plotNodeStatus.textContent = message;
+  plotNodeStatus.classList.toggle('is-error', error);
+}
+
+function setPlanningMode(mode: 'beginner' | 'professional'): void {
+  planningMode = mode;
+  const labels = mode === 'beginner' ? beginnerBriefLabels : professionalBriefLabels;
+  for (const element of document.querySelectorAll<HTMLElement>('[data-brief-label]')) {
+    const key = element.dataset.briefLabel as keyof typeof labels | undefined;
+    if (key) element.textContent = labels[key];
+  }
+  if (briefModeHelp) {
+    briefModeHelp.textContent =
+      mode === 'beginner'
+        ? '回答几个问题即可建立约束；留空不会阻止直接写作。'
+        : '所有字段直接对应ProjectBrief权威数据；空字段可在任何时候后补。';
+  }
+  for (const button of planningModeButtons) {
+    button.classList.toggle('is-active', button.dataset.planningMode === mode);
+    button.setAttribute('aria-pressed', String(button.dataset.planningMode === mode));
+  }
+}
+
+function parseRuleLines(value: FormDataEntryValue | null): string[] {
+  return String(value ?? '')
+    .split(/\r?\n/u)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function setBriefExpanded(expanded: boolean): void {
+  briefExpanded = expanded;
+  if (briefPanel) briefPanel.hidden = !expanded;
+  if (briefSkippedPanel) briefSkippedPanel.hidden = expanded;
+}
+
+function populateBriefForm(brief: ProjectBrief): void {
+  if (!briefForm) return;
+  for (const [name, value] of [
+    ['concept', brief.concept],
+    ['readingPromise', brief.readingPromise],
+    ['protagonistGoal', brief.protagonistGoal],
+    ['coreConflict', brief.coreConflict],
+    ['endingIntent', brief.endingIntent],
+    ['required', brief.required.join('\n')],
+    ['forbidden', brief.forbidden.join('\n')],
+  ] as const) {
+    const field = briefForm.elements.namedItem(name);
+    if (field instanceof HTMLTextAreaElement) field.value = value;
+  }
+  if (briefUpdated) {
+    briefUpdated.textContent = brief.updatedAt
+      ? `最后保存：${new Date(brief.updatedAt).toLocaleString('zh-CN')}`
+      : '尚未保存；可直接跳过。';
+  }
+}
+
+function sortedPlotChildren(parentId: string | null): PlotNode[] {
+  return activePlotNodes
+    .filter((node) => node.parentId === parentId)
+    .sort((left, right) => {
+      const order = BigInt(left.orderKey) - BigInt(right.orderKey);
+      return order < 0n ? -1 : order > 0n ? 1 : left.id.localeCompare(right.id, 'en');
+    });
+}
+
+function planningAction(label: string, dataAttribute: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'quiet-button';
+  button.textContent = label;
+  button.setAttribute(dataAttribute, '');
+  return button;
+}
+
+function clearDragStyles(): void {
+  outlineRootDrop?.classList.remove('is-drag-over');
+  for (const element of document.querySelectorAll('.plot-node.is-drag-over, .plot-node__child-drop.is-drag-over')) {
+    element.classList.remove('is-drag-over');
+  }
+}
+
+async function movePlotNodeFromUi(
+  nodeId: string,
+  targetParentId: string | null,
+  placement: { readonly kind: 'end' } | { readonly kind: 'after'; readonly siblingId: string },
+): Promise<void> {
+  const project = activeProject;
+  if (!project || project.databaseMode !== 'read-write') return;
+  planningRefreshGeneration += 1;
+  setPlanningStatus('正在以单事务移动大纲节点…');
+  const result = await window.worldforge.planning.movePlotNode({
+    projectId: project.projectId,
+    nodeId,
+    targetParentId,
+    placement,
+  });
+  if (!result.ok) {
+    setPlanningStatus(`移动失败 · ${result.error.code}`, true);
+    return;
+  }
+  activePlotNodes = result.data.nodes;
+  renderOutlineTree();
+  setPlanningStatus('大纲节点已移动；正文未修改。');
+}
+
+function renderPlotNode(node: PlotNode): HTMLElement {
+  const container = document.createElement('article');
+  container.className = 'plot-node';
+  container.dataset.plotNodeId = node.id;
+  container.draggable = activeProject?.databaseMode === 'read-write';
+
+  const row = document.createElement('div');
+  row.className = 'plot-node__row';
+  const summary = document.createElement('div');
+  summary.className = 'plot-node__summary';
+  const title = document.createElement('strong');
+  title.textContent = node.title;
+  const metadata = document.createElement('small');
+  metadata.textContent = `${plotNodeTypeLabels[node.nodeType]} · ${lifecycleLabels[node.status]}`;
+  summary.append(title, metadata);
+  const actions = document.createElement('div');
+  actions.className = 'plot-node__actions';
+  const addChild = planningAction('子节点', 'data-add-plot-child');
+  const edit = planningAction('编辑', 'data-edit-plot-node');
+  const remove = planningAction('删除', 'data-delete-plot-node');
+  const readOnly = activeProject?.databaseMode !== 'read-write';
+  addChild.disabled = readOnly;
+  edit.disabled = readOnly;
+  remove.disabled = readOnly;
+  addChild.addEventListener('click', () => openPlotNodeEditor(node.id));
+  edit.addEventListener('click', () => openPlotNodeEditor(node.parentId, node));
+  remove.addEventListener('click', () => void deletePlotNodeFromUi(node));
+  actions.append(addChild, edit, remove);
+  row.append(summary, actions);
+
+  const childDrop = document.createElement('div');
+  childDrop.className = 'plot-node__child-drop';
+  childDrop.dataset.outlineDropChild = node.id;
+  childDrop.textContent = '拖到这里作为子节点';
+  childDrop.addEventListener('dragover', (event) => {
+    if (!draggedPlotNodeId || draggedPlotNodeId === node.id) return;
+    event.preventDefault();
+    childDrop.classList.add('is-drag-over');
+  });
+  childDrop.addEventListener('dragleave', () => childDrop.classList.remove('is-drag-over'));
+  childDrop.addEventListener('drop', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const sourceId = draggedPlotNodeId;
+    clearDragStyles();
+    if (sourceId && sourceId !== node.id) {
+      void movePlotNodeFromUi(sourceId, node.id, { kind: 'end' });
+    }
+  });
+
+  container.addEventListener('dragstart', (event) => {
+    draggedPlotNodeId = node.id;
+    event.dataTransfer?.setData('text/plain', node.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  });
+  container.addEventListener('dragend', () => {
+    draggedPlotNodeId = null;
+    clearDragStyles();
+  });
+  container.addEventListener('dragover', (event) => {
+    if (!draggedPlotNodeId || draggedPlotNodeId === node.id) return;
+    event.preventDefault();
+    container.classList.add('is-drag-over');
+  });
+  container.addEventListener('dragleave', (event) => {
+    if (event.relatedTarget instanceof Node && container.contains(event.relatedTarget)) return;
+    container.classList.remove('is-drag-over');
+  });
+  container.addEventListener('drop', (event) => {
+    if (event.target instanceof HTMLElement && event.target.closest('[data-outline-drop-child]')) {
+      event.stopPropagation();
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const sourceId = draggedPlotNodeId;
+    clearDragStyles();
+    if (sourceId && sourceId !== node.id) {
+      void movePlotNodeFromUi(sourceId, node.parentId, { kind: 'after', siblingId: node.id });
+    }
+  });
+
+  container.append(row, childDrop);
+  const children = sortedPlotChildren(node.id);
+  if (children.length > 0) {
+    const childContainer = document.createElement('div');
+    childContainer.className = 'plot-node__children';
+    for (const child of children) childContainer.append(renderPlotNode(child));
+    container.append(childContainer);
+  }
+  return container;
+}
+
+function renderOutlineTree(): void {
+  outlineTree?.replaceChildren();
+  if (!outlineTree) return;
+  const roots = sortedPlotChildren(null);
+  if (roots.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'outline-empty';
+    empty.dataset.outlineEmpty = '';
+    empty.textContent = '尚未建立大纲节点。可以从卷、剧情弧或章节规划开始。';
+    outlineTree.append(empty);
+    return;
+  }
+  for (const node of roots) outlineTree.append(renderPlotNode(node));
+}
+
+async function refreshPlanningData(): Promise<void> {
+  const generation = ++planningRefreshGeneration;
+  const project = activeProject;
+  if (!project) return;
+  setPlanningStatus('正在读取作品任务书与大纲树…');
+  try {
+    const [briefResult, outlineResult] = await Promise.all([
+      window.worldforge.planning.getBrief(project.projectId),
+      window.worldforge.planning.listPlotNodes(project.projectId),
+    ]);
+    if (
+      generation !== planningRefreshGeneration ||
+      activeProject?.projectId !== project.projectId
+    )
+      return;
+    if (!briefResult.ok) {
+      setPlanningStatus(`任务书读取失败 · ${briefResult.error.code}`, true);
+      return;
+    }
+    if (!outlineResult.ok) {
+      setPlanningStatus(`大纲读取失败 · ${outlineResult.error.code}`, true);
+      return;
+    }
+    activeBrief = briefResult.data;
+    activePlotNodes = outlineResult.data.nodes;
+    populateBriefForm(activeBrief);
+    renderOutlineTree();
+    const writeable = project.databaseMode === 'read-write';
+    if (saveBriefButton) saveBriefButton.disabled = !writeable;
+    if (createRootPlotNodeButton) createRootPlotNodeButton.disabled = !writeable;
+    if (skipBriefButton) skipBriefButton.disabled = false;
+    setPlanningStatus(writeable ? '规划已同步；修改仅写入规划表。' : '只读浏览；规划修改已禁用。');
+  } catch {
+    if (
+      generation !== planningRefreshGeneration ||
+      activeProject?.projectId !== project.projectId
+    )
+      return;
+    setPlanningStatus('规划读取失败 · COMMON_INTERNAL_999', true);
+  }
+}
+
+function openPlotNodeEditor(parentId: string | null, node?: PlotNode): void {
+  if (!plotNodeForm || activeProject?.databaseMode !== 'read-write') return;
+  editingPlotNodeId = node?.id ?? null;
+  editingPlotNodeParentId = parentId;
+  plotNodeForm.reset();
+  const nodeType = plotNodeForm.elements.namedItem('nodeType');
+  const title = plotNodeForm.elements.namedItem('title');
+  const status = plotNodeForm.elements.namedItem('status');
+  const goal = plotNodeForm.elements.namedItem('goal');
+  const conflict = plotNodeForm.elements.namedItem('coreConflict');
+  const expected = plotNodeForm.elements.namedItem('expectedResult');
+  if (nodeType instanceof HTMLSelectElement) nodeType.value = node?.nodeType ?? 'arc';
+  if (title instanceof HTMLInputElement) title.value = node?.title ?? '';
+  if (status instanceof HTMLSelectElement) status.value = node?.status ?? 'pending';
+  if (goal instanceof HTMLTextAreaElement) goal.value = node?.goal ?? '';
+  if (conflict instanceof HTMLTextAreaElement) conflict.value = node?.coreConflict ?? '';
+  if (expected instanceof HTMLTextAreaElement) expected.value = node?.expectedResult ?? '';
+  if (plotNodeDialogTitle) plotNodeDialogTitle.textContent = node ? '编辑大纲节点' : '新增大纲节点';
+  setPlotNodeStatus(parentId ? '新节点将保存到所选父节点下。' : '新节点将保存到根级。');
+  plotNodeDialog?.showModal();
+  if (title instanceof HTMLInputElement) title.focus();
+}
+
+async function deletePlotNodeFromUi(node: PlotNode): Promise<void> {
+  const project = activeProject;
+  if (!project || project.databaseMode !== 'read-write') return;
+  const hasChildren = activePlotNodes.some((candidate) => candidate.parentId === node.id);
+  const warning = hasChildren
+    ? `删除“${node.title}”及其全部子节点？正文不会被删除。`
+    : `删除大纲节点“${node.title}”？正文不会被删除。`;
+  if (!window.confirm(warning)) return;
+  planningRefreshGeneration += 1;
+  setPlanningStatus('正在删除大纲节点…');
+  const result = await window.worldforge.planning.deletePlotNode({
+    projectId: project.projectId,
+    nodeId: node.id,
+  });
+  if (!result.ok) {
+    setPlanningStatus(`删除失败 · ${result.error.code}`, true);
+    return;
+  }
+  activePlotNodes = result.data.nodes;
+  renderOutlineTree();
+  setPlanningStatus('大纲节点已删除；正文未修改。');
 }
 
 function temporaryClientBlockId(): string {
@@ -1384,6 +1756,14 @@ async function permanentlyDeleteTrash(entry: TrashEntry): Promise<void> {
 
 function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
   activeProject = project;
+  activeBrief = null;
+  activePlotNodes = [];
+  editingPlotNodeId = null;
+  editingPlotNodeParentId = null;
+  planningRefreshGeneration += 1;
+  briefExpanded = true;
+  if (planningDialog?.open) planningDialog.close();
+  if (plotNodeDialog?.open) plotNodeDialog.close();
   document.body.dataset.projectState = project
     ? project.databaseMode === 'read-only'
       ? 'read-only'
@@ -2770,6 +3150,132 @@ async function refreshExportCatalog(): Promise<void> {
     exportVersionList.append(label);
   }
 }
+
+openPlanningButton?.addEventListener('click', () => {
+  if (!activeProject) return;
+  setPlanningMode(applicationSettings.defaultMode);
+  setBriefExpanded(briefExpanded);
+  planningDialog?.showModal();
+  void refreshPlanningData();
+});
+closePlanningButton?.addEventListener('click', () => planningDialog?.close());
+for (const button of planningModeButtons) {
+  button.addEventListener('click', () => {
+    const mode = button.dataset.planningMode;
+    if (mode === 'beginner' || mode === 'professional') setPlanningMode(mode);
+  });
+}
+skipBriefButton?.addEventListener('click', () => {
+  setBriefExpanded(false);
+  setPlanningStatus('任务书已暂时收起；大纲和正文仍可继续。');
+});
+restoreBriefButton?.addEventListener('click', () => {
+  setBriefExpanded(true);
+  if (activeBrief) populateBriefForm(activeBrief);
+});
+briefForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  void (async () => {
+    const project = activeProject;
+    if (!project || project.databaseMode !== 'read-write' || !briefForm) return;
+    const data = new FormData(briefForm);
+    if (saveBriefButton) saveBriefButton.disabled = true;
+    planningRefreshGeneration += 1;
+    setPlanningStatus('正在保存作品任务书…');
+    try {
+      const result = await window.worldforge.planning.updateBrief({
+        projectId: project.projectId,
+        concept: String(data.get('concept') ?? ''),
+        readingPromise: String(data.get('readingPromise') ?? ''),
+        protagonistGoal: String(data.get('protagonistGoal') ?? ''),
+        coreConflict: String(data.get('coreConflict') ?? ''),
+        endingIntent: String(data.get('endingIntent') ?? ''),
+        required: parseRuleLines(data.get('required')),
+        forbidden: parseRuleLines(data.get('forbidden')),
+      });
+      if (!result.ok) {
+        setPlanningStatus(`任务书保存失败 · ${result.error.code}`, true);
+        return;
+      }
+      activeBrief = result.data;
+      populateBriefForm(result.data);
+      setPlanningStatus('任务书已保存；正文、Version和Candidate未修改。');
+    } catch {
+      setPlanningStatus('任务书保存失败 · COMMON_INTERNAL_999', true);
+    } finally {
+      if (saveBriefButton) saveBriefButton.disabled = false;
+    }
+  })();
+});
+createRootPlotNodeButton?.addEventListener('click', () => openPlotNodeEditor(null));
+cancelPlotNodeButton?.addEventListener('click', () => plotNodeDialog?.close());
+plotNodeForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  void (async () => {
+    const project = activeProject;
+    if (!project || project.databaseMode !== 'read-write' || !plotNodeForm) return;
+    const data = new FormData(plotNodeForm);
+    const nodeType = String(data.get('nodeType')) as PlotNodeType;
+    const title = String(data.get('title') ?? '').trim();
+    const status = String(data.get('status')) as LifecycleStatus;
+    if (!title || !['volume', 'arc', 'chapter'].includes(nodeType)) {
+      setPlotNodeStatus('请填写有效标题和节点类型。', true);
+      return;
+    }
+    if (savePlotNodeButton) savePlotNodeButton.disabled = true;
+    planningRefreshGeneration += 1;
+    setPlotNodeStatus('正在保存大纲节点…');
+    const fields = {
+      nodeType,
+      title,
+      goal: String(data.get('goal') ?? ''),
+      coreConflict: String(data.get('coreConflict') ?? ''),
+      expectedResult: String(data.get('expectedResult') ?? ''),
+      status,
+    };
+    try {
+      const result = editingPlotNodeId
+        ? await window.worldforge.planning.updatePlotNode({
+            projectId: project.projectId,
+            nodeId: editingPlotNodeId,
+            patch: fields,
+          })
+        : await window.worldforge.planning.createPlotNode({
+            projectId: project.projectId,
+            parentId: editingPlotNodeParentId,
+            ...fields,
+            placement: { kind: 'end' },
+          });
+      if (!result.ok) {
+        setPlotNodeStatus(`保存失败 · ${result.error.code}`, true);
+        return;
+      }
+      activePlotNodes = result.data.nodes;
+      renderOutlineTree();
+      plotNodeDialog?.close();
+      setPlanningStatus('大纲节点已保存；正文未修改。');
+    } catch {
+      setPlotNodeStatus('保存失败 · COMMON_INTERNAL_999', true);
+    } finally {
+      if (savePlotNodeButton) savePlotNodeButton.disabled = false;
+    }
+  })();
+});
+outlineRootDrop?.addEventListener('dragover', (event) => {
+  if (!draggedPlotNodeId) return;
+  event.preventDefault();
+  outlineRootDrop.classList.add('is-drag-over');
+});
+outlineRootDrop?.addEventListener('dragleave', () =>
+  outlineRootDrop.classList.remove('is-drag-over'),
+);
+outlineRootDrop?.addEventListener('drop', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  const sourceId = draggedPlotNodeId;
+  clearDragStyles();
+  if (sourceId) void movePlotNodeFromUi(sourceId, null, { kind: 'end' });
+});
 
 openTextIoButton?.addEventListener('click', () => {
   textIoDialog?.showModal();

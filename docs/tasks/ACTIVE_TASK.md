@@ -24,8 +24,12 @@ allowed_paths:
   - packages/core-service/
   - packages/contracts/
   - apps/desktop/renderer/
+  - apps/desktop/main/
+  - apps/desktop/preload/
   - tests/integration/
   - tests/e2e/
+  - tests/migration/
+  - tests/security/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
@@ -35,6 +39,9 @@ allowed_paths:
   - docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M3-01/
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
   - docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md
 forbidden_paths:
 
@@ -53,6 +60,7 @@ verification:
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
+  - pnpm test:migration
   - pnpm test:integration
 ```
 

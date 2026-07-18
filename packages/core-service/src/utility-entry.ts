@@ -10,6 +10,7 @@ import {
   RECOVERY_COMMANDS,
   TEXT_IO_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
+  PROJECT_PLANNING_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
@@ -35,6 +36,7 @@ import { RecoveryService, RecoveryServiceError } from './recovery.js';
 import { ImportExportService, ImportExportServiceError } from './import-export.js';
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
+import { ProjectPlanningError, ProjectPlanningService } from './project-planning.js';
 import { StructureOperationService } from './structure-operations.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 
@@ -103,6 +105,7 @@ const recovery = new RecoveryService(projectWorkspace, {
   backupRootDirectory: requiredAbsolutePath('project-operation-recovery'),
 });
 const projectStructure = new ProjectStructureService(projectWorkspace);
+const projectPlanning = new ProjectPlanningService(projectWorkspace);
 const structureOperations = new StructureOperationService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
 const candidates = new CandidateService(projectWorkspace);
@@ -256,6 +259,11 @@ function projectWorkspaceError(error: unknown): ErrorCode {
         return 'COMMON_CONFLICT_003';
     }
   }
+  if (error instanceof ProjectPlanningError) {
+    if (error.code === 'PLANNING_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'PLANNING_INVALID_POSITION') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
   if (error instanceof ProjectStructureError) {
     if (error.code === 'STRUCTURE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'STRUCTURE_CONFLICT') return 'COMMON_CONFLICT_003';
@@ -399,6 +407,48 @@ async function executeProjectOperation(
             operation.projectId,
             operation.targetParentDirectory,
           ),
+        });
+      case PROJECT_PLANNING_COMMANDS.getBrief:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: projectPlanning.getBrief(operation.projectId),
+        });
+      case PROJECT_PLANNING_COMMANDS.updateBrief:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectPlanning.updateBrief(requestId, operation.input),
+        });
+      case PROJECT_PLANNING_COMMANDS.listPlotNodes:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: projectPlanning.listPlotNodes(operation.projectId),
+        });
+      case PROJECT_PLANNING_COMMANDS.createPlotNode:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectPlanning.createPlotNode(requestId, operation.input),
+        });
+      case PROJECT_PLANNING_COMMANDS.updatePlotNode:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectPlanning.updatePlotNode(requestId, operation.input),
+        });
+      case PROJECT_PLANNING_COMMANDS.movePlotNode:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectPlanning.movePlotNode(requestId, operation.input),
+        });
+      case PROJECT_PLANNING_COMMANDS.deletePlotNode:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await projectPlanning.deletePlotNode(requestId, operation.input),
         });
       case PROJECT_STRUCTURE_COMMANDS.listStructure:
         return CoreProjectResultSchema.parse({

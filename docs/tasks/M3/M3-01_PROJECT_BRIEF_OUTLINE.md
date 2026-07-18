@@ -45,8 +45,15 @@ M2
 - `packages/core-service/`
 - `packages/contracts/`
 - `apps/desktop/renderer/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `tests/integration/`
 - `tests/e2e/`
+- `tests/migration/`
+- `tests/security/`
+- `docs/contracts/IPC_CONTRACTS.md`
+- `docs/database/DATABASE_SCHEMA.md`
+- `docs/ui/SCREEN_SPECIFICATIONS.md`
 
 ## 实施内容
 

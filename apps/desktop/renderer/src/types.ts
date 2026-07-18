@@ -11,6 +11,9 @@ import type {
   TrashEntry,
   RecentProject,
   DraftDocument,
+  ProjectBrief,
+  PlotNode,
+  PlotNodeType,
 } from '@worldforge/contracts';
 
 export type ContentWidthPreference = AppearancePreferences['contentWidth'];
@@ -28,4 +31,7 @@ export type {
   TrashEntry,
   RecentProject,
   DraftDocument,
+  ProjectBrief,
+  PlotNode,
+  PlotNodeType,
 };

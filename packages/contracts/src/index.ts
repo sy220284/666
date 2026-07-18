@@ -86,6 +86,24 @@ import {
   type VolumeUpdateInput,
 } from './project-structure.js';
 import {
+  PROJECT_PLANNING_COMMANDS,
+  PROJECT_PLANNING_IPC_CHANNELS,
+  ProjectCreatePlotNodeCommandSchema,
+  ProjectDeletePlotNodeCommandSchema,
+  ProjectGetBriefCommandSchema,
+  ProjectListPlotNodesCommandSchema,
+  ProjectMovePlotNodeCommandSchema,
+  ProjectUpdateBriefCommandSchema,
+  ProjectUpdatePlotNodeCommandSchema,
+  type PlotNodeCreateInput,
+  type PlotNodeDeleteInput,
+  type PlotNodeList,
+  type PlotNodeMoveInput,
+  type PlotNodeUpdateInput,
+  type ProjectBrief,
+  type ProjectBriefUpdateInput,
+} from './project-planning.js';
+import {
   DRAFT_COMMANDS,
   DRAFT_IPC_CHANNELS,
   DraftApplyPatchCommandSchema,
@@ -139,6 +157,7 @@ export * from './task-protocol.js';
 export * from './app-data.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
+export * from './project-planning.js';
 export * from './draft.js';
 export * from './candidate.js';
 export * from './candidate-apply.js';
@@ -157,6 +176,7 @@ export const IPC_CHANNELS = {
   ...APP_DATA_IPC_CHANNELS,
   ...PROJECT_WORKSPACE_IPC_CHANNELS,
   ...PROJECT_STRUCTURE_IPC_CHANNELS,
+  ...PROJECT_PLANNING_IPC_CHANNELS,
   ...DRAFT_IPC_CHANNELS,
   ...VERSION_IPC_CHANNELS,
   ...RECOVERY_IPC_CHANNELS,
@@ -179,6 +199,7 @@ export const APP_COMMANDS = {
   ...APP_DATA_COMMANDS,
   ...PROJECT_WORKSPACE_COMMANDS,
   ...PROJECT_STRUCTURE_COMMANDS,
+  ...PROJECT_PLANNING_COMMANDS,
   ...DRAFT_COMMANDS,
   ...VERSION_COMMANDS,
   ...RECOVERY_COMMANDS,
@@ -329,6 +350,13 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectDeleteChapterCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
+  ProjectGetBriefCommandSchema,
+  ProjectUpdateBriefCommandSchema,
+  ProjectListPlotNodesCommandSchema,
+  ProjectCreatePlotNodeCommandSchema,
+  ProjectUpdatePlotNodeCommandSchema,
+  ProjectMovePlotNodeCommandSchema,
+  ProjectDeletePlotNodeCommandSchema,
   DraftOpenCommandSchema,
   DraftApplyPatchCommandSchema,
   ImportPreviewCommandSchema,
@@ -599,6 +627,13 @@ export interface WorldforgeBridge {
     ) => Promise<CommandResult<ExportVersionsResult>>;
   };
   readonly planning: {
+    readonly getBrief: (projectId: string) => Promise<CommandResult<ProjectBrief>>;
+    readonly updateBrief: (input: ProjectBriefUpdateInput) => Promise<CommandResult<ProjectBrief>>;
+    readonly listPlotNodes: (projectId: string) => Promise<CommandResult<PlotNodeList>>;
+    readonly createPlotNode: (input: PlotNodeCreateInput) => Promise<CommandResult<PlotNodeList>>;
+    readonly updatePlotNode: (input: PlotNodeUpdateInput) => Promise<CommandResult<PlotNodeList>>;
+    readonly movePlotNode: (input: PlotNodeMoveInput) => Promise<CommandResult<PlotNodeList>>;
+    readonly deletePlotNode: (input: PlotNodeDeleteInput) => Promise<CommandResult<PlotNodeList>>;
     readonly listStructure: (projectId: string) => Promise<CommandResult<ProjectStructure>>;
     readonly createVolume: (input: VolumeCreateInput) => Promise<CommandResult<ProjectStructure>>;
     readonly updateVolume: (input: VolumeUpdateInput) => Promise<CommandResult<ProjectStructure>>;

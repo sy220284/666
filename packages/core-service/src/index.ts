@@ -16,6 +16,7 @@ export * from './provider-configs.js';
 export * from './recent-projects.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
+export * from './project-planning.js';
 export * from './draft.js';
 export * from './candidate.js';
 export * from './version.js';

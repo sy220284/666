@@ -22,7 +22,9 @@ function failure(requestId: string, code: ErrorCode) {
     error: {
       code,
       message: 'The Candidate preview could not be loaded.',
-      retryable: ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+      retryable: ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(
+        code,
+      ),
     },
   });
 }

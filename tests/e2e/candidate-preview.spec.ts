@@ -255,7 +255,8 @@ test('cancels an oversized Candidate Diff through the desktop boundary', async (
     const cancel = page.locator('[data-cancel-candidate-preview]');
     await expect(cancel).toBeVisible();
     await expect(cancel).toBeEnabled();
-    await cancel.click();
+    // The Worker may finish between Playwright's layout-stability frames; dispatch while enabled.
+    await cancel.dispatchEvent('click');
     await expect(page.locator('[data-candidate-preview-status]')).toContainText('差异计算已取消');
   } finally {
     await closeGracefully(application);

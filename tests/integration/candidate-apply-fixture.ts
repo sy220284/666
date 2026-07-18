@@ -110,7 +110,9 @@ export async function createTwoBlockDraft(harness: CandidateApplyHarness) {
 
 export function applyTableCounts(harness: CandidateApplyHarness, projectId: string) {
   return harness.workspace.readProject(projectId, (database) => ({
-    patchLog: Number(database.prepare('SELECT COUNT(*) AS count FROM draft_patch_log').get()!.count),
+    patchLog: Number(
+      database.prepare('SELECT COUNT(*) AS count FROM draft_patch_log').get()!.count,
+    ),
     checkpoints: Number(
       database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_checkpoints').get()!.count,
     ),

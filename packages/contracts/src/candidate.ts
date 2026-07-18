@@ -1,10 +1,6 @@
 import { z } from 'zod';
 
 import {
-  CandidateCombinedOperationSchema,
-  CandidateCombinedResultSchema,
-} from './candidate-combined.js';
-import {
   DraftBlockAttributesSchema,
   DraftBlockTextSchema,
   DraftBlockTypeSchema,
@@ -179,7 +175,7 @@ export const CandidateDocumentResultSchema = resultSchema(CandidateDocumentSchem
 export const CandidateListResultSchema = resultSchema(CandidateListSchema);
 export const CandidateSummaryResultSchema = resultSchema(CandidateSummarySchema);
 
-const CoreCandidateBaseOperationSchema = z.discriminatedUnion('operation', [
+export const CoreCandidateOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({
     operation: z.literal(CANDIDATE_COMMANDS.createFixtureCandidate),
     input: CandidateCreateFixtureInputSchema,
@@ -198,7 +194,7 @@ const CoreCandidateBaseOperationSchema = z.discriminatedUnion('operation', [
   }),
 ]);
 
-const CoreCandidateBaseResultSchema = z.union([
+export const CoreCandidateResultSchema = z.union([
   z.strictObject({
     ok: z.literal(true),
     operation: z.literal(CANDIDATE_COMMANDS.createFixtureCandidate),
@@ -225,12 +221,6 @@ const CoreCandidateBaseResultSchema = z.union([
     errorCode: ErrorCodeSchema,
   }),
 ]);
-
-void CoreCandidateBaseOperationSchema;
-void CoreCandidateBaseResultSchema;
-
-export const CoreCandidateOperationSchema = CandidateCombinedOperationSchema;
-export const CoreCandidateResultSchema = CandidateCombinedResultSchema;
 
 export type CandidateType = z.infer<typeof CandidateTypeSchema>;
 export type CandidateCompleteness = z.infer<typeof CandidateCompletenessSchema>;

@@ -175,3 +175,107 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     database.close();
   }
 });
+
+test('cancels an oversized Candidate Diff through the desktop boundary', async () => {
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'projects');
+  await mkdir(createParent, { recursive: true });
+  const workspacePath = path.join(createParent, '候选预览取消.worldforge');
+  const application = await launch(userDataPath, {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+  });
+
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-create-project]').click();
+    await page.locator('[data-project-name]').fill('候选预览取消');
+    await page.locator('[data-project-channel]').fill('长篇');
+    await page.locator('[data-confirm-create-project]').click();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+
+    await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })
+        .worldforge;
+      const active = await bridge.project.getActive();
+      if (!active.ok || !active.data) throw new Error('E2E_ACTIVE_PROJECT_MISSING');
+      const structure = await bridge.planning.listStructure(active.data.projectId);
+      if (!structure.ok) throw new Error('E2E_STRUCTURE_MISSING');
+      const chapter = structure.data.volumes[0]?.chapters[0];
+      if (!chapter) throw new Error('E2E_CHAPTER_MISSING');
+      const opened = await bridge.draft.open({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+      });
+      if (!opened.ok) throw new Error('E2E_DRAFT_MISSING');
+      const initial = opened.data.blocks[0];
+      if (!initial?.contentHash) throw new Error('E2E_DRAFT_BLOCK_MISSING');
+      const currentText = '甲'.repeat(2_000_000);
+      const prepared = await bridge.draft.applyPatch({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draftId: opened.data.draftId,
+        baseRevision: opened.data.revision,
+        operations: [
+          {
+            type: 'update',
+            logicalBlockId: initial.logicalBlockId,
+            expectedHash: initial.contentHash,
+            content: currentText,
+          },
+        ],
+      });
+      if (!prepared.ok) throw new Error('E2E_DRAFT_PREPARE_FAILED');
+      const source = prepared.data.blocks[0];
+      if (!source?.contentHash) throw new Error('E2E_PREPARED_BLOCK_MISSING');
+      const candidate = await bridge.candidate.createFixture({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draftId: prepared.data.draftId,
+        baseDraftRevision: prepared.data.revision,
+        candidateType: 'rewrite',
+        completeness: 'complete',
+        title: 'E2E超长取消候选',
+        blocks: [
+          {
+            logicalBlockId: source.logicalBlockId,
+            sourceLogicalBlockIds: [source.logicalBlockId],
+            blockType: source.blockType,
+            text: `${'甲'.repeat(1_999_999)}乙`,
+            attributes: source.attributes,
+            sourceBlockHash: source.contentHash,
+          },
+        ],
+      });
+      if (!candidate.ok) throw new Error('E2E_CANDIDATE_CREATE_FAILED');
+    });
+
+    await page.locator('[data-open-chapter]').click();
+    await page.locator('[data-open-candidate-preview]').click();
+    const cancel = page.locator('[data-cancel-candidate-preview]');
+    await expect(cancel).toBeVisible();
+    await expect(cancel).toBeEnabled();
+    await cancel.click();
+    await expect(page.locator('[data-candidate-preview-status]')).toContainText('差异计算已取消');
+  } finally {
+    await closeGracefully(application);
+  }
+
+  const database = new DatabaseSync(path.join(workspacePath, 'project.sqlite'), {
+    readOnly: true,
+    allowExtension: false,
+    enableForeignKeyConstraints: true,
+    readBigInts: true,
+  });
+  try {
+    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_records').get()).toEqual(
+      { count: 0n },
+    );
+    expect(
+      database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_checkpoints').get(),
+    ).toEqual({ count: 0n });
+    expect(database.prepare('SELECT status FROM candidates').get()).toEqual({ status: 'pending' });
+  } finally {
+    database.close();
+  }
+});

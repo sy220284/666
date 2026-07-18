@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M2-03",
+  "commit": "working-tree",
+  "generatedAt": "2026-07-18T05:53:54Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 689,
+      "sha256": "e7cf1afb8ba9f2eed460dca8ad1869c06775829941eb73f0fe53726d6e7772f5"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 737,
+      "sha256": "ccbe27243710913e29274f09994708adc8706094beed47592f604d14973126ea"
+    },
+    {
+      "path": "manual-acceptance.md",
+      "bytes": 946,
+      "sha256": "59b1ddbe78dde5d1da4a38df251f1b43fbac9b8289786dc2b6b4c6d624e1b6cb"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 1624,
+      "sha256": "5e8db92a516a88e39295195c5d3e86e3ded79d82f56b84e152d1e55e143a6c1b"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 1237,
+      "sha256": "151c73249da7d7209bf9d1c0175aafe3ab52b212cced293366bf34cdd48e526a"
+    },
+    {
+      "path": "screenshots/manifest.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 705,
+      "sha256": "488fbe9fbcbedf5b48e43383531f4369e244773a80af0b5da0727c27a6ac15fe"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 1243,
+      "sha256": "bfbea6e99870c9600bd22af8ab4a8419db1a0f2e79a867f27d2867288be4b20a"
+    }
+  ]
+}

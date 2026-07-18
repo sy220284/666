@@ -127,6 +127,8 @@ export * from './app-data.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './draft.js';
+export * from './candidate.js';
+export * from './candidate-apply.js';
 export * from './version.js';
 export * from './recovery.js';
 export * from './import-export.js';

@@ -7,6 +7,7 @@ export default defineConfig({
     'candidate-preview.spec.ts',
     'candidate-action.spec.ts',
     'candidate-protection.spec.ts',
+    'candidate-undo.spec.ts',
   ],
   fullyParallel: false,
   workers: 1,

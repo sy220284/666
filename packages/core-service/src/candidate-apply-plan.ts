@@ -1,5 +1,6 @@
 export {
   buildCandidatePreview,
+  buildCandidatePreviewProgressively,
   buildCandidateTarget,
   candidateConflict,
   collectApplyConflicts,

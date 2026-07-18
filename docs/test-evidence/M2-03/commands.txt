@@ -1,0 +1,32 @@
+pnpm format:check
+exit=0 result=all matched files formatted
+
+pnpm lint
+exit=0 result=eslint passed
+
+pnpm typecheck
+exit=0 result=all 10 workspace packages passed
+
+pnpm test
+exit=0 result=61 files, 225 passed, 1 skipped
+
+pnpm test:unit
+exit=0 result=12 files, 47 passed
+
+pnpm test:integration
+exit=0 result=20 files, 66 passed
+
+pnpm test:migration
+exit=0 result=9 files, 26 passed
+
+pnpm test:security
+exit=0 result=13 files, 52 passed, 1 skipped
+
+pnpm test:perf
+exit=0 result=7 files, 34 passed
+
+pnpm check:boundaries && pnpm check:workspaces
+exit=0 result=9 boundaries and 10 workspaces validated
+
+pnpm test:e2e
+exit=2 result=build passed; E2E_DISPLAY_UNAVAILABLE before Playwright launch

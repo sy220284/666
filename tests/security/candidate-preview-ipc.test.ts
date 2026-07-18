@@ -1,6 +1,7 @@
 import {
   CANDIDATE_APPLY_COMMANDS,
   CANDIDATE_APPLY_IPC_CHANNELS,
+  CandidatePreviewCancelCommandSchema,
   CandidatePreviewCommandSchema,
   PROTOCOL_VERSION,
   type CandidatePreview,
@@ -22,6 +23,9 @@ const blockId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 const candidateBlockId = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const sentAt = '2026-07-17T12:30:00.000Z';
 const hash = '1'.repeat(64);
+const trustedEvent = {
+  senderFrame: { url: 'file:///trusted/index.html' },
+} as unknown as IpcMainInvokeEvent;
 
 const command = CandidatePreviewCommandSchema.parse({
   protocolVersion: PROTOCOL_VERSION,
@@ -29,6 +33,14 @@ const command = CandidatePreviewCommandSchema.parse({
   sentAt,
   command: CANDIDATE_APPLY_COMMANDS.previewCandidate,
   payload: { projectId, chapterId, candidateId },
+});
+
+const cancelCommand = CandidatePreviewCancelCommandSchema.parse({
+  protocolVersion: PROTOCOL_VERSION,
+  requestId,
+  sentAt,
+  command: CANDIDATE_APPLY_COMMANDS.cancelPreview,
+  payload: { previewRequestId: requestId },
 });
 
 const preview: CandidatePreview = {
@@ -125,11 +137,18 @@ function register() {
     removeHandler: vi.fn(),
   } as unknown as IpcMain;
   const invokeProjectOperation = vi.fn(
-    async (_id: string, operation: CoreProjectOperation): Promise<CoreProjectResult> => ({
-      ok: true,
-      operation: operation.operation as typeof CANDIDATE_APPLY_COMMANDS.previewCandidate,
-      data: preview,
-    }),
+    async (_id: string, operation: CoreProjectOperation): Promise<CoreProjectResult> =>
+      operation.operation === CANDIDATE_APPLY_COMMANDS.cancelPreview
+        ? {
+            ok: true,
+            operation: CANDIDATE_APPLY_COMMANDS.cancelPreview,
+            data: { cancelled: true },
+          }
+        : ({
+            ok: true,
+            operation: CANDIDATE_APPLY_COMMANDS.previewCandidate,
+            data: preview,
+          } as CoreProjectResult),
   );
   registerCandidatePreviewIpc({
     ipcMain,
@@ -171,6 +190,28 @@ describe('Candidate Preview IPC authority boundary', () => {
     expect(invokeProjectOperation).toHaveBeenCalledWith(requestId, {
       operation: CANDIDATE_APPLY_COMMANDS.previewCandidate,
       input: command.payload,
+    });
+  });
+
+  it('validates and forwards only the strict Preview cancellation operation', async () => {
+    const { handlers, invokeProjectOperation } = register();
+    const handler = handlers.get(CANDIDATE_APPLY_IPC_CHANNELS.cancelPreview);
+    await expect(
+      handler?.(trustedEvent, {
+        ...cancelCommand,
+        payload: { ...cancelCommand.payload, candidateId },
+      }),
+    ).resolves.toMatchObject({ ok: false, error: { code: 'COMMON_INVALID_INPUT_001' } });
+    expect(invokeProjectOperation).not.toHaveBeenCalled();
+
+    await expect(handler?.(trustedEvent, cancelCommand)).resolves.toEqual({
+      ok: true,
+      requestId,
+      data: { cancelled: true },
+    });
+    expect(invokeProjectOperation).toHaveBeenCalledWith(requestId, {
+      operation: CANDIDATE_APPLY_COMMANDS.cancelPreview,
+      input: cancelCommand.payload,
     });
   });
 });

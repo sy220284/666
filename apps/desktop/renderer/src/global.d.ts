@@ -7,8 +7,15 @@ import type {
   CandidateGetInput,
   CandidateList,
   CandidatePreview,
+  CandidatePreviewCancel,
   CandidatePreviewInput,
   CandidateSummary,
+  CandidateUndoInput,
+  CandidateUndoLookup,
+  CandidateUndoLookupInput,
+  CandidateUndoOutcome,
+  CandidateUndoPreview,
+  CandidateUndoPreviewInput,
   CommandResult,
   VersionCreateInput,
   WorldforgeBridge,
@@ -37,8 +44,21 @@ type RendererWorldforgeBridge = Omit<WorldforgeBridge, 'version'> & {
 };
 
 type RendererCandidateActionBridge = {
-  readonly preview: (input: CandidatePreviewInput) => Promise<CommandResult<CandidatePreview>>;
+  readonly preview: (
+    input: CandidatePreviewInput,
+    requestId?: string,
+  ) => Promise<CommandResult<CandidatePreview>>;
+  readonly cancelPreview: (
+    previewRequestId: string,
+  ) => Promise<CommandResult<CandidatePreviewCancel>>;
   readonly apply: (input: CandidateApplyInput) => Promise<CommandResult<CandidateApplyOutcome>>;
+  readonly findUndoRecord: (
+    input: CandidateUndoLookupInput,
+  ) => Promise<CommandResult<CandidateUndoLookup>>;
+  readonly previewUndo: (
+    input: CandidateUndoPreviewInput,
+  ) => Promise<CommandResult<CandidateUndoPreview>>;
+  readonly undo: (input: CandidateUndoInput) => Promise<CommandResult<CandidateUndoOutcome>>;
 };
 
 declare global {

@@ -1,0 +1,50 @@
+[
+  {
+    "suite": "static-gates",
+    "fixtureId": "M2-03",
+    "status": "passed",
+    "details": "Format, Lint, Typecheck, Build, boundaries and workspaces passed."
+  },
+  {
+    "suite": "unit",
+    "fixtureId": "M2-03",
+    "status": "passed",
+    "details": "12 files, 47 tests passed."
+  },
+  {
+    "suite": "integration",
+    "fixtureId": "M2-03",
+    "status": "passed",
+    "details": "20 files, 66 tests passed."
+  },
+  {
+    "suite": "migration",
+    "fixtureId": "M2-03",
+    "status": "passed",
+    "details": "9 files, 26 tests passed."
+  },
+  {
+    "suite": "security",
+    "fixtureId": "M2-03",
+    "status": "passed",
+    "details": "13 files, 52 passed and 1 pre-existing platform skip."
+  },
+  {
+    "suite": "performance",
+    "fixtureId": "M2-03",
+    "status": "passed",
+    "details": "7 files, 34 tests passed; progressive cancellation and Worker execution included."
+  },
+  {
+    "suite": "full-vitest",
+    "fixtureId": "M2-03",
+    "status": "passed",
+    "details": "61 files, 225 passed and 1 skipped."
+  },
+  {
+    "suite": "electron-e2e",
+    "fixtureId": "M2-03",
+    "status": "skipped",
+    "details": "Build passed; runner stopped with E2E_DISPLAY_UNAVAILABLE because DISPLAY and xvfb-run are absent."
+  }
+]

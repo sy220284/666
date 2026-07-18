@@ -8,18 +8,36 @@ import {
   type CandidateSelection,
   type DraftDocument,
 } from '@worldforge/contracts';
-import { computeCandidateDiff, type StructureDiffEntry } from './candidate-apply-diff.js';
+import {
+  computeCandidateDiff,
+  computeCandidateDiffProgressively,
+  type CandidateDiffResult,
+  type StructureDiffEntry,
+} from './candidate-apply-diff.js';
+import { collectLockGuardViolations } from './draft-lock-guard.js';
 
 import type { MutableDraftBlock } from './candidate-state.js';
 
-function normalizedStructure(entry: StructureDiffEntry) {
+function normalizedStructure(
+  entry: StructureDiffEntry,
+  candidate: CandidateDocument,
+  draft: DraftDocument,
+) {
+  const candidateBlockId = (index: number): string[] => {
+    const block = candidate.blocks[index];
+    return block ? [block.candidateBlockId] : [];
+  };
+  const currentIndex = (logicalBlockId: string): number[] => {
+    const index = draft.blocks.findIndex((block) => block.logicalBlockId === logicalBlockId);
+    return index < 0 ? [] : [index];
+  };
   switch (entry.kind) {
     case 'unchanged':
     case 'modified':
       return {
         kind: entry.kind,
         logicalBlockId: entry.logicalBlockId,
-        candidateBlockIds: [],
+        candidateBlockIds: candidateBlockId(entry.candidateIndex),
         sourceLogicalBlockIds: [entry.logicalBlockId],
         currentIndexes: [entry.currentIndex],
         candidateIndexes: [entry.candidateIndex],
@@ -29,7 +47,7 @@ function normalizedStructure(entry: StructureDiffEntry) {
       return {
         kind: entry.kind,
         logicalBlockId: entry.logicalBlockId,
-        candidateBlockIds: [],
+        candidateBlockIds: candidateBlockId(entry.candidateIndex),
         sourceLogicalBlockIds: [entry.logicalBlockId],
         currentIndexes: [entry.currentIndex],
         candidateIndexes: [entry.candidateIndex],
@@ -61,7 +79,7 @@ function normalizedStructure(entry: StructureDiffEntry) {
         logicalBlockId: entry.sourceLogicalBlockId,
         candidateBlockIds: [...entry.candidateBlockIds],
         sourceLogicalBlockIds: [entry.sourceLogicalBlockId],
-        currentIndexes: [],
+        currentIndexes: currentIndex(entry.sourceLogicalBlockId),
         candidateIndexes: [...entry.candidateIndexes],
         contentChanged: true,
       };
@@ -71,7 +89,7 @@ function normalizedStructure(entry: StructureDiffEntry) {
         logicalBlockId: null,
         candidateBlockIds: [entry.candidateBlockId],
         sourceLogicalBlockIds: [...entry.sourceLogicalBlockIds],
-        currentIndexes: [],
+        currentIndexes: entry.sourceLogicalBlockIds.flatMap(currentIndex),
         candidateIndexes: [entry.candidateIndex],
         contentChanged: true,
       };
@@ -82,7 +100,11 @@ export function buildCandidatePreview(
   candidate: CandidateDocument,
   draft: DraftDocument,
 ): CandidatePreview {
-  const diff = computeCandidateDiff(
+  return candidatePreviewFromDiff(candidate, draft, computeCandidatePreviewDiff(candidate, draft));
+}
+
+function computeCandidatePreviewDiff(candidate: CandidateDocument, draft: DraftDocument) {
+  return computeCandidateDiff(
     draft.blocks.map((block) => ({
       logicalBlockId: block.logicalBlockId,
       content: block.text,
@@ -94,10 +116,17 @@ export function buildCandidatePreview(
       content: block.text,
     })),
   );
+}
+
+function candidatePreviewFromDiff(
+  candidate: CandidateDocument,
+  draft: DraftDocument,
+  diff: CandidateDiffResult,
+): CandidatePreview {
   return CandidatePreviewSchema.parse({
     candidate,
     draft,
-    structure: diff.structure.map(normalizedStructure),
+    structure: diff.structure.map((entry) => normalizedStructure(entry, candidate, draft)),
     characterDiffs: diff.characterDiffs.map((item) => ({
       key: item.key,
       before: item.before,
@@ -107,6 +136,27 @@ export function buildCandidatePreview(
     })),
     execution: diff.execution,
   });
+}
+
+export async function buildCandidatePreviewProgressively(
+  candidate: CandidateDocument,
+  draft: DraftDocument,
+  signal?: AbortSignal,
+): Promise<CandidatePreview> {
+  const diff = await computeCandidateDiffProgressively(
+    draft.blocks.map((block) => ({
+      logicalBlockId: block.logicalBlockId,
+      content: block.text,
+    })),
+    candidate.blocks.map((block) => ({
+      temporaryId: block.candidateBlockId,
+      logicalBlockId: block.logicalBlockId,
+      sourceLogicalBlockIds: block.sourceLogicalBlockIds,
+      content: block.text,
+    })),
+    signal ? { signal } : {},
+  );
+  return candidatePreviewFromDiff(candidate, draft, diff);
 }
 
 function selectedBlocks(
@@ -263,6 +313,44 @@ export function collectApplyConflicts(
       ),
     );
   }
+  if (input.selection.mode === 'blocks') {
+    const candidateBlockIds = new Set(candidate.blocks.map((block) => block.candidateBlockId));
+    const unknownCandidateBlockId = input.selection.candidateBlockIds.find(
+      (candidateBlockId) => !candidateBlockIds.has(candidateBlockId),
+    );
+    if (
+      unknownCandidateBlockId ||
+      new Set(input.selection.candidateBlockIds).size !== input.selection.candidateBlockIds.length
+    ) {
+      conflicts.push(
+        candidateConflict('structure', 'The block selection does not match this Candidate.', {
+          candidateBlockId: unknownCandidateBlockId ?? input.selection.candidateBlockIds[0] ?? null,
+        }),
+      );
+    }
+  }
+  if (input.selection.mode === 'scene-beats') {
+    const candidateBeatIds = new Set(
+      candidate.blocks.flatMap((block) => (block.beatId ? [block.beatId] : [])),
+    );
+    if (
+      input.selection.beatIds.some((beatId) => !candidateBeatIds.has(beatId)) ||
+      new Set(input.selection.beatIds).size !== input.selection.beatIds.length
+    ) {
+      conflicts.push(
+        candidateConflict('structure', 'The SceneBeat selection does not match this Candidate.'),
+      );
+    }
+  }
+  if (
+    input.selection.mode !== 'all' &&
+    new Set(input.selection.deleteLogicalBlockIds).size !==
+      input.selection.deleteLogicalBlockIds.length
+  ) {
+    conflicts.push(
+      candidateConflict('structure', 'The deletion selection contains duplicate DraftBlocks.'),
+    );
+  }
   if (
     candidate.baseDraftId !== input.draftId ||
     candidate.baseDraftRevision !== input.baseRevision ||
@@ -313,46 +401,20 @@ export function collectApplyConflicts(
     }
   }
   const targetById = new Map(target.map((block) => [block.logicalBlockId, block]));
-  const retainedCurrentOrder = current
-    .filter((block) => targetById.has(block.logicalBlockId))
-    .map((block) => block.logicalBlockId);
-  const retainedTargetOrder = target
-    .filter((block) => currentById.has(block.logicalBlockId))
-    .map((block) => block.logicalBlockId);
-  for (const locked of current.filter((block) => block.locked)) {
-    const next = targetById.get(locked.logicalBlockId);
-    if (!next) {
-      conflicts.push(
-        candidateConflict('locked', 'A locked DraftBlock cannot be deleted by Candidate apply.', {
-          logicalBlockId: locked.logicalBlockId,
-          actualHash: locked.contentHash,
-        }),
-      );
-      continue;
-    }
-    if (
-      next.blockType !== locked.blockType ||
-      next.text !== locked.text ||
-      JSON.stringify(next.attributes) !== JSON.stringify(locked.attributes)
-    ) {
-      conflicts.push(
-        candidateConflict('locked', 'A locked DraftBlock cannot be modified by Candidate apply.', {
-          logicalBlockId: locked.logicalBlockId,
-          expectedHash: locked.contentHash,
-          actualHash: next.contentHash,
-        }),
-      );
-    }
-    if (
-      retainedCurrentOrder.indexOf(locked.logicalBlockId) !==
-      retainedTargetOrder.indexOf(locked.logicalBlockId)
-    ) {
-      conflicts.push(
-        candidateConflict('locked', 'A locked DraftBlock cannot be moved by Candidate apply.', {
-          logicalBlockId: locked.logicalBlockId,
-        }),
-      );
-    }
+  for (const violation of collectLockGuardViolations(current, target)) {
+    const before = currentById.get(violation.logicalBlockId);
+    const after = targetById.get(violation.logicalBlockId);
+    conflicts.push(
+      candidateConflict(
+        'locked',
+        `A locked DraftBlock cannot be ${violation.kind} by Candidate apply.`,
+        {
+          logicalBlockId: violation.logicalBlockId,
+          expectedHash: before?.contentHash ?? null,
+          actualHash: after?.contentHash ?? before?.contentHash ?? null,
+        },
+      ),
+    );
   }
   if (
     target.length === 0 ||

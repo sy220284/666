@@ -127,7 +127,76 @@ describe('M2-03 Candidate Preview zero-write guarantee', () => {
 
       expect(preview.candidate.candidateId).toBe(candidate.candidateId);
       expect(preview.structure.some((entry) => entry.kind === 'modified')).toBe(true);
+      expect(preview.structure.find((entry) => entry.kind === 'modified')).toMatchObject({
+        logicalBlockId: source.logicalBlockId,
+        candidateBlockIds: [candidate.blocks[0]!.candidateBlockId],
+        currentIndexes: [0],
+        candidateIndexes: [0],
+      });
       expect(preview.characterDiffs.length).toBeGreaterThan(0);
+      expect(persistedState(harness.workspace, project.projectId)).toEqual(before);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('cancels a progressive long-chapter Preview without changing project rows', async () => {
+    const harness = await createHarness();
+    try {
+      const project = await harness.workspace.create(
+        randomUUID(),
+        { name: '预览取消', channel: '长篇' },
+        harness.parent,
+      );
+      const chapter = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
+      const opened = await harness.drafts.open(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      });
+      const source = opened.blocks[0]!;
+      const draft = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: opened.draftId,
+        baseRevision: opened.revision,
+        operations: [
+          {
+            type: 'update',
+            logicalBlockId: source.logicalBlockId,
+            expectedHash: source.contentHash!,
+            content: '甲'.repeat(20_000),
+          },
+        ],
+      });
+      const candidate = await harness.candidates.createFixture(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseDraftRevision: draft.revision,
+        candidateType: 'rewrite',
+        completeness: 'complete',
+        title: '长章候选',
+        blocks: [
+          {
+            logicalBlockId: draft.blocks[0]!.logicalBlockId,
+            sourceLogicalBlockIds: [draft.blocks[0]!.logicalBlockId],
+            blockType: draft.blocks[0]!.blockType,
+            text: `${'甲'.repeat(19_999)}乙`,
+            attributes: draft.blocks[0]!.attributes,
+            sourceBlockHash: draft.blocks[0]!.contentHash,
+          },
+        ],
+      });
+      const before = persistedState(harness.workspace, project.projectId);
+      const previewRequestId = randomUUID();
+
+      const running = harness.preview.previewProgressively(previewRequestId, {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        candidateId: candidate.candidateId,
+      });
+      expect(harness.preview.cancelPreview({ previewRequestId })).toEqual({ cancelled: true });
+      await expect(running).rejects.toMatchObject({ code: 'CANDIDATE_PREVIEW_CANCELLED' });
       expect(persistedState(harness.workspace, project.projectId)).toEqual(before);
     } finally {
       await closeHarness(harness);

@@ -5,11 +5,11 @@ import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
 import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
 import { CoreRecoveryOperationSchema, CoreRecoveryResultSchema } from './recovery.js';
 import { CoreTextIoOperationSchema, CoreTextIoResultSchema } from './import-export.js';
-import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate-base.js';
+import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate.js';
 import {
-  CoreCandidatePreviewOperationSchema,
-  CoreCandidatePreviewResultSchema,
-} from './candidate-preview-core.js';
+  CoreCandidateApplyOperationSchema,
+  CoreCandidateApplyResultSchema,
+} from './candidate-apply.js';
 import {
   CoreProjectStructureOperationSchema,
   CoreProjectStructureResultSchema,
@@ -179,7 +179,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreProjectStructureOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
-  CoreCandidatePreviewOperationSchema,
+  CoreCandidateApplyOperationSchema,
   CoreVersionOperationSchema,
   CoreRecoveryOperationSchema,
   CoreTextIoOperationSchema,
@@ -214,7 +214,7 @@ export const CoreProjectResultSchema = z.union([
   CoreProjectStructureResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
-  CoreCandidatePreviewResultSchema,
+  CoreCandidateApplyResultSchema,
   CoreVersionResultSchema,
   CoreRecoveryResultSchema,
   CoreTextIoResultSchema,
@@ -227,7 +227,3 @@ export type ProjectMoveResult = z.infer<typeof ProjectMoveResultSchema>;
 export type ProjectCloseResult = z.infer<typeof ProjectCloseResultSchema>;
 export type CoreProjectOperation = z.infer<typeof CoreProjectOperationSchema>;
 export type CoreProjectResult = z.infer<typeof CoreProjectResultSchema>;
-
-export * from './candidate.js';
-export * from './candidate-apply.js';
-export * from './candidate-preview-core.js';

@@ -143,17 +143,27 @@ Renderer只可为快照块传入`clientBlockId`、可空`logicalBlockId`、`bloc
 
 ### 4.4 Version与Candidate
 
-| 命令                     | 输入                                      | 输出                                 |
-| ------------------------ | ----------------------------------------- | ------------------------------------ |
-| `version.create`         | chapterId、draftRevision、type、label     | Version摘要                          |
-| `version.list`           | chapterId                                 | Version列表                          |
-| `version.get`            | versionId                                 | Version与Blocks                      |
-| `version.restoreToDraft` | versionId                                 | 新活动Draft与Revision                |
-| `candidate.list`         | chapterId、筛选                           | Candidate列表                        |
-| `candidate.get`          | candidateId                               | Candidate与Blocks                    |
-| `candidate.diff`         | candidateId、currentRevision、viewOptions | Diff或Task ID                        |
-| `candidate.apply`        | candidateId、baseRevision、选择映射       | 新Revision、ApplyRecord或ConflictSet |
-| `candidate.discard`      | candidateId                               | 状态更新                             |
+| 命令                       | 输入                                                                  | 输出                                      |
+| -------------------------- | --------------------------------------------------------------------- | ----------------------------------------- |
+| `version.create`           | chapterId、draftRevision、type、label                                   | Version摘要                               |
+| `version.list`             | chapterId                                                             | Version列表                               |
+| `version.get`              | versionId                                                             | Version与Blocks                           |
+| `version.restoreToDraft`   | versionId                                                             | 新活动Draft与Revision                     |
+| `candidate.list`           | projectId、chapterId                                                   | Candidate列表                             |
+| `candidate.get`            | projectId、chapterId、candidateId                                      | Candidate与Blocks                         |
+| `candidate.preview`        | projectId、chapterId、candidateId                                      | Draft、Candidate、结构/字符Diff与执行策略 |
+| `candidate.cancelPreview`  | previewRequestId                                                       | 是否接收取消                              |
+| `candidate.apply`          | projectId、chapterId、candidateId、draftId、baseRevision、选择映射     | ApplyRecord+Checkpoint+Draft或ConflictSet |
+| `candidate.findUndoRecord` | projectId、chapterId、candidateId                                      | applyRecordId                             |
+| `candidate.previewUndo`    | projectId、chapterId、applyRecordId                                    | 回退预览、当前Draft、Checkpoint或冲突     |
+| `candidate.undoApply`      | projectId、chapterId、applyRecordId、draftId、baseRevision             | 新Revision或ConflictSet                   |
+| `candidate.discard`        | projectId、chapterId、candidateId                                      | 状态更新                                  |
+
+M2-03桌面最小审阅面使用窄桥`window.worldforgeCandidatePreview`，对应IPC频道为`worldforge:candidate:preview`、`cancel-preview`、`apply`、`find-undo-record`、`preview-undo`和`undo-apply`。Preload只暴露上述具名方法；Main同时校验strict命令Schema和可信Renderer URL，额外字段、非法ID与非可信来源在进入Core前拒绝。
+
+Preview的`requestId`同时是可取消计算标识。5001—20000字符在Core Utility Process内分片让出事件循环，20001字符以上进入Worker；取消返回后原Preview以`COMMON_CANCELLED_004`结束。Preview只读项目库，不写Draft、PatchLog或Candidate状态。
+
+Apply选择仅允许`all`、属于当前Candidate的完整CandidateBlock集合或SceneBeat集合，未知/重复选择进入结构ConflictSet，V1不接受逐字符拼接。Apply、Checkpoint、规范Draft Patch审计日志、Revision递增、ApplyRecord和Candidate状态在同一项目库事务提交；任一失败全部回滚。成功的Apply/Undo按持久化requestId跨重启返回首次结果，同一requestId不得重新绑定到其他Candidate或Patch。Undo同样写入统一`draft_patch_log`并创建新Revision，应用后Draft已变化时只返回持久化`undo-stale` ConflictSet。
 
 ### 4.5 实体、Canon与连续性
 

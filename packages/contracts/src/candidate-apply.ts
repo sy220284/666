@@ -5,7 +5,7 @@ import {
   CandidateCompletenessSchema,
   CandidateDocumentSchema,
   CandidateStatusSchema,
-} from './candidate-base.js';
+} from './candidate.js';
 import {
   DraftBlockAttributesSchema,
   DraftBlockSchema,
@@ -19,14 +19,18 @@ import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const CANDIDATE_APPLY_IPC_CHANNELS = {
   previewCandidate: 'worldforge:candidate:preview',
+  cancelPreview: 'worldforge:candidate:cancel-preview',
   applyCandidate: 'worldforge:candidate:apply',
+  findUndoRecord: 'worldforge:candidate:find-undo-record',
   previewUndo: 'worldforge:candidate:preview-undo',
   undoApply: 'worldforge:candidate:undo-apply',
 } as const;
 
 export const CANDIDATE_APPLY_COMMANDS = {
   previewCandidate: 'candidate.preview',
+  cancelPreview: 'candidate.cancelPreview',
   applyCandidate: 'candidate.apply',
+  findUndoRecord: 'candidate.findUndoRecord',
   previewUndo: 'candidate.previewUndo',
   undoApply: 'candidate.undoApply',
 } as const;
@@ -154,6 +158,12 @@ export const CandidatePreviewInputSchema = z.strictObject({
   chapterId: DraftEntityIdSchema,
   candidateId: DraftEntityIdSchema,
 });
+export const CandidatePreviewCancelInputSchema = z.strictObject({
+  previewRequestId: DraftEntityIdSchema,
+});
+export const CandidatePreviewCancelSchema = z.strictObject({
+  cancelled: z.boolean(),
+});
 export const CandidateApplyInputSchema = CandidatePreviewInputSchema.extend({
   draftId: DraftEntityIdSchema,
   baseRevision: z.number().int().nonnegative(),
@@ -162,6 +172,14 @@ export const CandidateApplyInputSchema = CandidatePreviewInputSchema.extend({
 export const CandidateUndoPreviewInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   chapterId: DraftEntityIdSchema,
+  applyRecordId: DraftEntityIdSchema,
+});
+export const CandidateUndoLookupInputSchema = CandidatePreviewInputSchema.pick({
+  projectId: true,
+  chapterId: true,
+  candidateId: true,
+});
+export const CandidateUndoLookupSchema = z.strictObject({
   applyRecordId: DraftEntityIdSchema,
 });
 export const CandidateUndoInputSchema = CandidateUndoPreviewInputSchema.extend({
@@ -211,10 +229,20 @@ export const CandidatePreviewCommandSchema = z.strictObject({
   command: z.literal(CANDIDATE_APPLY_COMMANDS.previewCandidate),
   payload: CandidatePreviewInputSchema,
 });
+export const CandidatePreviewCancelCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(CANDIDATE_APPLY_COMMANDS.cancelPreview),
+  payload: CandidatePreviewCancelInputSchema,
+});
 export const CandidateApplyCommandSchema = z.strictObject({
   ...commandEnvelope,
   command: z.literal(CANDIDATE_APPLY_COMMANDS.applyCandidate),
   payload: CandidateApplyInputSchema,
+});
+export const CandidateUndoLookupCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(CANDIDATE_APPLY_COMMANDS.findUndoRecord),
+  payload: CandidateUndoLookupInputSchema,
 });
 export const CandidateUndoPreviewCommandSchema = z.strictObject({
   ...commandEnvelope,
@@ -244,7 +272,9 @@ const resultSchema = <Schema extends z.ZodType>(schema: Schema) =>
     failureSchema,
   ]);
 export const CandidatePreviewResultSchema = resultSchema(CandidatePreviewSchema);
+export const CandidatePreviewCancelResultSchema = resultSchema(CandidatePreviewCancelSchema);
 export const CandidateApplyResultSchema = resultSchema(CandidateApplyOutcomeSchema);
+export const CandidateUndoLookupResultSchema = resultSchema(CandidateUndoLookupSchema);
 export const CandidateUndoPreviewResultSchema = resultSchema(CandidateUndoPreviewSchema);
 export const CandidateUndoResultSchema = resultSchema(CandidateUndoOutcomeSchema);
 
@@ -254,8 +284,16 @@ export const CoreCandidateApplyOperationSchema = z.discriminatedUnion('operation
     input: CandidatePreviewInputSchema,
   }),
   z.strictObject({
+    operation: z.literal(CANDIDATE_APPLY_COMMANDS.cancelPreview),
+    input: CandidatePreviewCancelInputSchema,
+  }),
+  z.strictObject({
     operation: z.literal(CANDIDATE_APPLY_COMMANDS.applyCandidate),
     input: CandidateApplyInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(CANDIDATE_APPLY_COMMANDS.findUndoRecord),
+    input: CandidateUndoLookupInputSchema,
   }),
   z.strictObject({
     operation: z.literal(CANDIDATE_APPLY_COMMANDS.previewUndo),
@@ -277,7 +315,9 @@ const coreSuccess = <Operation extends string, Schema extends z.ZodType>(
   });
 export const CoreCandidateApplyResultSchema = z.union([
   coreSuccess(CANDIDATE_APPLY_COMMANDS.previewCandidate, CandidatePreviewSchema),
+  coreSuccess(CANDIDATE_APPLY_COMMANDS.cancelPreview, CandidatePreviewCancelSchema),
   coreSuccess(CANDIDATE_APPLY_COMMANDS.applyCandidate, CandidateApplyOutcomeSchema),
+  coreSuccess(CANDIDATE_APPLY_COMMANDS.findUndoRecord, CandidateUndoLookupSchema),
   coreSuccess(CANDIDATE_APPLY_COMMANDS.previewUndo, CandidateUndoPreviewSchema),
   coreSuccess(CANDIDATE_APPLY_COMMANDS.undoApply, CandidateUndoOutcomeSchema),
   z.strictObject({
@@ -297,8 +337,12 @@ export type CandidateConflictSet = z.infer<typeof CandidateConflictSetSchema>;
 export type CandidateCheckpoint = z.infer<typeof CandidateCheckpointSchema>;
 export type CandidateApplyRecord = z.infer<typeof CandidateApplyRecordSchema>;
 export type CandidatePreviewInput = z.infer<typeof CandidatePreviewInputSchema>;
+export type CandidatePreviewCancelInput = z.infer<typeof CandidatePreviewCancelInputSchema>;
+export type CandidatePreviewCancel = z.infer<typeof CandidatePreviewCancelSchema>;
 export type CandidateApplyInput = z.infer<typeof CandidateApplyInputSchema>;
 export type CandidateUndoPreviewInput = z.infer<typeof CandidateUndoPreviewInputSchema>;
+export type CandidateUndoLookupInput = z.infer<typeof CandidateUndoLookupInputSchema>;
+export type CandidateUndoLookup = z.infer<typeof CandidateUndoLookupSchema>;
 export type CandidateUndoInput = z.infer<typeof CandidateUndoInputSchema>;
 export type CandidateApplyOutcome = z.infer<typeof CandidateApplyOutcomeSchema>;
 export type CandidateUndoPreview = z.infer<typeof CandidateUndoPreviewSchema>;

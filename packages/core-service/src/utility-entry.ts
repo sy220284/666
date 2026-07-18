@@ -201,6 +201,7 @@ function projectWorkspaceError(error: unknown): ErrorCode {
     }
   }
   if (error instanceof CandidateApplyServiceError) {
+    if (error.code === 'CANDIDATE_PREVIEW_CANCELLED') return 'COMMON_CANCELLED_004';
     if (error.code === 'CANDIDATE_APPLY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'CANDIDATE_APPLY_INVALID') return 'COMMON_INVALID_INPUT_001';
     return 'COMMON_CONFLICT_003';
@@ -236,6 +237,8 @@ function projectWorkspaceError(error: unknown): ErrorCode {
         return 'DRAFT_REVISION_CONFLICT_001';
       case 'DRAFT_BLOCK_HASH_CONFLICT':
         return 'DRAFT_BLOCK_HASH_CONFLICT_002';
+      case 'DRAFT_BLOCK_LOCKED':
+        return 'DRAFT_BLOCK_LOCKED_003';
       case 'DRAFT_PATCH_INVALID':
         return 'DRAFT_PATCH_INVALID_004';
       case 'DRAFT_INVARIANT_FAILED':
@@ -492,13 +495,37 @@ async function executeProjectOperation(
         return CoreProjectResultSchema.parse({
           ok: true,
           operation: operation.operation,
-          data: candidateApply.preview(operation.input),
+          data: await candidateApply.previewProgressively(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.cancelPreview:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidateApply.cancelPreview(operation.input),
         });
       case CANDIDATE_APPLY_COMMANDS.applyCandidate:
         return CoreProjectResultSchema.parse({
           ok: true,
           operation: operation.operation,
           data: await candidateApply.apply(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.previewUndo:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidateApply.previewUndo(operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.undoApply:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidateApply.undo(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.findUndoRecord:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidateApply.findUndoRecord(operation.input),
         });
       case VERSION_COMMANDS.createVersion:
         return CoreProjectResultSchema.parse({

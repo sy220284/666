@@ -1,3 +1,5 @@
+import type { CandidatePreview } from '@worldforge/contracts';
+
 interface CandidatePreviewContext {
   readonly projectId: string;
   readonly chapterId: string;
@@ -39,6 +41,11 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   const select = element('select');
   select.dataset.candidatePreviewSelect = '';
   select.setAttribute('aria-label', '选择候选稿');
+  const cancel = element('button', '取消计算');
+  cancel.type = 'button';
+  cancel.dataset.cancelCandidatePreview = '';
+  cancel.hidden = true;
+  cancel.disabled = true;
   const close = element('button', '关闭');
   close.type = 'button';
   const status = element('p', '选择候选后读取已保存正文的差异。');
@@ -47,7 +54,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   const warning = element('p');
   warning.dataset.candidatePreviewWarning = '';
   warning.setAttribute('role', 'status');
-  controls.append(select, close);
+  controls.append(select, cancel, close);
 
   const summary = element('pre');
   summary.dataset.candidatePreviewSummary = '';
@@ -76,17 +83,46 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   columns.append(currentPanel, candidatePanel);
   dialog.append(heading, controls, status, warning, summary, columns);
   document.body.append(dialog);
+  let activePreviewRequestId: string | null = null;
+
+  const dispatchLoading = (): void => {
+    dialog.dispatchEvent(new CustomEvent('worldforge:candidate-preview-loading'));
+  };
+
+  const dispatchReady = (preview: CandidatePreview): void => {
+    dialog.dispatchEvent(
+      new CustomEvent<CandidatePreview>('worldforge:candidate-preview-ready', {
+        detail: preview,
+      }),
+    );
+  };
 
   const loadPreview = async (): Promise<void> => {
     const context = await options.context();
     const candidateId = select.value;
     if (!context || !candidateId) return;
+    const requestId = globalThis.crypto.randomUUID();
+    activePreviewRequestId = requestId;
     select.disabled = true;
+    cancel.hidden = false;
+    cancel.disabled = false;
     status.textContent = '正在计算结构与中文字符差异…';
+    warning.textContent = '';
+    summary.textContent = '';
+    currentText.textContent = '';
+    candidateText.textContent = '';
+    dispatchLoading();
     try {
-      const result = await window.worldforgeCandidatePreview.preview({ ...context, candidateId });
+      const result = await window.worldforgeCandidatePreview.preview(
+        { ...context, candidateId },
+        requestId,
+      );
+      if (activePreviewRequestId !== requestId) return;
       if (!result.ok) {
-        status.textContent = `预览失败 · ${result.error.code}`;
+        status.textContent =
+          result.error.code === 'COMMON_CANCELLED_004'
+            ? '差异计算已取消。'
+            : `预览失败 · ${result.error.code}`;
         return;
       }
       const preview = result.data;
@@ -106,10 +142,35 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
       ].join('\n');
       currentText.textContent = blocksText(preview.draft.blocks);
       candidateText.textContent = blocksText(preview.candidate.blocks);
+      dispatchReady(preview);
     } catch {
+      if (activePreviewRequestId !== requestId) return;
       status.textContent = '预览失败 · COMMON_INTERNAL_999';
     } finally {
-      select.disabled = false;
+      if (activePreviewRequestId === requestId) {
+        activePreviewRequestId = null;
+        select.disabled = false;
+        cancel.hidden = true;
+        cancel.disabled = true;
+      }
+    }
+  };
+
+  const cancelPreview = async (): Promise<void> => {
+    const requestId = activePreviewRequestId;
+    if (!requestId) return;
+    cancel.disabled = true;
+    status.textContent = '正在取消差异计算…';
+    try {
+      const result = await window.worldforgeCandidatePreview.cancelPreview(requestId);
+      if (!result.ok || !result.data.cancelled) {
+        status.textContent = result.ok
+          ? '差异计算已结束，无需取消。'
+          : `取消失败 · ${result.error.code}`;
+      }
+    } catch {
+      status.textContent = '取消失败 · COMMON_INTERNAL_999';
+      cancel.disabled = false;
     }
   };
 
@@ -149,7 +210,15 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
 
   button.addEventListener('click', () => void open());
   select.addEventListener('change', () => void loadPreview());
-  close.addEventListener('click', () => dialog.close());
+  cancel.addEventListener('click', () => void cancelPreview());
+  close.addEventListener('click', () => {
+    if (activePreviewRequestId) {
+      void window.worldforgeCandidatePreview
+        .cancelPreview(activePreviewRequestId)
+        .catch(() => undefined);
+    }
+    dialog.close();
+  });
 
   return () => {
     button.remove();

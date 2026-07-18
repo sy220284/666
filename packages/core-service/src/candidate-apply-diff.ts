@@ -1,3 +1,5 @@
+import { Worker } from 'node:worker_threads';
+
 export interface DraftDiffBlock {
   readonly logicalBlockId: string;
   readonly content: string;
@@ -39,20 +41,57 @@ export type StructureDiffEntry =
       readonly candidateIndex: number;
     };
 
-interface CharacterDiffSegment {
+export interface CharacterDiffSegment {
   readonly type: 'equal' | 'insert' | 'delete';
   readonly text: string;
 }
 
-interface CharacterDiffResult {
+export interface CharacterDiffResult {
   readonly segments: readonly CharacterDiffSegment[];
   readonly coarse: boolean;
 }
 
-interface CharacterJob {
+export interface CandidateDiffResult {
+  readonly structure: readonly StructureDiffEntry[];
+  readonly characterDiffs: readonly CandidateBlockCharacterDiff[];
+  readonly execution: ReturnType<typeof executionPlan>;
+}
+
+export class CandidateDiffCancelledError extends Error {
+  constructor() {
+    super('Candidate Diff calculation was cancelled.');
+    this.name = 'CandidateDiffCancelledError';
+  }
+}
+
+export interface CandidateDiffProgressiveOptions {
+  readonly signal?: AbortSignal;
+  readonly yieldControl?: () => Promise<void>;
+}
+
+export interface CandidateDiffWorkerInput {
+  readonly kind: 'worldforge.candidate-diff';
+  readonly current: readonly DraftDiffBlock[];
+  readonly candidate: readonly CandidateDiffBlock[];
+}
+
+export type CandidateDiffWorkerMessage =
+  | { readonly ok: true; readonly result: CandidateDiffResult }
+  | { readonly ok: false; readonly message: string };
+
+export interface CharacterJob {
   readonly key: string;
   readonly before: string;
   readonly after: string;
+}
+
+export interface CandidateBlockCharacterDiff extends CharacterJob {
+  readonly diff: CharacterDiffResult;
+}
+
+interface CandidateDiffAnalysis {
+  readonly structure: readonly StructureDiffEntry[];
+  readonly jobs: readonly CharacterJob[];
 }
 
 interface DirectMatch {
@@ -190,10 +229,10 @@ function executionPlan(
   };
 }
 
-export function computeCandidateDiff(
+function analyzeCandidateDiff(
   current: readonly DraftDiffBlock[],
   candidate: readonly CandidateDiffBlock[],
-) {
+): CandidateDiffAnalysis {
   validateInputs(current, candidate);
   const currentById = new Map(
     current.map((block, index) => [block.logicalBlockId, { block, index }]),
@@ -260,7 +299,7 @@ export function computeCandidateDiff(
     if (consumedCandidate.has(candidateIndex)) continue;
     const source =
       block.sourceLogicalBlockIds?.length === 1 ? block.sourceLogicalBlockIds[0] : undefined;
-    const logicalBlockId = block.logicalBlockId ?? source;
+    const logicalBlockId = source ?? block.logicalBlockId;
     if (!logicalBlockId) continue;
     const record = currentById.get(logicalBlockId);
     if (!record || consumedCurrent.has(record.index)) continue;
@@ -299,9 +338,151 @@ export function computeCandidateDiff(
     }
   }
 
+  return { structure, jobs };
+}
+
+export function computeCandidateDiff(
+  current: readonly DraftDiffBlock[],
+  candidate: readonly CandidateDiffBlock[],
+): CandidateDiffResult {
+  const analysis = analyzeCandidateDiff(current, candidate);
   return {
-    structure,
-    characterDiffs: jobs.map((job) => ({ ...job, diff: characterDiff(job.before, job.after) })),
+    structure: analysis.structure,
+    characterDiffs: analysis.jobs.map((job) => ({
+      ...job,
+      diff: characterDiff(job.before, job.after),
+    })),
     execution: executionPlan(current, candidate),
   };
+}
+
+function throwIfCancelled(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new CandidateDiffCancelledError();
+}
+
+function defaultYieldControl(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+async function cooperativeCharacterDiff(
+  before: string,
+  after: string,
+  options: CandidateDiffProgressiveOptions,
+): Promise<CharacterDiffResult> {
+  throwIfCancelled(options.signal);
+  if (before === after) return { segments: [{ type: 'equal', text: before }], coarse: false };
+  const left = Array.from(before);
+  const right = Array.from(after);
+  const yieldControl = options.yieldControl ?? defaultYieldControl;
+  let scannedSinceYield = 0;
+  const checkpoint = async (): Promise<void> => {
+    scannedSinceYield += 1;
+    if (scannedSinceYield < 2_048) return;
+    scannedSinceYield = 0;
+    await yieldControl();
+    throwIfCancelled(options.signal);
+  };
+
+  let prefix = 0;
+  while (prefix < left.length && prefix < right.length && left[prefix] === right[prefix]) {
+    prefix += 1;
+    if (scannedSinceYield + 1 >= 2_048) await checkpoint();
+    else scannedSinceYield += 1;
+  }
+  let suffix = 0;
+  while (
+    suffix < left.length - prefix &&
+    suffix < right.length - prefix &&
+    left[left.length - 1 - suffix] === right[right.length - 1 - suffix]
+  ) {
+    suffix += 1;
+    if (scannedSinceYield + 1 >= 2_048) await checkpoint();
+    else scannedSinceYield += 1;
+  }
+  throwIfCancelled(options.signal);
+  const segments: CharacterDiffSegment[] = [];
+  const equalPrefix = left.slice(0, prefix).join('');
+  const deleted = left.slice(prefix, left.length - suffix).join('');
+  const inserted = right.slice(prefix, right.length - suffix).join('');
+  const equalSuffix = suffix === 0 ? '' : left.slice(left.length - suffix).join('');
+  if (equalPrefix) segments.push({ type: 'equal', text: equalPrefix });
+  if (deleted) segments.push({ type: 'delete', text: deleted });
+  if (inserted) segments.push({ type: 'insert', text: inserted });
+  if (equalSuffix) segments.push({ type: 'equal', text: equalSuffix });
+  return { segments, coarse: false };
+}
+
+function workerModuleUrl(): URL {
+  return import.meta.url.endsWith('.ts')
+    ? new URL('../dist/candidate-diff-worker.js', import.meta.url)
+    : new URL('./candidate-diff-worker.js', import.meta.url);
+}
+
+function computeCandidateDiffInWorker(
+  current: readonly DraftDiffBlock[],
+  candidate: readonly CandidateDiffBlock[],
+  signal: AbortSignal | undefined,
+): Promise<CandidateDiffResult> {
+  throwIfCancelled(signal);
+  const worker = new Worker(workerModuleUrl(), {
+    workerData: {
+      kind: 'worldforge.candidate-diff',
+      current,
+      candidate,
+    } satisfies CandidateDiffWorkerInput,
+  });
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = (): void => signal?.removeEventListener('abort', cancel);
+    const fail = (error: unknown): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const cancel = (): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      void worker.terminate();
+      reject(new CandidateDiffCancelledError());
+    };
+    signal?.addEventListener('abort', cancel, { once: true });
+    worker.once('message', (message: CandidateDiffWorkerMessage) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (message.ok) resolve(message.result);
+      else reject(new Error(message.message));
+    });
+    worker.once('error', fail);
+    worker.once('exit', (code) => {
+      if (code !== 0) fail(new Error(`Candidate Diff Worker exited with code ${code}.`));
+    });
+  });
+}
+
+export async function computeCandidateDiffProgressively(
+  current: readonly DraftDiffBlock[],
+  candidate: readonly CandidateDiffBlock[],
+  options: CandidateDiffProgressiveOptions = {},
+): Promise<CandidateDiffResult> {
+  throwIfCancelled(options.signal);
+  const execution = executionPlan(current, candidate);
+  if (execution.strategy === 'main-thread') return computeCandidateDiff(current, candidate);
+  if (execution.strategy === 'worker') {
+    return computeCandidateDiffInWorker(current, candidate, options.signal);
+  }
+
+  const analysis = analyzeCandidateDiff(current, candidate);
+  const characterDiffs: CandidateBlockCharacterDiff[] = [];
+  await (options.yieldControl?.() ?? defaultYieldControl());
+  throwIfCancelled(options.signal);
+  for (const job of analysis.jobs) {
+    characterDiffs.push({
+      ...job,
+      diff: await cooperativeCharacterDiff(job.before, job.after, options),
+    });
+  }
+  return { structure: analysis.structure, characterDiffs, execution };
 }

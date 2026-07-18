@@ -130,8 +130,25 @@ describe('M2-01 Core LockGuard', () => {
             baseRevision: withSecond.revision,
             operations: [operation],
           }),
-        ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_PATCH_INVALID' });
+        ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_BLOCK_LOCKED' });
       }
+
+      await expect(
+        harness.drafts.applyPatch(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          draftId: draft.draftId,
+          baseRevision: withSecond.revision,
+          operations: [
+            {
+              type: 'move',
+              logicalBlockId: withSecond.blocks[1]!.logicalBlockId,
+              expectedHash: withSecond.blocks[1]!.contentHash!,
+              afterLogicalBlockId: null,
+            },
+          ],
+        }),
+      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_BLOCK_LOCKED' });
 
       const unlockedAndUpdated = await harness.drafts.applyPatch(randomUUID(), {
         projectId: project.projectId,
@@ -238,7 +255,7 @@ describe('M2-01 Core LockGuard', () => {
             },
           ],
         }),
-      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_PATCH_INVALID' });
+      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_BLOCK_LOCKED' });
 
       await expect(
         harness.drafts.saveSnapshot(randomUUID(), {
@@ -262,7 +279,7 @@ describe('M2-01 Core LockGuard', () => {
             },
           ],
         }),
-      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_PATCH_INVALID' });
+      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_BLOCK_LOCKED' });
 
       await expect(
         harness.drafts.saveSnapshot(randomUUID(), {
@@ -286,7 +303,7 @@ describe('M2-01 Core LockGuard', () => {
             },
           ],
         }),
-      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_PATCH_INVALID' });
+      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_BLOCK_LOCKED' });
     } finally {
       await closeHarness(harness);
     }

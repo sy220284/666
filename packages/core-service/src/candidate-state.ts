@@ -10,6 +10,8 @@ import {
   DraftBlockAttributesSchema,
   DraftBlockSchema,
   DraftDocumentSchema,
+  DraftEntityIdSchema,
+  DraftPatchOperationSchema,
   type CandidateApplyRecord,
   type CandidateBlock,
   type CandidateCheckpoint,
@@ -17,16 +19,21 @@ import {
   type CandidateConflictSet,
   type CandidateDocument,
   type CandidatePreviewInput,
-  type CandidateSelection,
   type DraftBlock,
   type DraftDocument,
+  type DraftPatchOperation,
 } from '@worldforge/contracts';
+import { normalizeDraftBlockSemantic } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
+import { candidateBlockContentHash, candidateDocumentContentHash } from './candidate-integrity.js';
 import { draftContentHash } from './draft.js';
 
 export type CandidateApplyServiceErrorCode =
-  'CANDIDATE_APPLY_NOT_FOUND' | 'CANDIDATE_APPLY_INVALID' | 'CANDIDATE_APPLY_INVARIANT';
+  | 'CANDIDATE_APPLY_NOT_FOUND'
+  | 'CANDIDATE_APPLY_INVALID'
+  | 'CANDIDATE_APPLY_INVARIANT'
+  | 'CANDIDATE_PREVIEW_CANCELLED';
 
 export class CandidateApplyServiceError extends Error {
   readonly code: CandidateApplyServiceErrorCode;
@@ -41,7 +48,9 @@ export class CandidateApplyServiceError extends Error {
 export interface CandidateApplyServiceOptions {
   readonly clock?: DatabaseClock;
   readonly idFactory?: () => string;
-  readonly faultInjector?: (stage: 'after-checkpoint' | 'after-draft-persist') => void;
+  readonly faultInjector?: (
+    stage: 'after-checkpoint' | 'after-draft-persist' | 'before-commit',
+  ) => void;
 }
 
 export interface DraftRow {
@@ -128,6 +137,7 @@ export interface ApplyRecordRow {
 
 export interface MutableDraftBlock extends DraftBlock {
   readonly recordId: string;
+  readonly contentHash: string;
   readonly revision: number;
 }
 
@@ -207,19 +217,37 @@ export function readDraftBlocks(database: DatabaseSync, draftId: string): Mutabl
     .all(draftId) as unknown as DraftBlockRow[];
   return rows.map((row, index) => {
     const attributes = parseAttributes(row.attributesJson);
-    const contentHash =
-      row.contentHash ??
-      draftContentHash({ blockType: row.blockType, content: row.text, attributes });
+    let normalized: ReturnType<typeof normalizeDraftBlockSemantic>;
+    try {
+      normalized = normalizeDraftBlockSemantic({
+        blockType: row.blockType,
+        content: row.text,
+        attributes,
+      });
+    } catch (error) {
+      throw new CandidateApplyServiceError(
+        'CANDIDATE_APPLY_INVARIANT',
+        'Persisted DraftBlock semantics are invalid.',
+        { cause: error },
+      );
+    }
+    const computedHash = draftContentHash(normalized);
+    if (row.contentHash !== null && row.contentHash !== computedHash) {
+      throw new CandidateApplyServiceError(
+        'CANDIDATE_APPLY_INVARIANT',
+        'A persisted DraftBlock content hash does not match its semantic content.',
+      );
+    }
     return {
       recordId: row.recordId,
       logicalBlockId: row.logicalBlockId,
       orderKey: String((index + 1) * 1024),
-      blockType: row.blockType,
-      text: row.text,
-      attributes,
+      blockType: normalized.blockType,
+      text: normalized.content,
+      attributes: normalized.attributes,
       source: row.source,
       locked: persistedNumber(row.locked) === 1,
-      contentHash,
+      contentHash: row.contentHash ?? computedHash,
       revision: persistedNumber(row.revision),
     };
   });
@@ -313,24 +341,43 @@ export function readCandidateDocument(
     sourceBlockHash: block.sourceBlockHash,
     contentHash: block.contentHash,
   }));
-  return CandidateDocumentSchema.parse({
-    candidateId: row.candidateId,
-    projectId: row.projectId,
-    chapterId: row.chapterId,
-    generationRunId: row.generationRunId,
-    candidateType: row.candidateType,
-    baseDraftId: row.baseDraftId,
-    baseDraftRevision: persistedNumber(row.baseDraftRevision),
-    completeness: row.completeness,
-    status: row.status,
-    title: row.title,
-    sourceVersionId: row.sourceVersionId,
-    contentHash: row.contentHash,
-    blockCount: blocks.length,
-    createdAt: row.createdAt,
-    resolvedAt: row.resolvedAt,
-    blocks,
-  });
+  try {
+    const document = CandidateDocumentSchema.parse({
+      candidateId: row.candidateId,
+      projectId: row.projectId,
+      chapterId: row.chapterId,
+      generationRunId: row.generationRunId,
+      candidateType: row.candidateType,
+      baseDraftId: row.baseDraftId,
+      baseDraftRevision: persistedNumber(row.baseDraftRevision),
+      completeness: row.completeness,
+      status: row.status,
+      title: row.title,
+      sourceVersionId: row.sourceVersionId,
+      contentHash: row.contentHash,
+      blockCount: blocks.length,
+      createdAt: row.createdAt,
+      resolvedAt: row.resolvedAt,
+      blocks,
+    });
+    if (
+      document.blocks.some((block) => candidateBlockContentHash(block) !== block.contentHash) ||
+      candidateDocumentContentHash(document.blocks) !== document.contentHash
+    ) {
+      throw new CandidateApplyServiceError(
+        'CANDIDATE_APPLY_INVARIANT',
+        'The persisted Candidate content hashes do not match its blocks.',
+      );
+    }
+    return document;
+  } catch (error) {
+    if (error instanceof CandidateApplyServiceError) throw error;
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVARIANT',
+      'The persisted Candidate is invalid.',
+      { cause: error },
+    );
+  }
 }
 
 export function persistConflictSet(
@@ -445,10 +492,10 @@ export function auditBlocks(
 export function draftOperations(
   before: readonly MutableDraftBlock[],
   after: readonly MutableDraftBlock[],
-) {
+): DraftPatchOperation[] {
   const beforeById = new Map(before.map((block) => [block.logicalBlockId, block]));
   const afterById = new Map(after.map((block) => [block.logicalBlockId, block]));
-  const result: Record<string, unknown>[] = [];
+  const result: DraftPatchOperation[] = [];
   for (const block of before) {
     if (!afterById.has(block.logicalBlockId)) {
       result.push({
@@ -463,11 +510,12 @@ export function draftOperations(
     if (!previous) {
       result.push({
         type: 'insert',
-        logicalBlockId: block.logicalBlockId,
         afterLogicalBlockId: after[index - 1]?.logicalBlockId ?? null,
-        blockType: block.blockType,
-        content: block.text,
-        attributes: block.attributes,
+        block: {
+          blockType: block.blockType,
+          content: block.text,
+          attributes: block.attributes,
+        },
       });
       continue;
     }
@@ -486,7 +534,7 @@ export function draftOperations(
       result.push({
         type: 'move',
         logicalBlockId: block.logicalBlockId,
-        expectedHash: previous.contentHash,
+        expectedHash: block.contentHash,
         afterLogicalBlockId: after[index - 1]?.logicalBlockId ?? null,
       });
     }
@@ -520,6 +568,18 @@ function recordFrom(row: ApplyRecordRow): CandidateApplyRecord {
     undoneRevision: row.undoneRevision === null ? null : persistedNumber(row.undoneRevision),
     undoneAt: row.undoneAt,
   });
+}
+
+function operationsFromJson(raw: string): DraftPatchOperation[] {
+  try {
+    return DraftPatchOperationSchema.array().max(150_000).parse(JSON.parse(raw));
+  } catch (error) {
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVARIANT',
+      'A persisted Candidate ApplyRecord operation log is invalid.',
+      { cause: error },
+    );
+  }
 }
 
 export function readApplyRecord(
@@ -564,31 +624,109 @@ export function readApplyRecord(
       'The Candidate ApplyRecord checkpoint is missing.',
     );
   }
+  const baseRevision = persistedNumber(row.baseRevision);
+  const committedRevision = persistedNumber(row.committedRevision);
+  const undoneRevision = row.undoneRevision === null ? null : persistedNumber(row.undoneRevision);
+  if (
+    committedRevision !== baseRevision + 1 ||
+    (row.status === 'undone' && undoneRevision !== committedRevision + 1)
+  ) {
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVARIANT',
+      'The Candidate ApplyRecord Revision sequence is invalid.',
+    );
+  }
+  if (
+    checkpoint.candidateId !== row.candidateId ||
+    checkpoint.draftId !== row.draftId ||
+    persistedNumber(checkpoint.sourceRevision) !== baseRevision
+  ) {
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVARIANT',
+      'The Candidate ApplyRecord checkpoint does not match its ApplyRecord.',
+    );
+  }
+  const checkpointBlocks = mutableFromSnapshot(
+    checkpoint.blocksJson,
+    persistedNumber(checkpoint.sourceRevision),
+  );
+  const appliedBlocks = mutableFromSnapshot(row.appliedBlocksJson, committedRevision);
+  const operations = operationsFromJson(row.operationsJson);
+  const inverseOperations = operationsFromJson(row.inverseOperationsJson);
+  const checkpointHash = snapshotHash(
+    checkpointBlocks.map(({ recordId: _recordId, revision: _revision, ...block }) => block),
+  );
+  if (checkpointHash !== checkpoint.contentHash) {
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVARIANT',
+      'The Candidate ApplyRecord checkpoint content hash does not match its blocks.',
+    );
+  }
+  if (
+    stable(operations) !== stable(draftOperations(checkpointBlocks, appliedBlocks)) ||
+    stable(inverseOperations) !== stable(draftOperations(appliedBlocks, checkpointBlocks))
+  ) {
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVARIANT',
+      'The Candidate ApplyRecord operation logs do not match its snapshots.',
+    );
+  }
   return {
     row,
     record: recordFrom(row),
     checkpoint,
     checkpointSummary: checkpointFrom(checkpoint),
+    checkpointBlocks,
+    appliedBlocks,
+    operations,
+    inverseOperations,
   };
 }
 
 export function mutableFromSnapshot(raw: string, committedRevision: number): MutableDraftBlock[] {
-  const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
-  return parsed.map((item, index) => {
-    const block = DraftBlockSchema.parse({
-      logicalBlockId: item.logicalBlockId,
-      orderKey: String((index + 1) * 1024),
-      blockType: item.blockType,
-      text: item.text,
-      attributes: item.attributes,
-      source: item.source,
-      locked: item.locked,
-      contentHash: item.contentHash,
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error('Snapshot must contain at least one DraftBlock.');
+    }
+    return parsed.map((item, index) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        throw new Error('Snapshot entries must be objects.');
+      }
+      const record = item as Record<string, unknown>;
+      const block = DraftBlockSchema.parse({
+        logicalBlockId: record.logicalBlockId,
+        orderKey: String((index + 1) * 1024),
+        blockType: record.blockType,
+        text: record.text,
+        attributes: record.attributes,
+        source: record.source,
+        locked: record.locked,
+        contentHash: record.contentHash,
+      });
+      const contentHash = block.contentHash;
+      if (
+        !contentHash ||
+        draftContentHash({
+          blockType: block.blockType,
+          content: block.text,
+          attributes: block.attributes,
+        }) !== contentHash
+      ) {
+        throw new Error('Snapshot DraftBlock content hash does not match its semantic content.');
+      }
+      return {
+        ...block,
+        contentHash,
+        recordId: DraftEntityIdSchema.parse(record.recordId),
+        revision: committedRevision,
+      };
     });
-    return {
-      ...block,
-      recordId: String(item.recordId),
-      revision: committedRevision,
-    };
-  });
+  } catch (error) {
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVARIANT',
+      'A persisted Draft snapshot is invalid.',
+      { cause: error },
+    );
+  }
 }

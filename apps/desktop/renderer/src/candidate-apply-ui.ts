@@ -1,4 +1,9 @@
-import type { CandidatePreview, CandidateSelection } from '@worldforge/contracts';
+import type {
+  CandidateConflictItem,
+  CandidatePreview,
+  CandidateSelection,
+  CandidateUndoPreview,
+} from '@worldforge/contracts';
 
 interface CandidateContext {
   readonly projectId: string;
@@ -19,6 +24,14 @@ function checkedValues(root: HTMLElement, name: string): string[] {
   return [...root.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)].map(
     (input) => input.value,
   );
+}
+
+async function safely<T>(operation: () => Promise<T>): Promise<T | null> {
+  try {
+    return await operation();
+  } catch {
+    return null;
+  }
 }
 
 export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => void {
@@ -52,6 +65,12 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
   submit.dataset.applyCandidate = '';
   submit.disabled = true;
 
+  const undo = node('button', '撤销本次应用');
+  undo.type = 'button';
+  undo.dataset.undoCandidateApply = '';
+  undo.hidden = true;
+  undo.disabled = true;
+
   const status = node('p', '请选择候选内容。');
   status.dataset.candidateApplyStatus = '';
   status.setAttribute('role', 'status');
@@ -67,11 +86,19 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
 
   const label = node('label', '范围 ');
   label.append(mode);
-  panel.append(node('h3', '采用候选内容'), label, submit, status, choices, conflicts);
+  panel.append(node('h3', '采用候选内容'), label, submit, undo, status, choices, conflicts);
   dialog.append(panel);
 
   let preview: CandidatePreview | null = null;
+  let undoPreview: CandidateUndoPreview | null = null;
   let refreshId = 0;
+
+  const renderConflicts = (items: readonly CandidateConflictItem[]): void => {
+    conflicts.replaceChildren();
+    for (const conflict of items) {
+      conflicts.append(node('li', `${conflict.kind} · ${conflict.message}`));
+    }
+  };
 
   const buildSelection = (): CandidateSelection | null => {
     if (!preview) return null;
@@ -88,9 +115,10 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
 
   const render = (): void => {
     choices.replaceChildren();
-    conflicts.replaceChildren();
     if (!preview) {
       submit.disabled = true;
+      undo.hidden = true;
+      undo.disabled = true;
       return;
     }
 
@@ -132,43 +160,100 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
       }
       if (!beats.length) choices.append(node('p', '当前候选没有SceneBeat标记。'));
     }
-    submit.disabled = buildSelection() === null;
+    submit.disabled = preview.candidate.status !== 'pending' || buildSelection() === null;
+    undo.hidden = undoPreview === null;
+    undo.disabled = !undoPreview?.canUndo;
   };
 
-  const refresh = async (): Promise<void> => {
+  const loadUndoPreview = async (
+    context: CandidateContext,
+    candidateId: string,
+  ): Promise<CandidateUndoPreview | null> => {
+    const lookup = await safely(() =>
+      window.worldforgeCandidatePreview.findUndoRecord({
+        ...context,
+        candidateId,
+      }),
+    );
+    if (!lookup?.ok) return null;
+    const result = await safely(() =>
+      window.worldforgeCandidatePreview.previewUndo({
+        ...context,
+        applyRecordId: lookup.data.applyRecordId,
+      }),
+    );
+    return result?.ok ? result.data : null;
+  };
+
+  const acceptPreview = async (nextPreview: CandidatePreview): Promise<void> => {
     const request = ++refreshId;
     const context = await options.context();
     const candidateId = candidateSelect.value;
-    if (!context || !candidateId) return;
-    const result = await window.worldforgeCandidatePreview.preview({ ...context, candidateId });
-    if (request !== refreshId) return;
-    if (!result.ok) {
-      preview = null;
-      status.textContent = `准备失败 · ${result.error.code}`;
-      render();
+    if (!context || !candidateId || nextPreview.candidate.candidateId !== candidateId) return;
+    const nextUndoPreview =
+      nextPreview.candidate.status === 'accepted'
+        ? await loadUndoPreview(context, nextPreview.candidate.candidateId)
+        : null;
+    if (request !== refreshId || candidateSelect.value !== nextPreview.candidate.candidateId) {
       return;
     }
-    preview = result.data;
-    status.textContent =
-      preview.candidate.completeness === 'partial'
-        ? '不完整建议稿仅允许按块或SceneBeat采用。'
-        : '已准备采用。';
+    preview = nextPreview;
+    undoPreview = nextUndoPreview;
+    if (undoPreview) {
+      status.textContent = undoPreview.canUndo
+        ? '该候选已应用，可整体撤销。'
+        : '该应用已撤销或当前稿已变化，不会静默回退。';
+      renderConflicts(undoPreview.conflictSet?.conflicts ?? []);
+    } else {
+      conflicts.replaceChildren();
+      status.textContent =
+        preview.candidate.status !== 'pending'
+          ? `候选状态为 ${preview.candidate.status}，不可再次采用。`
+          : preview.candidate.completeness === 'partial'
+            ? '不完整建议稿仅允许按块或SceneBeat采用。'
+            : '已准备采用。';
+    }
     render();
+  };
+
+  const handlePreviewLoading = (): void => {
+    refreshId += 1;
+    preview = null;
+    undoPreview = null;
+    conflicts.replaceChildren();
+    status.textContent = '正在准备候选采用选项…';
+    render();
+  };
+
+  const handlePreviewReady = (event: Event): void => {
+    const nextPreview = (event as CustomEvent<CandidatePreview>).detail;
+    void acceptPreview(nextPreview);
   };
 
   const submitSelection = async (): Promise<void> => {
     const context = await options.context();
     const selection = buildSelection();
     if (!context || !preview || !selection) return;
+    const request = ++refreshId;
+    const activePreview = preview;
+    const candidateId = activePreview.candidate.candidateId;
     submit.disabled = true;
     conflicts.replaceChildren();
-    const result = await window.worldforgeCandidatePreview.apply({
-      ...context,
-      candidateId: preview.candidate.candidateId,
-      draftId: preview.draft.draftId,
-      baseRevision: preview.draft.revision,
-      selection,
-    });
+    const result = await safely(() =>
+      window.worldforgeCandidatePreview.apply({
+        ...context,
+        candidateId,
+        draftId: activePreview.draft.draftId,
+        baseRevision: activePreview.draft.revision,
+        selection,
+      }),
+    );
+    if (request !== refreshId || candidateSelect.value !== candidateId) return;
+    if (!result) {
+      status.textContent = '采用失败 · COMMON_INTERNAL_999';
+      submit.disabled = false;
+      return;
+    }
     if (!result.ok) {
       status.textContent = `采用失败 · ${result.error.code}`;
       submit.disabled = false;
@@ -176,31 +261,113 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
     }
     if (result.data.outcome === 'conflict') {
       status.textContent = `发现${result.data.conflictSet.conflicts.length}项冲突，Draft未改变。`;
-      for (const conflict of result.data.conflictSet.conflicts) {
-        conflicts.append(node('li', `${conflict.kind} · ${conflict.message}`));
-      }
+      renderConflicts(result.data.conflictSet.conflicts);
       submit.disabled = false;
       return;
     }
-    status.textContent = `采用成功 · Revision ${result.data.draft.revision}`;
+    const applied = result.data;
+    const undoResult = await safely(() =>
+      window.worldforgeCandidatePreview.previewUndo({
+        ...context,
+        applyRecordId: applied.record.applyRecordId,
+      }),
+    );
+    if (request !== refreshId || candidateSelect.value !== candidateId) return;
+    preview = {
+      ...activePreview,
+      candidate: {
+        ...activePreview.candidate,
+        status: 'accepted',
+        resolvedAt: applied.record.appliedAt,
+      },
+      draft: applied.draft,
+    };
+    undoPreview = undoResult?.ok ? undoResult.data : null;
+    status.textContent = `采用成功 · Revision ${applied.draft.revision}`;
+    const current = document.querySelector<HTMLElement>('[data-candidate-preview-current]');
+    if (current) current.textContent = applied.draft.blocks.map((block) => block.text).join('\n\n');
+    const option = candidateSelect.selectedOptions[0];
+    if (option) option.textContent = `${preview.candidate.title} · accepted`;
+    render();
+  };
+
+  const undoApplication = async (): Promise<void> => {
+    const context = await options.context();
+    if (!context || !undoPreview) return;
+    const request = ++refreshId;
+    const candidateId = candidateSelect.value;
+    const activeUndoPreview = undoPreview;
+    undo.disabled = true;
+    const fresh = await safely(() =>
+      window.worldforgeCandidatePreview.previewUndo({
+        ...context,
+        applyRecordId: activeUndoPreview.record.applyRecordId,
+      }),
+    );
+    if (request !== refreshId || candidateSelect.value !== candidateId) return;
+    if (!fresh) {
+      status.textContent = '撤销预览失败 · COMMON_INTERNAL_999';
+      undo.disabled = false;
+      return;
+    }
+    if (!fresh.ok) {
+      status.textContent = `撤销预览失败 · ${fresh.error.code}`;
+      undo.disabled = false;
+      return;
+    }
+    undoPreview = fresh.data;
+    if (!fresh.data.canUndo) {
+      status.textContent = '当前稿已变化，撤销进入冲突且未修改Draft。';
+      renderConflicts(fresh.data.conflictSet?.conflicts ?? []);
+      render();
+      return;
+    }
+    const result = await safely(() =>
+      window.worldforgeCandidatePreview.undo({
+        ...context,
+        applyRecordId: fresh.data.record.applyRecordId,
+        draftId: fresh.data.currentDraft.draftId,
+        baseRevision: fresh.data.currentDraft.revision,
+      }),
+    );
+    if (request !== refreshId || candidateSelect.value !== candidateId) return;
+    if (!result) {
+      status.textContent = '撤销失败 · COMMON_INTERNAL_999';
+      undo.disabled = false;
+      return;
+    }
+    if (!result.ok) {
+      status.textContent = `撤销失败 · ${result.error.code}`;
+      undo.disabled = false;
+      return;
+    }
+    if (result.data.outcome === 'conflict') {
+      status.textContent = '撤销冲突，Draft未改变。';
+      renderConflicts(result.data.conflictSet.conflicts);
+      undo.disabled = false;
+      return;
+    }
+    status.textContent = `已撤销本次应用 · Revision ${result.data.draft.revision}`;
     const current = document.querySelector<HTMLElement>('[data-candidate-preview-current]');
     if (current)
       current.textContent = result.data.draft.blocks.map((block) => block.text).join('\n\n');
-    const option = candidateSelect.selectedOptions[0];
-    if (option) option.textContent = `${preview.candidate.title} · accepted`;
+    undoPreview = null;
+    undo.hidden = true;
+    undo.disabled = true;
   };
 
   mode.addEventListener('change', render);
   choices.addEventListener('change', () => {
-    submit.disabled = buildSelection() === null;
+    submit.disabled = preview?.candidate.status !== 'pending' || buildSelection() === null;
   });
   submit.addEventListener('click', () => void submitSelection());
-  candidateSelect.addEventListener('change', () => void refresh());
-  const observer = new MutationObserver(() => void refresh());
-  observer.observe(candidateSelect, { childList: true });
+  undo.addEventListener('click', () => void undoApplication());
+  dialog.addEventListener('worldforge:candidate-preview-loading', handlePreviewLoading);
+  dialog.addEventListener('worldforge:candidate-preview-ready', handlePreviewReady);
 
   return () => {
-    observer.disconnect();
+    dialog.removeEventListener('worldforge:candidate-preview-loading', handlePreviewLoading);
+    dialog.removeEventListener('worldforge:candidate-preview-ready', handlePreviewReady);
     panel.remove();
   };
 }

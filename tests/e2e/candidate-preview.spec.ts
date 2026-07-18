@@ -140,6 +140,13 @@ test('previews a Fixture Candidate through the real desktop chain without writin
       fixture.candidateText,
     );
 
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.locator('[data-discard-candidate]').click();
+    await expect(page.locator('[data-candidate-preview-status]')).toContainText(
+      '候选已丢弃，Draft 未改变',
+    );
+    await expect(page.locator('[data-discard-candidate]')).toBeDisabled();
+
     const after = await page.evaluate(async (input) => {
       const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })
         .worldforge;
@@ -170,7 +177,9 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     expect(
       database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_checkpoints').get(),
     ).toEqual({ count: 0n });
-    expect(database.prepare('SELECT status FROM candidates').get()).toEqual({ status: 'pending' });
+    expect(database.prepare('SELECT status FROM candidates').get()).toEqual({
+      status: 'discarded',
+    });
   } finally {
     database.close();
   }

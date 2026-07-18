@@ -1,6 +1,6 @@
 # M2-02 Candidate与完整Version模型
 
-> 状态：Implemented  
+> 状态：In Progress  
 > 里程碑：M2 编辑安全与版本核心  
 > 优先级：P0  
 > 建议分支：`work/m2-02-candidate-version-model`
@@ -49,6 +49,8 @@ M1-07、M2-01
 - `tests/integration/`
 - `tests/migration/`
 - `tests/security/`
+- `tests/e2e/`
+- `docs/ui/EDITOR_INTERACTION_SPEC.md`
 
 ## 实施内容
 

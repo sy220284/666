@@ -1,0 +1,24 @@
+pnpm format:check
+exit=0 duration_ms=1700 fixtures=M2-02
+
+pnpm lint
+exit=0 duration_ms=1500 fixtures=M2-02
+
+pnpm typecheck
+exit=0 duration_ms=8000 fixtures=M2-02
+
+pnpm task:validate && pnpm check:boundaries && pnpm check:workspaces && pnpm ci:policy
+exit=0 duration_ms=1800 fixtures=M2-02
+
+pnpm exec vitest run tests/integration/candidate-version-model.test.ts tests/security/candidate-ipc.test.ts
+exit=0 duration_ms=700 fixtures=M2-02
+
+pnpm test
+exit=0 duration_ms=14000 fixtures=M2-02
+
+pnpm test:migration && pnpm test:eval
+exit=0 duration_ms=12000 fixtures=M2-02
+
+pnpm test:e2e
+exit=2 duration_ms=6400 fixtures=M2-02
+

@@ -1,0 +1,47 @@
+name: Temporary M3-02 Resync
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    env:
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Merge latest main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-commit --no-ff origin/main
+          rm -f .github/workflows/tmp-m3-02-resync.yml
+      - name: Validate synchronized branch
+        run: |
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm lint
+          pnpm task:validate
+      - name: Commit synchronized branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git commit -m "chore(M3-02): resync latest main governance baseline"
+          git push origin "HEAD:${HEAD_REF}"

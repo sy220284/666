@@ -1,6 +1,6 @@
 # M3-01 作品任务书与大纲树
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`feat/m3-project-brief-outline`

@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-01`
-- 唯一任务卡：`docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md`
-- 工作分支：`work/m3-01-project-brief-outline`
+- 任务ID：`M3-02`
+- 唯一任务卡：`docs/tasks/M3/M3-02_SCENE_BEAT_CROSS_CHAPTER.md`
+- 工作分支：`work/m3-02-scene-beat-cross-chapter`
 - 开始时间：`2026-07-18`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -32,17 +32,10 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md
+  - docs/tasks/M3/M3-02_SCENE_BEAT_CROSS_CHAPTER.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-01/
-  - docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md
-  - apps/desktop/main/
-  - apps/desktop/preload/
-  - tests/migration/
-  - tests/security/
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - docs/test-evidence/M3-02/
+  - docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md
 forbidden_paths:
 
 required_docs:
@@ -57,11 +50,11 @@ verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
+  - pnpm test:migration
+  - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
-  - pnpm test:migration
-  - pnpm test:integration
 ```
 
 ## 连续执行规则

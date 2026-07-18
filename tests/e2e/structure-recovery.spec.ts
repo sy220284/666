@@ -97,7 +97,7 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     expect(prepared.blockCount).toBe(2);
     expect(prepared.preview).toMatchObject({ canExecute: true, resultingTargetBlockCount: 1 });
 
-    // Exercise the real UI command while making native prompt values deterministic.
+    // Exercise the real UI command and verify stale structure reads cannot overwrite its result.
     await page.evaluate(() => {
       const answers = ['拆出章节', '1'];
       window.prompt = () => answers.shift() ?? null;

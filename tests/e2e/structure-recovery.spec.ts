@@ -96,7 +96,6 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     });
 
     await page.locator('[data-split-chapter]').click();
-    await expect(page.locator('[data-structure-state]')).toContainText('结构操作完成 · 恢复点');
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 

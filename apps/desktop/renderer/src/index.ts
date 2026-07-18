@@ -187,8 +187,6 @@ let appearance = defaultAppearance;
 let applicationSettings = defaultSettings;
 let activeProject: ProjectWorkspaceSummary | null = null;
 let activeStructure: ProjectStructure | null = null;
-let structureRefreshVersion = 0;
-let latestStructureOperationStatus: string | null = null;
 let activeChapter: Chapter | null = null;
 let activeDraft: DraftDocument | null = null;
 let draftEditor: Editor | null = null;
@@ -331,8 +329,7 @@ const lifecycleLabels: Record<LifecycleStatus, string> = {
   finalized: '已定稿',
 };
 
-function setStructureState(message: string, error = false, preserveOperationStatus = false): void {
-  if (!preserveOperationStatus) latestStructureOperationStatus = null;
+function setStructureState(message: string, error = false): void {
   if (!structureState) return;
   structureState.textContent = message;
   structureState.classList.toggle('is-error', error);
@@ -736,7 +733,6 @@ async function runStructureMutation(
   try {
     const result = await operation;
     if (result.ok && result.data) {
-      structureRefreshVersion += 1;
       renderProjectStructure(result.data);
       setStructureState('卷章结构已保存到项目数据库。');
       return result.data;
@@ -781,11 +777,8 @@ function showStructureOperationResult(
   result: StructureOperationResult,
   preferredChapterId: string,
 ): void {
-  structureRefreshVersion += 1;
   renderProjectStructure(result.structure);
-  const completionStatus = `结构操作完成 · 恢复点 ${result.backupId.slice(0, 8)}`;
-  setStructureState(completionStatus);
-  latestStructureOperationStatus = completionStatus;
+  setStructureState(`结构操作完成 · 恢复点 ${result.backupId.slice(0, 8)}`);
   const chapter = result.structure.volumes
     .flatMap((volume) => volume.chapters)
     .find((candidate) => candidate.id === preferredChapterId);
@@ -1197,27 +1190,19 @@ function renderProjectStructure(structure: ProjectStructure | null): void {
 
 async function refreshProjectStructure(): Promise<void> {
   const project = activeProject;
-  const refreshVersion = ++structureRefreshVersion;
   if (!project) {
     renderProjectStructure(null);
     setStructureState('');
     return;
   }
-  if (!latestStructureOperationStatus) setStructureState('正在读取卷章结构…');
+  setStructureState('正在读取卷章结构…');
   try {
     const result = await window.worldforge.planning.listStructure(project.projectId);
-    if (
-      activeProject?.projectId !== project.projectId ||
-      refreshVersion !== structureRefreshVersion
-    )
-      return;
+    if (activeProject?.projectId !== project.projectId) return;
     if (result.ok) {
       renderProjectStructure(result.data);
       setStructureState(
-        latestStructureOperationStatus ??
-          (project.databaseMode === 'read-only' ? '只读浏览；结构修改已禁用。' : '结构已同步。'),
-        false,
-        true,
+        project.databaseMode === 'read-only' ? '只读浏览；结构修改已禁用。' : '结构已同步。',
       );
     } else {
       renderProjectStructure(null);
@@ -1334,7 +1319,6 @@ async function restoreTrash(
       ...(targetVolumeId ? { targetVolumeId } : {}),
     });
     if (result.ok) {
-      structureRefreshVersion += 1;
       renderProjectStructure(result.data);
       setStructureState('已从废纸篓恢复。');
       await refreshTrashEntries();

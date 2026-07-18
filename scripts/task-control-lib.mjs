@@ -55,7 +55,7 @@ export function replaceTaskCardStatus(markdown, currentStatus, nextStatus) {
     throw new Error('Unsupported task card status transition');
   }
   return markdown.replace(
-    new RegExp(`^> 状态：${currentStatus}[ \\t]*$`, 'm'),
+    new RegExp(`^> 状态：${currentStatus}(?:（[^\\r\\n]*）)?[ \\t]*$`, 'm'),
     `> 状态：${nextStatus}  `,
   );
 }

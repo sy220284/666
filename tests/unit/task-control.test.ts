@@ -28,6 +28,9 @@ describe('task control', () => {
     expect(replaceTaskCardStatus('> 状态：In Progress  \n', 'In Progress', 'Planned')).toBe(
       '> 状态：Planned  \n',
     );
+    expect(
+      replaceTaskCardStatus('> 状态：Implemented（等待CI）\n', 'Implemented', 'Verified'),
+    ).toBe('> 状态：Verified  \n');
   });
 
   it('parses task rows and their canonical source', () => {

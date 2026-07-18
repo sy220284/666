@@ -22,6 +22,7 @@ permissions:
   checks: read
   contents: read
   pull-requests: read
+  statuses: write
 
 concurrency:
   group: main-verification-${{ inputs.expected_sha }}
@@ -71,12 +72,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
       VALIDATE_RESULT: ${{ needs.validate-main.result }}
       QUALITY_RESULT: ${{ needs.quality.result }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - name: Enforce final main verification result
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$VALIDATE_RESULT" = success
-          test "$QUALITY_RESULT" = success
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Publish final main verification status
+        run: node scripts/main-verification.mjs publish-status

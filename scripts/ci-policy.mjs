@@ -163,7 +163,9 @@ async function main() {
         'expected_sha:',
         'source_pr:',
         'source_head_sha:',
+        'statuses: write',
         'scripts/main-verification.mjs',
+        'publish-status',
         'package_smoke: true',
         'security_suite: true',
         'performance_eval: true',
@@ -212,6 +214,10 @@ async function main() {
     'requiredChecks',
     "check.conclusion !== 'success'",
     'refs/heads/${baseBranch}',
+    'mainVerificationStatusPayload',
+    '/statuses/${expectedSha}',
+    "context: 'main-verification'",
+    "command === 'publish-status'",
   ]);
 
   const branchHygiene = await readFile(path.join(root, 'scripts/branch-hygiene.mjs'), 'utf8');

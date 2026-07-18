@@ -25,7 +25,7 @@
 | Volume | 卷级容器 |
 | Chapter | 章节实体，指向唯一活动Draft和当前定稿Version |
 | PlotNode | 大纲层级节点，可表示卷、剧情弧或章节规划 |
-| SceneBeat | 章节内场景节拍，包含目标、冲突、结果和必选标记 |
+| SceneBeat | 章节内场景节拍，包含目标、冲突、结果、类型、字数比例、必选标记和排序；可选关联PlotNode、人物/地点UUID与DraftBlock |
 
 Chapter状态：
 

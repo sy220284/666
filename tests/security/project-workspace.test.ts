@@ -104,7 +104,7 @@ describe('project workspace lifecycle', () => {
         projectId: summary.projectId,
         displayName: '长夜灯火',
         databaseFile: 'project.sqlite',
-        projectSchemaVersion: 10,
+        projectSchemaVersion: 11,
         createdAt: '2026-07-16T09:00:00.000Z',
       });
 
@@ -114,7 +114,7 @@ describe('project workspace lifecycle', () => {
         name: '长夜灯火',
         channel: '网络小说',
         active_style_profile_id: null,
-        schema_version: 10,
+        schema_version: 11,
         created_at: '2026-07-16T09:00:00.000Z',
         updated_at: '2026-07-16T09:00:00.000Z',
       });

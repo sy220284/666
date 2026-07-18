@@ -104,6 +104,33 @@ import {
   type ProjectBriefUpdateInput,
 } from './project-planning.js';
 import {
+  SCENE_BEAT_COMMANDS,
+  SCENE_BEAT_IPC_CHANNELS,
+  SceneBeatListCommandSchema,
+  SceneBeatCreateCommandSchema,
+  SceneBeatUpdateCommandSchema,
+  SceneBeatMoveCommandSchema,
+  SceneBeatPreviewCrossChapterMoveCommandSchema,
+  SceneBeatMoveAcrossChaptersCommandSchema,
+  SceneBeatDeleteCommandSchema,
+  SceneBeatRestoreCommandSchema,
+  SceneBeatSetBlockLinksCommandSchema,
+  SceneBeatConvertBlocksCommandSchema,
+  type SceneBeat,
+  type SceneBeatList,
+  type SceneBeatListInput,
+  type SceneBeatCreateInput,
+  type SceneBeatUpdateInput,
+  type SceneBeatMoveInput,
+  type SceneBeatCrossChapterMovePreviewInput,
+  type SceneBeatCrossChapterMovePreview,
+  type SceneBeatCrossChapterMoveInput,
+  type SceneBeatDeleteInput,
+  type SceneBeatRestoreInput,
+  type SceneBeatSetBlockLinksInput,
+  type SceneBeatConvertBlocksInput,
+} from './scene-beat.js';
+import {
   DRAFT_COMMANDS,
   DRAFT_IPC_CHANNELS,
   DraftApplyPatchCommandSchema,
@@ -158,6 +185,7 @@ export * from './app-data.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './project-planning.js';
+export * from './scene-beat.js';
 export * from './draft.js';
 export * from './candidate.js';
 export * from './candidate-apply.js';
@@ -177,6 +205,7 @@ export const IPC_CHANNELS = {
   ...PROJECT_WORKSPACE_IPC_CHANNELS,
   ...PROJECT_STRUCTURE_IPC_CHANNELS,
   ...PROJECT_PLANNING_IPC_CHANNELS,
+  ...SCENE_BEAT_IPC_CHANNELS,
   ...DRAFT_IPC_CHANNELS,
   ...VERSION_IPC_CHANNELS,
   ...RECOVERY_IPC_CHANNELS,
@@ -200,6 +229,7 @@ export const APP_COMMANDS = {
   ...PROJECT_WORKSPACE_COMMANDS,
   ...PROJECT_STRUCTURE_COMMANDS,
   ...PROJECT_PLANNING_COMMANDS,
+  ...SCENE_BEAT_COMMANDS,
   ...DRAFT_COMMANDS,
   ...VERSION_COMMANDS,
   ...RECOVERY_COMMANDS,
@@ -357,6 +387,16 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectUpdatePlotNodeCommandSchema,
   ProjectMovePlotNodeCommandSchema,
   ProjectDeletePlotNodeCommandSchema,
+  SceneBeatListCommandSchema,
+  SceneBeatCreateCommandSchema,
+  SceneBeatUpdateCommandSchema,
+  SceneBeatMoveCommandSchema,
+  SceneBeatPreviewCrossChapterMoveCommandSchema,
+  SceneBeatMoveAcrossChaptersCommandSchema,
+  SceneBeatDeleteCommandSchema,
+  SceneBeatRestoreCommandSchema,
+  SceneBeatSetBlockLinksCommandSchema,
+  SceneBeatConvertBlocksCommandSchema,
   DraftOpenCommandSchema,
   DraftApplyPatchCommandSchema,
   ImportPreviewCommandSchema,
@@ -634,6 +674,32 @@ export interface WorldforgeBridge {
     readonly updatePlotNode: (input: PlotNodeUpdateInput) => Promise<CommandResult<PlotNodeList>>;
     readonly movePlotNode: (input: PlotNodeMoveInput) => Promise<CommandResult<PlotNodeList>>;
     readonly deletePlotNode: (input: PlotNodeDeleteInput) => Promise<CommandResult<PlotNodeList>>;
+    readonly listSceneBeats: (input: SceneBeatListInput) => Promise<CommandResult<SceneBeatList>>;
+    readonly createSceneBeat: (
+      input: SceneBeatCreateInput,
+    ) => Promise<CommandResult<SceneBeatList>>;
+    readonly updateSceneBeat: (
+      input: SceneBeatUpdateInput,
+    ) => Promise<CommandResult<SceneBeatList>>;
+    readonly moveSceneBeat: (input: SceneBeatMoveInput) => Promise<CommandResult<SceneBeatList>>;
+    readonly previewMoveSceneBeat: (
+      input: SceneBeatCrossChapterMovePreviewInput,
+    ) => Promise<CommandResult<SceneBeatCrossChapterMovePreview>>;
+    readonly moveSceneBeatAcrossChapters: (
+      input: SceneBeatCrossChapterMoveInput,
+    ) => Promise<CommandResult<SceneBeatList>>;
+    readonly deleteSceneBeat: (
+      input: SceneBeatDeleteInput,
+    ) => Promise<CommandResult<SceneBeatList>>;
+    readonly restoreSceneBeat: (
+      input: SceneBeatRestoreInput,
+    ) => Promise<CommandResult<SceneBeatList>>;
+    readonly setSceneBeatBlockLinks: (
+      input: SceneBeatSetBlockLinksInput,
+    ) => Promise<CommandResult<SceneBeatList>>;
+    readonly convertBlocksToSceneBeat: (
+      input: SceneBeatConvertBlocksInput,
+    ) => Promise<CommandResult<SceneBeatList>>;
     readonly listStructure: (projectId: string) => Promise<CommandResult<ProjectStructure>>;
     readonly createVolume: (input: VolumeCreateInput) => Promise<CommandResult<ProjectStructure>>;
     readonly updateVolume: (input: VolumeUpdateInput) => Promise<CommandResult<ProjectStructure>>;

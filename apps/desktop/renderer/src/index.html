@@ -603,6 +603,28 @@
             <div class="outline-root-drop" data-outline-root-drop>拖到这里移回根级末尾</div>
             <div class="outline-tree" data-outline-tree></div>
           </section>
+          <section class="outline-panel scene-beat-panel">
+            <header>
+              <div>
+                <small>SCENE BEAT</small>
+                <h3>场景节拍</h3>
+              </div>
+              <div class="scene-beat-card__actions">
+                <button class="quiet-button" type="button" data-convert-scene-beat>
+                  从正文转换
+                </button>
+                <button class="primary-button" type="button" data-create-scene-beat>
+                  新增节拍
+                </button>
+              </div>
+            </header>
+            <p data-scene-beat-chapter>打开章节后可维护节拍；规划移动不会自动移动正文。</p>
+            <div class="scene-beat-list" data-scene-beat-list></div>
+            <details class="scene-beat-trash">
+              <summary>已删除节拍</summary>
+              <div class="scene-beat-list" data-deleted-scene-beat-list></div>
+            </details>
+          </section>
         </div>
         <footer class="planning-workspace__footer">
           <span>规划数据独立存储，不产生Draft Patch。</span>
@@ -654,6 +676,69 @@
           <span></span><span></span>
           <button class="quiet-button" type="button" data-cancel-plot-node>取消</button>
           <button class="primary-button" type="submit" data-save-plot-node>保存节点</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog
+      class="settings-dialog"
+      data-scene-beat-dialog
+      aria-labelledby="scene-beat-dialog-title"
+    >
+      <form data-scene-beat-form>
+        <div class="settings-dialog__body">
+          <p class="eyebrow">SCENE BEAT</p>
+          <h2 id="scene-beat-dialog-title" data-scene-beat-dialog-title>新增场景节拍</h2>
+          <div class="general-settings-grid project-create-grid">
+            <label><span>标题</span><input name="title" maxlength="240" required /></label>
+            <label
+              ><span>类型</span
+              ><select name="beatType">
+                <option value="setup">铺垫</option>
+                <option value="development">发展</option>
+                <option value="turn">转折</option>
+                <option value="climax">高潮</option>
+                <option value="resolution">收束</option>
+                <option value="custom">自定义</option>
+              </select></label
+            >
+            <label
+              ><span>字数比例（0—100）</span
+              ><input name="wordTargetPercent" type="number" min="0" max="100" value="0"
+            /></label>
+            <label class="checkbox-row"
+              ><input name="required" type="checkbox" /><span>必选场景</span></label
+            >
+            <label
+              ><span>关联大纲节点</span
+              ><select name="plotNodeId" data-scene-beat-plot-node>
+                <option value="">不关联</option>
+              </select></label
+            >
+            <label class="planning-wide-field"
+              ><span>目标</span><textarea name="goal" maxlength="4000"></textarea>
+            </label>
+            <label class="planning-wide-field"
+              ><span>核心冲突</span><textarea name="coreConflict" maxlength="4000"></textarea>
+            </label>
+            <label class="planning-wide-field"
+              ><span>预期结果</span><textarea name="expectedResult" maxlength="4000"></textarea>
+            </label>
+            <label class="planning-wide-field"
+              ><span>人物ID（每行一个，可后补）</span
+              ><textarea name="characterIds" maxlength="20000"></textarea>
+            </label>
+            <label class="planning-wide-field"
+              ><span>地点ID（每行一个，可后补）</span
+              ><textarea name="locationIds" maxlength="20000"></textarea>
+            </label>
+          </div>
+          <p class="save-state" data-scene-beat-status role="status"></p>
+        </div>
+        <footer>
+          <span></span><span></span>
+          <button class="quiet-button" type="button" data-cancel-scene-beat>取消</button>
+          <button class="primary-button" type="submit" data-save-scene-beat>保存节拍</button>
         </footer>
       </form>
     </dialog>

@@ -10,6 +10,7 @@ import {
   TEXT_IO_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
+  SCENE_BEAT_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
@@ -50,6 +51,16 @@ import {
   ProjectUpdatePlotNodeCommandSchema,
   ProjectMovePlotNodeCommandSchema,
   ProjectDeletePlotNodeCommandSchema,
+  SceneBeatListCommandSchema,
+  SceneBeatCreateCommandSchema,
+  SceneBeatUpdateCommandSchema,
+  SceneBeatMoveCommandSchema,
+  SceneBeatPreviewCrossChapterMoveCommandSchema,
+  SceneBeatMoveAcrossChaptersCommandSchema,
+  SceneBeatDeleteCommandSchema,
+  SceneBeatRestoreCommandSchema,
+  SceneBeatSetBlockLinksCommandSchema,
+  SceneBeatConvertBlocksCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
@@ -180,6 +191,16 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.updatePlotNode,
     IPC_CHANNELS.movePlotNode,
     IPC_CHANNELS.deletePlotNode,
+    IPC_CHANNELS.listSceneBeats,
+    IPC_CHANNELS.createSceneBeat,
+    IPC_CHANNELS.updateSceneBeat,
+    IPC_CHANNELS.moveSceneBeat,
+    IPC_CHANNELS.previewMoveSceneBeat,
+    IPC_CHANNELS.moveSceneBeatAcrossChapters,
+    IPC_CHANNELS.deleteSceneBeat,
+    IPC_CHANNELS.restoreSceneBeat,
+    IPC_CHANNELS.setSceneBeatBlockLinks,
+    IPC_CHANNELS.convertBlocksToSceneBeat,
     IPC_CHANNELS.listStructure,
     IPC_CHANNELS.createVolume,
     IPC_CHANNELS.updateVolume,
@@ -667,6 +688,26 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
   }
 
   for (const [channel, schema, operation] of [
+    [IPC_CHANNELS.listSceneBeats, SceneBeatListCommandSchema, SCENE_BEAT_COMMANDS.listSceneBeats],
+    [
+      IPC_CHANNELS.previewMoveSceneBeat,
+      SceneBeatPreviewCrossChapterMoveCommandSchema,
+      SCENE_BEAT_COMMANDS.previewMoveSceneBeat,
+    ],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        input: parsed.data.payload,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
+
+  for (const [channel, schema, operation] of [
     [
       IPC_CHANNELS.updateBrief,
       ProjectUpdateBriefCommandSchema,
@@ -691,6 +732,56 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       IPC_CHANNELS.deletePlotNode,
       ProjectDeletePlotNodeCommandSchema,
       PROJECT_PLANNING_COMMANDS.deletePlotNode,
+    ],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        input: parsed.data.payload,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
+
+  for (const [channel, schema, operation] of [
+    [
+      IPC_CHANNELS.createSceneBeat,
+      SceneBeatCreateCommandSchema,
+      SCENE_BEAT_COMMANDS.createSceneBeat,
+    ],
+    [
+      IPC_CHANNELS.updateSceneBeat,
+      SceneBeatUpdateCommandSchema,
+      SCENE_BEAT_COMMANDS.updateSceneBeat,
+    ],
+    [IPC_CHANNELS.moveSceneBeat, SceneBeatMoveCommandSchema, SCENE_BEAT_COMMANDS.moveSceneBeat],
+    [
+      IPC_CHANNELS.moveSceneBeatAcrossChapters,
+      SceneBeatMoveAcrossChaptersCommandSchema,
+      SCENE_BEAT_COMMANDS.moveSceneBeatAcrossChapters,
+    ],
+    [
+      IPC_CHANNELS.deleteSceneBeat,
+      SceneBeatDeleteCommandSchema,
+      SCENE_BEAT_COMMANDS.deleteSceneBeat,
+    ],
+    [
+      IPC_CHANNELS.restoreSceneBeat,
+      SceneBeatRestoreCommandSchema,
+      SCENE_BEAT_COMMANDS.restoreSceneBeat,
+    ],
+    [
+      IPC_CHANNELS.setSceneBeatBlockLinks,
+      SceneBeatSetBlockLinksCommandSchema,
+      SCENE_BEAT_COMMANDS.setSceneBeatBlockLinks,
+    ],
+    [
+      IPC_CHANNELS.convertBlocksToSceneBeat,
+      SceneBeatConvertBlocksCommandSchema,
+      SCENE_BEAT_COMMANDS.convertBlocksToSceneBeat,
     ],
   ] as const) {
     register(channel, async (event, raw) => {

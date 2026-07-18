@@ -127,8 +127,9 @@ Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`、`fin
 - `planning.getBrief/updateBrief`：读取或保存可为空的ProjectBrief；Renderer不得传入ID或更新时间。
 - `planning.listPlotNodes`：读取按父级与orderKey组织的PlotNode列表。
 - `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`：节点ID与orderKey由Core生成；移动只传目标父级和同级锚点。
-- `planning.createSceneBeat/updateSceneBeat/moveSceneBeat/deleteSceneBeat`
-- `planning.moveSceneAcrossChapters`（M3-02）
+- `planning.listSceneBeats/createSceneBeat/updateSceneBeat/moveSceneBeat/deleteSceneBeat/restoreSceneBeat`：按章节维护SceneBeat，ID与orderKey由Core生成；删除为软删除并解除正文关联，不删除DraftBlock。
+- `planning.setSceneBeatBlockLinks/convertBlocksToSceneBeat`：只接受活动Draft中的logicalBlockId；关联或转换不改正文内容与Revision。
+- `planning.previewMoveSceneBeat/moveSceneBeatAcrossChapters`：先返回关联正文数量、字符数、警告和planHash；执行只移动规划数据。需要移动正文时另行调用`planning.previewMoveBlocks/moveBlocks`。
 
 规划变更不得自动发送正文Patch。
 

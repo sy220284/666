@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   format:
-    # Branch-scoped and self-removed after formatting.
+    # Branch-scoped, PR45-triggered, and removed after formatting.
     if: ${{ github.head_ref == 'fix/m1-08-unreadable-recovery' && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10

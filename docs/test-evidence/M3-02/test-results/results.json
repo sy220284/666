@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-02",
+  "generatedAt": "2026-07-18T15:15:00.000Z",
+  "implementationStatus": "in-progress",
+  "results": [
+    {
+      "suite": "format",
+      "command": "pnpm format",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "suite": "lint",
+      "command": "pnpm lint",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "suite": "task-control",
+      "command": "pnpm task:validate",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "suite": "permanent-ci",
+      "status": "pending",
+      "note": "PR 六类永久门禁独立运行，结果不在生成时预写。"
+    },
+    {
+      "suite": "manual-acceptance",
+      "status": "deferred",
+      "note": "未宣称人工验收通过。"
+    }
+  ]
+}

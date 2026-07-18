@@ -1,7 +1,5 @@
 # M3-02 测试证据摘要
 
-- SceneBeat创建、编辑、排序、软删除与恢复。
-- 正文块关联与正文转SceneBeat不修改正文Revision。
-- 跨章移动先生成planHash影响预览，规划与正文分别确认。
-- 删除SceneBeat不删除DraftBlock；事务故障全部回滚。
-- Main/Preload白名单、契约解析、迁移与Electron真实界面由CI验证。
+M3-02 已接通 SceneBeat 生命周期、正文块关联、软删除恢复、跨章影响预览与分步移动链路。
+
+本证据包记录当前实现阶段的可复现自动检查。格式、Lint 与任务状态校验已执行通过；完整永久 CI 由 PR 门禁独立运行。人工桌面验收、正式截图与最终 Verified 结论按 implementation-pr 模式延期，不在本包中伪造通过结论。

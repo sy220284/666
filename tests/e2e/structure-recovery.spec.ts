@@ -83,6 +83,13 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
       if (!inserted.ok) throw new Error('E2E_DRAFT_PREPARE_FAILED');
     });
 
+    // The fixture write bypasses Renderer state. Reload before exercising the real UI so
+    // operationDraft reads the persisted two-block Draft rather than the stale initial snapshot.
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await expect(page.locator('.chapter-node')).toHaveCount(1);
+
     page.on('dialog', async (dialog) => {
       const message = dialog.message();
       if (dialog.type() === 'prompt' && message.includes('新章节标题')) {

@@ -52,9 +52,9 @@ describe('task control', () => {
 
   it('recognizes the final main verification script as governance-only', () => {
     const governanceFiles = ['scripts/main-verification.mjs', 'tests/unit/task-control.test.ts'];
-    expect(isGovernanceOnlyPullRequest('policy/main-verification-acceptance', governanceFiles)).toBe(
-      true,
-    );
+    expect(
+      isGovernanceOnlyPullRequest('policy/main-verification-acceptance', governanceFiles),
+    ).toBe(true);
     expect(
       isGovernanceOnlyPullRequest('policy/main-verification-acceptance', [
         ...governanceFiles,

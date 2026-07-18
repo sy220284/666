@@ -3,11 +3,25 @@ import { fileURLToPath } from 'node:url';
 
 const githubFetch = globalThis.fetch;
 
+function checkRunOrder(run) {
+  const timestamp = Date.parse(run.created_at ?? run.started_at ?? run.completed_at ?? '');
+  return { timestamp: Number.isFinite(timestamp) ? timestamp : 0, id: Number(run.id ?? 0) };
+}
+
 export function latestChecksByName(checkRuns = []) {
   const latest = new Map();
   for (const run of checkRuns) {
     const previous = latest.get(run.name);
-    if (!previous || new Date(run.started_at) > new Date(previous.started_at)) {
+    if (!previous) {
+      latest.set(run.name, run);
+      continue;
+    }
+    const currentOrder = checkRunOrder(run);
+    const previousOrder = checkRunOrder(previous);
+    if (
+      currentOrder.timestamp > previousOrder.timestamp ||
+      (currentOrder.timestamp === previousOrder.timestamp && currentOrder.id > previousOrder.id)
+    ) {
       latest.set(run.name, run);
     }
   }
@@ -15,62 +29,29 @@ export function latestChecksByName(checkRuns = []) {
 }
 
 function assertFullSha(value, label) {
-  if (!/^[0-9a-f]{40}$/iu.test(value ?? '')) {
-    throw new Error(`${label} must be a full commit SHA`);
-  }
+  if (!/^[0-9a-f]{40}$/iu.test(value ?? '')) throw new Error(`${label} must be a full commit SHA`);
 }
 
-export function validateMainVerification({
-  repository,
-  baseBranch,
-  expectedSha,
-  sourcePr,
-  sourceHeadSha,
-  githubRef,
-  githubSha,
-  pull,
-  requiredChecks,
-  checkRuns,
-}) {
-  if (!/^[^/\s]+\/[^/\s]+$/u.test(repository ?? '')) {
-    throw new Error('GITHUB_REPOSITORY is invalid');
-  }
+export function validateMainVerification({ repository, baseBranch, expectedSha, sourcePr, sourceHeadSha, githubRef, githubSha, pull, requiredChecks, checkRuns }) {
+  if (!/^[^/\s]+\/[^/\s]+$/u.test(repository ?? '')) throw new Error('GITHUB_REPOSITORY is invalid');
   if (!baseBranch) throw new Error('Base branch is missing');
   assertFullSha(expectedSha, 'EXPECTED_SHA');
   assertFullSha(sourceHeadSha, 'SOURCE_HEAD_SHA');
-  if (!Number.isSafeInteger(sourcePr) || sourcePr <= 0) {
-    throw new Error('SOURCE_PR must be a positive integer');
-  }
-  if (githubRef !== `refs/heads/${baseBranch}`) {
-    throw new Error(`Main verification must run from refs/heads/${baseBranch}`);
-  }
-  if (githubSha !== expectedSha) {
-    throw new Error(`Dispatched SHA ${githubSha} does not match expected main SHA ${expectedSha}`);
-  }
-  if (!pull?.merged || !pull.merged_at) {
-    throw new Error(`Pull request #${sourcePr} is not merged`);
-  }
-  if (pull.base?.ref !== baseBranch) {
-    throw new Error(`Pull request #${sourcePr} does not target ${baseBranch}`);
-  }
-  if (pull.head?.sha !== sourceHeadSha) {
-    throw new Error(`Pull request #${sourcePr} head SHA changed after permanent checks`);
-  }
-  if (pull.merge_commit_sha !== expectedSha) {
-    throw new Error(`Pull request #${sourcePr} did not produce ${expectedSha}`);
-  }
+  if (!Number.isSafeInteger(sourcePr) || sourcePr <= 0) throw new Error('SOURCE_PR must be a positive integer');
+  if (githubRef !== `refs/heads/${baseBranch}`) throw new Error(`Main verification must run from refs/heads/${baseBranch}`);
+  if (githubSha !== expectedSha) throw new Error(`Dispatched SHA ${githubSha} does not match expected main SHA ${expectedSha}`);
+  if (!pull?.merged || !pull.merged_at) throw new Error(`Pull request #${sourcePr} is not merged`);
+  if (pull.base?.ref !== baseBranch) throw new Error(`Pull request #${sourcePr} does not target ${baseBranch}`);
+  if (pull.head?.sha !== sourceHeadSha) throw new Error(`Pull request #${sourcePr} head SHA changed after permanent checks`);
+  if (pull.merge_commit_sha !== expectedSha) throw new Error(`Pull request #${sourcePr} did not produce ${expectedSha}`);
 
   const latest = latestChecksByName(checkRuns);
   const missing = [];
   for (const name of requiredChecks) {
     const check = latest.get(name);
-    if (check?.status !== 'completed' || check.conclusion !== 'success') {
-      missing.push(name);
-    }
+    if (check?.status !== 'completed' || check.conclusion !== 'success') missing.push(name);
   }
-  if (missing.length > 0) {
-    throw new Error(`Source PR permanent checks are not successful: ${missing.join(', ')}`);
-  }
+  if (missing.length > 0) throw new Error(`Source PR permanent checks are not successful: ${missing.join(', ')}`);
 }
 
 export function mainVerificationStatusPayload(validateResult, qualityResult, targetUrl) {
@@ -78,9 +59,7 @@ export function mainVerificationStatusPayload(validateResult, qualityResult, tar
   return {
     state: success ? 'success' : 'failure',
     context: 'main-verification',
-    description: success
-      ? 'Final main SHA passed full Linux verification'
-      : 'Final main SHA failed provenance or quality verification',
+    description: success ? 'Final main SHA passed full Linux verification' : 'Final main SHA failed provenance or quality verification',
     target_url: targetUrl,
   };
 }
@@ -118,22 +97,8 @@ async function checkMain() {
     api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`),
     api(token, `/repos/${owner}/${repo}/commits/${sourceHeadSha}/check-runs?per_page=100`),
   ]);
-
-  validateMainVerification({
-    repository,
-    baseBranch: config.baseBranch,
-    expectedSha,
-    sourcePr,
-    sourceHeadSha,
-    githubRef,
-    githubSha,
-    pull,
-    requiredChecks: config.requiredChecks,
-    checkRuns: checks.check_runs ?? [],
-  });
-  console.log(
-    `Main verification provenance passed for ${expectedSha} from PR #${sourcePr} (${sourceHeadSha}).`,
-  );
+  validateMainVerification({ repository, baseBranch: config.baseBranch, expectedSha, sourcePr, sourceHeadSha, githubRef, githubSha, pull, requiredChecks: config.requiredChecks, checkRuns: checks.check_runs ?? [] });
+  console.log(`Main verification provenance passed for ${expectedSha} from PR #${sourcePr} (${sourceHeadSha}).`);
 }
 
 async function publishStatus() {
@@ -147,22 +112,14 @@ async function publishStatus() {
   if (!token || !repository || !runId) throw new Error('GitHub Actions environment is incomplete');
   assertFullSha(expectedSha, 'EXPECTED_SHA');
 
-  const payload = mainVerificationStatusPayload(
-    validateResult,
-    qualityResult,
-    `${serverUrl}/${repository}/actions/runs/${runId}`,
-  );
+  const payload = mainVerificationStatusPayload(validateResult, qualityResult, `${serverUrl}/${repository}/actions/runs/${runId}`);
   await api(token, `/repos/${repository}/statuses/${expectedSha}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   console.log(`Published ${payload.context}=${payload.state} for ${expectedSha}.`);
-  if (payload.state !== 'success') {
-    throw new Error(
-      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}`,
-    );
-  }
+  if (payload.state !== 'success') throw new Error(`Final main verification failed: validate=${validateResult}, quality=${qualityResult}`);
 }
 
 async function main() {

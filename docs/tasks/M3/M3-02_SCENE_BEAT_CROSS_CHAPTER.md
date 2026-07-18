@@ -66,13 +66,13 @@ M3-01、M2-04
 5. 跨章移动先预览影响，SceneBeat移动与DraftBlock移动分开确认。
 6. 涉及正文时使用恢复点、Patch、Revision、Hash和LockGuard。
 
-
 ## 实现约束落地
 
 - SceneBeat是规划权威数据；删除仅解除规划关联并软删除节拍，不删除DraftBlock。
 - SceneBeat跨章移动必须先生成含关联正文影响的planHash预览；规划移动和正文移动分别确认。
 - 关联正文的实际跨章移动复用M2-04恢复点、Patch、Revision、Hash与LockGuard链路；移动后按logicalBlockId重建关联。
 - 人物与地点关联先保存UUID引用，M3-03建立实体表后再增加存在性校验与选择器，避免倒置依赖。
+- SceneBeat命令全部使用`planning.sceneBeat.*`全限定操作名，禁止覆盖项目结构或大纲树命令键。
 
 ## 测试与证据
 

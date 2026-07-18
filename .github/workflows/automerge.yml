@@ -3,12 +3,7 @@ name: Auto Merge
 on:
   workflow_run:
     workflows:
-      - PR Policy
-      - Task Governance
       - Quality
-      - Security
-      - Performance
-      - Evidence
     types: [completed]
 
 permissions:
@@ -25,7 +20,7 @@ jobs:
   automerge:
     if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
@@ -34,7 +29,37 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Merge eligible pull request and schedule final main verification
+      - name: Validate check generation ordering
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { latestChecksByName, requiredCheckState } from './scripts/automerge.mjs';
+
+          const oldSuccess = {
+            id: 1,
+            name: 'security',
+            status: 'completed',
+            conclusion: 'success',
+            created_at: '2026-07-18T00:00:00Z',
+            started_at: '2026-07-18T00:05:00Z',
+          };
+          const newPending = {
+            id: 2,
+            name: 'security',
+            status: 'queued',
+            conclusion: null,
+            created_at: '2026-07-18T00:10:00Z',
+            started_at: null,
+          };
+          assert.equal(latestChecksByName([oldSuccess, newPending]).get('security')?.id, 2);
+          assert.deepEqual(requiredCheckState([oldSuccess, newPending], ['security']), {
+            ready: false,
+            pending: ['security'],
+            failed: [],
+          });
+          NODE
+      - name: Aggregate permanent checks, merge eligible pull request and schedule final main verification
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/automerge.mjs

@@ -143,10 +143,12 @@ async function reopenDeferred(taskId) {
     throw new Error('reopen requires an implementation-first authorization mode');
   }
   const deferred = (state.deferredVerification ?? []).find((entry) => entry.id === taskId);
-  if (!deferred) throw new Error(`${taskId} is not in deferredVerification`);
   const target = taskIndex.get(taskId);
-  if (!target || target.status !== 'Implemented') {
-    throw new Error(`${taskId} must be Implemented before reopening`);
+  if (!target || !['Implemented', 'Verified'].includes(target.status)) {
+    throw new Error(`${taskId} must be Implemented or Verified before reopening`);
+  }
+  if (target.status === 'Implemented' && !deferred) {
+    throw new Error(`${taskId} is not in deferredVerification`);
   }
   const paused = taskIndex.get(state.activeTask.id);
   if (!paused || paused.status !== 'In Progress') {
@@ -160,9 +162,9 @@ async function reopenDeferred(taskId) {
     readFile(pausedCardPath, 'utf8'),
     readFile(indexPath, 'utf8'),
   ]);
-  const reopenedCard = replaceTaskCardStatus(targetCard, 'Implemented', 'In Progress');
+  const reopenedCard = replaceTaskCardStatus(targetCard, target.status, 'In Progress');
   const pausedCardNext = replaceTaskCardStatus(pausedCard, 'In Progress', 'Planned');
-  if (reopenedCard === targetCard) throw new Error(`${taskId} card is not Implemented`);
+  if (reopenedCard === targetCard) throw new Error(`${taskId} card is not ${target.status}`);
   if (pausedCardNext === pausedCard) throw new Error(`${paused.id} card is not In Progress`);
 
   const allowedPaths = extractBacktickBullets(targetCard, '主要影响范围');

@@ -1,6 +1,6 @@
 # M3-02 SceneBeat、场景关联与跨章移动
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`feat/m3-scene-beat-cross-chapter`

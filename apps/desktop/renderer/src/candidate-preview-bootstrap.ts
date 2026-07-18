@@ -5,9 +5,8 @@ async function activeContext(): Promise<{
   readonly chapterId: string;
 } | null> {
   const active = await window.worldforge.project.getActive();
-  const chapterId = document.querySelector<HTMLElement>(
-    '.chapter-node.is-active',
-  )?.dataset.chapterId;
+  const chapterId =
+    document.querySelector<HTMLElement>('.chapter-node.is-active')?.dataset.chapterId;
   if (!active.ok || !active.data || !chapterId) return null;
   return { projectId: active.data.projectId, chapterId };
 }

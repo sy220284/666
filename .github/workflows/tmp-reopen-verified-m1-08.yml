@@ -3,7 +3,7 @@ name: Temporary Reopen Verified M1-08
 on:
   pull_request:
     branches: [main]
-    types: [opened]
+    types: [opened, reopened]
 
 permissions:
   contents: write
@@ -28,18 +28,20 @@ jobs:
       - name: Allow verified tasks to reopen for quality remediation
         shell: python
         run: |
+          import re
           from pathlib import Path
 
           path = Path('scripts/taskctl.mjs')
           source = path.read_text(encoding='utf-8')
-          old = """  const deferred = (state.deferredVerification ?? []).find((entry) => entry.id === taskId);
-          if (!deferred) throw new Error(`${taskId} is not in deferredVerification`);
-          const target = taskIndex.get(taskId);
-          if (!target || target.status !== 'Implemented') {
-            throw new Error(`${taskId} must be Implemented before reopening`);
-          }
-          """
-          new = """  const deferred = (state.deferredVerification ?? []).find((entry) => entry.id === taskId);
+          pattern = re.compile(
+              r"  const deferred = \(state\.deferredVerification \?\? \[\]\)\.find\(\(entry\) => entry\.id === taskId\);\n"
+              r"  if \(!deferred\) throw new Error\(`\$\{taskId\} is not in deferredVerification`\);\n"
+              r"  const target = taskIndex\.get\(taskId\);\n"
+              r"  if \(!target \|\| target\.status !== 'Implemented'\) \{\n"
+              r"    throw new Error\(`\$\{taskId\} must be Implemented before reopening`\);\n"
+              r"  \}\n"
+          )
+          replacement = """  const deferred = (state.deferredVerification ?? []).find((entry) => entry.id === taskId);
           const target = taskIndex.get(taskId);
           if (!target || !['Implemented', 'Verified'].includes(target.status)) {
             throw new Error(`${taskId} must be Implemented or Verified before reopening`);
@@ -48,17 +50,19 @@ jobs:
             throw new Error(`${taskId} is not in deferredVerification`);
           }
           """
-          if old not in source:
-            raise SystemExit('reopen target guard not found')
-          source = source.replace(old, new)
-          source = source.replace(
-            "const reopenedCard = replaceTaskCardStatus(targetCard, 'Implemented', 'In Progress');",
-            "const reopenedCard = replaceTaskCardStatus(targetCard, target.status, 'In Progress');",
-          )
-          source = source.replace(
-            "if (reopenedCard === targetCard) throw new Error(`${taskId} card is not Implemented`);",
-            "if (reopenedCard === targetCard) throw new Error(`${taskId} card is not ${target.status}`);",
-          )
+          source, count = pattern.subn(replacement, source, count=1)
+          if count != 1:
+            raise SystemExit(f'reopen target guard replacement count: {count}')
+          old_card = "const reopenedCard = replaceTaskCardStatus(targetCard, 'Implemented', 'In Progress');"
+          new_card = "const reopenedCard = replaceTaskCardStatus(targetCard, target.status, 'In Progress');"
+          if old_card not in source:
+            raise SystemExit('reopen card replacement target missing')
+          source = source.replace(old_card, new_card, 1)
+          old_error = "if (reopenedCard === targetCard) throw new Error(`${taskId} card is not Implemented`);"
+          new_error = "if (reopenedCard === targetCard) throw new Error(`${taskId} card is not ${target.status}`);"
+          if old_error not in source:
+            raise SystemExit('reopen card error target missing')
+          source = source.replace(old_error, new_error, 1)
           path.write_text(source, encoding='utf-8')
       - run: pnpm exec prettier --write scripts/taskctl.mjs
       - name: Record M3-02 implementation

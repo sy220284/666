@@ -20,3 +20,40 @@ jobs:
       package_smoke: true
       security_suite: false
       performance_eval: false
+
+  static-failure-diagnostics:
+    name: static-failure-diagnostics
+    if: ${{ always() && needs.quality.result == 'failure' }}
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Capture format, lint and typecheck output
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm format:check 2>&1 | tee test-results/ci/format-check.log || true
+          pnpm lint 2>&1 | tee test-results/ci/lint.log || true
+          pnpm typecheck 2>&1 | tee test-results/ci/typecheck.log || true
+      - name: Upload complete static diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: static-failure-diagnostics
+          path: |
+            test-results/ci/format-check.log
+            test-results/ci/lint.log
+            test-results/ci/typecheck.log
+          if-no-files-found: error
+          retention-days: 7

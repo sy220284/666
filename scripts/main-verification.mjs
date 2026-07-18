@@ -3,11 +3,28 @@ import { fileURLToPath } from 'node:url';
 
 const githubFetch = globalThis.fetch;
 
+function checkRunOrder(run) {
+  const timestamp = Date.parse(run.created_at ?? run.started_at ?? run.completed_at ?? '');
+  return {
+    timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+    id: Number(run.id ?? 0),
+  };
+}
+
 export function latestChecksByName(checkRuns = []) {
   const latest = new Map();
   for (const run of checkRuns) {
     const previous = latest.get(run.name);
-    if (!previous || new Date(run.started_at) > new Date(previous.started_at)) {
+    if (!previous) {
+      latest.set(run.name, run);
+      continue;
+    }
+    const currentOrder = checkRunOrder(run);
+    const previousOrder = checkRunOrder(previous);
+    if (
+      currentOrder.timestamp > previousOrder.timestamp ||
+      (currentOrder.timestamp === previousOrder.timestamp && currentOrder.id > previousOrder.id)
+    ) {
       latest.set(run.name, run);
     }
   }

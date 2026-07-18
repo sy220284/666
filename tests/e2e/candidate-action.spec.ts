@@ -150,9 +150,11 @@ test('commits selected Candidate content through the desktop transaction', async
     readBigInts: true,
   });
   try {
-    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_records').get()).toEqual({
-      count: 1n,
-    });
+    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_records').get()).toEqual(
+      {
+        count: 1n,
+      },
+    );
     expect(
       database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_checkpoints').get(),
     ).toEqual({ count: 1n });

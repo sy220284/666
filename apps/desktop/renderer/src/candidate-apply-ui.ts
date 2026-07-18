@@ -23,7 +23,9 @@ function checkedValues(root: HTMLElement, name: string): string[] {
 
 export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => void {
   const dialog = document.querySelector<HTMLDialogElement>('[data-candidate-preview-dialog]');
-  const candidateSelect = document.querySelector<HTMLSelectElement>('[data-candidate-preview-select]');
+  const candidateSelect = document.querySelector<HTMLSelectElement>(
+    '[data-candidate-preview-select]',
+  );
   if (!dialog || !candidateSelect) return () => undefined;
 
   const panel = node('section');
@@ -81,9 +83,7 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
         : null;
     }
     const beatIds = checkedValues(choices, 'candidate-beat-choice');
-    return beatIds.length
-      ? { mode: 'scene-beats', beatIds, deleteLogicalBlockIds: [] }
-      : null;
+    return beatIds.length ? { mode: 'scene-beats', beatIds, deleteLogicalBlockIds: [] } : null;
   };
 
   const render = (): void => {
@@ -108,7 +108,10 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
         input.name = 'candidate-block-choice';
         input.value = block.candidateBlockId;
         input.checked = true;
-        item.append(input, document.createTextNode(` 块 ${index + 1} · ${block.text.slice(0, 60)}`));
+        item.append(
+          input,
+          document.createTextNode(` 块 ${index + 1} · ${block.text.slice(0, 60)}`),
+        );
         choices.append(item);
       }
     } else {
@@ -181,7 +184,8 @@ export function setupCandidateApplyUi(options: CandidateActionUiOptions): () => 
     }
     status.textContent = `采用成功 · Revision ${result.data.draft.revision}`;
     const current = document.querySelector<HTMLElement>('[data-candidate-preview-current]');
-    if (current) current.textContent = result.data.draft.blocks.map((block) => block.text).join('\n\n');
+    if (current)
+      current.textContent = result.data.draft.blocks.map((block) => block.text).join('\n\n');
     const option = candidateSelect.selectedOptions[0];
     if (option) option.textContent = `${preview.candidate.title} · accepted`;
   };

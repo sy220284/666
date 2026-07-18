@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EditorState,
+  NodeSelection,
   TextSelection,
   createWorldforgeHistoryPlugin,
   createWorldforgeEditorSchema,
@@ -12,6 +13,7 @@ import {
   redoWorldforgeCommand,
   splitWorldforgeBlock,
   tiptapJsonToDraftSnapshot,
+  toggleWorldforgeBlockLock,
   undoWorldforgeCommand,
 } from '../../packages/editor-core/src/index.js';
 
@@ -219,6 +221,32 @@ describe('M1-04 WorldForge editor document', () => {
       'paragraph',
       'paragraph',
     ]);
+  });
+
+  it('toggles a selected separator block lock without requiring a text cursor', () => {
+    const schema = createWorldforgeEditorSchema();
+    const separator = schema.nodes.separator;
+    const document = schema.nodes.chapterDocument;
+    if (!separator || !document) throw new Error('Editor schema is incomplete.');
+    let state = EditorState.create({
+      doc: document.create(null, [
+        separator.create({
+          logicalBlockId: firstId,
+          clientBlockId: firstId,
+          source: 'manual',
+          locked: false,
+          contentHash: null,
+        }),
+      ]),
+    });
+    state = state.apply(state.tr.setSelection(NodeSelection.create(state.doc, 0)));
+
+    expect(
+      toggleWorldforgeBlockLock(state, (transaction) => {
+        state = state.apply(transaction);
+      }),
+    ).toBe(true);
+    expect(state.doc.child(0).attrs.locked).toBe(true);
   });
 
   it('round-trips one long continuous Chinese paragraph without loss or duplication', () => {

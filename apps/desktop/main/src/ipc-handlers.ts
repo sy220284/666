@@ -111,6 +111,7 @@ function failure(
   message: string,
   retryable: boolean,
   diagnosticId?: string,
+  details?: CommandFailure['error']['details'],
 ): CommandFailure {
   return {
     ok: false,
@@ -120,6 +121,7 @@ function failure(
       message,
       retryable,
       ...(diagnosticId ? { diagnosticId } : {}),
+      ...(details ? { details } : {}),
     },
   };
 }
@@ -278,12 +280,18 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     }
   });
 
-  const appDataFailure = (requestId: string, code: ErrorCode): CommandFailure =>
+  const appDataFailure = (
+    requestId: string,
+    code: ErrorCode,
+    details?: CommandFailure['error']['details'],
+  ): CommandFailure =>
     failure(
       requestId,
       code,
       'The local application data operation could not be completed.',
       ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+      undefined,
+      details,
     );
 
   register(IPC_CHANNELS.settingsGet, async (event, raw) => {
@@ -392,7 +400,11 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     const result = await options.supervisor.invokeProjectOperation(requestId, operation);
     return result.ok
       ? success(requestId, result.data)
-      : appDataFailure(requestId, result.errorCode);
+      : appDataFailure(
+          requestId,
+          result.errorCode,
+          'details' in result ? result.details : undefined,
+        );
   };
 
   register(IPC_CHANNELS.getActive, async (event, raw) => {

@@ -3,9 +3,9 @@ import { baseKeymap, joinBackward, splitBlockAs } from '@tiptap/pm/commands';
 import { history, redo, undo } from '@tiptap/pm/history';
 import { keymap } from '@tiptap/pm/keymap';
 import type { Node as ProseMirrorNode, Schema } from '@tiptap/pm/model';
-import { Plugin, type Command } from '@tiptap/pm/state';
+import { Plugin, type Command, type EditorState } from '@tiptap/pm/state';
 
-export { EditorState, TextSelection } from '@tiptap/pm/state';
+export { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state';
 export { Editor };
 
 export type WorldforgeBlockType = 'paragraph' | 'dialogue' | 'heading' | 'separator';
@@ -244,26 +244,43 @@ function createWorldforgeLockGuardPlugin(): Plugin {
   });
 }
 
-export const toggleWorldforgeBlockLock: Command = (state, dispatch) => {
+function selectedWorldforgeBlock(
+  state: EditorState,
+): { readonly node: ProseMirrorNode; readonly position: number } | null {
   const { $from } = state.selection;
-  if ($from.depth < 1) return false;
-  const targetNode = $from.node(1);
+  const targetNode = $from.depth >= 1 ? $from.node(1) : state.doc.nodeAt(state.selection.from);
   if (
+    !targetNode ||
     !supportedBlockTypes.has(targetNode.type.name as WorldforgeBlockType) ||
     !logicalBlockId(targetNode)
   ) {
-    return false;
+    return null;
   }
+  return { node: targetNode, position: $from.depth >= 1 ? $from.before(1) : state.selection.from };
+}
+
+export const toggleWorldforgeBlockLock: Command = (state, dispatch) => {
+  const target = selectedWorldforgeBlock(state);
+  if (!target) return false;
   if (dispatch) {
-    const transaction = state.tr.setNodeMarkup($from.before(1), undefined, {
-      ...targetNode.attrs,
-      locked: targetNode.attrs.locked !== true,
+    const transaction = state.tr.setNodeMarkup(target.position, undefined, {
+      ...target.node.attrs,
+      locked: target.node.attrs.locked !== true,
     });
     transaction.setMeta(LOCK_COMMAND_META, true);
     dispatch(transaction);
   }
   return true;
 };
+
+export function selectedWorldforgeBlockLocked(editor: Editor): boolean | null {
+  const target = selectedWorldforgeBlock(editor.state);
+  return target ? target.node.attrs.locked === true : null;
+}
+
+export function toggleWorldforgeEditorBlockLock(editor: Editor): boolean {
+  return toggleWorldforgeBlockLock(editor.state, editor.view.dispatch, editor.view);
+}
 
 export function splitWorldforgeBlock(
   clientBlockIdFactory: () => string = temporaryClientBlockId,

@@ -8,9 +8,11 @@ import {
   findTextRanges,
   documentToTiptapJson,
   redoWorldforgeEditor,
+  selectedWorldforgeBlockLocked,
   synchronizePersistedBlockMetadata,
   tiptapJsonToDraftSnapshot,
   undoWorldforgeEditor,
+  toggleWorldforgeEditorBlockLock,
 } from '@worldforge/editor-core';
 import type { ImportPlan, ImportPlanChapter, ExportVersionChoice } from '@worldforge/contracts';
 
@@ -160,6 +162,7 @@ const undoDraftButton = document.querySelector<HTMLButtonElement>('[data-undo-dr
 const redoDraftButton = document.querySelector<HTMLButtonElement>('[data-redo-draft]');
 const insertSeparatorButton = document.querySelector<HTMLButtonElement>('[data-insert-separator]');
 const blockTypeButtons = document.querySelectorAll<HTMLButtonElement>('[data-set-block-type]');
+const toggleBlockLockButton = document.querySelector<HTMLButtonElement>('[data-toggle-block-lock]');
 const draftCharacterCount = document.querySelector<HTMLElement>('[data-draft-character-count]');
 const draftTextCount = document.querySelector<HTMLElement>('[data-draft-text-count]');
 const draftParagraphCount = document.querySelector<HTMLElement>('[data-draft-paragraph-count]');
@@ -487,6 +490,18 @@ function rememberDraftSelection(): void {
   chapterSelections.set(activeChapter.id, { from, to });
 }
 
+function refreshDraftLockButton(): void {
+  if (!toggleBlockLockButton) return;
+  const locked = draftEditor ? selectedWorldforgeBlockLocked(draftEditor) : null;
+  const unavailable =
+    locked === null || draftComposing || activeProject?.databaseMode !== 'read-write';
+  toggleBlockLockButton.disabled = unavailable;
+  toggleBlockLockButton.setAttribute('aria-pressed', locked === true ? 'true' : 'false');
+  toggleBlockLockButton.textContent = locked === true ? '解锁当前块' : '锁定当前块';
+  toggleBlockLockButton.title =
+    locked === true ? '解锁当前正文块（Ctrl/Cmd+Shift+L）' : '锁定当前正文块（Ctrl/Cmd+Shift+L）';
+}
+
 function destroyDraftEditor(): void {
   rememberDraftSelection();
   draftAutosave?.destroy();
@@ -502,6 +517,7 @@ function destroyDraftEditor(): void {
   currentFindIndex = -1;
   draftFindMatches = [];
   updateDraftStatistics();
+  refreshDraftLockButton();
   if (draftFindStatus) draftFindStatus.textContent = '';
   if (saveDraftButton) saveDraftButton.disabled = true;
 }
@@ -544,6 +560,7 @@ function mountDraftEditor(draft: DraftDocument, chapter: Chapter): void {
       transformPastedText: (text) => text.replaceAll('\r\n', '\n').replaceAll('\r', '\n'),
     },
     onUpdate: () => {
+      refreshDraftLockButton();
       if (synchronizingDraftMetadata) return;
       draftDirty = true;
       updateDraftStatistics();
@@ -556,6 +573,7 @@ function mountDraftEditor(draft: DraftDocument, chapter: Chapter): void {
         from: editor.state.selection.from,
         to: editor.state.selection.to,
       });
+      refreshDraftLockButton();
     },
   });
   lastSavedRevision = draft.revision;
@@ -585,6 +603,7 @@ function mountDraftEditor(draft: DraftDocument, chapter: Chapter): void {
   if (workspaceBadge) workspaceBadge.textContent = readOnly ? '只读正文' : '活动 Draft';
   if (saveDraftButton) saveDraftButton.disabled = readOnly;
   for (const button of blockTypeButtons) button.disabled = readOnly;
+  refreshDraftLockButton();
   if (insertSeparatorButton) insertSeparatorButton.disabled = readOnly;
   if (undoDraftButton) undoDraftButton.disabled = readOnly;
   if (redoDraftButton) redoDraftButton.disabled = readOnly;
@@ -1732,6 +1751,17 @@ insertSeparatorButton?.addEventListener('click', () => {
     .run();
 });
 
+toggleBlockLockButton?.addEventListener('click', () => {
+  if (!draftEditor || draftComposing || activeProject?.databaseMode !== 'read-write') return;
+  draftEditor.commands.focus();
+  if (!toggleWorldforgeEditorBlockLock(draftEditor)) return;
+  refreshDraftLockButton();
+  const locked = selectedWorldforgeBlockLocked(draftEditor) === true;
+  setDraftState(
+    locked ? '当前正文块已锁定；修改、删除和移动将被阻止。' : '当前正文块已解锁，可以继续编辑。',
+  );
+});
+
 draftFindInput?.addEventListener('input', () => {
   currentFindIndex = 0;
   refreshDraftFindMatches(true);
@@ -1753,6 +1783,7 @@ draftEditorHost?.addEventListener('compositionstart', () => {
   draftComposing = true;
   draftAutosave?.pause();
   if (saveDraftButton) saveDraftButton.disabled = true;
+  refreshDraftLockButton();
   setDraftState('输入法组合中；保存与结构键已暂停。');
 });
 
@@ -1762,6 +1793,7 @@ draftEditorHost?.addEventListener('compositionend', () => {
   if (saveDraftButton) saveDraftButton.disabled = activeProject?.databaseMode !== 'read-write';
   draftAutosave?.resume();
   if (draftDirty) draftAutosave?.markDirty();
+  refreshDraftLockButton();
 });
 
 document.addEventListener('keydown', (event) => {

@@ -615,6 +615,9 @@ async function executeProjectOperation(
       ok: false,
       operation: operation.operation,
       errorCode: projectWorkspaceError(error),
+      ...(error instanceof DraftServiceError && error.lockConflict
+        ? { details: { lockConflict: error.lockConflict } }
+        : {}),
     });
   }
 }

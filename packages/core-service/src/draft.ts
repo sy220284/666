@@ -12,6 +12,8 @@ import {
   type DraftApplyPatchInput,
   type DraftBlock,
   type DraftDocument,
+  type DraftLockConflict,
+  type DraftLockConflictSummary,
   type DraftOpenInput,
   type DraftPatchOperation,
   type DraftSaveSnapshotInput,
@@ -40,11 +42,17 @@ export type DraftServiceErrorCode =
 
 export class DraftServiceError extends Error {
   readonly code: DraftServiceErrorCode;
+  readonly lockConflict: DraftLockConflictSummary | undefined;
 
-  constructor(code: DraftServiceErrorCode, message: string, options?: ErrorOptions) {
+  constructor(
+    code: DraftServiceErrorCode,
+    message: string,
+    options?: ErrorOptions & { readonly lockConflict?: DraftLockConflictSummary },
+  ) {
     super(message, options);
     this.name = 'DraftServiceError';
     this.code = code;
+    this.lockConflict = options?.lockConflict;
   }
 }
 
@@ -493,6 +501,34 @@ function assertUnlocked(block: WorkingBlock): void {
   }
 }
 
+function lockConflictError(
+  conflicts: readonly DraftLockConflict[],
+  skippedOperationCount: number,
+  message: string,
+): DraftServiceError {
+  const unique = [
+    ...new Map(
+      conflicts.map((conflict) => [`${conflict.kind}:${conflict.logicalBlockId}`, conflict]),
+    ).values(),
+  ];
+  return new DraftServiceError('DRAFT_BLOCK_LOCKED', message, {
+    lockConflict: { conflicts: unique, skippedOperationCount },
+  });
+}
+
+function operationLockConflict(operation: DraftPatchOperation): DraftLockConflict | null {
+  if (operation.type === 'update') {
+    return { kind: 'modified', logicalBlockId: operation.logicalBlockId };
+  }
+  if (operation.type === 'delete') {
+    return { kind: 'deleted', logicalBlockId: operation.logicalBlockId };
+  }
+  if (operation.type === 'move') {
+    return { kind: 'moved', logicalBlockId: operation.logicalBlockId };
+  }
+  return null;
+}
+
 function insertionIndex(
   blocks: readonly WorkingBlock[],
   afterLogicalBlockId: string | null,
@@ -536,11 +572,13 @@ function assertSnapshotPreservesLockedBlocks(
       locked: previous?.locked ?? false,
     };
   });
-  const violation = collectLockGuardViolations(existing, target)[0];
-  if (violation) {
-    throw new DraftServiceError(
-      'DRAFT_BLOCK_LOCKED',
-      `Locked DraftBlock ${violation.logicalBlockId} cannot be ${violation.kind} by snapshot replacement.`,
+  const violations = collectLockGuardViolations(existing, target);
+  if (violations.length > 0) {
+    const first = violations[0]!;
+    throw lockConflictError(
+      violations,
+      1,
+      `Locked DraftBlock ${first.logicalBlockId} cannot be ${first.kind} by snapshot replacement.`,
     );
   }
 }
@@ -812,24 +850,42 @@ export class DraftService {
       const before = readWorkingBlocks(connection, draft.id);
       const after = before.map((block) => ({ ...block }));
       const committedRevision = draft.revision + 1;
+      const directLockConflicts: DraftLockConflict[] = [];
       for (const operation of valid.operations) {
-        applyOperation(after, operation, committedRevision, this.#idFactory);
+        try {
+          applyOperation(after, operation, committedRevision, this.#idFactory);
+        } catch (error) {
+          const conflict = operationLockConflict(operation);
+          if (
+            error instanceof DraftServiceError &&
+            error.code === 'DRAFT_BLOCK_LOCKED' &&
+            conflict
+          ) {
+            directLockConflicts.push(conflict);
+            continue;
+          }
+          throw error;
+        }
       }
       const explicitlyUnlocked = new Set(
         valid.operations.flatMap((operation) =>
           operation.type === 'set-lock' && !operation.locked ? [operation.logicalBlockId] : [],
         ),
       );
-      const violation = collectLockGuardViolations(
-        before.map((block) =>
-          explicitlyUnlocked.has(block.logicalBlockId) ? { ...block, locked: false } : block,
+      const lockConflicts = [
+        ...directLockConflicts,
+        ...collectLockGuardViolations(
+          before.map((block) =>
+            explicitlyUnlocked.has(block.logicalBlockId) ? { ...block, locked: false } : block,
+          ),
+          after,
         ),
-        after,
-      )[0];
-      if (violation) {
-        throw new DraftServiceError(
-          'DRAFT_BLOCK_LOCKED',
-          `Draft Patch would ${violation.kind} locked DraftBlock ${violation.logicalBlockId}.`,
+      ];
+      if (lockConflicts.length > 0) {
+        throw lockConflictError(
+          lockConflicts,
+          valid.operations.length,
+          `Draft Patch conflicts with ${lockConflicts.length} locked block change(s); the full Patch was skipped.`,
         );
       }
       if (after.length === 0) {

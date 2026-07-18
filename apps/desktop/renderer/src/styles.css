@@ -652,6 +652,13 @@ nav {
   cursor: pointer;
 }
 
+.draft-toolbar button[aria-pressed='true'] {
+  border-color: var(--color-border-strong);
+  background: #f4e8df;
+  color: var(--color-text-primary);
+  font-weight: 650;
+}
+
 .draft-state {
   min-height: 1.5em;
   margin: 0 0 8px !important;
@@ -681,6 +688,26 @@ nav {
 
 .worldforge-editor > * {
   position: relative;
+}
+
+.worldforge-editor > [data-locked='true'] {
+  margin-inline: -8px;
+  padding-inline: 7px;
+  border-inline-start: 2px solid var(--color-border-strong);
+  border-radius: 3px;
+  background: rgb(244 232 223 / 48%);
+}
+
+.worldforge-editor > [data-locked='true']::after {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 5px;
+  content: '已锁定';
+  color: var(--color-text-muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.58em;
+  line-height: 1.4;
+  pointer-events: none;
 }
 
 .worldforge-editor p[data-block-type='dialogue'] {

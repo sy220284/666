@@ -213,6 +213,102 @@ describe('M2-01 Core LockGuard', () => {
     }
   });
 
+  it('returns a structured batch conflict, skips every operation, and persists locks after reopen', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, chapter, draft } = await createOpenedDraft(harness);
+      const initial = draft.blocks[0]!;
+      const withSecond = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: draft.revision,
+        operations: [
+          {
+            type: 'insert',
+            afterLogicalBlockId: initial.logicalBlockId,
+            block: { blockType: 'paragraph', content: '第二个锁定块', attributes: {} },
+          },
+        ],
+      });
+      const first = withSecond.blocks[0]!;
+      const second = withSecond.blocks[1]!;
+      const locked = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: withSecond.revision,
+        operations: [
+          {
+            type: 'set-lock',
+            logicalBlockId: first.logicalBlockId,
+            expectedHash: first.contentHash!,
+            locked: true,
+          },
+          {
+            type: 'set-lock',
+            logicalBlockId: second.logicalBlockId,
+            expectedHash: second.contentHash!,
+            locked: true,
+          },
+        ],
+      });
+
+      await expect(
+        harness.drafts.applyPatch(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          draftId: draft.draftId,
+          baseRevision: locked.revision,
+          operations: [
+            {
+              type: 'update',
+              logicalBlockId: locked.blocks[0]!.logicalBlockId,
+              expectedHash: locked.blocks[0]!.contentHash!,
+              content: '不应写入',
+            },
+            {
+              type: 'delete',
+              logicalBlockId: locked.blocks[1]!.logicalBlockId,
+              expectedHash: locked.blocks[1]!.contentHash!,
+            },
+            {
+              type: 'insert',
+              afterLogicalBlockId: locked.blocks[1]!.logicalBlockId,
+              block: { blockType: 'paragraph', content: '也不应写入', attributes: {} },
+            },
+          ],
+        }),
+      ).rejects.toMatchObject<DraftServiceError>({
+        code: 'DRAFT_BLOCK_LOCKED',
+        lockConflict: {
+          conflicts: [
+            { kind: 'modified', logicalBlockId: locked.blocks[0]!.logicalBlockId },
+            { kind: 'deleted', logicalBlockId: locked.blocks[1]!.logicalBlockId },
+          ],
+          skippedOperationCount: 3,
+        },
+      });
+
+      const unchanged = await harness.drafts.open(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      });
+      expect(unchanged).toEqual(locked);
+
+      await harness.workspace.close(randomUUID(), project.projectId);
+      await harness.workspace.open(randomUUID(), { workspacePath: project.workspacePath });
+      const reopened = await harness.drafts.open(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      });
+      expect(reopened.blocks.map((block) => block.locked)).toEqual([true, true]);
+      expect(reopened).toEqual(locked);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('blocks direct snapshot deletion, modification and movement of locked blocks', async () => {
     const harness = await createHarness();
     try {

@@ -77,6 +77,7 @@ import {
   DRAFT_COMMANDS,
   DRAFT_IPC_CHANNELS,
   DraftApplyPatchCommandSchema,
+  DraftLockConflictSummarySchema,
   DraftOpenCommandSchema,
   type DraftApplyPatchInput,
   type DraftDocument,
@@ -363,6 +364,7 @@ export const SafeErrorDetailsSchema = z.strictObject({
   expectedSequence: z.number().int().positive().optional(),
   receivedSequence: z.number().int().positive().optional(),
   field: z.string().min(1).max(128).optional(),
+  lockConflict: DraftLockConflictSummarySchema.optional(),
 });
 
 export const CommandFailureSchema = z.strictObject({

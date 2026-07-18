@@ -1,6 +1,6 @@
 # M2-01 锁定块与Core LockGuard
 
-> 状态：Implemented  
+> 状态：In Progress
 > 里程碑：M2 编辑安全与版本核心  
 > 优先级：P0  
 > 建议分支：`feat/m2-lock-guard`
@@ -44,9 +44,11 @@ M1-05
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
 - `apps/desktop/renderer/`
 - `tests/unit/`
 - `tests/integration/`
+- `tests/security/`
 - `tests/e2e/`
 
 ## 实施内容

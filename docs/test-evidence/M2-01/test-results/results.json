@@ -1,0 +1,44 @@
+[
+  {
+    "suite": "static-gates",
+    "fixtureId": "M2-01",
+    "status": "passed",
+    "details": "Format, Lint, Typecheck, Build, boundaries, workspaces, CI policy and task control passed."
+  },
+  {
+    "suite": "editor-unit",
+    "fixtureId": "M2-01",
+    "status": "passed",
+    "details": "Lock Patch ordering and editor transaction behavior passed."
+  },
+  {
+    "suite": "core-integration",
+    "fixtureId": "M2-01",
+    "status": "passed",
+    "details": "Update, delete, move, neighbor reordering, snapshot bypass, batch summary, atomic rejection and reopen persistence passed."
+  },
+  {
+    "suite": "ipc-security",
+    "fixtureId": "M2-01",
+    "status": "passed",
+    "details": "Strict authority fields, trusted origin and safe structured conflict propagation passed."
+  },
+  {
+    "suite": "full-vitest",
+    "fixtureId": "M2-01",
+    "status": "passed",
+    "details": "62 files, 231 passed and 1 pre-existing platform skip after the separator NodeSelection regression was added."
+  },
+  {
+    "suite": "electron-build",
+    "fixtureId": "M2-01",
+    "status": "passed",
+    "details": "All desktop and package targets built successfully."
+  },
+  {
+    "suite": "electron-e2e",
+    "fixtureId": "M2-01",
+    "status": "skipped",
+    "details": "Runner stopped with E2E_DISPLAY_UNAVAILABLE because DISPLAY and xvfb-run are absent."
+  }
+]

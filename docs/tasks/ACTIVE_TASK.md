@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M2-04`
-- 唯一任务卡：`docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md`
-- 工作分支：`work/m2-04-trash-structure-recovery`
+- 任务ID：`M2-01`
+- 唯一任务卡：`docs/tasks/M2/M2-01_LOCK_GUARD.md`
+- 工作分支：`work/m2-01-lock-guard`
 - 开始时间：`2026-07-18`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -19,12 +19,15 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - migrations/project/
+  - packages/editor-core/
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
+  - apps/desktop/main/
   - apps/desktop/renderer/
+  - tests/unit/
   - tests/integration/
+  - tests/security/
   - tests/e2e/
   - package.json
   - pnpm-lock.yaml
@@ -32,10 +35,15 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
+  - docs/tasks/M2/M2-01_LOCK_GUARD.md
   - docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M2-04/
-  - docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md
+  - docs/contracts/ERROR_CODES.md
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/security/THREAT_MODEL.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
+  - docs/ui/UI_ACCEPTANCE_CHECKLIST.md
+  - docs/test-evidence/M2-01/
 forbidden_paths:
 
 required_docs:
@@ -43,19 +51,17 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
   - docs/decisions/ADR-005-lock-revision-backup.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/ui/INTERACTION_STATES.md
-  - docs/testing/SECURITY_TEST_CASES.md
+  - docs/contracts/ERROR_CODES.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
-  - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
+  - pnpm test:integration
 ```
 
 ## 连续执行规则

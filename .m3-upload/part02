@@ -1,0 +1,463 @@
+onst mode = button.dataset.planningMode;
++    if (mode === 'beginner' || mode === 'professional') setPlanningMode(mode);
++  });
++}
++skipBriefButton?.addEventListener('click', () => {
++  setBriefExpanded(false);
++  setPlanningStatus('任务书已暂时收起；大纲和正文仍可继续。');
++});
++restoreBriefButton?.addEventListener('click', () => {
++  setBriefExpanded(true);
++  if (activeBrief) populateBriefForm(activeBrief);
++});
++briefForm?.addEventListener('submit', (event) => {
++  event.preventDefault();
++  void (async () => {
++    const project = activeProject;
++    if (!project || project.databaseMode !== 'read-write' || !briefForm) return;
++    const data = new FormData(briefForm);
++    if (saveBriefButton) saveBriefButton.disabled = true;
++    planningRefreshGeneration += 1;
++    setPlanningStatus('正在保存作品任务书…');
++    try {
++      const result = await window.worldforge.planning.updateBrief({
++        projectId: project.projectId,
++        concept: String(data.get('concept') ?? ''),
++        readingPromise: String(data.get('readingPromise') ?? ''),
++        protagonistGoal: String(data.get('protagonistGoal') ?? ''),
++        coreConflict: String(data.get('coreConflict') ?? ''),
++        endingIntent: String(data.get('endingIntent') ?? ''),
++        required: parseRuleLines(data.get('required')),
++        forbidden: parseRuleLines(data.get('forbidden')),
++      });
++      if (!result.ok) {
++        setPlanningStatus(`任务书保存失败 · ${result.error.code}`, true);
++        return;
++      }
++      activeBrief = result.data;
++      populateBriefForm(result.data);
++      setPlanningStatus('任务书已保存；正文、Version和Candidate未修改。');
++    } catch {
++      setPlanningStatus('任务书保存失败 · COMMON_INTERNAL_999', true);
++    } finally {
++      if (saveBriefButton) saveBriefButton.disabled = false;
++    }
++  })();
++});
++createRootPlotNodeButton?.addEventListener('click', () => openPlotNodeEditor(null));
++cancelPlotNodeButton?.addEventListener('click', () => plotNodeDialog?.close());
++plotNodeForm?.addEventListener('submit', (event) => {
++  event.preventDefault();
++  void (async () => {
++    const project = activeProject;
++    if (!project || project.databaseMode !== 'read-write' || !plotNodeForm) return;
++    const data = new FormData(plotNodeForm);
++    const nodeType = String(data.get('nodeType')) as PlotNodeType;
++    const title = String(data.get('title') ?? '').trim();
++    const status = String(data.get('status')) as LifecycleStatus;
++    if (!title || !['volume', 'arc', 'chapter'].includes(nodeType)) {
++      setPlotNodeStatus('请填写有效标题和节点类型。', true);
++      return;
++    }
++    if (savePlotNodeButton) savePlotNodeButton.disabled = true;
++    planningRefreshGeneration += 1;
++    setPlotNodeStatus('正在保存大纲节点…');
++    const fields = {
++      nodeType,
++      title,
++      goal: String(data.get('goal') ?? ''),
++      coreConflict: String(data.get('coreConflict') ?? ''),
++      expectedResult: String(data.get('expectedResult') ?? ''),
++      status,
++    };
++    try {
++      const result = editingPlotNodeId
++        ? await window.worldforge.planning.updatePlotNode({
++            projectId: project.projectId,
++            nodeId: editingPlotNodeId,
++            patch: fields,
++          })
++        : await window.worldforge.planning.createPlotNode({
++            projectId: project.projectId,
++            parentId: editingPlotNodeParentId,
++            ...fields,
++            placement: { kind: 'end' },
++          });
++      if (!result.ok) {
++        setPlotNodeStatus(`保存失败 · ${result.error.code}`, true);
++        return;
++      }
++      activePlotNodes = result.data.nodes;
++      renderOutlineTree();
++      plotNodeDialog?.close();
++      setPlanningStatus('大纲节点已保存；正文未修改。');
++    } catch {
++      setPlotNodeStatus('保存失败 · COMMON_INTERNAL_999', true);
++    } finally {
++      if (savePlotNodeButton) savePlotNodeButton.disabled = false;
++    }
++  })();
++});
++outlineRootDrop?.addEventListener('dragover', (event) => {
++  if (!draggedPlotNodeId) return;
++  event.preventDefault();
++  outlineRootDrop.classList.add('is-drag-over');
++});
++outlineRootDrop?.addEventListener('dragleave', () =>
++  outlineRootDrop.classList.remove('is-drag-over'),
++);
++outlineRootDrop?.addEventListener('drop', (event) => {
++  event.preventDefault();
++  event.stopPropagation();
++  const sourceId = draggedPlotNodeId;
++  clearDragStyles();
++  if (sourceId) void movePlotNodeFromUi(sourceId, null, { kind: 'end' });
++});
++
+ openTextIoButton?.addEventListener('click', () => {
+   textIoDialog?.showModal();
+   setTextIoStatus('预览不会修改项目；确认导入前会创建已验证恢复点。');
+diff -ruN '--exclude=.github' m3repo_base/apps/desktop/renderer/src/styles.css m3repo/apps/desktop/renderer/src/styles.css
+--- m3repo_base/apps/desktop/renderer/src/styles.css	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/apps/desktop/renderer/src/styles.css	2026-07-18 12:20:21.729281163 +0000
+@@ -58,7 +58,8 @@
+ 
+ button,
+ select,
+-input {
++input,
++textarea {
+   font: inherit;
+ }
+ 
+@@ -70,6 +71,7 @@
+ button:focus-visible,
+ select:focus-visible,
+ input:focus-visible,
++textarea:focus-visible,
+ [tabindex]:focus-visible {
+   outline: 2px solid var(--color-accent-primary);
+   outline-offset: 2px;
+@@ -1756,3 +1758,234 @@
+   border: 1px solid var(--border-color, #d8d4cc);
+   border-radius: 8px;
+ }
++
++.planning-dialog {
++  width: min(1180px, calc(100vw - 32px));
++  max-width: 1180px;
++  max-height: calc(100vh - 32px);
++  padding: 0;
++  border: 1px solid var(--color-border-subtle);
++  border-radius: var(--radius-lg);
++  background: var(--color-bg-paper);
++  box-shadow: var(--shadow-popover);
++}
++
++.planning-dialog::backdrop {
++  background: rgb(36 35 33 / 38%);
++}
++
++.planning-workspace {
++  display: grid;
++  grid-template-rows: auto auto minmax(0, 1fr) auto;
++  max-height: calc(100vh - 34px);
++}
++
++.planning-workspace__header,
++.planning-workspace__footer,
++.brief-panel > header,
++.outline-panel > header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 16px;
++}
++
++.planning-workspace__header {
++  padding: 20px 22px 12px;
++  border-bottom: 1px solid var(--color-border-subtle);
++}
++
++.planning-workspace__header h2,
++.brief-panel h3,
++.outline-panel h3 {
++  margin: 2px 0 0;
++}
++
++.planning-mode-switch {
++  display: flex;
++  gap: 6px;
++}
++
++.planning-mode-switch .is-active {
++  border-color: var(--color-accent-primary);
++  background: color-mix(in srgb, var(--color-accent-primary) 10%, white);
++}
++
++.planning-workspace > .save-state {
++  min-height: 24px;
++  margin: 0;
++  padding: 6px 22px;
++}
++
++.planning-workspace__body {
++  display: grid;
++  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
++  gap: 18px;
++  min-height: 0;
++  padding: 14px 22px 20px;
++  overflow: auto;
++}
++
++.brief-panel,
++.outline-panel {
++  min-width: 0;
++  padding: 16px;
++  border: 1px solid var(--color-border-subtle);
++  border-radius: var(--radius-md);
++  background: var(--color-bg-elevated);
++}
++
++.brief-panel form,
++.brief-panel label {
++  display: grid;
++  gap: 6px;
++}
++
++.brief-panel form {
++  gap: 12px;
++}
++
++.brief-panel textarea,
++.planning-wide-field textarea {
++  width: 100%;
++  min-height: 72px;
++  resize: vertical;
++  border: 1px solid var(--color-border-subtle);
++  border-radius: var(--radius-sm);
++  padding: 9px 10px;
++  background: var(--color-bg-paper);
++  color: var(--color-text-primary);
++  font: inherit;
++}
++
++.brief-rule-grid {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 12px;
++}
++
++.brief-panel form > footer {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++}
++
++.brief-panel--skipped {
++  align-self: start;
++}
++
++.outline-panel {
++  display: flex;
++  min-height: 380px;
++  flex-direction: column;
++}
++
++.outline-root-drop {
++  padding: 8px 10px;
++  margin: 4px 0 10px;
++  border: 1px dashed var(--color-border-strong);
++  border-radius: var(--radius-sm);
++  color: var(--color-text-muted);
++  text-align: center;
++}
++
++.outline-root-drop.is-drag-over,
++.plot-node__child-drop.is-drag-over,
++.plot-node.is-drag-over {
++  border-color: var(--color-accent-primary);
++  background: color-mix(in srgb, var(--color-accent-primary) 8%, white);
++}
++
++.outline-tree {
++  display: grid;
++  gap: 8px;
++}
++
++.outline-empty {
++  padding: 28px 12px;
++  color: var(--color-text-muted);
++  text-align: center;
++}
++
++.plot-node {
++  display: grid;
++  gap: 6px;
++  padding: 10px;
++  border: 1px solid var(--color-border-subtle);
++  border-radius: var(--radius-sm);
++  background: var(--color-bg-paper);
++}
++
++.plot-node__row {
++  display: flex;
++  align-items: flex-start;
++  justify-content: space-between;
++  gap: 8px;
++}
++
++.plot-node__summary {
++  min-width: 0;
++}
++
++.plot-node__summary strong,
++.plot-node__summary small {
++  display: block;
++}
++
++.plot-node__summary small {
++  margin-top: 3px;
++  color: var(--color-text-muted);
++}
++
++.plot-node__actions {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 4px;
++}
++
++.plot-node__actions button {
++  min-height: 26px;
++  padding: 2px 7px;
++  font-size: 0.78em;
++}
++
++.plot-node__child-drop {
++  padding: 4px 8px;
++  border: 1px dashed transparent;
++  border-radius: var(--radius-sm);
++  color: var(--color-text-muted);
++  font-size: 0.76em;
++}
++
++.plot-node__children {
++  display: grid;
++  gap: 8px;
++  padding-left: 18px;
++  border-left: 1px solid var(--color-border-subtle);
++}
++
++.planning-workspace__footer {
++  padding: 12px 22px;
++  border-top: 1px solid var(--color-border-subtle);
++  color: var(--color-text-muted);
++}
++
++.planning-wide-field {
++  grid-column: 1 / -1;
++}
++
++@media (max-width: 820px) {
++  .planning-workspace__body {
++    grid-template-columns: 1fr;
++  }
++
++  .planning-workspace__header {
++    align-items: flex-start;
++    flex-direction: column;
++  }
++
++  .brief-rule-grid {
++    grid-template-columns: 1fr;
++  }
++}
+diff -ruN '--exclude=.github' m3repo_base/apps/desktop/renderer/src/types.ts m3repo/apps/desktop/renderer/src/types.ts
+--- m3repo_base/apps/desktop/renderer/src/types.ts	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/apps/desktop/renderer/src/types.ts	2026-07-18 12:18:30.290980174 +0000
+@@ -11,6 +11,9 @@
+   TrashEntry,
+   RecentProject,
+   DraftDocument,
++  ProjectBrief,
++  PlotNode,
++  PlotNodeType,
+ } from '@worldforge/contracts';
+ 
+ export type ContentWidthPreference = AppearancePreferences['contentWidth'];
+@@ -28,4 +31,7 @@
+   TrashEntry,
+   RecentProject,
+   DraftDocument,
++  ProjectBrief,
++  PlotNode,
++  PlotNodeType,
+ };
+diff -ruN '--exclude=.github' m3repo_base/docs/contracts/IPC_CONTRACTS.md m3repo/docs/contracts/IPC_CONTRACTS.md
+--- m3repo_base/docs/contracts/IPC_CONTRACTS.md	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/docs/contracts/IPC_CONTRACTS.md	2026-07-18 12:11:59.306051513 +0000
+@@ -124,8 +124,9 @@
+ 
+ 高风险结构执行前先重算预览并校验`planHash`、Draft Revision、块Hash、归属和LockGuard；预检通过后创建已验证恢复点，再在单个项目库事务中提交结构与Draft Revision。任一重校验失败都不修改原结构。
+ 
+-- `planning.getBrief/updateBrief`
+-- `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`
++- `planning.getBrief/updateBrief`：读取或保存可为空的ProjectBrief；Renderer不得传入ID或更新时间。
++- `planning.listPlotNodes`：读取按父级与orderKey组织的PlotNode列表。
++- `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`：节点ID与orderKey由Core生成；移动只传目标父级和同级锚点。
+ - `planning.createSceneBeat/updateSceneBeat/moveSceneBeat/deleteSceneBeat`
+ - `planning.moveSceneAcrossChapters`（M3-02）
+ 
+diff -ruN '--exclude=.github' m3repo_base/docs/database/DATABASE_SCHEMA.md m3repo/docs/database/DATABASE_SCHEMA.md
+--- m3repo_base/docs/database/DATABASE_SCHEMA.md	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/docs/database/DATABASE_SCHEMA.md	2026-07-18 12:11:59.307007513 +0000
+@@ -377,6 +377,8 @@
+ 
+ `0009_structure_operation_recovery.sql`扩展恢复点操作为`move-blocks/permanent-delete`。永久删除预览统计卷、章、Draft、DraftBlock、Version与Candidate；存在Version或Candidate引用时拒绝执行。无阻断引用时，Core先创建已验证恢复点，再按PatchLog→DraftBlock→Draft→Chapter→Volume的引用顺序在单事务内清理。
+ 
++`0010_project_brief_outline.sql`建立`project_briefs`与`plot_nodes`。ProjectBrief按项目唯一保存；PlotNode使用自引用父级、64位整数orderKey、同级唯一顺序和父级项目一致性触发器。规划事务不写Draft、Version或Candidate。
++
+ 拆章和跨章移动保留被移动块的`logicalBlockId`，源/目标Draft分别写入`draft_patch_log`并递增一次Revision。合章将源正文复制到目标Draft后把源章移入回收站，因而原章仍可恢复；历史Version/VersionBlock始终不更改。
+ 
+ ## 4. FTS5
+diff -ruN '--exclude=.github' m3repo_base/docs/product/V1.0_TRACEABILITY_MATRIX.md m3repo/docs/product/V1.0_TRACEABILITY_MATRIX.md
+--- m3repo_base/docs/product/V1.0_TRACEABILITY_MATRIX.md	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/docs/product/V1.0_TRACEABILITY_MATRIX.md	2026-07-18 12:11:59.307610695 +0000
+@@ -30,7 +30,7 @@
+ | REQ-013 | Candidate采用原子事务与撤销        | CND-003/004              | ADR-004/005、IPC_CONTRACTS                 | M2-03、M5-05               | P0-030—P0-032          | In Progress |
+ | REQ-014 | 卷章场景生命周期                   | PLN-003/004、TRS-001     | DATABASE_SCHEMA                            | M1-03、M2-04、M3-02        | P0-034、P0-056         | In Progress |
+ | REQ-015 | 拆章、并章、跨章移动               | PLN-005/006              | ADR-005、IPC_CONTRACTS                     | M2-04、M3-02               | P0-035                 | In Progress |
+-| REQ-016 | 任务书、大纲和SceneBeat            | PLN-001/002/004          | FUNCTION_CATALOG、DATABASE_SCHEMA          | M3-01、M3-02               | P0-033、P0-034         | Planned     |
++| REQ-016 | 任务书、大纲和SceneBeat            | PLN-001/002/004          | FUNCTION_CATALOG、DATABASE_SCHEMA          | M3-01、M3-02               | P0-033、P0-034         | In Progress |
+ | REQ-017 | 人物与世界实体                     | CAN-001                  | DATABASE_SCHEMA                            | M3-03                      | P0-036                 | Planned     |
+ | REQ-018 | 静态Canon与动态状态分离            | CAN-002、STA-001         | ADR-004、DATABASE_SCHEMA                   | M3-03、M3-04               | P0-036、P0-037         | Planned     |
+ | REQ-019 | 时间线                             | TIM-001                  | DATABASE_SCHEMA                            | M3-04                      | P0-038                 | Planned     |
+diff -ruN '--exclude=.github' m3repo_base/docs/tasks/ACTIVE_TASK.json m3repo/docs/tasks/ACTIVE_TASK.json
+--- m3repo_base/docs/tasks/ACTIVE_TASK.json	2026-07-18 11:53:22.000000000 +0000
++++ m3repo/docs/tasks/ACTIVE_TASK.json	2026-07-18 12:23:28.987603081 +0000
+@@ -33,7 +33,14 @@
+       "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md",
+       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+       "docs/test-evidence/M3-01/",
+-      "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md"
++      "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
++      "apps/desktop/main/",
++      "apps/desktop/preload/",
++      "tests/migration/",
++      "tests/security/",
++      "docs/contracts/IPC_CONTRACTS.md",
++      "docs/database/DATABASE_SCHEMA.md",
++      "docs/ui/SCREEN_SPECIFICATIONS.md"
+     ],
+     "forbiddenPaths": [],
+     "requiredDocs": [
+@@ -52,6 +59,7 @@
+       "pnpm test:security",
+       "pnpm test:e2e",
+       "pnpm test:unit",
++      "pnpm test:migration",
+       "pnpm test:integration"
+     ]
+   },
+diff -ruN '--exclude=.git

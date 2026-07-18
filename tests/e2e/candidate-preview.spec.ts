@@ -162,9 +162,11 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     readBigInts: true,
   });
   try {
-    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_records').get()).toEqual({
-      count: 0n,
-    });
+    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_records').get()).toEqual(
+      {
+        count: 0n,
+      },
+    );
     expect(
       database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_checkpoints').get(),
     ).toEqual({ count: 0n });

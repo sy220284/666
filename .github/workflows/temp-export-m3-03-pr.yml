@@ -1,0 +1,22 @@
+name: Temporary M3-03 PR Source Export
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Archive source
+        run: tar --exclude=.git --exclude=node_modules -czf /tmp/worldforge-m3-03.tar.gz .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: worldforge-m3-03-pr-source
+          path: /tmp/worldforge-m3-03.tar.gz
+          retention-days: 1

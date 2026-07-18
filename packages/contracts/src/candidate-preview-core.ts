@@ -25,7 +25,5 @@ export const CoreCandidatePreviewResultSchema = z.union([
   }),
 ]);
 
-export type CoreCandidatePreviewOperation = z.infer<
-  typeof CoreCandidatePreviewOperationSchema
->;
+export type CoreCandidatePreviewOperation = z.infer<typeof CoreCandidatePreviewOperationSchema>;
 export type CoreCandidatePreviewResult = z.infer<typeof CoreCandidatePreviewResultSchema>;

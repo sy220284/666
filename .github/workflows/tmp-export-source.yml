@@ -34,7 +34,9 @@ jobs:
             c1d30c1e019362888246ede5f518ac93021d9c1b \
             71e9536a6991028a83428b76c010f69459de64f3 \
             2f039cc0e901c76c5588eb7979d070d3bd49279f \
-            074b1a07d97639ff27e31166775c15cc29770361
+            8d2c05deba39c24f0d3f2eb7cf03d22d34d945bd \
+            204bee87bddfb0c5195ae0cd7db7373d78d4dfdb \
+            9485e19cb58f0863957164d70215935e4b1d297d
           do
             gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" --jq .content \
               | tr -d '\n' \

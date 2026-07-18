@@ -4,6 +4,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import type { WorldforgeBridge } from '@worldforge/contracts';
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
@@ -68,21 +69,39 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await page.locator('[data-save-draft]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
 
-    page.on('dialog', async (dialog) => {
-      const message = dialog.message();
-      if (dialog.type() === 'prompt' && message.includes('新章节标题')) {
-        await dialog.accept('拆出章节');
-        return;
-      }
-      if (dialog.type() === 'prompt' && message.includes('第几个正文块')) {
-        await dialog.accept('1');
-        return;
-      }
-      if (dialog.type() === 'prompt' && message.includes('请输入完整标题')) {
-        await dialog.accept('拆出章节');
-        return;
-      }
-      await dialog.accept();
+    const prepared = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const active = await bridge.project.getActive();
+      if (!active.ok || !active.data) throw new Error('E2E_PROJECT_MISSING');
+      const structure = await bridge.planning.listStructure(active.data.projectId);
+      if (!structure.ok) throw new Error('E2E_STRUCTURE_MISSING');
+      const chapter = structure.data.volumes[0]?.chapters[0];
+      if (!chapter) throw new Error('E2E_CHAPTER_MISSING');
+      const draft = await bridge.draft.open({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+      });
+      if (!draft.ok) throw new Error('E2E_DRAFT_MISSING');
+      const preview = await bridge.planning.previewSplitChapter({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draftId: draft.data.draftId,
+        baseRevision: draft.data.revision,
+        splitAfterLogicalBlockId: draft.data.blocks[0]!.logicalBlockId,
+        newChapterTitle: '拆出章节',
+      });
+      if (!preview.ok) throw new Error(`E2E_SPLIT_PREVIEW_FAILED:${preview.error.code}`);
+      return { blockCount: draft.data.blocks.length, preview: preview.data };
+    });
+    expect(prepared.blockCount).toBe(2);
+    expect(prepared.preview).toMatchObject({ canExecute: true, resultingTargetBlockCount: 1 });
+
+    // Exercise the real UI command while making native prompt values deterministic.
+    await page.evaluate(() => {
+      const answers = ['拆出章节', '1'];
+      window.prompt = () => answers.shift() ?? null;
+      window.confirm = () => true;
     });
 
     await page.locator('.chapter-node').first().locator('[data-split-chapter]').click();
@@ -95,6 +114,11 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 
+    // Reinstall deterministic confirmation after reload for delete and permanent-delete UI actions.
+    await page.evaluate(() => {
+      window.confirm = () => true;
+      window.prompt = () => '拆出章节';
+    });
     const splitChapter = page.locator('.chapter-node').filter({ hasText: '拆出章节' });
     await splitChapter.locator('[data-delete-chapter]').click();
     await page.locator('[data-open-trash]').click();

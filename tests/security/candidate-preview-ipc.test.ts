@@ -67,6 +67,7 @@ const preview: CandidatePreview = {
     projectId,
     chapterId,
     draftId,
+    status: 'active',
     revision: 0,
     blocks: [
       {
@@ -75,7 +76,7 @@ const preview: CandidatePreview = {
         blockType: 'paragraph',
         text: '当前正文',
         attributes: {},
-        source: 'human',
+        source: 'manual',
         locked: false,
         contentHash: hash,
       },
@@ -85,7 +86,7 @@ const preview: CandidatePreview = {
     {
       kind: 'modified',
       logicalBlockId: blockId,
-      candidateBlockIds: [],
+      candidateBlockIds: [candidateBlockId],
       sourceLogicalBlockIds: [blockId],
       currentIndexes: [0],
       candidateIndexes: [0],

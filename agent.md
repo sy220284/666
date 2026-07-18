@@ -14,7 +14,7 @@ AGENTS.md
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-`ACTIVE_TASK.json`是机器真源，`ACTIVE_TASK.md`是其镜像。当前作者已授权`continuous-mainline`模式：一张任务Verified后可自动激活下一张依赖已满足的任务，失败时必须阻断。
+`ACTIVE_TASK.json`是机器真源，`ACTIVE_TASK.md`是其镜像。当前作者已授权`implementation-pr`模式：每张任务在独立非`main`分支完成真实实现，经PR Policy、Task Governance、Security、Performance、Evidence与Quality门禁通过并受控合并后，才可顺序推进；失败时必须阻断。
 
 ## 2. V1.0任务阶段
 

@@ -55,6 +55,8 @@ export interface TestEvidenceInput {
   readonly commit: string;
   readonly generatedAt: string;
   readonly summary: string;
+  readonly manualAcceptance: string;
+  readonly qualityMatrix: string;
   readonly commands: readonly EvidenceCommandResult[];
   readonly testResults: readonly EvidenceTestResult[];
   readonly screenshots?: readonly EvidenceScreenshot[];
@@ -228,6 +230,8 @@ export async function writeTestEvidence(
     ]);
     await Promise.all([
       writePrivateText(path.join(staging, 'summary.md'), renderSummary(input)),
+      writePrivateText(path.join(staging, 'manual-acceptance.md'), input.manualAcceptance),
+      writePrivateText(path.join(staging, 'quality-matrix.md'), input.qualityMatrix),
       writePrivateText(path.join(staging, 'commands.txt'), renderCommands(input.commands)),
       writePrivateText(path.join(staging, 'test-results', 'results.json'), json(input.testResults)),
       writePrivateText(path.join(staging, 'performance.json'), json(input.performance ?? [])),

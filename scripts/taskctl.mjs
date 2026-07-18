@@ -12,7 +12,7 @@ import {
   replaceTaskIndexStatus,
   taskBranchFor,
   validateActiveState,
-  validateChangedPaths,
+  validateChangedPathsForTransition,
   verificationForTask,
 } from './task-control-lib.mjs';
 
@@ -131,13 +131,78 @@ async function preflight() {
     console.log(`Governance-only preflight passed for ${headBranch}.`);
     return;
   }
-  const violations = validateChangedPaths(
-    files,
-    state.activeTask.allowedPaths,
-    state.activeTask.forbiddenPaths,
-  );
+  const violations = validateChangedPathsForTransition(files, state, loadBaseState());
   if (violations.length > 0) throw new Error(violations.join('\n'));
   console.log(`Preflight passed for ${state.activeTask.id}.`);
+}
+
+async function reopenDeferred(taskId) {
+  const { state, taskIndex } = await load();
+  if (!['implementation-mainline', 'implementation-pr'].includes(state.authorization.mode)) {
+    throw new Error('reopen requires an implementation-first authorization mode');
+  }
+  const deferred = (state.deferredVerification ?? []).find((entry) => entry.id === taskId);
+  if (!deferred) throw new Error(`${taskId} is not in deferredVerification`);
+  const target = taskIndex.get(taskId);
+  if (!target || target.status !== 'Implemented') {
+    throw new Error(`${taskId} must be Implemented before reopening`);
+  }
+  const paused = taskIndex.get(state.activeTask.id);
+  if (!paused || paused.status !== 'In Progress') {
+    throw new Error('The current task must be In Progress before it can be paused');
+  }
+
+  const targetCardPath = path.join(root, target.source);
+  const pausedCardPath = path.join(root, paused.source);
+  const [targetCard, pausedCard, indexSource] = await Promise.all([
+    readFile(targetCardPath, 'utf8'),
+    readFile(pausedCardPath, 'utf8'),
+    readFile(indexPath, 'utf8'),
+  ]);
+  const reopenedCard = targetCard.replace(/^> 状态：Implemented[^\n]*$/m, '> 状态：In Progress');
+  const pausedCardNext = pausedCard.replace(/^> 状态：In Progress[^\n]*$/m, '> 状态：Planned');
+  if (reopenedCard === targetCard) throw new Error(`${taskId} card is not Implemented`);
+  if (pausedCardNext === pausedCard) throw new Error(`${paused.id} card is not In Progress`);
+
+  const allowedPaths = extractBacktickBullets(targetCard, '主要影响范围');
+  const requiredDocs = extractBacktickBullets(targetCard, '必读文档');
+  const controlPaths = [
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'docs/tasks/ACTIVE_TASK.json',
+    'docs/tasks/ACTIVE_TASK.md',
+    'docs/tasks/TASK_INDEX.md',
+    target.source,
+    paused.source,
+    'docs/product/V1.0_TRACEABILITY_MATRIX.md',
+    `docs/test-evidence/${taskId}/`,
+  ];
+  state.activeTask = {
+    id: taskId,
+    status: 'IN_PROGRESS',
+    source: target.source,
+    branch: taskBranchFor(target),
+    startedAt: new Date().toISOString().slice(0, 10),
+    allowedPaths: [...new Set([...allowedPaths, ...controlPaths])],
+    forbiddenPaths: [],
+    requiredDocs,
+    verification: verificationForTask(targetCard),
+  };
+  state.deferredVerification = (state.deferredVerification ?? []).filter(
+    (entry) => entry.id !== taskId,
+  );
+  const reopenedIndex = replaceTaskIndexStatus(
+    replaceTaskIndexStatus(indexSource, paused.id, 'Planned'),
+    taskId,
+    'In Progress',
+  );
+  await Promise.all([
+    writeFile(targetCardPath, reopenedCard, 'utf8'),
+    writeFile(pausedCardPath, pausedCardNext, 'utf8'),
+  ]);
+  await writeActiveState(state, reopenedIndex);
+  console.log(`Reopened ${taskId}; paused ${paused.id}.`);
 }
 
 async function verify() {
@@ -354,6 +419,11 @@ async function main() {
     const taskId = process.argv[3];
     if (!taskId) throw new Error('activate requires a task id');
     return activate(taskId);
+  }
+  if (command === 'reopen') {
+    const taskId = process.argv[3];
+    if (!taskId) throw new Error('reopen requires a task id');
+    return reopenDeferred(taskId);
   }
   if (command === 'advance') return advanceImplementation();
   if (command === 'close') return close();

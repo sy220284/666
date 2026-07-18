@@ -1,11 +1,14 @@
 import path from 'node:path';
 
 export const GOVERNANCE_ALLOWED_PATHS = [
+  '.gitignore',
   '.github/CODEOWNERS',
   '.github/governance/',
   '.github/pull_request_template.md',
   '.github/workflows/',
   'package.json',
+  'agent.md',
+  'packages/testkit/src/evidence.ts',
   'scripts/automerge.mjs',
   'scripts/branch-hygiene.mjs',
   'scripts/ci-policy.mjs',
@@ -14,11 +17,16 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'scripts/scan-secrets.mjs',
   'scripts/task-control-lib.mjs',
   'scripts/taskctl.mjs',
+  'docs/PROJECT_EXECUTION_ENTRY.md',
+  'docs/process/CODEX_EXECUTION_PLAYBOOK.md',
   'docs/process/DEVELOPMENT_AUTOMATION.md',
   'docs/process/CI_WORKFLOW_ARCHITECTURE.md',
   'docs/process/MAIN_BRANCH_PROTECTION.md',
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
+  'tests/unit/evidence-policy.test.ts',
+  'tests/unit/task-control.test.ts',
+  'tests/unit/testkit-fixtures-evidence.test.ts',
 ];
 
 export function parseTaskIndex(markdown) {
@@ -59,6 +67,17 @@ export function validateChangedPaths(changedFiles, allowedPaths, forbiddenPaths)
     }
   }
   return violations;
+}
+
+export function validateChangedPathsForTransition(changedFiles, state, baseState = null) {
+  const states = [state, baseState].filter(Boolean);
+  const allowedPaths = states.flatMap((value) => value.activeTask?.allowedPaths ?? []);
+  const forbiddenPaths = states.flatMap((value) => value.activeTask?.forbiddenPaths ?? []);
+  return validateChangedPaths(
+    changedFiles,
+    [...new Set(allowedPaths)],
+    [...new Set(forbiddenPaths)],
+  );
 }
 
 export function isGovernanceOnlyPullRequest(branch, changedFiles) {

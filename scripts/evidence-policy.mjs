@@ -1,16 +1,16 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { access, readFile } from 'node:fs/promises';
+import { lstat, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
-const requiredFiles = [
+export const REQUIRED_EVIDENCE_FILES = [
   'summary.md',
   'commands.txt',
   'known-risks.md',
   'manual-acceptance.md',
   'quality-matrix.md',
-  'manifest.json',
   'test-results/results.json',
   'screenshots/manifest.json',
 ];
@@ -25,7 +25,7 @@ function changedFiles(baseSha) {
   return output.split(/\r?\n/u).filter(Boolean);
 }
 
-function changedEvidenceTasks(files) {
+export function changedEvidenceTasks(files) {
   const tasks = new Set();
   for (const file of files) {
     const match = /^docs\/test-evidence\/(M\d-\d{2})\//u.exec(file.replaceAll('\\', '/'));
@@ -34,48 +34,134 @@ function changedEvidenceTasks(files) {
   return [...tasks].sort();
 }
 
-async function validateTaskEvidence(taskId) {
-  const directory = path.join(root, 'docs/test-evidence', taskId);
-  const missing = [];
-  for (const relative of requiredFiles) {
-    try {
-      await access(path.join(directory, relative));
-    } catch {
-      missing.push(relative);
-    }
+function assertRelativeEvidencePath(value, label) {
+  if (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.includes('\\') ||
+    path.posix.isAbsolute(value) ||
+    path.posix.normalize(value) !== value ||
+    value === '..' ||
+    value.startsWith('../')
+  ) {
+    throw new Error(`${label} contains an unsafe evidence path`);
   }
-  if (missing.length > 0) {
-    throw new Error(`${taskId} evidence is incomplete: ${missing.join(', ')}`);
-  }
+  return value;
+}
 
-  const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+function sha256(content) {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+async function regularFiles(directory, prefix = '') {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isSymbolicLink()) throw new Error(`${relative} must not be a symbolic link`);
+    if (entry.isDirectory())
+      files.push(...(await regularFiles(path.join(directory, entry.name), relative)));
+    else if (entry.isFile()) files.push(relative);
+    else throw new Error(`${relative} must be a regular evidence file`);
+  }
+  return files;
+}
+
+export async function validateTaskEvidence(taskId, repositoryRoot = root) {
+  if (!/^M\d-\d{2}$/u.test(taskId)) throw new Error(`Invalid evidence task id: ${taskId}`);
+  const directory = path.join(repositoryRoot, 'docs', 'test-evidence', taskId);
+  const manifestPath = path.join(directory, 'manifest.json');
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch (error) {
+    throw new Error(`${taskId} evidence manifest is missing or invalid`, { cause: error });
+  }
   if (
     manifest.schemaVersion !== 1 ||
     manifest.taskId !== taskId ||
-    !Array.isArray(manifest.files)
+    !/^(?:working-tree|[0-9a-f]{7,40})$/u.test(manifest.commit ?? '') ||
+    Number.isNaN(Date.parse(manifest.generatedAt ?? '')) ||
+    !Array.isArray(manifest.files) ||
+    manifest.files.length === 0
   ) {
-    throw new Error(`${taskId} evidence manifest is invalid`);
+    throw new Error(`${taskId} evidence manifest metadata is invalid`);
   }
-  if (manifest.files.length === 0) throw new Error(`${taskId} evidence manifest is empty`);
-  const manifestPaths = new Set(manifest.files.map((entry) => entry?.path).filter(Boolean));
-  for (const required of [
-    'summary.md',
-    'commands.txt',
-    'known-risks.md',
-    'manual-acceptance.md',
-    'quality-matrix.md',
-    'test-results/results.json',
-  ]) {
-    if (!manifestPaths.has(required)) {
+
+  const entries = new Map();
+  for (const entry of manifest.files) {
+    const relative = assertRelativeEvidencePath(entry?.path, `${taskId} manifest`);
+    if (relative === 'manifest.json' || entries.has(relative)) {
+      throw new Error(`${taskId} evidence manifest contains a duplicate or self reference`);
+    }
+    if (!Number.isSafeInteger(entry.bytes) || entry.bytes < 0) {
+      throw new Error(`${taskId} evidence manifest has invalid bytes for ${relative}`);
+    }
+    if (!/^[0-9a-f]{64}$/u.test(entry.sha256 ?? '')) {
+      throw new Error(`${taskId} evidence manifest has invalid sha256 for ${relative}`);
+    }
+    const absolute = path.join(directory, relative);
+    let metadata;
+    let content;
+    try {
+      [metadata, content] = await Promise.all([lstat(absolute), readFile(absolute)]);
+    } catch (error) {
+      throw new Error(`${taskId} evidence file is missing: ${relative}`, { cause: error });
+    }
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      throw new Error(`${taskId} evidence file must be regular: ${relative}`);
+    }
+    if (content.byteLength !== entry.bytes || sha256(content) !== entry.sha256) {
+      throw new Error(`${taskId} evidence integrity mismatch: ${relative}`);
+    }
+    entries.set(relative, entry);
+  }
+
+  for (const required of REQUIRED_EVIDENCE_FILES) {
+    if (!entries.has(required)) {
       throw new Error(`${taskId} evidence manifest does not list ${required}`);
     }
+  }
+
+  let screenshots;
+  try {
+    screenshots = JSON.parse(
+      await readFile(path.join(directory, 'screenshots/manifest.json'), 'utf8'),
+    );
+  } catch (error) {
+    throw new Error(`${taskId} screenshot manifest is invalid`, { cause: error });
+  }
+  if (!Array.isArray(screenshots))
+    throw new Error(`${taskId} screenshot manifest must be an array`);
+  const screenshotNames = new Set();
+  for (const screenshot of screenshots) {
+    const fileName = assertRelativeEvidencePath(
+      screenshot?.fileName,
+      `${taskId} screenshot manifest`,
+    );
+    if (
+      fileName.includes('/') ||
+      screenshotNames.has(fileName) ||
+      !/^[0-9a-f]{64}$/u.test(screenshot?.sha256 ?? '')
+    ) {
+      throw new Error(`${taskId} screenshot manifest entry is invalid: ${fileName}`);
+    }
+    screenshotNames.add(fileName);
+    const evidenceEntry = entries.get(`screenshots/${fileName}`);
+    if (!evidenceEntry || evidenceEntry.sha256 !== screenshot.sha256) {
+      throw new Error(`${taskId} screenshot is absent from the evidence manifest: ${fileName}`);
+    }
+  }
+
+  const actualFiles = (await regularFiles(directory)).filter((file) => file !== 'manifest.json');
+  const unlisted = actualFiles.filter((file) => !entries.has(file));
+  if (unlisted.length > 0) {
+    throw new Error(`${taskId} evidence contains unlisted files: ${unlisted.join(', ')}`);
   }
   console.log(`Evidence gate passed for ${taskId}.`);
 }
 
 async function main() {
-  const files = changedFiles(process.env.EVIDENCE_BASE_SHA);
-  const taskIds = changedEvidenceTasks(files);
+  const taskIds = changedEvidenceTasks(changedFiles(process.env.EVIDENCE_BASE_SHA));
   if (taskIds.length === 0) {
     const state = JSON.parse(await readFile('docs/tasks/ACTIVE_TASK.json', 'utf8'));
     console.log(`Final evidence is deferred for ${state.activeTask?.id ?? '<no-active-task>'}.`);

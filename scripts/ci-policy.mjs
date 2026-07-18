@@ -144,6 +144,9 @@ async function main() {
   const evidencePolicy = await readFile(path.join(root, 'scripts/evidence-policy.mjs'), 'utf8');
   requireTokens(errors, 'scripts/evidence-policy.mjs', evidencePolicy, [
     'changedEvidenceTasks',
+    'evidence integrity mismatch',
+    'screenshot is absent from the evidence manifest',
+    'evidence contains unlisted files',
     'for (const taskId of taskIds)',
     'EVIDENCE_BASE_SHA',
   ]);

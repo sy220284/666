@@ -3,7 +3,8 @@
 > 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
-> 建议分支：`feat/m3-project-brief-outline`
+> 建议分支：`feat/m3-project-brief-outline`  
+> 实现真源：`82400d6cf35247a54c84b46faab065938e39310c`（PR #33）
 
 ## 目标
 

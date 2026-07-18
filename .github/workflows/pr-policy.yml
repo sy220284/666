@@ -31,3 +31,26 @@ jobs:
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate permanent CI policy
         run: node scripts/ci-policy.mjs
+      - name: Validate optimized merge routing
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+
+          const [workflow, script, quality, mainVerification] = await Promise.all([
+            readFile('.github/workflows/automerge.yml', 'utf8'),
+            readFile('scripts/automerge.mjs', 'utf8'),
+            readFile('.github/workflows/quality.yml', 'utf8'),
+            readFile('scripts/main-verification.mjs', 'utf8'),
+          ]);
+          const trigger = workflow.match(/workflows:\s*\n([\s\S]*?)\n\s*types:/u)?.[1] ?? '';
+          assert.match(trigger, /^\s*- Quality\s*$/mu);
+          assert.doesNotMatch(trigger, /PR Policy|Task Governance|Security|Performance|Evidence/u);
+          assert.match(script, /waitForRequiredChecks/u);
+          assert.match(script, /run\.created_at \?\? run\.started_at/u);
+          assert.match(quality, /static-failure-diagnostics/u);
+          assert.match(quality, /test-results\/ci\/lint\.log/u);
+          assert.match(quality, /test-results\/ci\/typecheck\.log/u);
+          assert.match(mainVerification, /run\.created_at \?\? run\.started_at/u);
+          NODE

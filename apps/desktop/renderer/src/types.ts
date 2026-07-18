@@ -14,6 +14,8 @@ import type {
   ProjectBrief,
   PlotNode,
   PlotNodeType,
+  SceneBeat,
+  SceneBeatType,
 } from '@worldforge/contracts';
 
 export type ContentWidthPreference = AppearancePreferences['contentWidth'];
@@ -34,4 +36,6 @@ export type {
   ProjectBrief,
   PlotNode,
   PlotNodeType,
+  SceneBeat,
+  SceneBeatType,
 };

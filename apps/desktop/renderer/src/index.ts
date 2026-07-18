@@ -35,6 +35,8 @@ import type {
   ProjectBrief,
   PlotNode,
   PlotNodeType,
+  SceneBeat,
+  SceneBeatType,
   ProjectWorkspaceSummary,
   RecentProject,
   TrashEntry,
@@ -123,6 +125,20 @@ const plotNodeForm = document.querySelector<HTMLFormElement>('[data-plot-node-fo
 const plotNodeStatus = document.querySelector<HTMLElement>('[data-plot-node-status]');
 const savePlotNodeButton = document.querySelector<HTMLButtonElement>('[data-save-plot-node]');
 const cancelPlotNodeButton = document.querySelector<HTMLButtonElement>('[data-cancel-plot-node]');
+const sceneBeatList = document.querySelector<HTMLElement>('[data-scene-beat-list]');
+const deletedSceneBeatList = document.querySelector<HTMLElement>('[data-deleted-scene-beat-list]');
+const sceneBeatChapter = document.querySelector<HTMLElement>('[data-scene-beat-chapter]');
+const createSceneBeatButton = document.querySelector<HTMLButtonElement>('[data-create-scene-beat]');
+const convertSceneBeatButton = document.querySelector<HTMLButtonElement>(
+  '[data-convert-scene-beat]',
+);
+const sceneBeatDialog = document.querySelector<HTMLDialogElement>('[data-scene-beat-dialog]');
+const sceneBeatDialogTitle = document.querySelector<HTMLElement>('[data-scene-beat-dialog-title]');
+const sceneBeatForm = document.querySelector<HTMLFormElement>('[data-scene-beat-form]');
+const sceneBeatStatus = document.querySelector<HTMLElement>('[data-scene-beat-status]');
+const sceneBeatPlotNode = document.querySelector<HTMLSelectElement>('[data-scene-beat-plot-node]');
+const saveSceneBeatButton = document.querySelector<HTMLButtonElement>('[data-save-scene-beat]');
+const cancelSceneBeatButton = document.querySelector<HTMLButtonElement>('[data-cancel-scene-beat]');
 const textIoDialog = document.querySelector<HTMLDialogElement>('[data-text-io-dialog]');
 const textIoStatus = document.querySelector<HTMLElement>('[data-text-io-status]');
 const importEncoding = document.querySelector<HTMLSelectElement>('[data-import-encoding]');
@@ -216,6 +232,11 @@ let activeProject: ProjectWorkspaceSummary | null = null;
 let activeStructure: ProjectStructure | null = null;
 let activeBrief: ProjectBrief | null = null;
 let activePlotNodes: PlotNode[] = [];
+let activeSceneBeats: SceneBeat[] = [];
+let deletedSceneBeats: SceneBeat[] = [];
+let sceneBeatChapterId: string | null = null;
+let editingSceneBeatId: string | null = null;
+let convertingLogicalBlockIds: string[] = [];
 let briefExpanded = true;
 let editingPlotNodeId: string | null = null;
 let editingPlotNodeParentId: string | null = null;
@@ -381,6 +402,14 @@ const plotNodeTypeLabels: Record<PlotNodeType, string> = {
   arc: '剧情弧',
   chapter: '章节规划',
 };
+const sceneBeatTypeLabels: Record<SceneBeatType, string> = {
+  setup: '铺垫',
+  development: '发展',
+  turn: '转折',
+  climax: '高潮',
+  resolution: '收束',
+  custom: '自定义',
+};
 
 const beginnerBriefLabels = {
   concept: '这部作品最核心的一句话是什么？',
@@ -412,6 +441,12 @@ function setPlotNodeStatus(message: string, error = false): void {
   if (!plotNodeStatus) return;
   plotNodeStatus.textContent = message;
   plotNodeStatus.classList.toggle('is-error', error);
+}
+
+function setSceneBeatStatus(message: string, error = false): void {
+  if (!sceneBeatStatus) return;
+  sceneBeatStatus.textContent = message;
+  sceneBeatStatus.classList.toggle('is-error', error);
 }
 
 function setPlanningMode(mode: 'beginner' | 'professional'): void {
@@ -625,15 +660,341 @@ function renderOutlineTree(): void {
   for (const node of roots) outlineTree.append(renderPlotNode(node));
 }
 
+function planningChapter(): Chapter | null {
+  const chapters = activeStructure?.volumes.flatMap((volume) => volume.chapters) ?? [];
+  if (sceneBeatChapterId) {
+    const selected = chapters.find((chapter) => chapter.id === sceneBeatChapterId);
+    if (selected) return selected;
+  }
+  return activeChapter ?? chapters[0] ?? null;
+}
+
+function parseUuidLines(value: FormDataEntryValue | null): string[] {
+  return [
+    ...new Set(
+      String(value ?? '')
+        .split(/\r?\n/u)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function selectedDraftLogicalBlockIds(chapter: Chapter): string[] | null {
+  if (!activeDraft || activeDraft.chapterId !== chapter.id) {
+    setPlanningStatus('请先打开目标章节，再选择或输入正文块。', true);
+    return null;
+  }
+  const raw = window.prompt(
+    `请输入正文块编号（1—${activeDraft.blocks.length}，可用逗号分隔）`,
+    activeDraft.blocks.length > 0 ? '1' : '',
+  );
+  if (!raw) return null;
+  const indexes = [...new Set(raw.split(/[,，\s]+/u).map(Number))];
+  if (
+    indexes.length === 0 ||
+    indexes.some(
+      (index) => !Number.isInteger(index) || index < 1 || index > activeDraft!.blocks.length,
+    )
+  ) {
+    setPlanningStatus('正文块编号无效。', true);
+    return null;
+  }
+  return indexes.map((index) => activeDraft!.blocks[index - 1]!.logicalBlockId);
+}
+
+function populateSceneBeatPlotNodes(selectedId: string | null): void {
+  if (!sceneBeatPlotNode) return;
+  sceneBeatPlotNode.replaceChildren(new Option('不关联', ''));
+  for (const node of activePlotNodes) {
+    sceneBeatPlotNode.append(
+      new Option(`${plotNodeTypeLabels[node.nodeType]} · ${node.title}`, node.id),
+    );
+  }
+  sceneBeatPlotNode.value = selectedId ?? '';
+}
+
+function openSceneBeatEditor(beat?: SceneBeat, logicalBlockIds: string[] = []): void {
+  const chapter = planningChapter();
+  if (!sceneBeatForm || !chapter || activeProject?.databaseMode !== 'read-write') return;
+  editingSceneBeatId = beat?.id ?? null;
+  convertingLogicalBlockIds = [...logicalBlockIds];
+  sceneBeatForm.reset();
+  const values: Array<[string, string]> = [
+    ['title', beat?.title ?? ''],
+    ['beatType', beat?.beatType ?? 'development'],
+    ['wordTargetPercent', String(beat?.wordTargetPercent ?? 0)],
+    ['goal', beat?.goal ?? ''],
+    ['coreConflict', beat?.coreConflict ?? ''],
+    ['expectedResult', beat?.expectedResult ?? ''],
+    ['characterIds', beat?.characterIds.join('\n') ?? ''],
+    ['locationIds', beat?.locationIds.join('\n') ?? ''],
+  ];
+  for (const [name, value] of values) {
+    const field = sceneBeatForm.elements.namedItem(name);
+    if (
+      field instanceof HTMLInputElement ||
+      field instanceof HTMLTextAreaElement ||
+      field instanceof HTMLSelectElement
+    ) {
+      field.value = value;
+    }
+  }
+  const required = sceneBeatForm.elements.namedItem('required');
+  if (required instanceof HTMLInputElement) required.checked = beat?.required ?? false;
+  populateSceneBeatPlotNodes(beat?.plotNodeId ?? null);
+  if (sceneBeatDialogTitle) {
+    sceneBeatDialogTitle.textContent = beat
+      ? '编辑场景节拍'
+      : logicalBlockIds.length > 0
+        ? '从正文转换为场景节拍'
+        : '新增场景节拍';
+  }
+  setSceneBeatStatus(
+    logicalBlockIds.length > 0
+      ? `将关联 ${logicalBlockIds.length} 个正文块；正文内容不会被改写。`
+      : '规划字段可后补；保存不会生成Draft Patch。',
+  );
+  sceneBeatDialog?.showModal();
+}
+
+async function updateSceneBeatLinks(beat: SceneBeat): Promise<void> {
+  const project = activeProject;
+  const chapter = planningChapter();
+  if (!project || !chapter || chapter.id !== beat.chapterId) return;
+  const logicalBlockIds = selectedDraftLogicalBlockIds(chapter);
+  if (!logicalBlockIds) return;
+  const result = await window.worldforge.planning.setSceneBeatBlockLinks({
+    projectId: project.projectId,
+    sceneBeatId: beat.id,
+    logicalBlockIds,
+  });
+  if (!result.ok) return setPlanningStatus(`正文关联失败 · ${result.error.code}`, true);
+  activeSceneBeats = result.data.beats;
+  deletedSceneBeats = result.data.deletedBeats;
+  renderSceneBeats();
+  setPlanningStatus('SceneBeat已关联正文块；正文内容和Revision未改变。');
+}
+
+async function moveSceneBeatAcrossChaptersFromUi(beat: SceneBeat): Promise<void> {
+  const project = activeProject;
+  const source = planningChapter();
+  const chapters = activeStructure?.volumes.flatMap((volume) => volume.chapters) ?? [];
+  if (!project || !source || beat.chapterId !== source.id) return;
+  const targets = chapters.filter((chapter) => chapter.id !== source.id);
+  if (targets.length === 0) return setPlanningStatus('没有可移动到的其他章节。', true);
+  const raw = window.prompt(
+    targets.map((chapter, index) => `${index + 1}. ${chapter.title}`).join('\n'),
+    '1',
+  );
+  const index = Number(raw) - 1;
+  const target = targets[index];
+  if (!target) return;
+  const input = {
+    projectId: project.projectId,
+    sceneBeatId: beat.id,
+    targetChapterId: target.id,
+    placement: { kind: 'end' as const },
+  };
+  const preview = await window.worldforge.planning.previewMoveSceneBeat(input);
+  if (!preview.ok) return setPlanningStatus(`节拍移动预览失败 · ${preview.error.code}`, true);
+  if (!preview.data.canExecute) {
+    return setPlanningStatus(preview.data.warnings.join('；') || '当前移动不可执行。', true);
+  }
+  if (!window.confirm(`移动到“${target.title}”？\n${preview.data.warnings.join('\n')}`)) return;
+  const sourceDraft = preview.data.linkedBlockCount > 0 ? await operationDraft(source) : null;
+  const targetDraft = preview.data.linkedBlockCount > 0 ? await operationDraft(target) : null;
+  const moved = await window.worldforge.planning.moveSceneBeatAcrossChapters({
+    ...input,
+    planHash: preview.data.planHash,
+  });
+  if (!moved.ok) return setPlanningStatus(`节拍移动失败 · ${moved.error.code}`, true);
+  sceneBeatChapterId = target.id;
+  activeSceneBeats = moved.data.beats;
+  deletedSceneBeats = moved.data.deletedBeats;
+  renderSceneBeats();
+  if (
+    preview.data.linkedBlockCount > 0 &&
+    sourceDraft &&
+    targetDraft &&
+    window.confirm(
+      'SceneBeat已移动。是否另行移动其关联正文块？该操作会创建恢复点并执行Patch/Revision/Hash/LockGuard校验。',
+    )
+  ) {
+    const blockInput = {
+      projectId: project.projectId,
+      sourceChapterId: source.id,
+      sourceDraftId: sourceDraft.draftId,
+      sourceBaseRevision: sourceDraft.revision,
+      targetChapterId: target.id,
+      targetDraftId: targetDraft.draftId,
+      targetBaseRevision: targetDraft.revision,
+      logicalBlockIds: preview.data.linkedLogicalBlockIds,
+      afterTargetLogicalBlockId: targetDraft.blocks.at(-1)?.logicalBlockId ?? null,
+    };
+    const blockPreview = await window.worldforge.planning.previewMoveBlocks(blockInput);
+    if (!blockPreview.ok || !blockPreview.data.canExecute) {
+      return setPlanningStatus(
+        `节拍已移动；正文移动预览失败 · ${blockPreview.ok ? 'COMMON_CONFLICT_003' : blockPreview.error.code}`,
+        true,
+      );
+    }
+    const blockMove = await window.worldforge.planning.moveBlocks({
+      ...blockInput,
+      planHash: blockPreview.data.planHash,
+    });
+    if (!blockMove.ok)
+      return setPlanningStatus(`节拍已移动；正文移动失败 · ${blockMove.error.code}`, true);
+    const relinked = await window.worldforge.planning.setSceneBeatBlockLinks({
+      projectId: project.projectId,
+      sceneBeatId: beat.id,
+      logicalBlockIds: preview.data.linkedLogicalBlockIds,
+    });
+    if (relinked.ok) {
+      activeSceneBeats = relinked.data.beats;
+      deletedSceneBeats = relinked.data.deletedBeats;
+      renderSceneBeats();
+    }
+    setPlanningStatus('SceneBeat与正文块已分别确认并安全移动。');
+    return;
+  }
+  setPlanningStatus('SceneBeat已移动；关联正文仍保留在原章节。');
+}
+
+function sceneBeatAction(label: string, action: () => void): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'quiet-button';
+  button.textContent = label;
+  button.addEventListener('click', action);
+  return button;
+}
+
+function renderSceneBeats(): void {
+  const chapter = planningChapter();
+  if (sceneBeatChapter) {
+    sceneBeatChapter.textContent = chapter
+      ? `当前规划章节：${chapter.title}。规划移动与正文移动分开确认。`
+      : '项目尚无章节；请先创建章节。';
+  }
+  const writeable = activeProject?.databaseMode === 'read-write' && Boolean(chapter);
+  if (createSceneBeatButton) createSceneBeatButton.disabled = !writeable;
+  if (convertSceneBeatButton)
+    convertSceneBeatButton.disabled = !writeable || activeDraft?.chapterId !== chapter?.id;
+  sceneBeatList?.replaceChildren();
+  deletedSceneBeatList?.replaceChildren();
+  if (!chapter) return;
+  for (const [index, beat] of activeSceneBeats.entries()) {
+    const card = document.createElement('article');
+    card.className = `scene-beat-card${beat.required ? ' is-required' : ''}`;
+    const header = document.createElement('div');
+    header.className = 'scene-beat-card__header';
+    const summary = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = beat.title;
+    const meta = document.createElement('div');
+    meta.className = 'scene-beat-card__meta';
+    meta.textContent = `${sceneBeatTypeLabels[beat.beatType]} · ${beat.wordTargetPercent}% · 正文关联 ${beat.blockLinks.length}${beat.required ? ' · 必选' : ''}`;
+    summary.append(title, meta);
+    header.append(summary);
+    const actions = document.createElement('div');
+    actions.className = 'scene-beat-card__actions';
+    actions.append(
+      sceneBeatAction('编辑', () => openSceneBeatEditor(beat)),
+      sceneBeatAction('上移', () => {
+        const previous = activeSceneBeats[index - 1];
+        if (!previous || !activeProject) return;
+        void window.worldforge.planning
+          .moveSceneBeat({
+            projectId: activeProject.projectId,
+            sceneBeatId: beat.id,
+            chapterId: beat.chapterId,
+            placement: { kind: 'before', siblingId: previous.id },
+          })
+          .then((result) => {
+            if (!result.ok) return setPlanningStatus(`节拍排序失败 · ${result.error.code}`, true);
+            activeSceneBeats = result.data.beats;
+            renderSceneBeats();
+          });
+      }),
+      sceneBeatAction('下移', () => {
+        const next = activeSceneBeats[index + 1];
+        if (!next || !activeProject) return;
+        void window.worldforge.planning
+          .moveSceneBeat({
+            projectId: activeProject.projectId,
+            sceneBeatId: beat.id,
+            chapterId: beat.chapterId,
+            placement: { kind: 'after', siblingId: next.id },
+          })
+          .then((result) => {
+            if (!result.ok) return setPlanningStatus(`节拍排序失败 · ${result.error.code}`, true);
+            activeSceneBeats = result.data.beats;
+            renderSceneBeats();
+          });
+      }),
+      sceneBeatAction('关联正文', () => void updateSceneBeatLinks(beat)),
+      sceneBeatAction('跨章移动', () => void moveSceneBeatAcrossChaptersFromUi(beat)),
+      sceneBeatAction('删除', () => {
+        if (!activeProject || !window.confirm(`删除节拍“${beat.title}”？正文不会删除。`)) return;
+        void window.worldforge.planning
+          .deleteSceneBeat({ projectId: activeProject.projectId, sceneBeatId: beat.id })
+          .then((result) => {
+            if (!result.ok) return setPlanningStatus(`删除失败 · ${result.error.code}`, true);
+            activeSceneBeats = result.data.beats;
+            deletedSceneBeats = result.data.deletedBeats;
+            renderSceneBeats();
+          });
+      }),
+    );
+    card.append(header, actions);
+    sceneBeatList?.append(card);
+  }
+  if (activeSceneBeats.length === 0 && sceneBeatList)
+    sceneBeatList.textContent = '当前章节尚无SceneBeat。';
+  for (const beat of deletedSceneBeats) {
+    const card = document.createElement('article');
+    card.className = 'scene-beat-card';
+    card.textContent = beat.title;
+    card.append(
+      sceneBeatAction('恢复到末尾', () => {
+        if (!activeProject) return;
+        void window.worldforge.planning
+          .restoreSceneBeat({
+            projectId: activeProject.projectId,
+            sceneBeatId: beat.id,
+            placement: { kind: 'end' },
+          })
+          .then((result) => {
+            if (!result.ok) return setPlanningStatus(`恢复失败 · ${result.error.code}`, true);
+            activeSceneBeats = result.data.beats;
+            deletedSceneBeats = result.data.deletedBeats;
+            renderSceneBeats();
+          });
+      }),
+    );
+    deletedSceneBeatList?.append(card);
+  }
+  if (deletedSceneBeats.length === 0 && deletedSceneBeatList)
+    deletedSceneBeatList.textContent = '没有已删除节拍。';
+}
+
 async function refreshPlanningData(): Promise<void> {
   const generation = ++planningRefreshGeneration;
   const project = activeProject;
   if (!project) return;
   setPlanningStatus('正在读取作品任务书与大纲树…');
   try {
-    const [briefResult, outlineResult] = await Promise.all([
+    const chapter = planningChapter();
+    const [briefResult, outlineResult, beatResult] = await Promise.all([
       window.worldforge.planning.getBrief(project.projectId),
       window.worldforge.planning.listPlotNodes(project.projectId),
+      chapter
+        ? window.worldforge.planning.listSceneBeats({
+            projectId: project.projectId,
+            chapterId: chapter.id,
+          })
+        : Promise.resolve(null),
     ]);
     if (generation !== planningRefreshGeneration || activeProject?.projectId !== project.projectId)
       return;
@@ -645,10 +1006,18 @@ async function refreshPlanningData(): Promise<void> {
       setPlanningStatus(`大纲读取失败 · ${outlineResult.error.code}`, true);
       return;
     }
+    if (beatResult && !beatResult.ok) {
+      setPlanningStatus(`SceneBeat读取失败 · ${beatResult.error.code}`, true);
+      return;
+    }
     activeBrief = briefResult.data;
     activePlotNodes = outlineResult.data.nodes;
+    sceneBeatChapterId = chapter?.id ?? null;
+    activeSceneBeats = beatResult?.data.beats ?? [];
+    deletedSceneBeats = beatResult?.data.deletedBeats ?? [];
     populateBriefForm(activeBrief);
     renderOutlineTree();
+    renderSceneBeats();
     const writeable = project.databaseMode === 'read-write';
     if (saveBriefButton) saveBriefButton.disabled = !writeable;
     if (createRootPlotNodeButton) createRootPlotNodeButton.disabled = !writeable;
@@ -1751,12 +2120,18 @@ function renderActiveProject(project: ProjectWorkspaceSummary | null): void {
   activeProject = project;
   activeBrief = null;
   activePlotNodes = [];
+  activeSceneBeats = [];
+  deletedSceneBeats = [];
+  sceneBeatChapterId = null;
+  editingSceneBeatId = null;
+  convertingLogicalBlockIds = [];
   editingPlotNodeId = null;
   editingPlotNodeParentId = null;
   planningRefreshGeneration += 1;
   briefExpanded = true;
   if (planningDialog?.open) planningDialog.close();
   if (plotNodeDialog?.open) plotNodeDialog.close();
+  if (sceneBeatDialog?.open) sceneBeatDialog.close();
   document.body.dataset.projectState = project
     ? project.databaseMode === 'read-only'
       ? 'read-only'
@@ -3146,6 +3521,7 @@ async function refreshExportCatalog(): Promise<void> {
 
 openPlanningButton?.addEventListener('click', () => {
   if (!activeProject) return;
+  sceneBeatChapterId = activeChapter?.id ?? null;
   setPlanningMode(applicationSettings.defaultMode);
   setBriefExpanded(briefExpanded);
   planningDialog?.showModal();
@@ -3200,6 +3576,81 @@ briefForm?.addEventListener('submit', (event) => {
     }
   })();
 });
+createSceneBeatButton?.addEventListener('click', () => openSceneBeatEditor());
+convertSceneBeatButton?.addEventListener('click', () => {
+  const chapter = planningChapter();
+  if (!chapter) return;
+  const ids = selectedDraftLogicalBlockIds(chapter);
+  if (ids) openSceneBeatEditor(undefined, ids);
+});
+cancelSceneBeatButton?.addEventListener('click', () => sceneBeatDialog?.close());
+sceneBeatForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  void (async () => {
+    const project = activeProject;
+    const chapter = planningChapter();
+    if (!project || !chapter || project.databaseMode !== 'read-write' || !sceneBeatForm) return;
+    const data = new FormData(sceneBeatForm);
+    const title = String(data.get('title') ?? '').trim();
+    const beatType = String(data.get('beatType')) as SceneBeatType;
+    const wordTargetPercent = Number(data.get('wordTargetPercent'));
+    if (
+      !title ||
+      !Number.isInteger(wordTargetPercent) ||
+      wordTargetPercent < 0 ||
+      wordTargetPercent > 100
+    ) {
+      return setSceneBeatStatus('请填写有效标题与字数比例。', true);
+    }
+    const fields = {
+      plotNodeId: String(data.get('plotNodeId') ?? '') || null,
+      title,
+      goal: String(data.get('goal') ?? ''),
+      coreConflict: String(data.get('coreConflict') ?? ''),
+      expectedResult: String(data.get('expectedResult') ?? ''),
+      beatType,
+      wordTargetPercent,
+      required: data.get('required') === 'on',
+      characterIds: parseUuidLines(data.get('characterIds')),
+      locationIds: parseUuidLines(data.get('locationIds')),
+    };
+    if (saveSceneBeatButton) saveSceneBeatButton.disabled = true;
+    setSceneBeatStatus('正在保存SceneBeat…');
+    try {
+      const result = editingSceneBeatId
+        ? await window.worldforge.planning.updateSceneBeat({
+            projectId: project.projectId,
+            sceneBeatId: editingSceneBeatId,
+            patch: fields,
+          })
+        : convertingLogicalBlockIds.length > 0
+          ? await window.worldforge.planning.convertBlocksToSceneBeat({
+              projectId: project.projectId,
+              chapterId: chapter.id,
+              logicalBlockIds: convertingLogicalBlockIds,
+              ...fields,
+              placement: { kind: 'end' },
+            })
+          : await window.worldforge.planning.createSceneBeat({
+              projectId: project.projectId,
+              chapterId: chapter.id,
+              ...fields,
+              placement: { kind: 'end' },
+            });
+      if (!result.ok) return setSceneBeatStatus(`保存失败 · ${result.error.code}`, true);
+      activeSceneBeats = result.data.beats;
+      deletedSceneBeats = result.data.deletedBeats;
+      renderSceneBeats();
+      sceneBeatDialog?.close();
+      setPlanningStatus('SceneBeat已保存；正文内容、Version与Candidate未改变。');
+    } catch {
+      setSceneBeatStatus('保存失败 · COMMON_INTERNAL_999', true);
+    } finally {
+      if (saveSceneBeatButton) saveSceneBeatButton.disabled = false;
+    }
+  })();
+});
+
 createRootPlotNodeButton?.addEventListener('click', () => openPlotNodeEditor(null));
 cancelPlotNodeButton?.addEventListener('click', () => plotNodeDialog?.close());
 plotNodeForm?.addEventListener('submit', (event) => {

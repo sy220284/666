@@ -11,6 +11,7 @@ import {
   TEXT_IO_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
+  SCENE_BEAT_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
@@ -37,6 +38,7 @@ import { ImportExportService, ImportExportServiceError } from './import-export.j
 import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
 import { ProjectPlanningError, ProjectPlanningService } from './project-planning.js';
+import { SceneBeatService, SceneBeatServiceError } from './scene-beat.js';
 import { StructureOperationService } from './structure-operations.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 
@@ -106,6 +108,7 @@ const recovery = new RecoveryService(projectWorkspace, {
 });
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const projectPlanning = new ProjectPlanningService(projectWorkspace);
+const sceneBeats = new SceneBeatService(projectWorkspace);
 const structureOperations = new StructureOperationService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
 const candidates = new CandidateService(projectWorkspace);
@@ -262,6 +265,11 @@ function projectWorkspaceError(error: unknown): ErrorCode {
   if (error instanceof ProjectPlanningError) {
     if (error.code === 'PLANNING_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'PLANNING_INVALID_POSITION') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
+  if (error instanceof SceneBeatServiceError) {
+    if (error.code === 'SCENE_BEAT_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'SCENE_BEAT_INVALID_POSITION') return 'COMMON_INVALID_INPUT_001';
     return 'COMMON_CONFLICT_003';
   }
   if (error instanceof ProjectStructureError) {
@@ -449,6 +457,66 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await projectPlanning.deletePlotNode(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.listSceneBeats:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: sceneBeats.list(operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.createSceneBeat:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.create(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.updateSceneBeat:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.update(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.moveSceneBeat:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.move(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.previewMoveSceneBeat:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: sceneBeats.previewCrossChapterMove(operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.moveSceneBeatAcrossChapters:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.moveAcrossChapters(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.deleteSceneBeat:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.delete(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.restoreSceneBeat:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.restore(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.setSceneBeatBlockLinks:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.setBlockLinks(requestId, operation.input),
+        });
+      case SCENE_BEAT_COMMANDS.convertBlocksToSceneBeat:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await sceneBeats.convertBlocks(requestId, operation.input),
         });
       case PROJECT_STRUCTURE_COMMANDS.listStructure:
         return CoreProjectResultSchema.parse({

@@ -18,6 +18,7 @@ import {
   CoreProjectPlanningOperationSchema,
   CoreProjectPlanningResultSchema,
 } from './project-planning.js';
+import { CoreSceneBeatOperationSchema, CoreSceneBeatResultSchema } from './scene-beat.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -182,6 +183,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreProjectWorkspaceOperationSchema,
   CoreProjectStructureOperationSchema,
   CoreProjectPlanningOperationSchema,
+  CoreSceneBeatOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
   CoreCandidateApplyOperationSchema,
@@ -218,6 +220,7 @@ export const CoreProjectResultSchema = z.union([
   CoreProjectWorkspaceResultSchema,
   CoreProjectStructureResultSchema,
   CoreProjectPlanningResultSchema,
+  CoreSceneBeatResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
   CoreCandidateApplyResultSchema,

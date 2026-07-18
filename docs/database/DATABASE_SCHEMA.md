@@ -377,7 +377,9 @@ RHY结果为P3建议级，不写入阻断严重度。
 
 `0009_structure_operation_recovery.sql`扩展恢复点操作为`move-blocks/permanent-delete`。永久删除预览统计卷、章、Draft、DraftBlock、Version与Candidate；存在Version或Candidate引用时拒绝执行。无阻断引用时，Core先创建已验证恢复点，再按PatchLog→DraftBlock→Draft→Chapter→Volume的引用顺序在单事务内清理。
 
-`0010_project_brief_outline.sql`建立`project_briefs`与`plot_nodes`。ProjectBrief按项目唯一保存；PlotNode使用自引用父级、64位整数orderKey、同级唯一顺序和父级项目一致性触发器。规划事务不写Draft、Version或Candidate。
+`0010_project_brief_outline.sql`建立`project_briefs`与`plot_nodes`。ProjectBrief按项目唯一保存；PlotNode使用自引用父级、64位整数orderKey、同级唯一顺序，并通过`(parent_id, project_id)`复合外键阻断跨项目挂接。规划事务不写Draft、Version或Candidate。
+
+`0011_scene_beats.sql`建立`scene_beats`与`scene_beat_block_links`。SceneBeat按章节保存目标、冲突、预期结果、类型、字数比例、必选标记、PlotNode与预留实体UUID引用；正文关联只指向DraftBlock，删除SceneBeat会清理关联，正文表不会被SceneBeat级联删除。跨章规划移动不改Draft；正文移动继续走M2-04恢复点、Patch、Revision、Hash与LockGuard链路。
 
 拆章和跨章移动保留被移动块的`logicalBlockId`，源/目标Draft分别写入`draft_patch_log`并递增一次Revision。合章将源正文复制到目标Draft后把源章移入回收站，因而原章仍可恢复；历史Version/VersionBlock始终不更改。
 

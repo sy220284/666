@@ -36,6 +36,15 @@ allowed_paths:
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M3-02/
   - docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md
+  - apps/desktop/main/
+  - apps/desktop/preload/
+  - tests/migration/
+  - tests/security/
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
 forbidden_paths:
 
 required_docs:

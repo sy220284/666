@@ -71,6 +71,18 @@ import {
   ProjectUpdatePlotNodeCommandSchema,
   ProjectMovePlotNodeCommandSchema,
   ProjectDeletePlotNodeCommandSchema,
+  SceneBeatListCommandSchema,
+  SceneBeatCreateCommandSchema,
+  SceneBeatUpdateCommandSchema,
+  SceneBeatMoveCommandSchema,
+  SceneBeatPreviewCrossChapterMoveCommandSchema,
+  SceneBeatMoveAcrossChaptersCommandSchema,
+  SceneBeatDeleteCommandSchema,
+  SceneBeatRestoreCommandSchema,
+  SceneBeatSetBlockLinksCommandSchema,
+  SceneBeatConvertBlocksCommandSchema,
+  SceneBeatListResultSchema,
+  SceneBeatMovePreviewResultSchema,
   ProjectListTrashCommandSchema,
   ProjectMoveCommandResultSchema,
   ProjectMoveCommandSchema,
@@ -394,6 +406,74 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         IPC_CHANNELS.deletePlotNode,
         ProjectDeletePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.deletePlotNode, input)),
         ProjectPlotNodeListResultSchema,
+      ),
+    listSceneBeats: (input) =>
+      invoke(
+        IPC_CHANNELS.listSceneBeats,
+        SceneBeatListCommandSchema.parse(envelope(APP_COMMANDS.listSceneBeats, input)),
+        SceneBeatListResultSchema,
+      ),
+    createSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.createSceneBeat,
+        SceneBeatCreateCommandSchema.parse(envelope(APP_COMMANDS.createSceneBeat, input)),
+        SceneBeatListResultSchema,
+      ),
+    updateSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.updateSceneBeat,
+        SceneBeatUpdateCommandSchema.parse(envelope(APP_COMMANDS.updateSceneBeat, input)),
+        SceneBeatListResultSchema,
+      ),
+    moveSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.moveSceneBeat,
+        SceneBeatMoveCommandSchema.parse(envelope(APP_COMMANDS.moveSceneBeat, input)),
+        SceneBeatListResultSchema,
+      ),
+    previewMoveSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.previewMoveSceneBeat,
+        SceneBeatPreviewCrossChapterMoveCommandSchema.parse(
+          envelope(APP_COMMANDS.previewMoveSceneBeat, input),
+        ),
+        SceneBeatMovePreviewResultSchema,
+      ),
+    moveSceneBeatAcrossChapters: (input) =>
+      invoke(
+        IPC_CHANNELS.moveSceneBeatAcrossChapters,
+        SceneBeatMoveAcrossChaptersCommandSchema.parse(
+          envelope(APP_COMMANDS.moveSceneBeatAcrossChapters, input),
+        ),
+        SceneBeatListResultSchema,
+      ),
+    deleteSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.deleteSceneBeat,
+        SceneBeatDeleteCommandSchema.parse(envelope(APP_COMMANDS.deleteSceneBeat, input)),
+        SceneBeatListResultSchema,
+      ),
+    restoreSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.restoreSceneBeat,
+        SceneBeatRestoreCommandSchema.parse(envelope(APP_COMMANDS.restoreSceneBeat, input)),
+        SceneBeatListResultSchema,
+      ),
+    setSceneBeatBlockLinks: (input) =>
+      invoke(
+        IPC_CHANNELS.setSceneBeatBlockLinks,
+        SceneBeatSetBlockLinksCommandSchema.parse(
+          envelope(APP_COMMANDS.setSceneBeatBlockLinks, input),
+        ),
+        SceneBeatListResultSchema,
+      ),
+    convertBlocksToSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.convertBlocksToSceneBeat,
+        SceneBeatConvertBlocksCommandSchema.parse(
+          envelope(APP_COMMANDS.convertBlocksToSceneBeat, input),
+        ),
+        SceneBeatListResultSchema,
       ),
     listStructure: (projectId) =>
       invoke(

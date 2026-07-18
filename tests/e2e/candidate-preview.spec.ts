@@ -4,6 +4,20 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import type {
+  CandidateCreateFixtureInput,
+  CandidateDocument,
+  CommandResult,
+  WorldforgeBridge,
+} from '@worldforge/contracts';
+
+type CandidateE2EBridge = WorldforgeBridge & {
+  readonly candidate: {
+    readonly createFixture: (
+      input: CandidateCreateFixtureInput,
+    ) => Promise<CommandResult<CandidateDocument>>;
+  };
+};
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
@@ -65,7 +79,8 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 
     const fixture = await page.evaluate(async () => {
-      const bridge = (globalThis as unknown as { readonly worldforge: any }).worldforge;
+      const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })
+        .worldforge;
       const active = await bridge.project.getActive();
       if (!active.ok || !active.data) throw new Error('E2E_ACTIVE_PROJECT_MISSING');
       const structure = await bridge.planning.listStructure(active.data.projectId);
@@ -126,8 +141,12 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     );
 
     const after = await page.evaluate(async (input) => {
-      const bridge = (globalThis as unknown as { readonly worldforge: any }).worldforge;
-      const draft = await bridge.draft.open(input);
+      const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })
+        .worldforge;
+      const draft = await bridge.draft.open({
+        projectId: input.projectId,
+        chapterId: input.chapterId,
+      });
       if (!draft.ok) throw new Error('E2E_DRAFT_REOPEN_FAILED');
       return { revision: draft.data.revision, text: draft.data.blocks[0]?.text };
     }, fixture);

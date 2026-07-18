@@ -1,0 +1,36 @@
+name: Temporary Format PR43
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ github.head_ref == 'fix/m1-08-unreadable-recovery' && github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/m1-08-unreadable-recovery
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm exec prettier --write apps/desktop/renderer/src/index.html
+      - name: Commit formatted file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/renderer/src/index.html
+          git diff --cached --quiet || git commit -m "style: format unreadable recovery UI"
+          git push origin HEAD:fix/m1-08-unreadable-recovery

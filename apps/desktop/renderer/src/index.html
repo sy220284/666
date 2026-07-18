@@ -528,8 +528,12 @@
             <p>所有字段均可跳过或后补；规划保存不会改写正文、Version或Candidate。</p>
           </div>
           <div class="planning-mode-switch" role="group" aria-label="任务书填写模式">
-            <button class="quiet-button is-active" type="button" data-planning-mode="beginner">问题引导</button>
-            <button class="quiet-button" type="button" data-planning-mode="professional">完整字段</button>
+            <button class="quiet-button is-active" type="button" data-planning-mode="beginner">
+              问题引导
+            </button>
+            <button class="quiet-button" type="button" data-planning-mode="professional">
+              完整字段
+            </button>
           </div>
         </header>
         <p class="save-state" data-planning-status role="status"></p>
@@ -544,14 +548,35 @@
             </header>
             <p data-brief-mode-help>回答几个问题即可建立约束；留空不会阻止直接写作。</p>
             <form data-brief-form>
-              <label><span data-brief-label="concept">这部作品最核心的一句话是什么？</span><textarea name="concept" maxlength="4000"></textarea></label>
-              <label><span data-brief-label="readingPromise">读者持续阅读时能稳定获得什么体验？</span><textarea name="readingPromise" maxlength="4000"></textarea></label>
-              <label><span data-brief-label="protagonistGoal">主角最想达成什么目标？</span><textarea name="protagonistGoal" maxlength="4000"></textarea></label>
-              <label><span data-brief-label="coreConflict">阻止主角的核心矛盾是什么？</span><textarea name="coreConflict" maxlength="4000"></textarea></label>
-              <label><span data-brief-label="endingIntent">你希望故事最终落在哪里？</span><textarea name="endingIntent" maxlength="4000"></textarea></label>
+              <label
+                ><span data-brief-label="concept">这部作品最核心的一句话是什么？</span
+                ><textarea name="concept" maxlength="4000"></textarea>
+              </label>
+              <label
+                ><span data-brief-label="readingPromise">读者持续阅读时能稳定获得什么体验？</span
+                ><textarea name="readingPromise" maxlength="4000"></textarea>
+              </label>
+              <label
+                ><span data-brief-label="protagonistGoal">主角最想达成什么目标？</span
+                ><textarea name="protagonistGoal" maxlength="4000"></textarea>
+              </label>
+              <label
+                ><span data-brief-label="coreConflict">阻止主角的核心矛盾是什么？</span
+                ><textarea name="coreConflict" maxlength="4000"></textarea>
+              </label>
+              <label
+                ><span data-brief-label="endingIntent">你希望故事最终落在哪里？</span
+                ><textarea name="endingIntent" maxlength="4000"></textarea>
+              </label>
               <div class="brief-rule-grid">
-                <label><span data-brief-label="required">必须出现或始终遵守（每行一项）</span><textarea name="required" maxlength="50000"></textarea></label>
-                <label><span data-brief-label="forbidden">明确禁止（每行一项）</span><textarea name="forbidden" maxlength="50000"></textarea></label>
+                <label
+                  ><span data-brief-label="required">必须出现或始终遵守（每行一项）</span
+                  ><textarea name="required" maxlength="50000"></textarea>
+                </label>
+                <label
+                  ><span data-brief-label="forbidden">明确禁止（每行一项）</span
+                  ><textarea name="forbidden" maxlength="50000"></textarea>
+                </label>
               </div>
               <footer>
                 <span data-brief-updated></span>
@@ -570,7 +595,9 @@
                 <small>PLOT NODE TREE</small>
                 <h3>长篇大纲树</h3>
               </div>
-              <button class="primary-button" type="button" data-create-root-plot-node>新增根节点</button>
+              <button class="primary-button" type="button" data-create-root-plot-node>
+                新增根节点
+              </button>
             </header>
             <p>拖到节点主体后方可调整同级顺序；拖到“作为子节点”区域可改变层级。</p>
             <div class="outline-root-drop" data-outline-root-drop>拖到这里移回根级末尾</div>
@@ -590,12 +617,36 @@
           <p class="eyebrow">PLOT NODE</p>
           <h2 id="plot-node-dialog-title" data-plot-node-dialog-title>新增大纲节点</h2>
           <div class="general-settings-grid project-create-grid">
-            <label><span>节点类型</span><select name="nodeType"><option value="volume">卷规划</option><option value="arc">剧情弧</option><option value="chapter">章节规划</option></select></label>
-            <label><span>标题</span><input name="title" maxlength="240" required autocomplete="off" /></label>
-            <label><span>状态</span><select name="status"><option value="pending">待规划</option><option value="outlined">已规划</option><option value="writing">写作中</option><option value="reviewing">审阅中</option><option value="finalized">已定稿</option></select></label>
-            <label class="planning-wide-field"><span>目标</span><textarea name="goal" maxlength="4000"></textarea></label>
-            <label class="planning-wide-field"><span>核心冲突</span><textarea name="coreConflict" maxlength="4000"></textarea></label>
-            <label class="planning-wide-field"><span>预期结果</span><textarea name="expectedResult" maxlength="4000"></textarea></label>
+            <label
+              ><span>节点类型</span
+              ><select name="nodeType">
+                <option value="volume">卷规划</option>
+                <option value="arc">剧情弧</option>
+                <option value="chapter">章节规划</option>
+              </select></label
+            >
+            <label
+              ><span>标题</span><input name="title" maxlength="240" required autocomplete="off"
+            /></label>
+            <label
+              ><span>状态</span
+              ><select name="status">
+                <option value="pending">待规划</option>
+                <option value="outlined">已规划</option>
+                <option value="writing">写作中</option>
+                <option value="reviewing">审阅中</option>
+                <option value="finalized">已定稿</option>
+              </select></label
+            >
+            <label class="planning-wide-field"
+              ><span>目标</span><textarea name="goal" maxlength="4000"></textarea>
+            </label>
+            <label class="planning-wide-field"
+              ><span>核心冲突</span><textarea name="coreConflict" maxlength="4000"></textarea>
+            </label>
+            <label class="planning-wide-field"
+              ><span>预期结果</span><textarea name="expectedResult" maxlength="4000"></textarea>
+            </label>
           </div>
           <p class="save-state" data-plot-node-status role="status"></p>
         </div>

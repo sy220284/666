@@ -374,17 +374,13 @@ const bridge: WorldforgeBridge & CandidateBridge = {
     createPlotNode: (input) =>
       invoke(
         IPC_CHANNELS.createPlotNode,
-        ProjectCreatePlotNodeCommandSchema.parse(
-          envelope(APP_COMMANDS.createPlotNode, input),
-        ),
+        ProjectCreatePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.createPlotNode, input)),
         ProjectPlotNodeListResultSchema,
       ),
     updatePlotNode: (input) =>
       invoke(
         IPC_CHANNELS.updatePlotNode,
-        ProjectUpdatePlotNodeCommandSchema.parse(
-          envelope(APP_COMMANDS.updatePlotNode, input),
-        ),
+        ProjectUpdatePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.updatePlotNode, input)),
         ProjectPlotNodeListResultSchema,
       ),
     movePlotNode: (input) =>
@@ -396,9 +392,7 @@ const bridge: WorldforgeBridge & CandidateBridge = {
     deletePlotNode: (input) =>
       invoke(
         IPC_CHANNELS.deletePlotNode,
-        ProjectDeletePlotNodeCommandSchema.parse(
-          envelope(APP_COMMANDS.deletePlotNode, input),
-        ),
+        ProjectDeletePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.deletePlotNode, input)),
         ProjectPlotNodeListResultSchema,
       ),
     listStructure: (projectId) =>

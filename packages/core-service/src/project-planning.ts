@@ -36,10 +36,7 @@ import type { ProjectWorkspaceService } from './project-workspace.js';
 const systemClock: DatabaseClock = { now: () => new Date() };
 
 export type ProjectPlanningErrorCode =
-  | 'PLANNING_NOT_FOUND'
-  | 'PLANNING_CONFLICT'
-  | 'PLANNING_INVALID_POSITION'
-  | 'PLANNING_INVARIANT';
+  'PLANNING_NOT_FOUND' | 'PLANNING_CONFLICT' | 'PLANNING_INVALID_POSITION' | 'PLANNING_INVARIANT';
 
 export class ProjectPlanningError extends Error {
   readonly code: ProjectPlanningErrorCode;
@@ -102,9 +99,13 @@ function rules(raw: string): string[] {
   try {
     return ProjectBriefRulesSchema.parse(JSON.parse(raw));
   } catch (error) {
-    throw new ProjectPlanningError('PLANNING_INVARIANT', 'Persisted ProjectBrief rules are invalid.', {
-      cause: error,
-    });
+    throw new ProjectPlanningError(
+      'PLANNING_INVARIANT',
+      'Persisted ProjectBrief rules are invalid.',
+      {
+        cause: error,
+      },
+    );
   }
 }
 
@@ -220,7 +221,13 @@ function orderedSiblings(
             AND (? IS NULL OR id <> ?)
           ORDER BY order_key, id`,
       )
-      .all(projectId, parentId, parentId, excludedId ?? null, excludedId ?? null) as unknown as Array<{
+      .all(
+        projectId,
+        parentId,
+        parentId,
+        excludedId ?? null,
+        excludedId ?? null,
+      ) as unknown as Array<{
       readonly id: string;
       readonly orderKey: number | bigint;
     }>
@@ -256,8 +263,10 @@ function temporaryOrderKeys(
     .get(projectId, parentId, parentId) as
     | { readonly minimum: number | bigint | null; readonly maximum: number | bigint | null }
     | undefined;
-  const minimum = range?.minimum === null || range?.minimum === undefined ? 0n : integer(range.minimum);
-  const maximum = range?.maximum === null || range?.maximum === undefined ? 0n : integer(range.maximum);
+  const minimum =
+    range?.minimum === null || range?.minimum === undefined ? 0n : integer(range.minimum);
+  const maximum =
+    range?.maximum === null || range?.maximum === undefined ? 0n : integer(range.maximum);
   const required = BigInt(count);
   if (minimum - required >= SQLITE_INTEGER_MIN) {
     return Array.from({ length: count }, (_, index) => minimum - BigInt(index + 1));
@@ -464,13 +473,7 @@ export class ProjectPlanningService {
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
       const current = nodeRow(connection, valid.projectId, valid.nodeId);
       const title = valid.patch.title ?? text(current.title);
-      assertUniqueTitle(
-        connection,
-        valid.projectId,
-        current.parentId,
-        title,
-        valid.nodeId,
-      );
+      assertUniqueTitle(connection, valid.projectId, current.parentId, title, valid.nodeId);
       connection
         .prepare(
           `UPDATE plot_nodes
@@ -532,7 +535,10 @@ export class ProjectPlanningService {
         .prepare('UPDATE plot_nodes SET order_key = ? WHERE id = ? AND project_id = ?')
         .run(plan.orderKey, valid.nodeId, valid.projectId);
       if (Number(committed.changes) !== 1) {
-        throw new ProjectPlanningError('PLANNING_INVARIANT', 'The PlotNode move was not committed.');
+        throw new ProjectPlanningError(
+          'PLANNING_INVARIANT',
+          'The PlotNode move was not committed.',
+        );
       }
       this.#faultInjector?.('after-node-move');
       return readPlotNodes(connection, valid.projectId);

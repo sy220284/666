@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 import { ErrorCodeSchema } from './error-codes.js';
-import { LifecycleStatusSchema, OrderKeySchema, OrderPlacementSchema } from './project-structure.js';
+import {
+  LifecycleStatusSchema,
+  OrderKeySchema,
+  OrderPlacementSchema,
+} from './project-structure.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_PLANNING_IPC_CHANNELS = {

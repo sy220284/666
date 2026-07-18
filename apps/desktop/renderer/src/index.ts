@@ -377,7 +377,6 @@ function setDraftState(message: string, error = false): void {
   draftState.classList.toggle('is-error', error);
 }
 
-
 const plotNodeTypeLabels: Record<PlotNodeType, string> = {
   volume: '卷规划',
   arc: '剧情弧',
@@ -489,7 +488,9 @@ function planningAction(label: string, dataAttribute: string): HTMLButtonElement
 
 function clearDragStyles(): void {
   outlineRootDrop?.classList.remove('is-drag-over');
-  for (const element of document.querySelectorAll('.plot-node.is-drag-over, .plot-node__child-drop.is-drag-over')) {
+  for (const element of document.querySelectorAll(
+    '.plot-node.is-drag-over, .plot-node__child-drop.is-drag-over',
+  )) {
     element.classList.remove('is-drag-over');
   }
 }
@@ -636,10 +637,7 @@ async function refreshPlanningData(): Promise<void> {
       window.worldforge.planning.getBrief(project.projectId),
       window.worldforge.planning.listPlotNodes(project.projectId),
     ]);
-    if (
-      generation !== planningRefreshGeneration ||
-      activeProject?.projectId !== project.projectId
-    )
+    if (generation !== planningRefreshGeneration || activeProject?.projectId !== project.projectId)
       return;
     if (!briefResult.ok) {
       setPlanningStatus(`任务书读取失败 · ${briefResult.error.code}`, true);
@@ -659,10 +657,7 @@ async function refreshPlanningData(): Promise<void> {
     if (skipBriefButton) skipBriefButton.disabled = false;
     setPlanningStatus(writeable ? '规划已同步；修改仅写入规划表。' : '只读浏览；规划修改已禁用。');
   } catch {
-    if (
-      generation !== planningRefreshGeneration ||
-      activeProject?.projectId !== project.projectId
-    )
+    if (generation !== planningRefreshGeneration || activeProject?.projectId !== project.projectId)
       return;
     setPlanningStatus('规划读取失败 · COMMON_INTERNAL_999', true);
   }

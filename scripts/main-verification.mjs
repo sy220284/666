@@ -73,12 +73,26 @@ export function validateMainVerification({
   }
 }
 
-async function api(token, pathname) {
+export function mainVerificationStatusPayload(validateResult, qualityResult, targetUrl) {
+  const success = validateResult === 'success' && qualityResult === 'success';
+  return {
+    state: success ? 'success' : 'failure',
+    context: 'main-verification',
+    description: success
+      ? 'Final main SHA passed full Linux verification'
+      : 'Final main SHA failed provenance or quality verification',
+    target_url: targetUrl,
+  };
+}
+
+async function api(token, pathname, options = {}) {
   const response = await githubFetch(`https://api.github.com${pathname}`, {
+    ...options,
     headers: {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${token}`,
       'X-GitHub-Api-Version': '2022-11-28',
+      ...(options.headers ?? {}),
     },
   });
   if (!response.ok) {
@@ -88,8 +102,7 @@ async function api(token, pathname) {
   return response.json();
 }
 
-async function main() {
-  if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
+async function checkMain() {
   const token = process.env.GITHUB_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY;
   const expectedSha = process.env.EXPECTED_SHA;
@@ -121,6 +134,43 @@ async function main() {
   console.log(
     `Main verification provenance passed for ${expectedSha} from PR #${sourcePr} (${sourceHeadSha}).`,
   );
+}
+
+async function publishStatus() {
+  const token = process.env.GITHUB_TOKEN;
+  const repository = process.env.GITHUB_REPOSITORY;
+  const expectedSha = process.env.EXPECTED_SHA;
+  const validateResult = process.env.VALIDATE_RESULT;
+  const qualityResult = process.env.QUALITY_RESULT;
+  const serverUrl = process.env.GITHUB_SERVER_URL ?? 'https://github.com';
+  const runId = process.env.GITHUB_RUN_ID;
+  if (!token || !repository || !runId) throw new Error('GitHub Actions environment is incomplete');
+  assertFullSha(expectedSha, 'EXPECTED_SHA');
+
+  const payload = mainVerificationStatusPayload(
+    validateResult,
+    qualityResult,
+    `${serverUrl}/${repository}/actions/runs/${runId}`,
+  );
+  await api(token, `/repos/${repository}/statuses/${expectedSha}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  console.log(`Published ${payload.context}=${payload.state} for ${expectedSha}.`);
+  if (payload.state !== 'success') {
+    throw new Error(
+      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}`,
+    );
+  }
+}
+
+async function main() {
+  if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
+  const command = process.argv[2] ?? 'check';
+  if (command === 'check') await checkMain();
+  else if (command === 'publish-status') await publishStatus();
+  else throw new Error(`Unknown main-verification command: ${command}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

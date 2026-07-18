@@ -42,8 +42,6 @@ allowed_paths:
   - docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M2-04/
-  - .github/workflows/m2-04-hardening-bot.yml
-  - .m2-04-hardening-done
 forbidden_paths:
 
 required_docs:

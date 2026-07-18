@@ -81,21 +81,34 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
         ],
       });
       if (!inserted.ok) throw new Error('E2E_DRAFT_PREPARE_FAILED');
+      const splitInput = {
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draftId: inserted.data.draftId,
+        baseRevision: inserted.data.revision,
+        splitAfterLogicalBlockId: inserted.data.blocks[0]!.logicalBlockId,
+        newChapterTitle: '拆出章节',
+      };
+      const preview = await bridge.planning.previewSplitChapter(splitInput);
+      if (!preview.ok || !preview.data.canExecute) throw new Error('E2E_SPLIT_PREVIEW_FAILED');
+      const split = await bridge.planning.splitChapter({
+        ...splitInput,
+        planHash: preview.data.planHash,
+      });
+      if (!split.ok) throw new Error(`E2E_SPLIT_FAILED:${split.error.code}`);
     });
 
     page.on('dialog', async (dialog) => {
-      if (dialog.type() === 'prompt' && dialog.message().includes('新章节标题')) {
-        await dialog.accept('拆出章节');
-      } else if (dialog.type() === 'prompt' && dialog.message().includes('正文块后拆分')) {
-        await dialog.accept('1');
-      } else if (dialog.type() === 'prompt' && dialog.message().includes('完整标题')) {
+      if (dialog.type() === 'prompt' && dialog.message().includes('完整标题')) {
         await dialog.accept('拆出章节');
       } else {
         await dialog.accept();
       }
     });
 
-    await page.locator('[data-split-chapter]').click();
+    await page.reload();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 

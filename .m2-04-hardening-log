@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "<stdin>", line 12, in <module>
+  File "<m2-04-hardening>", line 1
+    from pathlib import Path
+IndentationError: unexpected indent
+Traceback (most recent call last):
+  File "<stdin>", line 12, in <module>
+  File "<m2-04-hardening>", line 1
+    from pathlib import Path
+IndentationError: unexpected indent

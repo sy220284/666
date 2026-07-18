@@ -11,6 +11,8 @@ import type {
   WorldforgeBridge,
 } from '@worldforge/contracts';
 
+import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+
 type CandidateE2EBridge = WorldforgeBridge & {
   readonly candidate: {
     readonly createFixture: (
@@ -127,6 +129,7 @@ test('commits selected Candidate content through the desktop transaction', async
     await expect(page.locator('[data-candidate-apply-mode]')).toHaveValue('all');
     await page.locator('[data-apply-candidate]').click();
     await expect(page.locator('[data-candidate-apply-status]')).toContainText('采用成功');
+    await captureAcceptanceScreenshot(page, 'M2-03', 'candidate-apply-success.png');
 
     const current = await page.evaluate(async (input) => {
       const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })

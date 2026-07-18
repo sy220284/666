@@ -12,6 +12,8 @@ import {
 } from '@playwright/test';
 import type { AppearancePreferences, WorldforgeBridge } from '@worldforge/contracts';
 
+import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
 const defaultAppearance: AppearancePreferences = {
@@ -629,6 +631,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
         elements.map((element) => element.getAttribute('data-logical-block-id')),
       );
     expect(reopenedIds).toEqual(persisted?.blocks.map((block) => block.logicalBlockId));
+    await captureAcceptanceScreenshot(page, 'M2-01', 'lockguard-reopen.png');
   } finally {
     await closeGracefully(application);
   }
@@ -970,6 +973,7 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     await expect(page.locator('[data-version-row]')).toContainText('第一阶段');
     await page.locator('[data-version-action="final"]').click();
     await expect(page.locator('[data-version-row]')).toContainText('定稿');
+    await captureAcceptanceScreenshot(page, 'M2-02', 'immutable-version-finalized.png');
     await page.locator('[data-close-versions]').click();
 
     await editor.click();

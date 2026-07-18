@@ -2212,6 +2212,10 @@ async function openSelectedProject(button: HTMLButtonElement): Promise<void> {
     if (result.ok) {
       renderActiveProject(result.data);
       await refreshRecentProjects();
+      if (button.hasAttribute('data-recover-unreadable-project')) {
+        recoveryDialog?.showModal();
+        await refreshRecoveryOverview();
+      }
     } else if (result.error.code !== 'COMMON_CANCELLED_004') {
       showRecentFailure(`打开失败 · ${result.error.code}`);
     }

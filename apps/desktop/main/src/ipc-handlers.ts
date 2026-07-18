@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import {
   APP_COMMANDS,
   DRAFT_COMMANDS,
+  CANDIDATE_COMMANDS,
+  CANDIDATE_IPC_CHANNELS,
   VERSION_COMMANDS,
   RECOVERY_COMMANDS,
   TEXT_IO_COMMANDS,
@@ -18,6 +20,10 @@ import {
   AppSetAppearancePreferencesCommandSchema,
   DraftApplyPatchCommandSchema,
   DraftOpenCommandSchema,
+  CandidateCreateFixtureCommandSchema,
+  CandidateDiscardCommandSchema,
+  CandidateGetCommandSchema,
+  CandidateListCommandSchema,
   VersionCreateCommandSchema,
   VersionGetCommandSchema,
   VersionListCommandSchema,
@@ -162,6 +168,10 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.restoreTrashEntry,
     IPC_CHANNELS.openDraft,
     IPC_CHANNELS.applyPatch,
+    CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
+    CANDIDATE_IPC_CHANNELS.listCandidates,
+    CANDIDATE_IPC_CHANNELS.getCandidate,
+    CANDIDATE_IPC_CHANNELS.discardCandidate,
     IPC_CHANNELS.createVersion,
     IPC_CHANNELS.listVersions,
     IPC_CHANNELS.getVersion,
@@ -735,6 +745,40 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       input: parsed.data.payload,
     });
   });
+
+  for (const [channel, schema, operation] of [
+    [
+      CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
+      CandidateCreateFixtureCommandSchema,
+      CANDIDATE_COMMANDS.createFixtureCandidate,
+    ],
+    [
+      CANDIDATE_IPC_CHANNELS.listCandidates,
+      CandidateListCommandSchema,
+      CANDIDATE_COMMANDS.listCandidates,
+    ],
+    [
+      CANDIDATE_IPC_CHANNELS.getCandidate,
+      CandidateGetCommandSchema,
+      CANDIDATE_COMMANDS.getCandidate,
+    ],
+    [
+      CANDIDATE_IPC_CHANNELS.discardCandidate,
+      CandidateDiscardCommandSchema,
+      CANDIDATE_COMMANDS.discardCandidate,
+    ],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        input: parsed.data.payload,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
 
   for (const [channel, schema, operation] of [
     [IPC_CHANNELS.createVersion, VersionCreateCommandSchema, VERSION_COMMANDS.createVersion],

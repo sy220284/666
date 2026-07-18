@@ -13,8 +13,6 @@ import {
 import { ErrorCodeSchema } from './error-codes.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
-export * from './candidate.js';
-
 export const VERSION_IPC_CHANNELS = {
   createVersion: 'worldforge:version:create',
   listVersions: 'worldforge:version:list',

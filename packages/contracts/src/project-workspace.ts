@@ -5,6 +5,11 @@ import { CoreDraftOperationSchema, CoreDraftResultSchema } from './draft.js';
 import { CoreVersionOperationSchema, CoreVersionResultSchema } from './version.js';
 import { CoreRecoveryOperationSchema, CoreRecoveryResultSchema } from './recovery.js';
 import { CoreTextIoOperationSchema, CoreTextIoResultSchema } from './import-export.js';
+import { CoreCandidateOperationSchema, CoreCandidateResultSchema } from './candidate.js';
+import {
+  CoreCandidateApplyOperationSchema,
+  CoreCandidateApplyResultSchema,
+} from './candidate-apply.js';
 import {
   CoreProjectStructureOperationSchema,
   CoreProjectStructureResultSchema,
@@ -173,6 +178,8 @@ export const CoreProjectOperationSchema = z.union([
   CoreProjectWorkspaceOperationSchema,
   CoreProjectStructureOperationSchema,
   CoreDraftOperationSchema,
+  CoreCandidateOperationSchema,
+  CoreCandidateApplyOperationSchema,
   CoreVersionOperationSchema,
   CoreRecoveryOperationSchema,
   CoreTextIoOperationSchema,
@@ -206,6 +213,8 @@ export const CoreProjectResultSchema = z.union([
   CoreProjectWorkspaceResultSchema,
   CoreProjectStructureResultSchema,
   CoreDraftResultSchema,
+  CoreCandidateResultSchema,
+  CoreCandidateApplyResultSchema,
   CoreVersionResultSchema,
   CoreRecoveryResultSchema,
   CoreTextIoResultSchema,

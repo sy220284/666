@@ -256,6 +256,68 @@ describe('M1-05 atomic Draft Patch persistence', () => {
       await expect(harness.drafts.applyPatch(requestId, input)).resolves.toEqual(committed);
       expect(patchLogCount(harness, project.projectId)).toBe(1);
 
+      const evolved = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: committed.revision,
+        operations: [
+          {
+            type: 'update',
+            logicalBlockId: committed.blocks[0]!.logicalBlockId,
+            expectedHash: committed.blocks[0]!.contentHash!,
+            content: '后续编辑必须保留',
+          },
+        ],
+      });
+      await harness.workspace.close(randomUUID(), project.projectId);
+      await harness.workspace.open(randomUUID(), { workspacePath: project.workspacePath });
+      await expect(harness.drafts.applyPatch(requestId, input)).resolves.toEqual(committed);
+      await expect(
+        harness.drafts.open(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+        }),
+      ).resolves.toEqual(evolved);
+      expect(patchLogCount(harness, project.projectId)).toBe(2);
+
+      await harness.workspace.close(randomUUID(), project.projectId);
+      await harness.workspace.open(randomUUID(), { workspacePath: project.workspacePath });
+      await expect(
+        harness.drafts.applyPatch(requestId, {
+          ...input,
+          operations: [{ ...input.operations[0], content: '同一requestId不得绑定新操作' }],
+        }),
+      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_PATCH_INVALID' });
+      await expect(
+        harness.drafts.open(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+        }),
+      ).resolves.toEqual(evolved);
+
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        const row = database
+          .prepare(
+            'SELECT after_blocks_json AS blocksJson FROM draft_patch_log WHERE request_id = ?',
+          )
+          .get(requestId) as { readonly blocksJson: string };
+        const blocks = JSON.parse(row.blocksJson) as Array<Record<string, unknown>>;
+        blocks[0] = { ...blocks[0], text: '未重算哈希的重放快照' };
+        database
+          .prepare('UPDATE draft_patch_log SET after_blocks_json = ? WHERE request_id = ?')
+          .run(JSON.stringify(blocks), requestId);
+      });
+      await expect(
+        harness.drafts.applyPatch(requestId, input),
+      ).rejects.toMatchObject<DraftServiceError>({ code: 'DRAFT_INVARIANT_FAILED' });
+      await expect(
+        harness.drafts.open(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+        }),
+      ).resolves.toEqual(evolved);
+
       const interrupted = new DraftService(harness.workspace, {
         clock,
         faultInjector: (stage) => {
@@ -267,12 +329,12 @@ describe('M1-05 atomic Draft Patch persistence', () => {
           projectId: project.projectId,
           chapterId: chapter.id,
           draftId: draft.draftId,
-          baseRevision: committed.revision,
+          baseRevision: evolved.revision,
           operations: [
             {
               type: 'update',
-              logicalBlockId: committed.blocks[0]!.logicalBlockId,
-              expectedHash: committed.blocks[0]!.contentHash!,
+              logicalBlockId: evolved.blocks[0]!.logicalBlockId,
+              expectedHash: evolved.blocks[0]!.contentHash!,
               content: '事务失败不得落库',
             },
           ],
@@ -283,8 +345,8 @@ describe('M1-05 atomic Draft Patch persistence', () => {
           projectId: project.projectId,
           chapterId: chapter.id,
         }),
-      ).resolves.toEqual(committed);
-      expect(patchLogCount(harness, project.projectId)).toBe(1);
+      ).resolves.toEqual(evolved);
+      expect(patchLogCount(harness, project.projectId)).toBe(2);
     } finally {
       await closeHarness(harness);
     }

@@ -4,8 +4,10 @@ import type { DatabaseSync } from 'node:sqlite';
 import {
   DraftApplyPatchInputSchema,
   DraftBlockAttributesSchema,
+  DraftBlockSchema,
   DraftDocumentSchema,
   DraftOpenInputSchema,
+  DraftPatchOperationSchema,
   DraftSaveSnapshotInputSchema,
   type DraftApplyPatchInput,
   type DraftBlock,
@@ -22,6 +24,7 @@ import {
 } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
+import { collectLockGuardViolations } from './draft-lock-guard.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
@@ -32,6 +35,7 @@ export type DraftServiceErrorCode =
   | 'DRAFT_INVARIANT_FAILED'
   | 'DRAFT_REVISION_CONFLICT'
   | 'DRAFT_BLOCK_HASH_CONFLICT'
+  | 'DRAFT_BLOCK_LOCKED'
   | 'DRAFT_PATCH_INVALID';
 
 export class DraftServiceError extends Error {
@@ -67,6 +71,14 @@ interface WorkingBlock {
   readonly locked: boolean;
   readonly contentHash: string;
   readonly revision: number;
+}
+
+interface PatchReplayRow {
+  readonly draftId: string;
+  readonly baseRevision: number | bigint;
+  readonly committedRevision: number | bigint;
+  readonly operationsJson: string;
+  readonly afterBlocksJson: string;
 }
 
 function text(value: unknown): string {
@@ -172,6 +184,17 @@ export function draftContentHash(input: {
   readonly attributes?: DraftBlock['attributes'];
 }): string {
   return createHash('sha256').update(serializeDraftBlockSemantic(input), 'utf8').digest('hex');
+}
+
+function stable(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right, 'en'))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function normalizeBlock(input: {
@@ -283,6 +306,87 @@ function readDocument(
   });
 }
 
+function replayDocument(
+  projectId: string,
+  chapterId: string,
+  draft: DraftRow,
+  replay: PatchReplayRow,
+  input: DraftApplyPatchInput,
+): DraftDocument {
+  let replayOperations: DraftPatchOperation[];
+  try {
+    replayOperations = DraftPatchOperationSchema.array()
+      .max(150_000)
+      .parse(JSON.parse(replay.operationsJson));
+  } catch (error) {
+    throw new DraftServiceError(
+      'DRAFT_INVARIANT_FAILED',
+      'The persisted Draft Patch operation log is invalid.',
+      { cause: error },
+    );
+  }
+  const replayBaseRevision = nonnegativeInteger(replay.baseRevision);
+  const replayCommittedRevision = nonnegativeInteger(replay.committedRevision);
+  if (
+    replay.draftId !== draft.id ||
+    replayBaseRevision !== input.baseRevision ||
+    replayCommittedRevision !== replayBaseRevision + 1 ||
+    stable(replayOperations) !== stable(input.operations)
+  ) {
+    throw new DraftServiceError(
+      'DRAFT_PATCH_INVALID',
+      'The requestId is already bound to a different Draft Patch.',
+    );
+  }
+  try {
+    const raw = JSON.parse(replay.afterBlocksJson) as unknown;
+    if (!Array.isArray(raw) || raw.length === 0) throw new TypeError('PATCH_REPLAY_BLOCKS_INVALID');
+    const blocks = raw.map((item) => {
+      if (!item || typeof item !== 'object') throw new TypeError('PATCH_REPLAY_BLOCK_INVALID');
+      const block = item as Record<string, unknown>;
+      const parsed = DraftBlockSchema.parse({
+        logicalBlockId: block.logicalBlockId,
+        orderKey: block.orderKey,
+        blockType: block.blockType,
+        text: block.text,
+        attributes: block.attributes,
+        source: block.source,
+        locked: block.locked,
+        contentHash: block.contentHash,
+      });
+      if (
+        !parsed.contentHash ||
+        draftContentHash({
+          blockType: parsed.blockType,
+          content: parsed.text,
+          attributes: parsed.attributes,
+        }) !== parsed.contentHash
+      ) {
+        throw new TypeError('PATCH_REPLAY_BLOCK_HASH_INVALID');
+      }
+      return parsed;
+    });
+    if (new Set(blocks.map((block) => block.logicalBlockId)).size !== blocks.length) {
+      throw new TypeError('PATCH_REPLAY_BLOCK_IDS_DUPLICATE');
+    }
+    return DraftDocumentSchema.parse({
+      projectId,
+      chapterId,
+      draftId: draft.id,
+      status: draft.status,
+      revision: replayCommittedRevision,
+      blocks,
+    });
+  } catch (error) {
+    if (error instanceof DraftServiceError) throw error;
+    throw new DraftServiceError(
+      'DRAFT_INVARIANT_FAILED',
+      'The persisted Draft Patch replay result is invalid.',
+      { cause: error },
+    );
+  }
+}
+
 function readExistingDraft(
   connection: DatabaseSync,
   projectId: string,
@@ -383,7 +487,7 @@ function assertExpectedHash(block: WorkingBlock, expectedHash: string): void {
 function assertUnlocked(block: WorkingBlock): void {
   if (block.locked) {
     throw new DraftServiceError(
-      'DRAFT_PATCH_INVALID',
+      'DRAFT_BLOCK_LOCKED',
       `DraftBlock ${block.logicalBlockId} is locked and must be explicitly unlocked first.`,
     );
   }
@@ -410,74 +514,34 @@ function auditBlocks(blocks: readonly WorkingBlock[]): readonly Record<string, u
   }));
 }
 
-function snapshotBlockByLogicalId(
-  blocks: readonly DraftSnapshotBlockInput[],
-): Map<string, DraftSnapshotBlockInput> {
-  const result = new Map<string, DraftSnapshotBlockInput>();
-  for (const block of blocks) {
-    if (block.logicalBlockId) result.set(block.logicalBlockId, block);
-  }
-  return result;
-}
-
 function assertSnapshotPreservesLockedBlocks(
   existing: readonly WorkingBlock[],
   incoming: readonly DraftSnapshotBlockInput[],
 ): void {
-  const incomingById = snapshotBlockByLogicalId(incoming);
   const existingById = new Map(existing.map((block) => [block.logicalBlockId, block]));
-  const oldRetainedOrder = existing
-    .filter((block) => incomingById.has(block.logicalBlockId))
-    .map((block) => block.logicalBlockId);
-  const newRetainedOrder = incoming
-    .map((block) => block.logicalBlockId)
-    .filter(
-      (logicalBlockId): logicalBlockId is string =>
-        logicalBlockId !== null && existingById.has(logicalBlockId),
-    );
-  const newIndex = new Map(newRetainedOrder.map((id, index) => [id, index]));
-
-  for (const locked of existing.filter((block) => block.locked)) {
-    const candidate = incomingById.get(locked.logicalBlockId);
-    if (!candidate) {
-      throw new DraftServiceError(
-        'DRAFT_PATCH_INVALID',
-        `Locked DraftBlock ${locked.logicalBlockId} cannot be deleted by snapshot replacement.`,
-      );
-    }
+  const target = incoming.map((candidate, index) => {
     const normalized = normalizeBlock({
       blockType: candidate.blockType,
       content: candidate.text,
       attributes: candidate.attributes,
     });
-    if (
-      normalized.blockType !== locked.blockType ||
-      normalized.text !== locked.text ||
-      JSON.stringify(normalized.attributes) !== JSON.stringify(locked.attributes)
-    ) {
-      throw new DraftServiceError(
-        'DRAFT_PATCH_INVALID',
-        `Locked DraftBlock ${locked.logicalBlockId} cannot be modified by snapshot replacement.`,
-      );
-    }
-    const oldIndex = oldRetainedOrder.indexOf(locked.logicalBlockId);
-    const lockedNewIndex = newIndex.get(locked.logicalBlockId);
-    if (lockedNewIndex === undefined) {
-      throw new DraftServiceError('DRAFT_PATCH_INVALID', 'Locked DraftBlock order is invalid.');
-    }
-    for (const otherId of oldRetainedOrder) {
-      const otherNewIndex = newIndex.get(otherId);
-      if (otherId === locked.logicalBlockId || otherNewIndex === undefined) continue;
-      if (
-        Math.sign(oldIndex - oldRetainedOrder.indexOf(otherId)) !==
-        Math.sign(lockedNewIndex - otherNewIndex)
-      ) {
-        throw new DraftServiceError(
-          'DRAFT_PATCH_INVALID',
-          `Locked DraftBlock ${locked.logicalBlockId} cannot be moved by snapshot replacement.`,
-        );
-      }
-    }
+    const previous = candidate.logicalBlockId
+      ? existingById.get(candidate.logicalBlockId)
+      : undefined;
+    return {
+      logicalBlockId: candidate.logicalBlockId ?? `new:${index}`,
+      blockType: normalized.blockType,
+      text: normalized.text,
+      attributes: normalized.attributes,
+      locked: previous?.locked ?? false,
+    };
+  });
+  const violation = collectLockGuardViolations(existing, target)[0];
+  if (violation) {
+    throw new DraftServiceError(
+      'DRAFT_BLOCK_LOCKED',
+      `Locked DraftBlock ${violation.logicalBlockId} cannot be ${violation.kind} by snapshot replacement.`,
+    );
   }
 }
 
@@ -720,16 +784,15 @@ export class DraftService {
       }
 
       const replay = connection
-        .prepare('SELECT draft_id FROM draft_patch_log WHERE request_id = ?')
-        .get(requestId);
+        .prepare(
+          `SELECT draft_id AS draftId, base_revision AS baseRevision,
+                  committed_revision AS committedRevision, operations_json AS operationsJson,
+                  after_blocks_json AS afterBlocksJson
+             FROM draft_patch_log WHERE request_id = ?`,
+        )
+        .get(requestId) as PatchReplayRow | undefined;
       if (replay) {
-        if (text(replay.draft_id) !== draft.id) {
-          throw new DraftServiceError(
-            'DRAFT_PATCH_INVALID',
-            'The requestId is already bound to a different Draft.',
-          );
-        }
-        return readDocument(connection, valid.projectId, valid.chapterId, draft);
+        return replayDocument(valid.projectId, valid.chapterId, draft, replay, valid);
       }
 
       ensureStoredHashes(connection, draft.id);
@@ -751,6 +814,23 @@ export class DraftService {
       const committedRevision = draft.revision + 1;
       for (const operation of valid.operations) {
         applyOperation(after, operation, committedRevision, this.#idFactory);
+      }
+      const explicitlyUnlocked = new Set(
+        valid.operations.flatMap((operation) =>
+          operation.type === 'set-lock' && !operation.locked ? [operation.logicalBlockId] : [],
+        ),
+      );
+      const violation = collectLockGuardViolations(
+        before.map((block) =>
+          explicitlyUnlocked.has(block.logicalBlockId) ? { ...block, locked: false } : block,
+        ),
+        after,
+      )[0];
+      if (violation) {
+        throw new DraftServiceError(
+          'DRAFT_BLOCK_LOCKED',
+          `Draft Patch would ${violation.kind} locked DraftBlock ${violation.logicalBlockId}.`,
+        );
       }
       if (after.length === 0) {
         throw new DraftServiceError(

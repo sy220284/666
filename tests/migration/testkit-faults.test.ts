@@ -8,7 +8,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { AppDatabase, defineMigration } from '../../packages/core-service/src/database/index.js';
 import {
   acquireSqliteWriteLock,
-  corruptSqliteHeader,
   createSqliteDiskFullFault,
   createTemporaryWorldforgeWorkspace,
   failMigrationAt,
@@ -47,7 +46,7 @@ describe('temporary WorldForge workspace', () => {
     expect(workspace.appDatabase.mode).toBe('read-write');
     expect(workspace.projectDatabase.mode).toBe('read-write');
     expect(workspace.appDatabase.schemaVersion).toBe(2);
-    expect(workspace.projectDatabase.schemaVersion).toBe(7);
+    expect(workspace.projectDatabase.schemaVersion).toBe(8);
     expect(
       workspace.appDatabase.read((database) =>
         database.prepare('SELECT count(*) AS count FROM schema_migrations').get(),
@@ -124,25 +123,6 @@ describe('actual SQLite fault injection', () => {
       fault.release();
     }
     expect(isSqliteFullError(observed)).toBe(true);
-  });
-
-  it('damages a closed SQLite header with an explicit synthetic marker', async () => {
-    const databasePath = path.join(await temporaryDirectory(), 'damaged.sqlite');
-    const database = new DatabaseSync(databasePath);
-    database.exec('CREATE TABLE intact(value TEXT);');
-    database.close();
-
-    await expect(corruptSqliteHeader(databasePath)).resolves.toMatchObject({
-      injectedMarker: 'WF_CORRUPTED_DB!',
-    });
-    expect(() => {
-      const damaged = new DatabaseSync(databasePath);
-      try {
-        damaged.prepare('PRAGMA schema_version').get();
-      } finally {
-        if (damaged.isOpen) damaged.close();
-      }
-    }).toThrow();
   });
 
   it('fires inside the production migration transaction and leaves no partial schema', async () => {

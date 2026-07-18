@@ -3,6 +3,8 @@ import path from 'node:path';
 import {
   APP_DATA_COMMANDS,
   DRAFT_COMMANDS,
+  CANDIDATE_COMMANDS,
+  CANDIDATE_APPLY_COMMANDS,
   VERSION_COMMANDS,
   RECOVERY_COMMANDS,
   TEXT_IO_COMMANDS,
@@ -23,6 +25,9 @@ import {
 import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
 import { AppDataRepositoryError } from './app-data-errors.js';
+import { CandidateApplyService } from './candidate-apply.js';
+import { CandidateApplyServiceError } from './candidate-state.js';
+import { CandidateService, CandidateServiceError } from './candidate.js';
 import { DraftService, DraftServiceError } from './draft.js';
 import { VersionService, VersionServiceError } from './version.js';
 import { RecoveryService, RecoveryServiceError } from './recovery.js';
@@ -97,6 +102,8 @@ const recovery = new RecoveryService(projectWorkspace, {
 });
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
+const candidates = new CandidateService(projectWorkspace);
+const candidateApply = new CandidateApplyService(projectWorkspace);
 const versions = new VersionService(projectWorkspace);
 const textIo = new ImportExportService(projectWorkspace, recovery);
 
@@ -193,6 +200,26 @@ function projectWorkspaceError(error: unknown): ErrorCode {
         return 'EXPORT_WRITE_FAILED_003';
     }
   }
+  if (error instanceof CandidateApplyServiceError) {
+    if (error.code === 'CANDIDATE_PREVIEW_CANCELLED') return 'COMMON_CANCELLED_004';
+    if (error.code === 'CANDIDATE_APPLY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'CANDIDATE_APPLY_INVALID') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
+  if (error instanceof CandidateServiceError) {
+    switch (error.code) {
+      case 'CANDIDATE_NOT_FOUND':
+      case 'CANDIDATE_DRAFT_NOT_FOUND':
+        return 'COMMON_NOT_FOUND_002';
+      case 'CANDIDATE_REVISION_CONFLICT':
+      case 'CANDIDATE_SOURCE_CONFLICT':
+        return 'CANDIDATE_BASE_CONFLICT_002';
+      case 'CANDIDATE_STATUS_CONFLICT':
+        return 'CANDIDATE_ALREADY_RESOLVED_001';
+      case 'CANDIDATE_INVALID':
+        return 'COMMON_INVALID_INPUT_001';
+    }
+  }
   if (error instanceof VersionServiceError) {
     if (error.code === 'VERSION_NOT_FOUND' || error.code === 'VERSION_DRAFT_NOT_FOUND')
       return 'COMMON_NOT_FOUND_002';
@@ -210,6 +237,8 @@ function projectWorkspaceError(error: unknown): ErrorCode {
         return 'DRAFT_REVISION_CONFLICT_001';
       case 'DRAFT_BLOCK_HASH_CONFLICT':
         return 'DRAFT_BLOCK_HASH_CONFLICT_002';
+      case 'DRAFT_BLOCK_LOCKED':
+        return 'DRAFT_BLOCK_LOCKED_003';
       case 'DRAFT_PATCH_INVALID':
         return 'DRAFT_PATCH_INVALID_004';
       case 'DRAFT_INVARIANT_FAILED':
@@ -437,6 +466,66 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await drafts.applyPatch(requestId, operation.input),
+        });
+      case CANDIDATE_COMMANDS.createFixtureCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidates.createFixture(requestId, operation.input),
+        });
+      case CANDIDATE_COMMANDS.listCandidates:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidates.list(operation.input),
+        });
+      case CANDIDATE_COMMANDS.getCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidates.get(operation.input),
+        });
+      case CANDIDATE_COMMANDS.discardCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidates.discard(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.previewCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidateApply.previewProgressively(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.cancelPreview:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidateApply.cancelPreview(operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.applyCandidate:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidateApply.apply(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.previewUndo:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidateApply.previewUndo(operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.undoApply:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await candidateApply.undo(requestId, operation.input),
+        });
+      case CANDIDATE_APPLY_COMMANDS.findUndoRecord:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: candidateApply.findUndoRecord(operation.input),
         });
       case VERSION_COMMANDS.createVersion:
         return CoreProjectResultSchema.parse({

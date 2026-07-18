@@ -1,0 +1,66 @@
+[
+  {
+    "taskId": "M2-03",
+    "commit": "working-tree",
+    "environment": {
+      "os": "Linux 6.12.47 x86_64",
+      "cpu": "AMD EPYC 9V74 (9 vCPU exposed)",
+      "memoryGb": 15,
+      "display": "headless-no-display"
+    },
+    "dataset": "candidate-diff-5000-single-block",
+    "metric": "complete_diff_p95_ms",
+    "samples": 30,
+    "result": 1.142,
+    "budget": 1200,
+    "passed": true
+  },
+  {
+    "taskId": "M2-03",
+    "commit": "working-tree",
+    "environment": {
+      "os": "Linux 6.12.47 x86_64",
+      "cpu": "AMD EPYC 9V74 (9 vCPU exposed)",
+      "memoryGb": 15,
+      "display": "headless-no-display"
+    },
+    "dataset": "candidate-diff-20000-single-block",
+    "metric": "progressive_complete_p95_ms",
+    "samples": 20,
+    "result": 5.549,
+    "budget": 3000,
+    "passed": true
+  },
+  {
+    "taskId": "M2-03",
+    "commit": "working-tree",
+    "environment": {
+      "os": "Linux 6.12.47 x86_64",
+      "cpu": "AMD EPYC 9V74 (9 vCPU exposed)",
+      "memoryGb": 15,
+      "display": "headless-no-display"
+    },
+    "dataset": "candidate-diff-20001-worker-single-block",
+    "metric": "worker_complete_p95_ms",
+    "samples": 10,
+    "result": 52.348,
+    "budget": 3000,
+    "passed": true
+  },
+  {
+    "taskId": "M2-03",
+    "commit": "working-tree",
+    "environment": {
+      "os": "Linux 6.12.47 x86_64",
+      "cpu": "AMD EPYC 9V74 (9 vCPU exposed)",
+      "memoryGb": 15,
+      "display": "headless-no-display"
+    },
+    "dataset": "candidate-diff-20000-cancel",
+    "metric": "cancel_confirmation_ms",
+    "samples": 1,
+    "result": 1.51,
+    "budget": 500,
+    "passed": true
+  }
+]

@@ -10,7 +10,7 @@ import {
   CandidateService,
   type CandidateServiceError,
 } from '../../packages/core-service/src/candidate.js';
-import { DraftService } from '../../packages/core-service/src/draft.js';
+import { DraftService, draftContentHash } from '../../packages/core-service/src/draft.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import {
@@ -106,7 +106,7 @@ describe('M2-02 Candidate and Version model', () => {
           {
             logicalBlockId: source.logicalBlockId,
             blockType: source.blockType,
-            text: '候选文本只进入 Candidate。',
+            text: '候选文本只进入 Candidate，Cafe\u0301。\r\n下一行。',
             attributes: source.attributes,
             sourceBlockHash: source.contentHash,
           },
@@ -125,13 +125,19 @@ describe('M2-02 Candidate and Version model', () => {
       expect(
         harness.candidates.list({ projectId: project.projectId, chapterId: chapter.id }),
       ).toMatchObject({ candidates: [{ candidateId: candidate.candidateId, status: 'pending' }] });
-      expect(
-        harness.candidates.get({
-          projectId: project.projectId,
-          chapterId: chapter.id,
-          candidateId: candidate.candidateId,
-        }).blocks[0]!.text,
-      ).toBe('候选文本只进入 Candidate。');
+      const persistedBlock = harness.candidates.get({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        candidateId: candidate.candidateId,
+      }).blocks[0]!;
+      expect(persistedBlock.text).toBe('候选文本只进入 Candidate，Café。\n下一行。');
+      expect(persistedBlock.contentHash).toBe(
+        draftContentHash({
+          blockType: persistedBlock.blockType,
+          content: persistedBlock.text,
+          attributes: persistedBlock.attributes,
+        }),
+      );
 
       const unchanged = await harness.drafts.open(randomUUID(), {
         projectId: project.projectId,
@@ -230,6 +236,49 @@ describe('M2-02 Candidate and Version model', () => {
       });
       expect(immutable.contentHash).toBe(candidateVersion.contentHash);
       expect(immutable.blocks).toEqual(candidateVersion.blocks);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('rejects persisted Candidate block or aggregate hash drift', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, chapter, draft } = await createProjectDraft(harness, '候选完整性');
+      const source = draft.blocks[0]!;
+      const candidate = await harness.candidates.createFixture(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseDraftRevision: draft.revision,
+        candidateType: 'rewrite',
+        completeness: 'complete',
+        title: '哈希漂移候选',
+        blocks: [
+          {
+            logicalBlockId: source.logicalBlockId,
+            sourceLogicalBlockIds: [source.logicalBlockId],
+            blockType: source.blockType,
+            text: '原始候选内容',
+            attributes: source.attributes,
+            sourceBlockHash: source.contentHash,
+          },
+        ],
+      });
+
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        database
+          .prepare('UPDATE candidate_blocks SET text = ? WHERE candidate_id = ?')
+          .run('被篡改但未重算哈希', candidate.candidateId);
+      });
+
+      expect(() =>
+        harness.candidates.get({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          candidateId: candidate.candidateId,
+        }),
+      ).toThrow('content hash does not match');
     } finally {
       await closeHarness(harness);
     }

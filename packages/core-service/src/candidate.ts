@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 
 import {
@@ -16,8 +16,10 @@ import {
   type CandidateList,
   type CandidateSummary,
 } from '@worldforge/contracts';
+import { normalizeDraftBlockSemantic } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
+import { candidateBlockContentHash, candidateDocumentContentHash } from './candidate-integrity.js';
 import { draftContentHash } from './draft.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
@@ -86,35 +88,10 @@ interface CandidateBlockRow {
   readonly contentHash: string;
 }
 
-function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right, 'en'))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function candidateHash(blocks: readonly CandidateBlock[]): string {
-  return createHash('sha256')
-    .update(
-      stable(
-        blocks.map((block) => ({
-          logicalBlockId: block.logicalBlockId,
-          orderKey: block.orderKey,
-          blockType: block.blockType,
-          text: block.text,
-          attributes: block.attributes,
-          beatId: block.beatId,
-          sourceBlockHash: block.sourceBlockHash,
-          contentHash: block.contentHash,
-        })),
-      ),
-      'utf8',
-    )
-    .digest('hex');
+interface CandidateSourceRow {
+  readonly candidateBlockId: string;
+  readonly sourceLogicalBlockId: string;
+  readonly sourceOrder: number | bigint;
 }
 
 function mapSummary(row: CandidateSummaryRow): CandidateSummary {
@@ -137,18 +114,36 @@ function mapSummary(row: CandidateSummaryRow): CandidateSummary {
   });
 }
 
-function mapBlock(row: CandidateBlockRow): CandidateBlock {
-  return {
-    candidateBlockId: row.candidateBlockId,
-    logicalBlockId: row.logicalBlockId,
-    orderKey: String(row.orderKey),
-    blockType: row.blockType,
-    text: row.text,
-    attributes: JSON.parse(row.attributesJson) as CandidateBlock['attributes'],
-    beatId: row.beatId,
-    sourceBlockHash: row.sourceBlockHash,
-    contentHash: row.contentHash,
-  };
+function mapBlock(
+  row: CandidateBlockRow,
+  sourceLogicalBlockIds: readonly string[],
+): CandidateBlock {
+  try {
+    const block = CandidateDocumentSchema.shape.blocks.element.parse({
+      candidateBlockId: row.candidateBlockId,
+      logicalBlockId: row.logicalBlockId,
+      sourceLogicalBlockIds: [...sourceLogicalBlockIds],
+      orderKey: String(row.orderKey),
+      blockType: row.blockType,
+      text: row.text,
+      attributes: JSON.parse(row.attributesJson),
+      beatId: row.beatId,
+      sourceBlockHash: row.sourceBlockHash,
+      contentHash: row.contentHash,
+    });
+    if (candidateBlockContentHash(block) !== block.contentHash) {
+      throw new CandidateServiceError(
+        'CANDIDATE_INVALID',
+        'A persisted CandidateBlock content hash does not match its content.',
+      );
+    }
+    return block;
+  } catch (error) {
+    if (error instanceof CandidateServiceError) throw error;
+    throw new CandidateServiceError('CANDIDATE_INVALID', 'A persisted CandidateBlock is invalid.', {
+      cause: error,
+    });
+  }
 }
 
 function summaryQuery(where: string): string {
@@ -173,13 +168,28 @@ function readSummary(
   const row = database
     .prepare(summaryQuery('ca.id = ? AND ca.chapter_id = ? AND p.id = ?'))
     .get(input.candidateId, input.chapterId, input.projectId) as CandidateSummaryRow | undefined;
-  if (!row) {
-    throw new CandidateServiceError('CANDIDATE_NOT_FOUND', 'The Candidate was not found.');
-  }
+  if (!row) throw new CandidateServiceError('CANDIDATE_NOT_FOUND', 'The Candidate was not found.');
   return mapSummary(row);
 }
 
 function readBlocks(database: DatabaseSync, candidateId: string): CandidateBlock[] {
+  const sourceRows = database
+    .prepare(
+      `SELECT cbs.candidate_block_id AS candidateBlockId,
+              cbs.source_logical_block_id AS sourceLogicalBlockId,
+              cbs.source_order AS sourceOrder
+         FROM candidate_block_sources cbs
+         JOIN candidate_blocks cb ON cb.id = cbs.candidate_block_id
+        WHERE cb.candidate_id = ?
+        ORDER BY cbs.candidate_block_id, cbs.source_order`,
+    )
+    .all(candidateId) as unknown as CandidateSourceRow[];
+  const sources = new Map<string, string[]>();
+  for (const row of sourceRows) {
+    const values = sources.get(row.candidateBlockId) ?? [];
+    values.push(row.sourceLogicalBlockId);
+    sources.set(row.candidateBlockId, values);
+  }
   const rows = database
     .prepare(
       `SELECT id AS candidateBlockId, logical_block_id AS logicalBlockId,
@@ -191,7 +201,7 @@ function readBlocks(database: DatabaseSync, candidateId: string): CandidateBlock
         ORDER BY order_key, id`,
     )
     .all(candidateId) as unknown as CandidateBlockRow[];
-  return rows.map(mapBlock);
+  return rows.map((row) => mapBlock(row, sources.get(row.candidateBlockId) ?? []));
 }
 
 function assertSourceVersion(
@@ -289,34 +299,57 @@ export class CandidateService {
           );
         }
         logicalIds.add(logicalBlockId);
-        const currentSourceHash = draftHashes.get(logicalBlockId);
-        if (block.sourceBlockHash && currentSourceHash !== block.sourceBlockHash) {
-          throw new CandidateServiceError(
-            'CANDIDATE_SOURCE_CONFLICT',
-            'A Candidate source block changed or belongs to another Draft.',
-          );
+        const sourceLogicalBlockIds = [
+          ...new Set(
+            block.sourceLogicalBlockIds ??
+              (draftHashes.has(logicalBlockId) ? [logicalBlockId] : []),
+          ),
+        ];
+        for (const sourceLogicalBlockId of sourceLogicalBlockIds) {
+          if (!draftHashes.has(sourceLogicalBlockId)) {
+            throw new CandidateServiceError(
+              'CANDIDATE_SOURCE_CONFLICT',
+              'A Candidate source block belongs to another Draft or no longer exists.',
+            );
+          }
         }
-        const contentHash = draftContentHash({
+        if (block.sourceBlockHash) {
+          if (
+            sourceLogicalBlockIds.length !== 1 ||
+            draftHashes.get(sourceLogicalBlockIds[0] ?? '') !== block.sourceBlockHash
+          ) {
+            throw new CandidateServiceError(
+              'CANDIDATE_SOURCE_CONFLICT',
+              'A Candidate source block changed or belongs to another Draft.',
+            );
+          }
+        }
+        const normalized = normalizeDraftBlockSemantic({
           blockType: block.blockType,
           content: block.text,
           attributes: block.attributes,
         });
-        return {
+        return CandidateDocumentSchema.shape.blocks.element.parse({
           candidateBlockId: this.#idFactory(),
           logicalBlockId,
+          sourceLogicalBlockIds,
           orderKey: String((index + 1) * 1024),
-          blockType: block.blockType,
-          text: block.text.replaceAll('\r\n', '\n').replaceAll('\r', '\n'),
-          attributes: block.attributes,
+          blockType: normalized.blockType,
+          text: normalized.content,
+          attributes: normalized.attributes,
           beatId: block.beatId ?? null,
           sourceBlockHash: block.sourceBlockHash ?? null,
-          contentHash,
-        };
+          contentHash: draftContentHash({
+            blockType: normalized.blockType,
+            content: normalized.content,
+            attributes: normalized.attributes,
+          }),
+        });
       });
 
       const candidateId = this.#idFactory();
       const createdAt = this.#clock.now().toISOString();
-      const contentHash = candidateHash(blocks);
+      const contentHash = candidateDocumentContentHash(blocks);
       database
         .prepare(
           `INSERT INTO candidates(
@@ -344,6 +377,11 @@ export class CandidateService {
            attributes_json, beat_id, source_block_hash, content_hash
          ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       );
+      const insertSource = database.prepare(
+        `INSERT INTO candidate_block_sources(
+           candidate_block_id, source_logical_block_id, source_order
+         ) VALUES(?, ?, ?)`,
+      );
       for (const block of blocks) {
         insertBlock.run(
           block.candidateBlockId,
@@ -357,6 +395,9 @@ export class CandidateService {
           block.sourceBlockHash,
           block.contentHash,
         );
+        block.sourceLogicalBlockIds.forEach((sourceLogicalBlockId, sourceOrder) => {
+          insertSource.run(block.candidateBlockId, sourceLogicalBlockId, sourceOrder);
+        });
       }
 
       return CandidateDocumentSchema.parse({
@@ -397,10 +438,24 @@ export class CandidateService {
     const input = CandidateGetInputSchema.parse(raw);
     return this.#workspace.readProject(input.projectId, (database) => {
       const summary = readSummary(database, input);
-      return CandidateDocumentSchema.parse({
-        ...summary,
-        blocks: readBlocks(database, input.candidateId),
-      });
+      const blocks = readBlocks(database, input.candidateId);
+      if (candidateDocumentContentHash(blocks) !== summary.contentHash) {
+        throw new CandidateServiceError(
+          'CANDIDATE_INVALID',
+          'The persisted Candidate content hash does not match its blocks.',
+        );
+      }
+      try {
+        return CandidateDocumentSchema.parse({ ...summary, blocks });
+      } catch (error) {
+        throw new CandidateServiceError(
+          'CANDIDATE_INVALID',
+          'The persisted Candidate is invalid.',
+          {
+            cause: error,
+          },
+        );
+      }
     });
   }
 

@@ -5,7 +5,6 @@ interface CandidatePreviewContext {
 
 interface CandidatePreviewUiOptions {
   readonly context: () => Promise<CandidatePreviewContext | null>;
-  readonly flushDraft: () => Promise<boolean>;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string) {
@@ -42,7 +41,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   select.setAttribute('aria-label', '选择候选稿');
   const close = element('button', '关闭');
   close.type = 'button';
-  const status = element('p', '选择候选后读取差异。');
+  const status = element('p', '选择候选后读取已保存正文的差异。');
   status.dataset.candidatePreviewStatus = '';
   status.setAttribute('role', 'status');
   const warning = element('p');
@@ -59,7 +58,7 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
   columns.style.gap = '16px';
   const currentPanel = element('section');
   const candidatePanel = element('section');
-  const currentHeading = element('h3', '当前稿');
+  const currentHeading = element('h3', '当前已保存稿');
   const candidateHeading = element('h3', '候选稿');
   const currentText = element('pre');
   const candidateText = element('pre');
@@ -120,12 +119,8 @@ export function setupCandidatePreviewUi(options: CandidatePreviewUiOptions): () 
       window.alert('请先打开一个章节。');
       return;
     }
-    if (!(await options.flushDraft())) {
-      window.alert('当前稿保存失败，已阻止进入候选预览。');
-      return;
-    }
     status.textContent = '正在读取候选列表…';
-    warning.textContent = '';
+    warning.textContent = '预览只读取已持久化Draft，不会写入项目数据库。';
     summary.textContent = '';
     currentText.textContent = '';
     candidateText.textContent = '';

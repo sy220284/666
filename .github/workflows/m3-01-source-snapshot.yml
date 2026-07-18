@@ -15,10 +15,10 @@ jobs:
       - uses: actions/checkout@v6
       - name: Package repository source
         run: |
-          tar --exclude=.git --exclude=node_modules --exclude='*.zip' -czf m3-01-source.tar.gz .
+          tar --exclude=.git --exclude=node_modules --exclude='*.zip' -czf /tmp/m3-01-source.tar.gz .
       - uses: actions/upload-artifact@v7
         with:
           name: m3-01-source
-          path: m3-01-source.tar.gz
+          path: /tmp/m3-01-source.tar.gz
           if-no-files-found: error
           retention-days: 1

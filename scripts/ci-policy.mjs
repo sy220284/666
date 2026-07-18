@@ -161,10 +161,7 @@ async function main() {
     'expected_sha',
   ]);
 
-  const mainVerification = await readFile(
-    path.join(root, 'scripts/main-verification.mjs'),
-    'utf8',
-  );
+  const mainVerification = await readFile(path.join(root, 'scripts/main-verification.mjs'), 'utf8');
   requireTokens(errors, 'scripts/main-verification.mjs', mainVerification, [
     'GITHUB_SHA',
     'merge_commit_sha',

@@ -11,6 +11,7 @@ import { ProjectStructureService } from '../../packages/core-service/src/project
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { RecoveryService } from '../../packages/core-service/src/recovery.js';
 import { VersionService } from '../../packages/core-service/src/version.js';
+import { corruptSqliteHeader } from '../../packages/testkit/src/index.js';
 
 const temporaryDirectories: string[] = [];
 const clock = { now: () => new Date('2026-07-17T01:00:00.000Z') };
@@ -263,6 +264,67 @@ describe('M1-08 operation checkpoints and restored copies', () => {
       ).rejects.toMatchObject({ code: 'RESTORE_VERIFY_FAILED' });
       expect(value.workspace.activeProject?.projectId).toBe(project.projectId);
       expect(await readdir(value.restoreParent)).toEqual([]);
+    } finally {
+      await value.workspace.shutdown();
+      await value.appRuntime.close();
+    }
+  });
+
+  it('opens a physically unreadable project in recovery-only mode and restores an external checkpoint', async () => {
+    const value = await harness();
+    try {
+      const { project } = await seed(value);
+      const checkpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: project.projectId,
+        operation: 'manual-protection',
+      });
+      await value.workspace.close(randomUUID(), project.projectId);
+
+      const databasePath = path.join(project.workspacePath, 'project.sqlite');
+      await corruptSqliteHeader(databasePath);
+      const damagedSource = await readFile(databasePath);
+
+      const recoveryOnly = await value.workspace.open(randomUUID(), {
+        workspacePath: project.workspacePath,
+      });
+      expect(recoveryOnly).toMatchObject({
+        projectId: project.projectId,
+        databaseMode: 'read-only',
+        compatibility: 'integrity-failed',
+        readOnlyReason: 'integrity-failed',
+      });
+      expect(() => value.workspace.readProject(project.projectId, () => undefined)).toThrow(
+        'only external recovery points',
+      );
+      await expect(
+        value.workspace.writeProject(randomUUID(), project.projectId, () => undefined),
+      ).rejects.toMatchObject({ code: 'PROJECT_READ_ONLY' });
+
+      const overview = await value.recovery.getOverview(project.projectId);
+      expect(overview.databaseMode).toBe('read-only');
+      expect(overview.exportableVersions).toEqual([]);
+      expect(overview.checkpoints).toEqual([
+        expect.objectContaining({ backupId: checkpoint.backupId, projectId: project.projectId }),
+      ]);
+
+      const restored = await value.recovery.restoreCheckpoint(
+        randomUUID(),
+        { projectId: project.projectId, backupId: checkpoint.backupId },
+        value.restoreParent,
+      );
+      expect(restored).toMatchObject({
+        sourceProjectId: project.projectId,
+        databaseMode: 'read-write',
+        compatibility: 'current',
+      });
+      expect(await readFile(databasePath)).toEqual(damagedSource);
+
+      await value.workspace.close(randomUUID(), project.projectId);
+      const reopened = await value.workspace.open(randomUUID(), {
+        workspacePath: restored.workspacePath,
+      });
+      expect(reopened.databaseMode).toBe('read-write');
+      expect(value.structure.list(reopened.projectId).volumes[0]?.chapters).toHaveLength(1);
     } finally {
       await value.workspace.shutdown();
       await value.appRuntime.close();

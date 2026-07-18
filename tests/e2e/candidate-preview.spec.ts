@@ -11,6 +11,8 @@ import type {
   WorldforgeBridge,
 } from '@worldforge/contracts';
 
+import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+
 type CandidateE2EBridge = WorldforgeBridge & {
   readonly candidate: {
     readonly createFixture: (
@@ -139,6 +141,7 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     await expect(page.locator('[data-candidate-preview-candidate]')).toContainText(
       fixture.candidateText,
     );
+    await captureAcceptanceScreenshot(page, 'M2-02', 'candidate-readonly-preview.png');
 
     page.once('dialog', (dialog) => dialog.accept());
     await page.locator('[data-discard-candidate]').click();
@@ -146,6 +149,7 @@ test('previews a Fixture Candidate through the real desktop chain without writin
       '候选已丢弃，Draft 未改变',
     );
     await expect(page.locator('[data-discard-candidate]')).toBeDisabled();
+    await captureAcceptanceScreenshot(page, 'M2-02', 'candidate-discarded-draft-unchanged.png');
 
     const after = await page.evaluate(async (input) => {
       const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })

@@ -9,6 +9,7 @@ export default defineConfig({
     'candidate-protection.spec.ts',
     'candidate-undo.spec.ts',
     'structure-recovery.spec.ts',
+    'unreadable-project-recovery.spec.ts',
   ],
   fullyParallel: false,
   workers: 1,

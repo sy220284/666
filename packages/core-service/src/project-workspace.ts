@@ -72,7 +72,7 @@ export interface ProjectWorkspaceServiceOptions {
 }
 
 interface ActiveProjectContext {
-  readonly database: ProjectDatabase;
+  readonly database: ProjectDatabase | null;
   readonly manifest: ProjectWorkspaceManifest;
   readonly summary: ProjectWorkspaceSummary;
 }
@@ -105,6 +105,24 @@ function isInside(root: string, candidate: string): boolean {
     relative === '' ||
     (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
   );
+}
+
+function databaseIsPhysicallyUnreadable(databasePath: string): boolean {
+  let database: DatabaseSync | undefined;
+  try {
+    database = new DatabaseSync(databasePath, {
+      readOnly: true,
+      allowExtension: false,
+      enableForeignKeyConstraints: true,
+      readBigInts: true,
+    });
+    database.prepare('PRAGMA schema_version').get();
+    return false;
+  } catch {
+    return true;
+  } finally {
+    database?.close();
+  }
 }
 
 function assertManifestDatabaseIdentity(databasePath: string, manifestProjectId: string): void {
@@ -387,7 +405,7 @@ export class ProjectWorkspaceService {
             displayName: context.summary.name,
           });
         } catch (error) {
-          await context.database.close();
+          await this.#closeContext(context);
           throw error;
         }
         this.#active = context;
@@ -431,7 +449,7 @@ export class ProjectWorkspaceService {
           displayName: context.summary.name,
         });
       } catch (error) {
-        await context.database.close();
+        await this.#closeContext(context);
         throw error;
       }
       this.#active = context;
@@ -517,7 +535,7 @@ export class ProjectWorkspaceService {
             displayName: moved.summary.name,
           });
         } catch (error) {
-          await moved.database.close();
+          await this.#closeContext(moved);
           throw error;
         }
         this.#active = moved;
@@ -580,7 +598,14 @@ export class ProjectWorkspaceService {
   }
 
   readProject<T>(projectId: string, operation: DatabaseReadOperation<T>): T {
-    return this.#assertActiveContext(projectId).database.read(operation);
+    const context = this.#assertActiveContext(projectId);
+    if (!context.database) {
+      throw new ProjectWorkspaceError(
+        'PROJECT_READ_ONLY',
+        'The project database is unreadable; only external recovery points are available.',
+      );
+    }
+    return context.database.read(operation);
   }
 
   async writeProject<T>(
@@ -589,6 +614,12 @@ export class ProjectWorkspaceService {
     operation: DatabaseWriteOperation<T>,
   ): Promise<T> {
     const context = this.#assertActiveContext(projectId, true);
+    if (!context.database) {
+      throw new ProjectWorkspaceError(
+        'PROJECT_READ_ONLY',
+        'The project database is unreadable; write operations are disabled.',
+      );
+    }
     return (await context.database.write(requestId, operation)).value;
   }
 
@@ -768,6 +799,23 @@ export class ProjectWorkspaceService {
         },
       });
     } catch (error) {
+      if (databaseIsPhysicallyUnreadable(databasePath)) {
+        return {
+          database: null,
+          manifest,
+          summary: {
+            projectId: manifest.projectId,
+            name: manifest.displayName,
+            channel: '未分类',
+            workspacePath,
+            schemaVersion: manifest.projectSchemaVersion,
+            databaseMode: 'read-only',
+            compatibility: 'integrity-failed',
+            readOnlyReason: 'integrity-failed',
+            createdAt: manifest.createdAt,
+          },
+        };
+      }
       throw new ProjectWorkspaceError(
         'PROJECT_OPEN_FAILED',
         'The project database could not be opened safely.',
@@ -863,6 +911,7 @@ export class ProjectWorkspaceService {
   }
 
   async #closeContext(context: ActiveProjectContext): Promise<void> {
+    if (!context.database) return;
     await context.database.drain();
     if (context.database.mode === 'read-write') await context.database.checkpoint('TRUNCATE');
     await context.database.close();

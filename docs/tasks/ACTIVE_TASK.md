@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-02`
-- 唯一任务卡：`docs/tasks/M3/M3-02_SCENE_BEAT_CROSS_CHAPTER.md`
-- 工作分支：`work/m3-02-scene-beat-cross-chapter`
+- 任务ID：`M1-08`
+- 唯一任务卡：`docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md`
+- 工作分支：`work/m1-08-recovery-readonly-foundation`
 - 开始时间：`2026-07-18`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -20,11 +20,14 @@ IN_PROGRESS
 ```yaml
 allowed_paths:
   - migrations/project/
-  - packages/domain/
   - packages/core-service/
   - packages/contracts/
+  - apps/desktop/main/
+  - apps/desktop/preload/
   - apps/desktop/renderer/
   - tests/integration/
+  - tests/migration/
+  - tests/security/
   - tests/e2e/
   - package.json
   - pnpm-lock.yaml
@@ -32,19 +35,11 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/M3-02_SCENE_BEAT_CROSS_CHAPTER.md
+  - docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md
+  - docs/tasks/M3/M3-03_ENTITY_CANON.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-02/
-  - docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md
-  - apps/desktop/main/
-  - apps/desktop/preload/
-  - tests/migration/
-  - tests/security/
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/database/DATA_DICTIONARY.md
-  - docs/ui/SCREEN_SPECIFICATIONS.md
-  - docs/ui/EDITOR_INTERACTION_SPEC.md
+  - docs/test-evidence/M1-08/
+  - scripts/taskctl.mjs
 forbidden_paths:
 
 required_docs:
@@ -52,9 +47,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/product/FUNCTION_CATALOG.md
+  - docs/decisions/ADR-005-lock-revision-backup.md
   - docs/database/DATABASE_SCHEMA.md
-  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - docs/testing/SECURITY_TEST_CASES.md
 verification:
   - pnpm lint
   - pnpm typecheck

@@ -8,6 +8,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   '.github/workflows/',
   'package.json',
   'agent.md',
+  'packages/testkit/src/evidence.ts',
   'scripts/automerge.mjs',
   'scripts/branch-hygiene.mjs',
   'scripts/ci-policy.mjs',
@@ -24,6 +25,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
   'tests/unit/evidence-policy.test.ts',
+  'tests/unit/testkit-fixtures-evidence.test.ts',
 ];
 
 export function parseTaskIndex(markdown) {

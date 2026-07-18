@@ -101,6 +101,8 @@ describe('unified evidence writer', () => {
     commit: 'abcdef0',
     generatedAt: '2026-07-15T03:00:00.000Z',
     summary,
+    manualAcceptance: '# 人工验收\n\n- 固定公开Fixture复核通过。\n',
+    qualityMatrix: '# 质量矩阵\n\n| 维度 | 结论 |\n|---|---|\n| 数据 | PASS |\n',
     commands: [
       {
         command: 'pnpm test:unit',
@@ -147,8 +149,10 @@ describe('unified evidence writer', () => {
       expect.arrayContaining([
         'commands.txt',
         'known-risks.md',
+        'manual-acceptance.md',
         'manifest.json',
         'performance.json',
+        'quality-matrix.md',
         'screenshots/desktop.png',
         'screenshots/manifest.json',
         'summary.md',
@@ -158,7 +162,7 @@ describe('unified evidence writer', () => {
     expect(await readFile(path.join(target, 'summary.md'), 'utf8')).toContain('通过：1');
     expect(
       JSON.parse(await readFile(path.join(target, 'manifest.json'), 'utf8')).files,
-    ).toHaveLength(7);
+    ).toHaveLength(9);
 
     await writeTestEvidence(target, evidence('原子覆盖后的公开摘要。'), { overwrite: true });
     expect(await readFile(path.join(target, 'summary.md'), 'utf8')).toContain('原子覆盖后');

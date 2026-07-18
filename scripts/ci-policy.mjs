@@ -110,6 +110,8 @@ async function main() {
     [
       'quality-core.yml',
       [
+        'draft_mode:',
+        'inputs.draft_mode == false',
         'static-checks:',
         'tests:',
         'security-tests:',
@@ -118,11 +120,41 @@ async function main() {
         'build:',
         'package-smoke:',
         'quality:',
+        'DRAFT_MODE:',
+        'if: failure()',
       ],
     ],
-    ['quality.yml', ['security_suite: false', 'performance_eval: false']],
-    ['security.yml', ['pnpm audit', 'scan-secrets.mjs', 'pnpm test:security', 'name: security']],
-    ['performance.yml', ['pnpm test:perf', 'name: performance']],
+    [
+      'quality.yml',
+      [
+        'ready_for_review',
+        'converted_to_draft',
+        'draft_mode: ${{ github.event.pull_request.draft == true }}',
+        'security_suite: false',
+        'performance_eval: false',
+      ],
+    ],
+    [
+      'security.yml',
+      [
+        'github.event.pull_request.draft == false',
+        'pnpm audit',
+        'scan-secrets.mjs',
+        'pnpm test:security',
+        'DRAFT_MODE:',
+        'name: security',
+      ],
+    ],
+    [
+      'performance.yml',
+      [
+        'ready_for_review',
+        'converted_to_draft',
+        'Draft pull request fast path',
+        'pnpm test:perf',
+        'name: performance',
+      ],
+    ],
     ['evidence.yml', ['EVIDENCE_BASE_SHA:', 'evidence-policy.mjs', 'name: evidence']],
     [
       'main-verification.yml',
@@ -145,6 +177,18 @@ async function main() {
   ]);
   for (const [file, tokens] of tokenRequirements) {
     requireTokens(errors, file, workflows.get(file) ?? '', tokens);
+  }
+
+  for (const file of [
+    'quality.yml',
+    'security.yml',
+    'performance.yml',
+    'evidence.yml',
+    'task-governance.yml',
+  ]) {
+    if (/^\s*push:/mu.test(workflows.get(file) ?? '')) {
+      errors.push(`${file}: post-merge verification must be owned by main-verification.yml`);
+    }
   }
 
   const automerge = await readFile(path.join(root, 'scripts/automerge.mjs'), 'utf8');

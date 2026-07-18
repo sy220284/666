@@ -9,6 +9,7 @@ import {
   isGovernanceOnlyPullRequest,
   parseTaskIndex,
   renderActiveTask,
+  replaceTaskCardStatus,
   replaceTaskIndexStatus,
   taskBranchFor,
   validateActiveState,
@@ -159,8 +160,8 @@ async function reopenDeferred(taskId) {
     readFile(pausedCardPath, 'utf8'),
     readFile(indexPath, 'utf8'),
   ]);
-  const reopenedCard = targetCard.replace(/^> 状态：Implemented[^\n]*$/m, '> 状态：In Progress');
-  const pausedCardNext = pausedCard.replace(/^> 状态：In Progress[^\n]*$/m, '> 状态：Planned');
+  const reopenedCard = replaceTaskCardStatus(targetCard, 'Implemented', 'In Progress');
+  const pausedCardNext = replaceTaskCardStatus(pausedCard, 'In Progress', 'Planned');
   if (reopenedCard === targetCard) throw new Error(`${taskId} card is not Implemented`);
   if (pausedCardNext === pausedCard) throw new Error(`${paused.id} card is not In Progress`);
 
@@ -288,7 +289,7 @@ async function activate(taskId, additionalAllowedPaths = []) {
 
   const indexSource = await readFile(indexPath, 'utf8');
   const updatedIndex = replaceTaskIndexStatus(indexSource, taskId, 'In Progress');
-  const updatedCard = card.replace(/> 状态：Planned\s{2}/, '> 状态：In Progress  ');
+  const updatedCard = replaceTaskCardStatus(card, 'Planned', 'In Progress');
   if (updatedCard === card) throw new Error(`${taskId} card status is not Planned`);
   await writeFile(path.join(root, task.source), updatedCard, 'utf8');
   await writeActiveState(state, updatedIndex);
@@ -315,7 +316,7 @@ async function close() {
   const verifiedIndex = replaceTaskIndexStatus(indexSource, state.activeTask.id, 'Verified');
   const cardPath = path.join(root, state.activeTask.source);
   const card = await readFile(cardPath, 'utf8');
-  const verifiedCard = card.replace(/^> 状态：Implemented[^\n]*$/m, '> 状态：Verified  ');
+  const verifiedCard = replaceTaskCardStatus(card, 'Implemented', 'Verified');
   if (verifiedCard === card) throw new Error('Task card is not in Implemented state');
   await Promise.all([
     writeFile(indexPath, verifiedIndex, 'utf8'),
@@ -358,7 +359,7 @@ async function advanceImplementation() {
   const implementedIndex = replaceTaskIndexStatus(indexSource, state.activeTask.id, 'Implemented');
   const cardPath = path.join(root, state.activeTask.source);
   const card = await readFile(cardPath, 'utf8');
-  const implementedCard = card.replace(/^> 状态：In Progress[^\n]*$/m, '> 状态：Implemented  ');
+  const implementedCard = replaceTaskCardStatus(card, 'In Progress', 'Implemented');
   if (implementedCard === card) throw new Error('Task card is not in In Progress state');
 
   const refreshedIndex = parseTaskIndex(implementedIndex);

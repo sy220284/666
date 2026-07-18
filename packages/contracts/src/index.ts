@@ -116,7 +116,6 @@ import {
   SceneBeatRestoreCommandSchema,
   SceneBeatSetBlockLinksCommandSchema,
   SceneBeatConvertBlocksCommandSchema,
-  type SceneBeat,
   type SceneBeatList,
   type SceneBeatListInput,
   type SceneBeatCreateInput,

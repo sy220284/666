@@ -3,6 +3,11 @@ name: Quality Core
 on:
   workflow_call:
     inputs:
+      draft_mode:
+        description: Run only static checks for draft pull requests
+        required: false
+        type: boolean
+        default: false
       package_smoke:
         description: Run the Linux package smoke job
         required: false
@@ -53,18 +58,19 @@ jobs:
           set -o pipefail
           pnpm format:check 2>&1 | tee test-results/ci/format-check.log
       - name: Upload static diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: static-check-diagnostics
           path: test-results/ci/format-check.log
-          if-no-files-found: error
-          retention-days: 14
+          if-no-files-found: warn
+          retention-days: 7
       - run: pnpm lint
       - run: pnpm typecheck
 
   tests:
     name: tests-${{ matrix.suite }}
+    if: ${{ inputs.draft_mode == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -91,7 +97,7 @@ jobs:
           set -o pipefail
           pnpm exec vitest run "tests/${{ matrix.suite }}" 2>&1 | tee "test-results/ci/${{ matrix.suite }}.log"
       - name: Upload ${{ matrix.suite }} test diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-${{ matrix.suite }}-diagnostics
@@ -99,11 +105,11 @@ jobs:
             test-results/ci/${{ matrix.suite }}.log
             test-results/${{ matrix.suite }}/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
   security-tests:
     name: security-tests
-    if: ${{ inputs.security_suite }}
+    if: ${{ inputs.draft_mode == false && inputs.security_suite }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -126,7 +132,7 @@ jobs:
           set -o pipefail
           pnpm test:security 2>&1 | tee test-results/ci/security.log
       - name: Upload security diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: release-security-diagnostics
@@ -134,11 +140,11 @@ jobs:
             test-results/ci/security.log
             test-results/security/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
   performance-eval:
     name: performance-eval
-    if: ${{ inputs.performance_eval }}
+    if: ${{ inputs.draft_mode == false && inputs.performance_eval }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -160,7 +166,7 @@ jobs:
           set -o pipefail
           pnpm test:perf 2>&1 | tee test-results/ci/performance-eval.log
       - name: Upload performance and eval diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: release-performance-eval-diagnostics
@@ -168,10 +174,11 @@ jobs:
             test-results/ci/performance-eval.log
             test-results/performance/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
   desktop-e2e:
     name: desktop-e2e
+    if: ${{ inputs.draft_mode == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -201,7 +208,7 @@ jobs:
           set -o pipefail
           pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
       - name: Upload Electron and display evidence
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: desktop-e2e-evidence
@@ -210,10 +217,11 @@ jobs:
             test-results/electron/
             test-results/display-matrix/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
   build:
     name: build
+    if: ${{ inputs.draft_mode == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -235,17 +243,17 @@ jobs:
           set -o pipefail
           pnpm build 2>&1 | tee test-results/ci/build.log
       - name: Upload build diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: build-diagnostics
           path: test-results/ci/build.log
-          if-no-files-found: error
-          retention-days: 14
+          if-no-files-found: warn
+          retention-days: 7
 
   package-smoke:
     name: package-smoke
-    if: ${{ inputs.package_smoke }}
+    if: ${{ inputs.draft_mode == false && inputs.package_smoke }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -268,7 +276,7 @@ jobs:
           pnpm build 2>&1 | tee test-results/ci/package-smoke.log
           pnpm package 2>&1 | tee -a test-results/ci/package-smoke.log
       - name: Upload package smoke diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: package-smoke-diagnostics
@@ -276,7 +284,7 @@ jobs:
             test-results/ci/package-smoke.log
             artifacts/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
   quality:
     name: quality
@@ -292,6 +300,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
+      DRAFT_MODE: ${{ inputs.draft_mode }}
       STATIC_RESULT: ${{ needs.static-checks.result }}
       TEST_RESULT: ${{ needs.tests.result }}
       SECURITY_RESULT: ${{ needs.security-tests.result }}
@@ -304,10 +313,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'static=%s\ntests=%s\nsecurity=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
-            "$STATIC_RESULT" "$TEST_RESULT" "$SECURITY_RESULT" "$PERFORMANCE_RESULT" \
-            "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
-          for result in "$STATIC_RESULT" "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
+          printf 'draft=%s\nstatic=%s\ntests=%s\nsecurity=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
+            "$DRAFT_MODE" "$STATIC_RESULT" "$TEST_RESULT" "$SECURITY_RESULT" \
+            "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
+          test "$STATIC_RESULT" = success
+          if [ "$DRAFT_MODE" = true ]; then
+            for result in "$TEST_RESULT" "$SECURITY_RESULT" "$PERFORMANCE_RESULT" \
+              "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"; do
+              case "$result" in
+                success|skipped) ;;
+                *) exit 1 ;;
+              esac
+            done
+            exit 0
+          fi
+          for result in "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
             test "$result" = success
           done
           for result in "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$PACKAGE_RESULT"; do

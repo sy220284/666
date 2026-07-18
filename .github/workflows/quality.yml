@@ -1,10 +1,9 @@
 name: Quality
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -17,6 +16,7 @@ jobs:
   quality:
     uses: ./.github/workflows/quality-core.yml
     with:
+      draft_mode: ${{ github.event.pull_request.draft == true }}
       package_smoke: true
       security_suite: false
       performance_eval: false

@@ -1,0 +1,82 @@
+name: Main Verification
+
+run-name: Main Verification ${{ inputs.expected_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact main commit SHA produced by the controlled merge
+        required: true
+        type: string
+      source_pr:
+        description: Pull request number that produced the main commit
+        required: true
+        type: string
+      source_head_sha:
+        description: Pull request head SHA whose permanent checks passed
+        required: true
+        type: string
+
+permissions:
+  checks: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: main-verification-${{ inputs.expected_sha }}
+  cancel-in-progress: false
+
+jobs:
+  validate-main:
+    name: validate-main
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      SOURCE_PR: ${{ inputs.source_pr }}
+      SOURCE_HEAD_SHA: ${{ inputs.source_head_sha }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.expected_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Verify final main commit and source PR checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          node scripts/main-verification.mjs
+
+  quality:
+    name: Full Linux verification
+    needs: validate-main
+    uses: ./.github/workflows/quality-core.yml
+    with:
+      package_smoke: true
+      security_suite: true
+      performance_eval: true
+
+  main-verification:
+    name: main-verification
+    if: always()
+    needs:
+      - validate-main
+      - quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      VALIDATE_RESULT: ${{ needs.validate-main.result }}
+      QUALITY_RESULT: ${{ needs.quality.result }}
+    steps:
+      - name: Enforce final main verification result
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$VALIDATE_RESULT" = success
+          test "$QUALITY_RESULT" = success

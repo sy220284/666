@@ -1,8 +1,6 @@
 name: Task Governance
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -18,7 +16,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      TASK_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
       TASK_EVENT_NAME: ${{ github.event_name }}
       TASK_PR_HEAD_REF: ${{ github.head_ref }}
     steps:
@@ -32,7 +30,6 @@ jobs:
       - name: Validate active task and generated mirror
         run: node scripts/taskctl.mjs validate
       - name: Validate real PR branch
-        if: ${{ github.event_name == 'pull_request' }}
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate changed paths
         run: node scripts/taskctl.mjs preflight

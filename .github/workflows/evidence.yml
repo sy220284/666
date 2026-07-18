@@ -1,8 +1,6 @@
 name: Evidence
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -19,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      EVIDENCE_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
       - uses: actions/checkout@v6
         with:

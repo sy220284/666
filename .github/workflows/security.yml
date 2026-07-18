@@ -1,10 +1,9 @@
 name: Security
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -15,6 +14,7 @@ concurrency:
 
 jobs:
   dependency-audit:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -47,6 +47,7 @@ jobs:
         run: node scripts/scan-secrets.mjs
 
   application-security:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -75,12 +76,26 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
+      DRAFT_MODE: ${{ github.event.pull_request.draft }}
       AUDIT_RESULT: ${{ needs.dependency-audit.result }}
       SECRET_RESULT: ${{ needs.secret-scan.result }}
       APP_RESULT: ${{ needs.application-security.result }}
     steps:
       - name: Enforce security result
+        shell: bash
         run: |
-          test "$AUDIT_RESULT" = success
+          set -euo pipefail
+          printf 'draft=%s\naudit=%s\nsecret=%s\napplication=%s\n' \
+            "$DRAFT_MODE" "$AUDIT_RESULT" "$SECRET_RESULT" "$APP_RESULT"
           test "$SECRET_RESULT" = success
+          if [ "$DRAFT_MODE" = true ]; then
+            for result in "$AUDIT_RESULT" "$APP_RESULT"; do
+              case "$result" in
+                success|skipped) ;;
+                *) exit 1 ;;
+              esac
+            done
+            exit 0
+          fi
+          test "$AUDIT_RESULT" = success
           test "$APP_RESULT" = success

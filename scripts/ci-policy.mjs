@@ -8,6 +8,7 @@ const requiredWorkflows = [
   'automerge.yml',
   'branch-hygiene.yml',
   'evidence.yml',
+  'main-verification.yml',
   'performance.yml',
   'pr-policy.yml',
   'quality-core.yml',
@@ -23,6 +24,7 @@ const requiredFiles = [
   'scripts/automerge.mjs',
   'scripts/branch-hygiene.mjs',
   'scripts/evidence-policy.mjs',
+  'scripts/main-verification.mjs',
   'scripts/ruleset-policy.mjs',
   'scripts/scan-secrets.mjs',
 ];
@@ -87,7 +89,14 @@ async function main() {
   const tokenRequirements = new Map([
     [
       'automerge.yml',
-      ['workflow_run:', 'scripts/automerge.mjs', 'contents: write', 'pull-requests: write'],
+      [
+        'workflow_run:',
+        'scripts/automerge.mjs',
+        'actions: write',
+        'contents: write',
+        'pull-requests: write',
+        'group: automerge-main',
+      ],
     ],
     [
       'branch-hygiene.yml',
@@ -101,6 +110,8 @@ async function main() {
     [
       'quality-core.yml',
       [
+        'draft_mode:',
+        'inputs.draft_mode == false',
         'static-checks:',
         'tests:',
         'security-tests:',
@@ -109,12 +120,56 @@ async function main() {
         'build:',
         'package-smoke:',
         'quality:',
+        'DRAFT_MODE:',
+        'if: failure()',
       ],
     ],
-    ['quality.yml', ['security_suite: false', 'performance_eval: false']],
-    ['security.yml', ['pnpm audit', 'scan-secrets.mjs', 'pnpm test:security', 'name: security']],
-    ['performance.yml', ['pnpm test:perf', 'name: performance']],
+    [
+      'quality.yml',
+      [
+        'ready_for_review',
+        'converted_to_draft',
+        'draft_mode: ${{ github.event.pull_request.draft == true }}',
+        'security_suite: false',
+        'performance_eval: false',
+      ],
+    ],
+    [
+      'security.yml',
+      [
+        'github.event.pull_request.draft == false',
+        'pnpm audit',
+        'scan-secrets.mjs',
+        'pnpm test:security',
+        'DRAFT_MODE:',
+        'name: security',
+      ],
+    ],
+    [
+      'performance.yml',
+      [
+        'ready_for_review',
+        'converted_to_draft',
+        'Draft pull request fast path',
+        'pnpm test:perf',
+        'name: performance',
+      ],
+    ],
     ['evidence.yml', ['EVIDENCE_BASE_SHA:', 'evidence-policy.mjs', 'name: evidence']],
+    [
+      'main-verification.yml',
+      [
+        'workflow_dispatch:',
+        'expected_sha:',
+        'source_pr:',
+        'source_head_sha:',
+        'scripts/main-verification.mjs',
+        'package_smoke: true',
+        'security_suite: true',
+        'performance_eval: true',
+        'name: main-verification',
+      ],
+    ],
     [
       'repository-governance.yml',
       ['ruleset-policy.mjs check', 'RULESET_STRICT: true', 'REPO_ADMIN_TOKEN:'],
@@ -124,12 +179,39 @@ async function main() {
     requireTokens(errors, file, workflows.get(file) ?? '', tokens);
   }
 
+  for (const file of [
+    'quality.yml',
+    'security.yml',
+    'performance.yml',
+    'evidence.yml',
+    'task-governance.yml',
+  ]) {
+    if (/^\s*push:/mu.test(workflows.get(file) ?? '')) {
+      errors.push(`${file}: post-merge verification must be owned by main-verification.yml`);
+    }
+  }
+
   const automerge = await readFile(path.join(root, 'scripts/automerge.mjs'), 'utf8');
   requireTokens(errors, 'scripts/automerge.mjs', automerge, [
     'compare/${mainSha}...${sha}',
     'comparison.behind_by > 0',
     'pull.head.sha !== sha',
     "check.conclusion === 'success'",
+    'pull.merged',
+    'mainVerificationWorkflow',
+    '/actions/workflows/',
+    '/dispatches',
+    'workflow_runs',
+    'expected_sha',
+  ]);
+
+  const mainVerification = await readFile(path.join(root, 'scripts/main-verification.mjs'), 'utf8');
+  requireTokens(errors, 'scripts/main-verification.mjs', mainVerification, [
+    'GITHUB_SHA',
+    'merge_commit_sha',
+    'requiredChecks',
+    "check.conclusion !== 'success'",
+    'refs/heads/${baseBranch}',
   ]);
 
   const branchHygiene = await readFile(path.join(root, 'scripts/branch-hygiene.mjs'), 'utf8');
@@ -173,6 +255,9 @@ async function main() {
   const checks = JSON.parse(
     await readFile(path.join(root, '.github/governance/required-checks.json'), 'utf8'),
   );
+  if (checks.mainVerificationWorkflow !== 'main-verification.yml') {
+    errors.push('Post-merge main verification workflow must be main-verification.yml');
+  }
   for (const check of [
     'pr-policy',
     'task-governance',

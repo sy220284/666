@@ -13,6 +13,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'scripts/branch-hygiene.mjs',
   'scripts/ci-policy.mjs',
   'scripts/evidence-policy.mjs',
+  'scripts/main-verification.mjs',
   'scripts/ruleset-policy.mjs',
   'scripts/scan-secrets.mjs',
   'scripts/task-control-lib.mjs',

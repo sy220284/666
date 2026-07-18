@@ -6,6 +6,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import type { WorldforgeBridge } from '@worldforge/contracts';
 
+import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
 
@@ -107,6 +109,7 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await page.locator('.chapter-node').first().locator('[data-split-chapter]').click();
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
+    await captureAcceptanceScreenshot(page, 'M2-04', 'split-chapter-result.png');
 
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
@@ -126,6 +129,7 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await page.locator('[data-trash-entry-id]').locator('[data-permanent-delete]').click();
     await expect(page.locator('[data-trash-empty]')).toBeVisible();
     await expect(page.locator('[data-trash-status]')).toContainText('已永久删除 · 恢复点');
+    await captureAcceptanceScreenshot(page, 'M2-04', 'permanent-delete-checkpoint.png');
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-open-trash]').click();

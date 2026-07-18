@@ -134,6 +134,14 @@
                     <button class="quiet-button" type="button" data-select-project>
                       打开已有项目
                     </button>
+                    <button
+                      class="quiet-button"
+                      type="button"
+                      data-open-project
+                      data-recover-unreadable-project
+                    >
+                      恢复损坏项目
+                    </button>
                   </div>
                 </div>
                 <section class="active-project" data-active-project hidden aria-live="polite">
@@ -863,7 +871,10 @@
         <div class="settings-dialog__body">
           <p class="eyebrow">RECOVERY FOUNDATION</p>
           <h2 id="recovery-dialog-title">恢复点与只读导出</h2>
-          <p>恢复始终创建新项目副本，不覆盖当前项目。数据库只读时仍可恢复已验证副本。</p>
+          <p>
+            恢复始终创建新项目副本，不覆盖当前项目。即使 project.sqlite 已完全不可读， 仍可通过
+            manifest.json 与外部恢复点进入恢复流程。
+          </p>
           <div class="recovery-actions">
             <button class="primary-button" type="button" data-create-checkpoint>
               创建保护恢复点

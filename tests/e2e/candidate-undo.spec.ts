@@ -11,6 +11,8 @@ import type {
   WorldforgeBridge,
 } from '@worldforge/contracts';
 
+import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+
 type CandidateE2EBridge = WorldforgeBridge & {
   readonly candidate: {
     readonly createFixture: (
@@ -168,6 +170,7 @@ test('reopens a persisted ApplyRecord and safely restores its checkpoint', async
     await expect(page.locator('[data-undo-candidate-apply]')).toBeEnabled();
     await page.locator('[data-undo-candidate-apply]').click();
     await expect(page.locator('[data-candidate-apply-status]')).toContainText('已撤销本次应用');
+    await captureAcceptanceScreenshot(page, 'M2-03', 'persisted-undo-success.png');
 
     const current = await page.evaluate(async (input) => {
       const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })

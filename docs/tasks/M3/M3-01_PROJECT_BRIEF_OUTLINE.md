@@ -45,8 +45,15 @@ M2
 - `packages/core-service/`
 - `packages/contracts/`
 - `apps/desktop/renderer/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `tests/integration/`
 - `tests/e2e/`
+- `tests/migration/`
+- `tests/security/`
+- `docs/contracts/IPC_CONTRACTS.md`
+- `docs/database/DATABASE_SCHEMA.md`
+- `docs/ui/SCREEN_SPECIFICATIONS.md`
 
 ## 实施内容
 
@@ -55,6 +62,13 @@ M2
 3. 新手问题式入口与专业完整字段共用同一数据。
 4. 规划字段均可跳过、后补和关闭提示。
 5. 规划变化只更新规划数据，不产生正文Patch。
+
+## 实现约束落地
+
+- PlotNode同级重排采用临时排序键与最终排序键两阶段写入，避免唯一键在事务中产生瞬时冲突。
+- PlotNode父子归属通过`(parent_id, project_id)`复合外键在数据库层阻断跨项目挂接，不依赖触发器事务。
+- Renderer规划读取采用刷新代次防护，旧异步响应不得覆盖较新的ProjectBrief或PlotNode状态。
+- 规划命令只写入`project_briefs`与`plot_nodes`，不得生成Draft Patch或改变Version、Candidate。
 
 ## 测试与证据
 

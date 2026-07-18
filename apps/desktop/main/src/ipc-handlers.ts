@@ -9,6 +9,7 @@ import {
   RECOVERY_COMMANDS,
   TEXT_IO_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
+  PROJECT_PLANNING_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
@@ -42,6 +43,13 @@ import {
   RequestIdSchema,
   ProjectListRecentCommandSchema,
   ProjectListStructureCommandSchema,
+  ProjectGetBriefCommandSchema,
+  ProjectUpdateBriefCommandSchema,
+  ProjectListPlotNodesCommandSchema,
+  ProjectCreatePlotNodeCommandSchema,
+  ProjectUpdatePlotNodeCommandSchema,
+  ProjectMovePlotNodeCommandSchema,
+  ProjectDeletePlotNodeCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
@@ -165,6 +173,13 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.openRecent,
     IPC_CHANNELS.close,
     IPC_CHANNELS.move,
+    IPC_CHANNELS.getBrief,
+    IPC_CHANNELS.updateBrief,
+    IPC_CHANNELS.listPlotNodes,
+    IPC_CHANNELS.createPlotNode,
+    IPC_CHANNELS.updatePlotNode,
+    IPC_CHANNELS.movePlotNode,
+    IPC_CHANNELS.deletePlotNode,
     IPC_CHANNELS.listStructure,
     IPC_CHANNELS.createVolume,
     IPC_CHANNELS.updateVolume,
@@ -630,6 +645,65 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       targetDirectory,
     });
   });
+
+  for (const [channel, schema, operation] of [
+    [IPC_CHANNELS.getBrief, ProjectGetBriefCommandSchema, PROJECT_PLANNING_COMMANDS.getBrief],
+    [
+      IPC_CHANNELS.listPlotNodes,
+      ProjectListPlotNodesCommandSchema,
+      PROJECT_PLANNING_COMMANDS.listPlotNodes,
+    ],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        projectId: parsed.data.payload.projectId,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
+
+  for (const [channel, schema, operation] of [
+    [
+      IPC_CHANNELS.updateBrief,
+      ProjectUpdateBriefCommandSchema,
+      PROJECT_PLANNING_COMMANDS.updateBrief,
+    ],
+    [
+      IPC_CHANNELS.createPlotNode,
+      ProjectCreatePlotNodeCommandSchema,
+      PROJECT_PLANNING_COMMANDS.createPlotNode,
+    ],
+    [
+      IPC_CHANNELS.updatePlotNode,
+      ProjectUpdatePlotNodeCommandSchema,
+      PROJECT_PLANNING_COMMANDS.updatePlotNode,
+    ],
+    [
+      IPC_CHANNELS.movePlotNode,
+      ProjectMovePlotNodeCommandSchema,
+      PROJECT_PLANNING_COMMANDS.movePlotNode,
+    ],
+    [
+      IPC_CHANNELS.deletePlotNode,
+      ProjectDeletePlotNodeCommandSchema,
+      PROJECT_PLANNING_COMMANDS.deletePlotNode,
+    ],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        input: parsed.data.payload,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
 
   register(IPC_CHANNELS.listStructure, async (event, raw) => {
     const rejected = rejectUntrusted(event, raw);

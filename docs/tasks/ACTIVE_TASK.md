@@ -36,6 +36,13 @@ allowed_paths:
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M3-01/
   - docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md
+  - apps/desktop/main/
+  - apps/desktop/preload/
+  - tests/migration/
+  - tests/security/
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
 forbidden_paths:
 
 required_docs:
@@ -53,6 +60,7 @@ verification:
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
+  - pnpm test:migration
   - pnpm test:integration
 ```
 

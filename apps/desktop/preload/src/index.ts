@@ -64,6 +64,13 @@ import {
   ProjectGetActiveCommandSchema,
   ProjectListRecentCommandSchema,
   ProjectListStructureCommandSchema,
+  ProjectGetBriefCommandSchema,
+  ProjectUpdateBriefCommandSchema,
+  ProjectListPlotNodesCommandSchema,
+  ProjectCreatePlotNodeCommandSchema,
+  ProjectUpdatePlotNodeCommandSchema,
+  ProjectMovePlotNodeCommandSchema,
+  ProjectDeletePlotNodeCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectMoveCommandResultSchema,
   ProjectMoveCommandSchema,
@@ -87,6 +94,8 @@ import {
   RecentProjectsResultSchema,
   ProjectWorkspaceResultSchema,
   ProjectStructureResultSchema,
+  ProjectBriefResultSchema,
+  ProjectPlotNodeListResultSchema,
   ProjectTrashEntriesResultSchema,
   ProjectStructureOperationPreviewResultSchema,
   ProjectStructureOperationResultSchema,
@@ -342,6 +351,50 @@ const bridge: WorldforgeBridge & CandidateBridge = {
       ),
   },
   planning: {
+    getBrief: (projectId) =>
+      invoke(
+        IPC_CHANNELS.getBrief,
+        ProjectGetBriefCommandSchema.parse(envelope(APP_COMMANDS.getBrief, { projectId })),
+        ProjectBriefResultSchema,
+      ),
+    updateBrief: (input) =>
+      invoke(
+        IPC_CHANNELS.updateBrief,
+        ProjectUpdateBriefCommandSchema.parse(envelope(APP_COMMANDS.updateBrief, input)),
+        ProjectBriefResultSchema,
+      ),
+    listPlotNodes: (projectId) =>
+      invoke(
+        IPC_CHANNELS.listPlotNodes,
+        ProjectListPlotNodesCommandSchema.parse(
+          envelope(APP_COMMANDS.listPlotNodes, { projectId }),
+        ),
+        ProjectPlotNodeListResultSchema,
+      ),
+    createPlotNode: (input) =>
+      invoke(
+        IPC_CHANNELS.createPlotNode,
+        ProjectCreatePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.createPlotNode, input)),
+        ProjectPlotNodeListResultSchema,
+      ),
+    updatePlotNode: (input) =>
+      invoke(
+        IPC_CHANNELS.updatePlotNode,
+        ProjectUpdatePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.updatePlotNode, input)),
+        ProjectPlotNodeListResultSchema,
+      ),
+    movePlotNode: (input) =>
+      invoke(
+        IPC_CHANNELS.movePlotNode,
+        ProjectMovePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.movePlotNode, input)),
+        ProjectPlotNodeListResultSchema,
+      ),
+    deletePlotNode: (input) =>
+      invoke(
+        IPC_CHANNELS.deletePlotNode,
+        ProjectDeletePlotNodeCommandSchema.parse(envelope(APP_COMMANDS.deletePlotNode, input)),
+        ProjectPlotNodeListResultSchema,
+      ),
     listStructure: (projectId) =>
       invoke(
         IPC_CHANNELS.listStructure,

@@ -124,8 +124,9 @@ Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`、`fin
 
 高风险结构执行前先重算预览并校验`planHash`、Draft Revision、块Hash、归属和LockGuard；预检通过后创建已验证恢复点，再在单个项目库事务中提交结构与Draft Revision。任一重校验失败都不修改原结构。
 
-- `planning.getBrief/updateBrief`
-- `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`
+- `planning.getBrief/updateBrief`：读取或保存可为空的ProjectBrief；Renderer不得传入ID或更新时间。
+- `planning.listPlotNodes`：读取按父级与orderKey组织的PlotNode列表。
+- `planning.createPlotNode/updatePlotNode/movePlotNode/deletePlotNode`：节点ID与orderKey由Core生成；移动只传目标父级和同级锚点。
 - `planning.createSceneBeat/updateSceneBeat/moveSceneBeat/deleteSceneBeat`
 - `planning.moveSceneAcrossChapters`（M3-02）
 

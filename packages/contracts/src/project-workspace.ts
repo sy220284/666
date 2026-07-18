@@ -14,6 +14,10 @@ import {
   CoreProjectStructureOperationSchema,
   CoreProjectStructureResultSchema,
 } from './project-structure.js';
+import {
+  CoreProjectPlanningOperationSchema,
+  CoreProjectPlanningResultSchema,
+} from './project-planning.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -177,6 +181,7 @@ const CoreProjectWorkspaceOperationSchema = z.discriminatedUnion('operation', [
 export const CoreProjectOperationSchema = z.union([
   CoreProjectWorkspaceOperationSchema,
   CoreProjectStructureOperationSchema,
+  CoreProjectPlanningOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
   CoreCandidateApplyOperationSchema,
@@ -212,6 +217,7 @@ const CoreProjectWorkspaceResultSchema = z.union([
 export const CoreProjectResultSchema = z.union([
   CoreProjectWorkspaceResultSchema,
   CoreProjectStructureResultSchema,
+  CoreProjectPlanningResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
   CoreCandidateApplyResultSchema,

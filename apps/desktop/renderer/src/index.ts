@@ -187,6 +187,7 @@ let appearance = defaultAppearance;
 let applicationSettings = defaultSettings;
 let activeProject: ProjectWorkspaceSummary | null = null;
 let activeStructure: ProjectStructure | null = null;
+let structureRefreshVersion = 0;
 let activeChapter: Chapter | null = null;
 let activeDraft: DraftDocument | null = null;
 let draftEditor: Editor | null = null;
@@ -733,6 +734,7 @@ async function runStructureMutation(
   try {
     const result = await operation;
     if (result.ok && result.data) {
+      structureRefreshVersion += 1;
       renderProjectStructure(result.data);
       setStructureState('卷章结构已保存到项目数据库。');
       return result.data;
@@ -777,6 +779,7 @@ function showStructureOperationResult(
   result: StructureOperationResult,
   preferredChapterId: string,
 ): void {
+  structureRefreshVersion += 1;
   renderProjectStructure(result.structure);
   setStructureState(`结构操作完成 · 恢复点 ${result.backupId.slice(0, 8)}`);
   const chapter = result.structure.volumes
@@ -1190,6 +1193,7 @@ function renderProjectStructure(structure: ProjectStructure | null): void {
 
 async function refreshProjectStructure(): Promise<void> {
   const project = activeProject;
+  const refreshVersion = ++structureRefreshVersion;
   if (!project) {
     renderProjectStructure(null);
     setStructureState('');
@@ -1198,7 +1202,11 @@ async function refreshProjectStructure(): Promise<void> {
   setStructureState('正在读取卷章结构…');
   try {
     const result = await window.worldforge.planning.listStructure(project.projectId);
-    if (activeProject?.projectId !== project.projectId) return;
+    if (
+      activeProject?.projectId !== project.projectId ||
+      refreshVersion !== structureRefreshVersion
+    )
+      return;
     if (result.ok) {
       renderProjectStructure(result.data);
       setStructureState(
@@ -1319,6 +1327,7 @@ async function restoreTrash(
       ...(targetVolumeId ? { targetVolumeId } : {}),
     });
     if (result.ok) {
+      structureRefreshVersion += 1;
       renderProjectStructure(result.data);
       setStructureState('已从废纸篓恢复。');
       await refreshTrashEntries();

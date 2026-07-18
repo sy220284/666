@@ -48,6 +48,18 @@ export function parseTaskIndex(markdown) {
   return tasks;
 }
 
+const TASK_CARD_STATUSES = new Set(['Planned', 'In Progress', 'Implemented', 'Verified']);
+
+export function replaceTaskCardStatus(markdown, currentStatus, nextStatus) {
+  if (!TASK_CARD_STATUSES.has(currentStatus) || !TASK_CARD_STATUSES.has(nextStatus)) {
+    throw new Error('Unsupported task card status transition');
+  }
+  return markdown.replace(
+    new RegExp(`^> 状态：${currentStatus}(?:（[^\\r\\n]*）)?[ \\t]*$`, 'm'),
+    `> 状态：${nextStatus}  `,
+  );
+}
+
 export function isPathInside(filePath, allowedPath) {
   const normalizedFile = filePath.replaceAll('\\', '/').replace(/^\.\//, '');
   const normalizedAllowed = allowedPath.replaceAll('\\', '/').replace(/^\.\//, '');

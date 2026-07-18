@@ -6,6 +6,7 @@ import {
   extractBacktickBullets,
   findNextReadyTask,
   parseTaskIndex,
+  replaceTaskCardStatus,
   replaceTaskIndexStatus,
   validateActiveState,
   validateChangedPaths,
@@ -20,6 +21,18 @@ const indexFixture = `
 `;
 
 describe('task control', () => {
+  it('normalizes task card status lines with or without Markdown trailing spaces', () => {
+    expect(replaceTaskCardStatus('> 状态：Planned\n', 'Planned', 'In Progress')).toBe(
+      '> 状态：In Progress  \n',
+    );
+    expect(replaceTaskCardStatus('> 状态：In Progress  \n', 'In Progress', 'Planned')).toBe(
+      '> 状态：Planned  \n',
+    );
+    expect(
+      replaceTaskCardStatus('> 状态：Implemented（等待CI）\n', 'Implemented', 'Verified'),
+    ).toBe('> 状态：Verified  \n');
+  });
+
   it('parses task rows and their canonical source', () => {
     const tasks = parseTaskIndex(indexFixture);
     expect(tasks.get('M0-01')).toMatchObject({

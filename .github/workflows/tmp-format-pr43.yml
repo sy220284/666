@@ -5,6 +5,7 @@ on:
     branches:
       - main
     types:
+      - opened
       - synchronize
       - reopened
 
@@ -13,7 +14,7 @@ permissions:
 
 jobs:
   format:
-    # Branch-scoped, PR45-triggered, and removed after formatting.
+    # Branch-scoped, one-shot formatter. Removed before the final review PR.
     if: ${{ github.head_ref == 'fix/m1-08-unreadable-recovery' && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10

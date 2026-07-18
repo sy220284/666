@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isGovernanceOnlyPullRequest,
   isPathInside,
   dependenciesSatisfied,
   extractBacktickBullets,
@@ -47,6 +48,19 @@ describe('task control', () => {
     expect(isPathInside('packages/domain/src/index.ts', 'packages/')).toBe(true);
     expect(isPathInside('package.json', 'package.json')).toBe(true);
     expect(isPathInside('package-lock.json', 'package.json')).toBe(false);
+  });
+
+  it('recognizes the final main verification script as governance-only', () => {
+    const governanceFiles = ['scripts/main-verification.mjs', 'tests/unit/task-control.test.ts'];
+    expect(
+      isGovernanceOnlyPullRequest('policy/main-verification-acceptance', governanceFiles),
+    ).toBe(true);
+    expect(
+      isGovernanceOnlyPullRequest('policy/main-verification-acceptance', [
+        ...governanceFiles,
+        'packages/core-service/src/index.ts',
+      ]),
+    ).toBe(false);
   });
 
   it('reports forbidden and out-of-scope changes', () => {

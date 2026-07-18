@@ -6,6 +6,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import { CandidateService } from '../../packages/core-service/src/candidate.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
@@ -23,6 +24,7 @@ interface Harness {
   readonly workspace: ProjectWorkspaceService;
   readonly structure: ProjectStructureService;
   readonly drafts: DraftService;
+  readonly candidates: CandidateService;
   readonly versions: VersionService;
   readonly recovery: RecoveryService;
   readonly operations: StructureOperationService;
@@ -56,6 +58,7 @@ async function createHarness(
     workspace,
     structure: new ProjectStructureService(workspace, { clock }),
     drafts: new DraftService(workspace, { clock }),
+    candidates: new CandidateService(workspace, { clock }),
     versions: new VersionService(workspace, { clock }),
     recovery: new RecoveryService(workspace, {
       backupRootDirectory: path.join(root, 'operation-recovery'),
@@ -485,6 +488,205 @@ describe('M2-04 high-risk structure operations', () => {
           checkpoint.backupId,
         ),
       ).resolves.toMatchObject({ deleted: true, backupId: checkpoint.backupId });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('blocks indirect movement of locked blocks in source and target Drafts', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, first, firstDraft } = await createProject(harness, '间接锁定移动');
+      const prepared = await addBlocks(harness, project.projectId, first.id, firstDraft, [
+        '普通移动块',
+        '锁定保留块',
+      ]);
+      const lockedSourceBlock = prepared.blocks.at(-1)!;
+      const sourceLocked = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: first.id,
+        draftId: prepared.draftId,
+        baseRevision: prepared.revision,
+        operations: [
+          {
+            type: 'set-lock',
+            logicalBlockId: lockedSourceBlock.logicalBlockId,
+            expectedHash: lockedSourceBlock.contentHash!,
+            locked: true,
+          },
+        ],
+      });
+      const targetStructure = await harness.structure.createChapter(randomUUID(), {
+        projectId: project.projectId,
+        volumeId: first.volumeId,
+        title: '目标章',
+      });
+      const target = targetStructure.volumes[0]!.chapters[1]!;
+      const targetDraft = await harness.drafts.open(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: target.id,
+      });
+      const sourceMoveBlock = sourceLocked.blocks[0]!;
+      const sourceBlocked = harness.operations.previewMove({
+        projectId: project.projectId,
+        sourceChapterId: first.id,
+        sourceDraftId: sourceLocked.draftId,
+        sourceBaseRevision: sourceLocked.revision,
+        targetChapterId: target.id,
+        targetDraftId: targetDraft.draftId,
+        targetBaseRevision: targetDraft.revision,
+        logicalBlockIds: [sourceMoveBlock.logicalBlockId],
+        afterTargetLogicalBlockId: targetDraft.blocks.at(-1)!.logicalBlockId,
+      });
+      expect(sourceBlocked.canExecute).toBe(false);
+      expect(sourceBlocked.lockedLogicalBlockIds).toContain(lockedSourceBlock.logicalBlockId);
+
+      const sourceUnlocked = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: first.id,
+        draftId: sourceLocked.draftId,
+        baseRevision: sourceLocked.revision,
+        operations: [
+          {
+            type: 'set-lock',
+            logicalBlockId: lockedSourceBlock.logicalBlockId,
+            expectedHash: lockedSourceBlock.contentHash!,
+            locked: false,
+          },
+        ],
+      });
+      const targetLockBlock = targetDraft.blocks[0]!;
+      const targetLocked = await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: target.id,
+        draftId: targetDraft.draftId,
+        baseRevision: targetDraft.revision,
+        operations: [
+          {
+            type: 'set-lock',
+            logicalBlockId: targetLockBlock.logicalBlockId,
+            expectedHash: targetLockBlock.contentHash!,
+            locked: true,
+          },
+        ],
+      });
+      const targetBlocked = harness.operations.previewMove({
+        projectId: project.projectId,
+        sourceChapterId: first.id,
+        sourceDraftId: sourceUnlocked.draftId,
+        sourceBaseRevision: sourceUnlocked.revision,
+        targetChapterId: target.id,
+        targetDraftId: targetLocked.draftId,
+        targetBaseRevision: targetLocked.revision,
+        logicalBlockIds: [sourceUnlocked.blocks.at(-1)!.logicalBlockId],
+        afterTargetLogicalBlockId: null,
+      });
+      expect(targetBlocked.canExecute).toBe(false);
+      expect(targetBlocked.lockedLogicalBlockIds).toContain(targetLockBlock.logicalBlockId);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('blocks Candidate references during permanent-delete preview', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, first, firstDraft } = await createProject(harness, '候选引用阻断');
+      const source = firstDraft.blocks[0]!;
+      await harness.candidates.createFixture(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: first.id,
+        draftId: firstDraft.draftId,
+        baseDraftRevision: firstDraft.revision,
+        candidateType: 'rewrite',
+        completeness: 'complete',
+        title: '阻断永久删除的候选',
+        blocks: [
+          {
+            logicalBlockId: source.logicalBlockId,
+            blockType: source.blockType,
+            text: '候选正文',
+            attributes: source.attributes,
+            sourceBlockHash: source.contentHash,
+          },
+        ],
+      });
+      await harness.structure.deleteChapter(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: first.id,
+      });
+      const entry = harness.structure.listTrash(project.projectId).entries[0]!;
+      expect(
+        harness.operations.previewPermanentDelete({
+          projectId: project.projectId,
+          trashEntryId: entry.id,
+        }),
+      ).toMatchObject({
+        canDelete: false,
+        blockers: [{ kind: 'candidate', count: 1 }],
+      });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('rolls back permanent deletion when failure occurs after trash cleanup', async () => {
+    const harness = await createHarness((stage) => {
+      if (stage === 'after-trash-delete') throw new Error('INJECTED_PERMANENT_DELETE_FAILURE');
+    });
+    try {
+      const { project, first } = await createProject(harness, '永久删除回滚');
+      const structure = await harness.structure.createChapter(randomUUID(), {
+        projectId: project.projectId,
+        volumeId: first.volumeId,
+        title: '待回滚删除章',
+      });
+      const chapter = structure.volumes[0]!.chapters.find(
+        (candidate) => candidate.title === '待回滚删除章',
+      )!;
+      await harness.structure.deleteChapter(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      });
+      const entry = harness.structure
+        .listTrash(project.projectId)
+        .entries.find((candidate) => candidate.entityId === chapter.id)!;
+      const preview = harness.operations.previewPermanentDelete({
+        projectId: project.projectId,
+        trashEntryId: entry.id,
+      });
+      const checkpoint = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: project.projectId,
+        operation: 'permanent-delete',
+      });
+      await expect(
+        harness.operations.permanentDelete(
+          randomUUID(),
+          {
+            projectId: project.projectId,
+            trashEntryId: entry.id,
+            planHash: preview.planHash,
+            confirmationTitle: entry.title,
+          },
+          checkpoint.backupId,
+        ),
+      ).rejects.toThrow('INJECTED_PERMANENT_DELETE_FAILURE');
+      expect(harness.structure.listTrash(project.projectId).entries).toEqual([
+        expect.objectContaining({ id: entry.id, entityId: chapter.id }),
+      ]);
+      await expect(
+        harness.structure.restoreTrashEntry(randomUUID(), {
+          projectId: project.projectId,
+          trashEntryId: entry.id,
+          placement: 'original',
+        }),
+      ).resolves.toMatchObject({
+        volumes: [
+          expect.objectContaining({
+            chapters: expect.arrayContaining([expect.objectContaining({ id: chapter.id })]),
+          }),
+        ],
+      });
     } finally {
       await closeHarness(harness);
     }

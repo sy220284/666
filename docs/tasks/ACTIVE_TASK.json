@@ -11,29 +11,37 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M3-01",
+    "id": "M2-04",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md",
-    "branch": "work/m3-01-project-brief-outline",
+    "source": "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
+    "branch": "work/m2-04-quality-hardening",
     "startedAt": "2026-07-18",
     "allowedPaths": [
+      "AGENTS.md",
       "migrations/project/",
       "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
       "apps/desktop/renderer/",
+      "apps/desktop/main/",
+      "apps/desktop/preload/",
       "tests/integration/",
       "tests/e2e/",
-      "package.json",
-      "pnpm-lock.yaml",
-      "pnpm-workspace.yaml",
+      "tests/migration/",
+      "tests/security/",
+      "docs/contracts/IPC_CONTRACTS.md",
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/ui/INTERACTION_STATES.md",
+      "docs/testing/SECURITY_TEST_CASES.md",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
+      "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
       "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-01/",
-      "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md"
+      "docs/test-evidence/M2-04/",
+      ".github/workflows/m2-04-hardening-bot.yml",
+      ".m2-04-hardening-done"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -41,9 +49,10 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/product/FUNCTION_CATALOG.md",
+      "docs/decisions/ADR-005-lock-revision-backup.md",
       "docs/database/DATABASE_SCHEMA.md",
-      "docs/ui/SCREEN_SPECIFICATIONS.md"
+      "docs/ui/INTERACTION_STATES.md",
+      "docs/testing/SECURITY_TEST_CASES.md"
     ],
     "verification": [
       "pnpm lint",
@@ -52,7 +61,8 @@
       "pnpm test:security",
       "pnpm test:e2e",
       "pnpm test:unit",
-      "pnpm test:integration"
+      "pnpm test:integration",
+      "pnpm test:migration"
     ]
   },
   "lastVerifiedTask": {
@@ -87,17 +97,6 @@
       "id": "M2-02",
       "implementationCommit": "571ef8163d535a603af1cfb41731229767846c55",
       "deferredAt": "2026-07-18T08:21:20.671Z",
-      "pending": [
-        "standard evidence package and screenshots",
-        "manual acceptance and exhaustive quality matrix",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M2-04",
-      "implementationCommit": "6c7ff3bb6b7f1988b790e87dfbd80f16bca6f322",
-      "deferredAt": "2026-07-18T09:48:46.953Z",
       "pending": [
         "standard evidence package and screenshots",
         "manual acceptance and exhaustive quality matrix",

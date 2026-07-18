@@ -81,26 +81,28 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
         ],
       });
       if (!inserted.ok) throw new Error('E2E_DRAFT_PREPARE_FAILED');
-      const splitInput = {
-        projectId: active.data.projectId,
-        chapterId: chapter.id,
-        draftId: inserted.data.draftId,
-        baseRevision: inserted.data.revision,
-        splitAfterLogicalBlockId: inserted.data.blocks[0]!.logicalBlockId,
-        newChapterTitle: '拆出章节',
-      };
-      const preview = await bridge.planning.previewSplitChapter(splitInput);
-      if (!preview.ok || !preview.data.canExecute) throw new Error('E2E_SPLIT_PREVIEW_FAILED');
-      const split = await bridge.planning.splitChapter({
-        ...splitInput,
-        planHash: preview.data.planHash,
-      });
-      if (!split.ok) throw new Error(`E2E_SPLIT_FAILED:${split.error.code}`);
     });
 
     page.on('dialog', async (dialog) => {
+      const message = dialog.message();
+      if (dialog.type() === 'prompt' && message.includes('新章节标题')) {
+        await dialog.accept('拆出章节');
+        return;
+      }
+      if (dialog.type() === 'prompt' && message.includes('第几个正文块')) {
+        await dialog.accept('1');
+        return;
+      }
+      if (dialog.type() === 'prompt' && message.includes('请输入完整标题')) {
+        await dialog.accept('拆出章节');
+        return;
+      }
       await dialog.accept();
     });
+
+    await page.locator('.chapter-node').first().locator('[data-split-chapter]').click();
+    await expect(page.locator('.chapter-node')).toHaveCount(2);
+    await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
@@ -112,29 +114,9 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await splitChapter.locator('[data-delete-chapter]').click();
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);
-    const permanentDeleteBackupId = await page.evaluate(async () => {
-      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
-        .worldforge;
-      const active = await bridge.project.getActive();
-      if (!active.ok || !active.data) throw new Error('E2E_PROJECT_MISSING_AFTER_RELOAD');
-      const trash = await bridge.trash.list(active.data.projectId);
-      if (!trash.ok || trash.data.entries.length !== 1) throw new Error('E2E_TRASH_MISSING');
-      const entry = trash.data.entries[0]!;
-      const preview = await bridge.trash.previewPermanentDelete({
-        projectId: active.data.projectId,
-        trashEntryId: entry.id,
-      });
-      if (!preview.ok || !preview.data.canDelete) throw new Error('E2E_PURGE_PREVIEW_FAILED');
-      const deleted = await bridge.trash.permanentDelete({
-        projectId: active.data.projectId,
-        trashEntryId: entry.id,
-        planHash: preview.data.planHash,
-        confirmationTitle: entry.title,
-      });
-      if (!deleted.ok) throw new Error(`E2E_PURGE_FAILED:${deleted.error.code}`);
-      return deleted.data.backupId;
-    });
-    expect(permanentDeleteBackupId).toMatch(/^[0-9a-f-]{36}$/u);
+    await page.locator('[data-trash-entry-id]').locator('[data-permanent-delete]').click();
+    await expect(page.locator('[data-trash-empty]')).toBeVisible();
+    await expect(page.locator('[data-trash-status]')).toContainText('已永久删除 · 恢复点');
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-open-trash]').click();

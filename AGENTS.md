@@ -125,6 +125,15 @@ Inspect the real repository before coding:
 - Under `continuous-mainline` authorization, continue only after the current task is Verified and its evidence and traceability are complete.
 - Under `implementation-mainline` authorization, continue only after the current card has a real end-to-end implementation, its required focused tests and remote quality gate pass, and its deferred verification work is recorded. Any code, test, security, data-boundary, or migration failure still blocks advancement.
 
+### Implementation outcome versus prescribed mechanism
+
+- Task cards define required product intent, scope, non-goals, invariants, acceptance effects, and dependency order. They do not require an inferior mechanism when a stronger implementation is available.
+- A deviation is beneficial only when evidence shows equal or better user-visible behavior, safety, correctness, maintainability, testability, recovery, and performance without expanding product scope or violating frozen boundaries.
+- Do not reject an implementation solely because its internal mechanism differs from the task card. Compare achieved effects against the design intent and classify the difference as beneficial, neutral, or defective.
+- Beneficial deviations must remain compatible with downstream tasks, preserve authoritative data semantics, reuse or strengthen shared foundations, and be documented with focused tests.
+- A deviation is defective when it weakens an invariant, bypasses a shared safety boundary, hides failure, changes a non-goal, creates a second source of truth, or makes acceptance claims unsupported by evidence.
+- When a stronger mechanism replaces a prescribed mechanism, record why the outcome is superior and retain regression tests proving the original acceptance intent.
+
 ## 8. Frozen product boundaries
 
 V1.0 contains the local single-author writing loop only.
@@ -212,10 +221,10 @@ Repository responsibilities:
 Required BrowserWindow settings:
 
 ```ts
-nodeIntegration: false
-contextIsolation: true
-sandbox: true
-webSecurity: true
+nodeIntegration: false;
+contextIsolation: true;
+sandbox: true;
+webSecurity: true;
 ```
 
 - Preload exposes named minimal APIs only.

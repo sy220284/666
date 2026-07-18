@@ -493,13 +493,13 @@ describe('M2-04 high-risk structure operations', () => {
     }
   });
 
-  it('blocks indirect movement of locked blocks in source and target Drafts', async () => {
+  it('reuses LockGuard without blocking unrelated insertions around locked blocks', async () => {
     const harness = await createHarness();
     try {
-      const { project, first, firstDraft } = await createProject(harness, '间接锁定移动');
+      const { project, first, firstDraft } = await createProject(harness, '锁定语义复用');
       const prepared = await addBlocks(harness, project.projectId, first.id, firstDraft, [
-        '普通移动块',
-        '锁定保留块',
+        '可移动正文块',
+        '锁定正文块',
       ]);
       const lockedSourceBlock = prepared.blocks.at(-1)!;
       const sourceLocked = await harness.drafts.applyPatch(randomUUID(), {
@@ -526,8 +526,8 @@ describe('M2-04 high-risk structure operations', () => {
         projectId: project.projectId,
         chapterId: target.id,
       });
-      const sourceMoveBlock = sourceLocked.blocks[0]!;
-      const sourceBlocked = harness.operations.previewMove({
+
+      const lockedMove = harness.operations.previewMove({
         projectId: project.projectId,
         sourceChapterId: first.id,
         sourceDraftId: sourceLocked.draftId,
@@ -535,26 +535,12 @@ describe('M2-04 high-risk structure operations', () => {
         targetChapterId: target.id,
         targetDraftId: targetDraft.draftId,
         targetBaseRevision: targetDraft.revision,
-        logicalBlockIds: [sourceMoveBlock.logicalBlockId],
+        logicalBlockIds: [lockedSourceBlock.logicalBlockId],
         afterTargetLogicalBlockId: targetDraft.blocks.at(-1)!.logicalBlockId,
       });
-      expect(sourceBlocked.canExecute).toBe(false);
-      expect(sourceBlocked.lockedLogicalBlockIds).toContain(lockedSourceBlock.logicalBlockId);
+      expect(lockedMove.canExecute).toBe(false);
+      expect(lockedMove.lockedLogicalBlockIds).toContain(lockedSourceBlock.logicalBlockId);
 
-      const sourceUnlocked = await harness.drafts.applyPatch(randomUUID(), {
-        projectId: project.projectId,
-        chapterId: first.id,
-        draftId: sourceLocked.draftId,
-        baseRevision: sourceLocked.revision,
-        operations: [
-          {
-            type: 'set-lock',
-            logicalBlockId: lockedSourceBlock.logicalBlockId,
-            expectedHash: lockedSourceBlock.contentHash!,
-            locked: false,
-          },
-        ],
-      });
       const targetLockBlock = targetDraft.blocks[0]!;
       const targetLocked = await harness.drafts.applyPatch(randomUUID(), {
         projectId: project.projectId,
@@ -570,19 +556,46 @@ describe('M2-04 high-risk structure operations', () => {
           },
         ],
       });
-      const targetBlocked = harness.operations.previewMove({
+      const unrelatedMoveBlock = sourceLocked.blocks[0]!;
+      const allowed = harness.operations.previewMove({
         projectId: project.projectId,
         sourceChapterId: first.id,
-        sourceDraftId: sourceUnlocked.draftId,
-        sourceBaseRevision: sourceUnlocked.revision,
+        sourceDraftId: sourceLocked.draftId,
+        sourceBaseRevision: sourceLocked.revision,
         targetChapterId: target.id,
         targetDraftId: targetLocked.draftId,
         targetBaseRevision: targetLocked.revision,
-        logicalBlockIds: [sourceUnlocked.blocks.at(-1)!.logicalBlockId],
+        logicalBlockIds: [unrelatedMoveBlock.logicalBlockId],
         afterTargetLogicalBlockId: null,
       });
-      expect(targetBlocked.canExecute).toBe(false);
-      expect(targetBlocked.lockedLogicalBlockIds).toContain(targetLockBlock.logicalBlockId);
+      expect(allowed.canExecute).toBe(true);
+      expect(allowed.lockedLogicalBlockIds).toEqual([]);
+      const checkpoint = await harness.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: project.projectId,
+        operation: 'move-blocks',
+      });
+      const result = await harness.operations.executeMove(
+        randomUUID(),
+        {
+          projectId: project.projectId,
+          sourceChapterId: first.id,
+          sourceDraftId: sourceLocked.draftId,
+          sourceBaseRevision: sourceLocked.revision,
+          targetChapterId: target.id,
+          targetDraftId: targetLocked.draftId,
+          targetBaseRevision: targetLocked.revision,
+          logicalBlockIds: [unrelatedMoveBlock.logicalBlockId],
+          afterTargetLogicalBlockId: null,
+          planHash: allowed.planHash,
+        },
+        checkpoint.backupId,
+      );
+      expect(result.drafts[1]!.blocks[0]!.logicalBlockId).toBe(unrelatedMoveBlock.logicalBlockId);
+      expect(
+        result.drafts[1]!.blocks.find(
+          (block) => block.logicalBlockId === targetLockBlock.logicalBlockId,
+        )?.locked,
+      ).toBe(true);
     } finally {
       await closeHarness(harness);
     }

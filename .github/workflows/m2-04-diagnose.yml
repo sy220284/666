@@ -29,14 +29,16 @@ jobs:
           python3 <<'PY' > .m2-04-hardening-log 2>&1
           from pathlib import Path
           import re
-          import textwrap
           import traceback
 
           workflow = Path('.github/workflows/m2-04-hardening-bot.yml').read_text(encoding='utf-8')
           match = re.search(r"python3 <<'PY'\n(.*?)\n          PY", workflow, re.S)
           if not match:
               raise SystemExit('embedded patch script not found')
-          script = textwrap.dedent(match.group(1))
+          script = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in match.group(1).splitlines()
+          )
           try:
               exec(compile(script, '<m2-04-hardening>', 'exec'), {'__name__': '__main__'})
               print('PATCH_OK')

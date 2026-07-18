@@ -171,15 +171,19 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
     readBigInts: true,
   });
   try {
-    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_records').get()).toEqual({
-      count: 0n,
-    });
+    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_records').get()).toEqual(
+      {
+        count: 0n,
+      },
+    );
     expect(
       database.prepare('SELECT COUNT(*) AS count FROM candidate_apply_checkpoints').get(),
     ).toEqual({ count: 0n });
-    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_conflict_sets').get()).toEqual({
-      count: 1n,
-    });
+    expect(database.prepare('SELECT COUNT(*) AS count FROM candidate_conflict_sets').get()).toEqual(
+      {
+        count: 1n,
+      },
+    );
     expect(database.prepare('SELECT status FROM candidates').get()).toEqual({ status: 'pending' });
   } finally {
     database.close();

@@ -589,6 +589,23 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
       persisted?.blocks.length,
     );
 
+    await blocks.first().click();
+    const lockButton = page.locator('[data-toggle-block-lock]');
+    await expect(lockButton).toBeEnabled();
+    await lockButton.click();
+    await expect(lockButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(lockButton).toHaveText('解锁当前块');
+    await expect(blocks.first()).toHaveAttribute('data-locked', 'true');
+    expect(
+      await blocks.first().evaluate((element) => getComputedStyle(element).borderInlineStartWidth),
+    ).not.toBe('0px');
+    const lockedText = await blocks.first().textContent();
+    await page.keyboard.type('越权修改');
+    await expect(blocks.first()).toHaveText(lockedText ?? '');
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+      timeout: 3_000,
+    });
+
     await editor.click();
     await page.keyboard.press('Home');
     const selectionBeforeBack = await page.evaluate(() => document.getSelection()?.anchorOffset);
@@ -605,6 +622,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
     await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。终风又起。');
+    await expect(page.locator('[data-draft-content] > [data-locked="true"]')).toHaveCount(1);
     const reopenedIds = await page
       .locator('[data-draft-content] > [data-logical-block-id]')
       .evaluateAll((elements) =>

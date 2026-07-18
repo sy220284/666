@@ -123,23 +123,23 @@ Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`或`fin
 
 ### 4.3 Draft与编辑器
 
-| 命令                              | 输入                                                  | 输出                               |
-| --------------------------------- | ----------------------------------------------------- | ---------------------------------- |
-| `draft.get`                       | projectId、chapterId                                  | 活动Draft与有序DraftBlocks         |
-| `draft.saveSnapshot`（M1-04过渡） | projectId、chapterId、draftId、仅含可编辑字段的Blocks | 保存后的活动Draft与有序DraftBlocks |
-| `draft.applyPatch`                | draftId、baseRevision、operations                     | 新Revision、修改摘要               |
-| `draft.flush`                     | draftId、baseRevision                                 | 新Revision或无变化                 |
-| `draft.undoPersistentOperation`   | applyRecordId                                         | 新Revision                         |
-| `draft.setBlockLock`              | draftId、logicalBlockId、locked、baseRevision         | 新Revision                         |
-| `draft.searchCurrent`             | chapterId、query、options                             | 命中锚点                           |
-| `draft.replaceCurrent`            | chapterId、query、replacement、options                | 新Revision                         |
-| `draft.getWordStats`              | chapterId                                             | 字符数、纯文字字数、目标进度       |
+| 命令                            | 输入                              | 输出                         |
+| ------------------------------- | --------------------------------- | ---------------------------- |
+| `draft.get`                     | projectId、chapterId              | 活动Draft与有序DraftBlocks   |
+| `draft.applyPatch`              | draftId、baseRevision、operations | 新Revision与有序DraftBlocks  |
+| `draft.flush`（规划）           | draftId、baseRevision             | 新Revision或无变化           |
+| `draft.undoPersistentOperation` | applyRecordId                     | 新Revision                   |
+| `draft.searchCurrent`（规划）   | chapterId、query、options         | 命中锚点                     |
+| `draft.replaceCurrent`（规划）  | chapterId、query、replacement     | 新Revision                   |
+| `draft.getWordStats`（规划）    | chapterId                         | 字符数、纯文字字数、目标进度 |
 
-`draft.applyPatch`必须校验项目、Revision、expectedHash和锁定块。
+`draft.applyPatch`必须校验项目、Revision、expectedHash和锁定块。锁定与解锁使用受控`set-lock` Patch operation，不存在可绕过Patch校验的独立写入口。
 
-M1-04的Preload具名方法为`draft.open(input)`和`draft.saveSnapshot(input)`；前者发送冻结命令值`draft.get`。`draft.saveSnapshot`仅用于M1-05 Block Patch入口可用前的显式手动保存，不执行自动保存调度，不递增Revision，也不宣称Hash已建立。快照在Core单写事务内整体替换DraftBlock；任一校验、归属检查或写入故障都会回滚。
+当前Preload具名方法为`draft.open(input)`和`draft.applyPatch(input)`；前者发送冻结命令值`draft.get`。自动保存和手动保存统一生成Block Patch，成功后以Core返回的Revision、logicalBlockId和contentHash同步Renderer元数据。
 
-Renderer只可为快照块传入`clientBlockId`、可空`logicalBlockId`、`blockType`、`text`和严格`attributes`。`id`、`orderKey`、`source`、`locked`、`contentHash`和`revision`均为Core权威字段，IPC附加这些字段会被strict Schema拒绝。新logicalBlockId和记录ID只能由Core生成；已有logicalBlockId必须属于当前活动Draft。
+Renderer只可传入严格Schema允许的Patch字段。`id`、`orderKey`、`source`和`revision`均为Core权威字段；新logicalBlockId和记录ID只能由Core生成，已有logicalBlockId必须属于当前活动Draft。修改、删除、移动与锁定操作必须携带目标块expectedHash。
+
+锁定冲突返回`DRAFT_BLOCK_LOCKED_003`。安全详情位于`error.details.lockConflict`，包含`conflicts: { kind: 'deleted' | 'modified' | 'moved'; logicalBlockId }[]`与正整数`skippedOperationCount`。任一锁定冲突都会拒绝整批Patch，详情只用于解释，没有部分成功语义。
 
 ### 4.4 Version与Candidate
 

@@ -65,7 +65,7 @@ interface WorldForgeError {
 |---|---|
 | `DRAFT_REVISION_CONFLICT_001` | baseRevision与当前Revision不一致 |
 | `DRAFT_BLOCK_HASH_CONFLICT_002` | 目标块内容已变化 |
-| `DRAFT_BLOCK_LOCKED_003` | 操作涉及锁定块 |
+| `DRAFT_BLOCK_LOCKED_003` | 操作涉及锁定块；`details.lockConflict`列出被删除、修改或移动的logicalBlockId及整批跳过数量 |
 | `DRAFT_PATCH_INVALID_004` | Patch结构或顺序无效 |
 | `DRAFT_NO_ACTIVE_005` | 章节没有活动Draft |
 | `VERSION_IMMUTABLE_001` | 尝试修改不可变Version |
@@ -133,6 +133,7 @@ interface WorldForgeError {
 - 数据安全类错误：持续显示并提供恢复动作。
 - 可重试网络错误：提供重试，不自动无限重试。
 - Revision和Hash冲突：打开冲突处理，不显示为普通Toast。
+- 锁定冲突：显示安全的冲突块与整批跳过摘要；不得暗示未冲突操作已写入。
 - 用户取消：不显示红色错误。
 - 内部错误：显示诊断ID和安全说明，不泄露本地路径、SQL和正文。
 

@@ -196,5 +196,34 @@ describe('Draft IPC authority boundary', () => {
       operation: DRAFT_COMMANDS.applyPatch,
       input: command.payload,
     });
+
+    invokeProjectOperation.mockResolvedValueOnce({
+      ok: false,
+      operation: DRAFT_COMMANDS.applyPatch,
+      errorCode: 'DRAFT_BLOCK_LOCKED_003',
+      details: {
+        lockConflict: {
+          conflicts: [{ kind: 'modified', logicalBlockId }],
+          skippedOperationCount: 1,
+        },
+      },
+    });
+    await expect(
+      handler?.(
+        { senderFrame: { url: 'file:///trusted/index.html' } } as unknown as IpcMainInvokeEvent,
+        command,
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: 'DRAFT_BLOCK_LOCKED_003',
+        details: {
+          lockConflict: {
+            conflicts: [{ kind: 'modified', logicalBlockId }],
+            skippedOperationCount: 1,
+          },
+        },
+      },
+    });
   });
 });

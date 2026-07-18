@@ -180,6 +180,16 @@ export const DraftPatchOperationSchema = z.discriminatedUnion('type', [
   DraftPatchSetLockOperationSchema,
 ]);
 
+export const DraftLockConflictSchema = z.strictObject({
+  kind: z.enum(['deleted', 'modified', 'moved']),
+  logicalBlockId: DraftEntityIdSchema,
+});
+
+export const DraftLockConflictSummarySchema = z.strictObject({
+  conflicts: z.array(DraftLockConflictSchema).min(1),
+  skippedOperationCount: z.number().int().positive(),
+});
+
 export const DraftApplyPatchInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   chapterId: DraftEntityIdSchema,
@@ -215,6 +225,7 @@ const draftFailureSchema = z.strictObject({
     retryable: z.boolean(),
     userAction: z.string().min(1).max(512).optional(),
     diagnosticId: z.string().min(1).max(128).optional(),
+    details: z.strictObject({ lockConflict: DraftLockConflictSummarySchema.optional() }).optional(),
   }),
 });
 
@@ -245,6 +256,7 @@ export const CoreDraftResultSchema = z.union([
     ok: z.literal(false),
     operation: z.enum(DRAFT_COMMANDS),
     errorCode: ErrorCodeSchema,
+    details: z.strictObject({ lockConflict: DraftLockConflictSummarySchema.optional() }).optional(),
   }),
 ]);
 
@@ -262,6 +274,8 @@ export type DraftPatchDeleteOperation = z.infer<typeof DraftPatchDeleteOperation
 export type DraftPatchMoveOperation = z.infer<typeof DraftPatchMoveOperationSchema>;
 export type DraftPatchSetLockOperation = z.infer<typeof DraftPatchSetLockOperationSchema>;
 export type DraftPatchOperation = z.infer<typeof DraftPatchOperationSchema>;
+export type DraftLockConflict = z.infer<typeof DraftLockConflictSchema>;
+export type DraftLockConflictSummary = z.infer<typeof DraftLockConflictSummarySchema>;
 export type DraftApplyPatchInput = z.infer<typeof DraftApplyPatchInputSchema>;
 export type CoreDraftOperation = z.infer<typeof CoreDraftOperationSchema>;
 export type CoreDraftResult = z.infer<typeof CoreDraftResultSchema>;

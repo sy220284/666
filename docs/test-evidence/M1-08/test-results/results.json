@@ -1,31 +1,31 @@
 [
   {
-    "suite": "split-chapter",
-    "fixtureId": "M2-04-split-chapter",
+    "suite": "integration-physical-corruption",
+    "fixtureId": "M1-08-integration-physical-corruption",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "merge-and-move",
-    "fixtureId": "M2-04-merge-and-move",
+    "suite": "readonly-write-guard",
+    "fixtureId": "M1-08-readonly-write-guard",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "stale-plan-guard",
-    "fixtureId": "M2-04-stale-plan-guard",
+    "suite": "restore-copy",
+    "fixtureId": "M1-08-restore-copy",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "permanent-delete-impact",
-    "fixtureId": "M2-04-permanent-delete-impact",
+    "suite": "desktop-recovery-entry",
+    "fixtureId": "M1-08-desktop-recovery-entry",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "checkpoint-and-rollback",
-    "fixtureId": "M2-04-checkpoint-and-rollback",
+    "suite": "desktop-restored-copy",
+    "fixtureId": "M1-08-desktop-restored-copy",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   }

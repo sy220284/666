@@ -1,21 +1,12 @@
 # M1-08 测试证据
 
-生成时间：2026-07-17T03:02:51Z  
-验证基线提交：d279eaea92982b10f9424b47b0d0dac6e95406a7  
-原实现提交：5e6c40ec5b7792c4e48318db65cb69608eaa4374  
-GitHub Actions：https://github.com/sy220284/666/actions/runs/29551145839
+生成时间：2026-07-19T01:18:34Z  
+提交：9110b16bfc2c08d210d0306b7b394ef20cc9c9f7
 
-重大操作恢复点使用SQLite Online Backup，登记前完成完整性、外键和Hash验证；恢复始终生成新副本。
+状态：Verified。完全不可读的project.sqlite可由manifest与外部恢复点进入独立只恢复上下文；全部数据库写入被阻止，恢复始终创建新目录与新项目ID，损坏源文件保持不变。
 
 ## 自动化结果
 
-- 通过：4
+- 通过：5
 - 失败：0
 - 跳过：0
-
-## 验收结论
-
-- 自动化门禁：PASS
-- 界面截图复核：PASS
-- 数据完整性与失败路径：PASS
-- 任务结论：Verified

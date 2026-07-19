@@ -1,44 +1,32 @@
 [
   {
-    "suite": "static-gates",
-    "fixtureId": "M2-01",
+    "suite": "lockguard-core",
+    "fixtureId": "M2-01-lockguard-core",
     "status": "passed",
-    "details": "Format, Lint, Typecheck, Build, boundaries, workspaces, CI policy and task control passed."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "editor-unit",
-    "fixtureId": "M2-01",
+    "suite": "editor-input-filter",
+    "fixtureId": "M2-01-editor-input-filter",
     "status": "passed",
-    "details": "Lock Patch ordering and editor transaction behavior passed."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "core-integration",
-    "fixtureId": "M2-01",
+    "suite": "batch-patch-atomicity",
+    "fixtureId": "M2-01-batch-patch-atomicity",
     "status": "passed",
-    "details": "Update, delete, move, neighbor reordering, snapshot bypass, batch summary, atomic rejection and reopen persistence passed."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "ipc-security",
-    "fixtureId": "M2-01",
+    "suite": "desktop-reopen",
+    "fixtureId": "M2-01-desktop-reopen",
     "status": "passed",
-    "details": "Strict authority fields, trusted origin and safe structured conflict propagation passed."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "full-vitest",
-    "fixtureId": "M2-01",
+    "suite": "permanent-gates",
+    "fixtureId": "M2-01-permanent-gates",
     "status": "passed",
-    "details": "62 files, 231 passed and 1 pre-existing platform skip after the separator NodeSelection regression was added."
-  },
-  {
-    "suite": "electron-build",
-    "fixtureId": "M2-01",
-    "status": "passed",
-    "details": "All desktop and package targets built successfully."
-  },
-  {
-    "suite": "electron-e2e",
-    "fixtureId": "M2-01",
-    "status": "skipped",
-    "details": "Runner stopped with E2E_DISPLAY_UNAVAILABLE because DISPLAY and xvfb-run are absent."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   }
 ]

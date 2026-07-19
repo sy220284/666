@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "fileName": "permanent-delete-checkpoint.png",
+    "fixtureId": "M2-04-desktop-acceptance",
+    "sha256": "836b7476e669d73a541d6ff00ef9a9104db0e4beaec1bfc8e0261ddf592b27fe"
+  },
+  {
+    "fileName": "split-chapter-result.png",
+    "fixtureId": "M2-04-desktop-acceptance",
+    "sha256": "fec556caa5a8ea51489da86fc61b8a844f5882593e34a622414f53b1a9dcfb1b"
+  }
+]

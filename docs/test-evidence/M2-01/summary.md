@@ -1,12 +1,12 @@
 # M2-01 测试证据
 
-生成时间：2026-07-18T07:35:00Z  
-提交：working-tree
+生成时间：2026-07-19T01:18:34Z  
+提交：9110b16bfc2c08d210d0306b7b394ef20cc9c9f7
 
-锁定块UI、Tiptap事务过滤、Core LockGuard、结构化冲突摘要和跨项目重开持久化已完成自动化验证。任何锁定冲突都会拒绝整批Patch并保持Revision与正文不变。当前工作树保持In Progress，等待implementation PR在带显示环境中完成Electron E2E。
+状态：Verified。UI、编辑器事务过滤与Core LockGuard形成双层保护；锁定块更新、删除、移动、合并及受影响相邻块均原子拒绝，重开项目后锁定状态保持。
 
 ## 自动化结果
 
-- 通过：6
+- 通过：5
 - 失败：0
-- 跳过：1
+- 跳过：0

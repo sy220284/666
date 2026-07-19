@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "fileName": "candidate-apply-success.png",
+    "fixtureId": "M2-03-desktop-acceptance",
+    "sha256": "7a25b9404919599884a80260d345bd66aa8f65da2b00b829b332817c37e082a8"
+  },
+  {
+    "fileName": "persisted-undo-success.png",
+    "fixtureId": "M2-03-desktop-acceptance",
+    "sha256": "324fccd9594c58f432dca41e137b9d2f5eb436f96cd944207de0aa55a49bb462"
+  }
+]

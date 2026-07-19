@@ -1,9 +1,10 @@
 # M3-03 通用实体与静态Canon
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
-> 建议分支：`feat/m3-entity-canon`
+> 工作分支：`work/m3-03-entity-canon`  
+> 激活来源：M1-08质量返修与M2延期验收闭环完成后自动推进。
 
 ## 目标
 

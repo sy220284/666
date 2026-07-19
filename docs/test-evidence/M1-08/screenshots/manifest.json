@@ -8,5 +8,15 @@
     "fileName": "m1-08-readonly-recovery.png",
     "fixtureId": "M1-08",
     "sha256": "8b9c7f5425708590e4a16df7794c4fe358d1d88fa09da9be65a52592bd12313f"
+  },
+  {
+    "fileName": "unreadable-project-recovery-entry.png",
+    "fixtureId": "M1-08-desktop-acceptance",
+    "sha256": "394f6d87bc9e4869c517047f22250b172ae1e142bc5ae89e635e60d537abba93"
+  },
+  {
+    "fileName": "unreadable-project-restored-copy.png",
+    "fixtureId": "M1-08-desktop-acceptance",
+    "sha256": "229f9855415d5c8ff4496593f89a290a00178ca3473afe61179af30eed3fc283"
   }
 ]

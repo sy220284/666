@@ -1,0 +1,55 @@
+name: Temporary CI URL Global Fix
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+    paths:
+      - .github/workflows/temp-ci-url-global-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    if: ${{ github.head_ref == 'policy/ci-automerge-recovery-20260719' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: policy/ci-automerge-recovery-20260719
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Qualify URL through globalThis
+        shell: python
+        run: |
+          from pathlib import Path
+
+          replacements = {
+              Path('scripts/automerge.mjs'): 2,
+              Path('scripts/main-verification.mjs'): 1,
+          }
+          for path, expected in replacements.items():
+              source = path.read_text(encoding='utf-8')
+              actual = source.count('new URL(')
+              if actual != expected:
+                  raise SystemExit(f'{path}: expected {expected} URL constructors, found {actual}')
+              path.write_text(source.replace('new URL(', 'new globalThis.URL('), encoding='utf-8')
+      - name: Validate patched scripts
+        run: |
+          node --check scripts/automerge.mjs
+          node --check scripts/main-verification.mjs
+      - name: Commit fix and remove temporary workflow
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/temp-ci-url-global-fix.yml
+          git add scripts/automerge.mjs scripts/main-verification.mjs
+          git commit -m "fix(ci): qualify URL globals in Node scripts"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:policy/ci-automerge-recovery-20260719

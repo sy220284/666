@@ -7,7 +7,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
-import { ProjectDatabase, loadMigrations } from '../../packages/core-service/src/database/index.js';
+import {
+  ProjectDatabase,
+  latestMigrationVersion,
+  loadMigrations,
+} from '../../packages/core-service/src/database/index.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 
 const temporaryDirectories: string[] = [];
@@ -58,6 +62,8 @@ describe('project structure migration', () => {
       projectSchemaVersion: 1,
     });
 
+    const currentMigrations = await loadMigrations('migrations/project', 'project');
+    const latestProjectSchemaVersion = latestMigrationVersion(currentMigrations);
     const upgradedService = new ProjectWorkspaceService({
       projectMigrationsDirectory: 'migrations/project',
       projectMigrationRecoveryDirectory: recoveryRoot,
@@ -68,12 +74,17 @@ describe('project structure migration', () => {
     const upgraded = await upgradedService.open(randomUUID(), {
       workspacePath: legacy.workspacePath,
     });
-    expect(upgraded).toMatchObject({ schemaVersion: 12, compatibility: 'migrated' });
+    expect(upgraded).toMatchObject({
+      schemaVersion: latestProjectSchemaVersion,
+      compatibility: 'migrated',
+    });
 
     const recoveryProjectDirectory = path.join(recoveryRoot, legacy.projectId);
     const recoveryFiles = await readdir(recoveryProjectDirectory);
     expect(recoveryFiles).toHaveLength(1);
-    expect(recoveryFiles[0]).toMatch(/^project-v1-to-v12-[0-9a-f-]+\.sqlite$/u);
+    expect(recoveryFiles[0]).toMatch(
+      new RegExp(`^project-v1-to-v${latestProjectSchemaVersion}-[0-9a-f-]+[.]sqlite$`, 'u'),
+    );
     const recoveryPath = path.join(recoveryProjectDirectory, recoveryFiles[0]!);
     expect((await stat(recoveryProjectDirectory)).mode & 0o777).toBe(0o700);
     expect((await stat(recoveryPath)).mode & 0o777).toBe(0o600);
@@ -99,10 +110,10 @@ describe('project structure migration', () => {
       readBigInts: true,
     });
     expect(current.prepare('SELECT max(version) AS version FROM schema_migrations').get()).toEqual({
-      version: 12n,
+      version: BigInt(latestProjectSchemaVersion),
     });
     expect(current.prepare('SELECT schema_version FROM projects').get()).toEqual({
-      schema_version: 12n,
+      schema_version: BigInt(latestProjectSchemaVersion),
     });
     expect(
       current
@@ -129,7 +140,7 @@ describe('project structure migration', () => {
     expect(
       JSON.parse(await readFile(path.join(legacy.workspacePath, 'manifest.json'), 'utf8')),
     ).toMatchObject({
-      projectSchemaVersion: 12,
+      projectSchemaVersion: latestProjectSchemaVersion,
     });
 
     await upgradedService.shutdown();

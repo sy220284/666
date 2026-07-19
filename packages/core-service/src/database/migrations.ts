@@ -67,6 +67,10 @@ export function normalizeMigrations(
   return normalized;
 }
 
+export function latestMigrationVersion(migrations: readonly SqlMigration[]): number {
+  return normalizeMigrations(migrations).at(-1)?.version ?? 0;
+}
+
 export async function loadMigrations(
   directory: string,
   kind: DatabaseKind,

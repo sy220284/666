@@ -19,6 +19,14 @@ export const TASK_PLANNING_ALLOWED_PATHS = [
   'docs/tasks/M3/RENDERER_ARCHITECTURE_MIGRATION.md',
 ];
 
+export const SCHEMA_GOVERNANCE_ALLOWED_PATHS = [
+  'packages/core-service/src/database/index.ts',
+  'packages/core-service/src/database/migrations.ts',
+  'packages/core-service/src/project-workspace.ts',
+  'tests/migration/project-structure-migration.test.ts',
+  'tests/security/project-workspace.test.ts',
+];
+
 export const GOVERNANCE_ALLOWED_PATHS = [
   '.gitignore',
   '.github/CODEOWNERS',
@@ -141,9 +149,12 @@ export function isGovernanceOnlyPullRequest(branch, changedFiles) {
   const value = branch ?? '';
   const governanceBranch = /^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(value);
   const planningBranch = /^policy\/task-plan-/u.test(value);
+  const schemaGovernanceBranch = /^(?:policy|fix)\/governance-schema-/u.test(value);
   const allowedPaths = planningBranch
     ? [...GOVERNANCE_ALLOWED_PATHS, ...TASK_PLANNING_ALLOWED_PATHS]
-    : GOVERNANCE_ALLOWED_PATHS;
+    : schemaGovernanceBranch
+      ? [...GOVERNANCE_ALLOWED_PATHS, ...SCHEMA_GOVERNANCE_ALLOWED_PATHS]
+      : GOVERNANCE_ALLOWED_PATHS;
   return (
     governanceBranch &&
     changedFiles.length > 0 &&

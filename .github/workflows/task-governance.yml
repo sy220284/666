@@ -24,11 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Assert clean working tree before task validation
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Materialize base task state
         shell: bash
         run: git show "${TASK_BASE_REF}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
@@ -44,3 +47,5 @@ jobs:
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
         run: node .github/governance/task-transition-policy.mjs
+      - name: Assert clean working tree after task validation
+        run: node .github/governance/assert-clean-tree.mjs

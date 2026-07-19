@@ -36,7 +36,8 @@ jobs:
         with:
           node-version: 24
       - name: Assert clean trusted governance checkout
-        run: node .github/governance/assert-clean-tree.mjs
+        shell: bash
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Audit complete native main-branch protection
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -45,7 +46,8 @@ jobs:
           RULESET_STRICT: true
         run: node scripts/ruleset-policy.mjs check
       - name: Assert governance audit did not mutate tracked files
-        run: node .github/governance/assert-clean-tree.mjs
+        shell: bash
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Upload ruleset drift report
         if: always()
         uses: actions/upload-artifact@v7

@@ -22,6 +22,13 @@ function normalizedText(value: string): string {
   return value.normalize('NFKC').trim();
 }
 
+function containsControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || codePoint === 0x7f;
+  });
+}
+
 export function normalizeEntityName(value: string): string {
   const normalized = normalizedText(value);
   if (normalized.length < 1 || normalized.length > 240) {
@@ -47,11 +54,7 @@ export function normalizeEntityAliases(values: readonly string[]): string[] {
 
 export function normalizeFactKey(value: string): string {
   const normalized = normalizedText(value).toLocaleLowerCase('en-US').replace(/\s+/gu, '-');
-  if (
-    normalized.length < 1 ||
-    normalized.length > 120 ||
-    /[\u0000-\u001f\u007f]/u.test(normalized)
-  ) {
+  if (normalized.length < 1 || normalized.length > 120 || containsControlCharacter(normalized)) {
     throw new Error('CANON_FACT_KEY_INVALID');
   }
   return normalized;

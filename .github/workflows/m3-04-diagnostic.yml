@@ -18,7 +18,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-      - name: Reproduce generator and publish exact failure branch
+      - name: Reproduce generator and publish exact failure through API
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -34,11 +36,13 @@ jobs:
           python3 /tmp/m3-04-generator.py > /tmp/m3-04-generator.log 2>&1
           status=$?
           set -e
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git checkout -B automation/m3-04-diagnostic-output origin/main
-          cp /tmp/m3-04-generator.log m3-04-generator.log
-          git add m3-04-generator.log
-          git commit -m 'chore: publish M3-04 generator diagnostic'
-          git push --force origin automation/m3-04-diagnostic-output
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref='refs/heads/automation/m3-04-diagnostic-output' \
+            -f sha="$main_sha" >/dev/null 2>&1 || true
+          encoded="$(base64 -w0 /tmp/m3-04-generator.log)"
+          existing_sha="$(gh api "repos/$GITHUB_REPOSITORY/contents/m3-04-generator.log?ref=automation/m3-04-diagnostic-output" --jq .sha 2>/dev/null || true)"
+          args=(--method PUT "repos/$GITHUB_REPOSITORY/contents/m3-04-generator.log" -f message='chore: publish M3-04 generator diagnostic' -f content="$encoded" -f branch='automation/m3-04-diagnostic-output')
+          if [ -n "$existing_sha" ]; then args+=(-f sha="$existing_sha"); fi
+          gh api "${args[@]}" >/dev/null
           exit "$status"

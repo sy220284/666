@@ -7,6 +7,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - docs/m3-03-closeout.mjs
+      - docs/m3-03-evidence-manifest.mjs
       - .github/workflows/m3-03-closeout.yml
 
 permissions:
@@ -35,20 +36,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Prepare documentation and deferred evidence
-        run: node docs/m3-03-closeout.mjs
-      - name: Lint
-        shell: bash
         run: |
-          set -o pipefail
-          pnpm lint 2>&1 | tee docs/m3-03-closeout-lint.log
-      - name: Upload closeout diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: m3-03-closeout-diagnostics
-          path: docs/m3-03-closeout-lint.log
-          if-no-files-found: error
-          retention-days: 7
+          node docs/m3-03-closeout.mjs
+          node docs/m3-03-evidence-manifest.mjs
+      - name: Lint
+        run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
       - name: Build Renderer
@@ -75,8 +67,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git rm docs/m3-03-closeout.mjs .github/workflows/m3-03-closeout.yml
-          rm -f docs/m3-03-closeout-lint.log
+          git rm docs/m3-03-closeout.mjs docs/m3-03-evidence-manifest.mjs .github/workflows/m3-03-closeout.yml
           git add docs
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

@@ -79,6 +79,20 @@ Entity类型：
 character | location | faction | item | ability | rule | event | custom
 ```
 
+Entity状态：
+
+```text
+active | archived
+```
+
+CanonFact状态：
+
+```text
+current | historical
+```
+
+同一Entity与factKey只有一条current；作者确认新值时旧值进入historical。AI、规则校验和模型推测只能形成后续提案，不能直接改变Canon。SceneBeatEntity是项目内显式引用，跨项目关联无效。
+
 EntityState状态：
 
 ```text

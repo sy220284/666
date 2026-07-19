@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-03`
-- 唯一任务卡：`docs/tasks/M3/M3-03_ENTITY_CANON.md`
-- 工作分支：`work/m3-03-entity-canon`
+- 任务ID：`M3-04`
+- 唯一任务卡：`docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md`
+- 工作分支：`work/m3-04-state-timeline-knowledge`
 - 开始时间：`2026-07-19`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -19,7 +19,6 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - docs/
   - migrations/project/
   - packages/domain/
   - packages/core-service/
@@ -32,20 +31,10 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/M3-03_ENTITY_CANON.md
+  - docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-03/
-  - docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md
-  - docs/test-evidence/M0-05/
-  - docs/test-evidence/M1-08/
-  - docs/test-evidence/M2-01/
-  - docs/test-evidence/M2-02/
-  - docs/test-evidence/M2-03/
-  - docs/test-evidence/M2-04/
-  - docs/tasks/M2/M2-01_LOCK_GUARD.md
-  - docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md
-  - docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md
-  - docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md
+  - docs/test-evidence/M3-04/
+  - docs/tasks/M3/M3-03_ENTITY_CANON.md
 forbidden_paths:
 
 required_docs:
@@ -55,7 +44,7 @@ required_docs:
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
   - docs/database/DATABASE_SCHEMA.md
   - docs/database/DATA_DICTIONARY.md
-  - docs/decisions/ADR-004-ai-cannot-overwrite-draft.md
+  - docs/testing/TEST_STRATEGY.md
 verification:
   - pnpm lint
   - pnpm typecheck
@@ -64,6 +53,7 @@ verification:
   - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
+  - pnpm test:eval
 ```
 
 ## 连续执行规则

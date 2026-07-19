@@ -236,15 +236,21 @@ M1-08由`migrations/project/0006_operation_recovery.sql`记录已经完成SQLite
 
 #### `entities`
 
-`id TEXT PK, project_id TEXT FK, entity_type TEXT, name TEXT, aliases_json TEXT, summary TEXT, status TEXT, created_at TEXT, updated_at TEXT`
+`id TEXT PK, project_id TEXT FK, entity_type TEXT, name TEXT, aliases_json TEXT, summary TEXT, status TEXT, archived_at TEXT NULL, created_at TEXT, updated_at TEXT`
 
-类型：character/location/faction/item/ability/rule/event/custom。
+类型：character/location/faction/item/ability/rule/event/custom。状态为active/archived；归档时间与状态必须一致。同项目、同类型、同规范化名称只允许一个active实体。
 
 #### `canon_facts`
 
-`id TEXT PK, entity_id TEXT FK, fact_key TEXT, value_json TEXT, description TEXT, source_type TEXT, source_id TEXT NULL, is_current INTEGER, confirmed_at TEXT`
+`id TEXT PK, project_id TEXT FK, entity_id TEXT FK, fact_key TEXT, value_json TEXT, description TEXT, source_type TEXT, source_id TEXT NULL, status TEXT, confirmed_at TEXT, superseded_at TEXT NULL, created_at TEXT`
 
-同实体同`fact_key`最多一条`is_current=1`。
+状态为current/historical。部分唯一索引保证同实体同`fact_key`最多一条current；作者确认新值时，旧current在同一事务内转为historical并记录`superseded_at`。Core仅接受author权限，拒绝AI直接写入Canon。
+
+#### `scene_beat_entities`
+
+`project_id TEXT FK, scene_beat_id TEXT FK, entity_id TEXT FK, role TEXT, created_at TEXT`
+
+主键为`(scene_beat_id, entity_id, role)`。SceneBeat与Entity均使用包含`project_id`的复合外键，跨项目引用在SQLite层阻断。角色为character/location/participant/setting/subject/related。
 
 #### `entity_states`
 
@@ -380,6 +386,8 @@ RHY结果为P3建议级，不写入阻断严重度。
 `0010_project_brief_outline.sql`建立`project_briefs`与`plot_nodes`。ProjectBrief按项目唯一保存；PlotNode使用自引用父级、64位整数orderKey、同级唯一顺序，并通过`(parent_id, project_id)`复合外键阻断跨项目挂接。规划事务不写Draft、Version或Candidate。
 
 `0011_scene_beats.sql`建立`scene_beats`与`scene_beat_block_links`。SceneBeat按章节保存目标、冲突、预期结果、类型、字数比例、必选标记、PlotNode与预留实体UUID引用；正文关联只指向DraftBlock，删除SceneBeat会清理关联，正文表不会被SceneBeat级联删除。跨章规划移动不改Draft；正文移动继续走M2-04恢复点、Patch、Revision、Hash与LockGuard链路。
+
+`0012_entity_canon.sql`建立`entities`、`canon_facts`与`scene_beat_entities`，项目Schema升级为12。Entity支持别名、摘要、归档；CanonFact保留current/historical完整账本；跨项目SceneBeat引用、重复current和带引用永久删除均由数据库与Core双层阻断。
 
 拆章和跨章移动保留被移动块的`logicalBlockId`，源/目标Draft分别写入`draft_patch_log`并递增一次Revision。合章将源正文复制到目标Draft后把源章移入回收站，因而原章仍可恢复；历史Version/VersionBlock始终不更改。
 

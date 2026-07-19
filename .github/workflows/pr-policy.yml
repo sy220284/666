@@ -179,10 +179,10 @@ jobs:
           ]) {
             assert.match(trigger, new RegExp(`^\\s*- ${name}$`, 'mu'));
           }
-          assert.match(workflow, /group: automerge-main/u);
-          assert.match(workflow, /cancel-in-progress: false/u);
+          assert.match(workflow, /group: automerge-\$\{\{ github\.event\.workflow_run\.head_sha \}\}/u);
+          assert.match(workflow, /cancel-in-progress: true/u);
           assert.match(workflow, /automerge-base-gate\.mjs/u);
-          assert.match(workflow, /final-closeout\.patch/u);
+          assert.doesNotMatch(workflow, /CLOSEOUT_TRIGGER|tmp_closeout|final-closeout\.patch/u);
           assert.match(quality, /static-failure-diagnostics/u);
           assert.match(mainVerification, /modeAwareChecksState/u);
           assert.match(mainVerification, /nextPagePath/u);

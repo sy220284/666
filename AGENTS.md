@@ -66,7 +66,7 @@ Stage rules:
 - M1 must deliver a usable non-AI writing product: project, volume/chapter, editor, autosave, version, TXT/Markdown transfer, and recovery.
 - Do not count future AI schemas, prompts, or domain placeholders as completed product progress.
 - Do not use a table, command, model, recovery mechanism, or UI state before its upstream task is Verified. In `implementation-mainline` mode only, an upstream Implemented task may satisfy a coding dependency; it does not satisfy acceptance, release, or Verified claims.
-- Every user-facing task includes a minimum usable UI. M7 integrates and unifies; it is not the first time business functions become operable.
+- Every user-facing task includes a minimum usable UI. M3-07 through M3-10 migrate the Renderer to the frozen React/Tiptap/Zustand architecture before M4; M7 integrates and unifies rather than rewriting the foundation.
 - Shared foundations such as recovery, FTS, Candidate, Prompt, and backup are implemented once and reused.
 - V1.5 remains separate and must not block V1.0.
 

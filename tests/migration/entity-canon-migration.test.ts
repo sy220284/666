@@ -110,7 +110,17 @@ describe('M3-03 Entity and Canon migration', () => {
             )
             .run(randomUUID(), projectId, entityId, timestamp, timestamp),
         ),
-      ).rejects.toThrow(/UNIQUE constraint failed/u);
+      ).rejects.toMatchObject({ code: 'DATABASE_WRITE_FAILED' });
+      expect(
+        database.read(
+          (connection) =>
+            connection
+              .prepare(
+                "SELECT COUNT(*) AS total FROM canon_facts WHERE entity_id = ? AND fact_key = 'identity' AND status = 'current'",
+              )
+              .get(entityId)?.total,
+        ),
+      ).toBe(1n);
 
       await expect(
         database.write(randomUUID(), (connection) =>
@@ -122,7 +132,15 @@ describe('M3-03 Entity and Canon migration', () => {
             )
             .run(projectId, sceneBeatId, foreignEntityId, timestamp),
         ),
-      ).rejects.toThrow(/FOREIGN KEY constraint failed/u);
+      ).rejects.toMatchObject({ code: 'DATABASE_WRITE_FAILED' });
+      expect(
+        database.read(
+          (connection) =>
+            connection
+              .prepare('SELECT COUNT(*) AS total FROM scene_beat_entities')
+              .get()?.total,
+        ),
+      ).toBe(0n);
       expect(database.foreignKeyCheck()).toEqual([]);
     } finally {
       await database.close();

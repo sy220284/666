@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -6,6 +7,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  assertEvidenceHead,
+  assertEvidenceSourceCommit,
   assertFinalEvidenceSemantics,
   REQUIRED_EVIDENCE_FILES,
   validateTaskEvidence,
@@ -15,6 +18,27 @@ const temporaryDirectories: string[] = [];
 
 function hash(content: Buffer | string): string {
   return createHash('sha256').update(content).digest('hex');
+}
+
+function git(root: string, ...args: string[]): string {
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+}
+
+async function gitFixture() {
+  const root = await mkdtemp(path.join(tmpdir(), 'worldforge-evidence-head-'));
+  temporaryDirectories.push(root);
+  git(root, 'init');
+  git(root, 'config', 'user.email', 'ci@example.invalid');
+  git(root, 'config', 'user.name', 'CI Fixture');
+  await writeFile(path.join(root, 'source.txt'), 'source\n');
+  git(root, 'add', 'source.txt');
+  git(root, 'commit', '-m', 'source');
+  const sourceCommit = git(root, 'rev-parse', 'HEAD');
+  await writeFile(path.join(root, 'evidence.txt'), 'evidence\n');
+  git(root, 'add', 'evidence.txt');
+  git(root, 'commit', '-m', 'evidence');
+  const head = git(root, 'rev-parse', 'HEAD');
+  return { root, sourceCommit, head };
 }
 
 async function evidenceFixture() {
@@ -91,6 +115,21 @@ describe('evidence policy', () => {
     await expect(validateTaskEvidence(restored.taskId, restored.root)).rejects.toThrow(
       'evidence contains unlisted files: unlisted.txt',
     );
+  });
+
+  it('binds validation to the exact checked-out PR Head and a committed ancestor', async () => {
+    const fixture = await gitFixture();
+    expect(assertEvidenceHead(fixture.head, fixture.root)).toBe(fixture.head);
+    expect(() =>
+      assertEvidenceSourceCommit('M9-99', fixture.sourceCommit, fixture.head, fixture.root),
+    ).not.toThrow();
+    expect(() => assertEvidenceHead('0'.repeat(40), fixture.root)).toThrow('checkout SHA mismatch');
+    expect(() =>
+      assertEvidenceSourceCommit('M9-99', 'working-tree', fixture.head, fixture.root),
+    ).toThrow('committed source revision');
+    expect(() =>
+      assertEvidenceSourceCommit('M9-99', fixture.head, fixture.sourceCommit, fixture.root),
+    ).toThrow('not an ancestor');
   });
 });
 

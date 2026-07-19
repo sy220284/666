@@ -1,63 +1,42 @@
-name: Temporary Governance Repair
+name: Temporary Governance Workflow Export
 
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
     paths:
-      - .github/governance/tmp-governance-repair.mjs
-      - .github/governance/tmp-governance-lint-fix.mjs
+      - .github/governance/tmp-workflow-export.mjs
       - .github/workflows/tmp-governance-repair.yml
 
 permissions:
-  actions: write
-  contents: write
-  pull-requests: read
+  contents: read
 
 concurrency:
-  group: temporary-governance-repair-${{ github.event.pull_request.number }}
+  group: temporary-governance-workflow-export-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
-  repair:
+  export:
     if: ${{ github.head_ref == 'fix/governance-controlled-merge-transition' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply governance repair
-        run: node .github/governance/tmp-governance-repair.mjs
-      - name: Apply generated lint cleanup
-        run: node .github/governance/tmp-governance-lint-fix.mjs
-      - name: Synchronize task mirror
-        run: node scripts/taskctl.mjs sync
-      - name: Remove temporary generators before validation
-        run: git rm .github/governance/tmp-governance-repair.mjs .github/governance/tmp-governance-lint-fix.mjs
-      - name: Format
-        run: pnpm format
-      - name: Lint
-        run: pnpm lint
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: Governance unit tests
-        run: pnpm exec vitest run tests/unit/task-control.test.ts tests/unit/task-ordering.test.ts
-      - name: Governance self-tests
-        run: |
-          node .github/governance/automerge-base-gate.mjs self-test
-          node .github/governance/task-transition-policy.mjs self-test
-          node scripts/taskctl.mjs validate
-      - name: Export generated workflow set
+      - name: Generate target workflows
+        run: node .github/governance/tmp-workflow-export.mjs
+      - name: Format target workflows
+        run: pnpm exec prettier --write .github/workflows/automerge.yml .github/workflows/evidence.yml .github/workflows/pr-policy.yml .github/workflows/task-governance.yml .github/workflows/post-merge-verification.yml
+      - name: Export target workflows
         uses: actions/upload-artifact@v7
         with:
           name: controlled-merge-workflows
@@ -69,38 +48,3 @@ jobs:
             .github/workflows/post-merge-verification.yml
           if-no-files-found: error
           retention-days: 7
-      - name: Repair missing PR 68 Main Verification
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFile } from 'node:fs/promises';
-          import { ensureMainVerification } from './scripts/automerge.mjs';
-          const config = JSON.parse(await readFile('.github/governance/required-checks.json', 'utf8'));
-          await ensureMainVerification(
-            'sy220284',
-            '666',
-            config,
-            '24f8dd933af008c68f143869a4661f463d1e5d0f',
-            68,
-            '2ec055e38b39870bfafc2d459d5bea2ca1ede541',
-          );
-          NODE
-      - name: Publish non-workflow governance files
-        env:
-          TARGET_BRANCH: ${{ github.head_ref }}
-        run: |
-          set -euo pipefail
-          git restore --source=HEAD -- \
-            .github/workflows/automerge.yml \
-            .github/workflows/evidence.yml \
-            .github/workflows/pr-policy.yml \
-            .github/workflows/task-governance.yml
-          rm -f .github/workflows/post-merge-verification.yml
-          if ! git diff --quiet || ! git diff --cached --quiet; then
-            git add -A
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'fix(governance): harden task transitions and verification dispatch'
-            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
-          fi

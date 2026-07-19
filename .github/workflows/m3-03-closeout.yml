@@ -36,15 +36,18 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Prepare documentation and deferred evidence
         run: node docs/m3-03-closeout.mjs
-      - name: Revalidate implementation
-        shell: bash
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Build Renderer
+        run: pnpm --filter @worldforge/renderer build
+      - name: Entity Canon integration
+        run: pnpm exec vitest run tests/integration/entity-canon.test.ts
+      - name: Migration suite
+        run: pnpm test:migration
+      - name: Validate deferred evidence
         run: |
-          set -euo pipefail
-          pnpm lint
-          pnpm typecheck
-          pnpm --filter @worldforge/renderer build
-          pnpm exec vitest run tests/integration/entity-canon.test.ts
-          pnpm test:migration
           node --input-type=module <<'NODE'
           import { validateTaskEvidence } from './scripts/evidence-policy.mjs';
           await validateTaskEvidence('M3-03', process.cwd(), { final: false });

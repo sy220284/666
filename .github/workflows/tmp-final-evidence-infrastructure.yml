@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   apply:
@@ -18,7 +18,7 @@ jobs:
         with:
           ref: work/m1-08-recovery-readonly-foundation
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
@@ -281,11 +281,17 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
 
-      - name: Commit infrastructure
-        shell: bash
+      - name: Package generated files
         run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/workflows/quality-core.yml scripts/evidence-policy.mjs scripts/taskctl.mjs tests/unit/evidence-policy.test.ts docs/tasks/ACTIVE_TASK.json docs/tasks/ACTIVE_TASK.md
-          git commit -m "ci(evidence): persist successful acceptance and verify tasks"
-          git push origin HEAD:work/m1-08-recovery-readonly-foundation
+          tar -czf /tmp/final-evidence-infrastructure.tar.gz \
+            .github/workflows/quality-core.yml \
+            scripts/evidence-policy.mjs \
+            scripts/taskctl.mjs \
+            tests/unit/evidence-policy.test.ts \
+            docs/tasks/ACTIVE_TASK.json \
+            docs/tasks/ACTIVE_TASK.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: final-evidence-infrastructure
+          path: /tmp/final-evidence-infrastructure.tar.gz
+          retention-days: 1

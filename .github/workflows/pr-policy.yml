@@ -32,6 +32,8 @@ jobs:
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate permanent CI policy
         run: node scripts/ci-policy.mjs
+      - name: Reject tracked root scratch artifacts
+        run: test ! -e tmp
       - name: Self-test workflow order guards
         run: |
           node .github/governance/automerge-base-gate.mjs self-test
@@ -163,10 +165,11 @@ jobs:
             'APPROVED',
           );
 
-          const [workflow, quality, mainVerification] = await Promise.all([
+          const [workflow, quality, mainVerification, prPolicy] = await Promise.all([
             readFile('.github/workflows/automerge.yml', 'utf8'),
             readFile('.github/workflows/quality.yml', 'utf8'),
             readFile('scripts/main-verification.mjs', 'utf8'),
+            readFile('.github/workflows/pr-policy.yml', 'utf8'),
           ]);
           const trigger = workflow.match(/workflows:\s*\n([\s\S]*?)\n\s*types:/u)?.[1] ?? '';
           for (const name of [
@@ -186,4 +189,6 @@ jobs:
           assert.match(quality, /static-failure-diagnostics/u);
           assert.match(mainVerification, /modeAwareChecksState/u);
           assert.match(mainVerification, /nextPagePath/u);
+          assert.match(prPolicy, /name: Reject tracked root scratch artifacts/u);
+          assert.match(prPolicy, /run: test ! -e tmp/u);
           NODE

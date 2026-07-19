@@ -23,68 +23,55 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
-
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-
-      - name: Apply M3-04 wiring and documentation patches
-        run: |
-          python3 .github/m3-04/apply-core.py
-          python3 .github/m3-04/apply-ui.py
-          python3 .github/m3-04/apply-schema-tests.py
-          python3 .github/m3-04/apply-db-docs.py
-          python3 .github/m3-04/apply-product-docs.py
-          pnpm task:sync
-
+      - name: Apply Core Main Preload wiring
+        run: python3 .github/m3-04/apply-core.py
+      - name: Apply Renderer wiring
+        run: python3 .github/m3-04/apply-ui.py
+      - name: Update dynamic schema tests
+        run: python3 .github/m3-04/apply-schema-tests.py
+      - name: Update database documentation
+        run: python3 .github/m3-04/apply-db-docs.py
+      - name: Update IPC UI and traceability documentation
+        run: python3 .github/m3-04/apply-product-docs.py
+      - name: Synchronize task mirrors
+        run: pnpm task:sync
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-
       - name: Format implementation
         run: pnpm format
-
       - name: Lint
         run: pnpm lint
-
       - name: Typecheck
         run: pnpm typecheck
-
       - name: Build Renderer
         run: pnpm --filter @worldforge/renderer build
-
       - name: Continuity integration tests
         run: pnpm exec vitest run tests/integration/continuity.test.ts
-
       - name: Continuity migration tests
         run: pnpm exec vitest run tests/migration/continuity-migration.test.ts
-
       - name: Continuity security tests
         run: pnpm exec vitest run tests/security/continuity-contract.test.ts
-
       - name: Full integration suite
         run: pnpm test:integration
-
       - name: Full migration suite
         run: pnpm test:migration
-
       - name: Full security suite
         run: pnpm test:security
-
       - name: Validate task mirrors
         run: pnpm task:validate
-
       - name: Capture generated implementation diff
         if: always()
         run: |
           git status --short > /tmp/m3-04-status.txt
           git diff --stat > /tmp/m3-04-diff-stat.txt
           git diff --check > /tmp/m3-04-diff-check.txt || true
-
       - name: Upload implementation diagnostics
         if: always()
         uses: actions/upload-artifact@v4

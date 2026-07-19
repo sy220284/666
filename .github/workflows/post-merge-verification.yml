@@ -27,7 +27,45 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Assert clean trusted main checkout
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Idempotently schedule Main Verification
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node .github/governance/post-merge-verification.mjs
+      - name: Assert dispatcher did not mutate tracked files
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+
+  reconcile-ruleset:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Assert clean trusted main checkout
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Idempotently apply and verify native main ruleset
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          RULESET_REPORT: artifacts/repository-governance/report.json
+          RULESET_STRICT: true
+        run: node scripts/ruleset-policy.mjs apply
+      - name: Assert ruleset reconciliation did not mutate tracked files
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload reconciled ruleset report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: post-merge-ruleset-report
+          path: artifacts/repository-governance/
+          if-no-files-found: error
+          retention-days: 30

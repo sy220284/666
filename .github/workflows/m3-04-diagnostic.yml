@@ -1,0 +1,50 @@
+name: M3-04 Generator Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  diagnose:
+    if: ${{ github.head_ref == 'work/m3-04-state-timeline-knowledge' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Reproduce generator and publish exact failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/m3-04-implementation-runner.yml').read_text()
+          start = source.index('          from __future__ import annotations')
+          end = source.index('          PY\n', start)
+          lines = source[start:end].splitlines()
+          Path('/tmp/m3-04-generator.py').write_text('\n'.join(line[10:] for line in lines) + '\n')
+          PY
+          git fetch origin main
+          git reset --hard origin/main
+          set +e
+          python3 /tmp/m3-04-generator.py > /tmp/m3-04-generator.log 2>&1
+          status=$?
+          set -e
+          {
+            echo '### M3-04 generator diagnostic'
+            echo '```text'
+            tail -80 /tmp/m3-04-generator.log
+            echo '```'
+          } > /tmp/m3-04-comment.md
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --input /tmp/m3-04-comment.md -H 'Content-Type: text/plain' || \
+            gh pr comment "$PR_NUMBER" --body-file /tmp/m3-04-comment.md
+          exit "$status"

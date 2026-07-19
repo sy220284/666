@@ -159,7 +159,9 @@ async function main() {
   const githubEntries = await readdir(githubDirectory, { withFileTypes: true });
   for (const entry of githubEntries) {
     if (entry.isDirectory() && /^m\d+-/iu.test(entry.name)) {
-      errors.push(`Task-specific GitHub automation directory must be removed: .github/${entry.name}`);
+      errors.push(
+        `Task-specific GitHub automation directory must be removed: .github/${entry.name}`,
+      );
     }
   }
 
@@ -385,15 +387,20 @@ async function main() {
     'performance',
     'evidence',
   ];
-  if (checks.mergeMethod !== 'squash') errors.push('required-checks.json: mergeMethod must be squash');
+  if (checks.mergeMethod !== 'squash')
+    errors.push('required-checks.json: mergeMethod must be squash');
   if (checks.mainVerificationWorkflow !== 'main-verification.yml') {
     errors.push('required-checks.json: main verification workflow must be main-verification.yml');
   }
   if ('deleteHeadBranchAfterMerge' in checks) {
-    errors.push('required-checks.json: branch deletion is owned by Branch Hygiene, not merge config');
+    errors.push(
+      'required-checks.json: branch deletion is owned by Branch Hygiene, not merge config',
+    );
   }
   if (JSON.stringify(checks.requiredChecks) !== JSON.stringify(expectedChecks)) {
-    errors.push('required-checks.json: requiredChecks must exactly match the permanent Ruleset checks');
+    errors.push(
+      'required-checks.json: requiredChecks must exactly match the permanent Ruleset checks',
+    );
   }
 
   if (errors.length > 0) throw new Error(errors.join('\n'));

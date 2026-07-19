@@ -37,18 +37,30 @@ jobs:
       - name: Apply backend wiring
         run: node docs/m3-03-wire-backend.mjs
       - name: Format and validate backend slice
+        shell: bash
         run: |
+          set -o pipefail
           pnpm format
-          pnpm typecheck
-          pnpm exec vitest run tests/integration/entity-canon.test.ts
-          pnpm test:migration
+          {
+            pnpm typecheck
+            pnpm exec vitest run tests/integration/entity-canon.test.ts
+            pnpm test:migration
+          } 2>&1 | tee docs/m3-03-validation.log
+      - name: Upload backend diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m3-03-backend-diagnostics
+          path: docs/m3-03-validation.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Commit audited backend slice
         env:
-          GITHUB_TOKEN: ${{ github.token }}
           TARGET_BRANCH: ${{ github.head_ref }}
         run: |
           git rm docs/m3-03-wire-backend.mjs .github/workflows/m3-03-backend-apply.yml
-          git add migrations/project packages/domain packages/contracts packages/core-service tests/integration docs/tasks/ACTIVE_TASK.json
+          rm -f docs/m3-03-validation.log docs/.m3-03-pr-trigger*
+          git add -A
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat(M3-03): implement Entity and static Canon foundation'

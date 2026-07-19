@@ -96,22 +96,28 @@ describe('task control', () => {
     ]);
   });
 
-  it('accepts paths from either side of an authorized task transition', () => {
+  it('uses the completed task snapshot during an implementation transition', () => {
     const state = {
-      activeTask: { allowedPaths: ['packages/new/'], forbiddenPaths: [] },
+      activeTask: { id: 'M0-02', allowedPaths: ['packages/new/'], forbiddenPaths: [] },
+      lastImplementedTask: {
+        id: 'M0-01',
+        nextTaskId: 'M0-02',
+        allowedPaths: ['packages/previous/', 'docs/tasks/M0/M0-02.md'],
+        forbiddenPaths: [],
+      },
     };
     const baseState = {
-      activeTask: { allowedPaths: ['packages/previous/'], forbiddenPaths: [] },
+      activeTask: { id: 'M0-01', allowedPaths: ['stale/'], forbiddenPaths: [] },
     };
     expect(
       validateChangedPathsForTransition(
-        ['packages/previous/index.ts', 'packages/new/index.ts'],
+        ['packages/previous/index.ts', 'docs/tasks/M0/M0-02.md'],
         state,
         baseState,
       ),
     ).toEqual([]);
-    expect(validateChangedPathsForTransition(['outside.ts'], state, baseState)).toEqual([
-      'outside.ts: outside active task allowed paths',
+    expect(validateChangedPathsForTransition(['packages/new/index.ts'], state, baseState)).toEqual([
+      'packages/new/index.ts: outside active task allowed paths',
     ]);
   });
 

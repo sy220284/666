@@ -297,13 +297,12 @@ async function verifyTask(taskId) {
   const refreshedIndex = parseTaskIndex(verifiedIndex);
   const next = findNextReadyTask(refreshedIndex, { allowImplemented: true });
   if (!next) throw new Error('No implementation-ready Planned task remains');
-  const previousSource = state.activeTask.source;
   state.activeTask = null;
   await Promise.all([
     writeFile(indexPath, verifiedIndex, 'utf8'),
     writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8'),
   ]);
-  await activate(next.id, [previousSource]);
+  await activate(next.id);
   console.log(`Verified active task ${taskId}; advanced to ${next.id}.`);
 }
 
@@ -417,10 +416,9 @@ async function close() {
   const next = findNextReadyTask(refreshedIndex);
   if (!next) throw new Error('No dependency-ready Planned task remains');
 
-  const previousSource = state.activeTask.source;
   state.activeTask = null;
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-  await activate(next.id, [previousSource]);
+  await activate(next.id);
   console.log(`Closed ${state.lastVerifiedTask.id}; continuous mode advanced to ${next.id}.`);
 }
 
@@ -452,11 +450,17 @@ async function advanceImplementation() {
   if (!next) throw new Error('No implementation-ready Planned task remains');
 
   const implementedAt = new Date().toISOString();
-  const previousSource = state.activeTask.source;
+  const previousTask = state.activeTask;
+  const transitionAllowedPaths = [...new Set([...previousTask.allowedPaths, next.source])];
   state.lastImplementedTask = {
-    id: state.activeTask.id,
+    id: previousTask.id,
     commit,
     implementedAt,
+    source: previousTask.source,
+    branch: previousTask.branch,
+    nextTaskId: next.id,
+    allowedPaths: transitionAllowedPaths,
+    forbiddenPaths: [...(previousTask.forbiddenPaths ?? [])],
   };
   state.deferredVerification = [
     ...(state.deferredVerification ?? []),
@@ -479,9 +483,9 @@ async function advanceImplementation() {
   ]);
   state.activeTask = null;
   await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-  await activate(next.id, [previousSource]);
+  await activate(next.id);
   console.log(
-    `Recorded ${state.lastImplementedTask.id} as Implemented with deferred verification; advanced to ${next.id}.`,
+    `Recorded ${state.lastImplementedTask.id} as Implemented with a transition snapshot; advanced to ${next.id}.`,
   );
 }
 

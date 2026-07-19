@@ -37,7 +37,19 @@
       "docs/tasks/M3/M3-03_ENTITY_CANON.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
       "docs/test-evidence/M1-08/",
-      "scripts/taskctl.mjs"
+      "scripts/taskctl.mjs",
+      ".github/workflows/quality-core.yml",
+      "scripts/evidence-policy.mjs",
+      "tests/unit/evidence-policy.test.ts",
+      "docs/test-evidence/M0-05/",
+      "docs/test-evidence/M2-01/",
+      "docs/test-evidence/M2-02/",
+      "docs/test-evidence/M2-03/",
+      "docs/test-evidence/M2-04/",
+      "docs/tasks/M2/M2-01_LOCK_GUARD.md",
+      "docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md",
+      "docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md",
+      "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [

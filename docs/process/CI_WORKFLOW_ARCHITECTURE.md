@@ -12,7 +12,7 @@
 | `Evidence` | PR→main | 校验发生变化的任务证据包 | `evidence` |
 | `Controlled Merge` | 任一永久检查成功完成 | 聚合当前Head SHA的六项永久检查，复核Ready全量代次并squash合并 | 否 |
 | `Main Verification` | Controlled Merge或合并事件幂等调度 | 在最终main SHA上重新执行完整Linux质量门并发布最终提交状态 | `main-verification` |
-| `Repository Governance` | 每周、手动 | 审计main原生Ruleset是否缺失或漂移 | 否 |
+| `Repository Governance` | 每周、手动 | 审计自动化清单和main原生Ruleset是否缺失或漂移 | 否 |
 | `Branch Hygiene` | 每周、手动 | 默认报告分支状态；手动apply时删除确定安全的分支 | 否 |
 | `Release` | 手动 | 发布门、三平台构建打包和Release | 否 |
 
@@ -107,6 +107,20 @@ Main Verification负责：
 
 `Repository Governance`核验规则集状态、默认分支目标、删除与强推保护、线性历史、PR、会话解决、严格状态检查、精确检查名称和空Bypass列表。
 
-## 10. Release
+## 10. 永久自动化清单
+
+`.github/workflows/`和`.github/governance/`采用封闭白名单，不允许通过增加一个名称看似正常的额外文件绕过“永久工作流必须通用”的约束。
+
+`PR Policy`与`Repository Governance`共同执行`scripts/automation-layout-policy.mjs`，要求：
+
+1. 工作流目录只能包含本文件第1节列出的永久工作流及其可复用核心；
+2. Governance目录只能包含已登记的通用检查、配置和调度辅助文件；
+3. 工作流与治理辅助代码不得硬编码任务ID、任务分支、固定PR号或固定PR分支；
+4. 新增永久能力必须在同一治理PR中显式更新清单、架构文档和策略测试；
+5. 一次性恢复、迁移或Closeout逻辑不得长期留在默认分支。
+
+自动化清单失败属于治理硬失败，不能以任务完成、历史兼容或工作流当前不触发为理由豁免。
+
+## 11. Release
 
 Release只允许手动触发，要求main引用、发布任务门、完整Quality、三平台Build后Package、独立发布环境和SHA-256资产清单。

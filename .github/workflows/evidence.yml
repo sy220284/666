@@ -19,13 +19,19 @@ jobs:
     timeout-minutes: 10
     env:
       EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Assert clean working tree before evidence validation
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Validate every changed task evidence package
         run: node scripts/evidence-policy.mjs
+      - name: Assert clean working tree after evidence validation
+        run: node .github/governance/assert-clean-tree.mjs

@@ -246,7 +246,9 @@ describe('M3-03 Entity and static Canon', () => {
         role: 'participant',
       });
 
-      expect(harness.canon.previewDelete({ projectId: project.projectId, entityId: entity.id })).toMatchObject({
+      expect(
+        harness.canon.previewDelete({ projectId: project.projectId, entityId: entity.id }),
+      ).toMatchObject({
         archived: false,
         sceneBeatReferenceCount: 1,
         canDelete: false,
@@ -275,7 +277,9 @@ describe('M3-03 Entity and static Canon', () => {
         confirmName: entity.name,
       });
       expect(deleted).toEqual({ projectId: project.projectId, entityId: entity.id, deleted: true });
-      expect(harness.canon.list({ projectId: project.projectId, includeArchived: true }).entities).toEqual([]);
+      expect(
+        harness.canon.list({ projectId: project.projectId, includeArchived: true }).entities,
+      ).toEqual([]);
     } finally {
       await closeHarness(harness);
     }

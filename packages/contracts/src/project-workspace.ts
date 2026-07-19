@@ -19,6 +19,7 @@ import {
   CoreProjectPlanningResultSchema,
 } from './project-planning.js';
 import { CoreSceneBeatOperationSchema, CoreSceneBeatResultSchema } from './scene-beat.js';
+import { CoreEntityCanonOperationSchema, CoreEntityCanonResultSchema } from './entity-canon.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -184,6 +185,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreProjectStructureOperationSchema,
   CoreProjectPlanningOperationSchema,
   CoreSceneBeatOperationSchema,
+  CoreEntityCanonOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
   CoreCandidateApplyOperationSchema,
@@ -221,6 +223,7 @@ export const CoreProjectResultSchema = z.union([
   CoreProjectStructureResultSchema,
   CoreProjectPlanningResultSchema,
   CoreSceneBeatResultSchema,
+  CoreEntityCanonResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
   CoreCandidateApplyResultSchema,

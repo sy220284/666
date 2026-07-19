@@ -46,10 +46,12 @@ export function normalizeEntityAliases(values: readonly string[]): string[] {
 }
 
 export function normalizeFactKey(value: string): string {
-  const normalized = normalizedText(value)
-    .toLocaleLowerCase('en-US')
-    .replace(/\s+/gu, '-');
-  if (normalized.length < 1 || normalized.length > 120 || /[\u0000-\u001f\u007f]/u.test(normalized)) {
+  const normalized = normalizedText(value).toLocaleLowerCase('en-US').replace(/\s+/gu, '-');
+  if (
+    normalized.length < 1 ||
+    normalized.length > 120 ||
+    /[\u0000-\u001f\u007f]/u.test(normalized)
+  ) {
     throw new Error('CANON_FACT_KEY_INVALID');
   }
   return normalized;

@@ -146,11 +146,7 @@ function assertNameAvailable(
   }
 }
 
-function entityRow(
-  connection: DatabaseSync,
-  projectId: string,
-  entityId: string,
-): EntityRow {
+function entityRow(connection: DatabaseSync, projectId: string, entityId: string): EntityRow {
   const row = connection
     .prepare(
       `SELECT id, project_id AS projectId, entity_type AS entityType, name,
@@ -227,10 +223,7 @@ function parseEntity(connection: DatabaseSync, row: EntityRow): Entity {
   });
 }
 
-function readCatalog(
-  connection: DatabaseSync,
-  input: EntityListInput,
-): EntityCatalog {
+function readCatalog(connection: DatabaseSync, input: EntityListInput): EntityCatalog {
   assertProject(connection, input.projectId);
   const rows = connection
     .prepare(
@@ -261,10 +254,12 @@ export class EntityCanonService {
 
   list(input: EntityListInput): EntityCatalog {
     const valid = EntityListInputSchema.parse(input);
-    return this.#workspace.readProject(valid.projectId, (connection) => readCatalog(connection, valid));
+    return this.#workspace.readProject(valid.projectId, (connection) =>
+      readCatalog(connection, valid),
+    );
   }
 
-  create(requestId: string, input: EntityCreateInput): Promise<EntityCatalog> {
+  async create(requestId: string, input: EntityCreateInput): Promise<EntityCatalog> {
     const valid = EntityCreateInputSchema.parse(input);
     authorOnly(valid.authority);
     const name = normalizeEntityName(valid.name);
@@ -294,7 +289,7 @@ export class EntityCanonService {
     });
   }
 
-  update(requestId: string, input: EntityUpdateInput): Promise<EntityCatalog> {
+  async update(requestId: string, input: EntityUpdateInput): Promise<EntityCatalog> {
     const valid = EntityUpdateInputSchema.parse(input);
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
@@ -327,7 +322,7 @@ export class EntityCanonService {
     });
   }
 
-  archive(requestId: string, input: EntityArchiveInput): Promise<EntityCatalog> {
+  async archive(requestId: string, input: EntityArchiveInput): Promise<EntityCatalog> {
     const valid = EntityArchiveInputSchema.parse(input);
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
@@ -346,14 +341,17 @@ export class EntityCanonService {
     });
   }
 
-  setFact(requestId: string, input: CanonFactSetInput): Promise<EntityCatalog> {
+  async setFact(requestId: string, input: CanonFactSetInput): Promise<EntityCatalog> {
     const valid = CanonFactSetInputSchema.parse(input);
     authorOnly(valid.authority);
     const factKey = normalizeFactKey(valid.factKey);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
       const entity = entityRow(connection, valid.projectId, valid.entityId);
       if (entity.status !== 'active') {
-        throw new EntityCanonServiceError('ENTITY_CONFLICT', 'Archived Entities cannot receive new facts.');
+        throw new EntityCanonServiceError(
+          'ENTITY_CONFLICT',
+          'Archived Entities cannot receive new facts.',
+        );
       }
       const now = this.#clock.now().toISOString();
       connection
@@ -386,19 +384,25 @@ export class EntityCanonService {
     });
   }
 
-  linkSceneBeat(requestId: string, input: SceneBeatEntityLinkInput): Promise<EntityCatalog> {
+  async linkSceneBeat(requestId: string, input: SceneBeatEntityLinkInput): Promise<EntityCatalog> {
     const valid = SceneBeatEntityLinkInputSchema.parse(input);
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
       const entity = entityRow(connection, valid.projectId, valid.entityId);
       if (entity.status !== 'active') {
-        throw new EntityCanonServiceError('ENTITY_CONFLICT', 'Archived Entities cannot receive references.');
+        throw new EntityCanonServiceError(
+          'ENTITY_CONFLICT',
+          'Archived Entities cannot receive references.',
+        );
       }
       const beat = connection
         .prepare('SELECT 1 FROM scene_beats WHERE id = ? AND project_id = ? AND deleted_at IS NULL')
         .get(valid.sceneBeatId, valid.projectId);
       if (!beat) {
-        throw new EntityCanonServiceError('ENTITY_NOT_FOUND', 'The active SceneBeat was not found.');
+        throw new EntityCanonServiceError(
+          'ENTITY_NOT_FOUND',
+          'The active SceneBeat was not found.',
+        );
       }
       connection
         .prepare(
@@ -427,12 +431,15 @@ export class EntityCanonService {
           .get(valid.entityId)?.total,
       );
       const canonFactCount = count(
-        connection.prepare('SELECT COUNT(*) AS total FROM canon_facts WHERE entity_id = ?').get(valid.entityId)
-          ?.total,
+        connection
+          .prepare('SELECT COUNT(*) AS total FROM canon_facts WHERE entity_id = ?')
+          .get(valid.entityId)?.total,
       );
       const blockers: string[] = [];
-      if (entity.status !== 'archived') blockers.push('Archive the Entity before permanent deletion.');
-      if (sceneBeatReferenceCount > 0) blockers.push('Remove SceneBeat references before permanent deletion.');
+      if (entity.status !== 'archived')
+        blockers.push('Archive the Entity before permanent deletion.');
+      if (sceneBeatReferenceCount > 0)
+        blockers.push('Remove SceneBeat references before permanent deletion.');
       return EntityDeletePreviewSchema.parse({
         projectId: valid.projectId,
         entityId: valid.entityId,
@@ -446,7 +453,7 @@ export class EntityCanonService {
     });
   }
 
-  delete(requestId: string, input: EntityDeleteInput): Promise<EntityDeleteResult> {
+  async delete(requestId: string, input: EntityDeleteInput): Promise<EntityDeleteResult> {
     const valid = EntityDeleteInputSchema.parse(input);
     authorOnly(valid.authority);
     const preview = this.previewDelete({ projectId: valid.projectId, entityId: valid.entityId });
@@ -454,11 +461,14 @@ export class EntityCanonService {
       throw new EntityCanonServiceError('ENTITY_REFERENCED', preview.blockers.join(' '));
     }
     if (normalizeEntityName(valid.confirmName) !== preview.entityName) {
-      throw new EntityCanonServiceError('ENTITY_INVALID', 'Entity name confirmation does not match.');
+      throw new EntityCanonServiceError(
+        'ENTITY_INVALID',
+        'Entity name confirmation does not match.',
+      );
     }
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
       const result = connection
-        .prepare('DELETE FROM entities WHERE id = ? AND project_id = ? AND status = \'archived\'')
+        .prepare("DELETE FROM entities WHERE id = ? AND project_id = ? AND status = 'archived'")
         .run(valid.entityId, valid.projectId);
       if (Number(result.changes) !== 1) {
         throw new EntityCanonServiceError('ENTITY_CONFLICT', 'The Entity could not be deleted.');

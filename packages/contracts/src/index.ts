@@ -130,6 +130,29 @@ import {
   type SceneBeatConvertBlocksInput,
 } from './scene-beat.js';
 import {
+  ENTITY_CANON_COMMANDS,
+  ENTITY_CANON_IPC_CHANNELS,
+  CanonFactSetCommandSchema,
+  EntityArchiveCommandSchema,
+  EntityCreateCommandSchema,
+  EntityDeleteCommandSchema,
+  EntityDeletePreviewCommandSchema,
+  EntityListCommandSchema,
+  EntityUpdateCommandSchema,
+  SceneBeatEntityLinkCommandSchema,
+  type CanonFactSetInput,
+  type EntityArchiveInput,
+  type EntityCatalog,
+  type EntityCreateInput,
+  type EntityDeleteInput,
+  type EntityDeletePreview,
+  type EntityDeletePreviewInput,
+  type EntityDeleteResult,
+  type EntityListInput,
+  type EntityUpdateInput,
+  type SceneBeatEntityLinkInput,
+} from './entity-canon.js';
+import {
   DRAFT_COMMANDS,
   DRAFT_IPC_CHANNELS,
   DraftApplyPatchCommandSchema,
@@ -185,6 +208,7 @@ export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './project-planning.js';
 export * from './scene-beat.js';
+export * from './entity-canon.js';
 export * from './draft.js';
 export * from './candidate.js';
 export * from './candidate-apply.js';
@@ -205,6 +229,7 @@ export const IPC_CHANNELS = {
   ...PROJECT_STRUCTURE_IPC_CHANNELS,
   ...PROJECT_PLANNING_IPC_CHANNELS,
   ...SCENE_BEAT_IPC_CHANNELS,
+  ...ENTITY_CANON_IPC_CHANNELS,
   ...DRAFT_IPC_CHANNELS,
   ...VERSION_IPC_CHANNELS,
   ...RECOVERY_IPC_CHANNELS,
@@ -229,6 +254,7 @@ export const APP_COMMANDS = {
   ...PROJECT_STRUCTURE_COMMANDS,
   ...PROJECT_PLANNING_COMMANDS,
   ...SCENE_BEAT_COMMANDS,
+  ...ENTITY_CANON_COMMANDS,
   ...DRAFT_COMMANDS,
   ...VERSION_COMMANDS,
   ...RECOVERY_COMMANDS,
@@ -396,6 +422,14 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   SceneBeatRestoreCommandSchema,
   SceneBeatSetBlockLinksCommandSchema,
   SceneBeatConvertBlocksCommandSchema,
+  EntityListCommandSchema,
+  EntityCreateCommandSchema,
+  EntityUpdateCommandSchema,
+  EntityArchiveCommandSchema,
+  CanonFactSetCommandSchema,
+  SceneBeatEntityLinkCommandSchema,
+  EntityDeletePreviewCommandSchema,
+  EntityDeleteCommandSchema,
   DraftOpenCommandSchema,
   DraftApplyPatchCommandSchema,
   ImportPreviewCommandSchema,
@@ -726,6 +760,20 @@ export interface WorldforgeBridge {
     readonly moveBlocks: (
       input: CrossChapterMoveExecuteInput,
     ) => Promise<CommandResult<StructureOperationResult>>;
+  };
+  readonly canon: {
+    readonly list: (input: EntityListInput) => Promise<CommandResult<EntityCatalog>>;
+    readonly create: (input: EntityCreateInput) => Promise<CommandResult<EntityCatalog>>;
+    readonly update: (input: EntityUpdateInput) => Promise<CommandResult<EntityCatalog>>;
+    readonly archive: (input: EntityArchiveInput) => Promise<CommandResult<EntityCatalog>>;
+    readonly setFact: (input: CanonFactSetInput) => Promise<CommandResult<EntityCatalog>>;
+    readonly linkSceneBeat: (
+      input: SceneBeatEntityLinkInput,
+    ) => Promise<CommandResult<EntityCatalog>>;
+    readonly previewDelete: (
+      input: EntityDeletePreviewInput,
+    ) => Promise<CommandResult<EntityDeletePreview>>;
+    readonly delete: (input: EntityDeleteInput) => Promise<CommandResult<EntityDeleteResult>>;
   };
   readonly trash: {
     readonly list: (

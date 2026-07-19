@@ -12,6 +12,7 @@ import {
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
   SCENE_BEAT_COMMANDS,
+  ENTITY_CANON_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
@@ -39,6 +40,7 @@ import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-worksp
 import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
 import { ProjectPlanningError, ProjectPlanningService } from './project-planning.js';
 import { SceneBeatService, SceneBeatServiceError } from './scene-beat.js';
+import { EntityCanonService, EntityCanonServiceError } from './entity-canon.js';
 import { StructureOperationService } from './structure-operations.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 
@@ -109,6 +111,7 @@ const recovery = new RecoveryService(projectWorkspace, {
 const projectStructure = new ProjectStructureService(projectWorkspace);
 const projectPlanning = new ProjectPlanningService(projectWorkspace);
 const sceneBeats = new SceneBeatService(projectWorkspace);
+const entityCanon = new EntityCanonService(projectWorkspace);
 const structureOperations = new StructureOperationService(projectWorkspace);
 const drafts = new DraftService(projectWorkspace);
 const candidates = new CandidateService(projectWorkspace);
@@ -270,6 +273,13 @@ function projectWorkspaceError(error: unknown): ErrorCode {
   if (error instanceof SceneBeatServiceError) {
     if (error.code === 'SCENE_BEAT_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'SCENE_BEAT_INVALID_POSITION') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
+  if (error instanceof EntityCanonServiceError) {
+    if (error.code === 'ENTITY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'ENTITY_INVALID' || error.code === 'CANON_AUTHOR_REQUIRED') {
+      return 'COMMON_INVALID_INPUT_001';
+    }
     return 'COMMON_CONFLICT_003';
   }
   if (error instanceof ProjectStructureError) {
@@ -517,6 +527,54 @@ async function executeProjectOperation(
           ok: true,
           operation: operation.operation,
           data: await sceneBeats.convertBlocks(requestId, operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.listEntities:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: entityCanon.list(operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.createEntity:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await entityCanon.create(requestId, operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.updateEntity:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await entityCanon.update(requestId, operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.archiveEntity:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await entityCanon.archive(requestId, operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.setCanonFact:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await entityCanon.setFact(requestId, operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.linkSceneBeatEntity:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await entityCanon.linkSceneBeat(requestId, operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.previewDeleteEntity:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: entityCanon.previewDelete(operation.input),
+        });
+      case ENTITY_CANON_COMMANDS.deleteEntity:
+        return CoreProjectResultSchema.parse({
+          ok: true,
+          operation: operation.operation,
+          data: await entityCanon.delete(requestId, operation.input),
         });
       case PROJECT_STRUCTURE_COMMANDS.listStructure:
         return CoreProjectResultSchema.parse({

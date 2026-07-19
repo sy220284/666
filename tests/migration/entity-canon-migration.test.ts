@@ -136,9 +136,7 @@ describe('M3-03 Entity and Canon migration', () => {
       expect(
         database.read(
           (connection) =>
-            connection
-              .prepare('SELECT COUNT(*) AS total FROM scene_beat_entities')
-              .get()?.total,
+            connection.prepare('SELECT COUNT(*) AS total FROM scene_beat_entities').get()?.total,
         ),
       ).toBe(0n);
       expect(database.foreignKeyCheck()).toEqual([]);

@@ -223,11 +223,26 @@ export const EntityDeletePreviewResultSchema = commandResult(EntityDeletePreview
 export const EntityDeleteResultEnvelopeSchema = commandResult(EntityDeleteResultSchema);
 
 export const CoreEntityCanonOperationSchema = z.discriminatedUnion('operation', [
-  z.strictObject({ operation: z.literal(ENTITY_CANON_COMMANDS.listEntities), input: EntityListInputSchema }),
-  z.strictObject({ operation: z.literal(ENTITY_CANON_COMMANDS.createEntity), input: EntityCreateInputSchema }),
-  z.strictObject({ operation: z.literal(ENTITY_CANON_COMMANDS.updateEntity), input: EntityUpdateInputSchema }),
-  z.strictObject({ operation: z.literal(ENTITY_CANON_COMMANDS.archiveEntity), input: EntityArchiveInputSchema }),
-  z.strictObject({ operation: z.literal(ENTITY_CANON_COMMANDS.setCanonFact), input: CanonFactSetInputSchema }),
+  z.strictObject({
+    operation: z.literal(ENTITY_CANON_COMMANDS.listEntities),
+    input: EntityListInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(ENTITY_CANON_COMMANDS.createEntity),
+    input: EntityCreateInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(ENTITY_CANON_COMMANDS.updateEntity),
+    input: EntityUpdateInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(ENTITY_CANON_COMMANDS.archiveEntity),
+    input: EntityArchiveInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(ENTITY_CANON_COMMANDS.setCanonFact),
+    input: CanonFactSetInputSchema,
+  }),
   z.strictObject({
     operation: z.literal(ENTITY_CANON_COMMANDS.linkSceneBeatEntity),
     input: SceneBeatEntityLinkInputSchema,
@@ -236,7 +251,10 @@ export const CoreEntityCanonOperationSchema = z.discriminatedUnion('operation', 
     operation: z.literal(ENTITY_CANON_COMMANDS.previewDeleteEntity),
     input: EntityDeletePreviewInputSchema,
   }),
-  z.strictObject({ operation: z.literal(ENTITY_CANON_COMMANDS.deleteEntity), input: EntityDeleteInputSchema }),
+  z.strictObject({
+    operation: z.literal(ENTITY_CANON_COMMANDS.deleteEntity),
+    input: EntityDeleteInputSchema,
+  }),
 ]);
 
 const coreSuccess = <Operation extends string, Data extends z.ZodType>(

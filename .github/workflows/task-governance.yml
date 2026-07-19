@@ -20,7 +20,6 @@ jobs:
       TASK_EVENT_NAME: ${{ github.event_name }}
       TASK_PR_HEAD_REF: ${{ github.head_ref }}
       TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
-      TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
     steps:
       - uses: actions/checkout@v6
         with:
@@ -31,7 +30,7 @@ jobs:
           node-version: 24
       - name: Materialize base task state
         shell: bash
-        run: git show "${TASK_BASE_REF}:docs/tasks/ACTIVE_TASK.json" > "$TASK_BASE_STATE_PATH"
+        run: git show "${TASK_BASE_REF}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
       - name: Validate active task and generated mirror
         run: node scripts/taskctl.mjs validate
       - name: Validate real PR branch
@@ -41,4 +40,6 @@ jobs:
       - name: Validate evidence structure
         run: node scripts/taskctl.mjs verify
       - name: Validate implementation transition for Ready PRs
+        env:
+          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
         run: node .github/governance/task-transition-policy.mjs

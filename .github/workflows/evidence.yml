@@ -34,4 +34,5 @@ jobs:
       - name: Validate every changed task evidence package
         run: node scripts/evidence-policy.mjs
       - name: Assert clean working tree after evidence validation
+        if: always()
         run: node .github/governance/assert-clean-tree.mjs

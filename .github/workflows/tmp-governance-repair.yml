@@ -57,6 +57,18 @@ jobs:
           node .github/governance/automerge-base-gate.mjs self-test
           node .github/governance/task-transition-policy.mjs self-test
           node scripts/taskctl.mjs validate
+      - name: Export generated workflow set
+        uses: actions/upload-artifact@v7
+        with:
+          name: controlled-merge-workflows
+          path: |
+            .github/workflows/automerge.yml
+            .github/workflows/evidence.yml
+            .github/workflows/pr-policy.yml
+            .github/workflows/task-governance.yml
+            .github/workflows/post-merge-verification.yml
+          if-no-files-found: error
+          retention-days: 7
       - name: Repair missing PR 68 Main Verification
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -85,9 +97,10 @@ jobs:
             .github/workflows/pr-policy.yml \
             .github/workflows/task-governance.yml
           rm -f .github/workflows/post-merge-verification.yml
-          git add -A
-          git status --short
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'fix(governance): harden task transitions and verification dispatch'
-          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            git add -A
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'fix(governance): harden task transitions and verification dispatch'
+            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          fi

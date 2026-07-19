@@ -42,6 +42,8 @@ jobs:
         run: node .github/governance/tmp-governance-lint-fix.mjs
       - name: Synchronize task mirror
         run: node scripts/taskctl.mjs sync
+      - name: Remove temporary generators before validation
+        run: git rm .github/governance/tmp-governance-repair.mjs .github/governance/tmp-governance-lint-fix.mjs
       - name: Format
         run: pnpm format
       - name: Lint
@@ -89,10 +91,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -f governance-lint.log
-          git rm \
-            .github/governance/tmp-governance-repair.mjs \
-            .github/governance/tmp-governance-lint-fix.mjs \
-            .github/workflows/tmp-governance-repair.yml
+          git rm .github/workflows/tmp-governance-repair.yml
           git add .
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

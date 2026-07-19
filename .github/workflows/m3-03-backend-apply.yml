@@ -38,11 +38,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Apply M3-03 wiring and migration baselines
+        shell: bash
         run: |
-          node docs/m3-03-wire-backend.mjs
-          node docs/m3-03-wire-desktop.mjs
-          node docs/m3-03-fix-async.mjs
-          node docs/m3-03-fix-migration-baselines.mjs
+          set -o pipefail
+          {
+            node docs/m3-03-wire-backend.mjs
+            node docs/m3-03-wire-desktop.mjs
+            node docs/m3-03-fix-async.mjs
+            node docs/m3-03-fix-migration-baselines.mjs
+          } 2>&1 | tee docs/m3-03-apply.log
       - name: Format and validate M3-03 slice
         shell: bash
         run: |
@@ -58,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: m3-03-backend-diagnostics
-          path: docs/m3-03-validation.log
+          path: |
+            docs/m3-03-apply.log
+            docs/m3-03-validation.log
           if-no-files-found: error
           retention-days: 7
       - name: Commit audited M3-03 foundation
@@ -66,7 +72,7 @@ jobs:
           TARGET_BRANCH: ${{ github.head_ref }}
         run: |
           git rm docs/m3-03-wire-backend.mjs docs/m3-03-wire-desktop.mjs docs/m3-03-fix-async.mjs docs/m3-03-fix-migration-baselines.mjs .github/workflows/m3-03-backend-apply.yml
-          rm -f docs/m3-03-validation.log docs/.m3-03-pr-trigger*
+          rm -f docs/m3-03-apply.log docs/m3-03-validation.log docs/.m3-03-pr-trigger*
           git add -A
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

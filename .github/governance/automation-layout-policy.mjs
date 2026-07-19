@@ -1,8 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { argv, cwd, stdout } from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-const root = process.cwd();
+const root = cwd();
 
 export const PERMANENT_WORKFLOWS = Object.freeze([
   'automerge.yml',
@@ -117,9 +118,9 @@ export async function validateAutomationLayout(repositoryRoot = root) {
 
 async function main() {
   const result = await validateAutomationLayout();
-  console.log(
-    `Automation layout policy passed for ${result.workflows} workflows and ${result.governanceFiles} governance files.`,
+  stdout.write(
+    `Automation layout policy passed for ${result.workflows} workflows and ${result.governanceFiles} governance files.\n`,
   );
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
+if (argv[1] === fileURLToPath(import.meta.url)) await main();

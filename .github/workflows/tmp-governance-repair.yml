@@ -47,18 +47,7 @@ jobs:
       - name: Format
         run: pnpm format
       - name: Lint
-        shell: bash
-        run: |
-          set -o pipefail
-          pnpm lint 2>&1 | tee governance-lint.log
-      - name: Upload lint diagnostic
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: governance-lint-diagnostic
-          path: governance-lint.log
-          if-no-files-found: error
-          retention-days: 7
+        run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
       - name: Governance unit tests
@@ -85,33 +74,20 @@ jobs:
             '2ec055e38b39870bfafc2d459d5bea2ca1ede541',
           );
           NODE
-      - id: commit
-        name: Commit final governance repair
-        continue-on-error: true
+      - name: Publish non-workflow governance files
         env:
           TARGET_BRANCH: ${{ github.head_ref }}
-        shell: bash
         run: |
-          set -o pipefail
-          {
-            set -eux
-            rm -f governance-lint.log
-            git rm --ignore-unmatch .github/workflows/tmp-governance-repair.yml
-            git add -A
-            git status --short
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'fix(governance): harden controlled merge and task transitions'
-            git push origin "HEAD:refs/heads/$TARGET_BRANCH"
-          } 2>&1 | tee governance-commit.log
-      - name: Upload commit diagnostic
-        if: ${{ steps.commit.outcome == 'failure' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: governance-commit-diagnostic
-          path: governance-commit.log
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce commit success
-        if: ${{ steps.commit.outcome == 'failure' }}
-        run: exit 1
+          set -euo pipefail
+          git restore --source=HEAD -- \
+            .github/workflows/automerge.yml \
+            .github/workflows/evidence.yml \
+            .github/workflows/pr-policy.yml \
+            .github/workflows/task-governance.yml
+          rm -f .github/workflows/post-merge-verification.yml
+          git add -A
+          git status --short
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(governance): harden task transitions and verification dispatch'
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"

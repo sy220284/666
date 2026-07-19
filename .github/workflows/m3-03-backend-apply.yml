@@ -1,9 +1,10 @@
 name: M3-03 Backend Apply
 
 on:
-  push:
+  pull_request:
     branches:
-      - work/m3-03-entity-canon
+      - main
+    types: [opened, synchronize, reopened]
     paths:
       - docs/m3-03-wire-backend.mjs
       - .github/workflows/m3-03-backend-apply.yml
@@ -12,18 +13,18 @@ permissions:
   contents: write
 
 concurrency:
-  group: m3-03-backend-apply
+  group: m3-03-backend-apply-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
   apply:
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: ${{ github.head_ref == 'work/m3-03-entity-canon' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: work/m3-03-entity-canon
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
@@ -42,10 +43,13 @@ jobs:
           pnpm exec vitest run tests/integration/entity-canon.test.ts
           pnpm test:migration
       - name: Commit audited backend slice
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: ${{ github.head_ref }}
         run: |
           git rm docs/m3-03-wire-backend.mjs .github/workflows/m3-03-backend-apply.yml
           git add migrations/project packages/domain packages/contracts packages/core-service tests/integration docs/tasks/ACTIVE_TASK.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat(M3-03): implement Entity and static Canon foundation'
-          git push origin HEAD:work/m3-03-entity-canon
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"

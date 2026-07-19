@@ -20,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -28,9 +29,14 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Clean tree before dependency audit
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Audit high-severity dependency vulnerabilities
         run: pnpm audit --audit-level=high
+      - name: Clean tree after dependency audit
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
 
   secret-scan:
     runs-on: ubuntu-24.04
@@ -38,13 +44,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Scan tracked files for credentials
+      - name: Clean tree before tracked-file scan
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Scan tracked files
         run: node scripts/scan-secrets.mjs
+      - name: Clean tree after tracked-file scan
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
 
   application-security:
     if: ${{ github.event.pull_request.draft == false }}
@@ -53,6 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -61,10 +74,15 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Clean tree before application checks
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm test:prepare
-      - name: Run IPC, path, renderer and database security tests
+      - name: Run application security tests
         run: pnpm test:security
+      - name: Clean tree after application checks
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
 
   security:
     name: security
@@ -85,7 +103,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'draft=%s\naudit=%s\nsecret=%s\napplication=%s\n' \
+          printf 'draft=%s\naudit=%s\nscan=%s\napplication=%s\n' \
             "$DRAFT_MODE" "$AUDIT_RESULT" "$SECRET_RESULT" "$APP_RESULT"
           test "$SECRET_RESULT" = success
           if [ "$DRAFT_MODE" = true ]; then

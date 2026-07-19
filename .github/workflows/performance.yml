@@ -25,6 +25,7 @@ jobs:
       - uses: actions/checkout@v6
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
@@ -35,6 +36,9 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before performance validation
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
       - name: Run performance budgets
@@ -44,6 +48,9 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:perf 2>&1 | tee test-results/ci/performance.log
+      - name: Assert clean working tree after performance validation
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload performance evidence
         if: failure()
         uses: actions/upload-artifact@v7

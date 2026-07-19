@@ -16,6 +16,7 @@ jobs:
   quality:
     uses: ./.github/workflows/quality-core.yml
     with:
+      checkout_ref: ${{ github.event.pull_request.head.sha }}
       draft_mode: ${{ github.event.pull_request.draft == true }}
       package_smoke: true
       security_suite: false
@@ -30,6 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -38,6 +40,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean diagnostic checkout
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Capture format, lint and typecheck output
         shell: bash

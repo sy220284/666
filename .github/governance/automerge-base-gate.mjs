@@ -14,7 +14,7 @@ function statusOrder(status) {
   };
 }
 
-export function baseVerificationDecision(statuses = [], options = {}) {
+export function baseVerificationDecision(statuses = []) {
   const matching = statuses.filter((status) => status.context === 'main-verification');
   matching.sort((left, right) => {
     const a = statusOrder(left);
@@ -22,7 +22,7 @@ export function baseVerificationDecision(statuses = [], options = {}) {
     return a.timestamp - b.timestamp || a.id - b.id;
   });
   const latest = matching.at(-1);
-  if (!latest) return options.allowMissing === true ? 'bootstrap' : 'pending';
+  if (!latest) return 'pending';
   if (latest.state === 'success') return 'ready';
   if (latest.state === 'failure' || latest.state === 'error') return 'failed';
   return 'pending';
@@ -78,17 +78,14 @@ async function waitForVerifiedBase() {
       continue;
     }
 
-    const allowMissing = pull.base.sha === config.mainVerificationBaselineSha;
     for (let attempt = 1; attempt <= 90; attempt += 1) {
       const combined = await api(
         token,
         `/repos/${owner}/${repo}/commits/${pull.base.sha}/status`,
       );
-      const decision = baseVerificationDecision(combined.statuses ?? [], { allowMissing });
-      if (decision === 'ready' || decision === 'bootstrap') {
-        console.log(
-          `Base main verification is ${decision} for #${pull.number} at ${pull.base.sha}.`,
-        );
+      const decision = baseVerificationDecision(combined.statuses ?? []);
+      if (decision === 'ready') {
+        console.log(`Base main verification is ready for #${pull.number} at ${pull.base.sha}.`);
         break;
       }
       if (decision === 'failed') {
@@ -108,8 +105,7 @@ async function waitForVerifiedBase() {
 }
 
 function selfTest() {
-  assert.equal(baseVerificationDecision([], { allowMissing: true }), 'bootstrap');
-  assert.equal(baseVerificationDecision([], { allowMissing: false }), 'pending');
+  assert.equal(baseVerificationDecision([]), 'pending');
   assert.equal(
     baseVerificationDecision([
       { context: 'main-verification', state: 'success', id: 1 },

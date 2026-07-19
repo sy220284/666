@@ -15,14 +15,56 @@ export const REQUIRED_EVIDENCE_FILES = [
   'screenshots/manifest.json',
 ];
 
+function git(argumentsList, repositoryRoot = root) {
+  return execFileSync('git', argumentsList, {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
 function changedFiles(baseSha) {
   if (!baseSha) throw new Error('EVIDENCE_BASE_SHA is required');
   const allZero = /^0+$/u.test(baseSha);
   const argumentsList = allZero
     ? ['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', 'HEAD']
     : ['diff', '--name-only', baseSha, 'HEAD'];
-  const output = execFileSync('git', argumentsList, { cwd: root, encoding: 'utf8' });
+  const output = git(argumentsList);
   return output.split(/\r?\n/u).filter(Boolean);
+}
+
+export function assertEvidenceHead(expectedHead, repositoryRoot = root) {
+  if (!/^[0-9a-f]{40}$/u.test(expectedHead ?? '')) {
+    throw new Error('EVIDENCE_HEAD_SHA must be the full pull request head SHA');
+  }
+  const actualHead = git(['rev-parse', 'HEAD'], repositoryRoot);
+  if (actualHead !== expectedHead) {
+    throw new Error(`Evidence checkout SHA mismatch: expected ${expectedHead}, got ${actualHead}`);
+  }
+  return actualHead;
+}
+
+export function assertEvidenceSourceCommit(
+  taskId,
+  sourceCommit,
+  expectedHead,
+  repositoryRoot = root,
+) {
+  if (!/^[0-9a-f]{7,40}$/u.test(sourceCommit ?? '')) {
+    throw new Error(`${taskId} evidence must reference a committed source revision`);
+  }
+  try {
+    git(['cat-file', '-e', `${sourceCommit}^{commit}`], repositoryRoot);
+  } catch (error) {
+    throw new Error(`${taskId} evidence source commit does not exist`, { cause: error });
+  }
+  try {
+    git(['merge-base', '--is-ancestor', sourceCommit, expectedHead], repositoryRoot);
+  } catch (error) {
+    throw new Error(`${taskId} evidence source commit is not an ancestor of the PR Head`, {
+      cause: error,
+    });
+  }
 }
 
 export function changedEvidenceTasks(files) {
@@ -77,7 +119,7 @@ export function assertFinalEvidenceSemantics(taskId, manifest, screenshots, docu
     '\n',
   );
   const stale =
-    /working-tree|BLOCKED_BY_ENVIRONMENT|(?:^|\\W)(?:BLOCKED|PENDING|DEFERRED)(?:\\W|$)|人工待运行|桌面待运行|等待(?:有显示环境|implementation PR|PR|CI)|任务(?:保持|结论)[^\\n]*(?:In Progress|Implemented)/imu;
+    /working-tree|BLOCKED_BY_ENVIRONMENT|(?:^|\W)(?:BLOCKED|PENDING|DEFERRED)(?:\W|$)|人工待运行|桌面待运行|等待(?:有显示环境|implementation PR|PR|CI)|任务(?:保持|结论)[^\n]*(?:In Progress|Implemented)/imu;
   if (stale.test(combined)) {
     throw new Error(`${taskId} final evidence contains stale implementation or acceptance state`);
   }
@@ -102,6 +144,9 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
     manifest.files.length === 0
   ) {
     throw new Error(`${taskId} evidence manifest metadata is invalid`);
+  }
+  if (options.expectedHead) {
+    assertEvidenceSourceCommit(taskId, manifest.commit, options.expectedHead, repositoryRoot);
   }
 
   const entries = new Map();
@@ -199,14 +244,19 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
 }
 
 async function main() {
+  const expectedHead = assertEvidenceHead(process.env.EVIDENCE_HEAD_SHA);
   const taskIds = changedEvidenceTasks(changedFiles(process.env.EVIDENCE_BASE_SHA));
   if (taskIds.length === 0) {
     const state = JSON.parse(await readFile('docs/tasks/ACTIVE_TASK.json', 'utf8'));
-    console.log(`Final evidence is deferred for ${state.activeTask?.id ?? '<no-active-task>'}.`);
+    console.log(
+      `No changed evidence package at ${expectedHead}; final evidence is deferred for ${state.activeTask?.id ?? '<no-active-task>'}.`,
+    );
     return;
   }
-  for (const taskId of taskIds) await validateTaskEvidence(taskId);
-  console.log(`Validated ${taskIds.length} changed evidence package(s).`);
+  for (const taskId of taskIds) {
+    await validateTaskEvidence(taskId, root, { expectedHead });
+  }
+  console.log(`Validated ${taskIds.length} changed evidence package(s) at ${expectedHead}.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

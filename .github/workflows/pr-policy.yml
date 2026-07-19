@@ -176,6 +176,7 @@ jobs:
             '.github/workflows/performance.yml',
             '.github/workflows/quality-core.yml',
             '.github/workflows/main-verification.yml',
+            '.github/workflows/post-merge-verification.yml',
           ];
           const sources = new Map(
             await Promise.all(
@@ -186,6 +187,10 @@ jobs:
           const quality = await readFile('.github/workflows/quality.yml', 'utf8');
           const repositoryGovernance = await readFile(
             '.github/workflows/repository-governance.yml',
+            'utf8',
+          );
+          const postMerge = await readFile(
+            '.github/workflows/post-merge-verification.yml',
             'utf8',
           );
           const mainVerification = await readFile('scripts/main-verification.mjs', 'utf8');
@@ -215,7 +220,10 @@ jobs:
             assert.match(source, /assert-clean-tree\.mjs/u, `${file} must enforce clean-tree checks`);
           }
           assert.match(repositoryGovernance, /git status --porcelain=v1 --untracked-files=all/u);
-          assert.match(repositoryGovernance, /github\.event_name == 'push'.*'apply'/u);
+          assert.doesNotMatch(repositoryGovernance, /^\s*push:/mu);
+          assert.match(postMerge, /reconcile-ruleset:/u);
+          assert.match(postMerge, /ruleset-policy\.mjs apply/u);
+          assert.match(postMerge, /REPO_ADMIN_TOKEN: \$\{\{ secrets\.REPO_ADMIN_TOKEN \}\}/u);
           const checks = JSON.parse(
             await readFile('.github/governance/required-checks.json', 'utf8'),
           );

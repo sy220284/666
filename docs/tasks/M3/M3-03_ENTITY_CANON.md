@@ -1,6 +1,6 @@
 # M3-03 通用实体与静态Canon
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 工作分支：`work/m3-03-entity-canon`  
@@ -45,8 +45,12 @@ M3-01
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
 
 ## 实施内容
 
@@ -63,6 +67,14 @@ M3-01
 - 引用存在时永久删除影响预览。
 
 证据保存到：`docs/test-evidence/M3-03/`
+
+## 实现记录
+
+- 实现真源：`78dfdbcab4e981379f6455c8ecb23c16b653139a`（PR #68）。
+- 后端与Migration验证：Actions Run `29679433553`。
+- Renderer Canon工作区验证：Actions Run `29679760603`。
+- 已接通Entity CRUD、别名、归档、Canon current/history、作者权限、SceneBeat项目边界引用和永久删除影响预览。
+- implementation-pr模式下，人工桌面验收、正式截图和最终Verified结论进入延期验收队列。
 
 ## 完成条件
 

@@ -1,0 +1,8 @@
+pnpm typecheck  # exit 0, runs 29679433553 and 29679760603
+pnpm --filter @worldforge/renderer build  # exit 0, run 29679760603
+pnpm exec vitest run tests/integration/entity-canon.test.ts  # 3 passed
+pnpm test:migration  # 12 files, 29 tests passed
+pnpm lint  # executed again during closeout
+pnpm task:validate  # executed after task transition
+# Final PR permanent gates: PR Policy, Task Governance, Evidence, Security, Performance, Quality
+pnpm test:prepare && pnpm test:security  # 15 files, 56 tests required

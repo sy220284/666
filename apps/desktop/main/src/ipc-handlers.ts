@@ -11,6 +11,7 @@ import {
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
   SCENE_BEAT_COMMANDS,
+  ENTITY_CANON_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   AiHasCredentialCommandSchema,
   AiRemoveCredentialCommandSchema,
@@ -61,6 +62,14 @@ import {
   SceneBeatRestoreCommandSchema,
   SceneBeatSetBlockLinksCommandSchema,
   SceneBeatConvertBlocksCommandSchema,
+  CanonFactSetCommandSchema,
+  EntityArchiveCommandSchema,
+  EntityCreateCommandSchema,
+  EntityDeleteCommandSchema,
+  EntityDeletePreviewCommandSchema,
+  EntityListCommandSchema,
+  EntityUpdateCommandSchema,
+  SceneBeatEntityLinkCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
@@ -201,6 +210,14 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.restoreSceneBeat,
     IPC_CHANNELS.setSceneBeatBlockLinks,
     IPC_CHANNELS.convertBlocksToSceneBeat,
+    IPC_CHANNELS.listEntities,
+    IPC_CHANNELS.createEntity,
+    IPC_CHANNELS.updateEntity,
+    IPC_CHANNELS.archiveEntity,
+    IPC_CHANNELS.setCanonFact,
+    IPC_CHANNELS.linkSceneBeatEntity,
+    IPC_CHANNELS.previewDeleteEntity,
+    IPC_CHANNELS.deleteEntity,
     IPC_CHANNELS.listStructure,
     IPC_CHANNELS.createVolume,
     IPC_CHANNELS.updateVolume,
@@ -783,6 +800,36 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       SceneBeatConvertBlocksCommandSchema,
       SCENE_BEAT_COMMANDS.convertBlocksToSceneBeat,
     ],
+  ] as const) {
+    register(channel, async (event, raw) => {
+      const rejected = rejectUntrusted(event, raw);
+      if (rejected) return rejected;
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) return invalidRequest(raw);
+      return invokeProject(parsed.data.requestId, {
+        operation,
+        input: parsed.data.payload,
+      } as Parameters<CoreSupervisor['invokeProjectOperation']>[1]);
+    });
+  }
+
+  for (const [channel, schema, operation] of [
+    [IPC_CHANNELS.listEntities, EntityListCommandSchema, ENTITY_CANON_COMMANDS.listEntities],
+    [IPC_CHANNELS.createEntity, EntityCreateCommandSchema, ENTITY_CANON_COMMANDS.createEntity],
+    [IPC_CHANNELS.updateEntity, EntityUpdateCommandSchema, ENTITY_CANON_COMMANDS.updateEntity],
+    [IPC_CHANNELS.archiveEntity, EntityArchiveCommandSchema, ENTITY_CANON_COMMANDS.archiveEntity],
+    [IPC_CHANNELS.setCanonFact, CanonFactSetCommandSchema, ENTITY_CANON_COMMANDS.setCanonFact],
+    [
+      IPC_CHANNELS.linkSceneBeatEntity,
+      SceneBeatEntityLinkCommandSchema,
+      ENTITY_CANON_COMMANDS.linkSceneBeatEntity,
+    ],
+    [
+      IPC_CHANNELS.previewDeleteEntity,
+      EntityDeletePreviewCommandSchema,
+      ENTITY_CANON_COMMANDS.previewDeleteEntity,
+    ],
+    [IPC_CHANNELS.deleteEntity, EntityDeleteCommandSchema, ENTITY_CANON_COMMANDS.deleteEntity],
   ] as const) {
     register(channel, async (event, raw) => {
       const rejected = rejectUntrusted(event, raw);

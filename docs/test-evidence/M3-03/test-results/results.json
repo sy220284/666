@@ -1,0 +1,11 @@
+{
+  "taskId": "M3-03",
+  "status": "passed-with-deferred-manual-acceptance",
+  "runs": [
+    29679433553,
+    29679760603
+  ],
+  "integrationTests": 3,
+  "migrationFiles": 12,
+  "migrationTests": 29
+}

@@ -35,7 +35,7 @@ describe('M1-08 BackupRecord migration', () => {
       clock,
       prepareRecoveryPoint: async () => undefined,
     });
-    expect(upgraded).toMatchObject({ schemaVersion: 11, compatibility: 'migrated' });
+    expect(upgraded).toMatchObject({ schemaVersion: 12, compatibility: 'migrated' });
     expect(
       upgraded.read((database) =>
         database

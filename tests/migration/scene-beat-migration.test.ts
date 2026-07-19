@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 describe('M3-02 SceneBeat migration', () => {
-  it('creates strict planning tables at schema version 11 without正文 ownership cascades', async () => {
+  it('creates strict planning tables through project schema version 12 without正文 ownership cascades', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-scene-beat-migration-'));
     temporaryDirectories.push(directory);
     const database = await ProjectDatabase.open({
@@ -26,7 +26,7 @@ describe('M3-02 SceneBeat migration', () => {
       appVersion: '0.1.0',
     });
     try {
-      expect(database.schemaVersion).toBe(11);
+      expect(database.schemaVersion).toBe(12);
       expect(
         database.read((connection) =>
           connection

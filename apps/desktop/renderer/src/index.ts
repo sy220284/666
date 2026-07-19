@@ -23,6 +23,7 @@ import type {
 } from '@worldforge/contracts';
 
 import { contentWidthPixels, layoutPolicyForViewport } from './layout-model.js';
+import './canon-ui.js';
 import type {
   AppearancePreferences,
   AppSettings,

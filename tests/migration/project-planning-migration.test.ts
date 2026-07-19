@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 describe('M3-01 project planning migration', () => {
-  it('keeps strict ProjectBrief and PlotNode tables after project schema v11', async () => {
+  it('keeps strict ProjectBrief and PlotNode tables through the current project schema', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-planning-migration-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
@@ -43,7 +43,7 @@ describe('M3-01 project planning migration', () => {
       { name: '规划迁移', channel: '长篇', initialStructure: 'blank' },
       parent,
     );
-    expect(project.schemaVersion).toBe(11);
+    expect(project.schemaVersion).toBe(12);
     await workspace.shutdown();
     await appRuntime.close();
 
@@ -53,7 +53,7 @@ describe('M3-01 project planning migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 11n,
+        schema_version: 12n,
       });
       expect(
         database

@@ -292,3 +292,13 @@ interface AppearancePreferences {
 | `textIo.exportVersions`     | Main系统目录选择器 | 读取指定Version，临时写入、Hash校验、原子重命名                    |
 
 Renderer不得提交任意源路径或目标目录；Preload只暴露结构化输入，Main负责系统选择器，Core再次验证普通文件、目录、文件名、项目归属和Version归属。
+
+## M3-03 Entity与Canon命令
+
+- `canon.listEntities`：按项目读取active/archived实体及完整Canon历史。
+- `canon.createEntity`、`canon.updateEntity`、`canon.archiveEntity`：要求`authority=author`。
+- `canon.setFact`：在单事务内把旧current转为historical并写入新current。
+- `canon.linkSceneBeatEntity`：建立项目内SceneBeat与Entity显式引用。
+- `canon.previewDeleteEntity`、`canon.deleteEntity`：先返回引用影响；仅归档、无SceneBeat引用且名称确认匹配时永久删除。
+
+Main只接受受信Renderer事件，Preload使用严格Zod命令/结果Schema，Core是唯一权威写入层；`authority=ai`固定拒绝。

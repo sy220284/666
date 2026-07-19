@@ -146,15 +146,18 @@ describe('SQLite foundation migrations', () => {
       'candidate_blocks',
       'candidate_conflict_sets',
       'candidates',
+      'canon_facts',
       'chapters',
       'draft_blocks',
       'draft_patch_log',
       'drafts',
+      'entities',
       'migration_journal',
       'plot_nodes',
       'project_briefs',
       'projects',
       'scene_beat_block_links',
+      'scene_beat_entities',
       'scene_beats',
       'schema_migrations',
       'trash_entries',
@@ -164,7 +167,7 @@ describe('SQLite foundation migrations', () => {
     ]);
     expect(
       second.read((connection) => scalar(connection, 'SELECT count(*) FROM schema_migrations')),
-    ).toBe(11n);
+    ).toBe(12n);
     expect(second.capabilities).toEqual({ fts5: true, trigram: true });
     expect(second.quickCheck()).toEqual({ ok: true, messages: ['ok'] });
     expect(second.integrityCheck()).toEqual({ ok: true, messages: ['ok'] });

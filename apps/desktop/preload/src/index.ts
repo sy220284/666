@@ -83,6 +83,17 @@ import {
   SceneBeatConvertBlocksCommandSchema,
   SceneBeatListResultSchema,
   SceneBeatMovePreviewResultSchema,
+  CanonFactSetCommandSchema,
+  EntityArchiveCommandSchema,
+  EntityCatalogResultSchema,
+  EntityCreateCommandSchema,
+  EntityDeleteCommandSchema,
+  EntityDeletePreviewCommandSchema,
+  EntityDeletePreviewResultSchema,
+  EntityDeleteResultEnvelopeSchema,
+  EntityListCommandSchema,
+  EntityUpdateCommandSchema,
+  SceneBeatEntityLinkCommandSchema,
   ProjectListTrashCommandSchema,
   ProjectMoveCommandResultSchema,
   ProjectMoveCommandSchema,
@@ -572,6 +583,56 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         IPC_CHANNELS.moveBlocks,
         ProjectMoveBlocksCommandSchema.parse(envelope(APP_COMMANDS.moveBlocks, input)),
         ProjectStructureOperationResultSchema,
+      ),
+  },
+  canon: {
+    list: (input) =>
+      invoke(
+        IPC_CHANNELS.listEntities,
+        EntityListCommandSchema.parse(envelope(APP_COMMANDS.listEntities, input)),
+        EntityCatalogResultSchema,
+      ),
+    create: (input) =>
+      invoke(
+        IPC_CHANNELS.createEntity,
+        EntityCreateCommandSchema.parse(envelope(APP_COMMANDS.createEntity, input)),
+        EntityCatalogResultSchema,
+      ),
+    update: (input) =>
+      invoke(
+        IPC_CHANNELS.updateEntity,
+        EntityUpdateCommandSchema.parse(envelope(APP_COMMANDS.updateEntity, input)),
+        EntityCatalogResultSchema,
+      ),
+    archive: (input) =>
+      invoke(
+        IPC_CHANNELS.archiveEntity,
+        EntityArchiveCommandSchema.parse(envelope(APP_COMMANDS.archiveEntity, input)),
+        EntityCatalogResultSchema,
+      ),
+    setFact: (input) =>
+      invoke(
+        IPC_CHANNELS.setCanonFact,
+        CanonFactSetCommandSchema.parse(envelope(APP_COMMANDS.setCanonFact, input)),
+        EntityCatalogResultSchema,
+      ),
+    linkSceneBeat: (input) =>
+      invoke(
+        IPC_CHANNELS.linkSceneBeatEntity,
+        SceneBeatEntityLinkCommandSchema.parse(envelope(APP_COMMANDS.linkSceneBeatEntity, input)),
+        EntityCatalogResultSchema,
+      ),
+    previewDelete: (input) =>
+      invoke(
+        IPC_CHANNELS.previewDeleteEntity,
+        EntityDeletePreviewCommandSchema.parse(envelope(APP_COMMANDS.previewDeleteEntity, input)),
+        EntityDeletePreviewResultSchema,
+      ),
+    delete: (input) =>
+      invoke(
+        IPC_CHANNELS.deleteEntity,
+        EntityDeleteCommandSchema.parse(envelope(APP_COMMANDS.deleteEntity, input)),
+        EntityDeleteResultEnvelopeSchema,
       ),
   },
   trash: {

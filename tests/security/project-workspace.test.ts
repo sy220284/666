@@ -17,6 +17,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import {
+  latestMigrationVersion,
+  loadMigrations,
+} from '../../packages/core-service/src/database/index.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import {
   ProjectWorkspaceService,
@@ -78,6 +82,9 @@ async function closeHarness(harness: Harness): Promise<void> {
 describe('project workspace lifecycle', () => {
   it('creates a private .worldforge workspace, manifest, project database, and recent record', async () => {
     const harness = await createHarness();
+    const latestProjectSchemaVersion = latestMigrationVersion(
+      await loadMigrations('migrations/project', 'project'),
+    );
     try {
       const summary = await harness.service.create(
         randomUUID(),
@@ -104,7 +111,7 @@ describe('project workspace lifecycle', () => {
         projectId: summary.projectId,
         displayName: '长夜灯火',
         databaseFile: 'project.sqlite',
-        projectSchemaVersion: 12,
+        projectSchemaVersion: latestProjectSchemaVersion,
         createdAt: '2026-07-16T09:00:00.000Z',
       });
 
@@ -114,7 +121,7 @@ describe('project workspace lifecycle', () => {
         name: '长夜灯火',
         channel: '网络小说',
         active_style_profile_id: null,
-        schema_version: 12,
+        schema_version: latestProjectSchemaVersion,
         created_at: '2026-07-16T09:00:00.000Z',
         updated_at: '2026-07-16T09:00:00.000Z',
       });

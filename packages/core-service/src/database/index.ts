@@ -2,6 +2,7 @@ export { AppDatabase, ManagedDatabase, ProjectDatabase } from './database.js';
 export {
   defineMigration,
   inspectMigrations,
+  latestMigrationVersion,
   loadMigrations,
   normalizeMigrations,
 } from './migrations.js';

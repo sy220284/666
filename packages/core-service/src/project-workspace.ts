@@ -28,7 +28,12 @@ import {
   type ProjectWorkspaceSummary,
 } from '@worldforge/contracts';
 
-import { ProjectDatabase, loadMigrations, type DatabaseClock } from './database/index.js';
+import {
+  ProjectDatabase,
+  latestMigrationVersion,
+  loadMigrations,
+  type DatabaseClock,
+} from './database/index.js';
 import type { DatabaseReadOperation, DatabaseWriteOperation } from './database/index.js';
 import { createSqliteMigrationRecoveryPoint } from './migration-recovery.js';
 import { initializeProjectStructure } from './project-structure.js';
@@ -339,6 +344,7 @@ export class ProjectWorkspaceService {
         await mkdir(stagingPath, { mode: 0o700 });
         await chmod(stagingPath, 0o700);
         const migrations = await loadMigrations(this.#migrationsDirectory, 'project');
+        const projectSchemaVersion = latestMigrationVersion(migrations);
         const databasePath = path.join(stagingPath, 'project.sqlite');
         const database = await ProjectDatabase.open({
           path: databasePath,
@@ -347,10 +353,10 @@ export class ProjectWorkspaceService {
           clock: this.#clock,
         });
         try {
-          if (database.mode !== 'read-write') {
+          if (database.mode !== 'read-write' || database.schemaVersion !== projectSchemaVersion) {
             throw new ProjectWorkspaceError(
               'PROJECT_CREATE_FAILED',
-              'A new project database did not open in read-write mode.',
+              'A new project database did not reach the latest registered schema version.',
             );
           }
           await database.write(requestId, (connection) => {
@@ -387,7 +393,7 @@ export class ProjectWorkspaceService {
           projectId,
           displayName: project.name,
           databaseFile: 'project.sqlite',
-          projectSchemaVersion: migrations.at(-1)?.version ?? 0,
+          projectSchemaVersion,
           createdAt,
         });
         await writeFile(

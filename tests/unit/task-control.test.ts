@@ -83,6 +83,21 @@ describe('task control', () => {
     ).toBe(false);
   });
 
+  it('limits schema governance branches to the exact version-governance files', () => {
+    expect(
+      isGovernanceOnlyPullRequest('fix/governance-schema-version', [
+        'packages/core-service/src/database/migrations.ts',
+        'packages/core-service/src/project-workspace.ts',
+        'tests/security/project-workspace.test.ts',
+      ]),
+    ).toBe(true);
+    expect(
+      isGovernanceOnlyPullRequest('fix/governance-schema-version', [
+        'packages/core-service/src/entity-canon.ts',
+      ]),
+    ).toBe(false);
+  });
+
   it('reports forbidden and out-of-scope changes', () => {
     expect(
       validateChangedPaths(

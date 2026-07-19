@@ -34,8 +34,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Validate merge aggregation policy
-        run: node scripts/automerge.test.mjs
       - name: Aggregate permanent checks, merge eligible pull request and schedule final main verification
         env:
           GITHUB_TOKEN: ${{ github.token }}

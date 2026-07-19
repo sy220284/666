@@ -63,6 +63,26 @@ describe('task control', () => {
     ).toBe(false);
   });
 
+  it('allows frozen task planning documents only on task-plan policy branches', () => {
+    expect(
+      isGovernanceOnlyPullRequest('policy/task-plan-renderer-architecture', [
+        'docs/tasks/TASK_INDEX.md',
+        'docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md',
+        'docs/product/V1_TASK_SYSTEM_REBASE.md',
+      ]),
+    ).toBe(true);
+    expect(
+      isGovernanceOnlyPullRequest('policy/ordinary-governance', [
+        'docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md',
+      ]),
+    ).toBe(false);
+    expect(
+      isGovernanceOnlyPullRequest('policy/task-plan-renderer-architecture', [
+        'packages/core-service/src/index.ts',
+      ]),
+    ).toBe(false);
+  });
+
   it('reports forbidden and out-of-scope changes', () => {
     expect(
       validateChangedPaths(

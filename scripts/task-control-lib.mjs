@@ -1,5 +1,24 @@
 import path from 'node:path';
 
+export const TASK_PLANNING_ALLOWED_PATHS = [
+  'AGENTS.md',
+  'README.md',
+  'agent.md',
+  'docs/INDEX.md',
+  'docs/product/V1_TASK_SYSTEM_REBASE.md',
+  'docs/product/V1.0_TRACEABILITY_MATRIX.md',
+  'docs/product/WORLDFORGE_V6.5_FULL_SPEC.md',
+  'docs/roadmap/V1.0_ROADMAP.md',
+  'docs/tasks/TASK_INDEX.md',
+  'docs/tasks/TASK_TEMPLATE.md',
+  'docs/tasks/M3_TASKS.md',
+  'docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md',
+  'docs/tasks/M3/M3-08_RENDERER_SHELL_HOME_SETTINGS.md',
+  'docs/tasks/M3/M3-09_RENDERER_PLANNING_CANON_STRUCTURE.md',
+  'docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md',
+  'docs/tasks/M3/RENDERER_ARCHITECTURE_MIGRATION.md',
+];
+
 export const GOVERNANCE_ALLOWED_PATHS = [
   '.gitignore',
   '.github/CODEOWNERS',
@@ -94,13 +113,16 @@ export function validateChangedPathsForTransition(changedFiles, state, baseState
 }
 
 export function isGovernanceOnlyPullRequest(branch, changedFiles) {
-  const governanceBranch = /^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(branch ?? '');
+  const value = branch ?? '';
+  const governanceBranch = /^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(value);
+  const planningBranch = /^policy\/task-plan-/u.test(value);
+  const allowedPaths = planningBranch
+    ? [...GOVERNANCE_ALLOWED_PATHS, ...TASK_PLANNING_ALLOWED_PATHS]
+    : GOVERNANCE_ALLOWED_PATHS;
   return (
     governanceBranch &&
     changedFiles.length > 0 &&
-    changedFiles.every((file) =>
-      GOVERNANCE_ALLOWED_PATHS.some((allowed) => isPathInside(file, allowed)),
-    )
+    changedFiles.every((file) => allowedPaths.some((allowed) => isPathInside(file, allowed)))
   );
 }
 

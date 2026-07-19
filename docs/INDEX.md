@@ -40,7 +40,7 @@ AGENTS.md
 ## 3. 产品、范围与路线
 
 - [`product/WORLDFORGE_V6.5_FULL_SPEC.md`](product/WORLDFORGE_V6.5_FULL_SPEC.md)：产品原则、总体架构、完整功能边界和唯一真源路由。
-- [`product/V1_TASK_SYSTEM_REBASE.md`](product/V1_TASK_SYSTEM_REBASE.md)：九阶段、48张任务卡的重排依据与历史取代范围。
+- [`product/V1_TASK_SYSTEM_REBASE.md`](product/V1_TASK_SYSTEM_REBASE.md)：九阶段、52张任务卡的重排依据与历史取代范围。
 - [`product/V1_SCOPE_AND_ACCEPTANCE.md`](product/V1_SCOPE_AND_ACCEPTANCE.md)：V1.0 P0/P1、V1.5延期项和关闭条件。
 - [`product/FUNCTION_CATALOG.md`](product/FUNCTION_CATALOG.md)：功能ID、设计语义和版本归属。
 - [`product/V1.0_TRACEABILITY_MATRIX.md`](product/V1.0_TRACEABILITY_MATRIX.md)：需求、任务和验收追踪。
@@ -48,7 +48,7 @@ AGENTS.md
 
 ## 4. 任务体系
 
-- [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：48张独立任务卡、依赖和状态。
+- [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：52张独立任务卡、依赖和状态。
 - [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)：Planned任务卡和ACTIVE执行附件规则。
 - [`tasks/ACTIVE_TASK.md`](tasks/ACTIVE_TASK.md)：任务控制文件。
 - [`tasks/M0_TASKS.md`](tasks/M0_TASKS.md)至[`tasks/M8_TASKS.md`](tasks/M8_TASKS.md)：阶段摘要，仅用于导航。
@@ -57,7 +57,7 @@ AGENTS.md
 M0 工程、安全与运行底座
 → M1 基础写作MVP
 → M2 编辑安全与版本核心
-→ M3 规划、设定与连续性
+→ M3 规划、设定、连续性与Renderer架构收口
 → M4 检索与AI基础设施
 → M5 AI生成与候选审阅
 → M6 校验、搜索与交付

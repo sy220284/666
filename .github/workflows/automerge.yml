@@ -48,7 +48,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - id: guard
         name: Check closeout trigger
@@ -119,10 +119,13 @@ jobs:
       - name: Commit final closeout
         if: ${{ steps.guard.outputs.run == 'true' }}
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git rm docs/tasks/CLOSEOUT_TRIGGER.md
           git add docs/test-evidence docs/tasks docs/product/V1.0_TRACEABILITY_MATRIX.md
           git commit -m 'test(verification): close M1-08 and M2 evidence'
-          git push origin "HEAD:${{ github.event.workflow_run.head_branch }}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:${{ github.event.workflow_run.head_branch }}"

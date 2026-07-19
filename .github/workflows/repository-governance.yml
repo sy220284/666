@@ -7,7 +7,6 @@ on:
     paths:
       - '.github/governance/**'
       - '.github/workflows/**'
-      - 'scripts/automation-layout-policy.mjs'
       - 'scripts/automerge.mjs'
       - 'scripts/ci-policy.mjs'
       - 'scripts/main-verification.mjs'
@@ -41,7 +40,7 @@ jobs:
         shell: bash
         run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Audit permanent automation inventory
-        run: node scripts/automation-layout-policy.mjs
+        run: node .github/governance/automation-layout-policy.mjs
       - name: Audit complete native main-branch protection
         env:
           GITHUB_TOKEN: ${{ github.token }}

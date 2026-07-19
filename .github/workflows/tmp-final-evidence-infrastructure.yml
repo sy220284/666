@@ -3,7 +3,7 @@ name: Temporary Final Evidence Infrastructure
 on:
   pull_request:
     branches: [main]
-    types: [opened]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -281,12 +281,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
 
-      - name: Commit infrastructure and remove temporary workflow
+      - name: Commit infrastructure
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git rm .github/workflows/tmp-final-evidence-infrastructure.yml
           git add .github/workflows/quality-core.yml scripts/evidence-policy.mjs scripts/taskctl.mjs tests/unit/evidence-policy.test.ts docs/tasks/ACTIVE_TASK.json docs/tasks/ACTIVE_TASK.md
           git commit -m "ci(evidence): persist successful acceptance and verify tasks"
           git push origin HEAD:work/m1-08-recovery-readonly-foundation

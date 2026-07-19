@@ -7,6 +7,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - docs/m3-03-wire-backend.mjs
+      - docs/m3-03-wire-desktop.mjs
       - .github/workflows/m3-03-backend-apply.yml
 
 permissions:
@@ -34,9 +35,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply backend wiring
-        run: node docs/m3-03-wire-backend.mjs
-      - name: Format and validate backend slice
+      - name: Apply backend and desktop wiring
+        run: |
+          node docs/m3-03-wire-backend.mjs
+          node docs/m3-03-wire-desktop.mjs
+      - name: Format and validate M3-03 slice
         shell: bash
         run: |
           set -o pipefail
@@ -46,7 +49,7 @@ jobs:
             pnpm exec vitest run tests/integration/entity-canon.test.ts
             pnpm test:migration
           } 2>&1 | tee docs/m3-03-validation.log
-      - name: Upload backend diagnostics
+      - name: Upload M3-03 diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -54,11 +57,11 @@ jobs:
           path: docs/m3-03-validation.log
           if-no-files-found: error
           retention-days: 7
-      - name: Commit audited backend slice
+      - name: Commit audited M3-03 foundation
         env:
           TARGET_BRANCH: ${{ github.head_ref }}
         run: |
-          git rm docs/m3-03-wire-backend.mjs .github/workflows/m3-03-backend-apply.yml
+          git rm docs/m3-03-wire-backend.mjs docs/m3-03-wire-desktop.mjs .github/workflows/m3-03-backend-apply.yml
           rm -f docs/m3-03-validation.log docs/.m3-03-pr-trigger*
           git add -A
           git config user.name 'github-actions[bot]'

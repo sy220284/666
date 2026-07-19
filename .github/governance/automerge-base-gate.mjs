@@ -1,3 +1,4 @@
+/* global console, process, URL */
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';

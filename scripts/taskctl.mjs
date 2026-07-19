@@ -16,6 +16,7 @@ import {
   validateChangedPathsForTransition,
   verificationForTask,
 } from './task-control-lib.mjs';
+import { validateTaskEvidence } from './evidence-policy.mjs';
 
 const root = process.cwd();
 const statePath = path.join(root, 'docs/tasks/ACTIVE_TASK.json');
@@ -224,6 +225,65 @@ async function verify() {
   return state;
 }
 
+async function verifyTask(taskId) {
+  const ciStatus = process.argv.find((value) => value.startsWith('--ci='))?.slice(5);
+  const commit = process.argv.find((value) => value.startsWith('--commit='))?.slice(9);
+  if (ciStatus !== 'success') throw new Error('verify-task requires --ci=success');
+  if (!commit || !/^[0-9a-f]{7,40}$/iu.test(commit)) {
+    throw new Error('verify-task requires --commit=<sha>');
+  }
+
+  const { state, taskIndex } = await load();
+  const target = taskIndex.get(taskId);
+  if (!target || !['In Progress', 'Implemented'].includes(target.status)) {
+    throw new Error(`${taskId} must be In Progress or Implemented before verification`);
+  }
+  const active = state.activeTask?.id === taskId;
+  if (target.status === 'In Progress' && !active) {
+    throw new Error(`${taskId} is In Progress but is not the active task`);
+  }
+  if (target.status === 'Implemented') {
+    const deferred = (state.deferredVerification ?? []).some((entry) => entry.id === taskId);
+    if (!deferred) throw new Error(`${taskId} is not in deferredVerification`);
+  }
+
+  await validateTaskEvidence(taskId, root, { final: true });
+  const indexSource = await readFile(indexPath, 'utf8');
+  const verifiedIndex = replaceTaskIndexStatus(indexSource, taskId, 'Verified');
+  const cardPath = path.join(root, target.source);
+  const card = await readFile(cardPath, 'utf8');
+  const verifiedCard = replaceTaskCardStatus(card, target.status, 'Verified');
+  if (verifiedCard === card) throw new Error(`${taskId} card is not ${target.status}`);
+  await writeFile(cardPath, verifiedCard, 'utf8');
+
+  state.deferredVerification = (state.deferredVerification ?? []).filter(
+    (entry) => entry.id !== taskId,
+  );
+  state.lastVerifiedTask = {
+    id: taskId,
+    commit,
+    verifiedAt: new Date().toISOString(),
+  };
+
+  if (!active) {
+    await writeActiveState(state, verifiedIndex);
+    console.log(`Verified deferred task ${taskId}; active task remains ${state.activeTask.id}.`);
+    return;
+  }
+
+  const refreshedIndex = parseTaskIndex(verifiedIndex);
+  const next = findNextReadyTask(refreshedIndex, { allowImplemented: true });
+  if (!next) throw new Error('No implementation-ready Planned task remains');
+  const previousSource = state.activeTask.source;
+  state.activeTask = null;
+  await Promise.all([
+    writeFile(indexPath, verifiedIndex, 'utf8'),
+    writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8'),
+  ]);
+  await activate(next.id, [previousSource]);
+  console.log(`Verified active task ${taskId}; advanced to ${next.id}.`);
+}
+
 async function sync() {
   const { state } = await load();
   await writeFile(mirrorPath, renderActiveTask(state), 'utf8');
@@ -422,6 +482,11 @@ async function main() {
     const taskId = process.argv[3];
     if (!taskId) throw new Error('activate requires a task id');
     return activate(taskId);
+  }
+  if (command === 'verify-task') {
+    const taskId = process.argv[3];
+    if (!taskId) throw new Error('verify-task requires a task id');
+    return verifyTask(taskId);
   }
   if (command === 'reopen') {
     const taskId = process.argv[3];

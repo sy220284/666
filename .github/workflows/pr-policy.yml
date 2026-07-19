@@ -34,7 +34,7 @@ jobs:
       - name: Validate real PR branch
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate permanent automation inventory
-        run: node scripts/automation-layout-policy.mjs
+        run: node .github/governance/automation-layout-policy.mjs
       - name: Validate permanent CI policy
         run: node scripts/ci-policy.mjs
       - name: Reject tracked root scratch artifacts
@@ -197,7 +197,10 @@ jobs:
           );
           const mainVerification = await readFile('scripts/main-verification.mjs', 'utf8');
           const evidencePolicy = await readFile('scripts/evidence-policy.mjs', 'utf8');
-          const automationLayout = await readFile('scripts/automation-layout-policy.mjs', 'utf8');
+          const automationLayout = await readFile(
+            '.github/governance/automation-layout-policy.mjs',
+            'utf8',
+          );
           const trigger = workflow.match(/workflows:\s*\n([\s\S]*?)\n\s*types:/u)?.[1] ?? '';
           for (const name of [
             'PR Policy',

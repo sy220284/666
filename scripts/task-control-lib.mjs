@@ -42,10 +42,12 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/process/DEVELOPMENT_AUTOMATION.md',
   'docs/process/CI_WORKFLOW_ARCHITECTURE.md',
   'docs/process/MAIN_BRANCH_PROTECTION.md',
+  'docs/process/WORKFLOW_EXECUTION_ORDER.md',
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
   'tests/unit/evidence-policy.test.ts',
   'tests/unit/task-control.test.ts',
+  'tests/unit/task-ordering.test.ts',
   'tests/unit/testkit-fixtures-evidence.test.ts',
 ];
 
@@ -240,9 +242,15 @@ export function dependenciesSatisfied(task, taskIndex, options = {}) {
 }
 
 export function findNextReadyTask(taskIndex, options = {}) {
-  return [...taskIndex.values()].find(
-    (task) => task.status === 'Planned' && dependenciesSatisfied(task, taskIndex, options),
-  );
+  const tasks = [...taskIndex.values()];
+  let executionFrontier = -1;
+  for (let index = 0; index < tasks.length; index += 1) {
+    if (tasks[index]?.status !== 'Planned') executionFrontier = index;
+  }
+
+  const next = tasks.slice(executionFrontier + 1).find((task) => task.status === 'Planned');
+  if (!next) return undefined;
+  return dependenciesSatisfied(next, taskIndex, options) ? next : undefined;
 }
 
 export function replaceTaskIndexStatus(markdown, taskId, nextStatus) {

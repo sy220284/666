@@ -1,0 +1,51 @@
+name: M3-03 Backend Apply
+
+on:
+  push:
+    branches:
+      - work/m3-03-entity-canon
+    paths:
+      - docs/m3-03-wire-backend.mjs
+      - .github/workflows/m3-03-backend-apply.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m3-03-backend-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: work/m3-03-entity-canon
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply backend wiring
+        run: node docs/m3-03-wire-backend.mjs
+      - name: Format and validate backend slice
+        run: |
+          pnpm format
+          pnpm typecheck
+          pnpm exec vitest run tests/integration/entity-canon.test.ts
+          pnpm test:migration
+      - name: Commit audited backend slice
+        run: |
+          git rm docs/m3-03-wire-backend.mjs .github/workflows/m3-03-backend-apply.yml
+          git add migrations/project packages/domain packages/contracts packages/core-service tests/integration docs/tasks/ACTIVE_TASK.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(M3-03): implement Entity and static Canon foundation'
+          git push origin HEAD:work/m3-03-entity-canon

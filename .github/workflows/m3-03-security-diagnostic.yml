@@ -1,0 +1,49 @@
+name: M3-03 Security Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [synchronize, reopened, ready_for_review]
+    paths:
+      - .github/workflows/m3-03-security-diagnostic.yml
+      - apps/desktop/main/**
+      - apps/desktop/preload/**
+      - packages/contracts/**
+      - packages/core-service/**
+      - tests/security/**
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: ${{ github.head_ref == 'work/m3-03-entity-canon' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Run application security suite
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm test:prepare
+          pnpm test:security 2>&1 | tee m3-03-security.log
+      - name: Upload security diagnostic
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m3-03-security-diagnostic
+          path: m3-03-security.log
+          if-no-files-found: error
+          retention-days: 7

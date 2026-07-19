@@ -3,7 +3,7 @@
 > 状态：In Progress  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
-> 建议分支：`feat/m3-state-timeline-knowledge`
+> 建议分支：`work/m3-04-state-timeline-knowledge`
 
 ## 目标
 
@@ -44,8 +44,15 @@ M3-02、M3-03
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
+- `docs/contracts/`
+- `docs/database/`
+- `docs/ui/`
 
 ## 实施内容
 

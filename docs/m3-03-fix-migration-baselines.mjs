@@ -28,12 +28,6 @@ await replaceChecked(
 );
 await replaceChecked(
   'tests/migration/project-structure-migration.test.ts',
-  'schema_version: 11n',
-  'schema_version: 12n',
-  2,
-);
-await replaceChecked(
-  'tests/migration/project-structure-migration.test.ts',
   'projectSchemaVersion: 11',
   'projectSchemaVersion: 12',
 );

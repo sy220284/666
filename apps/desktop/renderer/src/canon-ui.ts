@@ -1,4 +1,9 @@
-import type { Entity, EntityCatalog, EntityType, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type {
+  Entity,
+  EntityCatalog,
+  EntityType,
+  ProjectWorkspaceSummary,
+} from '@worldforge/contracts';
 
 const dialog = document.querySelector<HTMLDialogElement>('[data-canon-dialog]');
 const openButton = document.querySelector<HTMLButtonElement>('[data-open-canon]');
@@ -40,14 +45,16 @@ function selectedEntity(): Entity | null {
 }
 
 function setWriteDisabled(disabled: boolean): void {
-  for (const element of dialog?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement>(
-    '[data-canon-write]',
-  ) ?? []) {
+  for (const element of dialog?.querySelectorAll<
+    HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement
+  >('[data-canon-write]') ?? []) {
     element.disabled = disabled;
   }
 }
 
-function formControl(name: string): HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null {
+function formControl(
+  name: string,
+): HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null {
   const control = entityForm?.elements.namedItem(name);
   return control instanceof HTMLInputElement ||
     control instanceof HTMLTextAreaElement ||
@@ -170,7 +177,14 @@ async function refreshCatalog(message = '正在读取实体与Canon…'): Promis
 }
 
 function aliasLines(value: FormDataEntryValue | null): string[] {
-  return [...new Set(String(value ?? '').split(/\r?\n/u).map((item) => item.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      String(value ?? '')
+        .split(/\r?\n/u)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 openButton?.addEventListener('click', () => {
@@ -221,9 +235,10 @@ entityForm?.addEventListener('submit', (event) => {
         });
     if (!result.ok) return setStatus(`保存失败 · ${result.error.code}`, true);
     if (!selectedEntityId) {
-      selectedEntityId = result.data.entities.find(
-        (entity) => entity.name === name && entity.entityType === entityType,
-      )?.id ?? null;
+      selectedEntityId =
+        result.data.entities.find(
+          (entity) => entity.name === name && entity.entityType === entityType,
+        )?.id ?? null;
     }
     renderCatalog(result.data);
     setStatus('实体已由作者命令写入项目数据库。');
@@ -240,7 +255,7 @@ factForm?.addEventListener('submit', (event) => {
     const rawValue = String(data.get('valueJson') ?? '').trim();
     const description = String(data.get('description') ?? '').trim();
     if (!factKey || !rawValue) return setStatus('请输入事实键和值。', true);
-    let value: unknown;
+    let value: Entity['facts'][number]['value'];
     try {
       value = JSON.parse(rawValue);
     } catch {

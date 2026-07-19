@@ -2026,3 +2026,98 @@ body[data-motion-preference='reduced'] *::after {
 .scene-beat-trash {
   margin-top: 0.8rem;
 }
+
+/* M3-03 Entity Canon workspace */
+.canon-dialog {
+  width: min(960px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+}
+
+.canon-dialog__body {
+  overflow: auto;
+}
+
+.canon-header,
+.canon-toolbar,
+.canon-section > header,
+.canon-fact-row > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.canon-toolbar {
+  flex-wrap: wrap;
+  margin-block: 16px;
+}
+
+.canon-toolbar label {
+  flex: 1 1 280px;
+}
+
+.canon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.canon-section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.canon-section h3,
+.canon-section small {
+  margin: 0;
+}
+
+.canon-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.canon-form label,
+.canon-toolbar label {
+  display: grid;
+  gap: 6px;
+}
+
+.canon-form input,
+.canon-form select,
+.canon-form textarea,
+.canon-toolbar select {
+  width: 100%;
+}
+
+.canon-fact-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.canon-fact-row {
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.canon-fact-row[data-canon-fact-status='historical'] {
+  opacity: 0.72;
+}
+
+.canon-fact-row pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .canon-grid {
+    grid-template-columns: 1fr;
+  }
+}

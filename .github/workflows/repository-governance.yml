@@ -12,6 +12,16 @@ on:
       - 'scripts/main-verification.mjs'
       - 'scripts/ruleset-policy.mjs'
       - 'docs/process/MAIN_BRANCH_PROTECTION.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/governance/**'
+      - '.github/workflows/**'
+      - 'scripts/automerge.mjs'
+      - 'scripts/ci-policy.mjs'
+      - 'scripts/main-verification.mjs'
+      - 'scripts/ruleset-policy.mjs'
+      - 'docs/process/MAIN_BRANCH_PROTECTION.md'
   schedule:
     - cron: '30 2 * * 1'
   workflow_dispatch:
@@ -27,6 +37,8 @@ jobs:
   repository-governance:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      RULESET_COMMAND: ${{ github.event_name == 'push' && 'apply' || 'check' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -38,14 +50,15 @@ jobs:
       - name: Assert clean trusted governance checkout
         shell: bash
         run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
-      - name: Audit complete native main-branch protection
+      - name: Audit or reconcile complete native main-branch protection
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          REPO_ADMIN_TOKEN: ${{ github.event_name == 'push' && secrets.REPO_ADMIN_TOKEN || '' }}
           RULESET_REPORT: artifacts/repository-governance/report.json
           RULESET_STRICT: true
-        run: node scripts/ruleset-policy.mjs check
+        run: node scripts/ruleset-policy.mjs "$RULESET_COMMAND"
       - name: Assert governance audit did not mutate tracked files
+        if: always()
         shell: bash
         run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Upload ruleset drift report

@@ -5,7 +5,11 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { REQUIRED_EVIDENCE_FILES, validateTaskEvidence } from '../../scripts/evidence-policy.mjs';
+import {
+  assertFinalEvidenceSemantics,
+  REQUIRED_EVIDENCE_FILES,
+  validateTaskEvidence,
+} from '../../scripts/evidence-policy.mjs';
 
 const temporaryDirectories: string[] = [];
 
@@ -87,5 +91,41 @@ describe('evidence policy', () => {
     await expect(validateTaskEvidence(restored.taskId, restored.root)).rejects.toThrow(
       'evidence contains unlisted files: unlisted.txt',
     );
+  });
+});
+
+describe('final evidence semantics', () => {
+  const documents = {
+    summary: '# 验证摘要\n\n状态：Verified。',
+    manualAcceptance: '# 人工验收\n\n结论：通过。',
+    qualityMatrix: '# 质量矩阵\n\n结论：Verified。',
+  };
+
+  it('accepts committed M2 evidence with screenshots and no stale state', () => {
+    expect(() =>
+      assertFinalEvidenceSemantics(
+        'M2-01',
+        { commit: 'a'.repeat(40) },
+        [{ fileName: 'lock.png', sha256: 'b'.repeat(64) }],
+        documents,
+      ),
+    ).not.toThrow();
+  });
+
+  it('rejects working-tree, empty screenshots and pending acceptance text', () => {
+    expect(() =>
+      assertFinalEvidenceSemantics('M2-01', { commit: 'working-tree' }, [], documents),
+    ).toThrow('committed revision');
+    expect(() =>
+      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, [], documents),
+    ).toThrow('desktop screenshot');
+    expect(() =>
+      assertFinalEvidenceSemantics(
+        'M2-01',
+        { commit: 'a'.repeat(40) },
+        [{ fileName: 'lock.png', sha256: 'b'.repeat(64) }],
+        { ...documents, manualAcceptance: '人工待运行' },
+      ),
+    ).toThrow('stale implementation');
   });
 });

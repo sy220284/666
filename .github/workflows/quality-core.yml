@@ -208,7 +208,7 @@ jobs:
           set -o pipefail
           pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
       - name: Upload Electron and display evidence
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: desktop-e2e-evidence

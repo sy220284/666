@@ -66,7 +66,24 @@ async function regularFiles(directory, prefix = '') {
   return files;
 }
 
-export async function validateTaskEvidence(taskId, repositoryRoot = root) {
+export function assertFinalEvidenceSemantics(taskId, manifest, screenshots, documents) {
+  if (!/^[0-9a-f]{7,40}$/u.test(manifest.commit ?? '')) {
+    throw new Error(`${taskId} final evidence must reference a committed revision`);
+  }
+  if (taskId.startsWith('M2-') && screenshots.length === 0) {
+    throw new Error(`${taskId} final evidence requires at least one desktop screenshot`);
+  }
+  const combined = [documents.summary, documents.manualAcceptance, documents.qualityMatrix].join(
+    '\n',
+  );
+  const stale =
+    /working-tree|BLOCKED_BY_ENVIRONMENT|(?:^|\\W)(?:BLOCKED|PENDING|DEFERRED)(?:\\W|$)|人工待运行|桌面待运行|等待(?:有显示环境|implementation PR|PR|CI)|任务(?:保持|结论)[^\\n]*(?:In Progress|Implemented)/imu;
+  if (stale.test(combined)) {
+    throw new Error(`${taskId} final evidence contains stale implementation or acceptance state`);
+  }
+}
+
+export async function validateTaskEvidence(taskId, repositoryRoot = root, options = {}) {
   if (!/^M\d-\d{2}$/u.test(taskId)) throw new Error(`Invalid evidence task id: ${taskId}`);
   const directory = path.join(repositoryRoot, 'docs', 'test-evidence', taskId);
   const manifestPath = path.join(directory, 'manifest.json');
@@ -150,6 +167,27 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root) {
     if (!evidenceEntry || evidenceEntry.sha256 !== screenshot.sha256) {
       throw new Error(`${taskId} screenshot is absent from the evidence manifest: ${fileName}`);
     }
+  }
+
+  let finalEvidence = options.final === true;
+  if (!finalEvidence) {
+    try {
+      const taskIndex = await readFile(
+        path.join(repositoryRoot, 'docs', 'tasks', 'TASK_INDEX.md'),
+        'utf8',
+      );
+      const taskRow = taskIndex.split(/\r?\n/u).find((line) => line.includes(`| ${taskId} |`));
+      finalEvidence = /\|\s*Verified\s*\|\s*$/u.test(taskRow ?? '');
+    } catch {
+      finalEvidence = false;
+    }
+  }
+  if (finalEvidence) {
+    assertFinalEvidenceSemantics(taskId, manifest, screenshots, {
+      summary: await readFile(path.join(directory, 'summary.md'), 'utf8'),
+      manualAcceptance: await readFile(path.join(directory, 'manual-acceptance.md'), 'utf8'),
+      qualityMatrix: await readFile(path.join(directory, 'quality-matrix.md'), 'utf8'),
+    });
   }
 
   const actualFiles = (await regularFiles(directory)).filter((file) => file !== 'manifest.json');

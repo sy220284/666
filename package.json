@@ -39,6 +39,7 @@
     "task:validate": "node scripts/taskctl.mjs validate",
     "task:preflight": "node scripts/taskctl.mjs preflight",
     "task:verify": "node scripts/taskctl.mjs verify",
+    "task:verify-final": "node scripts/taskctl.mjs verify-task",
     "task:sync": "node scripts/taskctl.mjs sync",
     "task:activate": "node scripts/taskctl.mjs activate",
     "task:reopen": "node scripts/taskctl.mjs reopen",

@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "taskId": "M3-03",
   "commit": "working-tree",
-  "generatedAt": "2026-07-19T08:39:40.669Z",
+  "generatedAt": "2026-07-19T08:57:05.207Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 442,
-      "sha256": "57366aaa9131ac31dd7f8fe03e412d8cba2f5f95f591371c18c6b29ecc05a83a"
+      "bytes": 513,
+      "sha256": "4067433d0c67e32095b19d5d26753a103d7f1f8c8b096a8f9b083502bdc25a24"
     },
     {
       "path": "known-risks.md",
-      "bytes": 454,
-      "sha256": "dac96251bbdf09675f1318181c449ad74e994df2b3bf3a1bf966fcab7677126b"
+      "bytes": 614,
+      "sha256": "fe59f8ce39dc8d683a6c4545db8f55ff363f3a84c8e449e546e55c12c8f92c19"
     },
     {
       "path": "manual-acceptance.md",
@@ -31,8 +31,8 @@
     },
     {
       "path": "summary.md",
-      "bytes": 518,
-      "sha256": "a3d51b7fe6595f277cb24b216959a8aeb0cd254a9bbe98ac43f367438f883142"
+      "bytes": 819,
+      "sha256": "a60dfb69a89c7274231f1e8c428bca5831d33631af7b4ba950790665a5e632c3"
     },
     {
       "path": "test-results/results.json",

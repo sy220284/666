@@ -1,6 +1,6 @@
 # M3-03 通用实体与静态Canon
 
-> 状态：Implemented  
+> 状态：In Progress  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 工作分支：`work/m3-03-entity-canon`  
@@ -45,8 +45,12 @@ M3-01
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
 
 ## 实施内容
 

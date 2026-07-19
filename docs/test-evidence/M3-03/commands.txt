@@ -5,3 +5,4 @@ pnpm test:migration  # 12 files, 29 tests passed
 pnpm lint  # executed again during closeout
 pnpm task:validate  # executed after task transition
 # Final PR permanent gates: PR Policy, Task Governance, Evidence, Security, Performance, Quality
+pnpm test:prepare && pnpm test:security  # 15 files, 56 tests required

@@ -23,11 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Assert clean working tree before policy validation
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Validate real PR branch
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate permanent CI policy
@@ -165,12 +168,25 @@ jobs:
             'APPROVED',
           );
 
-          const [workflow, quality, mainVerification, prPolicy] = await Promise.all([
-            readFile('.github/workflows/automerge.yml', 'utf8'),
-            readFile('.github/workflows/quality.yml', 'utf8'),
-            readFile('scripts/main-verification.mjs', 'utf8'),
-            readFile('.github/workflows/pr-policy.yml', 'utf8'),
-          ]);
+          const workflowFiles = [
+            '.github/workflows/pr-policy.yml',
+            '.github/workflows/task-governance.yml',
+            '.github/workflows/evidence.yml',
+            '.github/workflows/security.yml',
+            '.github/workflows/performance.yml',
+            '.github/workflows/quality-core.yml',
+            '.github/workflows/main-verification.yml',
+            '.github/workflows/repository-governance.yml',
+          ];
+          const sources = new Map(
+            await Promise.all(
+              workflowFiles.map(async (file) => [file, await readFile(file, 'utf8')]),
+            ),
+          );
+          const workflow = await readFile('.github/workflows/automerge.yml', 'utf8');
+          const quality = await readFile('.github/workflows/quality.yml', 'utf8');
+          const mainVerification = await readFile('scripts/main-verification.mjs', 'utf8');
+          const evidencePolicy = await readFile('scripts/evidence-policy.mjs', 'utf8');
           const trigger = workflow.match(/workflows:\s*\n([\s\S]*?)\n\s*types:/u)?.[1] ?? '';
           for (const name of [
             'PR Policy',
@@ -189,6 +205,15 @@ jobs:
           assert.match(quality, /static-failure-diagnostics/u);
           assert.match(mainVerification, /modeAwareChecksState/u);
           assert.match(mainVerification, /nextPagePath/u);
-          assert.match(prPolicy, /name: Reject tracked root scratch artifacts/u);
-          assert.match(prPolicy, /run: test ! -e tmp/u);
+          assert.match(evidencePolicy, /EVIDENCE_HEAD_SHA/u);
+          assert.match(evidencePolicy, /merge-base.*--is-ancestor/su);
+          for (const [file, source] of sources) {
+            assert.match(source, /assert-clean-tree\.mjs/u, `${file} must enforce clean-tree checks`);
+          }
+          const checks = JSON.parse(
+            await readFile('.github/governance/required-checks.json', 'utf8'),
+          );
+          assert.equal('mainVerificationBaselineSha' in checks, false);
           NODE
+      - name: Assert clean working tree after policy validation
+        run: node .github/governance/assert-clean-tree.mjs

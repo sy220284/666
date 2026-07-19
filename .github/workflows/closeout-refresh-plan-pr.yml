@@ -32,13 +32,29 @@ jobs:
         with:
           node-version: 24
 
-      - name: Build validated refresh plan
+      - id: build
+        name: Build validated refresh plan
+        continue-on-error: true
         env:
           EXPECTED_BRANCH_HEAD: ${{ github.event.pull_request.head.sha }}
           PLAN_OUTPUT_DIR: ${{ runner.temp }}/closeout-refresh-plan
-        run: node .github/governance/closeout-refresh-plan.mjs
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$PLAN_OUTPUT_DIR"
+          node .github/governance/closeout-refresh-plan.mjs 2>&1 | tee "$PLAN_OUTPUT_DIR/run.log"
+
+      - name: Upload refresh diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: closeout-refresh-diagnostics
+          path: ${{ runner.temp }}/closeout-refresh-plan/run.log
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload refresh plan
+        if: ${{ steps.build.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: closeout-refresh-plan
@@ -47,6 +63,7 @@ jobs:
           retention-days: 7
 
       - name: Publish refresh plan status
+        if: ${{ steps.build.outcome == 'success' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -74,3 +91,9 @@ jobs:
           });
           if (!response.ok) throw new Error(`Status publish failed: ${response.status}`);
           NODE
+
+      - name: Enforce refresh plan result
+        if: ${{ always() }}
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: test "$BUILD_OUTCOME" = success

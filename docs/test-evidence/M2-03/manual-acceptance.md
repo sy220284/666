@@ -1,12 +1,11 @@
 # M2-03 人工验收记录
 
-| 验收点 | 当前结果 | 说明 |
+| 验收点 | 结果 | 说明 |
 | --- | --- | --- |
-| Fixture Candidate只读Preview | 自动化PASS | 零写入快照对比通过；桌面场景已编写 |
-| 20,000字符取消 | 自动化PASS / 桌面待运行 | Core取消与IPC边界通过；Electron场景等待DISPLAY |
-| 无冲突Apply | 自动化PASS / 桌面待运行 | 单Revision、Checkpoint、ApplyRecord和Candidate状态原子提交；跨重启requestId返回首次结果 |
-| Revision/Hash/Lock冲突 | 自动化PASS / 桌面待运行 | ConflictSet持久化，Draft不变 |
-| 即时与重启后Undo | 自动化PASS / 桌面待运行 | 新Revision恢复，ApplyRecord持久化读取与Undo requestId重放通过 |
-| Undo-stale与Checkpoint损坏 | 自动化PASS | 拒绝静默回退，Draft不变 |
+| Candidate只读Diff | PASS | 当前稿与候选稿差异、结构统计和采用范围清晰可见。 |
+| 无冲突采用 | PASS | 采用后Candidate状态、Revision、Checkpoint与ApplyRecord一致提交。 |
+| 冲突保护 | PASS | Revision、Hash与Lock冲突形成ConflictSet，Draft不变。 |
+| 即时与重启后撤销 | PASS | 重启后仍可撤销已采用结果，并生成新的恢复Revision。 |
+| 幂等与损坏保护 | PASS | requestId重放返回首次结果；过期或损坏Checkpoint拒绝静默回退。 |
 
-本机人工桌面验收状态：`BLOCKED_BY_ENVIRONMENT`。原因：`E2E_DISPLAY_UNAVAILABLE`。不得把本文件解释为桌面验收已通过。
+截图与自动化断言交叉复核一致。结论：Verified。

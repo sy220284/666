@@ -1,23 +1,23 @@
 {
   "schemaVersion": 1,
   "taskId": "M2-04",
-  "commit": "working-tree",
-  "generatedAt": "2026-07-18T10:50:00.000Z",
+  "commit": "9110b16bfc2c08d210d0306b7b394ef20cc9c9f7",
+  "generatedAt": "2026-07-19T01:18:34Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 133,
-      "sha256": "d4383704c42467d3a08f1dd6dd2eab71f6eb482e323ffb9d7dcf04ad33d42573"
+      "bytes": 164,
+      "sha256": "3bb91f84872fdce6fc63bcfddb08648fa7d17b677957bed60621f1785385dac5"
     },
     {
       "path": "known-risks.md",
-      "bytes": 280,
-      "sha256": "1ceaf97525f07c3e2a7881786e66aeb57e59aaedccb649828e8c7368960c0055"
+      "bytes": 94,
+      "sha256": "ea5544cbd3381c546aa22a12900da06d614dd6bf8635a15c20498fc929011380"
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 1318,
-      "sha256": "736b41e4b044afe70b9945b2686f685ce505ec329954073d23fc917732b68f04"
+      "bytes": 741,
+      "sha256": "222cc0f79b47fd5fefd28cb6ce0cba10b2d9418ab5aea18351a87f10bd23ba64"
     },
     {
       "path": "performance.json",
@@ -26,23 +26,33 @@
     },
     {
       "path": "quality-matrix.md",
-      "bytes": 1741,
-      "sha256": "0a7e83d0f00f4b8fbd1b4279b3db6829624b122303c9fd5c8f73f534b1f9ad5c"
+      "bytes": 317,
+      "sha256": "6973859d51ad9bdb7adf9ee052903ebbb60ae93b2fbdec9055269ea9b1f8d301"
     },
     {
       "path": "screenshots/manifest.json",
-      "bytes": 3,
-      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      "bytes": 368,
+      "sha256": "640b83c58e937e241e5db80f57dec68428b1952428fcb6109e9cb316c5fb553c"
+    },
+    {
+      "path": "screenshots/permanent-delete-checkpoint.png",
+      "bytes": 123428,
+      "sha256": "836b7476e669d73a541d6ff00ef9a9104db0e4beaec1bfc8e0261ddf592b27fe"
+    },
+    {
+      "path": "screenshots/split-chapter-result.png",
+      "bytes": 102273,
+      "sha256": "fec556caa5a8ea51489da86fc61b8a844f5882593e34a622414f53b1a9dcfb1b"
     },
     {
       "path": "summary.md",
-      "bytes": 572,
-      "sha256": "ba6d4cbcb7e36e34ea1b42e3b8792d193dee6a13cae6aecc410d51ba189ccb79"
+      "bytes": 332,
+      "sha256": "018a9b708006f8fa4b3f00203363e5d525ca7ff19bb43286c92276225f45ea19"
     },
     {
       "path": "test-results/results.json",
-      "bytes": 1646,
-      "sha256": "5053621e5d4026f74b2edbf3f8d429b9cc857ac72ae45ae3f3c13f782c969d8f"
+      "bytes": 996,
+      "sha256": "c8c7bd4ac4c2591024aa86bc8325b8910259a4e0f461e7442d93dfc680099193"
     }
   ]
 }

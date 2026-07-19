@@ -1,6 +1,6 @@
 # M2-03 Diff、冲突、采用与持久化撤销
 
-> 状态：Implemented
+> 状态：Verified  
 > 里程碑：M2 编辑安全与版本核心  
 > 优先级：P0  
 > 工作分支：`work/m2-03-diff-apply-conflict-undo`
@@ -20,15 +20,12 @@ Candidate
 
 M2-03交付的是候选采用引擎和最小桌面验收面，证明Candidate不会绕过Patch、Revision、Hash、LockGuard和恢复机制写入Draft。
 
-## 当前实现进度（working tree）
+## 最终验收结论
 
-- 阶段0：完成。合约循环与Core反向依赖已收敛，一次性输出/格式生成测试已删除或转换为行为测试，schema v8文档已同步。
-- 阶段1：代码与非Electron自动化完成。结构/字符Diff、20,000字符分片取消、20,001+ Worker及完整桌面命令链已实现。
-- 阶段2：代码与非Electron自动化完成。整稿/块/SceneBeat、非法选择拒绝、规范Patch审计日志、ConflictSet、LockGuard与三阶段事务回滚均通过。
-- 阶段3：代码与非Electron自动化完成。即时Undo、重启读取ApplyRecord、Apply/Undo成功结果跨重启幂等重放、undo-stale与Checkpoint/快照完整性校验均通过。
-- 阶段4：Format、Lint、Typecheck、Build、Unit、Integration、Migration、Security、Performance已通过；Electron E2E因当前Linux环境无`DISPLAY`/`xvfb-run`待CI执行。
-
-任务保持`In Progress`，不得在Electron E2E、PR评审与main合并前改为Implemented或Verified。工作中证据见`docs/test-evidence/M2-03/`。
+- Diff Preview、Apply、ConflictSet、Checkpoint、即时Undo与跨重启Undo均已完成。
+- Format、Lint、Typecheck、Build、Unit、Integration、Migration、Security、Performance及真实Electron E2E全部通过。
+- 最终证据绑定提交`9110b16bfc2c08d210d0306b7b394ef20cc9c9f7`与Quality运行`29668237967`。
+- 任务状态：`Verified`。
 
 ## 阶段定位
 

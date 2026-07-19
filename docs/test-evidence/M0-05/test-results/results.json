@@ -1,31 +1,31 @@
 [
   {
-    "suite": "split-chapter",
-    "fixtureId": "M2-04-split-chapter",
+    "suite": "testkit-unit",
+    "fixtureId": "M0-05-testkit-unit",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "merge-and-move",
-    "fixtureId": "M2-04-merge-and-move",
+    "suite": "fault-injection",
+    "fixtureId": "M0-05-fault-injection",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "stale-plan-guard",
-    "fixtureId": "M2-04-stale-plan-guard",
+    "suite": "security-fixtures",
+    "fixtureId": "M0-05-security-fixtures",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "permanent-delete-impact",
-    "fixtureId": "M2-04-permanent-delete-impact",
+    "suite": "desktop-entry",
+    "fixtureId": "M0-05-desktop-entry",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "checkpoint-and-rollback",
-    "fixtureId": "M2-04-checkpoint-and-rollback",
+    "suite": "permanent-gates",
+    "fixtureId": "M0-05-permanent-gates",
     "status": "passed",
     "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   }

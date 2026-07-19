@@ -1,50 +1,32 @@
 [
   {
-    "suite": "candidate-core-integration",
-    "fixtureId": "M2-02",
+    "suite": "candidate-isolation",
+    "fixtureId": "M2-02-candidate-isolation",
     "status": "passed",
-    "details": "Fixture Candidate isolation, complete/partial, pending/discarded, hash integrity and reopen persistence passed."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "version-core-integration",
-    "fixtureId": "M2-02",
+    "suite": "candidate-preview",
+    "fixtureId": "M2-02-candidate-preview",
     "status": "passed",
-    "details": "Version type, parent/source provenance, immutable content, reopen persistence and cross-project rejection passed."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "candidate-ipc-security",
-    "fixtureId": "M2-02",
+    "suite": "candidate-discard",
+    "fixtureId": "M2-02-candidate-discard",
     "status": "passed",
-    "details": "Strict create/discard authority fields and trusted Renderer forwarding passed."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "full-vitest",
-    "fixtureId": "M2-02",
+    "suite": "version-immutability",
+    "fixtureId": "M2-02-version-immutability",
     "status": "passed",
-    "details": "62 files, 232 passed and 1 pre-existing platform skip."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   },
   {
-    "suite": "migration",
-    "fixtureId": "M2-02",
+    "suite": "desktop-persistence",
+    "fixtureId": "M2-02-desktop-persistence",
     "status": "passed",
-    "details": "9 migration files and 26 tests passed."
-  },
-  {
-    "suite": "ai-eval-baseline",
-    "fixtureId": "M2-02",
-    "status": "passed",
-    "details": "2 files and 8 tests passed without changing Candidate semantics."
-  },
-  {
-    "suite": "electron-build",
-    "fixtureId": "M2-02",
-    "status": "passed",
-    "details": "All desktop and package targets built successfully."
-  },
-  {
-    "suite": "electron-e2e",
-    "fixtureId": "M2-02",
-    "status": "skipped",
-    "details": "Runner stopped with E2E_DISPLAY_UNAVAILABLE because DISPLAY and xvfb-run are absent."
+    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
   }
 ]

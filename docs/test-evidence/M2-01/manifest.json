@@ -1,23 +1,23 @@
 {
   "schemaVersion": 1,
   "taskId": "M2-01",
-  "commit": "working-tree",
-  "generatedAt": "2026-07-18T07:35:00Z",
+  "commit": "9110b16bfc2c08d210d0306b7b394ef20cc9c9f7",
+  "generatedAt": "2026-07-19T01:18:34Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 562,
-      "sha256": "507a3c6370e518914c15bda4d4bb18ea34ab8b439eb2b73e5811f92852f9d34b"
+      "bytes": 164,
+      "sha256": "b20cd973a5159fdaacd867e902b63b27e55ae4021e357d65156452f0b33ca0ea"
     },
     {
       "path": "known-risks.md",
-      "bytes": 553,
-      "sha256": "0e83b059d9e537b626ade54ee75d54da9428e5dc037a28236a8daa7e2906ba36"
+      "bytes": 114,
+      "sha256": "10152498a79993008da8b81969aaf1c80456b9a21eaa9cfb0b8ce319053d4c06"
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 888,
-      "sha256": "83832b6ba3a2e23be4e2811e25e3cba76b6f8126c795471ecff16986a6c41b97"
+      "bytes": 572,
+      "sha256": "72d6134effda38478213388a1622b166d11596bb44dd2b44db050e7cfd21286c"
     },
     {
       "path": "performance.json",
@@ -26,23 +26,28 @@
     },
     {
       "path": "quality-matrix.md",
-      "bytes": 1058,
-      "sha256": "d1f448fc9e4a260a0427103989f52843bf33583330884d4c71ec131d0e6dcf08"
+      "bytes": 294,
+      "sha256": "0368413a4d1dd3811d1335265c38cd2403d9cd3da28d5691a3eacf225689a486"
+    },
+    {
+      "path": "screenshots/lockguard-reopen.png",
+      "bytes": 131243,
+      "sha256": "741a88098b7ba44a52f60716899182e2f12bb8366a8c8ea4a53dc9debe022de3"
     },
     {
       "path": "screenshots/manifest.json",
-      "bytes": 3,
-      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      "bytes": 178,
+      "sha256": "8a6b56d8aeaeb20e7539da88c7e19e24467c487aa91f5820772ad55f676738ad"
     },
     {
       "path": "summary.md",
-      "bytes": 447,
-      "sha256": "3628b72a0b5a7fd503e72857e280af7f369f79732ccdb35ceced9489a35b91dd"
+      "bytes": 373,
+      "sha256": "33ccf1bffefd6d287e83637d9f1afa50653cec02afd19d62fd3140dc1f419766"
     },
     {
       "path": "test-results/results.json",
-      "bytes": 1353,
-      "sha256": "d94ef9a99ca12956b14f2a6401533910264fb95cb68c87693876d8f6bf2becf0"
+      "bytes": 984,
+      "sha256": "e8d574373151fa33f0a6ecfccf7c2899d8bfe47ca6cecf030bc9ab73302eeb93"
     }
   ]
 }

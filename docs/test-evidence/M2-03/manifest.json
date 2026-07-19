@@ -1,48 +1,58 @@
 {
   "schemaVersion": 1,
   "taskId": "M2-03",
-  "commit": "working-tree",
-  "generatedAt": "2026-07-18T05:53:54Z",
+  "commit": "9110b16bfc2c08d210d0306b7b394ef20cc9c9f7",
+  "generatedAt": "2026-07-19T01:18:34Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 689,
-      "sha256": "e7cf1afb8ba9f2eed460dca8ad1869c06775829941eb73f0fe53726d6e7772f5"
+      "bytes": 164,
+      "sha256": "5a82f216cfb73bd6b934965571d835322ad7752307b78905176092232ac48db4"
     },
     {
       "path": "known-risks.md",
-      "bytes": 737,
-      "sha256": "ccbe27243710913e29274f09994708adc8706094beed47592f604d14973126ea"
+      "bytes": 108,
+      "sha256": "fc22835f2f4e4af9f418d49d92eff1e9543afe61e76fd9d098c0b0bceec08bdf"
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 946,
-      "sha256": "59b1ddbe78dde5d1da4a38df251f1b43fbac9b8289786dc2b6b4c6d624e1b6cb"
+      "bytes": 677,
+      "sha256": "ab7a614684a320f8b00df1cffe3c7d5ec5f2faa2ae3e523c2b8f606ac26bfc82"
     },
     {
       "path": "performance.json",
-      "bytes": 1624,
-      "sha256": "5e8db92a516a88e39295195c5d3e86e3ded79d82f56b84e152d1e55e143a6c1b"
-    },
-    {
-      "path": "quality-matrix.md",
-      "bytes": 1237,
-      "sha256": "151c73249da7d7209bf9d1c0175aafe3ab52b212cced293366bf34cdd48e526a"
-    },
-    {
-      "path": "screenshots/manifest.json",
       "bytes": 3,
       "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
     },
     {
+      "path": "quality-matrix.md",
+      "bytes": 280,
+      "sha256": "a35a42ce64e49e2cf5c32c46bcdc456bd0e53c2503b989a8437f9219992515d6"
+    },
+    {
+      "path": "screenshots/candidate-apply-success.png",
+      "bytes": 91975,
+      "sha256": "7a25b9404919599884a80260d345bd66aa8f65da2b00b829b332817c37e082a8"
+    },
+    {
+      "path": "screenshots/manifest.json",
+      "bytes": 366,
+      "sha256": "7cf9d2ceb1daefd1ad02aa25a755333d8fd6aaba58c264cb409624c71666724d"
+    },
+    {
+      "path": "screenshots/persisted-undo-success.png",
+      "bytes": 91484,
+      "sha256": "324fccd9594c58f432dca41e137b9d2f5eb436f96cd944207de0aa55a49bb462"
+    },
+    {
       "path": "summary.md",
-      "bytes": 705,
-      "sha256": "488fbe9fbcbedf5b48e43383531f4369e244773a80af0b5da0727c27a6ac15fe"
+      "bytes": 334,
+      "sha256": "53b44f00063ba63d131fad807935c07f1b92b5c57148a50dad6b829c6b9a4745"
     },
     {
       "path": "test-results/results.json",
-      "bytes": 1243,
-      "sha256": "bfbea6e99870c9600bd22af8ab4a8419db1a0f2e79a867f27d2867288be4b20a"
+      "bytes": 980,
+      "sha256": "8eea735fd6e29405040b5f4dad2fe9eee279b597cbdd42da188c5fc2f9d44758"
     }
   ]
 }

@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "fileName": "candidate-discarded-draft-unchanged.png",
+    "fixtureId": "M2-02-desktop-acceptance",
+    "sha256": "678568f577e048b668e6eaf3ca275d7be29d59241bf935d8b9878ccbf06a539f"
+  },
+  {
+    "fileName": "candidate-readonly-preview.png",
+    "fixtureId": "M2-02-desktop-acceptance",
+    "sha256": "8ce3964c932380b129694587fa834b9a08c53381a2c2073a9141d818b8f43ab8"
+  },
+  {
+    "fileName": "immutable-version-finalized.png",
+    "fixtureId": "M2-02-desktop-acceptance",
+    "sha256": "e2e6f7a2d0e2a90e1f8924ea42fdc7035d0843640dd931846f484bf8ffa7cfb5"
+  }
+]

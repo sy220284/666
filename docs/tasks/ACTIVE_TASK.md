@@ -23,8 +23,12 @@ allowed_paths:
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
+  - apps/desktop/main/
+  - apps/desktop/preload/
   - apps/desktop/renderer/
   - tests/integration/
+  - tests/migration/
+  - tests/security/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml

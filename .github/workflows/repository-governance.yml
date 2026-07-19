@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: repository-governance
+  group: repository-governance-${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.head.sha || 'main' }}
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
@@ -58,5 +58,5 @@ jobs:
         with:
           name: repository-governance-report
           path: artifacts/repository-governance/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30

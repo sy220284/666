@@ -35,6 +35,7 @@ jobs:
       - name: Audit high-severity dependency vulnerabilities
         run: pnpm audit --audit-level=high
       - name: Clean tree after dependency audit
+        if: always()
         run: node .github/governance/assert-clean-tree.mjs
 
   secret-scan:
@@ -54,6 +55,7 @@ jobs:
       - name: Scan tracked files
         run: node scripts/scan-secrets.mjs
       - name: Clean tree after tracked-file scan
+        if: always()
         run: node .github/governance/assert-clean-tree.mjs
 
   application-security:
@@ -79,6 +81,7 @@ jobs:
       - name: Run application security tests
         run: pnpm test:security
       - name: Clean tree after application checks
+        if: always()
         run: node .github/governance/assert-clean-tree.mjs
 
   security:

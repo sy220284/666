@@ -48,4 +48,5 @@ jobs:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
         run: node .github/governance/task-transition-policy.mjs
       - name: Assert clean working tree after task validation
+        if: always()
         run: node .github/governance/assert-clean-tree.mjs

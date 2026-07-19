@@ -377,7 +377,7 @@ async function hasMainVerificationRun(owner, repo, workflow, sha) {
   return runs.some((run) => run.head_sha === sha);
 }
 
-async function ensureMainVerification(owner, repo, config, mergeSha, number, sourceHeadSha) {
+export async function ensureMainVerification(owner, repo, config, mergeSha, number, sourceHeadSha) {
   const mainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`);
   if (mainRef.object.sha !== mergeSha) {
     console.log(

@@ -92,7 +92,7 @@ describe('implementation-first task lifecycle', () => {
         source: 'docs/tasks/M1/M1-01.md',
         branch: 'main',
         startedAt: '2026-07-16',
-        allowedPaths: ['packages/core-service/'],
+        allowedPaths: ['packages/core-service/', 'docs/tasks/M1/M1-01.md'],
         forbiddenPaths: [],
         requiredDocs: [],
         verification: ['pnpm test'],
@@ -124,12 +124,19 @@ describe('implementation-first task lifecycle', () => {
     );
     const updatedIndex = await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8');
     const updatedCard = await readFile(path.join(root, 'docs/tasks/M1/M1-01.md'), 'utf8');
-    expect(updatedState.lastImplementedTask).toMatchObject({ id: 'M1-01', commit: 'abcdef1' });
+    expect(updatedState.lastImplementedTask).toMatchObject({
+      id: 'M1-01',
+      commit: 'abcdef1',
+      source: 'docs/tasks/M1/M1-01.md',
+      branch: 'main',
+      nextTaskId: 'M1-02',
+    });
+    expect(updatedState.lastImplementedTask.allowedPaths).toContain('docs/tasks/M1/M1-01.md');
     expect(updatedState.deferredVerification).toEqual([
       expect.objectContaining({ id: 'M1-01', implementationCommit: 'abcdef1' }),
     ]);
     expect(updatedState.activeTask).toMatchObject({ id: 'M1-02', status: 'IN_PROGRESS' });
-    expect(updatedState.activeTask.allowedPaths).toContain('docs/tasks/M1/M1-01.md');
+    expect(updatedState.activeTask.allowedPaths).not.toContain('docs/tasks/M1/M1-01.md');
     expect(updatedIndex).toContain('| M1-01 | [设置](M1/M1-01.md) | M0 | Implemented |');
     expect(updatedIndex).toContain('| M1-02 | [项目](M1/M1-02.md) | M1-01 | In Progress |');
     expect(updatedCard).toContain('> 状态：Implemented  ');

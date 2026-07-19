@@ -23,12 +23,8 @@ allowed_paths:
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
-  - apps/desktop/main/
-  - apps/desktop/preload/
   - apps/desktop/renderer/
   - tests/integration/
-  - tests/migration/
-  - tests/security/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
@@ -38,7 +34,6 @@ allowed_paths:
   - docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M3-04/
-  - docs/tasks/M3/M3-03_ENTITY_CANON.md
 forbidden_paths:
 
 required_docs:

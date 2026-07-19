@@ -45,6 +45,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/process/WORKFLOW_EXECUTION_ORDER.md',
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
+  'tests/integration/task-lifecycle.test.ts',
   'tests/unit/evidence-policy.test.ts',
   'tests/unit/task-control.test.ts',
   'tests/unit/task-ordering.test.ts',
@@ -103,7 +104,29 @@ export function validateChangedPaths(changedFiles, allowedPaths, forbiddenPaths)
   return violations;
 }
 
+export function transitionSnapshotFor(state, baseState = null) {
+  const previous = baseState?.activeTask;
+  const snapshot = state?.lastImplementedTask;
+  if (
+    previous?.id &&
+    snapshot?.id === previous.id &&
+    snapshot?.nextTaskId === state?.activeTask?.id &&
+    Array.isArray(snapshot.allowedPaths)
+  ) {
+    return snapshot;
+  }
+  return null;
+}
+
 export function validateChangedPathsForTransition(changedFiles, state, baseState = null) {
+  const snapshot = transitionSnapshotFor(state, baseState);
+  if (snapshot) {
+    return validateChangedPaths(
+      changedFiles,
+      [...new Set(snapshot.allowedPaths)],
+      [...new Set(snapshot.forbiddenPaths ?? [])],
+    );
+  }
   const states = [state, baseState].filter(Boolean);
   const allowedPaths = states.flatMap((value) => value.activeTask?.allowedPaths ?? []);
   const forbiddenPaths = states.flatMap((value) => value.activeTask?.forbiddenPaths ?? []);

@@ -28,7 +28,7 @@
 → 提交Pull Request
 → 六项永久门禁
 → 审查条件复核
-→ Auto Merge通过Merge API执行squash
+→ Controlled Merge通过Merge API执行squash
 → Main Verification复核最终main提交
 → 证据与追踪回写
 → 激活下一张依赖已满足的任务
@@ -39,9 +39,9 @@
 1. 同一时刻只有一张`IN_PROGRESS`任务。
 2. 每张任务使用独立非`main`分支，分支名使用`work/`、`feat/`、`fix/`、`refactor/`、`test/`、`docs/`或`chore/`前缀。
 3. 所有代码、文档、任务状态和证据变更必须通过Pull Request进入`main`。
-4. 机器人和GitHub Actions不得执行`git push main`；只有仓库内已审计的Auto Merge脚本可在六项门禁全部成功后调用Pull Request Merge API。
+4. 机器人和GitHub Actions不得执行`git push main`；只有仓库内已审计的Controlled Merge脚本可在六项门禁全部成功后调用Pull Request Merge API。
 5. PR必须通过`pr-policy`、`task-governance`、`quality / quality`、`security`、`performance`和`evidence`；任一必要检查失败即禁止合并。
-6. Auto Merge必须阻止Draft、Changes Requested、未解决线程、头SHA变化和落后于当前main的分支。
+6. Controlled Merge必须阻止Draft、Changes Requested、未解决线程、头SHA变化和落后于当前main的分支。
 7. 每张任务使用独立原子提交或连续提交组，提交信息必须包含任务ID。
 8. 任何失败转为`BLOCKED`，保留复现、日志、数据安全状态和回退方式。
 9. 不允许跳过失败测试、伪造证据、绕开阶段门或提前实现未来任务。
@@ -88,7 +88,7 @@ Ready for Review
 └─ 同名六项检查重新执行完整门禁
 ```
 
-`ready_for_review`必须触发完整Quality、Security和Performance；`converted_to_draft`必须取消旧重型运行并恢复轻量检查。Draft阶段的绿色状态不具备合并资格，Auto Merge仍以PR实时状态为准。
+`ready_for_review`必须触发完整Quality、Security和Performance；`converted_to_draft`必须取消旧重型运行并恢复轻量检查。Draft阶段的绿色状态不具备合并资格，Controlled Merge仍以PR实时状态为准。
 
 ### 3.3 治理型PR
 
@@ -111,8 +111,8 @@ Ready for Review
 - GitHub `Performance`：Draft返回延期状态，Ready执行性能预算及AI协议与评估基线。
 - GitHub `Evidence`：验证发生变化的每个任务证据包及Manifest完整性。
 - GitHub `Quality`：调用`.github/workflows/quality-core.yml`，以聚合检查`quality / quality`作为合并判据。
-- GitHub `Auto Merge`：从main读取已审计脚本，串行复核全部门禁和审查状态，调用Merge API完成squash。
-- GitHub `Main Verification`：由Auto Merge显式调度，验证最终main SHA、来源PR和来源门禁，再运行完整Linux质量复核。
+- GitHub `Controlled Merge`：从main读取已审计脚本，串行复核全部门禁和审查状态，调用Merge API完成squash。
+- GitHub `Main Verification`：由Controlled Merge显式调度，验证最终main SHA、来源PR和来源门禁，再运行完整Linux质量复核。
 
 PR产生新提交时，同一PR旧门禁运行会自动取消。每个作业设置独立超时，避免Runner无界挂起。
 

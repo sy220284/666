@@ -21,8 +21,16 @@ export function transitionErrors(baseState, headState, taskStatuses) {
   const previous = baseState?.activeTask;
   if (!previous?.id || previous.status !== 'IN_PROGRESS') return errors;
 
-  if (headState?.lastImplementedTask?.id !== previous.id) {
+  const snapshot = headState?.lastImplementedTask;
+  if (snapshot?.id !== previous.id) {
     errors.push(`lastImplementedTask must record ${previous.id}`);
+  } else {
+    if (snapshot.source !== previous.source) errors.push('lastImplementedTask source must match the completed task');
+    if (snapshot.branch !== previous.branch) errors.push('lastImplementedTask branch must match the completed task');
+    if (snapshot.nextTaskId !== headState?.activeTask?.id) errors.push('lastImplementedTask nextTaskId must match the active task');
+    if (!Array.isArray(snapshot.allowedPaths) || snapshot.allowedPaths.length === 0) {
+      errors.push('lastImplementedTask must preserve the completed task allowedPaths snapshot');
+    }
   }
   if (!(headState?.deferredVerification ?? []).some((entry) => entry.id === previous.id)) {
     errors.push(`deferredVerification must include ${previous.id}`);
@@ -73,10 +81,23 @@ async function validateReadyTransition() {
 }
 
 function selfTest() {
-  const baseState = { activeTask: { id: 'M3-03', status: 'IN_PROGRESS' } };
+  const baseState = {
+    activeTask: {
+      id: 'M3-03',
+      status: 'IN_PROGRESS',
+      source: 'docs/tasks/M3/M3-03_ENTITY_CANON.md',
+      branch: 'work/m3-03-entity-canon',
+    },
+  };
   const headState = {
     activeTask: { id: 'M3-04', status: 'IN_PROGRESS' },
-    lastImplementedTask: { id: 'M3-03' },
+    lastImplementedTask: {
+      id: 'M3-03',
+      source: 'docs/tasks/M3/M3-03_ENTITY_CANON.md',
+      branch: 'work/m3-03-entity-canon',
+      nextTaskId: 'M3-04',
+      allowedPaths: ['packages/domain/'],
+    },
     deferredVerification: [{ id: 'M3-03' }],
   };
   const statuses = new Map([

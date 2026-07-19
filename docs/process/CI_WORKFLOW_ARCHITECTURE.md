@@ -10,8 +10,8 @@
 | `Security`              | PR→main              | Draft保留快速扫描；Ready后跑依赖和应用安全套件                               | `security`          |
 | `Performance`           | PR→main、手动        | Draft返回延期状态；Ready后跑性能基线                                         | `performance`       |
 | `Evidence`              | PR→main              | 校验发生变化的任务证据包                                                     | `evidence`          |
-| `Auto Merge`            | 任一永久检查成功完成 | 聚合当前头SHA的六项永久检查，复核Ready全量代次并squash合并，随后调度主线复核 | 否                  |
-| `Main Verification`     | Auto Merge显式调度   | 在最终main SHA上重新执行完整Linux质量门，并发布最终提交状态                  | `main-verification` |
+| `Controlled Merge`            | 任一永久检查成功完成 | 聚合当前头SHA的六项永久检查，复核Ready全量代次并squash合并，随后调度主线复核 | 否                  |
+| `Main Verification`     | Controlled Merge显式调度   | 在最终main SHA上重新执行完整Linux质量门，并发布最终提交状态                  | `main-verification` |
 | `Repository Governance` | 每周、手动           | 审计main原生Ruleset是否缺失或漂移                                            | 否                  |
 | `Branch Hygiene`        | 每周、手动           | 默认报告分支状态；手动apply时删除确定安全的分支                              | 否                  |
 | `Release`               | 手动                 | 发布门、三平台构建打包和Release                                              | 否                  |
@@ -46,7 +46,7 @@ pr-policy
 + evidence
 ```
 
-Auto Merge监听六项永久工作流的成功完成事件。任一检查单独重跑并恢复成功后，都会重新进入统一聚合判断，不依赖再次重跑Quality。
+Controlled Merge监听六项永久工作流的成功完成事件。任一检查单独重跑并恢复成功后，都会重新进入统一聚合判断，不依赖再次重跑Quality。
 
 同一头SHA的聚合运行使用独立并发组；后到的恢复触发会取消同SHA的旧聚合，只保留一个有效判断。不同PR、不同SHA互不阻塞。
 
@@ -66,7 +66,7 @@ PR Policy内嵌治理测试覆盖代次排序、Draft/Ready识别、性能步骤
 
 ## 4. 唯一主线验证入口
 
-Auto Merge受控合并后显式调度`main-verification.yml`。`Quality`、`Security`、`Performance`、`Evidence`和`Task Governance`只服务PR，不再监听`push main`。
+Controlled Merge受控合并后显式调度`main-verification.yml`。`Quality`、`Security`、`Performance`、`Evidence`和`Task Governance`只服务PR，不再监听`push main`。
 
 Main Verification负责：
 
@@ -83,7 +83,7 @@ Main Verification负责：
 
 - 常规工作流使用只读权限，Checkout关闭凭证持久化。
 - 禁止特权PR触发器、仓库事件旁路及业务工作流直接写main。
-- Auto Merge只拥有读取检查、读取Actions运行、受控合并及调度固定主线工作流所需权限。
+- Controlled Merge只拥有读取检查、读取Actions运行、受控合并及调度固定主线工作流所需权限。
 - Main Verification使用`actions: read`复核来源运行，仅以`statuses: write`发布最终SHA状态，不能修改仓库内容。
 - Release发布Job使用独立`release`环境和最小写权限。
 

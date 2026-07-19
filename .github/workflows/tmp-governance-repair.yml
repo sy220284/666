@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - .github/governance/tmp-governance-repair.mjs
+      - .github/governance/tmp-governance-lint-fix.mjs
       - .github/workflows/tmp-governance-repair.yml
 
 permissions:
@@ -37,6 +38,8 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Apply governance repair
         run: node .github/governance/tmp-governance-repair.mjs
+      - name: Apply generated lint cleanup
+        run: node .github/governance/tmp-governance-lint-fix.mjs
       - name: Synchronize task mirror
         run: node scripts/taskctl.mjs sync
       - name: Format
@@ -74,7 +77,10 @@ jobs:
           TARGET_BRANCH: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-          git rm .github/governance/tmp-governance-repair.mjs .github/workflows/tmp-governance-repair.yml
+          git rm \
+            .github/governance/tmp-governance-repair.mjs \
+            .github/governance/tmp-governance-lint-fix.mjs \
+            .github/workflows/tmp-governance-repair.yml
           git add .
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

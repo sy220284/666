@@ -169,12 +169,19 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
     }
   }
 
-  const taskIndex = await readFile(
-    path.join(repositoryRoot, 'docs', 'tasks', 'TASK_INDEX.md'),
-    'utf8',
-  );
-  const taskRow = taskIndex.split(/\r?\n/u).find((line) => line.includes(`| ${taskId} |`));
-  const finalEvidence = options.final === true || /\|\s*Verified\s*\|\s*$/u.test(taskRow ?? '');
+  let finalEvidence = options.final === true;
+  if (!finalEvidence) {
+    try {
+      const taskIndex = await readFile(
+        path.join(repositoryRoot, 'docs', 'tasks', 'TASK_INDEX.md'),
+        'utf8',
+      );
+      const taskRow = taskIndex.split(/\r?\n/u).find((line) => line.includes(`| ${taskId} |`));
+      finalEvidence = /\|\s*Verified\s*\|\s*$/u.test(taskRow ?? '');
+    } catch {
+      finalEvidence = false;
+    }
+  }
   if (finalEvidence) {
     assertFinalEvidenceSemantics(taskId, manifest, screenshots, {
       summary: await readFile(path.join(directory, 'summary.md'), 'utf8'),

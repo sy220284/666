@@ -1,0 +1,146 @@
+name: Closeout Branch Refresh
+
+on:
+  workflow_run:
+    workflows:
+      - Evidence
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: closeout-branch-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'work/m1-08-recovery-readonly-foundation' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - id: guard
+        name: Check refresh request
+        shell: bash
+        run: |
+          if [ -f docs/tasks/CLOSEOUT_REFRESH_REQUEST.md ]; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebuild closeout branch on current main
+        if: ${{ steps.guard.outputs.run == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git branch closeout-snapshot HEAD
+          git reset --hard origin/main
+
+          git checkout closeout-snapshot -- \
+            docs/tasks/ACTIVE_TASK.json \
+            docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md \
+            docs/tasks/M2/M2-01_LOCK_GUARD.md \
+            docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md \
+            docs/tasks/M2/M2-03_DIFF_APPLY_CONFLICT_UNDO.md \
+            docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md \
+            docs/tasks/M3/M3-03_ENTITY_CANON.md \
+            docs/test-evidence/M0-05 \
+            docs/test-evidence/M1-08 \
+            docs/test-evidence/M2-01 \
+            docs/test-evidence/M2-02 \
+            docs/test-evidence/M2-03 \
+            docs/test-evidence/M2-04
+
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { readFile, writeFile } from 'node:fs/promises';
+
+          const indexPath = 'docs/tasks/TASK_INDEX.md';
+          let index = await readFile(indexPath, 'utf8');
+          const statuses = new Map([
+            ['M1-08', 'Verified'],
+            ['M2-01', 'Verified'],
+            ['M2-02', 'Verified'],
+            ['M2-03', 'Verified'],
+            ['M2-04', 'Verified'],
+            ['M3-03', 'In Progress'],
+          ]);
+          for (const [id, status] of statuses) {
+            const row = new RegExp(
+              `^(\\|\\s*${id}\\s*\\|[^\\n]*\\|\\s*)([^|]+?)(\\s*\\|\\s*)$`,
+              'mu',
+            );
+            if (!row.test(index)) throw new Error(`Missing task index row: ${id}`);
+            index = index.replace(row, `$1${status}$3`);
+          }
+          await writeFile(indexPath, index, 'utf8');
+
+          const tracePath = 'docs/product/V1.0_TRACEABILITY_MATRIX.md';
+          let trace = await readFile(tracePath, 'utf8');
+          for (const id of ['REQ-010', 'REQ-011', 'REQ-012']) {
+            const row = new RegExp(
+              `^(\\|\\s*${id}\\s*\\|[^\\n]*\\|\\s*)Implemented(\\s*\\|\\s*)$`,
+              'mu',
+            );
+            if (!row.test(trace)) throw new Error(`Missing implemented trace row: ${id}`);
+            trace = trace.replace(row, '$1Verified$2');
+          }
+          const branchTrace = execFileSync(
+            'git',
+            ['show', 'closeout-snapshot:docs/product/V1.0_TRACEABILITY_MATRIX.md'],
+            { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 },
+          );
+          const branchHeading = '## M2延期验收闭环';
+          const branchOffset = branchTrace.indexOf(branchHeading);
+          const mainOffset = trace.indexOf('## M2-01实现证据');
+          if (branchOffset < 0 || mainOffset < 0) {
+            throw new Error('Traceability closeout sections are incomplete');
+          }
+          trace = `${trace.slice(0, mainOffset).trimEnd()}\n\n${branchTrace.slice(branchOffset).trim()}\n`;
+          await writeFile(tracePath, trace, 'utf8');
+          NODE
+
+          node scripts/taskctl.mjs sync
+          node scripts/taskctl.mjs validate
+          node --input-type=module <<'NODE'
+          import { validateTaskEvidence } from './scripts/evidence-policy.mjs';
+          for (const id of ['M0-05', 'M1-08', 'M2-01', 'M2-02', 'M2-03', 'M2-04']) {
+            await validateTaskEvidence(id, process.cwd(), { final: true });
+          }
+          NODE
+
+          rm -f .github/workflows/tmp-refresh-closeout-branch.yml
+          rm -f docs/tasks/CLOSEOUT_REFRESH_REQUEST.md
+          cat > docs/tasks/CLOSEOUT_REBASE_READY.md <<'MARKER'
+          # Closeout branch refresh marker
+
+          The reviewed closeout snapshot has been rebuilt on the current main tree and validated.
+          Remove this marker with an authenticated repository commit to trigger final PR checks.
+          MARKER
+
+      - name: Commit refreshed closeout branch
+        if: ${{ steps.guard.outputs.run == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'test(verification): refresh closeout on current main'
+          git push --force-with-lease \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:work/m1-08-recovery-readonly-foundation

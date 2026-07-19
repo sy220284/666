@@ -6,9 +6,7 @@ on:
     types: [synchronize]
 
 permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+  contents: write
 
 jobs:
   diagnose:
@@ -20,10 +18,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-      - name: Reproduce generator and publish exact failure
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+      - name: Reproduce generator and publish exact failure branch
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -39,12 +34,11 @@ jobs:
           python3 /tmp/m3-04-generator.py > /tmp/m3-04-generator.log 2>&1
           status=$?
           set -e
-          {
-            echo '### M3-04 generator diagnostic'
-            echo '```text'
-            tail -80 /tmp/m3-04-generator.log
-            echo '```'
-          } > /tmp/m3-04-comment.md
-          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --input /tmp/m3-04-comment.md -H 'Content-Type: text/plain' || \
-            gh pr comment "$PR_NUMBER" --body-file /tmp/m3-04-comment.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B automation/m3-04-diagnostic-output origin/main
+          cp /tmp/m3-04-generator.log m3-04-generator.log
+          git add m3-04-generator.log
+          git commit -m 'chore: publish M3-04 generator diagnostic'
+          git push --force origin automation/m3-04-diagnostic-output
           exit "$status"

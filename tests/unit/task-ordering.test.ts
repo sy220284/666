@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  findNextReadyTask,
-  parseTaskIndex,
-} from '../../scripts/task-control-lib.mjs';
+import { findNextReadyTask, parseTaskIndex } from '../../scripts/task-control-lib.mjs';
 
 function index(rows: string[]) {
   return parseTaskIndex(`

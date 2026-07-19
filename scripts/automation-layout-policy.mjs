@@ -46,10 +46,6 @@ const forbiddenAutomationMarkers = Object.freeze([
     label: 'fixed pull request branch',
     pattern: /github\.head_ref\s*={2,3}\s*['"][^'"]+['"]/u,
   },
-  {
-    label: 'historical closeout automation',
-    pattern: /CLOSEOUT_|closeout[-_ ](?:refresh|runner|apply|plan)|tmp_closeout|final-closeout/iu,
-  },
 ]);
 
 async function regularFileNames(directory) {

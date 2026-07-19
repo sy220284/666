@@ -42,6 +42,7 @@ jobs:
       - name: Audit permanent automation inventory
         run: node .github/governance/automation-layout-policy.mjs
       - name: Audit complete native main-branch protection
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
@@ -53,10 +54,10 @@ jobs:
         shell: bash
         run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Upload ruleset drift report
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v7
         with:
           name: repository-governance-report
           path: artifacts/repository-governance/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30

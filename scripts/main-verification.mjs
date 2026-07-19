@@ -78,7 +78,7 @@ export function mainVerificationStatusPayload(validateResult, qualityResult, tar
 }
 
 async function apiResponse(token, pathname, options = {}) {
-  const url = new URL(pathname, 'https://api.github.com');
+  const url = new globalThis.URL(pathname, 'https://api.github.com');
   if (url.origin !== 'https://api.github.com') {
     throw new Error(`Unexpected GitHub API origin: ${url.origin}`);
   }

@@ -35,7 +35,7 @@ const modeAwareWorkflows = [
 ];
 
 async function apiResponse(pathname, options = {}) {
-  const url = new URL(pathname, 'https://api.github.com');
+  const url = new globalThis.URL(pathname, 'https://api.github.com');
   if (url.origin !== 'https://api.github.com') {
     throw new Error(`Unexpected GitHub API origin: ${url.origin}`);
   }
@@ -66,7 +66,7 @@ export function nextPagePath(linkHeader) {
   for (const entry of linkHeader.split(',')) {
     const match = entry.match(/<([^>]+)>;\s*rel="([^"]+)"/u);
     if (!match || match[2] !== 'next') continue;
-    const url = new URL(match[1]);
+    const url = new globalThis.URL(match[1]);
     if (url.origin !== 'https://api.github.com') {
       throw new Error(`Unexpected pagination origin: ${url.origin}`);
     }

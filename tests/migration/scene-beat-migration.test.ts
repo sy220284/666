@@ -4,7 +4,11 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ProjectDatabase, loadMigrations } from '../../packages/core-service/src/database/index.js';
+import {
+  ProjectDatabase,
+  latestMigrationVersion,
+  loadMigrations,
+} from '../../packages/core-service/src/database/index.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -17,16 +21,17 @@ afterEach(async () => {
 });
 
 describe('M3-02 SceneBeat migration', () => {
-  it('creates strict planning tables through project schema version 12 without正文 ownership cascades', async () => {
+  it('creates strict planning tables through the current project schema without正文 ownership cascades', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-scene-beat-migration-'));
     temporaryDirectories.push(directory);
+    const migrations = await loadMigrations('migrations/project', 'project');
     const database = await ProjectDatabase.open({
       path: path.join(directory, 'project.sqlite'),
-      migrations: await loadMigrations('migrations/project', 'project'),
+      migrations,
       appVersion: '0.1.0',
     });
     try {
-      expect(database.schemaVersion).toBe(12);
+      expect(database.schemaVersion).toBe(latestMigrationVersion(migrations));
       expect(
         database.read((connection) =>
           connection

@@ -23,11 +23,19 @@ allowed_paths:
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
+  - apps/desktop/main/
+  - apps/desktop/preload/
   - apps/desktop/renderer/
   - tests/integration/
+  - tests/migration/
+  - tests/security/
+  - tests/e2e/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/contracts/IPC_CONTRACTS.md
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
@@ -43,6 +51,7 @@ required_docs:
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
   - docs/database/DATABASE_SCHEMA.md
   - docs/database/DATA_DICTIONARY.md
+  - docs/contracts/IPC_CONTRACTS.md
   - docs/testing/TEST_STRATEGY.md
 verification:
   - pnpm lint

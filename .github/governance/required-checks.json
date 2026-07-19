@@ -12,7 +12,6 @@
     "performance",
     "evidence"
   ],
-  "deleteHeadBranchAfterMerge": true,
   "blockDrafts": true,
   "blockChangesRequested": true,
   "blockUnresolvedThreads": true

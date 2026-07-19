@@ -301,6 +301,9 @@ jobs:
     timeout-minutes: 5
     env:
       DRAFT_MODE: ${{ inputs.draft_mode }}
+      PACKAGE_REQUIRED: ${{ inputs.package_smoke }}
+      SECURITY_REQUIRED: ${{ inputs.security_suite }}
+      PERFORMANCE_REQUIRED: ${{ inputs.performance_eval }}
       STATIC_RESULT: ${{ needs.static-checks.result }}
       TEST_RESULT: ${{ needs.tests.result }}
       SECURITY_RESULT: ${{ needs.security-tests.result }}
@@ -327,12 +330,31 @@ jobs:
             done
             exit 0
           fi
+
           for result in "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
             test "$result" = success
           done
-          for result in "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$PACKAGE_RESULT"; do
+
+          require_optional_job() {
+            required="$1"
+            result="$2"
+            label="$3"
+            if [ "$required" = true ]; then
+              test "$result" = success || {
+                echo "$label was enabled but did not succeed: $result" >&2
+                exit 1
+              }
+              return
+            fi
             case "$result" in
               success|skipped) ;;
-              *) exit 1 ;;
+              *)
+                echo "$label produced an invalid disabled result: $result" >&2
+                exit 1
+                ;;
             esac
-          done
+          }
+
+          require_optional_job "$SECURITY_REQUIRED" "$SECURITY_RESULT" security-tests
+          require_optional_job "$PERFORMANCE_REQUIRED" "$PERFORMANCE_RESULT" performance-eval
+          require_optional_job "$PACKAGE_REQUIRED" "$PACKAGE_RESULT" package-smoke

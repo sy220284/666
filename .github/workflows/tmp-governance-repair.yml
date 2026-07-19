@@ -45,7 +45,18 @@ jobs:
       - name: Format
         run: pnpm format
       - name: Lint
-        run: pnpm lint
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm lint 2>&1 | tee governance-lint.log
+      - name: Upload lint diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: governance-lint-diagnostic
+          path: governance-lint.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Typecheck
         run: pnpm typecheck
       - name: Governance unit tests
@@ -77,6 +88,7 @@ jobs:
           TARGET_BRANCH: ${{ github.head_ref }}
         run: |
           set -euo pipefail
+          rm -f governance-lint.log
           git rm \
             .github/governance/tmp-governance-repair.mjs \
             .github/governance/tmp-governance-lint-fix.mjs \

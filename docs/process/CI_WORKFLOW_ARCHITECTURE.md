@@ -111,7 +111,7 @@ Main Verification负责：
 
 `.github/workflows/`和`.github/governance/`采用封闭白名单，不允许通过增加一个名称看似正常的额外文件绕过“永久工作流必须通用”的约束。
 
-`PR Policy`与`Repository Governance`共同执行`scripts/automation-layout-policy.mjs`，要求：
+`PR Policy`与`Repository Governance`共同执行`.github/governance/automation-layout-policy.mjs`，要求：
 
 1. 工作流目录只能包含本文件第1节列出的永久工作流及其可复用核心；
 2. Governance目录只能包含已登记的通用检查、配置和调度辅助文件；

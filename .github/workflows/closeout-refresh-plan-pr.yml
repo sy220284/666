@@ -41,7 +41,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          mkdir -p "$PLAN_OUTPUT_DIR"
+          mkdir -p "$PLAN_OUTPUT_DIR" .github/governance
+          git fetch origin main
+          git show origin/main:.github/governance/closeout-refresh-plan.mjs \
+            > .github/governance/closeout-refresh-plan.mjs
           node .github/governance/closeout-refresh-plan.mjs 2>&1 | tee "$PLAN_OUTPUT_DIR/run.log"
 
       - name: Upload refresh diagnostics

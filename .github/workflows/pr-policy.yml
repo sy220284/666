@@ -31,26 +31,155 @@ jobs:
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate permanent CI policy
         run: node scripts/ci-policy.mjs
-      - name: Validate optimized merge routing
+      - name: Validate merge aggregation behavior
         shell: bash
         run: |
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import { readFile } from 'node:fs/promises';
+          import {
+            latestChecksByName,
+            latestReviewStates,
+            latestWorkflowRun,
+            modeAwareRunState,
+            nextPagePath,
+            requiredCheckState,
+          } from './scripts/automerge.mjs';
 
-          const [workflow, script, quality, mainVerification] = await Promise.all([
+          const workflowRun = (overrides = {}) => ({
+            id: 1,
+            status: 'completed',
+            conclusion: 'success',
+            created_at: '2026-07-19T00:00:00Z',
+            ...overrides,
+          });
+          const job = (name, conclusion = 'success', steps = []) => ({
+            name,
+            status: 'completed',
+            conclusion,
+            steps,
+          });
+
+          const oldSuccess = {
+            id: 1,
+            name: 'security',
+            status: 'completed',
+            conclusion: 'success',
+            created_at: '2026-07-19T00:00:00Z',
+          };
+          const newPending = {
+            ...oldSuccess,
+            id: 2,
+            status: 'queued',
+            conclusion: null,
+            created_at: '2026-07-19T00:01:00Z',
+          };
+          assert.equal(latestChecksByName([oldSuccess, newPending]).get('security')?.id, 2);
+          assert.deepEqual(requiredCheckState([oldSuccess, newPending], ['security']), {
+            ready: false,
+            pending: ['security'],
+            failed: [],
+          });
+          assert.equal(latestWorkflowRun([{ ...oldSuccess, id: 3 }, { ...oldSuccess, id: 4 }])?.id, 4);
+
+          const draftQualityJobs = [
+            job('quality / static-checks'),
+            job('quality / tests-unit', 'skipped'),
+            job('quality / tests-integration', 'skipped'),
+            job('quality / tests-migration', 'skipped'),
+            job('quality / desktop-e2e', 'skipped'),
+            job('quality / build', 'skipped'),
+            job('quality / package-smoke', 'skipped'),
+            job('quality / quality'),
+          ];
+          assert.deepEqual(modeAwareRunState('quality', workflowRun(), draftQualityJobs), {
+            ready: false,
+            pending: ['quality'],
+            failed: [],
+          });
+          assert.deepEqual(
+            modeAwareRunState(
+              'quality',
+              workflowRun(),
+              draftQualityJobs.map((candidate) => job(candidate.name)),
+            ),
+            { ready: true, pending: [], failed: [] },
+          );
+          assert.deepEqual(
+            modeAwareRunState('security', workflowRun(), [
+              job('dependency-audit', 'failure'),
+              job('secret-scan'),
+              job('application-security'),
+              job('security', 'failure'),
+            ]),
+            { ready: false, pending: [], failed: ['security'] },
+          );
+          assert.deepEqual(
+            modeAwareRunState('performance', workflowRun(), [
+              job('performance', 'success', [
+                {
+                  name: 'Run performance budgets',
+                  status: 'completed',
+                  conclusion: 'skipped',
+                },
+              ]),
+            ]),
+            { ready: false, pending: ['performance'], failed: [] },
+          );
+          assert.deepEqual(
+            modeAwareRunState('performance', workflowRun(), [
+              job('performance', 'success', [
+                {
+                  name: 'Run performance budgets',
+                  status: 'completed',
+                  conclusion: 'success',
+                },
+              ]),
+            ]),
+            { ready: true, pending: [], failed: [] },
+          );
+
+          assert.equal(
+            nextPagePath(
+              '<https://api.github.com/repos/acme/repo/check-runs?page=2>; rel="next", <https://api.github.com/repos/acme/repo/check-runs?page=4>; rel="last"',
+            ),
+            '/repos/acme/repo/check-runs?page=2',
+          );
+          assert.equal(nextPagePath(null), null);
+          assert.throws(
+            () => nextPagePath('<https://example.com/page=2>; rel="next"'),
+            /Unexpected pagination origin/u,
+          );
+          assert.equal(
+            latestReviewStates([
+              { user: { login: 'alice' }, state: 'CHANGES_REQUESTED' },
+              { user: { login: 'alice' }, state: 'APPROVED' },
+            ]).get('alice'),
+            'APPROVED',
+          );
+
+          const [workflow, quality, mainVerification] = await Promise.all([
             readFile('.github/workflows/automerge.yml', 'utf8'),
-            readFile('scripts/automerge.mjs', 'utf8'),
             readFile('.github/workflows/quality.yml', 'utf8'),
             readFile('scripts/main-verification.mjs', 'utf8'),
           ]);
           const trigger = workflow.match(/workflows:\s*\n([\s\S]*?)\n\s*types:/u)?.[1] ?? '';
-          assert.match(trigger, /^\s*- Quality\s*$/mu);
-          assert.doesNotMatch(trigger, /PR Policy|Task Governance|Security|Performance|Evidence/u);
-          assert.match(script, /waitForRequiredChecks/u);
-          assert.match(script, /run\.created_at \?\? run\.started_at/u);
+          for (const name of [
+            'PR Policy',
+            'Task Governance',
+            'Quality',
+            'Security',
+            'Performance',
+            'Evidence',
+          ]) {
+            assert.match(trigger, new RegExp(`^\\s*- ${name}$`, 'mu'));
+          }
+          assert.match(
+            workflow,
+            /group: automerge-main-\$\{\{ github\.event\.workflow_run\.head_sha \}\}/u,
+          );
+          assert.match(workflow, /cancel-in-progress: true/u);
           assert.match(quality, /static-failure-diagnostics/u);
-          assert.match(quality, /test-results\/ci\/lint\.log/u);
-          assert.match(quality, /test-results\/ci\/typecheck\.log/u);
-          assert.match(mainVerification, /run\.created_at \?\? run\.started_at/u);
+          assert.match(mainVerification, /modeAwareChecksState/u);
+          assert.match(mainVerification, /nextPagePath/u);
           NODE

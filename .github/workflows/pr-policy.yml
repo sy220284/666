@@ -60,7 +60,6 @@ jobs:
 
           const workflowRun = (overrides = {}) => ({
             id: 1,
-            name: 'security',
             status: 'completed',
             conclusion: 'success',
             created_at: '2026-07-19T00:00:00Z',

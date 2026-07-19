@@ -18,8 +18,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: automerge-main
-  cancel-in-progress: false
+  group: automerge-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
 
 jobs:
   automerge:
@@ -34,140 +34,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - id: closeout
-        name: Defer merge while closeout trigger exists
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import { appendFile } from 'node:fs/promises';
-          let defer = false;
-          if (process.env.HEAD_BRANCH === 'work/m1-08-recovery-readonly-foundation') {
-            const url = new URL(
-              `/repos/${process.env.GITHUB_REPOSITORY}/contents/docs/tasks/CLOSEOUT_TRIGGER.md`,
-              'https://api.github.com',
-            );
-            url.searchParams.set('ref', process.env.HEAD_SHA);
-            const response = await fetch(url, {
-              headers: {
-                Accept: 'application/vnd.github+json',
-                Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-                'X-GitHub-Api-Version': '2022-11-28',
-              },
-            });
-            if (response.status === 200) defer = true;
-            else if (response.status !== 404) {
-              throw new Error(`Closeout trigger lookup failed: ${response.status}`);
-            }
-          }
-          await appendFile(process.env.GITHUB_OUTPUT, `defer=${defer}\n`);
-          NODE
       - name: Wait for previous main verification
-        if: ${{ steps.closeout.outputs.defer != 'true' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node .github/governance/automerge-base-gate.mjs
       - name: Aggregate permanent checks, merge eligible pull request and schedule final main verification
-        if: ${{ steps.closeout.outputs.defer != 'true' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/automerge.mjs
-
-  closeout:
-    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.name == 'Evidence' && github.event.workflow_run.head_branch == 'work/m1-08-recovery-readonly-foundation' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - id: guard
-        name: Check closeout trigger
-        shell: bash
-        run: |
-          if [ -f docs/tasks/CLOSEOUT_TRIGGER.md ]; then
-            echo 'run=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'run=false' >> "$GITHUB_OUTPUT"
-          fi
-
-      - if: ${{ steps.guard.outputs.run == 'true' }}
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.13.0
-
-      - if: ${{ steps.guard.outputs.run == 'true' }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - if: ${{ steps.guard.outputs.run == 'true' }}
-        run: pnpm install --frozen-lockfile --prefer-offline
-
-      - name: Download reviewed desktop evidence
-        if: ${{ steps.guard.outputs.run == 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          rm -rf "$RUNNER_TEMP/desktop-e2e"
-          mkdir -p "$RUNNER_TEMP/desktop-e2e"
-          gh run download 29668237967 \
-            --repo "$GITHUB_REPOSITORY" \
-            --name desktop-e2e-evidence \
-            --dir "$RUNNER_TEMP/desktop-e2e"
-          find "$RUNNER_TEMP/desktop-e2e" -type f | sort
-
-      - name: Generate final evidence packages
-        if: ${{ steps.guard.outputs.run == 'true' }}
-        env:
-          DESKTOP_EVIDENCE_ROOT: ${{ runner.temp }}/desktop-e2e/electron/acceptance
-        run: python .github/governance/tmp_closeout.py
-
-      - name: Close deferred verification tasks
-        if: ${{ steps.guard.outputs.run == 'true' }}
-        env:
-          VERIFIED_COMMIT: 9110b16bfc2c08d210d0306b7b394ef20cc9c9f7
-        run: |
-          pnpm task:verify-final M2-01 --ci=success --commit="$VERIFIED_COMMIT"
-          pnpm task:verify-final M2-02 --ci=success --commit="$VERIFIED_COMMIT"
-          pnpm task:verify-final M2-03 --ci=success --commit="$VERIFIED_COMMIT"
-          pnpm task:verify-final M2-04 --ci=success --commit="$VERIFIED_COMMIT"
-          pnpm task:verify-final M1-08 --ci=success --commit="$VERIFIED_COMMIT"
-
-      - name: Validate closeout output
-        if: ${{ steps.guard.outputs.run == 'true' }}
-        run: |
-          pnpm task:validate
-          node --input-type=module <<'NODE'
-          import { validateTaskEvidence } from './scripts/evidence-policy.mjs';
-          for (const id of ['M0-05', 'M1-08', 'M2-01', 'M2-02', 'M2-03', 'M2-04']) {
-            await validateTaskEvidence(id, process.cwd(), { final: true });
-          }
-          NODE
-          pnpm exec vitest run tests/unit/evidence-policy.test.ts tests/unit/task-control.test.ts
-
-      - name: Prepare reviewed closeout patch
-        if: ${{ steps.guard.outputs.run == 'true' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git rm docs/tasks/CLOSEOUT_TRIGGER.md
-          git add docs/test-evidence docs/tasks docs/product/V1.0_TRACEABILITY_MATRIX.md
-          git diff --cached --binary > "$RUNNER_TEMP/final-closeout.patch"
-          test -s "$RUNNER_TEMP/final-closeout.patch"
-
-      - name: Upload reviewed closeout patch
-        if: ${{ steps.guard.outputs.run == 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: final-closeout-patch
-          path: ${{ runner.temp }}/final-closeout.patch
-          if-no-files-found: error
-          retention-days: 7

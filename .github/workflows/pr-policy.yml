@@ -31,6 +31,10 @@ jobs:
         run: node scripts/taskctl.mjs pr-policy
       - name: Validate permanent CI policy
         run: node scripts/ci-policy.mjs
+      - name: Self-test workflow order guards
+        run: |
+          node .github/governance/automerge-base-gate.mjs self-test
+          node .github/governance/task-transition-policy.mjs self-test
       - name: Validate merge aggregation behavior
         shell: bash
         run: |
@@ -174,11 +178,10 @@ jobs:
           ]) {
             assert.match(trigger, new RegExp(`^\\s*- ${name}$`, 'mu'));
           }
-          assert.match(
-            workflow,
-            /group: automerge-main-\$\{\{ github\.event\.workflow_run\.head_sha \}\}/u,
-          );
-          assert.match(workflow, /cancel-in-progress: true/u);
+          assert.match(workflow, /group: automerge-main/u);
+          assert.match(workflow, /cancel-in-progress: false/u);
+          assert.match(workflow, /automerge-base-gate\.mjs/u);
+          assert.match(workflow, /final-closeout\.patch/u);
           assert.match(quality, /static-failure-diagnostics/u);
           assert.match(mainVerification, /modeAwareChecksState/u);
           assert.match(mainVerification, /nextPagePath/u);

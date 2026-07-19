@@ -3,6 +3,7 @@
   "baseBranch": "main",
   "mergeMethod": "squash",
   "mainVerificationWorkflow": "main-verification.yml",
+  "mainVerificationBaselineSha": "757ce5d0bf073fd249dc29bc973c13353ca10803",
   "requiredChecks": [
     "pr-policy",
     "task-governance",

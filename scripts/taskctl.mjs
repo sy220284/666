@@ -59,9 +59,32 @@ async function validate() {
   return state;
 }
 
+function resolveDiffHead() {
+  const branch = pullRequestBranch();
+  const candidates = [
+    process.env.TASK_HEAD_REF,
+    branch ? `refs/remotes/origin/${branch}` : null,
+    isPullRequestEvent() ? 'HEAD^2' : null,
+    'HEAD',
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      return execFileSync('git', ['rev-parse', '--verify', candidate], {
+        cwd: root,
+        encoding: 'utf8',
+      }).trim();
+    } catch {
+      // Try the next representation of the real pull-request head.
+    }
+  }
+  throw new Error('Cannot resolve the pull request head for changed-path validation');
+}
+
 function changedFiles() {
   const base = process.env.TASK_BASE_REF ?? 'HEAD^';
-  const output = execFileSync('git', ['diff', '--name-only', base, 'HEAD'], {
+  const head = resolveDiffHead();
+  const output = execFileSync('git', ['diff', '--name-only', base, head], {
     cwd: root,
     encoding: 'utf8',
   });

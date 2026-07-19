@@ -1,6 +1,6 @@
 # M3-03 通用实体与静态Canon
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 工作分支：`work/m3-03-entity-canon`  

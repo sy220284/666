@@ -45,6 +45,8 @@ describe('M3-03 Entity and Canon migration', () => {
 
       const projectId = randomUUID();
       const foreignProjectId = randomUUID();
+      const volumeId = randomUUID();
+      const chapterId = randomUUID();
       const entityId = randomUUID();
       const foreignEntityId = randomUUID();
       const sceneBeatId = randomUUID();
@@ -56,6 +58,20 @@ describe('M3-03 Entity and Canon migration', () => {
         );
         insertProject.run(projectId, '本项目', timestamp, timestamp);
         insertProject.run(foreignProjectId, '异项目', timestamp, timestamp);
+        connection
+          .prepare(
+            `INSERT INTO volumes(id, project_id, title, order_key, status, deleted_at)
+             VALUES(?, ?, '第一卷', 1000, 'active', NULL)`,
+          )
+          .run(volumeId, projectId);
+        connection
+          .prepare(
+            `INSERT INTO chapters(
+               id, volume_id, title, order_key, status, target_word_min, target_word_max,
+               active_draft_id, final_version_id, deleted_at
+             ) VALUES(?, ?, '第一章', 1000, 'pending', NULL, NULL, NULL, NULL, NULL)`,
+          )
+          .run(chapterId, volumeId);
         const insertEntity = connection.prepare(
           `INSERT INTO entities(
              id, project_id, entity_type, name, aliases_json, summary,
@@ -76,11 +92,11 @@ describe('M3-03 Entity and Canon migration', () => {
           .prepare(
             `INSERT INTO scene_beats(
                id, project_id, chapter_id, plot_node_id, title, goal, core_conflict,
-               expected_result, beat_type, word_target_percent, required, order_key,
-               revision, deleted_at, created_at, updated_at
-             ) VALUES(?, ?, NULL, NULL, '场景', '', '', '', 'setup', 10, 1, 'a', 1, NULL, ?, ?)`,
+               expected_result, beat_type, word_target_percent, is_required, order_key,
+               character_ids_json, location_ids_json, deleted_at, updated_at
+             ) VALUES(?, ?, ?, NULL, '场景', '', '', '', 'setup', 10, 1, 1000, '[]', '[]', NULL, ?)`,
           )
-          .run(sceneBeatId, projectId, timestamp, timestamp);
+          .run(sceneBeatId, projectId, chapterId, timestamp);
       });
 
       await expect(

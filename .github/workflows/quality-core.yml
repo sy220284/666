@@ -3,6 +3,11 @@ name: Quality Core
 on:
   workflow_call:
     inputs:
+      checkout_ref:
+        description: Exact commit SHA or ref to validate
+        required: false
+        type: string
+        default: ''
       draft_mode:
         description: Run only static checks for draft pull requests
         required: false
@@ -38,6 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -46,6 +52,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before static checks
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Validate active task and mirror
         run: pnpm task:validate
@@ -57,6 +65,11 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm format:check 2>&1 | tee test-results/ci/format-check.log
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Assert clean working tree after static checks
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload static diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -65,8 +78,6 @@ jobs:
           path: test-results/ci/format-check.log
           if-no-files-found: warn
           retention-days: 7
-      - run: pnpm lint
-      - run: pnpm typecheck
 
   tests:
     name: tests-${{ matrix.suite }}
@@ -80,6 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -88,6 +100,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before test suite
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm test:prepare
       - name: Run ${{ matrix.suite }} tests
@@ -96,6 +110,9 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm exec vitest run "tests/${{ matrix.suite }}" 2>&1 | tee "test-results/ci/${{ matrix.suite }}.log"
+      - name: Assert clean working tree after test suite
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload ${{ matrix.suite }} test diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -115,6 +132,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -123,6 +141,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before security suite
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm test:prepare
       - name: Run application security tests
@@ -131,6 +151,9 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:security 2>&1 | tee test-results/ci/security.log
+      - name: Assert clean working tree after security suite
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload security diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -150,6 +173,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -158,6 +182,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before performance suite
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run performance and AI protocol baselines
         shell: bash
@@ -165,6 +191,9 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:perf 2>&1 | tee test-results/ci/performance-eval.log
+      - name: Assert clean working tree after performance suite
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload performance and eval diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -184,6 +213,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -192,6 +222,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before desktop E2E
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Install Electron display dependencies
         run: |
@@ -207,6 +239,9 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
+      - name: Assert clean working tree after desktop E2E
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload Electron and display evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -227,6 +262,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -235,6 +271,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before build
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Build all workspaces
         shell: bash
@@ -242,6 +280,9 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm build 2>&1 | tee test-results/ci/build.log
+      - name: Assert clean working tree after build
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload build diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
@@ -259,6 +300,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -267,6 +309,8 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Assert clean working tree before package smoke
+        run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run package smoke test
         shell: bash
@@ -275,6 +319,9 @@ jobs:
           set -o pipefail
           pnpm build 2>&1 | tee test-results/ci/package-smoke.log
           pnpm package 2>&1 | tee -a test-results/ci/package-smoke.log
+      - name: Assert clean working tree after package smoke
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload package smoke diagnostics
         if: failure()
         uses: actions/upload-artifact@v7

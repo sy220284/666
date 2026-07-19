@@ -9,6 +9,7 @@ on:
       - docs/m3-03-wire-backend.mjs
       - docs/m3-03-wire-desktop.mjs
       - docs/m3-03-fix-async.mjs
+      - docs/m3-03-fix-migration-baselines.mjs
       - .github/workflows/m3-03-backend-apply.yml
 
 permissions:
@@ -36,11 +37,12 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply M3-03 wiring
+      - name: Apply M3-03 wiring and migration baselines
         run: |
           node docs/m3-03-wire-backend.mjs
           node docs/m3-03-wire-desktop.mjs
           node docs/m3-03-fix-async.mjs
+          node docs/m3-03-fix-migration-baselines.mjs
       - name: Format and validate M3-03 slice
         shell: bash
         run: |
@@ -63,7 +65,7 @@ jobs:
         env:
           TARGET_BRANCH: ${{ github.head_ref }}
         run: |
-          git rm docs/m3-03-wire-backend.mjs docs/m3-03-wire-desktop.mjs docs/m3-03-fix-async.mjs .github/workflows/m3-03-backend-apply.yml
+          git rm docs/m3-03-wire-backend.mjs docs/m3-03-wire-desktop.mjs docs/m3-03-fix-async.mjs docs/m3-03-fix-migration-baselines.mjs .github/workflows/m3-03-backend-apply.yml
           rm -f docs/m3-03-validation.log docs/.m3-03-pr-trigger*
           git add -A
           git config user.name 'github-actions[bot]'

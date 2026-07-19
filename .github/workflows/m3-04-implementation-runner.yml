@@ -33,11 +33,13 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Apply M3-04 wiring patches
+      - name: Apply M3-04 wiring and documentation patches
         run: |
           python3 .github/m3-04/apply-core.py
           python3 .github/m3-04/apply-ui.py
           python3 .github/m3-04/apply-schema-tests.py
+          python3 .github/m3-04/apply-db-docs.py
+          python3 .github/m3-04/apply-product-docs.py
           pnpm task:sync
 
       - name: Install dependencies

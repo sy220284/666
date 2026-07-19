@@ -38,23 +38,41 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Reopen M3-03 and align Schema 12 security baseline
         run: node docs/m3-03-security-remediation.mjs
-      - name: Format and validate remediation
+      - name: Format
+        run: pnpm format
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Build Renderer
+        run: pnpm --filter @worldforge/renderer build
+      - name: Entity Canon integration
+        run: pnpm exec vitest run tests/integration/entity-canon.test.ts
+      - name: Migration suite
+        run: pnpm test:migration
+      - name: Prepare security suite
+        run: pnpm test:prepare
+      - name: Full application security suite
         shell: bash
         run: |
-          set -euo pipefail
-          pnpm format
-          pnpm lint
-          pnpm typecheck
-          pnpm --filter @worldforge/renderer build
-          pnpm exec vitest run tests/integration/entity-canon.test.ts
-          pnpm test:migration
-          pnpm test:prepare
-          pnpm test:security
+          set -o pipefail
+          pnpm test:security 2>&1 | tee m3-03-security-remediation.log
+      - name: Validate deferred evidence
+        run: |
           node --input-type=module <<'NODE'
           import { validateTaskEvidence } from './scripts/evidence-policy.mjs';
           await validateTaskEvidence('M3-03', process.cwd(), { final: false });
           NODE
-          pnpm task:validate
+      - name: Validate reopened task state
+        run: pnpm task:validate
+      - name: Upload remediation diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m3-03-security-remediation-diagnostic
+          path: m3-03-security-remediation.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Commit security remediation implementation
         id: implementation
         shell: bash
@@ -86,6 +104,7 @@ jobs:
             .github/workflows/m3-03-security-diagnostic.yml \
             .github/workflows/m3-03-security-remediation.yml \
             docs/m3-03-security-remediation.mjs
+          rm -f m3-03-security-remediation.log
           git add docs/tasks docs/test-evidence/M3-03
           git commit -m 'chore(M3): record M3-03 security remediation'
           git push origin "HEAD:refs/heads/$TARGET_BRANCH"

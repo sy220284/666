@@ -10,6 +10,9 @@ test-results/
 !docs/test-evidence/**/test-results/
 !docs/test-evidence/**/test-results/**
 
+# Root scratch artifacts
+/tmp
+
 # Electron and native build output
 *.node
 *.dmg

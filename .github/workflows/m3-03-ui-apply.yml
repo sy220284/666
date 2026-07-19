@@ -8,6 +8,7 @@ on:
     paths:
       - apps/desktop/renderer/src/canon-ui.ts
       - docs/m3-03-wire-ui.mjs
+      - docs/m3-03-fix-ui-type.mjs
       - .github/workflows/m3-03-ui-apply.yml
 
 permissions:
@@ -39,7 +40,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node docs/m3-03-wire-ui.mjs 2>&1 | tee docs/m3-03-ui-apply.log
+          {
+            node docs/m3-03-wire-ui.mjs
+            node docs/m3-03-fix-ui-type.mjs
+          } 2>&1 | tee docs/m3-03-ui-apply.log
       - name: Format and validate Canon workspace
         shell: bash
         run: |
@@ -67,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git rm docs/m3-03-wire-ui.mjs .github/workflows/m3-03-ui-apply.yml
+          git rm docs/m3-03-wire-ui.mjs docs/m3-03-fix-ui-type.mjs .github/workflows/m3-03-ui-apply.yml
           rm -f docs/m3-03-ui-apply.log docs/m3-03-ui-validation.log
           git add apps/desktop/renderer
           git config user.name 'github-actions[bot]'

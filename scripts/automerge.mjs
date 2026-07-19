@@ -7,8 +7,39 @@ const repository = process.env.GITHUB_REPOSITORY;
 const eventPath = process.env.GITHUB_EVENT_PATH;
 const githubFetch = globalThis.fetch;
 
-async function api(pathname, options = {}) {
-  const response = await githubFetch(`https://api.github.com${pathname}`, {
+const supportedTriggers = new Set([
+  'PR Policy',
+  'Task Governance',
+  'Quality',
+  'Security',
+  'Performance',
+  'Evidence',
+]);
+
+const modeAwareWorkflows = [
+  {
+    checkName: 'quality / quality',
+    workflow: 'quality.yml',
+    kind: 'quality',
+  },
+  {
+    checkName: 'security',
+    workflow: 'security.yml',
+    kind: 'security',
+  },
+  {
+    checkName: 'performance',
+    workflow: 'performance.yml',
+    kind: 'performance',
+  },
+];
+
+async function apiResponse(pathname, options = {}) {
+  const url = new URL(pathname, 'https://api.github.com');
+  if (url.origin !== 'https://api.github.com') {
+    throw new Error(`Unexpected GitHub API origin: ${url.origin}`);
+  }
+  const response = await githubFetch(url, {
     ...options,
     headers: {
       Accept: 'application/vnd.github+json',
@@ -19,10 +50,45 @@ async function api(pathname, options = {}) {
   });
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`GitHub API ${response.status}: ${pathname}\n${details}`);
+    throw new Error(`GitHub API ${response.status}: ${url.pathname}${url.search}\n${details}`);
   }
+  return response;
+}
+
+async function api(pathname, options = {}) {
+  const response = await apiResponse(pathname, options);
   if (response.status === 204) return null;
   return response.json();
+}
+
+export function nextPagePath(linkHeader) {
+  if (!linkHeader) return null;
+  for (const entry of linkHeader.split(',')) {
+    const match = entry.match(/<([^>]+)>;\s*rel="([^"]+)"/u);
+    if (!match || match[2] !== 'next') continue;
+    const url = new URL(match[1]);
+    if (url.origin !== 'https://api.github.com') {
+      throw new Error(`Unexpected pagination origin: ${url.origin}`);
+    }
+    return `${url.pathname}${url.search}`;
+  }
+  return null;
+}
+
+async function paginatedCollection(pathname, collectionKey = null, options = {}) {
+  const items = [];
+  let next = pathname;
+  while (next) {
+    const response = await apiResponse(next, options);
+    const payload = await response.json();
+    const page = collectionKey === null ? payload : payload[collectionKey];
+    if (!Array.isArray(page)) {
+      throw new Error(`GitHub API pagination payload is missing ${collectionKey ?? 'array data'}`);
+    }
+    items.push(...page);
+    next = nextPagePath(response.headers.get('link'));
+  }
+  return items;
 }
 
 async function graphql(query, variables) {
@@ -35,7 +101,7 @@ async function graphql(query, variables) {
   return result.data;
 }
 
-function checkRunOrder(run) {
+function runOrder(run) {
   const timestamp = Date.parse(run.created_at ?? run.started_at ?? run.completed_at ?? '');
   return {
     timestamp: Number.isFinite(timestamp) ? timestamp : 0,
@@ -51,13 +117,32 @@ export function latestChecksByName(checkRuns = []) {
       latest.set(run.name, run);
       continue;
     }
-    const currentOrder = checkRunOrder(run);
-    const previousOrder = checkRunOrder(previous);
+    const currentOrder = runOrder(run);
+    const previousOrder = runOrder(previous);
     if (
       currentOrder.timestamp > previousOrder.timestamp ||
       (currentOrder.timestamp === previousOrder.timestamp && currentOrder.id > previousOrder.id)
     ) {
       latest.set(run.name, run);
+    }
+  }
+  return latest;
+}
+
+export function latestWorkflowRun(workflowRuns = []) {
+  let latest = null;
+  for (const run of workflowRuns) {
+    if (!latest) {
+      latest = run;
+      continue;
+    }
+    const currentOrder = runOrder(run);
+    const previousOrder = runOrder(latest);
+    if (
+      currentOrder.timestamp > previousOrder.timestamp ||
+      (currentOrder.timestamp === previousOrder.timestamp && currentOrder.id > previousOrder.id)
+    ) {
+      latest = run;
     }
   }
   return latest;
@@ -83,19 +168,134 @@ export function requiredCheckState(checkRuns, requiredChecks) {
   };
 }
 
+function jobState(job) {
+  if (!job || job.status !== 'completed') return 'pending';
+  if (job.conclusion === 'success') return 'ready';
+  if (job.conclusion === 'failure' || job.conclusion === 'timed_out') return 'failed';
+  return 'pending';
+}
+
+function requiredJobsState(jobs, names) {
+  const jobsByName = new Map(jobs.map((job) => [job.name, job]));
+  const pending = [];
+  const failed = [];
+  for (const name of names) {
+    const state = jobState(jobsByName.get(name));
+    if (state === 'pending') pending.push(name);
+    if (state === 'failed') failed.push(name);
+  }
+  return { pending, failed };
+}
+
+export function modeAwareRunState(kind, workflowRun, jobs = []) {
+  if (!workflowRun || workflowRun.status !== 'completed') {
+    return { ready: false, pending: [kind], failed: [] };
+  }
+  if (workflowRun.conclusion === 'failure' || workflowRun.conclusion === 'timed_out') {
+    return { ready: false, pending: [], failed: [kind] };
+  }
+  if (workflowRun.conclusion !== 'success') {
+    return { ready: false, pending: [kind], failed: [] };
+  }
+
+  if (kind === 'quality') {
+    const state = requiredJobsState(jobs, [
+      'quality / static-checks',
+      'quality / tests-unit',
+      'quality / tests-integration',
+      'quality / tests-migration',
+      'quality / desktop-e2e',
+      'quality / build',
+      'quality / package-smoke',
+      'quality / quality',
+    ]);
+    return {
+      ready: state.pending.length === 0 && state.failed.length === 0,
+      pending: state.pending.length > 0 ? [kind] : [],
+      failed: state.failed.length > 0 ? [kind] : [],
+    };
+  }
+
+  if (kind === 'security') {
+    const state = requiredJobsState(jobs, [
+      'dependency-audit',
+      'secret-scan',
+      'application-security',
+      'security',
+    ]);
+    return {
+      ready: state.pending.length === 0 && state.failed.length === 0,
+      pending: state.pending.length > 0 ? [kind] : [],
+      failed: state.failed.length > 0 ? [kind] : [],
+    };
+  }
+
+  if (kind === 'performance') {
+    const job = jobs.find((candidate) => candidate.name === 'performance');
+    const state = jobState(job);
+    if (state === 'failed') return { ready: false, pending: [], failed: [kind] };
+    if (state !== 'ready') return { ready: false, pending: [kind], failed: [] };
+    const step = job.steps?.find((candidate) => candidate.name === 'Run performance budgets');
+    if (!step || step.status !== 'completed' || step.conclusion !== 'success') {
+      return { ready: false, pending: [kind], failed: [] };
+    }
+    return { ready: true, pending: [], failed: [] };
+  }
+
+  throw new Error(`Unknown mode-aware workflow kind: ${kind}`);
+}
+
+export async function modeAwareChecksState(owner, repo, sha) {
+  const pending = [];
+  const failed = [];
+  for (const specification of modeAwareWorkflows) {
+    const workflow = encodeURIComponent(specification.workflow);
+    const runs = await paginatedCollection(
+      `/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?event=pull_request&head_sha=${sha}&per_page=100`,
+      'workflow_runs',
+    );
+    const latest = latestWorkflowRun(runs);
+    const jobs = latest
+      ? await paginatedCollection(
+          `/repos/${owner}/${repo}/actions/runs/${latest.id}/jobs?per_page=100`,
+          'jobs',
+        )
+      : [];
+    const state = modeAwareRunState(specification.kind, latest, jobs);
+    pending.push(...state.pending.map(() => specification.checkName));
+    failed.push(...state.failed.map(() => specification.checkName));
+  }
+  return {
+    ready: pending.length === 0 && failed.length === 0,
+    pending,
+    failed,
+  };
+}
+
 async function waitForRequiredChecks(owner, repo, sha, requiredChecks) {
   const attempts = 90;
   const delayMs = 10_000;
+  await delay(5_000);
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const response = await api(`/repos/${owner}/${repo}/commits/${sha}/check-runs?per_page=100`);
-    const state = requiredCheckState(response.check_runs ?? [], requiredChecks);
-    if (state.failed.length > 0) return state;
-    if (state.ready) return state;
+    const checkRuns = await paginatedCollection(
+      `/repos/${owner}/${repo}/commits/${sha}/check-runs?per_page=100`,
+      'check_runs',
+    );
+    const checkState = requiredCheckState(checkRuns, requiredChecks);
+    if (checkState.failed.length > 0) return checkState;
+
+    const modeState = await modeAwareChecksState(owner, repo, sha);
+    if (modeState.failed.length > 0) return modeState;
+    if (checkState.ready && modeState.ready) {
+      return { ready: true, pending: [], failed: [] };
+    }
+
+    const pending = [...new Set([...checkState.pending, ...modeState.pending])];
     if (attempt === attempts) {
-      throw new Error(`Timed out waiting for permanent checks: ${state.pending.join(', ')}`);
+      throw new Error(`Timed out waiting for permanent checks: ${pending.join(', ')}`);
     }
     if (attempt === 1 || attempt % 6 === 0) {
-      console.log(`Waiting for permanent checks on ${sha}: ${state.pending.join(', ')}`);
+      console.log(`Waiting for permanent checks on ${sha}: ${pending.join(', ')}`);
     }
     await delay(delayMs);
   }
@@ -103,30 +303,46 @@ async function waitForRequiredChecks(owner, repo, sha, requiredChecks) {
 }
 
 async function hasUnresolvedThreads(owner, repo, number) {
-  const data = await graphql(
-    `
-      query ($owner: String!, $repo: String!, $number: Int!) {
-        repository(owner: $owner, name: $repo) {
-          pullRequest(number: $number) {
-            reviewThreads(first: 100) {
-              nodes {
-                isResolved
+  let after = null;
+  do {
+    const data = await graphql(
+      `
+        query ($owner: String!, $repo: String!, $number: Int!, $after: String) {
+          repository(owner: $owner, name: $repo) {
+            pullRequest(number: $number) {
+              reviewThreads(first: 100, after: $after) {
+                nodes {
+                  isResolved
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
               }
             }
           }
         }
-      }
-    `,
-    { owner, repo, number },
-  );
-  return data.repository.pullRequest.reviewThreads.nodes.some((thread) => !thread.isResolved);
+      `,
+      { owner, repo, number, after },
+    );
+    const threads = data.repository.pullRequest.reviewThreads;
+    if (threads.nodes.some((thread) => !thread.isResolved)) return true;
+    after = threads.pageInfo.hasNextPage ? threads.pageInfo.endCursor : null;
+  } while (after);
+  return false;
+}
+
+export function latestReviewStates(reviews = []) {
+  const latest = new Map();
+  for (const review of reviews) latest.set(review.user.login, review.state);
+  return latest;
 }
 
 async function hasChangesRequested(owner, repo, number) {
-  const reviews = await api(`/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`);
-  const latest = new Map();
-  for (const review of reviews) latest.set(review.user.login, review.state);
-  return [...latest.values()].includes('CHANGES_REQUESTED');
+  const reviews = await paginatedCollection(
+    `/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`,
+  );
+  return [...latestReviewStates(reviews).values()].includes('CHANGES_REQUESTED');
 }
 
 export function mainVerificationDispatchBody(config, mergeSha, number, sourceHeadSha) {
@@ -154,10 +370,11 @@ export function mainVerificationDispatchBody(config, mergeSha, number, sourceHea
 
 async function hasMainVerificationRun(owner, repo, workflow, sha) {
   const encodedWorkflow = encodeURIComponent(workflow);
-  const response = await api(
-    `/repos/${owner}/${repo}/actions/workflows/${encodedWorkflow}/runs?event=workflow_dispatch&head_sha=${sha}&per_page=20`,
+  const runs = await paginatedCollection(
+    `/repos/${owner}/${repo}/actions/workflows/${encodedWorkflow}/runs?event=workflow_dispatch&head_sha=${sha}&per_page=100`,
+    'workflow_runs',
   );
-  return (response.workflow_runs ?? []).some((run) => run.head_sha === sha);
+  return runs.some((run) => run.head_sha === sha);
 }
 
 async function ensureMainVerification(owner, repo, config, mergeSha, number, sourceHeadSha) {
@@ -186,20 +403,21 @@ async function main() {
   if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
   const [owner, repo] = repository.split('/');
   const event = JSON.parse(await readFile(eventPath, 'utf8'));
-  if (event.workflow_run?.name !== 'Quality') {
-    throw new Error('Auto Merge must be triggered only by the Quality workflow');
+  const triggerName = event.workflow_run?.name;
+  if (!supportedTriggers.has(triggerName)) {
+    throw new Error(`Unsupported Auto Merge trigger: ${triggerName ?? 'missing'}`);
   }
   const sha = event.workflow_run?.head_sha;
   if (!sha) throw new Error('workflow_run head SHA is missing');
   const config = JSON.parse(await readFile('.github/governance/required-checks.json', 'utf8'));
   let pulls = event.workflow_run.pull_requests ?? [];
   if (pulls.length === 0) {
-    pulls = await api(`/repos/${owner}/${repo}/commits/${sha}/pulls?per_page=20`);
+    pulls = await paginatedCollection(`/repos/${owner}/${repo}/commits/${sha}/pulls?per_page=100`);
   }
 
   for (const item of pulls) {
     const number = item.number;
-    const pull = await api(`/repos/${owner}/${repo}/pulls/${number}`);
+    let pull = await api(`/repos/${owner}/${repo}/pulls/${number}`);
     if (pull.base.ref !== config.baseBranch || pull.head.sha !== sha) continue;
     if (pull.head.repo.full_name !== repository) continue;
 
@@ -226,7 +444,27 @@ async function main() {
       console.log(`Skipping #${number}; failed permanent checks: ${checkState.failed.join(', ')}`);
       continue;
     }
-    if (pull.head.sha !== sha) continue;
+
+    pull = await api(`/repos/${owner}/${repo}/pulls/${number}`);
+    if (
+      pull.state !== 'open' ||
+      pull.draft ||
+      pull.base.ref !== config.baseBranch ||
+      pull.head.sha !== sha ||
+      pull.head.repo.full_name !== repository
+    ) {
+      continue;
+    }
+    const refreshedMainRef = await api(
+      `/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`,
+    );
+    const refreshedComparison = await api(
+      `/repos/${owner}/${repo}/compare/${refreshedMainRef.object.sha}...${sha}`,
+    );
+    if (refreshedComparison.behind_by > 0) {
+      console.log(`Skipping #${number}; ${config.baseBranch} advanced during aggregation.`);
+      continue;
+    }
     if (config.blockChangesRequested && (await hasChangesRequested(owner, repo, number))) continue;
     if (config.blockUnresolvedThreads && (await hasUnresolvedThreads(owner, repo, number))) {
       continue;

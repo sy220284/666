@@ -25,6 +25,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-node@v6
         with:
@@ -48,6 +49,7 @@ jobs:
         if: ${{ steps.guard.outputs.run == 'true' }}
         env:
           EXPECTED_BRANCH_HEAD: ${{ github.event.pull_request.head.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
           TARGET_BRANCH: ${{ github.head_ref }}
           PLAN_OUTPUT_DIR: ${{ runner.temp }}/closeout-refresh-apply
         shell: bash
@@ -70,7 +72,8 @@ jobs:
 
           test "$(git rev-parse HEAD^)" = "$BASE_MAIN_SHA"
           test "$(git rev-parse HEAD^{tree})" = "$DESIRED_TREE_SHA"
-          git push \
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH_HEADER" push \
             --force-with-lease="refs/heads/$TARGET_BRANCH:$EXPECTED_BRANCH_HEAD" \
             origin "HEAD:refs/heads/$TARGET_BRANCH"
 

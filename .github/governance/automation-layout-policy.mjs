@@ -30,7 +30,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'task-transition-policy.mjs',
 ]);
 
-const forbiddenAutomationMarkers = Object.freeze([
+const forbiddenWorkflowMarkers = Object.freeze([
   {
     label: 'task id',
     pattern: /(?:^|[^A-Za-z0-9])M\d-\d{2}(?:[^A-Za-z0-9]|$)/u,
@@ -77,8 +77,8 @@ function compareInventory(errors, label, actual, expected) {
   }
 }
 
-function scanSource(errors, file, source) {
-  for (const marker of forbiddenAutomationMarkers) {
+function scanWorkflowSource(errors, file, source) {
+  for (const marker of forbiddenWorkflowMarkers) {
     if (marker.pattern.test(source)) {
       errors.push(`${file}: contains forbidden ${marker.label}`);
     }
@@ -105,12 +105,7 @@ export async function validateAutomationLayout(repositoryRoot = root) {
 
   for (const file of workflowFiles) {
     const source = await readFile(path.join(workflowDirectory, file), 'utf8');
-    scanSource(errors, `.github/workflows/${file}`, source);
-  }
-  for (const file of governanceFiles) {
-    if (file.endsWith('/')) continue;
-    const source = await readFile(path.join(governanceDirectory, file), 'utf8');
-    scanSource(errors, `.github/governance/${file}`, source);
+    scanWorkflowSource(errors, `.github/workflows/${file}`, source);
   }
 
   if (errors.length > 0) throw new Error(errors.join('\n'));

@@ -1,4 +1,4 @@
-name: Auto Merge
+name: Controlled Merge
 
 on:
   workflow_run:

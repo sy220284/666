@@ -1,6 +1,17 @@
 name: Repository Governance
 
 on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/governance/**'
+      - '.github/workflows/**'
+      - 'scripts/automerge.mjs'
+      - 'scripts/ci-policy.mjs'
+      - 'scripts/main-verification.mjs'
+      - 'scripts/ruleset-policy.mjs'
+      - 'docs/process/MAIN_BRANCH_PROTECTION.md'
   schedule:
     - cron: '30 2 * * 1'
   workflow_dispatch:
@@ -19,10 +30,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: main
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Assert clean trusted governance checkout
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Audit complete native main-branch protection
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -30,6 +44,8 @@ jobs:
           RULESET_REPORT: artifacts/repository-governance/report.json
           RULESET_STRICT: true
         run: node scripts/ruleset-policy.mjs check
+      - name: Assert governance audit did not mutate tracked files
+        run: node .github/governance/assert-clean-tree.mjs
       - name: Upload ruleset drift report
         if: always()
         uses: actions/upload-artifact@v7

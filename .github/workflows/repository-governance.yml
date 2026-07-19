@@ -11,6 +11,7 @@ on:
       - 'scripts/ci-policy.mjs'
       - 'scripts/main-verification.mjs'
       - 'scripts/ruleset-policy.mjs'
+      - 'docs/process/CI_WORKFLOW_ARCHITECTURE.md'
       - 'docs/process/MAIN_BRANCH_PROTECTION.md'
   schedule:
     - cron: '30 2 * * 1'
@@ -20,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: repository-governance
+  group: repository-governance-${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.head.sha || 'main' }}
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
@@ -38,7 +39,10 @@ jobs:
       - name: Assert clean trusted governance checkout
         shell: bash
         run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Audit permanent automation inventory
+        run: node .github/governance/automation-layout-policy.mjs
       - name: Audit complete native main-branch protection
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
@@ -50,7 +54,7 @@ jobs:
         shell: bash
         run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Upload ruleset drift report
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v7
         with:
           name: repository-governance-report

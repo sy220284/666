@@ -45,6 +45,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/process/WORKFLOW_EXECUTION_ORDER.md',
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
+  'tests/integration/task-lifecycle.test.ts',
   'tests/unit/evidence-policy.test.ts',
   'tests/unit/task-control.test.ts',
   'tests/unit/task-ordering.test.ts',

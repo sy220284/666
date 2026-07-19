@@ -34,8 +34,8 @@ jobs:
         run: python3 .github/m3-04/apply-core.py
       - name: Apply Renderer wiring
         run: python3 .github/m3-04/apply-ui.py
-      - name: Update dynamic schema tests
-        run: python3 .github/m3-04/apply-schema-tests.py
+      - name: Update remaining dynamic schema tests
+        run: python3 .github/m3-04/apply-remaining-schema-tests.py
       - name: Update database documentation
         run: python3 .github/m3-04/apply-db-docs.py
       - name: Update IPC UI and traceability documentation

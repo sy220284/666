@@ -58,8 +58,16 @@
   ],
   "governancePaths": [
     ".github/audit-remediations/m0-m2-2026-07-20.json",
-    "docs/process/AUDIT_REMEDIATION_M0_M2.md",
     ".github/workflows/evidence.yml",
+    ".github/workflows/main-verification.yml",
+    ".github/workflows/performance.yml",
+    ".github/workflows/quality.yml",
+    ".github/workflows/security.yml",
+    ".github/workflows/task-governance.yml",
+    "docs/process/AUDIT_REMEDIATION_M0_M2.md",
+    "docs/process/CI_WORKFLOW_ARCHITECTURE.md",
+    "docs/process/DEVELOPMENT_AUTOMATION.md",
+    "packages/testkit/src/evidence.ts",
     "scripts/audit-remediation-policy.mjs",
     "scripts/evidence-policy.mjs",
     "scripts/migrate-legacy-evidence.mjs",
@@ -67,7 +75,7 @@
     "scripts/verified-evidence-scan.mjs",
     "tests/unit/audit-remediation-policy.test.ts",
     "tests/unit/evidence-policy.test.ts",
-    "tests/unit/verified-evidence-scan.test.ts",
-    "docs/process/CI_WORKFLOW_ARCHITECTURE.md"
+    "tests/unit/testkit-fixtures-evidence.test.ts",
+    "tests/unit/verified-evidence-scan.test.ts"
   ]
 }

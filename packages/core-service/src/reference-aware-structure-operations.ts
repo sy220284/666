@@ -229,7 +229,10 @@ export class ReferenceAwareStructureOperationService extends StructureOperationS
     raw: TrashPermanentDeleteInput,
   ): TrashPermanentDeletePreview {
     const input = TrashPermanentDeleteInputSchema.parse(raw);
-    const preview = this.previewPermanentDelete(input);
+    const preview = this.previewPermanentDelete({
+      projectId: input.projectId,
+      trashEntryId: input.trashEntryId,
+    });
     if (
       preview.planHash !== input.planHash ||
       preview.entry.title !== input.confirmationTitle ||

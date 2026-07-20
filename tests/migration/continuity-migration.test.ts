@@ -28,7 +28,7 @@ describe('M3-04 continuity migration', () => {
       appVersion: '0.1.0',
     });
     try {
-      expect(database.schemaVersion).toBe(13);
+      expect(database.schemaVersion).toBe(14);
       expect(
         database.read((connection) =>
           connection
@@ -66,7 +66,7 @@ describe('M3-04 continuity migration', () => {
           .prepare(
             `INSERT INTO projects(
                id, name, channel, active_style_profile_id, schema_version, created_at, updated_at
-             ) VALUES(?, 'Continuity', 'test', NULL, 13, ?, ?)`,
+             ) VALUES(?, 'Continuity', 'test', NULL, 14, ?, ?)`,
           )
           .run(projectId, timestamp, timestamp);
         connection

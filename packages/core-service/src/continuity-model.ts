@@ -138,12 +138,26 @@ export function currentRecord(
   table: 'entity_states' | 'knowledge_states',
   condition: string,
   values: readonly string[],
-): { readonly id: string; readonly validFromChapterId: string } | undefined {
+):
+  | {
+      readonly id: string;
+      readonly validFromChapterId: string;
+      readonly validUntilChapterId: string | null;
+    }
+  | undefined {
   return connection
     .prepare(
-      `SELECT id, valid_from_chapter_id AS validFromChapterId
+      `SELECT id,
+              valid_from_chapter_id AS validFromChapterId,
+              valid_until_chapter_id AS validUntilChapterId
          FROM ${table}
         WHERE ${condition} AND record_status = 'current'`,
     )
-    .get(...values) as { readonly id: string; readonly validFromChapterId: string } | undefined;
+    .get(...values) as
+    | {
+        readonly id: string;
+        readonly validFromChapterId: string;
+        readonly validUntilChapterId: string | null;
+      }
+    | undefined;
 }

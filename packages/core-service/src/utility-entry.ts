@@ -12,6 +12,7 @@ import {
 import { openAppRuntime } from './app-runtime.js';
 import { CandidateApplyService } from './candidate-apply.js';
 import { CandidateService } from './candidate.js';
+import { CheckpointAwareRecoveryService } from './checkpoint-aware-recovery.js';
 import { ContinuityService } from './continuity.js';
 import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
@@ -19,9 +20,8 @@ import { ImportExportService } from './import-export.js';
 import { ProjectPlanningService } from './project-planning.js';
 import { ProjectStructureService } from './project-structure.js';
 import { ProjectWorkspaceService } from './project-workspace.js';
-import { RecoveryService } from './recovery.js';
+import { ReferenceAwareStructureOperationService } from './reference-aware-structure-operations.js';
 import { SceneBeatService } from './scene-beat.js';
-import { StructureOperationService } from './structure-operations.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 import { executeAppDataOperation } from './utility-app-data-router.js';
 import { windowPreferencesError } from './utility-errors.js';
@@ -122,7 +122,7 @@ const projectWorkspace = new ProjectWorkspaceService({
   appVersion: requiredArgument('app-version'),
   recentProjects: appRuntime.recentProjects,
 });
-const recovery = new RecoveryService(projectWorkspace, {
+const recovery = new CheckpointAwareRecoveryService(projectWorkspace, {
   backupRootDirectory: requiredAbsolutePath('project-operation-recovery'),
 });
 const services: UtilityProjectServices = {
@@ -133,7 +133,7 @@ const services: UtilityProjectServices = {
   sceneBeats: new SceneBeatService(projectWorkspace),
   entityCanon: new EntityCanonService(projectWorkspace),
   continuity: new ContinuityService(projectWorkspace),
-  structureOperations: new StructureOperationService(projectWorkspace),
+  structureOperations: new ReferenceAwareStructureOperationService(projectWorkspace),
   drafts: new DraftService(projectWorkspace),
   candidates: new CandidateService(projectWorkspace),
   candidateApply: new CandidateApplyService(projectWorkspace),

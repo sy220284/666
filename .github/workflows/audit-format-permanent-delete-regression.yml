@@ -1,0 +1,36 @@
+name: Audit Format Permanent Delete Regression
+
+on:
+  push:
+    branches: [fix/governance-audit-m0-m2-remediation]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm exec prettier --write tests/integration/audit-m0-m2-remediation.test.ts packages/core-service/src/reference-aware-structure-operations.ts
+      - run: pnpm exec vitest run tests/integration/audit-m0-m2-remediation.test.ts --reporter=verbose
+      - run: pnpm typecheck
+      - name: Commit formatted verified regression
+        shell: bash
+        run: |
+          git rm .github/workflows/audit-format-permanent-delete-regression.yml
+          git add tests/integration/audit-m0-m2-remediation.test.ts packages/core-service/src/reference-aware-structure-operations.ts
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "test(M2-04): cover executable delete validation"
+          git push origin HEAD:fix/governance-audit-m0-m2-remediation

@@ -15,11 +15,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { ProjectWorkspaceService } from './project-workspace.js';
-import {
-  RecoveryService,
-  RecoveryServiceError,
-  type RecoveryServiceOptions,
-} from './recovery.js';
+import { RecoveryService, RecoveryServiceError, type RecoveryServiceOptions } from './recovery.js';
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
@@ -35,7 +31,9 @@ function safeName(value: string): string {
 }
 
 async function hashFile(filePath: string): Promise<string> {
-  return createHash('sha256').update(await readFile(filePath)).digest('hex');
+  return createHash('sha256')
+    .update(await readFile(filePath))
+    .digest('hex');
 }
 
 async function existingWritableDirectory(directory: string): Promise<string> {
@@ -89,7 +87,8 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     let database: DatabaseSync | null = null;
     try {
       const details = await lstat(backupPath);
-      if (!details.isFile() || details.isSymbolicLink() || details.size !== record.sizeBytes) return null;
+      if (!details.isFile() || details.isSymbolicLink() || details.size !== record.sizeBytes)
+        return null;
       if ((await hashFile(backupPath)) !== record.sha256) return null;
       database = new DatabaseSync(backupPath, {
         readOnly: true,
@@ -176,8 +175,7 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
           WHERE v.id = ? AND vo.project_id = ?`,
       )
       .get(versionId, reader.record.projectId) as
-      | { chapterTitle: string; versionTitle: string }
-      | undefined;
+      { chapterTitle: string; versionTitle: string } | undefined;
     if (!version) return null;
     const blocks = reader.database
       .prepare(

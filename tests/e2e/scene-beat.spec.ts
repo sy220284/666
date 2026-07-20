@@ -134,6 +134,15 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
       locationIds: [before.locationId],
     });
 
+    const outputDirectory = process.env.WORLDFORGE_E2E_OUTPUT_DIR;
+    if (outputDirectory) {
+      await mkdir(outputDirectory, { recursive: true });
+      await page.screenshot({
+        path: path.join(outputDirectory, 'm3-02-scene-beat-entity-selector.png'),
+        fullPage: true,
+      });
+    }
+
     page.once('dialog', (prompt) => prompt.accept());
     await page
       .locator('[data-scene-beat-list] .scene-beat-card')

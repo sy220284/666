@@ -17,6 +17,7 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
+import { registerNarrativePlanningIpc } from './narrative-planning-ipc.js';
 
 export interface ContinuityIpcOptions {
   readonly ipcMain: IpcMain;
@@ -43,6 +44,7 @@ function trustedSender(event: IpcMainInvokeEvent, rendererUrl: string): boolean 
 }
 
 export function registerContinuityIpc(options: ContinuityIpcOptions): () => void {
+  const unregisterNarrativePlanningIpc = registerNarrativePlanningIpc(options);
   const registrations = [
     {
       channel: CONTINUITY_IPC_CHANNELS.list,
@@ -109,5 +111,6 @@ export function registerContinuityIpc(options: ContinuityIpcOptions): () => void
 
   return () => {
     for (const registration of registrations) options.ipcMain.removeHandler(registration.channel);
+    unregisterNarrativePlanningIpc();
   };
 }

@@ -40,6 +40,18 @@ export function defineMigration(
   };
 }
 
+function containsForbiddenTransactionControl(sql: string): boolean {
+  if (/\b(?:COMMIT|ROLLBACK|VACUUM|ATTACH|DETACH)\b/i.test(sql)) return true;
+  for (const match of sql.matchAll(/\bBEGIN\b/gi)) {
+    const index = match.index;
+    if (index === undefined) return true;
+    const statementStart = sql.lastIndexOf(';', index - 1) + 1;
+    const prefix = sql.slice(statementStart, index);
+    if (!/\bCREATE\s+(?:(?:TEMP|TEMPORARY)\s+)?TRIGGER\b/i.test(prefix)) return true;
+  }
+  return false;
+}
+
 export function normalizeMigrations(
   migrations: readonly SqlMigration[],
   expectedKind?: DatabaseKind,
@@ -56,7 +68,7 @@ export function normalizeMigrations(
       !/^[a-z0-9_]+$/.test(migration.name) ||
       !/^[a-f0-9]{64}$/.test(migration.checksum) ||
       migration.checksum !== computedChecksum ||
-      /\b(?:BEGIN|COMMIT|ROLLBACK|VACUUM|ATTACH|DETACH)\b/i.test(migration.sql)
+      containsForbiddenTransactionControl(migration.sql)
     ) {
       throw new DatabaseFoundationError(
         'MIGRATION_SEQUENCE_INVALID',

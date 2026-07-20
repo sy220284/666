@@ -13,8 +13,10 @@
       "finding": "Permanent-delete impact omitted current chapter references.",
       "allowedPaths": [
         "packages/contracts/src/project-structure.ts",
-        "packages/core-service/src/structure-operations.ts",
-        "apps/desktop/renderer/src/index.ts",
+        "packages/core-service/src/reference-aware-structure-operations.ts",
+        "packages/core-service/src/utility-entry.ts",
+        "apps/desktop/renderer/src/audit-trash-reference-guard.ts",
+        "apps/desktop/renderer/src/entry.ts",
         "tests/integration/structure-operations.test.ts",
         "tests/e2e/structure-recovery.spec.ts",
         "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
@@ -25,9 +27,8 @@
       "taskId": "M1-08",
       "finding": "Physically unreadable databases could not list or export Versions from verified checkpoints.",
       "allowedPaths": [
-        "packages/core-service/src/project-workspace.ts",
-        "packages/core-service/src/recovery.ts",
-        "apps/desktop/renderer/src/index.ts",
+        "packages/core-service/src/checkpoint-aware-recovery.ts",
+        "packages/core-service/src/utility-entry.ts",
         "tests/integration/recovery-service.test.ts",
         "tests/e2e/unreadable-project-recovery.spec.ts",
         "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md"

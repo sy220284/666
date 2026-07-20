@@ -42,15 +42,22 @@ export interface PerformanceEvidenceRecord {
   readonly passed: boolean;
 }
 
+export interface EvidenceScreenshotInput {
+  readonly fileName: string;
+  readonly fixtureId: string;
+  readonly content: Uint8Array;
+}
+
 export interface TestEvidenceInput {
   readonly taskId: string;
   readonly commit: string;
   readonly generatedAt: string;
   readonly summary: string;
-  readonly manualAcceptance?: string;
-  readonly qualityMatrix?: string;
+  readonly manualAcceptance: string;
+  readonly qualityMatrix: string;
   readonly commands: readonly EvidenceCommandResult[];
   readonly testResults: readonly EvidenceTestResult[];
+  readonly screenshots?: readonly EvidenceScreenshotInput[];
   readonly performance?: readonly PerformanceEvidenceRecord[];
   readonly knownRisks: readonly string[];
 }
@@ -82,6 +89,20 @@ function assertNoCredentials(value: string): void {
   }
 }
 
+function safeScreenshotName(value: string): string {
+  if (
+    value.length === 0 ||
+    value.includes('/') ||
+    value.includes('\\') ||
+    value === '.' ||
+    value === '..' ||
+    path.basename(value) !== value
+  ) {
+    throw new Error('Evidence screenshot fileName must be a safe basename.');
+  }
+  return value;
+}
+
 function validateInput(input: TestEvidenceInput): void {
   if (!/^[A-Z][A-Z0-9]*-\d{2,}$/.test(input.taskId)) {
     throw new Error('Evidence taskId must use the repository task ID format.');
@@ -91,6 +112,9 @@ function validateInput(input: TestEvidenceInput): void {
   }
   if (!Number.isFinite(new Date(input.generatedAt).getTime())) {
     throw new Error('Evidence generatedAt must be an ISO-compatible timestamp.');
+  }
+  if (!input.manualAcceptance.trim() || !input.qualityMatrix.trim()) {
+    throw new Error('Evidence requires explicit manual acceptance and quality matrix content.');
   }
   for (const command of input.commands) {
     if (!Number.isSafeInteger(command.exitCode)) {
@@ -105,7 +129,20 @@ function validateInput(input: TestEvidenceInput): void {
       throw new Error('Performance evidence must identify the same task and commit.');
     }
   }
-  assertNoCredentials(JSON.stringify(input));
+  const screenshotNames = new Set<string>();
+  for (const screenshot of input.screenshots ?? []) {
+    const fileName = safeScreenshotName(screenshot.fileName);
+    if (screenshotNames.has(fileName)) {
+      throw new Error(`Evidence screenshot fileName is duplicated: ${fileName}`);
+    }
+    screenshotNames.add(fileName);
+  }
+  assertNoCredentials(
+    JSON.stringify({
+      ...input,
+      screenshots: input.screenshots?.map(({ fileName, fixtureId }) => ({ fileName, fixtureId })),
+    }),
+  );
 }
 
 function json(value: unknown): string {
@@ -132,23 +169,17 @@ function renderSummary(input: TestEvidenceInput): string {
         )
         .join('\n')
     : '| - | - | - | 未记录 |';
-  const manual =
-    input.manualAcceptance?.trim() || '未单独执行人工验收；以本文档记录的实际检查为准。';
-  const quality =
-    input.qualityMatrix?.trim() || '未单独维护质量矩阵；以任务卡要求和本文档结果为准。';
 
   return (
-    `# ${input.taskId} 验证记录\n\n` +
+    `# ${input.taskId} 验证摘要\n\n` +
     `生成时间：${input.generatedAt}  \n` +
-    `提交：${input.commit}\n\n` +
+    `来源提交：${input.commit}\n\n` +
     `${input.summary.trim()}\n\n` +
     `## 自动化结果\n\n` +
     `- 通过：${passed}\n` +
     `- 失败：${failed}\n` +
     `- 跳过：${skipped}\n\n` +
     `| 套件 | Fixture | 状态 | 说明 |\n|---|---|---|---|\n${testRows}\n\n` +
-    `## 人工验收记录\n\n${manual}\n\n` +
-    `## 质量复核记录\n\n${quality}\n\n` +
     `## 性能记录\n\n| 指标 | 结果 | 预算 | 结论 |\n|---|---:|---:|---|\n${performanceRows}\n`
   );
 }
@@ -206,7 +237,28 @@ async function inventory(directory: string): Promise<WrittenEvidenceFile[]> {
 
 async function writePrivateText(target: string, content: string): Promise<void> {
   assertNoCredentials(content);
+  await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
   await writeFile(target, content, { encoding: 'utf8', mode: 0o600 });
+}
+
+async function writeScreenshots(
+  staging: string,
+  screenshots: readonly EvidenceScreenshotInput[],
+): Promise<void> {
+  const directory = path.join(staging, 'screenshots');
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const manifest = [];
+  for (const screenshot of screenshots) {
+    const fileName = safeScreenshotName(screenshot.fileName);
+    const content = Buffer.from(screenshot.content);
+    await writeFile(path.join(directory, fileName), content, { mode: 0o600 });
+    manifest.push({
+      fileName,
+      fixtureId: screenshot.fixtureId,
+      sha256: createHash('sha256').update(content).digest('hex'),
+    });
+  }
+  await writePrivateText(path.join(directory, 'manifest.json'), json(manifest));
 }
 
 export async function writeTestEvidence(
@@ -233,6 +285,23 @@ export async function writeTestEvidence(
       writePrivateText(path.join(staging, 'summary.md'), renderSummary(input)),
       writePrivateText(path.join(staging, 'commands.txt'), renderCommands(input.commands)),
       writePrivateText(path.join(staging, 'known-risks.md'), renderKnownRisks(input.knownRisks)),
+      writePrivateText(
+        path.join(staging, 'manual-acceptance.md'),
+        `${input.manualAcceptance.trim()}\n`,
+      ),
+      writePrivateText(path.join(staging, 'quality-matrix.md'), `${input.qualityMatrix.trim()}\n`),
+      writePrivateText(
+        path.join(staging, 'test-results', 'results.json'),
+        json({
+          schemaVersion: 1,
+          taskId: input.taskId,
+          commit: input.commit,
+          generatedAt: input.generatedAt,
+          results: input.testResults,
+        }),
+      ),
+      writePrivateText(path.join(staging, 'performance.json'), json(input.performance ?? [])),
+      writeScreenshots(staging, input.screenshots ?? []),
     ]);
 
     const filesBeforeManifest = await inventory(staging);

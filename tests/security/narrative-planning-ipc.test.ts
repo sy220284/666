@@ -54,7 +54,9 @@ describe('M3-05 narrative planning IPC boundary', () => {
       rendererUrl: 'file:///trusted/index.html',
     });
 
-    expect([...handlers.keys()].sort()).toEqual(Object.values(NARRATIVE_PLANNING_IPC_CHANNELS).sort());
+    expect([...handlers.keys()].sort()).toEqual(
+      Object.values(NARRATIVE_PLANNING_IPC_CHANNELS).sort(),
+    );
 
     const cases = [
       {

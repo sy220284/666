@@ -42,9 +42,7 @@ describe('M3-05 character arcs', () => {
         dependencyMilestoneIds: [],
         dependencyTimelineEventIds: [],
       });
-      let first = catalog.characterArcs[0]!.milestones.find(
-        (item) => item.title === '第一次承担',
-      )!;
+      let first = catalog.characterArcs[0]!.milestones.find((item) => item.title === '第一次承担')!;
       catalog = await harness.narrative.saveArcMilestone(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',

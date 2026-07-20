@@ -57,6 +57,7 @@ describe('M3-04 continuity migration', () => {
       const projectId = randomUUID();
       const volumeId = randomUUID();
       const chapterId = randomUUID();
+      const draftId = randomUUID();
       const entityId = randomUUID();
       const versionId = randomUUID();
       const eventId = randomUUID();
@@ -84,13 +85,22 @@ describe('M3-04 continuity migration', () => {
           .run(chapterId, volumeId);
         connection
           .prepare(
+            `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)
+             VALUES(?, ?, 'active', 0, ?, ?)`,
+          )
+          .run(draftId, chapterId, timestamp, timestamp);
+        connection.prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?').run(
+          draftId,
+          chapterId,
+        );
+        connection
+          .prepare(
             `INSERT INTO versions(
                id, chapter_id, source_draft_id, source_revision, title, description, label,
-               content_hash, finalized, created_at, version_type, parent_version_id,
-               source_candidate_id
-             ) VALUES(?, ?, NULL, 0, '来源', '', NULL, ?, 0, ?, 'manual', NULL, NULL)`,
+               word_count, content_hash, created_at
+             ) VALUES(?, ?, ?, 0, '来源', '', NULL, 0, ?, ?)`,
           )
-          .run(versionId, chapterId, '0'.repeat(64), timestamp);
+          .run(versionId, chapterId, draftId, '0'.repeat(64), timestamp);
         connection
           .prepare(
             `INSERT INTO entities(

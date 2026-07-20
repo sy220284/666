@@ -7,6 +7,7 @@ import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src
 import { ContinuityService } from '../../packages/core-service/src/continuity.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import { EntityCanonService } from '../../packages/core-service/src/entity-canon.js';
+import { NarrativePlanningService } from '../../packages/core-service/src/narrative-planning.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { VersionService } from '../../packages/core-service/src/version.js';
@@ -42,6 +43,7 @@ export async function createContinuityHarness() {
     versions: new VersionService(workspace, { clock: hardeningClock }),
     canon: new EntityCanonService(workspace, { clock: hardeningClock }),
     continuity: new ContinuityService(workspace, { clock: hardeningClock }),
+    narrative: new NarrativePlanningService(workspace, { clock: hardeningClock }),
   };
 }
 

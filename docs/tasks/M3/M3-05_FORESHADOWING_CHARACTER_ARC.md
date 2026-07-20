@@ -1,6 +1,6 @@
 # M3-05 伏笔生命周期与人物弧光
 
-> 状态：In Progress  
+> 状态：Planned  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`feat/m3-foreshadowing-character-arc`

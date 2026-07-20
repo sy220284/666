@@ -69,6 +69,8 @@
     "docs/process/DEVELOPMENT_AUTOMATION.md",
     "packages/testkit/src/evidence.ts",
     "scripts/audit-remediation-policy.mjs",
+    "scripts/automerge.mjs",
+    "scripts/ci-policy.mjs",
     "scripts/evidence-policy.mjs",
     "scripts/migrate-legacy-evidence.mjs",
     "scripts/taskctl.mjs",

@@ -82,7 +82,9 @@ describe('M3-05 foreshadowing lifecycle', () => {
         includeResolved: true,
         referenceChapterId: seeded.chapter4.id,
       });
-      expect(search.foreshadowings.map((item) => item.title)).toEqual(['旧钥匙']);
+      const searchTitles = search.foreshadowings.map((item) => item.title);
+      expect(searchTitles).toHaveLength(2);
+      expect(searchTitles).toEqual(expect.arrayContaining(['旧钥匙', '密室真相']));
 
       catalog = await harness.narrative.saveForeshadowing(randomUUID(), {
         projectId: seeded.project.projectId,

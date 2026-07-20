@@ -164,9 +164,10 @@ describe('M3-05 character arcs', () => {
 
   it('rejects dependency cycles, foreign timeline events, invalid custom arcs, and AI writes', async () => {
     const harness = await createContinuityHarness();
+    const foreignHarness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
-      const foreign = await seedContinuity(harness);
+      const foreign = await seedContinuity(foreignHarness);
       let catalog = await harness.narrative.saveCharacterArc(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -196,7 +197,7 @@ describe('M3-05 character arcs', () => {
         dependencyIds: [],
       });
       const event = eventCatalog.timelineEvents[0]!;
-      const foreignEventCatalog = await harness.continuity.saveTimelineEvent(randomUUID(), {
+      const foreignEventCatalog = await foreignHarness.continuity.saveTimelineEvent(randomUUID(), {
         projectId: foreign.project.projectId,
         authority: 'author',
         eventId: null,
@@ -324,6 +325,7 @@ describe('M3-05 character arcs', () => {
         false,
       );
     } finally {
+      await closeContinuityHarness(foreignHarness);
       await closeContinuityHarness(harness);
     }
   });

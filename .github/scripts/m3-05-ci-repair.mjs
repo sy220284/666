@@ -1,5 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
+const candidatePreviewPath = 'apps/desktop/main/src/candidate-preview-ipc.ts';
+if (!readFileSync(candidatePreviewPath, 'utf8').includes('registerContinuityIpc')) {
+  process.stdout.write('M3-05 CI repairs are already applied.\n');
+  process.exit(0);
+}
+
 function replace(path, oldValue, newValue, expectedCount = 1) {
   const content = readFileSync(path, 'utf8');
   const actualCount = content.split(oldValue).length - 1;
@@ -11,21 +17,13 @@ function replace(path, oldValue, newValue, expectedCount = 1) {
   writeFileSync(path, content.replace(oldValue, newValue), 'utf8');
 }
 
+replace(candidatePreviewPath, "import { registerContinuityIpc } from './continuity-ipc.js';\n", '');
 replace(
-  'apps/desktop/main/src/candidate-preview-ipc.ts',
-  "import { registerContinuityIpc } from './continuity-ipc.js';\n",
-  '',
-);
-replace(
-  'apps/desktop/main/src/candidate-preview-ipc.ts',
+  candidatePreviewPath,
   '  const unregisterContinuityIpc = registerContinuityIpc(options);\n',
   '',
 );
-replace(
-  'apps/desktop/main/src/candidate-preview-ipc.ts',
-  '    unregisterContinuityIpc();\n',
-  '',
-);
+replace(candidatePreviewPath, '    unregisterContinuityIpc();\n', '');
 
 const candidateDescribe = "describe('Candidate Preview IPC authority boundary', () => {\n";
 const candidateRegression = [
@@ -58,7 +56,6 @@ replace(
   'projectDatabase.schemaVersion).toBe(13)',
   'projectDatabase.schemaVersion).toBe(14)',
 );
-
 replace(
   'tests/migration/sqlite-foundation.test.ts',
   "    ).toEqual([\n      'backup_records',",
@@ -74,7 +71,6 @@ replace(
   "      'entity_states',\n      'knowledge_states',",
   "      'entity_states',\n      'foreshadowing_chapters',\n      'foreshadowing_relations',\n      'foreshadowings',\n      'knowledge_states',",
 );
-
 replace(
   'tests/integration/narrative-foreshadowing.test.ts',
   "      expect(search.foreshadowings.map((item) => item.title)).toEqual(['旧钥匙']);",

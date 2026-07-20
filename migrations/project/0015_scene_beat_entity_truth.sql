@@ -131,12 +131,26 @@ BEGIN
    WHERE scene_beat_id = NEW.id
      AND role = 'location'
      AND entity_id NOT IN (SELECT value FROM json_each(NEW.location_ids_json));
-  INSERT OR IGNORE INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
-  SELECT NEW.project_id, NEW.id, value, 'character', NEW.updated_at
-    FROM json_each(NEW.character_ids_json);
-  INSERT OR IGNORE INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
-  SELECT NEW.project_id, NEW.id, value, 'location', NEW.updated_at
-    FROM json_each(NEW.location_ids_json);
+  INSERT INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
+  SELECT NEW.project_id, NEW.id, ref.value, 'character', NEW.updated_at
+    FROM json_each(NEW.character_ids_json) ref
+   WHERE NOT EXISTS (
+     SELECT 1
+       FROM scene_beat_entities link
+      WHERE link.scene_beat_id = NEW.id
+        AND link.entity_id = ref.value
+        AND link.role = 'character'
+   );
+  INSERT INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
+  SELECT NEW.project_id, NEW.id, ref.value, 'location', NEW.updated_at
+    FROM json_each(NEW.location_ids_json) ref
+   WHERE NOT EXISTS (
+     SELECT 1
+       FROM scene_beat_entities link
+      WHERE link.scene_beat_id = NEW.id
+        AND link.entity_id = ref.value
+        AND link.role = 'location'
+   );
 END;
 
 CREATE TRIGGER trg_scene_beat_entities_validate_insert

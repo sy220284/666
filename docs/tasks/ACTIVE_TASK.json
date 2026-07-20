@@ -11,33 +11,27 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M2-02",
+    "id": "M3-04",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md",
-    "branch": "work/m2-02-candidate-version-model",
-    "startedAt": "2026-07-20",
+    "source": "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
+    "branch": "work/m3-04-state-timeline-knowledge",
+    "startedAt": "2026-07-19",
     "allowedPaths": [
       "migrations/project/",
       "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
       "apps/desktop/renderer/",
-      "packages/testkit/",
       "tests/integration/",
-      "tests/migration/",
-      "tests/security/",
-      "tests/e2e/",
-      "docs/ui/EDITOR_INTERACTION_SPEC.md",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M2/M2-02_CANDIDATE_VERSION_MODEL.md",
       "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M2-02/"
+      "docs/test-evidence/M3-04/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -45,9 +39,9 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/decisions/ADR-003-draft-candidate-version.md",
-      "docs/decisions/ADR-004-ai-cannot-overwrite-draft.md",
-      "docs/database/DATABASE_SCHEMA.md"
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/database/DATA_DICTIONARY.md",
+      "docs/testing/TEST_STRATEGY.md"
     ],
     "verification": [
       "pnpm lint",
@@ -57,13 +51,13 @@
       "pnpm test:integration",
       "pnpm test:security",
       "pnpm test:e2e",
-      "pnpm test:unit"
+      "pnpm test:eval"
     ]
   },
   "lastVerifiedTask": {
-    "id": "M2-01",
-    "commit": "8f593d594371cdf30d46a8a18dce7abc4fab06db",
-    "verifiedAt": "2026-07-20T03:35:16Z"
+    "id": "M2-02",
+    "commit": "64f03f4a5652310fd7a2a12f845a7d3d310ef0ea",
+    "verifiedAt": "2026-07-20T04:13:00Z"
   },
   "deferredVerification": [
     {

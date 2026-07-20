@@ -1,1 +1,7 @@
-[]
+{
+  "taskId": "M2-01",
+  "sourceCommit": "8f593d594371cdf30d46a8a18dce7abc4fab06db",
+  "runId": 29714527779,
+  "status": "passed",
+  "note": "Performance gate and Main Verification completed; LockGuard introduced no budget regression."
+}

@@ -1,12 +1,12 @@
-# M2-01 测试证据
+# M2-01测试证据
 
-生成时间：2026-07-19T01:18:34Z  
-提交：9110b16bfc2c08d210d0306b7b394ef20cc9c9f7
+生成时间：2026-07-20T03:35:16Z  
+受测提交：`8f593d594371cdf30d46a8a18dce7abc4fab06db`  
+来源PR：#87  
+Main Verification：https://github.com/sy220284/666/actions/runs/29714735442
 
-状态：Verified。UI、编辑器事务过滤与Core LockGuard形成双层保护；锁定块更新、删除、移动、合并及受影响相邻块均原子拒绝，重开项目后锁定状态保持。
+状态：Verified。
 
-## 自动化结果
+M2-01已在当前通用复验流程下重新验证。PR #87以标准`revalidation-reopen`转换激活任务，六项永久门禁全部通过；Controlled Merge后，Main Verification在最终main提交上重新执行静态、单元、集成、Migration、安全、性能、Electron E2E、构建和Package Smoke矩阵。
 
-- 通过：5
-- 失败：0
-- 跳过：0
+LockGuard继续覆盖锁定块更新、删除、移动、拆分、合并与批量Patch；绕过Renderer直接调用Core仍被拒绝，锁定状态在重启后保持。现有任务专属截图保持原始二进制与SHA-256不变。

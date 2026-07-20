@@ -8,10 +8,10 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M2-01`
-- 唯一任务卡：`docs/tasks/M2/M2-01_LOCK_GUARD.md`
-- 工作分支：`work/m2-01-lock-guard`
-- 开始时间：`2026-07-20`
+- 任务ID：`M3-04`
+- 唯一任务卡：`docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md`
+- 工作分支：`work/m3-04-state-timeline-knowledge`
+- 开始时间：`2026-07-19`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -19,26 +19,21 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - packages/editor-core/
+  - migrations/project/
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
-  - apps/desktop/main/
   - apps/desktop/renderer/
-  - tests/unit/
   - tests/integration/
-  - tests/security/
-  - tests/e2e/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M2/M2-01_LOCK_GUARD.md
   - docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M2-01/
+  - docs/test-evidence/M3-04/
 forbidden_paths:
 
 required_docs:
@@ -46,13 +41,14 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/ui/EDITOR_INTERACTION_SPEC.md
-  - docs/decisions/ADR-005-lock-revision-backup.md
-  - docs/contracts/ERROR_CODES.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/testing/TEST_STRATEGY.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
+  - pnpm test:migration
   - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e

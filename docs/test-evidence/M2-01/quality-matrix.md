@@ -1,12 +1,12 @@
-# M2-01 质量矩阵
+# M2-01质量矩阵
 
-| 维度 | 结果 |
-| --- | --- |
-| UI可识别性 | PASS |
-| 编辑器输入保护 | PASS |
-| Core统一LockGuard | PASS |
-| 批量Patch原子性 | PASS |
-| 重启持久化 | PASS |
-| 后续写入路径复用 | PASS |
+| 场景 | 结果 | 证据 |
+|---|---|---|
+| 锁定块更新与删除 | 通过 | Unit、Integration，Quality 29714527880 |
+| 移动、拆分、合并与批量Patch | 通过 | Unit、Integration、Security |
+| 直接Core调用保护 | 通过 | Security 29714527783 |
+| 相邻锁定块与原子失败 | 通过 | Integration、Security |
+| 重启后锁定状态保持 | 通过 | Electron E2E与任务截图 |
+| 全套门禁与clean-tree | 通过 | PR 87与Main Verification 29714735442 |
 
-锁定块破坏率为0。最终结论：Verified。
+锁定内容未发生非预期改写。

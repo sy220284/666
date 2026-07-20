@@ -1,33 +1,33 @@
 {
   "schemaVersion": 1,
   "taskId": "M2-01",
-  "commit": "9110b16bfc2c08d210d0306b7b394ef20cc9c9f7",
-  "generatedAt": "2026-07-19T01:18:34Z",
+  "commit": "8f593d594371cdf30d46a8a18dce7abc4fab06db",
+  "generatedAt": "2026-07-20T03:35:16Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 164,
-      "sha256": "b20cd973a5159fdaacd867e902b63b27e55ae4021e357d65156452f0b33ca0ea"
+      "bytes": 891,
+      "sha256": "85c8e181d94ece9229050d2fd0c0542f66c70d06d6241fdd6d7ec8759c150169"
     },
     {
       "path": "known-risks.md",
-      "bytes": 114,
-      "sha256": "10152498a79993008da8b81969aaf1c80456b9a21eaa9cfb0b8ce319053d4c06"
+      "bytes": 292,
+      "sha256": "f8a477d62e6b4a11cbf20d44185f86a730bca9c9b0cfba17e48c1aec2df65771"
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 572,
-      "sha256": "72d6134effda38478213388a1622b166d11596bb44dd2b44db050e7cfd21286c"
+      "bytes": 863,
+      "sha256": "199ba13863690336eca272d233d87498a73f74b3bd2982ff10bf6abe090cf965"
     },
     {
       "path": "performance.json",
-      "bytes": 3,
-      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      "bytes": 238,
+      "sha256": "86c3d9634bed92f8e5b1f87710a6586c5583a263f3f9ec1e77bb4e5b899bef57"
     },
     {
       "path": "quality-matrix.md",
-      "bytes": 294,
-      "sha256": "0368413a4d1dd3811d1335265c38cd2403d9cd3da28d5691a3eacf225689a486"
+      "bytes": 548,
+      "sha256": "b3ebe62dfd39d8b2b3998b6d1ba0a7b86b10472b69e21757d188689d939da4e0"
     },
     {
       "path": "screenshots/lockguard-reopen.png",
@@ -41,13 +41,13 @@
     },
     {
       "path": "summary.md",
-      "bytes": 373,
-      "sha256": "33ccf1bffefd6d287e83637d9f1afa50653cec02afd19d62fd3140dc1f419766"
+      "bytes": 789,
+      "sha256": "c9155c539883e51c3626e28bd9348d13b9b79a7301db06ac3638d82f0c14173a"
     },
     {
       "path": "test-results/results.json",
-      "bytes": 984,
-      "sha256": "e8d574373151fa33f0a6ecfccf7c2899d8bfe47ca6cecf030bc9ab73302eeb93"
+      "bytes": 1132,
+      "sha256": "c09beab3c386ce4162553beae2eabdd51d6373025f78bb0219a38219e441ad8c"
     }
   ]
 }

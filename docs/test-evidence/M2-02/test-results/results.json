@@ -1,32 +1,38 @@
 [
   {
-    "suite": "candidate-isolation",
+    "suite": "candidate-draft-isolation",
     "fixtureId": "M2-02-candidate-isolation",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Candidate create/list/get/discard left Draft unchanged in Quality 29715921711 and Main Verification 29716128906."
   },
   {
-    "suite": "candidate-preview",
-    "fixtureId": "M2-02-candidate-preview",
+    "suite": "candidate-state-persistence",
+    "fixtureId": "M2-02-state-machine",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Complete/partial and pending/accepted/discarded state transitions persisted across restart."
   },
   {
-    "suite": "candidate-discard",
-    "fixtureId": "M2-02-candidate-discard",
+    "suite": "candidate-hash-integrity",
+    "fixtureId": "M2-02-hash-integrity",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Persisted block or aggregate hash drift was rejected."
   },
   {
-    "suite": "version-immutability",
-    "fixtureId": "M2-02-version-immutability",
+    "suite": "immutable-version-provenance",
+    "fixtureId": "M2-02-version-model",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Version parent, Candidate provenance, source revision and immutable content remained stable."
   },
   {
-    "suite": "desktop-persistence",
-    "fixtureId": "M2-02-desktop-persistence",
+    "suite": "cross-project-provenance",
+    "fixtureId": "M2-02-project-boundary",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Foreign Version and Candidate provenance references were rejected."
+  },
+  {
+    "suite": "screenshot-integrity",
+    "fixtureId": "M2-02-screenshots",
+    "status": "passed",
+    "details": "Three task-specific screenshots retain their recorded SHA-256 digests."
   }
 ]

@@ -1,3 +1,11 @@
-GitHub permanent gates and Quality desktop matrix: https://github.com/sy220284/666/actions/runs/29668237967
-exit=0 duration_ms=0 fixtures=M2-02-final-verification
-
+source_commit=64f03f4a5652310fd7a2a12f845a7d3d310ef0ea
+source_pr=89
+PR Policy: https://github.com/sy220284/666/actions/runs/29715921626 exit=0
+Task Governance: https://github.com/sy220284/666/actions/runs/29715921616 exit=0
+Evidence: https://github.com/sy220284/666/actions/runs/29715921607 exit=0
+Quality: https://github.com/sy220284/666/actions/runs/29715921711 exit=0
+Security: https://github.com/sy220284/666/actions/runs/29715921602 exit=0
+Performance: https://github.com/sy220284/666/actions/runs/29715921604 exit=0
+Main Verification: https://github.com/sy220284/666/actions/runs/29716128906 exit=0
+Quality executed format, lint, typecheck, unit, integration, migration, Electron E2E, build and package smoke with clean-tree checks.
+Main Verification repeated static, unit, integration, migration, security, performance/eval, Electron E2E, build and package smoke on the merge commit.

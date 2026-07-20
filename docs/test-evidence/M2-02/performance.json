@@ -1,1 +1,7 @@
-[]
+{
+  "taskId": "M2-02",
+  "sourceCommit": "64f03f4a5652310fd7a2a12f845a7d3d310ef0ea",
+  "runId": 29715921604,
+  "status": "passed",
+  "note": "Performance gate and Main Verification completed; Candidate/Version model introduced no budget regression."
+}

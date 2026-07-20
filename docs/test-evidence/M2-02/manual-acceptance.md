@@ -1,11 +1,13 @@
-# M2-02 人工验收记录
+# M2-02人工验收记录
 
-| 验收点 | 结果 | 说明 |
-| --- | --- | --- |
-| Candidate与Draft隔离 | PASS | 预览明确标注只读，候选内容不写入当前正文。 |
-| 候选差异预览 | PASS | 当前已保存稿与候选稿并列显示，结构差异与字符统计可见。 |
-| 丢弃候选 | PASS | 状态变为discarded，采用入口禁用，Draft保持不变。 |
-| Version不可变 | PASS | 定稿Version在后续Draft变化后内容与Hash保持。 |
-| 重启与归属保护 | PASS | Candidate、Version来源和项目归属跨重启保持。 |
+验收依据：PR #89最终Head、Quality运行`29715921711`、Security运行`29715921602`和Main Verification运行`29716128906`。
 
-截图与自动化断言交叉复核一致。结论：Verified。
+1. Candidate只读预览不会修改当前Draft，丢弃后Draft内容和Revision保持不变。
+2. 候选待处理、已接受、已丢弃以及complete/partial状态均由持久化测试覆盖。
+3. Candidate块及聚合内容Hash发生漂移时读取被拒绝。
+4. Version保留parentVersionId、sourceCandidateId、sourceRevision和内容Hash；Draft后续修改不改变历史Version。
+5. 外部项目的Version或Candidate来源关系被明确拒绝。
+6. 三张任务专属截图保留原始二进制，截图清单与SHA-256一致。
+7. Unit、Integration、Migration、Security与Electron E2E均在干净工作树上完成。
+
+结论：P0-020、P0-021对应的Candidate隔离和完整Version模型通过复验。

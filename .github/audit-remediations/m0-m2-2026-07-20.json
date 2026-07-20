@@ -17,6 +17,7 @@
         "packages/core-service/src/utility-entry.ts",
         "apps/desktop/renderer/src/audit-trash-reference-guard.ts",
         "apps/desktop/renderer/src/entry.ts",
+        "tests/integration/audit-m0-m2-remediation.test.ts",
         "tests/integration/structure-operations.test.ts",
         "tests/e2e/structure-recovery.spec.ts",
         "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
@@ -29,6 +30,7 @@
       "allowedPaths": [
         "packages/core-service/src/checkpoint-aware-recovery.ts",
         "packages/core-service/src/utility-entry.ts",
+        "tests/integration/audit-m0-m2-remediation.test.ts",
         "tests/integration/recovery-service.test.ts",
         "tests/e2e/unreadable-project-recovery.spec.ts",
         "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md"

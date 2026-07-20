@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-06`
-- 唯一任务卡：`docs/tasks/M3/M3-06_STATE_PROPOSAL_SNAPSHOT.md`
-- 工作分支：`work/m3-06-state-proposal-snapshot`
+- 任务ID：`M3-02`
+- 唯一任务卡：`docs/tasks/M3/M3-02_SCENE_BEAT_CROSS_CHAPTER.md`
+- 工作分支：`work/m3-02-scene-beat-cross-chapter`
 - 开始时间：`2026-07-20`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -24,17 +24,27 @@ allowed_paths:
   - packages/core-service/
   - packages/contracts/
   - apps/desktop/renderer/
+  - apps/desktop/main/
+  - apps/desktop/preload/
   - tests/integration/
   - tests/e2e/
+  - tests/migration/
+  - tests/security/
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
+  - docs/tasks/M3/M3-02_SCENE_BEAT_CROSS_CHAPTER.md
   - docs/tasks/M3/M3-06_STATE_PROPOSAL_SNAPSHOT.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-06/
+  - docs/test-evidence/M3-02/
 forbidden_paths:
 
 required_docs:
@@ -42,10 +52,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/architecture/DATA_FLOW.md
+  - docs/product/FUNCTION_CATALOG.md
   - docs/database/DATABASE_SCHEMA.md
-  - docs/decisions/ADR-004-ai-cannot-overwrite-draft.md
-  - docs/decisions/ADR-006-character-arc-via-state-proposal.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
 verification:
   - pnpm lint
   - pnpm typecheck
@@ -54,7 +63,6 @@ verification:
   - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
-  - pnpm test:eval
 ```
 
 ## 连续执行规则

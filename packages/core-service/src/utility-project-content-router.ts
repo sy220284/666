@@ -23,10 +23,7 @@ export async function routeContentProjectOperation(
 ): Promise<CoreProjectResult | null> {
   switch (operation.operation) {
     case DRAFT_COMMANDS.openDraft:
-      return success(
-        operation.operation,
-        await services.drafts.open(requestId, operation.input),
-      );
+      return success(operation.operation, await services.drafts.open(requestId, operation.input));
     case DRAFT_COMMANDS.applyPatch:
       return success(
         operation.operation,

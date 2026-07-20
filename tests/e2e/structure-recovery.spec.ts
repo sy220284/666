@@ -171,9 +171,11 @@ test('previews split and permanent delete, blocks current chapter references, an
     await captureAcceptanceScreenshot(page, 'M2-04', 'permanent-delete-reference-blocked.png');
 
     await page.evaluate(async (value) => {
-      const continuity = (globalThis as unknown as {
-        readonly worldforgeContinuity: ContinuityBridge;
-      }).worldforgeContinuity;
+      const continuity = (
+        globalThis as unknown as {
+          readonly worldforgeContinuity: ContinuityBridge;
+        }
+      ).worldforgeContinuity;
       const updated = await continuity.saveTimelineEvent({
         projectId: value.projectId,
         authority: 'author',

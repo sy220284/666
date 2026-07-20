@@ -58,7 +58,6 @@
   ],
   "governancePaths": [
     ".github/audit-remediations/m0-m2-2026-07-20.json",
-    ".github/workflows/audit-finalize-remediation.yml",
     "docs/process/AUDIT_REMEDIATION_M0_M2.md",
     ".github/workflows/evidence.yml",
     "scripts/audit-remediation-policy.mjs",

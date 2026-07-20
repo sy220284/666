@@ -116,31 +116,33 @@ M3-04使用独立窄桥`window.worldforgeContinuity`接通连续性账本；M3-0
 
 ### 4.2 规划与卷章
 
-| 命令                            | Renderer输入                                          | 输出                                        |
-| ------------------------------- | ----------------------------------------------------- | ------------------------------------------- |
-| `planning.listStructure`        | projectId                                             | 按orderKey排序的卷章树                      |
-| `planning.createVolume`         | projectId、标题、可选锚点位置                         | 最新卷章树                                  |
-| `planning.updateVolume`         | projectId、volumeId、标题/状态Patch                   | 最新卷章树                                  |
-| `planning.moveVolume`           | projectId、volumeId、同级锚点位置                     | 最新卷章树                                  |
-| `planning.deleteVolume`         | projectId、volumeId                                   | 软删除后的卷章树                            |
-| `planning.createChapter`        | projectId、volumeId、标题、可选锚点位置               | 最新卷章树                                  |
-| `planning.updateChapter`        | projectId、chapterId、标题/状态/目标字数Patch         | 最新卷章树                                  |
-| `planning.moveChapter`          | projectId、chapterId、targetVolumeId、锚点位置        | 最新卷章树                                  |
-| `planning.deleteChapter`        | projectId、chapterId                                  | 软删除后的卷章树                            |
-| `trash.list`                    | projectId                                             | 最小TrashEntry列表                          |
-| `trash.restore`                 | projectId、trashEntryId、原位或新锚点位置、可选目标卷 | 最新卷章树                                  |
-| `trash.previewPermanentDelete`  | projectId、trashEntryId                               | 影响数量、Version/Candidate阻断项与planHash |
-| `trash.permanentDelete`         | projectId、trashEntryId、planHash、完整标题确认       | 删除结果、影响数量与backupId                |
-| `planning.previewSplitChapter`  | 源Draft/Revision、拆分锚点、新章标题                  | 块数/字符数、锁定冲突与planHash             |
-| `planning.splitChapter`         | 同预览输入+planHash                                   | 新结构、两份Draft与backupId                 |
-| `planning.previewMergeChapters` | 源/目标章节、Draft和Revision                          | 合章影响、锁定冲突与planHash                |
-| `planning.mergeChapters`        | 同预览输入+planHash                                   | 新结构、目标Draft、回收源章与backupId       |
-| `planning.previewMoveBlocks`    | 源/目标Draft与Revision、logicalBlockIds、目标锚点     | 跨章移动影响与planHash                      |
-| `planning.moveBlocks`           | 同预览输入+planHash                                   | 两份新Revision Draft与backupId              |
+| 命令                            | Renderer输入                                          | 输出                                   |
+| ------------------------------- | ----------------------------------------------------- | -------------------------------------- |
+| `planning.listStructure`        | projectId                                             | 按orderKey排序的卷章树                 |
+| `planning.createVolume`         | projectId、标题、可选锚点位置                         | 最新卷章树                             |
+| `planning.updateVolume`         | projectId、volumeId、标题/状态Patch                   | 最新卷章树                             |
+| `planning.moveVolume`           | projectId、volumeId、同级锚点位置                     | 最新卷章树                             |
+| `planning.deleteVolume`         | projectId、volumeId                                   | 软删除后的卷章树                       |
+| `planning.createChapter`        | projectId、volumeId、标题、可选锚点位置               | 最新卷章树                             |
+| `planning.updateChapter`        | projectId、chapterId、标题/状态/目标字数Patch         | 最新卷章树                             |
+| `planning.moveChapter`          | projectId、chapterId、targetVolumeId、锚点位置        | 最新卷章树                             |
+| `planning.deleteChapter`        | projectId、chapterId                                  | 软删除后的卷章树                       |
+| `trash.list`                    | projectId                                             | 最小TrashEntry列表                     |
+| `trash.restore`                 | projectId、trashEntryId、原位或新锚点位置、可选目标卷 | 最新卷章树                             |
+| `trash.previewPermanentDelete`  | projectId、trashEntryId                               | 影响数量、全部章节外键阻断项与planHash |
+| `trash.permanentDelete`         | projectId、trashEntryId、planHash、完整标题确认       | 删除结果、影响数量与backupId           |
+| `planning.previewSplitChapter`  | 源Draft/Revision、拆分锚点、新章标题                  | 块数/字符数、锁定冲突与planHash        |
+| `planning.splitChapter`         | 同预览输入+planHash                                   | 新结构、两份Draft与backupId            |
+| `planning.previewMergeChapters` | 源/目标章节、Draft和Revision                          | 合章影响、锁定冲突与planHash           |
+| `planning.mergeChapters`        | 同预览输入+planHash                                   | 新结构、目标Draft、回收源章与backupId  |
+| `planning.previewMoveBlocks`    | 源/目标Draft与Revision、logicalBlockIds、目标锚点     | 跨章移动影响与planHash                 |
+| `planning.moveBlocks`           | 同预览输入+planHash                                   | 两份新Revision Draft与backupId         |
 
 Renderer不得传入权威ID、`orderKey`、`deletedAt`、`activeDraftId`、`finalVersionId`、`backupId`或影响数量。实体ID由Core生成；排序位置只使用`start/end/before/after`及同级实体ID表达，Core在单写事务内计算64位整数键和必要的局部重排。
 
 高风险结构执行前先重算预览并校验`planHash`、Draft Revision、块Hash、归属和LockGuard；预检通过后创建已验证恢复点，再在单个项目库事务中提交结构与Draft Revision。任一重校验失败都不修改原结构。
+
+永久删除预览以SQLite外键元数据为权威来源。除受控Draft内部引用外，任何指向`chapters`的外键都必须返回`source=表名.字段名`、引用数量和`ON DELETE`动作；Version、Candidate及`CASCADE/RESTRICT/NO ACTION/SET NULL/SET DEFAULT`引用均阻断执行。Core在写事务内重新扫描并验证完整`planHash`，Renderer不得提交表名、引用数量或删除动作。
 
 - `planning.getBrief/updateBrief`：读取或保存可为空的ProjectBrief；Renderer不得传入ID或更新时间。
 - `planning.listPlotNodes`：读取按父级与orderKey组织的PlotNode列表。
@@ -204,28 +206,28 @@ Entity与Canon命令：
 
 M3-04冻结的连续性命令：
 
-| 命令 | IPC频道 | 输入 | 输出 |
-|---|---|---|---|
-| `continuity.list` | `worldforge:continuity:list` | projectId、query、includeHistory、includeArchivedEvents、effectiveAtChapterId | EntityState、TimelineEvent、KnowledgeState目录 |
-| `continuity.setEntityState` | `worldforge:continuity:set-entity-state` | author权限、entityId、stateKey、value、章节半开区间、Evidence、sourceVersionId | 最新连续性目录 |
-| `continuity.invalidateEntityState` | `worldforge:continuity:invalidate-entity-state` | author权限、entityId、stateKey | 旧current失效后的目录 |
-| `continuity.saveTimelineEvent` | `worldforge:continuity:save-timeline-event` | author权限、eventId可空、时间范围/精度、章节、地点、三类人物引用、依赖 | 最新连续性目录 |
-| `continuity.archiveTimelineEvent` | `worldforge:continuity:archive-timeline-event` | author权限、eventId | 归档后的目录 |
-| `continuity.setKnowledgeState` | `worldforge:continuity:set-knowledge-state` | author权限、informationKey、characterId、认知状态、章节半开区间、Version或logicalBlock来源 | 最新连续性目录 |
-| `continuity.invalidateKnowledgeState` | `worldforge:continuity:invalidate-knowledge-state` | author权限、informationKey、characterId | 旧current失效后的目录 |
+| 命令                                  | IPC频道                                            | 输入                                                                                       | 输出                                           |
+| ------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `continuity.list`                     | `worldforge:continuity:list`                       | projectId、query、includeHistory、includeArchivedEvents、effectiveAtChapterId              | EntityState、TimelineEvent、KnowledgeState目录 |
+| `continuity.setEntityState`           | `worldforge:continuity:set-entity-state`           | author权限、entityId、stateKey、value、章节半开区间、Evidence、sourceVersionId             | 最新连续性目录                                 |
+| `continuity.invalidateEntityState`    | `worldforge:continuity:invalidate-entity-state`    | author权限、entityId、stateKey                                                             | 旧current失效后的目录                          |
+| `continuity.saveTimelineEvent`        | `worldforge:continuity:save-timeline-event`        | author权限、eventId可空、时间范围/精度、章节、地点、三类人物引用、依赖                     | 最新连续性目录                                 |
+| `continuity.archiveTimelineEvent`     | `worldforge:continuity:archive-timeline-event`     | author权限、eventId                                                                        | 归档后的目录                                   |
+| `continuity.setKnowledgeState`        | `worldforge:continuity:set-knowledge-state`        | author权限、informationKey、characterId、认知状态、章节半开区间、Version或logicalBlock来源 | 最新连续性目录                                 |
+| `continuity.invalidateKnowledgeState` | `worldforge:continuity:invalidate-knowledge-state` | author权限、informationKey、characterId                                                    | 旧current失效后的目录                          |
 
 Main必须先校验可信Renderer URL和strict命令Schema，再把输入转换为`CoreContinuityOperationSchema`。Core返回值必须通过`CoreContinuityResultSchema`和`ContinuityCatalogResultSchema`双重校验。写命令仅接受`authority='author'`；AI权限在进入权威事务前拒绝。可比较时间才执行多地冲突、依赖循环和确定性顺序校验，`approximate/unknown`不得伪造硬裁决。
 
 M3-05冻结的叙事规划命令：
 
-| 命令 | IPC频道 | 输入 | 输出 |
-|---|---|---|---|
-| `narrativePlanning.list` | `worldforge:narrative-planning:list` | projectId、query、includeResolved、referenceChapterId | 伏笔与人物弧光目录 |
-| `narrativePlanning.saveForeshadowing` | `worldforge:narrative-planning:save-foreshadowing` | author权限、foreshadowingId可空、标题、描述、回收窗口、章节角色、关系 | 最新目录 |
-| `narrativePlanning.transitionForeshadowing` | `worldforge:narrative-planning:transition-foreshadowing` | author权限、foreshadowingId、目标状态 | 最新目录 |
-| `narrativePlanning.saveCharacterArc` | `worldforge:narrative-planning:save-character-arc` | author权限、arcId可空、characterId、类型、自定义类型、状态、作者意图 | 最新目录 |
-| `narrativePlanning.saveArcMilestone` | `worldforge:narrative-planning:save-arc-milestone` | author权限、milestoneId可空、arcId、排序、计划章节、节点/时间线依赖 | 最新目录 |
-| `narrativePlanning.transitionArcMilestone` | `worldforge:narrative-planning:transition-arc-milestone` | author权限、milestoneId、planned/hit/skipped、实际章节 | 最新目录 |
+| 命令                                        | IPC频道                                                  | 输入                                                                  | 输出               |
+| ------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------- | ------------------ |
+| `narrativePlanning.list`                    | `worldforge:narrative-planning:list`                     | projectId、query、includeResolved、referenceChapterId                 | 伏笔与人物弧光目录 |
+| `narrativePlanning.saveForeshadowing`       | `worldforge:narrative-planning:save-foreshadowing`       | author权限、foreshadowingId可空、标题、描述、回收窗口、章节角色、关系 | 最新目录           |
+| `narrativePlanning.transitionForeshadowing` | `worldforge:narrative-planning:transition-foreshadowing` | author权限、foreshadowingId、目标状态                                 | 最新目录           |
+| `narrativePlanning.saveCharacterArc`        | `worldforge:narrative-planning:save-character-arc`       | author权限、arcId可空、characterId、类型、自定义类型、状态、作者意图  | 最新目录           |
+| `narrativePlanning.saveArcMilestone`        | `worldforge:narrative-planning:save-arc-milestone`       | author权限、milestoneId可空、arcId、排序、计划章节、节点/时间线依赖   | 最新目录           |
+| `narrativePlanning.transitionArcMilestone`  | `worldforge:narrative-planning:transition-arc-milestone` | author权限、milestoneId、planned/hit/skipped、实际章节                | 最新目录           |
 
 Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreNarrativePlanningOperationSchema`；Core返回值同时通过Core与IPC结果Schema校验。所有写命令只接受`authority='author'`，项目、章节、人物、伏笔、节点和TimelineEvent引用都在进入单写事务前校验。Core负责状态机、回收窗口、依赖环、互斥冲突和节点命中前置条件。
 
@@ -267,8 +269,11 @@ RHY结果为建议级，不能通过IPC标记为发布阻断。
 - `transfer.importPreview/importCommit/importCancel`
 - `transfer.exportPreview/exportExecute`
 - `backup.create/list/verify/restoreToCopy/delete`
+- `recovery.createCheckpoint/getOverview/restoreCheckpoint/exportVersion`
 - `trash.list/restore/permanentDelete`
 - `settings.get/set/reset`
+
+`recovery.getOverview`在项目数据库仍可读取时直接返回只读Version目录；`project.sqlite`物理不可读且`readOnlyReason=integrity-failed`时，只允许从外部Checkpoint回退。Checkpoint必须通过路径边界、普通文件且非符号链接、大小、SHA-256、SQLite完整性、外键和项目ID校验，才能向Renderer暴露Version。`recovery.exportVersion`按已验证Checkpoint顺序查找并原子写入用户选择目录，不修改损坏源库或Checkpoint。
 
 ### 4.10 通用长任务
 

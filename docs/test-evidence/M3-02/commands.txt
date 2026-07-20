@@ -1,4 +1,12 @@
-pnpm format  # exit 0
-pnpm lint  # exit 0
-pnpm task:validate  # exit 0
-# PR permanent gates: PR Policy, Task Governance, Evidence, Security, Performance, Quality
+source_commit=0239e87aca9a31bcfc81008d326af2a9fa16b889
+source_pr=97
+source_head=ac4cf1a30e61ba880b5160e50ca8d3118078aa50
+PR Policy: https://github.com/sy220284/666/actions/runs/29740976176 exit=0
+Task Governance: https://github.com/sy220284/666/actions/runs/29740976087 exit=0
+Evidence: https://github.com/sy220284/666/actions/runs/29740976193 exit=0
+Quality: https://github.com/sy220284/666/actions/runs/29740976348 exit=0
+Security: https://github.com/sy220284/666/actions/runs/29740976130 exit=0
+Performance: https://github.com/sy220284/666/actions/runs/29740976098 exit=0
+Desktop evidence artifact: id=8460479415 digest=sha256:8a65c441fa49c83328a7793bd84811071d5da5f15cee319882a60e30c4ae3886
+Quality executed task validation, workspace/boundary checks, format, lint, typecheck, unit, integration, migration, build, package smoke and Electron E2E with clean-tree checks.
+Electron E2E executed 19 tests; scene-beat.spec.ts was included and all 19 passed.

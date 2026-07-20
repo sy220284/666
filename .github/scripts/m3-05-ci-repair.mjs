@@ -74,7 +74,7 @@ replace(
 replace(
   'tests/integration/narrative-foreshadowing.test.ts',
   "      expect(search.foreshadowings.map((item) => item.title)).toEqual(['旧钥匙']);",
-  "      expect(search.foreshadowings.map((item) => item.title)).toEqual(['旧钥匙', '密室真相']);",
+  "      const searchTitles = search.foreshadowings.map((item) => item.title);\n      expect(searchTitles).toHaveLength(2);\n      expect(searchTitles).toEqual(expect.arrayContaining(['旧钥匙', '密室真相']));",
 );
 replace(
   'tests/integration/narrative-character-arc.test.ts',

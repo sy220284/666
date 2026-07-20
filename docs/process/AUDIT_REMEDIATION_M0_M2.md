@@ -46,6 +46,7 @@ M0-01—M0-04缺标准Manifest；M0-06、M0-07缺人工验收和质量矩阵；M
 6. M1-08、M2-04在本次功能修复的完整Ready CI与Electron工件产生后重建证据，绑定本次不可变实现提交。
 7. 收尾复核曾发现并行治理提交将Evidence降级为仅检查摘要、命令和风险三个文本文件，并在PR阶段跳过全量Verified扫描；现已恢复人工验收、质量矩阵、机器结果、截图清单、逐文件哈希和全部Verified包扫描，不接受降级证据门。
 8. 主线复验和PR Quality保持Package Smoke；主线复验同时执行Security与Performance，不以`draft_mode`替代完整验证。
+9. Testkit统一证据写入器同步生成`manual-acceptance.md`、`quality-matrix.md`、`test-results/results.json`、`screenshots/manifest.json`和逐文件Manifest，并支持原始截图二进制；生成器自身通过TypeScript和Unit自测。
 
 ## 3. PR边界
 

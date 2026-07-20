@@ -34,24 +34,23 @@ jobs:
           node-version: 24
       - name: Assert clean working tree before evidence validation
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Validate changed task evidence documents
+      - name: Validate every changed task evidence package
         if: ${{ github.event_name == 'pull_request' }}
         run: node scripts/evidence-policy.mjs
-      - name: Validate all Verified task evidence documents
-        if: ${{ github.event_name != 'pull_request' }}
+      - name: Validate all Verified task evidence packages
         shell: bash
         run: |
           mkdir -p test-results/ci
           set -o pipefail
           node scripts/verified-evidence-scan.mjs 2>&1 | tee test-results/ci/verified-evidence-scan.log
-      - name: Upload full-scan diagnostics
-        if: ${{ failure() && github.event_name != 'pull_request' }}
+      - name: Upload Verified evidence scan diagnostics
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: verified-evidence-scan-${{ github.run_id }}
           path: test-results/ci/verified-evidence-scan.log
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
       - name: Assert clean working tree after evidence validation
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

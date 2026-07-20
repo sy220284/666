@@ -101,7 +101,7 @@ EntityState记录状态：
 current | historical | superseded | invalid
 ```
 
-同一Entity与规范化stateKey只有一条`current`。作者设置新值时，旧current在同一事务转为`historical`，并把旧记录的`valid_until_chapter_id`设为新值的起始章节。章节区间统一使用`[validFromChapterId, validUntilChapterId)`半开语义；终点为空表示持续有效。`sourceVersionId`必须属于同项目，EvidenceAnchor也必须通过项目归属校验。AI权限不能写入、失效或归档权威连续性记录。
+同一Entity与规范化stateKey只有一条`current`。作者设置新值时，旧current在同一事务转为`historical`；同起点修订转为`superseded`。章节区间统一使用`[validFromChapterId, validUntilChapterId)`半开语义：旧记录没有终点或与新记录重叠时，终点截断到新值起点；旧记录已有更早或相同终点时保留原终点，允许存在明确空档期。终点为空表示持续有效。`sourceVersionId`必须属于同项目，EvidenceAnchor也必须通过项目归属校验。AI权限不能写入、失效或归档权威连续性记录。
 
 TimelineEvent精度：
 
@@ -115,7 +115,7 @@ TimelineEvent状态：
 active | archived
 ```
 
-时间冲突只对可比较范围执行。`approximate`和`unknown`不伪造硬时间顺序；可比较范围会阻断同一参与人物在重叠时间占据不同地点、事件依赖循环以及前置事件确定晚于后继事件。归档保留事件及引用账本，不作为默认活动查询结果。
+时间冲突只对可比较范围执行。`approximate`和`unknown`不伪造硬时间顺序；可比较范围会阻断同一在场人物在重叠时间占据不同地点、事件依赖循环以及前置事件确定晚于后继事件。`participant`和`witness`视为人物在场，`subject`只表示事件对象，不自动推定其身处事件地点。归档保留事件及引用账本，不作为默认活动查询结果。
 
 TimelineEntityRole：
 
@@ -135,7 +135,7 @@ KnowledgeState记录状态：
 current | historical | invalid
 ```
 
-同一Character与规范化informationKey只有一条`current`，章节区间同样使用半开语义。新认知状态会结束旧current并保留历史。每条记录至少具有同项目`sourceVersionId`或`sourceLogicalBlockId`之一；正文块删除不会把稳定logicalBlock来源误解释为新的权威事实。
+同一Character与规范化informationKey只有一条`current`，章节区间使用与EntityState相同的半开、截断和空档保留语义。新认知状态会结束旧current并保留历史。每条记录至少具有同项目`sourceVersionId`或`sourceLogicalBlockId`之一；创建记录时逻辑块必须真实存在且属于当前项目，记录被作者确认后，即使对应正文块随后删除，稳定logicalBlock来源仍保留为历史锚点，不会被误解释为新的权威事实。
 
 StateProposal类型：
 

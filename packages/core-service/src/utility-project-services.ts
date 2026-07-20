@@ -4,7 +4,6 @@ import type { ContinuityService } from './continuity.js';
 import type { DraftService } from './draft.js';
 import type { EntityCanonService } from './entity-canon.js';
 import type { ImportExportService } from './import-export.js';
-import type { NarrativePlanningService } from './narrative-planning.js';
 import type { ProjectPlanningService } from './project-planning.js';
 import type { ProjectStructureService } from './project-structure.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
@@ -20,7 +19,6 @@ export interface UtilityProjectServices {
   readonly sceneBeats: SceneBeatService;
   readonly entityCanon: EntityCanonService;
   readonly continuity: ContinuityService;
-  readonly narrativePlanning: NarrativePlanningService;
   readonly structureOperations: StructureOperationService;
   readonly drafts: DraftService;
   readonly candidates: CandidateService;

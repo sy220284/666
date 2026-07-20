@@ -28,7 +28,7 @@ describe('M3-03 Entity and Canon migration', () => {
       appVersion: '0.1.0',
     });
     try {
-      expect(database.schemaVersion).toBe(12);
+      expect(database.schemaVersion).toBe(13);
       expect(
         database.read((connection) =>
           connection
@@ -54,7 +54,7 @@ describe('M3-03 Entity and Canon migration', () => {
         const insertProject = connection.prepare(
           `INSERT INTO projects(
              id, name, channel, active_style_profile_id, schema_version, created_at, updated_at
-           ) VALUES(?, ?, 'test', NULL, 12, ?, ?)`,
+           ) VALUES(?, ?, 'test', NULL, 13, ?, ?)`,
         );
         insertProject.run(projectId, '本项目', timestamp, timestamp);
         insertProject.run(foreignProjectId, '异项目', timestamp, timestamp);

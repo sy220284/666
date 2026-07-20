@@ -11,6 +11,7 @@ export default defineConfig({
     'structure-recovery.spec.ts',
     'unreadable-project-recovery.spec.ts',
     'continuity-ledger.spec.ts',
+    'scene-beat.spec.ts',
   ],
   fullyParallel: false,
   workers: 1,

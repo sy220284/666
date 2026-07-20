@@ -33,6 +33,7 @@ allowed_paths:
   - docs/contracts/IPC_CONTRACTS.md
   - docs/database/DATABASE_SCHEMA.md
   - docs/database/DATA_DICTIONARY.md
+  - docs/database/SCENE_BEAT_ENTITY_REFERENCES.md
   - docs/ui/SCREEN_SPECIFICATIONS.md
   - docs/ui/EDITOR_INTERACTION_SPEC.md
   - package.json
@@ -54,6 +55,7 @@ required_docs:
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
   - docs/product/FUNCTION_CATALOG.md
   - docs/database/DATABASE_SCHEMA.md
+  - docs/database/SCENE_BEAT_ENTITY_REFERENCES.md
   - docs/ui/SCREEN_SPECIFICATIONS.md
 verification:
   - pnpm lint

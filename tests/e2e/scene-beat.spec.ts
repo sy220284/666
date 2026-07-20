@@ -37,7 +37,7 @@ test.afterEach(async () => {
   );
 });
 
-test('creates and deletes a SceneBeat while preserving Draft content', async () => {
+test('creates and deletes a SceneBeat with entity selectors while preserving Draft content', async () => {
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-scene-beat-e2e-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'projects');
@@ -67,13 +67,51 @@ test('creates and deletes a SceneBeat while preserving Draft content', async () 
         chapterId: chapter.id,
       });
       if (!draft.ok) throw new Error('DRAFT_MISSING');
-      return { projectId: active.data.projectId, chapterId: chapter.id, draft: draft.data };
+      const characters = await bridge.canon.create({
+        projectId: active.data.projectId,
+        authority: 'author',
+        entityType: 'character',
+        name: '林照夜',
+        aliases: [],
+        summary: '调查者',
+      });
+      if (!characters.ok) throw new Error('CHARACTER_CREATE_FAILED');
+      const character = characters.data.entities.find((entity) => entity.name === '林照夜');
+      if (!character) throw new Error('CHARACTER_MISSING');
+      const locations = await bridge.canon.create({
+        projectId: active.data.projectId,
+        authority: 'author',
+        entityType: 'location',
+        name: '旧档案馆',
+        aliases: [],
+        summary: '证据现场',
+      });
+      if (!locations.ok) throw new Error('LOCATION_CREATE_FAILED');
+      const location = locations.data.entities.find((entity) => entity.name === '旧档案馆');
+      if (!location) throw new Error('LOCATION_MISSING');
+      return {
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draft: draft.data,
+        characterId: character.id,
+        locationId: location.id,
+      };
     });
 
     await page.locator('[data-open-planning]').click();
     await expect(page.locator('[data-planning-dialog]')).toBeVisible();
     await page.locator('[data-create-scene-beat]').click();
     const dialog = page.locator('[data-scene-beat-dialog]');
+    const characterSelector = dialog.locator(
+      'select[data-scene-beat-entity-selector="character"]',
+    );
+    const locationSelector = dialog.locator('select[data-scene-beat-entity-selector="location"]');
+    await expect(characterSelector).toContainText('林照夜');
+    await expect(locationSelector).toContainText('旧档案馆');
+    await expect(dialog.locator('textarea[name="characterIds"]')).toBeHidden();
+    await expect(dialog.locator('textarea[name="locationIds"]')).toBeHidden();
+    await characterSelector.selectOption(before.characterId);
+    await locationSelector.selectOption(before.locationId);
     await dialog.locator('input[name="title"]').fill('发现第一条反证');
     await dialog.locator('select[name="beatType"]').selectOption('turn');
     await dialog.locator('input[name="wordTargetPercent"]').fill('20');
@@ -85,6 +123,18 @@ test('creates and deletes a SceneBeat while preserving Draft content', async () 
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('[data-scene-beat-list]')).toContainText('发现第一条反证');
     await expect(page.locator('[data-planning-status]')).toContainText('SceneBeat已保存');
+
+    const saved = await page.evaluate(async ({ projectId, chapterId }) => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const beats = await bridge.planning.listSceneBeats({ projectId, chapterId });
+      if (!beats.ok) throw new Error('SCENE_BEAT_READ_FAILED');
+      return beats.data.beats[0];
+    }, before);
+    expect(saved).toMatchObject({
+      characterIds: [before.characterId],
+      locationIds: [before.locationId],
+    });
 
     page.once('dialog', (prompt) => prompt.accept());
     await page

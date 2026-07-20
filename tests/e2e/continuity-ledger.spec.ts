@@ -3,11 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
-import type {
-  CommandResult,
-  ContinuityCatalog,
-  ContinuityListInput,
-} from '@worldforge/contracts';
+import type { CommandResult, ContinuityCatalog, ContinuityListInput } from '@worldforge/contracts';
 
 const root = process.cwd();
 const temporaryDirectories: string[] = [];

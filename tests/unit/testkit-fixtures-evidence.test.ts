@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -96,13 +97,14 @@ describe('public deterministic Chinese fixtures', () => {
 });
 
 describe('unified evidence writer', () => {
+  const screenshot = Buffer.from('synthetic screenshot bytes');
   const evidence = (summary = '所有自测使用公开、可复现 Fixture。'): TestEvidenceInput => ({
     taskId: 'M0-05',
     commit: 'abcdef0',
     generatedAt: '2026-07-15T03:00:00.000Z',
     summary,
-    manualAcceptance: '固定公开Fixture复核通过。',
-    qualityMatrix: '| 维度 | 结论 |\n|---|---|\n| 数据 | PASS |',
+    manualAcceptance: '# M0-05人工验收\n\n状态：通过。固定公开Fixture复核通过。',
+    qualityMatrix: '# M0-05质量矩阵\n\n| 维度 | 结论 |\n|---|---|\n| 数据 | PASS |',
     commands: [
       {
         command: 'pnpm test:unit',
@@ -116,6 +118,13 @@ describe('unified evidence writer', () => {
         suite: 'testkit-self-test',
         fixtureId: 'zh-long-paragraph-v1',
         status: 'passed',
+      },
+    ],
+    screenshots: [
+      {
+        fileName: 'acceptance.png',
+        fixtureId: 'M0-05-public-synthetic',
+        content: screenshot,
       },
     ],
     performance: [
@@ -134,7 +143,7 @@ describe('unified evidence writer', () => {
     knownRisks: ['真实 Provider 与真实平台显示仍由后续验收覆盖。'],
   });
 
-  it('writes one consolidated report plus commands, risks, and a hashed manifest atomically', async () => {
+  it('writes a complete evidence package and hashed manifest atomically', async () => {
     const directory = await temporaryDirectory();
     const target = path.join(directory, 'M0-05');
     const result = await writeTestEvidence(target, evidence());
@@ -142,14 +151,33 @@ describe('unified evidence writer', () => {
       'commands.txt',
       'known-risks.md',
       'manifest.json',
+      'manual-acceptance.md',
+      'performance.json',
+      'quality-matrix.md',
+      'screenshots/acceptance.png',
+      'screenshots/manifest.json',
       'summary.md',
+      'test-results/results.json',
     ]);
     const summary = await readFile(path.join(target, 'summary.md'), 'utf8');
     expect(summary).toContain('通过：1');
-    expect(summary).toContain('固定公开Fixture复核通过');
     expect(summary).toContain('fixture_generation_ms');
+    expect(await readFile(path.join(target, 'manual-acceptance.md'), 'utf8')).toContain(
+      '固定公开Fixture复核通过',
+    );
+    expect(await readFile(path.join(target, 'quality-matrix.md'), 'utf8')).toContain('PASS');
+    expect(await readFile(path.join(target, 'screenshots/acceptance.png'))).toEqual(screenshot);
+    expect(
+      JSON.parse(await readFile(path.join(target, 'screenshots/manifest.json'), 'utf8')),
+    ).toEqual([
+      {
+        fileName: 'acceptance.png',
+        fixtureId: 'M0-05-public-synthetic',
+        sha256: createHash('sha256').update(screenshot).digest('hex'),
+      },
+    ]);
     expect(JSON.parse(await readFile(path.join(target, 'manifest.json'), 'utf8')).files).toHaveLength(
-      3,
+      9,
     );
 
     await writeTestEvidence(target, evidence('原子覆盖后的公开摘要。'), { overwrite: true });

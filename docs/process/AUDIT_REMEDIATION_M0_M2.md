@@ -27,6 +27,7 @@ M0-01—M0-04缺标准Manifest；M0-06、M0-07缺人工验收和质量矩阵；M
 3. 阻断项返回`表名.字段名`、引用数量和`ON DELETE`动作，Renderer向用户显示真实影响来源。
 4. `planHash`包含完整目标、影响和阻断集合；执行事务内重新扫描，预览后新增引用会使旧计划失效。
 5. 集成测试覆盖动态新增外键、旧计划失效、章节/TrashEntry/Draft/正文不变；Electron E2E覆盖TimelineEvent章节锚点阻断、解除锚点后删除和恢复点生成。首次Ready运行还暴露了测试误用连续性目录返回值的问题，已改为从`timelineEvents`中取得真实eventId后再解除锚点。
+6. 最终桌面回归继续定位到执行校验边界：`assertPermanentDeleteExecutable()`曾把包含`planHash`和`confirmationTitle`的完整执行输入交给严格Preview Schema，触发`unrecognized_keys`并映射为`COMMON_INVALID_INPUT_001`。现已只向Preview传入`projectId`和`trashEntryId`，完整执行字段继续用于计划与标题复核，并增加ReferenceAware集成回归。
 
 ### 2.2 物理损坏Checkpoint只读回退
 

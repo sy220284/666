@@ -60,7 +60,9 @@ function renderBinding(binding: SelectorBinding, entities: readonly Entity[]): v
   const selected = selectedIds(binding.source);
   binding.select.replaceChildren();
   const matching = entities.filter(
-    (entity) => entity.entityType === binding.entityType && entity.status === 'active',
+    (entity) =>
+      entity.entityType === binding.entityType &&
+      (entity.status === 'active' || selected.has(entity.id)),
   );
   if (matching.length === 0) {
     const option = new Option(binding.emptyLabel, '');
@@ -71,7 +73,8 @@ function renderBinding(binding: SelectorBinding, entities: readonly Entity[]): v
   }
   binding.select.disabled = false;
   for (const entity of matching) {
-    const option = new Option(entity.name, entity.id, false, selected.has(entity.id));
+    const label = `${entity.name}${entity.status === 'archived' ? ' · 已归档' : ''}`;
+    const option = new Option(label, entity.id, false, selected.has(entity.id));
     option.title =
       entity.aliases.length > 0 ? `别名：${entity.aliases.join('、')}` : entity.summary;
     binding.select.append(option);
@@ -86,7 +89,7 @@ async function refreshSelectors(): Promise<void> {
   if (!active.ok || !active.data) return;
   const catalog = await window.worldforge.canon.list({
     projectId: active.data.projectId,
-    includeArchived: false,
+    includeArchived: true,
   });
   if (!catalog.ok) return;
   for (const binding of bindings) renderBinding(binding, catalog.data.entities);

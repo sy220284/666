@@ -102,11 +102,10 @@ export async function validateAuditRemediation({
   baseRef,
 }) {
   if (!isAuditRemediationBranch(branch)) return false;
-  const manifest = JSON.parse(
-    await readFile(path.join(repositoryRoot, MANIFEST_PATH), 'utf8'),
-  );
+  const manifest = JSON.parse(await readFile(path.join(repositoryRoot, MANIFEST_PATH), 'utf8'));
   validateManifestShape(manifest);
-  if (manifest.branch !== branch) throw new Error('Audit remediation branch does not match manifest');
+  if (manifest.branch !== branch)
+    throw new Error('Audit remediation branch does not match manifest');
   const resolvedBase = git(['rev-parse', baseRef], repositoryRoot);
   if (manifest.baseCommit !== resolvedBase) {
     throw new Error(

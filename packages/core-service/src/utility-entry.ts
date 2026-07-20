@@ -52,8 +52,9 @@ interface UtilityParentPort {
 
 type UtilityProcess = NodeJS.Process & { readonly parentPort?: UtilityParentPort };
 
-const parentPort = (process as UtilityProcess).parentPort;
-if (!parentPort) throw new Error('CORE_PARENT_PORT_UNAVAILABLE');
+const parentPortCandidate = (process as UtilityProcess).parentPort;
+if (!parentPortCandidate) throw new Error('CORE_PARENT_PORT_UNAVAILABLE');
+const parentPort: UtilityParentPort = parentPortCandidate;
 
 const startedAt = Date.now();
 const taskProtocol = new TaskProtocol();

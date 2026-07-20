@@ -102,9 +102,7 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
     await expect(page.locator('[data-planning-dialog]')).toBeVisible();
     await page.locator('[data-create-scene-beat]').click();
     const dialog = page.locator('[data-scene-beat-dialog]');
-    const characterSelector = dialog.locator(
-      'select[data-scene-beat-entity-selector="character"]',
-    );
+    const characterSelector = dialog.locator('select[data-scene-beat-entity-selector="character"]');
     const locationSelector = dialog.locator('select[data-scene-beat-entity-selector="location"]');
     await expect(characterSelector).toContainText('林照夜');
     await expect(locationSelector).toContainText('旧档案馆');

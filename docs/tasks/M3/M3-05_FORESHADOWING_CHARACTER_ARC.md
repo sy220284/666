@@ -1,6 +1,6 @@
 # M3-05 伏笔生命周期与人物弧光
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`work/m3-05-foreshadowing-character-arc`
@@ -83,5 +83,14 @@ M3-04
 - 伏笔和弧光均有权威数据模型，不依赖AI临时推断。
 - 弧光状态推进接口为M3-06预留统一StateProposal路径，pending提案不会改变节点状态。
 - 正式代码真实存在于最终PR Head，六类永久门禁验证同一Head。
+
+## 质量加固与实现记录
+
+- 恢复真实Prettier格式门禁，删除会打包源码并强制失败的错误脚本行为。
+- Core新增“已激活伏笔之间后补互斥关系”拒绝，覆盖保存时和状态流转时的双路径冲突。
+- 拆除Candidate Preview内部重复注册Continuity IPC的职责耦合，修复Electron在`ipc-register`阶段启动失败，并增加仅注册Candidate频道的回归测试。
+- 补齐反向回收窗口、自关联、依赖环、互斥、`reinforces`、AI写入拒绝、节点章节移动、TimelineEvent跨项目、`skipped`与确认来源测试。
+- 实现基线：`d0903e133a7d10165016aa0f587bff9908680dd1`。Quality运行`29732645227`、Security运行`29732645161`、Performance运行`29732645079`全部成功；真实Electron E2E、Migration、Integration、Build、Package Smoke与clean-tree均通过。
+- 按implementation-pr协议，本任务记录为`Implemented`并加入延期最终验收；标准证据包、人工验收矩阵与`Verified`关闭留待批量复验。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

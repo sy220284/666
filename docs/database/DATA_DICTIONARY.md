@@ -149,19 +149,51 @@ StateProposal状态：
 pending | accepted | edited | rejected
 ```
 
+Foreshadowing状态：
+
+```text
+planned | planted | reinforced | partially_revealed | revealed | cancelled
+```
+
+Foreshadowing章节角色：
+
+```text
+plant | reinforce | partial_reveal | reveal | reference
+```
+
+Foreshadowing关系：
+
+```text
+depends_on | blocks | mutually_exclusive | reinforces
+```
+
+回收窗口按章节顺序使用包含起点和终点的提示语义；超过终点且未解决时标记overdue。`depends_on`和`blocks`目标未进入revealed/cancelled时显示blocked；`reinforces`只提供软关联。Core拒绝依赖循环、自依赖以及两个已激活伏笔之间新增或触发的互斥冲突。
+
+CharacterArc类型：
+
+```text
+growth | darkening | awakening | fall | redemption | custom
+```
+
+CharacterArc状态：
+
+```text
+planned | active | completed | abandoned
+```
+
 ArcMilestone状态：
 
 ```text
 planned | hit | skipped
 ```
 
-`pending`弧光提案不能提前改变ArcMilestone状态。
-
-Foreshadowing状态：
+ArcMilestone确认来源：
 
 ```text
-planned | planted | reinforced | partially_revealed | revealed | cancelled
+author | state_proposal
 ```
+
+节点可依赖同项目ArcMilestone或TimelineEvent；节点依赖必须先hit，里程碑按`sortIndex, id`确定性排序。M3-05公开写入口只接受author权限；AI不能创建、修改或推进伏笔、人物弧光和弧光节点权威状态。`pending`弧光提案不能提前改变ArcMilestone状态。
 
 ## 5. AI、Prompt与任务
 

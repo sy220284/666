@@ -48,17 +48,8 @@ async function evidenceFixture() {
   const directory = path.join(root, 'docs', 'test-evidence', taskId);
   const files = new Map<string, Buffer>();
   for (const relative of REQUIRED_EVIDENCE_FILES) {
-    const content = relative.endsWith('.json') ? Buffer.from('[]\n') : Buffer.from(`${relative}\n`);
-    files.set(relative, content);
+    files.set(relative, Buffer.from(`${relative}\n`));
   }
-  const screenshot = Buffer.from('deterministic-png-fixture');
-  files.set('screenshots/example.png', screenshot);
-  files.set(
-    'screenshots/manifest.json',
-    Buffer.from(
-      `${JSON.stringify([{ fileName: 'example.png', fixtureId: taskId, sha256: hash(screenshot) }], null, 2)}\n`,
-    ),
-  );
 
   for (const [relative, content] of files) {
     const absolute = path.join(directory, relative);
@@ -87,7 +78,7 @@ afterEach(async () => {
 });
 
 describe('evidence policy', () => {
-  it('verifies bytes, hashes, screenshot references and complete file registration', async () => {
+  it('verifies documentation bytes, hashes and complete file registration', async () => {
     const fixture = await evidenceFixture();
     await expect(validateTaskEvidence(fixture.taskId, fixture.root)).resolves.toBeUndefined();
   });
@@ -136,35 +127,25 @@ describe('evidence policy', () => {
 describe('final evidence semantics', () => {
   const documents = {
     summary: '# 验证摘要\n\n状态：Verified。',
-    manualAcceptance: '# 人工验收\n\n结论：通过。',
-    qualityMatrix: '# 质量矩阵\n\n结论：Verified。',
+    commands: 'pnpm test\nexit=0\n',
+    knownRisks: '# 已知风险\n\n- 无。',
   };
 
-  it('accepts committed M2 evidence with screenshots and no stale state', () => {
+  it('accepts committed documentation-only evidence with no stale state', () => {
     expect(() =>
-      assertFinalEvidenceSemantics(
-        'M2-01',
-        { commit: 'a'.repeat(40) },
-        [{ fileName: 'lock.png', sha256: 'b'.repeat(64) }],
-        documents,
-      ),
+      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, documents),
     ).not.toThrow();
   });
 
-  it('rejects working-tree, empty screenshots and pending acceptance text', () => {
+  it('rejects working-tree and pending acceptance text', () => {
     expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'working-tree' }, [], documents),
+      assertFinalEvidenceSemantics('M2-01', { commit: 'working-tree' }, documents),
     ).toThrow('committed revision');
     expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, [], documents),
-    ).toThrow('desktop screenshot');
-    expect(() =>
-      assertFinalEvidenceSemantics(
-        'M2-01',
-        { commit: 'a'.repeat(40) },
-        [{ fileName: 'lock.png', sha256: 'b'.repeat(64) }],
-        { ...documents, manualAcceptance: '人工待运行' },
-      ),
+      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, {
+        ...documents,
+        summary: 'PENDING：等待CI。',
+      }),
     ).toThrow('stale implementation');
   });
 });

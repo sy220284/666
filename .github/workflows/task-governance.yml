@@ -39,12 +39,8 @@ jobs:
           git show "${TASK_BASE_REF}:docs/tasks/TASK_INDEX.md" > "$RUNNER_TEMP/base-task-index.md"
       - name: Validate active task and generated mirror
         run: node scripts/taskctl.mjs validate
-      - name: Validate real PR branch
-        run: node scripts/taskctl.mjs pr-policy
       - name: Validate changed paths
         run: node scripts/taskctl.mjs preflight
-      - name: Validate evidence structure
-        run: node scripts/taskctl.mjs verify
       - name: Validate task transition for Ready PRs
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json

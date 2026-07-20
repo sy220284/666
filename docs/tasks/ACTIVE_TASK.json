@@ -11,10 +11,10 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M3-05",
+    "id": "M3-06",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md",
-    "branch": "work/m3-05-foreshadowing-character-arc",
+    "source": "docs/tasks/M3/M3-06_STATE_PROPOSAL_SNAPSHOT.md",
+    "branch": "work/m3-06-state-proposal-snapshot",
     "startedAt": "2026-07-20",
     "allowedPaths": [
       "migrations/project/",
@@ -23,15 +23,16 @@
       "packages/contracts/",
       "apps/desktop/renderer/",
       "tests/integration/",
+      "tests/e2e/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md",
+      "docs/tasks/M3/M3-06_STATE_PROPOSAL_SNAPSHOT.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-05/"
+      "docs/test-evidence/M3-06/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -39,14 +40,20 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
+      "docs/architecture/DATA_FLOW.md",
       "docs/database/DATABASE_SCHEMA.md",
-      "docs/product/FUNCTION_CATALOG.md",
+      "docs/decisions/ADR-004-ai-cannot-overwrite-draft.md",
       "docs/decisions/ADR-006-character-arc-via-state-proposal.md"
     ],
     "verification": [
       "pnpm lint",
       "pnpm typecheck",
-      "pnpm test"
+      "pnpm test",
+      "pnpm test:migration",
+      "pnpm test:integration",
+      "pnpm test:security",
+      "pnpm test:e2e",
+      "pnpm test:eval"
     ]
   },
   "lastVerifiedTask": {
@@ -87,15 +94,26 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M3-05",
+      "implementationCommit": "d0903e133a7d10165016aa0f587bff9908680dd1",
+      "deferredAt": "2026-07-20T09:55:38.691Z",
+      "pending": [
+        "standard evidence package and screenshots",
+        "manual acceptance and exhaustive quality matrix",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "lastImplementedTask": {
-    "id": "M3-04",
-    "commit": "c4d27694c24f8c15080a013b32378bf61ce1b2b9",
-    "implementedAt": "2026-07-20T06:26:50.000Z",
-    "source": "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
-    "branch": "work/m3-04-state-timeline-knowledge",
-    "nextTaskId": "M3-05",
+    "id": "M3-05",
+    "commit": "d0903e133a7d10165016aa0f587bff9908680dd1",
+    "implementedAt": "2026-07-20T09:55:38.691Z",
+    "source": "docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md",
+    "branch": "work/m3-05-foreshadowing-character-arc",
+    "nextTaskId": "M3-06",
     "allowedPaths": [
       "migrations/project/",
       "packages/domain/",
@@ -117,10 +135,10 @@
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
+      "docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md",
+      "docs/tasks/M3/M3-06_STATE_PROPOSAL_SNAPSHOT.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-04/",
-      "docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md"
+      "docs/test-evidence/M3-05/"
     ],
     "forbiddenPaths": []
   }

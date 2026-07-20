@@ -159,6 +159,10 @@ function register() {
 }
 
 describe('Candidate Preview IPC authority boundary', () => {
+  it('registers only Candidate channels and leaves continuity composition to Electron main', () => {
+    const { handlers } = register();
+    expect([...handlers.keys()].sort()).toEqual(Object.values(CANDIDATE_APPLY_IPC_CHANNELS).sort());
+  });
   it('rejects untrusted senders and extra fields before Core', async () => {
     const { handlers, invokeProjectOperation } = register();
     const handler = handlers.get(CANDIDATE_APPLY_IPC_CHANNELS.previewCandidate);

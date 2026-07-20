@@ -81,9 +81,18 @@ window.worldforgeContinuity = {
   setKnowledgeState: {},
   invalidateKnowledgeState: {},
 };
+
+window.worldforgeNarrativePlanning = {
+  list: {},
+  saveForeshadowing: {},
+  transitionForeshadowing: {},
+  saveCharacterArc: {},
+  saveArcMilestone: {},
+  transitionArcMilestone: {},
+};
 ```
 
-M3-04使用独立窄桥`window.worldforgeContinuity`接通连续性账本，避免扩写旧Preload主入口；M3-07—M3-10 Renderer架构迁移时再统一适配到正式Bridge边界。禁止暴露通用`send(channel,payload)`、Node模块、文件系统、数据库连接、环境变量和任意URL请求。
+M3-04使用独立窄桥`window.worldforgeContinuity`接通连续性账本；M3-05使用`window.worldforgeNarrativePlanning`接通伏笔与人物弧光账本。两者均只暴露具名方法，M3-07—M3-10 Renderer架构迁移时再统一适配到正式Bridge边界。禁止暴露通用`send(channel,payload)`、Node模块、文件系统、数据库连接、环境变量和任意URL请求。
 
 ## 4. 命令目录
 
@@ -207,19 +216,27 @@ M3-04冻结的连续性命令：
 
 Main必须先校验可信Renderer URL和strict命令Schema，再把输入转换为`CoreContinuityOperationSchema`。Core返回值必须通过`CoreContinuityResultSchema`和`ContinuityCatalogResultSchema`双重校验。写命令仅接受`authority='author'`；AI权限在进入权威事务前拒绝。可比较时间才执行多地冲突、依赖循环和确定性顺序校验，`approximate/unknown`不得伪造硬裁决。
 
-后续规划命令仍包括：
+M3-05冻结的叙事规划命令：
+
+| 命令 | IPC频道 | 输入 | 输出 |
+|---|---|---|---|
+| `narrativePlanning.list` | `worldforge:narrative-planning:list` | projectId、query、includeResolved、referenceChapterId | 伏笔与人物弧光目录 |
+| `narrativePlanning.saveForeshadowing` | `worldforge:narrative-planning:save-foreshadowing` | author权限、foreshadowingId可空、标题、描述、回收窗口、章节角色、关系 | 最新目录 |
+| `narrativePlanning.transitionForeshadowing` | `worldforge:narrative-planning:transition-foreshadowing` | author权限、foreshadowingId、目标状态 | 最新目录 |
+| `narrativePlanning.saveCharacterArc` | `worldforge:narrative-planning:save-character-arc` | author权限、arcId可空、characterId、类型、自定义类型、状态、作者意图 | 最新目录 |
+| `narrativePlanning.saveArcMilestone` | `worldforge:narrative-planning:save-arc-milestone` | author权限、milestoneId可空、arcId、排序、计划章节、节点/时间线依赖 | 最新目录 |
+| `narrativePlanning.transitionArcMilestone` | `worldforge:narrative-planning:transition-arc-milestone` | author权限、milestoneId、planned/hit/skipped、实际章节 | 最新目录 |
+
+Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreNarrativePlanningOperationSchema`；Core返回值同时通过Core与IPC结果Schema校验。所有写命令只接受`authority='author'`，项目、章节、人物、伏笔、节点和TimelineEvent引用都在进入单写事务前校验。Core负责状态机、回收窗口、依赖环、互斥冲突和节点命中前置条件。
+
+M3-06后续命令包括：
 
 - `continuity.stateProposal.list/accept/editAndAccept/reject`
-- `continuity.foreshadowing.create/update/archive/list`
 - `continuity.snapshot.get/markStale/rebuild`
 
 ### 4.6 人物弧光
 
-- `arc.create/update/archive/list/get`
-- `arc.createMilestone/updateMilestone/moveMilestone/archiveMilestone`
-- `arc.listMilestones`
-
-AI不能调用直接推进里程碑状态的命令。里程碑状态只能通过`continuity.stateProposal.accept/editAndAccept`更新。
+M3-05已实现CharacterArc创建/更新、ArcMilestone创建/更新/移动计划章节和作者显式状态转换。`confirmationSource='state_proposal'`为M3-06保留统一入口；M3-05没有AI直写权威状态的IPC命令。
 
 ### 4.7 AI与Provider
 
@@ -306,3 +323,4 @@ interface AppearancePreferences {
 - Main对可信Renderer来源、额外字段、非法UUID和错误命令名执行拒绝测试。
 - Core项目操作联合类型必须覆盖所有公开命令，并拒绝无法识别的operation。
 - M3-04由`tests/security/continuity-ipc.test.ts`和真实Electron `tests/e2e/continuity-ledger.spec.ts`验证完整调用链。
+- M3-05由`tests/security/narrative-planning-ipc.test.ts`、`tests/security/candidate-preview-ipc.test.ts`和真实Electron `tests/e2e/narrative-planning-ledger.spec.ts`验证六个具名命令、可信来源边界及桌面写入展示链路。

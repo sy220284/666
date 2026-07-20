@@ -43,7 +43,7 @@ describe('M3-01 project planning migration', () => {
       { name: '规划迁移', channel: '长篇', initialStructure: 'blank' },
       parent,
     );
-    expect(project.schemaVersion).toBe(13);
+    expect(project.schemaVersion).toBe(14);
     await workspace.shutdown();
     await appRuntime.close();
 
@@ -53,7 +53,7 @@ describe('M3-01 project planning migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 13n,
+        schema_version: 14n,
       });
       expect(
         database

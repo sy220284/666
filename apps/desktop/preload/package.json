@@ -6,7 +6,7 @@
   "exports": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json && esbuild src/entry.ts --bundle --platform=node --format=cjs --target=node22 --external:electron --outfile=dist/index.cjs",
+    "build": "tsc -p tsconfig.json && esbuild src/continuity-entry.ts --bundle --platform=node --format=cjs --target=node22 --external:electron --outfile=dist/index.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

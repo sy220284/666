@@ -63,9 +63,11 @@ Candidate完整度：`complete | partial`
 |---|---|
 | Entity | 人物、地点、势力、道具、能力、规则、事件或自定义对象 |
 | CanonFact | 作者确认的稳定事实，AI不能直接修改 |
-| EntityState | 随剧情变化的动态状态记录 |
-| TimelineEvent | 有起止、精度、人物、地点和依赖的事件 |
-| KnowledgeState | 人物对信息的知道、相信、怀疑、误解或未知状态 |
+| EntityState | Entity在章节区间内生效的动态状态记录；当前值与历史值分离 |
+| EvidenceAnchor | 指向Chapter、SceneBeat、Version、Entity或logicalBlock的项目内证据锚点 |
+| TimelineEvent | 有起止、精度、人物角色、地点、章节、归档状态和前置依赖的事件 |
+| TimelineEntityRole | TimelineEvent中的`participant`、`witness`或`subject`关系 |
+| KnowledgeState | 人物在章节区间内对信息的知道、相信、怀疑、误解或未知状态 |
 | Foreshadowing | 有埋设、强化、揭示和取消生命周期的伏笔 |
 | CharacterArc | 人物长期成长、黑化、觉醒、堕落、救赎或自定义弧光 |
 | ArcMilestone | 弧光中的可确认里程碑节点 |
@@ -93,11 +95,47 @@ current | historical
 
 同一Entity与factKey只有一条current；作者确认新值时旧值进入historical。AI、规则校验和模型推测只能形成后续提案，不能直接改变Canon。SceneBeatEntity是项目内显式引用，跨项目关联无效。
 
-EntityState状态：
+EntityState记录状态：
 
 ```text
 current | historical | superseded | invalid
 ```
+
+同一Entity与规范化stateKey只有一条`current`。作者设置新值时，旧current在同一事务转为`historical`，并把旧记录的`valid_until_chapter_id`设为新值的起始章节。章节区间统一使用`[validFromChapterId, validUntilChapterId)`半开语义；终点为空表示持续有效。`sourceVersionId`必须属于同项目，EvidenceAnchor也必须通过项目归属校验。AI权限不能写入、失效或归档权威连续性记录。
+
+TimelineEvent精度：
+
+```text
+exact | day | month | year | approximate | unknown
+```
+
+TimelineEvent状态：
+
+```text
+active | archived
+```
+
+时间冲突只对可比较范围执行。`approximate`和`unknown`不伪造硬时间顺序；可比较范围会阻断同一参与人物在重叠时间占据不同地点、事件依赖循环以及前置事件确定晚于后继事件。归档保留事件及引用账本，不作为默认活动查询结果。
+
+TimelineEntityRole：
+
+```text
+participant | witness | subject
+```
+
+KnowledgeState状态：
+
+```text
+knows | believes | suspects | misunderstands | unknown
+```
+
+KnowledgeState记录状态：
+
+```text
+current | historical | invalid
+```
+
+同一Character与规范化informationKey只有一条`current`，章节区间同样使用半开语义。新认知状态会结束旧current并保留历史。每条记录至少具有同项目`sourceVersionId`或`sourceLogicalBlockId`之一；正文块删除不会把稳定logicalBlock来源误解释为新的权威事实。
 
 StateProposal类型：
 
@@ -118,12 +156,6 @@ planned | hit | skipped
 ```
 
 `pending`弧光提案不能提前改变ArcMilestone状态。
-
-KnowledgeState状态：
-
-```text
-knows | believes | suspects | misunderstands | unknown
-```
 
 Foreshadowing状态：
 
@@ -210,6 +242,8 @@ open | ignored_chapter | silenced_project | downgraded | false_positive | resolv
 | Version | 历史版本 / 定稿版本 |
 | GenerationRun | AI任务 |
 | EntityState | 当前状态 |
+| TimelineEvent | 时间线事件 |
+| KnowledgeState | 知情状态 |
 | StateProposal | 状态变化建议 |
 | CharacterArc | 人物弧光 |
 | ArcMilestone | 弧光节点 |

@@ -12,6 +12,7 @@ import {
   DatabaseFoundationError,
   ProjectDatabase,
   defineMigration,
+  latestMigrationVersion,
   loadMigrations,
   type SqlMigration,
 } from '../../packages/core-service/src/database/index.js';
@@ -115,6 +116,7 @@ describe('SQLite foundation migrations', () => {
   it('reopens an applied migration without changing history', async () => {
     const databasePath = await temporaryDatabase('project.sqlite');
     const migrations = await loadMigrations('migrations/project', 'project');
+    const latestProjectSchemaVersion = latestMigrationVersion(migrations);
     const first = await ProjectDatabase.open({
       path: databasePath,
       migrations,
@@ -152,6 +154,8 @@ describe('SQLite foundation migrations', () => {
       'draft_patch_log',
       'drafts',
       'entities',
+      'entity_states',
+      'knowledge_states',
       'migration_journal',
       'plot_nodes',
       'project_briefs',
@@ -160,6 +164,9 @@ describe('SQLite foundation migrations', () => {
       'scene_beat_entities',
       'scene_beats',
       'schema_migrations',
+      'timeline_event_dependencies',
+      'timeline_event_entities',
+      'timeline_events',
       'trash_entries',
       'version_blocks',
       'versions',
@@ -167,7 +174,7 @@ describe('SQLite foundation migrations', () => {
     ]);
     expect(
       second.read((connection) => scalar(connection, 'SELECT count(*) FROM schema_migrations')),
-    ).toBe(12n);
+    ).toBe(BigInt(latestProjectSchemaVersion));
     expect(second.capabilities).toEqual({ fts5: true, trigram: true });
     expect(second.quickCheck()).toEqual({ ok: true, messages: ['ok'] });
     expect(second.integrityCheck()).toEqual({ ok: true, messages: ['ok'] });

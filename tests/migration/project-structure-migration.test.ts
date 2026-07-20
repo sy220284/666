@@ -58,9 +58,7 @@ describe('project structure migration', () => {
     await legacyService.shutdown();
     expect(
       JSON.parse(await readFile(path.join(legacy.workspacePath, 'manifest.json'), 'utf8')),
-    ).toMatchObject({
-      projectSchemaVersion: 1,
-    });
+    ).toMatchObject({ projectSchemaVersion: 1 });
 
     const currentMigrations = await loadMigrations('migrations/project', 'project');
     const latestProjectSchemaVersion = latestMigrationVersion(currentMigrations);
@@ -89,8 +87,13 @@ describe('project structure migration', () => {
     expect((await stat(recoveryProjectDirectory)).mode & 0o777).toBe(0o700);
     expect((await stat(recoveryPath)).mode & 0o777).toBe(0o600);
 
-    const recovery = new DatabaseSync(recoveryPath, { readOnly: true, readBigInts: true });
-    expect(recovery.prepare('PRAGMA quick_check').get()).toEqual({ quick_check: 'ok' });
+    const recovery = new DatabaseSync(recoveryPath, {
+      readOnly: true,
+      readBigInts: true,
+    });
+    expect(recovery.prepare('PRAGMA quick_check').get()).toEqual({
+      quick_check: 'ok',
+    });
     expect(recovery.prepare('SELECT max(version) AS version FROM schema_migrations').get()).toEqual(
       {
         version: 1n,
@@ -115,33 +118,17 @@ describe('project structure migration', () => {
     expect(current.prepare('SELECT schema_version FROM projects').get()).toEqual({
       schema_version: BigInt(latestProjectSchemaVersion),
     });
-    expect(
-      current
-        .prepare(
-          "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='volumes'",
-        )
-        .get(),
-    ).toEqual({ count: 1n });
-    expect(
-      current
-        .prepare(
-          "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='draft_patch_log'",
-        )
-        .get(),
-    ).toEqual({ count: 1n });
-    expect(
-      current
-        .prepare(
-          "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='candidates'",
-        )
-        .get(),
-    ).toEqual({ count: 1n });
+    for (const table of ['volumes', 'draft_patch_log', 'candidates', 'entity_states']) {
+      expect(
+        current
+          .prepare("SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name=?")
+          .get(table),
+      ).toEqual({ count: 1n });
+    }
     current.close();
     expect(
       JSON.parse(await readFile(path.join(legacy.workspacePath, 'manifest.json'), 'utf8')),
-    ).toMatchObject({
-      projectSchemaVersion: latestProjectSchemaVersion,
-    });
+    ).toMatchObject({ projectSchemaVersion: latestProjectSchemaVersion });
 
     await upgradedService.shutdown();
     await appRuntime.close();
@@ -152,6 +139,7 @@ describe('project structure migration', () => {
     temporaryDirectories.push(root);
     const databasePath = path.join(root, 'project.sqlite');
     const migrations = await loadMigrations('migrations/project', 'project');
+    const latestProjectSchemaVersion = latestMigrationVersion(migrations);
     const initial = await ProjectDatabase.open({
       path: databasePath,
       migrations: [migrations[0]!],
@@ -208,37 +196,22 @@ describe('project structure migration', () => {
       clock,
       prepareRecoveryPoint: async () => undefined,
     });
-    expect(recovered).toMatchObject({ schemaVersion: 12, compatibility: 'migrated' });
+    expect(recovered).toMatchObject({
+      schemaVersion: latestProjectSchemaVersion,
+      compatibility: 'migrated',
+    });
     expect(
       recovered.read((database) => database.prepare('SELECT schema_version FROM projects').get()),
-    ).toEqual({ schema_version: 12n });
-    expect(
-      recovered.read((database) =>
-        database
-          .prepare(
-            "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='drafts'",
-          )
-          .get(),
-      ),
-    ).toEqual({ count: 1n });
-    expect(
-      recovered.read((database) =>
-        database
-          .prepare(
-            "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='draft_patch_log'",
-          )
-          .get(),
-      ),
-    ).toEqual({ count: 1n });
-    expect(
-      recovered.read((database) =>
-        database
-          .prepare(
-            "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='candidates'",
-          )
-          .get(),
-      ),
-    ).toEqual({ count: 1n });
+    ).toEqual({ schema_version: BigInt(latestProjectSchemaVersion) });
+    for (const table of ['drafts', 'draft_patch_log', 'candidates', 'entity_states']) {
+      expect(
+        recovered.read((database) =>
+          database
+            .prepare("SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name=?")
+            .get(table),
+        ),
+      ).toEqual({ count: 1n });
+    }
     await recovered.close();
   });
 });

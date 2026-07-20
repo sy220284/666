@@ -10,6 +10,7 @@ export default defineConfig({
     'candidate-undo.spec.ts',
     'structure-recovery.spec.ts',
     'unreadable-project-recovery.spec.ts',
+    'continuity-ledger.spec.ts',
   ],
   fullyParallel: false,
   workers: 1,

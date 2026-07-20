@@ -1,9 +1,9 @@
 # M3-04 动态状态、时间线与知情信息
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
-> 建议分支：`feat/m3-state-timeline-knowledge`
+> 建议分支：`work/m3-04-state-timeline-knowledge`
 
 ## 目标
 
@@ -36,6 +36,7 @@ M3-02、M3-03
 - `docs/decisions/IMPLEMENTATION_DECISIONS.md`
 - `docs/database/DATABASE_SCHEMA.md`
 - `docs/database/DATA_DICTIONARY.md`
+- `docs/contracts/IPC_CONTRACTS.md`
 - `docs/testing/TEST_STRATEGY.md`
 
 ## 主要影响范围
@@ -44,29 +45,46 @@ M3-02、M3-03
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
+- `tests/e2e/`
+- `docs/database/DATABASE_SCHEMA.md`
+- `docs/database/DATA_DICTIONARY.md`
+- `docs/contracts/IPC_CONTRACTS.md`
+- `docs/tasks/ACTIVE_TASK.json`
+- `docs/tasks/ACTIVE_TASK.md`
+- `docs/tasks/TASK_INDEX.md`
+- `docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md`
+- `docs/product/V1.0_TRACEABILITY_MATRIX.md`
+- `docs/test-evidence/M3-04/`
 
 ## 实施内容
 
 1. 实现EntityState的stateKey、value、validFromChapter、validUntilChapter、recordStatus、证据和来源Version。
-2. 提供当前状态与历史账本查询。
-3. 实现TimelineEvent起止、精度、人物、地点、章节和前置依赖。
-4. 实现同一人物同一时间多地、依赖循环和顺序冲突规则。
-5. 实现KnowledgeState：knows、believes、suspects、misunderstands、unknown及来源锚点。
-6. 提供列表式、可搜索、可引用的最小UI。
+2. 提供当前状态与历史账本查询；章节生效区间采用起点包含、终点不包含的半开区间，不允许重叠。
+3. 实现TimelineEvent起止、精度、人物、地点、章节、归档状态和前置依赖。
+4. 仅对可比较时间执行同一人物同一时间多地、依赖循环和确定性顺序冲突阻断；不确定精度不伪造硬裁决。
+5. 实现KnowledgeState：knows、believes、suspects、misunderstands、unknown、章节有效区间及稳定来源锚点。
+6. 提供状态失效、时间事件归档、知情记录失效的作者命令。
+7. 提供列表式、可搜索、可引用的最小UI，并贯通Renderer、Preload、Main、Core完整调用链。
 
 ## 测试与证据
 
-- 状态生效/失效、历史查询、跨项目证据和来源Version。
-- 不同时间精度、时间冲突、依赖循环。
-- 知情变化、误解和未得知信息读取。
+- 状态生效/失效、同起点修订、历史查询、跨项目证据和来源Version。
+- 不同时间精度、区间重叠、多地冲突、依赖循环及确定性顺序冲突。
+- 知情变化、章节边界、误解、未得知信息、来源锚点和正文块删除安全。
+- 严格IPC、Preload具名桥、Core操作联合类型和Electron E2E真实调用链。
 
 证据保存到：`docs/test-evidence/M3-04/`
 
 ## 完成条件
 
 - 连续性数据可被约束包和校验可靠读取，不依赖AI临时推断。
-- 当前值与历史值不会混淆。
+- 当前值、指定章节有效值与历史值不会混淆。
+- 正式代码真实存在于最终PR Head，通用六类门禁验证同一Head。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

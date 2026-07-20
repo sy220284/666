@@ -19,6 +19,7 @@ export * from './project-structure.js';
 export * from './project-planning.js';
 export * from './scene-beat.js';
 export * from './entity-canon.js';
+export * from './continuity.js';
 export * from './draft.js';
 export * from './candidate.js';
 export * from './version.js';

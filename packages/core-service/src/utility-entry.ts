@@ -1,48 +1,33 @@
-import path from 'node:path';
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 
 import {
-  APP_DATA_COMMANDS,
-  DRAFT_COMMANDS,
-  CANDIDATE_COMMANDS,
-  CANDIDATE_APPLY_COMMANDS,
-  VERSION_COMMANDS,
-  RECOVERY_COMMANDS,
-  TEXT_IO_COMMANDS,
-  PROJECT_STRUCTURE_COMMANDS,
-  PROJECT_PLANNING_COMMANDS,
-  SCENE_BEAT_COMMANDS,
-  ENTITY_CANON_COMMANDS,
-  PROJECT_WORKSPACE_COMMANDS,
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
   CoreProjectResultSchema,
   PROTOCOL_VERSION,
   type CoreEvent,
-  type CoreAppDataOperation,
-  type CoreAppDataResult,
-  type CoreProjectOperation,
-  type CoreProjectResult,
-  type ErrorCode,
 } from '@worldforge/contracts';
 
-import { DatabaseFoundationError } from './database/index.js';
 import { openAppRuntime } from './app-runtime.js';
-import { AppDataRepositoryError } from './app-data-errors.js';
 import { CandidateApplyService } from './candidate-apply.js';
-import { CandidateApplyServiceError } from './candidate-state.js';
-import { CandidateService, CandidateServiceError } from './candidate.js';
-import { DraftService, DraftServiceError } from './draft.js';
-import { VersionService, VersionServiceError } from './version.js';
-import { RecoveryService, RecoveryServiceError } from './recovery.js';
-import { ImportExportService, ImportExportServiceError } from './import-export.js';
-import { ProjectWorkspaceError, ProjectWorkspaceService } from './project-workspace.js';
-import { ProjectStructureError, ProjectStructureService } from './project-structure.js';
-import { ProjectPlanningError, ProjectPlanningService } from './project-planning.js';
-import { SceneBeatService, SceneBeatServiceError } from './scene-beat.js';
-import { EntityCanonService, EntityCanonServiceError } from './entity-canon.js';
+import { CandidateService } from './candidate.js';
+import { ContinuityService } from './continuity.js';
+import { DraftService } from './draft.js';
+import { EntityCanonService } from './entity-canon.js';
+import { ImportExportService } from './import-export.js';
+import { ProjectPlanningService } from './project-planning.js';
+import { ProjectStructureService } from './project-structure.js';
+import { ProjectWorkspaceService } from './project-workspace.js';
+import { RecoveryService } from './recovery.js';
+import { SceneBeatService } from './scene-beat.js';
 import { StructureOperationService } from './structure-operations.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
+import { executeAppDataOperation } from './utility-app-data-router.js';
+import { windowPreferencesError } from './utility-errors.js';
+import { executeProjectOperation } from './utility-project-router.js';
+import type { UtilityProjectServices } from './utility-project-services.js';
+import { VersionService } from './version.js';
 
 interface TransferredPort {
   postMessage(message: unknown): void;
@@ -67,11 +52,9 @@ interface UtilityParentPort {
 
 type UtilityProcess = NodeJS.Process & { readonly parentPort?: UtilityParentPort };
 
-const parentPort = (process as UtilityProcess).parentPort;
-
-if (!parentPort) {
-  throw new Error('CORE_PARENT_PORT_UNAVAILABLE');
-}
+const parentPortCandidate = (process as UtilityProcess).parentPort;
+if (!parentPortCandidate) throw new Error('CORE_PARENT_PORT_UNAVAILABLE');
+const parentPort: UtilityParentPort = parentPortCandidate;
 
 const startedAt = Date.now();
 const taskProtocol = new TaskProtocol();
@@ -93,32 +76,6 @@ function requiredAbsolutePath(name: string): string {
   return value;
 }
 
-const appRuntime = await openAppRuntime({
-  databasePath: requiredAbsolutePath('app-database'),
-  migrationsDirectory: requiredAbsolutePath('app-migrations'),
-  recoveryDirectory: requiredAbsolutePath('app-recovery'),
-  appVersion: requiredArgument('app-version'),
-});
-const projectWorkspace = new ProjectWorkspaceService({
-  projectMigrationsDirectory: requiredAbsolutePath('project-migrations'),
-  projectMigrationRecoveryDirectory: requiredAbsolutePath('project-migration-recovery'),
-  appVersion: requiredArgument('app-version'),
-  recentProjects: appRuntime.recentProjects,
-});
-const recovery = new RecoveryService(projectWorkspace, {
-  backupRootDirectory: requiredAbsolutePath('project-operation-recovery'),
-});
-const projectStructure = new ProjectStructureService(projectWorkspace);
-const projectPlanning = new ProjectPlanningService(projectWorkspace);
-const sceneBeats = new SceneBeatService(projectWorkspace);
-const entityCanon = new EntityCanonService(projectWorkspace);
-const structureOperations = new StructureOperationService(projectWorkspace);
-const drafts = new DraftService(projectWorkspace);
-const candidates = new CandidateService(projectWorkspace);
-const candidateApply = new CandidateApplyService(projectWorkspace);
-const versions = new VersionService(projectWorkspace);
-const textIo = new ImportExportService(projectWorkspace, recovery);
-
 function checkpointRequestId(requestId: string): string {
   const hex = createHash('sha256')
     .update(`${requestId}:checkpoint`, 'utf8')
@@ -128,7 +85,7 @@ function checkpointRequestId(requestId: string): string {
 }
 
 function send(message: CoreEvent): void {
-  parentPort?.postMessage(message);
+  parentPort.postMessage(message);
 }
 
 function adaptPort(port: TransferredPort): TaskMessagePort {
@@ -148,766 +105,42 @@ function adaptPort(port: TransferredPort): TaskMessagePort {
   };
 }
 
-function windowPreferencesError(error: unknown): ErrorCode {
-  if (error instanceof DatabaseFoundationError) {
-    if (error.code === 'DATABASE_READ_ONLY') return 'PROJECT_READ_ONLY_005';
-    if (error.code === 'DATABASE_INTEGRITY_FAILED') return 'DB_INTEGRITY_FAILED_003';
-    if (error.code === 'MIGRATION_FAILED') return 'DB_MIGRATION_FAILED_005';
-    if (error.code === 'MIGRATION_CHECKSUM_MISMATCH') return 'DB_MIGRATION_CHECKSUM_006';
-    if (error.code === 'DATABASE_FUTURE_SCHEMA') return 'DB_SCHEMA_UNSUPPORTED_007';
-    if (error.code === 'WRITE_QUEUE_CLOSED') return 'DB_WRITE_QUEUE_STOPPED_008';
-    if (error.code === 'DATABASE_WRITE_FAILED') return 'DB_BUSY_TIMEOUT_002';
-  }
-  return 'DB_OPEN_FAILED_001';
+function track(operation: Promise<void>): void {
+  activeAppDataOperations.add(operation);
+  void operation.finally(() => activeAppDataOperations.delete(operation));
 }
 
-function appDataError(error: unknown): ErrorCode {
-  if (error instanceof AppDataRepositoryError) {
-    if (error.code === 'RECENT_PROJECT_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
-    if (error.code === 'RECENT_PROJECT_PATH_MISSING') return 'PROJECT_PATH_MISSING_002';
-    if (error.code === 'RECENT_PROJECT_PATH_CONFLICT') return 'COMMON_CONFLICT_003';
-  }
-  if (error instanceof DatabaseFoundationError && error.code === 'REQUEST_ID_INVALID') {
-    return 'COMMON_INVALID_INPUT_001';
-  }
-  if (error instanceof Error && error.name === 'ZodError') return 'COMMON_INVALID_INPUT_001';
-  return windowPreferencesError(error);
-}
-
-function projectWorkspaceError(error: unknown): ErrorCode {
-  if (error instanceof ImportExportServiceError) {
-    switch (error.code) {
-      case 'IMPORT_FORMAT_UNSUPPORTED':
-        return 'IMPORT_FORMAT_UNSUPPORTED_001';
-      case 'IMPORT_ENCODING_UNCERTAIN':
-        return 'IMPORT_ENCODING_UNCERTAIN_002';
-      case 'IMPORT_ARCHIVE_LIMIT':
-        return 'IMPORT_ARCHIVE_LIMIT_003';
-      case 'IMPORT_CONTENT_EMPTY':
-        return 'IMPORT_CONTENT_EMPTY_004';
-      case 'IMPORT_PLAN_STALE':
-        return 'IMPORT_PLAN_STALE_005';
-      case 'IMPORT_COMMIT_FAILED':
-        return 'IMPORT_COMMIT_FAILED_006';
-      case 'EXPORT_VERSION_REQUIRED':
-        return 'EXPORT_VERSION_REQUIRED_001';
-      case 'EXPORT_TARGET_EXISTS':
-        return 'EXPORT_TARGET_EXISTS_002';
-      case 'EXPORT_WRITE_FAILED':
-        return 'EXPORT_WRITE_FAILED_003';
-    }
-  }
-  if (error instanceof RecoveryServiceError) {
-    switch (error.code) {
-      case 'BACKUP_CREATE_FAILED':
-        return 'BACKUP_CREATE_FAILED_001';
-      case 'BACKUP_VERIFY_FAILED':
-        return 'BACKUP_VERIFY_FAILED_002';
-      case 'BACKUP_SPACE_LOW':
-        return 'BACKUP_SPACE_LOW_003';
-      case 'BACKUP_NOT_FOUND':
-      case 'RESTORE_SOURCE_INVALID':
-        return 'RESTORE_SOURCE_INVALID_001';
-      case 'RESTORE_TARGET_CONFLICT':
-        return 'RESTORE_TARGET_CONFLICT_002';
-      case 'RESTORE_VERIFY_FAILED':
-        return 'RESTORE_VERIFY_FAILED_003';
-      case 'EXPORT_VERSION_REQUIRED':
-        return 'EXPORT_VERSION_REQUIRED_001';
-      case 'EXPORT_TARGET_EXISTS':
-        return 'EXPORT_TARGET_EXISTS_002';
-      case 'EXPORT_WRITE_FAILED':
-        return 'EXPORT_WRITE_FAILED_003';
-    }
-  }
-  if (error instanceof CandidateApplyServiceError) {
-    if (error.code === 'CANDIDATE_PREVIEW_CANCELLED') return 'COMMON_CANCELLED_004';
-    if (error.code === 'CANDIDATE_APPLY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
-    if (error.code === 'CANDIDATE_APPLY_INVALID') return 'COMMON_INVALID_INPUT_001';
-    return 'COMMON_CONFLICT_003';
-  }
-  if (error instanceof CandidateServiceError) {
-    switch (error.code) {
-      case 'CANDIDATE_NOT_FOUND':
-      case 'CANDIDATE_DRAFT_NOT_FOUND':
-        return 'COMMON_NOT_FOUND_002';
-      case 'CANDIDATE_REVISION_CONFLICT':
-      case 'CANDIDATE_SOURCE_CONFLICT':
-        return 'CANDIDATE_BASE_CONFLICT_002';
-      case 'CANDIDATE_STATUS_CONFLICT':
-        return 'CANDIDATE_ALREADY_RESOLVED_001';
-      case 'CANDIDATE_INVALID':
-        return 'COMMON_INVALID_INPUT_001';
-    }
-  }
-  if (error instanceof VersionServiceError) {
-    if (error.code === 'VERSION_NOT_FOUND' || error.code === 'VERSION_DRAFT_NOT_FOUND')
-      return 'COMMON_NOT_FOUND_002';
-    if (error.code === 'VERSION_REVISION_CONFLICT') return 'DRAFT_REVISION_CONFLICT_001';
-    if (error.code === 'VERSION_TITLE_CONFLICT' || error.code === 'VERSION_CHAPTER_MISMATCH')
-      return 'COMMON_CONFLICT_003';
-  }
-  if (error instanceof DraftServiceError) {
-    switch (error.code) {
-      case 'DRAFT_NOT_FOUND':
-        return 'DRAFT_NO_ACTIVE_005';
-      case 'DRAFT_BLOCK_NOT_FOUND':
-        return 'COMMON_NOT_FOUND_002';
-      case 'DRAFT_REVISION_CONFLICT':
-        return 'DRAFT_REVISION_CONFLICT_001';
-      case 'DRAFT_BLOCK_HASH_CONFLICT':
-        return 'DRAFT_BLOCK_HASH_CONFLICT_002';
-      case 'DRAFT_BLOCK_LOCKED':
-        return 'DRAFT_BLOCK_LOCKED_003';
-      case 'DRAFT_PATCH_INVALID':
-        return 'DRAFT_PATCH_INVALID_004';
-      case 'DRAFT_INVARIANT_FAILED':
-        return 'COMMON_CONFLICT_003';
-    }
-  }
-  if (error instanceof ProjectPlanningError) {
-    if (error.code === 'PLANNING_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
-    if (error.code === 'PLANNING_INVALID_POSITION') return 'COMMON_INVALID_INPUT_001';
-    return 'COMMON_CONFLICT_003';
-  }
-  if (error instanceof SceneBeatServiceError) {
-    if (error.code === 'SCENE_BEAT_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
-    if (error.code === 'SCENE_BEAT_INVALID_POSITION') return 'COMMON_INVALID_INPUT_001';
-    return 'COMMON_CONFLICT_003';
-  }
-  if (error instanceof EntityCanonServiceError) {
-    if (error.code === 'ENTITY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
-    if (error.code === 'ENTITY_INVALID' || error.code === 'CANON_AUTHOR_REQUIRED') {
-      return 'COMMON_INVALID_INPUT_001';
-    }
-    return 'COMMON_CONFLICT_003';
-  }
-  if (error instanceof ProjectStructureError) {
-    if (error.code === 'STRUCTURE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
-    if (error.code === 'STRUCTURE_CONFLICT') return 'COMMON_CONFLICT_003';
-    return 'COMMON_INVALID_INPUT_001';
-  }
-  if (error instanceof ProjectWorkspaceError) {
-    switch (error.code) {
-      case 'PROJECT_ALREADY_ACTIVE':
-        return 'PROJECT_ALREADY_OPEN_001';
-      case 'PROJECT_PATH_MISSING':
-        return 'PROJECT_PATH_MISSING_002';
-      case 'PROJECT_PATH_OUTSIDE_SCOPE':
-        return 'PROJECT_PATH_OUTSIDE_SCOPE_003';
-      case 'PROJECT_ID_MISMATCH':
-        return 'PROJECT_ID_MISMATCH_004';
-      case 'PROJECT_READ_ONLY':
-      case 'PROJECT_DIRECTORY_READ_ONLY':
-        return 'PROJECT_READ_ONLY_005';
-      case 'PROJECT_MOVE_FAILED':
-        return 'PROJECT_MOVE_FAILED_006';
-      case 'PROJECT_TARGET_CONFLICT':
-        return 'COMMON_CONFLICT_003';
-      case 'PROJECT_MANIFEST_INVALID':
-      case 'PROJECT_OPEN_FAILED':
-      case 'PROJECT_CREATE_FAILED':
-        return 'DB_OPEN_FAILED_001';
-    }
-  }
-  if (error instanceof Error && error.name === 'ZodError') return 'COMMON_INVALID_INPUT_001';
-  return windowPreferencesError(error);
-}
-
-async function executeAppDataOperation(
-  requestId: string,
-  operation: CoreAppDataOperation,
-): Promise<CoreAppDataResult> {
-  try {
-    switch (operation.operation) {
-      case APP_DATA_COMMANDS.settingsGet:
-        return CoreAppDataResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: appRuntime.appSettings.get(),
-        });
-      case APP_DATA_COMMANDS.settingsSet:
-        return CoreAppDataResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await appRuntime.appSettings.update(requestId, operation.settings),
-        });
-      case APP_DATA_COMMANDS.settingsReset:
-        return CoreAppDataResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await appRuntime.appSettings.reset(requestId),
-        });
-      case APP_DATA_COMMANDS.projectListRecent:
-        return CoreAppDataResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: { projects: await appRuntime.recentProjects.list(requestId) },
-        });
-      case APP_DATA_COMMANDS.projectRelocateRecent:
-        return CoreAppDataResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await appRuntime.recentProjects.relocate(
-            requestId,
-            operation.projectId,
-            operation.workspacePath,
-          ),
-        });
-      case APP_DATA_COMMANDS.projectRemoveRecent:
-        return CoreAppDataResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: {
-            removed: await appRuntime.recentProjects.remove(requestId, operation.projectId),
-          },
-        });
-    }
-  } catch (error) {
-    return CoreAppDataResultSchema.parse({
-      ok: false,
-      operation: operation.operation,
-      errorCode: appDataError(error),
-    });
-  }
-}
-
-async function executeProjectOperation(
-  requestId: string,
-  operation: CoreProjectOperation,
-): Promise<CoreProjectResult> {
-  try {
-    switch (operation.operation) {
-      case PROJECT_WORKSPACE_COMMANDS.getActive:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: projectWorkspace.activeProject,
-        });
-      case PROJECT_WORKSPACE_COMMANDS.create:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectWorkspace.create(
-            requestId,
-            operation.input,
-            operation.parentDirectory,
-          ),
-        });
-      case PROJECT_WORKSPACE_COMMANDS.openSelected:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectWorkspace.open(requestId, {
-            workspacePath: operation.workspacePath,
-          }),
-        });
-      case PROJECT_WORKSPACE_COMMANDS.openRecent:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectWorkspace.open(requestId, {
-            recentProjectId: operation.projectId,
-          }),
-        });
-      case PROJECT_WORKSPACE_COMMANDS.close:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectWorkspace.close(requestId, operation.projectId),
-        });
-      case PROJECT_WORKSPACE_COMMANDS.move:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectWorkspace.move(
-            requestId,
-            operation.projectId,
-            operation.targetParentDirectory,
-          ),
-        });
-      case PROJECT_PLANNING_COMMANDS.getBrief:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: projectPlanning.getBrief(operation.projectId),
-        });
-      case PROJECT_PLANNING_COMMANDS.updateBrief:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectPlanning.updateBrief(requestId, operation.input),
-        });
-      case PROJECT_PLANNING_COMMANDS.listPlotNodes:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: projectPlanning.listPlotNodes(operation.projectId),
-        });
-      case PROJECT_PLANNING_COMMANDS.createPlotNode:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectPlanning.createPlotNode(requestId, operation.input),
-        });
-      case PROJECT_PLANNING_COMMANDS.updatePlotNode:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectPlanning.updatePlotNode(requestId, operation.input),
-        });
-      case PROJECT_PLANNING_COMMANDS.movePlotNode:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectPlanning.movePlotNode(requestId, operation.input),
-        });
-      case PROJECT_PLANNING_COMMANDS.deletePlotNode:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectPlanning.deletePlotNode(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.listSceneBeats:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: sceneBeats.list(operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.createSceneBeat:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.create(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.updateSceneBeat:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.update(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.moveSceneBeat:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.move(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.previewMoveSceneBeat:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: sceneBeats.previewCrossChapterMove(operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.moveSceneBeatAcrossChapters:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.moveAcrossChapters(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.deleteSceneBeat:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.delete(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.restoreSceneBeat:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.restore(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.setSceneBeatBlockLinks:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.setBlockLinks(requestId, operation.input),
-        });
-      case SCENE_BEAT_COMMANDS.convertBlocksToSceneBeat:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await sceneBeats.convertBlocks(requestId, operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.listEntities:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: entityCanon.list(operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.createEntity:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await entityCanon.create(requestId, operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.updateEntity:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await entityCanon.update(requestId, operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.archiveEntity:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await entityCanon.archive(requestId, operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.setCanonFact:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await entityCanon.setFact(requestId, operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.linkSceneBeatEntity:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await entityCanon.linkSceneBeat(requestId, operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.previewDeleteEntity:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: entityCanon.previewDelete(operation.input),
-        });
-      case ENTITY_CANON_COMMANDS.deleteEntity:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await entityCanon.delete(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.listStructure:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: projectStructure.list(operation.projectId),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.createVolume:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.createVolume(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.updateVolume:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.updateVolume(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.moveVolume:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.moveVolume(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.deleteVolume:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.deleteVolume(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.createChapter:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.createChapter(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.updateChapter:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.updateChapter(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.moveChapter:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.moveChapter(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.deleteChapter:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.deleteChapter(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.listTrash:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: projectStructure.listTrash(operation.projectId),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await projectStructure.restoreTrashEntry(requestId, operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: structureOperations.previewPermanentDelete(operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.permanentDelete: {
-        structureOperations.assertPermanentDeleteExecutable(operation.input);
-        const checkpoint = await recovery.createOperationCheckpoint(
-          checkpointRequestId(requestId),
-          {
-            projectId: operation.input.projectId,
-            operation: 'permanent-delete',
-          },
-        );
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await structureOperations.permanentDelete(
-            requestId,
-            operation.input,
-            checkpoint.backupId,
-          ),
-        });
-      }
-      case PROJECT_STRUCTURE_COMMANDS.previewSplitChapter:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: structureOperations.previewSplit(operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.splitChapter: {
-        structureOperations.assertSplitExecutable(operation.input);
-        const checkpoint = await recovery.createOperationCheckpoint(
-          checkpointRequestId(requestId),
-          {
-            projectId: operation.input.projectId,
-            operation: 'split-chapter',
-          },
-        );
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await structureOperations.executeSplit(
-            requestId,
-            operation.input,
-            checkpoint.backupId,
-          ),
-        });
-      }
-      case PROJECT_STRUCTURE_COMMANDS.previewMergeChapters:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: structureOperations.previewMerge(operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.mergeChapters: {
-        structureOperations.assertMergeExecutable(operation.input);
-        const checkpoint = await recovery.createOperationCheckpoint(
-          checkpointRequestId(requestId),
-          {
-            projectId: operation.input.projectId,
-            operation: 'merge-chapter',
-          },
-        );
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await structureOperations.executeMerge(
-            requestId,
-            operation.input,
-            checkpoint.backupId,
-          ),
-        });
-      }
-      case PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: structureOperations.previewMove(operation.input),
-        });
-      case PROJECT_STRUCTURE_COMMANDS.moveBlocks: {
-        structureOperations.assertMoveExecutable(operation.input);
-        const checkpoint = await recovery.createOperationCheckpoint(
-          checkpointRequestId(requestId),
-          {
-            projectId: operation.input.projectId,
-            operation: 'move-blocks',
-          },
-        );
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await structureOperations.executeMove(
-            requestId,
-            operation.input,
-            checkpoint.backupId,
-          ),
-        });
-      }
-      case DRAFT_COMMANDS.openDraft:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await drafts.open(requestId, operation.input),
-        });
-      case DRAFT_COMMANDS.applyPatch:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await drafts.applyPatch(requestId, operation.input),
-        });
-      case CANDIDATE_COMMANDS.createFixtureCandidate:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await candidates.createFixture(requestId, operation.input),
-        });
-      case CANDIDATE_COMMANDS.listCandidates:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: candidates.list(operation.input),
-        });
-      case CANDIDATE_COMMANDS.getCandidate:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: candidates.get(operation.input),
-        });
-      case CANDIDATE_COMMANDS.discardCandidate:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await candidates.discard(requestId, operation.input),
-        });
-      case CANDIDATE_APPLY_COMMANDS.previewCandidate:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await candidateApply.previewProgressively(requestId, operation.input),
-        });
-      case CANDIDATE_APPLY_COMMANDS.cancelPreview:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: candidateApply.cancelPreview(operation.input),
-        });
-      case CANDIDATE_APPLY_COMMANDS.applyCandidate:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await candidateApply.apply(requestId, operation.input),
-        });
-      case CANDIDATE_APPLY_COMMANDS.previewUndo:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: candidateApply.previewUndo(operation.input),
-        });
-      case CANDIDATE_APPLY_COMMANDS.undoApply:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await candidateApply.undo(requestId, operation.input),
-        });
-      case CANDIDATE_APPLY_COMMANDS.findUndoRecord:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: candidateApply.findUndoRecord(operation.input),
-        });
-      case VERSION_COMMANDS.createVersion:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await versions.create(requestId, operation.input),
-        });
-      case VERSION_COMMANDS.listVersions:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: versions.list(operation.input),
-        });
-      case VERSION_COMMANDS.getVersion:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: versions.get(operation.input),
-        });
-      case VERSION_COMMANDS.setFinalVersion:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await versions.setFinal(requestId, operation.input),
-        });
-      case VERSION_COMMANDS.restoreVersion:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await versions.restore(requestId, operation.input),
-        });
-      case RECOVERY_COMMANDS.createCheckpoint:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await recovery.createOperationCheckpoint(requestId, operation.input),
-        });
-      case RECOVERY_COMMANDS.getOverview:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await recovery.getOverview(operation.input.projectId),
-        });
-      case RECOVERY_COMMANDS.restoreCheckpoint:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await recovery.restoreCheckpoint(
-            requestId,
-            operation.input,
-            operation.targetParentDirectory,
-          ),
-        });
-      case RECOVERY_COMMANDS.exportVersion:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await recovery.exportVersion(operation.input, operation.targetDirectory),
-        });
-      case TEXT_IO_COMMANDS.previewImport:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await textIo.previewImport(operation.input, operation.sourcePath),
-        });
-      case TEXT_IO_COMMANDS.commitImport:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await textIo.commitImport(requestId, operation.input),
-        });
-      case TEXT_IO_COMMANDS.listExportVersions:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: textIo.listExportVersions(operation.input.projectId),
-        });
-      case TEXT_IO_COMMANDS.exportVersions:
-        return CoreProjectResultSchema.parse({
-          ok: true,
-          operation: operation.operation,
-          data: await textIo.exportVersions(operation.input, operation.targetDirectory),
-        });
-    }
-  } catch (error) {
-    return CoreProjectResultSchema.parse({
-      ok: false,
-      operation: operation.operation,
-      errorCode: projectWorkspaceError(error),
-      ...(error instanceof DraftServiceError && error.lockConflict
-        ? { details: { lockConflict: error.lockConflict } }
-        : {}),
-    });
-  }
-}
+const appRuntime = await openAppRuntime({
+  databasePath: requiredAbsolutePath('app-database'),
+  migrationsDirectory: requiredAbsolutePath('app-migrations'),
+  recoveryDirectory: requiredAbsolutePath('app-recovery'),
+  appVersion: requiredArgument('app-version'),
+});
+const projectWorkspace = new ProjectWorkspaceService({
+  projectMigrationsDirectory: requiredAbsolutePath('project-migrations'),
+  projectMigrationRecoveryDirectory: requiredAbsolutePath('project-migration-recovery'),
+  appVersion: requiredArgument('app-version'),
+  recentProjects: appRuntime.recentProjects,
+});
+const recovery = new RecoveryService(projectWorkspace, {
+  backupRootDirectory: requiredAbsolutePath('project-operation-recovery'),
+});
+const services: UtilityProjectServices = {
+  projectWorkspace,
+  recovery,
+  projectStructure: new ProjectStructureService(projectWorkspace),
+  projectPlanning: new ProjectPlanningService(projectWorkspace),
+  sceneBeats: new SceneBeatService(projectWorkspace),
+  entityCanon: new EntityCanonService(projectWorkspace),
+  continuity: new ContinuityService(projectWorkspace),
+  structureOperations: new StructureOperationService(projectWorkspace),
+  drafts: new DraftService(projectWorkspace),
+  candidates: new CandidateService(projectWorkspace),
+  candidateApply: new CandidateApplyService(projectWorkspace),
+  versions: new VersionService(projectWorkspace),
+  textIo: new ImportExportService(projectWorkspace, recovery),
+  checkpointRequestId,
+};
 
 parentPort.on('message', ({ data, ports }) => {
   const parsed = CoreControlMessageSchema.safeParse(data);
@@ -992,17 +225,16 @@ parentPort.on('message', ({ data, ports }) => {
         });
         break;
       }
-      const active = executeAppDataOperation(requestId, operation)
-        .then((result) => {
+      track(
+        executeAppDataOperation(appRuntime, requestId, operation).then((result) => {
           send({
             type: 'core.app-data.result',
             protocolVersion: PROTOCOL_VERSION,
             requestId,
             result,
           });
-        })
-        .finally(() => activeAppDataOperations.delete(active));
-      activeAppDataOperations.add(active);
+        }),
+      );
       break;
     }
     case 'core.project.command': {
@@ -1021,17 +253,16 @@ parentPort.on('message', ({ data, ports }) => {
         });
         break;
       }
-      const active = executeProjectOperation(requestId, operation)
-        .then((result) => {
+      track(
+        executeProjectOperation(services, requestId, operation).then((result) => {
           send({
             type: 'core.project.result',
             protocolVersion: PROTOCOL_VERSION,
             requestId,
             result,
           });
-        })
-        .finally(() => activeAppDataOperations.delete(active));
-      activeAppDataOperations.add(active);
+        }),
+      );
       break;
     }
     case 'core.drain': {

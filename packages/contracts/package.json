@@ -3,11 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": {
-    ".": "./dist/public-index.js",
-    "./continuity": "./dist/continuity.js",
-    "./continuity-control": "./dist/continuity-control.js"
-  },
+  "exports": "./dist/public-index.js",
   "types": "./dist/public-index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",

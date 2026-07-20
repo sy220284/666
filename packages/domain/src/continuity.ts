@@ -114,5 +114,8 @@ export function chapterRangeContains(
   end: readonly [number, number] | null,
   target: readonly [number, number],
 ): boolean {
-  return compareChapterPosition(start, target) <= 0 && (!end || compareChapterPosition(target, end) < 0);
+  return (
+    compareChapterPosition(start, target) <= 0 &&
+    (!end || compareChapterPosition(target, end) < 0)
+  );
 }

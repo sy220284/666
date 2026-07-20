@@ -16,7 +16,7 @@
         "packages/core-service/src/structure-operations.ts",
         "apps/desktop/renderer/src/index.ts",
         "tests/integration/structure-operations.test.ts",
-        "tests/e2e/project-structure.spec.ts",
+        "tests/e2e/structure-recovery.spec.ts",
         "docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md",
         "docs/contracts/IPC_CONTRACTS.md"
       ]
@@ -54,11 +54,11 @@
     ".github/governance/audit-remediation-m0-m2.json",
     ".github/governance/AUDIT_REMEDIATION_M0_M2.md",
     ".github/workflows/evidence.yml",
+    "scripts/audit-remediation-policy.mjs",
     "scripts/evidence-policy.mjs",
-    "scripts/task-control-lib.mjs",
     "scripts/taskctl.mjs",
+    "tests/unit/audit-remediation-policy.test.ts",
     "tests/unit/evidence-policy.test.ts",
-    "tests/unit/task-control.test.ts",
     "docs/process/CI_WORKFLOW_ARCHITECTURE.md"
   ]
 }

@@ -87,14 +87,23 @@ describe('project structure migration', () => {
     expect((await stat(recoveryProjectDirectory)).mode & 0o777).toBe(0o700);
     expect((await stat(recoveryPath)).mode & 0o777).toBe(0o600);
 
-    const recovery = new DatabaseSync(recoveryPath, { readOnly: true, readBigInts: true });
-    expect(recovery.prepare('PRAGMA quick_check').get()).toEqual({ quick_check: 'ok' });
-    expect(recovery.prepare('SELECT max(version) AS version FROM schema_migrations').get()).toEqual({
-      version: 1n,
+    const recovery = new DatabaseSync(recoveryPath, {
+      readOnly: true,
+      readBigInts: true,
     });
+    expect(recovery.prepare('PRAGMA quick_check').get()).toEqual({
+      quick_check: 'ok',
+    });
+    expect(recovery.prepare('SELECT max(version) AS version FROM schema_migrations').get()).toEqual(
+      {
+        version: 1n,
+      },
+    );
     expect(
       recovery
-        .prepare("SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='volumes'")
+        .prepare(
+          "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='volumes'",
+        )
         .get(),
     ).toEqual({ count: 0n });
     recovery.close();
@@ -169,7 +178,9 @@ describe('project structure migration', () => {
     expect(
       interrupted.read((database) =>
         database
-          .prepare("SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='volumes'")
+          .prepare(
+            "SELECT count(*) AS count FROM sqlite_master WHERE type='table' AND name='volumes'",
+          )
           .get(),
       ),
     ).toEqual({ count: 0n });

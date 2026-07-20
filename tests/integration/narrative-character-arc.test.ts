@@ -101,13 +101,13 @@ describe('M3-05 character arcs', () => {
         status: 'planned',
         actualChapterId: null,
       });
-      expect(catalog.characterArcs[0]!.milestones.find((item) => item.id === second.id)).toMatchObject(
-        {
-          status: 'planned',
-          actualChapterId: null,
-          confirmationSource: null,
-        },
-      );
+      expect(
+        catalog.characterArcs[0]!.milestones.find((item) => item.id === second.id),
+      ).toMatchObject({
+        status: 'planned',
+        actualChapterId: null,
+        confirmationSource: null,
+      });
     } finally {
       await closeContinuityHarness(harness);
     }
@@ -189,7 +189,9 @@ describe('M3-05 character arcs', () => {
         dependencyMilestoneIds: [first.id],
         dependencyTimelineEventIds: [],
       });
-      const second = catalog.characterArcs[0]!.milestones.find((item) => item.title === '后续节点')!;
+      const second = catalog.characterArcs[0]!.milestones.find(
+        (item) => item.title === '后续节点',
+      )!;
       await expect(
         harness.narrative.saveArcMilestone(randomUUID(), {
           projectId: seeded.project.projectId,

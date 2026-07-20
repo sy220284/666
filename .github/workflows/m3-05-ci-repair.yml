@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/m3-05-foreshadowing-character-arc
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -53,7 +54,15 @@ jobs:
           )
 
           marker = "describe('Candidate Preview IPC authority boundary', () => {\n"
-          regression = """describe('Candidate Preview IPC authority boundary', () => {\n  it('registers only Candidate channels and leaves continuity composition to Electron main', () => {\n    const { handlers } = register();\n    expect([...handlers.keys()].sort()).toEqual(\n      Object.values(CANDIDATE_APPLY_IPC_CHANNELS).sort(),\n    );\n  });\n\n"""
+          regression = """describe('Candidate Preview IPC authority boundary', () => {
+            it('registers only Candidate channels and leaves continuity composition to Electron main', () => {
+              const { handlers } = register();
+              expect([...handlers.keys()].sort()).toEqual(
+                Object.values(CANDIDATE_APPLY_IPC_CHANNELS).sort(),
+              );
+            });
+
+          """
           replace('tests/security/candidate-preview-ipc.test.ts', marker, regression)
 
           replace('tests/migration/project-planning-migration.test.ts', 'toBe(13)', 'toBe(14)')
@@ -94,8 +103,19 @@ jobs:
               '      const foreignEventCatalog = await harness.continuity.saveTimelineEvent(',
               '      const foreignEventCatalog = await foreignHarness.continuity.saveTimelineEvent(',
           )
-          old_finally = """    } finally {\n      await closeContinuityHarness(harness);\n    }\n  });\n});\n"""
-          new_finally = """    } finally {\n      await closeContinuityHarness(foreignHarness);\n      await closeContinuityHarness(harness);\n    }\n  });\n});\n"""
+          old_finally = """    } finally {
+            await closeContinuityHarness(harness);
+          }
+        });
+      });
+          """
+          new_finally = """    } finally {
+            await closeContinuityHarness(foreignHarness);
+            await closeContinuityHarness(harness);
+          }
+        });
+      });
+          """
           replace('tests/integration/narrative-character-arc.test.ts', old_finally, new_finally)
           PY
       - name: Format repaired files

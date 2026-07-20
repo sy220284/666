@@ -11,32 +11,27 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M1-08",
+    "id": "M3-04",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md",
-    "branch": "work/m1-08-recovery-readonly-foundation",
-    "startedAt": "2026-07-20",
+    "source": "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
+    "branch": "work/m3-04-state-timeline-knowledge",
+    "startedAt": "2026-07-19",
     "allowedPaths": [
       "migrations/project/",
+      "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
-      "apps/desktop/main/",
-      "apps/desktop/preload/",
       "apps/desktop/renderer/",
       "tests/integration/",
-      "tests/migration/",
-      "tests/security/",
-      "tests/e2e/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md",
       "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M1-08/"
+      "docs/test-evidence/M3-04/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -44,9 +39,9 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/decisions/ADR-005-lock-revision-backup.md",
       "docs/database/DATABASE_SCHEMA.md",
-      "docs/testing/SECURITY_TEST_CASES.md"
+      "docs/database/DATA_DICTIONARY.md",
+      "docs/testing/TEST_STRATEGY.md"
     ],
     "verification": [
       "pnpm lint",
@@ -55,13 +50,14 @@
       "pnpm test:migration",
       "pnpm test:integration",
       "pnpm test:security",
-      "pnpm test:e2e"
+      "pnpm test:e2e",
+      "pnpm test:eval"
     ]
   },
   "lastVerifiedTask": {
-    "id": "M0-05",
-    "commit": "99561b79233f59d6e2c5a23cefefbb706c0d4cad",
-    "verifiedAt": "2026-07-20T02:22:03.000Z"
+    "id": "M1-08",
+    "commit": "3520855a45604bcfb7c740209552dc812c8de413",
+    "verifiedAt": "2026-07-20T02:59:51Z"
   },
   "deferredVerification": [
     {

@@ -1,32 +1,38 @@
 [
   {
-    "suite": "integration-physical-corruption",
-    "fixtureId": "M1-08-integration-physical-corruption",
+    "suite": "online-checkpoint-and-restored-copy",
+    "fixtureId": "M1-08-recovery-service",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Verified checkpoint, new project identity, writable restored copy and recent-project registration passed in Quality 29713250352 and Main Verification 29713419581."
   },
   {
-    "suite": "readonly-write-guard",
-    "fixtureId": "M1-08-readonly-write-guard",
+    "suite": "backup-failure-safety",
+    "fixtureId": "M1-08-backup-failures",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Low space and corrupted backup failures produced explicit errors and no unverified BackupRecord."
   },
   {
-    "suite": "restore-copy",
-    "fixtureId": "M1-08-restore-copy",
+    "suite": "restore-conflict-and-interruption",
+    "fixtureId": "M1-08-restore-safety",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Target conflict and interrupted restore preserved the source and removed partial destinations."
   },
   {
-    "suite": "desktop-recovery-entry",
-    "fixtureId": "M1-08-desktop-recovery-entry",
+    "suite": "damaged-project-readonly",
+    "fixtureId": "M1-08-readonly-security",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Integrity-failed projects opened read-only and source writes failed with PROJECT_READ_ONLY."
   },
   {
-    "suite": "desktop-restored-copy",
-    "fixtureId": "M1-08-desktop-restored-copy",
+    "suite": "unreadable-project-electron",
+    "fixtureId": "M1-08-desktop-acceptance",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Electron recovery flow and clean-tree passed in Quality 29713250352 and Main Verification 29713419581."
+  },
+  {
+    "suite": "screenshot-integrity",
+    "fixtureId": "M1-08-screenshots",
+    "status": "passed",
+    "details": "Four task-specific screenshots retain their recorded SHA-256 digests."
   }
 ]

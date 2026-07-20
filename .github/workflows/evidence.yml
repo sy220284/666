@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
 
 permissions:
   contents: read
@@ -16,14 +19,14 @@ jobs:
   evidence:
     name: evidence
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
-      EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
@@ -31,8 +34,24 @@ jobs:
           node-version: 24
       - name: Assert clean working tree before evidence validation
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Validate every changed task evidence package
+      - name: Validate changed task evidence documents
+        if: ${{ github.event_name == 'pull_request' }}
         run: node scripts/evidence-policy.mjs
+      - name: Validate all Verified task evidence documents
+        if: ${{ github.event_name != 'pull_request' }}
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          node scripts/verified-evidence-scan.mjs 2>&1 | tee test-results/ci/verified-evidence-scan.log
+      - name: Upload full-scan diagnostics
+        if: ${{ failure() && github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-evidence-scan-${{ github.run_id }}
+          path: test-results/ci/verified-evidence-scan.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Assert clean working tree after evidence validation
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

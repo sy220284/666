@@ -21,41 +21,63 @@ jobs:
     steps:
       - name: Draft pull request fast path
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true }}
-        run: echo "Performance baseline is deferred until the pull request is ready for review."
+        run: echo "Performance validation is deferred until the pull request is ready."
       - uses: actions/checkout@v6
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
+      - name: Determine performance validation route
+        id: route
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          set -euo pipefail
+          run=false
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            run=true
+          elif node --input-type=module -e "import {readFileSync} from 'node:fs'; const state=JSON.parse(readFileSync('docs/tasks/ACTIVE_TASK.json','utf8')); process.exit(state.activeTask?.verification?.includes('pnpm test:perf') ? 0 : 1);"; then
+            run=true
+          elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(tests/performance/|evals/|packages/prompts/|packages/editor-core/|\.github/workflows/performance\.yml$)'; then
+            run=true
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v4
+        if: ${{ steps.route.outputs.run == 'true' }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+        if: ${{ steps.route.outputs.run == 'true' }}
         with:
           node-version: 24
           cache: pnpm
       - name: Assert clean working tree before performance validation
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+        if: ${{ steps.route.outputs.run == 'true' }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+        if: ${{ steps.route.outputs.run == 'true' }}
       - name: Run performance budgets
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
         shell: bash
         run: |
+          set -euo pipefail
+          if [ "${{ steps.route.outputs.run }}" != true ]; then
+            echo "Performance suite skipped: the active task and changed paths are not performance-sensitive."
+            exit 0
+          fi
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:perf 2>&1 | tee test-results/ci/performance.log
       - name: Assert clean working tree after performance validation
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+        if: ${{ always() && steps.route.outputs.run == 'true' }}
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Upload performance evidence
-        if: failure()
+      - name: Upload performance diagnostics
+        if: ${{ failure() && steps.route.outputs.run == 'true' }}
         uses: actions/upload-artifact@v7
         with:
-          name: performance-evidence
+          name: performance-diagnostics
           path: |
             test-results/ci/performance.log
             test-results/performance/

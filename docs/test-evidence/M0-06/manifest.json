@@ -15,9 +15,19 @@
       "sha256": "677e6c814e06c630c817af3fcef7967e57c120b9ea9f5f20319a88cabea66281"
     },
     {
+      "path": "manual-acceptance.md",
+      "bytes": 439,
+      "sha256": "eeeeea9ecdc3a341519b802c5c70120df236450cb9a4caeb958625bd63adac0a"
+    },
+    {
       "path": "performance.json",
       "bytes": 887,
       "sha256": "b99587de85196a3c1ba707bf820b962b155d9c31714501cca490d6cb67d859c1"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 517,
+      "sha256": "fa083fe347effdb7c0e7d693805f5cf2bfe782ad5143b4798cebaaba5775d3ed"
     },
     {
       "path": "screenshots/1280x800-100.png",
@@ -56,8 +66,8 @@
     },
     {
       "path": "screenshots/manifest.json",
-      "bytes": 1166,
-      "sha256": "4909e33da11d636d40cb6402579e4682afd082361411e1783b7187a8c5da43b8"
+      "bytes": 1190,
+      "sha256": "428589f34281e149d430866e51cb05fc76098b8aace6418fabcf18933ecdde76"
     },
     {
       "path": "summary.md",
@@ -66,8 +76,8 @@
     },
     {
       "path": "test-results/results.json",
-      "bytes": 2250,
-      "sha256": "2f88018d2d99d3ff4347bf6f99047015df9784fa061a6a2f5204f2333a85295a"
+      "bytes": 2688,
+      "sha256": "bfa5404dabac1a9a55cca6eba91239dce966379cdd20c98659e4f398fde35304"
     }
   ]
 }

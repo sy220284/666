@@ -16,6 +16,7 @@ import {
   validateChangedPathsForTransition,
   verificationForTask,
 } from './task-control-lib.mjs';
+import { validateAuditRemediation } from './audit-remediation-policy.mjs';
 import { validateTaskEvidence } from './evidence-policy.mjs';
 
 const root = process.cwd();
@@ -113,6 +114,17 @@ function loadBaseState() {
   }
 }
 
+async function auditRemediationAccepted(state, files, headBranch, baseState) {
+  return validateAuditRemediation({
+    repositoryRoot: root,
+    branch: headBranch,
+    changedFiles: files,
+    currentState: state,
+    baseState,
+    baseRef: process.env.TASK_BASE_REF ?? 'HEAD^',
+  });
+}
+
 async function prPolicy() {
   const state = await validate();
   if (!isPullRequestEvent()) {
@@ -128,12 +140,13 @@ async function prPolicy() {
     throw new Error('Pull request head branch must be a named non-main branch');
   }
   const files = changedFiles();
+  const baseState = loadBaseState();
+  if (await auditRemediationAccepted(state, files, headBranch, baseState)) return state;
   if (isGovernanceOnlyPullRequest(headBranch, files)) {
     console.log(`Governance-only pull request accepted from ${headBranch}.`);
     return state;
   }
 
-  const baseState = loadBaseState();
   const allowedBranches = new Set(
     [state.activeTask?.branch, baseState?.activeTask?.branch].filter(Boolean),
   );
@@ -152,11 +165,18 @@ async function preflight() {
   const state = await validate();
   const files = changedFiles();
   const headBranch = pullRequestBranch();
+  const baseState = loadBaseState();
+  if (
+    isPullRequestEvent() &&
+    (await auditRemediationAccepted(state, files, headBranch, baseState))
+  ) {
+    return;
+  }
   if (isPullRequestEvent() && isGovernanceOnlyPullRequest(headBranch, files)) {
     console.log(`Governance-only preflight passed for ${headBranch}.`);
     return;
   }
-  const violations = validateChangedPathsForTransition(files, state, loadBaseState());
+  const violations = validateChangedPathsForTransition(files, state, baseState);
   if (violations.length > 0) throw new Error(violations.join('\n'));
   console.log(`Preflight passed for ${state.activeTask.id}.`);
 }

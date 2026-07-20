@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M1-09",
+  "generatedFrom": "commands.txt",
+  "sourceCommit": "1d83d3f158d0498355f90689ad25d73cf7e3be11",
+  "results": [
+    {
+      "suite": "legacy-command-01",
+      "status": "passed",
+      "details": "pnpm task:validate | exit=0 duration_ms=562 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-02",
+      "status": "passed",
+      "details": "pnpm check:workspaces | exit=0 duration_ms=499 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-03",
+      "status": "passed",
+      "details": "pnpm check:boundaries | exit=0 duration_ms=512 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-04",
+      "status": "passed",
+      "details": "pnpm format:check | exit=0 duration_ms=4824 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-05",
+      "status": "passed",
+      "details": "pnpm lint | exit=0 duration_ms=4492 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-06",
+      "status": "passed",
+      "details": "pnpm typecheck | exit=0 duration_ms=24668 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-07",
+      "status": "passed",
+      "details": "pnpm test:unit | exit=0 duration_ms=14368 fixtures=M1-09-regression"
+    },
+    {
+      "suite": "legacy-command-08",
+      "status": "passed",
+      "details": "pnpm test:integration | exit=0 duration_ms=8124 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-09",
+      "status": "passed",
+      "details": "pnpm test:migration | exit=0 duration_ms=14537 fixtures=M1-09-schema-regression"
+    },
+    {
+      "suite": "legacy-command-10",
+      "status": "passed",
+      "details": "pnpm test:security | exit=0 duration_ms=4132 fixtures=M1-09-path-boundary"
+    },
+    {
+      "suite": "legacy-command-11",
+      "status": "passed",
+      "details": "pnpm test:perf | exit=0 duration_ms=14207 fixtures=M1-09-regression"
+    },
+    {
+      "suite": "legacy-command-12",
+      "status": "passed",
+      "details": "pnpm test:e2e | exit=0 duration_ms=197274 fixtures=M1-09-regression"
+    },
+    {
+      "suite": "legacy-command-13",
+      "status": "passed",
+      "details": "M1-09 desktop acceptance | exit=0 duration_ms=22941 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-14",
+      "status": "passed",
+      "details": "pnpm build | exit=0 duration_ms=15802 fixtures=M1-09,P0-048,P0-050"
+    },
+    {
+      "suite": "legacy-command-15",
+      "status": "passed",
+      "details": "pnpm package | exit=0 duration_ms=503 fixtures=M1-09-package-smoke"
+    }
+  ]
+}

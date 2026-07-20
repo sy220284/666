@@ -192,8 +192,9 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
   } catch (error) {
     throw new Error(`${taskId} screenshot manifest is invalid`, { cause: error });
   }
-  if (!Array.isArray(screenshots))
+  if (!Array.isArray(screenshots)) {
     throw new Error(`${taskId} screenshot manifest must be an array`);
+  }
   const screenshotNames = new Set();
   for (const screenshot of screenshots) {
     const fileName = assertRelativeEvidencePath(

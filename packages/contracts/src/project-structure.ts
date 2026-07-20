@@ -293,9 +293,21 @@ export const TrashPermanentDeletePreviewInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   trashEntryId: StructureEntityIdSchema,
 });
+export const TrashReferenceDeleteActionSchema = z.enum([
+  'CASCADE',
+  'RESTRICT',
+  'NO ACTION',
+  'SET NULL',
+  'SET DEFAULT',
+]);
 export const TrashDeleteBlockerSchema = z.strictObject({
-  kind: z.enum(['version', 'candidate']),
+  kind: z.enum(['version', 'candidate', 'chapter-reference']),
   count: z.number().int().positive(),
+  source: z
+    .string()
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$/u)
+    .optional(),
+  deleteAction: TrashReferenceDeleteActionSchema.optional(),
 });
 export const TrashDeleteImpactSchema = z.strictObject({
   volumes: z.number().int().nonnegative(),
@@ -309,7 +321,7 @@ export const TrashPermanentDeletePreviewSchema = z.strictObject({
   planHash: StructurePlanHashSchema,
   entry: TrashEntrySchema,
   impact: TrashDeleteImpactSchema,
-  blockers: z.array(TrashDeleteBlockerSchema).max(2),
+  blockers: z.array(TrashDeleteBlockerSchema).max(128),
   canDelete: z.boolean(),
 });
 export const TrashPermanentDeleteInputSchema = TrashPermanentDeletePreviewInputSchema.extend({

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
-import type { WorldforgeBridge } from '@worldforge/contracts';
+import type { ContinuityBridge, WorldforgeBridge } from '@worldforge/contracts';
 
 import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
 
@@ -38,7 +38,7 @@ test.afterEach(async () => {
   );
 });
 
-test('previews split and permanent delete, creates checkpoints, and keeps Draft writes atomic', async () => {
+test('previews split and permanent delete, blocks current chapter references, and keeps Draft writes atomic', async () => {
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-structure-e2e-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'projects');
@@ -117,6 +117,47 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 
+    const anchor = await page.evaluate(async () => {
+      const rootWindow = globalThis as unknown as {
+        readonly worldforge: WorldforgeBridge;
+        readonly worldforgeContinuity: ContinuityBridge;
+      };
+      const active = await rootWindow.worldforge.project.getActive();
+      if (!active.ok || !active.data) throw new Error('E2E_PROJECT_MISSING');
+      const structure = await rootWindow.worldforge.planning.listStructure(active.data.projectId);
+      if (!structure.ok) throw new Error('E2E_STRUCTURE_MISSING');
+      const chapter = structure.data.volumes
+        .flatMap((volume) => volume.chapters)
+        .find((candidate) => candidate.title === '拆出章节');
+      if (!chapter) throw new Error('E2E_SPLIT_CHAPTER_MISSING');
+      const event = await rootWindow.worldforgeContinuity.saveTimelineEvent({
+        projectId: active.data.projectId,
+        authority: 'author',
+        eventId: null,
+        title: '拆出章节锚点',
+        startValue: '2026-07-20',
+        endValue: null,
+        precision: 'day',
+        chapterId: chapter.id,
+        locationId: null,
+        description: '永久删除必须先解除该章节锚点。',
+        participantIds: [],
+        witnessIds: [],
+        subjectIds: [],
+        dependencyIds: [],
+      });
+      if (!event.ok) throw new Error(`E2E_TIMELINE_EVENT_FAILED:${event.error.code}`);
+      const createdEvent = event.data.timelineEvents.find(
+        (candidate) => candidate.title === '拆出章节锚点',
+      );
+      if (!createdEvent) throw new Error('E2E_TIMELINE_EVENT_MISSING');
+      return {
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        eventId: createdEvent.id,
+      };
+    });
+
     // Reinstall deterministic confirmation after reload for delete and permanent-delete UI actions.
     await page.evaluate(() => {
       window.confirm = () => true;
@@ -126,6 +167,38 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     await splitChapter.locator('[data-delete-chapter]').click();
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);
+
+    await page.locator('[data-trash-entry-id]').locator('[data-permanent-delete]').click();
+    await expect(page.locator('[data-trash-entry-id]')).toHaveCount(1);
+    await expect(page.locator('[data-trash-status]')).toContainText('timeline_events.chapter_id');
+    await expect(page.locator('[data-trash-status]')).toContainText('SET NULL');
+    await captureAcceptanceScreenshot(page, 'M2-04', 'permanent-delete-reference-blocked.png');
+
+    await page.evaluate(async (value) => {
+      const continuity = (
+        globalThis as unknown as {
+          readonly worldforgeContinuity: ContinuityBridge;
+        }
+      ).worldforgeContinuity;
+      const updated = await continuity.saveTimelineEvent({
+        projectId: value.projectId,
+        authority: 'author',
+        eventId: value.eventId,
+        title: '拆出章节锚点',
+        startValue: '2026-07-20',
+        endValue: null,
+        precision: 'day',
+        chapterId: null,
+        locationId: null,
+        description: '永久删除前已由作者明确解除章节锚点。',
+        participantIds: [],
+        witnessIds: [],
+        subjectIds: [],
+        dependencyIds: [],
+      });
+      if (!updated.ok) throw new Error(`E2E_TIMELINE_EVENT_UPDATE_FAILED:${updated.error.code}`);
+    }, anchor);
+
     await page.locator('[data-trash-entry-id]').locator('[data-permanent-delete]').click();
     await expect(page.locator('[data-trash-empty]')).toBeVisible();
     await expect(page.locator('[data-trash-status]')).toContainText('已永久删除 · 恢复点');
@@ -158,6 +231,9 @@ test('previews split and permanent delete, creates checkpoints, and keeps Draft 
     expect(
       database.prepare("SELECT COUNT(*) AS count FROM chapters WHERE title = '拆出章节'").get(),
     ).toEqual({ count: 0n });
+    expect(
+      database.prepare("SELECT chapter_id FROM timeline_events WHERE title = '拆出章节锚点'").get(),
+    ).toEqual({ chapter_id: null });
     expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
   } finally {
     database.close();

@@ -4,38 +4,38 @@
 
 | 工作流 | 触发 | 职责 | 必需检查 |
 |---|---|---|---|
-| `PR Policy` | PR→main | 分支、治理白名单和CI策略 | `pr-policy` |
-| `Task Governance` | PR→main | 任务状态、允许路径、证据结构和任务转换 | `task-governance` |
-| `Quality` | PR→main | Draft跑静态检查；Ready后跑测试、E2E、Build和Package Smoke | `quality / quality` |
-| `Security` | PR→main | Draft保留快速扫描；Ready后跑依赖和应用安全套件 | `security` |
-| `Performance` | PR→main、手动 | Draft返回延期状态；Ready后跑性能基线 | `performance` |
-| `Evidence` | PR→main | 校验发生变化的任务证据包 | `evidence` |
-| `Controlled Merge` | 任一永久检查成功完成 | 聚合当前Head SHA的六项永久检查，复核Ready全量代次并squash合并 | 否 |
-| `Main Verification` | Controlled Merge或合并事件幂等调度 | 在最终main SHA上重新执行完整Linux质量门并发布最终提交状态 | `main-verification` |
-| `Repository Governance` | 治理PR、每周、手动 | PR审计拟议自动化；定期/手动审计main自动化与原生Ruleset | 否 |
-| `Branch Hygiene` | 每周、手动 | 默认报告分支状态；手动apply时删除确定安全的分支 | 否 |
-| `Release` | 手动 | 发布门、三平台构建打包和Release | 否 |
+| `PR Policy` | PR→main | 分支、治理白名单和永久CI策略 | `pr-policy` |
+| `Task Governance` | PR→main | 任务状态、镜像、允许路径和任务转换 | `task-governance` |
+| `Quality` | PR→main | Draft静态检查；Ready关键测试、E2E、Build和现有Package Smoke | `quality / quality` |
+| `Security` | PR→main | 凭据扫描始终执行；依赖与应用安全按变更路由 | `security` |
+| `Performance` | PR→main、手动 | 按任务声明和性能敏感路径执行 | `performance` |
+| `Evidence` | PR→main、每周、手动 | PR校验变化证据；定时/手动全量重放 | `evidence` |
+| `Controlled Merge` | 永久检查完成 | 聚合相同Head SHA并squash合并 | 否 |
+| `Main Verification` | 合并后幂等调度 | 核验最终SHA、来源门禁和静态一致性 | `main-verification` |
+| `Repository Governance` | 治理PR、每周、手动 | 审计永久自动化与原生Ruleset | 否 |
+| `Branch Hygiene` | 每周、手动 | 报告并可选清理安全废弃分支 | 否 |
+| `Release` | 手动 | 完整发布门和三平台打包 | 否 |
 
-`quality-core.yml`由Quality、Main Verification和Release复用，不单独设为必需检查。日常Quality不重复独立Security和Performance套件；最终main与Release重新启用全部验证。
+`quality-core.yml`由Quality、Main Verification和Release复用。调用方通过输入决定静态模式或完整发布模式。
 
 ## 2. Draft快速反馈
 
-Draft PR保留六个固定检查名称，只执行低成本验证：
+Draft保留固定检查名称，但只运行低成本路径：
 
 ```text
 PR Policy
-+ Task Governance
-+ Evidence
-+ Quality：task、workspace、boundary、format、lint、typecheck
-+ Security：快速凭据扫描
-+ Performance：明确延期到Ready
+Task Governance
+Evidence变化文档检查
+Quality静态检查
+Security凭据扫描
+Performance快速路由
 ```
 
-`ready_for_review`在同一Head SHA上重新运行完整Quality、Security和Performance；`converted_to_draft`取消旧重型运行并恢复轻量模式。Draft阶段的绿色状态不能授权合并。
+Draft结果不能授权合并。转为Ready后，同一Head重新运行必要门禁。
 
-## 3. 合并判据、代次识别与恢复触发
+## 3. Ready门禁
 
-进入main前必须同时通过：
+进入main前仍要求六项检查成功：
 
 ```text
 pr-policy
@@ -46,92 +46,95 @@ pr-policy
 + evidence
 ```
 
-Controlled Merge监听六项永久工作流的成功完成事件。任一检查单独重跑恢复成功后，都会重新进入统一聚合判断。
+其中：
 
-并发组按`workflow_run.head_sha`隔离：同一Head SHA只保留最新聚合运行，后到成功事件取消旧聚合；不同PR和不同SHA互不阻塞。聚合运行仍从`main`读取已审计脚本，不能执行PR分支中的合并代码。
+- Quality运行关键测试、Electron E2E、Build和现有Package Smoke；
+- Security的Dependency Audit只在依赖或Workflow输入变化时执行；
+- Application Security只在任务要求或Main/Preload/IPC/Core/Migration等安全边界变化时执行；
+- Performance只在任务要求`test:perf`、性能敏感路径变化或手动触发时执行；
+- 未命中重型路由的工作流仍返回同名成功检查，Controlled Merge无需猜测缺失状态；
+- Evidence只校验本次变化的任务证据文档。
 
-聚合器分页读取Check Runs，并以`created_at`和Check Run ID判定同名检查的最新结果。Quality、Security和Performance还会读取各自最新Actions运行及全部Jobs：
+## 4. 职责去重
 
-- Quality必须实际完成Static、Unit、Integration、Migration、Electron E2E、Build、Package Smoke和聚合Job；
-- Security必须实际完成依赖审计、凭据扫描、应用安全测试和聚合Job；
-- Performance必须实际执行并通过性能预算步骤。
+三个治理门禁必须各自单一负责：
 
-最新运行若仍是Draft快速路径，即使聚合检查显示成功，也会判为等待Ready全量代次。转回Draft产生的新快速运行会覆盖更早的Ready全量运行。
+```text
+PR Policy
+└─ PR分支、自动化布局、CI策略
 
-同时要求：头分支未落后main、没有Changes Requested、没有未解决线程，并在合并前重新读取PR状态、Head SHA和main状态。受控合并固定使用squash，并向Merge API绑定受检SHA。
+Task Governance
+└─ ACTIVE_TASK、镜像、allowedPaths、任务转换
 
-PR Policy内嵌治理测试覆盖代次排序、Draft/Ready识别、性能步骤执行、失败状态、分页解析及恢复触发配置。
+Evidence
+└─ 证据文档完整性与来源提交
+```
 
-## 4. Task Governance转换模型
+Task Governance不得重复调用`taskctl pr-policy`或Evidence结构校验。Evidence不得重复验证任务分支和allowedPaths。
 
-Task Governance同时读取PR base与Head中的`ACTIVE_TASK.json`和`TASK_INDEX.md`，只接受三种可审计转换：
+## 5. Controlled Merge
 
-1. **实现推进**：原活动任务转为`Implemented`，进入`deferredVerification`，记录`lastImplementedTask`，激活下一张依赖已满足的任务；
-2. **历史复验重开**：暂停当前`In Progress`任务为`Planned`，把既有`Implemented`或`Verified`任务重新激活为`In Progress`，PR分支必须等于该任务的标准工作分支；
-3. **历史复验关闭**：当前复验任务转回`Verified`并写入`lastVerifiedTask`，从延期账本移除，恢复原先暂停且在base中为`Planned`的下一任务。
+Controlled Merge从`main`读取已审计脚本，聚合相同PR Head SHA的六项检查，并再次确认：
 
-三种转换都必须保持任务卡、索引、机器状态、镜像、分支和允许路径一致。不得为单个任务、固定分支或历史Closeout保留例外。
+- PR为Ready且未变更Head；
+- 分支未落后`main`；
+- 没有Changes Requested；
+- 没有未解决线程；
+- 六项检查属于当前Head的最新运行；
+- 路由后的Security与Performance步骤真实成功。
 
-## 5. 主线验证
+合并固定使用squash，并向Merge API绑定受检SHA。
 
-Controlled Merge合并后显式调度`main-verification.yml`；`Post Merge Verification Dispatcher`对已合并PR进行幂等兜底调度。两条入口共享去重逻辑，不会为同一main SHA重复创建验证运行。
+## 6. Main Verification
 
-Main Verification负责：
+合并后不再重复完整发布级套件。Main Verification执行：
 
-1. 核对最终main SHA与输入SHA；
-2. 核对来源PR、来源Head SHA和merge SHA；
-3. 分页读取六项永久检查并确认最新结果成功；
-4. 再次确认Quality、Security和Performance来源于Ready全量运行；
-5. 在最终main提交上重新执行完整Quality Core；
-6. 以`main-verification`上下文写回最终SHA状态。
+1. 最终`main` SHA和输入SHA一致；
+2. 来源PR、来源Head和merge SHA一致；
+3. 来源六项永久检查成功；
+4. 在最终提交上执行task、workspace、boundary、format、lint、typecheck；
+5. 发布`main-verification`状态。
 
-`main-verification`不加入合并前Ruleset，避免循环依赖。下一次合并只等待当前main的最终状态，不依赖历史任务专用Closeout流程。
+下一次Controlled Merge只等待当前main的最终状态，不重复运行Unit、Integration、Migration、E2E、Package、Security和Performance。
 
-## 6. 权限边界
+## 7. Evidence
 
-- 常规工作流使用只读权限，Checkout关闭凭证持久化。
-- 禁止`pull_request_target`、`repository_dispatch`和业务工作流直接写main。
-- Controlled Merge只拥有读取检查、读取Actions运行、调用Merge API和调度固定主线工作流所需权限。
-- Controlled Merge中不得保留任务、分支、Actions Run或提交SHA的历史专用逻辑。
-- Main Verification仅以`statuses: write`发布最终SHA状态，不能修改仓库内容。
-- Repository Governance在PR事件只读取PR Head并审计仓库内策略；线上Ruleset审计仅在定期或手动事件中使用管理凭据。
-- Release发布Job使用独立`release`环境和最小写权限。
+Evidence采用文档记录：
 
-## 7. 证据与诊断
+```text
+summary.md
+commands.txt
+known-risks.md
+manifest.json
+```
 
-- Evidence按发生变化的任务目录逐项校验。
-- Quality Core和Performance仅在失败时上传诊断，默认保留7天。
-- Quality聚合失败时额外捕获format、lint和typecheck日志。
-- Actions Artifact只用于定位失败，不能替代版本化任务证据。
+不要求截图、截图清单、单独人工验收文件或单独质量矩阵。人工复核和质量结论直接写入`summary.md`。
 
-## 8. 安全与性能
+运行范围：
 
-- Draft阶段保留快速凭据扫描；Ready阶段执行依赖审计和应用安全测试。
-- `pnpm test:perf`保持独立必需检查。
-- Main Verification和Release再次执行安全与性能套件。
+- PR：校验变化目录；
+- 每周或手动：全量重放全部`Verified`任务；
+- 里程碑与Release：按需手动全量运行。
 
-## 9. 分支生命周期
+Actions Artifact只用于失败诊断，不能替代版本化文档，也不应为了证据生成无人查看的截图。
 
-永久保留`main`、当前活动任务分支、开放PR分支和`release/*`。每周任务只生成报告；实际删除必须手动触发并设置`apply=true`。分支删除由Branch Hygiene统一负责，不在合并配置中声明未实现行为。
+## 8. 阶段关闭
 
-## 10. Repository Governance审计
+实现优先模式下，任务完成真实代码和专项验证后可登记`Implemented`并进入延期账本。普通任务不再逐张创建纯Evidence/Verified关闭PR。
 
-治理PR运行只审计PR Head中的永久自动化清单、通用性和clean-tree，不向未经合并的PR暴露仓库管理凭据。每周和手动运行固定读取`main`，同时核验规则集状态、默认分支目标、删除与强推保护、线性历史、PR、会话解决、严格状态检查、精确检查名称和空Bypass列表。
+M3-06至M3-10连续实现，M3-10后统一执行M3批次复验；进入M4前完成M3全部必要关闭。
 
-## 11. 永久自动化清单
+## 9. 安全与发布边界
 
-`.github/workflows/`和`.github/governance/`采用封闭白名单，不允许通过增加一个名称看似正常的额外文件绕过“永久工作流必须通用”的约束。
+- Secret Scan每个PR执行；
+- 数据、Migration、恢复、IPC、路径和凭据边界失败始终阻断；
+- Release保持手动触发，完整执行Quality、Security、Performance和三平台Package；
+- 日常开发优化不得削弱发布门或数据安全门。
 
-`PR Policy`与`Repository Governance`共同执行`.github/governance/automation-layout-policy.mjs`，要求：
+## 10. 永久自动化约束
 
-1. 工作流目录只能包含本文件第1节列出的永久工作流及其可复用核心；
-2. Governance目录只能包含已登记的通用检查、配置和调度辅助文件；
-3. 永久Workflow不得硬编码任务ID、任务分支、固定PR号或固定PR分支；
-4. 新增永久能力必须在同一治理PR中显式更新清单、架构文档和策略自检；
-5. 一次性恢复、迁移或Closeout逻辑不得长期留在默认分支。
-
-自动化清单失败属于治理硬失败，不能以任务完成、历史兼容或工作流当前不触发为理由豁免。
-
-## 12. Release
-
-Release只允许手动触发，要求main引用、发布任务门、完整Quality、三平台Build后Package、独立发布环境和SHA-256资产清单。
+- 工作流必须通用，不得硬编码任务ID、固定PR、固定任务分支或一次性修复；
+- 禁止`pull_request_target`、`repository_dispatch`和业务工作流直接写`main`；
+- Checkout关闭凭据持久化；
+- 正式门禁验证已提交PR Head，前后执行clean-tree检查；
+- 新增或改变永久能力必须同步更新CI策略和本架构文档。

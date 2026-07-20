@@ -35,19 +35,19 @@
       "sha256": "2e5c7a98dcae9f6ef59cd691c79a0ff4aa6726dd799acb67874990f074e40f12"
     },
     {
+      "path": "screenshots/manifest.json",
+      "bytes": 185,
+      "sha256": "76003263d1a33d40e17392bbde78d1bce0eb7cbc7a9d22400cda12454f15179c"
+    },
+    {
       "path": "summary.md",
       "bytes": 592,
       "sha256": "21cff0234023064a9daf3281b56235d8213670e23a2e25b1c43d6fd594ad4530"
     },
     {
-      "path": "test-results/ci-run.json",
-      "bytes": 3702,
-      "sha256": "5b72bc2fc23700097cfe57d29bec657235b5e8cc319ac697359a7c53f9aca322"
-    },
-    {
       "path": "test-results/results.json",
-      "bytes": 559,
-      "sha256": "a9a1d6e53161777e25e89ce3c0dca873d626577ebc06a0eb2c95cf25d59a83dd"
+      "bytes": 2789,
+      "sha256": "7bee26827a6d194057349df589fd49f83964156bc949ce4a57f43cf8a3fd64fe"
     }
   ]
 }

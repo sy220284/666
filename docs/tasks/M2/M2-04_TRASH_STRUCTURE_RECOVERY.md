@@ -60,14 +60,19 @@ M2-03、M1-08
 ## 实施内容
 
 1. 完善卷章TrashEntry、恢复原位置、冲突位置选择和永久删除引用检查。
-2. 拆章、并章和正文块跨章移动先生成预览。
-3. 所有高风险操作前创建操作恢复点。
-4. 结构修改通过统一Patch、Revision、Hash和LockGuard。
-5. 历史Version保持不变，操作后字数、顺序和activeDraft引用一致。
+2. 永久删除预览以SQLite外键元数据为真源，动态扫描所有指向`chapters`的外键；除受控Draft内部数据外，Version、Candidate及任何`CASCADE`、`RESTRICT`、`NO ACTION`、`SET NULL`或`SET DEFAULT`章节引用均必须明确列为阻断项。
+3. 预览返回`表名.字段名`、引用数量、`ON DELETE`动作和完整`planHash`；执行事务内重新扫描并校验标题、引用集合和planHash，防止预览后新增引用造成竞态删除。
+4. 拆章、并章和正文块跨章移动先生成预览。
+5. 所有高风险操作前创建操作恢复点。
+6. 结构修改通过统一Patch、Revision、Hash和LockGuard。
+7. 历史Version保持不变，操作后字数、顺序和activeDraft引用一致。
 
 ## 测试与证据
 
 - 原位置占用、锁定块、引用存在、事务中断和恢复取消。
+- 动态新增章节外键也必须自动进入预览；SceneBeat、EntityState、KnowledgeState、TimelineEvent及后续Schema引用不得被静默级联或清空锚点。
+- 预览后新增引用必须使旧planHash失效，失败路径保持章节、TrashEntry、Draft和正文完整。
+- Electron界面明确展示阻断来源与`ON DELETE`动作，解除引用后才允许完整标题确认和永久删除。
 - 拆章、并章、跨章移动后的正文与统计一致。
 - 永久删除取消和恢复点可用。
 
@@ -76,6 +81,7 @@ M2-03、M1-08
 ## 完成条件
 
 - 任何失败路径下原结构和正文保持完整。
+- 永久删除影响预览覆盖当前及未来所有章节外键，预览和执行使用同一权威计算。
 - M2退出时编辑、版本、Candidate和结构安全闭环可用。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

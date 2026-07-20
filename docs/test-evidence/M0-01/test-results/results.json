@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-01",
+  "generatedFrom": "commands.txt",
+  "sourceCommit": "8ea7307d18b56fa6835f662b9633e0ff321f6ed1",
+  "results": [
+    {
+      "suite": "legacy-command-01",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm install --frozen-lockfile --store-dir /tmp/pnpm-store"
+    },
+    {
+      "suite": "legacy-command-02",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm task:validate"
+    },
+    {
+      "suite": "legacy-command-03",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm check:workspaces"
+    },
+    {
+      "suite": "legacy-command-04",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm check:boundaries"
+    },
+    {
+      "suite": "legacy-command-05",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm format:check"
+    },
+    {
+      "suite": "legacy-command-06",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm lint"
+    },
+    {
+      "suite": "legacy-command-07",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm typecheck"
+    },
+    {
+      "suite": "legacy-command-08",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test | 5 files, 12 tests passed"
+    },
+    {
+      "suite": "legacy-command-09",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm build"
+    },
+    {
+      "suite": "legacy-command-10",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged"
+    },
+    {
+      "suite": "legacy-command-11",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Task Governance #7 | https://github.com/sy220284/666/actions/runs/29384844269"
+    },
+    {
+      "suite": "legacy-command-12",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Quality #7 | https://github.com/sy220284/666/actions/runs/29384844270"
+    },
+    {
+      "suite": "legacy-command-13",
+      "status": "passed",
+      "details": "2026-07-15 | expected exit 1 | pnpm check:boundaries with Renderer importing node:fs/promises"
+    },
+    {
+      "suite": "legacy-command-14",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm check:boundaries after negative fixture removal"
+    },
+    {
+      "suite": "legacy-command-15",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified"
+    },
+    {
+      "suite": "legacy-command-16",
+      "status": "passed",
+      "details": "2026-07-15 | expected exit 1 | pnpm release:gate -- --version 0.1.0 | M8-03 is Planned"
+    },
+    {
+      "suite": "legacy-command-17",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test | 6 files, 16 tests passed"
+    },
+    {
+      "suite": "legacy-command-18",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm lint"
+    },
+    {
+      "suite": "legacy-command-19",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm typecheck | 9 process/architecture packages"
+    },
+    {
+      "suite": "legacy-command-20",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm build"
+    },
+    {
+      "suite": "legacy-command-21",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged"
+    }
+  ]
+}

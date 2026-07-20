@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-02",
+  "generatedFrom": "commands.txt",
+  "sourceCommit": "09abab11f62fcd2a01c49a4e9edd2e719f79e4a1",
+  "results": [
+    {
+      "suite": "legacy-command-01",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm install --store-dir /tmp/worldforge-pnpm-store"
+    },
+    {
+      "suite": "legacy-command-02",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm check:workspaces | 10 workspace packages"
+    },
+    {
+      "suite": "legacy-command-03",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm check:boundaries | 9 process/package layers"
+    },
+    {
+      "suite": "legacy-command-04",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm format:check"
+    },
+    {
+      "suite": "legacy-command-05",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm lint"
+    },
+    {
+      "suite": "legacy-command-06",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm typecheck"
+    },
+    {
+      "suite": "legacy-command-07",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test | 9 files, 30 tests passed"
+    },
+    {
+      "suite": "legacy-command-08",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test:integration | 2 files, 2 tests passed"
+    },
+    {
+      "suite": "legacy-command-09",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test:security | 3 files, 14 tests passed"
+    },
+    {
+      "suite": "legacy-command-10",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm build"
+    },
+    {
+      "suite": "legacy-command-11",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged"
+    },
+    {
+      "suite": "legacy-command-12",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified"
+    },
+    {
+      "suite": "legacy-command-13",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm task:validate | M0-02 IN_PROGRESS"
+    },
+    {
+      "suite": "legacy-command-14",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm task:preflight | commit 455c74a"
+    },
+    {
+      "suite": "legacy-command-15",
+      "status": "skipped",
+      "details": "2026-07-15 | environment exit 2 | pnpm test:e2e | local container has no DISPLAY or xvfb-run; no result claimed"
+    },
+    {
+      "suite": "legacy-command-16",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | pnpm test via GitHub Quality, including Vitest 30/30 and Playwright Electron E2E 1/1 | https://github.com/sy220284/666/actions/runs/29386475766"
+    },
+    {
+      "suite": "legacy-command-17",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Task Governance | https://github.com/sy220284/666/actions/runs/29386603319"
+    },
+    {
+      "suite": "legacy-command-18",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Quality, including Playwright Electron E2E | https://github.com/sy220284/666/actions/runs/29386603310"
+    }
+  ]
+}

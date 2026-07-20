@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M1-01",
+  "generatedFrom": "commands.txt",
+  "sourceCommit": "d279eaea92982b10f9424b47b0d0dac6e95406a7",
+  "results": [
+    {
+      "suite": "legacy-command-01",
+      "status": "passed",
+      "details": "pnpm task:validate | exit=0 duration_ms=510 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-02",
+      "status": "passed",
+      "details": "pnpm check:workspaces | exit=0 duration_ms=507 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-03",
+      "status": "passed",
+      "details": "pnpm check:boundaries | exit=0 duration_ms=530 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-04",
+      "status": "passed",
+      "details": "pnpm format:check | exit=0 duration_ms=4859 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-05",
+      "status": "passed",
+      "details": "pnpm lint | exit=0 duration_ms=5171 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-06",
+      "status": "passed",
+      "details": "pnpm typecheck | exit=0 duration_ms=26979 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-07",
+      "status": "passed",
+      "details": "pnpm test:unit | exit=0 duration_ms=14691 fixtures=M1-04,M1-05,M1-06"
+    },
+    {
+      "suite": "legacy-command-08",
+      "status": "passed",
+      "details": "pnpm test:integration | exit=0 duration_ms=7409 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-09",
+      "status": "passed",
+      "details": "pnpm test:migration | exit=0 duration_ms=14936 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-10",
+      "status": "passed",
+      "details": "pnpm test:security | exit=0 duration_ms=4210 fixtures=M1-01,M1-02,M1-04,M1-05,M1-08"
+    },
+    {
+      "suite": "legacy-command-11",
+      "status": "passed",
+      "details": "pnpm test:perf | exit=0 duration_ms=16095 fixtures=M1-06"
+    },
+    {
+      "suite": "legacy-command-12",
+      "status": "passed",
+      "details": "pnpm test:e2e | exit=0 duration_ms=196348 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-13",
+      "status": "passed",
+      "details": "M1 acceptance E2E | exit=0 duration_ms=58531 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    },
+    {
+      "suite": "legacy-command-14",
+      "status": "passed",
+      "details": "pnpm build | exit=0 duration_ms=16489 fixtures=M1-01,M1-02,M1-03,M1-04,M1-05,M1-06,M1-07,M1-08"
+    }
+  ]
+}

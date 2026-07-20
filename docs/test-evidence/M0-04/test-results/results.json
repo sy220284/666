@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-04",
+  "generatedFrom": "commands.txt",
+  "sourceCommit": "9908d57f97d71e6cdea2249e52e1430b7301c02d",
+  "results": [
+    {
+      "suite": "legacy-command-01",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=3239001e3365cea290675af36c20f2b6528ffdd1 | M0-03 Verified; M0-04 activated"
+    },
+    {
+      "suite": "legacy-command-02",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | required-document review | IPC_CONTRACTS, EVENT_PROTOCOL, ERROR_CODES, THREAT_MODEL"
+    },
+    {
+      "suite": "legacy-command-03",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm format"
+    },
+    {
+      "suite": "legacy-command-04",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm format:check"
+    },
+    {
+      "suite": "legacy-command-05",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm lint"
+    },
+    {
+      "suite": "legacy-command-06",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm typecheck | all eligible workspace packages passed"
+    },
+    {
+      "suite": "legacy-command-07",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test | 15 files, 53 tests passed"
+    },
+    {
+      "suite": "legacy-command-08",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test:integration | 5 files, 12 tests passed"
+    },
+    {
+      "suite": "legacy-command-09",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test:security | 4 files, 18 tests passed"
+    },
+    {
+      "suite": "legacy-command-10",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm check:workspaces | 10 workspace packages"
+    },
+    {
+      "suite": "legacy-command-11",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm check:boundaries | 9 process/package layers"
+    },
+    {
+      "suite": "legacy-command-12",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm build"
+    },
+    {
+      "suite": "legacy-command-13",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged"
+    },
+    {
+      "suite": "legacy-command-14",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified"
+    },
+    {
+      "suite": "legacy-command-15",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | documented error-code audit | documented=65; implemented=65; missing=0; extra=0"
+    },
+    {
+      "suite": "legacy-command-16",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | 10,000-chunk protocol benchmark | deltaBatches=20; recoveredPreviewCharacters=10000; cancelAckMs=1.012; eventsAfterCancel=0; slowConsumerDeliveredWithoutAck=32"
+    },
+    {
+      "suite": "legacy-command-17",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit b7410b4"
+    },
+    {
+      "suite": "legacy-command-18",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit 23ebb34"
+    },
+    {
+      "suite": "legacy-command-19",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit ad3770f"
+    },
+    {
+      "suite": "legacy-command-20",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Task Governance | https://github.com/sy220284/666/actions/runs/29389389684"
+    },
+    {
+      "suite": "legacy-command-21",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Quality with Playwright Electron MessagePort E2E | https://github.com/sy220284/666/actions/runs/29389389683"
+    }
+  ]
+}

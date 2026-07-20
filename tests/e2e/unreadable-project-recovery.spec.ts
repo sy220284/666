@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -40,22 +40,26 @@ test.afterEach(async () => {
   );
 });
 
-test('restores an external checkpoint when project.sqlite is physically unreadable', async () => {
-  test.setTimeout(120_000);
+test('browses and exports a Version from a verified checkpoint when project.sqlite is physically unreadable', async () => {
+  test.setTimeout(150_000);
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-unreadable-recovery-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'projects');
   const restoreParent = path.join(userDataPath, 'restored');
+  const exportDirectory = path.join(userDataPath, 'exports');
   await Promise.all([
     mkdir(createParent, { recursive: true }),
     mkdir(restoreParent, { recursive: true }),
+    mkdir(exportDirectory, { recursive: true }),
   ]);
   const workspacePath = path.join(createParent, '完全损坏恢复.worldforge');
-
-  const first = await launch(userDataPath, {
+  const environment = {
     WORLDFORGE_E2E_CREATE_PARENT: createParent,
     WORLDFORGE_E2E_RESTORE_PARENT: restoreParent,
-  });
+    WORLDFORGE_E2E_RECOVERY_EXPORT_DIRECTORY: exportDirectory,
+  };
+
+  const first = await launch(userDataPath, environment);
   try {
     const page = await first.firstWindow();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
@@ -64,6 +68,22 @@ test('restores an external checkpoint when project.sqlite is physically unreadab
     await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    const editor = page.locator('[data-draft-content]');
+    await editor.click();
+    await page.keyboard.type('物理损坏后仍可从已验证Checkpoint导出。');
+    await page.locator('[data-save-draft]').click();
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
+    await page.locator('[data-create-version]').click();
+    await page.locator('[data-version-title]').fill('物理损坏可导出版本');
+    await page.locator('[data-version-label]').fill('恢复验证');
+    await page.locator('[data-version-description]').fill('用于物理损坏Checkpoint回退验收');
+    await page.locator('[data-confirm-version]').click();
+    await expect(page.locator('[data-version-row]')).toContainText('物理损坏可导出版本');
+    await page.locator('[data-close-versions]').click();
+    await page.locator('[data-back-project]').click();
+
     await page.locator('[data-open-recovery]').click();
     await page.locator('[data-create-checkpoint]').click();
     await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {
@@ -81,8 +101,8 @@ test('restores an external checkpoint when project.sqlite is physically unreadab
   const damagedSource = await readFile(databasePath);
 
   const second = await launch(userDataPath, {
+    ...environment,
     WORLDFORGE_E2E_OPEN_WORKSPACE: workspacePath,
-    WORLDFORGE_E2E_RESTORE_PARENT: restoreParent,
   });
   try {
     const page = await second.firstWindow();
@@ -92,8 +112,14 @@ test('restores an external checkpoint when project.sqlite is physically unreadab
     await expect(page.locator('[data-active-project-readonly]')).toContainText('integrity-failed');
     await expect(page.locator('[data-recovery-dialog]')).toBeVisible();
     await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1);
-    await expect(page.locator('[data-recovery-versions]')).toContainText(
-      '当前数据库没有可读取的Version',
+    await expect(page.locator('[data-recovery-versions]')).toContainText('物理损坏可导出版本');
+
+    await page.locator('[data-export-recovery-version]').click();
+    await expect(page.locator('[data-recovery-status]')).toContainText('已导出');
+    const exportedFiles = await readdir(exportDirectory);
+    expect(exportedFiles).toHaveLength(1);
+    expect(await readFile(path.join(exportDirectory, exportedFiles[0]!), 'utf8')).toContain(
+      '物理损坏后仍可从已验证Checkpoint导出。',
     );
     await captureAcceptanceScreenshot(page, 'M1-08', 'unreadable-project-recovery-entry.png');
 

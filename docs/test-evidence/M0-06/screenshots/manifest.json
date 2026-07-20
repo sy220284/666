@@ -1,37 +1,37 @@
 [
   {
     "fileName": "1280x800-100.png",
-    "fixtureId": "DPI-1280x800-100",
+    "fixtureId": "M0-06-legacy-verified",
     "sha256": "1dbc5b8ab9054a359bb9df76be126fc02f1aef0c05b1742ec16ad0cf6b12f988"
   },
   {
     "fileName": "2560x1440-100.png",
-    "fixtureId": "DPI-2560x1440-100",
+    "fixtureId": "M0-06-legacy-verified",
     "sha256": "a4684d858d3309c1165e118d203e1a718899276de9ae5dff0f519dc153204111"
   },
   {
     "fileName": "2560x1440-125.png",
-    "fixtureId": "DPI-2560x1440-125",
+    "fixtureId": "M0-06-legacy-verified",
     "sha256": "1222aa56d8a2f9d39d21131fda21775398ed9e80f515ba2949da21fab6d0743f"
   },
   {
     "fileName": "2560x1440-150.png",
-    "fixtureId": "DPI-2560x1440-150",
+    "fixtureId": "M0-06-legacy-verified",
     "sha256": "e5fff67e326646cadba9f8d81658e2c84da50745026ef836e5995e97e1564023"
   },
   {
     "fileName": "3440x1440-100.png",
-    "fixtureId": "DPI-3440x1440-100",
+    "fixtureId": "M0-06-legacy-verified",
     "sha256": "f9146951e770844d5f7d3a8809cfc5bdb65782bcff594338a52808626ad8d836"
   },
   {
     "fileName": "3840x1600-100.png",
-    "fixtureId": "DPI-3840x1600-100",
+    "fixtureId": "M0-06-legacy-verified",
     "sha256": "5d93b6c35b5adbf3c2a9139fb6ce87fe9fb3fd6555e2bb294d11d1a69db76b59"
   },
   {
     "fileName": "effective-1024x640.png",
-    "fixtureId": "DPI-EFFECTIVE-1024x640",
+    "fixtureId": "M0-06-legacy-verified",
     "sha256": "c1c720ce15ce4a8f36e3365cb63faec43dc6651eb457164facc464ca519d80bf"
   }
 ]

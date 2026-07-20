@@ -61,15 +61,14 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
 
   quality:
-    name: Main static verification
+    name: Full Linux verification
     needs: validate-main
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ inputs.expected_sha }}
-      draft_mode: true
-      package_smoke: false
-      security_suite: false
-      performance_eval: false
+      package_smoke: true
+      security_suite: true
+      performance_eval: true
 
   main-verification:
     name: main-verification

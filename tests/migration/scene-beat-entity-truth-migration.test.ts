@@ -5,10 +5,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  ProjectDatabase,
-  loadMigrations,
-} from '../../packages/core-service/src/database/index.js';
+import { ProjectDatabase, loadMigrations } from '../../packages/core-service/src/database/index.js';
 
 const temporaryDirectories: string[] = [];
 const timestamp = '2026-07-20T11:00:00.000Z';
@@ -23,9 +20,7 @@ afterEach(async () => {
 
 describe('M3-02 SceneBeat entity truth migration', () => {
   it('validates legacy UUID inputs and keeps generic relation rows synchronized', async () => {
-    const directory = await mkdtemp(
-      path.join(tmpdir(), 'worldforge-scene-beat-entity-truth-'),
-    );
+    const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-scene-beat-entity-truth-'));
     temporaryDirectories.push(directory);
     const database = await ProjectDatabase.open({
       path: path.join(directory, 'project.sqlite'),
@@ -158,11 +153,7 @@ describe('M3-02 SceneBeat entity truth migration', () => {
         { entityId: locationId, role: 'location' },
       ]);
 
-      for (const invalidCharacterId of [
-        randomUUID(),
-        archivedCharacterId,
-        foreignCharacterId,
-      ]) {
+      for (const invalidCharacterId of [randomUUID(), archivedCharacterId, foreignCharacterId]) {
         await expect(
           database.write(randomUUID(), (connection) =>
             connection

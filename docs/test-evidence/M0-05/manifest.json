@@ -1,38 +1,38 @@
 {
   "schemaVersion": 1,
   "taskId": "M0-05",
-  "commit": "9110b16bfc2c08d210d0306b7b394ef20cc9c9f7",
-  "generatedAt": "2026-07-19T01:18:34Z",
+  "commit": "99561b79233f59d6e2c5a23cefefbb706c0d4cad",
+  "generatedAt": "2026-07-20T02:17:01Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 164,
-      "sha256": "cdd34304f273a2abc1ada76cc1bdd7a8c6f1810f4cc4165076aa5c71978f622d"
+      "bytes": 891,
+      "sha256": "5532f2e7e5369900bb783d88e4fba3da1dd08febde55d0270b4f807404a5ae50"
     },
     {
       "path": "known-risks.md",
-      "bytes": 120,
-      "sha256": "12e4f2362cbfe1001ed6f9dc3c01bda3dcaacff77c982725f782ffc7448dd6d5"
+      "bytes": 318,
+      "sha256": "6fdf16463f1c22715d33b6ad538cb95ef94d8a48e1685f78fb60e4745ded5da3"
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 553,
-      "sha256": "76e56d288dd2a8866313cb6688dafa3f2e978d1b773921e7f745cc1da470710a"
+      "bytes": 983,
+      "sha256": "85868f9cef365038f6097919555c262ae76230ba11a122ed8fb8d41387629c90"
     },
     {
       "path": "performance.json",
-      "bytes": 3,
-      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      "bytes": 263,
+      "sha256": "9d7afbc25b0f55633fdeca85402e0889396a45823667a81489146f4c83baf595"
     },
     {
       "path": "quality-matrix.md",
-      "bytes": 245,
-      "sha256": "1a1b158ce635d8bb50d2b47040e459e73606a1e7eb2e1992233d9ecfbc1d9b1d"
+      "bytes": 837,
+      "sha256": "9c65ec0337a5669f70f3deb2623c1e73286fc30786b460df4a51a72048c99f4c"
     },
     {
       "path": "screenshots/README.md",
-      "bytes": 310,
-      "sha256": "4e7c7b2727e5ff91de4b5a2d533713a7c0613ac2c1211169e18892e1a33332a1"
+      "bytes": 392,
+      "sha256": "ff724a9b57c3aecdcd8bc69aa911640b36b087139a728926e031bf09af3ae0e6"
     },
     {
       "path": "screenshots/manifest.json",
@@ -41,18 +41,18 @@
     },
     {
       "path": "summary.md",
-      "bytes": 391,
-      "sha256": "f9d0e0b6f6992088425dbd7ad56435b7a51942996554896ee579c4ac774cd26d"
+      "bytes": 674,
+      "sha256": "e57d68dcd7e9f973a73737c7d37a4f6b607c49a036cf1d7479701be7459612a3"
     },
     {
       "path": "test-results/results.json",
-      "bytes": 962,
-      "sha256": "b011c814dd253976c1eccdf2b31062c466c902221c89dfbd3bbf0a77fc8e5674"
+      "bytes": 1480,
+      "sha256": "1becad75915b175a13fbc1c03e6fc5b32bd88546336f5492b504c8d9aebe667f"
     },
     {
       "path": "test-results/testkit-self-test.json",
-      "bytes": 1254,
-      "sha256": "dc47f2507901eae7fda767f264f23e38ce8be20926885aae6236802177802294"
+      "bytes": 1172,
+      "sha256": "56016e11f6519ed4b6d82d2c627111fae430666b3a46b12e9fd5ee7f203333fa"
     }
   ]
 }

@@ -1,10 +1,16 @@
-# M0-05 人工验收记录
+# M0-05人工复核记录
 
-| 验收点 | 结果 | 说明 |
-| --- | --- | --- |
-| 临时工作区与确定性工具 | PASS | 项目路径边界、权限、时钟与ID均可复现。 |
-| SQLite与Migration故障注入 | PASS | 写锁、空间耗尽、事务中断和损坏场景均真实触发且无部分写入。 |
-| Provider与公开Fixture | PASS | 正常、断流、超时、限流、取消及中文大文本输入均稳定。 |
-| Electron真实入口 | PASS | Linux显示环境由Xvfb提供，不退化为浏览器替代。 |
+复核时间：2026-07-20T02:17:01Z  
+受测主线提交：`99561b79233f59d6e2c5a23cefefbb706c0d4cad`  
+来源PR：#83
 
-结论：Verified。
+## 人工审计
+
+- 核对`tests/migration/testkit-faults.test.ts`，确认存在真实`SQLITE_BUSY`、`SQLITE_FULL`、事务中断回滚、Migration中断无残留、路径越界拒绝和临时工作区幂等清理断言。
+- 核对`packages/testkit/src/`公开导出，确认Provider Stub、确定性Clock/ID、Fixture、故障注入、证据写入器和临时工作区均通过统一Testkit入口提供。
+- 核对PR #83全部永久门禁与Main Verification，确认测试运行对象分别为最终PR Head和squash后的main提交。
+- 核对Electron E2E实际启动桌面应用并在运行结束后通过clean-tree检查。
+
+## 截图判定
+
+M0-05是测试基础设施任务，没有独立用户可操作页面，任务卡也未要求专属视觉验收。截图清单保持为空；不得用无关桌面截图冒充任务证据。

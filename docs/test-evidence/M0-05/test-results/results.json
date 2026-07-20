@@ -1,32 +1,38 @@
 [
   {
-    "suite": "testkit-unit",
+    "suite": "testkit-unit-and-fixtures",
     "fixtureId": "M0-05-testkit-unit",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Quality https://github.com/sy220284/666/actions/runs/29711815513 and Main Verification https://github.com/sy220284/666/actions/runs/29711975141"
   },
   {
     "suite": "fault-injection",
     "fixtureId": "M0-05-fault-injection",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "SQLITE_BUSY, SQLITE_FULL, transaction rollback and migration interruption assertions passed in the migration suite."
   },
   {
-    "suite": "security-fixtures",
-    "fixtureId": "M0-05-security-fixtures",
+    "suite": "path-and-cleanup",
+    "fixtureId": "M0-05-path-cleanup",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Traversal rejection and idempotent temporary workspace cleanup assertions passed."
+  },
+  {
+    "suite": "provider-and-ai-protocol",
+    "fixtureId": "M0-05-provider-protocol",
+    "status": "passed",
+    "details": "Unit and performance/eval suites passed in Main Verification https://github.com/sy220284/666/actions/runs/29711975141."
   },
   {
     "suite": "desktop-entry",
-    "fixtureId": "M0-05-desktop-entry",
+    "fixtureId": "M0-05-electron-entry",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "Electron E2E passed in Quality https://github.com/sy220284/666/actions/runs/29711815513 and Main Verification https://github.com/sy220284/666/actions/runs/29711975141."
   },
   {
     "suite": "permanent-gates",
     "fixtureId": "M0-05-permanent-gates",
     "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+    "details": "PR Policy, Task Governance, Quality, Security, Performance and Evidence passed for PR #83."
   }
 ]

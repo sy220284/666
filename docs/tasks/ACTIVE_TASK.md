@@ -8,10 +8,10 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M0-05`
-- 唯一任务卡：`docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md`
-- 工作分支：`work/m0-05-testkit-fault-injection`
-- 开始时间：`2026-07-20`
+- 任务ID：`M3-04`
+- 唯一任务卡：`docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md`
+- 工作分支：`work/m3-04-state-timeline-knowledge`
+- 开始时间：`2026-07-19`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -19,21 +19,21 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - packages/testkit/
-  - tests/
-  - evals/
-  - scripts/
-  - docs/test-evidence/
+  - migrations/project/
+  - packages/domain/
+  - packages/core-service/
+  - packages/contracts/
+  - apps/desktop/renderer/
+  - tests/integration/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md
   - docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M0-05/
+  - docs/test-evidence/M3-04/
 forbidden_paths:
 
 required_docs:
@@ -41,10 +41,9 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
   - docs/testing/TEST_STRATEGY.md
-  - docs/testing/SECURITY_TEST_CASES.md
-  - docs/testing/PERFORMANCE_BUDGETS.md
-  - docs/ai/PROMPT_AND_EVAL_SPEC.md
 verification:
   - pnpm lint
   - pnpm typecheck
@@ -54,7 +53,6 @@ verification:
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:eval
-  - pnpm test:perf
 ```
 
 ## 连续执行规则

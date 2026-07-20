@@ -1,12 +1,12 @@
-# M0-05 测试证据
+# M0-05测试证据
 
-生成时间：2026-07-19T01:18:34Z  
-提交：9110b16bfc2c08d210d0306b7b394ef20cc9c9f7
+生成时间：2026-07-20T02:17:01Z  
+受测提交：`99561b79233f59d6e2c5a23cefefbb706c0d4cad`  
+来源PR：#83  
+Main Verification：https://github.com/sy220284/666/actions/runs/29711975141
 
-状态：Verified。测试基建、公开合成Fixture、故障注入、Provider Stub、证据写入器与真实Electron执行入口已在当前主线完整回归。任务卡、索引与证据摘要状态现已一致。
+状态：Verified。
 
-## 自动化结果
+M0-05已在通用工作流下重新验证。PR #83以标准`revalidation-reopen`转换激活任务，六项永久门禁全部通过；Controlled Merge后，Main Verification在最终main提交上重新执行完整质量、安全、性能与Electron E2E矩阵。
 
-- 通过：5
-- 失败：0
-- 跳过：0
+本次证据未复用旧Closeout运行结论。故障注入、自测、清理和桌面入口均由当前主线代码、实际测试套件及对应Actions运行共同支撑。

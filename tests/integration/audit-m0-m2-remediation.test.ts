@@ -174,14 +174,14 @@ describe('M0-M2 audit remediation', () => {
         trashEntryId: trashEntry.id,
       });
       expect(clear.canDelete).toBe(true);
-    expect(() =>
-      harness.operations.assertPermanentDeleteExecutable({
-        projectId: project.projectId,
-        trashEntryId: trashEntry.id,
-        planHash: clear.planHash,
-        confirmationTitle: trashEntry.title,
-      }),
-    ).not.toThrow();
+      expect(() =>
+        harness.operations.assertPermanentDeleteExecutable({
+          projectId: project.projectId,
+          trashEntryId: trashEntry.id,
+          planHash: clear.planHash,
+          confirmationTitle: trashEntry.title,
+        }),
+      ).not.toThrow();
 
       await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
         database

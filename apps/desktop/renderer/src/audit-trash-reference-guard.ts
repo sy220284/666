@@ -52,7 +52,10 @@ async function guardedPermanentDelete(button: HTMLButtonElement): Promise<void> 
       '',
     );
     if (confirmation !== title) {
-      trashStatus(confirmation === null ? '已取消永久删除。' : '标题不匹配，未删除。', confirmation !== null);
+      trashStatus(
+        confirmation === null ? '已取消永久删除。' : '标题不匹配，未删除。',
+        confirmation !== null,
+      );
       return;
     }
     const result = await window.worldforge.trash.permanentDelete({

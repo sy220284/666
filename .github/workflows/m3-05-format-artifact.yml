@@ -1,15 +1,12 @@
-name: M3-05 Format Artifact
+name: M3-05 Deterministic Format
 
 on:
   push:
     branches:
       - work/m3-05-foreshadowing-character-arc
-  pull_request:
-    branches:
-      - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -17,7 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: work/m3-05-foreshadowing-character-arc
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
@@ -29,10 +27,14 @@ jobs:
           pnpm exec prettier --write
           packages/core-service/src/narrative-planning.ts
           tests/integration/narrative-character-arc.test.ts
-      - uses: actions/upload-artifact@v7
-        with:
-          name: m3-05-formatted-files
-          path: |
-            packages/core-service/src/narrative-planning.ts
-            tests/integration/narrative-character-arc.test.ts
-          if-no-files-found: error
+      - name: Commit deterministic formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/core-service/src/narrative-planning.ts tests/integration/narrative-character-arc.test.ts
+          git commit -m "style(M3-05): apply repository prettier output"
+          git push origin HEAD:work/m3-05-foreshadowing-character-arc

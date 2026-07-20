@@ -144,7 +144,11 @@ export const ForeshadowingSaveInputSchema = z
       (relation) => `${relation.targetForeshadowingId}:${relation.kind}`,
     );
     if (new Set(relationKeys).size !== relationKeys.length) {
-      context.addIssue({ code: 'custom', path: ['relations'], message: 'Relations must be unique.' });
+      context.addIssue({
+        code: 'custom',
+        path: ['relations'],
+        message: 'Relations must be unique.',
+      });
     }
     const chapterKeys = value.chapterLinks.map((link) => `${link.chapterId}:${link.role}`);
     if (new Set(chapterKeys).size !== chapterKeys.length) {

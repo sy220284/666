@@ -1,36 +1,51 @@
 {
   "schemaVersion": 1,
   "taskId": "M3-02",
-  "generatedAt": "2026-07-18T15:15:00.000Z",
-  "implementationStatus": "in-progress",
-  "results": [
-    {
-      "suite": "format",
-      "command": "pnpm format",
-      "status": "passed",
-      "exitCode": 0
+  "sourceCommit": "0239e87aca9a31bcfc81008d326af2a9fa16b889",
+  "validatedHead": "ac4cf1a30e61ba880b5160e50ca8d3118078aa50",
+  "generatedAt": "2026-07-20T12:40:00Z",
+  "conclusion": "success",
+  "runs": {
+    "quality": {
+      "id": 29740976348,
+      "conclusion": "success"
     },
-    {
-      "suite": "lint",
-      "command": "pnpm lint",
-      "status": "passed",
-      "exitCode": 0
+    "security": {
+      "id": 29740976130,
+      "conclusion": "success"
     },
-    {
-      "suite": "task-control",
-      "command": "pnpm task:validate",
-      "status": "passed",
-      "exitCode": 0
+    "performance": {
+      "id": 29740976098,
+      "conclusion": "success"
     },
-    {
-      "suite": "permanent-ci",
-      "status": "pending",
-      "note": "PR 六类永久门禁独立运行，结果不在生成时预写。"
+    "prPolicy": {
+      "id": 29740976176,
+      "conclusion": "success"
     },
-    {
-      "suite": "manual-acceptance",
-      "status": "deferred",
-      "note": "未宣称人工验收通过。"
+    "taskGovernance": {
+      "id": 29740976087,
+      "conclusion": "success"
+    },
+    "evidence": {
+      "id": 29740976193,
+      "conclusion": "success"
     }
-  ]
+  },
+  "coverage": [
+    "static",
+    "unit",
+    "integration",
+    "migration",
+    "build",
+    "package-smoke",
+    "electron-e2e",
+    "security",
+    "performance",
+    "ai-eval"
+  ],
+  "electron": {
+    "tests": 19,
+    "passed": 19,
+    "sceneBeatSpecIncluded": true
+  }
 }

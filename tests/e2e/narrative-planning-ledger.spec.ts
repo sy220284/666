@@ -26,7 +26,9 @@ type ContinuityBridge = {
 
 type NarrativePlanningBridge = {
   list(input: NarrativePlanningListInput): Promise<CommandResult<NarrativePlanningCatalog>>;
-  saveForeshadowing(input: ForeshadowingSaveInput): Promise<CommandResult<NarrativePlanningCatalog>>;
+  saveForeshadowing(
+    input: ForeshadowingSaveInput,
+  ): Promise<CommandResult<NarrativePlanningCatalog>>;
   transitionForeshadowing(
     input: ForeshadowingTransitionInput,
   ): Promise<CommandResult<NarrativePlanningCatalog>>;

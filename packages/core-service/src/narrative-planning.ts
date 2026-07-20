@@ -45,11 +45,7 @@ export type NarrativePlanningServiceErrorCode =
 export class NarrativePlanningServiceError extends Error {
   readonly code: NarrativePlanningServiceErrorCode;
 
-  constructor(
-    code: NarrativePlanningServiceErrorCode,
-    message: string,
-    options?: ErrorOptions,
-  ) {
+  constructor(code: NarrativePlanningServiceErrorCode, message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'NarrativePlanningServiceError';
     this.code = code;
@@ -188,7 +184,8 @@ function assertArc(connection: DatabaseSync, projectId: string, arcId: string): 
         WHERE id = ? AND project_id = ?`,
     )
     .get(arcId, projectId) as ArcRow | undefined;
-  if (!row) throw new NarrativePlanningServiceError('NARRATIVE_NOT_FOUND', 'Character arc not found.');
+  if (!row)
+    throw new NarrativePlanningServiceError('NARRATIVE_NOT_FOUND', 'Character arc not found.');
   return row;
 }
 
@@ -208,7 +205,8 @@ function assertMilestone(
         WHERE id = ? AND project_id = ?`,
     )
     .get(milestoneId, projectId) as MilestoneRow | undefined;
-  if (!row) throw new NarrativePlanningServiceError('NARRATIVE_NOT_FOUND', 'Arc milestone not found.');
+  if (!row)
+    throw new NarrativePlanningServiceError('NARRATIVE_NOT_FOUND', 'Arc milestone not found.');
   return row;
 }
 
@@ -577,8 +575,7 @@ function assertNoMutualExclusionConflict(
         LIMIT 1`,
     )
     .get(foreshadowingId, projectId, foreshadowingId, foreshadowingId) as
-    | { readonly title: string; readonly status: string }
-    | undefined;
+    { readonly title: string; readonly status: string } | undefined;
   if (conflict) {
     throw new NarrativePlanningServiceError(
       'NARRATIVE_CONFLICT',
@@ -587,7 +584,9 @@ function assertNoMutualExclusionConflict(
   }
 }
 
-const foreshadowingTransitions: Readonly<Record<ForeshadowingStatus, readonly ForeshadowingStatus[]>> = {
+const foreshadowingTransitions: Readonly<
+  Record<ForeshadowingStatus, readonly ForeshadowingStatus[]>
+> = {
   planned: ['planted', 'cancelled'],
   planted: ['reinforced', 'partially_revealed', 'revealed', 'cancelled'],
   reinforced: ['partially_revealed', 'revealed', 'cancelled'],
@@ -706,10 +705,7 @@ export class NarrativePlanningService {
   readonly #clock: DatabaseClock;
   readonly #idFactory: () => string;
 
-  constructor(
-    workspace: ProjectWorkspaceService,
-    options: NarrativePlanningServiceOptions = {},
-  ) {
+  constructor(workspace: ProjectWorkspaceService, options: NarrativePlanningServiceOptions = {}) {
     this.#workspace = workspace;
     this.#clock = options.clock ?? systemClock;
     this.#idFactory = options.idFactory ?? randomUUID;
@@ -717,7 +713,9 @@ export class NarrativePlanningService {
 
   list(input: NarrativePlanningListInput): NarrativePlanningCatalog {
     const valid = NarrativePlanningListInputSchema.parse(input);
-    return this.#workspace.readProject(valid.projectId, (connection) => readCatalog(connection, valid));
+    return this.#workspace.readProject(valid.projectId, (connection) =>
+      readCatalog(connection, valid),
+    );
   }
 
   async saveForeshadowing(
@@ -776,7 +774,9 @@ export class NarrativePlanningService {
           );
       }
       connection.prepare('DELETE FROM foreshadowing_chapters WHERE foreshadowing_id = ?').run(id);
-      connection.prepare('DELETE FROM foreshadowing_relations WHERE source_foreshadowing_id = ?').run(id);
+      connection
+        .prepare('DELETE FROM foreshadowing_relations WHERE source_foreshadowing_id = ?')
+        .run(id);
       const insertChapter = connection.prepare(
         `INSERT INTO foreshadowing_chapters(
            project_id, foreshadowing_id, chapter_id, role, created_at
@@ -792,13 +792,7 @@ export class NarrativePlanningService {
          ) VALUES(?, ?, ?, ?, ?)`,
       );
       for (const relation of valid.relations) {
-        insertRelation.run(
-          valid.projectId,
-          id,
-          relation.targetForeshadowingId,
-          relation.kind,
-          now,
-        );
+        insertRelation.run(valid.projectId, id, relation.targetForeshadowingId, relation.kind, now);
       }
       return readCatalog(connection, {
         projectId: valid.projectId,
@@ -843,12 +837,7 @@ export class NarrativePlanningService {
           `UPDATE foreshadowings SET status = ?, updated_at = ?
             WHERE id = ? AND project_id = ?`,
         )
-        .run(
-          valid.status,
-          this.#clock.now().toISOString(),
-          valid.foreshadowingId,
-          valid.projectId,
-        );
+        .run(valid.status, this.#clock.now().toISOString(), valid.foreshadowingId, valid.projectId);
       return readCatalog(connection, {
         projectId: valid.projectId,
         query: '',
@@ -927,16 +916,9 @@ export class NarrativePlanningService {
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
       const id = valid.milestoneId ?? this.#idFactory();
-      const current = valid.milestoneId
-        ? assertMilestone(connection, valid.projectId, id)
-        : null;
+      const current = valid.milestoneId ? assertMilestone(connection, valid.projectId, id) : null;
       assertMilestoneTargets(connection, valid.projectId, id, valid);
-      assertMilestoneDependencyGraph(
-        connection,
-        valid.projectId,
-        id,
-        valid.dependencyMilestoneIds,
-      );
+      assertMilestoneDependencyGraph(connection, valid.projectId, id, valid.dependencyMilestoneIds);
       const now = this.#clock.now().toISOString();
       if (current) {
         connection

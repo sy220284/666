@@ -37,7 +37,19 @@ jobs:
       - name: Validate every changed task evidence package
         run: node scripts/evidence-policy.mjs
       - name: Validate all Verified task evidence packages
-        run: node scripts/verified-evidence-scan.mjs
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          node scripts/verified-evidence-scan.mjs 2>&1 | tee test-results/ci/verified-evidence-scan.log
+      - name: Upload Verified evidence scan diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-evidence-scan-${{ github.run_id }}
+          path: test-results/ci/verified-evidence-scan.log
+          if-no-files-found: error
+          retention-days: 14
       - name: Assert clean working tree after evidence validation
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

@@ -1,4 +1,4 @@
-# M0—M2审计修复计划
+# M0—M2审计修复计划与收尾记录
 
 > 审计复核基线：`main@9db5bbf1460b11df0236c0104fca2acf720459ad`  
 > 修复分支：`fix/governance-audit-m0-m2-remediation`  
@@ -8,54 +8,51 @@
 
 ### M2-04永久删除影响失真
 
-当前预览和执行仅以Version、Candidate作为阻断项。SceneBeat会随章节级联删除；EntityState与KnowledgeState会在执行时触发外键拒绝；TimelineEvent会静默失去章节锚点。预览、执行和当前Schema不一致。
+原预览和执行只以Version、Candidate作为阻断项。M3引入SceneBeat、EntityState、KnowledgeState和TimelineEvent后，数据库会出现静默级联、执行期外键失败或章节锚点被清空，预览、执行和当前Schema不一致。
 
 ### M1-08物理损坏降级能力不足
 
-项目数据库物理不可读时，活动上下文没有数据库Reader。恢复概览返回空Version列表，Version导出依赖原库查询，因此只能恢复外部Checkpoint，不能从Checkpoint浏览或导出Version。
+项目数据库物理不可读时，活动上下文没有数据库Reader。原恢复概览返回空Version列表，Version导出依赖原库查询，因此只能恢复外部Checkpoint，不能从Checkpoint浏览或导出Version。
 
 ### 历史Verified证据不能按现行规则重放
 
-M0-01—M0-04缺标准Manifest；M0-06、M0-07缺人工验收和质量矩阵；M1-01—M1-07、M1-09缺截图Manifest。现行Evidence工作流只检查本PR变更的证据目录，无法发现历史Verified漂移。
+M0-01—M0-04缺标准Manifest；M0-06、M0-07缺人工验收和质量矩阵；M1-01—M1-07、M1-09缺截图Manifest。现行Evidence工作流原先只检查本PR变更的证据目录，无法发现历史Verified漂移。全量扫描启用后另发现M2-03、M2-04的Manifest引用了未保留在主线祖先链中的PR Head。
 
-## 2. 修复设计
+## 2. 已实施方案
 
 ### 2.1 永久删除引用模型
 
-1. 影响预览显式列出当前章节引用：SceneBeat、EntityState起止引用、KnowledgeState起止引用、TimelineEvent章节锚点。
-2. SceneBeat属于可确认的级联影响，进入影响数量和计划Hash。
-3. EntityState、KnowledgeState属于权威连续性引用，阻断永久删除。
-4. TimelineEvent虽由数据库执行`SET NULL`，但静默丢失章节锚点不可接受，按阻断项处理，作者必须先迁移或解除锚点。
-5. 执行事务内重新计算同一影响模型，任何变化使计划失效；恢复点仍在执行前创建。
-6. 章节和卷删除均覆盖；补充预览、竞态、回滚与每类外键语义测试。
+1. 影响预览不再硬编码M3表名，而是读取SQLite外键元数据，动态发现所有指向`chapters`的当前及未来引用。
+2. Draft内部引用由删除事务受控处理；Version、Candidate以及其他`CASCADE`、`RESTRICT`、`NO ACTION`、`SET NULL`和`SET DEFAULT`章节引用均明确阻断。
+3. 阻断项返回`表名.字段名`、引用数量和`ON DELETE`动作，Renderer向用户显示真实影响来源。
+4. `planHash`包含完整目标、影响和阻断集合；执行事务内重新扫描，预览后新增引用会使旧计划失效。
+5. 集成测试覆盖动态新增外键、旧计划失效、章节/TrashEntry/Draft/正文不变；Electron E2E覆盖TimelineEvent章节锚点阻断、解除锚点后删除和恢复点生成。
 
 ### 2.2 物理损坏Checkpoint只读回退
 
-1. 原数据库物理不可读时，按时间倒序读取外部Checkpoint元数据。
-2. 每个候选必须通过文件名边界、普通文件、SHA-256、SQLite完整性、外键和项目身份校验。
-3. 从最新可验证Checkpoint只读列出Version；导出指定Version时可向更旧的有效Checkpoint回退查找。
-4. 导出仍写入用户选择目录，使用临时文件和原子改名；不修改损坏源库或Checkpoint。
-5. UI明确标识Version来源为已验证Checkpoint，避免误认为来自损坏原库当前状态。
-6. 补充损坏源库、损坏Checkpoint、篡改元数据、多个Checkpoint、导出和源文件不变测试。
+1. 原数据库物理不可读时，按Checkpoint时间顺序读取外部备份元数据。
+2. 每个候选必须通过路径边界、普通文件且非符号链接、文件大小、SHA-256、SQLite完整性、外键和项目身份校验。
+3. 从可验证Checkpoint只读汇总Version；导出指定Version时可继续向其他有效Checkpoint回退查找。
+4. 导出写入用户选择目录，使用临时文件和原子改名；不修改损坏源库或Checkpoint。
+5. 集成测试覆盖Version浏览/导出、篡改Checkpoint拒绝和源文件字节不变；Electron E2E覆盖损坏前创建Version与Checkpoint、损坏后列表、导出正文和恢复副本。
 
 ### 2.3 历史证据迁移与永久治理
 
-1. 只补齐已有验收事实，不伪造新截图或未执行命令。
-2. 现有二进制截图保持原字节不变；新增截图Manifest引用其现有SHA-256。
-3. M0-01—M0-04根据历史关闭提交、已有命令和结果建立标准Manifest。
-4. M0-06、M0-07补人工验收与质量矩阵，Manifest重新计算。
-5. M1-01—M1-07、M1-09补截图Manifest并重新计算根Manifest。
-6. Evidence策略新增全量Verified扫描；PR继续扫描变更包，同时所有Verified任务必须可通过现行结构和最终语义规则。
-7. 工作流增加定时与手动入口，定期检测历史证据漂移。
+1. 只结构化已有验收事实，不伪造新截图或未执行命令；本地无显示环境仍记录为跳过，远程Electron成功单独保留。
+2. M0-01—M0-04、M0-06、M0-07、M1-01—M1-07、M1-09共14个历史包已迁移并逐包通过现行Evidence规则。
+3. 现有二进制截图保持原字节不变；新增截图Manifest引用实际SHA-256。
+4. M2-03证据由未保留的PR Head改绑至PR #54的主线合并提交，不改变原验收结论和工件。
+5. Evidence策略新增全量Verified扫描、失败汇总和完整诊断工件；PR、手动和每周定时运行均扫描全部Verified任务。
+6. M1-08、M2-04在本次功能修复的完整Ready CI与Electron工件产生后重建证据，绑定本次不可变实现提交。
 
 ## 3. PR边界
 
-机器边界由`.github/audit-remediations/m0-m2-2026-07-20.json`定义。业务文件必须属于M1-08或M2-04的固定文件清单；证据修改仅允许14个列出的任务目录；治理修改仅允许固定治理文件。`ACTIVE_TASK.json`、`ACTIVE_TASK.md`、`TASK_INDEX.md`不得变化。
+机器边界由`.github/audit-remediations/m0-m2-2026-07-20.json`定义。业务文件必须属于M1-08或M2-04固定清单；历史迁移只允许清单中的14个目录及M2-03来源修复；M1-08、M2-04仅允许重建本次修复证据；治理修改仅允许固定文件。`ACTIVE_TASK.json`、`ACTIVE_TASK.md`、`TASK_INDEX.md`保持不变。
 
 ## 4. 验证门
 
 - Task Governance验证审计清单、基线、分支、活动任务不变及逐文件白名单。
-- Evidence验证14个迁移包，并全量扫描所有Verified任务。
+- Evidence验证变更证据，并全量扫描所有Verified任务。
 - Quality执行格式、Lint、类型、Unit、Integration、Migration、真实Electron E2E、Build和Package Smoke。
-- Security与Performance保持永久门禁。
-- 任一历史证据无法由已有事实闭环时，该任务不得伪造通过；必须在PR中显式降级状态或记录阻断。
+- Security、Performance与Repository Governance保持永久门禁。
+- 任一证据无法由真实提交、命令、工件和验收结论闭环时，不得伪造通过或合并。

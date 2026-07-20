@@ -117,6 +117,7 @@ describe('M3-05 character arcs', () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
+      const foreign = await seedContinuity(harness);
       let catalog = await harness.narrative.saveCharacterArc(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -140,10 +141,29 @@ describe('M3-05 character arcs', () => {
         chapterId: seeded.chapter2.id,
         locationId: seeded.south.id,
         description: '',
-        entities: [{ entityId: seeded.character.id, role: 'participant' }],
-        dependencyEventIds: [],
+        participantIds: [seeded.character.id],
+        witnessIds: [],
+        subjectIds: [],
+        dependencyIds: [],
       });
       const event = eventCatalog.timelineEvents[0]!;
+      const foreignEventCatalog = await harness.continuity.saveTimelineEvent(randomUUID(), {
+        projectId: foreign.project.projectId,
+        authority: 'author',
+        eventId: null,
+        title: '异项目事件',
+        startValue: '2026-07-21',
+        endValue: null,
+        precision: 'day',
+        chapterId: foreign.chapter2.id,
+        locationId: foreign.south.id,
+        description: '',
+        participantIds: [foreign.character.id],
+        witnessIds: [],
+        subjectIds: [],
+        dependencyIds: [],
+      });
+      const foreignEvent = foreignEventCatalog.timelineEvents[0]!;
       catalog = await harness.narrative.saveArcMilestone(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -184,7 +204,33 @@ describe('M3-05 character arcs', () => {
           dependencyTimelineEventIds: [event.id],
         }),
       ).rejects.toMatchObject({ code: 'NARRATIVE_CONFLICT' });
-
+      await expect(
+        harness.narrative.saveArcMilestone(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'author',
+          milestoneId: null,
+          arcId: arc.id,
+          title: '跨项目时间线',
+          description: '',
+          sortIndex: 3,
+          plannedChapterId: seeded.chapter4.id,
+          dependencyMilestoneIds: [],
+          dependencyTimelineEventIds: [foreignEvent.id],
+        }),
+      ).rejects.toMatchObject({ code: 'NARRATIVE_NOT_FOUND' });
+      await expect(
+        harness.narrative.saveCharacterArc(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'author',
+          arcId: null,
+          characterId: seeded.character.id,
+          title: '缺少自定义类型',
+          arcType: 'custom',
+          customType: null,
+          status: 'planned',
+          authorIntent: '',
+        }),
+      ).rejects.toBeDefined();
       await expect(
         harness.narrative.saveCharacterArc(randomUUID(), {
           projectId: seeded.project.projectId,

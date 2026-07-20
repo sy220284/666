@@ -16,6 +16,17 @@ function blockerLabel(blocker: {
   return `${blocker.source ?? '未知章节引用'} ${blocker.count}项（ON DELETE ${blocker.deleteAction ?? 'UNKNOWN'}）`;
 }
 
+function renderTrashEmptyStateAfterRemoval(row: HTMLElement): void {
+  const list = row.closest<HTMLElement>('[data-trash-list]');
+  row.remove();
+  if (!list || list.querySelector('[data-trash-entry-id]')) return;
+  const empty = document.createElement('p');
+  empty.className = 'structure-empty';
+  empty.dataset.trashEmpty = '';
+  empty.textContent = '废纸篓为空。';
+  list.replaceChildren(empty);
+}
+
 async function guardedPermanentDelete(button: HTMLButtonElement): Promise<void> {
   const row = button.closest<HTMLElement>('[data-trash-entry-id]');
   const trashEntryId = row?.dataset.trashEntryId;
@@ -68,7 +79,7 @@ async function guardedPermanentDelete(button: HTMLButtonElement): Promise<void> 
       trashStatus(`永久删除失败 · ${result.error.code}`, true);
       return;
     }
-    row.remove();
+    renderTrashEmptyStateAfterRemoval(row);
     trashStatus(`已永久删除 · 恢复点 ${result.data.backupId.slice(0, 8)}`);
   } catch {
     trashStatus('永久删除失败 · COMMON_INTERNAL_999', true);

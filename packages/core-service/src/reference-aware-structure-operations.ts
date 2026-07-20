@@ -107,7 +107,9 @@ function trashTarget(database: DatabaseSync, input: TrashPermanentDeletePreviewI
     return { entry, chapterIds: [entry.entityId], volumeIds: [] };
   }
   const chapterIds = (
-    database.prepare('SELECT id FROM chapters WHERE volume_id = ? ORDER BY id').all(entry.entityId) as {
+    database
+      .prepare('SELECT id FROM chapters WHERE volume_id = ? ORDER BY id')
+      .all(entry.entityId) as {
       id: string;
     }[]
   ).map((chapter) => chapter.id);
@@ -153,7 +155,10 @@ function chapterReferenceBlockers(
   const blockers: ChapterReferenceBlocker[] = [];
   for (const table of tables) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(table)) {
-      throw new ProjectStructureError('STRUCTURE_CONFLICT', 'An unsafe schema table name was found.');
+      throw new ProjectStructureError(
+        'STRUCTURE_CONFLICT',
+        'An unsafe schema table name was found.',
+      );
     }
     const foreignKeys = database.prepare(`PRAGMA foreign_key_list("${table}")`).all() as {
       table: string;
@@ -168,7 +173,10 @@ function chapterReferenceBlockers(
       if (count === 0) continue;
       const deleteAction = foreignKey.on_delete.toUpperCase() as DeleteAction;
       if (!['CASCADE', 'RESTRICT', 'NO ACTION', 'SET NULL', 'SET DEFAULT'].includes(deleteAction)) {
-        throw new ProjectStructureError('STRUCTURE_CONFLICT', 'An unknown foreign-key action was found.');
+        throw new ProjectStructureError(
+          'STRUCTURE_CONFLICT',
+          'An unknown foreign-key action was found.',
+        );
       }
       blockers.push({ kind: 'chapter-reference', count, source, deleteAction });
     }
@@ -208,14 +216,18 @@ export class ReferenceAwareStructureOperationService extends StructureOperationS
     this.#workspace = workspace;
   }
 
-  override previewPermanentDelete(raw: TrashPermanentDeletePreviewInput): TrashPermanentDeletePreview {
+  override previewPermanentDelete(
+    raw: TrashPermanentDeletePreviewInput,
+  ): TrashPermanentDeletePreview {
     const input = TrashPermanentDeletePreviewInputSchema.parse(raw);
     return this.#workspace.readProject(input.projectId, (database) =>
       previewWithDatabase(database, input),
     );
   }
 
-  override assertPermanentDeleteExecutable(raw: TrashPermanentDeleteInput): void {
+  override assertPermanentDeleteExecutable(
+    raw: TrashPermanentDeleteInput,
+  ): TrashPermanentDeletePreview {
     const input = TrashPermanentDeleteInputSchema.parse(raw);
     const preview = this.previewPermanentDelete(input);
     if (
@@ -228,6 +240,7 @@ export class ReferenceAwareStructureOperationService extends StructureOperationS
         'Permanent-delete impact, confirmation, or chapter references changed.',
       );
     }
+    return preview;
   }
 
   override permanentDelete(
@@ -274,7 +287,9 @@ export class ReferenceAwareStructureOperationService extends StructureOperationS
         database
           .prepare(`DELETE FROM draft_blocks WHERE draft_id IN (${placeholders(draftIds)})`)
           .run(...draftIds);
-        database.prepare(`DELETE FROM drafts WHERE id IN (${placeholders(draftIds)})`).run(...draftIds);
+        database
+          .prepare(`DELETE FROM drafts WHERE id IN (${placeholders(draftIds)})`)
+          .run(...draftIds);
       }
       if (target.chapterIds.length > 0) {
         database
@@ -288,9 +303,9 @@ export class ReferenceAwareStructureOperationService extends StructureOperationS
           .run(...target.chapterIds);
       }
       if (target.volumeIds.length > 0) {
-        database.prepare(`DELETE FROM volumes WHERE id IN (${placeholders(target.volumeIds)})`).run(
-          ...target.volumeIds,
-        );
+        database
+          .prepare(`DELETE FROM volumes WHERE id IN (${placeholders(target.volumeIds)})`)
+          .run(...target.volumeIds);
       }
       database.prepare('DELETE FROM trash_entries WHERE id = ?').run(input.trashEntryId);
       return TrashPermanentDeleteResultSchema.parse({

@@ -5,7 +5,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
-export const REQUIRED_EVIDENCE_FILES = ['summary.md', 'commands.txt', 'known-risks.md'];
+export const REQUIRED_EVIDENCE_FILES = [
+  'summary.md',
+  'commands.txt',
+  'known-risks.md',
+  'manual-acceptance.md',
+  'quality-matrix.md',
+  'test-results/results.json',
+  'screenshots/manifest.json',
+];
 
 function git(argumentsList, repositoryRoot = root) {
   return execFileSync('git', argumentsList, {
@@ -100,11 +108,16 @@ async function regularFiles(directory, prefix = '') {
   return files;
 }
 
-export function assertFinalEvidenceSemantics(taskId, manifest, documents) {
+export function assertFinalEvidenceSemantics(taskId, manifest, screenshots, documents) {
   if (!/^[0-9a-f]{7,40}$/u.test(manifest.commit ?? '')) {
     throw new Error(`${taskId} final evidence must reference a committed revision`);
   }
-  const combined = [documents.summary, documents.commands, documents.knownRisks].join('\n');
+  if (taskId.startsWith('M2-') && screenshots.length === 0) {
+    throw new Error(`${taskId} final evidence requires at least one desktop screenshot`);
+  }
+  const combined = [documents.summary, documents.manualAcceptance, documents.qualityMatrix].join(
+    '\n',
+  );
   const stale =
     /working-tree|BLOCKED_BY_ENVIRONMENT|(?:^|\W)(?:BLOCKED|PENDING|DEFERRED)(?:\W|$)|人工待运行|桌面待运行|等待(?:有显示环境|implementation PR|PR|CI)|任务(?:保持|结论)[^\n]*(?:In Progress|Implemented)/imu;
   if (stale.test(combined)) {
@@ -171,6 +184,37 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
     }
   }
 
+  let screenshots;
+  try {
+    screenshots = JSON.parse(
+      await readFile(path.join(directory, 'screenshots/manifest.json'), 'utf8'),
+    );
+  } catch (error) {
+    throw new Error(`${taskId} screenshot manifest is invalid`, { cause: error });
+  }
+  if (!Array.isArray(screenshots)) {
+    throw new Error(`${taskId} screenshot manifest must be an array`);
+  }
+  const screenshotNames = new Set();
+  for (const screenshot of screenshots) {
+    const fileName = assertRelativeEvidencePath(
+      screenshot?.fileName,
+      `${taskId} screenshot manifest`,
+    );
+    if (
+      fileName.includes('/') ||
+      screenshotNames.has(fileName) ||
+      !/^[0-9a-f]{64}$/u.test(screenshot?.sha256 ?? '')
+    ) {
+      throw new Error(`${taskId} screenshot manifest entry is invalid: ${fileName}`);
+    }
+    screenshotNames.add(fileName);
+    const evidenceEntry = entries.get(`screenshots/${fileName}`);
+    if (!evidenceEntry || evidenceEntry.sha256 !== screenshot.sha256) {
+      throw new Error(`${taskId} screenshot is absent from the evidence manifest: ${fileName}`);
+    }
+  }
+
   let finalEvidence = options.final === true;
   if (!finalEvidence) {
     try {
@@ -185,10 +229,10 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
     }
   }
   if (finalEvidence) {
-    assertFinalEvidenceSemantics(taskId, manifest, {
+    assertFinalEvidenceSemantics(taskId, manifest, screenshots, {
       summary: await readFile(path.join(directory, 'summary.md'), 'utf8'),
-      commands: await readFile(path.join(directory, 'commands.txt'), 'utf8'),
-      knownRisks: await readFile(path.join(directory, 'known-risks.md'), 'utf8'),
+      manualAcceptance: await readFile(path.join(directory, 'manual-acceptance.md'), 'utf8'),
+      qualityMatrix: await readFile(path.join(directory, 'quality-matrix.md'), 'utf8'),
     });
   }
 
@@ -197,7 +241,7 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
   if (unlisted.length > 0) {
     throw new Error(`${taskId} evidence contains unlisted files: ${unlisted.join(', ')}`);
   }
-  console.log(`Evidence document gate passed for ${taskId}.`);
+  console.log(`Evidence gate passed for ${taskId}.`);
 }
 
 async function main() {
@@ -206,14 +250,14 @@ async function main() {
   if (taskIds.length === 0) {
     const state = JSON.parse(await readFile('docs/tasks/ACTIVE_TASK.json', 'utf8'));
     console.log(
-      `No changed evidence documents at ${expectedHead}; final evidence is deferred for ${state.activeTask?.id ?? '<no-active-task>'}.`,
+      `No changed evidence package at ${expectedHead}; final evidence is deferred for ${state.activeTask?.id ?? '<no-active-task>'}.`,
     );
     return;
   }
   for (const taskId of taskIds) {
     await validateTaskEvidence(taskId, root, { expectedHead });
   }
-  console.log(`Validated ${taskIds.length} changed evidence document set(s) at ${expectedHead}.`);
+  console.log(`Validated ${taskIds.length} changed evidence package(s) at ${expectedHead}.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

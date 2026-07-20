@@ -1,32 +1,66 @@
-[
-  {
-    "suite": "split-chapter",
-    "fixtureId": "M2-04-split-chapter",
-    "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+{
+  "schemaVersion": 1,
+  "taskId": "M2-04",
+  "sourceCommit": "9da54fb67cdf43d1b4bc4b77e7af5770a6522ac5",
+  "validatedHead": "802009fbbc50e7923d764b6f61a1bdc99129ff03",
+  "validatedTree": "9a77352ee747e933740cd303e2a6e2e84fb53538",
+  "qualityRunId": 29788218764,
+  "desktopArtifactId": 8479349358,
+  "electron": {
+    "passed": 19,
+    "failed": 0,
+    "duration": "5.1m"
   },
-  {
-    "suite": "merge-and-move",
-    "fixtureId": "M2-04-merge-and-move",
-    "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
+  "workflows": {
+    "quality": {
+      "runId": 29788218764,
+      "status": "success"
+    },
+    "prPolicy": {
+      "runId": 29788218621,
+      "status": "success"
+    },
+    "taskGovernance": {
+      "runId": 29788218611,
+      "status": "success"
+    },
+    "evidence": {
+      "runId": 29788218599,
+      "status": "success"
+    },
+    "security": {
+      "runId": 29788218633,
+      "status": "success"
+    },
+    "performance": {
+      "runId": 29788218617,
+      "status": "success"
+    },
+    "repositoryGovernance": {
+      "runId": 29788218629,
+      "status": "success"
+    }
   },
-  {
-    "suite": "stale-plan-guard",
-    "fixtureId": "M2-04-stale-plan-guard",
-    "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
-  },
-  {
-    "suite": "permanent-delete-impact",
-    "fixtureId": "M2-04-permanent-delete-impact",
-    "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
-  },
-  {
-    "suite": "checkpoint-and-rollback",
-    "fixtureId": "M2-04-checkpoint-and-rollback",
-    "status": "passed",
-    "details": "Verified by https://github.com/sy220284/666/actions/runs/29668237967"
-  }
-]
+  "cases": [
+    {
+      "suite": "integration",
+      "case": "all non-owned chapter foreign keys block deletion",
+      "status": "passed"
+    },
+    {
+      "suite": "integration",
+      "case": "stale delete plan is rejected atomically",
+      "status": "passed"
+    },
+    {
+      "suite": "integration",
+      "case": "full execute input is narrowed before strict preview validation",
+      "status": "passed"
+    },
+    {
+      "suite": "electron",
+      "case": "structure-recovery.spec.ts",
+      "status": "passed"
+    }
+  ]
+}

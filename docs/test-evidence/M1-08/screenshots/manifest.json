@@ -1,22 +1,16 @@
 [
   {
-    "fileName": "m1-08-recovery-center.png",
-    "fixtureId": "M1-08",
-    "sha256": "457cabc0297b1d7b687faf4030a7c068e7a4496eab22b8be9a451de0f124c38b"
-  },
-  {
-    "fileName": "m1-08-readonly-recovery.png",
-    "fixtureId": "M1-08",
-    "sha256": "8b9c7f5425708590e4a16df7794c4fe358d1d88fa09da9be65a52592bd12313f"
-  },
-  {
     "fileName": "unreadable-project-recovery-entry.png",
-    "fixtureId": "M1-08-desktop-acceptance",
-    "sha256": "394f6d87bc9e4869c517047f22250b172ae1e142bc5ae89e635e60d537abba93"
+    "sha256": "e4cfe33b89c5328baa0e98edc1d04dfbb995c03059739240cc48cf21484ccbcf",
+    "description": "物理损坏后进入恢复模式并浏览Checkpoint Version",
+    "qualityRunId": 29788218764,
+    "artifactId": 8479349358
   },
   {
     "fileName": "unreadable-project-restored-copy.png",
-    "fixtureId": "M1-08-desktop-acceptance",
-    "sha256": "229f9855415d5c8ff4496593f89a290a00178ca3473afe61179af30eed3fc283"
+    "sha256": "157445b1774579f8cbaf76bd074a9de55232e73a71e63d768ebd6e0119982615",
+    "description": "恢复出的新项目副本可正常打开",
+    "qualityRunId": 29788218764,
+    "artifactId": 8479349358
   }
 ]

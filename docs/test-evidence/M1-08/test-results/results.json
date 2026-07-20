@@ -1,38 +1,61 @@
-[
-  {
-    "suite": "online-checkpoint-and-restored-copy",
-    "fixtureId": "M1-08-recovery-service",
-    "status": "passed",
-    "details": "Verified checkpoint, new project identity, writable restored copy and recent-project registration passed in Quality 29713250352 and Main Verification 29713419581."
+{
+  "schemaVersion": 1,
+  "taskId": "M1-08",
+  "sourceCommit": "9da54fb67cdf43d1b4bc4b77e7af5770a6522ac5",
+  "validatedHead": "802009fbbc50e7923d764b6f61a1bdc99129ff03",
+  "validatedTree": "9a77352ee747e933740cd303e2a6e2e84fb53538",
+  "qualityRunId": 29788218764,
+  "desktopArtifactId": 8479349358,
+  "electron": {
+    "passed": 19,
+    "failed": 0,
+    "duration": "5.1m"
   },
-  {
-    "suite": "backup-failure-safety",
-    "fixtureId": "M1-08-backup-failures",
-    "status": "passed",
-    "details": "Low space and corrupted backup failures produced explicit errors and no unverified BackupRecord."
+  "workflows": {
+    "quality": {
+      "runId": 29788218764,
+      "status": "success"
+    },
+    "prPolicy": {
+      "runId": 29788218621,
+      "status": "success"
+    },
+    "taskGovernance": {
+      "runId": 29788218611,
+      "status": "success"
+    },
+    "evidence": {
+      "runId": 29788218599,
+      "status": "success"
+    },
+    "security": {
+      "runId": 29788218633,
+      "status": "success"
+    },
+    "performance": {
+      "runId": 29788218617,
+      "status": "success"
+    },
+    "repositoryGovernance": {
+      "runId": 29788218629,
+      "status": "success"
+    }
   },
-  {
-    "suite": "restore-conflict-and-interruption",
-    "fixtureId": "M1-08-restore-safety",
-    "status": "passed",
-    "details": "Target conflict and interrupted restore preserved the source and removed partial destinations."
-  },
-  {
-    "suite": "damaged-project-readonly",
-    "fixtureId": "M1-08-readonly-security",
-    "status": "passed",
-    "details": "Integrity-failed projects opened read-only and source writes failed with PROJECT_READ_ONLY."
-  },
-  {
-    "suite": "unreadable-project-electron",
-    "fixtureId": "M1-08-desktop-acceptance",
-    "status": "passed",
-    "details": "Electron recovery flow and clean-tree passed in Quality 29713250352 and Main Verification 29713419581."
-  },
-  {
-    "suite": "screenshot-integrity",
-    "fixtureId": "M1-08-screenshots",
-    "status": "passed",
-    "details": "Four task-specific screenshots retain their recorded SHA-256 digests."
-  }
-]
+  "cases": [
+    {
+      "suite": "integration",
+      "case": "checkpoint Version browse/export after physical corruption",
+      "status": "passed"
+    },
+    {
+      "suite": "integration",
+      "case": "tampered checkpoint is rejected",
+      "status": "passed"
+    },
+    {
+      "suite": "electron",
+      "case": "unreadable-project-recovery.spec.ts",
+      "status": "passed"
+    }
+  ]
+}

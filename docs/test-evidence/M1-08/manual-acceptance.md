@@ -1,18 +1,9 @@
-# M1-08人工复核记录
+# M1-08 人工验收记录
 
-复核时间：2026-07-20T02:59:51Z  
-受测主线提交：`3520855a45604bcfb7c740209552dc812c8de413`  
-来源PR：#85
+1. 在真实Electron进程中创建项目、正文Version和已验证Checkpoint。
+2. 关闭项目并破坏 `project.sqlite` 文件头，使原数据库进入物理不可读状态。
+3. 通过“恢复损坏项目”入口打开恢复模式，界面列出Checkpoint中的Version。
+4. 导出所选Version，核对正文内容来自已验证Checkpoint。
+5. 恢复到新项目副本，核对新副本可打开，原损坏文件未被覆盖。
 
-## 人工审计
-
-- 核对`tests/integration/recovery-service.test.ts`：在线检查点生成SHA-256与BackupRecord，恢复到新项目ID，恢复副本可重新打开并继续写作。
-- 核对低空间、损坏备份、目标冲突和恢复中断路径：失败不登记无效检查点、不残留恢复目录，源项目保持活动。
-- 核对物理损坏数据库：只读`integrity-failed`模式阻止写入，外部检查点仍可恢复，原损坏数据库字节保持不变。
-- 核对`tests/security/recovery-readonly.test.ts`：外键损坏后全部源写入被`PROJECT_READ_ONLY`拒绝，恢复副本为新的可写项目。
-- 核对`tests/e2e/unreadable-project-recovery.spec.ts`：真实Electron中创建检查点、损坏数据库、进入恢复入口、恢复副本并从最近项目重新打开。
-- 核对四张任务专属截图及SHA-256与截图清单一致。
-
-## 判定
-
-M1-08的恢复、只读保护、源项目不覆盖和可写恢复副本闭环通过。
+结论：全部验收项通过。截图与完整Electron日志均来自同一成功Quality运行。

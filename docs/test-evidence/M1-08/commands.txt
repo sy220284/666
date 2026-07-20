@@ -1,11 +1,23 @@
-source_commit=3520855a45604bcfb7c740209552dc812c8de413
-source_pr=85
-PR Policy: https://github.com/sy220284/666/actions/runs/29713250326 exit=0
-Task Governance: https://github.com/sy220284/666/actions/runs/29713250321 exit=0
-Evidence: https://github.com/sy220284/666/actions/runs/29713250346 exit=0
-Quality: https://github.com/sy220284/666/actions/runs/29713250352 exit=0
-Security: https://github.com/sy220284/666/actions/runs/29713250323 exit=0
-Performance: https://github.com/sy220284/666/actions/runs/29713250314 exit=0
-Main Verification: https://github.com/sy220284/666/actions/runs/29713419581 exit=0
-Quality executed format, lint, typecheck, unit, integration, migration, Electron E2E, build and package smoke with clean-tree checks.
-Main Verification repeated static, unit, integration, migration, security, performance/eval, Electron E2E, build and package smoke on the merge commit.
+validated_source_commit=9da54fb67cdf43d1b4bc4b77e7af5770a6522ac5
+validated_pr_head=802009fbbc50e7923d764b6f61a1bdc99129ff03
+validated_tree=9a77352ee747e933740cd303e2a6e2e84fb53538
+quality_run_id=29788218764 status=success
+desktop_artifact_id=8479349358 sha256=9763f5455c16fd9e06693bece4160ff716b051e8cc091ba730429096c4af4363
+pnpm check:workspaces status=success
+pnpm check:boundaries status=success
+pnpm format:check status=success
+pnpm lint status=success
+pnpm typecheck status=success
+pnpm test:unit status=success
+pnpm test:integration status=success
+pnpm test:migration status=success
+pnpm build status=success
+pnpm test:package status=success
+pnpm test:e2e:electron status=success tests=19 passed=19
+quality_run_id=29788218764 status=success
+prPolicy_run_id=29788218621 status=success
+taskGovernance_run_id=29788218611 status=success
+evidence_run_id=29788218599 status=success
+security_run_id=29788218633 status=success
+performance_run_id=29788218617 status=success
+repositoryGovernance_run_id=29788218629 status=success

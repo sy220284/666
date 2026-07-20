@@ -1,58 +1,68 @@
 {
   "schemaVersion": 1,
   "taskId": "M2-04",
-  "commit": "9110b16bfc2c08d210d0306b7b394ef20cc9c9f7",
-  "generatedAt": "2026-07-19T01:18:34Z",
+  "commit": "9da54fb67cdf43d1b4bc4b77e7af5770a6522ac5",
+  "generatedAt": "2026-07-20T23:57:43.025623Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 164,
-      "sha256": "3bb91f84872fdce6fc63bcfddb08648fa7d17b677957bed60621f1785385dac5"
+      "bytes": 1026,
+      "sha256": "88522a3d1219a1849050ef3718e041dc71eaafd877d74f0b528c18cc66f8c82a"
     },
     {
       "path": "known-risks.md",
-      "bytes": 94,
-      "sha256": "ea5544cbd3381c546aa22a12900da06d614dd6bf8635a15c20498fc929011380"
+      "bytes": 255,
+      "sha256": "17ca6a76fb12ea95fdba0da81175de17eb736d4a175871e12dc60aaac9e5e677"
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 741,
-      "sha256": "222cc0f79b47fd5fefd28cb6ce0cba10b2d9418ab5aea18351a87f10bd23ba64"
+      "bytes": 643,
+      "sha256": "50c3af33dc3d2eaf35202cc96ca7fb28e5e57c9dcdbe8c223ff795fa825ae8f8"
     },
     {
       "path": "performance.json",
-      "bytes": 3,
-      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      "bytes": 327,
+      "sha256": "843fc02cff4fbc4e4ae682c898dd8ced5c03639392f005473a2e7577b5f25001"
     },
     {
       "path": "quality-matrix.md",
-      "bytes": 317,
-      "sha256": "6973859d51ad9bdb7adf9ee052903ebbb60ae93b2fbdec9055269ea9b1f8d301"
+      "bytes": 756,
+      "sha256": "6bd4f0547de9fa767cf4602f859a0bbb362ecc8f0d302605ae4f1b46d6649b2c"
     },
     {
       "path": "screenshots/manifest.json",
-      "bytes": 368,
-      "sha256": "640b83c58e937e241e5db80f57dec68428b1952428fcb6109e9cb316c5fb553c"
+      "bytes": 811,
+      "sha256": "621bf3c14ba956c3a314a2d37353827e3ee84b5b39bce4816beb1359fc247ec9"
     },
     {
       "path": "screenshots/permanent-delete-checkpoint.png",
-      "bytes": 123428,
-      "sha256": "836b7476e669d73a541d6ff00ef9a9104db0e4beaec1bfc8e0261ddf592b27fe"
+      "bytes": 119545,
+      "sha256": "8abac30e21e50671373a5bb5c53916adefa20984182cd85456e835a67d79ad82"
+    },
+    {
+      "path": "screenshots/permanent-delete-reference-blocked.png",
+      "bytes": 132978,
+      "sha256": "cec66c98be140ffa11649a88f968c9719f03949ed0a5c6eebe2145d9a2d1499b"
     },
     {
       "path": "screenshots/split-chapter-result.png",
-      "bytes": 102273,
-      "sha256": "fec556caa5a8ea51489da86fc61b8a844f5882593e34a622414f53b1a9dcfb1b"
+      "bytes": 102310,
+      "sha256": "17f468ce9901e4fc7def42b82a08ef4418c24a1b29570f07ccbf57106c44434c"
     },
     {
       "path": "summary.md",
-      "bytes": 332,
-      "sha256": "018a9b708006f8fa4b3f00203363e5d525ca7ff19bb43286c92276225f45ea19"
+      "bytes": 610,
+      "sha256": "5eebbc718bf0fe0acf64b7dba59c5aefbbc058e60e924d6a9e5ca823be941040"
+    },
+    {
+      "path": "test-results/desktop-e2e.log",
+      "bytes": 3740,
+      "sha256": "a067230088cc9ca9f1a350afd38ffd64d5066a00cc892889bafee0669e66ec10"
     },
     {
       "path": "test-results/results.json",
-      "bytes": 996,
-      "sha256": "c8c7bd4ac4c2591024aa86bc8325b8910259a4e0f461e7442d93dfc680099193"
+      "bytes": 1509,
+      "sha256": "093ca547459d12fb2807eee716896dc7fcea6f91c613fbc458d1fd2ebdadfaa7"
     }
   ]
 }

@@ -167,9 +167,9 @@ describe('M3-02 SceneBeat entity references', () => {
           .prepare(
             `INSERT INTO projects(
                id, name, channel, active_style_profile_id, schema_version, created_at, updated_at
-             ) VALUES(?, 'Foreign', 'test', NULL, 15, ?, ?)`,
+             ) VALUES(?, 'Foreign', 'test', NULL, ?, ?, ?)`,
           )
-          .run(foreignProjectId, now, now);
+          .run(foreignProjectId, project.schemaVersion, now, now);
         connection
           .prepare(
             `INSERT INTO entities(
@@ -186,6 +186,24 @@ describe('M3-02 SceneBeat entity references', () => {
           patch: { characterIds: [foreignCharacterId] },
         }),
       ).rejects.toBeDefined();
+
+      await harness.canon.archive(randomUUID(), {
+        projectId: project.projectId,
+        authority: 'author',
+        entityId: character.id,
+      });
+      const preserved = await harness.beats.update(randomUUID(), {
+        projectId: project.projectId,
+        sceneBeatId: beat.id,
+        patch: { goal: '归档后仍可编辑无关字段' },
+      });
+      expect(preserved.beats[0]).toMatchObject({
+        characterIds: [character.id],
+        locationIds: [location.id],
+      });
+      expect(
+        harness.canon.previewDelete({ projectId: project.projectId, entityId: character.id }),
+      ).toMatchObject({ archived: true, sceneBeatReferenceCount: 1, canDelete: false });
 
       const unchanged = harness.beats.list({
         projectId: project.projectId,

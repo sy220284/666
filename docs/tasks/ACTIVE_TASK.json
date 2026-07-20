@@ -11,27 +11,27 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M3-04",
+    "id": "M0-05",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
-    "branch": "work/m3-04-state-timeline-knowledge",
-    "startedAt": "2026-07-19",
+    "source": "docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md",
+    "branch": "work/m0-05-testkit-fault-injection",
+    "startedAt": "2026-07-20",
     "allowedPaths": [
-      "migrations/project/",
-      "packages/domain/",
-      "packages/core-service/",
-      "packages/contracts/",
-      "apps/desktop/renderer/",
-      "tests/integration/",
+      "packages/testkit/",
+      "tests/",
+      "evals/",
+      "scripts/",
+      "docs/test-evidence/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
+      "docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md",
       "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-04/"
+      "docs/test-evidence/M0-05/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -39,9 +39,10 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/database/DATA_DICTIONARY.md",
-      "docs/testing/TEST_STRATEGY.md"
+      "docs/testing/TEST_STRATEGY.md",
+      "docs/testing/SECURITY_TEST_CASES.md",
+      "docs/testing/PERFORMANCE_BUDGETS.md",
+      "docs/ai/PROMPT_AND_EVAL_SPEC.md"
     ],
     "verification": [
       "pnpm lint",
@@ -51,7 +52,8 @@
       "pnpm test:integration",
       "pnpm test:security",
       "pnpm test:e2e",
-      "pnpm test:eval"
+      "pnpm test:eval",
+      "pnpm test:perf"
     ]
   },
   "lastVerifiedTask": {

@@ -99,12 +99,7 @@ export async function setEntityState(
               SET record_status = ?, valid_until_chapter_id = ?, superseded_at = ?
             WHERE id = ?`,
         )
-        .run(
-          ordering === 0 ? 'superseded' : 'historical',
-          previousEndChapterId,
-          now,
-          current.id,
-        );
+        .run(ordering === 0 ? 'superseded' : 'historical', previousEndChapterId, now, current.id);
     }
     connection
       .prepare(

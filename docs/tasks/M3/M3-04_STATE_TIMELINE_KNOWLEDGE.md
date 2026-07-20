@@ -1,6 +1,6 @@
 # M3-04 动态状态、时间线与知情信息
 
-> 状态：In Progress  
+> 状态：Verified  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`work/m3-04-state-timeline-knowledge`
@@ -87,11 +87,12 @@ M3-02、M3-03
 - 当前值、指定章节有效值与历史值不会混淆。
 - 正式代码真实存在于最终PR Head，通用六类门禁验证同一Head。
 
-## 质量加固记录
+## 质量加固与关闭记录
 
 - 修复显式有限结束区间被后续状态错误延长的问题，合法空档期保持不变。
 - 多地冲突按实际在场语义覆盖`participant`和`witness`，`subject`不自动推定在场。
 - 补齐状态失效、跨项目来源、时间精度、依赖顺序、五种知情状态、逻辑块删除安全、七个IPC命令及真实Electron写入展示链路。
-- 加固实现Head：`c4d27694c24f8c15080a013b32378bf61ce1b2b9`；Quality、Security、Performance、PR Policy与Evidence均已通过，最终main复验提交为`bd9a1a0db768d9be8dbaa9bb1a0543754dcac40d`。
+- 加固实现Head：`c4d27694c24f8c15080a013b32378bf61ce1b2b9`；加固合并提交：`bd9a1a0db768d9be8dbaa9bb1a0543754dcac40d`。
+- PR #93六类永久门禁全部通过；Main Verification运行`29722417080`成功；P0-037、P0-038、P0-039证据保存在`docs/test-evidence/M3-04/`。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

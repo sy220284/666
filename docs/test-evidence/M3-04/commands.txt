@@ -1,0 +1,13 @@
+source_commit=bd9a1a0db768d9be8dbaa9bb1a0543754dcac40d
+source_pr=93
+source_head=921600723ab69b645878309410abf586506c6c6a
+PR Policy: https://github.com/sy220284/666/actions/runs/29722138354 exit=0
+Task Governance: https://github.com/sy220284/666/actions/runs/29722138341 exit=0
+Evidence: https://github.com/sy220284/666/actions/runs/29722138338 exit=0
+Quality: https://github.com/sy220284/666/actions/runs/29722138463 exit=0
+Security: https://github.com/sy220284/666/actions/runs/29722138396 exit=0
+Performance: https://github.com/sy220284/666/actions/runs/29722138356 exit=0
+Main Verification: https://github.com/sy220284/666/actions/runs/29722417080 exit=0
+Desktop evidence artifact: id=8452851704 digest=sha256:89af4645567eaa548ac4427954e69b72e95f67d51ae1b2630e196189e201cdc8
+Quality executed format, lint, typecheck, unit, integration, migration, Electron E2E, build and package smoke with clean-tree checks.
+Main Verification repeated static, unit, integration, migration, security, performance/eval, Electron E2E, build and package smoke on the final main commit.

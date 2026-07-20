@@ -1,14 +1,18 @@
-# M3-02 质量矩阵
+# M3-02质量矩阵
 
-| 维度 | 当前结论 | 依据 |
+| 维度 | 结果 | 依据 |
 |---|---|---|
-| Schema / Migration | 待永久 CI | `0011_scene_beats.sql` 与迁移测试 |
-| Contracts / IPC | 待永久 CI | 全限定 `planning.sceneBeat.*` 命令、Main/Preload 白名单与安全测试 |
-| Core 事务 | 待永久 CI | 创建、更新、排序、软删除、恢复、正文关联、planHash 预览与故障回滚 |
-| 正文安全 | 待永久 CI | 删除节拍不删 DraftBlock；正文移动复用 M2-04 Patch/Revision/Hash/LockGuard |
-| Renderer | 待永久 CI | SceneBeat 列表、编辑器、正文转换、跨章分步确认 |
-| 格式 / Lint | PASS | 同步工作流执行 `pnpm format`、`pnpm lint`，退出码 0 |
-| 任务状态 | PASS | `pnpm task:validate`，退出码 0 |
-| 人工验收 | DEFERRED | 见 `manual-acceptance.md` |
-| 截图 | DEFERRED | `screenshots/manifest.json` 当前为空数组 |
-| Verified 关闭 | DEFERRED | 等待批量人工验收与最终追踪矩阵复核 |
+| 任务治理与修改范围 | 通过 | Task Governance `29740976087` |
+| 工作区、边界、格式、Lint、TypeScript | 通过 | Quality `29740976348` |
+| 单元测试 | 通过 | Quality `29740976348` |
+| SceneBeat与Entity集成测试 | 通过 | Quality `29740976348` |
+| Schema 15、升级、触发器与回滚 | 通过 | Quality `29740976348` |
+| 构建与打包冒烟 | 通过 | Quality `29740976348` |
+| Renderer—Preload—Main—Core桌面链路 | 通过 | Electron E2E，Quality `29740976348` |
+| 实体名称选择器与UUID输入退役 | 通过 | `scene-beat.spec.ts`断言与桌面日志 |
+| 不存在、跨项目、类型错误、新增归档引用拒绝 | 通过 | Integration、Migration |
+| 既有归档引用保留与永久删除阻断 | 通过 | Integration |
+| 安全门禁 | 通过 | Security `29740976130` |
+| 性能与AI评估预算 | 通过 | Performance `29740976098` |
+| PR分支与审查策略 | 通过 | PR Policy `29740976176` |
+| 证据完整性 | 通过 | Manifest逐文件字节数与SHA-256 |

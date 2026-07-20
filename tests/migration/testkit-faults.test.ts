@@ -5,7 +5,12 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { AppDatabase, defineMigration } from '../../packages/core-service/src/database/index.js';
+import {
+  AppDatabase,
+  defineMigration,
+  latestMigrationVersion,
+  loadMigrations,
+} from '../../packages/core-service/src/database/index.js';
 import {
   acquireSqliteWriteLock,
   createSqliteDiskFullFault,
@@ -43,10 +48,11 @@ describe('temporary WorldForge workspace', () => {
   it('opens production app/project migrations and removes every file idempotently', async () => {
     const parentDirectory = await temporaryDirectory();
     const workspace = await createTemporaryWorldforgeWorkspace({ parentDirectory });
+    const projectMigrations = await loadMigrations('migrations/project', 'project');
     expect(workspace.appDatabase.mode).toBe('read-write');
     expect(workspace.projectDatabase.mode).toBe('read-write');
     expect(workspace.appDatabase.schemaVersion).toBe(2);
-    expect(workspace.projectDatabase.schemaVersion).toBe(14);
+    expect(workspace.projectDatabase.schemaVersion).toBe(latestMigrationVersion(projectMigrations));
     expect(
       workspace.appDatabase.read((database) =>
         database.prepare('SELECT count(*) AS count FROM schema_migrations').get(),

@@ -56,9 +56,11 @@
   "governancePaths": [
     ".github/audit-remediations/m0-m2-2026-07-20.json",
     "docs/process/AUDIT_REMEDIATION_M0_M2.md",
+    ".github/workflows/audit-migrate-evidence.yml",
     ".github/workflows/evidence.yml",
     "scripts/audit-remediation-policy.mjs",
     "scripts/evidence-policy.mjs",
+    "scripts/migrate-legacy-evidence.mjs",
     "scripts/taskctl.mjs",
     "tests/unit/audit-remediation-policy.test.ts",
     "tests/unit/evidence-policy.test.ts",

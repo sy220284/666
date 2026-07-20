@@ -34,7 +34,18 @@ jobs:
       - name: Format migration script
         run: pnpm exec prettier --write scripts/migrate-legacy-evidence.mjs
       - name: Migrate and validate exactly fourteen packages
-        run: node scripts/migrate-legacy-evidence.mjs
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/migrate-legacy-evidence.mjs 2>&1 | tee legacy-evidence-migration.log
+      - name: Upload migration diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: legacy-evidence-migration-diagnostics
+          path: legacy-evidence-migration.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Remove migration bootstrap authorization
         shell: bash
         run: |

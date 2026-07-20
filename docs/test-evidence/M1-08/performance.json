@@ -1,1 +1,8 @@
-[]
+{
+  "taskId": "M1-08",
+  "sourceCommit": "3520855a45604bcfb7c740209552dc812c8de413",
+  "workflowRun": 29713250314,
+  "mainVerificationRun": 29713419581,
+  "status": "passed",
+  "note": "Performance and AI protocol baselines passed; recovery operations were covered by integration, security and Electron E2E suites."
+}

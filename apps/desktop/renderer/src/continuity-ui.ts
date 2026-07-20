@@ -85,9 +85,17 @@ function renderCatalog(host: HTMLElement, catalog: ContinuityCatalog): void {
 }
 
 function mount(): void {
-  if (!window.worldforgeContinuity || document.querySelector('[data-continuity-dialog]')) return;
+  const actions = document.querySelector<HTMLElement>('.active-project__actions');
+  if (
+    !window.worldforgeContinuity ||
+    document.querySelector('[data-continuity-dialog]') ||
+    !actions
+  ) {
+    return;
+  }
   const openButton = element('button', '连续性账本');
   openButton.type = 'button';
+  openButton.className = 'quiet-button';
   openButton.dataset.openContinuity = '';
 
   const dialog = element('dialog');
@@ -161,7 +169,8 @@ function mount(): void {
     close,
     results,
   );
-  document.body.append(openButton, dialog);
+  actions.append(openButton);
+  document.body.append(dialog);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

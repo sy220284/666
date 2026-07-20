@@ -75,9 +75,6 @@ async function seed(value: Awaited<ReturnType<typeof harness>>) {
       projectId: project.projectId,
       volumeId: volume.id,
       title: '第二章',
-      status: 'writing',
-      targetWordMin: null,
-      targetWordMax: null,
     })
   ).volumes[0]!.chapters[1]!;
   const chapter3 = (
@@ -85,9 +82,6 @@ async function seed(value: Awaited<ReturnType<typeof harness>>) {
       projectId: project.projectId,
       volumeId: volume.id,
       title: '第三章',
-      status: 'writing',
-      targetWordMin: null,
-      targetWordMax: null,
     })
   ).volumes[0]!.chapters[2]!;
   const draft = await value.drafts.open(randomUUID(), {
@@ -128,7 +122,7 @@ async function seed(value: Awaited<ReturnType<typeof harness>>) {
     summary: '',
   });
   const location2 = catalog.entities.find((entity) => entity.name === '北城')!;
-  return { project, chapter1, chapter2, chapter3, draft, version, character, location1, location2 };
+  return { project, chapter1, chapter2, chapter3, version, character, location1, location2 };
 }
 
 describe('M3-04 continuity authority', () => {

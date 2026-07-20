@@ -27,6 +27,7 @@ const BASE_REQUIRED = ['summary.md', 'commands.txt', 'known-risks.md'];
 const REJECTED_STATUSES = new Set(['blocked', 'deferred', 'error', 'failed', 'failure', 'pending']);
 const SUCCESSFUL_COMMAND_OUTCOME = /\|\s*(?:exit 0|remote success|expected exit 1)\s*\|/iu;
 const UNCLAIMED_ENVIRONMENT_OUTCOME = /\|\s*environment exit \d+\s*\|/iu;
+const PAIRED_RESULT_LINE = /^exit=(\d+)\b.*fixtures=([^\s]+)$/iu;
 
 function git(argumentsList) {
   return execFileSync('git', argumentsList, {
@@ -90,6 +91,40 @@ function commandOutcome(line) {
   return null;
 }
 
+function parseCommandEvidence(source) {
+  const nonEmptyLines = source
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const inlineOutcomes = nonEmptyLines.map(commandOutcome);
+  if (nonEmptyLines.length > 0 && inlineOutcomes.every((status) => status !== null)) {
+    return nonEmptyLines.map((details, index) => ({ details, status: inlineOutcomes[index] }));
+  }
+
+  const groups = source
+    .trim()
+    .split(/\r?\n\s*\r?\n/u)
+    .map((group) => group.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean));
+  const parsed = [];
+  for (const group of groups) {
+    if (group.length !== 2) return null;
+    const result = PAIRED_RESULT_LINE.exec(group[1]);
+    if (!result) return null;
+    const exitCode = Number(result[1]);
+    const fixtures = result[2] ?? '';
+    if (exitCode === 0) {
+      parsed.push({ details: group.join(' | '), status: 'passed' });
+      continue;
+    }
+    if (/UNAVAILABLE|UNSUPPORTED|NO[_-]?DISPLAY/iu.test(fixtures)) {
+      parsed.push({ details: group.join(' | '), status: 'skipped' });
+      continue;
+    }
+    return null;
+  }
+  return parsed.length > 0 ? parsed : null;
+}
+
 async function sourceMetadata(taskId, directory) {
   const manifestPath = path.join(directory, 'manifest.json');
   if (await exists(manifestPath)) {
@@ -119,12 +154,9 @@ async function ensureMachineResults(taskId, directory, source) {
   const resultsDirectory = path.join(directory, 'test-results');
   const resultsPath = path.join(resultsDirectory, 'results.json');
   if (await exists(resultsPath)) return;
-  const commands = (await readFile(path.join(directory, 'commands.txt'), 'utf8'))
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const outcomes = commands.map(commandOutcome);
-  if (commands.length === 0 || outcomes.some((status) => status === null)) {
+  const commandSource = await readFile(path.join(directory, 'commands.txt'), 'utf8');
+  const commands = parseCommandEvidence(commandSource);
+  if (!commands) {
     throw new Error(`${taskId} commands cannot be converted into verified machine results`);
   }
   await mkdir(resultsDirectory, { recursive: true });
@@ -136,10 +168,10 @@ async function ensureMachineResults(taskId, directory, source) {
         taskId,
         generatedFrom: 'commands.txt',
         sourceCommit: source.commit,
-        results: commands.map((details, index) => ({
+        results: commands.map((entry, index) => ({
           suite: `legacy-command-${String(index + 1).padStart(2, '0')}`,
-          status: outcomes[index],
-          details,
+          status: entry.status,
+          details: entry.details,
         })),
       },
       null,

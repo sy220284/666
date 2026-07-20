@@ -167,12 +167,7 @@ describe('final evidence semantics', () => {
 
   it('accepts committed final evidence with no stale state', () => {
     expect(() =>
-      assertFinalEvidenceSemantics(
-        'M2-01',
-        { commit: 'a'.repeat(40) },
-        [screenshot],
-        documents,
-      ),
+      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, [screenshot], documents),
     ).not.toThrow();
   });
 
@@ -187,12 +182,10 @@ describe('final evidence semantics', () => {
       assertFinalEvidenceSemantics('M2-01', { commit: 'working-tree' }, [screenshot], documents),
     ).toThrow('committed revision');
     expect(() =>
-      assertFinalEvidenceSemantics(
-        'M2-01',
-        { commit: 'a'.repeat(40) },
-        [screenshot],
-        { ...documents, summary: 'PENDING：等待CI。' },
-      ),
+      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, [screenshot], {
+        ...documents,
+        summary: 'PENDING：等待CI。',
+      }),
     ).toThrow('stale implementation');
   });
 });

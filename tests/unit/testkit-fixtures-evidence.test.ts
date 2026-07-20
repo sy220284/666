@@ -176,9 +176,9 @@ describe('unified evidence writer', () => {
         sha256: createHash('sha256').update(screenshot).digest('hex'),
       },
     ]);
-    expect(JSON.parse(await readFile(path.join(target, 'manifest.json'), 'utf8')).files).toHaveLength(
-      9,
-    );
+    expect(
+      JSON.parse(await readFile(path.join(target, 'manifest.json'), 'utf8')).files,
+    ).toHaveLength(9);
 
     await writeTestEvidence(target, evidence('原子覆盖后的公开摘要。'), { overwrite: true });
     expect(await readFile(path.join(target, 'summary.md'), 'utf8')).toContain('原子覆盖后');

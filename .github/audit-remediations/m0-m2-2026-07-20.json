@@ -58,7 +58,6 @@
   ],
   "governancePaths": [
     ".github/audit-remediations/m0-m2-2026-07-20.json",
-    ".github/workflows/audit-format-evidence-stack.yml",
     ".github/workflows/evidence.yml",
     ".github/workflows/main-verification.yml",
     ".github/workflows/performance.yml",

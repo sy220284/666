@@ -22,6 +22,10 @@ function gitHead(repositoryRoot) {
   }).trim();
 }
 
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function validateAllVerifiedEvidence(
   repositoryRoot = process.cwd(),
   expectedHead = process.env.EVIDENCE_HEAD_SHA ?? gitHead(repositoryRoot),
@@ -35,12 +39,24 @@ export async function validateAllVerifiedEvidence(
   );
   const taskIds = verifiedTaskIds(indexSource);
   if (taskIds.length === 0) throw new Error('No Verified tasks were found in TASK_INDEX');
+
+  const failures = [];
   for (const taskId of taskIds) {
-    await validateTaskEvidence(taskId, repositoryRoot, {
-      final: true,
-      expectedHead,
-    });
+    try {
+      await validateTaskEvidence(taskId, repositoryRoot, {
+        final: true,
+        expectedHead,
+      });
+    } catch (error) {
+      failures.push(`${taskId}: ${errorMessage(error)}`);
+    }
   }
+  if (failures.length > 0) {
+    throw new Error(
+      `Verified evidence scan failed for ${failures.length} task(s):\n- ${failures.join('\n- ')}`,
+    );
+  }
+
   console.log(`Validated all ${taskIds.length} Verified evidence package(s) at ${expectedHead}.`);
   return taskIds;
 }

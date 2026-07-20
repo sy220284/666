@@ -1,0 +1,58 @@
+name: Audit Legacy Evidence Migration
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-legacy-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  migrate-and-self-remove:
+    if: ${{ github.event.pull_request.head.ref == 'fix/governance-audit-m0-m2-remediation' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/governance-audit-m0-m2-remediation
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format migration script
+        run: pnpm exec prettier --write scripts/migrate-legacy-evidence.mjs
+      - name: Migrate and validate exactly fourteen packages
+        run: node scripts/migrate-legacy-evidence.mjs
+      - name: Remove migration bootstrap authorization
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const file = '.github/audit-remediations/m0-m2-2026-07-20.json';
+          const manifest = JSON.parse(await readFile(file, 'utf8'));
+          manifest.governancePaths = manifest.governancePaths.filter(
+            (value) => value !== '.github/workflows/audit-migrate-evidence.yml',
+          );
+          await writeFile(file, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+          NODE
+          rm .github/workflows/audit-migrate-evidence.yml
+      - name: Commit migrated evidence
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'test(evidence): migrate historical Verified packages'
+          git push origin HEAD:fix/governance-audit-m0-m2-remediation

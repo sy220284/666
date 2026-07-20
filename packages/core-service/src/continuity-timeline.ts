@@ -32,6 +32,7 @@ export async function saveTimelineEvent(
   const participants = uniqueIds(valid.participantIds);
   const witnesses = uniqueIds(valid.witnessIds);
   const subjects = uniqueIds(valid.subjectIds);
+  const presentEntityIds = uniqueIds([...participants, ...witnesses]);
   const dependencies = uniqueIds(valid.dependencyIds);
   const nextRange = comparableRange(valid);
   return context.workspace.writeProject(requestId, valid.projectId, (connection) => {
@@ -75,7 +76,7 @@ export async function saveTimelineEvent(
       }
     }
     assertNoDependencyCycle(connection, valid.projectId, eventId, dependencies);
-    if (nextRange && valid.locationId && participants.length > 0) {
+    if (nextRange && valid.locationId && presentEntityIds.length > 0) {
       for (const row of existingEvents) {
         if (
           row.id === eventId ||
@@ -87,11 +88,14 @@ export async function saveTimelineEvent(
         }
         const existingRange = comparableRange(row);
         if (!existingRange || !timeRangesOverlap(nextRange, existingRange)) continue;
-        const existingParticipants = new Set(roleIds(connection, row.id, 'participant'));
-        if (participants.some((id) => existingParticipants.has(id))) {
+        const existingPresentEntityIds = new Set([
+          ...roleIds(connection, row.id, 'participant'),
+          ...roleIds(connection, row.id, 'witness'),
+        ]);
+        if (presentEntityIds.some((id) => existingPresentEntityIds.has(id))) {
           throw new ContinuityServiceError(
             'CONTINUITY_CONFLICT',
-            'The same participant cannot occupy different locations in overlapping time ranges.',
+            'The same present entity cannot occupy different locations in overlapping time ranges.',
           );
         }
       }

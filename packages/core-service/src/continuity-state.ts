@@ -1,3 +1,5 @@
+import type { DatabaseSync } from 'node:sqlite';
+
 import {
   EntityStateInvalidateInputSchema,
   EntityStateSetInputSchema,
@@ -15,6 +17,7 @@ import {
   ContinuityServiceError,
   authorOnly,
   currentRecord,
+  type ChapterPosition,
   type ContinuityContext,
 } from './continuity-model.js';
 import { readCatalog } from './continuity-read.js';
@@ -34,6 +37,20 @@ const catalogInput = (projectId: string) => ({
   includeArchivedEvents: false,
   effectiveAtChapterId: null,
 });
+
+function replacementEndChapterId(
+  connection: DatabaseSync,
+  projectId: string,
+  currentEndChapterId: string | null,
+  nextStartChapterId: string,
+  nextStart: ChapterPosition,
+): string {
+  if (!currentEndChapterId) return nextStartChapterId;
+  const currentEnd = chapterPosition(connection, projectId, currentEndChapterId);
+  return compareChapterPosition(currentEnd, nextStart) > 0
+    ? nextStartChapterId
+    : currentEndChapterId;
+}
 
 export async function setEntityState(
   context: ContinuityContext,
@@ -69,18 +86,20 @@ export async function setEntityState(
           'Historical backfill requires an explicit migration workflow.',
         );
       }
+      const previousEndChapterId = replacementEndChapterId(
+        connection,
+        valid.projectId,
+        current.validUntilChapterId,
+        valid.validFromChapterId,
+        range.start,
+      );
       connection
         .prepare(
           `UPDATE entity_states
               SET record_status = ?, valid_until_chapter_id = ?, superseded_at = ?
             WHERE id = ?`,
         )
-        .run(
-          ordering === 0 ? 'superseded' : 'historical',
-          valid.validFromChapterId,
-          now,
-          current.id,
-        );
+        .run(ordering === 0 ? 'superseded' : 'historical', previousEndChapterId, now, current.id);
     }
     connection
       .prepare(
@@ -174,13 +193,20 @@ export async function setKnowledgeState(
           'Historical knowledge backfill requires an explicit migration workflow.',
         );
       }
+      const previousEndChapterId = replacementEndChapterId(
+        connection,
+        valid.projectId,
+        current.validUntilChapterId,
+        valid.validFromChapterId,
+        range.start,
+      );
       connection
         .prepare(
           `UPDATE knowledge_states
               SET record_status = 'historical', valid_until_chapter_id = ?, superseded_at = ?
             WHERE id = ?`,
         )
-        .run(valid.validFromChapterId, now, current.id);
+        .run(previousEndChapterId, now, current.id);
     }
     connection
       .prepare(

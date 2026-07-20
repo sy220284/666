@@ -16,6 +16,6 @@
 7. 已关联实体归档后，无关SceneBeat编辑成功，引用仍阻止永久删除。
 8. Migration确认旧JSON回填关系表、关系表回写兼容投影、升级原子性和故障回滚。
 9. 桌面套件日志：`test-results/desktop-e2e.log`，明确记录19项全部通过及`scene-beat.spec.ts`执行。
-10. 原始PNG截图以Base64无损归档：`screenshots/m3-02-scene-beat-entity-selector.png.base64`；解码后的SHA-256记录在截图清单中。
+10. 真实PNG保存在Quality运行的桌面证据工件中；仓库以`screenshots/m3-02-scene-beat-entity-selector.json`固定记录工件ID、原图字节数、尺寸与SHA-256。
 
 结论：SceneBeat实体关联不存在可绕过的第二权威写入路径，桌面操作、Core返回值与数据库约束一致。

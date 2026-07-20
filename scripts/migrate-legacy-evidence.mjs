@@ -26,6 +26,7 @@ const TASKS = [
 const BASE_REQUIRED = ['summary.md', 'commands.txt', 'known-risks.md'];
 const REJECTED_STATUSES = new Set(['blocked', 'deferred', 'error', 'failed', 'failure', 'pending']);
 const SUCCESSFUL_COMMAND_OUTCOME = /\|\s*(?:exit 0|remote success|expected exit 1)\s*\|/iu;
+const UNCLAIMED_ENVIRONMENT_OUTCOME = /\|\s*environment exit \d+\s*\|/iu;
 
 function git(argumentsList) {
   return execFileSync('git', argumentsList, {
@@ -81,6 +82,14 @@ function collectStatuses(value, statuses = []) {
   return statuses;
 }
 
+function commandOutcome(line) {
+  if (SUCCESSFUL_COMMAND_OUTCOME.test(line)) return 'passed';
+  if (UNCLAIMED_ENVIRONMENT_OUTCOME.test(line) && /no result claimed/iu.test(line)) {
+    return 'skipped';
+  }
+  return null;
+}
+
 async function sourceMetadata(taskId, directory) {
   const manifestPath = path.join(directory, 'manifest.json');
   if (await exists(manifestPath)) {
@@ -114,7 +123,8 @@ async function ensureMachineResults(taskId, directory, source) {
     .split(/\r?\n/u)
     .map((line) => line.trim())
     .filter(Boolean);
-  if (commands.length === 0 || commands.some((line) => !SUCCESSFUL_COMMAND_OUTCOME.test(line))) {
+  const outcomes = commands.map(commandOutcome);
+  if (commands.length === 0 || outcomes.some((status) => status === null)) {
     throw new Error(`${taskId} commands cannot be converted into verified machine results`);
   }
   await mkdir(resultsDirectory, { recursive: true });
@@ -128,7 +138,7 @@ async function ensureMachineResults(taskId, directory, source) {
         sourceCommit: source.commit,
         results: commands.map((details, index) => ({
           suite: `legacy-command-${String(index + 1).padStart(2, '0')}`,
-          status: 'passed',
+          status: outcomes[index],
           details,
         })),
       },

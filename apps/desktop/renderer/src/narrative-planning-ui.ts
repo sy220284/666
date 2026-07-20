@@ -87,14 +87,8 @@ function renderCatalog(host: HTMLElement, catalog: NarrativePlanningCatalog): vo
         element('li', `计划章节: ${milestone.plannedChapterId ?? '未设'}`),
         element('li', `实际章节: ${milestone.actualChapterId ?? '未命中'}`),
         element('li', `确认来源: ${milestone.confirmationSource ?? '未确认'}`),
-        element(
-          'li',
-          `前置节点: ${milestone.dependencyMilestoneIds.join(', ') || '无'}`,
-        ),
-        element(
-          'li',
-          `时间线依赖: ${milestone.dependencyTimelineEventIds.join(', ') || '无'}`,
-        ),
+        element('li', `前置节点: ${milestone.dependencyMilestoneIds.join(', ') || '无'}`),
+        element('li', `时间线依赖: ${milestone.dependencyTimelineEventIds.join(', ') || '无'}`),
       );
       milestoneDetails.append(warnings(milestone.warnings));
       milestoneRecord.append(milestoneDetails);
@@ -186,16 +180,7 @@ function mount(): void {
   includeResolved.addEventListener('change', () => void load());
   referenceChapter.addEventListener('change', () => void load());
   close.addEventListener('click', () => dialog.close());
-  dialog.append(
-    title,
-    status,
-    query,
-    referenceChapter,
-    resolvedLabel,
-    refresh,
-    close,
-    results,
-  );
+  dialog.append(title, status, query, referenceChapter, resolvedLabel, refresh, close, results);
   actions.append(openButton);
   document.body.append(dialog);
 }

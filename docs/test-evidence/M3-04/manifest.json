@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-04",
+  "commit": "bd9a1a0db768d9be8dbaa9bb1a0543754dcac40d",
+  "generatedAt": "2026-07-20T06:54:23Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 1069,
+      "sha256": "4890fe0a906fa6a6dd72273c924755b7501895672aa657fa56f5b666d5e901d0"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 605,
+      "sha256": "5b69a71abe2eb966303f15f4277a6f8adfb9ed1bf838e8196ae18ade978931e6"
+    },
+    {
+      "path": "manual-acceptance.md",
+      "bytes": 1890,
+      "sha256": "ad131303b80e55bfc9cd7e3e4216b7487ef084bc8b97be1335540a4d23b15647"
+    },
+    {
+      "path": "performance.json",
+      "bytes": 305,
+      "sha256": "556f51690a711bd736e6fb511d336629429a1e3b958690ee25be82d1e84d8212"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 1254,
+      "sha256": "f84fc66c72699cdaeddd77bad9c205182a2944511142dc34150ba5d40ce235ad"
+    },
+    {
+      "path": "screenshots/manifest.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 1131,
+      "sha256": "0f325f379d4c33dff5835b1c13342cf57a9a27daefd7a15d84cd81c32cdda83c"
+    },
+    {
+      "path": "test-results/electron-e2e.log",
+      "bytes": 3570,
+      "sha256": "d576140108a4c2355eceeaced09c1e0ebff0b76e9359ae1f4506e74eb7901025"
+    },
+    {
+      "path": "test-results/results.json",
+      "bytes": 2161,
+      "sha256": "f687edebff91057a168fe1093e0a710086bacfe189766d34d810a3fb3e2640db"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/666/666[39m
+
+[90mstdout[2m | tests/integration/__audit-permanent-delete-diagnostic.test.ts[2m > [22m[2mrouted permanent delete diagnostic[2m > [22m[2mcreates the checkpoint and deletes after a TimelineEvent anchor is cleared
+[22m[39mDIAG blocked {"planHash":"9de00f309ee02949ceeecd198b0ac88fbc3af0803eeb13a766b0288402bcf95d","entry":{"id":"b5dc504c-8559-4a6e-8cfe-3ba4a6723f0b","entityType":"chapter","entityId":"a735a1de-9a3f-4d19-b081-0bc89e279d34","title":"第一章","originalParentId":"266483a8-953b-48ea-b2cc-e5f1bfd6459f","originalOrderKey":"1024","deletedAt":"2026-07-20T13:30:00.000Z"},"impact":{"volumes":0,"chapters":1,"drafts":1,"draftBlocks":1,"versions":0,"candidates":0},"blockers":[{"kind":"chapter-reference","count":1,"source":"timeline_events.chapter_id","deleteAction":"SET NULL"}],"canDelete":false}
+
+[90mstdout[2m | tests/integration/__audit-permanent-delete-diagnostic.test.ts[2m > [22m[2mrouted permanent delete diagnostic[2m > [22m[2mcreates the checkpoint and deletes after a TimelineEvent anchor is cleared
+[22m[39mDIAG clear {"planHash":"0b61bb69faa30a67317cb133dc7ad421ad6250eab68b9c9b15dfeaf10a9844d3","entry":{"id":"b5dc504c-8559-4a6e-8cfe-3ba4a6723f0b","entityType":"chapter","entityId":"a735a1de-9a3f-4d19-b081-0bc89e279d34","title":"第一章","originalParentId":"266483a8-953b-48ea-b2cc-e5f1bfd6459f","originalOrderKey":"1024","deletedAt":"2026-07-20T13:30:00.000Z"},"impact":{"volumes":0,"chapters":1,"drafts":1,"draftBlocks":1,"versions":0,"candidates":0},"blockers":[],"canDelete":true}
+DIAG requestIds dbe00383-7b37-40ee-8e69-b00b2f548720 e71c5f22-faac-53b8-8f7c-9ebe650f356a { success: [33mtrue[39m, data: [32m'e71c5f22-faac-53b8-8f7c-9ebe650f356a'[39m }
+
+ [31m×[39m tests/integration/__audit-permanent-delete-diagnostic.test.ts[2m > [22mrouted permanent delete diagnostic[2m > [22mcreates the checkpoint and deletes after a TimelineEvent anchor is cleared[32m 95[2mms[22m[39m
+[31m   → [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "planHash",
+      "confirmationTitle"
+    ],
+    "path": [],
+    "message": "Unrecognized keys: \"planHash\", \"confirmationTitle\""
+  }
+][39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/integration/__audit-permanent-delete-diagnostic.test.ts[2m > [22mrouted permanent delete diagnostic[2m > [22mcreates the checkpoint and deletes after a TimelineEvent anchor is cleared
+[31m[1mZodError[22m: [
+  {
+    "code": "unrecognized_keys",
+    "keys": [
+      "planHash",
+      "confirmationTitle"
+    ],
+    "path": [],
+    "message": "Unrecognized keys: \"planHash\", \"confirmationTitle\""
+  }
+][39m
+[36m [2m❯[22m ReferenceAwareStructureOperationService.previewPermanentDelete packages/core-service/src/reference-aware-structure-operations.ts:[2m222:58[22m[39m
+    [90m220|[39m     raw[33m:[39m [33mTrashPermanentDeletePreviewInput[39m[33m,[39m
+    [90m221|[39m   )[33m:[39m [33mTrashPermanentDeletePreview[39m {
+    [90m222|[39m     [35mconst[39m input [33m=[39m [33mTrashPermanentDeletePreviewInputSchema[39m[33m.[39m[34mparse[39m(raw)[33m;[39m
+    [90m   |[39m                                                          [31m^[39m
+    [90m223|[39m     [35mreturn[39m [35mthis[39m[33m.[39m#workspace[33m.[39m[34mreadProject[39m(input[33m.[39mprojectId[33m,[39m (database) [33m=>[39m
+    [90m224|[39m       [34mpreviewWithDatabase[39m(database[33m,[39m input)[33m,[39m
+[90m [2m❯[22m ReferenceAwareStructureOperationService.assertPermanentDeleteExecutable packages/core-service/src/reference-aware-structure-operations.ts:[2m232:26[22m[39m
+[90m [2m❯[22m routeStructureProjectOperation packages/core-service/src/utility-project-structure-router.ts:[2m75:36[22m[39m
+[90m [2m❯[22m tests/integration/__audit-permanent-delete-diagnostic.test.ts:[2m114:28[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ _zod: { def: [ { code: 'unrecognized_keys', keys: [ 'planHash', 'confirmationTitle' ], path: [], message: 'Unrecognized keys: "planHash", "confirmationTitle"' } ], constr: 'Function<ZodError>', traits: { constructor: 'Function<Set>', has: 'Function<has>', add: 'Function<add>', delete: 'Function<delete>', difference: 'Function<difference>', clear: 'Function<clear>', entries: 'Function<entries>', forEach: 'Function<forEach>', intersection: 'Function<intersection>', isSubsetOf: 'Function<isSubsetOf>', isSupersetOf: 'Function<isSupersetOf>', isDisjointFrom: 'Function<isDisjointFrom>', size: 2, symmetricDifference: 'Function<symmetricDifference>', union: 'Function<union>', values: 'Function<values>', keys: 'Function<values>' }, deferred: [] }, issues: [ { code: 'unrecognized_keys', keys: [ 'planHash', 'confirmationTitle' ], path: [], message: 'Unrecognized keys: "planHash", "confirmationTitle"' } ], format: 'Function<value>', flatten: 'Function<value>', addIssue: 'Function<value>', addIssues: 'Function<value>', isEmpty: false }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m   Start at [22m 23:17:12
+[2m   Duration [22m 947ms[2m (transform 437ms, setup 0ms, import 698ms, tests 96ms, environment 0ms)[22m
+

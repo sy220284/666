@@ -117,6 +117,16 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
     await dialog.locator('textarea[name="coreConflict"]').fill('证词和物证相反');
     await dialog.locator('textarea[name="expectedResult"]').fill('主角获得新目标');
     await dialog.locator('input[name="required"]').check();
+
+    const outputDirectory = process.env.WORLDFORGE_E2E_OUTPUT_DIR;
+    if (outputDirectory) {
+      await mkdir(outputDirectory, { recursive: true });
+      await page.screenshot({
+        path: path.join(outputDirectory, 'm3-02-scene-beat-entity-selector.png'),
+        fullPage: true,
+      });
+    }
+
     await page.locator('[data-save-scene-beat]').click();
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('[data-scene-beat-list]')).toContainText('发现第一条反证');
@@ -133,15 +143,6 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
       characterIds: [before.characterId],
       locationIds: [before.locationId],
     });
-
-    const outputDirectory = process.env.WORLDFORGE_E2E_OUTPUT_DIR;
-    if (outputDirectory) {
-      await mkdir(outputDirectory, { recursive: true });
-      await page.screenshot({
-        path: path.join(outputDirectory, 'm3-02-scene-beat-entity-selector.png'),
-        fullPage: true,
-      });
-    }
 
     page.once('dialog', (prompt) => prompt.accept());
     await page

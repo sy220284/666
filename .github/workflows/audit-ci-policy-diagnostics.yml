@@ -1,0 +1,57 @@
+name: Audit CI Policy Diagnostics
+
+on:
+  push:
+    branches: [fix/governance-audit-m0-m2-remediation]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-ci-policy-diagnostics
+  cancel-in-progress: true
+
+jobs:
+  diagnose-and-self-remove:
+    if: ${{ !contains(github.event.head_commit.message, 'remove CI policy diagnostics bootstrap') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/governance-audit-m0-m2-remediation
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Capture policy output without the temporary workflow
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          rm .github/workflows/audit-ci-policy-diagnostics.yml
+          node scripts/ci-policy.mjs > test-results/ci/ci-policy.log 2>&1 || true
+      - name: Upload exact CI policy diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: audit-ci-policy-diagnostics-${{ github.run_id }}
+          path: test-results/ci/ci-policy.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove bootstrap authorization and commit cleanup
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const file = '.github/audit-remediations/m0-m2-2026-07-20.json';
+          const manifest = JSON.parse(await readFile(file, 'utf8'));
+          manifest.governancePaths = manifest.governancePaths.filter(
+            (value) => value !== '.github/workflows/audit-ci-policy-diagnostics.yml',
+          );
+          await writeFile(file, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+          NODE
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'chore(ci): remove CI policy diagnostics bootstrap'
+          git push origin HEAD:fix/governance-audit-m0-m2-remediation

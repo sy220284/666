@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - work/m3-05-foreshadowing-character-arc
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -13,6 +16,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:

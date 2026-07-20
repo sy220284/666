@@ -491,6 +491,9 @@ function assertForeshadowingTargets(
   sourceId: string,
   input: ForeshadowingSaveInput,
 ): void {
+  const source = connection
+    .prepare('SELECT status FROM foreshadowings WHERE id = ? AND project_id = ?')
+    .get(sourceId, projectId) as { readonly status: string } | undefined;
   for (const link of input.chapterLinks) assertChapter(connection, projectId, link.chapterId);
   for (const relation of input.relations) {
     if (relation.targetForeshadowingId === sourceId) {
@@ -499,7 +502,18 @@ function assertForeshadowingTargets(
         'Foreshadowing cannot relate to itself.',
       );
     }
-    assertForeshadowing(connection, projectId, relation.targetForeshadowingId);
+    const target = assertForeshadowing(connection, projectId, relation.targetForeshadowingId);
+    if (
+      relation.kind === 'mutually_exclusive' &&
+      source &&
+      isActivatedForeshadowing(source.status) &&
+      isActivatedForeshadowing(target.status)
+    ) {
+      throw new NarrativePlanningServiceError(
+        'NARRATIVE_CONFLICT',
+        `Mutually exclusive foreshadowing is already active: ${target.title}.`,
+      );
+    }
   }
 }
 
@@ -575,7 +589,8 @@ function assertNoMutualExclusionConflict(
         LIMIT 1`,
     )
     .get(foreshadowingId, projectId, foreshadowingId, foreshadowingId) as
-    { readonly title: string; readonly status: string } | undefined;
+    | { readonly title: string; readonly status: string }
+    | undefined;
   if (conflict) {
     throw new NarrativePlanningServiceError(
       'NARRATIVE_CONFLICT',

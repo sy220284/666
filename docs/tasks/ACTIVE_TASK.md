@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-05`
-- 唯一任务卡：`docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md`
-- 工作分支：`work/m3-05-foreshadowing-character-arc`
+- 任务ID：`M3-04`
+- 唯一任务卡：`docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md`
+- 工作分支：`work/m3-04-state-timeline-knowledge`
 - 开始时间：`2026-07-20`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -23,17 +23,26 @@ allowed_paths:
   - packages/domain/
   - packages/core-service/
   - packages/contracts/
+  - apps/desktop/main/
+  - apps/desktop/preload/
   - apps/desktop/renderer/
   - tests/integration/
+  - tests/migration/
+  - tests/security/
+  - tests/e2e/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/contracts/IPC_CONTRACTS.md
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md
+  - docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-05/
+  - docs/test-evidence/M3-04/
+  - docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md
 forbidden_paths:
 
 required_docs:
@@ -42,12 +51,18 @@ required_docs:
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
   - docs/database/DATABASE_SCHEMA.md
-  - docs/product/FUNCTION_CATALOG.md
-  - docs/decisions/ADR-006-character-arc-via-state-proposal.md
+  - docs/database/DATA_DICTIONARY.md
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/testing/TEST_STRATEGY.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
+  - pnpm test:migration
+  - pnpm test:integration
+  - pnpm test:security
+  - pnpm test:e2e
+  - pnpm test:eval
 ```
 
 ## 连续执行规则

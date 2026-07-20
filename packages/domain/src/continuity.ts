@@ -1,10 +1,4 @@
-export type TimelinePrecision =
-  | 'exact'
-  | 'day'
-  | 'month'
-  | 'year'
-  | 'approximate'
-  | 'unknown';
+export type TimelinePrecision = 'exact' | 'day' | 'month' | 'year' | 'approximate' | 'unknown';
 
 export interface ComparableTimeRange {
   readonly startMs: number;
@@ -42,9 +36,7 @@ function dateParts(value: string, precision: TimelinePrecision): number[] | null
 function validUtcDate(year: number, month: number, day: number): boolean {
   const date = new Date(Date.UTC(year, month - 1, day));
   return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
   );
 }
 
@@ -88,10 +80,7 @@ export function eventTimeRange(
   return { startMs: start.startMs, endMs };
 }
 
-export function timeRangesOverlap(
-  left: ComparableTimeRange,
-  right: ComparableTimeRange,
-): boolean {
+export function timeRangesOverlap(left: ComparableTimeRange, right: ComparableTimeRange): boolean {
   return left.startMs < right.endMs && right.startMs < left.endMs;
 }
 
@@ -115,7 +104,6 @@ export function chapterRangeContains(
   target: readonly [number, number],
 ): boolean {
   return (
-    compareChapterPosition(start, target) <= 0 &&
-    (!end || compareChapterPosition(target, end) < 0)
+    compareChapterPosition(start, target) <= 0 && (!end || compareChapterPosition(target, end) < 0)
   );
 }

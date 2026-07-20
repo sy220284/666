@@ -110,10 +110,24 @@ describe('M3-05 foreshadowing lifecycle', () => {
     }
   });
 
-  it('rejects dependency cycles, mutual exclusion conflicts, illegal transitions, and AI writes', async () => {
+  it('rejects dependency cycles, mutex conflicts, invalid windows and AI writes', async () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
+      await expect(
+        harness.narrative.saveForeshadowing(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'author',
+          foreshadowingId: null,
+          title: '反向窗口',
+          description: '',
+          revealFromChapterId: seeded.chapter3.id,
+          revealByChapterId: seeded.chapter2.id,
+          chapterLinks: [],
+          relations: [],
+        }),
+      ).rejects.toMatchObject({ code: 'NARRATIVE_INVALID' });
+
       let catalog = await harness.narrative.saveForeshadowing(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -126,6 +140,20 @@ describe('M3-05 foreshadowing lifecycle', () => {
         relations: [],
       });
       const first = catalog.foreshadowings.find((item) => item.title === '甲')!;
+      await expect(
+        harness.narrative.saveForeshadowing(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'author',
+          foreshadowingId: first.id,
+          title: first.title,
+          description: first.description,
+          revealFromChapterId: null,
+          revealByChapterId: null,
+          chapterLinks: [],
+          relations: [{ targetForeshadowingId: first.id, kind: 'depends_on' }],
+        }),
+      ).rejects.toMatchObject({ code: 'NARRATIVE_INVALID' });
+
       catalog = await harness.narrative.saveForeshadowing(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -177,6 +205,55 @@ describe('M3-05 foreshadowing lifecycle', () => {
           status: 'planted',
         }),
       ).rejects.toMatchObject({ code: 'NARRATIVE_CONFLICT' });
+
+      catalog = await harness.narrative.saveForeshadowing(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        foreshadowingId: null,
+        title: '丙',
+        description: '',
+        revealFromChapterId: null,
+        revealByChapterId: null,
+        chapterLinks: [],
+        relations: [],
+      });
+      const third = catalog.foreshadowings.find((item) => item.title === '丙')!;
+      await harness.narrative.transitionForeshadowing(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        foreshadowingId: third.id,
+        status: 'planted',
+      });
+      await expect(
+        harness.narrative.saveForeshadowing(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'author',
+          foreshadowingId: first.id,
+          title: first.title,
+          description: first.description,
+          revealFromChapterId: null,
+          revealByChapterId: null,
+          chapterLinks: [],
+          relations: [{ targetForeshadowingId: third.id, kind: 'mutually_exclusive' }],
+        }),
+      ).rejects.toMatchObject({ code: 'NARRATIVE_CONFLICT' });
+
+      catalog = await harness.narrative.saveForeshadowing(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        foreshadowingId: first.id,
+        title: first.title,
+        description: first.description,
+        revealFromChapterId: null,
+        revealByChapterId: null,
+        chapterLinks: [{ chapterId: seeded.chapter2.id, role: 'reinforce' }],
+        relations: [{ targetForeshadowingId: third.id, kind: 'reinforces' }],
+      });
+      expect(catalog.foreshadowings.find((item) => item.id === first.id)).toMatchObject({
+        chapterLinks: [{ chapterId: seeded.chapter2.id, role: 'reinforce' }],
+        relations: [{ targetForeshadowingId: third.id, kind: 'reinforces' }],
+      });
+
       await expect(
         harness.narrative.transitionForeshadowing(randomUUID(), {
           projectId: seeded.project.projectId,
@@ -185,6 +262,14 @@ describe('M3-05 foreshadowing lifecycle', () => {
           status: 'planned',
         }),
       ).rejects.toMatchObject({ code: 'NARRATIVE_CONFLICT' });
+      await expect(
+        harness.narrative.transitionForeshadowing(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'ai',
+          foreshadowingId: second.id,
+          status: 'planted',
+        }),
+      ).rejects.toMatchObject({ code: 'NARRATIVE_AUTHOR_REQUIRED' });
       await expect(
         harness.narrative.saveForeshadowing(randomUUID(), {
           projectId: seeded.project.projectId,

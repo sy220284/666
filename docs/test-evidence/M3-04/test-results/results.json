@@ -1,0 +1,50 @@
+[
+  {
+    "suite": "continuity-interval-semantics",
+    "fixtureId": "M3-04-explicit-gap-and-revision",
+    "status": "passed",
+    "details": "Explicit finite ends remained unchanged across later state and knowledge writes; overlap truncation and same-start revision semantics passed."
+  },
+  {
+    "suite": "continuity-authority-boundaries",
+    "fixtureId": "M3-04-authority-and-project-boundary",
+    "status": "passed",
+    "details": "AI mutations and foreign Version, Entity, EvidenceAnchor and logicalBlock sources were rejected."
+  },
+  {
+    "suite": "timeline-conflict-rules",
+    "fixtureId": "M3-04-time-location-dependency",
+    "status": "passed",
+    "details": "Present-role multi-location conflicts, dependency cycles and definitely out-of-order dependencies were rejected without hard decisions for approximate or unknown time."
+  },
+  {
+    "suite": "knowledge-state-model",
+    "fixtureId": "M3-04-knowledge-statuses",
+    "status": "passed",
+    "details": "knows, believes, suspects, misunderstands and unknown persisted with chapter-effective history and invalidation."
+  },
+  {
+    "suite": "logical-block-anchor-safety",
+    "fixtureId": "M3-04-deleted-source-block",
+    "status": "passed",
+    "details": "A confirmed KnowledgeState retained its stable logicalBlock source identifier after the Draft block was deleted."
+  },
+  {
+    "suite": "continuity-ipc-security",
+    "fixtureId": "M3-04-seven-ipc-commands",
+    "status": "passed",
+    "details": "All seven named IPC commands rejected untrusted or malformed calls and forwarded validated payloads exactly once."
+  },
+  {
+    "suite": "continuity-electron-e2e",
+    "fixtureId": "M3-04-real-desktop-ledger",
+    "status": "passed",
+    "details": "The real Electron process created source data, wrote EntityState, TimelineEvent and KnowledgeState, returned counts [1,1,1], and displayed all records in the ledger UI. E2E run completed 18/18 tests."
+  },
+  {
+    "suite": "main-verification",
+    "fixtureId": "M3-04-final-main",
+    "status": "passed",
+    "details": "Final main commit bd9a1a0db768d9be8dbaa9bb1a0543754dcac40d passed Main Verification run 29722417080."
+  }
+]

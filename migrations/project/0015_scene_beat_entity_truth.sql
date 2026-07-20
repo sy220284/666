@@ -107,38 +107,19 @@ END;
 
 CREATE TRIGGER trg_scene_beats_entity_refs_sync_update
 AFTER UPDATE OF project_id, character_ids_json, location_ids_json ON scene_beats
-WHEN
-  EXISTS (
-    SELECT value FROM json_each(NEW.character_ids_json)
-    EXCEPT
-    SELECT entity_id FROM scene_beat_entities
-     WHERE scene_beat_id = NEW.id AND role = 'character'
-  )
-  OR EXISTS (
-    SELECT entity_id FROM scene_beat_entities
-     WHERE scene_beat_id = NEW.id AND role = 'character'
-    EXCEPT
-    SELECT value FROM json_each(NEW.character_ids_json)
-  )
-  OR EXISTS (
-    SELECT value FROM json_each(NEW.location_ids_json)
-    EXCEPT
-    SELECT entity_id FROM scene_beat_entities
-     WHERE scene_beat_id = NEW.id AND role = 'location'
-  )
-  OR EXISTS (
-    SELECT entity_id FROM scene_beat_entities
-     WHERE scene_beat_id = NEW.id AND role = 'location'
-    EXCEPT
-    SELECT value FROM json_each(NEW.location_ids_json)
-  )
 BEGIN
   DELETE FROM scene_beat_entities
-   WHERE scene_beat_id = NEW.id AND role IN ('character', 'location');
-  INSERT INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
+   WHERE scene_beat_id = NEW.id
+     AND role = 'character'
+     AND entity_id NOT IN (SELECT value FROM json_each(NEW.character_ids_json));
+  DELETE FROM scene_beat_entities
+   WHERE scene_beat_id = NEW.id
+     AND role = 'location'
+     AND entity_id NOT IN (SELECT value FROM json_each(NEW.location_ids_json));
+  INSERT OR IGNORE INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
   SELECT NEW.project_id, NEW.id, value, 'character', NEW.updated_at
     FROM json_each(NEW.character_ids_json);
-  INSERT INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
+  INSERT OR IGNORE INTO scene_beat_entities(project_id, scene_beat_id, entity_id, role, created_at)
   SELECT NEW.project_id, NEW.id, value, 'location', NEW.updated_at
     FROM json_each(NEW.location_ids_json);
 END;
@@ -172,6 +153,11 @@ END;
 CREATE TRIGGER trg_scene_beat_entities_character_mirror_insert
 AFTER INSERT ON scene_beat_entities
 WHEN NEW.role = 'character'
+ AND NOT EXISTS (
+   SELECT 1
+     FROM scene_beats beat, json_each(beat.character_ids_json) ref
+    WHERE beat.id = NEW.scene_beat_id AND ref.value = NEW.entity_id
+ )
 BEGIN
   UPDATE scene_beats
      SET character_ids_json = (
@@ -189,6 +175,11 @@ END;
 CREATE TRIGGER trg_scene_beat_entities_location_mirror_insert
 AFTER INSERT ON scene_beat_entities
 WHEN NEW.role = 'location'
+ AND NOT EXISTS (
+   SELECT 1
+     FROM scene_beats beat, json_each(beat.location_ids_json) ref
+    WHERE beat.id = NEW.scene_beat_id AND ref.value = NEW.entity_id
+ )
 BEGIN
   UPDATE scene_beats
      SET location_ids_json = (
@@ -206,6 +197,11 @@ END;
 CREATE TRIGGER trg_scene_beat_entities_character_mirror_delete
 AFTER DELETE ON scene_beat_entities
 WHEN OLD.role = 'character'
+ AND EXISTS (
+   SELECT 1
+     FROM scene_beats beat, json_each(beat.character_ids_json) ref
+    WHERE beat.id = OLD.scene_beat_id AND ref.value = OLD.entity_id
+ )
 BEGIN
   UPDATE scene_beats
      SET character_ids_json = (
@@ -223,6 +219,11 @@ END;
 CREATE TRIGGER trg_scene_beat_entities_location_mirror_delete
 AFTER DELETE ON scene_beat_entities
 WHEN OLD.role = 'location'
+ AND EXISTS (
+   SELECT 1
+     FROM scene_beats beat, json_each(beat.location_ids_json) ref
+    WHERE beat.id = OLD.scene_beat_id AND ref.value = OLD.entity_id
+ )
 BEGIN
   UPDATE scene_beats
      SET location_ids_json = (

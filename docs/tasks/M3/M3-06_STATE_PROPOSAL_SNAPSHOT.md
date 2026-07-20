@@ -1,6 +1,6 @@
 # M3-06 状态提案、定稿、尾快照与失效传播
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`work/m3-06-state-proposal-snapshot`

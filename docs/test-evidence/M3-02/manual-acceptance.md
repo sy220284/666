@@ -1,11 +1,21 @@
-# 人工验收
+# M3-02人工验收记录
 
-状态：**延期，未宣称通过**。
+状态：**通过**。
 
-implementation-pr 模式允许实现优先推进。以下项目将在 M3 批量验收或最终 Verified 关闭前执行：
+最终实现提交：`0239e87aca9a31bcfc81008d326af2a9fa16b889`。  
+验证Head：`ac4cf1a30e61ba880b5160e50ca8d3118078aa50`。
 
-1. 在真实 Electron 界面创建、编辑、排序、删除和恢复 SceneBeat。
-2. 从正文块转换 SceneBeat，确认正文内容与 Revision 不被规划操作修改。
-3. 预览跨章影响，分别确认 SceneBeat 移动与正文块移动。
-4. 验证取消、锁定冲突、事务中断与恢复点回滚。
-5. 采集真实界面截图并更新截图 manifest。
+验收方式：真实Electron自动验收、日志复核与桌面截图复核。
+
+1. 创建本地项目、人物“林照夜”和地点“旧档案馆”。
+2. 打开作品规划与SceneBeat新建弹窗。
+3. Playwright确认人物和地点字段显示实体名称多选器，旧UUID文本输入不可见。
+4. 选择人物和地点后保存SceneBeat，Core返回对应`characterIds`与`locationIds`。
+5. 删除SceneBeat后，原Draft内容、Revision和正文块保持不变。
+6. Integration确认不存在、跨项目、类型错误和新增归档实体引用均被拒绝。
+7. 已关联实体归档后，无关SceneBeat编辑成功，引用仍阻止永久删除。
+8. Migration确认旧JSON回填关系表、关系表回写兼容投影、升级原子性和故障回滚。
+9. 桌面套件日志：`test-results/desktop-e2e.log`，明确记录19项全部通过及`scene-beat.spec.ts`执行。
+10. 真实PNG保存在Quality运行的桌面证据工件中；仓库以`screenshots/m3-02-scene-beat-entity-selector.json`固定记录工件ID、原图字节数、尺寸与SHA-256。
+
+结论：SceneBeat实体关联不存在可绕过的第二权威写入路径，桌面操作、Core返回值与数据库约束一致。

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "M3-02-real-electron-scene-beat",
+  "sourceRunId": 29740976348,
+  "artifactId": 8460479415,
+  "artifactDigest": "sha256:8a65c441fa49c83328a7793bd84811071d5da5f15cee319882a60e30c4ae3886",
+  "fileName": "m3-02-scene-beat-entity-selector.png",
+  "bytes": 118311,
+  "sha256": "bc43498d55352ab7713958110166d38723e4d205649a2521966b865f565168f6",
+  "width": 1280,
+  "height": 800,
+  "format": "PNG",
+  "review": "Real Electron capture from the successful 19-test permanent E2E run. The repository stores this immutable descriptor; the original PNG is in the cited Actions artifact."
+}

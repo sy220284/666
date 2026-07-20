@@ -1,6 +1,6 @@
 # M3-02 SceneBeat、场景关联与跨章移动
 
-> 状态：In Progress  
+> 状态：Verified  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 工作分支：`work/m3-02-scene-beat-cross-chapter`
@@ -96,5 +96,13 @@ M3-01、M2-04
 - SceneBeat成为作者规划与后续T0共用结构。
 - 人物、地点关联只有一个受数据库约束的权威关系集合。
 - 不存在M2使用尚未创建SceneBeat的倒置依赖。
+
+## 验收关闭记录
+
+- 初始实现提交：`63d4d9c07ed3932a13adfc18bc19531bf15e77d3`。
+- 审计返修PR：#97；验证Head：`ac4cf1a30e61ba880b5160e50ca8d3118078aa50`；最终main提交：`0239e87aca9a31bcfc81008d326af2a9fa16b889`。
+- PR Policy、Task Governance、Evidence、Quality、Security、Performance六项永久门禁全部通过。
+- 真实Electron套件执行19项并全部通过，明确包含`scene-beat.spec.ts`；P0-034、P0-035完成验收。
+- 最终证据：`docs/test-evidence/M3-02/`。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

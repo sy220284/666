@@ -6,10 +6,7 @@ import {
 } from '@worldforge/contracts';
 
 import { ContinuityServiceError } from './continuity.js';
-import {
-  NarrativePlanningService,
-  NarrativePlanningServiceError,
-} from './narrative-planning.js';
+import { NarrativePlanningService, NarrativePlanningServiceError } from './narrative-planning.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
 
 function success(operation: string, data: unknown): CoreProjectResult {

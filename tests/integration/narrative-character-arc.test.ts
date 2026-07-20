@@ -14,7 +14,7 @@ afterEach(async () => {
 });
 
 describe('M3-05 character arcs', () => {
-  it('orders milestones, enforces dependencies, and records author confirmation', async () => {
+  it('orders milestones, moves planned chapters, enforces dependencies, and records author confirmation', async () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
@@ -42,9 +42,37 @@ describe('M3-05 character arcs', () => {
         dependencyMilestoneIds: [],
         dependencyTimelineEventIds: [],
       });
-      const first = catalog.characterArcs[0]!.milestones.find(
+      let first = catalog.characterArcs[0]!.milestones.find(
         (item) => item.title === '第一次承担',
       )!;
+      catalog = await harness.narrative.saveArcMilestone(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        milestoneId: first.id,
+        arcId: arc.id,
+        title: first.title,
+        description: first.description,
+        sortIndex: first.sortIndex,
+        plannedChapterId: seeded.chapter3.id,
+        dependencyMilestoneIds: [],
+        dependencyTimelineEventIds: [],
+      });
+      first = catalog.characterArcs[0]!.milestones.find((item) => item.id === first.id)!;
+      expect(first.plannedChapterId).toBe(seeded.chapter3.id);
+      catalog = await harness.narrative.saveArcMilestone(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        milestoneId: first.id,
+        arcId: arc.id,
+        title: first.title,
+        description: first.description,
+        sortIndex: first.sortIndex,
+        plannedChapterId: seeded.chapter2.id,
+        dependencyMilestoneIds: [],
+        dependencyTimelineEventIds: [],
+      });
+      first = catalog.characterArcs[0]!.milestones.find((item) => item.id === first.id)!;
+
       catalog = await harness.narrative.saveArcMilestone(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -108,6 +136,29 @@ describe('M3-05 character arcs', () => {
         actualChapterId: null,
         confirmationSource: null,
       });
+      catalog = await harness.narrative.transitionArcMilestone(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        milestoneId: second.id,
+        status: 'skipped',
+        actualChapterId: seeded.chapter4.id,
+      });
+      expect(
+        catalog.characterArcs[0]!.milestones.find((item) => item.id === second.id),
+      ).toMatchObject({
+        status: 'skipped',
+        actualChapterId: seeded.chapter4.id,
+        confirmationSource: 'author',
+      });
+      await expect(
+        harness.narrative.transitionArcMilestone(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'author',
+          milestoneId: second.id,
+          status: 'hit',
+          actualChapterId: seeded.chapter4.id,
+        }),
+      ).rejects.toMatchObject({ code: 'NARRATIVE_CONFLICT' });
     } finally {
       await closeContinuityHarness(harness);
     }
@@ -177,6 +228,7 @@ describe('M3-05 character arcs', () => {
         dependencyTimelineEventIds: [event.id],
       });
       const first = catalog.characterArcs[0]!.milestones[0]!;
+      expect(first.dependencyTimelineEventIds).toEqual([event.id]);
       catalog = await harness.narrative.saveArcMilestone(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
@@ -247,6 +299,20 @@ describe('M3-05 character arcs', () => {
         }),
       ).rejects.toMatchObject({ code: 'NARRATIVE_AUTHOR_REQUIRED' });
       await expect(
+        harness.narrative.saveArcMilestone(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'ai',
+          milestoneId: null,
+          arcId: arc.id,
+          title: 'AI节点',
+          description: '',
+          sortIndex: 3,
+          plannedChapterId: seeded.chapter4.id,
+          dependencyMilestoneIds: [],
+          dependencyTimelineEventIds: [],
+        }),
+      ).rejects.toMatchObject({ code: 'NARRATIVE_AUTHOR_REQUIRED' });
+      await expect(
         harness.narrative.transitionArcMilestone(randomUUID(), {
           projectId: seeded.project.projectId,
           authority: 'ai',
@@ -256,6 +322,9 @@ describe('M3-05 character arcs', () => {
         }),
       ).rejects.toMatchObject({ code: 'NARRATIVE_AUTHOR_REQUIRED' });
       expect(catalog.characterArcs.some((item) => item.title === 'AI弧光')).toBe(false);
+      expect(catalog.characterArcs[0]!.milestones.some((item) => item.title === 'AI节点')).toBe(
+        false,
+      );
     } finally {
       await closeContinuityHarness(harness);
     }

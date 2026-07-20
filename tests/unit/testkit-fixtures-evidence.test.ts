@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -101,8 +101,8 @@ describe('unified evidence writer', () => {
     commit: 'abcdef0',
     generatedAt: '2026-07-15T03:00:00.000Z',
     summary,
-    manualAcceptance: '# 人工验收\n\n- 固定公开Fixture复核通过。\n',
-    qualityMatrix: '# 质量矩阵\n\n| 维度 | 结论 |\n|---|---|\n| 数据 | PASS |\n',
+    manualAcceptance: '固定公开Fixture复核通过。',
+    qualityMatrix: '| 维度 | 结论 |\n|---|---|\n| 数据 | PASS |',
     commands: [
       {
         command: 'pnpm test:unit',
@@ -134,35 +134,23 @@ describe('unified evidence writer', () => {
     knownRisks: ['真实 Provider 与真实平台显示仍由后续验收覆盖。'],
   });
 
-  it('writes reports, screenshots, performance, risks, and a hashed manifest atomically', async () => {
+  it('writes one consolidated report plus commands, risks, and a hashed manifest atomically', async () => {
     const directory = await temporaryDirectory();
-    const screenshot = path.join(directory, 'public-screenshot.png');
-    await writeFile(screenshot, 'synthetic-public-image', 'utf8');
     const target = path.join(directory, 'M0-05');
-    const result = await writeTestEvidence(target, {
-      ...evidence(),
-      screenshots: [
-        { sourcePath: screenshot, fileName: 'desktop.png', fixtureId: 'electron-shell-v1' },
-      ],
-    });
-    expect(result.files.map((file) => file.path)).toEqual(
-      expect.arrayContaining([
-        'commands.txt',
-        'known-risks.md',
-        'manual-acceptance.md',
-        'manifest.json',
-        'performance.json',
-        'quality-matrix.md',
-        'screenshots/desktop.png',
-        'screenshots/manifest.json',
-        'summary.md',
-        'test-results/results.json',
-      ]),
+    const result = await writeTestEvidence(target, evidence());
+    expect(result.files.map((file) => file.path)).toEqual([
+      'commands.txt',
+      'known-risks.md',
+      'manifest.json',
+      'summary.md',
+    ]);
+    const summary = await readFile(path.join(target, 'summary.md'), 'utf8');
+    expect(summary).toContain('通过：1');
+    expect(summary).toContain('固定公开Fixture复核通过');
+    expect(summary).toContain('fixture_generation_ms');
+    expect(JSON.parse(await readFile(path.join(target, 'manifest.json'), 'utf8')).files).toHaveLength(
+      3,
     );
-    expect(await readFile(path.join(target, 'summary.md'), 'utf8')).toContain('通过：1');
-    expect(
-      JSON.parse(await readFile(path.join(target, 'manifest.json'), 'utf8')).files,
-    ).toHaveLength(9);
 
     await writeTestEvidence(target, evidence('原子覆盖后的公开摘要。'), { overwrite: true });
     expect(await readFile(path.join(target, 'summary.md'), 'utf8')).toContain('原子覆盖后');

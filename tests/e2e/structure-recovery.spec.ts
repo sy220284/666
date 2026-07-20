@@ -147,10 +147,14 @@ test('previews split and permanent delete, blocks current chapter references, an
         dependencyIds: [],
       });
       if (!event.ok) throw new Error(`E2E_TIMELINE_EVENT_FAILED:${event.error.code}`);
+      const createdEvent = event.data.timelineEvents.find(
+        (candidate) => candidate.title === '拆出章节锚点',
+      );
+      if (!createdEvent) throw new Error('E2E_TIMELINE_EVENT_MISSING');
       return {
         projectId: active.data.projectId,
         chapterId: chapter.id,
-        eventId: event.data.id,
+        eventId: createdEvent.id,
       };
     });
 

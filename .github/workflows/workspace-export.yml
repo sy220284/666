@@ -1,0 +1,30 @@
+name: Workspace Export
+
+on:
+  push:
+    branches:
+      - work/m3-05-foreshadowing-character-arc
+    paths:
+      - .github/workflows/workspace-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch snapshot
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Create workspace archive
+        run: git archive --format=zip --output=workspace.zip HEAD
+      - name: Upload workspace archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3-05-workspace-source
+          path: workspace.zip
+          if-no-files-found: error
+          retention-days: 1

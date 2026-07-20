@@ -57,13 +57,17 @@ M1-02、M0-03
 2. 备份后执行integrity_check、foreign_key_check和Hash验证。
 3. 提供高风险Use Case统一createOperationCheckpoint接口。
 4. 恢复只允许到新目录，完成复制、校验和最近项目注册。
-5. 数据库损坏时停止写入，提供只读浏览、Version导出和恢复副本入口。
-6. 保护原项目，任何恢复失败不覆盖源文件。
+5. 数据库损坏时立即停止写入。数据库仍可被SQLite读取时，直接以只读连接浏览和导出Version；`project.sqlite`物理不可读时，只允许从外部Checkpoint中读取Version目录与正文。
+6. Checkpoint读取必须同时通过路径边界、普通文件且非符号链接、文件大小、SHA-256、SQLite `integrity_check`、`foreign_key_check`和项目ID一致性校验；任一条件失败均不得暴露或导出其中数据。
+7. Version导出可按Checkpoint时间顺序回退查找，使用临时文件和原子改名落盘；源项目库与Checkpoint始终保持只读、不被修复或覆盖。
+8. 恢复副本只能写入新目录，任何失败不得覆盖或修改原项目。
 
 ## 测试与证据
 
 - 写入期间备份、空间不足、备份损坏、恢复目标冲突和恢复中断。
-- 损坏数据库只读打开且全部写命令失败。
+- 可读取的完整性异常进入只读模式，全部写命令失败。
+- 物理不可读时，从已验证Checkpoint列出并导出Version正文；源库字节保持不变。
+- Checkpoint字节、Hash、项目ID、SQLite完整性或外键异常时，不得列出或导出Version。
 - 恢复副本可重新打开并继续基础写作。
 
 证据保存到：`docs/test-evidence/M1-08/`
@@ -71,6 +75,7 @@ M1-02、M0-03
 ## 完成条件
 
 - 后续导入、替换、拆并章和Migration可调用统一恢复点基础。
-- 恢复路径不覆盖原项目。
+- 逻辑损坏与物理不可读的降级能力边界明确且有自动化及真实Electron证据。
+- 恢复和导出路径均不覆盖原项目或Checkpoint。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

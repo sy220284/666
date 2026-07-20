@@ -1,0 +1,70 @@
+name: Audit Permanent Delete Diagnostic
+
+on:
+  push:
+    branches: [fix/governance-audit-m0-m2-remediation]
+
+permissions:
+  contents: write
+
+env:
+  CI: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm test:prepare
+      - name: Restore diagnostic test from audited commit
+        shell: bash
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+
+          source = subprocess.check_output([
+              'git', 'show',
+              '27c6ab13709d37efe47755a47fd154604c546fb3:.github/workflows/audit-permanent-delete-diagnostic.yml',
+          ], text=True)
+          lines = source.splitlines()
+          start = next(i for i, line in enumerate(lines) if "cat > tests/integration/__audit-permanent-delete-diagnostic.test.ts <<'TEST'" in line)
+          end = next(i for i in range(start + 1, len(lines)) if lines[i] == '          TEST')
+          body = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines[start + 1:end]) + '\n'
+          Path('tests/integration/__audit-permanent-delete-diagnostic.test.ts').write_text(body, encoding='utf-8')
+          PY
+      - name: Run routed diagnostic
+        id: diagnostic
+        shell: bash
+        run: |
+          set +e
+          pnpm exec vitest run tests/integration/__audit-permanent-delete-diagnostic.test.ts --reporter=verbose 2>&1 | tee /tmp/permanent-delete-diagnostic.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Persist result and remove workflow
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p docs/process
+          cp /tmp/permanent-delete-diagnostic.log docs/process/AUDIT_PERMANENT_DELETE_DIAGNOSTIC.txt
+          rm -f tests/integration/__audit-permanent-delete-diagnostic.test.ts
+          git rm .github/workflows/audit-permanent-delete-diagnostic.yml
+          git add docs/process/AUDIT_PERMANENT_DELETE_DIAGNOSTIC.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "chore(audit): record permanent delete diagnostic"
+          git push origin HEAD:fix/governance-audit-m0-m2-remediation
+      - name: Fail when diagnostic failed
+        if: steps.diagnostic.outputs.status != '0'
+        run: exit 1

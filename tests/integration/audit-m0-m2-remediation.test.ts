@@ -164,7 +164,9 @@ describe('M0-M2 audit remediation', () => {
 
       await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
         database.prepare('DELETE FROM audit_chapter_links').run();
-        database.prepare('DELETE FROM version_blocks WHERE version_id IN (SELECT id FROM versions)').run();
+        database
+          .prepare('DELETE FROM version_blocks WHERE version_id IN (SELECT id FROM versions)')
+          .run();
         database.prepare('DELETE FROM versions').run();
       });
       const clear = harness.operations.previewPermanentDelete({
@@ -202,8 +204,9 @@ describe('M0-M2 audit remediation', () => {
               .get(trashEntry.id)?.count ?? 0,
           ),
           draftCount: Number(
-            database.prepare('SELECT COUNT(*) AS count FROM drafts WHERE chapter_id = ?').get(chapter.id)
-              ?.count ?? 0,
+            database
+              .prepare('SELECT COUNT(*) AS count FROM drafts WHERE chapter_id = ?')
+              .get(chapter.id)?.count ?? 0,
           ),
         })),
       ).toEqual({ chapterCount: 1, trashCount: 1, draftCount: 1 });

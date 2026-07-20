@@ -7,6 +7,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import {
+  latestMigrationVersion,
+  loadMigrations,
+} from '../../packages/core-service/src/database/index.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 
 const temporaryDirectories: string[] = [];
@@ -24,6 +28,8 @@ describe('M3-01 project planning migration', () => {
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
     await mkdir(parent, { recursive: true });
+    const projectMigrations = await loadMigrations('migrations/project', 'project');
+    const currentProjectSchemaVersion = latestMigrationVersion(projectMigrations);
     const appRuntime = await openAppRuntime({
       databasePath: path.join(root, 'app.sqlite'),
       migrationsDirectory: 'migrations/app',
@@ -43,7 +49,7 @@ describe('M3-01 project planning migration', () => {
       { name: '规划迁移', channel: '长篇', initialStructure: 'blank' },
       parent,
     );
-    expect(project.schemaVersion).toBe(14);
+    expect(project.schemaVersion).toBe(currentProjectSchemaVersion);
     await workspace.shutdown();
     await appRuntime.close();
 
@@ -53,7 +59,7 @@ describe('M3-01 project planning migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 14n,
+        schema_version: BigInt(currentProjectSchemaVersion),
       });
       expect(
         database

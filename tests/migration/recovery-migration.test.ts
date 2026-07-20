@@ -4,7 +4,11 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ProjectDatabase, loadMigrations } from '../../packages/core-service/src/database/index.js';
+import {
+  ProjectDatabase,
+  latestMigrationVersion,
+  loadMigrations,
+} from '../../packages/core-service/src/database/index.js';
 
 const temporaryDirectories: string[] = [];
 const clock = { now: () => new Date('2026-07-17T02:30:00.000Z') };
@@ -35,7 +39,10 @@ describe('M1-08 BackupRecord migration', () => {
       clock,
       prepareRecoveryPoint: async () => undefined,
     });
-    expect(upgraded).toMatchObject({ schemaVersion: 14, compatibility: 'migrated' });
+    expect(upgraded).toMatchObject({
+      schemaVersion: latestMigrationVersion(migrations),
+      compatibility: 'migrated',
+    });
     expect(
       upgraded.read((database) =>
         database

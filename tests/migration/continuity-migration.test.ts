@@ -5,7 +5,11 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ProjectDatabase, loadMigrations } from '../../packages/core-service/src/database/index.js';
+import {
+  ProjectDatabase,
+  latestMigrationVersion,
+  loadMigrations,
+} from '../../packages/core-service/src/database/index.js';
 
 const temporaryDirectories: string[] = [];
 const timestamp = '2026-07-20T03:00:00.000Z';
@@ -22,13 +26,15 @@ describe('M3-04 continuity migration', () => {
   it('creates strict ledgers, current uniqueness, and project-bound relationships', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-continuity-migration-'));
     temporaryDirectories.push(directory);
+    const migrations = await loadMigrations('migrations/project', 'project');
+    const currentSchemaVersion = latestMigrationVersion(migrations);
     const database = await ProjectDatabase.open({
       path: path.join(directory, 'project.sqlite'),
-      migrations: await loadMigrations('migrations/project', 'project'),
+      migrations,
       appVersion: '0.1.0',
     });
     try {
-      expect(database.schemaVersion).toBe(14);
+      expect(database.schemaVersion).toBe(currentSchemaVersion);
       expect(
         database.read((connection) =>
           connection
@@ -66,9 +72,9 @@ describe('M3-04 continuity migration', () => {
           .prepare(
             `INSERT INTO projects(
                id, name, channel, active_style_profile_id, schema_version, created_at, updated_at
-             ) VALUES(?, 'Continuity', 'test', NULL, 14, ?, ?)`,
+             ) VALUES(?, 'Continuity', 'test', NULL, ?, ?, ?)`,
           )
-          .run(projectId, timestamp, timestamp);
+          .run(projectId, currentSchemaVersion, timestamp, timestamp);
         connection
           .prepare(
             `INSERT INTO volumes(id, project_id, title, order_key, status, deleted_at)

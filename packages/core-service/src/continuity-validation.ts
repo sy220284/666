@@ -23,8 +23,7 @@ export function chapterPosition(
           AND c.deleted_at IS NULL AND v.deleted_at IS NULL`,
     )
     .get(chapterId, projectId) as
-    | { readonly volumeOrder: number | bigint; readonly chapterOrder: number | bigint }
-    | undefined;
+    { readonly volumeOrder: number | bigint; readonly chapterOrder: number | bigint } | undefined;
   if (!row) {
     throw new ContinuityServiceError('CONTINUITY_NOT_FOUND', 'The active Chapter was not found.');
   }

@@ -51,6 +51,23 @@ jobs:
           pnpm format:check 2>&1 | tee test-results/ci/format-check.log || true
           pnpm lint 2>&1 | tee test-results/ci/lint.log || true
           pnpm typecheck 2>&1 | tee test-results/ci/typecheck.log || true
+      - name: Capture exact formatted repair files
+        shell: bash
+        run: |
+          pnpm exec prettier --write \
+            scripts/audit-remediation-policy.mjs \
+            apps/desktop/renderer/src/audit-trash-reference-guard.ts \
+            packages/contracts/src/project-structure.ts \
+            packages/core-service/src/checkpoint-aware-recovery.ts \
+            packages/core-service/src/reference-aware-structure-operations.ts
+          mkdir -p test-results/ci/formatted
+          cp --parents \
+            scripts/audit-remediation-policy.mjs \
+            apps/desktop/renderer/src/audit-trash-reference-guard.ts \
+            packages/contracts/src/project-structure.ts \
+            packages/core-service/src/checkpoint-aware-recovery.ts \
+            packages/core-service/src/reference-aware-structure-operations.ts \
+            test-results/ci/formatted/
       - name: Upload complete static diagnostics
         uses: actions/upload-artifact@v7
         with:
@@ -59,5 +76,6 @@ jobs:
             test-results/ci/format-check.log
             test-results/ci/lint.log
             test-results/ci/typecheck.log
+            test-results/ci/formatted/
           if-no-files-found: error
           retention-days: 7

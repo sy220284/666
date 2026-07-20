@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { isPathInside, parseTaskIndex } from './task-control-lib.mjs';
 
-const MANIFEST_PATH = '.github/governance/audit-remediation-m0-m2.json';
+const MANIFEST_PATH = '.github/audit-remediations/m0-m2-2026-07-20.json';
 const AUDIT_BRANCH_PATTERN = /^fix\/governance-audit-[a-z0-9._-]+$/u;
 
 function git(argumentsList, repositoryRoot) {

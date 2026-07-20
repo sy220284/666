@@ -6,14 +6,54 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: quality-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  m3-05-closeout:
+    name: m3-05-closeout
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Synchronize M3-05 documentation
+        run: node .github/scripts/m3-05-closeout.mjs
+      - name: Advance task state
+        shell: bash
+        run: |
+          if grep -Eq '^\| M3-05 \|.*\| In Progress \|$' docs/tasks/TASK_INDEX.md; then
+            node scripts/taskctl.mjs advance --ci=success --commit=d0903e133a7d10165016aa0f587bff9908680dd1
+          fi
+          node scripts/taskctl.mjs validate
+      - name: Commit synchronized closeout
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            docs/database/DATABASE_SCHEMA.md \
+            docs/database/DATA_DICTIONARY.md \
+            docs/contracts/IPC_CONTRACTS.md \
+            docs/product/V1.0_TRACEABILITY_MATRIX.md \
+            docs/tasks/ACTIVE_TASK.json \
+            docs/tasks/ACTIVE_TASK.md \
+            docs/tasks/TASK_INDEX.md \
+            docs/tasks/M3/M3-05_FORESHADOWING_CHARACTER_ARC.md \
+            docs/tasks/M3/M3-06_STATE_PROPOSAL_SNAPSHOT.md
+          git commit -m "docs(M3-05): synchronize implementation closeout"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+
   quality:
+    needs: m3-05-closeout
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}

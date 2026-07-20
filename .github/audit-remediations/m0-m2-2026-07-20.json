@@ -61,8 +61,10 @@
     "scripts/evidence-policy.mjs",
     "scripts/migrate-legacy-evidence.mjs",
     "scripts/taskctl.mjs",
+    "scripts/verified-evidence-scan.mjs",
     "tests/unit/audit-remediation-policy.test.ts",
     "tests/unit/evidence-policy.test.ts",
+    "tests/unit/verified-evidence-scan.test.ts",
     "docs/process/CI_WORKFLOW_ARCHITECTURE.md"
   ]
 }

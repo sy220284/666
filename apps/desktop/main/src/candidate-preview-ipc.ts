@@ -17,6 +17,7 @@ import {
 } from '@worldforge/contracts';
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
+import { registerContinuityIpc } from './continuity-ipc.js';
 import type { CoreSupervisor } from './core-supervisor.js';
 
 interface CandidatePreviewIpcOptions {
@@ -110,6 +111,7 @@ function trustedSender(event: IpcMainInvokeEvent, rendererUrl: string): boolean 
 }
 
 export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions): () => void {
+  const unregisterContinuityIpc = registerContinuityIpc(options);
   const previewChannel = CANDIDATE_APPLY_IPC_CHANNELS.previewCandidate;
   const previewCancelChannel = CANDIDATE_APPLY_IPC_CHANNELS.cancelPreview;
   const actionChannel = CANDIDATE_APPLY_IPC_CHANNELS.applyCandidate;
@@ -228,6 +230,7 @@ export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions)
   });
 
   return () => {
+    unregisterContinuityIpc();
     options.ipcMain.removeHandler(undoChannel);
     options.ipcMain.removeHandler(undoPreviewChannel);
     options.ipcMain.removeHandler(lookupChannel);

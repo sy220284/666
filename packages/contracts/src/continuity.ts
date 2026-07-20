@@ -254,7 +254,10 @@ export const ContinuityCatalogResultSchema = z.union([
 ]);
 
 export const CoreContinuityOperationSchema = z.discriminatedUnion('operation', [
-  z.strictObject({ operation: z.literal(CONTINUITY_COMMANDS.list), input: ContinuityListInputSchema }),
+  z.strictObject({
+    operation: z.literal(CONTINUITY_COMMANDS.list),
+    input: ContinuityListInputSchema,
+  }),
   z.strictObject({
     operation: z.literal(CONTINUITY_COMMANDS.setEntityState),
     input: EntityStateSetInputSchema,

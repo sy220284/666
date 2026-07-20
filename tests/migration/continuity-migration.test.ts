@@ -89,10 +89,9 @@ describe('M3-04 continuity migration', () => {
              VALUES(?, ?, 'active', 0, ?, ?)`,
           )
           .run(draftId, chapterId, timestamp, timestamp);
-        connection.prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?').run(
-          draftId,
-          chapterId,
-        );
+        connection
+          .prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?')
+          .run(draftId, chapterId);
         connection
           .prepare(
             `INSERT INTO versions(

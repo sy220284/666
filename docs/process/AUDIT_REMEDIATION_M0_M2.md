@@ -44,6 +44,8 @@ M0-01—M0-04缺标准Manifest；M0-06、M0-07缺人工验收和质量矩阵；M
 4. M2-03证据由未保留的PR Head改绑至PR #54的主线合并提交，不改变原验收结论和工件。
 5. Evidence策略新增全量Verified扫描、失败汇总和完整诊断工件；PR、手动和每周定时运行均扫描全部Verified任务。
 6. M1-08、M2-04在本次功能修复的完整Ready CI与Electron工件产生后重建证据，绑定本次不可变实现提交。
+7. 收尾复核曾发现并行治理提交将Evidence降级为仅检查摘要、命令和风险三个文本文件，并在PR阶段跳过全量Verified扫描；现已恢复人工验收、质量矩阵、机器结果、截图清单、逐文件哈希和全部Verified包扫描，不接受降级证据门。
+8. 主线复验和PR Quality保持Package Smoke；主线复验同时执行Security与Performance，不以`draft_mode`替代完整验证。
 
 ## 3. PR边界
 

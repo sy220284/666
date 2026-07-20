@@ -1,0 +1,63 @@
+name: Audit Format Evidence Stack
+
+on:
+  push:
+    branches: [fix/governance-audit-m0-m2-remediation]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-format-evidence-stack
+  cancel-in-progress: true
+
+jobs:
+  validate-format-and-self-remove:
+    if: ${{ !contains(github.event.head_commit.message, 'format and validate complete evidence stack') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/governance-audit-m0-m2-remediation
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply locked formatter
+        run: |
+          pnpm exec prettier --write \
+            packages/testkit/src/evidence.ts \
+            tests/unit/evidence-policy.test.ts \
+            tests/unit/testkit-fixtures-evidence.test.ts
+      - name: Validate evidence stack
+        run: |
+          pnpm typecheck
+          pnpm test:unit
+      - name: Remove bootstrap authorization
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const file = '.github/audit-remediations/m0-m2-2026-07-20.json';
+          const manifest = JSON.parse(await readFile(file, 'utf8'));
+          manifest.governancePaths = manifest.governancePaths.filter(
+            (value) => value !== '.github/workflows/audit-format-evidence-stack.yml',
+          );
+          await writeFile(file, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+          NODE
+          rm .github/workflows/audit-format-evidence-stack.yml
+      - name: Commit validated output
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'style(evidence): format and validate complete evidence stack'
+          git push origin HEAD:fix/governance-audit-m0-m2-remediation

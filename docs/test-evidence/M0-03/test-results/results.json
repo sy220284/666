@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-03",
+  "generatedFrom": "commands.txt",
+  "sourceCommit": "3239001e3365cea290675af36c20f2b6528ffdd1",
+  "results": [
+    {
+      "suite": "legacy-command-01",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs close --ci=success --commit=09abab1 | M0-02 Verified; M0-03 activated"
+    },
+    {
+      "suite": "legacy-command-02",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs validate | M0-03 IN_PROGRESS"
+    },
+    {
+      "suite": "legacy-command-03",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm format"
+    },
+    {
+      "suite": "legacy-command-04",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm lint"
+    },
+    {
+      "suite": "legacy-command-05",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm typecheck | all eligible workspace packages passed"
+    },
+    {
+      "suite": "legacy-command-06",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test | 13 files, 41 tests passed"
+    },
+    {
+      "suite": "legacy-command-07",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test:migration | 2 files, 9 tests passed"
+    },
+    {
+      "suite": "legacy-command-08",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm test:integration | 4 files, 4 tests passed"
+    },
+    {
+      "suite": "legacy-command-09",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm build"
+    },
+    {
+      "suite": "legacy-command-10",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm package | 9 compiled entries packaged"
+    },
+    {
+      "suite": "legacy-command-11",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | pnpm release:check | configured; publish blocked until M8-03 Verified"
+    },
+    {
+      "suite": "legacy-command-12",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | host node:sqlite capability probe | Node 24.14.0; SQLite 3.51.2; FTS5=true; trigram=true"
+    },
+    {
+      "suite": "legacy-command-13",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | Electron node:sqlite capability probe | Electron 43.1.1; Node 24.18.0; SQLite 3.53.1; FTS5=true; trigram=true"
+    },
+    {
+      "suite": "legacy-command-14",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | 100-write SQLite benchmark | 7.26 ms; rows=100; lostWrites=0; WAL; integrityOk=true"
+    },
+    {
+      "suite": "legacy-command-15",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit 3869bd2"
+    },
+    {
+      "suite": "legacy-command-16",
+      "status": "passed",
+      "details": "2026-07-15 | exit 0 | node scripts/taskctl.mjs preflight | commit 5f42edc"
+    },
+    {
+      "suite": "legacy-command-17",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Task Governance | https://github.com/sy220284/666/actions/runs/29387901730"
+    },
+    {
+      "suite": "legacy-command-18",
+      "status": "passed",
+      "details": "2026-07-15 | remote success | GitHub Quality | https://github.com/sy220284/666/actions/runs/29387901747"
+    }
+  ]
+}

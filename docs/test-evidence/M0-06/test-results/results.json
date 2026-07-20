@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M0-06",
+  "generatedFrom": "commands.txt",
+  "sourceCommit": "98613c0d48dec23414b1598761c0a8e9e6c302f2",
+  "results": [
+    {
+      "suite": "legacy-command-01",
+      "status": "passed",
+      "details": "required-document review: AGENTS, PROJECT_EXECUTION_ENTRY, V6.5_FULL_SPEC, IMPLEMENTATION_DECISIONS, RESPONSIVE_AND_DPI, UI_SYSTEM, PERFORMANCE_BUDGETS | exit=0 duration_ms=0 fixtures=M0-06-DOCS"
+    },
+    {
+      "suite": "legacy-command-02",
+      "status": "passed",
+      "details": "pnpm format:check | exit=0 duration_ms=0 fixtures=M0-06-STATIC"
+    },
+    {
+      "suite": "legacy-command-03",
+      "status": "passed",
+      "details": "pnpm lint | exit=0 duration_ms=0 fixtures=M0-06-STATIC"
+    },
+    {
+      "suite": "legacy-command-04",
+      "status": "passed",
+      "details": "pnpm typecheck | exit=0 duration_ms=0 fixtures=M0-06-STATIC"
+    },
+    {
+      "suite": "legacy-command-05",
+      "status": "passed",
+      "details": "pnpm test | exit=0 duration_ms=0 fixtures=M0-06-UNIT"
+    },
+    {
+      "suite": "legacy-command-06",
+      "status": "passed",
+      "details": "pnpm test:migration | exit=0 duration_ms=0 fixtures=M0-06-MIGRATION"
+    },
+    {
+      "suite": "legacy-command-07",
+      "status": "passed",
+      "details": "pnpm test:integration | exit=0 duration_ms=0 fixtures=M0-06-INTEGRATION"
+    },
+    {
+      "suite": "legacy-command-08",
+      "status": "passed",
+      "details": "pnpm test:security | exit=0 duration_ms=0 fixtures=M0-06-SECURITY"
+    },
+    {
+      "suite": "legacy-command-09",
+      "status": "passed",
+      "details": "pnpm test:perf | exit=0 duration_ms=0 fixtures=M0-06-PERF"
+    },
+    {
+      "suite": "legacy-command-10",
+      "status": "passed",
+      "details": "pnpm check:workspaces && pnpm check:boundaries | exit=0 duration_ms=0 fixtures=M0-06-BOUNDARIES"
+    },
+    {
+      "suite": "legacy-command-11",
+      "status": "passed",
+      "details": "pnpm build && pnpm package | exit=0 duration_ms=0 fixtures=M0-06-BUILD"
+    },
+    {
+      "suite": "legacy-command-12",
+      "status": "skipped",
+      "details": "pnpm test:e2e (local headless container) | exit=2 duration_ms=0 fixtures=LOCAL-DISPLAY-UNAVAILABLE"
+    },
+    {
+      "suite": "legacy-command-13",
+      "status": "passed",
+      "details": "GitHub Actions Task Governance run 29393712442 | exit=0 duration_ms=0 fixtures=M0-06-GOVERNANCE"
+    },
+    {
+      "suite": "legacy-command-14",
+      "status": "passed",
+      "details": "GitHub Actions Quality run 29393712416: Playwright Electron E2E 4/4 | exit=0 duration_ms=20900 fixtures=M0-06-ELECTRON,M0-06-DISPLAY-MATRIX,M0-06-NATIVE-DPI"
+    }
+  ]
+}

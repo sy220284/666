@@ -15,9 +15,19 @@
       "sha256": "916772a6d506815b6dbf8af6683e846499404492497aee04dbd699bc6964d537"
     },
     {
+      "path": "manual-acceptance.md",
+      "bytes": 439,
+      "sha256": "0dbe25f772cda9b911564e2b254199e9277e897041df05f57e9b833094b5931f"
+    },
+    {
       "path": "performance.json",
       "bytes": 2235,
       "sha256": "8ff7077ae624343672b1e832336cf0a45905ab69fa65034961161d1d77f01a89"
+    },
+    {
+      "path": "quality-matrix.md",
+      "bytes": 516,
+      "sha256": "313ac2cca298628b3105a984847f4d2440e404e769ff07f7ae519fa692891ef5"
     },
     {
       "path": "screenshots/manifest.json",

@@ -16,8 +16,8 @@
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 680,
-      "sha256": "bfdb1eed688e3372359ebddd0e1becdd8db62c322a0fd3048fb080dada445804"
+      "bytes": 870,
+      "sha256": "c495d97775a890723178dfdf5e4662521a5e34e8237e50f79785a641e63e3802"
     },
     {
       "path": "performance.json",
@@ -26,8 +26,8 @@
     },
     {
       "path": "quality-matrix.md",
-      "bytes": 1016,
-      "sha256": "985aad3468302a3161f4540b50d9b9b5e0b9e60043c7027752aedc6bbfe41471"
+      "bytes": 1663,
+      "sha256": "e5a4c3f03cd9ddd4c6efd4ef59c530d2693ea7bcddf2fb5487831b7109d1057f"
     },
     {
       "path": "screenshots/m1-09-import-export.png",
@@ -35,19 +35,19 @@
       "sha256": "2227195bab2be1339d278399a7212eb23a58e18f0e9392a4053eea34f2c775ef"
     },
     {
+      "path": "screenshots/manifest.json",
+      "bytes": 178,
+      "sha256": "7b68dfa9c2891d88d66a11eaeb529b7ce9e766e3e69e07ff9d38c4eb042315bb"
+    },
+    {
       "path": "summary.md",
       "bytes": 646,
       "sha256": "cc08166a495461bf40a2e290a10eaf9319028554bcc592ad020c0b6d48cd407d"
     },
     {
-      "path": "test-results/ci-run.json",
-      "bytes": 2866,
-      "sha256": "fdddbd5409482109a1660e4e9276f2be33e35e15f64e87d425377bccbe1a65f0"
-    },
-    {
       "path": "test-results/results.json",
-      "bytes": 1436,
-      "sha256": "40aea43cbd3a114b59e8cbf8ef7fb247c800b88e29a20070e77b298a353996ce"
+      "bytes": 2656,
+      "sha256": "d885ae41c3330c3c9ee55d29494cc96cda0e0a41b22ee43c8f65ee249f9f97c3"
     }
   ]
 }

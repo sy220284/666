@@ -104,7 +104,12 @@ function parseCommandEvidence(source) {
   const groups = source
     .trim()
     .split(/\r?\n\s*\r?\n/u)
-    .map((group) => group.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean));
+    .map((group) =>
+      group
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    );
   const parsed = [];
   for (const group of groups) {
     if (group.length !== 2) return null;
@@ -187,7 +192,9 @@ async function validatedResults(taskId, directory) {
   const statuses = collectStatuses(results);
   const rejected = statuses.filter((status) => REJECTED_STATUSES.has(status));
   if (rejected.length > 0) {
-    throw new Error(`${taskId} results contain non-final statuses: ${[...new Set(rejected)].join(', ')}`);
+    throw new Error(
+      `${taskId} results contain non-final statuses: ${[...new Set(rejected)].join(', ')}`,
+    );
   }
   return { resultCount: statuses.length, statuses: [...new Set(statuses)].sort() };
 }
@@ -199,7 +206,9 @@ async function ensureMigrationDocuments(taskId, directory, source, resultSummary
     (file) => file !== 'manifest.json',
   );
   if (screenshotFiles.some((file) => file.includes('/'))) {
-    throw new Error(`${taskId} has nested screenshots that cannot be indexed by the current schema`);
+    throw new Error(
+      `${taskId} has nested screenshots that cannot be indexed by the current schema`,
+    );
   }
   const screenshotEntries = [];
   for (const fileName of screenshotFiles) {

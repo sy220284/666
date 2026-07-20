@@ -10,8 +10,7 @@ SELECT
        ON entity.id = ref.value AND entity.project_id = beat.project_id
     WHERE typeof(ref.value) <> 'text'
        OR entity.id IS NULL
-       OR entity.entity_type <> 'character'
-       OR entity.status <> 'active')
+       OR entity.entity_type <> 'character')
   +
   (SELECT COUNT(*)
      FROM scene_beats beat, json_each(beat.location_ids_json) ref
@@ -19,15 +18,13 @@ SELECT
        ON entity.id = ref.value AND entity.project_id = beat.project_id
     WHERE typeof(ref.value) <> 'text'
        OR entity.id IS NULL
-       OR entity.entity_type <> 'location'
-       OR entity.status <> 'active')
+       OR entity.entity_type <> 'location')
   +
   (SELECT COUNT(*)
      FROM scene_beat_entities link
      JOIN entities entity
        ON entity.id = link.entity_id AND entity.project_id = link.project_id
-    WHERE entity.status <> 'active'
-       OR (link.role = 'character' AND entity.entity_type <> 'character')
+    WHERE (link.role = 'character' AND entity.entity_type <> 'character')
        OR (link.role = 'location' AND entity.entity_type <> 'location'));
 
 DROP TABLE _m0015_scene_beat_entity_guard;
@@ -80,7 +77,16 @@ BEGIN
      WHERE typeof(ref.value) <> 'text'
         OR entity.id IS NULL
         OR entity.entity_type <> 'character'
-        OR entity.status <> 'active'
+        OR (
+          entity.status <> 'active'
+          AND (
+            OLD.project_id <> NEW.project_id
+            OR NOT EXISTS (
+              SELECT 1 FROM json_each(OLD.character_ids_json) old_ref
+               WHERE old_ref.value = ref.value
+            )
+          )
+        )
   ) THEN RAISE(ABORT, 'SCENE_BEAT_CHARACTER_REFERENCE_INVALID') END;
   SELECT CASE WHEN EXISTS (
     SELECT 1
@@ -90,7 +96,16 @@ BEGIN
      WHERE typeof(ref.value) <> 'text'
         OR entity.id IS NULL
         OR entity.entity_type <> 'location'
-        OR entity.status <> 'active'
+        OR (
+          entity.status <> 'active'
+          AND (
+            OLD.project_id <> NEW.project_id
+            OR NOT EXISTS (
+              SELECT 1 FROM json_each(OLD.location_ids_json) old_ref
+               WHERE old_ref.value = ref.value
+            )
+          )
+        )
   ) THEN RAISE(ABORT, 'SCENE_BEAT_LOCATION_REFERENCE_INVALID') END;
 END;
 

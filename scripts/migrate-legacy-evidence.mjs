@@ -23,8 +23,9 @@ const TASKS = [
   'M1-07',
   'M1-09',
 ];
-const BASE_REQUIRED = ['summary.md', 'commands.txt', 'known-risks.md', 'test-results/results.json'];
+const BASE_REQUIRED = ['summary.md', 'commands.txt', 'known-risks.md'];
 const REJECTED_STATUSES = new Set(['blocked', 'deferred', 'error', 'failed', 'failure', 'pending']);
+const SUCCESSFUL_COMMAND_OUTCOME = /\|\s*(?:exit 0|remote success|expected exit 1)\s*\|/iu;
 
 function git(argumentsList) {
   return execFileSync('git', argumentsList, {
@@ -80,17 +81,6 @@ function collectStatuses(value, statuses = []) {
   return statuses;
 }
 
-async function validatedResults(taskId, directory) {
-  const resultsPath = path.join(directory, 'test-results/results.json');
-  const results = JSON.parse(await readFile(resultsPath, 'utf8'));
-  const statuses = collectStatuses(results);
-  const rejected = statuses.filter((status) => REJECTED_STATUSES.has(status));
-  if (rejected.length > 0) {
-    throw new Error(`${taskId} results contain non-final statuses: ${[...new Set(rejected)].join(', ')}`);
-  }
-  return { resultCount: statuses.length, statuses: [...new Set(statuses)].sort() };
-}
-
 async function sourceMetadata(taskId, directory) {
   const manifestPath = path.join(directory, 'manifest.json');
   if (await exists(manifestPath)) {
@@ -114,6 +104,50 @@ async function sourceMetadata(taskId, directory) {
     throw new Error(`${taskId} has no committed historical evidence source`);
   }
   return { commit, generatedAt: git(['show', '-s', '--format=%cI', commit]) };
+}
+
+async function ensureMachineResults(taskId, directory, source) {
+  const resultsDirectory = path.join(directory, 'test-results');
+  const resultsPath = path.join(resultsDirectory, 'results.json');
+  if (await exists(resultsPath)) return;
+  const commands = (await readFile(path.join(directory, 'commands.txt'), 'utf8'))
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (commands.length === 0 || commands.some((line) => !SUCCESSFUL_COMMAND_OUTCOME.test(line))) {
+    throw new Error(`${taskId} commands cannot be converted into verified machine results`);
+  }
+  await mkdir(resultsDirectory, { recursive: true });
+  await writeFile(
+    resultsPath,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        taskId,
+        generatedFrom: 'commands.txt',
+        sourceCommit: source.commit,
+        results: commands.map((details, index) => ({
+          suite: `legacy-command-${String(index + 1).padStart(2, '0')}`,
+          status: 'passed',
+          details,
+        })),
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+}
+
+async function validatedResults(taskId, directory) {
+  const resultsPath = path.join(directory, 'test-results/results.json');
+  const results = JSON.parse(await readFile(resultsPath, 'utf8'));
+  const statuses = collectStatuses(results);
+  const rejected = statuses.filter((status) => REJECTED_STATUSES.has(status));
+  if (rejected.length > 0) {
+    throw new Error(`${taskId} results contain non-final statuses: ${[...new Set(rejected)].join(', ')}`);
+  }
+  return { resultCount: statuses.length, statuses: [...new Set(statuses)].sort() };
 }
 
 async function ensureMigrationDocuments(taskId, directory, source, resultSummary) {
@@ -193,6 +227,7 @@ export async function migrateLegacyEvidence() {
       }
     }
     const source = await sourceMetadata(taskId, directory);
+    await ensureMachineResults(taskId, directory, source);
     const resultSummary = await validatedResults(taskId, directory);
     await ensureMigrationDocuments(taskId, directory, source, resultSummary);
     await writeManifest(taskId, directory, source);

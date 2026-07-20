@@ -8,8 +8,8 @@ function trashStatus(message: string, error = false): void {
 function blockerLabel(blocker: {
   readonly kind: 'version' | 'candidate' | 'chapter-reference';
   readonly count: number;
-  readonly source?: string;
-  readonly deleteAction?: string;
+  readonly source?: string | undefined;
+  readonly deleteAction?: string | undefined;
 }): string {
   if (blocker.kind === 'version') return `Version ${blocker.count}项`;
   if (blocker.kind === 'candidate') return `Candidate ${blocker.count}项`;

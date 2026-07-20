@@ -65,6 +65,7 @@
     ".github/workflows/quality.yml",
     ".github/workflows/security.yml",
     ".github/workflows/task-governance.yml",
+    "AGENTS.md",
     "docs/process/AUDIT_REMEDIATION_M0_M2.md",
     "docs/process/CI_WORKFLOW_ARCHITECTURE.md",
     "docs/process/DEVELOPMENT_AUTOMATION.md",

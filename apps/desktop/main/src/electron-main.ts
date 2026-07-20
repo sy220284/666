@@ -14,10 +14,12 @@ import {
 } from 'electron';
 import type { AppearancePreferences, WindowPreferences } from '@worldforge/contracts';
 
+import { registerCandidatePreviewIpc } from './candidate-preview-ipc.js';
+import { registerContinuityIpc } from './continuity-ipc.js';
 import { CoreSupervisor, type UtilityProcessHandle } from './core-supervisor.js';
 import { CredentialBroker } from './credential-broker.js';
-import { registerCandidatePreviewIpc } from './candidate-preview-ipc.js';
 import { registerIpcHandlers } from './ipc-handlers.js';
+import { registerNarrativePlanningIpc } from './narrative-planning-ipc.js';
 import { installNavigationPolicy, type NavigationWebContents } from './navigation-policy.js';
 import { createDiagnosticId, PrivacyLogger } from './privacy-logger.js';
 import { buildSecureWebPreferences, CONTENT_SECURITY_POLICY } from './security-policy.js';
@@ -344,6 +346,12 @@ async function bootstrap(): Promise<void> {
       return selection.canceled ? null : (selection.filePaths[0] ?? null);
     },
   });
+  const unregisterContinuityIpc = registerContinuityIpc({ ipcMain, supervisor, rendererUrl });
+  const unregisterNarrativePlanningIpc = registerNarrativePlanningIpc({
+    ipcMain,
+    supervisor,
+    rendererUrl,
+  });
   const unregisterPreviewIpc = registerCandidatePreviewIpc({
     ipcMain,
     supervisor,
@@ -351,6 +359,8 @@ async function bootstrap(): Promise<void> {
   });
   unregisterIpc = () => {
     unregisterPreviewIpc();
+    unregisterNarrativePlanningIpc();
+    unregisterContinuityIpc();
     unregisterBaseIpc();
   };
 

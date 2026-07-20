@@ -64,7 +64,7 @@ replace(
 replace(
   'tests/migration/sqlite-foundation.test.ts',
   "      'canon_facts',\n      'chapters',",
-  "      'canon_facts',\n      'character_arcs',\n      'chapters',",
+  "      'canon_facts',\n      'chapters',\n      'character_arcs',",
 );
 replace(
   'tests/migration/sqlite-foundation.test.ts',

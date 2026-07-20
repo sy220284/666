@@ -1,48 +1,58 @@
 {
   "schemaVersion": 1,
   "taskId": "M3-02",
-  "commit": "working-tree",
-  "generatedAt": "2026-07-18T15:15:00.000Z",
+  "commit": "0239e87aca9a31bcfc81008d326af2a9fa16b889",
+  "generatedAt": "2026-07-20T12:40:00Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 162,
-      "sha256": "ba630555622b39728f90c9e5bc40a744f92f01a6bf6c2e38bb312df79e3b452b"
+      "bytes": 956,
+      "sha256": "d01e2bc95654ddf9418d9a45d5aeb5f2c6e8ed879d0b7f340a7105b06aa68aee"
     },
     {
       "path": "known-risks.md",
-      "bytes": 342,
-      "sha256": "4f23f487480665e879f65bd99c1ac876b677d79d1418103473b9f3be3b88bc15"
+      "bytes": 919,
+      "sha256": "83b2bee979a605395c51f09722834686eff4243c3b08e04781673b6fc89bdbd1"
     },
     {
       "path": "manual-acceptance.md",
-      "bytes": 556,
-      "sha256": "cf423e54c3e26c03ab7a4aaa53e1c6a3dbf2c2e69d089a94b1e0b8fb61933a4c"
+      "bytes": 1395,
+      "sha256": "41ba8d083bf53898b91052268f56c4d407b3d0d9f3b170e2452ce47b7faa371b"
     },
     {
       "path": "performance.json",
-      "bytes": 3,
-      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      "bytes": 371,
+      "sha256": "82e27a8db0d72ec567fdeb6f85fe86eb930cea571652e0a92fac020f491f4772"
     },
     {
       "path": "quality-matrix.md",
-      "bytes": 975,
-      "sha256": "a9dbf2a43c1c6d0afbee8e298d7a64e39f7fc5f51a6cc19838a1fd87081d4bd2"
+      "bytes": 1094,
+      "sha256": "6736021ea9b088df6755e5fd3a99b0f5ed5486d80388a55b7935fbcea6b9b726"
+    },
+    {
+      "path": "screenshots/m3-02-scene-beat-entity-selector.json",
+      "bytes": 617,
+      "sha256": "df62ddac97341a18f8d028556258a68fd62f60e798e07dc9fc1eb6dffd32344d"
     },
     {
       "path": "screenshots/manifest.json",
-      "bytes": 3,
-      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      "bytes": 423,
+      "sha256": "041bfabef90a4f1383438eb1fd726daaf8fb8f1191474495e3161cd19e4b4af0"
     },
     {
       "path": "summary.md",
-      "bytes": 441,
-      "sha256": "5cf73f8154d219a36075f911b0d53e5c4d37732ec1c1764a1197c10abcf0f161"
+      "bytes": 982,
+      "sha256": "8f288697791406bf01e9bec78358b230c8f5619a05734363cfdab7f60690fd88"
+    },
+    {
+      "path": "test-results/desktop-e2e.log",
+      "bytes": 3701,
+      "sha256": "b2485df0fa796a308d4627a2d204f4c74a04fcc206a01c8beb26243d2aeead0e"
     },
     {
       "path": "test-results/results.json",
-      "bytes": 786,
-      "sha256": "34c33f7adf2d21325d025437c26a2f717c93182bda592fd361fc3d5c23e69938"
+      "bytes": 1019,
+      "sha256": "0a44717c9ceb9651283b52a811d6c973d2d72bacbc0074125e65475d4262604b"
     }
   ]
 }

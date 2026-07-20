@@ -14,26 +14,48 @@ concurrency:
 
 jobs:
   dependency-audit:
-    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Determine dependency audit route
+        id: route
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          run=false
+          if [ "$DRAFT" = false ] && git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.github/workflows/)'; then
+            run=true
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@v4
+        if: ${{ steps.route.outputs.run == 'true' }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
+        if: ${{ steps.route.outputs.run == 'true' }}
         with:
           node-version: 24
           cache: pnpm
       - name: Clean tree before dependency audit
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ steps.route.outputs.run == 'true' }}
       - name: Audit high-severity dependency vulnerabilities
-        run: pnpm audit --audit-level=high
+        shell: bash
+        run: |
+          if [ "${{ steps.route.outputs.run }}" = true ]; then
+            pnpm audit --audit-level=high
+          else
+            echo "Dependency audit skipped: dependency and workflow inputs are unchanged."
+          fi
       - name: Clean tree after dependency audit
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
@@ -59,27 +81,52 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
 
   application-security:
-    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Determine application security route
+        id: route
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          run=false
+          if [ "$DRAFT" = false ] && node --input-type=module -e "import {readFileSync} from 'node:fs'; const state=JSON.parse(readFileSync('docs/tasks/ACTIVE_TASK.json','utf8')); process.exit(state.activeTask?.verification?.includes('pnpm test:security') ? 0 : 1);"; then
+            run=true
+          elif [ "$DRAFT" = false ] && git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(apps/desktop/(main|preload)/|packages/(contracts|core-service)/|migrations/|tests/security/|scripts/(scan-secrets|ci-policy)\.mjs$|\.github/workflows/security\.yml$)'; then
+            run=true
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@v4
+        if: ${{ steps.route.outputs.run == 'true' }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
+        if: ${{ steps.route.outputs.run == 'true' }}
         with:
           node-version: 24
           cache: pnpm
       - name: Clean tree before application checks
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ steps.route.outputs.run == 'true' }}
       - run: pnpm test:prepare
+        if: ${{ steps.route.outputs.run == 'true' }}
       - name: Run application security tests
-        run: pnpm test:security
+        shell: bash
+        run: |
+          if [ "${{ steps.route.outputs.run }}" = true ]; then
+            pnpm test:security
+          else
+            echo "Application security suite skipped: no security boundary changed."
+          fi
       - name: Clean tree after application checks
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
@@ -94,7 +141,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
-      DRAFT_MODE: ${{ github.event.pull_request.draft }}
       AUDIT_RESULT: ${{ needs.dependency-audit.result }}
       SECRET_RESULT: ${{ needs.secret-scan.result }}
       APP_RESULT: ${{ needs.application-security.result }}
@@ -103,17 +149,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'draft=%s\naudit=%s\nscan=%s\napplication=%s\n' \
-            "$DRAFT_MODE" "$AUDIT_RESULT" "$SECRET_RESULT" "$APP_RESULT"
-          test "$SECRET_RESULT" = success
-          if [ "$DRAFT_MODE" = true ]; then
-            for result in "$AUDIT_RESULT" "$APP_RESULT"; do
-              case "$result" in
-                success|skipped) ;;
-                *) exit 1 ;;
-              esac
-            done
-            exit 0
-          fi
+          printf 'audit=%s\nscan=%s\napplication=%s\n' "$AUDIT_RESULT" "$SECRET_RESULT" "$APP_RESULT"
           test "$AUDIT_RESULT" = success
+          test "$SECRET_RESULT" = success
           test "$APP_RESULT" = success

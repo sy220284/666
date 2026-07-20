@@ -25,7 +25,9 @@ function selectedIds(source: HTMLTextAreaElement): Set<string> {
 }
 
 function synchronizeSource(binding: SelectorBinding): void {
-  binding.source.value = [...binding.select.selectedOptions].map((option) => option.value).join('\n');
+  binding.source.value = [...binding.select.selectedOptions]
+    .map((option) => option.value)
+    .join('\n');
   binding.source.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
@@ -70,7 +72,8 @@ function renderBinding(binding: SelectorBinding, entities: readonly Entity[]): v
   binding.select.disabled = false;
   for (const entity of matching) {
     const option = new Option(entity.name, entity.id, false, selected.has(entity.id));
-    option.title = entity.aliases.length > 0 ? `别名：${entity.aliases.join('、')}` : entity.summary;
+    option.title =
+      entity.aliases.length > 0 ? `别名：${entity.aliases.join('、')}` : entity.summary;
     binding.select.append(option);
   }
   synchronizeSource(binding);

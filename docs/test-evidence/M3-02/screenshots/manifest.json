@@ -1,11 +1,10 @@
 [
   {
-    "fileName": "m3-02-scene-beat-entity-selector.png.base64",
+    "fileName": "m3-02-scene-beat-entity-selector.json",
     "fixtureId": "M3-02-real-electron-scene-beat",
-    "encoding": "base64",
-    "decodedFileName": "m3-02-scene-beat-entity-selector.png",
-    "decodedBytes": 118311,
-    "decodedSha256": "bc43498d55352ab7713958110166d38723e4d205649a2521966b865f565168f6",
-    "sha256": "39c062247f3f1620542fa5b012445c307372a8e9f305d6bc9475448d1a929483"
+    "evidenceType": "actions-artifact-screenshot-descriptor",
+    "sourceImageFileName": "m3-02-scene-beat-entity-selector.png",
+    "sourceImageSha256": "bc43498d55352ab7713958110166d38723e4d205649a2521966b865f565168f6",
+    "sha256": "df62ddac97341a18f8d028556258a68fd62f60e798e07dc9fc1eb6dffd32344d"
   }
 ]

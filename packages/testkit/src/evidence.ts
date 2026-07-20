@@ -1,8 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   access,
-  chmod,
-  copyFile,
   mkdir,
   mkdtemp,
   readFile,
@@ -27,12 +25,6 @@ export interface EvidenceTestResult {
   readonly details?: string;
 }
 
-export interface EvidenceScreenshot {
-  readonly sourcePath: string;
-  readonly fileName: string;
-  readonly fixtureId: string;
-}
-
 export interface PerformanceEvidenceRecord {
   readonly taskId: string;
   readonly commit: string;
@@ -55,11 +47,10 @@ export interface TestEvidenceInput {
   readonly commit: string;
   readonly generatedAt: string;
   readonly summary: string;
-  readonly manualAcceptance: string;
-  readonly qualityMatrix: string;
+  readonly manualAcceptance?: string;
+  readonly qualityMatrix?: string;
   readonly commands: readonly EvidenceCommandResult[];
   readonly testResults: readonly EvidenceTestResult[];
-  readonly screenshots?: readonly EvidenceScreenshot[];
   readonly performance?: readonly PerformanceEvidenceRecord[];
   readonly knownRisks: readonly string[];
 }
@@ -117,17 +108,6 @@ function validateInput(input: TestEvidenceInput): void {
   assertNoCredentials(JSON.stringify(input));
 }
 
-function validateFileName(fileName: string): void {
-  if (
-    fileName.length === 0 ||
-    fileName !== path.basename(fileName) ||
-    fileName === '.' ||
-    fileName === '..'
-  ) {
-    throw new Error('Evidence screenshot names must be plain file names.');
-  }
-}
-
 function json(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
@@ -136,15 +116,40 @@ function renderSummary(input: TestEvidenceInput): string {
   const passed = input.testResults.filter((result) => result.status === 'passed').length;
   const failed = input.testResults.filter((result) => result.status === 'failed').length;
   const skipped = input.testResults.filter((result) => result.status === 'skipped').length;
+  const testRows = input.testResults.length
+    ? input.testResults
+        .map(
+          (result) =>
+            `| ${result.suite} | ${result.fixtureId} | ${result.status} | ${result.details ?? '-'} |`,
+        )
+        .join('\n')
+    : '| - | - | 未记录 | - |';
+  const performanceRows = (input.performance ?? []).length
+    ? (input.performance ?? [])
+        .map(
+          (record) =>
+            `| ${record.metric} | ${record.result} | ${record.budget} | ${record.passed ? 'PASS' : 'FAIL'} |`,
+        )
+        .join('\n')
+    : '| - | - | - | 未记录 |';
+  const manual =
+    input.manualAcceptance?.trim() || '未单独执行人工验收；以本文档记录的实际检查为准。';
+  const quality =
+    input.qualityMatrix?.trim() || '未单独维护质量矩阵；以任务卡要求和本文档结果为准。';
+
   return (
-    `# ${input.taskId} 测试证据\n\n` +
+    `# ${input.taskId} 验证记录\n\n` +
     `生成时间：${input.generatedAt}  \n` +
     `提交：${input.commit}\n\n` +
     `${input.summary.trim()}\n\n` +
     `## 自动化结果\n\n` +
     `- 通过：${passed}\n` +
     `- 失败：${failed}\n` +
-    `- 跳过：${skipped}\n`
+    `- 跳过：${skipped}\n\n` +
+    `| 套件 | Fixture | 状态 | 说明 |\n|---|---|---|---|\n${testRows}\n\n` +
+    `## 人工验收记录\n\n${manual}\n\n` +
+    `## 质量复核记录\n\n${quality}\n\n` +
+    `## 性能记录\n\n| 指标 | 结果 | 预算 | 结论 |\n|---|---:|---:|---|\n${performanceRows}\n`
   );
 }
 
@@ -225,40 +230,10 @@ export async function writeTestEvidence(
   let backup: string | undefined;
   try {
     await Promise.all([
-      mkdir(path.join(staging, 'test-results'), { mode: 0o700 }),
-      mkdir(path.join(staging, 'screenshots'), { mode: 0o700 }),
-    ]);
-    await Promise.all([
       writePrivateText(path.join(staging, 'summary.md'), renderSummary(input)),
-      writePrivateText(path.join(staging, 'manual-acceptance.md'), input.manualAcceptance),
-      writePrivateText(path.join(staging, 'quality-matrix.md'), input.qualityMatrix),
       writePrivateText(path.join(staging, 'commands.txt'), renderCommands(input.commands)),
-      writePrivateText(path.join(staging, 'test-results', 'results.json'), json(input.testResults)),
-      writePrivateText(path.join(staging, 'performance.json'), json(input.performance ?? [])),
       writePrivateText(path.join(staging, 'known-risks.md'), renderKnownRisks(input.knownRisks)),
     ]);
-
-    const screenshotManifest: Array<{
-      readonly fileName: string;
-      readonly fixtureId: string;
-      readonly sha256: string;
-    }> = [];
-    for (const screenshot of input.screenshots ?? []) {
-      validateFileName(screenshot.fileName);
-      const destination = path.join(staging, 'screenshots', screenshot.fileName);
-      await copyFile(screenshot.sourcePath, destination);
-      await chmod(destination, 0o600);
-      const content = await readFile(destination);
-      screenshotManifest.push({
-        fileName: screenshot.fileName,
-        fixtureId: screenshot.fixtureId,
-        sha256: createHash('sha256').update(content).digest('hex'),
-      });
-    }
-    await writePrivateText(
-      path.join(staging, 'screenshots', 'manifest.json'),
-      json(screenshotManifest),
-    );
 
     const filesBeforeManifest = await inventory(staging);
     await writePrivateText(

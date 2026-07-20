@@ -11,27 +11,27 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M0-05",
+    "id": "M3-04",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md",
-    "branch": "work/m0-05-testkit-fault-injection",
-    "startedAt": "2026-07-20",
+    "source": "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
+    "branch": "work/m3-04-state-timeline-knowledge",
+    "startedAt": "2026-07-19",
     "allowedPaths": [
-      "packages/testkit/",
-      "tests/",
-      "evals/",
-      "scripts/",
-      "docs/test-evidence/",
+      "migrations/project/",
+      "packages/domain/",
+      "packages/core-service/",
+      "packages/contracts/",
+      "apps/desktop/renderer/",
+      "tests/integration/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M0/M0-05_TESTKIT_FAULT_INJECTION.md",
       "docs/tasks/M3/M3-04_STATE_TIMELINE_KNOWLEDGE.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M0-05/"
+      "docs/test-evidence/M3-04/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -39,10 +39,9 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/testing/TEST_STRATEGY.md",
-      "docs/testing/SECURITY_TEST_CASES.md",
-      "docs/testing/PERFORMANCE_BUDGETS.md",
-      "docs/ai/PROMPT_AND_EVAL_SPEC.md"
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/database/DATA_DICTIONARY.md",
+      "docs/testing/TEST_STRATEGY.md"
     ],
     "verification": [
       "pnpm lint",
@@ -52,14 +51,13 @@
       "pnpm test:integration",
       "pnpm test:security",
       "pnpm test:e2e",
-      "pnpm test:eval",
-      "pnpm test:perf"
+      "pnpm test:eval"
     ]
   },
   "lastVerifiedTask": {
-    "id": "M1-08",
-    "commit": "9110b16bfc2c08d210d0306b7b394ef20cc9c9f7",
-    "verifiedAt": "2026-07-19T03:20:09.361Z"
+    "id": "M0-05",
+    "commit": "99561b79233f59d6e2c5a23cefefbb706c0d4cad",
+    "verifiedAt": "2026-07-20T02:22:03.000Z"
   },
   "deferredVerification": [
     {

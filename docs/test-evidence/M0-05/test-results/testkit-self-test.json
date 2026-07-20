@@ -1,44 +1,40 @@
 {
   "taskId": "M0-05",
-  "implementationCommit": "a3d07ecb928c1618148ca94ee70f00e1cfc04d4e",
-  "recordedAt": "2026-07-15",
-  "local": {
-    "all": { "files": 19, "tests": 72, "passed": true },
-    "m0_05_self_tests": { "files": 4, "tests": 19, "passed": true },
-    "migration": { "files": 3, "tests": 16, "passed": true },
-    "integration": { "files": 5, "tests": 12, "passed": true },
-    "security": { "files": 4, "tests": 18, "passed": true },
-    "electron_e2e": {
-      "passed": false,
-      "blockedByEnvironment": true,
-      "exitCode": 2,
-      "reason": "DISPLAY and xvfb-run unavailable; runner failed closed"
-    }
-  },
-  "faultsObserved": [
-    "SQLITE_BUSY",
-    "SQLITE_FULL",
-    "transaction-interrupted-and-rolled-back",
-    "sqlite-header-corruption",
-    "migration-interrupted-and-rolled-back"
-  ],
-  "providerScenarios": [
-    "normal",
-    "token-stream",
-    "disconnect",
-    "timeout",
-    "rate-limit",
-    "invalid-json",
-    "cancellation"
-  ],
-  "remote": {
-    "taskGovernance": {
-      "passed": true,
-      "url": "https://github.com/sy220284/666/actions/runs/29390711628"
+  "sourceCommit": "99561b79233f59d6e2c5a23cefefbb706c0d4cad",
+  "sourceFile": "tests/migration/testkit-faults.test.ts",
+  "status": "passed",
+  "cases": [
+    {
+      "id": "path-boundary",
+      "assertion": "rejects project ids that escape the temporary workspace",
+      "status": "passed"
     },
-    "qualityWithElectronE2E": {
-      "passed": true,
-      "url": "https://github.com/sy220284/666/actions/runs/29390711632"
+    {
+      "id": "workspace-cleanup",
+      "assertion": "creates production-schema temporary databases and cleans them idempotently",
+      "status": "passed"
+    },
+    {
+      "id": "transaction-interruption",
+      "assertion": "rolls back interrupted writes without partial rows",
+      "status": "passed"
+    },
+    {
+      "id": "sqlite-busy",
+      "assertion": "produces a real SQLITE_BUSY conflict using independent connections",
+      "status": "passed"
+    },
+    {
+      "id": "sqlite-full",
+      "assertion": "produces a real SQLITE_FULL failure using max_page_count",
+      "status": "passed"
+    },
+    {
+      "id": "migration-interruption",
+      "assertion": "opens read-only/migration-failed and leaves no partial schema",
+      "status": "passed"
     }
-  }
+  ],
+  "qualityRun": 29711815513,
+  "mainVerificationRun": 29711975141
 }

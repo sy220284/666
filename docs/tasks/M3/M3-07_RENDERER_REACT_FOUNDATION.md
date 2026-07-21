@@ -64,9 +64,9 @@ M3-06
 6. 将旧入口封装为可挂载、可卸载兼容面，明确事件注销、Tiptap销毁、Autosave flush和异步取消边界。
 7. 增加静态规则：Bridge目录外禁止`window.worldforge`；React组件禁止命令式业务DOM；Zustand禁止持久化业务数据；主题不得选择不同业务命令。
 
-## 暂停说明
+## 恢复说明
 
-M3-06审计发现有限期EntityState终点被静默丢弃。本任务已暂停，原一次性锁文件诊断PR关闭；待M3-06修复合并并重新登记Implemented后，从最新main重新建立本任务分支。
+M3-06有限期EntityState缺陷已由主线提交`01409dd483191764fbc05d5bb298a33f5b32f360`修复，M3→M4机器硬门与Evidence可达性治理已由主线提交`0f673ee70ee283d82ec6d7e84ced0633e584a808`落地。M3-06证据已改绑可达主线提交并重新登记Implemented，本任务按`work/m3-07-renderer-react-foundation`恢复正式实现。
 
 ## 测试与证据
 

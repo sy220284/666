@@ -49,25 +49,27 @@ jobs:
           phrase = script.index("'standard evidence package and screenshots'")
           block_start = script.rfind('replace_once(', 0, phrase)
           block_end = script.index('\n\nreplace_once(', phrase)
-          robust_deferred_patch = r'''import re
-
-taskctl_path = Path('scripts/taskctl.mjs')
-taskctl_text = taskctl_path.read_text(encoding='utf-8')
-deferred_pattern = re.compile(
-    r"(?m)^      pending: \[\n\s*'standard evidence package and screenshots',\n\s*'manual acceptance and exhaustive quality matrix',\n\s*'final traceability verification status',\n\s*'Verified closure',\n\s*\],"
-)
-deferred_replacement = """      pending: [
-        'four-file evidence package and real automated run records',
-        'necessary manual review conclusions recorded in summary.md',
-        'risk-based screenshots, full logs, or independent quality matrix when warranted',
-        'final traceability verification status',
-        'Verified closure',
-      ],"""
-taskctl_text, deferred_count = deferred_pattern.subn(deferred_replacement, taskctl_text, count=1)
-if deferred_count != 1:
-    raise SystemExit(f'scripts/taskctl.mjs: expected one deferred ledger block, found {deferred_count}')
-taskctl_path.write_text(taskctl_text, encoding='utf-8')
-'''
+          robust_deferred_patch = "\n".join([
+              "import re",
+              "",
+              "taskctl_path = Path('scripts/taskctl.mjs')",
+              "taskctl_text = taskctl_path.read_text(encoding='utf-8')",
+              "deferred_pattern = re.compile(",
+              "    r\"(?m)^      pending: \\\[\\n\\s*'standard evidence package and screenshots',\\n\\s*'manual acceptance and exhaustive quality matrix',\\n\\s*'final traceability verification status',\\n\\s*'Verified closure',\\n\\s*\\\\],\"",
+              ")",
+              "deferred_replacement = \"\"\"      pending: [",
+              "        'four-file evidence package and real automated run records',",
+              "        'necessary manual review conclusions recorded in summary.md',",
+              "        'risk-based screenshots, full logs, or independent quality matrix when warranted',",
+              "        'final traceability verification status',",
+              "        'Verified closure',",
+              "      ],\"\"\"",
+              "taskctl_text, deferred_count = deferred_pattern.subn(deferred_replacement, taskctl_text, count=1)",
+              "if deferred_count != 1:",
+              "    raise SystemExit(f'scripts/taskctl.mjs: expected one deferred ledger block, found {deferred_count}')",
+              "taskctl_path.write_text(taskctl_text, encoding='utf-8')",
+              "",
+          ])
           script = script[:block_start] + robust_deferred_patch + script[block_end:]
           Path('/tmp/audit-governance-remediation.py').write_text(script, encoding='utf-8')
           BOOTSTRAP

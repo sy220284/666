@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 
 import {
+  ArcMilestoneResolutionValueSchema,
   DerivedInvalidationInputSchema,
   DerivedInvalidationResultSchema,
   EndingSnapshotContentSchema,
@@ -31,7 +32,6 @@ import {
   compareChapterPosition,
   normalizeContinuityKey,
 } from '@worldforge/domain';
-import { z } from 'zod';
 
 import type { DatabaseClock } from './database/index.js';
 import { chapterPosition, validateEvidence } from './continuity-validation.js';
@@ -100,21 +100,6 @@ interface EntityStateRow {
 interface VersionSourceRow {
   readonly finalVersionId: string | null;
 }
-
-const ArcResolutionValueSchema = z
-  .strictObject({
-    status: ProposedArcMilestoneStatusSchema,
-    actualChapterId: z.uuid().nullable(),
-  })
-  .superRefine((value, context) => {
-    if (value.status === 'hit' && value.actualChapterId === null) {
-      context.addIssue({
-        code: 'custom',
-        path: ['actualChapterId'],
-        message: 'A hit milestone requires an actual chapter.',
-      });
-    }
-  });
 
 export type StateProposalServiceErrorCode =
   | 'STATE_PROPOSAL_NOT_FOUND'
@@ -586,7 +571,7 @@ function applyArcMilestone(
       'ArcMilestone proposal target is incomplete.',
     );
   }
-  const resolved = ArcResolutionValueSchema.parse(value);
+  const resolved = ArcMilestoneResolutionValueSchema.parse(value);
   const current = assertMilestone(connection, proposal.projectId, proposal.arcMilestoneId);
   if (current.status !== 'planned') {
     throw new StateProposalServiceError(
@@ -706,7 +691,7 @@ export class StateProposalService {
         let entityId: string | null = null;
         let stateKey: string | null = null;
         let milestoneId: string | null = null;
-        let previousValue: unknown = null;
+        let previousValue: unknown;
         let proposedValue: unknown;
         let key: string;
         if (draft.proposalType === 'entity_state') {
@@ -734,7 +719,7 @@ export class StateProposalService {
             status: draft.proposedStatus,
             actualChapterId: draft.actualChapterId,
           };
-          ArcResolutionValueSchema.parse(proposedValue);
+          ArcMilestoneResolutionValueSchema.parse(proposedValue);
           key = `milestone:${milestoneId}`;
         }
         if (keys.has(key)) {

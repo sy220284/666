@@ -28,6 +28,20 @@ export const StateProposalStatusSchema = z.enum(['pending', 'accepted', 'edited'
 export const StateProposalSourceSchema = z.enum(['rule', 'provider_stub']);
 export const StateProposalDecisionSchema = z.enum(['accept', 'edit_accept', 'reject']);
 export const ProposedArcMilestoneStatusSchema = z.enum(['hit', 'skipped']);
+export const ArcMilestoneResolutionValueSchema = z
+  .strictObject({
+    status: ProposedArcMilestoneStatusSchema,
+    actualChapterId: z.uuid().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.status === 'hit' && value.actualChapterId === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['actualChapterId'],
+        message: 'A hit milestone requires an actual chapter.',
+      });
+    }
+  });
 export const EndingSnapshotStatusSchema = z.enum(['valid', 'stale']);
 export const SnapshotSourceSchema = z.enum(['snapshot', 'fallback_live_query']);
 export const DerivedChangeTypeSchema = z.enum([

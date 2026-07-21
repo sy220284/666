@@ -16,7 +16,6 @@ import {
   type StateProposalGenerateInput,
   type StateProposalResolveInput,
 } from './state-proposal.js';
-import type { CommandResult } from './task-protocol.js';
 
 const failureSchema = z.strictObject({
   ok: z.literal(false),
@@ -29,6 +28,10 @@ const failureSchema = z.strictObject({
     diagnosticId: z.string().min(1).max(128).optional(),
   }),
 });
+
+type StateProposalCommandResult<Data> =
+  | { readonly ok: true; readonly requestId: string; readonly data: Data }
+  | z.infer<typeof failureSchema>;
 
 function resultSchema<Data extends z.ZodType>(data: Data) {
   return z.union([
@@ -49,20 +52,20 @@ export interface StateProposalBridge {
     readonly projectId: string;
     readonly chapterId?: string | null;
     readonly includeResolved?: boolean;
-  }) => Promise<CommandResult<StateProposalCatalog>>;
+  }) => Promise<StateProposalCommandResult<StateProposalCatalog>>;
   readonly generate: (
     input: StateProposalGenerateInput,
-  ) => Promise<CommandResult<StateProposalCatalog>>;
+  ) => Promise<StateProposalCommandResult<StateProposalCatalog>>;
   readonly resolve: (
     input: StateProposalResolveInput,
-  ) => Promise<CommandResult<StateProposalCatalog>>;
+  ) => Promise<StateProposalCommandResult<StateProposalCatalog>>;
   readonly refreshSnapshot: (
     input: EndingSnapshotRefreshInput,
-  ) => Promise<CommandResult<EndingSnapshot>>;
+  ) => Promise<StateProposalCommandResult<EndingSnapshot>>;
   readonly readSnapshot: (
     input: EndingSnapshotReadInput,
-  ) => Promise<CommandResult<EndingSnapshotReadResult>>;
+  ) => Promise<StateProposalCommandResult<EndingSnapshotReadResult>>;
   readonly invalidateDerived: (
     input: DerivedInvalidationInput,
-  ) => Promise<CommandResult<DerivedInvalidationResult>>;
+  ) => Promise<StateProposalCommandResult<DerivedInvalidationResult>>;
 }

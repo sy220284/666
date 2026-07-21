@@ -1,0 +1,84 @@
+name: M3-06 Static Repair
+
+on:
+  push:
+    branches: [work/m3-06-state-proposal-snapshot]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: work/m3-06-state-proposal-snapshot
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Move parser to contracts and remove useless assignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          contracts = Path('packages/contracts/src/state-proposal.ts')
+          text = contracts.read_text()
+          needle = "export const ProposedArcMilestoneStatusSchema = z.enum(['hit', 'skipped']);\n"
+          addition = """export const ProposedArcMilestoneStatusSchema = z.enum(['hit', 'skipped']);
+          export const ArcMilestoneResolutionValueSchema = z
+            .strictObject({
+              status: ProposedArcMilestoneStatusSchema,
+              actualChapterId: z.uuid().nullable(),
+            })
+            .superRefine((value, context) => {
+              if (value.status === 'hit' && value.actualChapterId === null) {
+                context.addIssue({
+                  code: 'custom',
+                  path: ['actualChapterId'],
+                  message: 'A hit milestone requires an actual chapter.',
+                });
+              }
+            });
+          """
+          if needle not in text:
+              raise SystemExit('contracts insertion point missing')
+          contracts.write_text(text.replace(needle, addition, 1))
+
+          core = Path('packages/core-service/src/state-proposal.ts')
+          text = core.read_text()
+          text = text.replace(
+              "  DerivedInvalidationInputSchema,\n",
+              "  ArcMilestoneResolutionValueSchema,\n  DerivedInvalidationInputSchema,\n",
+              1,
+          )
+          text = text.replace("import { z } from 'zod';\n", "", 1)
+          start = text.index('const ArcResolutionValueSchema = z')
+          end_marker = "\n\nexport type StateProposalServiceErrorCode"
+          end = text.index(end_marker, start)
+          text = text[:start] + text[end + 2:]
+          text = text.replace('ArcResolutionValueSchema.parse', 'ArcMilestoneResolutionValueSchema.parse')
+          text = text.replace('let previousValue: unknown = null;', 'let previousValue: unknown;')
+          core.write_text(text)
+          PY
+          pnpm exec prettier --write \
+            packages/contracts/src/state-proposal.ts \
+            packages/core-service/src/state-proposal.ts
+          rm .github/workflows/m3-06-static-repair.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/contracts/src/state-proposal.ts \
+            packages/core-service/src/state-proposal.ts \
+            .github/workflows/m3-06-static-repair.yml
+          git commit -m 'fix(M3-06): keep validation schema in contracts'
+          git push origin HEAD:work/m3-06-state-proposal-snapshot

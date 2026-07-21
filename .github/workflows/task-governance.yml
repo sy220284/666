@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
+      TASK_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
       TASK_EVENT_NAME: ${{ github.event_name }}
       TASK_PR_HEAD_REF: ${{ github.head_ref }}
       TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
@@ -28,6 +28,9 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Resolve effective PR base
+        shell: bash
+        run: echo "TASK_BASE_REF=$(git merge-base \"origin/${TASK_BASE_BRANCH}\" HEAD)" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v6
         with:
           node-version: 24

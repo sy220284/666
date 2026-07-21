@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   pr-policy:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -217,7 +218,7 @@ jobs:
           assert.match(workflow, /automerge-base-gate\.mjs/u);
           assert.doesNotMatch(workflow, /CLOSEOUT_TRIGGER|tmp_closeout|final-closeout\.patch/u);
           assert.match(quality, /checkout_ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
-          assert.match(quality, /static-failure-diagnostics/u);
+          assert.doesNotMatch(quality, /static-failure-diagnostics/u);
           assert.match(mainVerification, /modeAwareChecksState/u);
           assert.match(mainVerification, /nextPagePath/u);
           assert.match(evidencePolicy, /EVIDENCE_HEAD_SHA/u);

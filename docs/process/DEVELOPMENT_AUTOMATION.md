@@ -25,7 +25,8 @@
 → 校验依赖和allowedPaths
 → 最小完整端到端实现
 → 本地专项验证
-→ Draft PR快速反馈
+→ 原子更新正式PR Head
+→ Draft PR静态反馈
 → Ready PR必要门禁
 → Controlled Merge执行squash
 → Main Verification核验最终SHA与静态一致性
@@ -40,6 +41,7 @@
 4. `Implemented`表示真实代码、必要专项测试和远端门禁已通过；不等于最终发布验收。
 5. `Verified`用于里程碑或批次关闭，不要求每张任务单独再开一张纯关闭PR。
 6. 禁止机器人直接写`main`；只有Controlled Merge可在永久检查通过后调用Merge API。
+7. 正式PR分支不是远程逐文件调试区。使用连接器写入时，必须先汇总完整文件，以Git Blob/Tree/Commit一次更新同一批改动；禁止连续`update_file`产生调试提交。确需修复时，应先完整定位失败原因，再用一个原子修复提交更新Head。
 
 ## 4. M3阶段冻结规则
 
@@ -65,31 +67,30 @@ M3-10完成后统一执行一次M3批次复验，集中关闭M3-01、M3-03、M3-
 
 ### 5.1 Draft PR
 
-Draft只提供快速反馈：
+Draft只运行一套快速反馈：
 
 ```text
-PR Policy
-Task Governance
-Evidence变更文档检查
-Quality静态检查
-Secret Scan
-Performance快速路由
+Quality
+└─ task:validate
+   workspace / boundary
+   format / lint / typecheck
 ```
 
-Draft绿色状态没有合并资格。
+PR Policy、Task Governance、Evidence、Security和Performance在Draft阶段不启动Runner，转为Ready后再针对当前Head执行。Draft绿色状态没有合并资格。
 
 ### 5.2 Ready PR
 
 Ready执行：
 
+- PR Policy：真实分支、永久自动化与CI策略；
 - Task Governance：状态、镜像、allowedPaths和任务转换；
-- Quality：静态检查、Unit、Integration、Migration、Electron E2E、Build和现有Package Smoke；
+- Quality：静态检查、Unit、Integration、Migration、Electron E2E和Build；
 - Security：Secret Scan始终执行，Dependency Audit仅在依赖或Workflow输入变化时执行，Application Security仅在任务声明或安全边界变化时执行；
 - Performance：仅在任务明确要求`pnpm test:perf`、性能测试/Eval/Prompt/Editor路径变化或手动触发时执行；
 - Evidence：只检查本次变更的任务证据文档；
 - Controlled Merge：复核Head SHA、审查状态、未解决线程和六项检查结果后squash合并。
 
-普通PR不承担全历史Evidence重放，也不在合并后再次执行完整发布级套件。
+普通PR不运行Package Smoke。打包验证只在Release或明确涉及打包配置、Electron发布链路时执行。普通PR不承担全历史Evidence重放，也不在合并后再次执行完整发布级套件。
 
 ## 6. Main Verification
 
@@ -100,7 +101,7 @@ Main Verification只负责最终提交真实性：
 3. 运行task、workspace、boundary、format、lint、typecheck静态复核；
 4. 发布`main-verification`状态。
 
-全量Unit、Integration、Migration、Electron E2E、Package、Security和Performance已经在Ready PR或里程碑门执行，合并后不再重复执行。
+全量Unit、Integration、Migration、Electron E2E、Package、Security和Performance已经在Ready PR、专项门或里程碑门执行，合并后不再重复执行。
 
 ## 7. 证据规则
 

@@ -25,6 +25,10 @@ import {
   CoreNarrativePlanningOperationSchema,
   CoreNarrativePlanningResultSchema,
 } from './narrative-planning.js';
+import {
+  CoreStateProposalOperationSchema,
+  CoreStateProposalResultSchema,
+} from './state-proposal.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -193,6 +197,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreEntityCanonOperationSchema,
   CoreContinuityOperationSchema,
   CoreNarrativePlanningOperationSchema,
+  CoreStateProposalOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
   CoreCandidateApplyOperationSchema,
@@ -233,6 +238,7 @@ export const CoreProjectResultSchema = z.union([
   CoreEntityCanonResultSchema,
   CoreContinuityResultSchema,
   CoreNarrativePlanningResultSchema,
+  CoreStateProposalResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
   CoreCandidateApplyResultSchema,

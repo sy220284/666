@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M3-06",
+  "commit": "d51ffe6a2c7751fe94dcf805a116ff0d037b5f01",
+  "generatedAt": "2026-07-21T03:48:00.000Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 658,
+      "sha256": "b66a6fb998a3274955637c3c9a04f0a4c228c0fa57681bc79928eecec56914fb"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 484,
+      "sha256": "01c02f0113854e12786c4ab3fc2404f18bed5d459e7cd6e920ac06f4db6d3cfb"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 1300,
+      "sha256": "f683bac46caeadabc83b93c378e22ddfbcab1bf73cf548ebd4a1b7dd76b763e5"
+    }
+  ]
+}

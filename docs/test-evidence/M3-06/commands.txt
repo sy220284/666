@@ -1,0 +1,12 @@
+pnpm check:workspaces # exit 0, Quality 29799141697
+pnpm check:boundaries # exit 0, Quality 29799141697
+pnpm format:check # exit 0, Quality 29799141697
+pnpm lint # exit 0, Quality 29799141697
+pnpm typecheck # exit 0, Quality 29799141697
+pnpm test:unit # exit 0, Quality 29799141697
+pnpm test:integration # exit 0, Quality 29799141697
+pnpm test:migration # exit 0, Quality 29799141697
+pnpm build # exit 0, Quality 29799141697
+pnpm test:e2e # exit 0, Quality 29799141697
+pnpm test:security # exit 0, Security 29799141529
+pnpm task:advance -- --ci=success --commit=d51ffe6a2c7751fe94dcf805a116ff0d037b5f01 # deterministic transition output committed atomically

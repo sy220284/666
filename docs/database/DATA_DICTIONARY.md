@@ -73,6 +73,7 @@ Candidate完整度：`complete | partial`
 | ArcMilestone | 弧光中的可确认里程碑节点 |
 | EndingSnapshot | 定稿后供下一章读取的最小连续性入口 |
 | StateProposal | AI或规则提出的`entity_state`或`arc_milestone`变化候选 |
+| DerivedInvalidation | 旧章语义变化对后续快照、校验和缓存造成的失效记录 |
 | stale | 派生数据因上游修改而过期，不能继续当作有效输入 |
 
 Entity类型：
@@ -148,6 +149,22 @@ StateProposal状态：
 ```text
 pending | accepted | edited | rejected
 ```
+
+StateProposal来源：
+
+```text
+rule | provider_stub
+```
+
+`pending`只表示待作者裁决的候选，不改变EntityState或ArcMilestone。`accept`使用提议值，`edit_accept`使用作者编辑后的合法JSON值，`reject`不产生权威写入；一批裁决任一失败时整批回滚。接受`entity_state`会结束旧current并写入新current；接受`arc_milestone`会以`confirmationSource=state_proposal`推进节点，并在同一事务重建章节尾快照。
+
+EndingSnapshot状态：
+
+```text
+valid | stale
+```
+
+有效快照按章节和来源Version可追溯；缺失或stale时读取来源为`fallback_live_query`，内容来自权威当前表。DerivedInvalidation记录上游语义变化影响的后续章节与`continuity/arc/timeline/foreshadowing/validation/cache`范围；纯`prose`修改不产生失效记录。
 
 Foreshadowing状态：
 

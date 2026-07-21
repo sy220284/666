@@ -194,11 +194,21 @@ test('preserves a finite EntityState interval across the real Electron boundary'
           readonly worldforgeStateProposal: StateProposalBridge;
         }
       ).worldforgeStateProposal;
-      const chapter1 = await bridge.readSnapshot({ projectId, chapterId: chapter1Id });
+      const chapter1 = await bridge.readSnapshot({
+        projectId,
+        chapterId: chapter1Id,
+      });
       if (!chapter1.ok) throw new Error(`CHAPTER1_SNAPSHOT_FAILED:${chapter1.error.code}`);
-      const chapter2 = await bridge.readSnapshot({ projectId, chapterId: chapter2Id });
+      const chapter2 = await bridge.readSnapshot({
+        projectId,
+        chapterId: chapter2Id,
+      });
       if (!chapter2.ok) throw new Error(`CHAPTER2_SNAPSHOT_FAILED:${chapter2.error.code}`);
-      const catalog = await bridge.list({ projectId, chapterId: chapter1Id, includeResolved: true });
+      const catalog = await bridge.list({
+        projectId,
+        chapterId: chapter1Id,
+        includeResolved: true,
+      });
       if (!catalog.ok) throw new Error(`PROPOSAL_LIST_FAILED:${catalog.error.code}`);
       return {
         chapter1Source: chapter1.data.snapshotSource,

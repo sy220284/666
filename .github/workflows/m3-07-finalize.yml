@@ -1,0 +1,141 @@
+name: M3-07 Finalize React Foundation
+
+on:
+  push:
+    branches:
+      - work/m3-07-renderer-react-foundation
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m3-07-finalize
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: work/m3-07-renderer-react-foundation
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Generate canonical lockfile
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm install --frozen-lockfile
+      - name: Format and validate architecture
+        run: |
+          pnpm format
+          pnpm check:workspaces
+          pnpm check:boundaries
+          node apps/desktop/renderer/check-react-boundaries.mjs
+      - name: Focused tests and build
+        run: |
+          pnpm --filter @worldforge/renderer build
+          pnpm exec vitest run tests/unit/renderer-react-foundation.test.ts
+          pnpm exec vitest run tests/security/renderer-react-boundaries.test.ts
+          pnpm lint
+          pnpm typecheck
+          pnpm build
+          pnpm exec playwright test tests/e2e/react-renderer-foundation.spec.ts
+      - name: Commit implementation and activate M3-08
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add package.json pnpm-lock.yaml apps/desktop/renderer tests/unit tests/security tests/e2e docs/architecture docs/ui
+          git commit -m 'refactor(M3-07): establish React renderer foundation'
+          IMPLEMENTATION_SHA="$(git rev-parse HEAD)"
+
+          mkdir -p docs/test-evidence/M3-07
+          cat > docs/test-evidence/M3-07/summary.md <<EOF
+          # M3-07 Renderer React基础
+
+          实现提交：\`${IMPLEMENTATION_SHA}\`。
+
+          - React Root和最小App已建立，旧业务面由单实例兼容层继续运行。
+          - Zustand只承载路由、选择ID、侧栏、Dialog、任务显示和返回位置。
+          - Bridge适配层统一pending、取消、陈旧响应、安全错误码和诊断ID。
+          - P0—P3状态仲裁与耐久性优先卸载顺序已建立。
+          - Renderer构建、专项Unit/Security、Lint、Typecheck、全工作区Build和真实Electron场景全部成功。
+          - 人工复核：Core、IPC、数据库和业务结果未改变；旧业务域按M3-08至M3-10逐域迁移。
+
+          Workflow：\`${GITHUB_RUN_ID}\`。
+          EOF
+          cat > docs/test-evidence/M3-07/commands.txt <<EOF
+          pnpm install --no-frozen-lockfile # exit 0
+          pnpm install --frozen-lockfile # exit 0
+          pnpm check:workspaces # exit 0
+          pnpm check:boundaries # exit 0
+          pnpm --filter @worldforge/renderer build # exit 0
+          pnpm exec vitest run tests/unit/renderer-react-foundation.test.ts # exit 0
+          pnpm exec vitest run tests/security/renderer-react-boundaries.test.ts # exit 0
+          pnpm lint # exit 0
+          pnpm typecheck # exit 0
+          pnpm build # exit 0
+          pnpm exec playwright test tests/e2e/react-renderer-foundation.spec.ts # exit 0
+          pnpm task:advance -- --ci=success --commit=${IMPLEMENTATION_SHA} # exit 0
+          EOF
+          cat > docs/test-evidence/M3-07/known-risks.md <<'EOF'
+          # 已知风险
+
+          - 旧命令式业务面仍作为单实例兼容层运行，逐域迁移和最终删除由M3-08至M3-10完成。
+          - M3-07不改变Core、IPC、数据库或业务状态机。
+          - M3批次最终Verified仍按阶段关闭规则延期执行。
+          EOF
+          node - "$IMPLEMENTATION_SHA" <<'EOF'
+          import { createHash } from 'node:crypto';
+          import { readFile, writeFile } from 'node:fs/promises';
+          import path from 'node:path';
+          const commit = process.argv[2];
+          const directory = 'docs/test-evidence/M3-07';
+          const files = [];
+          for (const name of ['commands.txt', 'known-risks.md', 'summary.md']) {
+            const bytes = await readFile(path.join(directory, name));
+            files.push({
+              path: name,
+              bytes: bytes.byteLength,
+              sha256: createHash('sha256').update(bytes).digest('hex'),
+            });
+          }
+          await writeFile(
+            path.join(directory, 'manifest.json'),
+            `${JSON.stringify(
+              {
+                schemaVersion: 1,
+                taskId: 'M3-07',
+                commit,
+                generatedAt: new Date().toISOString(),
+                files,
+              },
+              null,
+              2,
+            )}\n`,
+          );
+          EOF
+
+          pnpm task:advance -- --ci=success --commit="$IMPLEMENTATION_SHA"
+          pnpm format
+          rm .github/workflows/m3-07-finalize.yml
+          git add docs/tasks docs/test-evidence/M3-07 .github/workflows/m3-07-finalize.yml
+          git commit -m 'chore(M3-07): record implementation and activate M3-08'
+          git push origin HEAD:work/m3-07-renderer-react-foundation
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3-07-finalize-diagnostics
+          path: |
+            pnpm-debug.log
+            test-results/
+            playwright-report/

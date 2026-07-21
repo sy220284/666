@@ -13,10 +13,14 @@ await Promise.all([
     new URL('./src/styles.css', import.meta.url),
     new URL('./dist/styles.css', import.meta.url),
   ),
+  copyFile(
+    new URL('./src/react-foundation.css', import.meta.url),
+    new URL('./dist/react-foundation.css', import.meta.url),
+  ),
 ]);
 
 await build({
-  entryPoints: [new URL('./src/entry.ts', import.meta.url).pathname],
+  entryPoints: [new URL('./src/react-entry.tsx', import.meta.url).pathname],
   outfile: new URL('./dist/index.js', import.meta.url).pathname,
   bundle: true,
   format: 'esm',

@@ -1,23 +1,21 @@
 name: M3-06 Closeout Prep
 
 on:
-  push:
+  pull_request:
     branches:
-      - work/m3-06-state-proposal-snapshot
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   prepare:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: work/m3-06-state-proposal-snapshot
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
@@ -157,14 +155,14 @@ window.worldforgeStateProposal = {
               text = text.replace(old_intro, new_intro, 1)
           command_section = """M3-06冻结的状态提案与尾快照命令：
 
-| 命令                              | IPC频道                                         | 输入                                                        | 输出                         |
-| --------------------------------- | ----------------------------------------------- | ----------------------------------------------------------- | ---------------------------- |
-| `stateProposal.list`              | `worldforge:state-proposal:list`                | projectId、可选chapterId、includeResolved                   | 提案、快照与失效记录目录     |
-| `stateProposal.generate`          | `worldforge:state-proposal:generate`            | chapterId、final Version、来源、带正文证据的提案数组         | 只新增pending后的目录        |
-| `stateProposal.resolve`           | `worldforge:state-proposal:resolve`             | author权限、接受/编辑接受/拒绝批量裁决                       | 权威状态与快照提交后的目录   |
-| `stateProposal.refreshSnapshot`   | `worldforge:state-proposal:refresh-snapshot`    | author权限、chapterId、final Version                         | 重建后的EndingSnapshot       |
-| `stateProposal.readSnapshot`      | `worldforge:state-proposal:read-snapshot`       | projectId、chapterId                                        | snapshot或fallback_live_query |
-| `stateProposal.invalidateDerived` | `worldforge:state-proposal:invalidate-derived`  | author权限、来源章节/Version、变化类型                       | 失效快照ID与排队范围         |
+| 命令                              | IPC频道                                        | 输入                                                | 输出                          |
+| --------------------------------- | ---------------------------------------------- | --------------------------------------------------- | ----------------------------- |
+| `stateProposal.list`              | `worldforge:state-proposal:list`               | projectId、可选chapterId、includeResolved           | 提案、快照与失效记录目录      |
+| `stateProposal.generate`          | `worldforge:state-proposal:generate`           | chapterId、final Version、来源、带正文证据的提案数组 | 只新增pending后的目录         |
+| `stateProposal.resolve`           | `worldforge:state-proposal:resolve`            | author权限、接受/编辑接受/拒绝批量裁决               | 权威状态与快照提交后的目录    |
+| `stateProposal.refreshSnapshot`   | `worldforge:state-proposal:refresh-snapshot`   | author权限、chapterId、final Version                 | 重建后的EndingSnapshot        |
+| `stateProposal.readSnapshot`      | `worldforge:state-proposal:read-snapshot`      | projectId、chapterId                                | snapshot或fallback_live_query |
+| `stateProposal.invalidateDerived` | `worldforge:state-proposal:invalidate-derived` | author权限、来源章节/Version、变化类型               | 失效快照ID与排队范围          |
 
 Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreStateProposalOperationSchema`。生成只接受属于当前项目、当前章节final Version的正文Evidence；空提取合法。`resolve`、`refreshSnapshot`和`invalidateDerived`只接受author权限。批量裁决、EntityState或ArcMilestone更新和快照重建使用同一项目库事务；pending、拒绝或失败批次不得产生权威写入。`prose`变化返回空失效结果，语义变化只标记后续快照stale，不自动修改后文。
 """
@@ -204,14 +202,12 @@ Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreStatePro
                   text = text.replace(marker, closure + marker, 1)
           trace.write_text(text)
           PY
-          rm .github/workflows/m3-06-closeout-prep.yml
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/e2e/state-proposal-workflow.spec.ts \
-            docs/database/DATABASE_SCHEMA.md \
-            docs/database/DATA_DICTIONARY.md \
-            docs/contracts/IPC_CONTRACTS.md \
-            docs/product/V1.0_TRACEABILITY_MATRIX.md \
-            .github/workflows/m3-06-closeout-prep.yml
-          git commit -m 'docs(M3-06): synchronize schema IPC and traceability'
-          git push origin HEAD:work/m3-06-state-proposal-snapshot
+      - uses: actions/upload-artifact@v7
+        with:
+          name: m3-06-closeout-prepared
+          path: |
+            tests/e2e/state-proposal-workflow.spec.ts
+            docs/database/DATABASE_SCHEMA.md
+            docs/database/DATA_DICTIONARY.md
+            docs/contracts/IPC_CONTRACTS.md
+            docs/product/V1.0_TRACEABILITY_MATRIX.md

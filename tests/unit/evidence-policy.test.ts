@@ -41,31 +41,15 @@ async function gitFixture() {
   return { root, sourceCommit, head };
 }
 
-async function evidenceFixture(options: { readonly withScreenshot?: boolean } = {}) {
+async function evidenceFixture() {
   const root = await mkdtemp(path.join(tmpdir(), 'worldforge-evidence-policy-'));
   temporaryDirectories.push(root);
   const taskId = 'M9-99';
   const directory = path.join(root, 'docs', 'test-evidence', taskId);
-  const screenshotName = 'acceptance.png';
-  const screenshot = Buffer.from('real screenshot bytes');
-  const screenshotManifest = options.withScreenshot
-    ? [
-        {
-          fileName: screenshotName,
-          fixtureId: 'M9-99-acceptance',
-          sha256: hash(screenshot),
-        },
-      ]
-    : [];
   const files = new Map<string, Buffer>();
   for (const relative of REQUIRED_EVIDENCE_FILES) {
-    const value =
-      relative === 'screenshots/manifest.json'
-        ? `${JSON.stringify(screenshotManifest, null, 2)}\n`
-        : `${relative}\n`;
-    files.set(relative, Buffer.from(value));
+    files.set(relative, Buffer.from(`${relative}\n`));
   }
-  if (options.withScreenshot) files.set(`screenshots/${screenshotName}`, screenshot);
 
   for (const [relative, content] of files) {
     const absolute = path.join(directory, relative);
@@ -84,7 +68,7 @@ async function evidenceFixture(options: { readonly withScreenshot?: boolean } = 
     })),
   };
   await writeFile(path.join(directory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  return { root, taskId, directory, manifest, screenshotName };
+  return { root, taskId, directory, manifest };
 }
 
 afterEach(async () => {
@@ -94,7 +78,7 @@ afterEach(async () => {
 });
 
 describe('evidence policy', () => {
-  it('verifies all required files, hashes and complete file registration', async () => {
+  it('verifies documentation bytes, hashes and complete file registration', async () => {
     const fixture = await evidenceFixture();
     await expect(validateTaskEvidence(fixture.taskId, fixture.root)).resolves.toBeUndefined();
   });
@@ -124,19 +108,6 @@ describe('evidence policy', () => {
     );
   });
 
-  it('rejects screenshot entries that are missing from the root evidence manifest', async () => {
-    const fixture = await evidenceFixture({ withScreenshot: true });
-    const manifestPath = path.join(fixture.directory, 'manifest.json');
-    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as typeof fixture.manifest;
-    manifest.files = manifest.files.filter(
-      (entry) => entry.path !== `screenshots/${fixture.screenshotName}`,
-    );
-    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-    await expect(validateTaskEvidence(fixture.taskId, fixture.root)).rejects.toThrow(
-      'screenshot is absent from the evidence manifest',
-    );
-  });
-
   it('binds validation to the exact checked-out PR Head and a committed ancestor', async () => {
     const fixture = await gitFixture();
     expect(assertEvidenceHead(fixture.head, fixture.root)).toBe(fixture.head);
@@ -156,36 +127,29 @@ describe('evidence policy', () => {
 describe('final evidence semantics', () => {
   const documents = {
     summary: '# 验证摘要\n\n状态：Verified。',
-    manualAcceptance: '# 人工验收\n\n状态：通过。',
-    qualityMatrix: '# 质量矩阵\n\n全部通过。',
-  };
-  const screenshot = {
-    fileName: 'acceptance.png',
-    fixtureId: 'M2-01-acceptance',
-    sha256: 'b'.repeat(64),
+    commands: 'pnpm test\nexit=0\n',
+    knownRisks: '# 已知风险\n\n- 无。',
   };
 
-  it('accepts committed final evidence with no stale state', () => {
+  it('accepts committed documentation-only evidence with no stale state', () => {
     expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, [screenshot], documents),
+      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, documents),
     ).not.toThrow();
-  });
-
-  it('requires a desktop screenshot for M2 final evidence', () => {
-    expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, [], documents),
-    ).toThrow('requires at least one desktop screenshot');
   });
 
   it('rejects working-tree and pending acceptance text', () => {
     expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'working-tree' }, [screenshot], documents),
+      assertFinalEvidenceSemantics('M2-01', { commit: 'working-tree' }, documents),
     ).toThrow('committed revision');
     expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, [screenshot], {
-        ...documents,
-        summary: 'PENDING：等待CI。',
-      }),
+      assertFinalEvidenceSemantics(
+        'M2-01',
+        { commit: 'a'.repeat(40) },
+        {
+          ...documents,
+          summary: 'PENDING：等待CI。',
+        },
+      ),
     ).toThrow('stale implementation');
   });
 });

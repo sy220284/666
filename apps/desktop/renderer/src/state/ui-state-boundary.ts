@@ -7,6 +7,7 @@ export const RENDERER_ROUTE_IDS = [
   'writing',
   'versions',
   'candidates',
+  'checks',
   'settings',
   'recovery',
 ] as const;

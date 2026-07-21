@@ -23,6 +23,9 @@ export const STATE_PROPOSAL_COMMANDS = {
   invalidateDerived: 'stateProposal.invalidateDerived',
 } as const;
 
+export const STATE_PROPOSAL_VALID_UNTIL_EVIDENCE_NOTE =
+  'worldforge:state-valid-until-exclusive' as const;
+
 export const StateProposalTypeSchema = z.enum(['entity_state', 'arc_milestone']);
 export const StateProposalStatusSchema = z.enum(['pending', 'accepted', 'edited', 'rejected']);
 export const StateProposalSourceSchema = z.enum(['rule', 'provider_stub']);
@@ -66,14 +69,65 @@ const proposalBase = {
   confidence: z.number().finite().min(0).max(1),
 };
 
-export const EntityStateProposalDraftSchema = z.strictObject({
-  proposalType: z.literal('entity_state'),
-  entityId: z.uuid(),
-  stateKey: EntityStateKeySchema,
-  proposedValue: z.json(),
-  validUntilChapterId: z.uuid().nullable().default(null),
-  ...proposalBase,
-});
+function validityEvidence(
+  evidence: readonly z.infer<typeof EvidenceAnchorSchema>[],
+): readonly z.infer<typeof EvidenceAnchorSchema>[] {
+  return evidence.filter(
+    (anchor) =>
+      anchor.kind === 'chapter' && anchor.note === STATE_PROPOSAL_VALID_UNTIL_EVIDENCE_NOTE,
+  );
+}
+
+export const EntityStateProposalDraftSchema = z
+  .strictObject({
+    proposalType: z.literal('entity_state'),
+    entityId: z.uuid(),
+    stateKey: EntityStateKeySchema,
+    proposedValue: z.json(),
+    validUntilChapterId: z.uuid().nullable().default(null),
+    ...proposalBase,
+  })
+  .superRefine((value, context) => {
+    const markers = validityEvidence(value.evidence);
+    if (markers.length > 1) {
+      context.addIssue({
+        code: 'custom',
+        path: ['evidence'],
+        message: 'EntityState proposal validity evidence must be unique.',
+      });
+      return;
+    }
+    if (value.validUntilChapterId === null && markers.length > 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['evidence'],
+        message: 'Validity evidence requires validUntilChapterId.',
+      });
+      return;
+    }
+    if (
+      value.validUntilChapterId !== null &&
+      markers.length === 1 &&
+      markers[0]?.targetId !== value.validUntilChapterId
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['evidence'],
+        message: 'Validity evidence must match validUntilChapterId.',
+      });
+    }
+    if (
+      value.validUntilChapterId !== null &&
+      markers.length === 0 &&
+      value.evidence.length >= 100
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['evidence'],
+        message: 'Validity evidence would exceed the proposal evidence limit.',
+      });
+    }
+  });
 
 export const ArcMilestoneProposalDraftSchema = z
   .strictObject({
@@ -98,24 +152,55 @@ export const StateProposalDraftSchema = z.discriminatedUnion('proposalType', [
   ArcMilestoneProposalDraftSchema,
 ]);
 
-export const StateProposalSchema = z.strictObject({
-  id: z.uuid(),
-  projectId: ProjectIdSchema,
-  chapterId: z.uuid(),
-  sourceVersionId: z.uuid(),
-  proposalType: StateProposalTypeSchema,
-  source: StateProposalSourceSchema,
-  entityId: z.uuid().nullable(),
-  stateKey: EntityStateKeySchema.nullable(),
-  arcMilestoneId: z.uuid().nullable(),
-  previousValue: z.json().nullable(),
-  proposedValue: z.json(),
-  evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
-  confidence: z.number().finite().min(0).max(1),
-  status: StateProposalStatusSchema,
-  resolvedValue: z.json().nullable(),
-  createdAt: z.iso.datetime(),
-  resolvedAt: z.iso.datetime().nullable(),
+const StateProposalRecordSchema = z
+  .strictObject({
+    id: z.uuid(),
+    projectId: ProjectIdSchema,
+    chapterId: z.uuid(),
+    sourceVersionId: z.uuid(),
+    proposalType: StateProposalTypeSchema,
+    source: StateProposalSourceSchema,
+    entityId: z.uuid().nullable(),
+    stateKey: EntityStateKeySchema.nullable(),
+    arcMilestoneId: z.uuid().nullable(),
+    previousValue: z.json().nullable(),
+    proposedValue: z.json(),
+    evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
+    confidence: z.number().finite().min(0).max(1),
+    status: StateProposalStatusSchema,
+    resolvedValue: z.json().nullable(),
+    validUntilChapterId: z.uuid().nullable().optional(),
+    createdAt: z.iso.datetime(),
+    resolvedAt: z.iso.datetime().nullable(),
+  })
+  .superRefine((value, context) => {
+    const markers = validityEvidence(value.evidence);
+    if (markers.length > 1) {
+      context.addIssue({
+        code: 'custom',
+        path: ['evidence'],
+        message: 'Persisted StateProposal validity evidence must be unique.',
+      });
+      return;
+    }
+    const derived = value.proposalType === 'entity_state' ? (markers[0]?.targetId ?? null) : null;
+    if (value.validUntilChapterId !== undefined && value.validUntilChapterId !== derived) {
+      context.addIssue({
+        code: 'custom',
+        path: ['validUntilChapterId'],
+        message: 'Persisted StateProposal validity does not match its evidence.',
+      });
+    }
+  });
+
+export const StateProposalSchema = StateProposalRecordSchema.transform((value) => {
+  const marker = validityEvidence(value.evidence)[0];
+  const { validUntilChapterId: _providedValidity, ...proposal } = value;
+  return {
+    ...proposal,
+    validUntilChapterId:
+      value.proposalType === 'entity_state' ? (marker?.targetId ?? null) : null,
+  };
 });
 
 export const EndingSnapshotContentSchema = z.strictObject({
@@ -192,13 +277,36 @@ export const StateProposalListInputSchema = z.strictObject({
   includeResolved: z.boolean().default(true),
 });
 
-export const StateProposalGenerateInputSchema = z.strictObject({
+const StateProposalGenerateInputBaseSchema = z.strictObject({
   projectId: ProjectIdSchema,
   chapterId: z.uuid(),
   sourceVersionId: z.uuid(),
   source: StateProposalSourceSchema,
   proposals: z.array(StateProposalDraftSchema).max(200),
 });
+
+export const StateProposalGenerateInputSchema = StateProposalGenerateInputBaseSchema.transform(
+  (value) => ({
+    ...value,
+    proposals: value.proposals.map((proposal) => {
+      if (proposal.proposalType !== 'entity_state' || proposal.validUntilChapterId === null) {
+        return proposal;
+      }
+      if (validityEvidence(proposal.evidence).length > 0) return proposal;
+      return {
+        ...proposal,
+        evidence: [
+          ...proposal.evidence,
+          {
+            kind: 'chapter' as const,
+            targetId: proposal.validUntilChapterId,
+            note: STATE_PROPOSAL_VALID_UNTIL_EVIDENCE_NOTE,
+          },
+        ],
+      };
+    }),
+  }),
+);
 
 export const StateProposalResolutionSchema = z
   .strictObject({

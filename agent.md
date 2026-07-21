@@ -134,21 +134,20 @@ M1必须先交付无AI基础产品：
 固定规则：
 
 1. 连接器、本地工作区或作者批准的编码环境负责需求分析、正式源码、Migration、契约、UI、测试、文档、任务状态和提交。
-2. 无法`git clone`时，单文件修改可使用Contents API；涉及两个及以上正式文件时，必须优先使用Git Blob/Tree/Commit生成单个原子提交，禁止连续逐文件提交形成可见中间态。
-3. 禁止为规避连接器或锁文件限制创建一次性、任务专属或分支专属Workflow来生成、改写或提交正式代码、锁文件、测试、文档和任务状态；只能复用已经合入`main`并通过治理门禁的永久受控流程。
-4. 每次写入前必须确认仓库、目标分支、main SHA、任务ID和`allowedPaths`；不得依赖默认分支执行写操作。
-5. 原子提交后必须重新读取真实PR Head中的关键文件，确认出口、接线、测试、文档和任务状态确已落盘。
-6. 永久工作流只能提供仓库级通用能力：PR Policy、Task Governance、Evidence、Security、Performance、Quality、Controlled Merge、Main Verification和通用Diagnostics。
-7. 禁止创建绑定单个任务编号、分支或功能的Runner、Generator、Diagnostic工作流及`.github/<TASK-ID>/apply-*`补丁目录。
-8. CI只验证已提交代码，并生成构建、测试、覆盖率、安全、性能、E2E、截图、日志和状态报告；不得在临时工作树生成正式TypeScript、SQL、IPC、Renderer、测试、任务卡或产品文档后直接作为合并依据。
-9. 正式门禁测试前后必须保持工作树干净：
+2. 无法`git clone`时，继续使用连接器逐文件写回或Git Blob/Tree/Commit原子提交；禁止把正式业务开发转移到CI临时工作区。
+3. 每次写入前必须确认仓库、目标分支、main SHA、任务ID和`allowedPaths`；不得依赖默认分支执行写操作。
+4. 写入后必须重新读取真实PR Head中的关键文件，确认出口、接线、测试、文档和任务状态确已落盘。
+5. 永久工作流只能提供仓库级通用能力：PR Policy、Task Governance、Evidence、Security、Performance、Quality、Controlled Merge、Main Verification和通用Diagnostics。
+6. 禁止创建绑定单个任务编号、分支或功能的Runner、Generator、Diagnostic工作流及`.github/<TASK-ID>/apply-*`补丁目录。
+7. CI只验证已提交代码，并生成构建、测试、覆盖率、安全、性能、E2E、截图、日志和状态报告；不得在临时工作树生成正式TypeScript、SQL、IPC、Renderer、测试、任务卡或产品文档后直接作为合并依据。
+8. 正式门禁测试前后必须保持工作树干净：
 
 ```bash
 git diff --exit-code
 test -z "$(git status --porcelain)"
 ```
 
-10. Evidence必须绑定最终PR Head SHA，只记录针对该提交真实执行的结果。Runner成功、补丁成功、Artifact上传或PR可合并均不能单独证明完成。
-11. 六类永久门禁必须对应同一未变化Head；只允许Controlled Merge合并，Main Verification成功后才能宣布主线闭环。
-12. Schema当前版本从有序Migration序列自动派生，生产代码、Manifest、恢复点、Migration测试和Security测试不得写死当前版本号。
-13. 一旦发现CI生成的正式源码不在PR Head、任务专属工作流增加、临时脚本压过正式实现、JSON/Markdown不同步或误写`main`，必须立即停止，恢复错误分支，从最新main重建干净任务分支后重新提交真实代码。
+9. Evidence必须绑定最终PR Head SHA，只记录针对该提交真实执行的结果。Runner成功、补丁成功、Artifact上传或PR可合并均不能单独证明完成。
+10. 六类永久门禁必须对应同一未变化Head；只允许Controlled Merge合并，Main Verification成功后才能宣布主线闭环。
+11. Schema当前版本从有序Migration序列自动派生，生产代码、Manifest、恢复点、Migration测试和Security测试不得写死当前版本号。
+12. 一旦发现CI生成的正式源码不在PR Head、任务专属工作流增加、临时脚本压过正式实现、JSON/Markdown不同步或误写`main`，必须立即停止，恢复错误分支，从最新main重建干净任务分支后重新提交真实代码。

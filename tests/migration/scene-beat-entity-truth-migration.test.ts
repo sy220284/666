@@ -28,7 +28,7 @@ describe('M3-02 SceneBeat entity truth migration', () => {
       appVersion: '0.1.0',
     });
     try {
-      expect(database.schemaVersion).toBe(16);
+      expect(database.schemaVersion).toBe(17);
       const projectId = randomUUID();
       const foreignProjectId = randomUUID();
       const volumeId = randomUUID();
@@ -44,7 +44,7 @@ describe('M3-02 SceneBeat entity truth migration', () => {
         const insertProject = connection.prepare(
           `INSERT INTO projects(
              id, name, channel, active_style_profile_id, schema_version, created_at, updated_at
-           ) VALUES(?, ?, 'test', NULL, 16, ?, ?)`,
+           ) VALUES(?, ?, 'test', NULL, 17, ?, ?)`,
         );
         insertProject.run(projectId, '本项目', timestamp, timestamp);
         insertProject.run(foreignProjectId, '异项目', timestamp, timestamp);

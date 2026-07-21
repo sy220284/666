@@ -33,7 +33,11 @@ import {
 } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
-import { chapterPosition, validateEvidence } from './continuity-validation.js';
+import {
+  chapterPosition,
+  validateChapterRange,
+  validateEvidence,
+} from './continuity-validation.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
@@ -62,6 +66,7 @@ interface ProposalRow {
   readonly confidence: number;
   readonly status: string;
   readonly resolvedValueJson: string | null;
+  readonly validUntilChapterId: string | null;
   readonly createdAt: string;
   readonly resolvedAt: string | null;
 }
@@ -155,6 +160,7 @@ function mapProposal(row: ProposalRow) {
     confidence: row.confidence,
     status: row.status,
     resolvedValue: parseJson(row.resolvedValueJson),
+    validUntilChapterId: row.validUntilChapterId,
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
   });
@@ -478,6 +484,12 @@ function applyEntityState(
     );
   }
   assertEntity(connection, proposal.projectId, proposal.entityId);
+  validateChapterRange(
+    connection,
+    proposal.projectId,
+    proposal.chapterId,
+    proposal.validUntilChapterId,
+  );
   const stateKey = normalizeContinuityKey(proposal.stateKey, 120);
   const current = currentEntityState(connection, proposal.projectId, proposal.entityId, stateKey);
   const proposalPosition = chapterPosition(connection, proposal.projectId, proposal.chapterId);
@@ -518,7 +530,7 @@ function applyEntityState(
          id, project_id, entity_id, state_key, value_json,
          valid_from_chapter_id, valid_until_chapter_id, record_status,
          evidence_json, source_version_id, created_at, superseded_at
-       ) VALUES(?, ?, ?, ?, ?, ?, NULL, 'current', ?, ?, ?, NULL)`,
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, 'current', ?, ?, ?, NULL)`,
     )
     .run(
       idFactory(),
@@ -527,6 +539,7 @@ function applyEntityState(
       stateKey,
       JSON.stringify(value),
       proposal.chapterId,
+      proposal.validUntilChapterId,
       JSON.stringify(proposal.evidence),
       proposal.sourceVersionId,
       now,
@@ -610,6 +623,7 @@ function catalog(connection: DatabaseSync, projectId: string): StateProposalCata
               previous_value_json AS previousValueJson,
               proposed_value_json AS proposedValueJson, evidence_json AS evidenceJson,
               confidence, status, resolved_value_json AS resolvedValueJson,
+              valid_until_chapter_id AS validUntilChapterId,
               created_at AS createdAt, resolved_at AS resolvedAt
          FROM state_proposals WHERE project_id = ?
         ORDER BY status = 'pending' DESC, created_at DESC, id`,
@@ -690,6 +704,7 @@ export class StateProposalService {
         let entityId: string | null = null;
         let stateKey: string | null = null;
         let milestoneId: string | null = null;
+        let validUntilChapterId: string | null = null;
         let previousValue: unknown;
         let proposedValue: unknown;
         let key: string;
@@ -697,6 +712,8 @@ export class StateProposalService {
           entityId = draft.entityId;
           stateKey = normalizeContinuityKey(draft.stateKey, 120);
           assertEntity(connection, input.projectId, entityId);
+          validUntilChapterId = draft.validUntilChapterId;
+          validateChapterRange(connection, input.projectId, input.chapterId, validUntilChapterId);
           const current = currentEntityState(connection, input.projectId, entityId, stateKey);
           previousValue = current ? parseJson(current.valueJson) : null;
           proposedValue = draft.proposedValue;
@@ -734,8 +751,8 @@ export class StateProposalService {
                id, project_id, chapter_id, source_version_id, proposal_type, source,
                entity_id, state_key, arc_milestone_id, previous_value_json,
                proposed_value_json, evidence_json, confidence, status,
-               resolved_value_json, created_at, resolved_at
-             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?, NULL)`,
+               resolved_value_json, valid_until_chapter_id, created_at, resolved_at
+             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?, ?, NULL)`,
           )
           .run(
             this.#idFactory(),
@@ -751,6 +768,7 @@ export class StateProposalService {
             JSON.stringify(proposedValue),
             JSON.stringify(draft.evidence),
             draft.confidence,
+            validUntilChapterId,
             now,
           );
       }
@@ -781,6 +799,7 @@ export class StateProposalService {
                     previous_value_json AS previousValueJson,
                     proposed_value_json AS proposedValueJson, evidence_json AS evidenceJson,
                     confidence, status, resolved_value_json AS resolvedValueJson,
+                    valid_until_chapter_id AS validUntilChapterId,
                     created_at AS createdAt, resolved_at AS resolvedAt
                FROM state_proposals
               WHERE id = ? AND project_id = ?`,

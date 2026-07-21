@@ -98,25 +98,36 @@ export const StateProposalDraftSchema = z.discriminatedUnion('proposalType', [
   ArcMilestoneProposalDraftSchema,
 ]);
 
-export const StateProposalSchema = z.strictObject({
-  id: z.uuid(),
-  projectId: ProjectIdSchema,
-  chapterId: z.uuid(),
-  sourceVersionId: z.uuid(),
-  proposalType: StateProposalTypeSchema,
-  source: StateProposalSourceSchema,
-  entityId: z.uuid().nullable(),
-  stateKey: EntityStateKeySchema.nullable(),
-  arcMilestoneId: z.uuid().nullable(),
-  previousValue: z.json().nullable(),
-  proposedValue: z.json(),
-  evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
-  confidence: z.number().finite().min(0).max(1),
-  status: StateProposalStatusSchema,
-  resolvedValue: z.json().nullable(),
-  createdAt: z.iso.datetime(),
-  resolvedAt: z.iso.datetime().nullable(),
-});
+export const StateProposalSchema = z
+  .strictObject({
+    id: z.uuid(),
+    projectId: ProjectIdSchema,
+    chapterId: z.uuid(),
+    sourceVersionId: z.uuid(),
+    proposalType: StateProposalTypeSchema,
+    source: StateProposalSourceSchema,
+    entityId: z.uuid().nullable(),
+    stateKey: EntityStateKeySchema.nullable(),
+    arcMilestoneId: z.uuid().nullable(),
+    previousValue: z.json().nullable(),
+    proposedValue: z.json(),
+    evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
+    confidence: z.number().finite().min(0).max(1),
+    status: StateProposalStatusSchema,
+    resolvedValue: z.json().nullable(),
+    validUntilChapterId: z.uuid().nullable(),
+    createdAt: z.iso.datetime(),
+    resolvedAt: z.iso.datetime().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.proposalType === 'arc_milestone' && value.validUntilChapterId !== null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['validUntilChapterId'],
+        message: 'ArcMilestone proposals cannot define a chapter validity end.',
+      });
+    }
+  });
 
 export const EndingSnapshotContentSchema = z.strictObject({
   entityStates: z.array(

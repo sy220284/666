@@ -346,4 +346,4 @@ interface AppearancePreferences {
 - Core项目操作联合类型必须覆盖所有公开命令，并拒绝无法识别的operation。
 - M3-04由`tests/security/continuity-ipc.test.ts`和真实Electron `tests/e2e/continuity-ledger.spec.ts`验证完整调用链。
 - M3-05由`tests/security/narrative-planning-ipc.test.ts`、`tests/security/candidate-preview-ipc.test.ts`和真实Electron `tests/e2e/narrative-planning-ledger.spec.ts`验证六个具名命令、可信来源边界及桌面写入展示链路。
-- M3-06由`tests/security/state-proposal-ipc.test.ts`、`tests/integration/state-proposal-snapshot.test.ts`和真实Electron `tests/e2e/state-proposal-workflow.spec.ts`验证六个具名命令、作者最终裁决、事务回滚、快照回退与桌面接受链路。
+- M3-06由`tests/security/state-proposal-ipc.test.ts`、`tests/integration/state-proposal-snapshot.test.ts`、`tests/integration/state-proposal-valid-until.test.ts`、`tests/integration/state-proposal-valid-until-boundaries.test.ts`和真实Electron `tests/e2e/state-proposal-workflow.spec.ts`、`tests/e2e/state-proposal-valid-until.spec.ts`验证六个具名命令、作者最终裁决、有限期半开区间、跨项目/逆序拒绝、批量回滚、快照回退与桌面接受链路。

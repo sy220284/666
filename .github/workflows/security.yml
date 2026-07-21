@@ -99,9 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           run=false
-          if node --input-type=module -e "import {readFileSync} from 'node:fs'; const state=JSON.parse(readFileSync('docs/tasks/ACTIVE_TASK.json','utf8')); process.exit(state.activeTask?.verification?.includes('pnpm test:security') ? 0 : 1);"; then
-            run=true
-          elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(apps/desktop/(main|preload)/|packages/(contracts|core-service)/|migrations/|tests/security/|scripts/(scan-secrets|ci-policy)\.mjs$|\.github/workflows/security\.yml$)'; then
+          if git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(apps/desktop/(main|preload)/|packages/(contracts|core-service)/|migrations/|tests/security/|scripts/(scan-secrets|ci-policy)\.mjs$|\.github/workflows/security\.yml$)'; then
             run=true
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"

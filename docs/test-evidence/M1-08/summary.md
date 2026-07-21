@@ -1,12 +1,7 @@
-# M1-08测试证据
+# M1-08 验证摘要
 
-生成时间：2026-07-20T02:59:51Z  
-受测提交：`3520855a45604bcfb7c740209552dc812c8de413`  
-来源PR：#85  
-Main Verification：https://github.com/sy220284/666/actions/runs/29713419581
+状态：Verified。来源提交：`9da54fb67cdf43d1b4bc4b77e7af5770a6522ac5`。
 
-状态：Verified。
+物理损坏的 `project.sqlite` 无法作为Reader打开时，恢复服务只从通过路径、普通文件、SHA-256、SQLite完整性、外键与项目身份校验的外部Checkpoint读取Version目录与正文。真实Electron链路已验证：损坏前创建Version与Checkpoint；损坏后仍可浏览Version、导出正文并恢复新项目副本；损坏源库和Checkpoint保持不变。
 
-M1-08已在通用复验流程下重新验证。PR #85以标准`revalidation-reopen`转换激活任务，六项永久门禁全部通过；Controlled Merge后，Main Verification在最终main提交上重新执行完整质量、安全、性能和Electron E2E矩阵。
-
-现有四张任务专属恢复截图保持原始二进制与SHA-256不变。文本证据、运行来源、质量矩阵和完整性清单已重建，不再引用旧Closeout运行。
+Quality运行：`29788218764`；桌面工件：`8479349358`；19/19 Electron测试通过。

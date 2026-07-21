@@ -1,12 +1,23 @@
 [
   {
-    "fileName": "permanent-delete-checkpoint.png",
-    "fixtureId": "M2-04-desktop-acceptance",
-    "sha256": "836b7476e669d73a541d6ff00ef9a9104db0e4beaec1bfc8e0261ddf592b27fe"
+    "fileName": "split-chapter-result.png",
+    "sha256": "17f468ce9901e4fc7def42b82a08ef4418c24a1b29570f07ccbf57106c44434c",
+    "description": "拆章完成且结构结果可见",
+    "qualityRunId": 29788218764,
+    "artifactId": 8479349358
   },
   {
-    "fileName": "split-chapter-result.png",
-    "fixtureId": "M2-04-desktop-acceptance",
-    "sha256": "fec556caa5a8ea51489da86fc61b8a844f5882593e34a622414f53b1a9dcfb1b"
+    "fileName": "permanent-delete-reference-blocked.png",
+    "sha256": "cec66c98be140ffa11649a88f968c9719f03949ed0a5c6eebe2145d9a2d1499b",
+    "description": "TimelineEvent章节锚点阻断永久删除",
+    "qualityRunId": 29788218764,
+    "artifactId": 8479349358
+  },
+  {
+    "fileName": "permanent-delete-checkpoint.png",
+    "sha256": "8abac30e21e50671373a5bb5c53916adefa20984182cd85456e835a67d79ad82",
+    "description": "解除引用后永久删除成功并生成恢复点",
+    "qualityRunId": 29788218764,
+    "artifactId": 8479349358
   }
 ]

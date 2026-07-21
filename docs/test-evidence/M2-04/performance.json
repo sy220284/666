@@ -1,1 +1,9 @@
-[]
+{
+  "schemaVersion": 1,
+  "taskId": "M2-04",
+  "sourceCommit": "9da54fb67cdf43d1b4bc4b77e7af5770a6522ac5",
+  "workflowRunId": 29788218617,
+  "status": "success",
+  "taskSpecificBudget": "not-applicable",
+  "note": "Repository performance gate passed; this safety remediation introduces no dedicated task performance budget."
+}

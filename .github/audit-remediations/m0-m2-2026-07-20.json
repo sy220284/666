@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "remediationId": "audit-m0-m2-2026-07-20",
-  "baseCommit": "9db5bbf1460b11df0236c0104fca2acf720459ad",
-  "branch": "fix/governance-audit-m0-m2-remediation",
+  "baseCommit": "9da54fb67cdf43d1b4bc4b77e7af5770a6522ac5",
+  "branch": "fix/governance-audit-m0-m2-evidence-closeout",
   "activeTaskInvariant": {
     "id": "M3-06",
     "mustMatchBase": true

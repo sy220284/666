@@ -46,28 +46,7 @@ jobs:
       - name: Validate active task and generated mirror
         run: node scripts/taskctl.mjs validate
       - name: Validate changed paths
-        shell: bash
-        run: |
-          set +e
-          {
-            echo "TASK_BASE_REF=${TASK_BASE_REF}"
-            echo "TASK_PR_HEAD_REF=${TASK_PR_HEAD_REF}"
-            echo "resolved_head=$(git rev-parse "refs/remotes/origin/${TASK_PR_HEAD_REF}")"
-            echo "changed_files:"
-            git diff --name-only "${TASK_BASE_REF}" "refs/remotes/origin/${TASK_PR_HEAD_REF}"
-            echo "preflight:"
-            node scripts/taskctl.mjs preflight
-          } 2>&1 | tee "$RUNNER_TEMP/task-governance-preflight.log"
-          status=${PIPESTATUS[0]}
-          exit "$status"
-      - name: Upload task governance diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: task-governance-preflight
-          path: ${{ runner.temp }}/task-governance-preflight.log
-          if-no-files-found: error
-          retention-days: 7
+        run: node scripts/taskctl.mjs preflight
       - name: Validate task transition for Ready PRs
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json

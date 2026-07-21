@@ -5,23 +5,30 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const sourcePath = path.join(process.cwd(), 'packages/contracts/src/state-proposal.ts');
-const outputPath = path.join(
-  process.cwd(),
-  'test-results/integration/state-proposal.formatted.ts',
-);
+const outputDirectory = path.join(process.cwd(), 'test-results/integration');
+const originalPath = path.join(outputDirectory, 'state-proposal.original.ts');
+const formattedPath = path.join(outputDirectory, 'state-proposal.formatted.ts');
+const diffPath = path.join(outputDirectory, 'state-proposal-format.diff');
 
 describe('M3-06 locked formatter diagnostic', () => {
-  it('emits the exact repository-formatted contract and stops the temporary run', async () => {
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, await readFile(sourcePath));
-    const result = spawnSync('pnpm', ['exec', 'prettier', '--write', outputPath], {
+  it('emits the exact formatter diff and stops the temporary run', async () => {
+    await mkdir(outputDirectory, { recursive: true });
+    const source = await readFile(sourcePath);
+    await Promise.all([writeFile(originalPath, source), writeFile(formattedPath, source)]);
+    const format = spawnSync('pnpm', ['exec', 'prettier', '--write', formattedPath], {
       cwd: process.cwd(),
       encoding: 'utf8',
       env: process.env,
     });
-    if (result.status !== 0) {
-      throw new Error(`Formatter failed:\n${result.stdout}\n${result.stderr}`);
+    if (format.status !== 0) {
+      throw new Error(`Formatter failed:\n${format.stdout}\n${format.stderr}`);
     }
-    expect.fail('Formatted contract emitted for one-shot retrieval.');
+    const difference = spawnSync('diff', ['-u', originalPath, formattedPath], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: process.env,
+    });
+    await writeFile(diffPath, difference.stdout);
+    expect.fail('Formatter diff emitted for one-shot retrieval.');
   });
 });

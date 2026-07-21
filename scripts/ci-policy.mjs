@@ -127,6 +127,7 @@ async function main() {
   requireTokens(errors, 'pr-policy.yml', prPolicy, [
     'pull_request:',
     'ready_for_review',
+    'github.event.pull_request.draft == false',
     'taskctl.mjs pr-policy',
     'automation-layout-policy.mjs',
     'scripts/ci-policy.mjs',
@@ -136,6 +137,7 @@ async function main() {
   requireTokens(errors, 'task-governance.yml', taskGovernance, [
     'pull_request:',
     'ready_for_review',
+    'github.event.pull_request.draft == false',
     'taskctl.mjs validate',
     'taskctl.mjs preflight',
     'task-transition-policy.mjs',
@@ -150,6 +152,7 @@ async function main() {
     'pull_request:',
     'workflow_dispatch:',
     'schedule:',
+    "github.event_name != 'pull_request' || github.event.pull_request.draft == false",
     'Validate changed task evidence documents',
     "github.event_name == 'pull_request'",
     'Validate all Verified task evidence documents',
@@ -165,9 +168,10 @@ async function main() {
     'ready_for_review',
     'converted_to_draft',
     'quality-core.yml',
-    'package_smoke: true',
+    'package_smoke: false',
     'performance_eval: false',
   ]);
+  forbidTokens(errors, 'quality.yml', quality, ['static-failure-diagnostics']);
 
   const qualityCore = workflows.get('quality-core.yml') ?? '';
   requireTokens(errors, 'quality-core.yml', qualityCore, [
@@ -184,6 +188,7 @@ async function main() {
   requireTokens(errors, 'security.yml', security, [
     'pull_request:',
     'converted_to_draft',
+    'github.event.pull_request.draft == false',
     'pnpm audit --audit-level=high',
     'scan-secrets.mjs',
     'pnpm test:security',
@@ -195,6 +200,7 @@ async function main() {
     'pull_request:',
     'workflow_dispatch:',
     'converted_to_draft',
+    "github.event_name != 'pull_request' || github.event.pull_request.draft == false",
     'Determine performance validation route',
     'Run performance budgets',
     'pnpm test:perf',

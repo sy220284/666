@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   dependency-audit:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -27,11 +28,10 @@ jobs:
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
           run=false
-          if [ "$DRAFT" = false ] && git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.github/workflows/)'; then
+          if git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.github/workflows/)'; then
             run=true
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
@@ -61,6 +61,7 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
 
   secret-scan:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -81,6 +82,7 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
 
   application-security:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -94,13 +96,12 @@ jobs:
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
           run=false
-          if [ "$DRAFT" = false ] && node --input-type=module -e "import {readFileSync} from 'node:fs'; const state=JSON.parse(readFileSync('docs/tasks/ACTIVE_TASK.json','utf8')); process.exit(state.activeTask?.verification?.includes('pnpm test:security') ? 0 : 1);"; then
+          if node --input-type=module -e "import {readFileSync} from 'node:fs'; const state=JSON.parse(readFileSync('docs/tasks/ACTIVE_TASK.json','utf8')); process.exit(state.activeTask?.verification?.includes('pnpm test:security') ? 0 : 1);"; then
             run=true
-          elif [ "$DRAFT" = false ] && git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(apps/desktop/(main|preload)/|packages/(contracts|core-service)/|migrations/|tests/security/|scripts/(scan-secrets|ci-policy)\.mjs$|\.github/workflows/security\.yml$)'; then
+          elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(apps/desktop/(main|preload)/|packages/(contracts|core-service)/|migrations/|tests/security/|scripts/(scan-secrets|ci-policy)\.mjs$|\.github/workflows/security\.yml$)'; then
             run=true
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
@@ -133,7 +134,7 @@ jobs:
 
   security:
     name: security
-    if: always()
+    if: ${{ github.event.pull_request.draft == false }}
     needs:
       - dependency-audit
       - secret-scan

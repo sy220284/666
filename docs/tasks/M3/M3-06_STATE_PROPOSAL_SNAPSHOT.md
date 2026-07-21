@@ -45,8 +45,12 @@ M3-04、M3-05、M1-07、M2-03
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
 - `tests/e2e/`
 
 ## 实施内容
@@ -64,15 +68,16 @@ M3-04、M3-05、M1-07、M2-03
 - 已新增Schema 16及StateProposal、EndingSnapshot、DerivedInvalidation表。
 - 已实现双类型提案生成、作者批量裁决、单事务权威状态更新和快照重建。
 - 已实现有效快照读取、缺失或stale回退，以及按变化类型传播后续失效。
-- 静态门、Unit、Build与Package Smoke已通过。
-- 首轮完整矩阵确认业务事务与失效传播测试通过；剩余失败已定位为同步Zod断言写法及Schema 16冻结迁移预期，正在按诊断修正。
-- 已补集成测试与文本证据；任务状态保持In Progress。
+- 已接入严格命名IPC、最小Preload桥和作者状态提案裁决界面。
+- Static、Unit、Integration、Migration、Build与Package Smoke已通过；Electron将在任务推进状态完成后进行最终Ready复验。
+- 已补集成、迁移、安全测试与文本证据；任务状态保持In Progress。
 
 ## 测试与证据
 
 - 无证据提案、空提案、批量接受、编辑、拒绝和事务失败。
 - arc_milestone pending不生效，接受后合法推进。
 - 纯润色、位置、事件、伏笔变化的失效传播边界。
+- 不可信Renderer、畸形Payload和越权作者裁决输入被阻断。
 
 证据保存到：`docs/test-evidence/M3-06/`
 

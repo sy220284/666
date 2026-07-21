@@ -4,7 +4,8 @@
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 原机器分支：`work/m3-07-renderer-react-foundation`  
-> Checkpoint：`3522f2887da4c74fcf5de3a57aa87337fb270276`（PR #125）
+> Checkpoint：`3522f2887da4c74fcf5de3a57aa87337fb270276`（PR #125）  
+> 承接任务：`M3-08`
 
 ## 状态说明
 
@@ -39,5 +40,5 @@
 
 1. M3-08必须完成本卡全部转入范围，不能只迁移页面。
 2. M3-08 Evidence必须单独列出M3-07转入要求及真实测试结果。
-3. M3-08完成后，M3批次关闭PR可依据其Evidence将本卡从Deferred登记为Verified。
+3. M3-08完成后，使用`pnpm task:close-deferred M3-07 -- --evidence-task=M3-08 ...`校验承接关系、Evidence、主线提交与Squash来源后，将本卡从Deferred登记为Verified。
 4. 在上述条件满足前，M3阶段不得关闭，M4-01不得激活。

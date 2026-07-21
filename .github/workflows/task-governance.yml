@@ -47,11 +47,20 @@ jobs:
         run: node scripts/taskctl.mjs validate
       - name: Validate changed paths
         run: node scripts/taskctl.mjs preflight
+      - name: Self-test checkpoint policy
+        run: node .github/governance/task-checkpoint-policy.mjs self-test
       - name: Validate task transition for Ready PRs
+        if: ${{ startsWith(github.head_ref, 'policy/') || startsWith(github.head_ref, 'chore/governance-') || startsWith(github.head_ref, 'fix/governance-') || !contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
           TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
         run: node .github/governance/task-transition-policy.mjs
+      - name: Validate active task checkpoint
+        if: ${{ !startsWith(github.head_ref, 'policy/') && !startsWith(github.head_ref, 'chore/governance-') && !startsWith(github.head_ref, 'fix/governance-') && contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
+        env:
+          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
+          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
+        run: node .github/governance/task-checkpoint-policy.mjs
       - name: Enforce milestone close and evidence reachability
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json

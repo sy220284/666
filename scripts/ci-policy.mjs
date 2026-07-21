@@ -168,7 +168,7 @@ async function main() {
     'ready_for_review',
     'converted_to_draft',
     'quality-core.yml',
-    'package_smoke: false',
+    'package_smoke: true',
     'performance_eval: false',
   ]);
   forbidTokens(errors, 'quality.yml', quality, ['static-failure-diagnostics']);

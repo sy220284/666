@@ -84,13 +84,13 @@ Ready执行：
 
 - PR Policy：真实分支、永久自动化与CI策略；
 - Task Governance：状态、镜像、allowedPaths和任务转换；
-- Quality：静态检查、Unit、Integration、Migration、Electron E2E和Build；
+- Quality：静态检查、Unit、Integration、Migration、Electron E2E、Build和现有Package Smoke；
 - Security：Secret Scan始终执行，Dependency Audit仅在依赖或Workflow输入变化时执行，Application Security仅在任务声明或安全边界变化时执行；
 - Performance：仅在任务明确要求`pnpm test:perf`、性能测试/Eval/Prompt/Editor路径变化或手动触发时执行；
 - Evidence：只检查本次变更的任务证据文档；
 - Controlled Merge：复核Head SHA、审查状态、未解决线程和六项检查结果后squash合并。
 
-普通PR不运行Package Smoke。打包验证只在Release或明确涉及打包配置、Electron发布链路时执行。普通PR不承担全历史Evidence重放，也不在合并后再次执行完整发布级套件。
+Package Smoke暂时保留为Ready聚合的兼容门禁，避免Controlled Merge与Main Verification失配；后续只有在同步调整聚合器后才能移除。普通PR不承担全历史Evidence重放，也不在合并后再次执行完整发布级套件。
 
 ## 6. Main Verification
 

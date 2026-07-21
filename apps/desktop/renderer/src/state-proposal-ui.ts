@@ -1,4 +1,8 @@
-import type { StateProposal, StateProposalCatalog } from '@worldforge/contracts';
+import {
+  StateProposalResolutionSchema,
+  type StateProposal,
+  type StateProposalCatalog,
+} from '@worldforge/contracts';
 
 function element<Tag extends keyof HTMLElementTagNameMap>(
   tag: Tag,
@@ -198,7 +202,10 @@ function mount(): void {
     decision: 'accept' | 'edit_accept' | 'reject',
   ): Promise<void> => {
     if (!projectId) return;
-    let editedValue: unknown;
+    let resolution = StateProposalResolutionSchema.parse({
+      proposalId: proposal.id,
+      decision,
+    });
     if (decision === 'edit_accept') {
       const edited = window.prompt('请输入合法JSON作为最终值：', json(proposal.proposedValue));
       if (edited === null) {
@@ -206,7 +213,11 @@ function mount(): void {
         return;
       }
       try {
-        editedValue = JSON.parse(edited) as unknown;
+        resolution = StateProposalResolutionSchema.parse({
+          proposalId: proposal.id,
+          decision,
+          editedValue: JSON.parse(edited) as unknown,
+        });
       } catch {
         status.textContent = 'JSON格式无效，未执行裁决。';
         return;
@@ -216,13 +227,7 @@ function mount(): void {
     const response = await window.worldforgeStateProposal.resolve({
       projectId,
       authority: 'author',
-      resolutions: [
-        {
-          proposalId: proposal.id,
-          decision,
-          ...(decision === 'edit_accept' ? { editedValue } : {}),
-        },
-      ],
+      resolutions: [resolution],
     });
     if (!response.ok) {
       status.textContent = `裁决失败：${response.error.code}`;

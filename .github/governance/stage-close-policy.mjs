@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { validateTaskEvidence } from '../../scripts/evidence-policy.mjs';
@@ -10,10 +11,31 @@ import { validateAllVerifiedEvidence } from '../../scripts/verified-evidence-sca
 const root = process.cwd();
 const statePath = 'docs/tasks/ACTIVE_TASK.json';
 const indexPath = 'docs/tasks/TASK_INDEX.md';
+const fullShaPattern = /^[0-9a-f]{40}$/u;
+
+function git(argumentsList) {
+  return execFileSync('git', argumentsList, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function commitTree(commit) {
+  return git(['rev-parse', `${commit}^{tree}`]);
+}
+
+function assertCommitAncestor(ancestor, descendant, label) {
+  try {
+    git(['merge-base', '--is-ancestor', ancestor, descendant]);
+  } catch (error) {
+    throw new Error(`${label} must be reachable from ${descendant}`, { cause: error });
+  }
+}
 
 export function parseTaskStatuses(markdown) {
   const statuses = new Map();
-  const pattern = /^\|\s*(M\d-\d{2})\s*\|[^\n]*\|\s*([^|]+?)\s*\|\s*$/gmu;
+  const pattern = /^\|\s*(M\d+-\d{2})\s*\|[^\n]*\|\s*([^|]+?)\s*\|\s*$/gmu;
   for (const match of markdown.matchAll(pattern)) {
     if (match[1] && match[2]) statuses.set(match[1], match[2].trim());
   }
@@ -41,8 +63,27 @@ export function m3StageCloseErrors(state, taskStatuses) {
   if (deferredM3.length > 0) {
     errors.push(`M3 deferredVerification must be empty before M4-01: ${deferredM3.join(', ')}`);
   }
-  if (state.lastVerifiedTask?.id !== 'M3-10') {
+
+  const verified = state.lastVerifiedTask;
+  if (verified?.id !== 'M3-10') {
     errors.push('lastVerifiedTask must be M3-10 before M4-01 activation');
+    return errors;
+  }
+  if (!fullShaPattern.test(verified.evidenceHead ?? '')) {
+    errors.push('M3-10 stage close requires a full evidenceHead SHA');
+  }
+  const provenance = verified.squashProvenance;
+  for (const field of ['implementationHead', 'mainCommit', 'implementationTree', 'mainTree']) {
+    if (!fullShaPattern.test(provenance?.[field] ?? '')) {
+      errors.push(`M3-10 stage close requires squashProvenance.${field}`);
+    }
+  }
+  if (
+    fullShaPattern.test(provenance?.implementationTree ?? '') &&
+    fullShaPattern.test(provenance?.mainTree ?? '') &&
+    provenance.implementationTree !== provenance.mainTree
+  ) {
+    errors.push('M3-10 implementation and main Tree SHA must match');
   }
   return errors;
 }
@@ -58,13 +99,23 @@ function selfTest() {
     ['M3-10', 'Verified'],
     ['M4-01', 'In Progress'],
   ]);
+  const tree = 'b'.repeat(40);
   assert.deepEqual(newlyVerifiedTaskIds(base, closed), ['M3-01', 'M3-10']);
   assert.deepEqual(
     m3StageCloseErrors(
       {
         activeTask: { id: 'M4-01' },
         deferredVerification: [],
-        lastVerifiedTask: { id: 'M3-10' },
+        lastVerifiedTask: {
+          id: 'M3-10',
+          evidenceHead: 'a'.repeat(40),
+          squashProvenance: {
+            implementationHead: 'c'.repeat(40),
+            mainCommit: 'd'.repeat(40),
+            implementationTree: tree,
+            mainTree: tree,
+          },
+        },
       },
       closed,
     ),
@@ -80,6 +131,16 @@ function selfTest() {
       base,
     ).length >= 3,
   );
+  assert.ok(
+    m3StageCloseErrors(
+      {
+        activeTask: { id: 'M4-01' },
+        deferredVerification: [],
+        lastVerifiedTask: { id: 'M3-10' },
+      },
+      closed,
+    ).some((error) => error.includes('squashProvenance')),
+  );
   assert.deepEqual(m3StageCloseErrors({ activeTask: { id: 'M3-10' } }, base), []);
 }
 
@@ -88,7 +149,7 @@ async function validatePolicy() {
   const baseStatePath = process.env.TASK_BASE_STATE_PATH;
   const baseIndexPath = process.env.TASK_BASE_INDEX_PATH;
   const baseRef = process.env.TASK_BASE_REF;
-  if (!baseStatePath || !baseIndexPath || !/^[0-9a-f]{40}$/u.test(baseRef ?? '')) {
+  if (!baseStatePath || !baseIndexPath || !fullShaPattern.test(baseRef ?? '')) {
     throw new Error('Stage close policy requires base state, base index and full TASK_BASE_REF');
   }
 
@@ -111,13 +172,24 @@ async function validatePolicy() {
   }
 
   if (baseState?.activeTask?.id !== 'M4-01' && headState?.activeTask?.id === 'M4-01') {
+    const actualHead = git(['rev-parse', 'HEAD']);
+    const verified = headState.lastVerifiedTask;
+    const provenance = verified.squashProvenance;
+    assertCommitAncestor(verified.evidenceHead, actualHead, 'M3-10 evidenceHead');
+    assertCommitAncestor(provenance.mainCommit, baseRef, 'M3-10 mainCommit');
+    if (commitTree(provenance.mainCommit) !== provenance.mainTree) {
+      throw new Error('M3-10 recorded main Tree SHA does not match the main commit');
+    }
+    const manifest = JSON.parse(
+      await readFile(path.join(root, 'docs/test-evidence/M3-10/manifest.json'), 'utf8'),
+    );
+    if (manifest.commit !== provenance.mainCommit) {
+      throw new Error('M3-10 evidence manifest must bind squashProvenance.mainCommit');
+    }
     await validateAllVerifiedEvidence(root, baseRef);
   }
 
-  const actualHead = execFileSync('git', ['rev-parse', 'HEAD'], {
-    cwd: root,
-    encoding: 'utf8',
-  }).trim();
+  const actualHead = git(['rev-parse', 'HEAD']);
   console.log(`Stage close policy passed at ${actualHead}.`);
 }
 

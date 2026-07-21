@@ -9,6 +9,7 @@ import {
   parseTaskIndex,
   replaceTaskCardStatus,
   replaceTaskIndexStatus,
+  stageClosureErrors,
   validateActiveState,
   validateChangedPaths,
   validateChangedPathsForTransition,
@@ -207,6 +208,62 @@ describe('task control', () => {
     expect(dependenciesSatisfied(next, implemented)).toBe(false);
     expect(dependenciesSatisfied(next, implemented, { allowImplemented: true })).toBe(true);
     expect(findNextReadyTask(implemented, { allowImplemented: true })?.id).toBe('M0-02');
+  });
+
+  it('requires a verified, debt-free stage before activating its successor', () => {
+    const implemented = parseTaskIndex(`
+| ID | 任务卡 | 依赖 | 状态 |
+|---|---|---|---|
+| M3-01 | [一](M3/M3-01.md) | M2 | Implemented |
+| M3-10 | [十](M3/M3-10.md) | M3-09 | Implemented |
+| M4-01 | [四](M4/M4-01.md) | M3 | Planned |
+`);
+    const m4 = implemented.get('M4-01')!;
+    expect(
+      dependenciesSatisfied(m4, implemented, {
+        allowImplemented: true,
+        state: { deferredVerification: [{ id: 'M3-01' }] },
+      }),
+    ).toBe(false);
+    expect(
+      stageClosureErrors(m4, implemented, {
+        deferredVerification: [{ id: 'M3-01' }],
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'M3-01 must be Verified before M4-01 activation',
+        'M3-10 must be Verified before M4-01 activation',
+        'M3 deferredVerification must be empty before M4-01: M3-01',
+      ]),
+    );
+    expect(
+      findNextReadyTask(implemented, {
+        allowImplemented: true,
+        state: { deferredVerification: [] },
+      }),
+    ).toBeUndefined();
+
+    const verified = parseTaskIndex(
+      `
+| ID | 任务卡 | 依赖 | 状态 |
+|---|---|---|---|
+| M3-01 | [一](M3/M3-01.md) | M2 | Verified |
+| M3-10 | [十](M3/M3-10.md) | M3-09 | Verified |
+| M4-01 | [四](M4/M4-01.md) | M3 | Planned |
+`,
+    );
+    expect(
+      dependenciesSatisfied(m4, verified, {
+        allowImplemented: true,
+        state: { deferredVerification: [] },
+      }),
+    ).toBe(true);
+    expect(
+      findNextReadyTask(verified, {
+        allowImplemented: true,
+        state: { deferredVerification: [] },
+      })?.id,
+    ).toBe('M4-01');
   });
 
   it('updates exactly one task index status', () => {

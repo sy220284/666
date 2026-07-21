@@ -10,6 +10,8 @@ import {
   parseTaskIndex,
   renderActiveTask,
   replaceTaskCardStatus,
+  stageCloseDependencyStages,
+  stageClosureErrors,
   replaceTaskIndexStatus,
   taskBranchFor,
   validateActiveState,
@@ -17,12 +19,41 @@ import {
   verificationForTask,
 } from './task-control-lib.mjs';
 import { validateAuditRemediation } from './audit-remediation-policy.mjs';
-import { validateTaskEvidence } from './evidence-policy.mjs';
+import { assertEvidenceHead, validateTaskEvidence } from './evidence-policy.mjs';
+import { validateAllVerifiedEvidence } from './verified-evidence-scan.mjs';
 
 const root = process.cwd();
 const statePath = path.join(root, 'docs/tasks/ACTIVE_TASK.json');
 const mirrorPath = path.join(root, 'docs/tasks/ACTIVE_TASK.md');
 const indexPath = path.join(root, 'docs/tasks/TASK_INDEX.md');
+
+function git(argumentsList) {
+  return execFileSync('git', argumentsList, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function currentHead() {
+  return git(['rev-parse', 'HEAD']);
+}
+
+function commitTree(commit) {
+  try {
+    return git(['rev-parse', `${commit}^{tree}`]);
+  } catch (error) {
+    throw new Error(`Cannot resolve commit tree for ${commit}`, { cause: error });
+  }
+}
+
+function assertCommitAncestor(ancestor, descendant, label) {
+  try {
+    git(['merge-base', '--is-ancestor', ancestor, descendant]);
+  } catch (error) {
+    throw new Error(`${label} must be an ancestor of the expected Head`, { cause: error });
+  }
+}
 
 function normalizeText(value) {
   return value.replaceAll('\r\n', '\n');
@@ -271,9 +302,34 @@ async function verify() {
 async function verifyTask(taskId) {
   const ciStatus = process.argv.find((value) => value.startsWith('--ci='))?.slice(5);
   const commit = process.argv.find((value) => value.startsWith('--commit='))?.slice(9);
+  const expectedHead = process.argv
+    .find((value) => value.startsWith('--expected-head='))
+    ?.slice('--expected-head='.length);
+  const implementationHead = process.argv
+    .find((value) => value.startsWith('--implementation-head='))
+    ?.slice('--implementation-head='.length);
+  const mainCommit = process.argv
+    .find((value) => value.startsWith('--main-commit='))
+    ?.slice('--main-commit='.length);
   if (ciStatus !== 'success') throw new Error('verify-task requires --ci=success');
   if (!commit || !/^[0-9a-f]{7,40}$/iu.test(commit)) {
     throw new Error('verify-task requires --commit=<sha>');
+  }
+  for (const [label, value] of [
+    ['--expected-head', expectedHead],
+    ['--implementation-head', implementationHead],
+    ['--main-commit', mainCommit],
+  ]) {
+    if (!/^[0-9a-f]{40}$/iu.test(value ?? '')) {
+      throw new Error(`verify-task requires ${label}=<full-sha>`);
+    }
+  }
+  assertEvidenceHead(expectedHead, root);
+  assertCommitAncestor(mainCommit, expectedHead, 'mainCommit');
+  const implementationTree = commitTree(implementationHead);
+  const mainTree = commitTree(mainCommit);
+  if (implementationTree !== mainTree) {
+    throw new Error('Squash provenance requires identical implementation and main trees');
   }
 
   const { state, taskIndex } = await load();
@@ -290,7 +346,13 @@ async function verifyTask(taskId) {
     if (!deferred) throw new Error(`${taskId} is not in deferredVerification`);
   }
 
-  await validateTaskEvidence(taskId, root, { final: true });
+  await validateTaskEvidence(taskId, root, { final: true, expectedHead });
+  const evidenceManifest = JSON.parse(
+    await readFile(path.join(root, 'docs/test-evidence', taskId, 'manifest.json'), 'utf8'),
+  );
+  if (evidenceManifest.commit !== mainCommit) {
+    throw new Error(`${taskId} evidence manifest must bind the reachable main commit`);
+  }
   const indexSource = await readFile(indexPath, 'utf8');
   const verifiedIndex = replaceTaskIndexStatus(indexSource, taskId, 'Verified');
   const cardPath = path.join(root, target.source);
@@ -306,6 +368,13 @@ async function verifyTask(taskId) {
     id: taskId,
     commit,
     verifiedAt: new Date().toISOString(),
+    evidenceHead: expectedHead,
+    squashProvenance: {
+      implementationHead,
+      mainCommit,
+      implementationTree,
+      mainTree,
+    },
   };
 
   if (!active) {
@@ -315,7 +384,10 @@ async function verifyTask(taskId) {
   }
 
   const refreshedIndex = parseTaskIndex(verifiedIndex);
-  const next = findNextReadyTask(refreshedIndex, { allowImplemented: true });
+  const next = findNextReadyTask(refreshedIndex, {
+    allowImplemented: true,
+    state,
+  });
   if (!next) throw new Error('No implementation-ready Planned task remains');
   state.activeTask = null;
   await Promise.all([
@@ -351,10 +423,15 @@ async function activate(taskId, additionalAllowedPaths = []) {
   const allowImplemented = ['implementation-mainline', 'implementation-pr'].includes(
     state.authorization.mode,
   );
-  if (!dependenciesSatisfied(task, taskIndex, { allowImplemented })) {
+  const stageErrors = stageClosureErrors(task, taskIndex, state);
+  if (stageErrors.length > 0) throw new Error(stageErrors.join('\n'));
+  if (!dependenciesSatisfied(task, taskIndex, { allowImplemented, state })) {
     throw new Error(
       `${taskId} dependencies are not ${allowImplemented ? 'Implemented or Verified' : 'Verified'}`,
     );
+  }
+  if (stageCloseDependencyStages(task).length > 0) {
+    await validateAllVerifiedEvidence(root, currentHead());
   }
 
   const card = await readFile(path.join(root, task.source), 'utf8');
@@ -433,7 +510,7 @@ async function close() {
     verifiedAt: new Date().toISOString(),
   };
   const refreshedIndex = parseTaskIndex(verifiedIndex);
-  const next = findNextReadyTask(refreshedIndex);
+  const next = findNextReadyTask(refreshedIndex, { state });
   if (!next) throw new Error('No dependency-ready Planned task remains');
 
   state.activeTask = null;
@@ -466,7 +543,7 @@ async function advanceImplementation() {
   if (implementedCard === card) throw new Error('Task card is not in In Progress state');
 
   const refreshedIndex = parseTaskIndex(implementedIndex);
-  const next = findNextReadyTask(refreshedIndex, { allowImplemented: true });
+  const next = findNextReadyTask(refreshedIndex, { allowImplemented: true, state });
   if (!next) throw new Error('No implementation-ready Planned task remains');
 
   const implementedAt = new Date().toISOString();
@@ -489,8 +566,9 @@ async function advanceImplementation() {
       implementationCommit: commit,
       deferredAt: implementedAt,
       pending: [
-        'standard evidence package and screenshots',
-        'manual acceptance and exhaustive quality matrix',
+        'four-file evidence package and real automated run records',
+        'necessary manual review conclusions recorded in summary.md',
+        'risk-based screenshots, full logs, or independent quality matrix when warranted',
         'final traceability verification status',
         'Verified closure',
       ],

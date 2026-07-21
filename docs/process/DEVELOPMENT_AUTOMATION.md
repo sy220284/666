@@ -61,7 +61,7 @@ M3-06至M3-10按连续实现模式推进：
 - 任务状态或主线来源失真；
 - 作者明确要求立即复验。
 
-M3-10完成后统一执行一次M3批次复验，集中关闭M3-01、M3-03、M3-05及其他延期项。M4开始前必须完成M3阶段闭环。
+M3-10完成后统一执行一次M3批次复验，集中关闭M3-01、M3-03、M3-05及其他延期项。`taskctl`不得把`Implemented`视为跨阶段依赖已满足：激活M4-01前，M3全部任务必须为`Verified`，`deferredVerification`不得包含M3任务，并同步执行全量Verified Evidence扫描。任一条件失败时，`dependenciesSatisfied`、`findNextReadyTask`、`activate`和`advance`均必须阻断。
 
 ## 5. Draft与Ready门禁
 
@@ -119,35 +119,37 @@ docs/test-evidence/<TASK-ID>/
 
 规则：
 
-- `summary.md`集中记录实现范围、实际测试结果、人工复核、质量结论和必要说明；
-- `commands.txt`只记录真实执行过的命令、退出码和必要上下文；
+- `summary.md`集中记录实现范围、实际测试结果、必要人工复核结论、质量结论和说明；
+- `commands.txt`记录真实自动化运行命令、退出码和必要上下文；
 - `known-risks.md`记录剩余风险，无风险时明确写“无”；
-- `manifest.json`只负责文件完整性和来源提交绑定；
-- 不要求截图、截图目录、截图清单、单独人工验收文件或单独质量矩阵；
+- `manifest.json`负责文件完整性和可达来源提交绑定；
+- 真实Electron截图、完整日志Artifact或独立质量矩阵按任务风险选择，不作为所有任务的统一强制文件；
+- 不要求截图目录、截图清单、单独人工验收文件或单独质量矩阵；
 - 不得为了证据专门生成用户不查看的截图或Artifact；
 - 未运行、失败或环境限制必须如实写入文档，不得用模板文字伪装完成。
 
-旧证据包可保留历史截图和附加文件，只要Manifest完整；新证据默认只生成上述文本集合。
+旧证据包可保留历史截图和附加文件，只要Manifest完整；新证据强制四个文件和真实自动化运行记录，其他附件按风险增加。
 
 ## 8. Evidence运行范围
 
 - PR事件：只校验本次发生变化的证据目录；
 - 每周定时：重放全部`Verified`证据；
 - 手动入口：在里程碑关闭、审计或发布前全量重放；
+- M3阶段关闭PR：必须运行`verified-evidence-scan`，扫描成功是M4-01机器激活条件；
 - Release：执行发布验收需要的最终证据检查。
 
 历史证据不会因普通业务代码提交自动变化，因此禁止在每个PR重复全量扫描。
 
 ## 9. 测试路由
 
-| 变更范围 | 必要追加验证 |
-|---|---|
-| Migration、Repository、事务 | `test:migration`、`test:integration` |
-| Electron Main、Preload、IPC、路径、恢复、安全 | `test:security`、`test:e2e` |
-| Editor、Candidate、Revision、Lock | `test:unit`、`test:integration`、`test:e2e` |
-| Prompt、Provider、约束包、Eval | `test:eval`、`test:integration`，必要时`test:perf` |
-| 性能、DPI、FTS、搜索、流式处理 | `test:perf`，必要时`test:e2e` |
-| 纯文档和证据文本 | 静态与治理检查，不运行无关业务套件 |
+| 变更范围                                      | 必要追加验证                                       |
+| --------------------------------------------- | -------------------------------------------------- |
+| Migration、Repository、事务                   | `test:migration`、`test:integration`               |
+| Electron Main、Preload、IPC、路径、恢复、安全 | `test:security`、`test:e2e`                        |
+| Editor、Candidate、Revision、Lock             | `test:unit`、`test:integration`、`test:e2e`        |
+| Prompt、Provider、约束包、Eval                | `test:eval`、`test:integration`，必要时`test:perf` |
+| 性能、DPI、FTS、搜索、流式处理                | `test:perf`，必要时`test:e2e`                      |
+| 纯文档和证据文本                              | 静态与治理检查，不运行无关业务套件                 |
 
 路由不得跳过任务卡明确要求的专项测试。风险分类不确定时按更高风险执行。
 
@@ -169,7 +171,9 @@ Release保持手工触发并冻结到M8。正式发布仍执行：
 - 修改已存在于实际PR Head；
 - 入口、导出、IPC、Migration、UI与测试没有断链；
 - 声明通过的命令确实执行成功；
-- Evidence文档引用的是已提交且可达的来源提交；
+- Evidence文档引用的是已提交且可达的main来源提交；
+- Squash合并后显式记录实现Head、main提交、双方Tree SHA并验证Tree一致；
+- `taskctl verify-task`必须接收`--expected-head`、`--implementation-head`和`--main-commit`，不得绕过来源校验；
 - Controlled Merge和Main Verification针对同一代提交。
 
 未实际落地或未复核的内容不得声明完成。

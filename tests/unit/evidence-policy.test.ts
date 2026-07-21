@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -78,6 +78,13 @@ afterEach(async () => {
 });
 
 describe('evidence policy', () => {
+  it('locks the mandatory package to three payload files plus manifest', () => {
+    expect(REQUIRED_EVIDENCE_FILES).toEqual(['summary.md', 'commands.txt', 'known-risks.md']);
+    expect(REQUIRED_EVIDENCE_FILES).not.toEqual(
+      expect.arrayContaining(['screenshots', 'manual-acceptance.md', 'quality-matrix.md']),
+    );
+  });
+
   it('verifies documentation bytes, hashes and complete file registration', async () => {
     const fixture = await evidenceFixture();
     await expect(validateTaskEvidence(fixture.taskId, fixture.root)).resolves.toBeUndefined();

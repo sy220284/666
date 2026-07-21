@@ -243,31 +243,83 @@ export function extractBacktickBullets(markdown, heading) {
   return [...section.matchAll(/^\s*-\s+`([^`]+)`/gm)].map((match) => match[1]).filter(Boolean);
 }
 
+function taskStageNumber(taskId) {
+  const match = /^M(\d+)-\d{2}$/u.exec(taskId ?? '');
+  return match?.[1] ? Number(match[1]) : null;
+}
+
+function dependencyStageNumbers(dependencyText) {
+  const stages = new Set();
+  for (const match of dependencyText.matchAll(/M(\d+)(?!-)/gu)) {
+    if (match[1]) stages.add(Number(match[1]));
+  }
+  for (const match of dependencyText.matchAll(/M(\d+)\s*[—–]\s*M?(\d+)(?!\d)/gu)) {
+    const start = Number(match[1]);
+    const end = Number(match[2]);
+    for (let stage = start; stage <= end; stage += 1) stages.add(stage);
+  }
+  return stages;
+}
+
+export function stageCloseDependencyStages(task) {
+  const targetStage = taskStageNumber(task?.id);
+  if (targetStage === null || !/-01$/u.test(task?.id ?? '')) return [];
+  const stages = dependencyStageNumbers(task.dependencyText.trim());
+  for (const requiredId of task.dependencyText.match(/M\d+-\d{2}/gu) ?? []) {
+    const stage = taskStageNumber(requiredId);
+    if (stage !== null) stages.add(stage);
+  }
+  return [...stages].filter((stage) => stage < targetStage).sort((left, right) => left - right);
+}
+
+export function stageClosureErrors(task, taskIndex, state = {}) {
+  const errors = [];
+  for (const stage of stageCloseDependencyStages(task)) {
+    const prefix = `M${stage}-`;
+    const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(prefix));
+    if (stageTasks.length === 0) {
+      errors.push(`${task.id} activation requires indexed M${stage} tasks`);
+      continue;
+    }
+    for (const stageTask of stageTasks) {
+      if (stageTask.status !== 'Verified') {
+        errors.push(`${stageTask.id} must be Verified before ${task.id} activation`);
+      }
+    }
+    const deferred = (state.deferredVerification ?? [])
+      .map((entry) => entry?.id)
+      .filter((id) => typeof id === 'string' && id.startsWith(prefix));
+    if (deferred.length > 0) {
+      errors.push(
+        `M${stage} deferredVerification must be empty before ${task.id}: ${deferred.join(', ')}`,
+      );
+    }
+  }
+  return errors;
+}
+
 export function dependenciesSatisfied(task, taskIndex, options = {}) {
   const dependencyText = task.dependencyText.trim();
   if (dependencyText === '无') return true;
+  if (stageClosureErrors(task, taskIndex, options.state).length > 0) return false;
 
-  const dependencyReady = (status) =>
-    status === 'Verified' || (options.allowImplemented === true && status === 'Implemented');
+  const strictStages = new Set(stageCloseDependencyStages(task));
+  const dependencyReady = (status, stage = null) =>
+    status === 'Verified' ||
+    (options.allowImplemented === true && !strictStages.has(stage) && status === 'Implemented');
 
-  const requiredIds = new Set(dependencyText.match(/M\d-\d{2}/g) ?? []);
+  const requiredIds = new Set(dependencyText.match(/M\d+-\d{2}/g) ?? []);
   for (const requiredId of requiredIds) {
-    if (!dependencyReady(taskIndex.get(requiredId)?.status)) return false;
+    if (!dependencyReady(taskIndex.get(requiredId)?.status, taskStageNumber(requiredId)))
+      return false;
   }
 
-  const stageNumbers = new Set();
-  for (const match of dependencyText.matchAll(/M(\d)(?!-)/g)) {
-    if (match[1]) stageNumbers.add(Number(match[1]));
-  }
-  for (const match of dependencyText.matchAll(/M(\d)\s*[—–]\s*M?(\d)(?!\d)/g)) {
-    const start = Number(match[1]);
-    const end = Number(match[2]);
-    for (let stage = start; stage <= end; stage += 1) stageNumbers.add(stage);
-  }
-
-  for (const stage of stageNumbers) {
+  for (const stage of dependencyStageNumbers(dependencyText)) {
     const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
-    if (stageTasks.length === 0 || stageTasks.some(({ status }) => !dependencyReady(status))) {
+    if (
+      stageTasks.length === 0 ||
+      stageTasks.some(({ status }) => !dependencyReady(status, stage))
+    ) {
       return false;
     }
   }

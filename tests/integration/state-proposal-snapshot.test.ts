@@ -222,7 +222,7 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         chapterId: seeded.chapter1.id,
         versionId: seeded.version.versionId,
       });
-      await expect(
+      expect(() =>
         harness.proposals.generate(randomUUID(), {
           projectId: seeded.project.projectId,
           chapterId: seeded.chapter1.id,
@@ -240,7 +240,7 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
             },
           ],
         }),
-      ).rejects.toBeDefined();
+      ).toThrow();
       const empty = await harness.proposals.generate(randomUUID(), {
         projectId: seeded.project.projectId,
         chapterId: seeded.chapter1.id,

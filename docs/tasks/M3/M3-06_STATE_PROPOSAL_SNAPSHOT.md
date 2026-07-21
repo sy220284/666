@@ -64,7 +64,8 @@ M3-04、M3-05、M1-07、M2-03
 - 已新增Schema 16及StateProposal、EndingSnapshot、DerivedInvalidation表。
 - 已实现双类型提案生成、作者批量裁决、单事务权威状态更新和快照重建。
 - 已实现有效快照读取、缺失或stale回退，以及按变化类型传播后续失效。
-- 首轮静态诊断已确认TypeScript通过，已清理剩余Lint导入；最终结论以PR #103后续门禁为准。
+- 静态门、Unit、Build与Package Smoke已通过。
+- 首轮完整矩阵确认业务事务与失效传播测试通过；剩余失败已定位为同步Zod断言写法及Schema 16冻结迁移预期，正在按诊断修正。
 - 已补集成测试与文本证据；任务状态保持In Progress。
 
 ## 测试与证据

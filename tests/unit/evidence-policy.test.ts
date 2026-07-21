@@ -79,17 +79,9 @@ afterEach(async () => {
 
 describe('evidence policy', () => {
   it('locks the mandatory package to three payload files plus manifest', () => {
-    expect(REQUIRED_EVIDENCE_FILES).toEqual([
-      'summary.md',
-      'commands.txt',
-      'known-risks.md',
-    ]);
+    expect(REQUIRED_EVIDENCE_FILES).toEqual(['summary.md', 'commands.txt', 'known-risks.md']);
     expect(REQUIRED_EVIDENCE_FILES).not.toEqual(
-      expect.arrayContaining([
-        'screenshots',
-        'manual-acceptance.md',
-        'quality-matrix.md',
-      ]),
+      expect.arrayContaining(['screenshots', 'manual-acceptance.md', 'quality-matrix.md']),
     );
   });
 

@@ -10,7 +10,6 @@ import {
   EndingSnapshotReadResultSchema,
   EndingSnapshotRefreshInputSchema,
   EndingSnapshotSchema,
-  ProposedArcMilestoneStatusSchema,
   StateProposalCatalogSchema,
   StateProposalGenerateInputSchema,
   StateProposalListInputSchema,

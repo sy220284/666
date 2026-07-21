@@ -11,27 +11,31 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M3-07",
+    "id": "M3-08",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md",
-    "branch": "work/m3-07-renderer-react-foundation",
+    "source": "docs/tasks/M3/M3-08_RENDERER_SHELL_HOME_SETTINGS.md",
+    "branch": "work/m3-08-renderer-shell-home-settings",
     "startedAt": "2026-07-21",
     "allowedPaths": [
       "apps/desktop/renderer/",
+      "packages/contracts/",
       "package.json",
       "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
       "tests/unit/",
+      "tests/integration/",
+      "tests/migration/",
       "tests/security/",
       "tests/e2e/",
+      "tests/performance/",
       "docs/architecture/",
       "docs/ui/",
-      "pnpm-workspace.yaml",
+      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+      "docs/test-evidence/M3-08/",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md",
-      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-07/"
+      "docs/tasks/M3/M3-08_RENDERER_SHELL_HOME_SETTINGS.md"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -42,19 +46,27 @@
       "docs/ui/INFORMATION_ARCHITECTURE.md",
       "docs/ui/SCREEN_SPECIFICATIONS.md",
       "docs/ui/INTERACTION_STATES.md",
+      "docs/ui/RESPONSIVE_AND_DPI.md",
       "docs/ui/UI_SYSTEM.md",
       "docs/ui/ACCESSIBILITY.md"
     ],
     "verification": [
+      "pnpm install --frozen-lockfile",
+      "pnpm task:validate",
+      "pnpm check:workspaces",
+      "pnpm check:boundaries",
+      "pnpm format:check",
       "pnpm lint",
       "pnpm typecheck",
-      "pnpm test",
-      "pnpm test:migration",
-      "pnpm test:integration",
-      "pnpm test:security",
-      "pnpm test:e2e",
       "pnpm test:unit",
-      "pnpm test:eval"
+      "pnpm test:integration",
+      "pnpm test:migration",
+      "pnpm test:security",
+      "pnpm test:perf",
+      "pnpm test:eval",
+      "pnpm build",
+      "pnpm test:e2e",
+      "pnpm package"
     ]
   },
   "lastVerifiedTask": {
@@ -110,6 +122,16 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    }
+  ],
+  "deferredTasks": [
+    {
+      "id": "M3-07",
+      "status": "Deferred",
+      "checkpointCommit": "3522f2887da4c74fcf5de3a57aa87337fb270276",
+      "deferredAt": "2026-07-21",
+      "reason": "Author directed the independent task to be skipped; all unfinished React foundation scope is absorbed by M3-08.",
+      "absorbedBy": "M3-08"
     }
   ],
   "lastImplementedTask": {

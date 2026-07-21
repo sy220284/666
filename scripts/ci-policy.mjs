@@ -180,6 +180,9 @@ async function main() {
     'desktop-e2e:',
     'build:',
     'package-smoke:',
+    'Keep package gate green for daily Ready PRs',
+    'Package smoke deferred to Release or an explicitly enabled reusable gate.',
+    'if: ${{ inputs.package_smoke }}',
     'quality:',
     'require_optional_job "$PACKAGE_REQUIRED" "$PACKAGE_RESULT" package-smoke',
   ]);

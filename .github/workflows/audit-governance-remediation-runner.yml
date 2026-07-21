@@ -39,18 +39,8 @@ jobs:
 
           taskctl = Path('scripts/taskctl.mjs')
           taskctl_source = taskctl.read_text(encoding='utf-8')
-          actual = """      pending: [
-                'standard evidence package and screenshots',
-                'manual acceptance and exhaustive quality matrix',
-                'final traceability verification status',
-                'Verified closure',
-              ],"""
-          normalized = """      pending: [
-              'standard evidence package and screenshots',
-              'manual acceptance and exhaustive quality matrix',
-              'final traceability verification status',
-              'Verified closure',
-              ],"""
+          actual = "      pending: [\n        'standard evidence package and screenshots',\n        'manual acceptance and exhaustive quality matrix',\n        'final traceability verification status',\n        'Verified closure',\n      ],"
+          normalized = "      pending: [\n      'standard evidence package and screenshots',\n      'manual acceptance and exhaustive quality matrix',\n      'final traceability verification status',\n      'Verified closure',\n      ],"
           if taskctl_source.count(actual) != 1:
               raise SystemExit('scripts/taskctl.mjs deferred ledger source block changed')
           taskctl.write_text(taskctl_source.replace(actual, normalized), encoding='utf-8')

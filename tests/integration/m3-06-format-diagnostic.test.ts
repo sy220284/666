@@ -15,11 +15,15 @@ describe('M3-06 locked formatter diagnostic', () => {
     await mkdir(outputDirectory, { recursive: true });
     const source = await readFile(sourcePath);
     await Promise.all([writeFile(originalPath, source), writeFile(formattedPath, source)]);
-    const format = spawnSync('pnpm', ['exec', 'prettier', '--write', formattedPath], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-      env: process.env,
-    });
+    const format = spawnSync(
+      'pnpm',
+      ['exec', 'prettier', '--ignore-path', '/dev/null', '--write', formattedPath],
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: process.env,
+      },
+    );
     if (format.status !== 0) {
       throw new Error(`Formatter failed:\n${format.stdout}\n${format.stderr}`);
     }

@@ -1,16 +1,20 @@
 name: Audit Governance Remediation
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/governance-m3-stage-close
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: ${{ github.actor != 'github-actions[bot]' && github.head_ref == 'fix/governance-m3-stage-close' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6

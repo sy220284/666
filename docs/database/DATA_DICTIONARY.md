@@ -156,7 +156,7 @@ StateProposal来源：
 rule | provider_stub
 ```
 
-`pending`只表示待作者裁决的候选，不改变EntityState或ArcMilestone。`accept`使用提议值，`edit_accept`使用作者编辑后的合法JSON值，`reject`不产生权威写入；一批裁决任一失败时整批回滚。接受`entity_state`会结束旧current并写入新current；接受`arc_milestone`会以`confirmationSource=state_proposal`推进节点，并在同一事务重建章节尾快照。
+`pending`只表示待作者裁决的候选，不改变EntityState或ArcMilestone。EntityState提案可携带`validUntilChapterId`；非空终点必须属于同项目、保持活动状态并严格位于提案章节之后，采用`[chapterId, validUntilChapterId)`半开语义。`accept`使用提议值，`edit_accept`使用作者编辑后的合法JSON值，两者都保留提案终点；`reject`不产生权威写入。一批裁决任一失败时整批回滚。接受`entity_state`会结束旧current并写入带相同终点的新current；接受`arc_milestone`会以`confirmationSource=state_proposal`推进节点，并在同一事务重建章节尾快照。
 
 EndingSnapshot状态：
 

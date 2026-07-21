@@ -2,7 +2,8 @@ name: M3-06 Test Repair
 
 on:
   push:
-    branches: [work/m3-06-state-proposal-snapshot]
+    branches:
+      - work/m3-06-state-proposal-snapshot
 
 permissions:
   contents: write
@@ -25,94 +26,19 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Repair confirmed integration and migration expectations
-        shell: bash
+      - name: Apply confirmed expectation changes
         run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          integration = Path('tests/integration/state-proposal-snapshot.test.ts')
-          text = integration.read_text()
-          old = """      await expect(
-                harness.proposals.generate(randomUUID(), {
-                  projectId: seeded.project.projectId,
-                  chapterId: seeded.chapter1.id,
-                  sourceVersionId: seeded.version.versionId,
-                  source: 'rule',
-                  proposals: [
-                    {
-                      proposalType: 'entity_state',
-                      entityId: seeded.character.id,
-                      stateKey: 'location',
-                      proposedValue: seeded.south.id,
-                      validUntilChapterId: null,
-                      evidence: [],
-                      confidence: 0.8,
-                    },
-                  ],
-                }),
-              ).rejects.toBeDefined();
-          """
-          new = """      expect(() =>
-                harness.proposals.generate(randomUUID(), {
-                  projectId: seeded.project.projectId,
-                  chapterId: seeded.chapter1.id,
-                  sourceVersionId: seeded.version.versionId,
-                  source: 'rule',
-                  proposals: [
-                    {
-                      proposalType: 'entity_state',
-                      entityId: seeded.character.id,
-                      stateKey: 'location',
-                      proposedValue: seeded.south.id,
-                      validUntilChapterId: null,
-                      evidence: [],
-                      confidence: 0.8,
-                    },
-                  ],
-                }),
-              ).toThrow();
-          """
-          if old not in text:
-              raise SystemExit('integration assertion block not found')
-          integration.write_text(text.replace(old, new, 1))
-
-          migration = Path('tests/migration/scene-beat-entity-truth-migration.test.ts')
-          text = migration.read_text()
-          text = text.replace('expect(database.schemaVersion).toBe(15);', 'expect(database.schemaVersion).toBe(16);', 1)
-          text = text.replace("NULL, 15, ?, ?)", "NULL, 16, ?, ?)", 1)
-          migration.write_text(text)
-
-          foundation = Path('tests/migration/sqlite-foundation.test.ts')
-          text = foundation.read_text()
-          text = text.replace(
-              "      'character_arcs',\n      'draft_blocks',",
-              "      'character_arcs',\n      'derived_invalidations',\n      'draft_blocks',",
-              1,
-          )
-          text = text.replace(
-              "      'drafts',\n      'entities',",
-              "      'drafts',\n      'ending_snapshots',\n      'entities',",
-              1,
-          )
-          text = text.replace(
-              "      'schema_migrations',\n      'timeline_event_dependencies',",
-              "      'schema_migrations',\n      'state_proposals',\n      'timeline_event_dependencies',",
-              1,
-          )
-          foundation.write_text(text)
-          PY
-          pnpm exec prettier --write \
-            tests/integration/state-proposal-snapshot.test.ts \
-            tests/migration/scene-beat-entity-truth-migration.test.ts \
-            tests/migration/sqlite-foundation.test.ts
+          sed -i '0,/await expect(/s//expect(() =>/' tests/integration/state-proposal-snapshot.test.ts
+          sed -i '0,/).rejects.toBeDefined();/s//).toThrow();/' tests/integration/state-proposal-snapshot.test.ts
+          sed -i 's/expect(database.schemaVersion).toBe(15);/expect(database.schemaVersion).toBe(16);/' tests/migration/scene-beat-entity-truth-migration.test.ts
+          sed -i 's/NULL, 15, ?, ?)/NULL, 16, ?, ?)/' tests/migration/scene-beat-entity-truth-migration.test.ts
+          sed -i "/'character_arcs',/a\      'derived_invalidations'," tests/migration/sqlite-foundation.test.ts
+          sed -i "/'drafts',/a\      'ending_snapshots'," tests/migration/sqlite-foundation.test.ts
+          sed -i "/'schema_migrations',/a\      'state_proposals'," tests/migration/sqlite-foundation.test.ts
+          pnpm exec prettier --write tests/integration/state-proposal-snapshot.test.ts tests/migration/scene-beat-entity-truth-migration.test.ts tests/migration/sqlite-foundation.test.ts
           rm .github/workflows/m3-06-test-repair.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/integration/state-proposal-snapshot.test.ts \
-            tests/migration/scene-beat-entity-truth-migration.test.ts \
-            tests/migration/sqlite-foundation.test.ts \
-            .github/workflows/m3-06-test-repair.yml
+          git add tests/integration/state-proposal-snapshot.test.ts tests/migration/scene-beat-entity-truth-migration.test.ts tests/migration/sqlite-foundation.test.ts .github/workflows/m3-06-test-repair.yml
           git commit -m 'test(M3-06): align synchronous validation and schema 16 expectations'
           git push origin HEAD:work/m3-06-state-proposal-snapshot

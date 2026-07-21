@@ -1,6 +1,6 @@
 # M3-06 状态提案、定稿、尾快照与失效传播
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`work/m3-06-state-proposal-snapshot`
@@ -69,9 +69,10 @@ M3-04、M3-05、M1-07、M2-03
 - 已实现双类型提案生成、作者批量裁决、单事务权威状态更新和快照重建。
 - 已实现有效快照读取、缺失或stale回退，以及按变化类型传播后续失效。
 - 已接入严格命名IPC、最小Preload桥和作者状态提案裁决界面。
-- Static、Unit、Integration、Migration、Build与Package Smoke已通过；Electron将在任务推进状态完成后进行最终Ready复验。
-- 已新增真实Electron提案生成、界面接受与尾快照读取场景；任务状态保持In Progress。
-- Schema、数据字典、IPC合同和追踪矩阵已进入可复查同步工件流程。
+- Static、Unit、Integration、Migration、Build与真实Electron E2E均已通过。
+- 已完成真实Electron提案生成、界面接受与尾快照读取场景。
+- Schema、数据字典、IPC合同和追踪矩阵已同步。
+- 任务按M3连续实现规则登记为Implemented，最终Verified延期至M3批次复验。
 
 ## 测试与证据
 

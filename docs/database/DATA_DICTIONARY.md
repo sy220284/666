@@ -275,3 +275,30 @@ open | ignored_chapter | silenced_project | downgraded | false_positive | resolv
 |---|---|
 | ImportPlan | 临时导入预览，不修改项目真源 |
 | export Version | 被选中用于导出的不可变Version |
+| daily backup | 日常滚动备份 |
+| operation checkpoint | Migration、导入、替换和结构操作前的恢复点 |
+| manual snapshot | 作者命名的长期快照 |
+| verified backup | 通过完整性检查和Hash验证的备份 |
+| restore copy | 从备份恢复到新目录的新项目副本 |
+| TrashEntry | 软删除对象原位置与恢复信息 |
+
+## 8. UI术语映射
+
+| 工程术语 | 默认用户文案 |
+|---|---|
+| Draft | 当前稿 |
+| Candidate | AI建议稿 / 备选稿 |
+| Version | 历史版本 / 定稿版本 |
+| GenerationRun | AI任务 |
+| EntityState | 当前状态 |
+| TimelineEvent | 时间线事件 |
+| KnowledgeState | 知情状态 |
+| StateProposal | 状态变化建议 |
+| CharacterArc | 人物弧光 |
+| ArcMilestone | 弧光节点 |
+| ValidationIssue | 检查问题 |
+| stale | 需要重新检查 |
+
+## 9. P1与V1.5数据
+
+研究笔记、附件、项目日记、L0—L5自动记忆和语义向量索引不属于V1.0 P0初始Schema。启动对应P1/V1.5任务时再增加术语、表和Migration。

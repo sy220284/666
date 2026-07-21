@@ -294,12 +294,30 @@ const success = <Operation extends string, Data extends z.ZodType>(
 ) => z.strictObject({ ok: z.literal(true), operation: z.literal(operation), data });
 
 export const CoreStateProposalOperationSchema = z.discriminatedUnion('operation', [
-  z.strictObject({ operation: z.literal(STATE_PROPOSAL_COMMANDS.list), input: StateProposalListInputSchema }),
-  z.strictObject({ operation: z.literal(STATE_PROPOSAL_COMMANDS.generate), input: StateProposalGenerateInputSchema }),
-  z.strictObject({ operation: z.literal(STATE_PROPOSAL_COMMANDS.resolve), input: StateProposalResolveInputSchema }),
-  z.strictObject({ operation: z.literal(STATE_PROPOSAL_COMMANDS.refreshSnapshot), input: EndingSnapshotRefreshInputSchema }),
-  z.strictObject({ operation: z.literal(STATE_PROPOSAL_COMMANDS.readSnapshot), input: EndingSnapshotReadInputSchema }),
-  z.strictObject({ operation: z.literal(STATE_PROPOSAL_COMMANDS.invalidateDerived), input: DerivedInvalidationInputSchema }),
+  z.strictObject({
+    operation: z.literal(STATE_PROPOSAL_COMMANDS.list),
+    input: StateProposalListInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(STATE_PROPOSAL_COMMANDS.generate),
+    input: StateProposalGenerateInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(STATE_PROPOSAL_COMMANDS.resolve),
+    input: StateProposalResolveInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(STATE_PROPOSAL_COMMANDS.refreshSnapshot),
+    input: EndingSnapshotRefreshInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(STATE_PROPOSAL_COMMANDS.readSnapshot),
+    input: EndingSnapshotReadInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(STATE_PROPOSAL_COMMANDS.invalidateDerived),
+    input: DerivedInvalidationInputSchema,
+  }),
 ]);
 
 export const CoreStateProposalResultSchema = z.union([

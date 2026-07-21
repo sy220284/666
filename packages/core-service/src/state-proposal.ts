@@ -257,8 +257,7 @@ function assertMilestone(
          FROM arc_milestones WHERE id = ? AND project_id = ?`,
     )
     .get(milestoneId, projectId) as
-    | { readonly status: string; readonly actualChapterId: string | null }
-    | undefined;
+    { readonly status: string; readonly actualChapterId: string | null } | undefined;
   if (!row) {
     throw new StateProposalServiceError(
       'STATE_PROPOSAL_NOT_FOUND',
@@ -283,9 +282,7 @@ function validateVersionBlockEvidence(
   for (const anchor of blocks) {
     if (
       !connection
-        .prepare(
-          'SELECT 1 FROM version_blocks WHERE version_id = ? AND logical_block_id = ?',
-        )
+        .prepare('SELECT 1 FROM version_blocks WHERE version_id = ? AND logical_block_id = ?')
         .get(sourceVersionId, anchor.targetId)
     ) {
       throw new StateProposalServiceError(
@@ -835,9 +832,7 @@ export class StateProposalService {
           continue;
         }
         const value =
-          resolution.decision === 'edit_accept'
-            ? resolution.editedValue
-            : proposal.proposedValue;
+          resolution.decision === 'edit_accept' ? resolution.editedValue : proposal.proposedValue;
         if (proposal.proposalType === 'entity_state') {
           applyEntityState(connection, proposal, value, now, this.#idFactory);
         } else {
@@ -859,23 +854,13 @@ export class StateProposalService {
         acceptedSources.set(proposal.chapterId, proposal.sourceVersionId);
       }
       for (const [chapterId, versionId] of acceptedSources) {
-        snapshotRow(
-          connection,
-          input.projectId,
-          chapterId,
-          versionId,
-          now,
-          this.#idFactory,
-        );
+        snapshotRow(connection, input.projectId, chapterId, versionId, now, this.#idFactory);
       }
       return catalog(connection, input.projectId);
     });
   }
 
-  refreshSnapshot(
-    requestId: string,
-    raw: EndingSnapshotRefreshInput,
-  ): Promise<EndingSnapshot> {
+  refreshSnapshot(requestId: string, raw: EndingSnapshotRefreshInput): Promise<EndingSnapshot> {
     const input = EndingSnapshotRefreshInputSchema.parse(raw);
     authorOnly(input.authority);
     return this.#workspace.writeProject(requestId, input.projectId, (connection) =>
@@ -933,13 +918,10 @@ export class StateProposalService {
     const input = DerivedInvalidationInputSchema.parse(raw);
     authorOnly(input.authority);
     return this.#workspace.writeProject(requestId, input.projectId, (connection) => {
-      assertFinalVersion(
-        connection,
-        input.projectId,
-        input.sourceChapterId,
-        input.sourceVersionId,
-      );
-      const semantic = [...new Set(input.changeTypes.filter((type) => type !== 'prose'))] as ChangeType[];
+      assertFinalVersion(connection, input.projectId, input.sourceChapterId, input.sourceVersionId);
+      const semantic = [
+        ...new Set(input.changeTypes.filter((type) => type !== 'prose')),
+      ] as ChangeType[];
       if (semantic.length === 0) {
         return DerivedInvalidationResultSchema.parse({
           invalidatedSnapshotIds: [],
@@ -977,7 +959,8 @@ export class StateProposalService {
           .run(now, JSON.stringify(reasons), row.id, input.projectId);
       }
       const queuedScopes = [...new Set(semantic.flatMap(scopesFor))];
-      const targetChapterIds = targets.length > 0 ? targets.map((target) => target.chapterId) : [null];
+      const targetChapterIds =
+        targets.length > 0 ? targets.map((target) => target.chapterId) : [null];
       for (const changeType of semantic) {
         for (const scope of scopesFor(changeType)) {
           for (const targetChapterId of targetChapterIds) {

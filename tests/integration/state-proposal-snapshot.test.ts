@@ -99,15 +99,17 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         ],
       });
       expect(proposals.proposals).toHaveLength(2);
-      expect(listContinuityAt(harness, seeded.project.projectId, seeded.chapter1.id).entityStates).toEqual(
-        [],
-      );
-      expect(harness.narrative.list({
-        projectId: seeded.project.projectId,
-        query: '',
-        includeResolved: true,
-        referenceChapterId: seeded.chapter1.id,
-      }).characterArcs[0]!.milestones[0]).toMatchObject({
+      expect(
+        listContinuityAt(harness, seeded.project.projectId, seeded.chapter1.id).entityStates,
+      ).toEqual([]);
+      expect(
+        harness.narrative.list({
+          projectId: seeded.project.projectId,
+          query: '',
+          includeResolved: true,
+          referenceChapterId: seeded.chapter1.id,
+        }).characterArcs[0]!.milestones[0],
+      ).toMatchObject({
         status: 'planned',
         confirmationSource: null,
       });
@@ -144,12 +146,14 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         value: { locationId: seeded.north.id },
         sourceVersionId: seeded.version.versionId,
       });
-      expect(harness.narrative.list({
-        projectId: seeded.project.projectId,
-        query: '',
-        includeResolved: true,
-        referenceChapterId: seeded.chapter1.id,
-      }).characterArcs[0]!.milestones[0]).toMatchObject({
+      expect(
+        harness.narrative.list({
+          projectId: seeded.project.projectId,
+          query: '',
+          includeResolved: true,
+          referenceChapterId: seeded.chapter1.id,
+        }).characterArcs[0]!.milestones[0],
+      ).toMatchObject({
         status: 'hit',
         actualChapterId: seeded.chapter1.id,
         confirmationSource: 'state_proposal',
@@ -328,15 +332,17 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
           ],
         }),
       ).rejects.toMatchObject({ code: 'STATE_PROPOSAL_CONFLICT' });
-      expect(listContinuityAt(harness, seeded.project.projectId, seeded.chapter1.id).entityStates).toEqual(
-        [],
-      );
       expect(
-        harness.proposals.list({
-          projectId: seeded.project.projectId,
-          chapterId: seeded.chapter1.id,
-          includeResolved: true,
-        }).proposals.filter((proposal) => proposal.status === 'pending'),
+        listContinuityAt(harness, seeded.project.projectId, seeded.chapter1.id).entityStates,
+      ).toEqual([]);
+      expect(
+        harness.proposals
+          .list({
+            projectId: seeded.project.projectId,
+            chapterId: seeded.chapter1.id,
+            includeResolved: true,
+          })
+          .proposals.filter((proposal) => proposal.status === 'pending'),
       ).toHaveLength(2);
     } finally {
       await closeContinuityHarness(harness);
@@ -405,7 +411,9 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         sourceVersionId: seeded.version.versionId,
         changeTypes: ['entity_state', 'event', 'timeline', 'foreshadowing'],
       });
-      expect(new Set(semantic.invalidatedSnapshotIds)).toEqual(new Set([snapshot2.id, snapshot3.id]));
+      expect(new Set(semantic.invalidatedSnapshotIds)).toEqual(
+        new Set([snapshot2.id, snapshot3.id]),
+      );
       expect(new Set(semantic.queuedScopes)).toEqual(
         new Set(['continuity', 'timeline', 'foreshadowing', 'validation', 'cache']),
       );

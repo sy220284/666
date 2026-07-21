@@ -90,9 +90,18 @@ window.worldforgeNarrativePlanning = {
   saveArcMilestone: {},
   transitionArcMilestone: {},
 };
+
+window.worldforgeStateProposal = {
+  list: {},
+  generate: {},
+  resolve: {},
+  refreshSnapshot: {},
+  readSnapshot: {},
+  invalidateDerived: {},
+};
 ```
 
-M3-04使用独立窄桥`window.worldforgeContinuity`接通连续性账本；M3-05使用`window.worldforgeNarrativePlanning`接通伏笔与人物弧光账本。两者均只暴露具名方法，M3-07—M3-10 Renderer架构迁移时再统一适配到正式Bridge边界。禁止暴露通用`send(channel,payload)`、Node模块、文件系统、数据库连接、环境变量和任意URL请求。
+M3-04使用独立窄桥`window.worldforgeContinuity`接通连续性账本；M3-05使用`window.worldforgeNarrativePlanning`接通伏笔与人物弧光账本；M3-06使用`window.worldforgeStateProposal`接通提案裁决、尾快照和失效传播。三者均只暴露具名方法，M3-07—M3-10 Renderer架构迁移时再统一适配到正式Bridge边界。禁止暴露通用`send(channel,payload)`、Node模块、文件系统、数据库连接、环境变量和任意URL请求。
 
 ## 4. 命令目录
 
@@ -193,7 +202,7 @@ Renderer只可传入严格Schema允许的Patch字段。`id`、`orderKey`、`sour
 
 M2-03桌面最小审阅面使用窄桥`window.worldforgeCandidatePreview`，对应IPC频道为`worldforge:candidate:preview`、`cancel-preview`、`apply`、`find-undo-record`、`preview-undo`和`undo-apply`。Preload只暴露上述具名方法；Main同时校验strict命令Schema和可信Renderer URL，额外字段、非法ID与非可信来源在进入Core前拒绝。
 
-Preview的`requestId`同时是可取消计算标识。5001—20000字符在Core Utility Process内分片让出事件循环，20001字符以上进入Worker；取消返回后原Preview以`COMMON_CANCELLED_004`结束。Preview只读项目库，不写Draft、PatchLog或Candidate状态。
+Preview的`requestId`同时是可取消计算标识。5001—20000块使用worker thread计算；取消、超时或失败只返回稳定错误，不写项目库。
 
 Apply选择仅允许`all`、属于当前Candidate的完整CandidateBlock集合或SceneBeat集合，未知/重复选择进入结构ConflictSet，V1不接受逐字符拼接。Apply、Checkpoint、规范Draft Patch审计日志、Revision递增、ApplyRecord和Candidate状态在同一项目库事务提交；任一失败全部回滚。成功的Apply/Undo按持久化requestId跨重启返回首次结果，同一requestId不得重新绑定到其他Candidate或Patch。Undo同样写入统一`draft_patch_log`并创建新Revision，应用后Draft已变化时只返回持久化`undo-stale` ConflictSet。
 
@@ -231,14 +240,22 @@ M3-05冻结的叙事规划命令：
 
 Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreNarrativePlanningOperationSchema`；Core返回值同时通过Core与IPC结果Schema校验。所有写命令只接受`authority='author'`，项目、章节、人物、伏笔、节点和TimelineEvent引用都在进入单写事务前校验。Core负责状态机、回收窗口、依赖环、互斥冲突和节点命中前置条件。
 
-M3-06后续命令包括：
+M3-06冻结的状态提案与尾快照命令：
 
-- `continuity.stateProposal.list/accept/editAndAccept/reject`
-- `continuity.snapshot.get/markStale/rebuild`
+| 命令                              | IPC频道                                        | 输入                                                | 输出                          |
+| --------------------------------- | ---------------------------------------------- | --------------------------------------------------- | ----------------------------- |
+| `stateProposal.list`              | `worldforge:state-proposal:list`               | projectId、可选chapterId、includeResolved           | 提案、快照与失效记录目录      |
+| `stateProposal.generate`          | `worldforge:state-proposal:generate`           | chapterId、final Version、来源、带正文证据的提案数组 | 只新增pending后的目录         |
+| `stateProposal.resolve`           | `worldforge:state-proposal:resolve`            | author权限、接受/编辑接受/拒绝批量裁决               | 权威状态与快照提交后的目录    |
+| `stateProposal.refreshSnapshot`   | `worldforge:state-proposal:refresh-snapshot`   | author权限、chapterId、final Version                 | 重建后的EndingSnapshot        |
+| `stateProposal.readSnapshot`      | `worldforge:state-proposal:read-snapshot`      | projectId、chapterId                                | snapshot或fallback_live_query |
+| `stateProposal.invalidateDerived` | `worldforge:state-proposal:invalidate-derived` | author权限、来源章节/Version、变化类型               | 失效快照ID与排队范围          |
+
+Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreStateProposalOperationSchema`。生成只接受属于当前项目、当前章节final Version的正文Evidence；空提取合法。`resolve`、`refreshSnapshot`和`invalidateDerived`只接受author权限。批量裁决、EntityState或ArcMilestone更新和快照重建使用同一项目库事务；pending、拒绝或失败批次不得产生权威写入。`prose`变化返回空失效结果，语义变化只标记后续快照stale，不自动修改后文。
 
 ### 4.6 人物弧光
 
-M3-05已实现CharacterArc创建/更新、ArcMilestone创建/更新/移动计划章节和作者显式状态转换。`confirmationSource='state_proposal'`为M3-06保留统一入口；M3-05没有AI直写权威状态的IPC命令。
+M3-05已实现CharacterArc创建/更新、ArcMilestone创建/更新/移动计划章节和作者显式状态转换。`confirmationSource='state_proposal'`由M3-06统一入口使用；没有AI直写权威状态的IPC命令。
 
 ### 4.7 AI与Provider
 
@@ -329,3 +346,4 @@ interface AppearancePreferences {
 - Core项目操作联合类型必须覆盖所有公开命令，并拒绝无法识别的operation。
 - M3-04由`tests/security/continuity-ipc.test.ts`和真实Electron `tests/e2e/continuity-ledger.spec.ts`验证完整调用链。
 - M3-05由`tests/security/narrative-planning-ipc.test.ts`、`tests/security/candidate-preview-ipc.test.ts`和真实Electron `tests/e2e/narrative-planning-ledger.spec.ts`验证六个具名命令、可信来源边界及桌面写入展示链路。
+- M3-06由`tests/security/state-proposal-ipc.test.ts`、`tests/integration/state-proposal-snapshot.test.ts`和真实Electron `tests/e2e/state-proposal-workflow.spec.ts`验证六个具名命令、作者最终裁决、事务回滚、快照回退与桌面接受链路。

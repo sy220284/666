@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      full_suite:
+        description: Run product tests, Electron E2E and build for code-bearing Ready PRs
+        required: false
+        type: boolean
+        default: true
       package_smoke:
         description: Run the Linux package smoke job
         required: false
@@ -65,8 +70,16 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm format:check 2>&1 | tee test-results/ci/format-check.log
-      - run: pnpm lint
-      - run: pnpm typecheck
+      - name: Run lint
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm lint 2>&1 | tee test-results/ci/lint.log
+      - name: Run typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm typecheck 2>&1 | tee test-results/ci/typecheck.log
       - name: Assert clean working tree after static checks
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
@@ -75,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: static-check-diagnostics
-          path: test-results/ci/format-check.log
+          path: test-results/ci/
           if-no-files-found: warn
           retention-days: 7
 
@@ -89,32 +102,42 @@ jobs:
       matrix:
         suite: [unit, integration, migration]
     steps:
+      - name: Skip product tests for documentation-only Ready PR
+        if: ${{ inputs.full_suite == false }}
+        run: echo "Product tests are not required because only Markdown or docs/ files changed."
       - uses: actions/checkout@v6
+        if: ${{ inputs.full_suite }}
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
+        if: ${{ inputs.full_suite }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
+        if: ${{ inputs.full_suite }}
         with:
           node-version: 24
           cache: pnpm
       - name: Assert clean working tree before test suite
+        if: ${{ inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ inputs.full_suite }}
       - run: pnpm test:prepare
+        if: ${{ inputs.full_suite }}
       - name: Run ${{ matrix.suite }} tests
+        if: ${{ inputs.full_suite }}
         shell: bash
         run: |
           mkdir -p test-results/ci
           set -o pipefail
           pnpm exec vitest run "tests/${{ matrix.suite }}" 2>&1 | tee "test-results/ci/${{ matrix.suite }}.log"
       - name: Assert clean working tree after test suite
-        if: always()
+        if: ${{ always() && inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
       - name: Upload ${{ matrix.suite }} test diagnostics
-        if: failure()
+        if: ${{ failure() && inputs.full_suite }}
         uses: actions/upload-artifact@v7
         with:
           name: test-${{ matrix.suite }}-diagnostics
@@ -211,26 +234,36 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
+      - name: Skip Electron E2E for documentation-only Ready PR
+        if: ${{ inputs.full_suite == false }}
+        run: echo "Electron E2E is not required because only Markdown or docs/ files changed."
       - uses: actions/checkout@v6
+        if: ${{ inputs.full_suite }}
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
+        if: ${{ inputs.full_suite }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
+        if: ${{ inputs.full_suite }}
         with:
           node-version: 24
           cache: pnpm
       - name: Assert clean working tree before desktop E2E
+        if: ${{ inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ inputs.full_suite }}
       - name: Install Electron display dependencies
+        if: ${{ inputs.full_suite }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
           fc-match "Noto Serif CJK SC"
       - name: Run Electron E2E and capture diagnostics
+        if: ${{ inputs.full_suite }}
         shell: bash
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
@@ -240,10 +273,10 @@ jobs:
           set -o pipefail
           pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
       - name: Assert clean working tree after desktop E2E
-        if: always()
+        if: ${{ always() && inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
       - name: Upload Electron and display evidence
-        if: always()
+        if: ${{ always() && inputs.full_suite }}
         uses: actions/upload-artifact@v7
         with:
           name: desktop-e2e-evidence
@@ -260,31 +293,40 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Skip build for documentation-only Ready PR
+        if: ${{ inputs.full_suite == false }}
+        run: echo "Build is not required because only Markdown or docs/ files changed."
       - uses: actions/checkout@v6
+        if: ${{ inputs.full_suite }}
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
+        if: ${{ inputs.full_suite }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
+        if: ${{ inputs.full_suite }}
         with:
           node-version: 24
           cache: pnpm
       - name: Assert clean working tree before build
+        if: ${{ inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ inputs.full_suite }}
       - name: Build all workspaces
+        if: ${{ inputs.full_suite }}
         shell: bash
         run: |
           mkdir -p test-results/ci
           set -o pipefail
           pnpm build 2>&1 | tee test-results/ci/build.log
       - name: Assert clean working tree after build
-        if: always()
+        if: ${{ always() && inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
       - name: Upload build diagnostics
-        if: failure()
+        if: ${{ failure() && inputs.full_suite }}
         uses: actions/upload-artifact@v7
         with:
           name: build-diagnostics
@@ -298,9 +340,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Keep package gate green for daily Ready PRs
+      - name: Package smoke not required for this route
         if: ${{ inputs.package_smoke == false }}
-        run: echo "Package smoke deferred to Release or an explicitly enabled reusable gate."
+        run: echo "Package smoke is reserved for Release or an explicitly enabled reusable gate."
       - uses: actions/checkout@v6
         if: ${{ inputs.package_smoke }}
         with:

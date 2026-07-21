@@ -38,6 +38,7 @@
     "task:status": "node scripts/taskctl.mjs status",
     "task:validate": "node scripts/taskctl.mjs validate",
     "task:preflight": "node scripts/taskctl.mjs preflight",
+    "task:branch-check": "node scripts/ci-policy.mjs branch-check",
     "task:verify": "node scripts/taskctl.mjs verify",
     "task:verify-final": "node scripts/taskctl.mjs verify-task",
     "task:sync": "node scripts/taskctl.mjs sync",

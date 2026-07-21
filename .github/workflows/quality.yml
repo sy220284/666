@@ -13,11 +13,51 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  route:
+    name: route
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      full_suite: ${{ steps.route.outputs.full_suite }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Determine Ready quality route
+        id: route
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          full_suite=false
+          changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
+          if [ -z "$changed_files" ]; then
+            full_suite=true
+          else
+            while IFS= read -r file; do
+              case "$file" in
+                *.md|docs/*)
+                  ;;
+                *)
+                  full_suite=true
+                  break
+                  ;;
+              esac
+            done <<< "$changed_files"
+          fi
+          echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
+          echo "Ready quality full suite: $full_suite"
+
   quality:
+    needs: route
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
       draft_mode: ${{ github.event.pull_request.draft == true }}
+      full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
       package_smoke: false
       security_suite: false
       performance_eval: false

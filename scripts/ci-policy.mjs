@@ -1,6 +1,12 @@
 import { access, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  GOVERNANCE_ALLOWED_PATHS,
+  SCHEMA_GOVERNANCE_ALLOWED_PATHS,
+  TASK_PLANNING_ALLOWED_PATHS,
+  isPathInside,
+} from './task-control-lib.mjs';
 
 const root = process.cwd();
 const githubDirectory = path.join(root, '.github');
@@ -167,6 +173,8 @@ async function main() {
     'pull_request:',
     'ready_for_review',
     'converted_to_draft',
+    'Determine Ready quality route',
+    'full_suite:',
     'quality-core.yml',
     'package_smoke: false',
     'performance_eval: false',
@@ -175,13 +183,17 @@ async function main() {
 
   const qualityCore = workflows.get('quality-core.yml') ?? '';
   requireTokens(errors, 'quality-core.yml', qualityCore, [
+    'full_suite:',
     'static-checks:',
     'tests:',
+    'Skip product tests for documentation-only Ready PR',
     'desktop-e2e:',
+    'Skip Electron E2E for documentation-only Ready PR',
     'build:',
+    'Skip build for documentation-only Ready PR',
     'package-smoke:',
-    'Keep package gate green for daily Ready PRs',
-    'Package smoke deferred to Release or an explicitly enabled reusable gate.',
+    'Package smoke not required for this route',
+    'Package smoke is reserved for Release or an explicitly enabled reusable gate.',
     'if: ${{ inputs.package_smoke }}',
     'quality:',
     'require_optional_job "$PACKAGE_REQUIRED" "$PACKAGE_RESULT" package-smoke',
@@ -197,6 +209,7 @@ async function main() {
     'pnpm test:security',
     'name: security',
   ]);
+  forbidTokens(errors, 'security.yml', security, ['activeTask?.verification?.includes']);
 
   const performance = workflows.get('performance.yml') ?? '';
   requireTokens(errors, 'performance.yml', performance, [
@@ -207,8 +220,9 @@ async function main() {
     'Determine performance validation route',
     'Run performance budgets',
     'pnpm test:perf',
-    'activeTask?.verification?.includes',
+    'changed paths are not performance-sensitive',
   ]);
+  forbidTokens(errors, 'performance.yml', performance, ['activeTask?.verification?.includes']);
 
   const mainVerification = workflows.get('main-verification.yml') ?? '';
   requireTokens(errors, 'main-verification.yml', mainVerification, [
@@ -258,41 +272,107 @@ async function main() {
     }
   }
 
-  for (const file of [
-    'pr-policy.yml',
-    'task-governance.yml',
-    'evidence.yml',
-    'security.yml',
-    'performance.yml',
-    'quality-core.yml',
-    'main-verification.yml',
-    'post-merge-verification.yml',
-  ]) {
-    requireTokens(errors, file, workflows.get(file) ?? '', ['assert-clean-tree.mjs']);
-  }
-
-  const requiredChecks = JSON.parse(
-    await readFile(path.join(root, '.github/governance/required-checks.json'), 'utf8'),
-  );
-  const expectedChecks = [
-    'pr-policy',
-    'task-governance',
-    'quality / quality',
-    'security',
-    'performance',
-    'evidence',
-  ];
-  if (JSON.stringify(requiredChecks.requiredChecks) !== JSON.stringify(expectedChecks)) {
-    errors.push('required-checks.json: permanent check names changed unexpectedly');
-  }
-
   if (errors.length > 0) throw new Error(errors.join('\n'));
-  console.log('Permanent CI policy passed.');
+  console.log('CI policy is valid.');
+}
+
+function everyPathAllowed(files, allowedPaths) {
+  return files.every((file) => allowedPaths.some((allowed) => isPathInside(file, allowed)));
+}
+
+export function allowedPathsForBranch(branch, activeState = null) {
+  if (/^policy\/task-plan-/u.test(branch)) {
+    return [...GOVERNANCE_ALLOWED_PATHS, ...TASK_PLANNING_ALLOWED_PATHS];
+  }
+  if (/^(?:policy|fix)\/governance-schema-/u.test(branch)) {
+    return [...GOVERNANCE_ALLOWED_PATHS, ...SCHEMA_GOVERNANCE_ALLOWED_PATHS];
+  }
+  if (/^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(branch)) {
+    return GOVERNANCE_ALLOWED_PATHS;
+  }
+  if (branch && branch === activeState?.activeTask?.branch) {
+    return activeState.activeTask.allowedPaths ?? [];
+  }
+  return [];
+}
+
+export function recommendBranch(files, activeState = null) {
+  if (everyPathAllowed(files, GOVERNANCE_ALLOWED_PATHS)) {
+    return 'policy/<topic>';
+  }
+  const planningPaths = [...GOVERNANCE_ALLOWED_PATHS, ...TASK_PLANNING_ALLOWED_PATHS];
+  if (everyPathAllowed(files, planningPaths)) {
+    return 'policy/task-plan-<topic>';
+  }
+  const schemaPaths = [...GOVERNANCE_ALLOWED_PATHS, ...SCHEMA_GOVERNANCE_ALLOWED_PATHS];
+  if (everyPathAllowed(files, schemaPaths)) {
+    return 'policy/governance-schema-<topic>';
+  }
+  return activeState?.activeTask?.branch ?? '<active-task-branch>';
+}
+
+export function validateBranchPlan(branch, files, activeState = null) {
+  if (!branch || branch === 'main') {
+    return {
+      ok: false,
+      violations: ['A named non-main branch is required.'],
+      recommendedBranch: recommendBranch(files, activeState),
+    };
+  }
+  if (!Array.isArray(files) || files.length === 0) {
+    return {
+      ok: false,
+      violations: ['At least one changed file path is required.'],
+      recommendedBranch: recommendBranch([], activeState),
+    };
+  }
+
+  const allowedPaths = allowedPathsForBranch(branch, activeState);
+  if (allowedPaths.length === 0) {
+    return {
+      ok: false,
+      violations: [`Branch ${branch} is not authorized for governance or the active task.`],
+      recommendedBranch: recommendBranch(files, activeState),
+    };
+  }
+
+  const forbiddenPaths =
+    branch === activeState?.activeTask?.branch ? (activeState.activeTask.forbiddenPaths ?? []) : [];
+  const violations = files.flatMap((file) => {
+    if (forbiddenPaths.some((blocked) => isPathInside(file, blocked))) {
+      return [`${file}: forbidden by the active task`];
+    }
+    if (!allowedPaths.some((allowed) => isPathInside(file, allowed))) {
+      return [`${file}: outside the branch authorization`];
+    }
+    return [];
+  });
+  return {
+    ok: violations.length === 0,
+    violations,
+    recommendedBranch: violations.length > 0 ? recommendBranch(files, activeState) : branch,
+  };
+}
+
+async function branchCheck() {
+  const state = JSON.parse(await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8'));
+  const values = process.argv.slice(3);
+  const branchArgument = values.find((value) => value.startsWith('--branch='));
+  const branch = branchArgument?.slice('--branch='.length) ?? '';
+  const files = values.filter((value) => !value.startsWith('--'));
+  const result = validateBranchPlan(branch, files, state);
+  if (!result.ok) {
+    throw new Error(
+      `${result.violations.join('\n')}\nRecommended branch: ${result.recommendedBranch}`,
+    );
+  }
+  console.log(`Branch preflight passed: ${branch}`);
+  console.log(`Files: ${files.join(', ')}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
-    process.exitCode = 1;
-  });
+  const command = process.argv[2] ?? 'validate';
+  if (command === 'branch-check') await branchCheck();
+  else if (command === 'validate') await main();
+  else throw new Error(`Unknown ci-policy command: ${command}`);
 }

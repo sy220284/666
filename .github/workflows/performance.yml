@@ -35,8 +35,6 @@ jobs:
           run=false
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             run=true
-          elif node --input-type=module -e "import {readFileSync} from 'node:fs'; const state=JSON.parse(readFileSync('docs/tasks/ACTIVE_TASK.json','utf8')); process.exit(state.activeTask?.verification?.includes('pnpm test:perf') ? 0 : 1);"; then
-            run=true
           elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(tests/performance/|evals/|packages/prompts/|packages/editor-core/|\.github/workflows/performance\.yml$)'; then
             run=true
           fi
@@ -60,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${{ steps.route.outputs.run }}" != true ]; then
-            echo "Performance suite skipped: the active task and changed paths are not performance-sensitive."
+            echo "Performance suite skipped: changed paths are not performance-sensitive."
             exit 0
           fi
           mkdir -p test-results/ci

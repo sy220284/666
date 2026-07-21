@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   NARRATIVE_PLANNING_COMMANDS,
   NARRATIVE_PLANNING_IPC_CHANNELS,
+  STATE_PROPOSAL_IPC_CHANNELS,
   type CoreProjectOperation,
   type CoreProjectResult,
 } from '@worldforge/contracts';
@@ -20,7 +21,7 @@ const untrustedEvent = {
 } as unknown as IpcMainInvokeEvent;
 
 describe('M3-05 narrative planning IPC boundary', () => {
-  it('strictly validates and forwards all six named commands', async () => {
+  it('strictly validates and forwards all six narrative commands', async () => {
     const handlers = new Map<
       string,
       (event: IpcMainInvokeEvent, raw: unknown) => Promise<unknown> | unknown
@@ -55,7 +56,7 @@ describe('M3-05 narrative planning IPC boundary', () => {
     });
 
     expect([...handlers.keys()].sort()).toEqual(
-      Object.values(NARRATIVE_PLANNING_IPC_CHANNELS).sort(),
+      [...Object.values(NARRATIVE_PLANNING_IPC_CHANNELS), ...Object.values(STATE_PROPOSAL_IPC_CHANNELS)].sort(),
     );
 
     const cases = [
@@ -175,6 +176,6 @@ describe('M3-05 narrative planning IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(6);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(12);
   });
 });

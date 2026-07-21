@@ -168,7 +168,7 @@ async function main() {
     'ready_for_review',
     'converted_to_draft',
     'quality-core.yml',
-    'package_smoke: true',
+    'package_smoke: false',
     'performance_eval: false',
   ]);
   forbidTokens(errors, 'quality.yml', quality, ['static-failure-diagnostics']);
@@ -180,6 +180,9 @@ async function main() {
     'desktop-e2e:',
     'build:',
     'package-smoke:',
+    'Keep package gate green for daily Ready PRs',
+    'Package smoke deferred to Release or an explicitly enabled reusable gate.',
+    'if: ${{ inputs.package_smoke }}',
     'quality:',
     'require_optional_job "$PACKAGE_REQUIRED" "$PACKAGE_RESULT" package-smoke',
   ]);

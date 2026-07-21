@@ -52,6 +52,11 @@ jobs:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
           TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
         run: node .github/governance/task-transition-policy.mjs
+      - name: Enforce milestone close and evidence reachability
+        env:
+          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
+          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
+        run: node .github/governance/stage-close-policy.mjs
       - name: Assert clean working tree after task validation
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

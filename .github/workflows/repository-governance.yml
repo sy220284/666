@@ -41,6 +41,8 @@ jobs:
         run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Audit permanent automation inventory
         run: node .github/governance/automation-layout-policy.mjs
+      - name: Self-test deferred task closure
+        run: node .github/governance/deferred-task-closure.mjs --self-test
       - name: Audit complete native main-branch protection
         if: ${{ github.event_name != 'pull_request' }}
         env:

@@ -82,19 +82,15 @@ describe('M3-06 finite StateProposal interval boundaries', () => {
 
   it('rejects a validUntilChapterId that belongs to another project', async () => {
     const harness = await createContinuityHarness();
+    const otherHarness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
+      const otherSeeded = await seedContinuity(otherHarness);
       await harness.versions.setFinal(randomUUID(), {
         projectId: seeded.project.projectId,
         chapterId: seeded.chapter1.id,
         versionId: seeded.version.versionId,
       });
-      const otherProject = await harness.workspace.create(
-        randomUUID(),
-        { name: '跨项目区间目标', channel: '长篇' },
-        harness.parent,
-      );
-      const otherChapter = harness.structure.list(otherProject.projectId).volumes[0]!.chapters[0]!;
 
       await expect(
         harness.proposals.generate(randomUUID(), {
@@ -108,7 +104,7 @@ describe('M3-06 finite StateProposal interval boundaries', () => {
               entityId: seeded.character.id,
               stateKey: 'location',
               proposedValue: { locationId: seeded.south.id },
-              validUntilChapterId: otherChapter.id,
+              validUntilChapterId: otherSeeded.chapter2.id,
               evidence: [
                 {
                   kind: 'logicalBlock',
@@ -129,7 +125,7 @@ describe('M3-06 finite StateProposal interval boundaries', () => {
         }).proposals,
       ).toEqual([]);
     } finally {
-      await closeContinuityHarness(harness);
+      await Promise.all([closeContinuityHarness(harness), closeContinuityHarness(otherHarness)]);
     }
   });
 });

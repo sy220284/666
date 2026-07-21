@@ -73,6 +73,7 @@ Candidate完整度：`complete | partial`
 | ArcMilestone | 弧光中的可确认里程碑节点 |
 | EndingSnapshot | 定稿后供下一章读取的最小连续性入口 |
 | StateProposal | AI或规则提出的`entity_state`或`arc_milestone`变化候选 |
+| DerivedInvalidation | 旧章语义变化对后续快照、校验和缓存造成的失效记录 |
 | stale | 派生数据因上游修改而过期，不能继续当作有效输入 |
 
 Entity类型：
@@ -148,6 +149,22 @@ StateProposal状态：
 ```text
 pending | accepted | edited | rejected
 ```
+
+StateProposal来源：
+
+```text
+rule | provider_stub
+```
+
+`pending`只表示待作者裁决的候选，不改变EntityState或ArcMilestone。`accept`使用提议值，`edit_accept`使用作者编辑后的合法JSON值，`reject`不产生权威写入；一批裁决任一失败时整批回滚。接受`entity_state`会结束旧current并写入新current；接受`arc_milestone`会以`confirmationSource=state_proposal`推进节点，并在同一事务重建章节尾快照。
+
+EndingSnapshot状态：
+
+```text
+valid | stale
+```
+
+有效快照按章节和来源Version可追溯；缺失或stale时读取来源为`fallback_live_query`，内容来自权威当前表。DerivedInvalidation记录上游语义变化影响的后续章节与`continuity/arc/timeline/foreshadowing/validation/cache`范围；纯`prose`修改不产生失效记录。
 
 Foreshadowing状态：
 
@@ -258,30 +275,3 @@ open | ignored_chapter | silenced_project | downgraded | false_positive | resolv
 |---|---|
 | ImportPlan | 临时导入预览，不修改项目真源 |
 | export Version | 被选中用于导出的不可变Version |
-| daily backup | 日常滚动备份 |
-| operation checkpoint | Migration、导入、替换和结构操作前的恢复点 |
-| manual snapshot | 作者命名的长期快照 |
-| verified backup | 通过完整性检查和Hash验证的备份 |
-| restore copy | 从备份恢复到新目录的新项目副本 |
-| TrashEntry | 软删除对象原位置与恢复信息 |
-
-## 8. UI术语映射
-
-| 工程术语 | 默认用户文案 |
-|---|---|
-| Draft | 当前稿 |
-| Candidate | AI建议稿 / 备选稿 |
-| Version | 历史版本 / 定稿版本 |
-| GenerationRun | AI任务 |
-| EntityState | 当前状态 |
-| TimelineEvent | 时间线事件 |
-| KnowledgeState | 知情状态 |
-| StateProposal | 状态变化建议 |
-| CharacterArc | 人物弧光 |
-| ArcMilestone | 弧光节点 |
-| ValidationIssue | 检查问题 |
-| stale | 需要重新检查 |
-
-## 9. P1与V1.5数据
-
-研究笔记、附件、项目日记、L0—L5自动记忆和语义向量索引不属于V1.0 P0初始Schema。启动对应P1/V1.5任务时再增加术语、表和Migration。

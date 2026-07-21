@@ -1,0 +1,12 @@
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:security
+pnpm test:e2e:electron
+pnpm build
+pnpm test:package

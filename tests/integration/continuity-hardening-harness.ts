@@ -10,6 +10,7 @@ import { EntityCanonService } from '../../packages/core-service/src/entity-canon
 import { NarrativePlanningService } from '../../packages/core-service/src/narrative-planning.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
+import { StateProposalService } from '../../packages/core-service/src/state-proposal.js';
 import { VersionService } from '../../packages/core-service/src/version.js';
 
 const temporaryDirectories: string[] = [];
@@ -44,6 +45,7 @@ export async function createContinuityHarness() {
     canon: new EntityCanonService(workspace, { clock: hardeningClock }),
     continuity: new ContinuityService(workspace, { clock: hardeningClock }),
     narrative: new NarrativePlanningService(workspace, { clock: hardeningClock }),
+    proposals: new StateProposalService(workspace, { clock: hardeningClock }),
   };
 }
 
@@ -125,6 +127,7 @@ export async function seedContinuity(value: ContinuityHarness) {
     chapter2: chapter2!,
     chapter3: chapter3!,
     chapter4: chapter4!,
+    draft,
     version,
     character,
     south,

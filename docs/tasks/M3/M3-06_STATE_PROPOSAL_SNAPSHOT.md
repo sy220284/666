@@ -45,8 +45,12 @@ M3-04、M3-05、M1-07、M2-03
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/integration/`
+- `tests/migration/`
+- `tests/security/`
 - `tests/e2e/`
 
 ## 实施内容
@@ -59,11 +63,23 @@ M3-04、M3-05、M1-07、M2-03
 6. 纯文字润色不触发状态级联。
 7. 尾快照缺失时后续约束包可按DEC-016回退直查。
 
+## 当前实现进度
+
+- 已新增Schema 16及StateProposal、EndingSnapshot、DerivedInvalidation表。
+- 已实现双类型提案生成、作者批量裁决、单事务权威状态更新和快照重建。
+- 已实现有效快照读取、缺失或stale回退，以及按变化类型传播后续失效。
+- 已接入严格命名IPC、最小Preload桥和作者状态提案裁决界面。
+- Static、Unit、Integration、Migration、Build与Package Smoke已通过；Electron将在任务推进状态完成后进行最终Ready复验。
+- 已新增真实Electron提案生成、界面接受与尾快照读取场景；任务状态保持In Progress。
+- Schema、数据字典、IPC合同和追踪矩阵已进入可复查同步工件流程。
+
 ## 测试与证据
 
 - 无证据提案、空提案、批量接受、编辑、拒绝和事务失败。
 - arc_milestone pending不生效，接受后合法推进。
 - 纯润色、位置、事件、伏笔变化的失效传播边界。
+- 不可信Renderer、畸形Payload和越权作者裁决输入被阻断。
+- Electron从正文Version生成pending提案，经作者界面接受后生成有效尾快照。
 
 证据保存到：`docs/test-evidence/M3-06/`
 

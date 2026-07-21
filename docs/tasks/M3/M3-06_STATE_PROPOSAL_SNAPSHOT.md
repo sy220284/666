@@ -70,7 +70,7 @@ M3-04、M3-05、M1-07、M2-03
 - 已实现有效快照读取、缺失或stale回退，以及按变化类型传播后续失效。
 - 已接入严格命名IPC、最小Preload桥和作者状态提案裁决界面。
 - Static、Unit、Integration、Migration、Build与Package Smoke已通过；Electron将在任务推进状态完成后进行最终Ready复验。
-- 已补集成、迁移、安全测试与文本证据；任务状态保持In Progress。
+- 已新增真实Electron提案生成、界面接受与尾快照读取场景；任务状态保持In Progress。
 
 ## 测试与证据
 
@@ -78,6 +78,7 @@ M3-04、M3-05、M1-07、M2-03
 - arc_milestone pending不生效，接受后合法推进。
 - 纯润色、位置、事件、伏笔变化的失效传播边界。
 - 不可信Renderer、畸形Payload和越权作者裁决输入被阻断。
+- Electron从正文Version生成pending提案，经作者界面接受后生成有效尾快照。
 
 证据保存到：`docs/test-evidence/M3-06/`
 

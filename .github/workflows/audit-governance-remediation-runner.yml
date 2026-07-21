@@ -44,7 +44,23 @@ jobs:
           script = textwrap.dedent(source[start:end])
           Path('/tmp/audit-governance-remediation.py').write_text(script, encoding='utf-8')
           BOOTSTRAP
-          python /tmp/audit-governance-remediation.py
+          set +e
+          python /tmp/audit-governance-remediation.py > remediation-error.txt 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            tail -n 80 remediation-error.txt
+            exit "$status"
+          fi
+          rm remediation-error.txt
+      - name: Upload remediation failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: audit-governance-remediation-error
+          path: remediation-error.txt
+          if-no-files-found: error
+          retention-days: 2
       - name: Format and run focused tests
         shell: bash
         run: |

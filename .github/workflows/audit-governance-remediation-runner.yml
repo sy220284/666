@@ -1,0 +1,64 @@
+name: Audit Governance Remediation Runner
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' && github.head_ref == 'fix/governance-m3-stage-close' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/governance-m3-stage-close
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Execute embedded remediation source
+        shell: bash
+        run: |
+          python - <<'BOOTSTRAP'
+          from pathlib import Path
+          import textwrap
+
+          source = Path('.github/workflows/audit-governance-remediation.yml').read_text(encoding='utf-8')
+          marker = "          python - <<'PY'\n"
+          start = source.index(marker) + len(marker)
+          end = source.index("\n          PY\n      - name: Format", start)
+          script = textwrap.dedent(source[start:end])
+          Path('/tmp/audit-governance-remediation.py').write_text(script, encoding='utf-8')
+          BOOTSTRAP
+          python /tmp/audit-governance-remediation.py
+      - name: Format and run focused tests
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm exec prettier --write scripts/task-control-lib.mjs scripts/taskctl.mjs .github/governance/task-transition-policy.mjs tests/unit/task-control.test.ts tests/integration/task-lifecycle.test.ts docs/process/DEVELOPMENT_AUTOMATION.md
+          pnpm test:unit -- tests/unit/task-control.test.ts tests/unit/evidence-policy.test.ts
+          pnpm test:integration -- tests/integration/task-lifecycle.test.ts
+      - name: Commit remediation and remove helpers
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/audit-governance-remediation.yml .github/workflows/audit-governance-remediation-runner.yml
+          git add scripts/task-control-lib.mjs scripts/taskctl.mjs .github/governance/task-transition-policy.mjs tests/unit/task-control.test.ts tests/integration/task-lifecycle.test.ts docs/process/DEVELOPMENT_AUTOMATION.md
+          git commit -m "fix(governance): close M3 before M4 activation"
+          git push origin HEAD:fix/governance-m3-stage-close

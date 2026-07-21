@@ -1,27 +1,21 @@
-import { copyFile, mkdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 
-import { build } from 'esbuild';
+const lockUrl = new URL('../../../pnpm-lock.yaml', import.meta.url);
+let lock = await readFile(lockUrl, 'utf8');
 
-await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
-await Promise.all([
-  copyFile(
-    new URL('./src/index.html', import.meta.url),
-    new URL('./dist/index.html', import.meta.url),
-  ),
-  copyFile(
-    new URL('./src/styles.css', import.meta.url),
-    new URL('./dist/styles.css', import.meta.url),
-  ),
-]);
+const importerBefore = `  apps/desktop/renderer:\n    dependencies:\n      '@worldforge/contracts':\n        specifier: workspace:*\n        version: link:../../../packages/contracts\n      '@worldforge/editor-core':\n        specifier: workspace:*\n        version: link:../../../packages/editor-core\n    devDependencies:\n      esbuild:\n        specifier: 0.28.1\n        version: 0.28.1\n`;
+const importerAfter = `  apps/desktop/renderer:\n    dependencies:\n      '@worldforge/contracts':\n        specifier: workspace:*\n        version: link:../../../packages/contracts\n      '@worldforge/editor-core':\n        specifier: workspace:*\n        version: link:../../../packages/editor-core\n      react:\n        specifier: 19.2.7\n        version: 19.2.7\n      react-dom:\n        specifier: 19.2.7\n        version: 19.2.7(react@19.2.7)\n      zustand:\n        specifier: 5.0.14\n        version: 5.0.14(@types/react@19.2.17)(react@19.2.7)\n    devDependencies:\n      '@types/react':\n        specifier: 19.2.17\n        version: 19.2.17\n      '@types/react-dom':\n        specifier: 19.2.3\n        version: 19.2.3(@types/react@19.2.17)\n      esbuild:\n        specifier: 0.28.1\n        version: 0.28.1\n`;
+if (!lock.includes(importerBefore)) throw new Error('renderer importer marker missing');
+lock = lock.replace(importerBefore, importerAfter);
 
-await build({
-  entryPoints: [new URL('./src/entry.ts', import.meta.url).pathname],
-  outfile: new URL('./dist/index.js', import.meta.url).pathname,
-  bundle: true,
-  format: 'esm',
-  platform: 'browser',
-  target: 'es2023',
-  sourcemap: false,
-  logLevel: 'warning',
-});
+const packageEntries = `  '@types/react-dom@19.2.3':\n    resolution:\n      {\n        integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==,\n      }\n    peerDependencies:\n      '@types/react': ^19.2.0\n\n  '@types/react@19.2.17':\n    resolution:\n      {\n        integrity: sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw==,\n      }\n\n  csstype@3.2.3:\n    resolution:\n      {\n        integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==,\n      }\n\n  react-dom@19.2.7:\n    resolution:\n      {\n        integrity: sha512-t0BRVXvbiE/o20Hfw669rLbMCDWtYZLvmJigy2f0MxsXF+71pxhR3xOkspmsO8h3ZlNzyibAmtCa3l4lYKk6gQ==,\n      }\n    peerDependencies:\n      react: ^19.2.7\n\n  react@19.2.7:\n    resolution:\n      {\n        integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==,\n      }\n    engines: { node: '>=0.10.0' }\n\n  scheduler@0.27.0:\n    resolution:\n      {\n        integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==,\n      }\n\n  zustand@5.0.14:\n    resolution:\n      {\n        integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==,\n      }\n    engines: { node: '>=12.20.0' }\n    peerDependencies:\n      '@types/react': '>=18.0.0'\n      immer: '>=9.0.6'\n      react: '>=18.0.0'\n      use-sync-external-store: '>=1.2.0'\n    peerDependenciesMeta:\n      '@types/react':\n        optional: true\n      immer:\n        optional: true\n      react:\n        optional: true\n      use-sync-external-store:\n        optional: true\n\n`;
+const snapshotEntries = `  '@types/react-dom@19.2.3(@types/react@19.2.17)':\n    dependencies:\n      '@types/react': 19.2.17\n\n  '@types/react@19.2.17':\n    dependencies:\n      csstype: 3.2.3\n\n  csstype@3.2.3: {}\n\n  react-dom@19.2.7(react@19.2.7):\n    dependencies:\n      react: 19.2.7\n      scheduler: 0.27.0\n\n  react@19.2.7: {}\n\n  scheduler@0.27.0: {}\n\n  zustand@5.0.14(@types/react@19.2.17)(react@19.2.7):\n    optionalDependencies:\n      '@types/react': 19.2.17\n      react: 19.2.7\n\n`;
+const snapshotsMarker = '\nsnapshots:\n';
+if (!lock.includes(snapshotsMarker)) throw new Error('snapshots marker missing');
+lock = lock.replace(snapshotsMarker, `\n${packageEntries}snapshots:\n${snapshotEntries}`);
+
+console.log('M3_07_LOCK_BASE64_BEGIN');
+console.log(Buffer.from(lock, 'utf8').toString('base64'));
+console.log('M3_07_LOCK_BASE64_END');
+throw new Error('M3-07 dependency lock diagnostic generated');

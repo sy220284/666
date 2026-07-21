@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-07`
-- 唯一任务卡：`docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md`
-- 工作分支：`work/m3-07-renderer-react-foundation`
+- 任务ID：`M3-08`
+- 唯一任务卡：`docs/tasks/M3/M3-08_RENDERER_SHELL_HOME_SETTINGS.md`
+- 工作分支：`work/m3-08-renderer-shell-home-settings`
 - 开始时间：`2026-07-21`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -20,20 +20,24 @@ IN_PROGRESS
 ```yaml
 allowed_paths:
   - apps/desktop/renderer/
+  - packages/contracts/
   - package.json
   - pnpm-lock.yaml
+  - pnpm-workspace.yaml
   - tests/unit/
+  - tests/integration/
+  - tests/migration/
   - tests/security/
   - tests/e2e/
+  - tests/performance/
   - docs/architecture/
   - docs/ui/
-  - pnpm-workspace.yaml
+  - docs/product/V1.0_TRACEABILITY_MATRIX.md
+  - docs/test-evidence/M3-08/
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md
-  - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-07/
+  - docs/tasks/M3/M3-08_RENDERER_SHELL_HOME_SETTINGS.md
 forbidden_paths:
 
 required_docs:
@@ -44,18 +48,26 @@ required_docs:
   - docs/ui/INFORMATION_ARCHITECTURE.md
   - docs/ui/SCREEN_SPECIFICATIONS.md
   - docs/ui/INTERACTION_STATES.md
+  - docs/ui/RESPONSIVE_AND_DPI.md
   - docs/ui/UI_SYSTEM.md
   - docs/ui/ACCESSIBILITY.md
 verification:
+  - pnpm install --frozen-lockfile
+  - pnpm task:validate
+  - pnpm check:workspaces
+  - pnpm check:boundaries
+  - pnpm format:check
   - pnpm lint
   - pnpm typecheck
-  - pnpm test
-  - pnpm test:migration
-  - pnpm test:integration
-  - pnpm test:security
-  - pnpm test:e2e
   - pnpm test:unit
+  - pnpm test:integration
+  - pnpm test:migration
+  - pnpm test:security
+  - pnpm test:perf
   - pnpm test:eval
+  - pnpm build
+  - pnpm test:e2e
+  - pnpm package
 ```
 
 ## 连续执行规则

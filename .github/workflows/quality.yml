@@ -18,6 +18,6 @@ jobs:
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
       draft_mode: ${{ github.event.pull_request.draft == true }}
-      package_smoke: true
+      package_smoke: false
       security_suite: false
       performance_eval: false

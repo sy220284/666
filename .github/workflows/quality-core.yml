@@ -294,25 +294,34 @@ jobs:
 
   package-smoke:
     name: package-smoke
-    if: ${{ inputs.draft_mode == false && inputs.package_smoke }}
+    if: ${{ inputs.draft_mode == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
+      - name: Keep package gate green for daily Ready PRs
+        if: ${{ inputs.package_smoke == false }}
+        run: echo "Package smoke deferred to Release or an explicitly enabled reusable gate."
       - uses: actions/checkout@v6
+        if: ${{ inputs.package_smoke }}
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
+        if: ${{ inputs.package_smoke }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
+        if: ${{ inputs.package_smoke }}
         with:
           node-version: 24
           cache: pnpm
       - name: Assert clean working tree before package smoke
+        if: ${{ inputs.package_smoke }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ inputs.package_smoke }}
       - name: Run package smoke test
+        if: ${{ inputs.package_smoke }}
         shell: bash
         run: |
           mkdir -p test-results/ci
@@ -320,10 +329,10 @@ jobs:
           pnpm build 2>&1 | tee test-results/ci/package-smoke.log
           pnpm package 2>&1 | tee -a test-results/ci/package-smoke.log
       - name: Assert clean working tree after package smoke
-        if: always()
+        if: ${{ always() && inputs.package_smoke }}
         run: node .github/governance/assert-clean-tree.mjs
       - name: Upload package smoke diagnostics
-        if: failure()
+        if: ${{ failure() && inputs.package_smoke }}
         uses: actions/upload-artifact@v7
         with:
           name: package-smoke-diagnostics

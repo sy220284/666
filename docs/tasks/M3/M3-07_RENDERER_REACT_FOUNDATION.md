@@ -1,6 +1,6 @@
 # M3-07 Renderer React基础、Bridge适配与状态边界
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`work/m3-07-renderer-react-foundation`

@@ -50,13 +50,15 @@ jobs:
           block_start = script.rfind('replace_once(', 0, phrase)
           block_end = script.index('\n\nreplace_once(', phrase)
           robust_deferred_patch = "\n".join([
-              "import re",
-              "",
               "taskctl_path = Path('scripts/taskctl.mjs')",
               "taskctl_text = taskctl_path.read_text(encoding='utf-8')",
-              "deferred_pattern = re.compile(",
-              "    r\"(?m)^      pending: \\\[\\n\\s*'standard evidence package and screenshots',\\n\\s*'manual acceptance and exhaustive quality matrix',\\n\\s*'final traceability verification status',\\n\\s*'Verified closure',\\n\\s*\\\\],\"",
-              ")",
+              "ledger_anchor = taskctl_text.index('state.deferredVerification = [')",
+              "deferred_start = taskctl_text.index('      pending: [', ledger_anchor)",
+              "deferred_end = taskctl_text.index('      ],', deferred_start) + len('      ],')",
+              "deferred_source = taskctl_text[deferred_start:deferred_end]",
+              "for required_text in ('standard evidence package and screenshots', 'manual acceptance and exhaustive quality matrix'):",
+              "    if required_text not in deferred_source:",
+              "        raise SystemExit(f'scripts/taskctl.mjs deferred ledger missing {required_text}')",
               "deferred_replacement = \"\"\"      pending: [",
               "        'four-file evidence package and real automated run records',",
               "        'necessary manual review conclusions recorded in summary.md',",
@@ -64,9 +66,7 @@ jobs:
               "        'final traceability verification status',",
               "        'Verified closure',",
               "      ],\"\"\"",
-              "taskctl_text, deferred_count = deferred_pattern.subn(deferred_replacement, taskctl_text, count=1)",
-              "if deferred_count != 1:",
-              "    raise SystemExit(f'scripts/taskctl.mjs: expected one deferred ledger block, found {deferred_count}')",
+              "taskctl_text = taskctl_text[:deferred_start] + deferred_replacement + taskctl_text[deferred_end:]",
               "taskctl_path.write_text(taskctl_text, encoding='utf-8')",
               "",
           ])

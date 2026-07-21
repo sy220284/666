@@ -1,6 +1,6 @@
 # M3-07 Renderer React基础、Bridge适配与状态边界
 
-> 状态：In Progress  
+> 状态：Planned  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`refactor/m3-renderer-react-foundation`
@@ -63,6 +63,10 @@ M3-06
 5. Design Token集中为CSS变量；Radix仅作为无障碍行为底座，不复制业务状态机。
 6. 将旧入口封装为可挂载、可卸载兼容面，明确事件注销、Tiptap销毁、Autosave flush和异步取消边界。
 7. 增加静态规则：Bridge目录外禁止`window.worldforge`；React组件禁止命令式业务DOM；Zustand禁止持久化业务数据；主题不得选择不同业务命令。
+
+## 暂停说明
+
+M3-06审计发现有限期EntityState终点被静默丢弃。本任务已暂停，原一次性锁文件诊断PR关闭；待M3-06修复合并并重新登记Implemented后，从最新main重新建立本任务分支。
 
 ## 测试与证据
 

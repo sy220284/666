@@ -1,17 +1,22 @@
-# M3-06 StateProposal 与 EndingSnapshot
+# M3-06 StateProposal、EndingSnapshot 与有限期状态修复
 
-实现来源提交：`d51ffe6a2c7751fe94dcf805a116ff0d037b5f01`
-完整Quality运行：`29799141697`（Static、Unit、Integration、Migration、Build、Electron E2E全部成功）。
-独立永久门：PR Policy `29799141563`、Evidence `29799141574`、Security `29799141529`、Performance `29799141539`、Repository Governance `29799141535`均成功。
+权威实现提交：`01409dd483191764fbc05d5bb298a33f5b32f360`
+实现PR Head：`ffee00fdd68bf467c3f712418d473c02fda9f622`
+原始功能主线提交：`bba007a6735a65f1af6bdc0f06a278ddebe16fb4`
 
-本任务建立双类型StateProposal、作者裁决事务、EndingSnapshot与旧章返修失效传播：
+最终Quality运行：`29807742042`，Static、Unit、Integration、Migration、Build、Electron E2E全部成功。
+独立永久门：PR Policy `29807741925`、Task Governance `29807741957`、Evidence `29807741913`、Security `29807741863`、Performance `29807741889`均成功。
 
-- `pending`提案仅进入候选账本，不修改EntityState或ArcMilestone。
-- 接受、编辑接受与拒绝统一进入Core；批量裁决任一失败时整批回滚。
-- 接受后的权威状态与EndingSnapshot在同一写事务生成。
-- 有效快照直接读取；快照缺失或stale时回退查询权威当前表。
-- 纯文字润色不传播；状态、弧光、事件、时间线和伏笔变化只使后续快照及对应派生范围失效。
-- 提案必须携带属于定稿Version的正文logicalBlock证据。
-- 真实Electron场景完成“生成pending→作者界面接受→权威状态更新→有效尾快照展示”闭环。
+本次审计复验确认并修复：
 
-结论：M3-06代码和必要专项验证已完成，状态登记为Implemented；最终Verified按M3连续实现规则延期至M3批次复验。
+- `validUntilChapterId`从合同、StateProposal账本、作者接受/编辑接受到`entity_states.valid_until_chapter_id`完整保留。
+- 非空结束章节必须属于同项目、保持活动状态并严格位于起始章节之后。
+- EntityState继续采用`[validFromChapterId, validUntilChapterId)`半开区间。
+- 覆盖非空终点、同章、逆序、跨项目、编辑接受、终点失效后的批量事务回滚。
+- 真实Electron链路验证有限期提案经IPC、Core与作者界面接受后，在结束章节起失效。
+- pending提案不修改权威状态；接受、编辑接受、拒绝与EndingSnapshot重建保持单事务。
+- 快照缺失或stale时回退权威当前表；纯文字修订不触发语义传播。
+
+人工复核结论：PR最终差异不含一次性`expect.fail(...)`诊断文件；数据库、合同、Core、Electron链路与冻结文档语义一致。
+
+结论：M3-06审计缺陷已修复并通过完整PR矩阵，登记为Implemented；最终Verified按M3批次复验规则延期。

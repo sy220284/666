@@ -28,6 +28,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'main-protection.json',
   'post-merge-verification.mjs',
   'required-checks.json',
+  'stage-close-policy.mjs',
   'task-transition-policy.mjs',
 ]);
 

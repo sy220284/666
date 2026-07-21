@@ -183,7 +183,8 @@ const StateProposalRecordSchema = z
       });
       return;
     }
-    const derived = value.proposalType === 'entity_state' ? (markers[0]?.targetId ?? null) : null;
+    const derived =
+      value.proposalType === 'entity_state' ? (markers[0]?.targetId ?? null) : null;
     if (value.validUntilChapterId !== undefined && value.validUntilChapterId !== derived) {
       context.addIssue({
         code: 'custom',
@@ -285,11 +286,14 @@ const StateProposalGenerateInputBaseSchema = z.strictObject({
   proposals: z.array(StateProposalDraftSchema).max(200),
 });
 
-export const StateProposalGenerateInputSchema = StateProposalGenerateInputBaseSchema.transform(
-  (value) => ({
+export const StateProposalGenerateInputSchema =
+  StateProposalGenerateInputBaseSchema.transform((value) => ({
     ...value,
     proposals: value.proposals.map((proposal) => {
-      if (proposal.proposalType !== 'entity_state' || proposal.validUntilChapterId === null) {
+      if (
+        proposal.proposalType !== 'entity_state' ||
+        proposal.validUntilChapterId === null
+      ) {
         return proposal;
       }
       if (validityEvidence(proposal.evidence).length > 0) return proposal;
@@ -305,8 +309,7 @@ export const StateProposalGenerateInputSchema = StateProposalGenerateInputBaseSc
         ],
       };
     }),
-  }),
-);
+  }));
 
 export const StateProposalResolutionSchema = z
   .strictObject({

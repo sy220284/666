@@ -133,12 +133,91 @@ describe('implementation-first task lifecycle', () => {
     });
     expect(updatedState.lastImplementedTask.allowedPaths).toContain('docs/tasks/M1/M1-01.md');
     expect(updatedState.deferredVerification).toEqual([
-      expect.objectContaining({ id: 'M1-01', implementationCommit: 'abcdef1' }),
+      expect.objectContaining({
+        id: 'M1-01',
+        implementationCommit: 'abcdef1',
+        pending: [
+          'four-file evidence package and real automated run records',
+          'necessary manual review conclusions recorded in summary.md',
+          'risk-based screenshots, full logs, or independent quality matrix when warranted',
+          'final traceability verification status',
+          'Verified closure',
+        ],
+      }),
     ]);
     expect(updatedState.activeTask).toMatchObject({ id: 'M1-02', status: 'IN_PROGRESS' });
     expect(updatedState.activeTask.allowedPaths).not.toContain('docs/tasks/M1/M1-01.md');
     expect(updatedIndex).toContain('| M1-01 | [设置](M1/M1-01.md) | M0 | Implemented |');
     expect(updatedIndex).toContain('| M1-02 | [项目](M1/M1-02.md) | M1-01 | In Progress |');
     expect(updatedCard).toContain('> 状态：Implemented  ');
+  });
+});
+
+describe('M3 stage closure lifecycle', () => {
+  it('blocks implementation advance from M3-10 to M4-01 until M3 is Verified', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-m3-close-'));
+    temporaryDirectories.push(root);
+    await mkdir(path.join(root, 'docs/tasks/M3'), { recursive: true });
+    const state = {
+      schemaVersion: 1,
+      authorization: {
+        mode: 'implementation-mainline',
+        branch: 'main',
+        deferVerificationUntilBatch: true,
+      },
+      activeTask: {
+        id: 'M3-10',
+        status: 'IN_PROGRESS',
+        source: 'docs/tasks/M3/M3-10.md',
+        branch: 'main',
+        startedAt: '2026-07-21',
+        allowedPaths: ['apps/desktop/renderer/'],
+        forbiddenPaths: [],
+        requiredDocs: [],
+        verification: ['pnpm test'],
+      },
+      deferredVerification: [{ id: 'M3-01' }],
+    };
+    const index = `| ID | 任务卡 | 依赖 | 状态 |\n|---|---|---|---|\n| M3-01 | [一](M3/M3-01.md) | M2 | Implemented |\n| M3-10 | [十](M3/M3-10.md) | M3-09 | In Progress |\n| M4-01 | [四](M4/M4-01.md) | M3 | Planned |\n`;
+    await Promise.all([
+      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), JSON.stringify(state), 'utf8'),
+      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), renderActiveTask(state), 'utf8'),
+      writeFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), index, 'utf8'),
+      writeFile(
+        path.join(root, 'docs/tasks/M3/M3-10.md'),
+        '# M3-10\n\n> 状态：In Progress  \n',
+        'utf8',
+      ),
+    ]);
+
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        [path.resolve('scripts/taskctl.mjs'), 'advance', '--ci=success', '--commit=abcdef1'],
+        { cwd: root, stdio: 'pipe' },
+      ),
+    ).toThrow();
+    expect(
+      JSON.parse(await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8')),
+    ).toEqual(state);
+    expect(await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8')).toBe(index);
+  });
+
+  it('requires an explicit expected Head and squash provenance for verify-task', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-verify-head-'));
+    temporaryDirectories.push(root);
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        [
+          path.resolve('scripts/taskctl.mjs'),
+          'verify-task',
+          'M3-01',
+          '--ci=success',
+          '--commit=abcdef1',
+        ],
+        { cwd: root, stdio: 'pipe' },
+      ),
+    ).toThrow(/--expected-head/);
   });
 });

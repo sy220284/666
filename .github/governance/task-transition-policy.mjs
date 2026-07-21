@@ -4,18 +4,21 @@ import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
+import { stageClosureErrors } from '../../scripts/task-control-lib.mjs';
+
 const statePath = 'docs/tasks/ACTIVE_TASK.json';
 const indexPath = 'docs/tasks/TASK_INDEX.md';
 
 export function parseTaskRows(markdown) {
   const tasks = new Map();
   const pattern =
-    /^\|\s*(M\d-\d{2})\s*\|\s*\[[^\]]+\]\(([^)]+)\)\s*\|\s*[^|]+?\s*\|\s*([^|]+?)\s*\|\s*$/gmu;
+    /^\|\s*(M\d-\d{2})\s*\|\s*\[[^\]]+\]\(([^)]+)\)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gmu;
   for (const match of markdown.matchAll(pattern)) {
     tasks.set(match[1], {
       id: match[1],
       source: path.posix.join('docs/tasks', match[2]),
-      status: match[3].trim(),
+      dependencyText: match[3].trim(),
+      status: match[4].trim(),
     });
   }
   return tasks;
@@ -76,6 +79,8 @@ export function implementationAdvanceErrors(baseState, headState, headTasks) {
     errors.push(`TASK_INDEX must mark ${previous.id} as Implemented`);
   }
   errors.push(...activeNextTaskErrors(headState, headTasks, previous.id));
+  const nextTask = headTasks.get(headState?.activeTask?.id);
+  if (nextTask) errors.push(...stageClosureErrors(nextTask, headTasks, headState));
   return errors;
 }
 
@@ -125,7 +130,9 @@ export function revalidationReopenErrors(
   if ((headState.deferredVerification ?? []).some((entry) => entry.id === target.id)) {
     errors.push(`Reopened task ${target.id} must be removed from deferredVerification`);
   }
-  if (JSON.stringify(headState.lastImplementedTask) !== JSON.stringify(baseState.lastImplementedTask)) {
+  if (
+    JSON.stringify(headState.lastImplementedTask) !== JSON.stringify(baseState.lastImplementedTask)
+  ) {
     errors.push('Revalidation reopen must preserve lastImplementedTask');
   }
   return errors;
@@ -165,6 +172,8 @@ export function revalidationClosureErrors(
   if (nextId && baseTasks.get(nextId)?.status !== 'Planned') {
     errors.push(`Restored task ${nextId} must be Planned in the base TASK_INDEX`);
   }
+  const nextTask = headTasks.get(nextId);
+  if (nextTask) errors.push(...stageClosureErrors(nextTask, headTasks, headState));
   return errors;
 }
 
@@ -176,10 +185,7 @@ export function classifyTransition(baseState, headState, headTasks) {
   const previousId = baseState?.activeTask?.id;
   if (!previousId) return 'none';
   const previousHeadStatus = headTasks.get(previousId)?.status;
-  if (
-    headState?.lastImplementedTask?.id === previousId &&
-    previousHeadStatus === 'Implemented'
-  ) {
+  if (headState?.lastImplementedTask?.id === previousId && previousHeadStatus === 'Implemented') {
     return 'implementation-advance';
   }
   if (headState?.lastVerifiedTask?.id === previousId && previousHeadStatus === 'Verified') {
@@ -233,8 +239,8 @@ async function validateReadyTransition() {
   console.log(`Task transition is valid: ${transition}.`);
 }
 
-function task(id, source, status) {
-  return { id, source, status };
+function task(id, source, status, dependencyText = '无') {
+  return { id, source, status, dependencyText };
 }
 
 function selfTest() {
@@ -262,7 +268,12 @@ function selfTest() {
 
   const advanceState = {
     ...baseState,
-    activeTask: { id: nextId, status: 'IN_PROGRESS', source: nextSource, branch: 'work/m9-92-next' },
+    activeTask: {
+      id: nextId,
+      status: 'IN_PROGRESS',
+      source: nextSource,
+      branch: 'work/m9-92-next',
+    },
     lastImplementedTask: {
       id: pausedId,
       source: pausedSource,

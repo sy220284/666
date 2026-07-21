@@ -41,9 +41,9 @@ interface ParsedCommand {
 }
 
 interface CommandSchema {
-  safeParse(input: unknown):
-    | { readonly success: true; readonly data: ParsedCommand }
-    | { readonly success: false };
+  safeParse(
+    input: unknown,
+  ): { readonly success: true; readonly data: ParsedCommand } | { readonly success: false };
 }
 
 interface ResultSchema {

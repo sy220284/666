@@ -190,11 +190,7 @@ function mount(): void {
       snapshot.replaceChildren(element('p', `快照读取失败：${snapshotResponse.error.code}`));
       return;
     }
-    renderSnapshot(
-      snapshot,
-      snapshotResponse.data.snapshotSource,
-      snapshotResponse.data.content,
-    );
+    renderSnapshot(snapshot, snapshotResponse.data.snapshotSource, snapshotResponse.data.content);
   };
 
   const resolve = async (

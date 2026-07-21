@@ -40,7 +40,9 @@ function resultSchema<Data extends z.ZodType>(data: Data) {
 export const StateProposalCatalogResultSchema = resultSchema(StateProposalCatalogSchema);
 export const EndingSnapshotResultSchema = resultSchema(EndingSnapshotSchema);
 export const EndingSnapshotReadResultEnvelopeSchema = resultSchema(EndingSnapshotReadResultSchema);
-export const DerivedInvalidationResultEnvelopeSchema = resultSchema(DerivedInvalidationResultSchema);
+export const DerivedInvalidationResultEnvelopeSchema = resultSchema(
+  DerivedInvalidationResultSchema,
+);
 
 export interface StateProposalBridge {
   readonly list: (input: {

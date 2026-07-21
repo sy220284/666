@@ -1,0 +1,84 @@
+name: Dependency Lock Sync
+
+on:
+  push:
+    branches:
+      - 'work/**'
+      - 'refactor/**'
+    paths:
+      - '.github/dependency-lock-request.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dependency-lock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Validate dependency lock request
+        run: node scripts/dependency-lock-request.mjs validate
+      - name: Generate canonical lockfile
+        run: pnpm install --lockfile-only --ignore-scripts
+      - name: Verify frozen install metadata
+        run: pnpm install --frozen-lockfile --ignore-scripts --prefer-offline
+      - name: Commit lockfile and consume request
+        uses: actions/github-script@v8
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+          EXPECTED_HEAD: ${{ github.sha }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = process.env.TARGET_BRANCH;
+            const expectedHead = process.env.EXPECTED_HEAD;
+            const ref = await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+            if (ref.data.object.sha !== expectedHead) {
+              core.setFailed(`Branch moved during lock generation: ${ref.data.object.sha}`);
+              return;
+            }
+            const parent = await github.rest.git.getCommit({ owner, repo, commit_sha: expectedHead });
+            const lock = fs.readFileSync('pnpm-lock.yaml', 'utf8');
+            const blob = await github.rest.git.createBlob({ owner, repo, content: lock, encoding: 'utf-8' });
+            const tree = await github.rest.git.createTree({
+              owner,
+              repo,
+              base_tree: parent.data.tree.sha,
+              tree: [
+                { path: 'pnpm-lock.yaml', mode: '100644', type: 'blob', sha: blob.data.sha },
+                { path: '.github/dependency-lock-request.json', mode: '100644', type: 'blob', sha: null },
+              ],
+            });
+            const commit = await github.rest.git.createCommit({
+              owner,
+              repo,
+              message: 'chore(deps): synchronize frozen lockfile',
+              tree: tree.data.sha,
+              parents: [expectedHead],
+            });
+            await github.rest.git.updateRef({
+              owner,
+              repo,
+              ref: `heads/${branch}`,
+              sha: commit.data.sha,
+              force: false,
+            });

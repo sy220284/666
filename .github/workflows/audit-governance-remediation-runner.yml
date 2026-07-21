@@ -37,6 +37,24 @@ jobs:
           from pathlib import Path
           import textwrap
 
+          taskctl = Path('scripts/taskctl.mjs')
+          taskctl_source = taskctl.read_text(encoding='utf-8')
+          actual = """      pending: [
+                'standard evidence package and screenshots',
+                'manual acceptance and exhaustive quality matrix',
+                'final traceability verification status',
+                'Verified closure',
+              ],"""
+          normalized = """      pending: [
+              'standard evidence package and screenshots',
+              'manual acceptance and exhaustive quality matrix',
+              'final traceability verification status',
+              'Verified closure',
+              ],"""
+          if taskctl_source.count(actual) != 1:
+              raise SystemExit('scripts/taskctl.mjs deferred ledger source block changed')
+          taskctl.write_text(taskctl_source.replace(actual, normalized), encoding='utf-8')
+
           source = Path('.github/workflows/audit-governance-remediation.yml').read_text(encoding='utf-8')
           marker = "          python - <<'PY'\n"
           start = source.index(marker) + len(marker)

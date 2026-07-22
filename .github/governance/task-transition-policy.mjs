@@ -177,6 +177,98 @@ export function revalidationClosureErrors(
   return errors;
 }
 
+function m3Rows(tasks) {
+  return [...tasks.values()].filter((task) => task.id.startsWith('M3-'));
+}
+
+function allM3Verified(tasks) {
+  const rows = m3Rows(tasks);
+  return rows.length > 0 && rows.every((task) => task.status === 'Verified');
+}
+
+export function m3BatchClosureErrors(
+  baseState,
+  headState,
+  baseTasks,
+  headTasks,
+  pullRequestBranch,
+) {
+  const errors = [];
+  const active = baseState?.activeTask;
+  if (active?.id !== 'M3-01' || active.status !== 'IN_PROGRESS') {
+    errors.push('M3 batch closure requires M3-01 as the active revalidation task');
+    return errors;
+  }
+  if (pullRequestBranch !== active.branch) {
+    errors.push('M3 batch closure PR must use the M3-01 revalidation branch');
+  }
+  if (baseTasks.get('M3-01')?.status !== 'In Progress') {
+    errors.push('Base TASK_INDEX must mark M3-01 as In Progress');
+  }
+  if (baseTasks.get('M4-01')?.status !== 'Planned') {
+    errors.push('Base TASK_INDEX must mark M4-01 as Planned');
+  }
+
+  const baseM3 = m3Rows(baseTasks);
+  const headM3 = m3Rows(headTasks);
+  if (baseM3.length === 0 || headM3.length !== baseM3.length) {
+    errors.push('M3 batch closure must preserve the complete indexed M3 task set');
+  }
+  for (const task of headM3) {
+    if (task.status !== 'Verified') errors.push(`${task.id} must be Verified in M3 batch closure`);
+  }
+
+  const deferredM3 = (headState?.deferredVerification ?? [])
+    .map((entry) => entry?.id)
+    .filter((id) => typeof id === 'string' && id.startsWith('M3-'));
+  if (deferredM3.length > 0) {
+    errors.push(`M3 batch closure must clear deferredVerification: ${deferredM3.join(', ')}`);
+  }
+
+  const baseDeferredM307 = (baseState?.deferredTasks ?? []).find(
+    (entry) => entry?.id === 'M3-07',
+  );
+  if (baseDeferredM307?.status !== 'Deferred' || baseDeferredM307?.absorbedBy !== 'M3-08') {
+    errors.push('M3-07 must be a Deferred task absorbed by M3-08 before batch closure');
+  }
+  if ((headState?.deferredTasks ?? []).some((entry) => entry?.id === 'M3-07')) {
+    errors.push('M3 batch closure must remove M3-07 from deferredTasks');
+  }
+  if (headTasks.get('M3-07')?.status !== 'Verified') {
+    errors.push('M3-07 must be Verified using M3-08 absorbed evidence');
+  }
+  if (headTasks.get('M3-08')?.status !== 'Verified') {
+    errors.push('M3-08 must be Verified before absorbed M3-07 can close');
+  }
+
+  if (headState?.lastVerifiedTask?.id !== 'M3-10') {
+    errors.push('M3 batch closure lastVerifiedTask must record M3-10');
+  }
+  if (!/^[0-9a-f]{7,40}$/iu.test(headState?.lastVerifiedTask?.commit ?? '')) {
+    errors.push('M3 batch closure lastVerifiedTask must reference a committed revision');
+  }
+  if (
+    JSON.stringify(headState.lastImplementedTask) !== JSON.stringify(baseState.lastImplementedTask)
+  ) {
+    errors.push('M3 batch closure must preserve lastImplementedTask');
+  }
+
+  for (const [id, baseTask] of baseTasks.entries()) {
+    if (id.startsWith('M3-') || id === 'M4-01') continue;
+    if (headTasks.get(id)?.status !== baseTask.status) {
+      errors.push(`${id} status must not change during M3 batch closure`);
+    }
+  }
+
+  errors.push(...activeNextTaskErrors(headState, headTasks, active.id));
+  if (headState?.activeTask?.id !== 'M4-01') {
+    errors.push('M3 batch closure must activate M4-01');
+  }
+  const nextTask = headTasks.get(headState?.activeTask?.id);
+  if (nextTask) errors.push(...stageClosureErrors(nextTask, headTasks, headState));
+  return errors;
+}
+
 function governanceBranch(branch) {
   return /^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(branch ?? '');
 }
@@ -184,6 +276,14 @@ function governanceBranch(branch) {
 export function classifyTransition(baseState, headState, headTasks) {
   const previousId = baseState?.activeTask?.id;
   if (!previousId) return 'none';
+  if (
+    previousId === 'M3-01' &&
+    headState?.activeTask?.id === 'M4-01' &&
+    headState?.lastVerifiedTask?.id === 'M3-10' &&
+    allM3Verified(headTasks)
+  ) {
+    return 'm3-batch-closure';
+  }
   const previousHeadStatus = headTasks.get(previousId)?.status;
   if (headState?.lastImplementedTask?.id === previousId && previousHeadStatus === 'Implemented') {
     return 'implementation-advance';
@@ -230,6 +330,8 @@ async function validateReadyTransition() {
     errors = revalidationReopenErrors(baseState, headState, baseTasks, headTasks, branch);
   } else if (transition === 'revalidation-closure') {
     errors = revalidationClosureErrors(baseState, headState, baseTasks, headTasks, branch);
+  } else if (transition === 'm3-batch-closure') {
+    errors = m3BatchClosureErrors(baseState, headState, baseTasks, headTasks, branch);
   } else {
     throw new Error(
       `Ready task PR has an unsupported transition from ${baseState.activeTask?.id ?? '<none>'}`,
@@ -347,6 +449,88 @@ function selfTest() {
       'work/m9-91-target',
     ).includes(`Reopened task ${targetId} must be removed from deferredVerification`),
   );
+
+  const m3Task = (id, status) =>
+    task(id, `docs/tasks/M3/${id}_TASK.md`, status, id === 'M3-01' ? 'M2' : 'M3-01');
+  const m3BaseTasks = new Map([
+    ['M3-01', m3Task('M3-01', 'In Progress')],
+    ['M3-02', m3Task('M3-02', 'Verified')],
+    ['M3-03', m3Task('M3-03', 'Implemented')],
+    ['M3-04', m3Task('M3-04', 'Verified')],
+    ['M3-05', m3Task('M3-05', 'Implemented')],
+    ['M3-06', m3Task('M3-06', 'Implemented')],
+    ['M3-07', m3Task('M3-07', 'Deferred')],
+    ['M3-08', m3Task('M3-08', 'Implemented')],
+    ['M3-09', m3Task('M3-09', 'Implemented')],
+    ['M3-10', m3Task('M3-10', 'Implemented')],
+    [
+      'M4-01',
+      task('M4-01', 'docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md', 'Planned', 'M3'),
+    ],
+  ]);
+  const m3BaseState = {
+    activeTask: {
+      id: 'M3-01',
+      status: 'IN_PROGRESS',
+      source: m3BaseTasks.get('M3-01').source,
+      branch: 'work/m3-01-task',
+    },
+    lastImplementedTask: { id: 'M3-10' },
+    deferredVerification: [
+      { id: 'M3-03' },
+      { id: 'M3-05' },
+      { id: 'M3-06' },
+      { id: 'M3-08' },
+      { id: 'M3-09' },
+      { id: 'M3-10' },
+    ],
+    deferredTasks: [{ id: 'M3-07', status: 'Deferred', absorbedBy: 'M3-08' }],
+  };
+  const m3ClosedTasks = new Map(m3BaseTasks);
+  for (const id of [...m3ClosedTasks.keys()].filter((id) => id.startsWith('M3-'))) {
+    const row = m3ClosedTasks.get(id);
+    m3ClosedTasks.set(id, { ...row, status: 'Verified' });
+  }
+  m3ClosedTasks.set('M4-01', {
+    ...m3ClosedTasks.get('M4-01'),
+    status: 'In Progress',
+  });
+  const m3ClosedState = {
+    ...m3BaseState,
+    activeTask: {
+      id: 'M4-01',
+      status: 'IN_PROGRESS',
+      source: m3ClosedTasks.get('M4-01').source,
+      branch: 'work/m4-01-fts-index-dictionary',
+    },
+    deferredVerification: [],
+    deferredTasks: [],
+    lastVerifiedTask: { id: 'M3-10', commit: '1234567' },
+  };
+  assert.equal(
+    classifyTransition(m3BaseState, m3ClosedState, m3ClosedTasks),
+    'm3-batch-closure',
+  );
+  assert.deepEqual(
+    m3BatchClosureErrors(
+      m3BaseState,
+      m3ClosedState,
+      m3BaseTasks,
+      m3ClosedTasks,
+      'work/m3-01-task',
+    ),
+    [],
+  );
+  assert.ok(
+    m3BatchClosureErrors(
+      m3BaseState,
+      { ...m3ClosedState, deferredVerification: [{ id: 'M3-09' }] },
+      m3BaseTasks,
+      m3ClosedTasks,
+      'work/m3-01-task',
+    ).some((error) => error.includes('clear deferredVerification')),
+  );
+
   console.log('task transition policy self-test passed');
 }
 

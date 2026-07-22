@@ -1,0 +1,128 @@
+name: Diagnostic Export Integrated Remediation V2
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: ${{ github.head_ref == 'diagnostic/export-integrated-remediation' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Execute corrected audited patch generator
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import textwrap
+
+          workflow = Path('.github/workflows/diagnostic-export-integrated-remediation.yml').read_text()
+          script = workflow.split("python3 - <<'PY'\n", 1)[1].split('\n          PY', 1)[0]
+          script = textwrap.dedent(script)
+
+          script = re.sub(
+              r"replace_once\(\n\s*'apps/desktop/main/src/core-supervisor\.ts',\n.*?\n\s*\)\n\n\s*replace_once\(",
+              """replace_once(
+              'apps/desktop/main/src/core-supervisor.ts',
+              \"\"\"        message: 'The task command timed out.',
+                      retryable: true,\"\"\",
+              \"\"\"        message:
+                        'Core did not return a final result before the timeout; the operation may still have completed.',
+                      retryable: false,
+                      userAction: 'Refresh authoritative state before attempting the operation again.',\"\"\",
+          )
+
+          replace_once(""",
+              script,
+              count=1,
+              flags=re.S,
+          )
+          script = re.sub(
+              r"replace_once\(\n\s*'apps/desktop/main/src/electron-main\.ts',\n.*?\n\s*\)\n\n\s*candidate =",
+              """replace_once(
+              'apps/desktop/main/src/electron-main.ts',
+              \"\"\"    platform: process.platform,
+                  logger,\"\"\",
+              \"\"\"    platform: process.platform,
+                  enableTestFixtures: process.env.WORLDFORGE_E2E === '1' && !app.isPackaged,
+                  logger,\"\"\",
+          )
+
+          candidate =""",
+              script,
+              count=1,
+              flags=re.S,
+          )
+          script = re.sub(
+              r"replace_once\(\n\s*'tests/security/candidate-ipc\.test\.ts',\n\s*\"\"\"    platform: 'test',.*?\n\s*\)\n\s*replace_once\(",
+              """replace_once(
+              'tests/security/candidate-ipc.test.ts',
+              \"\"\"    platform: 'test',
+                  logger:\"\"\",
+              \"\"\"    platform: 'test',
+                  enableTestFixtures,
+                  logger:\"\"\",
+          )
+          replace_once(""",
+              script,
+              count=1,
+              flags=re.S,
+          )
+          exec(compile(script, 'integrated-remediation-generator', 'exec'))
+          PY
+      - name: Format changed files
+        run: |
+          pnpm exec prettier --write \
+            apps/desktop/main/src/core-supervisor.ts \
+            apps/desktop/main/src/ipc-handlers.ts \
+            apps/desktop/main/src/electron-main.ts \
+            apps/desktop/main/src/candidate-preview-ipc.ts \
+            apps/desktop/main/src/continuity-ipc.ts \
+            apps/desktop/main/src/narrative-planning-ipc.ts \
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts \
+            apps/desktop/renderer/src/react-entry.tsx \
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts \
+            tests/security/candidate-ipc.test.ts \
+            tests/unit/bridge-request-detachment.test.ts \
+            tests/unit/core-recovery-supervisor.test.ts \
+            tests/unit/ipc-timeout-semantics.test.ts \
+            tests/migration/integrated-coordination-migration.test.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: integrated-remediation-output-v2
+          path: |
+            apps/desktop/main/src/core-supervisor.ts
+            apps/desktop/main/src/ipc-handlers.ts
+            apps/desktop/main/src/electron-main.ts
+            apps/desktop/main/src/candidate-preview-ipc.ts
+            apps/desktop/main/src/continuity-ipc.ts
+            apps/desktop/main/src/narrative-planning-ipc.ts
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts
+            apps/desktop/renderer/src/react-entry.tsx
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts
+            migrations/project/0018_integrated_coordination_hardening.sql
+            tests/migration/integrated-coordination-migration.test.ts
+            tests/security/candidate-ipc.test.ts
+            tests/unit/bridge-request-detachment.test.ts
+            tests/unit/core-recovery-supervisor.test.ts
+            tests/unit/ipc-timeout-semantics.test.ts
+            docs/architecture/M0_M3_INTEGRATED_COORDINATION.md
+            docs/contracts/ERROR_CODES.md
+          if-no-files-found: error
+          retention-days: 1

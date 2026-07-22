@@ -1,0 +1,41 @@
+name: Diagnostic Prettier
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    if: ${{ github.head_ref == 'diagnostic/prettier-audit-manifest' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format target files
+        run: |
+          pnpm exec prettier --write \
+            scripts/audit-remediation-policy.mjs \
+            tests/unit/audit-remediation-manifest-discovery.test.ts \
+            .github/audit-remediations/manifest-discovery-2026-07-23.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: prettier-audit-manifest-output
+          path: |
+            scripts/audit-remediation-policy.mjs
+            tests/unit/audit-remediation-manifest-discovery.test.ts
+            .github/audit-remediations/manifest-discovery-2026-07-23.json
+          if-no-files-found: error
+          retention-days: 1

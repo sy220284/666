@@ -18,9 +18,7 @@
       ]
     }
   ],
-  "evidenceMigrationTasks": [
-    "M0-01"
-  ],
+  "evidenceMigrationTasks": ["M0-01"],
   "governancePaths": [
     ".github/audit-remediations/manifest-discovery-2026-07-23.json"
   ]

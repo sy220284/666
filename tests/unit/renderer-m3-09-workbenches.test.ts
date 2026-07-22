@@ -94,14 +94,15 @@ describe('M3 final React business workbenches', () => {
 
   it('has one static React root and physically removes every retired business bootstrap', async () => {
     const html = await readFile(path.join(rendererRoot, 'index.html'), 'utf8');
+    const packageEntry = await readFile(path.join(rendererRoot, 'index.ts'), 'utf8');
     expect(html).toContain('id="react-root"');
     expect(html).toContain('./m3.css');
     expect(html).not.toContain('legacy-root');
     expect(html).not.toContain('data-draft-workspace');
     expect(html).not.toContain('data-version-dialog');
+    expect(packageEntry).not.toContain("import './main.js'");
 
     for (const file of [
-      'index.ts',
       'main.ts',
       'entry.ts',
       'candidate-preview-bootstrap.ts',
@@ -183,7 +184,9 @@ describe('M3 final React business workbenches', () => {
       'state-proposal-valid-until.spec.ts',
       'state-proposal-workflow.spec.ts',
       'candidate-preview.spec.ts',
-      'candidate-apply.spec.ts',
+      'candidate-action.spec.ts',
+      'candidate-protection.spec.ts',
+      'candidate-undo.spec.ts',
     ]) {
       expect(config).toContain(spec);
     }

@@ -1,6 +1,6 @@
 # M3-10 Renderer写作、Version、Candidate迁移与旧入口退役
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`refactor/m3-renderer-writing-candidate-cutover`
@@ -80,7 +80,7 @@ M3-09
 - 候选基础布局和窄视口降级可用，完整M5能力仍按后续任务实现。
 - 长章编辑、Diff和章节切换性能不低于迁移前预算。
 - 静态扫描确认旧入口、Bridge直调、业务DOM查询和重复状态系统清除。
-- 全量Electron E2E覆盖关键目标视口。
+- M3批量复验运行`29914507812`完成25/25 Electron E2E及全部永久门。
 
 证据保存到：`docs/test-evidence/M3-10/`
 
@@ -89,6 +89,6 @@ M3-09
 - React成为Renderer唯一页面渲染系统，旧`index.ts`及业务HTML入口删除。
 - Zustand只承载UI临时状态；Tiptap和Core继续承担既定职责。
 - 写作、Version、Candidate、冲突、锁定、保存和恢复行为有等价证据且安全指标保持为0。
-- M4不得在本任务完成前新增Renderer业务入口。
+- M4只能在M3全部任务Verified且延期账本清空后激活。
 
 任务关闭前必须同步`TASK_INDEX.md`、追踪矩阵及实际受影响的架构、UI、安全、性能和测试文档。

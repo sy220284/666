@@ -1,15 +1,15 @@
-# M3-06 批量复验记录
+# M3-05 批量复验记录
 
 生成时间：2026-07-22T11:30:00.000Z  
 批量基线：f6d326887c43f3c561bf913d6090e00ffe9e4551
 
 ## 交付结论
 
-章节定稿生成final Version、StateProposal与EndingSnapshot；待裁决提案零权威写入，接受、编辑接受和拒绝由作者裁决并在单事务内更新。有限期EntityState完整保留validUntilChapterId并执行半开区间语义，旧章语义变化只标记后续派生快照失效。
+伏笔支持planned、planted、reinforced、partially_revealed、revealed与cancelled生命周期，并校验回收窗口、依赖环、互斥与增强关系；人物弧光及里程碑支持章节、TimelineEvent和节点依赖，权威推进只接受作者操作或确认后的StateProposal。
 
 ## 复验结论
 
-复核覆盖双类型提案、批量裁决、事务回滚、快照回退、失效传播、有限期终点保留及同章、逆序、跨项目拒绝。真实桌面链路覆盖提案生成、裁决与有限期状态展示。
+复核覆盖非法状态流转、自依赖、依赖环、互斥冲突、章节移动、TimelineEvent项目边界及AI零权威写入。React叙事台账完整展示伏笔关系与弧光依赖。
 
 ## 自动化与桌面证据
 

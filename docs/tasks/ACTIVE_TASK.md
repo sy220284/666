@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-01`
-- 唯一任务卡：`docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md`
-- 工作分支：`work/m3-01-project-brief-outline`
+- 任务ID：`M4-01`
+- 唯一任务卡：`docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md`
+- 工作分支：`work/m4-01-fts-index-dictionary`
 - 开始时间：`2026-07-22`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -20,39 +20,20 @@ IN_PROGRESS
 ```yaml
 allowed_paths:
   - migrations/project/
-  - packages/domain/
   - packages/core-service/
   - packages/contracts/
   - apps/desktop/renderer/
-  - apps/desktop/main/
-  - apps/desktop/preload/
   - tests/integration/
-  - tests/e2e/
-  - tests/migration/
-  - tests/security/
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - tests/performance/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/
-  - docs/tasks/M3_TASKS.md
   - docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-01/
-  - docs/test-evidence/M3-02/
-  - docs/test-evidence/M3-03/
-  - docs/test-evidence/M3-04/
-  - docs/test-evidence/M3-05/
-  - docs/test-evidence/M3-06/
-  - docs/test-evidence/M3-07/
-  - docs/test-evidence/M3-08/
-  - docs/test-evidence/M3-09/
-  - docs/test-evidence/M3-10/
+  - docs/test-evidence/M4-01/
 forbidden_paths:
 
 required_docs:
@@ -60,16 +41,15 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/product/FUNCTION_CATALOG.md
   - docs/database/DATABASE_SCHEMA.md
-  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - docs/testing/PERFORMANCE_BUDGETS.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
   - pnpm test:migration
   - pnpm test:integration
-  - pnpm test:security
+  - pnpm test:perf
   - pnpm test:e2e
 ```
 

@@ -1,6 +1,6 @@
 # M3-07 Renderer迁移基础与React底座
 
-> 状态：Deferred  
+> 状态：Verified  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 原机器分支：`work/m3-07-renderer-react-foundation`  
@@ -9,9 +9,9 @@
 
 ## 状态说明
 
-作者决定跳过M3-07的独立闭环，继续推进下一任务。M3-07不得登记为Implemented或Verified；已完成部分保留为Renderer迁移Checkpoint，未完成范围全部并入M3-08统一完成。
+M3-07未形成第二套独立实现。Checkpoint进入main后，未完成范围全部并入M3-08；M3-08已完成React依赖、真实Root、Zustand边界、错误边界、Legacy隔离与完整验证矩阵。
 
-本卡不再作为独立活动任务执行。Issue #126继续记录被转移的环境与验收事项。
+本卡依据M3-08最终Evidence及M3批量复验运行完成承接关闭。
 
 ## 已完成并进入main
 
@@ -25,7 +25,7 @@
 - Legacy所有权与退役任务清单。
 - 对应Unit与Security边界测试。
 
-## 转入M3-08的未完成范围
+## 由M3-08完成的转入范围
 
 - React、ReactDOM、Zustand及类型依赖。
 - pnpm 11.13.0生成的规范`pnpm-lock.yaml`。
@@ -34,11 +34,10 @@
 - Zustand正式Store接线及无持久化约束。
 - React与Legacy DOM所有权隔离。
 - 完整Unit、Integration、Migration、Security、Performance、Build、Electron E2E与Package复验。
-- M3-07正式Evidence。
+- M3-07承接Evidence。
 
-## 后续关闭规则
+## 关闭记录
 
-1. M3-08必须完成本卡全部转入范围，不能只迁移页面。
-2. M3-08 Evidence必须单独列出M3-07转入要求及真实测试结果。
-3. M3-08完成后，使用`pnpm task:close-deferred M3-07 -- --evidence-task=M3-08 ...`校验承接关系、Evidence、主线提交与Squash来源后，将本卡从Deferred登记为Verified。
-4. 在上述条件满足前，M3阶段不得关闭，M4-01不得激活。
+- M3-08 Evidence逐项列出转入要求与真实测试结果。
+- M3-07最终Evidence明确引用M3-08承接实现，不声明第二套实现。
+- M3批量复验运行`29914507812`完成25/25 Electron链路，安全与性能门同步通过。

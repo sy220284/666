@@ -11,46 +11,27 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M3-01",
+    "id": "M4-01",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md",
-    "branch": "work/m3-01-project-brief-outline",
+    "source": "docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md",
+    "branch": "work/m4-01-fts-index-dictionary",
     "startedAt": "2026-07-22",
     "allowedPaths": [
       "migrations/project/",
-      "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
       "apps/desktop/renderer/",
-      "apps/desktop/main/",
-      "apps/desktop/preload/",
       "tests/integration/",
-      "tests/e2e/",
-      "tests/migration/",
-      "tests/security/",
-      "docs/contracts/IPC_CONTRACTS.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/ui/SCREEN_SPECIFICATIONS.md",
+      "tests/performance/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M3/",
-      "docs/tasks/M3_TASKS.md",
       "docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-01/",
-      "docs/test-evidence/M3-02/",
-      "docs/test-evidence/M3-03/",
-      "docs/test-evidence/M3-04/",
-      "docs/test-evidence/M3-05/",
-      "docs/test-evidence/M3-06/",
-      "docs/test-evidence/M3-07/",
-      "docs/test-evidence/M3-08/",
-      "docs/test-evidence/M3-09/",
-      "docs/test-evidence/M3-10/"
+      "docs/test-evidence/M4-01/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -58,9 +39,8 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/product/FUNCTION_CATALOG.md",
       "docs/database/DATABASE_SCHEMA.md",
-      "docs/ui/SCREEN_SPECIFICATIONS.md"
+      "docs/testing/PERFORMANCE_BUDGETS.md"
     ],
     "verification": [
       "pnpm lint",
@@ -68,97 +48,22 @@
       "pnpm test",
       "pnpm test:migration",
       "pnpm test:integration",
-      "pnpm test:security",
+      "pnpm test:perf",
       "pnpm test:e2e"
     ]
   },
   "lastVerifiedTask": {
-    "id": "M3-02",
-    "commit": "0239e87aca9a31bcfc81008d326af2a9fa16b889",
-    "verifiedAt": "2026-07-20T12:49:05Z"
+    "id": "M3-10",
+    "commit": "f6d326887c43f3c561bf913d6090e00ffe9e4551",
+    "verifiedAt": "2026-07-22T11:45:00.000Z",
+    "evidenceHead": "f6d326887c43f3c561bf913d6090e00ffe9e4551",
+    "squashProvenance": {
+      "implementationHead": "5629f7430e58684f70b0de450b50ae330f3cdb62",
+      "mainCommit": "1e3dca74d799b32ca520c279c1b51878b37607f5"
+    }
   },
-  "deferredVerification": [
-    {
-      "id": "M3-03",
-      "implementationCommit": "e452d35c6056d505c402d3b78c779348247ebc13",
-      "deferredAt": "2026-07-19T08:58:11.099Z",
-      "pending": [
-        "four-file evidence package and real automated run records",
-        "necessary manual review conclusions recorded in summary.md",
-        "risk-based screenshots, full logs, or independent quality matrix when warranted",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M3-05",
-      "implementationCommit": "d0903e133a7d10165016aa0f587bff9908680dd1",
-      "deferredAt": "2026-07-20T09:55:38.691Z",
-      "pending": [
-        "four-file evidence package and real automated run records",
-        "necessary manual review conclusions recorded in summary.md",
-        "risk-based screenshots, full logs, or independent quality matrix when warranted",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M3-06",
-      "implementationCommit": "01409dd483191764fbc05d5bb298a33f5b32f360",
-      "deferredAt": "2026-07-21T07:40:04.859Z",
-      "pending": [
-        "four-file evidence package and real automated run records",
-        "necessary manual review conclusions recorded in summary.md",
-        "risk-based screenshots, full logs, or independent quality matrix when warranted",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M3-08",
-      "implementationCommit": "a519fc5fedac59777ed8c9d683a15d4b8a715f3e",
-      "deferredAt": "2026-07-22T02:19:43.093Z",
-      "pending": [
-        "four-file evidence package and real automated run records",
-        "necessary manual review conclusions recorded in summary.md",
-        "risk-based screenshots, full logs, or independent quality matrix when warranted",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M3-09",
-      "implementationCommit": "a47735bed06e4cc4f6884f0a66aa66a8fdf0691b",
-      "deferredAt": "2026-07-22T04:13:47.994Z",
-      "pending": [
-        "four-file evidence package and real automated run records",
-        "necessary manual review conclusions recorded in summary.md",
-        "risk-based screenshots, full logs, or independent quality matrix when warranted",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
-    {
-      "id": "M3-10",
-      "implementationCommit": "1e3dca74d799b32ca520c279c1b51878b37607f5",
-      "deferredAt": "2026-07-22T10:30:00.000Z",
-      "pending": [
-        "batch revalidation against the merged React renderer baseline",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    }
-  ],
-  "deferredTasks": [
-    {
-      "id": "M3-07",
-      "status": "Deferred",
-      "checkpointCommit": "3522f2887da4c74fcf5de3a57aa87337fb270276",
-      "deferredAt": "2026-07-21",
-      "reason": "Author directed the independent task to be skipped; all unfinished React foundation scope is absorbed by M3-08.",
-      "absorbedBy": "M3-08"
-    }
-  ],
+  "deferredVerification": [],
+  "deferredTasks": [],
   "lastImplementedTask": {
     "id": "M3-10",
     "commit": "1e3dca74d799b32ca520c279c1b51878b37607f5",

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import type { ProjectWorkspaceSummary } from '@worldforge/contracts';
 
@@ -18,11 +18,80 @@ interface WritingWorkbenchProps {
   readonly onStatus: (message: string) => void;
 }
 
+interface PersistedDomSelection {
+  readonly anchorPath: readonly number[];
+  readonly anchorOffset: number;
+  readonly focusPath: readonly number[];
+  readonly focusOffset: number;
+}
+
 export function WritingWorkbench(props: WritingWorkbenchProps) {
+  const selectionToRestore = useRef<PersistedDomSelection | null>(null);
   const bridge = useMemo(
     () => createWritingBridge(props.bridge, props.onPanelChange),
     [props.bridge, props.onPanelChange],
   );
+
+  useEffect(() => {
+    const rememberSelectionBeforeExit = (event: PointerEvent): void => {
+      if (!(event.target instanceof Element) || !event.target.closest('[data-back-project]')) {
+        return;
+      }
+      const content = document.querySelector('[data-draft-content]');
+      const selection = document.getSelection();
+      if (!(content instanceof HTMLElement) || !selection?.anchorNode || !selection.focusNode) {
+        return;
+      }
+      if (!content.contains(selection.anchorNode) || !content.contains(selection.focusNode)) return;
+      const anchorPath = pathFromRoot(content, selection.anchorNode);
+      const focusPath = pathFromRoot(content, selection.focusNode);
+      if (!anchorPath || !focusPath) return;
+      selectionToRestore.current = {
+        anchorPath,
+        anchorOffset: selection.anchorOffset,
+        focusPath,
+        focusOffset: selection.focusOffset,
+      };
+    };
+
+    const restoreSelectionAfterMount = (records: readonly MutationRecord[]): void => {
+      const remembered = selectionToRestore.current;
+      if (!remembered) return;
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          const content = node.matches('[data-draft-content]')
+            ? node
+            : node.querySelector('[data-draft-content]');
+          if (!(content instanceof HTMLElement)) continue;
+          requestAnimationFrame(() => {
+            const anchorNode = nodeFromPath(content, remembered.anchorPath);
+            const focusNode = nodeFromPath(content, remembered.focusPath);
+            if (!anchorNode || !focusNode) return;
+            content.focus({ preventScroll: true });
+            const selection = document.getSelection();
+            if (!selection) return;
+            selection.setBaseAndExtent(
+              anchorNode,
+              clampSelectionOffset(anchorNode, remembered.anchorOffset),
+              focusNode,
+              clampSelectionOffset(focusNode, remembered.focusOffset),
+            );
+            selectionToRestore.current = null;
+          });
+          return;
+        }
+      }
+    };
+
+    const observer = new MutationObserver(restoreSelectionAfterMount);
+    document.addEventListener('pointerdown', rememberSelectionBeforeExit, true);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      document.removeEventListener('pointerdown', rememberSelectionBeforeExit, true);
+      observer.disconnect();
+    };
+  }, []);
 
   return <WritingCoreWorkbench {...props} bridge={bridge} />;
 }
@@ -96,6 +165,35 @@ function createWritingBridge(
   });
 
   return { ...bridge, planning, version };
+}
+
+function pathFromRoot(root: Node, node: Node): readonly number[] | null {
+  const path: number[] = [];
+  let current: Node | null = node;
+  while (current && current !== root) {
+    const parent: ParentNode | null = current.parentNode;
+    if (!parent) return null;
+    const index = Array.prototype.indexOf.call(parent.childNodes, current) as number;
+    if (index < 0) return null;
+    path.unshift(index);
+    current = parent;
+  }
+  return current === root ? path : null;
+}
+
+function nodeFromPath(root: Node, path: readonly number[]): Node | null {
+  let current: Node = root;
+  for (const index of path) {
+    const next = current.childNodes.item(index);
+    if (!next) return null;
+    current = next;
+  }
+  return current;
+}
+
+function clampSelectionOffset(node: Node, offset: number): number {
+  const maximum = node.nodeType === Node.TEXT_NODE ? (node.textContent?.length ?? 0) : node.childNodes.length;
+  return Math.min(Math.max(0, offset), maximum);
 }
 
 function waitForDraftEditorHost(): Promise<void> {

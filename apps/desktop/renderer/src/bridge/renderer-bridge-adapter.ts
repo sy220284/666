@@ -146,8 +146,9 @@ type AdaptedMethod<Method> = Method extends (
   : never;
 
 type AdaptedDomain<Domain> = {
-  readonly [Key in keyof Domain as AdaptedMethod<Domain[Key]> extends never ? never : Key]:
-    AdaptedMethod<Domain[Key]>;
+  readonly [
+    Key in keyof Domain as AdaptedMethod<Domain[Key]> extends never ? never : Key
+  ]: AdaptedMethod<Domain[Key]>;
 };
 
 export interface RendererBridgeAdapter {
@@ -198,11 +199,7 @@ export function createRendererBridgeAdapter(
     trash: adaptDomain('trash', requireDomain(bridge.trash, 'trash'), coordinator),
     draft: adaptDomain('draft', requireDomain(bridge.draft, 'draft'), coordinator),
     version: adaptDomain('version', requireDomain(bridge.version, 'version'), coordinator),
-    candidate: adaptDomain(
-      'candidate',
-      requireDomain(bridge.candidate, 'candidate'),
-      coordinator,
-    ),
+    candidate: adaptDomain('candidate', requireDomain(bridge.candidate, 'candidate'), coordinator),
     continuity: adaptDomain(
       'continuity',
       requireDomain(auxiliary.continuity, 'continuity'),

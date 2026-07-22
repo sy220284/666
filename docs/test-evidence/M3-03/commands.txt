@@ -1,8 +1,50 @@
-pnpm typecheck  # exit 0, runs 29679433553 and 29679760603
-pnpm --filter @worldforge/renderer build  # exit 0, run 29679760603
-pnpm exec vitest run tests/integration/entity-canon.test.ts  # 3 passed
-pnpm test:migration  # 12 files, 29 tests passed
-pnpm lint  # executed again during closeout
-pnpm task:validate  # executed after task transition
-# Final PR permanent gates: PR Policy, Task Governance, Evidence, Security, Performance, Quality
-pnpm test:prepare && pnpm test:security  # 15 files, 56 tests required
+pnpm check:workspaces
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm check:boundaries
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm format:check
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm lint
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm typecheck
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm build
+exit=0 fixture=Quality-29914507812/build
+
+pnpm test:unit
+exit=0 fixture=Quality-29914507812/tests-unit
+
+pnpm test:integration
+exit=0 fixture=Quality-29914507812/tests-integration
+
+pnpm test:migration
+exit=0 fixture=Quality-29914507812/tests-migration
+
+pnpm test:e2e
+exit=0 fixture=25/25,Quality-29914507812,artifact-8527587874
+
+pnpm test:security
+exit=0 fixture=Security-29914507551
+
+pnpm test:perf
+exit=0 fixture=Performance-29914507599
+
+pnpm test:eval
+exit=0 fixture=Performance-29914507599
+
+PR Policy
+exit=0 fixture=29914507537
+
+Task Governance
+exit=0 fixture=29914507651
+
+Evidence
+exit=0 fixture=29914507544
+
+Repository Governance
+exit=0 fixture=29914507567

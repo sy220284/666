@@ -1,6 +1,6 @@
 # M3-08 React运行底座、Renderer壳层、首页、项目与设置迁移
 
-> 状态：In Progress  
+> 状态：Implemented
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 机器分支：`work/m3-08-renderer-shell-home-settings`  

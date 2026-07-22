@@ -1,0 +1,48 @@
+name: Diagnostic Remediation Patterns
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: ${{ github.head_ref == 'diagnostic/export-integrated-remediation' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Inspect exact replacement patterns
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee pattern-report.txt
+          from pathlib import Path
+          patterns = {
+            'core-timeout': ('apps/desktop/main/src/core-supervisor.ts', "message: 'The task command timed out.'"),
+            'ipc-interface': ('apps/desktop/main/src/ipc-handlers.ts', 'readonly platform: string;\n  readonly logger: PrivacyLogger;'),
+            'ipc-failure-signature': ('apps/desktop/main/src/ipc-handlers.ts', "diagnosticId?: string,\n  details?: CommandFailure['error']['details'],\n): CommandFailure {"),
+            'ipc-failure-body': ('apps/desktop/main/src/ipc-handlers.ts', '...(diagnosticId ? { diagnosticId } : {}),\n      ...(details ? { details } : {}),'),
+            'ipc-register': ('apps/desktop/main/src/ipc-handlers.ts', 'const register = ('),
+            'ipc-appdata': ('apps/desktop/main/src/ipc-handlers.ts', 'const appDataFailure = ('),
+            'electron-main': ('apps/desktop/main/src/electron-main.ts', 'platform: process.platform,\n    logger,'),
+            'candidate-inline': ('apps/desktop/main/src/candidate-preview-ipc.ts', "['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes("),
+            'candidate-helper': ('apps/desktop/main/src/candidate-preview-ipc.ts', 'function retryable(code: ErrorCode): boolean'),
+            'continuity': ('apps/desktop/main/src/continuity-ipc.ts', "['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes("),
+            'narrative': ('apps/desktop/main/src/narrative-planning-ipc.ts', "['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes("),
+            'security-helper': ('tests/security/candidate-ipc.test.ts', 'function registerCandidateHandler() {'),
+            'security-options': ('tests/security/candidate-ipc.test.ts', "platform: 'test',\n    logger:"),
+            'security-describe': ('tests/security/candidate-ipc.test.ts', "describe('Candidate IPC authority boundary', () => {\n  it('rejects renderer-supplied"),
+            'error-doc': ('docs/contracts/ERROR_CODES.md', '| `COMMON_TIMEOUT_005` | 任务超时 | 是 | 提供重试或调整超时 |'),
+          }
+          for name, (path, pattern) in patterns.items():
+              print(f'{name}={Path(path).read_text().count(pattern)}')
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: remediation-pattern-report
+          path: pattern-report.txt
+          retention-days: 1

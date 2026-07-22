@@ -1,0 +1,74 @@
+name: Diagnostic Remediation Full Patterns
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: ${{ github.head_ref == 'diagnostic/export-integrated-remediation' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Inspect full replacement blocks
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee full-pattern-report.txt
+          from pathlib import Path
+          cases = []
+          cases.append(('core', 'apps/desktop/main/src/core-supervisor.ts', """    return TaskCommandResultSchema.parse({
+            ok: false,
+            requestId: envelope.requestId,
+            error: {
+              code: 'COMMON_TIMEOUT_005',
+              message: 'The task command timed out.',
+              retryable: true,
+            },
+          });"""))
+          cases.append(('ipc-interface', 'apps/desktop/main/src/ipc-handlers.ts', """  readonly platform: string;
+            readonly logger: PrivacyLogger;"""))
+          cases.append(('ipc-signature', 'apps/desktop/main/src/ipc-handlers.ts', """  diagnosticId?: string,
+            details?: CommandFailure['error']['details'],
+          ): CommandFailure {"""))
+          cases.append(('ipc-body', 'apps/desktop/main/src/ipc-handlers.ts', """      ...(diagnosticId ? { diagnosticId } : {}),
+                ...(details ? { details } : {}),"""))
+          cases.append(('ipc-register', 'apps/desktop/main/src/ipc-handlers.ts', """  const register = (
+              channel: string,
+              handler: (event: IpcMainInvokeEvent, input: unknown) => Promise<unknown> | unknown,
+            ): void => {
+              options.ipcMain.handle(channel, handler);
+            };"""))
+          cases.append(('ipc-appdata', 'apps/desktop/main/src/ipc-handlers.ts', """  const appDataFailure = (
+              requestId: string,
+              code: ErrorCode,
+              details?: CommandFailure['error']['details'],
+            ): CommandFailure =>
+              failure(
+                requestId,
+                code,
+                'The local application data operation could not be completed.',
+                ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+                undefined,
+                details,
+              );"""))
+          cases.append(('electron', 'apps/desktop/main/src/electron-main.ts', """    version: app.getVersion(),
+                platform: process.platform,
+                logger,"""))
+          cases.append(('security-options', 'tests/security/candidate-ipc.test.ts', """    platform: 'test',
+                logger: { log: vi.fn() } as unknown as PrivacyLogger,"""))
+          cases.append(('security-describe', 'tests/security/candidate-ipc.test.ts', """describe('Candidate IPC authority boundary', () => {
+            it('rejects renderer-supplied status and provenance authority fields', () => {"""))
+          for name, path, pattern in cases:
+              print(f'{name}={Path(path).read_text().count(pattern)}')
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: remediation-full-pattern-report
+          path: full-pattern-report.txt
+          retention-days: 1

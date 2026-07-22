@@ -1,3 +1,6 @@
+import { access } from 'node:fs/promises';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,15 +12,17 @@ import {
   serializeRendererStartupDiagnostic,
 } from '../../apps/desktop/renderer/src/runtime/startup-diagnostics.js';
 
-const legacyDirectBridgeModules = [
+const retiredLegacyModules = [
   'index.ts',
+  'main.ts',
+  'entry.ts',
   'candidate-preview-bootstrap.ts',
   'candidate-preview-ui.ts',
   'candidate-apply-bootstrap.ts',
   'candidate-apply-ui.ts',
 ] as const;
 
-describe('M3-07 startup diagnostics', () => {
+describe('M3 startup diagnostics', () => {
   it('creates a P0 diagnostic with copy and safe-close capabilities', () => {
     const diagnostic = createRendererStartupDiagnostic(
       {
@@ -66,15 +71,20 @@ describe('M3-07 startup diagnostics', () => {
   });
 });
 
-describe('M3-07 legacy ownership inventory', () => {
-  it('covers every legacy module that still reads the Preload bridge directly', () => {
-    expect(() => assertLegacyOwnershipComplete(legacyDirectBridgeModules)).not.toThrow();
-    expect(LEGACY_RENDERER_OWNERSHIP).toHaveLength(legacyDirectBridgeModules.length);
+describe('M3-10 legacy ownership closure', () => {
+  it('has no remaining command-style Renderer owner or source file', async () => {
+    expect(LEGACY_RENDERER_OWNERSHIP).toEqual([]);
+    expect(() => assertLegacyOwnershipComplete([])).not.toThrow();
+
+    const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
+    for (const module of retiredLegacyModules) {
+      await expect(access(path.join(rendererRoot, module))).rejects.toThrow();
+    }
   });
 
-  it('fails closed when a legacy module has no migration owner', () => {
-    expect(() =>
-      assertLegacyOwnershipComplete([...legacyDirectBridgeModules, 'unowned-bootstrap.ts']),
-    ).toThrow('Legacy ownership is missing for: unowned-bootstrap.ts.');
+  it('fails closed if a retired module is reintroduced into the inventory', () => {
+    expect(() => assertLegacyOwnershipComplete(['index.ts'])).toThrow(
+      'Retired legacy Renderer modules remain: index.ts.',
+    );
   });
 });

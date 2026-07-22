@@ -1,0 +1,39 @@
+name: Diagnostic Remediation Generator Error V4
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: ${{ github.head_ref == 'diagnostic/export-integrated-remediation' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Capture V4 generator exception
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+          import traceback
+          report = Path('generator-error-v4.txt')
+          try:
+              workflow = Path('.github/workflows/diagnostic-export-integrated-remediation-v4.yml').read_text()
+              script = workflow.split("python3 - <<'PY'\n", 1)[1].split('\n          PY', 1)[0]
+              exec(compile(textwrap.dedent(script), 'remediation-v4', 'exec'))
+              report.write_text('success\n')
+          except BaseException:
+              report.write_text(traceback.format_exc())
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: remediation-generator-error-v4
+          path: generator-error-v4.txt
+          retention-days: 1

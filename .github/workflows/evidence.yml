@@ -24,16 +24,17 @@ jobs:
     env:
       EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
       EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 1
-          persist-credentials: false
-          show-progress: false
-      - name: Quietly fetch complete history
+      - name: Quiet repository checkout
         shell: bash
-        run: git fetch --quiet --no-tags --unshallow origin
+        run: |
+          git init . >/dev/null
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --quiet --no-tags --depth=1 origin "${EVIDENCE_HEAD_SHA}"
+          git checkout --quiet FETCH_HEAD
+          git fetch --quiet --no-tags --unshallow origin
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
       - uses: actions/setup-node@v6
         with:
           node-version: 24

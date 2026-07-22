@@ -1,0 +1,335 @@
+name: Diagnostic Export Integrated Remediation
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: ${{ github.head_ref == 'diagnostic/export-integrated-remediation' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply audited coordination patches
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}')
+              file.write_text(text.replace(old, new))
+
+          replace_once(
+              'apps/desktop/main/src/core-supervisor.ts',
+              """    return TaskCommandResultSchema.parse({
+              ok: false,
+              requestId: envelope.requestId,
+              error: {
+                code: 'COMMON_TIMEOUT_005',
+                message: 'The task command timed out.',
+                retryable: true,
+              },
+            });""",
+              """    return TaskCommandResultSchema.parse({
+              ok: false,
+              requestId: envelope.requestId,
+              error: {
+                code: 'COMMON_TIMEOUT_005',
+                message:
+                  'Core did not return a final result before the timeout; the operation may still have completed.',
+                retryable: false,
+                userAction: 'Refresh authoritative state before attempting the operation again.',
+              },
+            });""",
+          )
+
+          replace_once(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              """  readonly platform: string;
+              readonly logger: PrivacyLogger;""",
+              """  readonly platform: string;
+              readonly enableTestFixtures?: boolean;
+              readonly logger: PrivacyLogger;""",
+          )
+          replace_once(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              """  diagnosticId?: string,
+              details?: CommandFailure['error']['details'],
+            ): CommandFailure {""",
+              """  diagnosticId?: string,
+              details?: CommandFailure['error']['details'],
+              userAction?: string,
+            ): CommandFailure {""",
+          )
+          replace_once(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              """      ...(diagnosticId ? { diagnosticId } : {}),
+                  ...(details ? { details } : {}),""",
+              """      ...(diagnosticId ? { diagnosticId } : {}),
+                  ...(details ? { details } : {}),
+                  ...(userAction ? { userAction } : {}),""",
+          )
+          replace_once(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              """  const register = (
+                channel: string,
+                handler: (event: IpcMainInvokeEvent, input: unknown) => Promise<unknown> | unknown,
+              ): void => {
+                options.ipcMain.handle(channel, handler);
+              };""",
+              """  const register = (
+                channel: string,
+                handler: (event: IpcMainInvokeEvent, input: unknown) => Promise<unknown> | unknown,
+              ): void => {
+                if (
+                  channel === CANDIDATE_IPC_CHANNELS.createFixtureCandidate &&
+                  options.enableTestFixtures !== true
+                ) {
+                  return;
+                }
+                options.ipcMain.handle(channel, handler);
+              };""",
+          )
+          replace_once(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              """  const appDataFailure = (
+                requestId: string,
+                code: ErrorCode,
+                details?: CommandFailure['error']['details'],
+              ): CommandFailure =>
+                failure(
+                  requestId,
+                  code,
+                  'The local application data operation could not be completed.',
+                  ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+                  undefined,
+                  details,
+                );""",
+              """  const appDataFailure = (
+                requestId: string,
+                code: ErrorCode,
+                details?: CommandFailure['error']['details'],
+              ): CommandFailure => {
+                const resultUnknown = code === 'COMMON_TIMEOUT_005';
+                return failure(
+                  requestId,
+                  code,
+                  resultUnknown
+                    ? 'Core did not return a final result before the timeout; the operation may still have completed.'
+                    : 'The local application data operation could not be completed.',
+                  !resultUnknown && ['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+                  undefined,
+                  details,
+                  resultUnknown
+                    ? 'Refresh authoritative state before attempting the operation again.'
+                    : undefined,
+                );
+              };""",
+          )
+
+          replace_once(
+              'apps/desktop/main/src/electron-main.ts',
+              """    version: app.getVersion(),
+                  platform: process.platform,
+                  logger,""",
+              """    version: app.getVersion(),
+                  platform: process.platform,
+                  enableTestFixtures: process.env.WORLDFORGE_E2E === '1' && !app.isPackaged,
+                  logger,""",
+          )
+
+          candidate = Path('apps/desktop/main/src/candidate-preview-ipc.ts')
+          text = candidate.read_text()
+          text = text.replace(
+              "['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(\n        code,\n      )",
+              "['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code)",
+              1,
+          )
+          text = text.replace(
+              "['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(\n        code,\n      )",
+              "['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code)",
+              1,
+          )
+          text = text.replace(
+              "function retryable(code: ErrorCode): boolean {\n  return ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code);\n}",
+              "function readRetryable(code: ErrorCode): boolean {\n  return ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code);\n}\n\nfunction writeRetryable(code: ErrorCode): boolean {\n  return ['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code);\n}\n\nfunction timeoutAction(code: ErrorCode): string | undefined {\n  return code === 'COMMON_TIMEOUT_005'\n    ? 'Refresh authoritative state before attempting the operation again.'\n    : undefined;\n}",
+          )
+          text = text.replace('retryable: retryable(code),', 'retryable: readRetryable(code),', 2)
+          text = text.replace(
+              'retryable: retryable(code),',
+              "retryable: writeRetryable(code),\n      ...(timeoutAction(code) ? { userAction: timeoutAction(code) } : {}),",
+              1,
+          )
+          text = text.replace(
+              "retryable: ['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),\n    },\n  });\n}\n\nfunction retryable",
+              "retryable: ['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),\n      ...(timeoutAction(code) ? { userAction: timeoutAction(code) } : {}),\n    },\n  });\n}\n\nfunction readRetryable",
+              1,
+          )
+          candidate.write_text(text)
+
+          for path in [
+              'apps/desktop/main/src/continuity-ipc.ts',
+              'apps/desktop/main/src/narrative-planning-ipc.ts',
+          ]:
+              file = Path(path)
+              text = file.read_text()
+              old = "['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(\n        code,\n      )"
+              if old not in text:
+                  raise SystemExit(f'{path}: retryability pattern missing')
+              text = text.replace(old, "['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code)")
+              marker = "      retryable: ['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),"
+              replacement = marker + "\n      ...(code === 'COMMON_TIMEOUT_005'\n        ? { userAction: 'Refresh authoritative state before attempting the operation again.' }\n        : {}),"
+              text = text.replace(marker, replacement)
+              file.write_text(text)
+
+          replace_once(
+              'tests/security/candidate-ipc.test.ts',
+              'function registerCandidateHandler() {',
+              'function registerCandidateHandler(enableTestFixtures = true) {',
+          )
+          replace_once(
+              'tests/security/candidate-ipc.test.ts',
+              """    platform: 'test',
+                  logger: { log: vi.fn() } as unknown as PrivacyLogger,""",
+              """    platform: 'test',
+                  enableTestFixtures,
+                  logger: { log: vi.fn() } as unknown as PrivacyLogger,""",
+          )
+          replace_once(
+              'tests/security/candidate-ipc.test.ts',
+              """describe('Candidate IPC authority boundary', () => {
+              it('rejects renderer-supplied status and provenance authority fields', () => {""",
+              """describe('Candidate IPC authority boundary', () => {
+              it('does not register the fixture command in the production/default boundary', () => {
+                const { handlers } = registerCandidateHandler(false);
+                expect(handlers.has(CANDIDATE_IPC_CHANNELS.createFixtureCandidate)).toBe(false);
+                expect(handlers.has(CANDIDATE_IPC_CHANNELS.listCandidates)).toBe(true);
+              });
+
+              it('rejects renderer-supplied status and provenance authority fields', () => {""",
+          )
+
+          Path('tests/unit/ipc-timeout-semantics.test.ts').write_text("""import {
+            PROTOCOL_VERSION,
+            TaskListActiveCommandSchema,
+            type CoreControlMessage,
+          } from '@worldforge/contracts';
+          import { describe, expect, it, vi } from 'vitest';
+
+          import {
+            CoreSupervisor,
+            type UtilityProcessHandle,
+          } from '../../apps/desktop/main/src/core-supervisor.js';
+
+          function silentProcess(): UtilityProcessHandle {
+            return {
+              pid: 42,
+              postMessage: (_message: CoreControlMessage) => undefined,
+              onMessage: () => () => undefined,
+              onExit: () => () => undefined,
+            };
+          }
+
+          describe('IPC timeout semantics', () => {
+            it('marks an unresolved Core command as result-unknown and not directly retryable', async () => {
+              const supervisor = new CoreSupervisor({
+                spawn: silentProcess,
+                logger: { log: vi.fn() },
+                commandTimeoutMs: 1,
+              });
+              Object.assign(supervisor, { '#process': silentProcess() });
+              const internal = supervisor as unknown as {
+                invokeTaskCommand(command: ReturnType<typeof TaskListActiveCommandSchema.parse>): Promise<unknown>;
+                start(): Promise<unknown>;
+              };
+
+              const start = internal.start();
+              await new Promise((resolve) => setTimeout(resolve, 2));
+              void start;
+
+              const result = await supervisor.invokeTaskCommand(
+                TaskListActiveCommandSchema.parse({
+                  protocolVersion: PROTOCOL_VERSION,
+                  requestId: '550e8400-e29b-41d4-a716-446655440000',
+                  sentAt: '2026-07-23T00:00:00.000Z',
+                  command: 'task.listActive',
+                  payload: {},
+                }),
+              );
+              expect(result).toMatchObject({
+                ok: false,
+                error: {
+                  code: 'COMMON_TIMEOUT_005',
+                  retryable: false,
+                  userAction: expect.stringContaining('Refresh authoritative state'),
+                },
+              });
+            });
+          });
+          """)
+
+          replace_once(
+              'docs/contracts/ERROR_CODES.md',
+              '| `COMMON_TIMEOUT_005` | 任务超时 | 是 | 提供重试或调整超时 |',
+              '| `COMMON_TIMEOUT_005` | Core未在等待窗口内返回最终结果，操作可能仍已完成 | 否 | 刷新权威状态，确认结果后再决定是否重试 |',
+          )
+          PY
+      - name: Format changed TypeScript and governance files
+        run: |
+          pnpm exec prettier --write \
+            apps/desktop/main/src/core-supervisor.ts \
+            apps/desktop/main/src/ipc-handlers.ts \
+            apps/desktop/main/src/electron-main.ts \
+            apps/desktop/main/src/candidate-preview-ipc.ts \
+            apps/desktop/main/src/continuity-ipc.ts \
+            apps/desktop/main/src/narrative-planning-ipc.ts \
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts \
+            apps/desktop/renderer/src/react-entry.tsx \
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts \
+            tests/security/candidate-ipc.test.ts \
+            tests/unit/bridge-request-detachment.test.ts \
+            tests/unit/core-recovery-supervisor.test.ts \
+            tests/unit/ipc-timeout-semantics.test.ts \
+            tests/migration/integrated-coordination-migration.test.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: integrated-remediation-output
+          path: |
+            apps/desktop/main/src/core-supervisor.ts
+            apps/desktop/main/src/ipc-handlers.ts
+            apps/desktop/main/src/electron-main.ts
+            apps/desktop/main/src/candidate-preview-ipc.ts
+            apps/desktop/main/src/continuity-ipc.ts
+            apps/desktop/main/src/narrative-planning-ipc.ts
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts
+            apps/desktop/renderer/src/react-entry.tsx
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts
+            migrations/project/0018_integrated_coordination_hardening.sql
+            tests/migration/integrated-coordination-migration.test.ts
+            tests/security/candidate-ipc.test.ts
+            tests/unit/bridge-request-detachment.test.ts
+            tests/unit/core-recovery-supervisor.test.ts
+            tests/unit/ipc-timeout-semantics.test.ts
+            docs/architecture/M0_M3_INTEGRATED_COORDINATION.md
+            docs/contracts/ERROR_CODES.md
+          if-no-files-found: error
+          retention-days: 1

@@ -212,6 +212,9 @@ test('renders only persisted recent projects and restores general settings after
   await expect(firstWindow.locator('[data-settings-dialog]')).toBeVisible();
   await firstWindow.locator('[data-default-mode]').selectOption('professional');
   await firstWindow.locator('[data-save-settings]').click();
+  await expect(firstWindow.locator('[data-settings-status]')).toHaveText(
+    '设置已保存到应用数据库。',
+  );
   await firstWindow.locator('[data-settings-navigation="appearance"]').click();
   await firstWindow.locator('[data-theme-id]').selectOption('theme-b');
   await firstWindow.locator('[data-theme-variant]').selectOption('dark');

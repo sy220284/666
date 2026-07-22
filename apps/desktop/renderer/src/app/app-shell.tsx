@@ -45,6 +45,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const initialWorkspaceResolved = useRef(false);
   const settingsWriteQueue = useRef<Promise<void>>(Promise.resolve());
+  const confirmedSettings = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
   const [activeProject, setActiveProject] = useState<ProjectWorkspaceSummary | null>(null);
   const [recentProjects, setRecentProjects] = useState<readonly RecentProject[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -78,8 +79,10 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
 
     if (core.state === 'success') setCoreStatus(core.data);
     else setFailure(failureFromOutcome('Core状态读取失败', core));
-    if (applicationSettings.state === 'success') setSettings(applicationSettings.data.settings);
-    else setFailure(failureFromOutcome('应用设置读取失败', applicationSettings));
+    if (applicationSettings.state === 'success') {
+      confirmedSettings.current = applicationSettings.data.settings;
+      setSettings(applicationSettings.data.settings);
+    } else setFailure(failureFromOutcome('应用设置读取失败', applicationSettings));
     if (windowPreferences.state === 'success') {
       setAppearance({
         workspaceAlignment: windowPreferences.data.workspaceAlignment,
@@ -382,11 +385,20 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
     const write = settingsWriteQueue.current.then(async () => {
       setPendingKey('settings.set');
       try {
-        const outcome = await bridge.settings.set(update);
+        const current = confirmedSettings.current;
+        const outcome = await bridge.settings.set({
+          language: update.language ?? current.language,
+          startupBehavior: update.startupBehavior ?? current.startupBehavior,
+          defaultMode: update.defaultMode ?? current.defaultMode,
+          themeId: update.themeId ?? current.themeId,
+          themeVariant: update.themeVariant ?? current.themeVariant,
+          reduceMotion: update.reduceMotion ?? current.reduceMotion,
+        });
         if (outcome.state !== 'success') {
           setFailure(failureFromOutcome('设置保存失败', outcome));
           return false;
         }
+        confirmedSettings.current = outcome.data.settings;
         setSettings(outcome.data.settings);
         setMessage('设置已保存到应用数据库。');
         return true;
@@ -649,6 +661,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
               onResetSettings={() => {
                 void bridge.settings.reset().then((outcome) => {
                   if (outcome.state === 'success') {
+                    confirmedSettings.current = outcome.data.settings;
                     setSettings(outcome.data.settings);
                     setMessage('已恢复默认设置。');
                   } else setFailure(failureFromOutcome('恢复默认设置失败', outcome));

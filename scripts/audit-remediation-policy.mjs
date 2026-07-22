@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { isPathInside, parseTaskIndex } from './task-control-lib.mjs';
 
-const MANIFEST_PATH = '.github/audit-remediations/m0-m2-2026-07-20.json';
+const MANIFEST_DIRECTORY = '.github/audit-remediations';
 const AUDIT_BRANCH_PATTERN = /^fix\/governance-audit-[a-z0-9._-]+$/u;
 
 function git(argumentsList, repositoryRoot) {
@@ -93,6 +93,34 @@ export function isAuditRemediationBranch(branch) {
   return AUDIT_BRANCH_PATTERN.test(branch ?? '');
 }
 
+export async function loadAuditRemediationManifest({
+  repositoryRoot = process.cwd(),
+  branch,
+}) {
+  if (!isAuditRemediationBranch(branch)) {
+    throw new Error('Audit remediation branch is invalid');
+  }
+  const directory = path.join(repositoryRoot, MANIFEST_DIRECTORY);
+  const entries = await readdir(directory, { withFileTypes: true });
+  const manifests = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map(async (entry) => {
+        const manifestPath = path.posix.join(MANIFEST_DIRECTORY, entry.name);
+        const manifest = JSON.parse(await readFile(path.join(repositoryRoot, manifestPath), 'utf8'));
+        return { manifest, manifestPath };
+      }),
+  );
+  const matches = manifests.filter(({ manifest }) => manifest?.branch === branch);
+  if (matches.length !== 1) {
+    throw new Error(
+      `Audit remediation branch ${branch} must match exactly one manifest; found ${matches.length}`,
+    );
+  }
+  validateManifestShape(matches[0].manifest);
+  return matches[0];
+}
+
 export async function validateAuditRemediation({
   repositoryRoot = process.cwd(),
   branch,
@@ -102,8 +130,7 @@ export async function validateAuditRemediation({
   baseRef,
 }) {
   if (!isAuditRemediationBranch(branch)) return false;
-  const manifest = JSON.parse(await readFile(path.join(repositoryRoot, MANIFEST_PATH), 'utf8'));
-  validateManifestShape(manifest);
+  const { manifest, manifestPath } = await loadAuditRemediationManifest({ repositoryRoot, branch });
   if (manifest.branch !== branch)
     throw new Error('Audit remediation branch does not match manifest');
   const resolvedBase = git(['rev-parse', baseRef], repositoryRoot);
@@ -141,7 +168,7 @@ export async function validateAuditRemediation({
       `Audit remediation changed files outside its manifest:\n${violations.join('\n')}`,
     );
   }
-  if (!changedFiles.includes(MANIFEST_PATH)) {
+  if (!changedFiles.includes(manifestPath)) {
     throw new Error('Audit remediation PR must include its machine-readable manifest');
   }
   console.log(

@@ -1,6 +1,6 @@
 # M4-01 FTS5公共索引、队列与项目词典
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M4 检索与AI基础设施  
 > 优先级：P0  
 > 建议分支：`feat/m4-fts-index-dictionary`

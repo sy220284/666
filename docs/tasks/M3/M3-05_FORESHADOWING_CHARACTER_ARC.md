@@ -1,6 +1,6 @@
 # M3-05 伏笔生命周期与人物弧光
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`work/m3-05-foreshadowing-character-arc`
@@ -91,6 +91,6 @@ M3-04
 - 拆除Candidate Preview内部重复注册Continuity IPC的职责耦合，修复Electron在`ipc-register`阶段启动失败，并增加仅注册Candidate频道的回归测试。
 - 补齐反向回收窗口、自关联、依赖环、互斥、`reinforces`、AI写入拒绝、节点章节移动、TimelineEvent跨项目、`skipped`与确认来源测试。
 - 实现基线：`d0903e133a7d10165016aa0f587bff9908680dd1`。Quality运行`29732645227`、Security运行`29732645161`、Performance运行`29732645079`全部成功；真实Electron E2E、Migration、Integration、Build、Package Smoke与clean-tree均通过。
-- 按implementation-pr协议，本任务记录为`Implemented`并加入延期最终验收；标准证据包、人工验收矩阵与`Verified`关闭留待批量复验。
+- M3批量复验运行`29914507812`完成最终验收关闭。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。

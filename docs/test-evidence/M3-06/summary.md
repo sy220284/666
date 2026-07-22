@@ -5,7 +5,7 @@
 
 ## 交付结论
 
-章节定稿生成final Version、StateProposal与EndingSnapshot；pending提案零权威写入，接受、编辑接受和拒绝由作者裁决并在单事务内更新。有限期EntityState完整保留validUntilChapterId并执行半开区间语义，旧章语义变化只标记后续派生快照失效。
+章节定稿生成final Version、StateProposal与EndingSnapshot；待裁决提案零权威写入，接受、编辑接受和拒绝由作者裁决并在单事务内更新。有限期EntityState完整保留validUntilChapterId并执行半开区间语义，旧章语义变化只标记后续派生快照失效。
 
 ## 复验结论
 

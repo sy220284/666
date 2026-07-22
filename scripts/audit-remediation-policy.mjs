@@ -75,10 +75,7 @@ function validateManifestShape(manifest) {
   ) {
     throw new Error('Audit remediation must pin an unchanged active task');
   }
-  if (
-    !Array.isArray(manifest.verifiedTaskRepairs) ||
-    manifest.verifiedTaskRepairs.length === 0
-  ) {
+  if (!Array.isArray(manifest.verifiedTaskRepairs) || manifest.verifiedTaskRepairs.length === 0) {
     throw new Error('Audit remediation requires at least one verified task repair');
   }
   const repairIds = manifest.verifiedTaskRepairs.map((repair) => repair?.taskId);
@@ -96,10 +93,7 @@ export function isAuditRemediationBranch(branch) {
   return AUDIT_BRANCH_PATTERN.test(branch ?? '');
 }
 
-export async function loadAuditRemediationManifest({
-  repositoryRoot = process.cwd(),
-  branch,
-}) {
+export async function loadAuditRemediationManifest({ repositoryRoot = process.cwd(), branch }) {
   if (!isAuditRemediationBranch(branch)) {
     throw new Error('Audit remediation branch is invalid');
   }

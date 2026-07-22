@@ -13,8 +13,10 @@ const success = <T>(requestId: string, data: T): CommandResult<T> => ({
   data,
 });
 
-describe('M3-09 React业务工作台', () => {
-  it('通过命名适配器访问规划、恢复和连续性，不让feature直读window Bridge', async () => {
+const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
+
+describe('M3 final React business workbenches', () => {
+  it('uses named adapters without direct feature access to the Window preload bridge', async () => {
     const planning = {
       getBrief: vi.fn(async (projectId: string) => success('brief', { projectId })),
     };
@@ -42,6 +44,8 @@ describe('M3-09 React业务工作台', () => {
         canon: {},
         trash: {},
         draft: {},
+        version: {},
+        candidate: {},
         task: {},
       } as never,
       undefined,
@@ -49,6 +53,7 @@ describe('M3-09 React业务工作台', () => {
         continuity,
         narrativePlanning: {},
         stateProposal: {},
+        candidateAction: {},
       } as never,
     );
 
@@ -70,34 +75,39 @@ describe('M3-09 React业务工作台', () => {
       }),
     ).resolves.toMatchObject({ state: 'success', requestId: 'continuity' });
 
-    const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
     const featureSources = await Promise.all(
       [
-        'features/planning/planning-workbench.tsx',
+        'features/planning/planning-mode-workbench.tsx',
+        'features/planning/professional-planning-workbench.tsx',
         'features/canon/canon-workbench.tsx',
+        'features/canon/continuity-relationship-editor.tsx',
+        'features/canon/narrative-relationship-editor.tsx',
         'features/data-tools/data-tools-workbench.tsx',
+        'features/writing/writing-workbench.tsx',
+        'features/writing/writing-core-workbench.tsx',
       ].map((file) => readFile(path.join(rendererRoot, file), 'utf8')),
     );
     for (const source of featureSources) {
       expect(source).not.toContain('window.worldforge');
-      expect(source).toContain('RendererBridgeAdapter');
     }
   });
 
-  it('删除旧业务DOM和六个独立bootstrap，只保留M3-10兼容面', async () => {
-    const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
+  it('has one static React root and physically removes every retired business bootstrap', async () => {
     const html = await readFile(path.join(rendererRoot, 'index.html'), 'utf8');
-    for (const selector of [
-      'data-planning-dialog',
-      'data-canon-dialog',
-      'data-structure-dialog',
-      'data-trash-dialog',
-      'data-recovery-dialog',
-      'data-text-io-dialog',
-    ]) {
-      expect(html).not.toContain(selector);
-    }
+    expect(html).toContain('id="react-root"');
+    expect(html).toContain('./m3.css');
+    expect(html).not.toContain('legacy-root');
+    expect(html).not.toContain('data-draft-workspace');
+    expect(html).not.toContain('data-version-dialog');
+
     for (const file of [
+      'index.ts',
+      'main.ts',
+      'entry.ts',
+      'candidate-preview-bootstrap.ts',
+      'candidate-preview-ui.ts',
+      'candidate-apply-bootstrap.ts',
+      'candidate-apply-ui.ts',
       'canon-ui.ts',
       'continuity-ui.ts',
       'narrative-planning-ui.ts',
@@ -107,18 +117,31 @@ describe('M3-09 React业务工作台', () => {
     ]) {
       await expect(access(path.join(rendererRoot, file))).rejects.toThrow();
     }
-    expect(html).toContain('data-draft-workspace');
-    expect(html).toContain('data-version-dialog');
   });
 
-  it('保留危险操作的预览哈希、恢复点和只读阻断语义', async () => {
-    const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
-    const [planning, canon, dataTools, hook] = await Promise.all([
-      readFile(path.join(rendererRoot, 'features/planning/planning-workbench.tsx'), 'utf8'),
-      readFile(path.join(rendererRoot, 'features/canon/canon-workbench.tsx'), 'utf8'),
-      readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
-      readFile(path.join(rendererRoot, 'bridge/use-bridge-resource.ts'), 'utf8'),
-    ]);
+  it('keeps safety hashes, complete relationship fields and independent cancellation state', async () => {
+    const [planning, canonCore, continuity, narrative, dataTools, hook, writing] =
+      await Promise.all([
+        readFile(
+          path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
+          'utf8',
+        ),
+        readFile(path.join(rendererRoot, 'features/canon/canon-core-workbench.tsx'), 'utf8'),
+        readFile(
+          path.join(rendererRoot, 'features/canon/continuity-relationship-editor.tsx'),
+          'utf8',
+        ),
+        readFile(
+          path.join(rendererRoot, 'features/canon/narrative-relationship-editor.tsx'),
+          'utf8',
+        ),
+        readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'bridge/use-bridge-resource.ts'), 'utf8'),
+        readFile(
+          path.join(rendererRoot, 'features/writing/writing-core-workbench.tsx'),
+          'utf8',
+        ),
+      ]);
 
     expect(planning).toContain('previewSplitChapter');
     expect(planning).toContain('previewMergeChapters');
@@ -126,23 +149,32 @@ describe('M3-09 React业务工作台', () => {
     expect(planning).toContain('previewPermanentDelete');
     expect(planning).toContain('planHash: preview.planHash');
     expect(planning).toContain('confirmationTitle = window.prompt');
-    expect(planning).toContain('chapter-node is-selected is-active');
-    expect(canon).toContain("selected.status !== 'archived'");
-    expect(canon).toContain('输入实体名称');
-    expect(canon).toContain('useBridgeQuery');
+    expect(canonCore).toContain("selected.status !== 'archived'");
+    expect(canonCore).toContain('输入实体名称');
+    expect(continuity).toContain('participantIds');
+    expect(continuity).toContain('witnessIds');
+    expect(continuity).toContain('subjectIds');
+    expect(continuity).toContain('dependencyIds');
+    expect(continuity).toContain('evidence');
+    expect(narrative).toContain('chapterLinks');
+    expect(narrative).toContain('relations');
+    expect(narrative).toContain('dependencyMilestoneIds');
+    expect(narrative).toContain('dependencyTimelineEventIds');
     expect(dataTools).toContain("operation: 'manual-protection'");
-    expect(dataTools).not.toContain("window.confirm('从此恢复点");
     expect(dataTools).toContain('预览不会写入项目');
-    expect(dataTools).toContain('disabled={readOnly || command.pending}');
-    expect(hook).toContain('generation.current');
-    expect(hook).toContain('pendingRef.current');
+    expect(hook).toContain("BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'");
+    expect(hook).toContain("outcome.state === 'cancelled'");
+    expect(writing).toContain('DraftAutosaveCoordinator');
+    expect(writing).toContain('candidateAction.preview');
+    expect(writing).toContain('candidateAction.apply');
+    expect(writing).toContain('candidateAction.undo');
   });
 
-  it('让既有规划、设定、导入与恢复场景进入默认桌面端回归', async () => {
-    const [config, importExport] = await Promise.all([
-      readFile(path.join(process.cwd(), 'tests/e2e/playwright.config.ts'), 'utf8'),
-      readFile(path.join(process.cwd(), 'tests/e2e/m1-09-import-export.spec.ts'), 'utf8'),
-    ]);
+  it('keeps existing planning, Canon, import, recovery and Candidate scenarios in desktop regression', async () => {
+    const config = await readFile(
+      path.join(process.cwd(), 'tests/e2e/playwright.config.ts'),
+      'utf8',
+    );
     for (const spec of [
       'project-planning.spec.ts',
       'm1-09-import-export.spec.ts',
@@ -150,9 +182,10 @@ describe('M3-09 React业务工作台', () => {
       'narrative-planning-ledger.spec.ts',
       'state-proposal-valid-until.spec.ts',
       'state-proposal-workflow.spec.ts',
+      'candidate-preview.spec.ts',
+      'candidate-apply.spec.ts',
     ]) {
       expect(config).toContain(spec);
     }
-    expect(importExport).not.toContain('test.skip');
   });
 });

@@ -1,22 +1,24 @@
-# M3-06 StateProposal、EndingSnapshot 与有限期状态修复
+# M3-06 批量复验记录
 
-权威实现提交：`01409dd483191764fbc05d5bb298a33f5b32f360`
-实现PR Head：`ffee00fdd68bf467c3f712418d473c02fda9f622`
-原始功能主线提交：`bba007a6735a65f1af6bdc0f06a278ddebe16fb4`
+生成时间：2026-07-22T11:30:00.000Z  
+批量基线：f6d326887c43f3c561bf913d6090e00ffe9e4551
 
-最终Quality运行：`29807742042`，Static、Unit、Integration、Migration、Build、Electron E2E全部成功。
-独立永久门：PR Policy `29807741925`、Task Governance `29807741957`、Evidence `29807741913`、Security `29807741863`、Performance `29807741889`均成功。
+## 交付结论
 
-本次审计复验确认并修复：
+章节定稿生成final Version、StateProposal与EndingSnapshot；pending提案零权威写入，接受、编辑接受和拒绝由作者裁决并在单事务内更新。有限期EntityState完整保留validUntilChapterId并执行半开区间语义，旧章语义变化只标记后续派生快照失效。
 
-- `validUntilChapterId`从合同、StateProposal账本、作者接受/编辑接受到`entity_states.valid_until_chapter_id`完整保留。
-- 非空结束章节必须属于同项目、保持活动状态并严格位于起始章节之后。
-- EntityState继续采用`[validFromChapterId, validUntilChapterId)`半开区间。
-- 覆盖非空终点、同章、逆序、跨项目、编辑接受、终点失效后的批量事务回滚。
-- 真实Electron链路验证有限期提案经IPC、Core与作者界面接受后，在结束章节起失效。
-- pending提案不修改权威状态；接受、编辑接受、拒绝与EndingSnapshot重建保持单事务。
-- 快照缺失或stale时回退权威当前表；纯文字修订不触发语义传播。
+## 复验结论
 
-人工复核结论：PR最终差异不含一次性`expect.fail(...)`诊断文件；数据库、合同、Core、Electron链路与冻结文档语义一致。
+复核覆盖双类型提案、批量裁决、事务回滚、快照回退、失效传播、有限期终点保留及同章、逆序、跨项目拒绝。真实桌面链路覆盖提案生成、裁决与有限期状态展示。
 
-结论：M3-06审计缺陷已修复并通过完整PR矩阵，登记为Implemented；最终Verified按M3批次复验规则延期。
+## 自动化与桌面证据
+
+- Quality：运行 `29914507812`，静态、构建、单元、集成、迁移与Electron E2E全部成功。
+- Electron E2E：25/25，工件 `8527587874`，Digest `sha256:0b2163c9411940ad9a1c0b054df444d50a24dce6949e96b9ecd1a53b686efa47`。
+- Security：运行 `29914507551`。
+- Performance：运行 `29914507599`。
+- PR Policy、Task Governance、Evidence与Repository Governance分别由 `29914507537`、`29914507651`、`29914507544`、`29914507567` 验证。
+
+## 状态结论
+
+任务卡范围、真实实现、自动化结果与人工复核一致，可以关闭为Verified。跨后续阶段的需求继续保留其原有状态。

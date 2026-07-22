@@ -4,7 +4,9 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { loadAuditRemediationManifest } from '../../scripts/audit-remediation-policy.mjs';
+import {
+  loadAuditRemediationManifest,
+} from '../../scripts/audit-remediation-policy.mjs';
 
 const temporaryDirectories: string[] = [];
 
@@ -55,10 +57,7 @@ describe('audit remediation manifest discovery', () => {
     await writeFile(
       path.join(directory, 'legacy.json'),
       JSON.stringify(
-        manifest(
-          'fix/governance-audit-legacy',
-          '.github/audit-remediations/legacy.json',
-        ),
+        manifest('fix/governance-audit-legacy', '.github/audit-remediations/legacy.json'),
       ),
     );
 
@@ -75,10 +74,7 @@ describe('audit remediation manifest discovery', () => {
     await writeFile(
       path.join(directory, 'legacy.json'),
       JSON.stringify(
-        manifest(
-          'fix/governance-audit-legacy',
-          '.github/audit-remediations/legacy.json',
-        ),
+        manifest('fix/governance-audit-legacy', '.github/audit-remediations/legacy.json'),
       ),
     );
 

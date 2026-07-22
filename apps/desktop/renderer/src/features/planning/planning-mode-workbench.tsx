@@ -36,7 +36,17 @@ export function PlanningModeWorkbench({
   const [professional, setProfessional] = useState(initialMode === 'professional');
 
   useEffect(() => {
-    if (disclosureMode) setProfessional(disclosureMode === 'professional');
+    const synchronize = (): void => {
+      setProfessional((disclosureMode ?? currentDisclosureMode()) === 'professional');
+    };
+    synchronize();
+    if (disclosureMode) return;
+    const observer = new MutationObserver(synchronize);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-author-mode'],
+    });
+    return () => observer.disconnect();
   }, [disclosureMode]);
 
   if (professional) {

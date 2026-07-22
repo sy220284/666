@@ -78,6 +78,7 @@ export function WritingWorkbench({
   const activeChapter = useRef<Chapter | null>(null);
   const composing = useRef(false);
   const synchronizing = useRef(false);
+  const initialChapterRequested = useRef(false);
   const selectionByChapter = useRef(
     new Map<string, { readonly from: number; readonly to: number }>(),
   );
@@ -85,6 +86,7 @@ export function WritingWorkbench({
   const [draft, setDraft] = useState<DraftDocument | null>(null);
   const [editorState, setEditorState] = useState('从左侧卷章目录选择章节。');
   const [editorFailure, setEditorFailure] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   const [statistics, setStatistics] = useState<WritingStatistics>(EMPTY_STATISTICS);
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
@@ -207,7 +209,7 @@ export function WritingWorkbench({
     };
   }, [flush]);
 
-  const destroyEditor = useCallback((): void => {
+  const destroyEditor = useCallback((clearSession = true): void => {
     const instance = editor.current;
     const currentChapter = activeChapter.current;
     if (instance && currentChapter) {
@@ -221,20 +223,30 @@ export function WritingWorkbench({
     instance?.destroy();
     editor.current = null;
     editorHost.current?.replaceChildren();
-    activeDraft.current = null;
-    setDraft(null);
     setStatistics(EMPTY_STATISTICS);
     setSelectedLocked(null);
+    setIsComposing(false);
+    composing.current = false;
+    if (clearSession) {
+      activeDraft.current = null;
+      activeChapter.current = null;
+      setDraft(null);
+      setChapter(null);
+    }
   }, []);
 
   const mountEditor = useCallback(
     (document: DraftDocument, nextChapter: Chapter): void => {
-      destroyEditor();
-      const host = editorHost.current;
-      if (!host) return;
+      destroyEditor(false);
       activeDraft.current = document;
       activeChapter.current = nextChapter;
       setDraft(document);
+      setChapter(nextChapter);
+      const host = editorHost.current;
+      if (!host) {
+        setStatus('Draft已更新；返回正文后重建编辑器。');
+        return;
+      }
       const instance = new Editor({
         element: host,
         extensions: createWorldforgeEditorExtensions(temporaryClientBlockId),
@@ -290,7 +302,7 @@ export function WritingWorkbench({
       }
       refreshStatistics();
       refreshLockState();
-      setStatus(readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从DraftBlock重建。');
+      setStatus(readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从 DraftBlock 重建。');
     },
     [
       destroyEditor,
@@ -305,9 +317,20 @@ export function WritingWorkbench({
 
   useEffect(() => () => destroyEditor(), [destroyEditor]);
 
+  useEffect(() => {
+    if (panel !== 'editor' && editor.current) destroyEditor(false);
+  }, [destroyEditor, panel]);
+
+  useEffect(() => {
+    if (panel === 'editor' && chapter && draft && !editor.current) mountEditor(draft, chapter);
+  }, [chapter, draft, mountEditor, panel]);
+
   const openChapter = useCallback(
     async (nextChapter: Chapter): Promise<void> => {
-      if (activeChapter.current?.id === nextChapter.id) return;
+      if (activeChapter.current?.id === nextChapter.id && activeDraft.current) {
+        if (panel === 'editor' && !editor.current) mountEditor(activeDraft.current, nextChapter);
+        return;
+      }
       if (!(await flush())) {
         onStatus('自动保存失败，已阻止切换章节。');
         return;
@@ -333,8 +356,24 @@ export function WritingWorkbench({
       }
       mountEditor(outcome.data, nextChapter);
     },
-    [bridge, flush, mountEditor, onStatus, project.projectId, setStatus],
+    [bridge, flush, mountEditor, onStatus, panel, project.projectId, setStatus],
   );
+
+  useEffect(() => {
+    if (initialChapterRequested.current) return;
+    initialChapterRequested.current = true;
+    let active = true;
+    void bridge.planning
+      .listStructure(project.projectId, { mode: 'replace' })
+      .then((outcome) => {
+        if (!active || outcome.state !== 'success') return;
+        const firstChapter = outcome.data.volumes.flatMap((volume) => volume.chapters)[0];
+        if (firstChapter) void openChapter(firstChapter);
+      });
+    return () => {
+      active = false;
+    };
+  }, [bridge, openChapter, project.projectId]);
 
   const replaceDraft = useCallback(
     (next: DraftDocument, message: string): void => {
@@ -345,6 +384,15 @@ export function WritingWorkbench({
     },
     [mountEditor, setStatus],
   );
+
+  const backToProject = useCallback(async (): Promise<void> => {
+    if (!(await flush())) {
+      setStatus('自动保存失败，已阻止返回项目。', true);
+      return;
+    }
+    destroyEditor();
+    setStatus('已返回项目结构；选择章节可继续写作。');
+  }, [destroyEditor, flush, setStatus]);
 
   const matches = useCallback(() => {
     const instance = editor.current;
@@ -382,7 +430,7 @@ export function WritingWorkbench({
     (all: boolean): void => {
       const instance = editor.current;
       const values = matches();
-      if (!instance || readOnly || values.length === 0) return;
+      if (!instance || readOnly || composing.current || values.length === 0) return;
       const selected = all ? values : [values[findIndex] ?? values[0]!];
       let transaction = instance.state.tr;
       for (const match of [...selected].reverse()) {
@@ -459,6 +507,11 @@ export function WritingWorkbench({
     );
   }, [readOnly, refreshLockState, setStatus]);
 
+  const manualSave = useCallback(async (): Promise<void> => {
+    if (!(await flush())) return;
+    setStatus(`已手动保存 · Revision ${activeDraft.current?.revision ?? 0}`);
+  }, [flush, setStatus]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (
@@ -468,14 +521,16 @@ export function WritingWorkbench({
       )
         return;
       event.preventDefault();
-      if (!composing.current && !event.isComposing) void flush();
+      if (!composing.current && !event.isComposing) void manualSave();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [flush]);
+  }, [manualSave]);
+
+  const editorUnavailable = !draft || readOnly || isComposing;
 
   return (
-    <section className="writing-workbench" data-writing-workbench>
+    <section className="writing-workbench" data-writing-workbench data-draft-workspace>
       <header className="feature-heading writing-heading">
         <div>
           <p className="eyebrow">DRAFT · PROJECT.SQLITE</p>
@@ -483,6 +538,9 @@ export function WritingWorkbench({
           <p>React独占正文、Version和Candidate；Core继续负责Revision、Hash、LockGuard和原子事务。</p>
         </div>
         <div className="feature-heading__actions">
+          <button data-back-project type="button" onClick={() => void backToProject()}>
+            返回项目
+          </button>
           <button
             type="button"
             className={panel === 'editor' ? 'is-active' : ''}
@@ -492,6 +550,7 @@ export function WritingWorkbench({
           </button>
           <button
             data-open-versions
+            data-create-version
             type="button"
             className={panel === 'versions' ? 'is-active' : ''}
             disabled={!chapter}
@@ -518,9 +577,7 @@ export function WritingWorkbench({
           projectId={project.projectId}
           readOnly={readOnly}
           selectedChapterId={chapter?.id ?? null}
-          onSelectChapter={(chapterId) => {
-            if (chapter?.id === chapterId) return;
-          }}
+          onSelectChapter={() => undefined}
           onOpenChapter={(nextChapter) => void openChapter(nextChapter)}
           onBeforeWrite={flush}
           onStatus={onStatus}
@@ -531,48 +588,58 @@ export function WritingWorkbench({
             <>
               <div className="draft-toolbar" role="toolbar" aria-label="正文块工具">
                 <button
+                  data-set-block-type="paragraph"
                   type="button"
-                  disabled={!draft || readOnly}
+                  disabled={editorUnavailable}
                   onClick={() => setBlockType('paragraph')}
                 >
                   正文
                 </button>
                 <button
+                  data-set-block-type="dialogue"
                   type="button"
-                  disabled={!draft || readOnly}
+                  disabled={editorUnavailable}
                   onClick={() => setBlockType('dialogue')}
                 >
                   对话
                 </button>
                 <button
+                  data-set-block-type="heading"
                   type="button"
-                  disabled={!draft || readOnly}
+                  disabled={editorUnavailable}
                   onClick={() => setBlockType('heading')}
                 >
                   小标题
                 </button>
-                <button type="button" disabled={!draft || readOnly} onClick={insertSeparator}>
+                <button
+                  data-insert-separator
+                  type="button"
+                  disabled={editorUnavailable}
+                  onClick={insertSeparator}
+                >
                   分隔线
                 </button>
                 <button
                   data-toggle-block-lock
                   type="button"
                   aria-pressed={selectedLocked === true}
-                  disabled={!draft || readOnly || selectedLocked === null}
+                  disabled={editorUnavailable || selectedLocked === null}
                   onClick={toggleLock}
                 >
                   {selectedLocked ? '解锁当前块' : '锁定当前块'}
                 </button>
                 <button
+                  data-undo-draft
                   type="button"
-                  disabled={!draft || readOnly}
+                  disabled={editorUnavailable}
                   onClick={() => editor.current && undoWorldforgeEditor(editor.current)}
                 >
                   撤销
                 </button>
                 <button
+                  data-redo-draft
                   type="button"
-                  disabled={!draft || readOnly}
+                  disabled={editorUnavailable}
                   onClick={() => editor.current && redoWorldforgeEditor(editor.current)}
                 >
                   重做
@@ -581,8 +648,8 @@ export function WritingWorkbench({
                   className="primary-button"
                   data-save-draft
                   type="button"
-                  disabled={!draft || readOnly}
-                  onClick={() => void flush()}
+                  disabled={editorUnavailable}
+                  onClick={() => void manualSave()}
                 >
                   手动保存
                 </button>
@@ -591,7 +658,9 @@ export function WritingWorkbench({
                   disabled={!draft}
                   onClick={() =>
                     void navigator.clipboard.writeText(
-                      editor.current?.getText({ blockSeparator: '\n\n' }) ?? '',
+                      editor.current?.getText({ blockSeparator: '\n\n' }) ??
+                        draft?.blocks.map((block) => block.text).join('\n\n') ??
+                        '',
                     )
                   }
                 >
@@ -601,13 +670,13 @@ export function WritingWorkbench({
 
               <div className="draft-metrics" aria-label="正文统计">
                 <span>
-                  字符 <strong>{statistics.characterCount}</strong>
+                  字符 <strong data-draft-character-count>{statistics.characterCount}</strong>
                 </span>
                 <span>
-                  纯文字 <strong>{statistics.textCount}</strong>
+                  纯文字 <strong data-draft-text-count>{statistics.textCount}</strong>
                 </span>
                 <span>
-                  段落 <strong>{statistics.paragraphCount}</strong>
+                  段落 <strong data-draft-paragraph-count>{statistics.paragraphCount}</strong>
                 </span>
                 <span>
                   {statistics.progressPercent === null
@@ -618,6 +687,7 @@ export function WritingWorkbench({
 
               <div className="draft-find" aria-label="当前章节查找替换">
                 <input
+                  data-draft-find
                   type="search"
                   aria-label="查找文本"
                   placeholder="查找当前章节"
@@ -627,16 +697,26 @@ export function WritingWorkbench({
                     setFindIndex(0);
                   }}
                 />
-                <button type="button" disabled={!findCount} onClick={() => selectMatch(-1)}>
+                <button
+                  type="button"
+                  disabled={!findCount}
+                  onClick={() => selectMatch(-1)}
+                >
                   上一个
                 </button>
-                <button type="button" disabled={!findCount} onClick={() => selectMatch(1)}>
+                <button
+                  data-draft-find-next
+                  type="button"
+                  disabled={!findCount}
+                  onClick={() => selectMatch(1)}
+                >
                   下一个
                 </button>
-                <span aria-live="polite">
+                <span data-draft-find-status aria-live="polite">
                   {findCount ? `${findIndex + 1}/${findCount}` : findText ? '未找到' : ''}
                 </span>
                 <input
+                  data-draft-replace
                   type="text"
                   aria-label="替换文本"
                   placeholder="替换为"
@@ -644,15 +724,16 @@ export function WritingWorkbench({
                   onChange={(event) => setReplaceText(event.target.value)}
                 />
                 <button
+                  data-draft-replace-current
                   type="button"
-                  disabled={!findCount || readOnly}
+                  disabled={!findCount || readOnly || isComposing}
                   onClick={() => replaceMatches(false)}
                 >
                   替换
                 </button>
                 <button
                   type="button"
-                  disabled={!findCount || readOnly}
+                  disabled={!findCount || readOnly || isComposing}
                   onClick={() => replaceMatches(true)}
                 >
                   全部替换
@@ -661,6 +742,7 @@ export function WritingWorkbench({
 
               <p
                 className={editorFailure ? 'draft-state is-error' : 'draft-state'}
+                data-draft-state
                 role="status"
                 aria-live="polite"
               >
@@ -673,11 +755,13 @@ export function WritingWorkbench({
                   ref={editorHost}
                   onCompositionStart={() => {
                     composing.current = true;
+                    setIsComposing(true);
                     autosave.current?.pause();
                     setStatus('输入法组合中；保存与结构键已暂停。');
                   }}
                   onCompositionEnd={() => {
                     composing.current = false;
+                    setIsComposing(false);
                     autosave.current?.resume();
                     autosave.current?.markDirty();
                   }}
@@ -698,6 +782,7 @@ export function WritingWorkbench({
               draft={draft}
               project={project}
               flush={flush}
+              onClose={() => onPanelChange('editor')}
               onDraftReplace={replaceDraft}
             />
           ) : null}
@@ -740,6 +825,7 @@ function VersionPanel({
   draft,
   project,
   flush,
+  onClose,
   onDraftReplace,
 }: {
   readonly bridge: RendererBridgeAdapter;
@@ -747,6 +833,7 @@ function VersionPanel({
   readonly draft: DraftDocument;
   readonly project: ProjectWorkspaceSummary;
   readonly flush: () => Promise<boolean>;
+  readonly onClose: () => void;
   readonly onDraftReplace: (draft: DraftDocument, message: string) => void;
 }) {
   const readOnly = project.databaseMode !== 'read-write';
@@ -841,16 +928,29 @@ function VersionPanel({
           <h2>Version历史与比较</h2>
           <p>Version不可变；左侧为当前已保存Draft，右侧为选中Version。</p>
         </div>
+        <button data-close-versions type="button" onClick={onClose}>
+          返回正文
+        </button>
       </header>
       <form className="version-create-grid" onSubmit={(event) => void create(event)}>
-        <input name="title" maxLength={240} placeholder="版本标题" required />
-        <input name="label" maxLength={120} placeholder="标签（可选）" />
-        <input name="description" maxLength={2000} placeholder="说明（可选）" />
-        <button className="primary-button" disabled={readOnly || pending} type="submit">
+        <input data-version-title name="title" maxLength={240} placeholder="版本标题" required />
+        <input data-version-label name="label" maxLength={120} placeholder="标签（可选）" />
+        <input
+          data-version-description
+          name="description"
+          maxLength={2000}
+          placeholder="说明（可选）"
+        />
+        <button
+          className="primary-button"
+          data-confirm-version
+          disabled={readOnly || pending}
+          type="submit"
+        >
           创建Version
         </button>
       </form>
-      <p className="feature-status" role="status">
+      <p className="feature-status" data-version-status role="status">
         {status}
       </p>
       <div className="version-history-layout">
@@ -862,6 +962,7 @@ function VersionPanel({
               <article
                 className="version-row"
                 data-version-id={version.versionId}
+                data-version-row
                 key={version.versionId}
               >
                 <div>
@@ -873,10 +974,15 @@ function VersionPanel({
                   </small>
                 </div>
                 <div className="version-row__actions">
-                  <button type="button" onClick={() => void preview(version.versionId)}>
+                  <button
+                    data-version-action="compare"
+                    type="button"
+                    onClick={() => void preview(version.versionId)}
+                  >
                     比较
                   </button>
                   <button
+                    data-version-action="final"
                     type="button"
                     disabled={readOnly || version.finalized}
                     onClick={() => void finalize(version.versionId)}
@@ -884,6 +990,7 @@ function VersionPanel({
                     设为定稿
                   </button>
                   <button
+                    data-version-action="restore"
                     type="button"
                     disabled={readOnly}
                     onClick={() => void restore(version.versionId)}
@@ -891,6 +998,7 @@ function VersionPanel({
                     恢复为新Draft
                   </button>
                   <button
+                    data-version-action="export"
                     type="button"
                     onClick={() =>
                       void bridge.recovery.exportVersion({
@@ -966,26 +1074,26 @@ function CandidatePanel({
   }, [bridge, chapter.id, project.projectId]);
 
   const loadUndo = useCallback(
-    async (nextPreview: CandidatePreview): Promise<void> => {
+    async (nextPreview: CandidatePreview): Promise<boolean> => {
       if (nextPreview.candidate.status !== 'accepted') {
         setUndoPreview(null);
-        return;
+        return false;
       }
       const lookup = await bridge.candidateAction.findUndoRecord({
         projectId: project.projectId,
         chapterId: chapter.id,
         candidateId: nextPreview.candidate.candidateId,
       });
-      if (lookup.state !== 'success') return;
+      if (lookup.state !== 'success') return false;
       const outcome = await bridge.candidateAction.previewUndo({
         projectId: project.projectId,
         chapterId: chapter.id,
         applyRecordId: lookup.data.applyRecordId,
       });
-      if (outcome.state === 'success') {
-        setUndoPreview(outcome.data);
-        setConflicts(outcome.data.conflictSet?.conflicts ?? []);
-      }
+      if (outcome.state !== 'success') return false;
+      setUndoPreview(outcome.data);
+      setConflicts(outcome.data.conflictSet?.conflicts ?? []);
+      return outcome.data.canUndo;
     },
     [bridge, chapter.id, project.projectId],
   );
@@ -1028,10 +1136,12 @@ function CandidatePanel({
           outcome.data.candidate.blocks.flatMap((block) => (block.beatId ? [block.beatId] : [])),
         ),
       );
+      const canUndo = await loadUndo(outcome.data);
       setStatus(
-        `基础Revision ${outcome.data.candidate.baseDraftRevision} · ${outcome.data.execution.strategy}`,
+        canUndo
+          ? `可整体撤销 · 基础 Revision ${outcome.data.candidate.baseDraftRevision}`
+          : `已准备采用 · 基础 Revision ${outcome.data.candidate.baseDraftRevision} · ${outcome.data.execution.strategy}`,
       );
-      await loadUndo(outcome.data);
     },
     [bridge, chapter.id, loadUndo, project.projectId],
   );
@@ -1092,9 +1202,16 @@ function CandidatePanel({
       candidateId: preview.candidate.candidateId,
     });
     if (outcome.state === 'success') {
-      setStatus('候选已丢弃，Draft未改变。');
+      setPreview({
+        ...preview,
+        candidate: {
+          ...preview.candidate,
+          status: outcome.data.status,
+          resolvedAt: outcome.data.resolvedAt,
+        },
+      });
       await refreshList();
-      await loadPreview(outcome.data.candidateId);
+      setStatus('候选已丢弃，Draft 未改变。');
     } else if (outcome.state === 'failure') setStatus(`丢弃失败 · ${outcome.error.code}`);
   };
 
@@ -1121,7 +1238,6 @@ function CandidatePanel({
       return;
     }
     onDraftReplace(outcome.data.draft, `采用成功 · Revision ${outcome.data.draft.revision}`);
-    setStatus(`采用成功 · ApplyRecord ${outcome.data.record.applyRecordId.slice(0, 8)}…`);
     const nextPreview: CandidatePreview = {
       ...preview,
       candidate: {
@@ -1134,6 +1250,7 @@ function CandidatePanel({
     setPreview(nextPreview);
     await loadUndo(nextPreview);
     await refreshList();
+    setStatus(`采用成功 · ApplyRecord ${outcome.data.record.applyRecordId.slice(0, 8)}…`);
   };
 
   const undo = async (): Promise<void> => {
@@ -1166,9 +1283,10 @@ function CandidatePanel({
       outcome.data.draft,
       `已撤销本次应用 · Revision ${outcome.data.draft.revision}`,
     );
+    setPreview((current) => (current ? { ...current, draft: outcome.data.draft } : current));
     setUndoPreview(null);
     setConflicts([]);
-    setStatus('Candidate应用已整体撤销。');
+    setStatus('已撤销本次应用。');
   };
 
   return (
@@ -1182,6 +1300,7 @@ function CandidatePanel({
       <div className="filter-bar">
         <select
           aria-label="选择候选稿"
+          data-candidate-preview-select
           value={candidateId}
           onChange={(event) => {
             setCandidateId(event.target.value);
@@ -1198,10 +1317,16 @@ function CandidatePanel({
             </option>
           ))}
         </select>
-        <button type="button" disabled={!previewRequest.current} onClick={() => void cancel()}>
+        <button
+          data-cancel-candidate-preview
+          type="button"
+          disabled={!previewRequest.current}
+          onClick={() => void cancel()}
+        >
           取消计算
         </button>
         <button
+          data-discard-candidate
           type="button"
           disabled={!preview || preview.candidate.status !== 'pending'}
           onClick={() => void discard()}
@@ -1209,11 +1334,18 @@ function CandidatePanel({
           丢弃候选
         </button>
       </div>
-      <p className="feature-status" role="status">
+      <p
+        className="feature-status"
+        data-candidate-preview-status
+        data-candidate-apply-status
+        role="status"
+      >
         {status}
       </p>
       {preview?.candidate.completeness === 'partial' ? (
-        <p className="safety-inline">不完整建议稿只能按块或SceneBeat采用，不能整稿替换。</p>
+        <p className="safety-inline" data-candidate-preview-warning>
+          不完整建议稿只能按块或SceneBeat采用，不能整稿替换。
+        </p>
       ) : null}
       {preview ? (
         <>
@@ -1223,21 +1355,22 @@ function CandidatePanel({
             <span>{preview.execution.chapterCharacters}字符</span>
           </div>
           <div className="candidate-compare-grid">
-            <pre>
+            <pre data-candidate-preview-current>
               <strong>当前已保存稿</strong>
               {'\n\n'}
               {preview.draft.blocks.map((block) => block.text).join('\n\n')}
             </pre>
-            <pre>
+            <pre data-candidate-preview-candidate>
               <strong>候选稿</strong>
               {'\n\n'}
               {preview.candidate.blocks.map((block) => block.text).join('\n\n')}
             </pre>
           </div>
-          <div className="candidate-apply-panel">
+          <div className="candidate-apply-panel" data-candidate-apply-panel>
             <label>
               采用范围
               <select
+                data-candidate-apply-mode
                 value={selectionMode}
                 onChange={(event) => setSelectionMode(event.target.value as typeof selectionMode)}
               >
@@ -1313,7 +1446,11 @@ function CandidatePanel({
         </>
       ) : null}
       {conflicts.length ? (
-        <ul className="candidate-conflicts" aria-label="候选内容冲突">
+        <ul
+          className="candidate-conflicts"
+          data-candidate-conflict-list
+          aria-label="候选内容冲突"
+        >
           {conflicts.map((conflict, index) => (
             <li key={`${conflict.kind}-${index}`}>
               {conflict.kind} · {conflict.message}
@@ -1368,8 +1505,7 @@ function sanitizePastedHtml(html: string): string {
       }
       if (!(child instanceof HTMLElement)) continue;
       const tag = child.tagName.toLowerCase();
-      if (/^h[1-6]$/u.test(tag))
-        appendTextBlock(tag as `h${number}`, child.textContent ?? '');
+      if (/^h[1-6]$/u.test(tag)) appendTextBlock(tag as `h${number}`, child.textContent ?? '');
       else if (tag === 'blockquote') appendTextBlock('blockquote', child.textContent ?? '');
       else if (tag === 'hr') clean.append(document.createElement('hr'));
       else if (tag === 'p' || tag === 'li' || tag === 'pre')

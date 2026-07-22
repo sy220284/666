@@ -1,6 +1,6 @@
 # M3-10 Renderer写作、Version、Candidate迁移与旧入口退役
 
-> 状态：In Progress
+> 状态：Implemented  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`refactor/m3-renderer-writing-candidate-cutover`

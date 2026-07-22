@@ -70,12 +70,15 @@ test('skips and completes ProjectBrief, drags PlotNodes, and leaves Draft unchan
 
     await page.locator('[data-open-planning]').click();
     await expect(page.locator('[data-planning-dialog]')).toBeVisible();
-    await expect(page.locator('[data-outline-empty]')).toBeVisible();
+    await expect(page.locator('[data-planning-disclosure="beginner"]')).toBeVisible();
+    await expect(page.locator('[data-brief-form] textarea')).toHaveCount(4);
 
     await page.locator('[data-skip-brief]').click();
     await expect(page.locator('[data-brief-skipped]')).toBeVisible();
     await page.locator('[data-restore-brief]').click();
     await page.locator('[data-planning-mode="professional"]').click();
+    await expect(page.locator('[data-planning-disclosure="professional"]')).toBeVisible();
+    await expect(page.locator('[data-outline-empty]')).toBeVisible();
     const briefForm = page.locator('[data-brief-form]');
     await briefForm.locator('textarea[name="concept"]').fill('失去名字的人追查被改写的历史。');
     await briefForm.locator('textarea[name="readingPromise"]').fill('谜团升级与线索回收。');
@@ -111,6 +114,7 @@ test('skips and completes ProjectBrief, drags PlotNodes, and leaves Draft unchan
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-open-planning]').click();
+    await page.locator('[data-planning-mode="professional"]').click();
     await expect(page.locator('textarea[name="concept"]')).toHaveValue(
       '失去名字的人追查被改写的历史。',
     );

@@ -317,27 +317,23 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
 }
 
 function requestKey(domain: string, method: string, args: readonly unknown[]): string {
-  const identity = args
-    .map((argument) => {
-      if (typeof argument === 'string' || typeof argument === 'number') {
-        return String(argument);
-      }
-      if (!argument || typeof argument !== 'object') return typeof argument;
-      const record = argument as Record<string, unknown>;
-      for (const key of [
-        'taskId',
-        'projectId',
-        'chapterId',
-        'candidateId',
-        'versionId',
-        'entityId',
-        'sceneBeatId',
-        'backupId',
-      ]) {
-        if (typeof record[key] === 'string') return `${key}:${record[key]}`;
-      }
-      return 'object';
-    })
-    .join('|');
+  const identity = args.map(stableRequestIdentity).join('|');
   return `${domain}.${method}:${identity || 'root'}`;
+}
+
+function stableRequestIdentity(value: unknown): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return JSON.stringify(value);
+  }
+  if (typeof value === 'undefined') return 'undefined';
+  if (Array.isArray(value)) return `[${value.map(stableRequestIdentity).join(',')}]`;
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableRequestIdentity(record[key])}`)
+      .join(',')}}`;
+  }
+  return typeof value;
 }

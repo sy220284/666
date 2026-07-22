@@ -40,6 +40,12 @@ describe('M3-07 shell bridge adapter', () => {
         close: vi.fn(async (projectId) => success('project-close', { projectId })),
         move: vi.fn(async (projectId) => success('project-move', { projectId })),
       },
+      task: {
+        getSnapshot: vi.fn(async (taskId) => success('task-snapshot', { taskId })),
+        cancel: vi.fn(async () => success('task-cancel', { accepted: true, status: 'running' })),
+        listActive: vi.fn(async () => success('task-list', { tasks: [] })),
+        subscribe: vi.fn(() => () => undefined),
+      },
     };
     const adapter = createRendererBridgeAdapter(bridge);
 
@@ -63,5 +69,14 @@ describe('M3-07 shell bridge adapter', () => {
       state: 'success',
       requestId: 'project-close',
     });
+    await expect(adapter.task.listActive()).resolves.toMatchObject({
+      state: 'success',
+      requestId: 'task-list',
+      data: { tasks: [] },
+    });
+    const listener = vi.fn();
+    const unsubscribe = adapter.task.subscribe(listener, 'project-1');
+    expect(bridge.task.subscribe).toHaveBeenCalledWith(listener, 'project-1');
+    unsubscribe();
   });
 });

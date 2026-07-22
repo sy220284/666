@@ -6,7 +6,7 @@ import type {
 } from '@worldforge/contracts';
 
 const dialog = document.querySelector<HTMLDialogElement>('[data-canon-dialog]');
-const openButton = document.querySelector<HTMLButtonElement>('[data-open-canon]');
+const openButton = document.querySelector<HTMLButtonElement>('[data-legacy-open-canon]');
 const closeButton = document.querySelector<HTMLButtonElement>('[data-close-canon]');
 const newButton = document.querySelector<HTMLButtonElement>('[data-new-entity]');
 const archiveButton = document.querySelector<HTMLButtonElement>('[data-archive-entity]');

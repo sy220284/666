@@ -1,6 +1,6 @@
 # M3-09 Renderer规划、设定、结构与数据工具迁移
 
-> 状态：Planned  
+> 状态：In Progress
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`refactor/m3-renderer-planning-canon-structure`

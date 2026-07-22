@@ -11,9 +11,14 @@
   },
   "dependencies": {
     "@worldforge/contracts": "workspace:*",
-    "@worldforge/editor-core": "workspace:*"
+    "@worldforge/editor-core": "workspace:*",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zustand": "5.0.14"
   },
   "devDependencies": {
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
     "esbuild": "0.28.1"
   }
 }

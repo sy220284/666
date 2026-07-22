@@ -1,4 +1,4 @@
-import type { CommandResult, WorldforgeBridge } from '@worldforge/contracts';
+import type { CommandResult, TaskStreamUpdate, WorldforgeBridge } from '@worldforge/contracts';
 
 import {
   BridgeRequestCoordinator,
@@ -6,7 +6,7 @@ import {
   type BridgeRequestOutcome,
 } from './request-lifecycle.js';
 
-type RendererBridgePort = Pick<WorldforgeBridge, 'app' | 'settings' | 'project'>;
+type RendererBridgePort = Pick<WorldforgeBridge, 'app' | 'settings' | 'project' | 'task'>;
 
 type AdaptedMethod<Method> = Method extends (
   ...args: infer Args
@@ -24,6 +24,14 @@ export interface RendererBridgeAdapter {
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
   readonly project: AdaptedDomain<WorldforgeBridge['project']>;
+  readonly task: AdaptedDomain<
+    Pick<WorldforgeBridge['task'], 'getSnapshot' | 'cancel' | 'listActive'>
+  > & {
+    readonly subscribe: (
+      listener: (update: TaskStreamUpdate) => void,
+      projectId?: string,
+    ) => () => void;
+  };
   readonly cancelAll: () => void;
 }
 
@@ -92,6 +100,27 @@ export function createRendererBridgeAdapter(
         ),
       move: (projectId, options) =>
         coordinator.run(`project.move:${projectId}`, () => bridge.project.move(projectId), options),
+    },
+    task: {
+      getSnapshot: (taskId, projectId, options) =>
+        coordinator.run(
+          `task.getSnapshot:${taskId}`,
+          () => bridge.task.getSnapshot(taskId, projectId),
+          options,
+        ),
+      cancel: (taskId, projectId, options) =>
+        coordinator.run(
+          `task.cancel:${taskId}`,
+          () => bridge.task.cancel(taskId, projectId),
+          options,
+        ),
+      listActive: (projectId, options) =>
+        coordinator.run(
+          `task.listActive:${projectId ?? 'application'}`,
+          () => bridge.task.listActive(projectId),
+          options,
+        ),
+      subscribe: (listener, projectId) => bridge.task.subscribe(listener, projectId),
     },
     cancelAll: () => coordinator.cancelAll(),
   };

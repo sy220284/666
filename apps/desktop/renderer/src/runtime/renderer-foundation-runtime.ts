@@ -211,7 +211,12 @@ export function createRendererFoundationRuntime(
 function failureFromCoreOutcome(
   outcome: BridgeRequestOutcome<CoreStatus>,
 ): RendererStartupFailure | null {
-  if (outcome.state === 'failure') return outcome.error;
+  if (outcome.state === 'failure') {
+    return {
+      ...outcome.error,
+      details: outcome.error.details ?? undefined,
+    };
+  }
   if (outcome.state === 'cancelled') {
     return {
       code: 'CORE_STATUS_CANCELLED',

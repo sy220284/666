@@ -102,7 +102,7 @@ function coalescedMethod<Method extends (...args: never[]) => Promise<unknown>>(
       if (pending.get(key) === request) pending.delete(key);
     });
     return request;
-  }) as Method;
+  }) as unknown as Method;
 }
 
 function methodProxy<Domain extends object, Method extends keyof Domain>(

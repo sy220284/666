@@ -138,10 +138,7 @@ describe('M3 final React business workbenches', () => {
         ),
         readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'bridge/use-bridge-resource.ts'), 'utf8'),
-        readFile(
-          path.join(rendererRoot, 'features/writing/writing-core-workbench.tsx'),
-          'utf8',
-        ),
+        readFile(path.join(rendererRoot, 'features/writing/writing-core-workbench.tsx'), 'utf8'),
       ]);
 
     expect(planning).toContain('previewSplitChapter');
@@ -163,9 +160,7 @@ describe('M3 final React business workbenches', () => {
     expect(narrative).toContain('dependencyTimelineEventIds');
     expect(dataTools).toContain("operation: 'manual-protection'");
     expect(dataTools).toContain('预览不会写入项目');
-    expect(hook).toContain(
-      "BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'",
-    );
+    expect(hook).toContain("BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'");
     expect(hook).toContain("outcome.state === 'cancelled'");
     expect(writing).toContain('DraftAutosaveCoordinator');
     expect(writing).toContain('candidateAction.preview');

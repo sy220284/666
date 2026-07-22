@@ -1,0 +1,141 @@
+name: Diagnostic Export Integrated Remediation V4
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: ${{ github.head_ref == 'diagnostic/export-integrated-remediation' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Execute semantic-anchor patch generator
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import textwrap
+
+          workflow = Path('.github/workflows/diagnostic-export-integrated-remediation.yml').read_text()
+          script = textwrap.dedent(
+              workflow.split("python3 - <<'PY'\n", 1)[1].split('\n          PY', 1)[0]
+          )
+          core_replacement = """core_file = Path('apps/desktop/main/src/core-supervisor.ts')
+          core_text, count = re.subn(
+              r\"message: 'The task command timed out\\.',\\n\\s+retryable: true,\",
+              \"\"\"message:
+                        'Core did not return a final result before the timeout; the operation may still have completed.',
+                      retryable: false,
+                      userAction: 'Refresh authoritative state before attempting the operation again.',\"\"\",
+              core_file.read_text(),
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f'core timeout block: expected one match, found {count}')
+          core_file.write_text(core_text)
+
+          replace_once("""
+          script = re.sub(
+              r"replace_once\(\n\s*'apps/desktop/main/src/core-supervisor\.ts',\n.*?\n\s*\)\n\n\s*replace_once\(",
+              lambda _match: core_replacement,
+              script,
+              count=1,
+              flags=re.S,
+          )
+          electron_replacement = """electron_file = Path('apps/desktop/main/src/electron-main.ts')
+          electron_text = electron_file.read_text()
+          old = \"    platform: process.platform,\\n    logger,\"
+          if electron_text.count(old) != 1:
+              raise SystemExit('electron fixture flag anchor mismatch')
+          electron_file.write_text(
+              electron_text.replace(
+                  old,
+                  \"    platform: process.platform,\\n    enableTestFixtures: process.env.WORLDFORGE_E2E === '1' && !app.isPackaged,\\n    logger,\",
+              )
+          )
+
+          candidate ="""
+          script = re.sub(
+              r"replace_once\(\n\s*'apps/desktop/main/src/electron-main\.ts',\n.*?\n\s*\)\n\n\s*candidate =",
+              lambda _match: electron_replacement,
+              script,
+              count=1,
+              flags=re.S,
+          )
+          security_replacement = """security_file = Path('tests/security/candidate-ipc.test.ts')
+          security_text = security_file.read_text()
+          old = \"    platform: 'test',\\n    logger:\"
+          if security_text.count(old) != 1:
+              raise SystemExit('candidate security fixture flag anchor mismatch')
+          security_file.write_text(
+              security_text.replace(
+                  old,
+                  \"    platform: 'test',\\n    enableTestFixtures,\\n    logger:\",
+              )
+          )
+          replace_once("""
+          script = re.sub(
+              r"replace_once\(\n\s*'tests/security/candidate-ipc\.test\.ts',\n\s*\"\"\"    platform: 'test',.*?\n\s*\)\n\s*replace_once\(",
+              lambda _match: security_replacement,
+              script,
+              count=1,
+              flags=re.S,
+          )
+          exec(compile(script, 'integrated-remediation-generator', 'exec'))
+          PY
+      - name: Format changed files
+        run: |
+          pnpm exec prettier --write \
+            apps/desktop/main/src/core-supervisor.ts \
+            apps/desktop/main/src/ipc-handlers.ts \
+            apps/desktop/main/src/electron-main.ts \
+            apps/desktop/main/src/candidate-preview-ipc.ts \
+            apps/desktop/main/src/continuity-ipc.ts \
+            apps/desktop/main/src/narrative-planning-ipc.ts \
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts \
+            apps/desktop/renderer/src/react-entry.tsx \
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts \
+            tests/security/candidate-ipc.test.ts \
+            tests/unit/bridge-request-detachment.test.ts \
+            tests/unit/core-recovery-supervisor.test.ts \
+            tests/unit/ipc-timeout-semantics.test.ts \
+            tests/migration/integrated-coordination-migration.test.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: integrated-remediation-output-v4
+          path: |
+            apps/desktop/main/src/core-supervisor.ts
+            apps/desktop/main/src/ipc-handlers.ts
+            apps/desktop/main/src/electron-main.ts
+            apps/desktop/main/src/candidate-preview-ipc.ts
+            apps/desktop/main/src/continuity-ipc.ts
+            apps/desktop/main/src/narrative-planning-ipc.ts
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts
+            apps/desktop/renderer/src/react-entry.tsx
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts
+            migrations/project/0018_integrated_coordination_hardening.sql
+            tests/migration/integrated-coordination-migration.test.ts
+            tests/security/candidate-ipc.test.ts
+            tests/unit/bridge-request-detachment.test.ts
+            tests/unit/core-recovery-supervisor.test.ts
+            tests/unit/ipc-timeout-semantics.test.ts
+            docs/architecture/M0_M3_INTEGRATED_COORDINATION.md
+            docs/contracts/ERROR_CODES.md
+          if-no-files-found: error
+          retention-days: 1

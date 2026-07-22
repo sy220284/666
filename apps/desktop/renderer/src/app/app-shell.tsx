@@ -53,6 +53,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
   const [coreStatus, setCoreStatus] = useState<CoreStatus | null>(null);
   const [tasks, setTasks] = useState<readonly TaskSnapshot[]>([]);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
   const [message, setMessage] = useState<string | null>('正在读取本地工作区…');
   const [failure, setFailure] = useState<FailureView | null>(null);
 
@@ -107,12 +108,16 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
 
     setMessage(null);
-    document.body.dataset.rendererReady = 'true';
+    setHydrated(true);
   }, [bridge, dispatch]);
 
   useEffect(() => {
     void refreshWorkspace();
   }, [refreshWorkspace]);
+
+  useEffect(() => {
+    if (hydrated) document.body.dataset.rendererReady = 'true';
+  }, [hydrated]);
 
   useEffect(() => {
     const unsubscribe = bridge.task.subscribe(() => void refreshTasks());

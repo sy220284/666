@@ -1,18 +1,50 @@
-pnpm install --frozen-lockfile --prefer-offline # exit 0, local Node 24 / pnpm 11.13.0
-pnpm task:validate # exit 0, local M3-08 IN_PROGRESS before transition
-pnpm check:workspaces # exit 0, local 10 workspace packages; Quality 29885074542
-pnpm check:boundaries # exit 0, local 9 layers; Quality 29885074542
-pnpm format:check # exit 0, local; Quality 29885074542
-pnpm lint # exit 0, local; Quality 29885074542
-pnpm typecheck # exit 0, local; Quality 29885074542
-pnpm test:unit # exit 0, 119/119 local; Quality 29885074542
-pnpm test:integration # exit 0, 110/110 local; Quality 29885074542
-pnpm test:migration # exit 0, 33/33 local; Quality 29885074542
-pnpm test:security # exit 0, 62 passed and 1 existing skip local; Security 29885074405
-pnpm test:perf # exit 0, 34/34 local; Performance 29885074413
-pnpm test:eval # exit 0, 8/8 local; Performance 29885074413
-pnpm build # exit 0, local; Quality 29885074542
-pnpm test:e2e # exit 2, local Linux container has no DISPLAY or xvfb-run
-pnpm test:e2e # exit 0, Quality 29885074542 under xvfb, 19/19 in 8.0m
-pnpm package # exit 0, local, 9 compiled foundation entries
-pnpm task:advance -- --ci=success --commit=a519fc5fedac59777ed8c9d683a15d4b8a715f3e # exit 0, M3-08 transition and M3-09 activation
+pnpm check:workspaces
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm check:boundaries
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm format:check
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm lint
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm typecheck
+exit=0 fixture=Quality-29914507812/static-checks
+
+pnpm build
+exit=0 fixture=Quality-29914507812/build
+
+pnpm test:unit
+exit=0 fixture=Quality-29914507812/tests-unit
+
+pnpm test:integration
+exit=0 fixture=Quality-29914507812/tests-integration
+
+pnpm test:migration
+exit=0 fixture=Quality-29914507812/tests-migration
+
+pnpm test:e2e
+exit=0 fixture=25/25,Quality-29914507812,artifact-8527587874
+
+pnpm test:security
+exit=0 fixture=Security-29914507551
+
+pnpm test:perf
+exit=0 fixture=Performance-29914507599
+
+pnpm test:eval
+exit=0 fixture=Performance-29914507599
+
+PR Policy
+exit=0 fixture=29914507537
+
+Task Governance
+exit=0 fixture=29914507651
+
+Evidence
+exit=0 fixture=29914507544
+
+Repository Governance
+exit=0 fixture=29914507567

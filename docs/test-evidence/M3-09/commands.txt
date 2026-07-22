@@ -1,0 +1,39 @@
+pnpm lint
+exit=0 duration_ms=4028 fixtures=M3-09-lint,Quality-29889935786
+
+pnpm typecheck
+exit=0 duration_ms=12300 fixtures=M3-09-typecheck,Quality-29889935786
+
+pnpm test:unit
+exit=0 duration_ms=1980 fixtures=123/123,Quality-29889935786
+
+pnpm test:integration
+exit=0 duration_ms=13060 fixtures=110/110,Quality-29889935786
+
+pnpm test:migration
+exit=0 duration_ms=5530 fixtures=33/33,Quality-29889935786
+
+pnpm test:security
+exit=0 duration_ms=3200 fixtures=62-passed-1-existing-skip,Security-29888738316
+
+pnpm test:perf
+exit=0 duration_ms=2500 fixtures=34/34,Performance-29888738292
+
+pnpm test:eval
+exit=0 duration_ms=1200 fixtures=8/8,Performance-29888738292
+
+pnpm build
+exit=0 duration_ms=16500 fixtures=Quality-29889935786
+
+pnpm test:e2e
+exit=2 duration_ms=16100 fixtures=local-display-unavailable
+
+pnpm test:e2e
+exit=0 duration_ms=648000 fixtures=25/25,Quality-29889935786,artifact-8518043986
+
+pnpm package
+exit=0 duration_ms=8000 fixtures=Quality-29889935786
+
+pnpm task:advance -- --ci=success --commit=a47735bed06e4cc4f6884f0a66aa66a8fdf0691b
+exit=0 duration_ms=372 fixtures=M3-09-Implemented,M3-10-activated
+

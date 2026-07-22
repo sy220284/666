@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { BridgeRequestError, BridgeRequestOutcome } from './request-lifecycle.js';
 
-export type BridgeResourceState = 'loading' | 'success' | 'failure';
+export type BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled';
 
 export interface BridgeResource<T> {
   readonly state: BridgeResourceState;
@@ -31,7 +31,11 @@ export function useBridgeQuery<T>(
       setState('success');
       return;
     }
-    if (outcome.state === 'failure') setError(outcome.error);
+    if (outcome.state === 'cancelled') {
+      setState('cancelled');
+      return;
+    }
+    setError(outcome.error);
     setState('failure');
   }, [load]);
 

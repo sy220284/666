@@ -6,6 +6,7 @@ import { RendererFoundationApp } from './app/renderer-foundation-app.js';
 import { createWindowRendererBridgeAdapter } from './bridge/renderer-bridge-adapter.js';
 import { createLegacyCompatibilityLoader } from './compat/legacy-loader.js';
 import { createLegacySurfaceController } from './compat/legacy-surface.js';
+import { createCoreRecoverySupervisor } from './runtime/core-recovery-supervisor.js';
 import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
 import { createRendererFoundationRuntime } from './runtime/renderer-foundation-runtime.js';
 import { RendererStatusArbitrator } from './runtime/status-arbitrator.js';
@@ -21,6 +22,7 @@ const legacySurface = createLegacySurfaceController();
 const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
 const retiredCompatibilityBoundary = createLegacyCompatibilityLoader(async () => undefined);
+const coreRecovery = createCoreRecoverySupervisor({ bridge });
 const runtime = createRendererFoundationRuntime({
   bridge,
   legacy: retiredCompatibilityBoundary,
@@ -31,6 +33,8 @@ const runtime = createRendererFoundationRuntime({
 });
 const root = createRoot(rootElement);
 
+lifecycle.register('react-root', 'core-recovery-supervisor', () => coreRecovery.dispose());
+coreRecovery.start();
 rootElement.dataset.reactMounted = 'true';
 root.render(
   <RendererErrorBoundary>

@@ -1,0 +1,304 @@
+import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+
+import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
+
+export type CoreRecoveryHealth = CoreStatus['status'] | 'unreachable';
+
+export interface CoreRecoverySurfaceState {
+  readonly visible: boolean;
+  readonly health: CoreRecoveryHealth;
+  readonly recovering: boolean;
+  readonly message: string;
+  readonly hasRecoverableProject: boolean;
+}
+
+export interface CoreRecoverySurfaceActions {
+  readonly restart: () => void;
+  readonly copyDraft: () => void;
+}
+
+export interface CoreRecoverySurface {
+  bind(actions: CoreRecoverySurfaceActions): void;
+  render(state: CoreRecoverySurfaceState): void;
+  dispose(): void;
+}
+
+export interface CoreRecoverySupervisor {
+  readonly health: CoreRecoveryHealth;
+  readonly rememberedProjectId: string | null;
+  start(): void;
+  checkNow(): Promise<void>;
+  restart(): Promise<boolean>;
+  copyDraft(): Promise<boolean>;
+  dispose(): void;
+}
+
+interface CoreRecoveryBridge {
+  readonly app: Pick<RendererBridgeAdapter['app'], 'getCoreStatus' | 'restartCore'>;
+  readonly project: Pick<RendererBridgeAdapter['project'], 'getActive' | 'openRecent'>;
+}
+
+export interface CoreRecoverySupervisorOptions {
+  readonly bridge: CoreRecoveryBridge;
+  readonly surface?: CoreRecoverySurface;
+  readonly pollIntervalMs?: number;
+  readonly schedule?: (handler: () => void, intervalMs: number) => unknown;
+  readonly cancelSchedule?: (handle: unknown) => void;
+  readonly readDraftText?: () => string;
+  readonly writeClipboardText?: (text: string) => Promise<void>;
+}
+
+const DEFAULT_POLL_INTERVAL_MS = 2_000;
+
+export function createCoreRecoverySupervisor(
+  options: CoreRecoverySupervisorOptions,
+): CoreRecoverySupervisor {
+  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+  if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 250) {
+    throw new Error('CORE_RECOVERY_POLL_INTERVAL_INVALID');
+  }
+
+  const schedule =
+    options.schedule ??
+    ((handler: () => void, intervalMs: number): unknown => window.setInterval(handler, intervalMs));
+  const cancelSchedule =
+    options.cancelSchedule ?? ((handle: unknown): void => window.clearInterval(handle as number));
+  const readDraftText = options.readDraftText ?? defaultDraftText;
+  const writeClipboardText = options.writeClipboardText ?? defaultClipboardWrite;
+  const surface = options.surface ?? createDomCoreRecoverySurface();
+
+  let disposed = false;
+  let started = false;
+  let timer: unknown | null = null;
+  let checkPromise: Promise<void> | null = null;
+  let health: CoreRecoveryHealth = 'starting';
+  let observed = false;
+  let rememberedProject: ProjectWorkspaceSummary | null = null;
+  let recovering = false;
+  let message = '正在检查Core运行状态。';
+
+  const publish = (): void => {
+    surface.render({
+      visible: observed && (health !== 'healthy' || recovering),
+      health,
+      recovering,
+      message,
+      hasRecoverableProject: rememberedProject !== null,
+    });
+  };
+
+  const rememberActiveProject = async (): Promise<void> => {
+    try {
+      const project = await options.bridge.project.getActive();
+      if (project.state === 'success' && project.data) rememberedProject = project.data;
+    } catch {
+      // A concurrent workspace refresh may own the same bridge key. The next poll retries.
+    }
+  };
+
+  const checkNow = (): Promise<void> => {
+    if (disposed) return Promise.resolve();
+    if (checkPromise) return checkPromise;
+    checkPromise = Promise.resolve()
+      .then(async () => {
+        const outcome = await options.bridge.app.getCoreStatus();
+        if (outcome.state !== 'success') {
+          observed = true;
+          health = 'unreachable';
+          message =
+            outcome.state === 'failure'
+              ? `Core状态不可读取：${outcome.error.code}`
+              : 'Core状态请求未完成。';
+          publish();
+          return;
+        }
+        observed = true;
+        health = outcome.data.status;
+        if (health === 'healthy') {
+          await rememberActiveProject();
+          message = 'Core运行正常。';
+        } else {
+          message = `Core当前状态：${health}。未保存正文仍保留在当前窗口。`;
+        }
+        publish();
+      })
+      .catch(() => {
+        observed = true;
+        health = 'unreachable';
+        message = 'Core连接已中断。未保存正文仍保留在当前窗口。';
+        publish();
+      })
+      .finally(() => {
+        checkPromise = null;
+      });
+    return checkPromise;
+  };
+
+  const restart = async (): Promise<boolean> => {
+    if (disposed || recovering) return false;
+    observed = true;
+    recovering = true;
+    message = '正在重启Core；当前编辑器内容不会被清空。';
+    publish();
+    try {
+      const outcome = await options.bridge.app.restartCore();
+      if (outcome.state !== 'success' || outcome.data.status.status !== 'healthy') {
+        health = outcome.state === 'success' ? outcome.data.status.status : 'unreachable';
+        message =
+          outcome.state === 'failure'
+            ? `Core重启失败：${outcome.error.code}`
+            : 'Core尚未恢复健康状态。';
+        return false;
+      }
+      health = 'healthy';
+      if (rememberedProject) {
+        const reopened = await options.bridge.project.openRecent(rememberedProject.projectId);
+        if (reopened.state !== 'success') {
+          health = 'degraded';
+          message =
+            reopened.state === 'failure'
+              ? `Core已重启，但项目重新打开失败：${reopened.error.code}`
+              : 'Core已重启，但项目重新打开请求未完成。';
+          return false;
+        }
+        rememberedProject = reopened.data;
+      }
+      message = 'Core与项目已恢复，可以重新保存当前窗口中的正文。';
+      return true;
+    } catch {
+      health = 'unreachable';
+      message = 'Core重启或项目恢复失败。请先复制当前未保存正文。';
+      return false;
+    } finally {
+      recovering = false;
+      publish();
+    }
+  };
+
+  const copyDraft = async (): Promise<boolean> => {
+    if (disposed) return false;
+    const text = readDraftText();
+    if (!text.trim()) {
+      message = '当前窗口没有可复制的正文。';
+      publish();
+      return false;
+    }
+    try {
+      await writeClipboardText(text);
+      message = '当前窗口正文已复制到剪贴板。';
+      publish();
+      return true;
+    } catch {
+      message = '正文复制失败；请在编辑器内全选并手动复制。';
+      publish();
+      return false;
+    }
+  };
+
+  const start = (): void => {
+    if (disposed || started) return;
+    started = true;
+    surface.bind({
+      restart: () => void restart(),
+      copyDraft: () => void copyDraft(),
+    });
+    publish();
+    void checkNow();
+    timer = schedule(() => void checkNow(), pollIntervalMs);
+  };
+
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    if (timer !== null) cancelSchedule(timer);
+    timer = null;
+    surface.dispose();
+  };
+
+  return {
+    get health() {
+      return health;
+    },
+    get rememberedProjectId() {
+      return rememberedProject?.projectId ?? null;
+    },
+    start,
+    checkNow,
+    restart,
+    copyDraft,
+    dispose,
+  };
+}
+
+function defaultDraftText(): string {
+  const content = document.querySelector<HTMLElement>('[data-draft-content]');
+  return content?.innerText ?? content?.textContent ?? '';
+}
+
+async function defaultClipboardWrite(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
+}
+
+function createDomCoreRecoverySurface(): CoreRecoverySurface {
+  const dialog = document.createElement('dialog');
+  dialog.dataset.coreRecovery = '';
+  dialog.setAttribute('aria-labelledby', 'core-recovery-title');
+  dialog.className = 'safety-banner core-recovery-surface';
+
+  const title = document.createElement('h2');
+  title.id = 'core-recovery-title';
+  title.textContent = 'Core连接中断';
+  const description = document.createElement('p');
+  const actions = document.createElement('div');
+  actions.className = 'feature-heading__actions';
+  const copyButton = document.createElement('button');
+  copyButton.type = 'button';
+  copyButton.className = 'quiet-button';
+  copyButton.textContent = '复制当前正文';
+  const restartButton = document.createElement('button');
+  restartButton.type = 'button';
+  restartButton.className = 'primary-button';
+  restartButton.textContent = '重启Core并恢复项目';
+  actions.append(copyButton, restartButton);
+  dialog.append(title, description, actions);
+  document.body.append(dialog);
+
+  let bound = false;
+  let restartAction = (): void => undefined;
+  let copyAction = (): void => undefined;
+  const onRestart = (): void => restartAction();
+  const onCopy = (): void => copyAction();
+
+  return {
+    bind(nextActions) {
+      restartAction = nextActions.restart;
+      copyAction = nextActions.copyDraft;
+      if (bound) return;
+      bound = true;
+      restartButton.addEventListener('click', onRestart);
+      copyButton.addEventListener('click', onCopy);
+    },
+    render(state) {
+      description.textContent = state.message;
+      restartButton.disabled = state.recovering;
+      restartButton.textContent = state.hasRecoverableProject ? '重启Core并恢复项目' : '重启Core';
+      copyButton.disabled = state.recovering;
+      dialog.dataset.coreHealth = state.health;
+      if (state.visible) {
+        if (!dialog.open) {
+          if (typeof dialog.show === 'function') dialog.show();
+          else dialog.setAttribute('open', '');
+        }
+      } else if (dialog.open) {
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+      }
+    },
+    dispose() {
+      restartButton.removeEventListener('click', onRestart);
+      copyButton.removeEventListener('click', onCopy);
+      if (dialog.open && typeof dialog.close === 'function') dialog.close();
+      dialog.remove();
+    },
+  };
+}

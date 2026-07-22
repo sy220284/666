@@ -181,8 +181,10 @@ export class CoreSupervisor {
       requestId: envelope.requestId,
       error: {
         code: 'COMMON_TIMEOUT_005',
-        message: 'The task command timed out.',
-        retryable: true,
+        message:
+          'Core did not return a final result before the timeout; the operation may still have completed.',
+        retryable: false,
+        userAction: 'Refresh authoritative state before attempting the operation again.',
       },
     });
   }

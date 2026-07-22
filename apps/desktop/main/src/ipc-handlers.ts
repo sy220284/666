@@ -113,6 +113,7 @@ import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import type { CredentialBroker } from './credential-broker.js';
+import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
 import { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';
 
 interface IpcHandlerOptions {
@@ -122,6 +123,7 @@ interface IpcHandlerOptions {
   readonly rendererUrl: string;
   readonly version: string;
   readonly platform: string;
+  readonly enableTestFixtures?: boolean;
   readonly logger: PrivacyLogger;
   readonly getWindowPreferences: () => WindowPreferences;
   readonly setAppearancePreferences: (
@@ -148,6 +150,7 @@ function failure(
   retryable: boolean,
   diagnosticId?: string,
   details?: CommandFailure['error']['details'],
+  userAction?: string,
 ): CommandFailure {
   return {
     ok: false,
@@ -158,6 +161,7 @@ function failure(
       retryable,
       ...(diagnosticId ? { diagnosticId } : {}),
       ...(details ? { details } : {}),
+      ...(userAction ? { userAction } : {}),
     },
   };
 }
@@ -267,6 +271,12 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     channel: string,
     handler: (event: IpcMainInvokeEvent, input: unknown) => Promise<unknown> | unknown,
   ): void => {
+    if (
+      channel === CANDIDATE_IPC_CHANNELS.createFixtureCandidate &&
+      options.enableTestFixtures !== true
+    ) {
+      return;
+    }
     options.ipcMain.handle(channel, handler);
   };
 
@@ -353,15 +363,21 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     requestId: string,
     code: ErrorCode,
     details?: CommandFailure['error']['details'],
-  ): CommandFailure =>
-    failure(
-      requestId,
+  ): CommandFailure => {
+    const semantics = coreOperationFailureSemantics(
       code,
       'The local application data operation could not be completed.',
-      ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+    );
+    return failure(
+      requestId,
+      code,
+      semantics.message,
+      semantics.retryable,
       undefined,
       details,
+      semantics.userAction,
     );
+  };
 
   register(IPC_CHANNELS.settingsGet, async (event, raw) => {
     const rejected = rejectUntrusted(event, raw);

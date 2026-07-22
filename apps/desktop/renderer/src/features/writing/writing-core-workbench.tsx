@@ -299,6 +299,7 @@ export function WritingWorkbench({
           from: Math.min(Math.max(1, remembered.from), maximum),
           to: Math.min(Math.max(1, remembered.to), maximum),
         });
+        instance.commands.focus();
       }
       refreshStatistics();
       refreshLockState();
@@ -851,12 +852,13 @@ function VersionPanel({
   useEffect(() => void refresh(), [refresh]);
 
   const create = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    const form = event.currentTarget;
     event.preventDefault();
     if (readOnly || !(await flush())) {
       setStatus('自动保存失败，未创建Version。');
       return;
     }
-    const values = new FormData(event.currentTarget);
+    const values = new FormData(form);
     const title = String(values.get('title') ?? '').trim();
     if (!title) return;
     setPending(true);
@@ -879,7 +881,7 @@ function VersionPanel({
       );
       return;
     }
-    event.currentTarget.reset();
+    form.reset();
     setStatus(`Version“${outcome.data.title}”已创建，内容不可修改。`);
     await refresh();
   };
@@ -916,7 +918,7 @@ function VersionPanel({
       versionId,
     });
     if (outcome.state === 'success') {
-      onDraftReplace(outcome.data, `已从Version恢复为新Draft · Revision ${outcome.data.revision}`);
+      onDraftReplace(outcome.data, '已从只读版本恢复为新草稿。');
       setStatus('恢复成功；原Version与原Draft记录保持不变。');
     } else if (outcome.state === 'failure') setStatus(`恢复失败 · ${outcome.error.code}`);
   };

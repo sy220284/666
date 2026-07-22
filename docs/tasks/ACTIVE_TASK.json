@@ -12,7 +12,7 @@
   },
   "activeTask": {
     "id": "M3-10",
-    "status": "IN_PROGRESS",
+    "status": "IMPLEMENTED",
     "source": "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
     "branch": "work/m3-10-renderer-writing-candidate-cutover",
     "startedAt": "2026-07-22",
@@ -137,6 +137,16 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M3-10",
+      "implementationCommit": "1e3dca74d799b32ca520c279c1b51878b37607f5",
+      "deferredAt": "2026-07-22T10:30:00.000Z",
+      "pending": [
+        "batch revalidation against the merged React renderer baseline",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "deferredTasks": [
@@ -150,20 +160,22 @@
     }
   ],
   "lastImplementedTask": {
-    "id": "M3-09",
-    "commit": "a47735bed06e4cc4f6884f0a66aa66a8fdf0691b",
-    "implementedAt": "2026-07-22T04:13:47.994Z",
-    "source": "docs/tasks/M3/M3-09_RENDERER_PLANNING_CANON_STRUCTURE.md",
-    "branch": "work/m3-09-renderer-planning-canon-structure",
-    "nextTaskId": "M3-10",
+    "id": "M3-10",
+    "commit": "1e3dca74d799b32ca520c279c1b51878b37607f5",
+    "implementedAt": "2026-07-22T10:30:00.000Z",
+    "source": "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
+    "branch": "work/m3-10-renderer-writing-candidate-cutover",
+    "nextTaskId": null,
     "allowedPaths": [
       "apps/desktop/renderer/",
+      "packages/editor-core/",
       "packages/contracts/",
       "tests/unit/",
       "tests/integration/",
       "tests/security/",
       "tests/e2e/",
       "tests/performance/",
+      "docs/architecture/",
       "docs/ui/",
       "package.json",
       "pnpm-lock.yaml",
@@ -171,10 +183,9 @@
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M3/M3-09_RENDERER_PLANNING_CANON_STRUCTURE.md",
+      "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-09/",
-      "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md"
+      "docs/test-evidence/M3-10/"
     ],
     "forbiddenPaths": []
   }

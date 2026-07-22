@@ -53,7 +53,13 @@ export function SettingsPage(props: SettingsPageProps) {
           <h1>设置</h1>
           <p>显示偏好和应用设置保存在本机，不写入任何项目正文。</p>
         </div>
-        <button className="quiet-button" data-close-settings type="button" onClick={props.onClose}>
+        <button
+          className="quiet-button"
+          data-close-settings
+          disabled={Boolean(props.pendingKey)}
+          type="button"
+          onClick={props.onClose}
+        >
           返回首页
         </button>
       </header>
@@ -75,7 +81,7 @@ export function SettingsPage(props: SettingsPageProps) {
               className="react-settings-nav__item"
               data-current={item.current}
               data-settings-navigation={item.id}
-              disabled={item.disabled}
+              disabled={item.disabled || Boolean(props.pendingKey)}
               key={item.id}
               title={item.disabledReason ?? undefined}
               type="button"

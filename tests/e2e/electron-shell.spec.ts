@@ -105,7 +105,9 @@ async function setAppearance(page: Page, appearance: AppearancePreferences): Pro
   await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
   await page.locator('[data-settings-navigation="appearance"]').click();
   await page.locator('[data-ui-scale]').selectOption(String(appearance.uiScalePercent));
-  await page.locator('[data-workspace-alignment]').selectOption(appearance.workspaceAlignment);
+  await page
+    .locator('select[data-workspace-alignment]')
+    .selectOption(appearance.workspaceAlignment);
   await page.locator('[data-save-appearance]').click();
   await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
   const stored = await page.evaluate(async () => {

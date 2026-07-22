@@ -121,6 +121,7 @@ describe('M3-08 React运行底座', () => {
     expect(settingsSource.match(/data-ui-scale/gu)).toHaveLength(1);
     expect(settingsSource.match(/data-workspace-alignment/gu)).toHaveLength(1);
     expect(settingsSource.match(/data-theme-variant/gu)).toHaveLength(1);
+    expect(settingsSource).toContain('disabled={item.disabled || Boolean(props.pendingKey)}');
     expect(stylesSource).not.toContain("body[data-theme-variant='");
     expect(stylesSource).toContain("body[data-visual-theme-variant='dark']");
   });

@@ -11,53 +11,55 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M3-10",
-    "status": "IMPLEMENTED",
-    "source": "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
-    "branch": "work/m3-10-renderer-writing-candidate-cutover",
+    "id": "M3-01",
+    "status": "IN_PROGRESS",
+    "source": "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md",
+    "branch": "work/m3-01-project-brief-outline",
     "startedAt": "2026-07-22",
     "allowedPaths": [
-      "apps/desktop/renderer/",
-      "packages/editor-core/",
+      "migrations/project/",
+      "packages/domain/",
+      "packages/core-service/",
       "packages/contracts/",
-      "tests/unit/",
+      "apps/desktop/renderer/",
+      "apps/desktop/main/",
+      "apps/desktop/preload/",
       "tests/integration/",
-      "tests/security/",
       "tests/e2e/",
-      "tests/performance/",
-      "docs/architecture/",
-      "docs/ui/",
+      "tests/migration/",
+      "tests/security/",
+      "docs/contracts/IPC_CONTRACTS.md",
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/ui/SCREEN_SPECIFICATIONS.md",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
+      "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md",
       "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-10/"
+      "docs/test-evidence/M3-01/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
       "AGENTS.md",
       "docs/PROJECT_EXECUTION_ENTRY.md",
-      "docs/architecture/ARCHITECTURE.md",
+      "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/decisions/ADR-005-lock-revision-backup.md",
-      "docs/ui/EDITOR_INTERACTION_SPEC.md",
-      "docs/ui/CANDIDATE_REVIEW_SPEC.md",
-      "docs/ui/SCREEN_SPECIFICATIONS.md",
-      "docs/ui/INTERACTION_STATES.md"
+      "docs/product/FUNCTION_CATALOG.md",
+      "docs/database/DATABASE_SCHEMA.md",
+      "docs/ui/SCREEN_SPECIFICATIONS.md"
     ],
     "verification": [
       "pnpm lint",
       "pnpm typecheck",
       "pnpm test",
-      "pnpm test:security",
-      "pnpm test:e2e",
-      "pnpm test:unit",
+      "pnpm test:migration",
       "pnpm test:integration",
-      "pnpm test:perf"
+      "pnpm test:security",
+      "pnpm test:e2e"
     ]
   },
   "lastVerifiedTask": {
@@ -66,18 +68,6 @@
     "verifiedAt": "2026-07-20T12:49:05Z"
   },
   "deferredVerification": [
-    {
-      "id": "M3-01",
-      "implementationCommit": "82400d6cf35247a54c84b46faab065938e39310c",
-      "deferredAt": "2026-07-18T13:38:06.847Z",
-      "pending": [
-        "four-file evidence package and real automated run records",
-        "necessary manual review conclusions recorded in summary.md",
-        "risk-based screenshots, full logs, or independent quality matrix when warranted",
-        "final traceability verification status",
-        "Verified closure"
-      ]
-    },
     {
       "id": "M3-03",
       "implementationCommit": "e452d35c6056d505c402d3b78c779348247ebc13",
@@ -165,7 +155,7 @@
     "implementedAt": "2026-07-22T10:30:00.000Z",
     "source": "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
     "branch": "work/m3-10-renderer-writing-candidate-cutover",
-    "nextTaskId": null,
+    "nextTaskId": "M3-01",
     "allowedPaths": [
       "apps/desktop/renderer/",
       "packages/editor-core/",
@@ -185,7 +175,8 @@
       "docs/tasks/TASK_INDEX.md",
       "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-10/"
+      "docs/test-evidence/M3-10/",
+      "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md"
     ],
     "forbiddenPaths": []
   }

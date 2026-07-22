@@ -2145,7 +2145,6 @@ async function refresh(): Promise<void> {
     if (workspaceBadge) workspaceBadge.textContent = '兼容工作区初始化失败';
   } finally {
     applyLayout();
-    document.body.dataset.rendererReady = 'true';
   }
 }
 

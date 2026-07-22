@@ -107,6 +107,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
 
     setMessage(null);
+    document.body.dataset.rendererReady = 'true';
   }, [bridge, dispatch]);
 
   useEffect(() => {

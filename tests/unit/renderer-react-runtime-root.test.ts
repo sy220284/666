@@ -102,6 +102,8 @@ describe('M3-08 React运行底座', () => {
       expect(legacySource).not.toContain(operation);
     }
     expect(shellSource).toContain('data-react-shell');
+    expect(shellSource).toContain("document.body.dataset.rendererReady = 'true'");
+    expect(legacySource).not.toContain("document.body.dataset.rendererReady = 'true'");
     expect(homeSource).toContain('data-react-home');
     expect(settingsSource).toContain('data-react-settings');
   });

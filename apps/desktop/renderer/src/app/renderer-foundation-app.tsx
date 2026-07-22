@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 
+import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
+import type { LegacySurfaceController } from '../compat/legacy-surface.js';
 import type {
   RendererFoundationRuntime,
   RendererFoundationStartResult,
 } from '../runtime/renderer-foundation-runtime.js';
 import type { RendererStartupDiagnostic } from '../runtime/startup-diagnostics.js';
+import { AppShell } from './app-shell.js';
 
 type FoundationViewState =
   | { readonly state: 'starting'; readonly diagnostic: null }
@@ -13,9 +16,15 @@ type FoundationViewState =
 
 export interface RendererFoundationAppProps {
   readonly runtime: RendererFoundationRuntime;
+  readonly bridge: RendererBridgeAdapter;
+  readonly legacySurface: LegacySurfaceController;
 }
 
-export function RendererFoundationApp({ runtime }: RendererFoundationAppProps) {
+export function RendererFoundationApp({
+  runtime,
+  bridge,
+  legacySurface,
+}: RendererFoundationAppProps) {
   const [view, setView] = useState<FoundationViewState>({
     state: 'starting',
     diagnostic: null,
@@ -55,6 +64,10 @@ export function RendererFoundationApp({ runtime }: RendererFoundationAppProps) {
     );
   }
 
+  if (view.state === 'running') {
+    return <AppShell bridge={bridge} legacySurface={legacySurface} />;
+  }
+
   return (
     <section
       className="react-foundation-status"
@@ -63,7 +76,7 @@ export function RendererFoundationApp({ runtime }: RendererFoundationAppProps) {
       role="status"
       aria-live="polite"
     >
-      <strong>{view.state === 'running' ? 'React界面底座已启动' : '正在启动React界面底座'}</strong>
+      <strong>正在启动React界面底座</strong>
       <span>旧业务界面按任务边界单实例兼容加载</span>
     </section>
   );

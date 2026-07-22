@@ -10,991 +10,705 @@
     <title>WorldForge</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body data-layout-mode="standard" data-left-panel="sidebar" data-right-panel="sidebar">
+  <body data-layout-mode="standard" data-left-panel="sidebar">
     <div id="react-root" data-react-root></div>
-    <div class="app-shell">
-      <header class="top-bar">
-        <div class="top-bar__leading">
-          <button
-            class="icon-button panel-toggle"
-            type="button"
-            data-toggle-left
-            aria-controls="project-panel"
-            aria-expanded="false"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <path d="M4 5.5h16M4 12h16M4 18.5h16" />
-            </svg>
-            <span class="sr-only">打开项目导航</span>
-          </button>
-          <div class="brand">
-            <span class="brand__mark">W</span>
-            <span>
-              <strong>WorldForge</strong>
-              <small>本地写作工作台</small>
-            </span>
-          </div>
-        </div>
-        <div class="top-bar__status" aria-live="polite">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>Core</span>
-          <strong data-core-status>正在启动</strong>
-          <small data-diagnostic-id></small>
-        </div>
-        <div class="top-bar__actions">
-          <button class="primary-button" type="button" data-open-create-project>新建项目</button>
-          <button class="quiet-button" type="button" data-open-project>打开项目</button>
-          <button class="quiet-button" type="button" data-open-settings>通用设置</button>
-          <button class="quiet-button" type="button" data-boundary-popover aria-expanded="false">
-            浮层边界
-          </button>
-          <button class="quiet-button" type="button" data-open-dialog>对话框</button>
-          <button class="quiet-button" type="button" data-restart-core>重启 Core</button>
-          <button
-            class="icon-button panel-toggle"
-            type="button"
-            data-toggle-right
-            aria-controls="context-panel"
-            aria-expanded="false"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3" />
-              <path
-                d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"
-              />
-            </svg>
-            <span class="sr-only">打开显示设置</span>
-          </button>
-        </div>
-      </header>
-
-      <div class="workspace-canvas">
-        <div class="workspace-frame" data-workspace-frame>
-          <aside class="side-panel side-panel--left" id="project-panel" data-left-sidebar>
-            <div class="panel-heading">
-              <span>
-                <small>验证导航</small>
-                <strong>应用首页</strong>
-              </span>
-              <button class="icon-button drawer-close" type="button" data-close-left>
-                <span aria-hidden="true">×</span><span class="sr-only">关闭项目导航</span>
-              </button>
-            </div>
-            <nav aria-label="显示验证场景" data-home-navigation>
-              <p class="nav-label">本地工作区</p>
-              <button class="nav-row is-active" type="button" aria-current="page">
-                <span aria-hidden="true">⌂</span>
-                <span><strong>首页</strong><small>最近项目与本地设置</small></span>
-              </button>
-              <button class="nav-row" type="button">
-                <span aria-hidden="true">Aa</span>
-                <span><strong>显示验证</strong><small>沿用 M0-06 响应式矩阵</small></span>
-              </button>
-            </nav>
-            <section class="structure-panel" data-structure-panel hidden aria-label="卷章目录">
-              <header class="structure-panel__header">
+    <div id="legacy-root" data-legacy-root hidden>
+      <div class="app-shell legacy-app-shell">
+        <div class="workspace-canvas">
+          <div class="workspace-frame" data-workspace-frame>
+            <aside class="side-panel side-panel--left" id="project-panel" data-left-sidebar>
+              <div class="panel-heading">
                 <span>
-                  <small>PROJECT STRUCTURE</small>
+                  <small>PROJECT</small>
                   <strong>卷章目录</strong>
                 </span>
-                <button class="quiet-button" type="button" data-create-volume>新建卷</button>
+                <button class="icon-button drawer-close" type="button" data-close-left>
+                  <span aria-hidden="true">×</span><span class="sr-only">关闭项目导航</span>
+                </button>
+              </div>
+              <section class="structure-panel" data-structure-panel hidden aria-label="卷章目录">
+                <header class="structure-panel__header">
+                  <span>
+                    <small>PROJECT STRUCTURE</small>
+                    <strong>卷章目录</strong>
+                  </span>
+                  <button class="quiet-button" type="button" data-create-volume>新建卷</button>
+                </header>
+                <p class="structure-state" data-structure-state role="status"></p>
+                <div class="structure-tree" data-structure-tree></div>
+                <footer>
+                  <button class="quiet-button" type="button" data-open-trash>废纸篓</button>
+                </footer>
+              </section>
+            </aside>
+
+            <main class="editor-region">
+              <header class="workspace-header">
+                <div>
+                  <p class="eyebrow">LOCAL FIRST · APPLICATION HOME</p>
+                  <h1 data-workspace-title>继续你的本地写作</h1>
+                </div>
+                <span class="prototype-badge" data-workspace-badge>应用级数据</span>
               </header>
-              <p class="structure-state" data-structure-state role="status"></p>
-              <div class="structure-tree" data-structure-tree></div>
-              <footer>
-                <button class="quiet-button" type="button" data-open-trash>废纸篓</button>
-              </footer>
-            </section>
-            <div class="panel-note" data-home-panel-note>
-              <strong>原型边界</strong>
-              <p>首页读取 app.sqlite 的真实应用级记录，不读取或缓存任何项目正文。</p>
-            </div>
-          </aside>
-
-          <main class="editor-region">
-            <header class="workspace-header">
-              <div>
-                <p class="eyebrow">LOCAL FIRST · APPLICATION HOME</p>
-                <h1 data-workspace-title>继续你的本地写作</h1>
+              <div class="paper-stage">
+                <article class="editor-paper" data-editor-paper tabindex="0">
+                  <section class="legacy-project-placeholder" data-legacy-project-placeholder>
+                    <p class="chapter-kicker">PROJECT WORKSPACE</p>
+                    <h2>从左侧卷章目录选择章节</h2>
+                    <p>首页、项目生命周期和应用设置已由React壳层接管。</p>
+                  </section>
+                  <section class="draft-workspace" data-draft-workspace hidden>
+                    <header class="draft-workspace__header">
+                      <div>
+                        <p class="chapter-kicker">DRAFT · PROJECT.SQLITE</p>
+                        <h2 data-draft-chapter-title>章节正文</h2>
+                      </div>
+                      <div class="draft-workspace__actions">
+                        <button class="quiet-button" type="button" data-back-project>
+                          返回项目
+                        </button>
+                        <button class="quiet-button" type="button" data-copy-draft>复制正文</button>
+                        <button class="quiet-button" type="button" data-create-version>
+                          保存版本
+                        </button>
+                        <button class="quiet-button" type="button" data-open-versions>
+                          版本历史
+                        </button>
+                        <button class="primary-button" type="button" data-save-draft>
+                          手动保存
+                        </button>
+                      </div>
+                    </header>
+                    <div class="draft-toolbar" role="toolbar" aria-label="正文块工具">
+                      <button type="button" data-set-block-type="paragraph">正文</button>
+                      <button type="button" data-set-block-type="dialogue">对话</button>
+                      <button type="button" data-set-block-type="heading">小标题</button>
+                      <button type="button" data-insert-separator>分隔线</button>
+                      <button
+                        type="button"
+                        data-toggle-block-lock
+                        aria-pressed="false"
+                        title="锁定当前正文块（Ctrl/Cmd+Shift+L）"
+                      >
+                        锁定当前块
+                      </button>
+                      <span aria-hidden="true"></span>
+                      <button type="button" data-undo-draft title="Ctrl/Cmd+Z">撤销</button>
+                      <button type="button" data-redo-draft title="Shift+Ctrl/Cmd+Z">重做</button>
+                    </div>
+                    <div class="draft-metrics" aria-label="正文统计">
+                      <span>字符 <strong data-draft-character-count>0</strong></span>
+                      <span>纯文字 <strong data-draft-text-count>0</strong></span>
+                      <span>段落 <strong data-draft-paragraph-count>0</strong></span>
+                      <span data-draft-progress>未设置目标</span>
+                    </div>
+                    <div class="draft-find" aria-label="当前章节查找替换">
+                      <input
+                        type="search"
+                        data-draft-find
+                        placeholder="查找当前章节"
+                        aria-label="查找文本"
+                      />
+                      <button type="button" data-draft-find-previous>上一个</button>
+                      <button type="button" data-draft-find-next>下一个</button>
+                      <span data-draft-find-status aria-live="polite"></span>
+                      <input
+                        type="text"
+                        data-draft-replace
+                        placeholder="替换为"
+                        aria-label="替换文本"
+                      />
+                      <button type="button" data-draft-replace-current>替换</button>
+                      <button type="button" data-draft-replace-all>全部替换</button>
+                    </div>
+                    <p class="draft-state" data-draft-state role="status" aria-live="polite"></p>
+                    <div class="draft-editor-host" data-draft-editor-host></div>
+                    <p class="draft-workspace__hint">
+                      正文修改空闲800ms后自动保存；切换章节、返回项目与关闭应用前会强制刷新。中文输入组合期间暂停保存。
+                    </p>
+                  </section>
+                </article>
               </div>
-              <span class="prototype-badge" data-workspace-badge>应用级数据</span>
-            </header>
-            <div class="paper-stage">
-              <article class="editor-paper" data-editor-paper tabindex="0">
-                <div class="home-intro" data-home-intro>
-                  <p class="chapter-kicker">只保存在这台设备</p>
-                  <h2>最近项目</h2>
-                  <p>
-                    这里仅显示 Core 从应用数据库读取的项目登记；项目正文仍属于各自的
-                    project.sqlite。
-                  </p>
-                  <div class="home-actions">
-                    <button class="primary-button" type="button" data-create-project>
-                      新建本地项目
-                    </button>
-                    <button class="quiet-button" type="button" data-select-project>
-                      打开已有项目
-                    </button>
-                    <button
-                      class="quiet-button"
-                      type="button"
-                      data-open-project
-                      data-recover-unreadable-project
-                    >
-                      恢复损坏项目
-                    </button>
-                  </div>
-                </div>
-                <section class="active-project" data-active-project hidden aria-live="polite">
-                  <div class="active-project__heading">
-                    <div>
-                      <p class="chapter-kicker">当前工作区</p>
-                      <h3 data-active-project-name>—</h3>
-                      <p data-active-project-path></p>
-                    </div>
-                    <span class="prototype-badge" data-active-project-mode>—</span>
-                  </div>
-                  <p class="active-project__notice" data-active-project-readonly hidden></p>
-                  <p class="active-project__status" data-project-operation-status role="status"></p>
-                  <div class="active-project__actions">
-                    <button class="quiet-button" type="button" data-open-recovery>
-                      恢复与导出
-                    </button>
-                    <button class="quiet-button" type="button" data-open-planning>作品规划</button>
-                    <button class="quiet-button" type="button" data-open-canon>实体与Canon</button>
-                    <button class="quiet-button" type="button" data-open-text-io>导入导出</button>
-                    <button class="quiet-button" type="button" data-move-project>移动项目</button>
-                    <button class="quiet-button" type="button" data-close-project>关闭项目</button>
-                  </div>
-                </section>
-                <section class="draft-workspace" data-draft-workspace hidden>
-                  <header class="draft-workspace__header">
-                    <div>
-                      <p class="chapter-kicker">DRAFT · PROJECT.SQLITE</p>
-                      <h2 data-draft-chapter-title>章节正文</h2>
-                    </div>
-                    <div class="draft-workspace__actions">
-                      <button class="quiet-button" type="button" data-back-project>返回项目</button>
-                      <button class="quiet-button" type="button" data-copy-draft>复制正文</button>
-                      <button class="quiet-button" type="button" data-create-version>
-                        保存版本
-                      </button>
-                      <button class="quiet-button" type="button" data-open-versions>
-                        版本历史
-                      </button>
-                      <button class="primary-button" type="button" data-save-draft>手动保存</button>
-                    </div>
-                  </header>
-                  <div class="draft-toolbar" role="toolbar" aria-label="正文块工具">
-                    <button type="button" data-set-block-type="paragraph">正文</button>
-                    <button type="button" data-set-block-type="dialogue">对话</button>
-                    <button type="button" data-set-block-type="heading">小标题</button>
-                    <button type="button" data-insert-separator>分隔线</button>
-                    <button
-                      type="button"
-                      data-toggle-block-lock
-                      aria-pressed="false"
-                      title="锁定当前正文块（Ctrl/Cmd+Shift+L）"
-                    >
-                      锁定当前块
-                    </button>
-                    <span aria-hidden="true"></span>
-                    <button type="button" data-undo-draft title="Ctrl/Cmd+Z">撤销</button>
-                    <button type="button" data-redo-draft title="Shift+Ctrl/Cmd+Z">重做</button>
-                  </div>
-                  <div class="draft-metrics" aria-label="正文统计">
-                    <span>字符 <strong data-draft-character-count>0</strong></span>
-                    <span>纯文字 <strong data-draft-text-count>0</strong></span>
-                    <span>段落 <strong data-draft-paragraph-count>0</strong></span>
-                    <span data-draft-progress>未设置目标</span>
-                  </div>
-                  <div class="draft-find" aria-label="当前章节查找替换">
-                    <input
-                      type="search"
-                      data-draft-find
-                      placeholder="查找当前章节"
-                      aria-label="查找文本"
-                    />
-                    <button type="button" data-draft-find-previous>上一个</button>
-                    <button type="button" data-draft-find-next>下一个</button>
-                    <span data-draft-find-status aria-live="polite"></span>
-                    <input
-                      type="text"
-                      data-draft-replace
-                      placeholder="替换为"
-                      aria-label="替换文本"
-                    />
-                    <button type="button" data-draft-replace-current>替换</button>
-                    <button type="button" data-draft-replace-all>全部替换</button>
-                  </div>
-                  <p class="draft-state" data-draft-state role="status" aria-live="polite"></p>
-                  <div class="draft-editor-host" data-draft-editor-host></div>
-                  <p class="draft-workspace__hint">
-                    正文修改空闲800ms后自动保存；切换章节、返回项目与关闭应用前会强制刷新。中文输入组合期间暂停保存。
-                  </p>
-                </section>
-                <section
-                  class="recent-projects"
-                  data-recent-projects
-                  aria-labelledby="recent-projects-heading"
-                >
-                  <header>
-                    <div>
-                      <h3 id="recent-projects-heading">本地记录</h3>
-                      <p>路径失效时可重新定位，移除记录不会删除项目文件。</p>
-                    </div>
-                    <button class="quiet-button" type="button" data-refresh-recent>刷新</button>
-                  </header>
-                  <p class="recent-state" data-recent-loading>正在读取最近项目…</p>
-                  <div class="recent-empty" data-recent-empty hidden>
-                    <strong>还没有最近项目</strong>
-                    <p>新建或打开一个 .worldforge 本地项目后，它会出现在这里。</p>
-                  </div>
-                  <p class="recent-state is-error" data-recent-error role="alert" hidden></p>
-                  <div class="recent-list" data-recent-list></div>
-                </section>
-              </article>
-            </div>
-          </main>
+            </main>
+          </div>
+        </div>
+      </div>
 
-          <aside class="side-panel side-panel--right" id="context-panel" data-right-sidebar>
-            <div class="panel-heading">
-              <span>
-                <small>本地偏好</small>
-                <strong>显示设置</strong>
-              </span>
-              <button class="icon-button drawer-close" type="button" data-close-right>
-                <span aria-hidden="true">×</span><span class="sr-only">关闭显示设置</span>
+      <div data-legacy-command-triggers hidden>
+        <button type="button" data-toggle-left aria-controls="project-panel"></button>
+        <button type="button" data-legacy-open-planning></button>
+        <button type="button" data-legacy-open-canon></button>
+        <button type="button" data-legacy-open-recovery></button>
+        <button type="button" data-legacy-open-text-io></button>
+      </div>
+
+      <button class="drawer-scrim" type="button" data-drawer-scrim aria-label="关闭抽屉"></button>
+
+      <div class="boundary-popover" data-popover role="dialog" aria-label="浮层边界验证" hidden>
+        <strong>已限制在可见区域</strong>
+        <p>调整窗口或跨屏时，这个浮层会重新定位。</p>
+        <button type="button" data-close-popover>关闭</button>
+      </div>
+
+      <dialog
+        class="settings-dialog text-io-dialog"
+        data-text-io-dialog
+        aria-labelledby="text-io-title"
+      >
+        <div class="settings-dialog__body text-io-dialog__body">
+          <p class="eyebrow">TXT · MARKDOWN · VERSION</p>
+          <h2 id="text-io-title">旧稿导入与稳定稿导出</h2>
+          <p data-text-io-status role="status"></p>
+          <section class="text-io-section">
+            <header>
+              <h3>导入预览</h3>
+              <span>预览阶段不写项目数据库</span>
+            </header>
+            <div class="text-io-controls">
+              <label
+                >编码
+                <select data-import-encoding>
+                  <option value="auto">自动识别</option>
+                  <option value="utf-8">UTF-8</option>
+                  <option value="utf-16le">UTF-16 LE</option>
+                  <option value="utf-16be">UTF-16 BE</option>
+                  <option value="gb18030">GB18030</option>
+                </select>
+              </label>
+              <button class="quiet-button" type="button" data-preview-import>选择文件并预览</button>
+              <label
+                >新卷标题<input data-import-volume-title value="导入稿" maxlength="240"
+              /></label>
+              <button class="primary-button" type="button" data-commit-import disabled>
+                确认导入
               </button>
             </div>
-            <form class="settings-form" data-appearance-form>
-              <label>
-                <span>界面缩放</span>
-                <select name="uiScalePercent" data-ui-scale>
-                  <option value="90">90%</option>
-                  <option value="100">100%</option>
-                  <option value="110">110%</option>
-                  <option value="120">120%</option>
-                  <option value="130">130%</option>
-                  <option value="140">140%</option>
-                  <option value="150">150%</option>
-                </select>
-              </label>
-              <label>
-                <span>正文字号</span>
-                <select name="bodyFontSize" data-body-font-size>
-                  <option value="14">14 px</option>
-                  <option value="16">16 px</option>
-                  <option value="18">18 px</option>
-                  <option value="20">20 px</option>
-                  <option value="22">22 px</option>
-                  <option value="24">24 px</option>
-                  <option value="26">26 px</option>
-                  <option value="28">28 px</option>
-                </select>
-              </label>
-              <label>
-                <span>正文宽度</span>
-                <select name="contentWidth" data-content-width>
-                  <option value="narrow">窄 · 680 px</option>
-                  <option value="normal">标准 · 760 px</option>
-                  <option value="wide">宽 · 860 px</option>
-                  <option value="adaptive">自适应 · 680—860 px</option>
-                </select>
-              </label>
-              <fieldset>
-                <legend>超宽屏工作区</legend>
-                <div class="segmented-control" data-alignment-controls>
-                  <label><input type="radio" name="workspaceAlignment" value="left" />偏左</label>
-                  <label><input type="radio" name="workspaceAlignment" value="center" />居中</label>
-                  <label><input type="radio" name="workspaceAlignment" value="right" />偏右</label>
-                </div>
-              </fieldset>
-              <p class="save-state" data-preference-status role="status">
-                偏好由 Core 写入应用数据库
+            <div class="text-io-plan" data-import-plan-list></div>
+          </section>
+          <section class="text-io-section">
+            <header>
+              <h3>从Version导出</h3>
+              <span>只导出明确选择的不可变Version</span>
+            </header>
+            <div class="text-io-controls">
+              <label
+                >格式<select data-export-format>
+                  <option value="txt">TXT</option>
+                  <option value="markdown">Markdown</option>
+                </select></label
+              >
+              <label
+                >文件名<input data-export-file-name value="WorldForge-稳定稿" maxlength="240"
+              /></label>
+              <button class="quiet-button" type="button" data-refresh-export-versions>
+                刷新Version
+              </button>
+              <button class="primary-button" type="button" data-export-versions>导出所选</button>
+            </div>
+            <div class="text-io-export-list" data-export-version-list></div>
+          </section>
+        </div>
+        <footer><button class="quiet-button" type="button" data-close-text-io>关闭</button></footer>
+      </dialog>
+
+      <dialog
+        class="settings-dialog canon-dialog"
+        data-canon-dialog
+        aria-labelledby="canon-dialog-title"
+      >
+        <div class="settings-dialog__body canon-dialog__body">
+          <header class="canon-header">
+            <div>
+              <p class="eyebrow">ENTITY · STATIC CANON · PROJECT.SQLITE</p>
+              <h2 id="canon-dialog-title">实体与静态Canon</h2>
+              <p>
+                人物、地点、势力、道具、能力、规则和事件统一登记；只有作者明确命令能够改变Canon。
               </p>
-            </form>
-            <dl class="layout-readout">
-              <div>
-                <dt>布局模式</dt>
-                <dd data-layout-readout>—</dd>
-              </div>
-              <div>
-                <dt>有效视口</dt>
-                <dd data-viewport-readout>—</dd>
-              </div>
-              <div>
-                <dt>实际版心</dt>
-                <dd data-content-readout>—</dd>
-              </div>
-            </dl>
-          </aside>
-        </div>
-      </div>
-
-      <footer class="status-bar">
-        <span data-app-version>WorldForge</span>
-        <span>应用设置与最近项目：app.sqlite / 正文：项目独立</span>
-        <span>仅本地</span>
-      </footer>
-    </div>
-
-    <button class="drawer-scrim" type="button" data-drawer-scrim aria-label="关闭抽屉"></button>
-
-    <div class="boundary-popover" data-popover role="dialog" aria-label="浮层边界验证" hidden>
-      <strong>已限制在可见区域</strong>
-      <p>调整窗口或跨屏时，这个浮层会重新定位。</p>
-      <button type="button" data-close-popover>关闭</button>
-    </div>
-
-    <dialog
-      class="settings-dialog text-io-dialog"
-      data-text-io-dialog
-      aria-labelledby="text-io-title"
-    >
-      <div class="settings-dialog__body text-io-dialog__body">
-        <p class="eyebrow">TXT · MARKDOWN · VERSION</p>
-        <h2 id="text-io-title">旧稿导入与稳定稿导出</h2>
-        <p data-text-io-status role="status"></p>
-        <section class="text-io-section">
-          <header>
-            <h3>导入预览</h3>
-            <span>预览阶段不写项目数据库</span>
+            </div>
+            <button class="quiet-button" type="button" data-refresh-canon>刷新</button>
           </header>
-          <div class="text-io-controls">
-            <label
-              >编码
-              <select data-import-encoding>
-                <option value="auto">自动识别</option>
-                <option value="utf-8">UTF-8</option>
-                <option value="utf-16le">UTF-16 LE</option>
-                <option value="utf-16be">UTF-16 BE</option>
-                <option value="gb18030">GB18030</option>
-              </select>
+          <p class="save-state" data-canon-status role="status"></p>
+          <div class="canon-toolbar">
+            <label>
+              <span>实体</span>
+              <select data-canon-entity-select></select>
             </label>
-            <button class="quiet-button" type="button" data-preview-import>选择文件并预览</button>
-            <label>新卷标题<input data-import-volume-title value="导入稿" maxlength="240" /></label>
-            <button class="primary-button" type="button" data-commit-import disabled>
-              确认导入
+            <button class="quiet-button" type="button" data-new-entity data-canon-write>
+              新建
+            </button>
+            <button class="quiet-button" type="button" data-archive-entity data-canon-write>
+              归档
+            </button>
+            <button class="quiet-button" type="button" data-delete-entity data-canon-write>
+              永久删除
             </button>
           </div>
-          <div class="text-io-plan" data-import-plan-list></div>
-        </section>
-        <section class="text-io-section">
-          <header>
-            <h3>从Version导出</h3>
-            <span>只导出明确选择的不可变Version</span>
-          </header>
-          <div class="text-io-controls">
-            <label
-              >格式<select data-export-format>
-                <option value="txt">TXT</option>
-                <option value="markdown">Markdown</option>
-              </select></label
-            >
-            <label
-              >文件名<input data-export-file-name value="WorldForge-稳定稿" maxlength="240"
-            /></label>
-            <button class="quiet-button" type="button" data-refresh-export-versions>
-              刷新Version
-            </button>
-            <button class="primary-button" type="button" data-export-versions>导出所选</button>
-          </div>
-          <div class="text-io-export-list" data-export-version-list></div>
-        </section>
-      </div>
-      <footer><button class="quiet-button" type="button" data-close-text-io>关闭</button></footer>
-    </dialog>
-
-    <dialog
-      class="settings-dialog canon-dialog"
-      data-canon-dialog
-      aria-labelledby="canon-dialog-title"
-    >
-      <div class="settings-dialog__body canon-dialog__body">
-        <header class="canon-header">
-          <div>
-            <p class="eyebrow">ENTITY · STATIC CANON · PROJECT.SQLITE</p>
-            <h2 id="canon-dialog-title">实体与静态Canon</h2>
-            <p>人物、地点、势力、道具、能力、规则和事件统一登记；只有作者明确命令能够改变Canon。</p>
-          </div>
-          <button class="quiet-button" type="button" data-refresh-canon>刷新</button>
-        </header>
-        <p class="save-state" data-canon-status role="status"></p>
-        <div class="canon-toolbar">
-          <label>
-            <span>实体</span>
-            <select data-canon-entity-select></select>
-          </label>
-          <button class="quiet-button" type="button" data-new-entity data-canon-write>新建</button>
-          <button class="quiet-button" type="button" data-archive-entity data-canon-write>
-            归档
-          </button>
-          <button class="quiet-button" type="button" data-delete-entity data-canon-write>
-            永久删除
-          </button>
-        </div>
-        <div class="canon-grid">
-          <section class="canon-section">
-            <header>
-              <div>
-                <small>ENTITY</small>
-                <h3 data-canon-entity-mode>新建实体</h3>
-              </div>
-            </header>
-            <form class="canon-form" data-canon-entity-form>
-              <label
-                >类型
-                <select name="entityType" data-canon-write>
-                  <option value="character">人物</option>
-                  <option value="location">地点</option>
-                  <option value="faction">势力</option>
-                  <option value="item">道具</option>
-                  <option value="ability">能力</option>
-                  <option value="rule">规则</option>
-                  <option value="event">事件</option>
-                  <option value="custom">自定义</option>
-                </select>
-              </label>
-              <label>名称<input name="name" maxlength="240" required data-canon-write /></label>
-              <label
-                >别名（每行一项）<textarea name="aliases" rows="4" data-canon-write></textarea>
-              </label>
-              <label
-                >摘要<textarea
-                  name="summary"
-                  rows="5"
-                  maxlength="20000"
-                  data-canon-write
-                ></textarea>
-              </label>
-              <button class="primary-button" type="submit" data-canon-write>保存实体</button>
-            </form>
-          </section>
-          <section class="canon-section">
-            <header>
-              <div>
-                <small>CANON FACT</small>
-                <h3>静态事实</h3>
-              </div>
-            </header>
-            <form class="canon-form" data-canon-fact-form>
-              <label>factKey<input name="factKey" maxlength="120" placeholder="identity" /></label>
-              <label
-                >JSON值<textarea
-                  name="valueJson"
-                  rows="5"
-                  placeholder='{"name":"林照夜"}'
-                ></textarea>
-              </label>
-              <label>确认说明<input name="description" maxlength="20000" /></label>
-              <button class="primary-button" type="submit">确认事实</button>
-            </form>
-            <div class="canon-fact-list" data-canon-fact-list></div>
-          </section>
-        </div>
-      </div>
-      <footer>
-        <span></span><button class="quiet-button" type="button" data-close-canon>关闭</button>
-      </footer>
-    </dialog>
-
-    <dialog class="boundary-dialog" data-boundary-dialog aria-labelledby="boundary-dialog-title">
-      <form method="dialog">
-        <div>
-          <p class="eyebrow">BOUNDARY CHECK</p>
-          <h2 id="boundary-dialog-title">对话框保持在有效视口内</h2>
-          <p>
-            最大宽度与高度均由视口约束；在 1024×640 有效视口中，正文区域可滚动，底部操作始终可见。
-          </p>
-          <div class="dialog-sample-lines" aria-hidden="true">
-            <span></span><span></span><span></span><span></span>
-          </div>
-        </div>
-        <footer>
-          <button class="quiet-button" value="cancel">关闭</button>
-        </footer>
-      </form>
-    </dialog>
-
-    <dialog class="settings-dialog" data-settings-dialog aria-labelledby="settings-dialog-title">
-      <form data-settings-form>
-        <div class="settings-dialog__body">
-          <p class="eyebrow">APPLICATION SETTINGS</p>
-          <h2 id="settings-dialog-title">通用设置</h2>
-          <p>这些偏好属于应用，不会写入任何项目数据库。</p>
-          <div class="general-settings-grid">
-            <label>
-              <span>语言</span>
-              <select name="language" data-language>
-                <option value="zh-CN">简体中文</option>
-              </select>
-            </label>
-            <label>
-              <span>启动行为</span>
-              <select name="startupBehavior" data-startup-behavior>
-                <option value="show-home">显示首页</option>
-                <option value="reopen-last">重新打开最近项目</option>
-              </select>
-            </label>
-            <label>
-              <span>默认模式</span>
-              <select name="defaultMode" data-default-mode>
-                <option value="beginner">新手模式</option>
-                <option value="professional">专业模式</option>
-              </select>
-            </label>
-            <label>
-              <span>视觉方向</span>
-              <select name="themeId" data-theme-id>
-                <option value="theme-a">Theme A · 安静编辑部</option>
-                <option value="theme-b">Theme B · 水墨印章</option>
-              </select>
-            </label>
-            <label>
-              <span>主题模式</span>
-              <select name="themeVariant" data-theme-variant>
-                <option value="light">浅色</option>
-                <option value="dark">深色</option>
-                <option value="eye-care">护眼</option>
-                <option value="high-contrast">高对比</option>
-              </select>
-            </label>
-            <label class="checkbox-row">
-              <input type="checkbox" name="reduceMotion" data-reduce-motion />
-              <span>减少动态效果</span>
-            </label>
-          </div>
-          <p class="save-state" data-settings-status role="status"></p>
-        </div>
-        <footer>
-          <button class="quiet-button" type="button" data-reset-settings>恢复默认</button>
-          <span></span>
-          <button class="quiet-button" type="button" data-close-settings>关闭</button>
-          <button class="primary-button" type="button" data-save-settings>保存</button>
-        </footer>
-      </form>
-    </dialog>
-
-    <dialog
-      class="settings-dialog"
-      data-create-project-dialog
-      aria-labelledby="create-project-title"
-    >
-      <form data-create-project-form>
-        <div class="settings-dialog__body">
-          <p class="eyebrow">LOCAL PROJECT</p>
-          <h2 id="create-project-title">新建 WorldForge 项目</h2>
-          <p>输入项目资料后，再通过系统目录选择器决定保存位置。</p>
-          <div class="general-settings-grid project-create-grid">
-            <label>
-              <span>项目名称</span>
-              <input name="name" data-project-name maxlength="240" required autocomplete="off" />
-            </label>
-            <label>
-              <span>创作频道</span>
-              <input
-                name="channel"
-                data-project-channel
-                maxlength="120"
-                value="未分类"
-                required
-                autocomplete="off"
-              />
-            </label>
-            <label>
-              <span>初始结构</span>
-              <select name="initialStructure" data-project-initial-structure>
-                <option value="starter">快速开始 · 创建第一卷与第一章</option>
-                <option value="blank">专业空白 · 稍后手动创建</option>
-              </select>
-            </label>
-          </div>
-          <p class="save-state" data-create-project-status role="status"></p>
-        </div>
-        <footer>
-          <span></span><span></span>
-          <button class="quiet-button" type="button" data-cancel-create-project>取消</button>
-          <button class="primary-button" type="submit" data-confirm-create-project>
-            选择位置并创建
-          </button>
-        </footer>
-      </form>
-    </dialog>
-
-    <dialog class="planning-dialog" data-planning-dialog aria-labelledby="planning-dialog-title">
-      <div class="planning-workspace">
-        <header class="planning-workspace__header">
-          <div>
-            <p class="eyebrow">PROJECT PLANNING · PROJECT.SQLITE</p>
-            <h2 id="planning-dialog-title">作品任务书与大纲树</h2>
-            <p>所有字段均可跳过或后补；规划保存不会改写正文、Version或Candidate。</p>
-          </div>
-          <div class="planning-mode-switch" role="group" aria-label="任务书填写模式">
-            <button class="quiet-button is-active" type="button" data-planning-mode="beginner">
-              问题引导
-            </button>
-            <button class="quiet-button" type="button" data-planning-mode="professional">
-              完整字段
-            </button>
-          </div>
-        </header>
-        <p class="save-state" data-planning-status role="status"></p>
-        <div class="planning-workspace__body">
-          <section class="brief-panel" data-brief-panel>
-            <header>
-              <div>
-                <small>PROJECT BRIEF</small>
-                <h3>作品任务书</h3>
-              </div>
-              <button class="quiet-button" type="button" data-skip-brief>暂时跳过</button>
-            </header>
-            <p data-brief-mode-help>回答几个问题即可建立约束；留空不会阻止直接写作。</p>
-            <form data-brief-form>
-              <label
-                ><span data-brief-label="concept">这部作品最核心的一句话是什么？</span
-                ><textarea name="concept" maxlength="4000"></textarea>
-              </label>
-              <label
-                ><span data-brief-label="readingPromise">读者持续阅读时能稳定获得什么体验？</span
-                ><textarea name="readingPromise" maxlength="4000"></textarea>
-              </label>
-              <label
-                ><span data-brief-label="protagonistGoal">主角最想达成什么目标？</span
-                ><textarea name="protagonistGoal" maxlength="4000"></textarea>
-              </label>
-              <label
-                ><span data-brief-label="coreConflict">阻止主角的核心矛盾是什么？</span
-                ><textarea name="coreConflict" maxlength="4000"></textarea>
-              </label>
-              <label
-                ><span data-brief-label="endingIntent">你希望故事最终落在哪里？</span
-                ><textarea name="endingIntent" maxlength="4000"></textarea>
-              </label>
-              <div class="brief-rule-grid">
+          <div class="canon-grid">
+            <section class="canon-section">
+              <header>
+                <div>
+                  <small>ENTITY</small>
+                  <h3 data-canon-entity-mode>新建实体</h3>
+                </div>
+              </header>
+              <form class="canon-form" data-canon-entity-form>
                 <label
-                  ><span data-brief-label="required">必须出现或始终遵守（每行一项）</span
-                  ><textarea name="required" maxlength="50000"></textarea>
+                  >类型
+                  <select name="entityType" data-canon-write>
+                    <option value="character">人物</option>
+                    <option value="location">地点</option>
+                    <option value="faction">势力</option>
+                    <option value="item">道具</option>
+                    <option value="ability">能力</option>
+                    <option value="rule">规则</option>
+                    <option value="event">事件</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                </label>
+                <label>名称<input name="name" maxlength="240" required data-canon-write /></label>
+                <label
+                  >别名（每行一项）<textarea name="aliases" rows="4" data-canon-write></textarea>
                 </label>
                 <label
-                  ><span data-brief-label="forbidden">明确禁止（每行一项）</span
-                  ><textarea name="forbidden" maxlength="50000"></textarea>
+                  >摘要<textarea
+                    name="summary"
+                    rows="5"
+                    maxlength="20000"
+                    data-canon-write
+                  ></textarea>
                 </label>
-              </div>
-              <footer>
-                <span data-brief-updated></span>
-                <button class="primary-button" type="submit" data-save-brief>保存任务书</button>
-              </footer>
-            </form>
-          </section>
-          <section class="brief-panel brief-panel--skipped" data-brief-skipped hidden>
-            <h3>任务书已暂时收起</h3>
-            <p>大纲和正文仍可继续使用；已有内容不会删除。</p>
-            <button class="quiet-button" type="button" data-restore-brief>重新填写</button>
-          </section>
-          <section class="outline-panel">
-            <header>
-              <div>
-                <small>PLOT NODE TREE</small>
-                <h3>长篇大纲树</h3>
-              </div>
-              <button class="primary-button" type="button" data-create-root-plot-node>
-                新增根节点
-              </button>
-            </header>
-            <p>拖到节点主体后方可调整同级顺序；拖到“作为子节点”区域可改变层级。</p>
-            <div class="outline-root-drop" data-outline-root-drop>拖到这里移回根级末尾</div>
-            <div class="outline-tree" data-outline-tree></div>
-          </section>
-          <section class="outline-panel scene-beat-panel">
-            <header>
-              <div>
-                <small>SCENE BEAT</small>
-                <h3>场景节拍</h3>
-              </div>
-              <div class="scene-beat-card__actions">
-                <button class="quiet-button" type="button" data-convert-scene-beat>
-                  从正文转换
-                </button>
-                <button class="primary-button" type="button" data-create-scene-beat>
-                  新增节拍
-                </button>
-              </div>
-            </header>
-            <p data-scene-beat-chapter>打开章节后可维护节拍；规划移动不会自动移动正文。</p>
-            <div class="scene-beat-list" data-scene-beat-list></div>
-            <details class="scene-beat-trash">
-              <summary>已删除节拍</summary>
-              <div class="scene-beat-list" data-deleted-scene-beat-list></div>
-            </details>
-          </section>
-        </div>
-        <footer class="planning-workspace__footer">
-          <span>规划数据独立存储，不产生Draft Patch。</span>
-          <button class="quiet-button" type="button" data-close-planning>关闭</button>
-        </footer>
-      </div>
-    </dialog>
-
-    <dialog class="settings-dialog" data-plot-node-dialog aria-labelledby="plot-node-dialog-title">
-      <form data-plot-node-form>
-        <div class="settings-dialog__body">
-          <p class="eyebrow">PLOT NODE</p>
-          <h2 id="plot-node-dialog-title" data-plot-node-dialog-title>新增大纲节点</h2>
-          <div class="general-settings-grid project-create-grid">
-            <label
-              ><span>节点类型</span
-              ><select name="nodeType">
-                <option value="volume">卷规划</option>
-                <option value="arc">剧情弧</option>
-                <option value="chapter">章节规划</option>
-              </select></label
-            >
-            <label
-              ><span>标题</span><input name="title" maxlength="240" required autocomplete="off"
-            /></label>
-            <label
-              ><span>状态</span
-              ><select name="status">
-                <option value="pending">待规划</option>
-                <option value="outlined">已规划</option>
-                <option value="writing">写作中</option>
-                <option value="reviewing">审阅中</option>
-                <option value="finalized">已定稿</option>
-              </select></label
-            >
-            <label class="planning-wide-field"
-              ><span>目标</span><textarea name="goal" maxlength="4000"></textarea>
-            </label>
-            <label class="planning-wide-field"
-              ><span>核心冲突</span><textarea name="coreConflict" maxlength="4000"></textarea>
-            </label>
-            <label class="planning-wide-field"
-              ><span>预期结果</span><textarea name="expectedResult" maxlength="4000"></textarea>
-            </label>
+                <button class="primary-button" type="submit" data-canon-write>保存实体</button>
+              </form>
+            </section>
+            <section class="canon-section">
+              <header>
+                <div>
+                  <small>CANON FACT</small>
+                  <h3>静态事实</h3>
+                </div>
+              </header>
+              <form class="canon-form" data-canon-fact-form>
+                <label
+                  >factKey<input name="factKey" maxlength="120" placeholder="identity"
+                /></label>
+                <label
+                  >JSON值<textarea
+                    name="valueJson"
+                    rows="5"
+                    placeholder='{"name":"林照夜"}'
+                  ></textarea>
+                </label>
+                <label>确认说明<input name="description" maxlength="20000" /></label>
+                <button class="primary-button" type="submit">确认事实</button>
+              </form>
+              <div class="canon-fact-list" data-canon-fact-list></div>
+            </section>
           </div>
-          <p class="save-state" data-plot-node-status role="status"></p>
         </div>
         <footer>
-          <span></span><span></span>
-          <button class="quiet-button" type="button" data-cancel-plot-node>取消</button>
-          <button class="primary-button" type="submit" data-save-plot-node>保存节点</button>
+          <span></span><button class="quiet-button" type="button" data-close-canon>关闭</button>
         </footer>
-      </form>
-    </dialog>
+      </dialog>
 
-    <dialog
-      class="settings-dialog"
-      data-scene-beat-dialog
-      aria-labelledby="scene-beat-dialog-title"
-    >
-      <form data-scene-beat-form>
-        <div class="settings-dialog__body">
-          <p class="eyebrow">SCENE BEAT</p>
-          <h2 id="scene-beat-dialog-title" data-scene-beat-dialog-title>新增场景节拍</h2>
-          <div class="general-settings-grid project-create-grid">
-            <label><span>标题</span><input name="title" maxlength="240" required /></label>
-            <label
-              ><span>类型</span
-              ><select name="beatType">
-                <option value="setup">铺垫</option>
-                <option value="development">发展</option>
-                <option value="turn">转折</option>
-                <option value="climax">高潮</option>
-                <option value="resolution">收束</option>
-                <option value="custom">自定义</option>
-              </select></label
-            >
-            <label
-              ><span>字数比例（0—100）</span
-              ><input name="wordTargetPercent" type="number" min="0" max="100" value="0"
-            /></label>
-            <label class="checkbox-row"
-              ><input name="required" type="checkbox" /><span>必选场景</span></label
-            >
-            <label
-              ><span>关联大纲节点</span
-              ><select name="plotNodeId" data-scene-beat-plot-node>
-                <option value="">不关联</option>
-              </select></label
-            >
-            <label class="planning-wide-field"
-              ><span>目标</span><textarea name="goal" maxlength="4000"></textarea>
-            </label>
-            <label class="planning-wide-field"
-              ><span>核心冲突</span><textarea name="coreConflict" maxlength="4000"></textarea>
-            </label>
-            <label class="planning-wide-field"
-              ><span>预期结果</span><textarea name="expectedResult" maxlength="4000"></textarea>
-            </label>
-            <label class="planning-wide-field"
-              ><span>人物ID（每行一个，可后补）</span
-              ><textarea name="characterIds" maxlength="20000"></textarea>
-            </label>
-            <label class="planning-wide-field"
-              ><span>地点ID（每行一个，可后补）</span
-              ><textarea name="locationIds" maxlength="20000"></textarea>
-            </label>
-          </div>
-          <p class="save-state" data-scene-beat-status role="status"></p>
-        </div>
-        <footer>
-          <span></span><span></span>
-          <button class="quiet-button" type="button" data-cancel-scene-beat>取消</button>
-          <button class="primary-button" type="submit" data-save-scene-beat>保存节拍</button>
-        </footer>
-      </form>
-    </dialog>
-
-    <dialog class="settings-dialog" data-structure-dialog aria-labelledby="structure-dialog-title">
-      <form data-structure-form>
-        <div class="settings-dialog__body">
-          <p class="eyebrow">PROJECT STRUCTURE</p>
-          <h2 id="structure-dialog-title" data-structure-dialog-title>编辑卷章</h2>
-          <div class="general-settings-grid project-create-grid">
-            <label>
-              <span>标题</span>
-              <input
-                name="title"
-                data-structure-title
-                maxlength="240"
-                required
-                autocomplete="off"
-              />
-            </label>
-            <label data-structure-status-field>
-              <span>状态</span>
-              <select name="status" data-structure-status>
-                <option value="pending">待规划</option>
-                <option value="outlined">已规划</option>
-                <option value="writing">写作中</option>
-                <option value="reviewing">审阅中</option>
-                <option value="finalized">已定稿</option>
-              </select>
-            </label>
-            <label data-structure-volume-field hidden>
-              <span>所属卷</span>
-              <select name="volumeId" data-structure-volume></select>
-            </label>
-            <div class="word-target-grid" data-structure-word-fields hidden>
-              <label>
-                <span>目标字数下限</span>
-                <input name="targetWordMin" type="number" min="0" max="10000000" />
-              </label>
-              <label>
-                <span>目标字数上限</span>
-                <input name="targetWordMax" type="number" min="0" max="10000000" />
-              </label>
+      <dialog class="boundary-dialog" data-boundary-dialog aria-labelledby="boundary-dialog-title">
+        <form method="dialog">
+          <div>
+            <p class="eyebrow">BOUNDARY CHECK</p>
+            <h2 id="boundary-dialog-title">对话框保持在有效视口内</h2>
+            <p>
+              最大宽度与高度均由视口约束；在 1024×640 有效视口中，正文区域可滚动，底部操作始终可见。
+            </p>
+            <div class="dialog-sample-lines" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
             </div>
           </div>
-          <p class="save-state" data-structure-form-status role="status"></p>
-        </div>
-        <footer>
-          <span></span><span></span>
-          <button class="quiet-button" type="button" data-cancel-structure>取消</button>
-          <button class="primary-button" type="submit" data-save-structure>保存</button>
-        </footer>
-      </form>
-    </dialog>
+          <footer>
+            <button class="quiet-button" value="cancel">关闭</button>
+          </footer>
+        </form>
+      </dialog>
 
-    <dialog class="settings-dialog" data-trash-dialog aria-labelledby="trash-dialog-title">
-      <div class="dialog-list-layout">
-        <div class="settings-dialog__body">
-          <p class="eyebrow">LOCAL TRASH</p>
-          <h2 id="trash-dialog-title">废纸篓</h2>
-          <p>恢复会保留原对象；原排序位置被占用时，Core 会在同级范围内安全重排。</p>
-          <p class="save-state" data-trash-status role="status"></p>
-          <div class="trash-list" data-trash-list></div>
-        </div>
-        <footer>
-          <span></span><span></span><span></span>
-          <button class="quiet-button" type="button" data-close-trash>关闭</button>
-        </footer>
-      </div>
-    </dialog>
-
-    <dialog
-      class="settings-dialog version-dialog"
-      data-version-dialog
-      aria-labelledby="version-dialog-title"
-    >
-      <div class="dialog-list-layout">
-        <div class="settings-dialog__body">
-          <p class="eyebrow">IMMUTABLE VERSIONS</p>
-          <h2 id="version-dialog-title">版本历史</h2>
-          <p>版本一经创建即只读。恢复操作会创建新 Draft，现有 Draft 保留为归档。</p>
-          <div class="version-create-grid">
-            <input
-              data-version-title
-              maxlength="240"
-              placeholder="版本标题"
-              aria-label="版本标题"
-            />
-            <input
-              data-version-label
-              maxlength="120"
-              placeholder="标签（可选）"
-              aria-label="版本标签"
-            />
-            <input
-              data-version-description
-              maxlength="2000"
-              placeholder="说明（可选）"
-              aria-label="版本说明"
-            />
-            <button class="primary-button" type="button" data-confirm-version>创建版本</button>
-          </div>
-          <p class="save-state" data-version-status role="status"></p>
-          <div class="version-history-layout">
-            <div class="version-list" data-version-list></div>
-            <pre class="version-preview" data-version-preview>选择版本查看只读预览</pre>
-          </div>
-        </div>
-        <footer>
-          <span></span><span></span><span></span>
-          <button class="quiet-button" type="button" data-close-versions>关闭</button>
-        </footer>
-      </div>
-    </dialog>
-
-    <dialog
-      class="settings-dialog recovery-dialog"
-      data-recovery-dialog
-      aria-labelledby="recovery-dialog-title"
-    >
-      <div class="dialog-list-layout">
-        <div class="settings-dialog__body">
-          <p class="eyebrow">RECOVERY FOUNDATION</p>
-          <h2 id="recovery-dialog-title">恢复点与只读导出</h2>
-          <p>
-            恢复始终创建新项目副本，不覆盖当前项目。即使 project.sqlite 已完全不可读， 仍可通过
-            manifest.json 与外部恢复点进入恢复流程。
-          </p>
-          <div class="recovery-actions">
-            <button class="primary-button" type="button" data-create-checkpoint>
-              创建保护恢复点
-            </button>
-            <button class="quiet-button" type="button" data-refresh-recovery>刷新</button>
-          </div>
-          <p class="save-state" data-recovery-status role="status"></p>
-          <div class="recovery-columns">
-            <section>
-              <h3>已验证恢复点</h3>
-              <div class="recovery-list" data-recovery-checkpoints></div>
+      <dialog class="planning-dialog" data-planning-dialog aria-labelledby="planning-dialog-title">
+        <div class="planning-workspace">
+          <header class="planning-workspace__header">
+            <div>
+              <p class="eyebrow">PROJECT PLANNING · PROJECT.SQLITE</p>
+              <h2 id="planning-dialog-title">作品任务书与大纲树</h2>
+              <p>所有字段均可跳过或后补；规划保存不会改写正文、Version或Candidate。</p>
+            </div>
+            <div class="planning-mode-switch" role="group" aria-label="任务书填写模式">
+              <button class="quiet-button is-active" type="button" data-planning-mode="beginner">
+                问题引导
+              </button>
+              <button class="quiet-button" type="button" data-planning-mode="professional">
+                完整字段
+              </button>
+            </div>
+          </header>
+          <p class="save-state" data-planning-status role="status"></p>
+          <div class="planning-workspace__body">
+            <section class="brief-panel" data-brief-panel>
+              <header>
+                <div>
+                  <small>PROJECT BRIEF</small>
+                  <h3>作品任务书</h3>
+                </div>
+                <button class="quiet-button" type="button" data-skip-brief>暂时跳过</button>
+              </header>
+              <p data-brief-mode-help>回答几个问题即可建立约束；留空不会阻止直接写作。</p>
+              <form data-brief-form>
+                <label
+                  ><span data-brief-label="concept">这部作品最核心的一句话是什么？</span
+                  ><textarea name="concept" maxlength="4000"></textarea>
+                </label>
+                <label
+                  ><span data-brief-label="readingPromise">读者持续阅读时能稳定获得什么体验？</span
+                  ><textarea name="readingPromise" maxlength="4000"></textarea>
+                </label>
+                <label
+                  ><span data-brief-label="protagonistGoal">主角最想达成什么目标？</span
+                  ><textarea name="protagonistGoal" maxlength="4000"></textarea>
+                </label>
+                <label
+                  ><span data-brief-label="coreConflict">阻止主角的核心矛盾是什么？</span
+                  ><textarea name="coreConflict" maxlength="4000"></textarea>
+                </label>
+                <label
+                  ><span data-brief-label="endingIntent">你希望故事最终落在哪里？</span
+                  ><textarea name="endingIntent" maxlength="4000"></textarea>
+                </label>
+                <div class="brief-rule-grid">
+                  <label
+                    ><span data-brief-label="required">必须出现或始终遵守（每行一项）</span
+                    ><textarea name="required" maxlength="50000"></textarea>
+                  </label>
+                  <label
+                    ><span data-brief-label="forbidden">明确禁止（每行一项）</span
+                    ><textarea name="forbidden" maxlength="50000"></textarea>
+                  </label>
+                </div>
+                <footer>
+                  <span data-brief-updated></span>
+                  <button class="primary-button" type="submit" data-save-brief>保存任务书</button>
+                </footer>
+              </form>
             </section>
-            <section>
-              <h3>可导出Version</h3>
-              <div class="recovery-list" data-recovery-versions></div>
+            <section class="brief-panel brief-panel--skipped" data-brief-skipped hidden>
+              <h3>任务书已暂时收起</h3>
+              <p>大纲和正文仍可继续使用；已有内容不会删除。</p>
+              <button class="quiet-button" type="button" data-restore-brief>重新填写</button>
+            </section>
+            <section class="outline-panel">
+              <header>
+                <div>
+                  <small>PLOT NODE TREE</small>
+                  <h3>长篇大纲树</h3>
+                </div>
+                <button class="primary-button" type="button" data-create-root-plot-node>
+                  新增根节点
+                </button>
+              </header>
+              <p>拖到节点主体后方可调整同级顺序；拖到“作为子节点”区域可改变层级。</p>
+              <div class="outline-root-drop" data-outline-root-drop>拖到这里移回根级末尾</div>
+              <div class="outline-tree" data-outline-tree></div>
+            </section>
+            <section class="outline-panel scene-beat-panel">
+              <header>
+                <div>
+                  <small>SCENE BEAT</small>
+                  <h3>场景节拍</h3>
+                </div>
+                <div class="scene-beat-card__actions">
+                  <button class="quiet-button" type="button" data-convert-scene-beat>
+                    从正文转换
+                  </button>
+                  <button class="primary-button" type="button" data-create-scene-beat>
+                    新增节拍
+                  </button>
+                </div>
+              </header>
+              <p data-scene-beat-chapter>打开章节后可维护节拍；规划移动不会自动移动正文。</p>
+              <div class="scene-beat-list" data-scene-beat-list></div>
+              <details class="scene-beat-trash">
+                <summary>已删除节拍</summary>
+                <div class="scene-beat-list" data-deleted-scene-beat-list></div>
+              </details>
             </section>
           </div>
+          <footer class="planning-workspace__footer">
+            <span>规划数据独立存储，不产生Draft Patch。</span>
+            <button class="quiet-button" type="button" data-close-planning>关闭</button>
+          </footer>
         </div>
-        <footer>
-          <span></span><span></span><span></span>
-          <button class="quiet-button" type="button" data-close-recovery>关闭</button>
-        </footer>
-      </div>
-    </dialog>
+      </dialog>
 
+      <dialog
+        class="settings-dialog"
+        data-plot-node-dialog
+        aria-labelledby="plot-node-dialog-title"
+      >
+        <form data-plot-node-form>
+          <div class="settings-dialog__body">
+            <p class="eyebrow">PLOT NODE</p>
+            <h2 id="plot-node-dialog-title" data-plot-node-dialog-title>新增大纲节点</h2>
+            <div class="general-settings-grid project-create-grid">
+              <label
+                ><span>节点类型</span
+                ><select name="nodeType">
+                  <option value="volume">卷规划</option>
+                  <option value="arc">剧情弧</option>
+                  <option value="chapter">章节规划</option>
+                </select></label
+              >
+              <label
+                ><span>标题</span><input name="title" maxlength="240" required autocomplete="off"
+              /></label>
+              <label
+                ><span>状态</span
+                ><select name="status">
+                  <option value="pending">待规划</option>
+                  <option value="outlined">已规划</option>
+                  <option value="writing">写作中</option>
+                  <option value="reviewing">审阅中</option>
+                  <option value="finalized">已定稿</option>
+                </select></label
+              >
+              <label class="planning-wide-field"
+                ><span>目标</span><textarea name="goal" maxlength="4000"></textarea>
+              </label>
+              <label class="planning-wide-field"
+                ><span>核心冲突</span><textarea name="coreConflict" maxlength="4000"></textarea>
+              </label>
+              <label class="planning-wide-field"
+                ><span>预期结果</span><textarea name="expectedResult" maxlength="4000"></textarea>
+              </label>
+            </div>
+            <p class="save-state" data-plot-node-status role="status"></p>
+          </div>
+          <footer>
+            <span></span><span></span>
+            <button class="quiet-button" type="button" data-cancel-plot-node>取消</button>
+            <button class="primary-button" type="submit" data-save-plot-node>保存节点</button>
+          </footer>
+        </form>
+      </dialog>
+
+      <dialog
+        class="settings-dialog"
+        data-scene-beat-dialog
+        aria-labelledby="scene-beat-dialog-title"
+      >
+        <form data-scene-beat-form>
+          <div class="settings-dialog__body">
+            <p class="eyebrow">SCENE BEAT</p>
+            <h2 id="scene-beat-dialog-title" data-scene-beat-dialog-title>新增场景节拍</h2>
+            <div class="general-settings-grid project-create-grid">
+              <label><span>标题</span><input name="title" maxlength="240" required /></label>
+              <label
+                ><span>类型</span
+                ><select name="beatType">
+                  <option value="setup">铺垫</option>
+                  <option value="development">发展</option>
+                  <option value="turn">转折</option>
+                  <option value="climax">高潮</option>
+                  <option value="resolution">收束</option>
+                  <option value="custom">自定义</option>
+                </select></label
+              >
+              <label
+                ><span>字数比例（0—100）</span
+                ><input name="wordTargetPercent" type="number" min="0" max="100" value="0"
+              /></label>
+              <label class="checkbox-row"
+                ><input name="required" type="checkbox" /><span>必选场景</span></label
+              >
+              <label
+                ><span>关联大纲节点</span
+                ><select name="plotNodeId" data-scene-beat-plot-node>
+                  <option value="">不关联</option>
+                </select></label
+              >
+              <label class="planning-wide-field"
+                ><span>目标</span><textarea name="goal" maxlength="4000"></textarea>
+              </label>
+              <label class="planning-wide-field"
+                ><span>核心冲突</span><textarea name="coreConflict" maxlength="4000"></textarea>
+              </label>
+              <label class="planning-wide-field"
+                ><span>预期结果</span><textarea name="expectedResult" maxlength="4000"></textarea>
+              </label>
+              <label class="planning-wide-field"
+                ><span>人物ID（每行一个，可后补）</span
+                ><textarea name="characterIds" maxlength="20000"></textarea>
+              </label>
+              <label class="planning-wide-field"
+                ><span>地点ID（每行一个，可后补）</span
+                ><textarea name="locationIds" maxlength="20000"></textarea>
+              </label>
+            </div>
+            <p class="save-state" data-scene-beat-status role="status"></p>
+          </div>
+          <footer>
+            <span></span><span></span>
+            <button class="quiet-button" type="button" data-cancel-scene-beat>取消</button>
+            <button class="primary-button" type="submit" data-save-scene-beat>保存节拍</button>
+          </footer>
+        </form>
+      </dialog>
+
+      <dialog
+        class="settings-dialog"
+        data-structure-dialog
+        aria-labelledby="structure-dialog-title"
+      >
+        <form data-structure-form>
+          <div class="settings-dialog__body">
+            <p class="eyebrow">PROJECT STRUCTURE</p>
+            <h2 id="structure-dialog-title" data-structure-dialog-title>编辑卷章</h2>
+            <div class="general-settings-grid project-create-grid">
+              <label>
+                <span>标题</span>
+                <input
+                  name="title"
+                  data-structure-title
+                  maxlength="240"
+                  required
+                  autocomplete="off"
+                />
+              </label>
+              <label data-structure-status-field>
+                <span>状态</span>
+                <select name="status" data-structure-status>
+                  <option value="pending">待规划</option>
+                  <option value="outlined">已规划</option>
+                  <option value="writing">写作中</option>
+                  <option value="reviewing">审阅中</option>
+                  <option value="finalized">已定稿</option>
+                </select>
+              </label>
+              <label data-structure-volume-field hidden>
+                <span>所属卷</span>
+                <select name="volumeId" data-structure-volume></select>
+              </label>
+              <div class="word-target-grid" data-structure-word-fields hidden>
+                <label>
+                  <span>目标字数下限</span>
+                  <input name="targetWordMin" type="number" min="0" max="10000000" />
+                </label>
+                <label>
+                  <span>目标字数上限</span>
+                  <input name="targetWordMax" type="number" min="0" max="10000000" />
+                </label>
+              </div>
+            </div>
+            <p class="save-state" data-structure-form-status role="status"></p>
+          </div>
+          <footer>
+            <span></span><span></span>
+            <button class="quiet-button" type="button" data-cancel-structure>取消</button>
+            <button class="primary-button" type="submit" data-save-structure>保存</button>
+          </footer>
+        </form>
+      </dialog>
+
+      <dialog class="settings-dialog" data-trash-dialog aria-labelledby="trash-dialog-title">
+        <div class="dialog-list-layout">
+          <div class="settings-dialog__body">
+            <p class="eyebrow">LOCAL TRASH</p>
+            <h2 id="trash-dialog-title">废纸篓</h2>
+            <p>恢复会保留原对象；原排序位置被占用时，Core 会在同级范围内安全重排。</p>
+            <p class="save-state" data-trash-status role="status"></p>
+            <div class="trash-list" data-trash-list></div>
+          </div>
+          <footer>
+            <span></span><span></span><span></span>
+            <button class="quiet-button" type="button" data-close-trash>关闭</button>
+          </footer>
+        </div>
+      </dialog>
+
+      <dialog
+        class="settings-dialog version-dialog"
+        data-version-dialog
+        aria-labelledby="version-dialog-title"
+      >
+        <div class="dialog-list-layout">
+          <div class="settings-dialog__body">
+            <p class="eyebrow">IMMUTABLE VERSIONS</p>
+            <h2 id="version-dialog-title">版本历史</h2>
+            <p>版本一经创建即只读。恢复操作会创建新 Draft，现有 Draft 保留为归档。</p>
+            <div class="version-create-grid">
+              <input
+                data-version-title
+                maxlength="240"
+                placeholder="版本标题"
+                aria-label="版本标题"
+              />
+              <input
+                data-version-label
+                maxlength="120"
+                placeholder="标签（可选）"
+                aria-label="版本标签"
+              />
+              <input
+                data-version-description
+                maxlength="2000"
+                placeholder="说明（可选）"
+                aria-label="版本说明"
+              />
+              <button class="primary-button" type="button" data-confirm-version>创建版本</button>
+            </div>
+            <p class="save-state" data-version-status role="status"></p>
+            <div class="version-history-layout">
+              <div class="version-list" data-version-list></div>
+              <pre class="version-preview" data-version-preview>选择版本查看只读预览</pre>
+            </div>
+          </div>
+          <footer>
+            <span></span><span></span><span></span>
+            <button class="quiet-button" type="button" data-close-versions>关闭</button>
+          </footer>
+        </div>
+      </dialog>
+
+      <dialog
+        class="settings-dialog recovery-dialog"
+        data-recovery-dialog
+        aria-labelledby="recovery-dialog-title"
+      >
+        <div class="dialog-list-layout">
+          <div class="settings-dialog__body">
+            <p class="eyebrow">RECOVERY FOUNDATION</p>
+            <h2 id="recovery-dialog-title">恢复点与只读导出</h2>
+            <p>
+              恢复始终创建新项目副本，不覆盖当前项目。即使 project.sqlite 已完全不可读， 仍可通过
+              manifest.json 与外部恢复点进入恢复流程。
+            </p>
+            <div class="recovery-actions">
+              <button class="primary-button" type="button" data-create-checkpoint>
+                创建保护恢复点
+              </button>
+              <button class="quiet-button" type="button" data-refresh-recovery>刷新</button>
+            </div>
+            <p class="save-state" data-recovery-status role="status"></p>
+            <div class="recovery-columns">
+              <section>
+                <h3>已验证恢复点</h3>
+                <div class="recovery-list" data-recovery-checkpoints></div>
+              </section>
+              <section>
+                <h3>可导出Version</h3>
+                <div class="recovery-list" data-recovery-versions></div>
+              </section>
+            </div>
+          </div>
+          <footer>
+            <span></span><span></span><span></span>
+            <button class="quiet-button" type="button" data-close-recovery>关闭</button>
+          </footer>
+        </div>
+      </dialog>
+    </div>
     <script type="module" src="./index.js"></script>
   </body>
 </html>

@@ -97,29 +97,23 @@ async function captureMatrixScreenshot(
 
 async function setAppearance(page: Page, appearance: AppearancePreferences): Promise<void> {
   await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
-  await page.locator('[data-appearance-form]').evaluate((form, value) => {
-    const root = form as HTMLFormElement;
-    const setSelect = (name: string, selectedValue: string): void => {
-      const control = root.elements.namedItem(name);
-      if (!(control instanceof HTMLSelectElement)) throw new Error(`E2E_CONTROL_MISSING_${name}`);
-      control.value = selectedValue;
-    };
-    setSelect('uiScalePercent', String(value.uiScalePercent));
-    setSelect('bodyFontSize', String(value.bodyFontSize));
-    setSelect('contentWidth', value.contentWidth);
-    const alignment = root.querySelector<HTMLInputElement>(
-      `input[name="workspaceAlignment"][value="${value.workspaceAlignment}"]`,
-    );
-    if (!alignment) throw new Error('E2E_CONTROL_MISSING_workspaceAlignment');
-    alignment.checked = true;
-    root.dispatchEvent(new Event('change', { bubbles: true }));
-  }, appearance);
-  await expect(page.locator('[data-preference-status]')).toHaveText('已由 Core 保存到应用数据库');
+  await page.locator('[data-open-settings]').click();
+  await page.locator('[data-settings-navigation="editor"]').click();
+  await page.locator('[data-body-font-size]').fill(String(appearance.bodyFontSize));
+  await page.locator('[data-content-width]').selectOption(appearance.contentWidth);
+  await page.locator('[data-save-appearance]').click();
+  await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
+  await page.locator('[data-settings-navigation="appearance"]').click();
+  await page.locator('[data-ui-scale]').selectOption(String(appearance.uiScalePercent));
+  await page.locator('[data-workspace-alignment]').selectOption(appearance.workspaceAlignment);
+  await page.locator('[data-save-appearance]').click();
+  await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
   const stored = await page.evaluate(async () => {
     const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;
     return bridge.app.getWindowPreferences();
   });
   expect(stored).toMatchObject({ ok: true, data: appearance });
+  await page.locator('[data-close-settings]').click();
 }
 
 test.afterEach(async () => {
@@ -136,7 +130,8 @@ test('runs a sandboxed Renderer against a healthy supervised Core', async () => 
     await expect(window.locator('#react-root')).toHaveCount(1);
     await expect(window.locator('#react-root')).toHaveAttribute('data-react-mounted', 'true');
     await expect(window.locator('[data-react-runtime="running"]')).toBeVisible();
-    await expect(window.locator('[data-editor-paper]')).toBeVisible();
+    await expect(window.locator('[data-react-home]')).toBeVisible();
+    await expect(window.locator('[data-legacy-root]')).toBeHidden();
 
     const runtime = await window.evaluate(async () => {
       const globals = globalThis as unknown as Record<string, unknown>;
@@ -214,11 +209,15 @@ test('renders only persisted recent projects and restores general settings after
   await firstWindow.locator('[data-open-settings]').click();
   await expect(firstWindow.locator('[data-settings-dialog]')).toBeVisible();
   await firstWindow.locator('[data-default-mode]').selectOption('professional');
+  await firstWindow.locator('[data-save-settings]').click();
+  await firstWindow.locator('[data-settings-navigation="appearance"]').click();
   await firstWindow.locator('[data-theme-id]').selectOption('theme-b');
   await firstWindow.locator('[data-theme-variant]').selectOption('dark');
   await firstWindow.locator('[data-reduce-motion]').check();
   await firstWindow.locator('[data-save-settings]').click();
-  await expect(firstWindow.locator('[data-settings-status]')).toHaveText('设置已保存到应用数据库');
+  await expect(firstWindow.locator('[data-settings-status]')).toHaveText(
+    '显示设置已保存到应用数据库。',
+  );
   await closeGracefully(first);
 
   const database = new DatabaseSync(path.join(userDataPath, 'app.sqlite'));
@@ -248,6 +247,7 @@ test('renders only persisted recent projects and restores general settings after
     await expect(page.locator('[data-project-missing="true"]')).toContainText('路径已丢失');
     await page.locator('[data-open-settings]').click();
     await expect(page.locator('[data-default-mode]')).toHaveValue('professional');
+    await page.locator('[data-settings-navigation="appearance"]').click();
     await expect(page.locator('[data-theme-id]')).toHaveValue('theme-b');
     await expect(page.locator('[data-theme-variant]')).toHaveValue('dark');
     await expect(page.locator('[data-reduce-motion]')).toBeChecked();
@@ -710,15 +710,18 @@ test('persists DIP bounds and independent appearance preferences only in app.sql
         ...expectedAppearance,
       },
     });
-    await expect(page.locator('[data-ui-scale]')).toHaveValue('120');
+    await page.locator('[data-open-settings]').click();
+    await page.locator('[data-settings-navigation="editor"]').click();
     await expect(page.locator('[data-body-font-size]')).toHaveValue('22');
     await expect(page.locator('[data-content-width]')).toHaveValue('wide');
+    await page.locator('[data-settings-navigation="appearance"]').click();
+    await expect(page.locator('[data-ui-scale]')).toHaveValue('120');
   } finally {
     await closeGracefully(reopened);
   }
 });
 
-test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible', async () => {
+test('keeps the React shell viewport matrix scroll-free and overlays visible', async () => {
   test.setTimeout(90_000);
   const application = await launch(await temporaryUserData());
   try {
@@ -743,62 +746,46 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
         scenario.mode,
       );
       const layout = await page.evaluate(() => {
-        const paper = document.querySelector<HTMLElement>('[data-editor-paper]');
-        const frame = document.querySelector<HTMLElement>('[data-workspace-frame]');
-        const paperBounds = paper?.getBoundingClientRect();
-        const frameBounds = frame?.getBoundingClientRect();
-        const leftBounds = document
-          .querySelector<HTMLElement>('[data-left-sidebar]')
+        const homeBounds = document
+          .querySelector<HTMLElement>('[data-react-home]')
           ?.getBoundingClientRect();
-        const rightBounds = document
-          .querySelector<HTMLElement>('[data-right-sidebar]')
+        const mainBounds = document
+          .querySelector<HTMLElement>('.react-main')
           ?.getBoundingClientRect();
-        const actionBounds = document
-          .querySelector<HTMLElement>('.top-bar__actions')
+        const navBounds = document
+          .querySelector<HTMLElement>('.react-primary-nav')
+          ?.getBoundingClientRect();
+        const topBounds = document
+          .querySelector<HTMLElement>('.react-top-bar')
           ?.getBoundingClientRect();
         return {
           innerWidth: window.innerWidth,
           innerHeight: window.innerHeight,
           mode: document.body.dataset.layoutMode,
-          leftPanel: document.body.dataset.leftPanel,
-          rightPanel: document.body.dataset.rightPanel,
           horizontalOverflow:
             Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) -
             window.innerWidth,
-          paperWidth: paperBounds?.width ?? 0,
-          frameWidth: frameBounds?.width ?? 0,
-          frameLeft: frameBounds?.left ?? -1,
-          frameRight: frameBounds?.right ?? Number.POSITIVE_INFINITY,
-          leftBounds: leftBounds
-            ? { left: leftBounds.left, right: leftBounds.right, width: leftBounds.width }
-            : null,
-          rightBounds: rightBounds
-            ? { left: rightBounds.left, right: rightBounds.right, width: rightBounds.width }
-            : null,
-          actionRight: actionBounds?.right ?? Number.POSITIVE_INFINITY,
-          bodyFontSize: paper ? Number.parseFloat(getComputedStyle(paper).fontSize) : 0,
+          homeWidth: homeBounds?.width ?? 0,
+          homeLeft: homeBounds?.left ?? -1,
+          homeRight: homeBounds?.right ?? Number.POSITIVE_INFINITY,
+          mainLeft: mainBounds?.left ?? -1,
+          mainRight: mainBounds?.right ?? Number.POSITIVE_INFINITY,
+          navWidth: navBounds?.width ?? 0,
+          navLeft: navBounds?.left ?? -1,
+          topRight: topBounds?.right ?? Number.POSITIVE_INFINITY,
         };
       });
       expect(layout.mode).toBe(scenario.mode);
       expect(layout.horizontalOverflow).toBeLessThanOrEqual(1);
-      expect(layout.paperWidth).toBeGreaterThan(500);
-      expect(layout.paperWidth).toBeLessThanOrEqual(861);
-      expect(layout.bodyFontSize).toBeCloseTo(18, 0);
-      expect(layout.frameLeft).toBeGreaterThanOrEqual(-1);
-      expect(layout.frameRight).toBeLessThanOrEqual(layout.innerWidth + 1);
-      expect(layout.actionRight).toBeLessThanOrEqual(layout.innerWidth + 1);
-      if (layout.leftPanel === 'sidebar') {
-        expect(layout.leftBounds?.width ?? 0).toBeGreaterThanOrEqual(220);
-        expect(layout.leftBounds?.left ?? -1).toBeGreaterThanOrEqual(-1);
+      expect(layout.homeWidth).toBeGreaterThan(500);
+      expect(layout.homeWidth).toBeLessThanOrEqual(1_181);
+      expect(layout.homeLeft).toBeGreaterThanOrEqual(layout.mainLeft - 1);
+      expect(layout.homeRight).toBeLessThanOrEqual(layout.mainRight + 1);
+      expect(layout.topRight).toBeLessThanOrEqual(layout.innerWidth + 1);
+      if (scenario.width > 900) {
+        expect(layout.navWidth).toBeGreaterThanOrEqual(220);
+        expect(layout.navLeft).toBeGreaterThanOrEqual(-1);
       }
-      if (layout.rightPanel === 'sidebar') {
-        expect(layout.rightBounds?.width ?? 0).toBeGreaterThanOrEqual(300);
-        expect(layout.rightBounds?.right ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
-          layout.innerWidth + 1,
-        );
-      }
-      if (scenario.mode === 'ultrawide') expect(layout.frameWidth).toBeLessThanOrEqual(1_762);
-      if (scenario.mode === 'narrow') expect(layout.rightPanel).toBe('drawer');
       await captureMatrixScreenshot(
         page,
         screenshotDirectory,
@@ -811,35 +798,19 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
     await setContentViewport(application, 1_280, 800);
     await setAppearance(page, { ...defaultAppearance, uiScalePercent: 150 });
     await page.waitForFunction(() => document.body.dataset.layoutMode === 'compact');
-    expect(await page.locator('body').getAttribute('data-left-panel')).toBe('drawer');
-    expect(await page.locator('body').getAttribute('data-right-panel')).toBe('drawer');
-    await page.locator('[data-toggle-left]').click();
-    await expect(page.locator('[data-left-sidebar]')).toHaveClass(/is-open/);
+    const navToggle = page.getByRole('button', { name: '打开一级导航' });
+    await navToggle.click();
+    await expect(page.locator('.react-primary-nav')).toBeInViewport();
     await page.keyboard.press('Escape');
-    await expect(page.locator('[data-left-sidebar]')).not.toHaveClass(/is-open/);
-    await expect(page.locator('[data-toggle-left]')).toBeFocused();
+    await expect(navToggle).toBeFocused();
 
     await setAppearance(page, defaultAppearance);
-    await page.locator('[data-boundary-popover]').click();
-    const popoverBounds = await page.locator('[data-popover]').boundingBox();
+    await page.locator('[data-create-project]').click();
+    const dialogBounds = await page.locator('[data-create-project-dialog]').boundingBox();
     const viewport = await page.evaluate(() => ({
       width: window.innerWidth,
       height: window.innerHeight,
     }));
-    expect(popoverBounds).not.toBeNull();
-    expect(popoverBounds?.x ?? -1).toBeGreaterThanOrEqual(0);
-    expect(popoverBounds?.y ?? -1).toBeGreaterThanOrEqual(0);
-    expect((popoverBounds?.x ?? 0) + (popoverBounds?.width ?? 0)).toBeLessThanOrEqual(
-      viewport.width,
-    );
-    expect((popoverBounds?.y ?? 0) + (popoverBounds?.height ?? 0)).toBeLessThanOrEqual(
-      viewport.height,
-    );
-    await page.locator('[data-close-popover]').click();
-
-    await page.locator('[data-open-dialog]').click();
-    await expect(page.locator('[data-boundary-dialog]')).toBeVisible();
-    const dialogBounds = await page.locator('[data-boundary-dialog]').boundingBox();
     expect(dialogBounds).not.toBeNull();
     expect(dialogBounds?.x ?? -1).toBeGreaterThanOrEqual(0);
     expect(dialogBounds?.y ?? -1).toBeGreaterThanOrEqual(0);
@@ -847,7 +818,7 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
     expect((dialogBounds?.y ?? 0) + (dialogBounds?.height ?? 0)).toBeLessThanOrEqual(
       viewport.height,
     );
-    await page.locator('[data-boundary-dialog] button[value="cancel"]').click();
+    await page.getByRole('button', { name: '取消' }).click();
 
     await setContentViewport(application, 3_440, 1_440);
     for (const workspaceAlignment of ['left', 'center', 'right'] as const) {
@@ -856,9 +827,13 @@ test('keeps the frozen viewport/DPI matrix scroll-free and every overlay visible
         (alignment) => document.body.dataset.workspaceAlignment === alignment,
         workspaceAlignment,
       );
-      const margins = await page.locator('[data-workspace-frame]').evaluate((element) => {
+      const margins = await page.locator('[data-react-home]').evaluate((element) => {
         const bounds = element.getBoundingClientRect();
-        return { left: bounds.left, right: window.innerWidth - bounds.right };
+        const main = document.querySelector<HTMLElement>('.react-main')?.getBoundingClientRect();
+        return {
+          left: bounds.left - (main?.left ?? 0),
+          right: (main?.right ?? window.innerWidth) - bounds.right,
+        };
       });
       if (workspaceAlignment === 'left') expect(margins.left).toBeLessThan(margins.right);
       if (workspaceAlignment === 'center')
@@ -893,8 +868,8 @@ test('uses real Chromium device scaling for the 2560×1440 DPI matrix', async ()
         scenario.mode,
       );
       const rendererMetrics = await page.evaluate(() => {
-        const frame = document.querySelector<HTMLElement>('[data-workspace-frame]');
-        const right = document.querySelector<HTMLElement>('[data-right-sidebar]');
+        const home = document.querySelector<HTMLElement>('[data-react-home]');
+        const nav = document.querySelector<HTMLElement>('.react-primary-nav');
         return {
           innerWidth: window.innerWidth,
           innerHeight: window.innerHeight,
@@ -902,12 +877,9 @@ test('uses real Chromium device scaling for the 2560×1440 DPI matrix', async ()
           horizontalOverflow:
             Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) -
             window.innerWidth,
-          frameRight: frame?.getBoundingClientRect().right ?? Number.POSITIVE_INFINITY,
-          rightPanelMode: document.body.dataset.rightPanel,
-          rightPanelRight: right?.getBoundingClientRect().right ?? Number.POSITIVE_INFINITY,
-          paperWidth:
-            document.querySelector<HTMLElement>('[data-editor-paper]')?.getBoundingClientRect()
-              .width ?? 0,
+          homeRight: home?.getBoundingClientRect().right ?? Number.POSITIVE_INFINITY,
+          homeWidth: home?.getBoundingClientRect().width ?? 0,
+          navWidth: nav?.getBoundingClientRect().width ?? 0,
         };
       });
       const displayScaleFactor = await application.evaluate(
@@ -918,10 +890,9 @@ test('uses real Chromium device scaling for the 2560×1440 DPI matrix', async ()
       expect(rendererMetrics.devicePixelRatio).toBeCloseTo(scenario.scaleFactor, 2);
       expect(displayScaleFactor).toBeCloseTo(scenario.scaleFactor, 2);
       expect(rendererMetrics.horizontalOverflow).toBeLessThanOrEqual(1);
-      expect(rendererMetrics.frameRight).toBeLessThanOrEqual(rendererMetrics.innerWidth + 1);
-      expect(rendererMetrics.rightPanelMode).toBe('sidebar');
-      expect(rendererMetrics.rightPanelRight).toBeLessThanOrEqual(rendererMetrics.innerWidth + 1);
-      expect(rendererMetrics.paperWidth).toBeLessThanOrEqual(861);
+      expect(rendererMetrics.homeRight).toBeLessThanOrEqual(rendererMetrics.innerWidth + 1);
+      expect(rendererMetrics.homeWidth).toBeLessThanOrEqual(1_181);
+      expect(rendererMetrics.navWidth).toBeGreaterThanOrEqual(220);
       await captureMatrixScreenshot(page, screenshotDirectory, scenario.name, 2_560, 1_440);
     } finally {
       await closeGracefully(application);

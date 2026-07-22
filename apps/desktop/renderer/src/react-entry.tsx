@@ -5,6 +5,7 @@ import { RendererErrorBoundary } from './app/renderer-error-boundary.js';
 import { RendererFoundationApp } from './app/renderer-foundation-app.js';
 import { createWindowRendererBridgeAdapter } from './bridge/renderer-bridge-adapter.js';
 import { createLegacyCompatibilityLoader } from './compat/legacy-loader.js';
+import { createLegacySurfaceController } from './compat/legacy-surface.js';
 import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
 import { createRendererFoundationRuntime } from './runtime/renderer-foundation-runtime.js';
 import { RendererStatusArbitrator } from './runtime/status-arbitrator.js';
@@ -18,6 +19,7 @@ if (rootElement.dataset.reactMounted === 'true') {
 }
 
 const bridge = createWindowRendererBridgeAdapter();
+const legacySurface = createLegacySurfaceController();
 const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
 const legacy = createLegacyCompatibilityLoader(async () => {
@@ -36,7 +38,7 @@ const root = createRoot(rootElement);
 rootElement.dataset.reactMounted = 'true';
 root.render(
   <RendererErrorBoundary>
-    <RendererFoundationApp runtime={runtime} />
+    <RendererFoundationApp bridge={bridge} legacySurface={legacySurface} runtime={runtime} />
   </RendererErrorBoundary>,
 );
 

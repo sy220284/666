@@ -12,8 +12,7 @@ export interface RendererErrorDiagnostic {
 interface RendererErrorBoundaryProps {
   readonly children: ReactNode;
   readonly onError?:
-    | ((diagnostic: RendererErrorDiagnostic, componentStack: string | null) => void)
-    | undefined;
+    ((diagnostic: RendererErrorDiagnostic, componentStack: string | null) => void) | undefined;
 }
 
 interface RendererErrorBoundaryState {

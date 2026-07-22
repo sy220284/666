@@ -73,4 +73,36 @@ describe('M3-08 React运行底座', () => {
       phase: 'react-root',
     });
   });
+
+  it('由React独占首页、项目生命周期和设置节点', async () => {
+    const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
+    const [legacyHtml, legacySource, shellSource, homeSource, settingsSource] = await Promise.all([
+      readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
+      readFile(path.join(rendererRoot, 'index.ts'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/app-shell.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/home/home-page.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
+    ]);
+
+    for (const selector of [
+      'data-create-project',
+      'data-recent-card',
+      'data-active-project',
+      'data-settings-dialog',
+    ]) {
+      expect(legacyHtml).not.toContain(selector);
+    }
+    for (const operation of [
+      'worldforge.project.create',
+      'worldforge.project.openRecent',
+      'worldforge.project.close',
+      'worldforge.project.move',
+      'worldforge.settings.set',
+    ]) {
+      expect(legacySource).not.toContain(operation);
+    }
+    expect(shellSource).toContain('data-react-shell');
+    expect(homeSource).toContain('data-react-home');
+    expect(settingsSource).toContain('data-react-settings');
+  });
 });

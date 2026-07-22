@@ -106,10 +106,12 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await expect(page.locator('[data-recent-card]')).toHaveCount(1);
     await page.locator('[data-open-settings]').click();
     await page.locator('[data-default-mode]').selectOption('professional');
-    await page.locator('[data-theme-id]').selectOption('theme-b');
-    await page.locator('[data-theme-variant]').selectOption('eye-care');
     await page.locator('[data-save-settings]').click();
-    await expect(page.locator('[data-settings-status]')).toHaveText('设置已保存到应用数据库');
+    await page.locator('[data-settings-navigation="appearance"]').click();
+    await page.locator('[data-theme-id]').selectOption('theme-b');
+    await page.locator('[data-theme-variant]').selectOption('dark');
+    await page.locator('[data-save-settings]').click();
+    await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
     await capture(page, 'm1-01-settings-recent.png');
     await page.locator('[data-close-settings]').click();
 

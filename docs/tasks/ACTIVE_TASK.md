@@ -39,10 +39,20 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md
-  - docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md
+  - docs/tasks/M3/
+  - docs/tasks/M3_TASKS.md
+  - docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
   - docs/test-evidence/M3-01/
+  - docs/test-evidence/M3-02/
+  - docs/test-evidence/M3-03/
+  - docs/test-evidence/M3-04/
+  - docs/test-evidence/M3-05/
+  - docs/test-evidence/M3-06/
+  - docs/test-evidence/M3-07/
+  - docs/test-evidence/M3-08/
+  - docs/test-evidence/M3-09/
+  - docs/test-evidence/M3-10/
 forbidden_paths:
 
 required_docs:

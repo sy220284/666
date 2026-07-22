@@ -2121,3 +2121,38 @@ body[data-motion-preference='reduced'] *::after {
     grid-template-columns: 1fr;
   }
 }
+/* The React root remains visibly diagnostic while legacy business surfaces migrate task by task. */
+#react-root {
+  position: relative;
+  z-index: 30;
+}
+
+.react-foundation-status {
+  align-items: center;
+  background: var(--color-bg-panel, #f8f7f4);
+  border-bottom: 1px solid var(--color-border-subtle, #e6e2dc);
+  color: var(--color-text-secondary, #5f5d59);
+  display: flex;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 4px 16px;
+}
+
+.react-foundation-status strong {
+  color: var(--color-text-primary, #242321);
+  font-weight: 600;
+}
+
+.react-foundation-status[data-state='failed'] {
+  background: color-mix(in srgb, var(--color-danger, #b54a46) 9%, #fff);
+  border-bottom-color: var(--color-danger, #b54a46);
+  color: var(--color-danger, #b54a46);
+}
+
+.react-foundation-status__details {
+  margin-inline-start: 12px;
+  overflow-wrap: anywhere;
+}

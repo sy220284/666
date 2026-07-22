@@ -12,3 +12,5 @@ catalog:
 
 minimumReleaseAgeExclude:
   - electron@43.1.1
+  - react-dom@19.2.8
+  - react@19.2.8

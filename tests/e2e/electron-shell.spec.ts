@@ -133,6 +133,9 @@ test('runs a sandboxed Renderer against a healthy supervised Core', async () => 
   try {
     const window = await application.firstWindow();
     await expect(window).toHaveTitle('WorldForge');
+    await expect(window.locator('#react-root')).toHaveCount(1);
+    await expect(window.locator('#react-root')).toHaveAttribute('data-react-mounted', 'true');
+    await expect(window.locator('[data-react-runtime="running"]')).toBeVisible();
     await expect(window.locator('[data-editor-paper]')).toBeVisible();
 
     const runtime = await window.evaluate(async () => {

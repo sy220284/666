@@ -4,6 +4,7 @@ export interface RendererStartupFailure {
   readonly retryable: boolean;
   readonly diagnosticId?: string | undefined;
   readonly userAction?: string | undefined;
+  readonly details?: Readonly<Record<string, unknown>> | undefined;
 }
 
 export interface RendererStartupContext {
@@ -20,6 +21,7 @@ export interface RendererStartupDiagnostic {
   readonly retryable: boolean;
   readonly diagnosticId: string | null;
   readonly userAction: string | null;
+  readonly details: Readonly<Record<string, unknown>> | null;
   readonly occurredAt: string;
   readonly rendererVersion: string;
   readonly protocolVersion: number;
@@ -42,6 +44,7 @@ export function createRendererStartupDiagnostic(
     retryable: failure.retryable,
     diagnosticId: failure.diagnosticId ?? null,
     userAction: failure.userAction ?? null,
+    details: failure.details ?? null,
     occurredAt: context.occurredAt,
     rendererVersion: context.rendererVersion,
     protocolVersion: context.protocolVersion,

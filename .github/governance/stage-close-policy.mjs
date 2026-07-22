@@ -73,17 +73,27 @@ export function m3StageCloseErrors(state, taskStatuses) {
     errors.push('M3-10 stage close requires a full evidenceHead SHA');
   }
   const provenance = verified.squashProvenance;
-  for (const field of ['implementationHead', 'mainCommit', 'implementationTree', 'mainTree']) {
+  for (const field of ['implementationHead', 'mainCommit']) {
     if (!fullShaPattern.test(provenance?.[field] ?? '')) {
       errors.push(`M3-10 stage close requires squashProvenance.${field}`);
     }
   }
-  if (
-    fullShaPattern.test(provenance?.implementationTree ?? '') &&
-    fullShaPattern.test(provenance?.mainTree ?? '') &&
-    provenance.implementationTree !== provenance.mainTree
-  ) {
-    errors.push('M3-10 implementation and main Tree SHA must match');
+  const recordedTreeFields = ['implementationTree', 'mainTree'].filter(
+    (field) => provenance?.[field] !== undefined,
+  );
+  if (recordedTreeFields.length > 0) {
+    for (const field of ['implementationTree', 'mainTree']) {
+      if (!fullShaPattern.test(provenance?.[field] ?? '')) {
+        errors.push(`Recorded squash provenance requires ${field}`);
+      }
+    }
+    if (
+      fullShaPattern.test(provenance?.implementationTree ?? '') &&
+      fullShaPattern.test(provenance?.mainTree ?? '') &&
+      provenance.implementationTree !== provenance.mainTree
+    ) {
+      errors.push('M3-10 implementation and main Tree SHA must match');
+    }
   }
   return errors;
 }
@@ -99,7 +109,6 @@ function selfTest() {
     ['M3-10', 'Verified'],
     ['M4-01', 'In Progress'],
   ]);
-  const tree = 'b'.repeat(40);
   assert.deepEqual(newlyVerifiedTaskIds(base, closed), ['M3-01', 'M3-10']);
   assert.deepEqual(
     m3StageCloseErrors(
@@ -112,8 +121,6 @@ function selfTest() {
           squashProvenance: {
             implementationHead: 'c'.repeat(40),
             mainCommit: 'd'.repeat(40),
-            implementationTree: tree,
-            mainTree: tree,
           },
         },
       },
@@ -136,10 +143,32 @@ function selfTest() {
       {
         activeTask: { id: 'M4-01' },
         deferredVerification: [],
-        lastVerifiedTask: { id: 'M3-10' },
+        lastVerifiedTask: {
+          id: 'M3-10',
+          evidenceHead: 'a'.repeat(40),
+          squashProvenance: {},
+        },
       },
       closed,
-    ).some((error) => error.includes('squashProvenance')),
+    ).some((error) => error.includes('implementationHead')),
+  );
+  assert.ok(
+    m3StageCloseErrors(
+      {
+        activeTask: { id: 'M4-01' },
+        deferredVerification: [],
+        lastVerifiedTask: {
+          id: 'M3-10',
+          evidenceHead: 'a'.repeat(40),
+          squashProvenance: {
+            implementationHead: 'c'.repeat(40),
+            mainCommit: 'd'.repeat(40),
+            implementationTree: 'e'.repeat(40),
+          },
+        },
+      },
+      closed,
+    ).some((error) => error.includes('mainTree')),
   );
   assert.deepEqual(m3StageCloseErrors({ activeTask: { id: 'M3-10' } }, base), []);
 }
@@ -177,7 +206,18 @@ async function validatePolicy() {
     const provenance = verified.squashProvenance;
     assertCommitAncestor(verified.evidenceHead, actualHead, 'M3-10 evidenceHead');
     assertCommitAncestor(provenance.mainCommit, baseRef, 'M3-10 mainCommit');
-    if (commitTree(provenance.mainCommit) !== provenance.mainTree) {
+    const implementationTree = commitTree(provenance.implementationHead);
+    const mainTree = commitTree(provenance.mainCommit);
+    if (implementationTree !== mainTree) {
+      throw new Error('M3-10 implementation Head and main commit must resolve to the same Tree SHA');
+    }
+    if (
+      provenance.implementationTree !== undefined &&
+      provenance.implementationTree !== implementationTree
+    ) {
+      throw new Error('M3-10 recorded implementation Tree SHA does not match the implementation Head');
+    }
+    if (provenance.mainTree !== undefined && provenance.mainTree !== mainTree) {
       throw new Error('M3-10 recorded main Tree SHA does not match the main commit');
     }
     const manifest = JSON.parse(

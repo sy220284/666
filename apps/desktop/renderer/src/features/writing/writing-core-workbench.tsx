@@ -1279,11 +1279,9 @@ function CandidatePanel({
       setStatus('撤销冲突，Draft未改变。');
       return;
     }
-    onDraftReplace(
-      outcome.data.draft,
-      `已撤销本次应用 · Revision ${outcome.data.draft.revision}`,
-    );
-    setPreview((current) => (current ? { ...current, draft: outcome.data.draft } : current));
+    const restoredDraft = outcome.data.draft;
+    onDraftReplace(restoredDraft, `已撤销本次应用 · Revision ${restoredDraft.revision}`);
+    setPreview((current) => (current ? { ...current, draft: restoredDraft } : current));
     setUndoPreview(null);
     setConflicts([]);
     setStatus('已撤销本次应用。');

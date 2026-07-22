@@ -122,7 +122,9 @@ export class BridgeRequestCoordinator {
         return { state: 'stale', generation };
       }
       if (controller.signal.aborted) {
-        return { state: 'cancelled', generation };
+        // The underlying IPC completed despite the local abort. Its side effects
+        // are unknown, so do not claim that the operation was cancelled.
+        return { state: 'stale', generation };
       }
       if (result.ok) {
         return {

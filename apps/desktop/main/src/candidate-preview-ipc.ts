@@ -18,6 +18,7 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
+import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
 
 interface CandidatePreviewIpcOptions {
   readonly ipcMain: IpcMain;
@@ -26,16 +27,14 @@ interface CandidatePreviewIpcOptions {
 }
 
 function previewFailure(requestId: string, code: ErrorCode) {
+  const semantics = coreOperationFailureSemantics(
+    code,
+    'The Candidate preview could not be loaded.',
+  );
   return CandidatePreviewResultSchema.parse({
     ok: false,
     requestId,
-    error: {
-      code,
-      message: 'The Candidate preview could not be loaded.',
-      retryable: ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(
-        code,
-      ),
-    },
+    error: { code, ...semantics },
   });
 }
 
@@ -52,56 +51,50 @@ function previewCancelFailure(requestId: string, code: ErrorCode) {
 }
 
 function actionFailure(requestId: string, code: ErrorCode) {
+  const semantics = coreOperationFailureSemantics(
+    code,
+    'The Candidate action could not be completed.',
+  );
   return CandidateApplyResultSchema.parse({
     ok: false,
     requestId,
-    error: {
-      code,
-      message: 'The Candidate action could not be completed.',
-      retryable: ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(
-        code,
-      ),
-    },
+    error: { code, ...semantics },
   });
 }
 
-function retryable(code: ErrorCode): boolean {
-  return ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code);
-}
-
 function lookupFailure(requestId: string, code: ErrorCode) {
+  const semantics = coreOperationFailureSemantics(
+    code,
+    'The Candidate ApplyRecord could not be found.',
+  );
   return CandidateUndoLookupResultSchema.parse({
     ok: false,
     requestId,
-    error: {
-      code,
-      message: 'The Candidate ApplyRecord could not be found.',
-      retryable: retryable(code),
-    },
+    error: { code, ...semantics },
   });
 }
 
 function undoPreviewFailure(requestId: string, code: ErrorCode) {
+  const semantics = coreOperationFailureSemantics(
+    code,
+    'The Candidate undo preview could not be loaded.',
+  );
   return CandidateUndoPreviewResultSchema.parse({
     ok: false,
     requestId,
-    error: {
-      code,
-      message: 'The Candidate undo preview could not be loaded.',
-      retryable: retryable(code),
-    },
+    error: { code, ...semantics },
   });
 }
 
 function undoFailure(requestId: string, code: ErrorCode) {
+  const semantics = coreOperationFailureSemantics(
+    code,
+    'The Candidate application could not be undone.',
+  );
   return CandidateUndoResultSchema.parse({
     ok: false,
     requestId,
-    error: {
-      code,
-      message: 'The Candidate application could not be undone.',
-      retryable: retryable(code),
-    },
+    error: { code, ...semantics },
   });
 }
 

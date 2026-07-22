@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 import type { ProjectWorkspaceSummary } from '@worldforge/contracts';
 
@@ -19,45 +19,21 @@ interface WritingWorkbenchProps {
 }
 
 export function WritingWorkbench(props: WritingWorkbenchProps) {
-  const restoreEditorFocus = useRef(false);
-  const bridge = useMemo(() => createWritingBridge(props.bridge), [props.bridge]);
-
-  useEffect(() => {
-    const rememberEditorExit = (event: MouseEvent): void => {
-      if (event.target instanceof Element && event.target.closest('[data-back-project]')) {
-        restoreEditorFocus.current = true;
-      }
-    };
-    const restoreOnEditorMount = (records: readonly MutationRecord[]): void => {
-      if (!restoreEditorFocus.current) return;
-      for (const record of records) {
-        for (const node of record.addedNodes) {
-          if (!(node instanceof Element)) continue;
-          const content = node.matches('[data-draft-content]')
-            ? node
-            : node.querySelector('[data-draft-content]');
-          if (!(content instanceof HTMLElement)) continue;
-          restoreEditorFocus.current = false;
-          requestAnimationFrame(() => content.focus());
-          return;
-        }
-      }
-    };
-    const observer = new MutationObserver(restoreOnEditorMount);
-    document.addEventListener('click', rememberEditorExit, true);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      document.removeEventListener('click', rememberEditorExit, true);
-      observer.disconnect();
-    };
-  }, []);
+  const bridge = useMemo(
+    () => createWritingBridge(props.bridge, props.onPanelChange),
+    [props.bridge, props.onPanelChange],
+  );
 
   return <WritingCoreWorkbench {...props} bridge={bridge} />;
 }
 
-function createWritingBridge(bridge: RendererBridgeAdapter): RendererBridgeAdapter {
+function createWritingBridge(
+  bridge: RendererBridgeAdapter,
+  onPanelChange: (panel: WritingPanel) => void,
+): RendererBridgeAdapter {
   type ListStructure = RendererBridgeAdapter['planning']['listStructure'];
   type CreateVersion = RendererBridgeAdapter['version']['create'];
+  type RestoreVersion = RendererBridgeAdapter['version']['restore'];
   let pendingProjectId: string | null = null;
   let pending: ReturnType<ListStructure> | null = null;
 
@@ -95,6 +71,15 @@ function createWritingBridge(bridge: RendererBridgeAdapter): RendererBridgeAdapt
     );
   };
 
+  const restoreVersion: RestoreVersion = async (...args) => {
+    const outcome = await bridge.version.restore(...args);
+    if (outcome.state === 'success') {
+      onPanelChange('editor');
+      await waitForDraftEditorHost();
+    }
+    return outcome;
+  };
+
   const planning = new Proxy(bridge.planning, {
     get(target, property, receiver) {
       return property === 'listStructure'
@@ -104,9 +89,33 @@ function createWritingBridge(bridge: RendererBridgeAdapter): RendererBridgeAdapt
   });
   const version = new Proxy(bridge.version, {
     get(target, property, receiver) {
-      return property === 'create' ? createVersion : Reflect.get(target, property, receiver);
+      if (property === 'create') return createVersion;
+      if (property === 'restore') return restoreVersion;
+      return Reflect.get(target, property, receiver);
     },
   });
 
   return { ...bridge, planning, version };
+}
+
+function waitForDraftEditorHost(): Promise<void> {
+  return new Promise((resolve) => {
+    const finish = (): void => requestAnimationFrame(() => resolve());
+    if (document.querySelector('[data-draft-editor-host]')) {
+      finish();
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!document.querySelector('[data-draft-editor-host]')) return;
+      observer.disconnect();
+      clearTimeout(timeout);
+      finish();
+    });
+    const timeout = window.setTimeout(() => {
+      observer.disconnect();
+      resolve();
+    }, 1_000);
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
 }

@@ -1,6 +1,6 @@
 # M3-09 Renderer规划、设定、结构与数据工具迁移
 
-> 状态：Implemented
+> 状态：Verified
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`refactor/m3-renderer-planning-canon-structure`
@@ -68,6 +68,7 @@ M3-08
 - Canon、动态状态、历史状态和pending提案保持分离。
 - 拆并章、永久删除、导入和恢复继续通过现有安全回归。
 - 导入预览期间项目库不变化，取消或失败无临时数据残留。
+- M3批量复验运行`29914507812`完成25/25桌面链路与全部永久门。
 
 证据保存到：`docs/test-evidence/M3-09/`
 

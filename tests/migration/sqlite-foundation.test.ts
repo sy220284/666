@@ -171,6 +171,7 @@ describe('SQLite foundation migrations', () => {
       'projects',
       'scene_beat_block_links',
       'scene_beat_entities',
+      'scene_beat_link_rebind_queue',
       'scene_beats',
       'schema_migrations',
       'state_proposals',

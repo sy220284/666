@@ -22,6 +22,11 @@
       ]
     },
     {
+      "taskId": "M0-03",
+      "finding": "Schema 18 changed the authoritative project schema and table inventory; foundation migration assertions must follow the current migration ledger.",
+      "allowedPaths": ["tests/migration/sqlite-foundation.test.ts"]
+    },
+    {
       "taskId": "M1-07",
       "finding": "Final Version changes and Version restore did not coordinate derived snapshots and SceneBeat block identities.",
       "allowedPaths": [
@@ -42,7 +47,8 @@
       "finding": "SceneBeat block links were not coordinated with cross-Draft block identity transitions.",
       "allowedPaths": [
         "migrations/project/0018_integrated_coordination_hardening.sql",
-        "tests/migration/integrated-coordination-migration.test.ts"
+        "tests/migration/integrated-coordination-migration.test.ts",
+        "tests/migration/scene-beat-entity-truth-migration.test.ts"
       ]
     },
     {
@@ -74,12 +80,12 @@
         "tests/unit/bridge-request-detachment.test.ts",
         "docs/architecture/M0_M3_INTEGRATED_COORDINATION.md",
         "docs/contracts/ERROR_CODES.md",
-        "docs/test-evidence/M3-10/"
+        "docs/test-evidence/M3-10/",
+        "apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx",
+        "apps/desktop/renderer/src/features/writing/writing-workbench.tsx"
       ]
     }
   ],
   "evidenceMigrationTasks": ["M3-10"],
-  "governancePaths": [
-    ".github/audit-remediations/m0-m3-integrated-coordination-2026-07-23.json"
-  ]
+  "governancePaths": [".github/audit-remediations/m0-m3-integrated-coordination-2026-07-23.json"]
 }

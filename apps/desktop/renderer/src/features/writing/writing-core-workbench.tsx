@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import type {
   CandidateConflictItem,
@@ -63,6 +56,15 @@ const EMPTY_STATISTICS: WritingStatistics = {
   progressPercent: null,
 };
 
+const persistedSelectionByChapter = new Map<
+  string,
+  { readonly from: number; readonly to: number }
+>();
+
+function selectionKey(projectId: string, chapterId: string): string {
+  return `${projectId}:${chapterId}`;
+}
+
 export function WritingWorkbench({
   bridge,
   project,
@@ -79,9 +81,6 @@ export function WritingWorkbench({
   const composing = useRef(false);
   const synchronizing = useRef(false);
   const initialChapterRequested = useRef(false);
-  const selectionByChapter = useRef(
-    new Map<string, { readonly from: number; readonly to: number }>(),
-  );
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [draft, setDraft] = useState<DraftDocument | null>(null);
   const [editorState, setEditorState] = useState('从左侧卷章目录选择章节。');
@@ -209,31 +208,34 @@ export function WritingWorkbench({
     };
   }, [flush]);
 
-  const destroyEditor = useCallback((clearSession = true): void => {
-    const instance = editor.current;
-    const currentChapter = activeChapter.current;
-    if (instance && currentChapter) {
-      selectionByChapter.current.set(currentChapter.id, {
-        from: instance.state.selection.from,
-        to: instance.state.selection.to,
-      });
-    }
-    autosave.current?.destroy();
-    autosave.current = null;
-    instance?.destroy();
-    editor.current = null;
-    editorHost.current?.replaceChildren();
-    setStatistics(EMPTY_STATISTICS);
-    setSelectedLocked(null);
-    setIsComposing(false);
-    composing.current = false;
-    if (clearSession) {
-      activeDraft.current = null;
-      activeChapter.current = null;
-      setDraft(null);
-      setChapter(null);
-    }
-  }, []);
+  const destroyEditor = useCallback(
+    (clearSession = true): void => {
+      const instance = editor.current;
+      const currentChapter = activeChapter.current;
+      if (instance && currentChapter) {
+        persistedSelectionByChapter.set(selectionKey(project.projectId, currentChapter.id), {
+          from: instance.state.selection.from,
+          to: instance.state.selection.to,
+        });
+      }
+      autosave.current?.destroy();
+      autosave.current = null;
+      instance?.destroy();
+      editor.current = null;
+      editorHost.current?.replaceChildren();
+      setStatistics(EMPTY_STATISTICS);
+      setSelectedLocked(null);
+      setIsComposing(false);
+      composing.current = false;
+      if (clearSession) {
+        activeDraft.current = null;
+        activeChapter.current = null;
+        setDraft(null);
+        setChapter(null);
+      }
+    },
+    [project.projectId],
+  );
 
   const mountEditor = useCallback(
     (document: DraftDocument, nextChapter: Chapter): void => {
@@ -272,7 +274,7 @@ export function WritingWorkbench({
           setStatus(composing.current ? '输入法组合中；自动保存与结构键已暂停。' : '等待自动保存…');
         },
         onSelectionUpdate: ({ editor: current }) => {
-          selectionByChapter.current.set(nextChapter.id, {
+          persistedSelectionByChapter.set(selectionKey(project.projectId, nextChapter.id), {
             from: current.state.selection.from,
             to: current.state.selection.to,
           });
@@ -292,7 +294,9 @@ export function WritingWorkbench({
           else if (state === 'paused') setStatus('输入法组合中；自动保存已暂停。');
         },
       });
-      const remembered = selectionByChapter.current.get(nextChapter.id);
+      const remembered = persistedSelectionByChapter.get(
+        selectionKey(project.projectId, nextChapter.id),
+      );
       if (remembered) {
         const maximum = Math.max(1, instance.state.doc.content.size);
         instance.commands.setTextSelection({
@@ -364,13 +368,11 @@ export function WritingWorkbench({
     if (initialChapterRequested.current) return;
     initialChapterRequested.current = true;
     let active = true;
-    void bridge.planning
-      .listStructure(project.projectId, { mode: 'replace' })
-      .then((outcome) => {
-        if (!active || outcome.state !== 'success') return;
-        const firstChapter = outcome.data.volumes.flatMap((volume) => volume.chapters)[0];
-        if (firstChapter) void openChapter(firstChapter);
-      });
+    void bridge.planning.listStructure(project.projectId, { mode: 'replace' }).then((outcome) => {
+      if (!active || outcome.state !== 'success') return;
+      const firstChapter = outcome.data.volumes.flatMap((volume) => volume.chapters)[0];
+      if (firstChapter) void openChapter(firstChapter);
+    });
     return () => {
       active = false;
     };
@@ -515,11 +517,7 @@ export function WritingWorkbench({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (
-        !(event.ctrlKey || event.metaKey) ||
-        event.key.toLowerCase() !== 's' ||
-        !editor.current
-      )
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's' || !editor.current)
         return;
       event.preventDefault();
       if (!composing.current && !event.isComposing) void manualSave();
@@ -536,7 +534,9 @@ export function WritingWorkbench({
         <div>
           <p className="eyebrow">DRAFT · PROJECT.SQLITE</p>
           <h1>{chapter ? `${project.name} · ${chapter.title}` : project.name}</h1>
-          <p>React独占正文、Version和Candidate；Core继续负责Revision、Hash、LockGuard和原子事务。</p>
+          <p>
+            React独占正文、Version和Candidate；Core继续负责Revision、Hash、LockGuard和原子事务。
+          </p>
         </div>
         <div className="feature-heading__actions">
           <button data-back-project type="button" onClick={() => void backToProject()}>
@@ -698,11 +698,7 @@ export function WritingWorkbench({
                     setFindIndex(0);
                   }}
                 />
-                <button
-                  type="button"
-                  disabled={!findCount}
-                  onClick={() => selectMatch(-1)}
-                >
+                <button type="button" disabled={!findCount} onClick={() => selectMatch(-1)}>
                   上一个
                 </button>
                 <button
@@ -876,9 +872,7 @@ function VersionPanel({
     });
     setPending(false);
     if (outcome.state !== 'success') {
-      setStatus(
-        outcome.state === 'failure' ? `创建失败 · ${outcome.error.code}` : '创建已取消。',
-      );
+      setStatus(outcome.state === 'failure' ? `创建失败 · ${outcome.error.code}` : '创建已取消。');
       return;
     }
     form.reset();
@@ -1446,11 +1440,7 @@ function CandidatePanel({
         </>
       ) : null}
       {conflicts.length ? (
-        <ul
-          className="candidate-conflicts"
-          data-candidate-conflict-list
-          aria-label="候选内容冲突"
-        >
+        <ul className="candidate-conflicts" data-candidate-conflict-list aria-label="候选内容冲突">
           {conflicts.map((conflict, index) => (
             <li key={`${conflict.kind}-${index}`}>
               {conflict.kind} · {conflict.message}
@@ -1516,5 +1506,6 @@ function sanitizePastedHtml(html: string): string {
   };
   visit(parsed.body);
   if (!clean.hasChildNodes()) clean.append(document.createElement('p'));
-  return clean.innerHTML;
+  const serializer = new XMLSerializer();
+  return Array.from(clean.childNodes, (node) => serializer.serializeToString(node)).join('');
 }

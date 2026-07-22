@@ -21,7 +21,18 @@ function git(argumentsList) {
   }).trim();
 }
 
+function ensureCommitAvailable(commit) {
+  try {
+    git(['cat-file', '-e', `${commit}^{commit}`]);
+    return;
+  } catch {
+    git(['fetch', '--quiet', '--no-tags', 'origin', commit]);
+  }
+  git(['cat-file', '-e', `${commit}^{commit}`]);
+}
+
 function commitTree(commit) {
+  ensureCommitAvailable(commit);
   return git(['rev-parse', `${commit}^{tree}`]);
 }
 

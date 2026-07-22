@@ -26,9 +26,12 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
           show-progress: false
+      - name: Quietly fetch complete history
+        shell: bash
+        run: git fetch --quiet --no-tags --unshallow origin
       - name: Resolve effective PR base
         shell: bash
         run: |

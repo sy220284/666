@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-manifest-discovery-2026-07-23",
+  "baseCommit": "a94e0c20914f48be3b8a3d6ade4615eea99edd87",
+  "branch": "fix/governance-audit-manifest-discovery",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-01",
+      "finding": "Audit remediation governance was coupled to one historical manifest and could not host an independent verified-stage repair safely.",
+      "allowedPaths": [
+        ".github/audit-remediations/manifest-discovery-2026-07-23.json",
+        "scripts/audit-remediation-policy.mjs",
+        "tests/unit/audit-remediation-manifest-discovery.test.ts"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": [
+    "M0-01"
+  ],
+  "governancePaths": [
+    ".github/audit-remediations/manifest-discovery-2026-07-23.json"
+  ]
+}

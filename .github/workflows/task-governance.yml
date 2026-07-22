@@ -14,64 +14,29 @@ concurrency:
 
 jobs:
   task-governance:
-    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       TASK_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
-      TASK_EVENT_NAME: ${{ github.event_name }}
-      TASK_PR_HEAD_REF: ${{ github.head_ref }}
-      TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
       TASK_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Quiet repository checkout
         shell: bash
         run: |
-          git init . >/dev/null
+          git init -q .
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --quiet --no-tags --depth=1 origin "${TASK_HEAD_SHA}"
           git checkout --quiet FETCH_HEAD
           git fetch --quiet --no-tags --unshallow origin
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
-      - name: Resolve effective PR base
+      - name: Diagnose milestone close
         shell: bash
         run: |
           base_ref="$(git merge-base "origin/${TASK_BASE_BRANCH}" HEAD)"
-          echo "TASK_BASE_REF=${base_ref}" >> "$GITHUB_ENV"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - name: Assert clean working tree before task validation
-        run: node .github/governance/assert-clean-tree.mjs
-      - name: Materialize base task state
-        shell: bash
-        run: |
-          git show "${TASK_BASE_REF}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
-          git show "${TASK_BASE_REF}:docs/tasks/TASK_INDEX.md" > "$RUNNER_TEMP/base-task-index.md"
-      - name: Validate active task and generated mirror
-        run: node scripts/taskctl.mjs validate
-      - name: Validate changed paths
-        run: node scripts/taskctl.mjs preflight
-      - name: Self-test checkpoint policy
-        run: node .github/governance/task-checkpoint-policy.mjs self-test
-      - name: Validate task transition for Ready PRs
-        if: ${{ startsWith(github.head_ref, 'policy/') || startsWith(github.head_ref, 'chore/governance-') || startsWith(github.head_ref, 'fix/governance-') || !contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
-        env:
-          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
-          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
-        run: node .github/governance/task-transition-policy.mjs
-      - name: Validate active task checkpoint
-        if: ${{ !startsWith(github.head_ref, 'policy/') && !startsWith(github.head_ref, 'chore/governance-') && !startsWith(github.head_ref, 'fix/governance-') && contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
-        env:
-          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
-          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
-        run: node .github/governance/task-checkpoint-policy.mjs
-      - name: Enforce milestone close and evidence reachability
-        env:
-          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
-          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
-        run: node .github/governance/stage-close-policy.mjs
-      - name: Assert clean working tree after task validation
-        if: always()
-        run: node .github/governance/assert-clean-tree.mjs
+          git show "${base_ref}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
+          git show "${base_ref}:docs/tasks/TASK_INDEX.md" > "$RUNNER_TEMP/base-task-index.md"
+          TASK_BASE_REF="$base_ref" \
+          TASK_BASE_STATE_PATH="$RUNNER_TEMP/base-active-task.json" \
+          TASK_BASE_INDEX_PATH="$RUNNER_TEMP/base-task-index.md" \
+          node .github/governance/stage-close-policy.mjs

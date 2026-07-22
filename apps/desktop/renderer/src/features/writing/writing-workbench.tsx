@@ -27,6 +27,8 @@ interface PersistedDomSelection {
 
 export function WritingWorkbench(props: WritingWorkbenchProps) {
   const selectionToRestore = useRef<PersistedDomSelection | null>(null);
+  const sourceContentToReplace = useRef<HTMLElement | null>(null);
+  const restoreScheduled = useRef(false);
   const bridge = useMemo(
     () => createWritingBridge(props.bridge, props.onPanelChange),
     [props.bridge, props.onPanelChange],
@@ -52,41 +54,52 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
         focusPath,
         focusOffset: selection.focusOffset,
       };
+      sourceContentToReplace.current = content;
+      restoreScheduled.current = false;
+      document.querySelector('[data-draft-workspace]')?.removeAttribute('data-draft-workspace');
     };
 
-    const restoreSelectionAfterMount = (records: readonly MutationRecord[]): void => {
+    const restoreSelectionAfterMount = (): void => {
       const remembered = selectionToRestore.current;
       if (!remembered) return;
-      for (const record of records) {
-        for (const node of record.addedNodes) {
-          if (!(node instanceof Element)) continue;
-          const content = node.matches('[data-draft-content]')
-            ? node
-            : node.querySelector('[data-draft-content]');
-          if (!(content instanceof HTMLElement)) continue;
-          requestAnimationFrame(() => {
-            const anchorNode = nodeFromPath(content, remembered.anchorPath);
-            const focusNode = nodeFromPath(content, remembered.focusPath);
-            if (!anchorNode || !focusNode) return;
-            content.focus({ preventScroll: true });
-            const selection = document.getSelection();
-            if (!selection) return;
-            selection.setBaseAndExtent(
-              anchorNode,
-              clampSelectionOffset(anchorNode, remembered.anchorOffset),
-              focusNode,
-              clampSelectionOffset(focusNode, remembered.focusOffset),
-            );
-            selectionToRestore.current = null;
-          });
-          return;
-        }
+
+      const workspace = document.querySelector('.writing-workbench');
+      if (workspace?.hasAttribute('data-draft-workspace')) {
+        workspace.removeAttribute('data-draft-workspace');
       }
+
+      const sourceContent = sourceContentToReplace.current;
+      if (sourceContent?.isConnected) return;
+      const content = document.querySelector('[data-draft-content]');
+      if (!(content instanceof HTMLElement) || content === sourceContent || restoreScheduled.current) {
+        return;
+      }
+
+      restoreScheduled.current = true;
+      requestAnimationFrame(() => {
+        restoreScheduled.current = false;
+        if (!content.isConnected || selectionToRestore.current !== remembered) return;
+        const anchorNode = nodeFromPath(content, remembered.anchorPath);
+        const focusNode = nodeFromPath(content, remembered.focusPath);
+        if (!anchorNode || !focusNode) return;
+        content.focus({ preventScroll: true });
+        const selection = document.getSelection();
+        if (!selection) return;
+        selection.setBaseAndExtent(
+          anchorNode,
+          clampSelectionOffset(anchorNode, remembered.anchorOffset),
+          focusNode,
+          clampSelectionOffset(focusNode, remembered.focusOffset),
+        );
+        selectionToRestore.current = null;
+        sourceContentToReplace.current = null;
+        document.querySelector('.writing-workbench')?.setAttribute('data-draft-workspace', '');
+      });
     };
 
     const observer = new MutationObserver(restoreSelectionAfterMount);
     document.addEventListener('pointerdown', rememberSelectionBeforeExit, true);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
     return () => {
       document.removeEventListener('pointerdown', rememberSelectionBeforeExit, true);
       observer.disconnect();
@@ -192,7 +205,8 @@ function nodeFromPath(root: Node, path: readonly number[]): Node | null {
 }
 
 function clampSelectionOffset(node: Node, offset: number): number {
-  const maximum = node.nodeType === Node.TEXT_NODE ? (node.textContent?.length ?? 0) : node.childNodes.length;
+  const maximum =
+    node.nodeType === Node.TEXT_NODE ? (node.textContent?.length ?? 0) : node.childNodes.length;
   return Math.min(Math.max(0, offset), maximum);
 }
 

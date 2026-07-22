@@ -1,0 +1,38 @@
+pnpm lint
+exit=0 fixture=Quality-29911186317/static-checks
+
+pnpm typecheck
+exit=0 fixture=Quality-29911186317/static-checks
+
+pnpm build
+exit=0 fixture=Quality-29911186317/build
+
+pnpm test:unit
+exit=0 fixture=Quality-29911186317/tests-unit
+
+pnpm test:integration
+exit=0 fixture=Quality-29911186317/tests-integration
+
+pnpm test:migration
+exit=0 fixture=Quality-29911186317/tests-migration
+
+pnpm test:e2e
+exit=0 fixture=25/25,Quality-29911186317,artifact-8526227664
+
+pnpm test:security
+exit=0 fixture=Security-29911186070
+
+pnpm test:perf
+exit=0 fixture=Performance-29911185825
+
+pnpm test:eval
+exit=0 fixture=Performance-29911185825
+
+PR Policy
+exit=0 fixture=29911186570
+
+Task Governance
+exit=0 fixture=29911186093
+
+Evidence
+exit=0 fixture=29911185804

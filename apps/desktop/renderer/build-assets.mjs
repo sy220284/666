@@ -13,6 +13,7 @@ await Promise.all([
     new URL('./src/styles.css', import.meta.url),
     new URL('./dist/styles.css', import.meta.url),
   ),
+  copyFile(new URL('./src/m3.css', import.meta.url), new URL('./dist/m3.css', import.meta.url)),
 ]);
 
 await build({

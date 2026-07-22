@@ -66,6 +66,13 @@ M3-09
 7. 删除旧`index.ts`、静态HTML业务主体、Candidate bootstrap和遗留全局DOM状态；`index.html`只保留安全元信息、样式入口和React Root。
 8. 建立Bundle、性能、内存、事件注销和重复监听回归，避免双实例、重复保存和幽灵任务。
 
+## 实现约束记录
+
+- Renderer通过统一Bridge Adapter访问Draft、Version、Candidate和规划结构，React组件不直连Preload全局对象。
+- 章节切换、面板切换和返回项目均先flush当前Draft；重建编辑器时恢复章节选区并重新聚焦正文DOM选区。
+- Version创建在异步flush前固定表单元素引用，避免React事件对象跨await后失效；恢复操作继续创建新Draft，不修改原Version与原Draft记录。
+- Candidate预览保持只读，采用与撤销继续由Core事务、Revision、Hash、LockGuard和ApplyRecord约束。
+
 ## 测试与证据
 
 - 中文IME、800ms自动保存、失败持续提示、切章/关闭flush和未保存文本复制通过。

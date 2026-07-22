@@ -11,9 +11,7 @@ import { createRendererFoundationRuntime } from './runtime/renderer-foundation-r
 import { RendererStatusArbitrator } from './runtime/status-arbitrator.js';
 
 const rootElement = document.getElementById('react-root');
-if (!rootElement) {
-  throw new Error('RENDERER_REACT_ROOT_MISSING');
-}
+if (!rootElement) throw new Error('RENDERER_REACT_ROOT_MISSING');
 if (rootElement.dataset.reactMounted === 'true') {
   throw new Error('RENDERER_REACT_ROOT_DUPLICATE');
 }
@@ -22,12 +20,10 @@ const bridge = createWindowRendererBridgeAdapter();
 const legacySurface = createLegacySurfaceController();
 const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
-const legacy = createLegacyCompatibilityLoader(async () => {
-  await import('./entry.js');
-});
+const retiredCompatibilityBoundary = createLegacyCompatibilityLoader(async () => undefined);
 const runtime = createRendererFoundationRuntime({
   bridge,
-  legacy,
+  legacy: retiredCompatibilityBoundary,
   lifecycle,
   statuses,
   rendererVersion: '0.1.0',

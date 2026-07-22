@@ -216,7 +216,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
       setMessage(null);
       setNavOpen(false);
       void transitionToRoute(resolution.route).then((changed) => {
-        if (changed && (navigationId === 'home' || navigationId === 'settings')) {
+        if (changed && navigationId === 'home') {
           void refreshWorkspace();
         }
       });

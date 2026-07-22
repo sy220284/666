@@ -215,6 +215,16 @@ test('renders only persisted recent projects and restores general settings after
   await expect(firstWindow.locator('[data-settings-status]')).toHaveText(
     '设置已保存到应用数据库。',
   );
+  expect(
+    await firstWindow.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      return bridge.settings.get();
+    }),
+  ).toMatchObject({
+    ok: true,
+    data: { settings: { defaultMode: 'professional' } },
+  });
   await firstWindow.locator('[data-settings-navigation="appearance"]').click();
   await firstWindow.locator('[data-theme-id]').selectOption('theme-b');
   await firstWindow.locator('[data-theme-variant]').selectOption('dark');
@@ -223,6 +233,23 @@ test('renders only persisted recent projects and restores general settings after
   await expect(firstWindow.locator('[data-settings-status]')).toHaveText(
     '显示设置已保存到应用数据库。',
   );
+  expect(
+    await firstWindow.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      return bridge.settings.get();
+    }),
+  ).toMatchObject({
+    ok: true,
+    data: {
+      settings: {
+        defaultMode: 'professional',
+        themeId: 'theme-b',
+        themeVariant: 'dark',
+        reduceMotion: true,
+      },
+    },
+  });
   await closeGracefully(first);
 
   const database = new DatabaseSync(path.join(userDataPath, 'app.sqlite'));

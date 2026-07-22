@@ -76,10 +76,10 @@ describe('M3-08 React运行底座', () => {
 
   it('由React独占首页、项目生命周期和设置节点', async () => {
     const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
-    const [legacyHtml, legacySource, shellSource, homeSource, settingsSource] = await Promise.all([
+    const [legacyHtml, packageEntry, shellSource, homeSource, settingsSource] = await Promise.all([
       readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
       readFile(path.join(rendererRoot, 'index.ts'), 'utf8'),
-      readFile(path.join(rendererRoot, 'app/app-shell.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/app-shell-m3.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/home/home-page.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
     ]);
@@ -99,14 +99,14 @@ describe('M3-08 React运行底座', () => {
       'worldforge.project.move',
       'worldforge.settings.set',
     ]) {
-      expect(legacySource).not.toContain(operation);
+      expect(packageEntry).not.toContain(operation);
     }
     expect(shellSource).toContain('data-react-shell');
     expect(shellSource).toContain("document.body.dataset.rendererReady = 'true'");
     expect(shellSource).toContain('settingsWriteQueue.current.then');
     expect(shellSource).toContain('confirmedSettings.current = outcome.data.settings');
     expect(shellSource).not.toContain("navigationId === 'home' || navigationId === 'settings'");
-    expect(legacySource).not.toContain("document.body.dataset.rendererReady = 'true'");
+    expect(packageEntry).not.toContain("document.body.dataset.rendererReady = 'true'");
     expect(homeSource).toContain('data-react-home');
     expect(settingsSource).toContain('data-react-settings');
   });
@@ -116,11 +116,14 @@ describe('M3-08 React运行底座', () => {
     const [legacyHtml, shellSource, settingsSource, stylesSource, canonSource, planningSource] =
       await Promise.all([
         readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
-        readFile(path.join(rendererRoot, 'app/app-shell.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'app/app-shell-m3.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
-        readFile(path.join(rendererRoot, 'features/canon/canon-workbench.tsx'), 'utf8'),
-        readFile(path.join(rendererRoot, 'features/planning/planning-workbench.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'features/canon/canon-core-workbench.tsx'), 'utf8'),
+        readFile(
+          path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
+          'utf8',
+        ),
       ]);
 
     expect(legacyHtml).not.toContain('data-legacy-open-continuity');

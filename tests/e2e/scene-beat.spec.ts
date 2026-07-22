@@ -100,6 +100,8 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
 
     await page.locator('[data-open-planning]').click();
     await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+    await page.locator('[data-planning-mode="professional"]').click();
+    await expect(page.locator('[data-planning-disclosure="professional"]')).toBeVisible();
     await page.locator('[data-create-scene-beat]').click();
     const dialog = page.locator('[data-scene-beat-dialog]');
     const characterSelector = dialog.locator('select[data-scene-beat-entity-selector="character"]');

@@ -146,9 +146,8 @@ type AdaptedMethod<Method> = Method extends (
   : never;
 
 type AdaptedDomain<Domain> = {
-  readonly [Key in keyof Domain as AdaptedMethod<Domain[Key]> extends never
-    ? never
-    : Key]: AdaptedMethod<Domain[Key]>;
+  readonly [Key in keyof Domain as AdaptedMethod<Domain[Key]> extends never ? never : Key]:
+    AdaptedMethod<Domain[Key]>;
 };
 
 export interface RendererBridgeAdapter {
@@ -243,16 +242,12 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
   }
-  return createRendererBridgeAdapter(
-    window.worldforge,
-    new BridgeRequestCoordinator(),
-    {
-      continuity: window.worldforgeContinuity,
-      narrativePlanning: window.worldforgeNarrativePlanning,
-      stateProposal: window.worldforgeStateProposal,
-      candidateAction: window.worldforgeCandidatePreview,
-    },
-  );
+  return createRendererBridgeAdapter(window.worldforge, new BridgeRequestCoordinator(), {
+    continuity: window.worldforgeContinuity,
+    narrativePlanning: window.worldforgeNarrativePlanning,
+    stateProposal: window.worldforgeStateProposal,
+    candidateAction: window.worldforgeCandidatePreview,
+  });
 }
 
 function requireDomain<Domain extends object>(domain: Domain | undefined, name: string): Domain {
@@ -284,12 +279,17 @@ function adaptDomain<Domain extends object>(
           const options = takeBridgeOptions(args);
           const method = (domain as Record<string, unknown>)[property];
           if (typeof method !== 'function') {
-            return Promise.reject(new Error(`The ${domainName}.${property} bridge method is unavailable.`));
+            return Promise.reject(
+              new Error(`The ${domainName}.${property} bridge method is unavailable.`),
+            );
           }
           return coordinator.run(
             requestKey(domainName, property, args),
             () =>
-              (method as (...values: unknown[]) => Promise<CommandResult<unknown>>).apply(domain, args),
+              (method as (...values: unknown[]) => Promise<CommandResult<unknown>>).apply(
+                domain,
+                args,
+              ),
             options,
           );
         };
@@ -318,7 +318,9 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
 function requestKey(domain: string, method: string, args: readonly unknown[]): string {
   const identity = args
     .map((argument) => {
-      if (typeof argument === 'string' || typeof argument === 'number') return String(argument);
+      if (typeof argument === 'string' || typeof argument === 'number') {
+        return String(argument);
+      }
       if (!argument || typeof argument !== 'object') return typeof argument;
       const record = argument as Record<string, unknown>;
       for (const key of [

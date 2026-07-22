@@ -1,0 +1,316 @@
+name: Diagnostic Export Integrated Remediation V5
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: ${{ github.head_ref == 'diagnostic/export-integrated-remediation' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Generate integrated remediation files
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def sub(path, pattern, replacement, count=1, flags=0):
+              file = Path(path)
+              text, changed = re.subn(pattern, replacement, file.read_text(), count=count, flags=flags)
+              if changed != count:
+                  raise SystemExit(f'{path}: expected {count} replacement(s), got {changed}')
+              file.write_text(text)
+
+          def literal(path, old, new, count=1):
+              file = Path(path)
+              text = file.read_text()
+              if text.count(old) != count:
+                  raise SystemExit(f'{path}: literal count for {old[:50]!r} was {text.count(old)}')
+              file.write_text(text.replace(old, new, count))
+
+          Path('apps/desktop/main/src/ipc-error-semantics.ts').write_text("""import type { ErrorCode } from '@worldforge/contracts';
+
+          export interface CoreOperationFailureSemantics {
+            readonly message: string;
+            readonly retryable: boolean;
+            readonly userAction?: string;
+          }
+
+          export function coreOperationFailureSemantics(
+            code: ErrorCode,
+            fallbackMessage: string,
+          ): CoreOperationFailureSemantics {
+            if (code === 'COMMON_TIMEOUT_005') {
+              return {
+                message:
+                  'Core did not return a final result before the timeout; the operation may still have completed.',
+                retryable: false,
+                userAction: 'Refresh authoritative state before attempting the operation again.',
+              };
+            }
+            return {
+              message: fallbackMessage,
+              retryable: ['COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(code),
+            };
+          }
+          """)
+
+          sub(
+              'apps/desktop/main/src/core-supervisor.ts',
+              r"message: 'The task command timed out\.',\n\s+retryable: true,",
+              """message:
+                  'Core did not return a final result before the timeout; the operation may still have completed.',
+                retryable: false,
+                userAction: 'Refresh authoritative state before attempting the operation again.',""",
+          )
+
+          literal(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              "import { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';",
+              "import { coreOperationFailureSemantics } from './ipc-error-semantics.js';\nimport { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';",
+          )
+          sub(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              r"(  readonly platform: string;\n)",
+              r"\1  readonly enableTestFixtures?: boolean;\n",
+          )
+          sub(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              r"(  details\?: CommandFailure\['error'\]\['details'\],\n)(\): CommandFailure \{)",
+              r"\1  userAction?: string,\n\2",
+          )
+          sub(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              r"(      \.\.\.\(details \? \{ details \} : \{\}\),\n)",
+              r"\1      ...(userAction ? { userAction } : {}),\n",
+          )
+          sub(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              r"(  const register = \(\n[\s\S]*?  \): void => \{\n)(    options\.ipcMain\.handle\(channel, handler\);)",
+              r"\1    if (\n      channel === CANDIDATE_IPC_CHANNELS.createFixtureCandidate &&\n      options.enableTestFixtures !== true\n    ) {\n      return;\n    }\n\2",
+          )
+          sub(
+              'apps/desktop/main/src/ipc-handlers.ts',
+              r"  const appDataFailure = \([\s\S]*?\n    \);\n\n  register\(IPC_CHANNELS\.settingsGet,",
+              """  const appDataFailure = (
+              requestId: string,
+              code: ErrorCode,
+              details?: CommandFailure['error']['details'],
+            ): CommandFailure => {
+              const semantics = coreOperationFailureSemantics(
+                code,
+                'The local application data operation could not be completed.',
+              );
+              return failure(
+                requestId,
+                code,
+                semantics.message,
+                semantics.retryable,
+                undefined,
+                details,
+                semantics.userAction,
+              );
+            };
+
+            register(IPC_CHANNELS.settingsGet,""",
+              flags=re.S,
+          )
+
+          literal(
+              'apps/desktop/main/src/electron-main.ts',
+              "    platform: process.platform,\n    logger,",
+              "    platform: process.platform,\n    enableTestFixtures: process.env.WORLDFORGE_E2E === '1' && !app.isPackaged,\n    logger,",
+          )
+
+          literal(
+              'apps/desktop/main/src/candidate-preview-ipc.ts',
+              "import type { CoreSupervisor } from './core-supervisor.js';",
+              "import type { CoreSupervisor } from './core-supervisor.js';\nimport { coreOperationFailureSemantics } from './ipc-error-semantics.js';",
+          )
+          for name, schema, fallback in [
+              ('previewFailure', 'CandidatePreviewResultSchema', 'The Candidate preview could not be loaded.'),
+              ('actionFailure', 'CandidateApplyResultSchema', 'The Candidate action could not be completed.'),
+              ('lookupFailure', 'CandidateUndoLookupResultSchema', 'The Candidate ApplyRecord could not be found.'),
+              ('undoPreviewFailure', 'CandidateUndoPreviewResultSchema', 'The Candidate undo preview could not be loaded.'),
+              ('undoFailure', 'CandidateUndoResultSchema', 'The Candidate application could not be undone.'),
+          ]:
+              replacement = f"""function {name}(requestId: string, code: ErrorCode) {{
+            const semantics = coreOperationFailureSemantics(code, '{fallback}');
+            return {schema}.parse({{
+              ok: false,
+              requestId,
+              error: {{ code, ...semantics }},
+            }});
+          }}"""
+              sub(
+                  'apps/desktop/main/src/candidate-preview-ipc.ts',
+                  rf"function {name}\(requestId: string, code: ErrorCode\) \{{[\s\S]*?\n\}}",
+                  replacement,
+                  flags=re.S,
+              )
+          sub(
+              'apps/desktop/main/src/candidate-preview-ipc.ts',
+              r"\nfunction retryable\(code: ErrorCode\): boolean \{[\s\S]*?\n\}\n",
+              "\n",
+              flags=re.S,
+          )
+
+          literal(
+              'apps/desktop/main/src/continuity-ipc.ts',
+              "import type { CoreSupervisor } from './core-supervisor.js';",
+              "import type { CoreSupervisor } from './core-supervisor.js';\nimport { coreOperationFailureSemantics } from './ipc-error-semantics.js';",
+          )
+          sub(
+              'apps/desktop/main/src/continuity-ipc.ts',
+              r"function failure\(requestId: string, code: ErrorCode\) \{[\s\S]*?\n\}",
+              """function failure(requestId: string, code: ErrorCode) {
+            const semantics = coreOperationFailureSemantics(
+              code,
+              'The continuity operation could not be completed.',
+            );
+            return ContinuityCatalogResultSchema.parse({
+              ok: false,
+              requestId,
+              error: { code, ...semantics },
+            });
+          }""",
+              flags=re.S,
+          )
+
+          literal(
+              'apps/desktop/main/src/narrative-planning-ipc.ts',
+              "import type { CoreSupervisor } from './core-supervisor.js';",
+              "import type { CoreSupervisor } from './core-supervisor.js';\nimport { coreOperationFailureSemantics } from './ipc-error-semantics.js';",
+          )
+          sub(
+              'apps/desktop/main/src/narrative-planning-ipc.ts',
+              r"function failure\([\s\S]*?\n\}",
+              """function failure(
+            resultSchema: ResultSchema,
+            requestId: string,
+            code: ErrorCode,
+            message: string,
+          ): unknown {
+            const semantics = coreOperationFailureSemantics(code, message);
+            return resultSchema.parse({
+              ok: false,
+              requestId,
+              error: { code, ...semantics },
+            });
+          }""",
+              flags=re.S,
+          )
+
+          literal(
+              'tests/security/candidate-ipc.test.ts',
+              'function registerCandidateHandler() {',
+              'function registerCandidateHandler(enableTestFixtures = true) {',
+          )
+          literal(
+              'tests/security/candidate-ipc.test.ts',
+              "    platform: 'test',\n    logger:",
+              "    platform: 'test',\n    enableTestFixtures,\n    logger:",
+          )
+          literal(
+              'tests/security/candidate-ipc.test.ts',
+              "describe('Candidate IPC authority boundary', () => {\n  it('rejects renderer-supplied status and provenance authority fields', () => {",
+              """describe('Candidate IPC authority boundary', () => {
+            it('does not register the fixture command in the production/default boundary', () => {
+              const { handlers } = registerCandidateHandler(false);
+              expect(handlers.has(CANDIDATE_IPC_CHANNELS.createFixtureCandidate)).toBe(false);
+              expect(handlers.has(CANDIDATE_IPC_CHANNELS.listCandidates)).toBe(true);
+            });
+
+            it('rejects renderer-supplied status and provenance authority fields', () => {""",
+          )
+
+          Path('tests/unit/ipc-error-semantics.test.ts').write_text("""import { describe, expect, it } from 'vitest';
+
+          import { coreOperationFailureSemantics } from '../../apps/desktop/main/src/ipc-error-semantics.js';
+
+          describe('Core operation IPC failure semantics', () => {
+            it('marks Core timeout results as unknown and not directly retryable', () => {
+              expect(
+                coreOperationFailureSemantics('COMMON_TIMEOUT_005', 'fallback'),
+              ).toEqual({
+                message:
+                  'Core did not return a final result before the timeout; the operation may still have completed.',
+                retryable: false,
+                userAction: 'Refresh authoritative state before attempting the operation again.',
+              });
+            });
+
+            it('retains retryability for transient internal and database busy failures', () => {
+              expect(coreOperationFailureSemantics('DB_BUSY_TIMEOUT_002', 'busy')).toEqual({
+                message: 'busy',
+                retryable: true,
+              });
+            });
+          });
+          """)
+
+          literal(
+              'docs/contracts/ERROR_CODES.md',
+              '| `COMMON_TIMEOUT_005` | 任务超时 | 是 | 提供重试或调整超时 |',
+              '| `COMMON_TIMEOUT_005` | Core未在等待窗口内返回最终结果，操作可能仍已完成 | 否 | 刷新权威状态，确认结果后再决定是否重试 |',
+          )
+          PY
+      - name: Format changed files
+        run: |
+          pnpm exec prettier --write \
+            apps/desktop/main/src/core-supervisor.ts \
+            apps/desktop/main/src/ipc-error-semantics.ts \
+            apps/desktop/main/src/ipc-handlers.ts \
+            apps/desktop/main/src/electron-main.ts \
+            apps/desktop/main/src/candidate-preview-ipc.ts \
+            apps/desktop/main/src/continuity-ipc.ts \
+            apps/desktop/main/src/narrative-planning-ipc.ts \
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts \
+            apps/desktop/renderer/src/react-entry.tsx \
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts \
+            tests/security/candidate-ipc.test.ts \
+            tests/unit/bridge-request-detachment.test.ts \
+            tests/unit/core-recovery-supervisor.test.ts \
+            tests/unit/ipc-error-semantics.test.ts \
+            tests/migration/integrated-coordination-migration.test.ts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: integrated-remediation-output-v5
+          path: |
+            apps/desktop/main/src/core-supervisor.ts
+            apps/desktop/main/src/ipc-error-semantics.ts
+            apps/desktop/main/src/ipc-handlers.ts
+            apps/desktop/main/src/electron-main.ts
+            apps/desktop/main/src/candidate-preview-ipc.ts
+            apps/desktop/main/src/continuity-ipc.ts
+            apps/desktop/main/src/narrative-planning-ipc.ts
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts
+            apps/desktop/renderer/src/react-entry.tsx
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts
+            migrations/project/0018_integrated_coordination_hardening.sql
+            tests/migration/integrated-coordination-migration.test.ts
+            tests/security/candidate-ipc.test.ts
+            tests/unit/bridge-request-detachment.test.ts
+            tests/unit/core-recovery-supervisor.test.ts
+            tests/unit/ipc-error-semantics.test.ts
+            docs/architecture/M0_M3_INTEGRATED_COORDINATION.md
+            docs/contracts/ERROR_CODES.md
+          if-no-files-found: error
+          retention-days: 1

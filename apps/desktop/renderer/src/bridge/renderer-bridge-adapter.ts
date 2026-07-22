@@ -151,6 +151,10 @@ type AdaptedDomain<Domain> = {
   ]: AdaptedMethod<Domain[Key]>;
 };
 
+type AdaptedTaskDomain = AdaptedDomain<
+  Pick<WorldforgeBridge['task'], 'getSnapshot' | 'cancel' | 'listActive'>
+>;
+
 export interface RendererBridgeAdapter {
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
@@ -167,9 +171,7 @@ export interface RendererBridgeAdapter {
   readonly narrativePlanning: AdaptedDomain<NarrativePlanningBridgePort>;
   readonly stateProposal: AdaptedDomain<StateProposalBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
-  readonly task: AdaptedDomain<
-    Pick<WorldforgeBridge['task'], 'getSnapshot' | 'cancel' | 'listActive'>
-  > & {
+  readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
       listener: (update: TaskStreamUpdate) => void,
       projectId?: string,
@@ -221,7 +223,9 @@ export function createRendererBridgeAdapter(
       coordinator,
     ),
     task: {
-      ...adaptedTask,
+      getSnapshot: (...args) => adaptedTask.getSnapshot(...args),
+      cancel: (...args) => adaptedTask.cancel(...args),
+      listActive: (...args) => adaptedTask.listActive(...args),
       subscribe: (listener, projectId) => task.subscribe(listener, projectId),
     },
     cancelAll: () => coordinator.cancelAll(),

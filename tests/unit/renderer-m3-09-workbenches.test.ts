@@ -139,10 +139,10 @@ describe('M3-09 React业务工作台', () => {
   });
 
   it('让既有规划、设定、导入与恢复场景进入默认桌面端回归', async () => {
-    const config = await readFile(
-      path.join(process.cwd(), 'tests/e2e/playwright.config.ts'),
-      'utf8',
-    );
+    const [config, importExport] = await Promise.all([
+      readFile(path.join(process.cwd(), 'tests/e2e/playwright.config.ts'), 'utf8'),
+      readFile(path.join(process.cwd(), 'tests/e2e/m1-09-import-export.spec.ts'), 'utf8'),
+    ]);
     for (const spec of [
       'project-planning.spec.ts',
       'm1-09-import-export.spec.ts',
@@ -153,5 +153,6 @@ describe('M3-09 React业务工作台', () => {
     ]) {
       expect(config).toContain(spec);
     }
+    expect(importExport).not.toContain('test.skip');
   });
 });

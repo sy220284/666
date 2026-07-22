@@ -102,7 +102,6 @@ function RecoveryPanel({
     if (result) setStatus(`恢复点已创建并校验：${result.backupFileName}`);
   };
   const restore = async (backupId: string): Promise<void> => {
-    if (!window.confirm('从此恢复点创建一个新的可写项目？当前项目不会被覆盖。')) return;
     const result = await command.run(() =>
       bridge.recovery.restoreCheckpoint({ projectId, backupId }),
     );

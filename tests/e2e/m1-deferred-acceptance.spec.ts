@@ -50,8 +50,9 @@ async function setViewport(application: ElectronApplication): Promise<void> {
 }
 
 async function capture(page: Page, name: string): Promise<void> {
-  const directory = process.env.WORLDFORGE_M1_ACCEPTANCE_SCREENSHOTS;
-  if (!directory) throw new Error('WORLDFORGE_M1_ACCEPTANCE_SCREENSHOTS_MISSING');
+  const directory =
+    process.env.WORLDFORGE_M1_ACCEPTANCE_SCREENSHOTS ??
+    path.join(process.env.WORLDFORGE_E2E_OUTPUT_DIR ?? 'test-results/m1-acceptance', 'screenshots');
   await mkdir(directory, { recursive: true });
   const image = await page.screenshot({
     path: path.join(directory, name),

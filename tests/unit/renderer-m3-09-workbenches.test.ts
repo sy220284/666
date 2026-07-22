@@ -131,9 +131,27 @@ describe('M3-09 React业务工作台', () => {
     expect(canon).toContain('输入实体名称');
     expect(canon).toContain('useBridgeQuery');
     expect(dataTools).toContain("operation: 'manual-protection'");
+    expect(dataTools).not.toContain("window.confirm('从此恢复点");
     expect(dataTools).toContain('预览不会写入项目');
     expect(dataTools).toContain('disabled={readOnly || command.pending}');
     expect(hook).toContain('generation.current');
     expect(hook).toContain('pendingRef.current');
+  });
+
+  it('让既有规划、设定、导入与恢复场景进入默认桌面端回归', async () => {
+    const config = await readFile(
+      path.join(process.cwd(), 'tests/e2e/playwright.config.ts'),
+      'utf8',
+    );
+    for (const spec of [
+      'project-planning.spec.ts',
+      'm1-09-import-export.spec.ts',
+      'm1-deferred-acceptance.spec.ts',
+      'narrative-planning-ledger.spec.ts',
+      'state-proposal-valid-until.spec.ts',
+      'state-proposal-workflow.spec.ts',
+    ]) {
+      expect(config).toContain(spec);
+    }
   });
 });

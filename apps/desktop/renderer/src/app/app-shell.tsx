@@ -44,6 +44,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
   const navToggle = useRef<HTMLButtonElement>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const initialWorkspaceResolved = useRef(false);
+  const settingsWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const [activeProject, setActiveProject] = useState<ProjectWorkspaceSummary | null>(null);
   const [recentProjects, setRecentProjects] = useState<readonly RecentProject[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -377,17 +378,27 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
     setMessage('最近项目记录已移除，项目文件保持不变。');
   };
 
-  const saveSettings = async (update: AppSettingsUpdate): Promise<boolean> => {
-    setPendingKey('settings.set');
-    const outcome = await bridge.settings.set(update);
-    setPendingKey(null);
-    if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('设置保存失败', outcome));
-      return false;
-    }
-    setSettings(outcome.data.settings);
-    setMessage('设置已保存到应用数据库。');
-    return true;
+  const saveSettings = (update: AppSettingsUpdate): Promise<boolean> => {
+    const write = settingsWriteQueue.current.then(async () => {
+      setPendingKey('settings.set');
+      try {
+        const outcome = await bridge.settings.set(update);
+        if (outcome.state !== 'success') {
+          setFailure(failureFromOutcome('设置保存失败', outcome));
+          return false;
+        }
+        setSettings(outcome.data.settings);
+        setMessage('设置已保存到应用数据库。');
+        return true;
+      } finally {
+        setPendingKey(null);
+      }
+    });
+    settingsWriteQueue.current = write.then(
+      () => undefined,
+      () => undefined,
+    );
+    return write;
   };
 
   const saveAppearance = async (next: AppearancePreferences): Promise<boolean> => {

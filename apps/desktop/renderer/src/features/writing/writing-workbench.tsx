@@ -100,7 +100,9 @@ function createWritingBridge(
 
 function waitForDraftEditorHost(): Promise<void> {
   return new Promise((resolve) => {
-    const finish = (): void => requestAnimationFrame(() => resolve());
+    const finish = (): void => {
+      requestAnimationFrame(() => resolve());
+    };
     if (document.querySelector('[data-draft-editor-host]')) {
       finish();
       return;

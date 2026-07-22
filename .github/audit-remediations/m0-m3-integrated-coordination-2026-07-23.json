@@ -14,10 +14,11 @@
       "allowedPaths": [
         "apps/desktop/main/src/core-supervisor.ts",
         "apps/desktop/main/src/electron-main.ts",
+        "apps/desktop/main/src/ipc-error-semantics.ts",
         "apps/desktop/renderer/src/react-entry.tsx",
         "apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts",
         "tests/unit/core-recovery-supervisor.test.ts",
-        "tests/unit/ipc-timeout-semantics.test.ts"
+        "tests/unit/ipc-error-semantics.test.ts"
       ]
     },
     {

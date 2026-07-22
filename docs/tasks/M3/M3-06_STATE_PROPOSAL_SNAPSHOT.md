@@ -1,6 +1,6 @@
 # M3-06 状态提案、定稿、尾快照与失效传播
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M3 规划、设定与连续性  
 > 优先级：P0  
 > 建议分支：`work/m3-06-state-proposal-snapshot`
@@ -64,15 +64,12 @@ M3-04、M3-05、M1-07、M2-03
 7. 尾快照缺失时后续约束包可按DEC-016回退直查。
 8. `entity_state.validUntilChapterId`必须完整保留为半开区间终点；跨项目、同章或逆序终点必须阻断，禁止静默降级为永久状态。
 
-## 当前实现进度
+## 最终实现记录
 
-- 已新增Schema 16及StateProposal、EndingSnapshot、DerivedInvalidation表。
-- 已实现双类型提案生成、作者批量裁决、单事务权威状态更新和快照重建。
-- 已实现有效快照读取、缺失或stale回退，以及按变化类型传播后续失效。
-- 已接入严格命名IPC、最小Preload桥和作者状态提案裁决界面。
-- Static、Unit、Integration、Migration、Build与真实Electron E2E曾在原实现Head通过。
-- 审计发现非空`validUntilChapterId`通过输入Schema后未进入权威EntityState，现重新打开任务进行数据语义修复。
-- 修复完成前M3-07保持暂停，不得恢复连续推进。
+- Schema 16建立StateProposal、EndingSnapshot、DerivedInvalidation；Schema 17补齐有限期终点持久化与数据库级区间约束。
+- 双类型提案生成、作者批量裁决、单事务权威状态更新、快照重建及失效传播均已接通。
+- `validUntilChapterId`在合同、提案、裁决与EntityState之间完整保留；同章、逆序、跨项目和失效终点被拒绝。
+- M3批量复验运行`29914507812`完成最终桌面、质量、安全与性能闭环。
 
 ## 测试与证据
 

@@ -126,6 +126,7 @@ describe('M3-09 React业务工作台', () => {
     expect(planning).toContain('previewPermanentDelete');
     expect(planning).toContain('planHash: preview.planHash');
     expect(planning).toContain('confirmationTitle = window.prompt');
+    expect(planning).toContain('chapter-node is-selected is-active');
     expect(canon).toContain("selected.status !== 'archived'");
     expect(canon).toContain('输入实体名称');
     expect(canon).toContain('useBridgeQuery');

@@ -289,14 +289,27 @@ export function StructureNavigator({
   const resource = useBridgeQuery(`structure:${projectId}`, load);
   const [editor, setEditor] = useState<StructureEditor | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [internalSelectedChapterId, setInternalSelectedChapterId] = useState<string | null>(null);
   const command = useBridgeCommand(resource.refresh);
   const previewCommand = useBridgeCommand();
+  const activeSelectedChapterId =
+    selectedChapterId === undefined ? internalSelectedChapterId : selectedChapterId;
 
   useEffect(() => {
-    if (selectedChapterId || !onSelectChapter) return;
+    const chapters = resource.data?.volumes.flatMap((volume) => volume.chapters) ?? [];
+    if (
+      activeSelectedChapterId &&
+      chapters.some((chapter) => chapter.id === activeSelectedChapterId)
+    )
+      return;
     const first = resource.data?.volumes[0]?.chapters[0];
-    if (first) onSelectChapter(first.id);
-  }, [onSelectChapter, resource.data, selectedChapterId]);
+    if (!first) {
+      if (selectedChapterId === undefined) setInternalSelectedChapterId(null);
+      return;
+    }
+    if (onSelectChapter) onSelectChapter(first.id);
+    else setInternalSelectedChapterId(first.id);
+  }, [activeSelectedChapterId, onSelectChapter, resource.data, selectedChapterId]);
 
   const removeVolume = async (volume: Volume): Promise<void> => {
     if (!window.confirm(`将“${volume.title}”移入回收站？`)) return;
@@ -564,8 +577,8 @@ export function StructureNavigator({
               {volume.chapters.map((chapter, chapterIndex) => (
                 <div
                   className={
-                    selectedChapterId === chapter.id
-                      ? 'structure-row chapter-node is-selected'
+                    activeSelectedChapterId === chapter.id
+                      ? 'structure-row chapter-node is-selected is-active'
                       : 'structure-row chapter-node'
                   }
                   data-chapter-id={chapter.id}
@@ -577,6 +590,7 @@ export function StructureNavigator({
                     data-open-chapter
                     type="button"
                     onClick={() => {
+                      if (selectedChapterId === undefined) setInternalSelectedChapterId(chapter.id);
                       onSelectChapter?.(chapter.id);
                       onOpenChapter?.(chapter);
                     }}

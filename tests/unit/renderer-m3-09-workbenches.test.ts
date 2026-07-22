@@ -163,7 +163,9 @@ describe('M3 final React business workbenches', () => {
     expect(narrative).toContain('dependencyTimelineEventIds');
     expect(dataTools).toContain("operation: 'manual-protection'");
     expect(dataTools).toContain('预览不会写入项目');
-    expect(hook).toContain("BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'");
+    expect(hook).toContain(
+      "BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'",
+    );
     expect(hook).toContain("outcome.state === 'cancelled'");
     expect(writing).toContain('DraftAutosaveCoordinator');
     expect(writing).toContain('candidateAction.preview');

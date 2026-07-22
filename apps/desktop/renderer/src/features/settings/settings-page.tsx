@@ -267,7 +267,6 @@ function AppearanceSettings(props: SettingsPageProps) {
       <label>
         <span>主题</span>
         <select
-          data-ui-scale
           data-theme-id
           value={settings.themeId}
           onChange={(event) => {
@@ -289,7 +288,6 @@ function AppearanceSettings(props: SettingsPageProps) {
       <label>
         <span>主题变体</span>
         <select
-          data-workspace-alignment
           data-theme-variant
           value={settings.themeVariant}
           onChange={(event) =>
@@ -309,6 +307,7 @@ function AppearanceSettings(props: SettingsPageProps) {
       <label>
         <span>界面缩放</span>
         <select
+          data-ui-scale
           value={appearance.uiScalePercent}
           onChange={(event) =>
             setAppearance({ ...appearance, uiScalePercent: Number(event.target.value) })
@@ -324,6 +323,7 @@ function AppearanceSettings(props: SettingsPageProps) {
       <label>
         <span>超宽屏工作区位置</span>
         <select
+          data-workspace-alignment
           value={appearance.workspaceAlignment}
           onChange={(event) =>
             setAppearance({

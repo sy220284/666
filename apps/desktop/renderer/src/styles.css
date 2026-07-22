@@ -2158,7 +2158,7 @@ body[data-motion-preference='reduced'] *::after {
 }
 
 /* M3-08 React-owned application shell, home, project lifecycle and settings. */
-body[data-theme-variant='dark'] {
+body[data-visual-theme-variant='dark'] {
   color-scheme: dark;
   --color-bg-canvas: #17191b;
   --color-bg-paper: #202327;
@@ -2174,14 +2174,14 @@ body[data-theme-variant='dark'] {
   --color-danger: #ec7b74;
 }
 
-body[data-theme-variant='eye-care'] {
+body[data-visual-theme-variant='eye-care'] {
   --color-bg-canvas: #eef0df;
   --color-bg-paper: #f8f7e9;
   --color-bg-panel: #e7ead5;
   --color-bg-elevated: #fbfaec;
 }
 
-body[data-theme-variant='high-contrast'] {
+body[data-visual-theme-variant='high-contrast'] {
   --color-bg-canvas: #fff;
   --color-bg-paper: #fff;
   --color-bg-panel: #fff;

@@ -8,6 +8,7 @@ export interface LegacySurfaceController {
   readonly deactivate: () => void;
   readonly synchronizeProjectContext: () => void;
   readonly toggleProjectPanel: () => void;
+  readonly openContinuity: () => void;
   readonly openTextIo: () => void;
   readonly flushPendingDraft: () => Promise<boolean>;
   readonly refreshPlacement: () => void;
@@ -69,6 +70,9 @@ export function createLegacySurfaceController(): LegacySurfaceController {
     toggleProjectPanel() {
       root.querySelector<HTMLButtonElement>('[data-toggle-left]')?.click();
     },
+    openContinuity() {
+      root.querySelector<HTMLButtonElement>('[data-legacy-open-continuity]')?.click();
+    },
     openTextIo() {
       root.querySelector<HTMLButtonElement>('[data-legacy-open-text-io]')?.click();
     },
@@ -86,7 +90,8 @@ export function createLegacySurfaceController(): LegacySurfaceController {
     openRoute,
     applyPresentation(settings, appearance, projectState) {
       document.body.dataset.theme = settings.themeId;
-      document.body.dataset.themeVariant = settings.themeVariant;
+      delete document.body.dataset.themeVariant;
+      document.body.dataset.visualThemeVariant = settings.themeVariant;
       document.body.dataset.motionPreference = settings.reduceMotion ? 'reduced' : 'full';
       document.body.dataset.authorMode = settings.defaultMode;
       document.body.dataset.projectState = projectState;

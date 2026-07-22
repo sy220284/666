@@ -23,6 +23,7 @@ import { SettingsPage } from '../features/settings/settings-page.js';
 import {
   createPrimaryNavigationItems,
   resolvePrimaryNavigationIntent,
+  restoreAppShellRoute,
   type AppDisclosureMode,
   type PrimaryNavigationId,
 } from '../shell/app-shell-model.js';
@@ -42,6 +43,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
   const [navOpen, setNavOpen] = useState(false);
   const navToggle = useRef<HTMLButtonElement>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
+  const initialWorkspaceResolved = useRef(false);
   const [activeProject, setActiveProject] = useState<ProjectWorkspaceSummary | null>(null);
   const [recentProjects, setRecentProjects] = useState<readonly RecentProject[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -84,14 +86,28 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
         contentWidth: windowPreferences.data.contentWidth,
       });
     } else setFailure(failureFromOutcome('显示设置读取失败', windowPreferences));
-    if (project.state === 'success') setActiveProject(project.data);
-    else setFailure(failureFromOutcome('项目状态读取失败', project));
+    if (project.state === 'success') {
+      setActiveProject(project.data);
+      if (!initialWorkspaceResolved.current) {
+        initialWorkspaceResolved.current = true;
+        dispatch({
+          type: 'navigate',
+          route: restoreAppShellRoute(project.data ? 'writing' : 'home', {
+            activeProjectId: project.data?.projectId ?? null,
+            disclosureMode:
+              applicationSettings.state === 'success'
+                ? applicationSettings.data.settings.defaultMode
+                : DEFAULT_APP_SETTINGS.defaultMode,
+          }),
+        });
+      }
+    } else setFailure(failureFromOutcome('项目状态读取失败', project));
     if (recent.state === 'success') setRecentProjects(recent.data.projects);
     else setFailure(failureFromOutcome('最近项目读取失败', recent));
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
 
     setMessage(null);
-  }, [bridge]);
+  }, [bridge, dispatch]);
 
   useEffect(() => {
     void refreshWorkspace();
@@ -467,6 +483,16 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
             </span>
           ) : null}
           <div className="react-project-context__actions">
+            {legacyRoute ? (
+              <button
+                className="quiet-button"
+                data-open-continuity
+                type="button"
+                onClick={legacySurface.openContinuity}
+              >
+                连续性账本
+              </button>
+            ) : null}
             {legacyRoute ? (
               <button
                 className="quiet-button"

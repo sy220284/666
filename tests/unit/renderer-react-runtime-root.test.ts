@@ -105,4 +105,23 @@ describe('M3-08 React运行底座', () => {
     expect(homeSource).toContain('data-react-home');
     expect(settingsSource).toContain('data-react-settings');
   });
+
+  it('保留迁移边界内旧业务入口与唯一设置控件选择器', async () => {
+    const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
+    const [legacyHtml, shellSource, settingsSource, stylesSource] = await Promise.all([
+      readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/app-shell.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
+    ]);
+
+    expect(legacyHtml).toContain('data-legacy-open-continuity');
+    expect(shellSource).toContain('data-open-continuity');
+    expect(shellSource).toContain("restoreAppShellRoute(project.data ? 'writing' : 'home'");
+    expect(settingsSource.match(/data-ui-scale/gu)).toHaveLength(1);
+    expect(settingsSource.match(/data-workspace-alignment/gu)).toHaveLength(1);
+    expect(settingsSource.match(/data-theme-variant/gu)).toHaveLength(1);
+    expect(stylesSource).not.toContain("body[data-theme-variant='");
+    expect(stylesSource).toContain("body[data-visual-theme-variant='dark']");
+  });
 });

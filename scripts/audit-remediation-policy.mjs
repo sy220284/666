@@ -75,7 +75,10 @@ function validateManifestShape(manifest) {
   ) {
     throw new Error('Audit remediation must pin an unchanged active task');
   }
-  if (!Array.isArray(manifest.verifiedTaskRepairs) || manifest.verifiedTaskRepairs.length === 0) {
+  if (
+    !Array.isArray(manifest.verifiedTaskRepairs) ||
+    manifest.verifiedTaskRepairs.length === 0
+  ) {
     throw new Error('Audit remediation requires at least one verified task repair');
   }
   const repairIds = manifest.verifiedTaskRepairs.map((repair) => repair?.taskId);
@@ -107,7 +110,9 @@ export async function loadAuditRemediationManifest({
       .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
       .map(async (entry) => {
         const manifestPath = path.posix.join(MANIFEST_DIRECTORY, entry.name);
-        const manifest = JSON.parse(await readFile(path.join(repositoryRoot, manifestPath), 'utf8'));
+        const manifest = JSON.parse(
+          await readFile(path.join(repositoryRoot, manifestPath), 'utf8'),
+        );
         return { manifest, manifestPath };
       }),
   );
@@ -130,7 +135,10 @@ export async function validateAuditRemediation({
   baseRef,
 }) {
   if (!isAuditRemediationBranch(branch)) return false;
-  const { manifest, manifestPath } = await loadAuditRemediationManifest({ repositoryRoot, branch });
+  const { manifest, manifestPath } = await loadAuditRemediationManifest({
+    repositoryRoot,
+    branch,
+  });
   if (manifest.branch !== branch)
     throw new Error('Audit remediation branch does not match manifest');
   const resolvedBase = git(['rev-parse', baseRef], repositoryRoot);

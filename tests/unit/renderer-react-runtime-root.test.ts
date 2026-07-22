@@ -111,17 +111,23 @@ describe('M3-08 React运行底座', () => {
     expect(settingsSource).toContain('data-react-settings');
   });
 
-  it('保留迁移边界内旧业务入口与唯一设置控件选择器', async () => {
+  it('将M3-09业务入口迁到React并保留唯一设置控件选择器', async () => {
     const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
-    const [legacyHtml, shellSource, settingsSource, stylesSource] = await Promise.all([
-      readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
-      readFile(path.join(rendererRoot, 'app/app-shell.tsx'), 'utf8'),
-      readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
-      readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
-    ]);
+    const [legacyHtml, shellSource, settingsSource, stylesSource, canonSource, planningSource] =
+      await Promise.all([
+        readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
+        readFile(path.join(rendererRoot, 'app/app-shell.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
+        readFile(path.join(rendererRoot, 'features/canon/canon-workbench.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'features/planning/planning-workbench.tsx'), 'utf8'),
+      ]);
 
-    expect(legacyHtml).toContain('data-legacy-open-continuity');
+    expect(legacyHtml).not.toContain('data-legacy-open-continuity');
+    expect(legacyHtml).not.toContain('data-planning-dialog');
     expect(shellSource).toContain('data-open-continuity');
+    expect(canonSource).toContain('data-continuity-dialog');
+    expect(planningSource).toContain('data-planning-dialog');
     expect(shellSource).toContain("restoreAppShellRoute(project.data ? 'writing' : 'home'");
     expect(settingsSource.match(/data-ui-scale/gu)).toHaveLength(1);
     expect(settingsSource.match(/data-workspace-alignment/gu)).toHaveLength(1);

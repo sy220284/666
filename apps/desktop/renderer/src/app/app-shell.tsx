@@ -18,7 +18,13 @@ import type { BridgeRequestOutcome } from '../bridge/request-lifecycle.js';
 import { SafetyBanner } from '../components/safety-banner.js';
 import { TaskBar } from '../components/task-bar.js';
 import type { LegacySurfaceController } from '../compat/legacy-surface.js';
+import { CanonWorkbench, type CanonSection } from '../features/canon/canon-workbench.js';
+import {
+  DataToolsWorkbench,
+  type DataToolsSection,
+} from '../features/data-tools/data-tools-workbench.js';
 import { HomePage } from '../features/home/home-page.js';
+import { PlanningWorkbench, StructureNavigator } from '../features/planning/planning-workbench.js';
 import { SettingsPage } from '../features/settings/settings-page.js';
 import {
   createPrimaryNavigationItems,
@@ -58,6 +64,8 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
   const [hydrated, setHydrated] = useState(false);
   const [message, setMessage] = useState<string | null>('正在读取本地工作区…');
   const [failure, setFailure] = useState<FailureView | null>(null);
+  const [canonSection, setCanonSection] = useState<CanonSection>('entities');
+  const [dataToolsSection, setDataToolsSection] = useState<DataToolsSection>('recovery');
 
   const disclosureMode: AppDisclosureMode = settings.defaultMode;
 
@@ -137,10 +145,10 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
   }, [activeProject, appearance, legacySurface, settings]);
 
   useEffect(() => {
-    if (route === 'home' || route === 'project' || route === 'settings') {
-      legacySurface.deactivate();
-    } else {
+    if (isLegacyBusinessRoute(route)) {
       legacySurface.activate(route);
+    } else {
+      legacySurface.deactivate();
     }
   }, [legacySurface, route]);
 
@@ -184,10 +192,9 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
   const transitionToRoute = useCallback(
     async (nextRoute: RendererRouteId): Promise<boolean> => {
       if (route === nextRoute) {
-        legacySurface.openRoute(nextRoute);
         return true;
       }
-      if (route !== nextRoute && !['home', 'project', 'settings'].includes(route)) {
+      if (route !== nextRoute && isLegacyBusinessRoute(route)) {
         const flushed = await legacySurface.flushPendingDraft();
         if (!flushed) {
           setMessage('自动保存失败，已阻止离开当前工作台。');
@@ -450,7 +457,7 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
     await refreshTasks();
   };
 
-  const legacyRoute = !['home', 'project', 'settings'].includes(route);
+  const legacyRoute = isLegacyBusinessRoute(route);
 
   return (
     <div
@@ -512,16 +519,39 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
             </span>
           ) : null}
           <div className="react-project-context__actions">
-            {legacyRoute ? (
-              <button
-                className="quiet-button"
-                data-open-continuity
-                type="button"
-                onClick={legacySurface.openContinuity}
-              >
-                连续性账本
-              </button>
-            ) : null}
+            <button
+              className="quiet-button"
+              data-open-continuity
+              type="button"
+              onClick={() => {
+                setCanonSection('continuity');
+                void transitionToRoute('canon');
+              }}
+            >
+              连续性账本
+            </button>
+            <button
+              className="quiet-button"
+              data-open-narrative-planning
+              type="button"
+              onClick={() => {
+                setCanonSection('narrative');
+                void transitionToRoute('canon');
+              }}
+            >
+              伏笔与弧光
+            </button>
+            <button
+              className="quiet-button"
+              data-open-state-proposals
+              type="button"
+              onClick={() => {
+                setCanonSection('proposals');
+                void transitionToRoute('canon');
+              }}
+            >
+              状态提案
+            </button>
             {legacyRoute ? (
               <button
                 className="quiet-button"
@@ -535,20 +565,24 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
               className="quiet-button"
               data-open-recovery
               type="button"
-              onClick={() => void transitionToRoute('recovery')}
+              onClick={() => {
+                setDataToolsSection('recovery');
+                void transitionToRoute('recovery');
+              }}
             >
               恢复与导出
             </button>
-            {legacyRoute ? (
-              <button
-                className="quiet-button"
-                data-open-text-io
-                type="button"
-                onClick={legacySurface.openTextIo}
-              >
-                导入导出
-              </button>
-            ) : null}
+            <button
+              className="quiet-button"
+              data-open-text-io
+              type="button"
+              onClick={() => {
+                setDataToolsSection('import-export');
+                void transitionToRoute('recovery');
+              }}
+            >
+              导入导出
+            </button>
             <button
               className="quiet-button"
               data-move-project
@@ -672,11 +706,55 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
               onSaveSettings={saveSettings}
             />
           ) : null}
+          {route === 'planning' && activeProject ? (
+            <PlanningWorkbench
+              bridge={bridge}
+              projectId={activeProject.projectId}
+              readOnly={activeProject.databaseMode === 'read-only'}
+              onClose={() => void transitionToRoute('writing')}
+            />
+          ) : null}
+          {route === 'canon' && activeProject ? (
+            <CanonWorkbench
+              bridge={bridge}
+              projectId={activeProject.projectId}
+              projectName={activeProject.name}
+              readOnly={activeProject.databaseMode === 'read-only'}
+              section={canonSection}
+              onSectionChange={setCanonSection}
+            />
+          ) : null}
+          {route === 'recovery' && activeProject ? (
+            <DataToolsWorkbench
+              bridge={bridge}
+              projectId={activeProject.projectId}
+              readOnly={activeProject.databaseMode === 'read-only'}
+              section={dataToolsSection}
+              onClose={() => void transitionToRoute('writing')}
+              onProjectRestored={refreshWorkspace}
+              onSectionChange={setDataToolsSection}
+            />
+          ) : null}
           {legacyRoute ? (
-            <div className="react-legacy-heading" role="status">
-              <strong>{navigation.find((item) => item.current)?.label ?? '工作台'}</strong>
-              <span>未迁移业务区域由兼容层单实例加载，React继续控制导航与全局状态。</span>
-            </div>
+            <>
+              <div className="react-legacy-heading" role="status">
+                <strong>{navigation.find((item) => item.current)?.label ?? '工作台'}</strong>
+                <span>正文、Version与Candidate仍由兼容层承载；卷章目录已由React管理。</span>
+              </div>
+              {activeProject && route === 'writing' ? (
+                <div data-react-structure-rail>
+                  <StructureNavigator
+                    bridge={bridge}
+                    compact
+                    projectId={activeProject.projectId}
+                    readOnly={activeProject.databaseMode === 'read-only'}
+                    onOpenChapter={(chapter) => legacySurface.openChapter(chapter.id)}
+                    onBeforeWrite={legacySurface.flushPendingDraft}
+                    onStatus={setMessage}
+                  />
+                </div>
+              ) : null}
+            </>
           ) : null}
         </main>
       </div>
@@ -687,6 +765,10 @@ export function AppShell({ bridge, legacySurface }: AppShellProps) {
       />
     </div>
   );
+}
+
+function isLegacyBusinessRoute(route: RendererRouteId): boolean {
+  return ['writing', 'versions', 'candidates', 'checks'].includes(route);
 }
 
 function isCancelledOutcome(outcome: BridgeRequestOutcome<unknown>): boolean {

@@ -1,9 +1,24 @@
-# M3-03 测试证据摘要
+# M3-03 批量复验记录
 
-M3-03 已接通通用Entity、静态Canon、作者权限、current/history账本、SceneBeat项目边界引用、删除影响预览和最小桌面工作区。
+生成时间：2026-07-22T11:30:00.000Z  
+批量基线：f6d326887c43f3c561bf913d6090e00ffe9e4551
 
-后端与Migration专项运行 `29679433553` 通过类型检查、3项Entity/Canon集成测试及12个Migration测试文件共29项测试；Renderer运行 `29679760603` 通过类型检查、Renderer构建及同组集成/Migration复核。人工桌面验收、正式截图和最终Verified签字按implementation-pr模式延期。
+## 交付结论
 
-## 安全基线复核
+Entity覆盖人物、地点、势力、道具、能力、规则与事件；别名、归档、Canon current/history及作者确认边界已接通。同一实体同一factKey只有一条current，AI无权直接写入权威Canon。
 
-Ready门禁首次运行发现唯一失败为项目Manifest及项目表安全测试仍固定断言Schema 11；产品Manifest与数据库已正确写入Schema 12。修正两处测试基线后重新执行完整Security套件，要求15个测试文件、56项测试全部通过。
+## 复验结论
+
+复核覆盖实体CRUD、别名、项目边界、Canon历史保留、current唯一性、引用影响及作者权限。最终React Canon工作台补齐关系编辑，静态Canon与动态状态保持分离。
+
+## 自动化与桌面证据
+
+- Quality：运行 `29914507812`，静态、构建、单元、集成、迁移与Electron E2E全部成功。
+- Electron E2E：25/25，工件 `8527587874`，Digest `sha256:0b2163c9411940ad9a1c0b054df444d50a24dce6949e96b9ecd1a53b686efa47`。
+- Security：运行 `29914507551`。
+- Performance：运行 `29914507599`。
+- PR Policy、Task Governance、Evidence与Repository Governance分别由 `29914507537`、`29914507651`、`29914507544`、`29914507567` 验证。
+
+## 状态结论
+
+任务卡范围、真实实现、自动化结果与人工复核一致，可以关闭为Verified。跨后续阶段的需求继续保留其原有状态。

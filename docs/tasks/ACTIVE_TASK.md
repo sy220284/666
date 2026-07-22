@@ -8,9 +8,9 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M3-09`
-- 唯一任务卡：`docs/tasks/M3/M3-09_RENDERER_PLANNING_CANON_STRUCTURE.md`
-- 工作分支：`work/m3-09-renderer-planning-canon-structure`
+- 任务ID：`M3-10`
+- 唯一任务卡：`docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md`
+- 工作分支：`work/m3-10-renderer-writing-candidate-cutover`
 - 开始时间：`2026-07-22`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -20,12 +20,14 @@ IN_PROGRESS
 ```yaml
 allowed_paths:
   - apps/desktop/renderer/
+  - packages/editor-core/
   - packages/contracts/
   - tests/unit/
   - tests/integration/
   - tests/security/
   - tests/e2e/
   - tests/performance/
+  - docs/architecture/
   - docs/ui/
   - package.json
   - pnpm-lock.yaml
@@ -33,29 +35,30 @@ allowed_paths:
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M3/M3-09_RENDERER_PLANNING_CANON_STRUCTURE.md
+  - docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M3-09/
+  - docs/test-evidence/M3-10/
 forbidden_paths:
 
 required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
-  - docs/ui/INFORMATION_ARCHITECTURE.md
+  - docs/architecture/ARCHITECTURE.md
+  - docs/decisions/IMPLEMENTATION_DECISIONS.md
+  - docs/decisions/ADR-005-lock-revision-backup.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
+  - docs/ui/CANDIDATE_REVIEW_SPEC.md
   - docs/ui/SCREEN_SPECIFICATIONS.md
   - docs/ui/INTERACTION_STATES.md
-  - docs/database/DATABASE_SCHEMA.md
-  - docs/decisions/ADR-005-lock-revision-backup.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
-  - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
-  - pnpm test:eval
+  - pnpm test:integration
+  - pnpm test:perf
 ```
 
 ## 连续执行规则

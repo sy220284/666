@@ -84,6 +84,8 @@ V1.0固定六个一级入口：
 
 规划变化不自动修改正文。
 
+M3-09实现基线：规划、设定、卷章目录、回收站、恢复与TXT/Markdown导入导出均由React feature承载；写作正文、Version与Candidate暂留兼容层。规划工作台的三栏、设定工作台的实体/连续性/叙事/提案分区，以及独立恢复和文本工具页面共享同一Bridge Adapter与Query/Command状态模型。
+
 ### 3.2 写作工作台
 
 ```text

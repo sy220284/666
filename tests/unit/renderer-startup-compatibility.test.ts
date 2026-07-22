@@ -15,12 +15,6 @@ const legacyDirectBridgeModules = [
   'candidate-preview-ui.ts',
   'candidate-apply-bootstrap.ts',
   'candidate-apply-ui.ts',
-  'canon-ui.ts',
-  'continuity-ui.ts',
-  'narrative-planning-ui.ts',
-  'state-proposal-ui.ts',
-  'scene-beat-entity-selector.ts',
-  'audit-trash-reference-guard.ts',
 ] as const;
 
 describe('M3-07 startup diagnostics', () => {

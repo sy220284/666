@@ -71,7 +71,6 @@ test.afterEach(async () => {
 });
 
 test('previews, restructures, imports and atomically exports selected Versions', async () => {
-  test.skip(!process.env.WORLDFORGE_RUN_M1_09_ACCEPTANCE, 'Dedicated M1-09 acceptance only.');
   test.setTimeout(180_000);
 
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-m1-09-e2e-'));

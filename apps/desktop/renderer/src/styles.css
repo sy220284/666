@@ -2224,7 +2224,7 @@ body[data-visual-theme-variant='high-contrast'] {
 }
 
 #legacy-root[data-embedded='true'] .workspace-frame {
-  grid-template-columns: var(--left-panel-width) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 #legacy-root[data-embedded='true'] .side-panel[data-panel-mode='drawer'] {
@@ -2421,6 +2421,21 @@ body[data-visual-theme-variant='high-contrast'] {
 
 .react-main[data-legacy-placeholder='true'] > .react-safety-banner {
   pointer-events: auto;
+}
+
+[data-react-structure-rail] {
+  position: fixed;
+  z-index: 40;
+  width: var(--left-panel-width);
+  padding: 10px;
+  overflow: auto;
+  pointer-events: auto;
+  background: var(--color-bg-panel);
+  border-right: 1px solid var(--color-border-subtle);
+}
+
+[data-react-structure-rail] .structure-navigator {
+  box-shadow: none;
 }
 
 .react-legacy-heading {
@@ -2918,5 +2933,288 @@ body[data-layout-mode='compact'] .react-nav-scrim {
 
   .react-legacy-heading span {
     display: none;
+  }
+}
+
+/* M3-09 React planning, canon and data tools */
+.feature-heading,
+.feature-card__heading,
+.feature-row,
+.structure-row,
+.plot-node__summary,
+.react-dialog > header,
+.react-dialog form > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.feature-heading {
+  margin-bottom: 16px;
+}
+
+.feature-heading h1,
+.feature-card h2,
+.feature-card h3,
+.feature-card h4 {
+  margin: 0;
+}
+
+.feature-heading p,
+.feature-card p {
+  margin: 6px 0;
+}
+
+.eyebrow {
+  color: var(--color-accent-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.feature-heading__actions,
+.inline-actions,
+.feature-tabs,
+.filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feature-status {
+  min-height: 1.35em;
+  color: var(--color-text-muted);
+}
+
+.feature-tabs {
+  margin-bottom: 16px;
+  padding: 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+}
+
+.feature-tabs button.is-active,
+.feature-tabs button[aria-current='page'] {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, var(--color-bg-paper));
+  color: var(--color-accent-primary);
+}
+
+.feature-card,
+.structure-navigator {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-paper);
+  box-shadow: var(--shadow-card);
+}
+
+.planning-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(420px, 1.7fr) minmax(220px, 0.82fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.planning-center,
+.planning-context,
+.structure-chapters,
+.plot-node__children,
+.ledger-list,
+.import-plan,
+.export-version-list {
+  display: grid;
+  gap: 10px;
+}
+
+.planning-center,
+.planning-context {
+  gap: 14px;
+}
+
+.structure-volume,
+.plot-tree > article,
+.plot-node__children > article,
+.scene-beat-card,
+.ledger-record,
+.ledger-subrecord {
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+}
+
+.structure-volume + .structure-volume {
+  margin-top: 10px;
+}
+
+.structure-row {
+  align-items: center;
+}
+
+.structure-row.is-selected {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
+}
+
+.structure-chapter-title {
+  display: grid;
+  flex: 1;
+  justify-items: start;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.structure-chapter-title span,
+.plot-node__summary span,
+.feature-row span,
+.feature-row small,
+.compact-list span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.outline-drop-target {
+  width: 100%;
+  margin: 8px 0;
+  border-style: dashed;
+  color: var(--color-text-muted);
+}
+
+.plot-node__children {
+  margin-left: 18px;
+}
+
+.stacked-form,
+.stacked-form label,
+.feature-card > label,
+.react-dialog label {
+  display: grid;
+  gap: 6px;
+}
+
+.stacked-form {
+  gap: 12px;
+}
+
+.two-column-form,
+.word-target-grid,
+.canon-grid,
+.ledger-grid,
+.recovery-grid,
+.text-io-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.two-column-form,
+.word-target-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.canon-grid {
+  grid-template-columns: minmax(210px, 0.75fr) minmax(360px, 1.4fr) minmax(260px, 1fr);
+}
+
+.ledger-grid,
+.recovery-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.text-io-grid {
+  position: relative;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.text-io-status {
+  grid-column: 1 / -1;
+}
+
+.filter-bar {
+  margin: 12px 0;
+}
+
+.filter-bar input[type='search'],
+.filter-bar input:not([type]) {
+  min-width: 220px;
+}
+
+.compact-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.react-dialog {
+  z-index: 100;
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-paper);
+  color: var(--text);
+  box-shadow: var(--shadow-popover);
+}
+
+.react-dialog::backdrop {
+  background: rgb(15 18 22 / 46%);
+}
+
+.inline-error,
+.form-error {
+  color: var(--color-danger);
+}
+
+.inline-error {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.snapshot-card {
+  margin-top: 12px;
+  box-shadow: none;
+}
+
+@media (max-width: 1180px) {
+  .planning-grid,
+  .canon-grid {
+    grid-template-columns: minmax(210px, 0.75fr) minmax(0, 1.6fr);
+  }
+
+  .planning-context,
+  .canon-grid > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .ledger-grid,
+  .recovery-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .planning-grid,
+  .canon-grid,
+  .text-io-grid,
+  .two-column-form,
+  .word-target-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .planning-context,
+  .canon-grid > :last-child,
+  .text-io-status {
+    grid-column: auto;
   }
 }

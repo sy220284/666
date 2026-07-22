@@ -51,42 +51,6 @@ export const LEGACY_RENDERER_OWNERSHIP: readonly LegacyOwnershipRecord[] = [
     resources: ['event-listeners', 'async-requests', 'dom-ownership'],
     migrationTask: 'M3-10',
   },
-  {
-    module: 'canon-ui.ts',
-    owner: 'legacy-canon',
-    resources: ['event-listeners', 'async-requests', 'dom-ownership'],
-    migrationTask: 'M3-09',
-  },
-  {
-    module: 'continuity-ui.ts',
-    owner: 'legacy-continuity',
-    resources: ['event-listeners', 'async-requests', 'dom-ownership'],
-    migrationTask: 'M3-09',
-  },
-  {
-    module: 'narrative-planning-ui.ts',
-    owner: 'legacy-narrative-planning',
-    resources: ['event-listeners', 'async-requests', 'dom-ownership'],
-    migrationTask: 'M3-09',
-  },
-  {
-    module: 'state-proposal-ui.ts',
-    owner: 'legacy-state-proposal',
-    resources: ['event-listeners', 'async-requests', 'dom-ownership'],
-    migrationTask: 'M3-09',
-  },
-  {
-    module: 'scene-beat-entity-selector.ts',
-    owner: 'legacy-scene-beat-entity-selector',
-    resources: ['event-listeners', 'async-requests', 'dom-ownership'],
-    migrationTask: 'M3-09',
-  },
-  {
-    module: 'audit-trash-reference-guard.ts',
-    owner: 'legacy-trash-reference-guard',
-    resources: ['event-listeners', 'async-requests', 'dom-ownership'],
-    migrationTask: 'M3-09',
-  },
 ] as const;
 
 export function assertLegacyOwnershipComplete(modules: readonly string[]): void {

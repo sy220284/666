@@ -8,23 +8,15 @@ export interface LegacySurfaceController {
   readonly deactivate: () => void;
   readonly synchronizeProjectContext: () => void;
   readonly toggleProjectPanel: () => void;
-  readonly openContinuity: () => void;
-  readonly openTextIo: () => void;
+  readonly openChapter: (chapterId: string) => void;
   readonly flushPendingDraft: () => Promise<boolean>;
   readonly refreshPlacement: () => void;
-  readonly openRoute: (route: RendererRouteId) => void;
   readonly applyPresentation: (
     settings: AppSettings,
     appearance: AppearancePreferences,
     projectState: 'closed' | 'open' | 'read-only',
   ) => void;
 }
-
-const LEGACY_ROUTE_TRIGGER: Readonly<Partial<Record<RendererRouteId, string>>> = {
-  planning: '[data-legacy-open-planning]',
-  canon: '[data-legacy-open-canon]',
-  recovery: '[data-legacy-open-recovery]',
-};
 
 export function createLegacySurfaceController(): LegacySurfaceController {
   const root = document.getElementById('legacy-root');
@@ -37,7 +29,12 @@ export function createLegacySurfaceController(): LegacySurfaceController {
     if (!placeholder || !heading) return;
     const placeholderBounds = placeholder.getBoundingClientRect();
     const headingBounds = heading.getBoundingClientRect();
-    root.style.inset = `${Math.round(headingBounds.bottom)}px 0 0 ${Math.round(placeholderBounds.left)}px`;
+    const structureRail = placeholder.querySelector<HTMLElement>('[data-react-structure-rail]');
+    const railWidth = structureRail?.offsetWidth ?? 0;
+    if (structureRail) {
+      structureRail.style.inset = `${Math.round(headingBounds.bottom)}px auto 0 ${Math.round(placeholderBounds.left)}px`;
+    }
+    root.style.inset = `${Math.round(headingBounds.bottom)}px 0 0 ${Math.round(placeholderBounds.left + railWidth)}px`;
   };
 
   window.addEventListener('resize', position);
@@ -45,11 +42,6 @@ export function createLegacySurfaceController(): LegacySurfaceController {
   const synchronizeProjectContext = (): void => {
     window.dispatchEvent(new Event('worldforge:project-context-changed'));
   };
-  const openRoute = (route: RendererRouteId): void => {
-    const selector = LEGACY_ROUTE_TRIGGER[route];
-    if (selector) root.querySelector<HTMLButtonElement>(selector)?.click();
-  };
-
   return {
     activate(route) {
       root.hidden = false;
@@ -57,8 +49,6 @@ export function createLegacySurfaceController(): LegacySurfaceController {
       root.dataset.legacyRoute = route;
       synchronizeProjectContext();
       window.requestAnimationFrame(position);
-
-      if (LEGACY_ROUTE_TRIGGER[route]) window.setTimeout(() => openRoute(route), 50);
     },
     deactivate() {
       for (const dialog of root.querySelectorAll<HTMLDialogElement>('dialog[open]')) dialog.close();
@@ -70,11 +60,10 @@ export function createLegacySurfaceController(): LegacySurfaceController {
     toggleProjectPanel() {
       root.querySelector<HTMLButtonElement>('[data-toggle-left]')?.click();
     },
-    openContinuity() {
-      root.querySelector<HTMLButtonElement>('[data-legacy-open-continuity]')?.click();
-    },
-    openTextIo() {
-      root.querySelector<HTMLButtonElement>('[data-legacy-open-text-io]')?.click();
+    openChapter(chapterId) {
+      window.dispatchEvent(
+        new CustomEvent('worldforge:legacy-open-chapter', { detail: { chapterId } }),
+      );
     },
     flushPendingDraft() {
       const flush = (
@@ -87,7 +76,6 @@ export function createLegacySurfaceController(): LegacySurfaceController {
     refreshPlacement() {
       window.requestAnimationFrame(position);
     },
-    openRoute,
     applyPresentation(settings, appearance, projectState) {
       document.body.dataset.theme = settings.themeId;
       delete document.body.dataset.themeVariant;

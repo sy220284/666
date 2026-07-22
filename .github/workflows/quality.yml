@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: quality-${{ github.event.pull_request.number || github.ref }}
@@ -61,3 +61,59 @@ jobs:
       package_smoke: false
       security_suite: false
       performance_eval: false
+
+  audit-patch:
+    if: ${{ github.head_ref == 'diagnostic/patch-m0-m3-round2' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      TARGET_BRANCH: fix/governance-audit-m0-m3-integrated-coordination
+      EXPECTED_HEAD: 5bdac5e677fc14f71232b8a2edaa73a4d75a36f0
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Preserve patch script and check out formal remediation Head
+        shell: bash
+        run: |
+          cp .github/diagnostics/patch-m0-m3-round2.py "$RUNNER_TEMP/patch-m0-m3-round2.py"
+          git fetch --quiet origin "${TARGET_BRANCH}"
+          actual="$(git rev-parse FETCH_HEAD)"
+          test "${actual}" = "${EXPECTED_HEAD}"
+          git checkout -B remediation-target "${actual}"
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply and format patch
+        shell: bash
+        run: |
+          python3 "$RUNNER_TEMP/patch-m0-m3-round2.py"
+          pnpm exec prettier --write \
+            .github/audit-remediations/m0-m3-integrated-coordination-2026-07-23.json \
+            tests/migration/scene-beat-entity-truth-migration.test.ts \
+            tests/migration/sqlite-foundation.test.ts \
+            apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
+            apps/desktop/renderer/src/features/writing/writing-workbench.tsx
+      - name: Run focused regressions
+        run: |
+          pnpm test:prepare
+          pnpm exec vitest run \
+            tests/migration/integrated-coordination-migration.test.ts \
+            tests/migration/scene-beat-entity-truth-migration.test.ts \
+            tests/migration/sqlite-foundation.test.ts \
+            tests/security/renderer-react-boundary.test.ts
+      - name: Commit exact patch to formal remediation branch
+        shell: bash
+        run: |
+          git config user.name "WorldForge Audit Remediation"
+          git config user.email "worldforge-audit@users.noreply.github.com"
+          git add --all
+          git diff --cached --check -- ':!*.md'
+          git commit -m "fix(M0-M3): align schema baselines and React writing boundary"
+          git push origin HEAD:"${TARGET_BRANCH}"

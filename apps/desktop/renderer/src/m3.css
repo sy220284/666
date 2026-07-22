@@ -1,0 +1,308 @@
+.writing-workbench,
+.beginner-planning-workbench,
+.canon-complete-workbench,
+.relationship-editor {
+  min-width: 0;
+}
+
+.writing-heading {
+  margin-bottom: 1rem;
+}
+
+.writing-grid {
+  display: grid;
+  grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr) minmax(14rem, 18rem);
+  gap: 1rem;
+  align-items: start;
+}
+
+.writing-grid > .structure-navigator,
+.writing-context {
+  position: sticky;
+  top: 0.75rem;
+  max-height: calc(100vh - 10rem);
+  overflow: auto;
+}
+
+.writing-editor-card {
+  min-width: 0;
+  min-height: 38rem;
+  border: 1px solid var(--border, rgba(120, 120, 120, 0.28));
+  border-radius: 0.9rem;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+  overflow: hidden;
+}
+
+.draft-toolbar,
+.draft-find,
+.draft-metrics,
+.candidate-summary,
+.version-create-grid,
+.planning-disclosure-bar,
+.relationship-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.draft-toolbar,
+.draft-find,
+.draft-metrics,
+.draft-state {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--border, rgba(120, 120, 120, 0.22));
+}
+
+.draft-metrics span,
+.candidate-summary span,
+.relationship-summary span {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-muted, rgba(120, 120, 120, 0.12));
+  font-size: 0.82rem;
+}
+
+.draft-find input[type='search'],
+.draft-find input[type='text'] {
+  min-width: 10rem;
+  flex: 1 1 12rem;
+}
+
+.draft-editor-host {
+  min-height: 34rem;
+  padding: 1rem max(1rem, calc((100% - var(--content-width, 960px)) / 2));
+}
+
+.worldforge-editor {
+  min-height: 31rem;
+  outline: none;
+  font-size: var(--body-font-size, 18px);
+  line-height: 1.85;
+  white-space: pre-wrap;
+}
+
+.worldforge-editor > * {
+  max-width: var(--content-width, 960px);
+  margin-inline: auto;
+}
+
+.worldforge-editor [data-locked='true'],
+.worldforge-editor .is-locked {
+  border-inline-start: 3px solid currentColor;
+  padding-inline-start: 0.65rem;
+  opacity: 0.78;
+}
+
+.writing-empty {
+  margin: 2rem;
+}
+
+.version-workbench,
+.candidate-workbench {
+  padding: 1rem;
+}
+
+.version-create-grid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.2fr) minmax(8rem, 0.7fr) minmax(14rem, 2fr) auto;
+  margin-block: 1rem;
+}
+
+.version-create-grid input,
+.version-create-grid button {
+  min-width: 0;
+}
+
+.version-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--border, rgba(120, 120, 120, 0.2));
+}
+
+.version-row > div:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.version-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.version-compare-grid,
+.candidate-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.version-compare-grid pre,
+.candidate-compare-grid pre {
+  min-height: 20rem;
+  max-height: 55vh;
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border, rgba(120, 120, 120, 0.25));
+  border-radius: 0.7rem;
+  background: var(--surface-muted, rgba(120, 120, 120, 0.07));
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.candidate-apply-panel {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border, rgba(120, 120, 120, 0.25));
+  border-radius: 0.75rem;
+}
+
+.candidate-choice-list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.candidate-choice-list label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.45rem;
+  border-radius: 0.4rem;
+  background: var(--surface-muted, rgba(120, 120, 120, 0.07));
+}
+
+.candidate-conflicts {
+  margin-top: 1rem;
+  padding: 0.75rem 0.75rem 0.75rem 2rem;
+  border: 1px solid var(--danger, #b54a4a);
+  border-radius: 0.65rem;
+}
+
+.planning-disclosure-bar {
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border, rgba(120, 120, 120, 0.25));
+  border-radius: 0.75rem;
+  background: var(--surface-muted, rgba(120, 120, 120, 0.07));
+}
+
+.planning-disclosure-bar > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.beginner-question-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: 70rem;
+  margin: 1rem auto;
+}
+
+.beginner-question-form > label {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1rem;
+  border: 1px solid var(--border, rgba(120, 120, 120, 0.25));
+  border-radius: 0.8rem;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+}
+
+.beginner-question-form > label span {
+  opacity: 0.72;
+  font-size: 0.88rem;
+}
+
+.beginner-question-form textarea {
+  min-height: 8rem;
+}
+
+.beginner-question-form .inline-actions {
+  grid-column: 1 / -1;
+}
+
+.relationship-editor {
+  margin-top: 1rem;
+}
+
+.relationship-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.relationship-editor details {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border, rgba(120, 120, 120, 0.25));
+  border-radius: 0.7rem;
+}
+
+.relationship-editor summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.relationship-summary {
+  margin-top: 1rem;
+}
+
+.safety-inline.is-error {
+  border-color: var(--danger, #b54a4a);
+}
+
+@media (max-width: 1180px) {
+  .writing-grid {
+    grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr);
+  }
+
+  .writing-context {
+    position: static;
+    grid-column: 1 / -1;
+    max-height: none;
+  }
+
+  .version-create-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .writing-grid,
+  .relationship-editor-grid,
+  .beginner-question-form,
+  .version-compare-grid,
+  .candidate-compare-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .writing-grid > .structure-navigator {
+    position: static;
+    max-height: none;
+  }
+
+  .version-create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .version-row {
+    flex-direction: column;
+  }
+
+  .version-row__actions {
+    justify-content: flex-start;
+  }
+}

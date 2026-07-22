@@ -29,6 +29,8 @@ jobs:
         shell: bash
         run: |
           git fetch --quiet --no-tags origin 5629f7430e58684f70b0de450b50ae330f3cdb62
+          echo "CLOSURE_TREE=$(git rev-parse 12bb9b7b44d3f2adcaf63c7c6ca19cb97bada57c^{tree})"
+          echo "CURRENT_MAIN_TREE=$(git rev-parse origin/main^{tree})"
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
           base_ref="$(git merge-base "origin/${TASK_BASE_BRANCH}" HEAD)"
           git show "${base_ref}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"

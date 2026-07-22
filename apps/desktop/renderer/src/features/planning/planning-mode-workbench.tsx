@@ -5,13 +5,18 @@ import type { ProjectBrief } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
-import { PlanningWorkbench } from './planning-workbench.js';
+import {
+  PlanningWorkbench as ProfessionalPlanningWorkbench,
+  StructureNavigator,
+} from './professional-planning-workbench.js';
+
+export { StructureNavigator };
 
 interface PlanningModeWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly readOnly: boolean;
-  readonly disclosureMode: AppDisclosureMode;
+  readonly disclosureMode?: AppDisclosureMode;
   readonly onClose: () => void;
 }
 
@@ -27,10 +32,11 @@ export function PlanningModeWorkbench({
   disclosureMode,
   onClose,
 }: PlanningModeWorkbenchProps) {
-  const [professional, setProfessional] = useState(disclosureMode === 'professional');
+  const initialMode = disclosureMode ?? currentDisclosureMode();
+  const [professional, setProfessional] = useState(initialMode === 'professional');
 
   useEffect(() => {
-    setProfessional(disclosureMode === 'professional');
+    if (disclosureMode) setProfessional(disclosureMode === 'professional');
   }, [disclosureMode]);
 
   if (professional) {
@@ -50,7 +56,7 @@ export function PlanningModeWorkbench({
             切换到引导模式
           </button>
         </div>
-        <PlanningWorkbench
+        <ProfessionalPlanningWorkbench
           bridge={bridge}
           projectId={projectId}
           readOnly={readOnly}
@@ -230,4 +236,8 @@ function BeginnerBriefForm({
       </div>
     </form>
   );
+}
+
+function currentDisclosureMode(): AppDisclosureMode {
+  return document.body.dataset.authorMode === 'professional' ? 'professional' : 'beginner';
 }

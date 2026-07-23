@@ -42,13 +42,21 @@ jobs:
         run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false
       - run: pnpm test:prepare
       - name: 执行产品源码覆盖率
-        run: pnpm exec vitest run --config vitest.coverage.config.ts
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec vitest run --config vitest.coverage.config.ts 2>&1 | tee coverage-run.log
       - name: 输出机器摘要
-        run: cat coverage/coverage-summary.json
+        if: always()
+        run: |
+          test -f coverage/coverage-summary.json && cat coverage/coverage-summary.json || true
+          tail -n 160 coverage-run.log || true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: product-source-coverage
-          path: coverage/
-          if-no-files-found: warn
+          path: |
+            coverage/
+            coverage-run.log
+          if-no-files-found: error
           retention-days: 7

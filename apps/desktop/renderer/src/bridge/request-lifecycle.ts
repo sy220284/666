@@ -76,7 +76,6 @@ function unexpectedFailure(error: unknown): BridgeRequestError {
 
 export class BridgeRequestCoordinator {
   readonly #active = new Map<string, ActiveRequest>();
-  readonly #generations = new Map<string, number>();
 
   isPending(requestKey: string): boolean {
     return this.#active.has(requestKey);
@@ -104,8 +103,7 @@ export class BridgeRequestCoordinator {
     }
     existing?.controller.abort();
 
-    const generation = (this.#generations.get(requestKey) ?? 0) + 1;
-    this.#generations.set(requestKey, generation);
+    const generation = (existing?.generation ?? 0) + 1;
     const controller = new AbortController();
     const active = { generation, controller };
     this.#active.set(requestKey, active);

@@ -28,6 +28,7 @@ import {
   type ProjectWorkspaceSummary,
 } from '@worldforge/contracts';
 
+import { BoundedIdempotentPromiseCache } from './bounded-idempotent-promise-cache.js';
 import {
   ProjectDatabase,
   latestMigrationVersion,
@@ -298,7 +299,7 @@ export class ProjectWorkspaceService {
   readonly #hashWorkspace: (workspacePath: string) => Promise<string>;
   readonly #freeBytes: (directory: string) => Promise<bigint>;
   readonly #idFactory: () => string;
-  readonly #operations = new Map<string, Promise<unknown>>();
+  readonly #operations = new BoundedIdempotentPromiseCache();
   #lifecycleTail: Promise<void> = Promise.resolve();
   #active: ActiveProjectContext | null = null;
 
@@ -935,22 +936,13 @@ export class ProjectWorkspaceService {
 
   #idempotent<T>(requestId: string, operation: () => Promise<T>): Promise<T> {
     const validRequestId = RequestIdSchema.parse(requestId);
-    const existing = this.#operations.get(validRequestId);
-    if (existing) return existing as Promise<T>;
+    const existing = this.#operations.get<T>(validRequestId);
+    if (existing) return existing;
     const result = this.#lifecycleTail.then(operation);
     this.#lifecycleTail = result.then(
       () => undefined,
       () => undefined,
     );
-    this.#operations.set(validRequestId, result);
-    void result.catch(() => {
-      if (this.#operations.get(validRequestId) === result) this.#operations.delete(validRequestId);
-    });
-    while (this.#operations.size > 1_000) {
-      const oldest = this.#operations.keys().next().value;
-      if (typeof oldest !== 'string' || oldest === validRequestId) break;
-      this.#operations.delete(oldest);
-    }
-    return result;
+    return this.#operations.remember(validRequestId, result);
   }
 }

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -49,5 +49,38 @@ describe('CredentialBroker', () => {
     await expect(
       Promise.all(references.map((reference) => broker.has(reference))),
     ).resolves.toEqual(references.map(() => false));
+  });
+
+  it('rejects invalid provider identifiers at the broker boundary', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-credentials-'));
+    temporaryDirectories.push(root);
+    const broker = new CredentialBroker(safeStorage, path.join(root, 'credentials.json'));
+
+    await expect(broker.store('../escape', 'secret')).rejects.toThrow();
+  });
+
+  it('rejects credential files with malformed references or provider identifiers', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-credentials-'));
+    temporaryDirectories.push(root);
+    const filePath = path.join(root, 'credentials.json');
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        version: 1,
+        records: {
+          unsafe_reference: {
+            providerId: '../escape',
+            ciphertext: Buffer.from('secret').toString('base64'),
+            createdAt: '2026-07-23T12:00:00.000Z',
+          },
+        },
+      }),
+      'utf8',
+    );
+    const broker = new CredentialBroker(safeStorage, filePath);
+
+    await expect(broker.has('cred_550e8400-e29b-41d4-a716-446655440000')).rejects.toThrow(
+      'CREDENTIAL_STORE_CORRUPT',
+    );
   });
 });

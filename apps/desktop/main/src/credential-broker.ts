@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { CredentialRefSchema, ProviderIdSchema } from '@worldforge/contracts';
+
 export interface SafeStorageAdapter {
   isEncryptionAvailable(): boolean;
   encryptString(plainText: string): Buffer;
@@ -28,8 +30,7 @@ function isCredentialRecord(value: unknown): value is CredentialRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const candidate = value as Partial<CredentialRecord>;
   return (
-    typeof candidate.providerId === 'string' &&
-    candidate.providerId.length > 0 &&
+    ProviderIdSchema.safeParse(candidate.providerId).success &&
     typeof candidate.ciphertext === 'string' &&
     candidate.ciphertext.length > 0 &&
     typeof candidate.createdAt === 'string' &&
@@ -49,7 +50,8 @@ function isCredentialFile(value: unknown): value is CredentialFile {
     return false;
   }
   return Object.entries(candidate.records).every(
-    ([credentialRef, record]) => credentialRef.startsWith('cred_') && isCredentialRecord(record),
+    ([credentialRef, record]) =>
+      CredentialRefSchema.safeParse(credentialRef).success && isCredentialRecord(record),
   );
 }
 
@@ -114,18 +116,18 @@ export class CredentialBroker {
 
   async store(providerId: string, credential: string): Promise<string> {
     this.#assertSecureBackend();
-    if (!providerId) throw new Error('CREDENTIAL_PROVIDER_ID_EMPTY');
+    const validProviderId = ProviderIdSchema.parse(providerId);
     if (!credential) throw new Error('CREDENTIAL_EMPTY');
     return this.#enqueueMutation(async () => {
       const file = await this.#read();
-      const credentialRef = `cred_${randomUUID()}`;
+      const credentialRef = CredentialRefSchema.parse(`cred_${randomUUID()}`);
       const encrypted = this.#safeStorage.encryptString(credential);
       await this.#write({
         version: 1,
         records: {
           ...file.records,
           [credentialRef]: {
-            providerId,
+            providerId: validProviderId,
             ciphertext: encrypted.toString('base64'),
             createdAt: new Date().toISOString(),
           },
@@ -136,16 +138,18 @@ export class CredentialBroker {
   }
 
   async has(credentialRef: string): Promise<boolean> {
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
     await this.#waitForMutations();
-    return Boolean((await this.#read()).records[credentialRef]);
+    return Boolean((await this.#read()).records[validCredentialRef]);
   }
 
   remove(credentialRef: string): Promise<boolean> {
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
     return this.#enqueueMutation(async () => {
       const file = await this.#read();
-      if (!file.records[credentialRef]) return false;
+      if (!file.records[validCredentialRef]) return false;
       const records = { ...file.records };
-      delete records[credentialRef];
+      delete records[validCredentialRef];
       await this.#write({ version: 1, records });
       return true;
     });
@@ -153,8 +157,9 @@ export class CredentialBroker {
 
   async resolve(credentialRef: string): Promise<string | null> {
     this.#assertSecureBackend();
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
     await this.#waitForMutations();
-    const record = (await this.#read()).records[credentialRef];
+    const record = (await this.#read()).records[validCredentialRef];
     if (!record) return null;
     return this.#safeStorage.decryptString(Buffer.from(record.ciphertext, 'base64'));
   }

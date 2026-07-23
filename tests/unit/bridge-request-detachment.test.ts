@@ -81,4 +81,19 @@ describe('M3-R01 bridge cancellation truthfulness', () => {
     rejectOperation?.(new Error('late transport failure'));
     await delay(0);
   });
+
+  it('does not retain completed request keys or their serialized arguments', async () => {
+    const coordinator = new BridgeRequestCoordinator();
+
+    await expect(
+      coordinator.run('draft.update:{"text":"private-first-draft"}', async () =>
+        success('first', 'saved'),
+      ),
+    ).resolves.toMatchObject({ state: 'success', generation: 1 });
+    await expect(
+      coordinator.run('draft.update:{"text":"private-first-draft"}', async () =>
+        success('second', 'saved-again'),
+      ),
+    ).resolves.toMatchObject({ state: 'success', generation: 1 });
+  });
 });

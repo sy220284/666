@@ -94,19 +94,23 @@ function deferred<T>() {
   };
 }
 
-function harness(overrides: {
-  status?: unknown;
-  active?: unknown;
-  restart?: unknown;
-  recents?: unknown;
-  reopen?: unknown;
-  draft?: string;
-  clipboardReject?: boolean;
-} = {}) {
+function harness(
+  overrides: {
+    status?: unknown;
+    active?: unknown;
+    restart?: unknown;
+    recents?: unknown;
+    reopen?: unknown;
+    draft?: string;
+    clipboardReject?: boolean;
+  } = {},
+) {
   const surface = new Surface();
   const getCoreStatus = vi.fn(async () => overrides.status ?? success(healthy));
   const getActive = vi.fn(async () => overrides.active ?? success(project));
-  const restartCore = vi.fn(async () => overrides.restart ?? success({ accepted: true, status: healthy }));
+  const restartCore = vi.fn(
+    async () => overrides.restart ?? success({ accepted: true, status: healthy }),
+  );
   const listRecent = vi.fn(async () => overrides.recents ?? success({ projects: [recent] }));
   const openRecent = vi.fn(async () => overrides.reopen ?? success(project));
   const schedule = vi.fn(() => 'timer');

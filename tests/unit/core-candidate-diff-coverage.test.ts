@@ -1,32 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const workerState = vi.hoisted(() => ({
-  instances: [] as FakeWorker[],
-}));
-
-class FakeWorker {
-  readonly listeners = new Map<string, (value: unknown) => void>();
-  readonly terminate = vi.fn(async () => 0);
+interface FakeWorkerInstance {
+  readonly listeners: Map<string, (value: unknown) => void>;
+  readonly terminate: ReturnType<typeof vi.fn>;
   readonly url: URL;
   readonly options: unknown;
-
-  constructor(url: URL, options: unknown) {
-    this.url = url;
-    this.options = options;
-    workerState.instances.push(this);
-  }
-
-  once(name: string, listener: (value: unknown) => void): this {
-    this.listeners.set(name, listener);
-    return this;
-  }
-
-  emit(name: string, value: unknown): void {
-    this.listeners.get(name)?.(value);
-  }
+  emit(name: string, value: unknown): void;
 }
 
-vi.mock('node:worker_threads', () => ({ Worker: FakeWorker }));
+const workerState = vi.hoisted(() => ({
+  instances: [] as FakeWorkerInstance[],
+}));
+
+vi.mock('node:worker_threads', () => ({
+  Worker: class {
+    readonly listeners = new Map<string, (value: unknown) => void>();
+    readonly terminate = vi.fn(async () => 0);
+    readonly url: URL;
+    readonly options: unknown;
+
+    constructor(url: URL, options: unknown) {
+      this.url = url;
+      this.options = options;
+      workerState.instances.push(this);
+    }
+
+    once(name: string, listener: (value: unknown) => void): this {
+      this.listeners.set(name, listener);
+      return this;
+    }
+
+    emit(name: string, value: unknown): void {
+      this.listeners.get(name)?.(value);
+    }
+  },
+}));
 
 import {
   CandidateDiffCancelledError,
@@ -128,7 +136,10 @@ describe('Core candidate diff structural and cooperative coverage', () => {
     [[draft('a')], [candidate('x'), candidate('x')], 'Duplicate candidate temporaryId'],
     [
       [draft('a')],
-      [candidate('x', '一', { logicalBlockId: 'a' }), candidate('y', '二', { logicalBlockId: 'a' })],
+      [
+        candidate('x', '一', { logicalBlockId: 'a' }),
+        candidate('y', '二', { logicalBlockId: 'a' }),
+      ],
       'Duplicate candidate logicalBlockId',
     ],
     [
@@ -160,9 +171,10 @@ describe('Core candidate diff structural and cooperative coverage', () => {
 
   it('uses main-thread and cooperative strategies and yields during long scans', async () => {
     await expect(
-      computeCandidateDiffProgressively([draft('a', '甲')], [
-        candidate('a-next', '乙', { logicalBlockId: 'a' }),
-      ]),
+      computeCandidateDiffProgressively(
+        [draft('a', '甲')],
+        [candidate('a-next', '乙', { logicalBlockId: 'a' })],
+      ),
     ).resolves.toMatchObject({ execution: { strategy: 'main-thread' } });
 
     const yieldControl = vi.fn(async () => undefined);
@@ -227,7 +239,10 @@ describe('Core candidate diff Worker coverage', () => {
 
   it('rejects worker-declared errors, runtime errors and nonzero exits', async () => {
     const declaredInput = workerInput();
-    const declared = computeCandidateDiffProgressively(declaredInput.current, declaredInput.proposed);
+    const declared = computeCandidateDiffProgressively(
+      declaredInput.current,
+      declaredInput.proposed,
+    );
     workerState.instances[0]?.emit('message', {
       ok: false,
       message: 'worker rejected',

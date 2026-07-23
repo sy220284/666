@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   APP_COMMANDS,
+  ExportVersionListCommandSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
+  RecoveryOverviewCommandSchema,
   RegisteredCommandSchema,
   type WorldforgeBridge,
 } from '@worldforge/contracts';
@@ -61,6 +63,13 @@ const taskId = '33333333-3333-4333-8333-333333333333';
 const credentialRef = 'cred_55555555-5555-4555-8555-555555555555';
 const originalMessageChannel = globalThis.MessageChannel;
 
+function parseCommand(channel: string, command: unknown) {
+  if (channel === IPC_CHANNELS.getOverview) return RecoveryOverviewCommandSchema.parse(command);
+  if (channel === IPC_CHANNELS.listExportVersions)
+    return ExportVersionListCommandSchema.parse(command);
+  return RegisteredCommandSchema.parse(command);
+}
+
 function failure(requestId: string) {
   return {
     ok: false,
@@ -86,13 +95,7 @@ function taskEvent(sequence: number, eventId: string) {
   };
 }
 
-async function flushMicrotasks(): Promise<void> {
-  await vi.waitFor(() => {
-    expect(true).toBe(true);
-  });
-}
-
-describe('Preload bridge unit and regression coverage', () => {
+describe('Preload bridge real-contract regression coverage', () => {
   beforeEach(async () => {
     state.exposed = undefined;
     state.channels.length = 0;
@@ -101,7 +104,7 @@ describe('Preload bridge unit and regression coverage', () => {
     state.ipcPostMessage.mockReset();
     state.ipcInvoke.mockImplementation(async (channel: string, command: unknown) => {
       state.calls.push({ channel, command });
-      const parsed = RegisteredCommandSchema.parse(command);
+      const parsed = parseCommand(channel, command);
       if (channel === IPC_CHANNELS.taskGetSnapshot) {
         return {
           ok: true,
@@ -136,7 +139,7 @@ describe('Preload bridge unit and regression coverage', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses real command schemas and exact channels for representative bridge capabilities', async () => {
+  it('uses exact channels and authoritative schemas for representative capabilities', async () => {
     const bridge = state.exposed as WorldforgeBridge;
 
     await bridge.app.getInfo();
@@ -176,26 +179,26 @@ describe('Preload bridge unit and regression coverage', () => {
       { channel: IPC_CHANNELS.aiHasCredential, command: APP_COMMANDS.hasCredential },
       { channel: IPC_CHANNELS.taskListActive, command: APP_COMMANDS.taskListActive },
     ]);
-    for (const { command } of state.calls)
-      expect(() => RegisteredCommandSchema.parse(command)).not.toThrow();
+    for (const { channel, command } of state.calls)
+      expect(() => parseCommand(channel, command)).not.toThrow();
   });
 
-  it('rejects invalid input through the authoritative preload schema before IPC dispatch', async () => {
+  it('rejects invalid input synchronously before IPC dispatch', () => {
     const bridge = state.exposed as WorldforgeBridge;
-    await expect(
+    expect(() =>
       bridge.app.setAppearancePreferences({
         workspaceAlignment: 'center',
         uiScalePercent: 95,
         bodyFontSize: 18,
         contentWidth: 'normal',
       } as never),
-    ).rejects.toThrow();
-    await expect(bridge.project.openRecent('not-a-uuid')).rejects.toThrow();
-    await expect(bridge.ai.hasCredential('invalid-ref')).rejects.toThrow();
+    ).toThrow();
+    expect(() => bridge.project.openRecent('not-a-uuid')).toThrow();
+    expect(() => bridge.ai.hasCredential('invalid-ref')).toThrow();
     expect(state.ipcInvoke).not.toHaveBeenCalled();
   });
 
-  it('handles accepted, duplicate, malformed and sequence-gap events with real schemas', async () => {
+  it('handles accepted, duplicate, malformed and sequence-gap task events', async () => {
     const bridge = state.exposed as WorldforgeBridge;
     const listener = vi.fn();
     const unsubscribe = bridge.task.subscribe(listener, projectId);
@@ -213,14 +216,14 @@ describe('Preload bridge unit and regression coverage', () => {
     const firstEventId = '44444444-4444-4444-8444-444444444444';
     channel?.port1.onmessage?.({ data: taskEvent(1, firstEventId) });
     expect(listener).toHaveBeenCalledWith({ kind: 'event', event: taskEvent(1, firstEventId) });
-
     channel?.port1.onmessage?.({ data: taskEvent(1, firstEventId) });
-    const gapEventId = '66666666-6666-4666-8666-666666666666';
-    channel?.port1.onmessage?.({ data: taskEvent(3, gapEventId) });
+
+    channel?.port1.onmessage?.({
+      data: taskEvent(3, '66666666-6666-4666-8666-666666666666'),
+    });
     channel?.port1.onmessage?.({
       data: taskEvent(4, '77777777-7777-4777-8777-777777777777'),
     });
-    await flushMicrotasks();
     await vi.waitFor(() => {
       expect(listener).toHaveBeenCalledWith({
         kind: 'snapshot',
@@ -247,8 +250,8 @@ describe('Preload bridge unit and regression coverage', () => {
   it('does not publish failed or late snapshot recovery', async () => {
     const bridge = state.exposed as WorldforgeBridge;
     const listener = vi.fn();
-    state.ipcInvoke.mockImplementationOnce(async (_channel: string, command: unknown) => {
-      const parsed = RegisteredCommandSchema.parse(command);
+    state.ipcInvoke.mockImplementationOnce(async (channel: string, command: unknown) => {
+      const parsed = parseCommand(channel, command);
       return failure(parsed.requestId);
     });
     const unsubscribe = bridge.task.subscribe(listener, projectId);
@@ -256,14 +259,14 @@ describe('Preload bridge unit and regression coverage', () => {
     channel?.port1.onmessage?.({
       data: taskEvent(2, '99999999-9999-4999-8999-999999999999'),
     });
-    await flushMicrotasks();
+    await Promise.resolve();
     expect(listener).not.toHaveBeenCalled();
 
     let resolveSnapshot: ((value: unknown) => void) | undefined;
     state.ipcInvoke.mockImplementationOnce(
-      async (_channel: string, command: unknown) =>
+      async (channelName: string, command: unknown) =>
         await new Promise((resolve) => {
-          const parsed = RegisteredCommandSchema.parse(command);
+          const parsed = parseCommand(channelName, command);
           resolveSnapshot = (value) =>
             resolve({ ...(value as object), requestId: parsed.requestId });
         }),
@@ -285,7 +288,7 @@ describe('Preload bridge unit and regression coverage', () => {
         elapsedMs: 100,
       },
     });
-    await flushMicrotasks();
+    await Promise.resolve();
     expect(listener).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-m3-10-integrated-evidence-2026-07-23",
+  "baseCommit": "9a813efa75ec6a49b7547392d70118f977d8e263",
+  "branch": "fix/governance-audit-m3-10-integrated-evidence",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M3-10",
+      "finding": "The merged M0-M3 integrated remediation evidence was generated after PR #150 auto-merged and therefore was not reachable from main.",
+      "allowedPaths": [
+        ".github/audit-remediations/m3-10-integrated-evidence-2026-07-23.json",
+        "docs/test-evidence/M3-10/summary.md",
+        "docs/test-evidence/M3-10/manifest.json"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M3-10"],
+  "governancePaths": [
+    ".github/audit-remediations/m3-10-integrated-evidence-2026-07-23.json"
+  ]
+}

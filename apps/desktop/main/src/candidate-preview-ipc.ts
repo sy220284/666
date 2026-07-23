@@ -30,6 +30,7 @@ function previewFailure(requestId: string, code: ErrorCode) {
   const semantics = coreOperationFailureSemantics(
     code,
     'The Candidate preview could not be loaded.',
+    'query',
   );
   return CandidatePreviewResultSchema.parse({
     ok: false,
@@ -66,6 +67,7 @@ function lookupFailure(requestId: string, code: ErrorCode) {
   const semantics = coreOperationFailureSemantics(
     code,
     'The Candidate ApplyRecord could not be found.',
+    'query',
   );
   return CandidateUndoLookupResultSchema.parse({
     ok: false,
@@ -78,6 +80,7 @@ function undoPreviewFailure(requestId: string, code: ErrorCode) {
   const semantics = coreOperationFailureSemantics(
     code,
     'The Candidate undo preview could not be loaded.',
+    'query',
   );
   return CandidateUndoPreviewResultSchema.parse({
     ok: false,

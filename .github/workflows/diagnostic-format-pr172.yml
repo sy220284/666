@@ -36,3 +36,4 @@ jobs:
             packages/core-service/src/app-settings.ts
             .github/audit-remediations/full-code-recheck-2026-07-23.json
           if-no-files-found: error
+          retention-days: 1

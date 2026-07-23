@@ -11,6 +11,18 @@ def replace_once(path: str, old: str, new: str) -> None:
     file.write_text(source.replace(old, new))
 
 
+migration = 'migrations/project/0019_final_coordination_remediation.sql'
+replace_once(
+    migration,
+    '-- EndingSnapshot invalidation begin at the earliest affected chapter.',
+    '-- EndingSnapshot invalidation starts at the earliest affected chapter.',
+)
+replace_once(
+    migration,
+    '-- Entity and knowledge state changes begin at valid_from. Updating a state uses',
+    '-- Entity and knowledge state changes start at valid_from. Updating a state uses',
+)
+
 core = 'apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts'
 replace_once(
     core,

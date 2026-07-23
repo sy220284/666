@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-full-code-recheck-2026-07-23",
+  "baseCommit": "eb3bb4d35b0ff7dcfc020df8e1fed9c9f0aca421",
+  "branch": "fix/governance-audit-full-code-recheck-2026-07-23",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-03",
+      "finding": "Bounded database idempotency cleanup could evict still-pending writes after the cache limit was exceeded, allowing the same requestId to execute twice.",
+      "allowedPaths": [
+        "packages/core-service/src/bounded-idempotent-promise-cache.ts",
+        "packages/core-service/src/database/database.ts",
+        "tests/unit/bounded-idempotent-promise-cache.test.ts",
+        "docs/architecture/FULL_CODE_AUDIT_RECHECK_2026-07-23.md"
+      ]
+    },
+    {
+      "taskId": "M1-02",
+      "finding": "Project lifecycle idempotency cleanup could evict queued operations before completion and admit a duplicate lifecycle mutation.",
+      "allowedPaths": [
+        "packages/core-service/src/project-workspace.ts"
+      ]
+    },
+    {
+      "taskId": "M0-02",
+      "finding": "The credential broker accepted provider identifiers and persisted credential references outside the authoritative contract schemas.",
+      "allowedPaths": [
+        "apps/desktop/main/src/credential-broker.ts",
+        "tests/unit/credential-broker.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-07",
+      "finding": "The Renderer bridge coordinator permanently retained serialized request argument keys, including manuscript content, after requests completed.",
+      "allowedPaths": [
+        "apps/desktop/renderer/src/bridge/request-lifecycle.ts",
+        "tests/unit/bridge-request-detachment.test.ts"
+      ]
+    },
+    {
+      "taskId": "M1-01",
+      "finding": "Concurrent partial application settings updates merged outside the serialized write transaction and could overwrite independent fields.",
+      "allowedPaths": [
+        "packages/core-service/src/app-settings.ts",
+        "tests/integration/app-settings-concurrency.test.ts"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M0-03"],
+  "governancePaths": [
+    ".github/audit-remediations/full-code-recheck-2026-07-23.json"
+  ]
+}

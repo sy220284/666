@@ -102,7 +102,7 @@ const preferences: WindowPreferences = {
   contentWidth: 'normal',
 };
 
-function registerCandidateHandler() {
+function registerCandidateHandler(enableTestFixtures = true) {
   const handlers = new Map<string, (event: IpcMainInvokeEvent, raw: unknown) => unknown>();
   const ipcMain = {
     handle: vi.fn(
@@ -149,6 +149,7 @@ function registerCandidateHandler() {
     rendererUrl: 'file:///trusted/index.html',
     version: '0.1.0',
     platform: 'test',
+    enableTestFixtures,
     logger: { log: vi.fn() } as unknown as PrivacyLogger,
     getWindowPreferences: () => preferences,
     setAppearancePreferences: vi.fn(async () => preferences),
@@ -165,6 +166,12 @@ function registerCandidateHandler() {
 }
 
 describe('Candidate IPC authority boundary', () => {
+  it('does not register the fixture command in the production/default boundary', () => {
+    const { handlers } = registerCandidateHandler(false);
+    expect(handlers.has(CANDIDATE_IPC_CHANNELS.createFixtureCandidate)).toBe(false);
+    expect(handlers.has(CANDIDATE_IPC_CHANNELS.listCandidates)).toBe(true);
+  });
+
   it('rejects renderer-supplied status and provenance authority fields', () => {
     expect(CandidateCreateFixtureCommandSchema.safeParse(command).success).toBe(true);
     for (const authority of [

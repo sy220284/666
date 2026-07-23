@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import type {
   CandidateConflictItem,
@@ -63,6 +56,115 @@ const EMPTY_STATISTICS: WritingStatistics = {
   progressPercent: null,
 };
 
+interface PersistedEditorSelection {
+  readonly from: number;
+  readonly to: number;
+  readonly anchorPath?: readonly number[];
+  readonly anchorOffset?: number;
+  readonly focusPath?: readonly number[];
+  readonly focusOffset?: number;
+}
+
+const persistedSelectionByChapter = new Map<string, PersistedEditorSelection>();
+
+function selectionKey(projectId: string, chapterId: string): string {
+  return `${projectId}:${chapterId}`;
+}
+
+function pathFromEditorRoot(root: Node, node: Node): readonly number[] | null {
+  const path: number[] = [];
+  let current: Node | null = node;
+  while (current && current !== root) {
+    const parent: ParentNode | null = current.parentNode;
+    if (!parent) return null;
+    const index = Array.prototype.indexOf.call(parent.childNodes, current) as number;
+    if (index < 0) return null;
+    path.unshift(index);
+    current = parent;
+  }
+  return current === root ? path : null;
+}
+
+function nodeFromEditorPath(root: Node, path: readonly number[]): Node | null {
+  let current: Node = root;
+  for (const index of path) {
+    const next = current.childNodes.item(index);
+    if (!next) return null;
+    current = next;
+  }
+  return current;
+}
+
+function clampEditorSelectionOffset(node: Node, offset: number): number {
+  const maximum = node.nodeType === 3 ? (node.textContent?.length ?? 0) : node.childNodes.length;
+  return Math.min(Math.max(0, offset), maximum);
+}
+
+function captureEditorSelection(instance: Editor): PersistedEditorSelection {
+  const persisted: PersistedEditorSelection = {
+    from: instance.state.selection.from,
+    to: instance.state.selection.to,
+  };
+  const root = instance.view.dom;
+  const selection = root.ownerDocument.getSelection();
+  if (!selection?.anchorNode || !selection.focusNode) return persisted;
+  if (!root.contains(selection.anchorNode) || !root.contains(selection.focusNode)) return persisted;
+  const anchorPath = pathFromEditorRoot(root, selection.anchorNode);
+  const focusPath = pathFromEditorRoot(root, selection.focusNode);
+  if (!anchorPath || !focusPath) return persisted;
+  return {
+    ...persisted,
+    anchorPath,
+    anchorOffset: selection.anchorOffset,
+    focusPath,
+    focusOffset: selection.focusOffset,
+  };
+}
+
+function persistEditorSelection(projectId: string, chapterId: string, instance: Editor): void {
+  const key = selectionKey(projectId, chapterId);
+  const captured = captureEditorSelection(instance);
+  const existing = persistedSelectionByChapter.get(key);
+  if (
+    !captured.anchorPath &&
+    existing?.anchorPath &&
+    existing.from === captured.from &&
+    existing.to === captured.to
+  ) {
+    return;
+  }
+  persistedSelectionByChapter.set(key, captured);
+}
+
+function restoreEditorSelection(instance: Editor, remembered: PersistedEditorSelection): void {
+  const maximum = Math.max(1, instance.state.doc.content.size);
+  instance.commands.setTextSelection({
+    from: Math.min(Math.max(1, remembered.from), maximum),
+    to: Math.min(Math.max(1, remembered.to), maximum),
+  });
+  instance.view.focus();
+  if (
+    !remembered.anchorPath ||
+    remembered.anchorOffset === undefined ||
+    !remembered.focusPath ||
+    remembered.focusOffset === undefined
+  ) {
+    return;
+  }
+  const root = instance.view.dom;
+  const anchorNode = nodeFromEditorPath(root, remembered.anchorPath);
+  const focusNode = nodeFromEditorPath(root, remembered.focusPath);
+  if (!anchorNode || !focusNode) return;
+  root.ownerDocument
+    .getSelection()
+    ?.setBaseAndExtent(
+      anchorNode,
+      clampEditorSelectionOffset(anchorNode, remembered.anchorOffset),
+      focusNode,
+      clampEditorSelectionOffset(focusNode, remembered.focusOffset),
+    );
+}
+
 export function WritingWorkbench({
   bridge,
   project,
@@ -79,9 +181,6 @@ export function WritingWorkbench({
   const composing = useRef(false);
   const synchronizing = useRef(false);
   const initialChapterRequested = useRef(false);
-  const selectionByChapter = useRef(
-    new Map<string, { readonly from: number; readonly to: number }>(),
-  );
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [draft, setDraft] = useState<DraftDocument | null>(null);
   const [editorState, setEditorState] = useState('从左侧卷章目录选择章节。');
@@ -93,6 +192,7 @@ export function WritingWorkbench({
   const [findIndex, setFindIndex] = useState(0);
   const [findCount, setFindCount] = useState(0);
   const [selectedLocked, setSelectedLocked] = useState<boolean | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
 
   const setStatus = useCallback((message: string, failure = false): void => {
     setEditorState(message);
@@ -209,31 +309,39 @@ export function WritingWorkbench({
     };
   }, [flush]);
 
-  const destroyEditor = useCallback((clearSession = true): void => {
+  const rememberCurrentSelection = useCallback((): void => {
     const instance = editor.current;
     const currentChapter = activeChapter.current;
-    if (instance && currentChapter) {
-      selectionByChapter.current.set(currentChapter.id, {
-        from: instance.state.selection.from,
-        to: instance.state.selection.to,
-      });
-    }
-    autosave.current?.destroy();
-    autosave.current = null;
-    instance?.destroy();
-    editor.current = null;
-    editorHost.current?.replaceChildren();
-    setStatistics(EMPTY_STATISTICS);
-    setSelectedLocked(null);
-    setIsComposing(false);
-    composing.current = false;
-    if (clearSession) {
-      activeDraft.current = null;
-      activeChapter.current = null;
-      setDraft(null);
-      setChapter(null);
-    }
-  }, []);
+    if (!instance || !currentChapter) return;
+    persistEditorSelection(project.projectId, currentChapter.id, instance);
+  }, [project.projectId]);
+
+  const destroyEditor = useCallback(
+    (clearSession = true): void => {
+      const instance = editor.current;
+      const currentChapter = activeChapter.current;
+      if (instance && currentChapter) {
+        persistEditorSelection(project.projectId, currentChapter.id, instance);
+      }
+      autosave.current?.destroy();
+      autosave.current = null;
+      instance?.destroy();
+      editor.current = null;
+      editorHost.current?.replaceChildren();
+      setStatistics(EMPTY_STATISTICS);
+      setSelectedLocked(null);
+      setEditorReady(false);
+      setIsComposing(false);
+      composing.current = false;
+      if (clearSession) {
+        activeDraft.current = null;
+        activeChapter.current = null;
+        setDraft(null);
+        setChapter(null);
+      }
+    },
+    [project.projectId],
+  );
 
   const mountEditor = useCallback(
     (document: DraftDocument, nextChapter: Chapter): void => {
@@ -247,6 +355,9 @@ export function WritingWorkbench({
         setStatus('Draft已更新；返回正文后重建编辑器。');
         return;
       }
+      const remembered = persistedSelectionByChapter.get(
+        selectionKey(project.projectId, nextChapter.id),
+      );
       const instance = new Editor({
         element: host,
         extensions: createWorldforgeEditorExtensions(temporaryClientBlockId),
@@ -272,7 +383,7 @@ export function WritingWorkbench({
           setStatus(composing.current ? '输入法组合中；自动保存与结构键已暂停。' : '等待自动保存…');
         },
         onSelectionUpdate: ({ editor: current }) => {
-          selectionByChapter.current.set(nextChapter.id, {
+          persistedSelectionByChapter.set(selectionKey(project.projectId, nextChapter.id), {
             from: current.state.selection.from,
             to: current.state.selection.to,
           });
@@ -292,17 +403,10 @@ export function WritingWorkbench({
           else if (state === 'paused') setStatus('输入法组合中；自动保存已暂停。');
         },
       });
-      const remembered = selectionByChapter.current.get(nextChapter.id);
-      if (remembered) {
-        const maximum = Math.max(1, instance.state.doc.content.size);
-        instance.commands.setTextSelection({
-          from: Math.min(Math.max(1, remembered.from), maximum),
-          to: Math.min(Math.max(1, remembered.to), maximum),
-        });
-        instance.commands.focus();
-      }
+      if (remembered) restoreEditorSelection(instance, remembered);
       refreshStatistics();
       refreshLockState();
+      setEditorReady(true);
       setStatus(readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从 DraftBlock 重建。');
     },
     [
@@ -364,13 +468,11 @@ export function WritingWorkbench({
     if (initialChapterRequested.current) return;
     initialChapterRequested.current = true;
     let active = true;
-    void bridge.planning
-      .listStructure(project.projectId, { mode: 'replace' })
-      .then((outcome) => {
-        if (!active || outcome.state !== 'success') return;
-        const firstChapter = outcome.data.volumes.flatMap((volume) => volume.chapters)[0];
-        if (firstChapter) void openChapter(firstChapter);
-      });
+    void bridge.planning.listStructure(project.projectId, { mode: 'replace' }).then((outcome) => {
+      if (!active || outcome.state !== 'success') return;
+      const firstChapter = outcome.data.volumes.flatMap((volume) => volume.chapters)[0];
+      if (firstChapter) void openChapter(firstChapter);
+    });
     return () => {
       active = false;
     };
@@ -515,11 +617,7 @@ export function WritingWorkbench({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (
-        !(event.ctrlKey || event.metaKey) ||
-        event.key.toLowerCase() !== 's' ||
-        !editor.current
-      )
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's' || !editor.current)
         return;
       event.preventDefault();
       if (!composing.current && !event.isComposing) void manualSave();
@@ -531,15 +629,26 @@ export function WritingWorkbench({
   const editorUnavailable = !draft || readOnly || isComposing;
 
   return (
-    <section className="writing-workbench" data-writing-workbench data-draft-workspace>
+    <section
+      className="writing-workbench"
+      data-writing-workbench
+      data-draft-workspace={editorReady ? '' : undefined}
+    >
       <header className="feature-heading writing-heading">
         <div>
           <p className="eyebrow">DRAFT · PROJECT.SQLITE</p>
           <h1>{chapter ? `${project.name} · ${chapter.title}` : project.name}</h1>
-          <p>React独占正文、Version和Candidate；Core继续负责Revision、Hash、LockGuard和原子事务。</p>
+          <p>
+            React独占正文、Version和Candidate；Core继续负责Revision、Hash、LockGuard和原子事务。
+          </p>
         </div>
         <div className="feature-heading__actions">
-          <button data-back-project type="button" onClick={() => void backToProject()}>
+          <button
+            data-back-project
+            type="button"
+            onPointerDownCapture={rememberCurrentSelection}
+            onClick={() => void backToProject()}
+          >
             返回项目
           </button>
           <button
@@ -698,11 +807,7 @@ export function WritingWorkbench({
                     setFindIndex(0);
                   }}
                 />
-                <button
-                  type="button"
-                  disabled={!findCount}
-                  onClick={() => selectMatch(-1)}
-                >
+                <button type="button" disabled={!findCount} onClick={() => selectMatch(-1)}>
                   上一个
                 </button>
                 <button
@@ -876,9 +981,7 @@ function VersionPanel({
     });
     setPending(false);
     if (outcome.state !== 'success') {
-      setStatus(
-        outcome.state === 'failure' ? `创建失败 · ${outcome.error.code}` : '创建已取消。',
-      );
+      setStatus(outcome.state === 'failure' ? `创建失败 · ${outcome.error.code}` : '创建已取消。');
       return;
     }
     form.reset();
@@ -1446,11 +1549,7 @@ function CandidatePanel({
         </>
       ) : null}
       {conflicts.length ? (
-        <ul
-          className="candidate-conflicts"
-          data-candidate-conflict-list
-          aria-label="候选内容冲突"
-        >
+        <ul className="candidate-conflicts" data-candidate-conflict-list aria-label="候选内容冲突">
           {conflicts.map((conflict, index) => (
             <li key={`${conflict.kind}-${index}`}>
               {conflict.kind} · {conflict.message}
@@ -1516,5 +1615,6 @@ function sanitizePastedHtml(html: string): string {
   };
   visit(parsed.body);
   if (!clean.hasChildNodes()) clean.append(document.createElement('p'));
-  return clean.innerHTML;
+  const serializer = new XMLSerializer();
+  return Array.from(clean.childNodes, (node) => serializer.serializeToString(node)).join('');
 }

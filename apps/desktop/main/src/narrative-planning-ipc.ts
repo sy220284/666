@@ -28,6 +28,7 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
+import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
 
 export interface NarrativePlanningIpcOptions {
   readonly ipcMain: IpcMain;
@@ -64,16 +65,11 @@ function failure(
   code: ErrorCode,
   message: string,
 ): unknown {
+  const semantics = coreOperationFailureSemantics(code, message);
   return resultSchema.parse({
     ok: false,
     requestId,
-    error: {
-      code,
-      message,
-      retryable: ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(
-        code,
-      ),
-    },
+    error: { code, ...semantics },
   });
 }
 

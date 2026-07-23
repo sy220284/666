@@ -31,7 +31,7 @@ interface WorldForgeError {
 | `COMMON_NOT_FOUND_002` | 目标不存在或已删除 | 否 | 刷新页面并返回安全位置 |
 | `COMMON_CONFLICT_003` | 当前状态与操作基线冲突 | 否 | 打开冲突处理或重新加载 |
 | `COMMON_CANCELLED_004` | 用户取消任务 | 否 | 结束进度，保留可用结果 |
-| `COMMON_TIMEOUT_005` | 任务超时 | 是 | 提供重试或调整超时 |
+| `COMMON_TIMEOUT_005` | Core未在等待窗口内返回最终结果，操作可能仍已完成 | 否 | 刷新权威状态，确认结果后再决定是否重试 |
 | `COMMON_INTERNAL_999` | 未分类内部错误 | 视情况 | 记录诊断ID，不显示堆栈 |
 
 ## 3. 项目与路径

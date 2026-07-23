@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-m0-m3-integrated-coordination-2026-07-23",
+  "baseCommit": "ffe98417835c13bba28f27af66c3217c7d8cc85e",
+  "branch": "fix/governance-audit-m0-m3-integrated-coordination",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-02",
+      "finding": "Core crash recovery was not connected to unsaved Draft rescue and safe project reopening.",
+      "allowedPaths": [
+        "apps/desktop/main/src/core-supervisor.ts",
+        "apps/desktop/main/src/electron-main.ts",
+        "apps/desktop/main/src/ipc-error-semantics.ts",
+        "apps/desktop/renderer/src/react-entry.tsx",
+        "apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts",
+        "tests/unit/core-recovery-supervisor.test.ts",
+        "tests/unit/ipc-error-semantics.test.ts"
+      ]
+    },
+    {
+      "taskId": "M0-03",
+      "finding": "Schema 18 changed the authoritative project schema and table inventory; foundation migration assertions must follow the current migration ledger.",
+      "allowedPaths": ["tests/migration/sqlite-foundation.test.ts"]
+    },
+    {
+      "taskId": "M1-07",
+      "finding": "Final Version changes and Version restore did not coordinate derived snapshots and SceneBeat block identities.",
+      "allowedPaths": [
+        "migrations/project/0018_integrated_coordination_hardening.sql",
+        "tests/migration/integrated-coordination-migration.test.ts"
+      ]
+    },
+    {
+      "taskId": "M2-04",
+      "finding": "Structure operations could rebuild DraftBlocks without preserving SceneBeat links or invalidating continuity projections.",
+      "allowedPaths": [
+        "migrations/project/0018_integrated_coordination_hardening.sql",
+        "tests/migration/integrated-coordination-migration.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-02",
+      "finding": "SceneBeat block links were not coordinated with cross-Draft block identity transitions.",
+      "allowedPaths": [
+        "migrations/project/0018_integrated_coordination_hardening.sql",
+        "tests/migration/integrated-coordination-migration.test.ts",
+        "tests/migration/scene-beat-entity-truth-migration.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-05",
+      "finding": "Historical snapshots could include foreshadowing and arc outcomes from later chapters.",
+      "allowedPaths": [
+        "migrations/project/0018_integrated_coordination_hardening.sql",
+        "tests/migration/integrated-coordination-migration.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-06",
+      "finding": "Chapter order, validity boundaries and Final Version changes were not uniformly connected to snapshot invalidation.",
+      "allowedPaths": [
+        "migrations/project/0018_integrated_coordination_hardening.sql",
+        "tests/migration/integrated-coordination-migration.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-10",
+      "finding": "Renderer request cancellation, Core timeout semantics and production test-fixture exposure could misrepresent write outcomes or expand authority.",
+      "allowedPaths": [
+        "apps/desktop/main/src/ipc-handlers.ts",
+        "apps/desktop/main/src/candidate-preview-ipc.ts",
+        "apps/desktop/main/src/continuity-ipc.ts",
+        "apps/desktop/main/src/narrative-planning-ipc.ts",
+        "apps/desktop/renderer/src/bridge/request-lifecycle.ts",
+        "tests/security/candidate-ipc.test.ts",
+        "tests/unit/bridge-request-detachment.test.ts",
+        "docs/architecture/M0_M3_INTEGRATED_COORDINATION.md",
+        "docs/contracts/ERROR_CODES.md",
+        "docs/test-evidence/M3-10/",
+        "apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx",
+        "apps/desktop/renderer/src/features/writing/writing-workbench.tsx"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M3-10"],
+  "governancePaths": [".github/audit-remediations/m0-m3-integrated-coordination-2026-07-23.json"]
+}

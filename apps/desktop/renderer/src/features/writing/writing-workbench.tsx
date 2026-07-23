@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 import type { ProjectWorkspaceSummary } from '@worldforge/contracts';
 
@@ -18,93 +18,11 @@ interface WritingWorkbenchProps {
   readonly onStatus: (message: string) => void;
 }
 
-interface PersistedDomSelection {
-  readonly anchorPath: readonly number[];
-  readonly anchorOffset: number;
-  readonly focusPath: readonly number[];
-  readonly focusOffset: number;
-}
-
 export function WritingWorkbench(props: WritingWorkbenchProps) {
-  const selectionToRestore = useRef<PersistedDomSelection | null>(null);
-  const sourceContentToReplace = useRef<HTMLElement | null>(null);
-  const restoreScheduled = useRef(false);
   const bridge = useMemo(
     () => createWritingBridge(props.bridge, props.onPanelChange),
     [props.bridge, props.onPanelChange],
   );
-
-  useEffect(() => {
-    const rememberSelectionBeforeExit = (event: PointerEvent): void => {
-      if (!(event.target instanceof Element) || !event.target.closest('[data-back-project]')) {
-        return;
-      }
-      const content = document.querySelector('[data-draft-content]');
-      const selection = document.getSelection();
-      if (!(content instanceof HTMLElement) || !selection?.anchorNode || !selection.focusNode) {
-        return;
-      }
-      if (!content.contains(selection.anchorNode) || !content.contains(selection.focusNode)) return;
-      const anchorPath = pathFromRoot(content, selection.anchorNode);
-      const focusPath = pathFromRoot(content, selection.focusNode);
-      if (!anchorPath || !focusPath) return;
-      selectionToRestore.current = {
-        anchorPath,
-        anchorOffset: selection.anchorOffset,
-        focusPath,
-        focusOffset: selection.focusOffset,
-      };
-      sourceContentToReplace.current = content;
-      restoreScheduled.current = false;
-      document.querySelector('[data-draft-workspace]')?.removeAttribute('data-draft-workspace');
-    };
-
-    const restoreSelectionAfterMount = (): void => {
-      const remembered = selectionToRestore.current;
-      if (!remembered) return;
-
-      const workspace = document.querySelector('.writing-workbench');
-      if (workspace?.hasAttribute('data-draft-workspace')) {
-        workspace.removeAttribute('data-draft-workspace');
-      }
-
-      const sourceContent = sourceContentToReplace.current;
-      if (sourceContent?.isConnected) return;
-      const content = document.querySelector('[data-draft-content]');
-      if (!(content instanceof HTMLElement) || content === sourceContent || restoreScheduled.current) {
-        return;
-      }
-
-      restoreScheduled.current = true;
-      requestAnimationFrame(() => {
-        restoreScheduled.current = false;
-        if (!content.isConnected || selectionToRestore.current !== remembered) return;
-        const anchorNode = nodeFromPath(content, remembered.anchorPath);
-        const focusNode = nodeFromPath(content, remembered.focusPath);
-        if (!anchorNode || !focusNode) return;
-        content.focus({ preventScroll: true });
-        const selection = document.getSelection();
-        if (!selection) return;
-        selection.setBaseAndExtent(
-          anchorNode,
-          clampSelectionOffset(anchorNode, remembered.anchorOffset),
-          focusNode,
-          clampSelectionOffset(focusNode, remembered.focusOffset),
-        );
-        selectionToRestore.current = null;
-        sourceContentToReplace.current = null;
-        document.querySelector('.writing-workbench')?.setAttribute('data-draft-workspace', '');
-      });
-    };
-
-    const observer = new MutationObserver(restoreSelectionAfterMount);
-    document.addEventListener('pointerdown', rememberSelectionBeforeExit, true);
-    observer.observe(document.body, { attributes: true, childList: true, subtree: true });
-    return () => {
-      document.removeEventListener('pointerdown', rememberSelectionBeforeExit, true);
-      observer.disconnect();
-    };
-  }, []);
 
   return <WritingCoreWorkbench {...props} bridge={bridge} />;
 }
@@ -164,9 +82,7 @@ function createWritingBridge(
 
   const planning = new Proxy(bridge.planning, {
     get(target, property, receiver) {
-      return property === 'listStructure'
-        ? listStructure
-        : Reflect.get(target, property, receiver);
+      return property === 'listStructure' ? listStructure : Reflect.get(target, property, receiver);
     },
   });
   const version = new Proxy(bridge.version, {
@@ -180,56 +96,8 @@ function createWritingBridge(
   return { ...bridge, planning, version };
 }
 
-function pathFromRoot(root: Node, node: Node): readonly number[] | null {
-  const path: number[] = [];
-  let current: Node | null = node;
-  while (current && current !== root) {
-    const parent: ParentNode | null = current.parentNode;
-    if (!parent) return null;
-    const index = Array.prototype.indexOf.call(parent.childNodes, current) as number;
-    if (index < 0) return null;
-    path.unshift(index);
-    current = parent;
-  }
-  return current === root ? path : null;
-}
-
-function nodeFromPath(root: Node, path: readonly number[]): Node | null {
-  let current: Node = root;
-  for (const index of path) {
-    const next = current.childNodes.item(index);
-    if (!next) return null;
-    current = next;
-  }
-  return current;
-}
-
-function clampSelectionOffset(node: Node, offset: number): number {
-  const maximum =
-    node.nodeType === Node.TEXT_NODE ? (node.textContent?.length ?? 0) : node.childNodes.length;
-  return Math.min(Math.max(0, offset), maximum);
-}
-
 function waitForDraftEditorHost(): Promise<void> {
   return new Promise((resolve) => {
-    const finish = (): void => {
-      requestAnimationFrame(() => resolve());
-    };
-    if (document.querySelector('[data-draft-editor-host]')) {
-      finish();
-      return;
-    }
-
-    const observer = new MutationObserver(() => {
-      if (!document.querySelector('[data-draft-editor-host]')) return;
-      observer.disconnect();
-      clearTimeout(timeout);
-      finish();
-    });
-    const timeout = window.setTimeout(() => {
-      observer.disconnect();
-      resolve();
-    }, 1_000);
-    observer.observe(document.body, { childList: true, subtree: true });
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
 }

@@ -17,6 +17,7 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
+import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
 
 export interface ContinuityIpcOptions {
   readonly ipcMain: IpcMain;
@@ -25,16 +26,14 @@ export interface ContinuityIpcOptions {
 }
 
 function failure(requestId: string, code: ErrorCode) {
+  const semantics = coreOperationFailureSemantics(
+    code,
+    'The continuity operation could not be completed.',
+  );
   return ContinuityCatalogResultSchema.parse({
     ok: false,
     requestId,
-    error: {
-      code,
-      message: 'The continuity operation could not be completed.',
-      retryable: ['COMMON_TIMEOUT_005', 'COMMON_INTERNAL_999', 'DB_BUSY_TIMEOUT_002'].includes(
-        code,
-      ),
-    },
+    error: { code, ...semantics },
   });
 }
 

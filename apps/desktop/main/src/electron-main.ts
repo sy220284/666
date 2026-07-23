@@ -314,6 +314,7 @@ async function bootstrap(): Promise<void> {
     rendererUrl,
     version: app.getVersion(),
     platform: process.platform,
+    enableTestFixtures: process.env.WORLDFORGE_E2E === '1' && !app.isPackaged,
     logger,
     getWindowPreferences: () => activeWindowPreferences,
     setAppearancePreferences: updateAppearancePreferences,

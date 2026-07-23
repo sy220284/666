@@ -20,7 +20,7 @@ jobs:
     env:
       TARGET_BRANCH: fix/governance-audit-m0-m3-integrated-coordination
       DIAGNOSTIC_BRANCH: diagnostic/patch-m0-m3-round2
-      EXPECTED_HEAD: 76e30be8f2eaa8eadd64b4235d09d7f896986b0a
+      EXPECTED_HEAD: 056d335855a655d43130006db6bcd5db1ea5e935
     steps:
       - uses: actions/checkout@v6
         with:
@@ -55,7 +55,7 @@ jobs:
           git checkout -B remediation-target "${actual}"
       - if: ${{ steps.diagnostic.outputs.run == 'true' }}
         run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply and format selection restore fix
+      - name: Apply and format parentNode type fix
         if: ${{ steps.diagnostic.outputs.run == 'true' }}
         shell: bash
         run: |
@@ -132,5 +132,5 @@ jobs:
           git config user.email "worldforge-audit@users.noreply.github.com"
           git add apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
           git diff --cached --check
-          git commit -m "fix(M3-10): restore editor selection after remount"
+          git commit -m "fix(M3-10): type editor selection parent node"
           git push origin HEAD:"${TARGET_BRANCH}"

@@ -58,6 +58,7 @@ export class DraftAutosaveCoordinator {
     if (this.#paused) return false;
     if (this.#inFlight) {
       const completed = await this.#inFlight;
+      if (this.#destroyed) return completed;
       if (!completed) return false;
       if (this.#dirty) return this.flush();
       return true;
@@ -70,6 +71,7 @@ export class DraftAutosaveCoordinator {
     this.#inFlight = operation;
     const completed = await operation;
     if (this.#inFlight === operation) this.#inFlight = null;
+    if (this.#destroyed) return completed;
     if (!completed) {
       this.#dirty = true;
       this.#emit('failed');
@@ -81,7 +83,9 @@ export class DraftAutosaveCoordinator {
   }
 
   destroy(): void {
+    if (this.#destroyed) return;
     this.#destroyed = true;
+    this.#dirty = false;
     this.#clearTimer();
     this.#onState?.('idle');
   }
@@ -101,6 +105,6 @@ export class DraftAutosaveCoordinator {
   }
 
   #emit(state: AutosaveState): void {
-    this.#onState?.(state);
+    if (!this.#destroyed) this.#onState?.(state);
   }
 }

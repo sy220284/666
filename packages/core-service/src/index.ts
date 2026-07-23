@@ -27,6 +27,7 @@ export * from './candidate.js';
 export * from './version.js';
 export * from './recovery.js';
 export * from './import-export.js';
+export * from './coordinated-import-export.js';
 export * from './migration-recovery.js';
 export * from './task-protocol.js';
 export * from './window-preferences.js';

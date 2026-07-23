@@ -50,6 +50,26 @@ describe('DraftAutosaveCoordinator', () => {
     coordinator.destroy();
     vi.useRealTimers();
   });
+
+  it('does not publish a late saved or failed state after the editor destroys the coordinator', async () => {
+    vi.useFakeTimers();
+    let release: ((value: boolean) => void) | undefined;
+    const states: string[] = [];
+    const coordinator = new DraftAutosaveCoordinator({
+      delayMs: 800,
+      save: () => new Promise<boolean>((resolve) => (release = resolve)),
+      onState: (state) => states.push(state),
+    });
+    coordinator.markDirty();
+    await vi.advanceTimersByTimeAsync(800);
+    expect(states).toEqual(['waiting', 'saving']);
+    coordinator.destroy();
+    expect(states).toEqual(['waiting', 'saving', 'idle']);
+    release?.(true);
+    await vi.runAllTimersAsync();
+    expect(states).toEqual(['waiting', 'saving', 'idle']);
+    vi.useRealTimers();
+  });
 });
 
 describe('writing tools', () => {

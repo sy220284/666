@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export interface SafeStorageAdapter {
@@ -24,17 +24,39 @@ function emptyCredentialFile(): CredentialFile {
   return { version: 1, records: {} };
 }
 
-function isCredentialFile(value: unknown): value is CredentialFile {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as { readonly version?: unknown; readonly records?: unknown };
+function isCredentialRecord(value: unknown): value is CredentialRecord {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Partial<CredentialRecord>;
   return (
-    candidate.version === 1 && Boolean(candidate.records) && typeof candidate.records === 'object'
+    typeof candidate.providerId === 'string' &&
+    candidate.providerId.length > 0 &&
+    typeof candidate.ciphertext === 'string' &&
+    candidate.ciphertext.length > 0 &&
+    typeof candidate.createdAt === 'string' &&
+    !Number.isNaN(Date.parse(candidate.createdAt))
+  );
+}
+
+function isCredentialFile(value: unknown): value is CredentialFile {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as { readonly version?: unknown; readonly records?: unknown };
+  if (
+    candidate.version !== 1 ||
+    !candidate.records ||
+    typeof candidate.records !== 'object' ||
+    Array.isArray(candidate.records)
+  ) {
+    return false;
+  }
+  return Object.entries(candidate.records).every(
+    ([credentialRef, record]) => credentialRef.startsWith('cred_') && isCredentialRecord(record),
   );
 }
 
 export class CredentialBroker {
   readonly #safeStorage: SafeStorageAdapter;
   readonly #filePath: string;
+  #mutationTail: Promise<void> = Promise.resolve();
 
   constructor(safeStorage: SafeStorageAdapter, filePath: string) {
     this.#safeStorage = safeStorage;
@@ -65,49 +87,73 @@ export class CredentialBroker {
     const directory = path.dirname(this.#filePath);
     await mkdir(directory, { recursive: true, mode: 0o700 });
     const temporaryPath = `${this.#filePath}.tmp-${process.pid}-${randomUUID()}`;
-    await writeFile(temporaryPath, `${JSON.stringify(file)}\n`, {
-      encoding: 'utf8',
-      mode: 0o600,
-      flag: 'wx',
-    });
-    await rename(temporaryPath, this.#filePath);
+    try {
+      await writeFile(temporaryPath, `${JSON.stringify(file)}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
+      await rename(temporaryPath, this.#filePath);
+    } finally {
+      await rm(temporaryPath, { force: true });
+    }
+  }
+
+  #enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.#mutationTail.then(operation);
+    this.#mutationTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  async #waitForMutations(): Promise<void> {
+    await this.#mutationTail;
   }
 
   async store(providerId: string, credential: string): Promise<string> {
     this.#assertSecureBackend();
+    if (!providerId) throw new Error('CREDENTIAL_PROVIDER_ID_EMPTY');
     if (!credential) throw new Error('CREDENTIAL_EMPTY');
-    const file = await this.#read();
-    const credentialRef = `cred_${randomUUID()}`;
-    const encrypted = this.#safeStorage.encryptString(credential);
-    await this.#write({
-      version: 1,
-      records: {
-        ...file.records,
-        [credentialRef]: {
-          providerId,
-          ciphertext: encrypted.toString('base64'),
-          createdAt: new Date().toISOString(),
+    return this.#enqueueMutation(async () => {
+      const file = await this.#read();
+      const credentialRef = `cred_${randomUUID()}`;
+      const encrypted = this.#safeStorage.encryptString(credential);
+      await this.#write({
+        version: 1,
+        records: {
+          ...file.records,
+          [credentialRef]: {
+            providerId,
+            ciphertext: encrypted.toString('base64'),
+            createdAt: new Date().toISOString(),
+          },
         },
-      },
+      });
+      return credentialRef;
     });
-    return credentialRef;
   }
 
   async has(credentialRef: string): Promise<boolean> {
+    await this.#waitForMutations();
     return Boolean((await this.#read()).records[credentialRef]);
   }
 
-  async remove(credentialRef: string): Promise<boolean> {
-    const file = await this.#read();
-    if (!file.records[credentialRef]) return false;
-    const records = { ...file.records };
-    delete records[credentialRef];
-    await this.#write({ version: 1, records });
-    return true;
+  remove(credentialRef: string): Promise<boolean> {
+    return this.#enqueueMutation(async () => {
+      const file = await this.#read();
+      if (!file.records[credentialRef]) return false;
+      const records = { ...file.records };
+      delete records[credentialRef];
+      await this.#write({ version: 1, records });
+      return true;
+    });
   }
 
   async resolve(credentialRef: string): Promise<string | null> {
     this.#assertSecureBackend();
+    await this.#waitForMutations();
     const record = (await this.#read()).records[credentialRef];
     if (!record) return null;
     return this.#safeStorage.decryptString(Buffer.from(record.ciphertext, 'base64'));

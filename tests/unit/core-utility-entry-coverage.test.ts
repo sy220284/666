@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   parentListener: undefined as
-    | ((event: { data: unknown; ports: readonly FakeTransferredPort[] }) => void)
-    | undefined,
+    ((event: { data: unknown; ports: readonly FakeTransferredPort[] }) => void) | undefined,
   posted: [] as unknown[],
   protocol: undefined as FakeTaskProtocol | undefined,
   invalidControl: false,
@@ -93,32 +92,42 @@ vi.mock('../../packages/core-service/src/app-runtime.js', () => ({
   },
 }));
 
-for (const path of [
-  'candidate-apply',
-  'candidate',
-  'checkpoint-aware-recovery',
-  'continuity',
-  'coordinated-import-export',
-  'draft',
-  'entity-canon',
-  'project-planning',
-  'project-structure',
-  'reference-aware-structure-operations',
-  'scene-beat',
-  'version',
-]) {
-  vi.mock(`../../packages/core-service/src/${path}.js`, () => {
-    const exportName =
-      path
-        .split('-')
-        .map((part) => part[0]?.toUpperCase() + part.slice(1))
-        .join('') +
-      (path === 'checkpoint-aware-recovery' || path === 'reference-aware-structure-operations'
-        ? 'Service'
-        : 'Service');
-    return { [exportName]: class {} };
-  });
-}
+vi.mock('../../packages/core-service/src/candidate-apply.js', () => ({
+  CandidateApplyService: class {},
+}));
+vi.mock('../../packages/core-service/src/candidate.js', () => ({
+  CandidateService: class {},
+}));
+vi.mock('../../packages/core-service/src/checkpoint-aware-recovery.js', () => ({
+  CheckpointAwareRecoveryService: class {},
+}));
+vi.mock('../../packages/core-service/src/continuity.js', () => ({
+  ContinuityService: class {},
+}));
+vi.mock('../../packages/core-service/src/coordinated-import-export.js', () => ({
+  CoordinatedImportExportService: class {},
+}));
+vi.mock('../../packages/core-service/src/draft.js', () => ({
+  DraftService: class {},
+}));
+vi.mock('../../packages/core-service/src/entity-canon.js', () => ({
+  EntityCanonService: class {},
+}));
+vi.mock('../../packages/core-service/src/project-planning.js', () => ({
+  ProjectPlanningService: class {},
+}));
+vi.mock('../../packages/core-service/src/project-structure.js', () => ({
+  ProjectStructureService: class {},
+}));
+vi.mock('../../packages/core-service/src/reference-aware-structure-operations.js', () => ({
+  ReferenceAwareStructureOperationService: class {},
+}));
+vi.mock('../../packages/core-service/src/scene-beat.js', () => ({
+  SceneBeatService: class {},
+}));
+vi.mock('../../packages/core-service/src/version.js', () => ({
+  VersionService: class {},
+}));
 
 vi.mock('../../packages/core-service/src/project-workspace.js', () => ({
   ProjectWorkspaceService: class {
@@ -230,9 +239,9 @@ describe('Core utility entry unit and integration coverage', () => {
       'CORE_PARENT_PORT_UNAVAILABLE',
     );
 
-    await expect(importEntry(absoluteArguments.filter((value) => !value.startsWith('--app-version=')))).rejects.toThrow(
-      'CORE_ARGUMENT_MISSING_APP_VERSION',
-    );
+    await expect(
+      importEntry(absoluteArguments.filter((value) => !value.startsWith('--app-version='))),
+    ).rejects.toThrow('CORE_ARGUMENT_MISSING_APP_VERSION');
     await expect(
       importEntry(
         absoluteArguments.map((value) =>
@@ -332,7 +341,11 @@ describe('Core utility entry unit and integration coverage', () => {
       ports: [],
     });
     await flush();
-    expect(state.posted.filter((message) => (message as { type?: string }).type === 'core.window-preferences-result')).toHaveLength(4);
+    expect(
+      state.posted.filter(
+        (message) => (message as { type?: string }).type === 'core.window-preferences-result',
+      ),
+    ).toHaveLength(4);
     expect(state.posted).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ result: expect.objectContaining({ ok: true }) }),
@@ -386,7 +399,9 @@ describe('Core utility entry unit and integration coverage', () => {
     await flush();
     await vi.runAllTimersAsync();
     expect(state.protocol?.close).toHaveBeenCalled();
-    expect(state.posted).toContainEqual(expect.objectContaining({ type: 'core.shutdown-complete' }));
+    expect(state.posted).toContainEqual(
+      expect.objectContaining({ type: 'core.shutdown-complete' }),
+    );
     expect(state.processExit).toHaveBeenCalledWith(0);
     state.parentListener?.({ data: control('core.shutdown'), ports: [] });
   });

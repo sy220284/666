@@ -222,7 +222,9 @@ describe('Prompt registry coverage', () => {
       taskType: 'skeleton',
       constraintHash: hash,
     });
-    expect(JSON.parse(bundle.messages[0]?.content ?? '{}')).toMatchObject({ requiredBeats: [beat] });
+    expect(JSON.parse(bundle.messages[0]?.content ?? '{}')).toMatchObject({
+      requiredBeats: [beat],
+    });
   });
 
   it('builds both text and structured chapter bundles', () => {

@@ -17,6 +17,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    setupFiles: ['tests/setup/restore-global-state.ts'],
     testTimeout: 20_000,
     hookTimeout: 20_000,
     include: [
@@ -41,6 +42,12 @@ export default defineConfig({
         'packages/prompts/src/**/*.ts',
       ],
       exclude: ['**/*.d.ts', '**/dist/**', '**/node_modules/**'],
+      thresholds: {
+        statements: 75,
+        branches: 75,
+        functions: 75,
+        lines: 75,
+      },
     },
   },
 });

@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { RequestIdSchema } from '@worldforge/contracts';
 
+import { BoundedIdempotentPromiseCache } from '../bounded-idempotent-promise-cache.js';
 import {
   applyPendingMigrations,
   inspectMigrations,
@@ -340,7 +341,7 @@ export abstract class ManagedDatabase {
   readonly #reader: DatabaseSync;
   readonly #writer: DatabaseSync | undefined;
   readonly #queue: SerializedWriteQueue | undefined;
-  readonly #idempotentResults = new Map<string, Promise<unknown>>();
+  readonly #idempotentResults = new BoundedIdempotentPromiseCache();
   #closed = false;
 
   protected constructor(state: OpenedDatabaseState) {
@@ -377,27 +378,16 @@ export abstract class ManagedDatabase {
       );
     }
 
-    const existing = this.#idempotentResults.get(requestId);
+    const existing = this.#idempotentResults.get<T>(requestId);
     if (existing) {
-      return { value: (await existing) as T, replayed: true };
+      return { value: await existing, replayed: true };
     }
 
-    const result = queue.enqueue(() => this.#transaction(writer, operation));
-    this.#idempotentResults.set(requestId, result);
-    try {
-      const value = await result;
-      while (this.#idempotentResults.size > 1_000) {
-        const oldest = this.#idempotentResults.keys().next().value;
-        if (typeof oldest !== 'string') break;
-        this.#idempotentResults.delete(oldest);
-      }
-      return { value, replayed: false };
-    } catch (error) {
-      if (this.#idempotentResults.get(requestId) === result) {
-        this.#idempotentResults.delete(requestId);
-      }
-      throw error;
-    }
+    const result = this.#idempotentResults.remember(
+      requestId,
+      queue.enqueue(() => this.#transaction(writer, operation)),
+    );
+    return { value: await result, replayed: false };
   }
 
   quickCheck(): IntegrityReport {

@@ -111,18 +111,32 @@ jobs:
             tests/unit/core-recovery-supervisor.test.ts \
             tests/unit/ipc-error-semantics.test.ts
       - name: Typecheck and focused acceptance
+        id: acceptance
+        continue-on-error: true
         shell: bash
         run: |
-          pnpm typecheck
-          pnpm test:prepare
-          pnpm exec vitest run \
-            tests/unit/bridge-request-detachment.test.ts \
-            tests/unit/core-recovery-supervisor.test.ts \
-            tests/unit/ipc-error-semantics.test.ts \
-            tests/integration/recovery-identity-remap.test.ts \
-            tests/migration/integrated-coordination-migration.test.ts \
-            tests/migration/final-coordination-remediation.test.ts \
-            tests/performance/scene-beat-rebind-performance.test.ts
+          set -o pipefail
+          {
+            pnpm typecheck
+            pnpm test:prepare
+            pnpm exec vitest run \
+              tests/unit/bridge-request-detachment.test.ts \
+              tests/unit/core-recovery-supervisor.test.ts \
+              tests/unit/ipc-error-semantics.test.ts \
+              tests/integration/recovery-identity-remap.test.ts \
+              tests/migration/integrated-coordination-migration.test.ts \
+              tests/migration/final-coordination-remediation.test.ts \
+              tests/performance/scene-beat-rebind-performance.test.ts
+          } 2>&1 | tee final-remediation-acceptance.log
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: final-remediation-acceptance-log
+          path: final-remediation-acceptance.log
+          retention-days: 1
+      - name: Fail when acceptance failed
+        if: ${{ steps.acceptance.outcome != 'success' }}
+        run: exit 1
       - name: Commit exact remediation patch
         shell: bash
         run: |

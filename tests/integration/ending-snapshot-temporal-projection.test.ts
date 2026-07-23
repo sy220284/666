@@ -193,11 +193,13 @@ describe('EndingSnapshot temporal projection', () => {
     expect(third.content.foreshadowings).toEqual([
       { id: stagedForeshadowing.id, status: 'reinforced' },
     ]);
-    expect(third.content.arcMilestones).toEqual(
+    const byId = <Value extends { readonly id: string }>(left: Value, right: Value) =>
+      left.id.localeCompare(right.id, 'en');
+    expect([...third.content.arcMilestones].sort(byId)).toEqual(
       [
         { id: hitMilestone.id, status: 'hit', actualChapterId: seeded.chapter2.id },
         { id: skippedMilestone.id, status: 'skipped', actualChapterId: null },
-      ].sort((left, right) => left.id.localeCompare(right.id, 'en')),
+      ].sort(byId),
     );
     expect(first.content.foreshadowings).not.toContainEqual(
       expect.objectContaining({ id: futurePlan.id }),

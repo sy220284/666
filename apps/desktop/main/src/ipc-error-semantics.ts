@@ -1,5 +1,7 @@
 import type { ErrorCode } from '@worldforge/contracts';
 
+export type CoreOperationKind = 'query' | 'mutation';
+
 export interface CoreOperationFailureSemantics {
   readonly message: string;
   readonly retryable: boolean;
@@ -9,8 +11,16 @@ export interface CoreOperationFailureSemantics {
 export function coreOperationFailureSemantics(
   code: ErrorCode,
   fallbackMessage: string,
+  operationKind: CoreOperationKind = 'mutation',
 ): CoreOperationFailureSemantics {
   if (code === 'COMMON_TIMEOUT_005') {
+    if (operationKind === 'query') {
+      return {
+        message: 'Core did not return the query result before the timeout.',
+        retryable: true,
+        userAction: 'Retry the read operation; it does not create duplicate writes.',
+      };
+    }
     return {
       message:
         'Core did not return a final result before the timeout; the operation may still have completed.',

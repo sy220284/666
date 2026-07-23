@@ -28,7 +28,7 @@ describe('application settings concurrent patch coordination', () => {
     });
 
     await Promise.all([
-      runtime.appSettings.update(randomUUID(), { themeId: 'theme-concurrent' }),
+      runtime.appSettings.update(randomUUID(), { themeId: 'theme-b' }),
       runtime.appSettings.update(randomUUID(), { defaultMode: 'professional' }),
       runtime.appSettings.update(randomUUID(), { reduceMotion: true }),
     ]);
@@ -36,7 +36,7 @@ describe('application settings concurrent patch coordination', () => {
     expect(runtime.appSettings.get()).toMatchObject({
       source: 'stored',
       settings: {
-        themeId: 'theme-concurrent',
+        themeId: 'theme-b',
         defaultMode: 'professional',
         reduceMotion: true,
       },

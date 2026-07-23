@@ -114,6 +114,7 @@ export class CredentialBroker {
 
   store(providerId: string, credential: string): Promise<string> {
     this.#assertSecureBackend();
+    if (!providerId) throw new Error('CREDENTIAL_PROVIDER_ID_EMPTY');
     if (!credential) throw new Error('CREDENTIAL_EMPTY');
     return this.#enqueueMutation(async () => {
       const file = await this.#read();

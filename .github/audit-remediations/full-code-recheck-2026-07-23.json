@@ -21,9 +21,7 @@
     {
       "taskId": "M1-02",
       "finding": "Project lifecycle idempotency cleanup could evict queued operations before completion and admit a duplicate lifecycle mutation.",
-      "allowedPaths": [
-        "packages/core-service/src/project-workspace.ts"
-      ]
+      "allowedPaths": ["packages/core-service/src/project-workspace.ts"]
     },
     {
       "taskId": "M0-02",

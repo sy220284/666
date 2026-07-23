@@ -43,12 +43,24 @@ vi.mock('../../packages/core-service/src/narrative-planning.js', () => {
   return {
     NarrativePlanningServiceError,
     NarrativePlanningService: class {
-      list(...args: unknown[]) { return invoke('list', args); }
-      async saveForeshadowing(...args: unknown[]) { return invoke('saveForeshadowing', args); }
-      async transitionForeshadowing(...args: unknown[]) { return invoke('transitionForeshadowing', args); }
-      async saveCharacterArc(...args: unknown[]) { return invoke('saveCharacterArc', args); }
-      async saveArcMilestone(...args: unknown[]) { return invoke('saveArcMilestone', args); }
-      async transitionArcMilestone(...args: unknown[]) { return invoke('transitionArcMilestone', args); }
+      list(...args: unknown[]) {
+        return invoke('list', args);
+      }
+      async saveForeshadowing(...args: unknown[]) {
+        return invoke('saveForeshadowing', args);
+      }
+      async transitionForeshadowing(...args: unknown[]) {
+        return invoke('transitionForeshadowing', args);
+      }
+      async saveCharacterArc(...args: unknown[]) {
+        return invoke('saveCharacterArc', args);
+      }
+      async saveArcMilestone(...args: unknown[]) {
+        return invoke('saveArcMilestone', args);
+      }
+      async transitionArcMilestone(...args: unknown[]) {
+        return invoke('transitionArcMilestone', args);
+      }
     },
   };
 });
@@ -71,12 +83,24 @@ vi.mock('../../packages/core-service/src/state-proposal.js', () => {
   return {
     StateProposalServiceError,
     StateProposalService: class {
-      list(...args: unknown[]) { return invoke('list', args); }
-      async generate(...args: unknown[]) { return invoke('generate', args); }
-      async resolve(...args: unknown[]) { return invoke('resolve', args); }
-      async refreshSnapshot(...args: unknown[]) { return invoke('refreshSnapshot', args); }
-      readSnapshot(...args: unknown[]) { return invoke('readSnapshot', args); }
-      async invalidateDerived(...args: unknown[]) { return invoke('invalidateDerived', args); }
+      list(...args: unknown[]) {
+        return invoke('list', args);
+      }
+      async generate(...args: unknown[]) {
+        return invoke('generate', args);
+      }
+      async resolve(...args: unknown[]) {
+        return invoke('resolve', args);
+      }
+      async refreshSnapshot(...args: unknown[]) {
+        return invoke('refreshSnapshot', args);
+      }
+      readSnapshot(...args: unknown[]) {
+        return invoke('readSnapshot', args);
+      }
+      async invalidateDerived(...args: unknown[]) {
+        return invoke('invalidateDerived', args);
+      }
     },
   };
 });
@@ -92,11 +116,23 @@ const operation = (name: string): never => ({ operation: name, input }) as never
 
 const routeCases = [
   [NARRATIVE_PLANNING_COMMANDS.list, 'narrative.list', [input]],
-  [NARRATIVE_PLANNING_COMMANDS.saveForeshadowing, 'narrative.saveForeshadowing', [requestId, input]],
-  [NARRATIVE_PLANNING_COMMANDS.transitionForeshadowing, 'narrative.transitionForeshadowing', [requestId, input]],
+  [
+    NARRATIVE_PLANNING_COMMANDS.saveForeshadowing,
+    'narrative.saveForeshadowing',
+    [requestId, input],
+  ],
+  [
+    NARRATIVE_PLANNING_COMMANDS.transitionForeshadowing,
+    'narrative.transitionForeshadowing',
+    [requestId, input],
+  ],
   [NARRATIVE_PLANNING_COMMANDS.saveCharacterArc, 'narrative.saveCharacterArc', [requestId, input]],
   [NARRATIVE_PLANNING_COMMANDS.saveArcMilestone, 'narrative.saveArcMilestone', [requestId, input]],
-  [NARRATIVE_PLANNING_COMMANDS.transitionArcMilestone, 'narrative.transitionArcMilestone', [requestId, input]],
+  [
+    NARRATIVE_PLANNING_COMMANDS.transitionArcMilestone,
+    'narrative.transitionArcMilestone',
+    [requestId, input],
+  ],
   [STATE_PROPOSAL_COMMANDS.list, 'proposal.list', [input]],
   [STATE_PROPOSAL_COMMANDS.generate, 'proposal.generate', [requestId, input]],
   [STATE_PROPOSAL_COMMANDS.resolve, 'proposal.resolve', [requestId, input]],
@@ -113,7 +149,9 @@ describe('Core narrative planning router exact mapping', () => {
   });
 
   it.each(routeCases)('maps %s to %s with exact arguments', async (name, key, args) => {
-    await expect(routeNarrativePlanningOperation(services, requestId, operation(name))).resolves.toMatchObject({
+    await expect(
+      routeNarrativePlanningOperation(services, requestId, operation(name)),
+    ).resolves.toMatchObject({
       ok: true,
       operation: name,
       data: { marker: key },

@@ -1,5 +1,6 @@
 name: 固化75%覆盖率门禁
 
+# 基于最新Head执行一次性固化，完成后删除本工作流。
 on:
   push:
     branches:

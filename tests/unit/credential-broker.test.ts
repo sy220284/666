@@ -1,7 +1,8 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { format } from 'prettier';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -49,5 +50,26 @@ describe('CredentialBroker', () => {
     await expect(
       Promise.all(references.map((reference) => broker.has(reference))),
     ).resolves.toEqual(references.map(() => false));
+  });
+
+  it('captures the repository Prettier output for the coordinated import service', async () => {
+    const sourcePath = path.resolve('packages/core-service/src/coordinated-import-export.ts');
+    const source = await readFile(sourcePath, 'utf8');
+    const formatted = await format(source, {
+      filepath: sourcePath,
+      printWidth: 100,
+      singleQuote: true,
+      trailingComma: 'all',
+    });
+    if (source !== formatted) {
+      const outputDirectory = path.resolve('test-results/unit');
+      await mkdir(outputDirectory, { recursive: true });
+      await writeFile(
+        path.join(outputDirectory, 'coordinated-import-export.prettier.ts'),
+        formatted,
+        'utf8',
+      );
+    }
+    expect(source).toBe(formatted);
   });
 });

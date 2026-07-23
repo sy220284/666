@@ -7,7 +7,7 @@
 DROP TRIGGER IF EXISTS trg_scene_beat_link_capture_before_block_delete;
 DROP TRIGGER IF EXISTS trg_scene_beat_link_rebind_after_block_insert;
 DROP TRIGGER IF EXISTS trg_scene_beat_link_rebind_after_active_draft_change;
-DROP TABLE IF EXISTS scene_beat_link_rebind_queue;
+ALTER TABLE scene_beat_link_rebind_queue RENAME TO scene_beat_link_rebind_queue_legacy;
 
 CREATE TABLE scene_beat_link_rebind_queue (
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -24,6 +24,20 @@ CREATE INDEX idx_scene_beat_link_rebind_target
 ON scene_beat_link_rebind_queue(
   project_id, target_chapter_id, logical_block_id, scene_beat_id
 );
+
+INSERT OR REPLACE INTO scene_beat_link_rebind_queue(
+  project_id, scene_beat_id, logical_block_id, source_draft_id,
+  source_chapter_id, target_chapter_id, created_at
+)
+SELECT beat.project_id, legacy.scene_beat_id, legacy.logical_block_id,
+       legacy.source_draft_id, source_draft.chapter_id, beat.chapter_id,
+       legacy.created_at
+  FROM scene_beat_link_rebind_queue_legacy legacy
+  JOIN scene_beats beat ON beat.id = legacy.scene_beat_id
+  JOIN drafts source_draft ON source_draft.id = legacy.source_draft_id
+ WHERE beat.deleted_at IS NULL;
+
+DROP TABLE scene_beat_link_rebind_queue_legacy;
 
 -- Capture intent from the SceneBeat's current planning chapter. A later block
 -- insertion may consume the row only in that exact Project/chapter and only in

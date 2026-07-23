@@ -31,7 +31,5 @@
     }
   ],
   "evidenceMigrationTasks": ["M3-05"],
-  "governancePaths": [
-    ".github/audit-remediations/m0-m3-snapshot-projection-2026-07-23.json"
-  ]
+  "governancePaths": [".github/audit-remediations/m0-m3-snapshot-projection-2026-07-23.json"]
 }

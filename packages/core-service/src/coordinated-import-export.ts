@@ -100,10 +100,7 @@ export class CoordinatedImportExportService extends ImportExportService {
     this.#maximumRetainedPlans = maximumRetainedPlans;
   }
 
-  override async previewImport(
-    raw: ImportPreviewInput,
-    selectedPath: string,
-  ): Promise<ImportPlan> {
+  override async previewImport(raw: ImportPreviewInput, selectedPath: string): Promise<ImportPlan> {
     const sourcePath = await validatedImportSource(selectedPath, 'preview');
     const service = new ImportExportService(this.#workspace, this.#recovery, this.#baseOptions);
     const plan = await service.previewImport(raw, sourcePath);

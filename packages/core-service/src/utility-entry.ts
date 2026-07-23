@@ -14,9 +14,9 @@ import { CandidateApplyService } from './candidate-apply.js';
 import { CandidateService } from './candidate.js';
 import { CheckpointAwareRecoveryService } from './checkpoint-aware-recovery.js';
 import { ContinuityService } from './continuity.js';
+import { CoordinatedImportExportService } from './coordinated-import-export.js';
 import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
-import { ImportExportService } from './import-export.js';
 import { ProjectPlanningService } from './project-planning.js';
 import { ProjectStructureService } from './project-structure.js';
 import { ProjectWorkspaceService } from './project-workspace.js';
@@ -138,7 +138,7 @@ const services: UtilityProjectServices = {
   candidates: new CandidateService(projectWorkspace),
   candidateApply: new CandidateApplyService(projectWorkspace),
   versions: new VersionService(projectWorkspace),
-  textIo: new ImportExportService(projectWorkspace, recovery),
+  textIo: new CoordinatedImportExportService(projectWorkspace, recovery),
   checkpointRequestId,
 };
 

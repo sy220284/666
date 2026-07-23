@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-m0-m3-quality-recheck-2026-07-23",
+  "baseCommit": "8ab79656174ee0a45f6d61d71eafba92762bb9c8",
+  "branch": "fix/governance-audit-m0-m3-quality-recheck",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-02",
+      "finding": "Concurrent credential read-modify-write operations could overwrite successful records and temporary credential files were not cleaned after every failure path.",
+      "allowedPaths": [
+        "apps/desktop/main/src/credential-broker.ts",
+        "tests/unit/credential-broker.test.ts"
+      ]
+    },
+    {
+      "taskId": "M1-06",
+      "finding": "An in-flight autosave could publish a late saved or failed state after its editor coordinator had been destroyed.",
+      "allowedPaths": [
+        "packages/editor-core/src/autosave.ts",
+        "tests/unit/autosave-writing-tools.test.ts"
+      ]
+    },
+    {
+      "taskId": "M1-09",
+      "finding": "Import preview plans were retained without a capacity bound and commit did not revalidate the source file type and size before reading it again.",
+      "allowedPaths": [
+        "packages/core-service/src/coordinated-import-export.ts",
+        "packages/core-service/src/index.ts",
+        "packages/core-service/src/utility-entry.ts",
+        "tests/integration/coordinated-import-export-service.test.ts",
+        "docs/architecture/M0_M3_COMPLETED_CODE_AUDIT_2026-07-23.md"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M1-09"],
+  "governancePaths": [
+    ".github/audit-remediations/m0-m3-quality-recheck-2026-07-23.json"
+  ]
+}

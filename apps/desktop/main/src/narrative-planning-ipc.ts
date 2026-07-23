@@ -28,7 +28,10 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
-import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
+import {
+  coreOperationFailureSemantics,
+  type CoreOperationKind,
+} from './ipc-error-semantics.js';
 
 export interface NarrativePlanningIpcOptions {
   readonly ipcMain: IpcMain;
@@ -55,6 +58,7 @@ interface Registration {
   readonly channel: string;
   readonly schema: CommandSchema;
   readonly operation: string;
+  readonly operationKind: CoreOperationKind;
   readonly resultSchema: ResultSchema;
   readonly failureMessage: string;
 }
@@ -64,8 +68,9 @@ function failure(
   requestId: string,
   code: ErrorCode,
   message: string,
+  operationKind: CoreOperationKind,
 ): unknown {
-  const semantics = coreOperationFailureSemantics(code, message);
+  const semantics = coreOperationFailureSemantics(code, message, operationKind);
   return resultSchema.parse({
     ok: false,
     requestId,
@@ -84,6 +89,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.list,
       schema: NarrativePlanningListCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.list,
+      operationKind: 'query',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -91,6 +97,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.saveForeshadowing,
       schema: ForeshadowingSaveCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.saveForeshadowing,
+      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -98,6 +105,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.transitionForeshadowing,
       schema: ForeshadowingTransitionCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.transitionForeshadowing,
+      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -105,6 +113,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.saveCharacterArc,
       schema: CharacterArcSaveCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.saveCharacterArc,
+      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -112,6 +121,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.saveArcMilestone,
       schema: ArcMilestoneSaveCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.saveArcMilestone,
+      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -119,6 +129,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.transitionArcMilestone,
       schema: ArcMilestoneTransitionCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.transitionArcMilestone,
+      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -126,6 +137,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.list,
       schema: StateProposalListCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.list,
+      operationKind: 'query',
       resultSchema: StateProposalCatalogResultSchema,
       failureMessage: 'The state proposal operation could not be completed.',
     },
@@ -133,6 +145,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.generate,
       schema: StateProposalGenerateCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.generate,
+      operationKind: 'mutation',
       resultSchema: StateProposalCatalogResultSchema,
       failureMessage: 'The state proposal operation could not be completed.',
     },
@@ -140,6 +153,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.resolve,
       schema: StateProposalResolveCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.resolve,
+      operationKind: 'mutation',
       resultSchema: StateProposalCatalogResultSchema,
       failureMessage: 'The state proposal operation could not be completed.',
     },
@@ -147,6 +161,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.refreshSnapshot,
       schema: EndingSnapshotRefreshCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.refreshSnapshot,
+      operationKind: 'mutation',
       resultSchema: EndingSnapshotResultSchema,
       failureMessage: 'The ending snapshot operation could not be completed.',
     },
@@ -154,6 +169,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.readSnapshot,
       schema: EndingSnapshotReadCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.readSnapshot,
+      operationKind: 'query',
       resultSchema: EndingSnapshotReadResultEnvelopeSchema,
       failureMessage: 'The ending snapshot operation could not be completed.',
     },
@@ -161,6 +177,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.invalidateDerived,
       schema: DerivedInvalidationCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.invalidateDerived,
+      operationKind: 'mutation',
       resultSchema: DerivedInvalidationResultEnvelopeSchema,
       failureMessage: 'The derived invalidation operation could not be completed.',
     },
@@ -175,6 +192,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
           parsed.success ? parsed.data.requestId : randomUUID(),
           'COMMON_INVALID_INPUT_001',
           registration.failureMessage,
+          registration.operationKind,
         );
       }
       const coreOperation = CoreProjectOperationSchema.parse({
@@ -191,6 +209,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
           parsed.data.requestId,
           result.errorCode,
           registration.failureMessage,
+          registration.operationKind,
         );
       }
       return registration.resultSchema.parse({

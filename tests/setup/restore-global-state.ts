@@ -5,6 +5,9 @@ const baselineEnvironment = { ...process.env };
 const baselineResourcesPath = Object.getOwnPropertyDescriptor(process, 'resourcesPath');
 const baselineParentPort = Object.getOwnPropertyDescriptor(process, 'parentPort');
 const baselineMessageChannel = Object.getOwnPropertyDescriptor(globalThis, 'MessageChannel');
+const baselineDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+const baselineWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+const baselineNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
 
 function restoreProperty(target: object, key: PropertyKey, descriptor?: PropertyDescriptor): void {
   if (descriptor) {
@@ -23,4 +26,7 @@ afterEach(() => {
   restoreProperty(process, 'resourcesPath', baselineResourcesPath);
   restoreProperty(process, 'parentPort', baselineParentPort);
   restoreProperty(globalThis, 'MessageChannel', baselineMessageChannel);
+  restoreProperty(globalThis, 'document', baselineDocument);
+  restoreProperty(globalThis, 'window', baselineWindow);
+  restoreProperty(globalThis, 'navigator', baselineNavigator);
 });

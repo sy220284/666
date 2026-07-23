@@ -77,10 +77,7 @@ describe('CoordinatedImportExportService', () => {
       const plans = [];
       for (const sourcePath of paths) {
         plans.push(
-          await value.service.previewImport(
-            { projectId: value.project.projectId },
-            sourcePath,
-          ),
+          await value.service.previewImport({ projectId: value.project.projectId }, sourcePath),
         );
       }
 

@@ -37,17 +37,17 @@ describe('CredentialBroker', () => {
       credentials.map((credential, index) => broker.store(`provider-${index}`, credential)),
     );
 
-    await expect(Promise.all(references.map((reference) => broker.has(reference)))).resolves.toEqual(
-      references.map(() => true),
-    );
+    await expect(
+      Promise.all(references.map((reference) => broker.has(reference))),
+    ).resolves.toEqual(references.map(() => true));
     await expect(
       Promise.all(references.map((reference) => broker.resolve(reference))),
     ).resolves.toEqual(credentials);
 
     const removed = await Promise.all(references.map((reference) => broker.remove(reference)));
     expect(removed).toEqual(references.map(() => true));
-    await expect(Promise.all(references.map((reference) => broker.has(reference)))).resolves.toEqual(
-      references.map(() => false),
-    );
+    await expect(
+      Promise.all(references.map((reference) => broker.has(reference))),
+    ).resolves.toEqual(references.map(() => false));
   });
 });

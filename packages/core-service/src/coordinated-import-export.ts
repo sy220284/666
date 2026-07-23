@@ -138,7 +138,9 @@ export class CoordinatedImportExportService extends ImportExportService {
     } catch (error) {
       if (
         !(error instanceof ImportExportServiceError) ||
-        ['IMPORT_PLAN_STALE', 'IMPORT_FORMAT_UNSUPPORTED', 'IMPORT_ARCHIVE_LIMIT'].includes(error.code)
+        ['IMPORT_PLAN_STALE', 'IMPORT_FORMAT_UNSUPPORTED', 'IMPORT_ARCHIVE_LIMIT'].includes(
+          error.code,
+        )
       ) {
         this.#retainedPlans.delete(input.planId);
       }

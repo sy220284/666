@@ -112,7 +112,7 @@ export class CredentialBroker {
     await this.#mutationTail;
   }
 
-  store(providerId: string, credential: string): Promise<string> {
+  async store(providerId: string, credential: string): Promise<string> {
     this.#assertSecureBackend();
     if (!providerId) throw new Error('CREDENTIAL_PROVIDER_ID_EMPTY');
     if (!credential) throw new Error('CREDENTIAL_EMPTY');

@@ -7,7 +7,7 @@ const source = (path: string): string => fileURLToPath(new URL(path, import.meta
 export default defineConfig({
   resolve: {
     alias: {
-      '@worldforge/contracts': source('./packages/contracts/src/index.ts'),
+      '@worldforge/contracts': source('./packages/contracts/src/public-index.ts'),
       '@worldforge/core-service': source('./packages/core-service/src/index.ts'),
       '@worldforge/domain': source('./packages/domain/src/index.ts'),
       '@worldforge/editor-core': source('./packages/editor-core/src/index.ts'),

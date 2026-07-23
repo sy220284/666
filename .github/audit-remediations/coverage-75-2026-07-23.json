@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-coverage-75-2026-07-23",
+  "baseCommit": "4538660ebf3d0c4f5889bdc1f18c25c34937ca09",
+  "branch": "fix/governance-audit-coverage-75-2026-07-23",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-01",
+      "finding": "Product source coverage was disabled and CI had no regression threshold, so green tests could not prevent coverage decay.",
+      "allowedPaths": [
+        "vitest.coverage.config.ts",
+        "package.json",
+        "pnpm-lock.yaml",
+        ".github/workflows/quality-core.yml",
+        "docs/architecture/TEST_COVERAGE_75_REMEDIATION_2026-07-23.md"
+      ]
+    },
+    {
+      "taskId": "M0-02",
+      "finding": "Electron Main bootstrap, shutdown, dialog, Core process adapter and Preload bridge branches were materially under-tested.",
+      "allowedPaths": [
+        "tests/unit/electron-main-bootstrap-coverage.test.ts",
+        "tests/unit/preload-bridge-coverage.test.ts"
+      ]
+    },
+    {
+      "taskId": "M0-04",
+      "finding": "IPC handler, Core utility entry, routing and error-mapping branches lacked complete success, rejection and failure-path regression coverage.",
+      "allowedPaths": [
+        "tests/unit/ipc-handlers-branch-coverage.test.ts",
+        "tests/unit/core-utility-errors-coverage.test.ts",
+        "tests/unit/core-project-routers-coverage.test.ts",
+        "tests/unit/core-narrative-router-coverage.test.ts",
+        "tests/unit/core-utility-entry-coverage.test.ts",
+        "tests/unit/core-utility-router-coverage.test.ts"
+      ]
+    },
+    {
+      "taskId": "M0-06",
+      "finding": "Multi-display restoration and responsive layout boundary behavior lacked complete boundary and invalid-input regression coverage.",
+      "allowedPaths": [
+        "tests/unit/electron-window-state-coverage.test.ts",
+        "tests/unit/renderer-layout-model-coverage.test.ts"
+      ]
+    },
+    {
+      "taskId": "M0-07",
+      "finding": "Prompt cleaning, output parsing, mode policy and registry branches were not measured against source and were effectively uncovered.",
+      "allowedPaths": ["tests/unit/prompts-coverage.test.ts"]
+    },
+    {
+      "taskId": "M1-04",
+      "finding": "Draft document conversion, metadata validation, command and synchronization branches were only partially covered.",
+      "allowedPaths": ["tests/unit/editor-core-draft-document-coverage.test.ts"]
+    },
+    {
+      "taskId": "M2-03",
+      "finding": "Editor and Core Candidate Diff structural, cooperative slicing, cancellation and Worker paths lacked complete regression coverage.",
+      "allowedPaths": [
+        "tests/unit/editor-core-diff-coverage.test.ts",
+        "tests/unit/core-candidate-diff-coverage.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-07",
+      "finding": "Renderer Core recovery supervision had large untested health, restart, project reopen, clipboard and lifecycle branches.",
+      "allowedPaths": ["tests/unit/core-recovery-supervisor-branch-coverage.test.ts"]
+    }
+  ],
+  "evidenceMigrationTasks": ["M0-05"],
+  "governancePaths": [
+    ".github/audit-remediations/coverage-75-2026-07-23.json"
+  ]
+}

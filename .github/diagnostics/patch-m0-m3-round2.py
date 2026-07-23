@@ -78,6 +78,21 @@ function captureEditorSelection(instance: Editor): PersistedEditorSelection {
   };
 }
 
+function persistEditorSelection(projectId: string, chapterId: string, instance: Editor): void {
+  const key = selectionKey(projectId, chapterId);
+  const captured = captureEditorSelection(instance);
+  const existing = persistedSelectionByChapter.get(key);
+  if (
+    !captured.anchorPath &&
+    existing?.anchorPath &&
+    existing.from === captured.from &&
+    existing.to === captured.to
+  ) {
+    return;
+  }
+  persistedSelectionByChapter.set(key, captured);
+}
+
 function restoreEditorSelection(instance: Editor, remembered: PersistedEditorSelection): void {
   const maximum = Math.max(1, instance.state.doc.content.size);
   instance.commands.setTextSelection({
@@ -109,14 +124,26 @@ if source.count(old_selection_model) != 1:
     raise SystemExit(f'selection model count was {source.count(old_selection_model)}')
 source = source.replace(old_selection_model, new_selection_model, 1)
 
+old_destroy_anchor = """  const destroyEditor = useCallback(
+"""
+new_destroy_anchor = """  const rememberCurrentSelection = useCallback((): void => {
+    const instance = editor.current;
+    const currentChapter = activeChapter.current;
+    if (!instance || !currentChapter) return;
+    persistEditorSelection(project.projectId, currentChapter.id, instance);
+  }, [project.projectId]);
+
+  const destroyEditor = useCallback(
+"""
+if source.count(old_destroy_anchor) != 1:
+    raise SystemExit(f'destroy anchor count was {source.count(old_destroy_anchor)}')
+source = source.replace(old_destroy_anchor, new_destroy_anchor, 1)
+
 old_capture = """        persistedSelectionByChapter.set(selectionKey(project.projectId, currentChapter.id), {
           from: instance.state.selection.from,
           to: instance.state.selection.to,
         });"""
-new_capture = """        persistedSelectionByChapter.set(
-          selectionKey(project.projectId, currentChapter.id),
-          captureEditorSelection(instance),
-        );"""
+new_capture = """        persistEditorSelection(project.projectId, currentChapter.id, instance);"""
 if source.count(old_capture) != 1:
     raise SystemExit(f'destroy selection capture count was {source.count(old_capture)}')
 source = source.replace(old_capture, new_capture, 1)
@@ -145,5 +172,20 @@ new_restore = """      if (remembered) restoreEditorSelection(instance, remember
 if source.count(old_restore) != 1:
     raise SystemExit(f'late selection restore count was {source.count(old_restore)}')
 source = source.replace(old_restore, new_restore, 1)
+
+old_button = """          <button data-back-project type="button" onClick={() => void backToProject()}>
+            返回项目
+          </button>"""
+new_button = """          <button
+            data-back-project
+            type="button"
+            onPointerDownCapture={rememberCurrentSelection}
+            onClick={() => void backToProject()}
+          >
+            返回项目
+          </button>"""
+if source.count(old_button) != 1:
+    raise SystemExit(f'back button count was {source.count(old_button)}')
+source = source.replace(old_button, new_button, 1)
 
 path.write_text(source)

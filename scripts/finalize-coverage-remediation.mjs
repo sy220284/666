@@ -65,6 +65,11 @@ for (const file of outputFiles) {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.copyFileSync(file, destination);
 }
+fs.copyFileSync('.github/workflows/quality-core.yml', path.join(outputRoot, 'quality-core.yml'));
+fs.copyFileSync(
+  '.github/audit-remediations/coverage-75-2026-07-23.json',
+  path.join(outputRoot, 'coverage-manifest.json'),
+);
 fs.writeFileSync(
   path.join(outputRoot, 'deletions.json'),
   `${JSON.stringify(

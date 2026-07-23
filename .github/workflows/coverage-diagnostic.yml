@@ -36,27 +36,45 @@ jobs:
         run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false
       - name: 构建测试依赖
         run: pnpm test:prepare
-      - name: 执行全部 Vitest 测试并统计覆盖率
+      - name: 生成临时覆盖率配置
+        shell: bash
+        run: |
+          cat > vitest.coverage.config.ts <<'EOF'
+          import { defineConfig } from 'vitest/config';
+
+          export default defineConfig({
+            test: {
+              environment: 'node',
+              include: [
+                'tests/unit/**/*.test.ts',
+                'tests/integration/**/*.test.ts',
+                'tests/migration/**/*.test.ts',
+                'tests/security/**/*.test.ts',
+              ],
+              coverage: {
+                enabled: true,
+                provider: 'v8',
+                reporter: ['text', 'json-summary', 'json'],
+                reportsDirectory: 'coverage',
+                include: ['apps/**/*.{ts,mjs}', 'packages/**/*.ts', 'scripts/**/*.mjs'],
+                exclude: ['**/*.d.ts', '**/dist/**', '**/node_modules/**'],
+              },
+            },
+          });
+          EOF
+      - name: 执行可插桩测试并统计覆盖率
         shell: bash
         run: |
           set -o pipefail
-          pnpm exec vitest run \
-            --coverage.enabled=true \
-            --coverage.provider=v8 \
-            --coverage.reporter=text \
-            --coverage.reporter=json-summary \
-            --coverage.reporter=json \
-            --coverage.reportsDirectory=coverage \
-            --coverage.include='apps/**/*.{ts,mjs}' \
-            --coverage.include='packages/**/*.ts' \
-            --coverage.include='scripts/**/*.mjs' \
-            --coverage.exclude='**/*.d.ts' \
-            --coverage.exclude='**/dist/**' \
-            --coverage.exclude='**/node_modules/**' \
-            2>&1 | tee coverage-run.log
+          pnpm exec vitest run --config vitest.coverage.config.ts 2>&1 | tee coverage-run.log
       - name: 汇总覆盖率与低覆盖文件
+        if: ${{ always() }}
         shell: bash
         run: |
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo '覆盖率摘要未生成。'
+            exit 1
+          fi
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const report = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
@@ -72,8 +90,13 @@ jobs:
             }))
             .sort((a, b) => a.lines - b.lines || a.branches - b.branches);
           const output = {
+            baseline: '4538660ebf3d0c4f5889bdc1f18c25c34937ca09',
             scope: ['apps/**/*.{ts,mjs}', 'packages/**/*.ts', 'scripts/**/*.mjs'],
-            tests: 'vitest.config.ts 匹配的 tests/**/*.test.ts 全部测试',
+            tests: ['unit', 'integration', 'migration', 'security'],
+            excludedTestTypes: {
+              performance: '覆盖率插桩会扭曲性能预算，不纳入统计',
+              electronE2E: '独立 Electron 进程未接入 V8 覆盖率采集，不纳入统计',
+            },
             excludes: ['**/*.d.ts', '**/dist/**', '**/node_modules/**'],
             total,
             lowestCoverageFiles: rows.slice(0, 40),
@@ -85,11 +108,13 @@ jobs:
           console.log('COVERAGE_RESULT_END');
           NODE
       - name: 上传覆盖率结果
+        if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: main-coverage-diagnostic
           path: |
             coverage/
             coverage-run.log
-          if-no-files-found: error
+            vitest.coverage.config.ts
+          if-no-files-found: warn
           retention-days: 7

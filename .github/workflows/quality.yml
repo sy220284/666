@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: quality-${{ github.event.pull_request.number || github.ref }}
@@ -61,3 +61,74 @@ jobs:
       package_smoke: false
       security_suite: false
       performance_eval: false
+
+  final-remediation-patch:
+    if: ${{ github.head_ref == 'diagnostic/apply-m0-m3-final-remediation' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TARGET_BRANCH: fix/governance-audit-m0-m3-final-remediation
+      EXPECTED_HEAD: 8fe3a4e5e48572bdef1312e17e9b3067a12eb01c
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Preserve patch and check out exact remediation Head
+        shell: bash
+        run: |
+          cp .github/diagnostics/apply-m0-m3-final-remediation.py "$RUNNER_TEMP/final-remediation.py"
+          git fetch --quiet origin "${TARGET_BRANCH}"
+          actual="$(git rev-parse FETCH_HEAD)"
+          test "${actual}" = "${EXPECTED_HEAD}"
+          git checkout -B remediation-target "${actual}"
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply deterministic patches
+        run: python3 "$RUNNER_TEMP/final-remediation.py"
+      - name: Format remediation files
+        run: |
+          pnpm exec prettier --write \
+            .github/audit-remediations/m0-m3-final-remediation-2026-07-23.json \
+            apps/desktop/main/src/candidate-preview-ipc.ts \
+            apps/desktop/main/src/continuity-ipc.ts \
+            apps/desktop/main/src/ipc-error-semantics.ts \
+            apps/desktop/main/src/narrative-planning-ipc.ts \
+            apps/desktop/renderer/src/bridge/request-lifecycle.ts \
+            apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts \
+            packages/core-service/src/recovery.ts \
+            tests/integration/recovery-identity-remap.test.ts \
+            tests/migration/integrated-coordination-migration.test.ts \
+            tests/migration/final-coordination-remediation.test.ts \
+            tests/performance/scene-beat-rebind-performance.test.ts \
+            tests/unit/bridge-request-detachment.test.ts \
+            tests/unit/core-recovery-supervisor.test.ts \
+            tests/unit/ipc-error-semantics.test.ts
+      - name: Typecheck and focused acceptance
+        shell: bash
+        run: |
+          pnpm typecheck
+          pnpm test:prepare
+          pnpm exec vitest run \
+            tests/unit/bridge-request-detachment.test.ts \
+            tests/unit/core-recovery-supervisor.test.ts \
+            tests/unit/ipc-error-semantics.test.ts \
+            tests/integration/recovery-identity-remap.test.ts \
+            tests/migration/integrated-coordination-migration.test.ts \
+            tests/migration/final-coordination-remediation.test.ts \
+            tests/performance/scene-beat-rebind-performance.test.ts
+      - name: Commit exact remediation patch
+        shell: bash
+        run: |
+          git config user.name "WorldForge Final Audit Remediation"
+          git config user.email "worldforge-final-audit@users.noreply.github.com"
+          git add --all
+          git diff --cached --check -- ':!*.md'
+          git commit -m "fix(M0-M3): close final coordination findings"
+          git push origin HEAD:"${TARGET_BRANCH}"

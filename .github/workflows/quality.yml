@@ -19,20 +19,33 @@ jobs:
     timeout-minutes: 30
     env:
       TARGET_BRANCH: fix/governance-audit-m0-m3-integrated-coordination
+      DIAGNOSTIC_BRANCH: diagnostic/patch-m0-m3-round2
       EXPECTED_HEAD: 76e30be8f2eaa8eadd64b4235d09d7f896986b0a
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+      - name: Check whether failure was already captured
+        id: diagnostic
+        shell: bash
+        run: |
+          if [ -f .github/diagnostics/latest-selection-failure.txt ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: pnpm/action-setup@v4
+        if: ${{ steps.diagnostic.outputs.run == 'true' }}
         with:
           version: 11.13.0
       - uses: actions/setup-node@v6
+        if: ${{ steps.diagnostic.outputs.run == 'true' }}
         with:
           node-version: 24
           cache: pnpm
       - name: Preserve patch script and check out formal remediation Head
+        if: ${{ steps.diagnostic.outputs.run == 'true' }}
         shell: bash
         run: |
           cp .github/diagnostics/patch-m0-m3-round2.py "$RUNNER_TEMP/patch-m0-m3-round2.py"
@@ -40,44 +53,84 @@ jobs:
           actual="$(git rev-parse FETCH_HEAD)"
           test "${actual}" = "${EXPECTED_HEAD}"
           git checkout -B remediation-target "${actual}"
-      - run: pnpm install --frozen-lockfile --prefer-offline
+      - if: ${{ steps.diagnostic.outputs.run == 'true' }}
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Apply and format selection restore fix
+        if: ${{ steps.diagnostic.outputs.run == 'true' }}
         shell: bash
         run: |
           python3 "$RUNNER_TEMP/patch-m0-m3-round2.py"
           pnpm exec prettier --write apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
       - name: Install Electron display dependencies
+        if: ${{ steps.diagnostic.outputs.run == 'true' }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
-      - name: Run focused Electron regression
+      - name: Build and run focused Electron regression
+        if: ${{ steps.diagnostic.outputs.run == 'true' }}
+        id: regression
+        continue-on-error: true
         shell: bash
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron-selection
         run: |
           mkdir -p test-results/selection-ci
-          pnpm build
+          pnpm build > test-results/selection-ci/build.log 2>&1
+          build_status=$?
+          if [ "$build_status" -ne 0 ]; then
+            echo "status=$build_status" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           set -o pipefail
           node scripts/run-electron-e2e.mjs \
             tests/e2e/electron-shell.spec.ts \
             --grep "edits, sanitizes, saves, and rebuilds a four-block Draft through the desktop UI" \
             2>&1 | tee test-results/selection-ci/selection.log
-      - name: Upload focused Electron diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: selection-regression-diagnostics
-          path: |
-            test-results/selection-ci/selection.log
-            test-results/electron-selection/
-          if-no-files-found: warn
-          retention-days: 1
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Persist compact failure report on diagnostic branch
+        if: ${{ steps.diagnostic.outputs.run == 'true' && steps.regression.outputs.status != '0' }}
+        shell: bash
+        run: |
+          {
+            echo "# Focused selection regression failure"
+            echo
+            echo "Diagnostic source: ${GITHUB_SHA}"
+            echo "Formal head: ${EXPECTED_HEAD}"
+            echo "Exit status: ${{ steps.regression.outputs.status }}"
+            echo
+            echo "## Build tail"
+            echo '```text'
+            tail -80 test-results/selection-ci/build.log 2>/dev/null || true
+            echo '```'
+            echo
+            echo "## Playwright log"
+            echo '```text'
+            cat test-results/selection-ci/selection.log 2>/dev/null || true
+            echo '```'
+            echo
+            echo "## Error context"
+            echo '```text'
+            find test-results/electron-selection -name error-context.md -print -exec cat {} \; 2>/dev/null || true
+            echo '```'
+          } > "$RUNNER_TEMP/latest-selection-failure.txt"
+          git fetch --quiet origin "${DIAGNOSTIC_BRANCH}"
+          git checkout -B diagnostic-output FETCH_HEAD
+          cp "$RUNNER_TEMP/latest-selection-failure.txt" .github/diagnostics/latest-selection-failure.txt
+          git config user.name "WorldForge Diagnostic"
+          git config user.email "worldforge-diagnostic@users.noreply.github.com"
+          git add .github/diagnostics/latest-selection-failure.txt
+          git commit -m "chore(diagnostics): capture selection regression failure"
+          git push origin HEAD:"${DIAGNOSTIC_BRANCH}"
+          exit 1
       - name: Commit exact fix to formal remediation branch
+        if: ${{ steps.diagnostic.outputs.run == 'true' && steps.regression.outputs.status == '0' }}
         shell: bash
         run: |
           git config user.name "WorldForge Audit Remediation"
           git config user.email "worldforge-audit@users.noreply.github.com"
           git add apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
           git diff --cached --check
-          git commit -m "fix(M3-10): preserve native selection before editor teardown"
+          git commit -m "fix(M3-10): restore editor selection after remount"
           git push origin HEAD:"${TARGET_BRANCH}"

@@ -22,3 +22,32 @@
 ## 状态结论
 
 任务卡范围、真实实现、自动化结果与人工复核一致，可以关闭为Verified。跨后续阶段的需求继续保留其原有状态。
+
+## M0—M3整体审计整改复验
+
+复验时间：2026-07-23T02:39:03.000Z  
+整改Head：`537d0dda432738accbd94c18f7f0c129f2a54e89`  
+合并提交：`9a813efa75ec6a49b7547392d70118f977d8e263`  
+整改PR：`#150 fix(M0-M3): harden integrated coordination`
+
+### 整改覆盖
+
+- Core异常后的未保存正文救援、受控重启和项目恢复；
+- Schema 18下的Version、结构操作、SceneBeat链接与EndingSnapshot协调；
+- 伏笔和人物弧光按目标章节投影，阻止后文状态倒灌；
+- Renderer取消结果真实性、Core超时结果未知语义和Candidate测试Fixture生产隔离；
+- 写作工作台原生选区跨返回与重开恢复，并在编辑器完成挂载和选区恢复后发布工作区就绪标记。
+
+### 最终自动化证据
+
+- Quality：运行 `29974447440`，静态、格式、lint、typecheck、Build、Unit、Integration、Migration和完整Electron E2E全部成功。
+- Electron E2E：25/25，用时10.8分钟；工件 `8551052690`，Digest `sha256:b3ad768b6a0fc26d026297d4c46fb7e877b630b58d14345f9794df9b550e24db`。
+- Security：运行 `29974447347`，成功。
+- Performance：运行 `29974447341`，成功。
+- PR Policy：运行 `29974447383`，成功。
+- Task Governance：运行 `29974447345`，成功。
+- Evidence：运行 `29974447346`，成功。
+
+### 整改状态结论
+
+机器Manifest限定的M0—M3既有Verified能力整改已通过完整复验并合并至`main`；`ACTIVE_TASK`与M4-01状态未在整改中改变。该结论只覆盖PR #150列明的审计整改范围，不提前登记M4阶段功能完成。

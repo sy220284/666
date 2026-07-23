@@ -29,12 +29,7 @@ function snapshotFromValueJson(valueJson: string | null): AppSettingsSnapshot {
       settings: defaults(),
     };
   }
-  if (
-    value &&
-    typeof value === 'object' &&
-    'schemaVersion' in value &&
-    value.schemaVersion !== 1
-  ) {
+  if (value && typeof value === 'object' && 'schemaVersion' in value && value.schemaVersion !== 1) {
     return {
       source: 'recovered',
       recoveryReason: 'unsupported-version',
@@ -71,10 +66,7 @@ export class AppSettingsRepository {
     return snapshotFromValueJson(valueJson);
   }
 
-  async update(
-    requestId: string,
-    input: AppSettingsUpdate,
-  ): Promise<AppSettingsSnapshot> {
+  async update(requestId: string, input: AppSettingsUpdate): Promise<AppSettingsSnapshot> {
     const update = AppSettingsUpdateSchema.parse(input);
     const result = await this.#database.write(requestId, (database) => {
       const row = database

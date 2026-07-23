@@ -160,18 +160,13 @@ describe('Preload → IPC Main → Core integration', () => {
     await import('../../apps/desktop/preload/src/index.js');
     const bridge = transport.exposed as WorldforgeBridge;
 
-    const initial = await bridge.settings.get();
-    expect(initial).toMatchObject({
+    await expect(bridge.settings.get()).resolves.toMatchObject({
       ok: true,
       data: { settings: DEFAULT_APP_SETTINGS },
     });
-
-    const updated = await bridge.settings.set({
-      themeId: 'theme-b',
-      themeVariant: 'dark',
-      reduceMotion: true,
-    });
-    expect(updated).toMatchObject({
+    await expect(
+      bridge.settings.set({ themeId: 'theme-b', themeVariant: 'dark', reduceMotion: true }),
+    ).resolves.toMatchObject({
       ok: true,
       data: {
         source: 'stored',
@@ -184,8 +179,10 @@ describe('Preload → IPC Main → Core integration', () => {
       reduceMotion: true,
     });
 
-    const reset = await bridge.settings.reset();
-    expect(reset).toMatchObject({ ok: true, data: { source: 'default' } });
+    await expect(bridge.settings.reset()).resolves.toMatchObject({
+      ok: true,
+      data: { source: 'default' },
+    });
     expect(core.readSettings()).toEqual(DEFAULT_APP_SETTINGS);
     expect(transport.invokedChannels).toEqual([
       IPC_CHANNELS.settingsGet,
@@ -195,30 +192,26 @@ describe('Preload → IPC Main → Core integration', () => {
     unregister();
   });
 
-  it('round-trips a real project query and rejects invalid preload input before IPC dispatch', async () => {
+  it('round-trips a real project query and rejects invalid input before IPC dispatch', async () => {
     const { unregister } = registerTransport();
     await import('../../apps/desktop/preload/src/index.js');
     const bridge = transport.exposed as WorldforgeBridge;
 
-    await expect(bridge.project.getActive()).resolves.toMatchObject({
-      ok: true,
-      data: project,
-    });
+    await expect(bridge.project.getActive()).resolves.toMatchObject({ ok: true, data: project });
     expect(transport.invokedChannels).toContain(IPC_CHANNELS.getActive);
 
     const callsBeforeInvalidInput = transport.invokedChannels.length;
-    await expect(
+    expect(() =>
       bridge.app.setAppearancePreferences({
         workspaceAlignment: 'center',
         uiScalePercent: 95,
         bodyFontSize: 18,
         contentWidth: 'normal',
       } as never),
-    ).rejects.toThrow();
+    ).toThrow();
     expect(transport.invokedChannels).toHaveLength(callsBeforeInvalidInput);
 
-    const info = await bridge.app.getInfo();
-    expect(info).toMatchObject({
+    await expect(bridge.app.getInfo()).resolves.toMatchObject({
       ok: true,
       data: { version: '1.2.3', platform: 'linux', protocolVersion: PROTOCOL_VERSION },
     });

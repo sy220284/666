@@ -21,7 +21,8 @@
       "finding": "Renderer Abort detached result presentation but still awaited an uncooperative IPC indefinitely.",
       "allowedPaths": [
         "apps/desktop/renderer/src/bridge/request-lifecycle.ts",
-        "tests/unit/bridge-request-detachment.test.ts"
+        "tests/unit/bridge-request-detachment.test.ts",
+        "tests/unit/renderer-react-foundation.test.ts"
       ]
     },
     {

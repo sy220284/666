@@ -22,6 +22,11 @@ const systemClock: DatabaseClock = { now: () => new Date() };
 const MAX_IMPORT_BYTES = 20 * 1024 * 1024;
 const PLAN_TTL_MS = 30 * 60 * 1000;
 const DEFAULT_MAXIMUM_RETAINED_PLANS = 16;
+const INVALIDATING_IMPORT_PLAN_ERRORS = new Set([
+  'IMPORT_PLAN_STALE',
+  'IMPORT_FORMAT_UNSUPPORTED',
+  'IMPORT_ARCHIVE_LIMIT',
+]);
 
 interface RetainedImportPlan {
   readonly service: ImportExportService;
@@ -138,11 +143,7 @@ export class CoordinatedImportExportService extends ImportExportService {
     } catch (error) {
       if (
         !(error instanceof ImportExportServiceError) ||
-        [
-          'IMPORT_PLAN_STALE',
-          'IMPORT_FORMAT_UNSUPPORTED',
-          'IMPORT_ARCHIVE_LIMIT',
-        ].includes(error.code)
+        INVALIDATING_IMPORT_PLAN_ERRORS.has(error.code)
       ) {
         this.#retainedPlans.delete(input.planId);
       }

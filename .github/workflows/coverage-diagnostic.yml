@@ -1,0 +1,95 @@
+name: main 当前测试覆盖率诊断
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/coverage-diagnostic.yml
+  push:
+    branches:
+      - diagnostic/coverage-main-2026-07-23
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: 检出诊断分支
+        uses: actions/checkout@v6
+      - name: 配置 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - name: 配置 Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: 安装项目依赖
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 临时安装覆盖率 Provider
+        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false
+      - name: 构建测试依赖
+        run: pnpm test:prepare
+      - name: 执行全部 Vitest 测试并统计覆盖率
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec vitest run \
+            --coverage.enabled=true \
+            --coverage.provider=v8 \
+            --coverage.reporter=text \
+            --coverage.reporter=json-summary \
+            --coverage.reporter=json \
+            --coverage.reportsDirectory=coverage \
+            --coverage.include='apps/**/*.{ts,mjs}' \
+            --coverage.include='packages/**/*.ts' \
+            --coverage.include='scripts/**/*.mjs' \
+            --coverage.exclude='**/*.d.ts' \
+            --coverage.exclude='**/dist/**' \
+            --coverage.exclude='**/node_modules/**' \
+            2>&1 | tee coverage-run.log
+      - name: 汇总覆盖率与低覆盖文件
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
+          const total = report.total;
+          const rows = Object.entries(report)
+            .filter(([name]) => name !== 'total')
+            .map(([name, metrics]) => ({
+              file: name.replace(`${process.cwd()}/`, ''),
+              statements: metrics.statements.pct,
+              branches: metrics.branches.pct,
+              functions: metrics.functions.pct,
+              lines: metrics.lines.pct,
+            }))
+            .sort((a, b) => a.lines - b.lines || a.branches - b.branches);
+          const output = {
+            scope: ['apps/**/*.{ts,mjs}', 'packages/**/*.ts', 'scripts/**/*.mjs'],
+            tests: 'vitest.config.ts 匹配的 tests/**/*.test.ts 全部测试',
+            excludes: ['**/*.d.ts', '**/dist/**', '**/node_modules/**'],
+            total,
+            lowestCoverageFiles: rows.slice(0, 40),
+            filesMeasured: rows.length,
+          };
+          fs.writeFileSync('coverage/coverage-result.json', `${JSON.stringify(output, null, 2)}\n`);
+          console.log('COVERAGE_RESULT_START');
+          console.log(JSON.stringify(output, null, 2));
+          console.log('COVERAGE_RESULT_END');
+          NODE
+      - name: 上传覆盖率结果
+        uses: actions/upload-artifact@v7
+        with:
+          name: main-coverage-diagnostic
+          path: |
+            coverage/
+            coverage-run.log
+          if-no-files-found: error
+          retention-days: 7

@@ -31,7 +31,5 @@
     }
   ],
   "evidenceMigrationTasks": ["M0-04"],
-  "governancePaths": [
-    ".github/audit-remediations/m0-m3-timeout-semantics-2026-07-23.json"
-  ]
+  "governancePaths": [".github/audit-remediations/m0-m3-timeout-semantics-2026-07-23.json"]
 }

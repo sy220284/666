@@ -71,4 +71,4 @@ Core未在等待窗口内返回最终结果时，Main必须表达“结果未知
 
 ## 7. Renderer安全边界
 
-写作工作台的选区恢复使用React模块内的临时状态，以`projectId + chapterId`键控，不通过全局DOM查询寻找编辑器。粘贴HTML清洗通过受控DOM解析和序列化完成，不读取或注入`innerHTML`。Candidate测试Fixture只在未打包E2E环境注册，生产IPC处理器不暴露该入口。
+写作工作台的选区恢复使用React模块内的临时状态，以`projectId + chapterId`键控，不通过全局DOM查询寻找编辑器。返回项目时在按钮接管焦点前捕获编辑器原生选区；重开章节时先完成Tiptap挂载和选区恢复，再发布`data-draft-workspace`就绪标记，避免外部调用方把尚未恢复的界面误判为可用。粘贴HTML清洗通过受控DOM解析和序列化完成，不读取或注入`innerHTML`。Candidate测试Fixture只在未打包E2E环境注册，生产IPC处理器不暴露该入口。

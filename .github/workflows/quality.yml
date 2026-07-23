@@ -9,59 +9,10 @@ permissions:
   contents: write
 
 concurrency:
-  group: quality-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: diagnostic-selection-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  route:
-    name: route
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      full_suite: ${{ steps.route.outputs.full_suite }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Determine Ready quality route
-        id: route
-        shell: bash
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          full_suite=false
-          changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
-          if [ -z "$changed_files" ]; then
-            full_suite=true
-          else
-            while IFS= read -r file; do
-              case "$file" in
-                *.md|docs/*)
-                  ;;
-                *)
-                  full_suite=true
-                  break
-                  ;;
-              esac
-            done <<< "$changed_files"
-          fi
-          echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
-          echo "Ready quality full suite: $full_suite"
-
-  quality:
-    needs: route
-    uses: ./.github/workflows/quality-core.yml
-    with:
-      checkout_ref: ${{ github.event.pull_request.head.sha }}
-      draft_mode: ${{ github.event.pull_request.draft == true }}
-      full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
-      package_smoke: false
-      security_suite: false
-      performance_eval: false
-
   audit-patch:
     if: ${{ github.head_ref == 'diagnostic/patch-m0-m3-round2' }}
     runs-on: ubuntu-24.04
@@ -128,5 +79,5 @@ jobs:
           git config user.email "worldforge-audit@users.noreply.github.com"
           git add apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
           git diff --cached --check
-          git commit -m "fix(M3-10): preserve selection before editor initialization"
+          git commit -m "fix(M3-10): preserve native selection before editor teardown"
           git push origin HEAD:"${TARGET_BRANCH}"

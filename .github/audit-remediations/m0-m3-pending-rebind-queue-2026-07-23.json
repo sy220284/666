@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "remediationId": "audit-m0-m3-pending-rebind-queue-2026-07-23",
-  "baseCommit": "2b53a12985e9967934390a6af2f3ea3cd4556a46",
+  "baseCommit": "891f616c57b4495dfedb84ccaf841a28df198131",
   "branch": "fix/governance-audit-m0-m3-pending-rebind-queue",
   "activeTaskInvariant": {
     "id": "M4-01",

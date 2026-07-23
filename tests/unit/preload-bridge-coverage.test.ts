@@ -176,7 +176,8 @@ describe('Preload bridge unit and regression coverage', () => {
       { channel: IPC_CHANNELS.aiHasCredential, command: APP_COMMANDS.hasCredential },
       { channel: IPC_CHANNELS.taskListActive, command: APP_COMMANDS.taskListActive },
     ]);
-    for (const { command } of state.calls) expect(() => RegisteredCommandSchema.parse(command)).not.toThrow();
+    for (const { command } of state.calls)
+      expect(() => RegisteredCommandSchema.parse(command)).not.toThrow();
   });
 
   it('rejects invalid input through the authoritative preload schema before IPC dispatch', async () => {
@@ -263,7 +264,8 @@ describe('Preload bridge unit and regression coverage', () => {
       async (_channel: string, command: unknown) =>
         await new Promise((resolve) => {
           const parsed = RegisteredCommandSchema.parse(command);
-          resolveSnapshot = (value) => resolve({ ...value as object, requestId: parsed.requestId });
+          resolveSnapshot = (value) =>
+            resolve({ ...(value as object), requestId: parsed.requestId });
         }),
     );
     channel?.port1.onmessage?.({

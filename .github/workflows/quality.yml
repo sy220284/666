@@ -104,10 +104,23 @@ jobs:
         env:
           WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron-selection
         run: |
+          mkdir -p test-results/selection-ci
           pnpm build
+          set -o pipefail
           node scripts/run-electron-e2e.mjs \
             tests/e2e/electron-shell.spec.ts \
-            --grep "edits, sanitizes, saves, and rebuilds a four-block Draft through the desktop UI"
+            --grep "edits, sanitizes, saves, and rebuilds a four-block Draft through the desktop UI" \
+            2>&1 | tee test-results/selection-ci/selection.log
+      - name: Upload focused Electron diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: selection-regression-diagnostics
+          path: |
+            test-results/selection-ci/selection.log
+            test-results/electron-selection/
+          if-no-files-found: warn
+          retention-days: 1
       - name: Commit exact fix to formal remediation branch
         shell: bash
         run: |

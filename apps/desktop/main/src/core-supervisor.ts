@@ -22,6 +22,7 @@ import {
   type WindowPreferences,
 } from '@worldforge/contracts';
 
+import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
 import { createDiagnosticId, type LogFields, type LogLevel } from './privacy-logger.js';
 
 export interface UtilityProcessHandle {
@@ -176,16 +177,15 @@ export class CoreSupervisor {
     });
     const result = await response;
     if (result?.type === 'core.command-result') return result.result;
+    const semantics = coreOperationFailureSemantics(
+      'COMMON_TIMEOUT_005',
+      'The task command timed out.',
+      envelope.command === 'task.cancel' ? 'mutation' : 'query',
+    );
     return TaskCommandResultSchema.parse({
       ok: false,
       requestId: envelope.requestId,
-      error: {
-        code: 'COMMON_TIMEOUT_005',
-        message:
-          'Core did not return a final result before the timeout; the operation may still have completed.',
-        retryable: false,
-        userAction: 'Refresh authoritative state before attempting the operation again.',
-      },
+      error: { code: 'COMMON_TIMEOUT_005', ...semantics },
     });
   }
 

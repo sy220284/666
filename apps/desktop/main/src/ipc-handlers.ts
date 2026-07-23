@@ -113,7 +113,7 @@ import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import type { CredentialBroker } from './credential-broker.js';
-import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
+import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
 import { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';
 
 interface IpcHandlerOptions {
@@ -176,6 +176,33 @@ function requestIdFrom(raw: unknown): string {
     if (parsed.success) return parsed.data;
   }
   return randomUUID();
+}
+
+const QUERY_PROJECT_OPERATIONS = new Set<string>([
+  PROJECT_WORKSPACE_COMMANDS.getActive,
+  PROJECT_PLANNING_COMMANDS.getBrief,
+  PROJECT_PLANNING_COMMANDS.listPlotNodes,
+  SCENE_BEAT_COMMANDS.listSceneBeats,
+  SCENE_BEAT_COMMANDS.previewMoveSceneBeat,
+  ENTITY_CANON_COMMANDS.listEntities,
+  ENTITY_CANON_COMMANDS.previewDeleteEntity,
+  PROJECT_STRUCTURE_COMMANDS.listStructure,
+  PROJECT_STRUCTURE_COMMANDS.listTrash,
+  PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete,
+  PROJECT_STRUCTURE_COMMANDS.previewSplitChapter,
+  PROJECT_STRUCTURE_COMMANDS.previewMergeChapters,
+  PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks,
+  CANDIDATE_COMMANDS.listCandidates,
+  CANDIDATE_COMMANDS.getCandidate,
+  VERSION_COMMANDS.listVersions,
+  VERSION_COMMANDS.getVersion,
+  RECOVERY_COMMANDS.getOverview,
+  TEXT_IO_COMMANDS.previewImport,
+  TEXT_IO_COMMANDS.listExportVersions,
+]);
+
+function projectOperationKind(operation: string): CoreOperationKind {
+  return QUERY_PROJECT_OPERATIONS.has(operation) ? 'query' : 'mutation';
 }
 
 export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
@@ -363,10 +390,12 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     requestId: string,
     code: ErrorCode,
     details?: CommandFailure['error']['details'],
+    operationKind: CoreOperationKind = 'mutation',
   ): CommandFailure => {
     const semantics = coreOperationFailureSemantics(
       code,
       'The local application data operation could not be completed.',
+      operationKind,
     );
     return failure(
       requestId,
@@ -389,7 +418,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     });
     return result.ok
       ? success(parsed.data.requestId, result.data)
-      : appDataFailure(parsed.data.requestId, result.errorCode);
+      : appDataFailure(parsed.data.requestId, result.errorCode, undefined, 'query');
   });
 
   register(IPC_CHANNELS.settingsSet, async (event, raw) => {
@@ -429,7 +458,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     });
     return result.ok
       ? success(parsed.data.requestId, result.data)
-      : appDataFailure(parsed.data.requestId, result.errorCode);
+      : appDataFailure(parsed.data.requestId, result.errorCode, undefined, 'query');
   });
 
   register(IPC_CHANNELS.projectRelocateRecent, async (event, raw) => {
@@ -489,6 +518,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
           requestId,
           result.errorCode,
           'details' in result ? result.details : undefined,
+          projectOperationKind(operation.operation),
         );
   };
 

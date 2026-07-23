@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type { CoreStatus, ProjectWorkspaceSummary, RecentProject } from '@worldforge/contracts';
 
 import {
   createCoreRecoverySupervisor,
@@ -16,11 +16,19 @@ const project: ProjectWorkspaceSummary = {
   name: '故障恢复项目',
   channel: 'test',
   workspacePath: '/tmp/worldforge-recovery-project',
-  schemaVersion: 18,
+  schemaVersion: 19,
   databaseMode: 'read-write',
   compatibility: 'current',
   readOnlyReason: null,
   createdAt: '2026-07-22T12:00:00.000Z',
+};
+
+const recentProject: RecentProject = {
+  projectId: project.projectId,
+  workspacePath: project.workspacePath,
+  displayName: project.name,
+  lastOpenedAt: '2026-07-22T12:00:00.000Z',
+  missingSince: null,
 };
 
 const healthy: CoreStatus = {
@@ -66,12 +74,21 @@ function success<T>(data: T) {
   };
 }
 
+function deferred<T>() {
+  let resolve: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve: (value: T) => resolve?.(value) };
+}
+
 describe('M3-R01 Core recovery supervisor', () => {
   it('remembers the active project, surfaces a crash, and reopens after restart', async () => {
     const surface = new FakeSurface();
     const statusQueue = [healthy, crashed];
     const getCoreStatus = vi.fn(async () => success(statusQueue.shift() ?? healthy));
     const getActive = vi.fn(async () => success(project));
+    const listRecent = vi.fn(async () => success({ projects: [recentProject] }));
     const restartCore = vi.fn(async () => success({ accepted: true, status: healthy }));
     const openRecent = vi.fn(async () => success(project));
     const schedule = vi.fn(() => 'timer');
@@ -80,7 +97,7 @@ describe('M3-R01 Core recovery supervisor', () => {
     const supervisor = createCoreRecoverySupervisor({
       bridge: {
         app: { getCoreStatus, restartCore },
-        project: { getActive, openRecent },
+        project: { getActive, listRecent, openRecent },
       },
       surface,
       schedule,
@@ -106,11 +123,98 @@ describe('M3-R01 Core recovery supervisor', () => {
     await expect(supervisor.restart()).resolves.toBe(true);
     expect(restartCore).toHaveBeenCalledTimes(1);
     expect(openRecent).toHaveBeenCalledWith(project.projectId);
+    expect(listRecent).not.toHaveBeenCalled();
     expect(surface.states.at(-1)).toMatchObject({ visible: false, health: 'healthy' });
 
     supervisor.dispose();
     expect(cancelSchedule).toHaveBeenCalledWith('timer');
     expect(surface.disposed).toBe(true);
+  });
+
+  it('falls back to the most recent project when Core crashes before the first healthy poll', async () => {
+    const surface = new FakeSurface();
+    const restartCore = vi.fn(async () => success({ accepted: true, status: healthy }));
+    const listRecent = vi.fn(async () => success({ projects: [recentProject] }));
+    const openRecent = vi.fn(async () => success(project));
+    const supervisor = createCoreRecoverySupervisor({
+      bridge: {
+        app: {
+          getCoreStatus: vi.fn(async () => success(crashed)),
+          restartCore,
+        },
+        project: {
+          getActive: vi.fn(async () => success(null)),
+          listRecent,
+          openRecent,
+        },
+      },
+      surface,
+      schedule: () => 'timer',
+      cancelSchedule: () => undefined,
+    });
+
+    await supervisor.checkNow();
+    expect(supervisor.rememberedProjectId).toBeNull();
+    await expect(supervisor.restart()).resolves.toBe(true);
+    expect(listRecent).toHaveBeenCalledTimes(1);
+    expect(openRecent).toHaveBeenCalledWith(project.projectId);
+    expect(supervisor.rememberedProjectId).toBe(project.projectId);
+  });
+
+  it('coalesces concurrent restart requests', async () => {
+    const restartResult = deferred<ReturnType<typeof success<{ accepted: boolean; status: CoreStatus }>>>();
+    const restartCore = vi.fn(() => restartResult.promise);
+    const supervisor = createCoreRecoverySupervisor({
+      bridge: {
+        app: {
+          getCoreStatus: vi.fn(async () => success(crashed)),
+          restartCore,
+        },
+        project: {
+          getActive: vi.fn(async () => success(project)),
+          listRecent: vi.fn(async () => success({ projects: [recentProject] })),
+          openRecent: vi.fn(async () => success(project)),
+        },
+      },
+      surface: new FakeSurface(),
+      schedule: () => 'timer',
+      cancelSchedule: () => undefined,
+    });
+
+    const first = supervisor.restart();
+    const second = supervisor.restart();
+    expect(first).toBe(second);
+    restartResult.resolve(success({ accepted: true, status: healthy }));
+    await expect(first).resolves.toBe(true);
+    expect(restartCore).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render after disposal while a health check is still in flight', async () => {
+    const surface = new FakeSurface();
+    const statusResult = deferred<ReturnType<typeof success<CoreStatus>>>();
+    const supervisor = createCoreRecoverySupervisor({
+      bridge: {
+        app: {
+          getCoreStatus: vi.fn(() => statusResult.promise),
+          restartCore: vi.fn(async () => success({ accepted: true, status: healthy })),
+        },
+        project: {
+          getActive: vi.fn(async () => success(project)),
+          listRecent: vi.fn(async () => success({ projects: [recentProject] })),
+          openRecent: vi.fn(async () => success(project)),
+        },
+      },
+      surface,
+      schedule: () => 'timer',
+      cancelSchedule: () => undefined,
+    });
+
+    const check = supervisor.checkNow();
+    supervisor.dispose();
+    const renderCountAtDispose = surface.states.length;
+    statusResult.resolve(success(healthy));
+    await check;
+    expect(surface.states).toHaveLength(renderCountAtDispose);
   });
 
   it('copies dirty editor text without requiring a Draft flush', async () => {
@@ -124,6 +228,7 @@ describe('M3-R01 Core recovery supervisor', () => {
         },
         project: {
           getActive: vi.fn(async () => success(project)),
+          listRecent: vi.fn(async () => success({ projects: [recentProject] })),
           openRecent: vi.fn(async () => success(project)),
         },
       },

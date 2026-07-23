@@ -19,7 +19,5 @@
     }
   ],
   "evidenceMigrationTasks": ["M3-10"],
-  "governancePaths": [
-    ".github/audit-remediations/m3-10-integrated-evidence-2026-07-23.json"
-  ]
+  "governancePaths": [".github/audit-remediations/m3-10-integrated-evidence-2026-07-23.json"]
 }

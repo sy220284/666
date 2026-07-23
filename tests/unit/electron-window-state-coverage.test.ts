@@ -101,12 +101,7 @@ describe('Electron window state unit and regression coverage', () => {
   it('throws when no display is available', () => {
     expect(() => restoreWindowPreferences(null, [])).toThrow('WINDOW_RESTORE_DISPLAY_UNAVAILABLE');
     expect(() =>
-      captureWindowPreferences(
-        { x: 0, y: 0, width: 800, height: 600 },
-        false,
-        [],
-        appearance,
-      ),
+      captureWindowPreferences({ x: 0, y: 0, width: 800, height: 600 }, false, [], appearance),
     ).toThrow('WINDOW_RESTORE_DISPLAY_UNAVAILABLE');
   });
 

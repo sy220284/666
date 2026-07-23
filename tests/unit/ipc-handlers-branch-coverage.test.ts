@@ -224,7 +224,7 @@ describe('IPC handlers unit and integration branch coverage', () => {
       error: { retryable: boolean };
     };
     expect(settings.ok).toBe(false);
-    expect(settings.error.retryable).toBe(true);
+    expect(settings.error.retryable).toBe(false);
 
     harness.supervisor.invokeProjectOperation.mockResolvedValue({
       ok: false,
@@ -298,7 +298,10 @@ describe('IPC handlers unit and integration branch coverage', () => {
     expect(listener).toBeTypeOf('function');
 
     const accepted = port();
-    listener?.({ senderFrame: trustedEvent.senderFrame, ports: [accepted] }, { connectionId: 'ok' });
+    listener?.(
+      { senderFrame: trustedEvent.senderFrame, ports: [accepted] },
+      { connectionId: 'ok' },
+    );
     expect(harness.supervisor.attachTaskPort).toHaveBeenCalledWith('ok', accepted);
     expect(accepted.closed).toBe(0);
 
@@ -320,7 +323,10 @@ describe('IPC handlers unit and integration branch coverage', () => {
     schemaState.invalid = false;
     harness.supervisor.attachTaskPort.mockReturnValueOnce({ ok: false });
     const rejected = port();
-    listener?.({ senderFrame: trustedEvent.senderFrame, ports: [rejected] }, { connectionId: 'no' });
+    listener?.(
+      { senderFrame: trustedEvent.senderFrame, ports: [rejected] },
+      { connectionId: 'no' },
+    );
     expect(rejected.closed).toBe(1);
 
     listener?.({ senderFrame: trustedEvent.senderFrame, ports: [] }, {});

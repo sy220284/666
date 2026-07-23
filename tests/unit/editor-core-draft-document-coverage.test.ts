@@ -181,13 +181,15 @@ describe('Editor Core draft document conversion coverage', () => {
 describe('Editor Core draft command and metadata coverage', () => {
   const schema = createWorldforgeEditorSchema();
 
-  function stateFor(options: {
-    id?: string | null;
-    locked?: boolean;
-    source?: string;
-    text?: string;
-    blockType?: 'paragraph' | 'dialogue' | 'heading';
-  } = {}) {
+  function stateFor(
+    options: {
+      id?: string | null;
+      locked?: boolean;
+      source?: string;
+      text?: string;
+      blockType?: 'paragraph' | 'dialogue' | 'heading';
+    } = {},
+  ) {
     const blockType = options.blockType ?? 'paragraph';
     const doc = schema.nodeFromJSON({
       type: 'chapterDocument',
@@ -311,7 +313,9 @@ describe('Editor Core draft command and metadata coverage', () => {
     });
     expect(synchronizePersistedBlockMetadata(editor as never, [])).toBe(false);
     expect(
-      synchronizePersistedBlockMetadata(editor as never, [persisted('server-id', { blockType: 'heading' })]),
+      synchronizePersistedBlockMetadata(editor as never, [
+        persisted('server-id', { blockType: 'heading' }),
+      ]),
     ).toBe(false);
   });
 

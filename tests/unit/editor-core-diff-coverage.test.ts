@@ -79,9 +79,7 @@ describe('Editor Core character diff regression coverage', () => {
         return probes >= 2;
       },
     };
-    expect(() => diffChineseCharacters('甲乙丙', '甲丁丙', { signal })).toThrow(
-      DiffCancelledError,
-    );
+    expect(() => diffChineseCharacters('甲乙丙', '甲丁丙', { signal })).toThrow(DiffCancelledError);
   });
 });
 

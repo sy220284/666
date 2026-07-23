@@ -163,7 +163,9 @@ describe('Core project structure router coverage', () => {
       Object.values(PROJECT_STRUCTURE_COMMANDS),
     );
     expect(harness.calls.get('recovery.createOperationCheckpoint')).toHaveBeenCalledTimes(4);
-    expect(harness.calls.get('structureOperations.assertPermanentDeleteExecutable')).toHaveBeenCalled();
+    expect(
+      harness.calls.get('structureOperations.assertPermanentDeleteExecutable'),
+    ).toHaveBeenCalled();
     expect(harness.calls.get('structureOperations.assertSplitExecutable')).toHaveBeenCalled();
     expect(harness.calls.get('structureOperations.assertMergeExecutable')).toHaveBeenCalled();
     expect(harness.calls.get('structureOperations.assertMoveExecutable')).toHaveBeenCalled();

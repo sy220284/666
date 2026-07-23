@@ -119,7 +119,8 @@ describe('Preload bridge unit and regression coverage', () => {
     for (const [groupName, group] of Object.entries(bridge)) {
       if (!group || typeof group !== 'object') continue;
       for (const [methodName, method] of Object.entries(group)) {
-        if (typeof method !== 'function' || `${groupName}.${methodName}` === 'task.subscribe') continue;
+        if (typeof method !== 'function' || `${groupName}.${methodName}` === 'task.subscribe')
+          continue;
         const result = method(argument, argument, argument);
         await Promise.resolve(result);
         invoked.push(`${groupName}.${methodName}`);

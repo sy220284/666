@@ -8,7 +8,10 @@ const state = vi.hoisted(() => ({
   windows: [] as Array<Record<string, unknown>>,
   dialogResults: [] as Array<{ canceled: boolean; filePaths: string[] } | Error>,
   headerHandler: undefined as
-    | ((details: { url: string; responseHeaders?: Record<string, string[]> }, callback: (value: unknown) => void) => void)
+    | ((
+        details: { url: string; responseHeaders?: Record<string, string[]> },
+        callback: (value: unknown) => void,
+      ) => void)
     | undefined,
   navigationAdapter: undefined as Record<string, unknown> | undefined,
   navigationRendererUrl: '',
@@ -337,9 +340,7 @@ function windowInstance(): Record<string, unknown> {
 }
 
 async function flush(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  for (let index = 0; index < 25; index += 1) await Promise.resolve();
 }
 
 describe('Electron main bootstrap and lifecycle coverage', () => {
@@ -402,7 +403,9 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
       rendererCallback,
     );
     expect(rendererCallback).toHaveBeenCalledWith({
-      responseHeaders: expect.objectContaining({ 'Content-Security-Policy': ["default-src 'self'"] }),
+      responseHeaders: expect.objectContaining({
+        'Content-Security-Policy': ["default-src 'self'"],
+      }),
     });
 
     window.listeners.get('move')?.();
@@ -486,7 +489,10 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     await expect(options.chooseTextImportFile()).resolves.toBe('/tmp/import.md');
     await expect(options.chooseTextExportDirectory()).resolves.toBe('/tmp/text-export');
     expect(state.dialogShow).not.toHaveBeenCalled();
-    const window = windowInstance() as { onceListeners: Map<string, (...args: unknown[]) => unknown>; show: ReturnType<typeof vi.fn> };
+    const window = windowInstance() as {
+      onceListeners: Map<string, (...args: unknown[]) => unknown>;
+      show: ReturnType<typeof vi.fn>;
+    };
     window.onceListeners.get('ready-to-show')?.();
     expect(window.show).not.toHaveBeenCalled();
   });
@@ -550,7 +556,11 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     };
     window.listeners.get('close')?.({ preventDefault: vi.fn() });
     await flush();
-    expect(state.loggerLog).toHaveBeenCalledWith('error', 'app.shutdown.blocked', expect.any(Object));
+    expect(state.loggerLog).toHaveBeenCalledWith(
+      'error',
+      'app.shutdown.blocked',
+      expect.any(Object),
+    );
 
     window.webContents.executeJavaScript.mockRejectedValueOnce(new Error('renderer gone'));
     window.listeners.get('close')?.({ preventDefault: vi.fn() });

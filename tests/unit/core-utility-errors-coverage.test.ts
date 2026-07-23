@@ -186,9 +186,9 @@ describe('Core utility error mapping regression coverage', () => {
 
   it('maps final validation and database fallbacks', () => {
     expect(projectOperationError(zodError())).toBe('COMMON_INVALID_INPUT_001');
-    expect(projectOperationError(serviceError(DatabaseFoundationError, 'DATABASE_FUTURE_SCHEMA'))).toBe(
-      'DB_SCHEMA_UNSUPPORTED_007',
-    );
+    expect(
+      projectOperationError(serviceError(DatabaseFoundationError, 'DATABASE_FUTURE_SCHEMA')),
+    ).toBe('DB_SCHEMA_UNSUPPORTED_007');
     expect(projectOperationError(new Error('unknown'))).toBe('DB_OPEN_FAILED_001');
   });
 });

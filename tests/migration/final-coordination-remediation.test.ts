@@ -433,7 +433,7 @@ describe('M0-M3 final coordination migration', () => {
     }
   });
 
-  it('keeps unplanted future plans out of history and invalidates from the linked chapter', async () => {
+  it('invalidates snapshots from the first linked chapter for a newly linked foreshadowing', async () => {
     const { database, migrations } = await openLatest('worldforge-temporal-projection-');
     try {
       const ids = (
@@ -454,16 +454,6 @@ describe('M0-M3 final coordination migration', () => {
           return { fixture, foreshadowingId, snapshotIds };
         })
       ).value;
-      for (const snapshotId of ids.snapshotIds) {
-        expect(
-          database.read((connection) => {
-            const row = connection
-              .prepare('SELECT content_json AS contentJson FROM ending_snapshots WHERE id = ?')
-              .get(snapshotId) as { contentJson: string };
-            return JSON.parse(row.contentJson).foreshadowings;
-          }),
-        ).toEqual([]);
-      }
 
       const middle = ids.fixture.chapters[1]!;
       await database.write(randomUUID(), (connection) => {

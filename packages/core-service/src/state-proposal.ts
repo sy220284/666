@@ -283,18 +283,146 @@ function validateVersionBlockEvidence(
   }
 }
 
-function effectiveAt(
+type ChapterPosition = ReturnType<typeof chapterPosition>;
+
+type HistoricalForeshadowingStatus = 'planted' | 'reinforced' | 'partially_revealed' | 'revealed';
+
+interface ForeshadowingEventRow {
+  readonly id: string;
+  readonly chapterId: string;
+  readonly role: 'plant' | 'reinforce' | 'partial_reveal' | 'reveal';
+}
+
+function chapterPositions(
   connection: DatabaseSync,
   projectId: string,
+): ReadonlyMap<string, ChapterPosition> {
+  const rows = connection
+    .prepare(
+      `SELECT c.id AS chapterId, volume.order_key AS volumeOrder,
+              c.order_key AS chapterOrder
+         FROM chapters c
+         JOIN volumes volume ON volume.id = c.volume_id
+        WHERE volume.project_id = ?
+          AND c.deleted_at IS NULL AND volume.deleted_at IS NULL`,
+    )
+    .all(projectId) as unknown as {
+    readonly chapterId: string;
+    readonly volumeOrder: number | bigint;
+    readonly chapterOrder: number | bigint;
+  }[];
+  return new Map(
+    rows.map((row) => [
+      row.chapterId,
+      [Number(row.volumeOrder), Number(row.chapterOrder)] as ChapterPosition,
+    ]),
+  );
+}
+
+function requiredPosition(
+  positions: ReadonlyMap<string, ChapterPosition>,
   chapterId: string,
+): ChapterPosition {
+  const position = positions.get(chapterId);
+  if (!position) {
+    throw new StateProposalServiceError(
+      'STATE_PROPOSAL_INVARIANT',
+      'EndingSnapshot references a Chapter outside the active project structure.',
+    );
+  }
+  return position;
+}
+
+function effectiveAt(
+  positions: ReadonlyMap<string, ChapterPosition>,
+  target: ChapterPosition,
   startChapterId: string,
   endChapterId: string | null,
 ): boolean {
-  const target = chapterPosition(connection, projectId, chapterId);
-  const start = chapterPosition(connection, projectId, startChapterId);
+  const start = requiredPosition(positions, startChapterId);
   if (compareChapterPosition(start, target) > 0) return false;
   if (!endChapterId) return true;
-  return compareChapterPosition(target, chapterPosition(connection, projectId, endChapterId)) < 0;
+  return compareChapterPosition(target, requiredPosition(positions, endChapterId)) < 0;
+}
+
+const foreshadowingRole = {
+  plant: { status: 'planted', rank: 1 },
+  reinforce: { status: 'reinforced', rank: 2 },
+  partial_reveal: { status: 'partially_revealed', rank: 3 },
+  reveal: { status: 'revealed', rank: 4 },
+} as const satisfies Record<
+  ForeshadowingEventRow['role'],
+  { readonly status: HistoricalForeshadowingStatus; readonly rank: number }
+>;
+
+function historicalForeshadowings(
+  connection: DatabaseSync,
+  projectId: string,
+  positions: ReadonlyMap<string, ChapterPosition>,
+  target: ChapterPosition,
+): Array<{ readonly id: string; readonly status: HistoricalForeshadowingStatus }> {
+  const rows = connection
+    .prepare(
+      `SELECT f.id, link.chapter_id AS chapterId, link.role
+         FROM foreshadowings f
+         JOIN foreshadowing_chapters link ON link.foreshadowing_id = f.id
+        WHERE f.project_id = ?
+          AND link.role IN ('plant', 'reinforce', 'partial_reveal', 'reveal')
+        ORDER BY f.id, link.chapter_id, link.role`,
+    )
+    .all(projectId) as unknown as ForeshadowingEventRow[];
+  const latest = new Map<
+    string,
+    {
+      readonly position: ChapterPosition;
+      readonly rank: number;
+      readonly status: HistoricalForeshadowingStatus;
+    }
+  >();
+  for (const row of rows) {
+    const position = requiredPosition(positions, row.chapterId);
+    if (compareChapterPosition(position, target) > 0) continue;
+    const event = foreshadowingRole[row.role];
+    const current = latest.get(row.id);
+    const ordering = current ? compareChapterPosition(position, current.position) : 1;
+    if (!current || ordering > 0 || (ordering === 0 && event.rank > current.rank)) {
+      latest.set(row.id, { position, rank: event.rank, status: event.status });
+    }
+  }
+  return [...latest.entries()]
+    .sort(([left], [right]) => left.localeCompare(right, 'en'))
+    .map(([id, event]) => ({ id, status: event.status }));
+}
+
+function historicalArcMilestones(
+  connection: DatabaseSync,
+  projectId: string,
+  positions: ReadonlyMap<string, ChapterPosition>,
+  target: ChapterPosition,
+) {
+  const rows = connection
+    .prepare(
+      `SELECT id, status, planned_chapter_id AS plannedChapterId,
+              actual_chapter_id AS actualChapterId
+         FROM arc_milestones
+        WHERE project_id = ? AND status IN ('hit', 'skipped')
+        ORDER BY id`,
+    )
+    .all(projectId) as unknown as {
+    readonly id: string;
+    readonly status: 'hit' | 'skipped';
+    readonly plannedChapterId: string | null;
+    readonly actualChapterId: string | null;
+  }[];
+  return rows
+    .filter((row) => {
+      const effectiveChapterId = row.actualChapterId ?? row.plannedChapterId;
+      return (
+        effectiveChapterId !== null &&
+        compareChapterPosition(requiredPosition(positions, effectiveChapterId), target) <= 0
+      );
+    })
+    .map(({ id, status, actualChapterId }) => ({ id, status, actualChapterId }));
 }
 
 function snapshotContent(
@@ -302,7 +430,8 @@ function snapshotContent(
   projectId: string,
   chapterId: string,
 ): EndingSnapshotContent {
-  chapterPosition(connection, projectId, chapterId);
+  const target = chapterPosition(connection, projectId, chapterId);
+  const positions = chapterPositions(connection, projectId);
   const entityRows = connection
     .prepare(
       `SELECT entity_id AS entityId, state_key AS stateKey, value_json AS valueJson,
@@ -338,31 +467,10 @@ function snapshotContent(
     readonly validFromChapterId: string;
     readonly validUntilChapterId: string | null;
   }[];
-  const foreshadowings = connection
-    .prepare('SELECT id, status FROM foreshadowings WHERE project_id = ? ORDER BY id')
-    .all(projectId) as unknown as { readonly id: string; readonly status: string }[];
-  const milestones = connection
-    .prepare(
-      `SELECT id, status, actual_chapter_id AS actualChapterId
-         FROM arc_milestones
-        WHERE project_id = ? AND status IN ('hit', 'skipped')
-        ORDER BY id`,
-    )
-    .all(projectId) as unknown as {
-    readonly id: string;
-    readonly status: string;
-    readonly actualChapterId: string | null;
-  }[];
   return EndingSnapshotContentSchema.parse({
     entityStates: entityRows
       .filter((row) =>
-        effectiveAt(
-          connection,
-          projectId,
-          chapterId,
-          row.validFromChapterId,
-          row.validUntilChapterId,
-        ),
+        effectiveAt(positions, target, row.validFromChapterId, row.validUntilChapterId),
       )
       .map((row) => ({
         entityId: row.entityId,
@@ -372,21 +480,15 @@ function snapshotContent(
       })),
     knowledgeStates: knowledgeRows
       .filter((row) =>
-        effectiveAt(
-          connection,
-          projectId,
-          chapterId,
-          row.validFromChapterId,
-          row.validUntilChapterId,
-        ),
+        effectiveAt(positions, target, row.validFromChapterId, row.validUntilChapterId),
       )
       .map((row) => ({
         characterId: row.characterId,
         informationKey: row.informationKey,
         knowledgeStatus: row.knowledgeStatus,
       })),
-    foreshadowings,
-    arcMilestones: milestones,
+    foreshadowings: historicalForeshadowings(connection, projectId, positions, target),
+    arcMilestones: historicalArcMilestones(connection, projectId, positions, target),
   });
 }
 

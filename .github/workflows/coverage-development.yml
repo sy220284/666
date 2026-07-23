@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - .github/workflows/coverage-development.yml
       - vitest.coverage.config.ts
       - apps/desktop/main/src/**
       - apps/desktop/preload/src/**
@@ -63,13 +64,13 @@ jobs:
 
   finalize:
     needs: coverage
-    if: github.event_name == 'push' && github.event.head_commit.message == '测试：启动覆盖率工作流固化'
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: fix/governance-audit-coverage-75-2026-07-23
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
@@ -146,4 +147,4 @@ jobs:
           git add -A
           git diff --cached --quiet && exit 1
           git commit -m '测试：固化75%覆盖率配置与Quality门禁'
-          git push origin HEAD:fix/governance-audit-coverage-75-2026-07-23
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}

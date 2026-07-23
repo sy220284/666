@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-m0-m3-snapshot-projection-2026-07-23",
+  "baseCommit": "891f616c57b4495dfedb84ccaf841a28df198131",
+  "branch": "fix/governance-audit-m0-m3-snapshot-projection",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M3-05",
+      "finding": "Schema 19 invalidation tests did not exercise real EndingSnapshot refresh, while snapshotContent still projected unplanted foreshadowings from current project state.",
+      "allowedPaths": [
+        "packages/core-service/src/state-proposal.ts",
+        "tests/integration/ending-snapshot-temporal-projection.test.ts",
+        "tests/migration/final-coordination-remediation.test.ts",
+        "docs/architecture/M0_M3_FINAL_REMEDIATION.md",
+        "docs/test-evidence/M3-05/"
+      ]
+    },
+    {
+      "taskId": "M3-06",
+      "finding": "EndingSnapshot refresh included all resolved ArcMilestones regardless of whether their effective chapter was later than the target chapter.",
+      "allowedPaths": [
+        "packages/core-service/src/state-proposal.ts",
+        "tests/integration/ending-snapshot-temporal-projection.test.ts",
+        "tests/migration/final-coordination-remediation.test.ts",
+        "docs/architecture/M0_M3_FINAL_REMEDIATION.md"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M3-05"],
+  "governancePaths": [
+    ".github/audit-remediations/m0-m3-snapshot-projection-2026-07-23.json"
+  ]
+}

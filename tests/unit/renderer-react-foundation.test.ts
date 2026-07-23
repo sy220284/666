@@ -104,7 +104,7 @@ describe('M3-07 bridge request lifecycle', () => {
     await expect(first).resolves.toEqual({ state: 'stale', generation: 1 });
   });
 
-  it('cancels from an external AbortSignal', async () => {
+  it('detaches from an external AbortSignal without claiming Core cancellation', async () => {
     const coordinator = new BridgeRequestCoordinator();
     const external = new AbortController();
     const pending = coordinator.run(
@@ -126,7 +126,7 @@ describe('M3-07 bridge request lifecycle', () => {
 
     external.abort();
     await expect(pending).resolves.toEqual({
-      state: 'cancelled',
+      state: 'stale',
       generation: 1,
     });
   });

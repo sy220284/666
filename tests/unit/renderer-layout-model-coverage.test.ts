@@ -7,6 +7,7 @@ import {
 
 describe('Renderer layout policy boundary coverage', () => {
   it.each([
+    [1, 'compact', 'drawer', 'drawer'],
     [899, 'compact', 'drawer', 'drawer'],
     [900, 'narrow', 'sidebar', 'drawer'],
     [1099, 'narrow', 'sidebar', 'drawer'],

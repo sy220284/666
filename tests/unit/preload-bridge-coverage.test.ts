@@ -1,11 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  APP_COMMANDS,
+  IPC_CHANNELS,
+  PROTOCOL_VERSION,
+  RegisteredCommandSchema,
+  type WorldforgeBridge,
+} from '@worldforge/contracts';
 
 const state = vi.hoisted(() => ({
   exposed: undefined as unknown,
   channels: [] as FakeMessageChannel[],
-  disposition: { kind: 'accepted' } as { kind: string },
-  restored: [] as unknown[],
-  ipcInvoke: vi.fn(async () => ({ ok: true, data: {} })),
+  calls: [] as Array<{ channel: string; command: unknown }>,
+  ipcInvoke: vi.fn(),
   ipcPostMessage: vi.fn(),
 }));
 
@@ -49,59 +56,70 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('@worldforge/contracts', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
-  const schema = {
-    parse: (input: unknown) => input,
-    safeParse: (input: unknown) =>
-      (input as { valid?: boolean } | null)?.valid === false
-        ? { success: false, error: new Error('invalid') }
-        : { success: true, data: input },
-  };
-  class FakeTaskEventCursor {
-    accept(): { kind: string } {
-      return state.disposition;
-    }
-    restore(snapshot: unknown): void {
-      state.restored.push(snapshot);
-    }
-  }
-  return new Proxy(actual, {
-    get(target, property, receiver) {
-      if (property === 'TaskEventCursor') return FakeTaskEventCursor;
-      if (typeof property === 'string' && property.endsWith('Schema')) return schema;
-      return Reflect.get(target, property, receiver);
-    },
-  });
-});
+const projectId = '22222222-2222-4222-8222-222222222222';
+const taskId = '33333333-3333-4333-8333-333333333333';
+const credentialRef = 'cred_55555555-5555-4555-8555-555555555555';
+const originalMessageChannel = globalThis.MessageChannel;
 
-function universalArgument(): unknown {
-  const callable = vi.fn();
-  return new Proxy(callable, {
-    get(_target, property) {
-      if (property === 'then') return undefined;
-      if (property === Symbol.iterator) return function* iterator() {};
-      if (property === Symbol.toPrimitive) return () => 'coverage-id';
-      return callable;
+function failure(requestId: string) {
+  return {
+    ok: false,
+    requestId,
+    error: {
+      code: 'COMMON_INTERNAL_999',
+      message: 'expected unit-test failure',
+      retryable: false,
     },
-  });
+  };
+}
+
+function taskEvent(sequence: number, eventId: string) {
+  return {
+    protocolVersion: PROTOCOL_VERSION,
+    eventId,
+    taskId,
+    projectId,
+    sequence,
+    emittedAt: '2026-07-23T00:00:00.000Z',
+    type: 'task.progress',
+    payload: { stage: 'running', current: sequence, total: 10 },
+  };
 }
 
 async function flushMicrotasks(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  await vi.waitFor(() => {
+    expect(true).toBe(true);
+  });
 }
 
 describe('Preload bridge unit and regression coverage', () => {
   beforeEach(async () => {
     state.exposed = undefined;
     state.channels.length = 0;
-    state.disposition = { kind: 'accepted' };
-    state.restored.length = 0;
+    state.calls.length = 0;
     state.ipcInvoke.mockReset();
-    state.ipcInvoke.mockResolvedValue({ ok: true, data: {} });
     state.ipcPostMessage.mockReset();
+    state.ipcInvoke.mockImplementation(async (channel: string, command: unknown) => {
+      state.calls.push({ channel, command });
+      const parsed = RegisteredCommandSchema.parse(command);
+      if (channel === IPC_CHANNELS.taskGetSnapshot) {
+        return {
+          ok: true,
+          requestId: parsed.requestId,
+          data: {
+            taskId,
+            taskType: 'chapter.generate',
+            projectId,
+            status: 'running',
+            stage: 'running',
+            lastSequence: 3,
+            startedAt: '2026-07-23T00:00:00.000Z',
+            elapsedMs: 100,
+          },
+        };
+      }
+      return failure(parsed.requestId);
+    });
     Object.defineProperty(globalThis, 'MessageChannel', {
       configurable: true,
       value: FakeMessageChannel,
@@ -110,121 +128,161 @@ describe('Preload bridge unit and regression coverage', () => {
     await import('../../apps/desktop/preload/src/index.js');
   });
 
-  it('exposes one bridge and forwards every non-streaming capability through validated invoke', async () => {
-    expect(state.exposed).toBeTypeOf('object');
-    const bridge = state.exposed as Record<string, Record<string, (...args: unknown[]) => unknown>>;
-    const argument = universalArgument();
-    const invoked: string[] = [];
-
-    for (const [groupName, group] of Object.entries(bridge)) {
-      if (!group || typeof group !== 'object') continue;
-      for (const [methodName, method] of Object.entries(group)) {
-        if (typeof method !== 'function' || `${groupName}.${methodName}` === 'task.subscribe')
-          continue;
-        const result = method(argument, argument, argument);
-        await Promise.resolve(result);
-        invoked.push(`${groupName}.${methodName}`);
-      }
-    }
-
-    expect(invoked).toContain('app.getInfo');
-    expect(invoked).toContain('project.create');
-    expect(invoked).toContain('draft.applyPatch');
-    expect(invoked).toContain('candidate.discard');
-    expect(invoked).toContain('version.restore');
-    expect(invoked).toContain('ai.hasCredential');
-    expect(invoked).toContain('task.getSnapshot');
-    expect(state.ipcInvoke).toHaveBeenCalledTimes(invoked.length);
-    for (const [, command] of state.ipcInvoke.mock.calls) {
-      expect(command).toMatchObject({
-        protocolVersion: expect.any(Number),
-        requestId: expect.any(String),
-        sentAt: expect.any(String),
-      });
-    }
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'MessageChannel', {
+      configurable: true,
+      value: originalMessageChannel,
+    });
+    vi.restoreAllMocks();
   });
 
-  it('handles accepted, duplicate, malformed and sequence-gap task events and closes idempotently', async () => {
-    const bridge = state.exposed as {
-      task: {
-        subscribe(listener: (event: unknown) => void, projectId?: string): () => void;
-      };
-    };
+  it('uses real command schemas and exact channels for representative bridge capabilities', async () => {
+    const bridge = state.exposed as WorldforgeBridge;
+
+    await bridge.app.getInfo();
+    await bridge.app.setAppearancePreferences({
+      workspaceAlignment: 'left',
+      uiScalePercent: 110,
+      bodyFontSize: 20,
+      contentWidth: 'wide',
+    });
+    await bridge.settings.set({ themeId: 'theme-b', themeVariant: 'dark' });
+    await bridge.project.openRecent(projectId);
+    await bridge.planning.getBrief(projectId);
+    await bridge.recovery.getOverview(projectId);
+    await bridge.textIo.listExportVersions(projectId);
+    await bridge.ai.hasCredential(credentialRef);
+    await bridge.task.listActive(projectId);
+
+    expect(
+      state.calls.map(({ channel, command }) => ({
+        channel,
+        command: (command as { command: string }).command,
+      })),
+    ).toEqual([
+      { channel: IPC_CHANNELS.appGetInfo, command: APP_COMMANDS.getInfo },
+      {
+        channel: IPC_CHANNELS.appSetAppearancePreferences,
+        command: APP_COMMANDS.setAppearancePreferences,
+      },
+      { channel: IPC_CHANNELS.settingsSet, command: APP_COMMANDS.settingsSet },
+      { channel: IPC_CHANNELS.openRecent, command: APP_COMMANDS.openRecent },
+      { channel: IPC_CHANNELS.getBrief, command: APP_COMMANDS.getBrief },
+      { channel: IPC_CHANNELS.getOverview, command: APP_COMMANDS.getOverview },
+      {
+        channel: IPC_CHANNELS.listExportVersions,
+        command: APP_COMMANDS.listExportVersions,
+      },
+      { channel: IPC_CHANNELS.aiHasCredential, command: APP_COMMANDS.hasCredential },
+      { channel: IPC_CHANNELS.taskListActive, command: APP_COMMANDS.taskListActive },
+    ]);
+    for (const { command } of state.calls) expect(() => RegisteredCommandSchema.parse(command)).not.toThrow();
+  });
+
+  it('rejects invalid input through the authoritative preload schema before IPC dispatch', async () => {
+    const bridge = state.exposed as WorldforgeBridge;
+    await expect(
+      bridge.app.setAppearancePreferences({
+        workspaceAlignment: 'center',
+        uiScalePercent: 95,
+        bodyFontSize: 18,
+        contentWidth: 'normal',
+      } as never),
+    ).rejects.toThrow();
+    await expect(bridge.project.openRecent('not-a-uuid')).rejects.toThrow();
+    await expect(bridge.ai.hasCredential('invalid-ref')).rejects.toThrow();
+    expect(state.ipcInvoke).not.toHaveBeenCalled();
+  });
+
+  it('handles accepted, duplicate, malformed and sequence-gap events with real schemas', async () => {
+    const bridge = state.exposed as WorldforgeBridge;
     const listener = vi.fn();
-    const unsubscribe = bridge.task.subscribe(listener, 'project-id');
+    const unsubscribe = bridge.task.subscribe(listener, projectId);
     const channel = state.channels.at(-1);
     expect(channel?.port1.started).toBe(true);
-    expect(state.ipcPostMessage).toHaveBeenCalledTimes(1);
+    expect(state.ipcPostMessage).toHaveBeenCalledWith(
+      IPC_CHANNELS.taskConnectEvents,
+      expect.objectContaining({ protocolVersion: PROTOCOL_VERSION, projectId }),
+      [channel?.port2],
+    );
 
-    channel?.port1.onmessage?.({ data: { valid: false } });
+    channel?.port1.onmessage?.({ data: { invalid: true } });
     expect(listener).not.toHaveBeenCalled();
 
-    state.disposition = { kind: 'accepted' };
-    channel?.port1.onmessage?.({ data: { eventId: 'event-1', taskId: 'task-1' } });
-    expect(listener).toHaveBeenCalledWith({
-      kind: 'event',
-      event: { eventId: 'event-1', taskId: 'task-1' },
+    const firstEventId = '44444444-4444-4444-8444-444444444444';
+    channel?.port1.onmessage?.({ data: taskEvent(1, firstEventId) });
+    expect(listener).toHaveBeenCalledWith({ kind: 'event', event: taskEvent(1, firstEventId) });
+
+    channel?.port1.onmessage?.({ data: taskEvent(1, firstEventId) });
+    const gapEventId = '66666666-6666-4666-8666-666666666666';
+    channel?.port1.onmessage?.({ data: taskEvent(3, gapEventId) });
+    channel?.port1.onmessage?.({
+      data: taskEvent(4, '77777777-7777-4777-8777-777777777777'),
     });
-
-    state.disposition = { kind: 'duplicate' };
-    channel?.port1.onmessage?.({ data: { eventId: 'event-2', taskId: 'task-1' } });
-
-    let resolveSnapshot: ((value: unknown) => void) | undefined;
-    state.ipcInvoke.mockImplementationOnce(
-      async () =>
-        await new Promise((resolve) => {
-          resolveSnapshot = resolve;
-        }),
-    );
-    state.disposition = { kind: 'gap' };
-    const gap = { eventId: 'event-3', taskId: 'task-gap', projectId: 'project-id' };
-    channel?.port1.onmessage?.({ data: gap });
-    channel?.port1.onmessage?.({ data: { ...gap, eventId: 'event-4' } });
-    resolveSnapshot?.({ ok: true, data: { taskId: 'task-gap', sequence: 4 } });
     await flushMicrotasks();
-    expect(state.restored).toContainEqual({ taskId: 'task-gap', sequence: 4 });
-    expect(listener).toHaveBeenCalledWith({
-      kind: 'snapshot',
-      snapshot: { taskId: 'task-gap', sequence: 4 },
-      reason: 'sequence-gap',
+    await vi.waitFor(() => {
+      expect(listener).toHaveBeenCalledWith({
+        kind: 'snapshot',
+        snapshot: expect.objectContaining({ taskId, lastSequence: 3 }),
+        reason: 'sequence-gap',
+      });
     });
+    expect(channel?.port1.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ protocolVersion: PROTOCOL_VERSION, type: 'task.ack' }),
+      ]),
+    );
 
     unsubscribe();
     unsubscribe();
     expect(channel?.port1.closed).toBe(true);
-    const callsBeforeClosedEvent = listener.mock.calls.length;
-    channel?.port1.onmessage?.({ data: { eventId: 'late', taskId: 'task-1' } });
-    expect(listener).toHaveBeenCalledTimes(callsBeforeClosedEvent);
-    expect(channel?.port1.messages.length).toBeGreaterThanOrEqual(4);
+    const callsBeforeLateEvent = listener.mock.calls.length;
+    channel?.port1.onmessage?.({
+      data: taskEvent(5, '88888888-8888-4888-8888-888888888888'),
+    });
+    expect(listener).toHaveBeenCalledTimes(callsBeforeLateEvent);
   });
 
-  it('does not publish a failed or late snapshot recovery', async () => {
-    const bridge = state.exposed as {
-      task: { subscribe(listener: (event: unknown) => void): () => void };
-    };
+  it('does not publish failed or late snapshot recovery', async () => {
+    const bridge = state.exposed as WorldforgeBridge;
     const listener = vi.fn();
-    state.disposition = { kind: 'gap' };
-    state.ipcInvoke.mockResolvedValueOnce({ ok: false, error: { code: 'FAILED' } });
-    const unsubscribe = bridge.task.subscribe(listener);
+    state.ipcInvoke.mockImplementationOnce(async (_channel: string, command: unknown) => {
+      const parsed = RegisteredCommandSchema.parse(command);
+      return failure(parsed.requestId);
+    });
+    const unsubscribe = bridge.task.subscribe(listener, projectId);
     const channel = state.channels.at(-1);
     channel?.port1.onmessage?.({
-      data: { eventId: 'event-failed', taskId: 'task-failed', projectId: 'project-id' },
+      data: taskEvent(2, '99999999-9999-4999-8999-999999999999'),
     });
     await flushMicrotasks();
     expect(listener).not.toHaveBeenCalled();
 
     let resolveSnapshot: ((value: unknown) => void) | undefined;
     state.ipcInvoke.mockImplementationOnce(
-      async () =>
+      async (_channel: string, command: unknown) =>
         await new Promise((resolve) => {
-          resolveSnapshot = resolve;
+          const parsed = RegisteredCommandSchema.parse(command);
+          resolveSnapshot = (value) => resolve({ ...value as object, requestId: parsed.requestId });
         }),
     );
     channel?.port1.onmessage?.({
-      data: { eventId: 'event-late', taskId: 'task-late', projectId: 'project-id' },
+      data: taskEvent(3, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
     });
     unsubscribe();
-    resolveSnapshot?.({ ok: true, data: { taskId: 'task-late' } });
+    resolveSnapshot?.({
+      ok: true,
+      data: {
+        taskId,
+        taskType: 'chapter.generate',
+        projectId,
+        status: 'running',
+        stage: 'running',
+        lastSequence: 3,
+        startedAt: '2026-07-23T00:00:00.000Z',
+        elapsedMs: 100,
+      },
+    });
     await flushMicrotasks();
     expect(listener).not.toHaveBeenCalled();
   });

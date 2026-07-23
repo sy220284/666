@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: quality-${{ github.event.pull_request.number || github.ref }}
@@ -61,3 +61,56 @@ jobs:
       package_smoke: false
       security_suite: false
       performance_eval: false
+
+  preserve-rebind-queue:
+    if: ${{ github.head_ref == 'diagnostic/preserve-m0-m3-rebind-queue' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      TARGET_BRANCH: fix/governance-audit-m0-m3-final-remediation
+      EXPECTED_HEAD: 8b01dffcdba8c0cd67bf25cdc68c91e93b433144
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Preserve patch and check out formal remediation Head
+        shell: bash
+        run: |
+          cp .github/diagnostics/preserve-rebind-queue.py "$RUNNER_TEMP/preserve-rebind-queue.py"
+          git fetch --quiet origin "${TARGET_BRANCH}"
+          actual="$(git rev-parse FETCH_HEAD)"
+          test "${actual}" = "${EXPECTED_HEAD}"
+          git checkout -B remediation-target "${actual}"
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Patch and format
+        shell: bash
+        run: |
+          python3 "$RUNNER_TEMP/preserve-rebind-queue.py"
+          pnpm exec prettier --write \
+            migrations/project/0019_final_coordination_remediation.sql \
+            tests/migration/final-coordination-remediation.test.ts
+      - name: Verify upgrade preservation
+        shell: bash
+        run: |
+          pnpm typecheck
+          pnpm test:prepare
+          pnpm exec vitest run \
+            tests/migration/final-coordination-remediation.test.ts \
+            tests/migration/integrated-coordination-migration.test.ts
+      - name: Push verified patch to formal remediation branch
+        shell: bash
+        run: |
+          git config user.name "WorldForge Final Audit Remediation"
+          git config user.email "worldforge-final-audit@users.noreply.github.com"
+          git add --all
+          git diff --cached --check -- ':!*.md'
+          git commit -m "fix(M3-02): preserve pending rebind rows across Schema 19"
+          git push origin HEAD:"${TARGET_BRANCH}"

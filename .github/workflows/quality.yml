@@ -127,3 +127,5 @@ jobs:
           git diff --cached --check -- ':!*.md'
           git commit -m "fix(M0-M3): enforce temporal snapshot projection"
           git push origin HEAD:"${TARGET_BRANCH}"
+
+# Diagnostic-only synchronization trigger.

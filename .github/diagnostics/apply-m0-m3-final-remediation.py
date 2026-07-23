@@ -11,6 +11,15 @@ def replace_once(path: str, old: str, new: str) -> None:
     file.write_text(source.replace(old, new))
 
 
+def replace_count(path: str, old: str, new: str, expected: int) -> None:
+    file = Path(path)
+    source = file.read_text()
+    count = source.count(old)
+    if count != expected:
+        raise SystemExit(f'{path}: expected {expected} matches, found {count}: {old[:80]!r}')
+    file.write_text(source.replace(old, new))
+
+
 migration = 'migrations/project/0019_final_coordination_remediation.sql'
 replace_once(
     migration,
@@ -108,6 +117,55 @@ replace_once(
           connection.prepare('SELECT COUNT(*) AS count FROM scene_beat_link_rebind_queue').get(),
         ),
       ).toEqual({ count: 1n });
+""",
+)
+
+final_test = 'tests/migration/final-coordination-remediation.test.ts'
+replace_once(
+    final_test,
+    '      fixture = await v17.write(randomUUID(), (connection) => {',
+    '      fixture = (await v17.write(randomUUID(), (connection) => {',
+)
+replace_once(
+    final_test,
+    """        return seeded;
+      });
+""",
+    """        return seeded;
+      })).value;
+""",
+)
+replace_count(
+    final_test,
+    '      const ids = await database.write(randomUUID(), (connection) => {',
+    '      const ids = (await database.write(randomUUID(), (connection) => {',
+    3,
+)
+replace_once(
+    final_test,
+    """        return { fixture, source: source!, target: target!, logicalBlockId, sourceBlockId, beatId };
+      });
+""",
+    """        return { fixture, source: source!, target: target!, logicalBlockId, sourceBlockId, beatId };
+      })).value;
+""",
+)
+replace_once(
+    final_test,
+    """        return { fixture, snapshotIds };
+      });
+""",
+    """        return { fixture, snapshotIds };
+      })).value;
+""",
+)
+replace_once(
+    final_test,
+    """        return { fixture, foreshadowingId, snapshotIds };
+      });
+""",
+    """        return { fixture, foreshadowingId, snapshotIds };
+      })).value;
 """,
 )
 

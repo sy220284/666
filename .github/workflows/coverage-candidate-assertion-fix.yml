@@ -1,0 +1,38 @@
+name: 修正Candidate结构断言
+
+on:
+  push:
+    branches:
+      - fix/governance-audit-coverage-75-2026-07-23
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.head_commit.message == '测试：启动Candidate结构断言修正'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/governance-audit-coverage-75-2026-07-23
+      - name: 修正冲突样例
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const file = 'tests/unit/core-candidate-diff-coverage.test.ts';
+          let source = fs.readFileSync(file, 'utf8');
+          source = source.replace(
+            `[draft('a'), draft('b')],\n        [\n          candidate('merged', '甲乙', { sourceLogicalBlockIds: ['a', 'b'] }),\n          candidate('split-1', '甲', { sourceLogicalBlockIds: ['a'] }),\n          candidate('split-2', '乙', { sourceLogicalBlockIds: ['a'] }),\n        ],`,
+            `[draft('a'), draft('b'), draft('c')],\n        [\n          candidate('merge-ab', '甲乙', { sourceLogicalBlockIds: ['a', 'b'] }),\n          candidate('merge-ac', '甲丙', { sourceLogicalBlockIds: ['a', 'c'] }),\n        ],`,
+          );
+          fs.writeFileSync(file, source);
+          NODE
+      - name: 提交修正
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/unit/core-candidate-diff-coverage.test.ts
+          git diff --cached --quiet && exit 1
+          git commit -m '测试：修正Candidate结构冲突样例'
+          git push origin HEAD:fix/governance-audit-coverage-75-2026-07-23

@@ -1,6 +1,9 @@
 name: PR172 格式诊断
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - diagnostic/format-pr172

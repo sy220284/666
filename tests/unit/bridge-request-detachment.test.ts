@@ -28,10 +28,7 @@ describe('M3-R01 bridge cancellation truthfulness', () => {
 
     external.abort();
     await expect(
-      Promise.race([
-        request,
-        delay(50).then(() => ({ state: 'timeout' as const })),
-      ]),
+      Promise.race([request, delay(50).then(() => ({ state: 'timeout' as const }))]),
     ).resolves.toEqual({ state: 'stale', generation: 1 });
     expect(coordinator.isPending('project.write')).toBe(false);
 
@@ -42,10 +39,12 @@ describe('M3-R01 bridge cancellation truthfulness', () => {
   it('detaches the replaced generation and lets the replacement finish', async () => {
     const coordinator = new BridgeRequestCoordinator();
     let resolveOld: ((result: CommandResult<string>) => void) | undefined;
-    const oldRequest = coordinator.run('catalog.read', () =>
-      new Promise<CommandResult<string>>((resolve) => {
-        resolveOld = resolve;
-      }),
+    const oldRequest = coordinator.run(
+      'catalog.read',
+      () =>
+        new Promise<CommandResult<string>>((resolve) => {
+          resolveOld = resolve;
+        }),
     );
     const replacement = coordinator.run(
       'catalog.read',

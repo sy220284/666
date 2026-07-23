@@ -2,7 +2,7 @@
 --
 -- This migration replaces the broad Schema 18 triggers without rewriting the
 -- released migration. It keeps SceneBeat movement author-controlled and makes
--- EndingSnapshot invalidation begin at the earliest affected chapter.
+-- EndingSnapshot invalidation starts at the earliest affected chapter.
 
 DROP TRIGGER IF EXISTS trg_scene_beat_link_capture_before_block_delete;
 DROP TRIGGER IF EXISTS trg_scene_beat_link_rebind_after_block_insert;
@@ -218,7 +218,7 @@ BEGIN
    WHERE project_id = NEW.project_id AND status = 'valid';
 END;
 
--- Entity and knowledge state changes begin at valid_from. Updating a state uses
+-- Entity and knowledge state changes start at valid_from. Updating a state uses
 -- both old and new boundaries so shortened, extended, or moved ranges are safe.
 CREATE TRIGGER trg_snapshot_stale_after_entity_state_insert
 AFTER INSERT ON entity_states

@@ -37,7 +37,7 @@
       "finding": "Recovered project identity remapping committed before foreign-key verification, making a failed verification non-rollbackable.",
       "allowedPaths": [
         "packages/core-service/src/recovery.ts",
-        "tests/integration/recovery.test.ts"
+        "tests/integration/recovery-identity-remap.test.ts"
       ]
     },
     {
@@ -90,7 +90,5 @@
     }
   ],
   "evidenceMigrationTasks": ["M3-10"],
-  "governancePaths": [
-    ".github/audit-remediations/m0-m3-final-remediation-2026-07-23.json"
-  ]
+  "governancePaths": [".github/audit-remediations/m0-m3-final-remediation-2026-07-23.json"]
 }

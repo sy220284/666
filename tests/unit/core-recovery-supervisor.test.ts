@@ -162,7 +162,8 @@ describe('M3-R01 Core recovery supervisor', () => {
   });
 
   it('coalesces concurrent restart requests', async () => {
-    const restartResult = deferred<ReturnType<typeof success<{ accepted: boolean; status: CoreStatus }>>>();
+    const restartResult =
+      deferred<ReturnType<typeof success<{ accepted: boolean; status: CoreStatus }>>>();
     const restartCore = vi.fn(() => restartResult.promise);
     const supervisor = createCoreRecoverySupervisor({
       bridge: {

@@ -1,4 +1,4 @@
-import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type { CoreStatus } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 
@@ -35,7 +35,14 @@ export interface CoreRecoverySupervisor {
 
 interface CoreRecoveryBridge {
   readonly app: Pick<RendererBridgeAdapter['app'], 'getCoreStatus' | 'restartCore'>;
-  readonly project: Pick<RendererBridgeAdapter['project'], 'getActive' | 'listRecent' | 'openRecent'>;
+  readonly project: Pick<
+    RendererBridgeAdapter['project'],
+    'getActive' | 'listRecent' | 'openRecent'
+  >;
+}
+
+interface RecoverableProjectIdentity {
+  readonly projectId: string;
 }
 
 export interface CoreRecoverySupervisorOptions {
@@ -75,7 +82,7 @@ export function createCoreRecoverySupervisor(
   let restartPromise: Promise<boolean> | null = null;
   let health: CoreRecoveryHealth = 'starting';
   let observed = false;
-  let rememberedProject: ProjectWorkspaceSummary | null = null;
+  let rememberedProject: RecoverableProjectIdentity | null = null;
   let recovering = false;
   let message = '正在检查Core运行状态。';
 
@@ -103,7 +110,9 @@ export function createCoreRecoverySupervisor(
     }
   };
 
-  const recentProjectFallback = async (epoch: number): Promise<ProjectWorkspaceSummary | null> => {
+  const recentProjectFallback = async (
+    epoch: number,
+  ): Promise<RecoverableProjectIdentity | null> => {
     try {
       const recent = await options.bridge.project.listRecent();
       if (!isCurrent(epoch) || recent.state !== 'success') return null;

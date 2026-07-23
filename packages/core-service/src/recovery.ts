@@ -176,7 +176,7 @@ function verifyDatabase(databasePath: string, expectedProjectId: string): void {
   }
 }
 
-function remapProjectIdentity(
+export function remapProjectIdentity(
   databasePath: string,
   previousProjectId: string,
   nextProjectId: string,
@@ -212,10 +212,11 @@ function remapProjectIdentity(
       .prepare('UPDATE projects SET id = ?, name = ?, created_at = ?, updated_at = ? WHERE id = ?')
       .run(nextProjectId, nextName, timestamp, timestamp, previousProjectId);
     if (Number(changed.changes) !== 1) throw new Error('PROJECT_ID_REMAP_FAILED');
-    database.exec('COMMIT; PRAGMA foreign_keys = ON');
     if (database.prepare('PRAGMA foreign_key_check').all().length > 0) {
       throw new Error('PROJECT_ID_REMAP_FOREIGN_KEY_FAILED');
     }
+    database.exec('COMMIT');
+    database.exec('PRAGMA foreign_keys = ON');
   } catch (error) {
     if (database.isTransaction) database.exec('ROLLBACK');
     throw error;

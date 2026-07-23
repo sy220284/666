@@ -28,10 +28,7 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
-import {
-  coreOperationFailureSemantics,
-  type CoreOperationKind,
-} from './ipc-error-semantics.js';
+import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
 
 export interface NarrativePlanningIpcOptions {
   readonly ipcMain: IpcMain;

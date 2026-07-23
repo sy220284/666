@@ -98,14 +98,7 @@ describe('M3 SceneBeat rebind performance budget', () => {
         );
         for (const [index, logicalBlockId] of logicalBlockIds.entries()) {
           const blockId = randomUUID();
-          insertBlock.run(
-            blockId,
-            draftId,
-            logicalBlockId,
-            (index + 1) * 1024,
-            `正文${index}`,
-            0,
-          );
+          insertBlock.run(blockId, draftId, logicalBlockId, (index + 1) * 1024, `正文${index}`, 0);
           insertLink.run(beatId, blockId, timestamp);
         }
       });
@@ -136,7 +129,9 @@ describe('M3 SceneBeat rebind performance budget', () => {
         expect(
           database.read((connection) =>
             connection
-              .prepare('SELECT COUNT(*) AS count FROM scene_beat_block_links WHERE scene_beat_id = ?')
+              .prepare(
+                'SELECT COUNT(*) AS count FROM scene_beat_block_links WHERE scene_beat_id = ?',
+              )
               .get(beatId),
           ),
         ).toEqual({ count: 500n });

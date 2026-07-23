@@ -58,7 +58,9 @@ async function openLatest(prefix: string) {
 }
 
 function seedProject(
-  connection: Parameters<Parameters<Awaited<ReturnType<typeof openLatest>>['database']['write']>[1]>[0],
+  connection: Parameters<
+    Parameters<Awaited<ReturnType<typeof openLatest>>['database']['write']>[1]
+  >[0],
   schemaVersion: number,
   chapterCount = 3,
 ): ProjectFixture {
@@ -104,7 +106,14 @@ function seedProject(
            word_count, content_hash, created_at
          ) VALUES(?, ?, ?, 0, ?, '', NULL, 0, ?, ?)`,
       )
-      .run(versionId, chapterId, draftId, `版本${index + 1}`, String(index + 1).repeat(64), timestamp);
+      .run(
+        versionId,
+        chapterId,
+        draftId,
+        `版本${index + 1}`,
+        String(index + 1).repeat(64),
+        timestamp,
+      );
     connection
       .prepare('UPDATE chapters SET active_draft_id = ?, final_version_id = ? WHERE id = ?')
       .run(draftId, versionId, chapterId);
@@ -114,7 +123,9 @@ function seedProject(
 }
 
 function insertSnapshot(
-  connection: Parameters<Parameters<Awaited<ReturnType<typeof openLatest>>['database']['write']>[1]>[0],
+  connection: Parameters<
+    Parameters<Awaited<ReturnType<typeof openLatest>>['database']['write']>[1]
+  >[0],
   projectId: string,
   chapter: ChapterFixture,
   versionId = chapter.versionId,
@@ -148,7 +159,10 @@ function snapshotStatuses(
   );
 }
 
-function migrationsThrough(migrations: readonly SqlMigration[], version: number): readonly SqlMigration[] {
+function migrationsThrough(
+  migrations: readonly SqlMigration[],
+  version: number,
+): readonly SqlMigration[] {
   return migrations.filter((migration) => migration.version <= version);
 }
 
@@ -165,11 +179,13 @@ describe('M0-M3 final coordination migration', () => {
     let fixture: ProjectFixture;
     let snapshotId: string;
     try {
-      fixture = await v17.write(randomUUID(), (connection) => {
-        const seeded = seedProject(connection, 17, 1);
-        snapshotId = insertSnapshot(connection, seeded.projectId, seeded.chapters[0]!);
-        return seeded;
-      });
+      fixture = (
+        await v17.write(randomUUID(), (connection) => {
+          const seeded = seedProject(connection, 17, 1);
+          snapshotId = insertSnapshot(connection, seeded.projectId, seeded.chapters[0]!);
+          return seeded;
+        })
+      ).value;
     } finally {
       await v17.close();
     }
@@ -217,37 +233,46 @@ describe('M0-M3 final coordination migration', () => {
   it('rejects unrelated logicalBlockId insertions and rebinds only after a planned SceneBeat move', async () => {
     const { database, migrations } = await openLatest('worldforge-scene-beat-rebind-');
     try {
-      const ids = await database.write(randomUUID(), (connection) => {
-        const fixture = seedProject(connection, latestMigrationVersion(migrations), 2);
-        const [source, target] = fixture.chapters;
-        const logicalBlockId = randomUUID();
-        const sourceBlockId = randomUUID();
-        const beatId = randomUUID();
-        connection
-          .prepare(
-            `INSERT INTO draft_blocks(
+      const ids = (
+        await database.write(randomUUID(), (connection) => {
+          const fixture = seedProject(connection, latestMigrationVersion(migrations), 2);
+          const [source, target] = fixture.chapters;
+          const logicalBlockId = randomUUID();
+          const sourceBlockId = randomUUID();
+          const beatId = randomUUID();
+          connection
+            .prepare(
+              `INSERT INTO draft_blocks(
                id, draft_id, logical_block_id, order_key, block_type, text,
                attributes_json, source, locked, content_hash, revision
              ) VALUES(?, ?, ?, 1024, 'paragraph', '源正文', '{}', 'manual', 0, NULL, 0)`,
-          )
-          .run(sourceBlockId, source!.draftId, logicalBlockId);
-        connection
-          .prepare(
-            `INSERT INTO scene_beats(
+            )
+            .run(sourceBlockId, source!.draftId, logicalBlockId);
+          connection
+            .prepare(
+              `INSERT INTO scene_beats(
                id, project_id, chapter_id, plot_node_id, title, goal, core_conflict,
                expected_result, beat_type, word_target_percent, is_required, order_key,
                character_ids_json, location_ids_json, deleted_at, updated_at
              ) VALUES(?, ?, ?, NULL, '受控节拍', '', '', '', 'setup', 50, 1, 1024,
                       '[]', '[]', NULL, ?)`,
-          )
-          .run(beatId, fixture.projectId, source!.chapterId, timestamp);
-        connection
-          .prepare(
-            'INSERT INTO scene_beat_block_links(scene_beat_id, draft_block_id, created_at) VALUES(?, ?, ?)',
-          )
-          .run(beatId, sourceBlockId, timestamp);
-        return { fixture, source: source!, target: target!, logicalBlockId, sourceBlockId, beatId };
-      });
+            )
+            .run(beatId, fixture.projectId, source!.chapterId, timestamp);
+          connection
+            .prepare(
+              'INSERT INTO scene_beat_block_links(scene_beat_id, draft_block_id, created_at) VALUES(?, ?, ?)',
+            )
+            .run(beatId, sourceBlockId, timestamp);
+          return {
+            fixture,
+            source: source!,
+            target: target!,
+            logicalBlockId,
+            sourceBlockId,
+            beatId,
+          };
+        })
+      ).value;
 
       const unrelatedBlockId = randomUUID();
       await database.write(randomUUID(), (connection) => {
@@ -326,13 +351,15 @@ describe('M0-M3 final coordination migration', () => {
   it('invalidates only the affected chapter or chapters at and after a state boundary', async () => {
     const { database, migrations } = await openLatest('worldforge-snapshot-boundary-');
     try {
-      const ids = await database.write(randomUUID(), (connection) => {
-        const fixture = seedProject(connection, latestMigrationVersion(migrations), 3);
-        const snapshotIds = fixture.chapters.map((chapter) =>
-          insertSnapshot(connection, fixture.projectId, chapter),
-        );
-        return { fixture, snapshotIds };
-      });
+      const ids = (
+        await database.write(randomUUID(), (connection) => {
+          const fixture = seedProject(connection, latestMigrationVersion(migrations), 3);
+          const snapshotIds = fixture.chapters.map((chapter) =>
+            insertSnapshot(connection, fixture.projectId, chapter),
+          );
+          return { fixture, snapshotIds };
+        })
+      ).value;
       const [, middle] = ids.fixture.chapters;
       const replacementVersionId = randomUUID();
       await database.write(randomUUID(), (connection) => {
@@ -343,13 +370,7 @@ describe('M0-M3 final coordination migration', () => {
                word_count, content_hash, created_at
              ) VALUES(?, ?, ?, 0, '润色版', '', NULL, 0, ?, ?)`,
           )
-          .run(
-            replacementVersionId,
-            middle!.chapterId,
-            middle!.draftId,
-            '9'.repeat(64),
-            timestamp,
-          );
+          .run(replacementVersionId, middle!.chapterId, middle!.draftId, '9'.repeat(64), timestamp);
         connection
           .prepare('UPDATE chapters SET final_version_id = ? WHERE id = ?')
           .run(replacementVersionId, middle!.chapterId);
@@ -397,8 +418,8 @@ describe('M0-M3 final coordination migration', () => {
             timestamp,
           );
       });
-      const orderedChapters = [...ids.fixture.chapters].sort(
-        (left, right) => left.chapterId.localeCompare(right.chapterId, 'en'),
+      const orderedChapters = [...ids.fixture.chapters].sort((left, right) =>
+        left.chapterId.localeCompare(right.chapterId, 'en'),
       );
       const firstChapterId = ids.fixture.chapters[0]!.chapterId;
       expect(snapshotStatuses(database, ids.fixture.projectId)).toEqual(
@@ -415,22 +436,24 @@ describe('M0-M3 final coordination migration', () => {
   it('keeps unplanted future plans out of history and invalidates from the linked chapter', async () => {
     const { database, migrations } = await openLatest('worldforge-temporal-projection-');
     try {
-      const ids = await database.write(randomUUID(), (connection) => {
-        const fixture = seedProject(connection, latestMigrationVersion(migrations), 3);
-        const foreshadowingId = randomUUID();
-        connection
-          .prepare(
-            `INSERT INTO foreshadowings(
+      const ids = (
+        await database.write(randomUUID(), (connection) => {
+          const fixture = seedProject(connection, latestMigrationVersion(migrations), 3);
+          const foreshadowingId = randomUUID();
+          connection
+            .prepare(
+              `INSERT INTO foreshadowings(
                id, project_id, title, description, status,
                reveal_from_chapter_id, reveal_by_chapter_id, created_at, updated_at
              ) VALUES(?, ?, '未来伏笔', '', 'planned', NULL, NULL, ?, ?)`,
-          )
-          .run(foreshadowingId, fixture.projectId, timestamp, timestamp);
-        const snapshotIds = fixture.chapters.map((chapter) =>
-          insertSnapshot(connection, fixture.projectId, chapter),
-        );
-        return { fixture, foreshadowingId, snapshotIds };
-      });
+            )
+            .run(foreshadowingId, fixture.projectId, timestamp, timestamp);
+          const snapshotIds = fixture.chapters.map((chapter) =>
+            insertSnapshot(connection, fixture.projectId, chapter),
+          );
+          return { fixture, foreshadowingId, snapshotIds };
+        })
+      ).value;
       for (const snapshotId of ids.snapshotIds) {
         expect(
           database.read((connection) => {

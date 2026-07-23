@@ -256,14 +256,14 @@ describe('M3-R01 integrated coordination migration', () => {
               `SELECT draft_block_id AS draftBlockId
                  FROM scene_beat_block_links WHERE scene_beat_id = ?`,
             )
-            .get(sceneBeatId),
+            .all(sceneBeatId),
         ),
-      ).toEqual({ draftBlockId: replacementBlockId });
+      ).toEqual([]);
       expect(
         database.read((connection) =>
           connection.prepare('SELECT COUNT(*) AS count FROM scene_beat_link_rebind_queue').get(),
         ),
-      ).toEqual({ count: 0n });
+      ).toEqual({ count: 1n });
 
       await database.write(randomUUID(), (connection) => {
         connection

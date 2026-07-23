@@ -14,10 +14,7 @@
       "allowedPaths": [
         "apps/desktop/main/src/ipc-handlers.ts",
         "apps/desktop/main/src/core-supervisor.ts",
-        "tests/security/app-data-ipc.test.ts",
-        "tests/security/ipc-task-contracts.test.ts",
-        "tests/security/core-supervisor.test.ts",
-        "tests/unit/ipc-error-semantics.test.ts",
+        "tests/security/common-ipc-timeout-semantics.test.ts",
         "docs/architecture/M0_M3_FINAL_REMEDIATION.md",
         "docs/test-evidence/M0-04/"
       ]
@@ -28,10 +25,7 @@
       "allowedPaths": [
         "apps/desktop/main/src/ipc-handlers.ts",
         "apps/desktop/main/src/core-supervisor.ts",
-        "tests/security/app-data-ipc.test.ts",
-        "tests/security/ipc-task-contracts.test.ts",
-        "tests/security/core-supervisor.test.ts",
-        "tests/unit/ipc-error-semantics.test.ts",
+        "tests/security/common-ipc-timeout-semantics.test.ts",
         "docs/architecture/M0_M3_FINAL_REMEDIATION.md"
       ]
     }

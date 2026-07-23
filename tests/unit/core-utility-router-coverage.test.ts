@@ -98,7 +98,7 @@ const appCases = [
   {
     operation: { operation: APP_DATA_COMMANDS.projectListRecent },
     method: 'recentProjects.list',
-    args: [],
+    args: [requestId],
   },
   {
     operation: {

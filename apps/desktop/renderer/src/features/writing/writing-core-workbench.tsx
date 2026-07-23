@@ -75,7 +75,7 @@ function pathFromEditorRoot(root: Node, node: Node): readonly number[] | null {
   const path: number[] = [];
   let current: Node | null = node;
   while (current && current !== root) {
-    const parent = current.parentNode;
+    const parent: ParentNode | null = current.parentNode;
     if (!parent) return null;
     const index = Array.prototype.indexOf.call(parent.childNodes, current) as number;
     if (index < 0) return null;

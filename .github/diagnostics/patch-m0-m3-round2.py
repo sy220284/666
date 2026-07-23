@@ -124,6 +124,15 @@ if source.count(old_selection_model) != 1:
     raise SystemExit(f'selection model count was {source.count(old_selection_model)}')
 source = source.replace(old_selection_model, new_selection_model, 1)
 
+old_state = """  const [selectedLocked, setSelectedLocked] = useState<boolean | null>(null);
+"""
+new_state = """  const [selectedLocked, setSelectedLocked] = useState<boolean | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
+"""
+if source.count(old_state) != 1:
+    raise SystemExit(f'editor ready state anchor count was {source.count(old_state)}')
+source = source.replace(old_state, new_state, 1)
+
 old_destroy_anchor = """  const destroyEditor = useCallback(
 """
 new_destroy_anchor = """  const rememberCurrentSelection = useCallback((): void => {
@@ -148,6 +157,15 @@ if source.count(old_capture) != 1:
     raise SystemExit(f'destroy selection capture count was {source.count(old_capture)}')
 source = source.replace(old_capture, new_capture, 1)
 
+old_destroy_state = """      setSelectedLocked(null);
+      setIsComposing(false);"""
+new_destroy_state = """      setSelectedLocked(null);
+      setEditorReady(false);
+      setIsComposing(false);"""
+if source.count(old_destroy_state) != 1:
+    raise SystemExit(f'destroy ready-state count was {source.count(old_destroy_state)}')
+source = source.replace(old_destroy_state, new_destroy_state, 1)
+
 editor_anchor = """      const instance = new Editor({"""
 early_read = """      const remembered = persistedSelectionByChapter.get(
         selectionKey(project.projectId, nextChapter.id),
@@ -167,11 +185,22 @@ old_restore = """      const remembered = persistedSelectionByChapter.get(
           to: Math.min(Math.max(1, remembered.to), maximum),
         });
         instance.commands.focus();
-      }"""
-new_restore = """      if (remembered) restoreEditorSelection(instance, remembered);"""
+      }
+      refreshStatistics();"""
+new_restore = """      if (remembered) restoreEditorSelection(instance, remembered);
+      refreshStatistics();"""
 if source.count(old_restore) != 1:
     raise SystemExit(f'late selection restore count was {source.count(old_restore)}')
 source = source.replace(old_restore, new_restore, 1)
+
+old_mount_complete = """      refreshLockState();
+      setStatus(readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从 DraftBlock 重建。');"""
+new_mount_complete = """      refreshLockState();
+      setEditorReady(true);
+      setStatus(readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从 DraftBlock 重建。');"""
+if source.count(old_mount_complete) != 1:
+    raise SystemExit(f'mount ready-state count was {source.count(old_mount_complete)}')
+source = source.replace(old_mount_complete, new_mount_complete, 1)
 
 old_button = """          <button data-back-project type="button" onClick={() => void backToProject()}>
             返回项目
@@ -187,5 +216,15 @@ new_button = """          <button
 if source.count(old_button) != 1:
     raise SystemExit(f'back button count was {source.count(old_button)}')
 source = source.replace(old_button, new_button, 1)
+
+old_workspace = """    <section className="writing-workbench" data-writing-workbench data-draft-workspace>"""
+new_workspace = """    <section
+      className="writing-workbench"
+      data-writing-workbench
+      data-draft-workspace={editorReady ? '' : undefined}
+    >"""
+if source.count(old_workspace) != 1:
+    raise SystemExit(f'workspace readiness count was {source.count(old_workspace)}')
+source = source.replace(old_workspace, new_workspace, 1)
 
 path.write_text(source)

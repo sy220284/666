@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-m0-m3-final-remediation-2026-07-23",
+  "baseCommit": "dcf388560bf9077ec95abb309b03456ee0ef5012",
+  "branch": "fix/governance-audit-m0-m3-final-remediation",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-02",
+      "finding": "Core recovery polling and disposal retained race windows around initial project capture, concurrent restart, and late surface rendering.",
+      "allowedPaths": [
+        "apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts",
+        "tests/unit/core-recovery-supervisor.test.ts"
+      ]
+    },
+    {
+      "taskId": "M0-04",
+      "finding": "Renderer Abort detached result presentation but still awaited an uncooperative IPC indefinitely.",
+      "allowedPaths": [
+        "apps/desktop/renderer/src/bridge/request-lifecycle.ts",
+        "tests/unit/bridge-request-detachment.test.ts",
+        "tests/unit/renderer-react-foundation.test.ts"
+      ]
+    },
+    {
+      "taskId": "M1-07",
+      "finding": "Final Version changes invalidated every project snapshot, including prose-only changes and unaffected historical chapters.",
+      "allowedPaths": [
+        "migrations/project/0019_final_coordination_remediation.sql",
+        "tests/migration/final-coordination-remediation.test.ts"
+      ]
+    },
+    {
+      "taskId": "M1-08",
+      "finding": "Recovered project identity remapping committed before foreign-key verification, making a failed verification non-rollbackable.",
+      "allowedPaths": [
+        "packages/core-service/src/recovery.ts",
+        "tests/integration/recovery-identity-remap.test.ts"
+      ]
+    },
+    {
+      "taskId": "M2-04",
+      "finding": "Generic DraftBlock deletion and insertion triggers could transfer SceneBeat links without the controlled cross-chapter plan boundary.",
+      "allowedPaths": [
+        "migrations/project/0019_final_coordination_remediation.sql",
+        "tests/migration/final-coordination-remediation.test.ts",
+        "tests/performance/scene-beat-rebind-performance.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-02",
+      "finding": "SceneBeat rebind matching omitted project, chapter, active Draft, and explicit planning-move intent constraints.",
+      "allowedPaths": [
+        "migrations/project/0019_final_coordination_remediation.sql",
+        "tests/migration/integrated-coordination-migration.test.ts",
+        "tests/migration/final-coordination-remediation.test.ts",
+        "tests/performance/scene-beat-rebind-performance.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-05",
+      "finding": "Foreshadowing and arc snapshot triggers omitted insert/delete/update paths and allowed unplanted future plans into historical snapshots.",
+      "allowedPaths": [
+        "migrations/project/0019_final_coordination_remediation.sql",
+        "tests/migration/final-coordination-remediation.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-06",
+      "finding": "State and narrative invalidation propagation was project-wide instead of beginning at the earliest affected chapter boundary.",
+      "allowedPaths": [
+        "migrations/project/0019_final_coordination_remediation.sql",
+        "tests/migration/final-coordination-remediation.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-10",
+      "finding": "Timeout failure semantics did not distinguish safe read retries from mutation results whose outcome is unknown.",
+      "allowedPaths": [
+        "apps/desktop/main/src/ipc-error-semantics.ts",
+        "apps/desktop/main/src/candidate-preview-ipc.ts",
+        "apps/desktop/main/src/continuity-ipc.ts",
+        "apps/desktop/main/src/narrative-planning-ipc.ts",
+        "tests/unit/ipc-error-semantics.test.ts",
+        "docs/architecture/M0_M3_FINAL_REMEDIATION.md",
+        "docs/test-evidence/M3-10/"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M3-10"],
+  "governancePaths": [".github/audit-remediations/m0-m3-final-remediation-2026-07-23.json"]
+}

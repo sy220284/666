@@ -1,4 +1,4 @@
-import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type { CoreStatus } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 
@@ -35,7 +35,14 @@ export interface CoreRecoverySupervisor {
 
 interface CoreRecoveryBridge {
   readonly app: Pick<RendererBridgeAdapter['app'], 'getCoreStatus' | 'restartCore'>;
-  readonly project: Pick<RendererBridgeAdapter['project'], 'getActive' | 'openRecent'>;
+  readonly project: Pick<
+    RendererBridgeAdapter['project'],
+    'getActive' | 'listRecent' | 'openRecent'
+  >;
+}
+
+interface RecoverableProjectIdentity {
+  readonly projectId: string;
 }
 
 export interface CoreRecoverySupervisorOptions {
@@ -68,16 +75,21 @@ export function createCoreRecoverySupervisor(
   const surface = options.surface ?? createDomCoreRecoverySurface();
 
   let disposed = false;
+  let lifecycle = 0;
   let started = false;
   let timer: unknown | null = null;
   let checkPromise: Promise<void> | null = null;
+  let restartPromise: Promise<boolean> | null = null;
   let health: CoreRecoveryHealth = 'starting';
   let observed = false;
-  let rememberedProject: ProjectWorkspaceSummary | null = null;
+  let rememberedProject: RecoverableProjectIdentity | null = null;
   let recovering = false;
   let message = '正在检查Core运行状态。';
 
+  const isCurrent = (epoch: number): boolean => !disposed && lifecycle === epoch;
+
   const publish = (): void => {
+    if (disposed) return;
     surface.render({
       visible: observed && (health !== 'healthy' || recovering),
       health,
@@ -87,21 +99,37 @@ export function createCoreRecoverySupervisor(
     });
   };
 
-  const rememberActiveProject = async (): Promise<void> => {
+  const rememberActiveProject = async (epoch: number): Promise<void> => {
     try {
       const project = await options.bridge.project.getActive();
-      if (project.state === 'success' && project.data) rememberedProject = project.data;
+      if (isCurrent(epoch) && project.state === 'success' && project.data) {
+        rememberedProject = project.data;
+      }
     } catch {
       // A concurrent workspace refresh may own the same bridge key. The next poll retries.
+    }
+  };
+
+  const recentProjectFallback = async (
+    epoch: number,
+  ): Promise<RecoverableProjectIdentity | null> => {
+    try {
+      const recent = await options.bridge.project.listRecent();
+      if (!isCurrent(epoch) || recent.state !== 'success') return null;
+      return recent.data.projects[0] ?? null;
+    } catch {
+      return null;
     }
   };
 
   const checkNow = (): Promise<void> => {
     if (disposed) return Promise.resolve();
     if (checkPromise) return checkPromise;
+    const epoch = lifecycle;
     checkPromise = Promise.resolve()
       .then(async () => {
         const outcome = await options.bridge.app.getCoreStatus();
+        if (!isCurrent(epoch)) return;
         if (outcome.state !== 'success') {
           observed = true;
           health = 'unreachable';
@@ -115,7 +143,8 @@ export function createCoreRecoverySupervisor(
         observed = true;
         health = outcome.data.status;
         if (health === 'healthy') {
-          await rememberActiveProject();
+          await rememberActiveProject(epoch);
+          if (!isCurrent(epoch)) return;
           message = 'Core运行正常。';
         } else {
           message = `Core当前状态：${health}。未保存正文仍保留在当前窗口。`;
@@ -123,60 +152,78 @@ export function createCoreRecoverySupervisor(
         publish();
       })
       .catch(() => {
+        if (!isCurrent(epoch)) return;
         observed = true;
         health = 'unreachable';
         message = 'Core连接已中断。未保存正文仍保留在当前窗口。';
         publish();
       })
       .finally(() => {
-        checkPromise = null;
+        if (lifecycle === epoch) checkPromise = null;
       });
     return checkPromise;
   };
 
-  const restart = async (): Promise<boolean> => {
-    if (disposed || recovering) return false;
+  const restart = (): Promise<boolean> => {
+    if (disposed) return Promise.resolve(false);
+    if (restartPromise) return restartPromise;
+    const epoch = lifecycle;
     observed = true;
     recovering = true;
     message = '正在重启Core；当前编辑器内容不会被清空。';
     publish();
-    try {
-      const outcome = await options.bridge.app.restartCore();
-      if (outcome.state !== 'success' || outcome.data.status.status !== 'healthy') {
-        health = outcome.state === 'success' ? outcome.data.status.status : 'unreachable';
-        message =
-          outcome.state === 'failure'
-            ? `Core重启失败：${outcome.error.code}`
-            : 'Core尚未恢复健康状态。';
-        return false;
-      }
-      health = 'healthy';
-      if (rememberedProject) {
-        const reopened = await options.bridge.project.openRecent(rememberedProject.projectId);
-        if (reopened.state !== 'success') {
-          health = 'degraded';
+
+    restartPromise = (async (): Promise<boolean> => {
+      try {
+        const outcome = await options.bridge.app.restartCore();
+        if (!isCurrent(epoch)) return false;
+        if (outcome.state !== 'success' || outcome.data.status.status !== 'healthy') {
+          health = outcome.state === 'success' ? outcome.data.status.status : 'unreachable';
           message =
-            reopened.state === 'failure'
-              ? `Core已重启，但项目重新打开失败：${reopened.error.code}`
-              : 'Core已重启，但项目重新打开请求未完成。';
+            outcome.state === 'failure'
+              ? `Core重启失败：${outcome.error.code}`
+              : 'Core尚未恢复健康状态。';
           return false;
         }
-        rememberedProject = reopened.data;
+        health = 'healthy';
+        const projectToOpen = rememberedProject ?? (await recentProjectFallback(epoch));
+        if (!isCurrent(epoch)) return false;
+        if (projectToOpen) {
+          const reopened = await options.bridge.project.openRecent(projectToOpen.projectId);
+          if (!isCurrent(epoch)) return false;
+          if (reopened.state !== 'success') {
+            health = 'degraded';
+            message =
+              reopened.state === 'failure'
+                ? `Core已重启，但项目重新打开失败：${reopened.error.code}`
+                : 'Core已重启，但项目重新打开请求未完成。';
+            return false;
+          }
+          rememberedProject = reopened.data;
+        }
+        message = projectToOpen
+          ? 'Core与项目已恢复，可以重新保存当前窗口中的正文。'
+          : 'Core已恢复；当前没有可自动重新打开的最近项目。';
+        return true;
+      } catch {
+        if (!isCurrent(epoch)) return false;
+        health = 'unreachable';
+        message = 'Core重启或项目恢复失败。请先复制当前未保存正文。';
+        return false;
+      } finally {
+        if (isCurrent(epoch)) {
+          recovering = false;
+          publish();
+        }
+        if (lifecycle === epoch) restartPromise = null;
       }
-      message = 'Core与项目已恢复，可以重新保存当前窗口中的正文。';
-      return true;
-    } catch {
-      health = 'unreachable';
-      message = 'Core重启或项目恢复失败。请先复制当前未保存正文。';
-      return false;
-    } finally {
-      recovering = false;
-      publish();
-    }
+    })();
+    return restartPromise;
   };
 
   const copyDraft = async (): Promise<boolean> => {
     if (disposed) return false;
+    const epoch = lifecycle;
     const text = readDraftText();
     if (!text.trim()) {
       message = '当前窗口没有可复制的正文。';
@@ -185,10 +232,12 @@ export function createCoreRecoverySupervisor(
     }
     try {
       await writeClipboardText(text);
+      if (!isCurrent(epoch)) return false;
       message = '当前窗口正文已复制到剪贴板。';
       publish();
       return true;
     } catch {
+      if (!isCurrent(epoch)) return false;
       message = '正文复制失败；请在编辑器内全选并手动复制。';
       publish();
       return false;
@@ -210,6 +259,7 @@ export function createCoreRecoverySupervisor(
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
+    lifecycle += 1;
     if (timer !== null) cancelSchedule(timer);
     timer = null;
     surface.dispose();

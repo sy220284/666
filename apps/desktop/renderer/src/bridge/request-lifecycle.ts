@@ -45,6 +45,10 @@ interface ActiveRequest {
   readonly controller: AbortController;
 }
 
+type SettledOperation<T> =
+  | { readonly kind: 'result'; readonly result: CommandResult<T> }
+  | { readonly kind: 'error'; readonly error: unknown };
+
 export class DuplicateBridgeRequestError extends Error {
   readonly requestKey: string;
 
@@ -110,49 +114,64 @@ export class BridgeRequestCoordinator {
     if (options.signal?.aborted) {
       abortFromExternal();
     } else {
-      options.signal?.addEventListener('abort', abortFromExternal, {
-        once: true,
-      });
+      options.signal?.addEventListener('abort', abortFromExternal, { once: true });
     }
 
+    const operationPromise: Promise<SettledOperation<T>> = Promise.resolve()
+      .then(() => operation({ signal: controller.signal, generation }))
+      .then(
+        (result) => ({ kind: 'result' as const, result }),
+        (error: unknown) => ({ kind: 'error' as const, error }),
+      );
+    const aborted = new Promise<{ readonly kind: 'aborted' }>((resolve) => {
+      if (controller.signal.aborted) {
+        resolve({ kind: 'aborted' });
+        return;
+      }
+      controller.signal.addEventListener('abort', () => resolve({ kind: 'aborted' }), {
+        once: true,
+      });
+    });
+
     try {
-      const result = await operation({ signal: controller.signal, generation });
+      const settled = await Promise.race([operationPromise, aborted]);
+      if (settled.kind === 'aborted') {
+        // The caller stops waiting immediately. The underlying IPC may still
+        // complete, so its eventual result is consumed but never presented as
+        // a successful cancellation or used to mutate Renderer state.
+        void operationPromise.then(() => undefined);
+        return { state: 'stale', generation };
+      }
+
       const current = this.#active.get(requestKey);
       if (!current || current.generation !== generation) {
         return { state: 'stale', generation };
       }
       if (controller.signal.aborted) {
-        // The underlying IPC completed despite the local abort. Its side effects
-        // are unknown, so do not claim that the operation was cancelled.
         return { state: 'stale', generation };
       }
-      if (result.ok) {
+      if (settled.kind === 'error') {
+        if (isAbortError(settled.error)) return { state: 'cancelled', generation };
+        return {
+          state: 'failure',
+          generation,
+          requestId: null,
+          error: unexpectedFailure(settled.error),
+        };
+      }
+      if (settled.result.ok) {
         return {
           state: 'success',
           generation,
-          requestId: result.requestId,
-          data: result.data,
+          requestId: settled.result.requestId,
+          data: settled.result.data,
         };
       }
       return {
         state: 'failure',
         generation,
-        requestId: result.requestId,
-        error: result.error,
-      };
-    } catch (error) {
-      const current = this.#active.get(requestKey);
-      if (!current || current.generation !== generation) {
-        return { state: 'stale', generation };
-      }
-      if (controller.signal.aborted || isAbortError(error)) {
-        return { state: 'cancelled', generation };
-      }
-      return {
-        state: 'failure',
-        generation,
-        requestId: null,
-        error: unexpectedFailure(error),
+        requestId: settled.result.requestId,
+        error: settled.result.error,
       };
     } finally {
       options.signal?.removeEventListener('abort', abortFromExternal);

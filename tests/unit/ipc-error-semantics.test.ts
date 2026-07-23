@@ -3,12 +3,20 @@ import { describe, expect, it } from 'vitest';
 import { coreOperationFailureSemantics } from '../../apps/desktop/main/src/ipc-error-semantics.js';
 
 describe('Core operation IPC failure semantics', () => {
-  it('marks Core timeout results as unknown and not directly retryable', () => {
-    expect(coreOperationFailureSemantics('COMMON_TIMEOUT_005', 'fallback')).toEqual({
+  it('marks mutation timeouts as result-unknown and not directly retryable', () => {
+    expect(coreOperationFailureSemantics('COMMON_TIMEOUT_005', 'fallback', 'mutation')).toEqual({
       message:
         'Core did not return a final result before the timeout; the operation may still have completed.',
       retryable: false,
       userAction: 'Refresh authoritative state before attempting the operation again.',
+    });
+  });
+
+  it('allows a timed-out query to be retried without duplicate-write risk', () => {
+    expect(coreOperationFailureSemantics('COMMON_TIMEOUT_005', 'fallback', 'query')).toEqual({
+      message: 'Core did not return the query result before the timeout.',
+      retryable: true,
+      userAction: 'Retry the read operation; it does not create duplicate writes.',
     });
   });
 

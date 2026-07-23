@@ -22,7 +22,7 @@ on:
       - fix/governance-audit-coverage-75-2026-07-23
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   coverage:
@@ -60,3 +60,90 @@ jobs:
             coverage-run.log
           if-no-files-found: error
           retention-days: 7
+
+  finalize:
+    needs: coverage
+    if: github.event_name == 'push' && github.event.head_commit.message == '测试：启动覆盖率工作流固化'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/governance-audit-coverage-75-2026-07-23
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10
+      - name: 写入正式覆盖率门禁
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          packageJson.scripts['test:coverage'] =
+            'pnpm test:prepare && vitest run --config vitest.coverage.config.ts';
+          fs.writeFileSync('package.json', `${JSON.stringify(packageJson, null, 2)}\n`);
+
+          let coverage = fs.readFileSync('vitest.coverage.config.ts', 'utf8');
+          if (!coverage.includes('thresholds:')) {
+            coverage = coverage.replace(
+              "      exclude: ['**/*.d.ts', '**/dist/**', '**/node_modules/**'],",
+              "      exclude: ['**/*.d.ts', '**/dist/**', '**/node_modules/**'],\n      thresholds: { statements: 75, branches: 75, functions: 75, lines: 75 },",
+            );
+          }
+          fs.writeFileSync('vitest.coverage.config.ts', coverage);
+
+          let quality = fs.readFileSync('.github/workflows/quality-core.yml', 'utf8');
+          if (!quality.includes('  coverage:\n    name: coverage')) {
+            const job = `  coverage:\n    name: coverage\n    if: \${{ inputs.draft_mode == false }}\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30\n    steps:\n      - name: Skip coverage for documentation-only Ready PR\n        if: \${{ inputs.full_suite == false }}\n        run: echo \"Coverage is not required because only Markdown or docs/ files changed.\"\n      - uses: actions/checkout@v6\n        if: \${{ inputs.full_suite }}\n        with:\n          ref: \${{ inputs.checkout_ref || github.sha }}\n          persist-credentials: false\n      - uses: pnpm/action-setup@v4\n        if: \${{ inputs.full_suite }}\n        with:\n          version: 11.13.0\n      - uses: actions/setup-node@v6\n        if: \${{ inputs.full_suite }}\n        with:\n          node-version: 24\n          cache: pnpm\n      - name: Assert clean working tree before coverage\n        if: \${{ inputs.full_suite }}\n        run: node .github/governance/assert-clean-tree.mjs\n      - run: pnpm install --frozen-lockfile --prefer-offline\n        if: \${{ inputs.full_suite }}\n      - name: Run product source coverage threshold\n        if: \${{ inputs.full_suite }}\n        shell: bash\n        run: |\n          mkdir -p test-results/ci\n          set -o pipefail\n          pnpm test:coverage 2>&1 | tee test-results/ci/coverage.log\n      - name: Assert clean working tree after coverage\n        if: \${{ always() && inputs.full_suite }}\n        run: node .github/governance/assert-clean-tree.mjs\n      - name: Upload product source coverage\n        if: \${{ always() && inputs.full_suite }}\n        uses: actions/upload-artifact@v7\n        with:\n          name: product-source-coverage\n          path: |\n            coverage/\n            test-results/ci/coverage.log\n          if-no-files-found: warn\n          retention-days: 7\n\n`;
+            quality = quality.replace('  security-tests:\n', `${job}  security-tests:\n`);
+            quality = quality.replace(
+              '      - tests\n      - security-tests',
+              '      - tests\n      - coverage\n      - security-tests',
+            );
+            quality = quality.replace(
+              '      TEST_RESULT: ${{ needs.tests.result }}\n      SECURITY_RESULT:',
+              '      TEST_RESULT: ${{ needs.tests.result }}\n      COVERAGE_RESULT: ${{ needs.coverage.result }}\n      SECURITY_RESULT:',
+            );
+            quality = quality.replace(
+              "printf 'draft=%s\\nstatic=%s\\ntests=%s\\nsecurity=%s\\nperformance=%s\\ne2e=%s\\nbuild=%s\\npackage=%s\\n' \\",
+              "printf 'draft=%s\\nstatic=%s\\ntests=%s\\ncoverage=%s\\nsecurity=%s\\nperformance=%s\\ne2e=%s\\nbuild=%s\\npackage=%s\\n' \\",
+            );
+            quality = quality.replace(
+              '"$DRAFT_MODE" "$STATIC_RESULT" "$TEST_RESULT" "$SECURITY_RESULT" \\',
+              '"$DRAFT_MODE" "$STATIC_RESULT" "$TEST_RESULT" "$COVERAGE_RESULT" "$SECURITY_RESULT" \\',
+            );
+            quality = quality.replace(
+              'for result in "$TEST_RESULT" "$SECURITY_RESULT" "$PERFORMANCE_RESULT" \\',
+              'for result in "$TEST_RESULT" "$COVERAGE_RESULT" "$SECURITY_RESULT" "$PERFORMANCE_RESULT" \\',
+            );
+            quality = quality.replace(
+              'for result in "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do',
+              'for result in "$TEST_RESULT" "$COVERAGE_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do',
+            );
+          }
+          fs.writeFileSync('.github/workflows/quality-core.yml', quality);
+          for (const file of [
+            '.github/workflows/coverage-development.yml',
+            '.github/workflows/coverage-finalize.yml',
+            '.github/workflows/coverage-finalize-pr.yml',
+          ]) {
+            fs.rmSync(file, { force: true });
+          }
+          NODE
+      - run: >-
+          pnpm exec prettier --write package.json pnpm-lock.yaml
+          vitest.coverage.config.ts .github/workflows/quality-core.yml
+      - name: 提交正式门禁
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 1
+          git commit -m '测试：固化75%覆盖率配置与Quality门禁'
+          git push origin HEAD:fix/governance-audit-coverage-75-2026-07-23

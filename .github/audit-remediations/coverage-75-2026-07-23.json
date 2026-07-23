@@ -12,10 +12,12 @@
       "taskId": "M0-01",
       "finding": "Product source coverage was disabled and CI had no regression threshold, so green tests could not prevent coverage decay.",
       "allowedPaths": [
+        "vitest.config.ts",
         "vitest.coverage.config.ts",
         "package.json",
         "pnpm-lock.yaml",
         ".github/workflows/quality-core.yml",
+        "tests/setup/restore-global-state.ts",
         "docs/architecture/TEST_COVERAGE_75_REMEDIATION_2026-07-23.md"
       ]
     },
@@ -24,7 +26,8 @@
       "finding": "Electron Main bootstrap, shutdown, dialog, Core process adapter and Preload bridge branches were materially under-tested.",
       "allowedPaths": [
         "tests/unit/electron-main-bootstrap-coverage.test.ts",
-        "tests/unit/preload-bridge-coverage.test.ts"
+        "tests/unit/preload-bridge-coverage.test.ts",
+        "tests/integration/preload-ipc-core.integration.test.ts"
       ]
     },
     {
@@ -36,7 +39,8 @@
         "tests/unit/core-project-routers-coverage.test.ts",
         "tests/unit/core-narrative-router-coverage.test.ts",
         "tests/unit/core-utility-entry-coverage.test.ts",
-        "tests/unit/core-utility-router-coverage.test.ts"
+        "tests/unit/core-utility-router-coverage.test.ts",
+        "tests/integration/preload-ipc-core.integration.test.ts"
       ]
     },
     {
@@ -54,8 +58,11 @@
     },
     {
       "taskId": "M1-04",
-      "finding": "Draft document conversion, metadata validation, command and synchronization branches were only partially covered.",
-      "allowedPaths": ["tests/unit/editor-core-draft-document-coverage.test.ts"]
+      "finding": "Draft document conversion, metadata validation, lock protection, composition-safe commands and synchronization branches were only partially covered.",
+      "allowedPaths": [
+        "tests/unit/editor-core-draft-document-coverage.test.ts",
+        "tests/unit/editor-core-lock-guard-coverage.test.ts"
+      ]
     },
     {
       "taskId": "M2-03",
@@ -67,8 +74,11 @@
     },
     {
       "taskId": "M3-07",
-      "finding": "Renderer Core recovery supervision had large untested health, restart, project reopen, clipboard and lifecycle branches.",
-      "allowedPaths": ["tests/unit/core-recovery-supervisor-branch-coverage.test.ts"]
+      "finding": "Renderer Core recovery supervision and its default DOM surface had large untested health, restart, project reopen, clipboard and lifecycle branches.",
+      "allowedPaths": [
+        "tests/unit/core-recovery-supervisor-branch-coverage.test.ts",
+        "tests/unit/core-recovery-supervisor-dom.test.ts"
+      ]
     }
   ],
   "evidenceMigrationTasks": ["M0-05"],

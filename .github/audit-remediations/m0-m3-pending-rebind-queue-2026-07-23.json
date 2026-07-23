@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-m0-m3-pending-rebind-queue-2026-07-23",
+  "baseCommit": "2b53a12985e9967934390a6af2f3ea3cd4556a46",
+  "branch": "fix/governance-audit-m0-m3-pending-rebind-queue",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M2-04",
+      "finding": "Schema 19 must preserve explicit unresolved SceneBeat links already captured by Schema 18 instead of deleting the pending queue during upgrade.",
+      "allowedPaths": [
+        "migrations/project/0019_final_coordination_remediation.sql",
+        "tests/migration/final-coordination-remediation.test.ts"
+      ]
+    },
+    {
+      "taskId": "M3-02",
+      "finding": "Pending Schema 18 rebind rows require deterministic project, source chapter and target chapter migration before the constrained Schema 19 queue becomes active.",
+      "allowedPaths": [
+        "migrations/project/0019_final_coordination_remediation.sql",
+        "tests/migration/final-coordination-remediation.test.ts"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M3-02"],
+  "governancePaths": [
+    ".github/audit-remediations/m0-m3-pending-rebind-queue-2026-07-23.json"
+  ]
+}

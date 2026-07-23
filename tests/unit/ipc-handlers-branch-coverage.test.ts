@@ -29,7 +29,11 @@ function port(): FakePort {
   };
 }
 
-function envelope(command: string, payload: unknown = {}, project?: string): Record<string, unknown> {
+function envelope(
+  command: string,
+  payload: unknown = {},
+  project?: string,
+): Record<string, unknown> {
   return {
     protocolVersion: PROTOCOL_VERSION,
     requestId,
@@ -40,10 +44,12 @@ function envelope(command: string, payload: unknown = {}, project?: string): Rec
   };
 }
 
-function createHarness(options: {
-  fixtures?: boolean;
-  setAppearancePreferences?: (preferences: unknown) => Promise<unknown>;
-} = {}) {
+function createHarness(
+  options: {
+    fixtures?: boolean;
+    setAppearancePreferences?: (preferences: unknown) => Promise<unknown>;
+  } = {},
+) {
   const handlers = new Map<string, (event: unknown, raw: unknown) => unknown>();
   const listeners = new Map<string, (event: unknown, raw: unknown) => unknown>();
   const removedHandlers: string[] = [];
@@ -70,15 +76,18 @@ function createHarness(options: {
     invokeAppDataOperation: vi.fn(async (_requestId: string, operation: unknown) => ({
       ok: true,
       operation: (operation as { operation: string }).operation,
-      data: { source: 'stored', settings: {
-        schemaVersion: 1,
-        language: 'zh-CN',
-        startupBehavior: 'show-home',
-        defaultMode: 'beginner',
-        themeId: 'theme-a',
-        themeVariant: 'light',
-        reduceMotion: false,
-      } },
+      data: {
+        source: 'stored',
+        settings: {
+          schemaVersion: 1,
+          language: 'zh-CN',
+          startupBehavior: 'show-home',
+          defaultMode: 'beginner',
+          themeId: 'theme-a',
+          themeVariant: 'light',
+          reduceMotion: false,
+        },
+      },
     })),
     invokeProjectOperation: vi.fn(async (_requestId: string, operation: unknown) => ({
       ok: true,
@@ -189,10 +198,14 @@ describe('IPC handlers real-contract branch coverage', () => {
     const harness = createHarness();
 
     await expect(
-      call(harness, IPC_CHANNELS.settingsSet, envelope(APP_COMMANDS.settingsSet, {
-        themeId: 'theme-b',
-        themeVariant: 'dark',
-      })),
+      call(
+        harness,
+        IPC_CHANNELS.settingsSet,
+        envelope(APP_COMMANDS.settingsSet, {
+          themeId: 'theme-b',
+          themeVariant: 'dark',
+        }),
+      ),
     ).resolves.toMatchObject({ ok: true, requestId });
     expect(harness.supervisor.invokeAppDataOperation).toHaveBeenCalledWith(requestId, {
       operation: APP_COMMANDS.settingsSet,
@@ -237,7 +250,10 @@ describe('IPC handlers real-contract branch coverage', () => {
       ],
       [IPC_CHANNELS.settingsSet, envelope(APP_COMMANDS.settingsSet, { themeId: 'invalid' })],
       [IPC_CHANNELS.openRecent, envelope(APP_COMMANDS.openRecent, { projectId: 'invalid' })],
-      [IPC_CHANNELS.aiHasCredential, envelope(APP_COMMANDS.hasCredential, { credentialRef: 'bad' })],
+      [
+        IPC_CHANNELS.aiHasCredential,
+        envelope(APP_COMMANDS.hasCredential, { credentialRef: 'bad' }),
+      ],
     ] as const;
     for (const [channel, raw] of invalidCases) {
       await expect(call(harness, channel, raw)).resolves.toMatchObject({
@@ -257,10 +273,17 @@ describe('IPC handlers real-contract branch coverage', () => {
       errorCode: 'DB_WRITE_FAILED_004',
     });
     await expect(
-      call(harness, IPC_CHANNELS.settingsSet, envelope(APP_COMMANDS.settingsSet, {
-        reduceMotion: true,
-      })),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'DB_WRITE_FAILED_004', retryable: false } });
+      call(
+        harness,
+        IPC_CHANNELS.settingsSet,
+        envelope(APP_COMMANDS.settingsSet, {
+          reduceMotion: true,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'DB_WRITE_FAILED_004', retryable: false },
+    });
 
     harness.supervisor.invokeProjectOperation.mockResolvedValueOnce({
       ok: false,
@@ -358,7 +381,10 @@ describe('IPC handlers real-contract branch coverage', () => {
     expect(second.closed).toBe(1);
 
     const invalid = port();
-    listener?.({ senderFrame: trustedEvent.senderFrame, ports: [invalid] }, { ...connection, connectionId: 'invalid' });
+    listener?.(
+      { senderFrame: trustedEvent.senderFrame, ports: [invalid] },
+      { ...connection, connectionId: 'invalid' },
+    );
     expect(invalid.closed).toBe(1);
 
     harness.supervisor.attachTaskPort.mockReturnValueOnce({ ok: false });
@@ -377,7 +403,11 @@ describe('IPC handlers real-contract branch coverage', () => {
       envelope(APP_COMMANDS.taskGetSnapshot, { taskId }, projectId),
     );
     expect(harness.supervisor.invokeTaskCommand).toHaveBeenCalledWith(
-      expect.objectContaining({ command: APP_COMMANDS.taskGetSnapshot, projectId, payload: { taskId } }),
+      expect.objectContaining({
+        command: APP_COMMANDS.taskGetSnapshot,
+        projectId,
+        payload: { taskId },
+      }),
     );
   });
 });

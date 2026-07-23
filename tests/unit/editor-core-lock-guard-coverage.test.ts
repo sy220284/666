@@ -54,9 +54,11 @@ function editingKeymapPlugin() {
   const factory = (extension.config as { addProseMirrorPlugins?: () => Array<{ props?: object }> })
     .addProseMirrorPlugins;
   if (!factory) throw new Error('EDITING_HISTORY_PLUGIN_FACTORY_MISSING');
-  const plugin = factory.call(extension).find((candidate) =>
-    Boolean((candidate.props as { handleKeyDown?: unknown } | undefined)?.handleKeyDown),
-  );
+  const plugin = factory
+    .call(extension)
+    .find((candidate) =>
+      Boolean((candidate.props as { handleKeyDown?: unknown } | undefined)?.handleKeyDown),
+    );
   if (!plugin) throw new Error('EDITOR_KEYMAP_PLUGIN_MISSING');
   return plugin as {
     props: {
@@ -101,16 +103,16 @@ describe('Editor Lock Guard plugin regression coverage', () => {
       ).accepted,
     ).toBe(false);
     expect(
-      accepted(state, state.tr.setNodeMarkup(0, undefined, { ...attributes, source: 'ai' })).accepted,
+      accepted(state, state.tr.setNodeMarkup(0, undefined, { ...attributes, source: 'ai' }))
+        .accepted,
     ).toBe(false);
     expect(
-      accepted(
-        state,
-        state.tr.setNodeMarkup(0, undefined, { ...attributes, headingLevel: 3 }),
-      ).accepted,
+      accepted(state, state.tr.setNodeMarkup(0, undefined, { ...attributes, headingLevel: 3 }))
+        .accepted,
     ).toBe(false);
     expect(
-      accepted(state, state.tr.setNodeMarkup(0, undefined, { ...attributes, locked: false })).accepted,
+      accepted(state, state.tr.setNodeMarkup(0, undefined, { ...attributes, locked: false }))
+        .accepted,
     ).toBe(false);
   });
 

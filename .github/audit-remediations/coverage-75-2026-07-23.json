@@ -82,7 +82,5 @@
     }
   ],
   "evidenceMigrationTasks": ["M0-05"],
-  "governancePaths": [
-    ".github/audit-remediations/coverage-75-2026-07-23.json"
-  ]
+  "governancePaths": [".github/audit-remediations/coverage-75-2026-07-23.json"]
 }

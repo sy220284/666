@@ -124,24 +124,27 @@ function method(runtime: ReturnType<typeof appRuntime>, path: string): ReturnTyp
 }
 
 describe('Core utility app-data router exact mapping', () => {
-  it.each(appCases)('maps $operation.operation to $method', async ({ operation, method: path, args }) => {
-    const runtime = appRuntime();
-    const result = await executeAppDataOperation(runtime as never, requestId, operation as never);
-    expect(result).toMatchObject({ ok: true, operation: operation.operation });
-    expect(method(runtime, path)).toHaveBeenCalledOnce();
-    expect(method(runtime, path)).toHaveBeenCalledWith(...args);
-    const allMethods = [
-      runtime.appSettings.get,
-      runtime.appSettings.update,
-      runtime.appSettings.reset,
-      runtime.recentProjects.list,
-      runtime.recentProjects.relocate,
-      runtime.recentProjects.remove,
-    ];
-    expect(allMethods.filter((candidate) => candidate.mock.calls.length > 0)).toEqual([
-      method(runtime, path),
-    ]);
-  });
+  it.each(appCases)(
+    'maps $operation.operation to $method',
+    async ({ operation, method: path, args }) => {
+      const runtime = appRuntime();
+      const result = await executeAppDataOperation(runtime as never, requestId, operation as never);
+      expect(result).toMatchObject({ ok: true, operation: operation.operation });
+      expect(method(runtime, path)).toHaveBeenCalledOnce();
+      expect(method(runtime, path)).toHaveBeenCalledWith(...args);
+      const allMethods = [
+        runtime.appSettings.get,
+        runtime.appSettings.update,
+        runtime.appSettings.reset,
+        runtime.recentProjects.list,
+        runtime.recentProjects.relocate,
+        runtime.recentProjects.remove,
+      ];
+      expect(allMethods.filter((candidate) => candidate.mock.calls.length > 0)).toEqual([
+        method(runtime, path),
+      ]);
+    },
+  );
 
   it('maps synchronous and asynchronous failures without invoking unrelated methods', async () => {
     const synchronous = appRuntime();
@@ -149,11 +152,9 @@ describe('Core utility app-data router exact mapping', () => {
       throw new Error('get failed');
     });
     await expect(
-      executeAppDataOperation(
-        synchronous as never,
-        requestId,
-        { operation: APP_DATA_COMMANDS.settingsGet } as never,
-      ),
+      executeAppDataOperation(synchronous as never, requestId, {
+        operation: APP_DATA_COMMANDS.settingsGet,
+      } as never),
     ).resolves.toEqual({
       ok: false,
       operation: APP_DATA_COMMANDS.settingsGet,
@@ -164,11 +165,10 @@ describe('Core utility app-data router exact mapping', () => {
     const asynchronous = appRuntime();
     asynchronous.recentProjects.remove.mockRejectedValueOnce(new Error('remove failed'));
     await expect(
-      executeAppDataOperation(
-        asynchronous as never,
-        requestId,
-        { operation: APP_DATA_COMMANDS.projectRemoveRecent, projectId } as never,
-      ),
+      executeAppDataOperation(asynchronous as never, requestId, {
+        operation: APP_DATA_COMMANDS.projectRemoveRecent,
+        projectId,
+      } as never),
     ).resolves.toEqual({
       ok: false,
       operation: APP_DATA_COMMANDS.projectRemoveRecent,
@@ -193,13 +193,16 @@ describe('Core utility project router exact order and short-circuiting', () => {
     ['narrative', ['primary', 'narrative']],
     ['structure', ['primary', 'narrative', 'structure']],
     ['content', ['primary', 'narrative', 'structure', 'content']],
-  ] as const)('returns the first %s result and does not invoke later routers', async (owner, expectedCalls) => {
-    routeState[owner] = { ok: true, operation: owner, data: { owner } };
-    await expect(
-      executeProjectOperation({} as never, requestId, { operation: owner } as never),
-    ).resolves.toMatchObject({ ok: true, operation: owner });
-    expect(routeState.calls).toEqual(expectedCalls);
-  });
+  ] as const)(
+    'returns the first %s result and does not invoke later routers',
+    async (owner, expectedCalls) => {
+      routeState[owner] = { ok: true, operation: owner, data: { owner } };
+      await expect(
+        executeProjectOperation({} as never, requestId, { operation: owner } as never),
+      ).resolves.toMatchObject({ ok: true, operation: owner });
+      expect(routeState.calls).toEqual(expectedCalls);
+    },
+  );
 
   it('maps unrouted and thrown operations after the exact attempted chain', async () => {
     await expect(

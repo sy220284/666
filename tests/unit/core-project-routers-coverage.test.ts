@@ -95,43 +95,88 @@ function call(key: string, ...args: unknown[]): RecordedCall {
 
 const primaryCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = [
   [PROJECT_WORKSPACE_COMMANDS.getActive, [call('projectWorkspace.activeProject')]],
-  [PROJECT_WORKSPACE_COMMANDS.create, [call('projectWorkspace.create', requestId, input, '/tmp/parent')]],
-  [PROJECT_WORKSPACE_COMMANDS.openSelected, [call('projectWorkspace.open', requestId, { workspacePath: '/tmp/project' })]],
-  [PROJECT_WORKSPACE_COMMANDS.openRecent, [call('projectWorkspace.open', requestId, { recentProjectId: projectId })]],
+  [
+    PROJECT_WORKSPACE_COMMANDS.create,
+    [call('projectWorkspace.create', requestId, input, '/tmp/parent')],
+  ],
+  [
+    PROJECT_WORKSPACE_COMMANDS.openSelected,
+    [call('projectWorkspace.open', requestId, { workspacePath: '/tmp/project' })],
+  ],
+  [
+    PROJECT_WORKSPACE_COMMANDS.openRecent,
+    [call('projectWorkspace.open', requestId, { recentProjectId: projectId })],
+  ],
   [PROJECT_WORKSPACE_COMMANDS.close, [call('projectWorkspace.close', requestId, projectId)]],
-  [PROJECT_WORKSPACE_COMMANDS.move, [call('projectWorkspace.move', requestId, projectId, '/tmp/target')]],
+  [
+    PROJECT_WORKSPACE_COMMANDS.move,
+    [call('projectWorkspace.move', requestId, projectId, '/tmp/target')],
+  ],
   [PROJECT_PLANNING_COMMANDS.getBrief, [call('projectPlanning.getBrief', projectId)]],
   [PROJECT_PLANNING_COMMANDS.updateBrief, [call('projectPlanning.updateBrief', requestId, input)]],
   [PROJECT_PLANNING_COMMANDS.listPlotNodes, [call('projectPlanning.listPlotNodes', projectId)]],
-  [PROJECT_PLANNING_COMMANDS.createPlotNode, [call('projectPlanning.createPlotNode', requestId, input)]],
-  [PROJECT_PLANNING_COMMANDS.updatePlotNode, [call('projectPlanning.updatePlotNode', requestId, input)]],
-  [PROJECT_PLANNING_COMMANDS.movePlotNode, [call('projectPlanning.movePlotNode', requestId, input)]],
-  [PROJECT_PLANNING_COMMANDS.deletePlotNode, [call('projectPlanning.deletePlotNode', requestId, input)]],
+  [
+    PROJECT_PLANNING_COMMANDS.createPlotNode,
+    [call('projectPlanning.createPlotNode', requestId, input)],
+  ],
+  [
+    PROJECT_PLANNING_COMMANDS.updatePlotNode,
+    [call('projectPlanning.updatePlotNode', requestId, input)],
+  ],
+  [
+    PROJECT_PLANNING_COMMANDS.movePlotNode,
+    [call('projectPlanning.movePlotNode', requestId, input)],
+  ],
+  [
+    PROJECT_PLANNING_COMMANDS.deletePlotNode,
+    [call('projectPlanning.deletePlotNode', requestId, input)],
+  ],
   [SCENE_BEAT_COMMANDS.listSceneBeats, [call('sceneBeats.list', input)]],
   [SCENE_BEAT_COMMANDS.createSceneBeat, [call('sceneBeats.create', requestId, input)]],
   [SCENE_BEAT_COMMANDS.updateSceneBeat, [call('sceneBeats.update', requestId, input)]],
   [SCENE_BEAT_COMMANDS.moveSceneBeat, [call('sceneBeats.move', requestId, input)]],
   [SCENE_BEAT_COMMANDS.previewMoveSceneBeat, [call('sceneBeats.previewCrossChapterMove', input)]],
-  [SCENE_BEAT_COMMANDS.moveSceneBeatAcrossChapters, [call('sceneBeats.moveAcrossChapters', requestId, input)]],
+  [
+    SCENE_BEAT_COMMANDS.moveSceneBeatAcrossChapters,
+    [call('sceneBeats.moveAcrossChapters', requestId, input)],
+  ],
   [SCENE_BEAT_COMMANDS.deleteSceneBeat, [call('sceneBeats.delete', requestId, input)]],
   [SCENE_BEAT_COMMANDS.restoreSceneBeat, [call('sceneBeats.restore', requestId, input)]],
-  [SCENE_BEAT_COMMANDS.setSceneBeatBlockLinks, [call('sceneBeats.setBlockLinks', requestId, input)]],
-  [SCENE_BEAT_COMMANDS.convertBlocksToSceneBeat, [call('sceneBeats.convertBlocks', requestId, input)]],
+  [
+    SCENE_BEAT_COMMANDS.setSceneBeatBlockLinks,
+    [call('sceneBeats.setBlockLinks', requestId, input)],
+  ],
+  [
+    SCENE_BEAT_COMMANDS.convertBlocksToSceneBeat,
+    [call('sceneBeats.convertBlocks', requestId, input)],
+  ],
   [ENTITY_CANON_COMMANDS.listEntities, [call('entityCanon.list', input)]],
   [ENTITY_CANON_COMMANDS.createEntity, [call('entityCanon.create', requestId, input)]],
   [ENTITY_CANON_COMMANDS.updateEntity, [call('entityCanon.update', requestId, input)]],
   [ENTITY_CANON_COMMANDS.archiveEntity, [call('entityCanon.archive', requestId, input)]],
   [ENTITY_CANON_COMMANDS.setCanonFact, [call('entityCanon.setFact', requestId, input)]],
-  [ENTITY_CANON_COMMANDS.linkSceneBeatEntity, [call('entityCanon.linkSceneBeat', requestId, input)]],
+  [
+    ENTITY_CANON_COMMANDS.linkSceneBeatEntity,
+    [call('entityCanon.linkSceneBeat', requestId, input)],
+  ],
   [ENTITY_CANON_COMMANDS.previewDeleteEntity, [call('entityCanon.previewDelete', input)]],
   [ENTITY_CANON_COMMANDS.deleteEntity, [call('entityCanon.delete', requestId, input)]],
   [CONTINUITY_COMMANDS.list, [call('continuity.list', input)]],
   [CONTINUITY_COMMANDS.setEntityState, [call('continuity.setEntityState', requestId, input)]],
-  [CONTINUITY_COMMANDS.invalidateEntityState, [call('continuity.invalidateEntityState', requestId, input)]],
+  [
+    CONTINUITY_COMMANDS.invalidateEntityState,
+    [call('continuity.invalidateEntityState', requestId, input)],
+  ],
   [CONTINUITY_COMMANDS.saveTimelineEvent, [call('continuity.saveTimelineEvent', requestId, input)]],
-  [CONTINUITY_COMMANDS.archiveTimelineEvent, [call('continuity.archiveTimelineEvent', requestId, input)]],
+  [
+    CONTINUITY_COMMANDS.archiveTimelineEvent,
+    [call('continuity.archiveTimelineEvent', requestId, input)],
+  ],
   [CONTINUITY_COMMANDS.setKnowledgeState, [call('continuity.setKnowledgeState', requestId, input)]],
-  [CONTINUITY_COMMANDS.invalidateKnowledgeState, [call('continuity.invalidateKnowledgeState', requestId, input)]],
+  [
+    CONTINUITY_COMMANDS.invalidateKnowledgeState,
+    [call('continuity.invalidateKnowledgeState', requestId, input)],
+  ],
 ];
 
 const contentCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = [
@@ -141,7 +186,10 @@ const contentCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = 
   [CANDIDATE_COMMANDS.listCandidates, [call('candidates.list', input)]],
   [CANDIDATE_COMMANDS.getCandidate, [call('candidates.get', input)]],
   [CANDIDATE_COMMANDS.discardCandidate, [call('candidates.discard', requestId, input)]],
-  [CANDIDATE_APPLY_COMMANDS.previewCandidate, [call('candidateApply.previewProgressively', requestId, input)]],
+  [
+    CANDIDATE_APPLY_COMMANDS.previewCandidate,
+    [call('candidateApply.previewProgressively', requestId, input)],
+  ],
   [CANDIDATE_APPLY_COMMANDS.cancelPreview, [call('candidateApply.cancelPreview', input)]],
   [CANDIDATE_APPLY_COMMANDS.applyCandidate, [call('candidateApply.apply', requestId, input)]],
   [CANDIDATE_APPLY_COMMANDS.previewUndo, [call('candidateApply.previewUndo', input)]],
@@ -152,9 +200,15 @@ const contentCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = 
   [VERSION_COMMANDS.getVersion, [call('versions.get', input)]],
   [VERSION_COMMANDS.setFinalVersion, [call('versions.setFinal', requestId, input)]],
   [VERSION_COMMANDS.restoreVersion, [call('versions.restore', requestId, input)]],
-  [RECOVERY_COMMANDS.createCheckpoint, [call('recovery.createOperationCheckpoint', requestId, input)]],
+  [
+    RECOVERY_COMMANDS.createCheckpoint,
+    [call('recovery.createOperationCheckpoint', requestId, input)],
+  ],
   [RECOVERY_COMMANDS.getOverview, [call('recovery.getOverview', projectId)]],
-  [RECOVERY_COMMANDS.restoreCheckpoint, [call('recovery.restoreCheckpoint', requestId, input, '/tmp/target')]],
+  [
+    RECOVERY_COMMANDS.restoreCheckpoint,
+    [call('recovery.restoreCheckpoint', requestId, input, '/tmp/target')],
+  ],
   [RECOVERY_COMMANDS.exportVersion, [call('recovery.exportVersion', input, '/tmp/export')]],
   [TEXT_IO_COMMANDS.previewImport, [call('textIo.previewImport', input, '/tmp/import.md')]],
   [TEXT_IO_COMMANDS.commitImport, [call('textIo.commitImport', requestId, input)]],
@@ -164,31 +218,74 @@ const contentCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = 
 
 const simpleStructureCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = [
   [PROJECT_STRUCTURE_COMMANDS.listStructure, [call('projectStructure.list', projectId)]],
-  [PROJECT_STRUCTURE_COMMANDS.createVolume, [call('projectStructure.createVolume', requestId, input)]],
-  [PROJECT_STRUCTURE_COMMANDS.updateVolume, [call('projectStructure.updateVolume', requestId, input)]],
+  [
+    PROJECT_STRUCTURE_COMMANDS.createVolume,
+    [call('projectStructure.createVolume', requestId, input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.updateVolume,
+    [call('projectStructure.updateVolume', requestId, input)],
+  ],
   [PROJECT_STRUCTURE_COMMANDS.moveVolume, [call('projectStructure.moveVolume', requestId, input)]],
-  [PROJECT_STRUCTURE_COMMANDS.deleteVolume, [call('projectStructure.deleteVolume', requestId, input)]],
-  [PROJECT_STRUCTURE_COMMANDS.createChapter, [call('projectStructure.createChapter', requestId, input)]],
-  [PROJECT_STRUCTURE_COMMANDS.updateChapter, [call('projectStructure.updateChapter', requestId, input)]],
-  [PROJECT_STRUCTURE_COMMANDS.moveChapter, [call('projectStructure.moveChapter', requestId, input)]],
-  [PROJECT_STRUCTURE_COMMANDS.deleteChapter, [call('projectStructure.deleteChapter', requestId, input)]],
+  [
+    PROJECT_STRUCTURE_COMMANDS.deleteVolume,
+    [call('projectStructure.deleteVolume', requestId, input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.createChapter,
+    [call('projectStructure.createChapter', requestId, input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.updateChapter,
+    [call('projectStructure.updateChapter', requestId, input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.moveChapter,
+    [call('projectStructure.moveChapter', requestId, input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.deleteChapter,
+    [call('projectStructure.deleteChapter', requestId, input)],
+  ],
   [PROJECT_STRUCTURE_COMMANDS.listTrash, [call('projectStructure.listTrash', projectId)]],
-  [PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry, [call('projectStructure.restoreTrashEntry', requestId, input)]],
-  [PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete, [call('structureOperations.previewPermanentDelete', input)]],
-  [PROJECT_STRUCTURE_COMMANDS.previewSplitChapter, [call('structureOperations.previewSplit', input)]],
-  [PROJECT_STRUCTURE_COMMANDS.previewMergeChapters, [call('structureOperations.previewMerge', input)]],
+  [
+    PROJECT_STRUCTURE_COMMANDS.restoreTrashEntry,
+    [call('projectStructure.restoreTrashEntry', requestId, input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete,
+    [call('structureOperations.previewPermanentDelete', input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.previewSplitChapter,
+    [call('structureOperations.previewSplit', input)],
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.previewMergeChapters,
+    [call('structureOperations.previewMerge', input)],
+  ],
   [PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks, [call('structureOperations.previewMove', input)]],
 ];
 
-const destructiveStructureCases: ReadonlyArray<readonly [
-  string,
-  string,
-  string,
-  string,
-]> = [
-  [PROJECT_STRUCTURE_COMMANDS.permanentDelete, 'assertPermanentDeleteExecutable', 'permanent-delete', 'permanentDelete'],
-  [PROJECT_STRUCTURE_COMMANDS.splitChapter, 'assertSplitExecutable', 'split-chapter', 'executeSplit'],
-  [PROJECT_STRUCTURE_COMMANDS.mergeChapters, 'assertMergeExecutable', 'merge-chapter', 'executeMerge'],
+const destructiveStructureCases: ReadonlyArray<readonly [string, string, string, string]> = [
+  [
+    PROJECT_STRUCTURE_COMMANDS.permanentDelete,
+    'assertPermanentDeleteExecutable',
+    'permanent-delete',
+    'permanentDelete',
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.splitChapter,
+    'assertSplitExecutable',
+    'split-chapter',
+    'executeSplit',
+  ],
+  [
+    PROJECT_STRUCTURE_COMMANDS.mergeChapters,
+    'assertMergeExecutable',
+    'merge-chapter',
+    'executeMerge',
+  ],
   [PROJECT_STRUCTURE_COMMANDS.moveBlocks, 'assertMoveExecutable', 'move-blocks', 'executeMove'],
 ];
 
@@ -249,7 +346,9 @@ describe('Core project routers exact operation mapping', () => {
       routeStructureProjectOperation,
     ]) {
       const harness = createServices();
-      await expect(router(harness.services as never, requestId, operation('unknown.operation'))).resolves.toBeNull();
+      await expect(
+        router(harness.services as never, requestId, operation('unknown.operation')),
+      ).resolves.toBeNull();
       expect(harness.calls).toEqual([]);
     }
   });

@@ -76,3 +76,9 @@ Candidate预览、撤销预览、ApplyRecord查询、连续性列表、规划列
 - 500个SceneBeat链接块的批量删除与重建性能预算。
 
 N+1查询、`ipc-handlers.ts`拆分、`stable()`工具提取和编辑器序列化优化属于后续结构性性能债，不与本轮数据正确性整改混合。
+
+## 通用IPC超时语义补齐
+
+通用Main IPC注册表沿用同一读写分类：设置读取、最近项目、活动项目、规划/设定/结构预览、Version读取、恢复概览和导入预览属于`query`，超时后可安全重试；创建、更新、采用、恢复、导出和取消等`mutation`超时继续表达结果未知，必须先刷新权威状态。Task协议中的`task.getSnapshot`与`task.listActive`属于查询，`task.cancel`属于写入意图。
+
+该分类由通用操作集合与Task命令类型集中决定，避免在各handler中分散复制超时策略。

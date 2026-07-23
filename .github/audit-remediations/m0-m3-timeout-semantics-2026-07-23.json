@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-m0-m3-timeout-semantics-2026-07-23",
+  "baseCommit": "2b53a12985e9967934390a6af2f3ea3cd4556a46",
+  "branch": "fix/governance-audit-m0-m3-timeout-semantics",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-04",
+      "finding": "Common App, Project and Task IPC read operations still inherited mutation timeout semantics after the final coordination remediation.",
+      "allowedPaths": [
+        "apps/desktop/main/src/ipc-handlers.ts",
+        "apps/desktop/main/src/core-supervisor.ts",
+        "tests/security/common-ipc-timeout-semantics.test.ts",
+        "docs/architecture/M0_M3_FINAL_REMEDIATION.md",
+        "docs/test-evidence/M0-04/"
+      ]
+    },
+    {
+      "taskId": "M3-10",
+      "finding": "Renderer-visible timeout guidance must distinguish every safe query from mutation results whose completion is unknown, including handlers in the common IPC registry.",
+      "allowedPaths": [
+        "apps/desktop/main/src/ipc-handlers.ts",
+        "apps/desktop/main/src/core-supervisor.ts",
+        "tests/security/common-ipc-timeout-semantics.test.ts",
+        "docs/architecture/M0_M3_FINAL_REMEDIATION.md"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M0-04"],
+  "governancePaths": [".github/audit-remediations/m0-m3-timeout-semantics-2026-07-23.json"]
+}

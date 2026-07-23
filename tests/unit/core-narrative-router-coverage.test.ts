@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const routeState = vi.hoisted(() => ({
   narrativeError: undefined as { code: string; message: string } | Error | undefined,
   proposalError: undefined as { code: string; message: string } | Error | undefined,
+  calls: [] as Array<{ key: string; args: unknown[] }>,
 }));
 
 vi.mock('@worldforge/contracts', async (importOriginal) => {
@@ -32,33 +33,22 @@ vi.mock('../../packages/core-service/src/narrative-planning.js', () => {
       this.code = code;
     }
   }
-  const result = (name: string) => {
+  const invoke = (name: string, args: unknown[]) => {
+    routeState.calls.push({ key: `narrative.${name}`, args });
     const failure = routeState.narrativeError;
     if (failure instanceof Error) throw failure;
     if (failure) throw new NarrativePlanningServiceError(failure.code, failure.message);
-    return { name };
+    return { marker: `narrative.${name}` };
   };
   return {
     NarrativePlanningServiceError,
     NarrativePlanningService: class {
-      list() {
-        return result('list');
-      }
-      async saveForeshadowing() {
-        return result('saveForeshadowing');
-      }
-      async transitionForeshadowing() {
-        return result('transitionForeshadowing');
-      }
-      async saveCharacterArc() {
-        return result('saveCharacterArc');
-      }
-      async saveArcMilestone() {
-        return result('saveArcMilestone');
-      }
-      async transitionArcMilestone() {
-        return result('transitionArcMilestone');
-      }
+      list(...args: unknown[]) { return invoke('list', args); }
+      async saveForeshadowing(...args: unknown[]) { return invoke('saveForeshadowing', args); }
+      async transitionForeshadowing(...args: unknown[]) { return invoke('transitionForeshadowing', args); }
+      async saveCharacterArc(...args: unknown[]) { return invoke('saveCharacterArc', args); }
+      async saveArcMilestone(...args: unknown[]) { return invoke('saveArcMilestone', args); }
+      async transitionArcMilestone(...args: unknown[]) { return invoke('transitionArcMilestone', args); }
     },
   };
 });
@@ -71,33 +61,22 @@ vi.mock('../../packages/core-service/src/state-proposal.js', () => {
       this.code = code;
     }
   }
-  const result = (name: string) => {
+  const invoke = (name: string, args: unknown[]) => {
+    routeState.calls.push({ key: `proposal.${name}`, args });
     const failure = routeState.proposalError;
     if (failure instanceof Error) throw failure;
     if (failure) throw new StateProposalServiceError(failure.code, failure.message);
-    return { name };
+    return { marker: `proposal.${name}` };
   };
   return {
     StateProposalServiceError,
     StateProposalService: class {
-      list() {
-        return result('list');
-      }
-      async generate() {
-        return result('generate');
-      }
-      async resolve() {
-        return result('resolve');
-      }
-      async refreshSnapshot() {
-        return result('refreshSnapshot');
-      }
-      readSnapshot() {
-        return result('readSnapshot');
-      }
-      async invalidateDerived() {
-        return result('invalidateDerived');
-      }
+      list(...args: unknown[]) { return invoke('list', args); }
+      async generate(...args: unknown[]) { return invoke('generate', args); }
+      async resolve(...args: unknown[]) { return invoke('resolve', args); }
+      async refreshSnapshot(...args: unknown[]) { return invoke('refreshSnapshot', args); }
+      readSnapshot(...args: unknown[]) { return invoke('readSnapshot', args); }
+      async invalidateDerived(...args: unknown[]) { return invoke('invalidateDerived', args); }
     },
   };
 });
@@ -106,32 +85,47 @@ import { NARRATIVE_PLANNING_COMMANDS, STATE_PROPOSAL_COMMANDS } from '@worldforg
 import { ContinuityServiceError } from '../../packages/core-service/src/continuity.js';
 import { routeNarrativePlanningOperation } from '../../packages/core-service/src/utility-project-narrative-router.js';
 
+const requestId = 'request-id';
+const input = { projectId: 'project-id', marker: 'input' };
 const services = { projectWorkspace: {} } as never;
-const operation = (name: string): never =>
-  ({ operation: name, input: { projectId: 'project-id' } }) as never;
+const operation = (name: string): never => ({ operation: name, input }) as never;
 
-describe('Core narrative planning router coverage', () => {
+const routeCases = [
+  [NARRATIVE_PLANNING_COMMANDS.list, 'narrative.list', [input]],
+  [NARRATIVE_PLANNING_COMMANDS.saveForeshadowing, 'narrative.saveForeshadowing', [requestId, input]],
+  [NARRATIVE_PLANNING_COMMANDS.transitionForeshadowing, 'narrative.transitionForeshadowing', [requestId, input]],
+  [NARRATIVE_PLANNING_COMMANDS.saveCharacterArc, 'narrative.saveCharacterArc', [requestId, input]],
+  [NARRATIVE_PLANNING_COMMANDS.saveArcMilestone, 'narrative.saveArcMilestone', [requestId, input]],
+  [NARRATIVE_PLANNING_COMMANDS.transitionArcMilestone, 'narrative.transitionArcMilestone', [requestId, input]],
+  [STATE_PROPOSAL_COMMANDS.list, 'proposal.list', [input]],
+  [STATE_PROPOSAL_COMMANDS.generate, 'proposal.generate', [requestId, input]],
+  [STATE_PROPOSAL_COMMANDS.resolve, 'proposal.resolve', [requestId, input]],
+  [STATE_PROPOSAL_COMMANDS.refreshSnapshot, 'proposal.refreshSnapshot', [requestId, input]],
+  [STATE_PROPOSAL_COMMANDS.readSnapshot, 'proposal.readSnapshot', [input]],
+  [STATE_PROPOSAL_COMMANDS.invalidateDerived, 'proposal.invalidateDerived', [requestId, input]],
+] as const;
+
+describe('Core narrative planning router exact mapping', () => {
   beforeEach(() => {
     routeState.narrativeError = undefined;
     routeState.proposalError = undefined;
+    routeState.calls.length = 0;
   });
 
-  it('routes every narrative and state proposal operation', async () => {
-    for (const name of [
-      ...Object.values(NARRATIVE_PLANNING_COMMANDS),
-      ...Object.values(STATE_PROPOSAL_COMMANDS),
-    ]) {
-      await expect(routeNarrativePlanningOperation(services, 'request-id', operation(name))).resolves.toMatchObject({
-        ok: true,
-        operation: name,
-      });
-    }
+  it.each(routeCases)('maps %s to %s with exact arguments', async (name, key, args) => {
+    await expect(routeNarrativePlanningOperation(services, requestId, operation(name))).resolves.toMatchObject({
+      ok: true,
+      operation: name,
+      data: { marker: key },
+    });
+    expect(routeState.calls).toEqual([{ key, args: [...args] }]);
   });
 
-  it('returns null for unknown operations', async () => {
+  it('returns null without invoking either service for unknown operations', async () => {
     await expect(
-      routeNarrativePlanningOperation(services, 'request-id', operation('unknown.operation')),
+      routeNarrativePlanningOperation(services, requestId, operation('unknown.operation')),
     ).resolves.toBeNull();
+    expect(routeState.calls).toEqual([]);
   });
 
   it.each([
@@ -144,7 +138,7 @@ describe('Core narrative planning router coverage', () => {
     routeState.narrativeError = { code, message: 'narrative failed' };
     const error = await routeNarrativePlanningOperation(
       services,
-      'request-id',
+      requestId,
       operation(NARRATIVE_PLANNING_COMMANDS.list),
     ).catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(ContinuityServiceError);
@@ -161,20 +155,20 @@ describe('Core narrative planning router coverage', () => {
     routeState.proposalError = { code, message: 'proposal failed' };
     const error = await routeNarrativePlanningOperation(
       services,
-      'request-id',
+      requestId,
       operation(STATE_PROPOSAL_COMMANDS.list),
     ).catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(ContinuityServiceError);
     expect(error).toMatchObject({ code: expected, cause: expect.any(Error) });
   });
 
-  it('rethrows errors outside the known service classes', async () => {
+  it('rethrows errors outside the known service classes unchanged', async () => {
     const original = new TypeError('unexpected');
     routeState.narrativeError = original;
     await expect(
       routeNarrativePlanningOperation(
         services,
-        'request-id',
+        requestId,
         operation(NARRATIVE_PLANNING_COMMANDS.list),
       ),
     ).rejects.toBe(original);

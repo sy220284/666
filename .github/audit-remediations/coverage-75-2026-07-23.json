@@ -35,6 +35,7 @@
       "finding": "IPC handler, Core utility entry, routing and error-mapping branches lacked complete success, rejection and failure-path regression coverage.",
       "allowedPaths": [
         "tests/unit/ipc-handlers-branch-coverage.test.ts",
+        "tests/unit/ipc-handlers-real-surface-coverage.test.ts",
         "tests/unit/core-utility-errors-coverage.test.ts",
         "tests/unit/core-project-routers-coverage.test.ts",
         "tests/unit/core-narrative-router-coverage.test.ts",
@@ -82,5 +83,7 @@
     }
   ],
   "evidenceMigrationTasks": ["M0-05"],
-  "governancePaths": [".github/audit-remediations/coverage-75-2026-07-23.json"]
+  "governancePaths": [
+    ".github/audit-remediations/coverage-75-2026-07-23.json"
+  ]
 }

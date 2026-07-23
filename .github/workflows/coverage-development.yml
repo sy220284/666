@@ -1,22 +1,23 @@
 name: 覆盖率整改一次性固化
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/governance-audit-coverage-75-2026-07-23
+      - main
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   finalize:
-    if: github.event.head_commit.message == '测试：执行覆盖率整改格式化与固化'
+    if: github.event.pull_request.draft == true && github.head_ref == 'fix/governance-audit-coverage-75-2026-07-23'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: fix/governance-audit-coverage-75-2026-07-23
+          ref: ${{ github.event.pull_request.head.ref }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.13.0
@@ -109,4 +110,4 @@ jobs:
           git add -A
           git diff --cached --quiet && exit 1
           git commit -m '测试：固化75%覆盖率门禁并清理临时流程'
-          git push origin HEAD:fix/governance-audit-coverage-75-2026-07-23
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}

@@ -16,6 +16,42 @@ function defaults(): AppSettings {
   return { ...DEFAULT_APP_SETTINGS };
 }
 
+function snapshotFromValueJson(valueJson: string | null): AppSettingsSnapshot {
+  if (valueJson === null) return { source: 'default', settings: defaults() };
+
+  let value: unknown;
+  try {
+    value = JSON.parse(valueJson);
+  } catch {
+    return {
+      source: 'recovered',
+      recoveryReason: 'invalid-json',
+      settings: defaults(),
+    };
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    'schemaVersion' in value &&
+    value.schemaVersion !== 1
+  ) {
+    return {
+      source: 'recovered',
+      recoveryReason: 'unsupported-version',
+      settings: defaults(),
+    };
+  }
+  const parsed = AppSettingsSchema.safeParse(value);
+  if (!parsed.success) {
+    return {
+      source: 'recovered',
+      recoveryReason: 'invalid-value',
+      settings: defaults(),
+    };
+  }
+  return { source: 'stored', settings: parsed.data };
+}
+
 export class AppSettingsRepository {
   readonly #database: AppDatabase;
   readonly #clock: DatabaseClock;
@@ -32,45 +68,17 @@ export class AppSettingsRepository {
         .get(SETTINGS_KEY);
       return row ? String(row.value_json) : null;
     });
-    if (valueJson === null) return { source: 'default', settings: defaults() };
-
-    let value: unknown;
-    try {
-      value = JSON.parse(valueJson);
-    } catch {
-      return {
-        source: 'recovered',
-        recoveryReason: 'invalid-json',
-        settings: defaults(),
-      };
-    }
-    if (
-      value &&
-      typeof value === 'object' &&
-      'schemaVersion' in value &&
-      value.schemaVersion !== 1
-    ) {
-      return {
-        source: 'recovered',
-        recoveryReason: 'unsupported-version',
-        settings: defaults(),
-      };
-    }
-    const parsed = AppSettingsSchema.safeParse(value);
-    if (!parsed.success) {
-      return {
-        source: 'recovered',
-        recoveryReason: 'invalid-value',
-        settings: defaults(),
-      };
-    }
-    return { source: 'stored', settings: parsed.data };
+    return snapshotFromValueJson(valueJson);
   }
 
   async update(requestId: string, input: AppSettingsUpdate): Promise<AppSettingsSnapshot> {
     const update = AppSettingsUpdateSchema.parse(input);
-    const settings = AppSettingsSchema.parse({ ...this.get().settings, ...update });
     const result = await this.#database.write(requestId, (database) => {
+      const row = database
+        .prepare('SELECT value_json FROM app_settings WHERE key = ?')
+        .get(SETTINGS_KEY);
+      const current = snapshotFromValueJson(row ? String(row.value_json) : null).settings;
+      const settings = AppSettingsSchema.parse({ ...current, ...update });
       database
         .prepare(
           `INSERT INTO app_settings(key, value_json, updated_at) VALUES(?, ?, ?)

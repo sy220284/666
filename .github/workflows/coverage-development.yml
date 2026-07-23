@@ -1,0 +1,54 @@
+name: 产品源码覆盖率开发门禁
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - vitest.coverage.config.ts
+      - apps/desktop/main/src/**
+      - apps/desktop/preload/src/**
+      - apps/desktop/renderer/src/**
+      - packages/contracts/src/**
+      - packages/core-service/src/**
+      - packages/domain/src/**
+      - packages/editor-core/src/**
+      - packages/prompts/src/**
+      - tests/**
+      - package.json
+      - pnpm-lock.yaml
+  push:
+    branches:
+      - fix/governance-audit-coverage-75-2026-07-23
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 临时安装覆盖率 Provider
+        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false
+      - run: pnpm test:prepare
+      - name: 执行产品源码覆盖率
+        run: pnpm exec vitest run --config vitest.coverage.config.ts
+      - name: 输出机器摘要
+        run: cat coverage/coverage-summary.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: product-source-coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 7

@@ -94,9 +94,7 @@ jobs:
         shell: bash
         run: |
           python3 "$RUNNER_TEMP/preserve-rebind-queue.py"
-          pnpm exec prettier --write \
-            migrations/project/0019_final_coordination_remediation.sql \
-            tests/migration/final-coordination-remediation.test.ts
+          pnpm exec prettier --write tests/migration/final-coordination-remediation.test.ts
       - name: Verify upgrade preservation
         shell: bash
         run: |

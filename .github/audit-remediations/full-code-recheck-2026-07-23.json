@@ -49,7 +49,5 @@
     }
   ],
   "evidenceMigrationTasks": ["M0-03"],
-  "governancePaths": [
-    ".github/audit-remediations/full-code-recheck-2026-07-23.json"
-  ]
+  "governancePaths": [".github/audit-remediations/full-code-recheck-2026-07-23.json"]
 }

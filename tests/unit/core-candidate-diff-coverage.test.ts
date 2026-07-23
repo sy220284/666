@@ -159,11 +159,10 @@ describe('Core candidate diff structural and cooperative coverage', () => {
   it('rejects a source consumed by two structural groups', () => {
     expect(() =>
       computeCandidateDiff(
-        [draft('a'), draft('b')],
+        [draft('a'), draft('b'), draft('c')],
         [
-          candidate('merged', '甲乙', { sourceLogicalBlockIds: ['a', 'b'] }),
-          candidate('split-1', '甲', { sourceLogicalBlockIds: ['a'] }),
-          candidate('split-2', '乙', { sourceLogicalBlockIds: ['a'] }),
+          candidate('merge-ab', '甲乙', { sourceLogicalBlockIds: ['a', 'b'] }),
+          candidate('merge-ac', '甲丙', { sourceLogicalBlockIds: ['a', 'c'] }),
         ],
       ),
     ).toThrow('multiple structural groups');

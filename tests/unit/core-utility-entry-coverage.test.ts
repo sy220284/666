@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   parentListener: undefined as
-    | ((event: { data: unknown; ports: readonly FakeTransferredPort[] }) => void)
-    | undefined,
+    ((event: { data: unknown; ports: readonly FakeTransferredPort[] }) => void) | undefined,
   posted: [] as unknown[],
   protocol: undefined as FakeTaskProtocol | undefined,
   invalidControl: false,

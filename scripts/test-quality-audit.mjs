@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_ROOT = 'tests';
 const BASELINE_PATH = 'tests/test-quality-baseline.json';
+const AUDITOR_TEST_PATH = 'tests/unit/test-quality-audit.test.ts';
 
 const HARD_RULES = [
   {
@@ -62,7 +63,9 @@ function count(content, pattern) {
 }
 
 function stableObject(object) {
-  return Object.fromEntries(Object.entries(object).sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(
+    Object.entries(object).sort(([left], [right]) => left.localeCompare(right)),
+  );
 }
 
 export async function auditTests({ repositoryRoot = DEFAULT_ROOT } = {}) {
@@ -92,17 +95,21 @@ export async function auditTests({ repositoryRoot = DEFAULT_ROOT } = {}) {
   for (const absolutePath of sourceFiles) {
     const file = relative(repositoryRoot, absolutePath);
     const content = await readFile(absolutePath, 'utf8');
-    const unsafeCount = count(content, /\bas\s+never\b/gu);
-    if (unsafeCount > 0) unsafeTypeEscapes[file] = unsafeCount;
+    const isAuditorFixture = file === AUDITOR_TEST_PATH;
 
-    for (const rule of HARD_RULES) {
-      for (const match of content.matchAll(rule.pattern)) {
-        violations.push({
-          file,
-          line: lineNumber(content, match.index ?? 0),
-          rule: rule.id,
-          description: rule.description,
-        });
+    if (!isAuditorFixture) {
+      const unsafeCount = count(content, /\bas\s+never\b/gu);
+      if (unsafeCount > 0) unsafeTypeEscapes[file] = unsafeCount;
+
+      for (const rule of HARD_RULES) {
+        for (const match of content.matchAll(rule.pattern)) {
+          violations.push({
+            file,
+            line: lineNumber(content, match.index ?? 0),
+            rule: rule.id,
+            description: rule.description,
+          });
+        }
       }
     }
 
@@ -146,7 +153,9 @@ export async function auditTests({ repositoryRoot = DEFAULT_ROOT } = {}) {
     });
   }
 
-  metrics.longFiles.sort((left, right) => right.lines - left.lines || left.file.localeCompare(right.file));
+  metrics.longFiles.sort(
+    (left, right) => right.lines - left.lines || left.file.localeCompare(right.file),
+  );
   return { violations, metrics, unsafeTypeEscapes: actualUnsafe };
 }
 
@@ -168,7 +177,9 @@ function printReport(result) {
   }
   console.error(`Test quality audit failed with ${violations.length} violation(s):`);
   for (const violation of violations) {
-    console.error(`- ${violation.file}:${violation.line} [${violation.rule}] ${violation.description}`);
+    console.error(
+      `- ${violation.file}:${violation.line} [${violation.rule}] ${violation.description}`,
+    );
   }
 }
 

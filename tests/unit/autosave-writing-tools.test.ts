@@ -114,15 +114,7 @@ describe('DraftAutosaveCoordinator', () => {
     expect(coordinator.hasPendingWork).toBe(true);
     await expect(coordinator.flush()).resolves.toBe(true);
     expect(coordinator.hasPendingWork).toBe(false);
-    expect(states).toEqual([
-      'waiting',
-      'saving',
-      'failed',
-      'saving',
-      'failed',
-      'saving',
-      'saved',
-    ]);
+    expect(states).toEqual(['waiting', 'saving', 'failed', 'saving', 'failed', 'saving', 'saved']);
     coordinator.destroy();
   });
 

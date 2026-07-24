@@ -7,10 +7,13 @@ const routeState = vi.hoisted(() => ({
 }));
 
 vi.mock('@worldforge/contracts', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
+  const [actual, strictEnvelope] = await Promise.all([
+    importOriginal<Record<string, unknown>>(),
+    import('../testkit/strict-result-envelope.js'),
+  ]);
   return {
     ...actual,
-    CoreProjectResultSchema: { parse: (input: unknown) => input },
+    CoreProjectResultSchema: strictEnvelope.strictResultEnvelopeSchema,
   };
 });
 
@@ -108,11 +111,16 @@ vi.mock('../../packages/core-service/src/state-proposal.js', () => {
 import { NARRATIVE_PLANNING_COMMANDS, STATE_PROPOSAL_COMMANDS } from '@worldforge/contracts';
 import { ContinuityServiceError } from '../../packages/core-service/src/continuity.js';
 import { routeNarrativePlanningOperation } from '../../packages/core-service/src/utility-project-narrative-router.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 const requestId = 'request-id';
 const input = { projectId: 'project-id', marker: 'input' };
-const services = { projectWorkspace: {} } as never;
-const operation = (name: string): never => ({ operation: name, input }) as never;
+const services = strictTestDouble<Parameters<typeof routeNarrativePlanningOperation>[0]>(
+  'NarrativeProjectServices',
+  { projectWorkspace: {} },
+);
+const operation = (name: string): Parameters<typeof routeNarrativePlanningOperation>[2] =>
+  contractInput({ operation: name, input });
 
 const routeCases = [
   [NARRATIVE_PLANNING_COMMANDS.list, 'narrative.list', [input]],
@@ -151,7 +159,7 @@ describe('Core narrative planning router exact mapping', () => {
   it.each(routeCases)('maps %s to %s with exact arguments', async (name, key, args) => {
     await expect(
       routeNarrativePlanningOperation(services, requestId, operation(name)),
-    ).resolves.toMatchObject({
+    ).resolves.toEqual({
       ok: true,
       operation: name,
       data: { marker: key },

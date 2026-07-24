@@ -1,0 +1,53 @@
+name: Apply M4-01 Closeout PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    if: github.head_ref == 'tooling/m401-closeout'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout locked M4-01 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-01-fts-index-dictionary
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Load closeout script from tooling branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin tooling/m401-closeout
+          git show origin/tooling/m401-closeout:.github/tooling/m401-closeout.sh > "${RUNNER_TEMP}/m401-closeout.sh"
+          chmod 0755 "${RUNNER_TEMP}/m401-closeout.sh"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Apply verified closeout
+        shell: bash
+        run: "${RUNNER_TEMP}/m401-closeout.sh"

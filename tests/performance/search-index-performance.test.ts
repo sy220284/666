@@ -55,9 +55,7 @@ async function createHarness(): Promise<Harness> {
 
 function percentile(values: readonly number[], fraction: number): number {
   const ordered = [...values].sort((left, right) => left - right);
-  return ordered[
-    Math.min(ordered.length - 1, Math.ceil(ordered.length * fraction) - 1)
-  ]!;
+  return ordered[Math.min(ordered.length - 1, Math.ceil(ordered.length * fraction) - 1)]!;
 }
 
 afterEach(async () => {
@@ -77,8 +75,7 @@ describe('M4-01 search index performance', () => {
         { name: '百万字检索', channel: '长篇' },
         harness.parent,
       );
-      const chapter =
-        harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
+      const chapter = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
       const opened = await harness.drafts.open(randomUUID(), {
         projectId: project.projectId,
         chapterId: chapter.id,
@@ -110,11 +107,7 @@ describe('M4-01 search index performance', () => {
       const rebuildStartedAt = performance.now();
       const rebuilt = await harness.search.rebuild(randomUUID(), project.projectId);
       const rebuildMs = performance.now() - rebuildStartedAt;
-      expect(rebuilt).toMatchObject({
-        status: 'ready',
-        failedCount: 0,
-        draftCount: 1,
-      });
+      expect(rebuilt).toMatchObject({ status: 'ready', failedCount: 0, draftCount: 1 });
 
       for (let index = 0; index < 5; index += 1) {
         harness.search.search({

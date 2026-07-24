@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# tooling revision 3: robust version parsing and diagnostics
+# tooling revision 4: validate Electron binary without launching a GUI process as root
 
 SOURCE_HEAD="7b99b8c52751ac1e2303cd6001a4cff5e5b92ad1"
 OUT_DIR="${GITHUB_WORKSPACE}/test-results/ci"
@@ -45,7 +45,14 @@ printf '%s\n' \
 [[ "${ELECTRON_VERSION}" == "43.1.1" ]]
 [[ "${PNPM_VERSION}" == "11.13.0" ]]
 
-xvfb-run -a node_modules/electron/dist/electron --no-sandbox --version > "${STAGE_DIR}/ELECTRON_BINARY_VERSION.txt"
+ELECTRON_BINARY="node_modules/electron/dist/electron"
+test -x "${ELECTRON_BINARY}"
+file "${ELECTRON_BINARY}" > "${STAGE_DIR}/ELECTRON_BINARY_INFO.txt"
+ldd "${ELECTRON_BINARY}" | tee "${STAGE_DIR}/ELECTRON_LDD.txt"
+if grep -q 'not found' "${STAGE_DIR}/ELECTRON_LDD.txt"; then
+  echo 'Electron has unresolved shared-library dependencies.' >&2
+  exit 1
+fi
 
 git fetch --no-tags --depth=1 origin "${SOURCE_HEAD}"
 git archive --format=tar "${SOURCE_HEAD}" | tar -xf - -C "${STAGE_DIR}/repo"

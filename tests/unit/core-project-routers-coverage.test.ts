@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@worldforge/contracts', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
+  const [actual, strictEnvelope] = await Promise.all([
+    importOriginal<Record<string, unknown>>(),
+    import('../testkit/strict-result-envelope.js'),
+  ]);
   return {
     ...actual,
-    CoreProjectResultSchema: { parse: (input: unknown) => input },
+    CoreProjectResultSchema: strictEnvelope.strictResultEnvelopeSchema,
   };
 });
 
@@ -25,6 +28,7 @@ import {
 import { routeContentProjectOperation } from '../../packages/core-service/src/utility-project-content-router.js';
 import { routePrimaryProjectOperation } from '../../packages/core-service/src/utility-project-primary-router.js';
 import { routeStructureProjectOperation } from '../../packages/core-service/src/utility-project-structure-router.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const requestId = 'request-id';
 const projectId = 'project-id';
@@ -40,6 +44,10 @@ const operationBase = {
 };
 
 type RecordedCall = { readonly key: string; readonly args: readonly unknown[] };
+type ProjectRouter =
+  | typeof routePrimaryProjectOperation
+  | typeof routeContentProjectOperation
+  | typeof routeStructureProjectOperation;
 
 function createServices() {
   const calls: RecordedCall[] = [];
@@ -85,8 +93,8 @@ function createServices() {
   };
 }
 
-function operation(name: string): never {
-  return { operation: name, ...operationBase } as never;
+function operation(name: string): Parameters<ProjectRouter>[2] {
+  return contractInput({ operation: name, ...operationBase });
 }
 
 function call(key: string, ...args: unknown[]): RecordedCall {
@@ -289,17 +297,23 @@ const destructiveStructureCases: ReadonlyArray<readonly [string, string, string,
   [PROJECT_STRUCTURE_COMMANDS.moveBlocks, 'assertMoveExecutable', 'move-blocks', 'executeMove'],
 ];
 
+function expectedData(expectedCalls: readonly RecordedCall[]): unknown {
+  const finalCall = expectedCalls.at(-1);
+  if (!finalCall) throw new Error('EXPECTED_ROUTER_CALL_MISSING');
+  return finalCall.key === 'recovery.createOperationCheckpoint'
+    ? { backupId: 'backup-id' }
+    : { marker: finalCall.key };
+}
+
 async function verifyCases(
-  router: (services: never, requestId: string, operation: never) => Promise<unknown>,
+  router: ProjectRouter,
   cases: ReadonlyArray<readonly [string, readonly RecordedCall[]]>,
 ): Promise<void> {
   for (const [name, expectedCalls] of cases) {
     const harness = createServices();
-    const result = (await router(harness.services as never, requestId, operation(name))) as {
-      ok: boolean;
-      operation: string;
-    };
-    expect(result).toMatchObject({ ok: true, operation: name });
+    const services = contractInput<Parameters<ProjectRouter>[0]>(harness.services);
+    const result = await router(services, requestId, operation(name));
+    expect(result).toEqual({ ok: true, operation: name, data: expectedData(expectedCalls) });
     expect(harness.calls, name).toEqual(expectedCalls);
   }
 }
@@ -321,12 +335,13 @@ describe('Core project routers exact operation mapping', () => {
     'maps checkpointed structure operation %s in exact order',
     async (name, assertionMethod, checkpointOperation, executeMethod) => {
       const harness = createServices();
-      const result = await routeStructureProjectOperation(
-        harness.services as never,
-        requestId,
-        operation(name),
-      );
-      expect(result).toMatchObject({ ok: true, operation: name });
+      const services = contractInput<Parameters<ProjectRouter>[0]>(harness.services);
+      const result = await routeStructureProjectOperation(services, requestId, operation(name));
+      expect(result).toEqual({
+        ok: true,
+        operation: name,
+        data: { marker: `structureOperations.${executeMethod}` },
+      });
       expect(harness.calls).toEqual([
         call(`structureOperations.${assertionMethod}`, input),
         call('checkpointRequestId', requestId),
@@ -346,9 +361,8 @@ describe('Core project routers exact operation mapping', () => {
       routeStructureProjectOperation,
     ]) {
       const harness = createServices();
-      await expect(
-        router(harness.services as never, requestId, operation('unknown.operation')),
-      ).resolves.toBeNull();
+      const services = contractInput<Parameters<ProjectRouter>[0]>(harness.services);
+      await expect(router(services, requestId, operation('unknown.operation'))).resolves.toBeNull();
       expect(harness.calls).toEqual([]);
     }
   });

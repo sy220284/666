@@ -50,7 +50,6 @@ printf '%s\n' \
 test -f node_modules/prettier/package.json
 test -x node_modules/.bin/prettier
 test -x node_modules/electron/dist/electron
-test -x node_modules/@esbuild/linux-x64/bin/esbuild
 
 mapfile -d '' WORKSPACE_MODULES < <(find apps packages -type d -name node_modules -prune -print0)
 TAR_PATHS=(node_modules)

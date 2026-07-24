@@ -549,7 +549,17 @@ function authoritativeLike(
             ORDER BY entity.status = 'archived', lower(entity.name), entity.id
             LIMIT ?`,
         )
-        .all(projectId, includeArchived ? 1 : 0, query, query, query, query, query, query, limit) as unknown as FtsHit[]),
+        .all(
+          projectId,
+          includeArchived ? 1 : 0,
+          query,
+          query,
+          query,
+          query,
+          query,
+          query,
+          limit,
+        ) as unknown as FtsHit[]),
     );
   }
   const seen = new Set<string>();

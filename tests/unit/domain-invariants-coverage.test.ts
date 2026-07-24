@@ -21,7 +21,7 @@ import {
   normalizeFactKey,
   planOrderKey,
   timeRangesOverlap,
-} from '@worldforge/domain';
+} from '../../packages/domain/src/index.js';
 
 describe('continuity domain invariants', () => {
   it('normalizes valid keys and rejects empty, oversized and control-character keys', () => {
@@ -169,15 +169,11 @@ describe('order key planning invariants', () => {
         { id: 'b', orderKey: 3n * ORDER_KEY_INTERVAL },
       ],
     });
-    expect(
-      planOrderKey([{ id: 'min', orderKey: SQLITE_INTEGER_MIN }], { kind: 'start' }),
-    ).toEqual({
+    expect(planOrderKey([{ id: 'min', orderKey: SQLITE_INTEGER_MIN }], { kind: 'start' })).toEqual({
       orderKey: ORDER_KEY_INTERVAL,
       rebalanced: [{ id: 'min', orderKey: 2n * ORDER_KEY_INTERVAL }],
     });
-    expect(
-      planOrderKey([{ id: 'max', orderKey: SQLITE_INTEGER_MAX }], { kind: 'end' }),
-    ).toEqual({
+    expect(planOrderKey([{ id: 'max', orderKey: SQLITE_INTEGER_MAX }], { kind: 'end' })).toEqual({
       orderKey: 2n * ORDER_KEY_INTERVAL,
       rebalanced: [{ id: 'max', orderKey: ORDER_KEY_INTERVAL }],
     });
@@ -215,7 +211,8 @@ describe('application configuration contracts', () => {
         .success,
     ).toBe(true);
     expect(
-      AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-b', themeVariant: 'dark' }).success,
+      AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-b', themeVariant: 'dark' })
+        .success,
     ).toBe(true);
     expect(
       AppSettingsSchema.safeParse({ ...settings, themeId: 'theme-b', themeVariant: 'eye-care' })

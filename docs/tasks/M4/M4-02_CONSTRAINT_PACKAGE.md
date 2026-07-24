@@ -76,7 +76,7 @@ M4-01、M3-06
 
 - 150万字符正文约束组装与裁剪纳入永久性能回归，完整收口实测P95为107.97ms，低于1000ms预算。
 - 每次结果返回实际来源、来源Version、时序状态、Token预算、裁剪日志、冲突清单与稳定Hash，可用于后续GenerationRun和审计追溯。
-- 完整收口已通过145个测试文件/718项测试、25/25 Electron E2E、Security、Eval、43个Integration文件/124项测试和10个Performance文件/37项测试；本提交用于重新触发正式PR门禁。
+- 完整收口已通过145个测试文件/718项测试、25/25 Electron E2E、Security、Eval、43个Integration文件/124项测试和10个Performance文件/37项测试；PR #186转Ready后由本提交重新触发正式门禁。
 
 ## 完成条件
 

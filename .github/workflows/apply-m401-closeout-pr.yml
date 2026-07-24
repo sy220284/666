@@ -50,4 +50,18 @@ jobs:
 
       - name: Apply verified closeout
         shell: bash
-        run: "${RUNNER_TEMP}/m401-closeout.sh"
+        run: |
+          set +e
+          bash -x "${RUNNER_TEMP}/m401-closeout.sh" > "${RUNNER_TEMP}/m401-closeout.log" 2>&1
+          status=$?
+          cat "${RUNNER_TEMP}/m401-closeout.log"
+          exit "${status}"
+
+      - name: Upload closeout diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m401-closeout-diagnostics
+          path: ${{ runner.temp }}/m401-closeout.log
+          if-no-files-found: error
+          retention-days: 7

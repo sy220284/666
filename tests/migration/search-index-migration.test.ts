@@ -101,9 +101,7 @@ describe('M4-01 search index migrations', () => {
         database
           .prepare(`SELECT sql FROM sqlite_master WHERE name = 'fts_draft_blocks'`)
           .get(),
-      ).toMatchObject({
-        sql: expect.stringContaining("tokenize = 'trigram'"),
-      });
+      ).toMatchObject({ sql: expect.stringContaining("tokenize = 'trigram'") });
       expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
       database.close();

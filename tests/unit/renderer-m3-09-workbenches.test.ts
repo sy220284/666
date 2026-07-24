@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CommandResult } from '@worldforge/contracts';
 
 import { createRendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 const success = <T>(requestId: string, data: T): CommandResult<T> => ({
   ok: true,
@@ -14,6 +15,8 @@ const success = <T>(requestId: string, data: T): CommandResult<T> => ({
 });
 
 const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
+type BaseBridge = Parameters<typeof createRendererBridgeAdapter>[0];
+type ExtendedBridge = Parameters<typeof createRendererBridgeAdapter>[2];
 
 describe('M3 final React business workbenches', () => {
   it('uses named adapters without direct feature access to the Window preload bridge', async () => {
@@ -33,8 +36,9 @@ describe('M3 final React business workbenches', () => {
         }),
       ),
     };
-    const adapter = createRendererBridgeAdapter(
-      {
+    const baseBridge = strictTestDouble<BaseBridge>(
+      'RendererBaseBridge',
+      contractInput({
         app: {},
         settings: {},
         project: {},
@@ -47,15 +51,18 @@ describe('M3 final React business workbenches', () => {
         version: {},
         candidate: {},
         task: {},
-      } as never,
-      undefined,
-      {
+      }),
+    );
+    const extendedBridge = strictTestDouble<NonNullable<ExtendedBridge>>(
+      'RendererExtendedBridge',
+      contractInput({
         continuity,
         narrativePlanning: {},
         stateProposal: {},
         candidateAction: {},
-      } as never,
+      }),
     );
+    const adapter = createRendererBridgeAdapter(baseBridge, undefined, extendedBridge);
 
     await expect(adapter.planning.getBrief('project-1')).resolves.toMatchObject({
       state: 'success',

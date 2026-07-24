@@ -101,4 +101,9 @@ describe('test quality audit', () => {
     ]);
     expect(result.unsafeTypeEscapes).toEqual({ 'tests/unit/cast.test.ts': 1 });
   });
+
+  it('keeps every committed test file within the repository quality policy', async () => {
+    const result = await auditTests();
+    expect(result.violations).toEqual([]);
+  });
 });

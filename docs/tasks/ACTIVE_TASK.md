@@ -8,10 +8,10 @@
 IN_PROGRESS
 ```
 
-- 任务ID：`M4-01`
-- 唯一任务卡：`docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md`
-- 工作分支：`work/m4-01-fts-index-dictionary`
-- 开始时间：`2026-07-22`
+- 任务ID：`M4-02`
+- 唯一任务卡：`docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md`
+- 工作分支：`work/m4-02-constraint-package`
+- 开始时间：`2026-07-24`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -19,21 +19,22 @@ IN_PROGRESS
 
 ```yaml
 allowed_paths:
-  - migrations/project/
+  - packages/domain/
   - packages/core-service/
   - packages/contracts/
-  - apps/desktop/renderer/
+  - packages/prompts/
+  - tests/unit/
   - tests/integration/
-  - tests/performance/
+  - evals/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md
+  - docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/test-evidence/M4-01/
+  - docs/test-evidence/M4-02/
 forbidden_paths:
 
 required_docs:
@@ -41,16 +42,16 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
+  - docs/ai/PROMPT_AND_EVAL_SPEC.md
   - docs/database/DATABASE_SCHEMA.md
-  - docs/testing/PERFORMANCE_BUDGETS.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
-  - pnpm test:integration
-  - pnpm test:perf
+  - pnpm test:security
   - pnpm test:e2e
+  - pnpm test:eval
+  - pnpm test:integration
 ```
 
 ## 连续执行规则

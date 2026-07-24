@@ -1,0 +1,13 @@
+pnpm install --frozen-lockfile --prefer-offline
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:e2e
+pnpm test:perf
+pnpm exec vitest run tests/integration/search-index.test.ts tests/migration/search-index-migration.test.ts tests/migration/final-coordination-remediation.test.ts tests/migration/sqlite-foundation.test.ts
+pnpm exec vitest run tests/performance/search-index-performance.test.ts

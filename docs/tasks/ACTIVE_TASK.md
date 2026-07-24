@@ -24,6 +24,7 @@ allowed_paths:
   - packages/contracts/
   - apps/desktop/renderer/
   - tests/integration/
+  - tests/migration/
   - tests/performance/
   - package.json
   - pnpm-lock.yaml
@@ -33,6 +34,7 @@ allowed_paths:
   - docs/tasks/TASK_INDEX.md
   - docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
+  - docs/database/DATABASE_SCHEMA.md
   - docs/test-evidence/M4-01/
 forbidden_paths:
 

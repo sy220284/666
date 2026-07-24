@@ -312,9 +312,8 @@ describe('Editor Core draft command and metadata coverage', () => {
         },
       },
     };
-    const synchronizedEditor = contractInput<
-      Parameters<typeof synchronizePersistedBlockMetadata>[0]
-    >(editor);
+    const synchronizedEditor =
+      contractInput<Parameters<typeof synchronizePersistedBlockMetadata>[0]>(editor);
     expect(
       synchronizePersistedBlockMetadata(synchronizedEditor, [
         persisted('server-id', { source: 'imported', locked: true, contentHash: 'server-hash' }),

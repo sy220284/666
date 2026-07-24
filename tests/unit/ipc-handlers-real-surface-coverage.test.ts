@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  APP_COMMANDS,
-  DEFAULT_APP_SETTINGS,
-  IPC_CHANNELS,
-  PROTOCOL_VERSION,
-} from '@worldforge/contracts';
+import { APP_COMMANDS, IPC_CHANNELS, PROTOCOL_VERSION } from '@worldforge/contracts';
 import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
 
 const requestId = '11111111-1111-4111-8111-111111111111';
@@ -147,7 +142,7 @@ describe('IPC real-schema surface matrix', () => {
         }),
       ),
     ).resolves.toMatchObject({ ok: true, data: { workspaceAlignment: 'right' } });
-    expect(harness.supervisor.getStatus).toHaveBeenCalledOnce();
+    expect(harness.supervisor.getStatus).toHaveBeenCalledTimes(2);
     expect(harness.supervisor.restart).toHaveBeenCalledOnce();
     harness.unregister();
   });
@@ -159,7 +154,6 @@ describe('IPC real-schema surface matrix', () => {
       [
         IPC_CHANNELS.settingsSet,
         envelope(APP_COMMANDS.settingsSet, {
-          ...DEFAULT_APP_SETTINGS,
           themeId: 'theme-b',
           themeVariant: 'dark',
         }),
@@ -167,10 +161,7 @@ describe('IPC real-schema surface matrix', () => {
       [IPC_CHANNELS.settingsReset, envelope(APP_COMMANDS.settingsReset)],
       [IPC_CHANNELS.projectListRecent, envelope(APP_COMMANDS.projectListRecent)],
       [IPC_CHANNELS.getActive, envelope(APP_COMMANDS.getActive)],
-      [
-        IPC_CHANNELS.openRecent,
-        envelope(APP_COMMANDS.openRecent, { projectId }),
-      ],
+      [IPC_CHANNELS.openRecent, envelope(APP_COMMANDS.openRecent, { projectId })],
       [IPC_CHANNELS.getBrief, envelope(APP_COMMANDS.getBrief, { projectId })],
       [IPC_CHANNELS.listPlotNodes, envelope(APP_COMMANDS.listPlotNodes, { projectId })],
     ] as const;
@@ -191,7 +182,7 @@ describe('IPC real-schema surface matrix', () => {
         IPC_CHANNELS.aiHasCredential,
         envelope(APP_COMMANDS.hasCredential, { credentialRef }),
       ),
-    ).resolves.toMatchObject({ ok: true, data: { present: true } });
+    ).resolves.toMatchObject({ ok: true, data: { exists: true } });
     await expect(
       invoke(
         harness.handlers,

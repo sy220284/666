@@ -97,23 +97,18 @@ describe('M3-07 temporary UI state boundary', () => {
     },
   );
 
-  it.each([null, undefined, 'state', 1, [], true])(
-    'rejects non-object root state %#',
-    (value) => {
-      expect(() => assertTemporaryUiState(value)).toThrow(
-        'Renderer UI state must be an object.',
-      );
-    },
-  );
+  it.each([null, undefined, 'state', 1, [], true])('rejects non-object root state %#', (value) => {
+    expect(() => assertTemporaryUiState(value)).toThrow('Renderer UI state must be an object.');
+  });
 
   it('rejects invalid routes, foreground requests and filters', () => {
     const state = createInitialRendererUiState();
     expect(() => assertTemporaryUiState({ ...state, route: 'invalid' })).toThrow(
       'Renderer UI state contains an invalid route.',
     );
-    expect(() =>
-      assertTemporaryUiState({ ...state, foregroundRequestKey: 1 }),
-    ).toThrow('Renderer foreground request key must be a string or null.');
+    expect(() => assertTemporaryUiState({ ...state, foregroundRequestKey: 1 })).toThrow(
+      'Renderer foreground request key must be a string or null.',
+    );
     expect(() => assertTemporaryUiState({ ...state, filters: null })).toThrow(
       'Renderer filters must be a string record.',
     );
@@ -192,9 +187,7 @@ describe('M3-07 temporary UI state boundary', () => {
       { id: 'id', kind: 'info', expiresAt: Number.POSITIVE_INFINITY },
       { id: 'id', kind: 'info', expiresAt: 1, content: 'forbidden' },
     ]) {
-      expect(() => assertTemporaryUiState({ ...state, feedback })).toThrow(
-        /Renderer feedback/,
-      );
+      expect(() => assertTemporaryUiState({ ...state, feedback })).toThrow(/Renderer feedback/);
     }
   });
 

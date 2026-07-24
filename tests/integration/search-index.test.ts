@@ -80,7 +80,7 @@ afterEach(async () => {
 });
 
 describe('M4-01 FTS5 public index and project dictionary', () => {
-  it('indexes Draft, Version and Entity, falls back while stale, and re-reads authority rows', async () => {
+  it('indexes authority sources and falls back while stale', async () => {
     const harness = await createHarness();
     try {
       const project = await harness.workspace.create(
@@ -158,7 +158,9 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
       expect(longQuery.items.find((item) => item.sourceType === 'version')?.targetId).toBe(
         version.versionId,
       );
-      expect(longQuery.items.find((item) => item.sourceType === 'entity')?.targetId).toBe(entity.id);
+      expect(longQuery.items.find((item) => item.sourceType === 'entity')?.targetId).toBe(
+        entity.id,
+      );
 
       const shortQuery = harness.search.search({
         projectId: project.projectId,
@@ -252,7 +254,7 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
     }
   });
 
-  it('keeps failed indexing stale, retries safely, and blocks cross-project authority leakage', async () => {
+  it('retries failed indexing and blocks cross-project leakage', async () => {
     const harness = await createHarness();
     try {
       const project = await harness.workspace.create(

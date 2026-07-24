@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 describe('M4-01 search index migrations', () => {
-  it('installs contiguous Schema 20-21, trigram FTS, queue triggers and a strict dictionary', async () => {
+  it('installs Schema 20-21 search index and dictionary', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-search-migration-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
@@ -92,14 +92,18 @@ describe('M4-01 search index migrations', () => {
       ).toEqual({ count: 16n });
       expect(
         database
-          .prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`)
+          .prepare(
+            `SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`,
+          )
           .get(),
       ).toEqual({ strict: 1n });
       expect(
         database
           .prepare(`SELECT sql FROM sqlite_master WHERE name = 'fts_draft_blocks'`)
           .get(),
-      ).toMatchObject({ sql: expect.stringContaining("tokenize = 'trigram'") });
+      ).toMatchObject({
+        sql: expect.stringContaining("tokenize = 'trigram'"),
+      });
       expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
       database.close();

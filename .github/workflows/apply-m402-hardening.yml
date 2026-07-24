@@ -40,7 +40,9 @@ jobs:
           git fetch --no-tags origin tooling/m402-hardening
           git show origin/tooling/m402-hardening:.github/tooling/m402-hardening.py > "${RUNNER_TEMP}/m402-hardening.py"
           git show origin/tooling/m402-hardening:.github/tooling/m402-hardening-fix-1.py > "${RUNNER_TEMP}/m402-hardening-fix-1.py"
+          git show origin/tooling/m402-hardening:.github/tooling/m402-hardening-fix-2.py > "${RUNNER_TEMP}/m402-hardening-fix-2.py"
           python "${RUNNER_TEMP}/m402-hardening-fix-1.py" "${RUNNER_TEMP}/m402-hardening.py"
+          python "${RUNNER_TEMP}/m402-hardening-fix-2.py" "${RUNNER_TEMP}/m402-hardening.py"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

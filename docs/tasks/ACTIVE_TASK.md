@@ -29,6 +29,7 @@ allowed_paths:
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
+  - docs/database/DATABASE_SCHEMA.md
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md

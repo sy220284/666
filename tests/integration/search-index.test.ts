@@ -93,6 +93,11 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
         projectId: project.projectId,
         chapterId: chapter.id,
       });
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
+        connection
+          .prepare('UPDATE chapters SET title = ? WHERE id = ?')
+          .run('唯一章题检索词', chapter.id);
+      });
       const saved = await harness.drafts.saveSnapshot(randomUUID(), {
         projectId: project.projectId,
         chapterId: chapter.id,
@@ -103,6 +108,20 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
             logicalBlockId: opened.blocks[0]!.logicalBlockId,
             blockType: 'paragraph',
             text: '玄烛城夜雨长街暗号只在更鼓之后启用。',
+            attributes: {},
+          },
+          {
+            clientBlockId: randomUUID(),
+            logicalBlockId: null,
+            blockType: 'paragraph',
+            text: '兼容检索必须保留全角原文代号ＡＢＣ，不得把摘要改写成半角。',
+            attributes: {},
+          },
+          {
+            clientBlockId: randomUUID(),
+            logicalBlockId: null,
+            blockType: 'paragraph',
+            text: '这一段只用于验证章节标题命中不会按正文块重复返回。',
             attributes: {},
           },
         ],
@@ -161,6 +180,35 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
       expect(longQuery.items.find((item) => item.sourceType === 'entity')?.targetId).toBe(
         entity.id,
       );
+
+      const titleQuery = harness.search.search({
+        projectId: project.projectId,
+        query: '唯一章题检索词',
+        sourceTypes: ['draft'],
+        limit: 20,
+      });
+      expect(titleQuery.items).toHaveLength(1);
+      expect(titleQuery.items[0]).toMatchObject({ anchorId: null, title: '唯一章题检索词' });
+
+      const compatibilityQuery = harness.search.search({
+        projectId: project.projectId,
+        query: 'ABC',
+        sourceTypes: ['draft'],
+        limit: 20,
+      });
+      expect(compatibilityQuery.items).toHaveLength(1);
+      expect(compatibilityQuery.items[0]!.excerpt).toContain('ＡＢＣ');
+      expect(compatibilityQuery.items[0]!.excerpt).not.toContain('代号ABC');
+
+      const aliasQuery = harness.search.search({
+        projectId: project.projectId,
+        query: '夜雨街',
+        sourceTypes: ['entity'],
+        limit: 20,
+      });
+      expect(aliasQuery.items).toHaveLength(1);
+      expect(aliasQuery.items[0]!.excerpt).toContain('夜雨街');
+      expect(aliasQuery.items[0]!.excerpt).not.toContain('["夜雨街"]');
 
       const shortQuery = harness.search.search({
         projectId: project.projectId,
@@ -295,6 +343,24 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
         failedCount: 1,
         lastErrorCode: 'INJECTED_INDEX_FAILURE',
       });
+      await harness.canon.create(randomUUID(), {
+        projectId: project.projectId,
+        authority: 'author',
+        entityType: 'character',
+        name: '待处理新目标',
+        aliases: [],
+        summary: '用于验证旧失败错误码不会被后续成功的pending写入清空',
+      });
+      const partial = await harness.search.processPending(randomUUID(), {
+        projectId: project.projectId,
+        limit: 1,
+      });
+      expect(partial).toMatchObject({ status: 'stale', succeeded: 1, remaining: 1 });
+      expect(harness.search.getState(project.projectId)).toMatchObject({
+        status: 'stale',
+        failedCount: 1,
+        lastErrorCode: 'INJECTED_INDEX_FAILURE',
+      });
       await consumeAll(harness.search, project.projectId);
       expect(harness.search.getState(project.projectId)).toMatchObject({
         status: 'ready',
@@ -350,6 +416,57 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
           sourceTypes: ['draft'],
         }).items,
       ).toEqual([]);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('filters archived entities before applying the FTS result limit', async () => {
+    const harness = await createHarness();
+    try {
+      const project = await harness.workspace.create(
+        randomUUID(),
+        { name: '归档实体检索项目', channel: '长篇' },
+        harness.parent,
+      );
+      await consumeAll(harness.search, project.projectId);
+      const now = clock.now().toISOString();
+      for (const name of ['玄枢密钥甲', '玄枢密钥乙', '玄枢密钥丙']) {
+        const created = await harness.canon.create(randomUUID(), {
+          projectId: project.projectId,
+          authority: 'author',
+          entityType: 'item',
+          name,
+          aliases: [],
+          summary: '玄枢密钥玄枢密钥玄枢密钥',
+        });
+        const entity = created.entities.find((candidate) => candidate.name === name)!;
+        await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
+          connection
+            .prepare("UPDATE entities SET status = 'archived', archived_at = ? WHERE id = ?")
+            .run(now, entity.id);
+        });
+      }
+      const activeList = await harness.canon.create(randomUUID(), {
+        projectId: project.projectId,
+        authority: 'author',
+        entityType: 'character',
+        name: '现役玄枢使',
+        aliases: [],
+        summary: '负责保管玄枢密钥',
+      });
+      const active = activeList.entities.find((candidate) => candidate.name === '现役玄枢使')!;
+      await consumeAll(harness.search, project.projectId);
+
+      const result = harness.search.search({
+        projectId: project.projectId,
+        query: '玄枢密钥',
+        sourceTypes: ['entity'],
+        includeArchived: false,
+        limit: 1,
+      });
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]!.targetId).toBe(active.id);
     } finally {
       await closeHarness(harness);
     }

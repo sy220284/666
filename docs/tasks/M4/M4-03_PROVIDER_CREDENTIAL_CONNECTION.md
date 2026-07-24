@@ -1,8 +1,8 @@
 # M4-03 Provider、凭据与连接测试
 
-> 状态：Planned  
-> 里程碑：M4 检索与AI基础设施  
-> 优先级：P0  
+> 状态：In Progress
+> 里程碑：M4 检索与AI基础设施
+> 优先级：P0
 > 建议分支：`feat/m4-provider-credential-connection`
 
 ## 目标

@@ -1,8 +1,8 @@
 # M4-02 P0—P4约束包与裁剪追溯
 
-> 状态：In Progress  
-> 里程碑：M4 检索与AI基础设施  
-> 优先级：P0  
+> 状态：Implemented
+> 里程碑：M4 检索与AI基础设施
+> 优先级：P0
 > 工作分支：`work/m4-02-constraint-package`
 
 ## 目标
@@ -63,6 +63,19 @@ M4-01、M3-06
 - 超限、冲突、短中文搜索和快照缺失路径。
 
 证据保存到：`docs/test-evidence/M4-02/`
+
+## 实现结果
+
+- 新增P0—P4约束包合同，覆盖任务类型、来源、时序状态、来源Version、Token估算、冲突、裁剪日志、`contentHash`和`constraintHash`。
+- Core从ProjectBrief、当前章、SceneBeat、前章有效EndingSnapshot或权威回退、EntityState、KnowledgeState、Foreshadowing、Canon、人物弧光、当前稿与M4-01公共检索组装约束。
+- 首章不读取本章尾快照；补充检索按章节顺序排除未来章；Version来源明确标记为`historical`。
+- Domain执行稳定序列化、确定性Token估算与P4→P3→低相关P2裁剪；P0/P1不可裁剪，强制约束超限时明确失败。
+- Prompt层只负责确定性序列化，不接入Provider，不依赖Renderer临时状态，不新增数据库表。
+
+## 性能与可观测性
+
+- 150万字符正文约束组装与裁剪纳入永久性能回归，完整收口实测P95为107.97ms，低于1000ms预算。
+- 每次结果返回实际来源、来源Version、时序状态、Token预算、裁剪日志、冲突清单与稳定Hash，可用于后续GenerationRun和审计追溯。
 
 ## 完成条件
 

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { APP_COMMANDS, IPC_CHANNELS, PROTOCOL_VERSION } from '@worldforge/contracts';
+import {
+  APP_COMMANDS,
+  IPC_CHANNELS,
+  PROTOCOL_VERSION,
+} from '@worldforge/contracts';
 import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
 
 const requestId = '11111111-1111-4111-8111-111111111111';
@@ -21,7 +25,10 @@ function envelope(command: string, payload: unknown = {}, currentProjectId?: str
 }
 
 function createHarness() {
-  const handlers = new Map<string, (event: unknown, command: unknown) => unknown>();
+  const handlers = new Map<
+    string,
+    (event: unknown, command: unknown) => unknown
+  >();
   const supervisor = {
     getStatus: vi.fn(() => ({
       status: 'healthy',
@@ -31,16 +38,20 @@ function createHarness() {
       diagnosticId: null,
     })),
     restart: vi.fn(async () => ({ ok: true })),
-    invokeAppDataOperation: vi.fn(async (_id: string, operation: { operation: string }) => ({
-      ok: false,
-      operation: operation.operation,
-      errorCode: 'COMMON_INTERNAL_999',
-    })),
-    invokeProjectOperation: vi.fn(async (_id: string, operation: { operation: string }) => ({
-      ok: false,
-      operation: operation.operation,
-      errorCode: 'COMMON_INTERNAL_999',
-    })),
+    invokeAppDataOperation: vi.fn(
+      async (_id: string, operation: { operation: string }) => ({
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'COMMON_INTERNAL_999',
+      }),
+    ),
+    invokeProjectOperation: vi.fn(
+      async (_id: string, operation: { operation: string }) => ({
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'COMMON_INTERNAL_999',
+      }),
+    ),
     invokeTaskCommand: vi.fn(async () => ({
       ok: true,
       requestId,
@@ -55,7 +66,10 @@ function createHarness() {
   };
   const unregister = registerIpcHandlers({
     ipcMain: {
-      handle(channel: string, handler: (event: unknown, command: unknown) => unknown) {
+      handle(
+        channel: string,
+        handler: (event: unknown, command: unknown) => unknown,
+      ) {
         handlers.set(channel, handler);
       },
       on: vi.fn(),
@@ -111,8 +125,15 @@ describe('IPC real-schema surface matrix', () => {
   it('covers direct App and window-preference handlers with valid envelopes', async () => {
     const harness = createHarness();
     await expect(
-      invoke(harness.handlers, IPC_CHANNELS.appGetInfo, envelope(APP_COMMANDS.getInfo)),
-    ).resolves.toMatchObject({ ok: true, data: { version: '1.2.3', platform: 'linux' } });
+      invoke(
+        harness.handlers,
+        IPC_CHANNELS.appGetInfo,
+        envelope(APP_COMMANDS.getInfo),
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { version: '1.2.3', platform: 'linux' },
+    });
     await expect(
       invoke(
         harness.handlers,
@@ -121,7 +142,11 @@ describe('IPC real-schema surface matrix', () => {
       ),
     ).resolves.toMatchObject({ ok: true, data: { status: 'healthy' } });
     await expect(
-      invoke(harness.handlers, IPC_CHANNELS.appRestartCore, envelope(APP_COMMANDS.restartCore)),
+      invoke(
+        harness.handlers,
+        IPC_CHANNELS.appRestartCore,
+        envelope(APP_COMMANDS.restartCore),
+      ),
     ).resolves.toMatchObject({ ok: true });
     await expect(
       invoke(
@@ -141,7 +166,10 @@ describe('IPC real-schema surface matrix', () => {
           contentWidth: 'wide',
         }),
       ),
-    ).resolves.toMatchObject({ ok: true, data: { workspaceAlignment: 'right' } });
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { workspaceAlignment: 'right' },
+    });
     expect(harness.supervisor.getStatus).toHaveBeenCalledTimes(2);
     expect(harness.supervisor.restart).toHaveBeenCalledOnce();
     harness.unregister();
@@ -159,15 +187,26 @@ describe('IPC real-schema surface matrix', () => {
         }),
       ],
       [IPC_CHANNELS.settingsReset, envelope(APP_COMMANDS.settingsReset)],
-      [IPC_CHANNELS.projectListRecent, envelope(APP_COMMANDS.projectListRecent)],
+      [
+        IPC_CHANNELS.projectListRecent,
+        envelope(APP_COMMANDS.projectListRecent),
+      ],
       [IPC_CHANNELS.getActive, envelope(APP_COMMANDS.getActive)],
-      [IPC_CHANNELS.openRecent, envelope(APP_COMMANDS.openRecent, { projectId })],
+      [
+        IPC_CHANNELS.openRecent,
+        envelope(APP_COMMANDS.openRecent, { projectId }),
+      ],
       [IPC_CHANNELS.getBrief, envelope(APP_COMMANDS.getBrief, { projectId })],
-      [IPC_CHANNELS.listPlotNodes, envelope(APP_COMMANDS.listPlotNodes, { projectId })],
+      [
+        IPC_CHANNELS.listPlotNodes,
+        envelope(APP_COMMANDS.listPlotNodes, { projectId }),
+      ],
     ] as const;
 
     for (const [channel, command] of cases) {
-      await expect(invoke(harness.handlers, channel, command)).resolves.toMatchObject({ ok: false });
+      await expect(
+        invoke(harness.handlers, channel, command),
+      ).resolves.toMatchObject({ ok: false });
     }
     expect(harness.supervisor.invokeAppDataOperation).toHaveBeenCalledTimes(4);
     expect(harness.supervisor.invokeProjectOperation).toHaveBeenCalledTimes(4);
@@ -187,7 +226,7 @@ describe('IPC real-schema surface matrix', () => {
       invoke(
         harness.handlers,
         IPC_CHANNELS.taskListActive,
-        envelope(APP_COMMANDS.taskListActive, { projectId }, projectId),
+        envelope(APP_COMMANDS.taskListActive, {}, projectId),
       ),
     ).resolves.toMatchObject({ ok: true, data: { tasks: [] } });
     await expect(

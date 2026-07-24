@@ -1,10 +1,10 @@
 type PropertyBag = Record<PropertyKey, unknown>;
 
-export function strictTestDouble<T extends object>(
-  label: string,
-  members: Partial<T>,
-): T {
-  const target = { ...members } as PropertyBag;
+export function strictTestDouble<T extends object>(label: string, members: Partial<T>): T {
+  const target = Object.create(
+    Object.getPrototypeOf(members),
+    Object.getOwnPropertyDescriptors(members),
+  ) as PropertyBag;
   return new Proxy(target, {
     get(current, property, receiver) {
       if (property === 'then') return undefined;

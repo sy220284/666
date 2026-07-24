@@ -9,6 +9,7 @@ import {
   RegisteredCommandSchema,
   type WorldforgeBridge,
 } from '@worldforge/contracts';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const state = vi.hoisted(() => ({
   exposed: undefined as unknown,
@@ -186,12 +187,14 @@ describe('Preload bridge real-contract regression coverage', () => {
   it('rejects invalid input synchronously before IPC dispatch', () => {
     const bridge = state.exposed as WorldforgeBridge;
     expect(() =>
-      bridge.app.setAppearancePreferences({
-        workspaceAlignment: 'center',
-        uiScalePercent: 95,
-        bodyFontSize: 18,
-        contentWidth: 'normal',
-      } as never),
+      bridge.app.setAppearancePreferences(
+        contractInput<Parameters<WorldforgeBridge['app']['setAppearancePreferences']>[0]>({
+          workspaceAlignment: 'center',
+          uiScalePercent: 95,
+          bodyFontSize: 18,
+          contentWidth: 'normal',
+        }),
+      ),
     ).toThrow();
     expect(() => bridge.project.openRecent('not-a-uuid')).toThrow();
     expect(() => bridge.ai.hasCredential('invalid-ref')).toThrow();

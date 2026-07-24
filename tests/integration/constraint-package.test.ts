@@ -7,7 +7,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { serializeConstraintPackage } from '../../packages/prompts/src/constraint-package-serializer.js';
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
-import { ConstraintPackageService } from '../../packages/core-service/src/constraint-package.js';
+import {
+  ConstraintPackageService,
+  ConstraintPackageServiceError,
+} from '../../packages/core-service/src/constraint-package.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { SearchIndexService } from '../../packages/core-service/src/search-index.js';
@@ -271,6 +274,204 @@ describe('M4-02 constraint package integration', () => {
           (source) => source.sourceType === 'entity_state' && source.content.includes('钟楼'),
         ),
       ).toBe(true);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('does not consume the current chapter ending snapshot as pre-chapter continuity', async () => {
+    const harness = await createHarness();
+    try {
+      const project = await harness.workspace.create(
+        randomUUID(),
+        { name: '首章时序项目', channel: '长篇' },
+        harness.parent,
+      );
+      const first = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
+      const entityId = randomUUID();
+      const versionId = randomUUID();
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
+        connection
+          .prepare(
+            `INSERT INTO versions(
+               id, chapter_id, source_draft_id, source_revision, title, description,
+               label, word_count, content_hash, created_at
+             ) VALUES(?, ?, ?, 0, ?, '', NULL, 0, ?, ?)`,
+          )
+          .run(versionId, first.id, first.activeDraftId, '首章定稿', 'b'.repeat(64), now);
+        connection
+          .prepare('UPDATE chapters SET final_version_id = ? WHERE id = ?')
+          .run(versionId, first.id);
+        connection
+          .prepare(
+            `INSERT INTO ending_snapshots(
+               id, project_id, chapter_id, source_version_id, status,
+               content_json, stale_reasons_json, created_at, stale_at
+             ) VALUES(?, ?, ?, ?, 'valid', ?, '[]', ?, NULL)`,
+          )
+          .run(
+            randomUUID(),
+            project.projectId,
+            first.id,
+            versionId,
+            JSON.stringify({
+              entityStates: [
+                { entityId, stateKey: 'location', value: '首章结尾', sourceVersionId: versionId },
+              ],
+              knowledgeStates: [],
+              foreshadowings: [],
+              arcMilestones: [],
+            }),
+            now,
+          );
+      });
+
+      const result = harness.constraints.build({
+        projectId: project.projectId,
+        chapterId: first.id,
+        taskType: 'chapter',
+        maxInputTokens: 4_096,
+        safetyMarginTokens: 256,
+        maxSupplementalResults: 0,
+      });
+      expect(result.snapshotSource).toBe('fallback_live_query');
+      expect(result.sections.P2.some((source) => source.sourceType === 'ending_snapshot')).toBe(
+        false,
+      );
+      expect(result.sections.P2.some((source) => source.content.includes('首章结尾'))).toBe(false);
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('filters future supplemental hits, marks versions historical, and removes exact duplicate recall', async () => {
+    const harness = await createHarness();
+    try {
+      const project = await harness.workspace.create(
+        randomUUID(),
+        { name: '检索时序项目', channel: '长篇' },
+        harness.parent,
+      );
+      const initial = harness.structure.list(project.projectId);
+      const volume = initial.volumes[0]!;
+      const first = volume.chapters[0]!;
+      const withSecond = await harness.structure.createChapter(randomUUID(), {
+        projectId: project.projectId,
+        volumeId: volume.id,
+        title: '当前章',
+        placement: { kind: 'end' },
+      });
+      const second = withSecond.volumes[0]!.chapters[1]!;
+      const withThird = await harness.structure.createChapter(randomUUID(), {
+        projectId: project.projectId,
+        volumeId: volume.id,
+        title: '未来章',
+        placement: { kind: 'end' },
+      });
+      const third = withThird.volumes[0]!.chapters[2]!;
+      const versionId = randomUUID();
+      const versionBlockId = randomUUID();
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
+        connection
+          .prepare('UPDATE draft_blocks SET text = ? WHERE draft_id = ?')
+          .run('灯火旧线索', first.activeDraftId);
+        connection
+          .prepare('UPDATE draft_blocks SET text = ? WHERE draft_id = ?')
+          .run('灯火当前稿', second.activeDraftId);
+        connection
+          .prepare('UPDATE draft_blocks SET text = ? WHERE draft_id = ?')
+          .run('灯火未来泄漏', third.activeDraftId);
+        connection
+          .prepare(
+            `INSERT INTO versions(
+               id, chapter_id, source_draft_id, source_revision, title, description,
+               label, word_count, content_hash, created_at
+             ) VALUES(?, ?, ?, 0, ?, '', NULL, 5, ?, ?)`,
+          )
+          .run(versionId, first.id, first.activeDraftId, '灯火旧版本', 'c'.repeat(64), now);
+        connection
+          .prepare(
+            `INSERT INTO version_blocks(
+               version_id, logical_block_id, order_key, block_type, text,
+               attributes_json, source, locked, content_hash
+             ) VALUES(?, ?, 1024, 'paragraph', ?, '{}', 'manual', 0, ?)`,
+          )
+          .run(versionId, versionBlockId, '灯火旧版本正文', 'd'.repeat(64));
+      });
+      await harness.search.rebuild(randomUUID(), project.projectId);
+
+      const result = harness.constraints.build({
+        projectId: project.projectId,
+        chapterId: second.id,
+        taskType: 'chapter',
+        query: '灯',
+        maxInputTokens: 8_192,
+        safetyMarginTokens: 512,
+        maxSupplementalResults: 20,
+      });
+      const supplemental = result.sections.P4.filter(
+        (source) => source.sourceType === 'supplemental_search',
+      );
+      expect(supplemental.some((source) => source.chapterId === third.id)).toBe(false);
+      expect(
+        supplemental.some(
+          (source) =>
+            source.sourceVersionId === versionId && source.temporalStatus === 'historical',
+        ),
+      ).toBe(true);
+      const currentDraft = result.sections.P4.find(
+        (source) => source.sourceType === 'current_draft' && source.chapterId === second.id,
+      );
+      expect(currentDraft).toBeDefined();
+      expect(supplemental.some((source) => source.contentHash === currentDraft!.contentHash)).toBe(
+        false,
+      );
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
+  it('reports a service-level budget error when mandatory constraints exceed the usable window', async () => {
+    const harness = await createHarness();
+    try {
+      const project = await harness.workspace.create(
+        randomUUID(),
+        { name: '预算项目', channel: '长篇' },
+        harness.parent,
+      );
+      const chapter = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
+        connection
+          .prepare(
+            `INSERT INTO project_briefs(
+               id, project_id, concept, reading_promise, protagonist_goal,
+               core_conflict, ending_intent, required_json, forbidden_json, updated_at
+             ) VALUES(?, ?, '', '', '', '', '', ?, '[]', ?)`,
+          )
+          .run(randomUUID(), project.projectId, JSON.stringify(['必须保留'.repeat(150)]), now);
+      });
+      expect(() =>
+        harness.constraints.build({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          taskType: 'chapter',
+          maxInputTokens: 512,
+          safetyMarginTokens: 0,
+          maxSupplementalResults: 0,
+        }),
+      ).toThrowError(ConstraintPackageServiceError);
+      try {
+        harness.constraints.build({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          taskType: 'chapter',
+          maxInputTokens: 512,
+          safetyMarginTokens: 0,
+          maxSupplementalResults: 0,
+        });
+      } catch (error) {
+        expect(error).toMatchObject({ code: 'CONSTRAINT_PACKAGE_BUDGET_EXCEEDED' });
+      }
     } finally {
       await closeHarness(harness);
     }

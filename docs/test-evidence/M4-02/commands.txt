@@ -4,3 +4,4 @@ pnpm typecheck
 pnpm lint
 pnpm test:eval
 node scripts/taskctl.mjs validate
+pnpm exec vitest run tests/performance/constraint-package-performance.test.ts

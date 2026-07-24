@@ -62,17 +62,42 @@ export function stableSerialize(value: unknown): string {
   return JSON.stringify(normalizeStableValue(value));
 }
 
+function isCjkCodePoint(codePoint: number): boolean {
+  return (
+    (codePoint >= 0x3400 && codePoint <= 0x4dbf) ||
+    (codePoint >= 0x4e00 && codePoint <= 0x9fff) ||
+    (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+    (codePoint >= 0x20000 && codePoint <= 0x323af) ||
+    (codePoint >= 0x3040 && codePoint <= 0x30ff) ||
+    (codePoint >= 0x31f0 && codePoint <= 0x31ff) ||
+    (codePoint >= 0x1100 && codePoint <= 0x11ff) ||
+    (codePoint >= 0x3130 && codePoint <= 0x318f) ||
+    (codePoint >= 0xac00 && codePoint <= 0xd7af)
+  );
+}
+
+function isWhitespaceCodePoint(codePoint: number): boolean {
+  return (
+    codePoint <= 0x20 ||
+    (codePoint >= 0x7f && codePoint <= 0xa0) ||
+    codePoint === 0x1680 ||
+    (codePoint >= 0x2000 && codePoint <= 0x200a) ||
+    codePoint === 0x2028 ||
+    codePoint === 0x2029 ||
+    codePoint === 0x202f ||
+    codePoint === 0x205f ||
+    codePoint === 0x3000 ||
+    codePoint === 0xfeff
+  );
+}
+
 export function estimateConstraintTokens(value: string): number {
   let cjk = 0;
   let other = 0;
   for (const character of value) {
-    if (
-      /\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}/u.test(character)
-    ) {
-      cjk += 1;
-    } else if (!/\s/u.test(character)) {
-      other += 1;
-    }
+    const codePoint = character.codePointAt(0)!;
+    if (isCjkCodePoint(codePoint)) cjk += 1;
+    else if (!isWhitespaceCodePoint(codePoint)) other += 1;
   }
   return Math.max(1, cjk + Math.ceil(other / 4) + 8);
 }

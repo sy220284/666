@@ -73,6 +73,7 @@ interface ChapterRow extends Record<string, unknown> {
 interface BaseContext {
   readonly project: Record<string, unknown>;
   readonly chapter: ChapterRow;
+  readonly eligibleChapterIds: readonly string[];
   readonly brief: Record<string, unknown> | null;
   readonly beats: readonly Record<string, unknown>[];
   readonly linkedEntities: readonly Record<string, unknown>[];
@@ -174,7 +175,21 @@ function deduplicateSources(sources: readonly ConstraintSource[]): ConstraintSou
     const existing = byId.get(source.id);
     if (!existing || source.relevance > existing.relevance) byId.set(source.id, source);
   }
-  return [...byId.values()];
+  const values = [...byId.values()];
+  const authoritativeHashes = new Set(
+    values
+      .filter((source) => source.sourceType !== 'supplemental_search')
+      .map((source) => source.contentHash),
+  );
+  const supplementalHashes = new Set<string>();
+  return values.filter((source) => {
+    if (source.sourceType !== 'supplemental_search') return true;
+    if (authoritativeHashes.has(source.contentHash) || supplementalHashes.has(source.contentHash)) {
+      return false;
+    }
+    supplementalHashes.add(source.contentHash);
+    return true;
+  });
 }
 
 function conflictsFor(sources: readonly ConstraintSource[]): ConstraintConflict[] {
@@ -225,8 +240,9 @@ function loadBaseContext(
         ORDER BY volume.order_key, chapter.order_key, chapter.id`,
     )
     .all(projectId) as unknown as Record<string, unknown>[];
-  const rawChapter = chapters.find((row) => row.id === chapterId);
-  if (!rawChapter) {
+  const chapterIndex = chapters.findIndex((row) => row.id === chapterId);
+  const rawChapter = chapters[chapterIndex];
+  if (chapterIndex < 0 || !rawChapter) {
     throw new ConstraintPackageServiceError(
       'CONSTRAINT_PACKAGE_NOT_FOUND',
       'Chapter not found in the project.',
@@ -340,6 +356,9 @@ function loadBaseContext(
   return {
     project,
     chapter,
+    eligibleChapterIds: chapters
+      .slice(0, chapterIndex + 1)
+      .map((row) => text(row.id, 'chapter.id')),
     brief: brief ?? null,
     beats,
     linkedEntities,
@@ -435,7 +454,7 @@ function supplementalSource(item: SearchResultItem, relevance: number): Constrai
     label: item.title || `${item.sourceType}补充召回`,
     content: item.excerpt,
     relevance,
-    temporalStatus: 'current',
+    temporalStatus: item.sourceType === 'version' ? 'historical' : 'current',
   });
 }
 
@@ -462,10 +481,21 @@ export class ConstraintPackageService {
       loadBaseContext(connection, input.projectId, input.chapterId),
     );
     const snapshotChapterId = context.chapter.previousChapterId ?? input.chapterId;
-    const snapshotResult = this.#stateProposal.readSnapshot({
-      projectId: input.projectId,
-      chapterId: snapshotChapterId,
-    });
+    const snapshotResult = context.chapter.previousChapterId
+      ? this.#stateProposal.readSnapshot({
+          projectId: input.projectId,
+          chapterId: context.chapter.previousChapterId,
+        })
+      : {
+          snapshotSource: 'fallback_live_query' as const,
+          snapshot: null,
+          content: {
+            entityStates: [],
+            knowledgeStates: [],
+            foreshadowings: [],
+            arcMilestones: [],
+          },
+        };
     const sources: ConstraintSource[] = [];
     const add = (source: SourceInput) => sources.push(makeSource(source));
 
@@ -604,7 +634,7 @@ export class ConstraintPackageService {
       const entityId = text(entity.id, 'entity.id');
       add({
         priority: 'P2',
-        sourceType: 'canon_fact',
+        sourceType: 'entity',
         sourceId: entityId,
         entityId,
         semanticKey: `entity:${entityId}:profile`,
@@ -724,9 +754,12 @@ export class ConstraintPackageService {
         includeArchived: false,
         limit: input.maxSupplementalResults,
       });
-      result.items.forEach((item, index) =>
-        sources.push(supplementalSource(item, Math.max(0.2, 0.7 - index * 0.02))),
-      );
+      const eligibleChapterIds = new Set(context.eligibleChapterIds);
+      result.items
+        .filter((item) => item.chapterId === null || eligibleChapterIds.has(item.chapterId))
+        .forEach((item, index) =>
+          sources.push(supplementalSource(item, Math.max(0.2, 0.7 - index * 0.02))),
+        );
     }
 
     const uniqueSources = deduplicateSources(sources);

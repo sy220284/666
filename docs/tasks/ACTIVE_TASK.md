@@ -25,6 +25,7 @@ allowed_paths:
   - packages/prompts/
   - tests/unit/
   - tests/integration/
+  - tests/performance/
   - evals/
   - package.json
   - pnpm-lock.yaml

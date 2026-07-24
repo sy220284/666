@@ -314,11 +314,7 @@ function indexEntity(connection: DatabaseSync, projectId: string, entityId: stri
     );
 }
 
-function indexTarget(
-  connection: DatabaseSync,
-  projectId: string,
-  target: SearchIndexTarget,
-): void {
+function indexTarget(connection: DatabaseSync, projectId: string, target: SearchIndexTarget): void {
   if (target.operation === 'delete') {
     deleteTarget(connection, target);
   } else if (target.targetType === 'draft') {

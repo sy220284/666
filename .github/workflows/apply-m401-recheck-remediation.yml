@@ -33,9 +33,11 @@ jobs:
           git show origin/tooling/m401-recheck-remediation:.github/tooling/m401-recheck-remediation.sh > "${RUNNER_TEMP}/m401-recheck-remediation.sh"
           git show origin/tooling/m401-recheck-remediation:.github/tooling/m401-performance-patch.py > "${RUNNER_TEMP}/m401-performance-patch.py"
           python "${RUNNER_TEMP}/m401-performance-patch.py" "${RUNNER_TEMP}/m401-recheck-remediation.sh"
+          sed -i "s/\[compactSearchTerm(originalValue), normalizedValue, fullwidthAsciiVariant(normalizedValue)\]/[compactSearchTerm(originalValue), normalizedValue, fullwidthAsciiVariant(compactSearchTerm(originalValue)), fullwidthAsciiVariant(normalizedValue)]/" "${RUNNER_TEMP}/m401-recheck-remediation.sh"
           sed -i "/clientBlockId: randomUUID()/,/text: '兼容检索必须保留全角原文代号ＡＢＣ/ s/logicalBlockId: randomUUID()/logicalBlockId: null/" "${RUNNER_TEMP}/m401-recheck-remediation.sh"
           sed -i "/clientBlockId: randomUUID()/,/text: '这一段只用于验证章节标题命中/ s/logicalBlockId: randomUUID()/logicalBlockId: null/" "${RUNNER_TEMP}/m401-recheck-remediation.sh"
           test "$(grep -c 'logicalBlockId: null' "${RUNNER_TEMP}/m401-recheck-remediation.sh")" -ge 2
+          grep -q 'fullwidthAsciiVariant(compactSearchTerm(originalValue))' "${RUNNER_TEMP}/m401-recheck-remediation.sh"
           chmod 0755 "${RUNNER_TEMP}/m401-recheck-remediation.sh"
 
       - name: Set up pnpm

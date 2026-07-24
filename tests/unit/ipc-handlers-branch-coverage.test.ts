@@ -160,9 +160,8 @@ function createHarness(
       scaleFactor: 1,
       maximized: false,
     }),
-    setAppearancePreferences: contractInput<HandlerOptions['setAppearancePreferences']>(
-      setAppearancePreferences,
-    ),
+    setAppearancePreferences:
+      contractInput<HandlerOptions['setAppearancePreferences']>(setAppearancePreferences),
     chooseRecentLocation: choices.recent,
     chooseProjectCreateParent: choices.create,
     chooseProjectToOpen: choices.open,
@@ -201,9 +200,7 @@ function sorted(values: Iterable<string>): string[] {
 }
 
 const productionHandlerChannels = sorted([
-  ...Object.values(IPC_CHANNELS).filter(
-    (channel) => channel !== IPC_CHANNELS.taskConnectEvents,
-  ),
+  ...Object.values(IPC_CHANNELS).filter((channel) => channel !== IPC_CHANNELS.taskConnectEvents),
   ...Object.values(CANDIDATE_IPC_CHANNELS).filter(
     (channel) => channel !== CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
   ),

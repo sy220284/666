@@ -32,6 +32,7 @@ jobs:
           git fetch --no-tags origin tooling/m401-closeout
           git show origin/tooling/m401-closeout:.github/tooling/m401-closeout.sh > "${RUNNER_TEMP}/m401-closeout.sh"
           sed -i "s|^git diff --check$|git diff --check -- . ':(exclude)docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md' ':(exclude)docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md'|" "${RUNNER_TEMP}/m401-closeout.sh"
+          sed -i "s|mapfile -t changed < <(git diff --name-only)|mapfile -t changed < <({ git diff --name-only; git ls-files --others --exclude-standard; } \\| sort -u)|" "${RUNNER_TEMP}/m401-closeout.sh"
           chmod 0755 "${RUNNER_TEMP}/m401-closeout.sh"
 
       - name: Set up pnpm

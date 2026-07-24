@@ -31,29 +31,9 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin tooling/m401-recheck-remediation
           git show origin/tooling/m401-recheck-remediation:.github/tooling/m401-recheck-remediation.sh > "${RUNNER_TEMP}/m401-recheck-remediation.sh"
-          python <<'PY'
-          from pathlib import Path
-          import os
-
-          script = Path(os.environ['RUNNER_TEMP']) / 'm401-recheck-remediation.sh'
-          text = script.read_text()
-          for body in (
-              '兼容检索必须保留全角原文代号ＡＢＣ，不得把摘要改写成半角。',
-              '这一段只用于验证章节标题命中不会按正文块重复返回。',
-          ):
-              old = f"""            clientBlockId: randomUUID(),
-            logicalBlockId: randomUUID(),
-            blockType: 'paragraph',
-            text: '{body}',"""
-              new = f"""            clientBlockId: randomUUID(),
-            logicalBlockId: null,
-            blockType: 'paragraph',
-            text: '{body}',"""
-              if text.count(old) != 1:
-                  raise SystemExit(f'test fixture patch target not found: {body}')
-              text = text.replace(old, new, 1)
-          script.write_text(text)
-          PY
+          sed -i "/clientBlockId: randomUUID()/,/text: '兼容检索必须保留全角原文代号ＡＢＣ/ s/logicalBlockId: randomUUID()/logicalBlockId: null/" "${RUNNER_TEMP}/m401-recheck-remediation.sh"
+          sed -i "/clientBlockId: randomUUID()/,/text: '这一段只用于验证章节标题命中/ s/logicalBlockId: randomUUID()/logicalBlockId: null/" "${RUNNER_TEMP}/m401-recheck-remediation.sh"
+          test "$(grep -c 'logicalBlockId: null' "${RUNNER_TEMP}/m401-recheck-remediation.sh")" -ge 2
           chmod 0755 "${RUNNER_TEMP}/m401-recheck-remediation.sh"
 
       - name: Set up pnpm

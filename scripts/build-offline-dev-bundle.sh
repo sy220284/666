@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# tooling revision 4: validate Electron binary without launching a GUI process as root
+# tooling revision 5: materialize Electron 43.1.1 Linux x64 binary explicitly
 
 SOURCE_HEAD="7b99b8c52751ac1e2303cd6001a4cff5e5b92ad1"
 OUT_DIR="${GITHUB_WORKSPACE}/test-results/ci"
@@ -12,6 +12,7 @@ rm -rf "${STAGE_DIR}"
 mkdir -p "${OUT_DIR}" "${STAGE_DIR}/repo" "${STAGE_DIR}/tooling" "${STAGE_DIR}/cache"
 
 pnpm exec playwright install chromium
+node node_modules/electron/install.js
 
 PRETTIER_VERSION="$(pnpm exec prettier --version)"
 ESLINT_VERSION="$(pnpm exec eslint --version | sed 's/^v//')"

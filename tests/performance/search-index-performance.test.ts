@@ -55,7 +55,9 @@ async function createHarness(): Promise<Harness> {
 
 function percentile(values: readonly number[], fraction: number): number {
   const ordered = [...values].sort((left, right) => left - right);
-  return ordered[Math.min(ordered.length - 1, Math.ceil(ordered.length * fraction) - 1)]!;
+  return ordered[
+    Math.min(ordered.length - 1, Math.ceil(ordered.length * fraction) - 1)
+  ]!;
 }
 
 afterEach(async () => {
@@ -67,7 +69,7 @@ afterEach(async () => {
 });
 
 describe('M4-01 search index performance', () => {
-  it('keeps 1,500,000-character FTS query P95 within 200ms and records rebuild time', async () => {
+  it('keeps the 1.5M-character FTS query P95 within budget', async () => {
     const harness = await createHarness();
     try {
       const project = await harness.workspace.create(
@@ -75,21 +77,28 @@ describe('M4-01 search index performance', () => {
         { name: '百万字检索', channel: '长篇' },
         harness.parent,
       );
-      const chapter = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
+      const chapter =
+        harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
       const opened = await harness.drafts.open(randomUUID(), {
         projectId: project.projectId,
         chapterId: chapter.id,
       });
       const phrase = '玄烛城夜雨长街暗号';
       const filler = '长篇正文用于检索性能基线。'.repeat(300);
-      const blocks = Array.from({ length: 400 }, (_, index) => ({
-        clientBlockId: `performance-${index}`,
-        logicalBlockId: index === 0 ? opened.blocks[0]!.logicalBlockId : null,
-        blockType: 'paragraph' as const,
-        text: `${index % 20 === 0 ? phrase : '普通段落'}${filler}${String(index).padStart(4, '0')}`,
-        attributes: {},
-      }));
-      const characterCount = blocks.reduce((total, block) => total + Array.from(block.text).length, 0);
+      const blocks = Array.from({ length: 400 }, (_, index) => {
+        const prefix = index % 20 === 0 ? phrase : '普通段落';
+        return {
+          clientBlockId: `performance-${index}`,
+          logicalBlockId: index === 0 ? opened.blocks[0]!.logicalBlockId : null,
+          blockType: 'paragraph' as const,
+          text: `${prefix}${filler}${String(index).padStart(4, '0')}`,
+          attributes: {},
+        };
+      });
+      const characterCount = blocks.reduce(
+        (total, block) => total + Array.from(block.text).length,
+        0,
+      );
       expect(characterCount).toBeGreaterThanOrEqual(1_500_000);
       await harness.drafts.saveSnapshot(randomUUID(), {
         projectId: project.projectId,
@@ -101,7 +110,11 @@ describe('M4-01 search index performance', () => {
       const rebuildStartedAt = performance.now();
       const rebuilt = await harness.search.rebuild(randomUUID(), project.projectId);
       const rebuildMs = performance.now() - rebuildStartedAt;
-      expect(rebuilt).toMatchObject({ status: 'ready', failedCount: 0, draftCount: 1 });
+      expect(rebuilt).toMatchObject({
+        status: 'ready',
+        failedCount: 0,
+        draftCount: 1,
+      });
 
       for (let index = 0; index < 5; index += 1) {
         harness.search.search({

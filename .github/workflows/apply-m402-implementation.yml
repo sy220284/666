@@ -37,6 +37,8 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin tooling/m402-implementation
           git show origin/tooling/m402-implementation:.github/tooling/m402-implementation.py > "${RUNNER_TEMP}/m402-implementation.py"
+          git show origin/tooling/m402-implementation:.github/tooling/m402-fix-1.py > "${RUNNER_TEMP}/m402-fix-1.py"
+          python "${RUNNER_TEMP}/m402-fix-1.py" "${RUNNER_TEMP}/m402-implementation.py"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

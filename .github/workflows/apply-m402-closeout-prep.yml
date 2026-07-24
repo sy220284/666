@@ -1,0 +1,77 @@
+name: Apply M4-02 Closeout Prep
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    if: github.head_ref == 'tooling/m402-closeout-prep'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout formal M4-02 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-02-constraint-package
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify and configure baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "3e6ae02c2b3c71647d93d972ec215f39e4d93a24"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Load closeout script
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin tooling/m402-closeout-prep
+          git show origin/tooling/m402-closeout-prep:.github/tooling/m402-closeout-prep.py > "${RUNNER_TEMP}/m402-closeout-prep.py"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run full closeout and push evidence
+        shell: bash
+        run: |
+          set +e
+          python "${RUNNER_TEMP}/m402-closeout-prep.py" > "${RUNNER_TEMP}/m402-closeout-prep.log" 2>&1
+          status=$?
+          cat "${RUNNER_TEMP}/m402-closeout-prep.log"
+          exit "${status}"
+
+      - name: Upload closeout diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m402-closeout-prep-diagnostics
+          path: ${{ runner.temp }}/m402-closeout-prep.log
+          if-no-files-found: error
+          retention-days: 7

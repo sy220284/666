@@ -1,0 +1,6 @@
+pnpm exec prettier --check packages/contracts/src/constraint-package.ts packages/domain/src/constraint-package.ts packages/core-service/src/constraint-package.ts packages/prompts/src/constraint-package-serializer.ts tests/unit/constraint-package-domain.test.ts tests/integration/constraint-package.test.ts
+pnpm exec vitest run tests/unit/constraint-package-domain.test.ts tests/integration/constraint-package.test.ts
+pnpm typecheck
+pnpm lint
+pnpm test:eval
+node scripts/taskctl.mjs validate

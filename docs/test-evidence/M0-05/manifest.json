@@ -10,6 +10,11 @@
       "sha256": "5532f2e7e5369900bb783d88e4fba3da1dd08febde55d0270b4f807404a5ae50"
     },
     {
+      "path": "coverage-75-2026-07-23.md",
+      "bytes": 706,
+      "sha256": "46af83b187d759ea7a6a978fb789813d4baf15aaadbcd58c0e667793ff69a666"
+    },
+    {
       "path": "known-risks.md",
       "bytes": 318,
       "sha256": "6fdf16463f1c22715d33b6ad538cb95ef94d8a48e1685f78fb60e4745ded5da3"

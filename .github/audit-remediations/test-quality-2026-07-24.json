@@ -20,10 +20,6 @@
       ]
     }
   ],
-  "evidenceMigrationTasks": [
-    "M0-05"
-  ],
-  "governancePaths": [
-    ".github/audit-remediations/test-quality-2026-07-24.json"
-  ]
+  "evidenceMigrationTasks": ["M0-05"],
+  "governancePaths": [".github/audit-remediations/test-quality-2026-07-24.json"]
 }

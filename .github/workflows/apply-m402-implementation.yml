@@ -30,6 +30,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "665f2022eb87f85c6f95ac12680b210e88bad54f"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
 
       - name: Load implementation from tooling branch
         shell: bash

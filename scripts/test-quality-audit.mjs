@@ -7,6 +7,7 @@ const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const TEST_ROOT = 'tests';
 const BASELINE_PATH = 'tests/test-quality-baseline.json';
 const AUDITOR_TEST_PATH = 'tests/unit/test-quality-audit.test.ts';
+const TEST_CASE_PATTERN = /\b(?:it|test)(?:\.each)?\s*\(/u;
 
 const HARD_RULES = [
   {
@@ -17,8 +18,7 @@ const HARD_RULES = [
   {
     id: 'vacuous-boolean-assertion',
     description: 'Literal boolean assertions do not verify production behavior.',
-    pattern:
-      /expect\(\s*(true|false)\s*\)\s*\.\s*(?:toBe|toEqual)\(\s*\1\s*\)/gu,
+    pattern: /expect\(\s*(true|false)\s*\)\s*\.\s*(?:toBe|toEqual)\(\s*\1\s*\)/gu,
   },
   {
     id: 'empty-test-body',
@@ -28,9 +28,10 @@ const HARD_RULES = [
   },
   {
     id: 'pass-through-schema-mock',
-    description: 'Contract schemas must not be replaced by parse functions that return input unchanged.',
+    description:
+      'Contract schemas must not be replaced by parse functions that return input unchanged.',
     pattern:
-      /\b[A-Za-z_$][\w$]*Schema\s*:\s*\{\s*parse\s*:\s*\([^)]*\)\s*=>\s*[A-Za-z_$][\w$]*\s*\}/gu,
+      /\b[A-Za-z_$][\w$]*Schema\s*(?::|=)\s*\{\s*parse\s*:\s*\([^)]*\)\s*=>\s*[A-Za-z_$][\w$]*\s*\}/gu,
   },
   {
     id: 'weak-handler-count-assertion',
@@ -73,9 +74,7 @@ export async function auditTests({ repositoryRoot = DEFAULT_ROOT } = {}) {
   const allFiles = await walk(testsRoot);
   const sourceFiles = allFiles.filter((file) => /\.(?:ts|tsx|mjs|js)$/u.test(file));
   const testFiles = sourceFiles.filter((file) => /\.(?:test|spec)\.(?:ts|tsx|mjs|js)$/u.test(file));
-  const baseline = JSON.parse(
-    await readFile(path.join(repositoryRoot, BASELINE_PATH), 'utf8'),
-  );
+  const baseline = JSON.parse(await readFile(path.join(repositoryRoot, BASELINE_PATH), 'utf8'));
   if (baseline.schemaVersion !== 1 || typeof baseline.unsafeTypeEscapes !== 'object') {
     throw new Error('Invalid test quality baseline.');
   }
@@ -123,7 +122,7 @@ export async function auditTests({ repositoryRoot = DEFAULT_ROOT } = {}) {
         content,
         /new\s+Promise\s*\([^)]*=>\s*setTimeout\s*\(/gu,
       );
-      if (!/\b(?:it|test)\s*\(/u.test(content)) {
+      if (!TEST_CASE_PATTERN.test(content)) {
         violations.push({
           file,
           line: 1,

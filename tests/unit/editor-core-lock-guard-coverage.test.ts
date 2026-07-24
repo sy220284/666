@@ -6,6 +6,7 @@ import {
   createWorldforgeEditorExtensions,
   createWorldforgeEditorSchema,
 } from '../../packages/editor-core/src/draft-document.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const schema = createWorldforgeEditorSchema();
 const lockedAttributes = {
@@ -23,6 +24,8 @@ const unlockedAttributes = {
   contentHash: 'open-hash',
 };
 
+type EditorPlugin = NonNullable<Parameters<typeof EditorState.create>[0]['plugins']>[number];
+
 function paragraph(text: string, attributes: Record<string, unknown>) {
   return schema.node('paragraph', attributes, text.length > 0 ? schema.text(text) : undefined);
 }
@@ -35,7 +38,7 @@ function heading(text: string, attributes: Record<string, unknown>) {
   );
 }
 
-function lockPlugin() {
+function lockPlugin(): EditorPlugin {
   const extension = createWorldforgeEditorExtensions().find(
     (candidate) => candidate.name === 'worldforgeLockGuard',
   );
@@ -43,7 +46,7 @@ function lockPlugin() {
   const factory = (extension.config as { addProseMirrorPlugins?: () => unknown[] })
     .addProseMirrorPlugins;
   if (!factory) throw new Error('LOCK_GUARD_PLUGIN_FACTORY_MISSING');
-  return factory.call(extension)[0] as never;
+  return contractInput<EditorPlugin>(factory.call(extension)[0]);
 }
 
 function editingKeymapPlugin() {

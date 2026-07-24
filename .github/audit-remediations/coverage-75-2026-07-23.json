@@ -32,7 +32,7 @@
     },
     {
       "taskId": "M0-04",
-      "finding": "IPC handler, Core utility entry, routing and error-mapping branches lacked complete success, rejection and failure-path regression coverage.",
+      "finding": "IPC handler, Core utility entry, routing, domain invariants and error-mapping branches lacked complete success, rejection and failure-path regression coverage.",
       "allowedPaths": [
         "tests/unit/ipc-handlers-branch-coverage.test.ts",
         "tests/unit/ipc-handlers-real-surface-coverage.test.ts",
@@ -41,6 +41,7 @@
         "tests/unit/core-narrative-router-coverage.test.ts",
         "tests/unit/core-utility-entry-coverage.test.ts",
         "tests/unit/core-utility-router-coverage.test.ts",
+        "tests/unit/domain-invariants-coverage.test.ts",
         "tests/integration/preload-ipc-core.integration.test.ts"
       ]
     },
@@ -59,10 +60,11 @@
     },
     {
       "taskId": "M1-04",
-      "finding": "Draft document conversion, metadata validation, lock protection, composition-safe commands and synchronization branches were only partially covered.",
+      "finding": "Draft document conversion, metadata validation, lock protection, composition-safe commands, autosave coordination and writing-tool branches were only partially covered.",
       "allowedPaths": [
         "tests/unit/editor-core-draft-document-coverage.test.ts",
-        "tests/unit/editor-core-lock-guard-coverage.test.ts"
+        "tests/unit/editor-core-lock-guard-coverage.test.ts",
+        "tests/unit/autosave-writing-tools.test.ts"
       ]
     },
     {

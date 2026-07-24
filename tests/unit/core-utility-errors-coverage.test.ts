@@ -19,11 +19,13 @@ import {
   projectOperationError,
   windowPreferencesError,
 } from '../../packages/core-service/src/utility-errors.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
-type ErrorConstructor = new (code: never, message: string) => Error;
+type ErrorConstructor = new (code: string, message: string) => Error;
 
 function serviceError(ctor: unknown, code: string): Error {
-  return new (ctor as ErrorConstructor)(code as never, `coverage:${code}`);
+  const Constructor = contractInput<ErrorConstructor>(ctor);
+  return new Constructor(code, `coverage:${code}`);
 }
 
 function zodError(): Error {

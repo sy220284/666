@@ -147,6 +147,61 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  coverage:
+    name: coverage
+    if: ${{ inputs.draft_mode == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Skip coverage for documentation-only Ready PR
+        if: ${{ inputs.full_suite == false }}
+        run: echo "Coverage is not required because only Markdown or docs/ files changed."
+      - uses: actions/checkout@v6
+        if: ${{ inputs.full_suite }}
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        if: ${{ inputs.full_suite }}
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        if: ${{ inputs.full_suite }}
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Assert clean working tree before coverage
+        if: ${{ inputs.full_suite }}
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ inputs.full_suite }}
+      - name: Install exact coverage provider without changing the lockfile
+        if: ${{ inputs.full_suite }}
+        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false
+      - name: Run product source coverage threshold
+        if: ${{ inputs.full_suite }}
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          pnpm test:coverage 2>&1 | tee test-results/ci/coverage.log
+      - name: Restore package manifest after temporary coverage provider install
+        if: ${{ always() && inputs.full_suite }}
+        run: git checkout -- package.json
+      - name: Assert clean working tree after coverage
+        if: ${{ always() && inputs.full_suite }}
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload product source coverage
+        if: ${{ always() && inputs.full_suite }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: product-source-coverage
+          path: |
+            coverage/
+            test-results/ci/coverage.log
+          if-no-files-found: warn
+          retention-days: 7
+
   security-tests:
     name: security-tests
     if: ${{ inputs.draft_mode == false && inputs.security_suite }}
@@ -390,6 +445,7 @@ jobs:
     needs:
       - static-checks
       - tests
+      - coverage
       - security-tests
       - performance-eval
       - desktop-e2e
@@ -404,6 +460,7 @@ jobs:
       PERFORMANCE_REQUIRED: ${{ inputs.performance_eval }}
       STATIC_RESULT: ${{ needs.static-checks.result }}
       TEST_RESULT: ${{ needs.tests.result }}
+      COVERAGE_RESULT: ${{ needs.coverage.result }}
       SECURITY_RESULT: ${{ needs.security-tests.result }}
       PERFORMANCE_RESULT: ${{ needs.performance-eval.result }}
       E2E_RESULT: ${{ needs.desktop-e2e.result }}
@@ -414,13 +471,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'draft=%s\nstatic=%s\ntests=%s\nsecurity=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
-            "$DRAFT_MODE" "$STATIC_RESULT" "$TEST_RESULT" "$SECURITY_RESULT" \
-            "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
+          printf 'draft=%s\nstatic=%s\ntests=%s\ncoverage=%s\nsecurity=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
+            "$DRAFT_MODE" "$STATIC_RESULT" "$TEST_RESULT" "$COVERAGE_RESULT" \
+            "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
           test "$STATIC_RESULT" = success
           if [ "$DRAFT_MODE" = true ]; then
-            for result in "$TEST_RESULT" "$SECURITY_RESULT" "$PERFORMANCE_RESULT" \
-              "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"; do
+            for result in "$TEST_RESULT" "$COVERAGE_RESULT" "$SECURITY_RESULT" \
+              "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"; do
               case "$result" in
                 success|skipped) ;;
                 *) exit 1 ;;
@@ -429,7 +486,7 @@ jobs:
             exit 0
           fi
 
-          for result in "$TEST_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
+          for result in "$TEST_RESULT" "$COVERAGE_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
             test "$result" = success
           done
 

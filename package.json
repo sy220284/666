@@ -46,7 +46,8 @@
     "task:reopen": "node scripts/taskctl.mjs reopen",
     "task:advance": "node scripts/taskctl.mjs advance",
     "task:close": "node scripts/taskctl.mjs close",
-    "task:close-deferred": "node .github/governance/deferred-task-closure.mjs close"
+    "task:close-deferred": "node .github/governance/deferred-task-closure.mjs close",
+    "test:coverage": "pnpm test:prepare && vitest run --config vitest.coverage.config.ts"
   },
   "devDependencies": {
     "@electron/fuses": "2.1.3",

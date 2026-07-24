@@ -411,3 +411,40 @@ docs/test-evidence/<TASK-ID>/
 功能(M4-01)：实现项目词典管理
 文档：优化 Agent 执行与质量规则
 ```
+
+## 17. 网络与依赖阻塞回退
+
+### 17.1 触发条件与诊断
+
+- 依赖安装、包管理器激活或工具下载失败时，先检查工具版本、`packageManager`、锁文件、Registry、代理、DNS、TLS、认证、缓存和网络出口，确认故障层级并保留关键错误信息。
+- 本地配置可修复时直接修复并复验；确认内部制品代理、上游 Registry 或公网出口在当前环境不可用后，立即切换回退路径。
+- 不得通过反复无效重试、随意更换主版本、降级依赖、改写锁文件、关闭严格校验或采用未经验证的第三方镜像拖延或伪造推进。
+
+### 17.2 GitHub Actions 离线工具链回退
+
+GitHub Actions 具备可信联网环境时，优先执行：
+
+```text
+读取 package.json、packageManager 和锁文件
+→ 固定 Node、包管理器、操作系统与 CPU 架构
+→ 从官方 Registry 安装精确版本及全部传递依赖
+→ 运行版本检查和仓库要求的最小验证
+→ 生成离线工具包或完整开发依赖包
+→ 写入 manifest、来源提交、锁文件摘要和 SHA-256
+→ 上传为 Workflow Artifact
+→ 通过 GitHub 连接器下载到当前环境
+→ 校验、解压、安装并执行真实验证
+```
+
+- 离线包必须绑定源提交 SHA、锁文件 SHA-256、Node 版本、包管理器版本、操作系统、CPU 架构和生成时间；涉及原生模块时还要记录 Node ABI、Electron 版本及目标平台。
+- 生成环境必须与使用环境兼容。Electron、esbuild、Playwright、原生 `.node` 模块及平台二进制不得跨操作系统或架构混用。
+- 小型工具包可只包含 pnpm、Prettier、ESLint、TypeScript 等必要工具；完整开发包可包含根与各 Workspace 的 `node_modules`、pnpm Store 和平台二进制。选择满足当前任务的最小完整包，避免无界膨胀。
+- GitHub Actions 中必须先按锁文件安装并运行至少版本检查及目标命令；无法完成本地导入时，格式、类型、构建、测试等可直接在正式 Actions 门禁继续执行，开发不得因本地网络故障停滞。
+
+### 17.3 保存、安装与验证边界
+
+- 离线包本体优先保存为 Workflow Artifact；需要长期稳定归档时可同步为 GitHub Release Asset。不得把 `node_modules`、`.pnpm-store`、Electron、esbuild、Playwright、原生模块或大型压缩包提交到普通 Git 分支。
+- 仓库只保存可复现的永久工作流、通用构建/安装/校验脚本和说明文档；禁止为单个任务创建一次性 Workflow、临时补丁目录或把 Runner 产物当成正式源码。
+- 下载后必须校验 SHA-256、来源提交、锁文件摘要、平台和版本，再解压到仓库外或 `.gitignore` 已排除目录；不得覆盖受跟踪正式文件或污染工作树。
+- 安装完成后必须真实运行适用命令，例如包管理器版本、Formatter 版本、`format:check`、Lint、Typecheck、Build 和任务专项测试。Artifact 上传、下载、解压、命令存在或单次 Runner 成功均不能单独证明环境可用或任务完成。
+- 该回退只替代依赖获取和工具安装路径，不得绕过任务范围、锁文件、严格依赖策略、永久门禁、Controlled Merge、Main Verification、Evidence 或完成声明条件。

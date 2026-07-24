@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# tooling revision 2: trigger main-routed Actions after base retarget
+# tooling revision 3: robust version parsing and diagnostics
 
 SOURCE_HEAD="7b99b8c52751ac1e2303cd6001a4cff5e5b92ad1"
 OUT_DIR="${GITHUB_WORKSPACE}/test-results/ci"
@@ -16,13 +16,25 @@ pnpm exec playwright install chromium
 PRETTIER_VERSION="$(pnpm exec prettier --version)"
 ESLINT_VERSION="$(pnpm exec eslint --version | sed 's/^v//')"
 TYPESCRIPT_VERSION="$(pnpm exec tsc --version | awk '{print $2}')"
-VITEST_VERSION="$(pnpm exec vitest --version | awk '{print $2}')"
+VITEST_VERSION="$(pnpm exec vitest --version | sed -E 's#^vitest/([^ ]+).*$#\1#')"
 PLAYWRIGHT_VERSION="$(pnpm exec playwright --version | awk '{print $2}')"
 ESBUILD_VERSION="$(pnpm exec esbuild --version)"
 ELECTRON_VERSION="$(node -p "require('./node_modules/electron/package.json').version")"
 PNPM_VERSION="$(pnpm --version)"
 NODE_VERSION="$(node --version)"
 NPM_VERSION="$(npm --version)"
+
+printf '%s\n' \
+  "prettier=${PRETTIER_VERSION}" \
+  "eslint=${ESLINT_VERSION}" \
+  "typescript=${TYPESCRIPT_VERSION}" \
+  "vitest=${VITEST_VERSION}" \
+  "playwright=${PLAYWRIGHT_VERSION}" \
+  "esbuild=${ESBUILD_VERSION}" \
+  "electron=${ELECTRON_VERSION}" \
+  "pnpm=${PNPM_VERSION}" \
+  "node=${NODE_VERSION}" \
+  "npm=${NPM_VERSION}"
 
 [[ "${PRETTIER_VERSION}" == "3.9.5" ]]
 [[ "${ESLINT_VERSION}" == "10.7.0" ]]

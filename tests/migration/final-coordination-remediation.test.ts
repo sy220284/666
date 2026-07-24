@@ -276,9 +276,10 @@ describe('M0-M3 final coordination migration', () => {
     }
   });
 
-  it('upgrades a populated Schema 17 database through 18 to 19 without losing data', async () => {
+  it('upgrades a populated Schema 17 database through 18 and 19 to the current schema without losing data', async () => {
     const migrations = await loadMigrations('migrations/project', 'project');
-    expect(latestMigrationVersion(migrations)).toBe(19);
+    const latestVersion = latestMigrationVersion(migrations);
+    expect(latestVersion).toBeGreaterThanOrEqual(19);
     const filePath = await databasePath('worldforge-v17-v19-');
     const v17 = await ProjectDatabase.open({
       path: filePath,
@@ -306,7 +307,7 @@ describe('M0-M3 final coordination migration', () => {
       prepareRecoveryPoint: async () => undefined,
     });
     try {
-      expect(upgraded).toMatchObject({ schemaVersion: 19, compatibility: 'migrated' });
+      expect(upgraded).toMatchObject({ schemaVersion: latestVersion, compatibility: 'migrated' });
       expect(
         upgraded.read((connection) =>
           connection.prepare('SELECT id FROM projects WHERE id = ?').get(fixture.projectId),

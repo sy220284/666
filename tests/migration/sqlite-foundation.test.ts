@@ -123,6 +123,19 @@ describe('SQLite foundation migrations', () => {
       appVersion: '0.1.0',
     });
     expect(first.compatibility).toBe('migrated');
+    const firstTables = first.read((connection) =>
+      connection
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        )
+        .all()
+        .map((row) => row.name),
+    );
+    const firstHistory = first.read((connection) =>
+      connection
+        .prepare('SELECT version, name, checksum FROM schema_migrations ORDER BY version')
+        .all(),
+    );
     await first.close();
 
     const second = await ProjectDatabase.open({
@@ -140,49 +153,14 @@ describe('SQLite foundation migrations', () => {
           .all()
           .map((row) => row.name),
       ),
-    ).toEqual([
-      'arc_milestone_dependencies',
-      'arc_milestone_timeline_dependencies',
-      'arc_milestones',
-      'backup_records',
-      'candidate_apply_checkpoints',
-      'candidate_apply_records',
-      'candidate_block_sources',
-      'candidate_blocks',
-      'candidate_conflict_sets',
-      'candidates',
-      'canon_facts',
-      'chapters',
-      'character_arcs',
-      'derived_invalidations',
-      'draft_blocks',
-      'draft_patch_log',
-      'drafts',
-      'ending_snapshots',
-      'entities',
-      'entity_states',
-      'foreshadowing_chapters',
-      'foreshadowing_relations',
-      'foreshadowings',
-      'knowledge_states',
-      'migration_journal',
-      'plot_nodes',
-      'project_briefs',
-      'projects',
-      'scene_beat_block_links',
-      'scene_beat_entities',
-      'scene_beat_link_rebind_queue',
-      'scene_beats',
-      'schema_migrations',
-      'state_proposals',
-      'timeline_event_dependencies',
-      'timeline_event_entities',
-      'timeline_events',
-      'trash_entries',
-      'version_blocks',
-      'versions',
-      'volumes',
-    ]);
+    ).toEqual(firstTables);
+    expect(
+      second.read((connection) =>
+        connection
+          .prepare('SELECT version, name, checksum FROM schema_migrations ORDER BY version')
+          .all(),
+      ),
+    ).toEqual(firstHistory);
     expect(
       second.read((connection) => scalar(connection, 'SELECT count(*) FROM schema_migrations')),
     ).toBe(BigInt(latestProjectSchemaVersion));

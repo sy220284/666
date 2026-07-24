@@ -187,15 +187,17 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
       expect(aliased).toMatchObject({ strategy: 'dictionary', normalizedQuery: '玄烛城夜雨' });
       expect(aliased.items.length).toBeGreaterThan(0);
       await expect(
-        harness.search.upsertDictionary(randomUUID(), {
-          projectId: project.projectId,
-          authority: 'ai',
-          term: '伪词',
-          category: 'custom',
-          action: 'canonical',
-          replacementTerm: null,
-          notes: '',
-        }),
+        Promise.resolve().then(() =>
+          harness.search.upsertDictionary(randomUUID(), {
+            projectId: project.projectId,
+            authority: 'ai',
+            term: '伪词',
+            category: 'custom',
+            action: 'canonical',
+            replacementTerm: null,
+            notes: '',
+          }),
+        ),
       ).rejects.toMatchObject({ code: 'SEARCH_DICTIONARY_AUTHOR_REQUIRED' });
 
       const changed = await harness.drafts.applyPatch(randomUUID(), {
@@ -336,7 +338,7 @@ describe('M4-01 FTS5 public index and project dictionary', () => {
         connection
           .prepare(
             `INSERT INTO draft_blocks(id, draft_id, logical_block_id, order_key, block_type, text, attributes_json, source, locked, content_hash, revision)
-             VALUES(?, ?, ?, 1024, 'paragraph', '异项目绝密检索词', '{}', 'author', 0, NULL, 0)`,
+             VALUES(?, ?, ?, 1024, 'paragraph', '异项目绝密检索词', '{}', 'manual', 0, NULL, 0)`,
           )
           .run(foreignBlockId, foreignDraftId, foreignBlockId);
       });

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M4-02",
+  "commit": "3e6ae02c2b3c71647d93d972ec215f39e4d93a24",
+  "generatedAt": "2026-07-24T15:51:19.015860Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 250,
+      "sha256": "b60f7ae5ba43d64beff273d8555558ddecc11942c327d619569b6a357a38d254"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 583,
+      "sha256": "cac3b47bdb92782247798669b92d20ac715a1d3b8554b752de3e35c71e6e155f"
+    },
+    {
+      "path": "m401-baseline-audit.md",
+      "bytes": 1715,
+      "sha256": "b085d89c6c6a2980d4717d14cd6786b3041ea007edc223b08c7304d5f1117b5b"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 2020,
+      "sha256": "dcc6cdbbc92fdbf651a75fbb500679a5098aa3bdf4720c108cc43eb911220a00"
+    }
+  ]
+}

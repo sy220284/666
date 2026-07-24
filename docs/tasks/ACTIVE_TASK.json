@@ -11,28 +11,28 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M4-02",
+    "id": "M4-03",
     "status": "IN_PROGRESS",
-    "source": "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md",
-    "branch": "work/m4-02-constraint-package",
+    "source": "docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md",
+    "branch": "work/m4-03-provider-credential-connection",
     "startedAt": "2026-07-24",
     "allowedPaths": [
-      "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
-      "packages/prompts/",
-      "tests/unit/",
+      "apps/desktop/main/",
+      "apps/desktop/renderer/",
+      "migrations/app/",
       "tests/integration/",
-      "evals/",
+      "tests/security/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md",
+      "docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M4-02/"
+      "docs/test-evidence/M4-03/"
     ],
     "forbiddenPaths": [],
     "requiredDocs": [
@@ -40,17 +40,21 @@
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/ai/PROMPT_AND_EVAL_SPEC.md",
-      "docs/database/DATABASE_SCHEMA.md"
+      "docs/ai/LOCAL_AI_SERVICE_SPEC.md",
+      "docs/ai/PROVIDER_PROTOCOL.md",
+      "docs/security/PRIVACY_AND_LOGGING.md",
+      "docs/contracts/ERROR_CODES.md"
     ],
     "verification": [
       "pnpm lint",
       "pnpm typecheck",
       "pnpm test",
+      "pnpm test:migration",
+      "pnpm test:integration",
       "pnpm test:security",
       "pnpm test:e2e",
-      "pnpm test:eval",
-      "pnpm test:integration"
+      "pnpm test:unit",
+      "pnpm test:eval"
     ]
   },
   "lastVerifiedTask": {
@@ -75,35 +79,48 @@
         "final traceability verification status",
         "Verified closure"
       ]
+    },
+    {
+      "id": "M4-02",
+      "implementationCommit": "3e6ae02c2b3c71647d93d972ec215f39e4d93a24",
+      "deferredAt": "2026-07-24T15:51:19.673Z",
+      "pending": [
+        "four-file evidence package and real automated run records",
+        "necessary manual review conclusions recorded in summary.md",
+        "risk-based screenshots, full logs, or independent quality matrix when warranted",
+        "final traceability verification status",
+        "Verified closure"
+      ]
     }
   ],
   "deferredTasks": [],
   "lastImplementedTask": {
-    "id": "M4-01",
-    "commit": "c37aebb53aa713622d749e5f9b9d837f4642d4bf",
-    "implementedAt": "2026-07-24T11:37:20.117Z",
-    "source": "docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md",
-    "branch": "work/m4-01-fts-index-dictionary",
-    "nextTaskId": "M4-02",
+    "id": "M4-02",
+    "commit": "3e6ae02c2b3c71647d93d972ec215f39e4d93a24",
+    "implementedAt": "2026-07-24T15:51:19.673Z",
+    "source": "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md",
+    "branch": "work/m4-02-constraint-package",
+    "nextTaskId": "M4-03",
     "allowedPaths": [
-      "migrations/project/",
+      "packages/domain/",
       "packages/core-service/",
       "packages/contracts/",
-      "apps/desktop/renderer/",
+      "packages/prompts/",
+      "tests/unit/",
       "tests/integration/",
-      "tests/migration/",
       "tests/performance/",
+      "evals/",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
+      "docs/database/DATABASE_SCHEMA.md",
       "docs/tasks/ACTIVE_TASK.json",
       "docs/tasks/ACTIVE_TASK.md",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md",
+      "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/test-evidence/M4-01/",
-      "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md"
+      "docs/test-evidence/M4-02/",
+      "docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md"
     ],
     "forbiddenPaths": []
   }

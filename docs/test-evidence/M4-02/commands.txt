@@ -1,0 +1,10 @@
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:security
+pnpm test:e2e
+pnpm test:eval
+pnpm test:integration
+pnpm test:perf
+node scripts/taskctl.mjs validate
+node scripts/taskctl.mjs advance --ci=success --commit=3e6ae02c2b3c71647d93d972ec215f39e4d93a24

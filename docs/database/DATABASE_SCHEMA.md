@@ -480,13 +480,13 @@ RHY结果为P3建议级，不写入阻断严重度。
 
 三张FTS5表统一使用`trigram` tokenizer。SQLite触发器只将受影响的权威业务ID写入队列并把索引状态置为`stale`；全文组装、增量消费、失败重试和完整重建均由Core执行。索引失败只记录`failed`与错误码，不回滚已经提交的正文、Version、Entity或Canon事务。
 
-三字符及以上查询在索引`ready`时使用FTS5；少于三字符或索引`stale/rebuilding`时回读权威业务表执行标准化LIKE。FTS5只负责召回业务ID，返回结果前必须按当前项目重新读取Draft、Version或Entity权威数据，不直接展示派生表内容，也不得跨项目返回结果。
+三字符及以上查询在索引`ready`时使用FTS5；少于三字符或索引`stale/rebuilding`时回读权威业务表执行有界兼容变体匹配。查询同时保留原始文本、NFKC规范词和全角ASCII兼容变体用于召回，摘要始终从权威原文截取，禁止以规范化文本替换作者原文。FTS5只负责召回业务ID，返回结果前必须按当前项目重新读取Draft、Version或Entity权威数据，不直接展示派生表内容，也不得跨项目返回结果。
 
 `0021_project_dictionary.sql`将项目Schema升级为21，建立：
 
 `project_dictionary(term TEXT PK, normalized_term TEXT UNIQUE, category TEXT, action TEXT, replacement_term TEXT NULL, notes TEXT, created_at TEXT, updated_at TEXT)`
 
-`action`为`canonical/alias/ignore/replacement`。别名和替换项必须提供`replacement_term`，规范词和忽略项不得提供替换值。词典只能由作者权限写入，AI无权修改；精确词典命中可将查询规范化后复用同一搜索服务。
+`action`为`canonical/alias/ignore/replace`。别名和替换项必须提供`replacement_term`，规范词和忽略项不得提供替换值。词典只能由作者权限写入，AI无权修改；精确词典命中可将查询规范化后复用同一搜索服务。
 
 ResearchNote属于P1/V1.5范围，V1.0 P0不预建相关业务表或索引。
 

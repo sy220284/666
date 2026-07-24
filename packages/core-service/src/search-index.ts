@@ -118,6 +118,115 @@ export function normalizeSearchTerm(value: string): string {
   return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase('zh-CN');
 }
 
+function compactSearchTerm(value: string): string {
+  return value.trim().replace(/\s+/gu, ' ');
+}
+
+function fullwidthAsciiVariant(value: string): string {
+  return value
+    .replace(/[!-~]/gu, (character) => String.fromCharCode(character.charCodeAt(0) + 0xfee0))
+    .replaceAll(' ', '　');
+}
+
+function searchTermVariants(originalValue: string, normalizedValue: string): string[] {
+  return [
+    ...new Set(
+      [
+        compactSearchTerm(originalValue),
+        normalizedValue,
+        fullwidthAsciiVariant(compactSearchTerm(originalValue)),
+        fullwidthAsciiVariant(normalizedValue),
+      ].filter((value) => value.length > 0),
+    ),
+  ];
+}
+
+interface NormalizedSearchView {
+  readonly value: string;
+  readonly starts: readonly number[];
+  readonly ends: readonly number[];
+}
+
+function normalizedSearchView(value: string): NormalizedSearchView {
+  let normalized = '';
+  const starts: number[] = [];
+  const ends: number[] = [];
+  for (const match of value.matchAll(/\P{M}\p{M}*|\p{M}+/gu)) {
+    const segment = match[0];
+    const start = match.index;
+    const end = start + segment.length;
+    const transformed = segment.normalize('NFKC').toLocaleLowerCase('zh-CN');
+    normalized += transformed;
+    for (let index = 0; index < transformed.length; index += 1) {
+      starts.push(start);
+      ends.push(end);
+    }
+  }
+  return { value: normalized, starts, ends };
+}
+
+function parseStringArrayJson(value: unknown, field: string): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text(value, field));
+  } catch (error) {
+    throw new SearchIndexServiceError(
+      'SEARCH_INDEX_INVARIANT',
+      `Persisted search field ${field} is not valid JSON.`,
+      { cause: error },
+    );
+  }
+  if (!Array.isArray(parsed) || !parsed.every((entry) => typeof entry === 'string')) {
+    throw new SearchIndexServiceError(
+      'SEARCH_INDEX_INVARIANT',
+      `Persisted search field ${field} is not a string array.`,
+    );
+  }
+  return parsed;
+}
+
+function latestQueueErrorCode(connection: DatabaseSync): string | null {
+  const row = connection
+    .prepare(
+      `SELECT last_error_code AS lastErrorCode
+         FROM search_index_queue
+        WHERE status = 'failed' AND last_error_code IS NOT NULL
+        ORDER BY updated_at DESC, id
+        LIMIT 1`,
+    )
+    .get();
+  return row?.lastErrorCode === undefined
+    ? null
+    : text(row.lastErrorCode, 'lastErrorCode').slice(0, 128);
+}
+
+function ftsPhrase(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function ftsMatch(variants: readonly string[], column?: 'title' | 'body'): string {
+  const prefix = column ? `${column}:` : '';
+  return variants.map((variant) => `${prefix}${ftsPhrase(variant)}`).join(' OR ');
+}
+
+function likeClause(column: string, variantCount: number): string {
+  return Array.from({ length: variantCount }, () => `instr(lower(${column}), lower(?)) > 0`).join(
+    ' OR ',
+  );
+}
+
+function deduplicateItems(items: readonly SearchResultItem[], limit: number): SearchResultItem[] {
+  const seen = new Set<string>();
+  return items
+    .filter((item) => {
+      const key = `${item.sourceType}:${item.targetId}:${item.anchorId ?? ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit);
+}
+
 function parseDictionary(row: DictionaryRow): ProjectDictionaryEntry {
   return ProjectDictionaryEntrySchema.parse(row);
 }
@@ -165,21 +274,27 @@ function readState(connection: DatabaseSync, projectId: string): SearchIndexStat
 }
 
 function excerpt(content: string, query: string): string {
-  const normalizedContent = content.normalize('NFKC');
-  const normalizedQuery = query.normalize('NFKC');
-  const index = normalizedContent
-    .toLocaleLowerCase('zh-CN')
-    .indexOf(normalizedQuery.toLocaleLowerCase('zh-CN'));
-  const start = Math.max(0, index < 0 ? 0 : index - 80);
-  const end = Math.min(
-    normalizedContent.length,
-    (index < 0 ? 0 : index) + normalizedQuery.length + 120,
+  const loweredQuery = query.toLocaleLowerCase('zh-CN');
+  const directIndex = content.toLocaleLowerCase('zh-CN').indexOf(loweredQuery);
+  if (directIndex >= 0) {
+    const start = Math.max(0, directIndex - 80);
+    const end = Math.min(content.length, directIndex + query.length + 120);
+    const value = content.slice(start, end).trim();
+    return `${start > 0 ? '…' : ''}${value}${end < content.length ? '…' : ''}`.slice(0, 2_000);
+  }
+  const view = normalizedSearchView(content);
+  const normalizedQuery = normalizeSearchTerm(query);
+  const index = view.value.indexOf(normalizedQuery);
+  const matchStart = index < 0 ? 0 : (view.starts[index] ?? 0);
+  const matchEndIndex = Math.min(
+    view.ends.length - 1,
+    Math.max(index, index + normalizedQuery.length - 1),
   );
-  const value = normalizedContent.slice(start, end).trim();
-  return `${start > 0 ? '…' : ''}${value}${end < normalizedContent.length ? '…' : ''}`.slice(
-    0,
-    2_000,
-  );
+  const matchEnd = index < 0 ? 0 : (view.ends[matchEndIndex] ?? matchStart);
+  const start = Math.max(0, matchStart - 80);
+  const end = Math.min(content.length, index < 0 ? 120 : matchEnd + 120);
+  const value = content.slice(start, end).trim();
+  return `${start > 0 ? '…' : ''}${value}${end < content.length ? '…' : ''}`.slice(0, 2_000);
 }
 
 function deleteTarget(connection: DatabaseSync, target: SearchIndexTarget): void {
@@ -211,13 +326,13 @@ function indexDraft(connection: DatabaseSync, projectId: string, draftId: string
        project_id, draft_id, logical_block_id, chapter_id, title, body
      ) VALUES(?, ?, ?, ?, ?, ?)`,
   );
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
     insert.run(
       projectId,
       text(row.draftId, 'draftId'),
       text(row.logicalBlockId, 'logicalBlockId'),
       text(row.chapterId, 'chapterId'),
-      text(row.title, 'title'),
+      index === 0 ? text(row.title, 'title') : '',
       text(row.body, 'body'),
     );
   }
@@ -243,13 +358,13 @@ function indexVersion(connection: DatabaseSync, projectId: string, versionId: st
        project_id, version_id, logical_block_id, chapter_id, title, body
      ) VALUES(?, ?, ?, ?, ?, ?)`,
   );
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
     insert.run(
       projectId,
       text(row.versionId, 'versionId'),
       text(row.logicalBlockId, 'logicalBlockId'),
       text(row.chapterId, 'chapterId'),
-      text(row.title, 'title'),
+      index === 0 ? text(row.title, 'title') : '',
       text(row.body, 'body'),
     );
   }
@@ -264,22 +379,7 @@ function indexEntity(connection: DatabaseSync, projectId: string, entityId: stri
     )
     .get(entityId, projectId);
   if (!row) return;
-  let aliases: unknown;
-  try {
-    aliases = JSON.parse(text(row.aliases_json, 'aliasesJson'));
-  } catch (error) {
-    throw new SearchIndexServiceError(
-      'SEARCH_INDEX_INVARIANT',
-      'Persisted Entity aliases cannot be indexed.',
-      { cause: error },
-    );
-  }
-  if (!Array.isArray(aliases) || !aliases.every((value) => typeof value === 'string')) {
-    throw new SearchIndexServiceError(
-      'SEARCH_INDEX_INVARIANT',
-      'Persisted Entity aliases cannot be indexed.',
-    );
-  }
+  const aliases = parseStringArrayJson(row.aliases_json, 'aliasesJson');
   const facts = connection
     .prepare(
       `SELECT fact_key, value_json, description
@@ -344,11 +444,11 @@ function dictionaryMatch(
 function ftsHits(
   connection: DatabaseSync,
   projectId: string,
-  query: string,
+  queryVariants: readonly string[],
   requestedSources: readonly SearchSourceType[],
+  includeArchived: boolean,
   limit: number,
 ): FtsHit[] {
-  const match = `"${query.replaceAll('"', '""')}"`;
   const definitions = {
     draft: {
       table: 'fts_draft_blocks',
@@ -360,10 +460,30 @@ function ftsHits(
       target: 'version_id',
       anchor: 'logical_block_id',
     },
-    entity: { table: 'fts_entities', target: 'entity_id', anchor: 'NULL' },
   } as const;
   const hits: FtsHit[] = [];
   for (const sourceType of requestedSources) {
+    if (sourceType === 'entity') {
+      hits.push(
+        ...(connection
+          .prepare(
+            `SELECT 'entity' AS sourceType, entity_id AS targetId,
+                    NULL AS anchorId, bm25(fts_entities) AS score
+               FROM fts_entities
+              WHERE fts_entities MATCH ? AND project_id = ?
+                AND (? = 1 OR status = 'active')
+              ORDER BY score, entity_id
+              LIMIT ?`,
+          )
+          .all(
+            ftsMatch(queryVariants),
+            projectId,
+            includeArchived ? 1 : 0,
+            limit,
+          ) as unknown as FtsHit[]),
+      );
+      continue;
+    }
     const definition = definitions[sourceType];
     hits.push(
       ...(connection
@@ -372,14 +492,21 @@ function ftsHits(
                   ${definition.anchor} AS anchorId, bm25(${definition.table}) AS score
              FROM ${definition.table}
             WHERE ${definition.table} MATCH ? AND project_id = ?
-            ORDER BY score LIMIT ?`,
+            ORDER BY score, ${definition.target}, ${definition.anchor}
+            LIMIT ?`,
         )
-        .all(match, projectId, limit) as unknown as FtsHit[]),
+        .all(ftsMatch(queryVariants), projectId, limit) as unknown as FtsHit[]),
     );
   }
   return hits
     .map((hit) => ({ ...hit, score: Number(hit.score) }))
-    .sort((left, right) => left.score - right.score)
+    .sort(
+      (left, right) =>
+        left.score - right.score ||
+        left.sourceType.localeCompare(right.sourceType, 'en') ||
+        left.targetId.localeCompare(right.targetId, 'en') ||
+        (left.anchorId ?? '').localeCompare(right.anchorId ?? '', 'en'),
+    )
     .slice(0, limit);
 }
 
@@ -405,13 +532,24 @@ function authoritativeItem(
       )
       .get(hit.targetId, hit.anchorId, projectId);
     if (!row) return null;
+    const title = text(row.title, 'draftTitle');
+    const body = text(row.body, 'draftBody');
+    const normalizedQuery = normalizeSearchTerm(query);
+    const loweredQuery = query.toLocaleLowerCase('zh-CN');
+    const bodyMatches =
+      body.toLocaleLowerCase('zh-CN').includes(loweredQuery) ||
+      normalizedSearchView(body).value.includes(normalizedQuery);
+    const titleMatches =
+      title.toLocaleLowerCase('zh-CN').includes(loweredQuery) ||
+      normalizedSearchView(title).value.includes(normalizedQuery);
+    const anchorId = !bodyMatches && titleMatches ? null : row.anchorId;
     return SearchResultItemSchema.parse({
       sourceType: 'draft',
       targetId: row.targetId,
-      anchorId: row.anchorId,
+      anchorId,
       chapterId: row.chapterId,
-      title: row.title,
-      excerpt: excerpt(text(row.body, 'draftBody'), query),
+      title,
+      excerpt: excerpt(anchorId === null ? title : body, query),
       score: hit.score,
     });
   }
@@ -429,13 +567,24 @@ function authoritativeItem(
       )
       .get(hit.targetId, hit.anchorId, projectId);
     if (!row) return null;
+    const title = text(row.title, 'versionTitle');
+    const body = text(row.body, 'versionBody');
+    const normalizedQuery = normalizeSearchTerm(query);
+    const loweredQuery = query.toLocaleLowerCase('zh-CN');
+    const bodyMatches =
+      body.toLocaleLowerCase('zh-CN').includes(loweredQuery) ||
+      normalizedSearchView(body).value.includes(normalizedQuery);
+    const titleMatches =
+      title.toLocaleLowerCase('zh-CN').includes(loweredQuery) ||
+      normalizedSearchView(title).value.includes(normalizedQuery);
+    const anchorId = !bodyMatches && titleMatches ? null : row.anchorId;
     return SearchResultItemSchema.parse({
       sourceType: 'version',
       targetId: row.targetId,
-      anchorId: row.anchorId,
+      anchorId,
       chapterId: row.chapterId,
-      title: row.title,
-      excerpt: excerpt(text(row.body, 'versionBody'), query),
+      title,
+      excerpt: excerpt(anchorId === null ? title : body, query),
       score: hit.score,
     });
   }
@@ -444,7 +593,8 @@ function authoritativeItem(
       `SELECT entity.id AS targetId, entity.name, entity.aliases_json AS aliasesJson,
               entity.summary,
               COALESCE((
-                SELECT group_concat(fact.fact_key || ' ' || fact.value_json || ' ' || fact.description, '\n')
+                SELECT group_concat(fact.fact_key || ' ' || fact.value_json || ' ' || fact.description, '
+')
                   FROM canon_facts fact
                  WHERE fact.entity_id = entity.id AND fact.project_id = entity.project_id
                    AND fact.status = 'current'
@@ -455,10 +605,11 @@ function authoritativeItem(
     )
     .get(hit.targetId, projectId, includeArchived ? 1 : 0);
   if (!row) return null;
-  const content = `${text(row.name, 'entityName')} ${text(
-    row.aliasesJson,
-    'aliasesJson',
-  )} ${text(row.summary, 'entitySummary')} ${text(row.facts, 'entityFacts')}`;
+  const aliases = parseStringArrayJson(row.aliasesJson, 'aliasesJson');
+  const content = `${text(row.name, 'entityName')} ${aliases.join(' ')} ${text(
+    row.summary,
+    'entitySummary',
+  )} ${text(row.facts, 'entityFacts')}`;
   return SearchResultItemSchema.parse({
     sourceType: 'entity',
     targetId: row.targetId,
@@ -473,6 +624,7 @@ function authoritativeItem(
 function authoritativeLike(
   connection: DatabaseSync,
   projectId: string,
+  queryVariants: readonly string[],
   query: string,
   requestedSources: readonly SearchSourceType[],
   includeArchived: boolean,
@@ -484,6 +636,20 @@ function authoritativeLike(
       ...(connection
         .prepare(
           `SELECT 'draft' AS sourceType, draft.id AS targetId,
+                  NULL AS anchorId, 0 AS score
+             FROM drafts draft
+             JOIN chapters chapter ON chapter.id = draft.chapter_id
+             JOIN volumes volume ON volume.id = chapter.volume_id
+            WHERE volume.project_id = ? AND draft.status = 'active'
+              AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
+              AND (${likeClause('chapter.title', queryVariants.length)})
+            ORDER BY volume.order_key, chapter.order_key, draft.id
+            LIMIT ?`,
+        )
+        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
+      ...(connection
+        .prepare(
+          `SELECT 'draft' AS sourceType, draft.id AS targetId,
                   block.logical_block_id AS anchorId, 0 AS score
              FROM drafts draft
              JOIN draft_blocks block ON block.draft_id = draft.id
@@ -491,16 +657,29 @@ function authoritativeLike(
              JOIN volumes volume ON volume.id = chapter.volume_id
             WHERE volume.project_id = ? AND draft.status = 'active'
               AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
-              AND (instr(lower(block.text), lower(?)) > 0
-                OR instr(lower(chapter.title), lower(?)) > 0)
+              AND (${likeClause('block.text', queryVariants.length)})
             ORDER BY volume.order_key, chapter.order_key, block.order_key, block.id
             LIMIT ?`,
         )
-        .all(projectId, query, query, limit) as unknown as FtsHit[]),
+        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
     );
   }
   if (requestedSources.includes('version')) {
     hits.push(
+      ...(connection
+        .prepare(
+          `SELECT 'version' AS sourceType, version.id AS targetId,
+                  NULL AS anchorId, 0 AS score
+             FROM versions version
+             JOIN chapters chapter ON chapter.id = version.chapter_id
+             JOIN volumes volume ON volume.id = chapter.volume_id
+            WHERE volume.project_id = ? AND chapter.deleted_at IS NULL
+              AND volume.deleted_at IS NULL
+              AND (${likeClause('chapter.title', queryVariants.length)})
+            ORDER BY version.created_at DESC, version.id
+            LIMIT ?`,
+        )
+        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
       ...(connection
         .prepare(
           `SELECT 'version' AS sourceType, version.id AS targetId,
@@ -511,12 +690,11 @@ function authoritativeLike(
              JOIN volumes volume ON volume.id = chapter.volume_id
             WHERE volume.project_id = ? AND chapter.deleted_at IS NULL
               AND volume.deleted_at IS NULL
-              AND (instr(lower(block.text), lower(?)) > 0
-                OR instr(lower(chapter.title), lower(?)) > 0)
+              AND (${likeClause('block.text', queryVariants.length)})
             ORDER BY version.created_at DESC, block.order_key, block.logical_block_id
             LIMIT ?`,
         )
-        .all(projectId, query, query, limit) as unknown as FtsHit[]),
+        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
     );
   }
   if (requestedSources.includes('entity')) {
@@ -528,17 +706,17 @@ function authoritativeLike(
              FROM entities entity
             WHERE entity.project_id = ? AND (? = 1 OR entity.status = 'active')
               AND (
-                instr(lower(entity.name), lower(?)) > 0 OR
-                instr(lower(entity.aliases_json), lower(?)) > 0 OR
-                instr(lower(entity.summary), lower(?)) > 0 OR
+                (${likeClause('entity.name', queryVariants.length)}) OR
+                (${likeClause('entity.aliases_json', queryVariants.length)}) OR
+                (${likeClause('entity.summary', queryVariants.length)}) OR
                 EXISTS (
                   SELECT 1 FROM canon_facts fact
                    WHERE fact.entity_id = entity.id AND fact.project_id = entity.project_id
                      AND fact.status = 'current'
                      AND (
-                       instr(lower(fact.fact_key), lower(?)) > 0 OR
-                       instr(lower(fact.value_json), lower(?)) > 0 OR
-                       instr(lower(fact.description), lower(?)) > 0
+                       (${likeClause('fact.fact_key', queryVariants.length)}) OR
+                       (${likeClause('fact.value_json', queryVariants.length)}) OR
+                       (${likeClause('fact.description', queryVariants.length)})
                      )
                 )
               )
@@ -548,27 +726,22 @@ function authoritativeLike(
         .all(
           projectId,
           includeArchived ? 1 : 0,
-          query,
-          query,
-          query,
-          query,
-          query,
-          query,
+          ...queryVariants,
+          ...queryVariants,
+          ...queryVariants,
+          ...queryVariants,
+          ...queryVariants,
+          ...queryVariants,
           limit,
         ) as unknown as FtsHit[]),
     );
   }
-  const seen = new Set<string>();
-  return hits
-    .map((hit) => authoritativeItem(connection, projectId, hit, query, includeArchived))
-    .filter((item): item is SearchResultItem => item !== null)
-    .filter((item) => {
-      const key = `${item.sourceType}:${item.targetId}:${item.anchorId ?? ''}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, limit);
+  return deduplicateItems(
+    hits
+      .map((hit) => authoritativeItem(connection, projectId, hit, query, includeArchived))
+      .filter((item): item is SearchResultItem => item !== null),
+    limit,
+  );
 }
 
 function listDictionaryRows(connection: DatabaseSync): DictionaryRow[] {
@@ -643,6 +816,8 @@ export class SearchIndexService {
       }
       const counts = queueCounts(connection);
       const status = counts.pending === 0 && counts.failed === 0 ? 'ready' : 'stale';
+      const stateErrorCode =
+        status === 'ready' ? null : (lastErrorCode ?? latestQueueErrorCode(connection));
       connection
         .prepare(
           `UPDATE search_index_state
@@ -652,7 +827,7 @@ export class SearchIndexService {
                   last_error_code = ?, updated_at = ?
             WHERE singleton_id = 1`,
         )
-        .run(status, status, now, status, now, status === 'ready' ? null : lastErrorCode, now);
+        .run(status, status, now, status, now, stateErrorCode, now);
       return SearchIndexProcessResultSchema.parse({
         projectId: input.projectId,
         processed: rows.length,
@@ -797,23 +972,38 @@ export class SearchIndexService {
           'The dictionary replacement term is invalid.',
         );
       }
+      const queryVariants = searchTermVariants(
+        dictionary ? effectiveQuery : input.query,
+        effectiveQuery,
+      );
       const requestedSources = input.sourceTypes ?? [...sourceTypes];
       const useFts = Array.from(effectiveQuery).length >= 3 && state.status === 'ready';
       const items = useFts
-        ? ftsHits(connection, input.projectId, effectiveQuery, requestedSources, input.limit)
-            .map((hit) =>
-              authoritativeItem(
-                connection,
-                input.projectId,
-                hit,
-                effectiveQuery,
-                input.includeArchived,
-              ),
+        ? deduplicateItems(
+            ftsHits(
+              connection,
+              input.projectId,
+              queryVariants,
+              requestedSources,
+              input.includeArchived,
+              input.limit,
             )
-            .filter((item): item is SearchResultItem => item !== null)
+              .map((hit) =>
+                authoritativeItem(
+                  connection,
+                  input.projectId,
+                  hit,
+                  effectiveQuery,
+                  input.includeArchived,
+                ),
+              )
+              .filter((item): item is SearchResultItem => item !== null),
+            input.limit,
+          )
         : authoritativeLike(
             connection,
             input.projectId,
+            queryVariants,
             effectiveQuery,
             requestedSources,
             input.includeArchived,

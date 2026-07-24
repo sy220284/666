@@ -32,3 +32,4 @@ export * from './migration-recovery.js';
 export * from './task-protocol.js';
 export * from './window-preferences.js';
 export * from './search-index.js';
+export * from './constraint-package.js';

@@ -23,8 +23,7 @@ const HARD_RULES = [
   {
     id: 'empty-test-body',
     description: 'Empty test bodies create a false green signal.',
-    pattern:
-      /\b(?:it|test)\(\s*(['"`])[^\n]*?\1\s*,\s*(?:async\s*)?\(\s*\)\s*=>\s*\{\s*\}\s*\)/gu,
+    pattern: /\b(?:it|test)\(\s*(['"`])[^\n]*?\1\s*,\s*(?:async\s*)?\(\s*\)\s*=>\s*\{\s*\}\s*\)/gu,
   },
   {
     id: 'pass-through-schema-mock',
@@ -118,10 +117,7 @@ export async function auditTests({ repositoryRoot = DEFAULT_ROOT } = {}) {
       metrics.assertions += count(content, /\bexpect\s*\(/gu);
       metrics.partialAssertions += count(content, /\.toMatchObject\s*\(/gu);
       metrics.mocks += count(content, /\bvi\.mock\s*\(/gu);
-      metrics.arbitrarySleeps += count(
-        content,
-        /new\s+Promise\s*\([^)]*=>\s*setTimeout\s*\(/gu,
-      );
+      metrics.arbitrarySleeps += count(content, /new\s+Promise\s*\([^)]*=>\s*setTimeout\s*\(/gu);
       if (!TEST_CASE_PATTERN.test(content)) {
         violations.push({
           file,

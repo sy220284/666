@@ -77,10 +77,11 @@
     },
     {
       "taskId": "M3-07",
-      "finding": "Renderer Core recovery supervision and its default DOM surface had large untested health, restart, project reopen, clipboard and lifecycle branches.",
+      "finding": "Renderer Core recovery supervision, temporary UI state validation and the default DOM surface had large untested health, navigation, state-boundary, restart, project reopen, clipboard and lifecycle branches.",
       "allowedPaths": [
         "tests/unit/core-recovery-supervisor-branch-coverage.test.ts",
-        "tests/unit/core-recovery-supervisor-dom.test.ts"
+        "tests/unit/core-recovery-supervisor-dom.test.ts",
+        "tests/unit/renderer-ui-state-boundary.test.ts"
       ]
     }
   ],

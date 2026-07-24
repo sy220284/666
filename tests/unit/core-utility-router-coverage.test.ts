@@ -137,7 +137,9 @@ function appOperation(value: unknown): Parameters<typeof executeAppDataOperation
   return contractInput(value);
 }
 
-function appServices(runtime: ReturnType<typeof appRuntime>): Parameters<typeof executeAppDataOperation>[0] {
+function appServices(
+  runtime: ReturnType<typeof appRuntime>,
+): Parameters<typeof executeAppDataOperation>[0] {
   return strictTestDouble('AppDataRuntime', runtime);
 }
 

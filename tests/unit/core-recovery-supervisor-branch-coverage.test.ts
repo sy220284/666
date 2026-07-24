@@ -9,6 +9,7 @@ import {
   type CoreRecoverySurfaceActions,
   type CoreRecoverySurfaceState,
 } from '../../apps/desktop/renderer/src/runtime/core-recovery-supervisor.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 const project: ProjectWorkspaceSummary = {
   projectId: randomUUID(),
@@ -49,6 +50,9 @@ const crashed: CoreStatus = {
   lastErrorCode: 'CORE_PROCESS_EXITED',
   diagnosticId: 'diag-crashed',
 };
+
+type RecoveryOptions = Parameters<typeof createCoreRecoverySupervisor>[0];
+type RecoveryBridge = RecoveryOptions['bridge'];
 
 class Surface implements CoreRecoverySurface {
   actions: CoreRecoverySurfaceActions | null = null;
@@ -118,11 +122,15 @@ function harness(
   const writeClipboardText = vi.fn(async () => {
     if (overrides.clipboardReject) throw new Error('clipboard failed');
   });
-  const supervisor = createCoreRecoverySupervisor({
-    bridge: {
+  const bridge = strictTestDouble<RecoveryBridge>(
+    'CoreRecoveryBridge',
+    contractInput({
       app: { getCoreStatus, restartCore },
       project: { getActive, listRecent, openRecent },
-    } as never,
+    }),
+  );
+  const supervisor = createCoreRecoverySupervisor({
+    bridge,
     surface,
     pollIntervalMs: 250,
     schedule,
@@ -152,7 +160,7 @@ describe('Core recovery supervisor branch coverage', () => {
   it.each([249, 250.5, Number.NaN])('rejects invalid poll interval %s', (pollIntervalMs) => {
     expect(() =>
       createCoreRecoverySupervisor({
-        bridge: {} as never,
+        bridge: strictTestDouble<RecoveryBridge>('InvalidRecoveryBridge', {}),
         surface: new Surface(),
         pollIntervalMs,
       }),
@@ -184,7 +192,9 @@ describe('Core recovery supervisor branch coverage', () => {
   it('coalesces health checks and exposes failure, pending and thrown status outcomes', async () => {
     const status = deferred<unknown>();
     const value = harness();
-    value.getCoreStatus.mockImplementationOnce(() => status.promise as never);
+    value.getCoreStatus.mockImplementationOnce(() =>
+      contractInput<ReturnType<typeof value.getCoreStatus>>(status.promise),
+    );
     const first = value.supervisor.checkNow();
     const second = value.supervisor.checkNow();
     expect(first).toBe(second);
@@ -193,7 +203,9 @@ describe('Core recovery supervisor branch coverage', () => {
     expect(value.supervisor.health).toBe('unreachable');
     expect(value.surface.states.at(-1)?.message).toContain('CORE_STATUS_FAILED');
 
-    value.getCoreStatus.mockResolvedValueOnce(pending() as never);
+    value.getCoreStatus.mockResolvedValueOnce(
+      contractInput<Awaited<ReturnType<typeof value.getCoreStatus>>>(pending()),
+    );
     await value.supervisor.checkNow();
     expect(value.surface.states.at(-1)?.message).toContain('请求未完成');
 
@@ -270,7 +282,9 @@ describe('Core recovery supervisor branch coverage', () => {
 
     const restart = deferred<unknown>();
     const late = harness();
-    late.restartCore.mockImplementationOnce(() => restart.promise as never);
+    late.restartCore.mockImplementationOnce(() =>
+      contractInput<ReturnType<typeof late.restartCore>>(restart.promise),
+    );
     const promise = late.supervisor.restart();
     late.supervisor.dispose();
     restart.resolve(success({ accepted: true, status: healthy }));

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# tooling revision 2: trigger main-routed Actions after base retarget
 
 SOURCE_HEAD="7b99b8c52751ac1e2303cd6001a4cff5e5b92ad1"
 OUT_DIR="${GITHUB_WORKSPACE}/test-results/ci"

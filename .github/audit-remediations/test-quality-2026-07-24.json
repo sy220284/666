@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "remediationId": "audit-test-quality-2026-07-24",
+  "baseCommit": "dadb598dc8e36014bc149a8ed354e8580321d7e0",
+  "branch": "fix/governance-audit-test-quality-2026-07-24",
+  "activeTaskInvariant": {
+    "id": "M4-01",
+    "mustMatchBase": true
+  },
+  "verifiedTaskRepairs": [
+    {
+      "taskId": "M0-01",
+      "finding": "The repository had no whole-suite test-quality policy, so vacuous assertions, focused or skipped tests, pass-through contract mocks, unbounded type escapes and weak surface checks could regress while all product tests remained green.",
+      "allowedPaths": [
+        "tests/",
+        "scripts/test-quality-audit.mjs",
+        "package.json",
+        ".github/workflows/quality-core.yml",
+        "docs/architecture/TEST_QUALITY_REMEDIATION_2026-07-24.md"
+      ]
+    }
+  ],
+  "evidenceMigrationTasks": ["M0-05"],
+  "governancePaths": [".github/audit-remediations/test-quality-2026-07-24.json"]
+}

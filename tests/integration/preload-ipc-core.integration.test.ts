@@ -36,6 +36,7 @@ import {
 import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
 import { executeAppDataOperation } from '../../packages/core-service/src/utility-app-data-router.js';
 import { executeProjectOperation } from '../../packages/core-service/src/utility-project-router.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 const project = {
   projectId: '22222222-2222-4222-8222-222222222222',
@@ -59,6 +60,8 @@ const windowPreferences = {
   scaleFactor: 1,
   maximized: false,
 };
+
+type HandlerOptions = Parameters<typeof registerIpcHandlers>[0];
 
 function createCoreRuntime() {
   let settings: AppSettings = { ...DEFAULT_APP_SETTINGS };
@@ -96,8 +99,17 @@ function createCoreRuntime() {
 
 function registerTransport() {
   const core = createCoreRuntime();
-  const unregister = registerIpcHandlers({
-    ipcMain: {
+  const appRuntime = strictTestDouble<Parameters<typeof executeAppDataOperation>[0]>(
+    'IntegratedAppRuntime',
+    core.appRuntime,
+  );
+  const projectServices = strictTestDouble<Parameters<typeof executeProjectOperation>[0]>(
+    'IntegratedProjectServices',
+    core.projectServices,
+  );
+  const ipcMain = strictTestDouble<HandlerOptions['ipcMain']>(
+    'IntegratedIpcMain',
+    contractInput({
       handle(channel: string, handler: (event: unknown, command: unknown) => unknown) {
         transport.handlers.set(channel, handler);
       },
@@ -106,8 +118,11 @@ function registerTransport() {
         transport.handlers.delete(channel);
       },
       removeListener: vi.fn(),
-    } as never,
-    supervisor: {
+    }),
+  );
+  const supervisor = strictTestDouble<HandlerOptions['supervisor']>(
+    'IntegratedCoreSupervisor',
+    contractInput({
       getStatus: () => ({
         status: 'healthy',
         pid: 123,
@@ -116,22 +131,38 @@ function registerTransport() {
         diagnosticId: null,
       }),
       restart: async () => ({ ok: true }),
-      invokeAppDataOperation: (requestId: string, operation: never) =>
-        executeAppDataOperation(core.appRuntime as never, requestId, operation),
-      invokeProjectOperation: (requestId: string, operation: never) =>
-        executeProjectOperation(core.projectServices as never, requestId, operation),
+      invokeAppDataOperation: (
+        requestId: string,
+        operation: Parameters<typeof executeAppDataOperation>[2],
+      ) => executeAppDataOperation(appRuntime, requestId, operation),
+      invokeProjectOperation: (
+        requestId: string,
+        operation: Parameters<typeof executeProjectOperation>[2],
+      ) => executeProjectOperation(projectServices, requestId, operation),
       invokeTaskCommand: vi.fn(),
       attachTaskPort: vi.fn(() => ({ ok: true })),
-    } as never,
-    credentialBroker: {
-      store: vi.fn(),
-      remove: vi.fn(),
-      has: vi.fn(),
-    } as never,
+    }),
+  );
+  const unregister = registerIpcHandlers({
+    ipcMain,
+    supervisor,
+    credentialBroker: strictTestDouble(
+      'IntegratedCredentialBroker',
+      contractInput<Partial<HandlerOptions['credentialBroker']>>({
+        store: vi.fn(),
+        remove: vi.fn(),
+        has: vi.fn(),
+      }),
+    ),
     rendererUrl: transport.rendererUrl,
     version: '1.2.3',
     platform: 'linux',
-    logger: { log: vi.fn(async () => undefined) } as never,
+    logger: strictTestDouble(
+      'IntegratedPrivacyLogger',
+      contractInput<Partial<HandlerOptions['logger']>>({
+        log: vi.fn(async () => undefined),
+      }),
+    ),
     getWindowPreferences: () => windowPreferences,
     setAppearancePreferences: async (preferences) => ({ ...windowPreferences, ...preferences }),
     chooseRecentLocation: async () => null,
@@ -202,12 +233,14 @@ describe('Preload → IPC Main → Core integration', () => {
 
     const callsBeforeInvalidInput = transport.invokedChannels.length;
     expect(() =>
-      bridge.app.setAppearancePreferences({
-        workspaceAlignment: 'center',
-        uiScalePercent: 95,
-        bodyFontSize: 18,
-        contentWidth: 'normal',
-      } as never),
+      bridge.app.setAppearancePreferences(
+        contractInput<Parameters<WorldforgeBridge['app']['setAppearancePreferences']>[0]>({
+          workspaceAlignment: 'center',
+          uiScalePercent: 95,
+          bodyFontSize: 18,
+          contentWidth: 'normal',
+        }),
+      ),
     ).toThrow();
     expect(transport.invokedChannels).toHaveLength(callsBeforeInvalidInput);
 

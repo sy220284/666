@@ -7,6 +7,7 @@ import {
   PROTOCOL_VERSION,
 } from '@worldforge/contracts';
 import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 const requestId = '11111111-1111-4111-8111-111111111111';
 const projectId = '22222222-2222-4222-8222-222222222222';
@@ -14,6 +15,8 @@ const taskId = '33333333-3333-4333-8333-333333333333';
 const credentialRef = 'cred_55555555-5555-4555-8555-555555555555';
 const trustedEvent = { senderFrame: { url: 'file:///renderer.html' } };
 const untrustedEvent = { senderFrame: { url: 'https://evil.example' } };
+
+type HandlerOptions = Parameters<typeof registerIpcHandlers>[0];
 
 interface FakePort {
   closed: number;
@@ -127,14 +130,26 @@ function createHarness(
       maximized: false,
     }));
   const unregister = registerIpcHandlers({
-    ipcMain: ipcMain as never,
-    supervisor: supervisor as never,
-    credentialBroker: credentialBroker as never,
+    ipcMain: strictTestDouble(
+      'IpcMain',
+      contractInput<Partial<HandlerOptions['ipcMain']>>(ipcMain),
+    ),
+    supervisor: strictTestDouble(
+      'CoreSupervisor',
+      contractInput<Partial<HandlerOptions['supervisor']>>(supervisor),
+    ),
+    credentialBroker: strictTestDouble(
+      'CredentialBroker',
+      contractInput<Partial<HandlerOptions['credentialBroker']>>(credentialBroker),
+    ),
     rendererUrl: trustedEvent.senderFrame.url,
     version: '1.2.3',
     platform: 'linux',
     enableTestFixtures: options.fixtures,
-    logger: logger as never,
+    logger: strictTestDouble(
+      'PrivacyLogger',
+      contractInput<Partial<HandlerOptions['logger']>>(logger),
+    ),
     getWindowPreferences: () => ({
       workspaceAlignment: 'center',
       uiScalePercent: 100,
@@ -145,7 +160,8 @@ function createHarness(
       scaleFactor: 1,
       maximized: false,
     }),
-    setAppearancePreferences: setAppearancePreferences as never,
+    setAppearancePreferences:
+      contractInput<HandlerOptions['setAppearancePreferences']>(setAppearancePreferences),
     chooseRecentLocation: choices.recent,
     chooseProjectCreateParent: choices.create,
     chooseProjectToOpen: choices.open,
@@ -179,19 +195,35 @@ async function call(
   return await handler?.(event, raw);
 }
 
+function sorted(values: Iterable<string>): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+const productionHandlerChannels = sorted([
+  ...Object.values(IPC_CHANNELS).filter((channel) => channel !== IPC_CHANNELS.taskConnectEvents),
+  ...Object.values(CANDIDATE_IPC_CHANNELS).filter(
+    (channel) => channel !== CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
+  ),
+]);
+const removableHandlerChannels = sorted([
+  ...productionHandlerChannels,
+  CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
+]);
+
 describe('IPC handlers real-contract branch coverage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('registers the complete production surface and removes it symmetrically', () => {
+  it('registers the exact production surface and removes every configured handler symmetrically', () => {
     const harness = createHarness();
-    expect(harness.handlers.size).toBeGreaterThan(70);
+    expect(sorted(harness.handlers.keys())).toEqual(productionHandlerChannels);
+    expect(sorted(harness.listeners.keys())).toEqual([IPC_CHANNELS.taskConnectEvents]);
     expect(harness.handlers.has(CANDIDATE_IPC_CHANNELS.createFixtureCandidate)).toBe(false);
-    expect(harness.listeners.has(IPC_CHANNELS.taskConnectEvents)).toBe(true);
+
     harness.unregister();
-    expect(harness.removedHandlers).toHaveLength(harness.handlers.size + 1);
-    expect(harness.removedListeners).toContain(IPC_CHANNELS.taskConnectEvents);
+    expect(sorted(harness.removedHandlers)).toEqual(removableHandlerChannels);
+    expect(sorted(harness.removedListeners)).toEqual([IPC_CHANNELS.taskConnectEvents]);
   });
 
   it('parses real commands and dispatches exact app-data and project operations', async () => {

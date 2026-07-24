@@ -56,7 +56,10 @@ class FakeTaskProtocol {
 }
 
 vi.mock('@worldforge/contracts', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
+  const [actual, strictEnvelope] = await Promise.all([
+    importOriginal<Record<string, unknown>>(),
+    import('../testkit/strict-result-envelope.js'),
+  ]);
   return {
     ...actual,
     CoreControlMessageSchema: {
@@ -65,8 +68,8 @@ vi.mock('@worldforge/contracts', async (importOriginal) => {
           ? { success: false, error: new Error('invalid') }
           : { success: true, data: input },
     },
-    CoreAppDataResultSchema: { parse: (input: unknown) => input },
-    CoreProjectResultSchema: { parse: (input: unknown) => input },
+    CoreAppDataResultSchema: strictEnvelope.strictResultEnvelopeSchema,
+    CoreProjectResultSchema: strictEnvelope.strictResultEnvelopeSchema,
   };
 });
 
@@ -218,10 +221,10 @@ describe('Core utility entry unit and integration coverage', () => {
     state.executeApp.mockClear();
     state.executeProject.mockClear();
     state.processExit.mockClear();
-    vi.spyOn(process, 'exit').mockImplementation(((code?: string | number | null) => {
+    const processExitMock = ((code?: string | number | null) => {
       state.processExit(code);
-      return undefined as never;
-    }) as typeof process.exit);
+    }) as typeof process.exit;
+    vi.spyOn(process, 'exit').mockImplementation(processExitMock);
     vi.useFakeTimers();
   });
 

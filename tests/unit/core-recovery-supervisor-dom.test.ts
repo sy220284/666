@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createCoreRecoverySupervisor } from '../../apps/desktop/renderer/src/runtime/core-recovery-supervisor.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 class FakeElement {
   readonly dataset: Record<string, string> = {};
@@ -111,6 +112,8 @@ function success<T>(data: T) {
   return { state: 'success' as const, generation: 1, requestId: crypto.randomUUID(), data };
 }
 
+type RecoveryBridge = Parameters<typeof createCoreRecoverySupervisor>[0]['bridge'];
+
 function createBridge() {
   const getCoreStatus = vi.fn(async () => success(degraded));
   const restartCore = vi.fn(async () => success({ accepted: true, status: healthy }));
@@ -123,10 +126,13 @@ function createBridge() {
     getActive,
     listRecent,
     openRecent,
-    bridge: {
-      app: { getCoreStatus, restartCore },
-      project: { getActive, listRecent, openRecent },
-    },
+    bridge: strictTestDouble<RecoveryBridge>(
+      'CoreRecoveryDomBridge',
+      contractInput({
+        app: { getCoreStatus, restartCore },
+        project: { getActive, listRecent, openRecent },
+      }),
+    ),
   };
 }
 
@@ -136,7 +142,7 @@ describe('Core recovery default DOM surface integration', () => {
     const bridge = createBridge();
     const cancelSchedule = vi.fn();
     const supervisor = createCoreRecoverySupervisor({
-      bridge: bridge.bridge as never,
+      bridge: bridge.bridge,
       pollIntervalMs: 250,
       schedule: vi.fn(() => 'timer'),
       cancelSchedule,
@@ -183,7 +189,7 @@ describe('Core recovery default DOM surface integration', () => {
     const dom = installDom(false);
     const bridge = createBridge();
     const supervisor = createCoreRecoverySupervisor({
-      bridge: bridge.bridge as never,
+      bridge: bridge.bridge,
       pollIntervalMs: 250,
       schedule: vi.fn(() => 'timer'),
       cancelSchedule: vi.fn(),

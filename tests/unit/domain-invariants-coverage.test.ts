@@ -22,6 +22,7 @@ import {
   planOrderKey,
   timeRangesOverlap,
 } from '../../packages/domain/src/index.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
 describe('continuity domain invariants', () => {
   it('normalizes valid keys and rejects empty, oversized and control-character keys', () => {
@@ -63,9 +64,12 @@ describe('continuity domain invariants', () => {
       ['2023-02-29', 'day'],
       ['2026', 'invalid'],
     ] as const) {
-      expect(() => comparableTimeRange(value, precision as never)).toThrow(
-        'TIMELINE_VALUE_INVALID',
-      );
+      expect(() =>
+        comparableTimeRange(
+          value,
+          contractInput<Parameters<typeof comparableTimeRange>[1]>(precision),
+        ),
+      ).toThrow('TIMELINE_VALUE_INVALID');
     }
   });
 

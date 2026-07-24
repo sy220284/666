@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { APP_COMMANDS, IPC_CHANNELS, PROTOCOL_VERSION } from '@worldforge/contracts';
 import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 const requestId = '11111111-1111-4111-8111-111111111111';
 const projectId = '22222222-2222-4222-8222-222222222222';
 const taskId = '33333333-3333-4333-8333-333333333333';
 const credentialRef = 'cred_55555555-5555-4555-8555-555555555555';
 const trustedEvent = { senderFrame: { url: 'file:///renderer.html' } };
+
+type HandlerOptions = Parameters<typeof registerIpcHandlers>[0];
 
 function envelope(command: string, payload: unknown = {}, currentProjectId?: string) {
   return {
@@ -54,20 +57,34 @@ function createHarness() {
     has: vi.fn(async () => true),
   };
   const unregister = registerIpcHandlers({
-    ipcMain: {
-      handle(channel: string, handler: (event: unknown, command: unknown) => unknown) {
-        handlers.set(channel, handler);
-      },
-      on: vi.fn(),
-      removeHandler: vi.fn(),
-      removeListener: vi.fn(),
-    } as never,
-    supervisor: supervisor as never,
-    credentialBroker: credentialBroker as never,
+    ipcMain: strictTestDouble(
+      'SurfaceIpcMain',
+      contractInput<Partial<HandlerOptions['ipcMain']>>({
+        handle(channel: string, handler: (event: unknown, command: unknown) => unknown) {
+          handlers.set(channel, handler);
+        },
+        on: vi.fn(),
+        removeHandler: vi.fn(),
+        removeListener: vi.fn(),
+      }),
+    ),
+    supervisor: strictTestDouble(
+      'SurfaceCoreSupervisor',
+      contractInput<Partial<HandlerOptions['supervisor']>>(supervisor),
+    ),
+    credentialBroker: strictTestDouble(
+      'SurfaceCredentialBroker',
+      contractInput<Partial<HandlerOptions['credentialBroker']>>(credentialBroker),
+    ),
     rendererUrl: trustedEvent.senderFrame.url,
     version: '1.2.3',
     platform: 'linux',
-    logger: { log: vi.fn(async () => undefined) } as never,
+    logger: strictTestDouble(
+      'SurfacePrivacyLogger',
+      contractInput<Partial<HandlerOptions['logger']>>({
+        log: vi.fn(async () => undefined),
+      }),
+    ),
     getWindowPreferences: () => ({
       workspaceAlignment: 'center',
       uiScalePercent: 100,
@@ -149,32 +166,84 @@ describe('IPC real-schema surface matrix', () => {
     harness.unregister();
   });
 
-  it('covers settings, project and planning dispatch with real command schemas', async () => {
+  it('dispatches every settings, project and planning channel to the exact Core operation', async () => {
     const harness = createHarness();
     const cases = [
-      [IPC_CHANNELS.settingsGet, envelope(APP_COMMANDS.settingsGet)],
-      [
-        IPC_CHANNELS.settingsSet,
-        envelope(APP_COMMANDS.settingsSet, {
+      {
+        channel: IPC_CHANNELS.settingsGet,
+        command: envelope(APP_COMMANDS.settingsGet),
+        layer: 'app',
+        operation: { operation: APP_COMMANDS.settingsGet },
+      },
+      {
+        channel: IPC_CHANNELS.settingsSet,
+        command: envelope(APP_COMMANDS.settingsSet, {
           themeId: 'theme-b',
           themeVariant: 'dark',
         }),
-      ],
-      [IPC_CHANNELS.settingsReset, envelope(APP_COMMANDS.settingsReset)],
-      [IPC_CHANNELS.projectListRecent, envelope(APP_COMMANDS.projectListRecent)],
-      [IPC_CHANNELS.getActive, envelope(APP_COMMANDS.getActive)],
-      [IPC_CHANNELS.openRecent, envelope(APP_COMMANDS.openRecent, { projectId })],
-      [IPC_CHANNELS.getBrief, envelope(APP_COMMANDS.getBrief, { projectId })],
-      [IPC_CHANNELS.listPlotNodes, envelope(APP_COMMANDS.listPlotNodes, { projectId })],
+        layer: 'app',
+        operation: {
+          operation: APP_COMMANDS.settingsSet,
+          settings: { themeId: 'theme-b', themeVariant: 'dark' },
+        },
+      },
+      {
+        channel: IPC_CHANNELS.settingsReset,
+        command: envelope(APP_COMMANDS.settingsReset),
+        layer: 'app',
+        operation: { operation: APP_COMMANDS.settingsReset },
+      },
+      {
+        channel: IPC_CHANNELS.projectListRecent,
+        command: envelope(APP_COMMANDS.projectListRecent),
+        layer: 'app',
+        operation: { operation: APP_COMMANDS.projectListRecent },
+      },
+      {
+        channel: IPC_CHANNELS.getActive,
+        command: envelope(APP_COMMANDS.getActive),
+        layer: 'project',
+        operation: { operation: APP_COMMANDS.getActive },
+      },
+      {
+        channel: IPC_CHANNELS.openRecent,
+        command: envelope(APP_COMMANDS.openRecent, { projectId }),
+        layer: 'project',
+        operation: { operation: APP_COMMANDS.openRecent, projectId },
+      },
+      {
+        channel: IPC_CHANNELS.getBrief,
+        command: envelope(APP_COMMANDS.getBrief, { projectId }),
+        layer: 'project',
+        operation: { operation: APP_COMMANDS.getBrief, projectId },
+      },
+      {
+        channel: IPC_CHANNELS.listPlotNodes,
+        command: envelope(APP_COMMANDS.listPlotNodes, { projectId }),
+        layer: 'project',
+        operation: { operation: APP_COMMANDS.listPlotNodes, projectId },
+      },
     ] as const;
 
-    for (const [channel, command] of cases) {
-      await expect(invoke(harness.handlers, channel, command)).resolves.toMatchObject({
+    for (const testCase of cases) {
+      await expect(
+        invoke(harness.handlers, testCase.channel, testCase.command),
+      ).resolves.toMatchObject({
         ok: false,
+        requestId,
+        error: { code: 'COMMON_INTERNAL_999' },
       });
     }
-    expect(harness.supervisor.invokeAppDataOperation).toHaveBeenCalledTimes(4);
-    expect(harness.supervisor.invokeProjectOperation).toHaveBeenCalledTimes(4);
+    expect(harness.supervisor.invokeAppDataOperation.mock.calls).toEqual(
+      cases
+        .filter((testCase) => testCase.layer === 'app')
+        .map((testCase) => [requestId, testCase.operation]),
+    );
+    expect(harness.supervisor.invokeProjectOperation.mock.calls).toEqual(
+      cases
+        .filter((testCase) => testCase.layer === 'project')
+        .map((testCase) => [requestId, testCase.operation]),
+    );
     harness.unregister();
   });
 

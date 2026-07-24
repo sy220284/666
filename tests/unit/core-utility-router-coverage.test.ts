@@ -10,11 +10,14 @@ const routeState = vi.hoisted(() => ({
 }));
 
 vi.mock('@worldforge/contracts', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
+  const [actual, strictEnvelope] = await Promise.all([
+    importOriginal<Record<string, unknown>>(),
+    import('../testkit/strict-result-envelope.js'),
+  ]);
   return {
     ...actual,
-    CoreAppDataResultSchema: { parse: (input: unknown) => input },
-    CoreProjectResultSchema: { parse: (input: unknown) => input },
+    CoreAppDataResultSchema: strictEnvelope.strictResultEnvelopeSchema,
+    CoreProjectResultSchema: strictEnvelope.strictResultEnvelopeSchema,
   };
 });
 vi.mock('../../packages/core-service/src/utility-project-primary-router.js', () => ({
@@ -60,6 +63,7 @@ import { APP_DATA_COMMANDS } from '@worldforge/contracts';
 import { DraftServiceError } from '../../packages/core-service/src/draft.js';
 import { executeAppDataOperation } from '../../packages/core-service/src/utility-app-data-router.js';
 import { executeProjectOperation } from '../../packages/core-service/src/utility-project-router.js';
+import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
 const requestId = 'request-id';
 const projectId = '22222222-2222-4222-8222-222222222222';
@@ -84,21 +88,25 @@ const appCases = [
     operation: { operation: APP_DATA_COMMANDS.settingsGet },
     method: 'appSettings.get',
     args: [],
+    data: { source: 'stored', settings: { marker: 'get' } },
   },
   {
     operation: { operation: APP_DATA_COMMANDS.settingsSet, settings: { reduceMotion: true } },
     method: 'appSettings.update',
     args: [requestId, { reduceMotion: true }],
+    data: { source: 'stored', settings: { marker: 'update' } },
   },
   {
     operation: { operation: APP_DATA_COMMANDS.settingsReset },
     method: 'appSettings.reset',
     args: [requestId],
+    data: { source: 'default', settings: { marker: 'reset' } },
   },
   {
     operation: { operation: APP_DATA_COMMANDS.projectListRecent },
     method: 'recentProjects.list',
     args: [requestId],
+    data: { projects: [{ projectId, marker: 'list' }] },
   },
   {
     operation: {
@@ -108,11 +116,13 @@ const appCases = [
     },
     method: 'recentProjects.relocate',
     args: [requestId, projectId, '/tmp/relocated'],
+    data: { projectId, marker: 'relocate' },
   },
   {
     operation: { operation: APP_DATA_COMMANDS.projectRemoveRecent, projectId },
     method: 'recentProjects.remove',
     args: [requestId, projectId],
+    data: { removed: true },
   },
 ] as const;
 
@@ -123,13 +133,34 @@ function method(runtime: ReturnType<typeof appRuntime>, path: string): ReturnTyp
   ] as ReturnType<typeof vi.fn>;
 }
 
+function appOperation(value: unknown): Parameters<typeof executeAppDataOperation>[2] {
+  return contractInput(value);
+}
+
+function appServices(
+  runtime: ReturnType<typeof appRuntime>,
+): Parameters<typeof executeAppDataOperation>[0] {
+  return strictTestDouble('AppDataRuntime', runtime);
+}
+
+const projectServices = strictTestDouble<Parameters<typeof executeProjectOperation>[0]>(
+  'ProjectRouterServices',
+  {},
+);
+const projectOperation = (name: string): Parameters<typeof executeProjectOperation>[2] =>
+  contractInput({ operation: name });
+
 describe('Core utility app-data router exact mapping', () => {
   it.each(appCases)(
     'maps $operation.operation to $method',
-    async ({ operation, method: path, args }) => {
+    async ({ operation, method: path, args, data }) => {
       const runtime = appRuntime();
-      const result = await executeAppDataOperation(runtime as never, requestId, operation as never);
-      expect(result).toMatchObject({ ok: true, operation: operation.operation });
+      const result = await executeAppDataOperation(
+        appServices(runtime),
+        requestId,
+        appOperation(operation),
+      );
+      expect(result).toEqual({ ok: true, operation: operation.operation, data });
       expect(method(runtime, path)).toHaveBeenCalledOnce();
       expect(method(runtime, path)).toHaveBeenCalledWith(...args);
       const allMethods = [
@@ -152,9 +183,11 @@ describe('Core utility app-data router exact mapping', () => {
       throw new Error('get failed');
     });
     await expect(
-      executeAppDataOperation(synchronous as never, requestId, {
-        operation: APP_DATA_COMMANDS.settingsGet,
-      } as never),
+      executeAppDataOperation(
+        appServices(synchronous),
+        requestId,
+        appOperation({ operation: APP_DATA_COMMANDS.settingsGet }),
+      ),
     ).resolves.toEqual({
       ok: false,
       operation: APP_DATA_COMMANDS.settingsGet,
@@ -165,10 +198,11 @@ describe('Core utility app-data router exact mapping', () => {
     const asynchronous = appRuntime();
     asynchronous.recentProjects.remove.mockRejectedValueOnce(new Error('remove failed'));
     await expect(
-      executeAppDataOperation(asynchronous as never, requestId, {
-        operation: APP_DATA_COMMANDS.projectRemoveRecent,
-        projectId,
-      } as never),
+      executeAppDataOperation(
+        appServices(asynchronous),
+        requestId,
+        appOperation({ operation: APP_DATA_COMMANDS.projectRemoveRecent, projectId }),
+      ),
     ).resolves.toEqual({
       ok: false,
       operation: APP_DATA_COMMANDS.projectRemoveRecent,
@@ -196,17 +230,18 @@ describe('Core utility project router exact order and short-circuiting', () => {
   ] as const)(
     'returns the first %s result and does not invoke later routers',
     async (owner, expectedCalls) => {
-      routeState[owner] = { ok: true, operation: owner, data: { owner } };
+      const expected = { ok: true, operation: owner, data: { owner } };
+      routeState[owner] = expected;
       await expect(
-        executeProjectOperation({} as never, requestId, { operation: owner } as never),
-      ).resolves.toMatchObject({ ok: true, operation: owner });
+        executeProjectOperation(projectServices, requestId, projectOperation(owner)),
+      ).resolves.toEqual(expected);
       expect(routeState.calls).toEqual(expectedCalls);
     },
   );
 
   it('maps unrouted and thrown operations after the exact attempted chain', async () => {
     await expect(
-      executeProjectOperation({} as never, requestId, { operation: 'unrouted' } as never),
+      executeProjectOperation(projectServices, requestId, projectOperation('unrouted')),
     ).resolves.toEqual({
       ok: false,
       operation: 'unrouted',
@@ -217,7 +252,7 @@ describe('Core utility project router exact order and short-circuiting', () => {
     routeState.calls.length = 0;
     routeState.error = new Error('router failed');
     await expect(
-      executeProjectOperation({} as never, requestId, { operation: 'thrown' } as never),
+      executeProjectOperation(projectServices, requestId, projectOperation('thrown')),
     ).resolves.toEqual({
       ok: false,
       operation: 'thrown',
@@ -229,7 +264,7 @@ describe('Core utility project router exact order and short-circuiting', () => {
   it('preserves Draft lock-conflict details only when present', async () => {
     routeState.error = new DraftServiceError({ logicalBlockId: 'block-id' });
     await expect(
-      executeProjectOperation({} as never, requestId, { operation: 'locked' } as never),
+      executeProjectOperation(projectServices, requestId, projectOperation('locked')),
     ).resolves.toEqual({
       ok: false,
       operation: 'locked',
@@ -239,7 +274,7 @@ describe('Core utility project router exact order and short-circuiting', () => {
 
     routeState.error = new DraftServiceError();
     await expect(
-      executeProjectOperation({} as never, requestId, { operation: 'draft-no-details' } as never),
+      executeProjectOperation(projectServices, requestId, projectOperation('draft-no-details')),
     ).resolves.toEqual({
       ok: false,
       operation: 'draft-no-details',

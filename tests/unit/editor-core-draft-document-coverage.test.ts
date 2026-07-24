@@ -20,6 +20,7 @@ import {
   undoWorldforgeEditor,
   type PersistedEditorBlock,
 } from '../../packages/editor-core/src/draft-document.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const persisted = (
   logicalBlockId: string,
@@ -230,7 +231,11 @@ describe('Editor Core draft command and metadata coverage', () => {
       }),
     ).toBe(true);
     expect(next.doc.firstChild?.attrs.locked).toBe(true);
-    expect(selectedWorldforgeBlockLocked({ state: next } as never)).toBe(true);
+    expect(
+      selectedWorldforgeBlockLocked(
+        contractInput<Parameters<typeof selectedWorldforgeBlockLocked>[0]>({ state: next }),
+      ),
+    ).toBe(true);
 
     const editor = {
       state: next,
@@ -240,14 +245,22 @@ describe('Editor Core draft command and metadata coverage', () => {
         }),
       },
     };
-    expect(toggleWorldforgeEditorBlockLock(editor as never)).toBe(true);
+    expect(
+      toggleWorldforgeEditorBlockLock(
+        contractInput<Parameters<typeof toggleWorldforgeEditorBlockLock>[0]>(editor),
+      ),
+    ).toBe(true);
     expect(next.doc.firstChild?.attrs.locked).toBe(false);
   });
 
   it('returns false/null when selection has no persisted supported block', () => {
     const state = stateFor({ id: null });
     expect(toggleWorldforgeBlockLock(state)).toBe(false);
-    expect(selectedWorldforgeBlockLocked({ state } as never)).toBeNull();
+    expect(
+      selectedWorldforgeBlockLocked(
+        contractInput<Parameters<typeof selectedWorldforgeBlockLocked>[0]>({ state }),
+      ),
+    ).toBeNull();
   });
 
   it('defers destructive keys only during composition', () => {
@@ -299,8 +312,10 @@ describe('Editor Core draft command and metadata coverage', () => {
         },
       },
     };
+    const synchronizedEditor =
+      contractInput<Parameters<typeof synchronizePersistedBlockMetadata>[0]>(editor);
     expect(
-      synchronizePersistedBlockMetadata(editor as never, [
+      synchronizePersistedBlockMetadata(synchronizedEditor, [
         persisted('server-id', { source: 'imported', locked: true, contentHash: 'server-hash' }),
       ]),
     ).toBe(true);
@@ -311,9 +326,9 @@ describe('Editor Core draft command and metadata coverage', () => {
       locked: true,
       contentHash: 'server-hash',
     });
-    expect(synchronizePersistedBlockMetadata(editor as never, [])).toBe(false);
+    expect(synchronizePersistedBlockMetadata(synchronizedEditor, [])).toBe(false);
     expect(
-      synchronizePersistedBlockMetadata(editor as never, [
+      synchronizePersistedBlockMetadata(synchronizedEditor, [
         persisted('server-id', { blockType: 'heading' }),
       ]),
     ).toBe(false);
@@ -322,7 +337,11 @@ describe('Editor Core draft command and metadata coverage', () => {
   it('wraps history commands without requiring a history item', () => {
     const state = stateFor();
     const editor = { state, view: { dispatch: vi.fn() } };
-    expect(undoWorldforgeEditor(editor as never)).toBe(false);
-    expect(redoWorldforgeEditor(editor as never)).toBe(false);
+    expect(
+      undoWorldforgeEditor(contractInput<Parameters<typeof undoWorldforgeEditor>[0]>(editor)),
+    ).toBe(false);
+    expect(
+      redoWorldforgeEditor(contractInput<Parameters<typeof redoWorldforgeEditor>[0]>(editor)),
+    ).toBe(false);
   });
 });

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizeRendererError } from '../../apps/desktop/renderer/src/app/renderer-error-boundary.js';
 import { createRendererStartupDiagnostic } from '../../apps/desktop/renderer/src/runtime/startup-diagnostics.js';
 import { createRendererUiStore } from '../../apps/desktop/renderer/src/state/ui-store.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
 describe('M3-08 React运行底座', () => {
   it('将真实构建入口切换到唯一可见React Root', async () => {
@@ -40,10 +41,12 @@ describe('M3-08 React运行底座', () => {
       selection: { projectId: 'project-1', chapterId: 'chapter-1' },
     });
     expect(() =>
-      createRendererUiStore({
-        ...store.getState(),
-        draftDocument: { revision: 1 },
-      } as never),
+      createRendererUiStore(
+        contractInput<Parameters<typeof createRendererUiStore>[0]>({
+          ...store.getState(),
+          draftDocument: { revision: 1 },
+        }),
+      ),
     ).toThrow(/authoritative field/u);
   });
 

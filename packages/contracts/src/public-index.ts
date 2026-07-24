@@ -4,3 +4,4 @@ export * from './continuity-control.js';
 export * from './narrative-planning.js';
 export * from './state-proposal.js';
 export * from './state-proposal-ipc.js';
+export * from './search-index.js';

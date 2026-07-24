@@ -1,6 +1,6 @@
 # M4-02 P0—P4约束包与裁剪追溯
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M4 检索与AI基础设施  
 > 优先级：P0  
 > 建议分支：`feat/m4-constraint-package`

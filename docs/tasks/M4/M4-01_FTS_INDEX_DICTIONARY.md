@@ -1,6 +1,6 @@
 # M4-01 FTS5公共索引、队列与项目词典
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M4 检索与AI基础设施  
 > 优先级：P0  
 > 工作分支：`work/m4-01-fts-index-dictionary`
@@ -66,6 +66,14 @@ M3
 - 搜索结果仅通过业务ID召回并回读权威数据。
 
 证据保存到：`docs/test-evidence/M4-01/`
+
+## 实现收口
+
+- Schema 20—21、Core搜索服务、公共合同、迁移、集成与性能测试已形成完整实现。
+- Quality运行`30088007101`通过静态、构建、单元、集成、迁移、覆盖率与Electron E2E。
+- Security运行`30088006972`、Performance运行`30088006958`、PR Policy运行`30088006973`与Evidence运行`30088006985`均成功。
+- 1,563,300字符性能Fixture完整重建耗时202.16ms，30次查询P95为14.12ms；覆盖率为Lines 86.55%、Statements 84.28%、Functions 84.87%、Branches 75.30%。
+- 最终搜索页面与安全批量替换继续由M6-03实现；M4-01不提前引入该范围。
 
 ## 完成条件
 

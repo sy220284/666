@@ -438,9 +438,8 @@ RHY结果为P3建议级，不写入阻断严重度。
 
 - `story_todos(id, target_type, target_id, title, description, status, tags_json, source_issue_id, created_at, updated_at)`
 - `comments(id, target_type, target_id, block_id, content, created_at, updated_at)`
-- `project_dictionary(term PRIMARY KEY, normalized_term, category, action, notes)`
 - `project_settings(key PRIMARY KEY, value_json, updated_at)`
-- `search_index_queue(id TEXT PK, target_type TEXT, target_id TEXT, operation TEXT, status TEXT, created_at, updated_at)`
+- FTS5派生索引、显式队列、索引状态与项目词典见第4节。
 
 研究笔记、附件和项目日记属于P1/V1.5，V1.0 P0初始Schema不预建相关表。
 
@@ -469,17 +468,27 @@ RHY结果为P3建议级，不写入阻断严重度。
 
 拆章和跨章移动保留被移动块的`logicalBlockId`，源/目标Draft分别写入`draft_patch_log`并递增一次Revision。历史Version/VersionBlock始终不更改。
 
-## 4. FTS5
+## 4. FTS5、显式索引队列与项目词典
 
-V1.0使用：
+`0020_search_index.sql`将项目Schema升级为20，建立以下可删除、可完整重建的派生数据：
 
-- `fts_draft_blocks`
-- `fts_version_blocks`
-- `fts_entities`
+- `search_index_state(singleton_id INTEGER PK, status, last_indexed_at, stale_at, last_error_code, updated_at)`：单例状态，`status`为`ready/stale/rebuilding`。
+- `search_index_queue(id TEXT PK, target_type, target_id, operation, status, attempt_count, last_error_code, created_at, updated_at)`：`target_type`为`draft/version/entity`，`operation`为`upsert/delete`，同目标只保留一条待处理记录。
+- `fts_draft_blocks(project_id, draft_id, logical_block_id, chapter_id, title, body)`。
+- `fts_version_blocks(project_id, version_id, logical_block_id, chapter_id, title, body)`。
+- `fts_entities(project_id, entity_id, entity_type, status, name, aliases, summary, facts)`。
 
-正文与中文长文本优先使用FTS5 `trigram` tokenizer。少于3字符的查询使用标准化LIKE、精确别名或短词索引。
+三张FTS5表统一使用`trigram` tokenizer。SQLite触发器只将受影响的权威业务ID写入队列并把索引状态置为`stale`；全文组装、增量消费、失败重试和完整重建均由Core执行。索引失败只记录`failed`与错误码，不回滚已经提交的正文、Version、Entity或Canon事务。
 
-FTS由显式`search_index_queue`更新；失败只标记索引stale，不回滚已提交正文。FTS可以删除并完整重建。
+三字符及以上查询在索引`ready`时使用FTS5；少于三字符或索引`stale/rebuilding`时回读权威业务表执行标准化LIKE。FTS5只负责召回业务ID，返回结果前必须按当前项目重新读取Draft、Version或Entity权威数据，不直接展示派生表内容，也不得跨项目返回结果。
+
+`0021_project_dictionary.sql`将项目Schema升级为21，建立：
+
+`project_dictionary(term TEXT PK, normalized_term TEXT UNIQUE, category TEXT, action TEXT, replacement_term TEXT NULL, notes TEXT, created_at TEXT, updated_at TEXT)`
+
+`action`为`canonical/alias/ignore/replacement`。别名和替换项必须提供`replacement_term`，规范词和忽略项不得提供替换值。词典只能由作者权限写入，AI无权修改；精确词典命中可将查询规范化后复用同一搜索服务。
+
+ResearchNote属于P1/V1.5范围，V1.0 P0不预建相关业务表或索引。
 
 ## 5. 删除与不可变规则
 

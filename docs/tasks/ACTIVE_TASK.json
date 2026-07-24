@@ -11,11 +11,80 @@
     "modeAdjustedAt": "2026-07-17"
   },
   "activeTask": {
-    "id": "M4-01",
+    "id": "M4-02",
     "status": "IN_PROGRESS",
+    "source": "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md",
+    "branch": "work/m4-02-constraint-package",
+    "startedAt": "2026-07-24",
+    "allowedPaths": [
+      "packages/domain/",
+      "packages/core-service/",
+      "packages/contracts/",
+      "packages/prompts/",
+      "tests/unit/",
+      "tests/integration/",
+      "evals/",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "docs/tasks/ACTIVE_TASK.json",
+      "docs/tasks/ACTIVE_TASK.md",
+      "docs/tasks/TASK_INDEX.md",
+      "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md",
+      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+      "docs/test-evidence/M4-02/"
+    ],
+    "forbiddenPaths": [],
+    "requiredDocs": [
+      "AGENTS.md",
+      "docs/PROJECT_EXECUTION_ENTRY.md",
+      "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
+      "docs/decisions/IMPLEMENTATION_DECISIONS.md",
+      "docs/ai/PROMPT_AND_EVAL_SPEC.md",
+      "docs/database/DATABASE_SCHEMA.md"
+    ],
+    "verification": [
+      "pnpm lint",
+      "pnpm typecheck",
+      "pnpm test",
+      "pnpm test:security",
+      "pnpm test:e2e",
+      "pnpm test:eval",
+      "pnpm test:integration"
+    ]
+  },
+  "lastVerifiedTask": {
+    "id": "M3-10",
+    "commit": "f6d326887c43f3c561bf913d6090e00ffe9e4551",
+    "verifiedAt": "2026-07-22T11:45:00.000Z",
+    "evidenceHead": "f6d326887c43f3c561bf913d6090e00ffe9e4551",
+    "squashProvenance": {
+      "implementationHead": "5629f7430e58684f70b0de450b50ae330f3cdb62",
+      "mainCommit": "1e3dca74d799b32ca520c279c1b51878b37607f5"
+    }
+  },
+  "deferredVerification": [
+    {
+      "id": "M4-01",
+      "implementationCommit": "c37aebb53aa713622d749e5f9b9d837f4642d4bf",
+      "deferredAt": "2026-07-24T11:37:20.117Z",
+      "pending": [
+        "four-file evidence package and real automated run records",
+        "necessary manual review conclusions recorded in summary.md",
+        "risk-based screenshots, full logs, or independent quality matrix when warranted",
+        "final traceability verification status",
+        "Verified closure"
+      ]
+    }
+  ],
+  "deferredTasks": [],
+  "lastImplementedTask": {
+    "id": "M4-01",
+    "commit": "c37aebb53aa713622d749e5f9b9d837f4642d4bf",
+    "implementedAt": "2026-07-24T11:37:20.117Z",
     "source": "docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md",
     "branch": "work/m4-01-fts-index-dictionary",
-    "startedAt": "2026-07-22",
+    "nextTaskId": "M4-02",
     "allowedPaths": [
       "migrations/project/",
       "packages/core-service/",
@@ -33,67 +102,8 @@
       "docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
       "docs/database/DATABASE_SCHEMA.md",
-      "docs/test-evidence/M4-01/"
-    ],
-    "forbiddenPaths": [],
-    "requiredDocs": [
-      "AGENTS.md",
-      "docs/PROJECT_EXECUTION_ENTRY.md",
-      "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
-      "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/database/DATABASE_SCHEMA.md",
-      "docs/testing/PERFORMANCE_BUDGETS.md"
-    ],
-    "verification": [
-      "pnpm lint",
-      "pnpm typecheck",
-      "pnpm test",
-      "pnpm test:migration",
-      "pnpm test:integration",
-      "pnpm test:perf",
-      "pnpm test:e2e"
-    ]
-  },
-  "lastVerifiedTask": {
-    "id": "M3-10",
-    "commit": "f6d326887c43f3c561bf913d6090e00ffe9e4551",
-    "verifiedAt": "2026-07-22T11:45:00.000Z",
-    "evidenceHead": "f6d326887c43f3c561bf913d6090e00ffe9e4551",
-    "squashProvenance": {
-      "implementationHead": "5629f7430e58684f70b0de450b50ae330f3cdb62",
-      "mainCommit": "1e3dca74d799b32ca520c279c1b51878b37607f5"
-    }
-  },
-  "deferredVerification": [],
-  "deferredTasks": [],
-  "lastImplementedTask": {
-    "id": "M3-10",
-    "commit": "1e3dca74d799b32ca520c279c1b51878b37607f5",
-    "implementedAt": "2026-07-22T10:30:00.000Z",
-    "source": "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
-    "branch": "work/m3-10-renderer-writing-candidate-cutover",
-    "nextTaskId": "M3-01",
-    "allowedPaths": [
-      "apps/desktop/renderer/",
-      "packages/editor-core/",
-      "packages/contracts/",
-      "tests/unit/",
-      "tests/integration/",
-      "tests/security/",
-      "tests/e2e/",
-      "tests/performance/",
-      "docs/architecture/",
-      "docs/ui/",
-      "package.json",
-      "pnpm-lock.yaml",
-      "pnpm-workspace.yaml",
-      "docs/tasks/ACTIVE_TASK.json",
-      "docs/tasks/ACTIVE_TASK.md",
-      "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md",
-      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M3-10/",
-      "docs/tasks/M3/M3-01_PROJECT_BRIEF_OUTLINE.md"
+      "docs/test-evidence/M4-01/",
+      "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md"
     ],
     "forbiddenPaths": []
   }

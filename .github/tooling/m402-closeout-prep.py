@@ -27,6 +27,11 @@ def replace_table_row(text: str, row_id: str, replacement: str) -> str:
     return pattern.sub(replacement, text, count=1)
 
 
+def strip_trailing_whitespace(path: Path) -> None:
+    lines = path.read_text().splitlines()
+    path.write_text('\n'.join(line.rstrip() for line in lines) + '\n')
+
+
 def run(command: list[str]) -> None:
     subprocess.run(command, check=True)
 
@@ -132,6 +137,11 @@ run([
     '--ci=success',
     f'--commit={IMPLEMENTATION_COMMIT}',
 ])
+for task_card in [
+    Path('docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md'),
+    Path('docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md'),
+]:
+    strip_trailing_whitespace(task_card)
 run(['node', 'scripts/taskctl.mjs', 'validate'])
 run(['git', 'diff', '--check'])
 run(['git', 'add', '--all'])

@@ -32,7 +32,10 @@ export const SearchResultItemSchema = z.strictObject({
   chapterId: z.uuid().nullable(),
   title: z.string().max(500),
   excerpt: z.string().max(2_000),
-  score: z.number().finite().nullable(),
+  score: z.preprocess(
+    (value) => (typeof value === 'bigint' ? Number(value) : value),
+    z.number().finite().nullable(),
+  ),
 });
 
 export const SearchProjectResultSchema = z.strictObject({

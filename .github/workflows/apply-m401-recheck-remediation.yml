@@ -48,6 +48,9 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
+      - name: Build test workspaces
+        run: pnpm test:prepare
+
       - name: Apply and verify remediation
         shell: bash
         run: |

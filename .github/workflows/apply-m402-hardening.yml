@@ -1,0 +1,77 @@
+name: Apply M4-02 Hardening
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.head_ref == 'tooling/m402-hardening'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout formal M4-02 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-02-constraint-package
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify and configure baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "7f9e3c810f781b75574eb1e922b3a19d0b18c75f"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Load hardening script
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin tooling/m402-hardening
+          git show origin/tooling/m402-hardening:.github/tooling/m402-hardening.py > "${RUNNER_TEMP}/m402-hardening.py"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build workspaces
+        run: pnpm test:prepare
+
+      - name: Apply and verify hardening
+        shell: bash
+        run: |
+          set +e
+          python "${RUNNER_TEMP}/m402-hardening.py" > "${RUNNER_TEMP}/m402-hardening.log" 2>&1
+          status=$?
+          cat "${RUNNER_TEMP}/m402-hardening.log"
+          exit "${status}"
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m402-hardening-diagnostics
+          path: ${{ runner.temp }}/m402-hardening.log
+          if-no-files-found: error
+          retention-days: 7

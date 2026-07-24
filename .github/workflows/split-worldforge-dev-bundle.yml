@@ -39,7 +39,9 @@ jobs:
           CHECKSUM="${ARCHIVE}.sha256"
           test -f "${ARCHIVE}"
           test -f "${CHECKSUM}"
-          (cd source && sha256sum -c "$(basename "${CHECKSUM}")")
+          EXPECTED_SHA256="$(awk '{print $1}' "${CHECKSUM}")"
+          ACTUAL_SHA256="$(sha256sum "${ARCHIVE}" | awk '{print $1}')"
+          test "${ACTUAL_SHA256}" = "${EXPECTED_SHA256}"
           split -b 190M -d -a 2 "${ARCHIVE}" parts/worldforge-666-dev.tar.gz.part-
           cp "${CHECKSUM}" parts/original.sha256
           sha256sum parts/worldforge-666-dev.tar.gz.part-* > parts/parts.sha256

@@ -1,0 +1,75 @@
+name: Apply M4-02 Implementation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.head_ref == 'tooling/m402-implementation'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout formal M4-02 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-02-constraint-package
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify implementation baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "665f2022eb87f85c6f95ac12680b210e88bad54f"
+
+      - name: Load implementation from tooling branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin tooling/m402-implementation
+          git show origin/tooling/m402-implementation:.github/tooling/m402-implementation.py > "${RUNNER_TEMP}/m402-implementation.py"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build test workspaces
+        run: pnpm test:prepare
+
+      - name: Apply and verify M4-02 implementation
+        shell: bash
+        run: |
+          set +e
+          python "${RUNNER_TEMP}/m402-implementation.py" > "${RUNNER_TEMP}/m402-implementation.log" 2>&1
+          status=$?
+          cat "${RUNNER_TEMP}/m402-implementation.log"
+          exit "${status}"
+
+      - name: Upload implementation diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m402-implementation-diagnostics
+          path: ${{ runner.temp }}/m402-implementation.log
+          if-no-files-found: error
+          retention-days: 7

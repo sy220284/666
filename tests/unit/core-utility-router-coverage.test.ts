@@ -106,7 +106,7 @@ const appCases = [
     operation: { operation: APP_DATA_COMMANDS.projectListRecent },
     method: 'recentProjects.list',
     args: [requestId],
-    data: [{ projectId, marker: 'list' }],
+    data: { projects: [{ projectId, marker: 'list' }] },
   },
   {
     operation: {
@@ -122,7 +122,7 @@ const appCases = [
     operation: { operation: APP_DATA_COMMANDS.projectRemoveRecent, projectId },
     method: 'recentProjects.remove',
     args: [requestId, projectId],
-    data: true,
+    data: { removed: true },
   },
 ] as const;
 

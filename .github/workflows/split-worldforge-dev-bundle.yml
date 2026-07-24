@@ -14,14 +14,14 @@ permissions:
   contents: read
 
 jobs:
-  split:
+  manifest:
     if: github.head_ref == 'tooling/worldforge-dev-bundle'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       SOURCE_ARTIFACT_ID: '8592805434'
     steps:
-      - name: Download verified source artifact
+      - name: Build verified split manifest
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -45,40 +45,9 @@ jobs:
           split -b 190M -d -a 2 "${ARCHIVE}" parts/worldforge-666-dev.tar.gz.part-
           cp "${CHECKSUM}" parts/original.sha256
           sha256sum parts/worldforge-666-dev.tar.gz.part-* > parts/parts.sha256
-          printf 'source_artifact_id=%s\nsource_artifact_digest=sha256:890cb79f96880cf892b70a7f4850e74935ac38bc8af7ed8a042f9a9164371798\n' "${SOURCE_ARTIFACT_ID}" > parts/source.txt
+          printf 'source_artifact_id=%s\nsource_artifact_digest=sha256:890cb79f96880cf892b70a7f4850e74935ac38bc8af7ed8a042f9a9164371798\npart_count=%s\n' \
+            "${SOURCE_ARTIFACT_ID}" "$(find parts -name 'worldforge-666-dev.tar.gz.part-*' | wc -l)" > parts/source.txt
           ls -lh parts/
-
-      - name: Upload part 00
-        uses: actions/upload-artifact@v7
-        with:
-          name: worldforge-dev-part-00
-          path: parts/worldforge-666-dev.tar.gz.part-00
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload part 01
-        uses: actions/upload-artifact@v7
-        with:
-          name: worldforge-dev-part-01
-          path: parts/worldforge-666-dev.tar.gz.part-01
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload part 02
-        uses: actions/upload-artifact@v7
-        with:
-          name: worldforge-dev-part-02
-          path: parts/worldforge-666-dev.tar.gz.part-02
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload part 03
-        uses: actions/upload-artifact@v7
-        with:
-          name: worldforge-dev-part-03
-          path: parts/worldforge-666-dev.tar.gz.part-03
-          if-no-files-found: error
-          retention-days: 7
 
       - name: Upload manifest
         uses: actions/upload-artifact@v7

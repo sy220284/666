@@ -1,0 +1,67 @@
+name: Apply M4-01 Recheck Remediation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    if: github.head_ref == 'tooling/m401-recheck-remediation'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout formal M4-02 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-02-constraint-package
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Load remediation script from tooling branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin tooling/m401-recheck-remediation
+          git show origin/tooling/m401-recheck-remediation:.github/tooling/m401-recheck-remediation.sh > "${RUNNER_TEMP}/m401-recheck-remediation.sh"
+          chmod 0755 "${RUNNER_TEMP}/m401-recheck-remediation.sh"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Apply and verify remediation
+        shell: bash
+        run: |
+          set +e
+          bash -x "${RUNNER_TEMP}/m401-recheck-remediation.sh" > "${RUNNER_TEMP}/m401-recheck-remediation.log" 2>&1
+          status=$?
+          cat "${RUNNER_TEMP}/m401-recheck-remediation.log"
+          exit "${status}"
+
+      - name: Upload remediation diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m401-recheck-remediation-diagnostics
+          path: ${{ runner.temp }}/m401-recheck-remediation.log
+          if-no-files-found: error
+          retention-days: 7

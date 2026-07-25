@@ -165,9 +165,11 @@ async function removeCredentialForProvider(
   providerId: string,
   credentialRef: string,
 ): Promise<boolean> {
-  const owned = (broker as CredentialBroker & {
-    removeForProvider?: (owner: string, reference: string) => Promise<boolean>;
-  }).removeForProvider;
+  const owned = (
+    broker as CredentialBroker & {
+      removeForProvider?: (owner: string, reference: string) => Promise<boolean>;
+    }
+  ).removeForProvider;
   return owned ? owned.call(broker, providerId, credentialRef) : broker.remove(credentialRef);
 }
 
@@ -177,13 +179,11 @@ async function replaceCredentialForProvider(
   credentialRef: string,
   credential: string,
 ): Promise<void> {
-  const owned = (broker as CredentialBroker & {
-    replaceForProvider?: (
-      owner: string,
-      reference: string,
-      replacement: string,
-    ) => Promise<void>;
-  }).replaceForProvider;
+  const owned = (
+    broker as CredentialBroker & {
+      replaceForProvider?: (owner: string, reference: string, replacement: string) => Promise<void>;
+    }
+  ).replaceForProvider;
   if (!owned) throw new Error('CREDENTIAL_REPLACE_UNAVAILABLE');
   await owned.call(broker, providerId, credentialRef, credential);
 }
@@ -193,9 +193,11 @@ async function resolveCredentialForProvider(
   providerId: string,
   credentialRef: string,
 ): Promise<string | null> {
-  const owned = (broker as CredentialBroker & {
-    resolveForProvider?: (owner: string, reference: string) => Promise<string | null>;
-  }).resolveForProvider;
+  const owned = (
+    broker as CredentialBroker & {
+      resolveForProvider?: (owner: string, reference: string) => Promise<string | null>;
+    }
+  ).resolveForProvider;
   return owned ? owned.call(broker, providerId, credentialRef) : broker.resolve(credentialRef);
 }
 
@@ -272,10 +274,7 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
         return providerFailure(requestId, 'COMMON_INTERNAL_999');
       }
       const existing = existingResult.data.provider;
-      if (
-        parsed.data.payload.credential.action === 'preserve' &&
-        existing?.credentialRef
-      ) {
+      if (parsed.data.payload.credential.action === 'preserve' && existing?.credentialRef) {
         try {
           if (
             !(await hasCredentialForProvider(
@@ -365,10 +364,7 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
         return providerFailure(requestId, saved.ok ? 'COMMON_INTERNAL_999' : saved.errorCode);
       }
 
-      if (
-        parsed.data.payload.credential.action === 'remove' &&
-        existing?.credentialRef
-      ) {
+      if (parsed.data.payload.credential.action === 'remove' && existing?.credentialRef) {
         try {
           const removed = await removeCredentialForProvider(
             options.credentialBroker,

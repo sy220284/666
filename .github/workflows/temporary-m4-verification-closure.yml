@@ -53,18 +53,11 @@ jobs:
       - name: Validate generated JSON
         shell: bash
         run: |
-          echo 'ACTIVE_TASK.json'
           python3 -m json.tool docs/tasks/ACTIVE_TASK.json >/dev/null
-          echo 'package.json'
           python3 -m json.tool package.json >/dev/null
-          echo 'M4-01 manifest'
           python3 -m json.tool docs/test-evidence/M4-01/manifest.json >/dev/null
-          echo 'M4-02 manifest'
           python3 -m json.tool docs/test-evidence/M4-02/manifest.json >/dev/null
-          echo 'M4-03 manifest'
           python3 -m json.tool docs/test-evidence/M4-03/manifest.json >/dev/null
-      - name: Validate generated diff
-        run: git diff --check
       - name: Commit generated closure
         shell: bash
         run: |

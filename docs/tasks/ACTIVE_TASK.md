@@ -5,7 +5,7 @@
 ## 当前状态
 
 ```text
-IMPLEMENTED
+VERIFIED_HOLD
 ```
 
 - 任务ID：`M4-03`

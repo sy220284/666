@@ -1,28 +1,25 @@
-# M4-01 实现与复验记录
+# M4-01 Final Verification Summary
 
-## 交付结论
+## Conclusion
 
-已建立Draft、Version与Entity三类FTS5 trigram派生索引、显式目标队列、索引状态和作者管理的项目词典。SQLite触发器只登记权威业务ID，Core负责全文组装、增量消费、失败重试、完整重建、短词与stale回退以及结果权威回读。
+M4-01 is **Verified**. The shared FTS5 index, explicit queue, authoritative fallback, project dictionary, isolation and rebuild paths are implemented, audited and covered by real CI. The M4 audit hardening repaired unanchored chapter-title fallback and preserved the same authoritative search service for downstream constraint assembly.
 
-FTS结果仅用于召回业务ID；所有结果按当前项目重新读取权威数据。正文、Candidate采用与撤销、导入、Version、Entity、CanonFact、拆并章、跨章移动及卷章可见性变化均纳入失效传播。ResearchNote未进入V1.0 P0数据模型，因此未预建表或索引。
+## Verified scope
 
-## 自动化证据
+- Schema 20—21 FTS5 trigram indexes, index state and explicit target queue.
+- Core-owned indexing, retry, stale handling, rebuild and corruption recovery.
+- Authoritative Draft, Version and Entity reread with project isolation.
+- Short-query and stale-index fallback, including unanchored chapter title hits.
+- Author-managed project dictionary; AI has no write authority.
+- Performance fixture and permanent regression coverage.
 
-- 实现提交：`c37aebb53aa713622d749e5f9b9d837f4642d4bf`。
-- Quality：运行`30088007101`，静态、格式、Lint、Typecheck、Build、Unit、Integration、Migration、Coverage与Electron E2E全部成功。
-- Security：运行`30088006972`，秘密扫描、依赖审计与应用安全测试成功。
-- Performance：运行`30088006958`，性能预算成功。
-- PR Policy：运行`30088006973`成功。
-- Evidence：运行`30088006985`成功。
-- Coverage工件：`8594653232`，Digest `sha256:9a045425b108c8fafa41afa0cf53e1ba61c777cc38e420be1f0b996a7dabe94c`。
-- Electron E2E工件：`8594793290`，Digest `sha256:2f55789970e8bc3e5fa0d0713ea135a80eff31a4f91f7da1e29ee4462d3de681`。
+## Provenance
 
-## 量化结果
+- Initial implementation: `c37aebb53aa713622d749e5f9b9d837f4642d4bf`.
+- Audit hardening PR #208 merged as `dfca784f2ede657986fee7d5e71eee54e9ee897d`.
+- Final audit runs: Quality `30158717765`, Security `30158717671`, Performance `30158717652`, PR Policy `30158717668`, Task Governance `30158717666`, Evidence `30158717649`.
+- Full validation: 143 test files / 709 tests, Electron E2E passed; coverage Statements 84.30%, Branches 75.40%, Functions 85.67%, Lines 86.72%.
 
-- 1,563,300字符Fixture完整重建：202.16ms。
-- 30次FTS查询P95：14.12ms，预算上限200ms。
-- 产品源码覆盖率：Lines 86.55%、Statements 84.28%、Functions 84.87%、Branches 75.30%。
+## Deferred upper-layer work
 
-## 范围结论
-
-本记录覆盖M4-01公共检索基础设施和项目词典。最终搜索页面、安全批量替换由M6-03承接；P0—P4约束包由M4-02承接。实现阶段结果可供后续任务直接复用。
+M6-03 remains responsible for the final search UI and safe batch replace workflow. That planned upper-layer scope does not reopen the verified M4-01 indexing foundation.

@@ -1,6 +1,11 @@
-# M4-03 已知风险
+# M4-03 Known Risks
 
-- V1仅内置OpenAI兼容与Anthropic协议；Custom必须由仓库显式注册批准适配器。
-- Provider模型能力来自连接探测，具体模型窗口、价格与Tokenizer映射留待M4-04/M4-05。
-- 局域网HTTP仅允许用户明确配置的LAN或回环端点，界面持续显示非TLS风险提示。
-- M4-03完成收尾后暂不激活M4-04；任务治理保持M4-03为已实现状态，等待后续明确指令再推进下一张卡。
+## Accepted / deferred
+
+- M8-01 must bind validated DNS results to the actual outbound connection while retaining TLS verification against the original host name, then rerun release-level network security regression.
+- Local model download, installation and lifecycle supervision remain outside M4-03.
+- GenerationRun, Prompt Registry and concrete T0/T1 workflows remain M4-04 and later scope.
+
+## Closure judgement
+
+No open item blocks M4-03 verification within its task boundary. Credential ownership, cross-store consistency, mutation serialization, response limits, protocol behavior, offline isolation and current endpoint policy are implemented and covered. The DNS rebinding item remains an explicit M8-01 release blocker and cannot be silently removed.

@@ -1,10 +1,24 @@
+M4-02 final verification command and run record
+
+Initial implementation commit: 3e6ae02c2b3c71647d93d972ec215f39e4d93a24
+Audit hardening commit: dfca784f2ede657986fee7d5e71eee54e9ee897d
+
+pnpm format:check
 pnpm lint
 pnpm typecheck
-pnpm test
+pnpm build
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
 pnpm test:security
 pnpm test:e2e
-pnpm test:eval
-pnpm test:integration
+pnpm test:coverage
 pnpm test:perf
-node scripts/taskctl.mjs validate
-node scripts/taskctl.mjs advance --ci=success --commit=3e6ae02c2b3c71647d93d972ec215f39e4d93a24
+pnpm test:eval
+
+Quality: 30158717765
+Security: 30158717671
+Performance: 30158717652
+PR Policy: 30158717668
+Task Governance: 30158717666
+Evidence: 30158717649

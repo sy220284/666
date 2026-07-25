@@ -1,7 +1,11 @@
-# M4-01 已知边界
+# M4-01 Known Risks
 
-- 当前交付提供公共搜索服务、派生索引和项目词典，最终搜索页面与安全批量替换属于M6-03。
-- P0—P4约束包在M4-02复用本搜索服务，不在M4-01内实现上下文裁剪和Token预算。
-- ResearchNote属于P1/V1.5范围，当前不建立相关业务表或索引。
-- FTS为可重建派生数据；业务真源始终是项目SQLite中的Draft、Version、Entity与Canon数据。
-- 跨平台安装包与发布级性能复验由M8阶段统一完成。
+## Accepted / deferred
+
+- The final full-project search interface and safe batch replacement transaction belong to M6-03.
+- FTS remains derived, deletable data. A damaged or stale index can reduce recall until rebuild, while authoritative business data remains available and unchanged.
+- Search relevance is deterministic lexical retrieval; embedding and reranking remain outside V1 M4-01 scope.
+
+## Closure judgement
+
+No open risk blocks M4-01 verification. The remaining items are explicit later-task scope and do not weaken the authoritative-data, isolation, rebuild or performance guarantees verified here.

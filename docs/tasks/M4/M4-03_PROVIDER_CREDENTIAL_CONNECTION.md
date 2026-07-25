@@ -1,8 +1,8 @@
 # M4-03 Provider、凭据与连接测试
 
-> 状态：Implemented  
-> 里程碑：M4 检索与AI基础设施  
-> 优先级：P0  
+> 状态：Verified
+> 里程碑：M4 检索与AI基础设施
+> 优先级：P0
 > 工作分支：`work/m4-03-provider-credential-connection`
 
 ## 目标
@@ -106,3 +106,13 @@ M3、M0-02、M0-04、M0-05
 - Provider配置、连接测试、Main/Preload/Renderer接线和安全边界均有真实Electron证据。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。
+## 终验关闭
+
+- 最终状态：Verified。
+- 初始实现提交：`226aa653913756128070119415ed1a06b12f92f1`。
+- 全量审计整改由PR #208合并为`dfca784f2ede657986fee7d5e71eee54e9ee897d`，完成凭据Provider归属、同Provider操作串行、请求幂等、跨存储补偿回滚和16 MiB响应上限。
+- 依赖安全修复由PR #211合并为`c1f018cfc1ed19ec3e129300508e3c3ce616c526`，冻结安装、高危审计和全量质量门全部成功。
+- 最终审计门禁：Quality `30158717765`、Security `30158717671`、Performance `30158717652`、PR Policy `30158717668`、Task Governance `30158717666`、Evidence `30158717649`全部成功。
+- M8-01继续承担DNS重绑定的“校验地址绑定实际连接并保持原主机名TLS验证”发布级终验；该发布阻断项不得删除，但不构成M4-03任务边界内的未实现功能。
+- 按用户指令，M4-04保持Planned，不自动激活。
+

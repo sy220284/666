@@ -1,11 +1,26 @@
+M4-03 final verification command and run record
+
+Initial implementation commit: 226aa653913756128070119415ed1a06b12f92f1
+Audit hardening commit: dfca784f2ede657986fee7d5e71eee54e9ee897d
+Dependency security commit: c1f018cfc1ed19ec3e129300508e3c3ce616c526
+
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm build
-pnpm test
-pnpm test:migration
+pnpm test:unit
 pnpm test:integration
+pnpm test:migration
 pnpm test:security
 pnpm test:e2e
-pnpm test:unit
+pnpm test:coverage
+pnpm test:perf
 pnpm test:eval
-node scripts/taskctl.mjs validate
+pnpm audit --audit-level high
+
+Audit hardening Quality: 30158717765
+Audit hardening Security: 30158717671
+Audit hardening Performance: 30158717652
+Security fix Quality: 30161465664
+Security fix Security: 30161465583
+Security fix Performance: 30161465577

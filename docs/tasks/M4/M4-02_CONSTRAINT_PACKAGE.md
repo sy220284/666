@@ -1,6 +1,6 @@
 # M4-02 P0—P4约束包与裁剪追溯
 
-> 状态：Implemented
+> 状态：Verified
 > 里程碑：M4 检索与AI基础设施
 > 优先级：P0
 > 工作分支：`work/m4-02-constraint-package`
@@ -84,3 +84,11 @@ M4-01、M3-06
 - 约束包不依赖Renderer临时状态。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。
+## 终验关闭
+
+- 最终状态：Verified。
+- 初始实现提交：`3e6ae02c2b3c71647d93d972ec215f39e4d93a24`。
+- 全量审计整改由PR #208合并为`dfca784f2ede657986fee7d5e71eee54e9ee897d`，补充检索改为有界超量召回后执行当前稿排除、时序过滤、去重和最终限量。
+- 最终审计门禁：Quality `30158717765`、Security `30158717671`、Performance `30158717652`、PR Policy `30158717668`、Task Governance `30158717666`、Evidence `30158717649`全部成功。
+- Prompt Registry、GenerationRun和具体生成流程只消费本任务已验证的确定性约束合同，不重新实现或修改其裁剪、来源与Hash语义。
+

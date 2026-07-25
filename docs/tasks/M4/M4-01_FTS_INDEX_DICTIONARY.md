@@ -1,8 +1,8 @@
 # M4-01 FTS5公共索引、队列与项目词典
 
-> 状态：Implemented  
-> 里程碑：M4 检索与AI基础设施  
-> 优先级：P0  
+> 状态：Verified
+> 里程碑：M4 检索与AI基础设施
+> 优先级：P0
 > 工作分支：`work/m4-01-fts-index-dictionary`
 
 ## 目标
@@ -83,3 +83,11 @@ M3
 - Quality、Security、Performance、Evidence、Task Governance和PR Policy全部通过。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`、`DATABASE_SCHEMA.md`及测试证据。
+## 终验关闭
+
+- 最终状态：Verified。
+- 初始实现提交：`c37aebb53aa713622d749e5f9b9d837f4642d4bf`。
+- 全量审计整改由PR #208合并为`dfca784f2ede657986fee7d5e71eee54e9ee897d`，修复短词/陈旧索引下无锚点章节标题回退并补齐跨模块回归。
+- 最终审计门禁：Quality `30158717765`、Security `30158717671`、Performance `30158717652`、PR Policy `30158717668`、Task Governance `30158717666`、Evidence `30158717649`全部成功。
+- 最终搜索页面和安全批量替换仍由M6-03承接，不重新打开已验证的公共索引、权威回读、隔离、重建和性能合同。
+

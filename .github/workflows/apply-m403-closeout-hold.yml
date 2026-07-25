@@ -40,8 +40,10 @@ jobs:
           git fetch --no-tags origin tooling/m403-closeout-hold
           git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold.py > "${RUNNER_TEMP}/m403-closeout-hold.py"
           git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold-fix.py > "${RUNNER_TEMP}/m403-closeout-hold-fix.py"
+          git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold-fix-2.py > "${RUNNER_TEMP}/m403-closeout-hold-fix-2.py"
           git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold-reuse.py > "${RUNNER_TEMP}/m403-closeout-hold-reuse.py"
           python "${RUNNER_TEMP}/m403-closeout-hold-fix.py" "${RUNNER_TEMP}/m403-closeout-hold.py"
+          python "${RUNNER_TEMP}/m403-closeout-hold-fix-2.py" "${RUNNER_TEMP}/m403-closeout-hold.py"
           python "${RUNNER_TEMP}/m403-closeout-hold-reuse.py" "${RUNNER_TEMP}/m403-closeout-hold.py"
 
       - name: Set up pnpm

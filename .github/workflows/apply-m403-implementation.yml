@@ -38,10 +38,11 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags origin tooling/m403-implementation
-          for script in m403-contracts-core.py m403-main-ui.py m403-tests.py m403-finalize.py m403-fix-1.py; do
+          for script in m403-contracts-core.py m403-main-ui.py m403-tests.py m403-finalize.py m403-fix-1.py m403-fix-2.py; do
             git show "origin/tooling/m403-implementation:.github/tooling/${script}" > "${RUNNER_TEMP}/${script}"
           done
           python "${RUNNER_TEMP}/m403-fix-1.py" "${RUNNER_TEMP}"
+          python "${RUNNER_TEMP}/m403-fix-2.py" "${RUNNER_TEMP}/m403-contracts-core.py"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

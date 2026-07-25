@@ -53,6 +53,14 @@ import {
   ExportVersionsResultEnvelopeSchema,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
+  ProviderConnectionTestResultEnvelopeSchema,
+  ProviderListCommandSchema,
+  ProviderListResultSchema,
+  ProviderRemoveCommandSchema,
+  ProviderRemoveResultSchema,
+  ProviderSaveCommandSchema,
+  ProviderSummaryResultSchema,
+  ProviderTestConnectionCommandSchema,
   ProjectActiveResultSchema,
   ProjectCreateChapterCommandSchema,
   ProjectCreateVolumeCommandSchema,
@@ -237,6 +245,34 @@ const bridge: WorldforgeBridge & CandidateBridge = {
           envelope(APP_COMMANDS.setAppearancePreferences, preferences),
         ),
         WindowPreferencesResultSchema,
+      ),
+  },
+  providers: {
+    list: () =>
+      invoke(
+        IPC_CHANNELS.providerList,
+        ProviderListCommandSchema.parse(envelope(APP_COMMANDS.providerList, {})),
+        ProviderListResultSchema,
+      ),
+    save: (input) =>
+      invoke(
+        IPC_CHANNELS.providerSave,
+        ProviderSaveCommandSchema.parse(envelope(APP_COMMANDS.providerSave, input)),
+        ProviderSummaryResultSchema,
+      ),
+    remove: (providerId) =>
+      invoke(
+        IPC_CHANNELS.providerRemove,
+        ProviderRemoveCommandSchema.parse(envelope(APP_COMMANDS.providerRemove, { providerId })),
+        ProviderRemoveResultSchema,
+      ),
+    testConnection: (providerId) =>
+      invoke(
+        IPC_CHANNELS.providerTestConnection,
+        ProviderTestConnectionCommandSchema.parse(
+          envelope(APP_COMMANDS.providerTestConnection, { providerId }),
+        ),
+        ProviderConnectionTestResultEnvelopeSchema,
       ),
   },
   settings: {

@@ -47,6 +47,7 @@ type BaseRendererBridgePort = Pick<
   WorldforgeBridge,
   | 'app'
   | 'settings'
+  | 'providers'
   | 'project'
   | 'recovery'
   | 'textIo'
@@ -158,6 +159,7 @@ type AdaptedTaskDomain = AdaptedDomain<
 export interface RendererBridgeAdapter {
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
+  readonly providers: AdaptedDomain<WorldforgeBridge['providers']>;
   readonly project: AdaptedDomain<WorldforgeBridge['project']>;
   readonly recovery: AdaptedDomain<WorldforgeBridge['recovery']>;
   readonly textIo: AdaptedDomain<WorldforgeBridge['textIo']>;
@@ -193,6 +195,7 @@ export function createRendererBridgeAdapter(
   return {
     app: adaptDomain('app', requireDomain(bridge.app, 'app'), coordinator),
     settings: adaptDomain('settings', requireDomain(bridge.settings, 'settings'), coordinator),
+    providers: adaptDomain('providers', requireDomain(bridge.providers, 'providers'), coordinator),
     project: adaptDomain('project', requireDomain(bridge.project, 'project'), coordinator),
     recovery: adaptDomain('recovery', requireDomain(bridge.recovery, 'recovery'), coordinator),
     textIo: adaptDomain('textIo', requireDomain(bridge.textIo, 'textIo'), coordinator),

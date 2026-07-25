@@ -5,13 +5,13 @@
 ## 当前状态
 
 ```text
-VERIFIED_HOLD
+IN_PROGRESS
 ```
 
-- 任务ID：`M4-03`
-- 唯一任务卡：`docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md`
-- 工作分支：`work/m4-03-provider-credential-connection`
-- 开始时间：`2026-07-24`
+- 任务ID：`M4-04`
+- 唯一任务卡：`docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md`
+- 工作分支：`work/m4-04-v1-integrated-delivery`
+- 开始时间：`2026-07-25`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -19,50 +19,65 @@ VERIFIED_HOLD
 
 ```yaml
 allowed_paths:
-  - packages/core-service/
-  - packages/contracts/
-  - apps/desktop/main/
-  - apps/desktop/preload/
-  - apps/desktop/renderer/
-  - migrations/app/
-  - tests/integration/
-  - tests/security/
-  - tests/unit/
-  - tests/e2e/
+  - apps/
+  - packages/
+  - migrations/
+  - evals/
+  - tests/
+  - scripts/
+  - .github/workflows/
+  - .github/governance/
+  - docs/
+  - README.md
+  - SECURITY.md
+  - CHANGELOG.md
+  - LICENSE
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
-  - docs/tasks/ACTIVE_TASK.json
-  - docs/tasks/ACTIVE_TASK.md
-  - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md
-  - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/contracts/ERROR_CODES.md
-  - docs/test-evidence/M4-03/
 forbidden_paths:
-
+  - docs/tasks/M0/
+  - docs/tasks/M1/
+  - docs/tasks/M2/
+  - docs/tasks/M3/
+  - docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md
+  - docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md
+  - docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md
 required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
+  - docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md
+  - docs/tasks/M4/M4-04_INTEGRATED_IMPLEMENTATION_PLAN.md
+  - docs/tasks/M4/M4-04_ABSORBED_REQUIREMENTS.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
+  - docs/product/FUNCTION_CATALOG.md
+  - docs/product/V1.0_TRACEABILITY_MATRIX.md
+  - docs/testing/P0_ACCEPTANCE_MATRIX.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/ai/LOCAL_AI_SERVICE_SPEC.md
-  - docs/ai/PROVIDER_PROTOCOL.md
-  - docs/security/PRIVACY_AND_LOGGING.md
+  - docs/database/DATABASE_SCHEMA.md
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/contracts/EVENT_PROTOCOL.md
   - docs/contracts/ERROR_CODES.md
+  - docs/ai/PROMPT_AND_EVAL_SPEC.md
+  - docs/ai/PROVIDER_PROTOCOL.md
+  - docs/security/THREAT_MODEL.md
+  - docs/security/PRIVACY_AND_LOGGING.md
+  - docs/ui/UI_ACCEPTANCE_CHECKLIST.md
+  - docs/testing/PERFORMANCE_BUDGETS.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
+  - pnpm test:unit
   - pnpm test:integration
+  - pnpm test:migration
   - pnpm test:security
   - pnpm test:e2e
-  - pnpm test:unit
   - pnpm test:eval
+  - pnpm test:perf
+  - pnpm build
 ```
 
 ## 连续执行规则
 
-当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。
+当前作者已授权实现优先的PR模式：M4-04是V1剩余功能唯一整体任务，必须在独立非main分支通过一个长期Draft PR连续实施；内部阶段不切换活动任务。PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。

@@ -22,10 +22,13 @@ allowed_paths:
   - packages/core-service/
   - packages/contracts/
   - apps/desktop/main/
+  - apps/desktop/preload/
   - apps/desktop/renderer/
   - migrations/app/
+  - tests/unit/
   - tests/integration/
   - tests/security/
+  - tests/e2e/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
@@ -34,6 +37,11 @@ allowed_paths:
   - docs/tasks/TASK_INDEX.md
   - docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/contracts/ERROR_CODES.md
+  - docs/ai/PROVIDER_PROTOCOL.md
+  - docs/ai/LOCAL_AI_SERVICE_SPEC.md
+  - docs/security/PRIVACY_AND_LOGGING.md
   - docs/test-evidence/M4-03/
 forbidden_paths:
 

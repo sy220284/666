@@ -1,8 +1,8 @@
 # WorldForge V1.0 任务索引
 
-> 状态：Frozen  
-> 基线：WorldForge V6.5  
-> 任务体系：M0—M8九阶段，共53张独立任务卡。  
+> 状态：Frozen
+> 基线：WorldForge V6.5
+> 任务体系：M0—M8九阶段，共53张独立任务卡。
 > 原则：同一时间一个活动任务；一任务一文件；每任务独立原子提交；完成必须有证据。
 
 ## 1. 唯一执行入口
@@ -28,7 +28,7 @@ Blocked / Deferred / Removed
 | M2   | 编辑安全与版本核心   |      4 | 所有正文修改统一受Patch、Revision、Hash、锁定、Candidate隔离和恢复保护。      |
 | M3   | 规划、设定与连续性   |     10 | 建立权威连续性数据，并在M4前完成Renderer React架构校正与旧入口退役。          |
 | M4   | 检索与AI基础设施     |      5 | 建立FTS、约束包、Provider、Prompt和GenerationRun等可复用AI基础设施。          |
-| M5   | AI生成与候选审阅     |      6 | 先完成作者工作流体验门，再完成T0/T1、改写、融合、候选审阅、采用和撤销闭环。  |
+| M5   | AI生成与候选审阅     |      6 | 先完成作者工作流体验门，再完成T0/T1、改写、融合、候选审阅、采用和撤销闭环。   |
 | M6   | 校验、搜索与交付     |      6 | 补齐校验、全项目搜索、节奏指标、DOCX和三轨备份恢复。                          |
 | M7   | 完整UI与体验整合     |      3 | 统一工作台、新手/专业模式、主题、无障碍和目标显示环境。                       |
 | M8   | 发布硬化与验收       |      3 | 完成安全、数据、性能、E2E、跨平台构建、P0追踪和发布关闭。                     |
@@ -111,7 +111,7 @@ M1是明确的基础产品门：没有AI时也必须能够创建项目、建卷�
 | ----- | ------------------------------------------------------------------------------ | ----------------------- | ----------- |
 | M4-01 | [`FTS5公共索引、队列与项目词典`](M4/M4-01_FTS_INDEX_DICTIONARY.md)             | M3                      | Implemented |
 | M4-02 | [`P0—P4约束包与裁剪追溯`](M4/M4-02_CONSTRAINT_PACKAGE.md)                      | M4-01、M3-06            | Implemented |
-| M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md)       | M3、M0-02、M0-04、M0-05 | In Progress     |
+| M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md)       | M3、M0-02、M0-04、M0-05 | Implemented |
 | M4-04 | [`Prompt Registry、输出Schema与Cleaner`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)   | M4-02、M4-03            | Planned     |
 | M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md) | M4-04、M0-07            | Planned     |
 
@@ -119,14 +119,14 @@ M1是明确的基础产品门：没有AI时也必须能够创建项目、建卷�
 
 ## M5 AI生成与候选审阅
 
-| ID    | 任务卡                                                                                  | 依赖                               | 状态    |
-| ----- | --------------------------------------------------------------------------------------- | ---------------------------------- | ------- |
-| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)            | M4                                 | Planned |
-| M5-01 | [`T0多候选骨架`](M5/M5-01_T0_SKELETON.md)                                               | M5-00                              | Planned |
-| M5-02 | [`T1章节扩写`](M5/M5-02_T1_CHAPTER_GENERATION.md)                                       | M5-01                              | Planned |
-| M5-03 | [`快速改写与结构性改写`](M5/M5-03_REWRITE_WORKFLOWS.md)                                 | M5-02、M2-03                       | Planned |
-| M5-04 | [`多候选融合与部分结果恢复`](M5/M5-04_CANDIDATE_MERGE_PARTIAL.md)                       | M5-02、M5-03                       | Planned |
-| M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md)                      | M5-01、M5-02、M5-03、M5-04、M2-03 | Planned |
+| ID    | 任务卡                                                                       | 依赖                              | 状态    |
+| ----- | ---------------------------------------------------------------------------- | --------------------------------- | ------- |
+| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md) | M4                                | Planned |
+| M5-01 | [`T0多候选骨架`](M5/M5-01_T0_SKELETON.md)                                    | M5-00                             | Planned |
+| M5-02 | [`T1章节扩写`](M5/M5-02_T1_CHAPTER_GENERATION.md)                            | M5-01                             | Planned |
+| M5-03 | [`快速改写与结构性改写`](M5/M5-03_REWRITE_WORKFLOWS.md)                      | M5-02、M2-03                      | Planned |
+| M5-04 | [`多候选融合与部分结果恢复`](M5/M5-04_CANDIDATE_MERGE_PARTIAL.md)            | M5-02、M5-03                      | Planned |
+| M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md)           | M5-01、M5-02、M5-03、M5-04、M2-03 | Planned |
 
 里程碑摘要：[`M5_TASKS.md`](M5_TASKS.md)。
 

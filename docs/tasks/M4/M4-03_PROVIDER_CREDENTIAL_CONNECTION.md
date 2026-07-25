@@ -1,6 +1,6 @@
 # M4-03 Provider、凭据与连接测试
 
-> 状态：In Progress
+> 状态：Implemented
 > 里程碑：M4 检索与AI基础设施
 > 优先级：P0
 > 工作分支：`work/m4-03-provider-credential-connection`
@@ -79,6 +79,23 @@ M3、M0-02、M0-04、M0-05
 - Provider不可用时基础写作、搜索、恢复和导出不受影响。
 
 证据保存到：`docs/test-evidence/M4-03/`
+
+## 实现结果
+
+- 复用App DB `provider_configs`、Electron `safeStorage` Credential Broker和Core Utility Process，数据库只保存`credentialRef`，未建立第二套配置或凭据真源。
+- 实现OpenAI兼容与Anthropic适配器；Custom协议仅允许仓库显式注册的批准适配器。
+- 连接测试覆盖模型列表或缺失、最短生成、流式、结构化输出、Token统计、认证、限流、超时、中断和取消。
+- Provider IPC拆分为独立领域注册模块；Main负责凭据解析，Preload仅暴露受控命令，Renderer不接触网络客户端或凭据明文。
+- 端点按回环、局域网和外部分类；外部强制HTTPS；阻断嵌入凭据、query、fragment、保留地址、实例元数据、重定向及DNS跨信任边界解析。
+- 请求取消和超时覆盖响应头、JSON正文与SSE完整生命周期；OpenAI流在`finish_reason`和`[DONE]`同时存在时只产生一次完成事件。
+- 设置页支持保存配置、凭据替换/移除、连接测试、删除和明确的操作反馈。
+
+## 验证结果
+
+- Provider专项：Contracts、端点安全、凭据IPC和协议集成共13项回归通过。
+- 全仓：Lint、Typecheck、Build、全量测试、Migration、Integration、Security、Electron E2E、Unit和Eval全部通过。
+- Provider不可用、配置为空或凭据缺失时，不影响离线写作、搜索、恢复和导出基础路径。
+- 按用户指令，M4-03收口后保持Implemented，暂不激活M4-04。
 
 ## 完成条件
 

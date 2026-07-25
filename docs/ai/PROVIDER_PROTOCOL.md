@@ -116,3 +116,9 @@ estimatedInputTokens + maxOutputTokens + safetyMargin <= maxContextTokens
 ## 11. 版本控制
 
 适配器变化若影响Prompt映射、结构化输出或错误语义，必须更新适配器版本、运行相关Eval、更新ModelSupportProfile并记录兼容性变化。
+
+## M4-03 已实现协议边界
+
+V1内置OpenAI兼容和Anthropic适配器。连接探测依次验证模型列表（允许端点明确不支持）、最短非流式生成、流式完成、结构化输出和Token统计。Custom协议必须由仓库显式注册批准适配器。
+
+请求使用手动重定向策略；适配器不得自动跟随跨主机重定向。取消与超时覆盖获取响应头、JSON正文和SSE读取完整生命周期。OpenAI流同时返回`finish_reason`与`[DONE]`时只发布一个`completed`事件。协议错误统一映射到`AI_*`稳定错误码。

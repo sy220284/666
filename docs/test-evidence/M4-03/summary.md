@@ -14,3 +14,12 @@
 - Contracts、端点安全、协议适配、认证/限流/超时/中断/取消、无Token统计、凭据IPC与泄漏边界。
 - 全仓Typecheck、Lint、Build和真实Electron Provider设置页回归。
 - Provider不可用不改变基础离线写作、搜索、恢复和导出路径。
+
+## 完整收口记录
+
+- 最终实现提交：`226aa653913756128070119415ed1a06b12f92f1`。
+- 最终专项加固工作流：`30144534592`，Provider专项13/13、Typecheck、Lint、Build、Electron设置页和任务治理通过。
+- 全量测试适配工作流：`30144899128`，专项测试、Typecheck、Lint、完整`pnpm test`和任务治理通过，新增测试保持零unsafe类型逃逸。
+- 完整收口工作流：`30146439159`（https://github.com/sy220284/666/actions/runs/30146439159），执行任务卡全部验证命令并固化证据。
+- 人工复核：配置/凭据真源唯一；Provider IPC已独立拆分；端点、取消、超时、流式完成和错误脱敏边界与任务卡一致。
+- 治理结论：M4-03标记Implemented并继续作为当前任务保留，M4-04暂不激活。

@@ -1,0 +1,74 @@
+name: Apply M4-03 Sync Main
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.head_ref == 'tooling/m403-sync-main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout formal M4-03 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-03-provider-credential-connection
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify and configure Head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "e3813e16523ae326f9faa6e157869bf9f05fa0b4"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Load synchronization script
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin tooling/m403-sync-main
+          git show origin/tooling/m403-sync-main:.github/tooling/m403-sync-main.py > "${RUNNER_TEMP}/m403-sync-main.py"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Merge main, reconcile documents, verify and push
+        shell: bash
+        run: |
+          set +e
+          python "${RUNNER_TEMP}/m403-sync-main.py" > "${RUNNER_TEMP}/m403-sync-main.log" 2>&1
+          status=$?
+          cat "${RUNNER_TEMP}/m403-sync-main.log"
+          exit "${status}"
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m403-sync-main-diagnostics
+          path: ${{ runner.temp }}/m403-sync-main.log
+          if-no-files-found: error
+          retention-days: 7

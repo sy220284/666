@@ -114,6 +114,7 @@ import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import type { CoreSupervisor } from './core-supervisor.js';
 import type { CredentialBroker } from './credential-broker.js';
 import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
+import { registerProviderIpcHandlers } from './provider-ipc-handlers.js';
 import { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';
 
 interface IpcHandlerOptions {
@@ -319,6 +320,14 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
 
   const invalidRequest = (raw: unknown): CommandFailure =>
     failure(requestIdFrom(raw), 'COMMON_INVALID_INPUT_001', 'The request was invalid.', false);
+
+  const disposeProviderHandlers = registerProviderIpcHandlers({
+    ipcMain: options.ipcMain,
+    supervisor: options.supervisor,
+    credentialBroker: options.credentialBroker,
+    rendererUrl: options.rendererUrl,
+    logger: options.logger,
+  });
 
   register(IPC_CHANNELS.appGetInfo, (event, raw) => {
     const rejected = rejectUntrusted(event, raw);
@@ -1223,6 +1232,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
   options.ipcMain.on(IPC_CHANNELS.taskConnectEvents, connectTaskEvents);
 
   return () => {
+    disposeProviderHandlers();
     for (const channel of invokeChannels) options.ipcMain.removeHandler(channel);
     options.ipcMain.removeListener(IPC_CHANNELS.taskConnectEvents, connectTaskEvents);
   };

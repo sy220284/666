@@ -9,6 +9,7 @@ import {
 } from './database/index.js';
 import { AppSettingsRepository } from './app-settings.js';
 import { ProviderConfigsRepository } from './provider-configs.js';
+import { ProviderConnectionService } from './provider-connection.js';
 import { RecentProjectsRepository } from './recent-projects.js';
 import { WindowPreferencesRepository } from './window-preferences.js';
 import { createSqliteMigrationRecoveryPoint } from './migration-recovery.js';
@@ -27,6 +28,7 @@ export interface AppRuntime {
   readonly appSettings: AppSettingsRepository;
   readonly recentProjects: RecentProjectsRepository;
   readonly providerConfigs: ProviderConfigsRepository;
+  readonly providerConnections: ProviderConnectionService;
   readonly windowPreferences: WindowPreferencesRepository;
   close(): Promise<void>;
 }
@@ -65,6 +67,9 @@ export async function openAppRuntime(options: AppRuntimeOptions): Promise<AppRun
     appSettings: new AppSettingsRepository(database, options.clock),
     recentProjects: new RecentProjectsRepository(database, options.clock),
     providerConfigs: new ProviderConfigsRepository(database, options.clock),
+    providerConnections: new ProviderConnectionService({
+      ...(options.clock ? { clock: options.clock } : {}),
+    }),
     windowPreferences: new WindowPreferencesRepository(database, options.clock),
     close: () => database.close(),
   };

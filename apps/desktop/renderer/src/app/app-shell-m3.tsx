@@ -25,10 +25,7 @@ import {
 import { HomePage } from '../features/home/home-page.js';
 import { PlanningWorkbench } from '../features/planning/planning-workbench.js';
 import { SettingsPage } from '../features/settings/settings-page.js';
-import {
-  WritingWorkbench,
-  type WritingPanel,
-} from '../features/writing/writing-workbench.js';
+import { WritingWorkbench, type WritingPanel } from '../features/writing/writing-workbench.js';
 import {
   createPrimaryNavigationItems,
   resolvePrimaryNavigationIntent,
@@ -157,7 +154,10 @@ export function AppShell({ bridge }: AppShellProps) {
         ? 'read-only'
         : 'open'
       : 'closed';
-    document.documentElement.style.setProperty('--ui-scale', String(appearance.uiScalePercent / 100));
+    document.documentElement.style.setProperty(
+      '--ui-scale',
+      String(appearance.uiScalePercent / 100),
+    );
     document.documentElement.style.setProperty('--body-font-size', `${appearance.bodyFontSize}px`);
     document.documentElement.style.setProperty(
       '--content-width',
@@ -519,9 +519,7 @@ export function AppShell({ bridge }: AppShellProps) {
             {activeProject.databaseMode === 'read-only' ? '只读兼容模式' : '可写 · 本地数据库'}
           </span>
           {activeProject.databaseMode === 'read-only' ? (
-            <span data-active-project-readonly>
-              {activeProject.readOnlyReason ?? '兼容性保护'}
-            </span>
+            <span data-active-project-readonly>{activeProject.readOnlyReason ?? '兼容性保护'}</span>
           ) : null}
           {message ? (
             <span data-project-operation-status role="status">
@@ -683,6 +681,7 @@ export function AppShell({ bridge }: AppShellProps) {
           {route === 'settings' ? (
             <SettingsPage
               appearance={appearance}
+              bridge={bridge}
               coreStatus={coreStatus}
               disclosureMode={disclosureMode}
               message={message}
@@ -746,7 +745,11 @@ export function AppShell({ bridge }: AppShellProps) {
               project={activeProject}
               onPanelChange={(panel) =>
                 void transitionToRoute(
-                  panel === 'versions' ? 'versions' : panel === 'candidates' ? 'candidates' : 'writing',
+                  panel === 'versions'
+                    ? 'versions'
+                    : panel === 'candidates'
+                      ? 'candidates'
+                      : 'writing',
                 )
               }
               onStatus={setMessage}
@@ -800,8 +803,7 @@ function failureFromOutcome(title: string, outcome: BridgeRequestOutcome<unknown
   }
   return {
     title,
-    message:
-      outcome.state === 'cancelled' ? '操作已取消。' : '响应已被更新请求替代。',
+    message: outcome.state === 'cancelled' ? '操作已取消。' : '响应已被更新请求替代。',
     retryable: outcome.state !== 'cancelled',
     diagnosticId: null,
   };

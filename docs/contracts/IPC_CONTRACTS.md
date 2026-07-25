@@ -242,13 +242,13 @@ Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreNarrativ
 
 M3-06冻结的状态提案与尾快照命令：
 
-| 命令                              | IPC频道                                        | 输入                                                | 输出                          |
-| --------------------------------- | ---------------------------------------------- | --------------------------------------------------- | ----------------------------- |
-| `stateProposal.list`              | `worldforge:state-proposal:list`               | projectId、可选chapterId、includeResolved           | 提案、快照与失效记录目录      |
+| 命令                              | IPC频道                                        | 输入                                                 | 输出                          |
+| --------------------------------- | ---------------------------------------------- | ---------------------------------------------------- | ----------------------------- |
+| `stateProposal.list`              | `worldforge:state-proposal:list`               | projectId、可选chapterId、includeResolved            | 提案、快照与失效记录目录      |
 | `stateProposal.generate`          | `worldforge:state-proposal:generate`           | chapterId、final Version、来源、带正文证据的提案数组 | 只新增pending后的目录         |
 | `stateProposal.resolve`           | `worldforge:state-proposal:resolve`            | author权限、接受/编辑接受/拒绝批量裁决               | 权威状态与快照提交后的目录    |
 | `stateProposal.refreshSnapshot`   | `worldforge:state-proposal:refresh-snapshot`   | author权限、chapterId、final Version                 | 重建后的EndingSnapshot        |
-| `stateProposal.readSnapshot`      | `worldforge:state-proposal:read-snapshot`      | projectId、chapterId                                | snapshot或fallback_live_query |
+| `stateProposal.readSnapshot`      | `worldforge:state-proposal:read-snapshot`      | projectId、chapterId                                 | snapshot或fallback_live_query |
 | `stateProposal.invalidateDerived` | `worldforge:state-proposal:invalidate-derived` | author权限、来源章节/Version、变化类型               | 失效快照ID与排队范围          |
 
 Main先校验可信Renderer URL和strict命令Schema，再转换为`CoreStateProposalOperationSchema`。生成只接受属于当前项目、当前章节final Version的正文Evidence；空提取合法。`resolve`、`refreshSnapshot`和`invalidateDerived`只接受author权限。批量裁决、EntityState或ArcMilestone更新和快照重建使用同一项目库事务；pending、拒绝或失败批次不得产生权威写入。`prose`变化返回空失效结果，语义变化只标记后续快照stale，不自动修改后文。
@@ -347,3 +347,13 @@ interface AppearancePreferences {
 - M3-04由`tests/security/continuity-ipc.test.ts`和真实Electron `tests/e2e/continuity-ledger.spec.ts`验证完整调用链。
 - M3-05由`tests/security/narrative-planning-ipc.test.ts`、`tests/security/candidate-preview-ipc.test.ts`和真实Electron `tests/e2e/narrative-planning-ledger.spec.ts`验证六个具名命令、可信来源边界及桌面写入展示链路。
 - M3-06由`tests/security/state-proposal-ipc.test.ts`、`tests/integration/state-proposal-snapshot.test.ts`、`tests/integration/state-proposal-valid-until.test.ts`、`tests/integration/state-proposal-valid-until-boundaries.test.ts`和真实Electron `tests/e2e/state-proposal-workflow.spec.ts`、`tests/e2e/state-proposal-valid-until.spec.ts`验证六个具名命令、作者最终裁决、有限期半开区间、跨项目/逆序拒绝、批量回滚、快照回退与桌面接受链路。
+
+## M4-03 Provider IPC
+
+Provider配置使用四个受信invoke通道：列表、保存、删除和连接测试。所有输入先经过Contracts Schema，再由Main的独立Provider IPC领域模块调用Core Utility Process。
+
+- Renderer与Preload不得读取或返回凭据明文。
+- 保存命令只接收一次性凭据动作；Main写入Credential Broker后仅把`credentialRef`提交到Core。
+- 连接测试由Main按`credentialRef`临时解析明文，并在单次Core请求结束后释放引用。
+- 不可信sender、错误operation判别或Schema失败统一返回稳定`CommandFailure`，不泄露URL query、凭据、正文、堆栈或本地路径。
+- Provider通道由`provider-ipc-handlers.ts`独立注册与释放，避免通用IPC模块继续膨胀。

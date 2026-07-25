@@ -1,0 +1,11 @@
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm test
+pnpm test:migration
+pnpm test:integration
+pnpm test:security
+pnpm test:e2e
+pnpm test:unit
+pnpm test:eval
+node scripts/taskctl.mjs validate

@@ -1,0 +1,46 @@
+name: Temporary Stage Close Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Capture stage-close and evidence diagnostics
+        shell: bash
+        run: |
+          mkdir -p test-results/stage-close
+          base_ref="$(git merge-base origin/main HEAD)"
+          git show "${base_ref}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
+          git show "${base_ref}:docs/tasks/TASK_INDEX.md" > "$RUNNER_TEMP/base-task-index.md"
+          TASK_BASE_REF="$base_ref" \
+          TASK_BASE_STATE_PATH="$RUNNER_TEMP/base-active-task.json" \
+          TASK_BASE_INDEX_PATH="$RUNNER_TEMP/base-task-index.md" \
+          node .github/governance/stage-close-policy.mjs \
+          > test-results/stage-close/stage-close.log 2>&1 || true
+          EVIDENCE_BASE_SHA="$base_ref" EVIDENCE_HEAD_SHA="$(git rev-parse HEAD)" \
+          node scripts/evidence-policy.mjs \
+          > test-results/stage-close/evidence.log 2>&1 || true
+          cat test-results/stage-close/stage-close.log
+          cat test-results/stage-close/evidence.log
+      - uses: actions/upload-artifact@v7
+        with:
+          name: m4-stage-close-diagnostic
+          path: test-results/stage-close/
+          if-no-files-found: error
+          retention-days: 1

@@ -22,6 +22,7 @@ export type {
 } from './provider-adapters.js';
 export {
   MAX_PROVIDER_RESPONSE_BYTES,
+  MAX_PROVIDER_SSE_EVENT_BYTES,
   createBoundedProviderFetch,
   createProviderAdapter,
 } from './provider-adapter-runtime.js';

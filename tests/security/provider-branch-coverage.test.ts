@@ -27,7 +27,11 @@ const requestId = '550e8400-e29b-41d4-a716-446655440000';
 const credentialRef = 'cred_550e8400-e29b-41d4-a716-446655440000';
 const secret = 'provider-secret';
 const now = '2026-07-25T01:00:00.000Z';
-const base = { protocolVersion: PROTOCOL_VERSION, requestId, sentAt: now } as const;
+const base = {
+  protocolVersion: PROTOCOL_VERSION,
+  requestId,
+  sentAt: now,
+} as const;
 const editable = {
   id: 'local-openai',
   name: '本地模型',
@@ -50,7 +54,10 @@ const summary: ProviderSummary = {
     scope: 'loopback',
     origin: 'http://127.0.0.1:11434',
     secureTransport: false,
-    warnings: ['请求仅发送到当前设备上的用户配置服务。'],
+    warnings: [
+      '请求仅发送到当前设备上的用户配置服务。',
+      '当前连接未使用TLS，仅允许本机或受信局域网端点。',
+    ],
   },
   createdAt: now,
   updatedAt: now,
@@ -83,13 +90,25 @@ type Responder = (operation: CoreProviderOperation) => Promise<CoreProviderResul
 async function defaultResponse(operation: CoreProviderOperation): Promise<CoreProviderResult> {
   switch (operation.operation) {
     case PROVIDER_CORE_OPERATIONS.list:
-      return { ok: true, operation: operation.operation, data: { providers: [summary] } };
+      return {
+        ok: true,
+        operation: operation.operation,
+        data: { providers: [summary] },
+      };
     case PROVIDER_CORE_OPERATIONS.get:
-      return { ok: true, operation: operation.operation, data: { provider: stored } };
+      return {
+        ok: true,
+        operation: operation.operation,
+        data: { provider: stored },
+      };
     case PROVIDER_CORE_OPERATIONS.upsert:
       return { ok: true, operation: operation.operation, data: summary };
     case PROVIDER_CORE_OPERATIONS.remove:
-      return { ok: true, operation: operation.operation, data: { removed: true } };
+      return {
+        ok: true,
+        operation: operation.operation,
+        data: { removed: true },
+      };
     case PROVIDER_CORE_OPERATIONS.testConnection:
       return { ok: true, operation: operation.operation, data: connection };
   }
@@ -111,8 +130,8 @@ function ipcHarness(
     ),
     removeHandler: vi.fn(),
   } as unknown as IpcMain;
-  const invokeProviderOperation = vi.fn(
-    async (_id: string, operation: CoreProviderOperation) => responder(operation),
+  const invokeProviderOperation = vi.fn(async (_id: string, operation: CoreProviderOperation) =>
+    responder(operation),
   );
   const supervisor = { invokeProviderOperation } as unknown as CoreSupervisor;
   const credentialBroker = {
@@ -128,7 +147,14 @@ function ipcHarness(
     rendererUrl: 'file:///trusted/index.html',
     logger: { log } as unknown as PrivacyLogger,
   });
-  return { handlers, ipcMain, invokeProviderOperation, credentialBroker, log, dispose };
+  return {
+    handlers,
+    ipcMain,
+    invokeProviderOperation,
+    credentialBroker,
+    log,
+    dispose,
+  };
 }
 
 function saveCommand(action: 'preserve' | 'remove' | 'replace' = 'preserve') {
@@ -137,8 +163,7 @@ function saveCommand(action: 'preserve' | 'remove' | 'replace' = 'preserve') {
     command: APP_COMMANDS.providerSave,
     payload: {
       config: editable,
-      credential:
-        action === 'replace' ? { action, credential: secret } : { action },
+      credential: action === 'replace' ? { action, credential: secret } : { action },
     },
   };
 }
@@ -164,11 +189,23 @@ describe('M4-03 Provider IPC branch coverage', () => {
     const successSubject = ipcHarness();
     const list = successSubject.handlers.get(IPC_CHANNELS.providerList)!;
     await expect(
-      list(trusted, { ...base, command: APP_COMMANDS.providerList, payload: {} }),
+      list(trusted, {
+        ...base,
+        command: APP_COMMANDS.providerList,
+        payload: {},
+      }),
     ).resolves.toMatchObject({ ok: true, data: { providers: [summary] } });
     await expect(
-      list(trusted, { ...base, command: APP_COMMANDS.providerList, payload: { extra: true } }),
-    ).resolves.toMatchObject({ ok: false, requestId, error: { code: 'COMMON_INVALID_INPUT_001' } });
+      list(trusted, {
+        ...base,
+        command: APP_COMMANDS.providerList,
+        payload: { extra: true },
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      requestId,
+      error: { code: 'COMMON_INVALID_INPUT_001' },
+    });
     await expect(list(untrusted, null)).resolves.toMatchObject({
       ok: false,
       error: { code: 'COMMON_INVALID_INPUT_001' },
@@ -200,7 +237,10 @@ describe('M4-03 Provider IPC branch coverage', () => {
     expect(removeSubject.credentialBroker.remove).toHaveBeenCalledWith(credentialRef);
 
     const preserveSubject = ipcHarness();
-    await preserveSubject.handlers.get(IPC_CHANNELS.providerSave)!(trusted, saveCommand('preserve'));
+    await preserveSubject.handlers.get(IPC_CHANNELS.providerSave)!(
+      trusted,
+      saveCommand('preserve'),
+    );
     expect(preserveSubject.credentialBroker.remove).not.toHaveBeenCalled();
 
     const storeFailure = ipcHarness(defaultResponse, {
@@ -210,12 +250,19 @@ describe('M4-03 Provider IPC branch coverage', () => {
     });
     await expect(
       storeFailure.handlers.get(IPC_CHANNELS.providerSave)!(trusted, saveCommand('replace')),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_CREDENTIAL_MISSING_002' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_CREDENTIAL_MISSING_002' },
+    });
 
     const rollbackFailure = ipcHarness(
       async (operation) => {
         if (operation.operation === PROVIDER_CORE_OPERATIONS.get) {
-          return { ok: true, operation: operation.operation, data: { provider: stored } };
+          return {
+            ok: true,
+            operation: operation.operation,
+            data: { provider: stored },
+          };
         }
         return {
           ok: false,
@@ -231,7 +278,10 @@ describe('M4-03 Provider IPC branch coverage', () => {
     );
     await expect(
       rollbackFailure.handlers.get(IPC_CHANNELS.providerSave)!(trusted, saveCommand('replace')),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_ENDPOINT_UNSAFE_013' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_ENDPOINT_UNSAFE_013' },
+    });
     expect(rollbackFailure.log).toHaveBeenCalledWith(
       'warn',
       'credential.rollback.failed',
@@ -247,7 +297,10 @@ describe('M4-03 Provider IPC branch coverage', () => {
     }));
     await expect(
       lookupFailure.handlers.get(IPC_CHANNELS.providerSave)!(trusted, saveCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_PROVIDER_NOT_CONFIGURED_001' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_PROVIDER_NOT_CONFIGURED_001' },
+    });
 
     const mismatched = ipcHarness(async () => ({
       ok: true,
@@ -256,7 +309,10 @@ describe('M4-03 Provider IPC branch coverage', () => {
     }));
     await expect(
       mismatched.handlers.get(IPC_CHANNELS.providerSave)!(trusted, saveCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'COMMON_INTERNAL_999' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'COMMON_INTERNAL_999' },
+    });
   });
 
   it('covers remove failures, mismatched operations and credential cleanup warnings', async () => {
@@ -276,35 +332,64 @@ describe('M4-03 Provider IPC branch coverage', () => {
 
     const removeFailure = ipcHarness(async (operation) => {
       if (operation.operation === PROVIDER_CORE_OPERATIONS.get) {
-        return { ok: true, operation: operation.operation, data: { provider: stored } };
+        return {
+          ok: true,
+          operation: operation.operation,
+          data: { provider: stored },
+        };
       }
-      return { ok: false, operation: operation.operation, errorCode: 'AI_CONNECTION_FAILED_003' };
+      return {
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'AI_CONNECTION_FAILED_003',
+      };
     });
     await expect(
       removeFailure.handlers.get(IPC_CHANNELS.providerRemove)!(trusted, removeCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_CONNECTION_FAILED_003' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_CONNECTION_FAILED_003' },
+    });
 
     const mismatch = ipcHarness(async (operation) => {
       if (operation.operation === PROVIDER_CORE_OPERATIONS.get) {
-        return { ok: true, operation: operation.operation, data: { provider: stored } };
+        return {
+          ok: true,
+          operation: operation.operation,
+          data: { provider: stored },
+        };
       }
-      return { ok: true, operation: PROVIDER_CORE_OPERATIONS.list, data: { providers: [] } };
+      return {
+        ok: true,
+        operation: PROVIDER_CORE_OPERATIONS.list,
+        data: { providers: [] },
+      };
     });
     await expect(
       mismatch.handlers.get(IPC_CHANNELS.providerRemove)!(trusted, removeCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'COMMON_INTERNAL_999' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'COMMON_INTERNAL_999' },
+    });
   });
 
   it('covers missing providers, credential failures, connection failures and operation mismatch', async () => {
     const missing = ipcHarness(async (operation) => {
       if (operation.operation === PROVIDER_CORE_OPERATIONS.get) {
-        return { ok: true, operation: operation.operation, data: { provider: null } };
+        return {
+          ok: true,
+          operation: operation.operation,
+          data: { provider: null },
+        };
       }
       return defaultResponse(operation);
     });
     await expect(
       missing.handlers.get(IPC_CHANNELS.providerTestConnection)!(trusted, testCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_PROVIDER_NOT_CONFIGURED_001' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_PROVIDER_NOT_CONFIGURED_001' },
+    });
 
     const resolveFailure = ipcHarness(defaultResponse, {
       resolve: async () => {
@@ -313,32 +398,62 @@ describe('M4-03 Provider IPC branch coverage', () => {
     });
     await expect(
       resolveFailure.handlers.get(IPC_CHANNELS.providerTestConnection)!(trusted, testCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_CREDENTIAL_MISSING_002' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_CREDENTIAL_MISSING_002' },
+    });
 
-    const emptyCredential = ipcHarness(defaultResponse, { resolve: async () => null });
+    const emptyCredential = ipcHarness(defaultResponse, {
+      resolve: async () => null,
+    });
     await expect(
       emptyCredential.handlers.get(IPC_CHANNELS.providerTestConnection)!(trusted, testCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_CREDENTIAL_MISSING_002' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_CREDENTIAL_MISSING_002' },
+    });
 
     const connectionFailure = ipcHarness(async (operation) => {
       if (operation.operation === PROVIDER_CORE_OPERATIONS.get) {
-        return { ok: true, operation: operation.operation, data: { provider: stored } };
+        return {
+          ok: true,
+          operation: operation.operation,
+          data: { provider: stored },
+        };
       }
-      return { ok: false, operation: operation.operation, errorCode: 'AI_RATE_LIMITED_005' };
+      return {
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'AI_RATE_LIMITED_005',
+      };
     });
     await expect(
       connectionFailure.handlers.get(IPC_CHANNELS.providerTestConnection)!(trusted, testCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'AI_RATE_LIMITED_005', retryable: true } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'AI_RATE_LIMITED_005', retryable: true },
+    });
 
     const mismatch = ipcHarness(async (operation) => {
       if (operation.operation === PROVIDER_CORE_OPERATIONS.get) {
-        return { ok: true, operation: operation.operation, data: { provider: stored } };
+        return {
+          ok: true,
+          operation: operation.operation,
+          data: { provider: stored },
+        };
       }
-      return { ok: true, operation: PROVIDER_CORE_OPERATIONS.list, data: { providers: [] } };
+      return {
+        ok: true,
+        operation: PROVIDER_CORE_OPERATIONS.list,
+        data: { providers: [] },
+      };
     });
     await expect(
       mismatch.handlers.get(IPC_CHANNELS.providerTestConnection)!(trusted, testCommand()),
-    ).resolves.toMatchObject({ ok: false, error: { code: 'COMMON_INTERNAL_999' } });
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'COMMON_INTERNAL_999' },
+    });
   });
 
   it('removes all Provider handlers during disposal', () => {
@@ -367,7 +482,9 @@ describe('M4-03 Provider Utility router branches', () => {
   it('executes list, get, upsert, remove and connection test operations', async () => {
     const appRuntime = runtime();
     await expect(
-      executeProviderOperation(appRuntime, requestId, { operation: PROVIDER_CORE_OPERATIONS.list }),
+      executeProviderOperation(appRuntime, requestId, {
+        operation: PROVIDER_CORE_OPERATIONS.list,
+      }),
     ).resolves.toMatchObject({ ok: true, data: { providers: [summary] } });
     await expect(
       executeProviderOperation(appRuntime, requestId, {

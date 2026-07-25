@@ -3,7 +3,7 @@
 > 状态：In Progress
 > 里程碑：M4 检索与AI基础设施
 > 优先级：P0
-> 建议分支：`feat/m4-provider-credential-connection`
+> 工作分支：`work/m4-03-provider-credential-connection`
 
 ## 目标
 

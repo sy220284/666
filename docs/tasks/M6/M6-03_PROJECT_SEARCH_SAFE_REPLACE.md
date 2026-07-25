@@ -19,6 +19,7 @@
 - 不搜索或预建V1范围外的ResearchNote、项目日记或附件。
 - 不修改不可变Version。
 - 不通过通用正文替换事务修改Entity或Canon。
+- 不建立第二套全文索引、Draft Patch或恢复点服务。
 
 ## 依赖
 
@@ -52,9 +53,12 @@ M4-01、M2-01、M1-08
 
 - `packages/core-service/`
 - `packages/contracts/`
+- `apps/desktop/main/`
+- `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/unit/`
 - `tests/integration/`
+- `tests/security/`
 - `tests/e2e/`
 - `tests/performance/`
 
@@ -70,27 +74,46 @@ M4-01、M2-01、M1-08
 └─ 活动DraftBlock
 ```
 
+## ReplacePlan合同
+
+```text
+ReplacePlanItem
+├─ projectId
+├─ draftId
+├─ logicalBlockId
+├─ baseRevision
+├─ expectedBlockHash
+├─ matchedText
+├─ matchStart / matchEnd
+├─ replacement
+└─ locked
+```
+
+计划只保存受控匹配与校验信息，不保存第二份完整正文。提交时必须重新回读项目、Draft、Revision、Hash、范围和命中内容。
+
 ## 实施内容
 
 1. 实现搜索范围、来源、分页、索引状态、短词回退和权威结果回读。
 2. Draft结果可进入ReplacePlan；Version结果仅查看和定位；Entity结果跳转对应设定编辑界面。
-3. ReplacePlan只包含活动DraftBlock，展示命中锚点、目标Draft、Revision、Hash和锁定状态。
-4. 提交前创建恢复点，并重新校验项目、Draft、Revision、Hash、命中内容和LockGuard。
+3. ReplacePlan只包含活动DraftBlock，展示命中锚点、目标Draft、Revision、Hash、命中范围和锁定状态。
+4. 提交前创建恢复点，并重新校验项目、Draft、Revision、Hash、命中内容、范围和LockGuard。
 5. 锁定块默认跳过并显示摘要；用户不得通过批量替换绕过锁定。
-6. 替换通过标准Block Patch单事务提交，任一失败完整回滚。
+6. 替换通过标准Block Patch单事务提交，任一失败完整回滚；变更来源标记为`mutationOrigin: safe_replace`供M6-04排除人工写作统计。
 7. Version保持不可变，任何通用ReplacePlan包含Version目标时必须拒绝。
 8. Entity和Canon修改继续使用专用设定命令，不混入正文Patch事务。
 9. 项目词典继续提供专名、别名、忽略和替换建议，AI无权修改。
-10. StoryTodo、Comment、ResearchNote或附件未来需要搜索时，必须通过独立范围升级和追加索引任务实施。
+10. Main/Preload只暴露严格搜索、计划预览和提交命令；Renderer不得提交搜索结果全文或自行执行替换。
+11. StoryTodo、Comment、ResearchNote或附件未来需要搜索时，必须通过独立范围升级和追加索引任务实施。
 
 ## 测试与证据
 
 - 中文短词、长词、别名、索引损坏、stale、重建和大项目性能。
 - Draft、Version、Entity三类结果及权威回读。
-- ReplacePlan过期、Revision/Hash变化、锁定、命中内容变化、事务失败和恢复点。
+- ReplacePlan过期、Revision/Hash变化、范围变化、命中内容变化、锁定、事务失败和恢复点。
 - Version替换拒绝、Entity通用替换拒绝和跨项目隔离。
+- Renderer伪造结果、额外字段、未注册命令和跨项目计划安全测试。
 - 搜索结果来自权威业务数据，索引表内容不直接展示。
-- 批量替换失败不留下部分写入。
+- 批量替换失败不留下部分写入，成功来源为`safe_replace`。
 
 证据保存到：`docs/test-evidence/M6-03/`
 
@@ -99,7 +122,8 @@ M4-01、M2-01、M1-08
 - 搜索覆盖Draft、Version和Entity，且不同对象拥有正确操作入口。
 - 批量替换只作用于活动DraftBlock。
 - Version和Entity通过通用ReplacePlan被修改的成功次数为0。
-- 批量替换无静默覆盖且可通过恢复点撤销。
+- 批量替换无静默覆盖、使用统一Patch并可通过恢复点撤销。
+- 批量替换不会被M6-04计入人工写作统计。
 - 搜索索引可删除、可重建并继续复用M4-01。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全、性能或测试文档。

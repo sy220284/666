@@ -61,13 +61,27 @@ M4-02、M4-03、M0-07
 - `tests/integration/`
 - 仅在合同确有变化时同步相关AI、数据流和验收文档
 
+## T1输入判别合同
+
+```text
+ChapterGenerationSource（每次请求恰好一种）
+├─ skeleton_candidate
+│  └─ selectedSkeletonCandidateId
+├─ canonical_scene_beats
+│  └─ sceneBeatIds[]
+└─ direct_chapter_goal
+   └─ chapterGoal
+```
+
+零来源、多来源、`sourceType`与字段不匹配均必须由严格Schema拒绝。Renderer不得通过字段优先级决定权威来源。
+
 ## 实施内容
 
 1. 将M0-07的Spike实现升级为生产Prompt Registry；正式Prompt使用稳定`promptId`、整数`version`、`taskType`、输入输出Schema、构建器和支持模式。
 2. 为Spike Prompt确定历史保留与生产ID迁移策略；历史版本必须可读取，重复`promptId + version`注册必须失败。
 3. 在现有Cleaner和Parser上补齐受控协议外壳清理、严格解析、一次明确格式修复和安全失败；禁止猜测重写无效JSON。
 4. 建立或生产化T0、T1、rewrite、merge、validate、state_extract输入输出合同。
-5. T1输入使用显式联合来源：`selectedSkeletonCandidateId`、`canonicalSceneBeats`或`directChapterGoal`至少存在一种；允许作者绕过T0且SceneBeat为空，不得为满足Schema伪造节拍。
+5. T1输入使用显式判别联合；每次调用必须且只能选择Skeleton Candidate、权威SceneBeat或直接章节目标中的一种。允许作者绕过T0且SceneBeat为空，不得为满足Schema伪造节拍。
 6. `state_extract`输出必须对齐当前StateProposal合同：数值型`confidence`、`EvidenceAnchor[]`、`validUntilChapterId`和`actualChapterId`；`previousValue`由Core读取权威状态，不由模型决定。
 7. 纯文本与结构化模式继续按现有ModelSupportProfile策略选择，不强制未验证模型输出长正文JSON。
 8. PromptBundle只生成本次调用所需的不可变Prompt元数据与约束引用；GenerationRun持久化归M4-05。
@@ -77,7 +91,7 @@ M4-02、M4-03、M0-07
 ## 测试与证据
 
 - Spike兼容、生产ID迁移、版本并存、重复冲突、历史读取和占位符完整性。
-- T1三种输入来源、无SceneBeat直接生成输入、非法空联合和跨项目Skeleton引用拒绝。
+- T1三种输入来源、无SceneBeat直接生成输入、零来源、多来源、字段错配和跨项目Skeleton引用拒绝。
 - state_extract字段、证据锚点、有效期和弧光章节合同。
 - 代码围栏、废话外壳、无效JSON、多JSON片段、一次格式修复和Cleaner正反Fixture。
 - 纯文本/结构化模式选择与ModelSupportProfile匹配。
@@ -88,7 +102,7 @@ M4-02、M4-03、M0-07
 ## 完成条件
 
 - Prompt Registry可审计、可复现、可降级，并真实承接M0-07资产。
-- T1绕过T0路径在合同层成立，不依赖伪造SceneBeat。
+- T1三种来源在合同层互斥且完备，绕过T0不依赖伪造SceneBeat。
 - state_extract输出与现有StateProposal合同一致。
 - Prompt不承担锁定、Revision、项目边界、Candidate隔离或GenerationRun持久化。
 - 未建立第二套Registry、Cleaner、Parser或模式选择系统。

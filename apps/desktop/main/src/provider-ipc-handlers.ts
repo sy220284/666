@@ -206,7 +206,13 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
         existing?.credentialRef
       ) {
         try {
-          if (!(await hasCredentialForProvider(options.credentialBroker, providerId, existing.credentialRef))) {
+          if (
+            !(await hasCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              existing.credentialRef,
+            ))
+          ) {
             return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
           }
         } catch {

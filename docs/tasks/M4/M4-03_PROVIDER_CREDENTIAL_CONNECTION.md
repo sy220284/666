@@ -96,6 +96,7 @@ M3、M0-02、M0-04、M0-05
 - 全仓：Lint、Typecheck、Build、全量测试、Migration、Integration、Security、Electron E2E、Unit和Eval全部通过。
 - Provider不可用、配置为空或凭据缺失时，不影响离线写作、搜索、恢复和导出基础路径。
 - 按用户指令，M4-03收口后保持Implemented，暂不激活M4-04。
+- 本提交仅用于触发正式PR最终合并门禁，不改变实现范围或后续任务状态。
 
 ## 完成条件
 

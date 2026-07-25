@@ -141,11 +141,7 @@ export class CredentialBroker {
     });
   }
 
-  replaceForProvider(
-    providerId: string,
-    credentialRef: string,
-    credential: string,
-  ): Promise<void> {
+  replaceForProvider(providerId: string, credentialRef: string, credential: string): Promise<void> {
     this.#assertSecureBackend();
     const validProviderId = ProviderIdSchema.parse(providerId);
     const validCredentialRef = CredentialRefSchema.parse(credentialRef);

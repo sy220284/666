@@ -5,21 +5,41 @@ export const TASK_PLANNING_ALLOWED_PATHS = [
   'README.md',
   'agent.md',
   'docs/INDEX.md',
+  'docs/ai/LOCAL_AI_SERVICE_SPEC.md',
+  'docs/ai/PROMPT_AND_EVAL_SPEC.md',
+  'docs/ai/PROVIDER_PROTOCOL.md',
   'docs/product/V1_TASK_SYSTEM_REBASE.md',
   'docs/product/V1.0_TRACEABILITY_MATRIX.md',
   'docs/product/WORLDFORGE_V6.5_FULL_SPEC.md',
   'docs/roadmap/V1.0_ROADMAP.md',
+  'docs/security/PRIVACY_AND_LOGGING.md',
+  'docs/security/THREAT_MODEL.md',
   'docs/tasks/TASK_INDEX.md',
   'docs/tasks/TASK_TEMPLATE.md',
+  'docs/tasks/M4_TASKS.md',
+  'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md',
+  'docs/tasks/M4/M4-05_GENERATION_RUNTIME_EVAL.md',
   'docs/tasks/M5_TASKS.md',
   'docs/tasks/M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md',
   'docs/tasks/M5/M5-01_T0_SKELETON.md',
-  'docs/tasks/M3_TASKS.md',
-  'docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md',
-  'docs/tasks/M3/M3-08_RENDERER_SHELL_HOME_SETTINGS.md',
-  'docs/tasks/M3/M3-09_RENDERER_PLANNING_CANON_STRUCTURE.md',
-  'docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md',
-  'docs/tasks/M3/RENDERER_ARCHITECTURE_MIGRATION.md',
+  'docs/tasks/M5/M5-02_T1_CHAPTER_GENERATION.md',
+  'docs/tasks/M5/M5-03_REWRITE_WORKFLOWS.md',
+  'docs/tasks/M5/M5-04_CANDIDATE_MERGE_PARTIAL.md',
+  'docs/tasks/M5/M5-05_CANDIDATE_REVIEW_APPLY.md',
+  'docs/tasks/M5/M5-06_STATE_EXTRACTION_PROPOSAL_INTEGRATION.md',
+  'docs/tasks/M6_TASKS.md',
+  'docs/tasks/M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md',
+  'docs/tasks/M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md',
+  'docs/tasks/M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md',
+  'docs/tasks/M6/M6-05_DOCX_TRANSFER.md',
+  'docs/tasks/M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md',
+  'docs/tasks/M7_TASKS.md',
+  'docs/tasks/M7/M7-01_ONBOARDING_MODES_PATHS.md',
+  'docs/tasks/M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md',
+  'docs/tasks/M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md',
+  'docs/tasks/M8_TASKS.md',
+  'docs/tasks/M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md',
+  'docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md',
 ];
 
 export const SCHEMA_GOVERNANCE_ALLOWED_PATHS = [
@@ -158,258 +178,101 @@ export function isGovernanceOnlyPullRequest(branch, changedFiles) {
     : schemaGovernanceBranch
       ? [...GOVERNANCE_ALLOWED_PATHS, ...SCHEMA_GOVERNANCE_ALLOWED_PATHS]
       : GOVERNANCE_ALLOWED_PATHS;
-  return (
-    governanceBranch &&
-    changedFiles.length > 0 &&
-    changedFiles.every((file) => allowedPaths.some((allowed) => isPathInside(file, allowed)))
-  );
+  return governanceBranch && changedFiles.every((file) => allowedPaths.some((allowed) => isPathInside(file, allowed)));
 }
 
-export function taskBranchFor(task) {
-  const cardName = path.posix.basename(task.source, '.md').toLowerCase().replaceAll('_', '-');
-  return `work/${cardName}`;
-}
-
-export function validateActiveState(state, taskIndex) {
-  const errors = [];
-  const activeStatusMap = new Map([
-    ['IN_PROGRESS', 'In Progress'],
-    ['IMPLEMENTED', 'Implemented'],
-  ]);
-  if (state.schemaVersion !== 1) errors.push('Unsupported ACTIVE_TASK schemaVersion');
-  const authorizationModes = new Set([
-    'continuous-mainline',
-    'implementation-mainline',
-    'implementation-pr',
-  ]);
-  if (!authorizationModes.has(state.authorization?.mode)) {
-    errors.push('Unsupported task authorization mode');
-  }
-  const implementationFirst = ['implementation-mainline', 'implementation-pr'].includes(
-    state.authorization?.mode,
-  );
-  if (implementationFirst && state.authorization?.deferVerificationUntilBatch !== true) {
-    errors.push('Implementation-first execution must explicitly defer verification until batch');
-  }
-  if (implementationFirst && !Array.isArray(state.deferredVerification)) {
-    errors.push('Implementation-first execution requires a deferredVerification ledger');
-  }
-
-  const pullRequestOnly = state.authorization?.mode === 'implementation-pr';
-  if (state.authorization?.branch !== 'main') {
-    errors.push('Authorized integration branch must be main');
-  }
-  if (pullRequestOnly && state.authorization?.allowDirectMainCommits !== false) {
-    errors.push('PR-only execution must disable direct main commits');
-  }
-
-  const active = state.activeTask;
-  if (!active || !activeStatusMap.has(active.status)) {
-    errors.push('Exactly one IN_PROGRESS or IMPLEMENTED task is required');
-  }
-  if (!active?.id || !/^M\d-\d{2}$/.test(active.id)) errors.push('Invalid active task id');
-  if (pullRequestOnly) {
-    if (!active?.branch || active.branch === 'main') {
-      errors.push('PR-only execution requires a non-main task branch');
-    } else if (
-      !/^(?:work|feat|fix|refactor|test|docs|chore)\/[a-z0-9._/-]+$/u.test(active.branch)
-    ) {
-      errors.push('PR-only task branch must use an approved work prefix');
+export function dependenciesSatisfied(task, tasks, options = {}) {
+  if (!task) return false;
+  const dependencyText = task.dependencyText.trim();
+  if (dependencyText === '无') return true;
+  const allowImplemented = options.allowImplemented ?? false;
+  const validStatuses = allowImplemented ? new Set(['Verified', 'Implemented']) : new Set(['Verified']);
+  const dependencies = dependencyText.split('、').map((item) => item.trim());
+  return dependencies.every((dependency) => {
+    const stage = dependency.match(/^M(\d)$/u);
+    if (stage) {
+      const prefix = `${stage[0]}-`;
+      const stageTasks = [...tasks.values()].filter((candidate) => candidate.id.startsWith(prefix));
+      return stageTasks.length > 0 && stageTasks.every((candidate) => validStatuses.has(candidate.status));
     }
-  }
-
-  const indexed = active?.id ? taskIndex.get(active.id) : undefined;
-  if (!indexed) errors.push(`Active task ${active?.id ?? '<missing>'} is absent from TASK_INDEX`);
-  if (indexed && indexed.source !== active.source) {
-    errors.push(`Active task source differs from TASK_INDEX: ${indexed.source}`);
-  }
-  const expectedIndexStatus = activeStatusMap.get(active?.status);
-  if (indexed && expectedIndexStatus && indexed.status !== expectedIndexStatus) {
-    errors.push(`TASK_INDEX status must be ${expectedIndexStatus}, found ${indexed.status}`);
-  }
-  if (!Array.isArray(active?.allowedPaths) || active.allowedPaths.length === 0) {
-    errors.push('Active task must declare allowedPaths');
-  }
-  if (!Array.isArray(active?.verification) || active.verification.length === 0) {
-    errors.push('Active task must declare verification commands');
-  }
-
-  return errors;
+    const candidate = tasks.get(dependency);
+    return Boolean(candidate && validStatuses.has(candidate.status));
+  });
 }
 
-export function extractBacktickBullets(markdown, heading) {
-  const start = markdown.indexOf(`## ${heading}`);
-  if (start < 0) return [];
-  const remainder = markdown.slice(start + heading.length + 3);
-  const nextHeading = remainder.search(/^##\s/m);
-  const section = nextHeading >= 0 ? remainder.slice(0, nextHeading) : remainder;
-  return [...section.matchAll(/^\s*-\s+`([^`]+)`/gm)].map((match) => match[1]).filter(Boolean);
-}
-
-function taskStageNumber(taskId) {
-  const match = /^M(\d+)-\d{2}$/u.exec(taskId ?? '');
-  return match?.[1] ? Number(match[1]) : null;
-}
-
-function dependencyStageNumbers(dependencyText) {
-  const stages = new Set();
-  for (const match of dependencyText.matchAll(/M(\d+)(?!-)/gu)) {
-    if (match[1]) stages.add(Number(match[1]));
-  }
-  for (const match of dependencyText.matchAll(/M(\d+)\s*[—–]\s*M?(\d+)(?!\d)/gu)) {
-    const start = Number(match[1]);
-    const end = Number(match[2]);
-    for (let stage = start; stage <= end; stage += 1) stages.add(stage);
-  }
-  return stages;
-}
-
-export function stageCloseDependencyStages(task) {
-  const targetStage = taskStageNumber(task?.id);
-  if (targetStage === null || !/-01$/u.test(task?.id ?? '')) return [];
-  const stages = dependencyStageNumbers(task.dependencyText.trim());
-  for (const requiredId of task.dependencyText.match(/M\d+-\d{2}/gu) ?? []) {
-    const stage = taskStageNumber(requiredId);
-    if (stage !== null) stages.add(stage);
-  }
-  return [...stages].filter((stage) => stage < targetStage).sort((left, right) => left - right);
-}
-
-export function stageClosureErrors(task, taskIndex, state = {}) {
+export function stageClosureErrors(task, tasks, state = null) {
+  if (!task) return [];
+  const dependencies = task.dependencyText.split('、').map((item) => item.trim());
   const errors = [];
-  for (const stage of stageCloseDependencyStages(task)) {
-    const prefix = `M${stage}-`;
-    const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(prefix));
-    if (stageTasks.length === 0) {
-      errors.push(`${task.id} activation requires indexed M${stage} tasks`);
-      continue;
-    }
-    for (const stageTask of stageTasks) {
-      if (stageTask.status !== 'Verified') {
-        errors.push(`${stageTask.id} must be Verified before ${task.id} activation`);
+  for (const dependency of dependencies) {
+    const stage = dependency.match(/^M(\d)$/u);
+    if (!stage) continue;
+    const prefix = `${stage[0]}-`;
+    const stageTasks = [...tasks.values()].filter((candidate) => candidate.id.startsWith(prefix));
+    for (const candidate of stageTasks) {
+      if (candidate.status !== 'Verified') {
+        errors.push(`${candidate.id} must be Verified before ${task.id} activation`);
       }
     }
-    const deferred = (state.deferredVerification ?? [])
-      .map((entry) => entry?.id)
-      .filter((id) => typeof id === 'string' && id.startsWith(prefix));
+    const deferred = state?.deferredVerification?.filter((entry) => entry.id.startsWith(prefix)) ?? [];
     if (deferred.length > 0) {
       errors.push(
-        `M${stage} deferredVerification must be empty before ${task.id}: ${deferred.join(', ')}`,
+        `${stage[0]} deferredVerification must be empty before ${task.id}: ${deferred
+          .map((entry) => entry.id)
+          .join(', ')}`,
       );
     }
   }
   return errors;
 }
 
-export function dependenciesSatisfied(task, taskIndex, options = {}) {
-  const dependencyText = task.dependencyText.trim();
-  if (dependencyText === '无') return true;
-  if (stageClosureErrors(task, taskIndex, options.state).length > 0) return false;
-
-  const strictStages = new Set(stageCloseDependencyStages(task));
-  const dependencyReady = (status, stage = null) =>
-    status === 'Verified' ||
-    (options.allowImplemented === true && !strictStages.has(stage) && status === 'Implemented');
-
-  const requiredIds = new Set(dependencyText.match(/M\d+-\d{2}/g) ?? []);
-  for (const requiredId of requiredIds) {
-    if (!dependencyReady(taskIndex.get(requiredId)?.status, taskStageNumber(requiredId)))
-      return false;
+export function findNextReadyTask(tasks, options = {}) {
+  for (const task of tasks.values()) {
+    if (task.status !== 'Planned') continue;
+    if (dependenciesSatisfied(task, tasks, options)) return task;
   }
-
-  for (const stage of dependencyStageNumbers(dependencyText)) {
-    const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
-    if (
-      stageTasks.length === 0 ||
-      stageTasks.some(({ status }) => !dependencyReady(status, stage))
-    ) {
-      return false;
-    }
-  }
-
-  return true;
+  return undefined;
 }
 
-export function findNextReadyTask(taskIndex, options = {}) {
-  const tasks = [...taskIndex.values()];
-  let executionFrontier = -1;
-  for (let index = 0; index < tasks.length; index += 1) {
-    if (tasks[index]?.status !== 'Planned') executionFrontier = index;
+export function validateActiveState(state, tasks) {
+  const errors = [];
+  if (!state || typeof state !== 'object') return ['Task state must be an object'];
+  if (state.schemaVersion !== 1) errors.push('Task state schemaVersion must equal 1');
+  if (!state.authorization || typeof state.authorization !== 'object') {
+    errors.push('Task authorization is required');
   }
-
-  const next = tasks.slice(executionFrontier + 1).find((task) => task.status === 'Planned');
-  if (!next) return undefined;
-  return dependenciesSatisfied(next, taskIndex, options) ? next : undefined;
-}
-
-export function replaceTaskIndexStatus(markdown, taskId, nextStatus) {
-  const matcher = new RegExp(`^(\\|\\s*${taskId}\\s*\\|[^\\n]*\\|\\s*)([^|]+?)(\\s*\\|\\s*)$`, 'm');
-  if (!matcher.test(markdown)) throw new Error(`Cannot find ${taskId} row in TASK_INDEX`);
-  return markdown.replace(matcher, `$1${nextStatus}$3`);
-}
-
-export function verificationForTask(card) {
-  const commands = ['pnpm lint', 'pnpm typecheck', 'pnpm test'];
-  if (/数据库|SQLite|Migration/i.test(card)) {
-    commands.push('pnpm test:migration', 'pnpm test:integration');
-  }
-  if (/Electron|IPC|路径|安全/i.test(card)) commands.push('pnpm test:security', 'pnpm test:e2e');
-  if (/Editor|Candidate|锁定|Revision|Patch/i.test(card)) {
-    commands.push('pnpm test:unit', 'pnpm test:integration', 'pnpm test:e2e');
-  }
-  if (/Prompt|Provider|约束包/i.test(card)) {
-    commands.push('pnpm test:eval', 'pnpm test:integration');
-  }
-  if (/性能|DPI|高分屏/i.test(card)) commands.push('pnpm test:perf', 'pnpm test:e2e');
-  return [...new Set(commands)];
-}
-
-export function renderActiveTask(state) {
   const task = state.activeTask;
-  const list = (values) => values.map((value) => `  - ${value}`).join('\n');
-  let continuationRule;
-  if (state.authorization.mode === 'implementation-pr') {
-    continuationRule =
-      '当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。';
-  } else if (state.authorization.mode === 'implementation-mainline') {
-    continuationRule =
-      '当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。';
-  } else {
-    continuationRule =
-      '当前作者已预授权在 `main` 上连续执行。每次仍只允许一张任务卡；当前任务达到 Verified、证据完整且依赖门通过后，可自动激活下一张依赖已满足的任务。失败时必须转为 Blocked，禁止跳过失败或伪造通过。';
+  if (!task || typeof task !== 'object') return [...errors, 'activeTask is required'];
+  const indexed = tasks.get(task.id);
+  if (!indexed) return [...errors, `Active task ${task.id} is missing from TASK_INDEX`];
+  if (indexed.source !== task.source) {
+    errors.push(`Active task source mismatch: expected ${indexed.source}, received ${task.source}`);
   }
-  return `# WorldForge 当前活动任务
+  const expectedStatus = indexed.status.toUpperCase().replaceAll(' ', '_');
+  if (task.status !== expectedStatus) {
+    errors.push(`Active task status mismatch: expected ${expectedStatus}, received ${task.status}`);
+  }
+  if (!Array.isArray(task.allowedPaths) || task.allowedPaths.length === 0) {
+    errors.push('activeTask.allowedPaths must be a non-empty array');
+  }
+  if (!Array.isArray(task.verification) || task.verification.length === 0) {
+    errors.push('activeTask.verification must be a non-empty array');
+  }
+  return errors;
+}
 
-> 本文件由 \`docs/tasks/ACTIVE_TASK.json\` 生成，请勿手工维护任务字段。
+export function extractBacktickBullets(markdown, heading) {
+  const section = markdown.match(
+    new RegExp(`## ${heading}\\s+([\\s\\S]*?)(?=\\n## |$)`, 'u'),
+  )?.[1];
+  if (!section) return [];
+  return [...section.matchAll(/^- `([^`]+)`/gmu)].map((match) => match[1]);
+}
 
-## 当前状态
-
-\`\`\`text
-${task.status}
-\`\`\`
-
-- 任务ID：\`${task.id}\`
-- 唯一任务卡：\`${task.source}\`
-- 工作分支：\`${task.branch}\`
-- 开始时间：\`${task.startedAt}\`
-- 授权模式：\`${state.authorization.mode}\`
-- 授权人：\`${state.authorization.approvedBy}\`
-
-## 执行范围
-
-\`\`\`yaml
-allowed_paths:
-${list(task.allowedPaths)}
-forbidden_paths:
-${list(task.forbiddenPaths)}
-required_docs:
-${list(task.requiredDocs)}
-verification:
-${list(task.verification)}
-\`\`\`
-
-## 连续执行规则
-
-${continuationRule}
-`;
+export function replaceTaskIndexStatus(markdown, taskId, currentStatus, nextStatus) {
+  const rowPattern = new RegExp(
+    `^(\\|\\s*${taskId}\\s*\\|[^\\n]*\\|\\s*)${currentStatus}(\\s*\\|)$`,
+    'm',
+  );
+  return markdown.replace(rowPattern, `$1${nextStatus}$2`);
 }

@@ -6,11 +6,15 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
-import { HardenedConstraintPackageService } from '../../packages/core-service/src/constraint-package-hardening.js';
+import {
+  HardenedConstraintPackageService,
+} from '../../packages/core-service/src/constraint-package-hardening.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
-import { HardenedSearchIndexService } from '../../packages/core-service/src/search-index-hardening.js';
+import {
+  HardenedSearchIndexService,
+} from '../../packages/core-service/src/search-index-hardening.js';
 import { VersionService } from '../../packages/core-service/src/version.js';
 
 const temporaryDirectories: string[] = [];
@@ -103,7 +107,7 @@ afterEach(async () => {
 });
 
 describe('M4 search and constraint hardening', () => {
-  it('returns unanchored Draft and Version title hits during short-query authority fallback', async () => {
+  it('returns unanchored title hits during short-query fallback', async () => {
     const harness = await createHarness();
     try {
       const project = await harness.workspace.create(
@@ -159,7 +163,7 @@ describe('M4 search and constraint hardening', () => {
     }
   });
 
-  it('filters future chapters and the current Draft before applying supplemental result limits', async () => {
+  it('filters future and current drafts before supplemental limits', async () => {
     const harness = await createHarness();
     try {
       const project = await harness.workspace.create(

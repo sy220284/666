@@ -41,8 +41,10 @@ jobs:
           git show origin/tooling/m403-final-hardening:.github/tooling/m403-final-hardening.py > "${RUNNER_TEMP}/m403-final-hardening.py"
           git show origin/tooling/m403-final-hardening:.github/tooling/m403-final-hardening-fix.py > "${RUNNER_TEMP}/m403-final-hardening-fix.py"
           git show origin/tooling/m403-final-hardening:.github/tooling/m403-final-hardening-fix-2.py > "${RUNNER_TEMP}/m403-final-hardening-fix-2.py"
+          git show origin/tooling/m403-final-hardening:.github/tooling/m403-final-hardening-fix-3.py > "${RUNNER_TEMP}/m403-final-hardening-fix-3.py"
           python "${RUNNER_TEMP}/m403-final-hardening-fix.py" "${RUNNER_TEMP}/m403-final-hardening.py"
           python "${RUNNER_TEMP}/m403-final-hardening-fix-2.py" "${RUNNER_TEMP}/m403-final-hardening.py"
+          python "${RUNNER_TEMP}/m403-final-hardening-fix-3.py" "${RUNNER_TEMP}/m403-final-hardening.py"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

@@ -21,15 +21,50 @@ jobs:
           persist-credentials: true
       - name: Generate M4-01—M4-03 final closure
         run: python3 .github/governance/temporary-close-m4.py
-      - name: Validate generated text
+      - name: Normalize generated text
         shell: bash
         run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('docs/tasks/ACTIVE_TASK.md'),
+              Path('docs/tasks/TASK_INDEX.md'),
+              Path('docs/tasks/M4_TASKS.md'),
+              Path('docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md'),
+              Path('docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md'),
+              Path('docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md'),
+              Path('docs/product/V1.0_TRACEABILITY_MATRIX.md'),
+          ]
+          for directory in (
+              Path('docs/test-evidence/M4-01'),
+              Path('docs/test-evidence/M4-02'),
+              Path('docs/test-evidence/M4-03'),
+          ):
+              files.extend(directory.glob('*.md'))
+              files.extend(directory.glob('*.txt'))
+          for path in files:
+              if not path.exists():
+                  continue
+              source = path.read_text()
+              normalized = '\n'.join(line.rstrip() for line in source.splitlines()) + '\n'
+              path.write_text(normalized)
+          PY
+      - name: Validate generated JSON
+        shell: bash
+        run: |
+          echo 'ACTIVE_TASK.json'
           python3 -m json.tool docs/tasks/ACTIVE_TASK.json >/dev/null
+          echo 'package.json'
           python3 -m json.tool package.json >/dev/null
+          echo 'M4-01 manifest'
           python3 -m json.tool docs/test-evidence/M4-01/manifest.json >/dev/null
+          echo 'M4-02 manifest'
           python3 -m json.tool docs/test-evidence/M4-02/manifest.json >/dev/null
+          echo 'M4-03 manifest'
           python3 -m json.tool docs/test-evidence/M4-03/manifest.json >/dev/null
-          git diff --check
+      - name: Validate generated diff
+        run: git diff --check
       - name: Commit generated closure
         shell: bash
         run: |

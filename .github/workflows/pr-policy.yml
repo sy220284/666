@@ -33,7 +33,7 @@ jobs:
       - name: Assert clean working tree before policy validation
         run: node .github/governance/assert-clean-tree.mjs
       - name: Validate real PR branch
-        run: node scripts/taskctl.mjs pr-policy
+        run: node .github/governance/verification-hold-taskctl.mjs pr-policy
       - name: Validate permanent automation inventory
         run: node .github/governance/automation-layout-policy.mjs
       - name: Validate permanent CI policy
@@ -44,6 +44,7 @@ jobs:
         run: |
           node .github/governance/automerge-base-gate.mjs self-test
           node .github/governance/task-transition-policy.mjs self-test
+          node .github/governance/verification-hold-taskctl.mjs self-test
       - name: Validate merge aggregation behavior
         shell: bash
         run: |

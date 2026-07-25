@@ -1,4 +1,4 @@
-name: Apply M4-03 Closeout Hold
+name: Apply M4-03 Coverage Fix
 
 on:
   pull_request:
@@ -13,10 +13,10 @@ permissions:
   contents: write
 
 jobs:
-  closeout:
+  coverage-fix:
     if: github.head_ref == 'tooling/m403-closeout-hold'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout formal M4-03 branch
         uses: actions/checkout@v6
@@ -29,22 +29,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "226aa653913756128070119415ed1a06b12f92f1"
+          test "$(git rev-parse HEAD)" = "0299594c0a72eebe87f5452a2fcb8dd7aa38c498"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
 
-      - name: Load closeout script
+      - name: Load coverage fix
         shell: bash
         run: |
           set -euo pipefail
           git fetch --no-tags origin tooling/m403-closeout-hold
-          git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold.py > "${RUNNER_TEMP}/m403-closeout-hold.py"
-          git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold-fix.py > "${RUNNER_TEMP}/m403-closeout-hold-fix.py"
-          git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold-fix-2.py > "${RUNNER_TEMP}/m403-closeout-hold-fix-2.py"
-          git show origin/tooling/m403-closeout-hold:.github/tooling/m403-closeout-hold-reuse.py > "${RUNNER_TEMP}/m403-closeout-hold-reuse.py"
-          python "${RUNNER_TEMP}/m403-closeout-hold-fix.py" "${RUNNER_TEMP}/m403-closeout-hold.py"
-          python "${RUNNER_TEMP}/m403-closeout-hold-fix-2.py" "${RUNNER_TEMP}/m403-closeout-hold.py"
-          python "${RUNNER_TEMP}/m403-closeout-hold-reuse.py" "${RUNNER_TEMP}/m403-closeout-hold.py"
+          git show origin/tooling/m403-closeout-hold:.github/tooling/m403-coverage-fix.py > "${RUNNER_TEMP}/m403-coverage-fix.py"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -61,20 +55,20 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
-      - name: Apply verified closeout and keep M4-03 active
+      - name: Format, test coverage and push
         shell: bash
         run: |
           set +e
-          python "${RUNNER_TEMP}/m403-closeout-hold.py" > "${RUNNER_TEMP}/m403-closeout-hold.log" 2>&1
+          python "${RUNNER_TEMP}/m403-coverage-fix.py" > "${RUNNER_TEMP}/m403-coverage-fix.log" 2>&1
           status=$?
-          cat "${RUNNER_TEMP}/m403-closeout-hold.log"
+          cat "${RUNNER_TEMP}/m403-coverage-fix.log"
           exit "${status}"
 
       - name: Upload diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: m403-closeout-hold-diagnostics
-          path: ${{ runner.temp }}/m403-closeout-hold.log
+          name: m403-coverage-fix-diagnostics
+          path: ${{ runner.temp }}/m403-coverage-fix.log
           if-no-files-found: error
           retention-days: 7

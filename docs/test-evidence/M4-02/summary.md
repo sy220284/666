@@ -20,6 +20,6 @@ M4-02 is **Verified**. The P0—P4 constraint package, temporal filtering, sourc
 - Final audit runs: Quality `30158717765`, Security `30158717671`, Performance `30158717652`, PR Policy `30158717668`, Task Governance `30158717666`, Evidence `30158717649`.
 - Full validation: 143 test files / 709 tests, Electron E2E passed; coverage Statements 84.30%, Branches 75.40%, Functions 85.67%, Lines 86.72%.
 
-## Deferred upper-layer work
+## Later upper-layer work
 
 Prompt Registry, GenerationRun and concrete generation workflows consume this verified package in later tasks. Those integrations do not reopen the deterministic package assembly and trimming contracts closed by M4-02.

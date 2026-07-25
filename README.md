@@ -1,6 +1,6 @@
 # WorldForge（创世工坊）
 
-WorldForge 是面向单个作者的本地优先桌面长篇写作工作站。核心原则是：作者负责裁决，AI只生成候选；所有作品、数据库、索引、日志、备份和配置保存在本机。
+WorldForge 是面向单个作者的本地优先桌面长篇写作工作站。核心原则：作者负责裁决，AI只生成候选；所有作品、数据库、索引、日志、备份和配置保存在本机。
 
 ## 产品定位
 
@@ -30,44 +30,28 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 4. 锁定、Revision、Hash、不可变Version、项目与路径边界由代码保证。
 5. AI只能提议，作者拥有正文、Canon和状态的最终裁决权。
 
-## V1.0核心功能
+## 当前已完成基线
 
-### 基础写作
+已完成并Verified：
 
-- 新建、打开、关闭、移动和最近项目。
-- 卷与章节增删改、排序、状态和目标字数。
-- Tiptap块级正文、中文输入、粘贴清理。
-- 800ms空闲自动保存、保存状态、字数统计、当前章查找。
-- 手动历史Version、章节定稿和恢复为新当前稿。
-- TXT/Markdown导入导出。
-- 数据损坏只读打开、恢复点和恢复副本。
+- Electron安全壳、Core生命周期、SQLite、Migration、IPC、TaskProtocol和测试底座。
+- 项目、卷章、Tiptap中文正文、自动保存、字数、查找、Version和只读恢复。
+- Block Patch、Revision、Hash、LockGuard、Candidate、Diff、冲突、采用、撤销和结构恢复。
+- 任务书、大纲、SceneBeat、实体、Canon、动态状态、时间线、知情、伏笔、人物弧光、StateProposal和EndingSnapshot。
+- React Renderer正式架构。
+- FTS5公共索引、项目词典和索引队列。
+- P0—P4约束包、时序过滤、来源和裁剪追溯。
+- OpenAI兼容、Anthropic和Custom Provider适配器、凭据隔离、端点安全和连接测试。
 
-### 编辑安全与版本
+## V1.0目标功能
 
-- Block Patch、Revision、SHA-256内容Hash。
-- UI与Core双层锁定。
-- Draft/Candidate/Version三层正文模型。
-- 中文结构Diff与字符Diff。
-- 原子采用、ConflictSet、ApplyRecord和整体撤销。
-- 回收站、拆章、并章和高风险结构恢复。
-
-### 规划、设定与连续性
-
-- 作品任务书、大纲树、SceneBeat。
-- 人物、地点、势力、道具、能力、规则、事件和自定义实体。
-- 静态Canon与动态EntityState分离。
-- 时间线、知情信息和伏笔生命周期。
-- 人物弧光和弧光里程碑。
-- StateProposal、EndingSnapshot和旧章返修失效传播。
+以下剩余目标统一由M4-04整体任务实施和验收：
 
 ### AI写作
 
-- OpenAI兼容、Anthropic及经批准的自定义适配器。
-- Electron `safeStorage`调用OS安全加密后端，数据库只保存`credentialRef`。
-- P0—P4约束包、FTS5检索、时序过滤和Token裁剪。
-- 版本化Prompt、结构化输出、Cleaner和Eval。
-- GenerationRun、真实阶段、流式、取消和partial Candidate。
-- 结构化T0多候选骨架、Skeleton/SceneBeat/直接目标三路径T1章节扩写。
+- 生产Prompt Registry、GenerationRun、真实阶段、流式、取消和partial Candidate。
+- 结构化T0多候选骨架。
+- Skeleton、SceneBeat、直接章节目标三种互斥T1路径。
 - 快速改写、结构性改写和多候选融合。
 - 候选全屏比较、块级/SceneBeat级采用和冲突处理。
 - Final Version状态提取、pending StateProposal和作者确认闭环。
@@ -76,14 +60,15 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 
 - 确定性、统计和AI语义校验。
 - StoryTodo与批注。
-- Draft/Version/Entity全项目FTS5搜索和仅限活动DraftBlock的安全批量替换。
-- 爽点密度、章末钩子、人工写作统计、更新节奏和黄金三章建议。
+- Draft/Version/Entity全项目FTS5搜索和活动DraftBlock安全批量替换。
+- 人工写作统计、爽点密度、章末钩子、更新节奏和黄金三章建议。
 - DOCX安全导入和TXT/Markdown/DOCX导出。
 - 日常滚动、重大操作、手动快照三轨备份。
 - 恢复到新目录和安全空间清理。
 
 ### UI与显示
 
+- 作者语言、继续写作、正文中心、设定结构化表单和结构操作可视化。
 - 新手/专业模式和自主/混合/AI初稿三条路径。
 - 写作、规划设定、候选校验等统一工作台。
 - 沉浸写作、状态仲裁和上下文帮助。
@@ -136,23 +121,28 @@ Final Version
 
 ## V1.0开发路线
 
-任务体系采用一任务一文件，共54张任务卡，分为M0—M8九阶段：
+V1历史规格保留54份任务文件；独立执行体系为34张任务。M0—M3与M4-01—M4-03已经Verified，全部剩余功能统一由M4-04推进：
 
 ```text
-M0 工程、安全与运行底座
-→ M1 基础写作MVP
-→ M2 编辑安全与版本核心
-→ M3 规划、设定、连续性与Renderer架构收口
-→ M4 检索与AI基础设施
-→ M5 作者体验、AI生成候选与状态提取
-→ M6 校验、搜索与交付
-→ M7 完整UI与体验整合
-→ M8 发布硬化与验收
+M0—M3 已完成
+→ M4-01 FTS 已完成
+→ M4-02 约束包 已完成
+→ M4-03 Provider 已完成
+→ M4-04 V1剩余功能整体实施与发布闭环
 ```
 
-M1是明确的基础产品门。即使不配置AI，作者也必须能够创建项目、建卷章、写作、自动保存、保存版本、导入导出和恢复。
+M4-04吸收原M4-05—M8-03全部要求，采用：
 
-M5首先执行`M5-00 作者工作流与产品体验收口`；该任务Verified前不得进入T0/T1等面向用户的AI生成实现。M5最终由`M5-06`补齐真实Provider状态提取与作者裁决接线。
+```text
+一个活动任务
+→ 一个正式分支
+→ 一个长期Draft PR
+→ 先读全部要求和全量代码完成整体规划
+→ 按内部阶段连续实施
+→ 每阶段原子提交、代码审计和回归
+→ 全部完成后一次转Ready
+→ 一次受控合并和整体Verified关闭
+```
 
 路线图：[`docs/roadmap/V1.0_ROADMAP.md`](./docs/roadmap/V1.0_ROADMAP.md)  
 任务索引：[`docs/tasks/TASK_INDEX.md`](./docs/tasks/TASK_INDEX.md)  
@@ -160,21 +150,19 @@ M5首先执行`M5-00 作者工作流与产品体验收口`；该任务Verified�
 
 ## 开发入口
 
-任何任务按以下顺序启动：
-
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ ACTIVE_TASK指向的独立任务卡
-→ 任务卡列出的专项文档
+→ M4-04唯一整体任务卡
+→ 被吸收需求来源和专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-当前活动任务由机器状态文件控制：
+当前活动任务：
 
-[`M4-03 Provider、凭据与连接测试`](./docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md)
+[`M4-04 WorldForge V1剩余功能整体实施与发布闭环`](./docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 
@@ -186,7 +174,7 @@ AGENTS.md
 pnpm release:check
 ```
 
-真实发布只允许从`main`执行，并同时要求输入版本与`package.json`一致、M8-03已经`Verified`。通过门禁后，工作流会在Linux、Windows和macOS分别打包，生成`SHA256SUMS.txt`，再创建不可覆盖的GitHub Release。当前M8-03仍为`Planned`，因此发布入口会明确失败而不会提前分发基础骨架。
+真实发布只允许从`main`执行。M4-04未Verified或P0、跨平台、数据安全与恢复门未关闭时，发布入口必须明确失败，不能提前分发未完成版本。
 
 ## 关键文档
 

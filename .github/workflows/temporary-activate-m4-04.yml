@@ -1,0 +1,137 @@
+name: Temporary Activate M4-04
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  activate:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Activate M4-04
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re
+
+          root = Path('.')
+          state_path = root / 'docs/tasks/ACTIVE_TASK.json'
+          state = json.loads(state_path.read_text())
+          state['authorization']['autoActivateNext'] = True
+          state['authorization']['modeAdjustedAt'] = '2026-07-26'
+          state['activeTask'] = {
+              'id': 'M4-04',
+              'status': 'IN_PROGRESS',
+              'source': 'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md',
+              'branch': 'work/m4-04-prompt-registry-output',
+              'startedAt': '2026-07-26',
+              'allowedPaths': [
+                  'packages/prompts/',
+                  'packages/contracts/',
+                  'evals/',
+                  'tests/unit/',
+                  'tests/integration/',
+                  'package.json',
+                  'pnpm-lock.yaml',
+                  'pnpm-workspace.yaml',
+                  'docs/tasks/ACTIVE_TASK.json',
+                  'docs/tasks/ACTIVE_TASK.md',
+                  'docs/tasks/TASK_INDEX.md',
+                  'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md',
+                  'docs/product/V1.0_TRACEABILITY_MATRIX.md',
+                  'docs/ai/PROMPT_AND_EVAL_SPEC.md',
+                  'docs/ai/PROVIDER_PROTOCOL.md',
+                  'docs/test-evidence/M4-04/',
+              ],
+              'forbiddenPaths': [],
+              'requiredDocs': [
+                  'AGENTS.md',
+                  'docs/PROJECT_EXECUTION_ENTRY.md',
+                  'docs/product/WORLDFORGE_V6.5_FULL_SPEC.md',
+                  'docs/decisions/IMPLEMENTATION_DECISIONS.md',
+                  'docs/ai/PROMPT_AND_EVAL_SPEC.md',
+                  'docs/ai/PROVIDER_PROTOCOL.md',
+                  'docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md',
+              ],
+              'verification': [
+                  'pnpm lint',
+                  'pnpm typecheck',
+                  'pnpm test',
+                  'pnpm test:security',
+                  'pnpm test:e2e',
+                  'pnpm test:unit',
+                  'pnpm test:integration',
+                  'pnpm test:eval',
+              ],
+          }
+          state.pop('verificationHold', None)
+          snapshot = state.get('lastImplementedTask')
+          if isinstance(snapshot, dict) and snapshot.get('id') == 'M4-03':
+              snapshot['activationDeferred'] = False
+              snapshot.pop('activationDeferredReason', None)
+              snapshot['activationResumedAt'] = '2026-07-26T00:07:29+08:00'
+          state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n')
+
+          card_path = root / 'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md'
+          card = card_path.read_text()
+          card, count = re.subn(r'^> 状态：Planned\s*$', '> 状态：In Progress  ', card, count=1, flags=re.M)
+          if count != 1:
+              raise SystemExit(f'M4-04 card status replacement count: {count}')
+          card_path.write_text(card)
+
+          index_path = root / 'docs/tasks/TASK_INDEX.md'
+          index = index_path.read_text()
+          index, count = re.subn(
+              r'^(\|\s*M4-04\s*\|[^\n]*\|\s*)Planned(\s*\|\s*)$',
+              r'\1In Progress\2',
+              index,
+              count=1,
+              flags=re.M,
+          )
+          if count != 1:
+              raise SystemExit(f'M4-04 index replacement count: {count}')
+          index_path.write_text(index)
+
+          summary_path = root / 'docs/tasks/M4_TASKS.md'
+          summary = summary_path.read_text()
+          old = '- M4-01—M4-03已完成终验并冻结；M4-04按作者指令保持Planned，未激活。'
+          new = '- M4-01—M4-03已完成终验并冻结；作者已取消暂缓指令，M4-04正式激活。'
+          if old not in summary:
+              raise SystemExit('M4 task summary hold line not found')
+          summary_path.write_text(summary.replace(old, new, 1))
+
+          trace_path = root / 'docs/product/V1.0_TRACEABILITY_MATRIX.md'
+          trace = trace_path.read_text()
+          for req in ('REQ-027', 'REQ-031'):
+              pattern = rf'^(\| {req} \|.*?\| )Planned(\s*\|\s*)$'
+              trace, count = re.subn(pattern, rf'\1In Progress\2', trace, count=1, flags=re.M)
+              if count != 1:
+                  raise SystemExit(f'{req} trace replacement count: {count}')
+          trace_path.write_text(trace)
+          PY
+          node scripts/taskctl.mjs sync
+          node .github/governance/verification-hold-taskctl.mjs validate
+          git diff --check
+      - name: Commit activation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/tasks/ACTIVE_TASK.json docs/tasks/ACTIVE_TASK.md docs/tasks/TASK_INDEX.md docs/tasks/M4_TASKS.md docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md docs/product/V1.0_TRACEABILITY_MATRIX.md
+          git commit -m "治理：解除暂缓并激活M4-04"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"

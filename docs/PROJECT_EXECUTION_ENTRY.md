@@ -1,6 +1,6 @@
 # WorldForge 项目执行统一入口
 
-> 状态：Frozen  
+> 状态：Active  
 > 面向：Codex、开发者、审查者、测试人员
 
 ## 1. 唯一启动顺序
@@ -10,106 +10,145 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ ACTIVE_TASK指向的独立任务卡
-→ 任务卡列出的专项唯一真源
+→ M4-04唯一整体任务卡
+→ 任务卡列出的原需求来源与专项真源
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-`ACTIVE_TASK.json`是机器可读真源，`ACTIVE_TASK.md`是其镜像。当前按作者2026-07-17最新指令处于`implementation-pr`模式：一张任务卡的真实端到端代码、必要专项测试和远端质量门通过后，在独立非`main`分支标记Implemented并登记延期验证清单；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过并受控合并后，才可顺序推进下一张实现依赖已满足的任务。证据打包、截图、人工/穷尽验收、追踪Verified和最终关闭可在明确登记后延期，但任一代码、测试、安全、数据边界或Migration失败仍立即阻断。
+`ACTIVE_TASK.json`是机器可读真源，`ACTIVE_TASK.md`是生成镜像。
 
-## 2. 权威与任务路线
+作者最新指令已将V1剩余功能收口为单一任务：`M4-04 WorldForge V1剩余功能整体实施与发布闭环`。原M4-05—M8-03保留为详细需求来源，不再单独激活、建立分支、PR或关闭。
+
+## 2. 当前执行模式
+
+```text
+一个活动任务：M4-04
+→ 一个正式分支：work/m4-04-v1-integrated-delivery
+→ 一个长期Draft PR
+→ 先完成全量代码与需求审计
+→ 完成整体实施规划
+→ 按内部阶段连续实现
+→ 每阶段原子提交、代码审计与受影响回归
+→ 全部V1功能完成后一次转Ready
+→ 六项永久门禁通过后一次受控合并
+→ 一次整体Verified关闭
+```
+
+内部阶段不属于独立任务，不改变`ACTIVE_TASK`。任何代码、测试、安全、数据边界、Migration或恢复失败立即阻断。
+
+## 3. 权威顺序
 
 ```text
 作者最新明确指令
-> ACTIVE_TASK已批准范围与验收
-> docs/product/WORLDFORGE_V6.5_FULL_SPEC.md（产品原则、总体架构和功能边界）
-> docs/product/V1_TASK_SYSTEM_REBASE.md（任务阶段、编号、依赖和阶段门）
-> 对应专项唯一真源、ADR和IMPLEMENTATION_DECISIONS
+> ACTIVE_TASK批准范围与M4-04任务卡
+> docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
+> 冻结的专项规格、ADR、Schema、契约、UI、安全与P0验收
+> docs/decisions/IMPLEMENTATION_DECISIONS.md
 > 现有实现
 ```
 
-完整规格已经直接采用M0—M8九阶段，并将Schema、IPC、AI、UI和P0验收路由到对应专项唯一真源。任务编号和执行依赖只按重排基线、任务索引和路线图判断。
+发现冲突时必须在M4-04整体规划中记录冲突来源、受影响代码、数据兼容和解决方案，禁止静默选择。
 
-## 3. 九阶段
+## 4. 已完成基线与剩余交付
 
-| 阶段 | 退出结果 |
+### 已完成并冻结
+
+| 范围 | 结果 |
 |---|---|
-| M0 工程、安全与运行底座 | 应用、Core、SQLite、IPC、测试和关键Spike可运行 |
-| M1 基础写作MVP | 无AI完成项目、卷章、写作、保存、版本、导入导出和恢复 |
-| M2 编辑安全与版本核心 | Patch、Revision、Hash、锁定、Candidate、采用、撤销和结构恢复 |
-| M3 规划、设定与连续性 | 大纲、SceneBeat、Canon、状态、时间线、知情、伏笔、弧光和尾快照 |
-| M4 检索与AI基础设施 | FTS、约束包、Provider、Prompt、GenerationRun和Eval |
-| M5 AI生成与候选审阅 | T0/T1、改写、融合、比较、冲突、采用和partial |
-| M6 校验、搜索与交付 | 校验、搜索替换、节奏、DOCX和三轨备份 |
-| M7 完整UI与体验整合 | 模式、工作台、状态、主题、无障碍和响应式 |
-| M8 发布硬化与验收 | 安全、数据、性能、E2E、跨平台、P0和文档关闭 |
+| M0 | 工程、安全、SQLite、IPC、TaskProtocol、测试和AI Spike |
+| M1 | 无AI基础写作、保存、Version、文本导入导出和恢复 |
+| M2 | Patch、Revision、Hash、LockGuard、Candidate、采用、撤销和结构恢复 |
+| M3 | 规划、设定、状态、连续性、StateProposal、快照和React Renderer |
+| M4-01 | FTS5公共索引、队列和项目词典 |
+| M4-02 | 可追溯P0—P4约束包与裁剪 |
+| M4-03 | Provider、凭据、端点安全和连接测试 |
 
-M1未Verified前，后期AI、弧光、节奏和主题骨架不得计为主线完成度。
+历史任务卡、证据和Migration不回写。扩展由M4-04以追加兼容方式承接。
 
-## 4. 总览入口
+### M4-04内部阶段
+
+```text
+1. 全量基线审计与整体规划
+2. AI公共合同、Prompt与GenerationRun
+3. 作者体验、T0/T1、改写、融合、审阅与采用
+4. 状态提取、确定性校验、AI语义与人物弧光校验
+5. 搜索替换、写作统计、DOCX、导出与三轨恢复
+6. 向导、统一工作台、主题、无障碍、硬化与发布关闭
+```
+
+## 5. 总览入口
 
 | 问题 | 文档 |
 |---|---|
+| 当前唯一任务与整体规划 | `docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md` |
+| 当前授权 | `docs/tasks/ACTIVE_TASK.json`、`docs/tasks/ACTIVE_TASK.md` |
+| 独立任务与吸收关系 | `docs/tasks/TASK_INDEX.md` |
 | 产品原则与完整边界 | `docs/product/WORLDFORGE_V6.5_FULL_SPEC.md` |
-| V1.0 P0/P1和V1.5范围 | `docs/product/V1_SCOPE_AND_ACCEPTANCE.md` |
-| 功能ID与版本归属 | `docs/product/FUNCTION_CATALOG.md` |
-| 任务为何重排 | `docs/product/V1_TASK_SYSTEM_REBASE.md` |
-| 当前允许做什么 | `docs/tasks/ACTIVE_TASK.json`、`docs/tasks/ACTIVE_TASK.md` |
-| 全部任务顺序 | `docs/tasks/TASK_INDEX.md` |
-| 阶段路线 | `docs/roadmap/V1.0_ROADMAP.md` |
-| 需求如何映射 | `docs/product/V1.0_TRACEABILITY_MATRIX.md` |
+| V1.0范围 | `docs/product/V1_SCOPE_AND_ACCEPTANCE.md` |
+| 功能ID | `docs/product/FUNCTION_CATALOG.md` |
+| 任务体系变化 | `docs/product/V1_TASK_SYSTEM_REBASE.md` |
+| 路线与内部阶段 | `docs/roadmap/V1.0_ROADMAP.md` |
+| 需求追踪 | `docs/product/V1.0_TRACEABILITY_MATRIX.md` |
 | 数据库 | `docs/database/` |
 | IPC和事件 | `docs/contracts/` |
 | AI和Eval | `docs/ai/` |
 | UI与交互 | `docs/ui/` |
 | 安全与隐私 | `SECURITY.md`、`docs/security/` |
 | 测试与验收 | `docs/testing/` |
-| 冻结实现选择 | `docs/decisions/IMPLEMENTATION_DECISIONS.md` |
-| 完整执行闭环 | `docs/process/CODEX_EXECUTION_PLAYBOOK.md` |
-| 自动化执行与主线门禁 | `docs/process/DEVELOPMENT_AUTOMATION.md` |
+| 实现选择 | `docs/decisions/IMPLEMENTATION_DECISIONS.md` |
+| 执行闭环 | `docs/process/CODEX_EXECUTION_PLAYBOOK.md` |
+| 自动化与门禁 | `docs/process/DEVELOPMENT_AUTOMATION.md` |
 
-## 5. 标准执行流程
+## 6. 标准实施闭环
 
 ```text
-确认活动任务与Verified依赖
-→ 读取任务卡和专项唯一真源
-→ 检查真实代码、测试、Migration和最近提交
-→ 在ACTIVE_TASK补齐执行附件
-→ 输出目标、非目标、路径和影响
-→ 建立失败测试或稳定复现
-→ contracts/domain
-→ Migration/Repository
+读取全部被吸收要求和专项真源
+→ 审计全量现有代码、测试、Migration和最近提交
+→ 填写M4-04整体规划执行附件
+→ 冻结共享合同、Migration、IPC、用户路径和测试矩阵
+→ 失败测试或稳定复现
+→ Contracts / Domain
+→ Migration / Repository
 → Core Use Case
-→ Main/Preload
-→ 最小Renderer/UI
-→ 失败、取消、冲突、只读和恢复
-→ 自动化与人工验收
-→ 独立复查
-→ 文档、追踪矩阵和证据
-→ 关闭任务并按授权模式激活下一任务
+→ Main / Preload
+→ Renderer可操作闭环
+→ 失败、取消、冲突、只读、恢复与重启
+→ 受影响自动化与人工验收
+→ 横向、纵向独立复查
+→ 更新任务卡计划、文档、追踪与统一证据
+→ 进入下一内部阶段
 ```
 
-## 6. 强制规则
+M4-04最终阶段完成后运行全量矩阵并一次关闭，不自动激活下一任务。
 
-- 不跨活动任务范围。
-- 不引用尚未建立的未来表、模型、命令或恢复能力。
-- Planned任务卡激活时必须补齐`TASK_TEMPLATE.md`规定的执行附件。
-- 不以Mock、TODO、空函数和固定成功冒充完成。
+## 7. 强制规则
+
+- 编码前必须完成M4-04整体规划执行附件。
+- 不修改已完成任务卡和历史Migration。
+- 不建立第二套Prompt、TaskProtocol、Candidate采用、导入协调器、RecoveryService、模式状态或主题状态。
+- 每项用户功能必须形成Contracts→Core→Main→Preload→Renderer→测试纵向闭环。
+- 未完整接通的功能不得显示可用，不得写入半成品权威数据。
 - AI输出不得绕过Candidate或StateProposal进入权威数据。
-- Prompt不得代替锁定、Revision、Hash、项目和路径边界。
-- 用户功能必须在本任务内完成最小可操作UI。
-- `continuous-mainline`只能在当前任务Verified后推进；`implementation-mainline`只能在当前任务真实编程完成、必要门禁通过并登记延期验证后推进；`implementation-pr`在此基础上还要求独立分支、完整PR门禁和受控合并。所有模式都禁止并行任务、跳过失败或把Implemented冒充Verified。
+- Prompt不得替代LockGuard、Revision、Hash、项目和路径边界。
+- 无AI写作、保存、Version、导出和恢复始终必须可用。
+- 所有声明通过的测试、构建和发布结论必须有真实记录。
 
-## 7. 证据
+## 8. 证据
+
+统一目录：
 
 ```text
-docs/test-evidence/<TASK-ID>/
-├── summary.md
-├── commands.txt
-├── test-results/
-├── screenshots/
-├── performance.json
-└── known-risks.md
+docs/test-evidence/M4-04/
+├─ summary.md
+├─ commands.txt
+├─ known-risks.md
+├─ manifest.json
+├─ implementation-plan.md
+├─ test-matrix.md
+├─ migration-report.md
+├─ security-report.md
+├─ performance-report.md
+└─ release-report.md
 ```
 
-`Implemented`表示真实接通；只有自动化、人工验收和证据完成后才标记`Verified`。
+原被吸收任务不再独立建立Evidence关闭。其目标必须映射到M4-04统一证据、追踪矩阵和P0验收。

@@ -28,7 +28,7 @@ afterEach(async () => {
 });
 
 describe('M4 integrated Provider hardening', () => {
-  it('serializes one Provider, keeps other Providers concurrent, and deduplicates mutation retries', async () => {
+  it('serializes one Provider, keeps other Providers concurrent, and deduplicates retries', async () => {
     const coordinator = new ProviderOperationCoordinator();
     const order: string[] = [];
     let releaseFirst!: () => void;
@@ -67,7 +67,7 @@ describe('M4 integrated Provider hardening', () => {
     expect(order).toEqual(['a:first:start', 'b:first', 'a:first:end', 'a:second']);
   });
 
-  it('rejects cross-Provider credential reads and deletes without damaging the owner record', async () => {
+  it('enforces Provider ownership and replaces credentials without changing references', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-provider-owner-'));
     temporaryDirectories.push(root);
     const broker = new CredentialBroker(safeStorage, path.join(root, 'credentials.json'));
@@ -83,11 +83,12 @@ describe('M4 integrated Provider hardening', () => {
     await expect(broker.removeForProvider('provider-b', reference)).rejects.toThrow(
       'CREDENTIAL_PROVIDER_MISMATCH',
     );
-    await expect(broker.resolveForProvider('provider-a', reference)).resolves.toBe('secret-a');
+    await broker.replaceForProvider('provider-a', reference, 'secret-b');
+    await expect(broker.resolveForProvider('provider-a', reference)).resolves.toBe('secret-b');
     await expect(broker.removeForProvider('provider-a', reference)).resolves.toBe(true);
   });
 
-  it('rejects declared and streamed Provider responses that exceed the byte budget', async () => {
+  it('rejects declared, streamed, and undelimited SSE responses over their budgets', async () => {
     const declaredFetch: typeof fetch = async () =>
       new Response('oversized', {
         status: 200,
@@ -112,6 +113,22 @@ describe('M4 integrated Provider hardening', () => {
     const streamed = createBoundedProviderFetch(streamedFetch, 8);
     const response = await streamed('https://provider.example');
     await expect(response.arrayBuffer()).rejects.toMatchObject({
+      code: 'AI_OUTPUT_INVALID_008',
+    });
+
+    const sseFetch: typeof fetch = async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data:123456789'));
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'text/event-stream' } },
+      );
+    const boundedSse = createBoundedProviderFetch(sseFetch, 64, 8);
+    const sseResponse = await boundedSse('https://provider.example');
+    await expect(sseResponse.text()).rejects.toMatchObject({
       code: 'AI_OUTPUT_INVALID_008',
     });
   });

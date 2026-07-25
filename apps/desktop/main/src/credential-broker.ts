@@ -55,6 +55,10 @@ function isCredentialFile(value: unknown): value is CredentialFile {
   );
 }
 
+function assertProviderOwner(record: CredentialRecord, providerId: string): void {
+  if (record.providerId !== providerId) throw new Error('CREDENTIAL_PROVIDER_MISMATCH');
+}
+
 export class CredentialBroker {
   readonly #safeStorage: SafeStorageAdapter;
   readonly #filePath: string;
@@ -137,10 +141,44 @@ export class CredentialBroker {
     });
   }
 
+  replaceForProvider(providerId: string, credentialRef: string, credential: string): Promise<void> {
+    this.#assertSecureBackend();
+    const validProviderId = ProviderIdSchema.parse(providerId);
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
+    if (!credential) throw new Error('CREDENTIAL_EMPTY');
+    return this.#enqueueMutation(async () => {
+      const file = await this.#read();
+      const record = file.records[validCredentialRef];
+      if (!record) throw new Error('CREDENTIAL_NOT_FOUND');
+      assertProviderOwner(record, validProviderId);
+      const encrypted = this.#safeStorage.encryptString(credential);
+      await this.#write({
+        version: 1,
+        records: {
+          ...file.records,
+          [validCredentialRef]: {
+            ...record,
+            ciphertext: encrypted.toString('base64'),
+          },
+        },
+      });
+    });
+  }
+
   async has(credentialRef: string): Promise<boolean> {
     const validCredentialRef = CredentialRefSchema.parse(credentialRef);
     await this.#waitForMutations();
     return Boolean((await this.#read()).records[validCredentialRef]);
+  }
+
+  async hasForProvider(providerId: string, credentialRef: string): Promise<boolean> {
+    const validProviderId = ProviderIdSchema.parse(providerId);
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
+    await this.#waitForMutations();
+    const record = (await this.#read()).records[validCredentialRef];
+    if (!record) return false;
+    assertProviderOwner(record, validProviderId);
+    return true;
   }
 
   remove(credentialRef: string): Promise<boolean> {
@@ -155,12 +193,38 @@ export class CredentialBroker {
     });
   }
 
+  removeForProvider(providerId: string, credentialRef: string): Promise<boolean> {
+    const validProviderId = ProviderIdSchema.parse(providerId);
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
+    return this.#enqueueMutation(async () => {
+      const file = await this.#read();
+      const record = file.records[validCredentialRef];
+      if (!record) return false;
+      assertProviderOwner(record, validProviderId);
+      const records = { ...file.records };
+      delete records[validCredentialRef];
+      await this.#write({ version: 1, records });
+      return true;
+    });
+  }
+
   async resolve(credentialRef: string): Promise<string | null> {
     this.#assertSecureBackend();
     const validCredentialRef = CredentialRefSchema.parse(credentialRef);
     await this.#waitForMutations();
     const record = (await this.#read()).records[validCredentialRef];
     if (!record) return null;
+    return this.#safeStorage.decryptString(Buffer.from(record.ciphertext, 'base64'));
+  }
+
+  async resolveForProvider(providerId: string, credentialRef: string): Promise<string | null> {
+    this.#assertSecureBackend();
+    const validProviderId = ProviderIdSchema.parse(providerId);
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
+    await this.#waitForMutations();
+    const record = (await this.#read()).records[validCredentialRef];
+    if (!record) return null;
+    assertProviderOwner(record, validProviderId);
     return this.#safeStorage.decryptString(Buffer.from(record.ciphertext, 'base64'));
   }
 }

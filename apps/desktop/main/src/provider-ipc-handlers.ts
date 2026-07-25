@@ -11,12 +11,14 @@ import {
   type CommandFailure,
   type CommandResult,
   type ErrorCode,
+  type ProviderConfig,
 } from '@worldforge/contracts';
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import type { CredentialBroker } from './credential-broker.js';
 import type { PrivacyLogger } from './privacy-logger.js';
+import { ProviderOperationCoordinator } from './provider-operation-coordinator.js';
 
 interface ProviderIpcHandlerOptions {
   readonly ipcMain: IpcMain;
@@ -24,6 +26,7 @@ interface ProviderIpcHandlerOptions {
   readonly credentialBroker: CredentialBroker;
   readonly rendererUrl: string;
   readonly logger: PrivacyLogger;
+  readonly coordinator?: ProviderOperationCoordinator;
 }
 
 const PROVIDER_CHANNELS = [
@@ -74,7 +77,7 @@ function providerFailure(requestId: string, code: ErrorCode): CommandFailure {
       userAction: '刷新Provider列表或重新保存配置。',
     },
     AI_CREDENTIAL_MISSING_002: {
-      message: 'Provider凭据缺失或安全存储不可用。',
+      message: 'Provider凭据缺失、归属不匹配或安全存储不可用。',
       retryable: false,
       userAction: '重新保存凭据；本地无密钥服务可清除凭据后重试。',
     },
@@ -121,7 +124,114 @@ function providerFailure(requestId: string, code: ErrorCode): CommandFailure {
   return failure(requestId, code, resolved.message, resolved.retryable, resolved.userAction);
 }
 
+function supportsProviderOwnership(broker: CredentialBroker): boolean {
+  const candidate = broker as CredentialBroker & {
+    hasForProvider?: unknown;
+    removeForProvider?: unknown;
+    resolveForProvider?: unknown;
+  };
+  return (
+    typeof candidate.hasForProvider === 'function' &&
+    typeof candidate.removeForProvider === 'function' &&
+    typeof candidate.resolveForProvider === 'function'
+  );
+}
+
+function supportsAtomicCredentialReplacement(broker: CredentialBroker): boolean {
+  return (
+    typeof (broker as CredentialBroker & { replaceForProvider?: unknown }).replaceForProvider ===
+    'function'
+  );
+}
+
+/** Compatibility is limited to legacy test doubles; the concrete broker always uses owner checks. */
+async function hasCredentialForProvider(
+  broker: CredentialBroker,
+  providerId: string,
+  credentialRef: string,
+): Promise<boolean> {
+  const candidate = broker as CredentialBroker & {
+    hasForProvider?: (owner: string, reference: string) => Promise<boolean>;
+    has?: (reference: string) => Promise<boolean>;
+  };
+  if (candidate.hasForProvider) {
+    return candidate.hasForProvider.call(broker, providerId, credentialRef);
+  }
+  return candidate.has ? candidate.has.call(broker, credentialRef) : true;
+}
+
+async function removeCredentialForProvider(
+  broker: CredentialBroker,
+  providerId: string,
+  credentialRef: string,
+): Promise<boolean> {
+  const owned = (
+    broker as CredentialBroker & {
+      removeForProvider?: (owner: string, reference: string) => Promise<boolean>;
+    }
+  ).removeForProvider;
+  return owned ? owned.call(broker, providerId, credentialRef) : broker.remove(credentialRef);
+}
+
+async function replaceCredentialForProvider(
+  broker: CredentialBroker,
+  providerId: string,
+  credentialRef: string,
+  credential: string,
+): Promise<void> {
+  const owned = (
+    broker as CredentialBroker & {
+      replaceForProvider?: (owner: string, reference: string, replacement: string) => Promise<void>;
+    }
+  ).replaceForProvider;
+  if (!owned) throw new Error('CREDENTIAL_REPLACE_UNAVAILABLE');
+  await owned.call(broker, providerId, credentialRef, credential);
+}
+
+async function resolveCredentialForProvider(
+  broker: CredentialBroker,
+  providerId: string,
+  credentialRef: string,
+): Promise<string | null> {
+  const owned = (
+    broker as CredentialBroker & {
+      resolveForProvider?: (owner: string, reference: string) => Promise<string | null>;
+    }
+  ).resolveForProvider;
+  return owned ? owned.call(broker, providerId, credentialRef) : broker.resolve(credentialRef);
+}
+
+function providerConfigInput(config: ProviderConfig) {
+  return {
+    id: config.id,
+    name: config.name,
+    protocol: config.protocol,
+    baseUrl: config.baseUrl,
+    model: config.model,
+    credentialRef: config.credentialRef,
+    timeoutMs: config.timeoutMs,
+    options: config.options,
+  };
+}
+
+async function restoreProviderConfig(
+  options: ProviderIpcHandlerOptions,
+  config: ProviderConfig,
+): Promise<boolean> {
+  const restored = await options.supervisor.invokeProviderOperation(randomUUID(), {
+    operation: PROVIDER_CORE_OPERATIONS.upsert,
+    config: providerConfigInput(config),
+  });
+  if (restored.ok && restored.operation === PROVIDER_CORE_OPERATIONS.upsert) return true;
+  await options.logger.log('error', 'provider.config.rollback.failed', {
+    providerId: config.id,
+    errorCode: restored.ok ? 'COMMON_INTERNAL_999' : restored.errorCode,
+  });
+  return false;
+}
+
 export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions): () => void {
+  const coordinator = options.coordinator ?? new ProviderOperationCoordinator();
   const rejectUntrusted = (event: IpcMainInvokeEvent, raw: unknown): CommandFailure | null => {
     if (event.senderFrame?.url === options.rendererUrl) return null;
     return failure(
@@ -153,60 +263,136 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
     const parsed = ProviderSaveCommandSchema.safeParse(raw);
     if (!parsed.success) return invalidRequest(raw);
     const requestId = parsed.data.requestId;
-    const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.get,
-      providerId: parsed.data.payload.config.id,
-    });
-    if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
-    if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    const existing = existingResult.data.provider;
-    let credentialRef = existing?.credentialRef ?? null;
-    let createdCredentialRef: string | null = null;
-    try {
-      if (parsed.data.payload.credential.action === 'replace') {
-        createdCredentialRef = await options.credentialBroker.store(
-          parsed.data.payload.config.id,
-          parsed.data.payload.credential.credential,
-        );
-        credentialRef = createdCredentialRef;
-      } else if (parsed.data.payload.credential.action === 'remove') {
-        credentialRef = null;
+    const providerId = parsed.data.payload.config.id;
+    return coordinator.runMutation(providerId, requestId, 'save', async () => {
+      const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
+        operation: PROVIDER_CORE_OPERATIONS.get,
+        providerId,
+      });
+      if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
+      if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
+        return providerFailure(requestId, 'COMMON_INTERNAL_999');
       }
-    } catch {
-      return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
-    }
-
-    const saved = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.upsert,
-      config: { ...parsed.data.payload.config, credentialRef },
-    });
-    if (!saved.ok || saved.operation !== PROVIDER_CORE_OPERATIONS.upsert) {
-      if (createdCredentialRef) {
+      const existing = existingResult.data.provider;
+      if (parsed.data.payload.credential.action === 'preserve' && existing?.credentialRef) {
         try {
-          await options.credentialBroker.remove(createdCredentialRef);
+          if (
+            !(await hasCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              existing.credentialRef,
+            ))
+          ) {
+            return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
+          }
         } catch {
-          await options.logger.log('warn', 'credential.rollback.failed', {
-            providerId: parsed.data.payload.config.id,
-            errorCode: 'AI_CREDENTIAL_MISSING_002',
-          });
+          return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
         }
       }
-      return providerFailure(requestId, saved.ok ? 'COMMON_INTERNAL_999' : saved.errorCode);
-    }
 
-    if (existing?.credentialRef && existing.credentialRef !== credentialRef) {
+      let credentialRef = existing?.credentialRef ?? null;
+      let createdCredentialRef: string | null = null;
+      let replacedCredential: string | null = null;
       try {
-        await options.credentialBroker.remove(existing.credentialRef);
+        if (parsed.data.payload.credential.action === 'replace') {
+          if (
+            existing?.credentialRef &&
+            supportsAtomicCredentialReplacement(options.credentialBroker)
+          ) {
+            replacedCredential = await resolveCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              existing.credentialRef,
+            );
+            if (!replacedCredential) {
+              return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
+            }
+            await replaceCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              existing.credentialRef,
+              parsed.data.payload.credential.credential,
+            );
+          } else {
+            createdCredentialRef = await options.credentialBroker.store(
+              providerId,
+              parsed.data.payload.credential.credential,
+            );
+            credentialRef = createdCredentialRef;
+          }
+        } else if (parsed.data.payload.credential.action === 'remove') {
+          credentialRef = null;
+        }
       } catch {
-        await options.logger.log('warn', 'credential.cleanup.failed', {
-          providerId: parsed.data.payload.config.id,
-          errorCode: 'AI_CREDENTIAL_MISSING_002',
-        });
+        return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
       }
-    }
-    return success(requestId, saved.data);
+
+      const saved = await options.supervisor.invokeProviderOperation(requestId, {
+        operation: PROVIDER_CORE_OPERATIONS.upsert,
+        config: { ...parsed.data.payload.config, credentialRef },
+      });
+      if (!saved.ok || saved.operation !== PROVIDER_CORE_OPERATIONS.upsert) {
+        if (existing?.credentialRef && replacedCredential) {
+          try {
+            await replaceCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              existing.credentialRef,
+              replacedCredential,
+            );
+          } catch {
+            await options.logger.log('error', 'credential.rollback.failed', {
+              providerId,
+              errorCode: 'AI_CREDENTIAL_MISSING_002',
+            });
+          }
+        }
+        if (createdCredentialRef) {
+          try {
+            await removeCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              createdCredentialRef,
+            );
+          } catch {
+            await options.logger.log('warn', 'credential.rollback.failed', {
+              providerId,
+              errorCode: 'AI_CREDENTIAL_MISSING_002',
+            });
+          }
+        }
+        return providerFailure(requestId, saved.ok ? 'COMMON_INTERNAL_999' : saved.errorCode);
+      }
+
+      if (parsed.data.payload.credential.action === 'remove' && existing?.credentialRef) {
+        try {
+          const removed = await removeCredentialForProvider(
+            options.credentialBroker,
+            providerId,
+            existing.credentialRef,
+          );
+          if (!removed) throw new Error('CREDENTIAL_NOT_FOUND');
+        } catch {
+          if (!supportsProviderOwnership(options.credentialBroker)) {
+            await options.logger.log('warn', 'credential.cleanup.failed', {
+              providerId,
+              errorCode: 'AI_CREDENTIAL_MISSING_002',
+            });
+            return success(requestId, saved.data);
+          }
+          const restored = await restoreProviderConfig(options, existing);
+          await options.logger.log('error', 'credential.cleanup.failed', {
+            providerId,
+            errorCode: 'AI_CREDENTIAL_MISSING_002',
+          });
+          return providerFailure(
+            requestId,
+            restored ? 'AI_CREDENTIAL_MISSING_002' : 'COMMON_INTERNAL_999',
+          );
+        }
+      }
+      return success(requestId, saved.data);
+    });
   });
 
   options.ipcMain.handle(IPC_CHANNELS.providerRemove, async (event, raw) => {
@@ -215,33 +401,69 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
     const parsed = ProviderRemoveCommandSchema.safeParse(raw);
     if (!parsed.success) return invalidRequest(raw);
     const requestId = parsed.data.requestId;
-    const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.get,
-      providerId: parsed.data.payload.providerId,
-    });
-    if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
-    if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    const removed = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.remove,
-      providerId: parsed.data.payload.providerId,
-    });
-    if (!removed.ok) return providerFailure(requestId, removed.errorCode);
-    if (removed.operation !== PROVIDER_CORE_OPERATIONS.remove) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    if (removed.data.removed && existingResult.data.provider?.credentialRef) {
-      try {
-        await options.credentialBroker.remove(existingResult.data.provider.credentialRef);
-      } catch {
-        await options.logger.log('warn', 'credential.cleanup.failed', {
-          providerId: parsed.data.payload.providerId,
-          errorCode: 'AI_CREDENTIAL_MISSING_002',
-        });
+    const providerId = parsed.data.payload.providerId;
+    return coordinator.runMutation(providerId, requestId, 'remove', async () => {
+      const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
+        operation: PROVIDER_CORE_OPERATIONS.get,
+        providerId,
+      });
+      if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
+      if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
+        return providerFailure(requestId, 'COMMON_INTERNAL_999');
       }
-    }
-    return success(requestId, removed.data);
+      const existing = existingResult.data.provider;
+      if (existing?.credentialRef) {
+        try {
+          if (
+            !(await hasCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              existing.credentialRef,
+            ))
+          ) {
+            return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
+          }
+        } catch {
+          return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
+        }
+      }
+      const removed = await options.supervisor.invokeProviderOperation(requestId, {
+        operation: PROVIDER_CORE_OPERATIONS.remove,
+        providerId,
+      });
+      if (!removed.ok) return providerFailure(requestId, removed.errorCode);
+      if (removed.operation !== PROVIDER_CORE_OPERATIONS.remove) {
+        return providerFailure(requestId, 'COMMON_INTERNAL_999');
+      }
+      if (removed.data.removed && existing?.credentialRef) {
+        try {
+          const credentialRemoved = await removeCredentialForProvider(
+            options.credentialBroker,
+            providerId,
+            existing.credentialRef,
+          );
+          if (!credentialRemoved) throw new Error('CREDENTIAL_NOT_FOUND');
+        } catch {
+          if (!supportsProviderOwnership(options.credentialBroker)) {
+            await options.logger.log('warn', 'credential.cleanup.failed', {
+              providerId,
+              errorCode: 'AI_CREDENTIAL_MISSING_002',
+            });
+            return success(requestId, removed.data);
+          }
+          const restored = await restoreProviderConfig(options, existing);
+          await options.logger.log('error', 'credential.cleanup.failed', {
+            providerId,
+            errorCode: 'AI_CREDENTIAL_MISSING_002',
+          });
+          return providerFailure(
+            requestId,
+            restored ? 'AI_CREDENTIAL_MISSING_002' : 'COMMON_INTERNAL_999',
+          );
+        }
+      }
+      return success(requestId, removed.data);
+    });
   });
 
   options.ipcMain.handle(IPC_CHANNELS.providerTestConnection, async (event, raw) => {
@@ -250,35 +472,42 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
     const parsed = ProviderTestConnectionCommandSchema.safeParse(raw);
     if (!parsed.success) return invalidRequest(raw);
     const requestId = parsed.data.requestId;
-    const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.get,
-      providerId: parsed.data.payload.providerId,
-    });
-    if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
-    if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    const config = existingResult.data.provider;
-    if (!config) return providerFailure(requestId, 'AI_PROVIDER_NOT_CONFIGURED_001');
-    let credential: string | null = null;
-    if (config.credentialRef) {
-      try {
-        credential = await options.credentialBroker.resolve(config.credentialRef);
-      } catch {
-        return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
+    const providerId = parsed.data.payload.providerId;
+    return coordinator.runExclusive(providerId, async () => {
+      const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
+        operation: PROVIDER_CORE_OPERATIONS.get,
+        providerId,
+      });
+      if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
+      if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
+        return providerFailure(requestId, 'COMMON_INTERNAL_999');
       }
-      if (!credential) return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
-    }
-    const result = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.testConnection,
-      config,
-      credential,
+      const config = existingResult.data.provider;
+      if (!config) return providerFailure(requestId, 'AI_PROVIDER_NOT_CONFIGURED_001');
+      let credential: string | null = null;
+      if (config.credentialRef) {
+        try {
+          credential = await resolveCredentialForProvider(
+            options.credentialBroker,
+            providerId,
+            config.credentialRef,
+          );
+        } catch {
+          return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
+        }
+        if (!credential) return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
+      }
+      const result = await options.supervisor.invokeProviderOperation(requestId, {
+        operation: PROVIDER_CORE_OPERATIONS.testConnection,
+        config,
+        credential,
+      });
+      if (!result.ok) return providerFailure(requestId, result.errorCode);
+      if (result.operation !== PROVIDER_CORE_OPERATIONS.testConnection) {
+        return providerFailure(requestId, 'COMMON_INTERNAL_999');
+      }
+      return success(requestId, result.data);
     });
-    if (!result.ok) return providerFailure(requestId, result.errorCode);
-    if (result.operation !== PROVIDER_CORE_OPERATIONS.testConnection) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    return success(requestId, result.data);
   });
 
   return () => {

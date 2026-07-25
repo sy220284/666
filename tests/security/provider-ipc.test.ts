@@ -124,6 +124,9 @@ function harness() {
     remove: vi.fn(async () => true),
     has: vi.fn(async () => true),
     resolve: vi.fn(async () => secret),
+    hasForProvider: vi.fn(async () => true),
+    removeForProvider: vi.fn(async () => true),
+    resolveForProvider: vi.fn(async () => secret),
   } as unknown as CredentialBroker;
   const log = vi.fn();
   registerIpcHandlers({
@@ -196,7 +199,10 @@ describe('M4-03 Provider IPC security boundary', () => {
       command: APP_COMMANDS.providerTestConnection,
       payload: { providerId: stored.id },
     });
-    expect(subject.credentialBroker.resolve).toHaveBeenCalledWith(credentialRef);
+    expect(subject.credentialBroker.resolveForProvider).toHaveBeenCalledWith(
+      stored.id,
+      credentialRef,
+    );
     const testOperation = subject.operations.find(
       (operation) => operation.operation === PROVIDER_CORE_OPERATIONS.testConnection,
     );

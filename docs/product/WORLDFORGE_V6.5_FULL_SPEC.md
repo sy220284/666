@@ -14,7 +14,8 @@
 |---|---|
 | V1.0/P1/V1.5范围 | `V1_SCOPE_AND_ACCEPTANCE.md` |
 | 功能ID和功能关系 | `FUNCTION_CATALOG.md` |
-| 任务阶段、编号和依赖 | `V1_TASK_SYSTEM_REBASE.md`、`../tasks/TASK_INDEX.md` |
+| 任务编号、独立执行边界和吸收关系 | `V1_TASK_SYSTEM_REBASE.md`、`../tasks/TASK_INDEX.md` |
+| 当前唯一整体任务 | `../tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md` |
 | P0验收编号和通过标准 | `../testing/P0_ACCEPTANCE_MATRIX.md` |
 | 数据表、字段和事务 | `../database/DATABASE_SCHEMA.md` |
 | IPC、事件和错误码 | `../contracts/` |
@@ -96,7 +97,7 @@ WorldForge不建设：
 - TXT/Markdown基础导入导出、手动Version、章节定稿和历史恢复。
 - 基础恢复点、完整性检查和恢复到新副本。
 
-M1完成时必须形成无AI可长期使用的基础写作产品。
+无AI时必须形成可长期使用的基础写作产品。
 
 ### 5.2 编辑安全与版本
 
@@ -134,10 +135,10 @@ M1完成时必须形成无AI可长期使用的基础写作产品。
 ### 5.5 AI写作与候选审阅
 
 - T0生成多个结构化Skeleton Candidate，可编辑、可比较、可绕过，禁止进入正文Apply。
-- T1支持三种输入来源：选定Skeleton Candidate、权威SceneBeat或直接章节目标。
+- T1支持三种输入来源：选定Skeleton Candidate、权威SceneBeat或直接章节目标；每次恰好一种。
 - T1优先纯文本流，完成后保存Prose Candidate；结构化长正文只对已验证模型启用。
 - 单段快速改写和跨段结构性改写均先形成持久化Candidate。
-- 多候选按SceneBeat融合并生成新的merge Candidate。
+- 多候选支持有SceneBeat的Beat融合与无SceneBeat的受控Segment融合。
 - 双栏、上下、单稿和只看差异。
 - 整稿、块级和SceneBeat级采用。
 - 锁定、Revision、Hash和项目范围冲突处理。
@@ -162,16 +163,16 @@ M1完成时必须形成无AI可长期使用的基础写作产品。
 - TXT、Markdown和DOCX安全导入预览，DOCX扩展现有ImportPlan和提交协调器。
 - TXT、Markdown和DOCX从指定Version导出。
 - 日常滚动、重大操作和手动命名快照三轨备份，统一复用现有RecoveryService、验证和文件格式。
-- 最后一份已验证备份、永久恢复点和作者保留快照受保护。
+- 最后一份已验证备份、关键Migration恢复点和作者保留快照受保护。
 - 默认恢复到新目录，原项目保持不变。
 - 安全空间清理和回收站永久删除影响预览。
 
 ### 5.8 UI、主题和显示
 
 - 新手/专业模式共用数据与Use Case，只改变信息披露，并使用单一权威状态源。
-- M5-00完成作者语言、继续写作、基础导航、正文中心布局、侧栏折叠、沉浸状态和高风险操作可视化。
-- M7-01在M5-00基础上完成快速开始、完整流程、导入、空白项目和自主/混合/AI初稿三条路径。
-- M7-02将候选、校验、搜索、导入导出和恢复接入统一工作台，补齐StatusArbiter、帮助和返回原位置。
+- M4-04先完成作者语言、继续写作、基础导航、正文中心布局、侧栏折叠、沉浸状态和高风险操作可视化，再接入AI写作功能。
+- 同一任务后续完成快速开始、完整流程、导入、空白项目和自主/混合/AI初稿三条路径。
+- 候选、校验、搜索、导入导出和恢复接入统一工作台，补齐StatusArbiter、帮助和返回原位置。
 - 首页支持真实继续写作，恢复最近项目、章节、光标和滚动位置；持久化状态不保存正文内容。
 - 普通作者界面使用作者语言，工程术语集中到高级诊断和技术详情。
 - 正文为写作工作台默认视觉中心，侧栏可折叠，沉浸写作为视图状态。
@@ -294,7 +295,7 @@ ConstraintPackage
 - Prompt必须有稳定`promptId`和整数`version`。
 - Prompt Registry、Cleaner和Parser只在`packages/prompts`维护，并承接M0-07既有Spike资产。
 - GenerationRun记录`promptId`、`promptVersion`、`constraintHash`、实际约束来源、裁剪日志和实际模型。
-- T1输入为Skeleton Candidate、权威SceneBeat或直接章节目标三种来源的显式联合，禁止伪造SceneBeat。
+- T1输入为Skeleton Candidate、权威SceneBeat或直接章节目标三种来源的严格判别联合，禁止伪造SceneBeat。
 - T1优先纯文本流；结构化长正文仅对稳定模型启用。
 - Cleaner只移除登记的协议外壳，不猜测改写无效JSON。
 - `state_extract`输出对齐StateProposalDraft合同；`previousValue`由Core计算，结果只进入pending提案。
@@ -303,12 +304,12 @@ ConstraintPackage
 
 ## 12. UI实施规则
 
-- 每张用户功能任务同时完成最小可操作UI。
-- M5-00在面向用户的AI生成入口前完成现有作者工作流基础体验收口。
-- M7-01负责完整向导和三条创作路径；M7-02负责M6功能接入后的统一工作台、状态仲裁和帮助；M7不重建M5-00基础骨架。
+- M4-04内部每项用户功能同时完成最小可操作UI和完整纵向接线。
+- AI生成入口接入前先完成作者语言、继续写作、正文中心和高风险操作体验收口。
+- 完整向导、三条创作路径、统一工作台、状态仲裁、主题与显示终验均在同一任务内连续完成。
 - 新手/专业模式共用数据和命令，并使用单一权威模式状态源。
 - Theme A/Theme B共用业务组件、状态机和Appearance状态源。
-- 页面必须覆盖空、加载、成功、失败、取消、冲突、只读和恢复。
+- 页面必须覆盖空、加载、成功、失败、取消、冲突、只读、恢复和重启。
 - 正文始终是写作工作台视觉中心。
 - 普通界面优先说明用户影响和处理动作，工程诊断信息按需披露。
 
@@ -351,39 +352,35 @@ P0验收项以`../testing/P0_ACCEPTANCE_MATRIX.md`中的`P0-001—P0-075`为唯�
 5. 人工写作统计排除AI、导入、替换、恢复、结构和系统操作。
 6. 单元、Repository、集成、Migration、安全、桌面E2E、性能和AI Eval证据完整。
 7. 1280×800、2K、21:9、混合DPI及冻结主题范围通过UI验收。
-8. 模型质量未达标时，对应AI任务降级；无AI基础写作闭环必须仍可发布。
+8. 模型质量未达标时，对应AI能力降级；无AI基础写作闭环必须仍可发布。
+9. Windows、macOS、Linux有真实构建验证或明确可审计Blocked结论。
 
 ## 16. V1.0任务路线
 
-V1.0采用M0—M8九阶段，共54张独立任务卡：
+V1历史规格保留54份任务文件；独立执行体系为34张任务：M0—M3、M4-01—M4-04。
 
 ```text
-M0 工程、安全与运行底座
-→ M1 基础写作MVP
-→ M2 编辑安全与版本核心
-→ M3 规划、设定与连续性
-→ M4 检索与AI基础设施
-→ M5 作者体验、AI生成候选与状态提取
-→ M6 校验、搜索与交付
-→ M7 完整UI与体验整合
-→ M8 发布硬化与验收
+M0—M3 Verified
+→ M4-01 FTS Verified
+→ M4-02 ConstraintPackage Verified
+→ M4-03 Provider Verified
+→ M4-04 V1剩余功能整体实施与发布闭环 In Progress
 ```
 
-M5-00是M5-01的硬依赖，负责在T0/T1界面接入前关闭现有作者工作流的P0体验缺口。M5-06在M5候选审阅之后补齐真实Provider状态提取与StateProposal接线，M6-02依赖其已确认状态闭环。
+原M4-05—M8-03已被M4-04吸收为详细需求来源，不再独立激活、建立正式分支/PR或单独关闭。M4-04先完成全量需求与代码审计和整体规划，再按AI基础、作者写作、状态校验、搜索交付、体验整合和发布关闭连续实施。
 
-已完成任务卡及证据保持冻结；后续发现的扩展和整改由未完成任务承接。
-
-详细编号、依赖和状态只在`../tasks/TASK_INDEX.md`维护。
+已完成任务卡及证据保持冻结；兼容扩展由M4-04承接。详细编号、吸收关系和状态只在`../tasks/TASK_INDEX.md`维护。
 
 ## 17. 开发入口
 
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
+→ docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ ACTIVE_TASK指向的独立任务卡
-→ 任务卡列出的专项唯一真源
+→ M4-04唯一整体任务卡
+→ 被吸收需求来源与专项真源
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-`ACTIVE_TASK.md`为`NO_ACTIVE_CODING_TASK`时，不得自行开始生产代码任务。
+M4-04使用一个正式分支和一个长期Draft PR。内部阶段不切换活动任务；最终Verified后不自动激活下一任务。

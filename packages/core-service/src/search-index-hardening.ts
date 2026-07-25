@@ -122,7 +122,10 @@ export class HardenedSearchIndexService extends BaseSearchIndexService {
     if (usesFreshFts || !requestedSources.some((source) => source !== 'entity')) return base;
 
     const titleItems = this.#workspace.readProject(input.projectId, (connection) => {
-      if (base.strategy === 'dictionary' && dictionaryAction(connection, input.query) === 'ignore') {
+      if (
+        base.strategy === 'dictionary' &&
+        dictionaryAction(connection, input.query) === 'ignore'
+      ) {
         return [] as SearchResultItem[];
       }
       return requestedSources.flatMap((sourceType) => {

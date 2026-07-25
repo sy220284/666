@@ -1,23 +1,23 @@
 {
   "schemaVersion": 1,
   "taskId": "M4-01",
-  "commit": "c37aebb53aa713622d749e5f9b9d837f4642d4bf",
-  "generatedAt": "2026-07-24T11:37:21.129731Z",
+  "commit": "c1f018cfc1ed19ec3e129300508e3c3ce616c526",
+  "generatedAt": "2026-07-25T14:45:00.000Z",
   "files": [
     {
       "path": "commands.txt",
-      "bytes": 483,
-      "sha256": "752a65971140fc35b177823151e741fae1292fbcd1632aceea4333fed2c94035"
+      "bytes": 508,
+      "sha256": "4313ffc9f26336c6181ec5f79a32f4d27d40329508e065c88f6e1d51aaab22ae"
     },
     {
       "path": "known-risks.md",
-      "bytes": 513,
-      "sha256": "4bd56d8a80ea800494ca6871b85ef31c62bb7637d4dc1c932145ea1b8037fcd5"
+      "bytes": 632,
+      "sha256": "5efb85614ea62ad6cec7f191f8a11ff3befa94ce7ba1fec614c7396e18140971"
     },
     {
       "path": "summary.md",
-      "bytes": 1806,
-      "sha256": "6c6ea89c92dd8706422c65f6fe0662fb7c61177effdebaeec6c0160470fb0121"
+      "bytes": 1523,
+      "sha256": "bc46a8f8ba8ce9cf89d04b22d8a3d89c5a62c17343d337a78c0a9cb4a8a6d147"
     }
   ]
 }

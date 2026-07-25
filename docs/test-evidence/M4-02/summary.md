@@ -1,27 +1,25 @@
-# M4-02 实施证据摘要
+# M4-02 Final Verification Summary
 
-## 当前实现
+## Conclusion
 
-- 定义P0—P4约束包、来源、时序、冲突、Hash与裁剪日志合同。
-- Core从ProjectBrief、当前章、SceneBeat、前章EndingSnapshot或权威回退、EntityState、Knowledge、Foreshadowing、Canon、人物弧光、当前稿和公共检索组装。
-- Domain执行稳定序列化、确定性Token估算和P4→P3→低相关P2裁剪；P0/P1预算不足时明确失败。
-- Prompt层提供确定性序列化，不接入Provider。
+M4-02 is **Verified**. The P0—P4 constraint package, temporal filtering, source provenance, deterministic token budgeting, conflict reporting, stable hashes and trim log are implemented and audited. The M4 hardening changed supplemental recall to bounded over-fetch followed by current/future chapter filtering and final limiting, preventing invalid high-ranked results from starving eligible prior context.
 
-## 自动验证
+## Verified scope
 
-由正式PR的GitHub Actions记录为准；本提交在推送前运行专项单元、集成、Typecheck、Lint、Eval和任务状态校验。
+- P0 code constraints, P1 chapter must-haves, P2 state, P3 voice and P4 background.
+- Current chapter, SceneBeat, prior ending snapshot or authoritative fallback, entity/knowledge/foreshadowing/canon/arc inputs.
+- Deterministic relation and shared M4-01 FTS supplemental retrieval.
+- Temporal filtering, current-draft exclusion, deduplication, conflict flags and source versions.
+- Stable serialization, token estimation, safety margin and P4→P3→low-related P2 trimming; P0/P1 never trimmed.
+- Stable `contentHash`, `constraintHash` and reproducible trim/source records.
 
-## 复核加固
+## Provenance
 
-- 首章不读取本章尾快照，阻断章末状态倒灌到章前约束。
-- 公共检索补充按章节顺序过滤未来章，Version明确标记为historical。
-- Entity资料使用独立来源类型；精确重复的补充召回不再重复占用Token。
-- 增加短中文搜索、首章时序、未来章隔离、服务超限与150万字符性能回归。
+- Initial implementation: `3e6ae02c2b3c71647d93d972ec215f39e4d93a24`.
+- Audit hardening PR #208 merged as `dfca784f2ede657986fee7d5e71eee54e9ee897d`.
+- Final audit runs: Quality `30158717765`, Security `30158717671`, Performance `30158717652`, PR Policy `30158717668`, Task Governance `30158717666`, Evidence `30158717649`.
+- Full validation: 143 test files / 709 tests, Electron E2E passed; coverage Statements 84.30%, Branches 75.40%, Functions 85.67%, Lines 86.72%.
 
-## 自动化记录
+## Later upper-layer work
 
-- 首批实现工作流：`30103281554`，通过专项单元/集成、全仓Typecheck、Lint、Eval与任务状态校验。
-- 时序与性能加固工作流：`30104373569`，通过首章时序、未来章隔离、短中文、超限、去重、150万字符性能、Typecheck、Lint、Eval与任务状态校验。
-- 完整收口运行：`30104784660`（https://github.com/sy220284/666/actions/runs/30104784660）。Lint、Typecheck、145个测试文件/718项测试、25/25 Electron E2E、Security、Eval、43个Integration文件/124项测试、10个Performance文件/37项测试和任务状态校验全部通过；运行最终仅因追踪矩阵旧文本定位失败而返回failure，未发生代码或测试失败。
-- 证据固化与任务推进运行：`30106994335`（https://github.com/sy220284/666/actions/runs/30106994335），修复矩阵定位、生成Manifest并执行`taskctl advance`。
-- M4-01启动前基线整改记录见`m401-baseline-audit.md`。
+Prompt Registry, GenerationRun and concrete generation workflows consume this verified package in later tasks. Those integrations do not reopen the deterministic package assembly and trimming contracts closed by M4-02.

@@ -1,7 +1,11 @@
-# M4-02 已知风险
+# M4-02 Known Risks
 
-- Token估算采用确定性保守算法，不等同于任一Provider私有Tokenizer；M4-03/M4-05接入模型档案后可按模型覆盖估算器，但不得改变P0/P1不可裁剪规则。
-- 公共检索补充召回仍受M4-01索引状态影响；stale/rebuilding时会按M4-01合同回退权威LIKE。
-- V1不引入Embedding或Rerank，语义召回质量留待后续任务，当前保证确定性、可追溯和项目隔离。
+## Accepted / deferred
 
-- 当前性能基线覆盖150万字符确定性组装与裁剪；Provider特定Tokenizer和模型窗口映射留待M4-03/M4-05。
+- Prompt Registry, GenerationRun, model capability profiles and generation UX remain later-task responsibilities.
+- Lexical supplemental retrieval can miss semantic equivalents that share no indexed terms; embeddings and reranking are outside M4-02 scope.
+- An oversized mandatory P0/P1 set fails explicitly rather than silently discarding constraints; callers must surface that failure.
+
+## Closure judgement
+
+No open risk blocks M4-02 verification. Temporal validity, current-draft exclusion, deterministic trimming, provenance and failure semantics are covered by automated regression and remain stable interfaces for later AI workflows.

@@ -1,8 +1,8 @@
 # WorldForge V1.0 任务索引
 
-> 状态：Frozen  
-> 基线：WorldForge V6.5  
-> 任务体系：M0—M8九阶段，共54张独立任务卡。  
+> 状态：Frozen
+> 基线：WorldForge V6.5
+> 任务体系：M0—M8九阶段，共54张独立任务卡。
 > 原则：同一时间一个活动任务；一任务一文件；每任务独立原子提交；完成必须有证据。
 
 ## 1. 唯一执行入口
@@ -109,9 +109,9 @@ M1是明确的基础产品门：没有AI时也必须能够创建项目、建卷�
 
 | ID    | 任务卡                                                                         | 依赖                         | 状态        |
 | ----- | ------------------------------------------------------------------------------ | ---------------------------- | ----------- |
-| M4-01 | [`FTS5公共索引、队列与项目词典`](M4/M4-01_FTS_INDEX_DICTIONARY.md)             | M3                           | Implemented |
-| M4-02 | [`P0—P4约束包与裁剪追溯`](M4/M4-02_CONSTRAINT_PACKAGE.md)                      | M4-01、M3-06                 | Implemented |
-| M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md)       | M3、M0-02、M0-04、M0-05     | Implemented |
+| M4-01 | [`FTS5公共索引、队列与项目词典`](M4/M4-01_FTS_INDEX_DICTIONARY.md)             | M3                           | Verified |
+| M4-02 | [`P0—P4约束包与裁剪追溯`](M4/M4-02_CONSTRAINT_PACKAGE.md)                      | M4-01、M3-06                 | Verified |
+| M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md)       | M3、M0-02、M0-04、M0-05     | Verified |
 | M4-04 | [`Prompt Registry、输出Schema与Cleaner`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)   | M4-02、M4-03、M0-07          | Planned     |
 | M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md) | M4-04、M4-03、M0-04、M0-07   | Planned     |
 

@@ -5,8 +5,8 @@ interface RetainedOperation {
 
 /**
  * Serializes operations for one Provider while preserving concurrency across different Providers.
- * Mutation results, including failures, are retained by requestId so retries cannot repeat partial
- * credential or database side effects. Pending entries are never evicted.
+ * Mutation results, including failures, are retained by requestId and operation key so retries
+ * cannot repeat partial credential or database side effects. Pending entries are never evicted.
  */
 export class ProviderOperationCoordinator {
   readonly #maximumRetainedResults: number;
@@ -23,9 +23,10 @@ export class ProviderOperationCoordinator {
   runMutation<T>(
     providerId: string,
     requestId: string,
+    operationKey: string,
     operation: () => Promise<T>,
   ): Promise<T> {
-    const idempotencyKey = `${providerId}:${requestId}`;
+    const idempotencyKey = `${providerId}:${operationKey}:${requestId}`;
     const retained = this.#retainedMutations.get(idempotencyKey);
     if (retained) return retained.promise as Promise<T>;
 

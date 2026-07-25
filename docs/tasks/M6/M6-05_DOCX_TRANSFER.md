@@ -11,17 +11,18 @@
 
 ## 阶段定位
 
-补齐校验、全项目搜索、节奏指标、DOCX和三轨备份恢复。本任务扩展既有导入导出路径，不建立第二套ImportPlan、提交协调器或恢复事务。
+补齐校验、全项目搜索、节奏指标、DOCX和三轨备份恢复。本任务扩展既有导入导出路径，不建立第二套ImportPlan、提交协调器或恢复事务，并接入M6-04统一`mutationOrigin`合同。
 
 ## 非目标
 
 - 不保留任意Word宏、OLE、脚本和复杂版式。
 - 不重建TXT/Markdown导入导出真源。
 - 不建立新的Renderer临时导入权威状态。
+- 不建立DOCX专属写作统计或变更来源枚举。
 
 ## 依赖
 
-M1-09、M1-08
+M1-09、M1-08、M6-04
 
 ## 承接基线
 
@@ -33,6 +34,7 @@ M1-09、M1-08
 - 恢复点与单事务提交。
 - 失败、取消和过期计划清理。
 - Version来源明确的TXT/Markdown导出。
+- M6-04统一`mutationOrigin: import`合同。
 
 ## 关联
 
@@ -50,6 +52,7 @@ M1-09、M1-08
 - `docs/contracts/ERROR_CODES.md`
 - `docs/ui/SCREEN_SPECIFICATIONS.md`
 - `docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT.md`
+- `docs/tasks/M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md`
 
 ## 主要影响范围
 
@@ -59,6 +62,7 @@ M1-09、M1-08
 - `apps/desktop/preload/`
 - `apps/desktop/renderer/`
 - `tests/unit/`
+- `tests/migration/`
 - `tests/security/`
 - `tests/integration/`
 - `tests/e2e/`
@@ -67,24 +71,26 @@ M1-09、M1-08
 
 1. 在现有ImportPlan合同中增加DOCX安全解析结果，不创建平行计划缓存或第二套提交入口。
 2. DOCX只提取段落、标题和允许的基础格式，统一转换为现有导入中间模型。
-3. 限制解包总大小、单文件大小、文件数、压缩比、嵌套深度和路径；忽略宏、OLE、脚本、外部模板和远程资源。
-4. 使用隔离临时目录和安全ZIP读取；路径穿越、符号链接、设备文件和异常关系必须拒绝。
-5. 失败、取消、超时和进程异常时清理临时内容、计划和未提交资源。
-6. 提交继续复用计划过期、路径重校验、恢复点和单事务写入；任务开始后原文件或项目状态变化时计划必须失效。
-7. 导入产生的Draft变更必须标记`mutationOrigin: import`，供M6-04排除人工写作统计。
-8. 从作者选定的不可变Version导出TXT、Markdown和DOCX，禁止读取Candidate、当前Renderer HTML或未确认临时流。
-9. 输出使用同目录临时文件、内容验证、fsync/关闭和原子重命名；目标冲突由明确策略处理。
-10. DOCX适配器只负责格式转换和安全解析，不复制项目事务、恢复或Version选择逻辑。
+3. 限制解包总大小、单文件大小、文件数、压缩比、嵌套深度和路径；具体上限集中配置并有边界Fixture，禁止散落魔法数字。
+4. 忽略宏、OLE、脚本、外部模板和远程资源；使用隔离临时目录和安全ZIP读取。
+5. 路径穿越、符号链接、设备文件、异常关系、重复条目和大小声明不一致必须拒绝。
+6. 失败、取消、超时和进程异常时清理临时内容、计划和未提交资源。
+7. 提交继续复用计划过期、路径重校验、恢复点和单事务写入；任务开始后原文件或项目状态变化时计划必须失效。
+8. DOCX导入产生的全部Draft变更必须由Core标记`mutationOrigin: import`，Renderer不得提供或覆盖来源；供M6-04排除人工写作统计。
+9. 从作者选定的不可变Version导出TXT、Markdown和DOCX，禁止读取Candidate、当前Renderer HTML或未确认临时流。
+10. 输出使用同目录临时文件、内容验证、fsync/关闭和原子重命名；目标冲突由明确策略处理。
+11. DOCX适配器只负责格式转换和安全解析，不复制项目事务、恢复、Version选择或写作统计逻辑。
 
 ## 测试与证据
 
-- 异常DOCX、ZIP路径穿越、压缩炸弹、超限文件、嵌套关系、宏、OLE、外部资源和空内容。
+- 异常DOCX、ZIP路径穿越、压缩炸弹、超限文件、嵌套关系、宏、OLE、外部资源、重复条目和空内容。
 - ImportPlan过期、原文件变化、项目变化、取消、目标冲突和提交失败。
 - 临时目录、计划和恢复点清理。
 - TXT/Markdown既有路径回归，确认扩展未建立第二套协调器。
 - Version→TXT/Markdown/DOCX导出及往返一致性。
 - 导出不读取Candidate、Draft临时流或Renderer HTML。
-- 导入变更来源正确标记为`import`。
+- DOCX与既有TXT/Markdown导入全部标记为`import`；人工净增和写作速度不变化。
+- Renderer伪造或覆盖`mutationOrigin`被拒绝。
 
 证据保存到：`docs/test-evidence/M6-05/`
 
@@ -93,6 +99,7 @@ M1-09、M1-08
 - DOCX复用现有ImportPlan和提交协调器，不存在平行导入真源。
 - 异常输入不留下临时内容、孤立计划或项目半成品。
 - 多格式导出内容稳定且来源Version明确。
+- DOCX与既有文本导入统一使用Core决定的`mutationOrigin: import`。
 - 导入变更不会被M6-04计入人工写作统计。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、导入导出、安全、UI或测试文档。

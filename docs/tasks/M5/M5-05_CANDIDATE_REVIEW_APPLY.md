@@ -11,9 +11,9 @@
 
 ## 阶段定位
 
-M2-03负责底层安全采用引擎和最小功能验收面；M5-05负责完整候选工作台、AI任务入口、长章节审阅效率和跨显示环境体验。
+M2-03负责底层安全采用引擎和最小功能验收面；M5-05负责完整候选工作台、AI任务入口、长章节审阅效率和基础显示可用性。
 
-M5-05不得重写Candidate、ApplyRecord、ConflictSet、Checkpoint、Revision、Hash或LockGuard语义。如底层能力不足，应在本任务中通过正式合同扩展承接，不回写已完成任务卡，也不得在Renderer建立旁路状态。
+M5-05不得重写Candidate、ApplyRecord、ConflictSet、Checkpoint、Revision、Hash或LockGuard语义。如底层能力不足，应在本任务中通过正式合同扩展承接，不回写已完成任务卡，也不得在Renderer建立旁路状态。双主题、混合DPI、21:9和完整无障碍矩阵由M7-03统一终验。
 
 ## 非目标
 
@@ -22,6 +22,7 @@ M5-05不得重写Candidate、ApplyRecord、ConflictSet、Checkpoint、Revision�
 - 不复制一套主题专属的采用、冲突或撤销状态机。
 - 不允许Skeleton进入正文Diff、Apply或定稿。
 - 不允许partial Candidate默认整稿采用或直接定稿。
+- 不在本任务完成双主题视觉精修、混合DPI和全量读屏终验。
 
 ## 依赖
 
@@ -43,7 +44,7 @@ Skeleton Candidate
 ├─ 骨架比较
 ├─ 作者编辑
 ├─ 作为T1输入
-└─ 禁止正文Diff、Apply和定稿
+└─ 禁止正文Preview、Diff、Apply和定稿
 
 Prose Candidate
 ├─ full
@@ -63,7 +64,7 @@ partial Prose Candidate
 
 - 需求：REQ-013、REQ-029
 - 功能ID：CND-001—CND-005
-- 验收：P0-027—P0-032、P0-063—P0-066
+- 验收：P0-027—P0-032；P0-063基础可用性
 
 ## 必读文档
 
@@ -85,8 +86,11 @@ partial Prose Candidate
 - `packages/editor-core/`
 - `packages/contracts/`
 - `packages/core-service/`（仅Candidate类型守卫、生产来源查询或M2契约无法承接的正式扩展）
+- `apps/desktop/main/`（仅新增只读查询或类型守卫命令确需接线时）
+- `apps/desktop/preload/`（仅与Main新增查询同步）
 - `tests/unit/`
 - `tests/integration/`
+- `tests/security/`
 - `tests/e2e/`
 - `tests/performance/`
 - `docs/ui/`
@@ -98,38 +102,38 @@ partial Prose Candidate
 1. 将AI任务完成、候选历史、快速改写和融合结果接入统一审阅入口。
 2. 候选列表按任务、时间、类型、状态、完整度和基础Revision展示。
 3. 每个候选显示GenerationRun、Provider/Model、Prompt版本、约束来源、裁剪摘要和来源Version；普通界面使用作者语言，高级详情提供技术追溯。
-4. Skeleton工作区只提供骨架比较、编辑、选择和进入T1，不出现正文采用按钮；Core类型守卫作为最终硬保证。
+4. Skeleton工作区只提供骨架比较、编辑、选择和进入T1，不出现正文Preview、Diff或采用按钮；Core类型守卫作为最终硬保证。
 5. Prose工作区支持双栏、上下、单稿、只看差异、折叠未改段、同步滚动和差异导航。
 6. 在M2-03选择语义上实现整稿、块级、SceneBeat级采用和保留当前稿交互。
 7. partial Candidate显著显示限制、截断位置、继续生成和手动补全入口；整稿采用和定稿默认禁用并给出原因。
 8. ConflictSet区分Revision、Hash、锁定、缺失块和结构冲突，并提供清晰解决路径。
 9. 提交前展示修改摘要，成功后定位首个修改块并提供整体撤销。
-10. 完成多Candidate比较、骨架选择、节拍融合和手动合并工作台，但不得复制M5-04融合业务或M2-03采用事务。
+10. 完成多Candidate比较、骨架选择、节拍/片段融合和手动合并工作台，但不得复制M5-04融合业务或M2-03采用事务。
 11. UI术语、导航、状态、禁用原因和错误表达遵循M5-00。
-12. 完成1280×800、2K、21:9、混合DPI、键盘和读屏标签验收。
-13. Theme A/B只改变视觉Token与动效，不改变业务调用、命令和状态机。
+12. 完成1280×800基础功能可用、键盘主路径和必要语义标签；更广显示、主题和无障碍矩阵交由M7-03。
+13. 主题切换当前已存在时只做业务结果回归，不在本任务新增主题专属业务分支。
 
 ## 测试与证据
 
 - AI生成→候选入口→审阅→冲突→采用→撤销全流程。
-- Skeleton比较/编辑/T1入口及所有正文Apply命令拒绝。
+- Skeleton比较/编辑/T1入口及所有正文Preview、Diff、Apply命令拒绝。
 - partial继续生成、手动补全、限制展示、整稿采用拒绝和定稿拒绝。
 - GenerationRun、Prompt、约束来源和候选历史追溯。
 - 5000/20000字候选性能、视口切换、折叠和滚动同步。
 - 块级/节拍级采用、冲突、锁定、撤销和重启回退。
-- 1280×800、2K 125%、21:9和混合DPI。
-- 键盘全流程、读屏标签和不依赖单一颜色表达。
-- Theme切换前后业务结果一致。
+- 1280×800核心审阅路径无整页横向滚动。
+- 键盘主流程、焦点返回、基础读屏标签和不依赖单一颜色表达。
+- 当前主题切换前后业务结果一致；M7-03继续执行完整视觉矩阵。
 
 证据保存到：`docs/test-evidence/M5-05/`
 
 ## 完成条件
 
 - AI生成→审阅→冲突→采用→撤销全链路可用。
-- Skeleton进入正文Diff、Apply或Version的成功次数为0。
+- Skeleton进入正文Preview、Diff、Apply或Version的成功次数为0。
 - partial不会被误当完整稿、默认整稿采用或直接定稿。
 - 完整候选工作台不复制或绕过M2-03底层事务。
 - 所有AI结果均可追溯到GenerationRun、Prompt和约束来源。
-- M5退出前候选审阅界面符合M5-00作者语言和工作台规范。
+- M5退出前候选审阅界面符合M5-00作者语言和工作台规范，并为M7-03终验保留单一业务实现。
 
 任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、AI、UI、安全或测试文档。

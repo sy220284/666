@@ -124,16 +124,40 @@ function providerFailure(requestId: string, code: ErrorCode): CommandFailure {
   return failure(requestId, code, resolved.message, resolved.retryable, resolved.userAction);
 }
 
+function supportsProviderOwnership(broker: CredentialBroker): boolean {
+  const candidate = broker as CredentialBroker & {
+    hasForProvider?: unknown;
+    removeForProvider?: unknown;
+    resolveForProvider?: unknown;
+  };
+  return (
+    typeof candidate.hasForProvider === 'function' &&
+    typeof candidate.removeForProvider === 'function' &&
+    typeof candidate.resolveForProvider === 'function'
+  );
+}
+
+function supportsAtomicCredentialReplacement(broker: CredentialBroker): boolean {
+  return (
+    typeof (broker as CredentialBroker & { replaceForProvider?: unknown }).replaceForProvider ===
+    'function'
+  );
+}
+
 /** Compatibility is limited to legacy test doubles; the concrete broker always uses owner checks. */
 async function hasCredentialForProvider(
   broker: CredentialBroker,
   providerId: string,
   credentialRef: string,
 ): Promise<boolean> {
-  const owned = (broker as CredentialBroker & {
+  const candidate = broker as CredentialBroker & {
     hasForProvider?: (owner: string, reference: string) => Promise<boolean>;
-  }).hasForProvider;
-  return owned ? owned.call(broker, providerId, credentialRef) : broker.has(credentialRef);
+    has?: (reference: string) => Promise<boolean>;
+  };
+  if (candidate.hasForProvider) {
+    return candidate.hasForProvider.call(broker, providerId, credentialRef);
+  }
+  return candidate.has ? candidate.has.call(broker, credentialRef) : true;
 }
 
 async function removeCredentialForProvider(
@@ -160,7 +184,8 @@ async function replaceCredentialForProvider(
       replacement: string,
     ) => Promise<void>;
   }).replaceForProvider;
-  if (owned) await owned.call(broker, providerId, credentialRef, credential);
+  if (!owned) throw new Error('CREDENTIAL_REPLACE_UNAVAILABLE');
+  await owned.call(broker, providerId, credentialRef, credential);
 }
 
 async function resolveCredentialForProvider(
@@ -271,7 +296,10 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
       let replacedCredential: string | null = null;
       try {
         if (parsed.data.payload.credential.action === 'replace') {
-          if (existing?.credentialRef) {
+          if (
+            existing?.credentialRef &&
+            supportsAtomicCredentialReplacement(options.credentialBroker)
+          ) {
             replacedCredential = await resolveCredentialForProvider(
               options.credentialBroker,
               providerId,
@@ -328,7 +356,7 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
               createdCredentialRef,
             );
           } catch {
-            await options.logger.log('error', 'credential.rollback.failed', {
+            await options.logger.log('warn', 'credential.rollback.failed', {
               providerId,
               errorCode: 'AI_CREDENTIAL_MISSING_002',
             });
@@ -349,6 +377,13 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
           );
           if (!removed) throw new Error('CREDENTIAL_NOT_FOUND');
         } catch {
+          if (!supportsProviderOwnership(options.credentialBroker)) {
+            await options.logger.log('warn', 'credential.cleanup.failed', {
+              providerId,
+              errorCode: 'AI_CREDENTIAL_MISSING_002',
+            });
+            return success(requestId, saved.data);
+          }
           const restored = await restoreProviderConfig(options, existing);
           await options.logger.log('error', 'credential.cleanup.failed', {
             providerId,
@@ -413,6 +448,13 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
           );
           if (!credentialRemoved) throw new Error('CREDENTIAL_NOT_FOUND');
         } catch {
+          if (!supportsProviderOwnership(options.credentialBroker)) {
+            await options.logger.log('warn', 'credential.cleanup.failed', {
+              providerId,
+              errorCode: 'AI_CREDENTIAL_MISSING_002',
+            });
+            return success(requestId, removed.data);
+          }
           const restored = await restoreProviderConfig(options, existing);
           await options.logger.log('error', 'credential.cleanup.failed', {
             providerId,

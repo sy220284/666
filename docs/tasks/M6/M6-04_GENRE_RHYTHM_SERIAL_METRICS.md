@@ -3,25 +3,33 @@
 > 状态：Planned  
 > 里程碑：M6 校验、搜索与交付  
 > 优先级：P0  
-> 建议分支：`feat/m6-genre-rhythm-serial-metrics`
+> 建议分支：`work/m6-04-genre-rhythm-serial-metrics`
 
 ## 目标
 
-提供作者可编辑、建议级的爽点密度、章末钩子、更新节奏和黄金三章分析。
+提供作者可编辑、建议级的爽点密度、章末钩子、更新节奏、人工写作统计和黄金三章分析。
 
 ## 阶段定位
 
-补齐校验、全项目搜索、节奏指标、DOCX和三轨备份恢复。
+补齐校验、全项目搜索、节奏指标、DOCX和三轨备份恢复。写作统计必须区分人工输入与AI采用、导入、恢复和结构操作。
 
 ## 非目标
 
 - 不使用硬编码魔法数字。
 - 不阻断写作、定稿或发布。
 - 不替作者判断作品质量。
+- 不把Candidate采用、导入、恢复、批量替换或结构调整计入作者码字速度。
+- 不将统计数据变成正文或历史记录的权威真源。
 
 ## 依赖
 
 M3-02、M6-01、M6-02
+
+## 承接基线
+
+- 复用SceneBeat、Draft Patch、Version、Candidate Apply、导入、恢复和结构操作的现有事务入口。
+- 现有`draft_patch_log`缺少可靠操作来源，本任务必须先建立统一来源标记或独立写作会话统计，禁止直接将全部Patch视为人工写作。
+- 统计数据属于可重建派生数据。
 
 ## 关联
 
@@ -38,29 +46,57 @@ M3-02、M6-01、M6-02
 - `docs/product/FUNCTION_CATALOG.md`
 - `docs/database/DATABASE_SCHEMA.md`
 - `docs/testing/TEST_STRATEGY.md`
+- `docs/tasks/M1/M1-06_AUTOSAVE_STATS_FIND.md`
+- `docs/tasks/M5/M5-05_CANDIDATE_REVIEW_APPLY.md`
 
 ## 主要影响范围
 
-- `migrations/project/`
+- `migrations/project/`或`migrations/app/`（按统计归属确定）
 - `packages/domain/`
 - `packages/core-service/`
 - `packages/contracts/`
 - `apps/desktop/renderer/`
 - `tests/unit/`
 - `tests/integration/`
+- `tests/e2e/`
+
+## 变更来源合同
+
+```text
+mutationOrigin
+├─ manual_edit
+├─ candidate_apply
+├─ import
+├─ safe_replace
+├─ structure
+├─ restore
+└─ system
+```
+
+所有能够改变Draft的正式入口必须提供可验证来源；无法可靠补齐历史日志时，只从本任务上线后开始统计人工写作，不伪造历史数据。
 
 ## 实施内容
 
-1. 实现GenreRhythmProfile，按频道保存可编辑参考区间。
+1. 实现GenreRhythmProfile，按频道保存可编辑参考区间，不在代码中散落阈值。
 2. 爽点密度复用SceneBeat冲突、反转、信息释放节点，按千字统计。
 3. 章末钩子使用规则+语义联合检测，输出建议级提示。
-4. 更新节奏读取Draft保存历史统计当日/累计字数。
-5. 黄金三章只对前3章生效，复用统一统计口径。
-6. 所有结果为P3建议级，可关闭、调整阈值和标记不适用。
+4. 为正文变更建立统一`mutationOrigin`，或建立独立本地写作会话表；两种方案必须能可靠排除非人工变更。
+5. 每日作者净增字数只统计`manual_edit`，排除Candidate采用、导入、批量替换、拆章/并章/跨章移动、Version恢复、Migration和系统维护。
+6. 真实写作速度基于有效写作会话计算：开始编辑、最后有效输入、空闲阈值、有效活跃时长和人工净增字数。
+7. 切章、关闭、崩溃恢复和跨午夜场景必须正确收口会话；空闲停留、滚动、查看设定和AI等待不计为有效写作时长。
+8. 更新节奏展示当日人工净增、累计人工净增、有效写作时长和趋势，并明确统计口径与起始日期。
+9. 黄金三章只对前3章生效，复用统一统计口径。
+10. 所有结果为P3建议级，可关闭、调整阈值和标记不适用。
+11. 统计表、缓存和聚合可删除重建，不影响Draft、Version或ApplyRecord。
 
 ## 测试与证据
 
 - 不同频道、空SceneBeat、短章、长章和自定义阈值。
+- manual_edit、candidate_apply、import、safe_replace、structure、restore、system七类来源分类。
+- AI采用、导入、恢复和拆并章不增加人工码字统计。
+- 自动保存合并、撤销重做、切章、关闭、崩溃恢复、长时间空闲和跨午夜。
+- 写作会话有效时长与人工净增字数口径。
+- 派生统计删除重建不改变正文和历史记录。
 - 建议不会进入阻断类ValidationIssue。
 - AI不可用时规则部分仍可运行。
 
@@ -69,6 +105,9 @@ M3-02、M6-01、M6-02
 ## 完成条件
 
 - 节奏指标透明可解释且不强迫作者。
-- 新增功能有独立任务、测试和验收，不再塞入通用校验卡。
+- 人工写作统计不会混入AI、导入、替换、恢复、结构或系统操作。
+- 无法可靠归类的历史数据不被伪装为精确作者产出。
+- 统计数据可重建，不成为正文权威来源。
+- 新增功能有独立测试和验收，不再塞入通用校验卡。
 
-任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、UI、安全或测试文档。
+任务关闭前必须同步`TASK_INDEX.md`、`V1.0_TRACEABILITY_MATRIX.md`及实际受影响的Schema、IPC、数据流、UI或测试文档。

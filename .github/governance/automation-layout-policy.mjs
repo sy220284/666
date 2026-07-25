@@ -33,6 +33,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'task-checkpoint-policy.mjs',
   'task-transition-policy-core.mjs',
   'task-transition-policy.mjs',
+  'verification-hold-taskctl.mjs',
 ]);
 
 const forbiddenWorkflowMarkers = Object.freeze([

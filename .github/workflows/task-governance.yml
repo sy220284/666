@@ -44,9 +44,9 @@ jobs:
           git show "${TASK_BASE_REF}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
           git show "${TASK_BASE_REF}:docs/tasks/TASK_INDEX.md" > "$RUNNER_TEMP/base-task-index.md"
       - name: Validate active task and generated mirror
-        run: node scripts/taskctl.mjs validate
+        run: node .github/governance/verification-hold-taskctl.mjs validate
       - name: Validate changed paths
-        run: node scripts/taskctl.mjs preflight
+        run: node .github/governance/verification-hold-taskctl.mjs preflight
       - name: Self-test checkpoint policy
         run: node .github/governance/task-checkpoint-policy.mjs self-test
       - name: Validate task transition for Ready PRs

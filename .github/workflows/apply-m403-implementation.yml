@@ -1,0 +1,84 @@
+name: Apply M4-03 Implementation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.head_ref == 'tooling/m403-implementation'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Checkout formal M4-03 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-03-provider-credential-connection
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify and configure baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "f358b70b62d21dabcdd7b57332ac2b0d310339dc"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Load implementation scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin tooling/m403-implementation
+          for script in m403-contracts-core.py m403-main-ui.py m403-tests.py m403-finalize.py; do
+            git show "origin/tooling/m403-implementation:.github/tooling/${script}" > "${RUNNER_TEMP}/${script}"
+          done
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Apply and verify M4-03 implementation
+        shell: bash
+        run: |
+          set +e
+          {
+            python "${RUNNER_TEMP}/m403-contracts-core.py"
+            python "${RUNNER_TEMP}/m403-main-ui.py"
+            python "${RUNNER_TEMP}/m403-tests.py"
+            python "${RUNNER_TEMP}/m403-finalize.py"
+          } > "${RUNNER_TEMP}/m403-implementation.log" 2>&1
+          status=$?
+          cat "${RUNNER_TEMP}/m403-implementation.log"
+          exit "${status}"
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m403-implementation-diagnostics
+          path: ${{ runner.temp }}/m403-implementation.log
+          if-no-files-found: error
+          retention-days: 7

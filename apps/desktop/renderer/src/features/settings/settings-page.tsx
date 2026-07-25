@@ -7,7 +7,9 @@ import type {
   CoreStatus,
 } from '@worldforge/contracts';
 
+import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
+import { ProviderSettings } from './provider-settings.js';
 import {
   createSettingsNavigationItems,
   resolveSettingsNavigationIntent,
@@ -15,6 +17,7 @@ import {
 } from '../../shell/settings-navigation-model.js';
 
 export interface SettingsPageProps {
+  readonly bridge: RendererBridgeAdapter;
   readonly disclosureMode: AppDisclosureMode;
   readonly settings: AppSettings;
   readonly appearance: AppearancePreferences;
@@ -33,14 +36,26 @@ export function SettingsPage(props: SettingsPageProps) {
   const items = createSettingsNavigationItems({
     disclosureMode: props.disclosureMode,
     currentSection: section,
-    availability: { general: true, editor: true, appearance: true, advanced: true },
+    availability: {
+      general: true,
+      editor: true,
+      appearance: true,
+      providers: true,
+      advanced: true,
+    },
   });
 
   const navigate = (candidate: string): void => {
     const resolution = resolveSettingsNavigationIntent(candidate, {
       disclosureMode: props.disclosureMode,
       currentSection: section,
-      availability: { general: true, editor: true, appearance: true, advanced: true },
+      availability: {
+        general: true,
+        editor: true,
+        appearance: true,
+        providers: true,
+        advanced: true,
+      },
     });
     if (resolution.accepted) setSection(resolution.section);
   };
@@ -96,6 +111,7 @@ export function SettingsPage(props: SettingsPageProps) {
           {section === 'general' ? <GeneralSettings {...props} /> : null}
           {section === 'editor' ? <EditorSettings {...props} /> : null}
           {section === 'appearance' ? <AppearanceSettings {...props} /> : null}
+          {section === 'providers' ? <ProviderSettings bridge={props.bridge} /> : null}
           {section === 'advanced' ? <AdvancedSettings {...props} /> : null}
         </div>
       </div>

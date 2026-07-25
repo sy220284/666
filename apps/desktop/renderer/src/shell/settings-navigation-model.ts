@@ -1,6 +1,12 @@
 import type { AppDisclosureMode } from './app-shell-model.js';
 
-export const SETTINGS_BASIC_SECTION_IDS = ['general', 'editor', 'appearance', 'advanced'] as const;
+export const SETTINGS_BASIC_SECTION_IDS = [
+  'general',
+  'editor',
+  'appearance',
+  'providers',
+  'advanced',
+] as const;
 
 export type SettingsBasicSectionId = (typeof SETTINGS_BASIC_SECTION_IDS)[number];
 export type SettingsSectionAvailability = Readonly<Record<SettingsBasicSectionId, boolean>>;
@@ -43,6 +49,7 @@ const DEFAULT_SETTINGS_AVAILABILITY: SettingsSectionAvailability = {
   general: true,
   editor: false,
   appearance: true,
+  providers: false,
   advanced: false,
 };
 
@@ -64,6 +71,12 @@ const SETTINGS_SECTION_DEFINITIONS = [
     label: '外观与显示',
     beginnerDescription: '调整主题和界面显示方式',
     professionalDescription: '主题、变体、界面缩放、减少动态和高对比',
+  },
+  {
+    id: 'providers',
+    label: 'AI服务',
+    beginnerDescription: '配置本机或外部模型服务',
+    professionalDescription: 'Provider、端点边界、凭据和连接能力测试',
   },
   {
     id: 'advanced',

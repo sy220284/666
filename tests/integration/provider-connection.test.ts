@@ -65,7 +65,7 @@ async function startProviderServer(options: { omitUsage?: boolean } = {}) {
       response.write(`data: ${JSON.stringify({ type: 'message_stop' })}\n\n`);
     } else {
       response.write(
-        `data: ${JSON.stringify({ choices: [{ delta: { content: '好' }, finish_reason: null }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: '好' }, finish_reason: 'stop' }] })}\n\n`,
       );
       if (!options.omitUsage) {
         response.write(
@@ -138,6 +138,79 @@ describe('M4-03 real Provider protocol adapters', () => {
       tokenUsageAvailable: true,
     });
     expect(JSON.stringify(anthropic)).not.toContain('anthropic-secret');
+  });
+
+  it('emits exactly one completion event when finish_reason and DONE are both present', async () => {
+    const root = await startProviderServer();
+    const adapter = createProviderAdapter(config(`${root}/openai/v1`), null);
+    const events = [];
+    for await (const event of adapter.generate(
+      {
+        runId: '550e8400-e29b-41d4-a716-446655440000',
+        model: 'writer-model',
+        systemPrompt: 'test',
+        messages: [{ role: 'user', content: 'test' }],
+        maxOutputTokens: 8,
+        metadata: {
+          taskType: 'validate',
+          promptId: 'test',
+          promptVersion: 1,
+          constraintHash: '0'.repeat(64),
+        },
+      },
+      new AbortController().signal,
+    )) {
+      events.push(event);
+    }
+    expect(events.filter((event) => event.type === 'completed')).toEqual([
+      { type: 'completed', finishReason: 'stop' },
+    ]);
+  });
+
+  it('keeps cancellation and timeout active after streaming response headers arrive', async () => {
+    const stalledFetch = async (): Promise<Response> =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start() {
+            // The reader remains pending until the adapter deadline cancels it.
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'text/event-stream' } },
+      );
+    const request = {
+      runId: '550e8400-e29b-41d4-a716-446655440000',
+      model: 'writer-model',
+      systemPrompt: 'test',
+      messages: [{ role: 'user' as const, content: 'test' }],
+      maxOutputTokens: 8,
+      metadata: {
+        taskType: 'validate' as const,
+        promptId: 'test',
+        promptVersion: 1,
+        constraintHash: '0'.repeat(64),
+      },
+    };
+
+    const cancelledController = new AbortController();
+    const cancelledAdapter = createProviderAdapter(config('https://provider.example/v1'), null, {
+      fetch: stalledFetch as typeof fetch,
+    });
+    const cancelledStream = cancelledAdapter.generate(request, cancelledController.signal);
+    const cancelledIterator = cancelledStream[Symbol.asyncIterator]();
+    await expect(cancelledIterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
+    const cancelledRead = cancelledIterator.next();
+    cancelledController.abort();
+    await expect(cancelledRead).rejects.toMatchObject({ code: 'COMMON_CANCELLED_004' });
+
+    const timeoutAdapter = createProviderAdapter(
+      { ...config('https://provider.example/v1'), timeoutMs: 1_000 },
+      null,
+      { fetch: stalledFetch as typeof fetch },
+    );
+    const timeoutStream = timeoutAdapter.generate(request, new AbortController().signal);
+    const timeoutIterator = timeoutStream[Symbol.asyncIterator]();
+    await expect(timeoutIterator.next()).resolves.toMatchObject({ value: { type: 'connected' } });
+    await expect(timeoutIterator.next()).rejects.toMatchObject({ code: 'AI_REQUEST_TIMEOUT_006' });
   });
 
   it('reports missing usage without failing a valid stream', async () => {

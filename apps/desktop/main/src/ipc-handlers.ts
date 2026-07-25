@@ -44,11 +44,6 @@ import {
   PROTOCOL_VERSION,
   RequestIdSchema,
   ProjectListRecentCommandSchema,
-  PROVIDER_CORE_OPERATIONS,
-  ProviderListCommandSchema,
-  ProviderRemoveCommandSchema,
-  ProviderSaveCommandSchema,
-  ProviderTestConnectionCommandSchema,
   ProjectListStructureCommandSchema,
   ProjectGetBriefCommandSchema,
   ProjectUpdateBriefCommandSchema,
@@ -119,6 +114,7 @@ import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 import type { CoreSupervisor } from './core-supervisor.js';
 import type { CredentialBroker } from './credential-broker.js';
 import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
+import { registerProviderIpcHandlers } from './provider-ipc-handlers.js';
 import { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';
 
 interface IpcHandlerOptions {
@@ -220,10 +216,6 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.settingsGet,
     IPC_CHANNELS.settingsSet,
     IPC_CHANNELS.settingsReset,
-    IPC_CHANNELS.providerList,
-    IPC_CHANNELS.providerSave,
-    IPC_CHANNELS.providerRemove,
-    IPC_CHANNELS.providerTestConnection,
     IPC_CHANNELS.projectListRecent,
     IPC_CHANNELS.projectRelocateRecent,
     IPC_CHANNELS.projectRemoveRecent,
@@ -328,6 +320,14 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
 
   const invalidRequest = (raw: unknown): CommandFailure =>
     failure(requestIdFrom(raw), 'COMMON_INVALID_INPUT_001', 'The request was invalid.', false);
+
+  const disposeProviderHandlers = registerProviderIpcHandlers({
+    ipcMain: options.ipcMain,
+    supervisor: options.supervisor,
+    credentialBroker: options.credentialBroker,
+    rendererUrl: options.rendererUrl,
+    logger: options.logger,
+  });
 
   register(IPC_CHANNELS.appGetInfo, (event, raw) => {
     const rejected = rejectUntrusted(event, raw);
@@ -455,221 +455,6 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     return result.ok
       ? success(parsed.data.requestId, result.data)
       : appDataFailure(parsed.data.requestId, result.errorCode);
-  });
-
-  const providerFailure = (requestId: string, code: ErrorCode): CommandFailure => {
-    const semantics: Readonly<
-      Record<string, { message: string; retryable: boolean; userAction?: string }>
-    > = {
-      AI_PROVIDER_NOT_CONFIGURED_001: {
-        message: '未找到Provider配置。',
-        retryable: false,
-        userAction: '刷新Provider列表或重新保存配置。',
-      },
-      AI_CREDENTIAL_MISSING_002: {
-        message: 'Provider凭据缺失或安全存储不可用。',
-        retryable: false,
-        userAction: '重新保存凭据；本地无密钥服务可清除凭据后重试。',
-      },
-      AI_CONNECTION_FAILED_003: {
-        message: '无法连接Provider。',
-        retryable: true,
-        userAction: '检查服务是否运行、地址、端口和网络连接。',
-      },
-      AI_AUTH_FAILED_004: {
-        message: 'Provider认证失败。',
-        retryable: false,
-        userAction: '检查API密钥或本地服务认证设置。',
-      },
-      AI_RATE_LIMITED_005: {
-        message: 'Provider当前限流。',
-        retryable: true,
-        userAction: '稍后重试或检查Provider配额。',
-      },
-      AI_REQUEST_TIMEOUT_006: {
-        message: 'Provider连接测试超时。',
-        retryable: true,
-        userAction: '检查服务负载或适当增加超时时间。',
-      },
-      AI_STREAM_INTERRUPTED_009: {
-        message: 'Provider流式响应中断。',
-        retryable: true,
-        userAction: '检查网络稳定性与Provider流式兼容性。',
-      },
-      AI_MODEL_UNSUPPORTED_010: {
-        message: 'Provider未提供配置的模型或适配器。',
-        retryable: false,
-        userAction: '检查模型ID；Custom协议必须使用仓库已批准适配器。',
-      },
-      AI_ENDPOINT_UNSAFE_013: {
-        message: 'Provider地址未通过安全检查。',
-        retryable: false,
-        userAction: '使用回环/受信局域网地址，或使用HTTPS外部端点。',
-      },
-    };
-    const resolved = semantics[code] ?? {
-      message: 'Provider操作未完成。',
-      retryable: code === 'COMMON_INTERNAL_999' || code === 'COMMON_TIMEOUT_005',
-    };
-    return failure(
-      requestId,
-      code,
-      resolved.message,
-      resolved.retryable,
-      undefined,
-      undefined,
-      resolved.userAction,
-    );
-  };
-
-  register(IPC_CHANNELS.providerList, async (event, raw) => {
-    const rejected = rejectUntrusted(event, raw);
-    if (rejected) return rejected;
-    const parsed = ProviderListCommandSchema.safeParse(raw);
-    if (!parsed.success) return invalidRequest(raw);
-    const result = await options.supervisor.invokeProviderOperation(parsed.data.requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.list,
-    });
-    return result.ok
-      ? success(parsed.data.requestId, result.data)
-      : providerFailure(parsed.data.requestId, result.errorCode);
-  });
-
-  register(IPC_CHANNELS.providerSave, async (event, raw) => {
-    const rejected = rejectUntrusted(event, raw);
-    if (rejected) return rejected;
-    const parsed = ProviderSaveCommandSchema.safeParse(raw);
-    if (!parsed.success) return invalidRequest(raw);
-    const requestId = parsed.data.requestId;
-    const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.get,
-      providerId: parsed.data.payload.config.id,
-    });
-    if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
-    if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    const existing = existingResult.data.provider;
-    let credentialRef = existing?.credentialRef ?? null;
-    let createdCredentialRef: string | null = null;
-    try {
-      if (parsed.data.payload.credential.action === 'replace') {
-        createdCredentialRef = await options.credentialBroker.store(
-          parsed.data.payload.config.id,
-          parsed.data.payload.credential.credential,
-        );
-        credentialRef = createdCredentialRef;
-      } else if (parsed.data.payload.credential.action === 'remove') {
-        credentialRef = null;
-      }
-    } catch {
-      return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
-    }
-
-    const saved = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.upsert,
-      config: { ...parsed.data.payload.config, credentialRef },
-    });
-    if (!saved.ok) {
-      if (createdCredentialRef) {
-        try {
-          await options.credentialBroker.remove(createdCredentialRef);
-        } catch {
-          await options.logger.log('warn', 'credential.rollback.failed', {
-            providerId: parsed.data.payload.config.id,
-            errorCode: 'AI_CREDENTIAL_MISSING_002',
-          });
-        }
-      }
-      return providerFailure(requestId, saved.errorCode);
-    }
-    if (saved.operation !== PROVIDER_CORE_OPERATIONS.upsert) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-
-    if (existing?.credentialRef && existing.credentialRef !== credentialRef) {
-      try {
-        await options.credentialBroker.remove(existing.credentialRef);
-      } catch {
-        await options.logger.log('warn', 'credential.cleanup.failed', {
-          providerId: parsed.data.payload.config.id,
-          errorCode: 'AI_CREDENTIAL_MISSING_002',
-        });
-      }
-    }
-    return success(requestId, saved.data);
-  });
-
-  register(IPC_CHANNELS.providerRemove, async (event, raw) => {
-    const rejected = rejectUntrusted(event, raw);
-    if (rejected) return rejected;
-    const parsed = ProviderRemoveCommandSchema.safeParse(raw);
-    if (!parsed.success) return invalidRequest(raw);
-    const requestId = parsed.data.requestId;
-    const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.get,
-      providerId: parsed.data.payload.providerId,
-    });
-    if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
-    if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    const removed = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.remove,
-      providerId: parsed.data.payload.providerId,
-    });
-    if (!removed.ok) return providerFailure(requestId, removed.errorCode);
-    if (removed.operation !== PROVIDER_CORE_OPERATIONS.remove) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    if (removed.data.removed && existingResult.data.provider?.credentialRef) {
-      try {
-        await options.credentialBroker.remove(existingResult.data.provider.credentialRef);
-      } catch {
-        await options.logger.log('warn', 'credential.cleanup.failed', {
-          providerId: parsed.data.payload.providerId,
-          errorCode: 'AI_CREDENTIAL_MISSING_002',
-        });
-      }
-    }
-    return success(requestId, removed.data);
-  });
-
-  register(IPC_CHANNELS.providerTestConnection, async (event, raw) => {
-    const rejected = rejectUntrusted(event, raw);
-    if (rejected) return rejected;
-    const parsed = ProviderTestConnectionCommandSchema.safeParse(raw);
-    if (!parsed.success) return invalidRequest(raw);
-    const requestId = parsed.data.requestId;
-    const existingResult = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.get,
-      providerId: parsed.data.payload.providerId,
-    });
-    if (!existingResult.ok) return providerFailure(requestId, existingResult.errorCode);
-    if (existingResult.operation !== PROVIDER_CORE_OPERATIONS.get) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    const config = existingResult.data.provider;
-    if (!config) return providerFailure(requestId, 'AI_PROVIDER_NOT_CONFIGURED_001');
-    let credential: string | null = null;
-    if (config.credentialRef) {
-      try {
-        credential = await options.credentialBroker.resolve(config.credentialRef);
-      } catch {
-        return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
-      }
-      if (!credential) return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
-    }
-    const result = await options.supervisor.invokeProviderOperation(requestId, {
-      operation: PROVIDER_CORE_OPERATIONS.testConnection,
-      config,
-      credential,
-    });
-    if (!result.ok) return providerFailure(requestId, result.errorCode);
-    if (result.operation !== PROVIDER_CORE_OPERATIONS.testConnection) {
-      return providerFailure(requestId, 'COMMON_INTERNAL_999');
-    }
-    return success(requestId, result.data);
   });
 
   register(IPC_CHANNELS.projectListRecent, async (event, raw) => {
@@ -1447,6 +1232,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
   options.ipcMain.on(IPC_CHANNELS.taskConnectEvents, connectTaskEvents);
 
   return () => {
+    disposeProviderHandlers();
     for (const channel of invokeChannels) options.ipcMain.removeHandler(channel);
     options.ipcMain.removeListener(IPC_CHANNELS.taskConnectEvents, connectTaskEvents);
   };

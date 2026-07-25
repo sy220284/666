@@ -1,0 +1,6 @@
+pnpm exec vitest run tests/unit/provider-contracts.test.ts tests/security/provider-endpoint.test.ts tests/security/provider-ipc.test.ts tests/integration/provider-connection.test.ts
+pnpm typecheck
+pnpm lint
+pnpm build
+xvfb-run -a pnpm exec playwright test provider-settings.spec.ts --config tests/e2e/playwright.config.ts
+node scripts/taskctl.mjs validate

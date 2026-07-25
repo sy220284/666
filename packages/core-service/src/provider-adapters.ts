@@ -42,7 +42,10 @@ function integer(value: unknown): number | undefined {
 }
 
 function endpoint(baseUrl: string, relative: string): URL {
-  const normalized = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const normalized = new URL(baseUrl);
+  normalized.search = '';
+  normalized.hash = '';
+  if (!normalized.pathname.endsWith('/')) normalized.pathname += '/';
   return new URL(relative, normalized);
 }
 
@@ -78,28 +81,63 @@ function mapHttpError(status: number): ProviderRuntimeError {
   );
 }
 
+interface ProviderResponseLease {
+  readonly response: Response;
+  readonly signal: AbortSignal;
+  readonly cancelled: () => boolean;
+  readonly timedOut: () => boolean;
+  readonly release: () => void;
+}
+
+function cancelledError(): ProviderRuntimeError {
+  return new ProviderRuntimeError(
+    'COMMON_CANCELLED_004',
+    'The Provider request was cancelled.',
+    false,
+  );
+}
+
+function timeoutError(): ProviderRuntimeError {
+  return new ProviderRuntimeError(
+    'AI_REQUEST_TIMEOUT_006',
+    'The Provider request timed out.',
+    true,
+  );
+}
+
+function deadlineError(lease: ProviderResponseLease): ProviderRuntimeError | null {
+  if (lease.cancelled()) return cancelledError();
+  if (lease.timedOut()) return timeoutError();
+  return null;
+}
+
 async function request(
   fetchImplementation: typeof fetch,
   url: URL,
   init: RequestInit,
   timeoutMs: number,
   userSignal?: AbortSignal,
-): Promise<Response> {
+): Promise<ProviderResponseLease> {
+  if (userSignal?.aborted) throw cancelledError();
   const controller = new AbortController();
+  let cancelled = false;
   let timedOut = false;
-  const onAbort = (): void => controller.abort();
-  if (userSignal?.aborted) {
-    throw new ProviderRuntimeError(
-      'COMMON_CANCELLED_004',
-      'The Provider request was cancelled.',
-      false,
-    );
-  }
+  let released = false;
+  const onAbort = (): void => {
+    cancelled = true;
+    controller.abort();
+  };
   userSignal?.addEventListener('abort', onAbort, { once: true });
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort();
   }, timeoutMs);
+  const release = (): void => {
+    if (released) return;
+    released = true;
+    clearTimeout(timer);
+    userSignal?.removeEventListener('abort', onAbort);
+  };
   try {
     const response = await fetchImplementation(url, {
       ...init,
@@ -107,76 +145,100 @@ async function request(
       signal: controller.signal,
     });
     if (response.status >= 300 && response.status < 400) {
+      try {
+        await response.body?.cancel();
+      } finally {
+        release();
+      }
       throw new ProviderRuntimeError(
         'AI_ENDPOINT_UNSAFE_013',
         'Provider redirects are blocked unless an adapter explicitly approves them.',
         false,
       );
     }
-    return response;
+    return {
+      response,
+      signal: controller.signal,
+      cancelled: () => cancelled,
+      timedOut: () => timedOut,
+      release,
+    };
   } catch (error) {
+    release();
     if (error instanceof ProviderRuntimeError) throw error;
-    if (userSignal?.aborted) {
-      throw new ProviderRuntimeError(
-        'COMMON_CANCELLED_004',
-        'The Provider request was cancelled.',
-        false,
-      );
-    }
-    if (timedOut) {
-      throw new ProviderRuntimeError(
-        'AI_REQUEST_TIMEOUT_006',
-        'The Provider request timed out.',
-        true,
-      );
-    }
+    if (cancelled) throw cancelledError();
+    if (timedOut) throw timeoutError();
     throw new ProviderRuntimeError(
       'AI_CONNECTION_FAILED_003',
       'The Provider could not be reached.',
       true,
     );
-  } finally {
-    clearTimeout(timer);
-    userSignal?.removeEventListener('abort', onAbort);
   }
 }
 
-async function requireJson(response: Response): Promise<unknown> {
-  if (!response.ok) throw mapHttpError(response.status);
+async function discard(lease: ProviderResponseLease): Promise<void> {
   try {
-    return await response.json();
+    await lease.response.body?.cancel();
   } catch {
+    // The body may already be closed by the runtime.
+  } finally {
+    lease.release();
+  }
+}
+
+async function requireJson(lease: ProviderResponseLease): Promise<unknown> {
+  if (!lease.response.ok) {
+    const error = mapHttpError(lease.response.status);
+    await discard(lease);
+    throw error;
+  }
+  try {
+    const value = await lease.response.text();
+    return JSON.parse(value) as unknown;
+  } catch (error) {
+    const deadline = deadlineError(lease);
+    if (deadline) throw deadline;
+    if (error instanceof ProviderRuntimeError) throw error;
     throw new ProviderRuntimeError(
       'AI_OUTPUT_INVALID_008',
       'The Provider returned invalid JSON.',
       false,
     );
+  } finally {
+    lease.release();
   }
 }
 
-async function* sseData(response: Response, signal: AbortSignal): AsyncGenerator<string> {
-  if (!response.ok) throw mapHttpError(response.status);
-  if (!response.body) {
+async function* sseData(lease: ProviderResponseLease): AsyncGenerator<string> {
+  if (!lease.response.ok) {
+    const error = mapHttpError(lease.response.status);
+    await discard(lease);
+    throw error;
+  }
+  if (!lease.response.body) {
+    lease.release();
     throw new ProviderRuntimeError(
       'AI_STREAM_INTERRUPTED_009',
       'The Provider stream was empty.',
       true,
     );
   }
-  const reader = response.body.getReader();
+  const reader = lease.response.body.getReader();
+  const onAbort = (): void => {
+    void reader.cancel().catch(() => undefined);
+  };
+  lease.signal.addEventListener('abort', onAbort, { once: true });
   const decoder = new TextDecoder();
   let buffer = '';
   try {
     while (true) {
-      if (signal.aborted) {
-        throw new ProviderRuntimeError(
-          'COMMON_CANCELLED_004',
-          'The Provider request was cancelled.',
-          false,
-        );
-      }
+      if (lease.signal.aborted) throw deadlineError(lease) ?? cancelledError();
       const chunk = await reader.read();
-      if (chunk.done) break;
+      if (chunk.done) {
+        const deadline = deadlineError(lease);
+        if (deadline) throw deadline;
+        break;
+      }
       buffer += decoder.decode(chunk.value, { stream: true });
       const events = buffer.split(/\r?\n\r?\n/u);
       buffer = events.pop() ?? '';
@@ -199,21 +261,18 @@ async function* sseData(response: Response, signal: AbortSignal): AsyncGenerator
       if (data) yield data;
     }
   } catch (error) {
+    const deadline = deadlineError(lease);
+    if (deadline) throw deadline;
     if (error instanceof ProviderRuntimeError) throw error;
-    if (signal.aborted) {
-      throw new ProviderRuntimeError(
-        'COMMON_CANCELLED_004',
-        'The Provider request was cancelled.',
-        false,
-      );
-    }
     throw new ProviderRuntimeError(
       'AI_STREAM_INTERRUPTED_009',
       'The Provider stream was interrupted.',
       true,
     );
   } finally {
+    lease.signal.removeEventListener('abort', onAbort);
     reader.releaseLock();
+    lease.release();
   }
 }
 
@@ -316,7 +375,10 @@ class OpenAiCompatibleProvider extends BaseProvider {
       this.config.timeoutMs,
       signal,
     );
-    if ([404, 405, 501].includes(response.status)) return 'unsupported';
+    if ([404, 405, 501].includes(response.response.status)) {
+      await discard(response);
+      return 'unsupported';
+    }
     const body = object(await requireJson(response));
     const ids = array(body?.data)
       .map((item) => string(object(item)?.id))
@@ -366,7 +428,10 @@ class OpenAiCompatibleProvider extends BaseProvider {
       this.config.timeoutMs,
       signal,
     );
-    if (structured && [400, 404, 405, 422, 501].includes(response.status)) return false;
+    if (structured && [400, 404, 405, 422, 501].includes(response.response.status)) {
+      await discard(response);
+      return false;
+    }
     const body = object(await requireJson(response));
     const first = object(array(body?.choices)[0]);
     const content = string(object(first?.message)?.content);
@@ -443,10 +508,14 @@ class OpenAiCompatibleProvider extends BaseProvider {
     );
     yield ProviderEventSchema.parse({ type: 'connected' });
     let completed = false;
-    for await (const data of sseData(response, signal)) {
+    let finishReason: string | undefined;
+    for await (const data of sseData(response)) {
       if (data === '[DONE]') {
         completed = true;
-        yield ProviderEventSchema.parse({ type: 'completed' });
+        yield ProviderEventSchema.parse({
+          type: 'completed',
+          ...(finishReason ? { finishReason } : {}),
+        });
         break;
       }
       let payload: JsonRecord | null;
@@ -472,13 +541,11 @@ class OpenAiCompatibleProvider extends BaseProvider {
           ...(outputTokens === undefined ? {} : { outputTokens }),
         });
       }
-      if (choice?.finish_reason) {
-        completed = true;
-        yield ProviderEventSchema.parse({
-          type: 'completed',
-          finishReason: String(choice.finish_reason),
-        });
-      }
+      if (choice?.finish_reason) finishReason = String(choice.finish_reason);
+    }
+    if (!completed && finishReason) {
+      completed = true;
+      yield ProviderEventSchema.parse({ type: 'completed', finishReason });
     }
     if (!completed) {
       throw new ProviderRuntimeError(
@@ -510,7 +577,10 @@ class AnthropicProvider extends BaseProvider {
       this.config.timeoutMs,
       signal,
     );
-    if ([404, 405, 501].includes(response.status)) return 'unsupported';
+    if ([404, 405, 501].includes(response.response.status)) {
+      await discard(response);
+      return 'unsupported';
+    }
     const body = object(await requireJson(response));
     const ids = array(body?.data)
       .map((item) => string(object(item)?.id))
@@ -560,7 +630,10 @@ class AnthropicProvider extends BaseProvider {
       this.config.timeoutMs,
       signal,
     );
-    if (structured && [400, 404, 405, 422, 501].includes(response.status)) return false;
+    if (structured && [400, 404, 405, 422, 501].includes(response.response.status)) {
+      await discard(response);
+      return false;
+    }
     const body = object(await requireJson(response));
     const content = array(body?.content)
       .map((item) => string(object(item)?.text))
@@ -622,7 +695,7 @@ class AnthropicProvider extends BaseProvider {
     );
     yield ProviderEventSchema.parse({ type: 'connected' });
     let completed = false;
-    for await (const data of sseData(response, signal)) {
+    for await (const data of sseData(response)) {
       let payload: JsonRecord | null;
       try {
         payload = object(JSON.parse(data));

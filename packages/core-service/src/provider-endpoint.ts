@@ -20,20 +20,86 @@ function normalizedHost(hostname: string): string {
   return hostname.replace(/^\[/u, '').replace(/\]$/u, '').replace(/\.$/u, '').toLowerCase();
 }
 
-function ipv4Scope(host: string): ProviderEndpointScope | 'unsafe' {
+function ipv4Parts(host: string): readonly [number, number, number, number] | null {
   const parts = host.split('.').map(Number);
   if (
     parts.length !== 4 ||
     parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
   ) {
-    return 'unsafe';
+    return null;
   }
-  const [a, b] = parts as [number, number, number, number];
+  return parts as [number, number, number, number];
+}
+
+function ipv4Scope(host: string): ProviderEndpointScope | 'unsafe' {
+  const parts = ipv4Parts(host);
+  if (!parts) return 'unsafe';
+  const [a, b, c] = parts;
   if (a === 127) return 'loopback';
-  if (a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) return 'lan';
-  if (a === 0 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || a >= 224) {
+  if (a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) {
+    return 'lan';
+  }
+  if (
+    a === 0 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 192 && b === 88 && c === 99) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224
+  ) {
     return 'unsafe';
   }
+  return 'external';
+}
+
+function parseIpv6Words(host: string): readonly number[] | null {
+  const pieces = host.split('::');
+  if (pieces.length > 2) return null;
+  const parseSide = (side: string): number[] | null => {
+    if (!side) return [];
+    const words: number[] = [];
+    for (const token of side.split(':')) {
+      if (token.includes('.')) {
+        const ipv4 = ipv4Parts(token);
+        if (!ipv4) return null;
+        words.push((ipv4[0] << 8) | ipv4[1], (ipv4[2] << 8) | ipv4[3]);
+      } else {
+        if (!/^[0-9a-f]{1,4}$/iu.test(token)) return null;
+        words.push(Number.parseInt(token, 16));
+      }
+    }
+    return words;
+  };
+  const left = parseSide(pieces[0] ?? '');
+  const right = parseSide(pieces[1] ?? '');
+  if (!left || !right) return null;
+  if (pieces.length === 1) return left.length === 8 ? left : null;
+  const missing = 8 - left.length - right.length;
+  if (missing < 1) return null;
+  return [...left, ...Array.from({ length: missing }, () => 0), ...right];
+}
+
+function ipv6Scope(host: string): ProviderEndpointScope | 'unsafe' {
+  const words = parseIpv6Words(host);
+  if (!words || words.length !== 8) return 'unsafe';
+  if (words.every((word) => word === 0)) return 'unsafe';
+  if (words.slice(0, 7).every((word) => word === 0) && words[7] === 1) return 'loopback';
+  const mapped = words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff;
+  const compatible = words.slice(0, 6).every((word) => word === 0);
+  if (mapped || compatible) {
+    const ipv4 = `${(words[6]! >> 8) & 0xff}.${words[6]! & 0xff}.${
+      (words[7]! >> 8) & 0xff
+    }.${words[7]! & 0xff}`;
+    return ipv4Scope(ipv4);
+  }
+  const first = words[0]!;
+  if ((first & 0xfe00) === 0xfc00) return 'lan';
+  if ((first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00) return 'unsafe';
+  if (first === 0x2001 && words[1] === 0x0db8) return 'unsafe';
   return 'external';
 }
 
@@ -41,21 +107,8 @@ function literalScope(hostname: string): ProviderEndpointScope | 'unsafe' | null
   const host = normalizedHost(hostname);
   const version = isIP(host);
   if (version === 4) return ipv4Scope(host);
-  if (version !== 6) return null;
-  if (host === '::1') return 'loopback';
-  if (host === '::') return 'unsafe';
-  if (
-    host.startsWith('fe8') ||
-    host.startsWith('fe9') ||
-    host.startsWith('fea') ||
-    host.startsWith('feb')
-  ) {
-    return 'unsafe';
-  }
-  if (host.startsWith('ff')) return 'unsafe';
-  if (host.startsWith('fc') || host.startsWith('fd')) return 'lan';
-  const mapped = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/u)?.[1];
-  return mapped ? ipv4Scope(mapped) : 'external';
+  if (version === 6) return ipv6Scope(host);
+  return null;
 }
 
 function hostnameScope(hostname: string): ProviderEndpointScope {
@@ -86,6 +139,9 @@ export function validateProviderEndpoint(baseUrl: string): ProviderEndpointInfo 
   const parsedValue = ProviderBaseUrlSchema.safeParse(baseUrl);
   if (!parsedValue.success) unsafe('The Provider URL is invalid or contains embedded credentials.');
   const url = new URL(parsedValue.data);
+  if (url.search || url.hash) {
+    unsafe('Provider Base URLs cannot contain query parameters or fragments.');
+  }
   if (url.port === '0') unsafe('The Provider endpoint cannot use port 0.');
   const scope = hostnameScope(url.hostname);
   const secureTransport = url.protocol === 'https:';
@@ -143,6 +199,9 @@ export async function inspectProviderEndpoint(
     unsafe('The Provider hostname resolved across mixed network trust boundaries.');
   const [resolvedScope] = scopes;
   if (!resolvedScope) unsafe('The Provider endpoint scope could not be determined.');
+  if (resolvedScope !== initial.scope) {
+    unsafe('The Provider hostname resolved outside its declared network trust boundary.');
+  }
   if (resolvedScope === 'external' && url.protocol !== 'https:') {
     unsafe('External Provider endpoints must use HTTPS.');
   }

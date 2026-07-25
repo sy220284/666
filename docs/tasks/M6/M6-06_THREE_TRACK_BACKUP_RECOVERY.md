@@ -53,8 +53,8 @@ M1-08、M2-04、M6-03、M6-05
 - `docs/database/DATABASE_SCHEMA.md`
 - `docs/testing/SECURITY_TEST_CASES.md`
 - `docs/ui/INTERACTION_STATES.md`
-- `docs/tasks/M1/M1-08_RECOVERY_CHECKPOINT.md`
-- `docs/tasks/M2/M2-04_STRUCTURE_RECOVERY.md`
+- `docs/tasks/M1/M1-08_RECOVERY_READONLY_FOUNDATION.md`
+- `docs/tasks/M2/M2-04_TRASH_STRUCTURE_RECOVERY.md`
 - `docs/tasks/M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md`
 
 ## 主要影响范围

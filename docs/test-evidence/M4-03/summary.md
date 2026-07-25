@@ -8,7 +8,7 @@ M4-03 is **Verified**. Provider configuration, approved protocol adapters, crede
 
 - OpenAI-compatible and Anthropic adapters; Custom protocol restricted to approved registered adapters.
 - App DB Provider configuration and Electron safeStorage-backed encrypted credential file with database-only `credentialRef`.
-- Provider ownership checks for credential resolve/remove/replace; insecure safeStorage backends blocked.
+- Provider ownership checks for credential resolve/remove/replace; insecure safeStorage backends rejected.
 - Same-Provider save/remove/test serialization and bounded request-id idempotency.
 - Atomic credential replacement and compensating configuration rollback on cleanup failure.
 - Model listing/minimal generation/stream/structured capability probes and stable error mapping.

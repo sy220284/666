@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "379b8518b9c2b753dd4e22392c4221be648ffb4b"
+          test "$(git rev-parse HEAD)" = "09a1da1e241d8edcd83723056b3c29b979205b24"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
 
@@ -39,6 +39,8 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin tooling/m403-closeout
           git show origin/tooling/m403-closeout:.github/tooling/m403-closeout.py > "${RUNNER_TEMP}/m403-closeout.py"
+          git show origin/tooling/m403-closeout:.github/tooling/m403-closeout-head-fix.py > "${RUNNER_TEMP}/m403-closeout-head-fix.py"
+          python "${RUNNER_TEMP}/m403-closeout-head-fix.py" "${RUNNER_TEMP}/m403-closeout.py"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4

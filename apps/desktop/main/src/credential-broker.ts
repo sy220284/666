@@ -141,6 +141,34 @@ export class CredentialBroker {
     });
   }
 
+  replaceForProvider(
+    providerId: string,
+    credentialRef: string,
+    credential: string,
+  ): Promise<void> {
+    this.#assertSecureBackend();
+    const validProviderId = ProviderIdSchema.parse(providerId);
+    const validCredentialRef = CredentialRefSchema.parse(credentialRef);
+    if (!credential) throw new Error('CREDENTIAL_EMPTY');
+    return this.#enqueueMutation(async () => {
+      const file = await this.#read();
+      const record = file.records[validCredentialRef];
+      if (!record) throw new Error('CREDENTIAL_NOT_FOUND');
+      assertProviderOwner(record, validProviderId);
+      const encrypted = this.#safeStorage.encryptString(credential);
+      await this.#write({
+        version: 1,
+        records: {
+          ...file.records,
+          [validCredentialRef]: {
+            ...record,
+            ciphertext: encrypted.toString('base64'),
+          },
+        },
+      });
+    });
+  }
+
   async has(credentialRef: string): Promise<boolean> {
     const validCredentialRef = CredentialRefSchema.parse(credentialRef);
     await this.#waitForMutations();

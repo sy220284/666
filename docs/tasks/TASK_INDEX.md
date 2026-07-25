@@ -139,7 +139,7 @@ M1是明确的基础产品门：没有AI时也必须能够创建项目、建卷�
 | M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md)    | M6-01、M5-06                      | Planned |
 | M6-03 | [`全项目搜索与安全批量替换`](M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md)     | M4-01、M2-01、M1-08               | Planned |
 | M6-04 | [`网文节奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md)           | M3-02、M6-01、M6-02、M6-03        | Planned |
-| M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md)                   | M1-09、M1-08                      | Planned |
+| M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md)                   | M1-09、M1-08、M6-04               | Planned |
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md) | M1-08、M2-04、M6-03、M6-05        | Planned |
 
 里程碑摘要：[`M6_TASKS.md`](M6_TASKS.md)。
@@ -177,8 +177,9 @@ M1是明确的基础产品门：没有AI时也必须能够创建项目、建卷�
 9. M5-00四个垂直切片未全部Verified前，不得激活M5-01或新增面向用户的AI生成入口。
 10. M5-06未完成前，M6-02不得把真实Provider状态提取或pending提案当作已闭环能力。
 11. M6-03未完成前不得激活M6-04，避免`safe_replace`来源合同悬空。
-12. M6-04不得提前宣称M6-05 DOCX或M6-06三轨恢复来源已验收；全部来源由M8-02终验。
-13. M8验收任务只允许明确路径内的局部修复；跨模块设计缺陷必须转独立`fix/`任务并阻断发布。
+12. M6-04未完成前不得激活M6-05，DOCX必须复用统一`mutationOrigin: import`合同。
+13. M6-04不得提前宣称M6-05 DOCX或M6-06三轨恢复来源已验收；全部来源由M8-02终验。
+14. M8验收任务只允许明确路径内的局部修复；跨模块设计缺陷必须转独立`fix/`任务并阻断发布。
 
 ## 4. 执行规则
 

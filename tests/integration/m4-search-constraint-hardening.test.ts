@@ -6,15 +6,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
-import {
-  HardenedConstraintPackageService,
-} from '../../packages/core-service/src/constraint-package-hardening.js';
+import { HardenedConstraintPackageService } from '../../packages/core-service/src/constraint-package-hardening.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
-import {
-  HardenedSearchIndexService,
-} from '../../packages/core-service/src/search-index-hardening.js';
+import { HardenedSearchIndexService } from '../../packages/core-service/src/search-index-hardening.js';
 import { VersionService } from '../../packages/core-service/src/version.js';
 
 const temporaryDirectories: string[] = [];
@@ -117,7 +113,9 @@ describe('M4 search and constraint hardening', () => {
       );
       const chapter = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
       await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
-        connection.prepare('UPDATE chapters SET title = ? WHERE id = ?').run('城门夜雨', chapter.id);
+        connection
+          .prepare('UPDATE chapters SET title = ? WHERE id = ?')
+          .run('城门夜雨', chapter.id);
       });
       const saved = await saveChapter(
         harness,
@@ -195,12 +193,7 @@ describe('M4 search and constraint hardening', () => {
       const future = withFuture.volumes[0]!.chapters[2]!;
 
       await saveChapter(harness, project.projectId, previous.id, '玄枢暗号只在前章留下。');
-      await saveChapter(
-        harness,
-        project.projectId,
-        current.id,
-        `当前稿 ${'玄枢暗号 '.repeat(40)}`,
-      );
+      await saveChapter(harness, project.projectId, current.id, `当前稿 ${'玄枢暗号 '.repeat(40)}`);
       await saveChapter(
         harness,
         project.projectId,

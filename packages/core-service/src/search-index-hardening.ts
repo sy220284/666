@@ -139,9 +139,7 @@ export class HardenedSearchIndexService extends BaseSearchIndexService {
     });
     if (titleItems.length === 0) return base;
 
-    const titleTargets = new Set(
-      titleItems.map((item) => `${item.sourceType}:${item.targetId}`),
-    );
+    const titleTargets = new Set(titleItems.map((item) => `${item.sourceType}:${item.targetId}`));
     const ordered = requestedSources.flatMap((sourceType) => [
       ...titleItems.filter((item) => item.sourceType === sourceType),
       ...base.items.filter(

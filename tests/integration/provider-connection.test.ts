@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { createProviderAdapter } from '../../packages/core-service/src/provider-adapters.js';
 import { ProviderConnectionService } from '../../packages/core-service/src/provider-connection.js';
+import type { ProviderDnsLookup } from '../../packages/core-service/src/provider-endpoint.js';
 
 const servers: ReturnType<typeof createServer>[] = [];
 const now = '2026-07-25T01:00:00.000Z';
@@ -168,7 +169,7 @@ describe('M4-03 real Provider protocol adapters', () => {
   });
 
   it('keeps cancellation and timeout active after streaming response headers arrive', async () => {
-    const stalledFetch = async (): Promise<Response> =>
+    const stalledFetch: typeof fetch = async (): Promise<Response> =>
       new Response(
         new ReadableStream<Uint8Array>({
           start() {
@@ -193,7 +194,7 @@ describe('M4-03 real Provider protocol adapters', () => {
 
     const cancelledController = new AbortController();
     const cancelledAdapter = createProviderAdapter(config('https://provider.example/v1'), null, {
-      fetch: stalledFetch as typeof fetch,
+      fetch: stalledFetch,
     });
     const cancelledStream = cancelledAdapter.generate(request, cancelledController.signal);
     const cancelledIterator = cancelledStream[Symbol.asyncIterator]();
@@ -205,7 +206,7 @@ describe('M4-03 real Provider protocol adapters', () => {
     const timeoutAdapter = createProviderAdapter(
       { ...config('https://provider.example/v1'), timeoutMs: 1_000 },
       null,
-      { fetch: stalledFetch as typeof fetch },
+      { fetch: stalledFetch },
     );
     const timeoutStream = timeoutAdapter.generate(request, new AbortController().signal);
     const timeoutIterator = timeoutStream[Symbol.asyncIterator]();
@@ -222,7 +223,7 @@ describe('M4-03 real Provider protocol adapters', () => {
 
   it('normalizes authentication, rate-limit, model, timeout, interruption, and cancellation failures', async () => {
     const external = config('https://provider.example/v1');
-    const lookup = (async () => [{ address: '93.184.216.34', family: 4 }]) as never;
+    const lookup: ProviderDnsLookup = async () => [{ address: '93.184.216.34', family: 4 }];
     const run = (response: Response | Promise<Response>) =>
       new ProviderConnectionService({ lookup, fetch: async () => response }).test(
         external,
@@ -238,7 +239,7 @@ describe('M4-03 real Provider protocol adapters', () => {
       run(new Response(JSON.stringify({ data: [{ id: 'other-model' }] }), { status: 200 })),
     ).rejects.toMatchObject({ code: 'AI_MODEL_UNSUPPORTED_010' });
 
-    const timeoutFetch = async (_input: unknown, init?: RequestInit): Promise<Response> =>
+    const timeoutFetch: typeof fetch = async (_input, init): Promise<Response> =>
       new Promise((_resolve, reject) => {
         init?.signal?.addEventListener(
           'abort',
@@ -247,7 +248,7 @@ describe('M4-03 real Provider protocol adapters', () => {
         );
       });
     await expect(
-      new ProviderConnectionService({ lookup, fetch: timeoutFetch as typeof fetch }).test(
+      new ProviderConnectionService({ lookup, fetch: timeoutFetch }).test(
         { ...external, timeoutMs: 1_000 },
         'secret',
       ),

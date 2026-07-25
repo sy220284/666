@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   inspectProviderEndpoint,
   validateProviderEndpoint,
+  type ProviderDnsLookup,
 } from '../../packages/core-service/src/provider-endpoint.js';
 
 function codeOf(run: () => unknown): string | undefined {
@@ -56,21 +57,25 @@ describe('M4-03 Provider endpoint boundary', () => {
   });
 
   it('blocks DNS answers that cross or change network trust boundaries', async () => {
+    const mixedLookup: ProviderDnsLookup = async () => [
+      { address: '93.184.216.34', family: 4 },
+      { address: '10.0.0.5', family: 4 },
+    ];
+    const loopbackLookup: ProviderDnsLookup = async () => [
+      { address: '::ffff:127.0.0.1', family: 6 },
+    ];
+    const metadataLookup: ProviderDnsLookup = async () => [
+      { address: '169.254.169.254', family: 4 },
+    ];
+
     await expect(
-      inspectProviderEndpoint('https://api.example.com/v1', (async () => [
-        { address: '93.184.216.34', family: 4 },
-        { address: '10.0.0.5', family: 4 },
-      ]) as never),
+      inspectProviderEndpoint('https://api.example.com/v1', mixedLookup),
     ).rejects.toMatchObject({ code: 'AI_ENDPOINT_UNSAFE_013' });
     await expect(
-      inspectProviderEndpoint('https://api.example.com/v1', (async () => [
-        { address: '::ffff:127.0.0.1', family: 6 },
-      ]) as never),
+      inspectProviderEndpoint('https://api.example.com/v1', loopbackLookup),
     ).rejects.toMatchObject({ code: 'AI_ENDPOINT_UNSAFE_013' });
     await expect(
-      inspectProviderEndpoint('https://api.example.com/v1', (async () => [
-        { address: '169.254.169.254', family: 4 },
-      ]) as never),
+      inspectProviderEndpoint('https://api.example.com/v1', metadataLookup),
     ).rejects.toMatchObject({ code: 'AI_ENDPOINT_UNSAFE_013' });
   });
 });

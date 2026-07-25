@@ -10,7 +10,15 @@ import {
 
 import { ProviderRuntimeError } from './provider-errors.js';
 
-export type ProviderDnsLookup = typeof systemLookup;
+export interface ProviderResolvedAddress {
+  readonly address: string;
+  readonly family: number;
+}
+
+export type ProviderDnsLookup = (
+  hostname: string,
+  options: { readonly all: true; readonly verbatim: true },
+) => Promise<readonly ProviderResolvedAddress[]>;
 
 function unsafe(message: string): never {
   throw new ProviderRuntimeError('AI_ENDPOINT_UNSAFE_013', message, false);
@@ -158,7 +166,7 @@ export function validateProviderEndpoint(baseUrl: string): ProviderEndpointInfo 
 
 export async function inspectProviderEndpoint(
   baseUrl: string,
-  lookup: ProviderDnsLookup = systemLookup,
+  lookup: ProviderDnsLookup = systemLookup as ProviderDnsLookup,
 ): Promise<ProviderEndpointInfo> {
   const initial = validateProviderEndpoint(baseUrl);
   const url = new URL(baseUrl);

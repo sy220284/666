@@ -162,10 +162,11 @@ describe('M3-08 task bar model', () => {
 });
 
 describe('M3-08 settings navigation model', () => {
-  it('exposes only the four basic M3-08 settings sections', () => {
+  it('exposes the implemented Provider section alongside the basic settings sections', () => {
     const items = createSettingsNavigationItems({
       disclosureMode: 'beginner',
       currentSection: 'general',
+      availability: { providers: true },
     });
 
     expect(items.map((item) => item.id)).toEqual(SETTINGS_BASIC_SECTION_IDS);

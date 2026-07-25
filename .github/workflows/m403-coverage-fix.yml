@@ -1,0 +1,88 @@
+name: M4-03 Coverage Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'tooling/m403-coverage-fix'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout formal M4-03 branch
+        uses: actions/checkout@v6
+        with:
+          ref: work/m4-03-provider-credential-connection
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Lock formal Head and configure Git
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "0299594c0a72eebe87f5452a2fcb8dd7aa38c498"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Correct fixture and format
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/security/provider-branch-coverage.test.ts')
+          text = path.read_text()
+          old = "    warnings: ['请求仅发送到当前设备上的用户配置服务。'],\n"
+          new = """    warnings: [
+                '请求仅发送到当前设备上的用户配置服务。',
+                '当前连接未使用TLS，仅允许本机或受信局域网端点。',
+              ],
+          """
+          if text.count(old) != 1:
+              raise SystemExit(f'warning fixture target count: {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write tests/security/provider-branch-coverage.test.ts
+
+      - name: Verify test and coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm test:prepare
+          pnpm exec vitest run tests/security/provider-branch-coverage.test.ts
+          pnpm test:coverage
+          pnpm exec prettier --check tests/security/provider-branch-coverage.test.ts
+          git diff --check
+
+      - name: Commit verified correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add tests/security/provider-branch-coverage.test.ts
+          git commit -m '测试：修正Provider覆盖回归与格式'
+          git push origin HEAD:work/m4-03-provider-credential-connection

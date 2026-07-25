@@ -47,8 +47,6 @@ required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md
-  - docs/tasks/M4/M4-04_INTEGRATED_IMPLEMENTATION_PLAN.md
-  - docs/tasks/M4/M4-04_ABSORBED_REQUIREMENTS.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/product/FUNCTION_CATALOG.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
@@ -80,4 +78,4 @@ verification:
 
 ## 连续执行规则
 
-当前作者已授权实现优先的PR模式：M4-04是V1剩余功能唯一整体任务，必须在独立非main分支通过一个长期Draft PR连续实施；内部阶段不切换活动任务。PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。
+当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。

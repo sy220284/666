@@ -25,7 +25,7 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 ## 五项核心不变量
 
 1. 项目数据默认只在用户本机。
-2. AI输出必须先成为Candidate。
+2. AI输出必须先成为Candidate或待确认StateProposal。
 3. `project.sqlite`是项目唯一权威数据源。
 4. 锁定、Revision、Hash、不可变Version、项目与路径边界由代码保证。
 5. AI只能提议，作者拥有正文、Canon和状态的最终裁决权。
@@ -63,20 +63,21 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 ### AI写作
 
 - OpenAI兼容、Anthropic及经批准的自定义适配器。
-- OS Credential Store凭据管理。
+- Electron `safeStorage`调用OS安全加密后端，数据库只保存`credentialRef`。
 - P0—P4约束包、FTS5检索、时序过滤和Token裁剪。
 - 版本化Prompt、结构化输出、Cleaner和Eval。
 - GenerationRun、真实阶段、流式、取消和partial Candidate。
-- T0多候选骨架、T1章节扩写。
+- 结构化T0多候选骨架、Skeleton/SceneBeat/直接目标三路径T1章节扩写。
 - 快速改写、结构性改写和多候选融合。
 - 候选全屏比较、块级/SceneBeat级采用和冲突处理。
+- Final Version状态提取、pending StateProposal和作者确认闭环。
 
 ### 校验、搜索与交付
 
 - 确定性、统计和AI语义校验。
 - StoryTodo与批注。
-- 全项目FTS5搜索和安全批量替换。
-- 爽点密度、章末钩子、更新节奏和黄金三章建议。
+- Draft/Version/Entity全项目FTS5搜索和仅限活动DraftBlock的安全批量替换。
+- 爽点密度、章末钩子、人工写作统计、更新节奏和黄金三章建议。
 - DOCX安全导入和TXT/Markdown/DOCX导出。
 - 日常滚动、重大操作、手动快照三轨备份。
 - 恢复到新目录和安全空间清理。
@@ -106,7 +107,7 @@ project.sqlite
 └─ BackupRecord / TrashEntry / Dictionary
 ```
 
-AI不会直接写当前稿：
+AI不会直接写当前稿或权威状态：
 
 ```text
 约束包
@@ -116,6 +117,12 @@ AI不会直接写当前稿：
 → 作者选择
 → Block Patch
 → Draft Revision +1
+
+Final Version
+→ state_extract GenerationRun
+→ pending StateProposal
+→ 作者确认
+→ EntityState / ArcMilestone / EndingSnapshot
 ```
 
 ## 技术栈
@@ -129,7 +136,7 @@ AI不会直接写当前稿：
 
 ## V1.0开发路线
 
-任务体系采用一任务一文件，共53张任务卡，分为M0—M8九阶段：
+任务体系采用一任务一文件，共54张任务卡，分为M0—M8九阶段：
 
 ```text
 M0 工程、安全与运行底座
@@ -137,7 +144,7 @@ M0 工程、安全与运行底座
 → M2 编辑安全与版本核心
 → M3 规划、设定、连续性与Renderer架构收口
 → M4 检索与AI基础设施
-→ M5 作者体验前置、AI生成与候选审阅
+→ M5 作者体验、AI生成候选与状态提取
 → M6 校验、搜索与交付
 → M7 完整UI与体验整合
 → M8 发布硬化与验收
@@ -145,7 +152,7 @@ M0 工程、安全与运行底座
 
 M1是明确的基础产品门。即使不配置AI，作者也必须能够创建项目、建卷章、写作、自动保存、保存版本、导入导出和恢复。
 
-M5首先执行`M5-00 作者工作流与产品体验收口`；该任务Verified前不得进入T0/T1等面向用户的AI生成实现。
+M5首先执行`M5-00 作者工作流与产品体验收口`；该任务Verified前不得进入T0/T1等面向用户的AI生成实现。M5最终由`M5-06`补齐真实Provider状态提取与作者裁决接线。
 
 路线图：[`docs/roadmap/V1.0_ROADMAP.md`](./docs/roadmap/V1.0_ROADMAP.md)  
 任务索引：[`docs/tasks/TASK_INDEX.md`](./docs/tasks/TASK_INDEX.md)  
@@ -165,9 +172,9 @@ AGENTS.md
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-当前`main`已进入作者预授权的连续开发模式，活动任务由机器状态文件控制：
+当前活动任务由机器状态文件控制：
 
-[`M0-01 Monorepo、质量工具与CI`](./docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md)
+[`M4-03 Provider、凭据与连接测试`](./docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md)
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 

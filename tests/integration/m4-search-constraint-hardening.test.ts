@@ -107,7 +107,7 @@ afterEach(async () => {
 });
 
 describe('M4 search and constraint hardening', () => {
-  it('returns unanchored title hits during short-query fallback', async () => {
+  it('returns one unanchored title hit during short-query fallback', async () => {
     const harness = await createHarness();
     try {
       const project = await harness.workspace.create(
@@ -119,7 +119,12 @@ describe('M4 search and constraint hardening', () => {
       await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
         connection.prepare('UPDATE chapters SET title = ? WHERE id = ?').run('城门夜雨', chapter.id);
       });
-      const saved = await saveChapter(harness, project.projectId, chapter.id, '正文没有目标单字。');
+      const saved = await saveChapter(
+        harness,
+        project.projectId,
+        chapter.id,
+        '正文也提到城，却不能让同一Draft返回标题和正文两条结果。',
+      );
       const version = await harness.versions.create(randomUUID(), {
         projectId: project.projectId,
         chapterId: chapter.id,

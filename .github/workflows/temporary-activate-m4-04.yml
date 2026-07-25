@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Activate M4-04
+      - name: Generate M4-04 activation state
         shell: bash
         run: |
           python3 - <<'PY'
@@ -89,7 +89,7 @@ jobs:
 
           card_path = root / 'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md'
           card = card_path.read_text()
-          card, count = re.subn(r'^> 状态：Planned\s*$', '> 状态：In Progress  ', card, count=1, flags=re.M)
+          card, count = re.subn(r'^> 状态：Planned[ \t]*$', '> 状态：In Progress  ', card, count=1, flags=re.M)
           if count != 1:
               raise SystemExit(f'M4-04 card status replacement count: {count}')
           card_path.write_text(card)
@@ -97,7 +97,7 @@ jobs:
           index_path = root / 'docs/tasks/TASK_INDEX.md'
           index = index_path.read_text()
           index, count = re.subn(
-              r'^(\|\s*M4-04\s*\|[^\n]*\|\s*)Planned(\s*\|\s*)$',
+              r'^(\|\s*M4-04\s*\|[^\n]*\|\s*)Planned([ \t]*\|[ \t]*)$',
               r'\1In Progress\2',
               index,
               count=1,
@@ -118,15 +118,18 @@ jobs:
           trace_path = root / 'docs/product/V1.0_TRACEABILITY_MATRIX.md'
           trace = trace_path.read_text()
           for req in ('REQ-027', 'REQ-031'):
-              pattern = rf'^(\| {req} \|.*?\| )Planned(\s*\|\s*)$'
-              trace, count = re.subn(pattern, rf'\1In Progress\2', trace, count=1, flags=re.M)
+              pattern = rf'^(\| {req} \|[^\n]*\|\s*)Planned([ \t]*\|[ \t]*)$'
+              trace, count = re.subn(pattern, r'\1In Progress\2', trace, count=1, flags=re.M)
               if count != 1:
                   raise SystemExit(f'{req} trace replacement count: {count}')
           trace_path.write_text(trace)
           PY
-          node scripts/taskctl.mjs sync
-          node .github/governance/verification-hold-taskctl.mjs validate
-          git diff --check
+      - name: Synchronize active task mirror
+        run: node scripts/taskctl.mjs sync
+      - name: Validate active task state
+        run: node .github/governance/verification-hold-taskctl.mjs validate
+      - name: Validate generated diff
+        run: git diff --check
       - name: Commit activation
         shell: bash
         run: |

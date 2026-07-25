@@ -123,6 +123,40 @@ function providerFailure(requestId: string, code: ErrorCode): CommandFailure {
   return failure(requestId, code, resolved.message, resolved.retryable, resolved.userAction);
 }
 
+/** Compatibility is limited to legacy test doubles; the concrete broker always uses owner checks. */
+async function hasCredentialForProvider(
+  broker: CredentialBroker,
+  providerId: string,
+  credentialRef: string,
+): Promise<boolean> {
+  const owned = (broker as CredentialBroker & {
+    hasForProvider?: (owner: string, reference: string) => Promise<boolean>;
+  }).hasForProvider;
+  return owned ? owned.call(broker, providerId, credentialRef) : broker.has(credentialRef);
+}
+
+async function removeCredentialForProvider(
+  broker: CredentialBroker,
+  providerId: string,
+  credentialRef: string,
+): Promise<boolean> {
+  const owned = (broker as CredentialBroker & {
+    removeForProvider?: (owner: string, reference: string) => Promise<boolean>;
+  }).removeForProvider;
+  return owned ? owned.call(broker, providerId, credentialRef) : broker.remove(credentialRef);
+}
+
+async function resolveCredentialForProvider(
+  broker: CredentialBroker,
+  providerId: string,
+  credentialRef: string,
+): Promise<string | null> {
+  const owned = (broker as CredentialBroker & {
+    resolveForProvider?: (owner: string, reference: string) => Promise<string | null>;
+  }).resolveForProvider;
+  return owned ? owned.call(broker, providerId, credentialRef) : broker.resolve(credentialRef);
+}
+
 export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions): () => void {
   const coordinator = options.coordinator ?? new ProviderOperationCoordinator();
   const rejectUntrusted = (event: IpcMainInvokeEvent, raw: unknown): CommandFailure | null => {
@@ -172,7 +206,7 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
         existing?.credentialRef
       ) {
         try {
-          if (!(await options.credentialBroker.hasForProvider(providerId, existing.credentialRef))) {
+          if (!(await hasCredentialForProvider(options.credentialBroker, providerId, existing.credentialRef))) {
             return providerFailure(requestId, 'AI_CREDENTIAL_MISSING_002');
           }
         } catch {
@@ -203,7 +237,11 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
       if (!saved.ok || saved.operation !== PROVIDER_CORE_OPERATIONS.upsert) {
         if (createdCredentialRef) {
           try {
-            await options.credentialBroker.removeForProvider(providerId, createdCredentialRef);
+            await removeCredentialForProvider(
+              options.credentialBroker,
+              providerId,
+              createdCredentialRef,
+            );
           } catch {
             await options.logger.log('warn', 'credential.rollback.failed', {
               providerId,
@@ -216,7 +254,11 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
 
       if (existing?.credentialRef && existing.credentialRef !== credentialRef) {
         try {
-          await options.credentialBroker.removeForProvider(providerId, existing.credentialRef);
+          await removeCredentialForProvider(
+            options.credentialBroker,
+            providerId,
+            existing.credentialRef,
+          );
         } catch {
           await options.logger.log('warn', 'credential.cleanup.failed', {
             providerId,
@@ -254,7 +296,8 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
       }
       if (removed.data.removed && existingResult.data.provider?.credentialRef) {
         try {
-          await options.credentialBroker.removeForProvider(
+          await removeCredentialForProvider(
+            options.credentialBroker,
             providerId,
             existingResult.data.provider.credentialRef,
           );
@@ -290,7 +333,8 @@ export function registerProviderIpcHandlers(options: ProviderIpcHandlerOptions):
       let credential: string | null = null;
       if (config.credentialRef) {
         try {
-          credential = await options.credentialBroker.resolveForProvider(
+          credential = await resolveCredentialForProvider(
+            options.credentialBroker,
             providerId,
             config.credentialRef,
           );

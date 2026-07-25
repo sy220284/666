@@ -51,7 +51,7 @@ M4-04、M4-03、M0-04、M0-07
 - `docs/ai/PROMPT_AND_EVAL_SPEC.md`
 - `docs/ai/PROVIDER_PROTOCOL.md`
 - `docs/testing/PERFORMANCE_BUDGETS.md`
-- `docs/tasks/M0/M0-04_TASK_PROTOCOL.md`
+- `docs/tasks/M0/M0-04_IPC_EVENT_TASK_PROTOCOL.md`
 - `docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md`
 
 ## 主要影响范围

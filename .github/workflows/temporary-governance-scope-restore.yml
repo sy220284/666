@@ -1,0 +1,30 @@
+name: Temporary Governance Scope Restore
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  restore-scope:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Restore product dependency files from main
+        shell: bash
+        run: |
+          git checkout origin/main -- package.json pnpm-lock.yaml pnpm-workspace.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json pnpm-lock.yaml pnpm-workspace.yaml
+          git commit -m "治理：移出产品依赖安全变更"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"

@@ -51,7 +51,7 @@ M1-09、M1-08、M6-04
 - `docs/security/THREAT_MODEL.md`
 - `docs/contracts/ERROR_CODES.md`
 - `docs/ui/SCREEN_SPECIFICATIONS.md`
-- `docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT.md`
+- `docs/tasks/M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md`
 - `docs/tasks/M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md`
 
 ## 主要影响范围

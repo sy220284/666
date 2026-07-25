@@ -6,16 +6,71 @@
     "approvedAt": "2026-07-17",
     "branch": "main",
     "allowDirectMainCommits": false,
-    "autoActivateNext": false,
+    "autoActivateNext": true,
     "deferVerificationUntilBatch": true,
-    "modeAdjustedAt": "2026-07-17"
+    "modeAdjustedAt": "2026-07-26"
   },
   "activeTask": {
+    "id": "M4-04",
+    "status": "IN_PROGRESS",
+    "source": "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md",
+    "branch": "work/m4-04-prompt-registry-output",
+    "startedAt": "2026-07-26",
+    "allowedPaths": [
+      "packages/prompts/",
+      "packages/contracts/",
+      "evals/",
+      "tests/unit/",
+      "tests/integration/",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "docs/tasks/ACTIVE_TASK.json",
+      "docs/tasks/ACTIVE_TASK.md",
+      "docs/tasks/TASK_INDEX.md",
+      "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md",
+      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+      "docs/ai/PROMPT_AND_EVAL_SPEC.md",
+      "docs/ai/PROVIDER_PROTOCOL.md",
+      "docs/test-evidence/M4-04/"
+    ],
+    "forbiddenPaths": [],
+    "requiredDocs": [
+      "AGENTS.md",
+      "docs/PROJECT_EXECUTION_ENTRY.md",
+      "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
+      "docs/decisions/IMPLEMENTATION_DECISIONS.md",
+      "docs/ai/PROMPT_AND_EVAL_SPEC.md",
+      "docs/ai/PROVIDER_PROTOCOL.md",
+      "docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md"
+    ],
+    "verification": [
+      "pnpm lint",
+      "pnpm typecheck",
+      "pnpm test",
+      "pnpm test:security",
+      "pnpm test:e2e",
+      "pnpm test:unit",
+      "pnpm test:integration",
+      "pnpm test:eval"
+    ]
+  },
+  "lastVerifiedTask": {
     "id": "M4-03",
-    "status": "VERIFIED_HOLD",
+    "commit": "c1f018cfc1ed19ec3e129300508e3c3ce616c526",
+    "verifiedAt": "2026-07-25T14:45:00.000Z",
+    "evidenceHead": "c1f018cfc1ed19ec3e129300508e3c3ce616c526"
+  },
+  "deferredVerification": [],
+  "deferredTasks": [],
+  "lastImplementedTask": {
+    "id": "M4-03",
+    "commit": "226aa653913756128070119415ed1a06b12f92f1",
+    "implementedAt": "2026-07-25T05:50:13.730558Z",
     "source": "docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md",
     "branch": "work/m4-03-provider-credential-connection",
-    "startedAt": "2026-07-24",
+    "nextTaskId": "M4-04",
+    "activationDeferred": false,
     "allowedPaths": [
       "packages/core-service/",
       "packages/contracts/",
@@ -40,94 +95,6 @@
       "docs/test-evidence/M4-03/"
     ],
     "forbiddenPaths": [],
-    "requiredDocs": [
-      "AGENTS.md",
-      "docs/PROJECT_EXECUTION_ENTRY.md",
-      "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
-      "docs/decisions/IMPLEMENTATION_DECISIONS.md",
-      "docs/ai/LOCAL_AI_SERVICE_SPEC.md",
-      "docs/ai/PROVIDER_PROTOCOL.md",
-      "docs/security/PRIVACY_AND_LOGGING.md",
-      "docs/contracts/ERROR_CODES.md"
-    ],
-    "verification": [
-      "pnpm lint",
-      "pnpm typecheck",
-      "pnpm test",
-      "pnpm test:migration",
-      "pnpm test:integration",
-      "pnpm test:security",
-      "pnpm test:e2e",
-      "pnpm test:unit",
-      "pnpm test:eval"
-    ]
-  },
-  "lastVerifiedTask": {
-    "id": "M4-03",
-    "commit": "c1f018cfc1ed19ec3e129300508e3c3ce616c526",
-    "verifiedAt": "2026-07-25T14:45:00.000Z",
-    "evidenceHead": "c1f018cfc1ed19ec3e129300508e3c3ce616c526"
-  },
-  "deferredVerification": [],
-  "deferredTasks": [],
-  "lastImplementedTask": {
-    "id": "M4-03",
-    "commit": "226aa653913756128070119415ed1a06b12f92f1",
-    "implementedAt": "2026-07-25T05:50:13.730558Z",
-    "source": "docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md",
-    "branch": "work/m4-03-provider-credential-connection",
-    "nextTaskId": "M4-04",
-    "activationDeferred": true,
-    "activationDeferredReason": "按用户指令暂不激活下一张任务卡",
-    "allowedPaths": [
-      "packages/core-service/",
-      "packages/contracts/",
-      "apps/desktop/main/",
-      "apps/desktop/preload/",
-      "apps/desktop/renderer/",
-      "migrations/app/",
-      "tests/integration/",
-      "tests/security/",
-      "tests/unit/",
-      "tests/e2e/",
-      "package.json",
-      "pnpm-lock.yaml",
-      "pnpm-workspace.yaml",
-      "docs/tasks/ACTIVE_TASK.json",
-      "docs/tasks/ACTIVE_TASK.md",
-      "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md",
-      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/contracts/IPC_CONTRACTS.md",
-      "docs/contracts/ERROR_CODES.md",
-      "docs/test-evidence/M4-03/"
-    ],
-    "forbiddenPaths": []
-  },
-  "verificationHold": {
-    "taskId": "M4-03",
-    "verifiedTasks": [
-      "M4-01",
-      "M4-02",
-      "M4-03"
-    ],
-    "nextTaskId": "M4-04",
-    "heldAt": "2026-07-25T14:45:00.000Z",
-    "reason": "按用户指令，M4-01—M4-03已完成终验关闭，暂不激活M4-04",
-    "allowedPaths": [
-      "package.json",
-      "docs/tasks/ACTIVE_TASK.json",
-      "docs/tasks/ACTIVE_TASK.md",
-      "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M4_TASKS.md",
-      "docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md",
-      "docs/tasks/M4/M4-02_CONSTRAINT_PACKAGE.md",
-      "docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md",
-      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M4-01/",
-      "docs/test-evidence/M4-02/",
-      "docs/test-evidence/M4-03/"
-    ],
-    "forbiddenPaths": []
+    "activationResumedAt": "2026-07-26T00:07:29+08:00"
   }
 }

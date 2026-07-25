@@ -1,6 +1,6 @@
 # M4-04 Prompt Registry、输出Schema与Cleaner
 
-> 状态：Planned  
+> 状态：In Progress  
 > 里程碑：M4 检索与AI基础设施  
 > 优先级：P0  
 > 建议分支：`work/m4-04-prompt-registry-output`

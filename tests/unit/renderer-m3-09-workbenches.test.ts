@@ -41,6 +41,7 @@ describe('M3 final React business workbenches', () => {
       contractInput({
         app: {},
         settings: {},
+        providers: {},
         project: {},
         recovery,
         textIo: {},

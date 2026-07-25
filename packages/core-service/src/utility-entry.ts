@@ -5,6 +5,7 @@ import {
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
   CoreProjectResultSchema,
+  CoreProviderResultSchema,
   PROTOCOL_VERSION,
   type CoreEvent,
 } from '@worldforge/contracts';
@@ -26,6 +27,7 @@ import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-pr
 import { executeAppDataOperation } from './utility-app-data-router.js';
 import { windowPreferencesError } from './utility-errors.js';
 import { executeProjectOperation } from './utility-project-router.js';
+import { executeProviderOperation } from './utility-provider-router.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
 import { VersionService } from './version.js';
 
@@ -229,6 +231,34 @@ parentPort.on('message', ({ data, ports }) => {
         executeAppDataOperation(appRuntime, requestId, operation).then((result) => {
           send({
             type: 'core.app-data.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          });
+        }),
+      );
+      break;
+    }
+    case 'core.provider.command': {
+      const requestId = parsed.data.requestId;
+      const operation = parsed.data.operation;
+      if (!acceptingAppDataOperations) {
+        send({
+          type: 'core.provider.result',
+          protocolVersion: PROTOCOL_VERSION,
+          requestId,
+          result: CoreProviderResultSchema.parse({
+            ok: false,
+            operation: operation.operation,
+            errorCode: 'COMMON_CANCELLED_004',
+          }),
+        });
+        break;
+      }
+      track(
+        executeProviderOperation(appRuntime, requestId, operation).then((result) => {
+          send({
+            type: 'core.provider.result',
             protocolVersion: PROTOCOL_VERSION,
             requestId,
             result,

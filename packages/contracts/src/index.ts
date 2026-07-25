@@ -17,6 +17,19 @@ import {
   type RecentProject,
 } from './app-data.js';
 import {
+  CoreProviderOperationSchema,
+  CoreProviderResultSchema,
+  PROVIDER_COMMANDS,
+  PROVIDER_IPC_CHANNELS,
+  ProviderListCommandSchema,
+  ProviderRemoveCommandSchema,
+  ProviderSaveCommandSchema,
+  ProviderTestConnectionCommandSchema,
+  type ProviderConnectionTestResult,
+  type ProviderSaveInput,
+  type ProviderSummary,
+} from './provider.js';
+import {
   ProjectIdSchema,
   TASK_PROTOCOL_VERSION,
   TaskCancelCommandSchema,
@@ -204,6 +217,7 @@ export * from './error-codes.js';
 export * from './ai-output-protocol.js';
 export * from './task-protocol.js';
 export * from './app-data.js';
+export * from './provider.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './project-planning.js';
@@ -225,6 +239,7 @@ export const PROTOCOL_VERSION = TASK_PROTOCOL_VERSION;
 
 export const IPC_CHANNELS = {
   ...APP_DATA_IPC_CHANNELS,
+  ...PROVIDER_IPC_CHANNELS,
   ...PROJECT_WORKSPACE_IPC_CHANNELS,
   ...PROJECT_STRUCTURE_IPC_CHANNELS,
   ...PROJECT_PLANNING_IPC_CHANNELS,
@@ -250,6 +265,7 @@ export const IPC_CHANNELS = {
 
 export const APP_COMMANDS = {
   ...APP_DATA_COMMANDS,
+  ...PROVIDER_COMMANDS,
   ...PROJECT_WORKSPACE_COMMANDS,
   ...PROJECT_STRUCTURE_COMMANDS,
   ...PROJECT_PLANNING_COMMANDS,
@@ -388,6 +404,10 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProjectListRecentCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
+  ProviderListCommandSchema,
+  ProviderSaveCommandSchema,
+  ProviderRemoveCommandSchema,
+  ProviderTestConnectionCommandSchema,
   ProjectGetActiveCommandSchema,
   ProjectCreateCommandSchema,
   ProjectOpenSelectedCommandSchema,
@@ -569,6 +589,12 @@ export const CoreControlMessageSchema = z.discriminatedUnion('type', [
     operation: CoreAppDataOperationSchema,
   }),
   z.strictObject({
+    type: z.literal('core.provider.command'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    operation: CoreProviderOperationSchema,
+  }),
+  z.strictObject({
     type: z.literal('core.project.command'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
@@ -617,6 +643,12 @@ export const CoreEventSchema = z.discriminatedUnion('type', [
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
     result: CoreAppDataResultSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.provider.result'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    result: CoreProviderResultSchema,
   }),
   z.strictObject({
     type: z.literal('core.project.result'),
@@ -797,6 +829,14 @@ export interface WorldforgeBridge {
     readonly get: (input: VersionGetInput) => Promise<CommandResult<VersionDocument>>;
     readonly setFinal: (input: VersionSetFinalInput) => Promise<CommandResult<VersionSummary>>;
     readonly restore: (input: VersionRestoreInput) => Promise<CommandResult<DraftDocument>>;
+  };
+  readonly providers: {
+    readonly list: () => Promise<CommandResult<{ readonly providers: ProviderSummary[] }>>;
+    readonly save: (input: ProviderSaveInput) => Promise<CommandResult<ProviderSummary>>;
+    readonly remove: (providerId: string) => Promise<CommandResult<{ readonly removed: boolean }>>;
+    readonly testConnection: (
+      providerId: string,
+    ) => Promise<CommandResult<ProviderConnectionTestResult>>;
   };
   readonly ai: {
     readonly setCredential: (

@@ -6,6 +6,8 @@ import {
   CoreEventSchema,
   CoreProjectOperationSchema,
   CoreProjectResultSchema,
+  CoreProviderOperationSchema,
+  CoreProviderResultSchema,
   PROTOCOL_VERSION,
   TaskCommandResultSchema,
   WindowPreferencesSchema,
@@ -15,6 +17,8 @@ import {
   type CoreEvent,
   type CoreProjectOperation,
   type CoreProjectResult,
+  type CoreProviderOperation,
+  type CoreProviderResult,
   type CoreStatus,
   type CoreWindowPreferencesResult,
   type TaskCommand,
@@ -216,6 +220,46 @@ export class CoreSupervisor {
     const result = await response;
     if (result?.type === 'core.app-data.result') return result.result;
     return CoreAppDataResultSchema.parse({
+      ok: false,
+      operation: operation.operation,
+      errorCode: 'COMMON_TIMEOUT_005',
+    });
+  }
+
+  async invokeProviderOperation(
+    requestId: string,
+    input: CoreProviderOperation,
+  ): Promise<CoreProviderResult> {
+    const operation = CoreProviderOperationSchema.parse(input);
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return CoreProviderResultSchema.parse({
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'COMMON_INTERNAL_999',
+      });
+    }
+
+    const timeout =
+      operation.operation === 'provider.connection.test'
+        ? Math.max(
+            this.#commandTimeoutMs,
+            Math.min(1_200_000, operation.config.timeoutMs * 4 + 5_000),
+          )
+        : this.#commandTimeoutMs;
+    const response = this.#waitForMessage(
+      (message) => message.type === 'core.provider.result' && message.requestId === requestId,
+      timeout,
+    );
+    process.postMessage({
+      type: 'core.provider.command',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      operation,
+    });
+    const result = await response;
+    if (result?.type === 'core.provider.result') return result.result;
+    return CoreProviderResultSchema.parse({
       ok: false,
       operation: operation.operation,
       errorCode: 'COMMON_TIMEOUT_005',

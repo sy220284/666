@@ -20,6 +20,6 @@ M4-01 is **Verified**. The shared FTS5 index, explicit queue, authoritative fall
 - Final audit runs: Quality `30158717765`, Security `30158717671`, Performance `30158717652`, PR Policy `30158717668`, Task Governance `30158717666`, Evidence `30158717649`.
 - Full validation: 143 test files / 709 tests, Electron E2E passed; coverage Statements 84.30%, Branches 75.40%, Functions 85.67%, Lines 86.72%.
 
-## Deferred upper-layer work
+## Later upper-layer work
 
 M6-03 remains responsible for the final search UI and safe batch replace workflow. That planned upper-layer scope does not reopen the verified M4-01 indexing foundation.

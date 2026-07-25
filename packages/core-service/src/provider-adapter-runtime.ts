@@ -26,10 +26,12 @@ function parsedContentLength(response: Response): number | null {
 }
 
 function isEventStream(response: Response): boolean {
-  return response.headers
-    .get('content-type')
-    ?.toLocaleLowerCase('en-US')
-    .startsWith('text/event-stream') === true;
+  return (
+    response.headers
+      .get('content-type')
+      ?.toLocaleLowerCase('en-US')
+      .startsWith('text/event-stream') === true
+  );
 }
 
 export function createBoundedProviderFetch(

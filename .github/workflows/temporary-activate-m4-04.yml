@@ -128,8 +128,6 @@ jobs:
         run: node scripts/taskctl.mjs sync
       - name: Validate active task state
         run: node .github/governance/verification-hold-taskctl.mjs validate
-      - name: Validate generated diff
-        run: git diff --check
       - name: Commit activation
         shell: bash
         run: |

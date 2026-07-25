@@ -31,6 +31,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'required-checks.json',
   'stage-close-policy.mjs',
   'task-checkpoint-policy.mjs',
+  'task-transition-policy-core.mjs',
   'task-transition-policy.mjs',
 ]);
 

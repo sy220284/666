@@ -1,37 +1,41 @@
-# WorldForge M4 检索与AI基础设施任务摘要
+# WorldForge M4与V1剩余功能整体任务摘要
 
-> 状态：Frozen
-> 用途：里程碑导航与阶段门说明；不可替代独立任务卡。
+> 状态：Active  
+> 用途：里程碑导航；唯一执行任务为M4-04。
 
-## 阶段目标
+## 当前基线
 
-建立FTS、约束包、Provider、生产Prompt和GenerationRun等可复用AI基础设施，并承接M0既有TaskProtocol、ProviderStub和Prompt Spike，禁止重复建设。
+- M4-01 FTS5公共索引、队列与项目词典：Verified。
+- M4-02 P0—P4约束包与裁剪追溯：Verified。
+- M4-03 Provider、凭据与连接测试：Verified。
+- M4-04 V1剩余功能整体实施与发布闭环：In Progress。
 
-## 任务顺序
+## 唯一任务
 
-| ID | 任务 | 依赖 | 核心交付 |
-|---|---|---|---|
-| M4-01 | [FTS5公共索引、队列与项目词典](M4/M4-01_FTS_INDEX_DICTIONARY.md) | M3 | 建立AI约束召回和用户全项目搜索共用的FTS5基础，不重复建设索引逻辑。 |
-| M4-02 | [P0—P4约束包与裁剪追溯](M4/M4-02_CONSTRAINT_PACKAGE.md) | M4-01、M3-06 | 为每类AI任务组装可追溯、符合时序、可裁剪的上下文包。 |
-| M4-03 | [Provider、凭据与连接测试](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md) | M3、M0-02、M0-04、M0-05 | 安全连接外部API和用户已运行的本地兼容服务，统一认证、流式、取消和错误处理。 |
-| M4-04 | [Prompt Registry、输出Schema与Cleaner](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-02、M4-03、M0-07 | 在现有Spike基础上生产化Prompt版本、互斥T1三来源、state_extract合同、Parser和Cleaner。 |
-| M4-05 | [GenerationRun、流式运行与模型支持档案](M4/M4-05_GENERATION_RUNTIME_EVAL.md) | M4-04、M4-03、M0-04、M0-07 | 复用TaskProtocol建立GenerationRun持久化、通用结果引用、生产Prose Candidate收口、partial处理和模型支持档案。 |
+| ID | 任务 | 依赖 | 核心交付 | 状态 |
+|---|---|---|---|---|
+| M4-04 | [V1剩余功能整体实施与发布闭环](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-01、M4-02、M4-03、M0-07 | 先读取原M4-04—M8-03全部要求及全量代码完成整体规划，再连续完成AI写作、校验交付、产品体验、硬化与发布关闭。 | In Progress |
 
-## 阶段退出门
+原M4-05保留为详细需求来源，已由M4-04吸收，不再独立激活。
 
-- FTS、约束包、Provider、Prompt和GenerationRun形成稳定公共基础。
-- M4-04真实承接M0-07资产，不存在第二套Registry、Cleaner或Parser。
-- T1三种输入来源在合同层互斥且完备，零来源和多来源均被拒绝。
-- M4-05真实承接TaskProtocol，不存在第二套AI任务状态机。
-- GenerationResultRef可区分Candidate与StateProposal批次，旧Candidate事件保持兼容。
-- Run、结果、Prompt和约束来源引用完整，取消后无未来delta进入Renderer。
-- AI不可用时M1—M3功能完整可用。
-- 模型支持等级和Eval可追溯到Provider+Model+Task+PromptVersion。
+## 内部实施阶段
 
-## 执行规则
+```text
+全量基线审计与整体规划
+→ AI公共合同与运行底座
+→ 作者体验与AI写作闭环
+→ 状态提取、校验与连续性
+→ 搜索、统计、导入与恢复
+→ 完整体验、硬化与发布关闭
+```
 
-- 只能通过`ACTIVE_TASK.md`激活其中一张任务卡。
-- M4-01—M4-03已完成终验并冻结；M4-04按作者指令保持Planned，未激活。
-- M4-05不得提前定义Skeleton结构化Payload，骨架语义归M5-01。
-- 未满足依赖不得提前实现后续任务。
-- 每张任务完成后同步追踪矩阵与证据目录。
+内部阶段不是独立任务，不切换`ACTIVE_TASK`，不建立其他正式功能PR。
+
+## 阶段门
+
+- 编码前必须完成任务卡中的整体规划执行附件。
+- 已完成任务卡、历史Evidence和历史Migration保持冻结。
+- 每项用户功能必须形成Contracts→Core→Main→Preload→Renderer→测试的纵向闭环。
+- Prompt、TaskProtocol、Candidate采用、导入协调器、RecoveryService、模式状态和主题状态只允许一个真源。
+- 正式PR在全部V1功能完成前保持Draft；完成全量测试、证据和发布判断后一次转Ready。
+- M4-04是V1最终任务，Verified后不自动激活下一任务。

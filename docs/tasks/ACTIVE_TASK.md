@@ -5,13 +5,13 @@
 ## 当前状态
 
 ```text
-VERIFIED_HOLD
+IN_PROGRESS
 ```
 
-- 任务ID：`M4-03`
-- 唯一任务卡：`docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md`
-- 工作分支：`work/m4-03-provider-credential-connection`
-- 开始时间：`2026-07-24`
+- 任务ID：`M4-04`
+- 唯一任务卡：`docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md`
+- 工作分支：`work/m4-04-prompt-registry-output`
+- 开始时间：`2026-07-26`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -19,27 +19,22 @@ VERIFIED_HOLD
 
 ```yaml
 allowed_paths:
-  - packages/core-service/
+  - packages/prompts/
   - packages/contracts/
-  - apps/desktop/main/
-  - apps/desktop/preload/
-  - apps/desktop/renderer/
-  - migrations/app/
-  - tests/integration/
-  - tests/security/
+  - evals/
   - tests/unit/
-  - tests/e2e/
+  - tests/integration/
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
   - docs/tasks/ACTIVE_TASK.json
   - docs/tasks/ACTIVE_TASK.md
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md
+  - docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/contracts/IPC_CONTRACTS.md
-  - docs/contracts/ERROR_CODES.md
-  - docs/test-evidence/M4-03/
+  - docs/ai/PROMPT_AND_EVAL_SPEC.md
+  - docs/ai/PROVIDER_PROTOCOL.md
+  - docs/test-evidence/M4-04/
 forbidden_paths:
 
 required_docs:
@@ -47,19 +42,17 @@ required_docs:
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/decisions/IMPLEMENTATION_DECISIONS.md
-  - docs/ai/LOCAL_AI_SERVICE_SPEC.md
+  - docs/ai/PROMPT_AND_EVAL_SPEC.md
   - docs/ai/PROVIDER_PROTOCOL.md
-  - docs/security/PRIVACY_AND_LOGGING.md
-  - docs/contracts/ERROR_CODES.md
+  - docs/tasks/M0/M0-07_AI_DIFF_SPIKE.md
 verification:
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
-  - pnpm test:integration
   - pnpm test:security
   - pnpm test:e2e
   - pnpm test:unit
+  - pnpm test:integration
   - pnpm test:eval
 ```
 

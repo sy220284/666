@@ -8,7 +8,8 @@ import {
   type ProviderSummary,
 } from '@worldforge/contracts';
 
-import { createProviderAdapter, type ProviderAdapterDependencies } from './provider-adapters.js';
+import { createProviderAdapter } from './provider-adapter-runtime.js';
+import type { ProviderAdapterDependencies } from './provider-adapters.js';
 import {
   inspectProviderEndpoint,
   validateProviderEndpoint,

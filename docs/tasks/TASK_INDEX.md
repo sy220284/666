@@ -9,10 +9,8 @@
 
 1. [`ACTIVE_TASK.json`](ACTIVE_TASK.json)：机器可读的唯一活动任务状态与授权。
 2. [`ACTIVE_TASK.md`](ACTIVE_TASK.md)：由JSON生成的人类可读镜像。
-3. ACTIVE_TASK指向的唯一整体任务卡。
-4. [`M4/M4-04_INTEGRATED_IMPLEMENTATION_PLAN.md`](M4/M4-04_INTEGRATED_IMPLEMENTATION_PLAN.md)：编码前必须完成的整体规划。
-5. [`M4/M4-04_ABSORBED_REQUIREMENTS.md`](M4/M4-04_ABSORBED_REQUIREMENTS.md)：被吸收需求来源清单。
-6. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
+3. [`M4/M4-04_PROMPT_REGISTRY_OUTPUT.md`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)：唯一整体任务卡，包含整体规划门、内部阶段和被吸收要求。
+4. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
 
@@ -103,7 +101,7 @@ M0—M3 已完成产品底座
 
 ## 3. 已吸收的需求来源
 
-以下文件不参与机器任务解析和活动任务切换；完整映射见[`M4-04_ABSORBED_REQUIREMENTS.md`](M4/M4-04_ABSORBED_REQUIREMENTS.md)。
+以下文件不参与机器任务解析和活动任务切换；其完整要求由M4-04任务卡逐项吸收。
 
 | 原ID | 来源文件 | 原阶段 | 独立执行状态 | 统一归属 |
 |---|---|---|---|---|
@@ -146,4 +144,4 @@ M0—M3 已完成产品底座
 3. 内部阶段使用原子提交组；每组完成后复查真实Head、运行受影响测试并更新整体计划。
 4. M4-04允许路径由`ACTIVE_TASK.json`统一授权；已完成任务卡列入禁止路径。
 5. 最终证据统一保存到`docs/test-evidence/M4-04/`，原被吸收任务不再独立关闭。
-6. M4-04完成后一次性同步追踪矩阵、P0矩阵、功能目录、README、发布与恢复文档。
+6. M4-04完成后一次性同步追踪矩阵、P0矩阵、功能目录、README、发布和恢复文档。

@@ -15,7 +15,16 @@ export * from './app-settings.js';
 export * from './provider-configs.js';
 export * from './provider-errors.js';
 export * from './provider-endpoint.js';
-export * from './provider-adapters.js';
+export type {
+  AIProvider,
+  ProviderAdapterDependencies,
+  ProviderAdapterProbeResult,
+} from './provider-adapters.js';
+export {
+  MAX_PROVIDER_RESPONSE_BYTES,
+  createBoundedProviderFetch,
+  createProviderAdapter,
+} from './provider-adapter-runtime.js';
 export * from './provider-connection.js';
 export * from './recent-projects.js';
 export * from './project-workspace.js';
@@ -35,5 +44,23 @@ export * from './coordinated-import-export.js';
 export * from './migration-recovery.js';
 export * from './task-protocol.js';
 export * from './window-preferences.js';
-export * from './search-index.js';
-export * from './constraint-package.js';
+export {
+  SearchIndexServiceError,
+  normalizeSearchTerm,
+  type SearchIndexServiceErrorCode,
+  type SearchIndexServiceOptions,
+  type SearchIndexTarget,
+} from './search-index.js';
+export {
+  HardenedSearchIndexService,
+  HardenedSearchIndexService as SearchIndexService,
+} from './search-index-hardening.js';
+export {
+  ConstraintPackageServiceError,
+  type ConstraintPackageServiceErrorCode,
+  type ConstraintPackageServiceOptions,
+} from './constraint-package.js';
+export {
+  HardenedConstraintPackageService,
+  HardenedConstraintPackageService as ConstraintPackageService,
+} from './constraint-package-hardening.js';

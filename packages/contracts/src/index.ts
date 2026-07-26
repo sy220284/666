@@ -52,10 +52,14 @@ import {
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
   ProjectGetActiveCommandSchema,
+  ProjectGetContinuationCommandSchema,
   ProjectMoveCommandSchema,
   ProjectOpenRecentCommandSchema,
   ProjectOpenSelectedCommandSchema,
+  ProjectSaveContinuationCommandSchema,
   type ProjectCloseResult,
+  type ProjectContinuationInput,
+  type ProjectContinuationSnapshot,
   type ProjectCreateInput,
   type ProjectMoveResult,
   type ProjectWorkspaceSummary,
@@ -409,6 +413,8 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProviderRemoveCommandSchema,
   ProviderTestConnectionCommandSchema,
   ProjectGetActiveCommandSchema,
+  ProjectGetContinuationCommandSchema,
+  ProjectSaveContinuationCommandSchema,
   ProjectCreateCommandSchema,
   ProjectOpenSelectedCommandSchema,
   ProjectOpenRecentCommandSchema,
@@ -705,6 +711,12 @@ export interface WorldforgeBridge {
       projectId: string,
     ) => Promise<CommandResult<{ readonly removed: boolean }>>;
     readonly getActive: () => Promise<CommandResult<ProjectWorkspaceSummary | null>>;
+    readonly getContinuation: (
+      projectId: string,
+    ) => Promise<CommandResult<ProjectContinuationSnapshot | null>>;
+    readonly saveContinuation: (
+      input: ProjectContinuationInput,
+    ) => Promise<CommandResult<ProjectContinuationSnapshot>>;
     readonly create: (input: ProjectCreateInput) => Promise<CommandResult<ProjectWorkspaceSummary>>;
     readonly openSelected: () => Promise<CommandResult<ProjectWorkspaceSummary>>;
     readonly openRecent: (projectId: string) => Promise<CommandResult<ProjectWorkspaceSummary>>;

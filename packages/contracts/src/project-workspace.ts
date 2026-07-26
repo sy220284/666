@@ -33,6 +33,8 @@ import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
   getActive: 'worldforge:project:get-active',
+  getContinuation: 'worldforge:project:get-continuation',
+  saveContinuation: 'worldforge:project:save-continuation',
   create: 'worldforge:project:create',
   openSelected: 'worldforge:project:open-selected',
   openRecent: 'worldforge:project:open-recent',
@@ -42,6 +44,8 @@ export const PROJECT_WORKSPACE_IPC_CHANNELS = {
 
 export const PROJECT_WORKSPACE_COMMANDS = {
   getActive: 'project.getActive',
+  getContinuation: 'project.getContinuation',
+  saveContinuation: 'project.saveContinuation',
   create: 'project.create',
   openSelected: 'project.openSelected',
   openRecent: 'project.openRecent',
@@ -100,6 +104,46 @@ export const ProjectCloseResultSchema = z.strictObject({
   closed: z.literal(true),
 });
 
+export const ProjectContinuationPanelSchema = z.enum(['editor', 'versions', 'candidates']);
+export const ProjectContinuationInputSchema = z.strictObject({
+  projectId: ProjectIdSchema,
+  chapterId: z.uuid(),
+  draftId: z.uuid(),
+  draftRevision: z.number().int().nonnegative(),
+  logicalBlockId: z.uuid(),
+  expectedBlockHash: z.string().regex(/^[0-9a-f]{64}$/u),
+  cursorOffset: z.number().int().nonnegative().max(2_000_000),
+  scrollTop: z.number().int().nonnegative().max(50_000_000),
+  panel: ProjectContinuationPanelSchema,
+});
+
+const continuationSnapshotFields = {
+  projectId: ProjectIdSchema,
+  chapterId: z.uuid(),
+  chapterTitle: z.string().trim().min(1).max(240).nullable(),
+  draftId: z.uuid(),
+  draftRevision: z.number().int().nonnegative(),
+  logicalBlockId: z.uuid(),
+  expectedBlockHash: z.string().regex(/^[0-9a-f]{64}$/u),
+  cursorOffset: z.number().int().nonnegative().max(2_000_000),
+  scrollTop: z.number().int().nonnegative().max(50_000_000),
+  panel: ProjectContinuationPanelSchema,
+  updatedAt: z.iso.datetime(),
+} as const;
+
+export const ProjectContinuationSnapshotSchema = z.discriminatedUnion('status', [
+  z.strictObject({
+    status: z.literal('ready'),
+    ...continuationSnapshotFields,
+    chapterTitle: z.string().trim().min(1).max(240),
+  }),
+  z.strictObject({
+    status: z.literal('stale'),
+    ...continuationSnapshotFields,
+    reason: z.enum(['chapter-missing', 'draft-changed', 'block-changed', 'cursor-out-of-range']),
+  }),
+]);
+
 const commandEnvelope = {
   protocolVersion: z.literal(TASK_PROTOCOL_VERSION),
   requestId: z.uuid(),
@@ -110,6 +154,16 @@ export const ProjectGetActiveCommandSchema = z.strictObject({
   ...commandEnvelope,
   command: z.literal(PROJECT_WORKSPACE_COMMANDS.getActive),
   payload: z.strictObject({}),
+});
+export const ProjectGetContinuationCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_WORKSPACE_COMMANDS.getContinuation),
+  payload: z.strictObject({ projectId: ProjectIdSchema }),
+});
+export const ProjectSaveContinuationCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(PROJECT_WORKSPACE_COMMANDS.saveContinuation),
+  payload: ProjectContinuationInputSchema,
 });
 export const ProjectCreateCommandSchema = z.strictObject({
   ...commandEnvelope,
@@ -159,12 +213,26 @@ function projectResultSchema<DataSchema extends z.ZodType>(data: DataSchema) {
 export const ProjectActiveResultSchema = projectResultSchema(
   ProjectWorkspaceSummarySchema.nullable(),
 );
+export const ProjectContinuationResultSchema = projectResultSchema(
+  ProjectContinuationSnapshotSchema.nullable(),
+);
+export const ProjectContinuationSaveResultSchema = projectResultSchema(
+  ProjectContinuationSnapshotSchema,
+);
 export const ProjectWorkspaceResultSchema = projectResultSchema(ProjectWorkspaceSummarySchema);
 export const ProjectMoveCommandResultSchema = projectResultSchema(ProjectMoveResultSchema);
 export const ProjectCloseCommandResultSchema = projectResultSchema(ProjectCloseResultSchema);
 
 const CoreProjectWorkspaceOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({ operation: z.literal(PROJECT_WORKSPACE_COMMANDS.getActive) }),
+  z.strictObject({
+    operation: z.literal(PROJECT_WORKSPACE_COMMANDS.getContinuation),
+    projectId: ProjectIdSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(PROJECT_WORKSPACE_COMMANDS.saveContinuation),
+    input: ProjectContinuationInputSchema,
+  }),
   z.strictObject({
     operation: z.literal(PROJECT_WORKSPACE_COMMANDS.create),
     input: ProjectCreateInputSchema,
@@ -218,6 +286,11 @@ const coreSuccess = <Operation extends string, DataSchema extends z.ZodType>(
 
 const CoreProjectWorkspaceResultSchema = z.union([
   coreSuccess(PROJECT_WORKSPACE_COMMANDS.getActive, ProjectWorkspaceSummarySchema.nullable()),
+  coreSuccess(
+    PROJECT_WORKSPACE_COMMANDS.getContinuation,
+    ProjectContinuationSnapshotSchema.nullable(),
+  ),
+  coreSuccess(PROJECT_WORKSPACE_COMMANDS.saveContinuation, ProjectContinuationSnapshotSchema),
   coreSuccess(PROJECT_WORKSPACE_COMMANDS.create, ProjectWorkspaceSummarySchema),
   coreSuccess(PROJECT_WORKSPACE_COMMANDS.openSelected, ProjectWorkspaceSummarySchema),
   coreSuccess(PROJECT_WORKSPACE_COMMANDS.openRecent, ProjectWorkspaceSummarySchema),
@@ -252,5 +325,8 @@ export type ProjectWorkspaceManifest = z.infer<typeof ProjectWorkspaceManifestSc
 export type ProjectWorkspaceSummary = z.infer<typeof ProjectWorkspaceSummarySchema>;
 export type ProjectMoveResult = z.infer<typeof ProjectMoveResultSchema>;
 export type ProjectCloseResult = z.infer<typeof ProjectCloseResultSchema>;
+export type ProjectContinuationPanel = z.infer<typeof ProjectContinuationPanelSchema>;
+export type ProjectContinuationInput = z.infer<typeof ProjectContinuationInputSchema>;
+export type ProjectContinuationSnapshot = z.infer<typeof ProjectContinuationSnapshotSchema>;
 export type CoreProjectOperation = z.infer<typeof CoreProjectOperationSchema>;
 export type CoreProjectResult = z.infer<typeof CoreProjectResultSchema>;

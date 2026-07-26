@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type { ProjectContinuationSnapshot, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import {
@@ -13,6 +13,7 @@ export type { WritingPanel };
 interface WritingWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly project: ProjectWorkspaceSummary;
+  readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onStatus: (message: string) => void;

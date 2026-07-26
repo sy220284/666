@@ -15,6 +15,21 @@ import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resour
 
 export type CanonSection = 'entities' | 'continuity' | 'narrative' | 'proposals';
 
+const ENTITY_TYPE_OPTIONS: readonly { readonly value: EntityType; readonly label: string }[] = [
+  { value: 'character', label: '人物' },
+  { value: 'location', label: '地点' },
+  { value: 'faction', label: '组织与阵营' },
+  { value: 'item', label: '物品' },
+  { value: 'ability', label: '能力' },
+  { value: 'rule', label: '世界规则' },
+  { value: 'event', label: '重要事件' },
+  { value: 'custom', label: '其他' },
+];
+
+function entityTypeLabel(type: EntityType): string {
+  return ENTITY_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type;
+}
+
 interface CanonWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
@@ -36,15 +51,15 @@ export function CanonWorkbench({
     <section className="canon-workbench" data-canon-dialog aria-label="设定工作台">
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">Canon</p>
+          <p className="eyebrow">人物与世界</p>
           <h1>设定与连续性工作台</h1>
-          <p>作者Canon、动态历史、叙事规划和pending提案保持清晰分层。</p>
+          <p>已确认设定、动态历史、叙事规划和待裁决提案分区保存。</p>
         </div>
       </header>
       <nav className="feature-tabs" aria-label="设定工作台分区">
         <Tab
           current={section === 'entities'}
-          label="实体与Canon"
+          label="人物与世界设定"
           onClick={() => onSectionChange('entities')}
         />
         <Tab
@@ -275,7 +290,7 @@ function EntityCanonPanel({
             <option value="">未选择</option>
             {resource.data?.entities.map((entity) => (
               <option key={entity.id} value={entity.id}>
-                {entity.name} · {entity.entityType}
+                {entity.name} · {entityTypeLabel(entity.entityType)}
                 {entity.status === 'archived' ? ' · 已归档' : ''}
               </option>
             ))}
@@ -305,18 +320,9 @@ function EntityCanonPanel({
             <label>
               类型
               <select name="entityType" defaultValue={selected?.entityType ?? 'character'}>
-                {[
-                  'character',
-                  'location',
-                  'faction',
-                  'item',
-                  'ability',
-                  'rule',
-                  'event',
-                  'custom',
-                ].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                {ENTITY_TYPE_OPTIONS.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
                   </option>
                 ))}
               </select>

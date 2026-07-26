@@ -8,6 +8,8 @@ import type {
   CandidateUndoPreview,
   Chapter,
   DraftDocument,
+  ProjectContinuationInput,
+  ProjectContinuationSnapshot,
   ProjectWorkspaceSummary,
   VersionDocument,
   VersionSummary,
@@ -37,6 +39,7 @@ export type WritingPanel = 'editor' | 'versions' | 'candidates';
 interface WritingWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly project: ProjectWorkspaceSummary;
+  readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onStatus: (message: string) => void;
@@ -165,9 +168,52 @@ function restoreEditorSelection(instance: Editor, remembered: PersistedEditorSel
     );
 }
 
+function captureContinuationAnchor(instance: Editor): {
+  readonly logicalBlockId: string;
+  readonly expectedBlockHash: string;
+  readonly cursorOffset: number;
+} | null {
+  const position = instance.state.selection.$from;
+  for (let depth = position.depth; depth >= 1; depth -= 1) {
+    const node = position.node(depth);
+    const attributes = node.attrs as Record<string, unknown>;
+    if (
+      typeof attributes.logicalBlockId === 'string' &&
+      typeof attributes.contentHash === 'string'
+    ) {
+      return {
+        logicalBlockId: attributes.logicalBlockId,
+        expectedBlockHash: attributes.contentHash,
+        cursorOffset: Math.max(0, position.pos - position.start(depth)),
+      };
+    }
+  }
+  return null;
+}
+
+function restoreContinuationAnchor(
+  instance: Editor,
+  continuation: ProjectContinuationSnapshot,
+): void {
+  if (continuation.status !== 'ready') return;
+  let target: number | null = null;
+  instance.state.doc.descendants((node, position) => {
+    if (target !== null) return false;
+    const attributes = node.attrs as Record<string, unknown>;
+    if (attributes.logicalBlockId !== continuation.logicalBlockId) return true;
+    target = position + 1 + Math.min(continuation.cursorOffset, node.content.size);
+    return false;
+  });
+  if (target !== null) {
+    instance.commands.setTextSelection(target);
+    instance.commands.focus();
+  }
+}
+
 export function WritingWorkbench({
   bridge,
   project,
+  initialContinuation,
   panel,
   onPanelChange,
   onStatus,
@@ -181,6 +227,10 @@ export function WritingWorkbench({
   const composing = useRef(false);
   const synchronizing = useRef(false);
   const initialChapterRequested = useRef(false);
+  const continuationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const continuationScrollCleanup = useRef<(() => void) | null>(null);
+  const lastContinuationSignature = useRef<string | null>(null);
+  const lastContinuationInput = useRef<ProjectContinuationInput | null>(null);
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [draft, setDraft] = useState<DraftDocument | null>(null);
   const [editorState, setEditorState] = useState('从左侧卷章目录选择章节。');
@@ -193,6 +243,9 @@ export function WritingWorkbench({
   const [findCount, setFindCount] = useState(0);
   const [selectedLocked, setSelectedLocked] = useState<boolean | null>(null);
   const [editorReady, setEditorReady] = useState(false);
+  const [outlineVisible, setOutlineVisible] = useState(true);
+  const [contextVisible, setContextVisible] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
 
   const setStatus = useCallback((message: string, failure = false): void => {
     setEditorState(message);
@@ -231,6 +284,50 @@ export function WritingWorkbench({
       })),
     [],
   );
+
+  const saveContinuation = useCallback(async (): Promise<boolean> => {
+    const instance = editor.current;
+    const currentDraft = activeDraft.current;
+    const currentChapter = activeChapter.current;
+    if (!instance || !currentDraft || !currentChapter || readOnly) return true;
+    const anchor = captureContinuationAnchor(instance);
+    if (!anchor) return true;
+    const scrollContainer = editorHost.current?.closest<HTMLElement>('.react-main');
+    const input = {
+      projectId: project.projectId,
+      chapterId: currentChapter.id,
+      draftId: currentDraft.draftId,
+      draftRevision: currentDraft.revision,
+      ...anchor,
+      scrollTop: Math.max(0, Math.round(scrollContainer?.scrollTop ?? 0)),
+      panel,
+    };
+    const signature = JSON.stringify(input);
+    if (lastContinuationSignature.current === signature) return true;
+    const outcome = await bridge.project.saveContinuation(input, { mode: 'replace' });
+    if (outcome.state !== 'success') return false;
+    lastContinuationInput.current = input;
+    lastContinuationSignature.current = signature;
+    return true;
+  }, [bridge, panel, project.projectId, readOnly]);
+
+  const scheduleContinuationSave = useCallback((): void => {
+    if (readOnly) return;
+    if (continuationTimer.current) clearTimeout(continuationTimer.current);
+    continuationTimer.current = setTimeout(() => {
+      continuationTimer.current = null;
+      void saveContinuation();
+    }, 500);
+  }, [readOnly, saveContinuation]);
+
+  useEffect(() => {
+    const previous = lastContinuationInput.current;
+    if (!previous || previous.panel === panel || readOnly) return;
+    const next = { ...previous, panel };
+    lastContinuationInput.current = next;
+    lastContinuationSignature.current = JSON.stringify(next);
+    void bridge.project.saveContinuation(next, { mode: 'replace' });
+  }, [bridge, panel, readOnly]);
 
   const persistDraft = useCallback(async (): Promise<boolean> => {
     const instance = editor.current;
@@ -274,6 +371,7 @@ export function WritingWorkbench({
       }
       synchronizing.current = false;
       refreshStatistics();
+      await saveContinuation();
       setStatus(
         `已保存 · Revision ${result.data.revision}${JSON.stringify(instance.getJSON()) === signature ? '' : ' · 编辑器仍有新输入'}`,
       );
@@ -282,18 +380,27 @@ export function WritingWorkbench({
       synchronizing.current = false;
       return false;
     }
-  }, [bridge, persistedBlocks, project.projectId, readOnly, refreshStatistics, setStatus]);
+  }, [
+    bridge,
+    persistedBlocks,
+    project.projectId,
+    readOnly,
+    refreshStatistics,
+    saveContinuation,
+    setStatus,
+  ]);
 
   const flush = useCallback(async (): Promise<boolean> => {
     const result = await (autosave.current?.flush() ?? Promise.resolve(true));
+    const continuationSaved = result ? await saveContinuation() : false;
     setStatus(
-      result
+      result && continuationSaved
         ? `已保存 · Revision ${activeDraft.current?.revision ?? 0}`
         : '保存失败；窗口内容仍保留。',
-      !result,
+      !result || !continuationSaved,
     );
-    return result;
-  }, [setStatus]);
+    return result && continuationSaved;
+  }, [saveContinuation, setStatus]);
 
   useEffect(() => {
     Object.defineProperty(globalThis, 'worldforgeFlushDraft', {
@@ -322,7 +429,12 @@ export function WritingWorkbench({
       const currentChapter = activeChapter.current;
       if (instance && currentChapter) {
         persistEditorSelection(project.projectId, currentChapter.id, instance);
+        void saveContinuation();
       }
+      if (continuationTimer.current) clearTimeout(continuationTimer.current);
+      continuationTimer.current = null;
+      continuationScrollCleanup.current?.();
+      continuationScrollCleanup.current = null;
       autosave.current?.destroy();
       autosave.current = null;
       instance?.destroy();
@@ -340,7 +452,7 @@ export function WritingWorkbench({
         setChapter(null);
       }
     },
-    [project.projectId],
+    [project.projectId, saveContinuation],
   );
 
   const mountEditor = useCallback(
@@ -388,6 +500,7 @@ export function WritingWorkbench({
             to: current.state.selection.to,
           });
           refreshLockState();
+          scheduleContinuationSave();
         },
       });
       editor.current = instance;
@@ -403,7 +516,29 @@ export function WritingWorkbench({
           else if (state === 'paused') setStatus('输入法组合中；自动保存已暂停。');
         },
       });
-      if (remembered) restoreEditorSelection(instance, remembered);
+      if (remembered) {
+        restoreEditorSelection(instance, remembered);
+      } else if (
+        initialContinuation?.status === 'ready' &&
+        initialContinuation.chapterId === nextChapter.id
+      ) {
+        restoreContinuationAnchor(instance, initialContinuation);
+      }
+      const scrollContainer = host.closest<HTMLElement>('.react-main');
+      if (scrollContainer) {
+        const onScroll = (): void => scheduleContinuationSave();
+        scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+        continuationScrollCleanup.current = () =>
+          scrollContainer.removeEventListener('scroll', onScroll);
+        if (
+          initialContinuation?.status === 'ready' &&
+          initialContinuation.chapterId === nextChapter.id
+        ) {
+          window.requestAnimationFrame(() => {
+            scrollContainer.scrollTop = initialContinuation.scrollTop;
+          });
+        }
+      }
       refreshStatistics();
       refreshLockState();
       setEditorReady(true);
@@ -416,6 +551,8 @@ export function WritingWorkbench({
       readOnly,
       refreshLockState,
       refreshStatistics,
+      initialContinuation,
+      scheduleContinuationSave,
       setStatus,
     ],
   );
@@ -470,13 +607,23 @@ export function WritingWorkbench({
     let active = true;
     void bridge.planning.listStructure(project.projectId, { mode: 'replace' }).then((outcome) => {
       if (!active || outcome.state !== 'success') return;
-      const firstChapter = outcome.data.volumes.flatMap((volume) => volume.chapters)[0];
-      if (firstChapter) void openChapter(firstChapter);
+      const chapters = outcome.data.volumes.flatMap((volume) => volume.chapters);
+      const continuedChapter =
+        initialContinuation?.status === 'ready'
+          ? chapters.find((candidate) => candidate.id === initialContinuation.chapterId)
+          : undefined;
+      const nextChapter = continuedChapter ?? chapters[0];
+      if (nextChapter) {
+        if (initialContinuation?.status === 'stale') {
+          onStatus('上次写作位置已经变化，已安全回到首个可用章节。');
+        }
+        void openChapter(nextChapter);
+      }
     });
     return () => {
       active = false;
     };
-  }, [bridge, openChapter, project.projectId]);
+  }, [bridge, initialContinuation, onStatus, openChapter, project.projectId]);
 
   const replaceDraft = useCallback(
     (next: DraftDocument, message: string): void => {
@@ -631,16 +778,15 @@ export function WritingWorkbench({
   return (
     <section
       className="writing-workbench"
+      data-focus-mode={focusMode}
       data-writing-workbench
       data-draft-workspace={editorReady ? '' : undefined}
     >
       <header className="feature-heading writing-heading">
         <div>
-          <p className="eyebrow">DRAFT · PROJECT.SQLITE</p>
+          <p className="eyebrow">本地写作 · 自动保存</p>
           <h1>{chapter ? `${project.name} · ${chapter.title}` : project.name}</h1>
-          <p>
-            React独占正文、Version和Candidate；Core继续负责Revision、Hash、LockGuard和原子事务。
-          </p>
+          <p>正文、历史版本和候选稿都保存在当前项目中；采用前可预览，保存后可追溯。</p>
         </div>
         <div className="feature-heading__actions">
           <button
@@ -666,7 +812,7 @@ export function WritingWorkbench({
             disabled={!chapter}
             onClick={() => onPanelChange('versions')}
           >
-            Version
+            历史版本
           </button>
           <button
             data-open-candidate-preview
@@ -675,23 +821,53 @@ export function WritingWorkbench({
             disabled={!chapter}
             onClick={() => onPanelChange('candidates')}
           >
-            Candidate
+            候选稿
+          </button>
+          <button
+            aria-pressed={outlineVisible}
+            data-toggle-writing-outline
+            type="button"
+            onClick={() => setOutlineVisible((visible) => !visible)}
+          >
+            {outlineVisible ? '收起目录' : '展开目录'}
+          </button>
+          <button
+            aria-pressed={contextVisible}
+            data-toggle-writing-context
+            type="button"
+            onClick={() => setContextVisible((visible) => !visible)}
+          >
+            {contextVisible ? '收起上下文' : '展开上下文'}
+          </button>
+          <button
+            aria-pressed={focusMode}
+            data-toggle-focus-mode
+            type="button"
+            onClick={() => setFocusMode((enabled) => !enabled)}
+          >
+            {focusMode ? '退出沉浸' : '沉浸写作'}
           </button>
         </div>
       </header>
 
-      <div className="writing-grid">
-        <StructureNavigator
-          bridge={bridge}
-          compact
-          projectId={project.projectId}
-          readOnly={readOnly}
-          selectedChapterId={chapter?.id ?? null}
-          onSelectChapter={() => undefined}
-          onOpenChapter={(nextChapter) => void openChapter(nextChapter)}
-          onBeforeWrite={flush}
-          onStatus={onStatus}
-        />
+      <div
+        className="writing-grid"
+        data-context-visible={contextVisible && !focusMode}
+        data-outline-visible={outlineVisible && !focusMode}
+      >
+        {outlineVisible && !focusMode ? (
+          <StructureNavigator
+            bridge={bridge}
+            compact
+            projectId={project.projectId}
+            readOnly={readOnly}
+            selectedChapterId={chapter?.id ?? null}
+            onSelectChapter={() => undefined}
+            onOpenChapter={(nextChapter) => void openChapter(nextChapter)}
+            onBeforeWrite={flush}
+            onStatus={onStatus}
+          />
+        ) : null}
 
         <main className="writing-editor-card">
           {panel === 'editor' ? (
@@ -905,21 +1081,19 @@ export function WritingWorkbench({
           ) : null}
         </main>
 
-        <aside className="writing-context feature-card" aria-label="正文上下文">
-          <h2>当前上下文</h2>
-          <p>{chapter?.title ?? '尚未选择章节'}</p>
-          <p>
-            {draft
-              ? `Draft ${draft.draftId.slice(0, 8)}… · Revision ${draft.revision}`
-              : '无活动Draft'}
-          </p>
-          <p>
-            {readOnly
-              ? '只读保护：写入、采用和恢复已阻断。'
-              : '自动保存延迟800ms；事务确认后才显示已保存。'}
-          </p>
-          <p>正文权威数据不进入Zustand，编辑状态由Tiptap和当前Session持有。</p>
-        </aside>
+        {contextVisible && !focusMode ? (
+          <aside className="writing-context feature-card" aria-label="正文上下文">
+            <h2>当前写作状态</h2>
+            <p>{chapter?.title ?? '尚未选择章节'}</p>
+            <p>{draft ? `已保存修订 ${draft.revision}` : '尚未打开正文'}</p>
+            <p>
+              {readOnly
+                ? '只读保护：可以浏览和复制，写入已停用。'
+                : '停止输入约1秒后自动保存，事务确认后才显示成功。'}
+            </p>
+            <p>切换章节、工作台或关闭项目之前会先完成当前保存。</p>
+          </aside>
+        ) : null}
       </div>
     </section>
   );

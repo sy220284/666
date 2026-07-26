@@ -62,6 +62,8 @@ import {
   ProviderSummaryResultSchema,
   ProviderTestConnectionCommandSchema,
   ProjectActiveResultSchema,
+  ProjectContinuationResultSchema,
+  ProjectContinuationSaveResultSchema,
   ProjectCreateChapterCommandSchema,
   ProjectCreateVolumeCommandSchema,
   ProjectCloseCommandResultSchema,
@@ -70,6 +72,7 @@ import {
   ProjectDeleteChapterCommandSchema,
   ProjectDeleteVolumeCommandSchema,
   ProjectGetActiveCommandSchema,
+  ProjectGetContinuationCommandSchema,
   ProjectListRecentCommandSchema,
   ProjectListStructureCommandSchema,
   ProjectGetBriefCommandSchema,
@@ -109,6 +112,7 @@ import {
   ProjectMoveVolumeCommandSchema,
   ProjectOpenRecentCommandSchema,
   ProjectOpenSelectedCommandSchema,
+  ProjectSaveContinuationCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
@@ -377,6 +381,20 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         IPC_CHANNELS.getActive,
         ProjectGetActiveCommandSchema.parse(envelope(APP_COMMANDS.getActive, {})),
         ProjectActiveResultSchema,
+      ),
+    getContinuation: (projectId) =>
+      invoke(
+        IPC_CHANNELS.getContinuation,
+        ProjectGetContinuationCommandSchema.parse(
+          envelope(APP_COMMANDS.getContinuation, { projectId }),
+        ),
+        ProjectContinuationResultSchema,
+      ),
+    saveContinuation: (input) =>
+      invoke(
+        IPC_CHANNELS.saveContinuation,
+        ProjectSaveContinuationCommandSchema.parse(envelope(APP_COMMANDS.saveContinuation, input)),
+        ProjectContinuationSaveResultSchema,
       ),
     create: (input) =>
       invoke(

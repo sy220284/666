@@ -29,6 +29,7 @@ export {
 export * from './provider-connection.js';
 export * from './recent-projects.js';
 export * from './project-workspace.js';
+export * from './project-continuation.js';
 export * from './project-structure.js';
 export * from './project-planning.js';
 export * from './scene-beat.js';

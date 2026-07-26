@@ -15,3 +15,10 @@ pnpm exec vitest run tests/unit/evidence-policy.test.ts tests/unit/task-control.
 pnpm lint
 pnpm typecheck
 pnpm test:unit
+pnpm exec vitest run tests/migration/project-continuation-migration.test.ts tests/integration/project-continuation.test.ts tests/migration/search-index-migration.test.ts
+pnpm exec vitest run tests/unit tests/integration tests/migration
+pnpm typecheck
+pnpm build
+pnpm exec eslint <C1 changed TypeScript files>
+pnpm exec prettier --check <C1 changed source, tests and evidence>
+pnpm exec playwright test --config tests/e2e/playwright.config.ts tests/e2e/electron-shell.spec.ts

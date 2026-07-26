@@ -23,6 +23,13 @@ export async function routePrimaryProjectOperation(
   switch (operation.operation) {
     case PROJECT_WORKSPACE_COMMANDS.getActive:
       return success(operation.operation, services.projectWorkspace.activeProject);
+    case PROJECT_WORKSPACE_COMMANDS.getContinuation:
+      return success(operation.operation, services.projectContinuation.get(operation.projectId));
+    case PROJECT_WORKSPACE_COMMANDS.saveContinuation:
+      return success(
+        operation.operation,
+        await services.projectContinuation.save(requestId, operation.input),
+      );
     case PROJECT_WORKSPACE_COMMANDS.create:
       return success(
         operation.operation,

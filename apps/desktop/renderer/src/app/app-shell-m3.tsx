@@ -8,6 +8,7 @@ import {
   type AppearancePreferences,
   type CoreStatus,
   type ProjectCreateInput,
+  type ProjectContinuationSnapshot,
   type ProjectWorkspaceSummary,
   type RecentProject,
   type TaskSnapshot,
@@ -53,6 +54,7 @@ export function AppShell({ bridge }: AppShellProps) {
   const settingsWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const confirmedSettings = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
   const [activeProject, setActiveProject] = useState<ProjectWorkspaceSummary | null>(null);
+  const [continuation, setContinuation] = useState<ProjectContinuationSnapshot | null>(null);
   const [recentProjects, setRecentProjects] = useState<readonly RecentProject[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [appearance, setAppearance] = useState<AppearancePreferences>(
@@ -107,11 +109,22 @@ export function AppShell({ bridge }: AppShellProps) {
 
     if (project.state === 'success') {
       setActiveProject(project.data);
+      let nextContinuation: ProjectContinuationSnapshot | null = null;
+      if (project.data) {
+        const continuationOutcome = await bridge.project.getContinuation(project.data.projectId, {
+          mode: 'replace',
+        });
+        if (continuationOutcome.state === 'success') {
+          nextContinuation = continuationOutcome.data;
+        }
+      }
+      setContinuation(nextContinuation);
       if (!initialWorkspaceResolved.current) {
         initialWorkspaceResolved.current = true;
+        const restoredRoute = project.data ? continuationRoute(nextContinuation) : 'home';
         dispatch({
           type: 'navigate',
-          route: restoreAppShellRoute(project.data ? 'writing' : 'home', {
+          route: restoreAppShellRoute(restoredRoute, {
             activeProjectId: project.data?.projectId ?? null,
             disclosureMode:
               applicationSettings.state === 'success'
@@ -245,11 +258,23 @@ export function AppShell({ bridge }: AppShellProps) {
   );
 
   const projectChanged = useCallback(
-    async (project: ProjectWorkspaceSummary | null, resultMessage: string): Promise<void> => {
+    async (
+      project: ProjectWorkspaceSummary | null,
+      resultMessage: string,
+    ): Promise<ProjectContinuationSnapshot | null> => {
       setActiveProject(project);
+      let nextContinuation: ProjectContinuationSnapshot | null = null;
+      if (project) {
+        const outcome = await bridge.project.getContinuation(project.projectId, {
+          mode: 'replace',
+        });
+        if (outcome.state === 'success') nextContinuation = outcome.data;
+      }
+      setContinuation(nextContinuation);
       const recent = await bridge.project.listRecent({ mode: 'replace' });
       if (recent.state === 'success') setRecentProjects(recent.data.projects);
       setMessage(resultMessage);
+      return nextContinuation;
     },
     [bridge],
   );
@@ -320,8 +345,11 @@ export function AppShell({ bridge }: AppShellProps) {
       setMessage(null);
       return;
     }
-    await projectChanged(outcome.data, '项目已安全打开。');
-    dispatch({ type: 'navigate', route: recover ? 'recovery' : 'writing' });
+    const nextContinuation = await projectChanged(outcome.data, '项目已安全打开。');
+    dispatch({
+      type: 'navigate',
+      route: recover ? 'recovery' : continuationRoute(nextContinuation),
+    });
   };
 
   const openRecent = async (projectId: string): Promise<void> => {
@@ -332,8 +360,8 @@ export function AppShell({ bridge }: AppShellProps) {
       setFailure(failureFromOutcome('最近项目打开失败', outcome));
       return;
     }
-    await projectChanged(outcome.data, '最近项目已安全打开。');
-    dispatch({ type: 'navigate', route: 'writing' });
+    const nextContinuation = await projectChanged(outcome.data, '最近项目已安全打开。');
+    dispatch({ type: 'navigate', route: continuationRoute(nextContinuation) });
   };
 
   const closeProject = async (projectId: string): Promise<void> => {
@@ -661,6 +689,7 @@ export function AppShell({ bridge }: AppShellProps) {
             <HomePage
               activeProject={activeProject}
               activeTaskCount={tasks.length}
+              continuation={continuation}
               disclosureMode={disclosureMode}
               healthSignals={healthSignals}
               message={message}
@@ -668,6 +697,18 @@ export function AppShell({ bridge }: AppShellProps) {
               recentProjects={recentProjects}
               onCloseProject={(projectId) => void closeProject(projectId)}
               onCreate={createProject}
+              onContinue={() => {
+                if (activeProject) {
+                  void transitionToRoute(continuationRoute(continuation));
+                  return;
+                }
+                const recent = [...recentProjects]
+                  .filter((project) => project.missingSince === null)
+                  .sort(
+                    (left, right) => Date.parse(right.lastOpenedAt) - Date.parse(left.lastOpenedAt),
+                  )[0];
+                if (recent) void openRecent(recent.projectId);
+              }}
               onMoveProject={(projectId) => void moveProject(projectId)}
               onNavigate={navigate}
               onOpenRecent={(projectId) => void openRecent(projectId)}
@@ -741,6 +782,7 @@ export function AppShell({ bridge }: AppShellProps) {
           {isWritingRoute(route) && activeProject ? (
             <WritingWorkbench
               bridge={bridge}
+              initialContinuation={continuation}
               panel={writingPanel}
               project={activeProject}
               onPanelChange={(panel) =>
@@ -776,6 +818,13 @@ export function AppShell({ bridge }: AppShellProps) {
 
 function isWritingRoute(route: RendererRouteId): boolean {
   return route === 'writing' || route === 'versions' || route === 'candidates';
+}
+
+function continuationRoute(
+  continuation: ProjectContinuationSnapshot | null,
+): 'writing' | 'versions' | 'candidates' {
+  if (continuation?.status !== 'ready') return 'writing';
+  return continuation.panel === 'editor' ? 'writing' : continuation.panel;
 }
 
 function isCancelledOutcome(outcome: BridgeRequestOutcome<unknown>): boolean {

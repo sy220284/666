@@ -5,4 +5,6 @@
 3. `ModelSupportProfile`存在`untested/unverified`历史命名冲突，必须兼容读取后统一新写入。
 4. 长期Draft PR会持续变化，最终Evidence必须重新绑定Ready前最终Head。
 5. DOCX、超大项目、混合DPI和跨平台安装验收需要真实环境与可复现工件。
-6. 当前阶段只完成规划，任何产品需求均不得因本提交提前标记Implemented或Verified。
+6. C1已加入继续写作持久化；后续Migration必须保留Schema 22读取兼容并继续只追加。
+7. 当前容器缺少X Server，C1 Electron Playwright在Renderer启动前退出；必须读取PR CI结果后再确认桌面路径。
+8. C2—C8尚未完成，追踪矩阵中的M4-04需求继续保持`In Progress`。

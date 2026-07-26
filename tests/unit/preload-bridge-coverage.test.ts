@@ -152,6 +152,18 @@ describe('Preload bridge real-contract regression coverage', () => {
     });
     await bridge.settings.set({ themeId: 'theme-b', themeVariant: 'dark' });
     await bridge.project.openRecent(projectId);
+    await bridge.project.getContinuation(projectId);
+    await bridge.project.saveContinuation({
+      projectId,
+      chapterId: '66666666-6666-4666-8666-666666666666',
+      draftId: '77777777-7777-4777-8777-777777777777',
+      draftRevision: 3,
+      logicalBlockId: '88888888-8888-4888-8888-888888888888',
+      expectedBlockHash: 'a'.repeat(64),
+      cursorOffset: 12,
+      scrollTop: 480,
+      panel: 'editor',
+    });
     await bridge.planning.getBrief(projectId);
     await bridge.recovery.getOverview(projectId);
     await bridge.textIo.listExportVersions(projectId);
@@ -171,6 +183,14 @@ describe('Preload bridge real-contract regression coverage', () => {
       },
       { channel: IPC_CHANNELS.settingsSet, command: APP_COMMANDS.settingsSet },
       { channel: IPC_CHANNELS.openRecent, command: APP_COMMANDS.openRecent },
+      {
+        channel: IPC_CHANNELS.getContinuation,
+        command: APP_COMMANDS.getContinuation,
+      },
+      {
+        channel: IPC_CHANNELS.saveContinuation,
+        command: APP_COMMANDS.saveContinuation,
+      },
       { channel: IPC_CHANNELS.getBrief, command: APP_COMMANDS.getBrief },
       { channel: IPC_CHANNELS.getOverview, command: APP_COMMANDS.getOverview },
       {

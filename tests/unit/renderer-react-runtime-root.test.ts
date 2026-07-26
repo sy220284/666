@@ -134,7 +134,8 @@ describe('M3-08 React运行底座', () => {
     expect(shellSource).toContain('data-open-continuity');
     expect(canonSource).toContain('data-continuity-dialog');
     expect(planningSource).toContain('data-planning-dialog');
-    expect(shellSource).toContain("restoreAppShellRoute(project.data ? 'writing' : 'home'");
+    expect(shellSource).toContain('bridge.project.getContinuation');
+    expect(shellSource).toContain('route: restoreAppShellRoute(restoredRoute');
     expect(settingsSource.match(/data-ui-scale/gu)).toHaveLength(1);
     expect(settingsSource.match(/data-workspace-alignment/gu)).toHaveLength(1);
     expect(settingsSource.match(/data-theme-variant/gu)).toHaveLength(1);

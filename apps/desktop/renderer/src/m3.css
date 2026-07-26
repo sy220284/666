@@ -16,6 +16,22 @@
   align-items: start;
 }
 
+.writing-grid[data-outline-visible='false'][data-context-visible='true'] {
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+}
+
+.writing-grid[data-outline-visible='true'][data-context-visible='false'] {
+  grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
+}
+
+.writing-grid[data-outline-visible='false'][data-context-visible='false'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.writing-workbench[data-focus-mode='true'] .writing-heading > div:first-child > p {
+  display: none;
+}
+
 .writing-grid > .structure-navigator,
 .writing-context {
   position: sticky;

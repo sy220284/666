@@ -19,6 +19,7 @@ import { CoordinatedImportExportService } from './coordinated-import-export.js';
 import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
 import { ProjectPlanningService } from './project-planning.js';
+import { ProjectContinuationService } from './project-continuation.js';
 import { ProjectStructureService } from './project-structure.js';
 import { ProjectWorkspaceService } from './project-workspace.js';
 import { ReferenceAwareStructureOperationService } from './reference-aware-structure-operations.js';
@@ -129,6 +130,7 @@ const recovery = new CheckpointAwareRecoveryService(projectWorkspace, {
 });
 const services: UtilityProjectServices = {
   projectWorkspace,
+  projectContinuation: new ProjectContinuationService(projectWorkspace),
   recovery,
   projectStructure: new ProjectStructureService(projectWorkspace),
   projectPlanning: new ProjectPlanningService(projectWorkspace),

@@ -74,11 +74,13 @@ import {
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
   ProjectGetActiveCommandSchema,
+  ProjectGetContinuationCommandSchema,
   ProjectMoveCommandSchema,
   ProjectMoveChapterCommandSchema,
   ProjectMoveVolumeCommandSchema,
   ProjectOpenRecentCommandSchema,
   ProjectOpenSelectedCommandSchema,
+  ProjectSaveContinuationCommandSchema,
   ProjectCreateChapterCommandSchema,
   ProjectCreateVolumeCommandSchema,
   ProjectDeleteChapterCommandSchema,
@@ -181,6 +183,7 @@ function requestIdFrom(raw: unknown): string {
 
 const QUERY_PROJECT_OPERATIONS = new Set<string>([
   PROJECT_WORKSPACE_COMMANDS.getActive,
+  PROJECT_WORKSPACE_COMMANDS.getContinuation,
   PROJECT_PLANNING_COMMANDS.getBrief,
   PROJECT_PLANNING_COMMANDS.listPlotNodes,
   SCENE_BEAT_COMMANDS.listSceneBeats,
@@ -220,6 +223,8 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.projectRelocateRecent,
     IPC_CHANNELS.projectRemoveRecent,
     IPC_CHANNELS.getActive,
+    IPC_CHANNELS.getContinuation,
+    IPC_CHANNELS.saveContinuation,
     IPC_CHANNELS.create,
     IPC_CHANNELS.openSelected,
     IPC_CHANNELS.openRecent,
@@ -538,6 +543,28 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     if (!parsed.success) return invalidRequest(raw);
     return invokeProject(parsed.data.requestId, {
       operation: PROJECT_WORKSPACE_COMMANDS.getActive,
+    });
+  });
+
+  register(IPC_CHANNELS.getContinuation, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectGetContinuationCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.getContinuation,
+      projectId: parsed.data.payload.projectId,
+    });
+  });
+
+  register(IPC_CHANNELS.saveContinuation, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = ProjectSaveContinuationCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: PROJECT_WORKSPACE_COMMANDS.saveContinuation,
+      input: parsed.data.payload,
     });
   });
 

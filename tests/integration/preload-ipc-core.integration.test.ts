@@ -50,6 +50,21 @@ const project = {
   createdAt: '2026-07-23T00:00:00.000Z',
 } as const;
 
+const continuation = {
+  status: 'ready' as const,
+  projectId: project.projectId,
+  chapterId: '66666666-6666-4666-8666-666666666666',
+  chapterTitle: '第六章',
+  draftId: '77777777-7777-4777-8777-777777777777',
+  draftRevision: 3,
+  logicalBlockId: '88888888-8888-4888-8888-888888888888',
+  expectedBlockHash: 'a'.repeat(64),
+  cursorOffset: 12,
+  scrollTop: 480,
+  panel: 'editor' as const,
+  updatedAt: '2026-07-26T03:10:00.000Z',
+};
+
 const windowPreferences = {
   workspaceAlignment: 'center' as const,
   uiScalePercent: 100,
@@ -93,6 +108,13 @@ function createCoreRuntime() {
     },
     projectServices: {
       projectWorkspace: { activeProject: project },
+      projectContinuation: {
+        get: () => continuation,
+        save: async (
+          _requestId: string,
+          input: Omit<typeof continuation, 'status' | 'chapterTitle' | 'updatedAt'>,
+        ) => ({ ...continuation, ...input }),
+      },
     },
   };
 }
@@ -229,7 +251,26 @@ describe('Preload → IPC Main → Core integration', () => {
     const bridge = transport.exposed as WorldforgeBridge;
 
     await expect(bridge.project.getActive()).resolves.toMatchObject({ ok: true, data: project });
+    await expect(bridge.project.getContinuation(project.projectId)).resolves.toMatchObject({
+      ok: true,
+      data: continuation,
+    });
+    await expect(
+      bridge.project.saveContinuation({
+        projectId: continuation.projectId,
+        chapterId: continuation.chapterId,
+        draftId: continuation.draftId,
+        draftRevision: continuation.draftRevision,
+        logicalBlockId: continuation.logicalBlockId,
+        expectedBlockHash: continuation.expectedBlockHash,
+        cursorOffset: continuation.cursorOffset,
+        scrollTop: continuation.scrollTop,
+        panel: continuation.panel,
+      }),
+    ).resolves.toMatchObject({ ok: true, data: continuation });
     expect(transport.invokedChannels).toContain(IPC_CHANNELS.getActive);
+    expect(transport.invokedChannels).toContain(IPC_CHANNELS.getContinuation);
+    expect(transport.invokedChannels).toContain(IPC_CHANNELS.saveContinuation);
 
     const callsBeforeInvalidInput = transport.invokedChannels.length;
     expect(() =>

@@ -33,6 +33,8 @@ import type {
   NarrativePlanningListInput,
   StateProposalBridge,
   ValidationBridge,
+  SearchToolsBridge,
+  RhythmBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
@@ -140,6 +142,8 @@ interface AuxiliaryRendererBridges {
   readonly narrativePlanning?: NarrativePlanningBridgePort;
   readonly stateProposal?: StateProposalBridge;
   readonly validation?: ValidationBridge;
+  readonly searchTools?: SearchToolsBridge;
+  readonly rhythm?: RhythmBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -181,6 +185,8 @@ export interface RendererBridgeAdapter {
   readonly narrativePlanning: AdaptedDomain<NarrativePlanningBridgePort>;
   readonly stateProposal: AdaptedDomain<StateProposalBridge>;
   readonly validation: AdaptedDomain<ValidationBridge>;
+  readonly searchTools: AdaptedDomain<SearchToolsBridge>;
+  readonly rhythm: AdaptedDomain<RhythmBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -239,6 +245,12 @@ export function createRendererBridgeAdapter(
       requireDomain(auxiliary.validation, 'validation'),
       coordinator,
     ),
+    searchTools: adaptDomain(
+      'searchTools',
+      requireDomain(auxiliary.searchTools, 'searchTools'),
+      coordinator,
+    ),
+    rhythm: adaptDomain('rhythm', requireDomain(auxiliary.rhythm, 'rhythm'), coordinator),
     candidateAction: adaptDomain(
       'candidateAction',
       requireDomain(auxiliary.candidateAction, 'candidateAction'),
@@ -262,6 +274,8 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeNarrativePlanning ||
     !window.worldforgeStateProposal ||
     !window.worldforgeValidation ||
+    !window.worldforgeSearchTools ||
+    !window.worldforgeRhythm ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -271,6 +285,8 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     narrativePlanning: window.worldforgeNarrativePlanning,
     stateProposal: window.worldforgeStateProposal,
     validation: window.worldforgeValidation,
+    searchTools: window.worldforgeSearchTools,
+    rhythm: window.worldforgeRhythm,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }

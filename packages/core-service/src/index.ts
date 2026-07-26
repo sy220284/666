@@ -49,6 +49,9 @@ export * from './generation-run.js';
 export * from './generation-runtime.js';
 export * from './generation-source-resolver.js';
 export * from './validation.js';
+export * from './search-tools.js';
+export * from './rhythm.js';
+export * from './writing-metrics.js';
 export * from './window-preferences.js';
 export {
   SearchIndexServiceError,

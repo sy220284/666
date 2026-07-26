@@ -9,11 +9,15 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { RhythmPanel } from './rhythm-panel.js';
+import { SearchPanel } from './search-panel.js';
 
 interface ChecksWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly readOnly: boolean;
+  readonly onOpenCanon: () => void;
+  readonly onOpenWriting: () => void;
 }
 
 const ISSUE_ACTIONS = [
@@ -25,7 +29,13 @@ const ISSUE_ACTIONS = [
   ['reopen', '重新打开'],
 ] as const;
 
-export function ChecksWorkbench({ bridge, projectId, readOnly }: ChecksWorkbenchProps) {
+export function ChecksWorkbench({
+  bridge,
+  projectId,
+  readOnly,
+  onOpenCanon,
+  onOpenWriting,
+}: ChecksWorkbenchProps) {
   const [structure, setStructure] = useState<ProjectStructure | null>(null);
   const [catalog, setCatalog] = useState<ValidationCatalog | null>(null);
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
@@ -191,6 +201,14 @@ export function ChecksWorkbench({ bridge, projectId, readOnly }: ChecksWorkbench
           <p>检查结果保留证据锚点；只有作者可以解决、忽略或转为待办。</p>
         </div>
       </header>
+      <SearchPanel
+        bridge={bridge}
+        projectId={projectId}
+        readOnly={readOnly}
+        onOpenCanon={onOpenCanon}
+        onOpenWriting={onOpenWriting}
+      />
+      <RhythmPanel bridge={bridge} projectId={projectId} readOnly={readOnly} />
       <section className="feature-card">
         <div className="filter-bar">
           <label>

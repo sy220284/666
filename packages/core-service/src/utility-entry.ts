@@ -40,6 +40,8 @@ import { executeProviderOperation } from './utility-provider-router.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
 import { VersionService } from './version.js';
 import { ValidationService } from './validation.js';
+import { SearchToolsService } from './search-tools.js';
+import { RhythmService } from './rhythm.js';
 
 interface TransferredPort {
   postMessage(message: unknown): void;
@@ -146,6 +148,7 @@ const generationRuntime = new GenerationRuntime(generationRuns, taskProtocol);
 const candidates = new CandidateService(projectWorkspace);
 const stateProposals = new StateProposalService(projectWorkspace);
 const validation = new ValidationService(projectWorkspace);
+const searchTools = new SearchToolsService(projectWorkspace, recovery, checkpointRequestId);
 const generationServices = {
   constraints: new HardenedConstraintPackageService(projectWorkspace),
   runs: generationRuns,
@@ -169,6 +172,8 @@ const services: UtilityProjectServices = {
   candidateApply: new CandidateApplyService(projectWorkspace),
   versions: new VersionService(projectWorkspace),
   textIo: new CoordinatedImportExportService(projectWorkspace, recovery),
+  searchTools,
+  rhythm: new RhythmService(projectWorkspace),
   checkpointRequestId,
 };
 

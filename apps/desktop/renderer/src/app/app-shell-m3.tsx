@@ -804,6 +804,11 @@ export function AppShell({ bridge }: AppShellProps) {
               bridge={bridge}
               projectId={activeProject.projectId}
               readOnly={activeProject.databaseMode === 'read-only'}
+              onOpenCanon={() => {
+                setCanonSection('entities');
+                void transitionToRoute('canon');
+              }}
+              onOpenWriting={() => void transitionToRoute('writing')}
             />
           ) : null}
         </main>

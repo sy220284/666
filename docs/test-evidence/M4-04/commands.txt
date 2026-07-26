@@ -48,3 +48,10 @@ pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm build
+pnpm exec vitest run tests/migration/search-replace-rhythm-migration.test.ts tests/integration/search-replace-rhythm.test.ts tests/security/search-rhythm-ipc.test.ts
+pnpm exec vitest run tests/unit tests/integration tests/migration tests/security
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm format:check
+pnpm test:perf

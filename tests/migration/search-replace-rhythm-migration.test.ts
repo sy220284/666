@@ -7,14 +7,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
-import {
-  latestMigrationVersion,
-  loadMigrations,
-} from '../../packages/core-service/src/database/index.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 
 const temporaryDirectories: string[] = [];
-const clock = { now: () => new Date('2026-07-24T06:45:00.000Z') };
+const clock = { now: () => new Date('2026-07-26T09:00:00.000Z') };
 
 afterEach(async () => {
   await Promise.all(
@@ -24,15 +20,12 @@ afterEach(async () => {
   );
 });
 
-describe('M4-01 search index migrations', () => {
-  it('installs Schema 20-21 search index and dictionary', async () => {
-    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-search-migration-'));
+describe('M4-04 search, replacement and rhythm migration', () => {
+  it('installs schema 26 mutation origins, ReplacePlan and rebuildable writing metrics', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-search-rhythm-migration-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
     await mkdir(parent, { recursive: true });
-    const migrations = await loadMigrations('migrations/project', 'project');
-    expect(latestMigrationVersion(migrations)).toBe(26);
-
     const appRuntime = await openAppRuntime({
       databasePath: path.join(root, 'app.sqlite'),
       migrationsDirectory: 'migrations/app',
@@ -49,57 +42,42 @@ describe('M4-01 search index migrations', () => {
     });
     const project = await workspace.create(
       randomUUID(),
-      { name: '检索迁移', channel: '长篇' },
+      { name: '搜索节奏迁移', channel: '长篇' },
       parent,
     );
     await workspace.shutdown();
     await appRuntime.close();
-
     const database = new DatabaseSync(path.join(project.workspacePath, 'project.sqlite'), {
-      readOnly: true,
       readBigInts: true,
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
         schema_version: 26n,
       });
+      const columns = database.prepare(`PRAGMA table_info(draft_patch_log)`).all();
+      expect(columns).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'mutation_origin', dflt_value: "'system'" }),
+        ]),
+      );
+      for (const table of [
+        'replace_plans',
+        'replace_plan_items',
+        'genre_rhythm_profiles',
+        'writing_sessions',
+      ]) {
+        expect(
+          database.prepare(`SELECT strict FROM pragma_table_list WHERE name = ?`).get(table),
+        ).toEqual({ strict: 1n });
+      }
       expect(
         database
           .prepare(
-            `SELECT name FROM pragma_table_list
-              WHERE name IN (
-                'search_index_state', 'search_index_queue', 'fts_draft_blocks',
-                'fts_version_blocks', 'fts_entities', 'project_dictionary'
-              )
-              ORDER BY name`,
-          )
-          .all(),
-      ).toEqual([
-        { name: 'fts_draft_blocks' },
-        { name: 'fts_entities' },
-        { name: 'fts_version_blocks' },
-        { name: 'project_dictionary' },
-        { name: 'search_index_queue' },
-        { name: 'search_index_state' },
-      ]);
-      expect(
-        database
-          .prepare(
-            `SELECT COUNT(*) AS count FROM sqlite_master
-              WHERE type = 'trigger' AND name LIKE 'trg_search_queue_%'`,
+            `SELECT name FROM sqlite_master
+              WHERE type = 'trigger' AND name = 'trg_replace_plan_item_scope'`,
           )
           .get(),
-      ).toEqual({ count: 16n });
-      expect(
-        database
-          .prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`)
-          .get(),
-      ).toEqual({ strict: 1n });
-      expect(
-        database.prepare(`SELECT sql FROM sqlite_master WHERE name = 'fts_draft_blocks'`).get(),
-      ).toMatchObject({
-        sql: expect.stringContaining("tokenize = 'trigram'"),
-      });
+      ).toEqual({ name: 'trg_replace_plan_item_scope' });
       expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
       database.close();

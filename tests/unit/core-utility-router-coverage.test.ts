@@ -4,6 +4,7 @@ const routeState = vi.hoisted(() => ({
   primary: null as unknown,
   narrative: null as unknown,
   validation: null as unknown,
+  searchRhythm: null as unknown,
   structure: null as unknown,
   content: null as unknown,
   error: undefined as Error | undefined,
@@ -44,6 +45,12 @@ vi.mock('../../packages/core-service/src/utility-validation-router.js', () => ({
   routeValidationOperation: async () => {
     routeState.calls.push('validation');
     return routeState.validation;
+  },
+}));
+vi.mock('../../packages/core-service/src/utility-search-rhythm-router.js', () => ({
+  routeSearchRhythmOperation: async () => {
+    routeState.calls.push('searchRhythm');
+    return routeState.searchRhythm;
   },
 }));
 vi.mock('../../packages/core-service/src/utility-project-content-router.js', () => ({
@@ -224,6 +231,7 @@ describe('Core utility project router exact order and short-circuiting', () => {
     routeState.primary = null;
     routeState.narrative = null;
     routeState.validation = null;
+    routeState.searchRhythm = null;
     routeState.structure = null;
     routeState.content = null;
     routeState.error = undefined;
@@ -234,8 +242,9 @@ describe('Core utility project router exact order and short-circuiting', () => {
     ['primary', ['primary']],
     ['narrative', ['primary', 'narrative']],
     ['validation', ['primary', 'narrative', 'validation']],
-    ['structure', ['primary', 'narrative', 'validation', 'structure']],
-    ['content', ['primary', 'narrative', 'validation', 'structure', 'content']],
+    ['searchRhythm', ['primary', 'narrative', 'validation', 'searchRhythm']],
+    ['structure', ['primary', 'narrative', 'validation', 'searchRhythm', 'structure']],
+    ['content', ['primary', 'narrative', 'validation', 'searchRhythm', 'structure', 'content']],
   ] as const)(
     'returns the first %s result and does not invoke later routers',
     async (owner, expectedCalls) => {
@@ -260,6 +269,7 @@ describe('Core utility project router exact order and short-circuiting', () => {
       'primary',
       'narrative',
       'validation',
+      'searchRhythm',
       'structure',
       'content',
     ]);

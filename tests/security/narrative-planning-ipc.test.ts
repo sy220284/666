@@ -5,6 +5,8 @@ import {
   NARRATIVE_PLANNING_IPC_CHANNELS,
   STATE_PROPOSAL_IPC_CHANNELS,
   VALIDATION_IPC_CHANNELS,
+  SEARCH_TOOLS_IPC_CHANNELS,
+  RHYTHM_IPC_CHANNELS,
   type CoreProjectOperation,
   type CoreProjectResult,
 } from '@worldforge/contracts';
@@ -61,6 +63,8 @@ describe('M3-05 narrative planning IPC boundary', () => {
         ...Object.values(NARRATIVE_PLANNING_IPC_CHANNELS),
         ...Object.values(STATE_PROPOSAL_IPC_CHANNELS),
         ...Object.values(VALIDATION_IPC_CHANNELS),
+        ...Object.values(SEARCH_TOOLS_IPC_CHANNELS),
+        ...Object.values(RHYTHM_IPC_CHANNELS),
       ].sort(),
     );
 
@@ -181,6 +185,6 @@ describe('M3-05 narrative planning IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(19);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(30);
   });
 });

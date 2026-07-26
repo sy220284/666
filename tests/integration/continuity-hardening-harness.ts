@@ -13,6 +13,7 @@ import { ProjectStructureService } from '../../packages/core-service/src/project
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { StateProposalService } from '../../packages/core-service/src/state-proposal.js';
 import { ValidationService } from '../../packages/core-service/src/validation.js';
+import { RhythmService } from '../../packages/core-service/src/rhythm.js';
 import { VersionService } from '../../packages/core-service/src/version.js';
 
 const temporaryDirectories: string[] = [];
@@ -50,6 +51,7 @@ export async function createContinuityHarness() {
     proposals: new StateProposalService(workspace, { clock: hardeningClock }),
     generation: new GenerationRunService(workspace, { clock: hardeningClock }),
     validation: new ValidationService(workspace, { clock: hardeningClock }),
+    rhythm: new RhythmService(workspace, { clock: hardeningClock }),
   };
 }
 

@@ -1,6 +1,6 @@
 # M4-04 Migration、IPC与共享合同总计划
 
-> 状态：编码前冻结
+> 状态：编码前冻结；C1—C6 按实际纵向实现校准
 >
 > 原则：历史Migration不修改；新增表必须在同一内部阶段出现真实消费方；所有业务写入继续进入Core单写队列。
 
@@ -41,29 +41,26 @@
 - 数据库Trigger与Core双层阻止Skeleton写入`candidate_blocks`正文链。
 - 历史Candidate全部按Prose兼容迁移，内容Hash和块数量必须复核。
 
-### `0025_state_proposal_batches.sql`
+### `0025_state_validation.sql`
 
 - 建立`state_proposal_batches`，绑定GenerationRun、Final Version和snapshotSource。
 - 重建`state_proposals`，增加`provider`来源及Batch关系。
+- 建立`validation_batches`、`validation_issues`、`story_todos`与`story_comments`。
+- Issue锚点保存Version、logicalBlockId、expectedHash、quote和rangeHint，不保存第二份正文。
+- 扩展Generation输入与结果引用，支持不可变Version输入、StateProposalBatch和ValidationBatch。
 - 明确复制字段、行数、唯一索引、区间Trigger和Hash/外键检查。
 - 历史`rule/provider_stub`提案保持原值和裁决状态。
 
-### `0026_validation_review.sql`
+### `0026_search_replace_rhythm.sql`
 
-- `validation_runs`、`validation_issues`、`validation_suppressions`。
-- `style_profiles`、`story_todos`、`comments`。
-- Issue锚点保存Version、logicalBlockId、expectedHash、quote和rangeHint，不保存第二份正文。
-- 派生Issue可删除重建，不影响Draft、Version、Canon和状态。
-
-### `0027_writing_metrics_rhythm.sql`
-
-- `draft_mutations`：Draft/Revision唯一、Core决定七类`mutationOrigin`。
+- 为既有`draft_patch_log`追加Core决定的七类`mutationOrigin`，不建立第二套Mutation账本。
+- `replace_plans`与`replace_plan_items`保存Core权威替换预览和不可伪造锚点。
 - `writing_sessions`：有效输入起止、人工净增、有效时长和跨午夜分段。
-- `genre_rhythm_profiles`：版本化阈值、频道、启用状态。
+- `genre_rhythm_profiles`：阈值、频道、启用状态、目标、空闲阈值和项目时区。
 - 历史无法归类的Patch不回填为manual_edit，统计从迁移上线时间开始。
-- 节奏结果复用ValidationIssue的P3建议，不新建阻断真源。
+- 节奏结果按权威数据即时派生为P3建议，不新建阻断真源。
 
-### `0028_backup_tracks.sql`
+### `0027_backup_tracks.sql`（C7计划）
 
 - 扩展`backup_records`：daily/major/named、名称、备注、作者保护、Migration保护、Schema版本。
 - 建立项目级`backup_policy`：日常保留数、空间配额和清理策略。
@@ -132,8 +129,8 @@ Skeleton进入Preview、Diff、Apply、Version、Final和正文导出的成功�
 | Candidate    | `list/get/discard/updateSkeleton`；Fixture命令继续只在测试模式注册                            |
 | Validation   | `run/list/resolve/ignore/silence/downgrade/markFalsePositive`                                 |
 | Todo/Comment | `create/update/complete/reopen/list/delete`及批注CRUD                                         |
-| Search       | `project/previewReplace/applyReplace/getIndexStatus/rebuildIndex`及现有词典CRUD               |
-| Rhythm       | `getProfile/updateProfile/run/getResults/getWritingMetrics`                                   |
+| Search       | `search/getIndexState/rebuildIndex/previewReplace/applyReplace`及项目词典CRUD                 |
+| Rhythm       | `get/run/updateProfile`                                                                       |
 | TextIO       | 扩展现有Preview/Commit/Export命令支持DOCX，不建第二协调器                                     |
 | Recovery     | 扩展现有create/list/verify/protect/delete/policy/restoreToCopy                                |
 | Project      | `getContinuation/saveContinuation`并由Core校验锚点                                            |

@@ -142,6 +142,6 @@ describe('M4-04 validation IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(19);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(30);
   });
 });

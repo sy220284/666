@@ -15,6 +15,8 @@ import { RecoveryServiceError } from './recovery.js';
 import { SceneBeatServiceError } from './scene-beat.js';
 import { VersionServiceError } from './version.js';
 import { ValidationServiceError } from './validation.js';
+import { SearchToolsServiceError } from './search-tools.js';
+import { RhythmServiceError } from './rhythm.js';
 
 export function windowPreferencesError(error: unknown): ErrorCode {
   if (error instanceof DatabaseFoundationError) {
@@ -43,6 +45,17 @@ export function appDataError(error: unknown): ErrorCode {
 }
 
 export function projectOperationError(error: unknown): ErrorCode {
+  if (error instanceof SearchToolsServiceError) {
+    if (error.code === 'SEARCH_REPLACE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'SEARCH_REPLACE_INVALID') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
+  if (error instanceof RhythmServiceError) {
+    if (error.code === 'RHYTHM_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'RHYTHM_INVALID' || error.code === 'RHYTHM_AUTHOR_REQUIRED') {
+      return 'COMMON_INVALID_INPUT_001';
+    }
+  }
   if (error instanceof ValidationServiceError) {
     if (error.code === 'VALIDATION_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'VALIDATION_INVALID') return 'COMMON_INVALID_INPUT_001';

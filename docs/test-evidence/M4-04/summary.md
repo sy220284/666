@@ -2,9 +2,9 @@
 
 ## 当前阶段
 
-整体基线审计与编码前实施规划已经完成。C1—C5 作者工作流、GenerationRun、
-T0/T1、改写、融合、Candidate 审阅、状态提取与 Validation 闭环已实现，
-下一实施入口为 C6 搜索、替换、统计与节奏。
+整体基线审计与编码前实施规划已经完成。C1—C6 作者工作流、GenerationRun、
+T0/T1、改写、融合、Candidate 审阅、状态提取、Validation、搜索、安全替换、
+人工写作统计与节奏闭环已实现，下一实施入口为 C7 DOCX 与三轨恢复。
 
 ## 本阶段交付
 
@@ -33,11 +33,20 @@ T0/T1、改写、融合、Candidate 审阅、状态提取与 Validation 闭环�
 - Provider 提案保持 pending；作者裁决前不改变实体状态、人物弧光或 Draft。
 - 确定性规则检查具备规则/配置版本、输入幂等、稳定 ID 和 Version/Block Hash 锚点。
 - 检查工作台及状态提案工作台已接入规则/AI运行、证据、问题动作、待办、批注和裁决。
+- Schema 26、七值 `mutationOrigin`、ReplacePlan、GenreRhythmProfile 与
+  WritingSession 完成。
+- 全项目搜索覆盖活动 Draft、只读 Version 和 Entity，继续复用 M4-01 索引、
+  权威回读、索引状态与项目词典。
+- 安全替换只修改活动 DraftBlock，提交前复核 Revision、块 Hash、范围、命中文本
+  和 LockGuard，并在单事务前创建 Recovery Checkpoint。
+- 人工作字数和有效写作速度只统计 Core 标记的 `manual_edit`，排除 Candidate 采用、
+  导入、替换、结构、恢复和系统维护。
+- 爽点密度、章末钩子、黄金三章与连载目标为透明、可配置、可关闭的 P3 建议。
 
 ## 当前结论
 
-现有 M0—M3 与 M4-01—M4-03 底座保持兼容。C1—C5 纵向代码与本地自动化
-回归通过；长期 PR 保持 Draft，继续实施 C6—C8，最终以 P0-001—P0-075
+现有 M0—M3 与 M4-01—M4-03 底座保持兼容。C1—C6 纵向代码与本地自动化
+回归通过；长期 PR 保持 Draft，继续实施 C7—C8，最终以 P0-001—P0-075
 证据关闭任务。
 
 ## 已执行校验
@@ -61,3 +70,7 @@ T0/T1、改写、融合、Candidate 审阅、状态提取与 Validation 闭环�
 - C5 Unit、Integration、Migration、Security：157 个测试文件、744 项通过、
   1 项跳过。
 - C5 全工作区 Build、Typecheck、ESLint 与 Prettier 通过。
+- C6 Unit、Integration、Migration、Security：160 个测试文件、749 项通过、
+  1 项跳过。
+- C6 Performance：10 个测试文件、37 项全部通过。
+- C6 全工作区 Build、Typecheck、ESLint 与 Prettier 通过。

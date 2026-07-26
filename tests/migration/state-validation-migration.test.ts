@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 describe('M4-04 state and validation migration', () => {
-  it('installs strict schema 25 with batch ownership and GenerationRun result guards', async () => {
+  it('preserves strict schema 25 batch ownership and GenerationRun result guards', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-state-validation-migration-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
@@ -53,7 +53,7 @@ describe('M4-04 state and validation migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 25n,
+        schema_version: 26n,
       });
       for (const table of [
         'state_proposal_batches',

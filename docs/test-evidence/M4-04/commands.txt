@@ -1,0 +1,17 @@
+git status -sb
+git branch --show-current
+git log -1 --format=%H
+gh --version
+gh auth status
+gh repo view sy220284/666 --json nameWithOwner,defaultBranchRef,url
+pnpm --version
+pnpm install --frozen-lockfile --store-dir <workspace-local-store>
+node scripts/taskctl.mjs status
+node .github/governance/verification-hold-taskctl.mjs validate
+node .github/governance/verification-hold-taskctl.mjs preflight
+node scripts/evidence-policy.mjs <planning evidence validation>
+pnpm exec prettier --check <M4-04 planning documents>
+pnpm exec vitest run tests/unit/evidence-policy.test.ts tests/unit/task-control.test.ts tests/unit/task-ordering.test.ts
+pnpm lint
+pnpm typecheck
+pnpm test:unit

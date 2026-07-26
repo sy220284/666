@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M4-04",
+  "commit": "bf557fb2d3cb4a4911e75d5cc5e722ed847932d9",
+  "generatedAt": "2026-07-26T01:45:29.000Z",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 680,
+      "sha256": "78c4f5ba49c3266e3eab1716b487e40a6780ef79af038f32e42738f3bdfcdefc"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 636,
+      "sha256": "d988bde2595db74a366461944ffa65b4e40e9cd2acbb780e393f570102c7e78c"
+    },
+    {
+      "path": "migration-ipc-contract-plan.md",
+      "bytes": 9306,
+      "sha256": "929d7625ab0f06e6b3520aa3b69a0d5c463e075b2516fdc480fd08f7a3fb608f"
+    },
+    {
+      "path": "overall-implementation-plan.md",
+      "bytes": 8176,
+      "sha256": "b2bbc9862449b0dc77474d045ec9f592524a03647c5e46de21d5c838b1d820d1"
+    },
+    {
+      "path": "requirements-code-test-p0-matrix.md",
+      "bytes": 6633,
+      "sha256": "8641268cb4e9157dad36865107903658723268dac43f29ce7d0b66a4be30f76c"
+    },
+    {
+      "path": "risk-rollback-test-matrix.md",
+      "bytes": 7015,
+      "sha256": "bf56c064f1c1997808698f5d765c54110b80d05910cb09a105d2533a295cd9bb"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 988,
+      "sha256": "dc952c3151f73d0525605912278d82677823ef4b125d04a0f378be4e7e6d8501"
+    }
+  ]
+}

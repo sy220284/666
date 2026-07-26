@@ -97,7 +97,8 @@ export interface GenerationInputSourceInput {
     | 'draft_block'
     | 'candidate'
     | 'current_draft'
-    | 'generation_run';
+    | 'generation_run'
+    | 'version';
   readonly sourceId: string;
   readonly sourceOrder: number;
   readonly contentHash?: string | null;
@@ -259,10 +260,15 @@ function resultRefs(database: DatabaseSync, runId: string): GenerationResultRef[
           resultId: row.resultId,
           candidateKind: row.candidateKind,
         }
-      : {
-          resultType: 'state_proposal_batch' as const,
-          resultId: row.resultId,
-        },
+      : row.resultType === 'state_proposal_batch'
+        ? {
+            resultType: 'state_proposal_batch' as const,
+            resultId: row.resultId,
+          }
+        : {
+            resultType: 'validation_batch' as const,
+            resultId: row.resultId,
+          },
   ) as GenerationResultRef[];
 }
 

@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 describe('M4-04 structured Candidate migration', () => {
-  it('installs strict schema 24 and blocks Skeleton prose rows', async () => {
+  it('preserves strict schema 24 Candidate guards in the latest schema', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-structured-candidate-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
@@ -53,7 +53,7 @@ describe('M4-04 structured Candidate migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 24n,
+        schema_version: 25n,
       });
       for (const table of [
         'candidate_skeleton_revisions',

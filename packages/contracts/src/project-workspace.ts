@@ -29,6 +29,7 @@ import {
   CoreStateProposalOperationSchema,
   CoreStateProposalResultSchema,
 } from './state-proposal.js';
+import { CoreValidationOperationSchema, CoreValidationResultSchema } from './validation.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -266,6 +267,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreContinuityOperationSchema,
   CoreNarrativePlanningOperationSchema,
   CoreStateProposalOperationSchema,
+  CoreValidationOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
   CoreCandidateApplyOperationSchema,
@@ -312,6 +314,7 @@ export const CoreProjectResultSchema = z.union([
   CoreContinuityResultSchema,
   CoreNarrativePlanningResultSchema,
   CoreStateProposalResultSchema,
+  CoreValidationResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
   CoreCandidateApplyResultSchema,

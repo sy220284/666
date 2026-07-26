@@ -6,7 +6,9 @@ import {
   GENERATION_COMMANDS,
   GenerationRequestSchema,
   RewriteOutputSchema,
+  SemanticValidationOutputSchema,
   SkeletonCandidateBatchOutputSchema,
+  StateExtractionOutputSchema,
   type CandidateBlockInput,
   type CoreGenerationOperation,
   type CoreGenerationResult,
@@ -23,6 +25,8 @@ import {
   selectChapterOutputMode,
   serializeConstraintPackage,
   skeletonPrompt,
+  stateExtractPrompt,
+  validatePrompt,
 } from '@worldforge/prompts';
 
 import type { HardenedConstraintPackageService } from './constraint-package-hardening.js';
@@ -33,14 +37,18 @@ import {
   type GenerationSourceResolver,
 } from './generation-source-resolver.js';
 import { createProviderAdapter } from './provider-adapter-runtime.js';
+import { StateProposalServiceError, type StateProposalService } from './state-proposal.js';
 import { TaskProtocolError } from './task-protocol.js';
 import { projectOperationError } from './utility-errors.js';
+import { ValidationServiceError, type ValidationService } from './validation.js';
 
 export interface UtilityGenerationServices {
   readonly constraints: HardenedConstraintPackageService;
   readonly runs: GenerationRunService;
   readonly runtime: GenerationRuntime;
   readonly sources: GenerationSourceResolver;
+  readonly stateProposals: StateProposalService;
+  readonly validation: ValidationService;
 }
 
 interface Parser<Output> {
@@ -95,6 +103,16 @@ function generationError(error: unknown): ErrorCode {
       case 'GENERATION_SOURCE_INVALID':
         return 'COMMON_INVALID_INPUT_001';
     }
+  }
+  if (error instanceof StateProposalServiceError) {
+    if (error.code === 'STATE_PROPOSAL_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'STATE_PROPOSAL_CONFLICT') return 'COMMON_CONFLICT_003';
+    return 'COMMON_INVALID_INPUT_001';
+  }
+  if (error instanceof ValidationServiceError) {
+    if (error.code === 'VALIDATION_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'VALIDATION_CONFLICT') return 'COMMON_CONFLICT_003';
+    return 'COMMON_INVALID_INPUT_001';
   }
   if (error instanceof TaskProtocolError) return error.code;
   if (error && typeof error === 'object' && 'code' in error) {
@@ -220,9 +238,9 @@ async function startGeneration(
   const input = operation.input;
   const intent = input.intent;
   const provider = createProviderAdapter(operation.provider, operation.credential);
-  requireDraft(input.baseDraftId, input.baseDraftRevision);
 
   if (intent.runType === 'skeleton') {
+    requireDraft(input.baseDraftId, input.baseDraftRevision);
     const resolved = services.sources.resolveSkeleton(
       input.projectId,
       input.chapterId,
@@ -308,6 +326,7 @@ async function startGeneration(
   }
 
   if (intent.runType === 'chapter') {
+    requireDraft(input.baseDraftId, input.baseDraftRevision);
     const resolved = services.sources.resolveChapter(
       input.projectId,
       input.chapterId,
@@ -450,6 +469,7 @@ async function startGeneration(
   }
 
   if (intent.runType === 'rewrite') {
+    requireDraft(input.baseDraftId, input.baseDraftRevision);
     const resolved = services.sources.resolveRewrite(
       input.projectId,
       input.chapterId,
@@ -516,6 +536,7 @@ async function startGeneration(
   }
 
   if (intent.runType === 'merge') {
+    requireDraft(input.baseDraftId, input.baseDraftRevision);
     const resolved = services.sources.resolveMerge(
       input.projectId,
       input.chapterId,
@@ -584,7 +605,147 @@ async function startGeneration(
     });
   }
 
-  unsupported(intent.runType);
+  if (intent.runType === 'state_extract') {
+    const resolved = services.sources.resolveFinalVersion(
+      input.projectId,
+      input.chapterId,
+      intent.sourceVersionId,
+    );
+    const constraints = services.constraints.build({
+      projectId: input.projectId,
+      chapterId: input.chapterId,
+      taskType: 'state_extract',
+      query: '从当前定稿提取需要作者确认的实体状态和人物弧光变化',
+    });
+    const profile = modelSupport(services, {
+      projectId: input.projectId,
+      providerId: operation.provider.id,
+      model: operation.provider.model,
+      taskType: 'state_extract',
+      promptId: stateExtractPrompt.promptId,
+      promptVersion: stateExtractPrompt.version,
+    });
+    const bundle = stateExtractPrompt.build({
+      constraintHash: constraints.constraintHash,
+      constraintContext: serializeConstraintPackage(constraints),
+      finalVersionId: resolved.versionId,
+      blocks: resolved.blocks.map((block) => ({
+        logicalBlockId: block.logicalBlockId,
+        content: block.content,
+      })),
+    });
+    return services.runtime.startStructured({
+      requestId,
+      run: runSettings(
+        input,
+        'state_extract',
+        stateExtractPrompt,
+        'structured',
+        operation,
+        profile,
+        constraints,
+        resolved.inputSources,
+      ),
+      provider,
+      requestFor: (runId) =>
+        request(
+          runId,
+          operation.provider.model,
+          bundle,
+          Math.max(2_048, resolved.blocks.length * 256),
+        ),
+      partialOnFailure: false,
+      complete: async (runId, raw, usage) => {
+        const output = parseStructured(StateExtractionOutputSchema, raw);
+        await services.stateProposals.completeProviderBatch(requestId, {
+          projectId: input.projectId,
+          chapterId: input.chapterId,
+          sourceVersionId: resolved.versionId,
+          runId,
+          proposals: output.proposals,
+          usage,
+        });
+        const run = services.runs.get({ projectId: input.projectId, runId });
+        return {
+          run,
+          candidateIds: [],
+          resultRefs: run.resultRefs,
+        };
+      },
+    });
+  }
+
+  if (intent.runType === 'validate') {
+    const resolved = services.sources.resolveFinalVersion(
+      input.projectId,
+      input.chapterId,
+      intent.sourceVersionId,
+    );
+    const constraints = services.constraints.build({
+      projectId: input.projectId,
+      chapterId: input.chapterId,
+      taskType: 'validate',
+      query: '核对当前定稿的连续性、设定、知情、伏笔、文风和人物弧光风险',
+    });
+    const profile = modelSupport(services, {
+      projectId: input.projectId,
+      providerId: operation.provider.id,
+      model: operation.provider.model,
+      taskType: 'validate',
+      promptId: validatePrompt.promptId,
+      promptVersion: validatePrompt.version,
+    });
+    const bundle = validatePrompt.build({
+      constraintHash: constraints.constraintHash,
+      constraintContext: serializeConstraintPackage(constraints),
+      versionId: resolved.versionId,
+      blocks: resolved.blocks.map((block) => ({
+        logicalBlockId: block.logicalBlockId,
+        content: block.content,
+      })),
+    });
+    return services.runtime.startStructured({
+      requestId,
+      run: runSettings(
+        input,
+        'validate',
+        validatePrompt,
+        'structured',
+        operation,
+        profile,
+        constraints,
+        resolved.inputSources,
+      ),
+      provider,
+      requestFor: (runId) =>
+        request(
+          runId,
+          operation.provider.model,
+          bundle,
+          Math.max(2_048, resolved.blocks.length * 256),
+        ),
+      partialOnFailure: false,
+      complete: async (runId, raw, usage) => {
+        const output = parseStructured(SemanticValidationOutputSchema, raw);
+        await services.validation.completeAiBatch(requestId, {
+          projectId: input.projectId,
+          chapterId: input.chapterId,
+          sourceVersionId: resolved.versionId,
+          runId,
+          output,
+          usage,
+        });
+        const run = services.runs.get({ projectId: input.projectId, runId });
+        return {
+          run,
+          candidateIds: [],
+          resultRefs: run.resultRefs,
+        };
+      },
+    });
+  }
+
+  unsupported('unknown');
 }
 
 export async function executeGenerationOperation(

@@ -32,6 +32,7 @@ import type {
   NarrativePlanningCatalog,
   NarrativePlanningListInput,
   StateProposalBridge,
+  ValidationBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
@@ -138,6 +139,7 @@ interface AuxiliaryRendererBridges {
   readonly continuity?: ContinuityBridgePort;
   readonly narrativePlanning?: NarrativePlanningBridgePort;
   readonly stateProposal?: StateProposalBridge;
+  readonly validation?: ValidationBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -178,6 +180,7 @@ export interface RendererBridgeAdapter {
   readonly continuity: AdaptedDomain<ContinuityBridgePort>;
   readonly narrativePlanning: AdaptedDomain<NarrativePlanningBridgePort>;
   readonly stateProposal: AdaptedDomain<StateProposalBridge>;
+  readonly validation: AdaptedDomain<ValidationBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -231,6 +234,11 @@ export function createRendererBridgeAdapter(
       requireDomain(auxiliary.stateProposal, 'stateProposal'),
       coordinator,
     ),
+    validation: adaptDomain(
+      'validation',
+      requireDomain(auxiliary.validation, 'validation'),
+      coordinator,
+    ),
     candidateAction: adaptDomain(
       'candidateAction',
       requireDomain(auxiliary.candidateAction, 'candidateAction'),
@@ -253,6 +261,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeContinuity ||
     !window.worldforgeNarrativePlanning ||
     !window.worldforgeStateProposal ||
+    !window.worldforgeValidation ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -261,6 +270,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     continuity: window.worldforgeContinuity,
     narrativePlanning: window.worldforgeNarrativePlanning,
     stateProposal: window.worldforgeStateProposal,
+    validation: window.worldforgeValidation,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }

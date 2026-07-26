@@ -30,6 +30,7 @@ import { ProjectStructureService } from './project-structure.js';
 import { ProjectWorkspaceService } from './project-workspace.js';
 import { ReferenceAwareStructureOperationService } from './reference-aware-structure-operations.js';
 import { SceneBeatService } from './scene-beat.js';
+import { StateProposalService } from './state-proposal.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 import { executeAppDataOperation } from './utility-app-data-router.js';
 import { executeGenerationOperation } from './utility-generation-router.js';
@@ -38,6 +39,7 @@ import { executeProjectOperation } from './utility-project-router.js';
 import { executeProviderOperation } from './utility-provider-router.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
 import { VersionService } from './version.js';
+import { ValidationService } from './validation.js';
 
 interface TransferredPort {
   postMessage(message: unknown): void;
@@ -142,11 +144,15 @@ const recovery = new CheckpointAwareRecoveryService(projectWorkspace, {
 const generationRuns = new GenerationRunService(projectWorkspace);
 const generationRuntime = new GenerationRuntime(generationRuns, taskProtocol);
 const candidates = new CandidateService(projectWorkspace);
+const stateProposals = new StateProposalService(projectWorkspace);
+const validation = new ValidationService(projectWorkspace);
 const generationServices = {
   constraints: new HardenedConstraintPackageService(projectWorkspace),
   runs: generationRuns,
   runtime: generationRuntime,
   sources: new GenerationSourceResolver(projectWorkspace, candidates),
+  stateProposals,
+  validation,
 };
 const services: UtilityProjectServices = {
   projectWorkspace,

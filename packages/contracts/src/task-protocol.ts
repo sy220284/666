@@ -39,6 +39,10 @@ export const GenerationResultRefSchema = z.discriminatedUnion('resultType', [
     resultType: z.literal('state_proposal_batch'),
     resultId: z.uuid(),
   }),
+  z.strictObject({
+    resultType: z.literal('validation_batch'),
+    resultId: z.uuid(),
+  }),
 ]);
 
 export const TaskSnapshotSchema = z.strictObject({

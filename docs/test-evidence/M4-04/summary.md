@@ -2,9 +2,9 @@
 
 ## 当前阶段
 
-整体基线审计与编码前实施规划已经完成。C1—C4 作者工作流、GenerationRun、
-T0/T1、改写、融合与 Candidate 审阅闭环已实现，下一实施入口为 C5
-状态提取、Validation 与连续性闭环。
+整体基线审计与编码前实施规划已经完成。C1—C5 作者工作流、GenerationRun、
+T0/T1、改写、融合、Candidate 审阅、状态提取与 Validation 闭环已实现，
+下一实施入口为 C6 搜索、替换、统计与节奏。
 
 ## 本阶段交付
 
@@ -26,11 +26,18 @@ T0/T1、改写、融合与 Candidate 审阅闭环已实现，下一实施入口�
 - Candidate 工作台接入真实进度、取消、partial 裁决、继续生成、手动补全、
   来源追溯、差异、冲突、采用和整体撤销。
 - Skeleton 与 Prose 在合同、存储和 Core Preview/Apply 边界保持硬隔离。
+- Schema 25、StateProposalBatch、ValidationBatch、ValidationIssue、
+  StoryTodo 与 StoryComment 完成。
+- 状态提取与 AI 语义检查接入真实 Provider Runtime，只读取当前 Final Version，
+  并与 GenerationRun 结果引用原子提交。
+- Provider 提案保持 pending；作者裁决前不改变实体状态、人物弧光或 Draft。
+- 确定性规则检查具备规则/配置版本、输入幂等、稳定 ID 和 Version/Block Hash 锚点。
+- 检查工作台及状态提案工作台已接入规则/AI运行、证据、问题动作、待办、批注和裁决。
 
 ## 当前结论
 
-现有 M0—M3 与 M4-01—M4-03 底座保持兼容。C1—C4 纵向代码与本地自动化
-回归通过；长期 PR 保持 Draft，继续实施 C5—C8，最终以 P0-001—P0-075
+现有 M0—M3 与 M4-01—M4-03 底座保持兼容。C1—C5 纵向代码与本地自动化
+回归通过；长期 PR 保持 Draft，继续实施 C6—C8，最终以 P0-001—P0-075
 证据关闭任务。
 
 ## 已执行校验
@@ -51,3 +58,6 @@ T0/T1、改写、融合与 Candidate 审阅闭环已实现，下一实施入口�
   1 项跳过。
 - C3—C4 AI Eval：2 个测试文件、8 项通过；Performance：10 个测试文件、37 项通过。
 - C3—C4 全工作区 Build、Typecheck、ESLint 与受影响文件 Prettier 通过。
+- C5 Unit、Integration、Migration、Security：157 个测试文件、744 项通过、
+  1 项跳过。
+- C5 全工作区 Build、Typecheck、ESLint 与 Prettier 通过。

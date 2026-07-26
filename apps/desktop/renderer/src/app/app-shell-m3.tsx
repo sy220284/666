@@ -19,6 +19,7 @@ import type { BridgeRequestOutcome } from '../bridge/request-lifecycle.js';
 import { SafetyBanner } from '../components/safety-banner.js';
 import { TaskBar } from '../components/task-bar.js';
 import { CanonWorkbench, type CanonSection } from '../features/canon/canon-workbench.js';
+import { ChecksWorkbench } from '../features/checks/checks-workbench.js';
 import {
   DataToolsWorkbench,
   type DataToolsSection,
@@ -202,7 +203,7 @@ export function AppShell({ bridge }: AppShellProps) {
     planning: true,
     writing: true,
     canon: true,
-    checks: false,
+    checks: true,
     settings: true,
   } as const;
 
@@ -798,11 +799,12 @@ export function AppShell({ bridge }: AppShellProps) {
             />
           ) : null}
 
-          {route === 'checks' ? (
-            <section className="feature-card">
-              <h1>检查工作台尚未进入当前里程碑</h1>
-              <p>M4以后将在同一React架构上接入检索、规则和AI能力。</p>
-            </section>
+          {route === 'checks' && activeProject ? (
+            <ChecksWorkbench
+              bridge={bridge}
+              projectId={activeProject.projectId}
+              readOnly={activeProject.databaseMode === 'read-only'}
+            />
           ) : null}
         </main>
       </div>

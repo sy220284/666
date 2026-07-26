@@ -25,7 +25,9 @@ export const STATE_PROPOSAL_COMMANDS = {
 
 export const StateProposalTypeSchema = z.enum(['entity_state', 'arc_milestone']);
 export const StateProposalStatusSchema = z.enum(['pending', 'accepted', 'edited', 'rejected']);
-export const StateProposalSourceSchema = z.enum(['rule', 'provider_stub']);
+export const StateProposalSourceSchema = z.enum(['rule', 'provider_stub', 'provider']);
+export const LegacyStateProposalSourceSchema = z.enum(['rule', 'provider_stub']);
+export const StateProposalBatchStatusSchema = z.enum(['pending', 'resolved', 'rejected', 'mixed']);
 export const StateProposalDecisionSchema = z.enum(['accept', 'edit_accept', 'reject']);
 export const ProposedArcMilestoneStatusSchema = z.enum(['hit', 'skipped']);
 export const ArcMilestoneResolutionValueSchema = z
@@ -101,6 +103,8 @@ export const StateProposalDraftSchema = z.discriminatedUnion('proposalType', [
 export const StateProposalSchema = z
   .strictObject({
     id: z.uuid(),
+    batchId: z.uuid().nullable().default(null),
+    generationRunId: z.uuid().nullable().default(null),
     projectId: ProjectIdSchema,
     chapterId: z.uuid(),
     sourceVersionId: z.uuid(),
@@ -125,6 +129,35 @@ export const StateProposalSchema = z
         code: 'custom',
         path: ['validUntilChapterId'],
         message: 'ArcMilestone proposals cannot define a chapter validity end.',
+      });
+    }
+    if (value.source === 'provider' && (!value.batchId || !value.generationRunId)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['generationRunId'],
+        message: 'Provider proposals require a batch and GenerationRun.',
+      });
+    }
+  });
+
+export const StateProposalBatchSchema = z
+  .strictObject({
+    batchId: z.uuid(),
+    projectId: ProjectIdSchema,
+    chapterId: z.uuid(),
+    sourceVersionId: z.uuid(),
+    generationRunId: z.uuid().nullable(),
+    source: StateProposalSourceSchema,
+    proposalCount: z.number().int().nonnegative(),
+    status: StateProposalBatchStatusSchema,
+    createdAt: z.iso.datetime(),
+  })
+  .superRefine((batch, context) => {
+    if ((batch.source === 'provider') !== (batch.generationRunId !== null)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['generationRunId'],
+        message: 'Only Provider batches require a GenerationRun.',
       });
     }
   });
@@ -192,6 +225,7 @@ export const DerivedInvalidationSchema = z.strictObject({
 
 export const StateProposalCatalogSchema = z.strictObject({
   projectId: ProjectIdSchema,
+  batches: z.array(StateProposalBatchSchema).default([]),
   proposals: z.array(StateProposalSchema),
   snapshots: z.array(EndingSnapshotSchema),
   invalidations: z.array(DerivedInvalidationSchema),
@@ -207,7 +241,7 @@ export const StateProposalGenerateInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   chapterId: z.uuid(),
   sourceVersionId: z.uuid(),
-  source: StateProposalSourceSchema,
+  source: LegacyStateProposalSourceSchema,
   proposals: z.array(StateProposalDraftSchema).max(200),
 });
 
@@ -356,6 +390,7 @@ export const CoreStateProposalResultSchema = z.union([
 ]);
 
 export type StateProposal = z.infer<typeof StateProposalSchema>;
+export type StateProposalBatch = z.infer<typeof StateProposalBatchSchema>;
 export type StateProposalCatalog = z.infer<typeof StateProposalCatalogSchema>;
 export type StateProposalGenerateInput = z.infer<typeof StateProposalGenerateInputSchema>;
 export type StateProposalResolveInput = z.infer<typeof StateProposalResolveInputSchema>;

@@ -11,6 +11,7 @@ import { routeNarrativePlanningOperation } from './utility-project-narrative-rou
 import { routePrimaryProjectOperation } from './utility-project-primary-router.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
 import { routeStructureProjectOperation } from './utility-project-structure-router.js';
+import { routeValidationOperation } from './utility-validation-router.js';
 
 export async function executeProjectOperation(
   services: UtilityProjectServices,
@@ -21,6 +22,7 @@ export async function executeProjectOperation(
     const result =
       (await routePrimaryProjectOperation(services, requestId, operation)) ??
       (await routeNarrativePlanningOperation(services, requestId, operation)) ??
+      (await routeValidationOperation(services, requestId, operation)) ??
       (await routeStructureProjectOperation(services, requestId, operation)) ??
       (await routeContentProjectOperation(services, requestId, operation));
     if (!result) throw new Error(`CORE_PROJECT_OPERATION_UNROUTED:${operation.operation}`);

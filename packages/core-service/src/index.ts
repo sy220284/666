@@ -48,6 +48,7 @@ export * from './task-protocol.js';
 export * from './generation-run.js';
 export * from './generation-runtime.js';
 export * from './generation-source-resolver.js';
+export * from './validation.js';
 export * from './window-preferences.js';
 export {
   SearchIndexServiceError,

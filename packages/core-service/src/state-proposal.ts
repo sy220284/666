@@ -10,6 +10,7 @@ import {
   EndingSnapshotReadResultSchema,
   EndingSnapshotRefreshInputSchema,
   EndingSnapshotSchema,
+  StateProposalBatchSchema,
   StateProposalCatalogSchema,
   StateProposalGenerateInputSchema,
   StateProposalListInputSchema,
@@ -52,6 +53,8 @@ type InvalidationScope = ReturnType<
 
 interface ProposalRow {
   readonly id: string;
+  readonly batchId: string | null;
+  readonly generationRunId: string | null;
   readonly projectId: string;
   readonly chapterId: string;
   readonly sourceVersionId: string;
@@ -69,6 +72,18 @@ interface ProposalRow {
   readonly validUntilChapterId: string | null;
   readonly createdAt: string;
   readonly resolvedAt: string | null;
+}
+
+interface ProposalBatchRow {
+  readonly batchId: string;
+  readonly projectId: string;
+  readonly chapterId: string;
+  readonly sourceVersionId: string;
+  readonly generationRunId: string | null;
+  readonly source: string;
+  readonly proposalCount: number | bigint;
+  readonly status: string;
+  readonly createdAt: string;
 }
 
 interface SnapshotRow {
@@ -127,6 +142,18 @@ export interface StateProposalServiceOptions {
   readonly idFactory?: () => string;
 }
 
+export interface ProviderProposalBatchCompletionInput {
+  readonly projectId: string;
+  readonly chapterId: string;
+  readonly sourceVersionId: string;
+  readonly runId: string;
+  readonly proposals: readonly ProposalDraft[];
+  readonly usage?: {
+    readonly inputTokens?: number;
+    readonly outputTokens?: number;
+  };
+}
+
 function authorOnly(authority: 'author' | 'ai'): void {
   try {
     assertAuthorAuthority(authority);
@@ -146,6 +173,8 @@ function parseJson(value: string | null): unknown | null {
 function mapProposal(row: ProposalRow) {
   return StateProposalSchema.parse({
     id: row.id,
+    batchId: row.batchId,
+    generationRunId: row.generationRunId,
     projectId: row.projectId,
     chapterId: row.chapterId,
     sourceVersionId: row.sourceVersionId,
@@ -163,6 +192,13 @@ function mapProposal(row: ProposalRow) {
     validUntilChapterId: row.validUntilChapterId,
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
+  });
+}
+
+function mapBatch(row: ProposalBatchRow) {
+  return StateProposalBatchSchema.parse({
+    ...row,
+    proposalCount: Number(row.proposalCount),
   });
 }
 
@@ -715,20 +751,173 @@ function applyArcMilestone(
     );
 }
 
+type ProposalDraft = StateProposalGenerateInput['proposals'][number];
+
+interface ProposalBatchInsertInput {
+  readonly projectId: string;
+  readonly chapterId: string;
+  readonly sourceVersionId: string;
+  readonly generationRunId: string | null;
+  readonly source: 'rule' | 'provider_stub' | 'provider';
+  readonly proposals: readonly ProposalDraft[];
+}
+
+function insertProposalBatch(
+  connection: DatabaseSync,
+  input: ProposalBatchInsertInput,
+  batchId: string,
+  now: string,
+  idFactory: () => string,
+): void {
+  assertFinalVersion(connection, input.projectId, input.chapterId, input.sourceVersionId);
+  connection
+    .prepare(
+      `INSERT INTO state_proposal_batches(
+         id, project_id, chapter_id, source_version_id, generation_run_id,
+         source, proposal_count, status, created_at
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      batchId,
+      input.projectId,
+      input.chapterId,
+      input.sourceVersionId,
+      input.generationRunId,
+      input.source,
+      input.proposals.length,
+      input.proposals.length === 0 ? 'resolved' : 'pending',
+      now,
+    );
+  const keys = new Set<string>();
+  for (const draft of input.proposals) {
+    validateEvidence(connection, input.projectId, draft.evidence);
+    validateVersionBlockEvidence(connection, input.sourceVersionId, draft.evidence);
+    let entityId: string | null = null;
+    let stateKey: string | null = null;
+    let milestoneId: string | null = null;
+    let validUntilChapterId: string | null = null;
+    let previousValue: unknown;
+    let proposedValue: unknown;
+    let key: string;
+    if (draft.proposalType === 'entity_state') {
+      entityId = draft.entityId;
+      stateKey = normalizeContinuityKey(draft.stateKey, 120);
+      assertEntity(connection, input.projectId, entityId);
+      validUntilChapterId = draft.validUntilChapterId;
+      validateChapterRange(connection, input.projectId, input.chapterId, validUntilChapterId);
+      const current = currentEntityState(connection, input.projectId, entityId, stateKey);
+      previousValue = current ? parseJson(current.valueJson) : null;
+      proposedValue = draft.proposedValue;
+      key = `entity:${entityId}:${stateKey}`;
+    } else {
+      milestoneId = draft.arcMilestoneId;
+      const milestone = assertMilestone(connection, input.projectId, milestoneId);
+      if (milestone.status !== 'planned') {
+        throw new StateProposalServiceError(
+          'STATE_PROPOSAL_CONFLICT',
+          'Only planned ArcMilestones may receive pending proposals.',
+        );
+      }
+      previousValue = {
+        status: milestone.status,
+        actualChapterId: milestone.actualChapterId,
+      };
+      proposedValue = {
+        status: draft.proposedStatus,
+        actualChapterId: draft.actualChapterId,
+      };
+      ArcMilestoneResolutionValueSchema.parse(proposedValue);
+      key = `milestone:${milestoneId}`;
+    }
+    if (keys.has(key)) {
+      throw new StateProposalServiceError(
+        'STATE_PROPOSAL_CONFLICT',
+        'A proposal batch cannot contain duplicate targets.',
+      );
+    }
+    keys.add(key);
+    connection
+      .prepare(
+        `INSERT INTO state_proposals(
+           id, batch_id, project_id, chapter_id, source_version_id, proposal_type, source,
+           entity_id, state_key, arc_milestone_id, previous_value_json,
+           proposed_value_json, evidence_json, confidence, status,
+           resolved_value_json, valid_until_chapter_id, created_at, resolved_at
+         ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?, ?, NULL)`,
+      )
+      .run(
+        idFactory(),
+        batchId,
+        input.projectId,
+        input.chapterId,
+        input.sourceVersionId,
+        draft.proposalType,
+        input.source,
+        entityId,
+        stateKey,
+        milestoneId,
+        previousValue === null ? null : JSON.stringify(previousValue),
+        JSON.stringify(proposedValue),
+        JSON.stringify(draft.evidence),
+        draft.confidence,
+        validUntilChapterId,
+        now,
+      );
+  }
+}
+
+function refreshBatchStatus(connection: DatabaseSync, batchId: string): void {
+  connection
+    .prepare(
+      `UPDATE state_proposal_batches
+          SET status = (
+            SELECT CASE
+              WHEN COUNT(*) = 0 THEN 'resolved'
+              WHEN SUM(status = 'pending') = COUNT(*) THEN 'pending'
+              WHEN SUM(status = 'rejected') = COUNT(*) THEN 'rejected'
+              WHEN SUM(status IN ('accepted', 'edited')) = COUNT(*) THEN 'resolved'
+              ELSE 'mixed'
+            END
+              FROM state_proposals
+             WHERE batch_id = ?
+          )
+        WHERE id = ?`,
+    )
+    .run(batchId, batchId);
+}
+
 function catalog(connection: DatabaseSync, projectId: string): StateProposalCatalog {
+  const batches = connection
+    .prepare(
+      `SELECT id AS batchId, project_id AS projectId, chapter_id AS chapterId,
+              source_version_id AS sourceVersionId, generation_run_id AS generationRunId,
+              source, proposal_count AS proposalCount, status, created_at AS createdAt
+         FROM state_proposal_batches
+        WHERE project_id = ?
+        ORDER BY created_at DESC, id DESC`,
+    )
+    .all(projectId) as unknown as ProposalBatchRow[];
   const proposals = connection
     .prepare(
-      `SELECT id, project_id AS projectId, chapter_id AS chapterId,
-              source_version_id AS sourceVersionId, proposal_type AS proposalType,
-              source, entity_id AS entityId, state_key AS stateKey,
-              arc_milestone_id AS arcMilestoneId,
-              previous_value_json AS previousValueJson,
-              proposed_value_json AS proposedValueJson, evidence_json AS evidenceJson,
-              confidence, status, resolved_value_json AS resolvedValueJson,
-              valid_until_chapter_id AS validUntilChapterId,
-              created_at AS createdAt, resolved_at AS resolvedAt
-         FROM state_proposals WHERE project_id = ?
-        ORDER BY status = 'pending' DESC, created_at DESC, id`,
+      `SELECT proposal.id, proposal.batch_id AS batchId,
+              batch.generation_run_id AS generationRunId,
+              proposal.project_id AS projectId, proposal.chapter_id AS chapterId,
+              proposal.source_version_id AS sourceVersionId,
+              proposal.proposal_type AS proposalType,
+              proposal.source, proposal.entity_id AS entityId,
+              proposal.state_key AS stateKey,
+              proposal.arc_milestone_id AS arcMilestoneId,
+              proposal.previous_value_json AS previousValueJson,
+              proposal.proposed_value_json AS proposedValueJson,
+              proposal.evidence_json AS evidenceJson,
+              proposal.confidence, proposal.status,
+              proposal.resolved_value_json AS resolvedValueJson,
+              proposal.valid_until_chapter_id AS validUntilChapterId,
+              proposal.created_at AS createdAt, proposal.resolved_at AS resolvedAt
+         FROM state_proposals proposal
+         JOIN state_proposal_batches batch ON batch.id = proposal.batch_id
+        WHERE proposal.project_id = ?
+        ORDER BY proposal.status = 'pending' DESC, proposal.created_at DESC, proposal.id`,
     )
     .all(projectId) as unknown as ProposalRow[];
   const snapshots = connection
@@ -753,6 +942,7 @@ function catalog(connection: DatabaseSync, projectId: string): StateProposalCata
     .all(projectId) as unknown as InvalidationRow[];
   return StateProposalCatalogSchema.parse({
     projectId,
+    batches: batches.map(mapBatch),
     proposals: proposals.map(mapProposal),
     snapshots: snapshots.map(mapSnapshot),
     invalidations: invalidations.map(mapInvalidation),
@@ -796,85 +986,106 @@ export class StateProposalService {
   generate(requestId: string, raw: StateProposalGenerateInput): Promise<StateProposalCatalog> {
     const input = StateProposalGenerateInputSchema.parse(raw);
     return this.#workspace.writeProject(requestId, input.projectId, (connection) => {
-      assertFinalVersion(connection, input.projectId, input.chapterId, input.sourceVersionId);
-      if (input.proposals.length === 0) return catalog(connection, input.projectId);
       const now = this.#clock.now().toISOString();
-      const keys = new Set<string>();
-      for (const draft of input.proposals) {
-        validateEvidence(connection, input.projectId, draft.evidence);
-        validateVersionBlockEvidence(connection, input.sourceVersionId, draft.evidence);
-        let entityId: string | null = null;
-        let stateKey: string | null = null;
-        let milestoneId: string | null = null;
-        let validUntilChapterId: string | null = null;
-        let previousValue: unknown;
-        let proposedValue: unknown;
-        let key: string;
-        if (draft.proposalType === 'entity_state') {
-          entityId = draft.entityId;
-          stateKey = normalizeContinuityKey(draft.stateKey, 120);
-          assertEntity(connection, input.projectId, entityId);
-          validUntilChapterId = draft.validUntilChapterId;
-          validateChapterRange(connection, input.projectId, input.chapterId, validUntilChapterId);
-          const current = currentEntityState(connection, input.projectId, entityId, stateKey);
-          previousValue = current ? parseJson(current.valueJson) : null;
-          proposedValue = draft.proposedValue;
-          key = `entity:${entityId}:${stateKey}`;
-        } else {
-          milestoneId = draft.arcMilestoneId;
-          const milestone = assertMilestone(connection, input.projectId, milestoneId);
-          if (milestone.status !== 'planned') {
-            throw new StateProposalServiceError(
-              'STATE_PROPOSAL_CONFLICT',
-              'Only planned ArcMilestones may receive pending proposals.',
-            );
-          }
-          previousValue = {
-            status: milestone.status,
-            actualChapterId: milestone.actualChapterId,
-          };
-          proposedValue = {
-            status: draft.proposedStatus,
-            actualChapterId: draft.actualChapterId,
-          };
-          ArcMilestoneResolutionValueSchema.parse(proposedValue);
-          key = `milestone:${milestoneId}`;
-        }
-        if (keys.has(key)) {
-          throw new StateProposalServiceError(
-            'STATE_PROPOSAL_CONFLICT',
-            'A proposal batch cannot contain duplicate targets.',
-          );
-        }
-        keys.add(key);
-        connection
-          .prepare(
-            `INSERT INTO state_proposals(
-               id, project_id, chapter_id, source_version_id, proposal_type, source,
-               entity_id, state_key, arc_milestone_id, previous_value_json,
-               proposed_value_json, evidence_json, confidence, status,
-               resolved_value_json, valid_until_chapter_id, created_at, resolved_at
-             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?, ?, NULL)`,
-          )
-          .run(
-            this.#idFactory(),
-            input.projectId,
-            input.chapterId,
-            input.sourceVersionId,
-            draft.proposalType,
-            input.source,
-            entityId,
-            stateKey,
-            milestoneId,
-            previousValue === null ? null : JSON.stringify(previousValue),
-            JSON.stringify(proposedValue),
-            JSON.stringify(draft.evidence),
-            draft.confidence,
-            validUntilChapterId,
-            now,
-          );
-      }
+      insertProposalBatch(
+        connection,
+        { ...input, generationRunId: null },
+        this.#idFactory(),
+        now,
+        this.#idFactory,
+      );
       return catalog(connection, input.projectId);
+    });
+  }
+
+  completeProviderBatch(
+    requestId: string,
+    input: ProviderProposalBatchCompletionInput,
+  ): Promise<{ readonly batchId: string; readonly catalog: StateProposalCatalog }> {
+    return this.#workspace.writeProject(requestId, input.projectId, (connection) => {
+      const run = connection
+        .prepare(
+          `SELECT status, run_type AS runType, chapter_id AS chapterId
+             FROM generation_runs
+            WHERE id = ? AND project_id = ?`,
+        )
+        .get(input.runId, input.projectId) as
+        | {
+            readonly status: string;
+            readonly runType: string;
+            readonly chapterId: string;
+          }
+        | undefined;
+      if (
+        !run ||
+        (run.status !== 'queued' && run.status !== 'running') ||
+        run.runType !== 'state_extract' ||
+        run.chapterId !== input.chapterId
+      ) {
+        throw new StateProposalServiceError(
+          'STATE_PROPOSAL_CONFLICT',
+          'The StateProposal batch does not match an active state extraction run.',
+        );
+      }
+      const source = connection
+        .prepare(
+          `SELECT 1
+             FROM generation_input_sources
+            WHERE run_id = ? AND source_type = 'version' AND source_id = ?`,
+        )
+        .get(input.runId, input.sourceVersionId);
+      if (!source) {
+        throw new StateProposalServiceError(
+          'STATE_PROPOSAL_CONFLICT',
+          'The finalized Version is not the persisted GenerationRun source.',
+        );
+      }
+      const batchId = this.#idFactory();
+      const now = this.#clock.now().toISOString();
+      insertProposalBatch(
+        connection,
+        {
+          projectId: input.projectId,
+          chapterId: input.chapterId,
+          sourceVersionId: input.sourceVersionId,
+          generationRunId: input.runId,
+          source: 'provider',
+          proposals: input.proposals,
+        },
+        batchId,
+        now,
+        this.#idFactory,
+      );
+      connection
+        .prepare(
+          `INSERT INTO generation_result_refs(
+             run_id, result_type, result_id, candidate_kind, created_at
+           ) VALUES(?, 'state_proposal_batch', ?, NULL, ?)`,
+        )
+        .run(input.runId, batchId, now);
+      const updated = connection
+        .prepare(
+          `UPDATE generation_runs
+              SET status = 'succeeded', stage = 'completed',
+                  input_tokens = ?, output_tokens = ?,
+                  error_code = NULL, retryable = NULL, partial_status = 'unavailable',
+                  finished_at = ?
+            WHERE id = ? AND project_id = ? AND status IN ('queued', 'running')`,
+        )
+        .run(
+          input.usage?.inputTokens ?? null,
+          input.usage?.outputTokens ?? null,
+          now,
+          input.runId,
+          input.projectId,
+        );
+      if (Number(updated.changes) !== 1) {
+        throw new StateProposalServiceError(
+          'STATE_PROPOSAL_CONFLICT',
+          'The GenerationRun changed before its StateProposal batch committed.',
+        );
+      }
+      return { batchId, catalog: catalog(connection, input.projectId) };
     });
   }
 
@@ -891,20 +1102,28 @@ export class StateProposalService {
       }
       const now = this.#clock.now().toISOString();
       const acceptedSources = new Map<string, string>();
+      const affectedBatchIds = new Set<string>();
       for (const resolution of input.resolutions) {
         const row = connection
           .prepare(
-            `SELECT id, project_id AS projectId, chapter_id AS chapterId,
-                    source_version_id AS sourceVersionId, proposal_type AS proposalType,
-                    source, entity_id AS entityId, state_key AS stateKey,
-                    arc_milestone_id AS arcMilestoneId,
-                    previous_value_json AS previousValueJson,
-                    proposed_value_json AS proposedValueJson, evidence_json AS evidenceJson,
-                    confidence, status, resolved_value_json AS resolvedValueJson,
-                    valid_until_chapter_id AS validUntilChapterId,
-                    created_at AS createdAt, resolved_at AS resolvedAt
-               FROM state_proposals
-              WHERE id = ? AND project_id = ?`,
+            `SELECT proposal.id, proposal.batch_id AS batchId,
+                    batch.generation_run_id AS generationRunId,
+                    proposal.project_id AS projectId, proposal.chapter_id AS chapterId,
+                    proposal.source_version_id AS sourceVersionId,
+                    proposal.proposal_type AS proposalType,
+                    proposal.source, proposal.entity_id AS entityId,
+                    proposal.state_key AS stateKey,
+                    proposal.arc_milestone_id AS arcMilestoneId,
+                    proposal.previous_value_json AS previousValueJson,
+                    proposal.proposed_value_json AS proposedValueJson,
+                    proposal.evidence_json AS evidenceJson,
+                    proposal.confidence, proposal.status,
+                    proposal.resolved_value_json AS resolvedValueJson,
+                    proposal.valid_until_chapter_id AS validUntilChapterId,
+                    proposal.created_at AS createdAt, proposal.resolved_at AS resolvedAt
+               FROM state_proposals proposal
+               JOIN state_proposal_batches batch ON batch.id = proposal.batch_id
+              WHERE proposal.id = ? AND proposal.project_id = ?`,
           )
           .get(resolution.proposalId, input.projectId) as ProposalRow | undefined;
         if (!row) {
@@ -914,6 +1133,7 @@ export class StateProposalService {
           );
         }
         const proposal = mapProposal(row);
+        if (proposal.batchId) affectedBatchIds.add(proposal.batchId);
         if (proposal.status !== 'pending') {
           throw new StateProposalServiceError(
             'STATE_PROPOSAL_CONFLICT',
@@ -961,6 +1181,7 @@ export class StateProposalService {
       for (const [chapterId, versionId] of acceptedSources) {
         snapshotRow(connection, input.projectId, chapterId, versionId, now, this.#idFactory);
       }
+      for (const batchId of affectedBatchIds) refreshBatchStatus(connection, batchId);
       return catalog(connection, input.projectId);
     });
   }

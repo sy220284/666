@@ -61,6 +61,7 @@ describe('M3 final React business workbenches', () => {
         continuity,
         narrativePlanning: {},
         stateProposal: {},
+        validation: {},
         candidateAction: {},
       }),
     );

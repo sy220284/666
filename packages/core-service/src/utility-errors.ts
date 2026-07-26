@@ -14,6 +14,7 @@ import { ProjectWorkspaceError } from './project-workspace.js';
 import { RecoveryServiceError } from './recovery.js';
 import { SceneBeatServiceError } from './scene-beat.js';
 import { VersionServiceError } from './version.js';
+import { ValidationServiceError } from './validation.js';
 
 export function windowPreferencesError(error: unknown): ErrorCode {
   if (error instanceof DatabaseFoundationError) {
@@ -42,6 +43,11 @@ export function appDataError(error: unknown): ErrorCode {
 }
 
 export function projectOperationError(error: unknown): ErrorCode {
+  if (error instanceof ValidationServiceError) {
+    if (error.code === 'VALIDATION_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'VALIDATION_INVALID') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
   if (error instanceof ContinuityServiceError) {
     if (error.code === 'CONTINUITY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'CONTINUITY_INVALID' || error.code === 'CONTINUITY_AUTHOR_REQUIRED') {

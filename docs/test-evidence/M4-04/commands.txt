@@ -42,3 +42,9 @@ pnpm typecheck
 pnpm build
 pnpm exec prettier --check <C3-C4 changed source, tests and evidence>
 EVIDENCE_HEAD_SHA=<C2 committed PR Head> EVIDENCE_BASE_SHA=<PR Base> node scripts/evidence-policy.mjs
+pnpm exec vitest run tests/migration/state-validation-migration.test.ts tests/integration/state-validation-provider.test.ts tests/security/validation-ipc.test.ts
+pnpm exec vitest run tests/unit tests/integration tests/security tests/migration
+pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm build

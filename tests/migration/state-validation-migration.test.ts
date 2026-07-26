@@ -7,14 +7,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
-import {
-  latestMigrationVersion,
-  loadMigrations,
-} from '../../packages/core-service/src/database/index.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 
 const temporaryDirectories: string[] = [];
-const clock = { now: () => new Date('2026-07-24T06:45:00.000Z') };
+const clock = { now: () => new Date('2026-07-26T08:00:00.000Z') };
 
 afterEach(async () => {
   await Promise.all(
@@ -24,15 +20,12 @@ afterEach(async () => {
   );
 });
 
-describe('M4-01 search index migrations', () => {
-  it('installs Schema 20-21 search index and dictionary', async () => {
-    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-search-migration-'));
+describe('M4-04 state and validation migration', () => {
+  it('installs strict schema 25 with batch ownership and GenerationRun result guards', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-state-validation-migration-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
     await mkdir(parent, { recursive: true });
-    const migrations = await loadMigrations('migrations/project', 'project');
-    expect(latestMigrationVersion(migrations)).toBe(25);
-
     const appRuntime = await openAppRuntime({
       databasePath: path.join(root, 'app.sqlite'),
       migrationsDirectory: 'migrations/app',
@@ -49,57 +42,58 @@ describe('M4-01 search index migrations', () => {
     });
     const project = await workspace.create(
       randomUUID(),
-      { name: '检索迁移', channel: '长篇' },
+      { name: '状态与检查迁移', channel: '长篇' },
       parent,
     );
     await workspace.shutdown();
     await appRuntime.close();
 
     const database = new DatabaseSync(path.join(project.workspacePath, 'project.sqlite'), {
-      readOnly: true,
       readBigInts: true,
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
         schema_version: 25n,
       });
+      for (const table of [
+        'state_proposal_batches',
+        'state_proposals',
+        'validation_batches',
+        'validation_issues',
+        'story_todos',
+        'story_comments',
+        'generation_input_sources',
+        'generation_result_refs',
+      ]) {
+        expect(
+          database.prepare(`SELECT strict FROM pragma_table_list WHERE name = ?`).get(table),
+        ).toEqual({ strict: 1n });
+      }
+      const inputSourceSql = database
+        .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+        .get('generation_input_sources') as { readonly sql: string };
+      expect(inputSourceSql.sql).toContain("'version'");
+      const resultRefSql = database
+        .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`)
+        .get('generation_result_refs') as { readonly sql: string };
+      expect(resultRefSql.sql).toContain("'state_proposal_batch'");
+      expect(resultRefSql.sql).toContain("'validation_batch'");
       expect(
         database
           .prepare(
-            `SELECT name FROM pragma_table_list
-              WHERE name IN (
-                'search_index_state', 'search_index_queue', 'fts_draft_blocks',
-                'fts_version_blocks', 'fts_entities', 'project_dictionary'
+            `SELECT name FROM sqlite_master
+              WHERE type = 'trigger' AND name IN (
+                'trg_state_proposal_batch_scope_insert',
+                'trg_state_proposal_scope_insert',
+                'trg_validation_batch_scope_insert',
+                'trg_validation_issue_scope_insert',
+                'generation_state_batch_ref_requires_owned_batch',
+                'generation_validation_batch_ref_requires_owned_batch'
               )
               ORDER BY name`,
           )
           .all(),
-      ).toEqual([
-        { name: 'fts_draft_blocks' },
-        { name: 'fts_entities' },
-        { name: 'fts_version_blocks' },
-        { name: 'project_dictionary' },
-        { name: 'search_index_queue' },
-        { name: 'search_index_state' },
-      ]);
-      expect(
-        database
-          .prepare(
-            `SELECT COUNT(*) AS count FROM sqlite_master
-              WHERE type = 'trigger' AND name LIKE 'trg_search_queue_%'`,
-          )
-          .get(),
-      ).toEqual({ count: 16n });
-      expect(
-        database
-          .prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`)
-          .get(),
-      ).toEqual({ strict: 1n });
-      expect(
-        database.prepare(`SELECT sql FROM sqlite_master WHERE name = 'fts_draft_blocks'`).get(),
-      ).toMatchObject({
-        sql: expect.stringContaining("tokenize = 'trigram'"),
-      });
+      ).toHaveLength(6);
       expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
       database.close();

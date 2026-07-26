@@ -93,6 +93,16 @@ export interface ResolvedMergeSource {
   readonly sourceMappings: readonly GenerationCandidateSourceMappingInput[];
 }
 
+export interface ResolvedFinalVersionSource {
+  readonly versionId: string;
+  readonly blocks: ReadonlyArray<{
+    readonly logicalBlockId: string;
+    readonly content: string;
+    readonly contentHash: string;
+  }>;
+  readonly inputSources: readonly GenerationInputSourceInput[];
+}
+
 function sha256(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
@@ -761,6 +771,68 @@ export class GenerationSourceResolver {
         );
       }
       return { sources, inputSources, sourceMappings };
+    });
+  }
+
+  resolveFinalVersion(
+    projectId: string,
+    chapterId: string,
+    sourceVersionId: string,
+  ): ResolvedFinalVersionSource {
+    return this.#workspace.readProject(projectId, (database) => {
+      const version = database
+        .prepare(
+          `SELECT version.id AS versionId, version.content_hash AS contentHash
+             FROM versions version
+             JOIN chapters chapter ON chapter.id = version.chapter_id
+             JOIN volumes volume ON volume.id = chapter.volume_id
+            WHERE version.id = ? AND chapter.id = ? AND volume.project_id = ?
+              AND chapter.final_version_id = version.id
+              AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
+        )
+        .get(sourceVersionId, chapterId, projectId) as
+        { readonly versionId: string; readonly contentHash: string } | undefined;
+      if (!version) {
+        throw new GenerationSourceResolverError(
+          'GENERATION_SOURCE_NOT_FOUND',
+          'Only the chapter current Final Version can be used for this operation.',
+        );
+      }
+      const blocks = database
+        .prepare(
+          `SELECT logical_block_id AS logicalBlockId, text AS content,
+                  content_hash AS contentHash
+             FROM version_blocks
+            WHERE version_id = ?
+            ORDER BY order_key, id`,
+        )
+        .all(sourceVersionId) as unknown as Array<{
+        readonly logicalBlockId: string;
+        readonly content: string;
+        readonly contentHash: string;
+      }>;
+      if (
+        blocks.length === 0 ||
+        blocks.some((block) => !/^[0-9a-f]{64}$/u.test(block.contentHash))
+      ) {
+        throw new GenerationSourceResolverError(
+          'GENERATION_SOURCE_INVALID',
+          'The Final Version has no valid persisted body blocks.',
+        );
+      }
+      return {
+        versionId: version.versionId,
+        blocks,
+        inputSources: [
+          {
+            sourceType: 'version',
+            sourceId: version.versionId,
+            sourceOrder: 0,
+            contentHash: version.contentHash,
+            metadata: { final: true, blockCount: blocks.length },
+          },
+        ],
+      };
     });
   }
 }

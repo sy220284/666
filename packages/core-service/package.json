@@ -13,6 +13,7 @@
     "@worldforge/contracts": "workspace:*",
     "@worldforge/domain": "workspace:*",
     "@worldforge/prompts": "workspace:*",
+    "fflate": "0.8.2",
     "iconv-lite": "0.7.3"
   },
   "devDependencies": {

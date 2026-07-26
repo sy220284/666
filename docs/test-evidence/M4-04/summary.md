@@ -2,9 +2,10 @@
 
 ## 当前阶段
 
-整体基线审计与编码前实施规划已经完成。C1—C6 作者工作流、GenerationRun、
+整体基线审计与编码前实施规划已经完成。C1—C7 作者工作流、GenerationRun、
 T0/T1、改写、融合、Candidate 审阅、状态提取、Validation、搜索、安全替换、
-人工写作统计与节奏闭环已实现，下一实施入口为 C7 DOCX 与三轨恢复。
+人工写作统计、节奏、DOCX 与三轨备份恢复闭环已实现，下一实施入口为 C8
+完整体验、硬化与发布关闭。
 
 ## 本阶段交付
 
@@ -42,11 +43,22 @@ T0/T1、改写、融合、Candidate 审阅、状态提取、Validation、搜索�
 - 人工作字数和有效写作速度只统计 Core 标记的 `manual_edit`，排除 Candidate 采用、
   导入、替换、结构、恢复和系统维护。
 - 爽点密度、章末钩子、黄金三章与连载目标为透明、可配置、可关闭的 P3 建议。
+- DOCX 导入在进入既有 ImportPlan 前执行 ZIP 中央目录、解压预算、路径、
+  内容类型、XML 与 Relationship 安全检查，拒绝宏、OLE、ActiveX、外部链接
+  和归档炸弹。
+- TXT、Markdown 与 DOCX 导出只读取作者明确选择的不可变 Version，并以
+  排他临时文件、`fsync`、重新校验和原子重命名提交。
+- DOCX 导入保留计划失效、恢复点和单事务语义，写入标准
+  `mutationOrigin=import` 审计且不污染人工写作统计。
+- Schema 27 与既有 RecoveryService 建立日常滚动、重大操作、命名快照三轨；
+  支持策略、空间配额、确定性清理预览、stale 拒绝和失败补偿。
+- 作者保护、关键 Migration 点和最后一份已验证备份不会被自动清理；
+  解除作者保护要求精确备份 ID 确认，恢复始终创建新项目副本。
 
 ## 当前结论
 
-现有 M0—M3 与 M4-01—M4-03 底座保持兼容。C1—C6 纵向代码与本地自动化
-回归通过；长期 PR 保持 Draft，继续实施 C7—C8，最终以 P0-001—P0-075
+现有 M0—M3 与 M4-01—M4-03 底座保持兼容。C1—C7 纵向代码与本地自动化
+回归通过；长期 PR 保持 Draft，继续实施 C8，最终以 P0-001—P0-075
 证据关闭任务。
 
 ## 已执行校验
@@ -74,3 +86,8 @@ T0/T1、改写、融合、Candidate 审阅、状态提取、Validation、搜索�
   1 项跳过。
 - C6 Performance：10 个测试文件、37 项全部通过。
 - C6 全工作区 Build、Typecheck、ESLint 与 Prettier 通过。
+- C7 Unit、Integration、Migration、Security：165 个测试文件、757 项通过、
+  1 项既有跳过。
+- C7 DOCX、三轨恢复、Migration 与 IPC 安全定向回归：5 个测试文件、
+  7 项全部通过。
+- C7 全工作区 Build、Typecheck、ESLint 与 Prettier 通过。

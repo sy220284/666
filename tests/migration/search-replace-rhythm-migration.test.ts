@@ -52,7 +52,7 @@ describe('M4-04 search, replacement and rhythm migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 26n,
+        schema_version: 27n,
       });
       const columns = database.prepare(`PRAGMA table_info(draft_patch_log)`).all();
       expect(columns).toEqual(

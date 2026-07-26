@@ -170,7 +170,9 @@ describe('M3 final React business workbenches', () => {
     expect(narrative).toContain('relations');
     expect(narrative).toContain('dependencyMilestoneIds');
     expect(narrative).toContain('dependencyTimelineEventIds');
-    expect(dataTools).toContain("operation: 'manual-protection'");
+    expect(dataTools).toContain('createDailyBackup');
+    expect(dataTools).toContain('createNamedSnapshot');
+    expect(dataTools).toContain('previewCleanup');
     expect(dataTools).toContain('预览不会写入项目');
     expect(hook).toContain("BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'");
     expect(hook).toContain("outcome.state === 'cancelled'");

@@ -38,8 +38,18 @@ import {
   VersionSummaryResultSchema,
   RecoveryCreateCommandSchema,
   RecoveryCheckpointResultSchema,
+  RecoveryDailyBackupCommandSchema,
+  RecoveryNamedSnapshotCommandSchema,
   RecoveryOverviewCommandSchema,
   RecoveryOverviewResultSchema,
+  RecoveryPolicyUpdateCommandSchema,
+  RecoveryPolicyResultSchema,
+  RecoveryProtectionCommandSchema,
+  RecoveryProtectionResultSchema,
+  RecoveryCleanupPreviewCommandSchema,
+  RecoveryCleanupPreviewResultSchema,
+  RecoveryCleanupApplyCommandSchema,
+  RecoveryCleanupApplyResultSchema,
   RecoveryRestoreCommandSchema,
   RecoveryRestoreResultSchema,
   RecoveryExportCommandSchema,
@@ -375,11 +385,49 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         RecoveryCreateCommandSchema.parse(envelope(APP_COMMANDS.createCheckpoint, input)),
         RecoveryCheckpointResultSchema,
       ),
+    createDailyBackup: (input) =>
+      invoke(
+        IPC_CHANNELS.createDailyBackup,
+        RecoveryDailyBackupCommandSchema.parse(envelope(APP_COMMANDS.createDailyBackup, input)),
+        RecoveryCheckpointResultSchema,
+      ),
+    createNamedSnapshot: (input) =>
+      invoke(
+        IPC_CHANNELS.createNamedSnapshot,
+        RecoveryNamedSnapshotCommandSchema.parse(envelope(APP_COMMANDS.createNamedSnapshot, input)),
+        RecoveryCheckpointResultSchema,
+      ),
     getOverview: (projectId) =>
       invoke(
         IPC_CHANNELS.getOverview,
         RecoveryOverviewCommandSchema.parse(envelope(APP_COMMANDS.getOverview, { projectId })),
         RecoveryOverviewResultSchema,
+      ),
+    updatePolicy: (input) =>
+      invoke(
+        IPC_CHANNELS.updatePolicy,
+        RecoveryPolicyUpdateCommandSchema.parse(envelope(APP_COMMANDS.updatePolicy, input)),
+        RecoveryPolicyResultSchema,
+      ),
+    setProtection: (input) =>
+      invoke(
+        IPC_CHANNELS.setProtection,
+        RecoveryProtectionCommandSchema.parse(envelope(APP_COMMANDS.setProtection, input)),
+        RecoveryProtectionResultSchema,
+      ),
+    previewCleanup: (projectId) =>
+      invoke(
+        IPC_CHANNELS.previewCleanup,
+        RecoveryCleanupPreviewCommandSchema.parse(
+          envelope(APP_COMMANDS.previewCleanup, { projectId }),
+        ),
+        RecoveryCleanupPreviewResultSchema,
+      ),
+    applyCleanup: (input) =>
+      invoke(
+        IPC_CHANNELS.applyCleanup,
+        RecoveryCleanupApplyCommandSchema.parse(envelope(APP_COMMANDS.applyCleanup, input)),
+        RecoveryCleanupApplyResultSchema,
       ),
     restoreCheckpoint: (input) =>
       invoke(

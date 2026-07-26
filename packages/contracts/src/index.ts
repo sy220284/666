@@ -205,9 +205,17 @@ import {
   RECOVERY_COMMANDS,
   RECOVERY_IPC_CHANNELS,
   type BackupRecord,
+  type BackupCleanupPreview,
+  type BackupPolicy,
+  type RecoveryCleanupApplyInput,
+  type RecoveryCleanupResult,
   type RecoveryCreateInput,
+  type RecoveryDailyBackupInput,
   type RecoveryExportInput,
+  type RecoveryNamedSnapshotInput,
   type RecoveryOverview,
+  type RecoveryPolicyUpdateInput,
+  type RecoveryProtectionInput,
   type RecoveryRestoredProject,
   type RecoveryRestoreInput,
   type RecoveryVersionExport,
@@ -749,7 +757,23 @@ export interface WorldforgeBridge {
   };
   readonly recovery: {
     readonly createCheckpoint: (input: RecoveryCreateInput) => Promise<CommandResult<BackupRecord>>;
+    readonly createDailyBackup: (
+      input: RecoveryDailyBackupInput,
+    ) => Promise<CommandResult<BackupRecord>>;
+    readonly createNamedSnapshot: (
+      input: RecoveryNamedSnapshotInput,
+    ) => Promise<CommandResult<BackupRecord>>;
     readonly getOverview: (projectId: string) => Promise<CommandResult<RecoveryOverview>>;
+    readonly updatePolicy: (
+      input: RecoveryPolicyUpdateInput,
+    ) => Promise<CommandResult<BackupPolicy>>;
+    readonly setProtection: (
+      input: RecoveryProtectionInput,
+    ) => Promise<CommandResult<BackupRecord>>;
+    readonly previewCleanup: (projectId: string) => Promise<CommandResult<BackupCleanupPreview>>;
+    readonly applyCleanup: (
+      input: RecoveryCleanupApplyInput,
+    ) => Promise<CommandResult<RecoveryCleanupResult>>;
     readonly restoreCheckpoint: (
       input: RecoveryRestoreInput,
     ) => Promise<CommandResult<RecoveryRestoredProject>>;

@@ -99,6 +99,12 @@ export function projectOperationError(error: unknown): ErrorCode {
         return 'BACKUP_VERIFY_FAILED_002';
       case 'BACKUP_SPACE_LOW':
         return 'BACKUP_SPACE_LOW_003';
+      case 'BACKUP_PROTECTED':
+        return 'BACKUP_LAST_VERIFIED_PROTECTED_004';
+      case 'BACKUP_CLEANUP_STALE':
+        return 'COMMON_CONFLICT_003';
+      case 'BACKUP_DELETE_FAILED':
+        return 'BACKUP_CREATE_FAILED_001';
       case 'BACKUP_NOT_FOUND':
       case 'RESTORE_SOURCE_INVALID':
         return 'RESTORE_SOURCE_INVALID_001';

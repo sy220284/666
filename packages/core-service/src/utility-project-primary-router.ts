@@ -53,11 +53,21 @@ export async function routePrimaryProjectOperation(
           recentProjectId: operation.projectId,
         }),
       );
-    case PROJECT_WORKSPACE_COMMANDS.close:
+    case PROJECT_WORKSPACE_COMMANDS.close: {
+      const activeProject = services.projectWorkspace.activeProject;
+      if (
+        activeProject?.projectId === operation.projectId &&
+        activeProject.databaseMode === 'read-write'
+      ) {
+        await services.recovery.createDailyBackup(services.checkpointRequestId(requestId), {
+          projectId: operation.projectId,
+        });
+      }
       return success(
         operation.operation,
         await services.projectWorkspace.close(requestId, operation.projectId),
       );
+    }
     case PROJECT_WORKSPACE_COMMANDS.move:
       return success(
         operation.operation,

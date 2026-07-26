@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type {
+  BackupCleanupPreview,
   ImportPlan,
   ImportPlanChapter,
   TextDocumentFormat,
@@ -59,7 +60,7 @@ export function DataToolsWorkbench({
           type="button"
           onClick={() => onSectionChange('import-export')}
         >
-          TXT / Markdown
+          TXT / Markdown / DOCX
         </button>
       </nav>
       {section === 'recovery' ? (
@@ -93,13 +94,89 @@ function RecoveryPanel({
   );
   const resource = useBridgeQuery(`recovery:${projectId}`, load);
   const [status, setStatus] = useState('恢复操作会创建新项目，当前项目保持不变。');
+  const [snapshotName, setSnapshotName] = useState('手动快照');
+  const [snapshotNote, setSnapshotNote] = useState('');
+  const [cleanup, setCleanup] = useState<BackupCleanupPreview | null>(null);
+  const [dailyRetentionCount, setDailyRetentionCount] = useState(14);
+  const [majorRetentionCount, setMajorRetentionCount] = useState(30);
+  const [majorRetentionDays, setMajorRetentionDays] = useState(90);
+  const [quotaGiB, setQuotaGiB] = useState(5);
   const command = useBridgeCommand(resource.refresh);
 
-  const createCheckpoint = async (): Promise<void> => {
+  useEffect(() => {
+    if (!resource.data) return;
+    setDailyRetentionCount(resource.data.policy.dailyRetentionCount);
+    setMajorRetentionCount(resource.data.policy.majorRetentionCount);
+    setMajorRetentionDays(resource.data.policy.majorRetentionDays);
+    setQuotaGiB(Math.max(0.1, resource.data.policy.quotaBytes / 1024 / 1024 / 1024));
+  }, [resource.data]);
+
+  const createDailyBackup = async (): Promise<void> => {
     const result = await command.run(() =>
-      bridge.recovery.createCheckpoint({ projectId, operation: 'manual-protection' }),
+      bridge.recovery.createDailyBackup({ projectId }),
     );
-    if (result) setStatus(`恢复点已创建并校验：${result.backupFileName}`);
+    if (result) setStatus(`今日日常备份已验证：${result.backupFileName}`);
+  };
+  const createNamedSnapshot = async (): Promise<void> => {
+    const result = await command.run(() =>
+      bridge.recovery.createNamedSnapshot({
+        projectId,
+        authority: 'author',
+        name: snapshotName,
+        note: snapshotNote || null,
+      }),
+    );
+    if (result) setStatus(`命名快照“${result.displayName}”已创建并保护。`);
+  };
+  const updatePolicy = async (): Promise<void> => {
+    const result = await command.run(() =>
+      bridge.recovery.updatePolicy({
+        projectId,
+        authority: 'author',
+        dailyRetentionCount,
+        majorRetentionCount,
+        majorRetentionDays,
+        quotaBytes: Math.round(quotaGiB * 1024 * 1024 * 1024),
+      }),
+    );
+    if (result) setStatus(`保留策略已更新至版本 ${result.policyVersion}。`);
+  };
+  const toggleProtection = async (backupId: string, protectedValue: boolean): Promise<void> => {
+    const result = await command.run(() =>
+      bridge.recovery.setProtection({
+        projectId,
+        backupId,
+        authority: 'author',
+        protected: protectedValue,
+        confirmationBackupId: protectedValue ? null : backupId,
+      }),
+    );
+    if (result) {
+      setStatus(protectedValue ? '已标记为作者保留。' : '已解除作者保留；硬保护仍然有效。');
+    }
+  };
+  const previewCleanup = async (): Promise<void> => {
+    const result = await command.run(() => bridge.recovery.previewCleanup(projectId));
+    if (result) {
+      setCleanup(result);
+      setStatus(`清理预览可释放 ${formatBytes(result.reclaimableBytes)}。`);
+    }
+  };
+  const applyCleanup = async (): Promise<void> => {
+    if (!cleanup) return;
+    const result = await command.run(() =>
+      bridge.recovery.applyCleanup({
+        projectId,
+        authority: 'author',
+        planHash: cleanup.planHash,
+      }),
+    );
+    if (result) {
+      setCleanup(null);
+      setStatus(
+        `已安全清理 ${result.deletedBackupIds.length} 份，释放 ${formatBytes(result.releasedBytes)}。`,
+      );
+    }
   };
   const restore = async (backupId: string): Promise<void> => {
     const result = await command.run(() =>
@@ -121,14 +198,34 @@ function RecoveryPanel({
         <h2>保护状态</h2>
         <p>数据库：{resource.data?.databaseMode ?? '读取中'}</p>
         <p>兼容原因：{resource.data?.readOnlyReason ?? '无'}</p>
+        <p>
+          空间：{formatBytes(resource.data?.space.totalBytes ?? 0)} /
+          {formatBytes(resource.data?.space.quotaBytes ?? 0)}
+        </p>
         <button
           className="primary-button"
-          data-create-checkpoint
+          data-create-daily-backup
           disabled={readOnly || command.pending}
           type="button"
-          onClick={() => void createCheckpoint()}
+          onClick={() => void createDailyBackup()}
         >
-          创建手动恢复点
+          创建今日日常备份
+        </button>
+        <label>
+          快照名称
+          <input value={snapshotName} onChange={(event) => setSnapshotName(event.target.value)} />
+        </label>
+        <label>
+          备注
+          <textarea value={snapshotNote} onChange={(event) => setSnapshotNote(event.target.value)} />
+        </label>
+        <button
+          data-create-named-snapshot
+          disabled={readOnly || command.pending || snapshotName.trim().length === 0}
+          type="button"
+          onClick={() => void createNamedSnapshot()}
+        >
+          创建并保护命名快照
         </button>
         <p className="feature-status" data-recovery-status role="status">
           {command.error ? `${command.error.message} · ${command.error.code}` : status}
@@ -143,24 +240,127 @@ function RecoveryPanel({
             resource.data?.checkpoints.map((checkpoint) => (
               <article className="feature-row recovery-row" key={checkpoint.backupId}>
                 <div>
-                  <strong>{checkpoint.operation}</strong>
+                  <strong>{checkpoint.displayName ?? checkpoint.operation}</strong>
                   <span>
-                    {checkpoint.createdAt} · {formatBytes(checkpoint.sizeBytes)}
+                    {checkpoint.track} · Schema {checkpoint.schemaVersion} · {checkpoint.createdAt} ·{' '}
+                    {formatBytes(checkpoint.sizeBytes)}
                   </span>
+                  <small>
+                    {checkpoint.protectionReasons.length > 0
+                      ? `保护：${checkpoint.protectionReasons.join('、')}`
+                      : '普通配额项'}
+                  </small>
                   <code>{checkpoint.sha256.slice(0, 16)}…</code>
                 </div>
-                <button
-                  data-restore-checkpoint
-                  disabled={command.pending}
-                  type="button"
-                  onClick={() => void restore(checkpoint.backupId)}
-                >
-                  恢复为新项目
-                </button>
+                <div className="inline-actions">
+                  <button
+                    data-toggle-backup-protection
+                    disabled={readOnly || command.pending}
+                    type="button"
+                    onClick={() =>
+                      void toggleProtection(checkpoint.backupId, !checkpoint.authorProtected)
+                    }
+                  >
+                    {checkpoint.authorProtected ? '解除作者保留' : '作者保留'}
+                  </button>
+                  <button
+                    data-restore-checkpoint
+                    disabled={command.pending}
+                    type="button"
+                    onClick={() => void restore(checkpoint.backupId)}
+                  >
+                    恢复为新项目
+                  </button>
+                </div>
               </article>
             ))
           )}
         </div>
+      </div>
+      <div className="feature-card">
+        <h2>保留与空间策略</h2>
+        <label>
+          日常保留份数
+          <input
+            min={1}
+            max={365}
+            type="number"
+            value={dailyRetentionCount}
+            onChange={(event) => setDailyRetentionCount(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          重大恢复点份数
+          <input
+            min={1}
+            max={500}
+            type="number"
+            value={majorRetentionCount}
+            onChange={(event) => setMajorRetentionCount(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          重大恢复点保留天数
+          <input
+            min={1}
+            max={3650}
+            type="number"
+            value={majorRetentionDays}
+            onChange={(event) => setMajorRetentionDays(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          空间配额（GiB）
+          <input
+            min={0.1}
+            max={1024}
+            step={0.1}
+            type="number"
+            value={quotaGiB}
+            onChange={(event) => setQuotaGiB(Number(event.target.value))}
+          />
+        </label>
+        <div className="inline-actions">
+          <button
+            disabled={readOnly || command.pending}
+            type="button"
+            onClick={() => void updatePolicy()}
+          >
+            保存策略
+          </button>
+          <button
+            data-preview-backup-cleanup
+            disabled={readOnly || command.pending}
+            type="button"
+            onClick={() => void previewCleanup()}
+          >
+            预览安全清理
+          </button>
+        </div>
+        {cleanup ? (
+          <div data-backup-cleanup-preview>
+            <p>
+              删除 {cleanup.items.filter((item) => item.action === 'delete').length} 份；
+              预计释放 {formatBytes(cleanup.reclaimableBytes)}。
+            </p>
+            <ul>
+              {cleanup.items.map((item) => (
+                <li key={item.backupId}>
+                  {item.track} · {item.action} · {item.reason}
+                </li>
+              ))}
+            </ul>
+            <button
+              className="danger-button"
+              data-apply-backup-cleanup
+              disabled={command.pending || cleanup.reclaimableBytes === 0}
+              type="button"
+              onClick={() => void applyCleanup()}
+            >
+              按预览执行清理
+            </button>
+          </div>
+        ) : null}
       </div>
       <div className="feature-card">
         <h2>可安全导出的Version</h2>
@@ -313,8 +513,8 @@ function TextIoPanel({
   return (
     <section className="text-io-grid" data-text-io-dialog>
       <div className="feature-card">
-        <h2>TXT / Markdown导入</h2>
-        <p>选择文件后先形成内存计划，可调整章节再原子提交。</p>
+        <h2>TXT / Markdown / DOCX导入</h2>
+        <p>选择文件后先形成内存计划；DOCX会先经过隔离的ZIP与关系安全检查。</p>
         <label>
           编码
           <select
@@ -439,6 +639,7 @@ function TextIoPanel({
           >
             <option value="txt">TXT</option>
             <option value="markdown">Markdown</option>
+            <option value="docx">DOCX</option>
           </select>
         </label>
         <label>

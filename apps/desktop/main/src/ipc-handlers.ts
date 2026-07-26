@@ -34,7 +34,13 @@ import {
   VersionRestoreCommandSchema,
   VersionSetFinalCommandSchema,
   RecoveryCreateCommandSchema,
+  RecoveryDailyBackupCommandSchema,
+  RecoveryNamedSnapshotCommandSchema,
   RecoveryOverviewCommandSchema,
+  RecoveryPolicyUpdateCommandSchema,
+  RecoveryProtectionCommandSchema,
+  RecoveryCleanupPreviewCommandSchema,
+  RecoveryCleanupApplyCommandSchema,
   RecoveryRestoreCommandSchema,
   RecoveryExportCommandSchema,
   ImportPreviewCommandSchema,
@@ -202,6 +208,7 @@ const QUERY_PROJECT_OPERATIONS = new Set<string>([
   VERSION_COMMANDS.listVersions,
   VERSION_COMMANDS.getVersion,
   RECOVERY_COMMANDS.getOverview,
+  RECOVERY_COMMANDS.previewCleanup,
   TEXT_IO_COMMANDS.previewImport,
   TEXT_IO_COMMANDS.listExportVersions,
 ]);
@@ -288,7 +295,13 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.setFinalVersion,
     IPC_CHANNELS.restoreVersion,
     IPC_CHANNELS.createCheckpoint,
+    IPC_CHANNELS.createDailyBackup,
+    IPC_CHANNELS.createNamedSnapshot,
     IPC_CHANNELS.getOverview,
+    IPC_CHANNELS.updatePolicy,
+    IPC_CHANNELS.setProtection,
+    IPC_CHANNELS.previewCleanup,
+    IPC_CHANNELS.applyCleanup,
     IPC_CHANNELS.restoreCheckpoint,
     IPC_CHANNELS.exportVersion,
     IPC_CHANNELS.previewImport,
@@ -653,8 +666,31 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     if (rejected) return rejected;
     const parsed = RecoveryCreateCommandSchema.safeParse(raw);
     if (!parsed.success) return invalidRequest(raw);
+    if (parsed.data.payload.operation !== 'manual-protection') return invalidRequest(raw);
     return invokeProject(parsed.data.requestId, {
       operation: RECOVERY_COMMANDS.createCheckpoint,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.createDailyBackup, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryDailyBackupCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.createDailyBackup,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.createNamedSnapshot, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryNamedSnapshotCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.createNamedSnapshot,
       input: parsed.data.payload,
     });
   });
@@ -666,6 +702,50 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     if (!parsed.success) return invalidRequest(raw);
     return invokeProject(parsed.data.requestId, {
       operation: RECOVERY_COMMANDS.getOverview,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.updatePolicy, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryPolicyUpdateCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.updatePolicy,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.setProtection, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryProtectionCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.setProtection,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.previewCleanup, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryCleanupPreviewCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.previewCleanup,
+      input: parsed.data.payload,
+    });
+  });
+
+  register(IPC_CHANNELS.applyCleanup, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = RecoveryCleanupApplyCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return invokeProject(parsed.data.requestId, {
+      operation: RECOVERY_COMMANDS.applyCleanup,
       input: parsed.data.payload,
     });
   });

@@ -55,3 +55,9 @@ pnpm lint
 pnpm build
 pnpm format:check
 pnpm test:perf
+pnpm exec vitest run tests/integration/docx-transfer.test.ts tests/integration/three-track-recovery.test.ts tests/migration/backup-tracks-migration.test.ts tests/security/backup-transfer-ipc.test.ts tests/security/docx-archive-security.test.ts
+pnpm exec vitest run tests/unit tests/integration tests/migration tests/security --reporter=dot
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm format:check

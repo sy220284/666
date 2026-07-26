@@ -7,7 +7,7 @@
 5. DOCX、超大项目、混合DPI和跨平台安装验收需要真实环境与可复现工件。
 6. C1已加入继续写作持久化；后续Migration必须保留Schema 22读取兼容并继续只追加。
 7. 当前容器缺少X Server，C1 Electron Playwright在Renderer启动前退出；必须读取PR CI结果后再确认桌面路径。
-8. C7—C8尚未完成，追踪矩阵中的M4-04需求继续保持`In Progress`。
+8. C8尚未完成，追踪矩阵中的M4-04需求继续保持`In Progress`。
 9. 当前容器只能通过 Core/Renderer 自动化验证 C3—C4；真实 Electron
    Candidate 工作台仍需由 PR CI 与 C8 人工 UI 矩阵复核。
 10. `generation_result_refs`已预留`state_proposal_batch`类型，其目标表与强外键将在
@@ -20,3 +20,8 @@
     的搜索和批量替换规模上限仍需在 C8 真实数据性能报告中复核。
 14. 当前写作会话以 Draft Patch 为权威输入，首次按键计一秒有效时间；操作系统级
     休眠、窗口焦点与输入法组合事件需在 C8 Electron E2E 和人工验收中复核。
+15. C7 已自动化覆盖 DOCX 归档预算、危险部件、外部关系、原子导入导出与三轨
+    清理补偿；超大真实 DOCX、Windows 长路径、macOS 文件权限和 Linux 文件系统
+    差异仍需在 C8 安装包与平台矩阵复核。
+16. 日常备份以 UTC 日期去重以保持跨时区确定性；面向作者展示的本地日界线体验
+    需在 C8 跨时区人工验收中确认。

@@ -49,7 +49,7 @@ type ProjectRouter =
   | typeof routeContentProjectOperation
   | typeof routeStructureProjectOperation;
 
-function createServices() {
+function createServices(activeProject: unknown = { marker: 'projectWorkspace.activeProject' }) {
   const calls: RecordedCall[] = [];
   const service = (serviceName: string): Record<string, unknown> =>
     new Proxy(
@@ -59,7 +59,7 @@ function createServices() {
           const key = `${serviceName}.${String(property)}`;
           if (property === 'activeProject') {
             calls.push({ key, args: [] });
-            return { marker: key };
+            return activeProject;
           }
           return (...args: unknown[]) => {
             calls.push({ key, args });
@@ -115,7 +115,10 @@ const primaryCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = 
     PROJECT_WORKSPACE_COMMANDS.openRecent,
     [call('projectWorkspace.open', requestId, { recentProjectId: projectId })],
   ],
-  [PROJECT_WORKSPACE_COMMANDS.close, [call('projectWorkspace.close', requestId, projectId)]],
+  [
+    PROJECT_WORKSPACE_COMMANDS.close,
+    [call('projectWorkspace.activeProject'), call('projectWorkspace.close', requestId, projectId)],
+  ],
   [
     PROJECT_WORKSPACE_COMMANDS.move,
     [call('projectWorkspace.move', requestId, projectId, '/tmp/target')],
@@ -212,7 +215,13 @@ const contentCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = 
     RECOVERY_COMMANDS.createCheckpoint,
     [call('recovery.createOperationCheckpoint', requestId, input)],
   ],
+  [RECOVERY_COMMANDS.createDailyBackup, [call('recovery.createDailyBackup', requestId, input)]],
+  [RECOVERY_COMMANDS.createNamedSnapshot, [call('recovery.createNamedSnapshot', requestId, input)]],
   [RECOVERY_COMMANDS.getOverview, [call('recovery.getOverview', projectId)]],
+  [RECOVERY_COMMANDS.updatePolicy, [call('recovery.updatePolicy', requestId, input)]],
+  [RECOVERY_COMMANDS.setProtection, [call('recovery.setProtection', requestId, input)]],
+  [RECOVERY_COMMANDS.previewCleanup, [call('recovery.previewCleanup', projectId)]],
+  [RECOVERY_COMMANDS.applyCleanup, [call('recovery.applyCleanup', requestId, input)]],
   [
     RECOVERY_COMMANDS.restoreCheckpoint,
     [call('recovery.restoreCheckpoint', requestId, input, '/tmp/target')],
@@ -321,6 +330,26 @@ async function verifyCases(
 describe('Core project routers exact operation mapping', () => {
   it('maps every primary operation to one exact service method and argument list', async () => {
     await verifyCases(routePrimaryProjectOperation, primaryCases);
+  });
+
+  it('creates one consistent daily backup before closing the active writable project', async () => {
+    const harness = createServices({ projectId, databaseMode: 'read-write' });
+    const result = await routePrimaryProjectOperation(
+      contractInput(harness.services),
+      requestId,
+      operation(PROJECT_WORKSPACE_COMMANDS.close),
+    );
+    expect(result).toEqual({
+      ok: true,
+      operation: PROJECT_WORKSPACE_COMMANDS.close,
+      data: { marker: 'projectWorkspace.close' },
+    });
+    expect(harness.calls).toEqual([
+      call('projectWorkspace.activeProject'),
+      call('checkpointRequestId', requestId),
+      call('recovery.createDailyBackup', `${requestId}:checkpoint`, { projectId }),
+      call('projectWorkspace.close', requestId, projectId),
+    ]);
   });
 
   it('maps every content operation to one exact service method and argument list', async () => {

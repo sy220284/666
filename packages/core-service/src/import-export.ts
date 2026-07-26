@@ -3,12 +3,12 @@ import {
   access,
   constants,
   lstat,
+  open,
   readFile,
   realpath,
   rename,
   rm,
   stat,
-  writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -37,6 +37,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from './database/index.js';
+import { DocxTransferError, parseDocx, renderDocx } from './docx-transfer.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import type { RecoveryService } from './recovery.js';
 
@@ -327,8 +328,8 @@ function parseTxt(
 }
 
 function safeFileName(value: string, format: TextDocumentFormat): string {
-  const extension = format === 'markdown' ? '.md' : '.txt';
-  const base = value.trim().replace(/\.(?:txt|md|markdown)$/iu, '');
+  const extension = format === 'markdown' ? '.md' : format === 'docx' ? '.docx' : '.txt';
+  const base = value.trim().replace(/\.(?:txt|md|markdown|docx)$/iu, '');
   if (
     !base ||
     base !== path.basename(base) ||
@@ -340,6 +341,34 @@ function safeFileName(value: string, format: TextDocumentFormat): string {
     throw new ImportExportServiceError('EXPORT_WRITE_FAILED', 'The export file name is unsafe.');
   }
   return `${base}${extension}`;
+}
+
+async function durableWrite(filePath: string, content: Buffer): Promise<void> {
+  const handle = await open(filePath, 'wx', 0o600);
+  try {
+    await handle.writeFile(content);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+async function syncDirectory(directory: string): Promise<void> {
+  let handle;
+  try {
+    handle = await open(directory, 'r');
+    await handle.sync();
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !('code' in error) ||
+      !['EINVAL', 'ENOTSUP', 'EPERM'].includes(String(error.code))
+    ) {
+      throw error;
+    }
+  } finally {
+    await handle?.close();
+  }
 }
 
 async function existingFile(filePath: string): Promise<string> {
@@ -437,8 +466,7 @@ export class ImportExportService {
     this.#clock = options.clock ?? systemClock;
     this.#idFactory = options.idFactory ?? randomUUID;
     this.#readSource = options.readSource ?? readFile;
-    this.#writeTarget =
-      options.writeTarget ?? ((filePath, content) => writeFile(filePath, content));
+    this.#writeTarget = options.writeTarget ?? durableWrite;
     this.#faultInjector = options.faultInjector;
   }
 
@@ -452,37 +480,68 @@ export class ImportExportService {
         ? 'txt'
         : ['.md', '.markdown'].includes(extension)
           ? 'markdown'
-          : (() => {
-              throw new ImportExportServiceError(
-                'IMPORT_FORMAT_UNSUPPORTED',
-                'Only TXT, MD and MARKDOWN files are supported in M1.',
-              );
-            })();
+          : extension === '.docx'
+            ? 'docx'
+            : (() => {
+                throw new ImportExportServiceError(
+                  'IMPORT_FORMAT_UNSUPPORTED',
+                  'Only TXT, Markdown and DOCX files are supported.',
+                );
+              })();
     const buffer = await this.#readSource(sourcePath);
     if (buffer.byteLength === 0) {
       throw new ImportExportServiceError('IMPORT_CONTENT_EMPTY', 'The selected document is empty.');
     }
-    const detected = detectEncoding(buffer);
-    const encoding =
-      input.encoding && input.encoding !== 'auto' ? input.encoding : detected.encoding;
-    const text = decode(buffer, encoding);
-    if (!text.replace(/[\s\uFEFF]/gu, '')) {
-      throw new ImportExportServiceError(
-        'IMPORT_CONTENT_EMPTY',
-        'The selected document has no text.',
-      );
-    }
-    if (text.includes('\u0000')) {
-      throw new ImportExportServiceError(
-        'IMPORT_FORMAT_UNSUPPORTED',
-        'The selected document contains binary null bytes.',
-      );
-    }
     const fallbackTitle = path.parse(sourcePath).name.slice(0, 240) || '导入章节';
-    const chapters =
-      format === 'markdown'
-        ? parseMarkdown(text, fallbackTitle, this.#idFactory)
-        : parseTxt(text, fallbackTitle, this.#idFactory);
+    let detected: ReturnType<typeof detectEncoding> = {
+      encoding: 'utf-8',
+      confidence: 'high',
+      candidates: ['utf-8'],
+    };
+    let encoding: DetectedTextEncoding = 'utf-8';
+    let warnings: string[] = [];
+    let chapters: ImportPlanChapter[];
+    if (format === 'docx') {
+      try {
+        const parsed = parseDocx(buffer, fallbackTitle, this.#idFactory);
+        chapters = parsed.chapters;
+        warnings = [...parsed.warnings];
+      } catch (error) {
+        if (error instanceof DocxTransferError) {
+          const code =
+            error.code === 'archive-limit'
+              ? 'IMPORT_ARCHIVE_LIMIT'
+              : error.code === 'empty'
+                ? 'IMPORT_CONTENT_EMPTY'
+                : 'IMPORT_FORMAT_UNSUPPORTED';
+          throw new ImportExportServiceError(code, error.message, { cause: error });
+        }
+        throw error;
+      }
+    } else {
+      detected = detectEncoding(buffer);
+      encoding = input.encoding && input.encoding !== 'auto' ? input.encoding : detected.encoding;
+      const text = decode(buffer, encoding);
+      if (!text.replace(/[\s\uFEFF]/gu, '')) {
+        throw new ImportExportServiceError(
+          'IMPORT_CONTENT_EMPTY',
+          'The selected document has no text.',
+        );
+      }
+      if (text.includes('\u0000')) {
+        throw new ImportExportServiceError(
+          'IMPORT_FORMAT_UNSUPPORTED',
+          'The selected document contains binary null bytes.',
+        );
+      }
+      chapters =
+        format === 'markdown'
+          ? parseMarkdown(text, fallbackTitle, this.#idFactory)
+          : parseTxt(text, fallbackTitle, this.#idFactory);
+      if (!input.encoding && detected.confidence === 'low') {
+        warnings.push('编码置信度较低，请手动选择编码后重新预览。');
+      }
+    }
     if (chapters.length === 0) {
       throw new ImportExportServiceError(
         'IMPORT_CONTENT_EMPTY',
@@ -501,10 +560,7 @@ export class ImportExportService {
         : [encoding, ...detected.candidates].slice(0, 4),
       sourceSha256: sha256(buffer),
       chapters,
-      warnings:
-        !input.encoding && detected.confidence === 'low'
-          ? ['编码置信度较低，请手动选择编码后重新预览。']
-          : [],
+      warnings,
     });
     this.#plans.set(plan.planId, {
       plan,
@@ -577,7 +633,7 @@ export class ImportExportService {
         );
         const insertDraft = database.prepare(
           `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)
-           VALUES(?, ?, 'active', 0, ?, ?)`,
+           VALUES(?, ?, 'active', 1, ?, ?)`,
         );
         const activateDraft = database.prepare(
           'UPDATE chapters SET active_draft_id = ? WHERE id = ?',
@@ -586,13 +642,13 @@ export class ImportExportService {
           `INSERT INTO draft_blocks(
              id, draft_id, logical_block_id, order_key, block_type, text,
              attributes_json, source, locked, content_hash, revision
-           ) VALUES(?, ?, ?, ?, ?, ?, '{}', 'imported', 0, ?, 0)`,
+           ) VALUES(?, ?, ?, ?, ?, ?, '{}', 'imported', 0, ?, 1)`,
         );
         const insertVersion = database.prepare(
           `INSERT INTO versions(
              id, chapter_id, source_draft_id, source_revision, title, description,
              label, word_count, content_hash, created_at
-           ) VALUES(?, ?, ?, 0, '导入基线', '由M1文本导入创建', 'import', ?, ?, ?)`,
+           ) VALUES(?, ?, ?, 1, '导入基线', '由安全导入创建', 'import', ?, ?, ?)`,
         );
         const insertVersionBlock = database.prepare(
           `INSERT INTO version_blocks(
@@ -657,6 +713,32 @@ export class ImportExportService {
               block.contentHash,
             );
           }
+          const operations = versionBlocks.map((block, blockIndex) => ({
+            type: 'insert',
+            afterLogicalBlockId:
+              blockIndex === 0 ? null : versionBlocks[blockIndex - 1]!.logicalBlockId,
+            block: {
+              blockType: block.blockType,
+              content: block.text,
+              attributes: {},
+            },
+          }));
+          database
+            .prepare(
+              `INSERT INTO draft_patch_log(
+                 id, draft_id, request_id, base_revision, committed_revision,
+                 operations_json, before_blocks_json, after_blocks_json, created_at,
+                 mutation_origin
+               ) VALUES(?, ?, ?, 0, 1, ?, '[]', ?, ?, 'import')`,
+            )
+            .run(
+              this.#idFactory(),
+              draftId,
+              `${requestId}:import:${draftId}`,
+              JSON.stringify(operations),
+              JSON.stringify(versionBlocks.map((block) => ({ ...block, revision: 1 }))),
+              now,
+            );
           this.#faultInjector?.('during-import');
         });
         database
@@ -771,10 +853,13 @@ export class ImportExportService {
           .all(row.versionId) as unknown as ExportBlockRow[],
       }));
     });
-    const content = Buffer.from(
-      input.format === 'markdown' ? renderMarkdown(versions) : renderText(versions),
-      'utf8',
-    );
+    const content =
+      input.format === 'docx'
+        ? renderDocx(versions)
+        : Buffer.from(
+            input.format === 'markdown' ? renderMarkdown(versions) : renderText(versions),
+            'utf8',
+          );
     const temporaryPath = path.join(directory, `.${fileName}.tmp-${this.#idFactory()}`);
     try {
       await this.#writeTarget(temporaryPath, content);
@@ -786,7 +871,19 @@ export class ImportExportService {
           'The temporary export failed content verification.',
         );
       }
+      if (input.format === 'docx') {
+        try {
+          parseDocx(written, '导出验证', this.#idFactory);
+        } catch (error) {
+          throw new ImportExportServiceError(
+            'EXPORT_WRITE_FAILED',
+            'The temporary DOCX export failed package validation.',
+            { cause: error },
+          );
+        }
+      }
       await rename(temporaryPath, finalPath);
+      await syncDirectory(directory);
     } catch (error) {
       await rm(temporaryPath, { force: true });
       if (error instanceof ImportExportServiceError) throw error;

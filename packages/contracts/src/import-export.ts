@@ -26,7 +26,7 @@ export const TextImportEncodingSchema = z.enum([
   'gb18030',
 ]);
 export const DetectedTextEncodingSchema = TextImportEncodingSchema.exclude(['auto']);
-export const TextDocumentFormatSchema = z.enum(['txt', 'markdown']);
+export const TextDocumentFormatSchema = z.enum(['txt', 'markdown', 'docx']);
 export const ImportConfidenceSchema = z.enum(['high', 'medium', 'low']);
 
 export const ImportPlanBlockSchema = z.strictObject({

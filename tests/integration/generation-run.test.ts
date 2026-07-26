@@ -7,6 +7,8 @@ import { ConstraintPackageSchema, ModelSupportProfileSchema } from '@worldforge/
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import { CandidateApplyService } from '../../packages/core-service/src/candidate-apply.js';
+import { CandidateService } from '../../packages/core-service/src/candidate.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import {
   GenerationRunService,
@@ -25,6 +27,8 @@ interface Harness {
   readonly structure: ProjectStructureService;
   readonly drafts: DraftService;
   readonly generation: GenerationRunService;
+  readonly candidates: CandidateService;
+  readonly candidateApply: CandidateApplyService;
 }
 
 async function createHarness(): Promise<Harness> {
@@ -53,6 +57,8 @@ async function createHarness(): Promise<Harness> {
     structure: new ProjectStructureService(workspace, { clock }),
     drafts: new DraftService(workspace, { clock }),
     generation: new GenerationRunService(workspace, { clock }),
+    candidates: new CandidateService(workspace, { clock }),
+    candidateApply: new CandidateApplyService(workspace, { clock }),
   };
 }
 
@@ -101,6 +107,111 @@ afterEach(async () => {
 });
 
 describe('M4-04 GenerationRun persistence', () => {
+  it('atomically saves multiple structured Skeletons, author revisions and prose guards', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, chapter, draft } = await createProjectDraft(harness, '结构化骨架');
+      const run = await harness.generation.create(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        baseDraftId: draft.draftId,
+        baseDraftRevision: draft.revision,
+        runType: 'skeleton',
+        promptId: 'worldforge.skeleton',
+        promptVersion: 1,
+        outputMode: 'structured',
+        providerId: 'stub',
+        actualModel: 'deterministic-v1',
+        supportStatus: 'unverified',
+        constraintPackage: constraints(project.projectId, chapter.id, 'skeleton'),
+        inputSources: [
+          {
+            sourceType: 'chapter_goal',
+            sourceId: chapter.id,
+            sourceOrder: 0,
+            metadata: { chapterGoal: '夜渡' },
+          },
+        ],
+      });
+      await harness.generation.markRunning(randomUUID(), {
+        projectId: project.projectId,
+        runId: run.runId,
+      });
+      const payload = (event: string) => ({
+        titleSuggestion: event,
+        tendency: '压迫',
+        beats: [
+          {
+            beatId: `beat-${event}`,
+            order: 1,
+            event,
+            cause: '追兵逼近',
+            consequence: '主角必须决定是否上船',
+            informationReleased: ['船夫知道密道'],
+            characterIntentions: [{ characterId: 'hero', intention: '隐藏身份' }],
+          },
+        ],
+        endingHook: '岸边亮起第二盏灯',
+        risks: ['地点连续性'],
+      });
+      const completed = await harness.generation.completeSkeletonCandidates(randomUUID(), {
+        projectId: project.projectId,
+        runId: run.runId,
+        candidates: [
+          { title: '谨慎渡河', structuredPayload: payload('先试探船夫') },
+          { title: '强行登船', structuredPayload: payload('直接控制渡船') },
+        ],
+      });
+      expect(completed.run.resultRefs).toHaveLength(2);
+      expect(completed.candidates.every((candidate) => candidate.blockCount === 0)).toBe(true);
+      expect(
+        harness.candidates.list({ projectId: project.projectId, chapterId: chapter.id }),
+      ).toMatchObject({
+        candidates: [
+          { candidateType: 'skeleton', blockCount: 0 },
+          { candidateType: 'skeleton', blockCount: 0 },
+        ],
+      });
+
+      const selected = completed.candidates[0]!;
+      const edited = await harness.candidates.editSkeleton(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        candidateId: selected.candidateId,
+        expectedSkeletonRevisionId: selected.skeletonRevisionId,
+        structuredPayload: { ...selected.structuredPayload, endingHook: '灯火突然熄灭' },
+      });
+      expect(edited).toMatchObject({
+        skeletonRevision: 2,
+        parentSkeletonRevisionId: selected.skeletonRevisionId,
+        editedBy: 'author',
+        structuredPayload: { endingHook: '灯火突然熄灭' },
+      });
+      expect(() =>
+        harness.candidateApply.preview({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          candidateId: selected.candidateId,
+        }),
+      ).toThrowError(/Skeleton Candidates cannot enter prose preview/);
+
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        database
+          .prepare('UPDATE drafts SET revision = revision + 1 WHERE id = ?')
+          .run(draft.draftId);
+      });
+      expect(
+        harness.candidates.get({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          candidateId: selected.candidateId,
+        }),
+      ).toMatchObject({ sourceState: 'stale' });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('atomically commits a successful prose Candidate and typed result reference', async () => {
     const harness = await createHarness();
     try {

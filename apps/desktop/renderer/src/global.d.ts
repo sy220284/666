@@ -4,6 +4,7 @@ import type {
   CandidateCreateFixtureInput,
   CandidateDiscardInput,
   CandidateDocument,
+  CandidateEditSkeletonInput,
   CandidateGetInput,
   CandidateList,
   CandidatePreview,
@@ -32,6 +33,9 @@ type RendererCandidateBridge = {
   readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
   readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
   readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
+  readonly editSkeleton: (
+    input: CandidateEditSkeletonInput,
+  ) => Promise<CommandResult<CandidateDocument>>;
 };
 
 type RendererWorldforgeBridge = Omit<WorldforgeBridge, 'version'> & {

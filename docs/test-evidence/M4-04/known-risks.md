@@ -7,6 +7,10 @@
 5. DOCX、超大项目、混合DPI和跨平台安装验收需要真实环境与可复现工件。
 6. C1已加入继续写作持久化；后续Migration必须保留Schema 22读取兼容并继续只追加。
 7. 当前容器缺少X Server，C1 Electron Playwright在Renderer启动前退出；必须读取PR CI结果后再确认桌面路径。
-8. C3—C8尚未完成，追踪矩阵中的M4-04需求继续保持`In Progress`。
-9. C2只开放直接章节目标的正文生成入口；T0、骨架或场景节拍驱动的T1、改写、融合必须在C3完成后才可验收。
-10. `generation_result_refs`已预留`state_proposal_batch`类型，其目标表与强外键在C4的Schema 25追加，C2不得提前写入该类型。
+8. C5—C8尚未完成，追踪矩阵中的M4-04需求继续保持`In Progress`。
+9. 当前容器只能通过 Core/Renderer 自动化验证 C3—C4；真实 Electron
+   Candidate 工作台仍需由 PR CI 与 C8 人工 UI 矩阵复核。
+10. `generation_result_refs`已预留`state_proposal_batch`类型，其目标表与强外键将在
+    C5 的 Schema 25 追加；C3—C4 没有提前写入该类型。
+11. 结构化正文模式中断时只有完整可解析结果才可成为 complete Candidate；纯文本模式
+    继续承担可读 partial 的主要路径，最终模型档案需要在 C8 真实 Provider Eval 复核。

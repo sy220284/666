@@ -88,11 +88,11 @@ async function createProjectDraft(harness: Harness, name: string) {
   return { project, chapter, draft };
 }
 
-function constraints(projectId: string, chapterId: string) {
+function constraints(projectId: string, chapterId: string, taskType = 'chapter') {
   return ConstraintPackageSchema.parse({
     projectId,
     chapterId,
-    taskType: 'chapter',
+    taskType,
     snapshotSource: 'fallback_live_query',
     sections: { P0: [], P1: [], P2: [], P3: [], P4: [] },
     sourceVersionIds: [],
@@ -142,6 +142,102 @@ afterEach(async () => {
 });
 
 describe('M4-04 GenerationRuntime', () => {
+  it('parses one structured stream into multiple authoritative Skeleton results', async () => {
+    const harness = await createHarness();
+    try {
+      const { project, chapter, draft } = await createProjectDraft(harness, '多骨架运行');
+      const batch = {
+        candidates: ['试探', '突围'].map((event) => ({
+          titleSuggestion: event,
+          tendency: '悬疑',
+          beats: [
+            {
+              beatId: 'required-beat',
+              order: 1,
+              event,
+              cause: '追兵逼近',
+              consequence: '改变行动路线',
+              informationReleased: [],
+              characterIntentions: [],
+            },
+          ],
+          endingHook: '灯火熄灭',
+          risks: [],
+        })),
+      };
+      const started = await harness.runtime.startStructured({
+        requestId: randomUUID(),
+        run: {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          baseDraftId: draft.draftId,
+          baseDraftRevision: draft.revision,
+          runType: 'skeleton',
+          promptId: 'worldforge.skeleton',
+          promptVersion: 1,
+          outputMode: 'structured',
+          providerId: 'stub',
+          actualModel: 'deterministic-v1',
+          supportStatus: 'unverified',
+          constraintPackage: constraints(project.projectId, chapter.id, 'skeleton'),
+        },
+        provider: provider([
+          { type: 'connected' },
+          { type: 'delta', text: JSON.stringify(batch) },
+          { type: 'completed' },
+        ]),
+        requestFor: (runId) =>
+          GenerationRequestSchema.parse({
+            runId,
+            model: 'deterministic-v1',
+            systemPrompt: '只输出骨架批次。',
+            messages: [{ role: 'user', content: '生成两个骨架。' }],
+            maxOutputTokens: 4_096,
+            structuredOutput: { name: 'skeleton_candidate_batch_v1', schema: {} },
+            metadata: {
+              promptId: 'worldforge.skeleton',
+              promptVersion: 1,
+              taskType: 'skeleton',
+              constraintHash: 'b'.repeat(64),
+            },
+          }),
+        partialOnFailure: false,
+        complete: async (runId, raw, usage) => {
+          const parsed = JSON.parse(raw) as typeof batch;
+          const completed = await harness.runs.completeSkeletonCandidates(randomUUID(), {
+            projectId: project.projectId,
+            runId,
+            candidates: parsed.candidates.map((candidate) => ({
+              title: candidate.titleSuggestion,
+              structuredPayload: candidate,
+            })),
+            usage,
+          });
+          return {
+            run: completed.run,
+            candidateIds: completed.candidates.map((candidate) => candidate.candidateId),
+            resultRefs: completed.run.resultRefs,
+          };
+        },
+      });
+      await harness.runtime.waitFor(started.run.runId);
+      expect(
+        harness.runs.get({ projectId: project.projectId, runId: started.run.runId }),
+      ).toMatchObject({
+        status: 'succeeded',
+        resultRefs: [
+          { resultType: 'candidate', candidateKind: 'skeleton' },
+          { resultType: 'candidate', candidateKind: 'skeleton' },
+        ],
+      });
+      expect(harness.tasks.getSnapshot(started.taskId, project.projectId).resultRefs).toHaveLength(
+        2,
+      );
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('streams through TaskProtocol and commits the authoritative Candidate before success', async () => {
     const harness = await createHarness();
     try {

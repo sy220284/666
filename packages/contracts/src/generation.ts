@@ -68,6 +68,7 @@ export const ChapterGenerationSourceSchema = z.discriminatedUnion('sourceType', 
   z.strictObject({
     sourceType: z.literal('skeleton_candidate'),
     selectedSkeletonCandidateId: DraftEntityIdSchema,
+    acknowledgeStaleSource: z.boolean().default(false),
   }),
   z.strictObject({
     sourceType: z.literal('canonical_scene_beats'),
@@ -79,6 +80,88 @@ export const ChapterGenerationSourceSchema = z.discriminatedUnion('sourceType', 
   }),
 ]);
 
+export const RewriteSelectionAnchorSchema = z
+  .strictObject({
+    projectId: ProjectIdSchema,
+    chapterId: DraftEntityIdSchema,
+    draftId: DraftEntityIdSchema,
+    baseRevision: z.number().int().nonnegative(),
+    logicalBlockId: DraftEntityIdSchema,
+    expectedBlockHash: DraftContentHashValueSchema,
+    selectionStart: z.number().int().nonnegative(),
+    selectionEnd: z.number().int().positive(),
+    selectedTextHash: DraftContentHashValueSchema,
+  })
+  .refine((anchor) => anchor.selectionEnd > anchor.selectionStart, {
+    path: ['selectionEnd'],
+    message: 'Rewrite selection end must be after its start.',
+  });
+
+export const MergeRangeAnchorSchema = z
+  .strictObject({
+    logicalBlockId: DraftEntityIdSchema,
+    expectedBlockHash: DraftContentHashValueSchema,
+    selectionStart: z.number().int().nonnegative(),
+    selectionEnd: z.number().int().positive(),
+    selectedTextHash: DraftContentHashValueSchema,
+  })
+  .refine((anchor) => anchor.selectionEnd > anchor.selectionStart, {
+    path: ['selectionEnd'],
+    message: 'Merge range end must be after its start.',
+  });
+
+export const BeatSourceMappingUnitSchema = z
+  .strictObject({
+    sceneBeatId: DraftEntityIdSchema,
+    sourceCandidateId: DraftEntityIdSchema.nullable(),
+    sourceBlockIds: z.array(DraftEntityIdSchema).max(10_000),
+    keepCurrentDraft: z.boolean(),
+  })
+  .superRefine((unit, context) => {
+    if (unit.keepCurrentDraft === (unit.sourceCandidateId !== null)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Choose exactly one Candidate source or the current Draft.',
+      });
+    }
+    if (!unit.keepCurrentDraft && unit.sourceBlockIds.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['sourceBlockIds'],
+        message: 'Candidate-backed beat mappings require source blocks.',
+      });
+    }
+  });
+
+export const SegmentSourceMappingUnitSchema = z.discriminatedUnion('sourceType', [
+  z.strictObject({
+    segmentId: DraftEntityIdSchema,
+    sourceType: z.literal('candidate'),
+    candidateId: DraftEntityIdSchema,
+    sourceBlockIds: z.array(DraftEntityIdSchema).min(1).max(10_000),
+    order: z.number().int().positive(),
+    rangeAnchor: MergeRangeAnchorSchema.optional(),
+  }),
+  z.strictObject({
+    segmentId: DraftEntityIdSchema,
+    sourceType: z.literal('current_draft'),
+    sourceBlockIds: z.array(DraftEntityIdSchema).min(1).max(10_000),
+    order: z.number().int().positive(),
+    rangeAnchor: MergeRangeAnchorSchema.optional(),
+  }),
+]);
+
+export const MergeSourceMappingSchema = z.discriminatedUnion('mappingType', [
+  z.strictObject({
+    mappingType: z.literal('beat'),
+    units: z.array(BeatSourceMappingUnitSchema).min(1).max(256),
+  }),
+  z.strictObject({
+    mappingType: z.literal('segment'),
+    units: z.array(SegmentSourceMappingUnitSchema).min(2).max(1_000),
+  }),
+]);
+
 const generationIntentSchemas = [
   z.strictObject({
     runType: z.literal('skeleton'),
@@ -86,6 +169,7 @@ const generationIntentSchemas = [
     tendency: z.string().trim().min(1).max(512),
     targetLanguage: z.string().min(2).max(32).default('zh-CN'),
     candidateCount: z.number().int().min(1).max(5).default(3),
+    requiredSceneBeatIds: z.array(DraftEntityIdSchema).max(256).default([]),
   }),
   z.strictObject({
     runType: z.literal('chapter'),
@@ -96,14 +180,30 @@ const generationIntentSchemas = [
   }),
   z.strictObject({
     runType: z.literal('rewrite'),
-    logicalBlockIds: z.array(DraftEntityIdSchema).min(1).max(500),
-    expectedBlockHashes: z.array(DraftContentHashValueSchema).min(1).max(500),
+    scope: z.discriminatedUnion('scopeType', [
+      z.strictObject({
+        scopeType: z.literal('selection'),
+        anchor: RewriteSelectionAnchorSchema,
+      }),
+      z
+        .strictObject({
+          scopeType: z.literal('blocks'),
+          logicalBlockIds: z.array(DraftEntityIdSchema).min(1).max(500),
+          expectedBlockHashes: z.array(DraftContentHashValueSchema).min(1).max(500),
+        })
+        .refine((scope) => scope.logicalBlockIds.length === scope.expectedBlockHashes.length, {
+          path: ['expectedBlockHashes'],
+          message: 'Every rewrite block requires one expected content hash.',
+        }),
+    ]),
     instruction: z.string().trim().min(1).max(8_000),
+    targetLanguage: z.string().min(2).max(32).default('zh-CN'),
   }),
   z.strictObject({
     runType: z.literal('merge'),
-    candidateIds: z.array(DraftEntityIdSchema).min(2).max(20),
+    mapping: MergeSourceMappingSchema,
     instruction: z.string().trim().min(1).max(8_000).optional(),
+    targetLanguage: z.string().min(2).max(32).default('zh-CN'),
   }),
   z.strictObject({
     runType: z.literal('validate'),
@@ -115,20 +215,7 @@ const generationIntentSchemas = [
   }),
 ] as const;
 
-export const GenerationIntentSchema = z
-  .discriminatedUnion('runType', generationIntentSchemas)
-  .superRefine((value, context) => {
-    if (
-      value.runType === 'rewrite' &&
-      value.logicalBlockIds.length !== value.expectedBlockHashes.length
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['expectedBlockHashes'],
-        message: 'Every rewrite block requires one expected content hash.',
-      });
-    }
-  });
+export const GenerationIntentSchema = z.discriminatedUnion('runType', generationIntentSchemas);
 
 export const GenerationStartInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
@@ -136,6 +223,7 @@ export const GenerationStartInputSchema = z.strictObject({
   baseDraftId: DraftEntityIdSchema.nullable().default(null),
   baseDraftRevision: z.number().int().nonnegative().nullable().default(null),
   providerId: ProviderConfigIdSchema,
+  continuationOfRunId: TaskIdSchema.nullable().default(null),
   intent: GenerationIntentSchema,
 });
 
@@ -341,6 +429,9 @@ export const CoreGenerationResultSchema = z.union([
 ]);
 
 export type ChapterGenerationSource = z.infer<typeof ChapterGenerationSourceSchema>;
+export type RewriteSelectionAnchor = z.infer<typeof RewriteSelectionAnchorSchema>;
+export type MergeRangeAnchor = z.infer<typeof MergeRangeAnchorSchema>;
+export type MergeSourceMapping = z.infer<typeof MergeSourceMappingSchema>;
 export type GenerationIntent = z.infer<typeof GenerationIntentSchema>;
 export type GenerationStartInput = z.input<typeof GenerationStartInputSchema>;
 export type GenerationRunType = z.infer<typeof GenerationRunTypeSchema>;

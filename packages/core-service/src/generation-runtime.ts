@@ -6,6 +6,7 @@ import {
   type CandidateBlockInput,
   type ErrorCode,
   type GenerationRequest,
+  type GenerationResultRef,
   type GenerationRun,
   type ProviderEvent,
 } from '@worldforge/contracts';
@@ -15,6 +16,7 @@ import {
   type GenerationProseCandidateInput,
   type GenerationRunCreateInput,
   type GenerationRunService,
+  type GenerationUsage,
 } from './generation-run.js';
 import { TaskProtocolError, type RunningTask, type TaskProtocol } from './task-protocol.js';
 
@@ -40,6 +42,23 @@ export interface StartProseGenerationInput {
 export interface StartedGeneration {
   readonly run: GenerationRun;
   readonly taskId: string;
+}
+
+export interface StartStructuredGenerationInput {
+  readonly requestId: string;
+  readonly run: GenerationRunCreateInput;
+  readonly provider: GenerationRuntimeProvider;
+  readonly requestFor: (runId: string) => GenerationRequest;
+  readonly partialOnFailure: boolean;
+  readonly complete: (
+    runId: string,
+    text: string,
+    usage: GenerationUsage,
+  ) => Promise<{
+    readonly run: GenerationRun;
+    readonly candidateIds: readonly string[];
+    readonly resultRefs: readonly GenerationResultRef[];
+  }>;
 }
 
 interface Execution {
@@ -98,6 +117,25 @@ export class GenerationRuntime {
       initialStage: 'queued',
     });
     const completion = this.#execute(run, task, input);
+    this.#executions.set(run.runId, {
+      projectId: run.projectId,
+      taskId: run.taskId,
+      completion,
+    });
+    this.#trimExecutions();
+    return { run, taskId: task.taskId };
+  }
+
+  async startStructured(input: StartStructuredGenerationInput): Promise<StartedGeneration> {
+    const run = await this.#runs.create(input.requestId, input.run);
+    const task = this.#tasks.startTask({
+      taskId: run.taskId,
+      taskType: run.runType,
+      projectId: run.projectId,
+      runId: run.runId,
+      initialStage: 'queued',
+    });
+    const completion = this.#executeStructured(run, task, input);
     this.#executions.set(run.runId, {
       projectId: run.projectId,
       taskId: run.taskId,
@@ -247,6 +285,113 @@ export class GenerationRuntime {
           errorCode: mapped.code,
           retryable: mapped.retryable,
           ...(text ? { partialText: text } : {}),
+        });
+      } catch (persistenceError) {
+        if (!(
+          persistenceError instanceof GenerationRunServiceError &&
+          persistenceError.code === 'GENERATION_RUN_TERMINAL'
+        )) {
+          task.fail('COMMON_INTERNAL_999', false);
+          return;
+        }
+      }
+      task.fail(mapped.code, mapped.retryable);
+    }
+  }
+
+  async #executeStructured(
+    initialRun: GenerationRun,
+    task: RunningTask,
+    input: StartStructuredGenerationInput,
+  ): Promise<void> {
+    let text = '';
+    let usage: GenerationUsage = {};
+    try {
+      await this.#runs.markRunning(randomUUID(), {
+        projectId: initialRun.projectId,
+        runId: initialRun.runId,
+      });
+      task.setStage('calling_model', '正在请求模型');
+      await this.#runs.markStage(randomUUID(), {
+        projectId: initialRun.projectId,
+        runId: initialRun.runId,
+        stage: 'calling_model',
+      });
+      const request = validateRequest(initialRun, input.requestFor(initialRun.runId));
+      let completed = false;
+      for await (const event of input.provider.generate(request, task.signal)) {
+        switch (event.type) {
+          case 'connected':
+            task.setStage('receiving_output', '正在接收模型输出');
+            await this.#runs.markStage(randomUUID(), {
+              projectId: initialRun.projectId,
+              runId: initialRun.runId,
+              stage: 'receiving_output',
+            });
+            break;
+          case 'delta':
+            if (text.length + event.text.length > MAX_GENERATION_TEXT_CHARACTERS) {
+              throw Object.assign(new Error('Generation output exceeded the safe text limit.'), {
+                code: 'AI_OUTPUT_INVALID_008',
+                retryable: false,
+              });
+            }
+            text += event.text;
+            task.pushDelta(event.text);
+            break;
+          case 'usage':
+            usage = {
+              ...(event.inputTokens === undefined ? {} : { inputTokens: event.inputTokens }),
+              ...(event.outputTokens === undefined ? {} : { outputTokens: event.outputTokens }),
+            };
+            task.reportUsage(usage);
+            break;
+          case 'completed':
+            completed = true;
+            break;
+          case 'warning':
+            break;
+        }
+      }
+      if (task.signal.aborted) return;
+      if (!completed) {
+        throw Object.assign(new Error('The Provider stream ended without completion.'), {
+          code: 'AI_STREAM_INTERRUPTED_009',
+          retryable: true,
+        });
+      }
+      if (!text.trim()) {
+        throw Object.assign(new Error('The Provider returned no structured result.'), {
+          code: 'AI_OUTPUT_INVALID_008',
+          retryable: false,
+        });
+      }
+      task.setStage('parsing_output', '正在校验结构化输出');
+      await this.#runs.markStage(randomUUID(), {
+        projectId: initialRun.projectId,
+        runId: initialRun.runId,
+        stage: 'parsing_output',
+      });
+      task.setStage('saving_candidate', '正在保存候选', { cancellable: false });
+      await this.#runs.markStage(randomUUID(), {
+        projectId: initialRun.projectId,
+        runId: initialRun.runId,
+        stage: 'saving_candidate',
+      });
+      const result = await input.complete(initialRun.runId, text, usage);
+      for (const candidateId of result.candidateIds) task.saveCandidate(candidateId, 'complete');
+      for (const resultRef of result.resultRefs) task.saveResult(resultRef);
+      task.completeResults(result.resultRefs);
+    } catch (error) {
+      if (task.signal.aborted) return;
+      const mapped = runtimeError(error);
+      try {
+        await this.#runs.fail(randomUUID(), {
+          projectId: initialRun.projectId,
+          runId: initialRun.runId,
+          errorCode: mapped.code,
+          retryable: mapped.retryable,
+          ...(text && input.partialOnFailure ? { partialText: text } : {}),
         });
       } catch (persistenceError) {
         if (!(

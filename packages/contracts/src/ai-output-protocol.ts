@@ -122,6 +122,10 @@ export const SkeletonCandidateOutputSchema = z
     }
   });
 
+export const SkeletonCandidateBatchOutputSchema = z.strictObject({
+  candidates: z.array(SkeletonCandidateOutputSchema).min(1).max(5),
+});
+
 export const ChapterCandidateBlockSchema = z.strictObject({
   temporaryId: z.string().min(1).max(128),
   beatId: z.string().min(1).max(128).optional(),
@@ -148,6 +152,7 @@ export const ChapterCandidateOutputSchema = z
   });
 
 export const SkeletonCandidateJsonSchema = z.toJSONSchema(SkeletonCandidateOutputSchema);
+export const SkeletonCandidateBatchJsonSchema = z.toJSONSchema(SkeletonCandidateBatchOutputSchema);
 export const ChapterCandidateJsonSchema = z.toJSONSchema(ChapterCandidateOutputSchema);
 
 export const ModelSupportStatusSchema = z.enum(['verified', 'limited', 'unverified']);
@@ -182,7 +187,7 @@ export const SkeletonPromptInputSchema = z.strictObject({
   constraintHash: ConstraintHashSchema,
   targetLanguage: z.string().min(2).max(32),
   chapterGoal: z.string().min(1).max(32_768),
-  requiredBeats: z.array(RequiredBeatSchema).min(1).max(256),
+  requiredBeats: z.array(RequiredBeatSchema).max(256),
   tendency: z.string().min(1).max(512),
 });
 
@@ -199,6 +204,7 @@ export const ChapterPromptInputSchema = z.strictObject({
 export const PromptConstraintContextSchema = z.string().min(1).max(2_000_000);
 export const ProductionSkeletonPromptInputSchema = SkeletonPromptInputSchema.extend({
   constraintContext: PromptConstraintContextSchema,
+  candidateCount: z.number().int().min(1).max(5).default(3),
 }).strict();
 
 export const ResolvedChapterGenerationSourceSchema = z.discriminatedUnion('sourceType', [
@@ -226,6 +232,15 @@ export const ProductionChapterPromptInputSchema = z.strictObject({
   targetCharacters: z.number().int().positive().max(200_000),
   styleInstructions: z.array(z.string().trim().min(1).max(2_000)).max(32).default([]),
   outputMode: PromptOutputModeSchema,
+  continuation: z
+    .strictObject({
+      originalRunId: z.uuid(),
+      receivedText: z.string().min(1).max(2_000_000),
+      originalPromptId: PromptIdSchema,
+      originalPromptVersion: z.number().int().positive(),
+      originalConstraintHash: ConstraintHashSchema,
+    })
+    .optional(),
 });
 
 export const RewritePromptInputSchema = z.strictObject({
@@ -311,6 +326,7 @@ export type PromptMetadata = z.infer<typeof PromptMetadataSchema>;
 export type GenerationRequest = z.infer<typeof GenerationRequestSchema>;
 export type ProviderEvent = z.infer<typeof ProviderEventSchema>;
 export type SkeletonCandidateOutput = z.infer<typeof SkeletonCandidateOutputSchema>;
+export type SkeletonCandidateBatchOutput = z.infer<typeof SkeletonCandidateBatchOutputSchema>;
 export type ChapterCandidateOutput = z.infer<typeof ChapterCandidateOutputSchema>;
 export type ModelSupportProfile = z.infer<typeof ModelSupportProfileSchema>;
 export type ModelSupportStatus = z.infer<typeof ModelSupportStatusSchema>;
@@ -318,6 +334,8 @@ export type SkeletonPromptInput = z.infer<typeof SkeletonPromptInputSchema>;
 export type ChapterPromptInput = z.infer<typeof ChapterPromptInputSchema>;
 export type ProductionSkeletonPromptInput = z.infer<typeof ProductionSkeletonPromptInputSchema>;
 export type ProductionChapterPromptInput = z.infer<typeof ProductionChapterPromptInputSchema>;
+export type RequiredBeat = z.infer<typeof RequiredBeatSchema>;
+export type ResolvedChapterGenerationSource = z.infer<typeof ResolvedChapterGenerationSourceSchema>;
 export type RewritePromptInput = z.infer<typeof RewritePromptInputSchema>;
 export type RewriteOutput = z.infer<typeof RewriteOutputSchema>;
 export type MergePromptInput = z.infer<typeof MergePromptInputSchema>;

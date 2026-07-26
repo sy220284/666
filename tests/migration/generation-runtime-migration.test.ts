@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 describe('M4-04 generation runtime migration', () => {
-  it('installs strict schema 23 with lifecycle and ownership guards', async () => {
+  it('preserves schema 23 lifecycle and ownership guards in the latest schema', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-generation-migration-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
@@ -53,7 +53,7 @@ describe('M4-04 generation runtime migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 23n,
+        schema_version: 24n,
       });
       for (const table of [
         'generation_runs',

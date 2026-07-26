@@ -2,9 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 
 import type {
   CandidateConflictItem,
+  CandidateDocument,
   CandidatePreview,
   CandidateSelection,
   CandidateSummary,
+  GenerationIntent,
+  GenerationRun,
+  MergeSourceMapping,
+  ProviderSummary,
+  RewriteSelectionAnchor,
+  SceneBeat,
   CandidateUndoPreview,
   Chapter,
   DraftDocument,
@@ -69,6 +76,59 @@ interface PersistedEditorSelection {
 }
 
 const persistedSelectionByChapter = new Map<string, PersistedEditorSelection>();
+
+async function sha256Text(value: string): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function captureRewriteSelectionAnchor(
+  instance: Editor,
+  projectId: string,
+  chapter: Chapter,
+  draft: DraftDocument,
+): Promise<RewriteSelectionAnchor | null> {
+  const selection = instance.state.selection;
+  if (selection.empty) return null;
+  const blockAt = (position: typeof selection.$from) => {
+    for (let depth = position.depth; depth >= 1; depth -= 1) {
+      const node = position.node(depth);
+      const attributes = node.attrs as Record<string, unknown>;
+      if (
+        typeof attributes.logicalBlockId === 'string' &&
+        typeof attributes.contentHash === 'string'
+      ) {
+        return { depth, node, attributes };
+      }
+    }
+    return null;
+  };
+  const start = blockAt(selection.$from);
+  const end = blockAt(selection.$to);
+  if (
+    !start ||
+    !end ||
+    start.attributes.logicalBlockId !== end.attributes.logicalBlockId ||
+    start.attributes.locked === true
+  ) {
+    return null;
+  }
+  const selectionStart = selection.from - selection.$from.start(start.depth);
+  const selectionEnd = selection.to - selection.$to.start(end.depth);
+  const selectedText = start.node.textContent.slice(selectionStart, selectionEnd);
+  if (!selectedText) return null;
+  return {
+    projectId,
+    chapterId: chapter.id,
+    draftId: draft.draftId,
+    baseRevision: draft.revision,
+    logicalBlockId: String(start.attributes.logicalBlockId),
+    expectedBlockHash: String(start.attributes.contentHash),
+    selectionStart,
+    selectionEnd,
+    selectedTextHash: await sha256Text(selectedText),
+  };
+}
 
 function selectionKey(projectId: string, chapterId: string): string {
   return `${projectId}:${chapterId}`;
@@ -1077,6 +1137,13 @@ export function WritingWorkbench({
               project={project}
               flush={flush}
               onDraftReplace={replaceDraft}
+              onClose={() => onPanelChange('editor')}
+              getRewriteSelectionAnchor={() => {
+                const instance = editor.current;
+                return instance
+                  ? captureRewriteSelectionAnchor(instance, project.projectId, chapter, draft)
+                  : Promise.resolve(null);
+              }}
             />
           ) : null}
         </main>
@@ -1317,6 +1384,8 @@ function CandidatePanel({
   project,
   flush,
   onDraftReplace,
+  onClose,
+  getRewriteSelectionAnchor,
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly chapter: Chapter;
@@ -1324,6 +1393,8 @@ function CandidatePanel({
   readonly project: ProjectWorkspaceSummary;
   readonly flush: () => Promise<boolean>;
   readonly onDraftReplace: (draft: DraftDocument, message: string) => void;
+  readonly onClose: () => void;
+  readonly getRewriteSelectionAnchor: () => Promise<RewriteSelectionAnchor | null>;
 }) {
   const readOnly = project.databaseMode !== 'read-write';
   const [candidates, setCandidates] = useState<readonly CandidateSummary[]>([]);
@@ -1339,6 +1410,35 @@ function CandidatePanel({
   );
   const [pending, setPending] = useState(false);
   const previewRequest = useRef<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<CandidateDocument | null>(null);
+  const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
+  const [providerId, setProviderId] = useState('');
+  const [sceneBeats, setSceneBeats] = useState<readonly SceneBeat[]>([]);
+  const [generationMode, setGenerationMode] = useState<
+    'skeleton' | 'chapter' | 'rewrite' | 'merge'
+  >('chapter');
+  const [chapterSource, setChapterSource] = useState<
+    'direct_chapter_goal' | 'skeleton_candidate' | 'canonical_scene_beats'
+  >('direct_chapter_goal');
+  const [chapterGoal, setChapterGoal] = useState('');
+  const [tendency, setTendency] = useState('悬疑推进');
+  const [generationInstruction, setGenerationInstruction] = useState('');
+  const [targetCharacters, setTargetCharacters] = useState(3_000);
+  const [candidateCount, setCandidateCount] = useState(3);
+  const [selectedSkeletonId, setSelectedSkeletonId] = useState('');
+  const [acknowledgeStaleSkeleton, setAcknowledgeStaleSkeleton] = useState(false);
+  const [mergeCandidateIds, setMergeCandidateIds] = useState<Set<string>>(new Set());
+  const [mergeMappingMode, setMergeMappingMode] = useState<'beat' | 'segment'>(
+    sceneBeats.length ? 'beat' : 'segment',
+  );
+  const [mergeBeatSources, setMergeBeatSources] = useState<Record<string, string>>({});
+  const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
+  const [selectedRun, setSelectedRun] = useState<GenerationRun | null>(null);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [generationStatus, setGenerationStatus] = useState('选择Provider后可生成候选。');
+  const [skeletonEndingHook, setSkeletonEndingHook] = useState('');
+  const [skeletonTendency, setSkeletonTendency] = useState('');
+  const [lastGenerationIntent, setLastGenerationIntent] = useState<GenerationIntent | null>(null);
 
   const refreshList = useCallback(async (): Promise<readonly CandidateSummary[]> => {
     const outcome = await bridge.candidate.list(project.projectId, chapter.id, {
@@ -1406,6 +1506,7 @@ function CandidatePanel({
         return;
       }
       setPreview(outcome.data);
+      setSelectedDocument(outcome.data.candidate);
       setSelectionMode(outcome.data.candidate.completeness === 'partial' ? 'blocks' : 'all');
       setSelectedBlocks(
         new Set(outcome.data.candidate.blocks.map((block) => block.candidateBlockId)),
@@ -1425,6 +1526,47 @@ function CandidatePanel({
     [bridge, chapter.id, loadUndo, project.projectId],
   );
 
+  const loadCandidate = useCallback(
+    async (nextCandidateId: string): Promise<void> => {
+      if (!nextCandidateId) return;
+      const outcome = await bridge.candidate.get({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        candidateId: nextCandidateId,
+      });
+      if (outcome.state !== 'success') {
+        if (outcome.state === 'failure') setStatus(`候选读取失败 · ${outcome.error.code}`);
+        return;
+      }
+      setSelectedDocument(outcome.data);
+      if (outcome.data.generationRunId) {
+        const runOutcome = await bridge.generation.getRun(
+          project.projectId,
+          outcome.data.generationRunId,
+        );
+        setSelectedRun(runOutcome.state === 'success' ? runOutcome.data : null);
+      } else {
+        setSelectedRun(null);
+      }
+      if (outcome.data.candidateType === 'skeleton') {
+        setPreview(null);
+        setUndoPreview(null);
+        setConflicts([]);
+        setSelectedSkeletonId(outcome.data.candidateId);
+        setSkeletonEndingHook(outcome.data.structuredPayload.endingHook);
+        setSkeletonTendency(outcome.data.structuredPayload.tendency);
+        setStatus(
+          outcome.data.sourceState === 'stale'
+            ? '骨架来源已变化；进入T1前需要明确确认或重新生成。'
+            : `骨架修订 ${outcome.data.skeletonRevision} · 可编辑或作为T1来源。`,
+        );
+        return;
+      }
+      await loadPreview(nextCandidateId);
+    },
+    [bridge, chapter.id, loadPreview, project.projectId],
+  );
+
   useEffect(() => {
     void refreshList().then((items) => {
       const first = items[0];
@@ -1435,13 +1577,99 @@ function CandidatePanel({
         return;
       }
       setCandidateId(first.candidateId);
-      void loadPreview(first.candidateId);
+      void loadCandidate(first.candidateId);
     });
     return () => {
       const requestId = previewRequest.current;
       if (requestId) void bridge.candidateAction.cancelPreview(requestId);
     };
-  }, [bridge, loadPreview, refreshList]);
+  }, [bridge, loadCandidate, refreshList]);
+
+  useEffect(() => {
+    void Promise.all([
+      bridge.providers.list(),
+      bridge.planning.listSceneBeats({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      }),
+    ]).then(([providerOutcome, beatOutcome]) => {
+      if (providerOutcome.state === 'success') {
+        setProviders(providerOutcome.data.providers);
+        setProviderId((current) => current || providerOutcome.data.providers[0]?.id || '');
+      }
+      if (beatOutcome.state === 'success') {
+        setSceneBeats(beatOutcome.data.beats);
+        setMergeMappingMode(beatOutcome.data.beats.length ? 'beat' : 'segment');
+      }
+    });
+  }, [bridge, chapter.id, project.projectId]);
+
+  const refreshActiveRun = useCallback(async (): Promise<void> => {
+    if (!activeRun) return;
+    const outcome = await bridge.generation.getRun(project.projectId, activeRun.runId);
+    if (outcome.state !== 'success') return;
+    setActiveRun(outcome.data);
+    setGenerationStatus(
+      `${outcome.data.stage} · ${outcome.data.status}${
+        outcome.data.outputTokens === null ? '' : ` · 输出 ${outcome.data.outputTokens} tokens`
+      }`,
+    );
+    if (
+      outcome.data.status === 'succeeded' ||
+      outcome.data.status === 'failed' ||
+      outcome.data.status === 'cancelled'
+    ) {
+      setActiveTaskId(null);
+      const items = await refreshList();
+      const firstResult = outcome.data.resultRefs.find(
+        (result) => result.resultType === 'candidate',
+      );
+      const candidate = firstResult
+        ? items.find((item) => item.candidateId === firstResult.resultId)
+        : undefined;
+      if (candidate) {
+        setCandidateId(candidate.candidateId);
+        await loadCandidate(candidate.candidateId);
+      }
+    }
+  }, [activeRun, bridge, loadCandidate, project.projectId, refreshList]);
+
+  useEffect(() => {
+    if (!activeTaskId) return;
+    const unsubscribe = bridge.task.subscribe((update) => {
+      const taskId = update.kind === 'event' ? update.event.taskId : update.snapshot.taskId;
+      if (taskId !== activeTaskId) return;
+      if (update.kind === 'event') {
+        if (update.event.type === 'ai.stage') {
+          setGenerationStatus(`${update.event.payload.message} · ${update.event.payload.stage}`);
+        } else if (update.event.type === 'ai.delta') {
+          setGenerationStatus(`正在接收建议稿 · ${update.event.payload.receivedChars} 字符`);
+        } else if (
+          update.event.type === 'ai.completed' ||
+          update.event.type === 'ai.failed' ||
+          update.event.type === 'ai.cancelled'
+        ) {
+          void refreshActiveRun();
+        }
+      } else {
+        setGenerationStatus(
+          `${update.snapshot.stage} · ${update.snapshot.status} · ${update.snapshot.receivedChars} 字符`,
+        );
+        if (
+          update.snapshot.status === 'succeeded' ||
+          update.snapshot.status === 'failed' ||
+          update.snapshot.status === 'cancelled'
+        ) {
+          void refreshActiveRun();
+        }
+      }
+    }, project.projectId);
+    const timer = setInterval(() => void refreshActiveRun(), 1_000);
+    return () => {
+      clearInterval(timer);
+      unsubscribe();
+    };
+  }, [activeTaskId, bridge, project.projectId, refreshActiveRun]);
 
   const selection = useMemo<CandidateSelection | null>(() => {
     if (!preview) return null;
@@ -1470,25 +1698,34 @@ function CandidatePanel({
 
   const discard = async (): Promise<void> => {
     if (
-      !preview ||
-      preview.candidate.status !== 'pending' ||
+      !selectedDocument ||
+      selectedDocument.status !== 'pending' ||
       !window.confirm('丢弃后不能再采用，Draft不会改变。继续吗？')
     )
       return;
     const outcome = await bridge.candidate.discard({
       projectId: project.projectId,
       chapterId: chapter.id,
-      candidateId: preview.candidate.candidateId,
+      candidateId: selectedDocument.candidateId,
     });
     if (outcome.state === 'success') {
-      setPreview({
-        ...preview,
-        candidate: {
-          ...preview.candidate,
-          status: outcome.data.status,
-          resolvedAt: outcome.data.resolvedAt,
-        },
-      });
+      setSelectedDocument((current) =>
+        current
+          ? { ...current, status: outcome.data.status, resolvedAt: outcome.data.resolvedAt }
+          : current,
+      );
+      setPreview((current) =>
+        current
+          ? {
+              ...current,
+              candidate: {
+                ...current.candidate,
+                status: outcome.data.status,
+                resolvedAt: outcome.data.resolvedAt,
+              },
+            }
+          : current,
+      );
       await refreshList();
       setStatus('候选已丢弃，Draft 未改变。');
     } else if (outcome.state === 'failure') setStatus(`丢弃失败 · ${outcome.error.code}`);
@@ -1566,14 +1803,639 @@ function CandidatePanel({
     setStatus('已撤销本次应用。');
   };
 
+  const skeletonCandidates = candidates.filter(
+    (candidate): candidate is Extract<CandidateSummary, { candidateType: 'skeleton' }> =>
+      candidate.candidateType === 'skeleton' && candidate.status !== 'discarded',
+  );
+  const proseCandidates = candidates.filter(
+    (candidate) => candidate.candidateType !== 'skeleton' && candidate.status !== 'discarded',
+  );
+
+  const startGeneration = async (
+    continuationOfRunId: string | null = null,
+    intentOverride: GenerationIntent | null = null,
+  ): Promise<void> => {
+    if (!providerId || readOnly || !(await flush())) return;
+    if (
+      !continuationOfRunId &&
+      !intentOverride &&
+      generationMode === 'skeleton' &&
+      !chapterGoal.trim()
+    ) {
+      setGenerationStatus('请先填写本章目标。');
+      return;
+    }
+    if (
+      !continuationOfRunId &&
+      !intentOverride &&
+      generationMode === 'chapter' &&
+      chapterSource === 'direct_chapter_goal' &&
+      !chapterGoal.trim()
+    ) {
+      setGenerationStatus('直接生成正文需要本章目标。');
+      return;
+    }
+    if (
+      !continuationOfRunId &&
+      !intentOverride &&
+      generationMode === 'chapter' &&
+      chapterSource === 'skeleton_candidate' &&
+      !selectedSkeletonId
+    ) {
+      setGenerationStatus('请选择一个骨架候选。');
+      return;
+    }
+    if (
+      !continuationOfRunId &&
+      !intentOverride &&
+      generationMode === 'chapter' &&
+      chapterSource === 'canonical_scene_beats' &&
+      sceneBeats.length === 0
+    ) {
+      setGenerationStatus('当前章节没有可用于生成的 SceneBeat。');
+      return;
+    }
+    if (
+      !continuationOfRunId &&
+      !intentOverride &&
+      generationMode === 'rewrite' &&
+      !generationInstruction.trim()
+    ) {
+      setGenerationStatus('请填写改写指令。');
+      return;
+    }
+    setPending(true);
+    setGenerationStatus('正在校验权威输入并组装约束…');
+    let intent: GenerationIntent;
+    if (intentOverride) {
+      intent = intentOverride;
+    } else if (continuationOfRunId) {
+      intent = {
+        runType: 'chapter',
+        source: {
+          sourceType: 'direct_chapter_goal',
+          chapterGoal: chapterGoal.trim() || '从已保存的部分结果继续本章，不重复已有正文。',
+        },
+        targetLanguage: 'zh-CN',
+        targetCharacters,
+        styleInstructions: generationInstruction.trim() ? [generationInstruction.trim()] : [],
+      };
+    } else if (generationMode === 'skeleton') {
+      intent = {
+        runType: 'skeleton',
+        chapterGoal: chapterGoal.trim(),
+        tendency: tendency.trim(),
+        targetLanguage: 'zh-CN',
+        candidateCount,
+        requiredSceneBeatIds: sceneBeats.filter((beat) => beat.required).map((beat) => beat.id),
+      };
+    } else if (generationMode === 'chapter') {
+      intent = {
+        runType: 'chapter',
+        source:
+          chapterSource === 'skeleton_candidate'
+            ? {
+                sourceType: 'skeleton_candidate',
+                selectedSkeletonCandidateId: selectedSkeletonId,
+                acknowledgeStaleSource: acknowledgeStaleSkeleton,
+              }
+            : chapterSource === 'canonical_scene_beats'
+              ? {
+                  sourceType: 'canonical_scene_beats',
+                  sceneBeatIds: sceneBeats.map((beat) => beat.id),
+                }
+              : {
+                  sourceType: 'direct_chapter_goal',
+                  chapterGoal: chapterGoal.trim(),
+                },
+        targetLanguage: 'zh-CN',
+        targetCharacters,
+        styleInstructions: generationInstruction.trim() ? [generationInstruction.trim()] : [],
+      };
+    } else if (generationMode === 'rewrite') {
+      const anchor = await getRewriteSelectionAnchor();
+      const eligible = draft.blocks.filter((block) => !block.locked && block.contentHash);
+      if (!anchor && eligible.length === 0) {
+        setGenerationStatus('没有可改写的未锁定正文块。');
+        setPending(false);
+        return;
+      }
+      intent = {
+        runType: 'rewrite',
+        scope: anchor
+          ? { scopeType: 'selection', anchor }
+          : {
+              scopeType: 'blocks',
+              logicalBlockIds: eligible.map((block) => block.logicalBlockId),
+              expectedBlockHashes: eligible.map((block) => block.contentHash!),
+            },
+        instruction: generationInstruction.trim(),
+        targetLanguage: 'zh-CN',
+      };
+    } else {
+      const chosenBeatSources = Object.entries(mergeBeatSources).filter(([, source]) => source);
+      if (
+        (mergeMappingMode === 'segment' && mergeCandidateIds.size < 2) ||
+        (mergeMappingMode === 'beat' && chosenBeatSources.length < 2)
+      ) {
+        setGenerationStatus('融合至少需要两个明确的来源单元。');
+        setPending(false);
+        return;
+      }
+      const requestedCandidateIds =
+        mergeMappingMode === 'beat'
+          ? [
+              ...new Set(
+                chosenBeatSources.flatMap(([, source]) =>
+                  source === 'current_draft' ? [] : [source],
+                ),
+              ),
+            ]
+          : [...mergeCandidateIds];
+      const documents = await Promise.all(
+        requestedCandidateIds.map((id) =>
+          bridge.candidate.get({
+            projectId: project.projectId,
+            chapterId: chapter.id,
+            candidateId: id,
+          }),
+        ),
+      );
+      if (
+        documents.some(
+          (outcome) => outcome.state !== 'success' || outcome.data.candidateType === 'skeleton',
+        )
+      ) {
+        setGenerationStatus('融合来源读取失败或包含骨架。');
+        setPending(false);
+        return;
+      }
+      const documentsById = new Map(
+        documents.flatMap((outcome) =>
+          outcome.state === 'success' && outcome.data.candidateType !== 'skeleton'
+            ? [[outcome.data.candidateId, outcome.data] as const]
+            : [],
+        ),
+      );
+      const mapping: MergeSourceMapping =
+        mergeMappingMode === 'beat'
+          ? {
+              mappingType: 'beat',
+              units: chosenBeatSources.map(([sceneBeatId, source]) =>
+                source === 'current_draft'
+                  ? {
+                      sceneBeatId,
+                      sourceCandidateId: null,
+                      sourceBlockIds: [],
+                      keepCurrentDraft: true,
+                    }
+                  : {
+                      sceneBeatId,
+                      sourceCandidateId: source,
+                      sourceBlockIds:
+                        documentsById
+                          .get(source)
+                          ?.blocks.filter((block) => block.beatId === sceneBeatId)
+                          .map((block) => block.candidateBlockId) ?? [],
+                      keepCurrentDraft: false,
+                    },
+              ),
+            }
+          : {
+              mappingType: 'segment',
+              units: documents.map((outcome, index) => {
+                if (outcome.state !== 'success' || outcome.data.candidateType === 'skeleton') {
+                  throw new Error('MERGE_SOURCE_INVALID');
+                }
+                return {
+                  segmentId: crypto.randomUUID(),
+                  sourceType: 'candidate' as const,
+                  candidateId: outcome.data.candidateId,
+                  sourceBlockIds: outcome.data.blocks.map((block) => block.candidateBlockId),
+                  order: index + 1,
+                };
+              }),
+            };
+      if (
+        mapping.mappingType === 'beat' &&
+        mapping.units.some((unit) => !unit.keepCurrentDraft && unit.sourceBlockIds.length === 0)
+      ) {
+        setGenerationStatus('所选候选没有关联到对应 SceneBeat 的正文块，请改用 Segment 融合。');
+        setPending(false);
+        return;
+      }
+      intent = {
+        runType: 'merge',
+        mapping,
+        ...(generationInstruction.trim() ? { instruction: generationInstruction.trim() } : {}),
+        targetLanguage: 'zh-CN',
+      };
+    }
+    setLastGenerationIntent(intent);
+    const outcome = await bridge.generation.start({
+      projectId: project.projectId,
+      chapterId: chapter.id,
+      baseDraftId: draft.draftId,
+      baseDraftRevision: draft.revision,
+      providerId,
+      continuationOfRunId,
+      intent,
+    });
+    setPending(false);
+    if (outcome.state !== 'success') {
+      setGenerationStatus(
+        outcome.state === 'failure'
+          ? `生成未启动 · ${outcome.error.code}`
+          : '生成请求已取消或被新请求替代。',
+      );
+      return;
+    }
+    setActiveRun(outcome.data.run);
+    setActiveTaskId(outcome.data.taskId);
+    setGenerationStatus(`任务已启动 · ${outcome.data.run.stage}`);
+  };
+
+  const cancelGeneration = async (): Promise<void> => {
+    if (!activeRun) return;
+    const outcome = await bridge.generation.cancel({
+      projectId: project.projectId,
+      runId: activeRun.runId,
+    });
+    if (outcome.state === 'success') {
+      setActiveRun(outcome.data);
+      setGenerationStatus(
+        outcome.data.partialStatus === 'available'
+          ? '生成已取消；可保存或丢弃已收到的部分。'
+          : '生成已取消。',
+      );
+    }
+  };
+
+  const decidePartial = async (decision: 'save' | 'discard'): Promise<void> => {
+    if (!activeRun) return;
+    const input = { projectId: project.projectId, runId: activeRun.runId };
+    const outcome =
+      decision === 'save'
+        ? await bridge.generation.savePartial(input)
+        : await bridge.generation.discardPartial(input);
+    if (outcome.state !== 'success') return;
+    setActiveRun(outcome.data.run);
+    setGenerationStatus(decision === 'save' ? '部分结果已保存为受限候选。' : '部分结果已丢弃。');
+    await refreshList();
+  };
+
+  const saveSkeletonEdit = async (): Promise<void> => {
+    if (!selectedDocument || selectedDocument.candidateType !== 'skeleton' || readOnly) return;
+    const outcome = await bridge.candidate.editSkeleton({
+      projectId: project.projectId,
+      chapterId: chapter.id,
+      candidateId: selectedDocument.candidateId,
+      expectedSkeletonRevisionId: selectedDocument.skeletonRevisionId,
+      structuredPayload: {
+        ...selectedDocument.structuredPayload,
+        tendency: skeletonTendency.trim(),
+        endingHook: skeletonEndingHook.trim(),
+      },
+    });
+    if (outcome.state !== 'success' || outcome.data.candidateType !== 'skeleton') {
+      if (outcome.state === 'failure') setStatus(`骨架修订保存失败 · ${outcome.error.code}`);
+      return;
+    }
+    setSelectedDocument(outcome.data);
+    setSkeletonEndingHook(outcome.data.structuredPayload.endingHook);
+    setSkeletonTendency(outcome.data.structuredPayload.tendency);
+    await refreshList();
+    setStatus(`骨架修订 ${outcome.data.skeletonRevision} 已保存。`);
+  };
+
   return (
     <section className="candidate-workbench" data-candidate-preview-dialog>
       <header className="feature-card__heading">
         <div>
-          <h2>Candidate预览、采用与撤销</h2>
-          <p>结构差异和中文字符差异基于已保存Draft计算。</p>
+          <h2>AI 创作与 Candidate 工作台</h2>
+          <p>生成只读取已保存的权威数据；骨架与正文候选使用独立的审阅、采用规则。</p>
         </div>
       </header>
+      <section className="generation-studio" data-generation-studio>
+        <header>
+          <div>
+            <h3>生成任务</h3>
+            <p>进度来自持久化 GenerationRun 与任务事件，不使用模拟百分比。</p>
+          </div>
+          <span
+            className="generation-run-state"
+            data-generation-run-status
+            data-status={activeRun?.status ?? 'idle'}
+          >
+            {generationStatus}
+          </span>
+        </header>
+        <div className="generation-grid">
+          <label>
+            任务
+            <select
+              data-generation-mode
+              value={generationMode}
+              onChange={(event) => setGenerationMode(event.target.value as typeof generationMode)}
+            >
+              <option value="skeleton">T0 · 生成骨架</option>
+              <option value="chapter">T1 · 生成正文</option>
+              <option value="rewrite">快速改写</option>
+              <option value="merge">融合候选</option>
+            </select>
+          </label>
+          <label>
+            Provider
+            <select
+              data-generation-provider
+              value={providerId}
+              onChange={(event) => setProviderId(event.target.value)}
+            >
+              <option value="">请选择</option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name} · {provider.model}
+                </option>
+              ))}
+            </select>
+          </label>
+          {generationMode === 'chapter' ? (
+            <label>
+              正文来源
+              <select
+                data-chapter-generation-source
+                value={chapterSource}
+                onChange={(event) => setChapterSource(event.target.value as typeof chapterSource)}
+              >
+                <option value="direct_chapter_goal">直接章节目标</option>
+                <option value="skeleton_candidate">已选骨架</option>
+                <option value="canonical_scene_beats">正式 SceneBeat</option>
+              </select>
+            </label>
+          ) : null}
+          {generationMode === 'skeleton' ? (
+            <>
+              <label>
+                候选数
+                <input
+                  data-skeleton-candidate-count
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={candidateCount}
+                  onChange={(event) =>
+                    setCandidateCount(Math.max(1, Math.min(5, Number(event.target.value) || 1)))
+                  }
+                />
+              </label>
+              <label>
+                叙事倾向
+                <input
+                  data-skeleton-tendency
+                  value={tendency}
+                  onChange={(event) => setTendency(event.target.value)}
+                />
+              </label>
+            </>
+          ) : null}
+          {generationMode === 'chapter' && chapterSource === 'skeleton_candidate' ? (
+            <label>
+              骨架
+              <select
+                data-selected-skeleton
+                value={selectedSkeletonId}
+                onChange={(event) => {
+                  setSelectedSkeletonId(event.target.value);
+                  setAcknowledgeStaleSkeleton(false);
+                }}
+              >
+                <option value="">请选择</option>
+                {skeletonCandidates.map((candidate) => (
+                  <option key={candidate.candidateId} value={candidate.candidateId}>
+                    {candidate.title} · 修订 {candidate.skeletonRevision}
+                    {candidate.sourceState === 'stale' ? ' · 来源已变化' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {generationMode === 'chapter' ? (
+            <label>
+              目标字数
+              <input
+                data-generation-target-characters
+                type="number"
+                min={100}
+                max={200_000}
+                step={100}
+                value={targetCharacters}
+                onChange={(event) =>
+                  setTargetCharacters(
+                    Math.max(100, Math.min(200_000, Number(event.target.value) || 100)),
+                  )
+                }
+              />
+            </label>
+          ) : null}
+        </div>
+        {(generationMode === 'skeleton' ||
+          (generationMode === 'chapter' && chapterSource === 'direct_chapter_goal')) && (
+          <label className="generation-wide-field">
+            本章目标
+            <textarea
+              data-generation-chapter-goal
+              rows={3}
+              value={chapterGoal}
+              onChange={(event) => setChapterGoal(event.target.value)}
+              placeholder="描述这一章必须推进的事件、冲突与结果。"
+            />
+          </label>
+        )}
+        {generationMode === 'rewrite' ||
+        generationMode === 'merge' ||
+        generationMode === 'chapter' ? (
+          <label className="generation-wide-field">
+            {generationMode === 'rewrite'
+              ? '改写指令'
+              : generationMode === 'merge'
+                ? '融合偏好（可选）'
+                : '风格补充（可选）'}
+            <textarea
+              data-generation-instruction
+              rows={2}
+              value={generationInstruction}
+              onChange={(event) => setGenerationInstruction(event.target.value)}
+              placeholder={
+                generationMode === 'rewrite'
+                  ? '优先改写编辑器中的单块选区；没有选区时改写全部未锁定块。'
+                  : '只填写本次任务需要的额外要求。'
+              }
+            />
+          </label>
+        ) : null}
+        {generationMode === 'chapter' &&
+        chapterSource === 'skeleton_candidate' &&
+        skeletonCandidates.some(
+          (candidate) =>
+            candidate.candidateId === selectedSkeletonId && candidate.sourceState === 'stale',
+        ) ? (
+          <label className="safety-inline generation-acknowledgement">
+            <input
+              type="checkbox"
+              checked={acknowledgeStaleSkeleton}
+              onChange={(event) => setAcknowledgeStaleSkeleton(event.target.checked)}
+            />
+            我已知晓正式 SceneBeat 或基础稿已变化，仍使用此骨架生成正文
+          </label>
+        ) : null}
+        {generationMode === 'merge' ? (
+          <fieldset className="candidate-choice-list" data-merge-candidate-picker>
+            <legend>融合来源映射</legend>
+            {sceneBeats.length ? (
+              <label>
+                映射方式
+                <select
+                  data-merge-mapping-mode
+                  value={mergeMappingMode}
+                  onChange={(event) =>
+                    setMergeMappingMode(event.target.value as typeof mergeMappingMode)
+                  }
+                >
+                  <option value="beat">按正式 SceneBeat</option>
+                  <option value="segment">按候选片段</option>
+                </select>
+              </label>
+            ) : null}
+            {mergeMappingMode === 'beat' && sceneBeats.length ? (
+              sceneBeats.map((beat) => (
+                <label key={beat.id}>
+                  {beat.title}
+                  <select
+                    value={mergeBeatSources[beat.id] ?? ''}
+                    onChange={(event) =>
+                      setMergeBeatSources((current) => ({
+                        ...current,
+                        [beat.id]: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">不参与本次融合</option>
+                    <option value="current_draft">保留当前稿</option>
+                    {proseCandidates.map((candidate) => (
+                      <option key={candidate.candidateId} value={candidate.candidateId}>
+                        {candidate.title} · {candidate.candidateType}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))
+            ) : (
+              <>
+                <p>选择至少两个正文候选；候选无 Beat 关联时使用此模式。</p>
+                {proseCandidates.map((candidate) => (
+                  <label key={candidate.candidateId}>
+                    <input
+                      type="checkbox"
+                      checked={mergeCandidateIds.has(candidate.candidateId)}
+                      onChange={(event) =>
+                        setMergeCandidateIds(
+                          toggleSet(mergeCandidateIds, candidate.candidateId, event.target.checked),
+                        )
+                      }
+                    />
+                    {candidate.title} · {candidate.candidateType} · {candidate.completeness}
+                  </label>
+                ))}
+              </>
+            )}
+          </fieldset>
+        ) : null}
+        {generationMode === 'rewrite' ? (
+          <p className="feature-status">
+            选择同一正文块内的文字可精确改写；跨块、空选区或锁定块不会作为选区来源。
+          </p>
+        ) : null}
+        <div className="inline-actions">
+          <button
+            className="primary-button"
+            data-start-generation
+            type="button"
+            disabled={
+              pending ||
+              readOnly ||
+              !providerId ||
+              activeRun?.status === 'queued' ||
+              activeRun?.status === 'running'
+            }
+            onClick={() => void startGeneration()}
+          >
+            开始生成
+          </button>
+          <button
+            data-cancel-generation
+            type="button"
+            disabled={
+              !activeRun || (activeRun.status !== 'queued' && activeRun.status !== 'running')
+            }
+            onClick={() => void cancelGeneration()}
+          >
+            取消生成
+          </button>
+          {activeRun?.partialStatus === 'available' ? (
+            <>
+              <button
+                data-save-partial-candidate
+                type="button"
+                onClick={() => void decidePartial('save')}
+              >
+                保存部分结果
+              </button>
+              <button
+                data-discard-partial-candidate
+                type="button"
+                onClick={() => void decidePartial('discard')}
+              >
+                丢弃部分结果
+              </button>
+            </>
+          ) : null}
+          {lastGenerationIntent?.runType === 'rewrite' &&
+          activeRun?.runType === 'rewrite' &&
+          activeRun.status !== 'queued' &&
+          activeRun.status !== 'running' ? (
+            <button
+              data-retry-rewrite
+              type="button"
+              disabled={pending || readOnly || !providerId}
+              onClick={() => void startGeneration(null, lastGenerationIntent)}
+            >
+              换一个
+            </button>
+          ) : null}
+        </div>
+        {activeRun ? (
+          <dl className="generation-provenance" data-active-generation-run>
+            <div>
+              <dt>Run</dt>
+              <dd>{activeRun.runId}</dd>
+            </div>
+            <div>
+              <dt>Prompt</dt>
+              <dd>
+                {activeRun.promptId} v{activeRun.promptVersion}
+              </dd>
+            </div>
+            <div>
+              <dt>模型</dt>
+              <dd>{activeRun.actualModel}</dd>
+            </div>
+            <div>
+              <dt>支持档位</dt>
+              <dd>{activeRun.supportStatus}</dd>
+            </div>
+          </dl>
+        ) : null}
+      </section>
       <div className="filter-bar">
         <select
           aria-label="选择候选稿"
@@ -1581,7 +2443,7 @@ function CandidatePanel({
           value={candidateId}
           onChange={(event) => {
             setCandidateId(event.target.value);
-            void loadPreview(event.target.value);
+            void loadCandidate(event.target.value);
           }}
         >
           {candidates.map((candidate) => (
@@ -1590,7 +2452,8 @@ function CandidatePanel({
               key={candidate.candidateId}
               value={candidate.candidateId}
             >
-              {candidate.title} · {candidate.status}
+              {candidate.title} · {candidate.candidateType} · {candidate.completeness} ·{' '}
+              {candidate.status}
             </option>
           ))}
         </select>
@@ -1605,7 +2468,7 @@ function CandidatePanel({
         <button
           data-discard-candidate
           type="button"
-          disabled={!preview || preview.candidate.status !== 'pending'}
+          disabled={!selectedDocument || selectedDocument.status !== 'pending'}
           onClick={() => void discard()}
         >
           丢弃候选
@@ -1619,10 +2482,137 @@ function CandidatePanel({
       >
         {status}
       </p>
+      {selectedRun ? (
+        <dl className="generation-provenance" data-selected-candidate-provenance>
+          <div>
+            <dt>来源任务</dt>
+            <dd>{selectedRun.runId}</dd>
+          </div>
+          <div>
+            <dt>Provider / 模型</dt>
+            <dd>
+              {providers.find((provider) => provider.id === selectedRun.providerId)?.name ??
+                selectedRun.providerId}{' '}
+              / {selectedRun.actualModel}
+            </dd>
+          </div>
+          <div>
+            <dt>Prompt</dt>
+            <dd>
+              {selectedRun.promptId} v{selectedRun.promptVersion}
+            </dd>
+          </div>
+          <div>
+            <dt>输出</dt>
+            <dd>
+              {selectedRun.outputMode} · {selectedRun.supportStatus}
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+      {selectedDocument?.candidateType === 'skeleton' ? (
+        <section className="skeleton-review" data-skeleton-review>
+          <header>
+            <div>
+              <h3>{selectedDocument.title}</h3>
+              <p>
+                修订 {selectedDocument.skeletonRevision} ·{' '}
+                {selectedDocument.editedBy === 'author' ? '作者修订' : 'AI 初稿'} · 来源
+                {selectedDocument.sourceState === 'stale' ? '已变化' : '有效'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setGenerationMode('chapter');
+                setChapterSource('skeleton_candidate');
+                setSelectedSkeletonId(selectedDocument.candidateId);
+                setAcknowledgeStaleSkeleton(false);
+              }}
+            >
+              用于 T1 正文
+            </button>
+          </header>
+          <div className="generation-grid">
+            <label>
+              叙事倾向
+              <input
+                data-edit-skeleton-tendency
+                value={skeletonTendency}
+                onChange={(event) => setSkeletonTendency(event.target.value)}
+              />
+            </label>
+            <label>
+              收尾钩子
+              <textarea
+                data-edit-skeleton-ending-hook
+                rows={3}
+                value={skeletonEndingHook}
+                onChange={(event) => setSkeletonEndingHook(event.target.value)}
+              />
+            </label>
+          </div>
+          <ol className="skeleton-beat-list">
+            {[...selectedDocument.structuredPayload.beats]
+              .sort((left, right) => left.order - right.order)
+              .map((beat) => (
+                <li key={beat.beatId}>
+                  <strong>
+                    {beat.order}. {beat.event}
+                  </strong>
+                  <span>因：{beat.cause}</span>
+                  <span>果：{beat.consequence}</span>
+                </li>
+              ))}
+          </ol>
+          {selectedDocument.structuredPayload.risks.length ? (
+            <ul className="candidate-conflicts">
+              {selectedDocument.structuredPayload.risks.map((risk) => (
+                <li key={risk}>{risk}</li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="inline-actions">
+            <button
+              className="primary-button"
+              data-save-skeleton-revision
+              type="button"
+              disabled={readOnly || !skeletonTendency.trim() || !skeletonEndingHook.trim()}
+              onClick={() => void saveSkeletonEdit()}
+            >
+              保存作者修订
+            </button>
+            <button
+              data-discard-candidate
+              type="button"
+              disabled={selectedDocument.status !== 'pending'}
+              onClick={() => void discard()}
+            >
+              丢弃骨架
+            </button>
+          </div>
+          <p className="safety-inline">
+            骨架不会进入正文差异、采用、Version 或定稿；请先用它生成 T1 正文候选。
+          </p>
+        </section>
+      ) : null}
       {preview?.candidate.completeness === 'partial' ? (
-        <p className="safety-inline" data-candidate-preview-warning>
-          不完整建议稿只能按块或SceneBeat采用，不能整稿替换。
-        </p>
+        <div className="safety-inline partial-candidate-actions" data-candidate-preview-warning>
+          <span>不完整建议稿只能按块或SceneBeat采用，不能整稿替换。</span>
+          {preview.candidate.generationRunId ? (
+            <button
+              data-continue-partial-candidate
+              type="button"
+              disabled={pending || readOnly || !providerId}
+              onClick={() => void startGeneration(preview.candidate.generationRunId)}
+            >
+              继续生成
+            </button>
+          ) : null}
+          <button type="button" onClick={onClose}>
+            返回编辑器手动补全
+          </button>
+        </div>
       ) : null}
       {preview ? (
         <>

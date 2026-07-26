@@ -43,6 +43,11 @@ export async function routeContentProjectOperation(
         operation.operation,
         await services.candidates.discard(requestId, operation.input),
       );
+    case CANDIDATE_COMMANDS.editSkeleton:
+      return success(
+        operation.operation,
+        await services.candidates.editSkeleton(requestId, operation.input),
+      );
     case CANDIDATE_APPLY_COMMANDS.previewCandidate:
       return success(
         operation.operation,

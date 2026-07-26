@@ -6,6 +6,7 @@ import type {
   CandidateCreateFixtureInput,
   CandidateDiscardInput,
   CandidateDocument,
+  CandidateEditSkeletonInput,
   CandidateGetInput,
   CandidateList,
   CandidatePreview,
@@ -67,6 +68,9 @@ interface CandidateBridgePort {
   readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
   readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
   readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
+  readonly editSkeleton: (
+    input: CandidateEditSkeletonInput,
+  ) => Promise<CommandResult<CandidateDocument>>;
 }
 
 interface ContinuityBridgePort {

@@ -25,6 +25,7 @@ import {
   DraftOpenCommandSchema,
   CandidateCreateFixtureCommandSchema,
   CandidateDiscardCommandSchema,
+  CandidateEditSkeletonCommandSchema,
   CandidateGetCommandSchema,
   CandidateListCommandSchema,
   VersionCreateCommandSchema,
@@ -280,6 +281,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     CANDIDATE_IPC_CHANNELS.listCandidates,
     CANDIDATE_IPC_CHANNELS.getCandidate,
     CANDIDATE_IPC_CHANNELS.discardCandidate,
+    CANDIDATE_IPC_CHANNELS.editSkeleton,
     IPC_CHANNELS.createVersion,
     IPC_CHANNELS.listVersions,
     IPC_CHANNELS.getVersion,
@@ -1142,6 +1144,11 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
       CANDIDATE_IPC_CHANNELS.discardCandidate,
       CandidateDiscardCommandSchema,
       CANDIDATE_COMMANDS.discardCandidate,
+    ],
+    [
+      CANDIDATE_IPC_CHANNELS.editSkeleton,
+      CandidateEditSkeletonCommandSchema,
+      CANDIDATE_COMMANDS.editSkeleton,
     ],
   ] as const) {
     register(channel, async (event, raw) => {

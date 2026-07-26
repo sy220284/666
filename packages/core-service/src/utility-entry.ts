@@ -23,6 +23,7 @@ import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
 import { GenerationRunService } from './generation-run.js';
 import { GenerationRuntime } from './generation-runtime.js';
+import { GenerationSourceResolver } from './generation-source-resolver.js';
 import { ProjectPlanningService } from './project-planning.js';
 import { ProjectContinuationService } from './project-continuation.js';
 import { ProjectStructureService } from './project-structure.js';
@@ -140,10 +141,12 @@ const recovery = new CheckpointAwareRecoveryService(projectWorkspace, {
 });
 const generationRuns = new GenerationRunService(projectWorkspace);
 const generationRuntime = new GenerationRuntime(generationRuns, taskProtocol);
+const candidates = new CandidateService(projectWorkspace);
 const generationServices = {
   constraints: new HardenedConstraintPackageService(projectWorkspace),
   runs: generationRuns,
   runtime: generationRuntime,
+  sources: new GenerationSourceResolver(projectWorkspace, candidates),
 };
 const services: UtilityProjectServices = {
   projectWorkspace,
@@ -156,7 +159,7 @@ const services: UtilityProjectServices = {
   continuity: new ContinuityService(projectWorkspace),
   structureOperations: new ReferenceAwareStructureOperationService(projectWorkspace),
   drafts: new DraftService(projectWorkspace),
-  candidates: new CandidateService(projectWorkspace),
+  candidates,
   candidateApply: new CandidateApplyService(projectWorkspace),
   versions: new VersionService(projectWorkspace),
   textIo: new CoordinatedImportExportService(projectWorkspace, recovery),

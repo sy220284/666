@@ -10,7 +10,7 @@ import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 
 const temporaryDirectories: string[] = [];
-const clock = { now: () => new Date('2026-07-26T03:00:00.000Z') };
+const clock = { now: () => new Date('2026-07-26T07:00:00.000Z') };
 
 afterEach(async () => {
   await Promise.all(
@@ -20,9 +20,9 @@ afterEach(async () => {
   );
 });
 
-describe('M4-04 project continuation migration', () => {
-  it('installs schema 22 with a strict project settings store', async () => {
-    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-continuation-migration-'));
+describe('M4-04 structured Candidate migration', () => {
+  it('installs strict schema 24 and blocks Skeleton prose rows', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'worldforge-structured-candidate-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
     await mkdir(parent, { recursive: true });
@@ -42,7 +42,7 @@ describe('M4-04 project continuation migration', () => {
     });
     const project = await workspace.create(
       randomUUID(),
-      { name: '继续写作迁移', channel: '长篇' },
+      { name: '结构化候选迁移', channel: '长篇' },
       parent,
     );
     await workspace.shutdown();
@@ -55,25 +55,15 @@ describe('M4-04 project continuation migration', () => {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
         schema_version: 24n,
       });
-      expect(
-        database
-          .prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_settings'`)
-          .get(),
-      ).toEqual({ strict: 1n });
-      database
-        .prepare(
-          `INSERT INTO project_settings(setting_key, value_json, updated_at)
-           VALUES(?, ?, ?)`,
-        )
-        .run('writing.continuation', '{}', clock.now().toISOString());
-      expect(() =>
-        database
-          .prepare(
-            `INSERT INTO project_settings(setting_key, value_json, updated_at)
-             VALUES(?, ?, ?)`,
-          )
-          .run('invalid', '{', clock.now().toISOString()),
-      ).toThrow();
+      for (const table of [
+        'candidate_skeleton_revisions',
+        'generation_input_sources',
+        'candidate_source_mappings',
+      ]) {
+        expect(
+          database.prepare(`SELECT strict FROM pragma_table_list WHERE name = ?`).get(table),
+        ).toEqual({ strict: 1n });
+      }
       expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
       database.close();

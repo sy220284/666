@@ -3,23 +3,34 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import {
   CandidateCreateFixtureInputSchema,
+  CandidateBlockSchema,
   CandidateDiscardInputSchema,
-  CandidateDocumentSchema,
+  CandidateEditSkeletonInputSchema,
   CandidateGetInputSchema,
   CandidateListSchema,
   CandidateSummarySchema,
+  ProseCandidateDocumentSchema,
+  SkeletonCandidateDocumentSchema,
+  SkeletonCandidateOutputSchema,
   type CandidateBlock,
   type CandidateCreateFixtureInput,
   type CandidateDiscardInput,
   type CandidateDocument,
+  type CandidateEditSkeletonInput,
   type CandidateGetInput,
   type CandidateList,
   type CandidateSummary,
+  type SkeletonCandidateDocument,
 } from '@worldforge/contracts';
 import { normalizeDraftBlockSemantic } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
-import { candidateBlockContentHash, candidateDocumentContentHash } from './candidate-integrity.js';
+import {
+  candidateBlockContentHash,
+  candidateDocumentContentHash,
+  candidateSkeletonContentHash,
+  candidateSkeletonPayloadHash,
+} from './candidate-integrity.js';
 import { draftContentHash } from './draft.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
@@ -72,6 +83,13 @@ interface CandidateSummaryRow {
   readonly sourceVersionId: string | null;
   readonly contentHash: string;
   readonly blockCount: number | bigint;
+  readonly skeletonRevisionId: string | null;
+  readonly skeletonRevision: number | bigint | null;
+  readonly payloadSchemaVersion: number | bigint | null;
+  readonly payloadHash: string | null;
+  readonly sourceState: string | null;
+  readonly parentSkeletonRevisionId: string | null;
+  readonly editedBy: string | null;
   readonly createdAt: string;
   readonly resolvedAt: string | null;
 }
@@ -94,13 +112,12 @@ interface CandidateSourceRow {
   readonly sourceOrder: number | bigint;
 }
 
-function mapSummary(row: CandidateSummaryRow): CandidateSummary {
-  return CandidateSummarySchema.parse({
+function summaryBase(row: CandidateSummaryRow) {
+  return {
     candidateId: row.candidateId,
     projectId: row.projectId,
     chapterId: row.chapterId,
     generationRunId: row.generationRunId,
-    candidateType: row.candidateType,
     baseDraftId: row.baseDraftId,
     baseDraftRevision: Number(row.baseDraftRevision),
     completeness: row.completeness,
@@ -108,10 +125,32 @@ function mapSummary(row: CandidateSummaryRow): CandidateSummary {
     title: row.title,
     sourceVersionId: row.sourceVersionId,
     contentHash: row.contentHash,
-    blockCount: Number(row.blockCount),
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
-  });
+  };
+}
+
+function mapSummary(row: CandidateSummaryRow): CandidateSummary {
+  const base = summaryBase(row);
+  return row.candidateType === 'skeleton'
+    ? CandidateSummarySchema.parse({
+        ...base,
+        candidateType: 'skeleton',
+        blockCount: 0,
+        skeletonRevisionId: row.skeletonRevisionId,
+        skeletonRevision: row.skeletonRevision === null ? null : Number(row.skeletonRevision),
+        payloadSchemaVersion:
+          row.payloadSchemaVersion === null ? null : Number(row.payloadSchemaVersion),
+        payloadHash: row.payloadHash,
+        sourceState: row.sourceState,
+        parentSkeletonRevisionId: row.parentSkeletonRevisionId,
+        editedBy: row.editedBy,
+      })
+    : CandidateSummarySchema.parse({
+        ...base,
+        candidateType: row.candidateType,
+        blockCount: Number(row.blockCount),
+      });
 }
 
 function mapBlock(
@@ -119,7 +158,7 @@ function mapBlock(
   sourceLogicalBlockIds: readonly string[],
 ): CandidateBlock {
   try {
-    const block = CandidateDocumentSchema.shape.blocks.element.parse({
+    const block = CandidateBlockSchema.parse({
       candidateBlockId: row.candidateBlockId,
       logicalBlockId: row.logicalBlockId,
       sourceLogicalBlockIds: [...sourceLogicalBlockIds],
@@ -153,11 +192,36 @@ function summaryQuery(where: string): string {
                  ca.completeness, ca.status, ca.title, ca.source_version_id AS sourceVersionId,
                  ca.content_hash AS contentHash, ca.created_at AS createdAt,
                  ca.resolved_at AS resolvedAt,
-                 (SELECT COUNT(*) FROM candidate_blocks cb WHERE cb.candidate_id = ca.id) AS blockCount
+                 (SELECT COUNT(*) FROM candidate_blocks cb WHERE cb.candidate_id = ca.id) AS blockCount,
+                 skeleton.id AS skeletonRevisionId,
+                 skeleton.revision AS skeletonRevision,
+                 skeleton.payload_schema_version AS payloadSchemaVersion,
+                 skeleton.payload_hash AS payloadHash,
+                 skeleton.parent_revision_id AS parentSkeletonRevisionId,
+                 skeleton.edited_by AS editedBy,
+                 CASE
+                   WHEN ca.candidate_type <> 'skeleton' THEN NULL
+                   WHEN base.revision <> ca.base_draft_revision THEN 'stale'
+                   WHEN EXISTS (
+                     SELECT 1 FROM scene_beats beat
+                      WHERE beat.chapter_id = ca.chapter_id
+                        AND beat.updated_at > skeleton.created_at
+                   ) THEN 'stale'
+                   ELSE 'current'
+                 END AS sourceState
           FROM candidates ca
           JOIN chapters ch ON ch.id = ca.chapter_id
           JOIN volumes vo ON vo.id = ch.volume_id
           JOIN projects p ON p.id = vo.project_id
+          JOIN drafts base ON base.id = ca.base_draft_id
+          LEFT JOIN candidate_skeleton_revisions skeleton
+            ON skeleton.id = (
+              SELECT revision.id
+                FROM candidate_skeleton_revisions revision
+               WHERE revision.candidate_id = ca.id
+               ORDER BY revision.revision DESC, revision.id DESC
+               LIMIT 1
+            )
          WHERE ${where}`;
 }
 
@@ -329,7 +393,7 @@ export class CandidateService {
           content: block.text,
           attributes: block.attributes,
         });
-        return CandidateDocumentSchema.shape.blocks.element.parse({
+        return CandidateBlockSchema.parse({
           candidateBlockId: this.#idFactory(),
           logicalBlockId,
           sourceLogicalBlockIds,
@@ -400,7 +464,7 @@ export class CandidateService {
         });
       }
 
-      return CandidateDocumentSchema.parse({
+      return ProseCandidateDocumentSchema.parse({
         candidateId,
         projectId: input.projectId,
         chapterId: input.chapterId,
@@ -438,6 +502,49 @@ export class CandidateService {
     const input = CandidateGetInputSchema.parse(raw);
     return this.#workspace.readProject(input.projectId, (database) => {
       const summary = readSummary(database, input);
+      if (summary.candidateType === 'skeleton') {
+        const row = database
+          .prepare(
+            `SELECT structured_payload_json AS structuredPayloadJson
+               FROM candidate_skeleton_revisions
+              WHERE id = ? AND candidate_id = ?`,
+          )
+          .get(summary.skeletonRevisionId, summary.candidateId) as
+          { readonly structuredPayloadJson: string } | undefined;
+        if (!row) {
+          throw new CandidateServiceError(
+            'CANDIDATE_INVALID',
+            'The current Skeleton revision is missing.',
+          );
+        }
+        try {
+          const structuredPayload = SkeletonCandidateOutputSchema.parse(
+            JSON.parse(row.structuredPayloadJson),
+          );
+          const payloadHash = candidateSkeletonPayloadHash(structuredPayload);
+          if (
+            payloadHash !== summary.payloadHash ||
+            candidateSkeletonContentHash(summary.payloadSchemaVersion, payloadHash) !==
+              summary.contentHash
+          ) {
+            throw new CandidateServiceError(
+              'CANDIDATE_INVALID',
+              'The persisted Skeleton payload hash does not match its content.',
+            );
+          }
+          return SkeletonCandidateDocumentSchema.parse({
+            ...summary,
+            structuredPayload,
+          });
+        } catch (error) {
+          if (error instanceof CandidateServiceError) throw error;
+          throw new CandidateServiceError(
+            'CANDIDATE_INVALID',
+            'The persisted Skeleton Candidate is invalid.',
+            { cause: error },
+          );
+        }
+      }
       const blocks = readBlocks(database, input.candidateId);
       if (candidateDocumentContentHash(blocks) !== summary.contentHash) {
         throw new CandidateServiceError(
@@ -446,7 +553,7 @@ export class CandidateService {
         );
       }
       try {
-        return CandidateDocumentSchema.parse({ ...summary, blocks });
+        return ProseCandidateDocumentSchema.parse({ ...summary, blocks });
       } catch (error) {
         throw new CandidateServiceError(
           'CANDIDATE_INVALID',
@@ -456,6 +563,88 @@ export class CandidateService {
           },
         );
       }
+    });
+  }
+
+  editSkeleton(
+    requestId: string,
+    raw: CandidateEditSkeletonInput,
+  ): Promise<SkeletonCandidateDocument> {
+    const input = CandidateEditSkeletonInputSchema.parse(raw);
+    return this.#workspace.writeProject(requestId, input.projectId, (database) => {
+      const current = readSummary(database, input);
+      if (current.candidateType !== 'skeleton') {
+        throw new CandidateServiceError(
+          'CANDIDATE_INVALID',
+          'Only Skeleton Candidates can create Skeleton revisions.',
+        );
+      }
+      if (current.status !== 'pending') {
+        throw new CandidateServiceError(
+          'CANDIDATE_STATUS_CONFLICT',
+          'Only pending Skeleton Candidates can be edited.',
+        );
+      }
+      if (current.skeletonRevisionId !== input.expectedSkeletonRevisionId) {
+        throw new CandidateServiceError(
+          'CANDIDATE_REVISION_CONFLICT',
+          'The Skeleton changed before this edit was saved.',
+        );
+      }
+      const source = database
+        .prepare(
+          `SELECT source_fingerprint AS sourceFingerprint
+             FROM candidate_skeleton_revisions
+            WHERE id = ? AND candidate_id = ?`,
+        )
+        .get(current.skeletonRevisionId, current.candidateId) as
+        { readonly sourceFingerprint: string } | undefined;
+      if (!source) {
+        throw new CandidateServiceError(
+          'CANDIDATE_INVALID',
+          'The current Skeleton revision source is missing.',
+        );
+      }
+      const structuredPayload = SkeletonCandidateOutputSchema.parse(input.structuredPayload);
+      const payloadSchemaVersion = 1;
+      const payloadHash = candidateSkeletonPayloadHash(structuredPayload);
+      const contentHash = candidateSkeletonContentHash(payloadSchemaVersion, payloadHash);
+      const revisionId = this.#idFactory();
+      const createdAt = this.#clock.now().toISOString();
+      database
+        .prepare(
+          `INSERT INTO candidate_skeleton_revisions(
+             id, candidate_id, revision, parent_revision_id, payload_schema_version,
+             structured_payload_json, payload_hash, source_fingerprint, edited_by, created_at
+           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'author', ?)`,
+        )
+        .run(
+          revisionId,
+          current.candidateId,
+          current.skeletonRevision + 1,
+          current.skeletonRevisionId,
+          payloadSchemaVersion,
+          JSON.stringify(structuredPayload),
+          payloadHash,
+          source.sourceFingerprint,
+          createdAt,
+        );
+      const changed = database
+        .prepare(
+          `UPDATE candidates SET content_hash = ?
+            WHERE id = ? AND status = 'pending' AND content_hash = ?`,
+        )
+        .run(contentHash, current.candidateId, current.contentHash);
+      if (Number(changed.changes) !== 1) {
+        throw new CandidateServiceError(
+          'CANDIDATE_REVISION_CONFLICT',
+          'The Skeleton changed before this edit was committed.',
+        );
+      }
+      return SkeletonCandidateDocumentSchema.parse({
+        ...readSummary(database, input),
+        structuredPayload,
+      });
     });
   }
 

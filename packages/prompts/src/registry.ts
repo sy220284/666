@@ -11,6 +11,8 @@ import {
   SemanticValidationOutputJsonSchema,
   SemanticValidationOutputSchema,
   SemanticValidationPromptInputSchema,
+  SkeletonCandidateBatchJsonSchema,
+  SkeletonCandidateBatchOutputSchema,
   SkeletonCandidateJsonSchema,
   SkeletonCandidateOutputSchema,
   SkeletonPromptInputSchema,
@@ -27,6 +29,7 @@ import {
   type RewritePromptInput,
   type SemanticValidationOutput,
   type SemanticValidationPromptInput,
+  type SkeletonCandidateBatchOutput,
   type SkeletonCandidateOutput,
   type SkeletonPromptInput,
   type StateExtractionOutput,
@@ -113,13 +116,13 @@ export const chapterSpikePrompt: PromptDefinition<ChapterPromptInput, ChapterCan
 
 export const skeletonPrompt: PromptDefinition<
   ProductionSkeletonPromptInput,
-  SkeletonCandidateOutput
+  SkeletonCandidateBatchOutput
 > = {
   promptId: SKELETON_PROMPT_ID,
   version: 1,
   taskType: 'skeleton',
   inputSchema: ProductionSkeletonPromptInputSchema,
-  outputSchema: SkeletonCandidateOutputSchema,
+  outputSchema: SkeletonCandidateBatchOutputSchema,
   supportedModes: ['structured'],
   build(input): PromptBundle {
     const validated = ProductionSkeletonPromptInputSchema.parse(input);
@@ -134,11 +137,15 @@ export const skeletonPrompt: PromptDefinition<
             chapterGoal: validated.chapterGoal,
             requiredBeats: validated.requiredBeats,
             tendency: validated.tendency,
+            candidateCount: validated.candidateCount,
             constraints: validated.constraintContext,
           }),
         },
       ],
-      structuredOutput: { name: 'skeleton_candidate_v1', schema: SkeletonCandidateJsonSchema },
+      structuredOutput: {
+        name: 'skeleton_candidate_batch_v1',
+        schema: SkeletonCandidateBatchJsonSchema,
+      },
       metadata: metadata(SKELETON_PROMPT_ID, 'skeleton', validated.constraintHash),
     };
   },
@@ -167,6 +174,7 @@ export const chapterPrompt: PromptDefinition<ProductionChapterPromptInput, Chapt
               targetLanguage: validated.targetLanguage,
               targetCharacters: validated.targetCharacters,
               styleInstructions: validated.styleInstructions,
+              continuation: validated.continuation,
               constraints: validated.constraintContext,
             }),
           },

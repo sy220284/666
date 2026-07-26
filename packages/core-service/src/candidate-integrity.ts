@@ -1,15 +1,15 @@
 import { createHash } from 'node:crypto';
 
-import type { CandidateBlock } from '@worldforge/contracts';
+import type { CandidateBlock, SkeletonCandidateOutput } from '@worldforge/contracts';
 
 import { draftContentHash } from './draft.js';
 
-function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+export function stableCandidateSerialization(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableCandidateSerialization).join(',')}]`;
   if (value && typeof value === 'object') {
     return `{${Object.entries(value as Record<string, unknown>)
       .sort(([left], [right]) => left.localeCompare(right, 'en'))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`)
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableCandidateSerialization(item)}`)
       .join(',')}}`;
   }
   return JSON.stringify(value);
@@ -28,7 +28,7 @@ export function candidateBlockContentHash(
 export function candidateDocumentContentHash(blocks: readonly CandidateBlock[]): string {
   return createHash('sha256')
     .update(
-      stable(
+      stableCandidateSerialization(
         blocks.map((block) => ({
           logicalBlockId: block.logicalBlockId,
           sourceLogicalBlockIds: block.sourceLogicalBlockIds,
@@ -43,5 +43,18 @@ export function candidateDocumentContentHash(blocks: readonly CandidateBlock[]):
       ),
       'utf8',
     )
+    .digest('hex');
+}
+
+export function candidateSkeletonPayloadHash(payload: SkeletonCandidateOutput): string {
+  return createHash('sha256').update(stableCandidateSerialization(payload), 'utf8').digest('hex');
+}
+
+export function candidateSkeletonContentHash(
+  payloadSchemaVersion: number,
+  payloadHash: string,
+): string {
+  return createHash('sha256')
+    .update(stableCandidateSerialization({ payloadSchemaVersion, payloadHash }), 'utf8')
     .digest('hex');
 }

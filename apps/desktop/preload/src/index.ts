@@ -22,6 +22,7 @@ import {
   CandidateCreateFixtureCommandSchema,
   CandidateDiscardCommandSchema,
   CandidateDocumentResultSchema,
+  CandidateEditSkeletonCommandSchema,
   CandidateGetCommandSchema,
   CandidateListCommandSchema,
   CandidateListResultSchema,
@@ -169,6 +170,7 @@ import {
   type CandidateCreateFixtureInput,
   type CandidateDiscardInput,
   type CandidateDocument,
+  type CandidateEditSkeletonInput,
   type CandidateGetInput,
   type CandidateList,
   type CandidateSummary,
@@ -227,6 +229,9 @@ type CandidateBridge = {
     readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
     readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
     readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
+    readonly editSkeleton: (
+      input: CandidateEditSkeletonInput,
+    ) => Promise<CommandResult<CandidateDocument>>;
   };
 };
 
@@ -825,6 +830,12 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         CANDIDATE_IPC_CHANNELS.discardCandidate,
         CandidateDiscardCommandSchema.parse(envelope(CANDIDATE_COMMANDS.discardCandidate, input)),
         CandidateSummaryResultSchema,
+      ),
+    editSkeleton: (input) =>
+      invoke(
+        CANDIDATE_IPC_CHANNELS.editSkeleton,
+        CandidateEditSkeletonCommandSchema.parse(envelope(CANDIDATE_COMMANDS.editSkeleton, input)),
+        CandidateDocumentResultSchema,
       ),
   },
   version: {

@@ -29,3 +29,16 @@ pnpm build
 pnpm exec prettier --check <C2 changed source, tests and evidence>
 node .github/governance/verification-hold-taskctl.mjs preflight
 EVIDENCE_HEAD_SHA=<committed PR Head> EVIDENCE_BASE_SHA=<PR Base> node scripts/evidence-policy.mjs
+pnpm exec vitest run tests/unit/structured-candidate-contracts.test.ts tests/unit/renderer-c3-generation-workbench.test.ts
+pnpm exec vitest run tests/integration/generation-run.test.ts tests/integration/generation-runtime.test.ts tests/integration/generation-source-resolver.test.ts
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:security
+pnpm test:eval
+pnpm test:perf
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm exec prettier --check <C3-C4 changed source, tests and evidence>
+EVIDENCE_HEAD_SHA=<C2 committed PR Head> EVIDENCE_BASE_SHA=<PR Base> node scripts/evidence-policy.mjs

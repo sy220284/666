@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import {
   CandidateCreateFixtureInputSchema,
+  CandidateBlockSchema,
   CandidateDocumentSchema,
   GenerationGetRunInputSchema,
   GenerationListRunsInputSchema,
@@ -11,6 +12,8 @@ import {
   GenerationRunSchema,
   GenerationRunStageSchema,
   ModelSupportProfileSchema,
+  SkeletonCandidateDocumentSchema,
+  SkeletonCandidateOutputSchema,
   type CandidateBlock,
   type CandidateBlockInput,
   type CandidateDocument,
@@ -27,10 +30,16 @@ import {
   type ModelSupportProfile,
   type ModelSupportStatus,
   type PromptOutputMode,
+  type SkeletonCandidateDocument,
+  type SkeletonCandidateOutput,
 } from '@worldforge/contracts';
 import { normalizeDraftBlockSemantic } from '@worldforge/domain';
 
-import { candidateDocumentContentHash } from './candidate-integrity.js';
+import {
+  candidateDocumentContentHash,
+  candidateSkeletonContentHash,
+  candidateSkeletonPayloadHash,
+} from './candidate-integrity.js';
 import type { DatabaseClock } from './database/index.js';
 import { draftContentHash } from './draft.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
@@ -76,7 +85,23 @@ export interface GenerationRunCreateInput {
   readonly actualModel: string;
   readonly supportStatus: ModelSupportStatus;
   readonly constraintPackage: ConstraintPackage;
+  readonly inputSources?: readonly GenerationInputSourceInput[];
   readonly taskId?: string;
+}
+
+export interface GenerationInputSourceInput {
+  readonly sourceType:
+    | 'chapter_goal'
+    | 'skeleton_candidate'
+    | 'scene_beat'
+    | 'draft_block'
+    | 'candidate'
+    | 'current_draft'
+    | 'generation_run';
+  readonly sourceId: string;
+  readonly sourceOrder: number;
+  readonly contentHash?: string | null;
+  readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 export interface GenerationRunIdentity {
@@ -99,6 +124,28 @@ export interface GenerationProseCandidateInput extends GenerationRunIdentity {
   readonly completeness: 'complete' | 'partial';
   readonly sourceVersionId?: string | null;
   readonly blocks: readonly CandidateBlockInput[];
+  readonly sourceMappings?: readonly GenerationCandidateSourceMappingInput[];
+  readonly usage?: GenerationUsage;
+}
+
+export interface GenerationCandidateSourceMappingInput {
+  readonly mappingType: 'rewrite' | 'beat' | 'segment';
+  readonly sourceUnitId: string;
+  readonly sourceOrder: number;
+  readonly sourceCandidateId?: string | null;
+  readonly sceneBeatId?: string | null;
+  readonly sourceBlockIds: readonly string[];
+  readonly keepCurrentDraft?: boolean;
+  readonly rangeAnchor?: Readonly<Record<string, unknown>> | null;
+}
+
+export interface GenerationSkeletonCandidateInput {
+  readonly title: string;
+  readonly structuredPayload: SkeletonCandidateOutput;
+}
+
+export interface GenerationSkeletonCompletionInput extends GenerationRunIdentity {
+  readonly candidates: readonly GenerationSkeletonCandidateInput[];
   readonly usage?: GenerationUsage;
 }
 
@@ -107,9 +154,22 @@ export interface GenerationCompletion {
   readonly candidate: CandidateDocument;
 }
 
+export interface GenerationSkeletonCompletion {
+  readonly run: GenerationRun;
+  readonly candidates: readonly SkeletonCandidateDocument[];
+}
+
 export interface GenerationPartialDecision {
   readonly run: GenerationRun;
   readonly candidate: CandidateDocument | null;
+}
+
+export interface GenerationContinuationContext {
+  readonly originalRunId: string;
+  readonly receivedText: string;
+  readonly originalPromptId: string;
+  readonly originalPromptVersion: number;
+  readonly originalConstraintHash: string;
 }
 
 interface GenerationRunRow {
@@ -327,13 +387,6 @@ function insertProseCandidate(
     sourceVersionId: input.sourceVersionId ?? null,
     blocks: input.blocks,
   });
-  if (parsed.candidateType === 'skeleton') {
-    throw new GenerationRunServiceError(
-      'GENERATION_CANDIDATE_INVALID',
-      'A prose Candidate cannot use the Skeleton kind.',
-    );
-  }
-
   if (parsed.sourceVersionId) {
     const source = database
       .prepare(
@@ -400,7 +453,7 @@ function insertProseCandidate(
       content: block.text,
       attributes: block.attributes,
     });
-    return CandidateDocumentSchema.shape.blocks.element.parse({
+    return CandidateBlockSchema.parse({
       candidateBlockId: idFactory(),
       logicalBlockId,
       sourceLogicalBlockIds,
@@ -469,6 +522,65 @@ function insertProseCandidate(
       insertSource.run(block.candidateBlockId, sourceLogicalBlockId, index),
     );
   }
+  const insertMapping = database.prepare(
+    `INSERT INTO candidate_source_mappings(
+       candidate_id, mapping_type, source_unit_id, source_order,
+       source_candidate_id, scene_beat_id, source_block_ids_json,
+       keep_current_draft, range_anchor_json, created_at
+     ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  for (const mapping of input.sourceMappings ?? []) {
+    if (!Number.isInteger(mapping.sourceOrder) || mapping.sourceOrder < 0) {
+      throw new GenerationRunServiceError(
+        'GENERATION_CANDIDATE_INVALID',
+        'Candidate source mapping order must be a non-negative integer.',
+      );
+    }
+    if (mapping.sourceCandidateId) {
+      const source = database
+        .prepare(
+          `SELECT 1
+             FROM candidates source
+             JOIN chapters chapter ON chapter.id = source.chapter_id
+             JOIN volumes volume ON volume.id = chapter.volume_id
+            WHERE source.id = ? AND source.chapter_id = ? AND volume.project_id = ?
+              AND source.candidate_type <> 'skeleton'`,
+        )
+        .get(mapping.sourceCandidateId, run.chapterId, run.projectId);
+      if (!source) {
+        throw new GenerationRunServiceError(
+          'GENERATION_BASE_CONFLICT',
+          'A Candidate source mapping is outside the GenerationRun scope.',
+        );
+      }
+    }
+    if (mapping.sceneBeatId) {
+      const beat = database
+        .prepare(
+          `SELECT 1 FROM scene_beats
+            WHERE id = ? AND project_id = ? AND chapter_id = ? AND deleted_at IS NULL`,
+        )
+        .get(mapping.sceneBeatId, run.projectId, run.chapterId);
+      if (!beat) {
+        throw new GenerationRunServiceError(
+          'GENERATION_BASE_CONFLICT',
+          'A SceneBeat source mapping is outside the GenerationRun scope.',
+        );
+      }
+    }
+    insertMapping.run(
+      candidateId,
+      mapping.mappingType,
+      mapping.sourceUnitId,
+      mapping.sourceOrder,
+      mapping.sourceCandidateId ?? null,
+      mapping.sceneBeatId ?? null,
+      JSON.stringify(mapping.sourceBlockIds),
+      mapping.keepCurrentDraft ? 1 : 0,
+      mapping.rangeAnchor ? JSON.stringify(mapping.rangeAnchor) : null,
+      now,
+    );
+  }
   return CandidateDocumentSchema.parse({
     candidateId,
     projectId: run.projectId,
@@ -486,6 +598,106 @@ function insertProseCandidate(
     createdAt: now,
     resolvedAt: null,
     blocks,
+  });
+}
+
+function insertSkeletonCandidate(
+  database: DatabaseSync,
+  run: GenerationRun,
+  input: GenerationSkeletonCandidateInput,
+  idFactory: () => string,
+  now: string,
+): SkeletonCandidateDocument {
+  verifyDraftBase(database, run);
+  if (run.runType !== 'skeleton') {
+    throw new GenerationRunServiceError(
+      'GENERATION_CANDIDATE_INVALID',
+      'Only a Skeleton GenerationRun can save Skeleton Candidates.',
+    );
+  }
+  const structuredPayload = SkeletonCandidateOutputSchema.parse(input.structuredPayload);
+  const title = input.title.trim();
+  if (!title || title.length > 240) {
+    throw new GenerationRunServiceError(
+      'GENERATION_CANDIDATE_INVALID',
+      'Skeleton Candidate titles must contain 1 to 240 characters.',
+    );
+  }
+  const candidateId = idFactory();
+  const skeletonRevisionId = idFactory();
+  const payloadSchemaVersion = 1;
+  const payloadHash = candidateSkeletonPayloadHash(structuredPayload);
+  const contentHash = candidateSkeletonContentHash(payloadSchemaVersion, payloadHash);
+  const constraint = database
+    .prepare(
+      `SELECT constraint_hash AS constraintHash
+         FROM generation_constraint_packages WHERE run_id = ?`,
+    )
+    .get(run.runId) as { readonly constraintHash: string } | undefined;
+  if (!constraint) {
+    throw new GenerationRunServiceError(
+      'GENERATION_BASE_CONFLICT',
+      'The GenerationRun constraint fingerprint is missing.',
+    );
+  }
+  database
+    .prepare(
+      `INSERT INTO candidates(
+         id, chapter_id, generation_run_id, candidate_type, base_draft_id,
+         base_draft_revision, completeness, status, title, source_version_id,
+         content_hash, created_at, resolved_at
+       ) VALUES(?, ?, ?, 'skeleton', ?, ?, 'complete', 'pending', ?, NULL, ?, ?, NULL)`,
+    )
+    .run(
+      candidateId,
+      run.chapterId,
+      run.runId,
+      run.baseDraftId,
+      run.baseDraftRevision,
+      title,
+      contentHash,
+      now,
+    );
+  database
+    .prepare(
+      `INSERT INTO candidate_skeleton_revisions(
+         id, candidate_id, revision, parent_revision_id, payload_schema_version,
+         structured_payload_json, payload_hash, source_fingerprint, edited_by, created_at
+       ) VALUES(?, ?, 1, NULL, ?, ?, ?, ?, 'ai', ?)`,
+    )
+    .run(
+      skeletonRevisionId,
+      candidateId,
+      payloadSchemaVersion,
+      JSON.stringify(structuredPayload),
+      payloadHash,
+      constraint.constraintHash,
+      now,
+    );
+  return SkeletonCandidateDocumentSchema.parse({
+    candidateId,
+    projectId: run.projectId,
+    chapterId: run.chapterId,
+    generationRunId: run.runId,
+    candidateType: 'skeleton',
+    baseDraftId: run.baseDraftId,
+    baseDraftRevision: run.baseDraftRevision,
+    completeness: 'complete',
+    status: 'pending',
+    title,
+    sourceVersionId: null,
+    contentHash,
+    blockCount: 0,
+    createdAt: now,
+    resolvedAt: null,
+    skeletonRevisionId,
+    skeletonRevision: 1,
+    payloadSchemaVersion,
+    structuredPayload,
+    payloadHash,
+    sourceState: 'current',
+    parentSkeletonRevisionId: null,
+    editedBy: 'ai',
   });
 }
 
@@ -618,6 +830,36 @@ export class GenerationRunService {
           JSON.stringify(constraints.trimLog),
           createdAt,
         );
+      const insertInputSource = database.prepare(
+        `INSERT INTO generation_input_sources(
+           run_id, source_type, source_id, source_order,
+           content_hash, metadata_json, created_at
+         ) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const source of input.inputSources ?? []) {
+        if (
+          !source.sourceId ||
+          !Number.isInteger(source.sourceOrder) ||
+          source.sourceOrder < 0 ||
+          (source.contentHash !== undefined &&
+            source.contentHash !== null &&
+            !/^[0-9a-f]{64}$/u.test(source.contentHash))
+        ) {
+          throw new GenerationRunServiceError(
+            'GENERATION_BASE_CONFLICT',
+            'A GenerationRun input source is invalid.',
+          );
+        }
+        insertInputSource.run(
+          runId,
+          source.sourceType,
+          source.sourceId,
+          source.sourceOrder,
+          source.contentHash ?? null,
+          JSON.stringify(source.metadata ?? {}),
+          createdAt,
+        );
+      }
       return readRun(database, { projectId: input.projectId, runId });
     });
   }
@@ -639,6 +881,61 @@ export class GenerationRunService {
         )
         .all(input.projectId, input.chapterId, input.chapterId) as unknown as GenerationRunRow[];
       return GenerationRunListSchema.parse({ runs: rows.map((row) => mapRun(database, row)) });
+    });
+  }
+
+  getContinuationContext(input: GenerationRunIdentity): GenerationContinuationContext {
+    return this.#workspace.readProject(input.projectId, (database) => {
+      const run = readRun(database, input);
+      if (
+        (run.status !== 'failed' && run.status !== 'cancelled') ||
+        (run.partialStatus !== 'available' && run.partialStatus !== 'saved')
+      ) {
+        throw new GenerationRunServiceError(
+          'GENERATION_PARTIAL_UNAVAILABLE',
+          'The GenerationRun has no partial output that can be continued.',
+        );
+      }
+      const receivedText =
+        run.partialStatus === 'available'
+          ? ((
+              database
+                .prepare(`SELECT text FROM generation_partial_buffers WHERE run_id = ?`)
+                .get(run.runId) as PartialBufferRow | undefined
+            )?.text ?? '')
+          : (
+              database
+                .prepare(
+                  `SELECT block.text
+               FROM candidates candidate
+               JOIN candidate_blocks block ON block.candidate_id = candidate.id
+              WHERE candidate.generation_run_id = ?
+                AND candidate.completeness = 'partial'
+              ORDER BY candidate.created_at DESC, block.order_key, block.id`,
+                )
+                .all(run.runId) as unknown as Array<{ readonly text: string }>
+            )
+              .map((row) => row.text)
+              .join('\n\n');
+      const constraint = database
+        .prepare(
+          `SELECT constraint_hash AS constraintHash
+             FROM generation_constraint_packages WHERE run_id = ?`,
+        )
+        .get(run.runId) as { readonly constraintHash: string } | undefined;
+      if (!receivedText.trim() || !constraint) {
+        throw new GenerationRunServiceError(
+          'GENERATION_PARTIAL_UNAVAILABLE',
+          'The persisted partial continuation boundary is missing.',
+        );
+      }
+      return {
+        originalRunId: run.runId,
+        receivedText,
+        originalPromptId: run.promptId,
+        originalPromptVersion: run.promptVersion,
+        originalConstraintHash: constraint.constraintHash,
+      };
     });
   }
 
@@ -837,6 +1134,51 @@ export class GenerationRunService {
         )
         .run(input.usage?.inputTokens ?? null, input.usage?.outputTokens ?? null, now, run.runId);
       return { run: readRun(database, input), candidate };
+    });
+  }
+
+  completeSkeletonCandidates(
+    requestId: string,
+    input: GenerationSkeletonCompletionInput,
+  ): Promise<GenerationSkeletonCompletion> {
+    if (input.candidates.length < 1 || input.candidates.length > 5) {
+      return Promise.reject(
+        new GenerationRunServiceError(
+          'GENERATION_CANDIDATE_INVALID',
+          'A Skeleton GenerationRun must save between one and five Candidates.',
+        ),
+      );
+    }
+    return this.#workspace.writeProject(requestId, input.projectId, (database) => {
+      const run = readRun(database, input);
+      assertActive(run);
+      if (run.runType !== 'skeleton') {
+        throw new GenerationRunServiceError(
+          'GENERATION_CANDIDATE_INVALID',
+          'This GenerationRun cannot save Skeleton Candidates.',
+        );
+      }
+      const now = this.#clock.now().toISOString();
+      const candidates = input.candidates.map((candidate) =>
+        insertSkeletonCandidate(database, run, candidate, this.#idFactory, now),
+      );
+      const insertResult = database.prepare(
+        `INSERT INTO generation_result_refs(
+           run_id, result_type, result_id, candidate_kind, created_at
+         ) VALUES(?, 'candidate', ?, 'skeleton', ?)`,
+      );
+      for (const candidate of candidates) insertResult.run(run.runId, candidate.candidateId, now);
+      database
+        .prepare(
+          `UPDATE generation_runs
+              SET status = 'succeeded', stage = 'completed',
+                  input_tokens = COALESCE(?, input_tokens),
+                  output_tokens = COALESCE(?, output_tokens),
+                  error_code = NULL, retryable = NULL, finished_at = ?
+            WHERE id = ?`,
+        )
+        .run(input.usage?.inputTokens ?? null, input.usage?.outputTokens ?? null, now, run.runId);
+      return { run: readRun(database, input), candidates };
     });
   }
 

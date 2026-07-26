@@ -123,6 +123,9 @@ importers:
       '@worldforge/domain':
         specifier: workspace:*
         version: link:../domain
+      '@worldforge/prompts':
+        specifier: workspace:*
+        version: link:../prompts
       iconv-lite:
         specifier: 0.7.3
         version: 0.7.3

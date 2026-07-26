@@ -61,6 +61,20 @@ import {
   ProviderSaveCommandSchema,
   ProviderSummaryResultSchema,
   ProviderTestConnectionCommandSchema,
+  GENERATION_COMMANDS,
+  GENERATION_IPC_CHANNELS,
+  GenerationCancelCommandSchema,
+  GenerationDiscardPartialCommandSchema,
+  GenerationGetModelSupportCommandSchema,
+  GenerationGetRunCommandSchema,
+  GenerationListRunsCommandSchema,
+  GenerationModelSupportEnvelopeSchema,
+  GenerationPartialDecisionResultSchema,
+  GenerationRunListResultSchema,
+  GenerationRunResultSchema,
+  GenerationSavePartialCommandSchema,
+  GenerationStartCommandSchema,
+  GenerationStartResultSchema,
   ProjectActiveResultSchema,
   ProjectContinuationResultSchema,
   ProjectContinuationSaveResultSchema,
@@ -277,6 +291,56 @@ const bridge: WorldforgeBridge & CandidateBridge = {
           envelope(APP_COMMANDS.providerTestConnection, { providerId }),
         ),
         ProviderConnectionTestResultEnvelopeSchema,
+      ),
+  },
+  generation: {
+    start: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.start,
+        GenerationStartCommandSchema.parse(envelope(GENERATION_COMMANDS.start, input)),
+        GenerationStartResultSchema,
+      ),
+    getRun: (projectId, runId) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.getRun,
+        GenerationGetRunCommandSchema.parse(
+          envelope(GENERATION_COMMANDS.getRun, { projectId, runId }),
+        ),
+        GenerationRunResultSchema,
+      ),
+    listRuns: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.listRuns,
+        GenerationListRunsCommandSchema.parse(envelope(GENERATION_COMMANDS.listRuns, input)),
+        GenerationRunListResultSchema,
+      ),
+    cancel: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.cancel,
+        GenerationCancelCommandSchema.parse(envelope(GENERATION_COMMANDS.cancel, input)),
+        GenerationRunResultSchema,
+      ),
+    savePartial: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.savePartial,
+        GenerationSavePartialCommandSchema.parse(envelope(GENERATION_COMMANDS.savePartial, input)),
+        GenerationPartialDecisionResultSchema,
+      ),
+    discardPartial: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.discardPartial,
+        GenerationDiscardPartialCommandSchema.parse(
+          envelope(GENERATION_COMMANDS.discardPartial, input),
+        ),
+        GenerationPartialDecisionResultSchema,
+      ),
+    getModelSupport: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.getModelSupport,
+        GenerationGetModelSupportCommandSchema.parse(
+          envelope(GENERATION_COMMANDS.getModelSupport, input),
+        ),
+        GenerationModelSupportEnvelopeSchema,
       ),
   },
   settings: {

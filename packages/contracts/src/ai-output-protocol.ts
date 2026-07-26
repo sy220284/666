@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { StateProposalDraftSchema } from './state-proposal.js';
 import { ProjectIdSchema } from './task-protocol.js';
 
 export const PromptTaskTypeSchema = z.enum([
@@ -149,7 +150,8 @@ export const ChapterCandidateOutputSchema = z
 export const SkeletonCandidateJsonSchema = z.toJSONSchema(SkeletonCandidateOutputSchema);
 export const ChapterCandidateJsonSchema = z.toJSONSchema(ChapterCandidateOutputSchema);
 
-export const ModelSupportProfileSchema = z.strictObject({
+export const ModelSupportStatusSchema = z.enum(['verified', 'limited', 'unverified']);
+const CanonicalModelSupportProfileSchema = z.strictObject({
   providerId: z
     .string()
     .min(1)
@@ -159,12 +161,17 @@ export const ModelSupportProfileSchema = z.strictObject({
   taskType: PromptTaskTypeSchema,
   promptId: PromptIdSchema,
   promptVersion: z.number().int().positive(),
-  status: z.enum(['verified', 'limited', 'untested']),
+  status: ModelSupportStatusSchema,
   evaluatedAt: z.iso.datetime().optional(),
   fixtureSetVersion: z.string().min(1).max(128).optional(),
   metrics: z.record(z.string(), z.number().finite()).optional(),
   limitations: z.array(z.string().min(1).max(4_096)).max(256),
 });
+export const ModelSupportProfileSchema = z.preprocess((input) => {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
+  const profile = input as Record<string, unknown>;
+  return profile.status === 'untested' ? { ...profile, status: 'unverified' } : input;
+}, CanonicalModelSupportProfileSchema);
 
 export const RequiredBeatSchema = z.strictObject({
   beatId: z.string().min(1).max(128),
@@ -189,6 +196,114 @@ export const ChapterPromptInputSchema = z.strictObject({
   outputMode: PromptOutputModeSchema,
 });
 
+export const PromptConstraintContextSchema = z.string().min(1).max(2_000_000);
+export const ProductionSkeletonPromptInputSchema = SkeletonPromptInputSchema.extend({
+  constraintContext: PromptConstraintContextSchema,
+}).strict();
+
+export const ResolvedChapterGenerationSourceSchema = z.discriminatedUnion('sourceType', [
+  z.strictObject({
+    sourceType: z.literal('skeleton_candidate'),
+    selectedSkeletonCandidateId: z.uuid(),
+    beats: z.array(RequiredBeatSchema).min(1).max(256),
+  }),
+  z.strictObject({
+    sourceType: z.literal('canonical_scene_beats'),
+    sceneBeatIds: z.array(z.uuid()).min(1).max(256),
+    beats: z.array(RequiredBeatSchema).min(1).max(256),
+  }),
+  z.strictObject({
+    sourceType: z.literal('direct_chapter_goal'),
+    chapterGoal: z.string().trim().min(1).max(32_768),
+  }),
+]);
+
+export const ProductionChapterPromptInputSchema = z.strictObject({
+  constraintHash: ConstraintHashSchema,
+  constraintContext: PromptConstraintContextSchema,
+  targetLanguage: z.string().min(2).max(32),
+  source: ResolvedChapterGenerationSourceSchema,
+  targetCharacters: z.number().int().positive().max(200_000),
+  styleInstructions: z.array(z.string().trim().min(1).max(2_000)).max(32).default([]),
+  outputMode: PromptOutputModeSchema,
+});
+
+export const RewritePromptInputSchema = z.strictObject({
+  constraintHash: ConstraintHashSchema,
+  constraintContext: PromptConstraintContextSchema,
+  targetLanguage: z.string().min(2).max(32),
+  instruction: z.string().trim().min(1).max(8_000),
+  sourceText: z.string().min(1).max(200_000),
+});
+export const RewriteOutputSchema = z.strictObject({
+  replacement: z.string().min(1).max(200_000),
+  rationale: z.string().min(1).max(8_000).optional(),
+});
+
+export const MergePromptInputSchema = z.strictObject({
+  constraintHash: ConstraintHashSchema,
+  constraintContext: PromptConstraintContextSchema,
+  targetLanguage: z.string().min(2).max(32),
+  sources: z
+    .array(
+      z.strictObject({
+        candidateId: z.uuid(),
+        text: z.string().min(1).max(400_000),
+      }),
+    )
+    .min(2)
+    .max(20),
+  instruction: z.string().trim().min(1).max(8_000).optional(),
+});
+
+export const PromptDocumentBlockSchema = z.strictObject({
+  logicalBlockId: z.uuid(),
+  content: z.string().max(200_000),
+});
+export const SemanticValidationPromptInputSchema = z.strictObject({
+  constraintHash: ConstraintHashSchema,
+  constraintContext: PromptConstraintContextSchema,
+  versionId: z.uuid(),
+  blocks: z.array(PromptDocumentBlockSchema).min(1).max(50_000),
+});
+export const SemanticValidationIssueSchema = z
+  .strictObject({
+    type: z.string().trim().min(1).max(120),
+    severity: z.enum(['high', 'medium', 'low', 'info']),
+    logicalBlockId: z.uuid().optional(),
+    quote: z.string().min(1).max(2_000).optional(),
+    rationale: z.string().trim().min(1).max(8_000),
+    evidenceIds: z.array(z.string().trim().min(1).max(240)).max(100),
+    suggestion: z.string().trim().min(1).max(8_000).optional(),
+    confidence: z.number().finite().min(0).max(1),
+  })
+  .superRefine((issue, context) => {
+    if (issue.severity === 'high' && issue.evidenceIds.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['evidenceIds'],
+        message: 'High-severity semantic issues require evidence.',
+      });
+    }
+  });
+export const SemanticValidationOutputSchema = z.strictObject({
+  issues: z.array(SemanticValidationIssueSchema).max(2_000),
+});
+
+export const StateExtractionPromptInputSchema = z.strictObject({
+  constraintHash: ConstraintHashSchema,
+  constraintContext: PromptConstraintContextSchema,
+  finalVersionId: z.uuid(),
+  blocks: z.array(PromptDocumentBlockSchema).min(1).max(50_000),
+});
+export const StateExtractionOutputSchema = z.strictObject({
+  proposals: z.array(StateProposalDraftSchema).max(200),
+});
+
+export const RewriteOutputJsonSchema = z.toJSONSchema(RewriteOutputSchema);
+export const SemanticValidationOutputJsonSchema = z.toJSONSchema(SemanticValidationOutputSchema);
+export const StateExtractionOutputJsonSchema = z.toJSONSchema(StateExtractionOutputSchema);
+
 export type ContractSchema<T> = z.ZodType<T>;
 export type PromptTaskType = z.infer<typeof PromptTaskTypeSchema>;
 export type PromptOutputMode = z.infer<typeof PromptOutputModeSchema>;
@@ -198,5 +313,15 @@ export type ProviderEvent = z.infer<typeof ProviderEventSchema>;
 export type SkeletonCandidateOutput = z.infer<typeof SkeletonCandidateOutputSchema>;
 export type ChapterCandidateOutput = z.infer<typeof ChapterCandidateOutputSchema>;
 export type ModelSupportProfile = z.infer<typeof ModelSupportProfileSchema>;
+export type ModelSupportStatus = z.infer<typeof ModelSupportStatusSchema>;
 export type SkeletonPromptInput = z.infer<typeof SkeletonPromptInputSchema>;
 export type ChapterPromptInput = z.infer<typeof ChapterPromptInputSchema>;
+export type ProductionSkeletonPromptInput = z.infer<typeof ProductionSkeletonPromptInputSchema>;
+export type ProductionChapterPromptInput = z.infer<typeof ProductionChapterPromptInputSchema>;
+export type RewritePromptInput = z.infer<typeof RewritePromptInputSchema>;
+export type RewriteOutput = z.infer<typeof RewriteOutputSchema>;
+export type MergePromptInput = z.infer<typeof MergePromptInputSchema>;
+export type SemanticValidationPromptInput = z.infer<typeof SemanticValidationPromptInputSchema>;
+export type SemanticValidationOutput = z.infer<typeof SemanticValidationOutputSchema>;
+export type StateExtractionPromptInput = z.infer<typeof StateExtractionPromptInputSchema>;
+export type StateExtractionOutput = z.infer<typeof StateExtractionOutputSchema>;

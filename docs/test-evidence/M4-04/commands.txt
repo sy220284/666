@@ -22,3 +22,10 @@ pnpm build
 pnpm exec eslint <C1 changed TypeScript files>
 pnpm exec prettier --check <C1 changed source, tests and evidence>
 pnpm exec playwright test --config tests/e2e/playwright.config.ts tests/e2e/electron-shell.spec.ts
+pnpm exec vitest run tests/unit tests/integration tests/migration tests/security --reporter=dot
+pnpm typecheck
+pnpm lint
+pnpm build
+pnpm exec prettier --check <C2 changed source, tests and evidence>
+node .github/governance/verification-hold-taskctl.mjs preflight
+EVIDENCE_HEAD_SHA=<committed PR Head> EVIDENCE_BASE_SHA=<PR Base> node scripts/evidence-policy.mjs

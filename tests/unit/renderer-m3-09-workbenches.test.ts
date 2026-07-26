@@ -42,6 +42,7 @@ describe('M3 final React business workbenches', () => {
         app: {},
         settings: {},
         providers: {},
+        generation: {},
         project: {},
         recovery,
         textIo: {},

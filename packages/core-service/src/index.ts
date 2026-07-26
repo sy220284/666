@@ -45,6 +45,8 @@ export * from './import-export.js';
 export * from './coordinated-import-export.js';
 export * from './migration-recovery.js';
 export * from './task-protocol.js';
+export * from './generation-run.js';
+export * from './generation-runtime.js';
 export * from './window-preferences.js';
 export {
   SearchIndexServiceError,

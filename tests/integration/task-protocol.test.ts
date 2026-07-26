@@ -94,6 +94,35 @@ describe('task event protocol', () => {
     expect(port.sent.slice(5).map((event) => event.sequence)).toEqual([1, 2]);
   });
 
+  it('publishes typed result references while retaining Candidate compatibility fields', () => {
+    const port = new FakeTaskPort();
+    const protocol = new TaskProtocol();
+    protocol.attachPort(port);
+    const task = protocol.startTask({
+      taskType: 'state_extract',
+      runId: randomUUID(),
+      initialStage: 'queued',
+    });
+    const batchRef = {
+      resultType: 'state_proposal_batch' as const,
+      resultId: randomUUID(),
+    };
+    expect(task.saveResult(batchRef)).toBe(true);
+    expect(task.completeResults([batchRef])).toBe(true);
+    expect(port.sent.map((event) => event.type)).toEqual([
+      'ai.started',
+      'ai.resultSaved',
+      'ai.completed',
+    ]);
+    expect(port.sent[2]).toMatchObject({
+      payload: { candidateIds: [], resultRefs: [batchRef] },
+    });
+    expect(protocol.getSnapshot(task.taskId)).toMatchObject({
+      resultIds: [batchRef.resultId],
+      resultRefs: [batchRef],
+    });
+  });
+
   it('batches provider deltas and emits no future delta after cancellation', async () => {
     vi.useFakeTimers();
     const port = new FakeTaskPort();

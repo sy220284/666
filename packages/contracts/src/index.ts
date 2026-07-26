@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ErrorCodeSchema, type ErrorCode } from './error-codes.js';
+import type { ModelSupportProfile } from './ai-output-protocol.js';
 import {
   APP_DATA_COMMANDS,
   APP_DATA_IPC_CHANNELS,
@@ -29,6 +30,16 @@ import {
   type ProviderSaveInput,
   type ProviderSummary,
 } from './provider.js';
+import {
+  CoreGenerationOperationSchema,
+  CoreGenerationResultSchema,
+  type GenerationCancelInput,
+  type GenerationListRunsInput,
+  type GenerationModelSupportInput,
+  type GenerationPartialInput,
+  type GenerationRun,
+  type GenerationStartInput,
+} from './generation.js';
 import {
   ProjectIdSchema,
   TASK_PROTOCOL_VERSION,
@@ -222,6 +233,7 @@ export * from './ai-output-protocol.js';
 export * from './task-protocol.js';
 export * from './app-data.js';
 export * from './provider.js';
+export * from './generation.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './project-planning.js';
@@ -601,6 +613,12 @@ export const CoreControlMessageSchema = z.discriminatedUnion('type', [
     operation: CoreProviderOperationSchema,
   }),
   z.strictObject({
+    type: z.literal('core.generation.command'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    operation: CoreGenerationOperationSchema,
+  }),
+  z.strictObject({
     type: z.literal('core.project.command'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
@@ -655,6 +673,12 @@ export const CoreEventSchema = z.discriminatedUnion('type', [
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
     result: CoreProviderResultSchema,
+  }),
+  z.strictObject({
+    type: z.literal('core.generation.result'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    result: CoreGenerationResultSchema,
   }),
   z.strictObject({
     type: z.literal('core.project.result'),
@@ -849,6 +873,29 @@ export interface WorldforgeBridge {
     readonly testConnection: (
       providerId: string,
     ) => Promise<CommandResult<ProviderConnectionTestResult>>;
+  };
+  readonly generation: {
+    readonly start: (
+      input: GenerationStartInput,
+    ) => Promise<CommandResult<{ readonly run: GenerationRun; readonly taskId: string }>>;
+    readonly getRun: (projectId: string, runId: string) => Promise<CommandResult<GenerationRun>>;
+    readonly listRuns: (
+      input: GenerationListRunsInput,
+    ) => Promise<CommandResult<{ readonly runs: readonly GenerationRun[] }>>;
+    readonly cancel: (input: GenerationCancelInput) => Promise<CommandResult<GenerationRun>>;
+    readonly savePartial: (
+      input: GenerationPartialInput,
+    ) => Promise<
+      CommandResult<{ readonly run: GenerationRun; readonly candidateId: string | null }>
+    >;
+    readonly discardPartial: (
+      input: GenerationPartialInput,
+    ) => Promise<
+      CommandResult<{ readonly run: GenerationRun; readonly candidateId: string | null }>
+    >;
+    readonly getModelSupport: (
+      input: GenerationModelSupportInput,
+    ) => Promise<CommandResult<{ readonly profile: ModelSupportProfile }>>;
   };
   readonly ai: {
     readonly setCredential: (

@@ -48,6 +48,7 @@ type BaseRendererBridgePort = Pick<
   | 'app'
   | 'settings'
   | 'providers'
+  | 'generation'
   | 'project'
   | 'recovery'
   | 'textIo'
@@ -160,6 +161,7 @@ export interface RendererBridgeAdapter {
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
   readonly providers: AdaptedDomain<WorldforgeBridge['providers']>;
+  readonly generation: AdaptedDomain<WorldforgeBridge['generation']>;
   readonly project: AdaptedDomain<WorldforgeBridge['project']>;
   readonly recovery: AdaptedDomain<WorldforgeBridge['recovery']>;
   readonly textIo: AdaptedDomain<WorldforgeBridge['textIo']>;
@@ -196,6 +198,11 @@ export function createRendererBridgeAdapter(
     app: adaptDomain('app', requireDomain(bridge.app, 'app'), coordinator),
     settings: adaptDomain('settings', requireDomain(bridge.settings, 'settings'), coordinator),
     providers: adaptDomain('providers', requireDomain(bridge.providers, 'providers'), coordinator),
+    generation: adaptDomain(
+      'generation',
+      requireDomain(bridge.generation, 'generation'),
+      coordinator,
+    ),
     project: adaptDomain('project', requireDomain(bridge.project, 'project'), coordinator),
     recovery: adaptDomain('recovery', requireDomain(bridge.recovery, 'recovery'), coordinator),
     textIo: adaptDomain('textIo', requireDomain(bridge.textIo, 'textIo'), coordinator),

@@ -4,9 +4,11 @@ import path from 'node:path';
 import {
   CoreAppDataResultSchema,
   CoreControlMessageSchema,
+  CoreGenerationResultSchema,
   CoreProjectResultSchema,
   CoreProviderResultSchema,
   PROTOCOL_VERSION,
+  PROJECT_WORKSPACE_COMMANDS,
   type CoreEvent,
 } from '@worldforge/contracts';
 
@@ -15,9 +17,12 @@ import { CandidateApplyService } from './candidate-apply.js';
 import { CandidateService } from './candidate.js';
 import { CheckpointAwareRecoveryService } from './checkpoint-aware-recovery.js';
 import { ContinuityService } from './continuity.js';
+import { HardenedConstraintPackageService } from './constraint-package-hardening.js';
 import { CoordinatedImportExportService } from './coordinated-import-export.js';
 import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
+import { GenerationRunService } from './generation-run.js';
+import { GenerationRuntime } from './generation-runtime.js';
 import { ProjectPlanningService } from './project-planning.js';
 import { ProjectContinuationService } from './project-continuation.js';
 import { ProjectStructureService } from './project-structure.js';
@@ -26,6 +31,7 @@ import { ReferenceAwareStructureOperationService } from './reference-aware-struc
 import { SceneBeatService } from './scene-beat.js';
 import { TaskCommandRouter, TaskProtocol, type TaskMessagePort } from './task-protocol.js';
 import { executeAppDataOperation } from './utility-app-data-router.js';
+import { executeGenerationOperation } from './utility-generation-router.js';
 import { windowPreferencesError } from './utility-errors.js';
 import { executeProjectOperation } from './utility-project-router.js';
 import { executeProviderOperation } from './utility-provider-router.js';
@@ -80,8 +86,12 @@ function requiredAbsolutePath(name: string): string {
 }
 
 function checkpointRequestId(requestId: string): string {
+  return derivedRequestId(requestId, 'checkpoint');
+}
+
+function derivedRequestId(requestId: string, purpose: string): string {
   const hex = createHash('sha256')
-    .update(`${requestId}:checkpoint`, 'utf8')
+    .update(`${requestId}:${purpose}`, 'utf8')
     .digest('hex')
     .slice(0, 32);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20)}`;
@@ -128,6 +138,13 @@ const projectWorkspace = new ProjectWorkspaceService({
 const recovery = new CheckpointAwareRecoveryService(projectWorkspace, {
   backupRootDirectory: requiredAbsolutePath('project-operation-recovery'),
 });
+const generationRuns = new GenerationRunService(projectWorkspace);
+const generationRuntime = new GenerationRuntime(generationRuns, taskProtocol);
+const generationServices = {
+  constraints: new HardenedConstraintPackageService(projectWorkspace),
+  runs: generationRuns,
+  runtime: generationRuntime,
+};
 const services: UtilityProjectServices = {
   projectWorkspace,
   projectContinuation: new ProjectContinuationService(projectWorkspace),
@@ -269,6 +286,34 @@ parentPort.on('message', ({ data, ports }) => {
       );
       break;
     }
+    case 'core.generation.command': {
+      const requestId = parsed.data.requestId;
+      const operation = parsed.data.operation;
+      if (!acceptingAppDataOperations) {
+        send({
+          type: 'core.generation.result',
+          protocolVersion: PROTOCOL_VERSION,
+          requestId,
+          result: CoreGenerationResultSchema.parse({
+            ok: false,
+            operation: operation.operation,
+            errorCode: 'COMMON_CANCELLED_004',
+          }),
+        });
+        break;
+      }
+      track(
+        executeGenerationOperation(generationServices, requestId, operation).then((result) => {
+          send({
+            type: 'core.generation.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          });
+        }),
+      );
+      break;
+    }
     case 'core.project.command': {
       const requestId = parsed.data.requestId;
       const operation = parsed.data.operation;
@@ -286,7 +331,19 @@ parentPort.on('message', ({ data, ports }) => {
         break;
       }
       track(
-        executeProjectOperation(services, requestId, operation).then((result) => {
+        executeProjectOperation(services, requestId, operation).then(async (result) => {
+          if (
+            result.ok &&
+            (operation.operation === PROJECT_WORKSPACE_COMMANDS.create ||
+              operation.operation === PROJECT_WORKSPACE_COMMANDS.openRecent ||
+              operation.operation === PROJECT_WORKSPACE_COMMANDS.openSelected) &&
+            projectWorkspace.activeProject?.databaseMode === 'read-write'
+          ) {
+            await generationRuns.recoverInterrupted(
+              derivedRequestId(requestId, 'generation-recovery'),
+              projectWorkspace.activeProject.projectId,
+            );
+          }
           send({
             type: 'core.project.result',
             protocolVersion: PROTOCOL_VERSION,

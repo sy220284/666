@@ -16,6 +16,7 @@ import type { AppearancePreferences, WindowPreferences } from '@worldforge/contr
 
 import { registerCandidatePreviewIpc } from './candidate-preview-ipc.js';
 import { registerContinuityIpc } from './continuity-ipc.js';
+import { registerGenerationIpc } from './generation-ipc.js';
 import { CoreSupervisor, type UtilityProcessHandle } from './core-supervisor.js';
 import { CredentialBroker } from './credential-broker.js';
 import { registerIpcHandlers } from './ipc-handlers.js';
@@ -348,6 +349,13 @@ async function bootstrap(): Promise<void> {
     },
   });
   const unregisterContinuityIpc = registerContinuityIpc({ ipcMain, supervisor, rendererUrl });
+  const unregisterGenerationIpc = registerGenerationIpc({
+    ipcMain,
+    supervisor,
+    credentialBroker,
+    rendererUrl,
+    logger,
+  });
   const unregisterNarrativePlanningIpc = registerNarrativePlanningIpc({
     ipcMain,
     supervisor,
@@ -361,6 +369,7 @@ async function bootstrap(): Promise<void> {
   unregisterIpc = () => {
     unregisterPreviewIpc();
     unregisterNarrativePlanningIpc();
+    unregisterGenerationIpc();
     unregisterContinuityIpc();
     unregisterBaseIpc();
   };

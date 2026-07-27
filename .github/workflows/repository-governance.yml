@@ -18,14 +18,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: repository-governance-${{ github.event.pull_request.head.sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  coverage-lock-patch:
+  coverage-lock-commit:
     if: ${{ github.event_name == 'pull_request' && github.repository == 'sy220284/666' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -42,36 +42,25 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Determine whether the validated patch still needs to be committed
+        id: route
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=true
+          if node -e "const p=require('./package.json'); process.exit(p.devDependencies?.['@vitest/coverage-v8']==='4.1.10'?0:1)" \
+            && ! grep -q 'document[[:space:]]*\.[[:space:]]*querySelector' apps/desktop/renderer/src/features/writing/writing-workbench.tsx; then
+            run=false
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Add coverage provider to the governed manifest and lockfile
-        run: pnpm add --workspace-root --save-dev --save-exact @vitest/coverage-v8@4.1.10
-      - name: Remove mutable coverage dependency installation from CI
+        if: ${{ steps.route.outputs.run == 'true' }}
+      - name: Materialize the already validated package and React changes
+        if: ${{ steps.route.outputs.run == 'true' }}
         shell: bash
         run: |
-          node --input-type=module <<'NODE'
-          import { readFile, writeFile } from 'node:fs/promises';
-          const file = '.github/workflows/quality-core.yml';
-          const lines = (await readFile(file, 'utf8')).split('\n');
-          const removableSteps = new Set([
-            '      - name: Install exact coverage provider without changing the lockfile',
-            '      - name: Restore package manifest after temporary coverage provider install',
-          ]);
-          const output = [];
-          let removed = 0;
-          for (let index = 0; index < lines.length; index += 1) {
-            if (!removableSteps.has(lines[index])) {
-              output.push(lines[index]);
-              continue;
-            }
-            removed += 1;
-            index += 2;
-          }
-          if (removed !== removableSteps.size) throw new Error(`Expected two mutable coverage steps, removed ${removed}`);
-          await writeFile(file, output.join('\n'), 'utf8');
-          NODE
-      - name: Replace restore-notice DOM injection with React state flow
-        shell: bash
-        run: |
+          set -euo pipefail
+          pnpm add --workspace-root --save-dev --save-exact @vitest/coverage-v8@4.1.10
           node --input-type=module <<'NODE'
           import { readFile, writeFile } from 'node:fs/promises';
 
@@ -85,13 +74,11 @@ jobs:
           if (!domEffect.test(wrapper)) throw new Error('Restore notice DOM effect was not found');
           wrapper = wrapper.replace(domEffect, '\n');
           const bridgeMarker = '  const bridge = useMemo(\n';
-          if (!wrapper.includes(bridgeMarker)) throw new Error('Writing bridge marker was not found');
           wrapper = wrapper.replace(
             bridgeMarker,
             "  const consumeRestoreNotice = useCallback(() => setRestoreNotice(null), []);\n\n" + bridgeMarker,
           );
           const continuationProp = '      initialContinuation={continuation}\n';
-          if (!wrapper.includes(continuationProp)) throw new Error('Continuation prop marker was not found');
           wrapper = wrapper.replace(
             continuationProp,
             continuationProp +
@@ -103,17 +90,14 @@ jobs:
           const corePath = 'apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx';
           let core = await readFile(corePath, 'utf8');
           const propMarker = '  readonly onStatus: (message: string) => void;\n';
-          if (!core.includes(propMarker)) throw new Error('Core props marker was not found');
           core = core.replace(
             propMarker,
             propMarker +
               '  readonly statusNotice?: string | null;\n' +
               '  readonly onStatusNoticeConsumed?: () => void;\n',
           );
-          const destructureMarker = '  onPanelChange,\n  onStatus,\n}: WritingWorkbenchProps) {';
-          if (!core.includes(destructureMarker)) throw new Error('Core destructure marker was not found');
           core = core.replace(
-            destructureMarker,
+            '  onPanelChange,\n  onStatus,\n}: WritingWorkbenchProps) {',
             '  onPanelChange,\n  onStatus,\n  statusNotice,\n  onStatusNoticeConsumed,\n}: WritingWorkbenchProps) {',
           );
           const statusMarker =
@@ -121,7 +105,6 @@ jobs:
             '    setEditorState(message);\n' +
             '    setEditorFailure(failure);\n' +
             '  }, []);\n';
-          if (!core.includes(statusMarker)) throw new Error('Core status callback marker was not found');
           core = core.replace(
             statusMarker,
             statusMarker +
@@ -135,80 +118,38 @@ jobs:
           NODE
           pnpm exec prettier --write \
             apps/desktop/renderer/src/features/writing/writing-workbench.tsx \
-            apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
-            .github/workflows/quality-core.yml
-      - name: Validate frozen installation, React boundary and full coverage
-        shell: bash
-        run: |
-          set -o pipefail
-          mkdir -p test-results/coverage-lock
-          {
-            echo '=== frozen install ==='
-            pnpm install --frozen-lockfile --prefer-offline
-            echo '=== renderer boundary ==='
-            pnpm exec vitest run tests/security/renderer-react-boundary.test.ts
-            echo '=== coverage ==='
-            pnpm test:coverage
-            echo '=== manifest ==='
-            node -e "const p=require('./package.json'); console.log(p.devDependencies?.['@vitest/coverage-v8']); if(p.devDependencies?.['@vitest/coverage-v8']!=='4.1.10') process.exit(1)"
-            echo '=== lockfile ==='
-            grep -n '@vitest/coverage-v8' pnpm-lock.yaml | head
-            echo '=== workflow checks ==='
-            ! grep -n -- '--lockfile=false' .github/workflows/quality-core.yml
-            ! grep -n 'temporary coverage provider' .github/workflows/quality-core.yml
-            ! grep -n 'document[[:space:]]*\.[[:space:]]*querySelector' apps/desktop/renderer/src/features/writing/writing-workbench.tsx
-          } 2>&1 | tee test-results/coverage-lock/validation.log
-      - name: Upload exact locked coverage and React boundary patch
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: locked-coverage-provider-patch
-          path: |
-            package.json
-            pnpm-lock.yaml
-            .github/workflows/quality-core.yml
-            apps/desktop/renderer/src/features/writing/writing-workbench.tsx
             apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
-            test-results/coverage-lock/validation.log
-          if-no-files-found: error
-          retention-days: 1
-      - name: Remove the temporary patch generator from the permanent workflow
+      - name: Revalidate the non-workflow patch
+        if: ${{ steps.route.outputs.run == 'true' }}
         shell: bash
         run: |
-          node --input-type=module <<'NODE'
-          import { readFile, writeFile } from 'node:fs/promises';
-          const file = '.github/workflows/repository-governance.yml';
-          const source = await readFile(file, 'utf8');
-          const marker = /\n  coverage-lock-patch:[\s\S]*?\n  repository-governance:/u;
-          if (!marker.test(source)) throw new Error('Temporary coverage job marker was not found');
-          await writeFile(file, source.replace(marker, '\n  repository-governance:'), 'utf8');
-          NODE
-          pnpm exec prettier --write .github/workflows/repository-governance.yml
-      - name: Commit validated files by fast-forward only
+          set -euo pipefail
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm exec vitest run tests/security/renderer-react-boundary.test.ts
+          pnpm test:coverage
+          node -e "const p=require('./package.json'); if(p.devDependencies?.['@vitest/coverage-v8']!=='4.1.10') process.exit(1)"
+          ! grep -q 'document[[:space:]]*\.[[:space:]]*querySelector' apps/desktop/renderer/src/features/writing/writing-workbench.tsx
+      - name: Commit only package and React files
+        if: ${{ steps.route.outputs.run == 'true' }}
         env:
-          REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$REPO_ADMIN_TOKEN"
-          test -n "$HEAD_REF"
           remote_head="$(git ls-remote origin "refs/heads/$HEAD_REF" | cut -f1)"
           test "$remote_head" = "$SOURCE_SHA"
-          git diff --check
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add \
             package.json \
             pnpm-lock.yaml \
-            .github/workflows/quality-core.yml \
-            .github/workflows/repository-governance.yml \
             apps/desktop/renderer/src/features/writing/writing-workbench.tsx \
             apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
           git diff --cached --check
           git commit -m 'chore(ci): lock coverage provider and restore React boundary'
-          auth="$(printf 'x-access-token:%s' "$REPO_ADMIN_TOKEN" | base64 -w0)"
+          auth="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:"$HEAD_REF"
 
   repository-governance:

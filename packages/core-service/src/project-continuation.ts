@@ -113,6 +113,14 @@ function snapshot(connection: DatabaseSync, projectId: string): ProjectContinuat
       reason: 'block-changed',
     });
   }
+  if (revision !== input.draftRevision) {
+    return ProjectContinuationSnapshotSchema.parse({
+      status: 'stale',
+      ...common,
+      draftRevision: revision,
+      reason: 'draft-changed',
+    });
+  }
   const textLength = safeInteger(block.textLength);
   if (textLength === null || input.cursorOffset > textLength) {
     return ProjectContinuationSnapshotSchema.parse({

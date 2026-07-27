@@ -119,6 +119,63 @@ describe('M4-04 project continuation', () => {
     }
   });
 
+  it('marks a changed Draft revision stale even when the anchored block is unchanged', async () => {
+    const harness = await createHarness();
+    try {
+      const project = await harness.workspace.create(
+        randomUUID(),
+        { name: '续写Revision保护', channel: '悬疑' },
+        harness.parent,
+      );
+      const chapter = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
+      const draft = await harness.drafts.open(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      });
+      const anchoredBlock = draft.blocks[0]!;
+      await harness.continuation.save(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        draftRevision: draft.revision,
+        logicalBlockId: anchoredBlock.logicalBlockId,
+        expectedBlockHash: anchoredBlock.contentHash!,
+        cursorOffset: 0,
+        scrollTop: 0,
+        panel: 'editor',
+      });
+      await harness.drafts.applyPatch(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: draft.revision,
+        operations: [
+          {
+            type: 'insert',
+            afterLogicalBlockId: anchoredBlock.logicalBlockId,
+            block: {
+              blockType: 'paragraph',
+              content: '另一个正文块发生变化。',
+              attributes: {},
+            },
+          },
+        ],
+      });
+
+      expect(harness.continuation.get(project.projectId)).toMatchObject({
+        status: 'stale',
+        reason: 'draft-changed',
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftRevision: draft.revision + 1,
+        logicalBlockId: anchoredBlock.logicalBlockId,
+        expectedBlockHash: anchoredBlock.contentHash,
+      });
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('marks a changed logical block stale and rejects a cross-project write', async () => {
     const harness = await createHarness();
     try {

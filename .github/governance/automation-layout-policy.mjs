@@ -35,16 +35,17 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'task-transition-policy-core.mjs',
   'task-transition-policy.mjs',
   'verification-hold-taskctl.mjs',
+  'workspace-architecture.json',
 ]);
 
 const forbiddenWorkflowMarkers = Object.freeze([
   {
     label: 'task id',
-    pattern: /(?:^|[^A-Za-z0-9])M\d-\d{2}(?:[^A-Za-z0-9]|$)/u,
+    pattern: /(?:^|[^A-Za-z0-9])M\d+-\d{2}(?:[^A-Za-z0-9]|$)/u,
   },
   {
     label: 'task branch',
-    pattern: /(?:work|feat|fix|test|chore)\/m\d-\d{2}(?:[-/][a-z0-9._-]+)*/iu,
+    pattern: /(?:work|feat|fix|test|chore)\/m\d+-\d{2}(?:[-/][a-z0-9._-]+)*/iu,
   },
   {
     label: 'fixed pull request number',

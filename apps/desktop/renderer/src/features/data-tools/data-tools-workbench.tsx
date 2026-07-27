@@ -204,6 +204,7 @@ function RecoveryPanel({
         </p>
         <button
           className="primary-button"
+          data-create-checkpoint
           data-create-daily-backup
           disabled={readOnly || command.pending}
           type="button"

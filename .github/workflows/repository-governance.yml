@@ -96,6 +96,21 @@ jobs:
 
           path = Path('scripts/taskctl.mjs')
           source = path.read_text()
+          journal = """function taskTransactionJournalDirectory() {
+            return path.resolve(root, git(['rev-parse', '--git-path', 'taskctl-transactions']));
+          }
+          """
+          fallback = """function taskTransactionJournalDirectory() {
+            try {
+              return path.resolve(root, git(['rev-parse', '--git-path', 'taskctl-transactions']));
+            } catch {
+              return path.join(root, '.taskctl-transactions');
+            }
+          }
+          """
+          if journal not in source:
+              raise SystemExit('Transaction journal baseline missing')
+          source = source.replace(journal, fallback)
           retired = """async function writeActiveState() {
             throw new Error('writeActiveState is retired; use writeTaskStateTransaction');
           }

@@ -12,9 +12,6 @@ concurrency:
   group: security-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  PR_READY: ${{ github.event.pull_request.draft == false }}
-
 jobs:
   dependency-audit:
     runs-on: ubuntu-24.04

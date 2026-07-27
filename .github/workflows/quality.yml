@@ -25,7 +25,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Determine Ready quality route
+      - name: Determine PR quality route
         id: route
         shell: bash
         env:

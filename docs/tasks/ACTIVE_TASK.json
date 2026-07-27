@@ -55,7 +55,8 @@
       "LICENSE",
       "package.json",
       "pnpm-lock.yaml",
-      "pnpm-workspace.yaml"
+      "pnpm-workspace.yaml",
+      "vitest.coverage.config.ts"
     ],
     "forbiddenPaths": [
       "docs/tasks/M0/",

@@ -3,6 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 
+import { validateSchema28ProjectAnchors } from '../project-migration-preflight.js';
 import {
   DatabaseFoundationError,
   type DatabaseClock,
@@ -170,6 +171,27 @@ const migrationMetadataSql = `
   ) STRICT;
 `;
 
+function validatePendingMigrationPreconditions(
+  database: DatabaseSync,
+  migrations: readonly SqlMigration[],
+  inspection: MigrationInspection,
+): void {
+  const schema28Pending = migrations
+    .slice(inspection.schemaVersion)
+    .some((migration) => migration.kind === 'project' && migration.version === 28);
+  if (inspection.schemaVersion !== 27 || !schema28Pending) return;
+
+  try {
+    validateSchema28ProjectAnchors(database);
+  } catch (error) {
+    throw new DatabaseFoundationError(
+      'MIGRATION_FAILED',
+      'Migration 28 preflight rejected invalid historical StoryTodo or StoryComment anchors.',
+      { cause: error },
+    );
+  }
+}
+
 export function applyPendingMigrations(
   database: DatabaseSync,
   migrations: readonly SqlMigration[],
@@ -180,6 +202,8 @@ export function applyPendingMigrations(
     readonly faultInjector?: MigrationFaultInjector;
   },
 ): number {
+  validatePendingMigrationPreconditions(database, migrations, inspection);
+
   let appliedCount = 0;
   for (const migration of migrations.slice(inspection.schemaVersion)) {
     try {

@@ -1,53 +1,53 @@
 {
   "schemaVersion": 1,
   "taskId": "M4-04",
-  "commit": "ea7463a40faa5b23b3b9afc97504be19f2cee708",
-  "generatedAt": "2026-07-27T13:18:43.000Z",
+  "commit": "9131a6db1f43d97e52aaa867010a316998f860fb",
+  "generatedAt": "2026-07-27T14:15:00.000Z",
   "files": [
     {
       "path": "c1-author-workflow.md",
-      "bytes": 3409,
-      "sha256": "e0f421bba8388200f4a1b89dafddd6bd0f3d79b0f1af8f83abae8aa909689ea1"
+      "bytes": 2509,
+      "sha256": "ca3eba881bf00c6e4159b7fc4a9660510b1689bcca47ce2fe3c423ec9d0c363d"
     },
     {
       "path": "c2-generation-runtime.md",
-      "bytes": 3548,
-      "sha256": "5c03ec4b4a4515af9b765dad7a96b257a8212654f6e0fe3c4c92faec53ef268b"
+      "bytes": 2753,
+      "sha256": "8a653f82eae8cb0f4f0f0b537705e26cf1758664d3f56294f403f28ac38f4db5"
     },
     {
       "path": "c3-author-ai-loop.md",
-      "bytes": 2046,
-      "sha256": "a1516bb181dc0406bac9c1ea84503459fc6af1360a441a5ff980e18f4980327a"
+      "bytes": 2207,
+      "sha256": "def931b6f26e24a7fcd973ffcc31fae8c63692cb6444bea0d5fd5a521cfe9fe1"
     },
     {
       "path": "c4-rewrite-merge-review.md",
-      "bytes": 2483,
-      "sha256": "c7cf51ef43cc269bca8f1f0687f18f14aaa8caacd1e8e2a6f5c099dba0009c54"
+      "bytes": 2524,
+      "sha256": "8a85c64670ae85a31524dfed0bf47181b9a535134f964f9a116f50c0d7bc6b28"
     },
     {
       "path": "c5-state-validation.md",
-      "bytes": 4604,
-      "sha256": "97184db72e2f4879bfa0bca4242851e7b3eaef028d3d99cbe57841df5b846772"
+      "bytes": 3393,
+      "sha256": "25550f203665ce2d9a894cf9f6f8e1d0829b9cfb5e0b4244910c1fb65f6e06ed"
     },
     {
       "path": "c6-search-rhythm.md",
-      "bytes": 3323,
-      "sha256": "8888613035b20a3e06e7e4d267339e8b85d74510a4cc85edfef74d2fdfcc3cae"
+      "bytes": 2453,
+      "sha256": "0a4441ccd75573599aee8371b1aed72a55d2f72ea84044fd543026333f8d9865"
     },
     {
       "path": "c7-docx-recovery.md",
-      "bytes": 4851,
-      "sha256": "d5521de87c52c72bce3b9aad39f92c8571dfd8a7c44fc61335c1d34bc37a57e4"
+      "bytes": 2549,
+      "sha256": "e146c0119d1f40a4cbe169def086c66f6fbc290bcbcc8906d76161d655ffbdbc"
     },
     {
       "path": "commands.txt",
-      "bytes": 4653,
-      "sha256": "af3dff0759053137ba1e66a8fe0afd665c8520840331ea5c57f1443fef90e535"
+      "bytes": 1864,
+      "sha256": "44e78cbfbbf5a8466349bd3863008d7ad07d22277c85c598fdc55b82fd64a485"
     },
     {
       "path": "known-risks.md",
-      "bytes": 2915,
-      "sha256": "75f45904ceb8934c2492374e0508a8648c0fbaa0764b089f09c73360777fc6a8"
+      "bytes": 2236,
+      "sha256": "6da9038ceeff54935d49a557022e835c3cb91f0abb90907dc16bcc01dc16214a"
     },
     {
       "path": "migration-ipc-contract-plan.md",
@@ -71,8 +71,8 @@
     },
     {
       "path": "summary.md",
-      "bytes": 4463,
-      "sha256": "4ac0ec3c0f3618af35d60ec7a6582daa894d35777ec6c86145350e2f6832e782"
+      "bytes": 4302,
+      "sha256": "e178c73715fa623cfd9630bd195e7569f182651735e3ecb011e3b36e9e8f6650"
     }
   ]
 }

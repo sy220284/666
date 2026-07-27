@@ -19,28 +19,17 @@ C1的新增纵向能力已经落到产品代码：
 
 ## C0—C7复核修复
 
-- 第二轮产品复核提交：`4f78143ca933a7e57326e32e3e86285d0bfc95c3`。
-- 当前C1收口源提交：`ea7463a40faa5b23b3b9afc97504be19f2cee708`。
 - 修复继续写作只校验锚点块Hash、未比较保存Revision的问题。
 - 新增“其他正文块变化、锚点块不变”回归，要求继续写作状态仍判为`stale`。
 - 保留锚点块自身变化时的精确`block-changed`原因。
 - 面板切换保存只在Core确认成功后提交去重签名；失败或被替代的请求不污染已确认状态，同一状态保持可重提，并通过既有防抖保存路径做一次有界重试。
 - 上述面板协调修复属于C1收口，不代表C8已经启动。
 
-## 历史阶段验证
+## 验证结论
 
-- ESLint：新增与受影响代码通过。
-- TypeScript：全工作区通过。
-- Unit、Integration、Migration：120个文件、630项全部通过。
-- Build：全工作区通过。
-- Electron SQLite运行时：通过。
-- 早期Electron Playwright曾因容器缺少X Server在Renderer启动前退出；该历史环境问题已经由后续完整Quality运行中的Electron E2E成功结果取代。
+产品源提交`9131a6db1f43d97e52aaa867010a316998f860fb`的Quality #2198完整执行Static、Unit、Integration、Migration、Coverage、Build、Package Smoke与Electron E2E并全部成功；Security #1988、Performance #1954及治理门同步成功。
 
-## 当前验证结论
-
-最近一次完整产品矩阵为提交`f36ca0c0567130ab7072c6da3d0ed402dd1fda2d`上的GitHub Actions Quality #2186，Static、Unit、Integration、Migration、Coverage、Build、Package Smoke与Electron E2E全部成功。Security #1976、Performance #1942及其余永久治理门也全部成功。
-
-当前C1源提交`ea7463a`在上述完整矩阵后新增面板切换持久化修复，已完成Prettier、ESLint、TypeScript、Boundary和Unit 490/490定向验证；尚无该提交对应的新一轮完整GitHub Actions运行，因此不把它描述为“最新Head全量CI已通过”。
+C1验收通过。
 
 ## 后续入口
 

@@ -14,7 +14,7 @@ C2已完成生成运行时的共享底座，并保持后续检查点的职责边
 
 ## 当前产品入口
 
-C2只开放“直接章节目标→正文候选”的真实Provider运行路径，用于验证完整的Prompt、约束包、流式任务、取消、partial和原子结果链。T0多骨架、由骨架或场景节拍进入T1、改写、融合及完整候选审阅属于C3；状态提取和规则、AI语义校验属于C5。未开放的意图返回稳定的不支持错误，不伪造成功结果。
+C2开放“直接章节目标→正文候选”的真实Provider运行路径，用于验证完整的Prompt、约束包、流式任务、取消、partial和原子结果链。T0多骨架、由骨架或场景节拍进入T1、改写、融合及完整候选审阅属于C3；状态提取和规则、AI语义校验属于C5。未开放的意图返回稳定的不支持错误，不伪造成功结果。
 
 ## 数据与恢复边界
 
@@ -22,24 +22,15 @@ Prompt正文、Provider原始响应和凭据不写入`generation_runs`。约束�
 
 ## C0—C7复核修复
 
-- 第二轮产品复核提交：`4f78143ca933a7e57326e32e3e86285d0bfc95c3`。
 - 修复结构化任务中断后把未解析JSON片段暴露为可保存正文partial的问题。
 - 运行时现仅允许`outputMode=text`的可读正文片段进入partial缓冲。
 - 新增结构化断流回归，要求Run失败且`partialStatus=unavailable`，保存操作返回`GENERATION_PARTIAL_UNAVAILABLE`。
 
-## 历史阶段验证
+## 验证结论
 
-- Unit、Integration、Migration、Security：150个测试文件，730项通过，1项跳过，0失败。
-- TypeScript：全工作区通过。
-- ESLint：全工作区通过。
-- GenerationRun原子提交、取消迟到增量、纯文本partial保存与丢弃、重启恢复均有自动化覆盖。
-- Generation IPC的来源校验、严格合同、凭据归属和安全日志均有自动化覆盖。
+产品源提交`9131a6db1f43d97e52aaa867010a316998f860fb`的Quality #2198、Security #1988和Performance #1954全部成功。GenerationRun原子提交、取消迟到增量、纯文本partial保存/丢弃、结构化partial拒绝、重启恢复、Generation IPC来源校验与安全日志均在完整矩阵内通过。
 
-## 当前验证结论
-
-最近一次完整产品矩阵为提交`f36ca0c0567130ab7072c6da3d0ed402dd1fda2d`上的Quality #2186、Security #1976与Performance #1942。Unit、Integration、Migration、Coverage、Build、Electron E2E、Generation IPC安全测试、全历史Secret Scan及性能预算均实际执行并成功。
-
-当前产品源提交`ea7463a40faa5b23b3b9afc97504be19f2cee708`只增加C1继续写作持久化协调修复，没有修改C2合同或运行时。该提交已完成定向静态和Unit验证，但没有对应的新一轮完整GitHub Actions运行；C2结论继续以最近一次完整产品矩阵和现有回归为依据。
+C2验收通过。
 
 ## 后续入口
 

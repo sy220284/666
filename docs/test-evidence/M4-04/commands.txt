@@ -1,89 +1,62 @@
-git status -sb
-git branch --show-current
-git log -1 --format=%H
-gh --version
-gh auth status
-gh repo view sy220284/666 --json nameWithOwner,defaultBranchRef,url
-pnpm --version
-pnpm install --frozen-lockfile --store-dir <workspace-local-store>
-node scripts/taskctl.mjs status
-node .github/governance/verification-hold-taskctl.mjs validate
-node .github/governance/verification-hold-taskctl.mjs preflight
-node scripts/evidence-policy.mjs <planning evidence validation>
-pnpm exec prettier --check <M4-04 planning documents>
-pnpm exec vitest run tests/unit/evidence-policy.test.ts tests/unit/task-control.test.ts tests/unit/task-ordering.test.ts
+# M4-04 C0—C7最终收口
+
+# 产品源提交
+git rev-parse HEAD
+# 9131a6db1f43d97e52aaa867010a316998f860fb
+
+# main同步
+git merge-base --is-ancestor 12404557d4fbe6acb7061e80ab7990cfe0100a58 9131a6db1f43d97e52aaa867010a316998f860fb
+# 成功：产品分支已不落后main
+
+# C5定向实现与测试
+pnpm exec prettier --check packages/core-service/src/project-migration-preflight.ts packages/core-service/src/database/migrations.ts tests/migration/state-validation-migration.test.ts
+pnpm check:boundaries
 pnpm lint
 pnpm typecheck
-pnpm test:unit
-pnpm exec vitest run tests/migration/project-continuation-migration.test.ts tests/integration/project-continuation.test.ts tests/migration/search-index-migration.test.ts
-pnpm exec vitest run tests/unit tests/integration tests/migration
-pnpm typecheck
-pnpm build
-pnpm exec eslint <C1 changed TypeScript files>
-pnpm exec prettier --check <C1 changed source, tests and evidence>
-pnpm exec playwright test --config tests/e2e/playwright.config.ts tests/e2e/electron-shell.spec.ts
-pnpm exec vitest run tests/unit tests/integration tests/migration tests/security --reporter=dot
-pnpm typecheck
+pnpm exec vitest run tests/migration/state-validation-migration.test.ts
+pnpm test:migration
+
+# Quality #2198
+pnpm install --frozen-lockfile --prefer-offline
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
 pnpm lint
-pnpm build
-pnpm exec prettier --check <C2 changed source, tests and evidence>
-node .github/governance/verification-hold-taskctl.mjs preflight
-EVIDENCE_HEAD_SHA=<committed PR Head> EVIDENCE_BASE_SHA=<PR Base> node scripts/evidence-policy.mjs
-pnpm exec vitest run tests/unit/structured-candidate-contracts.test.ts tests/unit/renderer-c3-generation-workbench.test.ts
-pnpm exec vitest run tests/integration/generation-run.test.ts tests/integration/generation-runtime.test.ts tests/integration/generation-source-resolver.test.ts
+pnpm typecheck
 pnpm test:unit
 pnpm test:integration
 pnpm test:migration
+pnpm test:coverage
+pnpm build
+pnpm package
+pnpm test:e2e
+# 结论：全部成功
+
+# Security #1988
+pnpm audit --audit-level=high
 pnpm test:security
-pnpm test:eval
+node scripts/scan-secrets.mjs --history
+# 结论：Dependency Audit、Application Security、全Git历史Secret Scan全部成功
+
+# Performance #1954
 pnpm test:perf
-pnpm lint
-pnpm typecheck
-pnpm build
-pnpm exec prettier --check <C3-C4 changed source, tests and evidence>
-EVIDENCE_HEAD_SHA=<C2 committed PR Head> EVIDENCE_BASE_SHA=<PR Base> node scripts/evidence-policy.mjs
-pnpm exec vitest run tests/migration/state-validation-migration.test.ts tests/integration/state-validation-provider.test.ts tests/security/validation-ipc.test.ts
-pnpm exec vitest run tests/unit tests/integration tests/security tests/migration
-pnpm typecheck
-pnpm lint
-pnpm format:check
-pnpm build
-pnpm exec vitest run tests/migration/search-replace-rhythm-migration.test.ts tests/integration/search-replace-rhythm.test.ts tests/security/search-rhythm-ipc.test.ts
-pnpm exec vitest run tests/unit tests/integration tests/migration tests/security
-pnpm typecheck
-pnpm lint
-pnpm build
-pnpm format:check
-pnpm test:perf
-pnpm exec vitest run tests/integration/docx-transfer.test.ts tests/integration/three-track-recovery.test.ts tests/migration/backup-tracks-migration.test.ts tests/security/backup-transfer-ipc.test.ts tests/security/docx-archive-security.test.ts
-pnpm exec vitest run tests/unit tests/integration tests/migration tests/security --reporter=dot
-pnpm typecheck
-pnpm lint
-pnpm build
-pnpm format:check
+# 结论：成功
 
-# C0—C7历史复核记录
-# Quality #2043，受检提交3b8cae9d42dd06c5862606b1c23afef50cd0fa9d
-# Quality #2054，受检提交4f78143ca933a7e57326e32e3e86285d0bfc95c3
+# 其他永久门禁
+# Evidence #1917：成功
+# PR Policy #1946：成功
+# Task Governance #2167：成功
 
-# 最近一次完整产品CI，受检提交f36ca0c0567130ab7072c6da3d0ed402dd1fda2d
-# Quality #2186：Static、Unit、Integration、Migration、Coverage、Build、Package Smoke、Electron E2E全部成功
-# Security #1976：Dependency Audit、Application Security、全Git历史Secret Scan全部成功
-# Performance #1942：性能预算成功
-# Evidence #1905：成功
-# PR Policy #1934：成功
-# Task Governance #2155：成功
-# Repository Governance #698：成功
+# C5迁移场景
+# 1. 当前Schema 28严格表与触发器：通过
+# 2. 干净Schema 27→28：通过
+# 3. 历史非法StoryTodo：升级前拒绝，Schema/Manifest保持27，恢复点存在
+# 4. 历史非法StoryComment：升级前拒绝，Schema/Manifest保持27，恢复点存在
+# 5. 四个Schema 28触发器在失败路径中不落地
+# 6. 非法历史记录不被静默删除或改写
 
-# 当前Evidence产品源提交ea7463a40faa5b23b3b9afc97504be19f2cee708的C1定向验证
-pnpm exec prettier --check apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx tests/unit/renderer-continuation-persistence.test.ts
-pnpm typecheck
-pnpm exec eslint apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx tests/unit/renderer-continuation-persistence.test.ts
-pnpm check:boundaries
-pnpm exec vitest run tests/unit/renderer-continuation-persistence.test.ts
-pnpm test:unit
-
-# 真实结论
-# f36ca0c的完整永久门禁全绿。
-# ea7463a新增C1修复并完成定向验证，但没有对应的新一轮完整GitHub Actions运行。
-# C8尚未开始；C5历史脏数据升级策略仍是C0—C7整体验收阻断项。
+# 当前结论
+# C0—C7工程实现与自动化验收通过。
+# C8尚未开始。
+# M4-04继续保持Draft/In Progress，待C8、真实平台/P0人工验收和最终Evidence。

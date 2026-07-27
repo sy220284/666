@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ProjectContinuationSnapshot, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
@@ -36,11 +36,7 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
     setLatestContinuation(props.initialContinuation);
   }, [props.initialContinuation, props.project.projectId]);
 
-  useEffect(() => {
-    if (!restoreNotice || props.panel !== 'editor') return;
-    const timer = window.setTimeout(() => setRestoreNotice(null), 500);
-    return () => window.clearTimeout(timer);
-  }, [props.panel, restoreNotice]);
+  const consumeRestoreNotice = useCallback(() => setRestoreNotice(null), []);
 
   const bridge = useMemo(
     () =>
@@ -73,6 +69,8 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
       {...props}
       bridge={bridge}
       initialContinuation={continuation}
+      statusNotice={restoreNotice}
+      onStatusNoticeConsumed={consumeRestoreNotice}
       key={`${props.project.projectId}:${props.panel}`}
     />
   );

@@ -50,6 +50,8 @@ interface WritingWorkbenchProps {
   readonly panel: WritingPanel;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onStatus: (message: string) => void;
+  readonly statusNotice?: string | null;
+  readonly onStatusNoticeConsumed?: () => void;
 }
 
 interface WritingStatistics {
@@ -277,6 +279,8 @@ export function WritingWorkbench({
   panel,
   onPanelChange,
   onStatus,
+  statusNotice,
+  onStatusNoticeConsumed,
 }: WritingWorkbenchProps) {
   const readOnly = project.databaseMode !== 'read-write';
   const editorHost = useRef<HTMLDivElement>(null);
@@ -311,6 +315,12 @@ export function WritingWorkbench({
     setEditorState(message);
     setEditorFailure(failure);
   }, []);
+
+  useEffect(() => {
+    if (!statusNotice || panel !== 'editor') return;
+    setStatus(statusNotice);
+    onStatusNoticeConsumed?.();
+  }, [onStatusNoticeConsumed, panel, setStatus, statusNotice]);
 
   const refreshStatistics = useCallback((): void => {
     const instance = editor.current;

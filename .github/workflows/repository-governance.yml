@@ -71,14 +71,23 @@ jobs:
       - name: Validate frozen installation and real coverage execution
         shell: bash
         run: |
-          set -euo pipefail
-          pnpm install --frozen-lockfile --prefer-offline
-          pnpm test:coverage
-          node -e "const p=require('./package.json'); if(p.devDependencies?.['@vitest/coverage-v8']!=='4.1.10') process.exit(1)"
-          grep -q '@vitest/coverage-v8' pnpm-lock.yaml
-          ! grep -q -- '--lockfile=false' .github/workflows/quality-core.yml
-          ! grep -q 'temporary coverage provider' .github/workflows/quality-core.yml
-      - name: Upload exact locked coverage patch
+          set -o pipefail
+          mkdir -p test-results/coverage-lock
+          {
+            echo '=== frozen install ==='
+            pnpm install --frozen-lockfile --prefer-offline
+            echo '=== coverage ==='
+            pnpm test:coverage
+            echo '=== manifest ==='
+            node -e "const p=require('./package.json'); console.log(p.devDependencies?.['@vitest/coverage-v8']); if(p.devDependencies?.['@vitest/coverage-v8']!=='4.1.10') process.exit(1)"
+            echo '=== lockfile ==='
+            grep -n '@vitest/coverage-v8' pnpm-lock.yaml | head
+            echo '=== workflow checks ==='
+            ! grep -n -- '--lockfile=false' .github/workflows/quality-core.yml
+            ! grep -n 'temporary coverage provider' .github/workflows/quality-core.yml
+          } 2>&1 | tee test-results/coverage-lock/validation.log
+      - name: Upload exact locked coverage patch and diagnostics
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: locked-coverage-provider-patch
@@ -86,6 +95,7 @@ jobs:
             package.json
             pnpm-lock.yaml
             .github/workflows/quality-core.yml
+            test-results/coverage-lock/validation.log
           if-no-files-found: error
           retention-days: 1
 

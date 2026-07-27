@@ -75,18 +75,22 @@ export class ContinuationPersistenceTracker<Input> {
 
 /**
  * Derives a lightweight panel-switch state from the last Core-confirmed
- * snapshot and marks it as the newest Renderer intent before the asynchronous
- * save starts.
+ * snapshot and marks the selected panel as the newest Renderer intent before
+ * any asynchronous save settles. Returning to the committed panel still
+ * refreshes intent even though no immediate write is required.
  */
 export function derivePanelSwitchInput<Input extends { readonly panel: Panel }, Panel>(
   committed: Input | null,
   panel: Panel,
 ): Input | null {
-  if (!committed || committed.panel === panel) return null;
-  const next = { ...committed, panel };
-  if (typeof committed === 'object') {
-    trackerByCommittedInput.get(committed)?.noteIntent(next);
+  if (!committed) return null;
+  const tracker = trackerByCommittedInput.get(committed);
+  if (committed.panel === panel) {
+    tracker?.noteIntent(committed);
+    return null;
   }
+  const next = { ...committed, panel };
+  tracker?.noteIntent(next);
   return next;
 }
 

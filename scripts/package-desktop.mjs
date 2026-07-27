@@ -1,15 +1,6 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import {
-  cp,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -189,10 +180,7 @@ async function copyElectronRuntime(stagingDirectory, platform, version) {
   const bundlePath = path.join(stagingDirectory, bundleName);
   await cp(electronDist, bundlePath, { recursive: true, verbatimSymlinks: true });
   if (platform === 'windows') {
-    await rename(
-      path.join(bundlePath, 'electron.exe'),
-      path.join(bundlePath, 'WorldForge.exe'),
-    );
+    await rename(path.join(bundlePath, 'electron.exe'), path.join(bundlePath, 'WorldForge.exe'));
   } else {
     await rename(path.join(bundlePath, 'electron'), path.join(bundlePath, 'worldforge'));
   }
@@ -228,7 +216,9 @@ function createArchive({ platform, stagingDirectory, bundleName, artifactPath })
 }
 
 async function sha256(filePath) {
-  return createHash('sha256').update(await readFile(filePath)).digest('hex');
+  return createHash('sha256')
+    .update(await readFile(filePath))
+    .digest('hex');
 }
 
 export async function packageDesktop(argumentsList = process.argv.slice(2)) {
@@ -237,19 +227,10 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
     packageVersion: packageJson.version,
   });
   for (const [filePath, label] of [
-    [
-      path.join(root, 'apps', 'desktop', 'main', 'dist', 'electron-main.js'),
-      'Electron main build',
-    ],
+    [path.join(root, 'apps', 'desktop', 'main', 'dist', 'electron-main.js'), 'Electron main build'],
     [path.join(root, 'apps', 'desktop', 'preload', 'dist', 'index.cjs'), 'Preload build'],
-    [
-      path.join(root, 'apps', 'desktop', 'renderer', 'dist', 'index.html'),
-      'Renderer build',
-    ],
-    [
-      path.join(root, 'packages', 'core-service', 'dist', 'utility-entry.js'),
-      'Core service build',
-    ],
+    [path.join(root, 'apps', 'desktop', 'renderer', 'dist', 'index.html'), 'Renderer build'],
+    [path.join(root, 'packages', 'core-service', 'dist', 'utility-entry.js'), 'Core service build'],
   ]) {
     await requirePath(filePath, label);
   }
@@ -258,11 +239,7 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
   await mkdir(options.output, { recursive: true });
   const stagingDirectory = await mkdtemp(path.join(tmpdir(), 'worldforge-package-'));
   try {
-    const runtime = await copyElectronRuntime(
-      stagingDirectory,
-      options.platform,
-      options.version,
-    );
+    const runtime = await copyElectronRuntime(stagingDirectory, options.platform, options.version);
     await prepareApplication(runtime.resourcesPath, options.version);
     const artifactName = `WorldForge-v${options.version}-${options.platform}-${runtime.architecture}.${archiveExtension(options.platform)}`;
     const artifactPath = path.join(options.output, artifactName);

@@ -16,8 +16,11 @@ import {
   type RecoveryVersionSummary,
 } from '@worldforge/contracts';
 
+import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { RecoveryService, RecoveryServiceError, type RecoveryServiceOptions } from './recovery.js';
+
+const systemClock: DatabaseClock = { now: () => new Date() };
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
@@ -74,12 +77,14 @@ interface VersionExportData {
 export class CheckpointAwareRecoveryService extends RecoveryService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #backupRootDirectory: string;
+  readonly #clock: DatabaseClock;
   readonly #dailyBackups = new Map<string, Promise<BackupRecord>>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     super(workspace, options);
     this.#workspace = workspace;
     this.#backupRootDirectory = path.resolve(options.backupRootDirectory);
+    this.#clock = options.clock ?? systemClock;
   }
 
   override createDailyBackup(
@@ -87,14 +92,14 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     raw: RecoveryDailyBackupInput,
   ): Promise<BackupRecord> {
     const input = RecoveryDailyBackupInputSchema.parse(raw);
-    const existing = this.#dailyBackups.get(input.projectId);
+    const day = this.#clock.now().toISOString().slice(0, 10);
+    const key = `${input.projectId}:${day}`;
+    const existing = this.#dailyBackups.get(key);
     if (existing) return existing;
     const operation = super.createDailyBackup(requestId, input);
-    this.#dailyBackups.set(input.projectId, operation);
+    this.#dailyBackups.set(key, operation);
     const clear = (): void => {
-      if (this.#dailyBackups.get(input.projectId) === operation) {
-        this.#dailyBackups.delete(input.projectId);
-      }
+      if (this.#dailyBackups.get(key) === operation) this.#dailyBackups.delete(key);
     };
     void operation.then(clear, clear);
     return operation;

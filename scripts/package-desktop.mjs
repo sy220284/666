@@ -1,15 +1,28 @@
 import { createHash } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { parseReleaseVersion } from './release-tool.mjs';
 
 const root = process.cwd();
-const platformByNode = Object.freeze({ linux: 'linux', win32: 'windows', darwin: 'macos' });
+const platformByNode = Object.freeze({
+  linux: 'linux',
+  win32: 'windows',
+  darwin: 'macos',
+});
 const supportedPlatforms = new Set(Object.values(platformByNode));
 
 function option(argumentsList, name) {
@@ -43,14 +56,20 @@ export function parsePackageArguments(
 
   const hostPlatform = packagePlatformForNode(nodePlatform);
   const platform = option(argumentsList, '--platform') ?? hostPlatform;
-  if (!supportedPlatforms.has(platform)) throw new Error(`Unsupported package platform: ${platform}`);
+  if (!supportedPlatforms.has(platform)) {
+    throw new Error(`Unsupported package platform: ${platform}`);
+  }
   if (platform !== hostPlatform) {
-    throw new Error(`Cross-platform packaging is forbidden: host=${hostPlatform}, requested=${platform}`);
+    throw new Error(
+      `Cross-platform packaging is forbidden: host=${hostPlatform}, requested=${platform}`,
+    );
   }
 
   const version = parseReleaseVersion(option(argumentsList, '--version') ?? packageVersion);
   if (packageVersion && version !== packageVersion) {
-    throw new Error(`Package version ${version} does not match package.json version ${packageVersion}`);
+    throw new Error(
+      `Package version ${version} does not match package.json version ${packageVersion}`,
+    );
   }
 
   const output = path.resolve(
@@ -89,7 +108,9 @@ async function requirePath(filePath, label) {
   try {
     await stat(filePath);
   } catch (error) {
-    throw new Error(`${label} is missing: ${path.relative(root, filePath)}`, { cause: error });
+    throw new Error(`${label} is missing: ${path.relative(root, filePath)}`, {
+      cause: error,
+    });
   }
 }
 
@@ -107,13 +128,19 @@ async function prepareApplication(resourcesPath, version) {
   await deployWorkspace('@worldforge/main', mainTarget);
   await deployWorkspace('@worldforge/core-service', coreTarget);
   await Promise.all([
-    cp(path.join(root, 'apps', 'desktop', 'preload', 'dist'), path.join(appRoot, 'apps', 'desktop', 'preload', 'dist'), {
+    cp(
+      path.join(root, 'apps', 'desktop', 'preload', 'dist'),
+      path.join(appRoot, 'apps', 'desktop', 'preload', 'dist'),
+      { recursive: true },
+    ),
+    cp(
+      path.join(root, 'apps', 'desktop', 'renderer', 'dist'),
+      path.join(appRoot, 'apps', 'desktop', 'renderer', 'dist'),
+      { recursive: true },
+    ),
+    cp(path.join(root, 'migrations'), path.join(resourcesPath, 'migrations'), {
       recursive: true,
     }),
-    cp(path.join(root, 'apps', 'desktop', 'renderer', 'dist'), path.join(appRoot, 'apps', 'desktop', 'renderer', 'dist'), {
-      recursive: true,
-    }),
-    cp(path.join(root, 'migrations'), path.join(resourcesPath, 'migrations'), { recursive: true }),
   ]);
   await writeFile(
     path.join(appRoot, 'package.json'),
@@ -155,7 +182,10 @@ async function copyElectronRuntime(stagingDirectory, platform, version) {
   const bundlePath = path.join(stagingDirectory, bundleName);
   await cp(electronDist, bundlePath, { recursive: true, verbatimSymlinks: true });
   if (platform === 'windows') {
-    await rename(path.join(bundlePath, 'electron.exe'), path.join(bundlePath, 'WorldForge.exe'));
+    await rename(
+      path.join(bundlePath, 'electron.exe'),
+      path.join(bundlePath, 'WorldForge.exe'),
+    );
   } else {
     await rename(path.join(bundlePath, 'electron'), path.join(bundlePath, 'worldforge'));
   }
@@ -196,12 +226,23 @@ async function sha256(filePath) {
 
 export async function packageDesktop(argumentsList = process.argv.slice(2)) {
   const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
-  const options = parsePackageArguments(argumentsList, { packageVersion: packageJson.version });
+  const options = parsePackageArguments(argumentsList, {
+    packageVersion: packageJson.version,
+  });
   for (const [filePath, label] of [
-    [path.join(root, 'apps', 'desktop', 'main', 'dist', 'electron-main.js'), 'Electron main build'],
+    [
+      path.join(root, 'apps', 'desktop', 'main', 'dist', 'electron-main.js'),
+      'Electron main build',
+    ],
     [path.join(root, 'apps', 'desktop', 'preload', 'dist', 'index.cjs'), 'Preload build'],
-    [path.join(root, 'apps', 'desktop', 'renderer', 'dist', 'index.html'), 'Renderer build'],
-    [path.join(root, 'packages', 'core-service', 'dist', 'utility-entry.js'), 'Core service build'],
+    [
+      path.join(root, 'apps', 'desktop', 'renderer', 'dist', 'index.html'),
+      'Renderer build',
+    ],
+    [
+      path.join(root, 'packages', 'core-service', 'dist', 'utility-entry.js'),
+      'Core service build',
+    ],
   ]) {
     await requirePath(filePath, label);
   }
@@ -210,7 +251,11 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
   await mkdir(options.output, { recursive: true });
   const stagingDirectory = await mkdtemp(path.join(tmpdir(), 'worldforge-package-'));
   try {
-    const runtime = await copyElectronRuntime(stagingDirectory, options.platform, options.version);
+    const runtime = await copyElectronRuntime(
+      stagingDirectory,
+      options.platform,
+      options.version,
+    );
     await prepareApplication(runtime.resourcesPath, options.version);
     const artifactName = `WorldForge-v${options.version}-${options.platform}-${runtime.architecture}.${archiveExtension(options.platform)}`;
     const artifactPath = path.join(options.output, artifactName);

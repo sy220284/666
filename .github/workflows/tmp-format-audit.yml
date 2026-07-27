@@ -1,0 +1,42 @@
+name: Temporary Format Audit
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format audit files
+        run: >-
+          pnpm exec prettier --write
+          scripts/branch-hygiene.mjs
+          scripts/package-desktop.mjs
+          scripts/release-tool.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: exact-formatted-audit-files
+          path: |
+            scripts/branch-hygiene.mjs
+            scripts/package-desktop.mjs
+            scripts/release-tool.mjs
+          if-no-files-found: error
+          retention-days: 1

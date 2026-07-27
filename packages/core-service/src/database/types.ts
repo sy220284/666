@@ -72,6 +72,10 @@ export interface OpenDatabaseOptions {
   readonly clock?: DatabaseClock;
   readonly faultInjector?: MigrationFaultInjector;
   readonly prepareRecoveryPoint?: (context: MigrationRecoveryContext) => Promise<void>;
+  readonly validateMigration?: (
+    database: DatabaseSync,
+    context: MigrationRecoveryContext,
+  ) => void;
 }
 
 export interface SqliteCapabilities {

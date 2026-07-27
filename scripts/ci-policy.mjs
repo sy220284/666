@@ -42,12 +42,12 @@ const requiredFiles = [
   'scripts/scan-secrets.mjs',
 ];
 
-const actionVersions = new Map([
-  ['actions/checkout', 'v6'],
-  ['actions/setup-node', 'v6'],
-  ['actions/upload-artifact', 'v7'],
-  ['actions/download-artifact', 'v8'],
-  ['pnpm/action-setup', 'v4'],
+const actionPins = new Map([
+  ['actions/checkout', 'd23441a48e516b6c34aea4fa41551a30e30af803'],
+  ['actions/setup-node', '249970729cb0ef3589644e2896645e5dc5ba9c38'],
+  ['actions/upload-artifact', '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'],
+  ['actions/download-artifact', '3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'],
+  ['pnpm/action-setup', 'b906affcce14559ad1aafd4ab0e942779e9f58b1'],
 ]);
 
 function requireTokens(errors, file, source, tokens) {
@@ -74,13 +74,20 @@ function validateWorkflowEnvelope(errors, file, source) {
   }
 
   for (const match of source.matchAll(/uses:\s*([^@\s]+)@([^\s#]+)/gu)) {
-    const expected = actionVersions.get(match[1]);
-    if (expected && match[2] !== expected) {
-      errors.push(`${file}: ${match[1]} must use ${expected}`);
+    const action = match[1];
+    const reference = match[2];
+    if (action.startsWith('./')) continue;
+    const expected = actionPins.get(action);
+    if (!expected) {
+      errors.push(`${file}: external action ${action} is not allowlisted`);
+      continue;
+    }
+    if (reference !== expected) {
+      errors.push(`${file}: ${action} must use immutable SHA ${expected}`);
     }
   }
 
-  const checkouts = [...source.matchAll(/uses:\s*actions\/checkout@v6/gu)].length;
+  const checkouts = [...source.matchAll(/uses:\s*actions\/checkout@[^\s#]+/gu)].length;
   const safeCheckouts = [...source.matchAll(/persist-credentials:\s*false/gu)].length;
   if (checkouts !== safeCheckouts) {
     errors.push(`${file}: every checkout must disable credential persistence`);

@@ -13,7 +13,7 @@ const fullShaPattern = /^[0-9a-f]{40}$/iu;
 
 async function api(pathname, options = {}) {
   if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
-  const url = new URL(pathname, 'https://api.github.com');
+  const url = new globalThis.URL(pathname, 'https://api.github.com');
   if (url.origin !== 'https://api.github.com') {
     throw new Error(`Unexpected GitHub API origin: ${url.origin}`);
   }

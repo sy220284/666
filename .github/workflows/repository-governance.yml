@@ -62,8 +62,49 @@ jobs:
           mkdir -p test-results/taskctl-migration
           set -o pipefail
           {
+            python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/migrate-taskctl-atomic.mjs')
+          source = path.read_text()
+          replacements = [
+              (r"\\n}\\n\\nasync function", r"\\n\\}\\n\\nasync function"),
+              (
+                  "functionBody.indexOf('writeTaskStateTransaction')",
+                  "functionBody.lastIndexOf('writeTaskStateTransaction')",
+              ),
+              (
+                  """const activation = await prepareActivation(
+              state,
+              implementedIndex,
+              next.id,
+              transitionAllowedPaths,
+            );""",
+                  "const activation = await prepareActivation(state, implementedIndex, next.id);",
+              ),
+          ]
+          for before, after in replacements:
+              if before not in source:
+                  raise SystemExit(f'Migration repair baseline missing: {before!r}')
+              source = source.replace(before, after)
+          path.write_text(source)
+          PY
             node --check scripts/migrate-taskctl-atomic.mjs
             node scripts/migrate-taskctl-atomic.mjs
+            python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/taskctl.mjs')
+          source = path.read_text()
+          retired = """async function writeActiveState() {
+            throw new Error('writeActiveState is retired; use writeTaskStateTransaction');
+          }
+
+          """
+          if retired not in source:
+              raise SystemExit('Retired writeActiveState baseline missing')
+          path.write_text(source.replace(retired, ''))
+          PY
             pnpm exec prettier --write \
               scripts/atomic-file-transaction.mjs \
               scripts/taskctl.mjs \

@@ -6,8 +6,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import { CheckpointAwareRecoveryService } from '../../packages/core-service/src/checkpoint-aware-recovery.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
-import { RecoveryService } from '../../packages/core-service/src/recovery.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -20,7 +20,7 @@ afterEach(async () => {
 });
 
 describe('M4-04 three-track recovery center', () => {
-  it('deduplicates daily backups, protects named/migration/last and applies a stale-safe cleanup', async () => {
+  it('deduplicates concurrent daily backups, protects named/migration/last and applies a stale-safe cleanup', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-three-track-recovery-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
@@ -42,20 +42,26 @@ describe('M4-04 three-track recovery center', () => {
       recentProjects: runtime.recentProjects,
       clock,
     });
-    const recovery = new RecoveryService(workspace, { backupRootDirectory: backupRoot, clock });
+    const recovery = new CheckpointAwareRecoveryService(workspace, {
+      backupRootDirectory: backupRoot,
+      clock,
+    });
     try {
       const project = await workspace.create(
         randomUUID(),
         { name: '三轨恢复', channel: '长篇' },
         parent,
       );
-      const daily1 = await recovery.createDailyBackup(randomUUID(), {
-        projectId: project.projectId,
-      });
-      const daily1Again = await recovery.createDailyBackup(randomUUID(), {
-        projectId: project.projectId,
-      });
+      const [daily1, daily1Again] = await Promise.all([
+        recovery.createDailyBackup(randomUUID(), { projectId: project.projectId }),
+        recovery.createDailyBackup(randomUUID(), { projectId: project.projectId }),
+      ]);
       expect(daily1Again.backupId).toBe(daily1.backupId);
+      expect(
+        (await recovery.getOverview(project.projectId)).checkpoints.filter(
+          (record) => record.track === 'daily',
+        ),
+      ).toHaveLength(1);
 
       current = new Date('2026-07-02T08:00:00.000Z');
       const daily2 = await recovery.createDailyBackup(randomUUID(), {

@@ -4,10 +4,12 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
+  RecoveryDailyBackupInputSchema,
   RecoveryExportInputSchema,
   RecoveryOverviewSchema,
   RecoveryVersionExportSchema,
   type BackupRecord,
+  type RecoveryDailyBackupInput,
   type RecoveryExportInput,
   type RecoveryOverview,
   type RecoveryVersionExport,
@@ -72,11 +74,29 @@ interface VersionExportData {
 export class CheckpointAwareRecoveryService extends RecoveryService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #backupRootDirectory: string;
+  readonly #dailyBackups = new Map<string, Promise<BackupRecord>>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     super(workspace, options);
     this.#workspace = workspace;
     this.#backupRootDirectory = path.resolve(options.backupRootDirectory);
+  }
+
+  override createDailyBackup(
+    requestId: string,
+    raw: RecoveryDailyBackupInput,
+  ): Promise<BackupRecord> {
+    const input = RecoveryDailyBackupInputSchema.parse(raw);
+    const existing = this.#dailyBackups.get(input.projectId);
+    if (existing) return existing;
+    const operation = super.createDailyBackup(requestId, input);
+    this.#dailyBackups.set(input.projectId, operation);
+    void operation.finally(() => {
+      if (this.#dailyBackups.get(input.projectId) === operation) {
+        this.#dailyBackups.delete(input.projectId);
+      }
+    });
+    return operation;
   }
 
   async #openVerifiedCheckpoint(record: BackupRecord): Promise<CheckpointReader | null> {
@@ -175,7 +195,8 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
           WHERE v.id = ? AND vo.project_id = ?`,
       )
       .get(versionId, reader.record.projectId) as
-      { chapterTitle: string; versionTitle: string } | undefined;
+      | { chapterTitle: string; versionTitle: string }
+      | undefined;
     if (!version) return null;
     const blocks = reader.database
       .prepare(

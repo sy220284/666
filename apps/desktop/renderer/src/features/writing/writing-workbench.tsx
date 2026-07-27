@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ProjectContinuationSnapshot, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
@@ -21,23 +21,50 @@ interface WritingWorkbenchProps {
 
 export function WritingWorkbench(props: WritingWorkbenchProps) {
   const onPanelChangeRef = useRef(props.onPanelChange);
+  const [latestContinuation, setLatestContinuation] = useState<ProjectContinuationSnapshot | null>(
+    props.initialContinuation,
+  );
+
   useEffect(() => {
     onPanelChangeRef.current = props.onPanelChange;
   }, [props.onPanelChange]);
 
+  useEffect(() => {
+    setLatestContinuation(props.initialContinuation);
+  }, [props.initialContinuation, props.project.projectId]);
+
   const bridge = useMemo(
-    () => createWritingBridge(props.bridge, (panel) => onPanelChangeRef.current(panel)),
+    () =>
+      createWritingBridge(
+        props.bridge,
+        (panel) => onPanelChangeRef.current(panel),
+        setLatestContinuation,
+      ),
     [props.bridge],
   );
 
-  return <WritingCoreWorkbench {...props} bridge={bridge} />;
+  const continuation =
+    latestContinuation?.projectId === props.project.projectId
+      ? latestContinuation
+      : props.initialContinuation;
+
+  return (
+    <WritingCoreWorkbench
+      {...props}
+      bridge={bridge}
+      initialContinuation={continuation}
+      key={`${props.project.projectId}:${props.panel}`}
+    />
+  );
 }
 
 function createWritingBridge(
   bridge: RendererBridgeAdapter,
   onPanelChange: (panel: WritingPanel) => void,
+  onContinuation: (continuation: ProjectContinuationSnapshot) => void,
 ): RendererBridgeAdapter {
   type ListStructure = RendererBridgeAdapter['planning']['listStructure'];
+  type SaveContinuation = RendererBridgeAdapter['project']['saveContinuation'];
   type CreateVersion = RendererBridgeAdapter['version']['create'];
   type RestoreVersion = RendererBridgeAdapter['version']['restore'];
   let pendingProjectId: string | null = null;
@@ -57,6 +84,12 @@ function createWritingBridge(
     };
     void request.then(clear, clear);
     return request;
+  };
+
+  const saveContinuation: SaveContinuation = async (...args) => {
+    const outcome = await bridge.project.saveContinuation(...args);
+    if (outcome.state === 'success') onContinuation(outcome.data);
+    return outcome;
   };
 
   const createVersion: CreateVersion = async (...args) => {
@@ -87,6 +120,13 @@ function createWritingBridge(
     return outcome;
   };
 
+  const project = new Proxy(bridge.project, {
+    get(target, property, receiver) {
+      return property === 'saveContinuation'
+        ? saveContinuation
+        : Reflect.get(target, property, receiver);
+    },
+  });
   const planning = new Proxy(bridge.planning, {
     get(target, property, receiver) {
       return property === 'listStructure' ? listStructure : Reflect.get(target, property, receiver);
@@ -100,7 +140,7 @@ function createWritingBridge(
     },
   });
 
-  return { ...bridge, planning, version };
+  return { ...bridge, project, planning, version };
 }
 
 function waitForDraftEditorHost(): Promise<void> {

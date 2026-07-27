@@ -30,9 +30,7 @@
       ]
     }
   ],
-  "evidenceMigrationTasks": [
-    "M1-05"
-  ],
+  "evidenceMigrationTasks": ["M1-05"],
   "governancePaths": [
     ".github/audit-remediations/ci-hardening-2026-07-27.json",
     ".github/governance/automation-layout-policy.mjs",

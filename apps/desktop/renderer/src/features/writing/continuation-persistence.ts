@@ -69,10 +69,7 @@ export class ContinuationPersistenceTracker<Input> {
 
   #rememberOwner(input: Input | null): void {
     if (!input || typeof input !== 'object') return;
-    trackerByCommittedInput.set(
-      input,
-      this as unknown as ContinuationPersistenceTracker<unknown>,
-    );
+    trackerByCommittedInput.set(input, this as unknown as ContinuationPersistenceTracker<unknown>);
   }
 }
 

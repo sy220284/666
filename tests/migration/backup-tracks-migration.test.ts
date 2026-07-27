@@ -54,7 +54,7 @@ describe('M4-04 three-track backup migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 27n,
+        schema_version: 28n,
       });
       expect(
         database

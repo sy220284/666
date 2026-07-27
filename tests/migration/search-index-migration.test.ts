@@ -31,7 +31,7 @@ describe('M4-01 search index migrations', () => {
     const parent = path.join(root, 'projects');
     await mkdir(parent, { recursive: true });
     const migrations = await loadMigrations('migrations/project', 'project');
-    expect(latestMigrationVersion(migrations)).toBe(27);
+    expect(latestMigrationVersion(migrations)).toBe(28);
 
     const appRuntime = await openAppRuntime({
       databasePath: path.join(root, 'app.sqlite'),
@@ -61,7 +61,7 @@ describe('M4-01 search index migrations', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 27n,
+        schema_version: 28n,
       });
       expect(
         database
@@ -91,9 +91,7 @@ describe('M4-01 search index migrations', () => {
           .get(),
       ).toEqual({ count: 16n });
       expect(
-        database
-          .prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`)
-          .get(),
+        database.prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`).get(),
       ).toEqual({ strict: 1n });
       expect(
         database.prepare(`SELECT sql FROM sqlite_master WHERE name = 'fts_draft_blocks'`).get(),

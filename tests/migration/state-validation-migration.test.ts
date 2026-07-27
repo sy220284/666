@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 describe('M4-04 state and validation migration', () => {
-  it('preserves strict schema 25 batch ownership and GenerationRun result guards', async () => {
+  it('preserves strict schema 28 ownership, result and compound-anchor guards', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-state-validation-migration-'));
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
@@ -53,7 +53,7 @@ describe('M4-04 state and validation migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 27n,
+        schema_version: 28n,
       });
       for (const table of [
         'state_proposal_batches',
@@ -88,12 +88,16 @@ describe('M4-04 state and validation migration', () => {
                 'trg_validation_batch_scope_insert',
                 'trg_validation_issue_scope_insert',
                 'generation_state_batch_ref_requires_owned_batch',
-                'generation_validation_batch_ref_requires_owned_batch'
+                'generation_validation_batch_ref_requires_owned_batch',
+                'trg_story_todo_anchor_scope_insert_0028',
+                'trg_story_todo_anchor_scope_update_0028',
+                'trg_story_comment_anchor_scope_insert_0028',
+                'trg_story_comment_anchor_scope_update_0028'
               )
               ORDER BY name`,
           )
           .all(),
-      ).toHaveLength(6);
+      ).toHaveLength(10);
       expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
       database.close();

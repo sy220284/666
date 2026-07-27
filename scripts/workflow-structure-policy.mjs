@@ -80,12 +80,17 @@ export function validateWorkflowStructure(file, source) {
     }
     for (const [name, expected] of [
       ['draft_mode', false],
-      ['package_smoke', false],
       ['performance_eval', false],
     ]) {
       if (quality?.with?.[name] !== expected) {
         errors.push(`quality.yml: quality.with.${name} must be ${String(expected)}`);
       }
+    }
+    if (quality?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}") {
+      errors.push('quality.yml: quality.with.package_smoke must be controlled by the route output');
+    }
+    if (quality?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
+      errors.push('quality.yml: quality.with.full_suite must be controlled by the route output');
     }
   }
 

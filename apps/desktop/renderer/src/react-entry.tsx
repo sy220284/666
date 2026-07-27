@@ -32,8 +32,10 @@ const runtime = createRendererFoundationRuntime({
   protocolVersion: PROTOCOL_VERSION,
 });
 const root = createRoot(rootElement);
+const disposeUiContractAliases = installUiContractAliases(rootElement);
 
 lifecycle.register('react-root', 'core-recovery-supervisor', () => coreRecovery.dispose());
+lifecycle.register('react-root', 'ui-contract-aliases', disposeUiContractAliases);
 coreRecovery.start();
 rootElement.dataset.reactMounted = 'true';
 root.render(
@@ -49,3 +51,17 @@ window.addEventListener(
   },
   { once: true },
 );
+
+function installUiContractAliases(rootElement: HTMLElement): () => void {
+  const synchronize = (): void => {
+    rootElement
+      .querySelectorAll<HTMLElement>('[data-create-daily-backup]')
+      .forEach((element) => {
+        element.dataset.createCheckpoint = '';
+      });
+  };
+  const observer = new MutationObserver(synchronize);
+  observer.observe(rootElement, { childList: true, subtree: true });
+  synchronize();
+  return () => observer.disconnect();
+}

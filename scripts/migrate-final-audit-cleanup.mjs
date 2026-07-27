@@ -47,6 +47,14 @@ for (const [marker, addition] of [
     ciPolicy = ciPolicy.replace(marker, addition);
   }
 }
+const oldPerformanceMessage = 'changed paths are not performance-sensitive';
+const newPerformanceMessage = 'only documentation changed';
+if (ciPolicy.includes(oldPerformanceMessage)) {
+  ciPolicy = ciPolicy.replace(oldPerformanceMessage, newPerformanceMessage);
+}
+if (!ciPolicy.includes(newPerformanceMessage)) {
+  throw new Error('CI policy performance route message was not synchronized');
+}
 await writeFile(ciPolicyPath, ciPolicy, 'utf8');
 
 console.log(`Updated ${replacements} legacy task id pattern(s) and permanent CI files.`);

@@ -50,15 +50,23 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFile, writeFile } from 'node:fs/promises';
           const file = '.github/workflows/quality-core.yml';
-          let source = await readFile(file, 'utf8');
-          for (const block of [
-            "      - name: Install exact coverage provider without changing the lockfile\n        if: ${{ inputs.full_suite }}\n        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false\n",
-            "      - name: Restore package manifest after temporary coverage provider install\n        if: ${{ always() && inputs.full_suite }}\n        run: git checkout -- package.json\n",
-          ]) {
-            if (!source.includes(block)) throw new Error(`Missing audited coverage block: ${block.split('\n')[0]}`);
-            source = source.replace(block, '');
+          const lines = (await readFile(file, 'utf8')).split('\n');
+          const removableSteps = new Set([
+            '      - name: Install exact coverage provider without changing the lockfile',
+            '      - name: Restore package manifest after temporary coverage provider install',
+          ]);
+          const output = [];
+          let removed = 0;
+          for (let index = 0; index < lines.length; index += 1) {
+            if (!removableSteps.has(lines[index])) {
+              output.push(lines[index]);
+              continue;
+            }
+            removed += 1;
+            index += 2;
           }
-          await writeFile(file, source, 'utf8');
+          if (removed !== removableSteps.size) throw new Error(`Expected two mutable coverage steps, removed ${removed}`);
+          await writeFile(file, output.join('\n'), 'utf8');
           NODE
       - name: Validate frozen installation and real coverage execution
         shell: bash

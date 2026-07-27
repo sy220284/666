@@ -28,6 +28,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  format-audit-files:
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'fix/governance-audit-ci-hardening-2026-07-27' }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format isolated audit files
+        run: pnpm exec prettier --write .github/audit-remediations/ci-hardening-2026-07-27.json pnpm-lock.yaml
+      - name: Commit formatting result
+        shell: bash
+        env:
+          GH_PUSH_TOKEN: ${{ github.token }}
+        run: |
+          changed="$(git status --porcelain=v1)"
+          if [ -z "$changed" ]; then
+            echo 'Audit files already formatted.'
+            exit 0
+          fi
+          actual="$(git status --porcelain=v1 | sed -E 's/^...//' | sort -u)"
+          expected="$(printf '%s\n' '.github/audit-remediations/ci-hardening-2026-07-27.json' 'pnpm-lock.yaml' | sort -u)"
+          test "$actual" = "$expected"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/audit-remediations/ci-hardening-2026-07-27.json pnpm-lock.yaml
+          git commit -m 'style(ci): format isolated audit files'
+          git push "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_HEAD_REF}"
+
   repository-governance:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

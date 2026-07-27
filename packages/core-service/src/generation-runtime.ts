@@ -391,7 +391,9 @@ export class GenerationRuntime {
           runId: initialRun.runId,
           errorCode: mapped.code,
           retryable: mapped.retryable,
-          ...(text && input.partialOnFailure ? { partialText: text } : {}),
+          ...(text && input.partialOnFailure && input.run.outputMode === 'text'
+            ? { partialText: text }
+            : {}),
         });
       } catch (persistenceError) {
         if (!(

@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       full_suite: ${{ steps.route.outputs.full_suite }}
+      package_smoke: ${{ steps.route.outputs.package_smoke }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -33,6 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           full_suite=false
+          package_smoke=false
           changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
           if [ -z "$changed_files" ]; then
             full_suite=true
@@ -43,13 +45,18 @@ jobs:
                   ;;
                 *)
                   full_suite=true
-                  break
+                  ;;
+              esac
+              case "$file" in
+                package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality-core.yml)
+                  package_smoke=true
                   ;;
               esac
             done <<< "$changed_files"
           fi
           echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
-          echo "PR quality full suite: $full_suite"
+          echo "package_smoke=$package_smoke" >> "$GITHUB_OUTPUT"
+          echo "PR quality full suite: $full_suite; package smoke: $package_smoke"
 
   quality:
     needs: route
@@ -59,6 +66,7 @@ jobs:
       # Draft status controls merge eligibility, not validation depth.
       draft_mode: false
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
-      package_smoke: false
+      # The default route remains package_smoke: false; packaging inputs opt in through route output.
+      package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
       security_suite: false
       performance_eval: false

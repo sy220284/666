@@ -38,32 +38,8 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
 
   useEffect(() => {
     if (!restoreNotice || props.panel !== 'editor') return;
-
-    let active = true;
-    let settleTimer: number | null = null;
-    const applyNotice = (): void => {
-      const status = document.querySelector<HTMLElement>(
-        '[data-writing-workbench] [data-draft-state]',
-      );
-      if (!status) return;
-      if (status.textContent !== restoreNotice) status.textContent = restoreNotice;
-      if (settleTimer !== null) window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(() => {
-        if (!active) return;
-        active = false;
-        observer.disconnect();
-        setRestoreNotice(null);
-      }, 500);
-    };
-    const observer = new MutationObserver(applyNotice);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    applyNotice();
-
-    return () => {
-      active = false;
-      observer.disconnect();
-      if (settleTimer !== null) window.clearTimeout(settleTimer);
-    };
+    const timer = window.setTimeout(() => setRestoreNotice(null), 500);
+    return () => window.clearTimeout(timer);
   }, [props.panel, restoreNotice]);
 
   const bridge = useMemo(
@@ -81,6 +57,16 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
     latestContinuation?.projectId === props.project.projectId
       ? latestContinuation
       : props.initialContinuation;
+
+  if (restoreNotice && props.panel === 'editor') {
+    return (
+      <section className="writing-workbench" data-writing-workbench>
+        <p className="draft-state" data-draft-state role="status" aria-live="polite">
+          {restoreNotice}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <WritingCoreWorkbench

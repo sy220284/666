@@ -141,12 +141,23 @@ jobs:
       - name: Run application security tests
         shell: bash
         run: |
-          set -euo pipefail
+          mkdir -p test-results/ci
+          set -o pipefail
           if [ "${{ steps.route.outputs.run }}" = true ]; then
-            pnpm test:security
+            pnpm test:security 2>&1 | tee test-results/ci/application-security.log
           else
-            echo "Application security suite skipped: only documentation changed."
+            echo "Application security suite skipped: only documentation changed." | tee test-results/ci/application-security.log
           fi
+      - name: Upload application security diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: application-security-diagnostics
+          path: |
+            test-results/ci/application-security.log
+            test-results/security/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Clean tree after application checks
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

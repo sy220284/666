@@ -70,15 +70,14 @@ await writeFile(rendererPath, renderer, 'utf8');
 
 const transactionPath = 'scripts/atomic-file-transaction.mjs';
 let transaction = await readFile(transactionPath, 'utf8');
-const transactionRethrow = /\n    throw error;\n  }\n\n  journal\.status = 'committed';/u;
-if (!transactionRethrow.test(transaction)) {
+const oldTransactionRethrow = "\n    throw error;\n  }\n\n  journal.status = 'committed';";
+const newTransactionRethrow =
+  "\n    throw new Error(error instanceof Error ? error.message : 'Atomic file transaction failed', { cause: error });\n  }\n\n  journal.status = 'committed';";
+if (!transaction.includes(oldTransactionRethrow)) {
   throw new Error('Atomic transaction rethrow baseline was not found');
 }
-transaction = transaction.replace(
-  transactionRethrow,
-  "\n    throw new Error(error instanceof Error ? error.message : 'Atomic file transaction failed', { cause: error });\n  }\n\n  journal.status = 'committed';",
-);
-if (transactionRethrow.test(transaction) || !transaction.includes('{ cause: error }')) {
+transaction = transaction.replace(oldTransactionRethrow, newTransactionRethrow);
+if (transaction.includes(oldTransactionRethrow) || !transaction.includes('{ cause: error }')) {
   throw new Error('Atomic transaction error cause was not preserved');
 }
 await writeFile(transactionPath, transaction, 'utf8');

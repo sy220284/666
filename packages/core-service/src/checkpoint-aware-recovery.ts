@@ -99,7 +99,9 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     const operation = super.createDailyBackup(requestId, input);
     this.#dailyBackups.set(key, operation);
     const clear = (): void => {
-      if (this.#dailyBackups.get(key) === operation) this.#dailyBackups.delete(key);
+      if (this.#dailyBackups.get(key) === operation) {
+        this.#dailyBackups.delete(key);
+      }
     };
     void operation.then(clear, clear);
     return operation;
@@ -201,8 +203,7 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
           WHERE v.id = ? AND vo.project_id = ?`,
       )
       .get(versionId, reader.record.projectId) as
-      | { chapterTitle: string; versionTitle: string }
-      | undefined;
+      { chapterTitle: string; versionTitle: string } | undefined;
     if (!version) return null;
     const blocks = reader.database
       .prepare(

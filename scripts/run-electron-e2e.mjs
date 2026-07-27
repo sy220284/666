@@ -33,7 +33,21 @@ function hasXvfb() {
   return !probe.error && probe.status === 0;
 }
 
+export function parseRunnerArguments(argumentsList) {
+  const ciOnly = argumentsList.includes('--ci-only');
+  return {
+    ciOnly,
+    playwrightArguments: argumentsList.filter((argument) => argument !== '--ci-only'),
+  };
+}
+
 function run() {
+  const { ciOnly, playwrightArguments } = parseRunnerArguments(process.argv.slice(2));
+  if (ciOnly && process.env.CI !== 'true') {
+    process.stdout.write('Electron E2E skipped outside CI.\n');
+    return;
+  }
+
   const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   let invocation;
   try {
@@ -42,11 +56,12 @@ function run() {
       display: process.env.DISPLAY,
       xvfbAvailable: process.platform !== 'linux' || Boolean(process.env.DISPLAY) || hasXvfb(),
       pnpmCommand,
-      additionalArguments: process.argv.slice(2),
+      additionalArguments: playwrightArguments,
     });
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    process.exit(2);
+    process.exitCode = 2;
+    return;
   }
 
   const result = spawnSync(invocation.command, invocation.arguments, {
@@ -59,9 +74,10 @@ function run() {
   });
   if (result.error) {
     process.stderr.write('E2E_RUNNER_FAILED: Playwright Electron could not be started.\n');
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
-  process.exit(result.status ?? 1);
+  process.exitCode = result.status ?? 1;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) run();

@@ -71,7 +71,7 @@ function validateManifestShape(manifest) {
   }
   if (
     manifest.activeTaskInvariant?.mustMatchBase !== true ||
-    !/^M\d-\d{2}$/u.test(manifest.activeTaskInvariant?.id ?? '')
+    !/^M\d+-\d{2}$/u.test(manifest.activeTaskInvariant?.id ?? '')
   ) {
     throw new Error('Audit remediation must pin an unchanged active task');
   }
@@ -80,7 +80,7 @@ function validateManifestShape(manifest) {
   }
   const repairIds = manifest.verifiedTaskRepairs.map((repair) => repair?.taskId);
   if (
-    repairIds.some((taskId) => !/^M\d-\d{2}$/u.test(taskId ?? '')) ||
+    repairIds.some((taskId) => !/^M\d+-\d{2}$/u.test(taskId ?? '')) ||
     new Set(repairIds).size !== repairIds.length
   ) {
     throw new Error('Audit remediation task ids are invalid or duplicated');

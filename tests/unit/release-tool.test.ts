@@ -8,6 +8,7 @@ import {
   collectReleaseAssets,
   evaluateReleaseGate,
   parseReleaseVersion,
+  RELEASE_TASK_ID,
   renderChecksums,
   validateReleaseConfiguration,
 } from '../../scripts/release-tool.mjs';
@@ -16,9 +17,18 @@ const temporaryDirectories: string[] = [];
 const taskIndex = (status: string) =>
   '\n| ID | 任务卡 | 依赖 | 状态 |\n' +
   '|---|---|---|---|\n' +
-  '| M8-03 | [发布](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | M8-01、M8-02 | ' +
+  '| M4-04 | [整体交付](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-01、M4-02、M4-03 | ' +
   status +
   ' |\n';
+
+const releaseWorkflow = [
+  'workflow_dispatch:',
+  'package_smoke: true',
+  'pnpm audit --audit-level=high',
+  'node scripts/scan-secrets.mjs',
+  'pnpm release:gate',
+  'gh release create',
+].join('\n');
 
 afterEach(async () => {
   await Promise.all(
@@ -35,26 +45,29 @@ describe('release tool', () => {
   });
 
   it('validates the release workflow and package scripts', () => {
+    expect(RELEASE_TASK_ID).toBe('M4-04');
     expect(
       validateReleaseConfiguration({
         packageJson: {
           version: '1.0.0',
           scripts: {
+            package: 'node scripts/package-desktop.mjs',
+            'package:foundation': 'node scripts/package-foundation.mjs',
             'release:check': 'node scripts/release-tool.mjs check',
             'release:gate': 'node scripts/release-tool.mjs gate',
             'release:checksums': 'node scripts/release-tool.mjs checksums',
           },
         },
         taskIndexMarkdown: taskIndex('Planned'),
-        workflowSource: 'workflow_dispatch:\npnpm release:gate\ngh release create',
+        workflowSource: releaseWorkflow,
       }),
     ).toEqual([]);
   });
 
-  it('blocks publishing until version, branch and M8-03 all match', () => {
+  it('blocks publishing until version, branch and M4-04 all match', () => {
     expect(
       evaluateReleaseGate({
-        taskIndexMarkdown: taskIndex('Planned'),
+        taskIndexMarkdown: taskIndex('In Progress'),
         packageVersion: '1.0.0',
         requestedVersion: '1.0.1',
         refName: 'feature',
@@ -62,7 +75,7 @@ describe('release tool', () => {
     ).toEqual([
       'Requested version 1.0.1 does not match package.json version 1.0.0',
       'Releases may only run from main, found feature',
-      'M8-03 must be Verified before publishing, found Planned',
+      'M4-04 must be Verified before publishing, found In Progress',
     ]);
 
     expect(

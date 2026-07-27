@@ -12,7 +12,8 @@
   },
   "scripts": {
     "build": "pnpm -r --if-present build",
-    "package": "node scripts/package-foundation.mjs",
+    "package": "node scripts/package-desktop.mjs",
+    "package:foundation": "node scripts/package-foundation.mjs",
     "release:check": "node scripts/release-tool.mjs check",
     "release:gate": "node scripts/release-tool.mjs gate",
     "release:checksums": "node scripts/release-tool.mjs checksums",
@@ -22,7 +23,7 @@
     "format:check": "prettier --check \"scripts/**/*.mjs\" \"apps/**/*.{ts,json,mjs,html,css}\" \"packages/**/*.{ts,json}\" \"tests/**/*.ts\" \"evals/**/*.{json,yaml,yml}\" \".github/**/*.{yaml,yml,json,md}\" \".github/governance/deferred-task-closure.mjs\" \"*.{json,yaml,yml,mjs,ts}\"",
     "typecheck": "pnpm --filter @worldforge/domain build && pnpm --filter @worldforge/contracts build && pnpm --filter @worldforge/editor-core build && pnpm --filter @worldforge/core-service build && pnpm --filter @worldforge/prompts build && pnpm -r --if-present typecheck",
     "test:prepare": "pnpm --filter @worldforge/domain build && pnpm --filter @worldforge/contracts build && pnpm --filter @worldforge/editor-core build && pnpm --filter @worldforge/core-service build && pnpm --filter @worldforge/prompts build",
-    "test": "pnpm test:prepare && vitest run && node apps/desktop/main/run-ci-e2e.mjs",
+    "test": "pnpm test:prepare && vitest run && pnpm test:e2e -- --ci-only",
     "test:unit": "pnpm test:prepare && vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "pnpm build && node scripts/run-electron-e2e.mjs",
@@ -32,7 +33,7 @@
     "test:eval": "pnpm test:prepare && vitest run tests/performance/ai-output-protocol.test.ts tests/performance/ai-eval-baseline.test.ts",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:workspaces": "node scripts/check-workspaces.mjs",
-    "ci:policy": "node scripts/ci-policy.mjs",
+    "ci:policy": "node scripts/workflow-structure-policy.mjs && node scripts/ci-policy.mjs",
     "ci:evidence": "node scripts/evidence-policy.mjs",
     "ci:ruleset": "node scripts/ruleset-policy.mjs check",
     "task:status": "node scripts/taskctl.mjs status",
@@ -55,6 +56,7 @@
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.61.1",
     "@types/node": "26.1.1",
+    "@vitest/coverage-v8": "4.1.10",
     "@worldforge/contracts": "workspace:*",
     "electron": "43.1.1",
     "esbuild": "0.28.1",
@@ -62,6 +64,7 @@
     "prettier": "3.9.5",
     "typescript": "6.0.3",
     "typescript-eslint": "8.64.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "yaml": "2.9.0"
   }
 }

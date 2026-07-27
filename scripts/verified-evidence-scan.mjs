@@ -7,7 +7,7 @@ import { validateTaskEvidence } from './evidence-policy.mjs';
 
 export function verifiedTaskIds(taskIndexSource) {
   const tasks = [];
-  const rowPattern = /^\|\s*(M\d-\d{2})\s*\|[^\n]*\|\s*Verified\s*\|\s*$/gmu;
+  const rowPattern = /^\|\s*(M\d+-\d{2})\s*\|[^\n]*\|\s*Verified\s*\|\s*$/gmu;
   for (const match of taskIndexSource.matchAll(rowPattern)) {
     if (match[1]) tasks.push(match[1]);
   }

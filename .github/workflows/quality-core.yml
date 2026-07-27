@@ -175,9 +175,6 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
         if: ${{ inputs.full_suite }}
-      - name: Install exact coverage provider without changing the lockfile
-        if: ${{ inputs.full_suite }}
-        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false
       - name: Run product source coverage threshold
         if: ${{ inputs.full_suite }}
         shell: bash
@@ -185,9 +182,6 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:coverage 2>&1 | tee test-results/ci/coverage.log
-      - name: Restore package manifest after temporary coverage provider install
-        if: ${{ always() && inputs.full_suite }}
-        run: git checkout -- package.json
       - name: Assert clean working tree after coverage
         if: ${{ always() && inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs

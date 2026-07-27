@@ -12,7 +12,7 @@ const indexPath = 'docs/tasks/TASK_INDEX.md';
 export function parseTaskRows(markdown) {
   const tasks = new Map();
   const pattern =
-    /^\|\s*(M\d-\d{2})\s*\|\s*\[[^\]]+\]\(([^)]+)\)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gmu;
+    /^\|\s*(M\d+-\d{2})\s*\|\s*\[[^\]]+\]\(([^)]+)\)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gmu;
   for (const match of markdown.matchAll(pattern)) {
     tasks.set(match[1], {
       id: match[1],
@@ -225,9 +225,7 @@ export function m3BatchClosureErrors(
     errors.push(`M3 batch closure must clear deferredVerification: ${deferredM3.join(', ')}`);
   }
 
-  const baseDeferredM307 = (baseState?.deferredTasks ?? []).find(
-    (entry) => entry?.id === 'M3-07',
-  );
+  const baseDeferredM307 = (baseState?.deferredTasks ?? []).find((entry) => entry?.id === 'M3-07');
   if (baseDeferredM307?.status !== 'Deferred' || baseDeferredM307?.absorbedBy !== 'M3-08') {
     errors.push('M3-07 must be a Deferred task absorbed by M3-08 before batch closure');
   }
@@ -463,10 +461,7 @@ function selfTest() {
     ['M3-08', m3Task('M3-08', 'Implemented')],
     ['M3-09', m3Task('M3-09', 'Implemented')],
     ['M3-10', m3Task('M3-10', 'Implemented')],
-    [
-      'M4-01',
-      task('M4-01', 'docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md', 'Planned', 'M3'),
-    ],
+    ['M4-01', task('M4-01', 'docs/tasks/M4/M4-01_FTS_INDEX_DICTIONARY.md', 'Planned', 'M3')],
   ]);
   const m3BaseState = {
     activeTask: {
@@ -507,18 +502,9 @@ function selfTest() {
     deferredTasks: [],
     lastVerifiedTask: { id: 'M3-10', commit: '1234567' },
   };
-  assert.equal(
-    classifyTransition(m3BaseState, m3ClosedState, m3ClosedTasks),
-    'm3-batch-closure',
-  );
+  assert.equal(classifyTransition(m3BaseState, m3ClosedState, m3ClosedTasks), 'm3-batch-closure');
   assert.deepEqual(
-    m3BatchClosureErrors(
-      m3BaseState,
-      m3ClosedState,
-      m3BaseTasks,
-      m3ClosedTasks,
-      'work/m3-01-task',
-    ),
+    m3BatchClosureErrors(m3BaseState, m3ClosedState, m3BaseTasks, m3ClosedTasks, 'work/m3-01-task'),
     [],
   );
   assert.ok(

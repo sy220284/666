@@ -189,9 +189,12 @@ export async function writeFilesAtomically(
       throw new AggregateError(
         [error, rollbackError],
         'Atomic file transaction and rollback failed',
+        { cause: rollbackError },
       );
     }
-    throw error;
+    throw new Error(error instanceof Error ? error.message : 'Atomic file transaction failed', {
+      cause: error,
+    });
   }
 
   journal.status = 'committed';

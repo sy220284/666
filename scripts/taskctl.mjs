@@ -150,7 +150,7 @@ async function prepareActivation(state, indexSource, taskId, additionalAllowedPa
     state.authorization.mode === 'implementation-pr'
       ? taskBranchFor(task)
       : state.authorization.branch;
-  const nextState = structuredClone(state);
+  const nextState = globalThis.structuredClone(state);
   nextState.activeTask = {
     id: taskId,
     status: 'IN_PROGRESS',

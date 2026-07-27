@@ -33,6 +33,8 @@ const requiredFiles = [
   '.github/governance/main-protection.json',
   '.github/governance/post-merge-verification.mjs',
   '.github/governance/required-checks.json',
+  '.github/governance/secret-scan-allowlist.json',
+  '.github/governance/workspace-architecture.json',
   '.github/governance/task-transition-policy.mjs',
   'scripts/automerge.mjs',
   'scripts/branch-hygiene.mjs',
@@ -40,6 +42,7 @@ const requiredFiles = [
   'scripts/main-verification.mjs',
   'scripts/ruleset-policy.mjs',
   'scripts/scan-secrets.mjs',
+  'scripts/workflow-structure-policy.mjs',
 ];
 
 const actionPins = new Map([
@@ -241,7 +244,7 @@ async function main() {
     'Determine performance validation route',
     'Run performance budgets',
     'pnpm test:perf',
-    'changed paths are not performance-sensitive',
+    'only documentation changed',
   ]);
   forbidTokens(errors, 'performance.yml', performance, ['activeTask?.verification?.includes']);
   rejectWholeJobDraftSkip(errors, 'performance.yml', performance);

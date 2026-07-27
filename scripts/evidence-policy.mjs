@@ -62,7 +62,7 @@ export function assertEvidenceSourceCommit(
 export function changedEvidenceTasks(files) {
   const tasks = new Set();
   for (const file of files) {
-    const match = /^docs\/test-evidence\/(M\d-\d{2})\//u.exec(file.replaceAll('\\', '/'));
+    const match = /^docs\/test-evidence\/(M\d+-\d{2})\//u.exec(file.replaceAll('\\', '/'));
     if (match?.[1]) tasks.add(match[1]);
   }
   return [...tasks].sort();
@@ -115,7 +115,7 @@ export function assertFinalEvidenceSemantics(taskId, manifest, documents) {
 }
 
 export async function validateTaskEvidence(taskId, repositoryRoot = root, options = {}) {
-  if (!/^M\d-\d{2}$/u.test(taskId)) throw new Error(`Invalid evidence task id: ${taskId}`);
+  if (!/^M\d+-\d{2}$/u.test(taskId)) throw new Error(`Invalid evidence task id: ${taskId}`);
   const directory = path.join(repositoryRoot, 'docs', 'test-evidence', taskId);
   const manifestPath = path.join(directory, 'manifest.json');
   let manifest;

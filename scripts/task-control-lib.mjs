@@ -92,7 +92,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
 export function parseTaskIndex(markdown) {
   const tasks = new Map();
   const rowPattern =
-    /^\|\s*(M\d-\d{2})\s*\|\s*\[[^\]]+\]\(([^)]+)\)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gm;
+    /^\|\s*(M\d+-\d{2})\s*\|\s*\[[^\]]+\]\(([^)]+)\)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gm;
 
   for (const match of markdown.matchAll(rowPattern)) {
     const [, id, source, dependencyText, status] = match;
@@ -233,7 +233,7 @@ export function validateActiveState(state, taskIndex) {
   if (!active || !activeStatusMap.has(active.status)) {
     errors.push('Exactly one IN_PROGRESS or IMPLEMENTED task is required');
   }
-  if (!active?.id || !/^M\d-\d{2}$/.test(active.id)) errors.push('Invalid active task id');
+  if (!active?.id || !/^M\d+-\d{2}$/.test(active.id)) errors.push('Invalid active task id');
   if (pullRequestOnly) {
     if (!active?.branch || active.branch === 'main') {
       errors.push('PR-only execution requires a non-main task branch');

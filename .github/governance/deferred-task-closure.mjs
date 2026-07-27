@@ -141,10 +141,10 @@ async function closeDeferred(taskId) {
   const mainCommit = option('--main-commit');
 
   if (ciStatus !== 'success') throw new Error('close-deferred requires --ci=success');
-  if (!/^M\d-\d{2}$/u.test(taskId ?? '')) {
+  if (!/^M\d+-\d{2}$/u.test(taskId ?? '')) {
     throw new Error('close-deferred requires a target task id');
   }
-  if (!/^M\d-\d{2}$/u.test(evidenceTaskId ?? '')) {
+  if (!/^M\d+-\d{2}$/u.test(evidenceTaskId ?? '')) {
     throw new Error('close-deferred requires --evidence-task=<task-id>');
   }
   requireSha(commit, '--commit');

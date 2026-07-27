@@ -77,7 +77,7 @@ function holdErrors(state, taskIndex) {
     errors.push('Verification hold requires one VERIFIED_HOLD anchor task');
     return errors;
   }
-  if (!/^M\d-\d{2}$/u.test(active.id ?? '')) errors.push('Invalid verification hold task id');
+  if (!/^M\d+-\d{2}$/u.test(active.id ?? '')) errors.push('Invalid verification hold task id');
   if (!active.branch || active.branch === 'main') {
     errors.push('Verification hold anchor must preserve a non-main task branch');
   }

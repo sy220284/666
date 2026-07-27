@@ -16,8 +16,6 @@ on:
       - 'scripts/workflow-structure-policy.mjs'
       - 'docs/process/CI_WORKFLOW_ARCHITECTURE.md'
       - 'docs/process/MAIN_BRANCH_PROTECTION.md'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
   schedule:
     - cron: '30 2 * * 1'
   workflow_dispatch:
@@ -30,43 +28,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  generate-audit-lock:
-    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'fix/governance-audit-ci-hardening-2026-07-27' }}
-    permissions:
-      contents: write
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        with:
-          version: 11.13.0
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-      - name: Generate isolated audit lockfile
-        run: pnpm install --lockfile-only --no-frozen-lockfile --ignore-scripts
-      - name: Commit isolated audit lockfile
-        shell: bash
-        env:
-          GH_PUSH_TOKEN: ${{ github.token }}
-        run: |
-          changed="$(git status --porcelain=v1 -- pnpm-lock.yaml)"
-          if [ -z "$changed" ]; then
-            echo 'Audit lockfile already current.'
-            exit 0
-          fi
-          test "$(git status --porcelain=v1 | sed -E 's/^...//' | sort -u)" = 'pnpm-lock.yaml'
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add pnpm-lock.yaml
-          git commit -m 'chore(ci): lock isolated audit dependencies'
-          git push "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_HEAD_REF}"
-
   repository-governance:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

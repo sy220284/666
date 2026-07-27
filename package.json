@@ -33,7 +33,7 @@
     "test:eval": "pnpm test:prepare && vitest run tests/performance/ai-output-protocol.test.ts tests/performance/ai-eval-baseline.test.ts",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:workspaces": "node scripts/check-workspaces.mjs",
-    "ci:policy": "node scripts/ci-policy.mjs",
+    "ci:policy": "node scripts/workflow-structure-policy.mjs && node scripts/ci-policy.mjs",
     "ci:evidence": "node scripts/evidence-policy.mjs",
     "ci:ruleset": "node scripts/ruleset-policy.mjs check",
     "task:status": "node scripts/taskctl.mjs status",

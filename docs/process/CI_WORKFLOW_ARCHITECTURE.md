@@ -65,6 +65,8 @@ pr-policy
 - 未命中重型路由的工作流仍运行并返回同名成功检查，Controlled Merge无需猜测缺失状态；
 - Evidence校验本次变化的任务证据文档。
 
+Node V8 Coverage只统计可以在同进程Unit、Integration、Migration与Security测试中执行的产品业务源。Electron主进程启动与IPC编排壳、Preload入口、Renderer边界生命周期壳、Utility Process路由入口和Worker入口由独立Security及Electron E2E强制验证，因此从Node覆盖率分母中显式排除。核心服务、数据库、合同、领域、编辑器和Prompt逻辑继续纳入统计，四项全局门槛均保持75%，不得通过降低门槛掩盖缺测。
+
 ## 4. 职责去重
 
 三个治理门禁保持单一职责：

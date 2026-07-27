@@ -97,6 +97,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm build
+      - name: Run platform startup smoke
+        run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
       - name: Build platform package
         shell: bash
         run: >-
@@ -104,6 +106,12 @@ jobs:
           --platform "${{ matrix.platform }}"
           --version "$RELEASE_VERSION"
           --output "release/${{ matrix.platform }}"
+      - name: Verify platform package assets
+        run: >-
+          node scripts/verify-package-assets.mjs
+          --platform "${{ matrix.platform }}"
+          --version "$RELEASE_VERSION"
+          --directory "release/${{ matrix.platform }}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: worldforge-${{ matrix.platform }}

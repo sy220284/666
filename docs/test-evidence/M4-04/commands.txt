@@ -62,38 +62,28 @@ pnpm lint
 pnpm build
 pnpm format:check
 
-# C0—C7第一次基线复核，GitHub Actions Quality #2043，受检提交3b8cae9d42dd06c5862606b1c23afef50cd0fa9d
-pnpm install --frozen-lockfile --prefer-offline
-pnpm task:validate
-pnpm check:workspaces
-pnpm check:boundaries
-pnpm format:check
-pnpm lint
-pnpm typecheck
-node .github/governance/assert-clean-tree.mjs
+# C0—C7历史复核记录
+# Quality #2043，受检提交3b8cae9d42dd06c5862606b1c23afef50cd0fa9d
+# Quality #2054，受检提交4f78143ca933a7e57326e32e3e86285d0bfc95c3
 
-# C0—C7第二轮全量代码复核，GitHub Actions Quality #2054，受检产品提交4f78143ca933a7e57326e32e3e86285d0bfc95c3
-pnpm install --frozen-lockfile --prefer-offline
-pnpm task:validate
-pnpm check:workspaces
-pnpm check:boundaries
-pnpm format:check
-pnpm lint
-pnpm typecheck
-node .github/governance/assert-clean-tree.mjs
+# 最近一次完整产品CI，受检提交f36ca0c0567130ab7072c6da3d0ed402dd1fda2d
+# Quality #2186：Static、Unit、Integration、Migration、Coverage、Build、Package Smoke、Electron E2E全部成功
+# Security #1976：Dependency Audit、Application Security、全Git历史Secret Scan全部成功
+# Performance #1942：性能预算成功
+# Evidence #1905：成功
+# PR Policy #1934：成功
+# Task Governance #2155：成功
+# Repository Governance #698：成功
 
-# Draft路由按永久规则跳过，未在当前Head执行
-# pnpm test:unit
-# pnpm test:integration
-# pnpm test:migration
-# pnpm test:security
-# pnpm test:coverage
-# pnpm build
-# pnpm test:eval
-# pnpm test:perf
-# pnpm test:e2e
+# 当前Evidence产品源提交ea7463a40faa5b23b3b9afc97504be19f2cee708的C1定向验证
 pnpm exec prettier --check apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx tests/unit/renderer-continuation-persistence.test.ts
 pnpm typecheck
 pnpm exec eslint apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx tests/unit/renderer-continuation-persistence.test.ts
+pnpm check:boundaries
 pnpm exec vitest run tests/unit/renderer-continuation-persistence.test.ts
 pnpm test:unit
+
+# 真实结论
+# f36ca0c的完整永久门禁全绿。
+# ea7463a新增C1修复并完成定向验证，但没有对应的新一轮完整GitHub Actions运行。
+# C8尚未开始；C5历史脏数据升级策略仍是C0—C7整体验收阻断项。

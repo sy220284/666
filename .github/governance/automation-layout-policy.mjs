@@ -29,6 +29,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'main-protection.json',
   'post-merge-verification.mjs',
   'required-checks.json',
+  'secret-scan-allowlist.json',
   'stage-close-policy.mjs',
   'task-checkpoint-policy.mjs',
   'task-transition-policy-core.mjs',

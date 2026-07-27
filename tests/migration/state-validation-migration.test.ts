@@ -18,13 +18,21 @@ const schema28Triggers = [
   'trg_story_comment_anchor_scope_update_0028',
 ] as const;
 
+type HistoricalFixtureState = 'clean' | 'dirty-todo' | 'dirty-comment';
+
 interface Schema27Fixture {
-  readonly root: string;
   readonly databasePath: string;
   readonly recoveryRoot: string;
   readonly projectId: string;
   readonly workspacePath: string;
   readonly appRuntime: Awaited<ReturnType<typeof openAppRuntime>>;
+}
+
+interface SchemaInspection {
+  readonly schemaVersion: bigint;
+  readonly triggerCount: bigint;
+  readonly dirtyTodoCount: bigint;
+  readonly dirtyCommentCount: bigint;
 }
 
 afterEach(async () => {
@@ -35,7 +43,7 @@ afterEach(async () => {
   );
 });
 
-async function createSchema27Fixture(dirty: boolean): Promise<Schema27Fixture> {
+async function createSchema27Fixture(state: HistoricalFixtureState): Promise<Schema27Fixture> {
   const root = await mkdtemp(path.join(tmpdir(), 'worldforge-state-validation-migration-'));
   temporaryDirectories.push(root);
   const parent = path.join(root, 'projects');
@@ -57,7 +65,7 @@ async function createSchema27Fixture(dirty: boolean): Promise<Schema27Fixture> {
   });
   const project = await workspace.create(
     randomUUID(),
-    { name: dirty ? '历史脏锚点' : '历史干净锚点', channel: '长篇' },
+    { name: `Schema27-${state}`, channel: '长篇' },
     parent,
   );
   await workspace.shutdown();
@@ -68,7 +76,7 @@ async function createSchema27Fixture(dirty: boolean): Promise<Schema27Fixture> {
     for (const trigger of schema28Triggers) database.exec(`DROP TRIGGER ${trigger}`);
     database.prepare('DELETE FROM schema_migrations WHERE version = 28').run();
     database.prepare('UPDATE projects SET schema_version = 27').run();
-    if (dirty) {
+    if (state === 'dirty-todo') {
       database
         .prepare(
           `INSERT INTO story_todos(
@@ -80,7 +88,24 @@ async function createSchema27Fixture(dirty: boolean): Promise<Schema27Fixture> {
           randomUUID(),
           project.projectId,
           'historical-orphan-block',
-          '历史非法锚点',
+          '历史非法待办锚点',
+          clock.now().toISOString(),
+          clock.now().toISOString(),
+        );
+    }
+    if (state === 'dirty-comment') {
+      database
+        .prepare(
+          `INSERT INTO story_comments(
+             id, project_id, chapter_id, source_version_id, logical_block_id,
+             validation_issue_id, body, status, created_at, updated_at, resolved_at
+           ) VALUES(?, ?, NULL, NULL, ?, NULL, ?, 'open', ?, ?, NULL)`,
+        )
+        .run(
+          randomUUID(),
+          project.projectId,
+          'historical-orphan-comment-block',
+          '历史非法批注锚点',
           clock.now().toISOString(),
           clock.now().toISOString(),
         );
@@ -95,7 +120,6 @@ async function createSchema27Fixture(dirty: boolean): Promise<Schema27Fixture> {
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
   return {
-    root,
     databasePath,
     recoveryRoot,
     projectId: project.projectId,
@@ -104,11 +128,7 @@ async function createSchema27Fixture(dirty: boolean): Promise<Schema27Fixture> {
   };
 }
 
-function inspectSchema28(databasePath: string): {
-  readonly schemaVersion: bigint;
-  readonly triggerCount: bigint;
-  readonly dirtyTodoCount: bigint;
-} {
+function inspectSchema28(databasePath: string): SchemaInspection {
   const database = new DatabaseSync(databasePath, { readOnly: true, readBigInts: true });
   try {
     const schemaVersion = database
@@ -123,12 +143,55 @@ function inspectSchema28(databasePath: string): {
       )
       .get(...schema28Triggers)?.count as bigint;
     const dirtyTodoCount = database
-      .prepare("SELECT COUNT(*) AS count FROM story_todos WHERE title = '历史非法锚点'")
+      .prepare("SELECT COUNT(*) AS count FROM story_todos WHERE title = '历史非法待办锚点'")
       .get()?.count as bigint;
-    return { schemaVersion, triggerCount, dirtyTodoCount };
+    const dirtyCommentCount = database
+      .prepare("SELECT COUNT(*) AS count FROM story_comments WHERE body = '历史非法批注锚点'")
+      .get()?.count as bigint;
+    return { schemaVersion, triggerCount, dirtyTodoCount, dirtyCommentCount };
   } finally {
     database.close();
   }
+}
+
+async function expectDirtySchema27Rejected(
+  state: Exclude<HistoricalFixtureState, 'clean'>,
+  expected: Pick<SchemaInspection, 'dirtyTodoCount' | 'dirtyCommentCount'>,
+): Promise<void> {
+  const fixture = await createSchema27Fixture(state);
+  const workspace = new ProjectWorkspaceService({
+    projectMigrationsDirectory: 'migrations/project',
+    projectMigrationRecoveryDirectory: fixture.recoveryRoot,
+    appVersion: '0.1.0',
+    recentProjects: fixture.appRuntime.recentProjects,
+    clock,
+  });
+  try {
+    const opened = await workspace.open(randomUUID(), { workspacePath: fixture.workspacePath });
+    expect(opened).toMatchObject({
+      projectId: fixture.projectId,
+      schemaVersion: 27,
+      databaseMode: 'read-only',
+      compatibility: 'migration-failed',
+      readOnlyReason: 'migration-failed',
+    });
+    expect(await readdir(path.join(fixture.recoveryRoot, fixture.projectId))).toEqual([
+      expect.stringMatching(/^project-v27-to-v28-.*\.sqlite$/u),
+    ]);
+  } finally {
+    await workspace.shutdown();
+    await fixture.appRuntime.close();
+  }
+
+  expect(inspectSchema28(fixture.databasePath)).toEqual({
+    schemaVersion: 27n,
+    triggerCount: 0n,
+    ...expected,
+  });
+  const manifest = JSON.parse(
+    await readFile(path.join(fixture.workspacePath, 'manifest.json'), 'utf8'),
+  ) as { readonly projectSchemaVersion: number };
+  expect(manifest.projectSchemaVersion).toBe(27);
 }
 
 describe('M4-04 state and validation migration', () => {
@@ -216,7 +279,7 @@ describe('M4-04 state and validation migration', () => {
   });
 
   it('upgrades a clean schema 27 database to schema 28', async () => {
-    const fixture = await createSchema27Fixture(false);
+    const fixture = await createSchema27Fixture('clean');
     const workspace = new ProjectWorkspaceService({
       projectMigrationsDirectory: 'migrations/project',
       projectMigrationRecoveryDirectory: fixture.recoveryRoot,
@@ -241,43 +304,21 @@ describe('M4-04 state and validation migration', () => {
       schemaVersion: 28n,
       triggerCount: 4n,
       dirtyTodoCount: 0n,
+      dirtyCommentCount: 0n,
     });
   });
 
-  it('rejects dirty schema 27 anchors before migration 28 without a partial upgrade', async () => {
-    const fixture = await createSchema27Fixture(true);
-    const workspace = new ProjectWorkspaceService({
-      projectMigrationsDirectory: 'migrations/project',
-      projectMigrationRecoveryDirectory: fixture.recoveryRoot,
-      appVersion: '0.1.0',
-      recentProjects: fixture.appRuntime.recentProjects,
-      clock,
-    });
-    try {
-      const opened = await workspace.open(randomUUID(), { workspacePath: fixture.workspacePath });
-      expect(opened).toMatchObject({
-        projectId: fixture.projectId,
-        schemaVersion: 27,
-        databaseMode: 'read-only',
-        compatibility: 'migration-failed',
-        readOnlyReason: 'migration-failed',
-      });
-      expect(
-        await readdir(path.join(fixture.recoveryRoot, fixture.projectId)),
-      ).toEqual([expect.stringMatching(/^project-v27-to-v28-.*\.sqlite$/u)]);
-    } finally {
-      await workspace.shutdown();
-      await fixture.appRuntime.close();
-    }
-
-    expect(inspectSchema28(fixture.databasePath)).toEqual({
-      schemaVersion: 27n,
-      triggerCount: 0n,
+  it('rejects dirty schema 27 todo anchors before migration 28 without a partial upgrade', async () => {
+    await expectDirtySchema27Rejected('dirty-todo', {
       dirtyTodoCount: 1n,
+      dirtyCommentCount: 0n,
     });
-    const manifest = JSON.parse(
-      await readFile(path.join(fixture.workspacePath, 'manifest.json'), 'utf8'),
-    ) as { readonly projectSchemaVersion: number };
-    expect(manifest.projectSchemaVersion).toBe(27);
+  });
+
+  it('rejects dirty schema 27 comment anchors before migration 28 without a partial upgrade', async () => {
+    await expectDirtySchema27Rejected('dirty-comment', {
+      dirtyTodoCount: 0n,
+      dirtyCommentCount: 1n,
+    });
   });
 });

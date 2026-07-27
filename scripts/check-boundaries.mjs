@@ -20,7 +20,10 @@ const allowedInternalImports = new Map([
   ['@worldforge/renderer', new Set(['@worldforge/contracts', '@worldforge/editor-core'])],
   ['@worldforge/contracts', new Set()],
   ['@worldforge/domain', new Set()],
-  ['@worldforge/core-service', new Set(['@worldforge/contracts', '@worldforge/domain'])],
+  [
+    '@worldforge/core-service',
+    new Set(['@worldforge/contracts', '@worldforge/domain', '@worldforge/prompts']),
+  ],
   ['@worldforge/editor-core', new Set(['@worldforge/contracts', '@worldforge/domain'])],
   ['@worldforge/prompts', new Set(['@worldforge/contracts', '@worldforge/domain'])],
   ['@worldforge/testkit', new Set(packageByPath.values())],

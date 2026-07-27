@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { validateImport } from '../../scripts/check-boundaries.mjs';
 
 describe('module boundary policy', () => {
-  it('allows Core to depend on contracts and domain', () => {
+  it('allows Core to depend on contracts, domain and prompts', () => {
     expect(validateImport('@worldforge/core-service', '@worldforge/contracts')).toBeNull();
     expect(validateImport('@worldforge/core-service', '@worldforge/domain')).toBeNull();
+    expect(validateImport('@worldforge/core-service', '@worldforge/prompts')).toBeNull();
   });
 
   it('blocks Renderer and Domain from privileged dependencies', () => {

@@ -180,7 +180,7 @@ test('keeps a proposal pending until the author accepts it and then exposes the 
 
     await page.locator('[data-open-state-proposals]').click();
     await expect(page.locator('[data-state-proposal-dialog]')).toBeVisible();
-    await page.locator('[data-state-proposal-chapter]').fill(seeded.chapterId);
+    await page.locator('[data-state-proposal-chapter]').selectOption(seeded.chapterId);
     await page.locator('[data-refresh-state-proposals]').click();
     const proposal = page.locator(`[data-state-proposal="${seeded.proposalId}"]`);
     await expect(proposal).toContainText('pending');

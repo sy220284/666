@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import type { ProjectContinuationSnapshot, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
@@ -20,9 +20,14 @@ interface WritingWorkbenchProps {
 }
 
 export function WritingWorkbench(props: WritingWorkbenchProps) {
+  const onPanelChangeRef = useRef(props.onPanelChange);
+  useEffect(() => {
+    onPanelChangeRef.current = props.onPanelChange;
+  }, [props.onPanelChange]);
+
   const bridge = useMemo(
-    () => createWritingBridge(props.bridge, props.onPanelChange),
-    [props.bridge, props.onPanelChange],
+    () => createWritingBridge(props.bridge, (panel) => onPanelChangeRef.current(panel)),
+    [props.bridge],
   );
 
   return <WritingCoreWorkbench {...props} bridge={bridge} />;
@@ -44,12 +49,13 @@ function createWritingBridge(
     const request = bridge.planning.listStructure(...args);
     pendingProjectId = projectId;
     pending = request;
-    void request.finally(() => {
+    const clear = (): void => {
       if (pending === request) {
         pending = null;
         pendingProjectId = null;
       }
-    });
+    };
+    void request.then(clear, clear);
     return request;
   };
 

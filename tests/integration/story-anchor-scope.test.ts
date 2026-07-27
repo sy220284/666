@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { DatabaseFoundationError } from '../../packages/core-service/src/database/index.js';
 import {
   cleanupContinuityHarnesses,
   closeContinuityHarness,
@@ -10,6 +11,18 @@ import {
 } from './continuity-hardening-harness.js';
 
 afterEach(cleanupContinuityHarnesses);
+
+async function expectScopeViolation(operation: Promise<unknown>, marker: string): Promise<void> {
+  const error = await operation.then(
+    () => null,
+    (failure: unknown) => failure,
+  );
+  expect(error).toBeInstanceOf(DatabaseFoundationError);
+  expect(error).toMatchObject({ code: 'DATABASE_WRITE_FAILED' });
+  expect((error as Error).cause).toMatchObject({
+    message: expect.stringContaining(marker),
+  });
+}
 
 describe('M4-04 story todo and comment compound anchors', () => {
   it('accepts consistent anchors and rejects cross-chapter blocks on insert and update', async () => {
@@ -37,7 +50,7 @@ describe('M4-04 story todo and comment compound anchors', () => {
         logicalBlockId: firstBlockId,
       });
 
-      await expect(
+      await expectScopeViolation(
         harness.validation.saveTodo(randomUUID(), {
           projectId: seeded.project.projectId,
           chapterId: seeded.chapter1.id,
@@ -46,9 +59,10 @@ describe('M4-04 story todo and comment compound anchors', () => {
           title: '错误跨章待办',
           status: 'open',
         }),
-      ).rejects.toThrow(/STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID/u);
+        'STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID',
+      );
 
-      await expect(
+      await expectScopeViolation(
         harness.validation.saveTodo(randomUUID(), {
           projectId: seeded.project.projectId,
           todoId: todo.todoId,
@@ -58,7 +72,8 @@ describe('M4-04 story todo and comment compound anchors', () => {
           title: todo.title,
           status: todo.status,
         }),
-      ).rejects.toThrow(/STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID/u);
+        'STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID',
+      );
 
       catalog = harness.validation.list({
         projectId: seeded.project.projectId,
@@ -94,7 +109,7 @@ describe('M4-04 story todo and comment compound anchors', () => {
       const firstBlockId = seeded.version.blocks[0]!.logicalBlockId;
       const secondBlockId = secondVersion.blocks[0]!.logicalBlockId;
 
-      const catalog = await harness.validation.addComment(randomUUID(), {
+      let catalog = await harness.validation.addComment(randomUUID(), {
         projectId: seeded.project.projectId,
         issueId: null,
         chapterId: seeded.chapter1.id,
@@ -108,7 +123,7 @@ describe('M4-04 story todo and comment compound anchors', () => {
         logicalBlockId: firstBlockId,
       });
 
-      await expect(
+      await expectScopeViolation(
         harness.validation.addComment(randomUUID(), {
           projectId: seeded.project.projectId,
           issueId: null,
@@ -117,9 +132,10 @@ describe('M4-04 story todo and comment compound anchors', () => {
           logicalBlockId: secondBlockId,
           body: '错误跨章版本批注。',
         }),
-      ).rejects.toThrow(/STORY_COMMENT_VERSION_CHAPTER_SCOPE_INVALID/u);
+        'STORY_COMMENT_VERSION_CHAPTER_SCOPE_INVALID',
+      );
 
-      await expect(
+      await expectScopeViolation(
         harness.validation.addComment(randomUUID(), {
           projectId: seeded.project.projectId,
           issueId: null,
@@ -128,7 +144,20 @@ describe('M4-04 story todo and comment compound anchors', () => {
           logicalBlockId: secondBlockId,
           body: '错误跨版本正文块批注。',
         }),
-      ).rejects.toThrow(/STORY_COMMENT_BLOCK_SOURCE_SCOPE_INVALID/u);
+        'STORY_COMMENT_BLOCK_SOURCE_SCOPE_INVALID',
+      );
+
+      catalog = harness.validation.list({
+        projectId: seeded.project.projectId,
+        chapterId: null,
+        includeClosed: true,
+      });
+      expect(catalog.comments).toHaveLength(1);
+      expect(catalog.comments[0]).toMatchObject({
+        chapterId: seeded.chapter1.id,
+        sourceVersionId: seeded.version.versionId,
+        logicalBlockId: firstBlockId,
+      });
     } finally {
       await closeContinuityHarness(harness);
     }

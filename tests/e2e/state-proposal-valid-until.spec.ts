@@ -181,7 +181,7 @@ test('preserves a finite EntityState interval across the real Electron boundary'
 
     await page.locator('[data-open-state-proposals]').click();
     await expect(page.locator('[data-state-proposal-dialog]')).toBeVisible();
-    await page.locator('[data-state-proposal-chapter]').fill(seeded.chapter1Id);
+    await page.locator('[data-state-proposal-chapter]').selectOption(seeded.chapter1Id);
     await page.locator('[data-refresh-state-proposals]').click();
     const proposal = page.locator(`[data-state-proposal="${seeded.proposalId}"]`);
     await expect(proposal).toContainText('pending');

@@ -12,11 +12,33 @@ import { ProjectPlanningError } from './project-planning.js';
 import { ProjectStructureError } from './project-structure.js';
 import { ProjectWorkspaceError } from './project-workspace.js';
 import { RecoveryServiceError } from './recovery.js';
-import { SceneBeatServiceError } from './scene-beat.js';
-import { VersionServiceError } from './version.js';
-import { ValidationServiceError } from './validation.js';
-import { SearchToolsServiceError } from './search-tools.js';
 import { RhythmServiceError } from './rhythm.js';
+import { SceneBeatServiceError } from './scene-beat.js';
+import { SearchToolsServiceError } from './search-tools.js';
+import { ValidationServiceError } from './validation.js';
+import { VersionServiceError } from './version.js';
+
+const STORY_ANCHOR_SCOPE_MARKERS = [
+  'STORY_TODO_BEAT_CHAPTER_SCOPE_INVALID',
+  'STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID',
+  'STORY_TODO_ISSUE_ANCHOR_SCOPE_INVALID',
+  'STORY_COMMENT_VERSION_CHAPTER_SCOPE_INVALID',
+  'STORY_COMMENT_BLOCK_SOURCE_SCOPE_INVALID',
+  'STORY_COMMENT_ISSUE_ANCHOR_SCOPE_INVALID',
+] as const;
+
+function errorChainIncludes(
+  error: unknown,
+  markers: readonly string[],
+  seen: Set<object> = new Set(),
+): boolean {
+  if (!error || typeof error !== 'object' || seen.has(error)) return false;
+  seen.add(error);
+  const message =
+    'message' in error && typeof error.message === 'string' ? error.message : '';
+  if (markers.some((marker) => message.includes(marker))) return true;
+  return 'cause' in error ? errorChainIncludes(error.cause, markers, seen) : false;
+}
 
 export function windowPreferencesError(error: unknown): ErrorCode {
   if (error instanceof DatabaseFoundationError) {
@@ -45,6 +67,13 @@ export function appDataError(error: unknown): ErrorCode {
 }
 
 export function projectOperationError(error: unknown): ErrorCode {
+  if (
+    error instanceof DatabaseFoundationError &&
+    error.code === 'DATABASE_WRITE_FAILED' &&
+    errorChainIncludes(error, STORY_ANCHOR_SCOPE_MARKERS)
+  ) {
+    return 'COMMON_INVALID_INPUT_001';
+  }
   if (error instanceof SearchToolsServiceError) {
     if (error.code === 'SEARCH_REPLACE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'SEARCH_REPLACE_INVALID') return 'COMMON_INVALID_INPUT_001';

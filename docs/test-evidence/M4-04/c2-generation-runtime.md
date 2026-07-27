@@ -2,7 +2,7 @@
 
 ## 交付结论
 
-C2 已完成生成运行时的共享底座，并保持后续检查点的职责边界：
+C2已完成生成运行时的共享底座，并保持后续检查点的职责边界：
 
 - Project Schema 23新增`generation_runs`、`generation_constraint_packages`、`generation_result_refs`、`generation_partial_buffers`与`model_support_profiles`。
 - 六类生产Prompt使用稳定ID和严格输入、输出Schema，覆盖骨架、正文、改写、融合、语义校验和状态提取。
@@ -22,7 +22,7 @@ Prompt正文、Provider原始响应和凭据不写入`generation_runs`。约束�
 
 ## C0—C7复核修复
 
-- 受检产品提交：`4f78143ca933a7e57326e32e3e86285d0bfc95c3`。
+- 第二轮产品复核提交：`4f78143ca933a7e57326e32e3e86285d0bfc95c3`。
 - 修复结构化任务中断后把未解析JSON片段暴露为可保存正文partial的问题。
 - 运行时现仅允许`outputMode=text`的可读正文片段进入partial缓冲。
 - 新增结构化断流回归，要求Run失败且`partialStatus=unavailable`，保存操作返回`GENERATION_PARTIAL_UNAVAILABLE`。
@@ -35,9 +35,11 @@ Prompt正文、Provider原始响应和凭据不写入`generation_runs`。约束�
 - GenerationRun原子提交、取消迟到增量、纯文本partial保存与丢弃、重启恢复均有自动化覆盖。
 - Generation IPC的来源校验、严格合同、凭据归属和安全日志均有自动化覆盖。
 
-## 当前Head验证边界
+## 当前验证结论
 
-GitHub Actions Quality #2054已通过静态质量门。新增结构化partial集成回归尚未由Ready全量测试路由执行，必须在转Ready前与Unit、Integration、Migration、Security、Coverage、Build和Electron E2E一并重放。
+最近一次完整产品矩阵为提交`f36ca0c0567130ab7072c6da3d0ed402dd1fda2d`上的Quality #2186、Security #1976与Performance #1942。Unit、Integration、Migration、Coverage、Build、Electron E2E、Generation IPC安全测试、全历史Secret Scan及性能预算均实际执行并成功。
+
+当前产品源提交`ea7463a40faa5b23b3b9afc97504be19f2cee708`只增加C1继续写作持久化协调修复，没有修改C2合同或运行时。该提交已完成定向静态和Unit验证，但没有对应的新一轮完整GitHub Actions运行；C2结论继续以最近一次完整产品矩阵和现有回归为依据。
 
 ## 后续入口
 

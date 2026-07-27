@@ -11,15 +11,26 @@ BEGIN
     )
   ) THEN RAISE(ABORT, 'STORY_TODO_BEAT_CHAPTER_SCOPE_INVALID') END;
   SELECT CASE WHEN NEW.logical_block_id IS NOT NULL AND (
-    NEW.chapter_id IS NULL OR NOT EXISTS (
-      SELECT 1
-        FROM chapters chapter
-        JOIN volumes volume ON volume.id = chapter.volume_id
-        JOIN drafts draft ON draft.id = chapter.active_draft_id
-        JOIN draft_blocks block ON block.draft_id = draft.id
-       WHERE chapter.id = NEW.chapter_id
-         AND volume.project_id = NEW.project_id
-         AND block.logical_block_id = NEW.logical_block_id
+    NEW.chapter_id IS NULL OR NOT (
+      EXISTS (
+        SELECT 1
+          FROM chapters chapter
+          JOIN volumes volume ON volume.id = chapter.volume_id
+          JOIN drafts draft ON draft.id = chapter.active_draft_id
+          JOIN draft_blocks block ON block.draft_id = draft.id
+         WHERE chapter.id = NEW.chapter_id
+           AND volume.project_id = NEW.project_id
+           AND block.logical_block_id = NEW.logical_block_id
+      ) OR (
+        NEW.validation_issue_id IS NOT NULL AND EXISTS (
+          SELECT 1
+            FROM validation_issues issue
+           WHERE issue.id = NEW.validation_issue_id
+             AND issue.project_id = NEW.project_id
+             AND issue.chapter_id IS NEW.chapter_id
+             AND issue.logical_block_id IS NEW.logical_block_id
+        )
+      )
     )
   ) THEN RAISE(ABORT, 'STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID') END;
   SELECT CASE WHEN NEW.validation_issue_id IS NOT NULL AND NOT EXISTS (
@@ -46,15 +57,26 @@ BEGIN
     )
   ) THEN RAISE(ABORT, 'STORY_TODO_BEAT_CHAPTER_SCOPE_INVALID') END;
   SELECT CASE WHEN NEW.logical_block_id IS NOT NULL AND (
-    NEW.chapter_id IS NULL OR NOT EXISTS (
-      SELECT 1
-        FROM chapters chapter
-        JOIN volumes volume ON volume.id = chapter.volume_id
-        JOIN drafts draft ON draft.id = chapter.active_draft_id
-        JOIN draft_blocks block ON block.draft_id = draft.id
-       WHERE chapter.id = NEW.chapter_id
-         AND volume.project_id = NEW.project_id
-         AND block.logical_block_id = NEW.logical_block_id
+    NEW.chapter_id IS NULL OR NOT (
+      EXISTS (
+        SELECT 1
+          FROM chapters chapter
+          JOIN volumes volume ON volume.id = chapter.volume_id
+          JOIN drafts draft ON draft.id = chapter.active_draft_id
+          JOIN draft_blocks block ON block.draft_id = draft.id
+         WHERE chapter.id = NEW.chapter_id
+           AND volume.project_id = NEW.project_id
+           AND block.logical_block_id = NEW.logical_block_id
+      ) OR (
+        NEW.validation_issue_id IS NOT NULL AND EXISTS (
+          SELECT 1
+            FROM validation_issues issue
+           WHERE issue.id = NEW.validation_issue_id
+             AND issue.project_id = NEW.project_id
+             AND issue.chapter_id IS NEW.chapter_id
+             AND issue.logical_block_id IS NEW.logical_block_id
+        )
+      )
     )
   ) THEN RAISE(ABORT, 'STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID') END;
   SELECT CASE WHEN NEW.validation_issue_id IS NOT NULL AND NOT EXISTS (
@@ -101,6 +123,17 @@ BEGIN
          WHERE chapter.id = NEW.chapter_id
            AND volume.project_id = NEW.project_id
            AND block.logical_block_id = NEW.logical_block_id
+      )
+    ) OR (
+      NEW.source_version_id IS NULL
+      AND NEW.validation_issue_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1
+          FROM validation_issues issue
+         WHERE issue.id = NEW.validation_issue_id
+           AND issue.project_id = NEW.project_id
+           AND (NEW.chapter_id IS NULL OR issue.chapter_id IS NEW.chapter_id)
+           AND issue.logical_block_id IS NEW.logical_block_id
       )
     )
   ) THEN RAISE(ABORT, 'STORY_COMMENT_BLOCK_SOURCE_SCOPE_INVALID') END;
@@ -150,6 +183,17 @@ BEGIN
          WHERE chapter.id = NEW.chapter_id
            AND volume.project_id = NEW.project_id
            AND block.logical_block_id = NEW.logical_block_id
+      )
+    ) OR (
+      NEW.source_version_id IS NULL
+      AND NEW.validation_issue_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1
+          FROM validation_issues issue
+         WHERE issue.id = NEW.validation_issue_id
+           AND issue.project_id = NEW.project_id
+           AND (NEW.chapter_id IS NULL OR issue.chapter_id IS NEW.chapter_id)
+           AND issue.logical_block_id IS NEW.logical_block_id
       )
     )
   ) THEN RAISE(ABORT, 'STORY_COMMENT_BLOCK_SOURCE_SCOPE_INVALID') END;

@@ -1,0 +1,77 @@
+name: Temporary Pin External Actions
+
+on:
+  push:
+    branches:
+      - work/m4-04-v1-integrated-delivery
+    paths:
+      - '.github/workflows/temporary-pin-actions.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  pin-actions:
+    if: ${{ github.repository == 'sy220284/666' && github.ref == 'refs/heads/work/m4-04-v1-integrated-delivery' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin every allowlisted external action and harden CI policy
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
+          import path from 'node:path';
+
+          const pins = new Map([
+            ['actions/checkout@v6', 'actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6'],
+            ['actions/setup-node@v6', 'actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6'],
+            ['actions/upload-artifact@v7', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7'],
+            ['actions/download-artifact@v8', 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8'],
+            ['pnpm/action-setup@v4', 'pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4'],
+          ]);
+
+          const workflowDirectory = path.join('.github', 'workflows');
+          for (const file of await readdir(workflowDirectory)) {
+            if (!/\.ya?ml$/u.test(file) || file === 'temporary-pin-actions.yml') continue;
+            const filePath = path.join(workflowDirectory, file);
+            let source = await readFile(filePath, 'utf8');
+            for (const [tagged, pinned] of pins) source = source.replaceAll(tagged, pinned);
+            await writeFile(filePath, source, 'utf8');
+          }
+
+          const policyPath = path.join('scripts', 'ci-policy.mjs');
+          let policy = await readFile(policyPath, 'utf8');
+          policy = policy.replace(
+            /const actionVersions = new Map\(\[[\s\S]*?\n\]\);\n\nfunction requireTokens/u,
+            `const actionPins = new Map([\n  ['actions/checkout', 'd23441a48e516b6c34aea4fa41551a30e30af803'],\n  ['actions/setup-node', '249970729cb0ef3589644e2896645e5dc5ba9c38'],\n  ['actions/upload-artifact', '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'],\n  ['actions/download-artifact', '3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'],\n  ['pnpm/action-setup', 'b906affcce14559ad1aafd4ab0e942779e9f58b1'],\n]);\n\nfunction requireTokens`,
+          );
+          policy = policy.replace(
+            /  for \(const match of source\.matchAll\(\/uses:\\s\*\(\[\^@\\s\]\+\)@\(\[\^\\s#\]\+\)\/gu\)\) \{[\s\S]*?\n  \}\n\n  const checkouts = \[\.\.\.source\.matchAll\(\/uses:\\s\*actions\\\/checkout@v6\/gu\)\]\.length;/u,
+            `  for (const match of source.matchAll(/uses:\\s*([^@\\s]+)@([^\\s#]+)/gu)) {\n    const action = match[1];\n    const reference = match[2];\n    if (action.startsWith('./')) continue;\n    const expected = actionPins.get(action);\n    if (!expected) {\n      errors.push(\`${'${file}'}: external action ${'${action}'} is not allowlisted\`);\n      continue;\n    }\n    if (reference !== expected) {\n      errors.push(\`${'${file}'}: ${'${action}'} must use immutable SHA ${'${expected}'}\`);\n    }\n  }\n\n  const checkouts = [...source.matchAll(/uses:\\s*actions\\/checkout@[^\\s#]+/gu)].length;`,
+          );
+          if (policy.includes('actionVersions') || policy.includes('checkout@v6/gu')) {
+            throw new Error('CI policy pin rewrite did not fully apply');
+          }
+          await writeFile(policyPath, policy, 'utf8');
+          await rm(path.join(workflowDirectory, 'temporary-pin-actions.yml'));
+          NODE
+      - name: Commit immutable action pins and remove temporary workflow
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e .github/workflows/temporary-pin-actions.yml
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/workflows scripts/ci-policy.mjs
+          git commit -m 'chore(ci): enforce immutable action pins'
+          auth="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:"$GITHUB_REF_NAME"

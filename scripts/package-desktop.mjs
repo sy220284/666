@@ -10,6 +10,7 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -18,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { parseReleaseVersion } from './release-tool.mjs';
 
 const root = process.cwd();
+const require = createRequire(import.meta.url);
 const platformByNode = Object.freeze({
   linux: 'linux',
   win32: 'windows',
@@ -114,6 +116,11 @@ async function requirePath(filePath, label) {
   }
 }
 
+function electronDistributionPath() {
+  const packagePath = require.resolve('electron/package.json');
+  return path.join(path.dirname(packagePath), 'dist');
+}
+
 async function deployWorkspace(packageName, target) {
   const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   await mkdir(path.dirname(target), { recursive: true });
@@ -161,7 +168,7 @@ async function prepareApplication(resourcesPath, version) {
 }
 
 async function copyElectronRuntime(stagingDirectory, platform, version) {
-  const electronDist = path.join(root, 'node_modules', 'electron', 'dist');
+  const electronDist = electronDistributionPath();
   await requirePath(electronDist, 'Electron runtime');
   const architecture = process.arch;
   const bundleName = `WorldForge-v${version}-${platform}-${architecture}`;

@@ -54,16 +54,6 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
       ? latestContinuation
       : props.initialContinuation;
 
-  if (restoreNotice && props.panel === 'editor') {
-    return (
-      <section className="writing-workbench" data-writing-workbench>
-        <p className="draft-state" data-draft-state role="status" aria-live="polite">
-          {restoreNotice}
-        </p>
-      </section>
-    );
-  }
-
   return (
     <WritingCoreWorkbench
       {...props}

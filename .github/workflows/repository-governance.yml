@@ -48,23 +48,18 @@ jobs:
           node-version: 24
       - name: Generate isolated audit lockfile
         run: pnpm install --lockfile-only --no-frozen-lockfile --ignore-scripts
-      - name: Commit lockfile when changed
+      - name: Verify lockfile-only mutation
         shell: bash
-        env:
-          REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
         run: |
-          changed="$(git status --porcelain=v1 -- pnpm-lock.yaml)"
-          if [ -z "$changed" ]; then
-            echo 'Audit lockfile already current.'
-            exit 0
-          fi
-          test -n "$REPO_ADMIN_TOKEN"
+          test -n "$(git status --porcelain=v1 -- pnpm-lock.yaml)"
           test "$(git status --porcelain=v1 | sed -E 's/^...//' | sort -u)" = 'pnpm-lock.yaml'
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add pnpm-lock.yaml
-          git commit -m 'chore(ci): lock isolated audit dependencies'
-          git push "https://x-access-token:${REPO_ADMIN_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_HEAD_REF}"
+      - name: Upload isolated audit lockfile
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: isolated-audit-lockfile
+          path: pnpm-lock.yaml
+          if-no-files-found: error
+          retention-days: 1
 
   repository-governance:
     runs-on: ubuntu-24.04

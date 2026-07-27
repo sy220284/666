@@ -4,6 +4,8 @@
 
 C5已完成真实Provider状态提取、批次化作者裁决、确定性规则检查、AI语义检查以及StoryTodo/Comment闭环。状态提案与检查结果均只读取当前Final Version；Provider输出不能直接修改Draft、实体状态或叙事规划权威数据。
 
+当前验收状态为部分通过：功能链和现有自动化通过，但Schema 27历史脏锚点升级到Schema 28时缺少检测、拒绝、只读保护、隔离或确定性修复策略，也缺少对应历史脏数据Migration Fixture。该缺口未关闭前，C5不得标记为`Verified`。
+
 ## 实现
 
 - Schema 25新增`state_proposal_batches`、`validation_batches`、`validation_issues`、`story_todos`与`story_comments`严格表。
@@ -26,6 +28,7 @@ C5已完成真实Provider状态提取、批次化作者裁决、确定性规则�
 - INSERT和UPDATE均执行同一复合范围校验，防止先写合法记录再通过更新绕过。
 - 新增同章正常路径、跨章正文块、跨章Version、跨Version正文块及更新绕过回归。
 - 当前项目Schema最新版本为28。
+- 现有Migration只对未来INSERT/UPDATE生效，尚未处理Schema 27数据库中已经存在的非法历史锚点；这是当前C5验收阻断项。
 
 ## 历史阶段测试
 
@@ -38,9 +41,11 @@ C5已完成真实Provider状态提取、批次化作者裁决、确定性规则�
 - Unit、Integration、Migration、Security合并回归：157个测试文件、744项通过、1项跳过。
 - 全工作区Build、Typecheck、ESLint与Prettier通过。
 
-## 当前Head验证边界
+## 当前验证结论
 
-GitHub Actions Quality #2054已通过任务镜像、Workspaces、Boundary、Prettier、ESLint、Typecheck和干净工作树。Schema 28 Migration及新增复合锚点集成回归尚未由Ready全量测试路由执行，转Ready前必须完整重放空库、历史Schema升级、Integration、Migration、Security与Coverage。
+最近一次完整产品矩阵为提交`f36ca0c0567130ab7072c6da3d0ed402dd1fda2d`上的Quality #2186、Security #1976与Performance #1942。Schema 28现有Migration、Integration、Security、Coverage和Electron E2E均在当前测试集合内成功。
+
+该CI成功只证明现有测试集合通过，不能覆盖尚未编写的Schema 27历史脏数据升级场景。C5继续保持部分通过，待补充升级策略、历史Fixture和失败不半升级回归后复验。
 
 ## 后续边界
 

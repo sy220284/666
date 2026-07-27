@@ -134,7 +134,8 @@ export async function writeFilesAtomically(
       if (metadata.isSymbolicLink()) {
         throw new Error(`Atomic file targets may not be symbolic links: ${targetPath}`);
       }
-      if (!metadata.isFile()) throw new Error(`Atomic file target is not a regular file: ${targetPath}`);
+      if (!metadata.isFile())
+        throw new Error(`Atomic file target is not a regular file: ${targetPath}`);
       hadOriginal = true;
       mode = metadata.mode;
     } catch (error) {
@@ -174,7 +175,9 @@ export async function writeFilesAtomically(
       await syncDirectory(path.dirname(entry.targetPath));
       replacements += 1;
       if (replacements >= failAfterReplacements) {
-        throw new Error(`Injected atomic file transaction failure after ${replacements} replacements`);
+        throw new Error(
+          `Injected atomic file transaction failure after ${replacements} replacements`,
+        );
       }
     }
   } catch (error) {
@@ -183,7 +186,10 @@ export async function writeFilesAtomically(
       await rm(journalPath, { force: true });
       await syncDirectory(journalDirectory);
     } catch (rollbackError) {
-      throw new AggregateError([error, rollbackError], 'Atomic file transaction and rollback failed');
+      throw new AggregateError(
+        [error, rollbackError],
+        'Atomic file transaction and rollback failed',
+      );
     }
     throw error;
   }

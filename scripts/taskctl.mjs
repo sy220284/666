@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { access, readFile, writeFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -21,6 +21,7 @@ import {
 import { validateAuditRemediation } from './audit-remediation-policy.mjs';
 import { assertEvidenceHead, validateTaskEvidence } from './evidence-policy.mjs';
 import { validateAllVerifiedEvidence } from './verified-evidence-scan.mjs';
+import { recoverAtomicFileTransactions, writeFilesAtomically } from './atomic-file-transaction.mjs';
 
 const root = process.cwd();
 const statePath = path.join(root, 'docs/tasks/ACTIVE_TASK.json');
@@ -67,8 +68,109 @@ async function load() {
   ]);
   return {
     state: JSON.parse(stateSource),
+    indexSource,
     taskIndex: parseTaskIndex(indexSource),
     mirrorSource,
+  };
+}
+
+function taskTransactionJournalDirectory() {
+  try {
+    return path.resolve(root, git(['rev-parse', '--git-path', 'taskctl-transactions']));
+  } catch {
+    return path.join(root, '.taskctl-transactions');
+  }
+}
+
+async function writeTaskStateTransaction(state, indexSource, additionalEntries = []) {
+  await writeFilesAtomically(
+    [
+      { path: statePath, content: JSON.stringify(state, null, 2) + '\n', encoding: 'utf8' },
+      { path: indexPath, content: indexSource, encoding: 'utf8' },
+      { path: mirrorPath, content: renderActiveTask(state), encoding: 'utf8' },
+      ...additionalEntries,
+    ],
+    { journalDirectory: taskTransactionJournalDirectory() },
+  );
+}
+
+async function writeMirrorTransaction(state) {
+  await writeFilesAtomically(
+    [{ path: mirrorPath, content: renderActiveTask(state), encoding: 'utf8' }],
+    { journalDirectory: taskTransactionJournalDirectory() },
+  );
+}
+
+async function prepareActivation(state, indexSource, taskId, additionalAllowedPaths = []) {
+  if (state.activeTask) {
+    throw new Error(
+      'Cannot activate ' + taskId + ' while ' + state.activeTask.id + ' is still active',
+    );
+  }
+  const taskIndex = parseTaskIndex(indexSource);
+  const task = taskIndex.get(taskId);
+  if (!task) throw new Error('Unknown task: ' + taskId);
+  if (task.status !== 'Planned') throw new Error(taskId + ' must be Planned, found ' + task.status);
+  const allowImplemented = ['implementation-mainline', 'implementation-pr'].includes(
+    state.authorization.mode,
+  );
+  const stageErrors = stageClosureErrors(task, taskIndex, state);
+  if (stageErrors.length > 0) throw new Error(stageErrors.join('\n'));
+  if (!dependenciesSatisfied(task, taskIndex, { allowImplemented, state })) {
+    throw new Error(
+      taskId +
+        ' dependencies are not ' +
+        (allowImplemented ? 'Implemented or Verified' : 'Verified'),
+    );
+  }
+  if (stageCloseDependencyStages(task).length > 0) {
+    await validateAllVerifiedEvidence(root, currentHead());
+  }
+
+  const cardPath = path.join(root, task.source);
+  const card = await readFile(cardPath, 'utf8');
+  const allowedPaths = extractBacktickBullets(card, '主要影响范围');
+  const requiredDocs = extractBacktickBullets(card, '必读文档');
+  if (allowedPaths.length === 0 || requiredDocs.length === 0) {
+    throw new Error(taskId + ' card lacks machine-readable paths or required documents');
+  }
+
+  const controlPaths = [
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'docs/tasks/ACTIVE_TASK.json',
+    'docs/tasks/ACTIVE_TASK.md',
+    'docs/tasks/TASK_INDEX.md',
+    task.source,
+    'docs/product/V1.0_TRACEABILITY_MATRIX.md',
+    'docs/test-evidence/' + taskId + '/',
+  ];
+  const taskBranch =
+    state.authorization.mode === 'implementation-pr'
+      ? taskBranchFor(task)
+      : state.authorization.branch;
+  const nextState = structuredClone(state);
+  nextState.activeTask = {
+    id: taskId,
+    status: 'IN_PROGRESS',
+    source: task.source,
+    branch: taskBranch,
+    startedAt: new Date().toISOString().slice(0, 10),
+    allowedPaths: [...new Set([...allowedPaths, ...controlPaths, ...additionalAllowedPaths])],
+    forbiddenPaths: [],
+    requiredDocs,
+    verification: verificationForTask(card),
+  };
+
+  const updatedIndex = replaceTaskIndexStatus(indexSource, taskId, 'In Progress');
+  const updatedCard = replaceTaskCardStatus(card, 'Planned', 'In Progress');
+  if (updatedCard === card) throw new Error(taskId + ' card status is not Planned');
+  return {
+    state: nextState,
+    indexSource: updatedIndex,
+    entries: [{ path: cardPath, content: updatedCard, encoding: 'utf8' }],
+    taskBranch,
   };
 }
 
@@ -213,17 +315,17 @@ async function preflight() {
 }
 
 async function reopenDeferred(taskId) {
-  const { state, taskIndex } = await load();
+  const { state, taskIndex, indexSource } = await load();
   if (!['implementation-mainline', 'implementation-pr'].includes(state.authorization.mode)) {
     throw new Error('reopen requires an implementation-first authorization mode');
   }
   const deferred = (state.deferredVerification ?? []).find((entry) => entry.id === taskId);
   const target = taskIndex.get(taskId);
   if (!target || !['Implemented', 'Verified'].includes(target.status)) {
-    throw new Error(`${taskId} must be Implemented or Verified before reopening`);
+    throw new Error(taskId + ' must be Implemented or Verified before reopening');
   }
   if (target.status === 'Implemented' && !deferred) {
-    throw new Error(`${taskId} is not in deferredVerification`);
+    throw new Error(taskId + ' is not in deferredVerification');
   }
   const paused = taskIndex.get(state.activeTask.id);
   if (!paused || paused.status !== 'In Progress') {
@@ -232,15 +334,14 @@ async function reopenDeferred(taskId) {
 
   const targetCardPath = path.join(root, target.source);
   const pausedCardPath = path.join(root, paused.source);
-  const [targetCard, pausedCard, indexSource] = await Promise.all([
+  const [targetCard, pausedCard] = await Promise.all([
     readFile(targetCardPath, 'utf8'),
     readFile(pausedCardPath, 'utf8'),
-    readFile(indexPath, 'utf8'),
   ]);
   const reopenedCard = replaceTaskCardStatus(targetCard, target.status, 'In Progress');
   const pausedCardNext = replaceTaskCardStatus(pausedCard, 'In Progress', 'Planned');
-  if (reopenedCard === targetCard) throw new Error(`${taskId} card is not ${target.status}`);
-  if (pausedCardNext === pausedCard) throw new Error(`${paused.id} card is not In Progress`);
+  if (reopenedCard === targetCard) throw new Error(taskId + ' card is not ' + target.status);
+  if (pausedCardNext === pausedCard) throw new Error(paused.id + ' card is not In Progress');
 
   const allowedPaths = extractBacktickBullets(targetCard, '主要影响范围');
   const requiredDocs = extractBacktickBullets(targetCard, '必读文档');
@@ -254,7 +355,7 @@ async function reopenDeferred(taskId) {
     target.source,
     paused.source,
     'docs/product/V1.0_TRACEABILITY_MATRIX.md',
-    `docs/test-evidence/${taskId}/`,
+    'docs/test-evidence/' + taskId + '/',
   ];
   state.activeTask = {
     id: taskId,
@@ -275,12 +376,11 @@ async function reopenDeferred(taskId) {
     taskId,
     'In Progress',
   );
-  await Promise.all([
-    writeFile(targetCardPath, reopenedCard, 'utf8'),
-    writeFile(pausedCardPath, pausedCardNext, 'utf8'),
+  await writeTaskStateTransaction(state, reopenedIndex, [
+    { path: targetCardPath, content: reopenedCard, encoding: 'utf8' },
+    { path: pausedCardPath, content: pausedCardNext, encoding: 'utf8' },
   ]);
-  await writeActiveState(state, reopenedIndex);
-  console.log(`Reopened ${taskId}; paused ${paused.id}.`);
+  console.log('Reopened ' + taskId + '; paused ' + paused.id + '.');
 }
 
 async function verify() {
@@ -321,7 +421,7 @@ async function verifyTask(taskId) {
     ['--main-commit', mainCommit],
   ]) {
     if (!/^[0-9a-f]{40}$/iu.test(value ?? '')) {
-      throw new Error(`verify-task requires ${label}=<full-sha>`);
+      throw new Error('verify-task requires ' + label + '=<full-sha>');
     }
   }
   assertEvidenceHead(expectedHead, root);
@@ -332,18 +432,18 @@ async function verifyTask(taskId) {
     throw new Error('Squash provenance requires identical implementation and main trees');
   }
 
-  const { state, taskIndex } = await load();
+  const { state, taskIndex, indexSource } = await load();
   const target = taskIndex.get(taskId);
   if (!target || !['In Progress', 'Implemented'].includes(target.status)) {
-    throw new Error(`${taskId} must be In Progress or Implemented before verification`);
+    throw new Error(taskId + ' must be In Progress or Implemented before verification');
   }
   const active = state.activeTask?.id === taskId;
   if (target.status === 'In Progress' && !active) {
-    throw new Error(`${taskId} is In Progress but is not the active task`);
+    throw new Error(taskId + ' is In Progress but is not the active task');
   }
   if (target.status === 'Implemented') {
     const deferred = (state.deferredVerification ?? []).some((entry) => entry.id === taskId);
-    if (!deferred) throw new Error(`${taskId} is not in deferredVerification`);
+    if (!deferred) throw new Error(taskId + ' is not in deferredVerification');
   }
 
   await validateTaskEvidence(taskId, root, { final: true, expectedHead });
@@ -351,15 +451,13 @@ async function verifyTask(taskId) {
     await readFile(path.join(root, 'docs/test-evidence', taskId, 'manifest.json'), 'utf8'),
   );
   if (evidenceManifest.commit !== mainCommit) {
-    throw new Error(`${taskId} evidence manifest must bind the reachable main commit`);
+    throw new Error(taskId + ' evidence manifest must bind the reachable main commit');
   }
-  const indexSource = await readFile(indexPath, 'utf8');
   const verifiedIndex = replaceTaskIndexStatus(indexSource, taskId, 'Verified');
   const cardPath = path.join(root, target.source);
   const card = await readFile(cardPath, 'utf8');
   const verifiedCard = replaceTaskCardStatus(card, target.status, 'Verified');
-  if (verifiedCard === card) throw new Error(`${taskId} card is not ${target.status}`);
-  await writeFile(cardPath, verifiedCard, 'utf8');
+  if (verifiedCard === card) throw new Error(taskId + ' card is not ' + target.status);
 
   state.deferredVerification = (state.deferredVerification ?? []).filter(
     (entry) => entry.id !== taskId,
@@ -378,8 +476,12 @@ async function verifyTask(taskId) {
   };
 
   if (!active) {
-    await writeActiveState(state, verifiedIndex);
-    console.log(`Verified deferred task ${taskId}; active task remains ${state.activeTask.id}.`);
+    await writeTaskStateTransaction(state, verifiedIndex, [
+      { path: cardPath, content: verifiedCard, encoding: 'utf8' },
+    ]);
+    console.log(
+      'Verified deferred task ' + taskId + '; active task remains ' + state.activeTask.id + '.',
+    );
     return;
   }
 
@@ -390,91 +492,25 @@ async function verifyTask(taskId) {
   });
   if (!next) throw new Error('No implementation-ready Planned task remains');
   state.activeTask = null;
-  await Promise.all([
-    writeFile(indexPath, verifiedIndex, 'utf8'),
-    writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8'),
+  const activation = await prepareActivation(state, verifiedIndex, next.id);
+  await writeTaskStateTransaction(activation.state, activation.indexSource, [
+    { path: cardPath, content: verifiedCard, encoding: 'utf8' },
+    ...activation.entries,
   ]);
-  await activate(next.id);
-  console.log(`Verified active task ${taskId}; advanced to ${next.id}.`);
+  console.log('Verified active task ' + taskId + '; advanced to ' + next.id + '.');
 }
 
 async function sync() {
   const { state } = await load();
-  await writeFile(mirrorPath, renderActiveTask(state), 'utf8');
+  await writeMirrorTransaction(state);
   console.log('ACTIVE_TASK.md synchronized from ACTIVE_TASK.json.');
 }
 
-async function writeActiveState(state, indexSource) {
-  await Promise.all([
-    writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8'),
-    writeFile(indexPath, indexSource, 'utf8'),
-    writeFile(mirrorPath, renderActiveTask(state), 'utf8'),
-  ]);
-}
-
 async function activate(taskId, additionalAllowedPaths = []) {
-  const { state, taskIndex } = await load();
-  if (state.activeTask) {
-    throw new Error(`Cannot activate ${taskId} while ${state.activeTask.id} is still active`);
-  }
-  const task = taskIndex.get(taskId);
-  if (!task) throw new Error(`Unknown task: ${taskId}`);
-  if (task.status !== 'Planned') throw new Error(`${taskId} must be Planned, found ${task.status}`);
-  const allowImplemented = ['implementation-mainline', 'implementation-pr'].includes(
-    state.authorization.mode,
-  );
-  const stageErrors = stageClosureErrors(task, taskIndex, state);
-  if (stageErrors.length > 0) throw new Error(stageErrors.join('\n'));
-  if (!dependenciesSatisfied(task, taskIndex, { allowImplemented, state })) {
-    throw new Error(
-      `${taskId} dependencies are not ${allowImplemented ? 'Implemented or Verified' : 'Verified'}`,
-    );
-  }
-  if (stageCloseDependencyStages(task).length > 0) {
-    await validateAllVerifiedEvidence(root, currentHead());
-  }
-
-  const card = await readFile(path.join(root, task.source), 'utf8');
-  const allowedPaths = extractBacktickBullets(card, '主要影响范围');
-  const requiredDocs = extractBacktickBullets(card, '必读文档');
-  if (allowedPaths.length === 0 || requiredDocs.length === 0) {
-    throw new Error(`${taskId} card lacks machine-readable paths or required documents`);
-  }
-
-  const controlPaths = [
-    'package.json',
-    'pnpm-lock.yaml',
-    'pnpm-workspace.yaml',
-    'docs/tasks/ACTIVE_TASK.json',
-    'docs/tasks/ACTIVE_TASK.md',
-    'docs/tasks/TASK_INDEX.md',
-    task.source,
-    'docs/product/V1.0_TRACEABILITY_MATRIX.md',
-    `docs/test-evidence/${taskId}/`,
-  ];
-  const taskBranch =
-    state.authorization.mode === 'implementation-pr'
-      ? taskBranchFor(task)
-      : state.authorization.branch;
-  state.activeTask = {
-    id: taskId,
-    status: 'IN_PROGRESS',
-    source: task.source,
-    branch: taskBranch,
-    startedAt: new Date().toISOString().slice(0, 10),
-    allowedPaths: [...new Set([...allowedPaths, ...controlPaths, ...additionalAllowedPaths])],
-    forbiddenPaths: [],
-    requiredDocs,
-    verification: verificationForTask(card),
-  };
-
-  const indexSource = await readFile(indexPath, 'utf8');
-  const updatedIndex = replaceTaskIndexStatus(indexSource, taskId, 'In Progress');
-  const updatedCard = replaceTaskCardStatus(card, 'Planned', 'In Progress');
-  if (updatedCard === card) throw new Error(`${taskId} card status is not Planned`);
-  await writeFile(path.join(root, task.source), updatedCard, 'utf8');
-  await writeActiveState(state, updatedIndex);
-  console.log(`Activated ${taskId} on ${taskBranch}.`);
+  const { state, indexSource } = await load();
+  const activation = await prepareActivation(state, indexSource, taskId, additionalAllowedPaths);
+  await writeTaskStateTransaction(activation.state, activation.indexSource, activation.entries);
+  console.log('Activated ' + taskId + ' on ' + activation.taskBranch + '.');
 }
 
 async function close() {
@@ -490,19 +526,15 @@ async function close() {
     throw new Error('close is only available in continuous-mainline mode');
   }
   if (state.activeTask.status !== 'IMPLEMENTED') {
-    throw new Error(`Only an IMPLEMENTED task can close, found ${state.activeTask.status}`);
+    throw new Error('Only an IMPLEMENTED task can close, found ' + state.activeTask.status);
   }
 
-  const indexSource = await readFile(indexPath, 'utf8');
+  const { indexSource } = await load();
   const verifiedIndex = replaceTaskIndexStatus(indexSource, state.activeTask.id, 'Verified');
   const cardPath = path.join(root, state.activeTask.source);
   const card = await readFile(cardPath, 'utf8');
   const verifiedCard = replaceTaskCardStatus(card, 'Implemented', 'Verified');
   if (verifiedCard === card) throw new Error('Task card is not in Implemented state');
-  await Promise.all([
-    writeFile(indexPath, verifiedIndex, 'utf8'),
-    writeFile(cardPath, verifiedCard, 'utf8'),
-  ]);
 
   state.lastVerifiedTask = {
     id: state.activeTask.id,
@@ -514,9 +546,14 @@ async function close() {
   if (!next) throw new Error('No dependency-ready Planned task remains');
 
   state.activeTask = null;
-  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-  await activate(next.id);
-  console.log(`Closed ${state.lastVerifiedTask.id}; continuous mode advanced to ${next.id}.`);
+  const activation = await prepareActivation(state, verifiedIndex, next.id);
+  await writeTaskStateTransaction(activation.state, activation.indexSource, [
+    { path: cardPath, content: verifiedCard, encoding: 'utf8' },
+    ...activation.entries,
+  ]);
+  console.log(
+    'Closed ' + state.lastVerifiedTask.id + '; continuous mode advanced to ' + next.id + '.',
+  );
 }
 
 async function advanceImplementation() {
@@ -532,10 +569,10 @@ async function advanceImplementation() {
     throw new Error('advance requires an implementation-first authorization mode');
   }
   if (state.activeTask.status !== 'IN_PROGRESS') {
-    throw new Error(`Only an IN_PROGRESS task can advance, found ${state.activeTask.status}`);
+    throw new Error('Only an IN_PROGRESS task can advance, found ' + state.activeTask.status);
   }
 
-  const indexSource = await readFile(indexPath, 'utf8');
+  const { indexSource } = await load();
   const implementedIndex = replaceTaskIndexStatus(indexSource, state.activeTask.id, 'Implemented');
   const cardPath = path.join(root, state.activeTask.source);
   const card = await readFile(cardPath, 'utf8');
@@ -562,7 +599,7 @@ async function advanceImplementation() {
   state.deferredVerification = [
     ...(state.deferredVerification ?? []),
     {
-      id: state.activeTask.id,
+      id: previousTask.id,
       implementationCommit: commit,
       deferredAt: implementedAt,
       pending: [
@@ -575,19 +612,23 @@ async function advanceImplementation() {
     },
   ];
 
-  await Promise.all([
-    writeFile(indexPath, implementedIndex, 'utf8'),
-    writeFile(cardPath, implementedCard, 'utf8'),
-  ]);
   state.activeTask = null;
-  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-  await activate(next.id);
+  const activation = await prepareActivation(state, implementedIndex, next.id);
+  await writeTaskStateTransaction(activation.state, activation.indexSource, [
+    { path: cardPath, content: implementedCard, encoding: 'utf8' },
+    ...activation.entries,
+  ]);
   console.log(
-    `Recorded ${state.lastImplementedTask.id} as Implemented with a transition snapshot; advanced to ${next.id}.`,
+    'Recorded ' +
+      state.lastImplementedTask.id +
+      ' as Implemented with a transition snapshot; advanced to ' +
+      next.id +
+      '.',
   );
 }
 
 async function main() {
+  await recoverAtomicFileTransactions(taskTransactionJournalDirectory());
   const command = process.argv[2] ?? 'status';
   if (command === 'status') {
     const { state } = await load();

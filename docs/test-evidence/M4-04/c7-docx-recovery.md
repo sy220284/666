@@ -41,11 +41,12 @@ C7已完成DOCX安全导入、基于作者选择不可变Version的TXT、Markdow
 
 ## C0—C7复核验证
 
-- 受检产品提交：`4f78143ca933a7e57326e32e3e86285d0bfc95c3`。
+- 第二轮产品复核提交：`4f78143ca933a7e57326e32e3e86285d0bfc95c3`。
 - 新增真正并发的`Promise.all`日常备份回归，并验证最终只有一条daily记录。
-- GitHub Actions Quality #2054已通过Workspaces、Boundary、Prettier、ESLint、Typecheck与干净工作树。
-- 新增并发集成回归尚未由Ready全量测试路由执行，转Ready前必须与Integration、Migration、Security、Coverage和故障注入一起重放。
+- 最近一次完整产品矩阵为提交`f36ca0c0567130ab7072c6da3d0ed402dd1fda2d`上的Quality #2186、Security #1976与Performance #1942。
+- Unit、Integration、Migration、Coverage、Build、Package Smoke、Electron E2E、DOCX安全回归、恢复IPC安全回归及性能预算均实际执行并成功。
+- C7自动化验收通过；数据库级daily唯一约束、完整DOCX本地Header字段交叉验证、真实超大文件和跨平台文件系统差异继续作为C8硬化范围，不冒充已验证。
 
 ## 后续边界
 
-C8将完成首次使用向导、统一工作台、Theme A/B、无障碍和DPI硬化，并执行安全、隐私、真实性能、Electron E2E、AI Eval、跨平台构建与P0-001—P0-075发布验收。DOCX完整本地Header字段交叉校验、真实大文件、安装包和平台文件系统差异纳入C8矩阵。
+C8尚未开始。后续仍按M4-04任务卡原始“第六阶段：完整体验、硬化与发布关闭”执行首次使用向导、统一工作台、主题、无障碍、DPI、安全、性能、真实Provider Eval、跨平台构建与P0发布验收。不存在有效的C8重写阶段进度。

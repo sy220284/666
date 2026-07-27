@@ -5,8 +5,10 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
+const allowlistPath = path.join(root, '.github', 'governance', 'secret-scan-allowlist.json');
 const allowMarker = /(?:secret-scan:\s*allow|pragma:\s*allowlist\s+secret)/iu;
-const placeholderPattern = /(?:example|placeholder|replace[-_ ]?me|dummy|changeme|redacted|sample|test[-_ ]?only|x{6,})/iu;
+const placeholderPattern =
+  /(?:example|placeholder|replace[-_ ]?me|dummy|changeme|redacted|sample|test[-_ ]?only|x{6,})/iu;
 const exactPatterns = [
   ['GitHub token', /\bgh[pousr]_[A-Za-z0-9]{36,255}\b/gu],
   ['GitHub fine-grained token', /\bgithub_pat_[A-Za-z0-9_]{40,255}\b/gu],
@@ -164,13 +166,49 @@ async function scanHistory() {
   );
 }
 
+async function loadAllowlist() {
+  const document = JSON.parse(await readFile(allowlistPath, 'utf8'));
+  if (document.schemaVersion !== 1 || !Array.isArray(document.entries)) {
+    throw new Error('Secret scan allowlist must use schemaVersion 1 with an entries array');
+  }
+  const findings = new Set();
+  for (const [index, entry] of document.entries.entries()) {
+    if (
+      typeof entry?.finding !== 'string' ||
+      entry.finding.length === 0 ||
+      typeof entry?.reason !== 'string' ||
+      entry.reason.trim().length < 20
+    ) {
+      throw new Error(`Invalid secret scan allowlist entry at index ${index}`);
+    }
+    if (findings.has(entry.finding)) {
+      throw new Error(`Duplicate secret scan allowlist finding: ${entry.finding}`);
+    }
+    findings.add(entry.finding);
+  }
+  return findings;
+}
+
 async function main() {
   const historyEnabled = process.argv.includes('--history');
   const findings = await scanTrackedFiles();
   if (historyEnabled) findings.push(...(await scanHistory()));
   const uniqueFindings = [...new Set(findings)].sort();
-  if (uniqueFindings.length > 0) throw new Error(uniqueFindings.join('\n'));
-  console.log(historyEnabled ? 'Tracked-file and Git-history secret scan passed.' : 'Tracked-file secret scan passed.');
+  const allowlist = await loadAllowlist();
+  const unapproved = uniqueFindings.filter((finding) => !allowlist.has(finding));
+  if (unapproved.length > 0) throw new Error(unapproved.join('\n'));
+  if (historyEnabled) {
+    const staleEntries = [...allowlist].filter((finding) => !uniqueFindings.includes(finding));
+    if (staleEntries.length > 0) {
+      throw new Error(`Stale secret scan allowlist entries:\n${staleEntries.join('\n')}`);
+    }
+  }
+  const approvedCount = uniqueFindings.length - unapproved.length;
+  console.log(
+    historyEnabled
+      ? `Tracked-file and Git-history secret scan passed (${approvedCount} reviewed synthetic findings).`
+      : 'Tracked-file secret scan passed.',
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

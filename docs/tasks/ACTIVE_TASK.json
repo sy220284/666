@@ -56,6 +56,7 @@
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
+      "vitest.config.ts",
       "vitest.coverage.config.ts"
     ],
     "forbiddenPaths": [

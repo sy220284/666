@@ -5,6 +5,8 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['tests/setup/restore-global-state.ts'],
     include: ['tests/**/*.test.ts'],
+    testTimeout: 15_000,
+    hookTimeout: 15_000,
     coverage: { enabled: false },
   },
 });

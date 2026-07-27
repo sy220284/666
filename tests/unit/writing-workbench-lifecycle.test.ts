@@ -14,7 +14,9 @@ describe('writing workbench panel lifecycle', () => {
     );
 
     expect(source).toContain('key={`${props.project.projectId}:${props.panel}`}');
-    expect(source).toContain("type SaveContinuation = RendererBridgeAdapter['project']['saveContinuation']");
+    expect(source).toContain(
+      "type SaveContinuation = RendererBridgeAdapter['project']['saveContinuation']",
+    );
     expect(source).toContain("if (outcome.state === 'success') onContinuation(outcome.data)");
     expect(source).toContain('latestContinuation?.projectId === props.project.projectId');
   });

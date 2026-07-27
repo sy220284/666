@@ -70,6 +70,14 @@ await writeFile(rendererPath, renderer, 'utf8');
 
 const transactionPath = 'scripts/atomic-file-transaction.mjs';
 let transaction = await readFile(transactionPath, 'utf8');
+const oldAggregate =
+  "      throw new AggregateError(\n        [error, rollbackError],\n        'Atomic file transaction and rollback failed',\n      );";
+const newAggregate =
+  "      throw new AggregateError(\n        [error, rollbackError],\n        'Atomic file transaction and rollback failed',\n        { cause: rollbackError },\n      );";
+if (!transaction.includes(oldAggregate)) {
+  throw new Error('Atomic rollback AggregateError baseline was not found');
+}
+transaction = transaction.replace(oldAggregate, newAggregate);
 const oldTransactionRethrow = "\n    throw error;\n  }\n\n  journal.status = 'committed';";
 const newTransactionRethrow =
   "\n    throw new Error(error instanceof Error ? error.message : 'Atomic file transaction failed', { cause: error });\n  }\n\n  journal.status = 'committed';";
@@ -77,8 +85,12 @@ if (!transaction.includes(oldTransactionRethrow)) {
   throw new Error('Atomic transaction rethrow baseline was not found');
 }
 transaction = transaction.replace(oldTransactionRethrow, newTransactionRethrow);
-if (transaction.includes(oldTransactionRethrow) || !transaction.includes('{ cause: error }')) {
-  throw new Error('Atomic transaction error cause was not preserved');
+if (
+  transaction.includes(oldTransactionRethrow) ||
+  !transaction.includes('{ cause: error }') ||
+  !transaction.includes('{ cause: rollbackError }')
+) {
+  throw new Error('Atomic transaction error causes were not preserved');
 }
 await writeFile(transactionPath, transaction, 'utf8');
 

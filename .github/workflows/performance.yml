@@ -13,10 +13,12 @@ concurrency:
   group: performance-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  NON_PR_OR_READY: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+
 jobs:
   performance:
     name: performance
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

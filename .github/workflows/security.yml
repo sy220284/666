@@ -12,9 +12,11 @@ concurrency:
   group: security-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  PR_READY: ${{ github.event.pull_request.draft == false }}
+
 jobs:
   dependency-audit:
-    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -61,7 +63,6 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
 
   secret-scan:
-    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -82,7 +83,6 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
 
   application-security:
-    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -132,7 +132,7 @@ jobs:
 
   security:
     name: security
-    if: ${{ github.event.pull_request.draft == false }}
+    if: always()
     needs:
       - dependency-audit
       - secret-scan

@@ -49,14 +49,15 @@ jobs:
             done <<< "$changed_files"
           fi
           echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
-          echo "Ready quality full suite: $full_suite"
+          echo "PR quality full suite: $full_suite"
 
   quality:
     needs: route
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
-      draft_mode: ${{ github.event.pull_request.draft == true }}
+      # Draft status controls merge eligibility, not validation depth.
+      draft_mode: false
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
       package_smoke: false
       security_suite: false

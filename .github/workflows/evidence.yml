@@ -3,7 +3,7 @@ name: Evidence
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   workflow_dispatch:
   schedule:
     - cron: '17 3 * * 1'
@@ -15,10 +15,12 @@ concurrency:
   group: evidence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  NON_PR_OR_READY: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+
 jobs:
   evidence:
     name: evidence
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:

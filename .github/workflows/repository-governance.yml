@@ -8,9 +8,12 @@ on:
       - '.github/governance/**'
       - '.github/workflows/**'
       - 'scripts/automerge.mjs'
+      - 'scripts/check-boundaries.mjs'
+      - 'scripts/check-workspaces.mjs'
       - 'scripts/ci-policy.mjs'
       - 'scripts/main-verification.mjs'
       - 'scripts/ruleset-policy.mjs'
+      - 'scripts/workflow-structure-policy.mjs'
       - 'docs/process/CI_WORKFLOW_ARCHITECTURE.md'
       - 'docs/process/MAIN_BRANCH_PROTECTION.md'
   schedule:
@@ -75,19 +78,30 @@ jobs:
         if: ${{ steps.route.outputs.run == 'true' }}
         shell: bash
         run: |
-          set -euo pipefail
-          pnpm install --frozen-lockfile --prefer-offline
-          node .github/governance/automation-layout-policy.mjs
-          pnpm check:workspaces
-          pnpm check:boundaries
-          pnpm ci:policy
-          pnpm test:quality
-          pnpm exec vitest run \
-            tests/unit/workflow-structure-policy.test.ts \
-            tests/unit/tooling-hardening.test.ts \
-            tests/integration/workspace-graph.test.ts
-          pnpm lint
-          pnpm typecheck
+          mkdir -p test-results/final-audit-cleanup
+          set -o pipefail
+          {
+            pnpm install --frozen-lockfile --prefer-offline
+            node .github/governance/automation-layout-policy.mjs
+            pnpm check:workspaces
+            pnpm check:boundaries
+            pnpm ci:policy
+            pnpm test:quality
+            pnpm exec vitest run \
+              tests/unit/workflow-structure-policy.test.ts \
+              tests/unit/tooling-hardening.test.ts \
+              tests/integration/workspace-graph.test.ts
+            pnpm lint
+            pnpm typecheck
+          } 2>&1 | tee test-results/final-audit-cleanup/validation.log
+      - name: Upload final cleanup diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: final-audit-cleanup-diagnostics
+          path: test-results/final-audit-cleanup/
+          if-no-files-found: warn
+          retention-days: 1
       - name: Commit validated ordinary files
         if: ${{ steps.route.outputs.run == 'true' && success() }}
         env:

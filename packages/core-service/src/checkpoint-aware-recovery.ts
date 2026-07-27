@@ -91,11 +91,12 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     if (existing) return existing;
     const operation = super.createDailyBackup(requestId, input);
     this.#dailyBackups.set(input.projectId, operation);
-    void operation.finally(() => {
+    const clear = (): void => {
       if (this.#dailyBackups.get(input.projectId) === operation) {
         this.#dailyBackups.delete(input.projectId);
       }
-    });
+    };
+    void operation.then(clear, clear);
     return operation;
   }
 

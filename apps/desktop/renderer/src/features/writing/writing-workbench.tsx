@@ -19,11 +19,14 @@ interface WritingWorkbenchProps {
   readonly onStatus: (message: string) => void;
 }
 
+const VERSION_RESTORE_NOTICE = '已从只读版本恢复为新草稿。';
+
 export function WritingWorkbench(props: WritingWorkbenchProps) {
   const onPanelChangeRef = useRef(props.onPanelChange);
   const [latestContinuation, setLatestContinuation] = useState<ProjectContinuationSnapshot | null>(
     props.initialContinuation,
   );
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
 
   useEffect(() => {
     onPanelChangeRef.current = props.onPanelChange;
@@ -33,12 +36,43 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
     setLatestContinuation(props.initialContinuation);
   }, [props.initialContinuation, props.project.projectId]);
 
+  useEffect(() => {
+    if (!restoreNotice || props.panel !== 'editor') return;
+
+    let active = true;
+    let settleTimer: number | null = null;
+    const applyNotice = (): void => {
+      const status = document.querySelector<HTMLElement>(
+        '[data-writing-workbench] [data-draft-state]',
+      );
+      if (!status) return;
+      if (status.textContent !== restoreNotice) status.textContent = restoreNotice;
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        if (!active) return;
+        active = false;
+        observer.disconnect();
+        setRestoreNotice(null);
+      }, 500);
+    };
+    const observer = new MutationObserver(applyNotice);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    applyNotice();
+
+    return () => {
+      active = false;
+      observer.disconnect();
+      if (settleTimer !== null) window.clearTimeout(settleTimer);
+    };
+  }, [props.panel, restoreNotice]);
+
   const bridge = useMemo(
     () =>
       createWritingBridge(
         props.bridge,
         (panel) => onPanelChangeRef.current(panel),
         setLatestContinuation,
+        setRestoreNotice,
       ),
     [props.bridge],
   );
@@ -62,6 +96,7 @@ function createWritingBridge(
   bridge: RendererBridgeAdapter,
   onPanelChange: (panel: WritingPanel) => void,
   onContinuation: (continuation: ProjectContinuationSnapshot) => void,
+  onRestoreNotice: (message: string) => void,
 ): RendererBridgeAdapter {
   type ListStructure = RendererBridgeAdapter['planning']['listStructure'];
   type SaveContinuation = RendererBridgeAdapter['project']['saveContinuation'];
@@ -114,8 +149,8 @@ function createWritingBridge(
   const restoreVersion: RestoreVersion = async (...args) => {
     const outcome = await bridge.version.restore(...args);
     if (outcome.state === 'success') {
-      onPanelChange('editor');
-      await waitForDraftEditorHost();
+      onRestoreNotice(VERSION_RESTORE_NOTICE);
+      requestAnimationFrame(() => onPanelChange('editor'));
     }
     return outcome;
   };
@@ -141,10 +176,4 @@ function createWritingBridge(
   });
 
   return { ...bridge, project, planning, version };
-}
-
-function waitForDraftEditorHost(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
 }

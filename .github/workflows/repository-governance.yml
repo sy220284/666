@@ -43,7 +43,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Add coverage provider to the governed manifest and lockfile
-        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10
+        run: pnpm add --workspace-root --save-dev --save-exact @vitest/coverage-v8@4.1.10
       - name: Remove mutable coverage dependency installation from CI
         shell: bash
         run: |

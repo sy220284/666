@@ -45,6 +45,18 @@ interface ActiveRequest {
   readonly controller: AbortController;
 }
 
+interface LatestOnlyRequest {
+  readonly generation: number;
+  readonly execute: () => Promise<BridgeRequestOutcome<unknown>>;
+  readonly resolve: (outcome: BridgeRequestOutcome<unknown>) => void;
+}
+
+interface LatestOnlyLane {
+  inFlight: boolean;
+  latestGeneration: number;
+  pending: LatestOnlyRequest | null;
+}
+
 type SettledOperation<T> =
   | { readonly kind: 'result'; readonly result: CommandResult<T> }
   | { readonly kind: 'error'; readonly error: unknown };
@@ -74,14 +86,69 @@ function unexpectedFailure(error: unknown): BridgeRequestError {
   };
 }
 
+function latestOnlyLaneKey(requestKey: string): string | null {
+  if (!requestKey.startsWith('project.saveContinuation:')) return null;
+  const projectId = /"projectId":("(?:\\.|[^"\\])*")/.exec(requestKey)?.[1] ?? 'root';
+  return `project.saveContinuation:${projectId}`;
+}
+
+function withGeneration<T>(
+  outcome: BridgeRequestOutcome<T>,
+  generation: number,
+): BridgeRequestOutcome<T> {
+  switch (outcome.state) {
+    case 'success':
+      return {
+        state: 'success',
+        generation,
+        requestId: outcome.requestId,
+        data: outcome.data,
+      };
+    case 'failure':
+      return {
+        state: 'failure',
+        generation,
+        requestId: outcome.requestId,
+        error: outcome.error,
+      };
+    case 'cancelled':
+      return { state: 'cancelled', generation };
+    case 'stale':
+      return { state: 'stale', generation };
+  }
+}
+
 export class BridgeRequestCoordinator {
   readonly #active = new Map<string, ActiveRequest>();
+  readonly #latestOnly = new Map<string, LatestOnlyLane>();
 
   isPending(requestKey: string): boolean {
-    return this.#active.has(requestKey);
+    const laneKey = latestOnlyLaneKey(requestKey);
+    const lane = laneKey ? this.#latestOnly.get(laneKey) : undefined;
+    return this.#active.has(requestKey) || Boolean(lane?.inFlight || lane?.pending);
   }
 
   cancel(requestKey: string): boolean {
+    const laneKey = latestOnlyLaneKey(requestKey);
+    if (laneKey) {
+      const lane = this.#latestOnly.get(laneKey);
+      let cancelled = false;
+      if (lane) {
+        lane.latestGeneration += 1;
+        if (lane.pending) {
+          lane.pending.resolve({ state: 'stale', generation: lane.pending.generation });
+          lane.pending = null;
+        }
+        cancelled = lane.inFlight || cancelled;
+      }
+      for (const [activeKey, active] of this.#active) {
+        if (!activeKey.startsWith(`${laneKey}#`)) continue;
+        active.controller.abort();
+        cancelled = true;
+      }
+      return cancelled;
+    }
+
     const active = this.#active.get(requestKey);
     if (!active) return false;
     active.controller.abort();
@@ -89,10 +156,84 @@ export class BridgeRequestCoordinator {
   }
 
   cancelAll(): void {
+    for (const lane of this.#latestOnly.values()) {
+      lane.latestGeneration += 1;
+      if (lane.pending) {
+        lane.pending.resolve({ state: 'stale', generation: lane.pending.generation });
+        lane.pending = null;
+      }
+    }
     for (const active of this.#active.values()) active.controller.abort();
   }
 
-  async run<T>(
+  run<T>(
+    requestKey: string,
+    operation: (context: BridgeRequestContext) => Promise<CommandResult<T>>,
+    options: BridgeRequestOptions = {},
+  ): Promise<BridgeRequestOutcome<T>> {
+    const laneKey = options.mode === 'replace' ? latestOnlyLaneKey(requestKey) : null;
+    if (laneKey) return this.#runLatestOnly(laneKey, operation, options);
+    return this.#runImmediate(requestKey, operation, options);
+  }
+
+  #runLatestOnly<T>(
+    laneKey: string,
+    operation: (context: BridgeRequestContext) => Promise<CommandResult<T>>,
+    options: BridgeRequestOptions,
+  ): Promise<BridgeRequestOutcome<T>> {
+    const lane = this.#latestOnly.get(laneKey) ?? {
+      inFlight: false,
+      latestGeneration: 0,
+      pending: null,
+    };
+    this.#latestOnly.set(laneKey, lane);
+
+    const generation = lane.latestGeneration + 1;
+    lane.latestGeneration = generation;
+    const immediateOptions: BridgeRequestOptions = options.signal ? { signal: options.signal } : {};
+
+    return new Promise<BridgeRequestOutcome<T>>((resolve) => {
+      if (lane.pending) {
+        lane.pending.resolve({ state: 'stale', generation: lane.pending.generation });
+      }
+      lane.pending = {
+        generation,
+        execute: async () =>
+          withGeneration(
+            await this.#runImmediate(`${laneKey}#${generation}`, operation, immediateOptions),
+            generation,
+          ) as BridgeRequestOutcome<unknown>,
+        resolve: resolve as (outcome: BridgeRequestOutcome<unknown>) => void,
+      };
+      void this.#drainLatestOnly(laneKey, lane);
+    });
+  }
+
+  async #drainLatestOnly(laneKey: string, lane: LatestOnlyLane): Promise<void> {
+    if (lane.inFlight) return;
+    const request = lane.pending;
+    if (!request) return;
+
+    lane.pending = null;
+    lane.inFlight = true;
+    const outcome = await request.execute().catch((error: unknown) => ({
+      state: 'failure' as const,
+      generation: request.generation,
+      requestId: null,
+      error: unexpectedFailure(error),
+    }));
+    const superseded = request.generation !== lane.latestGeneration;
+    request.resolve(superseded ? { state: 'stale', generation: request.generation } : outcome);
+    lane.inFlight = false;
+
+    if (lane.pending) {
+      void this.#drainLatestOnly(laneKey, lane);
+      return;
+    }
+    this.#latestOnly.delete(laneKey);
+  }
+
+  async #runImmediate<T>(
     requestKey: string,
     operation: (context: BridgeRequestContext) => Promise<CommandResult<T>>,
     options: BridgeRequestOptions = {},

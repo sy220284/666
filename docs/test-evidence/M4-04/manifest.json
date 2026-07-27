@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
   "taskId": "M4-04",
-  "commit": "4f78143ca933a7e57326e32e3e86285d0bfc95c3",
-  "generatedAt": "2026-07-27T03:34:05.000Z",
+  "commit": "ea7463a40faa5b23b3b9afc97504be19f2cee708",
+  "generatedAt": "2026-07-27T13:18:43.000Z",
   "files": [
     {
       "path": "c1-author-workflow.md",
-      "bytes": 2674,
-      "sha256": "1e59a8fc4b895dcb087557d90ec3da03ca15238ea9078dd0dbbfc7e9967ce73b"
+      "bytes": 3409,
+      "sha256": "e0f421bba8388200f4a1b89dafddd6bd0f3d79b0f1af8f83abae8aa909689ea1"
     },
     {
       "path": "c2-generation-runtime.md",
-      "bytes": 3166,
-      "sha256": "10a1d30aae16f024ff5d2620d400de5097b1e29cc52ad9da90695f4fe4ef447e"
+      "bytes": 3548,
+      "sha256": "5c03ec4b4a4515af9b765dad7a96b257a8212654f6e0fe3c4c92faec53ef268b"
     },
     {
       "path": "c3-author-ai-loop.md",
@@ -26,8 +26,8 @@
     },
     {
       "path": "c5-state-validation.md",
-      "bytes": 4012,
-      "sha256": "d948a25950f6803ce8a60244fb5e27d74159d1ee104b4ac30b77f93d0214c8cd"
+      "bytes": 4604,
+      "sha256": "97184db72e2f4879bfa0bca4242851e7b3eaef028d3d99cbe57841df5b846772"
     },
     {
       "path": "c6-search-rhythm.md",
@@ -36,18 +36,18 @@
     },
     {
       "path": "c7-docx-recovery.md",
-      "bytes": 4627,
-      "sha256": "cf6def421a4514677477e77b090afd420da5188dc12706a1212525771a90b6e2"
+      "bytes": 4851,
+      "sha256": "d5521de87c52c72bce3b9aad39f92c8571dfd8a7c44fc61335c1d34bc37a57e4"
     },
     {
       "path": "commands.txt",
-      "bytes": 3998,
-      "sha256": "f4a9e07f19fe1d8d7b8e367d4c603eb91976a6f742090ab53e5f81e36b6dfeab"
+      "bytes": 4653,
+      "sha256": "af3dff0759053137ba1e66a8fe0afd665c8520840331ea5c57f1443fef90e535"
     },
     {
       "path": "known-risks.md",
-      "bytes": 2935,
-      "sha256": "929d8aa2db29b19d8e5ee0b40c61b4b9ef61e1d84c651a35158cfff12530e515"
+      "bytes": 2915,
+      "sha256": "75f45904ceb8934c2492374e0508a8648c0fbaa0764b089f09c73360777fc6a8"
     },
     {
       "path": "migration-ipc-contract-plan.md",
@@ -71,8 +71,8 @@
     },
     {
       "path": "summary.md",
-      "bytes": 4461,
-      "sha256": "599b5d3159734254a2ec474332499128f8a284b819722802867ab52da60da494"
+      "bytes": 4463,
+      "sha256": "4ac0ec3c0f3618af35d60ec7a6582daa894d35777ec6c86145350e2f6832e782"
     }
   ]
 }

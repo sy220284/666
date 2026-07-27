@@ -12,6 +12,7 @@ on:
       - 'scripts/check-workspaces.mjs'
       - 'scripts/ci-policy.mjs'
       - 'scripts/main-verification.mjs'
+      - 'scripts/migrate-final-audit-cleanup.mjs'
       - 'scripts/ruleset-policy.mjs'
       - 'scripts/workflow-structure-policy.mjs'
       - 'docs/process/CI_WORKFLOW_ARCHITECTURE.md'

@@ -25,6 +25,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  coverage-lock-patch:
+    if: ${{ github.event_name == 'pull_request' && github.repository == 'sy220284/666' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Add coverage provider to the governed manifest and lockfile
+        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10
+      - name: Remove mutable coverage dependency installation from CI
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const file = '.github/workflows/quality-core.yml';
+          let source = await readFile(file, 'utf8');
+          for (const block of [
+            "      - name: Install exact coverage provider without changing the lockfile\n        if: ${{ inputs.full_suite }}\n        run: pnpm add --workspace-root --save-dev @vitest/coverage-v8@4.1.10 --lockfile=false\n",
+            "      - name: Restore package manifest after temporary coverage provider install\n        if: ${{ always() && inputs.full_suite }}\n        run: git checkout -- package.json\n",
+          ]) {
+            if (!source.includes(block)) throw new Error(`Missing audited coverage block: ${block.split('\n')[0]}`);
+            source = source.replace(block, '');
+          }
+          await writeFile(file, source, 'utf8');
+          NODE
+      - name: Validate frozen installation and real coverage execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm test:coverage
+          node -e "const p=require('./package.json'); if(p.devDependencies?.['@vitest/coverage-v8']!=='4.1.10') process.exit(1)"
+          grep -q '@vitest/coverage-v8' pnpm-lock.yaml
+          ! grep -q -- '--lockfile=false' .github/workflows/quality-core.yml
+          ! grep -q 'temporary coverage provider' .github/workflows/quality-core.yml
+      - name: Upload exact locked coverage patch
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: locked-coverage-provider-patch
+          path: |
+            package.json
+            pnpm-lock.yaml
+            .github/workflows/quality-core.yml
+          if-no-files-found: error
+          retention-days: 1
 
   repository-governance:
     runs-on: ubuntu-24.04

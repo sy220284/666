@@ -160,11 +160,7 @@ async function main() {
   ];
   await mkdir(outputDirectory, { recursive: true });
   await Promise.all([
-    writeFile(
-      path.join(outputDirectory, 'report.md'),
-      `${lines.join('\n')}\n`,
-      'utf8',
-    ),
+    writeFile(path.join(outputDirectory, 'report.md'), `${lines.join('\n')}\n`, 'utf8'),
     writeFile(
       path.join(outputDirectory, 'report.json'),
       `${JSON.stringify(report, null, 2)}\n`,

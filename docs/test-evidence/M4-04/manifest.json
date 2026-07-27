@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "taskId": "M4-04",
-  "commit": "dcda933669e93b1663ff053f39e6004319f1f9b9",
-  "generatedAt": "2026-07-26T05:16:57.000Z",
+  "commit": "3b8cae9d42dd06c5862606b1c23afef50cd0fa9d",
+  "generatedAt": "2026-07-27T02:17:04.000Z",
   "files": [
     {
       "path": "c1-author-workflow.md",
@@ -36,18 +36,18 @@
     },
     {
       "path": "c7-docx-recovery.md",
-      "bytes": 3751,
-      "sha256": "d83b14408ecbbb9b8542f93fb7f13b693414d31a12cbe4b382e2b5327dc3a693"
+      "bytes": 4123,
+      "sha256": "ee8395445937d266af50e79e89e811f81a54ecf662c64fd725c0ac327e6401db"
     },
     {
       "path": "commands.txt",
-      "bytes": 3121,
-      "sha256": "e2f93fcf3a7c34865c11756df1f22938c3b15b1ee5cee73648488a41eedb526b"
+      "bytes": 3430,
+      "sha256": "33eb7bec053b1c67e91c10ee67a582b64691945a4d3ffdc9dd2a9bd669e24ad8"
     },
     {
       "path": "known-risks.md",
-      "bytes": 2426,
-      "sha256": "96f9306f18a22811e7774473dc0547814ec5ed3a545cffb37e6d9e9cab996c10"
+      "bytes": 2415,
+      "sha256": "b864b7111b0474b22186b79d4434e64f57f444427041bf3bd18e0aec41ad2b4d"
     },
     {
       "path": "migration-ipc-contract-plan.md",
@@ -71,8 +71,8 @@
     },
     {
       "path": "summary.md",
-      "bytes": 6112,
-      "sha256": "fb8477b40b43a7f4e7162318bb1ab6430f7fac88d5b2f21757288e3660396331"
+      "bytes": 6382,
+      "sha256": "2f608ed0b825e3146032c816b85281c0c1b81e418cc96db144ca3c714db882f9"
     }
   ]
 }

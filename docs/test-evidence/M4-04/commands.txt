@@ -61,3 +61,13 @@ pnpm typecheck
 pnpm lint
 pnpm build
 pnpm format:check
+
+# C0—C7基线复核，GitHub Actions Quality #2043，受检提交3b8cae9d42dd06c5862606b1c23afef50cd0fa9d
+pnpm install --frozen-lockfile --prefer-offline
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm typecheck
+node .github/governance/assert-clean-tree.mjs

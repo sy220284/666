@@ -12,7 +12,9 @@ ImportPlan、计划失效、恢复点和单事务提交；恢复继续复用既�
 - DOCX 进入 Core 前先读取 ZIP 中央目录并限制压缩体积、条目数、单文件解压体积、
   总解压体积、压缩比和路径深度。
 - 拒绝 ZIP64、多磁盘、加密、非支持压缩、目录穿越、绝对路径、反斜杠、
-  大小写重复条目、符号链接、设备文件和本地文件头不一致。
+  大小写重复条目、符号链接和设备文件。
+- 校验本地 Header 签名与偏移边界；解压后的条目大小必须与中央目录声明一致。
+  中央目录与本地 Header 的完整字段级交叉校验继续纳入 C8 安全硬化。
 - 拒绝宏、OLE、ActiveX、嵌入式可执行文件或脚本、外部 Relationship、
   `DOCTYPE`、`ENTITY` 与 XInclude；只解压解析所需 XML。
 - DOCX 正文和标题归一化为既有 ImportPlan；格式损失以显式警告展示。
@@ -52,10 +54,13 @@ ImportPlan、计划失效、恢复点和单事务提交；恢复继续复用既�
 - Unit、Integration、Migration、Security：165 个测试文件，757 项通过、
   1 项既有跳过。
 - C7 定向回归：5 个测试文件、7 项全部通过。
-- 全工作区 Build、Typecheck、ESLint 与 Prettier 通过。
+- C7 阶段全工作区 Build、Typecheck、ESLint 与 Prettier 通过。
+- C0—C7 基线修复提交`3b8cae9d42dd06c5862606b1c23afef50cd0fa9d`的
+  Workspaces、Boundary、Prettier、ESLint、Typecheck与干净工作树检查通过。
 
 ## 后续边界
 
 C8 将完成首次使用向导、统一工作台、Theme A/B、无障碍和 DPI 硬化，并执行
 安全、隐私、真实性能、Electron E2E、AI Eval、跨平台构建与 P0-001—P0-075
-发布验收。DOCX 与备份的真实大文件、安装包和平台文件系统差异纳入 C8 矩阵。
+发布验收。DOCX完整本地Header字段交叉校验、真实大文件、安装包和平台文件系统
+差异纳入 C8 矩阵。

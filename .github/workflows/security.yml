@@ -80,7 +80,19 @@ jobs:
       - name: Clean tree before repository secret scan
         run: node .github/governance/assert-clean-tree.mjs
       - name: Scan tracked files and full Git history
-        run: node scripts/scan-secrets.mjs --history
+        shell: bash
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          node scripts/scan-secrets.mjs --history 2>&1 | tee test-results/ci/secret-history-scan.log
+      - name: Upload secret scan diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: secret-history-scan-diagnostics
+          path: test-results/ci/secret-history-scan.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Clean tree after repository secret scan
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

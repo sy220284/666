@@ -154,7 +154,7 @@ async function main() {
     'converted_to_draft',
     'verification-hold-taskctl.mjs pr-policy',
     'automation-layout-policy.mjs',
-    'scripts/ci-policy.mjs',
+    'pnpm ci:policy',
   ]);
   rejectWholeJobDraftSkip(errors, 'pr-policy.yml', prPolicy);
 

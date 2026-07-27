@@ -5,7 +5,7 @@
 3. `ModelSupportProfile`存在`untested/unverified`历史命名冲突，必须兼容读取后统一新写入。
 4. 长期Draft PR会持续变化，最终Evidence必须重新绑定Ready前最终Head。
 5. DOCX、超大项目、混合DPI和跨平台安装验收需要真实环境与可复现工件。
-6. C1继续写作读取已同时校验Revision与块Hash；Renderer仅切换面板时，若偏好保存失败，同一面板状态不会自动重复提交。该问题不影响正文、Draft Revision或数据安全，纳入C8工作台状态协调。
+6. C1继续写作读取已同时校验Revision与块Hash；Renderer仅切换面板时，若偏好保存失败，同一面板状态不会自动重复提交。该问题不影响正文、Draft Revision或数据安全，纳入C8工作台状态协调。→ C8进展：面板切换保存已改为仅在Core确认成功后提交去重签名（`ContinuationPersistenceTracker`），失败时保持可重提并经防抖主保存路径做一次有界重试；新增`tests/unit/renderer-continuation-persistence.test.ts`规约。仍待C8 Electron E2E与全量矩阵复核。
 7. 当前PR保持Draft，永久Quality工作流只执行静态门；当前Head的Unit、Integration、Migration、Security、Coverage、Build、Performance/Eval、Electron E2E与Package Smoke尚未由Ready路由执行，不能把历史阶段结果冒充为当前Head的新结论。
 8. Schema 28已增加Migration与集成回归，但必须在转Ready前验证空库、支持的历史Schema升级、外键、触发器INSERT/UPDATE路径及完整回归。
 9. C8尚未完成，追踪矩阵中的M4-04需求继续保持`In Progress`。

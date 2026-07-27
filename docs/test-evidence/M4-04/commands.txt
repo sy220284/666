@@ -92,3 +92,8 @@ node .github/governance/assert-clean-tree.mjs
 # pnpm test:eval
 # pnpm test:perf
 # pnpm test:e2e
+pnpm exec prettier --check apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx tests/unit/renderer-continuation-persistence.test.ts
+pnpm typecheck
+pnpm exec eslint apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx tests/unit/renderer-continuation-persistence.test.ts
+pnpm exec vitest run tests/unit/renderer-continuation-persistence.test.ts
+pnpm test:unit

@@ -40,6 +40,10 @@ import {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { StructureNavigator } from '../planning/planning-workbench.js';
+import {
+  ContinuationPersistenceTracker,
+  derivePanelSwitchInput,
+} from './continuation-persistence.js';
 
 export type WritingPanel = 'editor' | 'versions' | 'candidates';
 
@@ -293,8 +297,9 @@ export function WritingWorkbench({
   const initialChapterRequested = useRef(false);
   const continuationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const continuationScrollCleanup = useRef<(() => void) | null>(null);
-  const lastContinuationSignature = useRef<string | null>(null);
-  const lastContinuationInput = useRef<ProjectContinuationInput | null>(null);
+  const [continuationPersistence] = useState(
+    () => new ContinuationPersistenceTracker<ProjectContinuationInput>(),
+  );
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [draft, setDraft] = useState<DraftDocument | null>(null);
   const [editorState, setEditorState] = useState('从左侧卷章目录选择章节。');
@@ -372,14 +377,12 @@ export function WritingWorkbench({
       scrollTop: Math.max(0, Math.round(scrollContainer?.scrollTop ?? 0)),
       panel,
     };
-    const signature = JSON.stringify(input);
-    if (lastContinuationSignature.current === signature) return true;
+    if (continuationPersistence.isCommitted(input)) return true;
     const outcome = await bridge.project.saveContinuation(input, { mode: 'replace' });
     if (outcome.state !== 'success') return false;
-    lastContinuationInput.current = input;
-    lastContinuationSignature.current = signature;
+    continuationPersistence.commit(input);
     return true;
-  }, [bridge, panel, project.projectId, readOnly]);
+  }, [bridge, continuationPersistence, panel, project.projectId, readOnly]);
 
   const scheduleContinuationSave = useCallback((): void => {
     if (readOnly) return;
@@ -391,13 +394,20 @@ export function WritingWorkbench({
   }, [readOnly, saveContinuation]);
 
   useEffect(() => {
-    const previous = lastContinuationInput.current;
-    if (!previous || previous.panel === panel || readOnly) return;
-    const next = { ...previous, panel };
-    lastContinuationInput.current = next;
-    lastContinuationSignature.current = JSON.stringify(next);
-    void bridge.project.saveContinuation(next, { mode: 'replace' });
-  }, [bridge, panel, readOnly]);
+    if (readOnly) return;
+    const next = derivePanelSwitchInput(continuationPersistence.committedInput(), panel);
+    if (!next) return;
+    void bridge.project.saveContinuation(next, { mode: 'replace' }).then((outcome) => {
+      if (outcome.state === 'success') {
+        continuationPersistence.commit(next);
+        return;
+      }
+      // A genuine failure leaves the tracker uncommitted, so the same panel
+      // state stays eligible for re-submission; schedule one bounded retry
+      // through the canonical debounced save instead of dropping it.
+      if (outcome.state === 'failure') scheduleContinuationSave();
+    });
+  }, [bridge, continuationPersistence, panel, readOnly, scheduleContinuationSave]);
 
   const persistDraft = useCallback(async (): Promise<boolean> => {
     const instance = editor.current;

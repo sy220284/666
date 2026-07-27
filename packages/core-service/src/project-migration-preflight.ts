@@ -195,7 +195,9 @@ export function validateSchema28ProjectAnchors(database: DatabaseSync): void {
     ),
   ];
 
-  const violation = violations.find((candidate): candidate is AnchorViolation => candidate !== null);
+  const violation = violations.find(
+    (candidate): candidate is AnchorViolation => candidate !== null,
+  );
   if (!violation) return;
 
   throw new Error(

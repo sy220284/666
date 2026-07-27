@@ -39,7 +39,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/ci-staging
           node --input-type=module <<'NODE'
           import { readFile, writeFile } from 'node:fs/promises';
           const source = await readFile('.github/workflows/quality-core.yml', 'utf8');
@@ -59,10 +58,10 @@ jobs:
             index += 2;
           }
           if (removed !== 2) throw new Error(`Expected two mutable coverage steps, removed ${removed}`);
-          await writeFile('artifacts/ci-staging/quality-core.final.yml', output.join('\n'), 'utf8');
+          await writeFile('scripts/quality-core.final.yml', output.join('\n'), 'utf8');
           NODE
-          ! grep -q -- '--lockfile=false' artifacts/ci-staging/quality-core.final.yml
-          ! grep -q 'temporary coverage provider' artifacts/ci-staging/quality-core.final.yml
+          ! grep -q -- '--lockfile=false' scripts/quality-core.final.yml
+          ! grep -q 'temporary coverage provider' scripts/quality-core.final.yml
       - name: Commit only the ordinary staging file
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -71,7 +70,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git cat-file -e HEAD:artifacts/ci-staging/quality-core.final.yml 2>/dev/null; then
+          if git cat-file -e HEAD:scripts/quality-core.final.yml 2>/dev/null; then
             echo 'Staging blob already exists.'
             exit 0
           fi
@@ -79,7 +78,8 @@ jobs:
           test "$remote_head" = "$SOURCE_SHA"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add artifacts/ci-staging/quality-core.final.yml
+          git add scripts/quality-core.final.yml
+          git diff --cached --check
           git commit -m 'chore(ci): stage final quality core blob'
           auth="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:"$HEAD_REF"

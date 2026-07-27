@@ -1,5 +1,5 @@
 import { copyFile, mkdir } from 'node:fs/promises';
-import { URL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
 
@@ -17,8 +17,8 @@ await Promise.all([
 ]);
 
 await build({
-  entryPoints: [new URL('./src/react-entry.tsx', import.meta.url).pathname],
-  outfile: new URL('./dist/index.js', import.meta.url).pathname,
+  entryPoints: [fileURLToPath(new URL('./src/react-entry.tsx', import.meta.url))],
+  outfile: fileURLToPath(new URL('./dist/index.js', import.meta.url)),
   bundle: true,
   format: 'esm',
   platform: 'browser',

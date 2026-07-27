@@ -28,50 +28,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Synchronize React restore regression and format tooling files
+      - name: Format final tooling and regression files
         shell: bash
         run: |
           set -euo pipefail
-          node --input-type=module <<'NODE'
-          import { readFile, writeFile } from 'node:fs/promises';
-          const file = 'tests/unit/renderer-m3-09-workbenches.test.ts';
-          const source = await readFile(file, 'utf8');
-          const before = `  it('keeps recovery selectors and publishes Version restore status after editor mount', async () => {
-            const [dataTools, writing] = await Promise.all([
-              readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
-              readFile(path.join(rendererRoot, 'features/writing/writing-workbench.tsx'), 'utf8'),
-            ]);
-
-            expect(dataTools).toContain('data-create-checkpoint');
-            expect(dataTools).toContain('data-create-daily-backup');
-            expect(writing).toContain('waitForRestoredDraftEditor');
-            expect(writing).toContain(
-              "'[data-writing-workbench][data-draft-workspace] [data-draft-content]'",
-            );
-            expect(writing).not.toContain('MutationObserver');
-            expect(writing.indexOf("onPanelChange('editor')")).toBeLessThan(
-              writing.indexOf('onRestoreNotice(VERSION_RESTORE_NOTICE)'),
-            );
-          });`;
-          const after = `  it('publishes Version restore status through React state after the editor panel switch', async () => {
-            const [dataTools, writing] = await Promise.all([
-              readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
-              readFile(path.join(rendererRoot, 'features/writing/writing-workbench.tsx'), 'utf8'),
-            ]);
-
-            expect(dataTools).toContain('data-create-checkpoint');
-            expect(dataTools).toContain('data-create-daily-backup');
-            expect(writing).toContain('statusNotice={restoreNotice}');
-            expect(writing).toContain('onStatusNoticeConsumed={consumeRestoreNotice}');
-            expect(writing).not.toContain('document.querySelector');
-            expect(writing).not.toContain('MutationObserver');
-            expect(writing.indexOf("onPanelChange('editor')")).toBeLessThan(
-              writing.indexOf('onRestoreNotice(VERSION_RESTORE_NOTICE)'),
-            );
-          });`;
-          if (!source.includes(before)) throw new Error('Renderer restore regression baseline was not found');
-          await writeFile(file, source.replace(before, after), 'utf8');
-          NODE
           pnpm exec prettier --write \
             apps/desktop/renderer/src/features/writing/writing-workbench.tsx \
             scripts/check-boundaries.mjs \

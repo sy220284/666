@@ -182,7 +182,7 @@ describe('M3 final React business workbenches', () => {
     expect(writing).toContain('candidateAction.undo');
   });
 
-  it('keeps recovery selectors and publishes Version restore status after editor mount', async () => {
+  it('publishes Version restore status through React state after the editor panel switch', async () => {
     const [dataTools, writing] = await Promise.all([
       readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/writing/writing-workbench.tsx'), 'utf8'),
@@ -190,10 +190,9 @@ describe('M3 final React business workbenches', () => {
 
     expect(dataTools).toContain('data-create-checkpoint');
     expect(dataTools).toContain('data-create-daily-backup');
-    expect(writing).toContain('waitForRestoredDraftEditor');
-    expect(writing).toContain(
-      "'[data-writing-workbench][data-draft-workspace] [data-draft-content]'",
-    );
+    expect(writing).toContain('statusNotice={restoreNotice}');
+    expect(writing).toContain('onStatusNoticeConsumed={consumeRestoreNotice}');
+    expect(writing).not.toContain('document.querySelector');
     expect(writing).not.toContain('MutationObserver');
     expect(writing.indexOf("onPanelChange('editor')")).toBeLessThan(
       writing.indexOf('onRestoreNotice(VERSION_RESTORE_NOTICE)'),

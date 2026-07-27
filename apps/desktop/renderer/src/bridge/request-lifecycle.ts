@@ -86,10 +86,20 @@ function unexpectedFailure(error: unknown): BridgeRequestError {
   };
 }
 
+const CONTINUATION_REQUEST_PREFIX = 'project.saveContinuation:';
+
 function latestOnlyLaneKey(requestKey: string): string | null {
-  if (!requestKey.startsWith('project.saveContinuation:')) return null;
-  const projectId = /"projectId":("(?:\\.|[^"\\])*")/.exec(requestKey)?.[1] ?? 'root';
-  return `project.saveContinuation:${projectId}`;
+  if (!requestKey.startsWith(CONTINUATION_REQUEST_PREFIX)) return null;
+  const identity = requestKey.slice(CONTINUATION_REQUEST_PREFIX.length);
+  try {
+    const input: unknown = JSON.parse(identity);
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+    const projectId = (input as Record<string, unknown>).projectId;
+    if (typeof projectId !== 'string' || projectId.length === 0) return null;
+    return `${CONTINUATION_REQUEST_PREFIX}${JSON.stringify(projectId)}`;
+  } catch {
+    return null;
+  }
 }
 
 function withGeneration<T>(

@@ -1,7 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-import type { MigrationRecoveryContext } from './database/index.js';
-
 interface AnchorViolation {
   readonly recordType: 'story_todo' | 'story_comment';
   readonly recordId: string;
@@ -20,18 +18,12 @@ function firstViolation(
 }
 
 /**
- * Validates historical project data before a pending migration is allowed to
- * change the database. Schema 28 adds compound anchor triggers for StoryTodo
- * and StoryComment, but triggers only protect future writes. A schema 27
- * database may already contain rows that violate those scopes, so the upgrade
- * must stop before migration 28 starts and retain the original schema/data.
+ * Validates schema 27 StoryTodo/StoryComment anchors before migration 28 is
+ * allowed to change the database. Migration 28 adds compound anchor triggers,
+ * but triggers protect only future writes. Historical invalid rows therefore
+ * stop the upgrade while the original schema and data remain unchanged.
  */
-export function validateProjectMigrationPreconditions(
-  database: DatabaseSync,
-  context: MigrationRecoveryContext,
-): void {
-  if (context.kind !== 'project' || context.fromVersion !== 27 || context.toVersion < 28) return;
-
+export function validateSchema28ProjectAnchors(database: DatabaseSync): void {
   const violations: readonly (AnchorViolation | null)[] = [
     firstViolation(
       database,

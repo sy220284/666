@@ -2,10 +2,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  packagePlatformForNode,
-  parsePackageArguments,
-} from '../../scripts/package-desktop.mjs';
+import { packagePlatformForNode, parsePackageArguments } from '../../scripts/package-desktop.mjs';
 
 describe('desktop package command', () => {
   it('maps supported Node platforms to release platform names', () => {

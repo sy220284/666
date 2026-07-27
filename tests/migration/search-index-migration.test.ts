@@ -91,7 +91,9 @@ describe('M4-01 search index migrations', () => {
           .get(),
       ).toEqual({ count: 16n });
       expect(
-        database.prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`).get(),
+        database
+          .prepare(`SELECT strict FROM pragma_table_list WHERE name = 'project_dictionary'`)
+          .get(),
       ).toEqual({ strict: 1n });
       expect(
         database.prepare(`SELECT sql FROM sqlite_master WHERE name = 'fts_draft_blocks'`).get(),

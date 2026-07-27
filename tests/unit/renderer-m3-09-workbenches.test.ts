@@ -182,6 +182,24 @@ describe('M3 final React business workbenches', () => {
     expect(writing).toContain('candidateAction.undo');
   });
 
+  it('keeps recovery selectors and publishes Version restore status after editor mount', async () => {
+    const [dataTools, writing] = await Promise.all([
+      readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/writing/writing-workbench.tsx'), 'utf8'),
+    ]);
+
+    expect(dataTools).toContain('data-create-checkpoint');
+    expect(dataTools).toContain('data-create-daily-backup');
+    expect(writing).toContain('waitForRestoredDraftEditor');
+    expect(writing).toContain(
+      "'[data-writing-workbench][data-draft-workspace] [data-draft-content]'",
+    );
+    expect(writing).not.toContain('MutationObserver');
+    expect(writing.indexOf("onPanelChange('editor')")).toBeLessThan(
+      writing.indexOf('onRestoreNotice(VERSION_RESTORE_NOTICE)'),
+    );
+  });
+
   it('keeps existing planning, Canon, import, recovery and Candidate scenarios in desktop regression', async () => {
     const config = await readFile(
       path.join(process.cwd(), 'tests/e2e/playwright.config.ts'),

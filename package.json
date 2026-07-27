@@ -23,7 +23,7 @@
     "format:check": "prettier --check \"scripts/**/*.mjs\" \"apps/**/*.{ts,json,mjs,html,css}\" \"packages/**/*.{ts,json}\" \"tests/**/*.ts\" \"evals/**/*.{json,yaml,yml}\" \".github/**/*.{yaml,yml,json,md}\" \".github/governance/deferred-task-closure.mjs\" \"*.{json,yaml,yml,mjs,ts}\"",
     "typecheck": "pnpm --filter @worldforge/domain build && pnpm --filter @worldforge/contracts build && pnpm --filter @worldforge/prompts build && pnpm --filter @worldforge/editor-core build && pnpm --filter @worldforge/core-service build && pnpm -r --if-present typecheck",
     "test:prepare": "pnpm --filter @worldforge/domain build && pnpm --filter @worldforge/contracts build && pnpm --filter @worldforge/prompts build && pnpm --filter @worldforge/editor-core build && pnpm --filter @worldforge/core-service build",
-    "test": "pnpm test:prepare && vitest run && node apps/desktop/main/run-ci-e2e.mjs",
+    "test": "pnpm test:prepare && vitest run && pnpm test:e2e -- --ci-only",
     "test:unit": "pnpm test:prepare && vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "pnpm build && node scripts/run-electron-e2e.mjs",
@@ -65,6 +65,7 @@
     "prettier": "3.9.5",
     "typescript": "6.0.3",
     "typescript-eslint": "8.64.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "yaml": "2.9.0"
   }
 }

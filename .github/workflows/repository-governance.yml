@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: repository-governance-${{ github.event.pull_request.head.sha || github.ref }}
@@ -120,24 +120,23 @@ jobs:
           policy = policy.replace(oldPins, newPins).replace(oldValidation, newValidation);
           await writeFile(policyPath, policy, 'utf8');
           NODE
-      - name: Commit immutable pins to the active task branch
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      - name: Verify generated immutable pin patch
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$HEAD_REF"
           git diff --check
           test "$(grep -RhoE 'uses: [^[:space:]]+@[0-9a-f]{40}' .github/workflows/*.yml | wc -l)" -gt 0
           test -z "$(grep -RhoE 'uses: [^[:space:]]+@v[0-9]+' .github/workflows/*.yml || true)"
           test -z "$(grep -R 'BEGIN TEMPORARY ACTION PIN JOB' .github/workflows || true)"
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/workflows scripts/ci-policy.mjs
-          git commit -m 'chore(ci): enforce immutable external action pins'
-          auth="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:"$HEAD_REF"
+      - name: Upload exact immutable pin patch
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: immutable-action-pin-patch
+          path: |
+            .github/workflows/*.yml
+            scripts/ci-policy.mjs
+          if-no-files-found: error
+          retention-days: 1
   # END TEMPORARY ACTION PIN JOB
 
   repository-governance:

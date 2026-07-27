@@ -125,9 +125,7 @@ function createWritingBridge(
     if (outcome.state === 'success') {
       requestAnimationFrame(() => {
         onPanelChange('editor');
-        void waitForRestoredDraftEditor().then(() => {
-          onRestoreNotice(VERSION_RESTORE_NOTICE);
-        });
+        requestAnimationFrame(() => onRestoreNotice(VERSION_RESTORE_NOTICE));
       });
     }
     return outcome;
@@ -154,21 +152,4 @@ function createWritingBridge(
   });
 
   return { ...bridge, project, planning, version };
-}
-
-function waitForRestoredDraftEditor(): Promise<void> {
-  return new Promise((resolve) => {
-    const expiresAt = performance.now() + 10_000;
-    const probe = (): void => {
-      const ready = document.querySelector(
-        '[data-writing-workbench][data-draft-workspace] [data-draft-content]',
-      );
-      if (ready || performance.now() >= expiresAt) {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-        return;
-      }
-      requestAnimationFrame(probe);
-    };
-    requestAnimationFrame(probe);
-  });
 }

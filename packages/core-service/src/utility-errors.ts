@@ -34,8 +34,7 @@ function errorChainIncludes(
 ): boolean {
   if (!error || typeof error !== 'object' || seen.has(error)) return false;
   seen.add(error);
-  const message =
-    'message' in error && typeof error.message === 'string' ? error.message : '';
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : '';
   if (markers.some((marker) => message.includes(marker))) return true;
   return 'cause' in error ? errorChainIncludes(error.cause, markers, seen) : false;
 }

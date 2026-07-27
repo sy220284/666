@@ -15,25 +15,15 @@ describe('secret scanner', () => {
   });
 
   it('detects credential-bearing database URLs and high-entropy assignments', () => {
-    expect(
-      scanSecretLine(
-        'DATABASE_URL="postgres://writer:s3cr3t-value@localhost/worldforge" # secret-scan: allow',
-      ),
-    ).toEqual([]);
-    expect(
-      scanSecretLine(
-        'client_secret="Ab9+/kLm2_Np7!Qr4-St8=Uv6" # secret-scan: allow',
-      ),
-    ).toEqual([]);
+    const databaseUrl = ['postgres://writer', 's3cr3t-value@localhost/worldforge'].join(':');
+    expect(scanSecretLine(`DATABASE_URL="${databaseUrl}"`)).toContain(
+      'Credential-bearing database URL',
+    );
 
-    const databaseFinding = scanSecretLine(
-      `DATABASE_URL="postgres://writer:${'s3cr3t-value'}@localhost/worldforge"`,
+    const secret = ['Ab9+/', 'kLm2_', 'Np7!Q', 'r4-St8', '=Uv6'].join('');
+    expect(scanSecretLine(`client_secret="${secret}"`)).toContain(
+      'High-entropy assigned credential',
     );
-    expect(databaseFinding).toContain('Credential-bearing database URL');
-    const entropyFinding = scanSecretLine(
-      `client_secret="${'Ab9+/kLm2_Np7!Qr4-St8=Uv6'}"`,
-    );
-    expect(entropyFinding).toContain('High-entropy assigned credential');
   });
 
   it('ignores placeholders and explicit reviewed allowlist lines', () => {

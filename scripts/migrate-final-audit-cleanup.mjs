@@ -57,4 +57,34 @@ if (!ciPolicy.includes(newPerformanceMessage)) {
 }
 await writeFile(ciPolicyPath, ciPolicy, 'utf8');
 
+const rendererPath = 'apps/desktop/renderer/build-assets.mjs';
+let renderer = await readFile(rendererPath, 'utf8');
+renderer = renderer.replace(
+  "import { fileURLToPath } from 'node:url';",
+  "import { URL, fileURLToPath } from 'node:url';",
+);
+if (!renderer.includes("import { URL, fileURLToPath } from 'node:url';")) {
+  throw new Error('Renderer URL import was not hardened');
+}
+await writeFile(rendererPath, renderer, 'utf8');
+
+const transactionPath = 'scripts/atomic-file-transaction.mjs';
+let transaction = await readFile(transactionPath, 'utf8');
+transaction = transaction.replace(
+  '    throw error;\n',
+  "    throw new Error(error instanceof Error ? error.message : 'Atomic file transaction failed', { cause: error });\n",
+);
+if (!transaction.includes("{ cause: error }")) {
+  throw new Error('Atomic transaction error cause was not preserved');
+}
+await writeFile(transactionPath, transaction, 'utf8');
+
+const taskctlPath = 'scripts/taskctl.mjs';
+let taskctl = await readFile(taskctlPath, 'utf8');
+taskctl = taskctl.replaceAll('structuredClone(', 'globalThis.structuredClone(');
+if (!taskctl.includes('globalThis.structuredClone(')) {
+  throw new Error('Task controller structuredClone usage was not hardened');
+}
+await writeFile(taskctlPath, taskctl, 'utf8');
+
 console.log(`Updated ${replacements} legacy task id pattern(s) and permanent CI files.`);

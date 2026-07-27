@@ -1,20 +1,25 @@
 # M4-04 Known Risks
 
+## 当前验收状态
+
+- Evidence绑定的产品源提交：`ea7463a40faa5b23b3b9afc97504be19f2cee708`。
+- 最近一次完整产品CI提交：`f36ca0c0567130ab7072c6da3d0ed402dd1fda2d`。
+- 完整CI运行：Quality #2186、Security #1976、Performance #1942、Evidence #1905、PR Policy #1934、Task Governance #2155、Repository Governance #698，全部成功。
+- `ea7463a`新增的C1面板切换持久化协调修复已完成Prettier、ESLint、TypeScript、Boundary及Unit 490/490定向验证；没有对应的新一轮完整GitHub Actions运行。
+- C8尚未开始，继续使用M4-04任务卡原始“第六阶段：完整体验、硬化与发布关闭”规划。此前失效的C8重写路径和阶段进度不再作为依据。
+
+## 未关闭风险
+
 1. 单一任务吸收20张原任务，必须依靠内部检查点和原子提交控制跨层断裂。
 2. GenerationRun、结构化Candidate、StateProposalBatch及Schema 28复合锚点硬化使用连续Migration，后续扩展必须继续只追加。
-3. `ModelSupportProfile`存在`untested/unverified`历史命名冲突，必须兼容读取后统一新写入。
-4. 长期Draft PR会持续变化，最终Evidence必须重新绑定Ready前最终Head。
-5. DOCX、超大项目、混合DPI和跨平台安装验收需要真实环境与可复现工件。
-6. C1继续写作读取已同时校验Revision与块Hash；Renderer仅切换面板时，若偏好保存失败，同一面板状态不会自动重复提交。该问题不影响正文、Draft Revision或数据安全，纳入C8工作台状态协调。→ C8进展：面板切换保存已改为仅在Core确认成功后提交去重签名（`ContinuationPersistenceTracker`），失败时保持可重提并经防抖主保存路径做一次有界重试；新增`tests/unit/renderer-continuation-persistence.test.ts`规约。仍待C8 Electron E2E与全量矩阵复核。
-7. 当前PR保持Draft，永久Quality工作流只执行静态门；当前Head的Unit、Integration、Migration、Security、Coverage、Build、Performance/Eval、Electron E2E与Package Smoke尚未由Ready路由执行，不能把历史阶段结果冒充为当前Head的新结论。
-8. Schema 28已增加Migration与集成回归，但必须在转Ready前验证空库、支持的历史Schema升级、外键、触发器INSERT/UPDATE路径及完整回归。
-9. C8尚未完成，追踪矩阵中的M4-04需求继续保持`In Progress`。
-10. 真实Electron Candidate工作台仍需由C8 Electron E2E与人工UI矩阵复核。
-11. 结构化输出中断后不再保存未解析JSON正文；纯文本partial继续承担可读部分结果。最终模型档案需要在C8真实Provider Eval复核。
-12. Skeleton来源失效判断当前采取保守策略：章节内任一SceneBeat变化可能使该章Skeleton进入`stale`确认。该行为阻止自动继续，不造成越权写入，交互精度纳入C8。
-13. C5已覆盖Provider Runtime接线、原子持久化和证据边界，但当前证据不保存真实第三方账号；限流、账号权限和模型输出差异仍需在C8发布环境复核。
-14. C6安全替换已覆盖Core权威预览、计划过期、锁定跳过、事务与恢复点；超大项目的搜索和批量替换规模上限仍需在C8真实数据性能报告中复核。
-15. 当前写作会话以Draft Patch为权威输入，首次按键计一秒有效时间；操作系统级休眠、窗口焦点与输入法组合事件需在C8 Electron E2E和人工验收中复核。
-16. C7已自动化覆盖DOCX中央目录预算、路径、危险部件、外部关系、解压后大小、原子导入导出与三轨清理补偿；中央目录与本地Header的完整字段级交叉校验继续纳入C8安全硬化。
-17. 超大真实DOCX、Windows长路径、macOS文件权限和Linux文件系统差异仍需在C8安装包与平台矩阵复核。
-18. 日常备份以UTC日期去重并已合并同项目同日并发请求；面向作者展示的本地日界线体验仍需在C8跨时区人工验收中确认。
+3. C5存在验收阻断：Schema 27历史跨章、跨Version脏锚点升级到Schema 28时缺少检测、拒绝、只读保护、隔离或确定性修复策略，也缺少相应历史Fixture和失败不半升级回归。
+4. `ModelSupportProfile`存在`untested/unverified`历史命名冲突，必须兼容读取后统一新写入。
+5. 长期Draft PR会继续变化；最终Evidence必须绑定Ready前最终产品源提交，并重新记录最终完整CI与人工验收结果。
+6. DOCX中央目录与本地Header的完整字段级交叉验证、真实超大DOCX、Windows长路径、macOS权限及Linux文件系统差异尚未完成。
+7. 跨平台安装、升级、卸载、原生模块和安全降级仍需Windows、macOS、Linux真实工件验收。
+8. Skeleton来源失效判断采取保守策略：章节内任一SceneBeat变化可能使该章Skeleton进入`stale`确认。该行为阻止自动继续，不造成越权写入，交互精度留待C8复核。
+9. C5已覆盖Provider Runtime接线、原子持久化和证据边界，但当前Evidence不保存真实第三方账号；限流、账号权限和模型输出差异需在C8真实Provider Eval复核。
+10. C6安全替换已覆盖Core权威预览、计划过期、锁定跳过、事务与恢复点；超大项目搜索和批量替换规模上限仍需真实数据性能报告。
+11. 写作会话以Draft Patch为权威输入，首次按键计一秒有效时间；操作系统休眠、窗口焦点和输入法组合事件需Electron E2E与人工验收复核。
+12. 日常备份在单Core实例内按项目和UTC日期合并并查重，当前自动化通过；数据库层尚无daily唯一索引，多进程或重复Service实例场景需在发布硬化中明确约束或增加持久化幂等。
+13. 混合DPI、1280×800、2K 100/125/150%、21:9已有自动化矩阵基础，仍需真实多屏与目标平台人工验收。

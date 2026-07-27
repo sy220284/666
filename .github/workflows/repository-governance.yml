@@ -68,7 +68,75 @@ jobs:
           if (removed !== removableSteps.size) throw new Error(`Expected two mutable coverage steps, removed ${removed}`);
           await writeFile(file, output.join('\n'), 'utf8');
           NODE
-      - name: Validate frozen installation and real coverage execution
+      - name: Replace restore-notice DOM injection with React state flow
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+
+          const wrapperPath = 'apps/desktop/renderer/src/features/writing/writing-workbench.tsx';
+          let wrapper = await readFile(wrapperPath, 'utf8');
+          wrapper = wrapper.replace(
+            "import { useEffect, useMemo, useRef, useState } from 'react';",
+            "import { useCallback, useEffect, useMemo, useRef, useState } from 'react';",
+          );
+          const domEffect = /\n  useEffect\(\(\) => \{\n    if \(!restoreNotice \|\| props\.panel !== 'editor'\) return;[\s\S]*?\n  \}, \[props\.panel, restoreNotice\]\);\n/u;
+          if (!domEffect.test(wrapper)) throw new Error('Restore notice DOM effect was not found');
+          wrapper = wrapper.replace(domEffect, '\n');
+          const bridgeMarker = '  const bridge = useMemo(\n';
+          if (!wrapper.includes(bridgeMarker)) throw new Error('Writing bridge marker was not found');
+          wrapper = wrapper.replace(
+            bridgeMarker,
+            "  const consumeRestoreNotice = useCallback(() => setRestoreNotice(null), []);\n\n" + bridgeMarker,
+          );
+          const continuationProp = '      initialContinuation={continuation}\n';
+          if (!wrapper.includes(continuationProp)) throw new Error('Continuation prop marker was not found');
+          wrapper = wrapper.replace(
+            continuationProp,
+            continuationProp +
+              '      statusNotice={restoreNotice}\n' +
+              '      onStatusNoticeConsumed={consumeRestoreNotice}\n',
+          );
+          await writeFile(wrapperPath, wrapper, 'utf8');
+
+          const corePath = 'apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx';
+          let core = await readFile(corePath, 'utf8');
+          const propMarker = '  readonly onStatus: (message: string) => void;\n';
+          if (!core.includes(propMarker)) throw new Error('Core props marker was not found');
+          core = core.replace(
+            propMarker,
+            propMarker +
+              '  readonly statusNotice?: string | null;\n' +
+              '  readonly onStatusNoticeConsumed?: () => void;\n',
+          );
+          const destructureMarker = '  onPanelChange,\n  onStatus,\n}: WritingWorkbenchProps) {';
+          if (!core.includes(destructureMarker)) throw new Error('Core destructure marker was not found');
+          core = core.replace(
+            destructureMarker,
+            '  onPanelChange,\n  onStatus,\n  statusNotice,\n  onStatusNoticeConsumed,\n}: WritingWorkbenchProps) {',
+          );
+          const statusMarker =
+            "  const setStatus = useCallback((message: string, failure = false): void => {\n" +
+            '    setEditorState(message);\n' +
+            '    setEditorFailure(failure);\n' +
+            '  }, []);\n';
+          if (!core.includes(statusMarker)) throw new Error('Core status callback marker was not found');
+          core = core.replace(
+            statusMarker,
+            statusMarker +
+              '\n  useEffect(() => {\n' +
+              "    if (!statusNotice || panel !== 'editor') return;\n" +
+              '    setStatus(statusNotice);\n' +
+              '    onStatusNoticeConsumed?.();\n' +
+              '  }, [onStatusNoticeConsumed, panel, setStatus, statusNotice]);\n',
+          );
+          await writeFile(corePath, core, 'utf8');
+          NODE
+          pnpm exec prettier --write \
+            apps/desktop/renderer/src/features/writing/writing-workbench.tsx \
+            apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
+            .github/workflows/quality-core.yml
+      - name: Validate frozen installation, React boundary and full coverage
         shell: bash
         run: |
           set -o pipefail
@@ -76,6 +144,8 @@ jobs:
           {
             echo '=== frozen install ==='
             pnpm install --frozen-lockfile --prefer-offline
+            echo '=== renderer boundary ==='
+            pnpm exec vitest run tests/security/renderer-react-boundary.test.ts
             echo '=== coverage ==='
             pnpm test:coverage
             echo '=== manifest ==='
@@ -85,8 +155,9 @@ jobs:
             echo '=== workflow checks ==='
             ! grep -n -- '--lockfile=false' .github/workflows/quality-core.yml
             ! grep -n 'temporary coverage provider' .github/workflows/quality-core.yml
+            ! grep -n 'document[[:space:]]*\.[[:space:]]*querySelector' apps/desktop/renderer/src/features/writing/writing-workbench.tsx
           } 2>&1 | tee test-results/coverage-lock/validation.log
-      - name: Upload exact locked coverage patch and diagnostics
+      - name: Upload exact locked coverage and React boundary patch
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -95,6 +166,8 @@ jobs:
             package.json
             pnpm-lock.yaml
             .github/workflows/quality-core.yml
+            apps/desktop/renderer/src/features/writing/writing-workbench.tsx
+            apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
             test-results/coverage-lock/validation.log
           if-no-files-found: error
           retention-days: 1

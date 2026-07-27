@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+  schedule:
+    - cron: '41 3 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,18 +22,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Determine dependency audit route
         id: route
         shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
         run: |
           set -euo pipefail
           run=false
-          if git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.github/workflows/)'; then
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            run=true
+          elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '(^|/)package\.json$|^pnpm-lock\.yaml$|^pnpm-workspace\.yaml$|^\.github/workflows/'; then
             run=true
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
@@ -50,6 +55,7 @@ jobs:
       - name: Audit high-severity dependency vulnerabilities
         shell: bash
         run: |
+          set -euo pipefail
           if [ "${{ steps.route.outputs.run }}" = true ]; then
             pnpm audit --audit-level=high
           else
@@ -65,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
@@ -85,18 +91,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Determine application security route
         id: route
         shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
         run: |
           set -euo pipefail
           run=false
-          if git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(apps/desktop/(main|preload)/|packages/(contracts|core-service)/|migrations/|tests/security/|scripts/(scan-secrets|ci-policy)\.mjs$|\.github/workflows/security\.yml$)'; then
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            run=true
+          elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(apps/desktop/|packages/|migrations/|tests/security/|scripts/(scan-secrets|ci-policy|package-desktop|release-tool)\.mjs$|\.github/workflows/(security|release|quality-core)\.yml$)'; then
             run=true
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
@@ -118,6 +126,7 @@ jobs:
       - name: Run application security tests
         shell: bash
         run: |
+          set -euo pipefail
           if [ "${{ steps.route.outputs.run }}" = true ]; then
             pnpm test:security
           else

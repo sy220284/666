@@ -34,8 +34,11 @@ jobs:
           run=false
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             run=true
-          elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^(tests/performance/|evals/|packages/prompts/|packages/editor-core/|\.github/workflows/performance\.yml$)'; then
-            run=true
+          else
+            changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
+            if [ -z "$changed_files" ] || printf '%s\n' "$changed_files" | grep -Eqv '^(docs/|.*\.md$)'; then
+              run=true
+            fi
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -57,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${{ steps.route.outputs.run }}" != true ]; then
-            echo "Performance suite skipped: changed paths are not performance-sensitive."
+            echo "Performance suite skipped: only documentation changed."
             exit 0
           fi
           mkdir -p test-results/ci

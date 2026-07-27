@@ -59,30 +59,47 @@ jobs:
         if: ${{ steps.route.outputs.run == 'true' }}
         shell: bash
         run: |
-          set -euo pipefail
-          node --check scripts/migrate-taskctl-atomic.mjs
-          node scripts/migrate-taskctl-atomic.mjs
-          pnpm exec prettier --write \
-            scripts/atomic-file-transaction.mjs \
-            scripts/taskctl.mjs \
-            tests/unit/atomic-file-transaction.test.ts \
-            tests/unit/taskctl-transaction-policy.test.ts
+          mkdir -p test-results/taskctl-migration
+          set -o pipefail
+          {
+            node --check scripts/migrate-taskctl-atomic.mjs
+            node scripts/migrate-taskctl-atomic.mjs
+            pnpm exec prettier --write \
+              scripts/atomic-file-transaction.mjs \
+              scripts/taskctl.mjs \
+              tests/unit/atomic-file-transaction.test.ts \
+              tests/unit/taskctl-transaction-policy.test.ts
+          } 2>&1 | tee test-results/taskctl-migration/generate.log
       - name: Validate rollback, recovery and task lifecycle
         if: ${{ steps.route.outputs.run == 'true' }}
         shell: bash
         run: |
-          set -euo pipefail
-          node --check scripts/atomic-file-transaction.mjs
-          node --check scripts/taskctl.mjs
-          pnpm exec vitest run \
-            tests/unit/atomic-file-transaction.test.ts \
-            tests/unit/task-control.test.ts \
-            tests/unit/task-ordering.test.ts \
-            tests/unit/taskctl-transaction-policy.test.ts \
-            tests/integration/task-lifecycle.test.ts
-          pnpm task:validate
+          mkdir -p test-results/taskctl-migration
+          set -o pipefail
+          {
+            node --check scripts/atomic-file-transaction.mjs
+            node --check scripts/taskctl.mjs
+            pnpm exec vitest run \
+              tests/unit/atomic-file-transaction.test.ts \
+              tests/unit/task-control.test.ts \
+              tests/unit/task-ordering.test.ts \
+              tests/unit/taskctl-transaction-policy.test.ts \
+              tests/integration/task-lifecycle.test.ts
+            pnpm task:validate
+          } 2>&1 | tee test-results/taskctl-migration/validate.log
+      - name: Upload migration diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: taskctl-atomic-migration-diagnostics
+          path: |
+            test-results/taskctl-migration/
+            scripts/taskctl.mjs
+            tests/unit/taskctl-transaction-policy.test.ts
+          if-no-files-found: warn
+          retention-days: 1
       - name: Commit validated migration and delete one-time script
-        if: ${{ steps.route.outputs.run == 'true' }}
+        if: ${{ steps.route.outputs.run == 'true' && success() }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}

@@ -107,9 +107,38 @@ async function requirePath(filePath, label) {
   }
 }
 
-function electronDistributionPath() {
+function electronPackageRoot() {
   const packagePath = require.resolve('electron/package.json');
-  return path.join(path.dirname(packagePath), 'dist');
+  return path.dirname(packagePath);
+}
+
+export function electronDistributionPath(packageRoot = electronPackageRoot()) {
+  return path.join(packageRoot, 'dist');
+}
+
+export async function ensureElectronRuntime({
+  packageRoot = electronPackageRoot(),
+  nodeExecutable = process.execPath,
+  environment = process.env,
+  runCommand = run,
+} = {}) {
+  const distributionPath = electronDistributionPath(packageRoot);
+  try {
+    await stat(distributionPath);
+    return distributionPath;
+  } catch {
+    const installerPath = path.join(packageRoot, 'install.js');
+    await requirePath(installerPath, 'Electron installer');
+    const installerEnvironment = { ...environment };
+    delete installerEnvironment.ELECTRON_SKIP_BINARY_DOWNLOAD;
+    runCommand(nodeExecutable, [installerPath], {
+      cwd: packageRoot,
+      env: installerEnvironment,
+      stdio: 'inherit',
+    });
+    await requirePath(distributionPath, 'Electron runtime after installer execution');
+    return distributionPath;
+  }
 }
 
 async function deployWorkspace(packageName, target) {
@@ -159,8 +188,7 @@ async function prepareApplication(resourcesPath, version) {
 }
 
 async function copyElectronRuntime(stagingDirectory, platform, version) {
-  const electronDist = electronDistributionPath();
-  await requirePath(electronDist, 'Electron runtime');
+  const electronDist = await ensureElectronRuntime();
   const architecture = process.arch;
   const bundleName = `WorldForge-v${version}-${platform}-${architecture}`;
 

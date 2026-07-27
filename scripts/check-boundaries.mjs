@@ -36,7 +36,13 @@ async function listTypeScriptFiles(directory) {
 
 export function importsFrom(source, fileName = 'source.ts') {
   const scriptKind = fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind);
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind,
+  );
   const imports = [];
   const record = (value) => {
     if (typeof value === 'string') imports.push(value);

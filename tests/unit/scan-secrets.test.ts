@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  scanGitPatchLines,
-  scanSecretLine,
-  scanSecretText,
-} from '../../scripts/scan-secrets.mjs';
+import { scanGitPatchLines, scanSecretLine, scanSecretText } from '../../scripts/scan-secrets.mjs';
 
 describe('secret scanner', () => {
   it('detects provider tokens without exposing their values', () => {
@@ -28,9 +24,7 @@ describe('secret scanner', () => {
 
   it('ignores placeholders and explicit reviewed allowlist lines', () => {
     expect(scanSecretLine('api_key="replace-me-with-your-api-key"')).toEqual([]);
-    expect(
-      scanSecretLine(`token="${'Ab9_'.repeat(8)}" # secret-scan: allow`),
-    ).toEqual([]);
+    expect(scanSecretLine(`token="${'Ab9_'.repeat(8)}" # secret-scan: allow`)).toEqual([]);
   });
 
   it('reports stable line numbers without returning secret values', () => {

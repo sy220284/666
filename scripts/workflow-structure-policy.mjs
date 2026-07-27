@@ -70,7 +70,8 @@ export function validateWorkflowStructure(file, source) {
     if (typeof job.uses === 'string' && !job.uses.startsWith('./')) {
       errors.push(`${file}: reusable workflow ${job.uses} must be repository-local`);
     }
-    for (const step of Array.isArray(job.steps) ? job.steps : []) validateAction(errors, file, step);
+    for (const step of Array.isArray(job.steps) ? job.steps : [])
+      validateAction(errors, file, step);
   }
 
   if (file === 'quality.yml') {

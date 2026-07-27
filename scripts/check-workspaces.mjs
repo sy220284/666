@@ -28,13 +28,16 @@ async function expandWorkspacePattern(rootDirectory, pattern) {
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     const relative = path.posix.join(parent.replaceAll('\\', '/'), entry.name);
-    if (await exists(path.join(rootDirectory, relative, 'package.json'))) directories.push(relative);
+    if (await exists(path.join(rootDirectory, relative, 'package.json')))
+      directories.push(relative);
   }
   return directories;
 }
 
 export async function discoverWorkspaceDirectories(rootDirectory = process.cwd()) {
-  const workspace = parseYaml(await readFile(path.join(rootDirectory, 'pnpm-workspace.yaml'), 'utf8'));
+  const workspace = parseYaml(
+    await readFile(path.join(rootDirectory, 'pnpm-workspace.yaml'), 'utf8'),
+  );
   if (!Array.isArray(workspace?.packages) || workspace.packages.length === 0) {
     throw new Error('pnpm-workspace.yaml must declare at least one package pattern');
   }
@@ -52,7 +55,11 @@ export async function discoverWorkspaceDirectories(rootDirectory = process.cwd()
 
 export async function loadWorkspaceArchitecture(rootDirectory = process.cwd()) {
   const document = JSON.parse(await readFile(path.join(rootDirectory, architecturePath), 'utf8'));
-  if (document.schemaVersion !== 1 || !document.workspaces || typeof document.workspaces !== 'object') {
+  if (
+    document.schemaVersion !== 1 ||
+    !document.workspaces ||
+    typeof document.workspaces !== 'object'
+  ) {
     throw new Error('Workspace architecture must use schemaVersion 1 with a workspaces object');
   }
   return document.workspaces;
@@ -100,7 +107,8 @@ export async function inspectWorkspaces(rootDirectory = process.cwd()) {
   }
 
   const names = packages.map(({ manifest }) => manifest.name);
-  if (new Set(names).size !== names.length) throw new Error('Workspace package names must be unique');
+  if (new Set(names).size !== names.length)
+    throw new Error('Workspace package names must be unique');
   return packages;
 }
 

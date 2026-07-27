@@ -9,11 +9,16 @@ function option(argumentsList, name) {
   return argumentsList[index + 1];
 }
 
-export async function verifyPackageAssets(argumentsList = process.argv.slice(2), root = process.cwd()) {
+export async function verifyPackageAssets(
+  argumentsList = process.argv.slice(2),
+  root = process.cwd(),
+) {
   const platform = option(argumentsList, '--platform');
   const version = option(argumentsList, '--version');
   const directory = path.resolve(root, option(argumentsList, '--directory'));
-  const manifest = JSON.parse(await readFile(path.join(directory, 'package-manifest.json'), 'utf8'));
+  const manifest = JSON.parse(
+    await readFile(path.join(directory, 'package-manifest.json'), 'utf8'),
+  );
   if (manifest.platform !== platform || manifest.version !== version) {
     throw new Error('Package manifest platform or version does not match the release matrix');
   }
@@ -22,7 +27,9 @@ export async function verifyPackageAssets(argumentsList = process.argv.slice(2),
   if (!metadata.isFile() || metadata.size <= 0 || metadata.size !== manifest.bytes) {
     throw new Error('Package artifact is missing, empty, or has a stale byte count');
   }
-  const digest = createHash('sha256').update(await readFile(artifactPath)).digest('hex');
+  const digest = createHash('sha256')
+    .update(await readFile(artifactPath))
+    .digest('hex');
   if (digest !== manifest.sha256) {
     throw new Error('Package artifact checksum does not match its manifest');
   }

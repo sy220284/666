@@ -1,52 +1,107 @@
+const NO_SCOPE = Symbol('continuation-no-scope');
+const NO_PANEL = Symbol('continuation-no-panel');
+const trackerByCommittedInput = new WeakMap<object, ContinuationPersistenceTracker<unknown>>();
+
 /**
  * Continuation persistence bookkeeping for the writing workbench.
  *
- * The workbench persists ProjectContinuation snapshots through a debounced
- * canonical save and through a lightweight panel-switch save. Both paths must
- * treat the tracker as confirmed state only after Core acknowledges the
- * write: committing earlier suppresses legitimate re-submissions, because the
- * dedupe signature would then claim Core already holds state it never
- * received (M4-04 known risk #6, C8 workbench state coordination).
+ * The tracker distinguishes Core-confirmed state from the latest Renderer
+ * intent. This prevents a delayed retry captured by an older panel render from
+ * re-submitting obsolete state after the author has already moved elsewhere.
  */
-
 export class ContinuationPersistenceTracker<Input> {
   #committedInput: Input | null = null;
   #committedSignature: string | null = null;
+  #desiredSignature: string | null = null;
+  #desiredScope: unknown | typeof NO_SCOPE = NO_SCOPE;
+  #desiredPanel: unknown | typeof NO_PANEL = NO_PANEL;
 
   /** The last input Core confirmed as persisted, if any. */
   committedInput(): Input | null {
+    this.#rememberOwner(this.#committedInput);
     return this.#committedInput;
   }
 
-  /** Whether persisting `next` can be skipped because Core already holds it. */
+  /**
+   * Whether persisting `next` can be skipped.
+   *
+   * A request is skipped when Core already holds the same state or when it was
+   * captured by an older panel render in the same project and has since been
+   * superseded by a newer panel intent.
+   */
   isCommitted(next: Input): boolean {
+    const scope = fieldOf(next, 'projectId', NO_SCOPE);
+    const panel = fieldOf(next, 'panel', NO_PANEL);
+    const sameScope = this.#desiredScope === NO_SCOPE || scope === this.#desiredScope;
+
+    if (
+      sameScope &&
+      this.#desiredPanel !== NO_PANEL &&
+      panel !== NO_PANEL &&
+      panel !== this.#desiredPanel
+    ) {
+      return true;
+    }
+
+    this.noteIntent(next);
     return this.#committedSignature === signatureOf(next);
   }
 
+  /** Records the latest Renderer state that should eventually reach Core. */
+  noteIntent(input: Input): void {
+    this.#desiredSignature = signatureOf(input);
+    this.#desiredScope = fieldOf(input, 'projectId', NO_SCOPE);
+    this.#desiredPanel = fieldOf(input, 'panel', NO_PANEL);
+  }
+
   /**
-   * Records `input` as persisted. Must only be called after a successful
-   * save; a failed or superseded save must leave the tracker untouched so the
-   * same state stays eligible for re-submission.
+   * Records `input` as persisted only when it still represents the latest
+   * Renderer intent. A superseded success must not move the confirmed cursor
+   * backwards even if its underlying write completed normally.
    */
   commit(input: Input): void {
+    const signature = signatureOf(input);
+    if (this.#desiredSignature !== null && signature !== this.#desiredSignature) return;
     this.#committedInput = input;
-    this.#committedSignature = signatureOf(input);
+    this.#committedSignature = signature;
+    this.#rememberOwner(input);
+  }
+
+  #rememberOwner(input: Input | null): void {
+    if (!input || typeof input !== 'object') return;
+    trackerByCommittedInput.set(
+      input,
+      this as unknown as ContinuationPersistenceTracker<unknown>,
+    );
   }
 }
 
 /**
- * Derives the lightweight panel-switch save from the last committed input.
- * Returns null when nothing is committed yet or the panel is unchanged, so
- * callers never issue redundant or fabricated writes.
+ * Derives a lightweight panel-switch state from the last Core-confirmed
+ * snapshot and marks it as the newest Renderer intent before the asynchronous
+ * save starts.
  */
 export function derivePanelSwitchInput<Input extends { readonly panel: Panel }, Panel>(
   committed: Input | null,
   panel: Panel,
 ): Input | null {
   if (!committed || committed.panel === panel) return null;
-  return { ...committed, panel };
+  const next = { ...committed, panel };
+  if (typeof committed === 'object') {
+    trackerByCommittedInput.get(committed)?.noteIntent(next);
+  }
+  return next;
+}
+
+function fieldOf(
+  input: unknown,
+  field: string,
+  fallback: typeof NO_SCOPE | typeof NO_PANEL,
+): unknown | typeof NO_SCOPE | typeof NO_PANEL {
+  if (!input || typeof input !== 'object' || !(field in input)) return fallback;
+  return (input as Record<string, unknown>)[field];
 }
 
 function signatureOf(input: unknown): string {
-  return JSON.stringify(input);
+  return JSON.stringify(input) ?? String(input);
 }

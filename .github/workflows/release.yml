@@ -29,7 +29,7 @@ jobs:
     name: Release quality
     uses: ./.github/workflows/quality-core.yml
     with:
-      package_smoke: false
+      package_smoke: true
       security_suite: true
       performance_eval: true
 
@@ -52,9 +52,16 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Recheck dependency and tracked-secret safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm audit --audit-level=high
+          node scripts/scan-secrets.mjs
       - name: Enforce main and release acceptance gate
         shell: bash
         run: |
+          set -euo pipefail
           test "$GITHUB_REF_NAME" = main
           pnpm release:gate -- --version "$RELEASE_VERSION"
       - run: pnpm release:check
@@ -126,6 +133,7 @@ jobs:
       - name: Recheck gate and create checksums
         shell: bash
         run: |
+          set -euo pipefail
           node scripts/release-tool.mjs gate --version "$RELEASE_VERSION"
           node scripts/release-tool.mjs checksums \
             --version "$RELEASE_VERSION" \

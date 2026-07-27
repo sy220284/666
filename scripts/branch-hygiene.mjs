@@ -38,7 +38,9 @@ async function paged(pathname) {
   for (let page = 1; ; page += 1) {
     const separator = pathname.includes('?') ? '&' : '?';
     const batch = await api(`${pathname}${separator}per_page=100&page=${page}`);
-    if (!Array.isArray(batch)) throw new Error(`GitHub API pagination returned a non-array: ${pathname}`);
+    if (!Array.isArray(batch)) {
+      throw new Error(`GitHub API pagination returned a non-array: ${pathname}`);
+    }
     items.push(...batch);
     if (batch.length < 100) return items;
   }
@@ -75,7 +77,9 @@ function markdownCell(value) {
 }
 
 async function main() {
-  if (!token || !repository) throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required');
+  if (!token || !repository) {
+    throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required');
+  }
   const [owner, repo] = repository.split('/');
   if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format');
   const state = JSON.parse(await readFile('docs/tasks/ACTIVE_TASK.json', 'utf8'));
@@ -156,7 +160,11 @@ async function main() {
   ];
   await mkdir(outputDirectory, { recursive: true });
   await Promise.all([
-    writeFile(path.join(outputDirectory, 'report.md'), `${lines.join('\n')}\n`, 'utf8'),
+    writeFile(
+      path.join(outputDirectory, 'report.md'),
+      `${lines.join('\n')}\n`,
+      'utf8',
+    ),
     writeFile(
       path.join(outputDirectory, 'report.json'),
       `${JSON.stringify(report, null, 2)}\n`,

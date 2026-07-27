@@ -134,6 +134,37 @@ describe('M4-04 continuation request coordination', () => {
     });
   });
 
+  it('does not collapse malformed continuation keys into a shared fallback lane', async () => {
+    const coordinator = new BridgeRequestCoordinator();
+    const firstGate = deferred<CommandResult<string>>();
+    const started: string[] = [];
+
+    const first = coordinator.run(
+      'project.saveContinuation:malformed-a',
+      async () => {
+        started.push('first');
+        return firstGate.promise;
+      },
+      { mode: 'replace' },
+    );
+    await vi.waitFor(() => expect(started).toEqual(['first']));
+
+    const second = coordinator.run(
+      'project.saveContinuation:malformed-b',
+      async () => {
+        started.push('second');
+        return success('request-second', 'second');
+      },
+      { mode: 'replace' },
+    );
+
+    await expect(second).resolves.toMatchObject({ state: 'success', data: 'second' });
+    expect(started).toEqual(['first', 'second']);
+
+    firstGate.resolve(success('request-first', 'first'));
+    await expect(first).resolves.toMatchObject({ state: 'success', data: 'first' });
+  });
+
   it('suppresses delayed retries and commits from an older panel intent', () => {
     const tracker = new ContinuationPersistenceTracker<ContinuationFixture>();
     const editor = continuation({ panel: 'editor' });
@@ -151,6 +182,25 @@ describe('M4-04 continuation request coordination', () => {
 
     tracker.commit(candidates);
     expect(tracker.committedInput()).toEqual(candidates);
+  });
+
+  it('restores the committed panel as latest intent when the author switches back early', () => {
+    const tracker = new ContinuationPersistenceTracker<ContinuationFixture>();
+    const editor = continuation({ panel: 'editor' });
+    tracker.commit(editor);
+
+    const versions = derivePanelSwitchInput(tracker.committedInput(), 'versions');
+    expect(versions).not.toBeNull();
+    if (!versions) return;
+
+    expect(derivePanelSwitchInput(tracker.committedInput(), 'editor')).toBeNull();
+    tracker.commit(versions);
+    expect(tracker.committedInput()).toBe(editor);
+
+    const movedEditor = continuation({ panel: 'editor', scrollTop: 640 });
+    expect(tracker.isCommitted(movedEditor)).toBe(false);
+    tracker.commit(movedEditor);
+    expect(tracker.committedInput()).toEqual(movedEditor);
   });
 
   it('does not treat a new project scope as a stale panel retry', () => {

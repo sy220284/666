@@ -1,6 +1,7 @@
 import { access, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import {
   GOVERNANCE_ALLOWED_PATHS,
   SCHEMA_GOVERNANCE_ALLOWED_PATHS,
@@ -9,8 +10,7 @@ import {
 } from './task-control-lib.mjs';
 
 const root = process.cwd();
-const githubDirectory = path.join(root, '.github');
-const workflowDirectory = path.join(githubDirectory, 'workflows');
+const workflowDirectory = path.join(root, '.github', 'workflows');
 
 const requiredWorkflows = [
   'automerge.yml',
@@ -33,6 +33,8 @@ const requiredFiles = [
   '.github/governance/main-protection.json',
   '.github/governance/post-merge-verification.mjs',
   '.github/governance/required-checks.json',
+  '.github/governance/secret-scan-allowlist.json',
+  '.github/governance/workspace-architecture.json',
   '.github/governance/task-transition-policy.mjs',
   'scripts/automerge.mjs',
   'scripts/branch-hygiene.mjs',
@@ -40,14 +42,15 @@ const requiredFiles = [
   'scripts/main-verification.mjs',
   'scripts/ruleset-policy.mjs',
   'scripts/scan-secrets.mjs',
+  'scripts/workflow-structure-policy.mjs',
 ];
 
-const actionVersions = new Map([
-  ['actions/checkout', 'v6'],
-  ['actions/setup-node', 'v6'],
-  ['actions/upload-artifact', 'v7'],
-  ['actions/download-artifact', 'v8'],
-  ['pnpm/action-setup', 'v4'],
+const actionPins = new Map([
+  ['actions/checkout', 'd23441a48e516b6c34aea4fa41551a30e30af803'],
+  ['actions/setup-node', '249970729cb0ef3589644e2896645e5dc5ba9c38'],
+  ['actions/upload-artifact', '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'],
+  ['actions/download-artifact', '3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'],
+  ['pnpm/action-setup', 'b906affcce14559ad1aafd4ab0e942779e9f58b1'],
 ]);
 
 function requireTokens(errors, file, source, tokens) {
@@ -74,16 +77,31 @@ function validateWorkflowEnvelope(errors, file, source) {
   }
 
   for (const match of source.matchAll(/uses:\s*([^@\s]+)@([^\s#]+)/gu)) {
-    const expected = actionVersions.get(match[1]);
-    if (expected && match[2] !== expected) {
-      errors.push(`${file}: ${match[1]} must use ${expected}`);
+    const action = match[1];
+    const reference = match[2];
+    if (action.startsWith('./')) continue;
+    const expected = actionPins.get(action);
+    if (!expected) {
+      errors.push(`${file}: external action ${action} is not allowlisted`);
+      continue;
+    }
+    if (reference !== expected) {
+      errors.push(`${file}: ${action} must use immutable SHA ${expected}`);
     }
   }
 
-  const checkouts = [...source.matchAll(/uses:\s*actions\/checkout@v6/gu)].length;
+  const checkouts = [...source.matchAll(/uses:\s*actions\/checkout@[^\s#]+/gu)].length;
   const safeCheckouts = [...source.matchAll(/persist-credentials:\s*false/gu)].length;
   if (checkouts !== safeCheckouts) {
     errors.push(`${file}: every checkout must disable credential persistence`);
+  }
+}
+
+function rejectWholeJobDraftSkip(errors, file, source) {
+  const pattern =
+    /^\s*if:\s*\$\{\{\s*(?:github\.event\.pull_request\.draft == false|github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.draft == false)\s*\}\}\s*$/mu;
+  if (pattern.test(source)) {
+    errors.push(`${file}: Draft PRs must not skip the whole permanent job`);
   }
 }
 
@@ -133,32 +151,34 @@ async function main() {
   requireTokens(errors, 'pr-policy.yml', prPolicy, [
     'pull_request:',
     'ready_for_review',
-    'github.event.pull_request.draft == false',
-    'taskctl.mjs pr-policy',
+    'converted_to_draft',
+    'verification-hold-taskctl.mjs pr-policy',
     'automation-layout-policy.mjs',
-    'scripts/ci-policy.mjs',
+    'pnpm ci:policy',
   ]);
+  rejectWholeJobDraftSkip(errors, 'pr-policy.yml', prPolicy);
 
   const taskGovernance = workflows.get('task-governance.yml') ?? '';
   requireTokens(errors, 'task-governance.yml', taskGovernance, [
     'pull_request:',
     'ready_for_review',
-    'github.event.pull_request.draft == false',
-    'taskctl.mjs validate',
-    'taskctl.mjs preflight',
+    'converted_to_draft',
+    'verification-hold-taskctl.mjs validate',
+    'verification-hold-taskctl.mjs preflight',
     'task-transition-policy.mjs',
   ]);
   forbidTokens(errors, 'task-governance.yml', taskGovernance, [
     'taskctl.mjs pr-policy',
     'taskctl.mjs verify',
   ]);
+  rejectWholeJobDraftSkip(errors, 'task-governance.yml', taskGovernance);
 
   const evidence = workflows.get('evidence.yml') ?? '';
   requireTokens(errors, 'evidence.yml', evidence, [
     'pull_request:',
     'workflow_dispatch:',
     'schedule:',
-    "github.event_name != 'pull_request' || github.event.pull_request.draft == false",
+    'converted_to_draft',
     'Validate changed task evidence documents',
     "github.event_name == 'pull_request'",
     'Validate all Verified task evidence documents',
@@ -167,19 +187,23 @@ async function main() {
     'scripts/verified-evidence-scan.mjs',
   ]);
   forbidTokens(errors, 'evidence.yml', evidence, ['screenshots']);
+  rejectWholeJobDraftSkip(errors, 'evidence.yml', evidence);
 
   const quality = workflows.get('quality.yml') ?? '';
   requireTokens(errors, 'quality.yml', quality, [
     'pull_request:',
     'ready_for_review',
     'converted_to_draft',
-    'Determine Ready quality route',
     'full_suite:',
     'quality-core.yml',
+    'draft_mode: false',
     'package_smoke: false',
     'performance_eval: false',
   ]);
-  forbidTokens(errors, 'quality.yml', quality, ['static-failure-diagnostics']);
+  forbidTokens(errors, 'quality.yml', quality, [
+    'static-failure-diagnostics',
+    'draft_mode: ${{ github.event.pull_request.draft',
+  ]);
 
   const qualityCore = workflows.get('quality-core.yml') ?? '';
   requireTokens(errors, 'quality-core.yml', qualityCore, [
@@ -203,26 +227,27 @@ async function main() {
   requireTokens(errors, 'security.yml', security, [
     'pull_request:',
     'converted_to_draft',
-    'github.event.pull_request.draft == false',
     'pnpm audit --audit-level=high',
     'scan-secrets.mjs',
     'pnpm test:security',
     'name: security',
+    'if: always()',
   ]);
   forbidTokens(errors, 'security.yml', security, ['activeTask?.verification?.includes']);
+  rejectWholeJobDraftSkip(errors, 'security.yml', security);
 
   const performance = workflows.get('performance.yml') ?? '';
   requireTokens(errors, 'performance.yml', performance, [
     'pull_request:',
     'workflow_dispatch:',
     'converted_to_draft',
-    "github.event_name != 'pull_request' || github.event.pull_request.draft == false",
     'Determine performance validation route',
     'Run performance budgets',
     'pnpm test:perf',
-    'changed paths are not performance-sensitive',
+    'only documentation changed',
   ]);
   forbidTokens(errors, 'performance.yml', performance, ['activeTask?.verification?.includes']);
+  rejectWholeJobDraftSkip(errors, 'performance.yml', performance);
 
   const mainVerification = workflows.get('main-verification.yml') ?? '';
   requireTokens(errors, 'main-verification.yml', mainVerification, [
@@ -297,15 +322,11 @@ export function allowedPathsForBranch(branch, activeState = null) {
 }
 
 export function recommendBranch(files, activeState = null) {
-  if (everyPathAllowed(files, GOVERNANCE_ALLOWED_PATHS)) {
-    return 'policy/<topic>';
-  }
-  const planningPaths = [...GOVERNANCE_ALLOWED_PATHS, ...TASK_PLANNING_ALLOWED_PATHS];
-  if (everyPathAllowed(files, planningPaths)) {
+  if (everyPathAllowed(files, GOVERNANCE_ALLOWED_PATHS)) return 'policy/<topic>';
+  if (everyPathAllowed(files, [...GOVERNANCE_ALLOWED_PATHS, ...TASK_PLANNING_ALLOWED_PATHS])) {
     return 'policy/task-plan-<topic>';
   }
-  const schemaPaths = [...GOVERNANCE_ALLOWED_PATHS, ...SCHEMA_GOVERNANCE_ALLOWED_PATHS];
-  if (everyPathAllowed(files, schemaPaths)) {
+  if (everyPathAllowed(files, [...GOVERNANCE_ALLOWED_PATHS, ...SCHEMA_GOVERNANCE_ALLOWED_PATHS])) {
     return 'policy/governance-schema-<topic>';
   }
   return activeState?.activeTask?.branch ?? '<active-task-branch>';

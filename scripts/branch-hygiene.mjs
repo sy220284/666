@@ -9,9 +9,15 @@ const outputDirectory = path.resolve(
   process.env.BRANCH_HYGIENE_OUTPUT ?? 'artifacts/branch-hygiene',
 );
 const githubFetch = globalThis.fetch;
+const fullShaPattern = /^[0-9a-f]{40}$/iu;
 
 async function api(pathname, options = {}) {
-  const response = await githubFetch(`https://api.github.com${pathname}`, {
+  if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
+  const url = new globalThis.URL(pathname, 'https://api.github.com');
+  if (url.origin !== 'https://api.github.com') {
+    throw new Error(`Unexpected GitHub API origin: ${url.origin}`);
+  }
+  const response = await githubFetch(url, {
     ...options,
     headers: {
       Accept: 'application/vnd.github+json',
@@ -21,7 +27,9 @@ async function api(pathname, options = {}) {
     },
   });
   const body = await response.text();
-  if (!response.ok) throw new Error(`GitHub API ${response.status}: ${pathname}\n${body}`);
+  if (!response.ok) {
+    throw new Error(`GitHub API ${response.status}: ${url.pathname}${url.search}\n${body}`);
+  }
   return body ? JSON.parse(body) : null;
 }
 
@@ -30,14 +38,50 @@ async function paged(pathname) {
   for (let page = 1; ; page += 1) {
     const separator = pathname.includes('?') ? '&' : '?';
     const batch = await api(`${pathname}${separator}per_page=100&page=${page}`);
+    if (!Array.isArray(batch)) {
+      throw new Error(`GitHub API pagination returned a non-array: ${pathname}`);
+    }
     items.push(...batch);
     if (batch.length < 100) return items;
   }
 }
 
+export function branchDeletionDecision({ branchSha, pull, comparison }) {
+  if (!fullShaPattern.test(branchSha ?? '')) {
+    return { safe: false, reason: 'missing-current-branch-head' };
+  }
+  if (!Number.isSafeInteger(comparison?.ahead_by) || comparison.ahead_by < 0) {
+    return { safe: false, reason: 'invalid-main-comparison' };
+  }
+  if (comparison.ahead_by === 0) {
+    return { safe: true, reason: 'current-head-is-fully-reachable-from-main' };
+  }
+  if (pull?.merged_at && pull.head?.sha === branchSha) {
+    return { safe: true, reason: 'merged-pr-head-is-still-current' };
+  }
+  if (pull?.merged_at) {
+    return { safe: false, reason: 'branch-advanced-after-merged-pr' };
+  }
+  return { safe: false, reason: 'branch-contains-unmerged-commits' };
+}
+
+function escapedRef(name) {
+  return name
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+function markdownCell(value) {
+  return String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
+}
+
 async function main() {
-  if (!token || !repository) throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required');
+  if (!token || !repository) {
+    throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required');
+  }
   const [owner, repo] = repository.split('/');
+  if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format');
   const state = JSON.parse(await readFile('docs/tasks/ACTIVE_TASK.json', 'utf8'));
   const activeBranch = state.activeTask?.branch;
   const [branches, pulls] = await Promise.all([
@@ -54,14 +98,16 @@ async function main() {
   const report = [];
   for (const branch of branches) {
     const name = branch.name;
+    const branchSha = branch.commit?.sha;
     if (name === 'main' || name === activeBranch || name.startsWith('release/')) {
-      report.push({ branch: name, classification: 'protected', action: 'keep' });
+      report.push({ branch: name, branchSha, classification: 'protected', action: 'keep' });
       continue;
     }
     const pull = latestPullByBranch.get(name);
     if (pull?.state === 'open') {
       report.push({
         branch: name,
+        branchSha,
         classification: 'open-pr',
         pullNumber: pull.number,
         action: 'keep',
@@ -71,20 +117,29 @@ async function main() {
     const comparison = await api(
       `/repos/${owner}/${repo}/compare/main...${encodeURIComponent(name)}`,
     );
-    const safeDelete = Boolean(pull?.merged_at || comparison.ahead_by === 0);
-    let action = safeDelete ? 'delete-candidate' : 'manual-review';
-    if (safeDelete && apply) {
-      await api(`/repos/${owner}/${repo}/git/refs/heads/${encodeURIComponent(name)}`, {
-        method: 'DELETE',
-      });
-      action = 'deleted';
+    const decision = branchDeletionDecision({ branchSha, pull, comparison });
+    let action = decision.safe ? 'delete-candidate' : 'manual-review';
+    if (decision.safe && apply) {
+      const refPath = `/repos/${owner}/${repo}/git/ref/heads/${escapedRef(name)}`;
+      const currentRef = await api(refPath);
+      if (currentRef?.object?.sha !== branchSha) {
+        action = 'changed-during-run';
+      } else {
+        await api(`/repos/${owner}/${repo}/git/refs/heads/${escapedRef(name)}`, {
+          method: 'DELETE',
+        });
+        action = 'deleted';
+      }
     }
     report.push({
       branch: name,
+      branchSha,
       aheadBy: comparison.ahead_by,
       behindBy: comparison.behind_by,
-      classification: safeDelete ? 'obsolete' : 'orphaned-work',
+      classification: decision.safe ? 'obsolete' : 'orphaned-work',
+      reason: decision.reason,
       pullNumber: pull?.number ?? null,
+      pullHeadSha: pull?.head?.sha ?? null,
       action,
     });
   }
@@ -95,11 +150,11 @@ async function main() {
     `Generated: ${new Date().toISOString()}`,
     `Apply mode: ${apply}`,
     '',
-    '| Branch | Classification | Ahead | Behind | Action |',
-    '|---|---|---:|---:|---|',
+    '| Branch | Classification | Ahead | Behind | Reason | Action |',
+    '|---|---|---:|---:|---|---|',
     ...report.map(
       (item) =>
-        `| ${item.branch} | ${item.classification} | ${item.aheadBy ?? '-'} | ${item.behindBy ?? '-'} | ${item.action}${item.pullNumber ? ` (#${item.pullNumber})` : ''} |`,
+        `| ${markdownCell(item.branch)} | ${item.classification} | ${item.aheadBy ?? '-'} | ${item.behindBy ?? '-'} | ${markdownCell(item.reason ?? '-')} | ${item.action}${item.pullNumber ? ` (#${item.pullNumber})` : ''} |`,
     ),
     '',
   ];

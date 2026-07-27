@@ -7,6 +7,7 @@ import { parseTaskIndex } from './task-control-lib.mjs';
 
 const root = process.cwd();
 const checksumFileName = 'SHA256SUMS.txt';
+export const RELEASE_TASK_ID = 'M4-04';
 
 export function parseReleaseVersion(value) {
   if (typeof value !== 'string' || value.trim() !== value || value.length === 0) {
@@ -40,6 +41,8 @@ export function validateReleaseConfiguration({ packageJson, taskIndexMarkdown, w
   }
 
   const expectedScripts = {
+    package: 'node scripts/package-desktop.mjs',
+    'package:foundation': 'node scripts/package-foundation.mjs',
     'release:check': 'node scripts/release-tool.mjs check',
     'release:gate': 'node scripts/release-tool.mjs gate',
     'release:checksums': 'node scripts/release-tool.mjs checksums',
@@ -50,10 +53,17 @@ export function validateReleaseConfiguration({ packageJson, taskIndexMarkdown, w
     }
   }
 
-  if (!parseTaskIndex(taskIndexMarkdown).has('M8-03')) {
-    errors.push('TASK_INDEX must contain the M8-03 release task');
+  if (!parseTaskIndex(taskIndexMarkdown).has(RELEASE_TASK_ID)) {
+    errors.push(`TASK_INDEX must contain the ${RELEASE_TASK_ID} integrated release task`);
   }
-  for (const token of ['workflow_dispatch:', 'pnpm release:gate', 'gh release create']) {
+  for (const token of [
+    'workflow_dispatch:',
+    'package_smoke: true',
+    'pnpm audit --audit-level=high',
+    'node scripts/scan-secrets.mjs',
+    'pnpm release:gate',
+    'gh release create',
+  ]) {
     if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
   }
   return errors;
@@ -87,15 +97,18 @@ export function evaluateReleaseGate({
     errors.push('Releases may only run from main, found ' + refName);
   }
 
-  const releaseTask = parseTaskIndex(taskIndexMarkdown).get('M8-03');
+  const releaseTask = parseTaskIndex(taskIndexMarkdown).get(RELEASE_TASK_ID);
   if (!releaseTask) {
-    errors.push('M8-03 is missing from TASK_INDEX');
+    errors.push(`${RELEASE_TASK_ID} is missing from TASK_INDEX`);
   } else if (releaseTask.status !== 'Verified') {
-    errors.push('M8-03 must be Verified before publishing, found ' + releaseTask.status);
+    errors.push(
+      `${RELEASE_TASK_ID} must be Verified before publishing, found ${releaseTask.status}`,
+    );
   }
 
   return {
     version,
+    taskId: RELEASE_TASK_ID,
     taskStatus: releaseTask?.status ?? null,
     errors,
   };
@@ -178,10 +191,10 @@ async function checkConfiguration() {
   const errors = validateReleaseConfiguration(state);
   if (errors.length > 0) throw new Error(errors.join('\n'));
 
-  const status = parseTaskIndex(state.taskIndexMarkdown).get('M8-03')?.status ?? 'Missing';
+  const status = parseTaskIndex(state.taskIndexMarkdown).get(RELEASE_TASK_ID)?.status ?? 'Missing';
   console.log(
     'Release tooling is configured. Publishing gate: ' +
-      (status === 'Verified' ? 'READY' : 'BLOCKED (M8-03 ' + status + ')') +
+      (status === 'Verified' ? 'READY' : `BLOCKED (${RELEASE_TASK_ID} ${status})`) +
       '.',
   );
 }
@@ -198,7 +211,7 @@ async function requireReleaseGate(requestedVersion) {
     refName: process.env.GITHUB_REF_NAME,
   });
   if (result.errors.length > 0) throw new Error(result.errors.join('\n'));
-  console.log('Release gate passed for v' + result.version + '.');
+  console.log(`Release gate passed for v${result.version} through ${result.taskId}.`);
   return result.version;
 }
 

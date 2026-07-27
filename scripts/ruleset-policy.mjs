@@ -121,7 +121,14 @@ function complianceReasons(current, desired) {
 }
 
 async function findRuleset(owner, repo, name) {
-  const rulesets = await api(`/repos/${owner}/${repo}/rulesets?includes_parents=false`);
+  const rulesets = [];
+  for (let page = 1; ; page += 1) {
+    const pageItems = await api(
+      `/repos/${owner}/${repo}/rulesets?includes_parents=false&per_page=100&page=${page}`,
+    );
+    rulesets.push(...pageItems);
+    if (pageItems.length < 100) break;
+  }
   const summary = rulesets.find((ruleset) => ruleset.name === name);
   if (!summary) return null;
   return api(`/repos/${owner}/${repo}/rulesets/${summary.id}`);

@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "workspaces": {
+    "apps/desktop": {
+      "packageName": "@worldforge/desktop",
+      "layer": "aggregate",
+      "buildable": false,
+      "allowNodeBuiltins": false,
+      "allowedInternalImports": []
+    },
+    "apps/desktop/main": {
+      "packageName": "@worldforge/main",
+      "layer": "desktop-main",
+      "buildable": true,
+      "allowNodeBuiltins": true,
+      "allowedInternalImports": ["@worldforge/contracts"]
+    },
+    "apps/desktop/preload": {
+      "packageName": "@worldforge/preload",
+      "layer": "desktop-preload",
+      "buildable": true,
+      "allowNodeBuiltins": true,
+      "allowedInternalImports": ["@worldforge/contracts"]
+    },
+    "apps/desktop/renderer": {
+      "packageName": "@worldforge/renderer",
+      "layer": "desktop-renderer",
+      "buildable": true,
+      "allowNodeBuiltins": false,
+      "allowedInternalImports": ["@worldforge/contracts", "@worldforge/editor-core"]
+    },
+    "packages/contracts": {
+      "packageName": "@worldforge/contracts",
+      "layer": "contracts",
+      "buildable": true,
+      "allowNodeBuiltins": false,
+      "allowedInternalImports": []
+    },
+    "packages/domain": {
+      "packageName": "@worldforge/domain",
+      "layer": "domain",
+      "buildable": true,
+      "allowNodeBuiltins": false,
+      "allowedInternalImports": []
+    },
+    "packages/core-service": {
+      "packageName": "@worldforge/core-service",
+      "layer": "core-service",
+      "buildable": true,
+      "allowNodeBuiltins": true,
+      "allowedInternalImports": [
+        "@worldforge/contracts",
+        "@worldforge/domain",
+        "@worldforge/prompts"
+      ]
+    },
+    "packages/editor-core": {
+      "packageName": "@worldforge/editor-core",
+      "layer": "editor-core",
+      "buildable": true,
+      "allowNodeBuiltins": true,
+      "allowedInternalImports": ["@worldforge/contracts", "@worldforge/domain"]
+    },
+    "packages/prompts": {
+      "packageName": "@worldforge/prompts",
+      "layer": "prompts",
+      "buildable": true,
+      "allowNodeBuiltins": true,
+      "allowedInternalImports": ["@worldforge/contracts", "@worldforge/domain"]
+    },
+    "packages/testkit": {
+      "packageName": "@worldforge/testkit",
+      "layer": "testkit",
+      "buildable": true,
+      "allowNodeBuiltins": true,
+      "allowedInternalImports": [
+        "@worldforge/main",
+        "@worldforge/preload",
+        "@worldforge/renderer",
+        "@worldforge/contracts",
+        "@worldforge/domain",
+        "@worldforge/core-service",
+        "@worldforge/editor-core",
+        "@worldforge/prompts"
+      ]
+    }
+  }
+}

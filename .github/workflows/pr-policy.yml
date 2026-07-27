@@ -3,7 +3,7 @@ name: PR Policy
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -14,22 +14,28 @@ concurrency:
 
 jobs:
   pr-policy:
-    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
       TASK_EVENT_NAME: pull_request
       TASK_PR_HEAD_REF: ${{ github.head_ref }}
+      TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
+      TASK_PR_READY: ${{ github.event.pull_request.draft == false }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Assert clean working tree before policy validation
         run: node .github/governance/assert-clean-tree.mjs
       - name: Validate real PR branch
@@ -37,7 +43,7 @@ jobs:
       - name: Validate permanent automation inventory
         run: node .github/governance/automation-layout-policy.mjs
       - name: Validate permanent CI policy
-        run: node scripts/ci-policy.mjs
+        run: pnpm ci:policy
       - name: Reject tracked root scratch artifacts
         run: test ! -e tmp
       - name: Self-test workflow order guards
@@ -96,7 +102,7 @@ jobs:
           });
           assert.equal(latestWorkflowRun([{ ...oldSuccess, id: 3 }, { ...oldSuccess, id: 4 }])?.id, 4);
 
-          const draftQualityJobs = [
+          const incompleteQualityJobs = [
             job('quality / static-checks'),
             job('quality / tests-unit', 'skipped'),
             job('quality / tests-integration', 'skipped'),
@@ -106,7 +112,7 @@ jobs:
             job('quality / package-smoke', 'skipped'),
             job('quality / quality'),
           ];
-          assert.deepEqual(modeAwareRunState('quality', workflowRun(), draftQualityJobs), {
+          assert.deepEqual(modeAwareRunState('quality', workflowRun(), incompleteQualityJobs), {
             ready: false,
             pending: ['quality'],
             failed: [],
@@ -115,7 +121,7 @@ jobs:
             modeAwareRunState(
               'quality',
               workflowRun(),
-              draftQualityJobs.map((candidate) => job(candidate.name)),
+              incompleteQualityJobs.map((candidate) => job(candidate.name)),
             ),
             { ready: true, pending: [], failed: [] },
           );
@@ -219,6 +225,8 @@ jobs:
           assert.match(workflow, /automerge-base-gate\.mjs/u);
           assert.doesNotMatch(workflow, /CLOSEOUT_TRIGGER|tmp_closeout|final-closeout\.patch/u);
           assert.match(quality, /checkout_ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/u);
+          assert.match(quality, /draft_mode: false/u);
+          assert.doesNotMatch(quality, /draft_mode: \$\{\{ github\.event\.pull_request\.draft/u);
           assert.doesNotMatch(quality, /static-failure-diagnostics/u);
           assert.match(mainVerification, /modeAwareChecksState/u);
           assert.match(mainVerification, /nextPagePath/u);
@@ -226,6 +234,27 @@ jobs:
           assert.match(evidencePolicy, /merge-base.*--is-ancestor/su);
           assert.match(automationLayout, /PERMANENT_WORKFLOWS/u);
           assert.match(automationLayout, /PERMANENT_GOVERNANCE_FILES/u);
+
+          const draftValidatedWorkflows = [
+            '.github/workflows/pr-policy.yml',
+            '.github/workflows/task-governance.yml',
+            '.github/workflows/evidence.yml',
+            '.github/workflows/security.yml',
+            '.github/workflows/performance.yml',
+          ];
+          for (const file of draftValidatedWorkflows) {
+            const source = sources.get(file) ?? '';
+            assert.match(source, /converted_to_draft/u, `${file} must rerun when converted to Draft`);
+            assert.doesNotMatch(
+              source,
+              /^\s*if:\s*\$\{\{\s*(?:github\.event\.pull_request\.draft == false|github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.draft == false)\s*\}\}\s*$/mu,
+              `${file} must not skip its whole job for Draft PRs`,
+            );
+          }
+          assert.match(
+            sources.get('.github/workflows/security.yml') ?? '',
+            /name: security[\s\S]*?if: always\(\)/u,
+          );
           for (const [file, source] of sources) {
             assert.match(source, /assert-clean-tree\.mjs/u, `${file} must enforce clean-tree checks`);
           }

@@ -32,7 +32,11 @@ export function parseReleaseVersion(value) {
   return value;
 }
 
-export function validateReleaseConfiguration({ packageJson, taskIndexMarkdown, workflowSource }) {
+export function validateReleaseConfiguration({
+  packageJson,
+  taskIndexMarkdown,
+  workflowSource,
+}) {
   const errors = [];
   try {
     parseReleaseVersion(packageJson.version);
@@ -191,12 +195,11 @@ async function checkConfiguration() {
   const errors = validateReleaseConfiguration(state);
   if (errors.length > 0) throw new Error(errors.join('\n'));
 
-  const status = parseTaskIndex(state.taskIndexMarkdown).get(RELEASE_TASK_ID)?.status ?? 'Missing';
+  const status =
+    parseTaskIndex(state.taskIndexMarkdown).get(RELEASE_TASK_ID)?.status ?? 'Missing';
   console.log(
     'Release tooling is configured. Publishing gate: ' +
-      (status === 'Verified'
-        ? 'READY'
-        : `BLOCKED (${RELEASE_TASK_ID} ${status})`) +
+      (status === 'Verified' ? 'READY' : `BLOCKED (${RELEASE_TASK_ID} ${status})`) +
       '.',
   );
 }
@@ -238,7 +241,9 @@ async function writeChecksums(requestedVersion) {
   if (assets.length === 0) throw new Error('No release assets were found');
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, renderChecksums(assets), 'utf8');
-  console.log('Wrote checksums for ' + assets.length + ' assets in WorldForge v' + version + '.');
+  console.log(
+    'Wrote checksums for ' + assets.length + ' assets in WorldForge v' + version + '.',
+  );
 }
 
 async function main() {

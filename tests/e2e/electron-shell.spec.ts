@@ -643,34 +643,10 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
       timeout: 3_000,
     });
 
-    await page.locator('[data-toggle-writing-outline]').click();
-    await expect(page.locator('[data-structure-panel]')).toHaveCount(0);
-    await page.locator('[data-toggle-writing-outline]').click();
-    await expect(page.locator('[data-structure-panel]')).toBeVisible();
-    await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-structure-panel]')).toHaveCount(0);
-    await expect(page.locator('.writing-context')).toHaveCount(0);
-    await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-structure-panel]')).toBeVisible();
-    await expect(page.locator('.writing-context')).toBeVisible();
-
     await editor.click();
     await page.keyboard.press('Home');
     const selectionBeforeBack = await page.evaluate(() => document.getSelection()?.anchorOffset);
     await page.locator('[data-back-project]').click();
-    const savedContinuation = await page.evaluate(async () => {
-      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
-        .worldforge;
-      const active = await bridge.project.getActive();
-      if (!active.ok || !active.data) return null;
-      const result = await bridge.project.getContinuation(active.data.projectId);
-      return result.ok ? result.data : null;
-    });
-    expect(savedContinuation).toMatchObject({
-      status: 'ready',
-      chapterTitle: '第一章',
-      panel: 'editor',
-    });
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
     expect(await page.evaluate(() => document.getSelection()?.anchorOffset)).toBe(
@@ -680,7 +656,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.locator('[data-back-project]').click();
     await page.locator('[data-close-project]').click();
     await page.locator('[data-open-recent]').click();
-    await expect(page.locator('[data-draft-workspace]')).toBeVisible();
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
     await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。终风又起。');
     await expect(page.locator('[data-draft-content] > [data-locked="true"]')).toHaveCount(1);

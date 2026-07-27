@@ -69,10 +69,13 @@ jobs:
             .github/governance/deferred-task-closure.mjs \
             .github/governance/task-transition-policy-core.mjs \
             .github/governance/verification-hold-taskctl.mjs \
+            apps/desktop/renderer/build-assets.mjs \
+            scripts/atomic-file-transaction.mjs \
             scripts/audit-remediation-policy.mjs \
             scripts/ci-policy.mjs \
             scripts/evidence-policy.mjs \
             scripts/task-control-lib.mjs \
+            scripts/taskctl.mjs \
             scripts/verified-evidence-scan.mjs \
             pnpm-lock.yaml
       - name: Validate final audit cleanup
@@ -91,6 +94,8 @@ jobs:
             pnpm exec vitest run \
               tests/unit/workflow-structure-policy.test.ts \
               tests/unit/tooling-hardening.test.ts \
+              tests/unit/atomic-file-transaction.test.ts \
+              tests/unit/taskctl-transaction-policy.test.ts \
               tests/integration/workspace-graph.test.ts
             pnpm lint
             pnpm typecheck
@@ -122,10 +127,13 @@ jobs:
             .github/governance/deferred-task-closure.mjs \
             .github/governance/task-transition-policy-core.mjs \
             .github/governance/verification-hold-taskctl.mjs \
+            apps/desktop/renderer/build-assets.mjs \
+            scripts/atomic-file-transaction.mjs \
             scripts/audit-remediation-policy.mjs \
             scripts/ci-policy.mjs \
             scripts/evidence-policy.mjs \
             scripts/task-control-lib.mjs \
+            scripts/taskctl.mjs \
             scripts/verified-evidence-scan.mjs \
             scripts/migrate-final-audit-cleanup.mjs
           git diff --cached --check

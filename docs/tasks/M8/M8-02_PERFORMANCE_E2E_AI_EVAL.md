@@ -129,7 +129,7 @@ M4-04
 ## 当前实施审计
 
 > 审计日期：2026-07-28
-> 产品Head：`313e55d926ab7d2b54e2fdc263795c30aeaea904`
+> 产品Head：`025b11101651b5362f131e24e35f3338314478c2`
 > Draft PR：[#224](https://github.com/sy220284/666/pull/224)
 
 ### 已完成实现
@@ -137,6 +137,7 @@ M4-04
 - 快速、完整、导入、空白四入口和自主、混合、AI优先三条路径；创建事务原子写入任务书、主角、首章与SceneBeat。
 - 新手/专业披露度、统一工作台、沉浸视图、上下文帮助、真实禁用原因和跨工作台继续位置。
 - StatusArbiter已接入Candidate、StateProposal、Validation和FTS既有权威查询；中断/待审Candidate、pending提案、开放校验和索引状态进入P1—P3仲裁，查询失败显式标记不可读。
+- 既有`candidate.list`合同已扩展为可选章节筛选；只传projectId时由Core跨章节读取全项目Candidate，章节工作台原调用保持兼容。
 - “AI优先”仅在本次会话真实Provider连接测试成功后解锁；Provider修改、删除或应用重启后失效，自主写作和离线功能保持可用。
 - Theme A/B、浅色/深色/护眼/高对比、减少动态、键盘焦点和窗口显示状态真源。
 - 安全诊断包白名单、`0600`临时文件、原子重命名和SHA-256；最终导出确认已下沉到Main原生可信边界。
@@ -148,7 +149,6 @@ M4-04
 ### 当前验收边界
 
 - 自动化代码闭环与结构化性能证据绑定上述产品Head，阶段记录进入`docs/test-evidence/M8-02/`。
-- Candidate现有列表合同按章节读取，StatusArbiter当前只统计继续写作章节；全项目Candidate聚合尚未完成。
 - Recovery现有Overview不提供失败备份账本，历史备份失败无法可靠进入全局仲裁；不得用空结果冒充成功。
 - Linux CI受Ubuntu/AppArmor限制，功能冒烟使用显式CI-only无沙箱回退；生产sandbox安装配置仍Blocked。
 - 真实Provider账号与多模型质量矩阵、完整真实AI Electron单链路、物理混合DPI/多屏、人工读屏/输入法、代码签名/公证、安装/升级/卸载仍Blocked。

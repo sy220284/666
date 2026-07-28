@@ -1,3 +1,7 @@
+# M8-02 commands and runs
+
+## 前置C8基线
+
 pnpm test:unit
 exit=0 duration_ms=10730 fixtures=quality-2239-unit
 
@@ -22,3 +26,26 @@ exit=0 duration_ms=1650 fixtures=performance-1995-ai-protocol
 pnpm test:e2e
 exit=0 duration_ms=720000 fixtures=quality-2239-electron
 
+## 本轮Renderer闭环
+
+pnpm typecheck
+exit=0 run=30339219630
+
+pnpm exec vitest run tests/unit/ai-readiness.test.ts tests/unit/workspace-attention.test.ts tests/unit/status-arbitrator.test.ts
+exit=0 files=3 tests=4 run=30339219630
+
+## 本轮诊断可信确认
+
+pnpm typecheck
+exit=0 run=30339582887
+
+pnpm exec vitest run tests/security/diagnostic-ipc-confirmation.test.ts tests/security/diagnostic-export.test.ts
+exit=0 files=2 tests=2 run=30339582887
+
+## 本轮结构化性能证据
+
+WORLDFORGE_M8_PERF_OUTPUT=test-results/performance/m8-02.json pnpm test:perf
+exit=0 files=11 tests=40 run=30340605091 artifact=8680890788
+
+pnpm test:eval
+exit=0 files=2 tests=8 run=30340605091

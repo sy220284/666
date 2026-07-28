@@ -218,7 +218,7 @@ test('completes atomic onboarding and exports only the confirmed diagnostic allo
     await expect(page.locator('[data-create-project-dialog]')).toBeVisible();
     await expect(
       page.locator('select[name="creativePath"] option[value="ai-first"]'),
-    ).toBeDisabled();
+    ).toHaveAttribute('disabled', '');
     await page.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.locator('[data-create-project-dialog]')).toHaveCount(0);
     expect(await readdir(createParent)).toEqual([]);

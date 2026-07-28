@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: '.',
   testMatch: [
     'electron-shell.spec.ts',
+    'continuation-panel-race.spec.ts',
     'candidate-preview.spec.ts',
     'candidate-action.spec.ts',
     'candidate-protection.spec.ts',

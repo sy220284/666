@@ -34,6 +34,15 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Correct codemod template escaping
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const path = 'scripts/m8-02-candidate-project-list-codemod.mjs';
+          let content = await readFile(path, 'utf8');
+          content = content.replaceAll('${summaryQuery(', '\\${summaryQuery(');
+          await writeFile(path, content, 'utf8');
+          NODE
       - name: Apply deterministic codemod
         run: node scripts/m8-02-candidate-project-list-codemod.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline

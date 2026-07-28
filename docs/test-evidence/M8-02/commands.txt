@@ -49,3 +49,11 @@ exit=0 files=11 tests=40 run=30340605091 artifact=8680890788
 
 pnpm test:eval
 exit=0 files=2 tests=8 run=30340605091
+
+## 本轮全项目Candidate汇总
+
+pnpm typecheck
+exit=0 run=30342560850
+
+pnpm exec vitest run tests/integration/candidate-project-list.test.ts tests/unit/workspace-attention.test.ts
+exit=0 files=2 run=30342560850

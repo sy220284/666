@@ -1,46 +1,58 @@
 # M8-02 验证记录
 
-生成时间：2026-07-28T13:35:45+08:00  
-提交：edbf5f5699f280d13d58f255c76f4cb0f20cb617
+生成时间：2026-07-28T08:10:00Z  
+产品提交：`313e55d926ab7d2b54e2fdc263795c30aeaea904`  
+正式PR：[#224](https://github.com/sy220284/666/pull/224)
 
-C8产品实现和自动化阶段验收绑定到受检Head edbf5f5699f280d13d58f255c76f4cb0f20cb617。四个首次入口、三条创作路径、统一工作台、双主题、基础无障碍、安全诊断包、生产ASAR/Fuse和三平台原生工件已实现；永久Quality、Security和Performance门禁执行真实仓库代码。仍存在真实Provider/Model、实体显示与人工无障碍、签名公证和安装生命周期等发布级Blocked，因此M8-02保持In Progress，当前结论为禁止发布。
+M8-02仍为`In Progress`。本轮依据P0矩阵、功能清单、UI验收、安全与性能文档，关闭了可由仓库代码完成的三项缺口，并增加可审计性能工件；真实Provider、多模型质量、物理显示、人工无障碍、签名公证和安装生命周期仍为发布级Blocked，因此当前结论继续为`禁止发布`。
 
-## 自动化结果
+## 本轮代码闭环
 
-- 通过：13
-- 失败：0
-- 跳过：4
+- StatusArbiter复用Candidate、StateProposal、Validation和FTS既有权威查询；查询失败显式标记不可读，不再静默当作零。
+- 中断/待审Candidate、pending StateProposal、开放ValidationIssue、FTS rebuilding/stale/failed和AI未验证状态进入P1—P3仲裁，并提供对应工作台动作。
+- “AI优先”仅在本次会话真实Provider连接测试成功后解锁；Provider保存、修改、删除或应用重启后验证状态失效，离线创作能力不受影响。
+- 诊断导出在Main可信边界重新生成清单并执行原生确认；拒绝确认时不打开目录选择器、不写文件，确认后导出同一份白名单Preview。
+- 新增M8发布性能证据测试，并使Performance成功时保存日志、AI协议结果和结构化JSON工件。
 
-| 套件 | Fixture | 状态 | 说明 |
-|---|---|---|---|
-| Quality静态门禁 | quality-2239-static | passed | Workspace、Boundary、Prettier、ESLint、TypeScript和任务状态检查通过。 |
-| Unit | quality-2239-unit | passed | 67个文件、525项测试通过。 |
-| Integration | quality-2239-integration | passed | 55个文件、156项测试通过。 |
-| Migration | quality-2239-migration | passed | 25个文件、49项测试通过。 |
-| Coverage | quality-2239-coverage | passed | 179个文件、824项测试通过；Statements 85.73%、Branches 75.72%、Functions 85.70%、Lines 87.53%。 |
-| Build | quality-2239-build | passed | 全部Workspace构建通过。 |
-| Windows成品冒烟 | artifact-8677430016 | passed | 原生便携工件、ASAR/Fuse/Hash和成品启动握手通过；不代表签名或安装生命周期通过。 |
-| macOS成品冒烟 | artifact-8677423295 | passed | 原生便携工件、ASAR/Fuse/Hash和成品启动握手通过；不代表签名、公证或安装生命周期通过。 |
-| Linux CI成品冒烟 | artifact-8677423591 | passed | 原生便携工件、ASAR/Fuse/Hash通过；启动使用显式CI-only无沙箱回退，生产sandbox安装仍Blocked。 |
-| Application Security | security-2029 | passed | 32个文件、94项安全测试通过；Secret Scan与Dependency Audit同时通过。 |
-| Performance Budget | performance-1995-budget | passed | 10个文件、37项预算测试通过。 |
-| AI协议与Fixture Eval | performance-1995-ai-protocol | passed | T0、T1、rewrite、merge、validate和state_extract相关2个文件、8项协议/Fixture基线通过；不代表真实模型质量通过。 |
-| Electron E2E | quality-2239-electron | passed | 28/28通过，用时12.0分钟；覆盖原子首次使用、安全诊断包、统一桌面壳、视口/DPI、Version、恢复及既有完整Electron路径。工件8677728424。 |
-| 真实Provider与Model矩阵 | m8-02-real-provider-model | skipped | 未提供真实账号、凭据和已批准模型矩阵；限流、成本和输出质量未验收。 |
-| 物理DPI与多屏 | m8-02-physical-display | skipped | 缺少2K 125/150%、21:9、混合DPI和真实多屏设备记录。 |
-| 人工无障碍与输入法 | m8-02-manual-accessibility | skipped | 真实读屏、IME、自定义字体和人工视觉复核未执行。 |
-| 签名与安装生命周期 | m8-02-release-installation | skipped | Windows签名、macOS签名/公证及三平台安装、升级、卸载未执行。 |
+## 定向验证
 
-## 人工验收记录
+| 范围 | 运行 | 结果 | 说明 |
+|---|---:|---|---|
+| Renderer状态仲裁与AI会话可用性 | 30339219630 | PASS | TypeScript通过；AI readiness、workspace attention、StatusArbiter共4项测试通过。 |
+| Main诊断可信确认 | 30339582887 | PASS | TypeScript通过；诊断IPC可信确认与既有诊断导出共2项安全测试通过。 |
+| 性能预算与AI协议 | 30340605091 | PASS | 11个性能文件、40项测试通过；AI协议2个文件、8项测试通过。 |
+| Performance工件 | artifact 8680890788 | PASS | `performance-evidence`，sha256:`959c0377a08cf6a147a5cf0f9ee0ed6950a4e63ef8c645ce206309b3dab852ac`。 |
 
-未执行物理设备和人工最终验收。1280×800与2560×1440合成视口、Chromium缩放、键盘焦点和减少动态已有自动化记录；2K 125/150%、21:9、混合DPI、真实多屏、读屏、IME、自定义字体和完整五分钟新手流程仍为Blocked，不得视为人工PASS。
+## 结构化性能记录
 
-## 质量复核记录
+| 指标 | Fixture | P95/结果 | 预算 | 结论 |
+|---|---|---:|---:|---|
+| 本地输入统计 | 2K正文，60样本 | 0.55 ms | ≤50 ms | PASS |
+| SQLite自动保存事务 | 2K正文，40样本 | 3.48 ms | ≤150 ms | PASS |
+| Candidate Diff结构首屏 | 5000字，20样本 | 0.39 ms | <500 ms | PASS |
+| Candidate Diff完整计算 | 5000字，20样本 | 3.39 ms | <1200 ms | PASS |
+| FTS查询 | 1,563,300字符，30样本 | 8.33 ms | ≤200 ms | PASS |
+| FTS重建 | 1,563,300字符 | 204.02 ms | <10,000 ms | PASS |
 
-受检Head edbf5f5699f280d13d58f255c76f4cb0f20cb617：Quality #2239（run 30331129812）、Security #2029（run 30331129677）、Performance #1995（run 30331129670）、PR Policy #1987、Task Governance #2208、Repository Governance #714、Evidence #1958。Windows工件8677430016 / sha256:f31af865d2f3132190fab55d8c7f4cf8b21a08a5c3d328ee76e38d6ecba94fd6；macOS工件8677423295 / sha256:2e3475e1af33342c0a3a2633bd153a1f2a6ab567a1d626a5656aedda56da26cf；Linux工件8677423591 / sha256:d0f6fe62bcb0b540989d838e591f1e8ca18f3e373c1f08e7ab3b384a3cecaf94；Electron E2E工件8677728424 / sha256:1c3db5bdcd9f5cba20d1e8051e28da6bbba2a7b452c870cc8c8542efd4237872。前次Quality #2238在27/28通过时暴露<option> matcher语义差异；DOM已有disabled，edbf5f5改为校验原生属性后由#2239复核。
+上述数字来自Linux x64 GitHub-hosted runner、Node v24.18.0，只作为自动化回归基线；不替代物理设备、真实多屏、长期运行、Renderer帧率或真实Provider延迟验收。原始数据见`performance.json`。
 
-## 性能记录
+## 前置C8自动化基线
 
-| 指标 | 结果 | 预算 | 结论 |
-|---|---:|---:|---|
-| - | - | - | 未记录 |
+- Quality #2239：Static、Unit、Integration、Migration、Coverage、Build和Electron E2E 28/28通过。
+- Security #2029：32个文件、94项安全测试通过。
+- Windows、macOS、Linux便携工件完成ASAR/Fuse/Hash与启动冒烟；不代表签名、公证或安装生命周期通过。
+- AI协议与确定性Fixture覆盖T0、T1、rewrite、merge、validate和state_extract；不代表真实模型质量通过。
+
+## 尚未关闭
+
+- 真实Provider账号、限流、成本、权限与多模型质量矩阵。
+- 物理2K 125/150%、21:9、混合DPI、真实多屏、读屏、IME、自定义字体和五分钟新手人工路径。
+- Windows代码签名、macOS签名/公证，以及三平台安装、升级、卸载；Linux生产sandbox和桌面集成。
+- 真实超大DOCX、中央目录与本地Header字段级交叉验证、平台文件系统差异。
+- 多进程或重复Core实例下日常备份持久化幂等。
+- Candidate全项目汇总和备份失败账本尚无现成权威查询；当前仲裁分别使用当前继续章节和已有恢复状态，不伪造全局完成。
+- 完整真实AI Electron单链路、长期运行、Renderer滚动帧率和Core事件循环阻塞报告。
+
+## 当前判断
+
+M8-02保持`In Progress`，PR #224保持Draft。自动化代码闭环已推进，但外部发布级P0仍存在，V1.0不得转`Verified`，不得生成正式发布。

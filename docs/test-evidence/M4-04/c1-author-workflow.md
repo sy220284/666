@@ -25,25 +25,31 @@ C1的新增纵向能力已经落到产品代码：
 - 面板切换保存只在Core确认成功后提交去重签名；失败或被替代的请求不污染已确认状态，同一状态保持可重提，并通过既有防抖保存路径做一次有界重试。
 - 上述面板协调修复属于C1收口，不代表C8已经启动。
 
-## C1后续并发硬化
+## C1继续写作并发硬化
 
-产品代码提交：`0987f2237911289f6d91f94498b3278cc82628ed`。
+产品代码提交：`42d7a682e3e1a26942fa9f4159d6123a8071350f`。
 
 - 同一项目的继续写作请求使用单通道串行执行；执行期间只保留最新待处理状态，中间状态以`stale`收口。
 - 不同项目使用独立通道，不发生跨项目阻塞。
 - 迟到成功、旧面板失败重试和旧Renderer闭包不得更新已确认状态。
 - `editor → versions → candidates`只继续提交最终待处理面板。
-- `editor → versions → editor`回切时重新排队已确认面板；即使`versions`已进入Core写入，后续`editor`恢复写入仍保证最终权威状态与作者当前面板一致。
+- 写作工作台父层持有最新面板意图；面板子工作台重建时，卸载或迟到保存会被重写为父层当前面板。
+- `editor → versions → editor`快速回切会排队最终`editor`写入，即使`versions`已经进入Core，最终权威状态仍与作者当前面板一致。
 - 畸形或缺失`projectId`的请求键不进入共享回退通道，避免无关请求相互串行或覆盖。
-- 新增可控Promise测试，验证真实执行顺序、最终Core写入、项目隔离和请求键降级。
+- 可控Promise单测覆盖执行顺序、最终Core写入、项目隔离和请求键降级。
+- Electron E2E `continuation-panel-race.spec.ts`已纳入Playwright正式清单，直接校验项目数据库最终`panel=editor`，并在关闭、重启后验证正文面板恢复。
 
 ## 验证结论
 
 C0—C7验收基线产品源`9131a6db1f43d97e52aaa867010a316998f860fb`的Quality #2198完整执行Static、Unit、Integration、Migration、Coverage、Build、Package Smoke与Electron E2E并全部成功；Security #1988、Performance #1954及治理门同步成功。
 
-C1并发硬化提交`0987f2237911289f6d91f94498b3278cc82628ed`已触发Quality #2208、Security #1998、Performance #1964、Evidence #1927、PR Policy #1956与Task Governance #2177；最终结果以该Head的GitHub Actions为准。
+C1并发硬化产品提交`42d7a682e3e1a26942fa9f4159d6123a8071350f`的永久门禁全部成功：
 
-C1基线验收通过；并发硬化进入当前产品Head，最终Ready前仍需绑定最终产品源并完成Electron E2E及统一Evidence复核。
+- Quality #2225：Static、Workspace/Boundary、Prettier、ESLint、TypeScript、Unit、Integration、Migration、Coverage、Build、Package Smoke与Electron E2E全部通过。
+- Security #2015、Performance #1981、Evidence #1944、PR Policy #1973、Task Governance #2194全部成功。
+- Electron E2E共27项通过，包含继续写作快速回切、数据库最终状态和重启恢复用例。
+
+C1继续写作并发硬化的自动化验收通过。M4-04仍保持Draft/In Progress；最终Ready前仍需绑定后续C8完成后的最终产品源并执行统一发布Evidence。
 
 ## 后续入口
 

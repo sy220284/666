@@ -16,7 +16,7 @@ pnpm typecheck
 pnpm exec vitest run tests/migration/state-validation-migration.test.ts
 pnpm test:migration
 
-# Quality #2198
+# C0—C7基线Quality #2198
 pnpm install --frozen-lockfile --prefer-offline
 pnpm task:validate
 pnpm check:workspaces
@@ -33,17 +33,17 @@ pnpm package
 pnpm test:e2e
 # 结论：全部成功
 
-# Security #1988
+# C0—C7基线Security #1988
 pnpm audit --audit-level=high
 pnpm test:security
 node scripts/scan-secrets.mjs --history
 # 结论：Dependency Audit、Application Security、全Git历史Secret Scan全部成功
 
-# Performance #1954
+# C0—C7基线Performance #1954
 pnpm test:perf
 # 结论：成功
 
-# 其他永久门禁
+# C0—C7基线其他永久门禁
 # Evidence #1917：成功
 # PR Policy #1946：成功
 # Task Governance #2167：成功
@@ -57,16 +57,28 @@ pnpm test:perf
 # 6. 非法历史记录不被静默删除或改写
 
 # C1继续写作并发硬化产品提交
-git show --stat --oneline 0987f2237911289f6d91f94498b3278cc82628ed
-pnpm exec prettier --check apps/desktop/renderer/src/features/writing/continuation-persistence.ts tests/unit/renderer-continuation-request-coordination.test.ts
+git show --stat --oneline 42d7a682e3e1a26942fa9f4159d6123a8071350f
+pnpm exec prettier --check apps/desktop/renderer/src/bridge/request-lifecycle.ts apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-workbench.tsx tests/unit/renderer-continuation-request-coordination.test.ts tests/e2e/continuation-panel-race.spec.ts tests/e2e/playwright.config.ts
 pnpm exec vitest run tests/unit/renderer-continuation-persistence.test.ts tests/unit/renderer-continuation-request-coordination.test.ts
 pnpm test:unit
-pnpm typecheck
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
 pnpm lint
-# 自动化结果由Quality #2208及同Head永久门禁记录；禁止将排队或执行中写成成功。
+pnpm typecheck
+pnpm build
+pnpm package
+pnpm test:e2e
+# Quality #2225：全部成功；Electron E2E 27/27通过，包含继续写作回切数据库与重启恢复用例。
+# Security #2015：成功
+# Performance #1981：成功
+# Evidence #1944：成功
+# PR Policy #1973：成功
+# Task Governance #2194：成功
 
 # 当前结论
 # C0—C7验收基线工程实现与自动化验收通过。
-# C1继续写作并发硬化已进入产品Head，最终Ready前重新绑定最终产品源和Evidence。
+# C1继续写作并发硬化自动化验收通过。
+# Evidence Manifest仍绑定C0—C7基线；最终Ready前重新绑定C8完成后的最终产品源。
 # C8尚未开始。
 # M4-04继续保持Draft/In Progress，待C8、真实平台/P0人工验收和最终Evidence。

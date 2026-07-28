@@ -1,0 +1,24 @@
+pnpm test:unit
+exit=0 duration_ms=10730 fixtures=quality-2239-unit
+
+pnpm test:integration
+exit=0 duration_ms=28120 fixtures=quality-2239-integration
+
+pnpm test:migration
+exit=0 duration_ms=8210 fixtures=quality-2239-migration
+
+pnpm test:coverage
+exit=0 duration_ms=60420 fixtures=quality-2239-coverage
+
+pnpm test:security
+exit=0 duration_ms=6160 fixtures=security-2029
+
+pnpm test:perf
+exit=0 duration_ms=4050 fixtures=performance-1995-budget
+
+pnpm test:eval
+exit=0 duration_ms=1650 fixtures=performance-1995-ai-protocol
+
+pnpm test:e2e
+exit=0 duration_ms=720000 fixtures=quality-2239-electron
+

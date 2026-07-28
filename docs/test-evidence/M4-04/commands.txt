@@ -1,6 +1,6 @@
 # M4-04 C0—C7最终收口
 
-# 产品源提交
+# C0—C7验收基线产品源
 git rev-parse HEAD
 # 9131a6db1f43d97e52aaa867010a316998f860fb
 
@@ -56,7 +56,17 @@ pnpm test:perf
 # 5. 四个Schema 28触发器在失败路径中不落地
 # 6. 非法历史记录不被静默删除或改写
 
+# C1继续写作并发硬化产品提交
+git show --stat --oneline 0987f2237911289f6d91f94498b3278cc82628ed
+pnpm exec prettier --check apps/desktop/renderer/src/features/writing/continuation-persistence.ts tests/unit/renderer-continuation-request-coordination.test.ts
+pnpm exec vitest run tests/unit/renderer-continuation-persistence.test.ts tests/unit/renderer-continuation-request-coordination.test.ts
+pnpm test:unit
+pnpm typecheck
+pnpm lint
+# 自动化结果由Quality #2208及同Head永久门禁记录；禁止将排队或执行中写成成功。
+
 # 当前结论
-# C0—C7工程实现与自动化验收通过。
+# C0—C7验收基线工程实现与自动化验收通过。
+# C1继续写作并发硬化已进入产品Head，最终Ready前重新绑定最终产品源和Evidence。
 # C8尚未开始。
 # M4-04继续保持Draft/In Progress，待C8、真实平台/P0人工验收和最终Evidence。

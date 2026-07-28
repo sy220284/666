@@ -49,6 +49,7 @@ required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md
+  - docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/product/FUNCTION_CATALOG.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md

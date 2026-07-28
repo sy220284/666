@@ -2,15 +2,16 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3与M4-01—M4-04，共34张独立任务卡。  
-> 当前执行：M4-04为V1剩余功能唯一整体任务；原M4-05—M8-03已吸收为需求来源，不再独立激活。
+> 独立任务体系：M0—M3、M4-01—M4-04与M8-02，共35张独立任务卡。  
+> 当前执行：M4-04完成C0—C7与C1并发硬化；M8-02承接延期C8，保持Planned。
 
 ## 1. 唯一执行入口
 
 1. [`ACTIVE_TASK.json`](ACTIVE_TASK.json)：机器可读的唯一活动任务状态与授权。
 2. [`ACTIVE_TASK.md`](ACTIVE_TASK.md)：由JSON生成的人类可读镜像。
-3. [`M4/M4-04_PROMPT_REGISTRY_OUTPUT.md`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)：唯一整体任务卡，包含整体规划门、内部阶段和被吸收要求。
-4. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
+3. 当前活动任务卡：[`M4/M4-04_PROMPT_REGISTRY_OUTPUT.md`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)。
+4. 延期C8任务卡：[`M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)。
+5. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
 
@@ -19,7 +20,7 @@ Planned → In Progress → Implemented → Verified
 Blocked / Deferred / Removed
 ```
 
-`Removed（absorbed by M4-04）`只取消原任务的独立执行形式，不取消其需求、测试和验收要求。
+`Removed（absorbed）`只取消原任务的独立执行形式，不取消其需求、测试和验收要求。
 
 ## 2. 执行总览
 
@@ -29,15 +30,19 @@ Blocked / Deferred / Removed
 | M1 | 基础写作MVP | 9 | Verified |
 | M2 | 编辑安全与版本核心 | 4 | Verified |
 | M3 | 规划、设定与连续性 | 10 | Verified |
-| M4 | 已完成AI基础 + V1剩余整体交付 | 4 | M4-01—M4-03 Verified；M4-04 In Progress |
-| 原M5—M8 | AI写作、校验交付、体验整合、发布验收 | 0 | 全部作为M4-04内部实施阶段与需求来源 |
+| M4 | AI基础与V1核心功能 | 4 | M4-01—M4-03 Verified；M4-04 In Progress |
+| M8 | C8完整体验、硬化与发布关闭 | 1 | M8-02 Planned |
+| 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 | 0 | 作为M4-04需求来源 |
+| 原M7-01—M8-03 | 体验整合、硬化与发布验收 | 0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
 ```text
 M0—M3 已完成产品底座
 → M4-01 FTS
 → M4-02 约束包
 → M4-03 Provider
-→ M4-04 V1剩余功能整体实施与发布闭环
+→ M4-04 C0—C7核心功能交付
+→ Implementation Hold
+→ M8-02 C8延期任务（作者后续明确启动）
 ```
 
 ## M0 工程、安全与运行底座
@@ -56,7 +61,7 @@ M0—M3 已完成产品底座
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M1-01 | [`app.sqlite、应用设置与最近项目`](M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md) | M0 | Verified |
+| M1-01 | [`app.sqlite、应用设置与最近项目`](M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md) | 无 | Verified |
 | M1-02 | [`项目工作空间、路径边界与只读打开`](M1/M1-02_PROJECT_WORKSPACE_PATHS.md) | M1-01 | Verified |
 | M1-03 | [`卷与章节基础生命周期`](M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md) | M1-02 | Verified |
 | M1-04 | [`Draft、Tiptap与中文输入`](M1/M1-04_DRAFT_EDITOR_IME.md) | M1-03 | Verified |
@@ -90,18 +95,24 @@ M0—M3 已完成产品底座
 | M3-09 | [`Renderer规划、设定、结构与数据工具迁移`](M3/M3-09_RENDERER_PLANNING_CANON_STRUCTURE.md) | M3-08 | Verified |
 | M3-10 | [`Renderer写作、Version、Candidate迁移与旧入口退役`](M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md) | M3-09 | Verified |
 
-## M4 已完成AI基础与唯一整体任务
+## M4 AI基础与V1核心功能
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
 | M4-01 | [`FTS5公共索引、队列与项目词典`](M4/M4-01_FTS_INDEX_DICTIONARY.md) | M3 | Verified |
 | M4-02 | [`P0—P4约束包与裁剪追溯`](M4/M4-02_CONSTRAINT_PACKAGE.md) | M4-01、M3-06 | Verified |
 | M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md) | M3、M0-02、M0-04、M0-05 | Verified |
-| M4-04 | [`V1剩余功能整体实施与发布闭环`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-01、M4-02、M4-03、M0-07 | In Progress |
+| M4-04 | [`V1核心功能整体实施`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-01、M4-02、M4-03、M0-07 | In Progress |
 
-## 3. 已吸收的需求来源
+## M8 C8延期任务
 
-以下文件不参与机器任务解析和活动任务切换；其完整要求由M4-04任务卡逐项吸收。
+| ID | 任务卡 | 依赖 | 状态 |
+|---|---|---|---|
+| M8-02 | [`C8完整体验、硬化与发布关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | Planned |
+
+## 3. 被吸收的需求来源
+
+以下文件不参与机器任务解析和活动任务切换；完整要求由对应整体任务承接。
 
 | 原ID | 来源文件 | 原阶段 | 独立执行状态 | 统一归属 |
 |---|---|---|---|---|
@@ -119,29 +130,24 @@ M0—M3 已完成产品底座
 | M6-04 | [`网文节奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md) | M6 | Removed（absorbed） | M4-04 |
 | M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md) | M6 | Removed（absorbed） | M4-04 |
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md) | M6 | Removed（absorbed） | M4-04 |
-| M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md) | M7 | Removed（absorbed） | M4-04 |
-| M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md) | M7 | Removed（absorbed） | M4-04 |
-| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md) | M7 | Removed（absorbed） | M4-04 |
-| M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md) | M8 | Removed（absorbed） | M4-04 |
-| M8-02 | [`性能、E2E、显示与AI Eval验收`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M8 | Removed（absorbed） | M4-04 |
-| M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | M8 | Removed（absorbed） | M4-04 |
+| M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md) | M7 | Removed（absorbed） | M8-02 |
+| M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md) | M7 | Removed（absorbed） | M8-02 |
+| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md) | M7 | Removed（absorbed） | M8-02 |
+| M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md) | M8 | Removed（absorbed） | M8-02 |
+| M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | M8 | Removed（absorbed） | M8-02 |
 
-## 4. 整体任务阶段门
+## 4. 阶段门
 
-1. M4-04编码前必须完成整体实施计划，逐项核实全部需求、代码、测试、Migration、IPC和追踪状态。
-2. 已完成任务卡、历史Evidence和历史Migration保持冻结；兼容扩展由M4-04承接。
-3. M4-04内部阶段不得建立独立活动任务、正式功能PR或旁路状态。
-4. 每项用户功能必须完成Contracts→Core→Main→Preload→Renderer→测试的实际纵向闭环；无影响层必须明确记录。
-5. 共享Prompt、TaskProtocol、Candidate采用、导入协调器、RecoveryService、模式状态和主题状态只允许一个真源。
-6. 内部阶段合并前不允许出现需依赖后续阶段才能恢复、迁移或解释的数据。
-7. 长期PR在全部功能完成前保持Draft；全部V1功能、测试、文档和证据完成后才能转Ready。
-8. M4-04是V1最终任务；Verified关闭后不自动激活下一任务。
+1. M4-04只关闭C0—C7及其阶段硬化，不包含C8最终发布范围。
+2. M4-04完成后使用Implementation Hold：M4-04标记Implemented，M8-02保持Planned，禁止自动激活。
+3. M8-02只有在作者明确指令下才能转In Progress并建立独立分支与PR。
+4. M8-02启动时必须重新读取M7-01—M8-03全部来源、V6.5规格、P0矩阵及M4-04已交付Evidence。
+5. M8-02完成真实平台、真实Provider、P0和发布Evidence后，才可执行最终Verified关闭。
 
-## 5. 执行规则
+## 5. 状态原则
 
-1. 正式分支：`work/m4-04-v1-integrated-delivery`。
-2. 正式PR：一个长期Draft PR，最终只保留一个受检Head。
-3. 内部阶段使用原子提交组；每组完成后复查真实Head、运行受影响测试并更新整体计划。
-4. M4-04允许路径由`ACTIVE_TASK.json`统一授权；已完成任务卡列入禁止路径。
-5. 最终证据统一保存到`docs/test-evidence/M4-04/`，原被吸收任务不再独立关闭。
-6. M4-04完成后一次性同步追踪矩阵、P0矩阵、功能目录、README、发布和恢复文档。
+- 已Verified任务卡和历史Migration保持冻结。
+- Implemented表示工程实现已进入main但统一验证或后续任务仍延期。
+- Planned任务不得因前置任务合并而自动开始。
+- Evidence必须绑定真实受检Head，不得沿用旧Head或把执行中写成成功。
+- main只接受通过Ready模式永久门禁和合并后验证的受控PR。

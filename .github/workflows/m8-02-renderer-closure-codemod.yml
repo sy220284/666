@@ -54,10 +54,28 @@ jobs:
           tests/unit/ai-readiness.test.ts
           tests/unit/workspace-attention.test.ts
       - name: Verify Renderer closure
+        id: verify
+        shell: bash
         run: |
-          pnpm typecheck
-          pnpm exec vitest run tests/unit/ai-readiness.test.ts tests/unit/workspace-attention.test.ts tests/unit/status-arbitrator.test.ts
+          set +e
+          pnpm typecheck > renderer-closure-verification.log 2>&1
+          typecheck_status=$?
+          pnpm exec vitest run tests/unit/ai-readiness.test.ts tests/unit/workspace-attention.test.ts tests/unit/status-arbitrator.test.ts >> renderer-closure-verification.log 2>&1
+          test_status=$?
+          cat renderer-closure-verification.log
+          if [ "$typecheck_status" -ne 0 ] || [ "$test_status" -ne 0 ]; then
+            exit 1
+          fi
+      - name: Upload failed verification log
+        if: failure() && steps.verify.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: m8-02-renderer-closure-verification
+          path: renderer-closure-verification.log
+          if-no-files-found: error
+          retention-days: 3
       - name: Commit verified closure
+        if: success()
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com

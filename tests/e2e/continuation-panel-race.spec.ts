@@ -96,7 +96,10 @@ test('persists the final editor panel after a rapid versions round trip and rest
       .toBe('editor');
 
     await page.locator('[data-open-versions]').click();
-    await page.getByRole('button', { name: '正文', exact: true }).click();
+    await page
+      .locator('.feature-heading__actions')
+      .getByRole('button', { name: '正文', exact: true })
+      .click();
 
     await expect
       .poll(() => continuationPanel(path.join(workspace, 'project.sqlite')), { timeout: 5_000 })
@@ -117,7 +120,11 @@ test('persists the final editor panel after a rapid versions round trip and rest
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-open-recent]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.getByRole('button', { name: '正文', exact: true })).toHaveClass(/is-active/u);
+    await expect(
+      page
+        .locator('.feature-heading__actions')
+        .getByRole('button', { name: '正文', exact: true }),
+    ).toHaveClass(/is-active/u);
   } finally {
     await closeGracefully(reopened);
   }

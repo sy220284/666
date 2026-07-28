@@ -35,26 +35,50 @@ jobs:
           node-version: 24
           cache: pnpm
       - name: Apply deterministic codemod
-        run: node scripts/m8-02-backup-failure-ledger-codemod.mjs
+        shell: bash
+        run: |
+          mkdir -p test-results/codemod
+          set -o pipefail
+          node scripts/m8-02-backup-failure-ledger-codemod.mjs 2>&1 | tee test-results/codemod/codemod.log
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Format and verify vertical closure
+        shell: bash
         run: |
-          pnpm exec prettier --write \
-            migrations/project/0029_backup_failure_ledger.sql \
-            packages/contracts/src/recovery.ts \
-            packages/core-service/src/recovery.ts \
-            apps/desktop/renderer/src/runtime/workspace-attention.ts \
-            apps/desktop/renderer/src/app/app-shell-m3.tsx \
-            tests/unit/workspace-attention.test.ts \
-            tests/migration/backup-failure-ledger-migration.test.ts \
-            tests/integration/recovery-failure-ledger.test.ts \
-            tests/migration/*.test.ts \
-            docs/database/DATABASE_SCHEMA.md
-          pnpm typecheck
-          pnpm exec vitest run \
-            tests/migration/backup-failure-ledger-migration.test.ts \
-            tests/integration/recovery-failure-ledger.test.ts \
-            tests/unit/workspace-attention.test.ts
+          mkdir -p test-results/codemod
+          set -o pipefail
+          {
+            pnpm exec prettier --write \
+              migrations/project/0029_backup_failure_ledger.sql \
+              packages/contracts/src/recovery.ts \
+              packages/core-service/src/recovery.ts \
+              apps/desktop/renderer/src/runtime/workspace-attention.ts \
+              apps/desktop/renderer/src/app/app-shell-m3.tsx \
+              tests/unit/workspace-attention.test.ts \
+              tests/migration/backup-failure-ledger-migration.test.ts \
+              tests/integration/recovery-failure-ledger.test.ts \
+              tests/migration/*.test.ts \
+              docs/database/DATABASE_SCHEMA.md
+            pnpm typecheck
+            pnpm exec vitest run \
+              tests/migration/backup-failure-ledger-migration.test.ts \
+              tests/integration/recovery-failure-ledger.test.ts \
+              tests/unit/workspace-attention.test.ts
+          } 2>&1 | tee test-results/codemod/verification.log
+      - name: Capture failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p test-results/codemod
+          git status --short > test-results/codemod/git-status.txt
+          git diff --no-ext-diff > test-results/codemod/git-diff.patch
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m8-02-backup-failure-ledger-${{ github.run_id }}
+          path: test-results/codemod/
+          if-no-files-found: error
+          retention-days: 7
       - name: Commit verified closure
         run: |
           git config user.name github-actions[bot]

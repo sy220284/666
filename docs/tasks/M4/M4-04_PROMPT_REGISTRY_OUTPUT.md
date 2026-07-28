@@ -1,6 +1,6 @@
 # M4-04 WorldForge V1核心功能整体实施
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M4—M6 V1核心功能交付  
 > 优先级：P0  
 > 最终任务：否  

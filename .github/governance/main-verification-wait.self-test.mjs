@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { stdout } from 'node:process';
 
 import { waitForSourceReadyChecks } from '../../scripts/main-verification.mjs';
 
@@ -94,4 +95,4 @@ await assert.rejects(
   /Timed out waiting for source PR permanent checks: quality \/ quality/u,
 );
 
-console.log('Main verification wait self-test passed.');
+stdout.write('Main verification wait self-test passed.\n');

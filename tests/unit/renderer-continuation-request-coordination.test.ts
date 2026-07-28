@@ -62,7 +62,9 @@ describe('M4-04 continuation request coordination', () => {
       'utf8',
     );
 
-    expect(source).toContain('const desiredPanelRef = useRef<WritingPanel>(props.panel);');
+    expect(source).toContain(
+      'const desiredPanelRef = useRef<WritingPanel>(props.panel);',
+    );
     expect(source).toContain('continuationInputForPanel(snapshot, panel)');
     expect(source).toContain('{ ...input, panel: getDesiredPanel() }');
     expect(source).toContain('key={`${props.project.projectId}:${props.panel}`}');

@@ -61,6 +61,7 @@ required_docs:
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/product/FUNCTION_CATALOG.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
+  - docs/product/SELF_USE_RELEASE_POLICY.md
   - docs/testing/P0_ACCEPTANCE_MATRIX.md
   - docs/testing/PERFORMANCE_BUDGETS.md
   - docs/ui/UI_ACCEPTANCE_CHECKLIST.md

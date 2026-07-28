@@ -77,9 +77,11 @@ M8-02是当前唯一活动任务，负责：
 - Theme A安静编辑部、Theme B水墨印章。
 - 1280×800、2K、21:9和混合DPI支持。
 - 键盘、焦点、减少动态和无障碍。
-- 安全诊断、性能、Electron E2E、真实AI Eval和Windows/macOS/Linux发布验收。
+- 安全诊断、性能、Electron E2E、AI Eval和Windows/macOS/Linux自用便携工件验收。
 
-当前C8产品代码已进入跨平台自动化验收，首次使用、统一工作台、主题、诊断包和三平台原生工件均已实现。真实Provider/Model质量矩阵、物理混合DPI与多屏、人工读屏与输入法、签名/公证以及安装/升级/卸载仍缺少发布证据，因此M8-02保持`In Progress`，当前结论为`禁止发布`。详细状态见`docs/test-evidence/M8-02/`。
+V1.0仅供仓库所有者本人使用。交付形态为三平台便携包，要求原生构建、ASAR/Fuse/Hash、启动、既有项目兼容和本地数据安全。Windows代码签名、macOS签名/公证、系统安装器以及安装/升级/卸载生命周期已经移出V1.0范围，不再阻断M8-02关闭。完整边界见[`docs/product/SELF_USE_RELEASE_POLICY.md`](./docs/product/SELF_USE_RELEASE_POLICY.md)。
+
+当前C8产品代码已经进入最终自动化验收。真实Provider/Model质量、物理混合DPI与多屏、人工读屏与输入法、超大DOCX、多进程备份幂等和长期性能仍按实际资源与任务清单推进。未验证能力必须如实记录，但不得与已经取消的公开分发要求混淆。
 
 ## 核心数据关系
 
@@ -134,7 +136,7 @@ M0—M3 已完成
 → M4-02 约束包 已完成
 → M4-03 Provider 已完成
 → M4-04 C0—C7核心功能已Implemented
-→ M8-02 C8完整体验、硬化与发布关闭进行中
+→ M8-02 C8完整体验、硬化与自用便携交付关闭进行中
 ```
 
 M4-04吸收原M4-05—M6-06；M8-02吸收原M7-01—M7-03、M8-01和M8-03。M8-02采用：
@@ -168,11 +170,11 @@ AGENTS.md
 
 当前活动任务：
 
-[`M8-02 C8完整体验、硬化与发布关闭`](./docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)
+[`M8-02 C8完整体验、硬化与自用交付关闭`](./docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 
-## 发布工具
+## 自用发布工具
 
 发布配置使用GitHub Actions手工触发，默认创建Draft Release。发布前可在本地检查配置：
 
@@ -180,13 +182,21 @@ AGENTS.md
 pnpm release:check
 ```
 
-真实发布只允许从`main`执行。M8-02未Verified或P0、跨平台、数据安全与恢复门未关闭时，发布入口必须明确失败，不能提前分发未完成版本。
+Release只允许从`main`执行，且M8-02必须达到`Verified`。V1.0生成的Windows、macOS和Linux工件仅供仓库所有者本人使用：
+
+- 工件可以未签名、未公证。
+- 不提供系统安装器、自动更新和安装生命周期保证。
+- Windows或macOS出现安全警告时由仓库所有者本人确认。
+- 不得将自用工件描述为适合公开分发、企业部署或应用商店发布。
+
+签名、公证和安装器未来只有在决定对第三方分发时才重新立项。
 
 ## 关键文档
 
 - [`docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`](./docs/product/WORLDFORGE_V6.5_FULL_SPEC.md)：完整产品与架构基线。
 - [`docs/product/FUNCTION_CATALOG.md`](./docs/product/FUNCTION_CATALOG.md)：全功能清单。
 - [`docs/product/V1_SCOPE_AND_ACCEPTANCE.md`](./docs/product/V1_SCOPE_AND_ACCEPTANCE.md)：版本范围。
+- [`docs/product/SELF_USE_RELEASE_POLICY.md`](./docs/product/SELF_USE_RELEASE_POLICY.md)：V1.0自用便携交付边界。
 - [`docs/INDEX.md`](./docs/INDEX.md)：文档总索引。
 - [`docs/PROJECT_EXECUTION_ENTRY.md`](./docs/PROJECT_EXECUTION_ENTRY.md)：执行统一入口。
 - [`docs/decisions/IMPLEMENTATION_DECISIONS.md`](./docs/decisions/IMPLEMENTATION_DECISIONS.md)：冻结实现决策。
@@ -208,4 +218,4 @@ V1.5在V1.0真实作者使用后单独立项：
 
 ## 许可证
 
-当前方案基线采用AGPL-3.0。正式发布前完成第三方依赖和分发策略许可证审查。
+当前方案基线采用AGPL-3.0。若未来面向第三方分发，必须重新完成第三方依赖和分发策略许可证审查。

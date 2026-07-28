@@ -10,6 +10,8 @@ import {
   type ProjectCreateInput,
   type ProjectContinuationSnapshot,
   type ProjectWorkspaceSummary,
+  type ProviderConnectionTestResult,
+  type ProviderSummary,
   type RecentProject,
   type TaskSnapshot,
 } from '@worldforge/contracts';
@@ -37,7 +39,13 @@ import {
   type PrimaryNavigationId,
 } from '../shell/app-shell-model.js';
 import type { HomeHealthSignal } from '../shell/home-dashboard-model.js';
+import { resolveAiReadiness } from '../runtime/ai-readiness.js';
 import { RendererStatusArbitrator } from '../runtime/status-arbitrator.js';
+import {
+  EMPTY_WORKSPACE_ATTENTION,
+  loadWorkspaceAttention,
+  type WorkspaceAttention,
+} from '../runtime/workspace-attention.js';
 import type { RendererRouteId } from '../state/ui-state-boundary.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 
@@ -66,7 +74,12 @@ export function AppShell({ bridge }: AppShellProps) {
   );
   const [coreStatus, setCoreStatus] = useState<CoreStatus | null>(null);
   const [tasks, setTasks] = useState<readonly TaskSnapshot[]>([]);
-  const [providerAvailable, setProviderAvailable] = useState(false);
+  const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
+  const [verifiedProviderIds, setVerifiedProviderIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [workspaceAttention, setWorkspaceAttention] =
+    useState<WorkspaceAttention>(EMPTY_WORKSPACE_ATTENTION);
   const [onboardingRequest, setOnboardingRequest] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -79,6 +92,18 @@ export function AppShell({ bridge }: AppShellProps) {
   const disclosureMode: AppDisclosureMode = settings.defaultMode;
   const writingPanel: WritingPanel =
     route === 'versions' ? 'versions' : route === 'candidates' ? 'candidates' : 'editor';
+  const aiReadiness = useMemo(
+    () => resolveAiReadiness(providers, verifiedProviderIds),
+    [providers, verifiedProviderIds],
+  );
+
+  const applyProviders = useCallback((nextProviders: readonly ProviderSummary[]): void => {
+    setProviders(nextProviders);
+    const currentIds = new Set(nextProviders.map((provider) => provider.id));
+    setVerifiedProviderIds(
+      (current) => new Set([...current].filter((providerId) => currentIds.has(providerId))),
+    );
+  }, []);
 
   const refreshTasks = useCallback(async (): Promise<void> => {
     const outcome = await bridge.task.listActive(undefined, { mode: 'replace' });
@@ -147,11 +172,11 @@ export function AppShell({ bridge }: AppShellProps) {
     else nextFailure ??= failureFromOutcome('最近项目读取失败', recent);
 
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
-    if (providers.state === 'success') setProviderAvailable(providers.data.providers.length > 0);
+    if (providers.state === 'success') applyProviders(providers.data.providers);
     setFailure(nextFailure);
     setMessage(null);
     setHydrated(true);
-  }, [bridge, dispatch]);
+  }, [applyProviders, bridge, dispatch]);
 
   useEffect(() => {
     void refreshWorkspace();
@@ -165,6 +190,23 @@ export function AppShell({ bridge }: AppShellProps) {
     const unsubscribe = bridge.task.subscribe(() => void refreshTasks());
     return unsubscribe;
   }, [bridge, refreshTasks]);
+
+  const refreshWorkspaceAttention = useCallback(async (): Promise<void> => {
+    if (!activeProject) {
+      setWorkspaceAttention(EMPTY_WORKSPACE_ATTENTION);
+      return;
+    }
+    const next = await loadWorkspaceAttention(
+      bridge,
+      activeProject.projectId,
+      continuation?.chapterId ?? null,
+    );
+    setWorkspaceAttention(next);
+  }, [activeProject, bridge, continuation?.chapterId]);
+
+  useEffect(() => {
+    void refreshWorkspaceAttention();
+  }, [refreshWorkspaceAttention, route, tasks]);
 
   useEffect(() => {
     document.body.dataset.theme = settings.themeId;
@@ -356,7 +398,88 @@ export function AppShell({ bridge }: AppShellProps) {
         priority: 'P1',
         message: `${tasks.length}个后台任务正在运行，可在底部任务栏查看真实阶段或取消。`,
         persistence: 'transient',
-        createdAt: 2,
+        createdAt: 70,
+      });
+    }
+    if (workspaceAttention.searchStatus === 'rebuilding') {
+      arbitrator.publish({
+        id: 'search-rebuilding',
+        priority: 'P1',
+        message: '全文索引正在重建；写作保持可用，搜索结果将在完成后恢复完整。',
+        persistence: 'transient',
+        createdAt: 69,
+      });
+    }
+    if (workspaceAttention.partialCandidateCount > 0) {
+      arbitrator.publish({
+        id: 'candidate-partial',
+        priority: 'P2',
+        message: `当前章节有${workspaceAttention.partialCandidateCount}份中断候选待处理，不能直接定稿。`,
+        persistence: 'sticky',
+        createdAt: 60,
+      });
+    } else if (workspaceAttention.pendingCandidateCount > 0) {
+      arbitrator.publish({
+        id: 'candidate-pending',
+        priority: 'P2',
+        message: `当前章节有${workspaceAttention.pendingCandidateCount}份候选待作者审阅。`,
+        persistence: 'sticky',
+        createdAt: 59,
+      });
+    }
+    if (workspaceAttention.pendingProposalCount > 0) {
+      arbitrator.publish({
+        id: 'proposal-pending',
+        priority: 'P2',
+        message: `有${workspaceAttention.pendingProposalCount}条状态提案等待作者裁决；尚未写入权威状态。`,
+        persistence: 'sticky',
+        createdAt: 58,
+      });
+    }
+    if (workspaceAttention.openValidationCount > 0) {
+      arbitrator.publish({
+        id: 'validation-open',
+        priority: 'P2',
+        message: workspaceAttention.highValidationCount
+          ? `有${workspaceAttention.openValidationCount}项校验问题待处理，其中${workspaceAttention.highValidationCount}项为高优先级。`
+          : `有${workspaceAttention.openValidationCount}项校验问题待处理。`,
+        persistence: 'sticky',
+        createdAt: 57,
+      });
+    }
+    if (workspaceAttention.searchFailedCount > 0) {
+      arbitrator.publish({
+        id: 'search-failed',
+        priority: 'P2',
+        message: `全文索引有${workspaceAttention.searchFailedCount}项失败；权威数据未受影响，可重建索引。`,
+        persistence: 'sticky',
+        createdAt: 56,
+      });
+    } else if (workspaceAttention.searchStatus === 'stale') {
+      arbitrator.publish({
+        id: 'search-stale',
+        priority: 'P2',
+        message: '全文索引已过期；搜索可降级读取权威数据，建议重建索引。',
+        persistence: 'sticky',
+        createdAt: 55,
+      });
+    }
+    if (settings.creativePath === 'ai-first' && aiReadiness.status !== 'ready') {
+      arbitrator.publish({
+        id: 'ai-readiness',
+        priority: 'P2',
+        message: aiReadiness.message,
+        persistence: 'sticky',
+        createdAt: 54,
+      });
+    }
+    if (workspaceAttention.unavailableSources.length > 0) {
+      arbitrator.publish({
+        id: 'attention-unavailable',
+        priority: 'P3',
+        message: '部分工作区状态暂不可读取；未将失败查询误报为空状态。',
+        persistence: 'transient',
+        createdAt: 10,
       });
     }
     const missing = recentProjects.filter((project) => project.missingSince !== null).length;
@@ -366,7 +489,7 @@ export function AppShell({ bridge }: AppShellProps) {
         priority: 'P2',
         message: `${missing}个最近项目路径失效，可重新定位恢复入口。`,
         persistence: 'sticky',
-        createdAt: 1,
+        createdAt: 53,
       });
     }
     if (message) {
@@ -379,7 +502,53 @@ export function AppShell({ bridge }: AppShellProps) {
       });
     }
     return arbitrator.current();
-  }, [activeProject, coreStatus, failure, message, recentProjects, tasks]);
+  }, [
+    activeProject,
+    aiReadiness,
+    coreStatus,
+    failure,
+    message,
+    recentProjects,
+    settings.creativePath,
+    tasks,
+    workspaceAttention,
+  ]);
+
+  const globalStatusAction = useMemo(() => {
+    if (!globalStatus) return undefined;
+    if (globalStatus.id === 'failure' && failure?.retryable) {
+      return { label: '重新读取', run: () => void refreshWorkspace() };
+    }
+    if (globalStatus.id === 'read-only') {
+      return { label: '恢复与导出', run: () => void transitionToRoute('recovery') };
+    }
+    if (globalStatus.id === 'missing') {
+      return { label: '查看最近项目', run: () => navigate('home') };
+    }
+    if (globalStatus.id === 'candidate-partial' || globalStatus.id === 'candidate-pending') {
+      return { label: '审阅候选', run: () => void transitionToRoute('candidates') };
+    }
+    if (globalStatus.id === 'proposal-pending') {
+      return {
+        label: '裁决提案',
+        run: () => {
+          setCanonSection('continuity');
+          void transitionToRoute('canon');
+        },
+      };
+    }
+    if (
+      globalStatus.id === 'validation-open' ||
+      globalStatus.id === 'search-failed' ||
+      globalStatus.id === 'search-stale'
+    ) {
+      return { label: '打开检查', run: () => void transitionToRoute('checks') };
+    }
+    if (globalStatus.id === 'ai-readiness') {
+      return { label: '检查AI连接', run: () => navigate('settings') };
+    }
+    return undefined;
+  }, [failure, globalStatus, navigate, refreshWorkspace, transitionToRoute]);
 
   const createProject = async (input: ProjectCreateInput): Promise<boolean> => {
     setPendingKey('project.create');
@@ -501,6 +670,10 @@ export function AppShell({ bridge }: AppShellProps) {
   };
 
   const saveSettings = (update: AppSettingsUpdate): Promise<boolean> => {
+    if (update.creativePath === 'ai-first' && aiReadiness.status !== 'ready') {
+      setMessage('AI优先需要先在本次会话完成真实连接测试；离线创作功能保持可用。');
+      return Promise.resolve(false);
+    }
     const write = settingsWriteQueue.current.then(async () => {
       setPendingKey('settings.set');
       try {
@@ -770,15 +943,7 @@ export function AppShell({ bridge }: AppShellProps) {
         <main className="react-main">
           {globalStatus ? (
             <SafetyBanner
-              action={
-                globalStatus.id === 'failure' && failure?.retryable
-                  ? { label: '重新读取', run: () => void refreshWorkspace() }
-                  : globalStatus.id === 'read-only'
-                    ? { label: '恢复与导出', run: () => void transitionToRoute('recovery') }
-                    : globalStatus.id === 'missing'
-                      ? { label: '查看最近项目', run: () => navigate('home') }
-                      : undefined
-              }
+              action={globalStatusAction}
               diagnosticId={globalStatus.id === 'failure' ? (failure?.diagnosticId ?? null) : null}
               kind={
                 globalStatus.id === 'failure' || globalStatus.id === 'core'
@@ -834,7 +999,7 @@ export function AppShell({ bridge }: AppShellProps) {
               message={message}
               onboardingRequest={onboardingRequest}
               pendingKey={pendingKey}
-              providerAvailable={providerAvailable}
+              providerAvailable={aiReadiness.status === 'ready'}
               recentProjects={recentProjects}
               settings={settings}
               onCloseProject={(projectId) => void closeProject(projectId)}
@@ -871,6 +1036,18 @@ export function AppShell({ bridge }: AppShellProps) {
               message={message}
               pendingKey={pendingKey}
               settings={settings}
+              aiReady={aiReadiness.status === 'ready'}
+              onProvidersChanged={applyProviders}
+              onProviderConnectionVerified={(result: ProviderConnectionTestResult) => {
+                setVerifiedProviderIds((current) => new Set([...current, result.providerId]));
+              }}
+              onProviderInvalidated={(providerId) => {
+                setVerifiedProviderIds((current) => {
+                  const next = new Set(current);
+                  next.delete(providerId);
+                  return next;
+                });
+              }}
               onClose={() => {
                 navigate('home');
                 window.requestAnimationFrame(() => settingsTrigger.current?.focus());
@@ -946,7 +1123,10 @@ export function AppShell({ bridge }: AppShellProps) {
                       : 'writing',
                 )
               }
-              onStatus={setMessage}
+              onStatus={(nextMessage) => {
+                setMessage(nextMessage);
+                void refreshWorkspaceAttention();
+              }}
             />
           ) : null}
 

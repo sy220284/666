@@ -11,6 +11,9 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 
 export interface ProviderSettingsProps {
   readonly bridge: RendererBridgeAdapter;
+  readonly onProvidersChanged: (providers: readonly ProviderSummary[]) => void;
+  readonly onProviderConnectionVerified: (result: ProviderConnectionTestResult) => void;
+  readonly onProviderInvalidated: (providerId: string) => void;
 }
 
 const EMPTY_CONFIG: ProviderEditableConfig = {
@@ -23,7 +26,12 @@ const EMPTY_CONFIG: ProviderEditableConfig = {
   options: {},
 };
 
-export function ProviderSettings({ bridge }: ProviderSettingsProps) {
+export function ProviderSettings({
+  bridge,
+  onProvidersChanged,
+  onProviderConnectionVerified,
+  onProviderInvalidated,
+}: ProviderSettingsProps) {
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
   const [draft, setDraft] = useState<ProviderEditableConfig>(EMPTY_CONFIG);
   const [credential, setCredential] = useState('');
@@ -37,6 +45,7 @@ export function ProviderSettings({ bridge }: ProviderSettingsProps) {
     const outcome = await bridge.providers.list({ mode: 'replace' });
     if (outcome.state === 'success') {
       setProviders(outcome.data.providers);
+      onProvidersChanged(outcome.data.providers);
       setMessage(
         outcome.data.providers.length ? nullMessage() : '尚未配置AI服务；离线写作功能不受影响。',
       );
@@ -90,6 +99,7 @@ export function ProviderSettings({ bridge }: ProviderSettingsProps) {
     setCredential('');
     setRemoveCredential(false);
     if (outcome.state === 'success') {
+      onProviderInvalidated(outcome.data.id);
       setDraft({
         id: outcome.data.id,
         name: outcome.data.name,
@@ -117,6 +127,7 @@ export function ProviderSettings({ bridge }: ProviderSettingsProps) {
     setPending(null);
     setDeleteArmed(null);
     if (outcome.state === 'success') {
+      onProviderInvalidated(provider.id);
       if (draft.id === provider.id) reset();
       await refresh();
       setMessage(
@@ -135,6 +146,7 @@ export function ProviderSettings({ bridge }: ProviderSettingsProps) {
     setPending(null);
     if (outcome.state === 'success') {
       setTestResult(outcome.data);
+      onProviderConnectionVerified(outcome.data);
       setMessage(`连接成功：${outcome.data.actualModel}，${outcome.data.latencyMs}ms。`);
     } else if (outcome.state === 'failure') {
       setMessage(`${outcome.error.message}（${outcome.error.code}）`);

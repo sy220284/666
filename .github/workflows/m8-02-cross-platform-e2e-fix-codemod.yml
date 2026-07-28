@@ -37,20 +37,38 @@ jobs:
       - name: Verify source and Linux Electron regression
         shell: bash
         run: |
-          pnpm exec prettier --write \
-            apps/desktop/renderer/src/features/home/home-page.tsx \
-            apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
-            tests/e2e/electron-shell.spec.ts \
-            .github/workflows/m8-02-remaining-validation.yml
-          pnpm lint
-          pnpm typecheck
-          pnpm exec vitest run \
-            tests/unit/electron-e2e-runner.test.ts \
-            tests/unit/renderer-m3-09-workbenches.test.ts
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
-          pnpm build
-          node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
+          mkdir -p test-results/m8-02-cross-platform
+          set -o pipefail
+          {
+            pnpm exec prettier --write \
+              apps/desktop/renderer/src/features/home/home-page.tsx \
+              apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
+              tests/e2e/electron-shell.spec.ts \
+              .github/workflows/m8-02-remaining-validation.yml
+            pnpm lint
+            pnpm typecheck
+            pnpm exec vitest run \
+              tests/unit/electron-e2e-runner.test.ts \
+              tests/unit/renderer-m3-09-workbenches.test.ts
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+            pnpm build
+            node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
+          } 2>&1 | tee test-results/m8-02-cross-platform/verification.log
+      - name: Capture failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          git status --short > test-results/m8-02-cross-platform/git-status.txt
+          git diff --no-ext-diff > test-results/m8-02-cross-platform/git-diff.patch
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m8-02-cross-platform-fix-${{ github.run_id }}
+          path: test-results/m8-02-cross-platform/
+          if-no-files-found: error
+          retention-days: 7
       - name: Commit verified fixes
         run: |
           git config user.name github-actions[bot]

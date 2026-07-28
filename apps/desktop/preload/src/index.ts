@@ -240,7 +240,7 @@ type CandidateBridge = {
     readonly createFixture: (
       input: CandidateCreateFixtureInput,
     ) => Promise<CommandResult<CandidateDocument>>;
-    readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
+    readonly list: (projectId: string, chapterId?: string) => Promise<CommandResult<CandidateList>>;
     readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
     readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
     readonly editSkeleton: (
@@ -881,7 +881,10 @@ const bridge: WorldforgeBridge & CandidateBridge = {
       invoke(
         CANDIDATE_IPC_CHANNELS.listCandidates,
         CandidateListCommandSchema.parse(
-          envelope(CANDIDATE_COMMANDS.listCandidates, { projectId, chapterId }),
+          envelope(CANDIDATE_COMMANDS.listCandidates, {
+            projectId,
+            ...(chapterId ? { chapterId } : {}),
+          }),
         ),
         CandidateListResultSchema,
       ),

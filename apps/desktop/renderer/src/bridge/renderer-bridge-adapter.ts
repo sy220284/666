@@ -68,7 +68,7 @@ interface CandidateBridgePort {
   readonly createFixture: (
     input: CandidateCreateFixtureInput,
   ) => Promise<CommandResult<CandidateDocument>>;
-  readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
+  readonly list: (projectId: string, chapterId?: string) => Promise<CommandResult<CandidateList>>;
   readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
   readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
   readonly editSkeleton: (

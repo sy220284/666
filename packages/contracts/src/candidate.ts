@@ -137,6 +137,11 @@ export const CandidateListSchema = z.strictObject({
   candidates: z.array(CandidateSummarySchema),
 });
 
+export const CandidateListInputSchema = z.strictObject({
+  projectId: ProjectIdSchema,
+  chapterId: DraftEntityIdSchema.optional(),
+});
+
 export const CandidateChapterInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   chapterId: DraftEntityIdSchema,
@@ -177,7 +182,7 @@ export const CandidateCreateFixtureCommandSchema = z.strictObject({
 export const CandidateListCommandSchema = z.strictObject({
   ...commandEnvelope,
   command: z.literal(CANDIDATE_COMMANDS.listCandidates),
-  payload: CandidateChapterInputSchema,
+  payload: CandidateListInputSchema,
 });
 
 export const CandidateGetCommandSchema = z.strictObject({
@@ -227,7 +232,7 @@ export const CoreCandidateOperationSchema = z.discriminatedUnion('operation', [
   }),
   z.strictObject({
     operation: z.literal(CANDIDATE_COMMANDS.listCandidates),
-    input: CandidateChapterInputSchema,
+    input: CandidateListInputSchema,
   }),
   z.strictObject({
     operation: z.literal(CANDIDATE_COMMANDS.getCandidate),
@@ -289,6 +294,7 @@ export type ProseCandidateDocument = z.infer<typeof ProseCandidateDocumentSchema
 export type SkeletonCandidateSummary = z.infer<typeof SkeletonCandidateSummarySchema>;
 export type SkeletonCandidateDocument = z.infer<typeof SkeletonCandidateDocumentSchema>;
 export type CandidateList = z.infer<typeof CandidateListSchema>;
+export type CandidateListInput = z.infer<typeof CandidateListInputSchema>;
 export type CandidateChapterInput = z.infer<typeof CandidateChapterInputSchema>;
 export type CandidateCreateFixtureInput = z.infer<typeof CandidateCreateFixtureInputSchema>;
 export type CandidateGetInput = z.infer<typeof CandidateGetInputSchema>;

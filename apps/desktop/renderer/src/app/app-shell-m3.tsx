@@ -196,13 +196,9 @@ export function AppShell({ bridge }: AppShellProps) {
       setWorkspaceAttention(EMPTY_WORKSPACE_ATTENTION);
       return;
     }
-    const next = await loadWorkspaceAttention(
-      bridge,
-      activeProject.projectId,
-      continuation?.chapterId ?? null,
-    );
+    const next = await loadWorkspaceAttention(bridge, activeProject.projectId);
     setWorkspaceAttention(next);
-  }, [activeProject, bridge, continuation?.chapterId]);
+  }, [activeProject, bridge]);
 
   useEffect(() => {
     void refreshWorkspaceAttention();

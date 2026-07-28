@@ -75,12 +75,9 @@ async function guarded<Data>(
 export async function loadWorkspaceAttention(
   bridge: RendererBridgeAdapter,
   projectId: string,
-  chapterId: string | null,
 ): Promise<WorkspaceAttention> {
   const [candidateOutcome, proposalOutcome, validationOutcome, searchOutcome] = await Promise.all([
-    chapterId
-      ? guarded(() => bridge.candidate.list(projectId, chapterId, { mode: 'replace' }))
-      : Promise.resolve(null),
+    guarded(() => bridge.candidate.list(projectId, undefined, { mode: 'replace' })),
     guarded(() =>
       bridge.stateProposal.list(
         { projectId, chapterId: null, includeResolved: false },
@@ -97,7 +94,7 @@ export async function loadWorkspaceAttention(
   ]);
 
   const unavailableSources: WorkspaceAttentionSource[] = [];
-  if (chapterId && candidateOutcome?.state !== 'success') unavailableSources.push('candidate');
+  if (candidateOutcome?.state !== 'success') unavailableSources.push('candidate');
   if (proposalOutcome?.state !== 'success') unavailableSources.push('proposal');
   if (validationOutcome?.state !== 'success') unavailableSources.push('validation');
   if (searchOutcome?.state !== 'success') unavailableSources.push('search');

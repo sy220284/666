@@ -7,6 +7,7 @@ import {
   CandidateDiscardInputSchema,
   CandidateEditSkeletonInputSchema,
   CandidateGetInputSchema,
+  CandidateListInputSchema,
   CandidateListSchema,
   CandidateSummarySchema,
   ProseCandidateDocumentSchema,
@@ -19,6 +20,7 @@ import {
   type CandidateEditSkeletonInput,
   type CandidateGetInput,
   type CandidateList,
+  type CandidateListInput,
   type CandidateSummary,
   type SkeletonCandidateDocument,
 } from '@worldforge/contracts';
@@ -485,15 +487,21 @@ export class CandidateService {
     });
   }
 
-  list(raw: { readonly projectId: string; readonly chapterId: string }): CandidateList {
-    const input = CandidateGetInputSchema.pick({ projectId: true, chapterId: true }).parse(raw);
+  list(raw: CandidateListInput): CandidateList {
+    const input = CandidateListInputSchema.parse(raw);
     return this.#workspace.readProject(input.projectId, (database) => {
-      const rows = database
-        .prepare(
-          `${summaryQuery('ca.chapter_id = ? AND p.id = ?')}
-           ORDER BY ca.created_at DESC, ca.id DESC`,
-        )
-        .all(input.chapterId, input.projectId) as unknown as CandidateSummaryRow[];
+      const statement = input.chapterId
+        ? database.prepare(
+            `${summaryQuery('ca.chapter_id = ? AND p.id = ?')}
+             ORDER BY ca.created_at DESC, ca.id DESC`,
+          )
+        : database.prepare(
+            `${summaryQuery('p.id = ?')}
+             ORDER BY ca.created_at DESC, ca.id DESC`,
+          );
+      const rows = (input.chapterId
+        ? statement.all(input.chapterId, input.projectId)
+        : statement.all(input.projectId)) as unknown as CandidateSummaryRow[];
       return CandidateListSchema.parse({ candidates: rows.map(mapSummary) });
     });
   }

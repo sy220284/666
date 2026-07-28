@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: m8-02-windows-reopen-fix
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   verify-and-commit:
@@ -34,7 +34,7 @@ jobs:
           cache: pnpm
       - run: node scripts/m8-02-windows-reopen-fix.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Verify Windows source and packaged paths
+      - name: Verify Windows source, package and assets
         shell: bash
         run: |
           mkdir -p test-results/m8-02-windows-fix
@@ -47,8 +47,12 @@ jobs:
             node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
             pnpm run package -- --platform windows --version 0.1.0 --output release/windows
             node scripts/verify-package-assets.mjs --platform windows --version 0.1.0 --directory release/windows
-            node scripts/smoke-packaged-desktop.mjs --platform windows --directory release/windows
           } 2>&1 | tee test-results/m8-02-windows-fix/verification.log
+      - name: Run Windows packaged startup
+        shell: pwsh
+        run: |
+          node scripts/smoke-packaged-desktop.mjs --platform windows --directory release/windows 2>&1 | Tee-Object -FilePath test-results/m8-02-windows-fix/packaged-smoke.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

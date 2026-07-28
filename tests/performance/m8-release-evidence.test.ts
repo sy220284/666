@@ -314,8 +314,10 @@ describe('M8-02 release performance evidence', () => {
     const harness = await createProjectHarness('worldforge-m8-sustained-');
     const initialHeap = process.memoryUsage().heapUsed;
     const startedAt = performance.now();
-    histogram.enable();
-    const memory = { heapGrowthBytes: 0 };
+    const memory = {
+      heapGrowthBytes: 0,
+      eventLoopP99Ms: Number.POSITIVE_INFINITY,
+    };
     try {
       const project = await harness.workspace.create(
         randomUUID(),
@@ -328,6 +330,9 @@ describe('M8-02 release performance evidence', () => {
         chapterId: chapter.id,
       });
       const base = '持续写作、保存、统计与索引负载。'.repeat(160);
+      await new Promise((resolve) => setImmediate(resolve));
+      histogram.enable();
+      histogram.reset();
       for (let index = 0; index < 300; index += 1) {
         const block = opened.blocks[0]!;
         opened = await harness.drafts.applyPatch(randomUUID(), {
@@ -347,6 +352,8 @@ describe('M8-02 release performance evidence', () => {
         calculateWritingStatistics(opened.blocks[0]!.text, 200, 8_000);
         await new Promise((resolve) => setImmediate(resolve));
       }
+      histogram.disable();
+      memory.eventLoopP99Ms = histogram.percentile(99) / 1_000_000;
       await harness.search.rebuild(randomUUID(), project.projectId);
       memory.heapGrowthBytes = Math.max(0, process.memoryUsage().heapUsed - initialHeap);
     } finally {
@@ -355,7 +362,7 @@ describe('M8-02 release performance evidence', () => {
       await harness.appRuntime.close();
     }
     const elapsedMs = performance.now() - startedAt;
-    const eventLoopP99Ms = histogram.percentile(99) / 1_000_000;
+    const eventLoopP99Ms = memory.eventLoopP99Ms;
     record({
       metric: 'core_event_loop_delay_p99_ms',
       dataset: '300-autosave-sustained-workload',

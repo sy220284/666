@@ -31,7 +31,7 @@ describe('M4-01 search index migrations', () => {
     const parent = path.join(root, 'projects');
     await mkdir(parent, { recursive: true });
     const migrations = await loadMigrations('migrations/project', 'project');
-    expect(latestMigrationVersion(migrations)).toBe(28);
+    expect(latestMigrationVersion(migrations)).toBe(29);
 
     const appRuntime = await openAppRuntime({
       databasePath: path.join(root, 'app.sqlite'),

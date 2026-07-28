@@ -569,25 +569,26 @@ export class RecoveryService {
         protectionReasons: protectionReasons(record, lastVerifiedBackupId),
       }),
     );
-    let backupFailures: BackupFailureRecord[] = [];
-    try {
-      backupFailures = this.#workspace.readProject(projectId, (database) =>
-        database
-          .prepare(
-            `SELECT id AS failureId, project_id AS projectId, operation,
-                    backup_track AS track, error_code AS errorCode,
-                    occurred_at AS occurredAt, resolved_at AS resolvedAt
-               FROM backup_failures
-              WHERE project_id = ? AND resolved_at IS NULL
-              ORDER BY occurred_at DESC, id DESC
-              LIMIT 20`,
-          )
-          .all(projectId)
-          .map((row) => BackupFailureRecordSchema.parse(row)),
-      );
-    } catch {
-      backupFailures = [];
-    }
+    const backupFailures: BackupFailureRecord[] = (() => {
+      try {
+        return this.#workspace.readProject(projectId, (database) =>
+          database
+            .prepare(
+              `SELECT id AS failureId, project_id AS projectId, operation,
+                      backup_track AS track, error_code AS errorCode,
+                      occurred_at AS occurredAt, resolved_at AS resolvedAt
+                 FROM backup_failures
+                WHERE project_id = ? AND resolved_at IS NULL
+                ORDER BY occurred_at DESC, id DESC
+                LIMIT 20`,
+            )
+            .all(projectId)
+            .map((row) => BackupFailureRecordSchema.parse(row)),
+        );
+      } catch {
+        return [];
+      }
+    })();
     const policy = this.#readPolicy(projectId);
     const space = {
       totalBytes: checkpoints.reduce((total, record) => total + record.sizeBytes, 0),

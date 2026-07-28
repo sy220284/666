@@ -12,7 +12,10 @@ const needle = `    await page.locator('[data-chapter-title="第一章"] [data-o
     await expect(page.locator('[data-draft-state]')).toHaveText(/Revision \\d+$/u, {
       timeout: 15_000,
     });`;
-const replacement = `    const seeded = await page.evaluate(async () => {
+const replacement = `    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open', {
+      timeout: 20_000,
+    });
+    const seeded = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;
       const active = await bridge.project.getActive();
       if (!active.ok || !active.data) throw new Error('RENDERER_PERF_ACTIVE_PROJECT_MISSING');
@@ -68,4 +71,4 @@ if (before.indexOf(needle, first + needle.length) >= 0) {
 }
 const after = before.slice(0, first) + replacement + before.slice(first + needle.length);
 await writeFile(path, after, 'utf8');
-console.log('M8-02 Renderer FPS fixture now seeds 96 blocks through Core.');
+console.log('M8-02 Renderer FPS fixture waits for project open and seeds 96 blocks through Core.');

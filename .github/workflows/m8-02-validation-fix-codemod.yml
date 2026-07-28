@@ -1,0 +1,54 @@
+name: M8-02 Validation Fix Codemod
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+    paths:
+      - scripts/m8-02-validation-fix-codemod.mjs
+      - .github/workflows/m8-02-validation-fix-codemod.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-02-validation-fix-codemod
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: work/m8-02-performance-e2e-ai-eval
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: node scripts/m8-02-validation-fix-codemod.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Verify lint, type and complete migration suite
+        shell: bash
+        run: |
+          pnpm exec prettier --write \
+            packages/core-service/src/recovery.ts \
+            tests/migration/search-index-migration.test.ts \
+            tests/migration/state-validation-migration.test.ts
+          pnpm lint
+          pnpm typecheck
+          pnpm test:migration
+          pnpm exec vitest run tests/integration/recovery-failure-ledger.test.ts tests/unit/workspace-attention.test.ts
+      - name: Commit verified fixes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "修复(M8-02)：关闭剩余矩阵静态与迁移缺口"
+          git push origin HEAD:work/m8-02-performance-e2e-ai-eval

@@ -9,7 +9,7 @@
 
 在M4-04核心功能进入Implementation Hold后，集中完成C8：首次使用、统一工作台、主题与无障碍、安全、性能、Electron E2E、AI Eval以及Windows、macOS、Linux自用便携工件验收。
 
-V1.0发布范围已经收敛为仓库所有者本人自用。正式边界见`docs/product/SELF_USE_RELEASE_POLICY.md`。
+V1.0发布范围已经收敛为仓库所有者本人自用。正式边界见`docs/product/SELF_USE_RELEASE_POLICY.md`。M8-02以GitHub Actions永久门禁和专项工作流结果作为最终验收依据。
 
 ## 阶段定位
 
@@ -20,7 +20,11 @@ M8-02是M4-04之后唯一活动的最终任务，吸收原M7-01、M7-02、M7-03�
 - 不重建M4-04已经交付的Prompt、GenerationRun、Candidate、StateProposal、搜索、导入或恢复系统。
 - 不以局部单元测试代替完整Electron路径。
 - 不把未验证Provider或Model的偶然成功标记为稳定支持。
-- 不为达成门禁而隐藏、跳过或伪造Blocked项。
+- 不为达成门禁而隐藏、跳过或伪造Actions失败项。
+- 不要求线下物理DPI、混合DPI、真实多屏或跨屏移动测试。
+- 不要求实体屏幕阅读器、人工IME、自定义字体、人工视觉复核或线下五分钟新手流程。
+- 不要求Linux实体自用主机启动记录。
+- 不要求真实Provider账号或线下模型质量测试；必须保证协议Fixture、错误映射和离线降级通过。
 - 不面向公众、客户、团队或第三方分发。
 - 不要求Windows代码签名、macOS Developer ID签名或Apple公证。
 - 不要求MSI、MSIX、PKG、DMG、DEB或RPM安装器。
@@ -38,7 +42,7 @@ M4-04
 - `docs/tasks/M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md`
 - `docs/tasks/M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md`
 
-被吸收任务只提供需求来源。与自用发布策略冲突的公开分发、签名、公证和安装器要求由本任务卡及`SELF_USE_RELEASE_POLICY.md`覆盖。
+被吸收任务只提供需求来源。与本任务卡、GitHub Actions验收口径及自用发布策略冲突的线下设备、公开分发、签名、公证和安装器要求均由本任务卡及`SELF_USE_RELEASE_POLICY.md`覆盖。
 
 ## 关联
 
@@ -109,8 +113,8 @@ M4-04
 ### 3. 主题、无障碍与显示
 
 - 完成Theme A/B、浅色、深色、护眼和高对比。
-- 完成减少动态、键盘操作、焦点、读屏和非颜色表达。
-- 验证1280×800、2K、21:9及可执行的显示矩阵；物理设备缺失必须如实记录。
+- 完成减少动态、键盘操作、焦点、无障碍语义和非颜色表达。
+- 在GitHub Actions中验证1280×800、2K、21:9合成视口、缩放矩阵、窗口恢复、键盘焦点和输入边界；线下设备不属于完成条件。
 
 ### 4. 安全、数据与隐私硬化
 
@@ -123,11 +127,11 @@ M4-04
 - 验证2K键入、自动保存、编辑IPC、5000字Diff、FTS和恢复性能预算。
 - 记录长章节、百万字、FTS、多任务、Candidate历史、校验、备份和恢复数据。
 - 完成项目创建→写作→T0/T1→改写/融合→审阅→采用→定稿→状态提取→作者裁决→校验→导出→恢复完整Electron E2E。
-- 按Provider、Model、Task和PromptVersion记录AI协议与质量边界；真实Provider不可用时必须降级且不影响基础写作。
+- 按Provider协议、Task和PromptVersion验证AI协议与质量边界；真实Provider不可用时，Actions中的Fixture、错误映射和离线降级通过即满足V1.0验收。
 
 ### 6. 跨平台自用便携交付
 
-- 在Windows、macOS和Linux原生Runner完成便携构建、ASAR、Electron Fuses、Hash、资产完整性和启动验证。
+- 在Windows、macOS和Linux GitHub-hosted原生Runner完成便携构建、ASAR、Electron Fuses、Hash、资产完整性和启动验证。
 - 验证程序目录与作者项目目录分离；替换或删除程序目录不得删除作品、数据库或备份。
 - 验证新版本便携包能够打开既有项目并执行必要Migration。
 - `signed: false`和`notarized: false`作为工件事实记录，不构成自用交付失败。
@@ -150,39 +154,41 @@ M4-04
 - 安全诊断包白名单、原子导出和Main可信确认。
 - 三平台原生便携打包、ASAR完整性、Electron Fuses、Hash、启动握手和CI工件。
 - 结构化性能证据、备份失败权威账本及对应Migration/Integration测试。
+- Windows关闭项目后立即重开的生命周期竞态已修复并通过Windows完整Electron E2E。
 
 ### 当前验收边界
 
-- Windows代码签名、macOS签名/公证和安装/升级/卸载已经明确移出V1.0自用范围，不再作为Blocked项。
-- 真实Provider与多模型质量、完整真实AI Electron链路仍需按实际资源验证或明确降级。
-- 物理混合DPI、多屏、读屏、IME和自定义字体缺少的人工证据必须如实记录，但不得与签名、公证、安装器混为同一发布阻断。
-- 真实超大DOCX、多进程备份幂等、长期运行和Renderer帧率仍按任务清单推进。
-- Linux CI专用无沙箱回退不得被描述为通用生产支持；自用主机采用的实际启动方式仍需记录。
+- GitHub Actions永久门禁和专项工作流是V1.0最终验收来源。
+- 线下物理显示、多屏、实体读屏、人工IME、自定义字体、人工视觉复核、线下新手流程和实体主机测试不属于完成条件。
+- 真实Provider账号与线下模型质量测试不属于完成条件；Actions必须验证协议Fixture、错误映射、离线降级和无AI基础写作。
+- Windows代码签名、macOS签名/公证和安装/升级/卸载已经明确移出V1.0自用范围。
+- 真实超大DOCX、多进程备份幂等、长期运行、Renderer帧率和Core事件循环仍由GitHub Actions推进。
 
 ## 测试与证据
 
-必须执行并保存真实结果：
+必须执行并保存真实Actions结果：
 
 - Workspace与Boundary
 - Prettier、ESLint、TypeScript
 - Unit、Integration、Migration、Coverage
-- Security、Performance、AI Eval
+- Security、Performance、AI协议与Fixture Eval
 - Build、Package Smoke、三平台自用便携打包
-- Electron E2E与能够执行的人工P0路径
-- Evidence、PR Policy、Task Governance
+- Electron E2E、合成显示矩阵、键盘焦点、无障碍语义和输入边界
+- 超大DOCX、多进程备份幂等、长期运行、Renderer帧率和Core事件循环专项
+- Evidence、PR Policy、Task Governance、Repository Governance
 
-Evidence必须记录环境、平台、Fixture规模、真实运行编号、失败和未执行原因。签名、公证、安装器及安装生命周期应记录为`NOT_REQUIRED_SELF_USE`，不得记录为Blocked或Fail。
+Evidence必须记录GitHub Actions环境、平台、Fixture规模、真实运行编号、失败和未执行原因。线下设备、人工设备测试、真实Provider账号、签名、公证、安装器及安装生命周期应记录为非目标或已知限制，不得记录为Blocked或Fail。
 
 ## 完成条件
 
 - M4-04保持Implemented或Verified，不被回写。
 - 首次使用、统一工作台、主题、安全、数据和核心显示路径完成。
 - 隐私、Migration、恢复、凭据和本地数据边界通过。
-- 性能预算、完整Electron E2E和AI协议/Eval通过，真实Provider缺失时基础写作降级可用。
-- Windows、macOS和Linux自用便携工件完成构建、完整性和启动验收。
+- 性能预算、完整Electron E2E和AI协议/Fixture Eval通过；无真实Provider时基础写作降级可用。
+- Windows、macOS和Linux自用便携工件完成原生Runner构建、完整性和启动验收。
 - 新便携版本能够打开既有项目，作者数据不依赖程序目录。
 - P0矩阵、追踪矩阵、README、自用发布策略和Evidence与代码一致。
 - 最终Evidence绑定实际受检Head和可达main提交。
-- 无P0代码硬保证、数据安全或恢复用例未解释失败后，任务可转Ready并关闭。
+- 无P0代码硬保证、数据安全、恢复或Actions专项未解释失败后，任务可转Ready并关闭。
 
-代码签名、Apple公证、系统安装器以及安装/升级/卸载生命周期不属于本任务完成条件。
+线下设备、人工设备测试、真实Provider账号、代码签名、Apple公证、系统安装器以及安装/升级/卸载生命周期不属于本任务完成条件。

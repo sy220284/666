@@ -1,0 +1,57 @@
+name: M8-02 Renderer Closure Codemod
+
+on:
+  push:
+    branches:
+      - work/m8-02-performance-e2e-ai-eval
+    paths:
+      - scripts/m8-02-renderer-closure-codemod.mjs
+      - .github/workflows/m8-02-renderer-closure-codemod.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-02-renderer-closure-codemod
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: work/m8-02-performance-e2e-ai-eval
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Apply deterministic codemod
+        run: node scripts/m8-02-renderer-closure-codemod.mjs
+      - name: Install workspace dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --prefer-offline
+      - name: Format changed sources
+        run: >-
+          pnpm exec prettier --write
+          apps/desktop/renderer/src/app/app-shell-m3.tsx
+          apps/desktop/renderer/src/features/settings/provider-settings.tsx
+          apps/desktop/renderer/src/features/settings/settings-page.tsx
+          apps/desktop/renderer/src/runtime/ai-readiness.ts
+          apps/desktop/renderer/src/runtime/workspace-attention.ts
+          tests/unit/ai-readiness.test.ts
+          tests/unit/workspace-attention.test.ts
+      - name: Verify Renderer closure
+        run: |
+          pnpm typecheck
+          pnpm exec vitest run tests/unit/ai-readiness.test.ts tests/unit/workspace-attention.test.ts tests/unit/status-arbitrator.test.ts
+      - name: Commit verified closure
+        run: |
+          test -z "$(git status --porcelain --untracked-files=no | grep -E 'scripts/m8-02-renderer-closure-codemod|m8-02-renderer-closure-codemod.yml' || true)" || true
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "修复(M8-02)：闭环业务状态仲裁与AI会话可用性"
+          git push origin HEAD:work/m8-02-performance-e2e-ai-eval

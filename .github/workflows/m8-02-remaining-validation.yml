@@ -1,0 +1,233 @@
+name: M8-02 Remaining Validation
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+    paths:
+      - .github/workflows/m8-02-remaining-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  VALIDATION_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  full-quality:
+    name: Full permanent quality gate
+    uses: ./.github/workflows/quality-core.yml
+    with:
+      checkout_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      draft_mode: false
+      full_suite: true
+      package_smoke: true
+      security_suite: true
+      performance_eval: true
+
+  release-package-matrix:
+    name: Package and startup (${{ matrix.platform }})
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.VALIDATION_REF }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm build
+      - name: Run platform Electron path
+        run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
+      - name: Build native package
+        shell: bash
+        run: pnpm run package -- --platform "${{ matrix.platform }}" --version "0.1.0" --output "release/${{ matrix.platform }}"
+      - name: Verify ASAR, Fuse, integrity and assets
+        run: node scripts/verify-package-assets.mjs --platform "${{ matrix.platform }}" --version "0.1.0" --directory "release/${{ matrix.platform }}"
+      - name: Run Linux packaged startup
+        if: matrix.platform == 'linux'
+        run: xvfb-run -a node scripts/smoke-packaged-desktop.mjs --platform linux --directory release/linux
+      - name: Run packaged startup
+        if: matrix.platform != 'linux'
+        run: node scripts/smoke-packaged-desktop.mjs --platform "${{ matrix.platform }}" --directory "release/${{ matrix.platform }}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: m8-02-package-${{ matrix.platform }}-${{ github.run_id }}
+          path: release/${{ matrix.platform }}/
+          if-no-files-found: warn
+          retention-days: 7
+
+  data-recovery-endurance:
+    name: DOCX, recovery and endurance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.VALIDATION_REF }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm test:prepare
+      - name: Run DOCX archive and recovery authority tests
+        shell: bash
+        run: |
+          mkdir -p test-results/m8-02-remaining
+          set -o pipefail
+          pnpm exec vitest run \
+            tests/integration/docx-transfer.test.ts \
+            tests/security/docx-archive-security.test.ts \
+            tests/integration/recovery-service.test.ts \
+            tests/integration/recovery-failure-ledger.test.ts \
+            2>&1 | tee test-results/m8-02-remaining/data-recovery.log
+      - name: Run three endurance performance cycles
+        shell: bash
+        run: |
+          set -euo pipefail
+          for cycle in 1 2 3; do
+            echo "cycle=$cycle" | tee -a test-results/m8-02-remaining/endurance.log
+            pnpm test:perf 2>&1 | tee -a test-results/m8-02-remaining/endurance.log
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: m8-02-data-recovery-endurance-${{ github.run_id }}
+          path: test-results/m8-02-remaining/
+          if-no-files-found: error
+          retention-days: 7
+
+  external-preconditions:
+    name: External acceptance preconditions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PROVIDER_HEALTH_URL: ${{ secrets.WORLDFORGE_REAL_PROVIDER_HEALTH_URL }}
+      PROVIDER_API_KEY: ${{ secrets.WORLDFORGE_REAL_PROVIDER_API_KEY }}
+      WINDOWS_CERT_PRESENT: ${{ secrets.WORLDFORGE_WINDOWS_CERT_PFX }}
+      MAC_CERT_PRESENT: ${{ secrets.WORLDFORGE_MAC_CERT_P12 }}
+      APPLE_ID_PRESENT: ${{ secrets.WORLDFORGE_APPLE_ID }}
+      APPLE_PASSWORD_PRESENT: ${{ secrets.WORLDFORGE_APPLE_APP_PASSWORD }}
+      APPLE_TEAM_PRESENT: ${{ secrets.WORLDFORGE_APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.VALIDATION_REF }}
+          persist-credentials: false
+      - name: Generate truthful external-condition report
+        shell: bash
+        run: |
+          mkdir -p test-results/m8-02-remaining
+          node --input-type=module <<'NODE'
+          import { writeFile } from 'node:fs/promises';
+
+          const report = {
+            schemaVersion: 1,
+            commit: process.env.VALIDATION_REF,
+            generatedAt: new Date().toISOString(),
+            checks: {
+              realProviderConnectivity: {
+                status:
+                  process.env.PROVIDER_HEALTH_URL && process.env.PROVIDER_API_KEY
+                    ? 'PENDING_NETWORK_CHECK'
+                    : 'BLOCKED',
+                reason:
+                  process.env.PROVIDER_HEALTH_URL && process.env.PROVIDER_API_KEY
+                    ? null
+                    : 'WORLDFORGE_REAL_PROVIDER_HEALTH_URL/API_KEY secrets are not both configured.',
+              },
+              windowsCodeSigning: {
+                status: process.env.WINDOWS_CERT_PRESENT ? 'PREREQUISITE_PRESENT' : 'BLOCKED',
+                reason: process.env.WINDOWS_CERT_PRESENT
+                  ? null
+                  : 'WORLDFORGE_WINDOWS_CERT_PFX secret is not configured.',
+              },
+              macSigningAndNotarization: {
+                status:
+                  process.env.MAC_CERT_PRESENT &&
+                  process.env.APPLE_ID_PRESENT &&
+                  process.env.APPLE_PASSWORD_PRESENT &&
+                  process.env.APPLE_TEAM_PRESENT
+                    ? 'PREREQUISITES_PRESENT'
+                    : 'BLOCKED',
+                reason:
+                  process.env.MAC_CERT_PRESENT &&
+                  process.env.APPLE_ID_PRESENT &&
+                  process.env.APPLE_PASSWORD_PRESENT &&
+                  process.env.APPLE_TEAM_PRESENT
+                    ? null
+                    : 'macOS signing/notarization secrets are incomplete.',
+              },
+              physicalMixedDpiAndMultiMonitor: {
+                status: 'BLOCKED',
+                reason: 'GitHub-hosted virtual displays cannot replace physical mixed-DPI and monitor movement acceptance.',
+              },
+              humanScreenReaderImeAndCustomFonts: {
+                status: 'BLOCKED',
+                reason: 'Automated composition and keyboard paths run in Electron E2E; human assistive-technology acceptance still requires physical execution.',
+              },
+              multiProcessBackupIdempotency: {
+                status: 'BLOCKED',
+                reason: 'Current suite proves single-Core request coalescing; a separate multi-process authority implementation/test is still required.',
+              },
+            },
+          };
+
+          if (report.checks.realProviderConnectivity.status === 'PENDING_NETWORK_CHECK') {
+            try {
+              const response = await fetch(process.env.PROVIDER_HEALTH_URL, {
+                headers: { Authorization: `Bearer ${process.env.PROVIDER_API_KEY}` },
+                signal: AbortSignal.timeout(15_000),
+              });
+              report.checks.realProviderConnectivity = response.ok
+                ? { status: 'PASS', reason: null, httpStatus: response.status }
+                : {
+                    status: 'FAIL',
+                    reason: `Provider health endpoint returned HTTP ${response.status}.`,
+                    httpStatus: response.status,
+                  };
+            } catch (error) {
+              report.checks.realProviderConnectivity = {
+                status: 'FAIL',
+                reason: error instanceof Error ? error.message : 'Provider health request failed.',
+              };
+            }
+          }
+
+          await writeFile(
+            'test-results/m8-02-remaining/external-preconditions.json',
+            `${JSON.stringify(report, null, 2)}\n`,
+            'utf8',
+          );
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m8-02-external-preconditions-${{ github.run_id }}
+          path: test-results/m8-02-remaining/external-preconditions.json
+          if-no-files-found: error
+          retention-days: 7

@@ -40,7 +40,7 @@ jobs:
           mkdir -p test-results/m8-02-windows-fix
           set -o pipefail
           {
-            pnpm exec prettier --write tests/e2e/electron-shell.spec.ts
+            pnpm exec prettier --write apps/desktop/renderer/src/app/app-shell-m3.tsx
             pnpm lint
             pnpm typecheck
             pnpm build
@@ -57,10 +57,10 @@ jobs:
           path: test-results/m8-02-windows-fix/
           if-no-files-found: error
           retention-days: 7
-      - name: Commit verified test stabilization
+      - name: Commit verified product fix
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add tests/e2e/electron-shell.spec.ts
-          git commit -m "测试(M8-02)：稳定Windows项目重开验收"
+          git add apps/desktop/renderer/src/app/app-shell-m3.tsx
+          git commit -m "修复(M8-02)：关闭项目重开竞态"
           git push origin HEAD:work/m8-02-performance-e2e-ai-eval

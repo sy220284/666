@@ -56,7 +56,12 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm build
       - name: Run platform Electron path
-        run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
+        shell: bash
+        run: |
+          mkdir -p test-results/m8-02-platform
+          set -o pipefail
+          node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts \
+            2>&1 | tee "test-results/m8-02-platform/electron-${{ matrix.platform }}.log"
       - name: Build native package
         shell: bash
         run: pnpm run package -- --platform "${{ matrix.platform }}" --version "0.1.0" --output "release/${{ matrix.platform }}"
@@ -72,7 +77,9 @@ jobs:
         if: always()
         with:
           name: m8-02-package-${{ matrix.platform }}-${{ github.run_id }}
-          path: release/${{ matrix.platform }}/
+          path: |
+            release/${{ matrix.platform }}/
+            test-results/m8-02-platform/
           if-no-files-found: warn
           retention-days: 7
 

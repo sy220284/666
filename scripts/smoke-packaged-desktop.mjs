@@ -38,6 +38,31 @@ export function packagedExecutablePath(root, manifest) {
   return path.join(bundle, manifest.platform === 'windows' ? 'WorldForge.exe' : 'worldforge');
 }
 
+export function packagedLaunchArguments(
+  platform,
+  {
+    allowCiNoSandbox = process.env.WORLDFORGE_PACKAGED_SMOKE_ALLOW_NO_SANDBOX,
+    ci = process.env.CI,
+    uid = process.getuid?.(),
+  } = {},
+) {
+  if (platform === 'linux' && allowCiNoSandbox === '1') {
+    if (ci !== 'true') {
+      throw new Error('PACKAGED_SMOKE_NO_SANDBOX_REQUIRES_CI');
+    }
+    return ['--no-sandbox'];
+  }
+  return uid === 0 ? ['--no-sandbox'] : [];
+}
+
+export function packagedTerminationInvocation(platform, pid) {
+  if (platform !== 'windows' || !Number.isSafeInteger(pid) || pid <= 0) return null;
+  return {
+    command: 'taskkill.exe',
+    arguments: ['/pid', String(pid), '/T', '/F'],
+  };
+}
+
 export function waitForPackagedReady(child, timeoutMs = 25_000) {
   return new Promise((resolve, reject) => {
     let standardOutput = '';
@@ -81,9 +106,17 @@ export function waitForPackagedReady(child, timeoutMs = 25_000) {
   });
 }
 
-async function terminate(child) {
+async function terminate(child, platform) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  child.kill();
+  const treeTermination = packagedTerminationInvocation(platform, child.pid);
+  if (treeTermination) {
+    const result = spawnSync(treeTermination.command, treeTermination.arguments, {
+      encoding: 'utf8',
+    });
+    if (result.error || result.status !== 0) child.kill();
+  } else {
+    child.kill();
+  }
   await Promise.race([
     new Promise((resolve) => child.once('exit', resolve)),
     new Promise((resolve) => setTimeout(resolve, 5_000)),
@@ -109,7 +142,8 @@ export async function smokePackagedDesktop(
   try {
     extractArchive(platform, path.join(directory, manifest.artifact), extractionDirectory);
     const executable = packagedExecutablePath(extractionDirectory, manifest);
-    application = spawn(executable, process.getuid?.() === 0 ? ['--no-sandbox'] : [], {
+    const launchArguments = packagedLaunchArguments(platform);
+    application = spawn(executable, launchArguments, {
       env: {
         ...process.env,
         WORLDFORGE_E2E: '1',
@@ -128,14 +162,18 @@ export async function smokePackagedDesktop(
       throw new Error(`Packaged smoke failed: ${JSON.stringify(result)}`);
     }
     process.stdout.write(
-      `Packaged WorldForge ${manifest.version} started successfully on ${platform}.\n`,
+      `Packaged WorldForge ${manifest.version} started successfully on ${platform}${
+        launchArguments.includes('--no-sandbox') && process.getuid?.() !== 0
+          ? ' (CI sandbox disabled; production sandbox remains a separate acceptance gate)'
+          : ''
+      }.\n`,
     );
     return result;
   } finally {
-    await terminate(application);
+    await terminate(application, platform);
     await Promise.all([
-      rm(extractionDirectory, { recursive: true, force: true }),
-      rm(userDataPath, { recursive: true, force: true }),
+      rm(extractionDirectory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }),
+      rm(userDataPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }),
     ]);
   }
 }

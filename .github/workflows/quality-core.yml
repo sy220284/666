@@ -436,8 +436,10 @@ jobs:
             --version "$package_version" \
             --directory "release/${{ matrix.platform }}" \
             2>&1 | tee -a test-results/ci/package-smoke.log
-      - name: Run Linux packaged startup smoke
+      - name: Run Linux packaged startup smoke with explicit CI sandbox fallback
         if: matrix.platform == 'linux'
+        env:
+          WORLDFORGE_PACKAGED_SMOKE_ALLOW_NO_SANDBOX: '1'
         run: >-
           xvfb-run -a node scripts/smoke-packaged-desktop.mjs
           --platform "${{ matrix.platform }}"

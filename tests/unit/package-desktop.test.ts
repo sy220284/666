@@ -11,7 +11,11 @@ import {
   pnpmInvocation,
   workspaceDeployArguments,
 } from '../../scripts/package-desktop.mjs';
-import { packagedExecutablePath } from '../../scripts/smoke-packaged-desktop.mjs';
+import {
+  packagedExecutablePath,
+  packagedLaunchArguments,
+  packagedTerminationInvocation,
+} from '../../scripts/smoke-packaged-desktop.mjs';
 
 describe('desktop package command', () => {
   it('maps supported Node platforms to release platform names', () => {
@@ -178,5 +182,38 @@ describe('desktop package command', () => {
         architecture: 'arm64',
       }),
     ).toBe(path.join('/unpacked', 'WorldForge.app', 'Contents', 'MacOS', 'WorldForge'));
+  });
+
+  it('isolates the explicit Linux CI no-sandbox fallback from production launches', () => {
+    expect(
+      packagedLaunchArguments('linux', {
+        allowCiNoSandbox: '1',
+        ci: 'true',
+        uid: 1000,
+      }),
+    ).toEqual(['--no-sandbox']);
+    expect(() =>
+      packagedLaunchArguments('linux', {
+        allowCiNoSandbox: '1',
+        ci: 'false',
+        uid: 1000,
+      }),
+    ).toThrow(/REQUIRES_CI/);
+    expect(
+      packagedLaunchArguments('linux', {
+        allowCiNoSandbox: undefined,
+        ci: 'false',
+        uid: 1000,
+      }),
+    ).toEqual([]);
+  });
+
+  it('terminates the complete Windows Electron process tree before removing artifacts', () => {
+    expect(packagedTerminationInvocation('windows', 4321)).toEqual({
+      command: 'taskkill.exe',
+      arguments: ['/pid', '4321', '/T', '/F'],
+    });
+    expect(packagedTerminationInvocation('linux', 4321)).toBeNull();
+    expect(packagedTerminationInvocation('windows', undefined)).toBeNull();
   });
 });

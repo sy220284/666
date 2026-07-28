@@ -39,24 +39,4 @@ await edit('tests/e2e/electron-shell.spec.ts', (source) => {
   );
 });
 
-const diagnostic = `    const recoveryDiagnostic = await page.evaluate(async () => {\n      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge }).worldforge;\n      const active = await bridge.project.getActive();\n      if (!active.ok || !active.data) return { active, overview: null };\n      const overview = await bridge.recovery.getOverview(active.data.projectId);\n      return { active, overview };\n    });\n    console.log('M8_RECOVERY_DIAGNOSTIC', JSON.stringify(recoveryDiagnostic));\n`;
-
-await edit('tests/e2e/m1-deferred-acceptance.spec.ts', (source) =>
-  replaceOnce(
-    source,
-    `    await page.locator('[data-open-recovery]').click();\n    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {\n      timeout: 20_000,\n    });`,
-    `    await page.locator('[data-open-recovery]').click();\n${diagnostic}    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {\n      timeout: 20_000,\n    });`,
-    'm1-recovery-diagnostic',
-  ),
-);
-
-await edit('tests/e2e/unreadable-project-recovery.spec.ts', (source) =>
-  replaceOnce(
-    source,
-    `    await expect(page.locator('[data-recovery-dialog]')).toBeVisible();\n    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {\n      timeout: 20_000,\n    });`,
-    `    await expect(page.locator('[data-recovery-dialog]')).toBeVisible();\n${diagnostic}    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {\n      timeout: 20_000,\n    });`,
-    'unreadable-recovery-diagnostic',
-  ),
-);
-
-console.log('M8-02 targeted E2E fixes and recovery diagnostics applied.');
+console.log('M8-02 formal Electron timing and cleanup fixes applied.');

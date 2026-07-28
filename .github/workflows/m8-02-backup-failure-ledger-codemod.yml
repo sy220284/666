@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - name: Correct nested template escaping
+      - name: Correct codemod templates
         shell: bash
         run: |
           node --input-type=module <<'NODE'
@@ -58,10 +58,14 @@ jobs:
               "                 FROM backup_failures WHERE project_id = ?`,",
               "                 FROM backup_failures WHERE project_id = ?\\`,",
             ],
+            [
+              "recovery = replaceExact(\n  recovery,\n  `    return this.#createBackup(\n      requestId,\n      { projectId: input.projectId, operation: 'manual-protection' },`,\n  `    return this.#createTrackedBackup(\n      requestId,\n      { projectId: input.projectId, operation: 'manual-protection' },`,\n  'track daily failure',\n);",
+              "recovery = replaceExact(\n  recovery,\n  `    return this.#createBackup(\n      requestId,\n      { projectId: input.projectId, operation: 'manual-protection' },\n      {\n        track: 'daily',`,\n  `    return this.#createTrackedBackup(\n      requestId,\n      { projectId: input.projectId, operation: 'manual-protection' },\n      {\n        track: 'daily',`,\n  'track daily failure',\n);",
+            ],
           ];
           for (const [before, after] of replacements) {
             const count = content.split(before).length - 1;
-            if (count !== 1) throw new Error(`template escaping expected one match, got ${count}`);
+            if (count !== 1) throw new Error(`template correction expected one match, got ${count}`);
             content = content.replace(before, after);
           }
           await writeFile(file, content, 'utf8');

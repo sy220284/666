@@ -23,7 +23,6 @@ function successfulChecks() {
 
 {
   let checkLoads = 0;
-  let modeLoads = 0;
   const result = await waitForSourceReadyChecks({
     requiredChecks,
     attempts: 3,
@@ -45,16 +44,9 @@ function successfulChecks() {
       }
       return checks;
     },
-    loadModeState: async () => {
-      modeLoads += 1;
-      return modeLoads === 1
-        ? { ready: false, pending: ['quality / quality'], failed: [] }
-        : { ready: true, pending: [], failed: [] };
-    },
   });
 
   assert.equal(checkLoads, 2);
-  assert.equal(modeLoads, 2);
   assert.equal(result.length, requiredChecks.length);
 }
 
@@ -76,9 +68,30 @@ await assert.rejects(
         started_at: '2026-07-28T00:20:00Z',
       },
     ],
-    loadModeState: async () => ({ ready: true, pending: [], failed: [] }),
   }),
   /Source PR permanent checks failed: performance/u,
+);
+
+await assert.rejects(
+  waitForSourceReadyChecks({
+    requiredChecks,
+    attempts: 2,
+    initialDelayMs: 0,
+    delayMs: 0,
+    sleep: async () => {},
+    log: () => {},
+    loadCheckRuns: async () => [
+      ...successfulChecks(),
+      {
+        id: 300,
+        name: 'quality / quality',
+        status: 'in_progress',
+        conclusion: null,
+        started_at: '2026-07-28T00:30:00Z',
+      },
+    ],
+  }),
+  /Timed out waiting for source PR permanent checks: quality \/ quality/u,
 );
 
 console.log('Main verification wait self-test passed.');

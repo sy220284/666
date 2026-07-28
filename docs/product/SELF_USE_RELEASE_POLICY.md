@@ -29,7 +29,7 @@ V1.0交付形态为Windows、macOS和Linux自用便携包。用户自行下载�
 - 安装、修复、覆盖升级、自动更新和卸载生命周期矩阵。
 - 面向第三方的可信发布、企业部署或应用商店上架。
 
-`package-manifest.json`中的` signed: false `与` notarized: false `属于事实记录，不代表自用便携包验收失败。
+`package-manifest.json`中的`signed: false`与`notarized: false`属于事实记录，不代表自用便携包验收失败。
 
 ## 4. 使用限制
 

@@ -3,7 +3,7 @@
 > 状态：Active  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04与M8-02，共35张独立任务卡。  
-> 当前执行：M4-04核心交付已Implemented并进入Implementation Hold；M8-02承接延期C8，保持Planned。
+> 当前执行：M4-04核心交付已Implemented；作者已明确启动M8-02，C8完整体验、硬化与发布关闭正在实施。
 
 ## 1. 唯一执行入口
 
@@ -31,7 +31,7 @@ Blocked / Deferred / Removed
 | M2 | 编辑安全与版本核心 | 4 | Verified |
 | M3 | 规划、设定与连续性 | 10 | Verified |
 | M4 | AI基础与V1核心功能 | 4 | M4-01—M4-03 Verified；M4-04 Implemented |
-| M8 | C8完整体验、硬化与发布关闭 | 1 | M8-02 Planned |
+| M8 | C8完整体验、硬化与发布关闭 | 1 | M8-02 In Progress |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 | 0 | 作为M4-04需求来源 |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收 | 0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
@@ -108,7 +108,7 @@ M0—M3 已完成产品底座
 
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
-| M8-02 | [`C8完整体验、硬化与发布关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | Planned |
+| M8-02 | [`C8完整体验、硬化与发布关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | In Progress |
 
 ## 3. 被吸收的需求来源
 

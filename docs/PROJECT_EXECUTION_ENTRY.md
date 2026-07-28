@@ -30,8 +30,9 @@ M4-04
 
 M8-02
 └─ C8完整体验、硬化、真实平台验收与发布关闭
-   → 保持Planned
-   → 作者后续明确启动
+   → 作者已于2026-07-28明确启动
+   → 独立任务分支与Draft PR
+   → 最终发布验收
 ```
 
 M4-04吸收原M4-05、M5-00—M5-06和M6-01—M6-06。原M7-01—M7-03、M8-01和M8-03改由M8-02吸收。
@@ -41,20 +42,20 @@ C8延期不代表删除，也不允许用M4-04阶段结果代替最终发布验�
 ## 3. 当前执行模式
 
 ```text
-活动任务：M4-04
-正式分支：work/m4-04-v1-integrated-delivery
+活动任务：M8-02
+正式分支：work/m8-02-performance-e2e-ai-eval
 授权模式：implementation-pr
 自动激活下一任务：关闭
-延期最终任务：M8-02（Planned）
+前置任务：M4-04（Implemented）
 ```
 
-M4-04完成后必须使用Implementation Hold：
+M4-04已完成Implementation Hold；作者明确启动M8-02后：
 
-- `TASK_INDEX`将M4-04标记为Implemented。
-- `ACTIVE_TASK.activeTask.status`改为`IMPLEMENTED`。
-- `lastImplementedTask`记录真实产品提交、Evidence与延期原因。
-- `deferredVerification`登记M4-04。
-- M8-02保持Planned，不自动转In Progress。
+- `TASK_INDEX`保持M4-04为Implemented。
+- `ACTIVE_TASK.activeTask`切换为M8-02 `IN_PROGRESS`。
+- `lastImplementedTask`继续保留M4-04真实产品提交、Evidence与原延期原因。
+- `deferredVerification`继续登记M4-04，等待最终批次关闭。
+- M8-02使用独立正式分支和独立PR，不复用已合并的M4-04 PR。
 
 ## 4. 权威顺序
 

@@ -1,6 +1,6 @@
 # M8-02 C8完整体验、硬化与发布关闭
 
-> 状态：Planned  
+> 状态：In Progress
 > 里程碑：M8 最终体验与发布验收  
 > 优先级：P0  
 > 建议分支：`work/m8-02-performance-e2e-ai-eval`
@@ -63,6 +63,7 @@ M4-04
 - `packages/contracts/`
 - `packages/core-service/`
 - `tests/e2e/`
+- `tests/unit/`
 - `tests/performance/`
 - `tests/security/`
 - `tests/integration/`
@@ -75,6 +76,10 @@ M4-04
 - `docs/security/`
 - `docs/product/`
 - `docs/test-evidence/M8-02/`
+- `docs/PROJECT_EXECUTION_ENTRY.md`
+- `README.md`
+- `CHANGELOG.md`
+- `LICENSE`
 - 发布与打包配置
 
 大范围架构重写必须单独立项并阻断M8-02关闭，禁止在验收任务内无计划扩张。

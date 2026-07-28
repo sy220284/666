@@ -5,6 +5,7 @@ on:
     types: [opened, reopened, synchronize]
     paths:
       - scripts/m8-02-final-closure-codemod.mjs
+      - scripts/m8-02-final-closure-fix.mjs
       - .github/workflows/m8-02-final-closure-codemod.yml
 
 permissions:
@@ -34,7 +35,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Apply deterministic closure patch
-        run: node scripts/m8-02-final-closure-codemod.mjs
+        run: |
+          node scripts/m8-02-final-closure-codemod.mjs
+          node scripts/m8-02-final-closure-fix.mjs
       - name: Format changed source and tests
         run: >-
           pnpm exec prettier --write

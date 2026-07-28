@@ -101,7 +101,7 @@ describe('Electron security boundary', () => {
       enableNodeCliInspectArguments: false,
       enableEmbeddedAsarIntegrityValidation: true,
       onlyLoadAppFromAsar: true,
-      loadBrowserProcessSpecificV8Snapshot: true,
+      loadBrowserProcessSpecificV8Snapshot: false,
       grantFileProtocolExtraPrivileges: false,
       wasmTrapHandlers: true,
     });

@@ -36,6 +36,14 @@ export async function verifyPackageAssets(
   ) {
     throw new Error('Package manifest does not prove the frozen ASAR and production-fuse policy');
   }
+  if (
+    platform === 'linux' &&
+    (manifest.portableLauncher?.launcher !== 'worldforge' ||
+      manifest.portableLauncher?.runtimeBinary !== 'worldforge-bin' ||
+      manifest.portableLauncher?.sandbox !== 'user-namespace')
+  ) {
+    throw new Error('Linux package manifest does not prove the user-namespace sandbox launcher');
+  }
   const artifactPath = path.join(directory, manifest.artifact);
   const metadata = await stat(artifactPath);
   if (!metadata.isFile() || metadata.size <= 0 || metadata.size !== manifest.bytes) {

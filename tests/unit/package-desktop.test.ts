@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   archiveInvocation,
   asarHeaderIntegrity,
+  linuxPortableLauncher,
   packagePlatformForNode,
   parsePackageArguments,
   pnpmInvocation,
@@ -90,6 +91,14 @@ describe('desktop package command', () => {
       algorithm: 'SHA256',
       hash: '1e0584a25d9f43bf5cbd0aec01eb1af2220ed085b4e7f1837b0d89958cae353a',
     });
+  });
+
+  it('uses a Linux portable launcher that keeps Chromium user-namespace sandboxing enabled', () => {
+    expect(linuxPortableLauncher()).toContain(
+      'exec "$launcher_dir/worldforge-bin" --disable-setuid-sandbox "$@"',
+    );
+    expect(linuxPortableLauncher()).not.toContain('--no-sandbox');
+    expect(() => linuxPortableLauncher('../worldforge-bin')).toThrow(/must not contain a path/);
   });
 
   it('uses a relative Windows archive target so tar does not treat the drive as remote', () => {

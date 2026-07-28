@@ -359,6 +359,35 @@ async function hardenPackagedRuntime(runtime, platform, version) {
   };
 }
 
+export function linuxPortableLauncher(binaryName = 'worldforge-bin') {
+  if (path.posix.basename(binaryName) !== binaryName) {
+    throw new Error('Linux portable runtime binary name must not contain a path');
+  }
+  return [
+    '#!/bin/sh',
+    'set -eu',
+    'launcher_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
+    `exec "$launcher_dir/${binaryName}" --disable-setuid-sandbox "$@"`,
+    '',
+  ].join('\n');
+}
+
+async function configurePortableLauncher(runtime, platform) {
+  if (platform !== 'linux') return null;
+  const runtimeBinaryPath = path.join(runtime.bundlePath, 'worldforge-bin');
+  await rename(runtime.executablePath, runtimeBinaryPath);
+  await writeFile(runtime.executablePath, linuxPortableLauncher(), {
+    encoding: 'utf8',
+    mode: 0o755,
+  });
+  await chmod(runtimeBinaryPath, 0o755);
+  return {
+    launcher: path.basename(runtime.executablePath),
+    runtimeBinary: path.basename(runtimeBinaryPath),
+    sandbox: 'user-namespace',
+  };
+}
+
 function archiveExtension(platform) {
   return platform === 'linux' ? 'tar.gz' : 'zip';
 }
@@ -430,6 +459,7 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
     const runtime = await copyElectronRuntime(stagingDirectory, options.platform, options.version);
     await prepareApplication(runtime.resourcesPath, options.version);
     const hardening = await hardenPackagedRuntime(runtime, options.platform, options.version);
+    const portableLauncher = await configurePortableLauncher(runtime, options.platform);
     const artifactName = `WorldForge-v${options.version}-${options.platform}-${runtime.architecture}.${archiveExtension(options.platform)}`;
     const artifactPath = path.join(options.output, artifactName);
     createArchive({
@@ -462,6 +492,7 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
         loadBrowserProcessSpecificV8Snapshot: false,
         wasmTrapHandlers: true,
       },
+      ...(portableLauncher ? { portableLauncher } : {}),
       limitations: ['Code signing and notarization are separate release acceptance gates.'],
     };
     await writeFile(

@@ -34,6 +34,8 @@ const state = vi.hoisted(() => ({
   dialogShow: vi.fn(),
   shellOpen: vi.fn(async () => undefined),
   utilityFork: vi.fn(),
+  protocolHandle: vi.fn(),
+  protocolRegister: vi.fn(),
   childPostMessage: vi.fn(),
   childOn: vi.fn(),
   childOff: vi.fn(),
@@ -71,6 +73,7 @@ vi.mock('electron', () => {
     });
     readonly setBounds = vi.fn();
     readonly loadFile = vi.fn(async () => undefined);
+    readonly loadURL = vi.fn(async () => undefined);
     readonly getNormalBounds = vi.fn(() => ({ x: 10, y: 20, width: 1000, height: 700 }));
     readonly isMaximized = vi.fn(() => false);
     readonly isMinimized = vi.fn(() => false);
@@ -144,6 +147,10 @@ vi.mock('electron', () => {
       showOpenDialog: state.dialogShow,
     },
     ipcMain: {},
+    protocol: {
+      handle: state.protocolHandle,
+      registerSchemesAsPrivileged: state.protocolRegister,
+    },
     safeStorage: {},
     screen: {
       getPrimaryDisplay: () => ({ id: 1 }),
@@ -381,6 +388,8 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     };
 
     expect(state.buildPreferences).toHaveBeenCalled();
+    expect(state.protocolRegister).toHaveBeenCalled();
+    expect(state.protocolHandle).toHaveBeenCalledWith('worldforge-app', expect.any(Function));
     expect(state.registerBase).toHaveBeenCalled();
     expect(state.registerContinuity).toHaveBeenCalled();
     expect(state.registerGeneration).toHaveBeenCalled();

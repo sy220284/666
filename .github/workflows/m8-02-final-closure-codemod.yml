@@ -48,21 +48,29 @@ jobs:
           tests/e2e/unreadable-project-recovery.spec.ts
       - name: Static verification
         run: |
-          pnpm lint
-          pnpm typecheck
+          set -o pipefail
+          {
+            pnpm lint
+            pnpm typecheck
+          } 2>&1 | tee m8-static.log
       - name: Targeted integration and performance verification
         run: |
-          pnpm test:prepare
-          pnpm exec vitest run \
-            tests/integration/docx-transfer.test.ts \
-            tests/integration/three-track-recovery.test.ts \
-            tests/performance/m8-release-evidence.test.ts
+          set -o pipefail
+          {
+            pnpm test:prepare
+            pnpm exec vitest run \
+              tests/integration/docx-transfer.test.ts \
+              tests/integration/three-track-recovery.test.ts \
+              tests/performance/m8-release-evidence.test.ts
+          } 2>&1 | tee m8-targeted.log
       - name: Install Electron display dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2t64 libgbm1
       - name: Full Electron E2E verification
-        run: xvfb-run -a pnpm test:e2e
+        run: |
+          set -o pipefail
+          xvfb-run -a pnpm test:e2e 2>&1 | tee m8-e2e.log
       - name: Commit verified formal changes
         run: |
           git config user.name github-actions[bot]
@@ -85,6 +93,9 @@ jobs:
         with:
           name: m8-02-final-closure-evidence
           path: |
+            m8-static.log
+            m8-targeted.log
+            m8-e2e.log
             test-results/performance/
             test-results/electron/
           if-no-files-found: warn

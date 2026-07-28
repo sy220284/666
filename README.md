@@ -43,9 +43,9 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 - P0—P4约束包、时序过滤、来源和裁剪追溯。
 - OpenAI兼容、Anthropic和Custom Provider适配器、凭据隔离、端点安全和连接测试。
 
-## V1.0目标功能
+## V1.0核心实现
 
-以下剩余目标统一由M4-04整体任务实施和验收：
+M4-04已经完成C0—C7核心功能实现并进入Implementation Hold：
 
 ### AI写作
 
@@ -66,15 +66,18 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 - 日常滚动、重大操作、手动快照三轨备份。
 - 恢复到新目录和安全空间清理。
 
-### UI与显示
+## 当前C8关闭范围
+
+M8-02是当前唯一活动任务，负责：
 
 - 作者语言、继续写作、正文中心、设定结构化表单和结构操作可视化。
-- 新手/专业模式和自主/混合/AI初稿三条路径。
+- 快速、完整、导入、空白四个入口，以及自主、混合、AI优先三条路径。
 - 写作、规划设定、候选校验等统一工作台。
 - 沉浸写作、状态仲裁和上下文帮助。
 - Theme A安静编辑部、Theme B水墨印章。
 - 1280×800、2K、21:9和混合DPI支持。
 - 键盘、焦点、减少动态和无障碍。
+- 安全诊断、性能、Electron E2E、真实AI Eval和Windows/macOS/Linux发布验收。
 
 ## 核心数据关系
 
@@ -121,17 +124,18 @@ Final Version
 
 ## V1.0开发路线
 
-V1历史规格保留54份任务文件；独立执行体系为34张任务。M0—M3与M4-01—M4-03已经Verified，全部剩余功能统一由M4-04推进：
+V1历史规格保留54份任务文件；独立执行体系为35张任务。M0—M3与M4-01—M4-03已经Verified，M4-04已经Implemented，C8由M8-02实施：
 
 ```text
 M0—M3 已完成
 → M4-01 FTS 已完成
 → M4-02 约束包 已完成
 → M4-03 Provider 已完成
-→ M4-04 V1剩余功能整体实施与发布闭环
+→ M4-04 C0—C7核心功能已Implemented
+→ M8-02 C8完整体验、硬化与发布关闭进行中
 ```
 
-M4-04吸收原M4-05—M8-03全部要求，采用：
+M4-04吸收原M4-05—M6-06；M8-02吸收原M7-01—M7-03、M8-01和M8-03。M8-02采用：
 
 ```text
 一个活动任务
@@ -155,14 +159,14 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ M4-04唯一整体任务卡
+→ M8-02当前任务卡
 → 被吸收需求来源和专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
 当前活动任务：
 
-[`M4-04 WorldForge V1剩余功能整体实施与发布闭环`](./docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)
+[`M8-02 C8完整体验、硬化与发布关闭`](./docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 
@@ -174,7 +178,7 @@ AGENTS.md
 pnpm release:check
 ```
 
-真实发布只允许从`main`执行。M4-04未Verified或P0、跨平台、数据安全与恢复门未关闭时，发布入口必须明确失败，不能提前分发未完成版本。
+真实发布只允许从`main`执行。M8-02未Verified或P0、跨平台、数据安全与恢复门未关闭时，发布入口必须明确失败，不能提前分发未完成版本。
 
 ## 关键文档
 

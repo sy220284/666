@@ -6,7 +6,9 @@ import {
   asarHeaderIntegrity,
   packagePlatformForNode,
   parsePackageArguments,
+  pnpmInvocation,
 } from '../../scripts/package-desktop.mjs';
+import { packagedExecutablePath } from '../../scripts/smoke-packaged-desktop.mjs';
 
 describe('desktop package command', () => {
   it('maps supported Node platforms to release platform names', () => {
@@ -86,5 +88,49 @@ describe('desktop package command', () => {
       algorithm: 'SHA256',
       hash: '1e0584a25d9f43bf5cbd0aec01eb1af2220ed085b4e7f1837b0d89958cae353a',
     });
+  });
+
+  it('invokes the pnpm JavaScript entrypoint directly on every host', () => {
+    expect(
+      pnpmInvocation(['--filter', '@worldforge/main', 'deploy'], {
+        environment: { npm_execpath: '/tools/pnpm.cjs' },
+        nodeExecutable: '/tools/node',
+        nodePlatform: 'win32',
+      }),
+    ).toEqual({
+      command: '/tools/node',
+      arguments: ['/tools/pnpm.cjs', '--filter', '@worldforge/main', 'deploy'],
+    });
+    expect(() =>
+      pnpmInvocation([], {
+        environment: {},
+        nodeExecutable: 'node.exe',
+        nodePlatform: 'win32',
+      }),
+    ).toThrow(/PNPM_CLI_PATH_REQUIRED_ON_WINDOWS/);
+  });
+
+  it('locates each packaged executable without relying on Playwright internals', () => {
+    expect(
+      packagedExecutablePath('/unpacked', {
+        version: '1.2.3',
+        platform: 'linux',
+        architecture: 'x64',
+      }),
+    ).toBe(path.join('/unpacked', 'WorldForge-v1.2.3-linux-x64', 'worldforge'));
+    expect(
+      packagedExecutablePath('/unpacked', {
+        version: '1.2.3',
+        platform: 'windows',
+        architecture: 'x64',
+      }),
+    ).toBe(path.join('/unpacked', 'WorldForge-v1.2.3-windows-x64', 'WorldForge.exe'));
+    expect(
+      packagedExecutablePath('/unpacked', {
+        version: '1.2.3',
+        platform: 'macos',
+        architecture: 'arm64',
+      }),
+    ).toBe(path.join('/unpacked', 'WorldForge.app', 'Contents', 'MacOS', 'WorldForge'));
   });
 });

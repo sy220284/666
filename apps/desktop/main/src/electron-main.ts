@@ -58,6 +58,25 @@ let unregisterIpc: (() => void) | null = null;
 let startupLogger: PrivacyLogger | null = null;
 let startupStage = 'module';
 
+async function announcePackagedSmokeReady(
+  window: BrowserWindow,
+  supervisor: CoreSupervisor,
+): Promise<void> {
+  if (!app.isPackaged || process.env.WORLDFORGE_PACKAGED_SMOKE !== '1') return;
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    const rendererReady = await window.webContents
+      .executeJavaScript('document.body.dataset.rendererReady === "true"', true)
+      .catch(() => false);
+    if (rendererReady === true && supervisor.getStatus().status === 'healthy') {
+      process.stdout.write('WORLDFORGE_PACKAGED_READY\n');
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error('PACKAGED_SMOKE_STARTUP_TIMEOUT');
+}
+
 function spawnCore(): UtilityProcessHandle {
   const userDataPath = app.getPath('userData');
   const appMigrationsPath = app.isPackaged
@@ -441,7 +460,9 @@ async function bootstrap(): Promise<void> {
   });
 
   mainWindow.once('ready-to-show', () => {
-    if (process.env.WORLDFORGE_E2E !== '1') mainWindow?.show();
+    if (process.env.WORLDFORGE_E2E !== '1' && process.env.WORLDFORGE_PACKAGED_SMOKE !== '1') {
+      mainWindow?.show();
+    }
   });
 
   startupStage = 'renderer-load';
@@ -449,6 +470,7 @@ async function bootstrap(): Promise<void> {
   if (!loadedPreferences.ok || loadedPreferences.preferences === null) {
     await persist(currentPreferences());
   }
+  await announcePackagedSmokeReady(mainWindow, supervisor);
   startupStage = 'ready';
 }
 

@@ -147,15 +147,43 @@ export async function ensureElectronRuntime({
 }
 
 async function deployWorkspace(packageName, target) {
-  const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   await mkdir(path.dirname(target), { recursive: true });
-  run(pnpmCommand, ['--filter', packageName, 'deploy', '--prod', '--legacy', target]);
+  const deployArguments = [
+    '--filter',
+    packageName,
+    'deploy',
+    '--prod',
+    '--config.inject-workspace-packages=true',
+    target,
+  ];
+  const invocation = pnpmInvocation(deployArguments);
+  run(invocation.command, invocation.arguments);
   const [scope, name] = packageName.split('/');
   if (scope && name) {
     await rm(path.join(target, 'node_modules', '.pnpm', 'node_modules', scope, name), {
       force: true,
     });
   }
+}
+
+export function pnpmInvocation(
+  argumentsList,
+  {
+    environment = process.env,
+    nodeExecutable = process.execPath,
+    nodePlatform = process.platform,
+  } = {},
+) {
+  if (environment.npm_execpath) {
+    return {
+      command: nodeExecutable,
+      arguments: [environment.npm_execpath, ...argumentsList],
+    };
+  }
+  if (nodePlatform === 'win32') {
+    throw new Error('PNPM_CLI_PATH_REQUIRED_ON_WINDOWS');
+  }
+  return { command: 'pnpm', arguments: argumentsList };
 }
 
 async function prepareApplication(resourcesPath, version) {

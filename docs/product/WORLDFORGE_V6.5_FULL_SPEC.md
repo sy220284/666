@@ -10,18 +10,18 @@
 
 为避免同一内容在多处重复维护，以下专项内容分别以对应文档为唯一真源：
 
-| 内容 | 唯一真源 |
-|---|---|
-| V1.0/P1/V1.5范围 | `V1_SCOPE_AND_ACCEPTANCE.md` |
-| 功能ID和功能关系 | `FUNCTION_CATALOG.md` |
+| 内容                             | 唯一真源                                             |
+| -------------------------------- | ---------------------------------------------------- |
+| V1.0/P1/V1.5范围                 | `V1_SCOPE_AND_ACCEPTANCE.md`                         |
+| 功能ID和功能关系                 | `FUNCTION_CATALOG.md`                                |
 | 任务编号、独立执行边界和吸收关系 | `V1_TASK_SYSTEM_REBASE.md`、`../tasks/TASK_INDEX.md` |
-| 当前唯一整体任务 | `../tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md` |
-| P0验收编号和通过标准 | `../testing/P0_ACCEPTANCE_MATRIX.md` |
-| 数据表、字段和事务 | `../database/DATABASE_SCHEMA.md` |
-| IPC、事件和错误码 | `../contracts/` |
-| Prompt、Provider和Eval | `../ai/` |
-| UI、主题、交互和显示 | `../ui/` |
-| 冻结技术选择 | `../decisions/IMPLEMENTATION_DECISIONS.md`与ADR |
+| 当前唯一整体任务                 | `../tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md`        |
+| P0验收编号和通过标准             | `../testing/P0_ACCEPTANCE_MATRIX.md`                 |
+| 数据表、字段和事务               | `../database/DATABASE_SCHEMA.md`                     |
+| IPC、事件和错误码                | `../contracts/`                                      |
+| Prompt、Provider和Eval           | `../ai/`                                             |
+| UI、主题、交互和显示             | `../ui/`                                             |
+| 冻结技术选择                     | `../decisions/IMPLEMENTATION_DECISIONS.md`与ADR      |
 
 本文件不复制任务卡明细或P0验收表。专项文档不得改变本文件的产品原则；专项实现细节发生冲突时，以对应唯一真源为准并同步追踪矩阵。
 
@@ -326,15 +326,15 @@ ConstraintPackage
 
 ## 14. 性能基线
 
-| 指标 | V1目标 |
-|---|---:|
-| 2K键入P95 | ≤50ms |
-| 自动保存事务P95 | ≤150ms |
-| 编辑IPC P95 | ≤200ms |
-| AI取消反馈 | ≤500ms |
-| 5000字Diff首屏 | ≤500ms |
-| 5000字完整Diff | ≤1.2s |
-| 正文滚动 | ≥50fps |
+| 指标                 | V1目标 |
+| -------------------- | -----: |
+| 2K键入P95            |  ≤50ms |
+| 自动保存事务P95      | ≤150ms |
+| 编辑IPC P95          | ≤200ms |
+| AI取消反馈           | ≤500ms |
+| 5000字Diff首屏       | ≤500ms |
+| 5000字完整Diff       |  ≤1.2s |
+| 正文滚动             | ≥50fps |
 | Core单次事件循环阻塞 | <100ms |
 
 完整性能预算以`../testing/PERFORMANCE_BUDGETS.md`为准。
@@ -357,19 +357,20 @@ P0验收项以`../testing/P0_ACCEPTANCE_MATRIX.md`中的`P0-001—P0-075`为唯�
 
 ## 16. V1.0任务路线
 
-V1历史规格保留54份任务文件；独立执行体系为34张任务：M0—M3、M4-01—M4-04。
+V1历史规格保留54份任务文件；独立执行体系为35张任务：M0—M3、M4-01—M4-04与M8-02。
 
 ```text
 M0—M3 Verified
 → M4-01 FTS Verified
 → M4-02 ConstraintPackage Verified
 → M4-03 Provider Verified
-→ M4-04 V1剩余功能整体实施与发布闭环 In Progress
+→ M4-04 C0—C7核心功能交付 Implemented
+→ M8-02 C8完整体验、硬化与发布关闭 In Progress
 ```
 
-原M4-05—M8-03已被M4-04吸收为详细需求来源，不再独立激活、建立正式分支/PR或单独关闭。M4-04先完成全量需求与代码审计和整体规划，再按AI基础、作者写作、状态校验、搜索交付、体验整合和发布关闭连续实施。
+原M4-05—M6-06由M4-04吸收并已完成核心实现；原M7-01—M7-03、M8-01和M8-03由M8-02吸收。M8-02使用独立分支与长期Draft PR完成C8最终体验、硬化、真实平台验收和发布判断。
 
-已完成任务卡及证据保持冻结；兼容扩展由M4-04承接。详细编号、吸收关系和状态只在`../tasks/TASK_INDEX.md`维护。
+已完成任务卡及证据保持冻结；C8兼容扩展与终验由M8-02承接。详细编号、吸收关系和状态只在`../tasks/TASK_INDEX.md`维护。
 
 ## 17. 开发入口
 
@@ -378,7 +379,7 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ M4-04唯一整体任务卡
+→ M8-02当前任务卡
 → 被吸收需求来源与专项真源
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```

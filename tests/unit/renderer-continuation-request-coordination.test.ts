@@ -184,23 +184,54 @@ describe('M4-04 continuation request coordination', () => {
     expect(tracker.committedInput()).toEqual(candidates);
   });
 
-  it('restores the committed panel as latest intent when the author switches back early', () => {
+  it('queues a restoring write when the author switches back before an older panel settles', async () => {
+    const coordinator = new BridgeRequestCoordinator();
     const tracker = new ContinuationPersistenceTracker<ContinuationFixture>();
     const editor = continuation({ panel: 'editor' });
+    const versionsGate = deferred<CommandResult<string>>();
+    const started: string[] = [];
+    const persisted: string[] = [];
     tracker.commit(editor);
 
     const versions = derivePanelSwitchInput(tracker.committedInput(), 'versions');
     expect(versions).not.toBeNull();
     if (!versions) return;
 
-    expect(derivePanelSwitchInput(tracker.committedInput(), 'editor')).toBeNull();
-    tracker.commit(versions);
-    expect(tracker.committedInput()).toBe(editor);
+    const versionsRequest = coordinator.run(
+      continuationRequestKey(versions.projectId, versions.panel),
+      async () => {
+        started.push('versions');
+        const result = await versionsGate.promise;
+        persisted.push('versions');
+        return result;
+      },
+      { mode: 'replace' },
+    );
+    await vi.waitFor(() => expect(started).toEqual(['versions']));
 
-    const movedEditor = continuation({ panel: 'editor', scrollTop: 640 });
-    expect(tracker.isCommitted(movedEditor)).toBe(false);
-    tracker.commit(movedEditor);
-    expect(tracker.committedInput()).toEqual(movedEditor);
+    const restoringEditor = derivePanelSwitchInput(tracker.committedInput(), 'editor');
+    expect(restoringEditor).toBe(editor);
+    if (!restoringEditor) return;
+
+    const editorRequest = coordinator.run(
+      continuationRequestKey(restoringEditor.projectId, restoringEditor.panel),
+      async () => {
+        started.push('editor');
+        persisted.push('editor');
+        return success('request-editor-restored', 'editor');
+      },
+      { mode: 'replace' },
+    );
+
+    versionsGate.resolve(success('request-versions', 'versions'));
+    await expect(versionsRequest).resolves.toEqual({ state: 'stale', generation: 1 });
+    const editorOutcome = await editorRequest;
+    expect(editorOutcome).toMatchObject({ state: 'success', data: 'editor' });
+    if (editorOutcome.state === 'success') tracker.commit(restoringEditor);
+
+    expect(started).toEqual(['versions', 'editor']);
+    expect(persisted).toEqual(['versions', 'editor']);
+    expect(tracker.committedInput()).toBe(editor);
   });
 
   it('does not treat a new project scope as a stale panel retry', () => {

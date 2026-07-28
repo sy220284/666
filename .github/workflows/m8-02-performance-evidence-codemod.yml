@@ -1,0 +1,69 @@
+name: M8-02 Performance Evidence Codemod
+
+on:
+  pull_request:
+    types:
+      - synchronize
+    branches:
+      - main
+    paths:
+      - scripts/m8-02-performance-evidence-codemod.mjs
+      - .github/workflows/m8-02-performance-evidence-codemod.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-02-performance-evidence-codemod
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: work/m8-02-performance-e2e-ai-eval
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Apply deterministic codemod
+        run: node scripts/m8-02-performance-evidence-codemod.mjs
+      - name: Install workspace dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --prefer-offline
+      - name: Format changed sources
+        run: >-
+          pnpm exec prettier --write
+          tests/performance/chinese-diff.test.ts
+          tests/performance/search-index-performance.test.ts
+          .github/workflows/performance.yml
+      - name: Run structured performance evidence
+        env:
+          WORLDFORGE_M1_PERF_OUTPUT: test-results/performance/writing.json
+          WORLDFORGE_DIFF_PERF_OUTPUT: test-results/performance/diff.json
+          WORLDFORGE_SEARCH_PERF_OUTPUT: test-results/performance/search.json
+        run: |
+          pnpm typecheck
+          pnpm test:perf
+          test -s test-results/performance/writing.json
+          test -s test-results/performance/diff.json
+          test -s test-results/performance/search.json
+      - name: Upload measured evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m8-02-measured-performance
+          path: test-results/performance/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Commit verified closure
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "测试(M8-02)：输出可审计性能测量工件"
+          git push origin HEAD:work/m8-02-performance-e2e-ai-eval

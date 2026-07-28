@@ -207,6 +207,7 @@ test('completes atomic onboarding and exports only the confirmed diagnostic allo
   ]);
   const application = await launch(userDataPath, undefined, {
     WORLDFORGE_E2E_CREATE_PARENT: createParent,
+    WORLDFORGE_E2E_CONFIRM_DIAGNOSTICS: '1',
     WORLDFORGE_E2E_DIAGNOSTICS_DIRECTORY: diagnosticsDirectory,
   });
   try {

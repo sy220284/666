@@ -118,6 +118,7 @@ import {
   type CommandResult,
   type ErrorCode,
   type AppearancePreferences,
+  type DiagnosticPreview,
   type WindowPreferences,
 } from '@worldforge/contracts';
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
@@ -150,6 +151,7 @@ interface IpcHandlerOptions {
   readonly chooseRecoveryExportDirectory: () => Promise<string | null>;
   readonly chooseTextImportFile: () => Promise<string | null>;
   readonly chooseTextExportDirectory: () => Promise<string | null>;
+  readonly confirmDiagnosticsExport?: (preview: DiagnosticPreview) => Promise<boolean>;
   readonly chooseDiagnosticsDirectory?: () => Promise<string | null>;
 }
 
@@ -445,6 +447,16 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     if (rejected) return rejected;
     const parsed = AppExportDiagnosticsCommandSchema.safeParse(raw);
     if (!parsed.success) return invalidRequest(raw);
+    const preview = diagnostics();
+    const confirmed = (await options.confirmDiagnosticsExport?.(preview)) ?? false;
+    if (!confirmed) {
+      return failure(
+        parsed.data.requestId,
+        'COMMON_CANCELLED_004',
+        'The diagnostic export was not confirmed in the trusted application shell.',
+        true,
+      );
+    }
     const targetDirectory = (await options.chooseDiagnosticsDirectory?.()) ?? null;
     if (!targetDirectory) {
       return failure(
@@ -457,7 +469,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     try {
       return success(
         parsed.data.requestId,
-        await exportDiagnosticPreview(targetDirectory, diagnostics()),
+        await exportDiagnosticPreview(targetDirectory, preview),
       );
     } catch {
       return failure(

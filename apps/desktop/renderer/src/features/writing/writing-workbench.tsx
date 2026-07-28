@@ -61,7 +61,7 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
       initialContinuation={continuation}
       statusNotice={restoreNotice}
       onStatusNoticeConsumed={consumeRestoreNotice}
-      key={`${props.project.projectId}:${props.panel}`}
+      key={props.project.projectId}
     />
   );
 }

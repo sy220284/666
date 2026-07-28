@@ -228,8 +228,10 @@ jobs:
           assert.match(quality, /draft_mode: false/u);
           assert.doesNotMatch(quality, /draft_mode: \$\{\{ github\.event\.pull_request\.draft/u);
           assert.doesNotMatch(quality, /static-failure-diagnostics/u);
-          assert.match(mainVerification, /modeAwareChecksState/u);
+          assert.match(mainVerification, /waitForSourceReadyChecks/u);
+          assert.match(mainVerification, /requiredCheckState/u);
           assert.match(mainVerification, /nextPagePath/u);
+          assert.doesNotMatch(mainVerification, /modeAwareChecksState/u);
           assert.match(evidencePolicy, /EVIDENCE_HEAD_SHA/u);
           assert.match(evidencePolicy, /merge-base.*--is-ancestor/su);
           assert.match(automationLayout, /PERMANENT_WORKFLOWS/u);
@@ -261,9 +263,10 @@ jobs:
           assert.match(repositoryGovernance, /git status --porcelain=v1 --untracked-files=all/u);
           assert.match(repositoryGovernance, /automation-layout-policy\.mjs/u);
           assert.doesNotMatch(repositoryGovernance, /^\s*push:/mu);
-          assert.match(postMerge, /reconcile-ruleset:/u);
-          assert.match(postMerge, /ruleset-policy\.mjs apply/u);
-          assert.match(postMerge, /REPO_ADMIN_TOKEN: \$\{\{ secrets\.REPO_ADMIN_TOKEN \}\}/u);
+          assert.match(postMerge, /post-merge-verification\.mjs/u);
+          assert.doesNotMatch(postMerge, /reconcile-ruleset:/u);
+          assert.doesNotMatch(postMerge, /ruleset-policy\.mjs apply/u);
+          assert.doesNotMatch(postMerge, /REPO_ADMIN_TOKEN/u);
           const checks = JSON.parse(
             await readFile('.github/governance/required-checks.json', 'utf8'),
           );

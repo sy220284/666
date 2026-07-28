@@ -194,18 +194,12 @@ describe('M8-02 release performance evidence', () => {
 
     for (let index = 0; index < 20; index += 1) {
       let startedAt = performance.now();
-      const plan = planDiffExecution(
-        [draft('b1', source)],
-        [candidate('c1', changed, 'b1')],
-      );
+      const plan = planDiffExecution([draft('b1', source)], [candidate('c1', changed, 'b1')]);
       structureSamples.push(performance.now() - startedAt);
       expect(plan.strategy).toBe('main-thread');
 
       startedAt = performance.now();
-      const result = computeCandidateDiff(
-        [draft('b1', source)],
-        [candidate('c1', changed, 'b1')],
-      );
+      const result = computeCandidateDiff([draft('b1', source)], [candidate('c1', changed, 'b1')]);
       completeSamples.push(performance.now() - startedAt);
       expect(result.characterDiffs).toHaveLength(1);
     }

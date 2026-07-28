@@ -22,15 +22,18 @@ allowed_paths:
   - apps/desktop/
   - packages/contracts/
   - packages/core-service/
+  - migrations/
   - tests/e2e/
   - tests/unit/
   - tests/performance/
   - tests/security/
   - tests/integration/
+  - tests/migration/
   - evals/
   - scripts/
   - .github/workflows/
   - .github/governance/
+  - docs/database/
   - docs/ui/
   - docs/testing/
   - docs/security/

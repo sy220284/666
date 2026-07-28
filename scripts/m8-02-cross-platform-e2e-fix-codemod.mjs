@@ -95,11 +95,15 @@ e2e = replaceExact(
 );
 e2e = replaceExact(
   e2e,
-  `    await expect(page.locator('[data-active-project-path]')).toHaveText(movedWorkspace);`,
-  `    await expect(page.locator('[data-active-project-path]')).toHaveText(
+  `    await page.locator('[data-move-project]').click();
+    await expect(page.locator('[data-active-project-path]')).toHaveText(movedWorkspace);
+    await expect(page.locator('[data-project-operation-status]')).toContainText('校验通过');`,
+  `    await page.locator('[data-move-project]').click();
+    await expect(page.locator('[data-project-operation-status]')).toContainText('校验通过');
+    await expect(page.locator('[data-active-project-path]')).toHaveText(
       await realpath(movedWorkspace),
     );`,
-  'canonical moved workspace expectation',
+  'wait for move before canonical path expectation',
 );
 e2e = replaceExact(
   e2e,

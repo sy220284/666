@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { ProjectContinuationSnapshot, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type {
+  ProjectContinuationInput,
+  ProjectContinuationSnapshot,
+  ProjectWorkspaceSummary,
+} from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import {
@@ -23,6 +27,11 @@ const VERSION_RESTORE_NOTICE = '已从只读版本恢复为新草稿。';
 
 export function WritingWorkbench(props: WritingWorkbenchProps) {
   const onPanelChangeRef = useRef(props.onPanelChange);
+  const desiredPanelRef = useRef<WritingPanel>(props.panel);
+  const latestContinuationRef = useRef<ProjectContinuationSnapshot | null>(
+    props.initialContinuation,
+  );
+  desiredPanelRef.current = props.panel;
   const [latestContinuation, setLatestContinuation] = useState<ProjectContinuationSnapshot | null>(
     props.initialContinuation,
   );
@@ -33,20 +42,44 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
   }, [props.onPanelChange]);
 
   useEffect(() => {
+    latestContinuationRef.current = props.initialContinuation;
     setLatestContinuation(props.initialContinuation);
   }, [props.initialContinuation, props.project.projectId]);
 
+  const acceptContinuation = useCallback((continuation: ProjectContinuationSnapshot): void => {
+    latestContinuationRef.current = continuation;
+    setLatestContinuation(continuation);
+  }, []);
   const consumeRestoreNotice = useCallback(() => setRestoreNotice(null), []);
 
   const bridge = useMemo(
     () =>
       createWritingBridge(
         props.bridge,
-        (panel) => onPanelChangeRef.current(panel),
-        setLatestContinuation,
+        () => desiredPanelRef.current,
+        (panel) => {
+          desiredPanelRef.current = panel;
+          onPanelChangeRef.current(panel);
+        },
+        acceptContinuation,
         setRestoreNotice,
       ),
-    [props.bridge],
+    [acceptContinuation, props.bridge],
+  );
+
+  const changePanel = useCallback(
+    (panel: WritingPanel): void => {
+      desiredPanelRef.current = panel;
+      onPanelChangeRef.current(panel);
+      const snapshot = latestContinuationRef.current;
+      if (!snapshot) return;
+      void props.bridge.project
+        .saveContinuation(continuationInputForPanel(snapshot, panel), { mode: 'replace' })
+        .then((outcome) => {
+          if (outcome.state === 'success') acceptContinuation(outcome.data);
+        });
+    },
+    [acceptContinuation, props.bridge.project],
   );
 
   const continuation =
@@ -59,15 +92,34 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
       {...props}
       bridge={bridge}
       initialContinuation={continuation}
+      onPanelChange={changePanel}
       statusNotice={restoreNotice}
       onStatusNoticeConsumed={consumeRestoreNotice}
-      key={props.project.projectId}
+      key={`${props.project.projectId}:${props.panel}`}
     />
   );
 }
 
+function continuationInputForPanel(
+  snapshot: ProjectContinuationSnapshot,
+  panel: WritingPanel,
+): ProjectContinuationInput {
+  return {
+    projectId: snapshot.projectId,
+    chapterId: snapshot.chapterId,
+    draftId: snapshot.draftId,
+    draftRevision: snapshot.draftRevision,
+    logicalBlockId: snapshot.logicalBlockId,
+    expectedBlockHash: snapshot.expectedBlockHash,
+    cursorOffset: snapshot.cursorOffset,
+    scrollTop: snapshot.scrollTop,
+    panel,
+  };
+}
+
 function createWritingBridge(
   bridge: RendererBridgeAdapter,
+  getDesiredPanel: () => WritingPanel,
   onPanelChange: (panel: WritingPanel) => void,
   onContinuation: (continuation: ProjectContinuationSnapshot) => void,
   onRestoreNotice: (message: string) => void,
@@ -96,7 +148,11 @@ function createWritingBridge(
   };
 
   const saveContinuation: SaveContinuation = async (...args) => {
-    const outcome = await bridge.project.saveContinuation(...args);
+    const [input, options] = args;
+    const outcome = await bridge.project.saveContinuation(
+      { ...input, panel: getDesiredPanel() },
+      options,
+    );
     if (outcome.state === 'success') onContinuation(outcome.data);
     return outcome;
   };

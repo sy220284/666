@@ -34,6 +34,38 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Correct nested template escaping
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const file = 'scripts/m8-02-backup-failure-ledger-codemod.mjs';
+          let content = await readFile(file, 'utf8');
+          const replacements = [
+            [
+              "          .prepare(\n            `INSERT INTO backup_failures(",
+              "          .prepare(\n            \\`INSERT INTO backup_failures(",
+            ],
+            [
+              ") VALUES(?, ?, 'import', 'daily', 'UNKNOWN', ?, NULL)`,",
+              ") VALUES(?, ?, 'import', 'daily', 'UNKNOWN', ?, NULL)\\`,",
+            ],
+            [
+              "            .prepare(\n              `SELECT error_code AS errorCode, resolved_at AS resolvedAt",
+              "            .prepare(\n              \\`SELECT error_code AS errorCode, resolved_at AS resolvedAt",
+            ],
+            [
+              "                 FROM backup_failures WHERE project_id = ?`,",
+              "                 FROM backup_failures WHERE project_id = ?\\`,",
+            ],
+          ];
+          for (const [before, after] of replacements) {
+            const count = content.split(before).length - 1;
+            if (count !== 1) throw new Error(`template escaping expected one match, got ${count}`);
+            content = content.replace(before, after);
+          }
+          await writeFile(file, content, 'utf8');
+          NODE
       - name: Apply deterministic codemod
         shell: bash
         run: |

@@ -54,6 +54,19 @@ export class ContinuationPersistenceTracker<Input> {
     this.#desiredPanel = fieldOf(input, 'panel', NO_PANEL);
   }
 
+  /** Whether `input` would replace a newer panel intent in the same project. */
+  hasDifferentPanelIntent(input: Input): boolean {
+    const scope = fieldOf(input, 'projectId', NO_SCOPE);
+    const panel = fieldOf(input, 'panel', NO_PANEL);
+    return (
+      this.#desiredScope !== NO_SCOPE &&
+      scope === this.#desiredScope &&
+      this.#desiredPanel !== NO_PANEL &&
+      panel !== NO_PANEL &&
+      panel !== this.#desiredPanel
+    );
+  }
+
   /**
    * Records `input` as persisted only when it still represents the latest
    * Renderer intent. A superseded success must not move the confirmed cursor
@@ -76,8 +89,8 @@ export class ContinuationPersistenceTracker<Input> {
 /**
  * Derives a lightweight panel-switch state from the last Core-confirmed
  * snapshot and marks the selected panel as the newest Renderer intent before
- * any asynchronous save settles. Returning to the committed panel still
- * refreshes intent even though no immediate write is required.
+ * any asynchronous save settles. Returning to the committed panel queues a
+ * restoring write when another panel request can still overwrite Core.
  */
 export function derivePanelSwitchInput<Input extends { readonly panel: Panel }, Panel>(
   committed: Input | null,
@@ -86,8 +99,9 @@ export function derivePanelSwitchInput<Input extends { readonly panel: Panel }, 
   if (!committed) return null;
   const tracker = trackerByCommittedInput.get(committed);
   if (committed.panel === panel) {
+    const shouldRestore = tracker?.hasDifferentPanelIntent(committed) ?? false;
     tracker?.noteIntent(committed);
-    return null;
+    return shouldRestore ? committed : null;
   }
   const next = { ...committed, panel };
   tracker?.noteIntent(next);

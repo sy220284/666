@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CommandResult } from '@worldforge/contracts';
@@ -50,6 +53,19 @@ function continuation(overrides: Partial<ContinuationFixture> = {}): Continuatio
 }
 
 describe('M4-04 continuation request coordination', () => {
+  it('keeps the persistence tracker mounted while the author changes panels', async () => {
+    const source = await readFile(
+      path.join(
+        process.cwd(),
+        'apps/desktop/renderer/src/features/writing/writing-workbench.tsx',
+      ),
+      'utf8',
+    );
+
+    expect(source).toContain('key={props.project.projectId}');
+    expect(source).not.toContain('key={`${props.project.projectId}:${props.panel}`}');
+  });
+
   it('serializes writes and drops superseded pending continuation states', async () => {
     const coordinator = new BridgeRequestCoordinator();
     const firstGate = deferred<CommandResult<string>>();

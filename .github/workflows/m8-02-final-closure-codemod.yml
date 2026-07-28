@@ -6,6 +6,7 @@ on:
     paths:
       - scripts/m8-02-final-closure-codemod.mjs
       - scripts/m8-02-final-closure-fix.mjs
+      - scripts/m8-02-e2e-diagnostic-fix.mjs
       - .github/workflows/m8-02-final-closure-codemod.yml
 
 permissions:
@@ -19,7 +20,7 @@ jobs:
   apply-and-verify:
     if: github.head_ref == 'work/m8-02-performance-e2e-ai-eval'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 25
     env:
       CI: 'true'
       WORLDFORGE_M8_PERF_OUTPUT: test-results/performance/m8-release-performance.json
@@ -34,10 +35,11 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply deterministic closure patch
+      - name: Apply deterministic closure and diagnostic patches
         run: |
           node scripts/m8-02-final-closure-codemod.mjs
           node scripts/m8-02-final-closure-fix.mjs
+          node scripts/m8-02-e2e-diagnostic-fix.mjs
       - name: Format changed source and tests
         run: >-
           pnpm exec prettier --write
@@ -47,6 +49,7 @@ jobs:
           tests/integration/three-track-recovery.test.ts
           tests/performance/m8-release-evidence.test.ts
           tests/e2e/electron-shell.spec.ts
+          tests/e2e/continuation-panel-race.spec.ts
           tests/e2e/m1-deferred-acceptance.spec.ts
           tests/e2e/unreadable-project-recovery.spec.ts
       - name: Static verification
@@ -56,49 +59,36 @@ jobs:
             pnpm lint
             pnpm typecheck
           } 2>&1 | tee m8-static.log
-      - name: Targeted integration and performance verification
-        run: |
-          set -o pipefail
-          {
-            pnpm test:prepare
-            pnpm exec vitest run \
-              tests/integration/docx-transfer.test.ts \
-              tests/integration/three-track-recovery.test.ts \
-              tests/performance/m8-release-evidence.test.ts
-          } 2>&1 | tee m8-targeted.log
+      - name: Build Electron workspaces
+        run: pnpm build
       - name: Install Electron display dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2t64 libgbm1
-      - name: Full Electron E2E verification
+      - name: Run recovery and continuation diagnostics
         run: |
           set -o pipefail
-          xvfb-run -a pnpm test:e2e 2>&1 | tee m8-e2e.log
-      - name: Commit verified formal changes
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add \
-            packages/core-service/src/docx-transfer.ts \
-            packages/core-service/src/recovery.ts \
-            tests/integration/docx-transfer.test.ts \
-            tests/integration/three-track-recovery.test.ts \
-            tests/performance/m8-release-evidence.test.ts \
-            tests/e2e/electron-shell.spec.ts \
+          node scripts/run-electron-e2e.mjs \
+            tests/e2e/continuation-panel-race.spec.ts \
             tests/e2e/m1-deferred-acceptance.spec.ts \
-            tests/e2e/unreadable-project-recovery.spec.ts
-          git diff --cached --check
-          git commit -m '测试(M8-02)：关闭DOCX、备份并发与运行性能专项'
-          git push origin HEAD:${{ github.head_ref }}
-      - name: Upload closure evidence
+            tests/e2e/unreadable-project-recovery.spec.ts \
+            2>&1 | tee m8-recovery-diagnostic.log
+      - name: Run Renderer frame-rate diagnostic
+        run: |
+          set -o pipefail
+          node scripts/run-electron-e2e.mjs \
+            tests/e2e/electron-shell.spec.ts \
+            --grep 'records Renderer animation-frame budget' \
+            2>&1 | tee m8-renderer-diagnostic.log
+      - name: Upload closure diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: m8-02-final-closure-evidence
+          name: m8-02-targeted-electron-diagnostics
           path: |
             m8-static.log
-            m8-targeted.log
-            m8-e2e.log
-            test-results/performance/
+            m8-recovery-diagnostic.log
+            m8-renderer-diagnostic.log
+            tests/e2e/test-results/electron/
             test-results/electron/
           if-no-files-found: warn

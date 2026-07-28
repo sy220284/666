@@ -31,7 +31,8 @@ export async function verifyPackageAssets(
     manifest.fuses?.runAsNode !== false ||
     manifest.fuses?.onlyLoadAppFromAsar !== true ||
     manifest.fuses?.embeddedAsarIntegrityValidation !== true ||
-    manifest.fuses?.grantFileProtocolExtraPrivileges !== false
+    manifest.fuses?.grantFileProtocolExtraPrivileges !== false ||
+    manifest.fuses?.loadBrowserProcessSpecificV8Snapshot !== false
   ) {
     throw new Error('Package manifest does not prove the frozen ASAR and production-fuse policy');
   }

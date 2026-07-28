@@ -148,15 +148,7 @@ export async function ensureElectronRuntime({
 
 async function deployWorkspace(packageName, target) {
   await mkdir(path.dirname(target), { recursive: true });
-  const deployArguments = [
-    '--filter',
-    packageName,
-    'deploy',
-    '--prod',
-    '--config.inject-workspace-packages=true',
-    target,
-  ];
-  const invocation = pnpmInvocation(deployArguments);
+  const invocation = pnpmInvocation(workspaceDeployArguments(packageName, target));
   run(invocation.command, invocation.arguments);
   const [scope, name] = packageName.split('/');
   if (scope && name) {
@@ -164,6 +156,18 @@ async function deployWorkspace(packageName, target) {
       force: true,
     });
   }
+}
+
+export function workspaceDeployArguments(packageName, target) {
+  return [
+    '--filter',
+    packageName,
+    'deploy',
+    '--prod',
+    '--config.inject-workspace-packages=true',
+    '--config.node-linker=hoisted',
+    target,
+  ];
 }
 
 export function pnpmInvocation(
@@ -345,7 +349,7 @@ async function hardenPackagedRuntime(runtime, platform, version) {
     [FuseV1Options.EnableNodeCliInspectArguments]: false,
     [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
     [FuseV1Options.OnlyLoadAppFromAsar]: true,
-    [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: true,
+    [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: false,
     [FuseV1Options.GrantFileProtocolExtraPrivileges]: false,
     [FuseV1Options.WasmTrapHandlers]: true,
   });
@@ -359,23 +363,44 @@ function archiveExtension(platform) {
   return platform === 'linux' ? 'tar.gz' : 'zip';
 }
 
-function createArchive({ platform, stagingDirectory, bundleName, artifactPath }) {
+export function archiveInvocation({ platform, stagingDirectory, bundleName, artifactPath }) {
   if (platform === 'macos') {
-    run('ditto', [
-      '-c',
-      '-k',
-      '--sequesterRsrc',
-      '--keepParent',
-      path.join(stagingDirectory, bundleName),
-      artifactPath,
-    ]);
-    return;
+    return {
+      command: 'ditto',
+      arguments: [
+        '-c',
+        '-k',
+        '--sequesterRsrc',
+        '--keepParent',
+        path.join(stagingDirectory, bundleName),
+        artifactPath,
+      ],
+    };
   }
   if (platform === 'windows') {
-    run('tar.exe', ['-a', '-c', '-f', artifactPath, '-C', stagingDirectory, bundleName]);
-    return;
+    return {
+      command: 'tar.exe',
+      arguments: [
+        '-a',
+        '-c',
+        '-f',
+        path.win32.basename(artifactPath),
+        '-C',
+        stagingDirectory,
+        bundleName,
+      ],
+      cwd: path.win32.dirname(artifactPath),
+    };
   }
-  run('tar', ['-czf', artifactPath, '-C', stagingDirectory, bundleName]);
+  return {
+    command: 'tar',
+    arguments: ['-czf', artifactPath, '-C', stagingDirectory, bundleName],
+  };
+}
+
+function createArchive(options) {
+  const invocation = archiveInvocation(options);
+  run(invocation.command, invocation.arguments, { cwd: invocation.cwd });
 }
 
 async function sha256(filePath) {
@@ -434,6 +459,7 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
         onlyLoadAppFromAsar: true,
         embeddedAsarIntegrityValidation: true,
         grantFileProtocolExtraPrivileges: false,
+        loadBrowserProcessSpecificV8Snapshot: false,
         wasmTrapHandlers: true,
       },
       limitations: ['Code signing and notarization are separate release acceptance gates.'],

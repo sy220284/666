@@ -3,10 +3,12 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  archiveInvocation,
   asarHeaderIntegrity,
   packagePlatformForNode,
   parsePackageArguments,
   pnpmInvocation,
+  workspaceDeployArguments,
 } from '../../scripts/package-desktop.mjs';
 import { packagedExecutablePath } from '../../scripts/smoke-packaged-desktop.mjs';
 
@@ -90,6 +92,29 @@ describe('desktop package command', () => {
     });
   });
 
+  it('uses a relative Windows archive target so tar does not treat the drive as remote', () => {
+    expect(
+      archiveInvocation({
+        platform: 'windows',
+        stagingDirectory: String.raw`C:\temp\stage`,
+        bundleName: 'WorldForge-v1.2.3-windows-x64',
+        artifactPath: String.raw`D:\a\release\WorldForge-v1.2.3-windows-x64.zip`,
+      }),
+    ).toEqual({
+      command: 'tar.exe',
+      arguments: [
+        '-a',
+        '-c',
+        '-f',
+        'WorldForge-v1.2.3-windows-x64.zip',
+        '-C',
+        String.raw`C:\temp\stage`,
+        'WorldForge-v1.2.3-windows-x64',
+      ],
+      cwd: String.raw`D:\a\release`,
+    });
+  });
+
   it('invokes the pnpm JavaScript entrypoint directly on every host', () => {
     expect(
       pnpmInvocation(['--filter', '@worldforge/main', 'deploy'], {
@@ -108,6 +133,18 @@ describe('desktop package command', () => {
         nodePlatform: 'win32',
       }),
     ).toThrow(/PNPM_CLI_PATH_REQUIRED_ON_WINDOWS/);
+  });
+
+  it('deploys production workspaces as hoisted copies that ASAR can resolve', () => {
+    expect(workspaceDeployArguments('@worldforge/main', '/tmp/main')).toEqual([
+      '--filter',
+      '@worldforge/main',
+      'deploy',
+      '--prod',
+      '--config.inject-workspace-packages=true',
+      '--config.node-linker=hoisted',
+      '/tmp/main',
+    ]);
   });
 
   it('locates each packaged executable without relying on Playwright internals', () => {

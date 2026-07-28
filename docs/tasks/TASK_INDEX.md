@@ -3,7 +3,7 @@
 > 状态：Active  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04与M8-02，共35张独立任务卡。  
-> 当前执行：M4-04完成C0—C7与C1并发硬化；M8-02承接延期C8，保持Planned。
+> 当前执行：M4-04核心交付已Implemented并进入Implementation Hold；M8-02承接延期C8，保持Planned。
 
 ## 1. 唯一执行入口
 
@@ -30,7 +30,7 @@ Blocked / Deferred / Removed
 | M1 | 基础写作MVP | 9 | Verified |
 | M2 | 编辑安全与版本核心 | 4 | Verified |
 | M3 | 规划、设定与连续性 | 10 | Verified |
-| M4 | AI基础与V1核心功能 | 4 | M4-01—M4-03 Verified；M4-04 In Progress |
+| M4 | AI基础与V1核心功能 | 4 | M4-01—M4-03 Verified；M4-04 Implemented |
 | M8 | C8完整体验、硬化与发布关闭 | 1 | M8-02 Planned |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 | 0 | 作为M4-04需求来源 |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收 | 0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
@@ -40,7 +40,7 @@ M0—M3 已完成产品底座
 → M4-01 FTS
 → M4-02 约束包
 → M4-03 Provider
-→ M4-04 C0—C7核心功能交付
+→ M4-04 C0—C7核心功能交付（Implemented）
 → Implementation Hold
 → M8-02 C8延期任务（作者后续明确启动）
 ```
@@ -102,7 +102,7 @@ M0—M3 已完成产品底座
 | M4-01 | [`FTS5公共索引、队列与项目词典`](M4/M4-01_FTS_INDEX_DICTIONARY.md) | M3 | Verified |
 | M4-02 | [`P0—P4约束包与裁剪追溯`](M4/M4-02_CONSTRAINT_PACKAGE.md) | M4-01、M3-06 | Verified |
 | M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md) | M3、M0-02、M0-04、M0-05 | Verified |
-| M4-04 | [`V1核心功能整体实施`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-01、M4-02、M4-03、M0-07 | In Progress |
+| M4-04 | [`V1核心功能整体实施`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-01、M4-02、M4-03、M0-07 | Implemented |
 
 ## M8 C8延期任务
 

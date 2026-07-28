@@ -5,6 +5,7 @@ import {
   copyFile,
   lstat,
   mkdir,
+  open,
   readFile,
   readdir,
   realpath,
@@ -332,21 +333,57 @@ export class RecoveryService {
   async createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
     const input = RecoveryDailyBackupInputSchema.parse(raw);
     const today = this.#clock.now().toISOString().slice(0, 10);
-    const existing = (await this.#readMetadata(input.projectId)).find(
-      (record) => record.track === 'daily' && record.createdAt.slice(0, 10) === today,
-    );
-    if (existing) return existing;
-    return this.#createTrackedBackup(
-      requestId,
-      { projectId: input.projectId, operation: 'manual-protection' },
-      {
-        track: 'daily',
-        displayName: null,
-        note: null,
-        authorProtected: false,
-        migrationProtected: false,
-      },
-    );
+    const backupDirectory = path.join(this.#backupRootDirectory, input.projectId);
+    await mkdir(backupDirectory, { recursive: true, mode: 0o700 });
+    await chmod(backupDirectory, 0o700);
+    const lockPath = path.join(backupDirectory, `.daily-${today}.lock`);
+    const startedAt = Date.now();
+    let lock: Awaited<ReturnType<typeof open>>;
+    for (;;) {
+      try {
+        lock = await open(lockPath, 'wx', 0o600);
+        break;
+      } catch (error) {
+        if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) throw error;
+        if (Date.now() - startedAt >= 30_000) {
+          try {
+            const details = await stat(lockPath);
+            if (Date.now() - details.mtimeMs >= 30_000) {
+              await rm(lockPath, { force: true });
+              continue;
+            }
+          } catch (lockError) {
+            if (isMissing(lockError)) continue;
+            throw lockError;
+          }
+          throw new RecoveryServiceError(
+            'BACKUP_CREATE_FAILED',
+            'Daily backup coordination timed out.',
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    }
+    try {
+      const existing = (await this.#readMetadata(input.projectId)).find(
+        (record) => record.track === 'daily' && record.createdAt.slice(0, 10) === today,
+      );
+      if (existing) return existing;
+      return await this.#createTrackedBackup(
+        requestId,
+        { projectId: input.projectId, operation: 'manual-protection' },
+        {
+          track: 'daily',
+          displayName: null,
+          note: null,
+          authorProtected: false,
+          migrationProtected: false,
+        },
+      );
+    } finally {
+      await lock.close();
+      await rm(lockPath, { force: true });
+    }
   }
 
   async createNamedSnapshot(

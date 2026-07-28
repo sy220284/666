@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { performance } from 'node:perf_hooks';
+import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
@@ -307,5 +307,69 @@ describe('M8-02 release performance evidence', () => {
       await harness.workspace.shutdown();
       await harness.appRuntime.close();
     }
+  });
+
+  it('records sustained Core workload and event-loop delay', async () => {
+    const histogram = monitorEventLoopDelay({ resolution: 10 });
+    const harness = await createProjectHarness('worldforge-m8-sustained-');
+    const initialHeap = process.memoryUsage().heapUsed;
+    const startedAt = performance.now();
+    histogram.enable();
+    const memory = { heapGrowthBytes: 0 };
+    try {
+      const project = await harness.workspace.create(
+        randomUUID(),
+        { name: 'M8持续负载', channel: '长篇' },
+        harness.parent,
+      );
+      const chapter = harness.structure.list(project.projectId).volumes[0]!.chapters[0]!;
+      let opened = await harness.drafts.open(randomUUID(), {
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      });
+      const base = '持续写作、保存、统计与索引负载。'.repeat(160);
+      for (let index = 0; index < 300; index += 1) {
+        const block = opened.blocks[0]!;
+        opened = await harness.drafts.applyPatch(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          draftId: opened.draftId,
+          baseRevision: opened.revision,
+          operations: [
+            {
+              type: 'update',
+              logicalBlockId: block.logicalBlockId,
+              expectedHash: block.contentHash!,
+              content: `${base}${index}`,
+            },
+          ],
+        });
+        calculateWritingStatistics(opened.blocks[0]!.text, 200, 8_000);
+        if (index % 20 === 0) await new Promise((resolve) => setImmediate(resolve));
+      }
+      await harness.search.rebuild(randomUUID(), project.projectId);
+      memory.heapGrowthBytes = Math.max(0, process.memoryUsage().heapUsed - initialHeap);
+    } finally {
+      histogram.disable();
+      await harness.workspace.shutdown();
+      await harness.appRuntime.close();
+    }
+    const elapsedMs = performance.now() - startedAt;
+    const eventLoopP99Ms = histogram.percentile(99) / 1_000_000;
+    record({
+      metric: 'core_event_loop_delay_p99_ms',
+      dataset: '300-autosave-sustained-workload',
+      samples: 1,
+      result: eventLoopP99Ms,
+      budget: 100,
+    });
+    record({
+      metric: 'sustained_workload_total_ms',
+      dataset: '300-autosave-plus-fts-rebuild',
+      samples: 1,
+      result: elapsedMs,
+      budget: 60_000,
+    });
+    expect(memory.heapGrowthBytes).toBeLessThan(128 * 1024 * 1024);
   });
 });

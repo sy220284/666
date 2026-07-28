@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
 import { CoordinatedImportExportService } from '../../packages/core-service/src/coordinated-import-export.js';
+import { parseDocx, renderDocx } from '../../packages/core-service/src/docx-transfer.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { RecoveryService } from '../../packages/core-service/src/recovery.js';
@@ -160,5 +161,58 @@ describe('M4-04 DOCX transfer', () => {
       await value.workspace.shutdown();
       await value.runtime.close();
     }
+  });
+
+  it('cross-checks central-directory fields against every local header', () => {
+    const archive = renderDocx([
+      {
+        chapterTitle: '第一章',
+        blocks: [{ blockType: 'paragraph', text: '本地头与中央目录必须一致。' }],
+      },
+    ]);
+    let eocd = -1;
+    for (
+      let offset = archive.length - 22;
+      offset >= Math.max(0, archive.length - 65_557);
+      offset -= 1
+    ) {
+      if (archive.readUInt32LE(offset) === 0x06054b50) {
+        eocd = offset;
+        break;
+      }
+    }
+    expect(eocd).toBeGreaterThanOrEqual(0);
+    const centralOffset = archive.readUInt32LE(eocd + 16);
+    const localOffset = archive.readUInt32LE(centralOffset + 42);
+    archive.writeUInt16LE(archive.readUInt16LE(localOffset + 8) === 8 ? 0 : 8, localOffset + 8);
+    expect(() => parseDocx(archive, '损坏文档', randomUUID)).toThrowError(
+      /local entry header fields do not match/iu,
+    );
+  });
+
+  it('imports a deterministic seven-million-character DOCX within archive limits', () => {
+    const bytes = Buffer.allocUnsafe(7_000_000);
+    let state = 0x1357_9bdf;
+    for (let index = 0; index < bytes.length; index += 1) {
+      state ^= state << 13;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      bytes[index] = 33 + ((state >>> 0) % 90);
+    }
+    const text = bytes.toString('ascii');
+    const chunks = Array.from({ length: 8 }, (_value, index) =>
+      text.slice(index * 875_000, (index + 1) * 875_000),
+    );
+    const archive = renderDocx([
+      {
+        chapterTitle: '超大章节',
+        blocks: chunks.map((chunk) => ({ blockType: 'paragraph', text: chunk })),
+      },
+    ]);
+    const parsed = parseDocx(archive, '超大章节', randomUUID);
+    expect(archive.byteLength).toBeLessThan(20 * 1024 * 1024);
+    expect(parsed.chapters[0]?.blocks.reduce((total, block) => total + block.text.length, 0)).toBe(
+      text.length,
+    );
   });
 });

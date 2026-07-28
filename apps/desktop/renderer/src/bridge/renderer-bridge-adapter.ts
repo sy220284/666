@@ -352,7 +352,10 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
   return (
     keys.length > 0 &&
     keys.every((key) => key === 'mode' || key === 'signal') &&
-    (!('mode' in value) || value.mode === 'reject' || value.mode === 'replace')
+    (!('mode' in value) ||
+      value.mode === 'reject' ||
+      value.mode === 'replace' ||
+      value.mode === 'share')
   );
 }
 

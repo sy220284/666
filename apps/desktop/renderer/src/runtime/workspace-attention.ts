@@ -97,7 +97,7 @@ export async function loadWorkspaceAttention(
         ),
       ),
       guarded(() => bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' })),
-      guarded(() => bridge.recovery.getOverview(projectId, { mode: 'replace' })),
+      guarded(() => bridge.recovery.getOverview(projectId, { mode: 'share' })),
     ]);
 
   const unavailableSources: WorkspaceAttentionSource[] = [];

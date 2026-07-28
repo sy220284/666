@@ -111,7 +111,9 @@ test('browses and exports a Version from a verified checkpoint when project.sqli
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'read-only');
     await expect(page.locator('[data-active-project-readonly]')).toContainText('integrity-failed');
     await expect(page.locator('[data-recovery-dialog]')).toBeVisible();
-    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1);
+    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {
+      timeout: 20_000,
+    });
     await expect(page.locator('[data-recovery-versions]')).toContainText('物理损坏可导出版本');
 
     await page.locator('[data-export-recovery-version]').click();

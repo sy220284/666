@@ -114,6 +114,7 @@ function centralEntries(buffer: Buffer): ZipEntry[] {
     }
     const flags = buffer.readUInt16LE(cursor + 8);
     const compression = buffer.readUInt16LE(cursor + 10);
+    const crc32 = buffer.readUInt32LE(cursor + 16);
     const compressedSize = buffer.readUInt32LE(cursor + 20);
     const expandedSize = buffer.readUInt32LE(cursor + 24);
     const nameLength = buffer.readUInt16LE(cursor + 28);
@@ -137,6 +138,42 @@ function centralEntries(buffer: Buffer): ZipEntry[] {
     }
     if (localOffset + 30 > centralOffset || buffer.readUInt32LE(localOffset) !== 0x04034b50) {
       unsupported('The DOCX local entry headers are inconsistent.');
+    }
+    const localFlags = buffer.readUInt16LE(localOffset + 6);
+    const localCompression = buffer.readUInt16LE(localOffset + 8);
+    const localCrc32 = buffer.readUInt32LE(localOffset + 14);
+    const localCompressedSize = buffer.readUInt32LE(localOffset + 18);
+    const localExpandedSize = buffer.readUInt32LE(localOffset + 22);
+    const localNameLength = buffer.readUInt16LE(localOffset + 26);
+    const localExtraLength = buffer.readUInt16LE(localOffset + 28);
+    const localHeaderEnd = localOffset + 30 + localNameLength + localExtraLength;
+    if (localHeaderEnd > centralOffset) {
+      unsupported('The DOCX local entry header extends into the central directory.');
+    }
+    const localName = readName(
+      buffer,
+      localOffset + 30,
+      localNameLength,
+      (localFlags & 0x800) !== 0,
+    );
+    if (localFlags !== flags || localCompression !== compression || localName !== name) {
+      unsupported('The DOCX local entry header fields do not match the central directory.');
+    }
+    const usesDataDescriptor = (flags & 0x8) !== 0;
+    const localSizesMatch =
+      localCrc32 === crc32 &&
+      localCompressedSize === compressedSize &&
+      localExpandedSize === expandedSize;
+    const localSizesArePlaceholders =
+      localCrc32 === 0 && localCompressedSize === 0 && localExpandedSize === 0;
+    if (
+      (!usesDataDescriptor && !localSizesMatch) ||
+      (usesDataDescriptor && !localSizesMatch && !localSizesArePlaceholders)
+    ) {
+      unsupported('The DOCX local entry sizes do not match the central directory.');
+    }
+    if (localHeaderEnd + compressedSize > centralOffset) {
+      unsupported('The DOCX local entry payload overlaps the central directory.');
     }
     if (
       expandedSize > DOCX_ARCHIVE_LIMITS.maximumEntryBytes ||
@@ -213,13 +250,50 @@ function validateRelationships(files: Record<string, Uint8Array>): void {
   }
 }
 
+function tagBoundary(value: string, index: number): boolean {
+  const character = value[index];
+  return (
+    character === '>' ||
+    character === '/' ||
+    character === ' ' ||
+    character === '\t' ||
+    character === '\r' ||
+    character === '\n'
+  );
+}
+
+function findTagStart(value: string, tag: string, from: number): number {
+  const prefix = `<${tag}`;
+  let cursor = from;
+  for (;;) {
+    const index = value.indexOf(prefix, cursor);
+    if (index < 0) return -1;
+    if (tagBoundary(value, index + prefix.length)) return index;
+    cursor = index + prefix.length;
+  }
+}
+
 function paragraphText(paragraph: string): string {
   const pieces: string[] = [];
-  const tokenPattern = /<w:t\b[^>]*>([\s\S]*?)<\/w:t>|<w:tab\b[^>]*\/>|<w:br\b[^>]*\/>/giu;
-  for (const token of paragraph.matchAll(tokenPattern)) {
-    if (token[1] !== undefined) pieces.push(xmlText(token[1]));
-    else if (/tab/iu.test(token[0])) pieces.push('\t');
-    else pieces.push('\n');
+  let cursor = 0;
+  for (;;) {
+    const textStart = findTagStart(paragraph, 'w:t', cursor);
+    const tabStart = findTagStart(paragraph, 'w:tab', cursor);
+    const breakStart = findTagStart(paragraph, 'w:br', cursor);
+    const starts = [textStart, tabStart, breakStart].filter((value) => value >= 0);
+    if (starts.length === 0) break;
+    const start = Math.min(...starts);
+    const openEnd = paragraph.indexOf('>', start);
+    if (openEnd < 0) unsupported('The DOCX paragraph contains an incomplete WordprocessingML tag.');
+    if (start === textStart) {
+      const close = paragraph.indexOf('</w:t>', openEnd + 1);
+      if (close < 0) unsupported('The DOCX paragraph contains an unterminated text run.');
+      pieces.push(xmlText(paragraph.slice(openEnd + 1, close)));
+      cursor = close + '</w:t>'.length;
+    } else {
+      pieces.push(start === tabStart ? '\t' : '\n');
+      cursor = openEnd + 1;
+    }
   }
   return pieces.join('').replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
 }
@@ -283,8 +357,14 @@ export function parseDocx(
     if (current.blocks.length === 0) return;
     chapters.push(current);
   };
-  for (const match of documentXml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/giu)) {
-    const paragraph = match[0];
+  let paragraphCursor = 0;
+  for (;;) {
+    const paragraphStart = findTagStart(documentXml, 'w:p', paragraphCursor);
+    if (paragraphStart < 0) break;
+    const paragraphEnd = documentXml.indexOf('</w:p>', paragraphStart);
+    if (paragraphEnd < 0) unsupported('The DOCX document contains an unterminated paragraph.');
+    const paragraph = documentXml.slice(paragraphStart, paragraphEnd + '</w:p>'.length);
+    paragraphCursor = paragraphEnd + '</w:p>'.length;
     const text = paragraphText(paragraph);
     if (!text) continue;
     const level = headingLevel(paragraph);

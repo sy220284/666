@@ -89,7 +89,7 @@ function RecoveryPanel({
   readonly onProjectRestored: () => Promise<void>;
 }) {
   const load = useCallback(
-    () => bridge.recovery.getOverview(projectId, { mode: 'replace' }),
+    () => bridge.recovery.getOverview(projectId, { mode: 'share' }),
     [bridge, projectId],
   );
   const resource = useBridgeQuery(`recovery:${projectId}`, load);
@@ -112,9 +112,7 @@ function RecoveryPanel({
   }, [resource.data]);
 
   const createDailyBackup = async (): Promise<void> => {
-    const result = await command.run(() =>
-      bridge.recovery.createDailyBackup({ projectId }),
-    );
+    const result = await command.run(() => bridge.recovery.createDailyBackup({ projectId }));
     if (result) setStatus(`今日日常备份已验证：${result.backupFileName}`);
   };
   const createNamedSnapshot = async (): Promise<void> => {
@@ -218,7 +216,10 @@ function RecoveryPanel({
         </label>
         <label>
           备注
-          <textarea value={snapshotNote} onChange={(event) => setSnapshotNote(event.target.value)} />
+          <textarea
+            value={snapshotNote}
+            onChange={(event) => setSnapshotNote(event.target.value)}
+          />
         </label>
         <button
           data-create-named-snapshot
@@ -243,8 +244,8 @@ function RecoveryPanel({
                 <div>
                   <strong>{checkpoint.displayName ?? checkpoint.operation}</strong>
                   <span>
-                    {checkpoint.track} · Schema {checkpoint.schemaVersion} · {checkpoint.createdAt} ·{' '}
-                    {formatBytes(checkpoint.sizeBytes)}
+                    {checkpoint.track} · Schema {checkpoint.schemaVersion} · {checkpoint.createdAt}{' '}
+                    · {formatBytes(checkpoint.sizeBytes)}
                   </span>
                   <small>
                     {checkpoint.protectionReasons.length > 0
@@ -341,8 +342,8 @@ function RecoveryPanel({
         {cleanup ? (
           <div data-backup-cleanup-preview>
             <p>
-              删除 {cleanup.items.filter((item) => item.action === 'delete').length} 份；
-              预计释放 {formatBytes(cleanup.reclaimableBytes)}。
+              删除 {cleanup.items.filter((item) => item.action === 'delete').length} 份； 预计释放{' '}
+              {formatBytes(cleanup.reclaimableBytes)}。
             </p>
             <ul>
               {cleanup.items.map((item) => (

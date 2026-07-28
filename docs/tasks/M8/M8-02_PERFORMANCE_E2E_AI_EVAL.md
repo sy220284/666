@@ -1,27 +1,30 @@
-# M8-02 C8完整体验、硬化与发布关闭
+# M8-02 C8完整体验、硬化与自用交付关闭
 
-> 状态：In Progress
-> 里程碑：M8 最终体验与发布验收  
+> 状态：In Progress  
+> 里程碑：M8 最终体验与自用交付验收  
 > 优先级：P0  
-> 建议分支：`work/m8-02-performance-e2e-ai-eval`
+> 正式分支：`work/m8-02-performance-e2e-ai-eval`
 
 ## 目标
 
-在M4-04核心功能完成并进入Implementation Hold后，集中完成C8：首次使用与统一工作台最终体验、主题与无障碍、真实显示与数据规模、完整安全/性能/E2E/AI Eval、跨平台构建安装和P0发布关闭。
+在M4-04核心功能进入Implementation Hold后，集中完成C8：首次使用、统一工作台、主题与无障碍、安全、性能、Electron E2E、AI Eval以及Windows、macOS、Linux自用便携工件验收。
+
+V1.0发布范围已经收敛为仓库所有者本人自用。正式边界见`docs/product/SELF_USE_RELEASE_POLICY.md`。
 
 ## 阶段定位
 
-M8-02是M4-04之后的独立最终任务。它吸收原M7-01、M7-02、M7-03、M8-01和M8-03，承接M8-02原有性能、E2E、显示和AI Eval要求。
-
-M8-02在作者明确启动前保持Planned，不因M4-04合并而自动激活。
+M8-02是M4-04之后唯一活动的最终任务，吸收原M7-01、M7-02、M7-03、M8-01和M8-03。M8-02保持单一任务、单一正式分支和单一Draft PR，不拆分状态或另建发布任务。
 
 ## 非目标
 
 - 不重建M4-04已经交付的Prompt、GenerationRun、Candidate、StateProposal、搜索、导入或恢复系统。
-- 不以模拟平台结果代替Windows、macOS和Linux真实工件验收。
 - 不以局部单元测试代替完整Electron路径。
 - 不把未验证Provider或Model的偶然成功标记为稳定支持。
 - 不为达成门禁而隐藏、跳过或伪造Blocked项。
+- 不面向公众、客户、团队或第三方分发。
+- 不要求Windows代码签名、macOS Developer ID签名或Apple公证。
+- 不要求MSI、MSIX、PKG、DMG、DEB或RPM安装器。
+- 不要求安装、修复、自动更新、覆盖升级或卸载生命周期矩阵。
 
 ## 依赖
 
@@ -35,10 +38,13 @@ M4-04
 - `docs/tasks/M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md`
 - `docs/tasks/M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md`
 
+被吸收任务只提供需求来源。与自用发布策略冲突的公开分发、签名、公证和安装器要求由本任务卡及`SELF_USE_RELEASE_POLICY.md`覆盖。
+
 ## 关联
 
-- 需求：M7—M8全部剩余体验、硬化与发布要求
-- 验收：`docs/testing/P0_ACCEPTANCE_MATRIX.md`中的最终P0矩阵
+- 验收：`docs/testing/P0_ACCEPTANCE_MATRIX.md`
+- UI验收：`docs/ui/UI_ACCEPTANCE_CHECKLIST.md`
+- 自用发布边界：`docs/product/SELF_USE_RELEASE_POLICY.md`
 - Evidence：`docs/test-evidence/M8-02/`
 
 ## 必读文档
@@ -50,6 +56,7 @@ M4-04
 - `docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`
 - `docs/product/FUNCTION_CATALOG.md`
 - `docs/product/V1.0_TRACEABILITY_MATRIX.md`
+- `docs/product/SELF_USE_RELEASE_POLICY.md`
 - `docs/testing/P0_ACCEPTANCE_MATRIX.md`
 - `docs/testing/PERFORMANCE_BUDGETS.md`
 - `docs/ui/UI_ACCEPTANCE_CHECKLIST.md`
@@ -62,15 +69,18 @@ M4-04
 - `apps/desktop/`
 - `packages/contracts/`
 - `packages/core-service/`
+- `migrations/`
 - `tests/e2e/`
 - `tests/unit/`
 - `tests/performance/`
 - `tests/security/`
 - `tests/integration/`
+- `tests/migration/`
 - `evals/`
 - `scripts/`
 - `.github/workflows/`
 - `.github/governance/`
+- `docs/database/`
 - `docs/ui/`
 - `docs/testing/`
 - `docs/security/`
@@ -79,17 +89,15 @@ M4-04
 - `docs/PROJECT_EXECUTION_ENTRY.md`
 - `README.md`
 - `CHANGELOG.md`
-- `LICENSE`
-- 发布与打包配置
 
-大范围架构重写必须单独立项并阻断M8-02关闭，禁止在验收任务内无计划扩张。
+大范围架构重写必须单独立项，禁止在验收任务内无计划扩张。
 
 ## 实施内容
 
 ### 1. 首次使用与创作路径
 
 - 完成快速、完整、导入、空白入口。
-- 完成自主、混合、AI初稿三条创作路径。
+- 完成自主、混合、AI优先三条创作路径。
 - 空、加载、失败、取消、只读、恢复和重启状态清晰可达。
 
 ### 2. 统一工作台体验
@@ -102,7 +110,7 @@ M4-04
 
 - 完成Theme A/B、浅色、深色、护眼和高对比。
 - 完成减少动态、键盘操作、焦点、读屏和非颜色表达。
-- 验证1280×800、2K 100/125/150%、21:9、混合DPI和真实多屏。
+- 验证1280×800、2K、21:9及可执行的显示矩阵；物理设备缺失必须如实记录。
 
 ### 4. 安全、数据与隐私硬化
 
@@ -112,48 +120,44 @@ M4-04
 
 ### 5. 性能、E2E与AI Eval
 
-- 验证2K键入P95≤50ms、自动保存P95≤150ms、编辑IPC P95≤200ms。
-- 验证5000字Diff首屏≤500ms、完整≤1.2s，正文滚动≥50fps，Core单次事件循环阻塞<100ms。
-- 记录长章节、百万字、FTS、多任务、Candidate历史、校验、备份和恢复真实数据。
+- 验证2K键入、自动保存、编辑IPC、5000字Diff、FTS和恢复性能预算。
+- 记录长章节、百万字、FTS、多任务、Candidate历史、校验、备份和恢复数据。
 - 完成项目创建→写作→T0/T1→改写/融合→审阅→采用→定稿→状态提取→作者裁决→校验→导出→恢复完整Electron E2E。
-- 按Provider、Model、Task、PromptVersion记录T0、T1、rewrite、merge、validate、state_extract和连续性Eval。
-- Prompt、Eval和ModelSupportProfile版本必须一致；不一致时降级或阻断。
+- 按Provider、Model、Task和PromptVersion记录AI协议与质量边界；真实Provider不可用时必须降级且不影响基础写作。
 
-### 6. 跨平台与发布关闭
+### 6. 跨平台自用便携交付
 
-- 运行Windows、macOS、Linux构建、安装、升级、卸载、启动、原生模块和安全降级矩阵。
-- 产物Hash、签名、版本、Migration、回滚和发布说明一致。
-- P0项目全部Verified或明确Blocked。
-- 输出允许发布、有条件允许或禁止发布结论。
+- 在Windows、macOS和Linux原生Runner完成便携构建、ASAR、Electron Fuses、Hash、资产完整性和启动验证。
+- 验证程序目录与作者项目目录分离；替换或删除程序目录不得删除作品、数据库或备份。
+- 验证新版本便携包能够打开既有项目并执行必要Migration。
+- `signed: false`和`notarized: false`作为工件事实记录，不构成自用交付失败。
+- 输出允许自用、有条件允许自用或禁止自用结论。
+- 不输出公开发布、可信发布者、安装器或应用商店就绪结论。
 
 ## 当前实施审计
 
-> 审计日期：2026-07-28
-> 产品Head：`025b11101651b5362f131e24e35f3338314478c2`
+> 审计日期：2026-07-28  
 > Draft PR：[#224](https://github.com/sy220284/666/pull/224)
 
 ### 已完成实现
 
-- 快速、完整、导入、空白四入口和自主、混合、AI优先三条路径；创建事务原子写入任务书、主角、首章与SceneBeat。
-- 新手/专业披露度、统一工作台、沉浸视图、上下文帮助、真实禁用原因和跨工作台继续位置。
-- StatusArbiter已接入Candidate、StateProposal、Validation和FTS既有权威查询；中断/待审Candidate、pending提案、开放校验和索引状态进入P1—P3仲裁，查询失败显式标记不可读。
-- 既有`candidate.list`合同已扩展为可选章节筛选；只传projectId时由Core跨章节读取全项目Candidate，章节工作台原调用保持兼容。
-- “AI优先”仅在本次会话真实Provider连接测试成功后解锁；Provider修改、删除或应用重启后失效，自主写作和离线功能保持可用。
-- Theme A/B、浅色/深色/护眼/高对比、减少动态、键盘焦点和窗口显示状态真源。
-- 安全诊断包白名单、`0600`临时文件、原子重命名和SHA-256；最终导出确认已下沉到Main原生可信边界。
-- 生产ASAR、完整性、Electron Fuses、三平台原生便携打包、成品启动握手和CI工件。
-- Renderer使用固定安全自定义协议，不使用高权限`file://`页面；资源读取受Host、根路径和扩展名白名单保护。
-- C8 Electron E2E、三平台Package Smoke、安全、性能和AI协议Eval纳入永久门禁。
-- Performance生成成功工件；Linux CI完成2K写作/自动保存、5000字Diff和156万字符FTS结构化测量。
+- 快速、完整、导入、空白四入口和自主、混合、AI优先三条路径。
+- 新手/专业披露度、统一工作台、沉浸视图、上下文帮助和跨工作台继续位置。
+- StatusArbiter接入Candidate、StateProposal、Validation、FTS和备份失败账本权威查询。
+- `candidate.list`支持按projectId跨章节读取全项目Candidate。
+- AI优先仅在当前会话Provider连接测试成功后解锁。
+- Theme A/B及浅色、深色、护眼、高对比、减少动态和键盘焦点。
+- 安全诊断包白名单、原子导出和Main可信确认。
+- 三平台原生便携打包、ASAR完整性、Electron Fuses、Hash、启动握手和CI工件。
+- 结构化性能证据、备份失败权威账本及对应Migration/Integration测试。
 
 ### 当前验收边界
 
-- 自动化代码闭环与结构化性能证据绑定上述产品Head，阶段记录进入`docs/test-evidence/M8-02/`。
-- Recovery现有Overview不提供失败备份账本，历史备份失败无法可靠进入全局仲裁；不得用空结果冒充成功。
-- Linux CI受Ubuntu/AppArmor限制，功能冒烟使用显式CI-only无沙箱回退；生产sandbox安装配置仍Blocked。
-- 真实Provider账号与多模型质量矩阵、完整真实AI Electron单链路、物理混合DPI/多屏、人工读屏/输入法、代码签名/公证、安装/升级/卸载仍Blocked。
-- 真实超大DOCX、中央目录与本地Header字段级交叉验证、多进程备份幂等、长期运行和Renderer帧率报告仍未完成。
-- 因存在发布级Blocked，当前结论为`禁止发布`，任务保持`In Progress`，PR保持Draft。
+- Windows代码签名、macOS签名/公证和安装/升级/卸载已经明确移出V1.0自用范围，不再作为Blocked项。
+- 真实Provider与多模型质量、完整真实AI Electron链路仍需按实际资源验证或明确降级。
+- 物理混合DPI、多屏、读屏、IME和自定义字体缺少的人工证据必须如实记录，但不得与签名、公证、安装器混为同一发布阻断。
+- 真实超大DOCX、多进程备份幂等、长期运行和Renderer帧率仍按任务清单推进。
+- Linux CI专用无沙箱回退不得被描述为通用生产支持；自用主机采用的实际启动方式仍需记录。
 
 ## 测试与证据
 
@@ -163,21 +167,22 @@ M4-04
 - Prettier、ESLint、TypeScript
 - Unit、Integration、Migration、Coverage
 - Security、Performance、AI Eval
-- Build、Package Smoke、跨平台打包
-- Electron E2E与人工P0路径
+- Build、Package Smoke、三平台自用便携打包
+- Electron E2E与能够执行的人工P0路径
 - Evidence、PR Policy、Task Governance
 
-证据保存到：`docs/test-evidence/M8-02/`。
-
-Evidence必须记录环境、设备、平台、Fixture规模、真实运行编号、失败与Blocked原因。不得沿用M4-04阶段Head或将未执行项写成成功。
+Evidence必须记录环境、平台、Fixture规模、真实运行编号、失败和未执行原因。签名、公证、安装器及安装生命周期应记录为`NOT_REQUIRED_SELF_USE`，不得记录为Blocked或Fail。
 
 ## 完成条件
 
 - M4-04保持Implemented或Verified，不被回写。
-- 首次使用、统一工作台、主题、无障碍和显示矩阵完成。
-- 安全、隐私、Migration、恢复和凭据边界通过。
-- 性能预算、完整Electron E2E和真实AI Eval通过或明确Blocked。
-- Windows、macOS、Linux真实工件验收完成。
-- P0矩阵、功能目录、追踪矩阵、README、发布与恢复文档与代码一致。
-- 最终Evidence绑定实际产品Head和可达main提交。
-- 无P0未解释阻断后，任务才可转Ready并关闭。
+- 首次使用、统一工作台、主题、安全、数据和核心显示路径完成。
+- 隐私、Migration、恢复、凭据和本地数据边界通过。
+- 性能预算、完整Electron E2E和AI协议/Eval通过，真实Provider缺失时基础写作降级可用。
+- Windows、macOS和Linux自用便携工件完成构建、完整性和启动验收。
+- 新便携版本能够打开既有项目，作者数据不依赖程序目录。
+- P0矩阵、追踪矩阵、README、自用发布策略和Evidence与代码一致。
+- 最终Evidence绑定实际受检Head和可达main提交。
+- 无P0代码硬保证、数据安全或恢复用例未解释失败后，任务可转Ready并关闭。
+
+代码签名、Apple公证、系统安装器以及安装/升级/卸载生命周期不属于本任务完成条件。

@@ -44,13 +44,14 @@ evidence
 
 自动合并仍受全部必需检查、Draft状态、Changes Requested、未解决线程、头SHA一致性以及“未落后于当前main”限制，不得成为绕过Ruleset的旁路。
 
-Controlled Merge使用全仓库串行并发组，避免两个已通过PR同时读取同一main基线并竞争合并。合并成功后只允许通过固定的`main-verification.yml`进行`workflow_dispatch`；该工作流校验最终SHA、来源PR和历史门禁，再运行完整Linux复核。
+Controlled Merge使用全仓库串行并发组，避免两个已通过PR同时读取同一main基线并竞争合并。合并成功后，Post Merge Verification Dispatcher只负责幂等调度固定的`main-verification.yml`，不得修改Repository Ruleset或要求管理员级长期凭据。Main Verification会等待来源Head因`ready_for_review`等事件触发的最新永久检查完成，再校验最终SHA、来源PR和历史门禁，并运行完整Linux复核。
 
 ## Main Verification权限
 
 - Controlled Merge：`actions: write`仅用于调度固定工作流；同时保留`checks: read`、`contents: write`和`pull-requests: write`。
+- Post Merge Verification Dispatcher：只使用`actions: write`调度Main Verification，保持`contents: read`和`pull-requests: read`，不读取或写入Repository Ruleset。
 - Main Verification：使用`contents: read`、`checks: read`和`pull-requests: read`完成只读复核；仅使用`statuses: write`把最终成功或失败状态写回目标main SHA。
-- 不使用PAT，不使用`repository_dispatch`，不允许工作流直接推送main。
+- 合并与Main Verification链路不使用PAT，不使用`repository_dispatch`，不允许工作流直接推送main。
 - 工作流输入必须包含最终main SHA、来源PR编号和来源头SHA。
 - 工作流运行SHA、PR的`merge_commit_sha`、来源头SHA及六项永久检查必须相互一致。
 - 聚合结果必须以`main-verification`上下文写入Commit Status；成功和失败都必须可见，且状态链接指向对应Actions Run。
@@ -73,7 +74,7 @@ Controlled Merge使用全仓库串行并发组，避免两个已通过PR同时�
 - 状态检查要求分支基于最新main，且检查名称与配置完全一致；
 - Bypass列表为空。
 
-任一项缺失或漂移都会使工作流失败，并上传包含具体差异原因的报告。使用具备管理员权限的`REPO_ADMIN_TOKEN`执行`scripts/ruleset-policy.mjs apply`可应用配置；没有该Token时审计仍可使用仓库Token只读运行。
+任一项缺失或漂移都会使治理审计失败，并上传包含具体差异原因的报告。Ruleset写入属于显式管理员操作，不得耦合到每次合并：需要应用配置时，由仓库管理员在受控环境中提供具备Rulesets管理权限的`REPO_ADMIN_TOKEN`并执行`scripts/ruleset-policy.mjs apply`；普通PR、Controlled Merge、Post Merge Dispatcher和Main Verification均不得依赖该令牌。
 
 ## 负向验证
 
@@ -85,6 +86,8 @@ Controlled Merge使用全仓库串行并发组，避免两个已通过PR同时�
 6. Ruleset缺失、状态非Active、检查名单漂移或存在Bypass actor时，治理审计必须失败。
 7. Controlled Merge成功后未产生针对最终SHA的`main-verification`运行，应视为主线复核链路故障。
 8. Main Verification输入SHA、来源PR、来源头SHA或永久检查任一不一致时必须失败。
-9. Main Verification完成后未在最终SHA写入`main-verification`成功或失败状态，应视为状态发布故障。
+9. Main Verification必须等待来源Head最新一轮Ready模式检查结束；显式失败立即阻断，Pending不得被误判为失败。
+10. Main Verification完成后未在最终SHA写入`main-verification`成功或失败状态，应视为状态发布故障。
+11. Post Merge Verification Dispatcher尝试读取或写入Ruleset、依赖管理员Token或因管理员Token缺失而失败，应视为权限边界回归。
 
 仓库代码不能自行授予管理员级权限；Ruleset和仓库Auto-merge开关必须由仓库管理员实际启用。

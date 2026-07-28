@@ -336,8 +336,8 @@ export function initializeProjectStructure(
   mode: 'starter' | 'blank',
   createdAt: string,
   idFactory: () => string = randomUUID,
-): void {
-  if (mode === 'blank') return;
+): { readonly volumeId: string; readonly chapterId: string } | null {
+  if (mode === 'blank') return null;
   const volumeId = idFactory();
   const chapterId = idFactory();
   connection
@@ -357,6 +357,7 @@ export function initializeProjectStructure(
   if (draftTablesAvailable(connection)) {
     initializeChapterDraft(connection, chapterId, createdAt, idFactory);
   }
+  return { volumeId, chapterId };
 }
 
 export class ProjectStructureService {

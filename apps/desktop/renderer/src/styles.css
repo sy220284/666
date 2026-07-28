@@ -2194,6 +2194,38 @@ body[data-visual-theme-variant='high-contrast'] {
   --color-accent-primary: #003bc5;
 }
 
+body[data-theme='theme-b'][data-visual-theme-variant='light'] {
+  color-scheme: light;
+  --color-bg-canvas: #f2eee6;
+  --color-bg-paper: #fffaf0;
+  --color-bg-panel: #ebe3d4;
+  --color-bg-elevated: #fffdf8;
+  --color-text-primary: #29221b;
+  --color-text-secondary: #66584a;
+  --color-text-muted: #8b7966;
+  --color-border-subtle: #ded1bf;
+  --color-border-strong: #bca88d;
+  --color-accent-primary: #784c33;
+  --color-success: #456d50;
+  --color-danger: #a33f38;
+}
+
+body[data-theme='theme-b'][data-visual-theme-variant='dark'] {
+  color-scheme: dark;
+  --color-bg-canvas: #1e1a17;
+  --color-bg-paper: #28221d;
+  --color-bg-panel: #231e1a;
+  --color-bg-elevated: #302821;
+  --color-text-primary: #f4eadb;
+  --color-text-secondary: #ccbaa5;
+  --color-text-muted: #9e8973;
+  --color-border-subtle: #453a31;
+  --color-border-strong: #6c5a49;
+  --color-accent-primary: #d49b72;
+  --color-success: #82ad89;
+  --color-danger: #ec7a70;
+}
+
 #react-root {
   min-height: 100vh;
 }
@@ -3184,6 +3216,158 @@ body[data-layout-mode='compact'] .react-nav-scrim {
 .snapshot-card {
   margin-top: 12px;
   box-shadow: none;
+}
+
+.react-onboarding-entry,
+.react-onboarding-scaffold,
+.react-context-help {
+  margin-top: 20px;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-paper);
+}
+
+.react-onboarding-entry > header h2 {
+  margin: 0 0 6px;
+}
+
+.react-onboarding-entry > header p,
+.react-context-help p,
+.react-dialog-note,
+.react-inline-setting small {
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+}
+
+.react-onboarding-entry__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.react-onboarding-entry__card {
+  display: grid;
+  min-height: 116px;
+  gap: 8px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.react-onboarding-entry__card:hover,
+.react-onboarding-entry__card:focus-visible {
+  border-color: var(--color-accent-primary);
+}
+
+.react-onboarding-entry__card span {
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.react-onboarding-scaffold {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.react-onboarding-scaffold p {
+  margin-bottom: 0;
+}
+
+.react-context-help {
+  border-left: 4px solid var(--color-accent-primary);
+}
+
+.react-context-help > header,
+.react-context-help footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.react-context-help h2 {
+  margin: 0 0 6px;
+}
+
+.react-context-help footer {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.react-onboarding-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0;
+}
+
+.react-onboarding-tabs [aria-current='step'] {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 9%, var(--color-bg-paper));
+}
+
+.react-dialog fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.react-dialog legend {
+  padding: 0 6px;
+  font-weight: 650;
+}
+
+.react-dialog textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  padding: 8px 9px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+.react-inline-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.react-inline-setting {
+  display: grid;
+  max-width: 440px;
+  gap: 6px;
+}
+
+.react-inline-setting select {
+  min-height: 38px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .react-onboarding-entry__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .react-onboarding-entry__grid,
+  .react-inline-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1180px) {

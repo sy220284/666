@@ -21,6 +21,8 @@ import {
   AppGetWindowPreferencesCommandSchema,
   AppRestartCoreCommandSchema,
   AppSetAppearancePreferencesCommandSchema,
+  AppPreviewDiagnosticsCommandSchema,
+  AppExportDiagnosticsCommandSchema,
   DraftApplyPatchCommandSchema,
   DraftOpenCommandSchema,
   CandidateCreateFixtureCommandSchema,
@@ -122,6 +124,7 @@ import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import type { CredentialBroker } from './credential-broker.js';
+import { createDiagnosticPreview, exportDiagnosticPreview } from './diagnostic-export.js';
 import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
 import { registerProviderIpcHandlers } from './provider-ipc-handlers.js';
 import { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';
@@ -147,6 +150,7 @@ interface IpcHandlerOptions {
   readonly chooseRecoveryExportDirectory: () => Promise<string | null>;
   readonly chooseTextImportFile: () => Promise<string | null>;
   readonly chooseTextExportDirectory: () => Promise<string | null>;
+  readonly chooseDiagnosticsDirectory?: () => Promise<string | null>;
 }
 
 function success<T>(requestId: string, data: T): CommandResult<T> {
@@ -224,6 +228,8 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     IPC_CHANNELS.appRestartCore,
     IPC_CHANNELS.appGetWindowPreferences,
     IPC_CHANNELS.appSetAppearancePreferences,
+    IPC_CHANNELS.appPreviewDiagnostics,
+    IPC_CHANNELS.appExportDiagnostics,
     IPC_CHANNELS.settingsGet,
     IPC_CHANNELS.settingsSet,
     IPC_CHANNELS.settingsReset,
@@ -411,6 +417,55 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
         'The window preferences could not be saved.',
         true,
         diagnosticId,
+      );
+    }
+  });
+
+  const diagnostics = () =>
+    createDiagnosticPreview({
+      app: {
+        version: options.version,
+        platform: options.platform,
+        protocolVersion: PROTOCOL_VERSION,
+      },
+      core: options.supervisor.getStatus(),
+      window: options.getWindowPreferences(),
+    });
+
+  register(IPC_CHANNELS.appPreviewDiagnostics, (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = AppPreviewDiagnosticsCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    return success(parsed.data.requestId, diagnostics());
+  });
+
+  register(IPC_CHANNELS.appExportDiagnostics, async (event, raw) => {
+    const rejected = rejectUntrusted(event, raw);
+    if (rejected) return rejected;
+    const parsed = AppExportDiagnosticsCommandSchema.safeParse(raw);
+    if (!parsed.success) return invalidRequest(raw);
+    const targetDirectory = (await options.chooseDiagnosticsDirectory?.()) ?? null;
+    if (!targetDirectory) {
+      return failure(
+        parsed.data.requestId,
+        'COMMON_CANCELLED_004',
+        'The diagnostic export was cancelled.',
+        true,
+      );
+    }
+    try {
+      return success(
+        parsed.data.requestId,
+        await exportDiagnosticPreview(targetDirectory, diagnostics()),
+      );
+    } catch {
+      return failure(
+        parsed.data.requestId,
+        'COMMON_INTERNAL_999',
+        'The diagnostic package could not be exported.',
+        true,
+        createDiagnosticId(),
       );
     }
   });

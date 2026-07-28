@@ -6,6 +6,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { DEFAULT_APP_SETTINGS } from '@worldforge/contracts';
+
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
 import type { AppDataRepositoryError } from '../../packages/core-service/src/app-data-errors.js';
 
@@ -41,15 +43,7 @@ describe('application settings repository', () => {
 
     expect(runtime.appSettings.get()).toEqual({
       source: 'default',
-      settings: {
-        schemaVersion: 1,
-        language: 'zh-CN',
-        startupBehavior: 'show-home',
-        defaultMode: 'beginner',
-        themeId: 'theme-a',
-        themeVariant: 'light',
-        reduceMotion: false,
-      },
+      settings: DEFAULT_APP_SETTINGS,
     });
 
     await expect(
@@ -81,6 +75,36 @@ describe('application settings repository', () => {
     await expect(reopened.appSettings.reset(randomUUID())).resolves.toMatchObject({
       source: 'default',
       settings: { defaultMode: 'beginner', themeId: 'theme-a' },
+    });
+
+    await reopened.database.write(randomUUID(), (database) => {
+      database
+        .prepare(
+          `INSERT INTO app_settings(key, value_json, updated_at) VALUES(?, ?, ?)
+           ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json`,
+        )
+        .run(
+          'application_preferences',
+          JSON.stringify({
+            schemaVersion: 1,
+            language: 'zh-CN',
+            startupBehavior: 'show-home',
+            defaultMode: 'beginner',
+            themeId: 'theme-a',
+            themeVariant: 'light',
+            reduceMotion: false,
+          }),
+          clock.now().toISOString(),
+        );
+    });
+    expect(reopened.appSettings.get()).toMatchObject({
+      source: 'stored',
+      settings: {
+        creativePath: 'autonomous',
+        onboardingCompleted: false,
+        onboardingTipsSeen: [],
+        onboardingScaffoldDismissed: false,
+      },
     });
 
     await reopened.database.write(randomUUID(), (database) => {

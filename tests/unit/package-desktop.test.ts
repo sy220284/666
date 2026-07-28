@@ -2,7 +2,20 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { packagePlatformForNode, parsePackageArguments } from '../../scripts/package-desktop.mjs';
+import {
+  archiveInvocation,
+  asarHeaderIntegrity,
+  linuxPortableLauncher,
+  packagePlatformForNode,
+  parsePackageArguments,
+  pnpmInvocation,
+  workspaceDeployArguments,
+} from '../../scripts/package-desktop.mjs';
+import {
+  packagedExecutablePath,
+  packagedLaunchArguments,
+  packagedTerminationInvocation,
+} from '../../scripts/smoke-packaged-desktop.mjs';
 
 describe('desktop package command', () => {
   it('maps supported Node platforms to release platform names', () => {
@@ -26,6 +39,13 @@ describe('desktop package command', () => {
       version: '1.2.3',
       output: path.join(repositoryRoot, 'release', 'linux'),
     });
+    expect(
+      parsePackageArguments(['--', '--platform', 'linux'], {
+        packageVersion: '1.2.3',
+        nodePlatform: 'linux',
+        repositoryRoot,
+      }).platform,
+    ).toBe('linux');
   });
 
   it('rejects cross-platform requests, version drift and unsafe outputs', () => {
@@ -68,5 +88,132 @@ describe('desktop package command', () => {
         repositoryRoot: '/workspace/worldforge',
       }),
     ).toThrow(/requires a value/);
+  });
+
+  it('derives the Electron ASAR header hash deterministically', () => {
+    expect(asarHeaderIntegrity('header')).toEqual({
+      algorithm: 'SHA256',
+      hash: '1e0584a25d9f43bf5cbd0aec01eb1af2220ed085b4e7f1837b0d89958cae353a',
+    });
+  });
+
+  it('uses a Linux portable launcher that keeps Chromium user-namespace sandboxing enabled', () => {
+    expect(linuxPortableLauncher()).toContain(
+      'exec "$launcher_dir/worldforge-bin" --disable-setuid-sandbox "$@"',
+    );
+    expect(linuxPortableLauncher()).not.toContain('--no-sandbox');
+    expect(() => linuxPortableLauncher('../worldforge-bin')).toThrow(/must not contain a path/);
+  });
+
+  it('uses a relative Windows archive target so tar does not treat the drive as remote', () => {
+    expect(
+      archiveInvocation({
+        platform: 'windows',
+        stagingDirectory: String.raw`C:\temp\stage`,
+        bundleName: 'WorldForge-v1.2.3-windows-x64',
+        artifactPath: String.raw`D:\a\release\WorldForge-v1.2.3-windows-x64.zip`,
+      }),
+    ).toEqual({
+      command: 'tar.exe',
+      arguments: [
+        '-a',
+        '-c',
+        '-f',
+        'WorldForge-v1.2.3-windows-x64.zip',
+        '-C',
+        String.raw`C:\temp\stage`,
+        'WorldForge-v1.2.3-windows-x64',
+      ],
+      cwd: String.raw`D:\a\release`,
+    });
+  });
+
+  it('invokes the pnpm JavaScript entrypoint directly on every host', () => {
+    expect(
+      pnpmInvocation(['--filter', '@worldforge/main', 'deploy'], {
+        environment: { npm_execpath: '/tools/pnpm.cjs' },
+        nodeExecutable: '/tools/node',
+        nodePlatform: 'win32',
+      }),
+    ).toEqual({
+      command: '/tools/node',
+      arguments: ['/tools/pnpm.cjs', '--filter', '@worldforge/main', 'deploy'],
+    });
+    expect(() =>
+      pnpmInvocation([], {
+        environment: {},
+        nodeExecutable: 'node.exe',
+        nodePlatform: 'win32',
+      }),
+    ).toThrow(/PNPM_CLI_PATH_REQUIRED_ON_WINDOWS/);
+  });
+
+  it('deploys production workspaces as hoisted copies that ASAR can resolve', () => {
+    expect(workspaceDeployArguments('@worldforge/main', '/tmp/main')).toEqual([
+      '--filter',
+      '@worldforge/main',
+      'deploy',
+      '--prod',
+      '--config.inject-workspace-packages=true',
+      '--config.node-linker=hoisted',
+      '/tmp/main',
+    ]);
+  });
+
+  it('locates each packaged executable without relying on Playwright internals', () => {
+    expect(
+      packagedExecutablePath('/unpacked', {
+        version: '1.2.3',
+        platform: 'linux',
+        architecture: 'x64',
+      }),
+    ).toBe(path.join('/unpacked', 'WorldForge-v1.2.3-linux-x64', 'worldforge'));
+    expect(
+      packagedExecutablePath('/unpacked', {
+        version: '1.2.3',
+        platform: 'windows',
+        architecture: 'x64',
+      }),
+    ).toBe(path.join('/unpacked', 'WorldForge-v1.2.3-windows-x64', 'WorldForge.exe'));
+    expect(
+      packagedExecutablePath('/unpacked', {
+        version: '1.2.3',
+        platform: 'macos',
+        architecture: 'arm64',
+      }),
+    ).toBe(path.join('/unpacked', 'WorldForge.app', 'Contents', 'MacOS', 'WorldForge'));
+  });
+
+  it('isolates the explicit Linux CI no-sandbox fallback from production launches', () => {
+    expect(
+      packagedLaunchArguments('linux', {
+        allowCiNoSandbox: '1',
+        ci: 'true',
+        uid: 1000,
+      }),
+    ).toEqual(['--no-sandbox']);
+    expect(() =>
+      packagedLaunchArguments('linux', {
+        allowCiNoSandbox: '1',
+        ci: 'false',
+        uid: 1000,
+      }),
+    ).toThrow(/REQUIRES_CI/);
+    expect(
+      packagedLaunchArguments('linux', {
+        allowCiNoSandbox: undefined,
+        ci: 'false',
+        uid: 1000,
+      }),
+    ).toEqual([]);
+  });
+
+  it('terminates the complete Windows Electron process tree before removing artifacts', () => {
+    expect(packagedTerminationInvocation('windows', 4321)).toEqual({
+      command: 'taskkill.exe',
+      arguments: ['/pid', '4321', '/T', '/F'],
+    });
+    expect(packagedTerminationInvocation('linux', 4321)).toBeNull();
+    expect(packagedTerminationInvocation('windows', undefined)).toBeNull();
   });
 });

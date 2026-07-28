@@ -55,7 +55,7 @@ jobs:
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
         if: ${{ steps.route.outputs.run == 'true' }}
-      - name: Run performance budgets
+      - name: Run performance budgets and AI protocol baselines
         shell: bash
         run: |
           set -euo pipefail
@@ -66,6 +66,7 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:perf 2>&1 | tee test-results/ci/performance.log
+          pnpm test:eval 2>&1 | tee test-results/ci/ai-eval.log
       - name: Assert clean working tree after performance validation
         if: ${{ always() && steps.route.outputs.run == 'true' }}
         run: node .github/governance/assert-clean-tree.mjs
@@ -76,6 +77,7 @@ jobs:
           name: performance-diagnostics
           path: |
             test-results/ci/performance.log
+            test-results/ci/ai-eval.log
             test-results/performance/
           if-no-files-found: warn
           retention-days: 7

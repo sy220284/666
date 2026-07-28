@@ -1,11 +1,12 @@
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import {
   app,
   BrowserWindow,
   dialog,
   ipcMain,
+  protocol,
   safeStorage,
   screen,
   shell,
@@ -23,6 +24,12 @@ import { registerIpcHandlers } from './ipc-handlers.js';
 import { registerNarrativePlanningIpc } from './narrative-planning-ipc.js';
 import { installNavigationPolicy, type NavigationWebContents } from './navigation-policy.js';
 import { createDiagnosticId, PrivacyLogger } from './privacy-logger.js';
+import {
+  createRendererAssetResponse,
+  RENDERER_DOCUMENT_URL,
+  RENDERER_SCHEME,
+  RENDERER_SCHEMES,
+} from './renderer-protocol.js';
 import { buildSecureWebPreferences, CONTENT_SECURITY_POLICY } from './security-policy.js';
 import {
   captureWindowPreferences,
@@ -32,8 +39,8 @@ import {
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const preloadPath = path.resolve(currentDirectory, '../../preload/dist/index.cjs');
-const rendererPath = path.resolve(currentDirectory, '../../renderer/dist/index.html');
-const rendererUrl = pathToFileURL(rendererPath).toString();
+const rendererRoot = path.resolve(currentDirectory, '../../renderer/dist');
+const rendererUrl = RENDERER_DOCUMENT_URL;
 const coreEntryPath = path.resolve(
   currentDirectory,
   '../../../../packages/core-service/dist/utility-entry.js',
@@ -43,6 +50,8 @@ const developmentProjectMigrationsPath = path.resolve(
   currentDirectory,
   '../../../../migrations/project',
 );
+
+protocol.registerSchemesAsPrivileged([...RENDERER_SCHEMES]);
 
 if (process.env.WORLDFORGE_E2E === '1' && process.env.WORLDFORGE_E2E_USER_DATA) {
   if (!path.isAbsolute(process.env.WORLDFORGE_E2E_USER_DATA)) {
@@ -57,6 +66,25 @@ let shutdownInFlight: Promise<void> | null = null;
 let unregisterIpc: (() => void) | null = null;
 let startupLogger: PrivacyLogger | null = null;
 let startupStage = 'module';
+
+async function announcePackagedSmokeReady(
+  window: BrowserWindow,
+  supervisor: CoreSupervisor,
+): Promise<void> {
+  if (!app.isPackaged || process.env.WORLDFORGE_PACKAGED_SMOKE !== '1') return;
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    const rendererReady = await window.webContents
+      .executeJavaScript('document.body.dataset.rendererReady === "true"', true)
+      .catch(() => false);
+    if (rendererReady === true && supervisor.getStatus().status === 'healthy') {
+      process.stdout.write('WORLDFORGE_PACKAGED_READY\n');
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error('PACKAGED_SMOKE_STARTUP_TIMEOUT');
+}
 
 function spawnCore(): UtilityProcessHandle {
   const userDataPath = app.getPath('userData');
@@ -139,6 +167,10 @@ function navigationAdapter(window: BrowserWindow): NavigationWebContents {
 async function bootstrap(): Promise<void> {
   startupStage = 'app-ready';
   await app.whenReady();
+  startupStage = 'renderer-protocol';
+  protocol.handle(RENDERER_SCHEME, (request) =>
+    createRendererAssetResponse(request.url, rendererRoot),
+  );
 
   const logger = new PrivacyLogger(path.join(app.getPath('userData'), 'logs'), 'main');
   startupLogger = logger;
@@ -247,7 +279,7 @@ async function bootstrap(): Promise<void> {
   screen.on('display-metrics-changed', restoreForCurrentDisplays);
 
   mainWindow.webContents.session.webRequest.onHeadersReceived(
-    { urls: ['file://*/*'] },
+    { urls: [`${RENDERER_SCHEME}://*/*`] },
     (details, callback) => {
       if (details.url !== rendererUrl) {
         callback(details.responseHeaders ? { responseHeaders: details.responseHeaders } : {});
@@ -337,6 +369,8 @@ async function bootstrap(): Promise<void> {
       chooseFile('选择TXT、Markdown或DOCX旧稿', '预览导入', 'WORLDFORGE_E2E_IMPORT_FILE'),
     chooseTextExportDirectory: () =>
       chooseDirectory('选择文本导出位置', '导出到这里', 'WORLDFORGE_E2E_TEXT_EXPORT_DIRECTORY'),
+    chooseDiagnosticsDirectory: () =>
+      chooseDirectory('选择诊断包导出位置', '导出诊断包', 'WORLDFORGE_E2E_DIAGNOSTICS_DIRECTORY'),
     chooseRecentLocation: async () => {
       const window = mainWindow;
       if (!window) return null;
@@ -439,14 +473,17 @@ async function bootstrap(): Promise<void> {
   });
 
   mainWindow.once('ready-to-show', () => {
-    if (process.env.WORLDFORGE_E2E !== '1') mainWindow?.show();
+    if (process.env.WORLDFORGE_E2E !== '1' && process.env.WORLDFORGE_PACKAGED_SMOKE !== '1') {
+      mainWindow?.show();
+    }
   });
 
   startupStage = 'renderer-load';
-  await mainWindow.loadFile(rendererPath);
+  await mainWindow.loadURL(rendererUrl);
   if (!loadedPreferences.ok || loadedPreferences.preferences === null) {
     await persist(currentPreferences());
   }
+  await announcePackagedSmokeReady(mainWindow, supervisor);
   startupStage = 'ready';
 }
 

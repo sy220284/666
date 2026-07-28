@@ -16,6 +16,7 @@ import {
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import type { BridgeRequestOutcome } from '../bridge/request-lifecycle.js';
+import { ContextHelp } from '../components/context-help.js';
 import { SafetyBanner } from '../components/safety-banner.js';
 import { TaskBar } from '../components/task-bar.js';
 import { CanonWorkbench, type CanonSection } from '../features/canon/canon-workbench.js';
@@ -24,7 +25,7 @@ import {
   DataToolsWorkbench,
   type DataToolsSection,
 } from '../features/data-tools/data-tools-workbench.js';
-import { HomePage } from '../features/home/home-page.js';
+import { HomePage, type OnboardingProjectPlan } from '../features/home/home-page.js';
 import { PlanningWorkbench } from '../features/planning/planning-workbench.js';
 import { SettingsPage } from '../features/settings/settings-page.js';
 import { WritingWorkbench, type WritingPanel } from '../features/writing/writing-workbench.js';
@@ -36,6 +37,7 @@ import {
   type PrimaryNavigationId,
 } from '../shell/app-shell-model.js';
 import type { HomeHealthSignal } from '../shell/home-dashboard-model.js';
+import { RendererStatusArbitrator } from '../runtime/status-arbitrator.js';
 import type { RendererRouteId } from '../state/ui-state-boundary.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 
@@ -51,6 +53,7 @@ export function AppShell({ bridge }: AppShellProps) {
   const [navOpen, setNavOpen] = useState(false);
   const navToggle = useRef<HTMLButtonElement>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
+  const helpTrigger = useRef<HTMLButtonElement>(null);
   const initialWorkspaceResolved = useRef(false);
   const settingsWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const confirmedSettings = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -63,6 +66,9 @@ export function AppShell({ bridge }: AppShellProps) {
   );
   const [coreStatus, setCoreStatus] = useState<CoreStatus | null>(null);
   const [tasks, setTasks] = useState<readonly TaskSnapshot[]>([]);
+  const [providerAvailable, setProviderAvailable] = useState(false);
+  const [onboardingRequest, setOnboardingRequest] = useState(0);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [message, setMessage] = useState<string | null>('正在读取本地工作区…');
@@ -80,7 +86,7 @@ export function AppShell({ bridge }: AppShellProps) {
   }, [bridge]);
 
   const refreshWorkspace = useCallback(async (): Promise<void> => {
-    const [core, applicationSettings, windowPreferences, project, recent, activeTasks] =
+    const [core, applicationSettings, windowPreferences, project, recent, activeTasks, providers] =
       await Promise.all([
         bridge.app.getCoreStatus({ mode: 'replace' }),
         bridge.settings.get({ mode: 'replace' }),
@@ -88,6 +94,7 @@ export function AppShell({ bridge }: AppShellProps) {
         bridge.project.getActive({ mode: 'replace' }),
         bridge.project.listRecent({ mode: 'replace' }),
         bridge.task.listActive(undefined, { mode: 'replace' }),
+        bridge.providers.list({ mode: 'replace' }),
       ]);
 
     let nextFailure: FailureView | null = null;
@@ -140,6 +147,7 @@ export function AppShell({ bridge }: AppShellProps) {
     else nextFailure ??= failureFromOutcome('最近项目读取失败', recent);
 
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
+    if (providers.state === 'success') setProviderAvailable(providers.data.providers.length > 0);
     setFailure(nextFailure);
     setMessage(null);
     setHydrated(true);
@@ -313,6 +321,66 @@ export function AppShell({ bridge }: AppShellProps) {
     return signals;
   }, [activeProject, coreStatus, recentProjects]);
 
+  const globalStatus = useMemo(() => {
+    const arbitrator = new RendererStatusArbitrator();
+    if (failure) {
+      arbitrator.publish({
+        id: 'failure',
+        priority: 'P0',
+        message: failure.message,
+        persistence: 'sticky',
+        createdAt: 5,
+      });
+    }
+    if (coreStatus && coreStatus.status !== 'healthy') {
+      arbitrator.publish({
+        id: 'core',
+        priority: 'P0',
+        message: `本地服务当前为${coreStatus.status}状态，写入保持阻断。`,
+        persistence: 'sticky',
+        createdAt: 4,
+      });
+    }
+    if (activeProject?.databaseMode === 'read-only') {
+      arbitrator.publish({
+        id: 'read-only',
+        priority: 'P0',
+        message: `项目处于只读保护：${activeProject.readOnlyReason ?? '兼容性保护'}。`,
+        persistence: 'sticky',
+        createdAt: 3,
+      });
+    }
+    if (tasks.length > 0) {
+      arbitrator.publish({
+        id: 'tasks',
+        priority: 'P1',
+        message: `${tasks.length}个后台任务正在运行，可在底部任务栏查看真实阶段或取消。`,
+        persistence: 'transient',
+        createdAt: 2,
+      });
+    }
+    const missing = recentProjects.filter((project) => project.missingSince !== null).length;
+    if (missing > 0) {
+      arbitrator.publish({
+        id: 'missing',
+        priority: 'P2',
+        message: `${missing}个最近项目路径失效，可重新定位恢复入口。`,
+        persistence: 'sticky',
+        createdAt: 1,
+      });
+    }
+    if (message) {
+      arbitrator.publish({
+        id: 'operation',
+        priority: 'P3',
+        message,
+        persistence: 'transient',
+        createdAt: 0,
+      });
+    }
+    return arbitrator.current();
+  }, [activeProject, coreStatus, failure, message, recentProjects, tasks]);
+
   const createProject = async (input: ProjectCreateInput): Promise<boolean> => {
     setPendingKey('project.create');
     setMessage('请选择保存位置…');
@@ -441,6 +509,11 @@ export function AppShell({ bridge }: AppShellProps) {
           language: update.language ?? current.language,
           startupBehavior: update.startupBehavior ?? current.startupBehavior,
           defaultMode: update.defaultMode ?? current.defaultMode,
+          creativePath: update.creativePath ?? current.creativePath,
+          onboardingCompleted: update.onboardingCompleted ?? current.onboardingCompleted,
+          onboardingTipsSeen: update.onboardingTipsSeen ?? current.onboardingTipsSeen,
+          onboardingScaffoldDismissed:
+            update.onboardingScaffoldDismissed ?? current.onboardingScaffoldDismissed,
           themeId: update.themeId ?? current.themeId,
           themeVariant: update.themeVariant ?? current.themeVariant,
           reduceMotion: update.reduceMotion ?? current.reduceMotion,
@@ -462,6 +535,27 @@ export function AppShell({ bridge }: AppShellProps) {
       () => undefined,
     );
     return write;
+  };
+
+  const createFromOnboarding = async (plan: OnboardingProjectPlan): Promise<boolean> => {
+    const created = await createProject(plan.project);
+    if (!created) return false;
+
+    const settingsSaved = await saveSettings({
+      creativePath: plan.creativePath,
+      onboardingCompleted: true,
+      onboardingScaffoldDismissed: plan.project.initialStructure === 'blank',
+    });
+    if (plan.destination === 'import-export') {
+      setDataToolsSection('import-export');
+      dispatch({ type: 'navigate', route: 'recovery' });
+    } else {
+      dispatch({ type: 'navigate', route: plan.destination });
+    }
+    if (!settingsSaved) {
+      setMessage('项目已安全创建；创作路径偏好未保存，可稍后在设置中重试。');
+    }
+    return true;
   };
 
   const saveAppearance = async (next: AppearancePreferences): Promise<boolean> => {
@@ -525,6 +619,16 @@ export function AppShell({ bridge }: AppShellProps) {
           <span>{activeProject?.databaseMode === 'read-only' ? '只读' : '本地'}</span>
           <span>任务 {tasks.length}</span>
         </div>
+        <button
+          aria-expanded={helpOpen}
+          className="quiet-button"
+          data-open-context-help
+          ref={helpTrigger}
+          type="button"
+          onClick={() => setHelpOpen((open) => !open)}
+        >
+          帮助
+        </button>
         <button
           className="quiet-button"
           data-open-settings
@@ -664,25 +768,59 @@ export function AppShell({ bridge }: AppShellProps) {
         ) : null}
 
         <main className="react-main">
-          {failure ? (
+          {globalStatus ? (
             <SafetyBanner
               action={
-                failure.retryable
+                globalStatus.id === 'failure' && failure?.retryable
                   ? { label: '重新读取', run: () => void refreshWorkspace() }
-                  : undefined
+                  : globalStatus.id === 'read-only'
+                    ? { label: '恢复与导出', run: () => void transitionToRoute('recovery') }
+                    : globalStatus.id === 'missing'
+                      ? { label: '查看最近项目', run: () => navigate('home') }
+                      : undefined
               }
-              diagnosticId={failure.diagnosticId}
-              kind="danger"
-              message={failure.message}
-              title={failure.title}
+              diagnosticId={globalStatus.id === 'failure' ? (failure?.diagnosticId ?? null) : null}
+              kind={
+                globalStatus.id === 'failure' || globalStatus.id === 'core'
+                  ? 'danger'
+                  : globalStatus.priority === 'P0' || globalStatus.priority === 'P2'
+                    ? 'warning'
+                    : 'info'
+              }
+              message={globalStatus.message}
+              title={
+                globalStatus.id === 'failure'
+                  ? (failure?.title ?? '操作失败')
+                  : globalStatus.priority === 'P0'
+                    ? '保护状态'
+                    : '工作区状态'
+              }
             />
           ) : null}
-          {activeProject?.databaseMode === 'read-only' ? (
-            <SafetyBanner
-              action={{ label: '恢复与导出', run: () => void transitionToRoute('recovery') }}
-              kind="warning"
-              message={`项目处于只读保护：${activeProject.readOnlyReason ?? '兼容性保护'}。`}
-              title="写入已禁用，浏览和安全导出仍可用"
+          {helpOpen ? (
+            <ContextHelp
+              disclosureMode={disclosureMode}
+              route={route}
+              seenTips={settings.onboardingTipsSeen}
+              onClose={() => {
+                setHelpOpen(false);
+                window.requestAnimationFrame(() => helpTrigger.current?.focus());
+              }}
+              onDismissTip={(tip) =>
+                void saveSettings({
+                  onboardingTipsSeen: [...new Set([...settings.onboardingTipsSeen, tip])],
+                })
+              }
+              onOpenOnboarding={() => {
+                setHelpOpen(false);
+                if (activeProject) {
+                  void saveSettings({ onboardingScaffoldDismissed: false });
+                  setMessage('已在首页重新显示项目引导建议。');
+                } else {
+                  setOnboardingRequest((request) => request + 1);
+                }
+                navigate('home');
+              }}
             />
           ) : null}
 
@@ -694,10 +832,13 @@ export function AppShell({ bridge }: AppShellProps) {
               disclosureMode={disclosureMode}
               healthSignals={healthSignals}
               message={message}
+              onboardingRequest={onboardingRequest}
               pendingKey={pendingKey}
+              providerAvailable={providerAvailable}
               recentProjects={recentProjects}
+              settings={settings}
               onCloseProject={(projectId) => void closeProject(projectId)}
-              onCreate={createProject}
+              onCreate={createFromOnboarding}
               onContinue={() => {
                 if (activeProject) {
                   void transitionToRoute(continuationRoute(continuation));
@@ -717,6 +858,7 @@ export function AppShell({ bridge }: AppShellProps) {
               onOpenSelected={(recover) => void openSelected(recover)}
               onRelocateRecent={(projectId) => void relocateRecent(projectId)}
               onRemoveRecent={(projectId) => void removeRecent(projectId)}
+              onSaveSettings={saveSettings}
             />
           ) : null}
 
@@ -745,6 +887,15 @@ export function AppShell({ bridge }: AppShellProps) {
               onRestartCore={() => void restartCore()}
               onSaveAppearance={saveAppearance}
               onSaveSettings={saveSettings}
+              onOpenOnboarding={() => {
+                if (activeProject) {
+                  void saveSettings({ onboardingScaffoldDismissed: false });
+                  setMessage('已在首页重新显示项目引导建议。');
+                } else {
+                  setOnboardingRequest((request) => request + 1);
+                }
+                navigate('home');
+              }}
             />
           ) : null}
 

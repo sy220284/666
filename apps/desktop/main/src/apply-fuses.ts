@@ -10,6 +10,8 @@ if (!executablePath) {
 
 await flipFuses(executablePath, {
   version: FuseVersion.V1,
+  resetAdHocDarwinSignature: process.platform === 'darwin' && process.arch === 'arm64',
+  strictlyRequireAllFuses: true,
   [FuseV1Options.RunAsNode]: productionFusePolicy.runAsNode,
   [FuseV1Options.EnableCookieEncryption]: productionFusePolicy.enableCookieEncryption,
   [FuseV1Options.EnableNodeOptionsEnvironmentVariable]:
@@ -20,4 +22,7 @@ await flipFuses(executablePath, {
   [FuseV1Options.OnlyLoadAppFromAsar]: productionFusePolicy.onlyLoadAppFromAsar,
   [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]:
     productionFusePolicy.loadBrowserProcessSpecificV8Snapshot,
+  [FuseV1Options.GrantFileProtocolExtraPrivileges]:
+    productionFusePolicy.grantFileProtocolExtraPrivileges,
+  [FuseV1Options.WasmTrapHandlers]: productionFusePolicy.wasmTrapHandlers,
 });

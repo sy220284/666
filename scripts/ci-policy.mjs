@@ -216,9 +216,11 @@ async function main() {
     'build:',
     'Skip build for documentation-only Ready PR',
     'package-smoke:',
-    'Package smoke not required for this route',
-    'Package smoke is reserved for Release or an explicitly enabled reusable gate.',
-    'if: ${{ inputs.package_smoke }}',
+    'if: ${{ inputs.draft_mode == false && inputs.package_smoke }}',
+    'platform: linux',
+    'platform: windows',
+    'platform: macos',
+    'smoke-packaged-desktop.mjs',
     'quality:',
     'require_optional_job "$PACKAGE_REQUIRED" "$PACKAGE_RESULT" package-smoke',
   ]);
@@ -280,7 +282,7 @@ async function main() {
     'security_suite: true',
     'performance_eval: true',
     'pnpm build',
-    'pnpm package --',
+    'pnpm run package --',
   ]);
   forbidTokens(errors, 'release.yml', release, ['pull_request:', 'schedule:']);
 

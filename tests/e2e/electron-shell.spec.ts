@@ -196,6 +196,104 @@ test('runs a sandboxed Renderer against a healthy supervised Core', async () => 
   }
 });
 
+test('completes atomic onboarding and exports only the confirmed diagnostic allowlist', async () => {
+  test.setTimeout(90_000);
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'onboarding-projects');
+  const diagnosticsDirectory = path.join(userDataPath, 'diagnostics');
+  await Promise.all([
+    mkdir(createParent, { recursive: true }),
+    mkdir(diagnosticsDirectory, { recursive: true }),
+  ]);
+  const application = await launch(userDataPath, undefined, {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+    WORLDFORGE_E2E_DIAGNOSTICS_DIRECTORY: diagnosticsDirectory,
+  });
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await expect(page.locator('[data-onboarding-entry]')).toHaveCount(4);
+
+    await page.locator('[data-onboarding-entry="quick"]').click();
+    await expect(page.locator('[data-create-project-dialog]')).toBeVisible();
+    await expect(
+      page.locator('select[name="creativePath"] option[value="ai-first"]'),
+    ).toHaveAttribute('disabled', '');
+    await page.getByRole('button', { name: '取消', exact: true }).click();
+    await expect(page.locator('[data-create-project-dialog]')).toHaveCount(0);
+    expect(await readdir(createParent)).toEqual([]);
+
+    await page.locator('[data-onboarding-entry="complete"]').click();
+    await page.locator('[data-project-name]').fill('原子向导E2E');
+    await page.locator('[data-project-channel]').fill('悬疑');
+    await page.locator('textarea[name="concept"]').fill('一座城将在七天后消失。');
+    await page.locator('textarea[name="protagonistGoal"]').fill('找回失踪的妹妹。');
+    await page.locator('textarea[name="readingPromise"]').fill('逐层揭开消失原因。');
+    await page.locator('textarea[name="coreConflict"]').fill('真相会摧毁整座城。');
+    await page.locator('input[name="protagonistName"]').fill('林灯');
+    await page.locator('input[name="protagonistIdentity"]').fill('档案修复师');
+    await page.locator('input[name="protagonistBoundary"]').fill('不牺牲无辜者');
+    await page.locator('input[name="chapterTitle"]').fill('城门将在午夜关闭');
+    await page.locator('input[name="targetWordMin"]').fill('2000');
+    await page.locator('input[name="targetWordMax"]').fill('3000');
+    await page
+      .locator('textarea[name="sceneGoals"]')
+      .fill('收到失踪档案\n在城门前做出选择\n发现第一条反常线索');
+    await page.locator('select[name="creativePath"]').selectOption('hybrid');
+    await page.locator('[data-confirm-create-project]').click();
+
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+    const settings = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      return bridge.settings.get();
+    });
+    expect(settings).toMatchObject({
+      ok: true,
+      data: {
+        settings: {
+          creativePath: 'hybrid',
+          onboardingCompleted: true,
+          onboardingScaffoldDismissed: false,
+        },
+      },
+    });
+
+    const workspace = path.join(createParent, '原子向导E2E.worldforge');
+    const database = new DatabaseSync(path.join(workspace, 'project.sqlite'), { readOnly: true });
+    expect(database.prepare('SELECT concept, protagonist_goal FROM project_briefs').get()).toEqual({
+      concept: '一座城将在七天后消失。',
+      protagonist_goal: '找回失踪的妹妹。',
+    });
+    expect(database.prepare('SELECT name FROM entities').get()).toEqual({ name: '林灯' });
+    expect(database.prepare('SELECT title FROM chapters').get()).toEqual({
+      title: '城门将在午夜关闭',
+    });
+    expect(database.prepare('SELECT count(*) AS count FROM scene_beats').get()).toEqual({
+      count: 3,
+    });
+    database.close();
+
+    await page.locator('[data-open-settings]').click();
+    await page.locator('[data-settings-navigation="advanced"]').click();
+    await page.getByRole('button', { name: '预览诊断清单' }).click();
+    await expect(page.locator('[data-diagnostic-preview]')).toContainText('project-content');
+    await page.locator('[data-confirm-diagnostic-export]').check();
+    await page.locator('[data-export-diagnostics]').click();
+    await expect(page.locator('[data-diagnostic-status]')).toContainText('已导出');
+
+    const diagnosticFiles = await readdir(diagnosticsDirectory);
+    expect(diagnosticFiles).toHaveLength(1);
+    const diagnostic = await readFile(path.join(diagnosticsDirectory, diagnosticFiles[0]!), 'utf8');
+    expect(diagnostic).not.toContain('一座城将在七天后消失');
+    expect(diagnostic).not.toContain(workspace);
+    expect(diagnostic).not.toContain('credentialRef');
+  } finally {
+    await closeGracefully(application);
+  }
+});
+
 test('renders only persisted recent projects and restores general settings after restart', async () => {
   test.setTimeout(60_000);
   const userDataPath = await temporaryUserData();

@@ -1,10 +1,13 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 
-import type {
-  ProjectCreateInput,
-  ProjectContinuationSnapshot,
-  ProjectWorkspaceSummary,
-  RecentProject,
+import {
+  type AppSettings,
+  type AppSettingsUpdate,
+  type CreativePath,
+  type ProjectCreateInput,
+  type ProjectContinuationSnapshot,
+  type ProjectWorkspaceSummary,
+  type RecentProject,
 } from '@worldforge/contracts';
 
 import {
@@ -22,8 +25,12 @@ export interface HomePageProps {
   readonly activeTaskCount: number;
   readonly pendingKey: string | null;
   readonly message: string | null;
+  readonly settings: AppSettings;
+  readonly providerAvailable: boolean;
+  readonly onboardingRequest: number;
   readonly onNavigate: (navigation: PrimaryNavigationId) => void;
-  readonly onCreate: (input: ProjectCreateInput) => Promise<boolean>;
+  readonly onCreate: (plan: OnboardingProjectPlan) => Promise<boolean>;
+  readonly onSaveSettings: (update: AppSettingsUpdate) => Promise<boolean>;
   readonly onContinue: () => void;
   readonly onOpenSelected: (recover: boolean) => void;
   readonly onOpenRecent: (projectId: string) => void;
@@ -34,9 +41,23 @@ export interface HomePageProps {
   readonly onOpenRecovery: () => void;
 }
 
+export interface OnboardingProjectPlan {
+  readonly project: ProjectCreateInput;
+  readonly creativePath: CreativePath;
+  readonly destination: 'writing' | 'planning' | 'import-export';
+}
+
+type OnboardingEntry = 'quick' | 'complete' | 'import' | 'blank';
+
 export function HomePage(props: HomePageProps) {
   const [creating, setCreating] = useState(false);
+  const [entry, setEntry] = useState<OnboardingEntry>('quick');
   const createTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (props.onboardingRequest <= 0) return;
+    setEntry('complete');
+    setCreating(true);
+  }, [props.onboardingRequest]);
   const closeCreateDialog = (): void => {
     setCreating(false);
     window.requestAnimationFrame(() => createTrigger.current?.focus());
@@ -116,17 +137,61 @@ export function HomePage(props: HomePageProps) {
       ) : null}
 
       {props.activeProject ? (
-        <ActiveProjectCard
-          project={props.activeProject}
-          continuation={props.continuation}
-          pending={Boolean(props.pendingKey)}
-          onContinue={props.onContinue}
-          onNavigate={props.onNavigate}
-          onClose={() => props.onCloseProject(props.activeProject?.projectId ?? '')}
-          onMove={() => props.onMoveProject(props.activeProject?.projectId ?? '')}
-          onOpenRecovery={props.onOpenRecovery}
-        />
-      ) : null}
+        <>
+          {props.settings.onboardingCompleted && !props.settings.onboardingScaffoldDismissed ? (
+            <aside className="react-onboarding-scaffold" aria-label="下一步建议">
+              <div>
+                <strong>下一步建议</strong>
+                <p>可先补充作品规划和人物边界，也可以直接继续正文；项目能力不会受影响。</p>
+              </div>
+              <button
+                className="quiet-button"
+                type="button"
+                onClick={() => void props.onSaveSettings({ onboardingScaffoldDismissed: true })}
+              >
+                知道了
+              </button>
+            </aside>
+          ) : null}
+          <ActiveProjectCard
+            project={props.activeProject}
+            continuation={props.continuation}
+            creativePath={props.settings.creativePath}
+            pending={Boolean(props.pendingKey)}
+            providerAvailable={props.providerAvailable}
+            onContinue={props.onContinue}
+            onNavigate={props.onNavigate}
+            onClose={() => props.onCloseProject(props.activeProject?.projectId ?? '')}
+            onMove={() => props.onMoveProject(props.activeProject?.projectId ?? '')}
+            onOpenRecovery={props.onOpenRecovery}
+            onSaveSettings={props.onSaveSettings}
+          />
+        </>
+      ) : (
+        <section className="react-onboarding-entry" aria-labelledby="onboarding-entry-title">
+          <header>
+            <h2 id="onboarding-entry-title">选择开始方式</h2>
+            <p>四种入口共用同一套本地项目与安全边界，之后可以随时调整创作路径。</p>
+          </header>
+          <div className="react-onboarding-entry__grid">
+            {onboardingEntries.map((item) => (
+              <button
+                className="react-onboarding-entry__card"
+                data-onboarding-entry={item.id}
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setEntry(item.id);
+                  setCreating(true);
+                }}
+              >
+                <strong>{item.title}</strong>
+                <span>{item.description}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="react-recent-projects" aria-labelledby="react-recent-heading">
         <header>
@@ -201,12 +266,15 @@ export function HomePage(props: HomePageProps) {
       {creating ? (
         <CreateProjectDialog
           disclosureMode={props.disclosureMode}
+          entry={entry}
           pending={props.pendingKey === 'project.create'}
+          providerAvailable={props.providerAvailable}
           onCancel={closeCreateDialog}
-          onCreate={async (input) => {
-            const created = await props.onCreate(input);
+          onCreate={async (plan) => {
+            const created = await props.onCreate(plan);
             if (created) closeCreateDialog();
           }}
+          onEntryChange={setEntry}
         />
       ) : null}
     </section>
@@ -217,22 +285,28 @@ interface ActiveProjectCardProps {
   readonly project: ProjectWorkspaceSummary;
   readonly continuation: ProjectContinuationSnapshot | null;
   readonly pending: boolean;
+  readonly creativePath: CreativePath;
+  readonly providerAvailable: boolean;
   readonly onContinue: () => void;
   readonly onNavigate: (navigation: PrimaryNavigationId) => void;
   readonly onClose: () => void;
   readonly onMove: () => void;
   readonly onOpenRecovery: () => void;
+  readonly onSaveSettings: (update: AppSettingsUpdate) => Promise<boolean>;
 }
 
 function ActiveProjectCard({
   project,
   continuation,
   pending,
+  creativePath,
+  providerAvailable,
   onContinue,
   onNavigate,
   onClose,
   onMove,
   onOpenRecovery,
+  onSaveSettings,
 }: ActiveProjectCardProps) {
   const readOnly = project.databaseMode === 'read-only';
   return (
@@ -254,6 +328,24 @@ function ActiveProjectCard({
           ）。浏览与安全导出可用，写入和移动已禁用。
         </p>
       ) : null}
+      <label className="react-inline-setting">
+        <span>创作路径</span>
+        <select
+          aria-describedby="creative-path-note"
+          disabled={pending}
+          value={creativePath}
+          onChange={(event) =>
+            void onSaveSettings({ creativePath: event.target.value as CreativePath })
+          }
+        >
+          <option value="autonomous">自主创作</option>
+          <option value="hybrid">人机协作</option>
+          <option disabled={!providerAvailable} value="ai-first">
+            AI优先{providerAvailable ? '' : '（需先配置AI连接）'}
+          </option>
+        </select>
+        <small id="creative-path-note">只改变推荐入口和说明，不改变项目数据或可用命令。</small>
+      </label>
       <div className="react-card-actions">
         <button className="primary-button" data-continue-writing type="button" onClick={onContinue}>
           继续写作
@@ -285,34 +377,103 @@ function ActiveProjectCard({
 
 interface CreateProjectDialogProps {
   readonly disclosureMode: AppDisclosureMode;
+  readonly entry: OnboardingEntry;
   readonly pending: boolean;
+  readonly providerAvailable: boolean;
   readonly onCancel: () => void;
-  readonly onCreate: (input: ProjectCreateInput) => Promise<void>;
+  readonly onCreate: (plan: OnboardingProjectPlan) => Promise<void>;
+  readonly onEntryChange: (entry: OnboardingEntry) => void;
 }
 
 function CreateProjectDialog({
   disclosureMode,
+  entry,
   pending,
+  providerAvailable,
   onCancel,
   onCreate,
+  onEntryChange,
 }: CreateProjectDialogProps) {
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const name = String(data.get('name') ?? '').trim();
-    const channel = String(data.get('channel') ?? '').trim();
-    const initialStructure = String(data.get('initialStructure') ?? 'starter');
+    const channel = String(data.get('channel') ?? '').trim() || '未指定';
+    const initialStructure =
+      entry === 'blank' ? 'blank' : String(data.get('initialStructure') ?? 'starter');
     if (!name || !channel || !['starter', 'blank'].includes(initialStructure)) {
       setError('请填写项目名称和创作频道。');
       return;
     }
+    const creativePath = String(data.get('creativePath') ?? 'autonomous') as CreativePath;
+    if (creativePath === 'ai-first' && !providerAvailable) {
+      setError('AI优先需要先配置AI连接；自主创作和人机协作可直接使用。');
+      return;
+    }
     setError(null);
+    const concept = field(data, 'concept');
+    const readingPromise = field(data, 'readingPromise');
+    const protagonistGoal = field(data, 'protagonistGoal');
+    const coreConflict = field(data, 'coreConflict');
+    const endingIntent = field(data, 'endingIntent');
+    const required = lines(field(data, 'required'));
+    const forbidden = lines(field(data, 'forbidden'));
+    const protagonistName = field(data, 'protagonistName');
+    const chapterTitle = field(data, 'chapterTitle');
+    const sceneGoals = lines(field(data, 'sceneGoals')).slice(0, 20);
+    const brief = [
+      concept,
+      readingPromise,
+      protagonistGoal,
+      coreConflict,
+      endingIntent,
+      ...required,
+      ...forbidden,
+    ].some(Boolean)
+      ? {
+          concept,
+          readingPromise,
+          protagonistGoal,
+          coreConflict,
+          endingIntent,
+          required,
+          forbidden,
+        }
+      : null;
     void onCreate({
-      name,
-      channel,
-      initialStructure: initialStructure as 'starter' | 'blank',
+      project: {
+        name,
+        channel,
+        initialStructure: initialStructure as 'starter' | 'blank',
+        onboarding:
+          entry === 'blank'
+            ? undefined
+            : {
+                brief,
+                protagonist: protagonistName
+                  ? {
+                      name: protagonistName,
+                      identity: field(data, 'protagonistIdentity'),
+                      goal: protagonistGoal,
+                      boundary: field(data, 'protagonistBoundary'),
+                    }
+                  : null,
+                firstChapter: chapterTitle
+                  ? {
+                      title: chapterTitle,
+                      targetWordMin: optionalNumber(data, 'targetWordMin'),
+                      targetWordMax: optionalNumber(data, 'targetWordMax'),
+                    }
+                  : null,
+                sceneGoals,
+              },
+      },
+      creativePath,
+      destination:
+        entry === 'import' ? 'import-export' : entry === 'complete' ? 'planning' : 'writing',
     });
   };
 
@@ -320,46 +481,163 @@ function CreateProjectDialog({
     <div className="react-dialog-backdrop" data-create-project-dialog data-react-project-dialog>
       <section
         className="react-dialog"
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-title"
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape') return;
-          event.preventDefault();
-          event.stopPropagation();
-          onCancel();
-        }}
+        aria-describedby="create-description"
+        onKeyDown={(event) => handleDialogKeyDown(event, dialogRef.current, onCancel)}
       >
         <header>
-          <h2 id="create-title">新建本地项目</h2>
-          <p>选择保存位置后，Core将原子创建工作空间、项目数据库和初始写作结构。</p>
+          <h2 id="create-title">{entryTitle(entry)}</h2>
+          <p id="create-description">
+            选择保存位置后，应用会一次完成项目、规划输入和首章准备；取消不会留下半成品。
+          </p>
         </header>
-        <form onSubmit={submit}>
-          <label>
-            <span>项目名称</span>
-            <input autoFocus data-project-name maxLength={240} name="name" required />
-          </label>
-          <label>
-            <span>创作频道</span>
-            <input
-              data-project-channel
-              defaultValue="未分类"
-              maxLength={120}
-              name="channel"
-              required
-            />
-          </label>
-          <label>
-            <span>初始结构</span>
-            <select
-              defaultValue={disclosureMode === 'professional' ? 'blank' : 'starter'}
-              data-project-initial-structure
-              name="initialStructure"
+        <nav className="react-onboarding-tabs" aria-label="开始方式">
+          {onboardingEntries.map((item) => (
+            <button
+              aria-current={entry === item.id ? 'step' : undefined}
+              className="quiet-button"
+              data-onboarding-dialog-entry={item.id}
+              key={item.id}
+              type="button"
+              onClick={() => onEntryChange(item.id)}
             >
-              <option value="starter">首卷、第一章与活动Draft</option>
-              <option value="blank">空白项目</option>
-            </select>
-          </label>
+              {item.title}
+            </button>
+          ))}
+        </nav>
+        <form key={entry} onSubmit={submit}>
+          <fieldset>
+            <legend>{entry === 'complete' ? '1. 项目基础' : '项目基础'}</legend>
+            <label>
+              <span>项目名称</span>
+              <input autoFocus data-project-name maxLength={240} name="name" required />
+            </label>
+            <label>
+              <span>创作频道（可跳过）</span>
+              <input data-project-channel defaultValue="未指定" maxLength={120} name="channel" />
+            </label>
+            <label>
+              <span>初始结构</span>
+              <select
+                defaultValue={
+                  entry === 'blank' || disclosureMode === 'professional' ? 'blank' : 'starter'
+                }
+                data-project-initial-structure
+                disabled={entry === 'blank'}
+                name="initialStructure"
+              >
+                <option value="starter">首卷、第一章与当前稿</option>
+                <option value="blank">空白项目</option>
+              </select>
+            </label>
+          </fieldset>
+          {entry === 'import' ? (
+            <p className="react-dialog-note">
+              创建安全工作区后进入导入预览；只有确认预览才会写入稿件内容。
+            </p>
+          ) : null}
+          {entry !== 'blank' ? (
+            <>
+              <fieldset>
+                <legend>
+                  {entry === 'complete' ? '2. 故事核心（均可跳过）' : '故事起点（可跳过）'}
+                </legend>
+                <label>
+                  <span>这个故事大概讲什么？</span>
+                  <textarea name="concept" maxLength={4000} />
+                </label>
+                <label>
+                  <span>主角现在最想得到什么？</span>
+                  <textarea name="protagonistGoal" maxLength={4000} />
+                </label>
+                {entry === 'complete' ? (
+                  <>
+                    <label>
+                      <span>希望读者持续期待什么？</span>
+                      <textarea name="readingPromise" maxLength={4000} />
+                    </label>
+                    <label>
+                      <span>核心冲突</span>
+                      <textarea name="coreConflict" maxLength={4000} />
+                    </label>
+                    <label>
+                      <span>终局方向</span>
+                      <textarea name="endingIntent" maxLength={4000} />
+                    </label>
+                    <label>
+                      <span>必须兑现（每行一条）</span>
+                      <textarea name="required" />
+                    </label>
+                    <label>
+                      <span>禁止事项（每行一条）</span>
+                      <textarea name="forbidden" />
+                    </label>
+                  </>
+                ) : null}
+              </fieldset>
+              {entry === 'complete' ? (
+                <fieldset>
+                  <legend>3. 关键人物（可跳过）</legend>
+                  <label>
+                    <span>姓名</span>
+                    <input name="protagonistName" maxLength={240} />
+                  </label>
+                  <label>
+                    <span>身份</span>
+                    <input name="protagonistIdentity" maxLength={500} />
+                  </label>
+                  <label>
+                    <span>不能突破的边界</span>
+                    <input name="protagonistBoundary" maxLength={500} />
+                  </label>
+                </fieldset>
+              ) : null}
+              <fieldset>
+                <legend>{entry === 'complete' ? '4. 第一章（可跳过）' : '第一章（可跳过）'}</legend>
+                <label>
+                  <span>章节标题</span>
+                  <input name="chapterTitle" maxLength={240} />
+                </label>
+                {entry === 'complete' ? (
+                  <div className="react-inline-fields">
+                    <label>
+                      <span>最低字数</span>
+                      <input min={0} max={1000000} name="targetWordMin" type="number" />
+                    </label>
+                    <label>
+                      <span>最高字数</span>
+                      <input min={0} max={1000000} name="targetWordMax" type="number" />
+                    </label>
+                  </div>
+                ) : null}
+                <label>
+                  <span>想先发生什么？（每行一个场景）</span>
+                  <textarea name="sceneGoals" />
+                </label>
+              </fieldset>
+            </>
+          ) : null}
+          <fieldset>
+            <legend>{entry === 'complete' ? '5. 创作路径' : '创作路径'}</legend>
+            <label>
+              <span>默认推荐方式</span>
+              <select defaultValue="autonomous" name="creativePath">
+                <option value="autonomous">自主创作</option>
+                <option value="hybrid">人机协作</option>
+                <option disabled={!providerAvailable} value="ai-first">
+                  AI优先
+                </option>
+              </select>
+            </label>
+            <small>
+              {providerAvailable
+                ? 'AI只在你明确触发后向已配置连接发送必要上下文。'
+                : '尚未配置AI连接；自主创作完整可用，AI优先暂不可选。'}
+            </small>
+          </fieldset>
           {error ? <p className="react-field-error">{error}</p> : null}
           <footer>
             <button className="quiet-button" disabled={pending} type="button" onClick={onCancel}>
@@ -378,4 +656,67 @@ function CreateProjectDialog({
       </section>
     </div>
   );
+}
+
+const onboardingEntries: readonly {
+  readonly id: OnboardingEntry;
+  readonly title: string;
+  readonly description: string;
+}[] = [
+  { id: 'quick', title: '快速开始', description: '只回答三个可选问题，立即进入第一章。' },
+  { id: 'complete', title: '完整流程', description: '按五步准备故事、人物与第一章。' },
+  { id: 'import', title: '导入已有作品', description: '先建安全工作区，再进入受控导入预览。' },
+  { id: 'blank', title: '空白项目', description: '只填名称并选择位置，自由搭建。' },
+];
+
+function entryTitle(entry: OnboardingEntry): string {
+  return onboardingEntries.find((item) => item.id === entry)?.title ?? '新建本地项目';
+}
+
+function field(data: FormData, name: string): string {
+  return String(data.get(name) ?? '').trim();
+}
+
+function lines(value: string): string[] {
+  return value
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 100);
+}
+
+function optionalNumber(data: FormData, name: string): number | null {
+  const value = field(data, name);
+  if (!value) return null;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 && number <= 1_000_000 ? number : null;
+}
+
+function handleDialogKeyDown(
+  event: KeyboardEvent<HTMLElement>,
+  dialog: HTMLElement | null,
+  onCancel: () => void,
+): void {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    onCancel();
+    return;
+  }
+  if (event.key !== 'Tab' || !dialog) return;
+  const controls = [
+    ...dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+    ),
+  ].filter((control) => control.tabIndex >= 0);
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }

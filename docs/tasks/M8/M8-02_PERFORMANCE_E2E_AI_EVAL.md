@@ -1,6 +1,6 @@
 # M8-02 C8完整体验、硬化与发布关闭
 
-> 状态：Planned  
+> 状态：In Progress
 > 里程碑：M8 最终体验与发布验收  
 > 优先级：P0  
 > 建议分支：`work/m8-02-performance-e2e-ai-eval`
@@ -63,6 +63,7 @@ M4-04
 - `packages/contracts/`
 - `packages/core-service/`
 - `tests/e2e/`
+- `tests/unit/`
 - `tests/performance/`
 - `tests/security/`
 - `tests/integration/`
@@ -75,6 +76,10 @@ M4-04
 - `docs/security/`
 - `docs/product/`
 - `docs/test-evidence/M8-02/`
+- `docs/PROJECT_EXECUTION_ENTRY.md`
+- `README.md`
+- `CHANGELOG.md`
+- `LICENSE`
 - 发布与打包配置
 
 大范围架构重写必须单独立项并阻断M8-02关闭，禁止在验收任务内无计划扩张。
@@ -120,6 +125,29 @@ M4-04
 - 产物Hash、签名、版本、Migration、回滚和发布说明一致。
 - P0项目全部Verified或明确Blocked。
 - 输出允许发布、有条件允许或禁止发布结论。
+
+## 当前实施审计
+
+> 审计日期：2026-07-28
+> 产品Head：`edbf5f5699f280d13d58f255c76f4cb0f20cb617`
+> Draft PR：[#222](https://github.com/sy220284/666/pull/222)
+
+### 已完成实现
+
+- 快速、完整、导入、空白四入口和自主、混合、AI优先三条路径；创建事务原子写入任务书、主角、首章与SceneBeat。
+- 新手/专业披露度、统一工作台、沉浸视图、StatusArbiter、上下文帮助、真实禁用原因和跨工作台继续位置。
+- Theme A/B、浅色/深色/护眼/高对比、减少动态、键盘焦点和窗口显示状态真源。
+- 安全诊断包预览与显式确认、严格白名单、`0600`临时文件、原子重命名和SHA-256。
+- 生产ASAR、完整性、Electron Fuses、三平台原生打包、成品启动握手和CI工件。
+- Renderer改用固定安全自定义协议，不使用高权限`file://`页面；资源读取受Host、根路径和扩展名白名单保护。
+- C8 Electron E2E、三平台Package Smoke、安全、性能和AI协议Eval纳入永久门禁。
+
+### 当前验收边界
+
+- 自动化实现与三平台功能启动证据绑定上述产品Head，最终记录进入`docs/test-evidence/M8-02/`。
+- Linux CI受Ubuntu/AppArmor限制，功能冒烟使用显式CI-only无沙箱回退；生产sandbox安装配置仍为Blocked。
+- 真实Provider账号与多模型质量矩阵、物理混合DPI/多屏、人工读屏/输入法、代码签名/公证、安装/升级/卸载仍为Blocked。
+- 因存在发布级Blocked，当前结论为`禁止发布`，任务保持`In Progress`，PR保持Draft。
 
 ## 测试与证据
 

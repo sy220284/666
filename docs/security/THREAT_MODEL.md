@@ -2,7 +2,7 @@
 
 > 状态：Approved  
 > 适用：V1.0桌面单用户、本地优先架构  
-> 更新日期：2026-07-25
+> 更新日期：2026-07-28
 
 ## 1. 保护资产
 
@@ -76,6 +76,8 @@ webPreferences: {
 还必须：
 
 - 严格CSP，不允许`unsafe-eval`进入正式构建。
+- Renderer只从`worldforge-app://renderer/`安全标准协议加载，Main按`html/js/css`扩展名、固定Host和规范化根路径白名单读取ASAR内文件；拒绝穿越、其他Host和其他类型。
+- Renderer不使用高权限`file://`页面；自定义协议不绕过CSP、不启用Service Worker、Fetch API、CORS、流或扩展能力。
 - 拦截`will-navigate`、`setWindowOpenHandler`和下载行为。
 - 不加载用户提供的HTML为应用页面。
 - 正式构建受控开放DevTools。
@@ -114,7 +116,7 @@ webPreferences: {
 - 凭据文件与目录使用平台可达的最小权限。
 - 凭据值只在请求期受控内存存在，不发送给Renderer。
 - Provider配置区分本机、局域网和外部端点。
-- 禁止`file://`、应用内部协议、任意本地文件、云元数据地址和未批准Custom脚本。
+- Provider端点禁止`file://`、应用内部协议、任意本地文件、云元数据地址和未批准Custom脚本；该限制不指Main受控提供的Renderer只读资源协议。
 - 跨主机重定向默认拒绝。
 - 外部Provider如何保存请求属于剩余风险，必须由界面明确提示。
 

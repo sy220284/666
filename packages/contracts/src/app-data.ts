@@ -36,6 +36,15 @@ const ProviderCredentialRefSchema = z
 export const AppLanguageSchema = z.enum(['zh-CN']);
 export const StartupBehaviorSchema = z.enum(['show-home', 'reopen-last']);
 export const AuthorModeSchema = z.enum(['beginner', 'professional']);
+export const CreativePathSchema = z.enum(['autonomous', 'hybrid', 'ai-first']);
+export const OnboardingTipSchema = z.enum([
+  'local-autosave',
+  'locked-blocks',
+  'candidate-safety',
+  'candidate-undo',
+  'recovery-copy',
+  'focus-mode',
+]);
 export const ThemeIdSchema = z.enum(['theme-a', 'theme-b']);
 export const ThemeVariantSchema = z.enum(['light', 'dark', 'eye-care', 'high-contrast']);
 
@@ -45,6 +54,10 @@ export const AppSettingsSchema = z
     language: AppLanguageSchema,
     startupBehavior: StartupBehaviorSchema,
     defaultMode: AuthorModeSchema,
+    creativePath: CreativePathSchema.default('autonomous'),
+    onboardingCompleted: z.boolean().default(false),
+    onboardingTipsSeen: z.array(OnboardingTipSchema).max(6).default([]),
+    onboardingScaffoldDismissed: z.boolean().default(false),
     themeId: ThemeIdSchema,
     themeVariant: ThemeVariantSchema,
     reduceMotion: z.boolean(),
@@ -67,6 +80,10 @@ export const AppSettingsUpdateSchema = z.strictObject({
   language: AppLanguageSchema.optional(),
   startupBehavior: StartupBehaviorSchema.optional(),
   defaultMode: AuthorModeSchema.optional(),
+  creativePath: CreativePathSchema.optional(),
+  onboardingCompleted: z.boolean().optional(),
+  onboardingTipsSeen: z.array(OnboardingTipSchema).max(6).optional(),
+  onboardingScaffoldDismissed: z.boolean().optional(),
   themeId: ThemeIdSchema.optional(),
   themeVariant: ThemeVariantSchema.optional(),
   reduceMotion: z.boolean().optional(),
@@ -77,6 +94,10 @@ export const DEFAULT_APP_SETTINGS = {
   language: 'zh-CN',
   startupBehavior: 'show-home',
   defaultMode: 'beginner',
+  creativePath: 'autonomous',
+  onboardingCompleted: false,
+  onboardingTipsSeen: [],
+  onboardingScaffoldDismissed: false,
   themeId: 'theme-a',
   themeVariant: 'light',
   reduceMotion: false,
@@ -298,6 +319,8 @@ export const CoreAppDataResultSchema = z.union([
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 export type AppSettingsUpdate = z.infer<typeof AppSettingsUpdateSchema>;
 export type AppSettingsSnapshot = z.infer<typeof AppSettingsSnapshotSchema>;
+export type CreativePath = z.infer<typeof CreativePathSchema>;
+export type OnboardingTip = z.infer<typeof OnboardingTipSchema>;
 export type RecentProject = z.infer<typeof RecentProjectSchema>;
 export type RecentProjectRegistration = z.infer<typeof RecentProjectRegistrationSchema>;
 export type ProviderOptions = z.infer<typeof ProviderOptionsSchema>;

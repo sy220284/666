@@ -443,6 +443,15 @@ export function AppShell({ bridge }: AppShellProps) {
         createdAt: 57,
       });
     }
+    if (workspaceAttention.backupFailureCount > 0) {
+      arbitrator.publish({
+        id: 'backup-failed',
+        priority: 'P2',
+        message: `有${workspaceAttention.backupFailureCount}次备份失败尚未由后续成功备份解除。`,
+        persistence: 'sticky',
+        createdAt: 57,
+      });
+    }
     if (workspaceAttention.searchFailedCount > 0) {
       arbitrator.publish({
         id: 'search-failed',
@@ -536,9 +545,12 @@ export function AppShell({ bridge }: AppShellProps) {
     if (
       globalStatus.id === 'validation-open' ||
       globalStatus.id === 'search-failed' ||
-      globalStatus.id === 'search-stale'
+      globalStatus.id === 'search-stale' ||
+      globalStatus.id === 'backup-failed'
     ) {
-      return { label: '打开检查', run: () => void transitionToRoute('checks') };
+      return globalStatus.id === 'backup-failed'
+        ? { label: '打开恢复中心', run: () => void transitionToRoute('recovery') }
+        : { label: '打开检查', run: () => void transitionToRoute('checks') };
     }
     if (globalStatus.id === 'ai-readiness') {
       return { label: '检查AI连接', run: () => navigate('settings') };

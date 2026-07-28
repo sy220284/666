@@ -61,7 +61,7 @@ describe('M4-01 search index migrations', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 28n,
+        schema_version: 29n,
       });
       expect(
         database

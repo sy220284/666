@@ -18,6 +18,7 @@ describe('workspace attention summary', () => {
           { status: 'resolved', severity: 'high' },
         ],
         searchState: { status: 'stale', failedCount: 2 },
+        backupFailures: [{ failureId: 'failure-1' }],
       }),
     ).toEqual({
       pendingCandidateCount: 2,
@@ -27,6 +28,7 @@ describe('workspace attention summary', () => {
       highValidationCount: 1,
       searchStatus: 'stale',
       searchFailedCount: 2,
+      backupFailureCount: 1,
       unavailableSources: [],
     });
   });
@@ -38,8 +40,9 @@ describe('workspace attention summary', () => {
         proposals: [],
         validationIssues: [],
         searchState: null,
-        unavailableSources: ['proposal', 'search'],
+        backupFailures: [],
+        unavailableSources: ['proposal', 'search', 'recovery'],
       }).unavailableSources,
-    ).toEqual(['proposal', 'search']);
+    ).toEqual(['proposal', 'search', 'recovery']);
   });
 });

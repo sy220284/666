@@ -53,7 +53,7 @@ describe('M4-04 generation runtime migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 28n,
+        schema_version: 29n,
       });
       for (const table of [
         'generation_runs',

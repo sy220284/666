@@ -19,6 +19,7 @@ import { backup, DatabaseSync } from 'node:sqlite';
 
 import {
   BackupRecordSchema,
+  BackupFailureRecordSchema,
   BackupCleanupPreviewSchema,
   BackupPolicySchema,
   RecoveryCleanupApplyInputSchema,
@@ -34,6 +35,8 @@ import {
   RecoveryRestoredProjectSchema,
   RecoveryVersionExportSchema,
   type BackupRecord,
+  type BackupFailureCode,
+  type BackupFailureRecord,
   type BackupCleanupItem,
   type BackupCleanupPreview,
   type BackupPolicy,
@@ -317,7 +320,7 @@ export class RecoveryService {
   ): Promise<BackupRecord> {
     const input = RecoveryCreateInputSchema.parse(raw);
     const named = input.operation === 'manual-protection';
-    return this.#createBackup(requestId, input, {
+    return this.#createTrackedBackup(requestId, input, {
       track: named ? 'named' : 'major',
       displayName: named ? '手动恢复点' : null,
       note: null,
@@ -333,7 +336,7 @@ export class RecoveryService {
       (record) => record.track === 'daily' && record.createdAt.slice(0, 10) === today,
     );
     if (existing) return existing;
-    return this.#createBackup(
+    return this.#createTrackedBackup(
       requestId,
       { projectId: input.projectId, operation: 'manual-protection' },
       {
@@ -351,7 +354,7 @@ export class RecoveryService {
     raw: RecoveryNamedSnapshotInput,
   ): Promise<BackupRecord> {
     const input = RecoveryNamedSnapshotInputSchema.parse(raw);
-    return this.#createBackup(
+    return this.#createTrackedBackup(
       requestId,
       { projectId: input.projectId, operation: 'manual-protection' },
       {
@@ -362,6 +365,70 @@ export class RecoveryService {
         migrationProtected: false,
       },
     );
+  }
+
+  async #createTrackedBackup(
+    requestId: string,
+    input: RecoveryCreateInput,
+    classification: {
+      readonly track: BackupRecord['track'];
+      readonly displayName: string | null;
+      readonly note: string | null;
+      readonly authorProtected: boolean;
+      readonly migrationProtected: boolean;
+    },
+  ): Promise<BackupRecord> {
+    try {
+      return await this.#createBackup(requestId, input, classification);
+    } catch (error) {
+      await this.#recordBackupFailure(input, classification.track, error);
+      throw error;
+    }
+  }
+
+  async #recordBackupFailure(
+    input: RecoveryCreateInput,
+    track: BackupRecord['track'],
+    error: unknown,
+  ): Promise<void> {
+    const allowed = new Set<BackupFailureCode>([
+      'BACKUP_CREATE_FAILED',
+      'BACKUP_VERIFY_FAILED',
+      'BACKUP_SPACE_LOW',
+    ]);
+    const errorCode =
+      error instanceof RecoveryServiceError && allowed.has(error.code as BackupFailureCode)
+        ? (error.code as BackupFailureCode)
+        : 'BACKUP_CREATE_FAILED';
+    const failure = BackupFailureRecordSchema.parse({
+      failureId: this.#idFactory(),
+      projectId: input.projectId,
+      operation: input.operation,
+      track,
+      errorCode,
+      occurredAt: this.#clock.now().toISOString(),
+      resolvedAt: null,
+    });
+    try {
+      await this.#workspace.writeProject(this.#idFactory(), input.projectId, (database) => {
+        database
+          .prepare(
+            `INSERT INTO backup_failures(
+               id, project_id, operation, backup_track, error_code, occurred_at, resolved_at
+             ) VALUES(?, ?, ?, ?, ?, ?, NULL)`,
+          )
+          .run(
+            failure.failureId,
+            failure.projectId,
+            failure.operation,
+            failure.track,
+            failure.errorCode,
+            failure.occurredAt,
+          );
+      });
+    } catch {
+      // Best effort only: the original backup failure remains authoritative.
+    }
   }
 
   async #createBackup(
@@ -463,6 +530,13 @@ export class RecoveryService {
               record.migrationProtected ? 1 : 0,
               record.schemaVersion,
             );
+          database
+            .prepare(
+              `UPDATE backup_failures
+                  SET resolved_at = ?
+                WHERE project_id = ? AND backup_track = ? AND resolved_at IS NULL`,
+            )
+            .run(record.verifiedAt, record.projectId, record.track);
         });
       } catch (error) {
         await Promise.all([rm(finalPath, { force: true }), rm(metadataPath, { force: true })]);
@@ -495,6 +569,25 @@ export class RecoveryService {
         protectionReasons: protectionReasons(record, lastVerifiedBackupId),
       }),
     );
+    let backupFailures: BackupFailureRecord[] = [];
+    try {
+      backupFailures = this.#workspace.readProject(projectId, (database) =>
+        database
+          .prepare(
+            `SELECT id AS failureId, project_id AS projectId, operation,
+                    backup_track AS track, error_code AS errorCode,
+                    occurred_at AS occurredAt, resolved_at AS resolvedAt
+               FROM backup_failures
+              WHERE project_id = ? AND resolved_at IS NULL
+              ORDER BY occurred_at DESC, id DESC
+              LIMIT 20`,
+          )
+          .all(projectId)
+          .map((row) => BackupFailureRecordSchema.parse(row)),
+      );
+    } catch {
+      backupFailures = [];
+    }
     const policy = this.#readPolicy(projectId);
     const space = {
       totalBytes: checkpoints.reduce((total, record) => total + record.sizeBytes, 0),
@@ -543,6 +636,7 @@ export class RecoveryService {
       databaseMode: project.databaseMode,
       readOnlyReason: project.readOnlyReason,
       checkpoints,
+      backupFailures,
       policy,
       space,
       exportableVersions,

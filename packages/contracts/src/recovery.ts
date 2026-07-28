@@ -41,6 +41,20 @@ export const RecoveryOperationSchema = z.enum([
 ]);
 
 export const BackupTrackSchema = z.enum(['daily', 'major', 'named']);
+export const BackupFailureCodeSchema = z.enum([
+  'BACKUP_CREATE_FAILED',
+  'BACKUP_VERIFY_FAILED',
+  'BACKUP_SPACE_LOW',
+]);
+export const BackupFailureRecordSchema = z.strictObject({
+  failureId: z.uuid(),
+  projectId: ProjectIdSchema,
+  operation: RecoveryOperationSchema,
+  track: BackupTrackSchema,
+  errorCode: BackupFailureCodeSchema,
+  occurredAt: z.iso.datetime(),
+  resolvedAt: z.iso.datetime().nullable(),
+});
 export const BackupProtectionReasonSchema = z.enum([
   'author-protected',
   'migration-protected',
@@ -118,6 +132,7 @@ export const RecoveryOverviewSchema = z.strictObject({
     ])
     .nullable(),
   checkpoints: z.array(BackupRecordSchema),
+  backupFailures: z.array(BackupFailureRecordSchema),
   policy: BackupPolicySchema,
   space: BackupSpaceSummarySchema,
   exportableVersions: z.array(RecoveryVersionSummarySchema),
@@ -415,6 +430,8 @@ export type RecoveryOperation = z.infer<typeof RecoveryOperationSchema>;
 export type BackupTrack = z.infer<typeof BackupTrackSchema>;
 export type BackupProtectionReason = z.infer<typeof BackupProtectionReasonSchema>;
 export type BackupRecord = z.infer<typeof BackupRecordSchema>;
+export type BackupFailureCode = z.infer<typeof BackupFailureCodeSchema>;
+export type BackupFailureRecord = z.infer<typeof BackupFailureRecordSchema>;
 export type BackupPolicy = z.infer<typeof BackupPolicySchema>;
 export type BackupSpaceSummary = z.infer<typeof BackupSpaceSummarySchema>;
 export type BackupCleanupItem = z.infer<typeof BackupCleanupItemSchema>;

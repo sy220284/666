@@ -3,7 +3,8 @@ import type { SearchIndexStatus } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import type { BridgeRequestOutcome } from '../bridge/request-lifecycle.js';
 
-export type WorkspaceAttentionSource = 'candidate' | 'proposal' | 'validation' | 'search';
+export type WorkspaceAttentionSource =
+  'candidate' | 'proposal' | 'validation' | 'search' | 'recovery';
 
 export interface WorkspaceAttention {
   readonly pendingCandidateCount: number;
@@ -13,6 +14,7 @@ export interface WorkspaceAttention {
   readonly highValidationCount: number;
   readonly searchStatus: SearchIndexStatus | 'unknown';
   readonly searchFailedCount: number;
+  readonly backupFailureCount: number;
   readonly unavailableSources: readonly WorkspaceAttentionSource[];
 }
 
@@ -24,6 +26,7 @@ export const EMPTY_WORKSPACE_ATTENTION: WorkspaceAttention = {
   highValidationCount: 0,
   searchStatus: 'unknown',
   searchFailedCount: 0,
+  backupFailureCount: 0,
   unavailableSources: [],
 };
 
@@ -41,6 +44,7 @@ interface WorkspaceAttentionInput {
     readonly status: SearchIndexStatus;
     readonly failedCount: number;
   } | null;
+  readonly backupFailures?: readonly unknown[];
   readonly unavailableSources?: readonly WorkspaceAttentionSource[];
 }
 
@@ -58,6 +62,7 @@ export function summarizeWorkspaceAttention(input: WorkspaceAttentionInput): Wor
     highValidationCount: openIssues.filter((issue) => issue.severity === 'high').length,
     searchStatus: input.searchState?.status ?? 'unknown',
     searchFailedCount: input.searchState?.failedCount ?? 0,
+    backupFailureCount: input.backupFailures?.length ?? 0,
     unavailableSources: input.unavailableSources ?? [],
   };
 }
@@ -76,34 +81,38 @@ export async function loadWorkspaceAttention(
   bridge: RendererBridgeAdapter,
   projectId: string,
 ): Promise<WorkspaceAttention> {
-  const [candidateOutcome, proposalOutcome, validationOutcome, searchOutcome] = await Promise.all([
-    guarded(() => bridge.candidate.list(projectId, undefined, { mode: 'replace' })),
-    guarded(() =>
-      bridge.stateProposal.list(
-        { projectId, chapterId: null, includeResolved: false },
-        { mode: 'replace' },
+  const [candidateOutcome, proposalOutcome, validationOutcome, searchOutcome, recoveryOutcome] =
+    await Promise.all([
+      guarded(() => bridge.candidate.list(projectId, undefined, { mode: 'replace' })),
+      guarded(() =>
+        bridge.stateProposal.list(
+          { projectId, chapterId: null, includeResolved: false },
+          { mode: 'replace' },
+        ),
       ),
-    ),
-    guarded(() =>
-      bridge.validation.list(
-        { projectId, chapterId: null, includeClosed: false },
-        { mode: 'replace' },
+      guarded(() =>
+        bridge.validation.list(
+          { projectId, chapterId: null, includeClosed: false },
+          { mode: 'replace' },
+        ),
       ),
-    ),
-    guarded(() => bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' })),
-  ]);
+      guarded(() => bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' })),
+      guarded(() => bridge.recovery.getOverview(projectId, { mode: 'replace' })),
+    ]);
 
   const unavailableSources: WorkspaceAttentionSource[] = [];
   if (candidateOutcome?.state !== 'success') unavailableSources.push('candidate');
   if (proposalOutcome?.state !== 'success') unavailableSources.push('proposal');
   if (validationOutcome?.state !== 'success') unavailableSources.push('validation');
   if (searchOutcome?.state !== 'success') unavailableSources.push('search');
+  if (recoveryOutcome?.state !== 'success') unavailableSources.push('recovery');
 
   return summarizeWorkspaceAttention({
     candidates: candidateOutcome?.state === 'success' ? candidateOutcome.data.candidates : [],
     proposals: proposalOutcome?.state === 'success' ? proposalOutcome.data.proposals : [],
     validationIssues: validationOutcome?.state === 'success' ? validationOutcome.data.issues : [],
     searchState: searchOutcome?.state === 'success' ? searchOutcome.data : null,
+    backupFailures: recoveryOutcome?.state === 'success' ? recoveryOutcome.data.backupFailures : [],
     unavailableSources,
   });
 }

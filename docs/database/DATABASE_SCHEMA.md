@@ -532,3 +532,9 @@ M1-09不新增Schema。确认导入复用`volumes`、`chapters`、`drafts`、`dr
 3. 新卷、章节、活动Draft、`source='imported'`块和“导入基线”Version在同一Core写事务提交。
 4. 失败时业务写入整体回滚；已验证恢复点保留。
 5. 导出只读取`versions/version_blocks`，不读取可能继续变化的活动Draft。
+
+## 备份失败账本（Schema 29）
+
+- `backup_failures`只记录项目ID、备份轨道、操作类型、稳定错误码和发生/解除时间，不记录路径、正文或异常消息。
+- 失败记录保持未解除，直至同项目同轨道产生已验证备份；Recovery Overview仅返回未解除记录。
+- 该表是StatusArbiter展示备份失败的唯一权威来源，Renderer不得从瞬时错误消息推导历史状态。

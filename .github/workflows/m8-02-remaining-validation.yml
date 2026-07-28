@@ -69,6 +69,8 @@ jobs:
         run: node scripts/verify-package-assets.mjs --platform "${{ matrix.platform }}" --version "0.1.0" --directory "release/${{ matrix.platform }}"
       - name: Run Linux packaged startup
         if: matrix.platform == 'linux'
+        env:
+          WORLDFORGE_PACKAGED_SMOKE_ALLOW_NO_SANDBOX: '1'
         run: xvfb-run -a node scripts/smoke-packaged-desktop.mjs --platform linux --directory release/linux
       - name: Run packaged startup
         if: matrix.platform != 'linux'

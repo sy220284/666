@@ -322,10 +322,10 @@ export function WritingWorkbench({
   }, []);
 
   useEffect(() => {
-    if (!statusNotice || panel !== 'editor') return;
+    if (!statusNotice || panel !== 'editor' || !editorReady) return;
     setStatus(statusNotice);
     onStatusNoticeConsumed?.();
-  }, [onStatusNoticeConsumed, panel, setStatus, statusNotice]);
+  }, [editorReady, onStatusNoticeConsumed, panel, setStatus, statusNotice]);
 
   const refreshStatistics = useCallback((): void => {
     const instance = editor.current;

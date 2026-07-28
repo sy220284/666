@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -426,7 +426,9 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-active-project-name]')).toHaveText('夜航');
-    await expect(page.locator('[data-active-project-path]')).toHaveText(sourceWorkspace);
+    await expect(page.locator('[data-active-project-path]')).toHaveText(
+      await realpath(sourceWorkspace),
+    );
     expect(await readdir(sourceWorkspace)).toEqual(
       expect.arrayContaining(['manifest.json', 'project.sqlite']),
     );
@@ -485,8 +487,10 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await expect(page.locator('[data-chapter-title="第二章"]')).toBeVisible();
 
     await page.locator('[data-move-project]').click();
-    await expect(page.locator('[data-active-project-path]')).toHaveText(movedWorkspace);
     await expect(page.locator('[data-project-operation-status]')).toContainText('校验通过');
+    await expect(page.locator('[data-active-project-path]')).toHaveText(
+      await realpath(movedWorkspace),
+    );
     expect(await readdir(moveParent)).toContain('夜航.worldforge');
     expect(await readdir(createParent)).not.toContain('夜航.worldforge');
     await page.locator('[data-close-project]').click();
@@ -587,7 +591,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     expect(await blocks.nth(1).getAttribute('data-logical-block-id')).toBeNull();
     expect(await blocks.nth(1).getAttribute('data-client-block-id')).toMatch(/^temporary-/u);
     await page.keyboard.type('风起。');
-    await page.keyboard.press('Home');
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowLeft' : 'Home');
     await page.keyboard.press('Backspace');
     await expect(blocks).toHaveCount(1);
     await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   type AppSettings,
@@ -263,20 +264,23 @@ export function HomePage(props: HomePageProps) {
         )}
       </section>
 
-      {creating ? (
-        <CreateProjectDialog
-          disclosureMode={props.disclosureMode}
-          entry={entry}
-          pending={props.pendingKey === 'project.create'}
-          providerAvailable={props.providerAvailable}
-          onCancel={closeCreateDialog}
-          onCreate={async (plan) => {
-            const created = await props.onCreate(plan);
-            if (created) closeCreateDialog();
-          }}
-          onEntryChange={setEntry}
-        />
-      ) : null}
+      {creating
+        ? createPortal(
+            <CreateProjectDialog
+              disclosureMode={props.disclosureMode}
+              entry={entry}
+              pending={props.pendingKey === 'project.create'}
+              providerAvailable={props.providerAvailable}
+              onCancel={closeCreateDialog}
+              onCreate={async (plan) => {
+                const created = await props.onCreate(plan);
+                if (created) closeCreateDialog();
+              }}
+              onEntryChange={setEntry}
+            />,
+            document.body,
+          )
+        : null}
     </section>
   );
 }

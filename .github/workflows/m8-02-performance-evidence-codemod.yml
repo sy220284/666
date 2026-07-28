@@ -30,6 +30,21 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+      - name: Correct codemod template escaping
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const path = 'scripts/m8-02-performance-evidence-codemod.mjs';
+          let content = await readFile(path, 'utf8');
+          content = content
+            .replaceAll('${JSON.stringify(metrics, null, 2)}', '\\${JSON.stringify(metrics, null, 2)}')
+            .replaceAll(
+              '${JSON.stringify({ characters: characterCount, metrics }, null, 2)}',
+              '\\${JSON.stringify({ characters: characterCount, metrics }, null, 2)}',
+            )
+            .replaceAll('if: ${{', 'if: \\${{');
+          await writeFile(path, content, 'utf8');
+          NODE
       - name: Apply deterministic codemod
         run: node scripts/m8-02-performance-evidence-codemod.mjs
       - name: Install workspace dependencies

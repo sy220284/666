@@ -1,14 +1,15 @@
 # M8-02 验证记录
 
-生成时间：2026-07-28T08:10:00Z  
-产品提交：`313e55d926ab7d2b54e2fdc263795c30aeaea904`  
+生成时间：2026-07-28T08:35:00Z  
+产品提交：`025b11101651b5362f131e24e35f3338314478c2`  
 正式PR：[#224](https://github.com/sy220284/666/pull/224)
 
-M8-02仍为`In Progress`。本轮依据P0矩阵、功能清单、UI验收、安全与性能文档，关闭了可由仓库代码完成的三项缺口，并增加可审计性能工件；真实Provider、多模型质量、物理显示、人工无障碍、签名公证和安装生命周期仍为发布级Blocked，因此当前结论继续为`禁止发布`。
+M8-02仍为`In Progress`。本轮依据P0矩阵、功能清单、UI验收、安全与性能文档，关闭了可由仓库代码完成的四项缺口，并增加可审计性能工件；真实Provider、多模型质量、物理显示、人工无障碍、签名公证和安装生命周期仍为发布级Blocked，因此当前结论继续为`禁止发布`。
 
 ## 本轮代码闭环
 
 - StatusArbiter复用Candidate、StateProposal、Validation和FTS既有权威查询；查询失败显式标记不可读，不再静默当作零。
+- 既有`candidate.list`合同扩展为可选章节筛选；仅传projectId时由Core跨章节读取全项目Candidate，章节工作台原调用保持兼容。
 - 中断/待审Candidate、pending StateProposal、开放ValidationIssue、FTS rebuilding/stale/failed和AI未验证状态进入P1—P3仲裁，并提供对应工作台动作。
 - “AI优先”仅在本次会话真实Provider连接测试成功后解锁；Provider保存、修改、删除或应用重启后验证状态失效，离线创作能力不受影响。
 - 诊断导出在Main可信边界重新生成清单并执行原生确认；拒绝确认时不打开目录选择器、不写文件，确认后导出同一份白名单Preview。
@@ -22,6 +23,7 @@ M8-02仍为`In Progress`。本轮依据P0矩阵、功能清单、UI验收、安�
 | Main诊断可信确认 | 30339582887 | PASS | TypeScript通过；诊断IPC可信确认与既有诊断导出共2项安全测试通过。 |
 | 性能预算与AI协议 | 30340605091 | PASS | 11个性能文件、40项测试通过；AI协议2个文件、8项测试通过。 |
 | Performance工件 | artifact 8680890788 | PASS | `performance-evidence`，sha256:`959c0377a08cf6a147a5cf0f9ee0ed6950a4e63ef8c645ce206309b3dab852ac`。 |
+| 全项目Candidate汇总 | 30342560850 | PASS | Contracts→Core→Preload→Renderer纵向闭环；TypeScript及2个定向测试文件通过。 |
 
 ## 结构化性能记录
 
@@ -50,7 +52,7 @@ M8-02仍为`In Progress`。本轮依据P0矩阵、功能清单、UI验收、安�
 - Windows代码签名、macOS签名/公证，以及三平台安装、升级、卸载；Linux生产sandbox和桌面集成。
 - 真实超大DOCX、中央目录与本地Header字段级交叉验证、平台文件系统差异。
 - 多进程或重复Core实例下日常备份持久化幂等。
-- Candidate全项目汇总和备份失败账本尚无现成权威查询；当前仲裁分别使用当前继续章节和已有恢复状态，不伪造全局完成。
+- Recovery失败备份账本尚无正式权威查询，StatusArbiter不能可靠展示历史备份失败。
 - 完整真实AI Electron单链路、长期运行、Renderer滚动帧率和Core事件循环阻塞报告。
 
 ## 当前判断

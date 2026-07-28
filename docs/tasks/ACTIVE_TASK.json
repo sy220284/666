@@ -16,7 +16,9 @@
     "source": "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md",
     "branch": "work/m4-04-v1-integrated-delivery",
     "startedAt": "2026-07-25",
-    "finalTask": true,
+    "finalTask": false,
+    "deliveryBoundary": "C0-C7+C1-hardening",
+    "deferredFinalTaskId": "M8-02",
     "absorbedTaskIds": [
       "M4-05",
       "M5-00",
@@ -31,13 +33,7 @@
       "M6-03",
       "M6-04",
       "M6-05",
-      "M6-06",
-      "M7-01",
-      "M7-02",
-      "M7-03",
-      "M8-01",
-      "M8-02",
-      "M8-03"
+      "M6-06"
     ],
     "allowedPaths": [
       "apps/",
@@ -72,6 +68,7 @@
       "AGENTS.md",
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md",
+      "docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md",
       "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
       "docs/product/FUNCTION_CATALOG.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
@@ -118,7 +115,7 @@
     "branch": "work/m4-03-provider-credential-connection",
     "nextTaskId": "M4-04",
     "activationDeferred": false,
-    "activationDeferredReason": "已按作者最新指令激活M4-04整体交付任务",
+    "activationDeferredReason": "已按作者最新指令激活M4-04核心交付任务",
     "allowedPaths": [
       "packages/core-service/",
       "packages/contracts/",
@@ -146,10 +143,13 @@
   },
   "integratedDelivery": {
     "taskId": "M4-04",
-    "finalTask": true,
+    "finalTask": false,
+    "deliveryBoundary": "C0-C7+C1-hardening",
     "planningRequiredBeforeCoding": true,
     "singleFormalBranch": true,
     "singleFormalPullRequest": true,
-    "requirementsAndPlanSource": "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md"
+    "requirementsAndPlanSource": "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md",
+    "deferredFinalTaskId": "M8-02",
+    "deferredFinalTaskSource": "docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md"
   }
 }

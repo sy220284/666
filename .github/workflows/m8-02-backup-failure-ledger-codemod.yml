@@ -84,7 +84,6 @@ jobs:
           set -o pipefail
           {
             pnpm exec prettier --write \
-              migrations/project/0029_backup_failure_ledger.sql \
               packages/contracts/src/recovery.ts \
               packages/core-service/src/recovery.ts \
               apps/desktop/renderer/src/runtime/workspace-attention.ts \

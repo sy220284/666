@@ -1,6 +1,12 @@
 import { readFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { latestChecksByName, modeAwareChecksState, nextPagePath } from './automerge.mjs';
+import {
+  latestChecksByName,
+  modeAwareChecksState,
+  nextPagePath,
+  requiredCheckState,
+} from './automerge.mjs';
 
 const githubFetch = globalThis.fetch;
 
@@ -63,6 +69,51 @@ export function validateMainVerification({
   if (missing.length > 0) {
     throw new Error(`Source PR permanent checks are not successful: ${missing.join(', ')}`);
   }
+}
+
+export async function waitForSourceReadyChecks({
+  requiredChecks,
+  loadCheckRuns,
+  loadModeState,
+  attempts = 90,
+  initialDelayMs = 5_000,
+  delayMs = 10_000,
+  sleep = delay,
+  log = console.log,
+}) {
+  if (!Array.isArray(requiredChecks) || requiredChecks.length === 0) {
+    throw new Error('Required checks are missing');
+  }
+  if (typeof loadCheckRuns !== 'function' || typeof loadModeState !== 'function') {
+    throw new Error('Source check loaders are required');
+  }
+  if (!Number.isSafeInteger(attempts) || attempts <= 0) {
+    throw new Error('Source check attempts must be a positive integer');
+  }
+
+  if (initialDelayMs > 0) await sleep(initialDelayMs);
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const [checkRuns, modeState] = await Promise.all([loadCheckRuns(), loadModeState()]);
+    const checkState = requiredCheckState(checkRuns, requiredChecks);
+    const failed = [...new Set([...checkState.failed, ...(modeState.failed ?? [])])];
+    if (failed.length > 0) {
+      throw new Error(`Source PR permanent checks failed: ${failed.join(', ')}`);
+    }
+
+    if (checkState.ready && modeState.ready) return checkRuns;
+
+    const pending = [...new Set([...checkState.pending, ...(modeState.pending ?? [])])];
+    if (attempt === attempts) {
+      throw new Error(`Timed out waiting for source PR permanent checks: ${pending.join(', ')}`);
+    }
+    if (attempt === 1 || attempt % 6 === 0) {
+      log(`Waiting for source PR permanent checks: ${pending.join(', ')}`);
+    }
+    await sleep(delayMs);
+  }
+
+  throw new Error('Source PR permanent check polling ended unexpectedly');
 }
 
 export function mainVerificationStatusPayload(validateResult, qualityResult, targetUrl) {
@@ -132,15 +183,17 @@ async function checkMain() {
 
   const config = JSON.parse(await readFile('.github/governance/required-checks.json', 'utf8'));
   const [owner, repo] = repository.split('/');
-  const [pull, checkRuns, modeState] = await Promise.all([
-    api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`),
-    paginatedCollection(
-      token,
-      `/repos/${owner}/${repo}/commits/${sourceHeadSha}/check-runs?per_page=100`,
-      'check_runs',
-    ),
-    modeAwareChecksState(owner, repo, sourceHeadSha),
-  ]);
+  const checkRuns = await waitForSourceReadyChecks({
+    requiredChecks: config.requiredChecks,
+    loadCheckRuns: () =>
+      paginatedCollection(
+        token,
+        `/repos/${owner}/${repo}/commits/${sourceHeadSha}/check-runs?per_page=100`,
+        'check_runs',
+      ),
+    loadModeState: () => modeAwareChecksState(owner, repo, sourceHeadSha),
+  });
+  const pull = await api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`);
 
   validateMainVerification({
     repository,
@@ -154,11 +207,6 @@ async function checkMain() {
     requiredChecks: config.requiredChecks,
     checkRuns,
   });
-  if (!modeState.ready) {
-    throw new Error(
-      `Source PR Ready-mode checks are incomplete: pending=${modeState.pending.join(', ')} failed=${modeState.failed.join(', ')}`,
-    );
-  }
   console.log(
     `Main verification provenance passed for ${expectedSha} from PR #${sourcePr} (${sourceHeadSha}).`,
   );

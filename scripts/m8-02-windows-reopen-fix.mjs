@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
 const file = 'tests/e2e/electron-shell.spec.ts';
-const content = await readFile(file, 'utf8');
+const content = (await readFile(file, 'utf8')).replaceAll('\r\n', '\n');
 const before = `    await page.locator('[data-back-project]').click();
     await page.locator('[data-close-project]').click();
     await page.locator('[data-open-recent]').click();

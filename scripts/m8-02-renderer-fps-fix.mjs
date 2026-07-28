@@ -1,8 +1,17 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
 const path = 'tests/e2e/electron-shell.spec.ts';
-const before = await readFile(path, 'utf8');
-const needle = `    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+let source = await readFile(path, 'utf8');
+
+function replaceOnce(needle, replacement, label) {
+  const first = source.indexOf(needle);
+  if (first < 0) throw new Error(`MISSING:${label}`);
+  if (source.indexOf(needle, first + needle.length) >= 0) throw new Error(`MULTIPLE:${label}`);
+  source = source.slice(0, first) + replacement + source.slice(first + needle.length);
+}
+
+replaceOnce(
+  `    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     const editor = page.locator('[data-draft-content]');
     const content = Array.from(
       { length: 320 },
@@ -11,8 +20,8 @@ const needle = `    await page.locator('[data-chapter-title="第一章"] [data-o
     await editor.fill(content);
     await expect(page.locator('[data-draft-state]')).toHaveText(/Revision \\d+$/u, {
       timeout: 15_000,
-    });`;
-const replacement = `    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open', {
+    });`,
+  `    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open', {
       timeout: 20_000,
     });
     const seeded = await page.evaluate(async () => {
@@ -63,12 +72,23 @@ const replacement = `    await expect(page.locator('body')).toHaveAttribute('dat
     const editor = page.locator('[data-draft-content]');
     await expect(editor.locator(':scope > [data-block-type]')).toHaveCount(96, {
       timeout: 20_000,
-    });`;
-const first = before.indexOf(needle);
-if (first < 0) throw new Error('MISSING:renderer-fps-ui-fixture');
-if (before.indexOf(needle, first + needle.length) >= 0) {
-  throw new Error('MULTIPLE:renderer-fps-ui-fixture');
-}
-const after = before.slice(0, first) + replacement + before.slice(first + needle.length);
-await writeFile(path, after, 'utf8');
-console.log('M8-02 Renderer FPS fixture waits for project open and seeds 96 blocks through Core.');
+    });`,
+  'renderer-fps-ui-fixture',
+);
+
+replaceOnce(
+  `    const metrics = await page.evaluate(async () => {`,
+  `    await application.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (!window) throw new Error('RENDERER_PERF_WINDOW_MISSING');
+      window.webContents.setBackgroundThrottling(false);
+      window.show();
+      window.focus();
+    });
+    await page.bringToFront();
+    const metrics = await page.evaluate(async () => {`,
+  'renderer-fps-disable-throttling',
+);
+
+await writeFile(path, source, 'utf8');
+console.log('M8-02 Renderer FPS fixture seeds Core data and disables CI background throttling.');

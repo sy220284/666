@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
   "taskId": "M8-02",
-  "commit": "025b11101651b5362f131e24e35f3338314478c2",
-  "generatedAt": "2026-07-28T08:35:00Z",
+  "commit": "258968683cb61940598078c3ba73951b1a1bbcb0",
+  "generatedAt": "2026-07-28T12:00:00Z",
+  "distributionScope": "SELF_USE_PORTABLE",
   "files": [
     {
       "path": "commands.txt",
@@ -11,8 +12,8 @@
     },
     {
       "path": "known-risks.md",
-      "bytes": 1514,
-      "sha256": "8835f5f07aa3962d71eff92b0e7382dbaa957307180990141b3a95320a9c860f"
+      "bytes": 1658,
+      "sha256": "fef01a34e81ef46a5e810572ee8526559f212e335de96f5ba22120fc4984104b"
     },
     {
       "path": "performance.json",
@@ -21,8 +22,8 @@
     },
     {
       "path": "summary.md",
-      "bytes": 4479,
-      "sha256": "75d8fe8e66f2571cf3f3d5a322748edb6deffc903cc505305ee90cc102141f0b"
+      "bytes": 3132,
+      "sha256": "fedc524ee7e75f98d541f474b8238b6c92af1d7ad2fc6a9176d0f47de565758c"
     }
   ]
 }

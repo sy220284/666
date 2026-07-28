@@ -37,6 +37,10 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+      - name: Correct codemod template import syntax
+        run: |
+          sed -i 's/  type ProviderConnectionTestResult,/  ProviderConnectionTestResult,/' scripts/m8-02-renderer-closure-codemod.mjs
+          sed -i 's/  type ProviderSummary,/  ProviderSummary,/' scripts/m8-02-renderer-closure-codemod.mjs
       - name: Apply deterministic codemod
         run: node scripts/m8-02-renderer-closure-codemod.mjs
       - name: Install workspace dependencies

@@ -57,27 +57,30 @@ jobs:
         if: ${{ steps.route.outputs.run == 'true' }}
       - name: Run performance budgets and AI protocol baselines
         shell: bash
+        env:
+          WORLDFORGE_M8_PERF_OUTPUT: test-results/performance/m8-02.json
         run: |
           set -euo pipefail
           if [ "${{ steps.route.outputs.run }}" != true ]; then
             echo "Performance suite skipped: only documentation changed."
             exit 0
           fi
-          mkdir -p test-results/ci
+          mkdir -p test-results/ci test-results/performance
           set -o pipefail
           pnpm test:perf 2>&1 | tee test-results/ci/performance.log
           pnpm test:eval 2>&1 | tee test-results/ci/ai-eval.log
+          test -s test-results/performance/m8-02.json
       - name: Assert clean working tree after performance validation
         if: ${{ always() && steps.route.outputs.run == 'true' }}
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Upload performance diagnostics
-        if: ${{ failure() && steps.route.outputs.run == 'true' }}
+      - name: Upload performance evidence
+        if: ${{ always() && steps.route.outputs.run == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: performance-diagnostics
+          name: performance-evidence
           path: |
             test-results/ci/performance.log
             test-results/ci/ai-eval.log
             test-results/performance/
-          if-no-files-found: warn
-          retention-days: 7
+          if-no-files-found: error
+          retention-days: 14

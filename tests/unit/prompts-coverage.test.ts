@@ -11,15 +11,28 @@ import {
   parseStructuredOutput,
 } from '../../packages/prompts/src/parsers.js';
 import {
+  CHAPTER_PROMPT_ID,
   CHAPTER_SPIKE_PROMPT_ID,
+  MERGE_PROMPT_ID,
+  REWRITE_PROMPT_ID,
   SKELETON_SPIKE_PROMPT_ID,
+  SKELETON_PROMPT_ID,
+  STATE_EXTRACT_PROMPT_ID,
+  VALIDATE_PROMPT_ID,
+  chapterPrompt,
   chapterSpikePrompt,
   getPromptDefinition,
+  mergePrompt,
   promptRegistry,
+  rewritePrompt,
+  skeletonPrompt,
   skeletonSpikePrompt,
+  stateExtractPrompt,
+  validatePrompt,
 } from '../../packages/prompts/src/registry.js';
 
 const hash = 'a'.repeat(64);
+const id = (suffix: string) => `00000000-0000-4000-8000-${suffix.padStart(12, '0')}`;
 const beat = { beatId: 'beat-1', event: '主角进入现场' };
 const skeletonOutput = {
   titleSuggestion: '标题',
@@ -246,8 +259,135 @@ describe('Prompt registry coverage', () => {
   it('resolves known definitions and rejects unknown prompt IDs and versions', () => {
     expect(getPromptDefinition(SKELETON_SPIKE_PROMPT_ID, 1)).toBe(skeletonSpikePrompt);
     expect(getPromptDefinition(CHAPTER_SPIKE_PROMPT_ID, 1)).toBe(chapterSpikePrompt);
-    expect(promptRegistry).toEqual([skeletonSpikePrompt, chapterSpikePrompt]);
+    expect(promptRegistry.slice(0, 2)).toEqual([skeletonSpikePrompt, chapterSpikePrompt]);
     expect(() => getPromptDefinition('unknown.prompt', 1)).toThrow('Unknown prompt');
     expect(() => getPromptDefinition(CHAPTER_SPIKE_PROMPT_ID, 2)).toThrow('Unknown prompt version');
+  });
+});
+
+describe('Production prompt registry', () => {
+  const context = 'P0：章节目标\nP1：人物当前状态';
+
+  it('registers all six stable production task prompts alongside historical spikes', () => {
+    expect(
+      [
+        SKELETON_PROMPT_ID,
+        CHAPTER_PROMPT_ID,
+        REWRITE_PROMPT_ID,
+        MERGE_PROMPT_ID,
+        VALIDATE_PROMPT_ID,
+        STATE_EXTRACT_PROMPT_ID,
+      ].map((promptId) => getPromptDefinition(promptId, 1).promptId),
+    ).toEqual([
+      SKELETON_PROMPT_ID,
+      CHAPTER_PROMPT_ID,
+      REWRITE_PROMPT_ID,
+      MERGE_PROMPT_ID,
+      VALIDATE_PROMPT_ID,
+      STATE_EXTRACT_PROMPT_ID,
+    ]);
+    expect(promptRegistry).toEqual(
+      expect.arrayContaining([
+        skeletonSpikePrompt,
+        chapterSpikePrompt,
+        skeletonPrompt,
+        chapterPrompt,
+        rewritePrompt,
+        mergePrompt,
+        validatePrompt,
+        stateExtractPrompt,
+      ]),
+    );
+  });
+
+  it('enforces exactly one T1 source through a discriminated union', () => {
+    const base = {
+      constraintHash: hash,
+      constraintContext: context,
+      targetLanguage: 'zh-CN',
+      targetCharacters: 3_000,
+      styleInstructions: [],
+      outputMode: 'text' as const,
+    };
+    expect(
+      chapterPrompt.inputSchema.safeParse({
+        ...base,
+        source: { sourceType: 'direct_chapter_goal', chapterGoal: '完成调查' },
+      }).success,
+    ).toBe(true);
+    expect(
+      chapterPrompt.inputSchema.safeParse({
+        ...base,
+        source: {
+          sourceType: 'direct_chapter_goal',
+          chapterGoal: '完成调查',
+          sceneBeatIds: [id('50')],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('builds privacy-bounded production bundles and excludes previousValue from state output', () => {
+    expect(
+      skeletonPrompt.build({
+        constraintHash: hash,
+        constraintContext: context,
+        targetLanguage: 'zh-CN',
+        chapterGoal: '推进调查',
+        requiredBeats: [beat],
+        tendency: '悬疑',
+      }).metadata.promptId,
+    ).toBe(SKELETON_PROMPT_ID);
+    expect(
+      rewritePrompt.build({
+        constraintHash: hash,
+        constraintContext: context,
+        targetLanguage: 'zh-CN',
+        instruction: '增强紧张感',
+        sourceText: '雨落旧渡口。',
+      }).structuredOutput?.name,
+    ).toBe('rewrite_candidate_v1');
+    expect(
+      mergePrompt.build({
+        constraintHash: hash,
+        constraintContext: context,
+        targetLanguage: 'zh-CN',
+        sources: [
+          { candidateId: id('51'), text: '第一稿' },
+          { candidateId: id('52'), text: '第二稿' },
+        ],
+      }).structuredOutput?.name,
+    ).toBe('merge_candidate_v1');
+    expect(
+      validatePrompt.build({
+        constraintHash: hash,
+        constraintContext: context,
+        versionId: id('53'),
+        blocks: [{ logicalBlockId: id('54'), content: '正文' }],
+      }).structuredOutput?.name,
+    ).toBe('semantic_validation_v1');
+    const stateBundle = stateExtractPrompt.build({
+      constraintHash: hash,
+      constraintContext: context,
+      finalVersionId: id('55'),
+      blocks: [{ logicalBlockId: id('56'), content: '人物受伤。' }],
+    });
+    expect(stateBundle.structuredOutput?.name).toBe('state_extraction_v1');
+    expect(
+      stateExtractPrompt.outputSchema.safeParse({
+        proposals: [
+          {
+            proposalType: 'entity_state',
+            entityId: id('57'),
+            stateKey: 'health',
+            previousValue: 'healthy',
+            proposedValue: 'injured',
+            validUntilChapterId: null,
+            evidence: [{ kind: 'logicalBlock', targetId: id('56'), note: '' }],
+            confidence: 0.9,
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });

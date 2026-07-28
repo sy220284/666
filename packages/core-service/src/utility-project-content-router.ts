@@ -43,6 +43,11 @@ export async function routeContentProjectOperation(
         operation.operation,
         await services.candidates.discard(requestId, operation.input),
       );
+    case CANDIDATE_COMMANDS.editSkeleton:
+      return success(
+        operation.operation,
+        await services.candidates.editSkeleton(requestId, operation.input),
+      );
     case CANDIDATE_APPLY_COMMANDS.previewCandidate:
       return success(
         operation.operation,
@@ -88,10 +93,40 @@ export async function routeContentProjectOperation(
         operation.operation,
         await services.recovery.createOperationCheckpoint(requestId, operation.input),
       );
+    case RECOVERY_COMMANDS.createDailyBackup:
+      return success(
+        operation.operation,
+        await services.recovery.createDailyBackup(requestId, operation.input),
+      );
+    case RECOVERY_COMMANDS.createNamedSnapshot:
+      return success(
+        operation.operation,
+        await services.recovery.createNamedSnapshot(requestId, operation.input),
+      );
     case RECOVERY_COMMANDS.getOverview:
       return success(
         operation.operation,
         await services.recovery.getOverview(operation.input.projectId),
+      );
+    case RECOVERY_COMMANDS.updatePolicy:
+      return success(
+        operation.operation,
+        await services.recovery.updatePolicy(requestId, operation.input),
+      );
+    case RECOVERY_COMMANDS.setProtection:
+      return success(
+        operation.operation,
+        await services.recovery.setProtection(requestId, operation.input),
+      );
+    case RECOVERY_COMMANDS.previewCleanup:
+      return success(
+        operation.operation,
+        await services.recovery.previewCleanup(operation.input.projectId),
+      );
+    case RECOVERY_COMMANDS.applyCleanup:
+      return success(
+        operation.operation,
+        await services.recovery.applyCleanup(requestId, operation.input),
       );
     case RECOVERY_COMMANDS.restoreCheckpoint:
       return success(

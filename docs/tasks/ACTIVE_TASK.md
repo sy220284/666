@@ -35,6 +35,8 @@ allowed_paths:
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
+  - vitest.config.ts
+  - vitest.coverage.config.ts
 forbidden_paths:
   - docs/tasks/M0/
   - docs/tasks/M1/

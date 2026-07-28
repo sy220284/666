@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M4-04",
+  "commit": "9131a6db1f43d97e52aaa867010a316998f860fb",
+  "generatedAt": "2026-07-28T01:39:18.000Z",
+  "files": [
+    {
+      "path": "c1-author-workflow.md",
+      "bytes": 4351,
+      "sha256": "cca2fac8c34f1aee0eec422c43cf3cdd6f0518f7fae8b7d2235d1b1bf3eec18e"
+    },
+    {
+      "path": "c2-generation-runtime.md",
+      "bytes": 2753,
+      "sha256": "8a653f82eae8cb0f4f0f0b537705e26cf1758664d3f56294f403f28ac38f4db5"
+    },
+    {
+      "path": "c3-author-ai-loop.md",
+      "bytes": 2207,
+      "sha256": "def931b6f26e24a7fcd973ffcc31fae8c63692cb6444bea0d5fd5a521cfe9fe1"
+    },
+    {
+      "path": "c4-rewrite-merge-review.md",
+      "bytes": 2524,
+      "sha256": "8a85c64670ae85a31524dfed0bf47181b9a535134f964f9a116f50c0d7bc6b28"
+    },
+    {
+      "path": "c5-state-validation.md",
+      "bytes": 3393,
+      "sha256": "25550f203665ce2d9a894cf9f6f8e1d0829b9cfb5e0b4244910c1fb65f6e06ed"
+    },
+    {
+      "path": "c6-search-rhythm.md",
+      "bytes": 2453,
+      "sha256": "0a4441ccd75573599aee8371b1aed72a55d2f72ea84044fd543026333f8d9865"
+    },
+    {
+      "path": "c7-docx-recovery.md",
+      "bytes": 2549,
+      "sha256": "e146c0119d1f40a4cbe169def086c66f6fbc290bcbcc8906d76161d655ffbdbc"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 3092,
+      "sha256": "1d76851e5361624a788f0380cfaede44b17c0d2c035f821ad6ea830b6bb8d6f9"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 3182,
+      "sha256": "45149742502ba7a709f20138b49083b5fe57c2b4d20e43618bc299c597f7e801"
+    },
+    {
+      "path": "migration-ipc-contract-plan.md",
+      "bytes": 9474,
+      "sha256": "ab931e25c0037e4e812399d03fe2fb568408718e00c9d9bae9bfde0d03c0baf4"
+    },
+    {
+      "path": "overall-implementation-plan.md",
+      "bytes": 8176,
+      "sha256": "b2bbc9862449b0dc77474d045ec9f592524a03647c5e46de21d5c838b1d820d1"
+    },
+    {
+      "path": "requirements-code-test-p0-matrix.md",
+      "bytes": 6633,
+      "sha256": "8641268cb4e9157dad36865107903658723268dac43f29ce7d0b66a4be30f76c"
+    },
+    {
+      "path": "risk-rollback-test-matrix.md",
+      "bytes": 7015,
+      "sha256": "bf56c064f1c1997808698f5d765c54110b80d05910cb09a105d2533a295cd9bb"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 6110,
+      "sha256": "8f1a884845eb07accd9e09423b578ddad1c6556b594e67d2557625f181e239ae"
+    }
+  ]
+}

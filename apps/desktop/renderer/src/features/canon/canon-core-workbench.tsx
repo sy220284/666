@@ -4,7 +4,10 @@ import type {
   ContinuityCatalog,
   EndingSnapshotReadResult,
   EntityType,
+  GenerationRun,
   NarrativePlanningCatalog,
+  ProjectStructure,
+  ProviderSummary,
   StateProposal,
   StateProposalCatalog,
 } from '@worldforge/contracts';
@@ -14,6 +17,21 @@ import type { BridgeRequestOutcome } from '../../bridge/request-lifecycle.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 
 export type CanonSection = 'entities' | 'continuity' | 'narrative' | 'proposals';
+
+const ENTITY_TYPE_OPTIONS: readonly { readonly value: EntityType; readonly label: string }[] = [
+  { value: 'character', label: '人物' },
+  { value: 'location', label: '地点' },
+  { value: 'faction', label: '组织与阵营' },
+  { value: 'item', label: '物品' },
+  { value: 'ability', label: '能力' },
+  { value: 'rule', label: '世界规则' },
+  { value: 'event', label: '重要事件' },
+  { value: 'custom', label: '其他' },
+];
+
+function entityTypeLabel(type: EntityType): string {
+  return ENTITY_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type;
+}
 
 interface CanonWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
@@ -36,15 +54,15 @@ export function CanonWorkbench({
     <section className="canon-workbench" data-canon-dialog aria-label="设定工作台">
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">Canon</p>
+          <p className="eyebrow">人物与世界</p>
           <h1>设定与连续性工作台</h1>
-          <p>作者Canon、动态历史、叙事规划和pending提案保持清晰分层。</p>
+          <p>已确认设定、动态历史、叙事规划和待裁决提案分区保存。</p>
         </div>
       </header>
       <nav className="feature-tabs" aria-label="设定工作台分区">
         <Tab
           current={section === 'entities'}
-          label="实体与Canon"
+          label="人物与世界设定"
           onClick={() => onSectionChange('entities')}
         />
         <Tab
@@ -275,7 +293,7 @@ function EntityCanonPanel({
             <option value="">未选择</option>
             {resource.data?.entities.map((entity) => (
               <option key={entity.id} value={entity.id}>
-                {entity.name} · {entity.entityType}
+                {entity.name} · {entityTypeLabel(entity.entityType)}
                 {entity.status === 'archived' ? ' · 已归档' : ''}
               </option>
             ))}
@@ -305,18 +323,9 @@ function EntityCanonPanel({
             <label>
               类型
               <select name="entityType" defaultValue={selected?.entityType ?? 'character'}>
-                {[
-                  'character',
-                  'location',
-                  'faction',
-                  'item',
-                  'ability',
-                  'rule',
-                  'event',
-                  'custom',
-                ].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                {ENTITY_TYPE_OPTIONS.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
                   </option>
                 ))}
               </select>
@@ -1227,6 +1236,13 @@ function StateProposalPanel({
   const [chapterId, setChapterId] = useState('');
   const [includeResolved, setIncludeResolved] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
+  const [structure, setStructure] = useState<ProjectStructure | null>(null);
+  const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
+  const [providerId, setProviderId] = useState('');
+  const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
+  const [pendingExtraction, setPendingExtraction] = useState(false);
+  const chapters = structure?.volumes.flatMap((volume) => volume.chapters) ?? [];
+  const chapter = chapters.find((item) => item.id === chapterId) ?? null;
   const load = useCallback(async (): Promise<BridgeRequestOutcome<StateProposalView>> => {
     const response = await bridge.stateProposal.list(
       { projectId, chapterId: chapterId || null, includeResolved },
@@ -1252,6 +1268,64 @@ function StateProposalPanel({
   );
   const command = useBridgeCommand(resource.refresh);
   const catalog = resource.data?.catalog ?? null;
+  useEffect(() => {
+    void Promise.all([
+      bridge.planning.listStructure(projectId, { mode: 'replace' }),
+      bridge.providers.list({ mode: 'replace' }),
+    ]).then(([structureOutcome, providerOutcome]) => {
+      if (structureOutcome.state === 'success') {
+        setStructure(structureOutcome.data);
+        const firstFinal = structureOutcome.data.volumes
+          .flatMap((volume) => volume.chapters)
+          .find((item) => item.finalVersionId);
+        setChapterId((current) => current || firstFinal?.id || '');
+      }
+      if (providerOutcome.state === 'success') {
+        setProviders(providerOutcome.data.providers);
+        setProviderId((current) => current || providerOutcome.data.providers[0]?.id || '');
+      }
+    });
+  }, [bridge, projectId]);
+
+  useEffect(() => {
+    if (!activeRun) return;
+    const timer = window.setInterval(() => {
+      void bridge.generation.getRun(projectId, activeRun.runId).then((outcome) => {
+        if (outcome.state !== 'success') return;
+        setActiveRun(outcome.data);
+        setNotice(`状态提取 · ${outcome.data.stage} · ${outcome.data.status}`);
+        if (['succeeded', 'failed', 'cancelled'].includes(outcome.data.status)) {
+          window.clearInterval(timer);
+          setPendingExtraction(false);
+          void resource.refresh();
+        }
+      });
+    }, 1_000);
+    return () => window.clearInterval(timer);
+  }, [activeRun?.runId, bridge, projectId, resource.refresh]);
+
+  const extractWithProvider = async (): Promise<void> => {
+    if (!chapter?.finalVersionId || !providerId || readOnly) return;
+    setPendingExtraction(true);
+    const outcome = await bridge.generation.start({
+      projectId,
+      chapterId: chapter.id,
+      baseDraftId: null,
+      baseDraftRevision: null,
+      providerId,
+      continuationOfRunId: null,
+      intent: { runType: 'state_extract', sourceVersionId: chapter.finalVersionId },
+    });
+    if (outcome.state === 'success') {
+      setActiveRun(outcome.data.run);
+      setNotice(`真实 Provider 状态提取已启动 · ${outcome.data.run.stage}`);
+    } else {
+      setPendingExtraction(false);
+      setNotice(
+        outcome.state === 'failure' ? `状态提取未启动 · ${outcome.error.code}` : '请求已取消。',
+      );
+    }
+  };
   const resolve = async (
     proposal: StateProposal,
     decision: 'accept' | 'edit_accept' | 'reject',
@@ -1300,12 +1374,40 @@ function StateProposalPanel({
         </button>
       </div>
       <div className="filter-bar">
-        <input
-          data-state-proposal-chapter
-          placeholder="可选：章节UUID"
-          value={chapterId}
-          onChange={(event) => setChapterId(event.target.value)}
-        />
+        <label>
+          Final Version 章节
+          <select
+            data-state-proposal-chapter
+            value={chapterId}
+            onChange={(event) => setChapterId(event.target.value)}
+          >
+            <option value="">全部章节</option>
+            {chapters.map((item) => (
+              <option disabled={!item.finalVersionId} key={item.id} value={item.id}>
+                {item.title}
+                {item.finalVersionId ? '' : '（尚无 Final Version）'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Provider
+          <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
+            <option value="">选择 Provider</option>
+            {providers.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          disabled={readOnly || pendingExtraction || !providerId || !chapter?.finalVersionId}
+          type="button"
+          onClick={() => void extractWithProvider()}
+        >
+          从 Final Version 提取
+        </button>
         <label>
           <input
             data-state-proposal-include-resolved
@@ -1327,6 +1429,17 @@ function StateProposalPanel({
                 ? `项目：${projectName} · 提案 ${catalog?.proposals.length ?? 0}`
                 : '读取中…'}
       </p>
+      <div className="ledger-list" data-state-proposal-batches>
+        {catalog?.batches.map((batch) => (
+          <article className="ledger-record" key={batch.batchId}>
+            <h4>提案批次 · {batch.source}</h4>
+            <p>
+              {batch.status} · {batch.proposalCount} 项 · Version {batch.sourceVersionId}
+            </p>
+            {batch.generationRunId ? <p>GenerationRun：{batch.generationRunId}</p> : null}
+          </article>
+        ))}
+      </div>
       <div data-state-proposal-list>
         {catalog?.proposals.length === 0 ? (
           <p>当前没有状态提案。</p>
@@ -1335,8 +1448,11 @@ function StateProposalPanel({
             <article className="ledger-record" data-state-proposal={proposal.id} key={proposal.id}>
               <h4>{proposal.proposalType}</h4>
               <p>
-                {proposal.status} · 置信度 {proposal.confidence}
+                {proposal.status} · {proposal.source} · 置信度 {proposal.confidence}
               </p>
+              <p>原值（来自 Core 权威状态）</p>
+              <pre>{JSON.stringify(proposal.previousValue, null, 2)}</pre>
+              <p>建议值</p>
               <pre>{JSON.stringify(proposal.proposedValue, null, 2)}</pre>
               {proposal.evidence.map((anchor, index) => (
                 <p key={`${anchor.targetId}-${index}`}>

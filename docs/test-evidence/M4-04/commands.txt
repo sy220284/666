@@ -1,0 +1,84 @@
+# M4-04 C0—C7最终收口
+
+# C0—C7验收基线产品源
+git rev-parse HEAD
+# 9131a6db1f43d97e52aaa867010a316998f860fb
+
+# main同步
+git merge-base --is-ancestor 12404557d4fbe6acb7061e80ab7990cfe0100a58 9131a6db1f43d97e52aaa867010a316998f860fb
+# 成功：产品分支已不落后main
+
+# C5定向实现与测试
+pnpm exec prettier --check packages/core-service/src/project-migration-preflight.ts packages/core-service/src/database/migrations.ts tests/migration/state-validation-migration.test.ts
+pnpm check:boundaries
+pnpm lint
+pnpm typecheck
+pnpm exec vitest run tests/migration/state-validation-migration.test.ts
+pnpm test:migration
+
+# C0—C7基线Quality #2198
+pnpm install --frozen-lockfile --prefer-offline
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm build
+pnpm package
+pnpm test:e2e
+# 结论：全部成功
+
+# C0—C7基线Security #1988
+pnpm audit --audit-level=high
+pnpm test:security
+node scripts/scan-secrets.mjs --history
+# 结论：Dependency Audit、Application Security、全Git历史Secret Scan全部成功
+
+# C0—C7基线Performance #1954
+pnpm test:perf
+# 结论：成功
+
+# C0—C7基线其他永久门禁
+# Evidence #1917：成功
+# PR Policy #1946：成功
+# Task Governance #2167：成功
+
+# C5迁移场景
+# 1. 当前Schema 28严格表与触发器：通过
+# 2. 干净Schema 27→28：通过
+# 3. 历史非法StoryTodo：升级前拒绝，Schema/Manifest保持27，恢复点存在
+# 4. 历史非法StoryComment：升级前拒绝，Schema/Manifest保持27，恢复点存在
+# 5. 四个Schema 28触发器在失败路径中不落地
+# 6. 非法历史记录不被静默删除或改写
+
+# C1继续写作并发硬化产品提交
+git show --stat --oneline 42d7a682e3e1a26942fa9f4159d6123a8071350f
+pnpm exec prettier --check apps/desktop/renderer/src/bridge/request-lifecycle.ts apps/desktop/renderer/src/features/writing/continuation-persistence.ts apps/desktop/renderer/src/features/writing/writing-workbench.tsx tests/unit/renderer-continuation-request-coordination.test.ts tests/e2e/continuation-panel-race.spec.ts tests/e2e/playwright.config.ts
+pnpm exec vitest run tests/unit/renderer-continuation-persistence.test.ts tests/unit/renderer-continuation-request-coordination.test.ts
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm package
+pnpm test:e2e
+# Quality #2225：全部成功；Electron E2E 27/27通过，包含继续写作回切数据库与重启恢复用例。
+# Security #2015：成功
+# Performance #1981：成功
+# Evidence #1944：成功
+# PR Policy #1973：成功
+# Task Governance #2194：成功
+
+# 当前结论
+# C0—C7验收基线工程实现与自动化验收通过。
+# C1继续写作并发硬化自动化验收通过。
+# Evidence Manifest仍绑定C0—C7基线；最终Ready前重新绑定C8完成后的最终产品源。
+# C8尚未开始。
+# M4-04继续保持Draft/In Progress，待C8、真实平台/P0人工验收和最终Evidence。

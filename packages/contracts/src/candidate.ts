@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { SkeletonCandidateOutputSchema } from './ai-output-protocol.js';
 import {
   DraftBlockAttributesSchema,
   DraftBlockTextSchema,
@@ -16,6 +17,7 @@ export const CANDIDATE_IPC_CHANNELS = {
   listCandidates: 'worldforge:candidate:list',
   getCandidate: 'worldforge:candidate:get',
   discardCandidate: 'worldforge:candidate:discard',
+  editSkeleton: 'worldforge:candidate:edit-skeleton',
 } as const;
 
 export const CANDIDATE_COMMANDS = {
@@ -23,9 +25,11 @@ export const CANDIDATE_COMMANDS = {
   listCandidates: 'candidate.list',
   getCandidate: 'candidate.get',
   discardCandidate: 'candidate.discard',
+  editSkeleton: 'candidate.editSkeleton',
 } as const;
 
 export const CandidateTypeSchema = z.enum(['skeleton', 'full', 'rewrite', 'merge']);
+export const ProseCandidateTypeSchema = z.enum(['full', 'rewrite', 'merge']);
 export const CandidateCompletenessSchema = z.enum(['complete', 'partial']);
 export const CandidateStatusSchema = z.enum(['pending', 'accepted', 'discarded']);
 export const CandidateTitleSchema = z.string().trim().min(1).max(240);
@@ -76,12 +80,11 @@ export const CandidateBlockSchema = z
   })
   .superRefine(validateCandidateBlock);
 
-export const CandidateSummarySchema = z.strictObject({
+const CandidateSummaryBaseSchema = z.strictObject({
   candidateId: DraftEntityIdSchema,
   projectId: ProjectIdSchema,
   chapterId: DraftEntityIdSchema,
   generationRunId: DraftEntityIdSchema.nullable(),
-  candidateType: CandidateTypeSchema,
   baseDraftId: DraftEntityIdSchema,
   baseDraftRevision: z.number().int().nonnegative(),
   completeness: CandidateCompletenessSchema,
@@ -89,14 +92,46 @@ export const CandidateSummarySchema = z.strictObject({
   title: CandidateTitleSchema,
   sourceVersionId: DraftEntityIdSchema.nullable(),
   contentHash: DraftContentHashValueSchema,
-  blockCount: z.number().int().positive(),
   createdAt: z.iso.datetime(),
   resolvedAt: z.iso.datetime().nullable(),
 });
 
-export const CandidateDocumentSchema = CandidateSummarySchema.extend({
+export const ProseCandidateSummarySchema = CandidateSummaryBaseSchema.extend({
+  candidateType: ProseCandidateTypeSchema,
+  blockCount: z.number().int().positive(),
+}).strict();
+
+export const SkeletonSourceStateSchema = z.enum(['current', 'stale']);
+export const SkeletonRevisionEditorSchema = z.enum(['ai', 'author']);
+export const SkeletonCandidateSummarySchema = CandidateSummaryBaseSchema.extend({
+  candidateType: z.literal('skeleton'),
+  blockCount: z.literal(0),
+  skeletonRevisionId: DraftEntityIdSchema,
+  skeletonRevision: z.number().int().positive(),
+  payloadSchemaVersion: z.number().int().positive(),
+  payloadHash: DraftContentHashValueSchema,
+  sourceState: SkeletonSourceStateSchema,
+  parentSkeletonRevisionId: DraftEntityIdSchema.nullable(),
+  editedBy: SkeletonRevisionEditorSchema,
+}).strict();
+
+export const CandidateSummarySchema = z.discriminatedUnion('candidateType', [
+  ProseCandidateSummarySchema,
+  SkeletonCandidateSummarySchema,
+]);
+
+export const ProseCandidateDocumentSchema = ProseCandidateSummarySchema.extend({
   blocks: z.array(CandidateBlockSchema).min(1).max(50_000),
 }).strict();
+
+export const SkeletonCandidateDocumentSchema = SkeletonCandidateSummarySchema.extend({
+  structuredPayload: SkeletonCandidateOutputSchema,
+}).strict();
+
+export const CandidateDocumentSchema = z.discriminatedUnion('candidateType', [
+  ProseCandidateDocumentSchema,
+  SkeletonCandidateDocumentSchema,
+]);
 
 export const CandidateListSchema = z.strictObject({
   candidates: z.array(CandidateSummarySchema),
@@ -110,7 +145,7 @@ export const CandidateChapterInputSchema = z.strictObject({
 export const CandidateCreateFixtureInputSchema = CandidateChapterInputSchema.extend({
   draftId: DraftEntityIdSchema,
   baseDraftRevision: z.number().int().nonnegative(),
-  candidateType: CandidateTypeSchema,
+  candidateType: ProseCandidateTypeSchema,
   completeness: CandidateCompletenessSchema,
   title: CandidateTitleSchema,
   sourceVersionId: DraftEntityIdSchema.nullable().optional(),
@@ -122,6 +157,10 @@ export const CandidateGetInputSchema = CandidateChapterInputSchema.extend({
 }).strict();
 
 export const CandidateDiscardInputSchema = CandidateGetInputSchema;
+export const CandidateEditSkeletonInputSchema = CandidateGetInputSchema.extend({
+  expectedSkeletonRevisionId: DraftEntityIdSchema,
+  structuredPayload: SkeletonCandidateOutputSchema,
+}).strict();
 
 const commandEnvelope = {
   protocolVersion: z.literal(TASK_PROTOCOL_VERSION),
@@ -151,6 +190,12 @@ export const CandidateDiscardCommandSchema = z.strictObject({
   ...commandEnvelope,
   command: z.literal(CANDIDATE_COMMANDS.discardCandidate),
   payload: CandidateDiscardInputSchema,
+});
+
+export const CandidateEditSkeletonCommandSchema = z.strictObject({
+  ...commandEnvelope,
+  command: z.literal(CANDIDATE_COMMANDS.editSkeleton),
+  payload: CandidateEditSkeletonInputSchema,
 });
 
 const failureSchema = z.strictObject({
@@ -192,6 +237,10 @@ export const CoreCandidateOperationSchema = z.discriminatedUnion('operation', [
     operation: z.literal(CANDIDATE_COMMANDS.discardCandidate),
     input: CandidateDiscardInputSchema,
   }),
+  z.strictObject({
+    operation: z.literal(CANDIDATE_COMMANDS.editSkeleton),
+    input: CandidateEditSkeletonInputSchema,
+  }),
 ]);
 
 export const CoreCandidateResultSchema = z.union([
@@ -216,6 +265,11 @@ export const CoreCandidateResultSchema = z.union([
     data: CandidateSummarySchema,
   }),
   z.strictObject({
+    ok: z.literal(true),
+    operation: z.literal(CANDIDATE_COMMANDS.editSkeleton),
+    data: SkeletonCandidateDocumentSchema,
+  }),
+  z.strictObject({
     ok: z.literal(false),
     operation: z.enum(CANDIDATE_COMMANDS),
     errorCode: ErrorCodeSchema,
@@ -223,16 +277,22 @@ export const CoreCandidateResultSchema = z.union([
 ]);
 
 export type CandidateType = z.infer<typeof CandidateTypeSchema>;
+export type ProseCandidateType = z.infer<typeof ProseCandidateTypeSchema>;
 export type CandidateCompleteness = z.infer<typeof CandidateCompletenessSchema>;
 export type CandidateStatus = z.infer<typeof CandidateStatusSchema>;
 export type CandidateBlockInput = z.infer<typeof CandidateBlockInputSchema>;
 export type CandidateBlock = z.infer<typeof CandidateBlockSchema>;
 export type CandidateSummary = z.infer<typeof CandidateSummarySchema>;
 export type CandidateDocument = z.infer<typeof CandidateDocumentSchema>;
+export type ProseCandidateSummary = z.infer<typeof ProseCandidateSummarySchema>;
+export type ProseCandidateDocument = z.infer<typeof ProseCandidateDocumentSchema>;
+export type SkeletonCandidateSummary = z.infer<typeof SkeletonCandidateSummarySchema>;
+export type SkeletonCandidateDocument = z.infer<typeof SkeletonCandidateDocumentSchema>;
 export type CandidateList = z.infer<typeof CandidateListSchema>;
 export type CandidateChapterInput = z.infer<typeof CandidateChapterInputSchema>;
 export type CandidateCreateFixtureInput = z.infer<typeof CandidateCreateFixtureInputSchema>;
 export type CandidateGetInput = z.infer<typeof CandidateGetInputSchema>;
 export type CandidateDiscardInput = z.infer<typeof CandidateDiscardInputSchema>;
+export type CandidateEditSkeletonInput = z.infer<typeof CandidateEditSkeletonInputSchema>;
 export type CoreCandidateOperation = z.infer<typeof CoreCandidateOperationSchema>;
 export type CoreCandidateResult = z.infer<typeof CoreCandidateResultSchema>;

@@ -6,6 +6,7 @@ import type {
   CandidateCreateFixtureInput,
   CandidateDiscardInput,
   CandidateDocument,
+  CandidateEditSkeletonInput,
   CandidateGetInput,
   CandidateList,
   CandidatePreview,
@@ -31,6 +32,9 @@ import type {
   NarrativePlanningCatalog,
   NarrativePlanningListInput,
   StateProposalBridge,
+  ValidationBridge,
+  SearchToolsBridge,
+  RhythmBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
@@ -48,6 +52,7 @@ type BaseRendererBridgePort = Pick<
   | 'app'
   | 'settings'
   | 'providers'
+  | 'generation'
   | 'project'
   | 'recovery'
   | 'textIo'
@@ -66,6 +71,9 @@ interface CandidateBridgePort {
   readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
   readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
   readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
+  readonly editSkeleton: (
+    input: CandidateEditSkeletonInput,
+  ) => Promise<CommandResult<CandidateDocument>>;
 }
 
 interface ContinuityBridgePort {
@@ -133,6 +141,9 @@ interface AuxiliaryRendererBridges {
   readonly continuity?: ContinuityBridgePort;
   readonly narrativePlanning?: NarrativePlanningBridgePort;
   readonly stateProposal?: StateProposalBridge;
+  readonly validation?: ValidationBridge;
+  readonly searchTools?: SearchToolsBridge;
+  readonly rhythm?: RhythmBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -160,6 +171,7 @@ export interface RendererBridgeAdapter {
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
   readonly providers: AdaptedDomain<WorldforgeBridge['providers']>;
+  readonly generation: AdaptedDomain<WorldforgeBridge['generation']>;
   readonly project: AdaptedDomain<WorldforgeBridge['project']>;
   readonly recovery: AdaptedDomain<WorldforgeBridge['recovery']>;
   readonly textIo: AdaptedDomain<WorldforgeBridge['textIo']>;
@@ -172,6 +184,9 @@ export interface RendererBridgeAdapter {
   readonly continuity: AdaptedDomain<ContinuityBridgePort>;
   readonly narrativePlanning: AdaptedDomain<NarrativePlanningBridgePort>;
   readonly stateProposal: AdaptedDomain<StateProposalBridge>;
+  readonly validation: AdaptedDomain<ValidationBridge>;
+  readonly searchTools: AdaptedDomain<SearchToolsBridge>;
+  readonly rhythm: AdaptedDomain<RhythmBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -196,6 +211,11 @@ export function createRendererBridgeAdapter(
     app: adaptDomain('app', requireDomain(bridge.app, 'app'), coordinator),
     settings: adaptDomain('settings', requireDomain(bridge.settings, 'settings'), coordinator),
     providers: adaptDomain('providers', requireDomain(bridge.providers, 'providers'), coordinator),
+    generation: adaptDomain(
+      'generation',
+      requireDomain(bridge.generation, 'generation'),
+      coordinator,
+    ),
     project: adaptDomain('project', requireDomain(bridge.project, 'project'), coordinator),
     recovery: adaptDomain('recovery', requireDomain(bridge.recovery, 'recovery'), coordinator),
     textIo: adaptDomain('textIo', requireDomain(bridge.textIo, 'textIo'), coordinator),
@@ -220,6 +240,17 @@ export function createRendererBridgeAdapter(
       requireDomain(auxiliary.stateProposal, 'stateProposal'),
       coordinator,
     ),
+    validation: adaptDomain(
+      'validation',
+      requireDomain(auxiliary.validation, 'validation'),
+      coordinator,
+    ),
+    searchTools: adaptDomain(
+      'searchTools',
+      requireDomain(auxiliary.searchTools, 'searchTools'),
+      coordinator,
+    ),
+    rhythm: adaptDomain('rhythm', requireDomain(auxiliary.rhythm, 'rhythm'), coordinator),
     candidateAction: adaptDomain(
       'candidateAction',
       requireDomain(auxiliary.candidateAction, 'candidateAction'),
@@ -242,6 +273,9 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeContinuity ||
     !window.worldforgeNarrativePlanning ||
     !window.worldforgeStateProposal ||
+    !window.worldforgeValidation ||
+    !window.worldforgeSearchTools ||
+    !window.worldforgeRhythm ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -250,6 +284,9 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     continuity: window.worldforgeContinuity,
     narrativePlanning: window.worldforgeNarrativePlanning,
     stateProposal: window.worldforgeStateProposal,
+    validation: window.worldforgeValidation,
+    searchTools: window.worldforgeSearchTools,
+    rhythm: window.worldforgeRhythm,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }

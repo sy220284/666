@@ -5,23 +5,24 @@ import {
   CandidateApplyRecordSchema,
   CandidateCheckpointSchema,
   CandidateConflictSetSchema,
-  CandidateDocumentSchema,
   CandidateSelectionSchema,
   DraftBlockAttributesSchema,
   DraftBlockSchema,
   DraftDocumentSchema,
   DraftEntityIdSchema,
   DraftPatchOperationSchema,
+  ProseCandidateDocumentSchema,
   type CandidateApplyRecord,
   type CandidateBlock,
   type CandidateCheckpoint,
   type CandidateConflictItem,
   type CandidateConflictSet,
-  type CandidateDocument,
+  type CandidateType,
   type CandidatePreviewInput,
   type DraftBlock,
   type DraftDocument,
   type DraftPatchOperation,
+  type ProseCandidateDocument,
 } from '@worldforge/contracts';
 import { normalizeDraftBlockSemantic } from '@worldforge/domain';
 
@@ -78,11 +79,11 @@ interface CandidateRow {
   readonly projectId: string;
   readonly chapterId: string;
   readonly generationRunId: string | null;
-  readonly candidateType: CandidateDocument['candidateType'];
+  readonly candidateType: CandidateType;
   readonly baseDraftId: string;
   readonly baseDraftRevision: number | bigint;
-  readonly completeness: CandidateDocument['completeness'];
-  readonly status: CandidateDocument['status'];
+  readonly completeness: ProseCandidateDocument['completeness'];
+  readonly status: ProseCandidateDocument['status'];
   readonly title: string;
   readonly sourceVersionId: string | null;
   readonly contentHash: string;
@@ -298,8 +299,14 @@ function candidateRow(database: DatabaseSync, input: CandidatePreviewInput): Can
 export function readCandidateDocument(
   database: DatabaseSync,
   input: CandidatePreviewInput,
-): CandidateDocument {
+): ProseCandidateDocument {
   const row = candidateRow(database, input);
+  if (row.candidateType === 'skeleton') {
+    throw new CandidateApplyServiceError(
+      'CANDIDATE_APPLY_INVALID',
+      'Skeleton Candidates cannot enter prose preview, diff or apply.',
+    );
+  }
   const sourceRows = database
     .prepare(
       `SELECT candidate_block_id AS candidateBlockId,
@@ -343,7 +350,7 @@ export function readCandidateDocument(
     contentHash: block.contentHash,
   }));
   try {
-    const document = CandidateDocumentSchema.parse({
+    const document = ProseCandidateDocumentSchema.parse({
       candidateId: row.candidateId,
       projectId: row.projectId,
       chapterId: row.chapterId,

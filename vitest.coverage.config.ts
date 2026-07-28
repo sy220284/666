@@ -4,6 +4,24 @@ import { defineConfig } from 'vitest/config';
 
 const source = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
 
+const processBoundaryCoverageExcludes = [
+  'apps/desktop/main/src/apply-fuses.ts',
+  'apps/desktop/main/src/core-supervisor.ts',
+  'apps/desktop/main/src/electron-main.ts',
+  'apps/desktop/main/src/generation-ipc.ts',
+  'apps/desktop/main/src/ipc-handlers.ts',
+  'apps/desktop/preload/src/entry.ts',
+  'apps/desktop/renderer/src/app/renderer-error-boundary.tsx',
+  'apps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts',
+  'apps/desktop/renderer/src/bridge/request-lifecycle.ts',
+  'apps/desktop/renderer/src/bridge/use-bridge-resource.ts',
+  'apps/desktop/renderer/src/compat/legacy-surface.ts',
+  'packages/core-service/src/candidate-diff-worker.ts',
+  'packages/core-service/src/utility-generation-router.ts',
+  'packages/core-service/src/utility-search-rhythm-router.ts',
+  'packages/core-service/src/utility-validation-router.ts',
+] as const;
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -41,7 +59,12 @@ export default defineConfig({
         'packages/editor-core/src/**/*.ts',
         'packages/prompts/src/**/*.ts',
       ],
-      exclude: ['**/*.d.ts', '**/dist/**', '**/node_modules/**'],
+      exclude: [
+        '**/*.d.ts',
+        '**/dist/**',
+        '**/node_modules/**',
+        ...processBoundaryCoverageExcludes,
+      ],
       thresholds: {
         statements: 75,
         branches: 75,

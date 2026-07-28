@@ -18,6 +18,7 @@ import {
   type DraftPatchOperation,
   type DraftSaveSnapshotInput,
   type DraftSnapshotBlockInput,
+  type MutationOrigin,
 } from '@worldforge/contracts';
 import {
   normalizeDraftBlockSemantic,
@@ -28,6 +29,7 @@ import {
 import type { DatabaseClock } from './database/index.js';
 import { collectLockGuardViolations } from './draft-lock-guard.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { recordDraftMutation } from './writing-metrics.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -813,6 +815,14 @@ export class DraftService {
   }
 
   applyPatch(requestId: string, input: DraftApplyPatchInput): Promise<DraftDocument> {
+    return this.applyPatchWithOrigin(requestId, input, 'manual_edit');
+  }
+
+  applyPatchWithOrigin(
+    requestId: string,
+    input: DraftApplyPatchInput,
+    mutationOrigin: MutationOrigin,
+  ): Promise<DraftDocument> {
     const valid = DraftApplyPatchInputSchema.parse(input);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
       const chapter = activeChapter(connection, valid.projectId, valid.chapterId);
@@ -910,8 +920,9 @@ export class DraftService {
         .prepare(
           `INSERT INTO draft_patch_log(
              id, draft_id, request_id, base_revision, committed_revision,
-             operations_json, before_blocks_json, after_blocks_json, created_at
-           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             operations_json, before_blocks_json, after_blocks_json, created_at,
+             mutation_origin
+           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           this.#idFactory(),
@@ -923,7 +934,18 @@ export class DraftService {
           JSON.stringify(auditBlocks(before)),
           JSON.stringify(auditBlocks(after)),
           timestamp,
+          mutationOrigin,
         );
+      recordDraftMutation(connection, {
+        projectId: valid.projectId,
+        chapterId: valid.chapterId,
+        draftId: draft.id,
+        origin: mutationOrigin,
+        beforeCharacters: before.reduce((total, block) => total + Array.from(block.text).length, 0),
+        afterCharacters: after.reduce((total, block) => total + Array.from(block.text).length, 0),
+        timestamp,
+        idFactory: this.#idFactory,
+      });
       this.#faultInjector?.('after-patch-persist');
       return readDocument(connection, valid.projectId, valid.chapterId, {
         ...draft,

@@ -16,6 +16,22 @@
   align-items: start;
 }
 
+.writing-grid[data-outline-visible='false'][data-context-visible='true'] {
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+}
+
+.writing-grid[data-outline-visible='true'][data-context-visible='false'] {
+  grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
+}
+
+.writing-grid[data-outline-visible='false'][data-context-visible='false'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.writing-workbench[data-focus-mode='true'] .writing-heading > div:first-child > p {
+  display: none;
+}
+
 .writing-grid > .structure-navigator,
 .writing-context {
   position: sticky;
@@ -166,6 +182,118 @@
   border-radius: 0.75rem;
 }
 
+.generation-studio,
+.skeleton-review {
+  display: grid;
+  gap: 0.8rem;
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border, rgba(120, 120, 120, 0.25));
+  border-radius: 0.75rem;
+  background: var(--surface-muted, rgba(120, 120, 120, 0.05));
+}
+
+.generation-studio > header,
+.skeleton-review > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.generation-studio h3,
+.generation-studio p,
+.skeleton-review h3,
+.skeleton-review p {
+  margin: 0;
+}
+
+.generation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.generation-grid label,
+.generation-wide-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.generation-grid input,
+.generation-grid select,
+.generation-grid textarea,
+.generation-wide-field textarea {
+  min-width: 0;
+  width: 100%;
+}
+
+.generation-run-state {
+  max-width: 28rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface, rgba(120, 120, 120, 0.12));
+  font-size: 0.82rem;
+}
+
+.generation-run-state[data-status='running'],
+.generation-run-state[data-status='queued'] {
+  color: var(--accent, #3d6be0);
+}
+
+.generation-run-state[data-status='failed'] {
+  color: var(--danger, #b54a4a);
+}
+
+.generation-acknowledgement,
+.partial-candidate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.generation-provenance {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0.8rem 0;
+}
+
+.generation-provenance > div {
+  min-width: 0;
+  padding: 0.55rem;
+  border-radius: 0.5rem;
+  background: var(--surface-muted, rgba(120, 120, 120, 0.08));
+}
+
+.generation-provenance dt {
+  font-size: 0.76rem;
+  opacity: 0.72;
+}
+
+.generation-provenance dd {
+  overflow: hidden;
+  margin: 0.2rem 0 0;
+  text-overflow: ellipsis;
+}
+
+.skeleton-beat-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding-inline-start: 1.6rem;
+}
+
+.skeleton-beat-list li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.65rem;
+  border-inline-start: 3px solid var(--accent, #3d6be0);
+  background: var(--surface, rgba(120, 120, 120, 0.06));
+}
+
 .candidate-choice-list {
   display: grid;
   gap: 0.45rem;
@@ -284,6 +412,8 @@
   .writing-grid,
   .relationship-editor-grid,
   .beginner-question-form,
+  .generation-grid,
+  .generation-provenance,
   .version-compare-grid,
   .candidate-compare-grid {
     grid-template-columns: 1fr;

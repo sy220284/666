@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -32,6 +33,7 @@ interface RetainedImportPlan {
   readonly service: ImportExportService;
   readonly sourcePath: string;
   readonly createdAtMs: number;
+  readonly projectFingerprint: string;
 }
 
 export interface CoordinatedImportExportServiceOptions extends ImportExportServiceOptions {
@@ -75,6 +77,49 @@ async function validatedImportSource(
   }
 }
 
+function projectFingerprint(workspace: ProjectWorkspaceService, projectId: string): string {
+  return workspace.readProject(projectId, (database) => {
+    const state = {
+      project: database
+        .prepare(
+          'SELECT schema_version AS schemaVersion, updated_at AS updatedAt FROM projects WHERE id = ?',
+        )
+        .get(projectId),
+      structure: database
+        .prepare(
+          `SELECT vo.id AS volumeId, vo.order_key AS volumeOrder, vo.deleted_at AS volumeDeletedAt,
+                  ch.id AS chapterId, ch.order_key AS chapterOrder, ch.deleted_at AS chapterDeletedAt,
+                  ch.active_draft_id AS activeDraftId, ch.final_version_id AS finalVersionId,
+                  draft.revision AS draftRevision
+             FROM volumes vo
+             LEFT JOIN chapters ch ON ch.volume_id = vo.id
+             LEFT JOIN drafts draft ON draft.id = ch.active_draft_id
+            WHERE vo.project_id = ?
+            ORDER BY vo.id, ch.id`,
+        )
+        .all(projectId),
+      versions: database
+        .prepare(
+          `SELECT version.id, version.content_hash AS contentHash
+             FROM versions version
+             JOIN chapters chapter ON chapter.id = version.chapter_id
+             JOIN volumes volume ON volume.id = chapter.volume_id
+            WHERE volume.project_id = ?
+            ORDER BY version.id`,
+        )
+        .all(projectId),
+    };
+    return createHash('sha256')
+      .update(
+        JSON.stringify(state, (_key, value: unknown) =>
+          typeof value === 'bigint' ? value.toString() : value,
+        ),
+        'utf8',
+      )
+      .digest('hex');
+  });
+}
+
 export class CoordinatedImportExportService extends ImportExportService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #recovery: RecoveryService;
@@ -106,7 +151,12 @@ export class CoordinatedImportExportService extends ImportExportService {
     const plan = await service.previewImport(raw, sourcePath);
     const createdAtMs = this.#clock.now().getTime();
     this.#pruneExpired(createdAtMs);
-    this.#retainedPlans.set(plan.planId, { service, sourcePath, createdAtMs });
+    this.#retainedPlans.set(plan.planId, {
+      service,
+      sourcePath,
+      createdAtMs,
+      projectFingerprint: projectFingerprint(this.#workspace, plan.projectId),
+    });
     this.#trimToLimit();
     return plan;
   }
@@ -132,6 +182,12 @@ export class CoordinatedImportExportService extends ImportExportService {
         throw new ImportExportServiceError(
           'IMPORT_PLAN_STALE',
           'The import source changed after preview.',
+        );
+      }
+      if (projectFingerprint(this.#workspace, input.projectId) !== retained.projectFingerprint) {
+        throw new ImportExportServiceError(
+          'IMPORT_PLAN_STALE',
+          'The project changed after the import preview.',
         );
       }
       const result = await retained.service.commitImport(requestId, input);

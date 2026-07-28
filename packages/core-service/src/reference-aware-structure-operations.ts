@@ -142,7 +142,13 @@ function chapterReferenceBlockers(
   chapterIds: readonly string[],
 ): ChapterReferenceBlocker[] {
   if (chapterIds.length === 0) return [];
-  const controlled = new Set(['drafts.chapter_id', 'versions.chapter_id', 'candidates.chapter_id']);
+  const controlled = new Set([
+    'drafts.chapter_id',
+    'versions.chapter_id',
+    'candidates.chapter_id',
+    'replace_plan_items.chapter_id',
+    'writing_sessions.chapter_id',
+  ]);
   const tables = (
     database
       .prepare(

@@ -44,10 +44,12 @@ const state = vi.hoisted(() => ({
   loggerLog: vi.fn(async () => undefined),
   registerBase: vi.fn(),
   registerContinuity: vi.fn(),
+  registerGeneration: vi.fn(),
   registerNarrative: vi.fn(),
   registerPreview: vi.fn(),
   unregisterBase: vi.fn(),
   unregisterContinuity: vi.fn(),
+  unregisterGeneration: vi.fn(),
   unregisterNarrative: vi.fn(),
   unregisterPreview: vi.fn(),
   buildPreferences: vi.fn(() => ({ sandbox: true })),
@@ -222,6 +224,12 @@ vi.mock('../../apps/desktop/main/src/continuity-ipc.js', () => ({
     return state.unregisterContinuity;
   },
 }));
+vi.mock('../../apps/desktop/main/src/generation-ipc.js', () => ({
+  registerGenerationIpc: (options: unknown) => {
+    state.registerGeneration(options);
+    return state.unregisterGeneration;
+  },
+}));
 vi.mock('../../apps/desktop/main/src/narrative-planning-ipc.js', () => ({
   registerNarrativePlanningIpc: (options: unknown) => {
     state.registerNarrative(options);
@@ -375,6 +383,7 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     expect(state.buildPreferences).toHaveBeenCalled();
     expect(state.registerBase).toHaveBeenCalled();
     expect(state.registerContinuity).toHaveBeenCalled();
+    expect(state.registerGeneration).toHaveBeenCalled();
     expect(state.registerNarrative).toHaveBeenCalled();
     expect(state.registerPreview).toHaveBeenCalled();
     expect(state.navigationAdapter).toBeDefined();
@@ -432,6 +441,7 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     expect(state.supervisorShutdownCall).toHaveBeenCalled();
     expect(state.unregisterBase).toHaveBeenCalled();
     expect(state.unregisterContinuity).toHaveBeenCalled();
+    expect(state.unregisterGeneration).toHaveBeenCalled();
     expect(state.unregisterNarrative).toHaveBeenCalled();
     expect(state.unregisterPreview).toHaveBeenCalled();
     expect(window.destroy).toHaveBeenCalled();

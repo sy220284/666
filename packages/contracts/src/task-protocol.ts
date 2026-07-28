@@ -29,6 +29,22 @@ export const AIStageSchema = z.enum([
   'completed',
 ]);
 
+export const GenerationResultRefSchema = z.discriminatedUnion('resultType', [
+  z.strictObject({
+    resultType: z.literal('candidate'),
+    resultId: z.uuid(),
+    candidateKind: z.enum(['prose', 'skeleton']),
+  }),
+  z.strictObject({
+    resultType: z.literal('state_proposal_batch'),
+    resultId: z.uuid(),
+  }),
+  z.strictObject({
+    resultType: z.literal('validation_batch'),
+    resultId: z.uuid(),
+  }),
+]);
+
 export const TaskSnapshotSchema = z.strictObject({
   taskId: TaskIdSchema,
   taskType: TaskTypeSchema,
@@ -42,6 +58,7 @@ export const TaskSnapshotSchema = z.strictObject({
   previewText: z.string().max(MAX_TASK_PREVIEW_CHARACTERS).optional(),
   previewTruncated: z.boolean().optional(),
   resultIds: z.array(z.uuid()).max(1_000).optional(),
+  resultRefs: z.array(GenerationResultRefSchema).max(1_000).optional(),
   errorCode: ErrorCodeSchema.optional(),
 });
 
@@ -185,8 +202,16 @@ export const TaskEventEnvelopeSchema = z.discriminatedUnion('type', [
   }),
   z.strictObject({
     ...eventEnvelopeBase,
+    type: z.literal('ai.resultSaved'),
+    payload: z.strictObject({ resultRef: GenerationResultRefSchema }),
+  }),
+  z.strictObject({
+    ...eventEnvelopeBase,
     type: z.literal('ai.completed'),
-    payload: z.strictObject({ candidateIds: z.array(z.uuid()).max(1_000) }),
+    payload: z.strictObject({
+      candidateIds: z.array(z.uuid()).max(1_000),
+      resultRefs: z.array(GenerationResultRefSchema).max(1_000).optional(),
+    }),
   }),
   z.strictObject({
     ...eventEnvelopeBase,
@@ -213,6 +238,7 @@ export const TaskEventAckSchema = z.strictObject({
 });
 
 export type TaskSnapshot = z.infer<typeof TaskSnapshotSchema>;
+export type GenerationResultRef = z.infer<typeof GenerationResultRefSchema>;
 export type TaskCommand = z.infer<typeof TaskCommandSchema>;
 export type TaskEventEnvelope = z.infer<typeof TaskEventEnvelopeSchema>;
 export type TaskEventAck = z.infer<typeof TaskEventAckSchema>;

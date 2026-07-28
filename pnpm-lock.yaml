@@ -37,6 +37,9 @@ importers:
       eslint:
         specifier: 10.7.0
         version: 10.7.0
+      fflate:
+        specifier: 0.8.2
+        version: 0.8.2
       prettier:
         specifier: 3.9.5
         version: 3.9.5
@@ -129,6 +132,12 @@ importers:
       '@worldforge/domain':
         specifier: workspace:*
         version: link:../domain
+      '@worldforge/prompts':
+        specifier: workspace:*
+        version: link:../prompts
+      fflate:
+        specifier: 0.8.2
+        version: 0.8.2
       iconv-lite:
         specifier: 0.7.3
         version: 0.7.3
@@ -1247,6 +1256,12 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.2:
+    resolution:
+      {
+        integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==,
+      }
 
   file-entry-cache@8.0.0:
     resolution:
@@ -2759,6 +2774,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
       picomatch: 4.0.5
+
+  fflate@0.8.2: {}
 
   file-entry-cache@8.0.0:
     dependencies:

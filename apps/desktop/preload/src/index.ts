@@ -22,6 +22,7 @@ import {
   CandidateCreateFixtureCommandSchema,
   CandidateDiscardCommandSchema,
   CandidateDocumentResultSchema,
+  CandidateEditSkeletonCommandSchema,
   CandidateGetCommandSchema,
   CandidateListCommandSchema,
   CandidateListResultSchema,
@@ -37,8 +38,18 @@ import {
   VersionSummaryResultSchema,
   RecoveryCreateCommandSchema,
   RecoveryCheckpointResultSchema,
+  RecoveryDailyBackupCommandSchema,
+  RecoveryNamedSnapshotCommandSchema,
   RecoveryOverviewCommandSchema,
   RecoveryOverviewResultSchema,
+  RecoveryPolicyUpdateCommandSchema,
+  RecoveryPolicyResultSchema,
+  RecoveryProtectionCommandSchema,
+  RecoveryProtectionResultSchema,
+  RecoveryCleanupPreviewCommandSchema,
+  RecoveryCleanupPreviewResultSchema,
+  RecoveryCleanupApplyCommandSchema,
+  RecoveryCleanupApplyResultSchema,
   RecoveryRestoreCommandSchema,
   RecoveryRestoreResultSchema,
   RecoveryExportCommandSchema,
@@ -61,7 +72,23 @@ import {
   ProviderSaveCommandSchema,
   ProviderSummaryResultSchema,
   ProviderTestConnectionCommandSchema,
+  GENERATION_COMMANDS,
+  GENERATION_IPC_CHANNELS,
+  GenerationCancelCommandSchema,
+  GenerationDiscardPartialCommandSchema,
+  GenerationGetModelSupportCommandSchema,
+  GenerationGetRunCommandSchema,
+  GenerationListRunsCommandSchema,
+  GenerationModelSupportEnvelopeSchema,
+  GenerationPartialDecisionResultSchema,
+  GenerationRunListResultSchema,
+  GenerationRunResultSchema,
+  GenerationSavePartialCommandSchema,
+  GenerationStartCommandSchema,
+  GenerationStartResultSchema,
   ProjectActiveResultSchema,
+  ProjectContinuationResultSchema,
+  ProjectContinuationSaveResultSchema,
   ProjectCreateChapterCommandSchema,
   ProjectCreateVolumeCommandSchema,
   ProjectCloseCommandResultSchema,
@@ -70,6 +97,7 @@ import {
   ProjectDeleteChapterCommandSchema,
   ProjectDeleteVolumeCommandSchema,
   ProjectGetActiveCommandSchema,
+  ProjectGetContinuationCommandSchema,
   ProjectListRecentCommandSchema,
   ProjectListStructureCommandSchema,
   ProjectGetBriefCommandSchema,
@@ -109,6 +137,7 @@ import {
   ProjectMoveVolumeCommandSchema,
   ProjectOpenRecentCommandSchema,
   ProjectOpenSelectedCommandSchema,
+  ProjectSaveContinuationCommandSchema,
   ProjectRelocateRecentCommandSchema,
   ProjectRemoveRecentCommandSchema,
   ProjectRestoreTrashEntryCommandSchema,
@@ -151,6 +180,7 @@ import {
   type CandidateCreateFixtureInput,
   type CandidateDiscardInput,
   type CandidateDocument,
+  type CandidateEditSkeletonInput,
   type CandidateGetInput,
   type CandidateList,
   type CandidateSummary,
@@ -209,6 +239,9 @@ type CandidateBridge = {
     readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
     readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
     readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
+    readonly editSkeleton: (
+      input: CandidateEditSkeletonInput,
+    ) => Promise<CommandResult<CandidateDocument>>;
   };
 };
 
@@ -275,6 +308,56 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         ProviderConnectionTestResultEnvelopeSchema,
       ),
   },
+  generation: {
+    start: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.start,
+        GenerationStartCommandSchema.parse(envelope(GENERATION_COMMANDS.start, input)),
+        GenerationStartResultSchema,
+      ),
+    getRun: (projectId, runId) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.getRun,
+        GenerationGetRunCommandSchema.parse(
+          envelope(GENERATION_COMMANDS.getRun, { projectId, runId }),
+        ),
+        GenerationRunResultSchema,
+      ),
+    listRuns: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.listRuns,
+        GenerationListRunsCommandSchema.parse(envelope(GENERATION_COMMANDS.listRuns, input)),
+        GenerationRunListResultSchema,
+      ),
+    cancel: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.cancel,
+        GenerationCancelCommandSchema.parse(envelope(GENERATION_COMMANDS.cancel, input)),
+        GenerationRunResultSchema,
+      ),
+    savePartial: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.savePartial,
+        GenerationSavePartialCommandSchema.parse(envelope(GENERATION_COMMANDS.savePartial, input)),
+        GenerationPartialDecisionResultSchema,
+      ),
+    discardPartial: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.discardPartial,
+        GenerationDiscardPartialCommandSchema.parse(
+          envelope(GENERATION_COMMANDS.discardPartial, input),
+        ),
+        GenerationPartialDecisionResultSchema,
+      ),
+    getModelSupport: (input) =>
+      invoke(
+        GENERATION_IPC_CHANNELS.getModelSupport,
+        GenerationGetModelSupportCommandSchema.parse(
+          envelope(GENERATION_COMMANDS.getModelSupport, input),
+        ),
+        GenerationModelSupportEnvelopeSchema,
+      ),
+  },
   settings: {
     get: () =>
       invoke(
@@ -302,11 +385,49 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         RecoveryCreateCommandSchema.parse(envelope(APP_COMMANDS.createCheckpoint, input)),
         RecoveryCheckpointResultSchema,
       ),
+    createDailyBackup: (input) =>
+      invoke(
+        IPC_CHANNELS.createDailyBackup,
+        RecoveryDailyBackupCommandSchema.parse(envelope(APP_COMMANDS.createDailyBackup, input)),
+        RecoveryCheckpointResultSchema,
+      ),
+    createNamedSnapshot: (input) =>
+      invoke(
+        IPC_CHANNELS.createNamedSnapshot,
+        RecoveryNamedSnapshotCommandSchema.parse(envelope(APP_COMMANDS.createNamedSnapshot, input)),
+        RecoveryCheckpointResultSchema,
+      ),
     getOverview: (projectId) =>
       invoke(
         IPC_CHANNELS.getOverview,
         RecoveryOverviewCommandSchema.parse(envelope(APP_COMMANDS.getOverview, { projectId })),
         RecoveryOverviewResultSchema,
+      ),
+    updatePolicy: (input) =>
+      invoke(
+        IPC_CHANNELS.updatePolicy,
+        RecoveryPolicyUpdateCommandSchema.parse(envelope(APP_COMMANDS.updatePolicy, input)),
+        RecoveryPolicyResultSchema,
+      ),
+    setProtection: (input) =>
+      invoke(
+        IPC_CHANNELS.setProtection,
+        RecoveryProtectionCommandSchema.parse(envelope(APP_COMMANDS.setProtection, input)),
+        RecoveryProtectionResultSchema,
+      ),
+    previewCleanup: (projectId) =>
+      invoke(
+        IPC_CHANNELS.previewCleanup,
+        RecoveryCleanupPreviewCommandSchema.parse(
+          envelope(APP_COMMANDS.previewCleanup, { projectId }),
+        ),
+        RecoveryCleanupPreviewResultSchema,
+      ),
+    applyCleanup: (input) =>
+      invoke(
+        IPC_CHANNELS.applyCleanup,
+        RecoveryCleanupApplyCommandSchema.parse(envelope(APP_COMMANDS.applyCleanup, input)),
+        RecoveryCleanupApplyResultSchema,
       ),
     restoreCheckpoint: (input) =>
       invoke(
@@ -377,6 +498,20 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         IPC_CHANNELS.getActive,
         ProjectGetActiveCommandSchema.parse(envelope(APP_COMMANDS.getActive, {})),
         ProjectActiveResultSchema,
+      ),
+    getContinuation: (projectId) =>
+      invoke(
+        IPC_CHANNELS.getContinuation,
+        ProjectGetContinuationCommandSchema.parse(
+          envelope(APP_COMMANDS.getContinuation, { projectId }),
+        ),
+        ProjectContinuationResultSchema,
+      ),
+    saveContinuation: (input) =>
+      invoke(
+        IPC_CHANNELS.saveContinuation,
+        ProjectSaveContinuationCommandSchema.parse(envelope(APP_COMMANDS.saveContinuation, input)),
+        ProjectContinuationSaveResultSchema,
       ),
     create: (input) =>
       invoke(
@@ -743,6 +878,12 @@ const bridge: WorldforgeBridge & CandidateBridge = {
         CANDIDATE_IPC_CHANNELS.discardCandidate,
         CandidateDiscardCommandSchema.parse(envelope(CANDIDATE_COMMANDS.discardCandidate, input)),
         CandidateSummaryResultSchema,
+      ),
+    editSkeleton: (input) =>
+      invoke(
+        CANDIDATE_IPC_CHANNELS.editSkeleton,
+        CandidateEditSkeletonCommandSchema.parse(envelope(CANDIDATE_COMMANDS.editSkeleton, input)),
+        CandidateDocumentResultSchema,
       ),
   },
   version: {

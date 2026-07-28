@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 
 import type {
   ProjectCreateInput,
+  ProjectContinuationSnapshot,
   ProjectWorkspaceSummary,
   RecentProject,
 } from '@worldforge/contracts';
@@ -15,6 +16,7 @@ import type { AppDisclosureMode, PrimaryNavigationId } from '../../shell/app-she
 export interface HomePageProps {
   readonly disclosureMode: AppDisclosureMode;
   readonly activeProject: ProjectWorkspaceSummary | null;
+  readonly continuation: ProjectContinuationSnapshot | null;
   readonly recentProjects: readonly RecentProject[];
   readonly healthSignals: readonly HomeHealthSignal[];
   readonly activeTaskCount: number;
@@ -22,6 +24,7 @@ export interface HomePageProps {
   readonly message: string | null;
   readonly onNavigate: (navigation: PrimaryNavigationId) => void;
   readonly onCreate: (input: ProjectCreateInput) => Promise<boolean>;
+  readonly onContinue: () => void;
   readonly onOpenSelected: (recover: boolean) => void;
   readonly onOpenRecent: (projectId: string) => void;
   readonly onRelocateRecent: (projectId: string) => void;
@@ -40,7 +43,15 @@ export function HomePage(props: HomePageProps) {
   };
   const model = createHomeDashboardModel({
     disclosureMode: props.disclosureMode,
-    continuation: null,
+    continuation:
+      props.activeProject && props.continuation?.status === 'ready'
+        ? {
+            projectId: props.activeProject.projectId,
+            projectName: props.activeProject.name,
+            chapterId: props.continuation.chapterId,
+            chapterTitle: props.continuation.chapterTitle,
+          }
+        : null,
     recentProjects: props.recentProjects,
     healthSignals: props.healthSignals,
     activeTaskCount: props.activeTaskCount,
@@ -107,7 +118,9 @@ export function HomePage(props: HomePageProps) {
       {props.activeProject ? (
         <ActiveProjectCard
           project={props.activeProject}
+          continuation={props.continuation}
           pending={Boolean(props.pendingKey)}
+          onContinue={props.onContinue}
           onNavigate={props.onNavigate}
           onClose={() => props.onCloseProject(props.activeProject?.projectId ?? '')}
           onMove={() => props.onMoveProject(props.activeProject?.projectId ?? '')}
@@ -130,7 +143,7 @@ export function HomePage(props: HomePageProps) {
           </div>
         ) : (
           <div className="react-recent-list">
-            {model.recentProjects.map((project) => (
+            {model.recentProjects.map((project, index) => (
               <article
                 className="react-recent-card"
                 data-recent-card
@@ -152,9 +165,11 @@ export function HomePage(props: HomePageProps) {
                       data-open-recent
                       disabled={Boolean(props.activeProject) || Boolean(props.pendingKey)}
                       type="button"
-                      onClick={() => props.onOpenRecent(project.projectId)}
+                      onClick={() =>
+                        index === 0 ? props.onContinue() : props.onOpenRecent(project.projectId)
+                      }
                     >
-                      打开
+                      {index === 0 ? '继续写作' : '打开'}
                     </button>
                   ) : (
                     <button
@@ -200,7 +215,9 @@ export function HomePage(props: HomePageProps) {
 
 interface ActiveProjectCardProps {
   readonly project: ProjectWorkspaceSummary;
+  readonly continuation: ProjectContinuationSnapshot | null;
   readonly pending: boolean;
+  readonly onContinue: () => void;
   readonly onNavigate: (navigation: PrimaryNavigationId) => void;
   readonly onClose: () => void;
   readonly onMove: () => void;
@@ -209,7 +226,9 @@ interface ActiveProjectCardProps {
 
 function ActiveProjectCard({
   project,
+  continuation,
   pending,
+  onContinue,
   onNavigate,
   onClose,
   onMove,
@@ -223,6 +242,11 @@ function ActiveProjectCard({
         <h2>{project.name}</h2>
         <p title={project.workspacePath}>{project.workspacePath}</p>
         <span>{readOnly ? '只读兼容模式' : '可写 · 本地数据库'}</span>
+        {continuation?.status === 'ready' ? (
+          <p data-continuation-summary>上次写到：{continuation.chapterTitle}</p>
+        ) : continuation?.status === 'stale' ? (
+          <p data-continuation-stale>上次位置已变化，将打开首个可用章节。</p>
+        ) : null}
       </div>
       {readOnly ? (
         <p className="react-readonly-notice" role="alert">
@@ -231,7 +255,7 @@ function ActiveProjectCard({
         </p>
       ) : null}
       <div className="react-card-actions">
-        <button className="primary-button" type="button" onClick={() => onNavigate('writing')}>
+        <button className="primary-button" data-continue-writing type="button" onClick={onContinue}>
           继续写作
         </button>
         <button className="quiet-button" type="button" onClick={() => onNavigate('planning')}>

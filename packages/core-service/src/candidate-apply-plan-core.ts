@@ -3,10 +3,10 @@ import {
   type CandidateApplyInput,
   type CandidateBlock,
   type CandidateConflictItem,
-  type CandidateDocument,
   type CandidatePreview,
   type CandidateSelection,
   type DraftDocument,
+  type ProseCandidateDocument,
 } from '@worldforge/contracts';
 import {
   computeCandidateDiff,
@@ -20,7 +20,7 @@ import type { MutableDraftBlock } from './candidate-state.js';
 
 function normalizedStructure(
   entry: StructureDiffEntry,
-  candidate: CandidateDocument,
+  candidate: ProseCandidateDocument,
   draft: DraftDocument,
 ) {
   const candidateBlockId = (index: number): string[] => {
@@ -97,13 +97,13 @@ function normalizedStructure(
 }
 
 export function buildCandidatePreview(
-  candidate: CandidateDocument,
+  candidate: ProseCandidateDocument,
   draft: DraftDocument,
 ): CandidatePreview {
   return candidatePreviewFromDiff(candidate, draft, computeCandidatePreviewDiff(candidate, draft));
 }
 
-function computeCandidatePreviewDiff(candidate: CandidateDocument, draft: DraftDocument) {
+function computeCandidatePreviewDiff(candidate: ProseCandidateDocument, draft: DraftDocument) {
   return computeCandidateDiff(
     draft.blocks.map((block) => ({
       logicalBlockId: block.logicalBlockId,
@@ -119,7 +119,7 @@ function computeCandidatePreviewDiff(candidate: CandidateDocument, draft: DraftD
 }
 
 function candidatePreviewFromDiff(
-  candidate: CandidateDocument,
+  candidate: ProseCandidateDocument,
   draft: DraftDocument,
   diff: CandidateDiffResult,
 ): CandidatePreview {
@@ -139,7 +139,7 @@ function candidatePreviewFromDiff(
 }
 
 export async function buildCandidatePreviewProgressively(
-  candidate: CandidateDocument,
+  candidate: ProseCandidateDocument,
   draft: DraftDocument,
   signal?: AbortSignal,
 ): Promise<CandidatePreview> {
@@ -160,7 +160,7 @@ export async function buildCandidatePreviewProgressively(
 }
 
 function selectedBlocks(
-  candidate: CandidateDocument,
+  candidate: ProseCandidateDocument,
   selection: CandidateSelection,
 ): CandidateBlock[] {
   if (selection.mode === 'all') return [...candidate.blocks];
@@ -186,7 +186,7 @@ function sourcesFor(
 
 export function buildCandidateTarget(
   current: readonly MutableDraftBlock[],
-  candidate: CandidateDocument,
+  candidate: ProseCandidateDocument,
   selection: CandidateSelection,
   committedRevision: number,
   idFactory: () => string,
@@ -287,7 +287,7 @@ export function candidateConflict(
 }
 
 export function collectApplyConflicts(
-  candidate: CandidateDocument,
+  candidate: ProseCandidateDocument,
   current: readonly MutableDraftBlock[],
   target: readonly MutableDraftBlock[],
   input: CandidateApplyInput,

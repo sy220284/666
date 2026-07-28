@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   CandidateBlockSchema,
   CandidateCompletenessSchema,
-  CandidateDocumentSchema,
   CandidateStatusSchema,
+  ProseCandidateDocumentSchema,
 } from './candidate.js';
 import {
   DraftBlockAttributesSchema,
@@ -76,7 +76,7 @@ export const CandidateDiffExecutionSchema = z.strictObject({
   rationale: z.string().min(1).max(512),
 });
 export const CandidatePreviewSchema = z.strictObject({
-  candidate: CandidateDocumentSchema,
+  candidate: ProseCandidateDocumentSchema,
   draft: DraftDocumentSchema,
   structure: z.array(CandidateStructureDiffSchema).max(100_000),
   characterDiffs: z.array(CandidateCharacterDiffSchema).max(50_000),

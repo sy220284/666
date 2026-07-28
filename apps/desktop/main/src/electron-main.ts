@@ -16,6 +16,7 @@ import type { AppearancePreferences, WindowPreferences } from '@worldforge/contr
 
 import { registerCandidatePreviewIpc } from './candidate-preview-ipc.js';
 import { registerContinuityIpc } from './continuity-ipc.js';
+import { registerGenerationIpc } from './generation-ipc.js';
 import { CoreSupervisor, type UtilityProcessHandle } from './core-supervisor.js';
 import { CredentialBroker } from './credential-broker.js';
 import { registerIpcHandlers } from './ipc-handlers.js';
@@ -287,7 +288,7 @@ async function bootstrap(): Promise<void> {
       title,
       buttonLabel,
       properties: ['openFile'],
-      filters: [{ name: '文本文件', extensions: ['txt', 'md', 'markdown'] }],
+      filters: [{ name: '文稿文件', extensions: ['txt', 'md', 'markdown', 'docx'] }],
     });
     return selection.canceled ? null : (selection.filePaths[0] ?? null);
   };
@@ -333,7 +334,7 @@ async function bootstrap(): Promise<void> {
         'WORLDFORGE_E2E_RECOVERY_EXPORT_DIRECTORY',
       ),
     chooseTextImportFile: () =>
-      chooseFile('选择TXT或Markdown旧稿', '预览导入', 'WORLDFORGE_E2E_IMPORT_FILE'),
+      chooseFile('选择TXT、Markdown或DOCX旧稿', '预览导入', 'WORLDFORGE_E2E_IMPORT_FILE'),
     chooseTextExportDirectory: () =>
       chooseDirectory('选择文本导出位置', '导出到这里', 'WORLDFORGE_E2E_TEXT_EXPORT_DIRECTORY'),
     chooseRecentLocation: async () => {
@@ -348,6 +349,13 @@ async function bootstrap(): Promise<void> {
     },
   });
   const unregisterContinuityIpc = registerContinuityIpc({ ipcMain, supervisor, rendererUrl });
+  const unregisterGenerationIpc = registerGenerationIpc({
+    ipcMain,
+    supervisor,
+    credentialBroker,
+    rendererUrl,
+    logger,
+  });
   const unregisterNarrativePlanningIpc = registerNarrativePlanningIpc({
     ipcMain,
     supervisor,
@@ -361,6 +369,7 @@ async function bootstrap(): Promise<void> {
   unregisterIpc = () => {
     unregisterPreviewIpc();
     unregisterNarrativePlanningIpc();
+    unregisterGenerationIpc();
     unregisterContinuityIpc();
     unregisterBaseIpc();
   };

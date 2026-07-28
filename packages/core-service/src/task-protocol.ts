@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   AIStageSchema,
   ErrorCodeSchema,
+  GenerationResultRefSchema,
   MAX_TASK_PREVIEW_CHARACTERS,
   PROTOCOL_VERSION,
   ProjectIdSchema,
@@ -14,6 +15,7 @@ import {
   TaskStageSchema,
   TaskTypeSchema,
   type ErrorCode,
+  type GenerationResultRef,
   type TaskCommand,
   type TaskCommandResult,
   type TaskEventEnvelope,
@@ -158,6 +160,7 @@ interface TaskRecord {
   sequence: number;
   receivedChars: number;
   resultIds?: readonly string[];
+  resultRefs?: readonly GenerationResultRef[];
   errorCode?: ErrorCode;
   cancellable: boolean;
   partialAvailable: boolean;
@@ -184,7 +187,9 @@ export interface RunningTask {
   pushDelta(text: string): boolean;
   reportUsage(usage: { readonly inputTokens?: number; readonly outputTokens?: number }): boolean;
   saveCandidate(candidateId: string, completeness: 'complete' | 'partial'): boolean;
+  saveResult(resultRef: GenerationResultRef): boolean;
   complete(resultIds?: readonly string[]): boolean;
+  completeResults(resultRefs: readonly GenerationResultRef[]): boolean;
   fail(errorCode: ErrorCode, retryable: boolean): boolean;
 }
 
@@ -309,7 +314,9 @@ export class TaskProtocol {
       reportUsage: (usage) => this.#reportUsage(task, usage),
       saveCandidate: (candidateId, completeness) =>
         this.#saveCandidate(task, candidateId, completeness),
+      saveResult: (resultRef) => this.#saveResult(task, resultRef),
       complete: (resultIds = []) => this.#complete(task, resultIds),
+      completeResults: (resultRefs) => this.#completeResults(task, resultRefs),
       fail: (errorCode, retryable) => this.#fail(task, errorCode, retryable),
     };
   }
@@ -439,6 +446,14 @@ export class TaskProtocol {
     return true;
   }
 
+  #saveResult(task: TaskRecord, resultRef: GenerationResultRef): boolean {
+    if (!this.#isActive(task) || !task.runId) return false;
+    const parsed = GenerationResultRefSchema.parse(resultRef);
+    task.resultRefs = [...(task.resultRefs ?? []), parsed];
+    this.#emit(task, 'ai.resultSaved', { resultRef: parsed });
+    return true;
+  }
+
   #complete(task: TaskRecord, resultIds: readonly string[]): boolean {
     if (!this.#isActive(task)) return false;
     this.#flushPendingDelta(task);
@@ -451,6 +466,26 @@ export class TaskProtocol {
       task.runId ? 'ai.completed' : 'task.completed',
       task.runId ? { candidateIds: parsedResultIds } : { resultIds: parsedResultIds },
     );
+    this.#notifyDrainedIfReady();
+    return true;
+  }
+
+  #completeResults(task: TaskRecord, resultRefs: readonly GenerationResultRef[]): boolean {
+    if (!this.#isActive(task) || !task.runId) return false;
+    this.#flushPendingDelta(task);
+    const parsedResultRefs = resultRefs.map((resultRef) =>
+      GenerationResultRefSchema.parse(resultRef),
+    );
+    task.status = 'succeeded';
+    task.stage = 'completed';
+    task.resultRefs = parsedResultRefs;
+    task.resultIds = parsedResultRefs.map((resultRef) => resultRef.resultId);
+    this.#emit(task, 'ai.completed', {
+      candidateIds: parsedResultRefs
+        .filter((resultRef) => resultRef.resultType === 'candidate')
+        .map((resultRef) => resultRef.resultId),
+      resultRefs: parsedResultRefs,
+    });
     this.#notifyDrainedIfReady();
     return true;
   }
@@ -537,6 +572,7 @@ export class TaskProtocol {
         ? { previewText: task.previewText, previewTruncated: task.previewTruncated }
         : {}),
       ...(task.resultIds ? { resultIds: task.resultIds } : {}),
+      ...(task.resultRefs ? { resultRefs: task.resultRefs } : {}),
       ...(task.errorCode ? { errorCode: task.errorCode } : {}),
     });
   }

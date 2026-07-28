@@ -4,6 +4,8 @@ import {
   CoreAppDataOperationSchema,
   CoreAppDataResultSchema,
   CoreEventSchema,
+  CoreGenerationOperationSchema,
+  CoreGenerationResultSchema,
   CoreProjectOperationSchema,
   CoreProjectResultSchema,
   CoreProviderOperationSchema,
@@ -15,6 +17,8 @@ import {
   type CoreAppDataOperation,
   type CoreAppDataResult,
   type CoreEvent,
+  type CoreGenerationOperation,
+  type CoreGenerationResult,
   type CoreProjectOperation,
   type CoreProjectResult,
   type CoreProviderOperation,
@@ -260,6 +264,38 @@ export class CoreSupervisor {
     const result = await response;
     if (result?.type === 'core.provider.result') return result.result;
     return CoreProviderResultSchema.parse({
+      ok: false,
+      operation: operation.operation,
+      errorCode: 'COMMON_TIMEOUT_005',
+    });
+  }
+
+  async invokeGenerationOperation(
+    requestId: string,
+    input: CoreGenerationOperation,
+  ): Promise<CoreGenerationResult> {
+    const operation = CoreGenerationOperationSchema.parse(input);
+    const process = this.#process;
+    if (!process || this.#state !== 'healthy') {
+      return CoreGenerationResultSchema.parse({
+        ok: false,
+        operation: operation.operation,
+        errorCode: 'COMMON_INTERNAL_999',
+      });
+    }
+    const response = this.#waitForMessage(
+      (message) => message.type === 'core.generation.result' && message.requestId === requestId,
+      Math.max(this.#commandTimeoutMs, 30_000),
+    );
+    process.postMessage({
+      type: 'core.generation.command',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      operation,
+    });
+    const result = await response;
+    if (result?.type === 'core.generation.result') return result.result;
+    return CoreGenerationResultSchema.parse({
       ok: false,
       operation: operation.operation,
       errorCode: 'COMMON_TIMEOUT_005',

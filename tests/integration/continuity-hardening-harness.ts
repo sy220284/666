@@ -7,10 +7,13 @@ import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src
 import { ContinuityService } from '../../packages/core-service/src/continuity.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import { EntityCanonService } from '../../packages/core-service/src/entity-canon.js';
+import { GenerationRunService } from '../../packages/core-service/src/generation-run.js';
 import { NarrativePlanningService } from '../../packages/core-service/src/narrative-planning.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { StateProposalService } from '../../packages/core-service/src/state-proposal.js';
+import { ValidationService } from '../../packages/core-service/src/validation.js';
+import { RhythmService } from '../../packages/core-service/src/rhythm.js';
 import { VersionService } from '../../packages/core-service/src/version.js';
 
 const temporaryDirectories: string[] = [];
@@ -46,6 +49,9 @@ export async function createContinuityHarness() {
     continuity: new ContinuityService(workspace, { clock: hardeningClock }),
     narrative: new NarrativePlanningService(workspace, { clock: hardeningClock }),
     proposals: new StateProposalService(workspace, { clock: hardeningClock }),
+    generation: new GenerationRunService(workspace, { clock: hardeningClock }),
+    validation: new ValidationService(workspace, { clock: hardeningClock }),
+    rhythm: new RhythmService(workspace, { clock: hardeningClock }),
   };
 }
 

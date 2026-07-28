@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ErrorCodeSchema, type ErrorCode } from './error-codes.js';
+import type { ModelSupportProfile } from './ai-output-protocol.js';
 import {
   APP_DATA_COMMANDS,
   APP_DATA_IPC_CHANNELS,
@@ -30,6 +31,16 @@ import {
   type ProviderSummary,
 } from './provider.js';
 import {
+  CoreGenerationOperationSchema,
+  CoreGenerationResultSchema,
+  type GenerationCancelInput,
+  type GenerationListRunsInput,
+  type GenerationModelSupportInput,
+  type GenerationPartialInput,
+  type GenerationRun,
+  type GenerationStartInput,
+} from './generation.js';
+import {
   ProjectIdSchema,
   TASK_PROTOCOL_VERSION,
   TaskCancelCommandSchema,
@@ -52,10 +63,14 @@ import {
   ProjectCloseCommandSchema,
   ProjectCreateCommandSchema,
   ProjectGetActiveCommandSchema,
+  ProjectGetContinuationCommandSchema,
   ProjectMoveCommandSchema,
   ProjectOpenRecentCommandSchema,
   ProjectOpenSelectedCommandSchema,
+  ProjectSaveContinuationCommandSchema,
   type ProjectCloseResult,
+  type ProjectContinuationInput,
+  type ProjectContinuationSnapshot,
   type ProjectCreateInput,
   type ProjectMoveResult,
   type ProjectWorkspaceSummary,
@@ -190,9 +205,17 @@ import {
   RECOVERY_COMMANDS,
   RECOVERY_IPC_CHANNELS,
   type BackupRecord,
+  type BackupCleanupPreview,
+  type BackupPolicy,
+  type RecoveryCleanupApplyInput,
+  type RecoveryCleanupResult,
   type RecoveryCreateInput,
+  type RecoveryDailyBackupInput,
   type RecoveryExportInput,
+  type RecoveryNamedSnapshotInput,
   type RecoveryOverview,
+  type RecoveryPolicyUpdateInput,
+  type RecoveryProtectionInput,
   type RecoveryRestoredProject,
   type RecoveryRestoreInput,
   type RecoveryVersionExport,
@@ -218,6 +241,7 @@ export * from './ai-output-protocol.js';
 export * from './task-protocol.js';
 export * from './app-data.js';
 export * from './provider.js';
+export * from './generation.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './project-planning.js';
@@ -409,6 +433,8 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   ProviderRemoveCommandSchema,
   ProviderTestConnectionCommandSchema,
   ProjectGetActiveCommandSchema,
+  ProjectGetContinuationCommandSchema,
+  ProjectSaveContinuationCommandSchema,
   ProjectCreateCommandSchema,
   ProjectOpenSelectedCommandSchema,
   ProjectOpenRecentCommandSchema,
@@ -595,6 +621,12 @@ export const CoreControlMessageSchema = z.discriminatedUnion('type', [
     operation: CoreProviderOperationSchema,
   }),
   z.strictObject({
+    type: z.literal('core.generation.command'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    operation: CoreGenerationOperationSchema,
+  }),
+  z.strictObject({
     type: z.literal('core.project.command'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
@@ -651,6 +683,12 @@ export const CoreEventSchema = z.discriminatedUnion('type', [
     result: CoreProviderResultSchema,
   }),
   z.strictObject({
+    type: z.literal('core.generation.result'),
+    protocolVersion: z.literal(PROTOCOL_VERSION),
+    requestId: RequestIdSchema,
+    result: CoreGenerationResultSchema,
+  }),
+  z.strictObject({
     type: z.literal('core.project.result'),
     protocolVersion: z.literal(PROTOCOL_VERSION),
     requestId: RequestIdSchema,
@@ -705,6 +743,12 @@ export interface WorldforgeBridge {
       projectId: string,
     ) => Promise<CommandResult<{ readonly removed: boolean }>>;
     readonly getActive: () => Promise<CommandResult<ProjectWorkspaceSummary | null>>;
+    readonly getContinuation: (
+      projectId: string,
+    ) => Promise<CommandResult<ProjectContinuationSnapshot | null>>;
+    readonly saveContinuation: (
+      input: ProjectContinuationInput,
+    ) => Promise<CommandResult<ProjectContinuationSnapshot>>;
     readonly create: (input: ProjectCreateInput) => Promise<CommandResult<ProjectWorkspaceSummary>>;
     readonly openSelected: () => Promise<CommandResult<ProjectWorkspaceSummary>>;
     readonly openRecent: (projectId: string) => Promise<CommandResult<ProjectWorkspaceSummary>>;
@@ -713,7 +757,23 @@ export interface WorldforgeBridge {
   };
   readonly recovery: {
     readonly createCheckpoint: (input: RecoveryCreateInput) => Promise<CommandResult<BackupRecord>>;
+    readonly createDailyBackup: (
+      input: RecoveryDailyBackupInput,
+    ) => Promise<CommandResult<BackupRecord>>;
+    readonly createNamedSnapshot: (
+      input: RecoveryNamedSnapshotInput,
+    ) => Promise<CommandResult<BackupRecord>>;
     readonly getOverview: (projectId: string) => Promise<CommandResult<RecoveryOverview>>;
+    readonly updatePolicy: (
+      input: RecoveryPolicyUpdateInput,
+    ) => Promise<CommandResult<BackupPolicy>>;
+    readonly setProtection: (
+      input: RecoveryProtectionInput,
+    ) => Promise<CommandResult<BackupRecord>>;
+    readonly previewCleanup: (projectId: string) => Promise<CommandResult<BackupCleanupPreview>>;
+    readonly applyCleanup: (
+      input: RecoveryCleanupApplyInput,
+    ) => Promise<CommandResult<RecoveryCleanupResult>>;
     readonly restoreCheckpoint: (
       input: RecoveryRestoreInput,
     ) => Promise<CommandResult<RecoveryRestoredProject>>;
@@ -837,6 +897,29 @@ export interface WorldforgeBridge {
     readonly testConnection: (
       providerId: string,
     ) => Promise<CommandResult<ProviderConnectionTestResult>>;
+  };
+  readonly generation: {
+    readonly start: (
+      input: GenerationStartInput,
+    ) => Promise<CommandResult<{ readonly run: GenerationRun; readonly taskId: string }>>;
+    readonly getRun: (projectId: string, runId: string) => Promise<CommandResult<GenerationRun>>;
+    readonly listRuns: (
+      input: GenerationListRunsInput,
+    ) => Promise<CommandResult<{ readonly runs: readonly GenerationRun[] }>>;
+    readonly cancel: (input: GenerationCancelInput) => Promise<CommandResult<GenerationRun>>;
+    readonly savePartial: (
+      input: GenerationPartialInput,
+    ) => Promise<
+      CommandResult<{ readonly run: GenerationRun; readonly candidateId: string | null }>
+    >;
+    readonly discardPartial: (
+      input: GenerationPartialInput,
+    ) => Promise<
+      CommandResult<{ readonly run: GenerationRun; readonly candidateId: string | null }>
+    >;
+    readonly getModelSupport: (
+      input: GenerationModelSupportInput,
+    ) => Promise<CommandResult<{ readonly profile: ModelSupportProfile }>>;
   };
   readonly ai: {
     readonly setCredential: (

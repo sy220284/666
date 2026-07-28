@@ -12,8 +12,32 @@ import { ProjectPlanningError } from './project-planning.js';
 import { ProjectStructureError } from './project-structure.js';
 import { ProjectWorkspaceError } from './project-workspace.js';
 import { RecoveryServiceError } from './recovery.js';
+import { RhythmServiceError } from './rhythm.js';
 import { SceneBeatServiceError } from './scene-beat.js';
+import { SearchToolsServiceError } from './search-tools.js';
+import { ValidationServiceError } from './validation.js';
 import { VersionServiceError } from './version.js';
+
+const STORY_ANCHOR_SCOPE_MARKERS = [
+  'STORY_TODO_BEAT_CHAPTER_SCOPE_INVALID',
+  'STORY_TODO_BLOCK_CHAPTER_SCOPE_INVALID',
+  'STORY_TODO_ISSUE_ANCHOR_SCOPE_INVALID',
+  'STORY_COMMENT_VERSION_CHAPTER_SCOPE_INVALID',
+  'STORY_COMMENT_BLOCK_SOURCE_SCOPE_INVALID',
+  'STORY_COMMENT_ISSUE_ANCHOR_SCOPE_INVALID',
+] as const;
+
+function errorChainIncludes(
+  error: unknown,
+  markers: readonly string[],
+  seen: Set<object> = new Set(),
+): boolean {
+  if (!error || typeof error !== 'object' || seen.has(error)) return false;
+  seen.add(error);
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : '';
+  if (markers.some((marker) => message.includes(marker))) return true;
+  return 'cause' in error ? errorChainIncludes(error.cause, markers, seen) : false;
+}
 
 export function windowPreferencesError(error: unknown): ErrorCode {
   if (error instanceof DatabaseFoundationError) {
@@ -42,6 +66,29 @@ export function appDataError(error: unknown): ErrorCode {
 }
 
 export function projectOperationError(error: unknown): ErrorCode {
+  if (
+    error instanceof DatabaseFoundationError &&
+    error.code === 'DATABASE_WRITE_FAILED' &&
+    errorChainIncludes(error, STORY_ANCHOR_SCOPE_MARKERS)
+  ) {
+    return 'COMMON_INVALID_INPUT_001';
+  }
+  if (error instanceof SearchToolsServiceError) {
+    if (error.code === 'SEARCH_REPLACE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'SEARCH_REPLACE_INVALID') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
+  if (error instanceof RhythmServiceError) {
+    if (error.code === 'RHYTHM_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'RHYTHM_INVALID' || error.code === 'RHYTHM_AUTHOR_REQUIRED') {
+      return 'COMMON_INVALID_INPUT_001';
+    }
+  }
+  if (error instanceof ValidationServiceError) {
+    if (error.code === 'VALIDATION_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'VALIDATION_INVALID') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_CONFLICT_003';
+  }
   if (error instanceof ContinuityServiceError) {
     if (error.code === 'CONTINUITY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'CONTINUITY_INVALID' || error.code === 'CONTINUITY_AUTHOR_REQUIRED') {
@@ -80,6 +127,12 @@ export function projectOperationError(error: unknown): ErrorCode {
         return 'BACKUP_VERIFY_FAILED_002';
       case 'BACKUP_SPACE_LOW':
         return 'BACKUP_SPACE_LOW_003';
+      case 'BACKUP_PROTECTED':
+        return 'BACKUP_LAST_VERIFIED_PROTECTED_004';
+      case 'BACKUP_CLEANUP_STALE':
+        return 'COMMON_CONFLICT_003';
+      case 'BACKUP_DELETE_FAILED':
+        return 'BACKUP_CREATE_FAILED_001';
       case 'BACKUP_NOT_FOUND':
       case 'RESTORE_SOURCE_INVALID':
         return 'RESTORE_SOURCE_INVALID_001';

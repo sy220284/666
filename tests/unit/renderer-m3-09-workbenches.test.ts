@@ -42,6 +42,7 @@ describe('M3 final React business workbenches', () => {
         app: {},
         settings: {},
         providers: {},
+        generation: {},
         project: {},
         recovery,
         textIo: {},
@@ -60,6 +61,9 @@ describe('M3 final React business workbenches', () => {
         continuity,
         narrativePlanning: {},
         stateProposal: {},
+        validation: {},
+        searchTools: {},
+        rhythm: {},
         candidateAction: {},
       }),
     );
@@ -166,7 +170,9 @@ describe('M3 final React business workbenches', () => {
     expect(narrative).toContain('relations');
     expect(narrative).toContain('dependencyMilestoneIds');
     expect(narrative).toContain('dependencyTimelineEventIds');
-    expect(dataTools).toContain("operation: 'manual-protection'");
+    expect(dataTools).toContain('createDailyBackup');
+    expect(dataTools).toContain('createNamedSnapshot');
+    expect(dataTools).toContain('previewCleanup');
     expect(dataTools).toContain('预览不会写入项目');
     expect(hook).toContain("BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'");
     expect(hook).toContain("outcome.state === 'cancelled'");
@@ -174,6 +180,23 @@ describe('M3 final React business workbenches', () => {
     expect(writing).toContain('candidateAction.preview');
     expect(writing).toContain('candidateAction.apply');
     expect(writing).toContain('candidateAction.undo');
+  });
+
+  it('publishes Version restore status through React state after the editor panel switch', async () => {
+    const [dataTools, writing] = await Promise.all([
+      readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/writing/writing-workbench.tsx'), 'utf8'),
+    ]);
+
+    expect(dataTools).toContain('data-create-checkpoint');
+    expect(dataTools).toContain('data-create-daily-backup');
+    expect(writing).toContain('statusNotice={restoreNotice}');
+    expect(writing).toContain('onStatusNoticeConsumed={consumeRestoreNotice}');
+    expect(writing).not.toContain('document.querySelector');
+    expect(writing).not.toContain('MutationObserver');
+    expect(writing.indexOf("onPanelChange('editor')")).toBeLessThan(
+      writing.indexOf('onRestoreNotice(VERSION_RESTORE_NOTICE)'),
+    );
   });
 
   it('keeps existing planning, Canon, import, recovery and Candidate scenarios in desktop regression', async () => {

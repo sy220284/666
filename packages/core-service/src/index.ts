@@ -29,6 +29,7 @@ export {
 export * from './provider-connection.js';
 export * from './recent-projects.js';
 export * from './project-workspace.js';
+export * from './project-continuation.js';
 export * from './project-structure.js';
 export * from './project-planning.js';
 export * from './scene-beat.js';
@@ -44,6 +45,13 @@ export * from './import-export.js';
 export * from './coordinated-import-export.js';
 export * from './migration-recovery.js';
 export * from './task-protocol.js';
+export * from './generation-run.js';
+export * from './generation-runtime.js';
+export * from './generation-source-resolver.js';
+export * from './validation.js';
+export * from './search-tools.js';
+export * from './rhythm.js';
+export * from './writing-metrics.js';
 export * from './window-preferences.js';
 export {
   SearchIndexServiceError,

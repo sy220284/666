@@ -272,16 +272,53 @@ Contracts
 
 ### 整体基线审计
 
-待在正式M4-04分支开始编码前填写。
+已完成。完整审计见：
+[`docs/test-evidence/M4-04/overall-implementation-plan.md`](../../test-evidence/M4-04/overall-implementation-plan.md)。
+
+审计结论：
+
+- 已完成底座可直接扩展，禁止重建Workspace、Draft Patch、Version、Candidate Apply、StateProposal、FTS、ConstraintPackage、Provider、ImportPlan、RecoveryService和Renderer状态源。
+- AI生产链的关键缺口为GenerationRun持久化、生产Prompt、结构化Skeleton、结果原子收口和完整桌面入口。
+- Candidate、TaskProtocol、StateProposal、Search、ImportExport、Recovery和Renderer均属于“已有基础、需要兼容扩展”，不得按新系统重写。
+- 当前正式分支已建立，但规划提交前没有产品代码增量；长期Draft PR在本规划提交推送后建立。
+- 实施按九个内部检查点连续推进，每个检查点完成受影响纵向链、自动化和代码复查后再进入下一项。
 
 ### 需求—代码—测试—P0映射
 
-待在正式M4-04分支开始编码前填写。
+已完成。完整矩阵见：
+[`docs/test-evidence/M4-04/requirements-code-test-p0-matrix.md`](../../test-evidence/M4-04/requirements-code-test-p0-matrix.md)。
+
+矩阵覆盖全部28项`In Progress`需求、对应用户路径、现有基线、代码落点、测试路由、P0编号和内部阶段。执行时遵循：
+
+- 后台或单层完成只更新阶段记录，不提前将需求标记为Implemented。
+- 用户纵向闭环、受影响回归和真实桌面入口完成后才可标记Implemented。
+- P0自动化、人工复查和统一Evidence绑定最终Head后才可标记Verified。
+- REQ-022继续保持Verified；真实Provider状态提取只作为兼容扩展接入。
 
 ### Migration、IPC与共享合同总计划
 
-待在正式M4-04分支开始编码前填写。
+已完成。完整计划见：
+[`docs/test-evidence/M4-04/migration-ipc-contract-plan.md`](../../test-evidence/M4-04/migration-ipc-contract-plan.md)。
+
+冻结方案：
+
+- 项目Schema从21依次追加`0022`—`0028`，分别承接项目续写设置、GenerationRun、结构化Candidate、StateProposalBatch、Validation、写作统计/节奏和三轨备份。
+- AppSettings复用现有`app_settings`键值表，通过版本化JSON兼容升级；当前不新增App SQL Migration。
+- GenerationResultRef兼容扩展现有TaskProtocol；保留旧字段读取，不建立第二套事件总线。
+- Search挂入现有Utility Project路由；DOCX复用CoordinatedImportExportService；三轨备份复用RecoveryService。
+- Generation IPC独立注册；Main只在请求内存中解析凭据并传递给Core，凭据值不进入项目库、日志、事件或Renderer。
+- Skeleton/Prose使用严格判别联合，Skeleton在Core层禁止Preview、Diff、Apply、Version和定稿。
 
 ### 风险、回滚与测试矩阵
 
-待在正式M4-04分支开始编码前填写。
+已完成。完整矩阵见：
+[`docs/test-evidence/M4-04/risk-rollback-test-matrix.md`](../../test-evidence/M4-04/risk-rollback-test-matrix.md)。
+
+执行硬门：
+
+- 每个Migration必须覆盖空库、Schema 21及受影响历史Fixture、故障注入、恢复点、外键和完整性检查。
+- 每个IPC必须完成Contracts、Core、Main、Preload、Renderer、Security和Electron E2E同阶段接线。
+- AI阶段必须验证Run终态与结果原子性、取消后零未来delta、partial显式裁决和重启真实状态。
+- 写入路径必须由Core决定`mutationOrigin`；Renderer提交来源值的成功次数为0。
+- 发布前执行任务卡全部静态、单元、集成、迁移、安全、E2E、Eval、性能、构建和跨平台矩阵。
+- 无法在真实目标平台验证的项目明确记录Blocked并进入发布判断，禁止用模拟结果替代。

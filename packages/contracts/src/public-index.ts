@@ -6,3 +6,6 @@ export * from './state-proposal.js';
 export * from './state-proposal-ipc.js';
 export * from './search-index.js';
 export * from './constraint-package.js';
+export * from './validation.js';
+export * from './search-tools.js';
+export * from './rhythm.js';

@@ -1,5 +1,10 @@
+import { appendFileSync, mkdirSync } from 'node:fs';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+const diagnosticDirectory = 'test-results/codemod';
+const diagnosticPath = `${diagnosticDirectory}/backup-failure-ledger.txt`;
+mkdirSync(diagnosticDirectory, { recursive: true });
 
 async function read(file) {
   return readFile(file, 'utf8');
@@ -11,7 +16,15 @@ async function write(file, content) {
 
 function replaceExact(content, before, after, label) {
   const count = content.split(before).length - 1;
-  if (count !== 1) throw new Error(`${label}: expected exactly one match, received ${count}`);
+  appendFileSync(diagnosticPath, `${label}: matches=${count}\n`, 'utf8');
+  if (count !== 1) {
+    appendFileSync(
+      diagnosticPath,
+      `FAILED ${label}\nEXPECTED START\n${before.slice(0, 800)}\nEXPECTED END\n`,
+      'utf8',
+    );
+    throw new Error(`${label}: expected exactly one match, received ${count}`);
+  }
   return content.replace(before, after);
 }
 

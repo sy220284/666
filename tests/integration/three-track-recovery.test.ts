@@ -46,6 +46,10 @@ describe('M4-04 three-track recovery center', () => {
       backupRootDirectory: backupRoot,
       clock,
     });
+    const recoveryReplica = new CheckpointAwareRecoveryService(workspace, {
+      backupRootDirectory: backupRoot,
+      clock,
+    });
     try {
       const project = await workspace.create(
         randomUUID(),
@@ -54,7 +58,7 @@ describe('M4-04 three-track recovery center', () => {
       );
       const [daily1, daily1Again] = await Promise.all([
         recovery.createDailyBackup(randomUUID(), { projectId: project.projectId }),
-        recovery.createDailyBackup(randomUUID(), { projectId: project.projectId }),
+        recoveryReplica.createDailyBackup(randomUUID(), { projectId: project.projectId }),
       ]);
       expect(daily1Again.backupId).toBe(daily1.backupId);
       expect(

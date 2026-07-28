@@ -6,6 +6,8 @@ import type {
   AppearancePreferences,
   CoreStatus,
   DiagnosticPreview,
+  ProviderConnectionTestResult,
+  ProviderSummary,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
@@ -31,6 +33,10 @@ export interface SettingsPageProps {
   readonly onSaveAppearance: (appearance: AppearancePreferences) => Promise<boolean>;
   readonly onRestartCore: () => void;
   readonly onOpenOnboarding: () => void;
+  readonly aiReady: boolean;
+  readonly onProvidersChanged: (providers: readonly ProviderSummary[]) => void;
+  readonly onProviderConnectionVerified: (result: ProviderConnectionTestResult) => void;
+  readonly onProviderInvalidated: (providerId: string) => void;
 }
 
 export function SettingsPage(props: SettingsPageProps) {
@@ -113,7 +119,14 @@ export function SettingsPage(props: SettingsPageProps) {
           {section === 'general' ? <GeneralSettings {...props} /> : null}
           {section === 'editor' ? <EditorSettings {...props} /> : null}
           {section === 'appearance' ? <AppearanceSettings {...props} /> : null}
-          {section === 'providers' ? <ProviderSettings bridge={props.bridge} /> : null}
+          {section === 'providers' ? (
+            <ProviderSettings
+              bridge={props.bridge}
+              onProviderConnectionVerified={props.onProviderConnectionVerified}
+              onProviderInvalidated={props.onProviderInvalidated}
+              onProvidersChanged={props.onProvidersChanged}
+            />
+          ) : null}
           {section === 'advanced' ? <AdvancedSettings {...props} /> : null}
         </div>
       </div>
@@ -190,9 +203,15 @@ function GeneralSettings(props: SettingsPageProps) {
         >
           <option value="autonomous">自主创作</option>
           <option value="hybrid">人机协作</option>
-          <option value="ai-first">AI优先</option>
+          <option disabled={!props.aiReady} value="ai-first">
+            AI优先{props.aiReady ? '' : '（请先完成连接测试）'}
+          </option>
         </select>
-        <small>只调整推荐入口和说明；项目数据、命令与安全边界保持一致。</small>
+        <small>
+          {props.aiReady
+            ? '当前会话已有Provider通过真实连接测试；只调整推荐入口和说明。'
+            : 'AI未验证不影响自主创作、搜索、备份、导入导出或恢复。'}
+        </small>
       </label>
       <footer>
         <button className="quiet-button" type="button" onClick={props.onOpenOnboarding}>

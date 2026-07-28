@@ -1,6 +1,6 @@
 # Changelog
 
-本文件记录WorldForge面向用户的版本变化。正式版本遵循语义化版本；未合并或尚未满足发布门禁的内容保留在`Unreleased`。
+本文件记录WorldForge面向用户的版本变化。正式版本遵循语义化版本；未合并或尚未满足当前交付门禁的内容保留在`Unreleased`。
 
 ## Unreleased
 
@@ -10,13 +10,16 @@
 - 新手/专业披露模式、统一工作台、沉浸写作、状态仲裁和上下文帮助。
 - Theme B水墨印章主题及Theme A/B的浅色、深色、护眼、高对比和减少动态支持。
 - 安全诊断包预览、显式确认、本地原子导出和SHA-256。
-- Windows、macOS、Linux原生Electron工件、ASAR完整性、生产Fuses和成品启动门禁。
+- Windows、macOS、Linux原生Electron自用便携工件、ASAR完整性、生产Fuses和成品启动门禁。
+- V1.0自用发布策略，明确仓库所有者本人使用边界。
 
 ### Changed
 
 - 生产Renderer改由固定`worldforge-app://renderer/`安全协议提供，不再使用高权限`file://`应用页面。
 - Performance永久门同时执行性能预算与AI输出协议基线。
 - Linux便携包使用用户命名空间sandbox启动器；CI受AppArmor限制时仅允许显式CI-only功能冒烟回退。
+- V1.0发布门槛收敛为三平台自用便携包：要求构建、ASAR/Fuse/Hash、启动、既有项目兼容和本地数据安全。
+- Windows代码签名、macOS签名/公证、系统安装器以及安装、升级、卸载生命周期不再属于M8-02完成条件。
 
 ### Security
 
@@ -26,7 +29,8 @@
 
 ### Known limitations
 
-- 当前工件未签名、未公证，尚无Windows/macOS/Linux安装、升级和卸载闭环。
-- Ubuntu 23.10+默认AppArmor环境仍需要正式安装流程配置生产sandbox；直接解压便携包不作为已支持发行路径。
-- 真实Provider/Model质量矩阵、物理混合DPI与多屏、人工读屏和输入法验收尚未完成。
-- 上述限制关闭前，V1.0发布状态为`禁止发布`。
+- 当前工件未签名、未公证，且不提供系统安装器；这是V1.0自用便携策略下的已知事实，不构成自用交付失败。
+- Windows或macOS可能显示未签名应用警告，由仓库所有者本人确认并放行。
+- Ubuntu 23.10+默认AppArmor环境仍需在实际自用主机记录可用启动方式；CI-only无沙箱回退不代表通用Linux支持。
+- 真实Provider/Model质量矩阵、物理混合DPI与多屏、人工读屏和输入法验收仍按任务实际资源推进。
+- 自用工件不得宣传或分发为已签名、已公证、具备安装生命周期保证或适合第三方公开使用的正式产品。

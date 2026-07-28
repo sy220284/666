@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M8-02",
+  "productHead": "025b11101651b5362f131e24e35f3338314478c2",
+  "sourceRun": 30340605091,
+  "artifact": {
+    "id": 8680890788,
+    "name": "performance-evidence",
+    "sha256": "959c0377a08cf6a147a5cf0f9ee0ed6950a4e63ef8c645ce206309b3dab852ac"
+  },
+  "generatedAt": "2026-07-28T08:01:19.349Z",
+  "environment": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v24.18.0",
+    "runner": "github-actions"
+  },
+  "metrics": [
+    {
+      "metric": "typing_latency_p95_ms",
+      "dataset": "2k-draft-local-statistics-path",
+      "samples": 60,
+      "result": 0.5544350000000122,
+      "budget": 50,
+      "unit": "ms",
+      "passed": true
+    },
+    {
+      "metric": "autosave_transaction_p95_ms",
+      "dataset": "2k-draft-sqlite-patch-transaction",
+      "samples": 40,
+      "result": 3.480007999999998,
+      "budget": 150,
+      "unit": "ms",
+      "passed": true
+    },
+    {
+      "metric": "candidate_diff_structure_p95_ms",
+      "dataset": "5000-character-chinese-diff",
+      "samples": 20,
+      "result": 0.39014899999983754,
+      "budget": 500,
+      "unit": "ms",
+      "passed": true
+    },
+    {
+      "metric": "candidate_diff_complete_p95_ms",
+      "dataset": "5000-character-chinese-diff",
+      "samples": 20,
+      "result": 3.394340999999713,
+      "budget": 1200,
+      "unit": "ms",
+      "passed": true
+    },
+    {
+      "metric": "fts_query_p95_ms",
+      "dataset": "1563300-character-project",
+      "samples": 30,
+      "result": 8.328361000000314,
+      "budget": 200,
+      "unit": "ms",
+      "passed": true
+    },
+    {
+      "metric": "fts_rebuild_ms",
+      "dataset": "1563300-character-project",
+      "samples": 1,
+      "result": 204.02252299999964,
+      "budget": 10000,
+      "unit": "ms",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Linux GitHub-hosted runner measurements are automated regression baselines, not physical Windows/macOS/Linux device acceptance.",
+    "The report does not cover renderer frame rate, physical mixed-DPI movement, long-duration memory growth, installation lifecycle, or real Provider latency."
+  ]
+}

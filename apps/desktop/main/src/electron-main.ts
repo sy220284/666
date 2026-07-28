@@ -13,7 +13,11 @@ import {
   utilityProcess,
   type MessagePortMain,
 } from 'electron';
-import type { AppearancePreferences, WindowPreferences } from '@worldforge/contracts';
+import type {
+  AppearancePreferences,
+  DiagnosticPreview,
+  WindowPreferences,
+} from '@worldforge/contracts';
 
 import { registerCandidatePreviewIpc } from './candidate-preview-ipc.js';
 import { registerContinuityIpc } from './continuity-ipc.js';
@@ -340,6 +344,27 @@ async function bootstrap(): Promise<void> {
     });
     return selection.canceled ? null : (selection.filePaths[0] ?? null);
   };
+  const confirmDiagnosticsExport = async (preview: DiagnosticPreview): Promise<boolean> => {
+    if (process.env.WORLDFORGE_E2E === '1') {
+      return process.env.WORLDFORGE_E2E_CONFIRM_DIAGNOSTICS === '1';
+    }
+    const window = mainWindow;
+    if (!window || window.isDestroyed()) return false;
+    const result = await dialog.showMessageBox(window, {
+      type: 'warning',
+      title: '确认导出安全诊断包',
+      message: '诊断包只包含下列本机运行元数据，不会自动上传。',
+      detail: [
+        `包含：${preview.manifest.included.join('、')}`,
+        `明确排除：${preview.manifest.excluded.join('、')}`,
+      ].join('\n'),
+      buttons: ['取消', '确认导出'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    return result.response === 1;
+  };
   const unregisterBaseIpc = registerIpcHandlers({
     ipcMain,
     supervisor,
@@ -369,6 +394,7 @@ async function bootstrap(): Promise<void> {
       chooseFile('选择TXT、Markdown或DOCX旧稿', '预览导入', 'WORLDFORGE_E2E_IMPORT_FILE'),
     chooseTextExportDirectory: () =>
       chooseDirectory('选择文本导出位置', '导出到这里', 'WORLDFORGE_E2E_TEXT_EXPORT_DIRECTORY'),
+    confirmDiagnosticsExport,
     chooseDiagnosticsDirectory: () =>
       chooseDirectory('选择诊断包导出位置', '导出诊断包', 'WORLDFORGE_E2E_DIAGNOSTICS_DIRECTORY'),
     chooseRecentLocation: async () => {

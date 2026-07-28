@@ -36,7 +36,7 @@ export interface BridgeRequestContext {
 }
 
 export interface BridgeRequestOptions {
-  readonly mode?: 'reject' | 'replace';
+  readonly mode?: 'reject' | 'replace' | 'share';
   readonly signal?: AbortSignal;
 }
 
@@ -131,6 +131,7 @@ function withGeneration<T>(
 export class BridgeRequestCoordinator {
   readonly #active = new Map<string, ActiveRequest>();
   readonly #latestOnly = new Map<string, LatestOnlyLane>();
+  readonly #shared = new Map<string, Promise<BridgeRequestOutcome<unknown>>>();
 
   isPending(requestKey: string): boolean {
     const laneKey = latestOnlyLaneKey(requestKey);
@@ -181,9 +182,26 @@ export class BridgeRequestCoordinator {
     operation: (context: BridgeRequestContext) => Promise<CommandResult<T>>,
     options: BridgeRequestOptions = {},
   ): Promise<BridgeRequestOutcome<T>> {
+    if (options.mode === 'share') return this.#runShared(requestKey, operation);
     const laneKey = options.mode === 'replace' ? latestOnlyLaneKey(requestKey) : null;
     if (laneKey) return this.#runLatestOnly(laneKey, operation, options);
     return this.#runImmediate(requestKey, operation, options);
+  }
+
+  #runShared<T>(
+    requestKey: string,
+    operation: (context: BridgeRequestContext) => Promise<CommandResult<T>>,
+  ): Promise<BridgeRequestOutcome<T>> {
+    const existing = this.#shared.get(requestKey);
+    if (existing) return existing as Promise<BridgeRequestOutcome<T>>;
+    const pending = this.#runImmediate(requestKey, operation);
+    const shared = pending as Promise<BridgeRequestOutcome<unknown>>;
+    this.#shared.set(requestKey, shared);
+    const clear = (): void => {
+      if (this.#shared.get(requestKey) === shared) this.#shared.delete(requestKey);
+    };
+    void pending.then(clear, clear);
+    return pending;
   }
 
   #runLatestOnly<T>(

@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -207,6 +207,7 @@ test('completes atomic onboarding and exports only the confirmed diagnostic allo
   ]);
   const application = await launch(userDataPath, undefined, {
     WORLDFORGE_E2E_CREATE_PARENT: createParent,
+    WORLDFORGE_E2E_CONFIRM_DIAGNOSTICS: '1',
     WORLDFORGE_E2E_DIAGNOSTICS_DIRECTORY: diagnosticsDirectory,
   });
   try {
@@ -425,7 +426,9 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-active-project-name]')).toHaveText('夜航');
-    await expect(page.locator('[data-active-project-path]')).toHaveText(sourceWorkspace);
+    await expect(page.locator('[data-active-project-path]')).toHaveText(
+      await realpath(sourceWorkspace),
+    );
     expect(await readdir(sourceWorkspace)).toEqual(
       expect.arrayContaining(['manifest.json', 'project.sqlite']),
     );
@@ -484,8 +487,10 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await expect(page.locator('[data-chapter-title="第二章"]')).toBeVisible();
 
     await page.locator('[data-move-project]').click();
-    await expect(page.locator('[data-active-project-path]')).toHaveText(movedWorkspace);
     await expect(page.locator('[data-project-operation-status]')).toContainText('校验通过');
+    await expect(page.locator('[data-active-project-path]')).toHaveText(
+      await realpath(movedWorkspace),
+    );
     expect(await readdir(moveParent)).toContain('夜航.worldforge');
     expect(await readdir(createParent)).not.toContain('夜航.worldforge');
     await page.locator('[data-close-project]').click();
@@ -586,7 +591,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     expect(await blocks.nth(1).getAttribute('data-logical-block-id')).toBeNull();
     expect(await blocks.nth(1).getAttribute('data-client-block-id')).toMatch(/^temporary-/u);
     await page.keyboard.type('风起。');
-    await page.keyboard.press('Home');
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowLeft' : 'Home');
     await page.keyboard.press('Backspace');
     await expect(blocks).toHaveCount(1);
     await expect(blocks.first()).toHaveAttribute('data-logical-block-id', originalLogicalId!);
@@ -1192,5 +1197,125 @@ test('creates a verified recovery point, restores a new project and exports a Ve
     ).toHaveLength(1);
   } finally {
     await closeGracefully(application);
+  }
+});
+
+test('records Renderer animation-frame budget during sustained writing scroll', async () => {
+  test.setTimeout(120_000);
+  const userDataPath = await temporaryUserData();
+  const createParent = path.join(userDataPath, 'renderer-performance-projects');
+  await mkdir(createParent, { recursive: true });
+  const application = await launch(userDataPath, undefined, {
+    WORLDFORGE_E2E_CREATE_PARENT: createParent,
+  });
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-create-project]').click();
+    await page.locator('[data-project-name]').fill('Renderer帧率');
+    await page.locator('[data-project-channel]').fill('长篇');
+    await page.locator('[data-confirm-create-project]').click();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open', {
+      timeout: 20_000,
+    });
+    const seeded = await page.evaluate(async () => {
+      const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
+        .worldforge;
+      const active = await bridge.project.getActive();
+      if (!active.ok || !active.data) throw new Error('RENDERER_PERF_ACTIVE_PROJECT_MISSING');
+      const structure = await bridge.planning.listStructure(active.data.projectId);
+      if (!structure.ok) throw new Error(structure.error.code);
+      const chapter = structure.data.volumes[0]?.chapters[0];
+      if (!chapter) throw new Error('RENDERER_PERF_CHAPTER_MISSING');
+      const opened = await bridge.draft.open({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+      });
+      if (!opened.ok) throw new Error(opened.error.code);
+      const initial = opened.data.blocks[0];
+      if (!initial?.contentHash) throw new Error('RENDERER_PERF_INITIAL_BLOCK_MISSING');
+      const paragraphs = Array.from(
+        { length: 96 },
+        (_value, index) =>
+          `第${String(index + 1).padStart(3, '0')}段：长篇写作滚动性能基线。${'灯火与长街。'.repeat(8)}`,
+      );
+      const operations: Parameters<WorldforgeBridge['draft']['applyPatch']>[0]['operations'] = [
+        {
+          type: 'update',
+          logicalBlockId: initial.logicalBlockId,
+          expectedHash: initial.contentHash,
+          content: paragraphs[0]!,
+        },
+        ...paragraphs.slice(1).map((content) => ({
+          type: 'insert' as const,
+          afterLogicalBlockId: initial.logicalBlockId,
+          block: { blockType: 'paragraph' as const, content, attributes: {} },
+        })),
+      ];
+      const saved = await bridge.draft.applyPatch({
+        projectId: active.data.projectId,
+        chapterId: chapter.id,
+        draftId: opened.data.draftId,
+        baseRevision: opened.data.revision,
+        operations,
+      });
+      if (!saved.ok) throw new Error(saved.error.code);
+      return { blockCount: saved.data.blocks.length };
+    });
+    expect(seeded).toEqual({ blockCount: 96 });
+    await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
+    const editor = page.locator('[data-draft-content]');
+    await expect(editor.locator(':scope > [data-block-type]')).toHaveCount(96, {
+      timeout: 20_000,
+    });
+    await application.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (!window) throw new Error('RENDERER_PERF_WINDOW_MISSING');
+      window.webContents.setBackgroundThrottling(false);
+      window.show();
+      window.focus();
+    });
+    await page.bringToFront();
+    const metrics = await page.evaluate(async () => {
+      const candidates = [
+        document.scrollingElement,
+        ...Array.from(document.querySelectorAll<HTMLElement>('*')),
+      ].filter((element): element is HTMLElement =>
+        Boolean(element && element.scrollHeight - element.clientHeight > 200),
+      );
+      const scroller = candidates.sort(
+        (left, right) =>
+          right.scrollHeight - right.clientHeight - (left.scrollHeight - left.clientHeight),
+      )[0];
+      if (!scroller) throw new Error('RENDERER_SCROLL_CONTAINER_MISSING');
+      const startedAt = performance.now();
+      let frames = 0;
+      return await new Promise<{ fps: number; durationMs: number; frames: number }>((resolve) => {
+        const step = (timestamp: number): void => {
+          frames += 1;
+          const elapsed = timestamp - startedAt;
+          const maximum = Math.max(1, scroller.scrollHeight - scroller.clientHeight);
+          const progress = Math.min(1, elapsed / 3_000);
+          scroller.scrollTop =
+            progress < 0.5 ? maximum * progress * 2 : maximum * (2 - progress * 2);
+          if (elapsed < 3_000) {
+            requestAnimationFrame(step);
+            return;
+          }
+          resolve({ fps: (frames * 1_000) / elapsed, durationMs: elapsed, frames });
+        };
+        requestAnimationFrame(step);
+      });
+    });
+    expect(metrics.fps).toBeGreaterThanOrEqual(50);
+    const output = path.join(process.cwd(), 'test-results/electron/m8-renderer-performance.json');
+    await mkdir(path.dirname(output), { recursive: true });
+    await writeFile(
+      output,
+      `${JSON.stringify({ schemaVersion: 1, taskId: 'M8-02', ...metrics }, null, 2)}\n`,
+      'utf8',
+    );
+  } finally {
+    await application.close();
   }
 });

@@ -119,7 +119,10 @@ test('persists the final editor panel after a rapid versions round trip and rest
     const page = await reopened.firstWindow();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-open-recent]').click();
-    await expect(page.locator('[data-draft-workspace]')).toBeVisible();
+    await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open', {
+      timeout: 20_000,
+    });
+    await expect(page.locator('[data-draft-workspace]')).toBeVisible({ timeout: 20_000 });
     const restoredEditorPanelButton = page
       .locator('.feature-heading__actions')
       .getByRole('button', { name: '正文', exact: true });

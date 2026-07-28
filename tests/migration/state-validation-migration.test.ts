@@ -74,7 +74,8 @@ async function createSchema27Fixture(state: HistoricalFixtureState): Promise<Sch
   const database = new DatabaseSync(databasePath, { readBigInts: true });
   try {
     for (const trigger of schema28Triggers) database.exec(`DROP TRIGGER ${trigger}`);
-    database.prepare('DELETE FROM schema_migrations WHERE version = 28').run();
+    database.exec('DROP TABLE IF EXISTS backup_failures');
+    database.prepare('DELETE FROM schema_migrations WHERE version IN (28, 29)').run();
     database.prepare('UPDATE projects SET schema_version = 27').run();
     if (state === 'dirty-todo') {
       database
@@ -176,7 +177,7 @@ async function expectDirtySchema27Rejected(
       readOnlyReason: 'migration-failed',
     });
     expect(await readdir(path.join(fixture.recoveryRoot, fixture.projectId))).toEqual([
-      expect.stringMatching(/^project-v27-to-v28-.*\.sqlite$/u),
+      expect.stringMatching(/^project-v27-to-v29-.*\.sqlite$/u),
     ]);
   } finally {
     await workspace.shutdown();
@@ -227,7 +228,7 @@ describe('M4-04 state and validation migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 28n,
+        schema_version: 29n,
       });
       for (const table of [
         'state_proposal_batches',
@@ -291,7 +292,7 @@ describe('M4-04 state and validation migration', () => {
       const opened = await workspace.open(randomUUID(), { workspacePath: fixture.workspacePath });
       expect(opened).toMatchObject({
         projectId: fixture.projectId,
-        schemaVersion: 28,
+        schemaVersion: 29,
         databaseMode: 'read-write',
         compatibility: 'migrated',
       });
@@ -301,7 +302,7 @@ describe('M4-04 state and validation migration', () => {
     }
 
     expect(inspectSchema28(fixture.databasePath)).toEqual({
-      schemaVersion: 28n,
+      schemaVersion: 29n,
       triggerCount: 4n,
       dirtyTodoCount: 0n,
       dirtyCommentCount: 0n,

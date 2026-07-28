@@ -28,6 +28,12 @@ export function resolveElectronE2EInvocation({
   return { command: pnpmCommand, arguments: playwrightArguments };
 }
 
+export function resolveElectronE2ESpawnOptions(platform) {
+  return {
+    shell: platform === 'win32',
+  };
+}
+
 function hasXvfb() {
   const probe = spawnSync('xvfb-run', ['--help'], { stdio: 'ignore' });
   return !probe.error && probe.status === 0;
@@ -71,9 +77,13 @@ function run() {
       WORLDFORGE_E2E_OUTPUT_DIR: process.env.WORLDFORGE_E2E_OUTPUT_DIR ?? 'test-results/electron',
     },
     stdio: 'inherit',
+    ...resolveElectronE2ESpawnOptions(process.platform),
   });
   if (result.error) {
-    process.stderr.write('E2E_RUNNER_FAILED: Playwright Electron could not be started.\n');
+    const code = 'code' in result.error ? ` (${String(result.error.code)})` : '';
+    process.stderr.write(
+      `E2E_RUNNER_FAILED: Playwright Electron could not be started${code}: ${result.error.message}\n`,
+    );
     process.exitCode = 1;
     return;
   }

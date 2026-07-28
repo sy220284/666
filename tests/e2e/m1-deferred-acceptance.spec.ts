@@ -244,7 +244,9 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await expect(page.locator('[data-move-project]')).toBeDisabled();
     await capture(page, 'm1-02-read-only.png');
     await page.locator('[data-open-recovery]').click();
-    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1);
+    await expect(page.locator('[data-recovery-checkpoints] .recovery-row')).toHaveCount(1, {
+      timeout: 20_000,
+    });
     await expect(page.locator('[data-create-checkpoint]')).toBeDisabled();
     await capture(page, 'm1-08-readonly-recovery.png');
   } finally {

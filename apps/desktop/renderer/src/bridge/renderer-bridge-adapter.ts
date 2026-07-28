@@ -68,7 +68,7 @@ interface CandidateBridgePort {
   readonly createFixture: (
     input: CandidateCreateFixtureInput,
   ) => Promise<CommandResult<CandidateDocument>>;
-  readonly list: (projectId: string, chapterId: string) => Promise<CommandResult<CandidateList>>;
+  readonly list: (projectId: string, chapterId?: string) => Promise<CommandResult<CandidateList>>;
   readonly get: (input: CandidateGetInput) => Promise<CommandResult<CandidateDocument>>;
   readonly discard: (input: CandidateDiscardInput) => Promise<CommandResult<CandidateSummary>>;
   readonly editSkeleton: (
@@ -352,7 +352,10 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
   return (
     keys.length > 0 &&
     keys.every((key) => key === 'mode' || key === 'signal') &&
-    (!('mode' in value) || value.mode === 'reject' || value.mode === 'replace')
+    (!('mode' in value) ||
+      value.mode === 'reject' ||
+      value.mode === 'replace' ||
+      value.mode === 'share')
   );
 }
 

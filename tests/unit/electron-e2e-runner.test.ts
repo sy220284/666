@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveElectronE2EInvocation } from '../../scripts/run-electron-e2e.mjs';
+import {
+  resolveElectronE2EInvocation,
+  resolveElectronE2ESpawnOptions,
+} from '../../scripts/run-electron-e2e.mjs';
 
 describe('Electron desktop E2E launcher', () => {
   it('runs Playwright against the Electron-only configuration', () => {
@@ -15,6 +18,12 @@ describe('Electron desktop E2E launcher', () => {
       command: 'pnpm',
       arguments: ['exec', 'playwright', 'test', '--config', 'tests/e2e/playwright.config.ts'],
     });
+  });
+
+  it('uses the command shell only for Windows batch launchers', () => {
+    expect(resolveElectronE2ESpawnOptions('win32')).toEqual({ shell: true });
+    expect(resolveElectronE2ESpawnOptions('linux')).toEqual({ shell: false });
+    expect(resolveElectronE2ESpawnOptions('darwin')).toEqual({ shell: false });
   });
 
   it('wraps headless Linux in Xvfb and fails clearly when Xvfb is absent', () => {

@@ -1,12 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import {
-  latestChecksByName,
-  modeAwareChecksState,
-  nextPagePath,
-  requiredCheckState,
-} from './automerge.mjs';
+import { latestChecksByName, nextPagePath, requiredCheckState } from './automerge.mjs';
 
 const githubFetch = globalThis.fetch;
 
@@ -74,7 +69,6 @@ export function validateMainVerification({
 export async function waitForSourceReadyChecks({
   requiredChecks,
   loadCheckRuns,
-  loadModeState,
   attempts = 90,
   initialDelayMs = 5_000,
   delayMs = 10_000,
@@ -84,8 +78,8 @@ export async function waitForSourceReadyChecks({
   if (!Array.isArray(requiredChecks) || requiredChecks.length === 0) {
     throw new Error('Required checks are missing');
   }
-  if (typeof loadCheckRuns !== 'function' || typeof loadModeState !== 'function') {
-    throw new Error('Source check loaders are required');
+  if (typeof loadCheckRuns !== 'function') {
+    throw new Error('Source check loader is required');
   }
   if (!Number.isSafeInteger(attempts) || attempts <= 0) {
     throw new Error('Source check attempts must be a positive integer');
@@ -94,21 +88,20 @@ export async function waitForSourceReadyChecks({
   if (initialDelayMs > 0) await sleep(initialDelayMs);
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const [checkRuns, modeState] = await Promise.all([loadCheckRuns(), loadModeState()]);
+    const checkRuns = await loadCheckRuns();
     const checkState = requiredCheckState(checkRuns, requiredChecks);
-    const failed = [...new Set([...checkState.failed, ...(modeState.failed ?? [])])];
-    if (failed.length > 0) {
-      throw new Error(`Source PR permanent checks failed: ${failed.join(', ')}`);
+    if (checkState.failed.length > 0) {
+      throw new Error(`Source PR permanent checks failed: ${checkState.failed.join(', ')}`);
     }
+    if (checkState.ready) return checkRuns;
 
-    if (checkState.ready && modeState.ready) return checkRuns;
-
-    const pending = [...new Set([...checkState.pending, ...(modeState.pending ?? [])])];
     if (attempt === attempts) {
-      throw new Error(`Timed out waiting for source PR permanent checks: ${pending.join(', ')}`);
+      throw new Error(
+        `Timed out waiting for source PR permanent checks: ${checkState.pending.join(', ')}`,
+      );
     }
     if (attempt === 1 || attempt % 6 === 0) {
-      log(`Waiting for source PR permanent checks: ${pending.join(', ')}`);
+      log(`Waiting for source PR permanent checks: ${checkState.pending.join(', ')}`);
     }
     await sleep(delayMs);
   }
@@ -191,7 +184,6 @@ async function checkMain() {
         `/repos/${owner}/${repo}/commits/${sourceHeadSha}/check-runs?per_page=100`,
         'check_runs',
       ),
-    loadModeState: () => modeAwareChecksState(owner, repo, sourceHeadSha),
   });
   const pull = await api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`);
 

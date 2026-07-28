@@ -616,15 +616,18 @@ export function AppShell({ bridge }: AppShellProps) {
       return;
     }
     setPendingKey(`project.close:${projectId}`);
-    const outcome = await bridge.project.close(projectId);
-    setPendingKey(null);
-    if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('项目关闭失败', outcome));
-      return;
+    try {
+      const outcome = await bridge.project.close(projectId);
+      if (outcome.state !== 'success') {
+        setFailure(failureFromOutcome('项目关闭失败', outcome));
+        return;
+      }
+      await projectChanged(null, '项目已安全关闭。');
+      dispatch({ type: 'reset-project-context' });
+      dispatch({ type: 'navigate', route: 'home' });
+    } finally {
+      setPendingKey(null);
     }
-    await projectChanged(null, '项目已安全关闭。');
-    dispatch({ type: 'reset-project-context' });
-    dispatch({ type: 'navigate', route: 'home' });
   };
 
   const moveProject = async (projectId: string): Promise<void> => {

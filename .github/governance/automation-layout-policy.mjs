@@ -27,6 +27,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'automerge-base-gate.mjs',
   'deferred-task-closure.mjs',
   'main-protection.json',
+  'main-verification-wait.self-test.mjs',
   'post-merge-verification.mjs',
   'required-checks.json',
   'secret-scan-allowlist.json',

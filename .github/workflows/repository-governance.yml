@@ -46,6 +46,8 @@ jobs:
         run: node .github/governance/automation-layout-policy.mjs
       - name: Self-test deferred task closure
         run: node .github/governance/deferred-task-closure.mjs --self-test
+      - name: Self-test main verification wait behavior
+        run: node .github/governance/main-verification-wait.self-test.mjs
       - name: Audit complete native main-branch protection
         if: ${{ github.event_name != 'pull_request' }}
         env:

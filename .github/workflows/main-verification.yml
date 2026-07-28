@@ -33,7 +33,7 @@ jobs:
   validate-main:
     name: validate-main
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       SOURCE_PR: ${{ inputs.source_pr }}

@@ -1,0 +1,66 @@
+name: M8-02 Event Loop Window Fix
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - scripts/m8-02-event-loop-window-fix.mjs
+      - .github/workflows/m8-02-event-loop-window-fix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-02-event-loop-window-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-commit:
+    if: github.head_ref == 'work/m8-02-performance-e2e-ai-eval'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      WORLDFORGE_M8_PERF_OUTPUT: test-results/performance/m8-release-performance.json
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply deterministic measurement-window patch
+        run: node scripts/m8-02-event-loop-window-fix.mjs
+      - name: Format and static verification
+        run: |
+          pnpm exec prettier --write tests/performance/m8-release-evidence.test.ts
+          pnpm lint
+          pnpm typecheck
+      - name: Run complete performance suite three times
+        run: |
+          set -o pipefail
+          mkdir -p test-results/performance/runs
+          for attempt in 1 2 3; do
+            echo "=== performance attempt ${attempt} ==="
+            pnpm test:perf 2>&1 | tee "test-results/performance/runs/attempt-${attempt}.log"
+            cp test-results/performance/m8-release-performance.json "test-results/performance/runs/attempt-${attempt}.json"
+          done
+      - name: Commit verified measurement correction
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tests/performance/m8-release-evidence.test.ts
+          git diff --cached --check
+          git commit -m '测试(M8-02)：隔离Core编辑事件循环测量窗口'
+          git push origin HEAD:${{ github.head_ref }}
+      - name: Upload repeated performance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: m8-02-event-loop-window-evidence
+          path: test-results/performance/
+          if-no-files-found: warn

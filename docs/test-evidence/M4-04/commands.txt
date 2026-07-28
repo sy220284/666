@@ -1,20 +1,8 @@
-# M4-04 C0—C7最终收口
+# M4-04 C0—C7与C1硬化实施记录
 
 # C0—C7验收基线产品源
 git rev-parse HEAD
 # 9131a6db1f43d97e52aaa867010a316998f860fb
-
-# main同步
-git merge-base --is-ancestor 12404557d4fbe6acb7061e80ab7990cfe0100a58 9131a6db1f43d97e52aaa867010a316998f860fb
-# 成功：产品分支已不落后main
-
-# C5定向实现与测试
-pnpm exec prettier --check packages/core-service/src/project-migration-preflight.ts packages/core-service/src/database/migrations.ts tests/migration/state-validation-migration.test.ts
-pnpm check:boundaries
-pnpm lint
-pnpm typecheck
-pnpm exec vitest run tests/migration/state-validation-migration.test.ts
-pnpm test:migration
 
 # C0—C7基线Quality #2198
 pnpm install --frozen-lockfile --prefer-offline
@@ -33,28 +21,12 @@ pnpm package
 pnpm test:e2e
 # 结论：全部成功
 
-# C0—C7基线Security #1988
-pnpm audit --audit-level=high
-pnpm test:security
-node scripts/scan-secrets.mjs --history
-# 结论：Dependency Audit、Application Security、全Git历史Secret Scan全部成功
-
-# C0—C7基线Performance #1954
-pnpm test:perf
-# 结论：成功
-
-# C0—C7基线其他永久门禁
+# C0—C7基线永久门
+# Security #1988：成功
+# Performance #1954：成功
 # Evidence #1917：成功
 # PR Policy #1946：成功
 # Task Governance #2167：成功
-
-# C5迁移场景
-# 1. 当前Schema 28严格表与触发器：通过
-# 2. 干净Schema 27→28：通过
-# 3. 历史非法StoryTodo：升级前拒绝，Schema/Manifest保持27，恢复点存在
-# 4. 历史非法StoryComment：升级前拒绝，Schema/Manifest保持27，恢复点存在
-# 5. 四个Schema 28触发器在失败路径中不落地
-# 6. 非法历史记录不被静默删除或改写
 
 # C1继续写作并发硬化产品提交
 git show --stat --oneline 42d7a682e3e1a26942fa9f4159d6123a8071350f
@@ -69,16 +41,46 @@ pnpm typecheck
 pnpm build
 pnpm package
 pnpm test:e2e
-# Quality #2225：全部成功；Electron E2E 27/27通过，包含继续写作回切数据库与重启恢复用例。
+# Quality #2225：成功；Electron E2E 27/27通过
 # Security #2015：成功
 # Performance #1981：成功
 # Evidence #1944：成功
 # PR Policy #1973：成功
 # Task Governance #2194：成功
 
-# 当前结论
-# C0—C7验收基线工程实现与自动化验收通过。
-# C1继续写作并发硬化自动化验收通过。
-# Evidence Manifest仍绑定C0—C7基线；最终Ready前重新绑定C8完成后的最终产品源。
-# C8尚未开始。
-# M4-04继续保持Draft/In Progress，待C8、真实平台/P0人工验收和最终Evidence。
+# 阶段Evidence Head
+git show --stat --oneline 19b2238ac488ca7c656798c4211d2590e31f4430
+# Quality #2226：成功
+# Security #2016：成功
+# Performance #1982：成功
+# Evidence #1945：成功
+# PR Policy #1974：成功
+# Task Governance #2195：成功
+
+# 产品首次合并
+git show --stat --oneline e7168bb2bbb4f02dc596d65d126dec62dd720f2c
+# 首次main-verification：失败
+# 原因：PR #216在Ready模式Task Governance和Quality收口前被提前合并
+
+# C8延期治理规划PR #220
+git show --stat --oneline bb23ae3d2bfd0623fcd963b7a9611ddb3f02b2c9
+# Ready永久门：
+# Quality #2230：成功
+# Security #2020：成功
+# Performance #1986：成功
+# Evidence #1949：成功
+# PR Policy #1978：成功
+# Task Governance #2199：成功
+
+# 治理规划合并main
+git show --stat --oneline 2b302b4630ce1e9e5210aa93b944cef9c4525b58
+# main-verification run 30323690925：成功
+
+# Implementation Hold要求
+# M4-04任务卡：Implemented
+# TASK_INDEX：M4-04 Implemented
+# ACTIVE_TASK：M4-04 IMPLEMENTED
+# deferredVerification：记录M4-04与e7168bb2
+# lastImplementedTask.nextTaskId：M8-02
+# activationDeferred=true
+# M8-02：Planned

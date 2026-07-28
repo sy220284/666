@@ -43,6 +43,10 @@ jobs:
           sed -i 's/  type ProviderSummary,/  ProviderSummary,/' scripts/m8-02-renderer-closure-codemod.mjs
       - name: Apply deterministic codemod
         run: node scripts/m8-02-renderer-closure-codemod.mjs
+      - name: Correct generated AppShell type imports
+        run: |
+          sed -i 's/^  ProviderConnectionTestResult,$/  type ProviderConnectionTestResult,/' apps/desktop/renderer/src/app/app-shell-m3.tsx
+          sed -i 's/^  ProviderSummary,$/  type ProviderSummary,/' apps/desktop/renderer/src/app/app-shell-m3.tsx
       - name: Install workspace dependencies
         run: |
           corepack enable

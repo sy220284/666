@@ -7,6 +7,7 @@ on:
       - scripts/m8-02-final-closure-codemod.mjs
       - scripts/m8-02-final-closure-fix.mjs
       - scripts/m8-02-e2e-diagnostic-fix.mjs
+      - scripts/m8-02-shared-recovery-codemod.mjs
       - .github/workflows/m8-02-final-closure-codemod.yml
 
 permissions:
@@ -40,11 +41,17 @@ jobs:
           node scripts/m8-02-final-closure-codemod.mjs
           node scripts/m8-02-final-closure-fix.mjs
           node scripts/m8-02-e2e-diagnostic-fix.mjs
+          node scripts/m8-02-shared-recovery-codemod.mjs
       - name: Format changed source and tests
         run: >-
           pnpm exec prettier --write
+          apps/desktop/renderer/src/bridge/request-lifecycle.ts
+          apps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts
+          apps/desktop/renderer/src/runtime/workspace-attention.ts
+          apps/desktop/renderer/src/features/data-tools/data-tools-workbench.tsx
           packages/core-service/src/docx-transfer.ts
           packages/core-service/src/recovery.ts
+          tests/unit/bridge-request-sharing.test.ts
           tests/integration/docx-transfer.test.ts
           tests/integration/three-track-recovery.test.ts
           tests/performance/m8-release-evidence.test.ts
@@ -52,12 +59,14 @@ jobs:
           tests/e2e/continuation-panel-race.spec.ts
           tests/e2e/m1-deferred-acceptance.spec.ts
           tests/e2e/unreadable-project-recovery.spec.ts
-      - name: Static verification
+      - name: Static and shared-query verification
         run: |
           set -o pipefail
           {
             pnpm lint
             pnpm typecheck
+            pnpm test:prepare
+            pnpm exec vitest run tests/unit/bridge-request-sharing.test.ts
           } 2>&1 | tee m8-static.log
       - name: Build Electron workspaces
         run: pnpm build

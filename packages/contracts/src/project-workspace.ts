@@ -59,11 +59,70 @@ export const PROJECT_WORKSPACE_COMMANDS = {
 export const ProjectNameSchema = z.string().trim().min(1).max(240);
 export const ProjectChannelSchema = z.string().trim().min(1).max(120);
 
-export const ProjectCreateInputSchema = z.strictObject({
-  name: ProjectNameSchema,
-  channel: ProjectChannelSchema,
-  initialStructure: z.enum(['starter', 'blank']).optional(),
-});
+export const ProjectOnboardingContentSchema = z
+  .strictObject({
+    brief: z
+      .strictObject({
+        concept: z.string().trim().max(4_000),
+        readingPromise: z.string().trim().max(4_000),
+        protagonistGoal: z.string().trim().max(4_000),
+        coreConflict: z.string().trim().max(4_000),
+        endingIntent: z.string().trim().max(4_000),
+        required: z.array(z.string().trim().min(1).max(500)).max(100),
+        forbidden: z.array(z.string().trim().min(1).max(500)).max(100),
+      })
+      .nullable(),
+    protagonist: z
+      .strictObject({
+        name: z.string().trim().min(1).max(240),
+        identity: z.string().trim().max(500),
+        goal: z.string().trim().max(4_000),
+        boundary: z.string().trim().max(500),
+      })
+      .nullable(),
+    firstChapter: z
+      .strictObject({
+        title: z.string().trim().min(1).max(240),
+        targetWordMin: z.number().int().min(0).max(1_000_000).nullable(),
+        targetWordMax: z.number().int().min(0).max(1_000_000).nullable(),
+      })
+      .nullable(),
+    sceneGoals: z.array(z.string().trim().min(1).max(4_000)).max(20),
+  })
+  .superRefine((content, context) => {
+    const minimum = content.firstChapter?.targetWordMin;
+    const maximum = content.firstChapter?.targetWordMax;
+    if (minimum !== null && minimum !== undefined && maximum !== null && maximum !== undefined) {
+      if (minimum > maximum) {
+        context.addIssue({
+          code: 'custom',
+          path: ['firstChapter', 'targetWordMin'],
+          message: 'The first chapter minimum word target must not exceed the maximum.',
+        });
+      }
+    }
+  });
+
+export const ProjectCreateInputSchema = z
+  .strictObject({
+    name: ProjectNameSchema,
+    channel: ProjectChannelSchema,
+    initialStructure: z.enum(['starter', 'blank']).optional(),
+    onboarding: ProjectOnboardingContentSchema.optional(),
+  })
+  .superRefine((input, context) => {
+    if (
+      input.initialStructure === 'blank' &&
+      input.onboarding &&
+      (input.onboarding.firstChapter !== null || input.onboarding.sceneGoals.length > 0)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['onboarding'],
+        message: 'Blank projects cannot contain first-chapter onboarding content.',
+      });
+    }
+  });
 
 export const ProjectWorkspaceManifestSchema = z.strictObject({
   format: z.literal('worldforge-project'),

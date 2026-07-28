@@ -337,6 +337,8 @@ async function bootstrap(): Promise<void> {
       chooseFile('选择TXT、Markdown或DOCX旧稿', '预览导入', 'WORLDFORGE_E2E_IMPORT_FILE'),
     chooseTextExportDirectory: () =>
       chooseDirectory('选择文本导出位置', '导出到这里', 'WORLDFORGE_E2E_TEXT_EXPORT_DIRECTORY'),
+    chooseDiagnosticsDirectory: () =>
+      chooseDirectory('选择诊断包导出位置', '导出诊断包', 'WORLDFORGE_E2E_DIAGNOSTICS_DIRECTORY'),
     chooseRecentLocation: async () => {
       const window = mainWindow;
       if (!window) return null;

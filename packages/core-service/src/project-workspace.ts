@@ -42,6 +42,94 @@ import type { RecentProjectsRepository } from './recent-projects.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
+function initializeOnboardingContent(
+  connection: DatabaseSync,
+  projectId: string,
+  chapterId: string | null,
+  input: ProjectCreateInput['onboarding'],
+  createdAt: string,
+  idFactory: () => string,
+): void {
+  if (!input) return;
+
+  if (input.brief) {
+    connection
+      .prepare(
+        `INSERT INTO project_briefs(
+           id, project_id, concept, reading_promise, protagonist_goal, core_conflict,
+           ending_intent, required_json, forbidden_json, updated_at
+         ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        idFactory(),
+        projectId,
+        input.brief.concept,
+        input.brief.readingPromise,
+        input.brief.protagonistGoal,
+        input.brief.coreConflict,
+        input.brief.endingIntent,
+        JSON.stringify(input.brief.required),
+        JSON.stringify(input.brief.forbidden),
+        createdAt,
+      );
+  }
+
+  if (input.protagonist) {
+    const summary = [input.protagonist.identity, input.protagonist.goal, input.protagonist.boundary]
+      .filter(Boolean)
+      .join('；');
+    connection
+      .prepare(
+        `INSERT INTO entities(
+           id, project_id, entity_type, name, aliases_json, summary, status,
+           archived_at, created_at, updated_at
+         ) VALUES(?, ?, 'character', ?, '[]', ?, 'active', NULL, ?, ?)`,
+      )
+      .run(idFactory(), projectId, input.protagonist.name, summary, createdAt, createdAt);
+  }
+
+  if (!chapterId) return;
+  if (input.firstChapter) {
+    connection
+      .prepare(
+        `UPDATE chapters
+            SET title = ?, target_word_min = ?, target_word_max = ?
+          WHERE id = ?`,
+      )
+      .run(
+        input.firstChapter.title,
+        input.firstChapter.targetWordMin,
+        input.firstChapter.targetWordMax,
+        chapterId,
+      );
+  }
+
+  if (input.sceneGoals.length === 0) return;
+  const basePercent = Math.floor(100 / input.sceneGoals.length);
+  for (const [index, goal] of input.sceneGoals.entries()) {
+    const last = index === input.sceneGoals.length - 1;
+    connection
+      .prepare(
+        `INSERT INTO scene_beats(
+           id, project_id, chapter_id, plot_node_id, title, goal, core_conflict,
+           expected_result, beat_type, word_target_percent, is_required, order_key,
+           character_ids_json, location_ids_json, deleted_at, updated_at
+         ) VALUES(?, ?, ?, NULL, ?, ?, '', '', ?, ?, 1, ?, '[]', '[]', NULL, ?)`,
+      )
+      .run(
+        idFactory(),
+        projectId,
+        chapterId,
+        `场景${index + 1}`,
+        goal,
+        last ? 'turn' : index === 0 ? 'setup' : 'development',
+        last ? 100 - basePercent * index : basePercent,
+        (index + 1) * 1024,
+        createdAt,
+      );
+  }
+}
+
 export type ProjectWorkspaceErrorCode =
   | 'PROJECT_ALREADY_ACTIVE'
   | 'PROJECT_ID_MISMATCH'
@@ -375,10 +463,18 @@ export class ProjectWorkspaceService {
                 createdAt,
                 createdAt,
               );
-            initializeProjectStructure(
+            const structure = initializeProjectStructure(
               connection,
               projectId,
               project.initialStructure ?? 'starter',
+              createdAt,
+              this.#idFactory,
+            );
+            initializeOnboardingContent(
+              connection,
+              projectId,
+              structure?.chapterId ?? null,
+              project.onboarding,
               createdAt,
               this.#idFactory,
             );

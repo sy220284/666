@@ -5,6 +5,7 @@ import type {
   AppSettingsUpdate,
   AppearancePreferences,
   CoreStatus,
+  DiagnosticPreview,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
@@ -29,6 +30,7 @@ export interface SettingsPageProps {
   readonly onResetSettings: () => void;
   readonly onSaveAppearance: (appearance: AppearancePreferences) => Promise<boolean>;
   readonly onRestartCore: () => void;
+  readonly onOpenOnboarding: () => void;
 }
 
 export function SettingsPage(props: SettingsPageProps) {
@@ -129,6 +131,7 @@ function GeneralSettings(props: SettingsPageProps) {
       language: draft.language,
       startupBehavior: draft.startupBehavior,
       defaultMode: draft.defaultMode,
+      creativePath: draft.creativePath,
     });
   };
 
@@ -173,7 +176,28 @@ function GeneralSettings(props: SettingsPageProps) {
           <option value="professional">专业模式</option>
         </select>
       </label>
+      <label>
+        <span>创作路径</span>
+        <select
+          data-creative-path
+          value={draft.creativePath}
+          onChange={(event) =>
+            setDraft({
+              ...draft,
+              creativePath: event.target.value as AppSettings['creativePath'],
+            })
+          }
+        >
+          <option value="autonomous">自主创作</option>
+          <option value="hybrid">人机协作</option>
+          <option value="ai-first">AI优先</option>
+        </select>
+        <small>只调整推荐入口和说明；项目数据、命令与安全边界保持一致。</small>
+      </label>
       <footer>
+        <button className="quiet-button" type="button" onClick={props.onOpenOnboarding}>
+          重新打开项目引导
+        </button>
         <button
           className="quiet-button"
           disabled={Boolean(props.pendingKey)}
@@ -385,6 +409,43 @@ function AppearanceSettings(props: SettingsPageProps) {
 
 function AdvancedSettings(props: SettingsPageProps) {
   const core = props.coreStatus;
+  const [preview, setPreview] = useState<DiagnosticPreview | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [diagnosticStatus, setDiagnosticStatus] = useState<string | null>(null);
+
+  const previewDiagnostics = async (): Promise<void> => {
+    setDiagnosticStatus('正在生成本地安全清单…');
+    const outcome = await props.bridge.app.previewDiagnostics({ mode: 'replace' });
+    if (outcome.state !== 'success') {
+      setDiagnosticStatus(
+        outcome.state === 'failure' ? `预览失败 · ${outcome.error.code}` : '预览已取消。',
+      );
+      return;
+    }
+    setPreview(outcome.data);
+    setConfirmed(false);
+    setDiagnosticStatus('请核对包含项与明确排除项，再确认导出。');
+  };
+
+  const exportDiagnostics = async (): Promise<void> => {
+    if (!preview || !confirmed) return;
+    setDiagnosticStatus('请选择诊断包保存位置…');
+    const outcome = await props.bridge.app.exportDiagnostics();
+    if (outcome.state !== 'success') {
+      setDiagnosticStatus(
+        outcome.state === 'failure'
+          ? outcome.error.code === 'COMMON_CANCELLED_004'
+            ? '已取消诊断导出。'
+            : `导出失败 · ${outcome.error.code}`
+          : '导出已取消。',
+      );
+      return;
+    }
+    setDiagnosticStatus(
+      `已导出 ${outcome.data.fileName} · ${outcome.data.bytes} bytes · ${outcome.data.sha256.slice(0, 12)}…`,
+    );
+  };
+
   return (
     <section className="react-settings-form" data-settings-section="advanced">
       <header>
@@ -409,6 +470,48 @@ function AdvancedSettings(props: SettingsPageProps) {
           <dd>{core?.diagnosticId ?? '无'}</dd>
         </div>
       </dl>
+      <section className="react-diagnostic-export" aria-labelledby="diagnostic-export-title">
+        <h3 id="diagnostic-export-title">安全诊断包</h3>
+        <p>必须先预览清单；默认不含正文、项目数据库、提示内容、凭据或绝对路径。</p>
+        <button className="quiet-button" type="button" onClick={() => void previewDiagnostics()}>
+          预览诊断清单
+        </button>
+        {preview ? (
+          <div data-diagnostic-preview>
+            <p>
+              <strong>包含：</strong>
+              {preview.manifest.included.join('、')}
+            </p>
+            <p>
+              <strong>排除：</strong>
+              {preview.manifest.excluded.join('、')}
+            </p>
+            <label className="react-switch-row">
+              <input
+                checked={confirmed}
+                data-confirm-diagnostic-export
+                type="checkbox"
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
+              <span>我已核对清单并确认导出</span>
+            </label>
+            <button
+              className="primary-button"
+              data-export-diagnostics
+              disabled={!confirmed}
+              type="button"
+              onClick={() => void exportDiagnostics()}
+            >
+              选择位置并导出
+            </button>
+          </div>
+        ) : null}
+        {diagnosticStatus ? (
+          <p data-diagnostic-status role="status">
+            {diagnosticStatus}
+          </p>
+        ) : null}
+      </section>
       <footer>
         <button
           className="primary-button"

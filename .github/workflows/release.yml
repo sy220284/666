@@ -102,7 +102,7 @@ jobs:
       - name: Build platform package
         shell: bash
         run: >-
-          pnpm package --
+          pnpm run package --
           --platform "${{ matrix.platform }}"
           --version "$RELEASE_VERSION"
           --output "release/${{ matrix.platform }}"
@@ -111,6 +111,18 @@ jobs:
           node scripts/verify-package-assets.mjs
           --platform "${{ matrix.platform }}"
           --version "$RELEASE_VERSION"
+          --directory "release/${{ matrix.platform }}"
+      - name: Run Linux packaged startup smoke
+        if: matrix.platform == 'linux'
+        run: >-
+          xvfb-run -a node scripts/smoke-packaged-desktop.mjs
+          --platform "${{ matrix.platform }}"
+          --directory "release/${{ matrix.platform }}"
+      - name: Run packaged startup smoke
+        if: matrix.platform != 'linux'
+        run: >-
+          node scripts/smoke-packaged-desktop.mjs
+          --platform "${{ matrix.platform }}"
           --directory "release/${{ matrix.platform }}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:

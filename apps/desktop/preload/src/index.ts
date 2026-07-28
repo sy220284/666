@@ -8,10 +8,14 @@ import {
   AppGetInfoCommandSchema,
   AppGetWindowPreferencesCommandSchema,
   AppInfoResultSchema,
+  AppPreviewDiagnosticsCommandSchema,
+  AppExportDiagnosticsCommandSchema,
   AppRestartCoreCommandSchema,
   AppSetAppearancePreferencesCommandSchema,
   CoreOperationResultSchema,
   CoreStatusResultSchema,
+  DiagnosticPreviewResultSchema,
+  DiagnosticExportResultSchema,
   CredentialPresenceResultSchema,
   CredentialReferenceResultSchema,
   DraftApplyPatchCommandSchema,
@@ -278,6 +282,20 @@ const bridge: WorldforgeBridge & CandidateBridge = {
           envelope(APP_COMMANDS.setAppearancePreferences, preferences),
         ),
         WindowPreferencesResultSchema,
+      ),
+    previewDiagnostics: () =>
+      invoke(
+        IPC_CHANNELS.appPreviewDiagnostics,
+        AppPreviewDiagnosticsCommandSchema.parse(envelope(APP_COMMANDS.previewDiagnostics, {})),
+        DiagnosticPreviewResultSchema,
+      ),
+    exportDiagnostics: () =>
+      invoke(
+        IPC_CHANNELS.appExportDiagnostics,
+        AppExportDiagnosticsCommandSchema.parse(
+          envelope(APP_COMMANDS.exportDiagnostics, { confirmation: true }),
+        ),
+        DiagnosticExportResultSchema,
       ),
   },
   providers: {

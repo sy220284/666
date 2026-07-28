@@ -7,7 +7,7 @@ import { parseTaskIndex } from './task-control-lib.mjs';
 
 const root = process.cwd();
 const checksumFileName = 'SHA256SUMS.txt';
-export const RELEASE_TASK_ID = 'M4-04';
+export const RELEASE_TASK_ID = 'M8-02';
 
 export function parseReleaseVersion(value) {
   if (typeof value !== 'string' || value.trim() !== value || value.length === 0) {

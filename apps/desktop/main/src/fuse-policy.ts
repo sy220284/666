@@ -6,6 +6,8 @@ export const productionFusePolicy = {
   enableEmbeddedAsarIntegrityValidation: true,
   onlyLoadAppFromAsar: true,
   loadBrowserProcessSpecificV8Snapshot: true,
+  grantFileProtocolExtraPrivileges: false,
+  wasmTrapHandlers: true,
 } as const;
 
 export const productionDevToolsPolicy = {

@@ -155,6 +155,122 @@ describe('project workspace lifecycle', () => {
     }
   });
 
+  it('commits optional onboarding content inside the project creation transaction', async () => {
+    const harness = await createHarness();
+    try {
+      const summary = await harness.service.create(
+        randomUUID(),
+        {
+          name: '原子向导',
+          channel: '未指定',
+          initialStructure: 'starter',
+          onboarding: {
+            brief: {
+              concept: '一座城在七天后消失。',
+              readingPromise: '逐层揭开消失原因。',
+              protagonistGoal: '找回失踪的妹妹。',
+              coreConflict: '真相会摧毁整座城。',
+              endingIntent: '由作者稍后决定。',
+              required: ['线索必须可回溯'],
+              forbidden: ['无依据复活'],
+            },
+            protagonist: {
+              name: '林灯',
+              identity: '档案修复师',
+              goal: '找回妹妹',
+              boundary: '不牺牲无辜者',
+            },
+            firstChapter: {
+              title: '城门将在午夜关闭',
+              targetWordMin: 2_000,
+              targetWordMax: 3_000,
+            },
+            sceneGoals: ['收到失踪档案', '在城门前做出选择', '发现第一条反常线索'],
+          },
+        },
+        harness.parent,
+      );
+
+      const project = new DatabaseSync(path.join(summary.workspacePath, 'project.sqlite'), {
+        readOnly: true,
+      });
+      expect(
+        project
+          .prepare(
+            `SELECT concept, reading_promise, protagonist_goal, core_conflict, ending_intent,
+                    required_json, forbidden_json
+               FROM project_briefs WHERE project_id = ?`,
+          )
+          .get(summary.projectId),
+      ).toEqual({
+        concept: '一座城在七天后消失。',
+        reading_promise: '逐层揭开消失原因。',
+        protagonist_goal: '找回失踪的妹妹。',
+        core_conflict: '真相会摧毁整座城。',
+        ending_intent: '由作者稍后决定。',
+        required_json: '["线索必须可回溯"]',
+        forbidden_json: '["无依据复活"]',
+      });
+      expect(
+        project
+          .prepare(
+            `SELECT name, summary FROM entities
+              WHERE project_id = ? AND entity_type = 'character'`,
+          )
+          .get(summary.projectId),
+      ).toEqual({
+        name: '林灯',
+        summary: '档案修复师；找回妹妹；不牺牲无辜者',
+      });
+      expect(
+        project
+          .prepare(
+            `SELECT title, target_word_min, target_word_max
+               FROM chapters
+              WHERE volume_id IN (SELECT id FROM volumes WHERE project_id = ?)`,
+          )
+          .get(summary.projectId),
+      ).toEqual({
+        title: '城门将在午夜关闭',
+        target_word_min: 2_000,
+        target_word_max: 3_000,
+      });
+      expect(
+        project
+          .prepare(
+            `SELECT title, goal, beat_type, word_target_percent, order_key
+               FROM scene_beats WHERE project_id = ? ORDER BY order_key`,
+          )
+          .all(summary.projectId),
+      ).toEqual([
+        {
+          title: '场景1',
+          goal: '收到失踪档案',
+          beat_type: 'setup',
+          word_target_percent: 33,
+          order_key: 1_024,
+        },
+        {
+          title: '场景2',
+          goal: '在城门前做出选择',
+          beat_type: 'development',
+          word_target_percent: 33,
+          order_key: 2_048,
+        },
+        {
+          title: '场景3',
+          goal: '发现第一条反常线索',
+          beat_type: 'turn',
+          word_target_percent: 34,
+          order_key: 3_072,
+        },
+      ]);
+      project.close();
+    } finally {
+      await closeHarness(harness);
+    }
+  });
+
   it('enforces active project IDs and rejects traversal and symbolic-link escapes', async () => {
     const harness = await createHarness();
     try {

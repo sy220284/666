@@ -278,6 +278,8 @@ export const IPC_CHANNELS = {
   appRestartCore: 'worldforge:app:restart-core',
   appGetWindowPreferences: 'worldforge:app:get-window-preferences',
   appSetAppearancePreferences: 'worldforge:app:set-appearance-preferences',
+  appPreviewDiagnostics: 'worldforge:app:preview-diagnostics',
+  appExportDiagnostics: 'worldforge:app:export-diagnostics',
   aiSetCredential: 'worldforge:ai:set-credential',
   aiRemoveCredential: 'worldforge:ai:remove-credential',
   aiHasCredential: 'worldforge:ai:has-credential',
@@ -304,6 +306,8 @@ export const APP_COMMANDS = {
   restartCore: 'app.restartCore',
   getWindowPreferences: 'app.getWindowPreferences',
   setAppearancePreferences: 'app.setAppearancePreferences',
+  previewDiagnostics: 'app.previewDiagnostics',
+  exportDiagnostics: 'app.exportDiagnostics',
   setCredential: 'ai.provider.setCredential',
   removeCredential: 'ai.provider.removeCredential',
   hasCredential: 'ai.provider.hasCredential',
@@ -395,6 +399,18 @@ export const AppSetAppearancePreferencesCommandSchema = z.strictObject({
   payload: AppearancePreferencesSchema,
 });
 
+export const AppPreviewDiagnosticsCommandSchema = z.strictObject({
+  ...envelopeBase,
+  command: z.literal(APP_COMMANDS.previewDiagnostics),
+  payload: EmptyPayloadSchema,
+});
+
+export const AppExportDiagnosticsCommandSchema = z.strictObject({
+  ...envelopeBase,
+  command: z.literal(APP_COMMANDS.exportDiagnostics),
+  payload: z.strictObject({ confirmation: z.literal(true) }),
+});
+
 export const AiSetCredentialCommandSchema = z.strictObject({
   ...envelopeBase,
   command: z.literal(APP_COMMANDS.setCredential),
@@ -422,6 +438,8 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   AppRestartCoreCommandSchema,
   AppGetWindowPreferencesCommandSchema,
   AppSetAppearancePreferencesCommandSchema,
+  AppPreviewDiagnosticsCommandSchema,
+  AppExportDiagnosticsCommandSchema,
   SettingsGetCommandSchema,
   SettingsSetCommandSchema,
   SettingsResetCommandSchema,
@@ -509,6 +527,43 @@ export const CoreOperationSchema = z.strictObject({
   status: CoreStatusSchema,
 });
 
+export const DiagnosticManifestSchema = z.strictObject({
+  generatedAt: z.iso.datetime(),
+  included: z.array(z.enum(['app-info', 'core-status', 'display-summary', 'log-metadata'])),
+  excluded: z.array(
+    z.enum([
+      'project-content',
+      'project-database',
+      'prompts',
+      'provider-credentials',
+      'absolute-paths',
+    ]),
+  ),
+  contentIncluded: z.literal(false),
+  credentialIncluded: z.literal(false),
+});
+
+export const DiagnosticPreviewSchema = z.strictObject({
+  manifest: DiagnosticManifestSchema,
+  app: AppInfoSchema,
+  core: CoreStatusSchema,
+  display: z.strictObject({
+    platform: z.string().min(1),
+    scaleFactor: z.number().finite().min(0.5).max(8),
+  }),
+  logs: z.strictObject({
+    includedFiles: z.literal(0),
+    includedEntries: z.literal(0),
+    redacted: z.literal(true),
+  }),
+});
+
+export const DiagnosticExportSchema = z.strictObject({
+  fileName: z.string().min(1).max(240),
+  bytes: z.number().int().positive(),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/u),
+});
+
 export const CredentialReferenceSchema = z.strictObject({
   credentialRef: CredentialRefSchema,
 });
@@ -554,6 +609,8 @@ export const AppInfoResultSchema = commandResultSchema(AppInfoSchema);
 export const CoreStatusResultSchema = commandResultSchema(CoreStatusSchema);
 export const CoreOperationResultSchema = commandResultSchema(CoreOperationSchema);
 export const WindowPreferencesResultSchema = commandResultSchema(WindowPreferencesSchema);
+export const DiagnosticPreviewResultSchema = commandResultSchema(DiagnosticPreviewSchema);
+export const DiagnosticExportResultSchema = commandResultSchema(DiagnosticExportSchema);
 export const CredentialReferenceResultSchema = commandResultSchema(CredentialReferenceSchema);
 export const CredentialPresenceResultSchema = commandResultSchema(CredentialPresenceSchema);
 export const TaskSnapshotResultSchema = commandResultSchema(TaskSnapshotSchema);
@@ -702,6 +759,9 @@ export type CoreOperation = z.infer<typeof CoreOperationSchema>;
 export type AppearancePreferences = z.infer<typeof AppearancePreferencesSchema>;
 export type WindowBoundsDip = z.infer<typeof WindowBoundsDipSchema>;
 export type WindowPreferences = z.infer<typeof WindowPreferencesSchema>;
+export type DiagnosticManifest = z.infer<typeof DiagnosticManifestSchema>;
+export type DiagnosticPreview = z.infer<typeof DiagnosticPreviewSchema>;
+export type DiagnosticExport = z.infer<typeof DiagnosticExportSchema>;
 export type CoreWindowPreferencesResult = z.infer<typeof CoreWindowPreferencesResultSchema>;
 export type CommandFailure = z.infer<typeof CommandFailureSchema>;
 export type CoreControlMessage = z.infer<typeof CoreControlMessageSchema>;
@@ -730,6 +790,8 @@ export interface WorldforgeBridge {
     readonly setAppearancePreferences: (
       preferences: AppearancePreferences,
     ) => Promise<CommandResult<WindowPreferences>>;
+    readonly previewDiagnostics: () => Promise<CommandResult<DiagnosticPreview>>;
+    readonly exportDiagnostics: () => Promise<CommandResult<DiagnosticExport>>;
   };
   readonly settings: {
     readonly get: () => Promise<CommandResult<AppSettingsSnapshot>>;

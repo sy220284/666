@@ -22,6 +22,19 @@ export async function verifyPackageAssets(
   if (manifest.platform !== platform || manifest.version !== version) {
     throw new Error('Package manifest platform or version does not match the release matrix');
   }
+  if (
+    manifest.packageKind !== 'portable-electron-bundle' ||
+    manifest.asar !== true ||
+    manifest.fusesApplied !== true ||
+    !/^[0-9a-f]{64}$/u.test(manifest.appAsarSha256 ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(manifest.appAsarHeaderSha256 ?? '') ||
+    manifest.fuses?.runAsNode !== false ||
+    manifest.fuses?.onlyLoadAppFromAsar !== true ||
+    manifest.fuses?.embeddedAsarIntegrityValidation !== true ||
+    manifest.fuses?.grantFileProtocolExtraPrivileges !== false
+  ) {
+    throw new Error('Package manifest does not prove the frozen ASAR and production-fuse policy');
+  }
   const artifactPath = path.join(directory, manifest.artifact);
   const metadata = await stat(artifactPath);
   if (!metadata.isFile() || metadata.size <= 0 || metadata.size !== manifest.bytes) {

@@ -1,11 +1,15 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { cp, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, cp, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+
+import { createPackage, getRawHeader } from '@electron/asar';
+import { flipFuses, FuseV1Options, FuseVersion } from '@electron/fuses';
+import { resedit } from '@electron/packager/resedit';
 
 import { parseReleaseVersion } from './release-tool.mjs';
 
@@ -39,6 +43,7 @@ export function parsePackageArguments(
   argumentsList,
   { packageVersion, nodePlatform = process.platform, repositoryRoot = root } = {},
 ) {
+  argumentsList = argumentsList.filter((argument) => argument !== '--');
   const known = new Set(['--platform', '--version', '--output']);
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
@@ -145,6 +150,12 @@ async function deployWorkspace(packageName, target) {
   const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   await mkdir(path.dirname(target), { recursive: true });
   run(pnpmCommand, ['--filter', packageName, 'deploy', '--prod', '--legacy', target]);
+  const [scope, name] = packageName.split('/');
+  if (scope && name) {
+    await rm(path.join(target, 'node_modules', '.pnpm', 'node_modules', scope, name), {
+      force: true,
+    });
+  }
 }
 
 async function prepareApplication(resourcesPath, version) {
@@ -197,26 +208,122 @@ async function copyElectronRuntime(stagingDirectory, platform, version) {
     const bundlePath = path.join(stagingDirectory, 'WorldForge.app');
     await requirePath(sourceApp, 'Electron macOS application');
     await cp(sourceApp, bundlePath, { recursive: true, verbatimSymlinks: true });
+    const sourceExecutable = path.join(bundlePath, 'Contents', 'MacOS', 'Electron');
+    const executablePath = path.join(bundlePath, 'Contents', 'MacOS', 'WorldForge');
+    await rename(sourceExecutable, executablePath);
+    const plistPath = path.join(bundlePath, 'Contents', 'Info.plist');
+    const plist = await readFile(plistPath, 'utf8');
+    await writeFile(
+      plistPath,
+      plist
+        .replaceAll('<string>Electron</string>', '<string>WorldForge</string>')
+        .replaceAll('<string>electron</string>', '<string>worldforge</string>'),
+      'utf8',
+    );
     return {
       architecture,
       bundleName: 'WorldForge.app',
       bundlePath,
+      executablePath,
+      plistPath,
       resourcesPath: path.join(bundlePath, 'Contents', 'Resources'),
     };
   }
 
   const bundlePath = path.join(stagingDirectory, bundleName);
   await cp(electronDist, bundlePath, { recursive: true, verbatimSymlinks: true });
+  let executablePath;
   if (platform === 'windows') {
-    await rename(path.join(bundlePath, 'electron.exe'), path.join(bundlePath, 'WorldForge.exe'));
+    executablePath = path.join(bundlePath, 'WorldForge.exe');
+    await rename(path.join(bundlePath, 'electron.exe'), executablePath);
   } else {
-    await rename(path.join(bundlePath, 'electron'), path.join(bundlePath, 'worldforge'));
+    executablePath = path.join(bundlePath, 'worldforge');
+    await rename(path.join(bundlePath, 'electron'), executablePath);
+    await chmod(executablePath, 0o755);
   }
   return {
     architecture,
     bundleName,
     bundlePath,
+    executablePath,
+    plistPath: null,
     resourcesPath: path.join(bundlePath, 'resources'),
+  };
+}
+
+export function asarHeaderIntegrity(headerString) {
+  return {
+    algorithm: 'SHA256',
+    hash: createHash('SHA256').update(headerString).digest('hex'),
+  };
+}
+
+async function embedAsarIntegrity(runtime, asarPath, platform, version) {
+  const integrity = asarHeaderIntegrity(getRawHeader(asarPath).headerString);
+  if (platform === 'windows') {
+    await resedit(runtime.executablePath, {
+      productName: 'WorldForge',
+      productVersion: version,
+      fileVersion: version,
+      asarIntegrity: { 'resources\\app.asar': integrity },
+      win32Metadata: {
+        CompanyName: 'WorldForge',
+        FileDescription: 'WorldForge local-first writing workstation',
+        InternalName: 'WorldForge',
+        OriginalFilename: 'WorldForge.exe',
+      },
+    });
+  } else if (platform === 'macos') {
+    if (!runtime.plistPath) throw new Error('macOS package is missing Info.plist');
+    const plist = await readFile(runtime.plistPath, 'utf8');
+    const closingDictionary = plist.lastIndexOf('</dict>');
+    if (closingDictionary < 0) throw new Error('macOS Info.plist has no root dictionary');
+    const integrityDictionary = [
+      '  <key>ElectronAsarIntegrity</key>',
+      '  <dict>',
+      '    <key>Resources/app.asar</key>',
+      '    <dict>',
+      '      <key>algorithm</key>',
+      '      <string>SHA256</string>',
+      '      <key>hash</key>',
+      `      <string>${integrity.hash}</string>`,
+      '    </dict>',
+      '  </dict>',
+      '',
+    ].join('\n');
+    await writeFile(
+      runtime.plistPath,
+      `${plist.slice(0, closingDictionary)}${integrityDictionary}${plist.slice(closingDictionary)}`,
+      'utf8',
+    );
+  }
+  return integrity;
+}
+
+async function hardenPackagedRuntime(runtime, platform, version) {
+  const appRoot = path.join(runtime.resourcesPath, 'app');
+  const asarPath = path.join(runtime.resourcesPath, 'app.asar');
+  await rm(path.join(runtime.resourcesPath, 'default_app.asar'), { force: true });
+  await createPackage(appRoot, asarPath);
+  await rm(appRoot, { recursive: true, force: true });
+  const asarIntegrity = await embedAsarIntegrity(runtime, asarPath, platform, version);
+  await flipFuses(runtime.executablePath, {
+    version: FuseVersion.V1,
+    resetAdHocDarwinSignature: platform === 'macos' && process.arch === 'arm64',
+    strictlyRequireAllFuses: true,
+    [FuseV1Options.RunAsNode]: false,
+    [FuseV1Options.EnableCookieEncryption]: true,
+    [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+    [FuseV1Options.EnableNodeCliInspectArguments]: false,
+    [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+    [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: true,
+    [FuseV1Options.GrantFileProtocolExtraPrivileges]: false,
+    [FuseV1Options.WasmTrapHandlers]: true,
+  });
+  return {
+    asarPath,
+    asarIntegrity,
   };
 }
 
@@ -269,6 +376,7 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
   try {
     const runtime = await copyElectronRuntime(stagingDirectory, options.platform, options.version);
     await prepareApplication(runtime.resourcesPath, options.version);
+    const hardening = await hardenPackagedRuntime(runtime, options.platform, options.version);
     const artifactName = `WorldForge-v${options.version}-${options.platform}-${runtime.architecture}.${archiveExtension(options.platform)}`;
     const artifactPath = path.join(options.output, artifactName);
     createArchive({
@@ -289,12 +397,18 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
       packageKind: 'portable-electron-bundle',
       signed: false,
       notarized: false,
-      fusesApplied: false,
-      asar: false,
-      limitations: [
-        'Code signing and notarization are separate release acceptance gates.',
-        'Electron production fuses and ASAR integrity remain blocked until the hardened C8 package stage.',
-      ],
+      fusesApplied: true,
+      asar: true,
+      appAsarSha256: await sha256(hardening.asarPath),
+      appAsarHeaderSha256: hardening.asarIntegrity.hash,
+      fuses: {
+        runAsNode: false,
+        onlyLoadAppFromAsar: true,
+        embeddedAsarIntegrityValidation: true,
+        grantFileProtocolExtraPrivileges: false,
+        wasmTrapHandlers: true,
+      },
+      limitations: ['Code signing and notarization are separate release acceptance gates.'],
     };
     await writeFile(
       path.join(options.output, 'package-manifest.json'),

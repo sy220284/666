@@ -17,7 +17,7 @@ const temporaryDirectories: string[] = [];
 const taskIndex = (status: string) =>
   '\n| ID | 任务卡 | 依赖 | 状态 |\n' +
   '|---|---|---|---|\n' +
-  '| M4-04 | [整体交付](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md) | M4-01、M4-02、M4-03 | ' +
+  '| M8-02 | [发布关闭](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | ' +
   status +
   ' |\n';
 
@@ -45,7 +45,7 @@ describe('release tool', () => {
   });
 
   it('validates the release workflow and package scripts', () => {
-    expect(RELEASE_TASK_ID).toBe('M4-04');
+    expect(RELEASE_TASK_ID).toBe('M8-02');
     expect(
       validateReleaseConfiguration({
         packageJson: {
@@ -64,7 +64,7 @@ describe('release tool', () => {
     ).toEqual([]);
   });
 
-  it('blocks publishing until version, branch and M4-04 all match', () => {
+  it('blocks publishing until version, branch and M8-02 all match', () => {
     expect(
       evaluateReleaseGate({
         taskIndexMarkdown: taskIndex('In Progress'),
@@ -75,7 +75,7 @@ describe('release tool', () => {
     ).toEqual([
       'Requested version 1.0.1 does not match package.json version 1.0.0',
       'Releases may only run from main, found feature',
-      'M4-04 must be Verified before publishing, found In Progress',
+      'M8-02 must be Verified before publishing, found In Progress',
     ]);
 
     expect(

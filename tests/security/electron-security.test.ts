@@ -102,6 +102,8 @@ describe('Electron security boundary', () => {
       enableEmbeddedAsarIntegrityValidation: true,
       onlyLoadAppFromAsar: true,
       loadBrowserProcessSpecificV8Snapshot: true,
+      grantFileProtocolExtraPrivileges: false,
+      wasmTrapHandlers: true,
     });
     expect(productionDevToolsPolicy).toMatchObject({
       browserWindowDevTools: false,

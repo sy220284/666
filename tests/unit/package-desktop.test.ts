@@ -2,7 +2,11 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { packagePlatformForNode, parsePackageArguments } from '../../scripts/package-desktop.mjs';
+import {
+  asarHeaderIntegrity,
+  packagePlatformForNode,
+  parsePackageArguments,
+} from '../../scripts/package-desktop.mjs';
 
 describe('desktop package command', () => {
   it('maps supported Node platforms to release platform names', () => {
@@ -26,6 +30,13 @@ describe('desktop package command', () => {
       version: '1.2.3',
       output: path.join(repositoryRoot, 'release', 'linux'),
     });
+    expect(
+      parsePackageArguments(['--', '--platform', 'linux'], {
+        packageVersion: '1.2.3',
+        nodePlatform: 'linux',
+        repositoryRoot,
+      }).platform,
+    ).toBe('linux');
   });
 
   it('rejects cross-platform requests, version drift and unsafe outputs', () => {
@@ -68,5 +79,12 @@ describe('desktop package command', () => {
         repositoryRoot: '/workspace/worldforge',
       }),
     ).toThrow(/requires a value/);
+  });
+
+  it('derives the Electron ASAR header hash deterministically', () => {
+    expect(asarHeaderIntegrity('header')).toEqual({
+      algorithm: 'SHA256',
+      hash: '1e0584a25d9f43bf5cbd0aec01eb1af2220ed085b4e7f1837b0d89958cae353a',
+    });
   });
 });

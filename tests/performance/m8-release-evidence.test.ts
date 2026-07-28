@@ -345,7 +345,7 @@ describe('M8-02 release performance evidence', () => {
           ],
         });
         calculateWritingStatistics(opened.blocks[0]!.text, 200, 8_000);
-        if (index % 20 === 0) await new Promise((resolve) => setImmediate(resolve));
+        await new Promise((resolve) => setImmediate(resolve));
       }
       await harness.search.rebuild(randomUUID(), project.projectId);
       memory.heapGrowthBytes = Math.max(0, process.memoryUsage().heapUsed - initialHeap);

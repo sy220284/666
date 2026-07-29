@@ -24,7 +24,7 @@ function migrateCreationBlocks(source, fileName) {
     }
 
     let confirmIndex = -1;
-    for (let candidate = index + 1; candidate < Math.min(lines.length, index + 70); candidate += 1) {
+    for (let candidate = index + 1; candidate < Math.min(lines.length, index + 200); candidate += 1) {
       if (lines[candidate].includes("await page.locator('[data-confirm-create-project]').click();")) {
         confirmIndex = candidate;
         break;

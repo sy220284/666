@@ -32,6 +32,21 @@ const ATTENTION_LABELS: Readonly<Record<string, string>> = {
   blocked: '存在阻断',
 };
 
+const SCENE_BEAT_TYPE_LABELS: Readonly<Record<string, string>> = {
+  setup: '开场铺垫',
+  development: '情节推进',
+  turn: '关键转折',
+  climax: '高潮爆发',
+  resolution: '结果收束',
+  custom: '自定义',
+};
+
+const PLOT_NODE_TYPE_LABELS: Readonly<Record<string, string>> = {
+  volume: '卷级情节',
+  arc: '故事线',
+  chapter: '章节目标',
+};
+
 export function authorEntityTypeLabel(entityType: string): string {
   return ENTITY_TYPE_LABELS[entityType] ?? '其他设定';
 }
@@ -46,6 +61,14 @@ export function authorCharacterArcStatusLabel(status: string): string {
 
 export function authorAttentionLabel(attention: string): string {
   return ATTENTION_LABELS[attention] ?? '状态未知';
+}
+
+export function authorSceneBeatTypeLabel(beatType: string): string {
+  return SCENE_BEAT_TYPE_LABELS[beatType] ?? '自定义';
+}
+
+export function authorPlotNodeTypeLabel(nodeType: string): string {
+  return PLOT_NODE_TYPE_LABELS[nodeType] ?? '章节目标';
 }
 
 export function authorJsonValue(value: unknown): string {

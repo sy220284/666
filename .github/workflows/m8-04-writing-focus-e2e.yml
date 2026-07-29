@@ -56,7 +56,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
           fc-match "Noto Serif CJK SC"
       - name: 验证写作辅助与沉浸写作流程
-        run: pnpm test:e2e -- tests/e2e/writing-focus-assistance.spec.ts
+        run: pnpm test:e2e tests/e2e/writing-focus-assistance.spec.ts
       - name: 提交生产代码与桌面测试
         run: |
           if git diff --quiet; then

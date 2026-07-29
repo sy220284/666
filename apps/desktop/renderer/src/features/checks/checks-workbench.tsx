@@ -32,12 +32,7 @@ const ISSUE_ACTIONS = [
   ['reopen', '重新打开'],
 ] as const;
 
-export function ChecksWorkbench({
-  bridge,
-  projectId,
-  readOnly,
-  onNavigate,
-}: ChecksWorkbenchProps) {
+export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: ChecksWorkbenchProps) {
   const [structure, setStructure] = useState<ProjectStructure | null>(null);
   const [catalog, setCatalog] = useState<ValidationCatalog | null>(null);
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
@@ -166,9 +161,7 @@ export function ChecksWorkbench({
       setNotice(`AI语义检查已启动 · ${generationStageLabel(outcome.data.run.stage)}`);
     } else {
       setPending(false);
-      setNotice(
-        outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。',
-      );
+      setNotice(outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。');
     }
   };
 
@@ -342,6 +335,7 @@ export function ChecksWorkbench({
                 </details>
                 <div className="inline-actions">
                   <button
+                    data-author-return-key={`validation-issue:${issue.issueId}`}
                     disabled={!issue.anchor.chapterId}
                     type="button"
                     onClick={() => navigateToIssue(issue)}
@@ -380,6 +374,7 @@ export function ChecksWorkbench({
             </p>
             <div className="inline-actions">
               <button
+                data-author-return-key={`story-todo:${todo.todoId}`}
                 disabled={!todo.chapterId}
                 type="button"
                 onClick={() =>
@@ -421,6 +416,7 @@ export function ChecksWorkbench({
             <p>{comment.status === 'open' ? '待处理' : '已处理'}</p>
             <div className="inline-actions">
               <button
+                data-author-return-key={`comment:${comment.commentId}`}
                 disabled={!comment.chapterId}
                 type="button"
                 onClick={() =>

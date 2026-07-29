@@ -6,10 +6,7 @@ import ts from 'typescript';
 const root = process.cwd();
 const glossaryPath = path.join(root, 'docs/product/AUTHOR_LANGUAGE_GLOSSARY.md');
 const governedPath = path.join(root, 'docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json');
-const termSourcePath = path.join(
-  root,
-  'apps/desktop/renderer/src/presentation/author-terms.ts',
-);
+const termSourcePath = path.join(root, 'apps/desktop/renderer/src/presentation/author-terms.ts');
 
 const prohibitedBusinessTerms = [
   'Candidate',
@@ -107,11 +104,7 @@ function syntaxAuthorText(file, source) {
       if (!isModulePathLiteral(node) && !/^(?:\.{0,2}\/|@|node:)/u.test(value)) {
         values.push(value);
       }
-    } else if (
-      ts.isTemplateHead(node) ||
-      ts.isTemplateMiddle(node) ||
-      ts.isTemplateTail(node)
-    ) {
+    } else if (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       values.push(node.text);
     }
     ts.forEachChild(node, visit);
@@ -133,9 +126,7 @@ function scanText(file, source) {
   for (const term of prohibitedBusinessTerms) {
     const matcher = new RegExp(`\\b${term}\\b`, 'u');
     if (matcher.test(searchable)) {
-      violations.push(
-        `${normalize(path.relative(root, file))}: 作者可见文本包含内部名称 ${term}`,
-      );
+      violations.push(`${normalize(path.relative(root, file))}: 作者可见文本包含内部名称 ${term}`);
     }
   }
   return violations;

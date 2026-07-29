@@ -6,10 +6,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
-import {
-  PlanningModeWorkbench,
-  StructureNavigator,
-} from './planning-mode-workbench.js';
+import { PlanningModeWorkbench, StructureNavigator } from './planning-mode-workbench.js';
 
 export { StructureNavigator };
 
@@ -19,6 +16,7 @@ interface PlanningWorkbenchProps {
   readonly readOnly: boolean;
   readonly disclosureMode?: AppDisclosureMode;
   readonly onClose: () => void;
+  readonly onReturn: () => void;
 }
 
 type SceneBeatNavigationState =
@@ -32,7 +30,6 @@ export function PlanningWorkbench(props: PlanningWorkbenchProps) {
   const selectedChapterId = useRendererUiStore((state) => state.selection.chapterId);
   const selectedSceneBeatId = useRendererUiStore((state) => state.selection.sceneBeatId);
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
-  const dispatch = useRendererUiStore((state) => state.dispatch);
   const [target, setTarget] = useState<SceneBeatNavigationState>({ status: 'idle' });
 
   useEffect(() => {
@@ -70,12 +67,7 @@ export function PlanningWorkbench(props: PlanningWorkbenchProps) {
       {returnLocation ? (
         <section className="feature-card navigation-return" data-navigation-return role="status">
           <span>已从来源页面打开目标场景节拍。</span>
-          <button
-            type="button"
-            onClick={() =>
-              dispatch({ type: 'navigate', route: returnLocation.route, returnLocation: null })
-            }
-          >
+          <button type="button" onClick={props.onReturn}>
             返回来源页面
           </button>
         </section>

@@ -28,6 +28,7 @@ import { registerIpcHandlers } from './ipc-handlers.js';
 import { registerNarrativePlanningIpc } from './narrative-planning-ipc.js';
 import { installNavigationPolicy, type NavigationWebContents } from './navigation-policy.js';
 import { createDiagnosticId, PrivacyLogger } from './privacy-logger.js';
+import { requestRendererDraftFlush } from './renderer-shutdown-ipc.js';
 import {
   createRendererAssetResponse,
   RENDERER_DOCUMENT_URL,
@@ -438,12 +439,7 @@ async function bootstrap(): Promise<void> {
     const window = mainWindow;
     if (!window || window.isDestroyed()) return true;
     try {
-      return Boolean(
-        await window.webContents.executeJavaScript(
-          'globalThis.worldforgeFlushDraft ? globalThis.worldforgeFlushDraft() : true',
-          true,
-        ),
-      );
+      return await requestRendererDraftFlush(ipcMain, window.webContents, rendererUrl);
     } catch {
       return false;
     }

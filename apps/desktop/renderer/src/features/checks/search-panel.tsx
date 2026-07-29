@@ -11,6 +11,7 @@ import type {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorTerm } from '../../presentation/author-terms.js';
+import { RequestGeneration } from '../../runtime/request-generation.js';
 import {
   searchResultNavigationTarget,
   type AuthorNavigationTarget,
@@ -37,14 +38,14 @@ export function SearchPanel({
   const [dictionary, setDictionary] = useState<readonly ProjectDictionaryEntry[]>([]);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState('搜索覆盖当前稿、历史版本与人物世界设定。');
-  const requestGeneration = useRef(0);
+  const requestGeneration = useRef(new RequestGeneration());
 
-  const beginRequest = (): number => requestGeneration.current;
+  const beginRequest = (): number => requestGeneration.current.begin();
   const isCurrentRequest = (generation: number): boolean =>
-    generation === requestGeneration.current;
+    requestGeneration.current.isCurrent(generation);
 
   useEffect(() => {
-    const generation = ++requestGeneration.current;
+    const generation = requestGeneration.current.begin();
     let active = true;
     setResult(null);
     setPlan(null);
@@ -56,14 +57,14 @@ export function SearchPanel({
       bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' }),
       bridge.searchTools.listDictionary({ projectId }, { mode: 'replace' }),
     ]).then(([stateOutcome, dictionaryOutcome]) => {
-      if (!active || generation !== requestGeneration.current) return;
+      if (!active || !requestGeneration.current.isCurrent(generation)) return;
       if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
       if (dictionaryOutcome.state === 'success') setDictionary(dictionaryOutcome.data.entries);
       setNotice('搜索覆盖当前稿、历史版本与人物世界设定。');
     });
     return () => {
       active = false;
-      requestGeneration.current += 1;
+      requestGeneration.current.invalidate();
     };
   }, [bridge, projectId]);
 
@@ -246,7 +247,11 @@ export function SearchPanel({
             <h3>{item.title}</h3>
             <p>{searchSourceLabel(item.sourceType)}</p>
             <p>{item.excerpt}</p>
-            <button type="button" onClick={() => navigateToResult(item)}>
+            <button
+              data-author-return-key={`search:${item.sourceType}:${item.targetId}:${item.anchorId ?? 'root'}`}
+              type="button"
+              onClick={() => navigateToResult(item)}
+            >
               {item.sourceType === 'entity' ? '打开人物设定' : '打开命中位置'}
             </button>
           </article>

@@ -7,6 +7,7 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
 import {
   WritingWorkbench as WritingCoreWorkbench,
@@ -24,7 +25,9 @@ interface WritingWorkbenchProps {
   readonly navigationLogicalBlockId?: string | null;
   readonly navigationVersionId?: string | null;
   readonly navigationQuery?: string | null;
+  readonly onNavigate: (target: AuthorNavigationTarget) => void;
   readonly onPanelChange: (panel: WritingPanel) => void;
+  readonly onReturn: () => void;
   readonly onStatus: (message: string) => void;
 }
 
@@ -37,7 +40,6 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
     props.initialContinuation,
   );
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
-  const dispatch = useRendererUiStore((state) => state.dispatch);
   desiredPanelRef.current = props.panel;
   const [latestContinuation, setLatestContinuation] = useState<ProjectContinuationSnapshot | null>(
     props.initialContinuation,
@@ -89,22 +91,6 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
     [acceptContinuation, props.bridge.project],
   );
 
-  const returnToSource = useCallback(async (): Promise<void> => {
-    if (!returnLocation) return;
-    if (props.panel === 'editor') {
-      const flush = (
-        globalThis as typeof globalThis & {
-          readonly worldforgeFlushDraft?: () => Promise<boolean>;
-        }
-      ).worldforgeFlushDraft;
-      if (flush && !(await flush())) {
-        props.onStatus('自动保存失败，已阻止返回来源页面。');
-        return;
-      }
-    }
-    dispatch({ type: 'navigate', route: returnLocation.route, returnLocation: null });
-  }, [dispatch, props.onStatus, props.panel, returnLocation]);
-
   const continuation =
     latestContinuation?.projectId === props.project.projectId
       ? latestContinuation
@@ -115,7 +101,7 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
       {returnLocation ? (
         <section className="feature-card navigation-return" data-navigation-return role="status">
           <span>已从来源页面打开目标内容。</span>
-          <button type="button" onClick={() => void returnToSource()}>
+          <button type="button" onClick={props.onReturn}>
             返回来源页面
           </button>
         </section>

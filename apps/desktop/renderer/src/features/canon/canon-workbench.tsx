@@ -6,10 +6,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
-import {
-  CanonWorkbench as CanonCoreWorkbench,
-  type CanonSection,
-} from './canon-core-workbench.js';
+import { CanonWorkbench as CanonCoreWorkbench, type CanonSection } from './canon-core-workbench.js';
 import { ContinuityRelationshipEditor } from './continuity-relationship-editor.js';
 import { NarrativeRelationshipEditor } from './narrative-relationship-editor.js';
 
@@ -23,6 +20,7 @@ interface CanonWorkbenchProps {
   readonly section: CanonSection;
   readonly selectedEntityId?: string | null;
   readonly onSectionChange: (section: CanonSection) => void;
+  readonly onReturn: () => void;
 }
 
 type Foreshadowing = NarrativePlanningCatalog['foreshadowings'][number];
@@ -39,14 +37,10 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
     (state) => state.filters['navigation.foreshadowingId'] ?? null,
   );
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
-  const dispatch = useRendererUiStore((state) => state.dispatch);
   const [target, setTarget] = useState<ForeshadowingNavigationState>({ status: 'idle' });
   const loadHealth = useCallback(
     () =>
-      bridge.canon.list(
-        { projectId: props.projectId, includeArchived: true },
-        { mode: 'replace' },
-      ),
+      bridge.canon.list({ projectId: props.projectId, includeArchived: true }, { mode: 'replace' }),
     [bridge, props.projectId],
   );
   const health = useBridgeQuery(`canon-health:${props.projectId}`, loadHealth);
@@ -87,9 +81,7 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
         const foreshadowing = outcome.data.foreshadowings.find(
           (item) => item.id === selectedForeshadowingId,
         );
-        setTarget(
-          foreshadowing ? { status: 'ready', foreshadowing } : { status: 'missing' },
-        );
+        setTarget(foreshadowing ? { status: 'ready', foreshadowing } : { status: 'missing' });
       });
     return () => {
       active = false;
@@ -101,12 +93,7 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
       {returnLocation ? (
         <section className="feature-card navigation-return" data-navigation-return role="status">
           <span>已从来源页面打开目标设定。</span>
-          <button
-            type="button"
-            onClick={() =>
-              dispatch({ type: 'navigate', route: returnLocation.route, returnLocation: null })
-            }
-          >
+          <button type="button" onClick={props.onReturn}>
             返回来源页面
           </button>
         </section>

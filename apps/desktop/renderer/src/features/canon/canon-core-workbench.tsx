@@ -1618,7 +1618,7 @@ function StateProposalPanel({
             <p>
               {batch.status} · {batch.proposalCount} 项 · 历史版本 {batch.sourceVersionId}
             </p>
-            {batch.generationRunId ? <p>GenerationRun：{batch.generationRunId}</p> : null}
+            {batch.generationRunId ? <p>生成记录标识：{batch.generationRunId}</p> : null}
           </article>
         ))}
       </div>
@@ -1632,7 +1632,7 @@ function StateProposalPanel({
               <p>
                 {proposal.status} · {proposal.source} · 置信度 {proposal.confidence}
               </p>
-              <p>原值（来自 Core 权威状态）</p>
+              <p>原值（来自本地服务的已确认状态）</p>
               <pre>{JSON.stringify(proposal.previousValue, null, 2)}</pre>
               <p>建议值</p>
               <pre>{JSON.stringify(proposal.proposedValue, null, 2)}</pre>

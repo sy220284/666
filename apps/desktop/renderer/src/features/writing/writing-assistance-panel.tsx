@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import {
@@ -6,11 +6,8 @@ import {
   authorForeshadowingStatusLabel,
   authorJsonValue,
 } from '../../presentation/author-value-format.js';
-import {
-  resolveAuthorNavigationTarget,
-  type AuthorNavigationTarget,
-} from '../../shell/navigation-target.js';
-import { useRendererUiStore } from '../../state/ui-store.js';
+import { RequestGeneration } from '../../runtime/request-generation.js';
+import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { loadWritingAssistance, type WritingAssistanceView } from './writing-assistance.js';
 
 interface WritingAssistancePanelProps {
@@ -19,6 +16,7 @@ interface WritingAssistancePanelProps {
   readonly chapterId: string;
   readonly savedRevision: number | null;
   readonly readOnly: boolean;
+  readonly onNavigate: (target: AuthorNavigationTarget) => void;
 }
 
 export function WritingAssistancePanel({
@@ -27,64 +25,32 @@ export function WritingAssistancePanel({
   chapterId,
   savedRevision,
   readOnly,
+  onNavigate,
 }: WritingAssistancePanelProps) {
   const [view, setView] = useState<WritingAssistanceView | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
-  const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
-  const route = useRendererUiStore((current) => current.route);
-  const dispatch = useRendererUiStore((current) => current.dispatch);
+  const requestGeneration = useRef(new RequestGeneration());
 
   const refresh = useCallback(async (): Promise<void> => {
+    const generation = requestGeneration.current.begin();
     setState('loading');
     try {
-      setView(await loadWritingAssistance(bridge, projectId, chapterId));
+      const next = await loadWritingAssistance(bridge, projectId, chapterId);
+      if (!requestGeneration.current.isCurrent(generation)) return;
+      setView(next);
       setState('ready');
     } catch {
+      if (!requestGeneration.current.isCurrent(generation)) return;
       setState('failed');
     }
   }, [bridge, chapterId, projectId]);
 
-  const navigate = useCallback(
-    async (target: AuthorNavigationTarget): Promise<void> => {
-      const flush = (
-        globalThis as typeof globalThis & {
-          readonly worldforgeFlushDraft?: () => Promise<boolean>;
-        }
-      ).worldforgeFlushDraft;
-      if (flush && !(await flush())) {
-        setNavigationNotice('自动保存失败，已阻止离开当前写作页。');
-        return;
-      }
-      const resolution = resolveAuthorNavigationTarget(target);
-      dispatch({ type: 'select', selection: resolution.selection });
-      for (const [key, value] of Object.entries(resolution.filters)) {
-        dispatch({ type: 'set-filter', key, value });
-      }
-      dispatch({
-        type: 'navigate',
-        route: resolution.route,
-        returnLocation: { route, focusKey: null },
-      });
-    },
-    [dispatch, route],
-  );
-
   useEffect(() => {
-    let active = true;
-    setState('loading');
-    void loadWritingAssistance(bridge, projectId, chapterId)
-      .then((next) => {
-        if (!active) return;
-        setView(next);
-        setState('ready');
-      })
-      .catch(() => {
-        if (active) setState('failed');
-      });
+    void refresh();
     return () => {
-      active = false;
+      requestGeneration.current.invalidate();
     };
-  }, [bridge, chapterId, projectId]);
+  }, [refresh]);
 
   return (
     <aside className="writing-context writing-assistance feature-card" data-writing-assistance>
@@ -99,14 +65,13 @@ export function WritingAssistancePanel({
       </header>
 
       <p className="feature-status" role="status" data-writing-assistance-status>
-        {navigationNotice ??
-          (state === 'loading'
-            ? '正在汇总本章规划与前后文…'
-            : state === 'failed'
-              ? '写作辅助暂时无法读取，正文编辑和保存不受影响。'
-              : readOnly
-                ? '只读浏览 · 写作辅助来自已保存数据'
-                : `当前稿已保存 · 保存序号 ${savedRevision ?? 0}`)}
+        {state === 'loading'
+          ? '正在汇总本章规划与前后文…'
+          : state === 'failed'
+            ? '写作辅助暂时无法读取，正文编辑和保存不受影响。'
+            : readOnly
+              ? '只读浏览 · 写作辅助来自已保存数据'
+              : `当前稿已保存 · 保存序号 ${savedRevision ?? 0}`}
       </p>
 
       {view ? (
@@ -142,8 +107,9 @@ export function WritingAssistancePanel({
                     </span>
                     <button
                       type="button"
+                      data-author-return-key={`writing-assistance:scene-beat:${beat.id}`}
                       onClick={() =>
-                        void navigate({
+                        onNavigate({
                           type: 'scene-beat',
                           projectId,
                           chapterId,
@@ -202,8 +168,9 @@ export function WritingAssistancePanel({
                 {item.description ? <p>{item.description}</p> : null}
                 <button
                   type="button"
+                  data-author-return-key={`writing-assistance:foreshadowing:${item.id}`}
                   onClick={() =>
-                    void navigate({
+                    onNavigate({
                       type: 'foreshadowing',
                       projectId,
                       foreshadowingId: item.id,
@@ -221,8 +188,9 @@ export function WritingAssistancePanel({
                 <strong>待办：{todo.title}</strong>
                 <button
                   type="button"
+                  data-author-return-key={`writing-assistance:todo:${todo.todoId}`}
                   onClick={() =>
-                    void navigate({
+                    onNavigate({
                       type: 'story-todo',
                       projectId,
                       todoId: todo.todoId,

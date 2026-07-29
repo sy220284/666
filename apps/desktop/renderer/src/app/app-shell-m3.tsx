@@ -44,13 +44,14 @@ import {
 } from '../shell/navigation-target.js';
 import type { HomeHealthSignal } from '../shell/home-dashboard-model.js';
 import { resolveAiReadiness } from '../runtime/ai-readiness.js';
+import { flushRegisteredDraft } from '../runtime/draft-flush-registry.js';
 import { RendererStatusArbitrator } from '../runtime/status-arbitrator.js';
 import {
   EMPTY_WORKSPACE_ATTENTION,
   loadWorkspaceAttention,
   type WorkspaceAttention,
 } from '../runtime/workspace-attention.js';
-import type { RendererRouteId } from '../state/ui-state-boundary.js';
+import type { RendererReturnLocation, RendererRouteId } from '../state/ui-state-boundary.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 
 export interface AppShellProps {
@@ -61,6 +62,8 @@ export interface AppShellProps {
 export function AppShell({ bridge }: AppShellProps) {
   const route = useRendererUiStore((state) => state.route);
   const selection = useRendererUiStore((state) => state.selection);
+  const filters = useRendererUiStore((state) => state.filters);
+  const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const navigationQuery = useRendererUiStore((state) => state.filters['navigation.query'] ?? null);
   const foregroundTaskId = useRendererUiStore((state) => state.foregroundRequestKey);
   const dispatch = useRendererUiStore((state) => state.dispatch);
@@ -68,6 +71,7 @@ export function AppShell({ bridge }: AppShellProps) {
   const navToggle = useRef<HTMLButtonElement>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
   const helpTrigger = useRef<HTMLButtonElement>(null);
+  const mainContent = useRef<HTMLElement>(null);
   const initialWorkspaceResolved = useRef(false);
   const settingsWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const confirmedSettings = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -267,12 +271,7 @@ export function AppShell({ bridge }: AppShellProps) {
   });
 
   const flushWriting = useCallback(async (): Promise<boolean> => {
-    const flush = (
-      globalThis as typeof globalThis & {
-        readonly worldforgeFlushDraft?: () => Promise<boolean>;
-      }
-    ).worldforgeFlushDraft;
-    return flush ? flush() : true;
+    return flushRegisteredDraft();
   }, []);
 
   const transitionToRoute = useCallback(
@@ -320,6 +319,13 @@ export function AppShell({ bridge }: AppShellProps) {
         }
         setFailure(null);
         setMessage(null);
+        const sourceLocation: RendererReturnLocation = {
+          route,
+          selection: { ...selection },
+          filters: { ...filters },
+          scrollTop: Math.max(0, Math.round(mainContent.current?.scrollTop ?? 0)),
+          focusKey: authorReturnFocusKey(document.activeElement),
+        };
         if (target.type === 'entity') setCanonSection('entities');
         dispatch({ type: 'select', selection: resolution.selection });
         for (const [key, value] of Object.entries(resolution.filters)) {
@@ -328,12 +334,28 @@ export function AppShell({ bridge }: AppShellProps) {
         dispatch({
           type: 'navigate',
           route: resolution.route,
-          returnLocation: { route, focusKey: null },
+          returnLocation: sourceLocation,
         });
       })();
     },
-    [dispatch, flushWriting, route],
+    [dispatch, filters, flushWriting, route, selection],
   );
+
+  const returnToAuthorSource = useCallback(async (): Promise<void> => {
+    if (!returnLocation) return;
+    if (isWritingRoute(route) && !(await flushWriting())) {
+      setMessage('自动保存失败，已阻止返回来源页面。');
+      return;
+    }
+    const location = returnLocation;
+    dispatch({ type: 'return-to-source' });
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (mainContent.current) mainContent.current.scrollTop = location.scrollTop;
+        focusAuthorReturnTarget(location.focusKey);
+      });
+    });
+  }, [dispatch, flushWriting, returnLocation, route]);
 
   const projectChanged = useCallback(
     async (
@@ -982,7 +1004,7 @@ export function AppShell({ bridge }: AppShellProps) {
           />
         ) : null}
 
-        <main className="react-main">
+        <main className="react-main" ref={mainContent}>
           {globalStatus ? (
             <SafetyBanner
               action={globalStatusAction}
@@ -1124,6 +1146,7 @@ export function AppShell({ bridge }: AppShellProps) {
               projectId={activeProject.projectId}
               readOnly={activeProject.databaseMode === 'read-only'}
               onClose={() => void transitionToRoute('writing')}
+              onReturn={() => void returnToAuthorSource()}
             />
           ) : null}
 
@@ -1136,6 +1159,7 @@ export function AppShell({ bridge }: AppShellProps) {
               section={canonSection}
               selectedEntityId={selection.entityId}
               onSectionChange={setCanonSection}
+              onReturn={() => void returnToAuthorSource()}
             />
           ) : null}
 
@@ -1161,6 +1185,7 @@ export function AppShell({ bridge }: AppShellProps) {
               navigationLogicalBlockId={selection.logicalBlockId}
               navigationVersionId={selection.versionId}
               navigationQuery={navigationQuery}
+              onNavigate={navigateToAuthorTarget}
               onPanelChange={(panel) =>
                 void transitionToRoute(
                   panel === 'versions'
@@ -1174,6 +1199,7 @@ export function AppShell({ bridge }: AppShellProps) {
                 setMessage(nextMessage);
                 void refreshWorkspaceAttention();
               }}
+              onReturn={() => void returnToAuthorSource()}
             />
           ) : null}
 
@@ -1199,6 +1225,18 @@ export function AppShell({ bridge }: AppShellProps) {
 
 function isWritingRoute(route: RendererRouteId): boolean {
   return route === 'writing' || route === 'versions' || route === 'candidates';
+}
+
+function authorReturnFocusKey(element: Element | null): string | null {
+  return element instanceof HTMLElement ? (element.dataset.authorReturnKey ?? null) : null;
+}
+
+function focusAuthorReturnTarget(focusKey: string | null): void {
+  if (!focusKey) return;
+  const target = Array.from(
+    document.querySelectorAll<HTMLElement>('[data-author-return-key]'),
+  ).find((element) => element.dataset.authorReturnKey === focusKey);
+  target?.focus();
 }
 
 function continuationRoute(

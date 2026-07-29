@@ -29,6 +29,9 @@ export interface RendererSelectionState {
 export interface RendererReturnLocation {
   readonly route: RendererRouteId;
   readonly focusKey: string | null;
+  readonly selection: RendererSelectionState;
+  readonly filters: Readonly<Record<string, string>>;
+  readonly scrollTop: number;
 }
 
 export interface RendererFeedbackState {
@@ -75,6 +78,7 @@ export type RendererUiAction =
       readonly type: 'set-feedback';
       readonly feedback: RendererFeedbackState | null;
     }
+  | { readonly type: 'return-to-source' }
   | { readonly type: 'reset-project-context' };
 
 export function createInitialRendererUiState(): RendererUiState {
@@ -137,6 +141,16 @@ export function reduceRendererUiState(
   }
   if (action.type === 'set-feedback') {
     return { ...state, feedback: action.feedback };
+  }
+  if (action.type === 'return-to-source') {
+    if (!state.returnLocation) return state;
+    return {
+      ...state,
+      route: state.returnLocation.route,
+      selection: state.returnLocation.selection,
+      filters: state.returnLocation.filters,
+      returnLocation: null,
+    };
   }
   return {
     ...createInitialRendererUiState(),
@@ -214,10 +228,31 @@ function assertReturnLocation(value: unknown): void {
   }
   const record = value as Record<string, unknown>;
   if (
-    Object.keys(record).some((key) => !['route', 'focusKey'].includes(key)) ||
+    Object.keys(record).some(
+      (key) => !['route', 'focusKey', 'selection', 'filters', 'scrollTop'].includes(key),
+    ) ||
     !RENDERER_ROUTE_IDS.includes(record.route as RendererRouteId) ||
-    !isNullableString(record.focusKey)
+    !isNullableString(record.focusKey) ||
+    typeof record.scrollTop !== 'number' ||
+    !Number.isFinite(record.scrollTop) ||
+    record.scrollTop < 0
   ) {
+    throw new TypeError('Renderer return location is invalid.');
+  }
+  assertNullableStringRecord(record.selection, [
+    'projectId',
+    'volumeId',
+    'chapterId',
+    'entityId',
+    'logicalBlockId',
+    'versionId',
+    'sceneBeatId',
+    'issueId',
+  ]);
+  if (!record.filters || typeof record.filters !== 'object' || Array.isArray(record.filters)) {
+    throw new TypeError('Renderer return location is invalid.');
+  }
+  if (Object.values(record.filters).some((item) => typeof item !== 'string')) {
     throw new TypeError('Renderer return location is invalid.');
   }
 }

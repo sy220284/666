@@ -39,6 +39,8 @@ import {
 } from '@worldforge/editor-core';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { registerDraftFlushHandler } from '../../runtime/draft-flush-registry.js';
+import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { StructureNavigator } from '../planning/planning-workbench.js';
 import { WritingAssistancePanel } from './writing-assistance-panel.js';
 import { ReviewDiffPanel } from './review-diff-panel.js';
@@ -65,6 +67,7 @@ interface WritingWorkbenchProps {
   readonly navigationLogicalBlockId?: string | null;
   readonly navigationVersionId?: string | null;
   readonly navigationQuery?: string | null;
+  readonly onNavigate: (target: AuthorNavigationTarget) => void;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onStatus: (message: string) => void;
   readonly statusNotice?: string | null;
@@ -298,6 +301,7 @@ export function WritingWorkbench({
   navigationLogicalBlockId,
   navigationVersionId,
   navigationQuery,
+  onNavigate,
   onPanelChange,
   onStatus,
   statusNotice,
@@ -519,17 +523,7 @@ export function WritingWorkbench({
   }, [saveContinuation, setStatus]);
 
   useEffect(() => {
-    Object.defineProperty(globalThis, 'worldforgeFlushDraft', {
-      configurable: true,
-      value: flush,
-    });
-    return () => {
-      delete (
-        globalThis as typeof globalThis & {
-          worldforgeFlushDraft?: () => Promise<boolean>;
-        }
-      ).worldforgeFlushDraft;
-    };
+    return registerDraftFlushHandler(flush);
   }, [flush]);
 
   const rememberCurrentSelection = useCallback((): void => {
@@ -1284,6 +1278,7 @@ export function WritingWorkbench({
             chapterId={chapter.id}
             savedRevision={draft?.revision ?? null}
             readOnly={readOnly}
+            onNavigate={onNavigate}
           />
         ) : null}
       </div>
@@ -2273,7 +2268,7 @@ function CandidatePanel({
         <header>
           <div>
             <h3>生成任务</h3>
-            <p>进度来自持久化 GenerationRun 与任务事件，不使用模拟百分比。</p>
+            <p>进度来自持久化生成记录与任务事件，不使用模拟百分比。</p>
           </div>
           <span
             className="generation-run-state"

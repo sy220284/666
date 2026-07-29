@@ -15,8 +15,10 @@ const state = vi.hoisted(() => ({
   exposed: undefined as unknown,
   channels: [] as FakeMessageChannel[],
   calls: [] as Array<{ channel: string; command: unknown }>,
+  ipcListeners: new Map<string, (...args: unknown[]) => void>(),
   ipcInvoke: vi.fn(),
   ipcPostMessage: vi.fn(),
+  ipcSend: vi.fn(),
 }));
 
 class FakePort {
@@ -56,6 +58,13 @@ vi.mock('electron', () => ({
   ipcRenderer: {
     invoke: state.ipcInvoke,
     postMessage: state.ipcPostMessage,
+    send: state.ipcSend,
+    on: (channel: string, listener: (...args: unknown[]) => void) => {
+      state.ipcListeners.set(channel, listener);
+    },
+    off: (channel: string, listener: (...args: unknown[]) => void) => {
+      if (state.ipcListeners.get(channel) === listener) state.ipcListeners.delete(channel);
+    },
   },
 }));
 
@@ -101,8 +110,10 @@ describe('Preload bridge real-contract regression coverage', () => {
     state.exposed = undefined;
     state.channels.length = 0;
     state.calls.length = 0;
+    state.ipcListeners.clear();
     state.ipcInvoke.mockReset();
     state.ipcPostMessage.mockReset();
+    state.ipcSend.mockReset();
     state.ipcInvoke.mockImplementation(async (channel: string, command: unknown) => {
       state.calls.push({ channel, command });
       const parsed = parseCommand(channel, command);
@@ -202,6 +213,27 @@ describe('Preload bridge real-contract regression coverage', () => {
     ]);
     for (const { channel, command } of state.calls)
       expect(() => parseCommand(channel, command)).not.toThrow();
+  });
+
+  it('relays the named shutdown handshake and removes its listener', () => {
+    const bridge = state.exposed as WorldforgeBridge;
+    const listener = vi.fn();
+    const stop = bridge.lifecycle.onShutdownPrepare(listener);
+    const request = {
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    };
+    state.ipcListeners.get('worldforge:lifecycle:shutdown-prepare')?.({}, request);
+    expect(listener).toHaveBeenCalledWith(request);
+
+    bridge.lifecycle.acknowledgeShutdown({ ...request, saved: true });
+    expect(state.ipcSend).toHaveBeenCalledWith('worldforge:lifecycle:shutdown-result', {
+      ...request,
+      saved: true,
+    });
+
+    stop();
+    expect(state.ipcListeners.has('worldforge:lifecycle:shutdown-prepare')).toBe(false);
   });
 
   it('rejects invalid input synchronously before IPC dispatch', () => {

@@ -55,6 +55,7 @@ import {
   type TaskEventEnvelope,
   type TaskSnapshot,
 } from './task-protocol.js';
+import type { RendererLifecycleBridge } from './renderer-shutdown.js';
 import {
   PROJECT_WORKSPACE_COMMANDS,
   PROJECT_WORKSPACE_IPC_CHANNELS,
@@ -782,6 +783,7 @@ export type TaskStreamUpdate =
     };
 
 export interface WorldforgeBridge {
+  readonly lifecycle: RendererLifecycleBridge;
   readonly app: {
     readonly getInfo: () => Promise<CommandResult<AppInfo>>;
     readonly getCoreStatus: () => Promise<CommandResult<CoreStatus>>;

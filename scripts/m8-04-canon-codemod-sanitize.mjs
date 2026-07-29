@@ -17,7 +17,6 @@ source = source.replace(
   ['新建实体', '新建设定条目'],
   ['选择一个实体', '选择一个设定条目'],
   ['保存实体', '保存设定条目'],
-  [\`实体 \${resource.data?.entities.length ?? 0}\`, \`设定条目 \${resource.data?.entities.length ?? 0}\`],
 ]) {
   source = source.replaceAll(before, after);
 }`,

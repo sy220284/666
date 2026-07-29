@@ -20,6 +20,10 @@ export interface RendererSelectionState {
   readonly volumeId: string | null;
   readonly chapterId: string | null;
   readonly entityId: string | null;
+  readonly logicalBlockId: string | null;
+  readonly versionId: string | null;
+  readonly sceneBeatId: string | null;
+  readonly issueId: string | null;
 }
 
 export interface RendererReturnLocation {
@@ -81,6 +85,10 @@ export function createInitialRendererUiState(): RendererUiState {
       volumeId: null,
       chapterId: null,
       entityId: null,
+      logicalBlockId: null,
+      versionId: null,
+      sceneBeatId: null,
+      issueId: null,
     },
     overlays: {
       drawer: null,
@@ -158,7 +166,16 @@ export function assertTemporaryUiState(value: unknown): asserts value is Rendere
   if (!RENDERER_ROUTE_IDS.includes(state.route as RendererRouteId)) {
     throw new TypeError('Renderer UI state contains an invalid route.');
   }
-  assertNullableStringRecord(state.selection, ['projectId', 'volumeId', 'chapterId', 'entityId']);
+  assertNullableStringRecord(state.selection, [
+    'projectId',
+    'volumeId',
+    'chapterId',
+    'entityId',
+    'logicalBlockId',
+    'versionId',
+    'sceneBeatId',
+    'issueId',
+  ]);
   assertNullableStringRecord(state.overlays, ['drawer', 'dialog', 'popover']);
   assertReturnLocation(state.returnLocation);
   assertFeedback(state.feedback);

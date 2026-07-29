@@ -45,6 +45,7 @@ jobs:
           pnpm exec prettier --write
           apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
           tests/e2e/writing-focus-assistance.spec.ts
+          tests/e2e/playwright.config.ts
           docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
       - name: 验证正式中文名称
         run: pnpm check:language
@@ -68,6 +69,7 @@ jobs:
           git add \
             apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
             tests/e2e/writing-focus-assistance.spec.ts \
+            tests/e2e/playwright.config.ts \
             docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
           git commit -m '测试(M8-04)：验证沉浸写作保留编辑器与选区'
           git push origin HEAD:work/m8-04-author-experience-language

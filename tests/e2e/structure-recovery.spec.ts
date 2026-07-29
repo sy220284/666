@@ -51,7 +51,6 @@ test('previews split and permanent delete, blocks current chapter references, an
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('结构恢复');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();

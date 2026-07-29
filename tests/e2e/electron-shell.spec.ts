@@ -217,9 +217,7 @@ test('completes atomic onboarding and exports only the confirmed diagnostic allo
 
     await page.locator('[data-onboarding-entry="quick"]').click();
     await expect(page.locator('[data-create-project-dialog]')).toBeVisible();
-    await expect(
-      page.locator('select[name="creativePath"] option[value="ai-first"]'),
-    ).toHaveAttribute('disabled', '');
+    await expect(page.locator('select[name="creativePath"]')).toHaveCount(0);
     await page.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.locator('[data-create-project-dialog]')).toHaveCount(0);
     expect(await readdir(createParent)).toEqual([]);
@@ -422,7 +420,6 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await page.locator('[data-create-project]').click();
     await expect(page.locator('[data-create-project-dialog]')).toBeVisible();
     await page.locator('[data-project-name]').fill('夜航');
-    await page.locator('[data-project-channel]').fill('悬疑');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-active-project-name]')).toHaveText('夜航');
@@ -539,9 +536,9 @@ test('creates an explicit professional blank project and exposes the first struc
     const page = await application.firstWindow();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
+    await page.locator('[data-onboarding-dialog-entry="blank"]').click();
     await page.locator('[data-project-name]').fill('空白长篇');
     await page.locator('[data-project-channel]').fill('历史');
-    await page.locator('[data-project-initial-structure]').selectOption('blank');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-structure-empty]')).toContainText('专业空白项目');
@@ -569,7 +566,6 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('雨夜正文');
-    await page.locator('[data-project-channel]').fill('悬疑');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();
 
@@ -1072,7 +1068,6 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('版本项目');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     const editor = page.locator('[data-draft-content]');
@@ -1160,7 +1155,6 @@ test('creates a verified recovery point, restores a new project and exports a Ve
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('恢复E2E');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     const editor = page.locator('[data-draft-content]');
@@ -1213,7 +1207,6 @@ test('records Renderer animation-frame budget during sustained writing scroll', 
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('Renderer帧率');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open', {
       timeout: 20_000,

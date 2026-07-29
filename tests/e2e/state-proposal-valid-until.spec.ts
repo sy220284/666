@@ -49,7 +49,6 @@ test('preserves a finite EntityState interval across the real Electron boundary'
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('有限期状态提案工程');
-    await page.locator('[data-project-channel]').fill('悬疑');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 

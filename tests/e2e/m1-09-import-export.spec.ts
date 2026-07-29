@@ -101,9 +101,9 @@ test('previews, restructures, imports and atomically exports selected Versions',
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
 
     await page.locator('[data-create-project]').click();
+    await page.locator('[data-onboarding-dialog-entry="blank"]').click();
     await page.locator('[data-project-name]').fill('M1-09验收项目');
     await page.locator('[data-project-channel]').fill('长篇');
-    await page.locator('[data-project-initial-structure]').selectOption('blank');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 

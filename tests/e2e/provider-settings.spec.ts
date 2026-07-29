@@ -38,6 +38,7 @@ test('configures a local keyless Provider and keeps offline writing healthy afte
     await page.locator('[data-open-settings]').click();
     await page.locator('[data-settings-navigation="providers"]').click();
     await expect(page.locator('[data-provider-settings]')).toBeVisible();
+    await page.locator('details.provider-advanced-settings > summary').click();
     await page.locator('[data-provider-id]').fill('local-e2e');
     await page.locator('[data-provider-name]').fill('本地E2E模型');
     await page.locator('[data-provider-model]').fill('writer-model');

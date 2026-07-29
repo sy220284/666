@@ -33,8 +33,8 @@ if (!source.includes(newBoundary)) {
   source = source.replace(oldBoundary, newBoundary);
 }
 
-const oldDialogSelector = `${indent}await page.locator('[data-onboarding-entry="${blank ? 'blank' : 'complete'}"]').click();`;
-const newDialogSelector = `${indent}await page.locator('[data-onboarding-dialog-entry="${blank ? 'blank' : 'complete'}"]').click();`;
+const oldDialogSelector = String.raw`\${indent}await page.locator('[data-onboarding-entry="\${blank ? 'blank' : 'complete'}"]').click();`;
+const newDialogSelector = String.raw`\${indent}await page.locator('[data-onboarding-dialog-entry="\${blank ? 'blank' : 'complete'}"]').click();`;
 if (!source.includes(newDialogSelector)) {
   if (!source.includes(oldDialogSelector)) throw new Error('缺少旧创建入口选择器。');
   source = source.replace(oldDialogSelector, newDialogSelector);

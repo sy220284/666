@@ -9,6 +9,7 @@ import {
   groupCandidatesForReview,
   sceneBeatReviewLabel,
 } from '../../apps/desktop/renderer/src/features/writing/review-diff.js';
+import { visibleReviewLines } from '../../apps/desktop/renderer/src/features/writing/review-diff-panel.js';
 import {
   applyProviderPreset,
   providerProtocolLabel,
@@ -69,6 +70,32 @@ describe('作者差异审阅', () => {
     expect(changedReviewLineIndexes(diff)).toEqual([1, 3]);
     expect(diff[1]?.currentSegments.some((segment) => segment.kind === 'removed')).toBe(true);
     expect(diff[1]?.comparisonSegments.some((segment) => segment.kind === 'added')).toBe(true);
+  });
+
+  it('长章节前部插入内容时保持后续行对齐', () => {
+    const original = Array.from({ length: 800 }, (_, index) => `原文第${index + 1}行`);
+    const comparison = ['新增开场', ...original];
+    const diff = createReviewDiff(original.join('\n'), comparison.join('\n'));
+    expect(diff.filter((line) => line.kind !== 'unchanged')).toHaveLength(1);
+    expect(diff[0]).toMatchObject({ kind: 'added', comparisonText: '新增开场' });
+    expect(diff.at(-1)).toMatchObject({
+      kind: 'unchanged',
+      currentText: '原文第800行',
+      comparisonText: '原文第800行',
+    });
+  });
+
+  it('长章节只渲染差异及必要上下文', () => {
+    const original = Array.from({ length: 1_600 }, (_, index) => `正文${index + 1}`);
+    const comparison = [...original];
+    comparison[800] = '正文801（修改）';
+    const diff = createReviewDiff(original.join('\n'), comparison.join('\n'));
+    const changed = changedReviewLineIndexes(diff);
+    const visible = visibleReviewLines(diff, changed, false);
+    expect(changed).toHaveLength(1);
+    expect(visible.length).toBeLessThan(100);
+    expect(visible.some((item) => item.index === changed[0])).toBe(true);
+    expect(visible.some((item) => item.omittedBefore > 0)).toBe(true);
   });
 
   it('按作者审阅状态分组建议稿', () => {

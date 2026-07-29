@@ -7,6 +7,7 @@
     "apps/desktop/renderer/src/shell/task-bar-model.ts",
     "apps/desktop/renderer/src/components/context-help.tsx",
     "apps/desktop/renderer/src/components/task-bar.tsx",
+    "apps/desktop/renderer/src/features/planning/planning-mode-workbench.tsx",
     "tests/unit/author-language.test.ts",
     "tests/unit/renderer-app-shell-model.test.ts",
     "tests/unit/renderer-home-settings-taskbar.test.ts",

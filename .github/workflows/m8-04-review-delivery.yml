@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - scripts/m8-04-review-delivery-codemod.mjs
+      - scripts/m8-04-review-delivery-sanitize.mjs
       - .github/workflows/m8-04-review-delivery.yml
 
 permissions:
@@ -39,7 +40,9 @@ jobs:
       - name: 安装锁定依赖
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: 接入审阅、AI连接与整书交付
-        run: node scripts/m8-04-review-delivery-codemod.mjs
+        run: |
+          node scripts/m8-04-review-delivery-codemod.mjs
+          node scripts/m8-04-review-delivery-sanitize.mjs
       - name: 格式化受影响文件
         run: >-
           pnpm exec prettier --write

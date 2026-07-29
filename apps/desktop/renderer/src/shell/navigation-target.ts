@@ -31,6 +31,27 @@ export type AuthorNavigationTarget =
       readonly chapterId: string | null;
       readonly versionId: string | null;
       readonly logicalBlockId: string | null;
+    }
+  | {
+      readonly type: 'story-todo';
+      readonly projectId: string;
+      readonly todoId: string;
+      readonly chapterId: string | null;
+      readonly sceneBeatId: string | null;
+      readonly logicalBlockId: string | null;
+    }
+  | {
+      readonly type: 'foreshadowing';
+      readonly projectId: string;
+      readonly foreshadowingId: string;
+      readonly chapterId: string | null;
+      readonly query: string | null;
+    }
+  | {
+      readonly type: 'scene-beat';
+      readonly projectId: string;
+      readonly sceneBeatId: string;
+      readonly chapterId: string;
     };
 
 export interface AuthorNavigationResolution {
@@ -51,9 +72,61 @@ export function resolveAuthorNavigationTarget(
         chapterId: null,
         logicalBlockId: null,
         versionId: null,
+        sceneBeatId: null,
         issueId: null,
       },
       filters: { 'navigation.query': target.query },
+    };
+  }
+
+  if (target.type === 'foreshadowing') {
+    return {
+      route: 'canon',
+      selection: {
+        projectId: target.projectId,
+        entityId: null,
+        chapterId: target.chapterId,
+        logicalBlockId: null,
+        versionId: null,
+        sceneBeatId: null,
+        issueId: null,
+      },
+      filters: {
+        'navigation.query': target.query,
+        'navigation.foreshadowingId': target.foreshadowingId,
+      },
+    };
+  }
+
+  if (target.type === 'scene-beat') {
+    return {
+      route: 'planning',
+      selection: {
+        projectId: target.projectId,
+        chapterId: target.chapterId,
+        sceneBeatId: target.sceneBeatId,
+        entityId: null,
+        logicalBlockId: null,
+        versionId: null,
+        issueId: null,
+      },
+      filters: { 'navigation.sceneBeatId': target.sceneBeatId },
+    };
+  }
+
+  if (target.type === 'story-todo' && !target.chapterId) {
+    return {
+      route: 'checks',
+      selection: {
+        projectId: target.projectId,
+        chapterId: null,
+        sceneBeatId: target.sceneBeatId,
+        logicalBlockId: target.logicalBlockId,
+        versionId: null,
+        entityId: null,
+        issueId: null,
+      },
+      filters: { 'navigation.todoId': target.todoId },
     };
   }
 
@@ -66,6 +139,7 @@ export function resolveAuthorNavigationTarget(
         versionId: target.type === 'version' ? target.versionId : target.versionId,
         entityId: null,
         logicalBlockId: target.logicalBlockId ?? null,
+        sceneBeatId: null,
         issueId: target.type === 'validation-issue' ? target.issueId : null,
       },
       filters: { 'navigation.query': target.type === 'version' ? target.query : null },
@@ -80,10 +154,12 @@ export function resolveAuthorNavigationTarget(
       logicalBlockId: target.logicalBlockId,
       versionId: null,
       entityId: null,
+      sceneBeatId: target.type === 'story-todo' ? target.sceneBeatId : null,
       issueId: target.type === 'validation-issue' ? target.issueId : null,
     },
     filters: {
       'navigation.query': target.type === 'draft-block' ? target.query : null,
+      'navigation.todoId': target.type === 'story-todo' ? target.todoId : null,
     },
   };
 }

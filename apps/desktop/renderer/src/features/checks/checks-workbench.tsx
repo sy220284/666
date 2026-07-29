@@ -9,6 +9,10 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { authorStatusLabel } from '../../presentation/author-status-labels.js';
+import { authorTerm } from '../../presentation/author-terms.js';
+import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { RhythmPanel } from './rhythm-panel.js';
 import { SearchPanel } from './search-panel.js';
 
@@ -16,16 +20,15 @@ interface ChecksWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly readOnly: boolean;
-  readonly onOpenCanon: () => void;
-  readonly onOpenWriting: () => void;
+  readonly onNavigate: (target: AuthorNavigationTarget) => void;
 }
 
 const ISSUE_ACTIONS = [
-  ['resolve', '解决'],
-  ['ignore', '忽略'],
-  ['mute', '静音规则'],
-  ['downgrade', '降级'],
-  ['false_positive', '误报'],
+  ['resolve', '标记已处理'],
+  ['ignore', '忽略本项'],
+  ['mute', '停用此规则'],
+  ['downgrade', '降低重要程度'],
+  ['false_positive', '标记为误报'],
   ['reopen', '重新打开'],
 ] as const;
 
@@ -33,8 +36,7 @@ export function ChecksWorkbench({
   bridge,
   projectId,
   readOnly,
-  onOpenCanon,
-  onOpenWriting,
+  onNavigate,
 }: ChecksWorkbenchProps) {
   const [structure, setStructure] = useState<ProjectStructure | null>(null);
   const [catalog, setCatalog] = useState<ValidationCatalog | null>(null);
@@ -44,7 +46,7 @@ export function ChecksWorkbench({
   const [includeClosed, setIncludeClosed] = useState(true);
   const [pending, setPending] = useState(false);
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
-  const [notice, setNotice] = useState('检查只读取当前 Final Version，不会自动改写正文。');
+  const [notice, setNotice] = useState(`检查只读取当前${authorTerm('finalVersion')}，不会自动改写正文。`);
 
   const chapters = useMemo(
     () => structure?.volumes.flatMap((volume) => volume.chapters) ?? [],
@@ -67,7 +69,7 @@ export function ChecksWorkbench({
       { mode: 'replace' },
     );
     if (outcome.state === 'success') setCatalog(outcome.data);
-    else if (outcome.state === 'failure') setNotice(`检查读取失败 · ${outcome.error.code}`);
+    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   }, [bridge, chapterId, includeClosed, projectId]);
 
   useEffect(() => {
@@ -102,7 +104,9 @@ export function ChecksWorkbench({
       void bridge.generation.getRun(projectId, activeRun.runId).then((outcome) => {
         if (outcome.state !== 'success') return;
         setActiveRun(outcome.data);
-        setNotice(`AI语义检查 · ${outcome.data.stage} · ${outcome.data.status}`);
+        setNotice(
+          `AI语义检查 · ${generationStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
+        );
         if (['succeeded', 'failed', 'cancelled'].includes(outcome.data.status)) {
           window.clearInterval(timer);
           setPending(false);
@@ -111,7 +115,7 @@ export function ChecksWorkbench({
       });
     }, 1_000);
     return () => window.clearInterval(timer);
-  }, [activeRun?.runId, bridge, projectId, refreshCatalog]);
+  }, [activeRun, bridge, projectId, refreshCatalog]);
 
   const runRules = async (): Promise<void> => {
     if (!chapter?.finalVersionId || readOnly) return;
@@ -124,7 +128,7 @@ export function ChecksWorkbench({
     if (outcome.state === 'success') {
       setCatalog(outcome.data);
       setNotice(`规则检查完成 · ${outcome.data.issues.length} 个问题。`);
-    } else if (outcome.state === 'failure') setNotice(`规则检查失败 · ${outcome.error.code}`);
+    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   };
 
   const runAi = async (): Promise<void> => {
@@ -141,11 +145,11 @@ export function ChecksWorkbench({
     });
     if (outcome.state === 'success') {
       setActiveRun(outcome.data.run);
-      setNotice(`AI语义检查已启动 · ${outcome.data.run.stage}`);
+      setNotice(`AI语义检查已启动 · ${generationStageLabel(outcome.data.run.stage)}`);
     } else {
       setPending(false);
       setNotice(
-        outcome.state === 'failure' ? `AI语义检查未启动 · ${outcome.error.code}` : '请求已取消。',
+        outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。',
       );
     }
   };
@@ -161,7 +165,7 @@ export function ChecksWorkbench({
       action,
     });
     if (outcome.state === 'success') setCatalog(outcome.data);
-    else if (outcome.state === 'failure') setNotice(`问题操作失败 · ${outcome.error.code}`);
+    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   };
 
   const createTodo = async (issue: ValidationIssue): Promise<void> => {
@@ -172,8 +176,8 @@ export function ChecksWorkbench({
     });
     if (outcome.state === 'success') {
       setCatalog(outcome.data);
-      setNotice('已创建与问题锚点关联的待办。');
-    } else if (outcome.state === 'failure') setNotice(`待办创建失败 · ${outcome.error.code}`);
+      setNotice('已创建与问题原文位置关联的写作待办。');
+    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   };
 
   const addComment = async (issue: ValidationIssue): Promise<void> => {
@@ -189,44 +193,53 @@ export function ChecksWorkbench({
       body,
     });
     if (outcome.state === 'success') setCatalog(outcome.data);
-    else if (outcome.state === 'failure') setNotice(`批注保存失败 · ${outcome.error.code}`);
+    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+  };
+
+  const navigateToIssue = (issue: ValidationIssue): void => {
+    if (!issue.anchor.chapterId) {
+      setNotice('该问题没有章节原文位置，无法进行精准跳转。');
+      return;
+    }
+    onNavigate({
+      type: 'validation-issue',
+      projectId,
+      issueId: issue.issueId,
+      chapterId: issue.anchor.chapterId,
+      versionId: issue.anchor.versionId,
+      logicalBlockId: issue.anchor.logicalBlockId,
+    });
   };
 
   return (
-    <section className="checks-workbench" data-checks-workbench aria-label="检查工作台">
+    <section className="checks-workbench" data-checks-workbench aria-label="作品检查工作台">
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">Validation</p>
-          <h1>规则与 AI 语义检查</h1>
-          <p>检查结果保留证据锚点；只有作者可以解决、忽略或转为待办。</p>
+          <p className="eyebrow">作品检查</p>
+          <h1>规则与AI语义检查</h1>
+          <p>检查结果保留内容依据；只有作者可以处理、忽略或转为写作待办。</p>
         </div>
       </header>
-      <SearchPanel
-        bridge={bridge}
-        projectId={projectId}
-        readOnly={readOnly}
-        onOpenCanon={onOpenCanon}
-        onOpenWriting={onOpenWriting}
-      />
+      <SearchPanel bridge={bridge} projectId={projectId} readOnly={readOnly} onNavigate={onNavigate} />
       <RhythmPanel bridge={bridge} projectId={projectId} readOnly={readOnly} />
       <section className="feature-card">
         <div className="filter-bar">
           <label>
-            Final Version 章节
+            定稿章节
             <select value={chapterId} onChange={(event) => setChapterId(event.target.value)}>
               <option value="">选择章节</option>
               {chapters.map((item) => (
                 <option disabled={!item.finalVersionId} key={item.id} value={item.id}>
                   {item.title}
-                  {item.finalVersionId ? '' : '（尚无 Final Version）'}
+                  {item.finalVersionId ? '' : '（尚无定稿版本）'}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Provider
+            AI连接
             <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
-              <option value="">选择 Provider</option>
+              <option value="">选择AI连接</option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
                   {provider.name}
@@ -240,7 +253,7 @@ export function ChecksWorkbench({
               type="checkbox"
               onChange={(event) => setIncludeClosed(event.target.checked)}
             />
-            包含已关闭
+            包含已处理问题
           </label>
           <button disabled={pending || readOnly || !chapter?.finalVersionId} onClick={runRules}>
             运行规则检查
@@ -249,7 +262,7 @@ export function ChecksWorkbench({
             disabled={pending || readOnly || !chapter?.finalVersionId || !providerId}
             onClick={runAi}
           >
-            运行 AI 语义检查
+            运行AI语义检查
           </button>
         </div>
         <p className="feature-status" role="status">
@@ -270,22 +283,30 @@ export function ChecksWorkbench({
                 key={issue.issueId}
               >
                 <h3>
-                  {issue.issueType} · {issue.severity}
+                  {issueTypeLabel(issue.issueType)} · {authorStatusLabel(issue.severity)}
                 </h3>
                 <p>
-                  {issue.source === 'rule' ? '确定性规则' : 'AI语义检查'} · {issue.status} · 锚点{' '}
-                  {issue.anchor.state === 'current' ? '有效' : '已过期'}
+                  {issue.source === 'rule' ? '确定性规则' : 'AI语义检查'} ·{' '}
+                  {authorStatusLabel(issue.status)} · 原文位置{' '}
+                  {issue.anchor.state === 'current' ? '有效' : '已经变化'}
                 </p>
                 <p>{issue.rationale}</p>
                 {issue.anchor.textQuote ? <blockquote>{issue.anchor.textQuote}</blockquote> : null}
-                {issue.suggestion ? <p>建议：{issue.suggestion}</p> : null}
+                {issue.suggestion ? <p>修改建议：{issue.suggestion}</p> : null}
                 <details>
-                  <summary>证据与版本</summary>
-                  <p>Version：{issue.anchor.versionId ?? '项目级'}</p>
-                  <p>Block：{issue.anchor.logicalBlockId ?? '无块锚点'}</p>
-                  <p>{issue.evidenceIds.join(' · ')}</p>
+                  <summary>技术详情</summary>
+                  <p>定稿版本标识：{issue.anchor.versionId ?? '作品级问题'}</p>
+                  <p>正文块标识：{issue.anchor.logicalBlockId ?? '没有正文块位置'}</p>
+                  <p>内容依据标识：{issue.evidenceIds.join(' · ') || '无'}</p>
                 </details>
                 <div className="inline-actions">
+                  <button
+                    disabled={!issue.anchor.chapterId}
+                    type="button"
+                    onClick={() => navigateToIssue(issue)}
+                  >
+                    前往原文
+                  </button>
                   {ISSUE_ACTIONS.map(([action, label]) => (
                     <button
                       disabled={readOnly}
@@ -297,7 +318,7 @@ export function ChecksWorkbench({
                     </button>
                   ))}
                   <button disabled={readOnly} type="button" onClick={() => void createTodo(issue)}>
-                    转为待办
+                    转为写作待办
                   </button>
                   <button disabled={readOnly} type="button" onClick={() => void addComment(issue)}>
                     添加批注
@@ -310,11 +331,11 @@ export function ChecksWorkbench({
       </section>
 
       <section className="feature-card">
-        <h2>待办与批注</h2>
+        <h2>写作待办与批注</h2>
         {(catalog?.todos ?? []).map((todo) => (
           <article className="ledger-record" key={todo.todoId}>
             <p>
-              {todo.title} · {todo.status}
+              {todo.title} · {todo.status === 'open' ? '待处理' : '已完成'}
             </p>
             <button
               disabled={readOnly}
@@ -332,17 +353,18 @@ export function ChecksWorkbench({
                   })
                   .then((outcome) => {
                     if (outcome.state === 'success') setCatalog(outcome.data);
+                    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
                   })
               }
             >
-              {todo.status === 'open' ? '完成' : '重新打开'}
+              {todo.status === 'open' ? '标记完成' : '重新打开'}
             </button>
           </article>
         ))}
         {(catalog?.comments ?? []).map((comment) => (
           <article className="ledger-record" key={comment.commentId}>
             <p>{comment.body}</p>
-            <p>{comment.status}</p>
+            <p>{comment.status === 'open' ? '待处理' : '已处理'}</p>
             {comment.status === 'open' ? (
               <button
                 disabled={readOnly}
@@ -352,10 +374,11 @@ export function ChecksWorkbench({
                     .resolveComment({ projectId, commentId: comment.commentId })
                     .then((outcome) => {
                       if (outcome.state === 'success') setCatalog(outcome.data);
+                      else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
                     })
                 }
               >
-                解决批注
+                标记批注已处理
               </button>
             ) : null}
           </article>
@@ -363,4 +386,25 @@ export function ChecksWorkbench({
       </section>
     </section>
   );
+}
+
+function generationStageLabel(stage: string): string {
+  if (stage === 'queued') return '等待开始';
+  if (stage === 'calling_model') return '正在调用AI模型';
+  if (stage === 'streaming') return '正在接收内容';
+  if (stage === 'validating') return '正在检查结果';
+  if (stage === 'persisting') return '正在保存';
+  return '处理中';
+}
+
+function issueTypeLabel(issueType: string): string {
+  const known: Readonly<Record<string, string>> = {
+    continuity: '前后文连续性',
+    character_arc: '人物成长线',
+    terminology: '专名与术语',
+    timeline: '时间线',
+    foreshadowing: '伏笔',
+    rhythm: '连载节奏',
+  };
+  return known[issueType] ?? issueType.replaceAll('_', ' ');
 }

@@ -7,6 +7,7 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { useRendererUiStore } from '../../state/ui-store.js';
 import {
   WritingWorkbench as WritingCoreWorkbench,
   type WritingPanel,
@@ -35,6 +36,8 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
   const latestContinuationRef = useRef<ProjectContinuationSnapshot | null>(
     props.initialContinuation,
   );
+  const returnLocation = useRendererUiStore((state) => state.returnLocation);
+  const dispatch = useRendererUiStore((state) => state.dispatch);
   desiredPanelRef.current = props.panel;
   const [latestContinuation, setLatestContinuation] = useState<ProjectContinuationSnapshot | null>(
     props.initialContinuation,
@@ -86,6 +89,28 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
     [acceptContinuation, props.bridge.project],
   );
 
+  const returnToSource = useCallback(async (): Promise<void> => {
+    if (!returnLocation) return;
+    if (props.panel === 'editor') {
+      const flush = (
+        globalThis as typeof globalThis & {
+          readonly worldforgeFlushDraft?: () => Promise<boolean>;
+        }
+      ).worldforgeFlushDraft;
+      if (flush && !(await flush())) {
+        props.onStatus('自动保存失败，已阻止返回来源页面。');
+        return;
+      }
+    }
+    dispatch({ type: 'navigate', route: returnLocation.route, returnLocation: null });
+    window.requestAnimationFrame(() => {
+      const focusTarget = returnLocation.focusKey
+        ? document.querySelector<HTMLElement>(`[data-return-focus="${returnLocation.focusKey}"]`)
+        : null;
+      focusTarget?.focus();
+    });
+  }, [dispatch, props, returnLocation]);
+
   const continuation =
     latestContinuation?.projectId === props.project.projectId
       ? latestContinuation
@@ -93,6 +118,14 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
 
   return (
     <>
+      {returnLocation ? (
+        <section className="feature-card navigation-return" data-navigation-return role="status">
+          <span>已从来源页面打开目标内容。</span>
+          <button type="button" onClick={() => void returnToSource()}>
+            返回来源页面
+          </button>
+        </section>
+      ) : null}
       {props.panel === 'versions' &&
       props.navigationChapterId &&
       props.navigationVersionId &&

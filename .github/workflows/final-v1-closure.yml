@@ -5,7 +5,7 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
     paths:
-      - scripts/final-v1-closure-codemod.mjs
+      - scripts/final-v1-closure-runner.mjs
       - .github/workflows/final-v1-closure.yml
 
 permissions:
@@ -33,13 +33,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Apply final closure
-        run: node scripts/final-v1-closure-codemod.mjs
+        run: node scripts/final-v1-closure-runner.mjs
       - name: Format formal changes
         run: >-
           pnpm exec prettier --write
           scripts/task-control-lib.mjs
           .github/governance/verification-hold-taskctl.mjs
-          .github/governance/task-transition-policy.mjs
           docs/tasks/ACTIVE_TASK.json
           docs/tasks/ACTIVE_TASK.md
           docs/tasks/TASK_INDEX.md
@@ -68,7 +67,6 @@ jobs:
           git add \
             scripts/task-control-lib.mjs \
             .github/governance/verification-hold-taskctl.mjs \
-            .github/governance/task-transition-policy.mjs \
             docs/tasks/ACTIVE_TASK.json \
             docs/tasks/ACTIVE_TASK.md \
             docs/tasks/TASK_INDEX.md \

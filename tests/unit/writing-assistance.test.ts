@@ -6,7 +6,7 @@ import type {
   NarrativePlanningCatalog,
   PlotNode,
   SceneBeat,
-  StoryTodo,
+  ValidationCatalog,
 } from '@worldforge/contracts';
 
 import { buildWritingAssistanceView } from '../../apps/desktop/renderer/src/features/writing/writing-assistance.js';

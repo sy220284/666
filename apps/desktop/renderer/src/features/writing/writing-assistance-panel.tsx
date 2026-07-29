@@ -6,10 +6,7 @@ import {
   authorForeshadowingStatusLabel,
   authorJsonValue,
 } from '../../presentation/author-value-format.js';
-import {
-  loadWritingAssistance,
-  type WritingAssistanceView,
-} from './writing-assistance.js';
+import { loadWritingAssistance, type WritingAssistanceView } from './writing-assistance.js';
 
 interface WritingAssistancePanelProps {
   readonly bridge: RendererBridgeAdapter;
@@ -106,7 +103,9 @@ export function WritingAssistancePanel({
                       {beat.title}
                       {beat.required ? ' · 必须完成' : ''}
                     </strong>
-                    <span>{beat.wordTargetPercent}% · {beat.goal || '尚未填写目标'}</span>
+                    <span>
+                      {beat.wordTargetPercent}% · {beat.goal || '尚未填写目标'}
+                    </span>
                   </li>
                 ))}
               </ol>

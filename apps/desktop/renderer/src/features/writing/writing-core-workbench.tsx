@@ -40,6 +40,7 @@ import {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { StructureNavigator } from '../planning/planning-workbench.js';
+import { WritingAssistancePanel } from './writing-assistance-panel.js';
 import {
   ContinuationPersistenceTracker,
   derivePanelSwitchInput,
@@ -951,7 +952,7 @@ export function WritingWorkbench({
         <div>
           <p className="eyebrow">本地写作 · 自动保存</p>
           <h1>{chapter ? `${project.name} · ${chapter.title}` : project.name}</h1>
-          <p>正文、历史版本和候选稿都保存在当前项目中；采用前可预览，保存后可追溯。</p>
+          <p>正文、历史版本和建议稿都保存在当前作品中；采用前可预览，保存后可追溯。</p>
         </div>
         <div className="feature-heading__actions">
           <button
@@ -986,7 +987,7 @@ export function WritingWorkbench({
             disabled={!chapter}
             onClick={() => onPanelChange('candidates')}
           >
-            候选稿
+            建议稿
           </button>
           <button
             aria-pressed={outlineVisible}
@@ -1002,7 +1003,7 @@ export function WritingWorkbench({
             type="button"
             onClick={() => setContextVisible((visible) => !visible)}
           >
-            {contextVisible ? '收起上下文' : '展开上下文'}
+            {contextVisible ? '收起写作辅助' : '展开写作辅助'}
           </button>
           <button
             aria-pressed={focusMode}
@@ -1254,18 +1255,14 @@ export function WritingWorkbench({
           ) : null}
         </main>
 
-        {contextVisible && !focusMode ? (
-          <aside className="writing-context feature-card" aria-label="正文上下文">
-            <h2>当前写作状态</h2>
-            <p>{chapter?.title ?? '尚未选择章节'}</p>
-            <p>{draft ? `已保存修订 ${draft.revision}` : '尚未打开正文'}</p>
-            <p>
-              {readOnly
-                ? '只读保护：可以浏览和复制，写入已停用。'
-                : '停止输入约1秒后自动保存，事务确认后才显示成功。'}
-            </p>
-            <p>切换章节、工作台或关闭项目之前会先完成当前保存。</p>
-          </aside>
+        {contextVisible && !focusMode && chapter ? (
+          <WritingAssistancePanel
+            bridge={bridge}
+            projectId={project.projectId}
+            chapterId={chapter.id}
+            savedRevision={draft?.revision ?? null}
+            readOnly={readOnly}
+          />
         ) : null}
       </div>
     </section>

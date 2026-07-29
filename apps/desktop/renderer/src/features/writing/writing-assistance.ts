@@ -4,10 +4,12 @@ import type {
   NarrativePlanningCatalog,
   PlotNode,
   SceneBeat,
-  StoryTodo,
+  ValidationCatalog,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+
+type StoryTodo = ValidationCatalog['todos'][number];
 
 export interface WritingAssistanceGoal {
   readonly title: string;
@@ -78,9 +80,7 @@ export interface WritingAssistanceSource {
   readonly warnings?: readonly string[];
 }
 
-export function buildWritingAssistanceView(
-  source: WritingAssistanceSource,
-): WritingAssistanceView {
+export function buildWritingAssistanceView(source: WritingAssistanceSource): WritingAssistanceView {
   const plotNodeIds = new Set(
     source.sceneBeats.flatMap((beat) => (beat.plotNodeId ? [beat.plotNodeId] : [])),
   );
@@ -102,9 +102,7 @@ export function buildWritingAssistanceView(
         .filter((state) => state.entityId === entity.id && state.recordStatus === 'current')
         .map((state) => ({ key: state.stateKey, value: state.value })),
       knowledge: source.continuity.knowledgeStates
-        .filter(
-          (state) => state.characterId === entity.id && state.recordStatus === 'current',
-        )
+        .filter((state) => state.characterId === entity.id && state.recordStatus === 'current')
         .map((state) => ({
           information: state.informationKey,
           status: state.knowledgeStatus,
@@ -184,10 +182,7 @@ export async function loadWritingAssistance(
         },
         { mode: 'replace' },
       ),
-      bridge.validation.list(
-        { projectId, chapterId, includeClosed: false },
-        { mode: 'replace' },
-      ),
+      bridge.validation.list({ projectId, chapterId, includeClosed: false }, { mode: 'replace' }),
     ]);
 
   const structureData = successData(structure, '卷章目录', warnings);
@@ -269,10 +264,7 @@ async function loadPreviousEnding(
     warnings.push('上一章定稿版本暂时无法读取');
   }
 
-  const draft = await bridge.draft.open(
-    { projectId, chapterId: chapter.id },
-    { mode: 'replace' },
-  );
+  const draft = await bridge.draft.open({ projectId, chapterId: chapter.id }, { mode: 'replace' });
   if (draft.state !== 'success') {
     warnings.push('上一章当前稿暂时无法读取');
     return null;

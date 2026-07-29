@@ -27,7 +27,10 @@
     "apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx",
     "apps/desktop/renderer/src/features/canon/canon-workbench.tsx",
     "apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx",
-    "tests/unit/renderer-navigation-target.test.ts"
+    "tests/unit/renderer-navigation-target.test.ts",
+    "apps/desktop/renderer/src/features/writing/writing-assistance.ts",
+    "apps/desktop/renderer/src/features/writing/writing-assistance-panel.tsx",
+    "tests/unit/writing-assistance.test.ts"
   ],
   "excludedPaths": [],
   "note": "完成一个文件或目录的中文业务语言治理后，必须将其加入本清单。"

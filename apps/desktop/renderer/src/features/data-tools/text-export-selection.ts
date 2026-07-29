@@ -11,8 +11,12 @@ export function selectedAllFinalized(
   selected: ReadonlySet<string>,
   versions: readonly ExportVersionChoice[],
 ): boolean {
-  const finalized = finalizedVersionIds(versions);
-  return finalized.length > 0 && finalized.every((versionId) => selected.has(versionId));
+  const finalized = new Set(finalizedVersionIds(versions));
+  return (
+    finalized.size > 0 &&
+    selected.size === finalized.size &&
+    [...selected].every((versionId) => finalized.has(versionId))
+  );
 }
 
 export function wholeBookExportLabel(

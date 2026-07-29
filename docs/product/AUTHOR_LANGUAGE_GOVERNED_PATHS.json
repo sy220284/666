@@ -7,18 +7,19 @@
     "apps/desktop/renderer/src/shell/task-bar-model.ts",
     "apps/desktop/renderer/src/components/context-help.tsx",
     "apps/desktop/renderer/src/components/task-bar.tsx",
+    "apps/desktop/renderer/src/components/author-error-notice.tsx",
+    "apps/desktop/renderer/src/features/home/home-page.tsx",
+    "apps/desktop/renderer/src/features/settings/settings-page.tsx",
     "apps/desktop/renderer/src/features/planning/planning-mode-workbench.tsx",
+    "apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx",
     "tests/unit/author-language.test.ts",
     "tests/unit/renderer-app-shell-model.test.ts",
     "tests/unit/renderer-home-settings-taskbar.test.ts",
+    "tests/e2e/m8-04-author-experience.spec.ts",
     "docs/tasks/ACTIVE_TASK.md",
     "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md",
-    "agent.md",
-    "apps/desktop/renderer/src/features/home/home-page.tsx",
-    "apps/desktop/renderer/src/features/settings/settings-page.tsx",
-    "apps/desktop/renderer/src/components/author-error-notice.tsx",
-    "apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx"
+    "agent.md"
   ],
   "excludedPaths": [],
-  "note": "阶段一只登记已经完成中文业务语言治理的路径；后续界面迁移完成一个文件或目录，就必须将其加入本清单。"
+  "note": "完成一个文件或目录的中文业务语言治理后，必须将其加入本清单。"
 }

@@ -1,0 +1,73 @@
+name: M8-04 沉浸写作桌面验证
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - scripts/m8-04-writing-focus-e2e-codemod.mjs
+      - .github/workflows/m8-04-writing-focus-e2e.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-04-writing-focus-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  apply-and-verify:
+    if: github.head_ref == 'work/m8-04-author-experience-language'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: 检出正式任务分支
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: 安装pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 11.13.0
+      - name: 安装Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: 安装锁定依赖
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 接入沉浸写作选区恢复
+        run: node scripts/m8-04-writing-focus-e2e-codemod.mjs
+      - name: 格式化受影响文件
+        run: >-
+          pnpm exec prettier --write
+          apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
+          tests/e2e/writing-focus-assistance.spec.ts
+          docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
+      - name: 验证正式中文名称
+        run: pnpm check:language
+      - name: 执行类型检查
+        run: pnpm typecheck
+      - name: 安装桌面显示依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
+      - name: 验证写作辅助与沉浸写作流程
+        run: pnpm test:e2e -- tests/e2e/writing-focus-assistance.spec.ts
+      - name: 提交生产代码与桌面测试
+        run: |
+          if git diff --quiet; then
+            echo '没有需要提交的生产变更。'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
+            tests/e2e/writing-focus-assistance.spec.ts \
+            docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
+          git commit -m '测试(M8-04)：验证沉浸写作保留编辑器与选区'
+          git push origin HEAD:work/m8-04-author-experience-language

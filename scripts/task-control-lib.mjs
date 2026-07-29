@@ -82,6 +82,13 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/process/WORKFLOW_EXECUTION_ORDER.md',
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
+  'docs/tasks/TASK_INDEX.md',
+  'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md',
+  'docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md',
+  'docs/test-evidence/M4-04/',
+  'docs/test-evidence/M8-02/',
+  'docs/product/V1.0_TRACEABILITY_MATRIX.md',
+  'README.md',
   'tests/integration/task-lifecycle.test.ts',
   'tests/unit/evidence-policy.test.ts',
   'tests/unit/task-control.test.ts',
@@ -394,7 +401,10 @@ export function renderActiveTask(state) {
   const task = state.activeTask;
   const list = (values) => values.map((value) => `  - ${value}`).join('\n');
   let continuationRule;
-  if (state.authorization.mode === 'implementation-pr') {
+  if (state.verificationHold?.finalTask === true) {
+    continuationRule =
+      'V1.0全部独立任务已经Verified；M8-02作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。';
+  } else if (state.authorization.mode === 'implementation-pr') {
     continuationRule =
       '当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。';
   } else if (state.authorization.mode === 'implementation-mainline') {

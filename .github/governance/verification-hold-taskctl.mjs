@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import {
+  isGovernanceOnlyPullRequest,
   parseTaskIndex,
   renderActiveTask,
   validateChangedPaths,
@@ -55,6 +56,7 @@ function holdErrors(state, taskIndex) {
   const active = state?.activeTask;
   const hold = state?.verificationHold;
   const verifiedTasks = hold?.verifiedTasks ?? [];
+  const finalTask = hold?.finalTask === true;
 
   if (state?.schemaVersion !== 1) errors.push('Unsupported ACTIVE_TASK schemaVersion');
   if (state?.authorization?.mode !== 'implementation-pr') {
@@ -115,7 +117,19 @@ function holdErrors(state, taskIndex) {
       }
     }
   }
-  if (!hold?.nextTaskId || hold.nextTaskId === active.id) {
+  if (finalTask) {
+    if (hold.nextTaskId !== null) errors.push('Final verification hold requires nextTaskId=null');
+    const unfinished = [...taskIndex.values()].filter((task) => task.status !== 'Verified');
+    if (unfinished.length > 0) {
+      errors.push(
+        'Final verification hold requires every task Verified: ' +
+          unfinished.map((task) => task.id).join(', '),
+      );
+    }
+    if ((state.deferredVerification ?? []).length > 0) {
+      errors.push('Final verification hold requires an empty deferredVerification ledger');
+    }
+  } else if (!hold?.nextTaskId || hold.nextTaskId === active.id) {
     errors.push('verificationHold.nextTaskId must identify the deferred next task');
   } else if (taskIndex.get(hold.nextTaskId)?.status !== 'Planned') {
     errors.push(`${hold.nextTaskId} must remain Planned during verification hold`);
@@ -178,6 +192,11 @@ function changedFiles() {
 async function validateHoldPaths() {
   const { state } = await load();
   const files = changedFiles();
+  const branch = process.env.TASK_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF ?? '';
+  if (isGovernanceOnlyPullRequest(branch, files)) {
+    console.log('Final governance closure paths accepted from ' + branch + '.');
+    return;
+  }
   const violations = validateChangedPaths(
     files,
     state.verificationHold.allowedPaths,
@@ -190,6 +209,11 @@ async function validateHoldPaths() {
 async function validateHoldBranch() {
   const { state } = await load();
   const branch = process.env.TASK_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF ?? '';
+  const files = changedFiles();
+  if (isGovernanceOnlyPullRequest(branch, files)) {
+    console.log('Final governance closure PR accepted: ' + branch + '.');
+    return;
+  }
   if (!branch || branch !== state.activeTask.branch) {
     throw new Error(
       `Verification hold PR branch must match ${state.activeTask.branch}, found ${branch || '<none>'}`,
@@ -257,6 +281,32 @@ export function selfTest() {
       taskIndex,
     ).includes('M4-02 must be absent from deferredVerification'),
   );
+  const finalIndex = new Map([
+    ['M4-04', { id: 'M4-04', source: 'docs/tasks/M4/M4-04.md', status: 'Verified' }],
+    ['M8-02', { id: 'M8-02', source: 'docs/tasks/M8/M8-02.md', status: 'Verified' }],
+  ]);
+  const finalState = {
+    ...state,
+    activeTask: {
+      ...state.activeTask,
+      id: 'M8-02',
+      source: 'docs/tasks/M8/M8-02.md',
+      branch: 'work/m8-02-final',
+    },
+    deferredVerification: [],
+    lastVerifiedTask: { id: 'M8-02', commit: 'a'.repeat(40), evidenceHead: 'b'.repeat(40) },
+    verificationHold: {
+      taskId: 'M8-02',
+      verifiedTasks: ['M4-04', 'M8-02'],
+      finalTask: true,
+      nextTaskId: null,
+      heldAt: '2026-07-29T00:00:00.000Z',
+      reason: 'final closure',
+      allowedPaths: ['docs/tasks/'],
+      forbiddenPaths: [],
+    },
+  };
+  assert.deepEqual(holdErrors(finalState, finalIndex), []);
   console.log('Verification hold taskctl self-test passed.');
 }
 

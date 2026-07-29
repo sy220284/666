@@ -19,8 +19,8 @@ const activeProjectContext = {
   disclosureMode: 'beginner',
 } as const;
 
-describe('M3-08 app shell primary navigation model', () => {
-  it('freezes the six V1 primary entries in the approved order', () => {
+describe('应用主导航', () => {
+  it('按批准顺序提供六个一级入口', () => {
     const items = createPrimaryNavigationItems(activeProjectContext);
 
     expect(items.map((item) => item.id)).toEqual(PRIMARY_NAVIGATION_IDS);
@@ -34,7 +34,7 @@ describe('M3-08 app shell primary navigation model', () => {
     ]);
   });
 
-  it('changes disclosure copy without changing routes or commands', () => {
+  it('切换信息显示方式时不改变页面和命令', () => {
     const beginner = createPrimaryNavigationItems(activeProjectContext);
     const professional = createPrimaryNavigationItems({
       ...activeProjectContext,
@@ -45,14 +45,14 @@ describe('M3-08 app shell primary navigation model', () => {
       beginner.map(({ id, route }) => ({ id, route })),
     );
     expect(professional.find((item) => item.id === 'planning')?.description).toContain(
-      'ProjectBrief',
+      '作品任务书',
     );
     expect(beginner.find((item) => item.id === 'planning')?.description).not.toContain(
-      'ProjectBrief',
+      '作品任务书',
     );
   });
 
-  it('keeps project workspaces unavailable until a local project is active', () => {
+  it('没有打开本地作品时禁用依赖作品的入口', () => {
     const items = createPrimaryNavigationItems({
       ...activeProjectContext,
       activeProjectId: null,
@@ -68,12 +68,12 @@ describe('M3-08 app shell primary navigation model', () => {
     expect(items.find((item) => item.id === 'settings')?.disabled).toBe(false);
   });
 
-  it('does not expose an unfinished check workspace as a clickable placeholder', () => {
+  it('未完成的检查功能不提供无法使用的占位入口', () => {
     expect(resolvePrimaryNavigationIntent('checks', activeProjectContext)).toEqual({
       accepted: false,
       id: 'checks',
       code: 'FEATURE_UNAVAILABLE',
-      reason: '该工作台尚未完成迁移，当前不会提供可点击占位入口。',
+      reason: '该功能尚未完成迁移，当前不会提供无法使用的占位入口。',
     });
 
     expect(
@@ -88,7 +88,7 @@ describe('M3-08 app shell primary navigation model', () => {
     });
   });
 
-  it('rejects unknown entries and project routes without an active project', () => {
+  it('拒绝未知入口和没有打开作品的写作入口', () => {
     expect(resolvePrimaryNavigationIntent('unknown', activeProjectContext)).toMatchObject({
       accepted: false,
       code: 'UNKNOWN_NAVIGATION',
@@ -105,7 +105,7 @@ describe('M3-08 app shell primary navigation model', () => {
     });
   });
 
-  it('maps secondary routes to their owning primary workspace', () => {
+  it('将二级页面归入对应的一级入口', () => {
     expect(primaryNavigationIdForRoute('project')).toBe('home');
     expect(primaryNavigationIdForRoute('structure')).toBe('planning');
     expect(primaryNavigationIdForRoute('versions')).toBe('writing');
@@ -118,7 +118,7 @@ describe('M3-08 app shell primary navigation model', () => {
     expect(items.find((item) => item.current)?.id).toBe('writing');
   });
 
-  it('restores only legal and currently available routes', () => {
+  it('只恢复合法且当前可用的页面', () => {
     expect(
       restoreAppShellRoute('versions', {
         activeProjectId: 'project-1',
@@ -152,7 +152,7 @@ describe('M3-08 app shell primary navigation model', () => {
     ).toBe('home');
   });
 
-  it('allows the checks route inside the temporary UI state boundary', () => {
+  it('临时界面状态允许进入检查页面', () => {
     const state = reduceRendererUiState(createInitialRendererUiState(), {
       type: 'navigate',
       route: 'checks',

@@ -1,16 +1,16 @@
-# WorldForge V1.0 任务索引
+# WorldForge 任务索引
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04与M8-02，共35张独立任务卡。  
-> 当前结果：35张独立任务卡全部Verified；M8-02作为V1.0终态验证锚点，不再激活后续任务。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02与M8-04，共36张独立任务卡。  
+> 当前任务：M8-04作者体验与开发语言统一改造正在实施；此前35张V1.0任务卡均已Verified。
 
 ## 1. 唯一执行入口
 
 1. [`ACTIVE_TASK.json`](ACTIVE_TASK.json)：机器可读的唯一活动任务状态与授权。
 2. [`ACTIVE_TASK.md`](ACTIVE_TASK.md)：由JSON生成的人类可读镜像。
-3. 前置实现任务卡：[`M4/M4-04_PROMPT_REGISTRY_OUTPUT.md`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)。
-4. 当前活动任务卡：[`M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)。
+3. 前置实现任务卡：[`M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)。
+4. 当前活动任务卡：[`M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)。
 5. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
@@ -24,25 +24,25 @@ Blocked / Deferred / Removed
 
 ## 2. 执行总览
 
-| 阶段          | 定位                           | 独立任务数 | 当前结果                                     |
-| ------------- | ------------------------------ | ---------: | -------------------------------------------- |
-| M0            | 工程、安全与运行底座           |          7 | Verified                                     |
-| M1            | 基础写作MVP                    |          9 | Verified                                     |
-| M2            | 编辑安全与版本核心             |          4 | Verified                                     |
-| M3            | 规划、设定与连续性             |         10 | Verified                                     |
-| M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
-| M8            | C8完整体验、硬化与自用交付关闭 |          1 | M8-02 Verified                               |
-| 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
-| 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
+| 阶段          | 定位                                 | 独立任务数 | 当前结果                                     |
+| ------------- | ------------------------------------ | ---------: | -------------------------------------------- |
+| M0            | 工程、安全与运行底座                 |          7 | Verified                                     |
+| M1            | 基础写作MVP                          |          9 | Verified                                     |
+| M2            | 编辑安全与版本核心                   |          4 | Verified                                     |
+| M3            | 规划、设定与连续性                   |         10 | Verified                                     |
+| M4            | AI基础与V1核心功能                   |          4 | M4-01—M4-04 Verified                         |
+| M8            | 交付关闭、作者体验与长期维护         |          2 | M8-02 Verified；M8-04 In Progress            |
+| 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复       |          0 | 作为M4-04需求来源                            |
+| 原M7-01—M8-03 | 体验整合、硬化与发布验收             |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
 ```text
 M0—M3 已完成产品底座
-→ M4-01 FTS
+→ M4-01 全文搜索
 → M4-02 约束包
-→ M4-03 Provider
-→ M4-04 C0—C7核心功能交付（Verified）
-→ M8-02 C8完整体验、硬化与自用交付关闭（Verified）
-→ V1.0全部任务关闭
+→ M4-03 AI连接
+→ M4-04 V1核心功能交付（Verified）
+→ M8-02 完整体验、硬化与自用交付关闭（Verified）
+→ M8-04 作者体验与开发语言统一改造（In Progress）
 ```
 
 ## M0 工程、安全与运行底座
@@ -104,11 +104,12 @@ M0—M3 已完成产品底座
 | M4-03 | [`Provider、凭据与连接测试`](M4/M4-03_PROVIDER_CREDENTIAL_CONNECTION.md) | M3、M0-02、M0-04、M0-05    | Verified |
 | M4-04 | [`V1核心功能整体实施`](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)               | M4-01、M4-02、M4-03、M0-07 | Verified |
 
-## M8 C8延期任务
+## M8 交付与体验任务
 
-| ID    | 任务卡                                                              | 依赖  | 状态     |
-| ----- | ------------------------------------------------------------------- | ----- | -------- |
-| M8-02 | [`C8完整体验、硬化与发布关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | Verified |
+| ID    | 任务卡                                                                       | 依赖  | 状态        |
+| ----- | ---------------------------------------------------------------------------- | ----- | ----------- |
+| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)        | M4-04 | Verified    |
+| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)        | M8-02 | In Progress |
 
 ## 3. 被吸收的需求来源
 
@@ -138,16 +139,16 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M4-04只关闭C0—C7及其阶段硬化，不包含C8最终发布范围。
-2. M4-04完成后使用Implementation Hold：M4-04标记Implemented；M8-02曾保持Planned且未被自动激活。
-3. 作者已明确启动M8-02，并已建立独立分支与长期Draft PR。
-4. M8-02启动时必须重新读取M7-01—M8-03全部来源、V6.5规格、P0矩阵及M4-04已交付Evidence。
-5. M8-02完成真实平台、真实Provider、P0和发布Evidence后，才可执行最终Verified关闭。
+1. M0—M8-02保持历史Verified状态，不因M8-04体验改造而重开。
+2. M8-04只复用既有底层合同与安全机制，不改变V1.0自用交付结论。
+3. M8-04必须使用独立正式分支和单一草稿合并请求。
+4. 每个实施阶段必须完成局部回归后才能进入下一阶段。
+5. M8-04最终验证记录绑定实际受检提交并通过主分支验证后，才能标记Verified。
 
 ## 5. 状态原则
 
-- 已Verified任务卡和历史Migration保持冻结。
-- Implemented表示工程实现已进入main但统一验证或后续任务仍延期。
+- 已Verified任务卡、历史Migration和历史验证记录保持冻结。
+- Implemented表示工程实现已进入main但统一验证仍延期。
 - Planned任务不得因前置任务合并而自动开始。
-- Evidence必须绑定真实受检Head，不得沿用旧Head或把执行中写成成功。
-- main只接受通过Ready模式永久门禁和合并后验证的受控PR。
+- 验证记录必须绑定真实受检提交，不得沿用旧提交或把执行中写成成功。
+- main只接受通过Ready模式永久门禁和合并后验证的受控合并请求。

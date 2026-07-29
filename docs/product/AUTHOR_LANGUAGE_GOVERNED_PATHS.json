@@ -3,8 +3,10 @@
   "paths": [
     "apps/desktop/renderer/src/presentation/",
     "apps/desktop/renderer/src/shell/app-shell-model.ts",
+    "apps/desktop/renderer/src/shell/settings-navigation-model.ts",
     "tests/unit/author-language.test.ts",
     "tests/unit/renderer-app-shell-model.test.ts",
+    "tests/unit/renderer-home-settings-taskbar.test.ts",
     "docs/tasks/ACTIVE_TASK.md",
     "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md"
   ],

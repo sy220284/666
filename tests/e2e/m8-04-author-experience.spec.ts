@@ -46,7 +46,7 @@ test('快速开始只填写作品名称并直接进入正文', async () => {
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
 
     await page.locator('[data-create-project]').click();
-    const dialog = page.locator('[data-project-dialog]');
+    const dialog = page.locator('[data-create-project-dialog]');
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('[data-project-name]')).toBeVisible();
     await expect(dialog.locator('[data-project-channel]')).toHaveCount(0);

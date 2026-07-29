@@ -21,9 +21,19 @@ for (const [before, after] of replacements) {
 }
 await writeFile(filePath, source, 'utf8');
 
+const playwrightPath = 'tests/e2e/playwright.config.ts';
+let playwright = await readFile(playwrightPath, 'utf8');
+const testAnchor = `    'provider-settings.spec.ts',\n`;
+if (!playwright.includes(testAnchor)) throw new Error('桌面测试配置缺少用例清单锚点。');
+playwright = playwright.replace(
+  testAnchor,
+  `${testAnchor}    'writing-focus-assistance.spec.ts',\n`,
+);
+await writeFile(playwrightPath, playwright, 'utf8');
+
 const governedPath = 'docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json';
 const governed = JSON.parse(await readFile(governedPath, 'utf8'));
 const testPath = 'tests/e2e/writing-focus-assistance.spec.ts';
 if (!governed.paths.includes(testPath)) governed.paths.push(testPath);
 await writeFile(governedPath, `${JSON.stringify(governed, null, 2)}\n`, 'utf8');
-console.log('沉浸写作切换已接入选区记录与恢复。');
+console.log('沉浸写作切换已接入选区记录与恢复，并登记桌面用例。');

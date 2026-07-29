@@ -65,7 +65,6 @@ test('browses and exports a Version from a verified checkpoint when project.sqli
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('完全损坏恢复');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 
@@ -74,7 +73,7 @@ test('browses and exports a Version from a verified checkpoint when project.sqli
     await editor.click();
     await page.keyboard.type('物理损坏后仍可从已验证Checkpoint导出。');
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
     await page.locator('[data-create-version]').click();
     await page.locator('[data-version-title]').fill('物理损坏可导出版本');
     await page.locator('[data-version-label]').fill('恢复验证');

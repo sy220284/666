@@ -44,7 +44,7 @@ describe('M4-04 C3 generation workbench', () => {
     expect(source).toContain('candidate.editSkeleton');
     expect(source).toContain('generation.savePartial');
     expect(source).toContain('generation.discardPartial');
-    expect(source).toContain('骨架不会进入正文差异、采用、Version 或定稿');
+    expect(source).toContain('情节骨架不会直接进入正文差异、采用、历史版本或定稿');
   });
 
   it('shows persisted task stages and never renders a fabricated AI percentage', async () => {

@@ -19,43 +19,30 @@ AGENTS.md
 
 ## 2. 当前分阶段交付
 
-作者最新指令明确采用两段交付：
+M4-04与M8-02已经完成V1.0核心功能、自用便携交付和最终验证。作者随后独立启动M8-04，在不重开历史任务和不改变自用发布边界的前提下，统一作者体验与开发协作语言：
 
 ```text
-M4-04
-└─ C0—C7与C1并发硬化
-   → Ready永久门禁
-   → 受控合并main
-   → Implementation Hold
-
-M8-02
-└─ C8完整体验、硬化、真实平台验收与发布关闭
-   → 作者已于2026-07-28明确启动
-   → 独立任务分支与Draft PR
-   → 最终发布验收
+M4-04与M8-02 Verified基线
+→ M8-04作者体验与开发语言统一
+→ PR #227永久门禁
+→ 受控合并main
+→ Main Verification
+→ 最终Verified关闭
 ```
 
-M4-04吸收原M4-05、M5-00—M5-06和M6-01—M6-06。原M7-01—M7-03、M8-01和M8-03改由M8-02吸收。
-
-C8延期不代表删除，也不允许用M4-04阶段结果代替最终发布验收。
+M8-04复用既有权威数据、服务、保存序号、内容校验、锁定、只读与恢复机制，不建立第二套产品或界面数据真源。
 
 ## 3. 当前执行模式
 
 ```text
-活动任务：M8-02
-正式分支：work/m8-02-performance-e2e-ai-eval
+活动任务：M8-04
+正式分支：work/m8-04-author-experience-language
 授权模式：implementation-pr
 自动激活下一任务：关闭
-前置任务：M4-04（Implemented）
+前置任务：M8-02（Verified）
 ```
 
-M4-04已完成Implementation Hold；作者明确启动M8-02后：
-
-- `TASK_INDEX`保持M4-04为Implemented。
-- `ACTIVE_TASK.activeTask`切换为M8-02 `IN_PROGRESS`。
-- `lastImplementedTask`继续保留M4-04真实产品提交、Evidence与原延期原因。
-- `deferredVerification`继续登记M4-04，等待最终批次关闭。
-- M8-02使用独立正式分支和独立PR，不复用已合并的M4-04 PR。
+M8-04使用独立正式分支与单一正式PR #227。任务实现、测试、文档和验证记录统一汇入该分支；Ready后只接受永久门禁验证的唯一Head。
 
 ## 4. 权威顺序
 
@@ -73,29 +60,16 @@ M4-04已完成Implementation Hold；作者明确启动M8-02后：
 
 ## 5. 当前任务边界
 
-### M4-04：V1核心功能
+### M8-04：作者体验与开发语言统一
 
-- C0整体规划与审计。
-- C1作者工作流、继续写作与并发硬化。
-- C2 GenerationRun与生产Prompt。
-- C3 T0/T1与结构化Candidate。
-- C4改写、融合、审阅与安全采用。
-- C5状态提取、Validation与Todo/Comment。
-- C6搜索替换、写作统计与节奏。
-- C7 DOCX与三轨备份恢复。
+- 正式中文名称与界面语言永久门禁。
+- 快速开始、继续写作、精准跳转与原位置返回。
+- 写作辅助、沉浸写作、结构化设定和前后文管理。
+- 建议稿差异审阅、安全采用、AI连接预设、作品检查与整书交付。
+- 异步查询防串、关闭前当前稿命名握手和长章节差异性能保护。
+- 功能目录、追踪矩阵、任务状态与四件套验证记录同步。
 
-Evidence：`docs/test-evidence/M4-04/`。
-
-### M8-02：延期C8
-
-- 首次使用向导与三条创作路径。
-- 统一工作台最终体验和StatusArbiter。
-- Theme A/B、无障碍和显示矩阵。
-- 安全、性能、Electron E2E与AI Eval终验。
-- Windows、macOS、Linux构建、安装、升级和卸载。
-- P0总验收、发布判断与最终Verified关闭。
-
-Evidence：`docs/test-evidence/M8-02/`。
+Evidence：`docs/test-evidence/M8-04/`。
 
 ## 6. 标准实施闭环
 

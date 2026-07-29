@@ -76,7 +76,6 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('候选预览');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 
@@ -132,13 +131,14 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     await expect(page.locator('[data-candidate-preview-dialog]')).toBeVisible();
     await expect(page.locator('[data-candidate-preview-select]')).toHaveCount(1);
     await expect(page.locator('[data-candidate-preview-status]')).toContainText(
-      `基础 Revision ${fixture.revision}`,
+      `基础保存序号 ${fixture.revision}`,
     );
     await expect(page.locator('[data-candidate-preview-warning]')).toContainText('不完整建议稿');
-    await expect(page.locator('[data-candidate-preview-current]')).toContainText(
+    const candidateDiff = page.locator('[data-review-diff="candidate"]');
+    await expect(candidateDiff.locator('[data-side="current"]').first()).toContainText(
       fixture.currentText,
     );
-    await expect(page.locator('[data-candidate-preview-candidate]')).toContainText(
+    await expect(candidateDiff.locator('[data-side="comparison"]').first()).toContainText(
       fixture.candidateText,
     );
     await captureAcceptanceScreenshot(page, 'M2-02', 'candidate-readonly-preview.png');
@@ -146,7 +146,7 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     page.once('dialog', (dialog) => dialog.accept());
     await page.locator('[data-discard-candidate]').click();
     await expect(page.locator('[data-candidate-preview-status]')).toContainText(
-      '候选已丢弃，Draft 未改变',
+      '建议稿已丢弃，当前稿未改变',
     );
     await expect(page.locator('[data-discard-candidate]')).toBeDisabled();
     await captureAcceptanceScreenshot(page, 'M2-02', 'candidate-discarded-draft-unchanged.png');
@@ -203,7 +203,6 @@ test('cancels an oversized Candidate Diff through the desktop boundary', async (
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('候选预览取消');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 

@@ -1,12 +1,10 @@
 import { useCallback, useState, type FormEvent } from 'react';
 
-import type {
-  ForeshadowingSaveInput,
-  NarrativePlanningCatalog,
-} from '@worldforge/contracts';
+import type { ForeshadowingSaveInput, NarrativePlanningCatalog } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import { ChapterNameSelect, useCanonAuthorReferences } from './canon-author-fields.js';
 
 export function NarrativeRelationshipEditor({
   bridge,
@@ -26,20 +24,37 @@ export function NarrativeRelationshipEditor({
     [bridge, projectId],
   );
   const resource = useBridgeQuery(`narrative-relations:${projectId}`, load);
-  const command = useBridgeCommand(resource.refresh);
-  const [status, setStatus] = useState(
-    '完整叙事关系编辑会保存章节锚点、伏笔关系和弧光依赖。',
+  const loadContinuity = useCallback(
+    () =>
+      bridge.continuity.list(
+        {
+          projectId,
+          query: '',
+          includeHistory: false,
+          includeArchivedEvents: false,
+          effectiveAtChapterId: null,
+        },
+        { mode: 'replace' },
+      ),
+    [bridge, projectId],
   );
+  const continuity = useBridgeQuery(`narrative-continuity:${projectId}`, loadContinuity);
+  const command = useBridgeCommand(resource.refresh);
+  const references = useCanonAuthorReferences(bridge, projectId);
+  const [status, setStatus] = useState('完整叙事关系编辑会保存章节锚点、伏笔关系和弧光依赖。');
 
   const saveForeshadowing = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
-    const chapterLinks = parseChapterLinks(String(values.get('chapterLinks') ?? ''));
-    const relations = parseForeshadowingRelations(String(values.get('relations') ?? ''));
-    if (!chapterLinks || !relations) {
-      setStatus('章节锚点或关系格式无效，请按提示逐行填写。');
-      return;
-    }
+    const chapterLinks = [
+      ...roleChapterLinks(values, 'plantChapterIds', 'plant'),
+      ...roleChapterLinks(values, 'reinforceChapterIds', 'reinforce'),
+      ...roleChapterLinks(values, 'revealChapterIds', 'reveal'),
+    ];
+    const relations = [
+      ...foreshadowingRelations(values, 'dependencyForeshadowingIds', 'depends_on'),
+      ...foreshadowingRelations(values, 'exclusiveForeshadowingIds', 'mutually_exclusive'),
+    ];
     const result = await command.run(() =>
       bridge.narrativePlanning.saveForeshadowing({
         projectId,
@@ -64,8 +79,8 @@ export function NarrativeRelationshipEditor({
     const values = new FormData(event.currentTarget);
     const arcId = String(values.get('arcId') ?? '').trim();
     const arc = resource.data?.characterArcs.find((item) => item.id === arcId);
-    const dependencyMilestoneIds = uniqueLines(values.get('dependencyMilestoneIds'));
-    const dependencyTimelineEventIds = uniqueLines(values.get('dependencyTimelineEventIds'));
+    const dependencyMilestoneIds = selectedValues(values, 'dependencyMilestoneIds');
+    const dependencyTimelineEventIds = selectedValues(values, 'dependencyTimelineEventIds');
     const result = await command.run(() =>
       bridge.narrativePlanning.saveArcMilestone({
         projectId,
@@ -116,26 +131,32 @@ export function NarrativeRelationshipEditor({
               <textarea name="description" />
             </label>
             <label>
-              最早回收章节UUID
-              <input name="revealFromChapterId" />
+              最早回收章节
+              <ChapterNameSelect name="revealFromChapterId" references={references} />
             </label>
             <label>
-              最晚回收章节UUID
-              <input name="revealByChapterId" />
+              最晚回收章节
+              <ChapterNameSelect name="revealByChapterId" references={references} />
             </label>
             <label>
-              章节锚点（每行 chapterId | role）
-              <textarea
-                name="chapterLinks"
-                placeholder="UUID | plant\nUUID | reinforce\nUUID | reveal"
-              />
+              埋设章节
+              <ChapterMultiSelect name="plantChapterIds" references={references} />
             </label>
             <label>
-              伏笔关系（每行 targetForeshadowingId | kind）
-              <textarea
-                name="relations"
-                placeholder="UUID | depends_on\nUUID | mutually_exclusive"
-              />
+              加强章节
+              <ChapterMultiSelect name="reinforceChapterIds" references={references} />
+            </label>
+            <label>
+              回收章节
+              <ChapterMultiSelect name="revealChapterIds" references={references} />
+            </label>
+            <label>
+              依赖的伏笔
+              <ForeshadowingMultiSelect catalog={resource.data} name="dependencyForeshadowingIds" />
+            </label>
+            <label>
+              互斥的伏笔
+              <ForeshadowingMultiSelect catalog={resource.data} name="exclusiveForeshadowingIds" />
             </label>
             <button disabled={readOnly || command.pending} type="submit">
               保存完整伏笔
@@ -168,16 +189,30 @@ export function NarrativeRelationshipEditor({
               <textarea name="description" />
             </label>
             <label>
-              计划章节UUID
-              <input name="plannedChapterId" />
+              计划章节
+              <ChapterNameSelect name="plannedChapterId" references={references} />
             </label>
             <label>
-              前置弧光节点UUID（每行一个）
-              <textarea name="dependencyMilestoneIds" />
+              前置弧光节点
+              <select multiple name="dependencyMilestoneIds">
+                {resource.data?.characterArcs.flatMap((item) =>
+                  item.milestones.map((milestone) => (
+                    <option key={milestone.id} value={milestone.id}>
+                      {item.title} / {milestone.title}
+                    </option>
+                  )),
+                )}
+              </select>
             </label>
             <label>
-              前置时间线事件UUID（每行一个）
-              <textarea name="dependencyTimelineEventIds" />
+              前置时间线事件
+              <select multiple name="dependencyTimelineEventIds">
+                {continuity.data?.timelineEvents.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
             </label>
             <button disabled={readOnly || command.pending} type="submit">
               保存完整弧光节点
@@ -228,53 +263,66 @@ function NarrativeRelationshipSummary({
 type ChapterLink = ForeshadowingSaveInput['chapterLinks'][number];
 type ForeshadowingRelation = ForeshadowingSaveInput['relations'][number];
 
-function parseChapterLinks(value: string): ChapterLink[] | null {
-  const allowed = new Set(['plant', 'reinforce', 'partial_reveal', 'reveal', 'reference']);
-  const result: ChapterLink[] = [];
-  for (const line of nonEmptyLines(value)) {
-    const [chapterId, role] = line.split('|').map((item) => item.trim());
-    if (!chapterId || !role || !allowed.has(role)) return null;
-    result.push({ chapterId, role: role as ChapterLink['role'] });
-  }
-  return uniqueBy(result, (item) => `${item.chapterId}:${item.role}`);
+function ChapterMultiSelect({
+  name,
+  references,
+}: {
+  readonly name: string;
+  readonly references: ReturnType<typeof useCanonAuthorReferences>;
+}) {
+  return (
+    <select multiple name={name}>
+      {references.chapters.map((chapter) => (
+        <option key={chapter.id} value={chapter.id}>
+          {chapter.label}
+        </option>
+      ))}
+    </select>
+  );
 }
 
-function parseForeshadowingRelations(value: string): ForeshadowingRelation[] | null {
-  const allowed = new Set(['depends_on', 'blocks', 'mutually_exclusive', 'reinforces']);
-  const result: ForeshadowingRelation[] = [];
-  for (const line of nonEmptyLines(value)) {
-    const [targetForeshadowingId, kind] = line.split('|').map((item) => item.trim());
-    if (!targetForeshadowingId || !kind || !allowed.has(kind)) return null;
-    result.push({
-      targetForeshadowingId,
-      kind: kind as ForeshadowingRelation['kind'],
-    });
-  }
-  return uniqueBy(result, (item) => `${item.targetForeshadowingId}:${item.kind}`);
+function ForeshadowingMultiSelect({
+  catalog,
+  name,
+}: {
+  readonly catalog: NarrativePlanningCatalog | null;
+  readonly name: string;
+}) {
+  return (
+    <select multiple name={name}>
+      {catalog?.foreshadowings.map((item) => (
+        <option key={item.id} value={item.id}>
+          {item.title}
+        </option>
+      ))}
+    </select>
+  );
 }
 
-function uniqueLines(value: FormDataEntryValue | null): string[] {
-  return [...new Set(nonEmptyLines(String(value ?? '')))];
+function roleChapterLinks(
+  values: FormData,
+  name: string,
+  role: ChapterLink['role'],
+): ChapterLink[] {
+  return selectedValues(values, name).map((chapterId) => ({ chapterId, role }));
 }
 
-function nonEmptyLines(value: string): string[] {
-  return value
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean);
+function foreshadowingRelations(
+  values: FormData,
+  name: string,
+  kind: ForeshadowingRelation['kind'],
+): ForeshadowingRelation[] {
+  return selectedValues(values, name).map((targetForeshadowingId) => ({
+    targetForeshadowingId,
+    kind,
+  }));
+}
+
+function selectedValues(values: FormData, name: string): string[] {
+  return [...new Set(values.getAll(name).map(String).filter(Boolean))];
 }
 
 function nullableString(value: FormDataEntryValue | null): string | null {
   const result = String(value ?? '').trim();
   return result || null;
-}
-
-function uniqueBy<T>(values: readonly T[], key: (value: T) => string): T[] {
-  const seen = new Set<string>();
-  return values.filter((value) => {
-    const current = key(value);
-    if (seen.has(current)) return false;
-    seen.add(current);
-    return true;
-  });
 }

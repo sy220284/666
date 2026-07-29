@@ -6,6 +6,16 @@ import {
   reduceRendererUiState,
 } from '../../apps/desktop/renderer/src/state/ui-state-boundary.js';
 
+function sourceLocation(route: 'home' | 'planning', focusKey: string | null) {
+  return {
+    route,
+    focusKey,
+    selection: createInitialRendererUiState().selection,
+    filters: { source: '保留' },
+    scrollTop: 240,
+  } as const;
+}
+
 describe('M3-07 temporary UI state boundary', () => {
   it('stores route, selected identifiers, overlays, filters and short-lived request feedback only', () => {
     let state = createInitialRendererUiState();
@@ -54,21 +64,28 @@ describe('M3-07 temporary UI state boundary', () => {
   it('handles navigation return locations and filter removal explicitly', () => {
     const initial = {
       ...createInitialRendererUiState(),
-      returnLocation: { route: 'home' as const, focusKey: 'home-title' },
+      returnLocation: sourceLocation('home', 'home-title'),
       filters: { query: '保留', removed: '删除' },
     };
     const retained = reduceRendererUiState(initial, {
       type: 'navigate',
       route: 'planning',
     });
-    expect(retained.returnLocation).toEqual({ route: 'home', focusKey: 'home-title' });
+    expect(retained.returnLocation).toEqual(sourceLocation('home', 'home-title'));
 
     const replaced = reduceRendererUiState(retained, {
       type: 'navigate',
       route: 'writing',
-      returnLocation: { route: 'planning', focusKey: null },
+      returnLocation: sourceLocation('planning', null),
     });
-    expect(replaced.returnLocation).toEqual({ route: 'planning', focusKey: null });
+    expect(replaced.returnLocation).toEqual(sourceLocation('planning', null));
+
+    expect(reduceRendererUiState(replaced, { type: 'return-to-source' })).toMatchObject({
+      route: 'planning',
+      selection: createInitialRendererUiState().selection,
+      filters: { source: '保留' },
+      returnLocation: null,
+    });
 
     const cleared = reduceRendererUiState(replaced, {
       type: 'navigate',
@@ -161,7 +178,7 @@ describe('M3-07 temporary UI state boundary', () => {
     expect(() =>
       assertTemporaryUiState({
         ...state,
-        returnLocation: { route: 'planning', focusKey: null },
+        returnLocation: sourceLocation('planning', null),
         feedback: { id: 'loaded', kind: 'info', expiresAt: 1 },
       }),
     ).not.toThrow();
@@ -169,9 +186,11 @@ describe('M3-07 temporary UI state boundary', () => {
     for (const returnLocation of [
       [],
       'return',
-      { route: 'invalid', focusKey: null },
-      { route: 'home', focusKey: 1 },
-      { route: 'home', focusKey: null, projectId: 'forbidden' },
+      { ...sourceLocation('home', null), route: 'invalid' },
+      { ...sourceLocation('home', null), focusKey: 1 },
+      { ...sourceLocation('home', null), projectId: 'forbidden' },
+      { ...sourceLocation('home', null), scrollTop: -1 },
+      { ...sourceLocation('home', null), filters: { query: 1 } },
     ]) {
       expect(() => assertTemporaryUiState({ ...state, returnLocation })).toThrow(
         /Renderer return location/,

@@ -1,0 +1,67 @@
+# M8-04 commands and runs
+
+## 本地确定性验证
+
+pnpm check:language
+exit=0 governed_files=53
+
+pnpm lint
+exit=0 test_files=226 assertions=3312 arbitrary_sleeps=0
+
+pnpm typecheck
+exit=0
+
+pnpm test:unit
+exit=0 files=79 tests=575
+
+pnpm build
+exit=0 workspaces=10
+
+## GitHub Actions 永久门禁
+
+Quality
+exit=0 run=30454589728 head=97a25d6e7f29eee136abc4809aae270d18fb1c47
+
+pnpm test:unit
+exit=0 tests=575 run=30454589728
+
+pnpm test:integration
+exit=0 tests=160 run=30454589728
+
+pnpm test:migration
+exit=0 tests=50 run=30454589728
+
+pnpm test:coverage
+exit=0 branch_percent=75.05 run=30454589728 artifact=8724995869
+
+pnpm test:e2e
+exit=0 tests=32 duration=13.0m run=30454589728 job=90584850424 artifact=8725377946
+artifact_sha256=c85e936a61d51959999eee220748bfd562e0bdf36565360e825f431156d5b4ca
+
+package-smoke-linux
+exit=0 run=30454589728 artifact=8724992023
+
+package-smoke-windows
+exit=0 run=30454589728 artifact=8724997147
+
+package-smoke-macos
+exit=0 run=30454589728 artifact=8724999255
+
+Security
+exit=0 run=30454589302 tests=95 skipped=1 artifact=8724947393
+
+Performance
+exit=0 run=30454589378 tests=42 artifact=8724969831
+artifact_sha256=dc143e7308d76002735eb9f6a9b550410384d462ec0c58c267336947b1b8d679
+
+Evidence
+exit=0 run=30454589450
+
+PR Policy
+exit=0 run=30454589316
+
+Task Governance
+exit=0 run=30454589359
+
+Repository Governance
+exit=0 run=30454589392

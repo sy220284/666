@@ -50,6 +50,7 @@ import {
 type BaseRendererBridgePort = Pick<
   WorldforgeBridge,
   | 'app'
+  | 'lifecycle'
   | 'settings'
   | 'providers'
   | 'generation'
@@ -168,6 +169,7 @@ type AdaptedTaskDomain = AdaptedDomain<
 >;
 
 export interface RendererBridgeAdapter {
+  readonly lifecycle: WorldforgeBridge['lifecycle'];
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
   readonly providers: AdaptedDomain<WorldforgeBridge['providers']>;
@@ -206,8 +208,15 @@ export function createRendererBridgeAdapter(
   const adaptedTask = adaptDomain<
     Pick<WorldforgeBridge['task'], 'getSnapshot' | 'cancel' | 'listActive'>
   >('task', task, coordinator);
+  const lifecycle = Object.hasOwn(bridge, 'lifecycle')
+    ? (bridge as { readonly lifecycle: WorldforgeBridge['lifecycle'] }).lifecycle
+    : {
+        onShutdownPrepare: () => () => undefined,
+        acknowledgeShutdown: () => undefined,
+      };
 
   return {
+    lifecycle,
     app: adaptDomain('app', requireDomain(bridge.app, 'app'), coordinator),
     settings: adaptDomain('settings', requireDomain(bridge.settings, 'settings'), coordinator),
     providers: adaptDomain('providers', requireDomain(bridge.providers, 'providers'), coordinator),

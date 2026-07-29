@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "paths": [
+    "apps/desktop/renderer/src/app/",
+    "apps/desktop/renderer/src/components/",
+    "apps/desktop/renderer/src/features/",
+    "apps/desktop/renderer/src/presentation/",
+    "apps/desktop/renderer/src/shell/",
+    "tests/unit/author-language.test.ts",
+    "tests/unit/renderer-app-shell-model.test.ts",
+    "tests/unit/renderer-home-settings-taskbar.test.ts",
+    "tests/unit/renderer-navigation-target.test.ts",
+    "tests/unit/writing-assistance.test.ts",
+    "tests/unit/canon-author-fields.test.ts",
+    "tests/unit/author-review-delivery.test.ts",
+    "tests/e2e/m8-04-author-experience.spec.ts",
+    "tests/e2e/writing-focus-assistance.spec.ts",
+    "docs/tasks/ACTIVE_TASK.md",
+    "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md",
+    "agent.md"
+  ],
+  "excludedPaths": [],
+  "note": "完整作者界面目录均受正式中文名称检查；新增界面文件自动进入门禁。"
+}

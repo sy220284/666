@@ -9,3 +9,4 @@ export * from './constraint-package.js';
 export * from './validation.js';
 export * from './search-tools.js';
 export * from './rhythm.js';
+export * from './renderer-shutdown.js';

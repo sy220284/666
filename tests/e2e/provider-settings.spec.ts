@@ -38,6 +38,7 @@ test('configures a local keyless Provider and keeps offline writing healthy afte
     await page.locator('[data-open-settings]').click();
     await page.locator('[data-settings-navigation="providers"]').click();
     await expect(page.locator('[data-provider-settings]')).toBeVisible();
+    await page.locator('details.provider-advanced-settings > summary').click();
     await page.locator('[data-provider-id]').fill('local-e2e');
     await page.locator('[data-provider-name]').fill('本地E2E模型');
     await page.locator('[data-provider-model]').fill('writer-model');
@@ -46,7 +47,7 @@ test('configures a local keyless Provider and keeps offline writing healthy afte
     await expect(page.locator('[data-provider-card="local-e2e"]')).toBeVisible();
     await expect(page.locator('[data-provider-status]')).toContainText('已保存');
     await page.locator('[data-provider-test="local-e2e"]').click();
-    await expect(page.locator('[data-provider-status]')).toContainText('AI_CONNECTION_FAILED_003');
+    await expect(page.locator('[data-provider-status]')).toContainText('无法连接AI服务');
     const core = await page.evaluate(async () => globalThis.worldforge.app.getCoreStatus());
     expect(core).toMatchObject({ ok: true, data: { status: 'healthy' } });
     await expect(page.locator('[data-provider-card="local-e2e"]')).toBeVisible();

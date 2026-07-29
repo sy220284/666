@@ -63,7 +63,6 @@ test('writes and displays continuity data through the real Electron process boun
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('连续性工程');
-    await page.locator('[data-project-channel]').fill('悬疑');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 
@@ -184,7 +183,7 @@ test('writes and displays continuity data through the real Electron process boun
       '时间线事件（1）',
       '知情状态（1）',
     ]);
-    await expect(page.locator('[data-continuity-results]')).toContainText('health');
+    await expect(page.locator('[data-continuity-results]')).toContainText('身体状态');
     await expect(page.locator('[data-continuity-results]')).toContainText('南城目击');
     await expect(page.locator('[data-continuity-results]')).toContainText('traitor-identity');
   } finally {

@@ -1,3 +1,4 @@
+import { authorTerm } from '../presentation/author-terms.js';
 import { RENDERER_ROUTE_IDS, type RendererRouteId } from '../state/ui-state-boundary.js';
 
 export const PRIMARY_NAVIGATION_IDS = [
@@ -66,8 +67,8 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     id: 'home',
     route: 'home',
     label: '首页',
-    beginnerDescription: '继续写作、最近项目和下一步建议',
-    professionalDescription: '最近项目、运行任务和项目健康状态',
+    beginnerDescription: '继续写作、最近作品和下一步建议',
+    professionalDescription: '最近作品、进行中的任务和作品健康状态',
     requiresProject: false,
   },
   {
@@ -75,7 +76,7 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     route: 'planning',
     label: '规划',
     beginnerDescription: '整理作品方向、情节和章节目标',
-    professionalDescription: 'ProjectBrief、大纲树、卷章与SceneBeat',
+    professionalDescription: `${authorTerm('projectBrief')}、大纲树、卷章与${authorTerm('sceneBeat')}`,
     requiresProject: true,
   },
   {
@@ -83,7 +84,7 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     route: 'writing',
     label: '写作',
     beginnerDescription: '打开当前章节继续创作',
-    professionalDescription: '正文、候选、冲突与历史版本',
+    professionalDescription: `正文、${authorTerm('candidate')}、冲突与${authorTerm('version')}`,
     requiresProject: true,
   },
   {
@@ -91,7 +92,7 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     route: 'canon',
     label: '设定',
     beginnerDescription: '管理人物、地点和关键设定',
-    professionalDescription: '实体、Canon、状态、时间线、知情与伏笔',
+    professionalDescription: `人物、地点、${authorTerm('canon')}、动态状态、时间线、知情状态与伏笔`,
     requiresProject: true,
   },
   {
@@ -99,7 +100,7 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     route: 'checks',
     label: '检查',
     beginnerDescription: '查看需要处理的高风险问题',
-    professionalDescription: '连续性、人物弧光、节奏、搜索与交付检查',
+    professionalDescription: '前后文、人物成长线、连载节奏、全文搜索与交付检查',
     requiresProject: true,
   },
   {
@@ -107,7 +108,7 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
     route: 'settings',
     label: '设置',
     beginnerDescription: '调整常用写作与显示选项',
-    professionalDescription: '通用、编辑器、外观、AI连接、备份与高级设置',
+    professionalDescription: `通用、编辑器、外观、${authorTerm('provider')}、备份与高级设置`,
     requiresProject: false,
   },
 ] as const satisfies readonly PrimaryNavigationDefinition[];
@@ -142,9 +143,9 @@ export function createPrimaryNavigationItems(
     const featureUnavailable = !availability[definition.id];
     const disabled = projectMissing || featureUnavailable;
     const disabledReason = projectMissing
-      ? '请先新建或打开一个本地项目。'
+      ? '请先新建或打开一部本地作品。'
       : featureUnavailable
-        ? '该工作台尚未完成迁移，当前不会提供可点击占位入口。'
+        ? '该功能尚未完成迁移，当前不会提供无法使用的占位入口。'
         : null;
 
     return {
@@ -171,7 +172,7 @@ export function resolvePrimaryNavigationIntent(
       accepted: false,
       id: null,
       code: 'UNKNOWN_NAVIGATION',
-      reason: `Unknown primary navigation entry: ${navigationId}.`,
+      reason: `无法识别的主导航入口：${navigationId}。`,
     };
   }
 
@@ -181,7 +182,7 @@ export function resolvePrimaryNavigationIntent(
       accepted: false,
       id: navigationId,
       code: 'UNKNOWN_NAVIGATION',
-      reason: `Unknown primary navigation entry: ${navigationId}.`,
+      reason: `无法识别的主导航入口：${navigationId}。`,
     };
   }
 
@@ -190,7 +191,7 @@ export function resolvePrimaryNavigationIntent(
       accepted: false,
       id: navigationId,
       code: 'PROJECT_REQUIRED',
-      reason: '请先新建或打开一个本地项目。',
+      reason: '请先新建或打开一部本地作品。',
     };
   }
 
@@ -199,7 +200,7 @@ export function resolvePrimaryNavigationIntent(
       accepted: false,
       id: navigationId,
       code: 'FEATURE_UNAVAILABLE',
-      reason: '该工作台尚未完成迁移，当前不会提供可点击占位入口。',
+      reason: '该功能尚未完成迁移，当前不会提供无法使用的占位入口。',
     };
   }
 

@@ -1,3 +1,4 @@
+import { authorTerm } from '../presentation/author-terms.js';
 import type { AppDisclosureMode } from './app-shell-model.js';
 
 export const SETTINGS_BASIC_SECTION_IDS = [
@@ -57,8 +58,8 @@ const SETTINGS_SECTION_DEFINITIONS = [
   {
     id: 'general',
     label: '通用',
-    beginnerDescription: '调整启动方式和默认使用模式',
-    professionalDescription: '语言、启动行为、最近项目和默认作者模式',
+    beginnerDescription: '调整启动方式和默认信息显示方式',
+    professionalDescription: '语言、启动行为、最近作品和默认信息显示方式',
   },
   {
     id: 'editor',
@@ -70,19 +71,19 @@ const SETTINGS_SECTION_DEFINITIONS = [
     id: 'appearance',
     label: '外观与显示',
     beginnerDescription: '调整主题和界面显示方式',
-    professionalDescription: '主题、变体、界面缩放、减少动态和高对比',
+    professionalDescription: '主题、显示方案、界面缩放、减少动态和高对比',
   },
   {
     id: 'providers',
-    label: 'AI服务',
-    beginnerDescription: '配置本机或外部模型服务',
-    professionalDescription: 'Provider、端点边界、凭据和连接能力测试',
+    label: authorTerm('provider'),
+    beginnerDescription: '配置本机或外部AI模型服务',
+    professionalDescription: `${authorTerm('provider')}、服务地址边界、凭据和连接能力测试`,
   },
   {
     id: 'advanced',
     label: '高级',
     beginnerDescription: '查看诊断和维护信息',
-    professionalDescription: '日志、诊断、数据库检查、FTS重建和开发信息',
+    professionalDescription: '日志、诊断、数据库检查、全文搜索重建和开发信息',
   },
 ] as const satisfies readonly SettingsSectionDefinition[];
 
@@ -102,7 +103,9 @@ export function createSettingsNavigationItems(
           : definition.professionalDescription,
       current: context.currentSection === definition.id,
       disabled,
-      disabledReason: disabled ? '该设置分区尚未接入正式命令，当前不会提供可点击占位入口。' : null,
+      disabledReason: disabled
+        ? '该设置分区尚未接入正式功能，当前不会提供无法使用的占位入口。'
+        : null,
     };
   });
 }
@@ -116,7 +119,7 @@ export function resolveSettingsNavigationIntent(
       accepted: false,
       section: null,
       code: 'UNKNOWN_SECTION',
-      reason: `Unknown settings section: ${section}.`,
+      reason: `无法识别的设置分区：${section}。`,
     };
   }
 
@@ -125,7 +128,7 @@ export function resolveSettingsNavigationIntent(
       accepted: false,
       section,
       code: 'SECTION_UNAVAILABLE',
-      reason: '该设置分区尚未接入正式命令，当前不会提供可点击占位入口。',
+      reason: '该设置分区尚未接入正式功能，当前不会提供无法使用的占位入口。',
     };
   }
 

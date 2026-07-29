@@ -10,6 +10,8 @@ import {
   type CoreProjectResult,
 } from '@worldforge/contracts';
 
+import { mixesWholeBookFinalsWithOtherVersions } from './export-selection-guard.js';
+import { ImportExportServiceError } from './import-export.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
 
 function success(operation: string, data: unknown): CoreProjectResult {
@@ -157,11 +159,19 @@ export async function routeContentProjectOperation(
         operation.operation,
         services.textIo.listExportVersions(operation.input.projectId),
       );
-    case TEXT_IO_COMMANDS.exportVersions:
+    case TEXT_IO_COMMANDS.exportVersions: {
+      const catalog = services.textIo.listExportVersions(operation.input.projectId);
+      if (mixesWholeBookFinalsWithOtherVersions(operation.input.versionIds, catalog.versions)) {
+        throw new ImportExportServiceError(
+          'EXPORT_VERSION_REQUIRED',
+          'Whole-book export may contain only the current finalized Version of each selected chapter.',
+        );
+      }
       return success(
         operation.operation,
         await services.textIo.exportVersions(operation.input, operation.targetDirectory),
       );
+    }
     default:
       return null;
   }

@@ -80,7 +80,9 @@ export function implementationHoldErrors(
     if (JSON.stringify(held.allowedPaths) !== JSON.stringify(previous.allowedPaths)) {
       errors.push('Held active task must preserve allowedPaths');
     }
-    if (JSON.stringify(held.forbiddenPaths ?? []) !== JSON.stringify(previous.forbiddenPaths ?? [])) {
+    if (
+      JSON.stringify(held.forbiddenPaths ?? []) !== JSON.stringify(previous.forbiddenPaths ?? [])
+    ) {
       errors.push('Held active task must preserve forbiddenPaths');
     }
   }
@@ -114,7 +116,20 @@ export function implementationHoldErrors(
     if (!String(snapshot.activationDeferredReason ?? '').trim()) {
       errors.push('lastImplementedTask must record an activation deferral reason');
     }
-    if (!snapshot.nextTaskId || snapshot.nextTaskId === previous.id) {
+    if (snapshot.finalTask === true) {
+      if (snapshot.nextTaskId !== null) {
+        errors.push('Final implementation hold requires nextTaskId=null');
+      }
+      const unfinished = [...baseTasks.values()].filter(
+        (task) => task.id !== previous.id && task.status !== 'Verified',
+      );
+      if (unfinished.length > 0) {
+        errors.push(
+          'Final implementation hold requires every earlier task Verified: ' +
+            unfinished.map((task) => task.id).join(', '),
+        );
+      }
+    } else if (!snapshot.nextTaskId || snapshot.nextTaskId === previous.id) {
       errors.push('lastImplementedTask must identify the deferred next task');
     } else {
       if (baseTasks.get(snapshot.nextTaskId)?.status !== 'Planned') {
@@ -210,7 +225,21 @@ export function verificationHoldErrors(
       }
     }
   }
-  if (!hold?.nextTaskId || hold.nextTaskId === previous.id) {
+  if (hold?.finalTask === true) {
+    if (hold.nextTaskId !== null) {
+      errors.push('Final verification hold requires nextTaskId=null');
+    }
+    const unfinished = [...headTasks.values()].filter((task) => task.status !== 'Verified');
+    if (unfinished.length > 0) {
+      errors.push(
+        'Final verification hold requires every task Verified: ' +
+          unfinished.map((task) => task.id).join(', '),
+      );
+    }
+    if ((headState?.deferredVerification ?? []).length > 0) {
+      errors.push('Final verification hold requires an empty deferredVerification ledger');
+    }
+  } else if (!hold?.nextTaskId || hold.nextTaskId === previous.id) {
     errors.push('verificationHold.nextTaskId must identify the deferred next task');
   } else {
     if (baseTasks.get(hold.nextTaskId)?.status !== 'Planned') {
@@ -235,7 +264,9 @@ export function verificationHoldErrors(
       errors.push(`lastVerifiedTask.${field} must reference a committed revision`);
     }
   }
-  if (JSON.stringify(headState.lastImplementedTask) !== JSON.stringify(baseState.lastImplementedTask)) {
+  if (
+    JSON.stringify(headState.lastImplementedTask) !== JSON.stringify(baseState.lastImplementedTask)
+  ) {
     errors.push('Verification hold must preserve lastImplementedTask');
   }
 
@@ -339,13 +370,7 @@ function selfTestHold() {
   holdTasks.set(currentId, { id: currentId, source: currentSource, status: 'Implemented' });
   assert.equal(classifyTransition(baseState, holdState, holdTasks), 'implementation-hold');
   assert.deepEqual(
-    implementationHoldErrors(
-      baseState,
-      holdState,
-      baseTasks,
-      holdTasks,
-      'work/m9-90-current',
-    ),
+    implementationHoldErrors(baseState, holdState, baseTasks, holdTasks, 'work/m9-90-current'),
     [],
   );
   assert.ok(
@@ -356,6 +381,34 @@ function selfTestHold() {
       holdTasks,
       'work/m9-90-current',
     ).includes('Implementation hold requires authorization.autoActivateNext=false'),
+  );
+  const finalBaseTasks = new Map([
+    ['M9-89', { id: 'M9-89', source: 'docs/tasks/M9/M9-89_PREVIOUS.md', status: 'Verified' }],
+    [currentId, { id: currentId, source: currentSource, status: 'In Progress' }],
+  ]);
+  const finalHoldTasks = new Map(finalBaseTasks);
+  finalHoldTasks.set(currentId, {
+    id: currentId,
+    source: currentSource,
+    status: 'Implemented',
+  });
+  const finalHoldState = {
+    ...holdState,
+    lastImplementedTask: {
+      ...holdState.lastImplementedTask,
+      nextTaskId: null,
+      finalTask: true,
+    },
+  };
+  assert.deepEqual(
+    implementationHoldErrors(
+      baseState,
+      finalHoldState,
+      finalBaseTasks,
+      finalHoldTasks,
+      'work/m9-90-current',
+    ),
+    [],
   );
 
   const implementedBase = {
@@ -393,7 +446,10 @@ function selfTestHold() {
     status: 'Verified',
   });
   verifiedTasks.set(currentId, { id: currentId, source: currentSource, status: 'Verified' });
-  assert.equal(classifyTransition(implementedBase, verifiedState, verifiedTasks), 'verification-hold');
+  assert.equal(
+    classifyTransition(implementedBase, verifiedState, verifiedTasks),
+    'verification-hold',
+  );
   assert.deepEqual(
     verificationHoldErrors(
       implementedBase,
@@ -412,6 +468,39 @@ function selfTestHold() {
       verifiedTasks,
       'work/m9-90-current',
     ).includes(`${currentId} must be absent from deferredVerification`),
+  );
+  const finalVerifiedBase = {
+    ...implementedBase,
+    deferredVerification: [{ id: currentId, implementationCommit: '1234567' }],
+  };
+  const finalVerifiedBaseTasks = new Map([
+    ['M9-89', { id: 'M9-89', source: 'docs/tasks/M9/M9-89_PREVIOUS.md', status: 'Verified' }],
+    [currentId, { id: currentId, source: currentSource, status: 'Implemented' }],
+  ]);
+  const finalVerifiedTasks = new Map(finalVerifiedBaseTasks);
+  finalVerifiedTasks.set(currentId, {
+    id: currentId,
+    source: currentSource,
+    status: 'Verified',
+  });
+  const finalVerifiedState = {
+    ...verifiedState,
+    verificationHold: {
+      ...verifiedState.verificationHold,
+      verifiedTasks: ['M9-89', currentId],
+      finalTask: true,
+      nextTaskId: null,
+    },
+  };
+  assert.deepEqual(
+    verificationHoldErrors(
+      finalVerifiedBase,
+      finalVerifiedState,
+      finalVerifiedBaseTasks,
+      finalVerifiedTasks,
+      'work/m9-90-current',
+    ),
+    [],
   );
   console.log('implementation and verification hold transition self-tests passed');
 }

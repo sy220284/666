@@ -217,9 +217,7 @@ test('completes atomic onboarding and exports only the confirmed diagnostic allo
 
     await page.locator('[data-onboarding-entry="quick"]').click();
     await expect(page.locator('[data-create-project-dialog]')).toBeVisible();
-    await expect(
-      page.locator('select[name="creativePath"] option[value="ai-first"]'),
-    ).toHaveAttribute('disabled', '');
+    await expect(page.locator('select[name="creativePath"]')).toHaveCount(0);
     await page.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.locator('[data-create-project-dialog]')).toHaveCount(0);
     expect(await readdir(createParent)).toEqual([]);
@@ -422,7 +420,6 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await page.locator('[data-create-project]').click();
     await expect(page.locator('[data-create-project-dialog]')).toBeVisible();
     await page.locator('[data-project-name]').fill('夜航');
-    await page.locator('[data-project-channel]').fill('悬疑');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-active-project-name]')).toHaveText('夜航');
@@ -539,9 +536,9 @@ test('creates an explicit professional blank project and exposes the first struc
     const page = await application.firstWindow();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
+    await page.locator('[data-onboarding-dialog-entry="blank"]').click();
     await page.locator('[data-project-name]').fill('空白长篇');
     await page.locator('[data-project-channel]').fill('历史');
-    await page.locator('[data-project-initial-structure]').selectOption('blank');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-structure-empty]')).toContainText('专业空白项目');
@@ -569,13 +566,12 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('雨夜正文');
-    await page.locator('[data-project-channel]').fill('悬疑');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();
 
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文块重建。');
     const editor = page.locator('[data-draft-content]');
     const blocks = editor.locator(':scope > [data-block-type]');
     await expect(editor).toHaveAttribute('contenteditable', 'true');
@@ -600,7 +596,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(page.locator('[data-draft-text-count]')).toHaveText('8');
     await expect(page.locator('[data-draft-paragraph-count]')).toHaveText('1');
     await expect(page.locator('[data-draft-state]')).toContainText('等待自动保存');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
       timeout: 3_000,
     });
     await page.locator('[data-draft-find]').fill('风起');
@@ -706,7 +702,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     }
 
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
     const persisted = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
         .worldforge;
@@ -742,7 +738,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     const lockedText = await blocks.first().textContent();
     await page.keyboard.type('越权修改');
     await expect(blocks.first()).toHaveText(lockedText ?? '');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
       timeout: 3_000,
     });
 
@@ -784,7 +780,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.locator('[data-close-project]').click();
     await page.locator('[data-open-recent]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文块重建。');
     await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。终风又起。');
     await expect(page.locator('[data-draft-content] > [data-locked="true"]')).toHaveCount(1);
     const reopenedIds = await page
@@ -1072,13 +1068,12 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('版本项目');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     const editor = page.locator('[data-draft-content]');
     await editor.click();
     await page.keyboard.type('首稿正文');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
       timeout: 3_000,
     });
     const originalDraftId = await page.evaluate(async () => {
@@ -1112,12 +1107,12 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     await editor.click();
     await page.keyboard.press('Control+End');
     await page.keyboard.type('后续修改');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
       timeout: 3_000,
     });
     await page.locator('[data-open-versions]').click();
     await page.locator('[data-version-action="restore"]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从只读版本恢复为新草稿。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从只读历史版本恢复为新当前稿。');
     await expect(editor).toHaveText('首稿正文');
     const restoredDraftId = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
@@ -1160,13 +1155,12 @@ test('creates a verified recovery point, restores a new project and exports a Ve
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('恢复E2E');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     const editor = page.locator('[data-draft-content]');
     await editor.click();
     await page.keyboard.type('恢复前正文');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · Revision \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
       timeout: 3_000,
     });
     await page.locator('[data-create-version]').click();
@@ -1213,7 +1207,6 @@ test('records Renderer animation-frame budget during sustained writing scroll', 
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('Renderer帧率');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open', {
       timeout: 20_000,
@@ -1263,6 +1256,7 @@ test('records Renderer animation-frame budget during sustained writing scroll', 
       return { blockCount: saved.data.blocks.length };
     });
     expect(seeded).toEqual({ blockCount: 96 });
+    await page.locator('[data-back-project]').click();
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     const editor = page.locator('[data-draft-content]');
     await expect(editor.locator(':scope > [data-block-type]')).toHaveCount(96, {

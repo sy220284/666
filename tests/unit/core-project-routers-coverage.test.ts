@@ -64,6 +64,9 @@ function createServices(activeProject: unknown = { marker: 'projectWorkspace.act
           return (...args: unknown[]) => {
             calls.push({ key, args });
             if (key === 'recovery.createOperationCheckpoint') return { backupId: 'backup-id' };
+            if (key === 'textIo.listExportVersions') {
+              return { projectId, versions: [] };
+            }
             return { marker: key };
           };
         },
@@ -230,7 +233,13 @@ const contentCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = 
   [TEXT_IO_COMMANDS.previewImport, [call('textIo.previewImport', input, '/tmp/import.md')]],
   [TEXT_IO_COMMANDS.commitImport, [call('textIo.commitImport', requestId, input)]],
   [TEXT_IO_COMMANDS.listExportVersions, [call('textIo.listExportVersions', projectId)]],
-  [TEXT_IO_COMMANDS.exportVersions, [call('textIo.exportVersions', input, '/tmp/export')]],
+  [
+    TEXT_IO_COMMANDS.exportVersions,
+    [
+      call('textIo.listExportVersions', projectId),
+      call('textIo.exportVersions', input, '/tmp/export'),
+    ],
+  ],
 ];
 
 const simpleStructureCases: ReadonlyArray<readonly [string, readonly RecordedCall[]]> = [
@@ -306,9 +315,10 @@ const destructiveStructureCases: ReadonlyArray<readonly [string, string, string,
   [PROJECT_STRUCTURE_COMMANDS.moveBlocks, 'assertMoveExecutable', 'move-blocks', 'executeMove'],
 ];
 
-function expectedData(expectedCalls: readonly RecordedCall[]): unknown {
+function expectedData(name: string, expectedCalls: readonly RecordedCall[]): unknown {
   const finalCall = expectedCalls.at(-1);
   if (!finalCall) throw new Error('EXPECTED_ROUTER_CALL_MISSING');
+  if (name === TEXT_IO_COMMANDS.listExportVersions) return { projectId, versions: [] };
   return finalCall.key === 'recovery.createOperationCheckpoint'
     ? { backupId: 'backup-id' }
     : { marker: finalCall.key };
@@ -322,7 +332,7 @@ async function verifyCases(
     const harness = createServices();
     const services = contractInput<Parameters<ProjectRouter>[0]>(harness.services);
     const result = await router(services, requestId, operation(name));
-    expect(result).toEqual({ ok: true, operation: name, data: expectedData(expectedCalls) });
+    expect(result).toEqual({ ok: true, operation: name, data: expectedData(name, expectedCalls) });
     expect(harness.calls, name).toEqual(expectedCalls);
   }
 }

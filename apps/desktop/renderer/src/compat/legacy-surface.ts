@@ -1,5 +1,6 @@
 import type { AppSettings, AppearancePreferences } from '@worldforge/contracts';
 
+import { flushRegisteredDraft } from '../runtime/draft-flush-registry.js';
 import type { RendererRouteId } from '../state/ui-state-boundary.js';
 
 export interface LegacySurfaceController {
@@ -29,12 +30,7 @@ export function createLegacySurfaceController(): LegacySurfaceController {
     toggleProjectPanel() {},
     openChapter() {},
     flushPendingDraft() {
-      const flush = (
-        globalThis as typeof globalThis & {
-          readonly worldforgeFlushDraft?: () => Promise<boolean>;
-        }
-      ).worldforgeFlushDraft;
-      return flush ? flush() : Promise.resolve(true);
+      return flushRegisteredDraft();
     },
     refreshPlacement() {},
     applyPresentation(settings, appearance, projectState) {

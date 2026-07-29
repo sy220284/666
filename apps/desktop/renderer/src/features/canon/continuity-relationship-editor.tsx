@@ -1,9 +1,16 @@
 import { useCallback, useState, type FormEvent } from 'react';
 
-import type { EvidenceAnchor } from '@worldforge/contracts';
-
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import {
+  ChapterNameSelect,
+  COMMON_STATE_FIELDS,
+  EntityNameSelect,
+  FinalVersionSelect,
+  parseAuthorValue,
+  timelinePrecisionLabel,
+  useCanonAuthorReferences,
+} from './canon-author-fields.js';
 
 export function ContinuityRelationshipEditor({
   bridge,
@@ -30,6 +37,7 @@ export function ContinuityRelationshipEditor({
   );
   const resource = useBridgeQuery(`continuity-relations:${projectId}`, load);
   const command = useBridgeCommand(resource.refresh);
+  const references = useCanonAuthorReferences(bridge, projectId);
   const [status, setStatus] = useState(
     '完整关系编辑会保留证据锚点、人物角色和事件依赖，不再固定为空数组。',
   );
@@ -37,44 +45,52 @@ export function ContinuityRelationshipEditor({
   const saveState = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
+    const stateKey = String(values.get('stateKey') ?? '');
+    const field = COMMON_STATE_FIELDS.find((item) => item.key === stateKey);
+    if (!field) {
+      setStatus('请选择要记录的动态状态。');
+      return;
+    }
     let value: Parameters<RendererBridgeAdapter['continuity']['setEntityState']>[0]['value'];
     try {
-      value = JSON.parse(String(values.get('value') ?? 'null')) as typeof value;
+      value = parseAuthorValue(field.valueType, String(values.get('value') ?? '')) as typeof value;
     } catch {
-      setStatus('动态状态值必须是有效JSON。');
+      setStatus('动态状态内容格式不正确，请根据字段提示修改。');
       return;
     }
-    const evidence = parseEvidence(String(values.get('evidence') ?? ''));
-    if (!evidence) {
-      setStatus('证据格式无效。每行使用：kind | targetId | note。');
-      return;
-    }
+    const sourceVersionId = String(values.get('sourceVersionId') ?? '');
     const result = await command.run(() =>
       bridge.continuity.setEntityState({
         projectId,
         authority: 'author',
         entityId: String(values.get('entityId') ?? '').trim(),
-        stateKey: String(values.get('stateKey') ?? '').trim(),
+        stateKey,
         value,
         validFromChapterId: String(values.get('validFromChapterId') ?? '').trim(),
         validUntilChapterId: nullableString(values.get('validUntilChapterId')),
-        sourceVersionId: String(values.get('sourceVersionId') ?? '').trim(),
-        evidence,
+        sourceVersionId,
+        evidence: [
+          {
+            kind: 'version',
+            targetId: sourceVersionId,
+            note: String(values.get('evidenceNote') ?? '').trim(),
+          },
+        ],
       }),
     );
     if (result) {
       event.currentTarget.reset();
-      setStatus(`动态状态已保存，证据锚点 ${evidence.length} 项。`);
+      setStatus('动态状态已保存，并绑定所选定稿版本作为依据。');
     }
   };
 
   const saveTimeline = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
-    const participantIds = uniqueLines(values.get('participantIds'));
-    const witnessIds = uniqueLines(values.get('witnessIds'));
-    const subjectIds = uniqueLines(values.get('subjectIds'));
-    const dependencyIds = uniqueLines(values.get('dependencyIds'));
+    const participantIds = selectedValues(values, 'participantIds');
+    const witnessIds = selectedValues(values, 'witnessIds');
+    const subjectIds = selectedValues(values, 'subjectIds');
+    const dependencyIds = selectedValues(values, 'dependencyIds');
     const result = await command.run(() =>
       bridge.continuity.saveTimelineEvent({
         projectId,
@@ -123,35 +139,41 @@ export function ContinuityRelationshipEditor({
           <summary>动态状态与证据锚点</summary>
           <form className="stacked-form" onSubmit={(event) => void saveState(event)}>
             <label>
-              实体UUID
-              <input name="entityId" required />
+              人物或设定
+              <EntityNameSelect name="entityId" references={references} required />
             </label>
             <label>
-              状态键
-              <input name="stateKey" required />
+              状态字段
+              <select name="stateKey" defaultValue="" required>
+                <option value="" disabled>
+                  请选择
+                </option>
+                {COMMON_STATE_FIELDS.map((field) => (
+                  <option key={field.key} value={field.key}>
+                    {field.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
-              JSON值
-              <textarea name="value" defaultValue="null" required />
+              状态内容
+              <textarea name="value" placeholder="按字段填写文字、数字或多行清单" required />
             </label>
             <label>
-              起始章节UUID
-              <input name="validFromChapterId" required />
+              从哪一章开始有效
+              <ChapterNameSelect name="validFromChapterId" references={references} required />
             </label>
             <label>
-              结束章节UUID
-              <input name="validUntilChapterId" />
+              到哪一章结束（可选）
+              <ChapterNameSelect name="validUntilChapterId" references={references} />
             </label>
             <label>
-              来源Version UUID
-              <input name="sourceVersionId" required />
+              依据的定稿版本
+              <FinalVersionSelect name="sourceVersionId" references={references} required />
             </label>
             <label>
-              证据锚点（每行 kind | targetId | note）
-              <textarea
-                name="evidence"
-                placeholder="chapter | UUID | 首次明确出现\nlogicalBlock | block-id | 关键原文"
-              />
+              依据说明
+              <textarea name="evidenceNote" placeholder="例如：本章结尾已明确人物负伤" />
             </label>
             <button disabled={readOnly || command.pending} type="submit">
               保存完整动态状态
@@ -179,38 +201,44 @@ export function ContinuityRelationshipEditor({
               <select name="precision" defaultValue="unknown">
                 {['exact', 'day', 'month', 'year', 'approximate', 'unknown'].map((value) => (
                   <option key={value} value={value}>
-                    {value}
+                    {timelinePrecisionLabel(value)}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              章节UUID
-              <input name="chapterId" />
+              关联章节
+              <ChapterNameSelect name="chapterId" references={references} />
             </label>
             <label>
-              地点UUID
-              <input name="locationId" />
+              发生地点
+              <EntityNameSelect entityType="location" name="locationId" references={references} />
             </label>
             <label>
               说明
               <textarea name="description" />
             </label>
             <label>
-              参与者UUID（每行一个）
-              <textarea name="participantIds" />
+              参与者
+              <EntityMultiSelect name="participantIds" references={references} />
             </label>
             <label>
-              见证者UUID（每行一个）
-              <textarea name="witnessIds" />
+              见证者
+              <EntityMultiSelect name="witnessIds" references={references} />
             </label>
             <label>
-              主体UUID（每行一个）
-              <textarea name="subjectIds" />
+              事件主体
+              <EntityMultiSelect name="subjectIds" references={references} />
             </label>
             <label>
-              前置事件UUID（每行一个）
-              <textarea name="dependencyIds" />
+              前置事件
+              <select multiple name="dependencyIds">
+                {resource.data?.timelineEvents.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
             </label>
             <button disabled={readOnly || command.pending} type="submit">
               保存完整时间线事件
@@ -245,26 +273,26 @@ export function ContinuityRelationshipEditor({
   );
 }
 
-function parseEvidence(value: string): EvidenceAnchor[] | null {
-  const allowed = new Set(['chapter', 'sceneBeat', 'version', 'entity', 'logicalBlock']);
-  const result: EvidenceAnchor[] = [];
-  for (const line of nonEmptyLines(value)) {
-    const [kind, targetId, note = ''] = line.split('|').map((item) => item.trim());
-    if (!kind || !targetId || !allowed.has(kind)) return null;
-    result.push({ kind: kind as EvidenceAnchor['kind'], targetId, note });
-  }
-  return result;
+function EntityMultiSelect({
+  name,
+  references,
+}: {
+  readonly name: string;
+  readonly references: ReturnType<typeof useCanonAuthorReferences>;
+}) {
+  return (
+    <select multiple name={name}>
+      {references.entities.map((entity) => (
+        <option key={entity.id} value={entity.id}>
+          {entity.name}
+        </option>
+      ))}
+    </select>
+  );
 }
 
-function uniqueLines(value: FormDataEntryValue | null): string[] {
-  return [...new Set(nonEmptyLines(String(value ?? '')))];
-}
-
-function nonEmptyLines(value: string): string[] {
-  return value
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean);
+function selectedValues(values: FormData, name: string): string[] {
+  return [...new Set(values.getAll(name).map(String).filter(Boolean))];
 }
 
 function nullableString(value: FormDataEntryValue | null): string | null {

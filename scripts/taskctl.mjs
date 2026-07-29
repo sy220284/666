@@ -490,7 +490,36 @@ async function verifyTask(taskId) {
     allowImplemented: true,
     state,
   });
-  if (!next) throw new Error('No implementation-ready Planned task remains');
+  if (!next) {
+    const unfinished = [...refreshedIndex.values()].filter((task) => task.status !== 'Verified');
+    if (unfinished.length > 0) {
+      throw new Error(
+        'No implementation-ready Planned task remains while unfinished tasks exist: ' +
+          unfinished.map((task) => task.id).join(', '),
+      );
+    }
+    state.authorization.autoActivateNext = false;
+    state.activeTask = { ...state.activeTask, status: 'VERIFIED_HOLD' };
+    state.verificationHold = {
+      taskId,
+      verifiedTasks: [...refreshedIndex.values()].map((task) => task.id),
+      finalTask: true,
+      nextTaskId: null,
+      heldAt: new Date().toISOString(),
+      reason: '最终任务已经验证，保留终态锚点且不自动激活后续任务',
+      allowedPaths: [
+        'docs/tasks/',
+        'docs/product/V1.0_TRACEABILITY_MATRIX.md',
+        'docs/test-evidence/' + taskId + '/',
+      ],
+      forbiddenPaths: [],
+    };
+    await writeTaskStateTransaction(state, verifiedIndex, [
+      { path: cardPath, content: verifiedCard, encoding: 'utf8' },
+    ]);
+    console.log('Verified final active task ' + taskId + '; entered final verification hold.');
+    return;
+  }
   state.activeTask = null;
   const activation = await prepareActivation(state, verifiedIndex, next.id);
   await writeTaskStateTransaction(activation.state, activation.indexSource, [
@@ -581,10 +610,56 @@ async function advanceImplementation() {
 
   const refreshedIndex = parseTaskIndex(implementedIndex);
   const next = findNextReadyTask(refreshedIndex, { allowImplemented: true, state });
-  if (!next) throw new Error('No implementation-ready Planned task remains');
 
   const implementedAt = new Date().toISOString();
   const previousTask = state.activeTask;
+  const pendingVerification = {
+    id: previousTask.id,
+    implementationCommit: commit,
+    deferredAt: implementedAt,
+    pending: [
+      'four-file evidence package and real automated run records',
+      'necessary manual review conclusions recorded in summary.md',
+      'risk-based screenshots, full logs, or independent quality matrix when warranted',
+      'final traceability verification status',
+      'Verified closure',
+    ],
+  };
+  if (!next) {
+    const unfinished = [...refreshedIndex.values()].filter(
+      (task) => task.id !== previousTask.id && task.status !== 'Verified',
+    );
+    if (unfinished.length > 0) {
+      throw new Error(
+        'No implementation-ready Planned task remains while unfinished tasks exist: ' +
+          unfinished.map((task) => task.id).join(', '),
+      );
+    }
+    state.authorization.autoActivateNext = false;
+    state.activeTask = { ...previousTask, status: 'IMPLEMENTED' };
+    state.lastImplementedTask = {
+      id: previousTask.id,
+      commit,
+      implementedAt,
+      source: previousTask.source,
+      branch: previousTask.branch,
+      nextTaskId: null,
+      finalTask: true,
+      activationDeferred: true,
+      activationDeferredReason: '最终任务等待受控合并与主分支验证后关闭',
+      allowedPaths: [...previousTask.allowedPaths],
+      forbiddenPaths: [...(previousTask.forbiddenPaths ?? [])],
+    };
+    state.deferredVerification = [...(state.deferredVerification ?? []), pendingVerification];
+    await writeTaskStateTransaction(state, implementedIndex, [
+      { path: cardPath, content: implementedCard, encoding: 'utf8' },
+    ]);
+    console.log(
+      'Recorded ' + previousTask.id + ' as the final Implemented task in implementation hold.',
+    );
+    return;
+  }
+
   const transitionAllowedPaths = [...new Set([...previousTask.allowedPaths, next.source])];
   state.lastImplementedTask = {
     id: previousTask.id,
@@ -596,21 +671,7 @@ async function advanceImplementation() {
     allowedPaths: transitionAllowedPaths,
     forbiddenPaths: [...(previousTask.forbiddenPaths ?? [])],
   };
-  state.deferredVerification = [
-    ...(state.deferredVerification ?? []),
-    {
-      id: previousTask.id,
-      implementationCommit: commit,
-      deferredAt: implementedAt,
-      pending: [
-        'four-file evidence package and real automated run records',
-        'necessary manual review conclusions recorded in summary.md',
-        'risk-based screenshots, full logs, or independent quality matrix when warranted',
-        'final traceability verification status',
-        'Verified closure',
-      ],
-    },
-  ];
+  state.deferredVerification = [...(state.deferredVerification ?? []), pendingVerification];
 
   state.activeTask = null;
   const activation = await prepareActivation(state, implementedIndex, next.id);

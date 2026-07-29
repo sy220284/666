@@ -5,13 +5,13 @@
 ## 当前状态
 
 ```text
-VERIFIED_HOLD
+IMPLEMENTED
 ```
 
-- 任务ID：`M8-02`
-- 唯一任务卡：`docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md`
-- 工作分支：`work/m8-02-performance-e2e-ai-eval`
-- 开始时间：`2026-07-28`
+- 任务ID：`M8-04`
+- 唯一任务卡：`docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md`
+- 工作分支：`work/m8-04-author-experience-language`
+- 开始时间：`2026-07-29`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -19,68 +19,71 @@ VERIFIED_HOLD
 
 ```yaml
 allowed_paths:
-  - apps/desktop/
+  - apps/desktop/renderer/
+  - apps/desktop/preload/
+  - apps/desktop/main/
   - packages/contracts/
   - packages/core-service/
-  - migrations/
-  - tests/e2e/
   - tests/unit/
-  - tests/performance/
-  - tests/security/
   - tests/integration/
-  - tests/migration/
-  - evals/
+  - tests/security/
+  - tests/performance/
+  - tests/e2e/
   - scripts/
   - .github/workflows/
   - .github/governance/
-  - docs/database/
+  - .github/pull_request_template.md
+  - docs/product/
   - docs/ui/
   - docs/testing/
-  - docs/security/
-  - docs/product/
-  - docs/test-evidence/M8-02/
+  - docs/process/
+  - docs/tasks/
+  - docs/test-evidence/M8-04/
+  - AGENTS.md
+  - agent.md
   - docs/PROJECT_EXECUTION_ENTRY.md
   - README.md
   - CHANGELOG.md
-  - LICENSE
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
-  - docs/tasks/ACTIVE_TASK.json
-  - docs/tasks/ACTIVE_TASK.md
-  - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md
-  - docs/product/V1.0_TRACEABILITY_MATRIX.md
 forbidden_paths:
-
+  - migrations/
+  - docs/test-evidence/M0/
+  - docs/test-evidence/M1/
+  - docs/test-evidence/M2/
+  - docs/test-evidence/M3/
+  - docs/test-evidence/M4-04/
+  - docs/test-evidence/M8-02/
 required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/tasks/ACTIVE_TASK.json
-  - docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md
+  - docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/product/FUNCTION_CATALOG.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/product/SELF_USE_RELEASE_POLICY.md
-  - docs/testing/P0_ACCEPTANCE_MATRIX.md
-  - docs/testing/PERFORMANCE_BUDGETS.md
+  - docs/product/AUTHOR_LANGUAGE_GLOSSARY.md
   - docs/ui/UI_ACCEPTANCE_CHECKLIST.md
-  - docs/ai/PROMPT_AND_EVAL_SPEC.md
+  - docs/ui/INFORMATION_ARCHITECTURE.md
+  - docs/ui/SCREEN_SPECIFICATIONS.md
+  - docs/ui/INTERACTION_STATES.md
+  - docs/ui/EDITOR_INTERACTION_SPEC.md
   - docs/security/THREAT_MODEL.md
   - docs/security/PRIVACY_AND_LOGGING.md
 verification:
+  - pnpm check:language
   - pnpm lint
   - pnpm typecheck
   - pnpm test
-  - pnpm test:migration
+  - pnpm test:unit
   - pnpm test:integration
   - pnpm test:security
-  - pnpm test:e2e
-  - pnpm test:unit
-  - pnpm test:eval
   - pnpm test:perf
+  - pnpm test:e2e
+  - pnpm build
 ```
 
 ## 连续执行规则
 
-V1.0全部独立任务已经Verified；M8-02作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。
+当前作者已授权实现优先的合并请求模式：每张任务必须在独立非main分支完成并提交合并请求；合并请求规则、任务治理、安全、性能、验证记录与质量门禁全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。

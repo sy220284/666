@@ -101,9 +101,9 @@ test('previews, restructures, imports and atomically exports selected Versions',
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
 
     await page.locator('[data-create-project]').click();
+    await page.locator('[data-onboarding-dialog-entry="blank"]').click();
     await page.locator('[data-project-name]').fill('M1-09验收项目');
     await page.locator('[data-project-channel]').fill('长篇');
-    await page.locator('[data-project-initial-structure]').selectOption('blank');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 
@@ -153,9 +153,7 @@ test('previews, restructures, imports and atomically exports selected Versions',
     expect(exportedText).toContain('# 第二章');
 
     await page.locator('[data-export-versions]').click();
-    await expect(page.locator('[data-text-io-status]')).toContainText(
-      '导出失败 · EXPORT_TARGET_EXISTS_002',
-    );
+    await expect(page.locator('[data-text-io-status]')).toContainText('导出失败：操作未完成');
 
     const committed = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })

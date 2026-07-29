@@ -193,6 +193,8 @@ import {
 } from '@worldforge/contracts';
 import { contextBridge, ipcRenderer } from 'electron';
 
+import { rendererLifecycleBridge } from './lifecycle-bridge.js';
+
 interface Parser<Result> {
   parse(input: unknown): Result;
 }
@@ -250,6 +252,7 @@ type CandidateBridge = {
 };
 
 const bridge: WorldforgeBridge & CandidateBridge = {
+  lifecycle: rendererLifecycleBridge,
   app: {
     getInfo: () =>
       invoke(

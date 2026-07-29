@@ -17,6 +17,14 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import {
+  authorCharacterArcStatusLabel,
+  authorEntityTypeLabel,
+  authorForeshadowingStatusLabel,
+  authorPlotNodeTypeLabel,
+  authorSceneBeatTypeLabel,
+} from '../../presentation/author-value-format.js';
 
 interface PlanningWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
@@ -70,9 +78,9 @@ export function PlanningWorkbench({
     <section className="planning-workbench" data-planning-dialog aria-label="规划工作台">
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">Planning</p>
-          <h1>规划工作台</h1>
-          <p>卷章与大纲、任务书、SceneBeat及相关设定在同一上下文中协作。</p>
+          <p className="eyebrow">完整规划</p>
+          <h1>完整规划工作台</h1>
+          <p>卷章与大纲、作品任务书、场景节拍及相关设定在同一上下文中协作。</p>
         </div>
         <div className="feature-heading__actions">
           <button
@@ -81,7 +89,7 @@ export function PlanningWorkbench({
             type="button"
             onClick={() => setProfessional(false)}
           >
-            引导
+            简明
           </button>
           <button
             className={professional ? 'quiet-button is-active' : 'quiet-button'}
@@ -89,7 +97,7 @@ export function PlanningWorkbench({
             type="button"
             onClick={() => setProfessional(true)}
           >
-            专业
+            完整
           </button>
           <button className="quiet-button" data-close-planning type="button" onClick={onClose}>
             返回写作
@@ -115,7 +123,7 @@ export function PlanningWorkbench({
           {briefSkipped ? (
             <section className="feature-card" data-brief-skipped>
               <h2>任务书已暂时收起</h2>
-              <p>可继续自由规划；恢复后仍从Core读取已保存内容。</p>
+              <p>可继续自由规划；恢复后仍从本地服务读取已保存内容。</p>
               <button
                 className="quiet-button"
                 data-restore-brief
@@ -183,7 +191,7 @@ export function PlanningWorkbench({
             />
           ) : (
             <section className="feature-card">
-              <h2>章节与SceneBeat</h2>
+              <h2>章节与场景节拍</h2>
               <p>从左侧选择章节后编辑场景节拍。</p>
             </section>
           )}
@@ -197,18 +205,18 @@ export function PlanningWorkbench({
                 {entities.data.entities.slice(0, 12).map((entity) => (
                   <li key={entity.id}>
                     <strong>{entity.name}</strong>
-                    <span>{entity.entityType}</span>
+                    <span>{authorEntityTypeLabel(entity.entityType)}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p>暂无实体。可在设定工作台建立人物、地点和规则。</p>
+              <p>暂无人物或设定。可在设定工作台建立人物、地点和规则。</p>
             )}
           </section>
           <section className="feature-card">
             <h2>权威边界</h2>
-            <p>ProjectBrief、PlotNode与SceneBeat均为规划；正文块移动需要单独预览与确认。</p>
-            <p>动态状态和提案不会在此自动确认为Canon。</p>
+            <p>作品任务书、大纲节点与场景节拍均属于规划；正文块移动需要单独预览与确认。</p>
+            <p>动态状态和设定更新建议不会在此自动确认为已确认设定。</p>
           </section>
           <section className="feature-card">
             <h2>伏笔与弧光摘要</h2>
@@ -220,14 +228,14 @@ export function PlanningWorkbench({
               {narrative.data?.foreshadowings.slice(0, 6).map((item) => (
                 <li key={item.id}>
                   <strong>{item.title}</strong>
-                  <span>{item.status}</span>
+                  <span>{authorForeshadowingStatusLabel(item.status)}</span>
                 </li>
               ))}
               {narrative.data?.characterArcs.slice(0, 6).map((arc) => (
                 <li key={arc.id}>
                   <strong>{arc.title}</strong>
                   <span>
-                    {arc.status} · 节点 {arc.milestones.length}
+                    {authorCharacterArcStatusLabel(arc.status)} · 节点 {arc.milestones.length}
                   </span>
                 </li>
               ))}
@@ -481,7 +489,7 @@ export function StructureNavigator({
       <div className="feature-card__heading">
         <div>
           <h2>卷章目录</h2>
-          {!compact ? <p>生命周期与目标字数由Core维护。</p> : null}
+          {!compact ? <p>生命周期与目标字数由本地服务维护。</p> : null}
         </div>
         <div className="inline-actions">
           <button
@@ -504,7 +512,7 @@ export function StructureNavigator({
         </div>
       </div>
       <p className="feature-status" data-structure-state role="status">
-        {command.error ? `${command.error.message} · ${command.error.code}` : ''}
+        {command.error ? `${authorErrorSummary(command.error)}` : ''}
       </p>
       <div className="structure-tree" data-structure-tree>
         {resource.state === 'loading' ? <p>正在读取卷章…</p> : null}
@@ -820,7 +828,7 @@ function StructureDialog({
           </label>
         </div>
         <p className="feature-status" data-structure-form-status>
-          {command.error ? `${command.error.message} · ${command.error.code}` : ''}
+          {command.error ? `${authorErrorSummary(command.error)}` : ''}
         </p>
         <footer>
           <button
@@ -855,7 +863,7 @@ function TrashDialog({
     [bridge, projectId],
   );
   const resource = useBridgeQuery(`trash:${projectId}`, load);
-  const [status, setStatus] = useState('恢复保留原始排序；永久删除先由Core计算影响。');
+  const [status, setStatus] = useState('恢复保留原始排序；永久删除先由本地服务计算影响。');
   const command = useBridgeCommand(async () => {
     await Promise.all([resource.refresh(), onStructureRefresh()]);
   });
@@ -891,7 +899,7 @@ function TrashDialog({
       }),
     );
     if (result)
-      setStatus(`已永久删除 · 恢复点 ${result.backupId.slice(0, 8)}… · 影响已由Core校验。`);
+      setStatus(`已永久删除 · 恢复点 ${result.backupId.slice(0, 8)}… · 影响已由本地服务校验。`);
   };
   return (
     <dialog className="react-dialog" data-trash-dialog open>
@@ -902,7 +910,7 @@ function TrashDialog({
         </button>
       </header>
       <p className="feature-status" data-trash-status role="status">
-        {command.error ? `${command.error.message} · ${command.error.code}` : status}
+        {command.error ? `${authorErrorSummary(command.error)}` : status}
       </p>
       <div className="trash-list" data-trash-list>
         {resource.data?.entries.length === 0 ? <p data-trash-empty>回收站为空。</p> : null}
@@ -1038,11 +1046,7 @@ function BriefEditor({
           >
             保存任务书
           </button>
-          {command.error ? (
-            <p className="form-error">
-              {command.error.message} · {command.error.code}
-            </p>
-          ) : null}
+          {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
         </form>
       ) : null}
     </section>
@@ -1101,7 +1105,7 @@ function PlotTree({
           <div>
             <strong>{node.title}</strong>
             <span>
-              {node.nodeType} · {statusLabel(node.status)}
+              {authorPlotNodeTypeLabel(node.nodeType)} · {statusLabel(node.status)}
             </span>
           </div>
           <div className="inline-actions">
@@ -1280,11 +1284,7 @@ function PlotNodeDialog({
         >
           保存
         </button>
-        {command.error ? (
-          <p className="form-error">
-            {command.error.message} · {command.error.code}
-          </p>
-        ) : null}
+        {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
       </form>
     </dialog>
   );
@@ -1324,11 +1324,11 @@ function SceneBeatPanel({
   const command = useBridgeCommand(resource.refresh);
   const previewCommand = useBridgeCommand();
   const remove = async (beat: SceneBeat): Promise<void> => {
-    if (!window.confirm(`删除SceneBeat“${beat.title}”？正文不会变化。`)) return;
+    if (!window.confirm(`删除场景节拍“${beat.title}”？正文不会变化。`)) return;
     const result = await command.run(() =>
       bridge.planning.deleteSceneBeat({ projectId, sceneBeatId: beat.id }),
     );
-    if (result) onStatus('SceneBeat已移入已删除列表；正文未变化。');
+    if (result) onStatus('场景节拍已移入已删除列表；正文未变化。');
   };
   const selectLogicalBlocks = async (
     defaultIds: readonly string[] = [],
@@ -1351,7 +1351,7 @@ function SceneBeatPanel({
       return block ? [block.logicalBlockId] : [];
     });
     if (ids.length !== indices.length) {
-      onStatus('正文块序号无效，未修改SceneBeat。');
+      onStatus('正文块序号无效，未修改场景节拍。');
       return null;
     }
     return ids;
@@ -1366,7 +1366,7 @@ function SceneBeatPanel({
         logicalBlockIds: ids,
       }),
     );
-    if (result) onStatus('SceneBeat正文块引用已更新；正文内容和顺序未变化。');
+    if (result) onStatus('场景节拍的正文块引用已更新；正文内容和顺序未变化。');
   };
   const moveWithinChapter = async (beat: SceneBeat, direction: -1 | 1): Promise<void> => {
     const beats = resource.data?.beats ?? [];
@@ -1384,7 +1384,7 @@ function SceneBeatPanel({
         },
       }),
     );
-    if (result) onStatus('SceneBeat顺序已更新；正文未变化。');
+    if (result) onStatus('场景节拍顺序已更新；正文未变化。');
   };
   const moveAcrossChapters = async (beat: SceneBeat): Promise<void> => {
     const chapters =
@@ -1393,7 +1393,7 @@ function SceneBeatPanel({
       ) ?? [];
     const targets = chapters.filter(({ chapter }) => chapter.id !== chapterId);
     if (!targets.length) {
-      onStatus('需要至少两个章节才能跨章移动SceneBeat。');
+      onStatus('需要至少两个章节才能跨章移动场景节拍。');
       return;
     }
     const choice = window.prompt(
@@ -1413,7 +1413,7 @@ function SceneBeatPanel({
     const preview = await previewCommand.run(() => bridge.planning.previewMoveSceneBeat(input));
     if (!preview) return;
     const impact = `关联正文块 ${preview.linkedBlockCount} · 关联人物 ${preview.linkedCharacterCount}${preview.warnings.length ? ` · ${preview.warnings.join('；')}` : ''}`;
-    onStatus(`SceneBeat跨章预览：${impact}`);
+    onStatus(`场景节拍跨章预览：${impact}`);
     if (
       !preview.canExecute ||
       !window.confirm(
@@ -1424,13 +1424,13 @@ function SceneBeatPanel({
     const result = await command.run(() =>
       bridge.planning.moveSceneBeatAcrossChapters({ ...input, planHash: preview.planHash }),
     );
-    if (result) onStatus('SceneBeat已跨章移动；正文块未自动移动。');
+    if (result) onStatus('场景节拍已跨章移动；正文块未自动移动。');
   };
   return (
     <section className="feature-card">
       <div className="feature-card__heading">
         <div>
-          <h2>章节与SceneBeat</h2>
+          <h2>章节与场景节拍</h2>
           <p>规划节拍与正文块保持显式分离。</p>
         </div>
         <div className="inline-actions">
@@ -1454,18 +1454,18 @@ function SceneBeatPanel({
             type="button"
             onClick={() => setEditor({ beat: null, logicalBlockIds: [] })}
           >
-            新建SceneBeat
+            新建场景节拍
           </button>
         </div>
       </div>
       <div data-scene-beat-list>
-        {resource.data?.beats.length === 0 ? <p>当前章节尚无SceneBeat。</p> : null}
+        {resource.data?.beats.length === 0 ? <p>当前章节尚无场景节拍。</p> : null}
         {resource.data?.beats.map((beat, index) => (
           <article className="scene-beat-card" key={beat.id}>
             <div>
               <strong>{beat.title}</strong>
               <span>
-                {beat.beatType} · {beat.wordTargetPercent}%
+                {authorSceneBeatTypeLabel(beat.beatType)} · {beat.wordTargetPercent}%
               </span>
             </div>
             <p>{beat.goal}</p>
@@ -1507,7 +1507,7 @@ function SceneBeatPanel({
         ))}
       </div>
       <details>
-        <summary>已删除SceneBeat</summary>
+        <summary>已删除场景节拍</summary>
         <div data-deleted-scene-beat-list>
           {resource.data?.deletedBeats.length === 0 ? (
             <p>无</p>
@@ -1544,7 +1544,7 @@ function SceneBeatPanel({
           onSaved={async () => {
             setEditor(null);
             await resource.refresh();
-            onStatus('SceneBeat已保存；正文未发生变化。');
+            onStatus('场景节拍已保存；正文未发生变化。');
           }}
         />
       ) : null}
@@ -1615,10 +1615,10 @@ function SceneBeatDialog({
         <header>
           <h2>
             {beat
-              ? '编辑SceneBeat'
+              ? '编辑场景节拍'
               : convertingLogicalBlockIds.length
                 ? `从 ${convertingLogicalBlockIds.length} 个正文块转换`
-                : '新建SceneBeat'}
+                : '新建场景节拍'}
           </h2>
           <button type="button" onClick={onClose}>
             关闭
@@ -1633,7 +1633,7 @@ function SceneBeatDialog({
           <select name="beatType" defaultValue={beat?.beatType ?? 'development'}>
             {['setup', 'development', 'turn', 'climax', 'resolution', 'custom'].map((type) => (
               <option key={type} value={type}>
-                {type}
+                {authorSceneBeatTypeLabel(type)}
               </option>
             ))}
           </select>
@@ -1727,11 +1727,7 @@ function SceneBeatDialog({
         >
           保存
         </button>
-        {command.error ? (
-          <p className="form-error">
-            {command.error.message} · {command.error.code}
-          </p>
-        ) : null}
+        {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
       </form>
     </dialog>
   );
@@ -1746,9 +1742,7 @@ function InlineError({
 }) {
   return (
     <div className="inline-error" role="alert">
-      <span>
-        {error.message} · {error.code}
-      </span>
+      <span>{authorErrorSummary(error)}</span>
       <button type="button" onClick={() => void onRetry()}>
         重试
       </button>

@@ -100,7 +100,6 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
 
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('M1验收项目');
-    await page.locator('[data-project-channel]').fill('长篇');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await page.locator('[data-close-project]').click();
@@ -171,7 +170,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await capture(page, 'm1-04-chinese-block-editor.png');
 
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
     const revision = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
         .worldforge;

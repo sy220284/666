@@ -49,7 +49,6 @@ test('keeps a proposal pending until the author accepts it and then exposes the 
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await page.locator('[data-create-project]').click();
     await page.locator('[data-project-name]').fill('状态提案工程');
-    await page.locator('[data-project-channel]').fill('悬疑');
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
 
@@ -180,13 +179,14 @@ test('keeps a proposal pending until the author accepts it and then exposes the 
 
     await page.locator('[data-open-state-proposals]').click();
     await expect(page.locator('[data-state-proposal-dialog]')).toBeVisible();
+    await page.locator('[data-refresh-state-proposals]').click();
     await page.locator('[data-state-proposal-chapter]').selectOption(seeded.chapterId);
     await page.locator('[data-refresh-state-proposals]').click();
     const proposal = page.locator(`[data-state-proposal="${seeded.proposalId}"]`);
-    await expect(proposal).toContainText('pending');
+    await expect(proposal).toContainText('等待处理');
     await expect(proposal).toContainText('沈砚走入南城');
     await proposal.locator(`[data-accept-state-proposal="${seeded.proposalId}"]`).click();
-    await expect(proposal).toContainText('accepted');
+    await expect(proposal).toContainText('已采用');
     await expect(page.locator('[data-ending-snapshot="snapshot"]')).toBeVisible();
     await expect(page.locator('[data-state-proposal-snapshot]')).toContainText('实体状态 1');
 

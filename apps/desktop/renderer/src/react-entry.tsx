@@ -7,6 +7,7 @@ import { createWindowRendererBridgeAdapter } from './bridge/renderer-bridge-adap
 import { createLegacyCompatibilityLoader } from './compat/legacy-loader.js';
 import { createLegacySurfaceController } from './compat/legacy-surface.js';
 import { createCoreRecoverySupervisor } from './runtime/core-recovery-supervisor.js';
+import { flushRegisteredDraft } from './runtime/draft-flush-registry.js';
 import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
 import { createRendererFoundationRuntime } from './runtime/renderer-foundation-runtime.js';
 import { RendererStatusArbitrator } from './runtime/status-arbitrator.js';
@@ -34,6 +35,12 @@ const runtime = createRendererFoundationRuntime({
 const root = createRoot(rootElement);
 
 lifecycle.register('react-root', 'core-recovery-supervisor', () => coreRecovery.dispose());
+const stopShutdownListener = bridge.lifecycle.onShutdownPrepare((request) => {
+  void flushRegisteredDraft()
+    .then((saved) => bridge.lifecycle.acknowledgeShutdown({ ...request, saved }))
+    .catch(() => bridge.lifecycle.acknowledgeShutdown({ ...request, saved: false }));
+});
+lifecycle.register('react-root', 'shutdown-listener', stopShutdownListener);
 coreRecovery.start();
 rootElement.dataset.reactMounted = 'true';
 root.render(

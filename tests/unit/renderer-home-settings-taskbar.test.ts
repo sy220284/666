@@ -14,14 +14,14 @@ const recentProjects: readonly RecentProject[] = [
   {
     projectId: '00000000-0000-4000-8000-000000000001',
     workspacePath: '/workspace/older',
-    displayName: '旧项目',
+    displayName: '旧作品',
     lastOpenedAt: '2026-07-20T08:00:00.000Z',
     missingSince: null,
   },
   {
     projectId: '00000000-0000-4000-8000-000000000002',
     workspacePath: '/workspace/missing',
-    displayName: '路径丢失项目',
+    displayName: '路径丢失作品',
     lastOpenedAt: '2026-07-21T08:00:00.000Z',
     missingSince: '2026-07-21T09:00:00.000Z',
   },
@@ -38,8 +38,8 @@ const task = (taskId: string, status: TaskSnapshot['status'], startedAt: string)
   elapsedMs: 1_000,
 });
 
-describe('M3-08 home dashboard model', () => {
-  it('prioritizes data risk and limits beginner prompts to one', () => {
+describe('首页信息模型', () => {
+  it('优先显示数据风险，并将简明模式提示限制为一条', () => {
     const model = createHomeDashboardModel({
       disclosureMode: 'beginner',
       continuation: null,
@@ -50,14 +50,14 @@ describe('M3-08 home dashboard model', () => {
           id: 'normal',
           severity: 'normal',
           title: '普通建议',
-          message: '继续完善项目。',
+          message: '继续完善作品。',
           intent: 'checks',
         },
         {
           id: 'database-risk',
           severity: 'data-risk',
           title: '数据风险',
-          message: '请先处理项目恢复。',
+          message: '请先处理作品恢复。',
           intent: 'recovery',
         },
       ],
@@ -69,12 +69,12 @@ describe('M3-08 home dashboard model', () => {
     expect(model.showDetailedTaskSummary).toBe(false);
   });
 
-  it('shows at most two professional prompts and sorts recent projects', () => {
+  it('完整模式最多显示两条提示，并按时间排列最近作品', () => {
     const model = createHomeDashboardModel({
       disclosureMode: 'professional',
       continuation: {
         projectId: '00000000-0000-4000-8000-000000000001',
-        projectName: '当前项目',
+        projectName: '当前作品',
         chapterId: '00000000-0000-4000-8000-000000000010',
         chapterTitle: '第一章',
       },
@@ -85,7 +85,7 @@ describe('M3-08 home dashboard model', () => {
           id: 'normal',
           severity: 'normal',
           title: '普通建议',
-          message: '继续完善项目。',
+          message: '继续完善作品。',
           intent: 'checks',
         },
         {
@@ -122,8 +122,8 @@ describe('M3-08 home dashboard model', () => {
   });
 });
 
-describe('M3-08 task bar model', () => {
-  it('keeps queued and running tasks visible across routes', () => {
+describe('生成任务栏模型', () => {
+  it('跨页面保留等待中和进行中的任务', () => {
     const runningId = '00000000-0000-4000-8000-000000000101';
     const model = createTaskBarModel(
       [
@@ -146,7 +146,7 @@ describe('M3-08 task bar model', () => {
     });
   });
 
-  it('hides when no active tasks remain', () => {
+  it('没有活动任务时隐藏', () => {
     const model = createTaskBarModel(
       [task('00000000-0000-4000-8000-000000000104', 'cancelled', '2026-07-21T08:00:00Z')],
       null,
@@ -161,8 +161,8 @@ describe('M3-08 task bar model', () => {
   });
 });
 
-describe('M3-08 settings navigation model', () => {
-  it('exposes the implemented Provider section alongside the basic settings sections', () => {
+describe('设置分区导航', () => {
+  it('在基础设置之外提供已经接通的AI连接分区', () => {
     const items = createSettingsNavigationItems({
       disclosureMode: 'beginner',
       currentSection: 'general',
@@ -175,9 +175,10 @@ describe('M3-08 settings navigation model', () => {
       'advanced',
     ]);
     expect(items.find((item) => item.id === 'general')?.current).toBe(true);
+    expect(items.find((item) => item.id === 'providers')?.label).toBe('AI连接');
   });
 
-  it('changes disclosure without changing section identity or availability', () => {
+  it('切换信息显示方式时不改变分区身份和可用状态', () => {
     const beginner = createSettingsNavigationItems({
       disclosureMode: 'beginner',
       currentSection: 'appearance',
@@ -190,10 +191,12 @@ describe('M3-08 settings navigation model', () => {
     expect(professional.map(({ id, disabled }) => ({ id, disabled }))).toEqual(
       beginner.map(({ id, disabled }) => ({ id, disabled })),
     );
-    expect(professional.find((item) => item.id === 'appearance')?.description).toContain('变体');
+    expect(professional.find((item) => item.id === 'appearance')?.description).toContain(
+      '显示方案',
+    );
   });
 
-  it('rejects unavailable placeholders and restores only legal sections', () => {
+  it('拒绝不可用的占位分区，并只恢复合法分区', () => {
     expect(
       resolveSettingsNavigationIntent('editor', {
         disclosureMode: 'professional',

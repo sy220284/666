@@ -263,6 +263,15 @@ vi.mock('../../apps/desktop/main/src/privacy-logger.js', () => ({
     }
   },
 }));
+vi.mock('../../apps/desktop/main/src/renderer-shutdown-ipc.js', () => ({
+  requestRendererDraftFlush: async (
+    _ipcMain: unknown,
+    webContents: { executeJavaScript: (source: string, userGesture: boolean) => Promise<unknown> },
+  ) =>
+    Boolean(
+      await webContents.executeJavaScript('named renderer shutdown handshake test double', true),
+    ),
+}));
 vi.mock('../../apps/desktop/main/src/security-policy.js', () => ({
   CONTENT_SECURITY_POLICY: "default-src 'self'",
   buildSecureWebPreferences: (...args: unknown[]) => state.buildPreferences(...args),

@@ -46,3 +46,11 @@ export function authorErrorMessage(code: string, fallbackMessage?: string): Auth
     }
   );
 }
+
+export function authorErrorSummary(error: {
+  readonly code: string;
+  readonly message: string;
+}): string {
+  const content = authorErrorMessage(error.code, error.message);
+  return [content.title, content.message, content.suggestedAction].filter(Boolean).join(' ');
+}

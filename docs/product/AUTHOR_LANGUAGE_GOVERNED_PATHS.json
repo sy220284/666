@@ -13,7 +13,9 @@
     "tests/unit/renderer-home-settings-taskbar.test.ts",
     "docs/tasks/ACTIVE_TASK.md",
     "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md",
-    "agent.md"
+    "agent.md",
+    "apps/desktop/renderer/src/features/home/home-page.tsx",
+    "apps/desktop/renderer/src/features/settings/settings-page.tsx"
   ],
   "excludedPaths": [],
   "note": "阶段一只登记已经完成中文业务语言治理的路径；后续界面迁移完成一个文件或目录，就必须将其加入本清单。"

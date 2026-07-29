@@ -72,9 +72,9 @@ export function SettingsPage(props: SettingsPageProps) {
     <section className="react-settings-page" data-react-settings data-settings-dialog>
       <header className="react-page-header">
         <div>
-          <p className="eyebrow">LOCAL PREFERENCES · APP.SQLITE</p>
+          <p className="eyebrow">本地应用设置</p>
           <h1>设置</h1>
-          <p>显示偏好和应用设置保存在本机，不写入任何项目正文。</p>
+          <p>显示偏好和应用设置保存在本机，不写入任何作品正文。</p>
         </div>
         <button
           className="quiet-button"
@@ -172,7 +172,7 @@ function GeneralSettings(props: SettingsPageProps) {
           }
         >
           <option value="show-home">显示首页</option>
-          <option value="reopen-last">重新打开最近项目</option>
+          <option value="reopen-last">重新打开最近作品</option>
         </select>
       </label>
       <label>
@@ -185,8 +185,8 @@ function GeneralSettings(props: SettingsPageProps) {
             setDraft({ ...draft, defaultMode: event.target.value as AppSettings['defaultMode'] })
           }
         >
-          <option value="beginner">新手模式</option>
-          <option value="professional">专业模式</option>
+          <option value="beginner">简明模式</option>
+          <option value="professional">完整模式</option>
         </select>
       </label>
       <label>
@@ -209,7 +209,7 @@ function GeneralSettings(props: SettingsPageProps) {
         </select>
         <small>
           {props.aiReady
-            ? '当前会话已有Provider通过真实连接测试；只调整推荐入口和说明。'
+            ? '当前会话已有AI连接通过真实连接测试；这里只调整推荐入口和说明。'
             : 'AI未验证不影响自主创作、搜索、备份、导入导出或恢复。'}
         </small>
       </label>
@@ -327,7 +327,7 @@ function AppearanceSettings(props: SettingsPageProps) {
     >
       <header>
         <h2>外观与显示</h2>
-        <p>主题只替换视觉Token；界面缩放不会改变正文内容和导出字号。</p>
+        <p>主题只改变视觉样式；界面缩放不会改变正文内容和导出字号。</p>
       </header>
       <label>
         <span>主题</span>
@@ -346,8 +346,8 @@ function AppearanceSettings(props: SettingsPageProps) {
             });
           }}
         >
-          <option value="theme-a">Theme A · 安静编辑部</option>
-          <option value="theme-b">Theme B</option>
+          <option value="theme-a">安静编辑部</option>
+          <option value="theme-b">水墨印章</option>
         </select>
       </label>
       <label>
@@ -461,7 +461,7 @@ function AdvancedSettings(props: SettingsPageProps) {
       return;
     }
     setDiagnosticStatus(
-      `已导出 ${outcome.data.fileName} · ${outcome.data.bytes} bytes · ${outcome.data.sha256.slice(0, 12)}…`,
+      `已导出 ${outcome.data.fileName} · ${outcome.data.bytes} 字节 · ${outcome.data.sha256.slice(0, 12)}…`,
     );
   };
 
@@ -469,11 +469,11 @@ function AdvancedSettings(props: SettingsPageProps) {
     <section className="react-settings-form" data-settings-section="advanced">
       <header>
         <h2>高级与诊断</h2>
-        <p>这里只显示安全诊断信息，不通过Renderer暴露堆栈、SQL、密钥或完整日志。</p>
+        <p>这里只显示安全诊断信息，不向应用界面暴露调用堆栈、数据库语句、密钥或完整日志。</p>
       </header>
       <dl className="react-diagnostic-list">
         <div>
-          <dt>Core状态</dt>
+          <dt>本地服务状态</dt>
           <dd>{core?.status ?? '未知'}</dd>
         </div>
         <div>
@@ -485,7 +485,7 @@ function AdvancedSettings(props: SettingsPageProps) {
           <dd>{core?.lastErrorCode ?? '无'}</dd>
         </div>
         <div>
-          <dt>诊断ID</dt>
+          <dt>诊断编号</dt>
           <dd>{core?.diagnosticId ?? '无'}</dd>
         </div>
       </dl>
@@ -538,7 +538,7 @@ function AdvancedSettings(props: SettingsPageProps) {
           type="button"
           onClick={props.onRestartCore}
         >
-          {props.pendingKey === 'app.restartCore' ? '正在重启…' : '安全重启Core'}
+          {props.pendingKey === 'app.restartCore' ? '正在重启…' : '安全重启本地服务'}
         </button>
       </footer>
     </section>

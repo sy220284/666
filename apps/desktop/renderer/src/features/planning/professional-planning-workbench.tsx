@@ -70,9 +70,9 @@ export function PlanningWorkbench({
     <section className="planning-workbench" data-planning-dialog aria-label="规划工作台">
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">Planning</p>
-          <h1>规划工作台</h1>
-          <p>卷章与大纲、任务书、SceneBeat及相关设定在同一上下文中协作。</p>
+          <p className="eyebrow">完整规划</p>
+          <h1>完整规划工作台</h1>
+          <p>卷章与大纲、作品任务书、场景节拍及相关设定在同一上下文中协作。</p>
         </div>
         <div className="feature-heading__actions">
           <button
@@ -81,7 +81,7 @@ export function PlanningWorkbench({
             type="button"
             onClick={() => setProfessional(false)}
           >
-            引导
+            简明
           </button>
           <button
             className={professional ? 'quiet-button is-active' : 'quiet-button'}
@@ -89,7 +89,7 @@ export function PlanningWorkbench({
             type="button"
             onClick={() => setProfessional(true)}
           >
-            专业
+            完整
           </button>
           <button className="quiet-button" data-close-planning type="button" onClick={onClose}>
             返回写作
@@ -115,7 +115,7 @@ export function PlanningWorkbench({
           {briefSkipped ? (
             <section className="feature-card" data-brief-skipped>
               <h2>任务书已暂时收起</h2>
-              <p>可继续自由规划；恢复后仍从Core读取已保存内容。</p>
+              <p>可继续自由规划；恢复后仍从本地服务读取已保存内容。</p>
               <button
                 className="quiet-button"
                 data-restore-brief
@@ -183,7 +183,7 @@ export function PlanningWorkbench({
             />
           ) : (
             <section className="feature-card">
-              <h2>章节与SceneBeat</h2>
+              <h2>章节与场景节拍</h2>
               <p>从左侧选择章节后编辑场景节拍。</p>
             </section>
           )}
@@ -202,13 +202,13 @@ export function PlanningWorkbench({
                 ))}
               </ul>
             ) : (
-              <p>暂无实体。可在设定工作台建立人物、地点和规则。</p>
+              <p>暂无人物或设定。可在设定工作台建立人物、地点和规则。</p>
             )}
           </section>
           <section className="feature-card">
             <h2>权威边界</h2>
-            <p>ProjectBrief、PlotNode与SceneBeat均为规划；正文块移动需要单独预览与确认。</p>
-            <p>动态状态和提案不会在此自动确认为Canon。</p>
+            <p>作品任务书、大纲节点与场景节拍均属于规划；正文块移动需要单独预览与确认。</p>
+            <p>动态状态和设定更新建议不会在此自动确认为已确认设定。</p>
           </section>
           <section className="feature-card">
             <h2>伏笔与弧光摘要</h2>
@@ -1430,7 +1430,7 @@ function SceneBeatPanel({
     <section className="feature-card">
       <div className="feature-card__heading">
         <div>
-          <h2>章节与SceneBeat</h2>
+          <h2>章节与场景节拍</h2>
           <p>规划节拍与正文块保持显式分离。</p>
         </div>
         <div className="inline-actions">

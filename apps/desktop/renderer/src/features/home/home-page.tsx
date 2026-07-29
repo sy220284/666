@@ -83,9 +83,9 @@ export function HomePage(props: HomePageProps) {
     <section className="react-home-page" data-react-home>
       <header className="react-page-header">
         <div>
-          <p className="eyebrow">LOCAL FIRST · APPLICATION HOME</p>
+          <p className="eyebrow">本地写作首页</p>
           <h1>{props.activeProject ? props.activeProject.name : '继续你的本地写作'}</h1>
-          <p>正文、设定、索引和备份保留在本机项目工作区。</p>
+          <p>正文、设定、索引和备份均保留在本机作品目录。</p>
         </div>
         <div className="react-page-actions">
           <button
@@ -97,7 +97,7 @@ export function HomePage(props: HomePageProps) {
             type="button"
             onClick={() => setCreating(true)}
           >
-            新建项目
+            新建作品
           </button>
           <button
             className="quiet-button"
@@ -106,7 +106,7 @@ export function HomePage(props: HomePageProps) {
             type="button"
             onClick={() => props.onOpenSelected(false)}
           >
-            打开项目
+            打开作品
           </button>
           <button
             className="quiet-button"
@@ -115,7 +115,7 @@ export function HomePage(props: HomePageProps) {
             type="button"
             onClick={() => props.onOpenSelected(true)}
           >
-            恢复损坏项目
+            恢复受损作品
           </button>
         </div>
       </header>
@@ -127,7 +127,7 @@ export function HomePage(props: HomePageProps) {
       ) : null}
 
       {model.prompts.length > 0 ? (
-        <div className="react-health-grid" aria-label="项目健康提示">
+        <div className="react-health-grid" aria-label="作品状态提示">
           {model.prompts.map((prompt) => (
             <article className="react-health-card" data-severity={prompt.severity} key={prompt.id}>
               <strong>{prompt.title}</strong>
@@ -172,7 +172,7 @@ export function HomePage(props: HomePageProps) {
         <section className="react-onboarding-entry" aria-labelledby="onboarding-entry-title">
           <header>
             <h2 id="onboarding-entry-title">选择开始方式</h2>
-            <p>四种入口共用同一套本地项目与安全边界，之后可以随时调整创作路径。</p>
+            <p>四种入口共用同一套本地作品与安全边界，之后可以随时调整创作方式。</p>
           </header>
           <div className="react-onboarding-entry__grid">
             {onboardingEntries.map((item) => (
@@ -197,15 +197,15 @@ export function HomePage(props: HomePageProps) {
       <section className="react-recent-projects" aria-labelledby="react-recent-heading">
         <header>
           <div>
-            <h2 id="react-recent-heading">最近项目</h2>
-            <p>路径丢失时可以重新定位；移除记录不会删除项目文件。</p>
+            <h2 id="react-recent-heading">最近作品</h2>
+            <p>路径丢失时可以重新定位；移除记录不会删除作品文件。</p>
           </div>
           {model.showDetailedTaskSummary ? <span>活动任务：{model.activeTaskCount}</span> : null}
         </header>
         {model.recentProjects.length === 0 ? (
           <div className="react-empty-state" data-recent-empty>
-            <strong>还没有最近项目</strong>
-            <p>新建或打开一个本地项目后，它会出现在这里。</p>
+            <strong>还没有最近作品</strong>
+            <p>新建或打开一部本地作品后，它会出现在这里。</p>
           </div>
         ) : (
           <div className="react-recent-list">
@@ -316,10 +316,10 @@ function ActiveProjectCard({
   return (
     <article className="react-active-project" data-react-active-project>
       <div>
-        <p className="eyebrow">CURRENT WORKSPACE</p>
+        <p className="eyebrow">当前作品</p>
         <h2>{project.name}</h2>
         <p title={project.workspacePath}>{project.workspacePath}</p>
-        <span>{readOnly ? '只读兼容模式' : '可写 · 本地数据库'}</span>
+        <span>{readOnly ? '只读保护' : '可以写作 · 本地保存'}</span>
         {continuation?.status === 'ready' ? (
           <p data-continuation-summary>上次写到：{continuation.chapterTitle}</p>
         ) : continuation?.status === 'stale' ? (
@@ -328,7 +328,7 @@ function ActiveProjectCard({
       </div>
       {readOnly ? (
         <p className="react-readonly-notice" role="alert">
-          项目以只读方式打开（{project.readOnlyReason ?? '兼容性保护'}
+          作品以只读方式打开（{project.readOnlyReason ?? '兼容性保护'}
           ）。浏览与安全导出可用，写入和移动已禁用。
         </p>
       ) : null}
@@ -348,7 +348,7 @@ function ActiveProjectCard({
             AI优先{providerAvailable ? '' : '（需先配置AI连接）'}
           </option>
         </select>
-        <small id="creative-path-note">只改变推荐入口和说明，不改变项目数据或可用命令。</small>
+        <small id="creative-path-note">只改变推荐入口和说明，不改变作品数据或可用功能。</small>
       </label>
       <div className="react-card-actions">
         <button className="primary-button" data-continue-writing type="button" onClick={onContinue}>
@@ -361,7 +361,7 @@ function ActiveProjectCard({
           人物与设定
         </button>
         <button className="quiet-button" type="button" onClick={onOpenRecovery}>
-          恢复与导出
+          恢复中心
         </button>
         <button
           className="quiet-button"
@@ -369,10 +369,10 @@ function ActiveProjectCard({
           type="button"
           onClick={onMove}
         >
-          移动项目
+          移动作品目录
         </button>
         <button className="quiet-button" disabled={pending} type="button" onClick={onClose}>
-          关闭项目
+          关闭作品
         </button>
       </div>
     </article>
@@ -409,7 +409,7 @@ function CreateProjectDialog({
     const initialStructure =
       entry === 'blank' ? 'blank' : String(data.get('initialStructure') ?? 'starter');
     if (!name || !channel || !['starter', 'blank'].includes(initialStructure)) {
-      setError('请填写项目名称和创作频道。');
+      setError('请填写作品名称。');
       return;
     }
     const creativePath = String(data.get('creativePath') ?? 'autonomous') as CreativePath;
@@ -495,7 +495,7 @@ function CreateProjectDialog({
         <header>
           <h2 id="create-title">{entryTitle(entry)}</h2>
           <p id="create-description">
-            选择保存位置后，应用会一次完成项目、规划输入和首章准备；取消不会留下半成品。
+            选择保存位置后，应用会一次完成作品创建和必要准备；取消不会留下半成品。
           </p>
         </header>
         <nav className="react-onboarding-tabs" aria-label="开始方式">
@@ -516,34 +516,43 @@ function CreateProjectDialog({
           <fieldset>
             <legend>{entry === 'complete' ? '1. 项目基础' : '项目基础'}</legend>
             <label>
-              <span>项目名称</span>
+              <span>作品名称</span>
               <input autoFocus data-project-name maxLength={240} name="name" required />
             </label>
-            <label>
-              <span>创作频道（可跳过）</span>
-              <input data-project-channel defaultValue="未指定" maxLength={120} name="channel" />
-            </label>
-            <label>
-              <span>初始结构</span>
-              <select
-                defaultValue={
-                  entry === 'blank' || disclosureMode === 'professional' ? 'blank' : 'starter'
-                }
-                data-project-initial-structure
-                disabled={entry === 'blank'}
-                name="initialStructure"
-              >
-                <option value="starter">首卷、第一章与当前稿</option>
-                <option value="blank">空白项目</option>
-              </select>
-            </label>
+            {entry !== 'quick' ? (
+              <>
+                <label>
+                  <span>创作频道（可跳过）</span>
+                  <input
+                    data-project-channel
+                    defaultValue="未指定"
+                    maxLength={120}
+                    name="channel"
+                  />
+                </label>
+                <label>
+                  <span>初始结构</span>
+                  <select
+                    defaultValue={
+                      entry === 'blank' || disclosureMode === 'professional' ? 'blank' : 'starter'
+                    }
+                    data-project-initial-structure
+                    disabled={entry === 'blank'}
+                    name="initialStructure"
+                  >
+                    <option value="starter">首卷、第一章与当前稿</option>
+                    <option value="blank">空白作品</option>
+                  </select>
+                </label>
+              </>
+            ) : null}
           </fieldset>
           {entry === 'import' ? (
             <p className="react-dialog-note">
               创建安全工作区后进入导入预览；只有确认预览才会写入稿件内容。
             </p>
           ) : null}
-          {entry !== 'blank' ? (
+          {entry !== 'blank' && entry !== 'quick' ? (
             <>
               <fieldset>
                 <legend>
@@ -624,24 +633,26 @@ function CreateProjectDialog({
               </fieldset>
             </>
           ) : null}
-          <fieldset>
-            <legend>{entry === 'complete' ? '5. 创作路径' : '创作路径'}</legend>
-            <label>
-              <span>默认推荐方式</span>
-              <select defaultValue="autonomous" name="creativePath">
-                <option value="autonomous">自主创作</option>
-                <option value="hybrid">人机协作</option>
-                <option disabled={!providerAvailable} value="ai-first">
-                  AI优先
-                </option>
-              </select>
-            </label>
-            <small>
-              {providerAvailable
-                ? 'AI只在你明确触发后向已配置连接发送必要上下文。'
-                : '尚未配置AI连接；自主创作完整可用，AI优先暂不可选。'}
-            </small>
-          </fieldset>
+          {entry === 'complete' ? (
+            <fieldset>
+              <legend>5. 创作方式</legend>
+              <label>
+                <span>默认推荐方式</span>
+                <select defaultValue="autonomous" name="creativePath">
+                  <option value="autonomous">自主创作</option>
+                  <option value="hybrid">人机协作</option>
+                  <option disabled={!providerAvailable} value="ai-first">
+                    AI优先
+                  </option>
+                </select>
+              </label>
+              <small>
+                {providerAvailable
+                  ? 'AI只在你明确触发后向已配置连接发送必要上下文。'
+                  : '尚未配置AI连接；自主创作完整可用，AI优先暂不可选。'}
+              </small>
+            </fieldset>
+          ) : null}
           {error ? <p className="react-field-error">{error}</p> : null}
           <footer>
             <button className="quiet-button" disabled={pending} type="button" onClick={onCancel}>
@@ -653,7 +664,7 @@ function CreateProjectDialog({
               disabled={pending}
               type="submit"
             >
-              {pending ? '正在创建…' : '选择位置并创建'}
+              {pending ? '正在创建…' : '选择位置并创建作品'}
             </button>
           </footer>
         </form>
@@ -667,14 +678,14 @@ const onboardingEntries: readonly {
   readonly title: string;
   readonly description: string;
 }[] = [
-  { id: 'quick', title: '快速开始', description: '只回答三个可选问题，立即进入第一章。' },
+  { id: 'quick', title: '快速开始', description: '只填写作品名称，立即进入第一章。' },
   { id: 'complete', title: '完整流程', description: '按五步准备故事、人物与第一章。' },
   { id: 'import', title: '导入已有作品', description: '先建安全工作区，再进入受控导入预览。' },
-  { id: 'blank', title: '空白项目', description: '只填名称并选择位置，自由搭建。' },
+  { id: 'blank', title: '空白作品', description: '只填名称并选择位置，自由搭建。' },
 ];
 
 function entryTitle(entry: OnboardingEntry): string {
-  return onboardingEntries.find((item) => item.id === entry)?.title ?? '新建本地项目';
+  return onboardingEntries.find((item) => item.id === entry)?.title ?? '新建本地作品';
 }
 
 function field(data: FormData, name: string): string {

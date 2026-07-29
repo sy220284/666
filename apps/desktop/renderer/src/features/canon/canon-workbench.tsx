@@ -1,8 +1,9 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { useRendererUiStore } from '../../state/ui-store.js';
 import {
   CanonWorkbench as CanonCoreWorkbench,
   type CanonSection,
@@ -24,6 +25,11 @@ interface CanonWorkbenchProps {
 
 export function CanonWorkbench(props: CanonWorkbenchProps) {
   const bridge = useMemo(() => coalesceCanonReads(props.bridge), [props.bridge]);
+  const selectedForeshadowingId = useRendererUiStore(
+    (state) => state.filters['navigation.foreshadowingId'] ?? null,
+  );
+  const returnLocation = useRendererUiStore((state) => state.returnLocation);
+  const dispatch = useRendererUiStore((state) => state.dispatch);
   const loadHealth = useCallback(
     () =>
       bridge.canon.list(
@@ -32,10 +38,64 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
       ),
     [bridge, props.projectId],
   );
+  const loadNarrative = useCallback(
+    () =>
+      bridge.narrativePlanning.list(
+        {
+          projectId: props.projectId,
+          query: '',
+          includeResolved: true,
+          referenceChapterId: null,
+        },
+        { mode: 'replace' },
+      ),
+    [bridge, props.projectId],
+  );
   const health = useBridgeQuery(`canon-health:${props.projectId}`, loadHealth);
+  const narrativeTarget = useBridgeQuery(
+    `canon-navigation:${props.projectId}:${selectedForeshadowingId ?? 'none'}`,
+    loadNarrative,
+  );
+  const selectedForeshadowing =
+    narrativeTarget.data?.foreshadowings.find((item) => item.id === selectedForeshadowingId) ?? null;
+
+  useEffect(() => {
+    if (selectedForeshadowingId && props.section !== 'narrative') {
+      props.onSectionChange('narrative');
+    }
+  }, [props, selectedForeshadowingId]);
 
   return (
     <section className="canon-complete-workbench">
+      {returnLocation ? (
+        <section className="feature-card navigation-return" data-navigation-return role="status">
+          <span>已从来源页面打开目标设定。</span>
+          <button
+            type="button"
+            onClick={() =>
+              dispatch({ type: 'navigate', route: returnLocation.route, returnLocation: null })
+            }
+          >
+            返回来源页面
+          </button>
+        </section>
+      ) : null}
+      {selectedForeshadowingId ? (
+        <section className="feature-card" data-foreshadowing-navigation={selectedForeshadowingId}>
+          <h2>目标伏笔</h2>
+          {narrativeTarget.state === 'loading' ? <p>正在读取目标伏笔…</p> : null}
+          {narrativeTarget.error ? <p>{authorErrorSummary(narrativeTarget.error)}</p> : null}
+          {narrativeTarget.state === 'success' && !selectedForeshadowing ? (
+            <p>目标伏笔已经变化或被删除，系统保留来源上下文。</p>
+          ) : null}
+          {selectedForeshadowing ? (
+            <article>
+              <strong>{selectedForeshadowing.title}</strong>
+              <p>{selectedForeshadowing.description || '尚未填写说明'}</p>
+            </article>
+          ) : null}
+        </section>
+      ) : null}
       {health.error ? (
         <div className="safety-inline is-error" data-canon-read-error role="alert">
           {authorErrorSummary(health.error)}

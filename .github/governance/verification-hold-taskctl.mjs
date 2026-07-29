@@ -214,6 +214,11 @@ async function validateHoldBranch() {
     console.log('Final governance closure PR accepted: ' + branch + '.');
     return;
   }
+  if (state.verificationHold?.finalTask === true && /^fix\/governance-/u.test(branch)) {
+    await validateHoldPaths();
+    console.log('Final task governance closure PR accepted: ' + branch + '.');
+    return;
+  }
   if (!branch || branch !== state.activeTask.branch) {
     throw new Error(
       `Verification hold PR branch must match ${state.activeTask.branch}, found ${branch || '<none>'}`,

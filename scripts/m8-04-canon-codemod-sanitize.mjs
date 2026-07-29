@@ -23,18 +23,18 @@ source = source.replace(
 }`,
 );
 
-const factValueOptions = `<option value="list">多项内容</option>\n              </select>`;
+const factValueOptions = String.raw`<option value="list">多项内容</option>\n              </select>`;
 if (!source.includes(factValueOptions)) throw new Error('事实内容形式缺少选项锚点。');
 source = source.replace(
   factValueOptions,
-  `<option value="list">多项内容</option>\n                <option value="json">原始JSON（高级）</option>\n              </select>`,
+  String.raw`<option value="list">多项内容</option>\n                <option value="json">原始JSON（高级）</option>\n              </select>`,
 );
 
-const inertAdvancedField = `              <p>需要保存复杂结构时，可将“内容形式”改为原始JSON。</p>\n              <label>\n                原始JSON类型\n                <select name="advancedValueType" defaultValue="json" disabled>\n                  <option value="json">原始JSON</option>\n                </select>\n              </label>`;
+const inertAdvancedField = String.raw`              <p>需要保存复杂结构时，可将“内容形式”改为原始JSON。</p>\n              <label>\n                原始JSON类型\n                <select name="advancedValueType" defaultValue="json" disabled>\n                  <option value="json">原始JSON</option>\n                </select>\n              </label>`;
 if (!source.includes(inertAdvancedField)) throw new Error('缺少待清理的无效高级字段。');
 source = source.replace(
   inertAdvancedField,
-  `              <p>复杂结构请选择上方“原始JSON（高级）”，普通作者无需使用。</p>`,
+  String.raw`              <p>复杂结构请选择上方“原始JSON（高级）”，普通作者无需使用。</p>`,
 );
 
 await writeFile(filePath, source, 'utf8');

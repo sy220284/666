@@ -4,6 +4,7 @@
     "apps/desktop/renderer/src/presentation/",
     "apps/desktop/renderer/src/shell/app-shell-model.ts",
     "apps/desktop/renderer/src/shell/settings-navigation-model.ts",
+    "apps/desktop/renderer/src/components/context-help.tsx",
     "tests/unit/author-language.test.ts",
     "tests/unit/renderer-app-shell-model.test.ts",
     "tests/unit/renderer-home-settings-taskbar.test.ts",

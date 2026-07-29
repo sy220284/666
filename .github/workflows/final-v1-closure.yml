@@ -1,0 +1,87 @@
+name: Final V1 Closure
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - scripts/final-v1-closure-codemod.mjs
+      - .github/workflows/final-v1-closure.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: final-v1-closure-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  close:
+    if: github.head_ref == 'fix/governance-final-v1-closure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply final closure
+        run: node scripts/final-v1-closure-codemod.mjs
+      - name: Format formal changes
+        run: >-
+          pnpm exec prettier --write
+          scripts/task-control-lib.mjs
+          .github/governance/verification-hold-taskctl.mjs
+          .github/governance/task-transition-policy.mjs
+          docs/tasks/ACTIVE_TASK.json
+          docs/tasks/ACTIVE_TASK.md
+          docs/tasks/TASK_INDEX.md
+          docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md
+          docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md
+          docs/test-evidence/M4-04/summary.md
+          docs/test-evidence/M4-04/known-risks.md
+          docs/test-evidence/M4-04/manifest.json
+          docs/test-evidence/M8-02/summary.md
+          docs/test-evidence/M8-02/known-risks.md
+          docs/test-evidence/M8-02/manifest.json
+          docs/product/V1.0_TRACEABILITY_MATRIX.md
+          README.md
+      - name: Validate governance and evidence
+        run: |
+          pnpm lint
+          pnpm typecheck
+          node .github/governance/verification-hold-taskctl.mjs self-test
+          node .github/governance/verification-hold-taskctl.mjs validate
+          node -e "import('./scripts/evidence-policy.mjs').then(async (m) => { await m.validateTaskEvidence('M4-04', process.cwd(), { final: true, expectedHead: process.env.GITHUB_SHA }); await m.validateTaskEvidence('M8-02', process.cwd(), { final: true, expectedHead: process.env.GITHUB_SHA }); })"
+          pnpm exec vitest run tests/integration/task-lifecycle.test.ts tests/unit/task-control.test.ts tests/unit/evidence-policy.test.ts
+      - name: Commit verified closure
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            scripts/task-control-lib.mjs \
+            .github/governance/verification-hold-taskctl.mjs \
+            .github/governance/task-transition-policy.mjs \
+            docs/tasks/ACTIVE_TASK.json \
+            docs/tasks/ACTIVE_TASK.md \
+            docs/tasks/TASK_INDEX.md \
+            docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md \
+            docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md \
+            docs/test-evidence/M4-04/summary.md \
+            docs/test-evidence/M4-04/known-risks.md \
+            docs/test-evidence/M4-04/manifest.json \
+            docs/test-evidence/M8-02/summary.md \
+            docs/test-evidence/M8-02/known-risks.md \
+            docs/test-evidence/M8-02/manifest.json \
+            docs/product/V1.0_TRACEABILITY_MATRIX.md \
+            README.md
+          git diff --cached --check
+          git commit -m '治理：完成M4-04与M8-02最终Verified收口'
+          git push origin HEAD:${{ github.head_ref }}

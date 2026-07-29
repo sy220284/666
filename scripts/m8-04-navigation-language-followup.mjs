@@ -12,6 +12,7 @@ const replacementsByFile = {
     ['我已知晓正式 SceneBeat 或基础稿已变化，仍使用此骨架生成正文', '我已知晓正式场景节拍或基础稿已变化，仍使用此骨架生成正文'],
     ['<option value="beat">按正式 SceneBeat</option>', '<option value="beat">按正式场景节拍</option>'],
     ['不完整建议稿只能按块或SceneBeat采用，不能整稿替换。', '不完整建议稿只能按正文块或场景节拍采用，不能整稿替换。'],
+    ['navigationVersionId={navigationVersionId}', 'navigationVersionId={navigationVersionId ?? null}'],
   ],
   'apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx': [
     ['aria-label="生效章节ID"', 'aria-label="生效章节"'],
@@ -31,6 +32,7 @@ const replacementsByFile = {
     ['<option value="">选择 Provider</option>', '<option value="">选择AI连接</option>'],
     ['从 Final Version 提取', '从定稿版本提取'],
     [' · Version {batch.sourceVersionId}', ' · 历史版本 {batch.sourceVersionId}'],
+    ['selectedEntityId={selectedEntityId}', 'selectedEntityId={selectedEntityId ?? null}'],
   ],
 };
 

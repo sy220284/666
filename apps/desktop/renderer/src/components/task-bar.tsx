@@ -13,15 +13,15 @@ export function TaskBar({ tasks, foregroundTaskId, onCancel }: TaskBarProps) {
   if (!model.visible) return null;
 
   return (
-    <aside className="react-task-bar" data-react-task-bar aria-label="运行任务">
+    <aside className="react-task-bar" data-react-task-bar aria-label="生成任务">
       <strong>
-        运行任务 {model.runningCount} · 排队 {model.queuedCount}
+        进行中 {model.runningCount} · 等待开始 {model.queuedCount}
       </strong>
       <div className="react-task-bar__items">
         {model.items.map((item) => (
           <div className="react-task-bar__item" data-foreground={item.foreground} key={item.taskId}>
             <span>
-              {item.taskType} · {item.stage} · {formatElapsed(item.elapsedMs)}
+              {item.taskLabel} · {item.stageLabel} · {formatElapsed(item.elapsedMs)}
             </span>
             <button
               className="quiet-button"

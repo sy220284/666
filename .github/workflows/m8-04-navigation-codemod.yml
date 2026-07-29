@@ -1,0 +1,77 @@
+name: M8-04 内容精准跳转接线
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - scripts/m8-04-navigation-codemod.mjs
+      - .github/workflows/m8-04-navigation-codemod.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-04-navigation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  apply-and-verify:
+    if: github.head_ref == 'work/m8-04-author-experience-language'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: 检出正式任务分支
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: 安装pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - name: 安装Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: 安装锁定依赖
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 执行内容精准跳转接线
+        run: node scripts/m8-04-navigation-codemod.mjs
+      - name: 格式化受影响文件
+        run: >-
+          pnpm exec prettier --write
+          apps/desktop/renderer/src/app/app-shell-m3.tsx
+          apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
+          apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx
+          apps/desktop/renderer/src/m3.css
+          docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
+      - name: 验证正式中文名称
+        run: pnpm check:language
+      - name: 执行类型检查
+        run: pnpm typecheck
+      - name: 准备测试依赖
+        run: pnpm test:prepare
+      - name: 验证精准跳转与界面状态
+        run: >-
+          pnpm exec vitest run
+          tests/unit/renderer-navigation-target.test.ts
+          tests/unit/renderer-ui-state-boundary.test.ts
+          tests/unit/renderer-app-shell-model.test.ts
+          tests/unit/author-language.test.ts
+      - name: 提交精准跳转接线结果
+        run: |
+          if git diff --quiet; then
+            echo '没有需要提交的接线结果。'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/desktop/renderer/src/app/app-shell-m3.tsx \
+            apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
+            apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx \
+            apps/desktop/renderer/src/m3.css \
+            docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
+          git commit -m '功能(M8-04)：接通搜索检查与内容精准跳转'
+          git push origin HEAD:work/m8-04-author-experience-language

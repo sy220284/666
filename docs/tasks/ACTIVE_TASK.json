@@ -152,8 +152,7 @@
       "docs/test-evidence/M4-04/",
       "docs/test-evidence/M8-02/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "README.md",
-      "dummy"
+      "README.md"
     ],
     "forbiddenPaths": []
   }

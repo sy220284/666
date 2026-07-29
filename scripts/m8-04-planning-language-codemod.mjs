@@ -3,7 +3,10 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 const replacementsByFile = {
   'apps/desktop/renderer/src/features/home/home-page.tsx': [
-    ['可先补充创作频道；项目能力不会受影响。', '可先补充创作频道；作品功能不会受影响。'],
+    [
+      '可先补充作品规划和人物边界，也可以直接继续正文；项目能力不会受影响。',
+      '可先补充作品规划和人物边界，也可以直接继续正文；作品功能不会受影响。',
+    ],
     [
       "<legend>{entry === 'complete' ? '1. 项目基础' : '项目基础'}</legend>",
       "<legend>{entry === 'complete' ? '1. 作品基础' : '作品基础'}</legend>",

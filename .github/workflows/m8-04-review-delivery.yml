@@ -8,6 +8,9 @@ on:
     paths:
       - scripts/m8-04-review-delivery-codemod.mjs
       - scripts/m8-04-review-delivery-sanitize.mjs
+      - tests/unit/renderer-c3-generation-workbench.test.ts
+      - tests/unit/renderer-m3-09-workbenches.test.ts
+      - tests/unit/writing-assistance.test.ts
       - .github/workflows/m8-04-review-delivery.yml
 
 permissions:
@@ -56,6 +59,8 @@ jobs:
           apps/desktop/renderer/src/m3.css
           tests/unit/author-review-delivery.test.ts
           tests/unit/writing-assistance.test.ts
+          tests/unit/renderer-c3-generation-workbench.test.ts
+          tests/unit/renderer-m3-09-workbenches.test.ts
           docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
       - name: 验证正式中文名称
         run: pnpm check:language
@@ -87,6 +92,8 @@ jobs:
             apps/desktop/renderer/src/m3.css \
             tests/unit/author-review-delivery.test.ts \
             tests/unit/writing-assistance.test.ts \
+            tests/unit/renderer-c3-generation-workbench.test.ts \
+            tests/unit/renderer-m3-09-workbenches.test.ts \
             docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
           git commit -m '改进(M8-04)：完善建议稿审阅、AI连接与整书交付'
           git push origin HEAD:work/m8-04-author-experience-language

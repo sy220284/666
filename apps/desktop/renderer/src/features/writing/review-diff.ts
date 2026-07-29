@@ -26,6 +26,11 @@ interface RawLineOperation {
   readonly comparisonLineNumber: number | null;
 }
 
+interface LineAnchor {
+  readonly currentIndex: number;
+  readonly comparisonIndex: number;
+}
+
 const MAX_LCS_CELLS = 360_000;
 
 function lines(value: string): string[] {
@@ -82,9 +87,74 @@ function inlineSegments(
   };
 }
 
-function fallbackOperations(
+function unchangedOperation(
+  text: string,
+  currentIndex: number,
+  comparisonIndex: number,
+): RawLineOperation {
+  return {
+    kind: 'unchanged',
+    text,
+    currentLineNumber: currentIndex + 1,
+    comparisonLineNumber: comparisonIndex + 1,
+  };
+}
+
+function offsetOperations(
+  operations: readonly RawLineOperation[],
+  currentOffset: number,
+  comparisonOffset: number,
+): RawLineOperation[] {
+  return operations.map((operation) => ({
+    ...operation,
+    currentLineNumber:
+      operation.currentLineNumber === null ? null : operation.currentLineNumber + currentOffset,
+    comparisonLineNumber:
+      operation.comparisonLineNumber === null
+        ? null
+        : operation.comparisonLineNumber + comparisonOffset,
+  }));
+}
+
+function uniqueLineAnchor(
   current: readonly string[],
   comparison: readonly string[],
+): LineAnchor | null {
+  const currentOccurrences = new Map<string, number[]>();
+  const comparisonOccurrences = new Map<string, number[]>();
+  current.forEach((line, index) => {
+    currentOccurrences.set(line, [...(currentOccurrences.get(line) ?? []), index]);
+  });
+  comparison.forEach((line, index) => {
+    comparisonOccurrences.set(line, [...(comparisonOccurrences.get(line) ?? []), index]);
+  });
+
+  const candidates: LineAnchor[] = [];
+  for (const [line, currentIndexes] of currentOccurrences) {
+    const comparisonIndexes = comparisonOccurrences.get(line);
+    if (currentIndexes.length !== 1 || comparisonIndexes?.length !== 1) continue;
+    candidates.push({ currentIndex: currentIndexes[0]!, comparisonIndex: comparisonIndexes[0]! });
+  }
+  if (!candidates.length) return null;
+
+  const currentMiddle = (current.length - 1) / 2;
+  const comparisonMiddle = (comparison.length - 1) / 2;
+  return candidates.reduce((best, candidate) => {
+    const bestDistance =
+      Math.abs(best.currentIndex - currentMiddle) +
+      Math.abs(best.comparisonIndex - comparisonMiddle);
+    const candidateDistance =
+      Math.abs(candidate.currentIndex - currentMiddle) +
+      Math.abs(candidate.comparisonIndex - comparisonMiddle);
+    return candidateDistance < bestDistance ? candidate : best;
+  });
+}
+
+function lineAlignedOperations(
+  current: readonly string[],
+  comparison: readonly string[],
+  currentOffset: number,
+  comparisonOffset: number,
 ): RawLineOperation[] {
   const operations: RawLineOperation[] = [];
   const length = Math.max(current.length, comparison.length);
@@ -96,18 +166,15 @@ function fallbackOperations(
       comparisonText !== undefined &&
       currentText === comparisonText
     ) {
-      operations.push({
-        kind: 'unchanged',
-        text: currentText,
-        currentLineNumber: index + 1,
-        comparisonLineNumber: index + 1,
-      });
+      operations.push(
+        unchangedOperation(currentText, currentOffset + index, comparisonOffset + index),
+      );
     } else {
       if (currentText !== undefined) {
         operations.push({
           kind: 'removed',
           text: currentText,
-          currentLineNumber: index + 1,
+          currentLineNumber: currentOffset + index + 1,
           comparisonLineNumber: null,
         });
       }
@@ -116,7 +183,7 @@ function fallbackOperations(
           kind: 'added',
           text: comparisonText,
           currentLineNumber: null,
-          comparisonLineNumber: index + 1,
+          comparisonLineNumber: comparisonOffset + index + 1,
         });
       }
     }
@@ -124,13 +191,126 @@ function fallbackOperations(
   return operations;
 }
 
-function lcsOperations(
+function fallbackOperations(
+  current: readonly string[],
+  comparison: readonly string[],
+  currentOffset = 0,
+  comparisonOffset = 0,
+): RawLineOperation[] {
+  let prefixLength = 0;
+  while (
+    prefixLength < current.length &&
+    prefixLength < comparison.length &&
+    current[prefixLength] === comparison[prefixLength]
+  ) {
+    prefixLength += 1;
+  }
+
+  let suffixLength = 0;
+  while (
+    suffixLength < current.length - prefixLength &&
+    suffixLength < comparison.length - prefixLength &&
+    current[current.length - suffixLength - 1] === comparison[comparison.length - suffixLength - 1]
+  ) {
+    suffixLength += 1;
+  }
+
+  const operations: RawLineOperation[] = [];
+  for (let index = 0; index < prefixLength; index += 1) {
+    operations.push(
+      unchangedOperation(current[index]!, currentOffset + index, comparisonOffset + index),
+    );
+  }
+
+  const currentMiddleEnd = current.length - suffixLength;
+  const comparisonMiddleEnd = comparison.length - suffixLength;
+  const currentMiddle = current.slice(prefixLength, currentMiddleEnd);
+  const comparisonMiddle = comparison.slice(prefixLength, comparisonMiddleEnd);
+  const middleCurrentOffset = currentOffset + prefixLength;
+  const middleComparisonOffset = comparisonOffset + prefixLength;
+
+  if (!currentMiddle.length) {
+    comparisonMiddle.forEach((text, index) => {
+      operations.push({
+        kind: 'added',
+        text,
+        currentLineNumber: null,
+        comparisonLineNumber: middleComparisonOffset + index + 1,
+      });
+    });
+  } else if (!comparisonMiddle.length) {
+    currentMiddle.forEach((text, index) => {
+      operations.push({
+        kind: 'removed',
+        text,
+        currentLineNumber: middleCurrentOffset + index + 1,
+        comparisonLineNumber: null,
+      });
+    });
+  } else if (currentMiddle.length * comparisonMiddle.length <= MAX_LCS_CELLS) {
+    operations.push(
+      ...offsetOperations(
+        lcsOperationsWithinLimit(currentMiddle, comparisonMiddle),
+        middleCurrentOffset,
+        middleComparisonOffset,
+      ),
+    );
+  } else {
+    const anchor = uniqueLineAnchor(currentMiddle, comparisonMiddle);
+    if (anchor) {
+      operations.push(
+        ...fallbackOperations(
+          currentMiddle.slice(0, anchor.currentIndex),
+          comparisonMiddle.slice(0, anchor.comparisonIndex),
+          middleCurrentOffset,
+          middleComparisonOffset,
+        ),
+      );
+      operations.push(
+        unchangedOperation(
+          currentMiddle[anchor.currentIndex]!,
+          middleCurrentOffset + anchor.currentIndex,
+          middleComparisonOffset + anchor.comparisonIndex,
+        ),
+      );
+      operations.push(
+        ...fallbackOperations(
+          currentMiddle.slice(anchor.currentIndex + 1),
+          comparisonMiddle.slice(anchor.comparisonIndex + 1),
+          middleCurrentOffset + anchor.currentIndex + 1,
+          middleComparisonOffset + anchor.comparisonIndex + 1,
+        ),
+      );
+    } else {
+      operations.push(
+        ...lineAlignedOperations(
+          currentMiddle,
+          comparisonMiddle,
+          middleCurrentOffset,
+          middleComparisonOffset,
+        ),
+      );
+    }
+  }
+
+  for (let index = suffixLength; index > 0; index -= 1) {
+    const currentIndex = current.length - index;
+    const comparisonIndex = comparison.length - index;
+    operations.push(
+      unchangedOperation(
+        current[currentIndex]!,
+        currentOffset + currentIndex,
+        comparisonOffset + comparisonIndex,
+      ),
+    );
+  }
+  return operations;
+}
+
+function lcsOperationsWithinLimit(
   current: readonly string[],
   comparison: readonly string[],
 ): RawLineOperation[] {
-  if (current.length * comparison.length > MAX_LCS_CELLS) {
-    return fallbackOperations(current, comparison);
-  }
   const width = comparison.length + 1;
   const table = Array.from({ length: current.length + 1 }, () => new Uint32Array(width));
   for (let currentIndex = current.length - 1; currentIndex >= 0; currentIndex -= 1) {
@@ -186,6 +366,15 @@ function lcsOperations(
     }
   }
   return operations;
+}
+
+function lcsOperations(
+  current: readonly string[],
+  comparison: readonly string[],
+): RawLineOperation[] {
+  return current.length * comparison.length > MAX_LCS_CELLS
+    ? fallbackOperations(current, comparison)
+    : lcsOperationsWithinLimit(current, comparison);
 }
 
 function unchangedLine(operation: RawLineOperation, index: number): ReviewDiffLine {

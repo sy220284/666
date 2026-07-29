@@ -6,6 +6,11 @@ import {
   authorForeshadowingStatusLabel,
   authorJsonValue,
 } from '../../presentation/author-value-format.js';
+import {
+  resolveAuthorNavigationTarget,
+  type AuthorNavigationTarget,
+} from '../../shell/navigation-target.js';
+import { useRendererUiStore } from '../../state/ui-store.js';
 import { loadWritingAssistance, type WritingAssistanceView } from './writing-assistance.js';
 
 interface WritingAssistancePanelProps {
@@ -25,6 +30,9 @@ export function WritingAssistancePanel({
 }: WritingAssistancePanelProps) {
   const [view, setView] = useState<WritingAssistanceView | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
+  const route = useRendererUiStore((current) => current.route);
+  const dispatch = useRendererUiStore((current) => current.dispatch);
 
   const refresh = useCallback(async (): Promise<void> => {
     setState('loading');
@@ -35,6 +43,31 @@ export function WritingAssistancePanel({
       setState('failed');
     }
   }, [bridge, chapterId, projectId]);
+
+  const navigate = useCallback(
+    async (target: AuthorNavigationTarget): Promise<void> => {
+      const flush = (
+        globalThis as typeof globalThis & {
+          readonly worldforgeFlushDraft?: () => Promise<boolean>;
+        }
+      ).worldforgeFlushDraft;
+      if (flush && !(await flush())) {
+        setNavigationNotice('自动保存失败，已阻止离开当前写作页。');
+        return;
+      }
+      const resolution = resolveAuthorNavigationTarget(target);
+      dispatch({ type: 'select', selection: resolution.selection });
+      for (const [key, value] of Object.entries(resolution.filters)) {
+        dispatch({ type: 'set-filter', key, value });
+      }
+      dispatch({
+        type: 'navigate',
+        route: resolution.route,
+        returnLocation: { route, focusKey: null },
+      });
+    },
+    [dispatch, route],
+  );
 
   useEffect(() => {
     let active = true;
@@ -66,13 +99,14 @@ export function WritingAssistancePanel({
       </header>
 
       <p className="feature-status" role="status" data-writing-assistance-status>
-        {state === 'loading'
-          ? '正在汇总本章规划与前后文…'
-          : state === 'failed'
-            ? '写作辅助暂时无法读取，正文编辑和保存不受影响。'
-            : readOnly
-              ? '只读浏览 · 写作辅助来自已保存数据'
-              : `当前稿已保存 · 保存序号 ${savedRevision ?? 0}`}
+        {navigationNotice ??
+          (state === 'loading'
+            ? '正在汇总本章规划与前后文…'
+            : state === 'failed'
+              ? '写作辅助暂时无法读取，正文编辑和保存不受影响。'
+              : readOnly
+                ? '只读浏览 · 写作辅助来自已保存数据'
+                : `当前稿已保存 · 保存序号 ${savedRevision ?? 0}`)}
       </p>
 
       {view ? (
@@ -106,6 +140,19 @@ export function WritingAssistancePanel({
                     <span>
                       {beat.wordTargetPercent}% · {beat.goal || '尚未填写目标'}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void navigate({
+                          type: 'scene-beat',
+                          projectId,
+                          chapterId,
+                          sceneBeatId: beat.id,
+                        })
+                      }
+                    >
+                      前往场景节拍
+                    </button>
                   </li>
                 ))}
               </ol>
@@ -153,11 +200,40 @@ export function WritingAssistancePanel({
                   {authorAttentionLabel(item.attention)}
                 </span>
                 {item.description ? <p>{item.description}</p> : null}
+                <button
+                  type="button"
+                  onClick={() =>
+                    void navigate({
+                      type: 'foreshadowing',
+                      projectId,
+                      foreshadowingId: item.id,
+                      chapterId,
+                      query: item.title,
+                    })
+                  }
+                >
+                  前往伏笔
+                </button>
               </article>
             ))}
             {view.todos.map((todo) => (
               <article className="writing-assistance__item" key={todo.todoId}>
                 <strong>待办：{todo.title}</strong>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void navigate({
+                      type: 'story-todo',
+                      projectId,
+                      todoId: todo.todoId,
+                      chapterId: todo.chapterId,
+                      sceneBeatId: todo.sceneBeatId,
+                      logicalBlockId: todo.logicalBlockId,
+                    })
+                  }
+                >
+                  前往待办位置
+                </button>
               </article>
             ))}
             {!view.foreshadowings.length && !view.todos.length ? <p>当前没有待处理事项。</p> : null}

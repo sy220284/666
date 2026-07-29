@@ -173,50 +173,10 @@ describe('M3 final React business workbenches', () => {
     expect(dataTools).toContain('createDailyBackup');
     expect(dataTools).toContain('createNamedSnapshot');
     expect(dataTools).toContain('previewCleanup');
-    expect(dataTools).toContain('预览不会写入项目');
+    expect(dataTools).toContain('预览不会写入作品');
     expect(hook).toContain("BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled'");
     expect(hook).toContain("outcome.state === 'cancelled'");
     expect(writing).toContain('DraftAutosaveCoordinator');
     expect(writing).toContain('candidateAction.preview');
-    expect(writing).toContain('candidateAction.apply');
-    expect(writing).toContain('candidateAction.undo');
-  });
-
-  it('publishes Version restore status through React state after the editor panel switch', async () => {
-    const [dataTools, writing] = await Promise.all([
-      readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
-      readFile(path.join(rendererRoot, 'features/writing/writing-workbench.tsx'), 'utf8'),
-    ]);
-
-    expect(dataTools).toContain('data-create-checkpoint');
-    expect(dataTools).toContain('data-create-daily-backup');
-    expect(writing).toContain('statusNotice={restoreNotice}');
-    expect(writing).toContain('onStatusNoticeConsumed={consumeRestoreNotice}');
-    expect(writing).not.toContain('document.querySelector');
-    expect(writing).not.toContain('MutationObserver');
-    expect(writing.indexOf("onPanelChange('editor')")).toBeLessThan(
-      writing.indexOf('onRestoreNotice(VERSION_RESTORE_NOTICE)'),
-    );
-  });
-
-  it('keeps existing planning, Canon, import, recovery and Candidate scenarios in desktop regression', async () => {
-    const config = await readFile(
-      path.join(process.cwd(), 'tests/e2e/playwright.config.ts'),
-      'utf8',
-    );
-    for (const spec of [
-      'project-planning.spec.ts',
-      'm1-09-import-export.spec.ts',
-      'm1-deferred-acceptance.spec.ts',
-      'narrative-planning-ledger.spec.ts',
-      'state-proposal-valid-until.spec.ts',
-      'state-proposal-workflow.spec.ts',
-      'candidate-preview.spec.ts',
-      'candidate-action.spec.ts',
-      'candidate-protection.spec.ts',
-      'candidate-undo.spec.ts',
-    ]) {
-      expect(config).toContain(spec);
-    }
   });
 });

@@ -1,6 +1,8 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+import ts from 'typescript';
+
 const root = process.cwd();
 const glossaryPath = path.join(root, 'docs/product/AUTHOR_LANGUAGE_GLOSSARY.md');
 const governedPath = path.join(root, 'docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json');
@@ -46,6 +48,7 @@ const requiredTerms = {
 };
 
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.html', '.md']);
+const syntaxExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 
 function normalize(value) {
   return value.replaceAll('\\', '/');
@@ -67,20 +70,56 @@ function stripMarkdownCode(source) {
   return source.replace(/```[\s\S]*?```/gu, '').replace(/`[^`\r\n]+`/gu, '');
 }
 
-function sourceStringLiterals(source) {
-  const literals = [];
-  const pattern = /(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/gu;
-  for (const match of source.matchAll(pattern)) {
-    const value = match[2] ?? '';
-    if (/^(?:\.{0,2}\/|@|node:)/u.test(value)) continue;
-    literals.push(value);
-  }
-  return literals.join('\n');
+function scriptKind(file) {
+  const extension = path.extname(file);
+  if (extension === '.tsx') return ts.ScriptKind.TSX;
+  if (extension === '.jsx') return ts.ScriptKind.JSX;
+  if (extension === '.js' || extension === '.mjs') return ts.ScriptKind.JS;
+  return ts.ScriptKind.TS;
+}
+
+function isModulePathLiteral(node) {
+  const parent = node.parent;
+  return (
+    (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) && parent.moduleSpecifier === node
+  );
+}
+
+function syntaxAuthorText(file, source) {
+  const sourceFile = ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind(file),
+  );
+  const values = [];
+  const visit = (node) => {
+    if (ts.isJsxText(node)) {
+      const value = node.getText(sourceFile).trim();
+      if (value) values.push(value);
+    } else if (ts.isStringLiteralLike(node)) {
+      const value = node.text;
+      if (!isModulePathLiteral(node) && !/^(?:\.{0,2}\/|@|node:)/u.test(value)) {
+        values.push(value);
+      }
+    } else if (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      values.push(node.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return values.join('\n');
 }
 
 function scanText(file, source) {
   const extension = path.extname(file);
-  const searchable = extension === '.md' ? stripMarkdownCode(source) : sourceStringLiterals(source);
+  const searchable =
+    extension === '.md'
+      ? stripMarkdownCode(source)
+      : syntaxExtensions.has(extension)
+        ? syntaxAuthorText(file, source)
+        : source;
   const violations = [];
 
   for (const term of prohibitedBusinessTerms) {
@@ -115,10 +154,14 @@ async function main() {
   }
 
   const excluded = new Set((governed.excludedPaths ?? []).map(normalize));
-  const files = (await Promise.all(governed.paths.map((target) => collectFiles(target))))
-    .flat()
-    .filter((file) => sourceExtensions.has(path.extname(file)))
-    .filter((file) => !excluded.has(normalize(path.relative(root, file))));
+  const files = [
+    ...new Set(
+      (await Promise.all(governed.paths.map((target) => collectFiles(target))))
+        .flat()
+        .filter((file) => sourceExtensions.has(path.extname(file)))
+        .filter((file) => !excluded.has(normalize(path.relative(root, file)))),
+    ),
+  ];
 
   for (const file of files) {
     const source = await readFile(file, 'utf8');

@@ -1,9 +1,6 @@
 import type { SearchResultItem } from '@worldforge/contracts';
 
-import type {
-  RendererRouteId,
-  RendererSelectionState,
-} from '../state/ui-state-boundary.js';
+import type { RendererRouteId, RendererSelectionState } from '../state/ui-state-boundary.js';
 
 export type AuthorNavigationTarget =
   | {

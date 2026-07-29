@@ -5,10 +5,7 @@ import path from 'node:path';
 const root = process.cwd();
 const glossaryPath = path.join(root, 'docs/product/AUTHOR_LANGUAGE_GLOSSARY.md');
 const governedPath = path.join(root, 'docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json');
-const termSourcePath = path.join(
-  root,
-  'apps/desktop/renderer/src/presentation/author-terms.ts',
-);
+const termSourcePath = path.join(root, 'apps/desktop/renderer/src/presentation/author-terms.ts');
 
 const prohibitedBusinessTerms = [
   'Candidate',
@@ -49,15 +46,7 @@ const requiredTerms = {
   testEvidence: '验证记录',
 };
 
-const sourceExtensions = new Set([
-  '.ts',
-  '.tsx',
-  '.js',
-  '.jsx',
-  '.mjs',
-  '.html',
-  '.md',
-]);
+const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.html', '.md']);
 
 function normalize(value) {
   return value.replaceAll('\\', '/');
@@ -70,9 +59,7 @@ async function collectFiles(target) {
 
   const entries = await readdir(absolute, { withFileTypes: true });
   const nested = await Promise.all(
-    entries.map((entry) =>
-      collectFiles(path.relative(root, path.join(absolute, entry.name))),
-    ),
+    entries.map((entry) => collectFiles(path.relative(root, path.join(absolute, entry.name)))),
   );
   return nested.flat();
 }
@@ -94,16 +81,13 @@ function sourceStringLiterals(source) {
 
 function scanText(file, source) {
   const extension = path.extname(file);
-  const searchable =
-    extension === '.md' ? stripMarkdownCode(source) : sourceStringLiterals(source);
+  const searchable = extension === '.md' ? stripMarkdownCode(source) : sourceStringLiterals(source);
   const violations = [];
 
   for (const term of prohibitedBusinessTerms) {
     const matcher = new RegExp(`\\b${term}\\b`, 'u');
     if (matcher.test(searchable)) {
-      violations.push(
-        `${normalize(path.relative(root, file))}: 作者可见文本包含内部名称 ${term}`,
-      );
+      violations.push(`${normalize(path.relative(root, file))}: 作者可见文本包含内部名称 ${term}`);
     }
   }
   return violations;
@@ -132,9 +116,7 @@ async function main() {
   }
 
   const excluded = new Set((governed.excludedPaths ?? []).map(normalize));
-  const files = (
-    await Promise.all(governed.paths.map((target) => collectFiles(target)))
-  )
+  const files = (await Promise.all(governed.paths.map((target) => collectFiles(target))))
     .flat()
     .filter((file) => sourceExtensions.has(path.extname(file)))
     .filter((file) => !excluded.has(normalize(path.relative(root, file))));

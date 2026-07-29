@@ -7,6 +7,13 @@ import {
   authorTerm,
   technicalTermDetail,
 } from '../../apps/desktop/renderer/src/presentation/author-terms.js';
+import {
+  authorAttentionLabel,
+  authorCharacterArcStatusLabel,
+  authorEntityTypeLabel,
+  authorForeshadowingStatusLabel,
+  authorJsonValue,
+} from '../../apps/desktop/renderer/src/presentation/author-value-format.js';
 
 describe('正式中文名称', () => {
   it('为核心写作概念提供唯一中文名称', () => {
@@ -40,6 +47,23 @@ describe('作者状态名称', () => {
     expect(authorStatusLabel('partial')).toBe('未完成');
     expect(authorStatusLabel('false_positive')).toBe('已标记为误报');
     expect(authorStatusLabel('custom-status')).toBe('custom-status');
+  });
+});
+
+describe('设定与规划值格式化', () => {
+  it('将设定类型和伏笔状态转换为正式中文名称', () => {
+    expect(authorEntityTypeLabel('character')).toBe('人物');
+    expect(authorEntityTypeLabel('rule')).toBe('世界规则');
+    expect(authorEntityTypeLabel('unknown')).toBe('其他设定');
+    expect(authorForeshadowingStatusLabel('partially_revealed')).toBe('已部分揭示');
+    expect(authorCharacterArcStatusLabel('active')).toBe('进行中');
+    expect(authorAttentionLabel('overdue')).toBe('已经逾期');
+  });
+
+  it('普通视图不直接显示原始结构化数据', () => {
+    expect(authorJsonValue(null)).toBe('无');
+    expect(authorJsonValue(['清河', '不羡仙'])).toBe('清河、不羡仙');
+    expect(authorJsonValue({ location: '清河' })).toBe('结构化内容');
   });
 });
 

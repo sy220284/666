@@ -117,6 +117,69 @@ describe('内容精准跳转', () => {
     });
   });
 
+  it('写作待办优先定位正文，无章节时返回作品检查', () => {
+    const anchored = resolveAuthorNavigationTarget({
+      type: 'story-todo',
+      projectId: 'project-1',
+      todoId: 'todo-1',
+      chapterId: 'chapter-1',
+      sceneBeatId: 'beat-1',
+      logicalBlockId: 'block-1',
+    });
+    expect(anchored).toMatchObject({
+      route: 'writing',
+      selection: {
+        chapterId: 'chapter-1',
+        sceneBeatId: 'beat-1',
+        logicalBlockId: 'block-1',
+      },
+      filters: { 'navigation.todoId': 'todo-1' },
+    });
+
+    const unanchored = resolveAuthorNavigationTarget({
+      type: 'story-todo',
+      projectId: 'project-1',
+      todoId: 'todo-2',
+      chapterId: null,
+      sceneBeatId: null,
+      logicalBlockId: null,
+    });
+    expect(unanchored).toMatchObject({
+      route: 'checks',
+      filters: { 'navigation.todoId': 'todo-2' },
+    });
+  });
+
+  it('伏笔和场景节拍进入对应管理位置', () => {
+    const foreshadowing = resolveAuthorNavigationTarget({
+      type: 'foreshadowing',
+      projectId: 'project-1',
+      foreshadowingId: 'foreshadowing-1',
+      chapterId: 'chapter-1',
+      query: '旧印',
+    });
+    expect(foreshadowing).toMatchObject({
+      route: 'canon',
+      selection: { chapterId: 'chapter-1' },
+      filters: {
+        'navigation.query': '旧印',
+        'navigation.foreshadowingId': 'foreshadowing-1',
+      },
+    });
+
+    const beat = resolveAuthorNavigationTarget({
+      type: 'scene-beat',
+      projectId: 'project-1',
+      sceneBeatId: 'beat-1',
+      chapterId: 'chapter-1',
+    });
+    expect(beat).toMatchObject({
+      route: 'planning',
+      selection: { chapterId: 'chapter-1', sceneBeatId: 'beat-1' },
+      filters: { 'navigation.sceneBeatId': 'beat-1' },
+    });
+  });
+
   it('缺少章节的正文或历史版本结果不会错误跳转', () => {
     expect(
       searchResultNavigationTarget(

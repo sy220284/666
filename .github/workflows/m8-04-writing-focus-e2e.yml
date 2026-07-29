@@ -38,12 +38,13 @@ jobs:
           cache: pnpm
       - name: 安装锁定依赖
         run: pnpm install --frozen-lockfile --prefer-offline
-      - name: 接入沉浸写作选区恢复
+      - name: 修复首次章节打开与沉浸选区恢复
         run: node scripts/m8-04-writing-focus-e2e-codemod.mjs
       - name: 格式化受影响文件
         run: >-
           pnpm exec prettier --write
           apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
+          tests/e2e/m8-04-author-experience.spec.ts
           tests/e2e/writing-focus-assistance.spec.ts
           tests/e2e/playwright.config.ts
           docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
@@ -56,8 +57,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
           fc-match "Noto Serif CJK SC"
-      - name: 验证写作辅助与沉浸写作流程
-        run: pnpm test:e2e writing-focus-assistance.spec.ts
+      - name: 验证快速开始与沉浸写作流程
+        run: >-
+          pnpm test:e2e
+          m8-04-author-experience.spec.ts
+          writing-focus-assistance.spec.ts
       - name: 提交生产代码与桌面测试
         run: |
           if git diff --quiet; then
@@ -68,8 +72,9 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
             apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
+            tests/e2e/m8-04-author-experience.spec.ts \
             tests/e2e/writing-focus-assistance.spec.ts \
             tests/e2e/playwright.config.ts \
             docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
-          git commit -m '测试(M8-04)：验证沉浸写作保留编辑器与选区'
+          git commit -m '修复(M8-04)：稳定快速开始与沉浸写作'
           git push origin HEAD:work/m8-04-author-experience-language

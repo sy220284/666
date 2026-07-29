@@ -1,8 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
 const filePath = 'scripts/m8-04-e2e-onboarding-codemod.mjs';
-const source = await readFile(filePath, 'utf8');
-const before = `  const remainingChannelBlocks = migrated
+let source = await readFile(filePath, 'utf8');
+
+const oldBoundary = `  const remainingChannelBlocks = migrated
     .split("await page.locator('[data-create-project]').click();")
     .slice(1)
     .filter((block) => {
@@ -12,7 +13,7 @@ const before = `  const remainingChannelBlocks = migrated
   if (remainingChannelBlocks.length > 0) {
     throw new Error(\`\${fileName}仍有\${remainingChannelBlocks.length}个旧创建流程未迁移。\`);
   }`;
-const after = `  const migratedLines = migrated.split('\\n');
+const newBoundary = `  const migratedLines = migrated.split('\\n');
   let remainingChannelBlocks = 0;
   for (let index = 0; index < migratedLines.length; index += 1) {
     if (!migratedLines[index].includes("await page.locator('[data-create-project]').click();")) continue;
@@ -27,10 +28,33 @@ const after = `  const migratedLines = migrated.split('\\n');
   if (remainingChannelBlocks > 0) {
     throw new Error(\`\${fileName}仍有\${remainingChannelBlocks}个旧创建流程未迁移。\`);
   }`;
-if (source.includes(after)) {
-  console.log('桌面迁移自检边界已经修正。');
-} else {
-  if (!source.includes(before)) throw new Error('缺少桌面迁移旧自检片段。');
-  await writeFile(filePath, source.replace(before, after), 'utf8');
-  console.log('已将桌面迁移自检限定在单条测试内。');
+if (!source.includes(newBoundary)) {
+  if (!source.includes(oldBoundary)) throw new Error('缺少桌面迁移旧自检片段。');
+  source = source.replace(oldBoundary, newBoundary);
 }
+
+const oldDialogSelector = `${indent}await page.locator('[data-onboarding-entry="${blank ? 'blank' : 'complete'}"]').click();`;
+const newDialogSelector = `${indent}await page.locator('[data-onboarding-dialog-entry="${blank ? 'blank' : 'complete'}"]').click();`;
+if (!source.includes(newDialogSelector)) {
+  if (!source.includes(oldDialogSelector)) throw new Error('缺少旧创建入口选择器。');
+  source = source.replace(oldDialogSelector, newDialogSelector);
+}
+source = source.replace(
+  `migrated.match(/\\[data-onboarding-entry="(?:complete|blank)"\\]/gu) ?? []`,
+  `migrated.match(/\\[data-onboarding-(?:dialog-)?entry="(?:complete|blank)"\\]/gu) ?? []`,
+);
+
+const assertionAnchor = `    if (entry.name === 'electron-shell.spec.ts') {`;
+const multilineReplacement = `    source = source.replace(
+      /toContainText\\(\\s*['"]导出失败 · EXPORT_TARGET_EXISTS_002['"]\\s*,?\\s*\\)/gu,
+      "toContainText('导出位置已有文件')",
+    );
+
+${assertionAnchor}`;
+if (!source.includes(multilineReplacement)) {
+  if (!source.includes(assertionAnchor)) throw new Error('缺少桌面断言迁移锚点。');
+  source = source.replace(assertionAnchor, multilineReplacement);
+}
+
+await writeFile(filePath, source, 'utf8');
+console.log('已修正桌面迁移边界、弹窗入口和跨行断言。');

@@ -15,6 +15,7 @@ export type AuthorNavigationTarget =
       readonly projectId: string;
       readonly chapterId: string;
       readonly versionId: string;
+      readonly logicalBlockId?: string | null;
       readonly query: string | null;
     }
   | {
@@ -56,18 +57,18 @@ export function resolveAuthorNavigationTarget(
     };
   }
 
-  if (target.type === 'version') {
+  if (target.type === 'version' || (target.type === 'validation-issue' && target.versionId)) {
     return {
       route: 'versions',
       selection: {
         projectId: target.projectId,
         chapterId: target.chapterId,
-        versionId: target.versionId,
+        versionId: target.type === 'version' ? target.versionId : target.versionId,
         entityId: null,
-        logicalBlockId: null,
-        issueId: null,
+        logicalBlockId: target.logicalBlockId ?? null,
+        issueId: target.type === 'validation-issue' ? target.issueId : null,
       },
-      filters: { 'navigation.query': target.query },
+      filters: { 'navigation.query': target.type === 'version' ? target.query : null },
     };
   }
 
@@ -77,7 +78,7 @@ export function resolveAuthorNavigationTarget(
       projectId: target.projectId,
       chapterId: target.chapterId,
       logicalBlockId: target.logicalBlockId,
-      versionId: target.type === 'validation-issue' ? target.versionId : null,
+      versionId: null,
       entityId: null,
       issueId: target.type === 'validation-issue' ? target.issueId : null,
     },
@@ -107,6 +108,7 @@ export function searchResultNavigationTarget(
       projectId,
       chapterId: item.chapterId,
       versionId: item.targetId,
+      logicalBlockId: item.anchorId,
       query,
     };
   }

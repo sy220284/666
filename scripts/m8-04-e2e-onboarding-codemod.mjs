@@ -6,35 +6,96 @@ const entries = await readdir(directory, { withFileTypes: true });
 let changedFiles = 0;
 let migratedBlocks = 0;
 
+function migrateCreationBlocks(source, fileName) {
+  const lines = source.split('\n');
+  const result = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    result.push(line);
+    if (!line.includes("await page.locator('[data-create-project]').click();")) continue;
+
+    let confirmIndex = -1;
+    for (let candidate = index + 1; candidate < Math.min(lines.length, index + 70); candidate += 1) {
+      if (lines[candidate].includes("await page.locator('[data-confirm-create-project]').click();")) {
+        confirmIndex = candidate;
+        break;
+      }
+      if (lines[candidate].startsWith('test(')) break;
+    }
+    if (confirmIndex < 0) continue;
+    const block = lines.slice(index + 1, confirmIndex);
+    if (!block.some((value) => value.includes('[data-project-channel]'))) continue;
+
+    const blank = block.some(
+      (value) =>
+        value.includes("[data-project-initial-structure]')") && value.includes("selectOption('blank')"),
+    );
+    const indent = line.slice(0, line.indexOf('await'));
+    result.push(
+      `${indent}await page.locator('[data-onboarding-dialog-entry="${blank ? 'blank' : 'complete'}"]').click();`,
+    );
+    if (!blank) {
+      result.push(
+        `${indent}await page.locator('[data-project-initial-structure]').selectOption('starter');`,
+      );
+    }
+    migratedBlocks += 1;
+  }
+
+  let migrated = result.join('\n');
+  migrated = migrated.replace(
+    /^\s*await page\.locator\('\[data-project-initial-structure\]'\)\.selectOption\('blank'\);\n/gmu,
+    '',
+  );
+
+  const remainingChannelBlocks = migrated
+    .split("await page.locator('[data-create-project]').click();")
+    .slice(1)
+    .filter((block) => {
+      const beforeConfirm = block.split("await page.locator('[data-confirm-create-project]').click();")[0] ?? '';
+      return (
+        beforeConfirm.includes('[data-project-channel]') &&
+        !beforeConfirm.includes('[data-onboarding-dialog-entry=')
+      );
+    });
+  if (remainingChannelBlocks.length > 0) {
+    throw new Error(`${fileName}仍有${remainingChannelBlocks.length}个旧创建流程未迁移。`);
+  }
+  if (
+    migrated.includes("[data-project-initial-structure]').selectOption('blank')")
+  ) {
+    throw new Error(`${fileName}仍在操作空白入口中的禁用初始结构控件。`);
+  }
+  return migrated;
+}
+
 for (const entry of entries) {
   if (!entry.isFile() || !entry.name.endsWith('.spec.ts')) continue;
   const filePath = path.join(directory, entry.name);
   let source = await readFile(filePath, 'utf8');
   const original = source;
 
-  const creationBlock = /(\s*)await page\.locator\('\[data-create-project\]'\)\.click\(\);([\s\S]*?)await page\.locator\('\[data-confirm-create-project\]'\)\.click\(\);/gu;
-  source = source.replace(creationBlock, (block, indent, middle) => {
-    if (!middle.includes('[data-project-channel]')) return block;
-    if (middle.includes('[data-onboarding-dialog-entry=')) return block;
-    const blank = middle.includes("[data-project-initial-structure]').selectOption('blank')");
-    const entryId = blank ? 'blank' : 'complete';
-    let nextMiddle = middle;
-    if (blank) {
-      nextMiddle = nextMiddle.replace(
-        new RegExp(
-          `${indent}await page\\.locator\\('\\[data-project-initial-structure\\]'\\)\\.selectOption\\('blank'\\);\\n`,
-          'u',
-        ),
-        '',
-      );
-    }
-    migratedBlocks += 1;
-    return `${indent}await page.locator('[data-create-project]').click();\n${indent}await page.locator('[data-onboarding-dialog-entry="${entryId}"]').click();${nextMiddle}${indent}await page.locator('[data-confirm-create-project]').click();`;
-  });
+  source = migrateCreationBlocks(source, entry.name);
+
+  for (const [before, after] of [
+    ["toContainText('health')", "toContainText('身体状态')"],
+    ["toContainText('planted')", "toContainText('已埋设')"],
+    ["toContainText('author')", "toContainText('已命中')"],
+    ["toContainText('AI_CONNECTION_FAILED_003')", "toContainText('无法连接AI服务')"],
+    ["toContainText('SceneBeat已保存')", "toContainText('场景节拍已保存')"],
+    ['/^已手动保存 · Revision \\d+$/u', '/^已手动保存 · 保存序号 \\d+$/u'],
+    ['/^自动保存完成 · Revision \\d+$/u', '/^自动保存完成 · 保存序号 \\d+$/u'],
+  ]) {
+    source = source.replaceAll(before, after);
+  }
 
   if (entry.name === 'electron-shell.spec.ts') {
-    const oldQuickAssertion = `    await expect(\n      page.locator('select[name="creativePath"] option[value="ai-first"]'),\n    ).toHaveAttribute('disabled', '');`;
-    const newQuickAssertion = `    await expect(\n      page.locator('select[name="creativePath"] option[value="ai-first"]'),\n    ).toHaveCount(0);`;
+    const oldQuickAssertion = `    await expect(
+      page.locator('select[name="creativePath"] option[value="ai-first"]'),
+    ).toHaveAttribute('disabled', '');`;
+    const newQuickAssertion = `    await expect(
+      page.locator('select[name="creativePath"] option[value="ai-first"]'),
+    ).toHaveCount(0);`;
     if (!source.includes(oldQuickAssertion)) {
       throw new Error('电子桌面向导用例缺少快速开始断言锚点。');
     }

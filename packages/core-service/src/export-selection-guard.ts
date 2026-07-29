@@ -14,5 +14,8 @@ export function mixesWholeBookFinalsWithOtherVersions(
   if (finalized.size === 0) return false;
   const includesEveryFinalized = [...finalized].every((versionId) => selected.has(versionId));
   if (!includesEveryFinalized) return false;
-  return selected.size !== finalized.size || [...selected].some((versionId) => !finalized.has(versionId));
+  return (
+    selected.size !== finalized.size ||
+    [...selected].some((versionId) => !finalized.has(versionId))
+  );
 }

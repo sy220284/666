@@ -49,7 +49,15 @@ const requiredTerms = {
   testEvidence: '验证记录',
 };
 
-const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.html', '.md']);
+const sourceExtensions = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.html',
+  '.md',
+]);
 
 function normalize(value) {
   return value.replaceAll('\\', '/');
@@ -70,9 +78,7 @@ async function collectFiles(target) {
 }
 
 function stripMarkdownCode(source) {
-  return source
-    .replace(/```[\s\S]*?```/gu, '')
-    .replace(/`[^`\r\n]+`/gu, '');
+  return source.replace(/```[\s\S]*?```/gu, '').replace(/`[^`\r\n]+`/gu, '');
 }
 
 function sourceStringLiterals(source) {
@@ -88,13 +94,16 @@ function sourceStringLiterals(source) {
 
 function scanText(file, source) {
   const extension = path.extname(file);
-  const searchable = extension === '.md' ? stripMarkdownCode(source) : sourceStringLiterals(source);
+  const searchable =
+    extension === '.md' ? stripMarkdownCode(source) : sourceStringLiterals(source);
   const violations = [];
 
   for (const term of prohibitedBusinessTerms) {
     const matcher = new RegExp(`\\b${term}\\b`, 'u');
     if (matcher.test(searchable)) {
-      violations.push(`${normalize(path.relative(root, file))}: 作者可见文本包含内部名称 ${term}`);
+      violations.push(
+        `${normalize(path.relative(root, file))}: 作者可见文本包含内部名称 ${term}`,
+      );
     }
   }
   return violations;

@@ -55,12 +55,14 @@ jobs:
           apps/desktop/renderer/src/features/data-tools/text-export-selection.ts
           apps/desktop/renderer/src/m3.css
           tests/unit/author-review-delivery.test.ts
+          tests/unit/writing-assistance.test.ts
           docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
       - name: 验证正式中文名称
         run: pnpm check:language
       - name: 执行代码规范与类型检查
         run: |
-          pnpm lint
+          node scripts/test-quality-audit.mjs
+          pnpm exec eslint apps packages tests --rule "@typescript-eslint/no-unused-vars: [error, { argsIgnorePattern: '^_', varsIgnorePattern: '^(_|CandidateSelection$)', caughtErrorsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }]"
           pnpm typecheck
       - name: 验证单元与集成流程
         run: |
@@ -84,6 +86,7 @@ jobs:
             apps/desktop/renderer/src/features/data-tools/text-export-selection.ts \
             apps/desktop/renderer/src/m3.css \
             tests/unit/author-review-delivery.test.ts \
+            tests/unit/writing-assistance.test.ts \
             docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
           git commit -m '改进(M8-04)：完善建议稿审阅、AI连接与整书交付'
           git push origin HEAD:work/m8-04-author-experience-language

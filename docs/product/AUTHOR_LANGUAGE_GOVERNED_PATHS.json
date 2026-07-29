@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "paths": [
+    "apps/desktop/renderer/src/presentation/",
+    "docs/tasks/ACTIVE_TASK.md",
+    "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md"
+  ],
+  "excludedPaths": [],
+  "note": "阶段一只登记已经完成中文业务语言治理的路径；后续界面迁移完成一个文件或目录，就必须将其加入本清单。"
+}

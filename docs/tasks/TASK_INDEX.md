@@ -1,6 +1,6 @@
 # WorldForge 任务索引
 
-> 状态：Active  
+> 状态：Verified Hold  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02与M8-04，共36张独立任务卡。  
 > 当前终态：M8-04作者体验与开发语言统一改造已Verified；36张独立任务卡全部完成验证。

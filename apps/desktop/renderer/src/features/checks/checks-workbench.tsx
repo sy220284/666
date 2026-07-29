@@ -46,7 +46,9 @@ export function ChecksWorkbench({
   const [includeClosed, setIncludeClosed] = useState(true);
   const [pending, setPending] = useState(false);
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
-  const [notice, setNotice] = useState(`检查只读取当前${authorTerm('finalVersion')}，不会自动改写正文。`);
+  const [notice, setNotice] = useState(
+    `检查只读取当前${authorTerm('finalVersion')}，不会自动改写正文。`,
+  );
 
   const chapters = useMemo(
     () => structure?.volumes.flatMap((volume) => volume.chapters) ?? [],
@@ -73,6 +75,14 @@ export function ChecksWorkbench({
   }, [bridge, chapterId, includeClosed, projectId]);
 
   useEffect(() => {
+    let active = true;
+    setStructure(null);
+    setCatalog(null);
+    setProviders([]);
+    setProviderId('');
+    setChapterId('');
+    setActiveRun(null);
+    setPending(false);
     void Promise.all([
       bridge.planning.listStructure(projectId, { mode: 'replace' }),
       bridge.providers.list({ mode: 'replace' }),
@@ -81,28 +91,33 @@ export function ChecksWorkbench({
         { mode: 'replace' },
       ),
     ]).then(([structureOutcome, providerOutcome, validationOutcome]) => {
+      if (!active) return;
       if (structureOutcome.state === 'success') {
         setStructure(structureOutcome.data);
         const firstFinal = structureOutcome.data.volumes
           .flatMap((volume) => volume.chapters)
           .find((item) => item.finalVersionId);
-        setChapterId((current) => current || firstFinal?.id || '');
+        setChapterId(firstFinal?.id ?? '');
       }
       if (providerOutcome.state === 'success') {
         setProviders(providerOutcome.data.providers);
-        setProviderId((current) => current || providerOutcome.data.providers[0]?.id || '');
+        setProviderId(providerOutcome.data.providers[0]?.id ?? '');
       }
       if (validationOutcome.state === 'success') setCatalog(validationOutcome.data);
     });
+    return () => {
+      active = false;
+    };
   }, [bridge, projectId]);
 
   useEffect(() => void refreshCatalog(), [refreshCatalog]);
 
   useEffect(() => {
     if (!activeRun) return;
+    let active = true;
     const timer = window.setInterval(() => {
       void bridge.generation.getRun(projectId, activeRun.runId).then((outcome) => {
-        if (outcome.state !== 'success') return;
+        if (!active || outcome.state !== 'success') return;
         setActiveRun(outcome.data);
         setNotice(
           `AI语义检查 · ${generationStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
@@ -114,7 +129,10 @@ export function ChecksWorkbench({
         }
       });
     }, 1_000);
-    return () => window.clearInterval(timer);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, [activeRun, bridge, projectId, refreshCatalog]);
 
   const runRules = async (): Promise<void> => {
@@ -211,6 +229,24 @@ export function ChecksWorkbench({
     });
   };
 
+  const navigateToDraftLocation = (
+    targetChapterId: string | null,
+    logicalBlockId: string | null,
+    label: string,
+  ): void => {
+    if (!targetChapterId) {
+      setNotice(`${label}没有章节原文位置，无法进行精准跳转。`);
+      return;
+    }
+    onNavigate({
+      type: 'draft-block',
+      projectId,
+      chapterId: targetChapterId,
+      logicalBlockId,
+      query: null,
+    });
+  };
+
   return (
     <section className="checks-workbench" data-checks-workbench aria-label="作品检查工作台">
       <header className="feature-heading">
@@ -220,7 +256,12 @@ export function ChecksWorkbench({
           <p>检查结果保留内容依据；只有作者可以处理、忽略或转为写作待办。</p>
         </div>
       </header>
-      <SearchPanel bridge={bridge} projectId={projectId} readOnly={readOnly} onNavigate={onNavigate} />
+      <SearchPanel
+        bridge={bridge}
+        projectId={projectId}
+        readOnly={readOnly}
+        onNavigate={onNavigate}
+      />
       <RhythmPanel bridge={bridge} projectId={projectId} readOnly={readOnly} />
       <section className="feature-card">
         <div className="filter-bar">
@@ -333,54 +374,80 @@ export function ChecksWorkbench({
       <section className="feature-card">
         <h2>写作待办与批注</h2>
         {(catalog?.todos ?? []).map((todo) => (
-          <article className="ledger-record" key={todo.todoId}>
+          <article className="ledger-record" data-writing-todo={todo.todoId} key={todo.todoId}>
             <p>
               {todo.title} · {todo.status === 'open' ? '待处理' : '已完成'}
             </p>
-            <button
-              disabled={readOnly}
-              type="button"
-              onClick={() =>
-                void bridge.validation
-                  .saveTodo({
-                    projectId,
-                    todoId: todo.todoId,
-                    chapterId: todo.chapterId,
-                    sceneBeatId: todo.sceneBeatId,
-                    logicalBlockId: todo.logicalBlockId,
-                    title: todo.title,
-                    status: todo.status === 'open' ? 'done' : 'open',
-                  })
-                  .then((outcome) => {
-                    if (outcome.state === 'success') setCatalog(outcome.data);
-                    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
-                  })
-              }
-            >
-              {todo.status === 'open' ? '标记完成' : '重新打开'}
-            </button>
+            <div className="inline-actions">
+              <button
+                disabled={!todo.chapterId}
+                type="button"
+                onClick={() =>
+                  navigateToDraftLocation(todo.chapterId, todo.logicalBlockId, '该待办')
+                }
+              >
+                前往原文
+              </button>
+              <button
+                disabled={readOnly}
+                type="button"
+                onClick={() =>
+                  void bridge.validation
+                    .saveTodo({
+                      projectId,
+                      todoId: todo.todoId,
+                      chapterId: todo.chapterId,
+                      sceneBeatId: todo.sceneBeatId,
+                      logicalBlockId: todo.logicalBlockId,
+                      title: todo.title,
+                      status: todo.status === 'open' ? 'done' : 'open',
+                    })
+                    .then((outcome) => {
+                      if (outcome.state === 'success') setCatalog(outcome.data);
+                      else if (outcome.state === 'failure') {
+                        setNotice(authorErrorSummary(outcome.error));
+                      }
+                    })
+                }
+              >
+                {todo.status === 'open' ? '标记完成' : '重新打开'}
+              </button>
+            </div>
           </article>
         ))}
         {(catalog?.comments ?? []).map((comment) => (
           <article className="ledger-record" key={comment.commentId}>
             <p>{comment.body}</p>
             <p>{comment.status === 'open' ? '待处理' : '已处理'}</p>
-            {comment.status === 'open' ? (
+            <div className="inline-actions">
               <button
-                disabled={readOnly}
+                disabled={!comment.chapterId}
                 type="button"
                 onClick={() =>
-                  void bridge.validation
-                    .resolveComment({ projectId, commentId: comment.commentId })
-                    .then((outcome) => {
-                      if (outcome.state === 'success') setCatalog(outcome.data);
-                      else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
-                    })
+                  navigateToDraftLocation(comment.chapterId, comment.logicalBlockId, '该批注')
                 }
               >
-                标记批注已处理
+                前往原文
               </button>
-            ) : null}
+              {comment.status === 'open' ? (
+                <button
+                  disabled={readOnly}
+                  type="button"
+                  onClick={() =>
+                    void bridge.validation
+                      .resolveComment({ projectId, commentId: comment.commentId })
+                      .then((outcome) => {
+                        if (outcome.state === 'success') setCatalog(outcome.data);
+                        else if (outcome.state === 'failure') {
+                          setNotice(authorErrorSummary(outcome.error));
+                        }
+                      })
+                  }
+                >
+                  标记批注已处理
+                </button>
+              ) : null}
+            </div>
           </article>
         ))}
       </section>

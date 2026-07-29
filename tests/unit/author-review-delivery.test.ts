@@ -158,4 +158,10 @@ describe('整书定稿导出', () => {
     expect(selectedAllFinalized(new Set(['final-1']), versions)).toBe(false);
     expect(wholeBookExportLabel(new Set(['final-1']), versions)).toBe('选择目录并导出所选版本');
   });
+
+  it('混入非定稿历史版本时不得标记为整书导出', () => {
+    const mixed = new Set(['final-1', 'final-2', 'draft-1']);
+    expect(selectedAllFinalized(mixed, versions)).toBe(false);
+    expect(wholeBookExportLabel(mixed, versions)).toBe('选择目录并导出所选版本');
+  });
 });

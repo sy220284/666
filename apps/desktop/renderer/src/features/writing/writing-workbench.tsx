@@ -19,11 +19,15 @@ interface WritingWorkbenchProps {
   readonly project: ProjectWorkspaceSummary;
   readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;
+  readonly navigationChapterId?: string | null;
+  readonly navigationLogicalBlockId?: string | null;
+  readonly navigationVersionId?: string | null;
+  readonly navigationQuery?: string | null;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onStatus: (message: string) => void;
 }
 
-const VERSION_RESTORE_NOTICE = '已从只读版本恢复为新草稿。';
+const VERSION_RESTORE_NOTICE = '已从只读历史版本恢复为新当前稿。';
 
 export function WritingWorkbench(props: WritingWorkbenchProps) {
   const onPanelChangeRef = useRef(props.onPanelChange);

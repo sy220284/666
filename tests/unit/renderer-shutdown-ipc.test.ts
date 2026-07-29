@@ -48,6 +48,7 @@ describe('关闭前当前稿刷新握手', () => {
     respond?.({ senderFrame: { url: rendererUrl } }, { ...request, saved: true });
 
     await expect(pending).resolves.toBe(true);
+    respond?.({ senderFrame: { url: rendererUrl } }, { ...request, saved: false });
     expect(request.protocolVersion).toBe(PROTOCOL_VERSION);
     expect(value.listeners.size).toBe(0);
   });

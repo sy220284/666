@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type {
   ContinuityCatalog,
@@ -9,12 +9,85 @@ import type {
   StoryTodo,
 } from '@worldforge/contracts';
 
-import { buildWritingAssistanceView } from '../../apps/desktop/renderer/src/features/writing/writing-assistance.js';
+import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+import {
+  buildWritingAssistanceView,
+  loadWritingAssistance,
+} from '../../apps/desktop/renderer/src/features/writing/writing-assistance.js';
 
 const projectId = '11111111-1111-4111-8111-111111111111';
 const chapterId = '22222222-2222-4222-8222-222222222222';
 const characterId = '33333333-3333-4333-8333-333333333333';
 const plotNodeId = '44444444-4444-4444-8444-444444444444';
+const previousChapterId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const previousVersionId = '77777777-7777-4777-8777-777777777777';
+
+function success<Data>(data: Data) {
+  return Promise.resolve({ state: 'success' as const, data });
+}
+
+function unavailable() {
+  return Promise.resolve({ state: 'error' as const, error: new Error('暂时不可用') });
+}
+
+function assistanceBridge(options?: {
+  readonly finalVersionId?: string | null;
+  readonly failSources?: boolean;
+  readonly failVersion?: boolean;
+  readonly failDraft?: boolean;
+  readonly endingText?: string;
+}): RendererBridgeAdapter {
+  const finalVersionId =
+    options?.finalVersionId === undefined ? previousVersionId : options.finalVersionId;
+  const failSources = options?.failSources === true;
+  const source = <Data>(data: Data) => (failSources ? unavailable() : success(data));
+  return {
+    planning: {
+      listStructure: vi.fn(() =>
+        source({
+          volumes: [
+            {
+              chapters: [
+                { id: previousChapterId, title: '上一章', finalVersionId },
+                { id: chapterId, title: '当前章', finalVersionId: null },
+              ],
+            },
+          ],
+        }),
+      ),
+      listPlotNodes: vi.fn(() => source({ nodes: [] })),
+      listSceneBeats: vi.fn(() => source({ beats: [] })),
+    },
+    canon: {
+      list: vi.fn(() => source({ entities: [] })),
+    },
+    continuity: {
+      list: vi.fn(() =>
+        source({ projectId, entityStates: [], timelineEvents: [], knowledgeStates: [] }),
+      ),
+    },
+    narrativePlanning: {
+      list: vi.fn(() => source({ projectId, foreshadowings: [], characterArcs: [] })),
+    },
+    validation: {
+      list: vi.fn(() => source({ todos: [] })),
+    },
+    version: {
+      get: vi.fn(() =>
+        options?.failVersion
+          ? unavailable()
+          : success({ blocks: [{ text: options?.endingText ?? '上一章定稿结尾' }] }),
+      ),
+    },
+    draft: {
+      open: vi.fn(() =>
+        options?.failDraft
+          ? unavailable()
+          : success({ blocks: [{ text: options?.endingText ?? '上一章当前稿结尾' }] }),
+      ),
+    },
+  } as RendererBridgeAdapter;
+}
 
 describe('本章写作辅助聚合', () => {
   it('只汇总当前章节关联的目标、人物状态、伏笔和待办', () => {
@@ -203,5 +276,51 @@ describe('本章写作辅助聚合', () => {
     expect(view.goal).toBeNull();
     expect(view.characters).toEqual([]);
     expect(view.todos).toEqual([]);
+  });
+
+  it('优先读取上一章定稿结尾并保留当前章节名称', async () => {
+    const bridge = assistanceBridge();
+    const view = await loadWritingAssistance(bridge, projectId, chapterId);
+    expect(view.chapterTitle).toBe('当前章');
+    expect(view.previousEnding).toEqual({
+      chapterId: previousChapterId,
+      chapterTitle: '上一章',
+      text: '上一章定稿结尾',
+      source: 'final-version',
+    });
+    expect(bridge.version.get).toHaveBeenCalledOnce();
+    expect(bridge.draft.open).not.toHaveBeenCalled();
+  });
+
+  it('定稿读取失败时回退当前稿，并截取过长结尾', async () => {
+    const ending = `${'开场'.repeat(400)}\n\n${'收束'.repeat(300)}`;
+    const bridge = assistanceBridge({ failVersion: true, endingText: ending });
+    const view = await loadWritingAssistance(bridge, projectId, chapterId);
+    expect(view.previousEnding?.source).toBe('current-draft');
+    expect(view.previousEnding?.text).toHaveLength(601);
+    expect(view.previousEnding?.text.startsWith('…')).toBe(true);
+    expect(view.warnings).toContain('上一章定稿版本暂时无法读取');
+  });
+
+  it('各聚合源和上一章当前稿不可用时安全返回空集合与中文说明', async () => {
+    const failedSources = assistanceBridge({ failSources: true });
+    const empty = await loadWritingAssistance(failedSources, projectId, chapterId);
+    expect(empty).toMatchObject({
+      chapterTitle: null,
+      sceneBeats: [],
+      characters: [],
+      foreshadowings: [],
+      todos: [],
+      previousEnding: null,
+    });
+    expect(empty.warnings).toHaveLength(7);
+
+    const failedDraft = assistanceBridge({
+      finalVersionId: null,
+      failDraft: true,
+    });
+    const withoutEnding = await loadWritingAssistance(failedDraft, projectId, chapterId);
+    expect(withoutEnding.previousEnding).toBeNull();
+    expect(withoutEnding.warnings).toContain('上一章当前稿暂时无法读取');
   });
 });

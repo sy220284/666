@@ -98,6 +98,24 @@ describe('作者差异审阅', () => {
     expect(visible.some((item) => item.omittedBefore > 0)).toBe(true);
   });
 
+  it('只看修改时保留修改顺序并标明折叠行数', () => {
+    const original = ['开头', '旧句', '过渡一', '过渡二', '结尾'];
+    const comparison = ['新增开场', '开头', '新句', '过渡一', '过渡二', '新结尾'];
+    const diff = createReviewDiff(original.join('\n'), comparison.join('\n'));
+    const changed = changedReviewLineIndexes(diff);
+    const visible = visibleReviewLines(diff, changed, true);
+    expect(visible.map((item) => item.index)).toEqual(changed);
+    expect(visible[0]?.omittedBefore).toBe(changed[0]);
+    expect(visible.at(-1)?.omittedBefore).toBeGreaterThanOrEqual(0);
+  });
+
+  it('短章节不折叠任何未修改行', () => {
+    const diff = createReviewDiff('第一行\n第二行', '第一行\n第二行');
+    expect(visibleReviewLines(diff, [], false)).toEqual(
+      diff.map((line, index) => ({ line, index, omittedBefore: 0 })),
+    );
+  });
+
   it('按作者审阅状态分组建议稿', () => {
     const values = [
       candidate('待审阅', 'pending', 'full'),

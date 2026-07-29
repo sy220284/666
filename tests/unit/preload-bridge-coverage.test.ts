@@ -223,6 +223,8 @@ describe('Preload bridge real-contract regression coverage', () => {
       protocolVersion: PROTOCOL_VERSION,
       requestId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     };
+    state.ipcListeners.get('worldforge:lifecycle:shutdown-prepare')?.({}, { invalid: true });
+    expect(listener).not.toHaveBeenCalled();
     state.ipcListeners.get('worldforge:lifecycle:shutdown-prepare')?.({}, request);
     expect(listener).toHaveBeenCalledWith(request);
 

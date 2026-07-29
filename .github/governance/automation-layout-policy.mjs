@@ -31,6 +31,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'post-merge-verification.mjs',
   'required-checks.json',
   'secret-scan-allowlist.json',
+  'squash-provenance.mjs',
   'stage-close-policy.mjs',
   'task-checkpoint-policy.mjs',
   'task-transition-policy-core.mjs',
@@ -105,12 +106,7 @@ export async function validateAutomationLayout(repositoryRoot = root) {
   const governanceFiles = await regularFileNames(governanceDirectory);
 
   compareInventory(errors, '.github/workflows', workflowFiles, PERMANENT_WORKFLOWS);
-  compareInventory(
-    errors,
-    '.github/governance',
-    governanceFiles,
-    PERMANENT_GOVERNANCE_FILES,
-  );
+  compareInventory(errors, '.github/governance', governanceFiles, PERMANENT_GOVERNANCE_FILES);
 
   for (const file of workflowFiles) {
     const source = await readFile(path.join(workflowDirectory, file), 'utf8');

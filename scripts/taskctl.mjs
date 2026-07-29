@@ -22,6 +22,7 @@ import { validateAuditRemediation } from './audit-remediation-policy.mjs';
 import { assertEvidenceHead, validateTaskEvidence } from './evidence-policy.mjs';
 import { validateAllVerifiedEvidence } from './verified-evidence-scan.mjs';
 import { recoverAtomicFileTransactions, writeFilesAtomically } from './atomic-file-transaction.mjs';
+import { verifySquashProvenance } from '../.github/governance/squash-provenance.mjs';
 
 const root = process.cwd();
 const statePath = path.join(root, 'docs/tasks/ACTIVE_TASK.json');
@@ -38,22 +39,6 @@ function git(argumentsList) {
 
 function currentHead() {
   return git(['rev-parse', 'HEAD']);
-}
-
-function commitTree(commit) {
-  try {
-    return git(['rev-parse', `${commit}^{tree}`]);
-  } catch (error) {
-    throw new Error(`Cannot resolve commit tree for ${commit}`, { cause: error });
-  }
-}
-
-function assertCommitAncestor(ancestor, descendant, label) {
-  try {
-    git(['merge-base', '--is-ancestor', ancestor, descendant]);
-  } catch (error) {
-    throw new Error(`${label} must be an ancestor of the expected Head`, { cause: error });
-  }
 }
 
 function normalizeText(value) {
@@ -425,12 +410,12 @@ async function verifyTask(taskId) {
     }
   }
   assertEvidenceHead(expectedHead, root);
-  assertCommitAncestor(mainCommit, expectedHead, 'mainCommit');
-  const implementationTree = commitTree(implementationHead);
-  const mainTree = commitTree(mainCommit);
-  if (implementationTree !== mainTree) {
-    throw new Error('Squash provenance requires identical implementation and main trees');
-  }
+  const squashProvenance = verifySquashProvenance({
+    repositoryRoot: root,
+    implementationHead,
+    mainCommit,
+    expectedHead,
+  });
 
   const { state, taskIndex, indexSource } = await load();
   const target = taskIndex.get(taskId);
@@ -467,12 +452,7 @@ async function verifyTask(taskId) {
     commit,
     verifiedAt: new Date().toISOString(),
     evidenceHead: expectedHead,
-    squashProvenance: {
-      implementationHead,
-      mainCommit,
-      implementationTree,
-      mainTree,
-    },
+    squashProvenance,
   };
 
   if (!active) {

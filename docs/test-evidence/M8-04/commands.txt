@@ -65,3 +65,26 @@ exit=0 run=30454589359
 
 Repository Governance
 exit=0 run=30454589392
+
+## 合并后主线验证与来源绑定
+
+main-verification
+exit=0 state=success run=30457455038 main=b24682432123d35d6228cbc7a0667202cc9a9c7f
+
+git diff 90f5366d6062ceb9aa4ec57bb2a821f8f651daff..2dc173895e7d71b5b37a8cbe80f759d74684e936 | git patch-id --stable
+exit=0 patch_id=61a1b3ef6395d798f4e7c52f30f381220bce5dbc
+
+git diff 9793e3bb568c8e64f51849236b83904c2af75faa..b24682432123d35d6228cbc7a0667202cc9a9c7f | git patch-id --stable
+exit=0 patch_id=61a1b3ef6395d798f4e7c52f30f381220bce5dbc
+
+git diff --binary --full-index --no-ext-diff --no-renames 90f5366d6062ceb9aa4ec57bb2a821f8f651daff 2dc173895e7d71b5b37a8cbe80f759d74684e936 | sha256sum
+exit=0 sha256=0d1b91499ed1a6682c3ee2baa9007ec025f0bf220f1ac9916eb11322af002684
+
+git diff --binary --full-index --no-ext-diff --no-renames 9793e3bb568c8e64f51849236b83904c2af75faa b24682432123d35d6228cbc7a0667202cc9a9c7f | sha256sum
+exit=0 sha256=0d1b91499ed1a6682c3ee2baa9007ec025f0bf220f1ac9916eb11322af002684
+
+node scripts/taskctl.mjs verify-task M8-04 --ci=success --commit=b24682432123d35d6228cbc7a0667202cc9a9c7f --expected-head=9fdfde18ad7b0c384d92224bc5f0cc18c98d2528 --implementation-head=2dc173895e7d71b5b37a8cbe80f759d74684e936 --main-commit=b24682432123d35d6228cbc7a0667202cc9a9c7f
+exit=0 result=VERIFIED_HOLD
+
+EVIDENCE_HEAD_SHA=b24682432123d35d6228cbc7a0667202cc9a9c7f node scripts/verified-evidence-scan.mjs
+exit=0 verified_tasks=36

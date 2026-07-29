@@ -1,6 +1,5 @@
 /* global console, process */
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,38 +10,15 @@ import {
   renderActiveTask,
   replaceTaskIndexStatus,
 } from '../../scripts/task-control-lib.mjs';
+import { verifySquashProvenance } from './squash-provenance.mjs';
 
 const root = process.cwd();
 const statePath = path.join(root, 'docs/tasks/ACTIVE_TASK.json');
 const mirrorPath = path.join(root, 'docs/tasks/ACTIVE_TASK.md');
 const indexPath = path.join(root, 'docs/tasks/TASK_INDEX.md');
 
-function git(argumentsList) {
-  return execFileSync('git', argumentsList, {
-    cwd: root,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }).trim();
-}
-
 function option(name) {
   return process.argv.find((value) => value.startsWith(`${name}=`))?.slice(name.length + 1);
-}
-
-function commitTree(commit) {
-  try {
-    return git(['rev-parse', `${commit}^{tree}`]);
-  } catch (error) {
-    throw new Error(`Cannot resolve commit tree for ${commit}`, { cause: error });
-  }
-}
-
-function assertCommitAncestor(ancestor, descendant, label) {
-  try {
-    git(['merge-base', '--is-ancestor', ancestor, descendant]);
-  } catch (error) {
-    throw new Error(`${label} must be an ancestor of the expected Head`, { cause: error });
-  }
 }
 
 export function replaceDeferredCardStatus(markdown) {
@@ -153,12 +129,12 @@ async function closeDeferred(taskId) {
   requireSha(mainCommit, '--main-commit', true);
 
   assertEvidenceHead(expectedHead, root);
-  assertCommitAncestor(mainCommit, expectedHead, 'mainCommit');
-  const implementationTree = commitTree(implementationHead);
-  const mainTree = commitTree(mainCommit);
-  if (implementationTree !== mainTree) {
-    throw new Error('Squash provenance requires identical implementation and main trees');
-  }
+  const squashProvenance = verifySquashProvenance({
+    repositoryRoot: root,
+    implementationHead,
+    mainCommit,
+    expectedHead,
+  });
 
   const [stateSource, indexSource] = await Promise.all([
     readFile(statePath, 'utf8'),
@@ -202,12 +178,7 @@ async function closeDeferred(taskId) {
     verifiedAt: new Date().toISOString(),
     evidenceHead: expectedHead,
     evidenceTaskId,
-    squashProvenance: {
-      implementationHead,
-      mainCommit,
-      implementationTree,
-      mainTree,
-    },
+    squashProvenance,
   };
 
   await Promise.all([

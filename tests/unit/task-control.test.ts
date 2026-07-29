@@ -13,6 +13,7 @@ import {
   validateActiveState,
   validateChangedPaths,
   validateChangedPathsForTransition,
+  renderActiveTask,
 } from '../../scripts/task-control-lib.mjs';
 import { mainVerificationDispatchBody } from '../../scripts/automerge.mjs';
 import { validateMainVerification } from '../../scripts/main-verification.mjs';
@@ -62,6 +63,18 @@ describe('task control', () => {
         'packages/core-service/src/index.ts',
       ]),
     ).toBe(false);
+  });
+
+  it('allows the final M8-04 closure records on a governance branch', () => {
+    expect(
+      isGovernanceOnlyPullRequest('fix/governance-m8-04-closure', [
+        'AGENTS.md',
+        '.github/governance/squash-provenance.mjs',
+        'scripts/taskctl.mjs',
+        'docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md',
+        'docs/test-evidence/M8-04/manifest.json',
+      ]),
+    ).toBe(true);
   });
 
   it('allows frozen task planning documents only on task-plan policy branches', () => {
@@ -170,6 +183,33 @@ describe('task control', () => {
       deferredVerification: [],
     };
     expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual([]);
+  });
+
+  it('renders the actual final verification hold task as the terminal anchor', () => {
+    const state = {
+      schemaVersion: 1,
+      authorization: {
+        mode: 'implementation-pr',
+        approvedBy: 'author',
+      },
+      activeTask: {
+        id: 'M8-04',
+        status: 'VERIFIED_HOLD',
+        source: 'docs/tasks/M8/M8-04.md',
+        branch: 'work/m8-04',
+        startedAt: '2026-07-29',
+        allowedPaths: ['docs/tasks/'],
+        forbiddenPaths: [],
+        requiredDocs: ['AGENTS.md'],
+        verification: ['pnpm test'],
+      },
+      verificationHold: {
+        taskId: 'M8-04',
+        finalTask: true,
+      },
+    };
+    expect(renderActiveTask(state)).toContain('M8-04作为终态验证锚点保留');
+    expect(renderActiveTask(state)).not.toContain('M8-02作为终态验证锚点保留');
   });
 
   it('keeps an implemented task active while remote verification is pending', () => {

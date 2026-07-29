@@ -94,6 +94,8 @@ C8自动化验收已经完成。M4-04与M8-02均已Verified，V1.0全部35张独
 - 异步查询通过请求代次阻止旧结果回写；关闭前当前稿通过具名IPC握手安全刷新。
 - 正式中文名称检查成为永久质量门禁。
 
+PR #227已经受控合并，合并提交`b24682432123d35d6228cbc7a0667202cc9a9c7f`的Main Verification成功；M8-04最终状态为Verified。
+
 ## 核心数据关系
 
 ```text
@@ -139,7 +141,7 @@ Final Version
 
 ## V1.0开发路线
 
-V1历史规格保留54份任务文件；独立执行体系为36张任务。M0—M3、M4-01—M4-04与M8-02均已Verified；当前独立维护任务为M8-04：
+V1历史规格保留54份任务文件；独立执行体系为36张任务。M0—M3、M4-01—M4-04、M8-02与M8-04均已Verified：
 
 ```text
 M0—M3 已完成
@@ -148,6 +150,7 @@ M0—M3 已完成
 → M4-03 Provider 已完成
 → M4-04 C0—C7核心功能已Verified
 → M8-02 C8完整体验、硬化与自用便携交付已Verified
+→ M8-04作者体验与开发语言统一已Verified
 ```
 
 M4-04吸收原M4-05—M6-06；M8-02吸收原M7-01—M7-03、M8-01和M8-03。M8-02历史执行方式为：
@@ -174,12 +177,12 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ M8-04当前任务卡
+→ M8-04终态任务卡
 → 被吸收需求来源和专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-当前活动任务：[`M8-04`](./docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)，正式分支`work/m8-04-author-experience-language`，正式PR #227。
+当前终态锚点：[`M8-04`](./docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)，状态`VERIFIED_HOLD`；正式PR #227已经合并。
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 

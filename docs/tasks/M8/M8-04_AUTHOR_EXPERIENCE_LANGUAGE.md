@@ -1,6 +1,6 @@
 # M8-04 作者体验与开发语言统一改造
 
-> 状态：Implemented
+> 状态：Verified
 > 里程碑：M8 作者体验与长期维护收口  
 > 优先级：P0  
 > 正式分支：`work/m8-04-author-experience-language`
@@ -239,3 +239,12 @@ M8-02
 14. 完整作者流程测试通过。
 15. 功能目录、追踪矩阵、任务状态、代码和验证记录一致。
 16. 最终验证记录绑定实际受检提交并通过主分支验证。
+
+## 最终关闭
+
+- 受检产品 Head：`97a25d6e7f29eee136abc4809aae270d18fb1c47`
+- 受检 PR Head：`2dc173895e7d71b5b37a8cbe80f759d74684e936`
+- main 合并提交：`b24682432123d35d6228cbc7a0667202cc9a9c7f`
+- Main Verification：运行 `30457455038`，状态成功
+- 最终验证记录：`docs/test-evidence/M8-04/`，绑定 main 合并提交
+- 任务状态：`Verified`，终态锚点为 `VERIFIED_HOLD`

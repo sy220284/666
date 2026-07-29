@@ -57,6 +57,7 @@ export const SCHEMA_GOVERNANCE_ALLOWED_PATHS = [
 ];
 
 export const GOVERNANCE_ALLOWED_PATHS = [
+  'AGENTS.md',
   '.gitignore',
   '.github/CODEOWNERS',
   '.github/governance/',
@@ -85,12 +86,15 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/tasks/TASK_INDEX.md',
   'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md',
   'docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md',
+  'docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md',
   'docs/test-evidence/M4-04/',
   'docs/test-evidence/M8-02/',
+  'docs/test-evidence/M8-04/',
   'docs/product/V1.0_TRACEABILITY_MATRIX.md',
   'README.md',
   'tests/integration/task-lifecycle.test.ts',
   'tests/unit/evidence-policy.test.ts',
+  'tests/unit/squash-provenance.test.ts',
   'tests/unit/task-control.test.ts',
   'tests/unit/task-ordering.test.ts',
   'tests/unit/testkit-fixtures-evidence.test.ts',
@@ -402,8 +406,7 @@ export function renderActiveTask(state) {
   const list = (values) => values.map((value) => `  - ${value}`).join('\n');
   let continuationRule;
   if (state.verificationHold?.finalTask === true) {
-    continuationRule =
-      'V1.0全部独立任务已经Verified；M8-02作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。';
+    continuationRule = `V1.0全部独立任务已经Verified；${state.verificationHold.taskId}作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。`;
   } else if (state.authorization.mode === 'implementation-pr') {
     continuationRule =
       '当前作者已授权实现优先的合并请求模式：每张任务必须在独立非main分支完成并提交合并请求；合并请求规则、任务治理、安全、性能、验证记录与质量门禁全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。';

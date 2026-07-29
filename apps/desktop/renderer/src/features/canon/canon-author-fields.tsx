@@ -1,4 +1,9 @@
-import { useEffect, useState, type SelectHTMLAttributes } from 'react';
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type SelectHTMLAttributes,
+} from 'react';
 
 import type { Entity } from '@worldforge/contracts';
 
@@ -61,6 +66,28 @@ export const COMMON_STATE_FIELDS = [
   readonly label: string;
   readonly valueType: AuthorValueType;
 }[];
+
+let authorValueError: string | null = null;
+const authorValueErrorListeners = new Set<() => void>();
+
+function publishAuthorValueError(message: string | null): void {
+  if (authorValueError === message) return;
+  authorValueError = message;
+  for (const listener of authorValueErrorListeners) listener();
+}
+
+function subscribeAuthorValueError(listener: () => void): () => void {
+  authorValueErrorListeners.add(listener);
+  return () => authorValueErrorListeners.delete(listener);
+}
+
+function useAuthorValueError(): string | null {
+  return useSyncExternalStore(
+    subscribeAuthorValueError,
+    () => authorValueError,
+    () => null,
+  );
+}
 
 export function useCanonAuthorReferences(
   bridge: RendererBridgeAdapter,
@@ -127,18 +154,26 @@ export function EntityNameSelect({
   readonly references: CanonAuthorReferences;
   readonly entityType?: Entity['entityType'];
 }) {
+  const valueError = useAuthorValueError();
   const entities = entityType
     ? references.entities.filter((entity) => entity.entityType === entityType)
     : references.entities;
   return (
-    <select {...props}>
-      <option value="">{emptyLabel}</option>
-      {entities.map((entity) => (
-        <option key={entity.id} value={entity.id}>
-          {entity.name}
-        </option>
-      ))}
-    </select>
+    <>
+      <select {...props}>
+        <option value="">{emptyLabel}</option>
+        {entities.map((entity) => (
+          <option key={entity.id} value={entity.id}>
+            {entity.name}
+          </option>
+        ))}
+      </select>
+      {props.name === 'entityId' && valueError ? (
+        <span className="form-error" data-author-value-error role="alert">
+          {valueError}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -178,24 +213,36 @@ export function FinalVersionSelect({
 
 export function parseAuthorValue(valueType: AuthorValueType, rawValue: string): unknown {
   const value = rawValue.trim();
-  if (valueType === 'text') return value;
-  if (valueType === 'number') {
-    const number = Number(value);
-    if (!Number.isFinite(number)) throw new TypeError('请输入有效数字。');
-    return number;
+  try {
+    let parsed: unknown;
+    if (valueType === 'text') parsed = value;
+    else if (valueType === 'number') {
+      const number = Number(value);
+      if (!Number.isFinite(number)) throw new TypeError('请输入有效数字。');
+      parsed = number;
+    } else if (valueType === 'boolean') {
+      if (value === 'true' || value === '是') parsed = true;
+      else if (value === 'false' || value === '否') parsed = false;
+      else throw new TypeError('布尔值只能填写“是”或“否”。');
+    } else if (valueType === 'list') {
+      parsed = value
+        .split(/[\n,，、]+/u)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    } else {
+      try {
+        parsed = JSON.parse(value || 'null') as unknown;
+      } catch {
+        throw new TypeError('原始JSON格式不正确，请检查括号、引号和逗号。');
+      }
+    }
+    publishAuthorValueError(null);
+    return parsed;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '内容格式不正确。';
+    publishAuthorValueError(message);
+    throw error;
   }
-  if (valueType === 'boolean') {
-    if (value === 'true' || value === '是') return true;
-    if (value === 'false' || value === '否') return false;
-    throw new TypeError('布尔值只能填写“是”或“否”。');
-  }
-  if (valueType === 'list') {
-    return value
-      .split(/[\n,，、]+/u)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  return JSON.parse(value || 'null') as unknown;
 }
 
 export function authorFactLabel(key: string): string {

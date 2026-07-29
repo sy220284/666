@@ -44,7 +44,14 @@ describe('设定结构化字段', () => {
     expect(parseAuthorValue('boolean', '是')).toBe(true);
     expect(parseAuthorValue('list', '赵二，少东家\n清河')).toEqual(['赵二', '少东家', '清河']);
     expect(parseAuthorValue('json', '{"伤势":"左肩"}')).toEqual({ 伤势: '左肩' });
+  });
+
+  it('数字、布尔值与原始JSON格式错误时返回作者可理解说明', () => {
     expect(() => parseAuthorValue('number', '十二')).toThrow('请输入有效数字');
+    expect(() => parseAuthorValue('boolean', '大概')).toThrow('布尔值只能填写“是”或“否”');
+    expect(() => parseAuthorValue('json', '{伤势:左肩}')).toThrow(
+      '原始JSON格式不正确，请检查括号、引号和逗号',
+    );
   });
 
   it('用中文显示章节和内部状态', () => {

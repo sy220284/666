@@ -44,7 +44,7 @@ describe('内容精准跳转', () => {
       {
         sourceType: 'version',
         targetId: '00000000-0000-4000-8000-000000000020',
-        anchorId: null,
+        anchorId: '00000000-0000-4000-8000-000000000022',
         chapterId: '00000000-0000-4000-8000-000000000021',
         title: '第一章定稿',
         excerpt: '清河旧事。',
@@ -57,6 +57,7 @@ describe('内容精准跳转', () => {
       selection: {
         chapterId: '00000000-0000-4000-8000-000000000021',
         versionId: '00000000-0000-4000-8000-000000000020',
+        logicalBlockId: '00000000-0000-4000-8000-000000000022',
       },
     });
 
@@ -76,6 +77,43 @@ describe('内容精准跳转', () => {
     expect(resolveAuthorNavigationTarget(entityTarget!)).toMatchObject({
       route: 'canon',
       selection: { entityId: '00000000-0000-4000-8000-000000000030' },
+    });
+  });
+
+  it('检查问题有定稿版本时进入历史版本，没有版本时进入当前稿', () => {
+    const historical = resolveAuthorNavigationTarget({
+      type: 'validation-issue',
+      projectId: 'project-1',
+      issueId: 'issue-1',
+      chapterId: '00000000-0000-4000-8000-000000000041',
+      versionId: '00000000-0000-4000-8000-000000000042',
+      logicalBlockId: '00000000-0000-4000-8000-000000000043',
+    });
+    expect(historical).toMatchObject({
+      route: 'versions',
+      selection: {
+        issueId: 'issue-1',
+        chapterId: '00000000-0000-4000-8000-000000000041',
+        versionId: '00000000-0000-4000-8000-000000000042',
+        logicalBlockId: '00000000-0000-4000-8000-000000000043',
+      },
+    });
+
+    const current = resolveAuthorNavigationTarget({
+      type: 'validation-issue',
+      projectId: 'project-1',
+      issueId: 'issue-2',
+      chapterId: '00000000-0000-4000-8000-000000000041',
+      versionId: null,
+      logicalBlockId: '00000000-0000-4000-8000-000000000044',
+    });
+    expect(current).toMatchObject({
+      route: 'writing',
+      selection: {
+        issueId: 'issue-2',
+        versionId: null,
+        logicalBlockId: '00000000-0000-4000-8000-000000000044',
+      },
     });
   });
 

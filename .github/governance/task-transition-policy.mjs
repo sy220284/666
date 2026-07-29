@@ -225,7 +225,21 @@ export function verificationHoldErrors(
       }
     }
   }
-  if (!hold?.nextTaskId || hold.nextTaskId === previous.id) {
+  if (hold?.finalTask === true) {
+    if (hold.nextTaskId !== null) {
+      errors.push('Final verification hold requires nextTaskId=null');
+    }
+    const unfinished = [...headTasks.values()].filter((task) => task.status !== 'Verified');
+    if (unfinished.length > 0) {
+      errors.push(
+        'Final verification hold requires every task Verified: ' +
+          unfinished.map((task) => task.id).join(', '),
+      );
+    }
+    if ((headState?.deferredVerification ?? []).length > 0) {
+      errors.push('Final verification hold requires an empty deferredVerification ledger');
+    }
+  } else if (!hold?.nextTaskId || hold.nextTaskId === previous.id) {
     errors.push('verificationHold.nextTaskId must identify the deferred next task');
   } else {
     if (baseTasks.get(hold.nextTaskId)?.status !== 'Planned') {
@@ -454,6 +468,39 @@ function selfTestHold() {
       verifiedTasks,
       'work/m9-90-current',
     ).includes(`${currentId} must be absent from deferredVerification`),
+  );
+  const finalVerifiedBase = {
+    ...implementedBase,
+    deferredVerification: [{ id: currentId, implementationCommit: '1234567' }],
+  };
+  const finalVerifiedBaseTasks = new Map([
+    ['M9-89', { id: 'M9-89', source: 'docs/tasks/M9/M9-89_PREVIOUS.md', status: 'Verified' }],
+    [currentId, { id: currentId, source: currentSource, status: 'Implemented' }],
+  ]);
+  const finalVerifiedTasks = new Map(finalVerifiedBaseTasks);
+  finalVerifiedTasks.set(currentId, {
+    id: currentId,
+    source: currentSource,
+    status: 'Verified',
+  });
+  const finalVerifiedState = {
+    ...verifiedState,
+    verificationHold: {
+      ...verifiedState.verificationHold,
+      verifiedTasks: ['M9-89', currentId],
+      finalTask: true,
+      nextTaskId: null,
+    },
+  };
+  assert.deepEqual(
+    verificationHoldErrors(
+      finalVerifiedBase,
+      finalVerifiedState,
+      finalVerifiedBaseTasks,
+      finalVerifiedTasks,
+      'work/m9-90-current',
+    ),
+    [],
   );
   console.log('implementation and verification hold transition self-tests passed');
 }

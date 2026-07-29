@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - scripts/m8-04-e2e-onboarding-codemod.mjs
+      - apps/desktop/renderer/src/presentation/author-error-message.ts
       - .github/workflows/m8-04-e2e-migration.yml
 
 permissions:
@@ -38,14 +39,16 @@ jobs:
           cache: pnpm
       - name: 安装锁定依赖
         run: pnpm install --frozen-lockfile --prefer-offline
-      - name: 迁移旧桌面创建流程
+      - name: 迁移旧桌面创建流程与断言
         run: node scripts/m8-04-e2e-onboarding-codemod.mjs
-      - name: 格式化桌面测试
-        run: pnpm exec prettier --write "tests/e2e/*.spec.ts"
+      - name: 格式化受影响文件
+        run: |
+          pnpm exec prettier --write "tests/e2e/*.spec.ts"
+          pnpm exec prettier --write apps/desktop/renderer/src/presentation/author-error-message.ts
       - name: 执行静态检查
         run: |
           pnpm check:language
-          pnpm exec eslint tests/e2e
+          pnpm exec eslint tests/e2e apps/desktop/renderer/src/presentation/author-error-message.ts
           pnpm typecheck
       - name: 安装桌面显示依赖
         run: |
@@ -62,6 +65,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/e2e
+          git add tests/e2e apps/desktop/renderer/src/presentation/author-error-message.ts
           git commit -m '测试(M8-04)：迁移全部桌面流程到正式入口'
           git push origin HEAD:work/m8-04-author-experience-language

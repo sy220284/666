@@ -1,6 +1,27 @@
 /* global console */
 import { readFile, writeFile } from 'node:fs/promises';
 
+const typeFixes = [
+  'apps/desktop/renderer/src/features/writing/writing-assistance.ts',
+  'tests/unit/writing-assistance.test.ts',
+];
+for (const filePath of typeFixes) {
+  let source = await readFile(filePath, 'utf8');
+  const before = `  SceneBeat,\n  StoryTodo,`;
+  const after = `  SceneBeat,\n  ValidationCatalog,`;
+  if (!source.includes(before)) throw new Error(`${filePath} 缺少待办类型导入锚点。`);
+  source = source.replace(before, after);
+  if (filePath.endsWith('writing-assistance.ts')) {
+    const anchor = `import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';\n`;
+    if (!source.includes(anchor)) throw new Error('写作辅助缺少类型别名锚点。');
+    source = source.replace(
+      anchor,
+      `${anchor}\ntype StoryTodo = ValidationCatalog['todos'][number];\n`,
+    );
+  }
+  await writeFile(filePath, source, 'utf8');
+}
+
 const workbenchPath =
   'apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx';
 let workbench = await readFile(workbenchPath, 'utf8');

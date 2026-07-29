@@ -12,7 +12,7 @@
   },
   "activeTask": {
     "id": "M8-02",
-    "status": "IN_PROGRESS",
+    "status": "VERIFIED_HOLD",
     "source": "docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md",
     "branch": "work/m8-02-performance-e2e-ai-eval",
     "startedAt": "2026-07-28",
@@ -81,17 +81,12 @@
     ]
   },
   "lastVerifiedTask": {
-    "id": "M4-03",
-    "commit": "c1f018cfc1ed19ec3e129300508e3c3ce616c526",
-    "verifiedAt": "2026-07-25T14:45:00.000Z",
-    "evidenceHead": "c1f018cfc1ed19ec3e129300508e3c3ce616c526"
+    "id": "M8-02",
+    "commit": "0363eb94da694aa359076cec79064cc41b42d6e1",
+    "verifiedAt": "2026-07-29T00:55:00.000Z",
+    "evidenceHead": "0363eb94da694aa359076cec79064cc41b42d6e1"
   },
-  "deferredVerification": [
-    {
-      "id": "M4-04",
-      "implementationCommit": "e7168bb2bbb4f02dc596d65d126dec62dd720f2c"
-    }
-  ],
+  "deferredVerification": [],
   "deferredTasks": [],
   "lastImplementedTask": {
     "id": "M4-04",
@@ -134,13 +129,32 @@
   },
   "integratedDelivery": {
     "taskId": "M4-04",
-    "finalTask": false,
-    "deliveryBoundary": "C0-C7+C1-hardening",
+    "finalTask": true,
+    "deliveryBoundary": "C0-C8+self-use-portable",
     "planningRequiredBeforeCoding": true,
     "singleFormalBranch": true,
     "singleFormalPullRequest": true,
     "requirementsAndPlanSource": "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md",
     "deferredFinalTaskId": "M8-02",
     "deferredFinalTaskSource": "docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md"
+  },
+  "verificationHold": {
+    "taskId": "M8-02",
+    "verifiedTasks": ["M4-04", "M8-02"],
+    "finalTask": true,
+    "nextTaskId": null,
+    "heldAt": "2026-07-29T00:55:00.000Z",
+    "reason": "WorldForge V1.0全部35张独立任务卡已完成Verified关闭，不再激活后续任务。",
+    "allowedPaths": [
+      ".github/governance/",
+      "scripts/",
+      "docs/tasks/",
+      "docs/test-evidence/M4-04/",
+      "docs/test-evidence/M8-02/",
+      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+      "README.md",
+      "dummy"
+    ],
+    "forbiddenPaths": []
   }
 }

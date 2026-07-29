@@ -81,7 +81,7 @@ M8-02是当前唯一活动任务，负责：
 
 V1.0仅供仓库所有者本人使用。交付形态为三平台便携包，要求原生构建、ASAR/Fuse/Hash、启动、既有项目兼容和本地数据安全。Windows代码签名、macOS签名/公证、系统安装器以及安装/升级/卸载生命周期已经移出V1.0范围，不再阻断M8-02关闭。完整边界见[`docs/product/SELF_USE_RELEASE_POLICY.md`](./docs/product/SELF_USE_RELEASE_POLICY.md)。
 
-当前C8产品代码已经进入最终自动化验收。真实Provider/Model质量、物理混合DPI与多屏、人工读屏与输入法、超大DOCX、多进程备份幂等和长期性能仍按实际资源与任务清单推进。未验证能力必须如实记录，但不得与已经取消的公开分发要求混淆。
+C8自动化验收已经完成。M4-04与M8-02均已Verified，V1.0全部35张独立任务卡关闭；未纳入自用范围的公开分发能力继续按已知限制披露。
 
 ## 核心数据关系
 
@@ -135,8 +135,8 @@ M0—M3 已完成
 → M4-01 FTS 已完成
 → M4-02 约束包 已完成
 → M4-03 Provider 已完成
-→ M4-04 C0—C7核心功能已Implemented
-→ M8-02 C8完整体验、硬化与自用便携交付关闭进行中
+→ M4-04 C0—C7核心功能已Verified
+→ M8-02 C8完整体验、硬化与自用便携交付已Verified
 ```
 
 M4-04吸收原M4-05—M6-06；M8-02吸收原M7-01—M7-03、M8-01和M8-03。M8-02采用：
@@ -168,9 +168,7 @@ AGENTS.md
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-当前活动任务：
-
-[`M8-02 C8完整体验、硬化与自用交付关闭`](./docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)
+当前任务状态：V1.0全部35张独立任务卡已Verified；[`M8-02`](./docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)保留为终态验证锚点，不再激活后续任务。
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 

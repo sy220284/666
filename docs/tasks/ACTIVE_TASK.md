@@ -5,7 +5,7 @@
 ## 当前状态
 
 ```text
-IN_PROGRESS
+VERIFIED_HOLD
 ```
 
 - 任务ID：`M8-02`
@@ -83,4 +83,4 @@ verification:
 
 ## 连续执行规则
 
-当前作者已授权实现优先的PR模式：每张任务必须在独立非main分支完成并提交Pull Request；PR Policy、Task Governance、Security、Performance、Evidence与Quality全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。
+V1.0全部独立任务已经Verified；M8-02作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。

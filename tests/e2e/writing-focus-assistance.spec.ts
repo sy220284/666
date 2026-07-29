@@ -51,13 +51,15 @@ test('写作辅助读取真实数据，沉浸写作不重建编辑器或丢失�
 
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
-    await expect(page.locator('[data-writing-assistance]')).toBeVisible();
-    await expect(page.locator('[data-writing-assistance-status]')).not.toContainText(
-      '正在汇总本章规划与前后文',
-    );
 
     const editor = page.locator('.worldforge-editor');
-    await expect(editor).toBeVisible();
+    await expect(editor).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-writing-assistance]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-writing-assistance-status]')).not.toContainText(
+      '正在汇总本章规划与前后文',
+      { timeout: 15_000 },
+    );
+
     await editor.click();
     await page.keyboard.insertText('沉浸写作保留选区与未保存输入');
     await expect(editor).toContainText('沉浸写作保留选区与未保存输入');

@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - scripts/m8-04-e2e-onboarding-codemod.mjs
+      - scripts/m8-04-e2e-codemod-boundary-fix.mjs
       - apps/desktop/renderer/src/features/home/home-page.tsx
       - apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx
       - apps/desktop/renderer/src/presentation/author-error-message.ts
@@ -41,6 +42,8 @@ jobs:
           cache: pnpm
       - name: 安装锁定依赖
         run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 修正迁移自检边界
+        run: node scripts/m8-04-e2e-codemod-boundary-fix.mjs
       - name: 迁移旧桌面创建流程与断言
         run: node scripts/m8-04-e2e-onboarding-codemod.mjs
       - name: 格式化受影响文件

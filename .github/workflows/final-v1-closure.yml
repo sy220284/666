@@ -58,7 +58,7 @@ jobs:
           pnpm typecheck
           node .github/governance/verification-hold-taskctl.mjs self-test
           node .github/governance/verification-hold-taskctl.mjs validate
-          node -e "import('./scripts/evidence-policy.mjs').then(async (m) => { await m.validateTaskEvidence('M4-04', process.cwd(), { final: true, expectedHead: process.env.GITHUB_SHA }); await m.validateTaskEvidence('M8-02', process.cwd(), { final: true, expectedHead: process.env.GITHUB_SHA }); })"
+          EVIDENCE_HEAD_SHA="$(git rev-parse HEAD)" node -e "import('./scripts/evidence-policy.mjs').then(async (m) => { const head = process.env.EVIDENCE_HEAD_SHA; await m.validateTaskEvidence('M4-04', process.cwd(), { final: true, expectedHead: head }); await m.validateTaskEvidence('M8-02', process.cwd(), { final: true, expectedHead: head }); })"
           pnpm exec vitest run tests/integration/task-lifecycle.test.ts tests/unit/task-control.test.ts tests/unit/evidence-policy.test.ts
       - name: Commit verified closure
         run: |

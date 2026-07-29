@@ -1,4 +1,4 @@
-/* global console, process */
+/* global console */
 import { readFile, writeFile } from 'node:fs/promises';
 
 const replacementsByFile = {
@@ -88,8 +88,14 @@ const replacementsByFile = {
     ['<p className="eyebrow">Planning</p>', '<p className="eyebrow">完整规划</p>'],
     ['<h1>规划工作台</h1>', '<h1>完整规划工作台</h1>'],
     ['卷章与大纲、任务书、SceneBeat及相关设定在同一上下文中协作。', '卷章与大纲、作品任务书、场景节拍及相关设定在同一上下文中协作。'],
-    ['>引导<', '>简明<'],
-    ['>专业<', '>完整<'],
+    [
+      `          >\n            引导\n          </button>`,
+      `          >\n            简明\n          </button>`,
+    ],
+    [
+      `          >\n            专业\n          </button>`,
+      `          >\n            完整\n          </button>`,
+    ],
     ['恢复后仍从Core读取已保存内容。', '恢复后仍从本地服务读取已保存内容。'],
     ['<h2>章节与SceneBeat</h2>', '<h2>章节与场景节拍</h2>'],
     ['暂无实体。可在设定工作台建立人物、地点和规则。', '暂无人物或设定。可在设定工作台建立人物、地点和规则。'],
@@ -104,7 +110,7 @@ async function replaceRequired(filePath, replacements) {
     if (!source.includes(before)) {
       throw new Error(`${filePath} 缺少预期片段：${before.slice(0, 120)}`);
     }
-    source = source.replace(before, after);
+    source = source.replaceAll(before, after);
   }
   await writeFile(filePath, source, 'utf8');
 }

@@ -1,6 +1,7 @@
 /* global console */
 import { readFile, writeFile } from 'node:fs/promises';
 
+// 仅用于本阶段的一次性确定性改写；任何旧片段不匹配都会立即失败。
 const replacementsByFile = {
   'AGENTS.md': [
     [

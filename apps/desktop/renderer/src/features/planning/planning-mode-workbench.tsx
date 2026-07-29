@@ -4,6 +4,7 @@ import type { ProjectBrief } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import { authorTerm } from '../../presentation/author-terms.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import {
   PlanningWorkbench as ProfessionalPlanningWorkbench,
@@ -21,9 +22,8 @@ interface PlanningModeWorkbenchProps {
 }
 
 /**
- * M3-01 uses one authoritative ProjectBrief model with two disclosure levels.
- * Beginner mode asks four focused questions. Professional mode opens the full
- * three-column planning surface without creating a second data model.
+ * 简明规划和完整规划共用同一份作品任务书数据。
+ * 简明规划只显示四个核心问题，完整规划展示全部大纲与场景节拍能力。
  */
 export function PlanningModeWorkbench({
   bridge,
@@ -54,8 +54,8 @@ export function PlanningModeWorkbench({
       <section data-planning-disclosure="professional">
         <div className="planning-disclosure-bar">
           <div>
-            <strong>专业规划模式</strong>
-            <span>完整大纲树、卷章、SceneBeat和全部任务书字段。</span>
+            <strong>完整规划模式</strong>
+            <span>完整大纲树、卷章、场景节拍和作品任务书全部字段。</span>
           </div>
           <button
             className="quiet-button"
@@ -63,7 +63,7 @@ export function PlanningModeWorkbench({
             type="button"
             onClick={() => setProfessional(false)}
           >
-            切换到引导模式
+            切换到简明规划
           </button>
         </div>
         <ProfessionalPlanningWorkbench
@@ -107,7 +107,7 @@ function BeginnerPlanningQuestions({
   const resource = useBridgeQuery(`beginner-brief:${projectId}`, load);
   const command = useBridgeCommand(resource.refresh);
   const [skipped, setSkipped] = useState(false);
-  const [status, setStatus] = useState('先回答四个问题即可开始写作，其他字段可以以后补充。');
+  const [status, setStatus] = useState('先回答四个问题即可开始写作，其他内容可以以后补充。');
 
   const save = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -126,7 +126,7 @@ function BeginnerPlanningQuestions({
         forbidden: brief.forbidden,
       }),
     );
-    if (result) setStatus('四项核心任务书已保存；专业字段原值保持不变。');
+    if (result) setStatus('四项核心方向已保存；完整规划中的其他内容保持不变。');
   };
 
   return (
@@ -134,13 +134,15 @@ function BeginnerPlanningQuestions({
       className="beginner-planning-workbench"
       data-planning-dialog
       data-planning-disclosure="beginner"
-      aria-label="引导式规划"
+      aria-label="简明规划"
     >
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">Planning · Beginner</p>
+          <p className="eyebrow">简明规划</p>
           <h1>用四个问题建立作品方向</h1>
-          <p>引导模式只减少当前显示字段，ProjectBrief仍是同一份Core权威数据。</p>
+          <p>
+            简明规划只减少当前显示内容，仍然读取和保存同一份{authorTerm('projectBrief')}。
+          </p>
         </div>
         <div className="feature-heading__actions">
           <button
@@ -159,17 +161,17 @@ function BeginnerPlanningQuestions({
 
       <p className="feature-status" data-planning-status role="status">
         {resource.error
-          ? `任务书读取失败 · ${resource.error.code}`
+          ? '作品任务书读取失败，请重试。'
           : resource.state === 'cancelled'
-            ? '任务书读取已取消。'
+            ? '作品任务书读取已取消。'
             : command.error
-              ? `任务书保存失败 · ${command.error.code}`
+              ? '作品任务书保存失败，已有内容保持不变。'
               : status}
       </p>
 
       {skipped ? (
         <section className="feature-card beginner-planning-skip" data-brief-skipped>
-          <h2>已暂时跳过任务书</h2>
+          <h2>已暂时跳过作品任务书</h2>
           <p>可以直接进入写作；已有内容没有被清空。</p>
           <button type="button" data-restore-brief onClick={() => setSkipped(false)}>
             继续回答
@@ -201,8 +203,8 @@ function BeginnerBriefForm({
   readonly onSave: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   readonly onSkip: () => void;
 }) {
-  if (loading) return <p>正在读取任务书…</p>;
-  if (!brief) return <p>任务书暂不可用。</p>;
+  if (loading) return <p>正在读取作品任务书…</p>;
+  if (!brief) return <p>作品任务书暂不可用。</p>;
 
   return (
     <form

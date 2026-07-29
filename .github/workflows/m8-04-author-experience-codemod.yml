@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - scripts/m8-04-author-experience-codemod.mjs
+      - scripts/m8-04-task-language-codemod.mjs
       - .github/workflows/m8-04-author-experience-codemod.yml
 
 permissions:
@@ -36,16 +37,22 @@ jobs:
           cache: pnpm
       - name: 安装锁定依赖
         run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 统一任务状态生成语言
+        run: node scripts/m8-04-task-language-codemod.mjs
       - name: 执行作者体验确定性改写
         run: node scripts/m8-04-author-experience-codemod.mjs
       - name: 格式化受影响文件
         run: >-
           pnpm exec prettier --write
           AGENTS.md
+          scripts/task-control-lib.mjs
+          docs/tasks/ACTIVE_TASK.md
           apps/desktop/renderer/src/features/home/home-page.tsx
           apps/desktop/renderer/src/features/settings/settings-page.tsx
           apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx
           docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
+      - name: 验证活动任务镜像
+        run: pnpm task:validate
       - name: 验证正式中文名称
         run: pnpm check:language
       - name: 准备测试依赖
@@ -65,9 +72,11 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add AGENTS.md \
+            scripts/task-control-lib.mjs \
+            docs/tasks/ACTIVE_TASK.md \
             apps/desktop/renderer/src/features/home/home-page.tsx \
             apps/desktop/renderer/src/features/settings/settings-page.tsx \
             apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx \
             docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
-          git commit -m '体验(M8-04)：统一首页设置与规划正式中文名称'
+          git commit -m '体验(M8-04)：统一首页设置规划与任务语言'
           git push origin HEAD:work/m8-04-author-experience-language

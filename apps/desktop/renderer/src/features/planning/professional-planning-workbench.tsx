@@ -1046,11 +1046,7 @@ function BriefEditor({
           >
             保存任务书
           </button>
-          {command.error ? (
-            <p className="form-error">
-              {command.error.message} · {command.error.code}
-            </p>
-          ) : null}
+          {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
         </form>
       ) : null}
     </section>
@@ -1288,11 +1284,7 @@ function PlotNodeDialog({
         >
           保存
         </button>
-        {command.error ? (
-          <p className="form-error">
-            {command.error.message} · {command.error.code}
-          </p>
-        ) : null}
+        {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
       </form>
     </dialog>
   );
@@ -1735,11 +1727,7 @@ function SceneBeatDialog({
         >
           保存
         </button>
-        {command.error ? (
-          <p className="form-error">
-            {command.error.message} · {command.error.code}
-          </p>
-        ) : null}
+        {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
       </form>
     </dialog>
   );

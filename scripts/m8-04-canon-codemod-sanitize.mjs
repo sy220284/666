@@ -23,6 +23,21 @@ source = source.replace(
 }`,
 );
 
+const factMarker = source.indexOf('{fact.factKey}');
+const factBlockStart = source.lastIndexOf('replaceRequired(', factMarker);
+const factBlockEnd = source.indexOf('\n);', factMarker);
+if (factMarker < 0 || factBlockStart < 0 || factBlockEnd < 0) {
+  throw new Error('缺少待拆分的事实显示改写块。');
+}
+source = `${source.slice(0, factBlockStart)}replaceRequired(
+  \`<strong>{fact.factKey}</strong>\`,
+  \`<strong>{authorFactLabel(fact.factKey)}</strong>\`,
+);
+replaceRequired(
+  \`{fact.status} · {JSON.stringify(fact.value)}\`,
+  \`{recordStatusLabel(fact.status)} · {authorJsonValue(fact.value)}\`,
+);${source.slice(factBlockEnd + 3)}`;
+
 const factValueOptions = String.raw`<option value="list">多项内容</option>\n              </select>`;
 if (!source.includes(factValueOptions)) throw new Error('事实内容形式缺少选项锚点。');
 source = source.replace(
@@ -38,4 +53,4 @@ source = source.replace(
 );
 
 await writeFile(filePath, source, 'utf8');
-console.log('设定表单改写规则已收窄，并补齐有效的高级JSON入口。');
+console.log('设定表单改写规则已收窄，事实显示已拆分，并补齐高级JSON入口。');

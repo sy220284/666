@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import {
   CanonWorkbench as CanonCoreWorkbench,
   type CanonSection,
@@ -17,6 +18,7 @@ interface CanonWorkbenchProps {
   readonly projectName: string;
   readonly readOnly: boolean;
   readonly section: CanonSection;
+  readonly selectedEntityId?: string | null;
   readonly onSectionChange: (section: CanonSection) => void;
 }
 
@@ -36,14 +38,14 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
     <section className="canon-complete-workbench">
       {health.error ? (
         <div className="safety-inline is-error" data-canon-read-error role="alert">
-          实体与Canon读取失败 · {health.error.code} · {health.error.message}
+          {authorErrorSummary(health.error)}
           <button type="button" onClick={() => void health.refresh()}>
             重试
           </button>
         </div>
       ) : health.state === 'cancelled' ? (
         <div className="safety-inline" role="status">
-          实体与Canon读取已取消。
+          人物与设定读取已取消。
         </div>
       ) : null}
 

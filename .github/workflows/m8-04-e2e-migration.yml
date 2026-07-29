@@ -1,0 +1,67 @@
+name: M8-04 全部桌面流程迁移验证
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - scripts/m8-04-e2e-onboarding-codemod.mjs
+      - .github/workflows/m8-04-e2e-migration.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-04-e2e-migration-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  migrate-and-verify:
+    if: github.head_ref == 'work/m8-04-author-experience-language'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: 检出正式任务分支
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: 安装pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 11.13.0
+      - name: 安装Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: 安装锁定依赖
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 迁移旧桌面创建流程
+        run: node scripts/m8-04-e2e-onboarding-codemod.mjs
+      - name: 格式化桌面测试
+        run: pnpm exec prettier --write "tests/e2e/*.spec.ts"
+      - name: 执行静态检查
+        run: |
+          pnpm check:language
+          pnpm exec eslint tests/e2e
+          pnpm typecheck
+      - name: 安装桌面显示依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
+      - name: 验证全部桌面流程
+        run: pnpm test:e2e
+      - name: 提交桌面测试迁移
+        run: |
+          if git diff --quiet; then
+            echo '没有需要提交的桌面测试变更。'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/e2e
+          git commit -m '测试(M8-04)：迁移全部桌面流程到正式入口'
+          git push origin HEAD:work/m8-04-author-experience-language

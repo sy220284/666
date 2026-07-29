@@ -145,8 +145,10 @@ test('preserves the newer Draft when Candidate base state is stale', async () =>
     expect(changed).toEqual({ revision: fixture.revision + 1, text: '人工更新后的正文' });
 
     await page.locator('[data-apply-candidate]').click();
-    await expect(page.locator('[data-candidate-apply-status]')).toContainText('Draft未改变');
-    await expect(page.locator('[data-candidate-conflict-list]')).toContainText('revision');
+    await expect(page.locator('[data-candidate-apply-status]')).toContainText('当前稿未改变');
+    await expect(page.locator('[data-candidate-conflict-list]')).toContainText(
+      '建议稿生成后当前稿已经变化',
+    );
 
     const current = await page.evaluate(async (input) => {
       const bridge = (globalThis as unknown as { readonly worldforge: CandidateE2EBridge })

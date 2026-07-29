@@ -153,9 +153,7 @@ test('previews, restructures, imports and atomically exports selected Versions',
     expect(exportedText).toContain('# 第二章');
 
     await page.locator('[data-export-versions]').click();
-    await expect(page.locator('[data-text-io-status]')).toContainText(
-      '导出失败 · EXPORT_TARGET_EXISTS_002',
-    );
+    await expect(page.locator('[data-text-io-status]')).toContainText('导出失败：操作未完成');
 
     const committed = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })

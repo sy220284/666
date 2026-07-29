@@ -58,7 +58,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     // Prepare the two-block Draft through the actual editor so Renderer and Core share one state path.
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从 DraftBlock 重建。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文块重建。');
     const editor = page.locator('[data-draft-content]');
     const blocks = editor.locator(':scope > [data-block-type]');
     await expect(blocks).toHaveCount(1);
@@ -68,7 +68,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     await page.keyboard.type('拆分后进入新章节。');
     await expect(blocks).toHaveCount(2);
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · Revision \d+$/u);
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
 
     const prepared = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })

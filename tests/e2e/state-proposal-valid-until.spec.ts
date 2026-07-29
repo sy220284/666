@@ -180,12 +180,13 @@ test('preserves a finite EntityState interval across the real Electron boundary'
 
     await page.locator('[data-open-state-proposals]').click();
     await expect(page.locator('[data-state-proposal-dialog]')).toBeVisible();
+    await page.locator('[data-refresh-state-proposals]').click();
     await page.locator('[data-state-proposal-chapter]').selectOption(seeded.chapter1Id);
     await page.locator('[data-refresh-state-proposals]').click();
     const proposal = page.locator(`[data-state-proposal="${seeded.proposalId}"]`);
-    await expect(proposal).toContainText('pending');
+    await expect(proposal).toContainText('等待处理');
     await proposal.locator(`[data-accept-state-proposal="${seeded.proposalId}"]`).click();
-    await expect(proposal).toContainText('accepted');
+    await expect(proposal).toContainText('已采用');
 
     const result = await page.evaluate(async ({ projectId, chapter1Id, chapter2Id }) => {
       const bridge = (

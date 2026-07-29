@@ -183,7 +183,7 @@ test('writes and displays continuity data through the real Electron process boun
       '时间线事件（1）',
       '知情状态（1）',
     ]);
-    await expect(page.locator('[data-continuity-results]')).toContainText('health');
+    await expect(page.locator('[data-continuity-results]')).toContainText('身体状态');
     await expect(page.locator('[data-continuity-results]')).toContainText('南城目击');
     await expect(page.locator('[data-continuity-results]')).toContainText('traitor-identity');
   } finally {

@@ -665,7 +665,7 @@ export function WritingWorkbench({
       refreshStatistics();
       refreshLockState();
       setEditorReady(true);
-      setStatus(readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从 DraftBlock 重建。');
+      setStatus(readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从正文块重建。');
     },
     [
       destroyEditor,
@@ -1667,7 +1667,7 @@ function CandidatePanel({
       setStatus(
         canUndo
           ? `可整体撤销 · 基础保存序号 ${outcome.data.candidate.baseDraftRevision}`
-          : `已准备采用 · 基础保存序号 ${outcome.data.candidate.baseDraftRevision} · ${outcome.data.execution.strategy}`,
+          : `已准备采用 · 基础保存序号 ${outcome.data.candidate.baseDraftRevision}`,
       );
     },
     [bridge, chapter.id, loadUndo, project.projectId],
@@ -2865,13 +2865,35 @@ function CandidatePanel({
         <ul className="candidate-conflicts" data-candidate-conflict-list aria-label="候选内容冲突">
           {conflicts.map((conflict, index) => (
             <li key={`${conflict.kind}-${index}`}>
-              {conflict.kind} · {conflict.message}
+              {candidateConflictLabel(conflict.kind)}
+              <details>
+                <summary>技术详情</summary>
+                <p>
+                  {conflict.kind} · {conflict.message}
+                </p>
+              </details>
             </li>
           ))}
         </ul>
       ) : null}
     </section>
   );
+}
+
+function candidateConflictLabel(kind: CandidateConflictItem['kind']): string {
+  const labels: Readonly<Record<CandidateConflictItem['kind'], string>> = {
+    project: '建议稿不属于当前作品',
+    'candidate-status': '建议稿已经处理',
+    'partial-restricted': '未完成建议稿不能替换整章',
+    revision: '建议稿生成后当前稿已经变化',
+    hash: '正文内容与生成时不一致',
+    locked: '建议稿涉及已锁定的正文',
+    'missing-block': '建议稿引用的正文位置已经不存在',
+    structure: '建议稿与当前正文结构不一致',
+    'duplicate-apply': '建议稿已经采用过',
+    'undo-stale': '采用后当前稿已经变化，无法整体撤销',
+  };
+  return labels[kind];
 }
 
 function toggleSet(source: Set<string>, value: string, included: boolean): Set<string> {

@@ -131,7 +131,7 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     await expect(page.locator('[data-candidate-preview-dialog]')).toBeVisible();
     await expect(page.locator('[data-candidate-preview-select]')).toHaveCount(1);
     await expect(page.locator('[data-candidate-preview-status]')).toContainText(
-      `基础 Revision ${fixture.revision}`,
+      `基础保存序号 ${fixture.revision}`,
     );
     await expect(page.locator('[data-candidate-preview-warning]')).toContainText('不完整建议稿');
     await expect(page.locator('[data-candidate-preview-current]')).toContainText(
@@ -145,7 +145,7 @@ test('previews a Fixture Candidate through the real desktop chain without writin
     page.once('dialog', (dialog) => dialog.accept());
     await page.locator('[data-discard-candidate]').click();
     await expect(page.locator('[data-candidate-preview-status]')).toContainText(
-      '候选已丢弃，Draft 未改变',
+      '建议稿已丢弃，当前稿未改变',
     );
     await expect(page.locator('[data-discard-candidate]')).toBeDisabled();
     await captureAcceptanceScreenshot(page, 'M2-02', 'candidate-discarded-draft-unchanged.png');

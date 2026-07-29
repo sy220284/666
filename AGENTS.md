@@ -336,7 +336,7 @@ docs/test-evidence/<TASK-ID>/
 最终 Evidence
 ├─ manifest.commit 绑定 Squash 后可达的 mainCommit
 ├─ 记录 implementationHead 与 mainCommit
-└─ 通过 Tree SHA 一致性证明 mainCommit 内容等同受检 PR Head
+└─ 默认通过 Tree SHA 一致性证明内容等同；若合并前 main 已并入独立提交，则记录双方基线、稳定 Patch ID 与完整 Diff SHA-256，证明 Squash 只应用了受检 PR 变更
 ```
 
 默认不生成截图。只有在定位真实 UI 故障且文字、日志或自动化结果不足时，才可按风险保留截图。
@@ -357,7 +357,7 @@ docs/test-evidence/<TASK-ID>/
 
 - 最终四文件 Evidence 完整；
 - Evidence 绑定可达的 `mainCommit`；
-- `implementationHead` 与 `mainCommit` 的 Tree SHA 一致；
+- `implementationHead` 与 `mainCommit` 的 Tree SHA 一致，或在合并前 main 已推进时，受检分支相对共同基线的稳定 Patch ID 与完整 Diff SHA-256，均与 `mainCommit` 相对唯一父提交的对应值一致；
 - 任务或里程碑最终验收完成；
 - `TASK_INDEX`、任务卡、追踪状态和 ACTIVE_TASK 一致。
 

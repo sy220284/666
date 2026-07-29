@@ -1,16 +1,16 @@
 # WorldForge 任务索引
 
-> 状态：Active  
+> 状态：Verified Hold  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02与M8-04，共36张独立任务卡。  
-> 当前任务：M8-04作者体验与开发语言统一改造已进入实现完成保持；此前35张V1.0任务卡均已Verified。
+> 当前终态：M8-04作者体验与开发语言统一改造已Verified；36张独立任务卡全部完成验证。
 
 ## 1. 唯一执行入口
 
 1. [`ACTIVE_TASK.json`](ACTIVE_TASK.json)：机器可读的唯一活动任务状态与授权。
 2. [`ACTIVE_TASK.md`](ACTIVE_TASK.md)：由JSON生成的人类可读镜像。
 3. 前置实现任务卡：[`M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)。
-4. 当前活动任务卡：[`M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)。
+4. 当前终态任务卡：[`M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)。
 5. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
@@ -31,7 +31,7 @@ Blocked / Deferred / Removed
 | M2            | 编辑安全与版本核心             |          4 | Verified                                     |
 | M3            | 规划、设定与连续性             |         10 | Verified                                     |
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
-| M8            | 交付关闭、作者体验与长期维护   |          2 | M8-02 Verified；M8-04 Implemented            |
+| M8            | 交付关闭、作者体验与长期维护   |          2 | M8-02与M8-04均Verified                       |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
@@ -42,7 +42,7 @@ M0—M3 已完成产品底座
 → M4-03 AI连接
 → M4-04 V1核心功能交付（Verified）
 → M8-02 完整体验、硬化与自用交付关闭（Verified）
-→ M8-04 作者体验与开发语言统一改造（Implemented）
+→ M8-04 作者体验与开发语言统一改造（Verified）
 ```
 
 ## M0 工程、安全与运行底座
@@ -52,7 +52,7 @@ M0—M3 已完成产品底座
 | M0-01 | [`Monorepo、质量工具与CI`](M0/M0-01_MONOREPO_QUALITY_CI.md)               | 无                         | Verified |
 | M0-02 | [`Electron安全壳与Core生命周期`](M0/M0-02_ELECTRON_CORE_LIFECYCLE.md)     | M0-01                      | Verified |
 | M0-03 | [`SQLite、Migration与单写队列`](M0/M0-03_SQLITE_MIGRATION_WRITE_QUEUE.md) | M0-01                      | Verified |
-| M0-04 | [`IPC、错误码、事件与任务协议`](M0/M0-04_IPC_EVENT_TASK_PROTOCOL.md)      | M0-02、M0-03               | Verified |
+| M0-04 | [`IPC、错误码、事件与任务协议`](M0/M0-04_IPC_EVENT_TASK_PROTOCOL.md)       | M0-02、M0-03               | Verified |
 | M0-05 | [`测试基建、Fixture与故障注入`](M0/M0-05_TESTKIT_FAULT_INJECTION.md)      | M0-01、M0-02、M0-03、M0-04 | Verified |
 | M0-06 | [`显示、DPI与窗口恢复Spike`](M0/M0-06_DISPLAY_WINDOW_SPIKE.md)            | M0-02、M0-03、M0-05        | Verified |
 | M0-07 | [`AI输出协议与中文Diff Spike`](M0/M0-07_AI_DIFF_SPIKE.md)                 | M0-03、M0-04、M0-05        | Verified |
@@ -106,10 +106,10 @@ M0—M3 已完成产品底座
 
 ## M8 交付与体验任务
 
-| ID    | 任务卡                                                                 | 依赖  | 状态        |
-| ----- | ---------------------------------------------------------------------- | ----- | ----------- |
-| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)  | M4-04 | Verified    |
-| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md) | M8-02 | Implemented |
+| ID    | 任务卡                                                                 | 依赖  | 状态     |
+| ----- | ---------------------------------------------------------------------- | ----- | -------- |
+| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)  | M4-04 | Verified |
+| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md) | M8-02 | Verified |
 
 ## 3. 被吸收的需求来源
 
@@ -118,7 +118,7 @@ M0—M3 已完成产品底座
 | 原ID  | 来源文件                                                                               | 原阶段 | 独立执行状态        | 统一归属 |
 | ----- | -------------------------------------------------------------------------------------- | ------ | ------------------- | -------- |
 | M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md)         | M4     | Removed（absorbed） | M4-04    |
-| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)           | M5     | Removed（absorbed） | M4-04    |
+| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)            | M5     | Removed（absorbed） | M4-04    |
 | M5-01 | [`T0多候选骨架`](M5/M5-01_T0_SKELETON.md)                                              | M5     | Removed（absorbed） | M4-04    |
 | M5-02 | [`T1章节扩写`](M5/M5-02_T1_CHAPTER_GENERATION.md)                                      | M5     | Removed（absorbed） | M4-04    |
 | M5-03 | [`快速改写与结构性改写`](M5/M5-03_REWRITE_WORKFLOWS.md)                                | M5     | Removed（absorbed） | M4-04    |

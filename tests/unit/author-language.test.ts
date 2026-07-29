@@ -13,6 +13,8 @@ import {
   authorEntityTypeLabel,
   authorForeshadowingStatusLabel,
   authorJsonValue,
+  authorPlotNodeTypeLabel,
+  authorSceneBeatTypeLabel,
 } from '../../apps/desktop/renderer/src/presentation/author-value-format.js';
 
 describe('正式中文名称', () => {
@@ -51,13 +53,15 @@ describe('作者状态名称', () => {
 });
 
 describe('设定与规划值格式化', () => {
-  it('将设定类型和伏笔状态转换为正式中文名称', () => {
+  it('将设定类型、规划类型和状态转换为正式中文名称', () => {
     expect(authorEntityTypeLabel('character')).toBe('人物');
     expect(authorEntityTypeLabel('rule')).toBe('世界规则');
     expect(authorEntityTypeLabel('unknown')).toBe('其他设定');
     expect(authorForeshadowingStatusLabel('partially_revealed')).toBe('已部分揭示');
     expect(authorCharacterArcStatusLabel('active')).toBe('进行中');
     expect(authorAttentionLabel('overdue')).toBe('已经逾期');
+    expect(authorSceneBeatTypeLabel('turn')).toBe('关键转折');
+    expect(authorPlotNodeTypeLabel('arc')).toBe('故事线');
   });
 
   it('普通视图不直接显示原始结构化数据', () => {

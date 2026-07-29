@@ -52,6 +52,10 @@ interface WritingWorkbenchProps {
   readonly project: ProjectWorkspaceSummary;
   readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;
+  readonly navigationChapterId?: string | null;
+  readonly navigationLogicalBlockId?: string | null;
+  readonly navigationVersionId?: string | null;
+  readonly navigationQuery?: string | null;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onStatus: (message: string) => void;
   readonly statusNotice?: string | null;
@@ -281,6 +285,10 @@ export function WritingWorkbench({
   project,
   initialContinuation,
   panel,
+  navigationChapterId,
+  navigationLogicalBlockId,
+  navigationVersionId,
+  navigationQuery,
   onPanelChange,
   onStatus,
   statusNotice,
@@ -295,6 +303,7 @@ export function WritingWorkbench({
   const composing = useRef(false);
   const synchronizing = useRef(false);
   const initialChapterRequested = useRef(false);
+  const handledNavigationKey = useRef<string | null>(null);
   const continuationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const continuationScrollCleanup = useRef<(() => void) | null>(null);
   const [continuationPersistence] = useState(
@@ -326,6 +335,24 @@ export function WritingWorkbench({
     setStatus(statusNotice);
     onStatusNoticeConsumed?.();
   }, [editorReady, onStatusNoticeConsumed, panel, setStatus, statusNotice]);
+
+  useEffect(() => {
+    if (panel !== 'editor' || !editorReady || !navigationLogicalBlockId) return;
+    const target = Array.from(
+      editorHost.current?.querySelectorAll<HTMLElement>('[data-logical-block-id]') ?? [],
+    ).find((element) => element.dataset.logicalBlockId === navigationLogicalBlockId);
+    if (!target) {
+      setStatus('目标段落已经变化，系统没有跳转到可能错误的位置。请在当前章节重新搜索。');
+      return;
+    }
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    target.dataset.navigationHighlight = 'true';
+    if (navigationQuery) setFindText(navigationQuery);
+    const timer = window.setTimeout(() => {
+      delete target.dataset.navigationHighlight;
+    }, 2_400);
+    return () => window.clearTimeout(timer);
+  }, [editorReady, navigationLogicalBlockId, navigationQuery, panel, setStatus]);
 
   const refreshStatistics = useCallback((): void => {
     const instance = editor.current;
@@ -453,7 +480,7 @@ export function WritingWorkbench({
       refreshStatistics();
       await saveContinuation();
       setStatus(
-        `已保存 · Revision ${result.data.revision}${JSON.stringify(instance.getJSON()) === signature ? '' : ' · 编辑器仍有新输入'}`,
+        `已保存 · 保存序号 ${result.data.revision}${JSON.stringify(instance.getJSON()) === signature ? '' : ' · 编辑器仍有新输入'}`,
       );
       return true;
     } catch {
@@ -475,7 +502,7 @@ export function WritingWorkbench({
     const continuationSaved = result ? await saveContinuation() : false;
     setStatus(
       result && continuationSaved
-        ? `已保存 · Revision ${activeDraft.current?.revision ?? 0}`
+        ? `已保存 · 保存序号 ${activeDraft.current?.revision ?? 0}`
         : '保存失败；窗口内容仍保留。',
       !result || !continuationSaved,
     );
@@ -544,7 +571,7 @@ export function WritingWorkbench({
       setChapter(nextChapter);
       const host = editorHost.current;
       if (!host) {
-        setStatus('Draft已更新；返回正文后重建编辑器。');
+        setStatus('当前稿已更新；返回正文后重建编辑器。');
         return;
       }
       const remembered = persistedSelectionByChapter.get(
@@ -591,7 +618,7 @@ export function WritingWorkbench({
           if (state === 'waiting') setStatus('等待自动保存…');
           else if (state === 'saving') setStatus('正在自动保存…');
           else if (state === 'saved')
-            setStatus(`自动保存完成 · Revision ${activeDraft.current?.revision ?? 0}`);
+            setStatus(`自动保存完成 · 保存序号 ${activeDraft.current?.revision ?? 0}`);
           else if (state === 'failed') setStatus('自动保存失败；窗口内容仍保留。', true);
           else if (state === 'paused') setStatus('输入法组合中；自动保存已暂停。');
         },
@@ -659,7 +686,7 @@ export function WritingWorkbench({
       }
       setChapter(nextChapter);
       activeChapter.current = nextChapter;
-      setStatus('正在从项目数据库读取DraftBlock…');
+      setStatus('正在从作品数据库读取正文…');
       const outcome = await bridge.draft.open(
         { projectId: project.projectId, chapterId: nextChapter.id },
         { mode: 'replace' },
@@ -688,11 +715,22 @@ export function WritingWorkbench({
     void bridge.planning.listStructure(project.projectId, { mode: 'replace' }).then((outcome) => {
       if (!active || outcome.state !== 'success') return;
       const chapters = outcome.data.volumes.flatMap((volume) => volume.chapters);
+      const requestedChapter = navigationChapterId
+        ? chapters.find((candidate) => candidate.id === navigationChapterId)
+        : undefined;
       const continuedChapter =
         initialContinuation?.status === 'ready'
           ? chapters.find((candidate) => candidate.id === initialContinuation.chapterId)
           : undefined;
-      const nextChapter = continuedChapter ?? chapters[0];
+      const nextChapter = requestedChapter ?? continuedChapter ?? chapters[0];
+      if (requestedChapter) {
+        handledNavigationKey.current = navigationKey(
+          panel,
+          navigationChapterId,
+          navigationLogicalBlockId,
+          navigationVersionId,
+        );
+      }
       if (nextChapter) {
         if (initialContinuation?.status === 'stale') {
           onStatus('上次写作位置已经变化，已安全回到首个可用章节。');
@@ -703,7 +741,54 @@ export function WritingWorkbench({
     return () => {
       active = false;
     };
-  }, [bridge, initialContinuation, onStatus, openChapter, project.projectId]);
+  }, [
+    bridge,
+    initialContinuation,
+    navigationChapterId,
+    navigationLogicalBlockId,
+    navigationVersionId,
+    onStatus,
+    openChapter,
+    panel,
+    project.projectId,
+  ]);
+
+  useEffect(() => {
+    if (!navigationChapterId || !initialChapterRequested.current) return;
+    const key = navigationKey(
+      panel,
+      navigationChapterId,
+      navigationLogicalBlockId,
+      navigationVersionId,
+    );
+    if (handledNavigationKey.current === key) return;
+    handledNavigationKey.current = key;
+    if (activeChapter.current?.id === navigationChapterId) return;
+    let active = true;
+    void bridge.planning.listStructure(project.projectId, { mode: 'replace' }).then((outcome) => {
+      if (!active || outcome.state !== 'success') return;
+      const requested = outcome.data.volumes
+        .flatMap((volume) => volume.chapters)
+        .find((candidate) => candidate.id === navigationChapterId);
+      if (!requested) {
+        setStatus('目标章节已经变化，系统没有跳转到可能错误的位置。');
+        return;
+      }
+      void openChapter(requested);
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    bridge,
+    navigationChapterId,
+    navigationLogicalBlockId,
+    navigationVersionId,
+    openChapter,
+    panel,
+    project.projectId,
+    setStatus,
+  ]);
 
   const replaceDraft = useCallback(
     (next: DraftDocument, message: string): void => {
@@ -839,7 +924,7 @@ export function WritingWorkbench({
 
   const manualSave = useCallback(async (): Promise<void> => {
     if (!(await flush())) return;
-    setStatus(`已手动保存 · Revision ${activeDraft.current?.revision ?? 0}`);
+    setStatus(`已手动保存 · 保存序号 ${activeDraft.current?.revision ?? 0}`);
   }, [flush, setStatus]);
 
   useEffect(() => {
@@ -1143,6 +1228,7 @@ export function WritingWorkbench({
               chapter={chapter}
               draft={draft}
               project={project}
+              navigationVersionId={navigationVersionId ?? null}
               flush={flush}
               onClose={() => onPanelChange('editor')}
               onDraftReplace={replaceDraft}
@@ -1191,6 +1277,7 @@ function VersionPanel({
   chapter,
   draft,
   project,
+  navigationVersionId,
   flush,
   onClose,
   onDraftReplace,
@@ -1199,6 +1286,7 @@ function VersionPanel({
   readonly chapter: Chapter;
   readonly draft: DraftDocument;
   readonly project: ProjectWorkspaceSummary;
+  readonly navigationVersionId?: string | null;
   readonly flush: () => Promise<boolean>;
   readonly onClose: () => void;
   readonly onDraftReplace: (draft: DraftDocument, message: string) => void;
@@ -1206,7 +1294,7 @@ function VersionPanel({
   const readOnly = project.databaseMode !== 'read-write';
   const [versions, setVersions] = useState<readonly VersionSummary[]>([]);
   const [selected, setSelected] = useState<VersionDocument | null>(null);
-  const [status, setStatus] = useState('Version只读不可变；恢复会创建新Draft。');
+  const [status, setStatus] = useState('历史版本只读不可变；恢复会创建新的当前稿。');
   const [pending, setPending] = useState(false);
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -1217,11 +1305,32 @@ function VersionPanel({
 
   useEffect(() => void refresh(), [refresh]);
 
+  useEffect(() => {
+    if (!navigationVersionId) return;
+    void bridge.version
+      .get(
+        {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          versionId: navigationVersionId,
+        },
+        { mode: 'replace' },
+      )
+      .then((outcome) => {
+        if (outcome.state === 'success') {
+          setSelected(outcome.data);
+          setStatus(`正在比较：${outcome.data.title}`);
+        } else if (outcome.state === 'failure') {
+          setStatus('目标历史版本已经变化，请重新搜索。');
+        }
+      });
+  }, [bridge, chapter.id, navigationVersionId, project.projectId]);
+
   const create = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     const form = event.currentTarget;
     event.preventDefault();
     if (readOnly || !(await flush())) {
-      setStatus('自动保存失败，未创建Version。');
+      setStatus('自动保存失败，未创建历史版本。');
       return;
     }
     const values = new FormData(form);
@@ -1246,7 +1355,7 @@ function VersionPanel({
       return;
     }
     form.reset();
-    setStatus(`Version“${outcome.data.title}”已创建，内容不可修改。`);
+    setStatus(`历史版本“${outcome.data.title}”已创建，内容不可修改。`);
     await refresh();
   };
 
@@ -1282,8 +1391,8 @@ function VersionPanel({
       versionId,
     });
     if (outcome.state === 'success') {
-      onDraftReplace(outcome.data, '已从只读版本恢复为新草稿。');
-      setStatus('恢复成功；原Version与原Draft记录保持不变。');
+      onDraftReplace(outcome.data, '已从只读历史版本恢复为新当前稿。');
+      setStatus('恢复成功；原历史版本与原当前稿记录保持不变。');
     } else if (outcome.state === 'failure') setStatus(`恢复失败 · ${outcome.error.code}`);
   };
 
@@ -1291,8 +1400,8 @@ function VersionPanel({
     <section className="version-workbench" data-version-dialog>
       <header className="feature-card__heading">
         <div>
-          <h2>Version历史与比较</h2>
-          <p>Version不可变；左侧为当前已保存Draft，右侧为选中Version。</p>
+          <h2>历史版本与比较</h2>
+          <p>历史版本不可变；左侧为当前已保存正文，右侧为选中的历史版本。</p>
         </div>
         <button data-close-versions type="button" onClick={onClose}>
           返回正文
@@ -1313,7 +1422,7 @@ function VersionPanel({
           disabled={readOnly || pending}
           type="submit"
         >
-          创建Version
+          创建历史版本
         </button>
       </form>
       <p className="feature-status" data-version-status role="status">
@@ -1322,7 +1431,7 @@ function VersionPanel({
       <div className="version-history-layout">
         <div className="version-list">
           {versions.length === 0 ? (
-            <p>还没有手动Version。</p>
+            <p>还没有手动保存的历史版本。</p>
           ) : (
             versions.map((version) => (
               <article
@@ -1334,7 +1443,7 @@ function VersionPanel({
                 <div>
                   <strong>{version.title}</strong>
                   <small>
-                    {version.wordCount}字 · Revision {version.sourceRevision}
+                    {version.wordCount}字 · 保存序号 {version.sourceRevision}
                     {version.label ? ` · ${version.label}` : ''}
                     {version.finalized ? ' · 定稿' : ''}
                   </small>
@@ -1361,7 +1470,7 @@ function VersionPanel({
                     disabled={readOnly}
                     onClick={() => void restore(version.versionId)}
                   >
-                    恢复为新Draft
+                    恢复为新当前稿
                   </button>
                   <button
                     data-version-action="export"
@@ -1382,12 +1491,12 @@ function VersionPanel({
         </div>
         <div className="version-compare-grid">
           <pre>
-            <strong>当前Draft</strong>
+            <strong>当前稿</strong>
             {'\n\n'}
             {draft.blocks.map((block) => block.text).join('\n\n')}
           </pre>
           <pre>
-            <strong>{selected?.title ?? '选择Version比较'}</strong>
+            <strong>{selected?.title ?? '选择历史版本比较'}</strong>
             {'\n\n'}
             {selected?.blocks.map((block) => block.text).join('\n\n') ?? ''}
           </pre>
@@ -1395,6 +1504,15 @@ function VersionPanel({
       </div>
     </section>
   );
+}
+
+function navigationKey(
+  panel: WritingPanel,
+  chapterId: string | null | undefined,
+  logicalBlockId: string | null | undefined,
+  versionId: string | null | undefined,
+): string {
+  return [panel, chapterId ?? '', logicalBlockId ?? '', versionId ?? ''].join(':');
 }
 
 function CandidatePanel({
@@ -1426,7 +1544,7 @@ function CandidatePanel({
   const [selectedBeats, setSelectedBeats] = useState<Set<string>>(new Set());
   const [conflicts, setConflicts] = useState<readonly CandidateConflictItem[]>([]);
   const [status, setStatus] = useState(
-    `预览只读取已持久化Draft Revision ${draft.revision}，不会写入项目数据库。`,
+    `预览只读取已保存的当前稿（保存序号 ${draft.revision}），不会写入作品数据库。`,
   );
   const [pending, setPending] = useState(false);
   const previewRequest = useRef<string | null>(null);
@@ -1455,7 +1573,7 @@ function CandidatePanel({
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
   const [selectedRun, setSelectedRun] = useState<GenerationRun | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [generationStatus, setGenerationStatus] = useState('选择Provider后可生成候选。');
+  const [generationStatus, setGenerationStatus] = useState('选择AI连接后可生成建议稿。');
   const [skeletonEndingHook, setSkeletonEndingHook] = useState('');
   const [skeletonTendency, setSkeletonTendency] = useState('');
   const [lastGenerationIntent, setLastGenerationIntent] = useState<GenerationIntent | null>(null);
@@ -1539,8 +1657,8 @@ function CandidatePanel({
       const canUndo = await loadUndo(outcome.data);
       setStatus(
         canUndo
-          ? `可整体撤销 · 基础 Revision ${outcome.data.candidate.baseDraftRevision}`
-          : `已准备采用 · 基础 Revision ${outcome.data.candidate.baseDraftRevision} · ${outcome.data.execution.strategy}`,
+          ? `可整体撤销 · 基础保存序号 ${outcome.data.candidate.baseDraftRevision}`
+          : `已准备采用 · 基础保存序号 ${outcome.data.candidate.baseDraftRevision} · ${outcome.data.execution.strategy}`,
       );
     },
     [bridge, chapter.id, loadUndo, project.projectId],
@@ -1593,7 +1711,7 @@ function CandidatePanel({
       if (!first) {
         setCandidateId('');
         setPreview(null);
-        setStatus('当前章节没有Candidate。');
+        setStatus('当前章节没有建议稿。');
         return;
       }
       setCandidateId(first.candidateId);
@@ -1720,7 +1838,7 @@ function CandidatePanel({
     if (
       !selectedDocument ||
       selectedDocument.status !== 'pending' ||
-      !window.confirm('丢弃后不能再采用，Draft不会改变。继续吗？')
+      !window.confirm('丢弃后不能再采用，当前稿不会改变。继续吗？')
     )
       return;
     const outcome = await bridge.candidate.discard({
@@ -1747,7 +1865,7 @@ function CandidatePanel({
           : current,
       );
       await refreshList();
-      setStatus('候选已丢弃，Draft 未改变。');
+      setStatus('建议稿已丢弃，当前稿未改变。');
     } else if (outcome.state === 'failure') setStatus(`丢弃失败 · ${outcome.error.code}`);
   };
 
@@ -1770,10 +1888,10 @@ function CandidatePanel({
     }
     if (outcome.data.outcome === 'conflict') {
       setConflicts(outcome.data.conflictSet.conflicts);
-      setStatus(`发现${outcome.data.conflictSet.conflicts.length}项冲突，Draft未改变。`);
+      setStatus(`发现${outcome.data.conflictSet.conflicts.length}项冲突，当前稿未改变。`);
       return;
     }
-    onDraftReplace(outcome.data.draft, `采用成功 · Revision ${outcome.data.draft.revision}`);
+    onDraftReplace(outcome.data.draft, `采用成功 · 保存序号 ${outcome.data.draft.revision}`);
     const nextPreview: CandidatePreview = {
       ...preview,
       candidate: {
@@ -1799,7 +1917,7 @@ function CandidatePanel({
     if (fresh.state !== 'success') return;
     if (!fresh.data.canUndo) {
       setConflicts(fresh.data.conflictSet?.conflicts ?? []);
-      setStatus('当前稿已变化，撤销进入冲突且未修改Draft。');
+      setStatus('当前稿已变化，撤销进入冲突且未修改正文。');
       return;
     }
     const outcome = await bridge.candidateAction.undo({
@@ -1812,11 +1930,11 @@ function CandidatePanel({
     if (outcome.state !== 'success') return;
     if (outcome.data.outcome === 'conflict') {
       setConflicts(outcome.data.conflictSet.conflicts);
-      setStatus('撤销冲突，Draft未改变。');
+      setStatus('撤销冲突，当前稿未改变。');
       return;
     }
     const restoredDraft = outcome.data.draft;
-    onDraftReplace(restoredDraft, `已撤销本次应用 · Revision ${restoredDraft.revision}`);
+    onDraftReplace(restoredDraft, `已撤销本次应用 · 保存序号 ${restoredDraft.revision}`);
     setPreview((current) => (current ? { ...current, draft: restoredDraft } : current));
     setUndoPreview(null);
     setConflicts([]);
@@ -1872,7 +1990,7 @@ function CandidatePanel({
       chapterSource === 'canonical_scene_beats' &&
       sceneBeats.length === 0
     ) {
-      setGenerationStatus('当前章节没有可用于生成的 SceneBeat。');
+      setGenerationStatus('当前章节没有可用于生成的场景节拍。');
       return;
     }
     if (
@@ -2040,7 +2158,7 @@ function CandidatePanel({
         mapping.mappingType === 'beat' &&
         mapping.units.some((unit) => !unit.keepCurrentDraft && unit.sourceBlockIds.length === 0)
       ) {
-        setGenerationStatus('所选候选没有关联到对应 SceneBeat 的正文块，请改用 Segment 融合。');
+        setGenerationStatus('所选建议稿没有关联到对应场景节拍的正文块，请改用分段融合。');
         setPending(false);
         return;
       }
@@ -2132,7 +2250,7 @@ function CandidatePanel({
     <section className="candidate-workbench" data-candidate-preview-dialog>
       <header className="feature-card__heading">
         <div>
-          <h2>AI 创作与 Candidate 工作台</h2>
+          <h2>AI创作与建议稿工作台</h2>
           <p>生成只读取已保存的权威数据；骨架与正文候选使用独立的审阅、采用规则。</p>
         </div>
       </header>
@@ -2165,7 +2283,7 @@ function CandidatePanel({
             </select>
           </label>
           <label>
-            Provider
+            AI连接
             <select
               data-generation-provider
               value={providerId}
@@ -2189,7 +2307,7 @@ function CandidatePanel({
               >
                 <option value="direct_chapter_goal">直接章节目标</option>
                 <option value="skeleton_candidate">已选骨架</option>
-                <option value="canonical_scene_beats">正式 SceneBeat</option>
+                <option value="canonical_scene_beats">正式场景节拍</option>
               </select>
             </label>
           ) : null}
@@ -2305,7 +2423,7 @@ function CandidatePanel({
               checked={acknowledgeStaleSkeleton}
               onChange={(event) => setAcknowledgeStaleSkeleton(event.target.checked)}
             />
-            我已知晓正式 SceneBeat 或基础稿已变化，仍使用此骨架生成正文
+            我已知晓正式场景节拍或基础稿已变化，仍使用此骨架生成正文
           </label>
         ) : null}
         {generationMode === 'merge' ? (
@@ -2321,7 +2439,7 @@ function CandidatePanel({
                     setMergeMappingMode(event.target.value as typeof mergeMappingMode)
                   }
                 >
-                  <option value="beat">按正式 SceneBeat</option>
+                  <option value="beat">按正式场景节拍</option>
                   <option value="segment">按候选片段</option>
                 </select>
               </label>
@@ -2509,7 +2627,7 @@ function CandidatePanel({
             <dd>{selectedRun.runId}</dd>
           </div>
           <div>
-            <dt>Provider / 模型</dt>
+            <dt>AI连接 / 模型</dt>
             <dd>
               {providers.find((provider) => provider.id === selectedRun.providerId)?.name ??
                 selectedRun.providerId}{' '}
@@ -2618,7 +2736,7 @@ function CandidatePanel({
       ) : null}
       {preview?.candidate.completeness === 'partial' ? (
         <div className="safety-inline partial-candidate-actions" data-candidate-preview-warning>
-          <span>不完整建议稿只能按块或SceneBeat采用，不能整稿替换。</span>
+          <span>不完整建议稿只能按正文块或场景节拍采用，不能整稿替换。</span>
           {preview.candidate.generationRunId ? (
             <button
               data-continue-partial-candidate

@@ -282,7 +282,8 @@ export function SearchPanel({
                   .deleteDictionary({ projectId, authority: 'author', term: entry.term })
                   .then((outcome) => {
                     if (outcome.state === 'success') setDictionary(outcome.data.entries);
-                    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+                    else if (outcome.state === 'failure')
+                      setNotice(authorErrorSummary(outcome.error));
                   })
               }
             >
@@ -316,7 +317,7 @@ function searchIndexStatusLabel(status: SearchProjectResult['indexStatus']): str
 function replacePlanStatusLabel(status: ReplacePlan['status']): string {
   if (status === 'preview') return '等待确认';
   if (status === 'applied') return '已经替换';
-  if (status === 'expired') return '预览已经过期';
+  if (status === 'stale') return '预览已经过期';
   return '已取消';
 }
 

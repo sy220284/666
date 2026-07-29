@@ -38,6 +38,10 @@ import {
   type AppDisclosureMode,
   type PrimaryNavigationId,
 } from '../shell/app-shell-model.js';
+import {
+  resolveAuthorNavigationTarget,
+  type AuthorNavigationTarget,
+} from '../shell/navigation-target.js';
 import type { HomeHealthSignal } from '../shell/home-dashboard-model.js';
 import { resolveAiReadiness } from '../runtime/ai-readiness.js';
 import { RendererStatusArbitrator } from '../runtime/status-arbitrator.js';
@@ -56,6 +60,8 @@ export interface AppShellProps {
 
 export function AppShell({ bridge }: AppShellProps) {
   const route = useRendererUiStore((state) => state.route);
+  const selection = useRendererUiStore((state) => state.selection);
+  const navigationQuery = useRendererUiStore((state) => state.filters['navigation.query'] ?? null);
   const foregroundTaskId = useRendererUiStore((state) => state.foregroundRequestKey);
   const dispatch = useRendererUiStore((state) => state.dispatch);
   const [navOpen, setNavOpen] = useState(false);
@@ -124,7 +130,7 @@ export function AppShell({ bridge }: AppShellProps) {
 
     let nextFailure: FailureView | null = null;
     if (core.state === 'success') setCoreStatus(core.data);
-    else nextFailure = failureFromOutcome('Core状态读取失败', core);
+    else nextFailure = failureFromOutcome('本地服务状态读取失败', core);
 
     if (applicationSettings.state === 'success') {
       confirmedSettings.current = applicationSettings.data.settings;
@@ -304,6 +310,31 @@ export function AppShell({ bridge }: AppShellProps) {
     [activeProject, disclosureMode, refreshWorkspace, route, transitionToRoute],
   );
 
+  const navigateToAuthorTarget = useCallback(
+    (target: AuthorNavigationTarget): void => {
+      const resolution = resolveAuthorNavigationTarget(target);
+      void (async () => {
+        if (route !== resolution.route && isWritingRoute(route) && !(await flushWriting())) {
+          setMessage('自动保存失败，已阻止离开当前写作会话。');
+          return;
+        }
+        setFailure(null);
+        setMessage(null);
+        if (target.type === 'entity') setCanonSection('entities');
+        dispatch({ type: 'select', selection: resolution.selection });
+        for (const [key, value] of Object.entries(resolution.filters)) {
+          dispatch({ type: 'set-filter', key, value });
+        }
+        dispatch({
+          type: 'navigate',
+          route: resolution.route,
+          returnLocation: { route, focusKey: null },
+        });
+      })();
+    },
+    [dispatch, flushWriting, route],
+  );
+
   const projectChanged = useCallback(
     async (
       project: ProjectWorkspaceSummary | null,
@@ -332,8 +363,8 @@ export function AppShell({ bridge }: AppShellProps) {
       signals.push({
         id: 'core-health',
         severity: 'data-risk',
-        title: 'Core需要处理',
-        message: `当前状态：${coreStatus.status}。写入保持阻断，直到Core恢复健康。`,
+        title: '本地服务需要处理',
+        message: `当前状态：${coreStatus.status}。写入保持阻断，直到本地服务恢复正常。`,
         intent: 'settings',
       });
     }
@@ -636,7 +667,7 @@ export function AppShell({ bridge }: AppShellProps) {
       return;
     }
     setPendingKey(`project.move:${projectId}`);
-    setMessage('请选择新位置；Core将复制、校验后再切换。');
+    setMessage('请选择新位置；本地服务将复制、校验后再切换。');
     const outcome = await bridge.project.move(projectId);
     setPendingKey(null);
     if (isCancelledOutcome(outcome)) {
@@ -765,11 +796,11 @@ export function AppShell({ bridge }: AppShellProps) {
     const outcome = await bridge.app.restartCore();
     setPendingKey(null);
     if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('Core重启失败', outcome));
+      setFailure(failureFromOutcome('本地服务重启失败', outcome));
       return;
     }
     setCoreStatus(outcome.data.status);
-    setMessage(`Core已进入${outcome.data.status.status}状态。`);
+    setMessage(`本地服务已进入${outcome.data.status.status}状态。`);
     await refreshWorkspace();
   };
 
@@ -798,7 +829,7 @@ export function AppShell({ bridge }: AppShellProps) {
         </button>
         <div className="react-top-bar__status" aria-live="polite">
           <span data-status={coreStatus?.status ?? 'starting'}>
-            Core · {coreStatus?.status ?? '正在连接'}
+            本地服务 · {coreStatus?.status ?? '正在连接'}
           </span>
           <span>{activeProject?.databaseMode === 'read-only' ? '只读' : '本地'}</span>
           <span>任务 {tasks.length}</span>
@@ -1103,6 +1134,7 @@ export function AppShell({ bridge }: AppShellProps) {
               projectName={activeProject.name}
               readOnly={activeProject.databaseMode === 'read-only'}
               section={canonSection}
+              selectedEntityId={selection.entityId}
               onSectionChange={setCanonSection}
             />
           ) : null}
@@ -1125,6 +1157,10 @@ export function AppShell({ bridge }: AppShellProps) {
               initialContinuation={continuation}
               panel={writingPanel}
               project={activeProject}
+              navigationChapterId={selection.chapterId}
+              navigationLogicalBlockId={selection.logicalBlockId}
+              navigationVersionId={selection.versionId}
+              navigationQuery={navigationQuery}
               onPanelChange={(panel) =>
                 void transitionToRoute(
                   panel === 'versions'
@@ -1146,11 +1182,7 @@ export function AppShell({ bridge }: AppShellProps) {
               bridge={bridge}
               projectId={activeProject.projectId}
               readOnly={activeProject.databaseMode === 'read-only'}
-              onOpenCanon={() => {
-                setCanonSection('entities');
-                void transitionToRoute('canon');
-              }}
-              onOpenWriting={() => void transitionToRoute('writing')}
+              onNavigate={navigateToAuthorTarget}
             />
           ) : null}
         </main>

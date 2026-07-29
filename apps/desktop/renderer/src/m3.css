@@ -91,6 +91,12 @@
   padding: 1rem max(1rem, calc((100% - var(--content-width, 960px)) / 2));
 }
 
+.worldforge-editor [data-navigation-highlight='true'] {
+  outline: 2px solid var(--focus-ring, currentColor);
+  outline-offset: 0.25rem;
+  border-radius: 0.25rem;
+}
+
 .worldforge-editor {
   min-height: 31rem;
   outline: none;

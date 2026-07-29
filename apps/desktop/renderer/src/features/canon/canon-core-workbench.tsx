@@ -39,6 +39,7 @@ interface CanonWorkbenchProps {
   readonly projectName: string;
   readonly readOnly: boolean;
   readonly section: CanonSection;
+  readonly selectedEntityId?: string | null;
   readonly onSectionChange: (section: CanonSection) => void;
 }
 
@@ -48,6 +49,7 @@ export function CanonWorkbench({
   projectName,
   readOnly,
   section,
+  selectedEntityId,
   onSectionChange,
 }: CanonWorkbenchProps) {
   return (
@@ -85,7 +87,12 @@ export function CanonWorkbench({
         />
       </nav>
       {section === 'entities' ? (
-        <EntityCanonPanel bridge={bridge} projectId={projectId} readOnly={readOnly} />
+        <EntityCanonPanel
+          bridge={bridge}
+          projectId={projectId}
+          readOnly={readOnly}
+          selectedEntityId={selectedEntityId ?? null}
+        />
       ) : null}
       {section === 'continuity' ? (
         <ContinuityPanel
@@ -145,10 +152,12 @@ function EntityCanonPanel({
   bridge,
   projectId,
   readOnly,
+  selectedEntityId,
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly readOnly: boolean;
+  readonly selectedEntityId?: string | null;
 }) {
   const load = useCallback(
     () => bridge.canon.list({ projectId, includeArchived: true }, { mode: 'replace' }),
@@ -162,8 +171,16 @@ function EntityCanonPanel({
   const selected = resource.data?.entities.find((entity) => entity.id === selectedId) ?? null;
 
   useEffect(() => {
+    if (
+      selectedEntityId &&
+      resource.data?.entities.some((entity) => entity.id === selectedEntityId)
+    ) {
+      setSelectedId(selectedEntityId);
+      setNewEntity(false);
+      return;
+    }
     if (!selectedId && resource.data?.entities[0]) setSelectedId(resource.data.entities[0].id);
-  }, [resource.data, selectedId]);
+  }, [resource.data, selectedEntityId, selectedId]);
 
   const saveEntity = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -480,8 +497,8 @@ function ContinuityPanel({
           onChange={(event) => setQuery(event.target.value)}
         />
         <input
-          aria-label="生效章节ID"
-          placeholder="可选：生效章节UUID"
+          aria-label="生效章节"
+          placeholder="可选：生效章节内部标识"
           value={effectiveChapter}
           onChange={(event) => setEffectiveChapter(event.target.value)}
         />
@@ -650,7 +667,7 @@ function ContinuityEditors({
         <summary>记录动态状态</summary>
         <form className="stacked-form" onSubmit={(event) => void setEntityState(event)}>
           <label>
-            实体UUID
+            设定条目内部标识
             <input name="entityId" required />
           </label>
           <label>
@@ -662,15 +679,15 @@ function ContinuityEditors({
             <textarea name="value" defaultValue="null" required />
           </label>
           <label>
-            起始章节UUID
+            起始章节内部标识
             <input name="validFromChapterId" required />
           </label>
           <label>
-            结束章节UUID
+            结束章节内部标识
             <input name="validUntilChapterId" />
           </label>
           <label>
-            来源Version UUID
+            来源历史版本内部标识
             <input name="sourceVersionId" required />
           </label>
           <button disabled={readOnly || command.pending} type="submit">
@@ -727,11 +744,11 @@ function ContinuityEditors({
             </select>
           </label>
           <label>
-            章节UUID
+            章节内部标识
             <input name="chapterId" />
           </label>
           <label>
-            地点UUID
+            地点内部标识
             <input name="locationId" />
           </label>
           <label>
@@ -773,7 +790,7 @@ function ContinuityEditors({
             <input name="informationKey" required />
           </label>
           <label>
-            人物UUID
+            人物内部标识
             <input name="characterId" required />
           </label>
           <label>
@@ -787,19 +804,19 @@ function ContinuityEditors({
             </select>
           </label>
           <label>
-            起始章节UUID
+            起始章节内部标识
             <input name="validFromChapterId" required />
           </label>
           <label>
-            结束章节UUID
+            结束章节内部标识
             <input name="validUntilChapterId" />
           </label>
           <label>
-            来源Version UUID
+            来源历史版本内部标识
             <input name="sourceVersionId" />
           </label>
           <label>
-            来源正文块UUID
+            来源正文块内部标识
             <input name="sourceLogicalBlockId" />
           </label>
           <label>
@@ -894,7 +911,7 @@ function NarrativePanel({
         />
         <input
           data-narrative-reference-chapter
-          placeholder="参考章节UUID"
+          placeholder="参考章节内部标识"
           value={chapter}
           onChange={(event) => setChapter(event.target.value)}
         />
@@ -1039,7 +1056,7 @@ function NarrativeEditors({
     status: 'hit' | 'skipped',
   ): Promise<void> => {
     const actualChapterId =
-      status === 'hit' ? window.prompt('实际命中章节UUID：')?.trim() || null : null;
+      status === 'hit' ? window.prompt('实际命中章节内部标识：')?.trim() || null : null;
     if (status === 'hit' && !actualChapterId) return;
     await command.run(() =>
       bridge.narrativePlanning.transitionArcMilestone({
@@ -1065,11 +1082,11 @@ function NarrativeEditors({
             <textarea name="description" />
           </label>
           <label>
-            最早回收章节UUID
+            最早回收章节内部标识
             <input name="revealFromChapterId" />
           </label>
           <label>
-            最晚回收章节UUID
+            最晚回收章节内部标识
             <input name="revealByChapterId" />
           </label>
           <button disabled={readOnly || command.pending} type="submit">
@@ -1115,7 +1132,7 @@ function NarrativeEditors({
         <summary>新增人物弧光</summary>
         <form className="stacked-form" onSubmit={(event) => void saveArc(event)}>
           <label>
-            人物UUID
+            人物内部标识
             <input name="characterId" required />
           </label>
           <label>
@@ -1177,7 +1194,7 @@ function NarrativeEditors({
             <textarea name="description" />
           </label>
           <label>
-            计划章节UUID
+            计划章节内部标识
             <input name="plannedChapterId" />
           </label>
           <button
@@ -1318,7 +1335,7 @@ function StateProposalPanel({
     });
     if (outcome.state === 'success') {
       setActiveRun(outcome.data.run);
-      setNotice(`真实 Provider 状态提取已启动 · ${outcome.data.run.stage}`);
+      setNotice(`AI连接状态提取已启动 · ${outcome.data.run.stage}`);
     } else {
       setPendingExtraction(false);
       setNotice(
@@ -1375,7 +1392,7 @@ function StateProposalPanel({
       </div>
       <div className="filter-bar">
         <label>
-          Final Version 章节
+          定稿版本章节
           <select
             data-state-proposal-chapter
             value={chapterId}
@@ -1385,15 +1402,15 @@ function StateProposalPanel({
             {chapters.map((item) => (
               <option disabled={!item.finalVersionId} key={item.id} value={item.id}>
                 {item.title}
-                {item.finalVersionId ? '' : '（尚无 Final Version）'}
+                {item.finalVersionId ? '' : '（尚无定稿版本）'}
               </option>
             ))}
           </select>
         </label>
         <label>
-          Provider
+          AI连接
           <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
-            <option value="">选择 Provider</option>
+            <option value="">选择AI连接</option>
             {providers.map((provider) => (
               <option key={provider.id} value={provider.id}>
                 {provider.name}
@@ -1406,7 +1423,7 @@ function StateProposalPanel({
           type="button"
           onClick={() => void extractWithProvider()}
         >
-          从 Final Version 提取
+          从定稿版本提取
         </button>
         <label>
           <input
@@ -1434,7 +1451,7 @@ function StateProposalPanel({
           <article className="ledger-record" key={batch.batchId}>
             <h4>提案批次 · {batch.source}</h4>
             <p>
-              {batch.status} · {batch.proposalCount} 项 · Version {batch.sourceVersionId}
+              {batch.status} · {batch.proposalCount} 项 · 历史版本 {batch.sourceVersionId}
             </p>
             {batch.generationRunId ? <p>GenerationRun：{batch.generationRunId}</p> : null}
           </article>
@@ -1503,7 +1520,7 @@ function SnapshotSummary({ snapshot }: { readonly snapshot: EndingSnapshotReadRe
   if (!snapshot)
     return (
       <div data-state-proposal-snapshot>
-        <p>填写章节UUID后读取尾快照。</p>
+        <p>填写章节内部标识后读取尾快照。</p>
       </div>
     );
   return (

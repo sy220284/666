@@ -1,0 +1,71 @@
+name: M8-04 作者体验确定性改写
+
+on:
+  push:
+    branches:
+      - work/m8-04-author-experience-language
+    paths:
+      - scripts/m8-04-author-experience-codemod.mjs
+      - .github/workflows/m8-04-author-experience-codemod.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-04-author-experience-codemod
+  cancel-in-progress: true
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: 检出正式任务分支
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work/m8-04-author-experience-language
+          fetch-depth: 0
+      - name: 安装pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - name: 安装Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: 安装锁定依赖
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: 执行作者体验确定性改写
+        run: node scripts/m8-04-author-experience-codemod.mjs
+      - name: 格式化受影响文件
+        run: >-
+          pnpm exec prettier --write
+          AGENTS.md
+          apps/desktop/renderer/src/features/home/home-page.tsx
+          apps/desktop/renderer/src/features/settings/settings-page.tsx
+          apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx
+          docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
+      - name: 验证正式中文名称
+        run: pnpm check:language
+      - name: 准备测试依赖
+        run: pnpm test:prepare
+      - name: 验证相关单元测试
+        run: >-
+          pnpm exec vitest run
+          tests/unit/author-language.test.ts
+          tests/unit/renderer-app-shell-model.test.ts
+          tests/unit/renderer-home-settings-taskbar.test.ts
+      - name: 提交确定性改写结果
+        run: |
+          if git diff --quiet; then
+            echo '没有需要提交的改写结果。'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AGENTS.md \
+            apps/desktop/renderer/src/features/home/home-page.tsx \
+            apps/desktop/renderer/src/features/settings/settings-page.tsx \
+            apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx \
+            docs/product/AUTHOR_LANGUAGE_GOVERNED_PATHS.json
+          git commit -m '体验(M8-04)：统一首页设置与规划正式中文名称'
+          git push origin HEAD:work/m8-04-author-experience-language

@@ -81,7 +81,8 @@ function scriptKind(file) {
 function isModulePathLiteral(node) {
   const parent = node.parent;
   return (
-    (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) && parent.moduleSpecifier === node
+    (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) &&
+    parent.moduleSpecifier === node
   );
 }
 
@@ -103,7 +104,11 @@ function syntaxAuthorText(file, source) {
       if (!isModulePathLiteral(node) && !/^(?:\.{0,2}\/|@|node:)/u.test(value)) {
         values.push(value);
       }
-    } else if (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+    } else if (
+      ts.isTemplateHead(node) ||
+      ts.isTemplateMiddle(node) ||
+      ts.isTemplateTail(node)
+    ) {
       values.push(node.text);
     }
     ts.forEachChild(node, visit);

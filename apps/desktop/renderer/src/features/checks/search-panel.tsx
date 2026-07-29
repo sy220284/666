@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import type {
   ProjectDictionaryEntry,
@@ -37,20 +37,40 @@ export function SearchPanel({
   const [dictionary, setDictionary] = useState<readonly ProjectDictionaryEntry[]>([]);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState('搜索覆盖当前稿、历史版本与人物世界设定。');
+  const requestGeneration = useRef(0);
+
+  const beginRequest = (): number => requestGeneration.current;
+  const isCurrentRequest = (generation: number): boolean =>
+    generation === requestGeneration.current;
 
   useEffect(() => {
+    const generation = ++requestGeneration.current;
+    let active = true;
+    setResult(null);
+    setPlan(null);
+    setIndexState(null);
+    setDictionary([]);
+    setPending(false);
+    setNotice('正在读取当前作品的全文搜索状态…');
     void Promise.all([
       bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' }),
       bridge.searchTools.listDictionary({ projectId }, { mode: 'replace' }),
     ]).then(([stateOutcome, dictionaryOutcome]) => {
+      if (!active || generation !== requestGeneration.current) return;
       if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
       if (dictionaryOutcome.state === 'success') setDictionary(dictionaryOutcome.data.entries);
+      setNotice('搜索覆盖当前稿、历史版本与人物世界设定。');
     });
+    return () => {
+      active = false;
+      requestGeneration.current += 1;
+    };
   }, [bridge, projectId]);
 
   const search = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (!query.trim() || sourceTypes.size === 0) return;
+    const generation = beginRequest();
     setPending(true);
     const outcome = await bridge.searchTools.search({
       projectId,
@@ -59,6 +79,7 @@ export function SearchPanel({
       includeArchived: false,
       limit: 100,
     });
+    if (!isCurrentRequest(generation)) return;
     setPending(false);
     if (outcome.state === 'success') {
       setResult(outcome.data);
@@ -71,6 +92,7 @@ export function SearchPanel({
   const previewReplace = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (readOnly) return;
+    const generation = beginRequest();
     const values = new FormData(event.currentTarget);
     setPending(true);
     const outcome = await bridge.searchTools.previewReplace({
@@ -80,6 +102,7 @@ export function SearchPanel({
       matchCase: values.get('matchCase') === 'on',
       maxMatches: 2_000,
     });
+    if (!isCurrentRequest(generation)) return;
     setPending(false);
     if (outcome.state === 'success') {
       setPlan(outcome.data);
@@ -91,11 +114,13 @@ export function SearchPanel({
 
   const applyReplace = async (): Promise<void> => {
     if (!plan || readOnly) return;
+    const generation = beginRequest();
     setPending(true);
     const outcome = await bridge.searchTools.applyReplace({
       projectId,
       planId: plan.planId,
     });
+    if (!isCurrentRequest(generation)) return;
     setPending(false);
     if (outcome.state === 'success') {
       setPlan(outcome.data.plan);
@@ -108,6 +133,7 @@ export function SearchPanel({
   const saveDictionary = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (readOnly) return;
+    const generation = beginRequest();
     const form = event.currentTarget;
     const values = new FormData(form);
     const action = String(values.get('action')) as 'canonical' | 'alias' | 'ignore' | 'replace';
@@ -121,10 +147,38 @@ export function SearchPanel({
       replacementTerm: replacementTerm || null,
       notes: String(values.get('notes') ?? ''),
     });
+    if (!isCurrentRequest(generation)) return;
     if (outcome.state === 'success') {
       setDictionary(outcome.data.entries);
       form.reset();
     } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+  };
+
+  const rebuildIndex = async (): Promise<void> => {
+    const generation = beginRequest();
+    const outcome = await bridge.searchTools.rebuildIndex({ projectId });
+    if (!isCurrentRequest(generation)) return;
+    if (outcome.state === 'failure') {
+      setNotice(authorErrorSummary(outcome.error));
+      return;
+    }
+    if (outcome.state !== 'success') return;
+    setNotice(`全文搜索重建完成 · ${searchIndexStatusLabel(outcome.data.status)}`);
+    const stateOutcome = await bridge.searchTools.getIndexState({ projectId });
+    if (!isCurrentRequest(generation)) return;
+    if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
+  };
+
+  const deleteDictionary = async (entry: ProjectDictionaryEntry): Promise<void> => {
+    const generation = beginRequest();
+    const outcome = await bridge.searchTools.deleteDictionary({
+      projectId,
+      authority: 'author',
+      term: entry.term,
+    });
+    if (!isCurrentRequest(generation)) return;
+    if (outcome.state === 'success') setDictionary(outcome.data.entries);
+    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   };
 
   const navigateToResult = (item: SearchProjectResult['items'][number]): void => {
@@ -143,20 +197,7 @@ export function SearchPanel({
           <h2>全文搜索与安全替换</h2>
           <p>历史版本与设定只读；替换范围只能包含正在使用的当前稿正文块。</p>
         </div>
-        <button
-          disabled={pending || readOnly}
-          type="button"
-          onClick={() =>
-            void bridge.searchTools.rebuildIndex({ projectId }).then((outcome) => {
-              if (outcome.state === 'success') {
-                setNotice(`全文搜索重建完成 · ${searchIndexStatusLabel(outcome.data.status)}`);
-                void bridge.searchTools.getIndexState({ projectId }).then((stateOutcome) => {
-                  if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
-                });
-              } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
-            })
-          }
-        >
+        <button disabled={pending || readOnly} type="button" onClick={() => void rebuildIndex()}>
           重建全文搜索
         </button>
       </div>
@@ -274,19 +315,7 @@ export function SearchPanel({
           <p key={entry.normalizedTerm}>
             {entry.term} · {dictionaryActionLabel(entry.action)}
             {entry.replacementTerm ? ` → ${entry.replacementTerm}` : ''}
-            <button
-              disabled={readOnly}
-              type="button"
-              onClick={() =>
-                void bridge.searchTools
-                  .deleteDictionary({ projectId, authority: 'author', term: entry.term })
-                  .then((outcome) => {
-                    if (outcome.state === 'success') setDictionary(outcome.data.entries);
-                    else if (outcome.state === 'failure')
-                      setNotice(authorErrorSummary(outcome.error));
-                  })
-              }
-            >
+            <button disabled={readOnly} type="button" onClick={() => void deleteDictionary(entry)}>
               删除
             </button>
           </p>

@@ -103,13 +103,7 @@ export function WritingWorkbench(props: WritingWorkbenchProps) {
       }
     }
     dispatch({ type: 'navigate', route: returnLocation.route, returnLocation: null });
-    window.requestAnimationFrame(() => {
-      const focusTarget = returnLocation.focusKey
-        ? document.querySelector<HTMLElement>(`[data-return-focus="${returnLocation.focusKey}"]`)
-        : null;
-      focusTarget?.focus();
-    });
-  }, [dispatch, props, returnLocation]);
+  }, [dispatch, props.onStatus, props.panel, returnLocation]);
 
   const continuation =
     latestContinuation?.projectId === props.project.projectId

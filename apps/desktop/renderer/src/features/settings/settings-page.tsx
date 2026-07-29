@@ -152,7 +152,7 @@ function GeneralSettings(props: SettingsPageProps) {
     <form className="react-settings-form" data-settings-section="general" onSubmit={submit}>
       <header>
         <h2>通用</h2>
-        <p>选择启动行为和默认信息披露模式。模式切换不会改变数据与命令。</p>
+        <p>选择启动行为和默认信息显示方式。切换显示方式不会改变作品数据与功能。</p>
       </header>
       <label>
         <span>语言</span>
@@ -190,7 +190,7 @@ function GeneralSettings(props: SettingsPageProps) {
         </select>
       </label>
       <label>
-        <span>创作路径</span>
+        <span>创作方式</span>
         <select
           data-creative-path
           value={draft.creativePath}

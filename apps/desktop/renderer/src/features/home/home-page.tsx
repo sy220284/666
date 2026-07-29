@@ -143,7 +143,7 @@ export function HomePage(props: HomePageProps) {
             <aside className="react-onboarding-scaffold" aria-label="下一步建议">
               <div>
                 <strong>下一步建议</strong>
-                <p>可先补充作品规划和人物边界，也可以直接继续正文；项目能力不会受影响。</p>
+                <p>可先补充作品规划和人物边界，也可以直接继续正文；作品功能不会受影响。</p>
               </div>
               <button
                 className="quiet-button"
@@ -514,7 +514,7 @@ function CreateProjectDialog({
         </nav>
         <form key={entry} onSubmit={submit}>
           <fieldset>
-            <legend>{entry === 'complete' ? '1. 项目基础' : '项目基础'}</legend>
+            <legend>{entry === 'complete' ? '1. 作品基础' : '作品基础'}</legend>
             <label>
               <span>作品名称</span>
               <input autoFocus data-project-name maxLength={240} name="name" required />
@@ -549,7 +549,7 @@ function CreateProjectDialog({
           </fieldset>
           {entry === 'import' ? (
             <p className="react-dialog-note">
-              创建安全工作区后进入导入预览；只有确认预览才会写入稿件内容。
+              创建安全作品目录后进入导入预览；只有确认预览才会写入稿件内容。
             </p>
           ) : null}
           {entry !== 'blank' && entry !== 'quick' ? (

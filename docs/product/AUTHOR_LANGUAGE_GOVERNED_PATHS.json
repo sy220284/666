@@ -15,7 +15,9 @@
     "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md",
     "agent.md",
     "apps/desktop/renderer/src/features/home/home-page.tsx",
-    "apps/desktop/renderer/src/features/settings/settings-page.tsx"
+    "apps/desktop/renderer/src/features/settings/settings-page.tsx",
+    "apps/desktop/renderer/src/components/author-error-notice.tsx",
+    "apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx"
   ],
   "excludedPaths": [],
   "note": "阶段一只登记已经完成中文业务语言治理的路径；后续界面迁移完成一个文件或目录，就必须将其加入本清单。"

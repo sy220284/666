@@ -20,6 +20,8 @@ export default defineConfig({
     'state-proposal-valid-until.spec.ts',
     'state-proposal-workflow.spec.ts',
     'provider-settings.spec.ts',
+    'm8-04-author-experience.spec.ts',
+    'writing-focus-assistance.spec.ts',
   ],
   fullyParallel: false,
   workers: 1,

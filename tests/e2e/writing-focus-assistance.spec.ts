@@ -63,7 +63,9 @@ test('写作辅助读取真实数据，沉浸写作不重建编辑器或丢失�
     await editor.click();
     await page.keyboard.insertText('沉浸写作保留选区与未保存输入');
     await expect(editor).toContainText('沉浸写作保留选区与未保存输入');
-    await expect(page.locator('[data-draft-state]')).toContainText(/等待自动保存|正在自动保存|已保存/u);
+    await expect(page.locator('[data-draft-state]')).toContainText(
+      /等待自动保存|正在自动保存|已保存/u,
+    );
 
     const selectedText = await page.evaluate(() => {
       const root = document.querySelector<HTMLElement>('.worldforge-editor');
@@ -85,7 +87,10 @@ test('写作辅助读取真实数据，沉浸写作不重建编辑器或丢失�
     expect(selectedText).toBe('沉浸写作');
 
     await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute('data-focus-mode', 'true');
+    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute(
+      'data-focus-mode',
+      'true',
+    );
     await expect(page.locator('[data-toggle-focus-mode]')).toHaveText('退出沉浸');
     await expect(page.locator('[data-back-project]')).toBeHidden();
     await expect(page.locator('.draft-toolbar')).toBeHidden();
@@ -107,7 +112,10 @@ test('写作辅助读取真实数据，沉浸写作不重建编辑器或丢失�
       .toBe(selectedText);
 
     await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute('data-focus-mode', 'false');
+    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute(
+      'data-focus-mode',
+      'false',
+    );
     await expect(page.locator('[data-writing-assistance]')).toBeVisible();
     await expect(page.locator('.structure-navigator')).toBeVisible();
     await expect(editor).toContainText('沉浸写作保留选区与未保存输入');

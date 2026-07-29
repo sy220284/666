@@ -531,6 +531,19 @@ export function WritingWorkbench({
     persistEditorSelection(project.projectId, currentChapter.id, instance);
   }, [project.projectId]);
 
+  const toggleFocusMode = useCallback((): void => {
+    setFocusMode((enabled) => !enabled);
+    window.requestAnimationFrame(() => {
+      const instance = editor.current;
+      const currentChapter = activeChapter.current;
+      if (!instance || !currentChapter) return;
+      const remembered = persistedSelectionByChapter.get(
+        selectionKey(project.projectId, currentChapter.id),
+      );
+      if (remembered) restoreEditorSelection(instance, remembered);
+    });
+  }, [project.projectId]);
+
   const destroyEditor = useCallback(
     (clearSession = true): void => {
       const instance = editor.current;
@@ -711,10 +724,10 @@ export function WritingWorkbench({
 
   useEffect(() => {
     if (initialChapterRequested.current) return;
-    initialChapterRequested.current = true;
     let active = true;
     void bridge.planning.listStructure(project.projectId, { mode: 'replace' }).then((outcome) => {
-      if (!active || outcome.state !== 'success') return;
+      if (!active || outcome.state !== 'success' || initialChapterRequested.current) return;
+      initialChapterRequested.current = true;
       const chapters = outcome.data.volumes.flatMap((volume) => volume.chapters);
       const requestedChapter = navigationChapterId
         ? chapters.find((candidate) => candidate.id === navigationChapterId)
@@ -1009,7 +1022,8 @@ export function WritingWorkbench({
             aria-pressed={focusMode}
             data-toggle-focus-mode
             type="button"
-            onClick={() => setFocusMode((enabled) => !enabled)}
+            onPointerDownCapture={rememberCurrentSelection}
+            onClick={toggleFocusMode}
           >
             {focusMode ? '退出沉浸' : '沉浸写作'}
           </button>

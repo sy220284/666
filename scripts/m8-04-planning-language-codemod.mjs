@@ -26,7 +26,7 @@ const replacementsByFile = {
   'apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx': [
     [
       "import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';",
-      `import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';\nimport { AuthorErrorNotice } from '../../components/author-error-notice.js';\nimport { authorErrorSummary } from '../../presentation/author-error-message.js';\nimport {\n  authorCharacterArcStatusLabel,\n  authorEntityTypeLabel,\n  authorForeshadowingStatusLabel,\n  authorPlotNodeTypeLabel,\n  authorSceneBeatTypeLabel,\n} from '../../presentation/author-value-format.js';`,
+      `import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';\nimport { authorErrorSummary } from '../../presentation/author-error-message.js';\nimport {\n  authorCharacterArcStatusLabel,\n  authorEntityTypeLabel,\n  authorForeshadowingStatusLabel,\n  authorPlotNodeTypeLabel,\n  authorSceneBeatTypeLabel,\n} from '../../presentation/author-value-format.js';`,
     ],
     ['<span>{entity.entityType}</span>', '<span>{authorEntityTypeLabel(entity.entityType)}</span>'],
     ['<span>{item.status}</span>', '<span>{authorForeshadowingStatusLabel(item.status)}</span>'],
@@ -63,14 +63,7 @@ const replacementsByFile = {
     ['SceneBeat已保存；正文未发生变化。', '场景节拍已保存；正文未发生变化。'],
     ['编辑SceneBeat', '编辑场景节拍'],
     ['${command.error.message} · ${command.error.code}', '${authorErrorSummary(command.error)}'],
-    [
-      `        {command.error ? (\n          <p className="form-error">\n            {authorErrorSummary(command.error)}\n          </p>\n        ) : null}`,
-      `        {command.error ? <AuthorErrorNotice error={command.error} /> : null}`,
-    ],
-    [
-      `      <span>\n        {error.message} · {error.code}\n      </span>`,
-      `      <AuthorErrorNotice error={error} className="inline-error__message" />`,
-    ],
+    ['{error.message} · {error.code}', '{authorErrorSummary(error)}'],
   ],
 };
 

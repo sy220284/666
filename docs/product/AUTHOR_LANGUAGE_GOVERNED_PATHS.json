@@ -31,7 +31,9 @@
     "apps/desktop/renderer/src/features/writing/writing-assistance.ts",
     "apps/desktop/renderer/src/features/writing/writing-assistance-panel.tsx",
     "tests/unit/writing-assistance.test.ts",
-    "tests/e2e/writing-focus-assistance.spec.ts"
+    "tests/e2e/writing-focus-assistance.spec.ts",
+    "apps/desktop/renderer/src/features/canon/canon-author-fields.tsx",
+    "tests/unit/canon-author-fields.test.ts"
   ],
   "excludedPaths": [],
   "note": "完成一个文件或目录的中文业务语言治理后，必须将其加入本清单。"

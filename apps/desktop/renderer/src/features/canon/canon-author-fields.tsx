@@ -86,8 +86,7 @@ export function useCanonAuthorReferences(
           )
         : [];
     setReferences({
-      state:
-        entities.state === 'success' && structure.state === 'success' ? 'ready' : 'partial',
+      state: entities.state === 'success' && structure.state === 'success' ? 'ready' : 'partial',
       entities: entityValues,
       chapters,
       versions: chapters.flatMap((chapter) =>
@@ -110,8 +109,7 @@ export function useCanonAuthorReferences(
   return references;
 }
 
-interface ReferenceSelectProps
-  extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
+interface ReferenceSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
   readonly emptyLabel?: string;
 }
 
@@ -207,10 +205,7 @@ export function entityName(references: CanonAuthorReferences, entityId: string):
   return references.entities.find((entity) => entity.id === entityId)?.name ?? '未知设定条目';
 }
 
-export function chapterName(
-  references: CanonAuthorReferences,
-  chapterId: string | null,
-): string {
+export function chapterName(references: CanonAuthorReferences, chapterId: string | null): string {
   if (!chapterId) return '当前';
   return references.chapters.find((chapter) => chapter.id === chapterId)?.label ?? '未知章节';
 }

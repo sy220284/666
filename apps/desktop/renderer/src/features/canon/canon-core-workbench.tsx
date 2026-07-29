@@ -15,6 +15,32 @@ import type {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import type { BridgeRequestOutcome } from '../../bridge/request-lifecycle.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import {
+  authorCharacterArcStatusLabel,
+  authorForeshadowingStatusLabel,
+  authorJsonValue,
+} from '../../presentation/author-value-format.js';
+import {
+  arcTypeLabel,
+  authorFactLabel,
+  authorStateLabel,
+  ChapterNameSelect,
+  chapterName,
+  COMMON_FACT_FIELDS,
+  COMMON_STATE_FIELDS,
+  EntityNameSelect,
+  entityName,
+  FinalVersionSelect,
+  knowledgeStatusLabel,
+  parseAuthorValue,
+  promptChapterId,
+  recordStatusLabel,
+  timelinePrecisionLabel,
+  useCanonAuthorReferences,
+  type AuthorValueType,
+  type CanonAuthorReferences,
+} from './canon-author-fields.js';
 
 export type CanonSection = 'entities' | 'continuity' | 'narrative' | 'proposals';
 
@@ -52,6 +78,7 @@ export function CanonWorkbench({
   selectedEntityId,
   onSectionChange,
 }: CanonWorkbenchProps) {
+  const references = useCanonAuthorReferences(bridge, projectId);
   return (
     <section className="canon-workbench" data-canon-dialog aria-label="设定工作台">
       <header className="feature-heading">
@@ -100,6 +127,7 @@ export function CanonWorkbench({
           projectId={projectId}
           projectName={projectName}
           readOnly={readOnly}
+          references={references}
         />
       ) : null}
       {section === 'narrative' ? (
@@ -108,6 +136,7 @@ export function CanonWorkbench({
           projectId={projectId}
           projectName={projectName}
           readOnly={readOnly}
+          references={references}
         />
       ) : null}
       {section === 'proposals' ? (
@@ -208,7 +237,7 @@ function EntityCanonPanel({
       const match = result.entities.find((entity) => entity.name === fields.name);
       setSelectedId(match?.id ?? null);
       setNewEntity(false);
-      setNotice('实体已由作者命令写入项目数据库。');
+      setNotice('设定条目已写入作品数据库。');
     }
   };
 
@@ -216,13 +245,23 @@ function EntityCanonPanel({
     event.preventDefault();
     if (!selected) return;
     const values = new FormData(event.currentTarget);
+    const selectedFactKey = String(values.get('factKey') ?? '');
+    const factKey =
+      selectedFactKey === 'custom'
+        ? String(values.get('customFactKey') ?? '').trim()
+        : selectedFactKey;
+    if (!factKey) {
+      setNotice('请填写自定义事实名称。');
+      return;
+    }
     let value: Parameters<RendererBridgeAdapter['canon']['setFact']>[0]['value'];
     try {
-      value = JSON.parse(String(values.get('value') ?? 'null')) as Parameters<
-        RendererBridgeAdapter['canon']['setFact']
-      >[0]['value'];
-    } catch {
-      setNotice('事实值必须是有效JSON。');
+      value = parseAuthorValue(
+        String(values.get('valueType') ?? 'text') as AuthorValueType,
+        String(values.get('value') ?? ''),
+      ) as typeof value;
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '事实值格式不正确。');
       return;
     }
     const result = await command.run(() =>
@@ -230,7 +269,7 @@ function EntityCanonPanel({
         projectId,
         authority: 'author',
         entityId: selected.id,
-        factKey: String(values.get('factKey') ?? ''),
+        factKey,
         value,
         description: String(values.get('description') ?? ''),
         sourceType: 'author',
@@ -248,7 +287,7 @@ function EntityCanonPanel({
     const result = await command.run(() =>
       bridge.canon.archive({ projectId, authority: 'author', entityId: selected.id }),
     );
-    if (result) setNotice('实体已归档；永久删除仍需通过引用预览与名称确认。');
+    if (result) setNotice('设定条目已归档；永久删除仍需通过引用预览与名称确认。');
   };
   const remove = async (): Promise<void> => {
     if (!selected || selected.status !== 'archived') return;
@@ -275,7 +314,7 @@ function EntityCanonPanel({
     );
     if (result) {
       setSelectedId(null);
-      setNotice('实体已永久删除。');
+      setNotice('设定条目已永久删除。');
     }
   };
 
@@ -283,7 +322,7 @@ function EntityCanonPanel({
     <div className="canon-grid">
       <aside className="feature-card">
         <div className="feature-card__heading">
-          <h2>实体</h2>
+          <h2>设定条目</h2>
           <button
             className="primary-button"
             data-new-entity
@@ -298,7 +337,7 @@ function EntityCanonPanel({
           </button>
         </div>
         <label>
-          选择实体
+          选择设定条目
           <select
             data-canon-entity-select
             value={selectedId ?? ''}
@@ -322,13 +361,13 @@ function EntityCanonPanel({
             : notice
               ? notice
               : resource.state === 'loading'
-                ? '正在读取实体与Canon…'
+                ? '正在读取人物与设定…'
                 : `实体 ${resource.data?.entities.length ?? 0}`}
         </p>
       </aside>
       <main className="feature-card">
         <h2 data-canon-entity-mode>
-          {newEntity ? '新建实体' : selected ? `编辑：${selected.name}` : '选择一个实体'}
+          {newEntity ? '新建设定条目' : selected ? `编辑：${selected.name}` : '选择一个设定条目'}
         </h2>
         {newEntity || selected ? (
           <form
@@ -366,7 +405,7 @@ function EntityCanonPanel({
                 disabled={readOnly || command.pending}
                 type="submit"
               >
-                保存实体
+                保存设定条目
               </button>
               {selected ? (
                 <button
@@ -393,15 +432,15 @@ function EntityCanonPanel({
         ) : null}
       </main>
       <aside className="feature-card">
-        <h2>Canon事实</h2>
+        <h2>已确认事实</h2>
         <div data-canon-fact-list>
           {selected?.facts.length ? (
             selected.facts.map((fact) => (
               <article className="feature-row" key={fact.id}>
                 <div>
-                  <strong>{fact.factKey}</strong>
+                  <strong>{authorFactLabel(fact.factKey)}</strong>
                   <span>
-                    {fact.status} · {JSON.stringify(fact.value)}
+                    {recordStatusLabel(fact.status)} · {authorJsonValue(fact.value)}
                   </span>
                 </div>
                 <p>{fact.description}</p>
@@ -418,13 +457,38 @@ function EntityCanonPanel({
             onSubmit={(event) => void setFact(event)}
           >
             <label>
-              事实键
-              <input name="factKey" required />
+              事实类型
+              <select name="factKey" defaultValue="appearance">
+                {COMMON_FACT_FIELDS.map((field) => (
+                  <option key={field.key} value={field.key}>
+                    {field.label}
+                  </option>
+                ))}
+                <option value="custom">其他自定义事实</option>
+              </select>
             </label>
             <label>
-              JSON值
-              <textarea name="value" defaultValue="null" required />
+              内容形式
+              <select name="valueType" defaultValue="text">
+                <option value="text">文字</option>
+                <option value="number">数字</option>
+                <option value="boolean">是 / 否</option>
+                <option value="list">多项内容</option>
+                <option value="json">原始JSON（高级）</option>
+              </select>
             </label>
+            <label>
+              内容
+              <textarea name="value" placeholder="多项内容可用换行或顿号分隔" required />
+            </label>
+            <details>
+              <summary>高级自定义字段</summary>
+              <label>
+                自定义事实名称
+                <input name="customFactKey" />
+              </label>
+              <p>复杂结构请选择上方“原始JSON（高级）”，普通作者无需使用。</p>
+            </details>
             <label>
               说明
               <textarea name="description" />
@@ -449,11 +513,13 @@ function ContinuityPanel({
   projectId,
   projectName,
   readOnly,
+  references,
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly projectName: string;
   readonly readOnly: boolean;
+  readonly references: CanonAuthorReferences;
 }) {
   const [query, setQuery] = useState('');
   const [effectiveChapter, setEffectiveChapter] = useState('');
@@ -496,9 +562,10 @@ function ContinuityPanel({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <input
+        <ChapterNameSelect
           aria-label="生效章节"
-          placeholder="可选：生效章节内部标识"
+          emptyLabel="全部章节"
+          references={references}
           value={effectiveChapter}
           onChange={(event) => setEffectiveChapter(event.target.value)}
         />
@@ -526,30 +593,37 @@ function ContinuityPanel({
             ? `项目：${projectName}`
             : '读取中…'}
       </p>
-      <ContinuityResults catalog={resource.data} />
+      <ContinuityResults catalog={resource.data} references={references} />
       <ContinuityEditors
         bridge={bridge}
         catalog={resource.data}
         projectId={projectId}
         readOnly={readOnly}
+        references={references}
         onRefresh={resource.refresh}
       />
     </section>
   );
 }
 
-function ContinuityResults({ catalog }: { readonly catalog: ContinuityCatalog | null }) {
+function ContinuityResults({
+  catalog,
+  references,
+}: {
+  readonly catalog: ContinuityCatalog | null;
+  readonly references: CanonAuthorReferences;
+}) {
   return (
     <div className="ledger-grid" data-continuity-results>
       <LedgerSection title={`动态状态（${catalog?.entityStates.length ?? 0}）`}>
         {catalog?.entityStates.map((state) => (
           <LedgerRecord
             key={state.id}
-            title={state.stateKey}
+            title={`${entityName(references, state.entityId)} · ${authorStateLabel(state.stateKey)}`}
             lines={[
-              state.recordStatus,
-              JSON.stringify(state.value),
-              `${state.validFromChapterId} → ${state.validUntilChapterId ?? '当前'}`,
+              recordStatusLabel(state.recordStatus),
+              authorJsonValue(state.value),
+              `${chapterName(references, state.validFromChapterId)} → ${chapterName(references, state.validUntilChapterId)}`,
             ]}
           />
         ))}
@@ -560,8 +634,10 @@ function ContinuityResults({ catalog }: { readonly catalog: ContinuityCatalog | 
             key={event.id}
             title={event.title}
             lines={[
-              event.status,
-              `${event.startValue} → ${event.endValue ?? event.startValue}`,
+              recordStatusLabel(event.status),
+              `${event.startValue} → ${event.endValue ?? event.startValue} · ${timelinePrecisionLabel(event.precision)}`,
+              event.chapterId ? chapterName(references, event.chapterId) : '',
+              event.locationId ? entityName(references, event.locationId) : '',
               event.description,
             ]}
           />
@@ -571,8 +647,12 @@ function ContinuityResults({ catalog }: { readonly catalog: ContinuityCatalog | 
         {catalog?.knowledgeStates.map((state) => (
           <LedgerRecord
             key={state.id}
-            title={state.informationKey}
-            lines={[state.knowledgeStatus, state.recordStatus, state.notes]}
+            title={`${entityName(references, state.characterId)} · ${state.informationKey}`}
+            lines={[
+              knowledgeStatusLabel(state.knowledgeStatus),
+              recordStatusLabel(state.recordStatus),
+              state.notes,
+            ]}
           />
         ))}
       </LedgerSection>
@@ -585,21 +665,32 @@ function ContinuityEditors({
   catalog,
   projectId,
   readOnly,
+  references,
   onRefresh,
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly catalog: ContinuityCatalog | null;
   readonly projectId: string;
   readonly readOnly: boolean;
+  readonly references: CanonAuthorReferences;
   readonly onRefresh: () => Promise<void>;
 }) {
   const command = useBridgeCommand(onRefresh);
   const setEntityState = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
+    const selectedStateKey = String(values.get('stateKey') ?? '');
+    const stateKey =
+      selectedStateKey === 'custom'
+        ? String(values.get('customStateKey') ?? '').trim()
+        : selectedStateKey;
+    if (!stateKey) return;
     let value: Parameters<RendererBridgeAdapter['continuity']['setEntityState']>[0]['value'];
     try {
-      value = JSON.parse(String(values.get('value') ?? 'null')) as typeof value;
+      value = parseAuthorValue(
+        String(values.get('valueType') ?? 'text') as AuthorValueType,
+        String(values.get('value') ?? ''),
+      ) as typeof value;
     } catch {
       return;
     }
@@ -608,7 +699,7 @@ function ContinuityEditors({
         projectId,
         authority: 'author',
         entityId: String(values.get('entityId')),
-        stateKey: String(values.get('stateKey')),
+        stateKey,
         value,
         validFromChapterId: String(values.get('validFromChapterId')),
         validUntilChapterId: nullableString(values.get('validUntilChapterId')),
@@ -634,7 +725,7 @@ function ContinuityEditors({
         chapterId: nullableString(values.get('chapterId')),
         locationId: nullableString(values.get('locationId')),
         description: String(values.get('description') ?? ''),
-        participantIds: [],
+        participantIds: values.getAll('participantIds').map(String).filter(Boolean),
         witnessIds: [],
         subjectIds: [],
         dependencyIds: [],
@@ -667,29 +758,53 @@ function ContinuityEditors({
         <summary>记录动态状态</summary>
         <form className="stacked-form" onSubmit={(event) => void setEntityState(event)}>
           <label>
-            设定条目内部标识
-            <input name="entityId" required />
+            人物或设定
+            <EntityNameSelect name="entityId" references={references} required />
           </label>
           <label>
-            状态键
-            <input name="stateKey" required />
+            状态类型
+            <select name="stateKey" defaultValue="location">
+              {COMMON_STATE_FIELDS.map((field) => (
+                <option key={field.key} value={field.key}>
+                  {field.label}
+                </option>
+              ))}
+              <option value="custom">其他自定义状态</option>
+            </select>
           </label>
           <label>
-            JSON值
-            <textarea name="value" defaultValue="null" required />
+            内容形式
+            <select name="valueType" defaultValue="text">
+              <option value="text">文字</option>
+              <option value="number">数字</option>
+              <option value="boolean">是 / 否</option>
+              <option value="list">多项内容</option>
+              <option value="json">原始JSON（高级）</option>
+            </select>
           </label>
           <label>
-            起始章节内部标识
-            <input name="validFromChapterId" required />
+            当前内容
+            <textarea name="value" required />
           </label>
           <label>
-            结束章节内部标识
-            <input name="validUntilChapterId" />
+            从哪一章开始生效
+            <ChapterNameSelect name="validFromChapterId" references={references} required />
           </label>
           <label>
-            来源历史版本内部标识
-            <input name="sourceVersionId" required />
+            到哪一章结束
+            <ChapterNameSelect name="validUntilChapterId" references={references} />
           </label>
+          <label>
+            依据的定稿版本
+            <FinalVersionSelect name="sourceVersionId" references={references} required />
+          </label>
+          <details>
+            <summary>高级自定义状态</summary>
+            <label>
+              自定义状态名称
+              <input name="customStateKey" />
+            </label>
+          </details>
           <button disabled={readOnly || command.pending} type="submit">
             确认动态状态
           </button>
@@ -738,18 +853,27 @@ function ContinuityEditors({
             <select name="precision" defaultValue="unknown">
               {['exact', 'day', 'month', 'year', 'approximate', 'unknown'].map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {timelinePrecisionLabel(value)}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            章节内部标识
-            <input name="chapterId" />
+            对应章节
+            <ChapterNameSelect name="chapterId" references={references} />
           </label>
           <label>
-            地点内部标识
-            <input name="locationId" />
+            发生地点
+            <EntityNameSelect name="locationId" entityType="location" references={references} />
+          </label>
+          <label>
+            参与人物
+            <EntityNameSelect
+              name="participantIds"
+              entityType="character"
+              references={references}
+              multiple
+            />
           </label>
           <label>
             说明
@@ -786,39 +910,47 @@ function ContinuityEditors({
         <summary>记录知情状态</summary>
         <form className="stacked-form" onSubmit={(event) => void setKnowledge(event)}>
           <label>
-            信息键
-            <input name="informationKey" required />
+            知情内容
+            <input name="informationKey" placeholder="人物知道或误解了什么" required />
           </label>
           <label>
-            人物内部标识
-            <input name="characterId" required />
+            人物
+            <EntityNameSelect
+              name="characterId"
+              entityType="character"
+              references={references}
+              required
+            />
           </label>
           <label>
             状态
             <select name="knowledgeStatus" defaultValue="knows">
               {['knows', 'believes', 'suspects', 'misunderstands', 'unknown'].map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {knowledgeStatusLabel(value)}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            起始章节内部标识
-            <input name="validFromChapterId" required />
+            从哪一章开始生效
+            <ChapterNameSelect name="validFromChapterId" references={references} required />
           </label>
           <label>
-            结束章节内部标识
-            <input name="validUntilChapterId" />
+            到哪一章结束
+            <ChapterNameSelect name="validUntilChapterId" references={references} />
           </label>
           <label>
-            来源历史版本内部标识
-            <input name="sourceVersionId" />
+            依据的定稿版本
+            <FinalVersionSelect name="sourceVersionId" references={references} />
           </label>
-          <label>
-            来源正文块内部标识
-            <input name="sourceLogicalBlockId" />
-          </label>
+          <details>
+            <summary>高级来源定位</summary>
+            <label>
+              来源正文块内部标识
+              <input name="sourceLogicalBlockId" />
+            </label>
+          </details>
           <label>
             备注
             <textarea name="notes" />
@@ -851,11 +983,7 @@ function ContinuityEditors({
             ))}
         </div>
       </details>
-      {command.error ? (
-        <p className="form-error">
-          {command.error.message} · {command.error.code}
-        </p>
-      ) : null}
+      {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
     </div>
   );
 }
@@ -865,11 +993,13 @@ function NarrativePanel({
   projectId,
   projectName,
   readOnly,
+  references,
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly projectName: string;
   readonly readOnly: boolean;
+  readonly references: CanonAuthorReferences;
 }) {
   const [query, setQuery] = useState('');
   const [chapter, setChapter] = useState('');
@@ -909,9 +1039,10 @@ function NarrativePanel({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <input
+        <ChapterNameSelect
           data-narrative-reference-chapter
-          placeholder="参考章节内部标识"
+          emptyLabel="全部章节"
+          references={references}
           value={chapter}
           onChange={(event) => setChapter(event.target.value)}
         />
@@ -932,19 +1063,26 @@ function NarrativePanel({
             ? `项目：${projectName}`
             : '读取中…'}
       </p>
-      <NarrativeResults catalog={resource.data} />
+      <NarrativeResults catalog={resource.data} references={references} />
       <NarrativeEditors
         bridge={bridge}
         catalog={resource.data}
         projectId={projectId}
         readOnly={readOnly}
+        references={references}
         onRefresh={resource.refresh}
       />
     </section>
   );
 }
 
-function NarrativeResults({ catalog }: { readonly catalog: NarrativePlanningCatalog | null }) {
+function NarrativeResults({
+  catalog,
+  references,
+}: {
+  readonly catalog: NarrativePlanningCatalog | null;
+  readonly references: CanonAuthorReferences;
+}) {
   return (
     <div className="ledger-grid" data-narrative-planning-results>
       <LedgerSection title={`伏笔（${catalog?.foreshadowings.length ?? 0}）`}>
@@ -952,7 +1090,17 @@ function NarrativeResults({ catalog }: { readonly catalog: NarrativePlanningCata
           <LedgerRecord
             key={item.id}
             title={item.title}
-            lines={[item.status, item.description, ...item.warnings]}
+            lines={[
+              authorForeshadowingStatusLabel(item.status),
+              item.revealFromChapterId
+                ? `最早：${chapterName(references, item.revealFromChapterId)}`
+                : '',
+              item.revealByChapterId
+                ? `最晚：${chapterName(references, item.revealByChapterId)}`
+                : '',
+              item.description,
+              ...item.warnings,
+            ]}
           />
         ))}
       </LedgerSection>
@@ -961,14 +1109,23 @@ function NarrativeResults({ catalog }: { readonly catalog: NarrativePlanningCata
           <article className="ledger-record" key={arc.id}>
             <h4>{arc.title}</h4>
             <p>
-              {arc.status} · {arc.arcType}
+              {authorCharacterArcStatusLabel(arc.status)} · {arcTypeLabel(arc.arcType)} ·{' '}
+              {entityName(references, arc.characterId)}
             </p>
             <p>{arc.authorIntent}</p>
             {arc.milestones.map((milestone) => (
               <div className="ledger-subrecord" key={milestone.id}>
                 <strong>{milestone.title}</strong>
                 <span>
-                  {milestone.status} · {milestone.confirmationSource ?? '未确认'}
+                  {milestone.status === 'hit'
+                    ? '已命中'
+                    : milestone.status === 'skipped'
+                      ? '已跳过'
+                      : '待命中'}{' '}
+                  ·{' '}
+                  {milestone.actualChapterId
+                    ? chapterName(references, milestone.actualChapterId)
+                    : '尚未确认章节'}
                 </span>
               </div>
             ))}
@@ -984,12 +1141,14 @@ function NarrativeEditors({
   catalog,
   projectId,
   readOnly,
+  references,
   onRefresh,
 }: {
   readonly bridge: RendererBridgeAdapter;
   readonly catalog: NarrativePlanningCatalog | null;
   readonly projectId: string;
   readonly readOnly: boolean;
+  readonly references: CanonAuthorReferences;
   readonly onRefresh: () => Promise<void>;
 }) {
   const command = useBridgeCommand(onRefresh);
@@ -1056,7 +1215,7 @@ function NarrativeEditors({
     status: 'hit' | 'skipped',
   ): Promise<void> => {
     const actualChapterId =
-      status === 'hit' ? window.prompt('实际命中章节内部标识：')?.trim() || null : null;
+      status === 'hit' ? promptChapterId(references.chapters, '选择实际命中章节序号：') : null;
     if (status === 'hit' && !actualChapterId) return;
     await command.run(() =>
       bridge.narrativePlanning.transitionArcMilestone({
@@ -1082,12 +1241,12 @@ function NarrativeEditors({
             <textarea name="description" />
           </label>
           <label>
-            最早回收章节内部标识
-            <input name="revealFromChapterId" />
+            最早回收章节
+            <ChapterNameSelect name="revealFromChapterId" references={references} />
           </label>
           <label>
-            最晚回收章节内部标识
-            <input name="revealByChapterId" />
+            最晚回收章节
+            <ChapterNameSelect name="revealByChapterId" references={references} />
           </label>
           <button disabled={readOnly || command.pending} type="submit">
             保存伏笔
@@ -1121,7 +1280,7 @@ function NarrativeEditors({
                 'cancelled',
               ].map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {authorForeshadowingStatusLabel(status)}
                 </option>
               ))}
             </select>
@@ -1132,8 +1291,13 @@ function NarrativeEditors({
         <summary>新增人物弧光</summary>
         <form className="stacked-form" onSubmit={(event) => void saveArc(event)}>
           <label>
-            人物内部标识
-            <input name="characterId" required />
+            人物
+            <EntityNameSelect
+              name="characterId"
+              entityType="character"
+              references={references}
+              required
+            />
           </label>
           <label>
             标题
@@ -1144,7 +1308,7 @@ function NarrativeEditors({
             <select name="arcType" defaultValue="growth">
               {['growth', 'darkening', 'awakening', 'fall', 'redemption', 'custom'].map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {arcTypeLabel(value)}
                 </option>
               ))}
             </select>
@@ -1158,7 +1322,7 @@ function NarrativeEditors({
             <select name="status" defaultValue="planned">
               {['planned', 'active', 'completed', 'abandoned'].map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {authorCharacterArcStatusLabel(value)}
                 </option>
               ))}
             </select>
@@ -1194,8 +1358,8 @@ function NarrativeEditors({
             <textarea name="description" />
           </label>
           <label>
-            计划章节内部标识
-            <input name="plannedChapterId" />
+            计划章节
+            <ChapterNameSelect name="plannedChapterId" references={references} />
           </label>
           <button
             disabled={readOnly || command.pending || !catalog?.characterArcs.length}
@@ -1208,7 +1372,12 @@ function NarrativeEditors({
           arc.milestones.map((milestone) => (
             <div className="feature-row" key={milestone.id}>
               <span>
-                {arc.title} / {milestone.title} · {milestone.status}
+                {arc.title} / {milestone.title} ·{' '}
+                {milestone.status === 'hit'
+                  ? '已命中'
+                  : milestone.status === 'skipped'
+                    ? '已跳过'
+                    : '待命中'}
               </span>
               <div className="inline-actions">
                 <button
@@ -1230,11 +1399,7 @@ function NarrativeEditors({
           )),
         )}
       </details>
-      {command.error ? (
-        <p className="form-error">
-          {command.error.message} · {command.error.code}
-        </p>
-      ) : null}
+      {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
     </div>
   );
 }

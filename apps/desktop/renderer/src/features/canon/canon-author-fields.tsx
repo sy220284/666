@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type SelectHTMLAttributes } from 'react';
+import { useEffect, useState, type SelectHTMLAttributes } from 'react';
 
 import type { Entity } from '@worldforge/contracts';
 
@@ -69,43 +69,48 @@ export function useCanonAuthorReferences(
   const [references, setReferences] = useState<CanonAuthorReferences>(
     EMPTY_CANON_AUTHOR_REFERENCES,
   );
-  const load = useCallback(async (): Promise<void> => {
-    const [entities, structure] = await Promise.all([
-      bridge.canon.list({ projectId, includeArchived: false }, { mode: 'replace' }),
-      bridge.planning.listStructure(projectId, { mode: 'replace' }),
-    ]);
-    const entityValues = entities.state === 'success' ? entities.data.entities : [];
-    const chapters =
-      structure.state === 'success'
-        ? structure.data.volumes.flatMap((volume) =>
-            volume.chapters.map((chapter) => ({
-              id: chapter.id,
-              label: `${volume.title} / ${chapter.title}`,
-              finalVersionId: chapter.finalVersionId,
-            })),
-          )
-        : [];
-    setReferences({
-      state: entities.state === 'success' && structure.state === 'success' ? 'ready' : 'partial',
-      entities: entityValues,
-      chapters,
-      versions: chapters.flatMap((chapter) =>
-        chapter.finalVersionId
-          ? [
-              {
-                id: chapter.finalVersionId,
-                chapterId: chapter.id,
-                label: `${chapter.label} · 定稿版本`,
-              },
-            ]
-          : [],
-      ),
-    });
-  }, [bridge, projectId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    setReferences(EMPTY_CANON_AUTHOR_REFERENCES);
+    void Promise.all([
+      bridge.canon.list({ projectId, includeArchived: false }, { mode: 'replace' }),
+      bridge.planning.listStructure(projectId, { mode: 'replace' }),
+    ]).then(([entities, structure]) => {
+      if (!active) return;
+      const entityValues = entities.state === 'success' ? entities.data.entities : [];
+      const chapters =
+        structure.state === 'success'
+          ? structure.data.volumes.flatMap((volume) =>
+              volume.chapters.map((chapter) => ({
+                id: chapter.id,
+                label: `${volume.title} / ${chapter.title}`,
+                finalVersionId: chapter.finalVersionId,
+              })),
+            )
+          : [];
+      setReferences({
+        state: entities.state === 'success' && structure.state === 'success' ? 'ready' : 'partial',
+        entities: entityValues,
+        chapters,
+        versions: chapters.flatMap((chapter) =>
+          chapter.finalVersionId
+            ? [
+                {
+                  id: chapter.finalVersionId,
+                  chapterId: chapter.id,
+                  label: `${chapter.label} · 定稿版本`,
+                },
+              ]
+            : [],
+        ),
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [bridge, projectId]);
+
   return references;
 }
 

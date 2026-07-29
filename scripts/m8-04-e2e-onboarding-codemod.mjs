@@ -6,6 +6,12 @@ const entries = await readdir(directory, { withFileTypes: true });
 let changedFiles = 0;
 let migratedBlocks = 0;
 
+function usesLegacyChannelInput(lines) {
+  return lines.some(
+    (value) => value.includes('[data-project-channel]') && value.includes('.fill('),
+  );
+}
+
 function migrateCreationBlocks(source, fileName) {
   const lines = source.split('\n');
   const result = [];
@@ -24,7 +30,7 @@ function migrateCreationBlocks(source, fileName) {
     }
     if (confirmIndex < 0) continue;
     const block = lines.slice(index + 1, confirmIndex);
-    if (!block.some((value) => value.includes('[data-project-channel]'))) continue;
+    if (!usesLegacyChannelInput(block)) continue;
 
     const blank = block.some(
       (value) =>
@@ -54,16 +60,14 @@ function migrateCreationBlocks(source, fileName) {
     .filter((block) => {
       const beforeConfirm = block.split("await page.locator('[data-confirm-create-project]').click();")[0] ?? '';
       return (
-        beforeConfirm.includes('[data-project-channel]') &&
+        usesLegacyChannelInput(beforeConfirm.split('\n')) &&
         !beforeConfirm.includes('[data-onboarding-dialog-entry=')
       );
     });
   if (remainingChannelBlocks.length > 0) {
     throw new Error(`${fileName}仍有${remainingChannelBlocks.length}个旧创建流程未迁移。`);
   }
-  if (
-    migrated.includes("[data-project-initial-structure]').selectOption('blank')")
-  ) {
+  if (migrated.includes("[data-project-initial-structure]').selectOption('blank')")) {
     throw new Error(`${fileName}仍在操作空白入口中的禁用初始结构控件。`);
   }
   return migrated;

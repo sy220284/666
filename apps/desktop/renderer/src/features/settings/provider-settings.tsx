@@ -8,6 +8,14 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import {
+  applyProviderPreset,
+  PROVIDER_PRESETS,
+  providerPreset,
+  providerProtocolLabel,
+  type ProviderPresetId,
+} from './provider-presets.js';
 
 export interface ProviderSettingsProps {
   readonly bridge: RendererBridgeAdapter;
@@ -16,15 +24,7 @@ export interface ProviderSettingsProps {
   readonly onProviderInvalidated: (providerId: string) => void;
 }
 
-const EMPTY_CONFIG: ProviderEditableConfig = {
-  id: '',
-  name: '',
-  protocol: 'openai_compatible',
-  baseUrl: 'http://127.0.0.1:11434/v1',
-  model: '',
-  timeoutMs: 30_000,
-  options: {},
-};
+const EMPTY_CONFIG = applyProviderPreset('ollama');
 
 export function ProviderSettings({
   bridge,
@@ -34,10 +34,11 @@ export function ProviderSettings({
 }: ProviderSettingsProps) {
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
   const [draft, setDraft] = useState<ProviderEditableConfig>(EMPTY_CONFIG);
+  const [activePreset, setActivePreset] = useState<ProviderPresetId | null>('ollama');
   const [credential, setCredential] = useState('');
   const [removeCredential, setRemoveCredential] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
-  const [message, setMessage] = useState('正在读取本机Provider配置…');
+  const [message, setMessage] = useState('正在读取本机AI连接…');
   const [deleteArmed, setDeleteArmed] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderConnectionTestResult | null>(null);
 
@@ -46,17 +47,25 @@ export function ProviderSettings({
     if (outcome.state === 'success') {
       setProviders(outcome.data.providers);
       onProvidersChanged(outcome.data.providers);
-      setMessage(
-        outcome.data.providers.length ? nullMessage() : '尚未配置AI服务；离线写作功能不受影响。',
-      );
+      setMessage(outcome.data.providers.length ? 'AI连接已加载。' : '尚未配置AI连接；离线写作功能不受影响。');
     } else if (outcome.state === 'failure') {
-      setMessage(`${outcome.error.message}（${outcome.error.code}）`);
+      setMessage(authorErrorSummary(outcome.error));
     }
   };
 
   useEffect(() => {
     void refresh();
   }, []);
+
+  const choosePreset = (presetId: ProviderPresetId): void => {
+    setDraft(applyProviderPreset(presetId));
+    setActivePreset(presetId);
+    setCredential('');
+    setRemoveCredential(false);
+    setDeleteArmed(null);
+    setTestResult(null);
+    setMessage(`${providerPreset(presetId).label}预设已填入，请确认模型名称后保存。`);
+  };
 
   const edit = (provider: ProviderSummary): void => {
     setDraft({
@@ -68,20 +77,14 @@ export function ProviderSettings({
       timeoutMs: provider.timeoutMs,
       options: provider.options,
     });
+    setActivePreset(null);
     setCredential('');
     setRemoveCredential(false);
     setTestResult(null);
-    setMessage(`正在编辑“${provider.name}”；凭据不会回显。`);
+    setMessage(`正在编辑“${provider.name}”；密钥不会回显。`);
   };
 
-  const reset = (): void => {
-    setDraft(EMPTY_CONFIG);
-    setCredential('');
-    setRemoveCredential(false);
-    setDeleteArmed(null);
-    setTestResult(null);
-    setMessage('新建Provider配置。');
-  };
+  const reset = (): void => choosePreset('ollama');
 
   const save = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -112,7 +115,7 @@ export function ProviderSettings({
       await refresh();
       setMessage(`已保存“${outcome.data.name}”。实际密钥仅保存在系统安全存储。`);
     } else if (outcome.state === 'failure') {
-      setMessage(`${outcome.error.message}（${outcome.error.code}）`);
+      setMessage(authorErrorSummary(outcome.error));
     }
   };
 
@@ -130,11 +133,9 @@ export function ProviderSettings({
       onProviderInvalidated(provider.id);
       if (draft.id === provider.id) reset();
       await refresh();
-      setMessage(
-        outcome.data.removed ? `已删除“${provider.name}”及其凭据引用。` : '配置已不存在。',
-      );
+      setMessage(outcome.data.removed ? `已删除“${provider.name}”及其密钥引用。` : '该AI连接已不存在。');
     } else if (outcome.state === 'failure') {
-      setMessage(`${outcome.error.message}（${outcome.error.code}）`);
+      setMessage(authorErrorSummary(outcome.error));
     }
   };
 
@@ -147,42 +148,43 @@ export function ProviderSettings({
     if (outcome.state === 'success') {
       setTestResult(outcome.data);
       onProviderConnectionVerified(outcome.data);
-      setMessage(`连接成功：${outcome.data.actualModel}，${outcome.data.latencyMs}ms。`);
+      setMessage(`连接成功：${outcome.data.actualModel}，${outcome.data.latencyMs}毫秒。`);
     } else if (outcome.state === 'failure') {
-      setMessage(`${outcome.error.message}（${outcome.error.code}）`);
+      setMessage(authorErrorSummary(outcome.error));
     }
   };
 
+  const presetHint = activePreset ? providerPreset(activePreset).credentialHint : '编辑已有AI连接时，留空密钥即可保持原值。';
+
   return (
-    <section
-      className="react-settings-form"
-      data-provider-settings
-      data-settings-section="providers"
-    >
+    <section className="react-settings-form" data-provider-settings data-settings-section="providers">
       <header>
         <h2>AI服务与连接</h2>
-        <p>
-          Provider不可用不会影响写作、版本、搜索、恢复或导出。密钥只进入系统安全存储和单次请求内存。
-        </p>
+        <p>选择常用服务后只需确认模型和密钥。连接不可用不会影响写作、搜索、版本、恢复或导出。</p>
       </header>
       <p aria-live="polite" data-provider-status role="status">
         {message}
       </p>
+      <div className="provider-preset-grid" data-provider-presets>
+        {PROVIDER_PRESETS.map((preset) => (
+          <button
+            aria-pressed={activePreset === preset.id}
+            className="provider-preset-card"
+            data-provider-preset={preset.id}
+            disabled={Boolean(pending)}
+            key={preset.id}
+            type="button"
+            onClick={() => choosePreset(preset.id)}
+          >
+            <strong>{preset.label}</strong>
+            <span>{preset.description}</span>
+          </button>
+        ))}
+      </div>
       <div className="provider-settings-grid">
         <form data-provider-form onSubmit={(event) => void save(event)}>
           <label>
-            <span>配置ID</span>
-            <input
-              required
-              data-provider-id
-              disabled={providers.some((provider) => provider.id === draft.id)}
-              pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
-              value={draft.id}
-              onChange={(event) => setDraft({ ...draft, id: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>显示名称</span>
+            <span>连接名称</span>
             <input
               required
               data-provider-name
@@ -191,79 +193,91 @@ export function ProviderSettings({
             />
           </label>
           <label>
-            <span>协议</span>
-            <select
-              data-provider-protocol
-              value={draft.protocol}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  protocol: event.target.value as ProviderEditableConfig['protocol'],
-                })
-              }
-            >
-              <option value="openai_compatible">OpenAI兼容</option>
-              <option value="anthropic">Anthropic</option>
-            </select>
-          </label>
-          <label>
-            <span>Base URL</span>
-            <input
-              required
-              data-provider-base-url
-              type="url"
-              value={draft.baseUrl}
-              onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>模型ID</span>
+            <span>模型名称</span>
             <input
               required
               data-provider-model
+              placeholder="填写服务中实际可用的模型名称"
               value={draft.model}
               onChange={(event) => setDraft({ ...draft, model: event.target.value })}
             />
           </label>
           <label>
-            <span>单次请求超时（毫秒）</span>
-            <input
-              data-provider-timeout
-              max={300_000}
-              min={1_000}
-              step={1_000}
-              type="number"
-              value={draft.timeoutMs}
-              onChange={(event) => setDraft({ ...draft, timeoutMs: Number(event.target.value) })}
-            />
-          </label>
-          <label>
-            <span>API密钥（留空即保持；本地无密钥服务可不填）</span>
+            <span>API密钥</span>
             <input
               autoComplete="new-password"
               data-provider-credential
+              placeholder="本机无密钥服务可留空"
               type="password"
               value={credential}
               onChange={(event) => setCredential(event.target.value)}
             />
+            <small>{presetHint}</small>
           </label>
-          <label className="react-switch-row">
-            <input
-              checked={removeCredential}
-              data-provider-remove-credential
-              type="checkbox"
-              onChange={(event) => setRemoveCredential(event.target.checked)}
-            />
-            <span>保存时清除已有密钥</span>
-          </label>
+          <details className="provider-advanced-settings">
+            <summary>高级连接设置</summary>
+            <label>
+              <span>内部名称</span>
+              <input
+                required
+                data-provider-id
+                disabled={providers.some((provider) => provider.id === draft.id)}
+                pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
+                value={draft.id}
+                onChange={(event) => setDraft({ ...draft, id: event.target.value })}
+              />
+            </label>
+            <label>
+              <span>接口类型</span>
+              <select
+                data-provider-protocol
+                value={draft.protocol}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    protocol: event.target.value as ProviderEditableConfig['protocol'],
+                  })
+                }
+              >
+                <option value="openai_compatible">OpenAI兼容接口</option>
+                <option value="anthropic">Anthropic原生接口</option>
+              </select>
+            </label>
+            <label>
+              <span>服务地址</span>
+              <input
+                required
+                data-provider-base-url
+                type="url"
+                value={draft.baseUrl}
+                onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
+              />
+            </label>
+            <label>
+              <span>单次请求等待时间（毫秒）</span>
+              <input
+                data-provider-timeout
+                max={300_000}
+                min={1_000}
+                step={1_000}
+                type="number"
+                value={draft.timeoutMs}
+                onChange={(event) => setDraft({ ...draft, timeoutMs: Number(event.target.value) })}
+              />
+            </label>
+            <label className="react-switch-row">
+              <input
+                checked={removeCredential}
+                data-provider-remove-credential
+                type="checkbox"
+                onChange={(event) => setRemoveCredential(event.target.checked)}
+              />
+              <span>保存时清除已有密钥</span>
+            </label>
+          </details>
           <footer>
-            <button
-              className="quiet-button"
-              disabled={Boolean(pending)}
-              type="button"
-              onClick={reset}
-            >
-              新建
+            <button className="quiet-button" disabled={Boolean(pending)} type="button" onClick={reset}>
+              新建本机连接
             </button>
             <button
               className="primary-button"
@@ -271,34 +285,29 @@ export function ProviderSettings({
               disabled={Boolean(pending)}
               type="submit"
             >
-              {pending === 'save' ? '正在保存…' : '保存配置'}
+              {pending === 'save' ? '正在保存…' : '保存AI连接'}
             </button>
           </footer>
         </form>
         <div data-provider-list>
-          {providers.length === 0 ? <p>暂无Provider配置。</p> : null}
+          {providers.length === 0 ? <p>暂无AI连接。</p> : null}
           {providers.map((provider) => (
             <article className="feature-card" data-provider-card={provider.id} key={provider.id}>
               <h3>{provider.name}</h3>
               <p>
-                {provider.protocol} · {provider.model}
+                {providerProtocolLabel(provider.protocol)} · {provider.model}
               </p>
-              <p>{provider.baseUrl}</p>
-              <p>
-                {scopeLabel(provider.endpoint.scope)} ·{' '}
-                {provider.endpoint.secureTransport ? 'TLS' : '未使用TLS'}
-              </p>
-              <p>{provider.credentialConfigured ? '已配置密钥' : '无密钥'}</p>
+              <p>{scopeLabel(provider.endpoint.scope)} · {provider.endpoint.secureTransport ? '加密连接' : '未加密连接'}</p>
+              <p>{provider.credentialConfigured ? '已配置密钥' : '未配置密钥'}</p>
               {provider.endpoint.warnings.map((warning) => (
                 <p key={warning}>{warning}</p>
               ))}
+              <details>
+                <summary>连接详情</summary>
+                <p>{provider.baseUrl}</p>
+              </details>
               <footer>
-                <button
-                  className="quiet-button"
-                  disabled={Boolean(pending)}
-                  type="button"
-                  onClick={() => edit(provider)}
-                >
+                <button className="quiet-button" disabled={Boolean(pending)} type="button" onClick={() => edit(provider)}>
                   编辑
                 </button>
                 <button
@@ -327,15 +336,15 @@ export function ProviderSettings({
       {testResult ? (
         <dl className="react-diagnostic-list" data-provider-test-result>
           <div>
-            <dt>网络边界</dt>
+            <dt>连接范围</dt>
             <dd>{scopeLabel(testResult.endpoint.scope)}</dd>
           </div>
           <div>
             <dt>模型列表</dt>
-            <dd>{testResult.modelList === 'verified' ? '已验证' : '端点不支持'}</dd>
+            <dd>{testResult.modelList === 'verified' ? '已验证' : '服务未提供'}</dd>
           </div>
           <div>
-            <dt>流式</dt>
+            <dt>流式输出</dt>
             <dd>{testResult.streaming ? '通过' : '未通过'}</dd>
           </div>
           <div>
@@ -343,8 +352,8 @@ export function ProviderSettings({
             <dd>{testResult.structuredOutput ? '通过' : '未通过'}</dd>
           </div>
           <div>
-            <dt>Token统计</dt>
-            <dd>{testResult.tokenUsageAvailable ? 'Provider返回' : '需要本地估算'}</dd>
+            <dt>用量统计</dt>
+            <dd>{testResult.tokenUsageAvailable ? '服务返回' : '使用本地估算'}</dd>
           </div>
           {testResult.warnings.map((warning) => (
             <div key={warning}>
@@ -360,8 +369,4 @@ export function ProviderSettings({
 
 function scopeLabel(scope: ProviderEndpointScope): string {
   return scope === 'loopback' ? '当前设备' : scope === 'lan' ? '局域网' : '外部网络';
-}
-
-function nullMessage(): string {
-  return 'Provider配置已加载。';
 }

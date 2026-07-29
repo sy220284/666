@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type {
   BackupCleanupPreview,
@@ -10,6 +10,8 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { finalizedVersionIds, wholeBookExportLabel } from './text-export-selection.js';
 
 export type DataToolsSection = 'recovery' | 'import-export';
 
@@ -36,9 +38,9 @@ export function DataToolsWorkbench({
     <section className="data-tools-workbench" data-recovery-dialog aria-label="恢复与数据工具">
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">Data Safety</p>
+          <p className="eyebrow">本地作品安全</p>
           <h1>恢复与数据工具</h1>
-          <p>恢复点、只读导出和文本导入导出继续由Core执行校验与原子事务。</p>
+          <p>恢复点、只读导出和文本导入导出继续由本地服务执行校验与原子写入。</p>
         </div>
         <button className="quiet-button" data-close-recovery type="button" onClick={onClose}>
           返回
@@ -194,7 +196,7 @@ function RecoveryPanel({
     <section className="recovery-grid">
       <div className="feature-card recovery-summary">
         <h2>保护状态</h2>
-        <p>数据库：{resource.data?.databaseMode ?? '读取中'}</p>
+        <p>作品数据库：{resource.data?.databaseMode ?? '读取中'}</p>
         <p>兼容原因：{resource.data?.readOnlyReason ?? '无'}</p>
         <p>
           空间：{formatBytes(resource.data?.space.totalBytes ?? 0)} /
@@ -230,7 +232,7 @@ function RecoveryPanel({
           创建并保护命名快照
         </button>
         <p className="feature-status" data-recovery-status role="status">
-          {command.error ? `${command.error.message} · ${command.error.code}` : status}
+          {command.error ? authorErrorSummary(command.error) : status}
         </p>
       </div>
       <div className="feature-card">
@@ -244,8 +246,8 @@ function RecoveryPanel({
                 <div>
                   <strong>{checkpoint.displayName ?? checkpoint.operation}</strong>
                   <span>
-                    {checkpoint.track} · Schema {checkpoint.schemaVersion} · {checkpoint.createdAt}{' '}
-                    · {formatBytes(checkpoint.sizeBytes)}
+                    {checkpoint.track} · 数据结构版本 {checkpoint.schemaVersion} ·{' '}
+                    {checkpoint.createdAt} · {formatBytes(checkpoint.sizeBytes)}
                   </span>
                   <small>
                     {checkpoint.protectionReasons.length > 0
@@ -365,10 +367,10 @@ function RecoveryPanel({
         ) : null}
       </div>
       <div className="feature-card">
-        <h2>可安全导出的Version</h2>
+        <h2>可安全导出的历史版本</h2>
         <div className="recovery-list" data-recovery-versions>
           {resource.data?.exportableVersions.length === 0 ? (
-            <p>暂无可导出Version。</p>
+            <p>暂无可导出的历史版本。</p>
           ) : (
             resource.data?.exportableVersions.map((version) => (
               <article className="feature-row recovery-row" key={version.versionId}>
@@ -418,12 +420,16 @@ function TextIoPanel({
   const [selectedVersions, setSelectedVersions] = useState<Set<string>>(new Set());
   const [format, setFormat] = useState<TextDocumentFormat>('txt');
   const [fileName, setFileName] = useState('WorldForge导出');
-  const [status, setStatus] = useState('预览不会写入项目；提交时Core先创建恢复点。');
+  const [status, setStatus] = useState('预览不会写入作品；提交时本地服务会先创建恢复点。');
   const [operationLabel, setOperationLabel] = useState('操作');
   const command = useBridgeCommand();
+  const finalizedIds = useMemo(
+    () => finalizedVersionIds(exports.data?.versions ?? []),
+    [exports.data?.versions],
+  );
 
   useEffect(() => {
-    if (command.error) setStatus(`${operationLabel}失败 · ${command.error.code}`);
+    if (command.error) setStatus(`${operationLabel}失败：${authorErrorSummary(command.error)}`);
   }, [command.error, operationLabel]);
 
   const preview = async (): Promise<void> => {
@@ -598,11 +604,29 @@ function TextIoPanel({
         ) : null}
       </div>
       <div className="feature-card">
-        <h2>Version导出</h2>
-        <p>仅导出明确勾选的Version，不读取未定稿Draft。</p>
+        <h2>历史版本与整书导出</h2>
+        <p>只导出明确选择的历史版本；整书导出会一次选择全部定稿版本，不读取未定稿当前稿。</p>
+        <div className="inline-actions export-selection-actions">
+          <button
+            data-select-finalized-versions
+            disabled={finalizedIds.length === 0}
+            type="button"
+            onClick={() => setSelectedVersions(new Set(finalizedIds))}
+          >
+            选择全部定稿（{finalizedIds.length}章）
+          </button>
+          <button
+            disabled={selectedVersions.size === 0}
+            type="button"
+            onClick={() => setSelectedVersions(new Set())}
+          >
+            清空选择
+          </button>
+          <span>已选择 {selectedVersions.size} 个版本</span>
+        </div>
         <div className="export-version-list">
           {exports.data?.versions.length === 0 ? (
-            <p>暂无可导出Version。</p>
+            <p>暂无可导出的历史版本。</p>
           ) : (
             exports.data?.versions.map((version) => (
               <label className="feature-row" key={version.versionId}>
@@ -659,7 +683,7 @@ function TextIoPanel({
           type="button"
           onClick={() => void exportSelected()}
         >
-          选择目录并导出
+          {wholeBookExportLabel(selectedVersions, exports.data?.versions ?? [])}
         </button>
       </div>
       <p className="feature-status text-io-status" data-text-io-status role="status">

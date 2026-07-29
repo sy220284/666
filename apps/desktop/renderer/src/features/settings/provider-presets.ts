@@ -1,6 +1,7 @@
 import type { ProviderEditableConfig } from '@worldforge/contracts';
 
-export type ProviderPresetId = 'ollama' | 'lm-studio' | 'openai-compatible' | 'anthropic' | 'custom';
+export type ProviderPresetId =
+  'ollama' | 'lm-studio' | 'openai-compatible' | 'anthropic' | 'custom';
 
 export interface ProviderPreset {
   readonly id: ProviderPresetId;

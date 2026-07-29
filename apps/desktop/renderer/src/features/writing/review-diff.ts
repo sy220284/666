@@ -43,10 +43,7 @@ function commonPrefixLength(left: string, right: string): number {
 function commonSuffixLength(left: string, right: string, prefixLength: number): number {
   const limit = Math.min(left.length, right.length) - prefixLength;
   let index = 0;
-  while (
-    index < limit &&
-    left[left.length - index - 1] === right[right.length - index - 1]
-  ) {
+  while (index < limit && left[left.length - index - 1] === right[right.length - index - 1]) {
     index += 1;
   }
   return index;
@@ -85,13 +82,20 @@ function inlineSegments(
   };
 }
 
-function fallbackOperations(current: readonly string[], comparison: readonly string[]): RawLineOperation[] {
+function fallbackOperations(
+  current: readonly string[],
+  comparison: readonly string[],
+): RawLineOperation[] {
   const operations: RawLineOperation[] = [];
   const length = Math.max(current.length, comparison.length);
   for (let index = 0; index < length; index += 1) {
     const currentText = current[index];
     const comparisonText = comparison[index];
-    if (currentText !== undefined && comparisonText !== undefined && currentText === comparisonText) {
+    if (
+      currentText !== undefined &&
+      comparisonText !== undefined &&
+      currentText === comparisonText
+    ) {
       operations.push({
         kind: 'unchanged',
         text: currentText,
@@ -120,7 +124,10 @@ function fallbackOperations(current: readonly string[], comparison: readonly str
   return operations;
 }
 
-function lcsOperations(current: readonly string[], comparison: readonly string[]): RawLineOperation[] {
+function lcsOperations(
+  current: readonly string[],
+  comparison: readonly string[],
+): RawLineOperation[] {
   if (current.length * comparison.length > MAX_LCS_CELLS) {
     return fallbackOperations(current, comparison);
   }
@@ -143,7 +150,11 @@ function lcsOperations(current: readonly string[], comparison: readonly string[]
   while (currentIndex < current.length || comparisonIndex < comparison.length) {
     const currentText = current[currentIndex];
     const comparisonText = comparison[comparisonIndex];
-    if (currentText !== undefined && comparisonText !== undefined && currentText === comparisonText) {
+    if (
+      currentText !== undefined &&
+      comparisonText !== undefined &&
+      currentText === comparisonText
+    ) {
       operations.push({
         kind: 'unchanged',
         text: currentText,
@@ -178,9 +189,7 @@ function lcsOperations(current: readonly string[], comparison: readonly string[]
 }
 
 function unchangedLine(operation: RawLineOperation, index: number): ReviewDiffLine {
-  const segments = operation.text
-    ? [{ kind: 'unchanged' as const, text: operation.text }]
-    : [];
+  const segments = operation.text ? [{ kind: 'unchanged' as const, text: operation.text }] : [];
   return {
     id: `line-${index}`,
     kind: 'unchanged',
@@ -237,9 +246,7 @@ export function createReviewDiff(currentValue: string, comparisonValue: string):
         comparisonLineNumber: null,
         currentText: currentLine.text,
         comparisonText: '',
-        currentSegments: currentLine.text
-          ? [{ kind: 'removed', text: currentLine.text }]
-          : [],
+        currentSegments: currentLine.text ? [{ kind: 'removed', text: currentLine.text }] : [],
         comparisonSegments: [],
       });
     }
@@ -265,12 +272,7 @@ export function changedReviewLineIndexes(diff: readonly ReviewDiffLine[]): numbe
   return diff.flatMap((line, index) => (line.kind === 'unchanged' ? [] : [index]));
 }
 
-export type CandidateReviewGroupId =
-  | 'pending'
-  | 'accepted'
-  | 'discarded'
-  | 'skeleton'
-  | 'partial';
+export type CandidateReviewGroupId = 'pending' | 'accepted' | 'discarded' | 'skeleton' | 'partial';
 
 export interface CandidateReviewGroup {
   readonly id: CandidateReviewGroupId;
@@ -278,13 +280,14 @@ export interface CandidateReviewGroup {
   readonly candidates: readonly CandidateSummary[];
 }
 
-const CANDIDATE_GROUPS: readonly { readonly id: CandidateReviewGroupId; readonly label: string }[] = [
-  { id: 'pending', label: '待审阅' },
-  { id: 'partial', label: '未完成内容' },
-  { id: 'skeleton', label: '情节骨架' },
-  { id: 'accepted', label: '已采用' },
-  { id: 'discarded', label: '已丢弃' },
-];
+const CANDIDATE_GROUPS: readonly { readonly id: CandidateReviewGroupId; readonly label: string }[] =
+  [
+    { id: 'pending', label: '待审阅' },
+    { id: 'partial', label: '未完成内容' },
+    { id: 'skeleton', label: '情节骨架' },
+    { id: 'accepted', label: '已采用' },
+    { id: 'discarded', label: '已丢弃' },
+  ];
 
 export function candidateReviewGroupId(candidate: CandidateSummary): CandidateReviewGroupId {
   if (candidate.status === 'accepted') return 'accepted';
@@ -320,9 +323,7 @@ export function candidateStatusLabel(status: CandidateSummary['status']): string
   return status === 'pending' ? '待审阅' : status === 'accepted' ? '已采用' : '已丢弃';
 }
 
-export function candidateCompletenessLabel(
-  completeness: CandidateSummary['completeness'],
-): string {
+export function candidateCompletenessLabel(completeness: CandidateSummary['completeness']): string {
   return completeness === 'complete' ? '内容完整' : '内容未完成';
 }
 

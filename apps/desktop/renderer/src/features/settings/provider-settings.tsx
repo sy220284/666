@@ -47,7 +47,9 @@ export function ProviderSettings({
     if (outcome.state === 'success') {
       setProviders(outcome.data.providers);
       onProvidersChanged(outcome.data.providers);
-      setMessage(outcome.data.providers.length ? 'AI连接已加载。' : '尚未配置AI连接；离线写作功能不受影响。');
+      setMessage(
+        outcome.data.providers.length ? 'AI连接已加载。' : '尚未配置AI连接；离线写作功能不受影响。',
+      );
     } else if (outcome.state === 'failure') {
       setMessage(authorErrorSummary(outcome.error));
     }
@@ -133,7 +135,9 @@ export function ProviderSettings({
       onProviderInvalidated(provider.id);
       if (draft.id === provider.id) reset();
       await refresh();
-      setMessage(outcome.data.removed ? `已删除“${provider.name}”及其密钥引用。` : '该AI连接已不存在。');
+      setMessage(
+        outcome.data.removed ? `已删除“${provider.name}”及其密钥引用。` : '该AI连接已不存在。',
+      );
     } else if (outcome.state === 'failure') {
       setMessage(authorErrorSummary(outcome.error));
     }
@@ -154,10 +158,16 @@ export function ProviderSettings({
     }
   };
 
-  const presetHint = activePreset ? providerPreset(activePreset).credentialHint : '编辑已有AI连接时，留空密钥即可保持原值。';
+  const presetHint = activePreset
+    ? providerPreset(activePreset).credentialHint
+    : '编辑已有AI连接时，留空密钥即可保持原值。';
 
   return (
-    <section className="react-settings-form" data-provider-settings data-settings-section="providers">
+    <section
+      className="react-settings-form"
+      data-provider-settings
+      data-settings-section="providers"
+    >
       <header>
         <h2>AI服务与连接</h2>
         <p>选择常用服务后只需确认模型和密钥。连接不可用不会影响写作、搜索、版本、恢复或导出。</p>
@@ -276,7 +286,12 @@ export function ProviderSettings({
             </label>
           </details>
           <footer>
-            <button className="quiet-button" disabled={Boolean(pending)} type="button" onClick={reset}>
+            <button
+              className="quiet-button"
+              disabled={Boolean(pending)}
+              type="button"
+              onClick={reset}
+            >
               新建本机连接
             </button>
             <button
@@ -297,7 +312,10 @@ export function ProviderSettings({
               <p>
                 {providerProtocolLabel(provider.protocol)} · {provider.model}
               </p>
-              <p>{scopeLabel(provider.endpoint.scope)} · {provider.endpoint.secureTransport ? '加密连接' : '未加密连接'}</p>
+              <p>
+                {scopeLabel(provider.endpoint.scope)} ·{' '}
+                {provider.endpoint.secureTransport ? '加密连接' : '未加密连接'}
+              </p>
               <p>{provider.credentialConfigured ? '已配置密钥' : '未配置密钥'}</p>
               {provider.endpoint.warnings.map((warning) => (
                 <p key={warning}>{warning}</p>
@@ -307,7 +325,12 @@ export function ProviderSettings({
                 <p>{provider.baseUrl}</p>
               </details>
               <footer>
-                <button className="quiet-button" disabled={Boolean(pending)} type="button" onClick={() => edit(provider)}>
+                <button
+                  className="quiet-button"
+                  disabled={Boolean(pending)}
+                  type="button"
+                  onClick={() => edit(provider)}
+                >
                   编辑
                 </button>
                 <button

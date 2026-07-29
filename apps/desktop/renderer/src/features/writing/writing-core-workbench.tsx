@@ -41,6 +41,14 @@ import {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { StructureNavigator } from '../planning/planning-workbench.js';
 import { WritingAssistancePanel } from './writing-assistance-panel.js';
+import { ReviewDiffPanel } from './review-diff-panel.js';
+import {
+  candidateCompletenessLabel,
+  candidateStatusLabel,
+  candidateTypeLabel,
+  groupCandidatesForReview,
+  sceneBeatReviewLabel,
+} from './review-diff.js';
 import {
   ContinuationPersistenceTracker,
   derivePanelSwitchInput,
@@ -1500,18 +1508,13 @@ function VersionPanel({
             ))
           )}
         </div>
-        <div className="version-compare-grid">
-          <pre>
-            <strong>当前稿</strong>
-            {'\n\n'}
-            {draft.blocks.map((block) => block.text).join('\n\n')}
-          </pre>
-          <pre>
-            <strong>{selected?.title ?? '选择历史版本比较'}</strong>
-            {'\n\n'}
-            {selected?.blocks.map((block) => block.text).join('\n\n') ?? ''}
-          </pre>
-        </div>
+        <ReviewDiffPanel
+          comparisonText={selected?.blocks.map((block) => block.text).join('\n\n') ?? ''}
+          comparisonTitle={selected?.title ?? '选择历史版本比较'}
+          currentText={draft.blocks.map((block) => block.text).join('\n\n')}
+          currentTitle="当前已保存稿"
+          marker="version"
+        />
       </div>
     </section>
   );
@@ -1594,7 +1597,7 @@ function CandidatePanel({
       mode: 'replace',
     });
     if (outcome.state !== 'success') {
-      if (outcome.state === 'failure') setStatus(`候选列表读取失败 · ${outcome.error.code}`);
+      if (outcome.state === 'failure') setStatus(`建议稿列表读取失败 · ${outcome.error.code}`);
       return [];
     }
     setCandidates(outcome.data.candidates);
@@ -1684,7 +1687,7 @@ function CandidatePanel({
         candidateId: nextCandidateId,
       });
       if (outcome.state !== 'success') {
-        if (outcome.state === 'failure') setStatus(`候选读取失败 · ${outcome.error.code}`);
+        if (outcome.state === 'failure') setStatus(`建议稿读取失败 · ${outcome.error.code}`);
         return;
       }
       setSelectedDocument(outcome.data);
@@ -1915,7 +1918,7 @@ function CandidatePanel({
     setPreview(nextPreview);
     await loadUndo(nextPreview);
     await refreshList();
-    setStatus(`采用成功 · ApplyRecord ${outcome.data.record.applyRecordId.slice(0, 8)}…`);
+    setStatus(`采用成功 · 采用记录 ${outcome.data.record.applyRecordId.slice(0, 8)}…`);
   };
 
   const undo = async (): Promise<void> => {
@@ -1959,6 +1962,7 @@ function CandidatePanel({
   const proseCandidates = candidates.filter(
     (candidate) => candidate.candidateType !== 'skeleton' && candidate.status !== 'discarded',
   );
+  const reviewGroups = useMemo(() => groupCandidatesForReview(candidates), [candidates]);
 
   const startGeneration = async (
     continuationOfRunId: string | null = null,
@@ -2472,7 +2476,7 @@ function CandidatePanel({
                     <option value="current_draft">保留当前稿</option>
                     {proseCandidates.map((candidate) => (
                       <option key={candidate.candidateId} value={candidate.candidateId}>
-                        {candidate.title} · {candidate.candidateType}
+                        {candidate.title} · {candidateTypeLabel(candidate.candidateType)}
                       </option>
                     ))}
                   </select>
@@ -2480,7 +2484,7 @@ function CandidatePanel({
               ))
             ) : (
               <>
-                <p>选择至少两个正文候选；候选无 Beat 关联时使用此模式。</p>
+                <p>选择至少两个正文建议稿；建议稿没有场景节拍关联时使用此模式。</p>
                 {proseCandidates.map((candidate) => (
                   <label key={candidate.candidateId}>
                     <input
@@ -2492,7 +2496,8 @@ function CandidatePanel({
                         )
                       }
                     />
-                    {candidate.title} · {candidate.candidateType} · {candidate.completeness}
+                    {candidate.title} · {candidateTypeLabel(candidate.candidateType)} ·{' '}
+                    {candidate.completeness}
                   </label>
                 ))}
               </>
@@ -2565,11 +2570,11 @@ function CandidatePanel({
         {activeRun ? (
           <dl className="generation-provenance" data-active-generation-run>
             <div>
-              <dt>Run</dt>
+              <dt>生成记录</dt>
               <dd>{activeRun.runId}</dd>
             </div>
             <div>
-              <dt>Prompt</dt>
+              <dt>提示词版本</dt>
               <dd>
                 {activeRun.promptId} v{activeRun.promptVersion}
               </dd>
@@ -2579,7 +2584,7 @@ function CandidatePanel({
               <dd>{activeRun.actualModel}</dd>
             </div>
             <div>
-              <dt>支持档位</dt>
+              <dt>兼容状态</dt>
               <dd>{activeRun.supportStatus}</dd>
             </div>
           </dl>
@@ -2587,7 +2592,7 @@ function CandidatePanel({
       </section>
       <div className="filter-bar">
         <select
-          aria-label="选择候选稿"
+          aria-label="选择建议稿"
           data-candidate-preview-select
           value={candidateId}
           onChange={(event) => {
@@ -2595,15 +2600,20 @@ function CandidatePanel({
             void loadCandidate(event.target.value);
           }}
         >
-          {candidates.map((candidate) => (
-            <option
-              data-status={candidate.status}
-              key={candidate.candidateId}
-              value={candidate.candidateId}
-            >
-              {candidate.title} · {candidate.candidateType} · {candidate.completeness} ·{' '}
-              {candidate.status}
-            </option>
+          {reviewGroups.map((group) => (
+            <optgroup key={group.id} label={group.label}>
+              {group.candidates.map((candidate) => (
+                <option
+                  data-status={candidate.status}
+                  key={candidate.candidateId}
+                  value={candidate.candidateId}
+                >
+                  {candidate.title} · {candidateTypeLabel(candidate.candidateType)} ·{' '}
+                  {candidateCompletenessLabel(candidate.completeness)} ·{' '}
+                  {candidateStatusLabel(candidate.status)}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <button
@@ -2620,7 +2630,7 @@ function CandidatePanel({
           disabled={!selectedDocument || selectedDocument.status !== 'pending'}
           onClick={() => void discard()}
         >
-          丢弃候选
+          丢弃建议稿
         </button>
       </div>
       <p
@@ -2646,13 +2656,13 @@ function CandidatePanel({
             </dd>
           </div>
           <div>
-            <dt>Prompt</dt>
+            <dt>提示词版本</dt>
             <dd>
               {selectedRun.promptId} v{selectedRun.promptVersion}
             </dd>
           </div>
           <div>
-            <dt>输出</dt>
+            <dt>输出方式</dt>
             <dd>
               {selectedRun.outputMode} · {selectedRun.supportStatus}
             </dd>
@@ -2679,7 +2689,7 @@ function CandidatePanel({
                 setAcknowledgeStaleSkeleton(false);
               }}
             >
-              用于 T1 正文
+              用于生成正文
             </button>
           </header>
           <div className="generation-grid">
@@ -2741,7 +2751,7 @@ function CandidatePanel({
             </button>
           </div>
           <p className="safety-inline">
-            骨架不会进入正文差异、采用、Version 或定稿；请先用它生成 T1 正文候选。
+            情节骨架不会直接进入正文差异、采用、历史版本或定稿；请先用它生成正文建议稿。
           </p>
         </section>
       ) : null}
@@ -2770,18 +2780,13 @@ function CandidatePanel({
             <span>字符差异块 {preview.characterDiffs.length}</span>
             <span>{preview.execution.chapterCharacters}字符</span>
           </div>
-          <div className="candidate-compare-grid">
-            <pre data-candidate-preview-current>
-              <strong>当前已保存稿</strong>
-              {'\n\n'}
-              {preview.draft.blocks.map((block) => block.text).join('\n\n')}
-            </pre>
-            <pre data-candidate-preview-candidate>
-              <strong>候选稿</strong>
-              {'\n\n'}
-              {preview.candidate.blocks.map((block) => block.text).join('\n\n')}
-            </pre>
-          </div>
+          <ReviewDiffPanel
+            comparisonText={preview.candidate.blocks.map((block) => block.text).join('\n\n')}
+            comparisonTitle={preview.candidate.title}
+            currentText={preview.draft.blocks.map((block) => block.text).join('\n\n')}
+            currentTitle="当前已保存稿"
+            marker="candidate"
+          />
           <div className="candidate-apply-panel" data-candidate-apply-panel>
             <label>
               采用范围
@@ -2794,7 +2799,7 @@ function CandidatePanel({
                   整稿
                 </option>
                 <option value="blocks">按块</option>
-                <option value="scene-beats">按SceneBeat</option>
+                <option value="scene-beats">按场景节拍</option>
               </select>
             </label>
             {selectionMode === 'blocks' ? (
@@ -2832,7 +2837,7 @@ function CandidatePanel({
                         setSelectedBeats(toggleSet(selectedBeats, beatId, event.target.checked))
                       }
                     />
-                    {beatId}
+                    {sceneBeatReviewLabel(sceneBeats, beatId)}
                   </label>
                 ))}
               </div>

@@ -32,7 +32,10 @@ export function ReviewDiffPanel({
   );
   const changedIndexes = useMemo(() => changedReviewLineIndexes(diff), [diff]);
   const visible = useMemo(
-    () => diff.map((line, index) => ({ line, index })).filter(({ line }) => !changedOnly || line.kind !== 'unchanged'),
+    () =>
+      diff
+        .map((line, index) => ({ line, index }))
+        .filter(({ line }) => !changedOnly || line.kind !== 'unchanged'),
     [changedOnly, diff],
   );
 
@@ -75,7 +78,9 @@ export function ReviewDiffPanel({
             上一处
           </button>
           <span aria-live="polite">
-            {changedIndexes.length === 0 ? '没有差异' : `${activeChange + 1}/${changedIndexes.length}`}
+            {changedIndexes.length === 0
+              ? '没有差异'
+              : `${activeChange + 1}/${changedIndexes.length}`}
           </span>
           <button disabled={changedIndexes.length === 0} type="button" onClick={() => move(1)}>
             下一处

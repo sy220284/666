@@ -156,8 +156,6 @@ describe('整书定稿导出', () => {
 
   it('部分选择仍按所选版本导出', () => {
     expect(selectedAllFinalized(new Set(['final-1']), versions)).toBe(false);
-    expect(wholeBookExportLabel(new Set(['final-1']), versions)).toBe(
-      '选择目录并导出所选版本',
-    );
+    expect(wholeBookExportLabel(new Set(['final-1']), versions)).toBe('选择目录并导出所选版本');
   });
 });

@@ -86,7 +86,9 @@ export const AUTHOR_TERMS = {
 
 export type AuthorTermKey = keyof typeof AUTHOR_TERMS;
 
-export function authorTerm(key: AuthorTermKey): (typeof AUTHOR_TERMS)[AuthorTermKey] {
+export function authorTerm(
+  key: AuthorTermKey,
+): (typeof AUTHOR_TERMS)[AuthorTermKey] {
   return AUTHOR_TERMS[key];
 }
 

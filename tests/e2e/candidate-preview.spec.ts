@@ -134,10 +134,11 @@ test('previews a Fixture Candidate through the real desktop chain without writin
       `基础保存序号 ${fixture.revision}`,
     );
     await expect(page.locator('[data-candidate-preview-warning]')).toContainText('不完整建议稿');
-    await expect(page.locator('[data-candidate-preview-current]')).toContainText(
+    const candidateDiff = page.locator('[data-review-diff="candidate"]');
+    await expect(candidateDiff.locator('[data-side="current"]').first()).toContainText(
       fixture.currentText,
     );
-    await expect(page.locator('[data-candidate-preview-candidate]')).toContainText(
+    await expect(candidateDiff.locator('[data-side="comparison"]').first()).toContainText(
       fixture.candidateText,
     );
     await captureAcceptanceScreenshot(page, 'M2-02', 'candidate-readonly-preview.png');

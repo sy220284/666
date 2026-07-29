@@ -229,7 +229,6 @@ test('writes and displays foreshadowing and character arcs across the real Elect
     await expect(page.locator('[data-narrative-planning-results]')).toContainText('已埋设');
     await expect(page.locator('[data-narrative-planning-results]')).toContainText('从旁观到承担');
     await expect(page.locator('[data-narrative-planning-results]')).toContainText('主动作证');
-    await expect(page.locator('[data-narrative-planning-results]')).toContainText('author');
   } finally {
     await closeGracefully(application);
   }

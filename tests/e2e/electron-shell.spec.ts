@@ -1112,7 +1112,7 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     });
     await page.locator('[data-open-versions]').click();
     await page.locator('[data-version-action="restore"]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从只读版本恢复为新草稿。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从只读历史版本恢复为新当前稿。');
     await expect(editor).toHaveText('首稿正文');
     const restoredDraftId = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })

@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - scripts/m8-04-navigation-codemod.mjs
+      - scripts/m8-04-navigation-language-followup.mjs
       - .github/workflows/m8-04-navigation-codemod.yml
 
 permissions:
@@ -37,11 +38,14 @@ jobs:
       - name: 安装锁定依赖
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: 执行内容精准跳转接线
-        run: node scripts/m8-04-navigation-codemod.mjs
+        run: |
+          node scripts/m8-04-navigation-codemod.mjs
+          node scripts/m8-04-navigation-language-followup.mjs
       - name: 格式化受影响文件
         run: >-
           pnpm exec prettier --write
           apps/desktop/renderer/src/app/app-shell-m3.tsx
+          apps/desktop/renderer/src/features/checks/search-panel.tsx
           apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
           apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx
           apps/desktop/renderer/src/m3.css
@@ -69,6 +73,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
             apps/desktop/renderer/src/app/app-shell-m3.tsx \
+            apps/desktop/renderer/src/features/checks/search-panel.tsx \
             apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx \
             apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx \
             apps/desktop/renderer/src/m3.css \

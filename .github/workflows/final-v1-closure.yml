@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - scripts/final-v1-closure-runner.mjs
+      - scripts/final-v1-whitespace-fix.mjs
       - .github/workflows/final-v1-closure.yml
 
 permissions:
@@ -52,6 +53,8 @@ jobs:
           docs/test-evidence/M8-02/manifest.json
           docs/product/V1.0_TRACEABILITY_MATRIX.md
           README.md
+      - name: Normalize closure whitespace and evidence hashes
+        run: node scripts/final-v1-whitespace-fix.mjs
       - name: Validate governance and evidence
         run: |
           pnpm lint

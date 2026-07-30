@@ -1,16 +1,16 @@
 import type {
   CoreStatus,
   ProjectWorkspaceSummary,
-} from '@worldforge/contracts';
+} from "@worldforge/contracts";
 
-import type { PrimaryNavigationAvailability } from '../shell/app-shell-model.js';
+import type { PrimaryNavigationAvailability } from "../shell/app-shell-model.js";
 
 export type ProjectOperatingMode =
-  | 'closed'
-  | 'normal'
-  | 'read-only-compatible'
-  | 'read-only-integrity-failed'
-  | 'recovery-only';
+  | "closed"
+  | "normal"
+  | "read-only-compatible"
+  | "read-only-integrity-failed"
+  | "recovery-only";
 
 export interface ApplicationCapabilities {
   readonly shellAvailable: boolean;
@@ -44,9 +44,9 @@ export interface CapabilityMatrix {
 }
 
 const RECOVERY_ONLY_REASONS = new Set([
-  'migration-failed',
-  'checksum-mismatch',
-  'integrity-failed',
+  "migration-failed",
+  "checksum-mismatch",
+  "integrity-failed",
 ]);
 
 function applicationCapabilities(
@@ -55,7 +55,7 @@ function applicationCapabilities(
   providerCount: number,
   verifiedProviderCount: number,
 ): ApplicationCapabilities {
-  const coreAvailable = coreStatus?.status === 'healthy';
+  const coreAvailable = coreStatus?.status === "healthy";
   return {
     shellAvailable: hydrated,
     coreAvailable,
@@ -68,7 +68,7 @@ function applicationCapabilities(
 
 function closedProject(): ProjectCapabilities {
   return {
-    mode: 'closed',
+    mode: "closed",
     projectReadable: false,
     projectWritable: false,
     databaseReadable: false,
@@ -89,9 +89,9 @@ function projectCapabilities(
   coreAvailable: boolean,
 ): ProjectCapabilities {
   if (!project || !coreAvailable) return closedProject();
-  if (project.databaseMode === 'read-write') {
+  if (project.databaseMode === "read-write") {
     return {
-      mode: 'normal',
+      mode: "normal",
       projectReadable: true,
       projectWritable: true,
       databaseReadable: true,
@@ -108,9 +108,9 @@ function projectCapabilities(
   }
 
   if (RECOVERY_ONLY_REASONS.has(project.compatibility)) {
-    const integrityFailed = project.compatibility === 'integrity-failed';
+    const integrityFailed = project.compatibility === "integrity-failed";
     return {
-      mode: integrityFailed ? 'read-only-integrity-failed' : 'recovery-only',
+      mode: integrityFailed ? "read-only-integrity-failed" : "recovery-only",
       projectReadable: false,
       projectWritable: false,
       databaseReadable: false,
@@ -127,7 +127,7 @@ function projectCapabilities(
   }
 
   return {
-    mode: 'read-only-compatible',
+    mode: "read-only-compatible",
     projectReadable: true,
     projectWritable: false,
     databaseReadable: true,

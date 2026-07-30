@@ -4,8 +4,10 @@ import {
   DRAFT_FLUSH_FAILED_EVENT,
   flushRegisteredDraft,
 } from '../runtime/draft-flush-registry.js';
+import { useRendererUiStore } from '../state/ui-store.js';
 
 export function DraftFlushFailureDialog() {
+  const dispatch = useRendererUiStore((state) => state.dispatch);
   const [open, setOpen] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [notice, setNotice] = useState('当前稿尚未安全保存，操作已经停止。');
@@ -33,13 +35,8 @@ export function DraftFlushFailureDialog() {
   };
 
   const openRecovery = (): void => {
-    const recoveryButton = document.querySelector<HTMLButtonElement>('[data-open-recovery]');
-    if (!recoveryButton || recoveryButton.disabled) {
-      setNotice('当前无法打开恢复中心。请先返回正文复制未保存内容。');
-      return;
-    }
     setOpen(false);
-    recoveryButton.click();
+    dispatch({ type: 'navigate', route: 'recovery' });
   };
 
   return (

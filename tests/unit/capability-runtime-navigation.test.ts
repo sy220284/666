@@ -45,9 +45,11 @@ describe('capability-tracked primary navigation', () => {
         app: {
           getCoreStatus: async () => ({ state: 'success', data: core }),
         },
+        settings: {},
         project: {
           getActive: async () => ({ state: 'success', data: project }),
         },
+        task: {},
         providers: {
           list: async () => ({ state: 'success', data: { providers: [] } }),
         },
@@ -71,9 +73,7 @@ describe('capability-tracked primary navigation', () => {
       },
     });
 
-    expect(
-      Object.fromEntries(items.map((item) => [item.id, item.disabled])),
-    ).toMatchObject({
+    expect(Object.fromEntries(items.map((item) => [item.id, item.disabled]))).toMatchObject({
       home: false,
       planning: true,
       writing: true,

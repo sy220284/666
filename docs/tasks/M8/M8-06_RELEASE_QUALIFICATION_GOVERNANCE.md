@@ -1,9 +1,10 @@
 # M8-06 发布资格与任务治理硬化
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
-> 正式分支：`work/m8-06-release-qualification-governance`
+> 正式分支：`work/m8-06-release-qualification-governance`  
+> 实现提交：`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`
 
 ## 目标
 
@@ -99,6 +100,36 @@ M8-05（Verified）
 - `pnpm release:check`
 - `pnpm build`
 
-## 完成记录
+## 实现结果
 
-实现、门禁运行、Evidence和最终关闭信息在任务达到Implemented后补充。
+- 发布工具不再含固定发布任务ID。
+- 发布门精确检查全部独立任务，忽略`Removed（absorbed）`历史任务行。
+- 最终保持、延期账本、任务清单和提交可达性均进入发布资格判断。
+- Release资格检查与发布前复核均获取完整Git历史。
+- 单元测试覆盖阻断与合法放行路径。
+- 发布资格规范、路线图、P0矩阵、README、变更记录和开发自动化完成同步。
+
+## 验证结果
+
+受检实现提交`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`的门禁全部成功：
+
+```text
+PR Policy            30516672698  success
+Task Governance      30516672657  success
+Evidence             30516672691  success
+Quality              30516672758  success
+Security             30516672817  success
+Performance          30516672653  success
+Repository Governance 30516672658 success
+```
+
+详细记录：`docs/test-evidence/M8-06/`。
+
+## 后续关闭条件
+
+当前状态为Implemented。只有以下步骤完成后才能标记Verified：
+
+1. 正式PR #231转Ready后，最终Head六项永久门禁全部成功。
+2. 使用精确Head受控压缩合并。
+3. 合并提交的Main Verification成功。
+4. 独立治理关闭PR将最终Evidence绑定main提交并进入main。

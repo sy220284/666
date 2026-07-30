@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-policy-${{ github.event.pull_request.number }}
@@ -27,7 +27,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11.13.0
@@ -38,26 +38,6 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Assert clean working tree before policy validation
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Prepare reviewed M8-07 fix
-        run: node scripts/prepare-m8-07-e2e-fix.mjs "$RUNNER_TEMP/m8-07-e2e-fix"
-      - name: Apply reviewed M8-07 source fix and remove bootstrap script
-        if: github.head_ref == 'policy/ci-parallel-toolchain-multitask'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp -R "$RUNNER_TEMP/m8-07-e2e-fix/." .
-          rm scripts/prepare-m8-07-e2e-fix.mjs
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            apps/desktop/renderer/src/m8-07.css \
-            tests/e2e/continuation-panel-race.spec.ts \
-            tests/e2e/electron-shell.spec.ts \
-            tests/e2e/structure-recovery.spec.ts \
-            tests/e2e/unreadable-project-recovery.spec.ts
-          git add -A scripts/prepare-m8-07-e2e-fix.mjs
-          git commit -m 'test: align E2E save status and editor theme'
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
       - name: Validate real PR branch
         run: |
           if node .github/governance/parallel-task-policy.mjs has-marker; then

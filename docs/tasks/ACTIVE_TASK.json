@@ -12,7 +12,7 @@
   },
   "activeTask": {
     "id": "M8-06",
-    "status": "IN_PROGRESS",
+    "status": "IMPLEMENTED",
     "source": "docs/tasks/M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md",
     "branch": "work/m8-06-release-qualification-governance",
     "startedAt": "2026-07-30",
@@ -72,30 +72,46 @@
     "verifiedAt": "2026-07-30T04:10:00.000Z",
     "evidenceHead": "02a595a247cdad83b74634dc5059b72dd93c9451"
   },
-  "deferredVerification": [],
+  "deferredVerification": [
+    {
+      "id": "M8-06",
+      "implementationCommit": "6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841",
+      "deferredAt": "2026-07-30T05:46:00.000Z",
+      "pending": [
+        "Ready Head six permanent checks",
+        "controlled squash merge",
+        "main-verification success",
+        "final evidence binding to reachable main commit",
+        "Verified closure"
+      ]
+    }
+  ],
   "deferredTasks": [],
   "lastImplementedTask": {
-    "id": "M8-05",
-    "commit": "1c5505b1a267e7ea43a70995b4dce7a5fc6abad3",
-    "implementedAt": "2026-07-30T03:20:00.000Z",
-    "source": "docs/tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md",
-    "branch": "work/m8-05-runtime-hardening-documentation-sync",
+    "id": "M8-06",
+    "commit": "6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841",
+    "implementedAt": "2026-07-30T05:46:00.000Z",
+    "source": "docs/tasks/M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md",
+    "branch": "work/m8-06-release-qualification-governance",
     "nextTaskId": null,
     "finalTask": true,
     "activationDeferred": true,
     "activationDeferredReason": "维护任务等待受控合并、主分支验证与最终治理关闭",
     "allowedPaths": [
-      "apps/desktop/renderer/",
-      "packages/contracts/",
-      "packages/core-service/",
-      "tests/unit/",
-      "tests/integration/",
-      "tests/security/",
-      "tests/performance/",
-      "tests/e2e/",
-      "docs/",
+      "scripts/release-tool.mjs",
+      "tests/unit/release-tool.test.ts",
+      ".github/workflows/release.yml",
+      "docs/tasks/",
+      "docs/process/",
+      "docs/roadmap/",
+      "docs/testing/",
+      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+      "docs/test-evidence/M8-06/",
       "README.md",
-      "CHANGELOG.md"
+      "CHANGELOG.md",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml"
     ],
     "forbiddenPaths": [
       "migrations/",
@@ -105,7 +121,8 @@
       "docs/test-evidence/M3/",
       "docs/test-evidence/M4-04/",
       "docs/test-evidence/M8-02/",
-      "docs/test-evidence/M8-04/manifest.json"
+      "docs/test-evidence/M8-04/",
+      "docs/test-evidence/M8-05/"
     ]
   },
   "integratedDelivery": {

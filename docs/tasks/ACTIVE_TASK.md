@@ -5,7 +5,7 @@
 ## 当前状态
 
 ```text
-IN_PROGRESS
+IMPLEMENTED
 ```
 
 - 任务ID：`M8-06`
@@ -64,6 +64,10 @@ verification:
   - pnpm release:check
   - pnpm build
 ```
+
+## 延期验证
+
+M8-06实现提交`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`已经通过实现门禁。当前等待正式PR最终Head永久门禁、受控压缩合并、Main Verification、最终Evidence绑定和Verified关闭。
 
 ## 连续执行规则
 

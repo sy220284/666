@@ -1,29 +1,44 @@
-# WorldForge 原M8 发布硬化与验收需求摘要
+# WorldForge M8交付、体验与长期维护任务摘要
 
-> 状态：Absorbed by M4-04  
-> 用途：保留安全、性能、跨平台与发布关闭要求；不得作为独立任务执行入口。
+> 状态：Active  
+> 用途：记录M8独立任务、被吸收来源和当前长期维护前沿。
 
-## 执行归属
+## 独立任务
 
-原M8-01—M8-03全部由[M4-04 V1剩余功能整体实施与发布闭环](M4/M4-04_PROMPT_REGISTRY_OUTPUT.md)吸收，作为同一任务的最终内部阶段执行。
+| ID | 任务 | 依赖 | 核心交付 | 状态 |
+|---|---|---|---|---|
+| M8-02 | [完整体验、硬化与自用交付关闭](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | C8体验、安全硬化、性能、E2E、AI Eval和三平台自用便携交付 | Verified |
+| M8-04 | [作者体验与开发语言统一改造](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md) | M8-02 | 正式中文名称、精准跳转、写作辅助、结构化设定、差异审阅和安全关闭握手 | Verified |
+| M8-05 | [运行时硬化与文档统一同步](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md) | M8-04 | 搜索工具异步隔离、Provider错误语义和全量文档一致性 | In Progress |
 
-发现功能、数据模型或跨模块架构缺陷时，必须回到M4-04对应内部阶段完成真实整改并重跑受影响矩阵，不得在发布末尾用临时补丁、降级文案或伪证据掩盖。
+## 被吸收的历史来源
 
-## 需求范围
+原M7-01—M7-03、M8-01和M8-03不再独立执行，其需求由M8-02统一承接：
 
 | 原ID | 需求来源 | 统一实施内容 |
 |---|---|---|
-| M8-01 | [安全、数据、Migration与隐私硬化](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md) | Electron、IPC、Migration、Candidate、GenerationRun、StateProposal、凭据、日志与恢复硬门。 |
-| M8-02 | [性能、E2E、显示与AI Eval验收](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | 真实规模性能、完整Electron E2E、AI Eval、显示矩阵、写作统计与备份回归。 |
-| M8-03 | [跨平台构建、P0追踪与发布关闭](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | Windows/macOS/Linux构建、安装升级、P0关闭、文档同步与发布判断。 |
+| M7-01 | [新手/专业模式、向导与三条创作路径](M7/M7-01_ONBOARDING_MODES_PATHS.md) | 四入口、三路径、模式状态与创建事务。 |
+| M7-02 | [统一工作台、沉浸视图与交互状态](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md) | 工作台、状态仲裁、帮助、失败与恢复状态。 |
+| M7-03 | [双视觉主题、无障碍与响应式验收](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md) | Theme A/B、键盘、焦点、视口与DPI。 |
+| M8-01 | [安全、数据、Migration与隐私硬化](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md) | Electron、IPC、Migration、凭据、日志、诊断与恢复硬门。 |
+| M8-03 | [跨平台构建、P0追踪与发布关闭](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | Windows/macOS/Linux自用便携构建、追踪和发布判断。 |
 
-## 统一退出要求
+Removed只取消原任务的独立执行形式，不取消需求与验收要求。
 
-- Skeleton不得进入正文，partial不得误作完整稿，state_extract不得直接写权威状态。
-- GenerationRun、Candidate、StateProposalBatch、StateProposal、Prompt和约束来源引用完整。
-- 取消后无迟到delta污染Renderer，重启不伪装恢复已消失网络流。
-- 人工写作统计排除AI、导入、替换、恢复、结构和系统变更。
-- 安全、Migration、恢复、性能、E2E、Eval、主题、无障碍和显示矩阵均有真实证据。
-- Windows、macOS、Linux均有真实构建验证或明确可审计的Blocked结论。
-- P0-001—P0-075全部Verified或明确Blocked，输出允许发布、有条件允许或禁止发布结论。
-- 统一证据进入`docs/test-evidence/M4-04/`，不再建立M8独立关闭状态。
+## 最终交付边界
+
+M8-02已经完成V1.0自用便携交付：
+
+- Windows、macOS、Linux原生构建、ASAR/Fuse/Hash和启动验证。
+- 无AI基础写作、安全、恢复和既有项目兼容。
+- Windows代码签名、macOS签名与公证、系统安装器、自动更新和安装生命周期不属于V1.0范围。
+- 自用工件不得宣传或分发为适合第三方公开使用的正式产品。
+
+M8-04与M8-05均不扩大该边界。
+
+## 长期维护规则
+
+- 已Verified任务和历史Evidence保持冻结。
+- 新发现的真实缺陷必须建立新的独立维护任务，不能改写历史结论冒充当时已经覆盖。
+- 代码、测试、契约、专项规格、任务状态和Evidence必须在同一受检Head汇合。
+- 当前任务只从`ACTIVE_TASK.json`读取。

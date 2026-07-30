@@ -12,7 +12,7 @@ export const MAX_PROVIDER_SSE_EVENT_BYTES = 1024 * 1024;
 
 function responseTooLarge(): ProviderRuntimeError {
   return new ProviderRuntimeError(
-    'AI_OUTPUT_INVALID_008',
+    'AI_RESPONSE_TOO_LARGE_014',
     'The Provider response exceeded the configured safety limit.',
     false,
   );

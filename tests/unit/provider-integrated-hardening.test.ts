@@ -96,7 +96,7 @@ describe('M4 integrated Provider hardening', () => {
       });
     const declared = createBoundedProviderFetch(declaredFetch, 8);
     await expect(declared('https://provider.example')).rejects.toMatchObject({
-      code: 'AI_OUTPUT_INVALID_008',
+      code: 'AI_RESPONSE_TOO_LARGE_014',
     });
 
     const streamedFetch: typeof fetch = async () =>
@@ -113,7 +113,7 @@ describe('M4 integrated Provider hardening', () => {
     const streamed = createBoundedProviderFetch(streamedFetch, 8);
     const response = await streamed('https://provider.example');
     await expect(response.arrayBuffer()).rejects.toMatchObject({
-      code: 'AI_OUTPUT_INVALID_008',
+      code: 'AI_RESPONSE_TOO_LARGE_014',
     });
 
     const sseFetch: typeof fetch = async () =>
@@ -129,7 +129,7 @@ describe('M4 integrated Provider hardening', () => {
     const boundedSse = createBoundedProviderFetch(sseFetch, 64, 8);
     const sseResponse = await boundedSse('https://provider.example');
     await expect(sseResponse.text()).rejects.toMatchObject({
-      code: 'AI_OUTPUT_INVALID_008',
+      code: 'AI_RESPONSE_TOO_LARGE_014',
     });
   });
 });

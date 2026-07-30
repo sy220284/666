@@ -1,6 +1,6 @@
 # WorldForge V1.0 P0验收矩阵
 
-> 状态：Active with M8-06 Release Qualification Maintenance  
+> 状态：Final Verified Hold  
 > 说明：P0-001—P0-075是V1.0唯一产品发布验收编号体系；M8-05、M8-06维护项不新增V1.0产品范围，只补缺陷回归与发布治理。  
 > 发布边界：仅验收仓库所有者自用便携包，详见`docs/product/SELF_USE_RELEASE_POLICY.md`。  
 > 更新日期：2026-07-30
@@ -136,7 +136,8 @@
 - M8-02完成C8体验、硬化、AI Eval和三平台自用便携交付并Verified。
 - M8-04完成作者体验与开发语言统一并Verified。
 - M8-05完成搜索工具异步隔离、Provider资源超限语义和文档统一并Verified。
-- M8-06只硬化发布资格与任务治理，不改变产品能力或自用交付边界。
+- M8-06完成发布资格与任务治理硬化并Verified。
+- 全部38张独立任务已Verified，延期账本为空，项目进入最终`VERIFIED_HOLD`。
 - Windows代码签名、macOS签名与公证、系统安装器、自动更新和安装生命周期不属于本矩阵。
 - 未签名、未公证和无安装器必须在工件说明中如实披露；工件不得面向第三方宣传或分发。
 - 模型质量未达标时对应AI任务降级；无AI基础写作闭环保持可用。
@@ -170,12 +171,12 @@ M8-06不新增P0产品编号，作为发布治理补充：
 
 | 维护ID | 关联P0 | 验收项 | 通过标准 | 当前状态 |
 |---|---|---|---|---|
-| MNT-009 | P0-001 | 全任务发布资格 | 任一独立任务非Verified时拒绝发布并列出任务 | In Progress |
-| MNT-010 | P0-001 | 最终验证保持 | 非`VERIFIED_HOLD`或最终任务不一致时拒绝发布 | In Progress |
-| MNT-011 | P0-001 | 延期账本 | `deferredVerification`或`deferredTasks`非空时拒绝发布 | In Progress |
-| MNT-012 | P0-001 | 验证任务清单 | 最终保持清单与独立任务索引不一致或重复时拒绝发布 | In Progress |
-| MNT-013 | P0-001 | 受检提交可达性 | 实现提交与Evidence提交必须为发布提交的可达祖先 | In Progress |
-| MNT-014 | P0-001 | 被吸收任务隔离 | `Removed（absorbed）`历史行不参与独立任务发布判定 | In Progress |
-| MNT-015 | P0-001 | 发布前双重复核 | 构建前和GitHub Release创建前均执行动态资格门 | In Progress |
+| MNT-009 | P0-001 | 全任务发布资格 | 任一独立任务非Verified时拒绝发布并列出任务 | Verified |
+| MNT-010 | P0-001 | 最终验证保持 | 非`VERIFIED_HOLD`或最终任务不一致时拒绝发布 | Verified |
+| MNT-011 | P0-001 | 延期账本 | `deferredVerification`或`deferredTasks`非空时拒绝发布 | Verified |
+| MNT-012 | P0-001 | 验证任务清单 | 最终保持清单与独立任务索引不一致或重复时拒绝发布 | Verified |
+| MNT-013 | P0-001 | 受检提交可达性 | 实现提交与Evidence提交必须为发布提交的可达祖先 | Verified |
+| MNT-014 | P0-001 | 被吸收任务隔离 | `Removed（absorbed）`历史行不参与独立任务发布判定 | Verified |
+| MNT-015 | P0-001 | 发布前双重复核 | 构建前和GitHub Release创建前均执行动态资格门 | Verified |
 
-详细规则见`docs/process/RELEASE_QUALIFICATION.md`。M8-06达到Implemented和最终Verified后，本节状态与Evidence一并更新。
+详细规则见`docs/process/RELEASE_QUALIFICATION.md`。实现PR #231受控合并为main提交`66e17c99ba84a6f8f40dce6bec97df7c6d7898e9`，Main Verification运行`30519100282`成功，最终Evidence与`VERIFIED_HOLD`状态已经同步。

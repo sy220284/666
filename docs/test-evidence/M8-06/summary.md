@@ -1,10 +1,10 @@
-# M8-06 验证摘要
+# M8-06 最终验证摘要
 
 ## 结论
 
-M8-06发布资格与任务治理硬化已完成实现验证。受检实现提交为`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`。
+M8-06发布资格与任务治理硬化已完成最终验证。实现PR #231受控压缩合并为main提交`66e17c99ba84a6f8f40dce6bec97df7c6d7898e9`，Main Verification运行`30519100282`成功。
 
-发布工具已经移除对固定任务`M8-02`的依赖。发布资格改由全部独立任务、最终`VERIFIED_HOLD`、延期验证账本、最终任务一致性以及受检提交可达性共同决定。
+发布工具已经移除对固定任务`M8-02`的依赖。发布资格由全部独立任务、最终`VERIFIED_HOLD`、延期验证账本、最终任务一致性以及受检提交可达性共同决定。
 
 ## 实现范围
 
@@ -24,24 +24,23 @@ M8-06发布资格与任务治理硬化已完成实现验证。受检实现提交
 - `tests/unit/release-tool.test.ts`
   - 覆盖未完成任务、延期账本、保持状态、清单一致性、提交可达性、被吸收任务和合法放行路径。
 - 文档
-  - 新增发布资格规范。
-  - 同步任务索引、路线图、P0维护矩阵、README、变更记录和开发自动化规范。
+  - 发布资格规范、任务索引、路线图、P0维护矩阵、README、变更记录和开发自动化规范已经同步。
 
 ## 验证结果
 
-受检实现提交的永久门禁全部成功：
+实现PR最终Head为`64d3de74aacada8671d1ac932978c67c9534d8be`，永久门禁全部成功：
 
 | 门禁 | 运行 | 结果 |
 |---|---:|---|
-| PR Policy | 30516672698 | success |
-| Task Governance | 30516672657 | success |
-| Evidence | 30516672691 | success |
-| Quality | 30516672758 | success |
-| Security | 30516672817 | success |
-| Performance | 30516672653 | success |
-| Repository Governance | 30516672658 | success |
+| PR Policy | 30518250676 | success |
+| Task Governance | 30518250667 | success |
+| Evidence | 30518250717 | success |
+| Quality | 30518250847 | success |
+| Security | 30518250691 | success |
+| Performance | 30518250702 | success |
+| Repository Governance | 30518250694 | success |
 
-Quality包含格式、Lint、类型检查、单元、集成、Migration、Electron E2E、覆盖率、构建及Linux、Windows、macOS打包启动冒烟，均成功。
+受控压缩合并生成main提交`66e17c99ba84a6f8f40dce6bec97df7c6d7898e9`。Main Verification运行`30519100282`成功，`validate-main`、静态检查、聚合质量和最终状态发布均成功。
 
 ## 边界复核
 
@@ -51,6 +50,6 @@ Quality包含格式、Lint、类型检查、单元、集成、Migration、Electr
 - 发布工具只判定资格，不替代完整Quality、Security、Performance和三平台构建。
 - 历史已Verified任务和Evidence保持冻结。
 
-## 当前状态
+## 最终状态
 
-M8-06可以登记为Implemented。后续仍需正式PR最终Head六项Ready门禁、受控压缩合并、Main Verification及独立治理关闭，完成后才能标记Verified。
+M8-06满足Verified关闭条件。全部38张独立任务完成验证，延期账本清空，项目进入最终`VERIFIED_HOLD`。

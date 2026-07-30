@@ -3,14 +3,8 @@
 body {
   color: var(--color-text-primary);
   font-family:
-    'Noto Sans CJK SC',
-    'Source Han Sans SC',
-    'Microsoft YaHei UI',
-    'PingFang SC',
-    'Hiragino Sans GB',
-    'Segoe UI',
-    system-ui,
-    sans-serif;
+    'Noto Sans CJK SC', 'Source Han Sans SC', 'Microsoft YaHei UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Segoe UI', system-ui, sans-serif;
 }
 
 .react-dialog,

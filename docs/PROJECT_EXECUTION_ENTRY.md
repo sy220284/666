@@ -19,30 +19,32 @@ AGENTS.md
 
 ## 2. 当前分阶段交付
 
-M4-04与M8-02已经完成V1.0核心功能、自用便携交付和最终验证。作者随后独立启动M8-04，在不重开历史任务和不改变自用发布边界的前提下，统一作者体验与开发协作语言：
+M4-04、M8-02和M8-04已经完成V1.0核心功能、自用便携交付、作者体验改造和最终验证。当前独立维护任务M8-05处理后续审计确认的运行时缺陷与文档漂移：
 
 ```text
-M4-04与M8-02 Verified基线
-→ M8-04作者体验与开发语言统一
-→ PR #227永久门禁
+M4-04、M8-02、M8-04 Verified基线
+→ M8-05搜索工具异步隔离
+→ Provider响应超限错误语义收敛
+→ 任务、契约、安全、UI与验收文档统一
+→ PR永久门禁
 → 受控合并main
 → Main Verification
-→ M8-04 Verified终态保持
+→ M8-05 Verified关闭
 ```
 
-M8-04复用既有权威数据、服务、保存序号、内容校验、锁定、只读与恢复机制，不建立第二套产品或界面数据真源。
+M8-05复用既有权威数据、服务、保存序号、内容校验、锁定、只读与恢复机制，不建立第二套产品、搜索数据或界面数据真源。
 
 ## 3. 当前执行模式
 
 ```text
-终态锚点：M8-04
-正式分支：work/m8-04-author-experience-language
+活动任务：M8-05
+正式分支：work/m8-05-runtime-hardening-documentation-sync
 授权模式：implementation-pr
 自动激活下一任务：关闭
-前置任务：M8-02（Verified）
+前置任务：M8-04（Verified）
 ```
 
-M8-04使用独立正式分支与单一正式PR #227完成实现、测试、文档和验证记录汇合。PR #227已经受控合并，Main Verification成功；当前保留M8-04作为`VERIFIED_HOLD`终态锚点，不自动激活后续任务。
+M8-05使用独立正式分支与单一正式PR完成实现、测试、文档和验证记录汇合。只有Ready永久门禁和合并后Main Verification均成功，才能关闭为Verified。
 
 ## 4. 权威顺序
 
@@ -60,45 +62,40 @@ M8-04使用独立正式分支与单一正式PR #227完成实现、测试、文�
 
 ## 5. 当前任务边界
 
-### M8-04：作者体验与开发语言统一
+### M8-05：运行时硬化与文档统一同步
 
-- 正式中文名称与界面语言永久门禁。
-- 快速开始、继续写作、精准跳转与原位置返回。
-- 写作辅助、沉浸写作、结构化设定和前后文管理。
-- 建议稿差异审阅、安全采用、AI连接预设、作品检查与整书交付。
-- 异步查询防串、关闭前当前稿命名握手和长章节差异性能保护。
-- 功能目录、追踪矩阵、任务状态与四件套验证记录同步。
+- 搜索、替换、作品词典和全文索引使用独立请求通道与独立等待状态。
+- 同一通道旧响应失效，不同通道互不错误取消；作品切换统一失效全部旧请求。
+- Provider总响应和单个SSE事件继续受资源上限保护。
+- 超限使用独立`AI_RESPONSE_TOO_LARGE_014`，不再复用结构解析失败语义。
+- 同步任务体系、产品规格、IPC、错误码、Provider、安全、UI、测试、README和CHANGELOG。
+- 不修改数据库Schema、历史Migration和自用发布边界。
 
-Evidence：`docs/test-evidence/M8-04/`。
+Evidence：`docs/test-evidence/M8-05/`。
 
 ## 6. 标准实施闭环
 
 ```text
-读取任务卡、吸收来源与专项真源
-→ 审计代码、测试、Migration、IPC和最近提交
-→ 失败测试或稳定复现
-→ Contracts / Domain
-→ Migration / Repository
-→ Core
-→ Main / Preload
-→ Renderer
-→ 失败、取消、冲突、只读、恢复与重启
-→ 受影响自动化与人工验收
-→ 横向和纵向复查
-→ 更新任务、追踪和Evidence
+读取任务卡、专项真源与现有实现
+→ 建立稳定复现或失败测试
+→ 最小完整代码修复
+→ Contracts / Core / Renderer按影响同步
+→ 单元、集成、安全、性能与E2E回归
+→ 更新任务、追踪、专项文档和Evidence
 → Draft转Ready
 → 六项永久门禁全部成功
 → 使用expected_head_sha受控合并
 → 等待main-verification成功
+→ 关闭任务为Verified
 ```
 
 任何一个步骤未完成，不得报告“合并完成”或“main已通过”。
 
 ## 7. 强制规则
 
-- 不修改已Verified任务卡和历史Migration。
-- 不建立第二套Prompt、TaskProtocol、Candidate采用、导入、恢复、模式或主题状态。
-- 每项用户功能按实际影响完成Contracts→Core→Main→Preload→Renderer→测试闭环。
+- 不修改已Verified任务卡、历史Migration和历史Evidence Manifest。
+- 不建立第二套Prompt、TaskProtocol、Candidate采用、导入、恢复、模式、主题或搜索数据真源。
+- 每项代码修改按实际影响完成Contracts→Core→Renderer→测试闭环。
 - 未接通能力不得显示可用，不得写入半成品权威数据。
 - AI输出不得绕过Candidate或StateProposal进入权威数据。
 - 无AI写作、保存、Version、导出和恢复始终必须可用。

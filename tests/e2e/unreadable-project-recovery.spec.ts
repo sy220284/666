@@ -73,7 +73,7 @@ test('browses and exports a Version from a verified checkpoint when project.sqli
     await editor.click();
     await page.keyboard.type('物理损坏后仍可从已验证Checkpoint导出。');
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存$/u);
     await page.locator('[data-create-version]').click();
     await page.locator('[data-version-title]').fill('物理损坏可导出版本');
     await page.locator('[data-version-label]').fill('恢复验证');
@@ -125,7 +125,7 @@ test('browses and exports a Version from a verified checkpoint when project.sqli
     await captureAcceptanceScreenshot(page, 'M1-08', 'unreadable-project-recovery-entry.png');
 
     await page.locator('[data-restore-checkpoint]').click();
-    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近项目');
+    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近作品');
     await captureAcceptanceScreenshot(page, 'M1-08', 'unreadable-project-restored-copy.png');
     expect(await readFile(databasePath)).toEqual(damagedSource);
 

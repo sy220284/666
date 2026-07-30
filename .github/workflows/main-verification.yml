@@ -51,9 +51,7 @@ jobs:
       - name: Assert clean final main checkout
         run: node .github/governance/assert-clean-tree.mjs
       - name: Verify final main commit and source PR checks
-        shell: bash
         run: |
-          set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           node scripts/main-verification.mjs
       - name: Assert main provenance validation did not mutate tracked files
@@ -62,7 +60,6 @@ jobs:
 
   quality:
     name: Main static verification
-    needs: validate-main
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ inputs.expected_sha }}

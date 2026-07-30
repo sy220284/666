@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "mode": "parallel-pr",
+  "baseBranch": "main",
+  "allowDirectMainCommits": false,
+  "mainWriteMode": "serialized",
+  "taskRuntimeDirectory": "docs/tasks/runtime",
+  "prTaskMarker": "worldforge-task"
+}

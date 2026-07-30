@@ -18,10 +18,7 @@ const temporaryDirectories: string[] = [];
 type ThemeId = 'theme-a' | 'theme-b';
 type ThemeVariant = 'light' | 'dark';
 
-async function launch(
-  userDataPath: string,
-  createParent: string,
-): Promise<ElectronApplication> {
+async function launch(userDataPath: string, createParent: string): Promise<ElectronApplication> {
   const args: string[] = [];
   if (process.getuid?.() === 0) args.push('--no-sandbox');
   args.push(path.join(root, 'apps/desktop/main'));
@@ -66,27 +63,28 @@ async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): 
   await page.locator('[data-theme-id]').selectOption(themeId);
   await page.locator('[data-theme-variant]').selectOption(variant);
   await page.locator('[data-save-settings]').click();
-  await expect(page.locator('[data-settings-status]')).toHaveText(
-    '显示设置已保存到应用数据库。',
-  );
+  await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
   await expect(page.locator('body')).toHaveAttribute('data-theme', themeId);
   await expect(page.locator('body')).toHaveAttribute('data-visual-theme-variant', variant);
   await page.locator('[data-close-settings]').click();
   await expect(page.locator('[data-writing-workbench]')).toBeVisible();
+  await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
 }
 
 function relativeLuminance(red: number, green: number, blue: number): number {
   const channels = [red, green, blue].map((value) => {
     const normalized = value / 255;
-    return normalized <= 0.03928
-      ? normalized / 12.92
-      : ((normalized + 0.055) / 1.055) ** 2.4;
+    return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
   });
   return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
 }
 
 function parseRgb(value: string): readonly [number, number, number] {
-  const channels = value.match(/[\d.]+/gu)?.slice(0, 3).map(Number) ?? [];
+  const channels =
+    value
+      .match(/[\d.]+/gu)
+      ?.slice(0, 3)
+      .map(Number) ?? [];
   if (channels.length !== 3 || channels.some((channel) => !Number.isFinite(channel))) {
     throw new Error(`M8_07_COLOR_PARSE_FAILED:${value}`);
   }
@@ -96,16 +94,8 @@ function parseRgb(value: string): readonly [number, number, number] {
 function contrastRatio(foreground: string, background: string): number {
   const [foregroundRed, foregroundGreen, foregroundBlue] = parseRgb(foreground);
   const [backgroundRed, backgroundGreen, backgroundBlue] = parseRgb(background);
-  const foregroundLuminance = relativeLuminance(
-    foregroundRed,
-    foregroundGreen,
-    foregroundBlue,
-  );
-  const backgroundLuminance = relativeLuminance(
-    backgroundRed,
-    backgroundGreen,
-    backgroundBlue,
-  );
+  const foregroundLuminance = relativeLuminance(foregroundRed, foregroundGreen, foregroundBlue);
+  const backgroundLuminance = relativeLuminance(backgroundRed, backgroundGreen, backgroundBlue);
   const light = Math.max(foregroundLuminance, backgroundLuminance);
   const dark = Math.min(foregroundLuminance, backgroundLuminance);
   return (light + 0.05) / (dark + 0.05);

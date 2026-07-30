@@ -19,6 +19,7 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'repository-governance.yml',
   'security.yml',
   'task-governance.yml',
+  'toolchain-export.yml',
 ]);
 
 export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
@@ -28,7 +29,10 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'deferred-task-closure.mjs',
   'main-protection.json',
   'main-verification-wait.self-test.mjs',
+  'parallel-task-policy.mjs',
+  'parallel-task-release-gate.mjs',
   'post-merge-verification.mjs',
+  'pr-policy-self-test.mjs',
   'required-checks.json',
   'secret-scan-allowlist.json',
   'squash-provenance.mjs',
@@ -36,6 +40,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'task-checkpoint-policy.mjs',
   'task-transition-policy-core.mjs',
   'task-transition-policy.mjs',
+  'toolchain-bundle.mjs',
   'verification-hold-taskctl.mjs',
   'workspace-architecture.json',
 ]);
@@ -89,9 +94,7 @@ function compareInventory(errors, label, actual, expected) {
 
 function scanWorkflowSource(errors, file, source) {
   for (const marker of forbiddenWorkflowMarkers) {
-    if (marker.pattern.test(source)) {
-      errors.push(`${file}: contains forbidden ${marker.label}`);
-    }
+    if (marker.pattern.test(source)) errors.push(`${file}: contains forbidden ${marker.label}`);
   }
 }
 
@@ -99,32 +102,21 @@ export async function validateAutomationLayout(repositoryRoot = root) {
   const workflowDirectory = path.join(repositoryRoot, '.github', 'workflows');
   const governanceDirectory = path.join(repositoryRoot, '.github', 'governance');
   const errors = [];
-
-  const workflowFiles = (await regularFileNames(workflowDirectory)).filter((file) =>
-    /\.ya?ml$/u.test(file),
-  );
+  const workflowFiles = (await regularFileNames(workflowDirectory)).filter((file) => /\.ya?ml$/u.test(file));
   const governanceFiles = await regularFileNames(governanceDirectory);
-
   compareInventory(errors, '.github/workflows', workflowFiles, PERMANENT_WORKFLOWS);
   compareInventory(errors, '.github/governance', governanceFiles, PERMANENT_GOVERNANCE_FILES);
-
   for (const file of workflowFiles) {
     const source = await readFile(path.join(workflowDirectory, file), 'utf8');
     scanWorkflowSource(errors, `.github/workflows/${file}`, source);
   }
-
   if (errors.length > 0) throw new Error(errors.join('\n'));
-  return {
-    workflows: workflowFiles.length,
-    governanceFiles: governanceFiles.length,
-  };
+  return { workflows: workflowFiles.length, governanceFiles: governanceFiles.length };
 }
 
 async function main() {
   const result = await validateAutomationLayout();
-  stdout.write(
-    `Automation layout policy passed for ${result.workflows} workflows and ${result.governanceFiles} governance files.\n`,
-  );
+  stdout.write(`Automation layout policy passed for ${result.workflows} workflows and ${result.governanceFiles} governance files.\n`);
 }
 
 if (argv[1] === fileURLToPath(import.meta.url)) await main();

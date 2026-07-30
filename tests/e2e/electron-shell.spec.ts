@@ -596,7 +596,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(page.locator('[data-draft-text-count]')).toHaveText('8');
     await expect(page.locator('[data-draft-paragraph-count]')).toHaveText('1');
     await expect(page.locator('[data-draft-state]')).toContainText('等待自动保存');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
     await page.locator('[data-draft-find]').fill('风起');
@@ -702,7 +702,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     }
 
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存$/u);
     const persisted = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
         .worldforge;
@@ -738,7 +738,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     const lockedText = await blocks.first().textContent();
     await page.keyboard.type('越权修改');
     await expect(blocks.first()).toHaveText(lockedText ?? '');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
 
@@ -1073,7 +1073,7 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     const editor = page.locator('[data-draft-content]');
     await editor.click();
     await page.keyboard.type('首稿正文');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
     const originalDraftId = await page.evaluate(async () => {
@@ -1107,7 +1107,7 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     await editor.click();
     await page.keyboard.press('Control+End');
     await page.keyboard.type('后续修改');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
     await page.locator('[data-open-versions]').click();
@@ -1160,7 +1160,7 @@ test('creates a verified recovery point, restores a new project and exports a Ve
     const editor = page.locator('[data-draft-content]');
     await editor.click();
     await page.keyboard.type('恢复前正文');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
     await page.locator('[data-create-version]').click();
@@ -1183,7 +1183,7 @@ test('creates a verified recovery point, restores a new project and exports a Ve
     );
 
     await page.locator('[data-restore-checkpoint]').click();
-    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近项目', {
+    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近作品', {
       timeout: 15_000,
     });
     expect(

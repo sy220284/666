@@ -100,16 +100,25 @@ export function validateWorkflowStructure(file, source) {
     if (quality?.uses !== './.github/workflows/quality-core.yml') {
       errors.push('release.yml: quality must call quality-core.yml');
     }
-    for (const name of ['package_smoke', 'security_suite', 'performance_eval']) {
-      if (quality?.with?.[name] !== true) {
-        errors.push(`release.yml: quality.with.${name} must be true`);
+    for (const [name, expected] of [
+      ['package_smoke', false],
+      ['security_suite', true],
+      ['performance_eval', true],
+    ]) {
+      if (quality?.with?.[name] !== expected) {
+        errors.push(`release.yml: quality.with.${name} must be ${String(expected)}`);
       }
     }
     if (workflow.jobs.build?.needs !== 'release-gate') {
       errors.push('release.yml: build must need release-gate');
     }
-    if (workflow.jobs.publish?.needs !== 'build') {
-      errors.push('release.yml: publish must need build');
+    const publishNeeds = workflow.jobs.publish?.needs;
+    const requiredPublishNeeds = ['quality', 'release-gate', 'build'];
+    if (
+      !Array.isArray(publishNeeds) ||
+      requiredPublishNeeds.some((name) => !publishNeeds.includes(name))
+    ) {
+      errors.push('release.yml: publish must need quality, release-gate and build');
     }
   }
 

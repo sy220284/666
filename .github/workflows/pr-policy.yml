@@ -15,7 +15,7 @@ concurrency:
 jobs:
   pr-policy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
       TASK_EVENT_NAME: pull_request
@@ -49,6 +49,22 @@ jobs:
         run: node .github/governance/automation-layout-policy.mjs
       - name: Validate permanent CI policy
         run: pnpm ci:policy
+      - name: Smoke test changed toolchain exporters
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed_files="$(git diff --name-only "$TASK_BASE_REF" HEAD)"
+          if ! printf '%s\n' "$changed_files" | grep -Eq '^\.github/(governance/toolchain-bundle\.mjs|workflows/toolchain-export\.yml)$'; then
+            echo "Toolchain exporter unchanged; smoke test skipped."
+            exit 0
+          fi
+          source_sha="$(git rev-parse HEAD)"
+          for profile in formatter quality; do
+            node .github/governance/toolchain-bundle.mjs export \
+              --profile "$profile" \
+              --source-sha "$source_sha" \
+              --output "$RUNNER_TEMP/toolchain-$profile"
+          done
       - name: Reject tracked root scratch artifacts
         run: test ! -e tmp
       - name: Self-test workflow order guards

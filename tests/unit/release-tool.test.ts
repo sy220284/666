@@ -13,11 +13,29 @@ import {
   validateReleaseConfiguration,
 } from '../../scripts/release-tool.mjs';
 
+interface TaskIndexEntry {
+  readonly id: string;
+  readonly dependency: string;
+  readonly status: string;
+}
+
+interface ActiveTaskOverrides {
+  readonly activeStatus?: string;
+  readonly activeId?: string;
+  readonly holdTaskId?: string;
+  readonly lastVerifiedTaskId?: string;
+  readonly holdVerifiedTasks?: readonly string[];
+  readonly deferredVerification?: readonly unknown[];
+  readonly deferredTasks?: readonly unknown[];
+  readonly finalTask?: boolean;
+  readonly nextTaskId?: string | null;
+  readonly commit?: string;
+  readonly evidenceHead?: string;
+}
+
 const temporaryDirectories: string[] = [];
 
-const taskIndex = (
-  entries: readonly { readonly id: string; readonly dependency: string; readonly status: string }[],
-) =>
+const taskIndex = (entries: readonly TaskIndexEntry[]) =>
   '\n| ID | 任务卡 | 依赖 | 状态 |\n' +
   '|---|---|---|---|\n' +
   entries
@@ -34,21 +52,7 @@ const verifiedTasks = [
   { id: 'M8-05', dependency: 'M8-04', status: 'Verified' },
 ] as const;
 
-function activeTaskState(
-  overrides: {
-    readonly activeStatus?: string;
-    readonly activeId?: string;
-    readonly holdTaskId?: string;
-    readonly lastVerifiedTaskId?: string;
-    readonly holdVerifiedTasks?: readonly string[];
-    readonly deferredVerification?: readonly unknown[];
-    readonly deferredTasks?: readonly unknown[];
-    readonly finalTask?: boolean;
-    readonly nextTaskId?: string | null;
-    readonly commit?: string;
-    readonly evidenceHead?: string;
-  } = {},
-) {
+function activeTaskState(overrides: ActiveTaskOverrides = {}) {
   const activeId = overrides.activeId ?? 'M8-05';
   return {
     schemaVersion: 1,
@@ -95,7 +99,9 @@ const packageJson = {
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })),
+    temporaryDirectories.splice(0).map((directory) =>
+      rm(directory, { recursive: true }),
+    ),
   );
 });
 
@@ -186,7 +192,7 @@ describe('release tool', () => {
     );
   });
 
-  it('blocks publishing when verified commits are not reachable from the release commit', () => {
+  it('blocks publishing when verified commits are not reachable', () => {
     const result = evaluateReleaseGate({
       taskIndexMarkdown: taskIndex(verifiedTasks),
       activeTaskState: activeTaskState(),

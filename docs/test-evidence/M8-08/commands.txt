@@ -1,0 +1,26 @@
+# M8-08 verification commands
+pnpm install --frozen-lockfile
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:language
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm test:e2e
+pnpm build
+pnpm release:check
+
+# GitHub permanent gates
+PR Policy
+Task Governance
+Evidence
+Quality
+Security
+Performance

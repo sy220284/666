@@ -1,4 +1,7 @@
-import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type {
+  CoreStatus,
+  ProjectWorkspaceSummary,
+} from '@worldforge/contracts';
 
 import type { PrimaryNavigationAvailability } from '../shell/app-shell-model.js';
 

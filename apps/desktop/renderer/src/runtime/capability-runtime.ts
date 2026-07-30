@@ -22,11 +22,40 @@ const state: CapabilityRuntimeState = {
   verifiedProviderCount: 0,
 };
 
+const requiredProductResources = new Set([
+  'app.getCoreStatus',
+  'app.getWindowPreferences',
+  'settings.get',
+  'project.getActive',
+  'project.listRecent',
+  'task.listActive',
+  'providers.list',
+]);
+const observedProductResources = new Set<string>();
+
 function successData<Data>(outcome: BridgeRequestOutcome<Data>): Data | null {
   return outcome.state === 'success' ? outcome.data : null;
 }
 
+function updateReadySignals(): void {
+  if (typeof document === 'undefined') return;
+  const matrix = deriveCapabilityMatrix(state);
+  const productReady =
+    matrix.application.coreAvailable &&
+    [...requiredProductResources].every((resource) => observedProductResources.has(resource));
+  document.body.dataset.shellReady = String(matrix.application.shellAvailable);
+  document.body.dataset.coreReady = String(matrix.application.coreAvailable);
+  document.body.dataset.productReady = String(productReady);
+  document.body.dataset.projectReady = String(matrix.project.projectReadable);
+  document.body.dataset.projectMode = matrix.project.mode;
+}
+
+function observe(domain: string, method: string, outcome: BridgeRequestOutcome<unknown>): void {
+  if (outcome.state === 'success') observedProductResources.add(`${domain}.${method}`);
+}
+
 function trackDomain<Domain extends object>(
+  domainName: string,
   domain: Domain,
   after: (method: string, outcome: BridgeRequestOutcome<unknown>) => void,
 ): Domain {
@@ -37,7 +66,9 @@ function trackDomain<Domain extends object>(
       return (...args: unknown[]) =>
         Promise.resolve((value as (...received: unknown[]) => unknown).apply(target, args)).then(
           (outcome: BridgeRequestOutcome<unknown>) => {
+            observe(domainName, property, outcome);
             after(property, outcome);
+            updateReadySignals();
             return outcome;
           },
         );
@@ -50,15 +81,17 @@ export function createCapabilityTrackingBridge(
 ): RendererBridgeAdapter {
   state.initialized = true;
   state.hydrated = true;
+  updateReadySignals();
 
   return {
     ...bridge,
-    app: trackDomain(bridge.app, (method, outcome) => {
+    app: trackDomain('app', bridge.app, (method, outcome) => {
       if (method !== 'getCoreStatus') return;
       const coreStatus = successData(outcome as BridgeRequestOutcome<CoreStatus>);
       if (coreStatus) state.coreStatus = coreStatus;
     }),
-    project: trackDomain(bridge.project, (method, outcome) => {
+    settings: trackDomain('settings', bridge.settings, () => undefined),
+    project: trackDomain('project', bridge.project, (method, outcome) => {
       if (method === 'close' && outcome.state === 'success') {
         state.project = null;
         return;
@@ -69,7 +102,8 @@ export function createCapabilityTrackingBridge(
       );
       if (outcome.state === 'success') state.project = project;
     }),
-    providers: trackDomain(bridge.providers, (method, outcome) => {
+    task: trackDomain('task', bridge.task, () => undefined),
+    providers: trackDomain('providers', bridge.providers, (method, outcome) => {
       if (method !== 'list' || outcome.state !== 'success') return;
       const data = outcome.data as { readonly providers?: readonly unknown[] };
       state.providerCount = data.providers?.length ?? 0;
@@ -94,4 +128,5 @@ export function resetCapabilityRuntimeForTests(): void {
   state.project = null;
   state.providerCount = 0;
   state.verifiedProviderCount = 0;
+  observedProductResources.clear();
 }

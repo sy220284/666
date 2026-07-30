@@ -149,7 +149,9 @@ export function evaluateReleaseGate({
       errors.push('verificationHold must be final with nextTaskId=null');
     }
     const indexedTaskIds = tasks.map((task) => task.id);
-    const verifiedTaskIds = Array.isArray(hold.verifiedTasks) ? hold.verifiedTasks : [];
+    const verifiedTaskIds = Array.isArray(hold.verifiedTasks)
+      ? hold.verifiedTasks
+      : [];
     if (new Set(verifiedTaskIds).size !== verifiedTaskIds.length) {
       errors.push('verificationHold.verifiedTasks must not contain duplicates');
     }
@@ -278,12 +280,13 @@ function isAncestor(ancestor, descendant) {
 }
 
 async function loadReleaseState() {
-  const [packageSource, taskIndexMarkdown, activeTaskSource, workflowSource] = await Promise.all([
-    readFile(path.join(root, 'package.json'), 'utf8'),
-    readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'),
-    readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8'),
-    readFile(path.join(root, '.github/workflows/release.yml'), 'utf8'),
-  ]);
+  const [packageSource, taskIndexMarkdown, activeTaskSource, workflowSource] =
+    await Promise.all([
+      readFile(path.join(root, 'package.json'), 'utf8'),
+      readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'),
+      readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8'),
+      readFile(path.join(root, '.github/workflows/release.yml'), 'utf8'),
+    ]);
   return {
     packageJson: JSON.parse(packageSource),
     taskIndexMarkdown,
@@ -312,11 +315,11 @@ async function checkConfiguration() {
   if (errors.length > 0) throw new Error(errors.join('\n'));
 
   const result = evaluateCurrentReleaseState(state, state.packageJson.version, 'main');
-  console.log(
-    'Release tooling is configured. Publishing gate: ' +
-      (result.errors.length === 0 ? `READY (${result.taskId})` : `BLOCKED (${result.errors.join('; ')})`) +
-      '.',
-  );
+  const gateStatus =
+    result.errors.length === 0
+      ? `READY (${result.taskId})`
+      : `BLOCKED (${result.errors.join('; ')})`;
+  console.log('Release tooling is configured. Publishing gate: ' + gateStatus + '.');
 }
 
 async function requireReleaseGate(requestedVersion) {
@@ -324,7 +327,11 @@ async function requireReleaseGate(requestedVersion) {
   const configurationErrors = validateReleaseConfiguration(state);
   if (configurationErrors.length > 0) throw new Error(configurationErrors.join('\n'));
 
-  const result = evaluateCurrentReleaseState(state, requestedVersion, process.env.GITHUB_REF_NAME);
+  const result = evaluateCurrentReleaseState(
+    state,
+    requestedVersion,
+    process.env.GITHUB_REF_NAME,
+  );
   if (result.errors.length > 0) throw new Error(result.errors.join('\n'));
   console.log(`Release gate passed for v${result.version} through ${result.taskId}.`);
   return result.version;
@@ -351,7 +358,9 @@ async function writeChecksums(requestedVersion) {
   if (assets.length === 0) throw new Error('No release assets were found');
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, renderChecksums(assets), 'utf8');
-  console.log('Wrote checksums for ' + assets.length + ' assets in WorldForge v' + version + '.');
+  console.log(
+    'Wrote checksums for ' + assets.length + ' assets in WorldForge v' + version + '.',
+  );
 }
 
 async function main() {

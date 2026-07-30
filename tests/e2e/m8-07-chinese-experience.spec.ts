@@ -2,7 +2,13 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 
 import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
 
@@ -12,7 +18,10 @@ const temporaryDirectories: string[] = [];
 type ThemeId = 'theme-a' | 'theme-b';
 type ThemeVariant = 'light' | 'dark';
 
-async function launch(userDataPath: string, createParent: string): Promise<ElectronApplication> {
+async function launch(
+  userDataPath: string,
+  createParent: string,
+): Promise<ElectronApplication> {
   const args: string[] = [];
   if (process.getuid?.() === 0) args.push('--no-sandbox');
   args.push(path.join(root, 'apps/desktop/main'));
@@ -57,7 +66,9 @@ async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): 
   await page.locator('[data-theme-id]').selectOption(themeId);
   await page.locator('[data-theme-variant]').selectOption(variant);
   await page.locator('[data-save-settings]').click();
-  await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
+  await expect(page.locator('[data-settings-status]')).toHaveText(
+    '显示设置已保存到应用数据库。',
+  );
   await expect(page.locator('body')).toHaveAttribute('data-theme', themeId);
   await expect(page.locator('body')).toHaveAttribute('data-visual-theme-variant', variant);
   await page.locator('[data-close-settings]').click();
@@ -154,7 +165,9 @@ async function expectResponsiveWritingLayout(page: Page): Promise<void> {
 
 test.afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
   );
 });
 

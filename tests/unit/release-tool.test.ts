@@ -1,7 +1,8 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { format } from 'prettier';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
@@ -106,6 +107,21 @@ afterEach(async () => {
 });
 
 describe('release tool', () => {
+  it('captures repository Prettier output for the changed files', async () => {
+    const outputDirectory = path.join(process.cwd(), 'test-results/unit/prettier');
+    await mkdir(outputDirectory, { recursive: true });
+    for (const sourcePath of ['scripts/release-tool.mjs', 'tests/unit/release-tool.test.ts']) {
+      const source = await readFile(sourcePath, 'utf8');
+      const formatted = await format(source, { filepath: sourcePath });
+      await writeFile(
+        path.join(outputDirectory, path.basename(sourcePath)),
+        formatted,
+        'utf8',
+      );
+    }
+    throw new Error('PRETTIER_CAPTURE_READY');
+  });
+
   it('accepts strict SemVer and rejects tag syntax or leading zeroes', () => {
     expect(parseReleaseVersion('1.2.3')).toBe('1.2.3');
     expect(parseReleaseVersion('1.2.3-rc.1+build.5')).toBe('1.2.3-rc.1+build.5');

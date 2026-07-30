@@ -1,10 +1,12 @@
 # M8-05 运行时硬化与文档统一同步
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
 > 正式分支：`work/m8-05-runtime-hardening-documentation-sync`  
-> 实现提交：`1c5505b1a267e7ea43a70995b4dce7a5fc6abad3`
+> 实现提交：`1c5505b1a267e7ea43a70995b4dce7a5fc6abad3`  
+> 最终PR Head：`b72f60d23f1523d8f75352d687460bd7d7e9af4d`  
+> main实现提交：`02a595a247cdad83b74634dc5059b72dd93c9451`
 
 ## 目标
 
@@ -34,7 +36,7 @@
 
 ### 3. 文档统一
 
-- 当前任务与路线统一为37张独立任务，M8-05为当前维护任务。
+- 当前任务与路线统一为37张独立任务，M8-05作为最终维护任务完成验证。
 - 历史收口文档保留历史过程并明确后续演进，不再冒充当前执行真源。
 - 补齐具名关闭握手、请求通道隔离、Provider资源上限、写作辅助、精准返回和长章节差异审阅的专项规格。
 - 在M8-05任务、追踪矩阵和新Evidence中记录M8-04后续维护关系；M8-04历史任务卡与四件套Evidence保持哈希冻结。
@@ -109,26 +111,23 @@ M8-04（Verified）
 - 任务、路线、产品、IPC、Provider、安全、UI、验收、README和CHANGELOG完成统一同步。
 - M4-04与M8-04历史任务和Evidence保持冻结。
 
-## 验证结果
+## 最终验证结果
 
-受检实现提交`1c5505b1a267e7ea43a70995b4dce7a5fc6abad3`的六项永久门禁全部成功：
+最终PR Head `b72f60d23f1523d8f75352d687460bd7d7e9af4d`的六项永久门禁全部成功：
 
 ```text
-PR Policy       30509808959  success
-Task Governance 30509808967  success
-Evidence        30509808988  success
-Quality         30509809116  success
-Security        30509808962  success
-Performance     30509808998  success
+PR Policy       30511563140  success
+Task Governance 30511563097  success
+Evidence        30511563096  success
+Quality         30511563241  success
+Security        30511563137  success
+Performance     30511563092  success
 ```
+
+PR #229使用`expected_head_sha`受控压缩合并，生成main提交`02a595a247cdad83b74634dc5059b72dd93c9451`。Main Verification运行`30512257330`成功，确认最终main SHA、来源PR、来源Head和永久门禁一致。
 
 详细记录：`docs/test-evidence/M8-05/`。
 
-## 后续关闭条件
+## 关闭结论
 
-当前状态为Implemented。只有以下步骤完成后才能标记Verified：
-
-1. 正式PR #229转Ready后，最终Head六项永久门禁全部成功。
-2. 使用`expected_head_sha`受控压缩合并。
-3. 合并提交的Main Verification成功。
-4. 独立治理关闭PR将最终Evidence绑定main提交并进入main。
+代码、测试、文档、受控合并、主分支验证与最终Evidence均已完成。M8-05关闭为Verified，并作为37张独立任务的最终验证锚点进入`VERIFIED_HOLD`。后续新增功能、公开分发能力或新缺陷修复必须重新立项。

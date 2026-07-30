@@ -85,6 +85,11 @@ const AUTHOR_ERROR_MESSAGES: Readonly<Record<string, AuthorErrorMessage>> = {
     message: '该模型无法完成本次生成方式，正文没有被修改。',
     suggestedAction: '请更换模型或选择其他生成方式。',
   },
+  AI_RESPONSE_TOO_LARGE_014: {
+    title: 'AI返回内容超过安全上限',
+    message: '模型服务返回的数据量过大，系统已经停止接收，正文和本地数据没有被修改。',
+    suggestedAction: '请缩小生成范围、降低输出长度，或检查模型服务是否异常。',
+  },
 };
 
 export function authorErrorMessage(code: string, fallbackMessage?: string): AuthorErrorMessage {

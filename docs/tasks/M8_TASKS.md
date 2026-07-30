@@ -1,6 +1,6 @@
 # WorldForge M8交付、体验与长期维护任务摘要
 
-> 状态：Active  
+> 状态：Final Verified Hold  
 > 用途：记录M8独立任务、被吸收来源和长期维护状态。
 
 ## 独立任务
@@ -10,7 +10,7 @@
 | M8-02 | [完整体验、硬化与自用交付关闭](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | C8体验、安全硬化、性能、E2E、AI Eval和三平台自用便携交付 | Verified |
 | M8-04 | [作者体验与开发语言统一改造](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md) | M8-02 | 正式中文名称、精准跳转、写作辅助、结构化设定、差异审阅和安全关闭握手 | Verified |
 | M8-05 | [运行时硬化与文档统一同步](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md) | M8-04 | 搜索工具异步隔离、Provider错误语义和全量文档一致性 | Verified |
-| M8-06 | [发布资格与任务治理硬化](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md) | M8-05 | 动态发布资格、最终验证保持、延期账本与受检提交可达性 | Implemented |
+| M8-06 | [发布资格与任务治理硬化](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md) | M8-05 | 动态发布资格、最终验证保持、延期账本与受检提交可达性 | Verified |
 
 ## 被吸收的历史来源
 
@@ -39,7 +39,7 @@ M8-04、M8-05与M8-06均不扩大该边界。
 
 ## 当前维护结论
 
-M8-05已经Verified。M8-06实现与分支验证已经完成，发布资格现由全部独立任务、最终验证保持、延期验证账本和受检提交可达性共同决定；当前等待受控合并、主分支验证与最终治理关闭。
+M8-04、M8-05与M8-06均已Verified。发布资格由全部独立任务、最终验证保持、延期验证账本和受检提交可达性共同决定；项目已进入最终`VERIFIED_HOLD`。
 
 ## 长期维护规则
 

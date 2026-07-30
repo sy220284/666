@@ -5,12 +5,12 @@
 ## 当前状态
 
 ```text
-IMPLEMENTED
+VERIFIED_HOLD
 ```
 
 - 任务ID：`M8-06`
 - 唯一任务卡：`docs/tasks/M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md`
-- 工作分支：`work/m8-06-release-qualification-governance`
+- 工作分支：`work/m8-06-final-governance-closure`
 - 开始时间：`2026-07-30`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
@@ -67,4 +67,4 @@ verification:
 
 ## 连续执行规则
 
-当前作者已授权实现优先的合并请求模式：每张任务必须在独立非main分支完成并提交合并请求；合并请求规则、任务治理、安全、性能、验证记录与质量门禁全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。
+V1.0全部独立任务已经Verified；M8-06作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。

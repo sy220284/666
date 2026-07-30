@@ -1,10 +1,13 @@
 # M8-06 发布资格与任务治理硬化
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
-> 正式分支：`work/m8-06-release-qualification-governance`  
-> 实现提交：`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`
+> 正式实现分支：`work/m8-06-release-qualification-governance`  
+> 最终治理分支：`work/m8-06-final-governance-closure`  
+> 实现提交：`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`  
+> 实现PR最终Head：`64d3de74aacada8671d1ac932978c67c9534d8be`  
+> main实现提交：`66e17c99ba84a6f8f40dce6bec97df7c6d7898e9`
 
 ## 目标
 
@@ -109,27 +112,24 @@ M8-05（Verified）
 - 单元测试覆盖阻断与合法放行路径。
 - 发布资格规范、路线图、P0矩阵、README、变更记录和开发自动化完成同步。
 
-## 验证结果
+## 实现阶段验证
 
 受检实现提交`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`的门禁全部成功：
 
 ```text
-PR Policy            30516672698  success
-Task Governance      30516672657  success
-Evidence             30516672691  success
-Quality              30516672758  success
-Security             30516672817  success
-Performance          30516672653  success
-Repository Governance 30516672658 success
+PR Policy              30516672698 success
+Task Governance         30516672657 success
+Evidence                30516672691 success
+Quality                 30516672758 success
+Security                30516672817 success
+Performance             30516672653 success
+Repository Governance   30516672658 success
 ```
 
+## 最终验证结果
+
+实现PR #231最终Head`64d3de74aacada8671d1ac932978c67c9534d8be`的永久门禁全部成功，受控压缩合并生成main提交`66e17c99ba84a6f8f40dce6bec97df7c6d7898e9`。
+
+Main Verification运行`30519100282`成功。最终Evidence Head为`59a3cc2b3b0f799674c2dd56493e829b24564968`，Manifest绑定main实现提交，全部38张独立任务进入Verified，延期账本清空并建立最终`VERIFIED_HOLD`。
+
 详细记录：`docs/test-evidence/M8-06/`。
-
-## 后续关闭条件
-
-当前状态为Implemented。只有以下步骤完成后才能标记Verified：
-
-1. 正式PR #231转Ready后，最终Head六项永久门禁全部成功。
-2. 使用精确Head受控压缩合并。
-3. 合并提交的Main Verification成功。
-4. 独立治理关闭PR将最终Evidence绑定main提交并进入main。

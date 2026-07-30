@@ -39,6 +39,8 @@ Main Verification
 - `docs/tasks/runtime/<TASK-ID>.json`：每张活动任务的独立机器状态。
 - PR正文标记：`<!-- worldforge-task: M8-07 -->`。
 
+PR正文标记是机器路由入口；分支名只表达变更类别，不再承担唯一任务身份。
+
 旧的`ACTIVE_TASK.json`与`ACTIVE_TASK.md`暂时保留为兼容锚点，供历史关闭流程和旧命令使用；带任务标记的PR由并行任务策略读取独立运行时文件，不再要求来源分支等于唯一活动分支。
 
 ### 3.2 约束

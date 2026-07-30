@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type {
+  CoreStatus,
+  ProjectWorkspaceSummary,
+} from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import {
@@ -73,7 +76,9 @@ describe('capability-tracked primary navigation', () => {
       },
     });
 
-    expect(Object.fromEntries(items.map((item) => [item.id, item.disabled]))).toMatchObject({
+    expect(
+      Object.fromEntries(items.map((item) => [item.id, item.disabled])),
+    ).toMatchObject({
       home: false,
       planning: true,
       writing: true,

@@ -141,20 +141,24 @@ async function expectResponsiveWritingLayout(page: Page): Promise<void> {
     const body = document.body;
     const main = document.querySelector<HTMLElement>('.react-main');
     const chapterTitle = document.querySelector<HTMLElement>('.structure-chapter-title');
-    if (!main || !chapterTitle) throw new Error('M8_07_LAYOUT_TARGET_MISSING');
+    const chapterTitleText = chapterTitle?.querySelector<HTMLElement>('strong');
+    if (!main || !chapterTitle || !chapterTitleText) {
+      throw new Error('M8_07_LAYOUT_TARGET_MISSING');
+    }
     const mainRect = main.getBoundingClientRect();
     const titleRect = chapterTitle.getBoundingClientRect();
-    const titleStyle = getComputedStyle(chapterTitle);
-    const parsedLineHeight = Number.parseFloat(titleStyle.lineHeight);
-    const fontSize = Number.parseFloat(titleStyle.fontSize);
+    const titleTextRect = chapterTitleText.getBoundingClientRect();
+    const titleTextStyle = getComputedStyle(chapterTitleText);
+    const parsedLineHeight = Number.parseFloat(titleTextStyle.lineHeight);
+    const fontSize = Number.parseFloat(titleTextStyle.fontSize);
     return {
       documentOverflow: Math.max(documentElement.scrollWidth, body.scrollWidth) - window.innerWidth,
       mainLeft: mainRect.left,
       mainRight: mainRect.right,
       viewportWidth: window.innerWidth,
       titleWidth: titleRect.width,
-      titleHeight: titleRect.height,
-      titleLineHeight: Number.isFinite(parsedLineHeight) ? parsedLineHeight : fontSize * 1.2,
+      titleTextHeight: titleTextRect.height,
+      titleTextLineHeight: Number.isFinite(parsedLineHeight) ? parsedLineHeight : fontSize * 1.2,
     };
   });
 
@@ -162,7 +166,7 @@ async function expectResponsiveWritingLayout(page: Page): Promise<void> {
   expect(layout.mainLeft).toBeGreaterThanOrEqual(0);
   expect(layout.mainRight).toBeLessThanOrEqual(layout.viewportWidth + 1);
   expect(layout.titleWidth).toBeGreaterThan(72);
-  expect(layout.titleHeight).toBeLessThanOrEqual(layout.titleLineHeight * 2.2);
+  expect(layout.titleTextHeight).toBeLessThanOrEqual(layout.titleTextLineHeight * 1.2);
 }
 
 test.afterEach(async () => {

@@ -1,0 +1,157 @@
+/* global console, process */
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = process.cwd();
+const profiles = {
+  formatter: ['prettier'],
+  quality: ['@eslint/js', 'eslint', 'prettier', 'typescript', 'typescript-eslint'],
+};
+
+function option(name, fallback = null) {
+  const index = process.argv.indexOf(`--${name}`);
+  return index >= 0 ? process.argv[index + 1] : fallback;
+}
+
+function run(command, args, cwd = root) {
+  return execFileSync(command, args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function sha256(content) {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+async function fileHash(file) {
+  return sha256(await readFile(file));
+}
+
+async function prepare(profile, output, sourceSha) {
+  const rootPackage = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+  const tools = profiles[profile];
+  if (!tools) throw new Error(`Unsupported toolchain profile: ${profile}`);
+  if (!/^[0-9a-f]{40}$/iu.test(sourceSha)) throw new Error('source-sha must be a full 40 character commit SHA');
+  await rm(output, { recursive: true, force: true });
+  await mkdir(output, { recursive: true });
+  const devDependencies = Object.fromEntries(
+    tools.map((name) => {
+      const version = rootPackage.devDependencies?.[name];
+      if (!version || version.startsWith('workspace:')) throw new Error(`Missing fixed tool version: ${name}`);
+      return [name, version];
+    }),
+  );
+  const packageJson = {
+    name: `worldforge-${profile}-toolchain`,
+    private: true,
+    type: 'module',
+    packageManager: rootPackage.packageManager,
+    devDependencies,
+  };
+  await writeFile(path.join(output, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`);
+  return { tools, packageJson };
+}
+
+async function finalize(profile, output, sourceSha, tools) {
+  const lockPath = path.join(output, 'pnpm-lock.yaml');
+  const rootLockPath = path.join(root, 'pnpm-lock.yaml');
+  const toolVersions = Object.fromEntries(
+    tools.map((name) => [
+      name,
+      JSON.parse(
+        run('pnpm', [
+          '--dir',
+          output,
+          'exec',
+          'node',
+          '-p',
+          `JSON.stringify(require('${name}/package.json').version)`,
+        ]),
+      ),
+    ]),
+  );
+  const manifest = {
+    schemaVersion: 1,
+    sourceCommit: sourceSha,
+    sourceTree: run('git', ['rev-parse', `${sourceSha}^{tree}`]),
+    profile,
+    platform: process.platform,
+    architecture: process.arch,
+    nodeVersion: process.version,
+    pnpmVersion: run('pnpm', ['--version']),
+    rootLockfileSha256: await fileHash(rootLockPath),
+    generatedLockfileSha256: await fileHash(lockPath),
+    toolVersions,
+    generatedAt: new Date().toISOString(),
+  };
+  await writeFile(path.join(output, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  const files = ['package.json', 'pnpm-lock.yaml', 'manifest.json'];
+  const sums = [];
+  for (const file of files) sums.push(`${await fileHash(path.join(output, file))}  ${file}`);
+  await writeFile(path.join(output, 'SHA256SUMS.txt'), `${sums.join('\n')}\n`);
+}
+
+async function verify(output, tools) {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'worldforge-toolchain-'));
+  try {
+    await cp(path.join(output, 'package.json'), path.join(temporary, 'package.json'));
+    await cp(path.join(output, 'pnpm-lock.yaml'), path.join(temporary, 'pnpm-lock.yaml'));
+    run(
+      'pnpm',
+      [
+        'install',
+        '--offline',
+        '--frozen-lockfile',
+        '--ignore-scripts',
+        '--store-dir',
+        path.join(output, 'store'),
+      ],
+      temporary,
+    );
+    for (const tool of tools) run('pnpm', ['exec', tool, '--version'], temporary);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+}
+
+async function exportBundle() {
+  const profile = option('profile', 'formatter');
+  const output = path.resolve(
+    option('output', process.env.TOOLCHAIN_OUTPUT ?? path.join(root, 'toolchain-bundle')),
+  );
+  const sourceSha = option('source-sha', process.env.GITHUB_SHA ?? '');
+  const { tools } = await prepare(profile, output, sourceSha);
+  run('pnpm', ['install', '--lockfile-only', '--ignore-scripts'], output);
+  run('pnpm', ['fetch', '--store-dir', path.join(output, 'store')], output);
+  run(
+    'pnpm',
+    [
+      'install',
+      '--offline',
+      '--frozen-lockfile',
+      '--ignore-scripts',
+      '--store-dir',
+      path.join(output, 'store'),
+    ],
+    output,
+  );
+  await finalize(profile, output, sourceSha, tools);
+  await verify(output, tools.filter((tool) => tool !== '@eslint/js'));
+  const entries = await readdir(output);
+  if (!entries.includes('store') || !entries.includes('manifest.json')) {
+    throw new Error('Toolchain bundle is incomplete');
+  }
+  console.log(`Toolchain bundle verified at ${output}.`);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const command = process.argv[2] ?? 'export';
+  if (command !== 'export') throw new Error(`Unknown toolchain-bundle command: ${command}`);
+  await exportBundle();
+}

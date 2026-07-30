@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M8-08",
+  "commit": "61454971fde7df15208299029f32ee4fb64a10be",
+  "generatedAt": "2026-07-30T16:21:00.000Z",
+  "acceptanceSource": "GITHUB_ACTIONS",
+  "files": [
+    {
+      "path": "baseline-audit.md",
+      "bytes": 1149,
+      "sha256": "6fb3e168f741a4ddf93d82d75e1ca6cc1c02aae5ea37bf61092a65f831e2dbed"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 431,
+      "sha256": "d6937b96e21dbb25cceb3d82487871060a6da19a381907a3c9c8ebda8b9049d5"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 558,
+      "sha256": "9b1ffdeb21e0755a767ed97bb14f897b4c64236d690ffdf9e2245169a386853e"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 1172,
+      "sha256": "efbdf756abf22e554c598ec74021d41a788682776fee456f8aa16621832449ad"
+    }
+  ]
+}

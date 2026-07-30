@@ -33,6 +33,11 @@ export function parseReleaseVersion(value) {
   return value;
 }
 
+function parseIndependentTaskIndex(markdown) {
+  const [independentSection = ''] = markdown.split(/^## 3\. 被吸收的需求来源\s*$/mu, 1);
+  return parseTaskIndex(independentSection);
+}
+
 export function validateReleaseConfiguration({
   packageJson,
   taskIndexMarkdown,
@@ -59,7 +64,7 @@ export function validateReleaseConfiguration({
     }
   }
 
-  if (parseTaskIndex(taskIndexMarkdown).size === 0) {
+  if (parseIndependentTaskIndex(taskIndexMarkdown).size === 0) {
     errors.push('TASK_INDEX must contain at least one independent task');
   }
   if (!activeTaskState || activeTaskState.schemaVersion !== 1) {
@@ -119,7 +124,7 @@ export function evaluateReleaseGate({
     errors.push('Releases may only run from main, found ' + refName);
   }
 
-  const tasks = [...parseTaskIndex(taskIndexMarkdown).values()];
+  const tasks = [...parseIndependentTaskIndex(taskIndexMarkdown).values()];
   if (tasks.length === 0) {
     errors.push('TASK_INDEX contains no independent tasks');
   }

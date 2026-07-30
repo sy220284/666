@@ -1,0 +1,55 @@
+name: M8-07 Visual Evidence
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - ready_for_review
+
+permissions:
+  contents: read
+
+jobs:
+  visual-evidence:
+    if: github.event.pull_request.head.ref == 'tooling/m8-07-visual-evidence'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install Electron display dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
+      - name: Build desktop
+        run: pnpm build
+      - name: Run M8-07 visual acceptance
+        shell: bash
+        env:
+          WORLDFORGE_E2E_OUTPUT_DIR: ${{ github.workspace }}/test-results/electron
+        run: |
+          mkdir -p test-results/ci
+          set -o pipefail
+          xvfb-run -a node scripts/run-electron-e2e.mjs m8-07-chinese-experience.spec.ts 2>&1 | tee test-results/ci/m8-07-visual-e2e.log
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m8-07-visual-evidence
+          path: |
+            test-results/ci/m8-07-visual-e2e.log
+            test-results/electron/acceptance/M8-07/
+          if-no-files-found: warn
+          retention-days: 7

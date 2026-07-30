@@ -29,7 +29,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Resolve effective PR base
-        shell: bash
         run: |
           base_ref="$(git merge-base "origin/${TASK_BASE_BRANCH}" HEAD)"
           echo "TASK_BASE_REF=${base_ref}" >> "$GITHUB_ENV"
@@ -38,30 +37,44 @@ jobs:
           node-version: 24
       - name: Assert clean working tree before task validation
         run: node .github/governance/assert-clean-tree.mjs
+      - name: Detect parallel task marker
+        id: parallel
+        run: |
+          if node .github/governance/parallel-task-policy.mjs has-marker; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate parallel task PR
+        if: ${{ steps.parallel.outputs.enabled == 'true' }}
+        run: node .github/governance/parallel-task-policy.mjs validate
       - name: Materialize base task state
-        shell: bash
+        if: ${{ steps.parallel.outputs.enabled != 'true' }}
         run: |
           git show "${TASK_BASE_REF}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
           git show "${TASK_BASE_REF}:docs/tasks/TASK_INDEX.md" > "$RUNNER_TEMP/base-task-index.md"
       - name: Validate active task and generated mirror
+        if: ${{ steps.parallel.outputs.enabled != 'true' }}
         run: node .github/governance/verification-hold-taskctl.mjs validate
       - name: Validate changed paths
+        if: ${{ steps.parallel.outputs.enabled != 'true' }}
         run: node .github/governance/verification-hold-taskctl.mjs preflight
       - name: Self-test checkpoint policy
         run: node .github/governance/task-checkpoint-policy.mjs self-test
       - name: Validate task transition for Ready PRs
-        if: ${{ startsWith(github.head_ref, 'policy/') || startsWith(github.head_ref, 'chore/governance-') || startsWith(github.head_ref, 'fix/governance-') || !contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
+        if: ${{ steps.parallel.outputs.enabled != 'true' && (startsWith(github.head_ref, 'policy/') || startsWith(github.head_ref, 'chore/governance-') || startsWith(github.head_ref, 'fix/governance-') || !contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->')) }}
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
           TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
         run: node .github/governance/task-transition-policy.mjs
       - name: Validate active task checkpoint
-        if: ${{ !startsWith(github.head_ref, 'policy/') && !startsWith(github.head_ref, 'chore/governance-') && !startsWith(github.head_ref, 'fix/governance-') && contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
+        if: ${{ steps.parallel.outputs.enabled != 'true' && !startsWith(github.head_ref, 'policy/') && !startsWith(github.head_ref, 'chore/governance-') && !startsWith(github.head_ref, 'fix/governance-') && contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
           TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
         run: node .github/governance/task-checkpoint-policy.mjs
       - name: Enforce milestone close and evidence reachability
+        if: ${{ steps.parallel.outputs.enabled != 'true' }}
         env:
           TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
           TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md

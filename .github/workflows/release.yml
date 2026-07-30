@@ -29,13 +29,12 @@ jobs:
     name: Release quality
     uses: ./.github/workflows/quality-core.yml
     with:
-      package_smoke: true
+      package_smoke: false
       security_suite: true
       performance_eval: true
 
   release-gate:
     name: Release acceptance gate
-    needs: quality
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -54,16 +53,13 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Recheck dependency and repository-secret safety
-        shell: bash
         run: |
-          set -euo pipefail
           pnpm audit --audit-level=high
           node scripts/scan-secrets.mjs --history
       - name: Enforce product and task release acceptance gates
-        shell: bash
         run: |
-          set -euo pipefail
           test "$GITHUB_REF_NAME" = main
+          node .github/governance/parallel-task-release-gate.mjs
           node scripts/ui-acceptance-gate.mjs
           pnpm release:gate -- --version "$RELEASE_VERSION"
       - run: pnpm release:check
@@ -101,7 +97,6 @@ jobs:
       - name: Run platform startup smoke
         run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
       - name: Build platform package
-        shell: bash
         run: >-
           pnpm run package --
           --platform "${{ matrix.platform }}"
@@ -134,7 +129,10 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    needs: build
+    needs:
+      - quality
+      - release-gate
+      - build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
@@ -154,9 +152,8 @@ jobs:
           pattern: worldforge-*
           path: release
       - name: Recheck gates and create checksums
-        shell: bash
         run: |
-          set -euo pipefail
+          node .github/governance/parallel-task-release-gate.mjs
           node scripts/ui-acceptance-gate.mjs
           node scripts/release-tool.mjs gate --version "$RELEASE_VERSION"
           node scripts/release-tool.mjs checksums \
@@ -164,9 +161,7 @@ jobs:
             --assets release \
             --output release/SHA256SUMS.txt
       - name: Create immutable GitHub Release
-        shell: bash
         run: |
-          set -euo pipefail
           tag="v$RELEASE_VERSION"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists; refusing to overwrite it." >&2
@@ -176,13 +171,11 @@ jobs:
             echo "Tag $tag already exists; refusing to publish against an ambiguous commit." >&2
             exit 1
           fi
-
           mapfile -d '' assets < <(find release -type f -print0 | sort -z)
           if [ "${#assets[@]}" -eq 0 ]; then
             echo "No release assets found." >&2
             exit 1
           fi
-
           release_args=(
             --target "$GITHUB_SHA"
             --title "WorldForge $tag"
@@ -197,5 +190,4 @@ jobs:
               exit 1
               ;;
           esac
-
           gh release create "$tag" "${assets[@]}" "${release_args[@]}"

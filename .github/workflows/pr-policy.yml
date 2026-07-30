@@ -74,8 +74,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
       - name: Prepare M8-07 E2E fix preview
+        if: always()
         run: node scripts/prepare-m8-07-e2e-fix.mjs "$RUNNER_TEMP/m8-07-e2e-fix"
       - name: Upload M8-07 E2E fix preview
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: m8-07-e2e-fix-preview-${{ github.event.pull_request.head.sha }}

@@ -97,9 +97,9 @@ describe('UI acceptance gate', () => {
       ],
     });
 
-    expect(evaluateUiAcceptanceState(state, { now: Date.parse('2026-07-30T00:00:00.000Z') })).toContain(
-      'P2-LIMITATION: accepted-risk waiver has expired',
-    );
+    expect(
+      evaluateUiAcceptanceState(state, { now: Date.parse('2026-07-30T00:00:00.000Z') }),
+    ).toContain('P2-LIMITATION: accepted-risk waiver has expired');
   });
 
   it('validates repository evidence paths while allowing typed external references', async () => {

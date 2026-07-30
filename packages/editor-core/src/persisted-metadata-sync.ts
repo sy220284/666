@@ -1,10 +1,6 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 
-import {
-  type Editor,
-  type PersistedEditorBlock,
-  type WorldforgeBlockType,
-} from './draft-document.js';
+import type { Editor, PersistedEditorBlock } from './draft-document.js';
 
 const LOCK_COMMAND_META = 'worldforgeLockCommand';
 
@@ -70,7 +66,8 @@ export function synchronizePersistedBlockMetadata(
     const logicalBlockId = optionalString(node.attrs.logicalBlockId);
     const stableMatch = logicalBlockId ? persistedById.get(logicalBlockId) : undefined;
     const positionalMatch = blocks[index];
-    const block = stableMatch ??
+    const block =
+      stableMatch ??
       (positionalMatch && semanticMatch(node, positionalMatch) ? positionalMatch : undefined);
     if (!block) return;
 
@@ -83,10 +80,4 @@ export function synchronizePersistedBlockMetadata(
   transaction.setMeta(LOCK_COMMAND_META, true);
   editor.view.dispatch(transaction);
   return true;
-}
-
-export function currentBlockType(node: ProseMirrorNode): WorldforgeBlockType | null {
-  return ['paragraph', 'dialogue', 'heading', 'separator'].includes(node.type.name)
-    ? (node.type.name as WorldforgeBlockType)
-    : null;
 }

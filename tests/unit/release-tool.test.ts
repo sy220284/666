@@ -121,6 +121,21 @@ describe('release tool', () => {
     ).toEqual([]);
   });
 
+  it('ignores absorbed historical task rows when checking independent tasks', () => {
+    const result = evaluateReleaseGate({
+      taskIndexMarkdown:
+        taskIndex(verifiedTasks) +
+        '\n## 3. 被吸收的需求来源\n' +
+        taskIndex([{ id: 'M4-05', dependency: 'M4-04', status: 'Removed（absorbed）' }]),
+      activeTaskState: activeTaskState(),
+      packageVersion: '1.0.0',
+      requestedVersion: '1.0.0',
+      refName: 'main',
+    });
+
+    expect(result.errors).toEqual([]);
+  });
+
   it('blocks publishing when a later independent task is not Verified', () => {
     const result = evaluateReleaseGate({
       taskIndexMarkdown: taskIndex([

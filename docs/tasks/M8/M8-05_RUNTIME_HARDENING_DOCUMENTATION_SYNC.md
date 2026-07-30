@@ -1,9 +1,10 @@
 # M8-05 运行时硬化与文档统一同步
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
-> 正式分支：`work/m8-05-runtime-hardening-documentation-sync`
+> 正式分支：`work/m8-05-runtime-hardening-documentation-sync`  
+> 实现提交：`1c5505b1a267e7ea43a70995b4dce7a5fc6abad3`
 
 ## 目标
 
@@ -11,7 +12,7 @@
 
 ## 缺陷基线
 
-1. 全文搜索、替换预览、正式替换与作品词典共用同一个请求代次；词典保存或删除可使在途搜索/替换响应失效，但旧请求在清理等待状态前退出，导致搜索与替换区域持续锁定。
+1. 全文搜索、替换预览、正式替换与作品词典共用同一个请求代次；词典保存或删除可使在途搜索或替换响应失效，但旧请求在清理等待状态前退出，导致搜索与替换区域持续锁定。
 2. Provider原始HTTP响应和单个SSE事件已经实施资源上限，但超限仍复用`AI_OUTPUT_INVALID_008`，与“结构化输出解析失败”的已发布语义冲突。
 3. 多份任务、路线、产品、IPC、Provider、安全、界面和验收文档仍停留在M4-04或M8-02执行阶段，与36张任务全部Verified及M8-04终态不一致。
 
@@ -33,17 +34,17 @@
 
 ### 3. 文档统一
 
-- 当前任务与路线统一为37张独立任务，M8-05为当前活动维护任务。
+- 当前任务与路线统一为37张独立任务，M8-05为当前维护任务。
 - 历史收口文档保留历史过程并明确后续演进，不再冒充当前执行真源。
 - 补齐具名关闭握手、请求通道隔离、Provider资源上限、写作辅助、精准返回和长章节差异审阅的专项规格。
-- 修正M8-04验证记录中的过度表述，明确原实现仅覆盖跨作品和同通道旧响应，未覆盖搜索与词典交叉竞态。
+- 在M8-05任务、追踪矩阵和新Evidence中记录M8-04后续维护关系；M8-04历史任务卡与四件套Evidence保持哈希冻结。
 
 ## 非目标
 
 - 不新增产品功能、云服务、模型代理、多人协作或公开分发能力。
 - 不修改数据库Schema和历史Migration。
 - 不改变搜索、替换、词典、Provider和建议稿的权威数据边界。
-- 不重写历史已Verified任务卡；只在当前文档中记录后续维护关系。
+- 不重写历史已Verified任务卡和历史Evidence。
 - 不降低Provider响应资源限制。
 
 ## 依赖
@@ -98,17 +99,36 @@ M8-04（Verified）
 6. 任务、产品、契约、安全、界面、测试和发布文档与真实代码一致。
 7. 受影响单元、安全、性能、Electron端到端、全量测试和构建全部通过。
 
-## 验证命令
+## 实现结果
 
-- `pnpm check:language`
-- `pnpm lint`
-- `pnpm typecheck`
-- `pnpm test`
-- `pnpm test:unit`
-- `pnpm test:integration`
-- `pnpm test:security`
-- `pnpm test:perf`
-- `pnpm test:e2e`
-- `pnpm build`
+- 搜索、替换、词典和索引已经使用四个独立请求通道及等待状态。
+- 同通道旧响应、跨作品旧响应和全部通道统一失效均有单元测试。
+- 搜索面板接线测试锁定词典等待状态不参与搜索工具互斥。
+- Provider三条响应超限路径均返回`AI_RESPONSE_TOO_LARGE_014`。
+- 作者错误提示明确说明安全停止、正文未修改和可执行处理动作。
+- 任务、路线、产品、IPC、Provider、安全、UI、验收、README和CHANGELOG完成统一同步。
+- M4-04与M8-04历史任务和Evidence保持冻结。
 
-验证记录保存到：`docs/test-evidence/M8-05/`。
+## 验证结果
+
+受检实现提交`1c5505b1a267e7ea43a70995b4dce7a5fc6abad3`的六项永久门禁全部成功：
+
+```text
+PR Policy       30509808959  success
+Task Governance 30509808967  success
+Evidence        30509808988  success
+Quality         30509809116  success
+Security        30509808962  success
+Performance     30509808998  success
+```
+
+详细记录：`docs/test-evidence/M8-05/`。
+
+## 后续关闭条件
+
+当前状态为Implemented。只有以下步骤完成后才能标记Verified：
+
+1. 正式PR #229转Ready后，最终Head六项永久门禁全部成功。
+2. 使用`expected_head_sha`受控压缩合并。
+3. 合并提交的Main Verification成功。
+4. 独立治理关闭PR将最终Evidence绑定main提交并进入main。

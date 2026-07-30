@@ -1183,7 +1183,7 @@ test('creates a verified recovery point, restores a new project and exports a Ve
     );
 
     await page.locator('[data-restore-checkpoint]').click();
-    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近项目', {
+    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近作品', {
       timeout: 15_000,
     });
     expect(

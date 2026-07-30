@@ -71,6 +71,7 @@ export function AppShell({ bridge }: AppShellProps) {
   const [navOpen, setNavOpen] = useState(false);
   const navToggle = useRef<HTMLButtonElement>(null);
   const settingsTrigger = useRef<HTMLButtonElement>(null);
+  const settingsReturnRoute = useRef<RendererRouteId>('home');
   const helpTrigger = useRef<HTMLButtonElement>(null);
   const mainContent = useRef<HTMLElement>(null);
   const initialWorkspaceResolved = useRef(false);
@@ -303,6 +304,9 @@ export function AppShell({ bridge }: AppShellProps) {
         return;
       }
       setNavOpen(false);
+      if (resolution.route === 'settings' && route !== 'settings') {
+        settingsReturnRoute.current = route;
+      }
       void transitionToRoute(resolution.route).then((changed) => {
         if (changed && navigationId === 'home') void refreshWorkspace();
       });
@@ -1114,8 +1118,13 @@ export function AppShell({ bridge }: AppShellProps) {
                 });
               }}
               onClose={() => {
-                navigate('home');
-                window.requestAnimationFrame(() => settingsTrigger.current?.focus());
+                const target = restoreAppShellRoute(settingsReturnRoute.current, {
+                  activeProjectId: activeProject?.projectId ?? null,
+                  disclosureMode,
+                });
+                void transitionToRoute(target).then((changed) => {
+                  if (changed) window.requestAnimationFrame(() => settingsTrigger.current?.focus());
+                });
               }}
               onResetSettings={() => {
                 void bridge.settings.reset().then((outcome) => {

@@ -86,7 +86,7 @@ export function SettingsPage(props: SettingsPageProps) {
           type="button"
           onClick={props.onClose}
         >
-          返回首页
+          返回上一页
         </button>
       </header>
       {props.message ? (

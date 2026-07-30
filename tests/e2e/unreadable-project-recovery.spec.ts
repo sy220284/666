@@ -125,7 +125,7 @@ test('browses and exports a Version from a verified checkpoint when project.sqli
     await captureAcceptanceScreenshot(page, 'M1-08', 'unreadable-project-recovery-entry.png');
 
     await page.locator('[data-restore-checkpoint]').click();
-    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近项目');
+    await expect(page.locator('[data-recovery-status]')).toContainText('已注册到最近作品');
     await captureAcceptanceScreenshot(page, 'M1-08', 'unreadable-project-restored-copy.png');
     expect(await readFile(databasePath)).toEqual(damagedSource);
 

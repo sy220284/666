@@ -171,6 +171,9 @@
     "allowedPaths": [
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+      "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
+      "docs/testing/P0_ACCEPTANCE_MATRIX.md",
+      "docs/ui/UI_ACCEPTANCE_CHECKLIST.md",
       "docs/test-evidence/M8-05/",
       "README.md",
       "docs/INDEX.md",

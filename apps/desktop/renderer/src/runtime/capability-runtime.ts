@@ -63,15 +63,15 @@ function trackDomain<Domain extends object>(
     get(target, property, receiver) {
       const value = Reflect.get(target, property, receiver);
       if (typeof property !== 'string' || typeof value !== 'function') return value;
-      return (...args: unknown[]) =>
-        Promise.resolve((value as (...received: unknown[]) => unknown).apply(target, args)).then(
-          (outcome: BridgeRequestOutcome<unknown>) => {
-            observe(domainName, property, outcome);
-            after(property, outcome);
-            updateReadySignals();
-            return outcome;
-          },
-        );
+      return async (...args: unknown[]) => {
+        const outcome = await (
+          value as (...received: unknown[]) => Promise<BridgeRequestOutcome<unknown>>
+        ).apply(target, args);
+        observe(domainName, property, outcome);
+        after(property, outcome);
+        updateReadySignals();
+        return outcome;
+      };
     },
   });
 }

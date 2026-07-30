@@ -9,7 +9,8 @@ import { isPathInside, parseTaskIndex } from '../../scripts/task-control-lib.mjs
 
 const root = process.cwd();
 const markerPattern = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu;
-const approvedBranch = /^(?:work|feat|fix|refactor|test|docs|chore)\/[a-z0-9._/-]+$/u;
+const approvedBranch = /^(?:work|feat|fix|refactor|test|docs|chore|policy)\/[a-z0-9._/-]+$/u;
+const governanceBranch = /^(?:policy\/|chore\/governance-|fix\/governance-)/u;
 const activeStatuses = new Set(['IN_PROGRESS', 'IMPLEMENTED']);
 const transitions = new Set([
   'PLANNED:PLANNED',
@@ -87,17 +88,22 @@ function changedFiles() {
   return output.split(/\r?\n/u).filter(Boolean);
 }
 
-function changedPathErrors(files, task) {
+function changedPathErrors(files, task, branch) {
   const errors = [];
   const ownRuntime = runtimePath(task.id);
+  const mayChangeGlobalTaskState = governanceBranch.test(branch);
   for (const file of files) {
     if (file === ownRuntime) continue;
     if (file === 'docs/tasks/TASK_AUTHORIZATION.json') {
-      errors.push(`${file}: global task authorization may only change in a governance PR`);
+      if (!mayChangeGlobalTaskState) {
+        errors.push(`${file}: global task authorization may only change in a governance PR`);
+      }
       continue;
     }
     if (/^docs\/tasks\/runtime\/[^/]+\.json$/u.test(file)) {
-      errors.push(`${file}: task PR may only modify its own runtime file`);
+      if (!mayChangeGlobalTaskState) {
+        errors.push(`${file}: task PR may only modify its own runtime file`);
+      }
       continue;
     }
     if (task.forbiddenPaths.some((blocked) => isPathInside(file, blocked))) {
@@ -166,7 +172,11 @@ async function validatePrPolicy() {
 
 async function validateTaskPr() {
   const { taskId, task } = await resolveTask();
-  const errors = [...(await dependencyErrors(task)), ...changedPathErrors(changedFiles(), task)];
+  const branch = process.env.TASK_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF ?? '';
+  const errors = [
+    ...(await dependencyErrors(task)),
+    ...changedPathErrors(changedFiles(), task, branch),
+  ];
   const previous = baseRuntime(taskId);
   if (previous && !transitions.has(`${previous.status}:${task.status}`)) {
     errors.push(`Invalid ${taskId} runtime transition: ${previous.status} -> ${task.status}`);
@@ -191,6 +201,22 @@ export function selfTest() {
       },
       'M8-07',
     ),
+    [],
+  );
+  assert.deepEqual(
+    changedPathErrors(['docs/tasks/TASK_AUTHORIZATION.json'], {
+      id: 'M8-07',
+      allowedPaths: ['docs/tasks/'],
+      forbiddenPaths: [],
+    }, 'work/m8-07'),
+    ['docs/tasks/TASK_AUTHORIZATION.json: global task authorization may only change in a governance PR'],
+  );
+  assert.deepEqual(
+    changedPathErrors(['docs/tasks/TASK_AUTHORIZATION.json'], {
+      id: 'M8-07',
+      allowedPaths: ['docs/tasks/'],
+      forbiddenPaths: [],
+    }, 'policy/parallel-task'),
     [],
   );
   assert.equal(transitions.has('IN_PROGRESS:IMPLEMENTED'), true);

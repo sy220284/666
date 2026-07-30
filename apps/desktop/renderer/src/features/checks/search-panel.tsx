@@ -11,11 +11,13 @@ import type {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorTerm } from '../../presentation/author-terms.js';
-import { RequestGeneration } from '../../runtime/request-generation.js';
+import { RequestGenerationGroup } from '../../runtime/request-generation.js';
 import {
   searchResultNavigationTarget,
   type AuthorNavigationTarget,
 } from '../../shell/navigation-target.js';
+
+type SearchPanelRequestLane = 'search' | 'replace' | 'dictionary' | 'index';
 
 export function SearchPanel({
   bridge,
@@ -36,150 +38,191 @@ export function SearchPanel({
   const [indexState, setIndexState] = useState<SearchIndexState | null>(null);
   const [plan, setPlan] = useState<ReplacePlan | null>(null);
   const [dictionary, setDictionary] = useState<readonly ProjectDictionaryEntry[]>([]);
-  const [pending, setPending] = useState(false);
+  const [searchPending, setSearchPending] = useState(false);
+  const [replacePending, setReplacePending] = useState(false);
+  const [dictionaryPending, setDictionaryPending] = useState(false);
+  const [indexPending, setIndexPending] = useState(false);
   const [notice, setNotice] = useState('搜索覆盖当前稿、历史版本与人物世界设定。');
-  const requestGeneration = useRef(new RequestGeneration());
+  const requests = useRef(new RequestGenerationGroup<SearchPanelRequestLane>());
+  const searchToolsPending = searchPending || replacePending || indexPending;
 
-  const beginRequest = (): number => requestGeneration.current.begin();
-  const isCurrentRequest = (generation: number): boolean =>
-    requestGeneration.current.isCurrent(generation);
+  const beginRequest = (lane: SearchPanelRequestLane): number => requests.current.begin(lane);
+  const isCurrentRequest = (lane: SearchPanelRequestLane, generation: number): boolean =>
+    requests.current.isCurrent(lane, generation);
 
   useEffect(() => {
-    const generation = requestGeneration.current.begin();
+    const indexGeneration = requests.current.begin('index');
+    const dictionaryGeneration = requests.current.begin('dictionary');
     let active = true;
     setResult(null);
     setPlan(null);
     setIndexState(null);
     setDictionary([]);
-    setPending(false);
+    setSearchPending(false);
+    setReplacePending(false);
+    setDictionaryPending(false);
+    setIndexPending(false);
     setNotice('正在读取当前作品的全文搜索状态…');
     void Promise.all([
       bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' }),
       bridge.searchTools.listDictionary({ projectId }, { mode: 'replace' }),
     ]).then(([stateOutcome, dictionaryOutcome]) => {
-      if (!active || !requestGeneration.current.isCurrent(generation)) return;
-      if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
-      if (dictionaryOutcome.state === 'success') setDictionary(dictionaryOutcome.data.entries);
-      setNotice('搜索覆盖当前稿、历史版本与人物世界设定。');
+      if (!active) return;
+      const indexCurrent = requests.current.isCurrent('index', indexGeneration);
+      const dictionaryCurrent = requests.current.isCurrent('dictionary', dictionaryGeneration);
+      if (indexCurrent && stateOutcome.state === 'success') setIndexState(stateOutcome.data);
+      if (dictionaryCurrent && dictionaryOutcome.state === 'success') {
+        setDictionary(dictionaryOutcome.data.entries);
+      }
+      if (indexCurrent && dictionaryCurrent) {
+        setNotice('搜索覆盖当前稿、历史版本与人物世界设定。');
+      }
     });
     return () => {
       active = false;
-      requestGeneration.current.invalidate();
+      requests.current.invalidateAll();
     };
   }, [bridge, projectId]);
 
   const search = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (!query.trim() || sourceTypes.size === 0) return;
-    const generation = beginRequest();
-    setPending(true);
-    const outcome = await bridge.searchTools.search({
-      projectId,
-      query,
-      sourceTypes: [...sourceTypes],
-      includeArchived: false,
-      limit: 100,
-    });
-    if (!isCurrentRequest(generation)) return;
-    setPending(false);
-    if (outcome.state === 'success') {
-      setResult(outcome.data);
-      setNotice(
-        `找到 ${outcome.data.items.length} 项 · ${searchStrategyLabel(outcome.data.strategy)} · ${searchIndexStatusLabel(outcome.data.indexStatus)}`,
-      );
-    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    const generation = beginRequest('search');
+    setSearchPending(true);
+    try {
+      const outcome = await bridge.searchTools.search({
+        projectId,
+        query,
+        sourceTypes: [...sourceTypes],
+        includeArchived: false,
+        limit: 100,
+      });
+      if (!isCurrentRequest('search', generation)) return;
+      if (outcome.state === 'success') {
+        setResult(outcome.data);
+        setNotice(
+          `找到 ${outcome.data.items.length} 项 · ${searchStrategyLabel(outcome.data.strategy)} · ${searchIndexStatusLabel(outcome.data.indexStatus)}`,
+        );
+      } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      if (isCurrentRequest('search', generation)) setSearchPending(false);
+    }
   };
 
   const previewReplace = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (readOnly) return;
-    const generation = beginRequest();
+    const generation = beginRequest('replace');
     const values = new FormData(event.currentTarget);
-    setPending(true);
-    const outcome = await bridge.searchTools.previewReplace({
-      projectId,
-      query: String(values.get('query') ?? ''),
-      replacement: String(values.get('replacement') ?? ''),
-      matchCase: values.get('matchCase') === 'on',
-      maxMatches: 2_000,
-    });
-    if (!isCurrentRequest(generation)) return;
-    setPending(false);
-    if (outcome.state === 'success') {
-      setPlan(outcome.data);
-      setNotice(
-        `替换范围已预览 · 可以替换 ${outcome.data.eligibleCount} · 已锁定跳过 ${outcome.data.lockedCount}`,
-      );
-    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    setReplacePending(true);
+    try {
+      const outcome = await bridge.searchTools.previewReplace({
+        projectId,
+        query: String(values.get('query') ?? ''),
+        replacement: String(values.get('replacement') ?? ''),
+        matchCase: values.get('matchCase') === 'on',
+        maxMatches: 2_000,
+      });
+      if (!isCurrentRequest('replace', generation)) return;
+      if (outcome.state === 'success') {
+        setPlan(outcome.data);
+        setNotice(
+          `替换范围已预览 · 可以替换 ${outcome.data.eligibleCount} · 已锁定跳过 ${outcome.data.lockedCount}`,
+        );
+      } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      if (isCurrentRequest('replace', generation)) setReplacePending(false);
+    }
   };
 
   const applyReplace = async (): Promise<void> => {
     if (!plan || readOnly) return;
-    const generation = beginRequest();
-    setPending(true);
-    const outcome = await bridge.searchTools.applyReplace({
-      projectId,
-      planId: plan.planId,
-    });
-    if (!isCurrentRequest(generation)) return;
-    setPending(false);
-    if (outcome.state === 'success') {
-      setPlan(outcome.data.plan);
-      setNotice(`替换完成 · ${outcome.data.changedDrafts.length} 个当前稿 · 已创建恢复点。`);
-    } else if (outcome.state === 'failure') {
-      setNotice(authorErrorSummary(outcome.error));
+    const generation = beginRequest('replace');
+    setReplacePending(true);
+    try {
+      const outcome = await bridge.searchTools.applyReplace({
+        projectId,
+        planId: plan.planId,
+      });
+      if (!isCurrentRequest('replace', generation)) return;
+      if (outcome.state === 'success') {
+        setPlan(outcome.data.plan);
+        setNotice(`替换完成 · ${outcome.data.changedDrafts.length} 个当前稿 · 已创建恢复点。`);
+      } else if (outcome.state === 'failure') {
+        setNotice(authorErrorSummary(outcome.error));
+      }
+    } finally {
+      if (isCurrentRequest('replace', generation)) setReplacePending(false);
     }
   };
 
   const saveDictionary = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (readOnly) return;
-    const generation = beginRequest();
+    const generation = beginRequest('dictionary');
     const form = event.currentTarget;
     const values = new FormData(form);
     const action = String(values.get('action')) as 'canonical' | 'alias' | 'ignore' | 'replace';
     const replacementTerm = String(values.get('replacementTerm') ?? '').trim();
-    const outcome = await bridge.searchTools.upsertDictionary({
-      projectId,
-      authority: 'author',
-      term: String(values.get('term') ?? ''),
-      category: 'terminology',
-      action,
-      replacementTerm: replacementTerm || null,
-      notes: String(values.get('notes') ?? ''),
-    });
-    if (!isCurrentRequest(generation)) return;
-    if (outcome.state === 'success') {
-      setDictionary(outcome.data.entries);
-      form.reset();
-    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    setDictionaryPending(true);
+    try {
+      const outcome = await bridge.searchTools.upsertDictionary({
+        projectId,
+        authority: 'author',
+        term: String(values.get('term') ?? ''),
+        category: 'terminology',
+        action,
+        replacementTerm: replacementTerm || null,
+        notes: String(values.get('notes') ?? ''),
+      });
+      if (!isCurrentRequest('dictionary', generation)) return;
+      if (outcome.state === 'success') {
+        setDictionary(outcome.data.entries);
+        form.reset();
+        setNotice('作品词典已保存。');
+      } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      if (isCurrentRequest('dictionary', generation)) setDictionaryPending(false);
+    }
   };
 
   const rebuildIndex = async (): Promise<void> => {
-    const generation = beginRequest();
-    const outcome = await bridge.searchTools.rebuildIndex({ projectId });
-    if (!isCurrentRequest(generation)) return;
-    if (outcome.state === 'failure') {
-      setNotice(authorErrorSummary(outcome.error));
-      return;
+    const generation = beginRequest('index');
+    setIndexPending(true);
+    try {
+      const outcome = await bridge.searchTools.rebuildIndex({ projectId });
+      if (!isCurrentRequest('index', generation)) return;
+      if (outcome.state === 'failure') {
+        setNotice(authorErrorSummary(outcome.error));
+        return;
+      }
+      if (outcome.state !== 'success') return;
+      setNotice(`全文搜索重建完成 · ${searchIndexStatusLabel(outcome.data.status)}`);
+      const stateOutcome = await bridge.searchTools.getIndexState({ projectId });
+      if (!isCurrentRequest('index', generation)) return;
+      if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
+    } finally {
+      if (isCurrentRequest('index', generation)) setIndexPending(false);
     }
-    if (outcome.state !== 'success') return;
-    setNotice(`全文搜索重建完成 · ${searchIndexStatusLabel(outcome.data.status)}`);
-    const stateOutcome = await bridge.searchTools.getIndexState({ projectId });
-    if (!isCurrentRequest(generation)) return;
-    if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
   };
 
   const deleteDictionary = async (entry: ProjectDictionaryEntry): Promise<void> => {
-    const generation = beginRequest();
-    const outcome = await bridge.searchTools.deleteDictionary({
-      projectId,
-      authority: 'author',
-      term: entry.term,
-    });
-    if (!isCurrentRequest(generation)) return;
-    if (outcome.state === 'success') setDictionary(outcome.data.entries);
-    else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    const generation = beginRequest('dictionary');
+    setDictionaryPending(true);
+    try {
+      const outcome = await bridge.searchTools.deleteDictionary({
+        projectId,
+        authority: 'author',
+        term: entry.term,
+      });
+      if (!isCurrentRequest('dictionary', generation)) return;
+      if (outcome.state === 'success') {
+        setDictionary(outcome.data.entries);
+        setNotice('作品词典词条已删除。');
+      } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+    } finally {
+      if (isCurrentRequest('dictionary', generation)) setDictionaryPending(false);
+    }
   };
 
   const navigateToResult = (item: SearchProjectResult['items'][number]): void => {
@@ -198,8 +241,12 @@ export function SearchPanel({
           <h2>全文搜索与安全替换</h2>
           <p>历史版本与设定只读；替换范围只能包含正在使用的当前稿正文块。</p>
         </div>
-        <button disabled={pending || readOnly} type="button" onClick={() => void rebuildIndex()}>
-          重建全文搜索
+        <button
+          disabled={searchToolsPending || readOnly}
+          type="button"
+          onClick={() => void rebuildIndex()}
+        >
+          {indexPending ? '正在重建…' : '重建全文搜索'}
         </button>
       </div>
       <p className="feature-status" role="status">
@@ -233,8 +280,8 @@ export function SearchPanel({
                 : '人物设定'}
           </label>
         ))}
-        <button disabled={pending} type="submit">
-          搜索
+        <button disabled={searchToolsPending} type="submit">
+          {searchPending ? '正在搜索…' : '搜索'}
         </button>
       </form>
       <div className="ledger-list">
@@ -273,8 +320,8 @@ export function SearchPanel({
             <input defaultChecked name="matchCase" type="checkbox" />
             区分大小写
           </label>
-          <button disabled={pending || readOnly} type="submit">
-            预览替换范围
+          <button disabled={searchToolsPending || readOnly} type="submit">
+            {replacePending ? '正在处理…' : '预览替换范围'}
           </button>
         </form>
         {plan ? (
@@ -290,11 +337,11 @@ export function SearchPanel({
               </p>
             ))}
             <button
-              disabled={pending || readOnly || plan.status !== 'preview'}
+              disabled={searchToolsPending || readOnly || plan.status !== 'preview'}
               type="button"
               onClick={() => void applyReplace()}
             >
-              创建恢复点并替换
+              {replacePending ? '正在替换…' : '创建恢复点并替换'}
             </button>
           </div>
         ) : null}
@@ -312,15 +359,19 @@ export function SearchPanel({
           </select>
           <input name="replacementTerm" placeholder="别名或替换目标" />
           <input name="notes" placeholder="备注" />
-          <button disabled={readOnly} type="submit">
-            保存词条
+          <button disabled={dictionaryPending || readOnly} type="submit">
+            {dictionaryPending ? '正在保存…' : '保存词条'}
           </button>
         </form>
         {dictionary.map((entry) => (
           <p key={entry.normalizedTerm}>
             {entry.term} · {dictionaryActionLabel(entry.action)}
             {entry.replacementTerm ? ` → ${entry.replacementTerm}` : ''}
-            <button disabled={readOnly} type="button" onClick={() => void deleteDictionary(entry)}>
+            <button
+              disabled={dictionaryPending || readOnly}
+              type="button"
+              onClick={() => void deleteDictionary(entry)}
+            >
               删除
             </button>
           </p>

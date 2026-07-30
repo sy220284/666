@@ -30,13 +30,14 @@ function semanticMatch(node: ProseMirrorNode, block: PersistedEditorBlock): bool
 function metadataForCurrentNode(
   node: ProseMirrorNode,
   block: PersistedEditorBlock,
+  savedSnapshotStillCurrent: boolean,
 ): Record<string, unknown> {
   return {
     ...node.attrs,
     logicalBlockId: block.logicalBlockId,
     clientBlockId: optionalString(node.attrs.clientBlockId) ?? block.logicalBlockId,
-    source: block.source,
-    locked: block.locked,
+    source: savedSnapshotStillCurrent ? block.source : node.attrs.source,
+    locked: savedSnapshotStillCurrent ? block.locked : node.attrs.locked,
     contentHash: block.contentHash,
     ...(node.type.name === 'heading' ? { headingLevel: headingLevel(node) } : {}),
   };
@@ -66,12 +67,17 @@ export function synchronizePersistedBlockMetadata(
     const logicalBlockId = optionalString(node.attrs.logicalBlockId);
     const stableMatch = logicalBlockId ? persistedById.get(logicalBlockId) : undefined;
     const positionalMatch = blocks[index];
-    const block =
-      stableMatch ??
-      (positionalMatch && semanticMatch(node, positionalMatch) ? positionalMatch : undefined);
+    const positionalSnapshotCurrent = Boolean(
+      positionalMatch && semanticMatch(node, positionalMatch),
+    );
+    const block = stableMatch ?? (positionalSnapshotCurrent ? positionalMatch : undefined);
     if (!block) return;
 
-    transaction.setNodeMarkup(offset, undefined, metadataForCurrentNode(node, block));
+    transaction.setNodeMarkup(
+      offset,
+      undefined,
+      metadataForCurrentNode(node, block, semanticMatch(node, block)),
+    );
     synchronized += 1;
   });
 

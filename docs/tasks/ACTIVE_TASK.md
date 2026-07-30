@@ -10,7 +10,7 @@ VERIFIED_HOLD
 
 - 任务ID：`M8-06`
 - 唯一任务卡：`docs/tasks/M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md`
-- 工作分支：`work/m8-06-final-governance-closure`
+- 工作分支：`work/m8-06-release-qualification-governance`
 - 开始时间：`2026-07-30`
 - 授权模式：`implementation-pr`
 - 授权人：`author`

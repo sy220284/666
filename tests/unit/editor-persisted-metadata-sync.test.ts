@@ -4,6 +4,7 @@ import {
   EditorState,
   createWorldforgeEditorSchema,
   type PersistedEditorBlock,
+  type WorldforgeBlockSource,
 } from '../../packages/editor-core/src/draft-document.js';
 import { synchronizePersistedBlockMetadata } from '../../packages/editor-core/src/persisted-metadata-sync.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
@@ -33,6 +34,8 @@ function editorFor(
     clientBlockId: string;
     text: string;
     blockType?: 'paragraph' | 'dialogue' | 'heading';
+    source?: WorldforgeBlockSource;
+    locked?: boolean;
   }>,
 ) {
   let state = EditorState.create({
@@ -43,8 +46,8 @@ function editorFor(
         attrs: {
           logicalBlockId: block.logicalBlockId,
           clientBlockId: block.clientBlockId,
-          source: 'manual',
-          locked: false,
+          source: block.source ?? 'manual',
+          locked: block.locked ?? false,
           contentHash: block.logicalBlockId ? `old-${block.logicalBlockId}` : null,
           ...(block.blockType === 'heading' ? { headingLevel: 2 } : {}),
         },
@@ -98,13 +101,15 @@ describe('persisted metadata synchronization during delayed autosave', () => {
     });
   });
 
-  it('updates stable persisted identities without overwriting changed text or block type', () => {
+  it('updates the base hash without overwriting later text, type, source or lock changes', () => {
     const target = editorFor([
       {
         logicalBlockId: 'server-1',
         clientBlockId: 'server-1',
         text: '保存期间改成对白',
         blockType: 'dialogue',
+        source: 'mixed',
+        locked: true,
       },
     ]);
 
@@ -113,7 +118,11 @@ describe('persisted metadata synchronization during delayed autosave', () => {
     ).toBe(true);
     expect(target.state().doc.firstChild?.type.name).toBe('dialogue');
     expect(target.state().doc.firstChild?.textContent).toBe('保存期间改成对白');
-    expect(target.state().doc.firstChild?.attrs.contentHash).toBe('hash-server-1');
+    expect(target.state().doc.firstChild?.attrs).toMatchObject({
+      contentHash: 'hash-server-1',
+      source: 'mixed',
+      locked: true,
+    });
   });
 
   it('partially synchronizes stable blocks after a split and leaves the new block for the next save', () => {

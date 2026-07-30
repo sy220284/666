@@ -3,8 +3,8 @@
 > 状态：Verified  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
-> 正式实现分支：`work/m8-06-release-qualification-governance`  
-> 最终治理分支：`work/m8-06-final-governance-closure`  
+> 正式分支：`work/m8-06-release-qualification-governance`  
+> 最终治理PR：#233  
 > 实现提交：`6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841`  
 > 实现PR最终Head：`64d3de74aacada8671d1ac932978c67c9534d8be`  
 > main实现提交：`66e17c99ba84a6f8f40dce6bec97df7c6d7898e9`

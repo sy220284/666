@@ -21,7 +21,12 @@ function currentHead() {
 }
 
 function isAncestor(ancestor, descendant) {
-  if (!COMMIT_PATTERN.test(ancestor ?? '') || !COMMIT_PATTERN.test(descendant ?? '')) return false;
+  if (
+    !COMMIT_PATTERN.test(ancestor ?? '') ||
+    !COMMIT_PATTERN.test(descendant ?? '')
+  ) {
+    return false;
+  }
   try {
     execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant], {
       cwd: root,
@@ -43,11 +48,18 @@ export function evaluateUiAcceptanceState(state, options = {}) {
   if (!state || state.schemaVersion !== 1) {
     errors.push('UI acceptance state must use schemaVersion 1');
   }
-  if (typeof state?.taskId !== 'string' || !/^M\d+-\d{2}$/u.test(state.taskId)) {
+  if (
+    typeof state?.taskId !== 'string' ||
+    !/^M\d+-\d{2}$/u.test(state.taskId)
+  ) {
     errors.push('UI acceptance state must identify a valid taskId');
   }
-  if (!validDate(state?.updatedAt)) errors.push('UI acceptance state updatedAt must be an ISO date');
-  if (items.length === 0) errors.push('UI acceptance state must contain acceptance items');
+  if (!validDate(state?.updatedAt)) {
+    errors.push('UI acceptance state updatedAt must be an ISO date');
+  }
+  if (items.length === 0) {
+    errors.push('UI acceptance state must contain acceptance items');
+  }
 
   const ids = new Set();
   for (const item of items) {
@@ -67,7 +79,9 @@ export function evaluateUiAcceptanceState(state, options = {}) {
     }
 
     if (releaseSeverities.has(item?.severity) && item.status !== 'PASS') {
-      errors.push(`${id}: release-blocking ${item.severity} item must be PASS, found ${item.status}`);
+      errors.push(
+        `${id}: release-blocking ${item.severity} item must be PASS, found ${item.status}`,
+      );
     }
 
     if (item.status === 'PASS') {

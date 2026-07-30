@@ -6,9 +6,10 @@ import { deriveCapabilityMatrix } from '../../apps/desktop/renderer/src/runtime/
 
 const healthyCore: CoreStatus = {
   status: 'healthy',
-  protocolVersion: 1,
   pid: 1,
-  startedAt: '2026-07-30T00:00:00.000Z',
+  restartCount: 0,
+  lastErrorCode: null,
+  diagnosticId: null,
 };
 
 function project(

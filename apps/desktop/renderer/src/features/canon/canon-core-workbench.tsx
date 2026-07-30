@@ -86,7 +86,7 @@ export function CanonWorkbench({
         <div>
           <p className="eyebrow">人物与世界</p>
           <h1>设定与连续性工作台</h1>
-          <p>已确认设定、动态历史、叙事规划和待裁决提案分区保存。</p>
+          <p>已确认设定、动态历史、叙事规划和待处理设定更新建议分区保存。</p>
         </div>
       </header>
       <nav className="feature-tabs" aria-label="设定工作台分区">
@@ -109,7 +109,7 @@ export function CanonWorkbench({
         />
         <Tab
           current={section === 'proposals'}
-          label="状态提案"
+          label="设定更新建议"
           marker="open-state-proposals"
           onClick={() => onSectionChange('proposals')}
         />
@@ -358,7 +358,7 @@ function EntityCanonPanel({
         </label>
         <p className="feature-status" data-canon-status>
           {command.error
-            ? `${command.error.message} · ${command.error.code}`
+            ? `${command.error.message} · ${authorErrorSummary(command.error)}`
             : notice
               ? notice
               : resource.state === 'loading'
@@ -589,7 +589,7 @@ function ContinuityPanel({
       </div>
       <p className="feature-status" data-continuity-status>
         {resource.error
-          ? `读取失败：${resource.error.code}`
+          ? `读取失败：${authorErrorSummary(resource.error)}`
           : resource.state === 'success'
             ? `项目：${projectName}`
             : '读取中…'}
@@ -1059,7 +1059,7 @@ function NarrativePanel({
       </div>
       <p className="feature-status" data-narrative-planning-status>
         {resource.error
-          ? `读取失败：${resource.error.code}`
+          ? `读取失败：${authorErrorSummary(resource.error)}`
           : resource.state === 'success'
             ? `项目：${projectName}`
             : '读取中…'}
@@ -1560,7 +1560,7 @@ function StateProposalPanel({
     <section className="feature-card" data-state-proposal-dialog>
       <div className="feature-card__heading">
         <div>
-          <h2>状态提案与章节尾快照</h2>
+          <h2>设定更新建议与章节尾快照</h2>
           <p>等待处理的提案不会改变已确认状态，必须由作者裁决。</p>
         </div>
         <button
@@ -1618,9 +1618,9 @@ function StateProposalPanel({
       </div>
       <p className="feature-status" data-state-proposal-status>
         {command.error
-          ? `裁决失败：${command.error.code}`
+          ? `裁决失败：${authorErrorSummary(command.error)}`
           : resource.error
-            ? `读取失败：${resource.error.code}`
+            ? `读取失败：${authorErrorSummary(resource.error)}`
             : notice
               ? notice
               : resource.state === 'success'
@@ -1644,7 +1644,7 @@ function StateProposalPanel({
       </div>
       <div data-state-proposal-list>
         {catalog?.proposals.length === 0 ? (
-          <p>当前没有状态提案。</p>
+          <p>当前没有设定更新建议。</p>
         ) : (
           catalog?.proposals.map((proposal) => (
             <article className="ledger-record" data-state-proposal={proposal.id} key={proposal.id}>
@@ -1751,7 +1751,7 @@ function stateProposalTypeLabel(type: string): string {
     entity_state: '人物与世界状态',
     arc_milestone: '人物弧光里程碑',
   };
-  return labels[type] ?? '状态提案';
+  return labels[type] ?? '设定更新建议';
 }
 
 function stateProposalSourceLabel(source: string): string {

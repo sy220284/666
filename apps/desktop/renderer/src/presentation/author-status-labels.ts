@@ -27,6 +27,12 @@ export const AUTHOR_STATUS_LABELS = {
   medium: '重要',
   high: '严重',
   critical: '必须处理',
+  healthy: '运行正常',
+  starting: '正在启动',
+  degraded: '部分功能受限',
+  stopped: '已经停止',
+  crashed: '意外停止',
+  unreachable: '暂时无法连接',
 } as const;
 
 export type AuthorStatusKey = keyof typeof AUTHOR_STATUS_LABELS;

@@ -7,6 +7,7 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
 import {
@@ -18,6 +19,7 @@ export type { WritingPanel };
 
 interface WritingWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
+  readonly disclosureMode: AppDisclosureMode;
   readonly project: ProjectWorkspaceSummary;
   readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;

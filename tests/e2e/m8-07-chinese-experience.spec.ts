@@ -68,6 +68,7 @@ async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): 
   await expect(page.locator('body')).toHaveAttribute('data-visual-theme-variant', variant);
   await page.locator('[data-close-settings]').click();
   await expect(page.locator('[data-writing-workbench]')).toBeVisible();
+  await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
 }
 
 function relativeLuminance(red: number, green: number, blue: number): number {

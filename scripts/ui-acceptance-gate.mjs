@@ -21,10 +21,7 @@ function currentHead() {
 }
 
 function isAncestor(ancestor, descendant) {
-  if (
-    !COMMIT_PATTERN.test(ancestor ?? '') ||
-    !COMMIT_PATTERN.test(descendant ?? '')
-  ) {
+  if (!COMMIT_PATTERN.test(ancestor ?? '') || !COMMIT_PATTERN.test(descendant ?? '')) {
     return false;
   }
   try {
@@ -48,10 +45,7 @@ export function evaluateUiAcceptanceState(state, options = {}) {
   if (!state || state.schemaVersion !== 1) {
     errors.push('UI acceptance state must use schemaVersion 1');
   }
-  if (
-    typeof state?.taskId !== 'string' ||
-    !/^M\d+-\d{2}$/u.test(state.taskId)
-  ) {
+  if (typeof state?.taskId !== 'string' || !/^M\d+-\d{2}$/u.test(state.taskId)) {
     errors.push('UI acceptance state must identify a valid taskId');
   }
   if (!validDate(state?.updatedAt)) {

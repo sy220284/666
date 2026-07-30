@@ -1,6 +1,6 @@
 # WorldForge V1.0 P0验收矩阵
 
-> 状态：Frozen with Active Maintenance  
+> 状态：Frozen with Verified M8-05 Maintenance  
 > 说明：P0-001—P0-075是V1.0唯一发布验收编号体系；M8-05维护项不新增V1.0产品范围，只补缺陷回归。  
 > 发布边界：仅验收仓库所有者自用便携包，详见`docs/product/SELF_USE_RELEASE_POLICY.md`。  
 > 更新日期：2026-07-30
@@ -135,22 +135,16 @@
 - M4-04完成C0—C7核心功能并Verified。
 - M8-02完成C8体验、硬化、AI Eval和三平台自用便携交付并Verified。
 - M8-04完成作者体验与开发语言统一并Verified。
+- M8-05完成搜索工具异步隔离、Provider资源超限语义和文档统一并Verified。
 - Windows代码签名、macOS签名与公证、系统安装器、自动更新和安装生命周期不属于本矩阵。
 - 未签名、未公证和无安装器必须在工件说明中如实披露；工件不得面向第三方宣传或分发。
 - 模型质量未达标时对应AI任务降级；无AI基础写作闭环保持可用。
 
 ## 12. M8-04维护边界
 
-M8-04验证了：
+M8-04验证了精准跳转与返回、本章写作辅助、名称选择器与结构化设定、建议稿和历史版本差异审阅、同一查询通道与跨作品旧响应防回写，以及关闭前当前稿具名刷新握手。
 
-- 精准跳转与返回；
-- 本章写作辅助；
-- 名称选择器与结构化设定；
-- 建议稿和历史版本差异审阅；
-- 同一查询通道与跨作品旧响应防回写；
-- 关闭前当前稿具名刷新握手。
-
-后续审计发现搜索、替换和作品词典共享请求代次会造成交叉操作永久等待。该问题不回写M8-04历史主分支Evidence，由M8-05独立维护。
+后续审计发现搜索、替换和作品词典共享请求代次会造成交叉操作永久等待。该问题没有回写M8-04历史主分支Evidence，由M8-05独立维护。
 
 ## 13. M8-05维护验收
 
@@ -158,13 +152,13 @@ M8-05不新增P0编号，作为受影响P0项的回归补充：
 
 | 维护ID | 关联P0 | 验收项 | 通过标准 | 当前状态 |
 |---|---|---|---|---|
-| MNT-001 | P0-046 | 全文搜索请求通道 | 词典写入不使搜索结果失效或永久等待 | In Progress |
-| MNT-002 | P0-047 | 安全替换请求通道 | 词典写入不使替换预览或提交永久等待 | In Progress |
-| MNT-003 | P0-046/047 | 作品切换 | 搜索、替换、词典和索引全部旧响应失效 | In Progress |
-| MNT-004 | P0-022/023 | Provider声明响应超限 | 读取正文前取消并返回`AI_RESPONSE_TOO_LARGE_014` | In Progress |
-| MNT-005 | P0-022/023 | Provider实际流式总量超限 | 累计超过16 MiB取消Reader | In Progress |
-| MNT-006 | P0-022/023 | 单SSE事件超限 | 单事件超过1 MiB停止读取 | In Progress |
-| MNT-007 | P0-061/062 | 作者错误提示 | 明确安全停止、正文未修改和可执行动作 | In Progress |
-| MNT-008 | P0-001 | 文档与任务治理 | 产品、契约、安全、UI、追踪和Evidence一致 | In Progress |
+| MNT-001 | P0-046 | 全文搜索请求通道 | 词典写入不使搜索结果失效或永久等待 | Verified |
+| MNT-002 | P0-047 | 安全替换请求通道 | 词典写入不使替换预览或提交永久等待 | Verified |
+| MNT-003 | P0-046/047 | 作品切换 | 搜索、替换、词典和索引全部旧响应失效 | Verified |
+| MNT-004 | P0-022/023 | Provider声明响应超限 | 读取正文前取消并返回`AI_RESPONSE_TOO_LARGE_014` | Verified |
+| MNT-005 | P0-022/023 | Provider实际流式总量超限 | 累计超过16 MiB取消Reader | Verified |
+| MNT-006 | P0-022/023 | 单SSE事件超限 | 单事件超过1 MiB停止读取 | Verified |
+| MNT-007 | P0-061/062 | 作者错误提示 | 明确安全停止、正文未修改和可执行动作 | Verified |
+| MNT-008 | P0-001 | 文档与任务治理 | 产品、契约、安全、UI、追踪和Evidence一致 | Verified |
 
-M8-05达到Verified前，必须通过当前PR的PR Policy、Task Governance、Evidence、Quality、Security和Performance，以及合并后Main Verification。
+M8-05最终PR Head六项永久门禁全部成功；PR #229受控合并后的main提交`02a595a247cdad83b74634dc5059b72dd93c9451`通过Main Verification运行`30512257330`。

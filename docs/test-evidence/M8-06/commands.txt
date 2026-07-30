@@ -1,18 +1,27 @@
-# M8-06 受检实现提交
+# M8-06 实现与主线验证
 implementation_commit=6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841
-pull_request=231
+implementation_head=64d3de74aacada8671d1ac932978c67c9534d8be
+implementation_pull_request=231
+main_commit=66e17c99ba84a6f8f40dce6bec97df7c6d7898e9
 branch=work/m8-06-release-qualification-governance
 
-# 永久门禁
-PR Policy       run=30516672698 conclusion=success
-Task Governance run=30516672657 conclusion=success
-Evidence        run=30516672691 conclusion=success
-Quality         run=30516672758 conclusion=success
-Security        run=30516672817 conclusion=success
-Performance     run=30516672653 conclusion=success
-Repository Governance run=30516672658 conclusion=success
+# 实现PR最终Head永久门禁
+PR Policy run=30518250676 conclusion=success
+Task Governance run=30518250667 conclusion=success
+Evidence run=30518250717 conclusion=success
+Quality run=30518250847 conclusion=success
+Security run=30518250691 conclusion=success
+Performance run=30518250702 conclusion=success
+Repository Governance run=30518250694 conclusion=success
 
-# Quality覆盖
+# Main Verification
+main_verification_run=30519100282 conclusion=success
+validate-main conclusion=success
+main-static-checks conclusion=success
+main-quality conclusion=success
+main-verification-status conclusion=success
+
+# 实现阶段专项验证
 pnpm check:language exit=0
 pnpm check:workspaces exit=0
 pnpm check:boundaries exit=0
@@ -24,14 +33,12 @@ pnpm test:integration exit=0
 pnpm test:migration exit=0
 pnpm test:e2e exit=0
 pnpm test:coverage exit=0
+pnpm test:perf exit=0
+pnpm test:security exit=0
 pnpm build exit=0
 Linux package smoke exit=0
 Windows package smoke exit=0
 macOS package smoke exit=0
-
-# 专项验证
-pnpm test:perf exit=0
-pnpm test:security exit=0
 
 # 关键回归
 - 任一后续独立任务非Verified时拒绝发布。

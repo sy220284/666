@@ -13,7 +13,7 @@ import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.
 
 const project: ProjectWorkspaceSummary = {
   projectId: randomUUID(),
-  name: '恢复项目',
+  name: '恢复作品',
   channel: 'test',
   workspacePath: '/tmp/recovery-project',
   schemaVersion: 19,
@@ -201,7 +201,8 @@ describe('Core recovery supervisor branch coverage', () => {
     status.resolve(failure('CORE_STATUS_FAILED'));
     await first;
     expect(value.supervisor.health).toBe('unreachable');
-    expect(value.surface.states.at(-1)?.message).toContain('CORE_STATUS_FAILED');
+    expect(value.surface.states.at(-1)?.message).toContain('操作未完成');
+    expect(value.surface.states.at(-1)?.message).not.toContain('CORE_STATUS_FAILED');
 
     value.getCoreStatus.mockResolvedValueOnce(
       contractInput<Awaited<ReturnType<typeof value.getCoreStatus>>>(pending()),
@@ -231,14 +232,15 @@ describe('Core recovery supervisor branch coverage', () => {
   });
 
   it.each([
-    [failure('RESTART_FAILED'), 'unreachable', 'Core重启失败'],
-    [pending(), 'unreachable', '尚未恢复健康'],
-    [success({ accepted: false, status: crashed }), 'crashed', '尚未恢复健康'],
+    [failure('RESTART_FAILED'), 'unreachable', '操作未完成'],
+    [pending(), 'unreachable', '尚未恢复正常'],
+    [success({ accepted: false, status: crashed }), 'crashed', '尚未恢复正常'],
   ])('handles restart outcome %#', async (restart, expectedHealth, message) => {
     const value = harness({ restart });
     await expect(value.supervisor.restart()).resolves.toBe(false);
     expect(value.supervisor.health).toBe(expectedHealth);
     expect(value.surface.states.at(-1)?.message).toContain(message);
+    expect(value.surface.states.at(-1)?.message).not.toContain('RESTART_FAILED');
     expect(value.surface.states.at(-1)?.recovering).toBe(false);
   });
 
@@ -261,8 +263,8 @@ describe('Core recovery supervisor branch coverage', () => {
   });
 
   it.each([
-    [failure('OPEN_FAILED'), 'Core已重启，但项目重新打开失败'],
-    [pending(), '项目重新打开请求未完成'],
+    [failure('OPEN_FAILED'), '操作未完成'],
+    [pending(), '作品重新打开请求未完成'],
   ])('reports project reopen outcome %#', async (reopen, message) => {
     const value = harness({ reopen });
     await value.supervisor.checkNow();
@@ -271,6 +273,7 @@ describe('Core recovery supervisor branch coverage', () => {
     await expect(value.supervisor.restart()).resolves.toBe(false);
     expect(value.supervisor.health).toBe('degraded');
     expect(value.surface.states.at(-1)?.message).toContain(message);
+    expect(value.surface.states.at(-1)?.message).not.toContain('OPEN_FAILED');
   });
 
   it('handles restart exceptions and ignores late restart completion after disposal', async () => {

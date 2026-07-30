@@ -1,7 +1,7 @@
 import type { CoreStatus } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
-import { authorErrorSummary } from '../presentation/author-error-message.js';
+import { authorErrorMessage } from '../presentation/author-error-message.js';
 
 export type CoreRecoveryHealth = CoreStatus['status'] | 'unreachable';
 
@@ -66,8 +66,9 @@ function coreHealthLabel(health: CoreRecoveryHealth): string {
   return '暂时无法连接';
 }
 
-function authorFailure(error: { readonly code: string; readonly message: string }): string {
-  return authorErrorSummary(error);
+function authorFailure(code: string): string {
+  const content = authorErrorMessage(code);
+  return [content.title, content.message, content.suggestedAction].filter(Boolean).join(' ');
 }
 
 export function createCoreRecoverySupervisor(
@@ -148,7 +149,7 @@ export function createCoreRecoverySupervisor(
           health = 'unreachable';
           message =
             outcome.state === 'failure'
-              ? authorFailure(outcome.error)
+              ? authorFailure(outcome.error.code)
               : '本地服务状态请求未完成。未保存正文仍保留在当前窗口。';
           publish();
           return;
@@ -194,7 +195,7 @@ export function createCoreRecoverySupervisor(
           health = outcome.state === 'success' ? outcome.data.status.status : 'unreachable';
           message =
             outcome.state === 'failure'
-              ? authorFailure(outcome.error)
+              ? authorFailure(outcome.error.code)
               : `本地服务${coreHealthLabel(health)}，尚未恢复正常。`;
           return false;
         }
@@ -208,7 +209,7 @@ export function createCoreRecoverySupervisor(
             health = 'degraded';
             message =
               reopened.state === 'failure'
-                ? authorFailure(reopened.error)
+                ? authorFailure(reopened.error.code)
                 : '本地服务已重启，但作品重新打开请求未完成。';
             return false;
           }

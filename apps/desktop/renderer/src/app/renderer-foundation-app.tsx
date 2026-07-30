@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import type { LegacySurfaceController } from '../compat/legacy-surface.js';
+import { DraftFlushFailureDialog } from '../components/draft-flush-failure-dialog.js';
 import { createCapabilityTrackingBridge } from '../runtime/capability-runtime.js';
 import type {
   RendererFoundationRuntime,
@@ -67,7 +68,12 @@ export function RendererFoundationApp({
   }
 
   if (view.state === 'running') {
-    return <AppShell bridge={trackedBridge} legacySurface={legacySurface} />;
+    return (
+      <>
+        <AppShell bridge={trackedBridge} legacySurface={legacySurface} />
+        <DraftFlushFailureDialog />
+      </>
+    );
   }
 
   return (

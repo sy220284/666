@@ -30,9 +30,9 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 4. 锁定、保存序号、内容Hash、不可变历史版本、项目与路径边界由代码保证。
 5. AI只能提议，作者拥有正文、已确认设定和状态的最终裁决权。
 
-## V1.0与维护终态
+## V1.0与维护状态
 
-M0—M4-04、M8-02、M8-04与M8-05共37张独立任务已经Verified：
+M0—M4-04、M8-02、M8-04与M8-05共37张独立任务已经Verified；M8-06正在硬化发布资格与任务治理：
 
 - Electron安全壳、Core生命周期、SQLite、Migration、IPC、TaskProtocol和测试底座。
 - 项目、卷章、Tiptap中文正文、自动保存、字数、查找、历史版本和只读恢复。
@@ -50,8 +50,9 @@ M0—M4-04、M8-02、M8-04与M8-05共37张独立任务已经Verified：
 - 正式中文业务名称、精准跳转与返回、本章写作辅助、名称选择器、长章节差异审阅和关闭前安全刷新握手。
 - 全文搜索、安全替换、作品词典和全文索引使用四个独立请求通道与独立等待状态。
 - Provider总响应限制16 MiB、单个SSE事件限制1 MiB，超限返回`AI_RESPONSE_TOO_LARGE_014`并停止读取。
+- 发布资格不再绑定固定任务编号，改由全部独立任务、最终验证保持、延期账本和提交可达性共同判断。
 
-M8-05正式PR #229最终Head为`b72f60d23f1523d8f75352d687460bd7d7e9af4d`，受控压缩合并生成main实现提交`02a595a247cdad83b74634dc5059b72dd93c9451`。Main Verification运行`30512257330`成功，任务关闭为Verified并进入最终`VERIFIED_HOLD`。
+M8-05正式PR #229最终Head为`b72f60d23f1523d8f75352d687460bd7d7e9af4d`，受控压缩合并生成main实现提交`02a595a247cdad83b74634dc5059b72dd93c9451`。Main Verification运行`30512257330`成功，PR #230将任务关闭为Verified并生成main治理提交`ab009bf5d9780104bb9aa3fa1609f9c04eaf8868`。
 
 ## 核心数据关系
 
@@ -98,7 +99,7 @@ AI不会直接写当前稿或权威状态：
 
 ## V1.0任务路线
 
-V1历史规格保留54份任务文件；当前独立执行体系共37张任务：
+V1历史规格保留54份任务文件；当前独立执行体系共38张任务：
 
 ```text
 M0—M3 Verified
@@ -109,9 +110,10 @@ M0—M3 Verified
 → M8-02 C8完整体验、硬化与自用交付 Verified
 → M8-04作者体验与开发语言统一 Verified
 → M8-05运行时硬化与文档统一 Verified
+→ M8-06发布资格与任务治理 In Progress
 ```
 
-原M4-05—M6-06由M4-04吸收；原M7-01—M7-03、M8-01和M8-03由M8-02吸收。M8-04和M8-05是后续独立维护任务。
+原M4-05—M6-06由M4-04吸收；原M7-01—M7-03、M8-01和M8-03由M8-02吸收。M8-04—M8-06是后续独立维护任务。
 
 路线图：[`docs/roadmap/V1.0_ROADMAP.md`](./docs/roadmap/V1.0_ROADMAP.md)  
 任务索引：[`docs/tasks/TASK_INDEX.md`](./docs/tasks/TASK_INDEX.md)  
@@ -124,14 +126,15 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ M8-05终态任务卡
-→ 受影响专项文档
-→ 现有代码、测试、Migration、IPC和追踪矩阵
+→ M8-06当前任务卡
+→ 发布资格规范与受影响专项文档
+→ 现有代码、测试、工作流和任务状态
 ```
 
-当前无自动激活的后续任务。任何新功能、公开分发能力或新缺陷修复必须重新立项。
+当前活动任务为M8-06。它只硬化发布资格和任务治理，不改变产品功能、数据库或自用便携交付边界。
 
-自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
+自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)  
+发布资格规范：[`docs/process/RELEASE_QUALIFICATION.md`](./docs/process/RELEASE_QUALIFICATION.md)
 
 ## 自用发布边界
 
@@ -153,6 +156,7 @@ V1.0仅供仓库所有者本人使用。交付形态为三平台便携包，要�
 - [`docs/product/FUNCTION_CATALOG.md`](./docs/product/FUNCTION_CATALOG.md)：全功能清单。
 - [`docs/product/V1_SCOPE_AND_ACCEPTANCE.md`](./docs/product/V1_SCOPE_AND_ACCEPTANCE.md)：版本范围。
 - [`docs/product/SELF_USE_RELEASE_POLICY.md`](./docs/product/SELF_USE_RELEASE_POLICY.md)：自用便携交付边界。
+- [`docs/process/RELEASE_QUALIFICATION.md`](./docs/process/RELEASE_QUALIFICATION.md)：动态发布资格判定。
 - [`docs/INDEX.md`](./docs/INDEX.md)：文档总索引。
 - [`docs/PROJECT_EXECUTION_ENTRY.md`](./docs/PROJECT_EXECUTION_ENTRY.md)：执行统一入口。
 - [`docs/contracts/IPC_CONTRACTS.md`](./docs/contracts/IPC_CONTRACTS.md)：IPC契约。

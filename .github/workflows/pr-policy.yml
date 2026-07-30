@@ -65,6 +65,14 @@ jobs:
               --source-sha "$source_sha" \
               --output "$RUNNER_TEMP/toolchain-$profile"
           done
+      - name: Upload formatter toolchain smoke artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: toolchain-formatter-smoke-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/toolchain-formatter/
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Reject tracked root scratch artifacts
         run: test ! -e tmp
       - name: Self-test workflow order guards

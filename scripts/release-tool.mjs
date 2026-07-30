@@ -150,6 +150,9 @@ export function evaluateReleaseGate({
     }
     const indexedTaskIds = tasks.map((task) => task.id);
     const verifiedTaskIds = Array.isArray(hold.verifiedTasks) ? hold.verifiedTasks : [];
+    if (new Set(verifiedTaskIds).size !== verifiedTaskIds.length) {
+      errors.push('verificationHold.verifiedTasks must not contain duplicates');
+    }
     const missingFromHold = taskSetDifference(indexedTaskIds, verifiedTaskIds);
     const extraInHold = taskSetDifference(verifiedTaskIds, indexedTaskIds);
     if (missingFromHold.length > 0 || extraInHold.length > 0) {
@@ -249,10 +252,14 @@ function readOption(name, fallback) {
 }
 
 function git(argumentsList, options = {}) {
+  if (options.quiet) {
+    execFileSync('git', argumentsList, { cwd: root, stdio: 'ignore' });
+    return '';
+  }
   return execFileSync('git', argumentsList, {
     cwd: root,
     encoding: 'utf8',
-    stdio: options.quiet ? 'ignore' : ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
 }
 

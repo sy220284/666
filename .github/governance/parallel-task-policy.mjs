@@ -132,7 +132,7 @@ async function dependencyErrors(task) {
   const indexSource = await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8');
   const index = parseTaskIndex(indexSource);
   for (const dependency of task.dependencies) {
-    let status = null;
+    let status;
     try {
       status = (await loadJson(runtimePath(dependency))).status;
     } catch {
@@ -204,19 +204,27 @@ export function selfTest() {
     [],
   );
   assert.deepEqual(
-    changedPathErrors(['docs/tasks/TASK_AUTHORIZATION.json'], {
-      id: 'M8-07',
-      allowedPaths: ['docs/tasks/'],
-      forbiddenPaths: [],
-    }, 'work/m8-07'),
+    changedPathErrors(
+      ['docs/tasks/TASK_AUTHORIZATION.json'],
+      {
+        id: 'M8-07',
+        allowedPaths: ['docs/tasks/'],
+        forbiddenPaths: [],
+      },
+      'work/m8-07',
+    ),
     ['docs/tasks/TASK_AUTHORIZATION.json: global task authorization may only change in a governance PR'],
   );
   assert.deepEqual(
-    changedPathErrors(['docs/tasks/TASK_AUTHORIZATION.json'], {
-      id: 'M8-07',
-      allowedPaths: ['docs/tasks/'],
-      forbiddenPaths: [],
-    }, 'policy/parallel-task'),
+    changedPathErrors(
+      ['docs/tasks/TASK_AUTHORIZATION.json'],
+      {
+        id: 'M8-07',
+        allowedPaths: ['docs/tasks/'],
+        forbiddenPaths: [],
+      },
+      'policy/parallel-task',
+    ),
     [],
   );
   assert.equal(transitions.has('IN_PROGRESS:IMPLEMENTED'), true);

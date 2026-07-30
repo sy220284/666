@@ -30,7 +30,7 @@
 → Ready PR必要门禁
 → Controlled Merge执行squash
 → Main Verification核验最终SHA与静态一致性
-→ 进入下一任务
+→ 进入下一任务或最终VERIFIED_HOLD
 ```
 
 约束：
@@ -39,7 +39,7 @@
 2. 所有正式文件必须直接提交到任务分支，CI不得生成业务代码后代替开发提交。
 3. 任何数据库、Migration、安全、项目边界、事务、恢复或数据损坏失败立即阻断，不得延期。
 4. `Implemented`表示真实代码、必要专项测试和远端门禁已通过；不等于最终发布验收。
-5. `Verified`用于里程碑或批次关闭，不要求每张任务单独再开一张纯关闭PR。
+5. `Verified`用于里程碑或批次关闭，不要求每张任务单独再开一张纯关闭PR；任务卡另有明确关闭要求时按任务卡执行。
 6. 禁止机器人直接写`main`；只有Controlled Merge可在永久检查通过后调用Merge API。
 7. 正式PR分支不是远程逐文件调试区。使用连接器写入时，必须先汇总完整文件，以Git Blob/Tree/Commit一次更新同一批改动；禁止连续`update_file`产生调试提交。确需修复时，应先完整定位失败原因，再用一个原子修复提交更新Head。
 
@@ -149,20 +149,34 @@ docs/test-evidence/<TASK-ID>/
 | Editor、Candidate、Revision、Lock             | `test:unit`、`test:integration`、`test:e2e`        |
 | Prompt、Provider、约束包、Eval                | `test:eval`、`test:integration`，必要时`test:perf` |
 | 性能、DPI、FTS、搜索、流式处理                | `test:perf`，必要时`test:e2e`                      |
+| 发布工具、任务终态和Release Workflow          | `test:unit`、Task Governance、PR Policy            |
 | 纯文档和证据文本                              | 静态与治理检查，不运行无关业务套件                 |
 
 路由不得跳过任务卡明确要求的专项测试。风险分类不确定时按更高风险执行。
 
-## 10. 发布边界
+## 10. 发布边界与动态资格
 
-Release保持手工触发并冻结到M8。正式发布仍执行：
+Release保持手工触发。正式发布仍执行：
 
 - 完整Quality；
 - Security与Performance；
 - Linux、Windows、macOS构建打包；
-- Release Gate、校验和与不可变发布资产。
+- 动态Release Gate、校验和与不可变发布资产。
 
-发布级验证不下沉到每张日常任务卡。
+发布资格不绑定固定任务编号。发布工具必须同时检查：
+
+```text
+全部独立任务Verified
+AND ACTIVE_TASK处于最终VERIFIED_HOLD
+AND 最终保持任务、活动任务和最近验证任务一致
+AND deferredVerification与deferredTasks为空
+AND 最终保持清单精确覆盖独立任务索引
+AND 受检提交和Evidence提交为发布提交的可达祖先
+```
+
+被吸收的`Removed（absorbed）`历史任务不属于独立任务发布判定。Release Gate和创建GitHub Release前的复核均必须获取完整Git历史。详细规则见`docs/process/RELEASE_QUALIFICATION.md`。
+
+发布级验证不下沉到每张日常任务卡；新增独立维护任务后，发布门应自动阻断，直到该任务完成Verified关闭。
 
 ## 11. 完成真实性
 

@@ -15,6 +15,7 @@
     "scripts/release-tool.mjs",
     "scripts/task-control-lib.mjs",
     "scripts/ui-acceptance-gate.mjs",
+    "scripts/workflow-structure-policy.mjs",
     "tests/unit/",
     "tests/integration/",
     "tests/security/",

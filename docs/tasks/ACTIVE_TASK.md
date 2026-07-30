@@ -5,13 +5,13 @@
 ## 当前状态
 
 ```text
-VERIFIED_HOLD
+IN_PROGRESS
 ```
 
-- 任务ID：`M8-04`
-- 唯一任务卡：`docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md`
-- 工作分支：`work/m8-04-author-experience-language`
-- 开始时间：`2026-07-29`
+- 任务ID：`M8-05`
+- 唯一任务卡：`docs/tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md`
+- 工作分支：`work/m8-05-runtime-hardening-documentation-sync`
+- 开始时间：`2026-07-30`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -20,8 +20,6 @@ VERIFIED_HOLD
 ```yaml
 allowed_paths:
   - apps/desktop/renderer/
-  - apps/desktop/preload/
-  - apps/desktop/main/
   - packages/contracts/
   - packages/core-service/
   - tests/unit/
@@ -29,24 +27,9 @@ allowed_paths:
   - tests/security/
   - tests/performance/
   - tests/e2e/
-  - scripts/
-  - .github/workflows/
-  - .github/governance/
-  - .github/pull_request_template.md
-  - docs/product/
-  - docs/ui/
-  - docs/testing/
-  - docs/process/
-  - docs/tasks/
-  - docs/test-evidence/M8-04/
-  - AGENTS.md
-  - agent.md
-  - docs/PROJECT_EXECUTION_ENTRY.md
+  - docs/
   - README.md
   - CHANGELOG.md
-  - package.json
-  - pnpm-lock.yaml
-  - pnpm-workspace.yaml
 forbidden_paths:
   - migrations/
   - docs/test-evidence/M0/
@@ -55,22 +38,24 @@ forbidden_paths:
   - docs/test-evidence/M3/
   - docs/test-evidence/M4-04/
   - docs/test-evidence/M8-02/
+  - docs/test-evidence/M8-04/manifest.json
 required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/tasks/ACTIVE_TASK.json
-  - docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md
+  - docs/tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md
   - docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
   - docs/product/FUNCTION_CATALOG.md
   - docs/product/V1.0_TRACEABILITY_MATRIX.md
-  - docs/product/AUTHOR_LANGUAGE_GLOSSARY.md
+  - docs/contracts/IPC_CONTRACTS.md
+  - docs/contracts/ERROR_CODES.md
+  - docs/ai/PROVIDER_PROTOCOL.md
+  - docs/security/THREAT_MODEL.md
+  - docs/testing/SECURITY_TEST_CASES.md
   - docs/ui/UI_ACCEPTANCE_CHECKLIST.md
   - docs/ui/INFORMATION_ARCHITECTURE.md
   - docs/ui/SCREEN_SPECIFICATIONS.md
-  - docs/ui/INTERACTION_STATES.md
-  - docs/ui/EDITOR_INTERACTION_SPEC.md
-  - docs/security/THREAT_MODEL.md
-  - docs/security/PRIVACY_AND_LOGGING.md
+  - docs/ui/CANDIDATE_REVIEW_SPEC.md
 verification:
   - pnpm check:language
   - pnpm lint
@@ -86,4 +71,4 @@ verification:
 
 ## 连续执行规则
 
-V1.0全部独立任务已经Verified；M8-04作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。
+当前作者已授权实现优先的合并请求模式：M8-05必须在独立非main分支完成并提交单一合并请求；任务治理、安全、性能、验证记录与质量门禁全部通过后，才允许执行受控合并。任何代码、测试、安全、数据或文档一致性失败立即阻断。

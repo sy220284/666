@@ -97,6 +97,22 @@ function scriptKind(file) {
   return ts.ScriptKind.TS;
 }
 
+function isTechnicalDiagnosticLiteral(node) {
+  let current = node.parent;
+  while (current) {
+    if (
+      ts.isNewExpression(current) &&
+      ts.isIdentifier(current.expression) &&
+      ['Error', 'TypeError', 'RangeError', 'AggregateError'].includes(current.expression.text)
+    ) {
+      return true;
+    }
+    if (ts.isStatement(current) || ts.isSourceFile(current)) return false;
+    current = current.parent;
+  }
+  return false;
+}
+
 function isModulePathLiteral(node) {
   const parent = node.parent;
   return (
@@ -120,10 +136,17 @@ function syntaxAuthorText(file, source) {
       if (value) values.push(value);
     } else if (ts.isStringLiteralLike(node)) {
       const value = node.text;
-      if (!isModulePathLiteral(node) && !/^(?:\.{0,2}\/|@|node:)/u.test(value)) {
+      if (
+        !isModulePathLiteral(node) &&
+        !isTechnicalDiagnosticLiteral(node) &&
+        !/^(?:\.{0,2}\/|@|node:)/u.test(value)
+      ) {
         values.push(value);
       }
-    } else if (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+    } else if (
+      (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) &&
+      !isTechnicalDiagnosticLiteral(node)
+    ) {
       values.push(node.text);
     }
     ts.forEachChild(node, visit);

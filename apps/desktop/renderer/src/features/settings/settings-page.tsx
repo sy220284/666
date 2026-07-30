@@ -19,6 +19,9 @@ import {
   type SettingsBasicSectionId,
 } from '../../shell/settings-navigation-model.js';
 
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+
+import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 export interface SettingsPageProps {
   readonly bridge: RendererBridgeAdapter;
   readonly disclosureMode: AppDisclosureMode;
@@ -437,7 +440,9 @@ function AdvancedSettings(props: SettingsPageProps) {
     const outcome = await props.bridge.app.previewDiagnostics({ mode: 'replace' });
     if (outcome.state !== 'success') {
       setDiagnosticStatus(
-        outcome.state === 'failure' ? `预览失败 · ${outcome.error.code}` : '预览已取消。',
+        outcome.state === 'failure'
+          ? `预览失败 · ${authorErrorSummary(outcome.error)}`
+          : '预览已取消。',
       );
       return;
     }
@@ -455,7 +460,7 @@ function AdvancedSettings(props: SettingsPageProps) {
         outcome.state === 'failure'
           ? outcome.error.code === 'COMMON_CANCELLED_004'
             ? '已取消诊断导出。'
-            : `导出失败 · ${outcome.error.code}`
+            : `导出失败 · ${authorErrorSummary(outcome.error)}`
           : '导出已取消。',
       );
       return;
@@ -474,21 +479,28 @@ function AdvancedSettings(props: SettingsPageProps) {
       <dl className="react-diagnostic-list">
         <div>
           <dt>本地服务状态</dt>
-          <dd>{core?.status ?? '未知'}</dd>
+          <dd>{core ? authorStatusLabel(core.status) : '状态未知'}</dd>
         </div>
         <div>
           <dt>重启次数</dt>
           <dd>{core?.restartCount ?? '—'}</dd>
         </div>
-        <div>
-          <dt>错误码</dt>
-          <dd>{core?.lastErrorCode ?? '无'}</dd>
-        </div>
-        <div>
-          <dt>诊断编号</dt>
-          <dd>{core?.diagnosticId ?? '无'}</dd>
-        </div>
       </dl>
+      {core?.lastErrorCode || core?.diagnosticId ? (
+        <details className="react-technical-details">
+          <summary>技术详情</summary>
+          <dl className="react-diagnostic-list">
+            <div>
+              <dt>错误码</dt>
+              <dd>{core.lastErrorCode ?? '无'}</dd>
+            </div>
+            <div>
+              <dt>诊断编号</dt>
+              <dd>{core.diagnosticId ?? '无'}</dd>
+            </div>
+          </dl>
+        </details>
+      ) : null}
       <section className="react-diagnostic-export" aria-labelledby="diagnostic-export-title">
         <h3 id="diagnostic-export-title">安全诊断包</h3>
         <p>必须先预览清单；默认不含正文、项目数据库、提示内容、凭据或绝对路径。</p>

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { authorErrorMessage } from '../../apps/desktop/renderer/src/presentation/author-error-message.js';
+import {
+  authorErrorMessage,
+  authorErrorSummary,
+} from '../../apps/desktop/renderer/src/presentation/author-error-message.js';
 import { authorStatusLabel } from '../../apps/desktop/renderer/src/presentation/author-status-labels.js';
 import {
   AUTHOR_TERMS,
@@ -48,6 +51,7 @@ describe('作者状态名称', () => {
     expect(authorStatusLabel('pending')).toBe('等待处理');
     expect(authorStatusLabel('partial')).toBe('未完成');
     expect(authorStatusLabel('false_positive')).toBe('已标记为误报');
+    expect(authorStatusLabel('degraded')).toBe('部分功能受限');
   });
 
   it('未知状态使用安全回退，不向普通界面泄漏内部枚举', () => {
@@ -82,6 +86,15 @@ describe('作者错误说明', () => {
       message: '建议稿生成后，当前稿又有新的修改。系统没有覆盖正文。',
       suggestedAction: '请重新比较内容后再采用。',
     });
+  });
+
+  it('未知错误摘要不把桥接消息和错误码带入普通提示', () => {
+    const summary = authorErrorSummary({
+      code: 'CORE_STATUS_FAILED',
+      message: 'CORE_STATUS_FAILED',
+    });
+    expect(summary).toContain('操作未完成');
+    expect(summary).not.toContain('CORE_STATUS_FAILED');
   });
 
   it('未知错误使用安全回退说明', () => {

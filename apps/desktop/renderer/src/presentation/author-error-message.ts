@@ -106,6 +106,6 @@ export function authorErrorSummary(error: {
   readonly code: string;
   readonly message: string;
 }): string {
-  const content = authorErrorMessage(error.code, error.message);
+  const content = authorErrorMessage(error.code);
   return [content.title, content.message, content.suggestedAction].filter(Boolean).join(' ');
 }

@@ -6,6 +6,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { ChapterNameSelect, useCanonAuthorReferences } from './canon-author-fields.js';
 
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
 export function NarrativeRelationshipEditor({
   bridge,
   projectId,
@@ -113,9 +114,9 @@ export function NarrativeRelationshipEditor({
       </header>
       <p className="feature-status" role="status">
         {resource.error
-          ? `叙事规划读取失败 · ${resource.error.code}`
+          ? `叙事规划读取失败 · ${authorErrorSummary(resource.error)}`
           : command.error
-            ? `写入失败 · ${command.error.code} · ${command.error.message}`
+            ? `写入失败 · ${authorErrorSummary(command.error)} · ${command.error.message}`
             : status}
       </p>
       <div className="relationship-editor-grid">

@@ -1,0 +1,74 @@
+import { useEffect, useState } from 'react';
+
+import {
+  DRAFT_FLUSH_FAILED_EVENT,
+  flushRegisteredDraft,
+} from '../runtime/draft-flush-registry.js';
+
+export function DraftFlushFailureDialog() {
+  const [open, setOpen] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [notice, setNotice] = useState('当前稿尚未安全保存，操作已经停止。');
+
+  useEffect(() => {
+    const show = (): void => {
+      setNotice('当前稿尚未安全保存，操作已经停止。');
+      setOpen(true);
+    };
+    window.addEventListener(DRAFT_FLUSH_FAILED_EVENT, show);
+    return () => window.removeEventListener(DRAFT_FLUSH_FAILED_EVENT, show);
+  }, []);
+
+  if (!open) return null;
+
+  const retry = async (): Promise<void> => {
+    setRetrying(true);
+    const saved = await flushRegisteredDraft();
+    setRetrying(false);
+    if (saved) {
+      setOpen(false);
+      return;
+    }
+    setNotice('重试保存仍未成功。正文保留在当前窗口，请检查后再次重试。');
+  };
+
+  const openRecovery = (): void => {
+    const recoveryButton = document.querySelector<HTMLButtonElement>('[data-open-recovery]');
+    if (!recoveryButton || recoveryButton.disabled) {
+      setNotice('当前无法打开恢复中心。请先返回正文复制未保存内容。');
+      return;
+    }
+    setOpen(false);
+    recoveryButton.click();
+  };
+
+  return (
+    <div className="react-dialog-backdrop" data-draft-flush-failure-dialog>
+      <section
+        aria-describedby="draft-flush-failure-description"
+        aria-labelledby="draft-flush-failure-title"
+        aria-modal="true"
+        className="react-dialog"
+        role="dialog"
+      >
+        <h2 id="draft-flush-failure-title">正文尚未安全保存</h2>
+        <p id="draft-flush-failure-description">{notice}</p>
+        <p>程序不会自动丢弃当前窗口中的修改，也不会继续切换页面、关闭作品或退出。</p>
+        <div className="inline-actions">
+          <button disabled={retrying} type="button" onClick={() => void retry()}>
+            {retrying ? '正在重试…' : '重试保存'}
+          </button>
+          <button type="button" onClick={() => setOpen(false)}>
+            返回正文检查
+          </button>
+          <button type="button" onClick={openRecovery}>
+            打开恢复中心
+          </button>
+          <button className="quiet-button" type="button" onClick={() => setOpen(false)}>
+            取消操作
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}

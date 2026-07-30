@@ -22,6 +22,7 @@
     "tests/e2e/",
     ".github/governance/",
     ".github/workflows/",
+    ".github/pull_request_template.md",
     "docs/contracts/",
     "docs/product/",
     "docs/ui/",

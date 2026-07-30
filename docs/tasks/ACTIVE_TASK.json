@@ -12,7 +12,7 @@
   },
   "activeTask": {
     "id": "M8-05",
-    "status": "IN_PROGRESS",
+    "status": "IMPLEMENTED",
     "source": "docs/tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md",
     "branch": "work/m8-05-runtime-hardening-documentation-sync",
     "startedAt": "2026-07-30",
@@ -89,22 +89,33 @@
       "mainDiffSha256": "0d1b91499ed1a6682c3ee2baa9007ec025f0bf220f1ac9916eb11322af002684"
     }
   },
-  "deferredVerification": [],
+  "deferredVerification": [
+    {
+      "id": "M8-05",
+      "implementationCommit": "1c5505b1a267e7ea43a70995b4dce7a5fc6abad3",
+      "deferredAt": "2026-07-30T03:20:00.000Z",
+      "pending": [
+        "Ready Head six permanent checks",
+        "controlled squash merge",
+        "main-verification success",
+        "final evidence binding to reachable main commit",
+        "Verified closure"
+      ]
+    }
+  ],
   "deferredTasks": [],
   "lastImplementedTask": {
-    "id": "M8-04",
-    "commit": "97a25d6e7f29eee136abc4809aae270d18fb1c47",
-    "implementedAt": "2026-07-29T13:22:39.856Z",
-    "source": "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md",
-    "branch": "work/m8-04-author-experience-language",
+    "id": "M8-05",
+    "commit": "1c5505b1a267e7ea43a70995b4dce7a5fc6abad3",
+    "implementedAt": "2026-07-30T03:20:00.000Z",
+    "source": "docs/tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md",
+    "branch": "work/m8-05-runtime-hardening-documentation-sync",
     "nextTaskId": null,
     "finalTask": true,
     "activationDeferred": true,
-    "activationDeferredReason": "M8-04已经完成主分支验证；后续维护由作者另行立项",
+    "activationDeferredReason": "维护任务等待受控合并、主分支验证与最终治理关闭",
     "allowedPaths": [
       "apps/desktop/renderer/",
-      "apps/desktop/preload/",
-      "apps/desktop/main/",
       "packages/contracts/",
       "packages/core-service/",
       "tests/unit/",
@@ -112,24 +123,9 @@
       "tests/security/",
       "tests/performance/",
       "tests/e2e/",
-      "scripts/",
-      ".github/workflows/",
-      ".github/governance/",
-      ".github/pull_request_template.md",
-      "docs/product/",
-      "docs/ui/",
-      "docs/testing/",
-      "docs/process/",
-      "docs/tasks/",
-      "docs/test-evidence/M8-04/",
-      "AGENTS.md",
-      "agent.md",
-      "docs/PROJECT_EXECUTION_ENTRY.md",
+      "docs/",
       "README.md",
-      "CHANGELOG.md",
-      "package.json",
-      "pnpm-lock.yaml",
-      "pnpm-workspace.yaml"
+      "CHANGELOG.md"
     ],
     "forbiddenPaths": [
       "migrations/",
@@ -138,7 +134,8 @@
       "docs/test-evidence/M2/",
       "docs/test-evidence/M3/",
       "docs/test-evidence/M4-04/",
-      "docs/test-evidence/M8-02/"
+      "docs/test-evidence/M8-02/",
+      "docs/test-evidence/M8-04/manifest.json"
     ]
   },
   "integratedDelivery": {

@@ -1,14 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import type {
   CoreStatus,
   ProjectWorkspaceSummary,
-} from '@worldforge/contracts';
+} from "@worldforge/contracts";
 
-import { deriveCapabilityMatrix } from '../../apps/desktop/renderer/src/runtime/capability-matrix.js';
+import { deriveCapabilityMatrix } from "../../apps/desktop/renderer/src/runtime/capability-matrix.js";
 
 const healthyCore: CoreStatus = {
-  status: 'healthy',
+  status: "healthy",
   pid: 1,
   restartCount: 0,
   lastErrorCode: null,
@@ -19,21 +19,21 @@ function project(
   overrides: Partial<ProjectWorkspaceSummary> = {},
 ): ProjectWorkspaceSummary {
   return {
-    projectId: '00000000-0000-4000-8000-000000000001',
-    name: '测试作品',
-    channel: '男频',
-    workspacePath: '/tmp/worldforge-test',
+    projectId: "00000000-0000-4000-8000-000000000001",
+    name: "测试作品",
+    channel: "男频",
+    workspacePath: "/tmp/worldforge-test",
     schemaVersion: 1,
-    databaseMode: 'read-write',
-    compatibility: 'current',
+    databaseMode: "read-write",
+    compatibility: "current",
     readOnlyReason: null,
-    createdAt: '2026-07-30T00:00:00.000Z',
+    createdAt: "2026-07-30T00:00:00.000Z",
     ...overrides,
   };
 }
 
-describe('application and project capability matrix', () => {
-  it('enables the complete author workflow for a healthy writable project', () => {
+describe("application and project capability matrix", () => {
+  it("enables the complete author workflow for a healthy writable project", () => {
     const matrix = deriveCapabilityMatrix({
       hydrated: true,
       coreStatus: healthyCore,
@@ -48,7 +48,7 @@ describe('application and project capability matrix', () => {
       generationAvailable: true,
     });
     expect(matrix.project).toMatchObject({
-      mode: 'normal',
+      mode: "normal",
       draftWritable: true,
       canonWritable: true,
       backupAvailable: true,
@@ -64,21 +64,21 @@ describe('application and project capability matrix', () => {
     });
   });
 
-  it('keeps browsing and export available for a compatible future-schema project', () => {
+  it("keeps browsing and export available for a compatible future-schema project", () => {
     const matrix = deriveCapabilityMatrix({
       hydrated: true,
       coreStatus: healthyCore,
       project: project({
-        databaseMode: 'read-only',
-        compatibility: 'future-schema',
-        readOnlyReason: 'future-schema',
+        databaseMode: "read-only",
+        compatibility: "future-schema",
+        readOnlyReason: "future-schema",
       }),
       providerCount: 0,
       verifiedProviderCount: 0,
     });
 
     expect(matrix.project).toMatchObject({
-      mode: 'read-only-compatible',
+      mode: "read-only-compatible",
       projectReadable: true,
       draftReadable: true,
       draftWritable: false,
@@ -89,14 +89,18 @@ describe('application and project capability matrix', () => {
     expect(matrix.navigation.writing).toBe(true);
   });
 
-  it.each(['integrity-failed', 'checksum-mismatch', 'migration-failed'] as const)(
-    'limits %s projects to recovery and safe export',
+  it.each([
+    "integrity-failed",
+    "checksum-mismatch",
+    "migration-failed",
+  ] as const)(
+    "limits %s projects to recovery and safe export",
     (compatibility) => {
       const matrix = deriveCapabilityMatrix({
         hydrated: true,
         coreStatus: healthyCore,
         project: project({
-          databaseMode: 'read-only',
+          databaseMode: "read-only",
           compatibility,
           readOnlyReason: compatibility,
         }),
@@ -117,10 +121,10 @@ describe('application and project capability matrix', () => {
     },
   );
 
-  it('blocks project capabilities while the local service is unavailable', () => {
+  it("blocks project capabilities while the local service is unavailable", () => {
     const matrix = deriveCapabilityMatrix({
       hydrated: true,
-      coreStatus: { ...healthyCore, status: 'degraded' },
+      coreStatus: { ...healthyCore, status: "degraded" },
       project: project(),
       providerCount: 1,
       verifiedProviderCount: 1,
@@ -128,7 +132,7 @@ describe('application and project capability matrix', () => {
 
     expect(matrix.application.coreAvailable).toBe(false);
     expect(matrix.application.generationAvailable).toBe(false);
-    expect(matrix.project.mode).toBe('closed');
+    expect(matrix.project.mode).toBe("closed");
     expect(matrix.navigation).toEqual({
       home: true,
       planning: false,

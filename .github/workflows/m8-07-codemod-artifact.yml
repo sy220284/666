@@ -28,29 +28,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Restrict wrapper prop edit to the primary component
-        shell: bash
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-          path = Path('.github/governance/m8-07-language-codemod.py')
-          text = path.read_text(encoding='utf-8')
-          source = """    text = text.replace(
-        '  readonly bridge: RendererBridgeAdapter;\\n',
-        '  readonly bridge: RendererBridgeAdapter;\\n  readonly disclosureMode: AppDisclosureMode;\\n',
-    )
-write(wrapper, text)"""
-          target = """    text = text.replace(
-        '  readonly bridge: RendererBridgeAdapter;\\n',
-        '  readonly bridge: RendererBridgeAdapter;\\n  readonly disclosureMode: AppDisclosureMode;\\n',
-        1,
-    )
-write(wrapper, text)"""
-          if source not in text:
-              raise SystemExit('wrapper replacement block not found')
-          path.write_text(text.replace(source, target), encoding='utf-8')
-          PY
       - run: python3 .github/governance/m8-07-language-codemod.py
+      - run: python3 .github/governance/m8-07-codemod-postfix.py
       - name: Format with repository Prettier
         shell: bash
         run: |

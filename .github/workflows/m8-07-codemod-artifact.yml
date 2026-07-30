@@ -1,0 +1,80 @@
+name: M8-07 Codemod Artifact
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - ready_for_review
+
+permissions:
+  contents: read
+
+jobs:
+  codemod-artifact:
+    if: github.event.pull_request.head.ref == 'work/m8-07-chinese-experience-governance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Restrict wrapper prop edit to the primary component
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('.github/governance/m8-07-language-codemod.py')
+          text = path.read_text(encoding='utf-8')
+          source = """    text = text.replace(
+        '  readonly bridge: RendererBridgeAdapter;\\n',
+        '  readonly bridge: RendererBridgeAdapter;\\n  readonly disclosureMode: AppDisclosureMode;\\n',
+    )
+write(wrapper, text)"""
+          target = """    text = text.replace(
+        '  readonly bridge: RendererBridgeAdapter;\\n',
+        '  readonly bridge: RendererBridgeAdapter;\\n  readonly disclosureMode: AppDisclosureMode;\\n',
+        1,
+    )
+write(wrapper, text)"""
+          if source not in text:
+              raise SystemExit('wrapper replacement block not found')
+          path.write_text(text.replace(source, target), encoding='utf-8')
+          PY
+      - run: python3 .github/governance/m8-07-language-codemod.py
+      - name: Format with repository Prettier
+        shell: bash
+        run: |
+          mapfile -t files < test-results/m8-07-codemod-files.txt
+          pnpm exec prettier --write "${files[@]}"
+          pnpm exec prettier --check "${files[@]}"
+      - name: Validate generated result
+        shell: bash
+        run: |
+          pnpm check:language
+          pnpm typecheck
+          pnpm test:unit
+      - name: Stage artifact tree
+        shell: bash
+        run: |
+          mkdir -p test-results/m8-07-codemod-artifact
+          while IFS= read -r file; do
+            mkdir -p "test-results/m8-07-codemod-artifact/$(dirname "$file")"
+            cp "$file" "test-results/m8-07-codemod-artifact/$file"
+          done < test-results/m8-07-codemod-files.txt
+          cp test-results/m8-07-codemod-files.txt test-results/m8-07-codemod-artifact/manifest.txt
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m8-07-codemod-files
+          path: test-results/m8-07-codemod-artifact/
+          if-no-files-found: error
+          retention-days: 1

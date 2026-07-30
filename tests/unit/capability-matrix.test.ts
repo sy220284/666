@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type {
+  CoreStatus,
+  ProjectWorkspaceSummary,
+} from '@worldforge/contracts';
 
 import { deriveCapabilityMatrix } from '../../apps/desktop/renderer/src/runtime/capability-matrix.js';
 

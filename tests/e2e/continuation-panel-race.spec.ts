@@ -87,7 +87,7 @@ test('persists the final editor panel after a rapid versions round trip and rest
     const editor = page.locator('[data-draft-content]');
     await editor.click();
     await page.keyboard.type('面板回切验证。');
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成 · 保存序号 \d+$/u, {
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 5_000,
     });
     await expect

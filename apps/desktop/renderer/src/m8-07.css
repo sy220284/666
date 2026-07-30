@@ -22,6 +22,11 @@ textarea {
   background: var(--color-bg-elevated);
 }
 
+.worldforge-editor {
+  color: var(--color-text-primary);
+  background: var(--color-bg-paper);
+}
+
 body[data-visual-theme-variant='dark'] .worldforge-editor,
 body[data-visual-theme-variant='dark'] .writing-editor-card,
 body[data-visual-theme-variant='dark'] .feature-card,

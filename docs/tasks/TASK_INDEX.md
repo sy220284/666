@@ -3,7 +3,7 @@
 > 状态：Active  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04、M8-05与M8-06，共38张独立任务卡。  
-> 当前任务：M8-06发布资格与任务治理硬化，状态为In Progress。
+> 当前任务：M8-06实现与分支验证已经完成，状态为Implemented；等待受控合并、主分支验证和最终治理关闭。
 
 ## 1. 唯一执行入口
 
@@ -31,7 +31,7 @@ Blocked / Deferred / Removed
 | M2            | 编辑安全与版本核心             |          4 | Verified                                      |
 | M3            | 规划、设定与连续性             |         10 | Verified                                      |
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                          |
-| M8            | 交付关闭、作者体验与长期维护   |          4 | M8-02、M8-04、M8-05 Verified；M8-06进行中    |
+| M8            | 交付关闭、作者体验与长期维护   |          4 | M8-02、M8-04、M8-05 Verified；M8-06 Implemented |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                             |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务  |
 
@@ -44,7 +44,7 @@ M0—M3 已完成产品底座
 → M8-02 完整体验、硬化与自用交付关闭（Verified）
 → M8-04 作者体验与开发语言统一改造（Verified）
 → M8-05 运行时硬化与文档统一同步（Verified）
-→ M8-06 发布资格与任务治理硬化（In Progress）
+→ M8-06 发布资格与任务治理硬化（Implemented）
 ```
 
 ## M0 工程、安全与运行底座
@@ -108,12 +108,12 @@ M0—M3 已完成产品底座
 
 ## M8 交付与体验任务
 
-| ID    | 任务卡                                                                                          | 依赖  | 状态        |
-| ----- | ----------------------------------------------------------------------------------------------- | ----- | ----------- |
-| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                           | M4-04 | Verified    |
-| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                          | M8-02 | Verified    |
-| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)                  | M8-04 | Verified    |
-| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)                        | M8-05 | In Progress |
+| ID    | 任务卡                                                                                          | 依赖  | 状态       |
+| ----- | ----------------------------------------------------------------------------------------------- | ----- | ---------- |
+| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                           | M4-04 | Verified   |
+| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                          | M8-02 | Verified   |
+| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)                  | M8-04 | Verified   |
+| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)                        | M8-05 | Implemented |
 
 ## 3. 被吸收的需求来源
 

@@ -171,6 +171,7 @@
     "reason": "最终任务已经验证，保留终态锚点且不自动激活后续任务",
     "allowedPaths": [
       "docs/tasks/",
+      "docs/testing/P0_ACCEPTANCE_MATRIX.md",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
       "docs/test-evidence/M8-06/"
     ],

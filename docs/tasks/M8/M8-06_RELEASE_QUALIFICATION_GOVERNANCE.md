@@ -73,6 +73,7 @@ M8-05（Verified）
 - `docs/tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md`
 - `docs/process/DEVELOPMENT_AUTOMATION.md`
 - `docs/process/WORKFLOW_EXECUTION_ORDER.md`
+- `docs/process/RELEASE_QUALIFICATION.md`
 - `docs/roadmap/V1.0_ROADMAP.md`
 - `docs/testing/P0_ACCEPTANCE_MATRIX.md`
 - `.github/workflows/release.yml`

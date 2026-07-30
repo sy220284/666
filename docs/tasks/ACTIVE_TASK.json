@@ -14,7 +14,7 @@
     "id": "M8-06",
     "status": "VERIFIED_HOLD",
     "source": "docs/tasks/M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md",
-    "branch": "work/m8-06-final-governance-closure",
+    "branch": "work/m8-06-release-qualification-governance",
     "startedAt": "2026-07-30",
     "allowedPaths": [
       "scripts/release-tool.mjs",

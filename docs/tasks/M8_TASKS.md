@@ -1,7 +1,7 @@
 # WorldForge M8交付、体验与长期维护任务摘要
 
-> 状态：Active  
-> 用途：记录M8独立任务、被吸收来源和当前长期维护前沿。
+> 状态：Verified Hold  
+> 用途：记录M8独立任务、被吸收来源和长期维护终态。
 
 ## 独立任务
 
@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | M8-02 | [完整体验、硬化与自用交付关闭](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md) | M4-04 | C8体验、安全硬化、性能、E2E、AI Eval和三平台自用便携交付 | Verified |
 | M8-04 | [作者体验与开发语言统一改造](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md) | M8-02 | 正式中文名称、精准跳转、写作辅助、结构化设定、差异审阅和安全关闭握手 | Verified |
-| M8-05 | [运行时硬化与文档统一同步](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md) | M8-04 | 搜索工具异步隔离、Provider错误语义和全量文档一致性 | In Progress |
+| M8-05 | [运行时硬化与文档统一同步](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md) | M8-04 | 搜索工具异步隔离、Provider错误语义和全量文档一致性 | Verified |
 
 ## 被吸收的历史来源
 
@@ -34,11 +34,15 @@ M8-02已经完成V1.0自用便携交付：
 - Windows代码签名、macOS签名与公证、系统安装器、自动更新和安装生命周期不属于V1.0范围。
 - 自用工件不得宣传或分发为适合第三方公开使用的正式产品。
 
-M8-04与M8-05均不扩大该边界。
+M8-04与M8-05均未扩大该边界。
+
+## 最终维护结论
+
+M8-05已完成搜索工具四通道隔离、Provider响应超限独立错误语义和全量文档同步。PR #229受控合并后的main提交`02a595a247cdad83b74634dc5059b72dd93c9451`通过Main Verification运行`30512257330`，任务关闭为Verified。
 
 ## 长期维护规则
 
 - 已Verified任务和历史Evidence保持冻结。
 - 新发现的真实缺陷必须建立新的独立维护任务，不能改写历史结论冒充当时已经覆盖。
 - 代码、测试、契约、专项规格、任务状态和Evidence必须在同一受检Head汇合。
-- 当前任务只从`ACTIVE_TASK.json`读取。
+- 当前终态只从`ACTIVE_TASK.json`读取；任何后续工作必须重新立项。

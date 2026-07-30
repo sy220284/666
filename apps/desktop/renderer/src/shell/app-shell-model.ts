@@ -1,4 +1,5 @@
 import { authorTerm } from '../presentation/author-terms.js';
+import { currentRuntimeNavigationAvailability } from '../runtime/capability-runtime.js';
 import { RENDERER_ROUTE_IDS, type RendererRouteId } from '../state/ui-state-boundary.js';
 
 export const PRIMARY_NAVIGATION_IDS = [
@@ -136,16 +137,20 @@ export function createPrimaryNavigationItems(
   context: AppShellNavigationContext,
 ): readonly PrimaryNavigationItem[] {
   const availability = resolveAvailability(context.availability);
+  const runtimeAvailability = currentRuntimeNavigationAvailability();
   const currentPrimaryId = primaryNavigationIdForRoute(context.currentRoute);
 
   return PRIMARY_NAVIGATION_DEFINITIONS.map((definition) => {
     const projectMissing = definition.requiresProject && context.activeProjectId === null;
     const featureUnavailable = !availability[definition.id];
+    const protectedByRuntime = runtimeAvailability?.[definition.id] === false;
     const disabled = projectMissing || featureUnavailable;
     const disabledReason = projectMissing
       ? '请先新建或打开一部本地作品。'
       : featureUnavailable
-        ? '该功能尚未完成迁移，当前不会提供无法使用的占位入口。'
+        ? protectedByRuntime
+          ? '当前作品或本地服务处于保护状态，请先使用恢复与导出或恢复本地服务。'
+          : '该功能尚未完成迁移，当前不会提供无法使用的占位入口。'
         : null;
 
     return {
@@ -196,11 +201,14 @@ export function resolvePrimaryNavigationIntent(
   }
 
   if (!resolveAvailability(context.availability)[navigationId]) {
+    const protectedByRuntime = currentRuntimeNavigationAvailability()?.[navigationId] === false;
     return {
       accepted: false,
       id: navigationId,
       code: 'FEATURE_UNAVAILABLE',
-      reason: '该功能尚未完成迁移，当前不会提供无法使用的占位入口。',
+      reason: protectedByRuntime
+        ? '当前作品或本地服务处于保护状态，请先使用恢复与导出或恢复本地服务。'
+        : '该功能尚未完成迁移，当前不会提供无法使用的占位入口。',
     };
   }
 
@@ -232,9 +240,19 @@ export function restoreAppShellRoute(
 function resolveAvailability(
   override: Partial<PrimaryNavigationAvailability> | undefined,
 ): PrimaryNavigationAvailability {
-  return {
+  const requested = {
     ...DEFAULT_AVAILABILITY,
     ...override,
+  };
+  const runtime = currentRuntimeNavigationAvailability();
+  if (!runtime) return requested;
+  return {
+    home: requested.home && runtime.home,
+    planning: requested.planning && runtime.planning,
+    writing: requested.writing && runtime.writing,
+    canon: requested.canon && runtime.canon,
+    checks: requested.checks && runtime.checks,
+    settings: requested.settings && runtime.settings,
   };
 }
 

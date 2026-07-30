@@ -1,0 +1,42 @@
+# M8-06 受检实现提交
+implementation_commit=6cf8b81e8ceff9b87c26ad29eaa8bfb0f4c73841
+pull_request=231
+branch=work/m8-06-release-qualification-governance
+
+# 永久门禁
+PR Policy       run=30516672698 conclusion=success
+Task Governance run=30516672657 conclusion=success
+Evidence        run=30516672691 conclusion=success
+Quality         run=30516672758 conclusion=success
+Security        run=30516672817 conclusion=success
+Performance     run=30516672653 conclusion=success
+Repository Governance run=30516672658 conclusion=success
+
+# Quality覆盖
+pnpm check:language exit=0
+pnpm check:workspaces exit=0
+pnpm check:boundaries exit=0
+pnpm format:check exit=0
+pnpm lint exit=0
+pnpm typecheck exit=0
+pnpm test:unit exit=0
+pnpm test:integration exit=0
+pnpm test:migration exit=0
+pnpm test:e2e exit=0
+pnpm test:coverage exit=0
+pnpm build exit=0
+Linux package smoke exit=0
+Windows package smoke exit=0
+macOS package smoke exit=0
+
+# 专项验证
+pnpm test:perf exit=0
+pnpm test:security exit=0
+
+# 关键回归
+- 任一后续独立任务非Verified时拒绝发布。
+- 非VERIFIED_HOLD、延期账本非空或最终任务不一致时拒绝发布。
+- 最终保持清单漏项、额外项或重复项时拒绝发布。
+- 受检提交或Evidence提交对发布提交不可达时拒绝发布。
+- Removed（absorbed）历史任务不参与独立任务发布判定。
+- 完整终态、版本与分支正确时允许发布。

@@ -27,6 +27,25 @@ const prohibitedBusinessTerms = [
   'Fixture',
 ];
 
+const prohibitedAuthorPhrases = new Map([
+  ['最近项目', '最近作品'],
+  ['项目工作区', '作品目录'],
+  ['项目处于', '作品处于'],
+  ['项目创建', '作品创建'],
+  ['项目打开', '作品打开'],
+  ['项目关闭', '作品关闭'],
+  ['项目移动', '作品移动'],
+  ['项目重新定位', '作品重新定位'],
+  ['项目路径', '作品路径'],
+  ['项目文件', '作品文件'],
+  ['中断候选', '未完成建议稿'],
+  ['候选待', '建议稿待'],
+  ['审阅候选', '审阅建议稿'],
+  ['状态提案', '设定更新建议'],
+  ['裁决提案', '处理设定更新建议'],
+  ['校验问题', '检查问题'],
+]);
+
 const requiredTerms = {
   draft: '当前稿',
   version: '历史版本',
@@ -113,6 +132,10 @@ function syntaxAuthorText(file, source) {
   return values.join('\n');
 }
 
+function rendererAuthorSurface(file) {
+  return normalize(path.relative(root, file)).startsWith('apps/desktop/renderer/src/');
+}
+
 function scanText(file, source) {
   const extension = path.extname(file);
   const searchable =
@@ -122,11 +145,23 @@ function scanText(file, source) {
         ? syntaxAuthorText(file, source)
         : source;
   const violations = [];
+  const relative = normalize(path.relative(root, file));
 
   for (const term of prohibitedBusinessTerms) {
     const matcher = new RegExp(`\\b${term}\\b`, 'u');
     if (matcher.test(searchable)) {
-      violations.push(`${normalize(path.relative(root, file))}: 作者可见文本包含内部名称 ${term}`);
+      violations.push(`${relative}: 作者可见文本包含内部名称 ${term}`);
+    }
+  }
+
+  if (rendererAuthorSurface(file)) {
+    for (const [phrase, replacement] of prohibitedAuthorPhrases) {
+      if (searchable.includes(phrase)) {
+        violations.push(`${relative}: 作者可见文本包含旧称“${phrase}”，应使用“${replacement}”`);
+      }
+    }
+    if (/\$\{[^}\r\n]*(?:error|failure)\.code[^}\r\n]*\}/u.test(source)) {
+      violations.push(`${relative}: 普通作者文本直接插入原始错误码，应移入折叠技术详情`);
     }
   }
   return violations;

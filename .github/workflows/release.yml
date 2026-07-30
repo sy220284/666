@@ -59,11 +59,12 @@ jobs:
           set -euo pipefail
           pnpm audit --audit-level=high
           node scripts/scan-secrets.mjs --history
-      - name: Enforce main and release acceptance gate
+      - name: Enforce product and task release acceptance gates
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_REF_NAME" = main
+          node scripts/ui-acceptance-gate.mjs
           pnpm release:gate -- --version "$RELEASE_VERSION"
       - run: pnpm release:check
 
@@ -152,10 +153,11 @@ jobs:
         with:
           pattern: worldforge-*
           path: release
-      - name: Recheck gate and create checksums
+      - name: Recheck gates and create checksums
         shell: bash
         run: |
           set -euo pipefail
+          node scripts/ui-acceptance-gate.mjs
           node scripts/release-tool.mjs gate --version "$RELEASE_VERSION"
           node scripts/release-tool.mjs checksums \
             --version "$RELEASE_VERSION" \

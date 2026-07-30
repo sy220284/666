@@ -48,7 +48,11 @@ describe('作者状态名称', () => {
     expect(authorStatusLabel('pending')).toBe('等待处理');
     expect(authorStatusLabel('partial')).toBe('未完成');
     expect(authorStatusLabel('false_positive')).toBe('已标记为误报');
-    expect(authorStatusLabel('custom-status')).toBe('custom-status');
+  });
+
+  it('未知状态使用安全回退，不向普通界面泄漏内部枚举', () => {
+    expect(authorStatusLabel('custom-status')).toBe('状态未知');
+    expect(authorStatusLabel('partially_processed')).toBe('状态未知');
   });
 });
 

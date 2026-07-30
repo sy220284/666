@@ -32,5 +32,5 @@ export const AUTHOR_STATUS_LABELS = {
 export type AuthorStatusKey = keyof typeof AUTHOR_STATUS_LABELS;
 
 export function authorStatusLabel(status: string): string {
-  return AUTHOR_STATUS_LABELS[status as AuthorStatusKey] ?? status;
+  return AUTHOR_STATUS_LABELS[status as AuthorStatusKey] ?? '状态未知';
 }

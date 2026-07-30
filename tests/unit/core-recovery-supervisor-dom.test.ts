@@ -137,7 +137,7 @@ function createBridge() {
 }
 
 describe('Core recovery default DOM surface integration', () => {
-  it('renders, binds actions, copies draft text, restarts and disposes the real DOM surface', async () => {
+  it('renders author-facing recovery language, binds actions, copies text and disposes', async () => {
     const dom = installDom();
     const bridge = createBridge();
     const cancelSchedule = vi.fn();
@@ -151,6 +151,7 @@ describe('Core recovery default DOM surface integration', () => {
     supervisor.start();
     await supervisor.checkNow();
     const dialog = dom.created.find((element) => element.tagName === 'dialog');
+    const title = dom.created.find((element) => element.tagName === 'h2');
     const description = dom.created.find((element) => element.tagName === 'p');
     const buttons = dom.created.filter((element) => element.tagName === 'button');
     const copyButton = buttons[0];
@@ -158,9 +159,11 @@ describe('Core recovery default DOM surface integration', () => {
 
     expect(dialog?.open).toBe(true);
     expect(dialog?.dataset.coreHealth).toBe('degraded');
-    expect(description?.textContent).toContain('degraded');
+    expect(title?.textContent).toBe('本地服务连接中断');
+    expect(description?.textContent).toContain('部分功能受限');
+    expect(description?.textContent).not.toContain('degraded');
     expect(copyButton?.textContent).toBe('复制当前正文');
-    expect(restartButton?.textContent).toBe('重启Core');
+    expect(restartButton?.textContent).toBe('重启本地服务');
     expect(copyButton?.listeners.get('click')?.size).toBe(1);
     expect(restartButton?.listeners.get('click')?.size).toBe(1);
 

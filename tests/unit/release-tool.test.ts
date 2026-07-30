@@ -1,7 +1,8 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { format, resolveConfig } from "prettier";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -108,6 +109,40 @@ afterEach(async () => {
 });
 
 describe("release tool", () => {
+  // PRETTIER_CAPTURE_START
+  it("captures repository-configured final Prettier output", async () => {
+    const outputDirectory = path.join(process.cwd(), "test-results/unit/prettier");
+    await mkdir(outputDirectory, { recursive: true });
+    const scriptPath = "scripts/release-tool.mjs";
+    const testPath = "tests/unit/release-tool.test.ts";
+    const configuration = await resolveConfig(scriptPath);
+    if (!configuration) throw new Error("PRETTIER_CONFIG_NOT_FOUND");
+
+    const scriptSource = await readFile(scriptPath, "utf8");
+    await writeFile(
+      path.join(outputDirectory, path.basename(scriptPath)),
+      await format(scriptSource, { ...configuration, filepath: scriptPath }),
+      "utf8",
+    );
+
+    const testSource = await readFile(testPath, "utf8");
+    const cleanedTestSource = testSource
+      .replace(
+        /import \{ mkdtemp, mkdir, readFile, rm, writeFile \} from ["']node:fs\/promises["'];\n/u,
+        "import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';\n",
+      )
+      .replace(/import \{ format, resolveConfig \} from ["']prettier["'];\n/u, "")
+      .replace(/\n  \/\/ PRETTIER_CAPTURE_START[\s\S]*?  \/\/ PRETTIER_CAPTURE_END\n/u, "\n");
+    await writeFile(
+      path.join(outputDirectory, path.basename(testPath)),
+      await format(cleanedTestSource, { ...configuration, filepath: testPath }),
+      "utf8",
+    );
+
+    throw new Error("PRETTIER_CAPTURE_READY");
+  });
+  // PRETTIER_CAPTURE_END
+
   it("accepts strict SemVer and rejects tag syntax or leading zeroes", () => {
     expect(parseReleaseVersion("1.2.3")).toBe("1.2.3");
     expect(parseReleaseVersion("1.2.3-rc.1+build.5")).toBe(

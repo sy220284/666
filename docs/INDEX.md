@@ -1,7 +1,7 @@
 # WorldForge 文档总索引
 
 > 基线：WorldForge V6.5  
-> 原则：产品设计真源集中；已完成任务冻结；当前维护由独立任务承接；验收必须有真实证据。
+> 原则：产品设计真源集中；已完成任务冻结；后续工作重新立项；验收必须有真实证据。
 
 ## 1. 唯一工作入口
 
@@ -10,7 +10,7 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ M8-05当前活动任务卡
+→ M8-05终态任务卡
 → 受影响专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
@@ -20,7 +20,7 @@ AGENTS.md
 - [`PROJECT_EXECUTION_ENTRY.md`](PROJECT_EXECUTION_ENTRY.md)：单一任务执行入口与专项路由。
 - [`tasks/ACTIVE_TASK.json`](tasks/ACTIVE_TASK.json)：机器可读活动任务与授权真源。
 - [`tasks/ACTIVE_TASK.md`](tasks/ACTIVE_TASK.md)：由JSON生成的人类可读镜像。
-- [`tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md`](tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)：当前运行时硬化与文档统一任务。
+- [`tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md`](tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)：运行时硬化与文档统一终态任务。
 - [`process/CODEX_EXECUTION_PLAYBOOK.md`](process/CODEX_EXECUTION_PLAYBOOK.md)：实施、测试、复查与关闭规则。
 - [`process/DEVELOPMENT_AUTOMATION.md`](process/DEVELOPMENT_AUTOMATION.md)：PR、质量门禁与受控合并。
 
@@ -36,7 +36,7 @@ AGENTS.md
 > 现有实现
 ```
 
-任务编号、状态和吸收关系以`TASK_INDEX.md`为准；产品、Schema、IPC、AI、UI和验收语义继续由专项真源负责。发现文档与代码冲突时，当前任务必须同时修正实现、测试、专项文档和追踪关系，禁止静默漂移。
+任务编号、状态和吸收关系以`TASK_INDEX.md`为准；产品、Schema、IPC、AI、UI和验收语义继续由专项真源负责。发现文档与代码冲突时，新立任务必须同时修正实现、测试、专项文档和追踪关系，禁止静默漂移。
 
 ## 3. 产品、范围与路线
 
@@ -61,10 +61,10 @@ M0—M3 Verified
 → M4-01—M4-04 Verified
 → M8-02 Verified
 → M8-04 Verified
-→ M8-05 In Progress
+→ M8-05 Verified / VERIFIED_HOLD
 ```
 
-原M4-05—M6-06文件保留为M4-04详细需求来源；原M7-01—M8-03由M8-02承接。只有`ACTIVE_TASK`指向的独立任务可执行；已完成任务卡和历史Evidence保持冻结。
+原M4-05—M6-06文件保留为M4-04详细需求来源；原M7-01—M8-03由M8-02承接。37张独立任务均已Verified；任何新工作必须重新立项，已完成任务卡和历史Evidence保持冻结。
 
 ## 5. 工程架构与决策
 

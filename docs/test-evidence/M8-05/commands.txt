@@ -1,6 +1,9 @@
-# M8-05 实现验证命令与运行记录
+# M8-05 最终验证命令与运行记录
 
-受检提交：`1c5505b1a267e7ea43a70995b4dce7a5fc6abad3`
+实现提交：`1c5505b1a267e7ea43a70995b4dce7a5fc6abad3`
+最终PR Head：`b72f60d23f1523d8f75352d687460bd7d7e9af4d`
+main实现提交：`02a595a247cdad83b74634dc5059b72dd93c9451`
+正式PR：`#229`
 
 ## 任务要求命令
 
@@ -17,29 +20,30 @@ pnpm test:e2e
 pnpm build
 ```
 
-上述命令由永久工作流按受检提交执行；Quality同时运行工作区、模块边界、格式、Migration和产品覆盖率检查。
+上述命令由Ready永久工作流对最终PR Head执行；Quality同时运行工作区、模块边界、格式、Migration、产品覆盖率、构建和Electron端到端。
 
-## GitHub Actions
-
-```text
-PR Policy       30509808959  success
-Task Governance 30509808967  success
-Evidence        30509808988  success
-Quality         30509809116  success
-Security        30509808962  success
-Performance     30509808998  success
-```
-
-运行地址：
+## Ready永久门禁
 
 ```text
-https://github.com/sy220284/666/actions/runs/30509808959
-https://github.com/sy220284/666/actions/runs/30509808967
-https://github.com/sy220284/666/actions/runs/30509808988
-https://github.com/sy220284/666/actions/runs/30509809116
-https://github.com/sy220284/666/actions/runs/30509808962
-https://github.com/sy220284/666/actions/runs/30509808998
+PR Policy       30511563140  success
+Task Governance 30511563097  success
+Evidence        30511563096  success
+Quality         30511563241  success
+Security        30511563137  success
+Performance     30511563092  success
 ```
+
+## 受控合并与主分支验证
+
+```text
+squash merge
+expected_head_sha=b72f60d23f1523d8f75352d687460bd7d7e9af4d
+main_commit=02a595a247cdad83b74634dc5059b72dd93c9451
+main-verification=30512257330
+main-verification result=success
+```
+
+Main Verification核对最终main SHA、来源PR、来源Head与六项永久门禁，并完成task、workspace、boundary、format、lint和typecheck静态复核。
 
 ## 受影响回归
 

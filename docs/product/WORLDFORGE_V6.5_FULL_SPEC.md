@@ -1,6 +1,6 @@
 # WorldForge V6.5 完整产品与技术规格
 
-> 状态：Frozen with M8-05 Maintenance Addendum  
+> 状态：Frozen with Verified M8-05 Maintenance Addendum  
 > 目标版本：V1.0核心写作闭环；V1.5超长篇增强  
 > 更新日期：2026-07-30
 
@@ -14,7 +14,7 @@
 | 功能ID和功能关系 | `FUNCTION_CATALOG.md` |
 | 当前任务编号、状态和吸收关系 | `../tasks/TASK_INDEX.md`、`../tasks/ACTIVE_TASK.json` |
 | 历史任务收口过程 | `V1_TASK_SYSTEM_REBASE.md` |
-| 当前活动任务 | `../tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md` |
+| 最终维护任务 | `../tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md` |
 | P0验收编号和通过标准 | `../testing/P0_ACCEPTANCE_MATRIX.md` |
 | 数据表、字段和事务 | `../database/DATABASE_SCHEMA.md` |
 | IPC、事件和错误码 | `../contracts/` |
@@ -22,7 +22,7 @@
 | UI、主题、交互和显示 | `../ui/` |
 | 冻结技术选择 | `../decisions/IMPLEMENTATION_DECISIONS.md`与ADR |
 
-专项文档不得改变本文件的产品原则。发现代码、专项规格与本文件冲突时，当前任务必须同步修正实现、测试、追踪和Evidence，禁止静默漂移。
+专项文档不得改变本文件的产品原则。代码、专项规格与本文件发生冲突时，必须通过新的独立任务同步修正实现、测试、追踪和Evidence。
 
 ## 2. 产品定位
 
@@ -45,7 +45,7 @@ WorldForge是面向单个作者的本地优先桌面长篇写作工作站。
 2. AI正文只生成可拒绝、可比较、可撤销的建议稿；状态变化只生成待确认设定更新建议。
 3. 正文、设定、状态、历史版本和备份全部保存在用户本机。
 4. 长篇创作中的卷章、场景、人物状态、知情、伏笔、人物弧光和时间线可持续维护。
-5. 任何自动能力不能绕过作者裁决和数据安全边界。
+5. 自动能力不得绕过作者裁决和数据安全边界。
 
 ## 3. 本地与AI边界
 
@@ -113,21 +113,20 @@ WorldForge不建设：
 - 人物、地点、势力、道具、能力、规则、事件和自定义实体。
 - 静态已确认设定与动态状态分离。
 - 时间线、人物知情信息和伏笔生命周期。
-- 人物弧光与弧光里程碑，支持成长、黑化、觉醒、堕落、救赎和自定义类型。
-- 弧光节点状态为`planned/hit/skipped`，命中必须经设定更新建议确认。
-- 设定更新建议、章节尾快照和旧章返修失效传播。
+- 人物弧光与弧光里程碑。
+- 弧光节点命中必须经设定更新建议确认。
+- 章节尾快照和旧章返修失效传播。
 - 规划变化只产生影响提示，不自动修改正文。
 
 ### 5.4 AI基础设施
 
 - OpenAI兼容、Anthropic和仓库内批准的Custom适配器。
-- Electron `safeStorage`安全后端加密凭据；数据库只保存`credentialRef`。
+- Electron安全后端加密凭据；数据库只保存`credentialRef`。
 - FTS5公共索引、作品词典和可重建索引队列。
 - P0—P4约束包、时序过滤、来源追溯、Token估算与裁剪。
 - 版本化Prompt Registry、严格输入输出Schema、受控Cleaner和Parser。
-- 复用TaskProtocol建立GenerationRun、真实阶段、MessagePort流式、取消、错误映射、未完成建议稿和重启查询。
+- 复用TaskProtocol建立GenerationRun、真实阶段、流式、取消、错误映射、未完成建议稿和重启查询。
 - GenerationRun记录Prompt版本、约束来源、裁剪日志、Provider、Model、usage、错误和结果引用。
-- 模型支持档案按Provider + Model + Task + PromptVersion记录支持等级。
 
 ### 5.5 Provider资源边界
 
@@ -140,7 +139,7 @@ WorldForge不建设：
 
 - 先检查有效`Content-Length`，再按实际流式字节累计。
 - 无长度声明、跨分片和无事件分隔符仍受限制。
-- 超限不能等待完整字符串或JSON缓冲后再检查。
+- 超限不得等待完整字符串或JSON缓冲后再检查。
 - 超限不得保存完整建议稿、设定更新建议或原始响应正文。
 - `AI_OUTPUT_INVALID_008`只表达输出Schema或业务内容无效。
 
@@ -148,14 +147,14 @@ WorldForge不建设：
 
 - T0生成多个结构化情节骨架，可编辑、比较和绕过，禁止进入正文采用。
 - T1支持选定情节骨架、权威场景节拍或直接章节目标三种互斥来源。
-- T1优先纯文本流，完成后保存正文建议稿。
-- 单段快速改写和跨段结构性改写均先形成持久化建议稿。
+- T1完成后保存正文建议稿。
+- 快速改写和结构性改写均先形成持久化建议稿。
 - 多建议稿支持场景节拍融合与受控片段融合。
 - 建议稿按状态和类型分组，支持并排、行内、单稿、只看修改和长章节上下文折叠。
 - 整稿、正文块和场景节拍级采用。
 - 锁定、保存序号、Hash和项目范围冲突处理。
-- 取消或断流后可选择保存未完成建议稿；不能默认整稿采用或定稿。
-- 定稿历史版本可通过真实`state_extract`生成pending设定更新建议，作者裁决后才更新权威状态和章节尾快照。
+- 未完成建议稿不能默认整稿采用或定稿。
+- 定稿历史版本可生成pending设定更新建议，作者裁决后才更新权威状态。
 
 ### 5.7 作品检查、搜索和连载建议
 
@@ -196,17 +195,16 @@ WorldForge不建设：
 
 ### 5.10 UI、主题和显示
 
-- 新手/专业模式共用数据与Use Case，只改变信息披露。
 - 快速开始、完整流程、导入和空白项目四个入口。
 - 自主、混合和AI优先三条创作路径。
 - 统一规划、写作、设定、检查和交付工作台。
-- 首页真实继续写作，恢复最近作品、章节、光标和滚动位置；不保存正文内容。
-- 正文为写作工作台默认视觉中心，侧栏可折叠，沉浸写作是视图状态。
+- 首页真实继续写作，不保存正文内容。
+- 正文为默认视觉中心，侧栏可折叠，沉浸写作是视图状态。
 - 本章写作辅助读取真实目标、场景节拍、人物状态、伏笔、待办和上一章结尾。
 - 搜索、检查、待办、伏笔和场景节拍使用统一精准导航目标并恢复来源状态。
 - 常用设定使用中文结构化表单和名称选择器。
-- Theme A安静编辑部与Theme B水墨印章共用业务组件和状态机。
-- 支持1280×800、2K 100/125/150%、21:9和混合DPI。
+- Theme A与Theme B共用业务组件和状态机。
+- 支持1280×800、2K、21:9和混合DPI。
 - 核心流程支持键盘、焦点、读屏、减少动态和非颜色状态表达。
 
 ### 5.11 安全关闭握手
@@ -219,8 +217,6 @@ WorldForge不建设：
 - 监听器在完成、失败和超时后清理。
 
 ## 6. P1与V1.5边界
-
-V1.0 P1和V1.5延期项以`V1_SCOPE_AND_ACCEPTANCE.md`为准。
 
 - P1不能阻塞V1.0 P0发布。
 - V1.5不在V1.0任务中提前建设。
@@ -243,29 +239,9 @@ Core Service Utility Process
   唯一SQLite写者、文件、全文搜索、Provider、校验、导入导出、备份恢复
 ```
 
-Core初期保持单一Utility Process。网络任务异步运行，SQLite业务写入串行；CPU任务超过事件循环预算时使用Worker或分片。只有量化性能证据达到门槛时才评审拆进程。
+Core保持单一Utility Process。网络任务异步运行，SQLite业务写入串行；只有量化性能证据达到门槛时才评审拆进程。
 
-## 8. 仓库结构
-
-```text
-apps/desktop/main
-apps/desktop/preload
-apps/desktop/renderer
-packages/contracts
-packages/domain
-packages/core-service
-packages/editor-core
-packages/prompts
-packages/testkit
-migrations/app
-migrations/project
-tests
-evals
-docs
-scripts
-```
-
-## 9. 核心数据关系
+## 8. 核心数据关系
 
 ```text
 app.sqlite
@@ -275,7 +251,7 @@ app.sqlite
 
 project.sqlite
 ├─ Project / Volume / Chapter / ProjectBrief / PlotNode / SceneBeat
-├─ Draft / DraftBlock / Candidate / SkeletonPayload / CandidateBlock / Version / ApplyRecord
+├─ Draft / DraftBlock / Candidate / Version / ApplyRecord
 ├─ Entity / CanonFact / EntityState / StateProposal
 ├─ Timeline / Knowledge / Foreshadowing / CharacterArc / ArcMilestone
 ├─ EndingSnapshot / ValidationIssue / StoryTodo / Comment
@@ -284,55 +260,27 @@ project.sqlite
 └─ BackupRecord / TrashEntry / ProjectSetting / MigrationJournal
 ```
 
-AI正文链：
-
-```text
-约束包
-→ GenerationRun
-→ 临时流展示
-→ 正文建议稿
-→ 差异与冲突检查
-→ 作者选择
-→ 正文补丁
-→ 保存序号 +1
-```
-
-状态链：
-
-```text
-定稿历史版本
-→ state_extract GenerationRun
-→ pending设定更新建议
-→ 作者接受/编辑/拒绝
-→ 单事务更新权威状态
-→ 章节尾快照
-```
-
-## 10. 数据和事务规则
+## 9. 数据和事务规则
 
 - `app.sqlite`只保存应用设置、最近作品、Provider元数据和UI偏好。
 - `project.sqlite`保存项目权威数据。
-- 所有业务ID使用小写带连字符UUID。
-- 所有排序键使用64位整数间隔键。
-- 所有持久化时间使用UTC ISO-8601毫秒字符串。
 - 所有业务写入通过Core单写队列。
-- 正文补丁、建议稿采用、历史版本创建、设定更新建议批次创建与解决、结构操作、导入和Migration必须单事务。
+- 正文补丁、建议稿采用、历史版本创建、设定更新建议、结构操作、导入和Migration必须单事务。
 - GenerationRun成功与建议稿或设定更新建议结果引用必须原子收口。
 - 高风险操作调用统一恢复点。
 - 全文索引、统计、摘要和缓存属于可重建派生数据。
 
-## 11. 安全与隐私
+## 10. 安全与隐私
 
 - Renderer无Node、文件、数据库、环境变量和凭据能力。
 - Preload只暴露具名白名单方法，输入输出使用strict Schema。
 - Core验证项目ID、实体归属、建议稿类型、定稿历史版本、真实路径和符号链接边界。
-- DOCX在隔离临时目录解析，限制数量、大小、压缩比和外部资源。
-- 凭据由安全后端加密，密文文件使用受限权限；不安全后端直接阻断。
+- DOCX在隔离临时目录解析并限制资源。
+- 凭据由安全后端加密；不安全后端直接阻断。
 - 普通日志不记录正文、完整Prompt、约束全文、原始模型响应和凭据。
-- 继续写作状态只保存作品、章节、光标和滚动等最小信息。
 - 外部Provider由用户主动配置，界面明确本机、局域网和外部端点边界。
 
-## 12. 性能基线
+## 11. 性能基线
 
 | 指标 | V1目标 |
 |---|---:|
@@ -345,7 +293,7 @@ AI正文链：
 | 正文滚动 | ≥50fps |
 | Core单次事件循环阻塞 | <100ms |
 
-## 13. 验收与发布
+## 12. 验收与发布
 
 P0验收项以`../testing/P0_ACCEPTANCE_MATRIX.md`中的P0-001—P0-075为唯一编号体系。
 
@@ -355,14 +303,11 @@ P0验收项以`../testing/P0_ACCEPTANCE_MATRIX.md`中的P0-001—P0-075为唯一
 2. 数据安全、恢复、建议稿隔离、情节骨架类型守卫、未完成限制、锁定、保存序号和项目边界全部通过。
 3. GenerationRun、建议稿、设定更新建议、Prompt和约束包引用完整。
 4. AI直接写权威状态的成功次数为0。
-5. 人工写作统计排除非人工来源。
-6. 单元、Repository、集成、Migration、安全、桌面E2E、性能和AI Eval证据完整。
-7. 1280×800、2K、21:9、混合DPI及冻结主题范围通过UI验收。
-8. 模型质量未达标时对应AI能力降级；无AI基础写作闭环仍可发布。
-9. Windows、macOS和Linux有真实自用便携构建验证。
-10. Provider资源超限安全失败，搜索工具交叉操作不产生永久等待。
+5. 单元、集成、Migration、安全、桌面E2E、性能和AI Eval证据完整。
+6. Windows、macOS和Linux有真实自用便携构建验证。
+7. Provider资源超限安全失败，搜索工具交叉操作不产生永久等待。
 
-## 14. V1.0任务路线
+## 13. 任务路线与终态
 
 V1历史规格保留54份任务文件；当前独立执行体系为37张任务：
 
@@ -371,21 +316,23 @@ M0—M3 Verified
 → M4-01—M4-04 Verified
 → M8-02 Verified
 → M8-04 Verified
-→ M8-05 In Progress
+→ M8-05 Verified / VERIFIED_HOLD
 ```
 
-M4-04完成C0—C7；M8-02完成C8与自用交付；M8-04完成作者体验维护；M8-05修复后续运行时竞态、错误语义和文档漂移。
+M4-04完成C0—C7；M8-02完成C8与自用交付；M8-04完成作者体验维护；M8-05完成运行时竞态、Provider错误语义和文档漂移修复。
 
-## 15. 开发入口
+M8-05正式PR #229受控合并为main提交`02a595a247cdad83b74634dc5059b72dd93c9451`，Main Verification运行`30512257330`成功。37张独立任务全部Verified，当前不自动激活后续任务。
+
+## 14. 开发入口
 
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ M8-05当前任务卡
+→ M8-05终态任务卡
 → 受影响专项真源
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-M8-05使用独立分支与单一正式PR。只有PR永久门禁与合并后Main Verification成功，才可关闭为Verified。
+任何新功能、公开分发能力或后续缺陷修复必须重新立项。

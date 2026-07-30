@@ -30,9 +30,9 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 4. 锁定、保存序号、内容Hash、不可变历史版本、项目与路径边界由代码保证。
 5. AI只能提议，作者拥有正文、已确认设定和状态的最终裁决权。
 
-## V1.0已验证基线
+## V1.0与维护终态
 
-M0—M4-04、M8-02与M8-04共36张独立任务已经Verified：
+M0—M4-04、M8-02、M8-04与M8-05共37张独立任务已经Verified：
 
 - Electron安全壳、Core生命周期、SQLite、Migration、IPC、TaskProtocol和测试底座。
 - 项目、卷章、Tiptap中文正文、自动保存、字数、查找、历史版本和只读恢复。
@@ -48,27 +48,10 @@ M0—M4-04、M8-02与M8-04共36张独立任务已经Verified：
 - Theme A安静编辑部、Theme B水墨印章、响应式、DPI、键盘、焦点和无障碍。
 - Windows、macOS和Linux自用便携工件、ASAR完整性、Fuses、Hash和启动验证。
 - 正式中文业务名称、精准跳转与返回、本章写作辅助、名称选择器、长章节差异审阅和关闭前安全刷新握手。
+- 全文搜索、安全替换、作品词典和全文索引使用四个独立请求通道与独立等待状态。
+- Provider总响应限制16 MiB、单个SSE事件限制1 MiB，超限返回`AI_RESPONSE_TOO_LARGE_014`并停止读取。
 
-## 当前维护：M8-05
-
-后续审计确认两类问题：
-
-1. 全文搜索、安全替换和作品词典共享请求代次，词典保存或删除可能使在途搜索/替换无法清理等待状态。
-2. Provider原始响应资源上限已经实施，但超限复用了结构化输出无效错误码。
-
-M8-05正在完成：
-
-- 全文搜索、安全替换、作品词典和全文索引使用独立请求通道与独立等待状态。
-- 同一通道后发请求使先发响应失效，不同通道互不错误取消。
-- 作品切换或页面卸载统一失效全部旧响应。
-- Provider总响应限制为16 MiB，单个SSE事件限制为1 MiB。
-- 超限返回独立`AI_RESPONSE_TOO_LARGE_014`，停止读取并提供作者化处理建议。
-- 任务、路线、产品、IPC、Provider、安全、UI、验收和发布文档统一到当前实现。
-
-当前正式分支：`work/m8-05-runtime-hardening-documentation-sync`。  
-当前正式PR：[#229](https://github.com/sy220284/666/pull/229)。
-
-在PR永久门禁和合并后Main Verification完成前，M8-05保持`In Progress`，不得写成已合并或已Verified。
+M8-05正式PR #229最终Head为`b72f60d23f1523d8f75352d687460bd7d7e9af4d`，受控压缩合并生成main实现提交`02a595a247cdad83b74634dc5059b72dd93c9451`。Main Verification运行`30512257330`成功，任务关闭为Verified并进入最终`VERIFIED_HOLD`。
 
 ## 核心数据关系
 
@@ -125,7 +108,7 @@ M0—M3 Verified
 → M4-04 C0—C7核心功能 Verified
 → M8-02 C8完整体验、硬化与自用交付 Verified
 → M8-04作者体验与开发语言统一 Verified
-→ M8-05运行时硬化与文档统一 In Progress
+→ M8-05运行时硬化与文档统一 Verified
 ```
 
 原M4-05—M6-06由M4-04吸收；原M7-01—M7-03、M8-01和M8-03由M8-02吸收。M8-04和M8-05是后续独立维护任务。
@@ -141,10 +124,12 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/ACTIVE_TASK.json
 → docs/tasks/ACTIVE_TASK.md
-→ M8-05当前任务卡
+→ M8-05终态任务卡
 → 受影响专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
+
+当前无自动激活的后续任务。任何新功能、公开分发能力或新缺陷修复必须重新立项。
 
 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
 

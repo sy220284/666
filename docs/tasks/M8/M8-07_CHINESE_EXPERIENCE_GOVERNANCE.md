@@ -68,7 +68,7 @@
 
 ## 合并后待办
 
-以下项目经作者明确要求登记为合并后待办。本次合并只接收当前实现，不代表M8-07已Verified，也不构成发布资格：
+以下项目经作者明确要求登记为合并后待办。本次合并只接收当前实现，不代表M8-07已Implemented或Verified，也不构成发布资格：
 
 1. 修复并复跑当前Head的最终Prettier格式检查。
 2. 完成桌面Electron E2E视觉用例并消除现有失败。
@@ -77,7 +77,7 @@
 5. 保留已确认的验收脚本修正：`line-height: normal`使用数值回退，不再将“章节名+元信息”整体误判为标题换行。
 6. 完成Windows真实中文输入法验收并归档实际操作系统证据。
 7. `docs/ui/UI_ACCEPTANCE_STATE.json`中的P0/P1继续保持FAIL，直至各项证据闭环。
-8. 补齐M8-07 Evidence并绑定当前受检提交，完成Main Verification后方可转为Verified。
+8. 补齐M8-07 Evidence并绑定当前受检提交，完成Main Verification后方可转为Implemented及Verified。
 9. 在上述项目完成前，禁止恢复`VERIFIED_HOLD`，禁止放行发布。
 
 ## 非目标

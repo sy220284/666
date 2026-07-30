@@ -1,4 +1,7 @@
-import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
+import type {
+  CoreStatus,
+  ProjectWorkspaceSummary,
+} from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import type { BridgeRequestOutcome } from '../bridge/request-lifecycle.js';
@@ -50,7 +53,11 @@ function updateReadySignals(): void {
   document.body.dataset.projectMode = matrix.project.mode;
 }
 
-function observe(domain: string, method: string, outcome: BridgeRequestOutcome<unknown>): void {
+function observe(
+  domain: string,
+  method: string,
+  outcome: BridgeRequestOutcome<unknown>,
+): void {
   if (outcome.state === 'success') observedProductResources.add(`${domain}.${method}`);
 }
 
@@ -96,7 +103,11 @@ export function createCapabilityTrackingBridge(
         state.project = null;
         return;
       }
-      if (!['getActive', 'create', 'openSelected', 'openRecent', 'move'].includes(method)) return;
+      if (
+        !['getActive', 'create', 'openSelected', 'openRecent', 'move'].includes(method)
+      ) {
+        return;
+      }
       const project = successData(
         outcome as BridgeRequestOutcome<ProjectWorkspaceSummary | null>,
       );

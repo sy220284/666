@@ -35,8 +35,8 @@ for (const file of testFiles) {
   await writeFile(destination, source);
 }
 
-if (replacementCount !== 6) {
-  throw new Error(`Expected 6 legacy save-state assertions, found ${replacementCount}.`);
+if (replacementCount !== 9) {
+  throw new Error(`Expected 9 legacy save-state assertions, found ${replacementCount}.`);
 }
 
 const cssPath = 'apps/desktop/renderer/src/m8-07.css';

@@ -76,6 +76,26 @@ button[aria-busy='true'],
   overflow-wrap: break-word;
 }
 
+.structure-navigator.is-compact .structure-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch;
+}
+
+.structure-navigator.is-compact .structure-chapter-title {
+  width: 100%;
+  min-width: 0;
+}
+
+.structure-navigator.is-compact .structure-row > .inline-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.structure-navigator.is-compact .structure-row > span {
+  justify-self: start;
+}
+
 @container author-main (max-width: 1120px) {
   .writing-grid {
     grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);

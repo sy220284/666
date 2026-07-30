@@ -183,7 +183,7 @@ function RecoveryPanel({
       bridge.recovery.restoreCheckpoint({ projectId, backupId }),
     );
     if (result) {
-      setStatus(`恢复项目“${result.name}”已注册到最近项目。`);
+      setStatus(`恢复项目“${result.name}”已注册到最近作品。`);
       await onProjectRestored();
     }
   };

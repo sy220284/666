@@ -54,6 +54,7 @@ import {
 import type { RendererReturnLocation, RendererRouteId } from '../state/ui-state-boundary.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 
+import { authorErrorSummary } from '../presentation/author-error-message.js';
 export interface AppShellProps {
   readonly bridge: RendererBridgeAdapter;
   readonly legacySurface?: unknown;
@@ -179,7 +180,7 @@ export function AppShell({ bridge }: AppShellProps) {
     } else nextFailure ??= failureFromOutcome('项目状态读取失败', project);
 
     if (recent.state === 'success') setRecentProjects(recent.data.projects);
-    else nextFailure ??= failureFromOutcome('最近项目读取失败', recent);
+    else nextFailure ??= failureFromOutcome('最近作品读取失败', recent);
 
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
     if (providers.state === 'success') applyProviders(providers.data.providers);
@@ -394,7 +395,7 @@ export function AppShell({ bridge }: AppShellProps) {
       signals.push({
         id: 'project-readonly',
         severity: 'data-risk',
-        title: '项目处于只读保护',
+        title: '作品处于只读保护',
         message: `原因：${activeProject.readOnlyReason ?? '兼容性保护'}。可以浏览并安全导出。`,
         intent: 'recovery',
       });
@@ -404,8 +405,8 @@ export function AppShell({ bridge }: AppShellProps) {
       signals.push({
         id: 'recent-missing',
         severity: 'high',
-        title: `${missingCount}个最近项目路径失效`,
-        message: '重新定位后即可恢复入口，项目文件不会被删除。',
+        title: `${missingCount}个最近作品路径失效`,
+        message: '重新定位后即可恢复入口，作品文件不会被删除。',
         intent: 'recovery',
       });
     }
@@ -436,7 +437,7 @@ export function AppShell({ bridge }: AppShellProps) {
       arbitrator.publish({
         id: 'read-only',
         priority: 'P0',
-        message: `项目处于只读保护：${activeProject.readOnlyReason ?? '兼容性保护'}。`,
+        message: `作品处于只读保护：${activeProject.readOnlyReason ?? '兼容性保护'}。`,
         persistence: 'sticky',
         createdAt: 3,
       });
@@ -463,7 +464,7 @@ export function AppShell({ bridge }: AppShellProps) {
       arbitrator.publish({
         id: 'candidate-partial',
         priority: 'P2',
-        message: `当前章节有${workspaceAttention.partialCandidateCount}份中断候选待处理，不能直接定稿。`,
+        message: `当前章节有${workspaceAttention.partialCandidateCount}份未完成建议稿待处理，不能直接定稿。`,
         persistence: 'sticky',
         createdAt: 60,
       });
@@ -471,7 +472,7 @@ export function AppShell({ bridge }: AppShellProps) {
       arbitrator.publish({
         id: 'candidate-pending',
         priority: 'P2',
-        message: `当前章节有${workspaceAttention.pendingCandidateCount}份候选待作者审阅。`,
+        message: `当前章节有${workspaceAttention.pendingCandidateCount}份建议稿待作者审阅。`,
         persistence: 'sticky',
         createdAt: 59,
       });
@@ -480,7 +481,7 @@ export function AppShell({ bridge }: AppShellProps) {
       arbitrator.publish({
         id: 'proposal-pending',
         priority: 'P2',
-        message: `有${workspaceAttention.pendingProposalCount}条状态提案等待作者裁决；尚未写入权威状态。`,
+        message: `有${workspaceAttention.pendingProposalCount}条设定更新建议等待作者裁决；尚未写入权威状态。`,
         persistence: 'sticky',
         createdAt: 58,
       });
@@ -490,8 +491,8 @@ export function AppShell({ bridge }: AppShellProps) {
         id: 'validation-open',
         priority: 'P2',
         message: workspaceAttention.highValidationCount
-          ? `有${workspaceAttention.openValidationCount}项校验问题待处理，其中${workspaceAttention.highValidationCount}项为高优先级。`
-          : `有${workspaceAttention.openValidationCount}项校验问题待处理。`,
+          ? `有${workspaceAttention.openValidationCount}项检查问题待处理，其中${workspaceAttention.highValidationCount}项为高优先级。`
+          : `有${workspaceAttention.openValidationCount}项检查问题待处理。`,
         persistence: 'sticky',
         createdAt: 57,
       });
@@ -545,7 +546,7 @@ export function AppShell({ bridge }: AppShellProps) {
       arbitrator.publish({
         id: 'missing',
         priority: 'P2',
-        message: `${missing}个最近项目路径失效，可重新定位恢复入口。`,
+        message: `${missing}个最近作品路径失效，可重新定位恢复入口。`,
         persistence: 'sticky',
         createdAt: 53,
       });
@@ -581,14 +582,14 @@ export function AppShell({ bridge }: AppShellProps) {
       return { label: '恢复与导出', run: () => void transitionToRoute('recovery') };
     }
     if (globalStatus.id === 'missing') {
-      return { label: '查看最近项目', run: () => navigate('home') };
+      return { label: '查看最近作品', run: () => navigate('home') };
     }
     if (globalStatus.id === 'candidate-partial' || globalStatus.id === 'candidate-pending') {
-      return { label: '审阅候选', run: () => void transitionToRoute('candidates') };
+      return { label: '审阅建议稿', run: () => void transitionToRoute('candidates') };
     }
     if (globalStatus.id === 'proposal-pending') {
       return {
-        label: '裁决提案',
+        label: '处理设定更新建议',
         run: () => {
           setCanonSection('continuity');
           void transitionToRoute('canon');
@@ -621,7 +622,7 @@ export function AppShell({ bridge }: AppShellProps) {
       return false;
     }
     if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('项目创建失败', outcome));
+      setFailure(failureFromOutcome('作品创建失败', outcome));
       setMessage(null);
       return false;
     }
@@ -632,7 +633,7 @@ export function AppShell({ bridge }: AppShellProps) {
 
   const openSelected = async (recover: boolean): Promise<void> => {
     setPendingKey('project.openSelected');
-    setMessage('请选择项目工作区…');
+    setMessage('请选择作品目录…');
     const outcome = await bridge.project.openSelected();
     setPendingKey(null);
     if (isCancelledOutcome(outcome)) {
@@ -640,7 +641,7 @@ export function AppShell({ bridge }: AppShellProps) {
       return;
     }
     if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('项目打开失败', outcome));
+      setFailure(failureFromOutcome('作品打开失败', outcome));
       setMessage(null);
       return;
     }
@@ -656,10 +657,10 @@ export function AppShell({ bridge }: AppShellProps) {
     const outcome = await bridge.project.openRecent(projectId);
     setPendingKey(null);
     if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('最近项目打开失败', outcome));
+      setFailure(failureFromOutcome('最近作品打开失败', outcome));
       return;
     }
-    const nextContinuation = await projectChanged(outcome.data, '最近项目已安全打开。');
+    const nextContinuation = await projectChanged(outcome.data, '最近作品已安全打开。');
     dispatch({ type: 'navigate', route: continuationRoute(nextContinuation) });
   };
 
@@ -672,7 +673,7 @@ export function AppShell({ bridge }: AppShellProps) {
     try {
       const outcome = await bridge.project.close(projectId);
       if (outcome.state !== 'success') {
-        setFailure(failureFromOutcome('项目关闭失败', outcome));
+        setFailure(failureFromOutcome('作品关闭失败', outcome));
         return;
       }
       await projectChanged(null, '项目已安全关闭。');
@@ -697,7 +698,7 @@ export function AppShell({ bridge }: AppShellProps) {
       return;
     }
     if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('项目移动失败，原项目保持可用', outcome));
+      setFailure(failureFromOutcome('作品移动失败，原项目保持可用', outcome));
       return;
     }
     await projectChanged(
@@ -714,11 +715,11 @@ export function AppShell({ bridge }: AppShellProps) {
     setPendingKey(null);
     if (isCancelledOutcome(outcome)) return;
     if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('项目重新定位失败', outcome));
+      setFailure(failureFromOutcome('作品重新定位失败', outcome));
       return;
     }
     await refreshWorkspace();
-    setMessage('项目路径已重新定位。');
+    setMessage('作品路径已重新定位。');
   };
 
   const removeRecent = async (projectId: string): Promise<void> => {
@@ -726,11 +727,11 @@ export function AppShell({ bridge }: AppShellProps) {
     const outcome = await bridge.project.removeRecent(projectId);
     setPendingKey(null);
     if (outcome.state !== 'success') {
-      setFailure(failureFromOutcome('最近项目记录移除失败', outcome));
+      setFailure(failureFromOutcome('最近作品记录移除失败', outcome));
       return;
     }
     setRecentProjects((projects) => projects.filter((project) => project.projectId !== projectId));
-    setMessage('最近项目记录已移除，项目文件保持不变。');
+    setMessage('最近作品记录已移除，作品文件保持不变。');
   };
 
   const saveSettings = (update: AppSettingsUpdate): Promise<boolean> => {
@@ -928,7 +929,7 @@ export function AppShell({ bridge }: AppShellProps) {
                 void transitionToRoute('canon');
               }}
             >
-              状态提案
+              设定更新建议
             </button>
             <button
               className="quiet-button"
@@ -1178,6 +1179,7 @@ export function AppShell({ bridge }: AppShellProps) {
           {isWritingRoute(route) && activeProject ? (
             <WritingWorkbench
               bridge={bridge}
+              disclosureMode={disclosureMode}
               initialContinuation={continuation}
               panel={writingPanel}
               project={activeProject}
@@ -1264,7 +1266,7 @@ function failureFromOutcome(title: string, outcome: BridgeRequestOutcome<unknown
   if (outcome.state === 'failure') {
     return {
       title,
-      message: `${outcome.error.message} · ${outcome.error.code}`,
+      message: authorErrorSummary(outcome.error),
       retryable: outcome.error.retryable,
       diagnosticId: outcome.error.diagnosticId ?? null,
     };

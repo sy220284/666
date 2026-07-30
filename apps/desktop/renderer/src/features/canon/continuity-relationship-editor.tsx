@@ -12,6 +12,7 @@ import {
   useCanonAuthorReferences,
 } from './canon-author-fields.js';
 
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
 export function ContinuityRelationshipEditor({
   bridge,
   projectId,
@@ -129,9 +130,9 @@ export function ContinuityRelationshipEditor({
       </header>
       <p className="feature-status" role="status">
         {resource.error
-          ? `连续性读取失败 · ${resource.error.code}`
+          ? `连续性读取失败 · ${authorErrorSummary(resource.error)}`
           : command.error
-            ? `写入失败 · ${command.error.code} · ${command.error.message}`
+            ? `写入失败 · ${authorErrorSummary(command.error)} · ${command.error.message}`
             : status}
       </p>
       <div className="relationship-editor-grid">

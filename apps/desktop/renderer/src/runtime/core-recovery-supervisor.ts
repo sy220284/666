@@ -1,6 +1,7 @@
 import type { CoreStatus } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
+import { authorErrorMessage } from '../presentation/author-error-message.js';
 
 export type CoreRecoveryHealth = CoreStatus['status'] | 'unreachable';
 
@@ -57,6 +58,19 @@ export interface CoreRecoverySupervisorOptions {
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
 
+function coreHealthLabel(health: CoreRecoveryHealth): string {
+  if (health === 'healthy') return '运行正常';
+  if (health === 'starting') return '正在启动';
+  if (health === 'degraded') return '部分功能受限';
+  if (health === 'stopped') return '已经停止';
+  return '暂时无法连接';
+}
+
+function authorFailure(code: string): string {
+  const content = authorErrorMessage(code);
+  return [content.title, content.message, content.suggestedAction].filter(Boolean).join(' ');
+}
+
 export function createCoreRecoverySupervisor(
   options: CoreRecoverySupervisorOptions,
 ): CoreRecoverySupervisor {
@@ -84,7 +98,7 @@ export function createCoreRecoverySupervisor(
   let observed = false;
   let rememberedProject: RecoverableProjectIdentity | null = null;
   let recovering = false;
-  let message = '正在检查Core运行状态。';
+  let message = '正在检查本地服务运行状态。';
 
   const isCurrent = (epoch: number): boolean => !disposed && lifecycle === epoch;
 
@@ -135,8 +149,8 @@ export function createCoreRecoverySupervisor(
           health = 'unreachable';
           message =
             outcome.state === 'failure'
-              ? `Core状态不可读取：${outcome.error.code}`
-              : 'Core状态请求未完成。';
+              ? authorFailure(outcome.error.code)
+              : '本地服务状态请求未完成。未保存正文仍保留在当前窗口。';
           publish();
           return;
         }
@@ -145,9 +159,9 @@ export function createCoreRecoverySupervisor(
         if (health === 'healthy') {
           await rememberActiveProject(epoch);
           if (!isCurrent(epoch)) return;
-          message = 'Core运行正常。';
+          message = '本地服务运行正常。';
         } else {
-          message = `Core当前状态：${health}。未保存正文仍保留在当前窗口。`;
+          message = `本地服务${coreHealthLabel(health)}。未保存正文仍保留在当前窗口。`;
         }
         publish();
       })
@@ -155,7 +169,7 @@ export function createCoreRecoverySupervisor(
         if (!isCurrent(epoch)) return;
         observed = true;
         health = 'unreachable';
-        message = 'Core连接已中断。未保存正文仍保留在当前窗口。';
+        message = '本地服务连接已中断。未保存正文仍保留在当前窗口。';
         publish();
       })
       .finally(() => {
@@ -170,7 +184,7 @@ export function createCoreRecoverySupervisor(
     const epoch = lifecycle;
     observed = true;
     recovering = true;
-    message = '正在重启Core；当前编辑器内容不会被清空。';
+    message = '正在重启本地服务；当前编辑器内容不会被清空。';
     publish();
 
     restartPromise = (async (): Promise<boolean> => {
@@ -181,8 +195,8 @@ export function createCoreRecoverySupervisor(
           health = outcome.state === 'success' ? outcome.data.status.status : 'unreachable';
           message =
             outcome.state === 'failure'
-              ? `Core重启失败：${outcome.error.code}`
-              : 'Core尚未恢复健康状态。';
+              ? authorFailure(outcome.error.code)
+              : `本地服务${coreHealthLabel(health)}，尚未恢复正常。`;
           return false;
         }
         health = 'healthy';
@@ -195,20 +209,20 @@ export function createCoreRecoverySupervisor(
             health = 'degraded';
             message =
               reopened.state === 'failure'
-                ? `Core已重启，但项目重新打开失败：${reopened.error.code}`
-                : 'Core已重启，但项目重新打开请求未完成。';
+                ? authorFailure(reopened.error.code)
+                : '本地服务已重启，但作品重新打开请求未完成。';
             return false;
           }
           rememberedProject = reopened.data;
         }
         message = projectToOpen
-          ? 'Core与项目已恢复，可以重新保存当前窗口中的正文。'
-          : 'Core已恢复；当前没有可自动重新打开的最近项目。';
+          ? '本地服务与作品已恢复，可以重新保存当前窗口中的正文。'
+          : '本地服务已恢复；当前没有可自动重新打开的最近作品。';
         return true;
       } catch {
         if (!isCurrent(epoch)) return false;
         health = 'unreachable';
-        message = 'Core重启或项目恢复失败。请先复制当前未保存正文。';
+        message = '本地服务重启或作品恢复失败。请先复制当前未保存正文。';
         return false;
       } finally {
         if (isCurrent(epoch)) {
@@ -297,7 +311,7 @@ function createDomCoreRecoverySurface(): CoreRecoverySurface {
 
   const title = document.createElement('h2');
   title.id = 'core-recovery-title';
-  title.textContent = 'Core连接中断';
+  title.textContent = '本地服务连接中断';
   const description = document.createElement('p');
   const actions = document.createElement('div');
   actions.className = 'feature-heading__actions';
@@ -308,7 +322,7 @@ function createDomCoreRecoverySurface(): CoreRecoverySurface {
   const restartButton = document.createElement('button');
   restartButton.type = 'button';
   restartButton.className = 'primary-button';
-  restartButton.textContent = '重启Core并恢复项目';
+  restartButton.textContent = '重启本地服务并恢复作品';
   actions.append(copyButton, restartButton);
   dialog.append(title, description, actions);
   document.body.append(dialog);
@@ -331,7 +345,10 @@ function createDomCoreRecoverySurface(): CoreRecoverySurface {
     render(state) {
       description.textContent = state.message;
       restartButton.disabled = state.recovering;
-      restartButton.textContent = state.hasRecoverableProject ? '重启Core并恢复项目' : '重启Core';
+      restartButton.setAttribute('aria-busy', String(state.recovering));
+      restartButton.textContent = state.hasRecoverableProject
+        ? '重启本地服务并恢复作品'
+        : '重启本地服务';
       copyButton.disabled = state.recovering;
       dialog.dataset.coreHealth = state.health;
       if (state.visible) {

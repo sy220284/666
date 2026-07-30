@@ -66,6 +66,20 @@
 - 开放P0/P1、缺失证据、不可达Evidence或过期风险豁免均阻断发布。
 - Markdown标题、复选框或任务Verified不得单独构成发布资格。
 
+## 合并后待办
+
+以下项目经作者明确要求登记为合并后待办。本次合并只接收当前实现，不代表M8-07已Implemented或Verified，也不构成发布资格：
+
+1. 修复并复跑当前Head的最终Prettier格式检查。
+2. 完成桌面Electron E2E视觉用例并消除现有失败。
+3. 生成并人工复核Theme A/B浅色、深色四张截图。
+4. 完成1280×800写作目录布局的最终截图复核；章节标题保持独占一行，编辑、拆分、合并、移动、删除操作区下置换行且功能完整。
+5. 保留已确认的验收脚本修正：`line-height: normal`使用数值回退，不再将“章节名+元信息”整体误判为标题换行。
+6. 完成Windows真实中文输入法验收并归档实际操作系统证据。
+7. `docs/ui/UI_ACCEPTANCE_STATE.json`中的P0/P1继续保持FAIL，直至各项证据闭环。
+8. 补齐M8-07 Evidence并绑定当前受检提交，完成Main Verification后方可转为Implemented及Verified。
+9. 在上述项目完成前，禁止恢复`VERIFIED_HOLD`，禁止放行发布。
+
 ## 非目标
 
 - 不建设云存储、云同步、账号或WorldForge自有云端AI服务。
@@ -185,4 +199,4 @@
 
 ## 状态规则
 
-当前状态为In Progress。只有代码、测试、视觉证据、真实输入法验收、机器验收状态、受控合并和Main Verification全部闭环后，才允许转为Implemented并最终关闭为Verified。
+当前状态保持In Progress。作者已明确要求先合并当前实现，未完成项目全部登记为合并后待办。只有格式、E2E、视觉证据、真实输入法、机器验收状态与Main Verification全部闭环后，才允许转为Implemented并最终关闭为Verified。

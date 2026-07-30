@@ -2,10 +2,16 @@
   "schemaVersion": 1,
   "paths": [
     "apps/desktop/renderer/src/app/",
+    "apps/desktop/renderer/src/bridge/",
+    "apps/desktop/renderer/src/compat/",
     "apps/desktop/renderer/src/components/",
     "apps/desktop/renderer/src/features/",
     "apps/desktop/renderer/src/presentation/",
+    "apps/desktop/renderer/src/runtime/",
     "apps/desktop/renderer/src/shell/",
+    "apps/desktop/renderer/src/state/",
+    "apps/desktop/renderer/src/react-entry.tsx",
+    "apps/desktop/renderer/src/index.html",
     "tests/unit/author-language.test.ts",
     "tests/unit/renderer-app-shell-model.test.ts",
     "tests/unit/renderer-home-settings-taskbar.test.ts",
@@ -20,5 +26,5 @@
     "agent.md"
   ],
   "excludedPaths": [],
-  "note": "完整作者界面目录均受正式中文名称检查；新增界面文件自动进入门禁。"
+  "note": "完整作者界面、运行时恢复层与新增界面文件均受正式中文名称检查；普通视图禁止旧中文同义词和原始错误码。任务技术说明不作为作者界面扫描对象。"
 }

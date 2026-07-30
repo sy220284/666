@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M8-07",
+  "updatedAt": "2026-07-30T15:46:00+08:00",
+  "releaseBlockingSeverities": ["P0", "P1"],
+  "items": [
+    {
+      "id": "CHN-TERM-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "作者主路径不存在旧中文同义词或内部工程名称",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "CHN-ERROR-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "普通界面不直接显示原始错误码，错误统一进入作者提示与折叠技术详情",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "CHN-STATUS-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "未知内部状态不直接进入普通作者界面",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "CHN-IME-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "真实中文输入法矩阵完成并绑定受检提交",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "VIS-DARK-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "Theme A深色核心页面文字、控件与背景可读",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "VIS-DARK-002",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "Theme B深色核心页面文字、控件与背景可读",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "LAYOUT-1280-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "1280×800核心流程无整页横向滚动、遮挡或无法操作",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "LAYOUT-WRITE-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "写作目录不逐字纵向换行，正文保持视觉中心",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "ACCESS-001",
+      "severity": "P1",
+      "status": "FAIL",
+      "description": "键盘焦点、状态播报和错误技术详情可访问",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    },
+    {
+      "id": "GOV-EVIDENCE-001",
+      "severity": "P0",
+      "status": "FAIL",
+      "description": "全部发布阻断验收项具有当前可达提交与证据",
+      "verifiedCommit": null,
+      "evidence": [],
+      "waiver": null
+    }
+  ]
+}

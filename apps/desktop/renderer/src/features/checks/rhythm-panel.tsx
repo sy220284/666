@@ -4,6 +4,7 @@ import type { RhythmDashboard } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
 export function RhythmPanel({
   bridge,
   projectId,
@@ -19,7 +20,8 @@ export function RhythmPanel({
   useEffect(() => {
     void bridge.rhythm.get({ projectId }, { mode: 'replace' }).then((outcome) => {
       if (outcome.state === 'success') setDashboard(outcome.data);
-      else if (outcome.state === 'failure') setNotice(`节奏读取失败 · ${outcome.error.code}`);
+      else if (outcome.state === 'failure')
+        setNotice(`节奏读取失败 · ${authorErrorSummary(outcome.error)}`);
     });
   }, [bridge, projectId]);
 
@@ -42,7 +44,8 @@ export function RhythmPanel({
     if (outcome.state === 'success') {
       setDashboard(outcome.data);
       setNotice('节奏参考区间与统计口径已保存。');
-    } else if (outcome.state === 'failure') setNotice(`节奏配置保存失败 · ${outcome.error.code}`);
+    } else if (outcome.state === 'failure')
+      setNotice(`节奏配置保存失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   if (!dashboard) {

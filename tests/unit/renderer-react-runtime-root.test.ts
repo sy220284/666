@@ -27,6 +27,22 @@ describe('M3-08 React运行底座', () => {
     expect(tsconfigSource).toContain('"src/**/*.tsx"');
   });
 
+  it('加载M8-07主题与容器响应覆盖层', async () => {
+    const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer');
+    const [buildSource, htmlSource, experienceStyles] = await Promise.all([
+      readFile(path.join(rendererRoot, 'build-assets.mjs'), 'utf8'),
+      readFile(path.join(rendererRoot, 'src/index.html'), 'utf8'),
+      readFile(path.join(rendererRoot, 'src/m8-07.css'), 'utf8'),
+    ]);
+
+    expect(buildSource).toContain("new URL('./src/m8-07.css'");
+    expect(htmlSource).toContain('<link rel="stylesheet" href="./m8-07.css" />');
+    expect(experienceStyles).toContain('body {\n  color: var(--color-text-primary);');
+    expect(experienceStyles).toContain('container-type: inline-size');
+    expect(experienceStyles).toContain('@container author-main (max-width: 1120px)');
+    expect(experienceStyles).toContain("body[data-visual-theme-variant='dark'] .worldforge-editor");
+  });
+
   it('通过Zustand Store更新临时状态且不接受权威对象', () => {
     const store = createRendererUiStore();
 

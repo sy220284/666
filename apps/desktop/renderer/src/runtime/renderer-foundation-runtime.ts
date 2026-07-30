@@ -44,6 +44,15 @@ const STARTING_STATUS_ID = 'renderer-foundation-starting';
 const READY_STATUS_ID = 'renderer-foundation-ready';
 const FAILED_STATUS_ID = 'renderer-foundation-failed';
 
+function coreStatusLabel(status: CoreStatus['status']): string {
+  if (status === 'healthy') return '运行正常';
+  if (status === 'starting') return '正在启动';
+  if (status === 'degraded') return '部分功能受限';
+  if (status === 'stopped') return '已经停止';
+  if (status === 'crashed') return '意外停止';
+  return '状态未知';
+}
+
 export function createRendererFoundationRuntime(
   options: RendererFoundationRuntimeOptions,
 ): RendererFoundationRuntime {
@@ -81,7 +90,7 @@ export function createRendererFoundationRuntime(
   const start = (): Promise<RendererFoundationStartResult> => {
     if (state === 'running') return Promise.resolve({ ok: true });
     if (state === 'disposed' || state === 'disposing') {
-      return Promise.reject(new Error('Renderer foundation runtime is disposed.'));
+      return Promise.reject(new Error('应用界面运行环境已经关闭。'));
     }
     if (startPromise) return startPromise;
 
@@ -91,7 +100,7 @@ export function createRendererFoundationRuntime(
     options.statuses.publish({
       id: STARTING_STATUS_ID,
       priority: 'P2',
-      message: 'Renderer foundation is starting.',
+      message: '应用界面正在启动。',
       persistence: 'sticky',
       createdAt: now(),
       replaces: [FAILED_STATUS_ID, READY_STATUS_ID],
@@ -104,7 +113,7 @@ export function createRendererFoundationRuntime(
           return fail(
             {
               code: 'RENDERER_START_CANCELLED',
-              message: 'Renderer startup was cancelled during shutdown.',
+              message: '应用关闭过程中已取消界面启动。',
               retryable: true,
             },
             'bridge',
@@ -119,10 +128,7 @@ export function createRendererFoundationRuntime(
           return fail(
             {
               code: 'LEGACY_COMPATIBILITY_FAILED',
-              message:
-                error instanceof Error
-                  ? error.message
-                  : 'Legacy compatibility initialization failed.',
+              message: error instanceof Error ? error.message : '兼容层初始化失败。',
               retryable: false,
             },
             'legacy-compatibility',
@@ -133,7 +139,7 @@ export function createRendererFoundationRuntime(
           return fail(
             {
               code: 'RENDERER_START_CANCELLED',
-              message: 'Renderer startup was cancelled during shutdown.',
+              message: '应用关闭过程中已取消界面启动。',
               retryable: true,
             },
             'legacy-compatibility',
@@ -144,7 +150,7 @@ export function createRendererFoundationRuntime(
         options.statuses.publish({
           id: READY_STATUS_ID,
           priority: 'P3',
-          message: 'Renderer foundation is ready.',
+          message: '应用界面已就绪。',
           persistence: 'transient',
           createdAt: now(),
           replaces: [STARTING_STATUS_ID, FAILED_STATUS_ID],
@@ -155,7 +161,7 @@ export function createRendererFoundationRuntime(
         fail(
           {
             code: 'RENDERER_FOUNDATION_FAILED',
-            message: error instanceof Error ? error.message : 'Renderer foundation startup failed.',
+            message: error instanceof Error ? error.message : '应用界面启动失败。',
             retryable: true,
           },
           'bridge',
@@ -187,7 +193,7 @@ export function createRendererFoundationRuntime(
           .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
           .map((result) => result.reason);
         if (failures.length > 0) {
-          throw new AggregateError(failures, 'Renderer foundation disposal failed.');
+          throw new AggregateError(failures, '应用界面关闭清理失败。');
         }
       })
       .finally(() => {
@@ -220,24 +226,24 @@ function failureFromCoreOutcome(
   if (outcome.state === 'cancelled') {
     return {
       code: 'CORE_STATUS_CANCELLED',
-      message: 'Core status request was cancelled.',
+      message: '本地服务状态读取已取消。',
       retryable: true,
     };
   }
   if (outcome.state === 'stale') {
     return {
       code: 'CORE_STATUS_STALE',
-      message: 'Core status response was superseded by a newer request.',
+      message: '本地服务状态已由更新结果替代。',
       retryable: true,
     };
   }
   if (outcome.data.status !== 'healthy') {
     return {
       code: outcome.data.lastErrorCode ?? 'CORE_UNAVAILABLE',
-      message: `Core is ${outcome.data.status}.`,
+      message: `本地服务${coreStatusLabel(outcome.data.status)}。`,
       retryable: true,
       diagnosticId: outcome.data.diagnosticId ?? undefined,
-      userAction: 'Copy diagnostics, restart Core, or close the application safely.',
+      userAction: '请复制诊断信息、重启本地服务，或安全关闭应用。',
     };
   }
   return null;

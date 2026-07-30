@@ -40,6 +40,7 @@ import {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { registerDraftFlushHandler } from '../../runtime/draft-flush-registry.js';
+import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { StructureNavigator } from '../planning/planning-workbench.js';
 import { WritingAssistancePanel } from './writing-assistance-panel.js';
@@ -56,10 +57,12 @@ import {
   derivePanelSwitchInput,
 } from './continuation-persistence.js';
 
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
 export type WritingPanel = 'editor' | 'versions' | 'candidates';
 
 interface WritingWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
+  readonly disclosureMode: AppDisclosureMode;
   readonly project: ProjectWorkspaceSummary;
   readonly initialContinuation: ProjectContinuationSnapshot | null;
   readonly panel: WritingPanel;
@@ -87,6 +90,10 @@ const EMPTY_STATISTICS: WritingStatistics = {
   paragraphCount: 0,
   progressPercent: null,
 };
+
+function savedStatus(label: string, revision: number, disclosureMode: AppDisclosureMode): string {
+  return disclosureMode === 'beginner' ? label : `${label} · 保存序号 ${revision}`;
+}
 
 interface PersistedEditorSelection {
   readonly from: number;
@@ -294,6 +301,7 @@ function restoreContinuationAnchor(
 
 export function WritingWorkbench({
   bridge,
+  disclosureMode,
   project,
   initialContinuation,
   panel,
@@ -493,7 +501,7 @@ export function WritingWorkbench({
       refreshStatistics();
       await saveContinuation();
       setStatus(
-        `已保存 · 保存序号 ${result.data.revision}${JSON.stringify(instance.getJSON()) === signature ? '' : ' · 编辑器仍有新输入'}`,
+        `${savedStatus('已保存', result.data.revision, disclosureMode)}${JSON.stringify(instance.getJSON()) === signature ? '' : ' · 编辑器仍有新输入'}`,
       );
       return true;
     } catch {
@@ -502,6 +510,7 @@ export function WritingWorkbench({
     }
   }, [
     bridge,
+    disclosureMode,
     persistedBlocks,
     project.projectId,
     readOnly,
@@ -515,12 +524,12 @@ export function WritingWorkbench({
     const continuationSaved = result ? await saveContinuation() : false;
     setStatus(
       result && continuationSaved
-        ? `已保存 · 保存序号 ${activeDraft.current?.revision ?? 0}`
+        ? savedStatus('已保存', activeDraft.current?.revision ?? 0, disclosureMode)
         : '保存失败；窗口内容仍保留。',
       !result || !continuationSaved,
     );
     return result && continuationSaved;
-  }, [saveContinuation, setStatus]);
+  }, [disclosureMode, saveContinuation, setStatus]);
 
   useEffect(() => {
     return registerDraftFlushHandler(flush);
@@ -634,7 +643,9 @@ export function WritingWorkbench({
           if (state === 'waiting') setStatus('等待自动保存…');
           else if (state === 'saving') setStatus('正在自动保存…');
           else if (state === 'saved')
-            setStatus(`自动保存完成 · 保存序号 ${activeDraft.current?.revision ?? 0}`);
+            setStatus(
+              savedStatus('自动保存完成', activeDraft.current?.revision ?? 0, disclosureMode),
+            );
           else if (state === 'failed') setStatus('自动保存失败；窗口内容仍保留。', true);
           else if (state === 'paused') setStatus('输入法组合中；自动保存已暂停。');
         },
@@ -669,6 +680,7 @@ export function WritingWorkbench({
     },
     [
       destroyEditor,
+      disclosureMode,
       persistDraft,
       persistedBlocks,
       readOnly,
@@ -711,7 +723,7 @@ export function WritingWorkbench({
       if (outcome.state !== 'success') {
         setStatus(
           outcome.state === 'failure'
-            ? `正文读取失败 · ${outcome.error.code}`
+            ? `正文读取失败 · ${authorErrorSummary(outcome.error)}`
             : outcome.state === 'cancelled'
               ? '正文读取已取消。'
               : '正文读取已被更新请求替代。',
@@ -940,8 +952,8 @@ export function WritingWorkbench({
 
   const manualSave = useCallback(async (): Promise<void> => {
     if (!(await flush())) return;
-    setStatus(`已手动保存 · 保存序号 ${activeDraft.current?.revision ?? 0}`);
-  }, [flush, setStatus]);
+    setStatus(savedStatus('已手动保存', activeDraft.current?.revision ?? 0, disclosureMode));
+  }, [disclosureMode, flush, setStatus]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -1314,7 +1326,8 @@ function VersionPanel({
   const refresh = useCallback(async (): Promise<void> => {
     const outcome = await bridge.version.list(project.projectId, chapter.id, { mode: 'replace' });
     if (outcome.state === 'success') setVersions(outcome.data.versions);
-    else if (outcome.state === 'failure') setStatus(`版本读取失败 · ${outcome.error.code}`);
+    else if (outcome.state === 'failure')
+      setStatus(`版本读取失败 · ${authorErrorSummary(outcome.error)}`);
   }, [bridge, chapter.id, project.projectId]);
 
   useEffect(() => void refresh(), [refresh]);
@@ -1365,7 +1378,11 @@ function VersionPanel({
     });
     setPending(false);
     if (outcome.state !== 'success') {
-      setStatus(outcome.state === 'failure' ? `创建失败 · ${outcome.error.code}` : '创建已取消。');
+      setStatus(
+        outcome.state === 'failure'
+          ? `创建失败 · ${authorErrorSummary(outcome.error)}`
+          : '创建已取消。',
+      );
       return;
     }
     form.reset();
@@ -1381,7 +1398,8 @@ function VersionPanel({
     if (outcome.state === 'success') {
       setSelected(outcome.data);
       setStatus(`正在比较：${outcome.data.title}`);
-    } else if (outcome.state === 'failure') setStatus(`预览失败 · ${outcome.error.code}`);
+    } else if (outcome.state === 'failure')
+      setStatus(`预览失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   const finalize = async (versionId: string): Promise<void> => {
@@ -1394,7 +1412,8 @@ function VersionPanel({
     if (outcome.state === 'success') {
       setStatus(`已将“${outcome.data.title}”设为定稿。`);
       await refresh();
-    } else if (outcome.state === 'failure') setStatus(`定稿失败 · ${outcome.error.code}`);
+    } else if (outcome.state === 'failure')
+      setStatus(`定稿失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   const restore = async (versionId: string): Promise<void> => {
@@ -1407,7 +1426,8 @@ function VersionPanel({
     if (outcome.state === 'success') {
       onDraftReplace(outcome.data, '已从只读历史版本恢复为新当前稿。');
       setStatus('恢复成功；原历史版本与原当前稿记录保持不变。');
-    } else if (outcome.state === 'failure') setStatus(`恢复失败 · ${outcome.error.code}`);
+    } else if (outcome.state === 'failure')
+      setStatus(`恢复失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   return (
@@ -1592,7 +1612,8 @@ function CandidatePanel({
       mode: 'replace',
     });
     if (outcome.state !== 'success') {
-      if (outcome.state === 'failure') setStatus(`建议稿列表读取失败 · ${outcome.error.code}`);
+      if (outcome.state === 'failure')
+        setStatus(`建议稿列表读取失败 · ${authorErrorSummary(outcome.error)}`);
       return [];
     }
     setCandidates(outcome.data.candidates);
@@ -1645,7 +1666,7 @@ function CandidatePanel({
           outcome.state === 'failure'
             ? outcome.error.code === 'COMMON_CANCELLED_004'
               ? '差异计算已取消。'
-              : `预览失败 · ${outcome.error.code}`
+              : `预览失败 · ${authorErrorSummary(outcome.error)}`
             : outcome.state === 'cancelled'
               ? '差异计算已取消。'
               : '预览已被更新请求替代。',
@@ -1682,7 +1703,8 @@ function CandidatePanel({
         candidateId: nextCandidateId,
       });
       if (outcome.state !== 'success') {
-        if (outcome.state === 'failure') setStatus(`建议稿读取失败 · ${outcome.error.code}`);
+        if (outcome.state === 'failure')
+          setStatus(`建议稿读取失败 · ${authorErrorSummary(outcome.error)}`);
         return;
       }
       setSelectedDocument(outcome.data);
@@ -1875,7 +1897,8 @@ function CandidatePanel({
       );
       await refreshList();
       setStatus('建议稿已丢弃，当前稿未改变。');
-    } else if (outcome.state === 'failure') setStatus(`丢弃失败 · ${outcome.error.code}`);
+    } else if (outcome.state === 'failure')
+      setStatus(`丢弃失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   const apply = async (): Promise<void> => {
@@ -1892,7 +1915,7 @@ function CandidatePanel({
     });
     setPending(false);
     if (outcome.state !== 'success') {
-      if (outcome.state === 'failure') setStatus(`采用失败 · ${outcome.error.code}`);
+      if (outcome.state === 'failure') setStatus(`采用失败 · ${authorErrorSummary(outcome.error)}`);
       return;
     }
     if (outcome.data.outcome === 'conflict') {
@@ -2193,7 +2216,7 @@ function CandidatePanel({
     if (outcome.state !== 'success') {
       setGenerationStatus(
         outcome.state === 'failure'
-          ? `生成未启动 · ${outcome.error.code}`
+          ? `生成未启动 · ${authorErrorSummary(outcome.error)}`
           : '生成请求已取消或被新请求替代。',
       );
       return;
@@ -2246,7 +2269,8 @@ function CandidatePanel({
       },
     });
     if (outcome.state !== 'success' || outcome.data.candidateType !== 'skeleton') {
-      if (outcome.state === 'failure') setStatus(`骨架修订保存失败 · ${outcome.error.code}`);
+      if (outcome.state === 'failure')
+        setStatus(`骨架修订保存失败 · ${authorErrorSummary(outcome.error)}`);
       return;
     }
     setSelectedDocument(outcome.data);

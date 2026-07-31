@@ -3,11 +3,7 @@ import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts'
 import type { PrimaryNavigationAvailability } from '../shell/app-shell-model.js';
 
 export type ProjectOperatingMode =
-  | 'closed'
-  | 'normal'
-  | 'read-only-compatible'
-  | 'read-only-integrity-failed'
-  | 'recovery-only';
+  'closed' | 'normal' | 'read-only-compatible' | 'read-only-integrity-failed' | 'recovery-only';
 
 export interface ApplicationCapabilities {
   readonly shellAvailable: boolean;

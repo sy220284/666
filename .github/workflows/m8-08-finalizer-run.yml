@@ -45,6 +45,14 @@ jobs:
               "await readFile(`docs/tasks/runtime/${name}`, 'utf8')",
               "await readFile('docs/tasks/runtime/' + name, 'utf8')",
           )
+          text = text.replace(
+              "/<!--\\s*worldforge-task:\\s*(M\\d+-\\d{2})\\s*-->/iu",
+              "/<!--\\\\s*worldforge-task:\\\\s*(M\\\\d+-\\\\d{2})\\\\s*-->/iu",
+          )
+          text = text.replace(
+              "/^M\\d+-\\d{2}\\.json$/u",
+              "/^M\\\\d+-\\\\d{2}\\\\.json$/u",
+          )
           path.write_text(text)
           PY
           node scripts/run-m8-08-finalizer.cjs

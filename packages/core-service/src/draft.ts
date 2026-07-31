@@ -952,10 +952,22 @@ export class DraftService {
         idFactory: this.#idFactory,
       });
       this.#faultInjector?.('after-patch-persist');
-      return readDocument(connection, valid.projectId, valid.chapterId, {
+      const document = readDocument(connection, valid.projectId, valid.chapterId, {
         ...draft,
         revision: committedRevision,
       });
+      const clientIdentityByLogicalId = new Map(
+        after.flatMap((block) =>
+          block.clientBlockId ? [[block.logicalBlockId, block.clientBlockId] as const] : [],
+        ),
+      );
+      return {
+        ...document,
+        blocks: document.blocks.map((block) => {
+          const clientBlockId = clientIdentityByLogicalId.get(block.logicalBlockId);
+          return clientBlockId ? { ...block, clientBlockId } : block;
+        }),
+      };
     });
   }
 }

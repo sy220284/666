@@ -212,10 +212,10 @@
       "M8-06",
       "M8-07"
     ],
-    "finalTask": true,
-    "nextTaskId": null,
+    "finalTask": false,
+    "nextTaskId": "M8-08",
     "heldAt": "2026-07-31T10:14:46.874Z",
-    "reason": "最终任务已经验证，保留终态锚点且不自动激活后续任务",
+    "reason": "M8-07已完成主分支验证；终态锚点保留期间允许M8-08按并行任务运行时继续封版",
     "allowedPaths": [
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",

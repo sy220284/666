@@ -1,14 +1,16 @@
 # M8-08 V1.0最终质量治理与封版闭环
 
-> 状态：In Progress  
-> 里程碑：M8长期维护  
-> 优先级：P0  
-> 正式分支：`work/m8-08-v1-final-governance-closure`  
-> 交付方式：单任务、单分支、单PR、单次受控合并  
-> 实施基线：`main@fddb88d05c5da576f90a18464ef1ee39304e2a1f`  
-> 开发依赖：`M8-06`已Verified  
-> 封版依赖：`M8-07`必须在M8-08最终合并、发布与`VERIFIED_HOLD`前完成Verified闭环  
-> 后续任务：无  
+> 状态：Implemented
+> 里程碑：M8长期维护
+> 优先级：P0
+> 正式分支：`work/m8-08-v1-final-governance-closure`
+> 交付方式：单任务、单分支、单PR、单次受控合并
+> 实施基线：`main@44fc199c0d4725a9aa169865309674954143f5cf`
+> 开发依赖：`M8-06`已Verified
+> 封版依赖：`M8-07`已完成Verified闭环
+> 后续任务：无
+> 实施证据Head：`695a74cb5e42901d7a0d177b8811c857a40736d3`
+> 三平台工件：Runs `30623725133`、`30624246649`
 > 目标终态：`VERIFIED_HOLD`
 
 ## 一、任务定位

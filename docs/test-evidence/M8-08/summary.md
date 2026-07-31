@@ -4,19 +4,19 @@
 - 实施基线：`main@44fc199c0d4725a9aa169865309674954143f5cf`
 - 实现分支：`work/m8-08-v1-final-governance-closure`
 - 实现PR：#243
-- 版本准备源Head：`e23e5789380f4088b22a2c4063c138cf21490b84`
+- 实施证据Head：`695a74cb5e42901d7a0d177b8811c857a40736d3`
 - 目标版本：`1.0.0`
 
-## 已实施
+## 已完成
 
 1. 正文保存按稳定身份同步持久化元数据，旧结果不再重置继续编辑后的正文。
 2. AI检查改为串行轮询并具备退避、卸载停止、失败恢复与终态刷新。
 3. 应用/项目能力矩阵、恢复模式和关闭刷新失败交互已接入。
 4. M8-07已在main完成Verified闭环，M8-08封版依赖解除。
-5. V1.0版本源、README、CHANGELOG和Evidence结构已统一。
+5. 11个工作区包、Renderer版本、README与CHANGELOG统一为`1.0.0`。
+6. Windows、macOS、Linux原生便携工件、资产校验与成品启动冒烟通过。
+7. M8-07验证保持与并行任务运行时的衔接规则已修复。
 
-## 待完成
+## 当前状态
 
-- 当前版本Head永久门禁。
-- Windows、macOS、Linux原生工件与启动冒烟。
-- M8-08转Implemented、合并后main完整复跑、最终Verified与VERIFIED_HOLD。
+M8-08已转Implemented。剩余步骤仅为当前Head永久门禁、受控合并、最终main全矩阵验证、Verified终态和正式V1.0 Release。

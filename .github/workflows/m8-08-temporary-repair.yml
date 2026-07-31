@@ -1,0 +1,39 @@
+name: M8-08 Temporary Repair
+
+on:
+  push:
+    branches:
+      - work/m8-08-v1-final-governance-closure
+    paths:
+      - .github/automation/m8-08-fix.mjs
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-08-temporary-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work/m8-08-v1-final-governance-closure
+          fetch-depth: 0
+      - name: Apply asserted repairs
+        run: node .github/automation/m8-08-fix.mjs
+      - name: Commit asserted repairs
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No repair changes were required."
+            exit 0
+          fi
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "修复(M8-08)：完成任务卡审计整改"
+          git push origin HEAD:work/m8-08-v1-final-governance-closure

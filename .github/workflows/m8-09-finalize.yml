@@ -26,11 +26,21 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+      - name: Check whether closure is already complete
+        id: guard
+        run: |
+          if node -e "const s=require('./docs/tasks/runtime/M8-09.json'); process.exit(s.status === 'VERIFIED' ? 0 : 1)"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Configure governance commit identity
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Bind final main verification evidence
+        if: steps.guard.outputs.skip != 'true'
         env:
           MAIN_COMMIT: 07b5aa8c04628cbac5d74f0cc4139e9609626858
           MAIN_VERIFICATION_RUN: '30652873306'
@@ -87,12 +97,13 @@ jobs:
           git commit -m "治理：绑定M8-09最终main验证证据"
           git push
       - name: Transition M8-09 to Verified hold
+        if: steps.guard.outputs.skip != 'true'
         env:
           MAIN_COMMIT: 07b5aa8c04628cbac5d74f0cc4139e9609626858
           IMPLEMENTATION_HEAD: 80e68f639ff7547b443cb910883a734ef110508a
           MAIN_VERIFICATION_RUN: '30652873306'
         run: |
-          EVIDENCE_HEAD="$(git rev-parse HEAD)"
+          export EVIDENCE_HEAD="$(git rev-parse HEAD)"
           node scripts/taskctl.mjs verify-task M8-09 \
             --ci=success \
             --commit="$MAIN_COMMIT" \
@@ -112,12 +123,8 @@ jobs:
           runtime.sourcePr = 258;
           await writeFile(file, `${JSON.stringify(runtime, null, 2)}\n`, 'utf8');
           NODE
-        env:
-          MAIN_COMMIT: 07b5aa8c04628cbac5d74f0cc4139e9609626858
-          IMPLEMENTATION_HEAD: 80e68f639ff7547b443cb910883a734ef110508a
-          MAIN_VERIFICATION_RUN: '30652873306'
-          EVIDENCE_HEAD: ${{ github.sha }}
       - name: Remove one-time workflow and commit closure
+        if: steps.guard.outputs.skip != 'true'
         run: |
           rm .github/workflows/m8-09-finalize.yml
           git add docs/tasks docs/test-evidence/M8-09 .github/workflows/m8-09-finalize.yml

@@ -102,15 +102,15 @@ jobs:
       - run: pnpm build
       - name: Build platform package
         run: >-
-          pnpm run package --
+          node scripts/package-desktop.mjs
           --platform "${{ matrix.platform }}"
-          --version "$RELEASE_VERSION"
+          --version "${{ env.RELEASE_VERSION }}"
           --output "release/${{ matrix.platform }}"
       - name: Verify platform package assets
         run: >-
           node scripts/verify-package-assets.mjs
           --platform "${{ matrix.platform }}"
-          --version "$RELEASE_VERSION"
+          --version "${{ env.RELEASE_VERSION }}"
           --directory "release/${{ matrix.platform }}"
       - name: Run Linux packaged startup smoke
         if: matrix.platform == 'linux'
@@ -152,12 +152,12 @@ jobs:
         shell: bash
         run: |
           node scripts/release-tool.mjs checksums \
-            --version "$RELEASE_VERSION" \
+            --version "${{ env.RELEASE_VERSION }}" \
             --assets release \
             --output release/SHA256SUMS.txt
           cat > release/REPACKAGE_INFO.txt <<EOF
-          WorldForge version: $RELEASE_VERSION
-          Verified source main: $SOURCE_MAIN_SHA
+          WorldForge version: ${{ env.RELEASE_VERSION }}
+          Verified source main: ${{ env.SOURCE_MAIN_SHA }}
           Packaging workflow head: ${{ github.event.pull_request.head.sha }}
           Source PR: #${{ github.event.pull_request.number }}
           EOF

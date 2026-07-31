@@ -229,22 +229,21 @@ describe('persisted metadata synchronization during delayed autosave', () => {
     });
   });
 
-  it('evicts the oldest pending snapshot while retaining the newest bounded entries', () => {
-    for (let index = 0; index < 9; index += 1) {
-      rememberPendingDraftSnapshot([snapshot(`temporary-${index}`, null, `快照-${index}`)]);
-    }
-
-    const oldest = editorFor([
-      { logicalBlockId: null, clientBlockId: 'temporary-0', text: '快照-0' },
-    ]);
-    synchronizePersistedBlockMetadata(oldest.editor, [persisted('server-0', '快照-0')]);
-    expect(oldest.state().doc.firstChild?.attrs.logicalBlockId).toBeNull();
+  it('replaces an abandoned request snapshot with the next serialized save snapshot', () => {
+    rememberPendingDraftSnapshot([snapshot('temporary-old', null, '旧请求')]);
+    rememberPendingDraftSnapshot([snapshot('temporary-new', null, '新请求')]);
 
     const newest = editorFor([
-      { logicalBlockId: null, clientBlockId: 'temporary-8', text: '快照-8' },
+      { logicalBlockId: null, clientBlockId: 'temporary-new', text: '新请求' },
     ]);
-    synchronizePersistedBlockMetadata(newest.editor, [persisted('server-8', '快照-8')]);
-    expect(newest.state().doc.firstChild?.attrs.logicalBlockId).toBe('server-8');
+    synchronizePersistedBlockMetadata(newest.editor, [persisted('server-new', '新请求')]);
+    expect(newest.state().doc.firstChild?.attrs.logicalBlockId).toBe('server-new');
+
+    const stale = editorFor([
+      { logicalBlockId: null, clientBlockId: 'temporary-old', text: '旧请求' },
+    ]);
+    synchronizePersistedBlockMetadata(stale.editor, [persisted('server-old', '旧请求')]);
+    expect(stale.state().doc.firstChild?.attrs.logicalBlockId).toBeNull();
   });
 
   it('uses heading semantics to preserve later level changes while attaching persisted identity', () => {

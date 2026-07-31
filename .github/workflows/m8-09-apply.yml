@@ -47,6 +47,8 @@ jobs:
         run: node scripts/apply-m8-09-v1-stability.mjs
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Synchronize generated task mirror
+        run: pnpm task:sync
       - name: Format changed files
         run: >-
           pnpm exec prettier --write

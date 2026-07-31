@@ -90,21 +90,19 @@ jobs:
           if (-not (Test-Path $profilePath)) {
             throw "M8_07_MICROSOFT_PINYIN_PROFILE_MISSING: $profilePath"
           }
-          Get-ItemProperty -Path $profilePath |
+          [pscustomobject]@{
+            inputTip = $inputTip
+            profilePath = $profilePath
+            registry = Get-ItemProperty -Path $profilePath
+          } |
             ConvertTo-Json -Depth 8 |
             Out-File -FilePath test-results/windows-ime/microsoft-pinyin-profile.json -Encoding utf8
-          $languages = New-WinUserLanguageList 'en-US'
-          $languages.Add('zh-CN')
-          $chinese = $languages | Where-Object LanguageTag -eq 'zh-CN'
-          $chinese.InputMethodTips.Clear()
-          $chinese.InputMethodTips.Add($inputTip)
-          Set-WinUserLanguageList $languages -Force
+          $preloadPath = 'HKCU:\Keyboard Layout\Preload'
+          New-Item -Path $preloadPath -Force | Out-Null
+          New-ItemProperty -Path $preloadPath -Name '1' -Value '00000804' -PropertyType String -Force | Out-Null
           Set-WinDefaultInputMethodOverride -InputTip $inputTip
           Start-Process "$env:WINDIR\System32\ctfmon.exe"
           Start-Sleep -Seconds 3
-          Get-WinUserLanguageList |
-            ConvertTo-Json -Depth 8 |
-            Out-File -FilePath test-results/windows-ime/windows-language-list.json -Encoding utf8
           Get-WinDefaultInputMethodOverride |
             ConvertTo-Json -Depth 8 |
             Out-File -FilePath test-results/windows-ime/default-input-method.json -Encoding utf8

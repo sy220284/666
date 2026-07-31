@@ -12,7 +12,7 @@ describe('AI semantic-check generation polling', () => {
     expect(source).toContain('const outcome = await bridge.generation.getRun');
     expect(source).toContain("{ mode: 'share' }");
     expect(source).toContain('window.setTimeout(() => void poll(), delay)');
-    expect(source).toContain('if (!terminal) schedule(pollingDelay(failureCount))');
+    expect(source).toContain('if (!terminal) schedule(generationPollingDelay(failureCount))');
   });
 
   it('has bounded retry, cancellation cleanup and terminal refresh paths', async () => {

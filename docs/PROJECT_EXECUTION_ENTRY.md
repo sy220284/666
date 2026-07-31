@@ -1,6 +1,6 @@
 # WorldForge 项目执行统一入口
 
-> 状态：Verified Hold  
+> 状态：M8-09 In Progress
 > 面向：Codex、开发者、审查者、测试人员
 
 ## 1. 启动顺序
@@ -99,3 +99,7 @@ Evidence：`docs/test-evidence/M8-05/`。
 - 无AI写作、保存、Version、导出和恢复始终必须可用。
 - 测试、构建、发布和平台结论必须来自真实运行。
 - PR Head检查成功不等于main验证成功；合并后必须复核最终main SHA及`main-verification`。
+
+## 8. M8-09当前治理
+
+V1.0代码级复核确认两项数据安全缺陷及若干生命周期、错误处理和异步状态问题。M8-09在独立PR中修复，不修改Schema、历史Migration、AI作者裁决边界或本地优先原则。

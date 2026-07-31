@@ -333,7 +333,34 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     ) {
       return;
     }
-    options.ipcMain.handle(channel, handler);
+    options.ipcMain.handle(channel, async (event, input) => {
+      try {
+        return await handler(event, input);
+      } catch {
+        const requestId = requestIdFrom(input);
+        const diagnosticId = createDiagnosticId();
+        try {
+          await options.logger.log('error', 'ipc.handler.unexpected', {
+            requestId,
+            operation: channel,
+            errorCode: 'COMMON_INTERNAL_999',
+            retryable: true,
+            diagnosticId,
+          });
+        } catch {
+          // Error conversion must remain available when logging itself fails.
+        }
+        return failure(
+          requestId,
+          'COMMON_INTERNAL_999',
+          'The operation failed unexpectedly.',
+          true,
+          diagnosticId,
+          undefined,
+          '请重试；若问题持续，请导出诊断包。',
+        );
+      }
+    });
   };
 
   const rejectUntrusted = (event: IpcMainInvokeEvent, raw: unknown): CommandFailure | null => {

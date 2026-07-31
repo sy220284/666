@@ -1,0 +1,10 @@
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:language
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm exec vitest run tests/unit/m8-09-v1-stability-invariants.test.ts
+pnpm test:integration
+pnpm build

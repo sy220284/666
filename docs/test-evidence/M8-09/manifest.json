@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M8-09",
+  "commit": "PR_HEAD_PENDING",
+  "generatedAt": "2026-07-31T16:12:36.672Z",
+  "acceptanceSource": "GITHUB_ACTIONS",
+  "files": [
+    {
+      "path": "summary.md",
+      "bytes": 431,
+      "sha256": "332e6b2d3e53a00379d5e8d5d7e3e7b7eac895e9e8239ceb089ff501c6adb803"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 229,
+      "sha256": "bf934943c97e08cef0fd23fa21a5c1cdb04dc4360f76c1830fb4846e2ea9ddfe"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 457,
+      "sha256": "3041df096952a86a930dcc4c3fa358dead24b841947c8718728b7a3363234aed"
+    }
+  ]
+}

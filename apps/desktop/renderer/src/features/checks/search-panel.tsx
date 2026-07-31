@@ -43,6 +43,7 @@ export function SearchPanel({
   const [dictionaryPending, setDictionaryPending] = useState(false);
   const [indexPending, setIndexPending] = useState(false);
   const [notice, setNotice] = useState('搜索覆盖当前稿、历史版本与人物世界设定。');
+  const [reloadToken, setReloadToken] = useState(0);
   const requests = useRef(new RequestGenerationGroup<SearchPanelRequestLane>());
   const searchToolsPending = searchPending || replacePending || indexPending;
 
@@ -66,23 +67,36 @@ export function SearchPanel({
     void Promise.all([
       bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' }),
       bridge.searchTools.listDictionary({ projectId }, { mode: 'replace' }),
-    ]).then(([stateOutcome, dictionaryOutcome]) => {
-      if (!active) return;
-      const indexCurrent = requests.current.isCurrent('index', indexGeneration);
-      const dictionaryCurrent = requests.current.isCurrent('dictionary', dictionaryGeneration);
-      if (indexCurrent && stateOutcome.state === 'success') setIndexState(stateOutcome.data);
-      if (dictionaryCurrent && dictionaryOutcome.state === 'success') {
-        setDictionary(dictionaryOutcome.data.entries);
-      }
-      if (indexCurrent && dictionaryCurrent) {
-        setNotice('搜索覆盖当前稿、历史版本与人物世界设定。');
-      }
-    });
+    ])
+      .then(([stateOutcome, dictionaryOutcome]) => {
+        if (!active) return;
+        const indexCurrent = requests.current.isCurrent('index', indexGeneration);
+        const dictionaryCurrent = requests.current.isCurrent('dictionary', dictionaryGeneration);
+        const failures: string[] = [];
+        if (indexCurrent && stateOutcome.state === 'success') setIndexState(stateOutcome.data);
+        else if (indexCurrent && stateOutcome.state === 'failure')
+          failures.push(`全文搜索状态读取失败：${authorErrorSummary(stateOutcome.error)}`);
+        if (dictionaryCurrent && dictionaryOutcome.state === 'success') {
+          setDictionary(dictionaryOutcome.data.entries);
+        } else if (dictionaryCurrent && dictionaryOutcome.state === 'failure') {
+          failures.push(`作品词典读取失败：${authorErrorSummary(dictionaryOutcome.error)}`);
+        }
+        if (indexCurrent && dictionaryCurrent) {
+          setNotice(
+            failures.length > 0
+              ? `${failures.join(' ')} 可以重新读取。`
+              : '搜索覆盖当前稿、历史版本与人物世界设定。',
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setNotice('搜索工具读取异常；现有作品数据没有变化，可以重新读取。');
+      });
     return () => {
       active = false;
       requests.current.invalidateAll();
     };
-  }, [bridge, projectId]);
+  }, [bridge, projectId, reloadToken]);
 
   const search = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -241,13 +255,22 @@ export function SearchPanel({
           <h2>全文搜索与安全替换</h2>
           <p>历史版本与设定只读；替换范围只能包含正在使用的当前稿正文块。</p>
         </div>
-        <button
-          disabled={searchToolsPending || readOnly}
-          type="button"
-          onClick={() => void rebuildIndex()}
-        >
-          {indexPending ? '正在重建…' : '重建全文搜索'}
-        </button>
+        <div>
+          <button
+            disabled={searchToolsPending}
+            type="button"
+            onClick={() => setReloadToken((value) => value + 1)}
+          >
+            重新读取搜索状态
+          </button>
+          <button
+            disabled={searchToolsPending || readOnly}
+            type="button"
+            onClick={() => void rebuildIndex()}
+          >
+            {indexPending ? '正在重建…' : '重建全文搜索'}
+          </button>
+        </div>
       </div>
       <p className="feature-status" role="status">
         {notice} · 等待更新 {indexState?.pendingCount ?? 0} · 失败 {indexState?.failedCount ?? 0}
@@ -310,14 +333,14 @@ export function SearchPanel({
         <form className="form-grid" onSubmit={(event) => void previewReplace(event)}>
           <label>
             查找
-            <input name="query" required />
+            <input name="query" required onChange={() => setPlan(null)} />
           </label>
           <label>
             替换为
-            <input name="replacement" />
+            <input name="replacement" onChange={() => setPlan(null)} />
           </label>
           <label>
-            <input defaultChecked name="matchCase" type="checkbox" />
+            <input defaultChecked name="matchCase" type="checkbox" onChange={() => setPlan(null)} />
             区分大小写
           </label>
           <button disabled={searchToolsPending || readOnly} type="submit">

@@ -8,6 +8,15 @@ on:
     paths:
       - scripts/apply-m8-09-v1-stability.mjs
       - .github/workflows/m8-09-apply.yml
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+    paths:
+      - scripts/apply-m8-09-v1-stability.mjs
+      - .github/workflows/m8-09-apply.yml
 
 permissions:
   contents: write
@@ -18,7 +27,7 @@ concurrency:
 
 jobs:
   apply:
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: ${{ github.actor != 'github-actions[bot]' && (github.event_name == 'push' || github.event.pull_request.head.ref == 'work/m8-09-v1-stability-hardening') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

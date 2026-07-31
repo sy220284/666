@@ -94,9 +94,9 @@
   },
   "lastVerifiedTask": {
     "id": "M8-08",
-    "commit": "0e8328b023bccf4d79f338f05b1ae960fd6a6426",
-    "verifiedAt": "2026-07-31T11:56:00.000Z",
-    "evidenceHead": "b679eb97d4ae5dde9801bff8b63e8f3c50b80ae0",
+    "commit": "61fc6a5c606c8847d7353cd386e3ec5fb44a028d",
+    "verifiedAt": "2026-07-31T12:15:00.000Z",
+    "evidenceHead": "61fc6a5c606c8847d7353cd386e3ec5fb44a028d",
     "squashProvenance": {
       "method": "identical-tree",
       "implementationHead": "e53c8e57d4113776db524b0ca08ca100fa119e6a",

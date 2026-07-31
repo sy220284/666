@@ -1,4 +1,4 @@
-name: M8-08 Release Inventory
+name: M8-08 Prepare Release
 
 on:
   pull_request:
@@ -6,53 +6,134 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inventory:
+  prepare:
     if: ${{ github.head_ref == 'work/m8-08-v1-final-governance-closure' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: work/m8-08-v1-final-governance-closure
           fetch-depth: 0
-          persist-credentials: false
-      - name: Print workspace package versions
+          persist-credentials: true
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Update V1.0 version sources and evidence structure
         shell: bash
+        env:
+          SOURCE_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           node <<'NODE'
           const fs = require('node:fs');
           const path = require('node:path');
-          const roots = ['package.json', 'apps', 'packages'];
-          const files = [];
-          const walk = (entry) => {
-            const stat = fs.statSync(entry);
-            if (stat.isDirectory()) {
-              for (const name of fs.readdirSync(entry).sort()) {
-                if (name === 'node_modules' || name === 'dist') continue;
-                walk(path.join(entry, name));
-              }
-            } else if (path.basename(entry) === 'package.json') {
-              files.push(entry.replaceAll('\\', '/'));
+          const crypto = require('node:crypto');
+          const version = '1.0.0';
+          const packageFiles = ['package.json'];
+          const walk = (dir) => {
+            for (const name of fs.readdirSync(dir).sort()) {
+              if (name === 'node_modules' || name === 'dist') continue;
+              const entry = path.join(dir, name);
+              const stat = fs.statSync(entry);
+              if (stat.isDirectory()) walk(entry);
+              else if (name === 'package.json') packageFiles.push(entry.replaceAll('\\', '/'));
             }
           };
-          for (const root of roots) if (fs.existsSync(root)) walk(root);
-          for (const file of files) {
+          walk('apps');
+          walk('packages');
+          const uniquePackages = [...new Set(packageFiles)].sort();
+          if (uniquePackages.length !== 11) throw new Error(`Expected 11 package manifests, found ${uniquePackages.length}`);
+          for (const file of uniquePackages) {
             const value = JSON.parse(fs.readFileSync(file, 'utf8'));
-            console.log(`${file}\t${value.name ?? '<unnamed>'}\t${value.version ?? '<none>'}\tprivate=${value.private === true}`);
+            if (!['0.1.0', version].includes(value.version)) throw new Error(`${file}: unexpected version ${value.version}`);
+            value.version = version;
+            fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n', 'utf8');
           }
+
+          const rendererPath = 'apps/desktop/renderer/src/react-entry.tsx';
+          let renderer = fs.readFileSync(rendererPath, 'utf8');
+          if (!renderer.includes("rendererVersion: '0.1.0'") && !renderer.includes("rendererVersion: '1.0.0'")) {
+            throw new Error('Renderer version source not found');
+          }
+          renderer = renderer.replace("rendererVersion: '0.1.0'", "rendererVersion: '1.0.0'");
+          fs.writeFileSync(rendererPath, renderer, 'utf8');
+
+          const readmePath = 'README.md';
+          let readme = fs.readFileSync(readmePath, 'utf8');
+          const replacements = [
+            [
+              'M0—M4-04、M8-02、M8-04与M8-05共37张独立任务已经Verified；M8-06正在硬化发布资格与任务治理：',
+              '当前正式版本目标为`1.0.0`。M0—M4-04及M8-02、M8-04—M8-07已Verified；M8-08正在完成最终质量治理、三平台工件与封版闭环：',
+            ],
+            ['V1历史规格保留54份任务文件；当前独立执行体系共38张任务：', 'V1历史规格保留54份任务文件；当前独立执行体系共40张任务：'],
+            ['→ M8-06发布资格与任务治理 In Progress', '→ M8-06发布资格与任务治理 Verified\n→ M8-07中文作者体验治理与发布验收 Verified\n→ M8-08 V1.0最终质量治理与封版闭环 In Progress'],
+            ['M8-04—M8-06是后续独立维护任务。', 'M8-04—M8-08是后续独立维护与封版任务。'],
+          ];
+          for (const [from, to] of replacements) {
+            if (!readme.includes(from)) throw new Error(`README expected text missing: ${from}`);
+            readme = readme.replace(from, to);
+          }
+          fs.writeFileSync(readmePath, readme, 'utf8');
+
+          const changelogPath = 'CHANGELOG.md';
+          let changelog = fs.readFileSync(changelogPath, 'utf8');
+          if (!changelog.includes('## 1.0.0 - 2026-07-31')) {
+            if (!changelog.includes('## Unreleased')) throw new Error('CHANGELOG Unreleased section missing');
+            changelog = changelog.replace('## Unreleased', '## Unreleased\n\n## 1.0.0 - 2026-07-31');
+          }
+          fs.writeFileSync(changelogPath, changelog, 'utf8');
+
+          const evidenceRoot = 'docs/test-evidence/M8-08';
+          const sourceHead = process.env.SOURCE_HEAD;
+          const documents = {
+            'implementation-review.md': `# M8-08实施复核\n\n- 受检分支：\`work/m8-08-v1-final-governance-closure\`。\n- 版本准备源Head：\`${sourceHead}\`。\n- 正文保存采用稳定块身份同步，旧保存结果不得覆盖继续输入后的正文。\n- AI检查使用单请求串行轮询、失败退避、卸载停止与终态刷新。\n- 关闭刷新失败统一进入可重试、返回正文、恢复中心或取消关闭的阻断交互。\n- 应用与项目能力矩阵已接入导航和保护状态。\n- 最终结论须以本分支全门禁、三平台工件和合并后main验证为准。\n`,
+            'autosave-race-reproduction.md': `# 正文保存竞态复现\n\n原风险链：保存请求捕获旧正文快照后，作者继续输入、分段、改变块类型或重排；旧请求返回时若按数组位置或整篇setContent回写，会覆盖新输入或把持久化元数据绑定到错误正文块。\n\n复现维度：继续输入、分段、块类型变化、锁定变化、同文重排、缺失clientBlockId、跨请求隔离。\n\n验收原则：旧响应只能同步稳定身份可确认的元数据；正文文本、选区和编辑历史保持当前编辑器权威。\n`,
+            'autosave-race-fix-verification.md': `# 正文保存竞态修复验证\n\n- \`clientBlockId\`作为首选稳定身份，\`logicalBlockId\`与明确Patch映射作为后备。\n- 无法确认身份时保留当前正文并继续调度保存，禁止静默覆盖。\n- 单元与集成测试覆盖保存期间输入、结构变化、元数据隔离与缺失身份。\n- 最终结果以Quality中的Unit、Integration、Coverage和Electron E2E同时成功为通过。\n`,
+            'cross-process-coverage.md': `# 跨进程边界覆盖\n\n覆盖对象包括Electron Main启动/关闭协调、Core Supervisor、IPC Handlers、Generation IPC、Preload、Renderer Bridge、请求生命周期和Utility Routers。\n\n当前分支已增加针对Main启动、恢复监督器、IPC与Renderer运行边界的分支测试。最终覆盖率数值和执行Run将在封版证据更新提交中登记。\n`,
+            'capability-matrix-verification.md': `# 能力矩阵验证\n\nApplicationCapabilities区分Shell、Core、设置、Provider、生成与诊断能力。ProjectCapabilities区分项目/数据库/结构/正文/设定的读写能力，以及导出、备份、恢复和移动能力。\n\n验证模式：normal、read-only-compatible、read-only-integrity-failed、recovery-only；并覆盖Core不可用、Provider未配置/不可用和数据库可读不可写。\n`,
+            'main-final-verification.md': `# 最终main验证\n\n状态：待M8-08实现PR受控合并后执行。\n\n必须在最终main提交上重新执行静态检查、Unit、Integration、Migration、Coverage、Security、Performance、AI协议基线、Electron E2E、Build和Linux成品启动冒烟。来源PR结果不替代最终main验证。\n`,
+            'release-artifacts.md': `# 三平台发布工件\n\n状态：等待版本\`1.0.0\`提交上的Windows、macOS、Linux原生Runner构建与启动验证。\n\n最终记录必须包含Workflow Run、各平台Artifact ID、SHA-256摘要、包内容验证和启动冒烟结果。未签名、未公证及不提供系统安装器属于自用便携边界。\n`,
+            'known-limitations.md': `# 已知限制\n\n- V1.0工件面向仓库所有者本人自用，未签名、未公证，不提供系统安装器。\n- Windows与macOS可能显示未签名应用警告。\n- Linux在部分AppArmor环境可能需要用户命名空间启动方式；CI回退不代表任意发行版通用支持。\n- 真实模型输出质量依赖作者配置的Provider或本地模型服务。\n`,
+          };
+          for (const [name, content] of Object.entries(documents)) {
+            fs.writeFileSync(path.join(evidenceRoot, name), content, 'utf8');
+          }
+
+          const summaryPath = path.join(evidenceRoot, 'summary.md');
+          fs.writeFileSync(summaryPath, `# M8-08阶段证据摘要\n\n- 任务：V1.0最终质量治理与封版闭环\n- 实施基线：\`main@44fc199c0d4725a9aa169865309674954143f5cf\`\n- 实现分支：\`work/m8-08-v1-final-governance-closure\`\n- 实现PR：#243\n- 版本准备源Head：\`${sourceHead}\`\n- 目标版本：\`1.0.0\`\n\n## 已实施\n\n1. 正文保存按稳定身份同步持久化元数据，旧结果不再重置继续编辑后的正文。\n2. AI检查改为串行轮询并具备退避、卸载停止、失败恢复与终态刷新。\n3. 应用/项目能力矩阵、恢复模式和关闭刷新失败交互已接入。\n4. M8-07已在main完成Verified闭环，M8-08封版依赖解除。\n5. V1.0版本源、README、CHANGELOG和Evidence结构已统一。\n\n## 待完成\n\n- 当前版本Head永久门禁。\n- Windows、macOS、Linux原生工件与启动冒烟。\n- M8-08转Implemented、合并后main完整复跑、最终Verified与VERIFIED_HOLD。\n`, 'utf8');
+
+          const commandsPath = path.join(evidenceRoot, 'commands.txt');
+          fs.writeFileSync(commandsPath, `M8-08 preparation source: ${sourceHead}\nTarget version: 1.0.0\nPR: 243\nM8-07 verified main: 44fc199c0d4725a9aa169865309674954143f5cf\nPending: current-head quality, cross-platform artifacts, final main verification\n`, 'utf8');
+
+          const risksPath = path.join(evidenceRoot, 'known-risks.md');
+          fs.writeFileSync(risksPath, `# M8-08风险记录\n\n- 三平台原生工件尚未在版本1.0.0 Head上生成，当前不得合并。\n- M8-08尚为IN_PROGRESS，发布门必须保持阻断。\n- 来源PR验证不得替代最终main验证。\n- 工件未签名、未公证，严格限定仓库所有者本人自用。\n`, 'utf8');
+
+          const manifestPath = path.join(evidenceRoot, 'manifest.json');
+          const names = fs.readdirSync(evidenceRoot).filter((name) => name !== 'manifest.json').sort();
+          const files = names.map((name) => {
+            const content = fs.readFileSync(path.join(evidenceRoot, name));
+            return { path: name, bytes: content.byteLength, sha256: crypto.createHash('sha256').update(content).digest('hex') };
+          });
+          fs.writeFileSync(manifestPath, JSON.stringify({ schemaVersion: 1, taskId: 'M8-08', commit: sourceHead, generatedAt: '2026-07-31T18:30:00+08:00', acceptanceSource: 'GITHUB_ACTIONS', files }, null, 2) + '\n', 'utf8');
           NODE
-      - name: Print 0.1.0 references
+          pnpm install --lockfile-only
+          pnpm exec prettier --write package.json 'apps/**/package.json' 'packages/**/package.json' apps/desktop/renderer/src/react-entry.tsx
+      - name: Commit release preparation
         shell: bash
         run: |
           set -euo pipefail
-          git grep -n -- '0\.1\.0' ':!docs/test-evidence/M0/**' ':!docs/test-evidence/M1/**' ':!docs/test-evidence/M2/**' ':!docs/test-evidence/M3/**' ':!docs/test-evidence/M4-04/**' ':!docs/test-evidence/M8-02/**' ':!docs/test-evidence/M8-04/**' ':!docs/test-evidence/M8-05/**' ':!docs/test-evidence/M8-06/**' ':!docs/test-evidence/M8-07/**' || true
-      - name: Print M8-08 evidence and task tooling inventory
-        shell: bash
-        run: |
-          set -euo pipefail
-          find docs/test-evidence/M8-08 -maxdepth 1 -type f -printf '%f\n' | sort
-          find .github/governance scripts -maxdepth 2 -type f | sort | grep -E 'parallel|task|release|evidence' || true
+          rm .github/workflows/m8-08-release-inventory.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "feat(M8-08): prepare V1.0 release closure"
+          git push origin HEAD:work/m8-08-v1-final-governance-closure

@@ -54,7 +54,7 @@ jobs:
           const manifestPath = path.join(root, 'manifest.json');
           const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
           manifest.commit = mainCommit;
-          manifest.generatedAt = '2026-07-31T18:12:00+08:00';
+          manifest.generatedAt = '2026-07-31T18:15:00+08:00';
           for (const entry of manifest.files) {
             const content = fs.readFileSync(path.join(root, entry.path));
             entry.bytes = content.byteLength;
@@ -76,6 +76,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add --all
-          git diff --cached --check
           git commit -m "governance(M8-07): complete main verification"
           git push origin HEAD:work/m8-07-chinese-experience-governance

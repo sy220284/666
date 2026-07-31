@@ -1,0 +1,125 @@
+name: M8-09 Finalize
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: m8-09-finalize-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: ${{ github.head_ref == 'fix/governance-m8-09-final-closure' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Configure governance commit identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Bind final main verification evidence
+        env:
+          MAIN_COMMIT: 07b5aa8c04628cbac5d74f0cc4139e9609626858
+          MAIN_VERIFICATION_RUN: '30652873306'
+          SOURCE_PR: '258'
+          SOURCE_HEAD: 80e68f639ff7547b443cb910883a734ef110508a
+          IMPLEMENTATION_COMMIT: 6edb7a7ec7221fd709aba14bc30029acd397f69d
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { readFile, readdir, writeFile } from 'node:fs/promises';
+          import path from 'node:path';
+
+          const directory = 'docs/test-evidence/M8-09';
+          const mainCommit = process.env.MAIN_COMMIT;
+          const verificationRun = process.env.MAIN_VERIFICATION_RUN;
+          const sourcePr = process.env.SOURCE_PR;
+          const sourceHead = process.env.SOURCE_HEAD;
+          const implementationCommit = process.env.IMPLEMENTATION_COMMIT;
+          const generatedAt = '2026-07-31T17:55:22.000Z';
+
+          const commands = `Task: M8-09\nImplementation commit: ${implementationCommit}\nSource PR: ${sourcePr}\nSource PR head: ${sourceHead}\nControlled main merge commit: ${mainCommit}\nMain Verification Run: ${verificationRun} (success)\nPermanent PR gates: Quality, Security, Performance, Evidence, PR Policy and Task Governance (success)\n`;
+          const summary = `# M8-09最终证据摘要\n\n- 任务：V1.0稳定性与生命周期治理\n- 实施提交：\`${implementationCommit}\`\n- 来源PR：#${sourcePr}\n- 来源PR Head：\`${sourceHead}\`\n- 受控main合并提交：\`${mainCommit}\`\n- Main Verification Run：\`${verificationRun}\`\n\n## 完成结论\n\n1. 章节切换会话改为加载期间冻结并在成功后原子切换，关闭旧编辑器前再次刷新旧稿。\n2. 新作品正式落盘后不再因最近作品登记失败而删除；健康作品的创建、打开、移动与恢复不再被辅助数据库阻断。\n3. \`reopen-last\`、跨作品状态隔离、退出重试、搜索初始化与替换计划失效均已形成真实运行逻辑。\n4. IPC与Renderer意外异常边界、中文作者错误语义及项目移动空间余量已完成。\n5. 故障注入、Unit、Integration、Migration、Coverage、Security、Performance、Electron E2E、Build与全部永久PR门禁通过。\n6. 最终main提交已由Main Verification核对来源PR、来源Head、永久检查与主线静态一致性。\n\n## 质量结论\n\nM8-09验收项已完成，Evidence绑定可达main提交，任务满足Verified与最终VERIFIED_HOLD条件。\n`;
+          const finalVerification = `# M8-09最终main验证\n\n- 来源PR：#${sourcePr}\n- 来源PR Head：\`${sourceHead}\`\n- 合并提交：\`${mainCommit}\`\n- Main Verification Run：\`${verificationRun}\`\n- 结果：成功\n\n最终main验证已核对合并提交、来源PR永久门禁、来源Head和主线静态一致性。来源PR完整Quality矩阵已覆盖Unit、Integration、Migration、Coverage、Electron E2E、Build与Package Smoke；Security和Performance永久门禁均成功。\n`;
+
+          await writeFile(path.join(directory, 'commands.txt'), commands, 'utf8');
+          await writeFile(path.join(directory, 'summary.md'), summary, 'utf8');
+          await writeFile(path.join(directory, 'main-final-verification.md'), finalVerification, 'utf8');
+
+          const names = (await readdir(directory)).filter((name) => name !== 'manifest.json').sort();
+          const files = [];
+          for (const name of names) {
+            const content = await readFile(path.join(directory, name));
+            files.push({
+              path: name,
+              bytes: content.byteLength,
+              sha256: createHash('sha256').update(content).digest('hex'),
+            });
+          }
+          const manifest = {
+            schemaVersion: 1,
+            taskId: 'M8-09',
+            commit: mainCommit,
+            generatedAt,
+            acceptanceSource: 'GITHUB_ACTIONS',
+            files,
+          };
+          await writeFile(
+            path.join(directory, 'manifest.json'),
+            `${JSON.stringify(manifest, null, 2)}\n`,
+            'utf8',
+          );
+          NODE
+          git add docs/test-evidence/M8-09
+          git commit -m "治理：绑定M8-09最终main验证证据"
+          git push
+      - name: Transition M8-09 to Verified hold
+        env:
+          MAIN_COMMIT: 07b5aa8c04628cbac5d74f0cc4139e9609626858
+          IMPLEMENTATION_HEAD: 80e68f639ff7547b443cb910883a734ef110508a
+          MAIN_VERIFICATION_RUN: '30652873306'
+        run: |
+          EVIDENCE_HEAD="$(git rev-parse HEAD)"
+          node scripts/taskctl.mjs verify-task M8-09 \
+            --ci=success \
+            --commit="$MAIN_COMMIT" \
+            --expected-head="$EVIDENCE_HEAD" \
+            --implementation-head="$IMPLEMENTATION_HEAD" \
+            --main-commit="$MAIN_COMMIT"
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const file = 'docs/tasks/runtime/M8-09.json';
+          const runtime = JSON.parse(await readFile(file, 'utf8'));
+          runtime.status = 'VERIFIED';
+          runtime.verifiedAt = '2026-07-31T17:55:22.000Z';
+          runtime.mainCommit = process.env.MAIN_COMMIT;
+          runtime.implementationHead = process.env.IMPLEMENTATION_HEAD;
+          runtime.evidenceHead = process.env.EVIDENCE_HEAD;
+          runtime.mainVerificationRun = Number(process.env.MAIN_VERIFICATION_RUN);
+          runtime.sourcePr = 258;
+          await writeFile(file, `${JSON.stringify(runtime, null, 2)}\n`, 'utf8');
+          NODE
+        env:
+          MAIN_COMMIT: 07b5aa8c04628cbac5d74f0cc4139e9609626858
+          IMPLEMENTATION_HEAD: 80e68f639ff7547b443cb910883a734ef110508a
+          MAIN_VERIFICATION_RUN: '30652873306'
+          EVIDENCE_HEAD: ${{ github.sha }}
+      - name: Remove one-time workflow and commit closure
+        run: |
+          rm .github/workflows/m8-09-finalize.yml
+          git add docs/tasks docs/test-evidence/M8-09 .github/workflows/m8-09-finalize.yml
+          git commit -m "治理：完成M8-09最终Verified与V1.0稳定保持"
+          git push

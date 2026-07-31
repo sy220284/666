@@ -32,7 +32,7 @@ WorldForge不建设自有云端AI服务，不保存用户作品到云端，不�
 
 ## V1.0与维护状态
 
-M0—M4-04、M8-02、M8-04与M8-05共37张独立任务已经Verified；M8-06正在硬化发布资格与任务治理：
+当前正式版本目标为`1.0.0`。M0—M4-04及M8-02、M8-04—M8-07已Verified；M8-08正在完成最终质量治理、三平台工件与封版闭环：
 
 - Electron安全壳、Core生命周期、SQLite、Migration、IPC、TaskProtocol和测试底座。
 - 项目、卷章、Tiptap中文正文、自动保存、字数、查找、历史版本和只读恢复。
@@ -99,7 +99,7 @@ AI不会直接写当前稿或权威状态：
 
 ## V1.0任务路线
 
-V1历史规格保留54份任务文件；当前独立执行体系共38张任务：
+V1历史规格保留54份任务文件；当前独立执行体系共40张任务：
 
 ```text
 M0—M3 Verified
@@ -110,10 +110,12 @@ M0—M3 Verified
 → M8-02 C8完整体验、硬化与自用交付 Verified
 → M8-04作者体验与开发语言统一 Verified
 → M8-05运行时硬化与文档统一 Verified
-→ M8-06发布资格与任务治理 In Progress
+→ M8-06发布资格与任务治理 Verified
+→ M8-07中文作者体验治理与发布验收 Verified
+→ M8-08 V1.0最终质量治理与封版闭环 In Progress
 ```
 
-原M4-05—M6-06由M4-04吸收；原M7-01—M7-03、M8-01和M8-03由M8-02吸收。M8-04—M8-06是后续独立维护任务。
+原M4-05—M6-06由M4-04吸收；原M7-01—M7-03、M8-01和M8-03由M8-02吸收。M8-04—M8-08是后续独立维护与封版任务。
 
 路线图：[`docs/roadmap/V1.0_ROADMAP.md`](./docs/roadmap/V1.0_ROADMAP.md)  
 任务索引：[`docs/tasks/TASK_INDEX.md`](./docs/tasks/TASK_INDEX.md)  

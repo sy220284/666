@@ -1,26 +1,5 @@
-# M8-08 verification commands
-pnpm install --frozen-lockfile
-pnpm task:validate
-pnpm check:workspaces
-pnpm check:boundaries
-pnpm check:language
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test:unit
-pnpm test:integration
-pnpm test:migration
-pnpm test:coverage
-pnpm test:security
-pnpm test:perf
-pnpm test:e2e
-pnpm build
-pnpm release:check
-
-# GitHub permanent gates
-PR Policy
-Task Governance
-Evidence
-Quality
-Security
-Performance
+M8-08 preparation source: e23e5789380f4088b22a2c4063c138cf21490b84
+Target version: 1.0.0
+PR: 243
+M8-07 verified main: 44fc199c0d4725a9aa169865309674954143f5cf
+Pending: current-head quality, cross-platform artifacts, final main verification

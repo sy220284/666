@@ -1,29 +1,69 @@
 {
   "schemaVersion": 1,
   "taskId": "M8-08",
-  "commit": "61454971fde7df15208299029f32ee4fb64a10be",
-  "generatedAt": "2026-07-30T16:21:00.000Z",
+  "commit": "e23e5789380f4088b22a2c4063c138cf21490b84",
+  "generatedAt": "2026-07-31T18:30:00+08:00",
   "acceptanceSource": "GITHUB_ACTIONS",
   "files": [
+    {
+      "path": "autosave-race-fix-verification.md",
+      "bytes": 415,
+      "sha256": "65746f57aeeee396a93a2d2f086b117946864e14953f54d104ac07073298be16"
+    },
+    {
+      "path": "autosave-race-reproduction.md",
+      "bytes": 542,
+      "sha256": "27ce29abc7f7bb34a774b11e6c40bb301b9dea6afcc38d815432a463db22a773"
+    },
     {
       "path": "baseline-audit.md",
       "bytes": 1149,
       "sha256": "6fb3e168f741a4ddf93d82d75e1ca6cc1c02aae5ea37bf61092a65f831e2dbed"
     },
     {
+      "path": "capability-matrix-verification.md",
+      "bytes": 415,
+      "sha256": "014a6faf97facbd58ec0e074e915b2d902ae8391f8f09fbf6f4452d5cd5e0999"
+    },
+    {
       "path": "commands.txt",
-      "bytes": 431,
-      "sha256": "d6937b96e21dbb25cceb3d82487871060a6da19a381907a3c9c8ebda8b9049d5"
+      "bytes": 240,
+      "sha256": "1394ea1fe6239491fa551ae9a37814f05b6124938624989faef1ae6bf4468b7f"
+    },
+    {
+      "path": "cross-process-coverage.md",
+      "bytes": 375,
+      "sha256": "c4dcc9776cab6aaa164e24cee25bf5b7fd58effb373bb5a0aef6750c5c1e3d78"
+    },
+    {
+      "path": "implementation-review.md",
+      "bytes": 593,
+      "sha256": "da0e5cfab846bd791cbfd516ba5f776c60667dcf8bb050a9521acfdd926c107e"
+    },
+    {
+      "path": "known-limitations.md",
+      "bytes": 373,
+      "sha256": "5a9a6043ce38170efe24b0e7e0d14a9e777075de01708202f2e7f81c4cab54ac"
     },
     {
       "path": "known-risks.md",
-      "bytes": 558,
-      "sha256": "9b1ffdeb21e0755a767ed97bb14f897b4c64236d690ffdf9e2245169a386853e"
+      "bytes": 284,
+      "sha256": "d5f72447e9bc5dfb09bf6faa941b7a0c9208ff3e651deb2b37cf1c572fd6ab7d"
+    },
+    {
+      "path": "main-final-verification.md",
+      "bytes": 304,
+      "sha256": "901e8224fcc66e04459d3c7d485761bb5b4e20fa47a832db667f8c4761fd6f33"
+    },
+    {
+      "path": "release-artifacts.md",
+      "bytes": 319,
+      "sha256": "90557b6ea3ab02589447da48ffd9e6a7acb73ea469a551e5e03fe8da80190dca"
     },
     {
       "path": "summary.md",
-      "bytes": 1172,
-      "sha256": "efbdf756abf22e554c598ec74021d41a788682776fee456f8aa16621832449ad"
+      "bytes": 932,
+      "sha256": "03ecf75a037ac81928c2e7a74dcfefa0ca6819b0789cbb2af22a8710559e4595"
     }
   ]
 }

@@ -191,6 +191,7 @@ switch ($Action) {
   'enter' {
     [System.Windows.Forms.SendKeys]::SendWait($Text)
     Start-Sleep -Milliseconds 700
+    Send-VirtualKey -VirtualKey 0x20
     Send-VirtualKey -VirtualKey 0x0D
   }
   'ascii' {

@@ -60,6 +60,7 @@ jobs:
       - name: Complete guarded workspace attention refresh
         run: |
           python3 - <<'PY'
+          import re
           from pathlib import Path
 
           path = Path('apps/desktop/renderer/src/app/app-shell-m3.tsx')
@@ -74,22 +75,6 @@ jobs:
               1,
           )
 
-          old = """  useEffect(() => {
-            let active = true;
-            if (!activeProject) {
-              setWorkspaceAttention(EMPTY_WORKSPACE_ATTENTION);
-              return () => {
-                active = false;
-              };
-            }
-            const projectId = activeProject.projectId;
-            void loadWorkspaceAttention(bridge, projectId).then((next) => {
-              if (active) setWorkspaceAttention(next);
-            });
-            return () => {
-              active = false;
-            };
-          }, [activeProject, bridge, route, tasks]);"""
           new = """  const refreshWorkspaceAttention = useCallback(async (): Promise<void> => {
             const generation = workspaceAttentionGeneration.current + 1;
             workspaceAttentionGeneration.current = generation;
@@ -113,9 +98,14 @@ jobs:
               workspaceAttentionGeneration.current += 1;
             };
           }, [refreshWorkspaceAttention, route, tasks]);"""
-          if source.count(old) != 1:
+          pattern = re.compile(
+              r"  useEffect\(\(\) => \{\s+let active = true;.*?\n  \}, \[activeProject, bridge, route, tasks\]\);",
+              re.S,
+          )
+          source, count = pattern.subn(new, source, count=1)
+          if count != 1:
               raise SystemExit('generated workspace attention block not found')
-          path.write_text(source.replace(old, new, 1), encoding='utf-8')
+          path.write_text(source, encoding='utf-8')
           PY
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline

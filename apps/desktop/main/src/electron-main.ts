@@ -448,36 +448,53 @@ async function bootstrap(): Promise<void> {
   const gracefulShutdown = (): Promise<void> => {
     if (shutdownInFlight) return shutdownInFlight;
     shutdownInFlight = (async () => {
-      if (!(await flushRendererDraft())) {
-        await logger.log('error', 'draft.autosave.flush.failed', {
-          errorCode: 'DB_WRITE_FAILED_004',
-          processStatus: supervisor.getStatus().status,
-        });
+      try {
+        if (!(await flushRendererDraft())) {
+          await logger.log('error', 'draft.autosave.flush.failed', {
+            errorCode: 'DB_WRITE_FAILED_004',
+            processStatus: supervisor.getStatus().status,
+          });
+          mainWindow?.show();
+          return;
+        }
+        await flushWindowPreferences();
+        const result = await supervisor.shutdown();
+        if (!result.ok) {
+          await logger.log('error', 'app.shutdown.blocked', {
+            errorCode: result.errorCode ?? 'CORE_SHUTDOWN_FAILED',
+            diagnosticId: result.diagnosticId ?? null,
+            processStatus: supervisor.getStatus().status,
+          });
+          mainWindow?.show();
+          return;
+        }
+        allowQuit = true;
+        screen.off('display-added', restoreForCurrentDisplays);
+        screen.off('display-removed', restoreForCurrentDisplays);
+        screen.off('display-metrics-changed', restoreForCurrentDisplays);
+        unregisterIpc?.();
+        unregisterIpc = null;
+        mainWindow?.destroy();
+        mainWindow = null;
+        app.quit();
+      } catch {
+        const diagnosticId = createDiagnosticId();
+        try {
+          await logger.log('error', 'app.shutdown.failed', {
+            errorCode: 'COMMON_INTERNAL_999',
+            diagnosticId,
+            processStatus: supervisor.getStatus().status,
+          });
+        } catch {
+          process.stderr.write(
+            `${JSON.stringify({ event: 'app.shutdown.failed', diagnosticId })}
+`,
+          );
+        }
         mainWindow?.show();
-        shutdownInFlight = null;
-        return;
+      } finally {
+        if (!allowQuit) shutdownInFlight = null;
       }
-      await flushWindowPreferences();
-      const result = await supervisor.shutdown();
-      if (!result.ok) {
-        await logger.log('error', 'app.shutdown.blocked', {
-          errorCode: result.errorCode ?? 'CORE_SHUTDOWN_FAILED',
-          diagnosticId: result.diagnosticId ?? null,
-          processStatus: supervisor.getStatus().status,
-        });
-        mainWindow?.show();
-        shutdownInFlight = null;
-        return;
-      }
-      allowQuit = true;
-      screen.off('display-added', restoreForCurrentDisplays);
-      screen.off('display-removed', restoreForCurrentDisplays);
-      screen.off('display-metrics-changed', restoreForCurrentDisplays);
-      unregisterIpc?.();
-      unregisterIpc = null;
-      mainWindow?.destroy();
-      mainWindow = null;
-      app.quit();
     })();
     return shutdownInFlight;
   };

@@ -333,7 +333,28 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     ) {
       return;
     }
-    options.ipcMain.handle(channel, handler);
+    options.ipcMain.handle(channel, async (event, input) => {
+      try {
+        return await handler(event, input);
+      } catch {
+        const requestId = requestIdFrom(input);
+        const diagnosticId = createDiagnosticId();
+        await options.logger
+          .log('error', 'ipc.handler.failed', {
+            operation: channel,
+            errorCode: 'COMMON_INTERNAL_999',
+            diagnosticId,
+          })
+          .catch(() => undefined);
+        return failure(
+          requestId,
+          'COMMON_INTERNAL_999',
+          '桌面命令执行时发生意外错误。',
+          true,
+          diagnosticId,
+        );
+      }
+    });
   };
 
   const rejectUntrusted = (event: IpcMainInvokeEvent, raw: unknown): CommandFailure | null => {

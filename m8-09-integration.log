@@ -1,0 +1,90 @@
+$ vitest run tests/integration
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/666/666[39m
+
+ [32m✓[39m tests/integration/constraint-package.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 711[2mms[22m[39m
+ [32m✓[39m tests/integration/structure-operations.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1632[2mms[22m[39m
+ [32m✓[39m tests/integration/search-index.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 666[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-apply-transaction.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 3003[2mms[22m[39m
+ [32m✓[39m tests/integration/generation-run.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1235[2mms[22m[39m
+     [33m[2m✓[22m[39m atomically saves multiple structured Skeletons, author revisions and prose guards [33m 310[2mms[22m[39m
+ [32m✓[39m tests/integration/state-proposal-snapshot.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 764[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps pending proposals non-authoritative, applies edited and accepted decisions atomically, and creates a traceable snapshot [33m 356[2mms[22m[39m
+ [32m✓[39m tests/integration/project-planning.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 819[2mms[22m[39m
+ [32m✓[39m tests/integration/draft-lock-guard.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 769[2mms[22m[39m
+ [32m✓[39m tests/integration/generation-runtime.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 855[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-version-model.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1050[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects Version and Candidate provenance from another project [33m 340[2mms[22m[39m
+ [32m✓[39m tests/integration/project-structure.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1404[2mms[22m[39m
+     [33m[2m✓[22m[39m creates the starter hierarchy by default and supports an explicit professional blank project [33m 386[2mms[22m[39m
+ [32m✓[39m tests/integration/draft-patch.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 688[2mms[22m[39m
+ [32m✓[39m tests/integration/generation-source-resolver.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 280[2mms[22m[39m
+ [32m✓[39m tests/integration/narrative-character-arc.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 619[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects dependency cycles, foreign timeline events, invalid custom arcs, and AI writes [33m 412[2mms[22m[39m
+ [32m✓[39m tests/integration/import-export-service.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 797[2mms[22m[39m
+ [32m✓[39m tests/integration/narrative-foreshadowing.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 432[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-service.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 467[2mms[22m[39m
+ [32m✓[39m tests/integration/task-protocol.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-service.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 5794[2mms[22m[39m
+     [33m[2m✓[22m[39m creates a verified online checkpoint, exports a Version and restores a new writable project [33m 484[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects low space and corrupted backup output without recording an unverified checkpoint [33m 320[2mms[22m[39m
+     [33m[2m✓[22m[39m opens a physically unreadable project in recovery-only mode and restores an external checkpoint [33m 4723[2mms[22m[39m
+ [32m✓[39m tests/integration/scene-beat.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 692[2mms[22m[39m
+ [32m✓[39m tests/integration/preload-ipc-core.integration.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 332[2mms[22m[39m
+ [32m✓[39m tests/integration/entity-canon.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 449[2mms[22m[39m
+ [32m✓[39m tests/integration/audit-m0-m2-remediation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 4645[2mms[22m[39m
+     [33m[2m✓[22m[39m lists and exports Versions from a verified checkpoint when project.sqlite is unreadable [33m 4202[2mms[22m[39m
+ [32m✓[39m tests/integration/provider-connection.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 2179[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps cancellation and timeout active after streaming response headers arrive [33m 1006[2mms[22m[39m
+     [33m[2m✓[22m[39m normalizes authentication, rate-limit, model, timeout, interruption, and cancellation failures [33m 1007[2mms[22m[39m
+ [32m✓[39m tests/integration/task-lifecycle.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 422[2mms[22m[39m
+ [32m✓[39m tests/integration/app-data-repositories.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m tests/integration/state-validation-provider.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 515[2mms[22m[39m
+ [32m✓[39m tests/integration/search-replace-rhythm.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 520[2mms[22m[39m
+     [33m[2m✓[22m[39m searches authoritative Draft/Version/Entity data and applies only unlocked active Draft matches [33m 340[2mms[22m[39m
+ [32m✓[39m tests/integration/state-proposal-valid-until.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 715[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves a validUntilChapterId through proposal review and the authoritative EntityState [33m 319[2mms[22m[39m
+ [32m✓[39m tests/integration/draft-document.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 482[2mms[22m[39m
+ [32m✓[39m tests/integration/version-service.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m creates, finalizes and restores a Version as a new active Draft [33m 338[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-preview-zero-write.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 440[2mms[22m[39m
+ [32m✓[39m tests/integration/project-continuation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 582[2mms[22m[39m
+ [32m✓[39m tests/integration/m4-search-constraint-hardening.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 403[2mms[22m[39m
+ [32m✓[39m tests/integration/scene-beat-entity-references.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 244[2mms[22m[39m
+ [32m✓[39m tests/integration/ending-snapshot-temporal-projection.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 252[2mms[22m[39m
+ [32m✓[39m tests/integration/docx-transfer.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1603[2mms[22m[39m
+     [33m[2m✓[22m[39m round-trips selected immutable Versions and records import without manual writing time [33m 315[2mms[22m[39m
+     [33m[2m✓[22m[39m imports a deterministic seven-million-character DOCX within archive limits [33m 1132[2mms[22m[39m
+ [32m✓[39m tests/integration/three-track-recovery.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 454[2mms[22m[39m
+     [33m[2m✓[22m[39m deduplicates concurrent daily backups, protects named/migration/last and applies a stale-safe cleanup [33m 452[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-timeline-hardening.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 302[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces presence, precision, ordering, archive, and all knowledge statuses [32m 300[2mms[22m[39m
+ [32m✓[39m tests/integration/structured-partial-safety.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 196[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-logical-block.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 210[2mms[22m[39m
+ [32m✓[39m tests/integration/story-anchor-scope.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 480[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-interval-hardening.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 205[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-project-list.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 235[2mms[22m[39m
+ [32m✓[39m tests/integration/coordinated-import-export-service.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 442[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-apply-contract.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-authority-hardening.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 259[2mms[22m[39m
+ [32m✓[39m tests/integration/state-proposal-valid-until-boundaries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 672[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a validUntilChapterId that belongs to another project [33m 405[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-metadata-boundary.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 245[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-failure-ledger.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 253[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-apply-diff.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-identity-remap.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m tests/integration/workspace-graph.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m tests/integration/app-settings-concurrency.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m tests/integration/database-boundaries.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m tests/integration/m2-03-core-boundary.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+[90mstdout[2m | tests/integration/electron-sqlite-runtime.test.ts[2m > [22m[2mElectron Core SQLite runtime[2m > [22m[2mships node:sqlite with FTS5 trigram support
+[22m[39mDownloading Electron binary...
+
+ [32m✓[39m tests/integration/electron-sqlite-runtime.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 2229[2mms[22m[39m
+     [33m[2m✓[22m[39m ships node:sqlite with FTS5 trigram support [33m 2227[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m57 passed[39m[22m[90m (57)[39m
+[2m      Tests [22m [1m[32m160 passed[39m[22m[90m (160)[39m
+[2m   Start at [22m 16:15:53
+[2m   Duration [22m 27.63s[2m (transform 3.12s, setup 788ms, import 25.87s, tests 43.25s, environment 8ms)[22m
+

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "M8-09",
+  "status": "IN_PROGRESS",
+  "source": "docs/tasks/M8/M8-09_V1_STABILITY_REMEDIATION.md",
+  "startedAt": "2026-07-31",
+  "dependencies": ["M8-08"],
+  "releaseBlocking": true,
+  "allowedPaths": [
+    "apps/desktop/renderer/src/",
+    "apps/desktop/main/src/",
+    "packages/core-service/src/",
+    "packages/contracts/src/",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/security/",
+    "tests/e2e/",
+    "docs/tasks/",
+    "docs/product/",
+    "docs/testing/",
+    "docs/test-evidence/M8-09/",
+    "CHANGELOG.md"
+  ],
+  "exclusivePaths": [
+    "apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx",
+    "apps/desktop/renderer/src/app/app-shell-m3.tsx",
+    "packages/core-service/src/project-workspace.ts"
+  ],
+  "forbiddenPaths": [
+    "migrations/",
+    "docs/test-evidence/M0/",
+    "docs/test-evidence/M1/",
+    "docs/test-evidence/M2/",
+    "docs/test-evidence/M3/",
+    "docs/test-evidence/M4-04/",
+    "docs/test-evidence/M8-02/",
+    "docs/test-evidence/M8-04/",
+    "docs/test-evidence/M8-05/",
+    "docs/test-evidence/M8-06/",
+    "docs/test-evidence/M8-07/",
+    "docs/test-evidence/M8-08/"
+  ],
+  "verification": [
+    "pnpm check:language",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm test:e2e",
+    "pnpm build",
+    "pnpm release:check"
+  ]
+}

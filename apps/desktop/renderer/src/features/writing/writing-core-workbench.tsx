@@ -322,6 +322,7 @@ export function WritingWorkbench({
   const activeDraft = useRef<DraftDocument | null>(null);
   const activeChapter = useRef<Chapter | null>(null);
   const editorGeneration = useRef(0);
+  const chapterOpenGeneration = useRef(0);
   const composing = useRef(false);
   const synchronizing = useRef(false);
   const initialChapterRequested = useRef(false);
@@ -590,6 +591,7 @@ export function WritingWorkbench({
       autosave.current?.destroy();
       autosave.current = null;
       editorGeneration.current += 1;
+      chapterOpenGeneration.current += 1;
       instance?.destroy();
       editor.current = null;
       editorHost.current?.replaceChildren();
@@ -733,20 +735,27 @@ export function WritingWorkbench({
         onStatus('自动保存失败，已阻止切换章节。');
         return;
       }
-      setChapter(nextChapter);
-      activeChapter.current = nextChapter;
-      setStatus('正在从作品数据库读取正文…');
+
+      const generation = chapterOpenGeneration.current + 1;
+      chapterOpenGeneration.current = generation;
+      const currentEditor = editor.current;
+      if (currentEditor && !readOnly) currentEditor.setEditable(false);
+      setStatus('正在从作品数据库读取正文；当前章节已暂时锁定输入。');
+
       const outcome = await bridge.draft.open(
         { projectId: project.projectId, chapterId: nextChapter.id },
         { mode: 'replace' },
       );
-      if (activeChapter.current?.id !== nextChapter.id) return;
+      if (chapterOpenGeneration.current !== generation) return;
       if (outcome.state !== 'success') {
+        if (editor.current === currentEditor && currentEditor && !readOnly) {
+          currentEditor.setEditable(true);
+        }
         setStatus(
           outcome.state === 'failure'
             ? `正文读取失败 · ${authorErrorSummary(outcome.error)}`
             : outcome.state === 'cancelled'
-              ? '正文读取已取消。'
+              ? '正文读取已取消，仍停留在原章节。'
               : '正文读取已被更新请求替代。',
           outcome.state === 'failure',
         );
@@ -754,7 +763,7 @@ export function WritingWorkbench({
       }
       mountEditor(outcome.data, nextChapter);
     },
-    [bridge, flush, mountEditor, onStatus, panel, project.projectId, setStatus],
+    [bridge, flush, mountEditor, onStatus, panel, project.projectId, readOnly, setStatus],
   );
 
   useEffect(() => {

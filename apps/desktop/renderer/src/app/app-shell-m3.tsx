@@ -76,6 +76,7 @@ export function AppShell({ bridge }: AppShellProps) {
   const helpTrigger = useRef<HTMLButtonElement>(null);
   const mainContent = useRef<HTMLElement>(null);
   const initialWorkspaceResolved = useRef(false);
+  const workspaceAttentionGeneration = useRef(0);
   const settingsWriteQueue = useRef<Promise<void>>(Promise.resolve());
   const confirmedSettings = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
   const [activeProject, setActiveProject] = useState<ProjectWorkspaceSummary | null>(null);
@@ -101,6 +102,21 @@ export function AppShell({ bridge }: AppShellProps) {
   const [failure, setFailure] = useState<FailureView | null>(null);
   const [canonSection, setCanonSection] = useState<CanonSection>('entities');
   const [dataToolsSection, setDataToolsSection] = useState<DataToolsSection>('recovery');
+
+  useEffect(() => {
+    const onUnexpectedRendererError = (): void => {
+      setFailure({
+        title: '界面操作发生意外错误',
+        message: '系统已经阻止异常继续扩散，当前作品内容保持不变。请重新执行刚才的操作。',
+        retryable: true,
+        diagnosticId: null,
+      });
+      setMessage(null);
+    };
+    window.addEventListener('worldforge:unexpected-renderer-error', onUnexpectedRendererError);
+    return () =>
+      window.removeEventListener('worldforge:unexpected-renderer-error', onUnexpectedRendererError);
+  }, []);
 
   const disclosureMode: AppDisclosureMode = settings.defaultMode;
   const writingPanel: WritingPanel =
@@ -150,9 +166,13 @@ export function AppShell({ bridge }: AppShellProps) {
     if (core.state === 'success') setCoreStatus(core.data);
     else nextFailure = failureFromOutcome('本地服务状态读取失败', core);
 
+    const resolvedSettings =
+      applicationSettings.state === 'success'
+        ? applicationSettings.data.settings
+        : DEFAULT_APP_SETTINGS;
     if (applicationSettings.state === 'success') {
-      confirmedSettings.current = applicationSettings.data.settings;
-      setSettings(applicationSettings.data.settings);
+      confirmedSettings.current = resolvedSettings;
+      setSettings(resolvedSettings);
     } else nextFailure ??= failureFromOutcome('应用设置读取失败', applicationSettings);
 
     if (windowPreferences.state === 'success') {
@@ -164,36 +184,57 @@ export function AppShell({ bridge }: AppShellProps) {
       });
     } else nextFailure ??= failureFromOutcome('显示设置读取失败', windowPreferences);
 
-    if (project.state === 'success') {
-      setActiveProject(project.data);
-      let nextContinuation: ProjectContinuationSnapshot | null = null;
-      if (project.data) {
-        const continuationOutcome = await bridge.project.getContinuation(project.data.projectId, {
-          mode: 'replace',
-        });
-        if (continuationOutcome.state === 'success') {
-          nextContinuation = continuationOutcome.data;
-        }
-      }
-      setContinuation(nextContinuation);
-      if (!initialWorkspaceResolved.current) {
-        initialWorkspaceResolved.current = true;
-        const restoredRoute = project.data ? continuationRoute(nextContinuation) : 'home';
-        dispatch({
-          type: 'navigate',
-          route: restoreAppShellRoute(restoredRoute, {
-            activeProjectId: project.data?.projectId ?? null,
-            disclosureMode:
-              applicationSettings.state === 'success'
-                ? applicationSettings.data.settings.defaultMode
-                : DEFAULT_APP_SETTINGS.defaultMode,
-          }),
-        });
-      }
-    } else nextFailure ??= failureFromOutcome('项目状态读取失败', project);
-
     if (recent.state === 'success') setRecentProjects(recent.data.projects);
     else nextFailure ??= failureFromOutcome('最近作品读取失败', recent);
+
+    let resolvedProject: ProjectWorkspaceSummary | null = null;
+    if (project.state === 'success') resolvedProject = project.data;
+    else nextFailure ??= failureFromOutcome('项目状态读取失败', project);
+
+    const initialResolution = !initialWorkspaceResolved.current;
+    if (
+      initialResolution &&
+      project.state === 'success' &&
+      !resolvedProject &&
+      resolvedSettings.startupBehavior === 'reopen-last' &&
+      recent.state === 'success'
+    ) {
+      const candidate = recent.data.projects.find((entry) => entry.missingSince === null);
+      if (candidate) {
+        const reopened = await bridge.project.openRecent(candidate.projectId, { mode: 'replace' });
+        if (reopened.state === 'success') {
+          resolvedProject = reopened.data;
+        } else if (reopened.state === 'failure') {
+          nextFailure ??= failureFromOutcome('最近作品自动打开失败', reopened);
+        }
+      }
+    }
+
+    setActiveProject(resolvedProject);
+    let nextContinuation: ProjectContinuationSnapshot | null = null;
+    if (resolvedProject) {
+      const continuationOutcome = await bridge.project.getContinuation(resolvedProject.projectId, {
+        mode: 'replace',
+      });
+      if (continuationOutcome.state === 'success') {
+        nextContinuation = continuationOutcome.data;
+      } else if (continuationOutcome.state === 'failure') {
+        nextFailure ??= failureFromOutcome('上次写作位置读取失败', continuationOutcome);
+      }
+    }
+    setContinuation(nextContinuation);
+
+    if (initialResolution) {
+      initialWorkspaceResolved.current = true;
+      const restoredRoute = resolvedProject ? continuationRoute(nextContinuation) : 'home';
+      dispatch({
+        type: 'navigate',
+        route: restoreAppShellRoute(restoredRoute, {
+          activeProjectId: resolvedProject?.projectId ?? null,
+          disclosureMode: resolvedSettings.defaultMode,
+        }),
+      });
+    }
 
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
     if (providers.state === 'success') applyProviders(providers.data.providers);
@@ -216,16 +257,27 @@ export function AppShell({ bridge }: AppShellProps) {
   }, [bridge, refreshTasks]);
 
   const refreshWorkspaceAttention = useCallback(async (): Promise<void> => {
-    if (!activeProject) {
+    const generation = workspaceAttentionGeneration.current + 1;
+    workspaceAttentionGeneration.current = generation;
+    const projectId = activeProject?.projectId ?? null;
+    if (!projectId) {
       setWorkspaceAttention(EMPTY_WORKSPACE_ATTENTION);
       return;
     }
-    const next = await loadWorkspaceAttention(bridge, activeProject.projectId);
-    setWorkspaceAttention(next);
+    const next = await loadWorkspaceAttention(bridge, projectId);
+    if (
+      workspaceAttentionGeneration.current === generation &&
+      activeProject?.projectId === projectId
+    ) {
+      setWorkspaceAttention(next);
+    }
   }, [activeProject, bridge]);
 
   useEffect(() => {
     void refreshWorkspaceAttention();
+    return () => {
+      workspaceAttentionGeneration.current += 1;
+    };
   }, [refreshWorkspaceAttention, route, tasks]);
 
   useEffect(() => {
@@ -316,14 +368,7 @@ export function AppShell({ bridge }: AppShellProps) {
         if (changed && navigationId === 'home') void refreshWorkspace();
       });
     },
-    [
-      activeProject,
-      availability,
-      disclosureMode,
-      refreshWorkspace,
-      route,
-      transitionToRoute,
-    ],
+    [activeProject, availability, disclosureMode, refreshWorkspace, route, transitionToRoute],
   );
 
   const navigateToAuthorTarget = useCallback(

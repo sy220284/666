@@ -12,6 +12,16 @@ import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
 import { createRendererFoundationRuntime } from './runtime/renderer-foundation-runtime.js';
 import { RendererStatusArbitrator } from './runtime/status-arbitrator.js';
 
+const publishUnexpectedRendererError = (): void => {
+  window.dispatchEvent(new CustomEvent('worldforge:unexpected-renderer-error'));
+};
+
+window.addEventListener('unhandledrejection', (event) => {
+  event.preventDefault();
+  publishUnexpectedRendererError();
+});
+window.addEventListener('error', publishUnexpectedRendererError);
+
 const rootElement = document.getElementById('react-root');
 if (!rootElement) throw new Error('RENDERER_REACT_ROOT_MISSING');
 if (rootElement.dataset.reactMounted === 'true') {

@@ -428,7 +428,7 @@ export class ProjectWorkspaceService {
 
       const projectId = this.#idFactory();
       const createdAt = this.#clock.now().toISOString();
-      let renamed = false;
+      let committed = false;
       try {
         await mkdir(stagingPath, { mode: 0o700 });
         await chmod(stagingPath, 0o700);
@@ -499,23 +499,14 @@ export class ProjectWorkspaceService {
           { encoding: 'utf8', mode: 0o600, flag: 'wx' },
         );
         await rename(stagingPath, finalPath);
-        renamed = true;
+        committed = true;
         const context = await this.#loadWorkspace(finalPath);
-        try {
-          await this.#recentProjects.register(requestId, {
-            projectId: context.summary.projectId,
-            workspacePath: context.summary.workspacePath,
-            displayName: context.summary.name,
-          });
-        } catch (error) {
-          await this.#closeContext(context);
-          throw error;
-        }
+        await this.#registerRecentBestEffort(requestId, context.summary);
         this.#active = context;
         return context.summary;
       } catch (error) {
-        if (!this.#active) {
-          await rm(renamed ? finalPath : stagingPath, { recursive: true, force: true });
+        if (!this.#active && !committed) {
+          await rm(stagingPath, { recursive: true, force: true });
         }
         if (error instanceof ProjectWorkspaceError) throw error;
         if (isPermissionFailure(error)) {
@@ -545,16 +536,7 @@ export class ProjectWorkspaceService {
         workspacePath = input.workspacePath;
       }
       const context = await this.#loadWorkspace(workspacePath);
-      try {
-        await this.#recentProjects.register(requestId, {
-          projectId: context.summary.projectId,
-          workspacePath: context.summary.workspacePath,
-          displayName: context.summary.name,
-        });
-      } catch (error) {
-        await this.#closeContext(context);
-        throw error;
-      }
+      await this.#registerRecentBestEffort(requestId, context.summary);
       this.#active = context;
       return context.summary;
     });
@@ -631,16 +613,7 @@ export class ProjectWorkspaceService {
         targetCreated = true;
 
         const moved = await this.#loadWorkspace(target);
-        try {
-          await this.#recentProjects.register(requestId, {
-            projectId: moved.summary.projectId,
-            workspacePath: moved.summary.workspacePath,
-            displayName: moved.summary.name,
-          });
-        } catch (error) {
-          await this.#closeContext(moved);
-          throw error;
-        }
+        await this.#registerRecentBestEffort(requestId, moved.summary);
         this.#active = moved;
         let sourceRetained = false;
         try {
@@ -658,11 +631,7 @@ export class ProjectWorkspaceService {
           try {
             const restored = await this.#loadWorkspace(source);
             this.#active = restored;
-            await this.#recentProjects.register(this.#idFactory(), {
-              projectId: restored.summary.projectId,
-              workspacePath: restored.summary.workspacePath,
-              displayName: restored.summary.name,
-            });
+            await this.#registerRecentBestEffort(this.#idFactory(), restored.summary);
           } catch {
             // Keep the original move error. The source remains untouched for manual recovery.
           }
@@ -684,11 +653,7 @@ export class ProjectWorkspaceService {
     return this.#idempotent(requestId, async () => {
       const context = await this.#loadWorkspace(workspacePath);
       try {
-        await this.#recentProjects.register(requestId, {
-          projectId: context.summary.projectId,
-          workspacePath: context.summary.workspacePath,
-          displayName: context.summary.name,
-        });
+        await this.#registerRecentBestEffort(requestId, context.summary);
         return context.summary;
       } finally {
         await this.#closeContext(context);
@@ -772,6 +737,24 @@ export class ProjectWorkspaceService {
       }
     }
     return candidate;
+  }
+
+  async #registerRecentBestEffort(
+    requestId: string,
+    summary: ProjectWorkspaceSummary,
+  ): Promise<void> {
+    try {
+      await this.#recentProjects.register(requestId, {
+        projectId: summary.projectId,
+        workspacePath: summary.workspacePath,
+        displayName: summary.name,
+      });
+    } catch {
+      process.emitWarning('最近作品记录写入失败；作品数据保持可用。', {
+        code: 'WORLDFORGE_RECENT_PROJECT_REGISTER_FAILED',
+        detail: summary.projectId,
+      });
+    }
   }
 
   async shutdown(): Promise<void> {

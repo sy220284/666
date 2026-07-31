@@ -70,12 +70,22 @@ export function SearchPanel({
       if (!active) return;
       const indexCurrent = requests.current.isCurrent('index', indexGeneration);
       const dictionaryCurrent = requests.current.isCurrent('dictionary', dictionaryGeneration);
+      const failures: string[] = [];
       if (indexCurrent && stateOutcome.state === 'success') setIndexState(stateOutcome.data);
+      else if (indexCurrent && stateOutcome.state === 'failure') {
+        failures.push(`全文搜索状态读取失败：${authorErrorSummary(stateOutcome.error)}`);
+      }
       if (dictionaryCurrent && dictionaryOutcome.state === 'success') {
         setDictionary(dictionaryOutcome.data.entries);
+      } else if (dictionaryCurrent && dictionaryOutcome.state === 'failure') {
+        failures.push(`作品词典读取失败：${authorErrorSummary(dictionaryOutcome.error)}`);
       }
       if (indexCurrent && dictionaryCurrent) {
-        setNotice('搜索覆盖当前稿、历史版本与人物世界设定。');
+        setNotice(
+          failures.length > 0
+            ? `${failures.join('；')} 请重试或重建全文搜索。`
+            : '搜索覆盖当前稿、历史版本与人物世界设定。',
+        );
       }
     });
     return () => {
@@ -225,6 +235,12 @@ export function SearchPanel({
     }
   };
 
+  const invalidateReplacePlan = (): void => {
+    if (!plan) return;
+    setPlan(null);
+    setNotice('替换条件已经变化，请重新预览替换范围。');
+  };
+
   const navigateToResult = (item: SearchProjectResult['items'][number]): void => {
     const target = searchResultNavigationTarget(projectId, item, result?.query ?? query);
     if (!target) {
@@ -310,14 +326,19 @@ export function SearchPanel({
         <form className="form-grid" onSubmit={(event) => void previewReplace(event)}>
           <label>
             查找
-            <input name="query" required />
+            <input name="query" required onChange={invalidateReplacePlan} />
           </label>
           <label>
             替换为
-            <input name="replacement" />
+            <input name="replacement" onChange={invalidateReplacePlan} />
           </label>
           <label>
-            <input defaultChecked name="matchCase" type="checkbox" />
+            <input
+              defaultChecked
+              name="matchCase"
+              type="checkbox"
+              onChange={invalidateReplacePlan}
+            />
             区分大小写
           </label>
           <button disabled={searchToolsPending || readOnly} type="submit">

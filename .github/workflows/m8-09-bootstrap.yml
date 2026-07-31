@@ -37,6 +37,36 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      - name: Correct bootstrap anchors
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/m8-09-apply.py')
+          source = path.read_text(encoding='utf-8')
+          needle = 'replace_exact_count(workspace, registration_block, registration_replacement, 2)'
+          replacement = '''replace_exact_count(workspace, registration_block, registration_replacement, 1)
+
+          open_registration = """      try {
+                await this.#recentProjects.register(requestId, {
+                  projectId: context.summary.projectId,
+                  workspacePath: context.summary.workspacePath,
+                  displayName: context.summary.name,
+                });
+              } catch (error) {
+                await this.#closeContext(context);
+                throw error;
+              }
+              this.#active = context;"""
+          open_registration_replacement = """      await this.#registerRecentBestEffort(
+                requestId,
+                context.summary,
+              );
+              this.#active = context;"""
+          replace_once(workspace, open_registration, open_registration_replacement)'''
+          if source.count(needle) != 1:
+              raise SystemExit('bootstrap anchor not found')
+          path.write_text(source.replace(needle, replacement, 1), encoding='utf-8')
+          PY
       - name: Apply M8-09 remediation
         run: python3 scripts/m8-09-apply.py
       - name: Install dependencies

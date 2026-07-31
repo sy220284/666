@@ -12,7 +12,7 @@
   },
   "activeTask": {
     "id": "M8-07",
-    "status": "IMPLEMENTED",
+    "status": "VERIFIED_HOLD",
     "source": "docs/tasks/M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md",
     "branch": "work/m8-07-chinese-experience-governance",
     "startedAt": "2026-07-30",
@@ -91,25 +91,19 @@
     ]
   },
   "lastVerifiedTask": {
-    "id": "M8-06",
-    "commit": "66e17c99ba84a6f8f40dce6bec97df7c6d7898e9",
-    "verifiedAt": "2026-07-30T06:40:00.000Z",
-    "evidenceHead": "59a3cc2b3b0f799674c2dd56493e829b24564968"
-  },
-  "deferredVerification": [
-    {
-      "id": "M8-07",
-      "implementationCommit": "85832bb78ffd48a39e90ed4103f6eeca789c0bda",
-      "deferredAt": "2026-07-31T08:57:51.705Z",
-      "pending": [
-        "four-file evidence package and real automated run records",
-        "necessary manual review conclusions recorded in summary.md",
-        "risk-based screenshots, full logs, or independent quality matrix when warranted",
-        "final traceability verification status",
-        "Verified closure"
-      ]
+    "id": "M8-07",
+    "commit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+    "verifiedAt": "2026-07-31T10:14:46.873Z",
+    "evidenceHead": "3b57f31d7071a98ae90fd912a299689768cc4940",
+    "squashProvenance": {
+      "method": "identical-tree",
+      "implementationHead": "0723d6513b036a9be85cee2e4be12df773c67e56",
+      "mainCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "implementationTree": "f21a5dc4c07efd2e44d613dfdd1fcc65460c8f05",
+      "mainTree": "f21a5dc4c07efd2e44d613dfdd1fcc65460c8f05"
     }
-  ],
+  },
+  "deferredVerification": [],
   "deferredTasks": [],
   "lastImplementedTask": {
     "id": "M8-07",
@@ -174,5 +168,59 @@
     "requirementsAndPlanSource": "docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md",
     "deferredFinalTaskId": "M8-02",
     "deferredFinalTaskSource": "docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md"
+  },
+  "verificationHold": {
+    "taskId": "M8-07",
+    "verifiedTasks": [
+      "M0-01",
+      "M0-02",
+      "M0-03",
+      "M0-04",
+      "M0-05",
+      "M0-06",
+      "M0-07",
+      "M1-01",
+      "M1-02",
+      "M1-03",
+      "M1-04",
+      "M1-05",
+      "M1-06",
+      "M1-07",
+      "M1-08",
+      "M1-09",
+      "M2-01",
+      "M2-02",
+      "M2-03",
+      "M2-04",
+      "M3-01",
+      "M3-02",
+      "M3-03",
+      "M3-04",
+      "M3-05",
+      "M3-06",
+      "M3-07",
+      "M3-08",
+      "M3-09",
+      "M3-10",
+      "M4-01",
+      "M4-02",
+      "M4-03",
+      "M4-04",
+      "M8-02",
+      "M8-04",
+      "M8-05",
+      "M8-06",
+      "M8-07"
+    ],
+    "finalTask": true,
+    "nextTaskId": null,
+    "heldAt": "2026-07-31T10:14:46.874Z",
+    "reason": "最终任务已经验证，保留终态锚点且不自动激活后续任务",
+    "allowedPaths": [
+      "docs/tasks/",
+      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
+      "docs/test-evidence/M8-07/"
+    ],
+    "forbiddenPaths": []
   }
 }

@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
   "taskId": "M8-07",
-  "commit": "cd097424586af9ae42735953aee092feeb068859",
-  "generatedAt": "2026-07-31T16:28:00+08:00",
+  "commit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+  "generatedAt": "2026-07-31T18:15:00+08:00",
   "acceptanceSource": "GITHUB_ACTIONS_AND_MANUAL_REVIEW",
   "files": [
     {
       "path": "summary.md",
-      "bytes": 1595,
-      "sha256": "a3fe0b6837352915262f587c624192092bb01ad3fd0ce84ec62b6d517ecc0d57"
+      "bytes": 1954,
+      "sha256": "8c305d8763dd05536722a4682e440b299e6a7ce48550980b61221189de4e9677"
     },
     {
       "path": "commands.txt",
-      "bytes": 574,
-      "sha256": "932682957e8d8a09de18763eddff6861a816c8992c9de46f6beb66146fab6e2a"
+      "bytes": 662,
+      "sha256": "86d30e73ae66bbb601767e8a7d34efa99795d13864725140f02e02525ae5a677"
     },
     {
       "path": "known-risks.md",

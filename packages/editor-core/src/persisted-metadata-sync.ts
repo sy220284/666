@@ -1,8 +1,15 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 
-import type { Editor, PersistedEditorBlock } from './draft-document.js';
+import type {
+  DraftSnapshotEditorBlock,
+  Editor,
+  PersistedEditorBlock,
+} from './draft-document.js';
 
 const LOCK_COMMAND_META = 'worldforgeLockCommand';
+const MAX_PENDING_SNAPSHOTS = 8;
+
+let pendingSnapshots: DraftSnapshotEditorBlock[][] = [];
 
 function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
@@ -13,18 +20,74 @@ function headingLevel(node: ProseMirrorNode): number {
   return Number.isInteger(value) && value >= 1 && value <= 6 ? value : 2;
 }
 
+function snapshotHeadingLevel(block: DraftSnapshotEditorBlock): number {
+  const value = Number(block.attributes.headingLevel);
+  return Number.isInteger(value) && value >= 1 && value <= 6 ? value : 2;
+}
+
 function persistedHeadingLevel(block: PersistedEditorBlock): number {
   const value = Number(block.attributes.headingLevel);
   return Number.isInteger(value) && value >= 1 && value <= 6 ? value : 2;
 }
 
-function semanticMatch(node: ProseMirrorNode, block: PersistedEditorBlock): boolean {
-  if (node.type.name !== block.blockType) return false;
-  if (node.textContent !== block.text) return false;
-  if (block.blockType === 'heading' && headingLevel(node) !== persistedHeadingLevel(block)) {
-    return false;
-  }
-  return true;
+function snapshotMatchesPersisted(
+  snapshot: DraftSnapshotEditorBlock,
+  block: PersistedEditorBlock,
+): boolean {
+  if (snapshot.blockType !== block.blockType || snapshot.text !== block.text) return false;
+  if (snapshot.logicalBlockId && snapshot.logicalBlockId !== block.logicalBlockId) return false;
+  return (
+    snapshot.blockType !== 'heading' ||
+    snapshotHeadingLevel(snapshot) === persistedHeadingLevel(block)
+  );
+}
+
+function nodeMatchesSnapshot(
+  node: ProseMirrorNode,
+  snapshot: DraftSnapshotEditorBlock,
+): boolean {
+  if (node.type.name !== snapshot.blockType || node.textContent !== snapshot.text) return false;
+  return (
+    snapshot.blockType !== 'heading' || headingLevel(node) === snapshotHeadingLevel(snapshot)
+  );
+}
+
+function nodeMatchesPersisted(node: ProseMirrorNode, block: PersistedEditorBlock): boolean {
+  if (node.type.name !== block.blockType || node.textContent !== block.text) return false;
+  return block.blockType !== 'heading' || headingLevel(node) === persistedHeadingLevel(block);
+}
+
+function cloneSnapshot(blocks: readonly DraftSnapshotEditorBlock[]): DraftSnapshotEditorBlock[] {
+  return blocks.map((block) => ({
+    ...block,
+    attributes: { ...block.attributes },
+  }));
+}
+
+export function rememberPendingDraftSnapshot(
+  blocks: readonly DraftSnapshotEditorBlock[],
+): void {
+  pendingSnapshots.push(cloneSnapshot(blocks));
+  if (pendingSnapshots.length > MAX_PENDING_SNAPSHOTS) pendingSnapshots.shift();
+}
+
+export function resetPendingDraftSnapshotsForTests(): void {
+  pendingSnapshots = [];
+}
+
+function takeMatchingSnapshot(
+  blocks: readonly PersistedEditorBlock[],
+): readonly DraftSnapshotEditorBlock[] | null {
+  const index = pendingSnapshots.findIndex(
+    (snapshot) =>
+      snapshot.length === blocks.length &&
+      snapshot.every((savedBlock, blockIndex) => {
+        const persisted = blocks[blockIndex];
+        return Boolean(persisted && snapshotMatchesPersisted(savedBlock, persisted));
+      }),
+  );
+  if (index < 0) return null;
+  return pendingSnapshots.splice(index, 1)[0] ?? null;
 }
 
 function metadataForCurrentNode(
@@ -44,12 +107,12 @@ function metadataForCurrentNode(
 }
 
 /**
- * Synchronizes only metadata that can be associated with the current editor by a stable identity.
+ * Synchronizes persisted metadata without replacing current editor content.
  *
- * Persisted logical IDs are preferred. A positional association is allowed only when the current
- * node is semantically identical to the persisted block, which means no later user edit can be
- * overwritten. Unmatched current nodes are intentionally left untouched and remain eligible for
- * the next autosave. The function never replaces editor content.
+ * The immutable save snapshot maps each clientBlockId to the corresponding persisted response
+ * block. Current nodes are then matched by logicalBlockId or clientBlockId, so delayed responses
+ * remain safe after typing, splitting, type changes or reordering. Without a matching snapshot,
+ * only already-persisted logical identities are synchronized.
  */
 export function synchronizePersistedBlockMetadata(
   editor: Editor,
@@ -61,23 +124,39 @@ export function synchronizePersistedBlockMetadata(
     persistedById.set(block.logicalBlockId, block);
   }
 
-  const transaction = editor.state.tr;
-  let synchronized = 0;
-  editor.state.doc.forEach((node, offset, index) => {
-    const logicalBlockId = optionalString(node.attrs.logicalBlockId);
-    const stableMatch = logicalBlockId ? persistedById.get(logicalBlockId) : undefined;
-    const positionalMatch = blocks[index];
-    const positionalSnapshotCurrent = Boolean(
-      positionalMatch && semanticMatch(node, positionalMatch),
-    );
-    const block = stableMatch ?? (positionalSnapshotCurrent ? positionalMatch : undefined);
-    if (!block) return;
+  const snapshot = takeMatchingSnapshot(blocks);
+  const savedByClientId = new Map<string, DraftSnapshotEditorBlock>();
+  const persistedByClientId = new Map<string, PersistedEditorBlock>();
+  if (snapshot) {
+    for (const [index, savedBlock] of snapshot.entries()) {
+      const persisted = blocks[index];
+      if (!persisted || savedByClientId.has(savedBlock.clientBlockId)) continue;
+      savedByClientId.set(savedBlock.clientBlockId, savedBlock);
+      persistedByClientId.set(savedBlock.clientBlockId, persisted);
+    }
+  }
 
+  const transaction = editor.state.tr;
+  const usedPersistedIds = new Set<string>();
+  let synchronized = 0;
+  editor.state.doc.forEach((node, offset) => {
+    const logicalBlockId = optionalString(node.attrs.logicalBlockId);
+    const clientBlockId = optionalString(node.attrs.clientBlockId);
+    const stableMatch = logicalBlockId ? persistedById.get(logicalBlockId) : undefined;
+    const clientMatch = clientBlockId ? persistedByClientId.get(clientBlockId) : undefined;
+    const block = stableMatch ?? clientMatch;
+    if (!block || usedPersistedIds.has(block.logicalBlockId)) return;
+
+    const savedBlock = clientBlockId ? savedByClientId.get(clientBlockId) : undefined;
+    const savedSnapshotStillCurrent = savedBlock
+      ? nodeMatchesSnapshot(node, savedBlock)
+      : nodeMatchesPersisted(node, block);
     transaction.setNodeMarkup(
       offset,
       undefined,
-      metadataForCurrentNode(node, block, semanticMatch(node, block)),
+      metadataForCurrentNode(node, block, savedSnapshotStillCurrent),
     );
+    usedPersistedIds.add(block.logicalBlockId);
     synchronized += 1;
   });
 

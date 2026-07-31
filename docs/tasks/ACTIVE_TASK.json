@@ -14,7 +14,7 @@
     "id": "M8-08",
     "status": "VERIFIED_HOLD",
     "source": "docs/tasks/M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md",
-    "branch": "work/m8-08-v1-final-governance-closure",
+    "branch": "fix/governance-m8-08-final-closure",
     "startedAt": "2026-07-30",
     "allowedPaths": [
       "apps/desktop/renderer/src/",

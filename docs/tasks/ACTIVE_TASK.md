@@ -5,7 +5,7 @@
 ## 当前状态
 
 ```text
-IN_PROGRESS
+IMPLEMENTED
 ```
 
 - 任务ID：`M8-07`

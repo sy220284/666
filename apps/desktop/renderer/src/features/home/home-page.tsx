@@ -389,7 +389,8 @@ function ActiveProjectCard({
         <button
           className="quiet-button"
           disabled={
-            (!projectCapabilities.restoreAvailable && !projectCapabilities.exportAvailable) || pending
+            (!projectCapabilities.restoreAvailable && !projectCapabilities.exportAvailable) ||
+            pending
           }
           type="button"
           onClick={onOpenRecovery}

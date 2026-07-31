@@ -966,8 +966,7 @@ export function AppShell({ bridge }: AppShellProps) {
               className="quiet-button"
               data-open-recovery
               disabled={
-                (!capabilities.project.restoreAvailable &&
-                  !capabilities.project.exportAvailable) ||
+                (!capabilities.project.restoreAvailable && !capabilities.project.exportAvailable) ||
                 Boolean(pendingKey)
               }
               type="button"
@@ -983,9 +982,7 @@ export function AppShell({ bridge }: AppShellProps) {
               data-open-text-io
               disabled={!capabilities.project.exportAvailable || Boolean(pendingKey)}
               title={
-                capabilities.project.exportAvailable
-                  ? undefined
-                  : '当前作品无法安全导入或导出。'
+                capabilities.project.exportAvailable ? undefined : '当前作品无法安全导入或导出。'
               }
               type="button"
               onClick={() => {

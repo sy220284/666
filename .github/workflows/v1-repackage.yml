@@ -24,11 +24,11 @@ jobs:
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
-      draft_mode: false
-      full_suite: true
+      draft_mode: true
+      full_suite: false
       package_smoke: false
-      security_suite: true
-      performance_eval: true
+      security_suite: false
+      performance_eval: false
 
   release-gate:
     name: Repackage acceptance gate

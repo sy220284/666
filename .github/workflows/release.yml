@@ -16,6 +16,16 @@ on:
           - draft
           - prerelease
           - stable
+  workflow_call:
+    inputs:
+      version:
+        description: Exact package.json SemVer without a leading v
+        required: true
+        type: string
+      release_kind:
+        description: GitHub Release visibility
+        required: true
+        type: string
 
 permissions:
   contents: read

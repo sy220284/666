@@ -227,7 +227,8 @@
     "allowedPaths": [
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M8-08/"
+      "docs/test-evidence/M8-08/",
+      "docs/ui/UI_ACCEPTANCE_STATE.json"
     ],
     "forbiddenPaths": []
   }

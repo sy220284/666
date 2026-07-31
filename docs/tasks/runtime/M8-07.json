@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "M8-07",
-  "status": "IN_PROGRESS",
+  "status": "VERIFIED",
   "source": "docs/tasks/M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md",
   "startedAt": "2026-07-30",
   "dependencies": ["M8-06"],
@@ -59,5 +59,10 @@
     "pnpm test:e2e",
     "pnpm release:check",
     "pnpm build"
-  ]
+  ],
+  "implementedAt": "2026-07-31T09:50:10.000Z",
+  "implementationCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+  "verifiedAt": "2026-07-31T10:17:47.000Z",
+  "mainCommit": "44fc199c0d4725a9aa169865309674954143f5cf",
+  "mainVerificationRun": 30623064019
 }

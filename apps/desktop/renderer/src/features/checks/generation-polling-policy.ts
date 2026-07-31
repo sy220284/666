@@ -1,7 +1,7 @@
 export const MAX_GENERATION_POLL_FAILURES = 5;
 
 export function generationPollingDelay(failureCount: number): number {
-  return Math.min(5_000, 1_000 * 2 ** Math.min(Math.max(0, failureCount), 2));
+  return Math.min(5_000, 1_000 * 2 ** Math.min(Math.max(0, failureCount), 3));
 }
 
 export function registerGenerationPollingFailure(failureCount: number): {

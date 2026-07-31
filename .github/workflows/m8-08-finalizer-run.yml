@@ -49,6 +49,7 @@ jobs:
           PY
           node scripts/run-m8-08-finalizer.cjs
           git checkout -- scripts/run-m8-08-finalizer.cjs
+          sed -i 's/[[:space:]]\+$//' docs/tasks/M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md
       - name: Format generated state
         run: >-
           pnpm exec prettier --write

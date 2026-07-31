@@ -1,0 +1,58 @@
+name: M8-08 Release Inventory
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    if: ${{ github.head_ref == 'work/m8-08-v1-final-governance-closure' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Print workspace package versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const roots = ['package.json', 'apps', 'packages'];
+          const files = [];
+          const walk = (entry) => {
+            const stat = fs.statSync(entry);
+            if (stat.isDirectory()) {
+              for (const name of fs.readdirSync(entry).sort()) {
+                if (name === 'node_modules' || name === 'dist') continue;
+                walk(path.join(entry, name));
+              }
+            } else if (path.basename(entry) === 'package.json') {
+              files.push(entry.replaceAll('\\', '/'));
+            }
+          };
+          for (const root of roots) if (fs.existsSync(root)) walk(root);
+          for (const file of files) {
+            const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+            console.log(`${file}\t${value.name ?? '<unnamed>'}\t${value.version ?? '<none>'}\tprivate=${value.private === true}`);
+          }
+          NODE
+      - name: Print 0.1.0 references
+        shell: bash
+        run: |
+          set -euo pipefail
+          git grep -n -- '0\.1\.0' ':!docs/test-evidence/M0/**' ':!docs/test-evidence/M1/**' ':!docs/test-evidence/M2/**' ':!docs/test-evidence/M3/**' ':!docs/test-evidence/M4-04/**' ':!docs/test-evidence/M8-02/**' ':!docs/test-evidence/M8-04/**' ':!docs/test-evidence/M8-05/**' ':!docs/test-evidence/M8-06/**' ':!docs/test-evidence/M8-07/**' || true
+      - name: Print M8-08 evidence and task tooling inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          find docs/test-evidence/M8-08 -maxdepth 1 -type f -printf '%f\n' | sort
+          find .github/governance scripts -maxdepth 2 -type f | sort | grep -E 'parallel|task|release|evidence' || true

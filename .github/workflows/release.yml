@@ -1,5 +1,5 @@
 name: Release
-run-name: Release ${{ inputs.version || '1.0.0' }} (${{ github.event_name }})
+run-name: Release ${{ inputs.version || '1.0.0' }} (${{ github.event_name }}, attempt ${{ github.run_attempt }})
 
 on:
   workflow_dispatch:

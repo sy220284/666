@@ -57,6 +57,66 @@ jobs:
           PY
       - name: Apply M8-09 remediation
         run: python3 scripts/m8-09-apply.py
+      - name: Complete guarded workspace attention refresh
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/desktop/renderer/src/app/app-shell-m3.tsx')
+          source = path.read_text(encoding='utf-8')
+
+          ref_anchor = "  const initialWorkspaceResolved = useRef(false);\n"
+          if source.count(ref_anchor) != 1:
+              raise SystemExit('workspace attention ref anchor not found')
+          source = source.replace(
+              ref_anchor,
+              ref_anchor + "  const workspaceAttentionGeneration = useRef(0);\n",
+              1,
+          )
+
+          old = """  useEffect(() => {
+            let active = true;
+            if (!activeProject) {
+              setWorkspaceAttention(EMPTY_WORKSPACE_ATTENTION);
+              return () => {
+                active = false;
+              };
+            }
+            const projectId = activeProject.projectId;
+            void loadWorkspaceAttention(bridge, projectId).then((next) => {
+              if (active) setWorkspaceAttention(next);
+            });
+            return () => {
+              active = false;
+            };
+          }, [activeProject, bridge, route, tasks]);"""
+          new = """  const refreshWorkspaceAttention = useCallback(async (): Promise<void> => {
+            const generation = workspaceAttentionGeneration.current + 1;
+            workspaceAttentionGeneration.current = generation;
+            const projectId = activeProject?.projectId ?? null;
+            if (!projectId) {
+              setWorkspaceAttention(EMPTY_WORKSPACE_ATTENTION);
+              return;
+            }
+            const next = await loadWorkspaceAttention(bridge, projectId);
+            if (
+              workspaceAttentionGeneration.current === generation &&
+              activeProject?.projectId === projectId
+            ) {
+              setWorkspaceAttention(next);
+            }
+          }, [activeProject, bridge]);
+
+          useEffect(() => {
+            void refreshWorkspaceAttention();
+            return () => {
+              workspaceAttentionGeneration.current += 1;
+            };
+          }, [refreshWorkspaceAttention, route, tasks]);"""
+          if source.count(old) != 1:
+              raise SystemExit('generated workspace attention block not found')
+          path.write_text(source.replace(old, new, 1), encoding='utf-8')
+          PY
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Format changed sources

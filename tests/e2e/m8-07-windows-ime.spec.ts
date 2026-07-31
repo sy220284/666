@@ -143,9 +143,10 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
     });
     await expect(editor).toContainText('测试', { timeout: 10_000 });
 
-    await invokeNativeIme(electronProcessId, electronWindowHandle, 'undo', evidenceLog);
+    await editor.click();
+    await page.keyboard.press('Control+Z');
     await expect(editor).not.toContainText('测试');
-    await invokeNativeIme(electronProcessId, electronWindowHandle, 'redo', evidenceLog);
+    await page.keyboard.press('Control+Y');
     await expect(editor).toContainText('测试');
 
     await expect

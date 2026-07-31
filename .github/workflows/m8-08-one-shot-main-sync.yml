@@ -1,0 +1,88 @@
+name: M8-08 One-shot Main Sync
+
+on:
+  push:
+    branches:
+      - work/m8-08-v1-final-governance-closure
+    paths:
+      - .github/workflows/m8-08-one-shot-main-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work/m8-08-v1-final-governance-closure
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Merge main and resolve the M8 task index
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-ff --no-commit origin/main || true
+
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          if [ "$conflicts" != "docs/tasks/TASK_INDEX.md" ]; then
+            echo "Unexpected conflict set:"
+            printf '%s\n' "$conflicts"
+            exit 1
+          fi
+
+          git checkout --ours docs/tasks/TASK_INDEX.md
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'docs/tasks/TASK_INDEX.md';
+          let text = fs.readFileSync(path, 'utf8');
+          const replacements = [
+            [
+              '> 当前任务：M8-07与M8-08按独立运行时并行推进，状态均为In Progress；main写入保持串行。',
+              '> 当前任务：M8-07已Implemented，M8-08继续In Progress；main写入保持串行。',
+            ],
+            [
+              'M8-02—M8-06 Verified；M8-07、M8-08 In Progress',
+              'M8-02—M8-06 Verified；M8-07 Implemented；M8-08 In Progress',
+            ],
+            [
+              '├─ M8-07 中文作者体验治理闭环与产品发布验收硬化（In Progress）',
+              '├─ M8-07 中文作者体验治理闭环与产品发布验收硬化（Implemented）',
+            ],
+            [
+              '1. M0—M8-06保持Verified；M8-07与M8-08通过独立运行时并行推进。',
+              '1. M0—M8-06保持Verified；M8-07已Implemented并等待main验证，M8-08继续In Progress。',
+            ],
+          ];
+          for (const [from, to] of replacements) {
+            if (!text.includes(from)) {
+              throw new Error(`Missing expected task-index text: ${from}`);
+            }
+            text = text.replace(from, to);
+          }
+          const tablePattern = /(\| M8-07 \|[^\n]+\| M8-06\s+\| )In Progress( \|)/;
+          if (!tablePattern.test(text)) {
+            throw new Error('Missing M8-07 task-index table row');
+          }
+          text = text.replace(tablePattern, '$1Implemented$2');
+          fs.writeFileSync(path, text, 'utf8');
+          NODE
+
+          git add docs/tasks/TASK_INDEX.md
+          unresolved="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$unresolved" ]; then
+            echo "Unresolved conflicts remain:"
+            printf '%s\n' "$unresolved"
+            exit 1
+          fi
+
+          rm .github/workflows/m8-08-one-shot-main-sync.yml
+          git add --all
+          git diff --cached --check
+          git commit -m "chore(M8-08): sync main after M8-07 closure"
+          git push origin HEAD:work/m8-08-v1-final-governance-closure

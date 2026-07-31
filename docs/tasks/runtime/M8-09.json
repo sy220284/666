@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "M8-09",
+  "status": "IN_PROGRESS",
+  "source": "docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md",
+  "startedAt": "2026-07-31",
+  "dependencies": ["M8-08"],
+  "branch": "work/m8-09-v1-stability-hardening",
+  "priority": "P0",
+  "scope": [
+    "chapter-session-safety",
+    "project-lifecycle-authority",
+    "startup-reopen-last",
+    "workspace-attention-isolation",
+    "shutdown-retry-safety",
+    "author-error-messages",
+    "search-replace-state",
+    "ipc-and-renderer-error-boundaries"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:language",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e",
+    "pnpm release:check"
+  ]
+}

@@ -67,7 +67,7 @@ test.afterEach(async () => {
 });
 
 test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自动保存、切章、沉浸与恢复', async () => {
-  test.skip(process.platform !== 'win32', '真实Windows系统输入法验收只在Windows运行。');
+  expect(process.platform).toBe('win32');
   test.setTimeout(240_000);
 
   const evidenceDirectory =

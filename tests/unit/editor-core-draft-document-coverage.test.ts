@@ -218,7 +218,7 @@ describe('Editor Core draft command and metadata coverage', () => {
       expect.arrayContaining(['paragraph', 'dialogue', 'heading', 'separator', 'text']),
     );
     const extensions = createWorldforgeEditorExtensions(() => 'split-client');
-    expect(extensions).toHaveLength(8);
+    expect(extensions).toHaveLength(9);
   });
 
   it('toggles a selected persisted block with and without dispatch', () => {

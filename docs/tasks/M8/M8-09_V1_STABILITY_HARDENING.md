@@ -1,6 +1,6 @@
 # M8-09 WorldForge V1.0 稳定性与生命周期治理
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
 > 正式分支：`work/m8-09-v1-stability-hardening`
@@ -97,7 +97,13 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-## 8. 完成条件
+## 8. 实施结果
+
+- 实施提交：`6edb7a7ec7221fd709aba14bc30029acd397f69d`。
+- 已通过任务治理、PR策略、Evidence、Security、Performance、静态检查、构建、单元测试、集成测试、Migration与覆盖率门禁。
+- PR转为Ready后重新执行最终桌面E2E与完整质量门，通过后方可受控合并。
+
+## 9. 完成条件
 
 - 独立治理PR全部永久门禁成功。
 - PR Head对应代码、测试、任务状态和Evidence一致。

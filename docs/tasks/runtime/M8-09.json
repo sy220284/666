@@ -17,6 +17,37 @@
     "search-replace-state",
     "ipc-and-renderer-error-boundaries"
   ],
+  "allowedPaths": [
+    "apps/desktop/renderer/src/",
+    "apps/desktop/preload/src/",
+    "apps/desktop/main/src/",
+    "packages/contracts/src/",
+    "packages/core-service/src/",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/security/",
+    "tests/e2e/",
+    "scripts/",
+    "docs/tasks/",
+    "docs/product/",
+    "docs/testing/",
+    "docs/test-evidence/M8-09/",
+    ".github/workflows/"
+  ],
+  "forbiddenPaths": [
+    "migrations/",
+    "docs/test-evidence/M0/",
+    "docs/test-evidence/M1/",
+    "docs/test-evidence/M2/",
+    "docs/test-evidence/M3/",
+    "docs/test-evidence/M4-04/",
+    "docs/test-evidence/M8-02/",
+    "docs/test-evidence/M8-04/",
+    "docs/test-evidence/M8-05/",
+    "docs/test-evidence/M8-06/",
+    "docs/test-evidence/M8-07/",
+    "docs/test-evidence/M8-08/"
+  ],
   "verification": [
     "pnpm task:validate",
     "pnpm check:workspaces",

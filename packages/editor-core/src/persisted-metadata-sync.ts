@@ -4,6 +4,8 @@ import type { DraftSnapshotEditorBlock, Editor, PersistedEditorBlock } from './d
 
 const LOCK_COMMAND_META = 'worldforgeLockCommand';
 
+let pendingSnapshot: DraftSnapshotEditorBlock[] | null = null;
+
 function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
@@ -45,24 +47,58 @@ function nodeMatchesPersisted(node: ProseMirrorNode, block: PersistedEditorBlock
   return block.blockType !== 'heading' || headingLevel(node) === persistedHeadingLevel(block);
 }
 
-function requestSnapshotMatchesResponse(
-  snapshot: readonly DraftSnapshotEditorBlock[],
-  blocks: readonly PersistedEditorBlock[],
-): boolean {
-  if (snapshot.length !== blocks.length) return false;
+function cloneSnapshot(blocks: readonly DraftSnapshotEditorBlock[]): DraftSnapshotEditorBlock[] {
+  return blocks.map((block) => ({
+    ...block,
+    attributes: { ...block.attributes },
+  }));
+}
+
+/**
+ * Registers the immutable snapshot used by the one in-flight autosave request.
+ * DraftAutosaveCoordinator serializes saves, so a new request always replaces a failed or
+ * abandoned request snapshot before another successful response can be synchronized.
+ */
+export function rememberPendingDraftSnapshot(blocks: readonly DraftSnapshotEditorBlock[]): void {
+  pendingSnapshot = cloneSnapshot(blocks);
+}
+
+export function resetPendingDraftSnapshotsForTests(): void {
+  pendingSnapshot = null;
+}
+
+function currentClientBlockIds(editor: Editor): ReadonlySet<string> {
   const clientBlockIds = new Set<string>();
-  return snapshot.every((savedBlock, index) => {
+  editor.state.doc.forEach((node) => {
+    const clientBlockId = optionalString(node.attrs.clientBlockId);
+    if (clientBlockId) clientBlockIds.add(clientBlockId);
+  });
+  return clientBlockIds;
+}
+
+function consumeRequestSnapshot(
+  blocks: readonly PersistedEditorBlock[],
+  currentClientIds: ReadonlySet<string>,
+): readonly DraftSnapshotEditorBlock[] | null {
+  const snapshot = pendingSnapshot;
+  pendingSnapshot = null;
+  if (!snapshot || snapshot.length !== blocks.length) return null;
+
+  const clientBlockIds = new Set<string>();
+  let currentIdentityMatches = 0;
+  for (const [index, savedBlock] of snapshot.entries()) {
     const persisted = blocks[index];
     if (
       !persisted ||
       clientBlockIds.has(savedBlock.clientBlockId) ||
       !snapshotMatchesPersisted(savedBlock, persisted)
     ) {
-      return false;
+      return null;
     }
     clientBlockIds.add(savedBlock.clientBlockId);
-    return true;
-  });
+    if (currentClientIds.has(savedBlock.clientBlockId)) currentIdentityMatches += 1;
+  }
+  return currentIdentityMatches > 0 ? snapshot : null;
 }
 
 function metadataForCurrentNode(
@@ -84,16 +120,14 @@ function metadataForCurrentNode(
 /**
  * Synchronizes persisted metadata without replacing current editor content.
  *
- * The save caller passes the exact immutable snapshot used to build this request. The persisted
- * response is mapped back through that snapshot's clientBlockIds, so same-content requests,
- * chapter switches and delayed responses cannot borrow identity from another save. Current nodes
- * are matched by logicalBlockId or by the request's clientBlockId. Later user content, type, source
- * and lock changes remain untouched and will be persisted by the next autosave.
+ * The exact snapshot registered by the serialized save request is consumed once and mapped back
+ * through its clientBlockIds. Same-content blocks, chapter switches and delayed responses cannot
+ * borrow identity from an older candidate snapshot. Later user content, type, source and lock
+ * changes remain untouched and will be persisted by the next autosave.
  */
 export function synchronizePersistedBlockMetadata(
   editor: Editor,
   blocks: readonly PersistedEditorBlock[],
-  requestSnapshot: readonly DraftSnapshotEditorBlock[],
 ): boolean {
   const persistedById = new Map<string, PersistedEditorBlock>();
   for (const block of blocks) {
@@ -101,10 +135,11 @@ export function synchronizePersistedBlockMetadata(
     persistedById.set(block.logicalBlockId, block);
   }
 
+  const snapshot = consumeRequestSnapshot(blocks, currentClientBlockIds(editor));
   const savedByClientId = new Map<string, DraftSnapshotEditorBlock>();
   const persistedByClientId = new Map<string, PersistedEditorBlock>();
-  if (requestSnapshotMatchesResponse(requestSnapshot, blocks)) {
-    for (const [index, savedBlock] of requestSnapshot.entries()) {
+  if (snapshot) {
+    for (const [index, savedBlock] of snapshot.entries()) {
       const persisted = blocks[index];
       if (!persisted) continue;
       savedByClientId.set(savedBlock.clientBlockId, savedBlock);

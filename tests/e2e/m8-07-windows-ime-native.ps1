@@ -129,14 +129,9 @@ function Send-VirtualKey {
 }
 
 function Send-ControlChord {
-  param([byte]$VirtualKey)
-  [WorldForgeNativeIme]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
-  Start-Sleep -Milliseconds 40
-  [WorldForgeNativeIme]::keybd_event($VirtualKey, 0, 0, [UIntPtr]::Zero)
-  Start-Sleep -Milliseconds 40
-  [WorldForgeNativeIme]::keybd_event($VirtualKey, 0, 2, [UIntPtr]::Zero)
-  [WorldForgeNativeIme]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
-  Start-Sleep -Milliseconds 120
+  param([string]$Keys)
+  [System.Windows.Forms.SendKeys]::SendWait($Keys)
+  Start-Sleep -Milliseconds 250
 }
 
 function Capture-Desktop {
@@ -202,10 +197,10 @@ switch ($Action) {
     Send-VirtualKey -VirtualKey 0x10
   }
   'undo' {
-    Send-ControlChord -VirtualKey 0x5A
+    Send-ControlChord -Keys '^z'
   }
   'redo' {
-    Send-ControlChord -VirtualKey 0x59
+    Send-ControlChord -Keys '^y'
   }
 }
 

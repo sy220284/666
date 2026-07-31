@@ -219,9 +219,7 @@ describe('persisted metadata synchronization during delayed autosave', () => {
     ]);
 
     expect(
-      synchronizePersistedBlockMetadata(target.editor, [
-        persisted('server-1', '没有保存快照'),
-      ]),
+      synchronizePersistedBlockMetadata(target.editor, [persisted('server-1', '没有保存快照')]),
     ).toBe(true);
     expect(target.state().doc.firstChild?.attrs).toMatchObject({
       logicalBlockId: null,
@@ -232,10 +230,10 @@ describe('persisted metadata synchronization during delayed autosave', () => {
 
   it('rejects duplicate client identities before a patch can register an ambiguous snapshot', () => {
     expect(() =>
-      buildDraftPatchOperations([persisted('server-1', '原文')], [
-        snapshot('duplicate', 'server-1', '原文'),
-        snapshot('duplicate', null, '新增'),
-      ]),
+      buildDraftPatchOperations(
+        [persisted('server-1', '原文')],
+        [snapshot('duplicate', 'server-1', '原文'), snapshot('duplicate', null, '新增')],
+      ),
     ).toThrow('Duplicate current clientBlockId: duplicate');
   });
 

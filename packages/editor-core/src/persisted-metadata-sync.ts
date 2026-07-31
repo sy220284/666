@@ -1,10 +1,6 @@
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 
-import type {
-  DraftSnapshotEditorBlock,
-  Editor,
-  PersistedEditorBlock,
-} from './draft-document.js';
+import type { DraftSnapshotEditorBlock, Editor, PersistedEditorBlock } from './draft-document.js';
 
 const LOCK_COMMAND_META = 'worldforgeLockCommand';
 const MAX_PENDING_SNAPSHOTS = 8;
@@ -42,14 +38,9 @@ function snapshotMatchesPersisted(
   );
 }
 
-function nodeMatchesSnapshot(
-  node: ProseMirrorNode,
-  snapshot: DraftSnapshotEditorBlock,
-): boolean {
+function nodeMatchesSnapshot(node: ProseMirrorNode, snapshot: DraftSnapshotEditorBlock): boolean {
   if (node.type.name !== snapshot.blockType || node.textContent !== snapshot.text) return false;
-  return (
-    snapshot.blockType !== 'heading' || headingLevel(node) === snapshotHeadingLevel(snapshot)
-  );
+  return snapshot.blockType !== 'heading' || headingLevel(node) === snapshotHeadingLevel(snapshot);
 }
 
 function nodeMatchesPersisted(node: ProseMirrorNode, block: PersistedEditorBlock): boolean {
@@ -64,9 +55,7 @@ function cloneSnapshot(blocks: readonly DraftSnapshotEditorBlock[]): DraftSnapsh
   }));
 }
 
-export function rememberPendingDraftSnapshot(
-  blocks: readonly DraftSnapshotEditorBlock[],
-): void {
+export function rememberPendingDraftSnapshot(blocks: readonly DraftSnapshotEditorBlock[]): void {
   pendingSnapshots.push(cloneSnapshot(blocks));
   if (pendingSnapshots.length > MAX_PENDING_SNAPSHOTS) pendingSnapshots.shift();
 }

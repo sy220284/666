@@ -13,6 +13,10 @@ import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorTerm } from '../../presentation/author-terms.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
+import {
+  generationPollingDelay,
+  registerGenerationPollingFailure,
+} from './generation-polling-policy.js';
 import { RhythmPanel } from './rhythm-panel.js';
 import { SearchPanel } from './search-panel.js';
 
@@ -33,10 +37,6 @@ const ISSUE_ACTIONS = [
 ] as const;
 
 const TERMINAL_RUN_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
-
-function pollingDelay(failureCount: number): number {
-  return Math.min(5_000, 1_000 * 2 ** Math.min(failureCount, 2));
-}
 
 export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: ChecksWorkbenchProps) {
   const [structure, setStructure] = useState<ProjectStructure | null>(null);
@@ -152,8 +152,18 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             await refreshCatalog();
           }
         } else if (outcome.state === 'failure') {
-          failureCount += 1;
-          setNotice(`AI语义检查状态读取失败：${authorErrorSummary(outcome.error)}，将自动重试。`);
+          const decision = registerGenerationPollingFailure(failureCount);
+          failureCount = decision.failureCount;
+          terminal = decision.terminal;
+          if (terminal) {
+            setPending(false);
+            setActiveRun(null);
+            setNotice(
+              `AI语义检查状态连续读取失败：${authorErrorSummary(outcome.error)}。自动重试已停止，请重新运行。`,
+            );
+          } else {
+            setNotice(`AI语义检查状态读取失败：${authorErrorSummary(outcome.error)}，将自动重试。`);
+          }
         } else if (outcome.state === 'cancelled') {
           terminal = true;
           setPending(false);
@@ -161,10 +171,18 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
         }
       } catch {
         if (!active) return;
-        failureCount += 1;
-        setNotice('AI语义检查状态暂时无法读取，将自动重试。');
+        const decision = registerGenerationPollingFailure(failureCount);
+        failureCount = decision.failureCount;
+        terminal = decision.terminal;
+        if (terminal) {
+          setPending(false);
+          setActiveRun(null);
+          setNotice('AI语义检查状态连续无法读取。自动重试已停止，请重新运行。');
+        } else {
+          setNotice('AI语义检查状态暂时无法读取，将自动重试。');
+        }
       }
-      if (!terminal) schedule(pollingDelay(failureCount));
+      if (!terminal) schedule(generationPollingDelay(failureCount));
     };
 
     schedule(0);

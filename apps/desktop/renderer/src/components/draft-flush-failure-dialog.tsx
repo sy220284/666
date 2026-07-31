@@ -34,7 +34,16 @@ export function DraftFlushFailureDialog() {
     setNotice('重试保存仍未成功。正文保留在当前窗口，请检查后再次重试。');
   };
 
-  const openRecovery = (): void => {
+  const openRecovery = async (): Promise<void> => {
+    setRetrying(true);
+    const saved = await flushRegisteredDraft();
+    setRetrying(false);
+    if (!saved) {
+      setNotice(
+        '恢复中心不会在当前稿尚未安全保存时切走写作页面。请先重试保存，或复制当前正文后处理本地服务。',
+      );
+      return;
+    }
     setOpen(false);
     dispatch({ type: 'navigate', route: 'recovery' });
   };
@@ -58,7 +67,7 @@ export function DraftFlushFailureDialog() {
           <button type="button" onClick={() => setOpen(false)}>
             返回正文检查
           </button>
-          <button type="button" onClick={openRecovery}>
+          <button disabled={retrying} type="button" onClick={() => void openRecovery()}>
             打开恢复中心
           </button>
           <button className="quiet-button" type="button" onClick={() => setOpen(false)}>

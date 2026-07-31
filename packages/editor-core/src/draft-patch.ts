@@ -4,8 +4,6 @@ import type {
   WorldforgeBlockAttributes,
   WorldforgeBlockType,
 } from './draft-document.js';
-import { rememberPendingDraftSnapshot } from './persisted-metadata-sync.js';
-
 export interface DraftPatchNewBlock {
   readonly blockType: WorldforgeBlockType;
   readonly content: string;
@@ -223,7 +221,5 @@ export function buildDraftPatchOperations(
       locked: true,
     }));
 
-  const operations = [...unlocks, ...deletions, ...moves, ...inserts, ...updates, ...locks];
-  if (operations.length > 0) rememberPendingDraftSnapshot(current);
-  return operations;
+  return [...unlocks, ...deletions, ...moves, ...inserts, ...updates, ...locks];
 }

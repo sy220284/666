@@ -157,8 +157,9 @@ export async function smokePackagedDesktop(
       product: manifest.product,
       coreStatus: 'healthy',
       rendererReady: 'true',
+      productReady: 'true',
     };
-    if (result.product !== 'WorldForge') {
+    if (result.product !== 'WorldForge' || result.productReady !== 'true') {
       throw new Error(`Packaged smoke failed: ${JSON.stringify(result)}`);
     }
     process.stdout.write(

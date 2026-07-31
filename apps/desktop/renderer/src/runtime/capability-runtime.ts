@@ -102,9 +102,21 @@ export function createCapabilityTrackingBridge(
     }),
     task: trackDomain('task', bridge.task, () => undefined),
     providers: trackDomain('providers', bridge.providers, (method, outcome) => {
-      if (method !== 'list' || outcome.state !== 'success') return;
-      const data = outcome.data as { readonly providers?: readonly unknown[] };
-      state.providerCount = data.providers?.length ?? 0;
+      if (outcome.state !== 'success') return;
+      if (method === 'list') {
+        const data = outcome.data as { readonly providers?: readonly unknown[] };
+        state.providerCount = data.providers?.length ?? 0;
+        state.verifiedProviderCount = Math.min(
+          state.verifiedProviderCount,
+          state.providerCount,
+        );
+        return;
+      }
+      if (method === 'testConnection') {
+        state.verifiedProviderCount = Math.max(1, state.verifiedProviderCount);
+        return;
+      }
+      if (method === 'save' || method === 'remove') state.verifiedProviderCount = 0;
     }),
   };
 }

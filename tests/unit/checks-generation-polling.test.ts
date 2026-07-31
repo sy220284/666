@@ -18,7 +18,8 @@ describe('AI semantic-check generation polling', () => {
   it('has bounded retry, cancellation cleanup and terminal refresh paths', async () => {
     const source = await readFile(sourcePath, 'utf8');
 
-    expect(source).toContain('Math.min(5_000');
+    expect(source).toContain('registerGenerationPollingFailure');
+    expect(source).toContain('自动重试已停止');
     expect(source).toContain('if (timer !== null) window.clearTimeout(timer)');
     expect(source).toContain('TERMINAL_RUN_STATUSES.has(outcome.data.status)');
     expect(source).toContain('await refreshCatalog()');

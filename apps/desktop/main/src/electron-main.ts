@@ -79,10 +79,10 @@ async function announcePackagedSmokeReady(
   if (!app.isPackaged || process.env.WORLDFORGE_PACKAGED_SMOKE !== '1') return;
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
-    const rendererReady = await window.webContents
-      .executeJavaScript('document.body.dataset.rendererReady === "true"', true)
+    const productReady = await window.webContents
+      .executeJavaScript('document.body.dataset.productReady === "true"', true)
       .catch(() => false);
-    if (rendererReady === true && supervisor.getStatus().status === 'healthy') {
+    if (productReady === true && supervisor.getStatus().status === 'healthy') {
       process.stdout.write('WORLDFORGE_PACKAGED_READY\n');
       return;
     }

@@ -477,7 +477,9 @@ export function WritingWorkbench({
         baseRevision: currentDraft.revision,
         editorGeneration: editorGeneration.current,
         documentFingerprint: signature,
-        blockIdentityMap: new Map(nextBlocks.map((block) => [block.clientBlockId, block.logicalBlockId])),
+        blockIdentityMap: new Map(
+          nextBlocks.map((block) => [block.clientBlockId, block.logicalBlockId]),
+        ),
         requestSnapshot: nextBlocks,
         requestedAt: Date.now(),
       };

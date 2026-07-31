@@ -93,7 +93,11 @@ describe('request-bound persisted metadata synchronization', () => {
   it('keeps later text while attaching the persisted identity from the same request', () => {
     const request = [saved('client-a', null, '保存快照')];
     const target = editorFor([saved('client-a', null, '保存后继续输入')]);
-    synchronizePersistedBlockMetadata(target.editor, [persisted('server-a', '保存快照', 'client-a')], request);
+    synchronizePersistedBlockMetadata(
+      target.editor,
+      [persisted('server-a', '保存快照', 'client-a')],
+      request,
+    );
     expect(target.state().doc.firstChild?.textContent).toBe('保存后继续输入');
     expect(target.state().doc.firstChild?.attrs.logicalBlockId).toBe('server-a');
   });

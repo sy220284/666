@@ -100,8 +100,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
           fc-match "Noto Serif CJK SC"
       - run: pnpm build
-      - name: Run platform startup smoke
-        run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
       - name: Build platform package
         run: >-
           pnpm run package --

@@ -90,12 +90,19 @@ jobs:
           if (-not (Test-Path $profilePath)) {
             throw "M8_07_MICROSOFT_PINYIN_PROFILE_MISSING: $profilePath"
           }
+          $registry = Get-ItemProperty -Path $profilePath
+          $values = [ordered]@{}
+          foreach ($property in $registry.PSObject.Properties) {
+            if ($property.Name -notlike 'PS*') {
+              $values[$property.Name] = [string]$property.Value
+            }
+          }
           [pscustomobject]@{
             inputTip = $inputTip
             profilePath = $profilePath
-            registry = Get-ItemProperty -Path $profilePath
+            registryValues = $values
           } |
-            ConvertTo-Json -Depth 8 |
+            ConvertTo-Json -Depth 3 |
             Out-File -FilePath test-results/windows-ime/microsoft-pinyin-profile.json -Encoding utf8
           Start-Process "$env:WINDIR\System32\ctfmon.exe"
           Start-Sleep -Seconds 2

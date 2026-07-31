@@ -3,6 +3,9 @@ param(
   [int]$ElectronProcessId,
 
   [Parameter(Mandatory = $true)]
+  [long]$ElectronWindowHandle,
+
+  [Parameter(Mandatory = $true)]
   [ValidateSet('candidate', 'enter', 'ascii', 'toggle-shift', 'undo', 'redo')]
   [string]$Action,
 
@@ -49,6 +52,9 @@ public static class WorldForgeNativeIme {
         ref Guid interfaceId,
         out IntPtr interfacePointer
     );
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -114,24 +120,6 @@ public static class WorldForgeNativeIme {
 }
 '@
 
-function Get-ElectronWindowHandle {
-  param([int]$RootProcessId)
-
-  $root = Get-Process -Id $RootProcessId -ErrorAction SilentlyContinue
-  if ($root -and $root.MainWindowHandle -ne 0) {
-    return [IntPtr]$root.MainWindowHandle
-  }
-
-  $candidate = Get-Process -Name electron -ErrorAction SilentlyContinue |
-    Where-Object { $_.MainWindowHandle -ne 0 } |
-    Sort-Object StartTime |
-    Select-Object -First 1
-  if (-not $candidate) {
-    throw 'M8_07_WINDOWS_IME_WINDOW_NOT_FOUND'
-  }
-  return [IntPtr]$candidate.MainWindowHandle
-}
-
 function Send-VirtualKey {
   param([byte]$VirtualKey)
   [WorldForgeNativeIme]::keybd_event($VirtualKey, 0, 0, [UIntPtr]::Zero)
@@ -178,7 +166,10 @@ if ($activationHresult -ne 0) {
   throw ('M8_07_WINDOWS_IME_TSF_ACTIVATION_FAILED: 0x{0:X8}' -f ([uint32]$activationHresult))
 }
 
-$windowHandle = Get-ElectronWindowHandle -RootProcessId $ElectronProcessId
+$windowHandle = [IntPtr]$ElectronWindowHandle
+if (-not [WorldForgeNativeIme]::IsWindow($windowHandle)) {
+  throw ('M8_07_WINDOWS_IME_INVALID_WINDOW_HANDLE: {0}' -f $ElectronWindowHandle)
+}
 [WorldForgeNativeIme]::ShowWindow($windowHandle, 9) | Out-Null
 [WorldForgeNativeIme]::SetForegroundWindow($windowHandle) | Out-Null
 Start-Sleep -Milliseconds 350
@@ -227,6 +218,7 @@ $languageId = ([int64]$activeLayout) -band 0xffff
   action = $Action
   text = $Text
   electronProcessId = $ElectronProcessId
+  electronWindowHandle = $ElectronWindowHandle
   windowProcessId = $windowProcessId
   windowThreadId = $windowThreadId
   activationHresult = ('0x{0:X8}' -f ([uint32]$activationHresult))

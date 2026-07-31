@@ -164,10 +164,12 @@ function temporaryClientBlockId(): string {
   return `temporary-${Date.now().toString(36)}-${temporaryIdSequence.toString(36)}`;
 }
 
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
 function logicalBlockId(node: ProseMirrorNode): string | null {
-  return typeof node.attrs.logicalBlockId === 'string' && node.attrs.logicalBlockId.length > 0
-    ? node.attrs.logicalBlockId
-    : null;
+  return optionalString(node.attrs.logicalBlockId);
 }
 
 function persistedOrder(document: ProseMirrorNode): readonly string[] {
@@ -240,6 +242,52 @@ function createWorldforgeLockGuardPlugin(): Plugin {
         transaction.doc,
         transaction.getMeta(LOCK_COMMAND_META) === true,
       );
+    },
+  });
+}
+
+function nextUniqueClientBlockId(
+  clientBlockIdFactory: () => string,
+  usedClientBlockIds: ReadonlySet<string>,
+): string {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const candidate = clientBlockIdFactory();
+    if (candidate.length > 0 && !usedClientBlockIds.has(candidate)) return candidate;
+  }
+  throw new RangeError('Unable to assign a unique editor clientBlockId.');
+}
+
+/**
+ * Persists a stable client identity on every top-level block introduced by paste or structural
+ * editing. The metadata-only appended transaction is excluded from undo history and never changes
+ * semantic content. Duplicate client identities are repaired conservatively before autosave.
+ */
+export function createWorldforgeClientIdentityPlugin(
+  clientBlockIdFactory: () => string = temporaryClientBlockId,
+): Plugin {
+  return new Plugin({
+    appendTransaction(_transactions, _oldState, newState) {
+      let transaction = newState.tr;
+      let changed = false;
+      const usedClientBlockIds = new Set<string>();
+      newState.doc.forEach((node, offset) => {
+        const clientBlockId = optionalString(node.attrs.clientBlockId);
+        if (clientBlockId && !usedClientBlockIds.has(clientBlockId)) {
+          usedClientBlockIds.add(clientBlockId);
+          return;
+        }
+        const assigned = nextUniqueClientBlockId(clientBlockIdFactory, usedClientBlockIds);
+        usedClientBlockIds.add(assigned);
+        transaction = transaction.setNodeMarkup(offset, undefined, {
+          ...node.attrs,
+          clientBlockId: assigned,
+        });
+        changed = true;
+      });
+      if (!changed) return null;
+      transaction.setMeta('addToHistory', false);
+      transaction.setMeta(LOCK_COMMAND_META, true);
+      return transaction;
     },
   });
 }
@@ -339,6 +387,12 @@ export function createWorldforgeEditorExtensions(
       return [createWorldforgeLockGuardPlugin()];
     },
   });
+  const ClientIdentity = Extension.create({
+    name: 'worldforgeClientIdentity',
+    addProseMirrorPlugins() {
+      return [createWorldforgeClientIdentityPlugin(clientBlockIdFactory)];
+    },
+  });
   const EditingHistory = Extension.create({
     name: 'worldforgeEditingHistory',
     addProseMirrorPlugins() {
@@ -366,6 +420,7 @@ export function createWorldforgeEditorExtensions(
     HeadingBlock,
     SeparatorBlock,
     LockGuard,
+    ClientIdentity,
     EditingHistory,
   ];
 }
@@ -421,10 +476,6 @@ export function documentToTiptapJson(blocks: readonly PersistedEditorBlock[]): J
       }),
     ),
   };
-}
-
-function optionalString(value: unknown): string | null {
-  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 export function tiptapJsonToDraftSnapshot(

@@ -10,7 +10,14 @@ describe('application shell capability actions', () => {
     expect(shell).toContain('const availability = capabilities.navigation');
     expect(shell).toContain('projectCapabilities={capabilities.project}');
     expect(shell).toContain('!capabilities.project.moveAvailable');
-    expect(shell).toContain('availability,\n      disclosureMode');
+
+    const navigationStart = shell.indexOf('createPrimaryNavigationItems({');
+    const navigationEnd = shell.indexOf('});', navigationStart);
+    const navigationContext = shell.slice(navigationStart, navigationEnd);
+    expect(navigationStart).toBeGreaterThan(-1);
+    expect(navigationContext).toContain('availability');
+    expect(navigationContext).toContain('disclosureMode');
+
     expect(home).toContain('!projectCapabilities.draftReadable');
     expect(home).toContain('!projectCapabilities.structureReadable');
     expect(home).toContain('!projectCapabilities.canonReadable');

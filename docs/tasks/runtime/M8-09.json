@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "M8-09",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "source": "docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md",
   "startedAt": "2026-07-31",
   "dependencies": ["M8-08"],
@@ -66,5 +66,15 @@
     "pnpm build",
     "pnpm test:e2e",
     "pnpm release:check"
-  ]
+  ],
+  "implementedAt": "2026-08-01T01:42:35+09:00",
+  "implementationCommit": "6edb7a7ec7221fd709aba14bc30029acd397f69d",
+  "verificationRuns": {
+    "taskGovernance": 30647483172,
+    "prPolicy": 30647482909,
+    "evidence": 30647483024,
+    "security": 30647482946,
+    "performance": 30647482903,
+    "quality": 30647483259
+  }
 }

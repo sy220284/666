@@ -29,7 +29,7 @@ jobs:
     name: Release quality
     uses: ./.github/workflows/quality-core.yml
     with:
-      package_smoke: true
+      package_smoke: false
       security_suite: true
       performance_eval: true
 

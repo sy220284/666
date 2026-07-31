@@ -28,8 +28,20 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
+async function getNativeWindowHandle(application: ElectronApplication): Promise<string> {
+  const handleHex = await application.evaluate(
+    ({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.getNativeWindowHandle().toString('hex') ?? '',
+  );
+  const handleBytes = Buffer.from(handleHex, 'hex');
+  if (handleBytes.length === 8) return handleBytes.readBigUInt64LE(0).toString();
+  if (handleBytes.length === 4) return handleBytes.readUInt32LE(0).toString();
+  throw new Error(`M8_07_WINDOWS_IME_NATIVE_HANDLE_INVALID:${handleHex}`);
+}
+
 async function invokeNativeIme(
   electronProcessId: number,
+  electronWindowHandle: string,
   action: 'candidate' | 'enter' | 'ascii' | 'toggle-shift' | 'undo' | 'redo',
   evidenceLog: string[],
   input: { readonly text?: string; readonly screenshotPath?: string } = {},
@@ -52,6 +64,8 @@ async function invokeNativeIme(
     script,
     '-ElectronProcessId',
     String(electronProcessId),
+    '-ElectronWindowHandle',
+    electronWindowHandle,
     '-Action',
     action,
   ];
@@ -104,29 +118,34 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
     await editor.click();
 
     const electronProcessId = application.process().pid;
-    await invokeNativeIme(electronProcessId, 'candidate', evidenceLog, {
+    const electronWindowHandle = await getNativeWindowHandle(application);
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'candidate', evidenceLog, {
       text: 'zhongwen',
       screenshotPath: candidateScreenshot,
     });
     await expect(editor).toContainText('中文', { timeout: 10_000 });
 
-    await invokeNativeIme(electronProcessId, 'enter', evidenceLog, { text: 'shurufa' });
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'enter', evidenceLog, {
+      text: 'shurufa',
+    });
     await expect(editor).toContainText('中文输入法', { timeout: 10_000 });
 
-    await invokeNativeIme(electronProcessId, 'toggle-shift', evidenceLog);
-    await invokeNativeIme(electronProcessId, 'ascii', evidenceLog, { text: 'ABC' });
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'toggle-shift', evidenceLog);
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'ascii', evidenceLog, {
+      text: 'ABC',
+    });
     await expect(editor).toContainText('ABC');
 
-    await invokeNativeIme(electronProcessId, 'toggle-shift', evidenceLog);
-    await invokeNativeIme(electronProcessId, 'candidate', evidenceLog, {
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'toggle-shift', evidenceLog);
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'candidate', evidenceLog, {
       text: 'ceshi',
       screenshotPath: path.join(evidenceDirectory, 'microsoft-pinyin-second-candidate.png'),
     });
     await expect(editor).toContainText('测试', { timeout: 10_000 });
 
-    await invokeNativeIme(electronProcessId, 'undo', evidenceLog);
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'undo', evidenceLog);
     await expect(editor).not.toContainText('测试');
-    await invokeNativeIme(electronProcessId, 'redo', evidenceLog);
+    await invokeNativeIme(electronProcessId, electronWindowHandle, 'redo', evidenceLog);
     await expect(editor).toContainText('测试');
 
     await expect

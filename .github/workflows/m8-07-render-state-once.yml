@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   render:
@@ -42,3 +43,7 @@ jobs:
             docs/tasks/M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md
           if-no-files-found: error
           retention-days: 1
+      - name: Report run id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api repos/${{ github.repository }}/issues/244/comments -f body="M8-07 implemented-state artifact run: ${{ github.run_id }}"

@@ -178,13 +178,11 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
       path.join(evidenceDirectory, 'microsoft-pinyin-profile.json'),
       'utf8',
     );
-    const defaultInputMethod = await readFile(
-      path.join(evidenceDirectory, 'default-input-method.json'),
-      'utf8',
-    );
+    const nativeEvidence = evidenceLog.join('\n');
     expect(profileEvidence).toContain('81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E');
     expect(profileEvidence).toContain('FA550B04-5AD7-411F-A5AC-CA038EC515D7');
-    expect(defaultInputMethod).toContain('FA550B04-5AD7-411F-A5AC-CA038EC515D7');
+    expect(nativeEvidence).toContain('"activationHresult":"0x00000000"');
+    expect(nativeEvidence).toContain('"languageId":"0x0804"');
     await writeFile(
       path.join(evidenceDirectory, 'native-ime-actions.jsonl'),
       `${evidenceLog.filter(Boolean).join('\n')}\n`,

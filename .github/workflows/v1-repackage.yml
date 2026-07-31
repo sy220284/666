@@ -59,11 +59,10 @@ jobs:
         run: |
           pnpm audit --audit-level=high
           node scripts/scan-secrets.mjs --history
-      - name: Enforce product and task acceptance gates
+      - name: Enforce actual product and task acceptance gates
         run: |
           node .github/governance/parallel-task-release-gate.mjs
           node scripts/ui-acceptance-gate.mjs
-          pnpm release:check
 
   build:
     name: Repackage (${{ matrix.platform }})

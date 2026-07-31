@@ -102,10 +102,10 @@ jobs:
       - run: pnpm build
       - name: Build platform package
         run: >-
-          node scripts/package-desktop.mjs
-          --platform "${{ matrix.platform }}"
-          --version "${{ env.RELEASE_VERSION }}"
-          --output "release/${{ matrix.platform }}"
+          pnpm run package --
+          --platform=${{ matrix.platform }}
+          --version=${{ env.RELEASE_VERSION }}
+          --output=release/${{ matrix.platform }}
       - name: Verify platform package assets
         run: >-
           node scripts/verify-package-assets.mjs

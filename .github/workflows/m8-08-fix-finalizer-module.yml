@@ -1,0 +1,44 @@
+name: M8-08 Fix Finalizer Module Mode
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ github.head_ref == 'work/m8-08-v1-final-governance-closure' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: work/m8-08-v1-final-governance-closure
+          persist-credentials: true
+      - name: Wrap finalizer script in an async CommonJS function
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/m8-08-cross-platform-evidence.yml')
+          text = path.read_text()
+          start = "          node <<'NODE'\n          const fs = require('node:fs');"
+          replacement = "          node <<'NODE'\n          (async () => {\n          const fs = require('node:fs');"
+          if start not in text:
+              raise SystemExit('finalizer script start not found')
+          text = text.replace(start, replacement, 1)
+          end = "          fs.rmSync('.github/workflows/m8-08-cross-platform-evidence.yml');\n          NODE"
+          replacement_end = "          fs.rmSync('.github/workflows/m8-08-cross-platform-evidence.yml');\n          })().catch((error) => { console.error(error); process.exitCode = 1; });\n          NODE"
+          if end not in text:
+              raise SystemExit('finalizer script end not found')
+          path.write_text(text.replace(end, replacement_end, 1))
+          PY
+          rm .github/workflows/m8-08-fix-finalizer-module.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "fix(M8-08): run finalizer in explicit async scope"
+          git push origin HEAD:work/m8-08-v1-final-governance-closure

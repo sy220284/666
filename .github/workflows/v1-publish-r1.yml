@@ -1,0 +1,184 @@
+name: Publish V1 Repack R1
+run-name: Publish v1.0.0-r1 from ${{ github.event.pull_request.head.sha }}
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: v1-publish-r1-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  SOURCE_MAIN_SHA: 3448e5ae8ec0bdd2ce1f983141b0ba654957e2a9
+  PACKAGE_RUN_ID: '30668456301'
+  RELEASE_TAG: v1.0.0-r1
+
+jobs:
+  publish:
+    name: Publish repaired V1 package
+    if: ${{ github.head_ref == 'tooling/v1-publish-r1' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Assert immutable verified source and tooling-only branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$SOURCE_MAIN_SHA" HEAD
+          changed="$(git diff --name-only "$SOURCE_MAIN_SHA"...HEAD)"
+          test "$changed" = ".github/workflows/v1-publish-r1.yml"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Download Windows package artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: worldforge-repack-1.0.0-windows
+          path: assets/windows
+          repository: sy220284/666
+          run-id: ${{ env.PACKAGE_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download Linux package artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: worldforge-repack-1.0.0-linux
+          path: assets/linux
+          repository: sy220284/666
+          run-id: ${{ env.PACKAGE_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Download macOS package artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: worldforge-repack-1.0.0-macos
+          path: assets/macos
+          repository: sy220284/666
+          run-id: ${{ env.PACKAGE_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Prepare immutable release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p publish
+          cp assets/windows/WorldForge-v1.0.0-windows-x64.zip publish/
+          cp assets/linux/WorldForge-v1.0.0-linux-x64.tar.gz publish/
+          cp assets/macos/WorldForge-v1.0.0-macos-arm64.zip publish/
+          cp assets/windows/package-manifest.json publish/package-manifest-windows.json
+          cp assets/linux/package-manifest.json publish/package-manifest-linux.json
+          cp assets/macos/package-manifest.json publish/package-manifest-macos.json
+
+          cat > publish/REPACKAGE_INFO.txt <<EOF
+          WorldForge application version: 1.0.0
+          Release tag: $RELEASE_TAG
+          Verified source main: $SOURCE_MAIN_SHA
+          Package workflow run: $PACKAGE_RUN_ID
+          Package workflow head: 633ebe571549dad34a25d05d9c30683bf8a77494
+          Source repackage PR: #260
+          Original immutable v1.0.0 Release: unchanged
+          EOF
+
+          cat > publish/RELEASE_NOTES.md <<'EOF'
+          ## WorldForge V1.0 修复重打包版
+
+          本版本基于完成 M8-09 稳定性治理后的已验证 `main` 重新构建，应用内部版本仍为 `1.0.0`。
+
+          ### 本次修复
+
+          - 修复章节切换期间继续输入可能造成正文丢失的问题。
+          - 修复最近作品登记失败时可能删除已创建作品目录的问题。
+          - 最近作品缓存故障不再阻断健康作品创建、打开、移动和恢复。
+          - 实现“启动时重新打开最近作品”。
+          - 修复跨作品异步状态覆盖与退出异常卡死。
+          - 完善作者化错误提示、搜索失败反馈和替换计划失效机制。
+          - 增加 IPC 与 Renderer 异常边界及相关故障注入测试。
+
+          ### 构建与验证
+
+          Windows、Linux、macOS 均已完成原生打包、资产校验和打包成品启动冒烟。原 `v1.0.0` Release 保持不变，本Release作为修复重打包版本独立发布。
+          EOF
+
+          (
+            cd publish
+            sha256sum \
+              WorldForge-v1.0.0-windows-x64.zip \
+              WorldForge-v1.0.0-linux-x64.tar.gz \
+              WorldForge-v1.0.0-macos-arm64.zip \
+              package-manifest-windows.json \
+              package-manifest-linux.json \
+              package-manifest-macos.json \
+              REPACKAGE_INFO.txt > SHA256SUMS.txt
+          )
+
+      - name: Create GitHub Release and upload assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SOURCE_MAIN_SHA" \
+            --title "WorldForge V1.0 修复重打包版（r1）" \
+            --notes-file publish/RELEASE_NOTES.md \
+            --latest \
+            publish/WorldForge-v1.0.0-windows-x64.zip \
+            publish/WorldForge-v1.0.0-linux-x64.tar.gz \
+            publish/WorldForge-v1.0.0-macos-arm64.zip \
+            publish/package-manifest-windows.json \
+            publish/package-manifest-linux.json \
+            publish/package-manifest-macos.json \
+            publish/SHA256SUMS.txt \
+            publish/REPACKAGE_INFO.txt
+
+      - name: Verify published release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')" = "false"
+          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease')" = "false"
+          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json targetCommitish --jq '.targetCommitish')" = "$SOURCE_MAIN_SHA"
+          test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')" -eq 8
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,tagName,targetCommitish,assets
+
+  cleanup:
+    name: Remove one-time publish workflow
+    if: ${{ success() && github.head_ref == 'tooling/v1-publish-r1' }}
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Remove temporary workflow from tooling branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/v1-publish-r1.yml
+          git add .github/workflows/v1-publish-r1.yml
+          git commit -m "工具：完成V1.0修复重打包版发布并清理临时工作流"
+          git push

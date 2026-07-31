@@ -97,11 +97,13 @@ describe('作者错误说明', () => {
     expect(summary).not.toContain('CORE_STATUS_FAILED');
   });
 
-  it('未知错误使用安全回退说明', () => {
-    expect(authorErrorMessage('UNKNOWN_ERROR', '磁盘写入失败')).toEqual({
+  it('未知错误使用固定安全回退，不展示未经映射的技术消息', () => {
+    const expected = {
       title: '操作未完成',
-      message: '磁盘写入失败',
+      message: '系统未能完成本次操作，现有内容保持不变。',
       suggestedAction: '请查看技术详情后重试。',
-    });
+    };
+    expect(authorErrorMessage('UNKNOWN_ERROR', '磁盘写入失败')).toEqual(expected);
+    expect(authorErrorMessage('UNKNOWN_ERROR', 'Internal disk write failure.')).toEqual(expected);
   });
 });

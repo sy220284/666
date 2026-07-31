@@ -2,8 +2,8 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04、M8-05、M8-06、M8-07与M8-08，共40张独立任务卡。  
-> 当前任务：M8-07与M8-08均已Verified，仓库进入最终VERIFIED_HOLD；main写入保持串行。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04、M8-05、M8-06、M8-07、M8-08与M8-09，共41张独立任务卡。  
+> 当前任务：M8-09已Implemented，等待Ready PR永久门禁、受控合并与main最终验证。
 
 ## 1. 执行入口
 
@@ -12,7 +12,8 @@
 3. [`ACTIVE_TASK.json`](ACTIVE_TASK.json)与[`ACTIVE_TASK.md`](ACTIVE_TASK.md)：历史关闭流程兼容锚点。
 4. M8-07任务卡：[`M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)。
 5. M8-08任务卡：[`M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)。
-6. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
+6. M8-09任务卡：[`M8/M8-09_V1_STABILITY_HARDENING.md`](M8/M8-09_V1_STABILITY_HARDENING.md)。
+7. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
 
@@ -25,16 +26,16 @@ Blocked / Deferred / Removed
 
 ## 2. 执行总览
 
-| 阶段          | 定位                           | 独立任务数 | 当前结果                                               |
-| ------------- | ------------------------------ | ---------: | ------------------------------------------------------ |
-| M0            | 工程、安全与运行底座           |          7 | Verified                                               |
-| M1            | 基础写作MVP                    |          9 | Verified                                               |
-| M2            | 编辑安全与版本核心             |          4 | Verified                                               |
-| M3            | 规划、设定与连续性             |         10 | Verified                                               |
-| M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                                   |
-| M8            | 交付关闭、作者体验与长期维护   |          6 | M8-02—M8-08 Verified                                   |
-| 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                                      |
-| 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务           |
+| 阶段          | 定位                           | 独立任务数 | 当前结果                                     |
+| ------------- | ------------------------------ | ---------: | -------------------------------------------- |
+| M0            | 工程、安全与运行底座           |          7 | Verified                                     |
+| M1            | 基础写作MVP                    |          9 | Verified                                     |
+| M2            | 编辑安全与版本核心             |          4 | Verified                                     |
+| M3            | 规划、设定与连续性             |         10 | Verified                                     |
+| M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
+| M8            | 交付关闭、作者体验与长期维护   |          7 | M8-02—M8-08 Verified；M8-09 Implemented      |
+| 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
+| 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
 ```text
 M0—M3 已完成产品底座
@@ -47,7 +48,8 @@ M0—M3 已完成产品底座
 → M8-05 运行时硬化与文档统一同步（Verified）
 → M8-06 发布资格与任务治理硬化（Verified）
 ├─ M8-07 中文作者体验治理闭环与产品发布验收硬化（Verified）
-└─ M8-08 V1.0最终质量治理与封版闭环（Verified）
+├─ M8-08 V1.0最终质量治理与封版闭环（Verified）
+└─ M8-09 V1.0稳定性与生命周期治理（Implemented）
 ```
 
 ## M0 工程、安全与运行底座
@@ -57,7 +59,7 @@ M0—M3 已完成产品底座
 | M0-01 | [`Monorepo、质量工具与CI`](M0/M0-01_MONOREPO_QUALITY_CI.md)               | 无                         | Verified |
 | M0-02 | [`Electron安全壳与Core生命周期`](M0/M0-02_ELECTRON_CORE_LIFECYCLE.md)     | M0-01                      | Verified |
 | M0-03 | [`SQLite、Migration与单写队列`](M0/M0-03_SQLITE_MIGRATION_WRITE_QUEUE.md) | M0-01                      | Verified |
-| M0-04 | [`IPC、错误码、事件与任务协议`](M0/M0-04_IPC_EVENT_TASK_PROTOCOL.md)       | M0-02、M0-03               | Verified |
+| M0-04 | [`IPC、错误码、事件与任务协议`](M0/M0-04_IPC_EVENT_TASK_PROTOCOL.md)      | M0-02、M0-03               | Verified |
 | M0-05 | [`测试基建、Fixture与故障注入`](M0/M0-05_TESTKIT_FAULT_INJECTION.md)      | M0-01、M0-02、M0-03、M0-04 | Verified |
 | M0-06 | [`显示、DPI与窗口恢复Spike`](M0/M0-06_DISPLAY_WINDOW_SPIKE.md)            | M0-02、M0-03、M0-05        | Verified |
 | M0-07 | [`AI输出协议与中文Diff Spike`](M0/M0-07_AI_DIFF_SPIKE.md)                 | M0-03、M0-04、M0-05        | Verified |
@@ -111,14 +113,15 @@ M0—M3 已完成产品底座
 
 ## M8 交付与体验任务
 
-| ID    | 任务卡                                                                                             | 依赖                         | 状态     |
-| ----- | -------------------------------------------------------------------------------------------------- | ---------------------------- | -------- |
-| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                              | M4-04                        | Verified |
-| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                             | M8-02                        | Verified |
-| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)                     | M8-04                        | Verified |
-| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)                           | M8-05                        | Verified |
-| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)              | M8-06                        | Verified |
-| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)                             | 开发：M8-06；封版：M8-07     | Verified |
+| ID    | 任务卡                                                                                | 依赖                     | 状态       |
+| ----- | ------------------------------------------------------------------------------------- | ------------------------ | ---------- |
+| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                 | M4-04                    | Verified   |
+| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                | M8-02                    | Verified   |
+| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)        | M8-04                    | Verified   |
+| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)              | M8-05                    | Verified   |
+| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md) | M8-06                    | Verified   |
+| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | 开发：M8-06；封版：M8-07 | Verified   |
+| M8-09 | [`V1.0稳定性与生命周期治理`](M8/M8-09_V1_STABILITY_HARDENING.md)                      | M8-08                    | Implemented |
 
 ## 3. 被吸收的需求来源
 
@@ -127,14 +130,14 @@ M0—M3 已完成产品底座
 | 原ID  | 来源文件                                                                               | 原阶段 | 独立执行状态        | 统一归属 |
 | ----- | -------------------------------------------------------------------------------------- | ------ | ------------------- | -------- |
 | M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md)         | M4     | Removed（absorbed） | M4-04    |
-| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)            | M5     | Removed（absorbed） | M4-04    |
+| M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)           | M5     | Removed（absorbed） | M4-04    |
 | M5-01 | [`T0多候选骨架`](M5/M5-01_T0_SKELETON.md)                                              | M5     | Removed（absorbed） | M4-04    |
 | M5-02 | [`T1章节扩写`](M5/M5-02_T1_CHAPTER_GENERATION.md)                                      | M5     | Removed（absorbed） | M4-04    |
 | M5-03 | [`快速改写与结构性改写`](M5/M5-03_REWRITE_WORKFLOWS.md)                                | M5     | Removed（absorbed） | M4-04    |
 | M5-04 | [`多候选融合与部分结果恢复`](M5/M5-04_CANDIDATE_MERGE_PARTIAL.md)                      | M5     | Removed（absorbed） | M4-04    |
 | M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md)                     | M5     | Removed（absorbed） | M4-04    |
 | M5-06 | [`真实状态提取与StateProposal接入`](M5/M5-06_STATE_EXTRACTION_PROPOSAL_INTEGRATION.md) | M5     | Removed（absorbed） | M4-04    |
-| M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATUS_VALIDATION_TODOS.md)                 | M6     | Removed（absorbed） | M4-04    |
+| M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATUS_VALIDATION_TODOS.md)                | M6     | Removed（absorbed） | M4-04    |
 | M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md)                 | M6     | Removed（absorbed） | M4-04    |
 | M6-03 | [`全项目搜索与安全批量替换`](M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md)                  | M6     | Removed（absorbed） | M4-04    |
 | M6-04 | [`网文章奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md)                        | M6     | Removed（absorbed） | M4-04    |
@@ -148,11 +151,11 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M0—M8-08全部保持Verified，仓库进入最终VERIFIED_HOLD。
+1. M0—M8-08保持Verified；M8-09处于Implemented，等待受控合并与main最终验证。
 2. 每个PR绑定一个主任务并按自身`allowedPaths`验证；不同任务可以同时开放PR。
 3. main写入保持串行：一个PR合并并完成Main Verification后，才允许下一个PR写入main。
-4. M8-08已完成最终封版条件；任何后续需求必须重新立项。
-5. M8-08不得改写M8-07及更早任务的历史Evidence。
+4. M8-09修复V1.0最终审计确认的数据安全与生命周期问题，不改变本地优先、AI作者裁决或数据库Schema。
+5. M8-09不得改写M8-08及更早任务的历史Evidence。
 6. 任一releaseBlocking任务未Verified时，发布资格必须被拒绝。
 
 ## 5. 状态原则

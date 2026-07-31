@@ -5,13 +5,13 @@
 ## 当前状态
 
 ```text
-VERIFIED_HOLD
+IMPLEMENTED
 ```
 
-- 任务ID：`M8-08`
-- 唯一任务卡：`docs/tasks/M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md`
-- 工作分支：`fix/governance-m8-08-final-closure`
-- 开始时间：`2026-07-30`
+- 任务ID：`M8-09`
+- 唯一任务卡：`docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md`
+- 工作分支：`work/m8-09-v1-stability-hardening`
+- 开始时间：`2026-07-31`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -22,37 +22,18 @@ allowed_paths:
   - apps/desktop/renderer/src/
   - apps/desktop/preload/src/
   - apps/desktop/main/src/
-  - packages/editor-core/src/
   - packages/contracts/src/
   - packages/core-service/src/
   - tests/unit/
   - tests/integration/
   - tests/security/
-  - tests/performance/
   - tests/e2e/
-  - .github/workflows/
-  - .github/governance/
   - scripts/
   - docs/tasks/
-  - docs/process/
   - docs/product/
   - docs/testing/
-  - docs/roadmap/
-  - docs/test-evidence/M8-08/
-  - README.md
-  - CHANGELOG.md
-  - package.json
-  - pnpm-lock.yaml
-  - apps/desktop/main/package.json
-  - apps/desktop/package.json
-  - apps/desktop/preload/package.json
-  - apps/desktop/renderer/package.json
-  - packages/contracts/package.json
-  - packages/core-service/package.json
-  - packages/domain/package.json
-  - packages/editor-core/package.json
-  - packages/prompts/package.json
-  - packages/testkit/package.json
+  - docs/test-evidence/M8-09/
+  - .github/workflows/
 forbidden_paths:
   - migrations/
   - docs/test-evidence/M0/
@@ -65,17 +46,14 @@ forbidden_paths:
   - docs/test-evidence/M8-05/
   - docs/test-evidence/M8-06/
   - docs/test-evidence/M8-07/
+  - docs/test-evidence/M8-08/
 required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/tasks/TASK_AUTHORIZATION.json
-  - docs/tasks/runtime/M8-07.json
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md
-  - docs/process/CI_PARALLEL_TOOLCHAIN_MULTITASK.md
-  - docs/process/RELEASE_QUALIFICATION.md
-  - docs/testing/P0_ACCEPTANCE_MATRIX.md
-  - docs/product/V1.0_TRACEABILITY_MATRIX.md
+  - docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md
+  - docs/tasks/runtime/M8-09.json
 verification:
   - pnpm check:language
   - pnpm lint
@@ -93,4 +71,4 @@ verification:
 
 ## 连续执行规则
 
-V1.0全部独立任务已经Verified；M8-08作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。
+当前作者已授权实现优先的合并请求模式：每张任务必须在独立非main分支完成并提交合并请求；合并请求规则、任务治理、安全、性能、验证记录与质量门禁全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。

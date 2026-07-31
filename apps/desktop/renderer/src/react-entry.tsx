@@ -7,6 +7,7 @@ import { createWindowRendererBridgeAdapter } from './bridge/renderer-bridge-adap
 import { createLegacyCompatibilityLoader } from './compat/legacy-loader.js';
 import { createLegacySurfaceController } from './compat/legacy-surface.js';
 import { createCoreRecoverySupervisor } from './runtime/core-recovery-supervisor.js';
+import { installGlobalRendererErrorBoundary } from './runtime/global-error-boundary.js';
 import { flushRegisteredDraft } from './runtime/draft-flush-registry.js';
 import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
 import { createRendererFoundationRuntime } from './runtime/renderer-foundation-runtime.js';
@@ -24,6 +25,7 @@ const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
 const retiredCompatibilityBoundary = createLegacyCompatibilityLoader(async () => undefined);
 const coreRecovery = createCoreRecoverySupervisor({ bridge, flushDraft: flushRegisteredDraft });
+const stopGlobalErrorBoundary = installGlobalRendererErrorBoundary();
 const runtime = createRendererFoundationRuntime({
   bridge,
   legacy: retiredCompatibilityBoundary,
@@ -35,6 +37,7 @@ const runtime = createRendererFoundationRuntime({
 const root = createRoot(rootElement);
 
 lifecycle.register('react-root', 'core-recovery-supervisor', () => coreRecovery.dispose());
+lifecycle.register('react-root', 'global-error-boundary', stopGlobalErrorBoundary);
 const stopShutdownListener = bridge.lifecycle.onShutdownPrepare((request) => {
   void flushRegisteredDraft()
     .then((saved) => bridge.lifecycle.acknowledgeShutdown({ ...request, saved }))

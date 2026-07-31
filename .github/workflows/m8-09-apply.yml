@@ -82,6 +82,8 @@ jobs:
           docs/test-evidence/M8-09/manifest.json
           docs/test-evidence/M8-09/summary.md
           docs/test-evidence/M8-09/known-risks.md
+      - name: Normalize markdown diff hygiene
+        run: sed -i 's/[[:blank:]]\+$//' docs/PROJECT_EXECUTION_ENTRY.md
       - name: Validate task and boundaries
         run: |
           pnpm task:validate

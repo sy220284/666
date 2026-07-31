@@ -47,6 +47,14 @@ function nodeMatchesPersisted(node: ProseMirrorNode, block: PersistedEditorBlock
   return block.blockType !== 'heading' || headingLevel(node) === persistedHeadingLevel(block);
 }
 
+function snapshotSemanticKey(block: DraftSnapshotEditorBlock): string {
+  return JSON.stringify([
+    block.blockType,
+    block.text,
+    block.blockType === 'heading' ? snapshotHeadingLevel(block) : null,
+  ]);
+}
+
 function cloneSnapshot(blocks: readonly DraftSnapshotEditorBlock[]): DraftSnapshotEditorBlock[] {
   return blocks.map((block) => ({
     ...block,
@@ -122,9 +130,10 @@ function metadataForCurrentNode(
  * Synchronizes persisted metadata without replacing current editor content.
  *
  * The exact snapshot registered by the serialized save request is consumed once and mapped back
- * through its clientBlockIds. Same-content blocks, chapter switches and delayed responses cannot
- * borrow identity from an older candidate snapshot. Later user content, type, source and lock
- * changes remain untouched and will be persisted by the next autosave.
+ * through its clientBlockIds. Paste-created nodes can temporarily lack a clientBlockId; those are
+ * associated only when the request snapshot entry is semantically unique and the current node at
+ * that request position is still identical. Ambiguous duplicate content remains untouched for a
+ * later save instead of accepting a positional identity guess.
  */
 export function synchronizePersistedBlockMetadata(
   editor: Editor,
@@ -139,27 +148,44 @@ export function synchronizePersistedBlockMetadata(
   const snapshot = consumeRequestSnapshot(blocks, currentClientBlockIds(editor));
   const savedByClientId = new Map<string, DraftSnapshotEditorBlock>();
   const persistedByClientId = new Map<string, PersistedEditorBlock>();
+  const unsavedSemanticCounts = new Map<string, number>();
   if (snapshot) {
     for (const [index, savedBlock] of snapshot.entries()) {
       const persisted = blocks[index];
       if (!persisted) continue;
       savedByClientId.set(savedBlock.clientBlockId, savedBlock);
       persistedByClientId.set(savedBlock.clientBlockId, persisted);
+      if (!savedBlock.logicalBlockId) {
+        const key = snapshotSemanticKey(savedBlock);
+        unsavedSemanticCounts.set(key, (unsavedSemanticCounts.get(key) ?? 0) + 1);
+      }
     }
   }
 
   const transaction = editor.state.tr;
   const usedPersistedIds = new Set<string>();
   let synchronized = 0;
-  editor.state.doc.forEach((node, offset) => {
+  editor.state.doc.forEach((node, offset, index) => {
     const logicalBlockId = optionalString(node.attrs.logicalBlockId);
     const clientBlockId = optionalString(node.attrs.clientBlockId);
     const stableMatch = logicalBlockId ? persistedById.get(logicalBlockId) : undefined;
     const clientMatch = clientBlockId ? persistedByClientId.get(clientBlockId) : undefined;
-    const block = stableMatch ?? clientMatch;
+    const positionalSaved = !logicalBlockId && !clientBlockId ? snapshot?.[index] : undefined;
+    const positionalPersisted = positionalSaved ? blocks[index] : undefined;
+    const uniqueSemanticPositionMatch = Boolean(
+      positionalSaved &&
+      positionalPersisted &&
+      !positionalSaved.logicalBlockId &&
+      unsavedSemanticCounts.get(snapshotSemanticKey(positionalSaved)) === 1 &&
+      nodeMatchesSnapshot(node, positionalSaved),
+    );
+    const block =
+      stableMatch ?? clientMatch ?? (uniqueSemanticPositionMatch ? positionalPersisted : undefined);
     if (!block || usedPersistedIds.has(block.logicalBlockId)) return;
 
-    const savedBlock = clientBlockId ? savedByClientId.get(clientBlockId) : undefined;
+    const savedBlock =
+      (clientBlockId ? savedByClientId.get(clientBlockId) : undefined) ??
+      (uniqueSemanticPositionMatch ? positionalSaved : undefined);
     const savedSnapshotStillCurrent = savedBlock
       ? nodeMatchesSnapshot(node, savedBlock)
       : nodeMatchesPersisted(node, block);

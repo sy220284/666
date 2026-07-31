@@ -10,7 +10,7 @@ VERIFIED_HOLD
 
 - 任务ID：`M8-08`
 - 唯一任务卡：`docs/tasks/M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md`
-- 工作分支：`work/m8-08-v1-final-governance-closure`
+- 工作分支：`fix/governance-m8-08-final-closure`
 - 开始时间：`2026-07-30`
 - 授权模式：`implementation-pr`
 - 授权人：`author`

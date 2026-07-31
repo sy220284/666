@@ -50,11 +50,7 @@ function updateReadySignals(): void {
   document.body.dataset.projectMode = matrix.project.mode;
 }
 
-function observe(
-  domain: string,
-  method: string,
-  outcome: BridgeRequestOutcome<unknown>,
-): void {
+function observe(domain: string, method: string, outcome: BridgeRequestOutcome<unknown>): void {
   if (outcome.state === 'success') observedProductResources.add(`${domain}.${method}`);
 }
 
@@ -101,9 +97,7 @@ export function createCapabilityTrackingBridge(
         return;
       }
       if (!['getActive', 'create', 'openSelected', 'openRecent', 'move'].includes(method)) return;
-      const project = successData(
-        outcome as BridgeRequestOutcome<ProjectWorkspaceSummary | null>,
-      );
+      const project = successData(outcome as BridgeRequestOutcome<ProjectWorkspaceSummary | null>);
       if (outcome.state === 'success') state.project = project;
     }),
     task: trackDomain('task', bridge.task, () => undefined),

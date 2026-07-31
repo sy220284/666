@@ -28,6 +28,7 @@
     "tests/security/",
     "tests/e2e/",
     "scripts/",
+    "docs/PROJECT_EXECUTION_ENTRY.md",
     "docs/tasks/",
     "docs/product/",
     "docs/testing/",

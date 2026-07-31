@@ -72,7 +72,6 @@ jobs:
           TASK_PR_HEAD_REF: work/m8-08-v1-final-governance-closure
           TASK_BASE_REF: origin/main
           EVIDENCE_BASE_SHA: 44fc199c0d4725a9aa169865309674954143f5cf
-          EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -84,5 +83,5 @@ jobs:
           pnpm task:validate
           node .github/governance/parallel-task-policy.mjs pr-policy
           node .github/governance/parallel-task-policy.mjs validate
-          pnpm ci:evidence
+          EVIDENCE_HEAD_SHA="$(git rev-parse HEAD)" pnpm ci:evidence
           git push origin HEAD:work/m8-08-v1-final-governance-closure

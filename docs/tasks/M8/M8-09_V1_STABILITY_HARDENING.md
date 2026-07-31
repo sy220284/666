@@ -1,6 +1,6 @@
 # M8-09 WorldForge V1.0 稳定性与生命周期治理
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
 > 正式分支：`work/m8-09-v1-stability-hardening`

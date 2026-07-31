@@ -110,6 +110,8 @@ jobs:
           --directory "release/${{ matrix.platform }}"
       - name: Run Linux packaged startup smoke
         if: matrix.platform == 'linux'
+        env:
+          WORLDFORGE_PACKAGED_SMOKE_ALLOW_NO_SANDBOX: '1'
         run: >-
           xvfb-run -a node scripts/smoke-packaged-desktop.mjs
           --platform "${{ matrix.platform }}"

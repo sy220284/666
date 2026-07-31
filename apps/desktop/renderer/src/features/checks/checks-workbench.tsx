@@ -13,6 +13,10 @@ import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorTerm } from '../../presentation/author-terms.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
+import {
+  generationPollingDelay,
+  registerGenerationPollingFailure,
+} from './generation-polling-policy.js';
 import { RhythmPanel } from './rhythm-panel.js';
 import { SearchPanel } from './search-panel.js';
 
@@ -31,6 +35,8 @@ const ISSUE_ACTIONS = [
   ['false_positive', '标记为误报'],
   ['reopen', '重新打开'],
 ] as const;
+
+const TERMINAL_RUN_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
 
 export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: ChecksWorkbenchProps) {
   const [structure, setStructure] = useState<ProjectStructure | null>(null);
@@ -87,18 +93,28 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
       ),
     ]).then(([structureOutcome, providerOutcome, validationOutcome]) => {
       if (!active) return;
+      const failures: string[] = [];
       if (structureOutcome.state === 'success') {
         setStructure(structureOutcome.data);
         const firstFinal = structureOutcome.data.volumes
           .flatMap((volume) => volume.chapters)
           .find((item) => item.finalVersionId);
         setChapterId(firstFinal?.id ?? '');
+      } else if (structureOutcome.state === 'failure') {
+        failures.push(`章节读取失败：${authorErrorSummary(structureOutcome.error)}`);
       }
       if (providerOutcome.state === 'success') {
         setProviders(providerOutcome.data.providers);
         setProviderId(providerOutcome.data.providers[0]?.id ?? '');
+      } else if (providerOutcome.state === 'failure') {
+        failures.push(`AI连接读取失败：${authorErrorSummary(providerOutcome.error)}`);
       }
-      if (validationOutcome.state === 'success') setCatalog(validationOutcome.data);
+      if (validationOutcome.state === 'success') {
+        setCatalog(validationOutcome.data);
+      } else if (validationOutcome.state === 'failure') {
+        failures.push(`检查结果读取失败：${authorErrorSummary(validationOutcome.error)}`);
+      }
+      if (failures.length > 0) setNotice(failures.join('；'));
     });
     return () => {
       active = false;
@@ -107,28 +123,74 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
 
   useEffect(() => void refreshCatalog(), [refreshCatalog]);
 
+  const activeRunId = activeRun?.runId ?? null;
   useEffect(() => {
-    if (!activeRun) return;
+    if (!activeRunId) return;
     let active = true;
-    const timer = window.setInterval(() => {
-      void bridge.generation.getRun(projectId, activeRun.runId).then((outcome) => {
-        if (!active || outcome.state !== 'success') return;
-        setActiveRun(outcome.data);
-        setNotice(
-          `AI语义检查 · ${generationStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
-        );
-        if (['succeeded', 'failed', 'cancelled'].includes(outcome.data.status)) {
-          window.clearInterval(timer);
+    let timer: number | null = null;
+    let failureCount = 0;
+
+    const schedule = (delay: number): void => {
+      if (!active) return;
+      timer = window.setTimeout(() => void poll(), delay);
+    };
+
+    const poll = async (): Promise<void> => {
+      let terminal = false;
+      try {
+        const outcome = await bridge.generation.getRun(projectId, activeRunId, { mode: 'share' });
+        if (!active) return;
+        if (outcome.state === 'success') {
+          failureCount = 0;
+          setActiveRun(outcome.data);
+          setNotice(
+            `AI语义检查 · ${generationStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
+          );
+          terminal = TERMINAL_RUN_STATUSES.has(outcome.data.status);
+          if (terminal) {
+            setPending(false);
+            await refreshCatalog();
+          }
+        } else if (outcome.state === 'failure') {
+          const decision = registerGenerationPollingFailure(failureCount);
+          failureCount = decision.failureCount;
+          terminal = decision.terminal;
+          if (terminal) {
+            setPending(false);
+            setActiveRun(null);
+            setNotice(
+              `AI语义检查状态连续读取失败：${authorErrorSummary(outcome.error)}。自动重试已停止，请重新运行。`,
+            );
+          } else {
+            setNotice(`AI语义检查状态读取失败：${authorErrorSummary(outcome.error)}，将自动重试。`);
+          }
+        } else if (outcome.state === 'cancelled') {
+          terminal = true;
           setPending(false);
-          void refreshCatalog();
+          setNotice('AI语义检查状态读取已取消。');
         }
-      });
-    }, 1_000);
+      } catch {
+        if (!active) return;
+        const decision = registerGenerationPollingFailure(failureCount);
+        failureCount = decision.failureCount;
+        terminal = decision.terminal;
+        if (terminal) {
+          setPending(false);
+          setActiveRun(null);
+          setNotice('AI语义检查状态连续无法读取。自动重试已停止，请重新运行。');
+        } else {
+          setNotice('AI语义检查状态暂时无法读取，将自动重试。');
+        }
+      }
+      if (!terminal) schedule(generationPollingDelay(failureCount));
+    };
+
+    schedule(0);
     return () => {
       active = false;
-      window.clearInterval(timer);
+      if (timer !== null) window.clearTimeout(timer);
     };
-  }, [activeRun, bridge, projectId, refreshCatalog]);
+  }, [activeRunId, bridge, projectId, refreshCatalog]);
 
   const runRules = async (): Promise<void> => {
     if (!chapter?.finalVersionId || readOnly) return;
@@ -377,9 +439,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                 data-author-return-key={`story-todo:${todo.todoId}`}
                 disabled={!todo.chapterId}
                 type="button"
-                onClick={() =>
-                  navigateToDraftLocation(todo.chapterId, todo.logicalBlockId, '该待办')
-                }
+                onClick={() => navigateToDraftLocation(todo.chapterId, todo.logicalBlockId, '该待办')}
               >
                 前往原文
               </button>

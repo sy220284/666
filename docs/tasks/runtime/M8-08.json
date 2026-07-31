@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "id": "M8-08",
+  "status": "IMPLEMENTED",
+  "source": "docs/tasks/M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md",
+  "startedAt": "2026-07-30",
+  "dependencies": ["M8-06"],
+  "closureDependencies": ["M8-07"],
+  "releaseBlocking": true,
+  "allowedPaths": [
+    "apps/desktop/renderer/src/",
+    "apps/desktop/preload/src/",
+    "apps/desktop/main/src/",
+    "packages/editor-core/src/",
+    "packages/contracts/src/",
+    "packages/core-service/src/",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/security/",
+    "tests/performance/",
+    "tests/e2e/",
+    ".github/workflows/",
+    ".github/governance/",
+    "scripts/",
+    "docs/tasks/",
+    "docs/process/",
+    "docs/product/",
+    "docs/testing/",
+    "docs/roadmap/",
+    "docs/test-evidence/M8-08/",
+    "README.md",
+    "CHANGELOG.md",
+    "package.json",
+    "pnpm-lock.yaml",
+    "apps/desktop/main/package.json",
+    "apps/desktop/package.json",
+    "apps/desktop/preload/package.json",
+    "apps/desktop/renderer/package.json",
+    "packages/contracts/package.json",
+    "packages/core-service/package.json",
+    "packages/domain/package.json",
+    "packages/editor-core/package.json",
+    "packages/prompts/package.json",
+    "packages/testkit/package.json"
+  ],
+  "exclusivePaths": [
+    ".github/workflows/",
+    ".github/governance/",
+    "README.md",
+    "CHANGELOG.md",
+    "package.json",
+    "pnpm-lock.yaml"
+  ],
+  "forbiddenPaths": [
+    "migrations/",
+    "docs/test-evidence/M0/",
+    "docs/test-evidence/M1/",
+    "docs/test-evidence/M2/",
+    "docs/test-evidence/M3/",
+    "docs/test-evidence/M4-04/",
+    "docs/test-evidence/M8-02/",
+    "docs/test-evidence/M8-04/",
+    "docs/test-evidence/M8-05/",
+    "docs/test-evidence/M8-06/",
+    "docs/test-evidence/M8-07/"
+  ],
+  "verification": [
+    "pnpm check:language",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm test:e2e",
+    "pnpm build",
+    "pnpm release:check"
+  ],
+  "implementedAt": "2026-07-31T18:50:00+08:00",
+  "implementationCommit": "695a74cb5e42901d7a0d177b8811c857a40736d3",
+  "releaseEvidence": {
+    "version": "1.0.0",
+    "artifactRuns": [30623725133, 30624246649],
+    "artifacts": {
+      "macos": {
+        "id": 8790527645,
+        "bytes": 122409745,
+        "sha256": "b23377c65900e13689a18da34eb5e4dd6d163e22bbca4363215693792e2a6652"
+      },
+      "windows": {
+        "id": 8790649171,
+        "bytes": 147976944,
+        "sha256": "ca0e1f7ef66bfc6ccdea7412fbd981ea7891eb569b7a8a200fa33e43cbb5ac8b"
+      },
+      "linux": {
+        "id": 8790691885,
+        "bytes": 128606196,
+        "sha256": "7b6bd7777afa28f508a7adef1e6c3546c0696690058bb10c1ea9e0997eef633b"
+      }
+    }
+  }
+}

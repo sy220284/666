@@ -1,7 +1,7 @@
 /* global console, process */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -33,6 +33,56 @@ function delegate(argumentsList) {
   });
 }
 
+function delegateParallel(command) {
+  execFileSync(process.execPath, ['.github/governance/parallel-task-policy.mjs', command], {
+    cwd: root,
+    env: process.env,
+    stdio: 'inherit',
+  });
+}
+
+async function pullRequestBody() {
+  if (process.env.TASK_PR_BODY) return process.env.TASK_PR_BODY;
+  if (!process.env.GITHUB_EVENT_PATH) return '';
+  try {
+    const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
+    return event.pull_request?.body ?? '';
+  } catch {
+    return '';
+  }
+}
+
+async function activeParallelTask() {
+  try {
+    const authorization = JSON.parse(await readFile('docs/tasks/TASK_AUTHORIZATION.json', 'utf8'));
+    if (authorization.mode !== 'parallel-pr') return null;
+    const taskId = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu
+      .exec(await pullRequestBody())?.[1]
+      ?.toUpperCase();
+    if (!taskId) return null;
+    const runtime = JSON.parse(await readFile('docs/tasks/runtime/' + taskId + '.json', 'utf8'));
+    return ['IN_PROGRESS', 'IMPLEMENTED'].includes(runtime.status) ? taskId : null;
+  } catch {
+    return null;
+  }
+}
+
+async function parallelRuntimeStatuses() {
+  const statuses = new Map();
+  try {
+    const authorization = JSON.parse(await readFile('docs/tasks/TASK_AUTHORIZATION.json', 'utf8'));
+    if (authorization.mode !== 'parallel-pr') return statuses;
+    for (const name of await readdir('docs/tasks/runtime')) {
+      if (!/^M\d+-\d{2}\.json$/u.test(name)) continue;
+      const runtime = JSON.parse(await readFile('docs/tasks/runtime/' + name, 'utf8'));
+      statuses.set(runtime.id, runtime.status);
+    }
+  } catch {
+    // Legacy repositories without parallel task state retain the original hold behavior.
+  }
+  return statuses;
+}
+
 async function load() {
   const [stateSource, indexSource, mirrorSource] = await Promise.all([
     readFile(statePath, 'utf8'),
@@ -51,7 +101,7 @@ function isVerificationHold(state) {
   return state?.activeTask?.status === 'VERIFIED_HOLD';
 }
 
-function holdErrors(state, taskIndex) {
+function holdErrors(state, taskIndex, runtimeStatuses = new Map()) {
   const errors = [];
   const active = state?.activeTask;
   const hold = state?.verificationHold;
@@ -131,8 +181,17 @@ function holdErrors(state, taskIndex) {
     }
   } else if (!hold?.nextTaskId || hold.nextTaskId === active.id) {
     errors.push('verificationHold.nextTaskId must identify the deferred next task');
-  } else if (taskIndex.get(hold.nextTaskId)?.status !== 'Planned') {
-    errors.push(`${hold.nextTaskId} must remain Planned during verification hold`);
+  } else {
+    const indexedNextStatus = taskIndex.get(hold.nextTaskId)?.status;
+    const runtimeNextStatus = runtimeStatuses.get(hold.nextTaskId);
+    const supportedParallelState =
+      (indexedNextStatus === 'In Progress' && runtimeNextStatus === 'IN_PROGRESS') ||
+      (indexedNextStatus === 'Implemented' && runtimeNextStatus === 'IMPLEMENTED');
+    if (indexedNextStatus !== 'Planned' && !supportedParallelState) {
+      errors.push(
+        `${hold.nextTaskId} must be Planned or match an active parallel runtime during verification hold`,
+      );
+    }
   }
   if (!String(hold?.reason ?? '').trim()) {
     errors.push('verificationHold.reason is required');
@@ -161,7 +220,7 @@ function normalizeText(value) {
 
 async function validateHold() {
   const { state, taskIndex, mirrorSource } = await load();
-  const errors = holdErrors(state, taskIndex);
+  const errors = holdErrors(state, taskIndex, await parallelRuntimeStatuses());
   const expectedMirror = renderActiveTask(state);
   if (normalizeText(mirrorSource) !== normalizeText(expectedMirror)) {
     errors.push('ACTIVE_TASK.md is out of sync with ACTIVE_TASK.json');
@@ -190,6 +249,7 @@ function changedFiles() {
 }
 
 async function validateHoldPaths() {
+  if (await activeParallelTask()) return delegateParallel('validate');
   const { state } = await load();
   const files = changedFiles();
   const branch = process.env.TASK_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF ?? '';
@@ -207,6 +267,7 @@ async function validateHoldPaths() {
 }
 
 async function validateHoldBranch() {
+  if (await activeParallelTask()) return delegateParallel('pr-policy');
   const { state } = await load();
   const branch = process.env.TASK_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF ?? '';
   const files = changedFiles();
@@ -271,6 +332,13 @@ export function selfTest() {
     },
   };
   assert.deepEqual(holdErrors(state, taskIndex), []);
+  const parallelIndex = new Map(taskIndex);
+  parallelIndex.set('M4-04', {
+    id: 'M4-04',
+    source: 'docs/tasks/M4/M4-04.md',
+    status: 'In Progress',
+  });
+  assert.deepEqual(holdErrors(state, parallelIndex, new Map([['M4-04', 'IN_PROGRESS']])), []);
   assert.ok(
     holdErrors(
       { ...state, authorization: { ...state.authorization, autoActivateNext: true } },

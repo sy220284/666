@@ -100,6 +100,7 @@ describe('M1-05 atomic Draft Patch persistence', () => {
         operations: [
           {
             type: 'insert',
+            clientBlockId: 'integration-new-dialogue',
             afterLogicalBlockId: first.logicalBlockId,
             block: { blockType: 'dialogue', content: '“新块。”', attributes: {} },
           },
@@ -118,6 +119,7 @@ describe('M1-05 atomic Draft Patch persistence', () => {
         ['dialogue', '“新块。”'],
       ]);
       expect(firstBatch.blocks.every((block) => block.contentHash !== null)).toBe(true);
+      expect(firstBatch.blocks[1]?.clientBlockId).toBe('integration-new-dialogue');
 
       const moved = firstBatch.blocks[1]!;
       const secondBatch = await harness.drafts.applyPatch(randomUUID(), {

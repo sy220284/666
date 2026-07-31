@@ -23,13 +23,13 @@ const legacySurface = createLegacySurfaceController();
 const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
 const retiredCompatibilityBoundary = createLegacyCompatibilityLoader(async () => undefined);
-const coreRecovery = createCoreRecoverySupervisor({ bridge });
+const coreRecovery = createCoreRecoverySupervisor({ bridge, flushDraft: flushRegisteredDraft });
 const runtime = createRendererFoundationRuntime({
   bridge,
   legacy: retiredCompatibilityBoundary,
   lifecycle,
   statuses,
-  rendererVersion: '0.1.0',
+  rendererVersion: '1.0.0',
   protocolVersion: PROTOCOL_VERSION,
 });
 const root = createRoot(rootElement);

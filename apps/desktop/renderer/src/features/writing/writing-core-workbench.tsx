@@ -321,6 +321,7 @@ export function WritingWorkbench({
   const autosave = useRef<DraftAutosaveCoordinator | null>(null);
   const activeDraft = useRef<DraftDocument | null>(null);
   const activeChapter = useRef<Chapter | null>(null);
+  const editorGeneration = useRef(0);
   const composing = useRef(false);
   const synchronizing = useRef(false);
   const initialChapterRequested = useRef(false);
@@ -398,6 +399,7 @@ export function WritingWorkbench({
     (document: DraftDocument) =>
       document.blocks.map((block) => ({
         logicalBlockId: block.logicalBlockId,
+        clientBlockId: block.clientBlockId ?? null,
         blockType: block.blockType,
         text: block.text,
         attributes: block.attributes,
@@ -468,40 +470,58 @@ export function WritingWorkbench({
       const signature = JSON.stringify(json);
       assertEditorNodeMetadata(json);
       const nextBlocks = tiptapJsonToDraftSnapshot(json, temporaryClientBlockId);
-      const operations = buildDraftPatchOperations(persistedBlocks(currentDraft), nextBlocks);
-      if (operations.length === 0) return true;
-      const result = await bridge.draft.applyPatch({
+      const saveContext = {
         projectId: project.projectId,
         chapterId: currentChapter.id,
         draftId: currentDraft.draftId,
         baseRevision: currentDraft.revision,
+        editorGeneration: editorGeneration.current,
+        documentFingerprint: signature,
+        blockIdentityMap: new Map(
+          nextBlocks.map((block) => [block.clientBlockId, block.logicalBlockId]),
+        ),
+        requestSnapshot: nextBlocks,
+        requestedAt: Date.now(),
+      };
+      const operations = buildDraftPatchOperations(persistedBlocks(currentDraft), nextBlocks);
+      if (operations.length === 0) return true;
+      const result = await bridge.draft.applyPatch({
+        projectId: saveContext.projectId,
+        chapterId: saveContext.chapterId,
+        draftId: saveContext.draftId,
+        baseRevision: saveContext.baseRevision,
         operations,
       });
-      if (result.state !== 'success') return false;
+      if (result.state !== 'success') {
+        setStatus(
+          result.state === 'failure'
+            ? authorErrorSummary(result.error)
+            : '保存请求已取消；当前窗口内容仍保留。',
+          true,
+        );
+        return false;
+      }
       if (
-        activeChapter.current?.id !== currentChapter.id ||
-        activeDraft.current?.draftId !== currentDraft.draftId ||
-        editor.current !== instance
+        activeChapter.current?.id !== saveContext.chapterId ||
+        activeDraft.current?.draftId !== saveContext.draftId ||
+        editor.current !== instance ||
+        editorGeneration.current !== saveContext.editorGeneration
       ) {
         return true;
       }
       activeDraft.current = result.data;
       setDraft(result.data);
       synchronizing.current = true;
-      const synchronized = synchronizePersistedBlockMetadata(
+      synchronizePersistedBlockMetadata(
         instance,
         persistedBlocks(result.data),
+        saveContext.requestSnapshot,
       );
-      if (!synchronized) {
-        instance.commands.setContent(documentToTiptapJson(persistedBlocks(result.data)), {
-          emitUpdate: false,
-        });
-      }
       synchronizing.current = false;
       refreshStatistics();
       await saveContinuation();
       setStatus(
-        `${savedStatus('已保存', result.data.revision, disclosureMode)}${JSON.stringify(instance.getJSON()) === signature ? '' : ' · 编辑器仍有新输入'}`,
+        `${savedStatus('已保存', result.data.revision, disclosureMode)}${JSON.stringify(instance.getJSON()) === saveContext.documentFingerprint ? '' : ' · 编辑器仍有新输入'}`,
       );
       return true;
     } catch {
@@ -569,6 +589,7 @@ export function WritingWorkbench({
       continuationScrollCleanup.current = null;
       autosave.current?.destroy();
       autosave.current = null;
+      editorGeneration.current += 1;
       instance?.destroy();
       editor.current = null;
       editorHost.current?.replaceChildren();

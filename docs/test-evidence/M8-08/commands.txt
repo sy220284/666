@@ -1,0 +1,11 @@
+M8-08 implementation evidence head: 695a74cb5e42901d7a0d177b8811c857a40736d3
+Target version: 1.0.0
+PR: 243
+M8-07 verified main: 44fc199c0d4725a9aa169865309674954143f5cf
+Product quality run: 30623729016
+Cross-platform run: 30623725133
+Linux controlled retry run: 30624246649
+Windows artifact: 8790649171
+macOS artifact: 8790527645
+Linux artifact: 8790691885
+Pending: current-head permanent gates, merge, final main verification, Verified hold, release

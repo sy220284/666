@@ -4,6 +4,7 @@ import {
   EditorState,
   NodeSelection,
   TextSelection,
+  createWorldforgeClientIdentityPlugin,
   createWorldforgeHistoryPlugin,
   createWorldforgeEditorSchema,
   documentToTiptapJson,
@@ -80,6 +81,77 @@ describe('M1-04 WorldForge editor document', () => {
     expect(() =>
       tiptapJsonToDraftSnapshot({ type: 'chapterDocument', content: [{ type: 'blockquote' }] }),
     ).toThrow(/Unsupported editor block/);
+  });
+
+  it('persists unique client identities for pasted blocks without adding an undo step', () => {
+    const schema = createWorldforgeEditorSchema();
+    const paragraph = schema.nodes.paragraph;
+    const heading = schema.nodes.heading;
+    const dialogue = schema.nodes.dialogue;
+    const document = schema.nodes.chapterDocument;
+    if (!paragraph || !heading || !dialogue || !document) {
+      throw new Error('Editor schema is incomplete.');
+    }
+    let sequence = 0;
+    const identity = createWorldforgeClientIdentityPlugin(() => {
+      sequence += 1;
+      return `pasted-${sequence}`;
+    });
+    let state = EditorState.create({
+      doc: document.create(null, [
+        paragraph.create(
+          {
+            logicalBlockId: firstId,
+            clientBlockId: firstId,
+            source: 'manual',
+            locked: false,
+            contentHash: null,
+          },
+          schema.text('原正文'),
+        ),
+        heading.create(
+          {
+            logicalBlockId: null,
+            clientBlockId: null,
+            source: 'manual',
+            locked: false,
+            contentHash: null,
+            headingLevel: 3,
+          },
+          schema.text('网页标题'),
+        ),
+        dialogue.create(
+          {
+            logicalBlockId: null,
+            clientBlockId: null,
+            source: 'manual',
+            locked: false,
+            contentHash: null,
+          },
+          schema.text('“安全网页正文”'),
+        ),
+      ]),
+      plugins: [identity],
+    });
+
+    const initialized = state.applyTransaction(state.tr.setMeta('paste-simulation', true));
+    state = initialized.state;
+    expect(initialized.transactions).toHaveLength(2);
+    expect(initialized.transactions[1]?.getMeta('addToHistory')).toBe(false);
+    expect(state.doc.child(0).attrs.clientBlockId).toBe(firstId);
+    expect(state.doc.child(1).attrs.clientBlockId).toBe('pasted-1');
+    expect(state.doc.child(2).attrs.clientBlockId).toBe('pasted-2');
+
+    const firstSnapshot = tiptapJsonToDraftSnapshot(state.doc.toJSON());
+    const secondSnapshot = tiptapJsonToDraftSnapshot(state.doc.toJSON());
+    expect(secondSnapshot.map((block) => block.clientBlockId)).toEqual(
+      firstSnapshot.map((block) => block.clientBlockId),
+    );
+    expect(new Set(firstSnapshot.map((block) => block.clientBlockId)).size).toBe(3);
+
+    const unchanged = state.applyTransaction(state.tr.setMeta('identity-recheck', true));
+    expect(unchanged.transactions).toHaveLength(1);
+    expect(sequence).toBe(2);
   });
 
   it('keeps the left logicalBlockId on Enter and gives the right block a temporary identity', () => {

@@ -107,6 +107,8 @@ function harness(
     reopen?: unknown;
     draft?: string;
     clipboardReject?: boolean;
+    flush?: boolean;
+    flushReject?: boolean;
   } = {},
 ) {
   const surface = new Surface();
@@ -121,6 +123,10 @@ function harness(
   const cancelSchedule = vi.fn();
   const writeClipboardText = vi.fn(async () => {
     if (overrides.clipboardReject) throw new Error('clipboard failed');
+  });
+  const flushDraft = vi.fn(async () => {
+    if (overrides.flushReject) throw new Error('flush failed');
+    return overrides.flush ?? true;
   });
   const bridge = strictTestDouble<RecoveryBridge>(
     'CoreRecoveryBridge',
@@ -137,6 +143,7 @@ function harness(
     cancelSchedule,
     readDraftText: () => overrides.draft ?? '草稿正文',
     writeClipboardText,
+    flushDraft,
   });
   return {
     supervisor,
@@ -149,6 +156,7 @@ function harness(
     schedule,
     cancelSchedule,
     writeClipboardText,
+    flushDraft,
   };
 }
 
@@ -229,6 +237,24 @@ describe('Core recovery supervisor branch coverage', () => {
     await value.supervisor.checkNow();
     expect(value.supervisor.health).toBe('degraded');
     expect(value.surface.states.at(-1)).toMatchObject({ visible: true, health: 'degraded' });
+  });
+
+  it('blocks restart until a failed draft flush is copied to the clipboard', async () => {
+    const value = harness({ flush: false });
+    await expect(value.supervisor.restart()).resolves.toBe(false);
+    expect(value.restartCore).not.toHaveBeenCalled();
+    expect(value.surface.states.at(-1)?.message).toContain('先复制当前正文');
+
+    await expect(value.supervisor.copyDraft()).resolves.toBe(true);
+    await expect(value.supervisor.restart()).resolves.toBe(true);
+    expect(value.restartCore).toHaveBeenCalledOnce();
+    expect(value.flushDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats a thrown flush as unsafe and does not restart', async () => {
+    const value = harness({ flushReject: true });
+    await expect(value.supervisor.restart()).resolves.toBe(false);
+    expect(value.restartCore).not.toHaveBeenCalled();
   });
 
   it.each([

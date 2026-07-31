@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M8-08",
+  "commit": "695a74cb5e42901d7a0d177b8811c857a40736d3",
+  "generatedAt": "2026-07-31T18:50:00+08:00",
+  "acceptanceSource": "GITHUB_ACTIONS",
+  "files": [
+    {
+      "path": "autosave-race-fix-verification.md",
+      "bytes": 415,
+      "sha256": "65746f57aeeee396a93a2d2f086b117946864e14953f54d104ac07073298be16"
+    },
+    {
+      "path": "autosave-race-reproduction.md",
+      "bytes": 542,
+      "sha256": "27ce29abc7f7bb34a774b11e6c40bb301b9dea6afcc38d815432a463db22a773"
+    },
+    {
+      "path": "baseline-audit.md",
+      "bytes": 1149,
+      "sha256": "6fb3e168f741a4ddf93d82d75e1ca6cc1c02aae5ea37bf61092a65f831e2dbed"
+    },
+    {
+      "path": "capability-matrix-verification.md",
+      "bytes": 415,
+      "sha256": "014a6faf97facbd58ec0e074e915b2d902ae8391f8f09fbf6f4452d5cd5e0999"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 451,
+      "sha256": "507defffe0cfb238df0db1adb32e6d623f835da25cbc1da10655387b7dfc7d4d"
+    },
+    {
+      "path": "cross-process-coverage.md",
+      "bytes": 375,
+      "sha256": "c4dcc9776cab6aaa164e24cee25bf5b7fd58effb373bb5a0aef6750c5c1e3d78"
+    },
+    {
+      "path": "implementation-review.md",
+      "bytes": 593,
+      "sha256": "da0e5cfab846bd791cbfd516ba5f776c60667dcf8bb050a9521acfdd926c107e"
+    },
+    {
+      "path": "known-limitations.md",
+      "bytes": 373,
+      "sha256": "5a9a6043ce38170efe24b0e7e0d14a9e777075de01708202f2e7f81c4cab54ac"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 354,
+      "sha256": "cd0470cd212d526b434a71a31b6a34841a30d8fcc3671cf1db5b70a301e4ff65"
+    },
+    {
+      "path": "main-final-verification.md",
+      "bytes": 331,
+      "sha256": "a87941ba08829b0ec2e9e6befcd925683509abfce3e343698d594f282f3d8610"
+    },
+    {
+      "path": "release-artifacts.md",
+      "bytes": 874,
+      "sha256": "e69eb62d77c3ceb675fa88ffa486b21e5a6286ddd911c34d1de9480b28f038d8"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 1079,
+      "sha256": "960f51e2eb0d52cfcab78810aef6d196dbfc8cb767ae016b3f3a21027a110fd8"
+    }
+  ]
+}

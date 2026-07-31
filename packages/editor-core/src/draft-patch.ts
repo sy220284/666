@@ -4,7 +4,6 @@ import type {
   WorldforgeBlockAttributes,
   WorldforgeBlockType,
 } from './draft-document.js';
-
 export interface DraftPatchNewBlock {
   readonly blockType: WorldforgeBlockType;
   readonly content: string;
@@ -14,6 +13,7 @@ export interface DraftPatchNewBlock {
 export type DraftEditorPatchOperation =
   | {
       readonly type: 'insert';
+      readonly clientBlockId: string;
       readonly afterLogicalBlockId: string | null;
       readonly block: DraftPatchNewBlock;
     }
@@ -77,13 +77,18 @@ function assertUniquePersistedIds(blocks: readonly PersistedEditorBlock[]): void
 }
 
 function assertUniqueCurrentIds(blocks: readonly DraftSnapshotEditorBlock[]): void {
-  const ids = new Set<string>();
+  const logicalIds = new Set<string>();
+  const clientIds = new Set<string>();
   for (const block of blocks) {
+    if (clientIds.has(block.clientBlockId)) {
+      throw new RangeError(`Duplicate current clientBlockId: ${block.clientBlockId}`);
+    }
+    clientIds.add(block.clientBlockId);
     if (!block.logicalBlockId) continue;
-    if (ids.has(block.logicalBlockId)) {
+    if (logicalIds.has(block.logicalBlockId)) {
       throw new RangeError(`Duplicate current logicalBlockId: ${block.logicalBlockId}`);
     }
-    ids.add(block.logicalBlockId);
+    logicalIds.add(block.logicalBlockId);
   }
 }
 
@@ -178,6 +183,7 @@ export function buildDraftPatchOperations(
     }
     inserts.push({
       type: 'insert',
+      clientBlockId: block.clientBlockId,
       afterLogicalBlockId,
       block: {
         blockType: block.blockType,

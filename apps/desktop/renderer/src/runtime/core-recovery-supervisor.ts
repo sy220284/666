@@ -54,6 +54,7 @@ export interface CoreRecoverySupervisorOptions {
   readonly cancelSchedule?: (handle: unknown) => void;
   readonly readDraftText?: () => string;
   readonly writeClipboardText?: (text: string) => Promise<void>;
+  readonly flushDraft?: () => Promise<boolean>;
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
@@ -86,6 +87,7 @@ export function createCoreRecoverySupervisor(
     options.cancelSchedule ?? ((handle: unknown): void => window.clearInterval(handle as number));
   const readDraftText = options.readDraftText ?? defaultDraftText;
   const writeClipboardText = options.writeClipboardText ?? defaultClipboardWrite;
+  const flushDraft = options.flushDraft ?? (() => Promise.resolve(true));
   const surface = options.surface ?? createDomCoreRecoverySurface();
 
   let disposed = false;
@@ -98,6 +100,7 @@ export function createCoreRecoverySupervisor(
   let observed = false;
   let rememberedProject: RecoverableProjectIdentity | null = null;
   let recovering = false;
+  let draftCopied = false;
   let message = '正在检查本地服务运行状态。';
 
   const isCurrent = (epoch: number): boolean => !disposed && lifecycle === epoch;
@@ -184,11 +187,22 @@ export function createCoreRecoverySupervisor(
     const epoch = lifecycle;
     observed = true;
     recovering = true;
-    message = '正在重启本地服务；当前编辑器内容不会被清空。';
+    message = '正在确认当前稿安全状态，再重启本地服务。';
     publish();
 
     restartPromise = (async (): Promise<boolean> => {
       try {
+        let safelyFlushed = false;
+        try {
+          safelyFlushed = await flushDraft();
+        } catch {
+          safelyFlushed = false;
+        }
+        if (!isCurrent(epoch)) return false;
+        if (!safelyFlushed && !draftCopied) {
+          message = '当前稿尚未安全保存。请先复制当前正文，再重启本地服务。';
+          return false;
+        }
         const outcome = await options.bridge.app.restartCore();
         if (!isCurrent(epoch)) return false;
         if (outcome.state !== 'success' || outcome.data.status.status !== 'healthy') {
@@ -218,6 +232,7 @@ export function createCoreRecoverySupervisor(
         message = projectToOpen
           ? '本地服务与作品已恢复，可以重新保存当前窗口中的正文。'
           : '本地服务已恢复；当前没有可自动重新打开的最近作品。';
+        draftCopied = false;
         return true;
       } catch {
         if (!isCurrent(epoch)) return false;
@@ -247,6 +262,7 @@ export function createCoreRecoverySupervisor(
     try {
       await writeClipboardText(text);
       if (!isCurrent(epoch)) return false;
+      draftCopied = true;
       message = '当前窗口正文已复制到剪贴板。';
       publish();
       return true;

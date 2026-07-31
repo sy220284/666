@@ -74,6 +74,7 @@ interface DraftRow {
 interface WorkingBlock {
   readonly recordId: string;
   readonly logicalBlockId: string;
+  readonly clientBlockId?: string | undefined;
   readonly blockType: DraftBlock['blockType'];
   readonly text: string;
   readonly attributes: DraftBlock['attributes'];
@@ -292,6 +293,7 @@ function readDocument(
 ): DraftDocument {
   const blocks = readWorkingBlocks(connection, draft.id).map((block, index) => ({
     logicalBlockId: block.logicalBlockId,
+    ...(block.clientBlockId ? { clientBlockId: block.clientBlockId } : {}),
     orderKey: String((index + 1) * 1024),
     blockType: block.blockType,
     text: block.text,
@@ -356,6 +358,7 @@ function replayDocument(
       const block = item as Record<string, unknown>;
       const parsed = DraftBlockSchema.parse({
         logicalBlockId: block.logicalBlockId,
+        clientBlockId: block.clientBlockId,
         orderKey: block.orderKey,
         blockType: block.blockType,
         text: block.text,
@@ -541,6 +544,7 @@ function insertionIndex(
 function auditBlocks(blocks: readonly WorkingBlock[]): readonly Record<string, unknown>[] {
   return blocks.map((block, index) => ({
     logicalBlockId: block.logicalBlockId,
+    ...(block.clientBlockId ? { clientBlockId: block.clientBlockId } : {}),
     orderKey: String((index + 1) * 1024),
     blockType: block.blockType,
     text: block.text,
@@ -598,6 +602,7 @@ function applyOperation(
       blocks.splice(index, 0, {
         recordId: idFactory(),
         logicalBlockId: idFactory(),
+        ...(operation.clientBlockId ? { clientBlockId: operation.clientBlockId } : {}),
         ...normalized,
         source: 'manual',
         locked: false,
@@ -947,10 +952,22 @@ export class DraftService {
         idFactory: this.#idFactory,
       });
       this.#faultInjector?.('after-patch-persist');
-      return readDocument(connection, valid.projectId, valid.chapterId, {
+      const document = readDocument(connection, valid.projectId, valid.chapterId, {
         ...draft,
         revision: committedRevision,
       });
+      const clientIdentityByLogicalId = new Map(
+        after.flatMap((block) =>
+          block.clientBlockId ? [[block.logicalBlockId, block.clientBlockId] as const] : [],
+        ),
+      );
+      return {
+        ...document,
+        blocks: document.blocks.map((block) => {
+          const clientBlockId = clientIdentityByLogicalId.get(block.logicalBlockId);
+          return clientBlockId ? { ...block, clientBlockId } : block;
+        }),
+      };
     });
   }
 }

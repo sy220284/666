@@ -1,22 +1,20 @@
-# M8-08阶段证据摘要
+# M8-08最终证据摘要
 
 - 任务：V1.0最终质量治理与封版闭环
-- 实施基线：`main@44fc199c0d4725a9aa169865309674954143f5cf`
-- 实现分支：`work/m8-08-v1-final-governance-closure`
+- 实现分支Head：`e53c8e57d4113776db524b0ca08ca100fa119e6a`
+- 受控squash合并提交：`0e8328b023bccf4d79f338f05b1ae960fd6a6426`
 - 实现PR：#243
-- 实施证据Head：`695a74cb5e42901d7a0d177b8811c857a40736d3`
 - 目标版本：`1.0.0`
 
-## 已完成
+## 完成结论
 
-1. 正文保存按稳定身份同步持久化元数据，旧结果不再重置继续编辑后的正文。
-2. AI检查改为串行轮询并具备退避、卸载停止、失败恢复与终态刷新。
-3. 应用/项目能力矩阵、恢复模式和关闭刷新失败交互已接入。
-4. M8-07已在main完成Verified闭环，M8-08封版依赖解除。
-5. 11个工作区包、Renderer版本、README与CHANGELOG统一为`1.0.0`。
-6. Windows、macOS、Linux原生便携工件、资产校验与成品启动冒烟通过。
-7. M8-07验证保持与并行任务运行时的衔接规则已修复。
+1. 正文保存竞态、AI检查轮询、能力矩阵与恢复模式已完成并通过专项验证。
+2. 11个工作区包、Renderer版本、README与CHANGELOG已统一为`1.0.0`。
+3. Windows、macOS、Linux原生便携工件均通过资产校验和成品启动冒烟。
+4. 来源PR永久门禁全部通过，Quality Run为`30626652448`。
+5. 受控squash合并完成，Main Verification Run `30627656869`成功核验最终SHA、来源PR检查、静态一致性与squash溯源。
+6. 正式Release流水线已统一Linux AppArmor沙箱回退策略。
 
-## 当前状态
+## 质量结论
 
-M8-08已转Implemented。剩余步骤仅为当前Head永久门禁、受控合并、最终main全矩阵验证、Verified终态和正式V1.0 Release。
+M8-08验收项已完成，Evidence绑定可达main提交，任务满足Verified与最终VERIFIED_HOLD条件。

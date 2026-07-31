@@ -34,7 +34,13 @@ async function invokeNativeIme(
   evidenceLog: string[],
   input: { readonly text?: string; readonly screenshotPath?: string } = {},
 ): Promise<void> {
-  const powershell = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const powershell = path.join(
+    process.env.SystemRoot ?? 'C:\\Windows',
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'powershell.exe',
+  );
   const script = path.join(root, 'tests/e2e/m8-07-windows-ime-native.ps1');
   const args = [
     '-NoLogo',
@@ -62,7 +68,9 @@ async function invokeNativeIme(
 
 test.afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
   );
 });
 
@@ -138,10 +146,16 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
     await expect(editor).toContainText('中文输入法ABC测试');
 
     await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute('data-focus-mode', 'true');
+    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute(
+      'data-focus-mode',
+      'true',
+    );
     await expect(editor).toContainText('中文输入法ABC测试');
     await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute('data-focus-mode', 'false');
+    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute(
+      'data-focus-mode',
+      'false',
+    );
 
     const screenshotStats = await stat(candidateScreenshot);
     expect(screenshotStats.size).toBeGreaterThan(30_000);

@@ -60,9 +60,9 @@ jobs:
 
   windows-native-ime:
     name: windows-native-ime
-    if: ${{ github.event.pull_request.head.ref == 'work/m8-07-chinese-experience-governance' }}
+    if: ${{ contains(github.event.pull_request.body, 'worldforge-task: M8-07') }}
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -78,18 +78,21 @@ jobs:
       - name: Assert clean working tree before Windows IME acceptance
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Configure real Microsoft Pinyin input profile
+      - name: Configure built-in Microsoft Pinyin input profile
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path test-results/windows-ime | Out-Null
-          $capability = Get-WindowsCapability -Online |
-            Where-Object { $_.Name -like 'Language.Basic~~~zh-CN~*' } |
-            Select-Object -First 1
-          if ($capability -and $capability.State -ne 'Installed') {
-            Add-WindowsCapability -Online -Name $capability.Name | Out-Host
+          $tipId = '{81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E}'
+          $profileId = '{FA550B04-5AD7-411F-A5AC-CA038EC515D7}'
+          $inputTip = "0804:$tipId$profileId"
+          $profilePath = "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$tipId\LanguageProfile\0x00000804\$profileId"
+          if (-not (Test-Path $profilePath)) {
+            throw "M8_07_MICROSOFT_PINYIN_PROFILE_MISSING: $profilePath"
           }
-          $inputTip = '0804:{81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E}{FA550B04-5AD7-411F-A5AC-CA038EC515D7}'
+          Get-ItemProperty -Path $profilePath |
+            ConvertTo-Json -Depth 8 |
+            Out-File -FilePath test-results/windows-ime/microsoft-pinyin-profile.json -Encoding utf8
           $languages = New-WinUserLanguageList 'en-US'
           $languages.Add('zh-CN')
           $chinese = $languages | Where-Object LanguageTag -eq 'zh-CN'
@@ -113,7 +116,7 @@ jobs:
           WORLDFORGE_WINDOWS_IME_EVIDENCE_DIR: ${{ github.workspace }}\test-results\windows-ime
         run: |
           $ErrorActionPreference = 'Stop'
-          pnpm exec playwright test tests/e2e/m8-07-windows-ime.spec.ts --config tests/e2e/playwright.config.ts --workers=1 2>&1 |
+          pnpm exec playwright test --config tests/e2e/playwright.windows-ime.config.ts --workers=1 2>&1 |
             Tee-Object -FilePath test-results/windows-ime/windows-ime-e2e.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Assert clean working tree after Windows IME acceptance

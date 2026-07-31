@@ -174,10 +174,17 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
     await expect(restoredPage.locator('[data-writing-workbench]')).toBeVisible();
     await expect(restoredPage.locator('.worldforge-editor')).toContainText('中文输入法ABC测试');
 
-    const languageListPath = path.join(evidenceDirectory, 'windows-language-list.json');
-    const languageList = await readFile(languageListPath, 'utf8');
-    expect(languageList).toContain('zh-CN');
-    expect(languageList).toContain('FA550B04-5AD7-411F-A5AC-CA038EC515D7');
+    const profileEvidence = await readFile(
+      path.join(evidenceDirectory, 'microsoft-pinyin-profile.json'),
+      'utf8',
+    );
+    const defaultInputMethod = await readFile(
+      path.join(evidenceDirectory, 'default-input-method.json'),
+      'utf8',
+    );
+    expect(profileEvidence).toContain('81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E');
+    expect(profileEvidence).toContain('FA550B04-5AD7-411F-A5AC-CA038EC515D7');
+    expect(defaultInputMethod).toContain('FA550B04-5AD7-411F-A5AC-CA038EC515D7');
     await writeFile(
       path.join(evidenceDirectory, 'native-ime-actions.jsonl'),
       `${evidenceLog.filter(Boolean).join('\n')}\n`,

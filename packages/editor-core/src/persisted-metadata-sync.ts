@@ -64,19 +64,43 @@ export function resetPendingDraftSnapshotsForTests(): void {
   pendingSnapshots = [];
 }
 
+function currentClientBlockIds(editor: Editor): ReadonlySet<string> {
+  const clientBlockIds = new Set<string>();
+  editor.state.doc.forEach((node) => {
+    const clientBlockId = optionalString(node.attrs.clientBlockId);
+    if (clientBlockId) clientBlockIds.add(clientBlockId);
+  });
+  return clientBlockIds;
+}
+
 function takeMatchingSnapshot(
   blocks: readonly PersistedEditorBlock[],
+  currentClientIds: ReadonlySet<string>,
 ): readonly DraftSnapshotEditorBlock[] | null {
-  const index = pendingSnapshots.findIndex(
-    (snapshot) =>
-      snapshot.length === blocks.length &&
-      snapshot.every((savedBlock, blockIndex) => {
+  let selectedIndex = -1;
+  let selectedScore = 0;
+  for (let index = pendingSnapshots.length - 1; index >= 0; index -= 1) {
+    const snapshot = pendingSnapshots[index];
+    if (
+      !snapshot ||
+      snapshot.length !== blocks.length ||
+      !snapshot.every((savedBlock, blockIndex) => {
         const persisted = blocks[blockIndex];
         return Boolean(persisted && snapshotMatchesPersisted(savedBlock, persisted));
-      }),
-  );
-  if (index < 0) return null;
-  return pendingSnapshots.splice(index, 1)[0] ?? null;
+      })
+    ) {
+      continue;
+    }
+    const score = snapshot.reduce(
+      (total, savedBlock) => total + Number(currentClientIds.has(savedBlock.clientBlockId)),
+      0,
+    );
+    if (score <= selectedScore) continue;
+    selectedIndex = index;
+    selectedScore = score;
+  }
+  if (selectedIndex < 0) return null;
+  return pendingSnapshots.splice(selectedIndex, 1)[0] ?? null;
 }
 
 function metadataForCurrentNode(
@@ -98,10 +122,11 @@ function metadataForCurrentNode(
 /**
  * Synchronizes persisted metadata without replacing current editor content.
  *
- * The immutable save snapshot maps each clientBlockId to the corresponding persisted response
- * block. Current nodes are then matched by logicalBlockId or clientBlockId, so delayed responses
- * remain safe after typing, splitting, type changes or reordering. Without a matching snapshot,
- * only already-persisted logical identities are synchronized.
+ * A candidate save snapshot must match the persisted response and overlap the current editor's
+ * stable clientBlockIds. Newer snapshots win ties, so a delayed response from another chapter or
+ * an older same-content request cannot bind metadata into the active editor. Current nodes are
+ * then matched by logicalBlockId or clientBlockId. Without a safe snapshot, only already-persisted
+ * logical identities are synchronized.
  */
 export function synchronizePersistedBlockMetadata(
   editor: Editor,
@@ -113,7 +138,7 @@ export function synchronizePersistedBlockMetadata(
     persistedById.set(block.logicalBlockId, block);
   }
 
-  const snapshot = takeMatchingSnapshot(blocks);
+  const snapshot = takeMatchingSnapshot(blocks, currentClientBlockIds(editor));
   const savedByClientId = new Map<string, DraftSnapshotEditorBlock>();
   const persistedByClientId = new Map<string, PersistedEditorBlock>();
   if (snapshot) {

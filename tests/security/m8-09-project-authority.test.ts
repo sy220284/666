@@ -65,11 +65,14 @@ describe('M8-09 project authority boundary', () => {
     }
   });
 
-  it('opens and moves a healthy project even when recent-project metadata remains unavailable', async () => {
+  it('opens and moves a healthy project when recent metadata remains unavailable', async () => {
     const root = await temporaryDirectory();
     const parent = path.join(root, 'projects');
     const targetParent = path.join(root, 'moved');
-    await Promise.all([mkdir(parent, { recursive: true }), mkdir(targetParent, { recursive: true })]);
+    await Promise.all([
+      mkdir(parent, { recursive: true }),
+      mkdir(targetParent, { recursive: true }),
+    ]);
 
     const creator = workspaceService(root);
     const created = await creator.create(

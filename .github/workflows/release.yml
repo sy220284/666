@@ -1,4 +1,5 @@
 name: Release
+run-name: Release ${{ inputs.version || '1.0.0' }} (${{ github.event_name }})
 
 on:
   workflow_dispatch:
@@ -27,11 +28,34 @@ permissions:
 
 concurrency:
   group: release-${{ inputs.version || '1.0.0' }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
+  release-status-start:
+    name: Mark release pending
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    env:
+      STATUS_CONTEXT: release-${{ inputs.version || '1.0.0' }}
+      STATUS_SHA: ${{ github.sha }}
+      STATUS_TARGET_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Publish pending release status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}"
+          -f state=pending
+          -f context="$STATUS_CONTEXT"
+          -f description="Release started"
+          -f target_url="$STATUS_TARGET_URL"
+
   quality:
     name: Release quality
+    needs: release-status-start
     uses: ./.github/workflows/quality-core.yml
     with:
       package_smoke: false
@@ -40,6 +64,7 @@ jobs:
 
   release-gate:
     name: Release acceptance gate
+    needs: release-status-start
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -140,6 +165,32 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  release-status-ready:
+    name: Mark release ready to publish
+    needs:
+      - quality
+      - release-gate
+      - build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    env:
+      STATUS_CONTEXT: release-${{ inputs.version || '1.0.0' }}
+      STATUS_SHA: ${{ github.sha }}
+      STATUS_TARGET_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Publish build-complete release status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh api --method POST
+          "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}"
+          -f state=pending
+          -f context="$STATUS_CONTEXT"
+          -f description="Artifacts built; awaiting publish"
+          -f target_url="$STATUS_TARGET_URL"
+
   publish:
     name: Publish GitHub Release
     needs:
@@ -204,3 +255,44 @@ jobs:
               ;;
           esac
           gh release create "$tag" "${assets[@]}" "${release_args[@]}"
+
+  release-status-final:
+    name: Publish final release status
+    if: always()
+    needs:
+      - quality
+      - release-gate
+      - build
+      - publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    env:
+      BUILD_RESULT: ${{ needs.build.result }}
+      GATE_RESULT: ${{ needs.release-gate.result }}
+      PUBLISH_RESULT: ${{ needs.publish.result }}
+      QUALITY_RESULT: ${{ needs.quality.result }}
+      STATUS_CONTEXT: release-${{ inputs.version || '1.0.0' }}
+      STATUS_SHA: ${{ github.sha }}
+      STATUS_TARGET_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Publish final release status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          state=failure
+          description="Release failed before tag publication"
+          if [ "$QUALITY_RESULT" = success ] && \
+             [ "$GATE_RESULT" = success ] && \
+             [ "$BUILD_RESULT" = success ] && \
+             [ "$PUBLISH_RESULT" = success ]; then
+            state=success
+            description="Release published"
+          fi
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
+            -f state="$state" \
+            -f context="$STATUS_CONTEXT" \
+            -f description="$description" \
+            -f target_url="$STATUS_TARGET_URL"

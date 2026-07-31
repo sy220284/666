@@ -1,0 +1,70 @@
+name: M8-09 Bootstrap
+
+on:
+  push:
+    branches:
+      - work/m8-09-v1-stability-remediation
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-09-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  apply-and-verify:
+    if: ${{ !contains(github.event.head_commit.message, '[m8-09-generated]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: work/m8-09-v1-stability-remediation
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Apply M8-09 remediation
+        run: python3 scripts/m8-09-apply.py
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format changed sources
+        run: >-
+          pnpm exec prettier --write
+          apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
+          apps/desktop/renderer/src/app/app-shell-m3.tsx
+          apps/desktop/renderer/src/features/checks/search-panel.tsx
+          apps/desktop/renderer/src/presentation/author-error-message.ts
+          apps/desktop/renderer/src/react-entry.tsx
+          apps/desktop/main/src/electron-main.ts
+          apps/desktop/main/src/ipc-handlers.ts
+          packages/core-service/src/project-workspace.ts
+          tests/unit/v1-stability-remediation.test.ts
+          docs/tasks/runtime/M8-09.json
+      - name: Validate task and language
+        run: |
+          node .github/governance/parallel-task-policy.mjs self-test
+          pnpm check:language
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test:unit
+      - name: Integration tests
+        run: pnpm test:integration
+      - name: Remove bootstrap files
+        run: rm scripts/m8-09-apply.py .github/workflows/m8-09-bootstrap.yml
+      - name: Commit generated remediation
+        env:
+          BRANCH: work/m8-09-v1-stability-remediation
+        run: |
+          git config user.name "worldforge-governance-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "M8-09：修复V1.0数据安全与生命周期问题 [m8-09-generated]"
+          git push origin "HEAD:$BRANCH"

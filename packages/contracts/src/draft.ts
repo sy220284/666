@@ -63,6 +63,7 @@ function validateNewBlockSemantics(
 export const DraftBlockSchema = z
   .strictObject({
     logicalBlockId: DraftEntityIdSchema,
+    clientBlockId: DraftClientBlockIdSchema.optional(),
     orderKey: DraftOrderKeySchema,
     blockType: DraftBlockTypeSchema,
     text: DraftBlockTextSchema,
@@ -139,6 +140,7 @@ export const DraftPatchNewBlockSchema = z
 
 export const DraftPatchInsertOperationSchema = z.strictObject({
   type: z.literal('insert'),
+  clientBlockId: DraftClientBlockIdSchema.optional(),
   afterLogicalBlockId: DraftEntityIdSchema.nullable(),
   block: DraftPatchNewBlockSchema,
 });

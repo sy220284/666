@@ -60,11 +60,13 @@ describe('M1-05 editor Patch generation', () => {
     expect(operations).toEqual([
       {
         type: 'insert',
+        clientBlockId: 'temporary-two',
         afterLogicalBlockId: firstId,
         block: { blockType: 'paragraph', content: '新二', attributes: {} },
       },
       {
         type: 'insert',
+        clientBlockId: 'temporary-one',
         afterLogicalBlockId: firstId,
         block: { blockType: 'paragraph', content: '新一', attributes: {} },
       },

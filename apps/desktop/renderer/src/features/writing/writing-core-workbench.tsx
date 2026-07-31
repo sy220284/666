@@ -399,6 +399,7 @@ export function WritingWorkbench({
     (document: DraftDocument) =>
       document.blocks.map((block) => ({
         logicalBlockId: block.logicalBlockId,
+        clientBlockId: block.clientBlockId ?? null,
         blockType: block.blockType,
         text: block.text,
         attributes: block.attributes,

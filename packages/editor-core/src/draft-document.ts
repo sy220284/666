@@ -17,6 +17,7 @@ export interface WorldforgeBlockAttributes {
 
 export interface PersistedEditorBlock {
   readonly logicalBlockId: string;
+  readonly clientBlockId?: string | null | undefined;
   readonly blockType: WorldforgeBlockType;
   readonly text: string;
   readonly attributes: WorldforgeBlockAttributes;

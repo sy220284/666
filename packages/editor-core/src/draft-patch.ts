@@ -13,6 +13,7 @@ export interface DraftPatchNewBlock {
 export type DraftEditorPatchOperation =
   | {
       readonly type: 'insert';
+      readonly clientBlockId: string;
       readonly afterLogicalBlockId: string | null;
       readonly block: DraftPatchNewBlock;
     }
@@ -182,6 +183,7 @@ export function buildDraftPatchOperations(
     }
     inserts.push({
       type: 'insert',
+      clientBlockId: block.clientBlockId,
       afterLogicalBlockId,
       block: {
         blockType: block.blockType,

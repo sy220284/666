@@ -26,9 +26,14 @@ function saved(
   };
 }
 
-function persisted(logicalBlockId: string, text: string): PersistedEditorBlock {
+function persisted(
+  logicalBlockId: string,
+  text: string,
+  clientBlockId?: string,
+): PersistedEditorBlock {
   return {
     logicalBlockId,
+    ...(clientBlockId ? { clientBlockId } : {}),
     blockType: 'paragraph',
     text,
     attributes: {},
@@ -77,7 +82,7 @@ describe('request-bound persisted metadata synchronization', () => {
     expect(
       synchronizePersistedBlockMetadata(
         target.editor,
-        [persisted('server-a', '相同'), persisted('server-b', '相同')],
+        [persisted('server-a', '相同', 'client-a'), persisted('server-b', '相同', 'client-b')],
         request,
       ),
     ).toBe(true);
@@ -88,7 +93,7 @@ describe('request-bound persisted metadata synchronization', () => {
   it('keeps later text while attaching the persisted identity from the same request', () => {
     const request = [saved('client-a', null, '保存快照')];
     const target = editorFor([saved('client-a', null, '保存后继续输入')]);
-    synchronizePersistedBlockMetadata(target.editor, [persisted('server-a', '保存快照')], request);
+    synchronizePersistedBlockMetadata(target.editor, [persisted('server-a', '保存快照', 'client-a')], request);
     expect(target.state().doc.firstChild?.textContent).toBe('保存后继续输入');
     expect(target.state().doc.firstChild?.attrs.logicalBlockId).toBe('server-a');
   });
@@ -98,7 +103,7 @@ describe('request-bound persisted metadata synchronization', () => {
     expect(
       synchronizePersistedBlockMetadata(
         target.editor,
-        [persisted('server-old', '旧请求')],
+        [persisted('server-old', '旧请求', 'client-old')],
         [saved('client-old', null, '旧请求')],
       ),
     ).toBe(false);
@@ -110,7 +115,7 @@ describe('request-bound persisted metadata synchronization', () => {
     expect(
       synchronizePersistedBlockMetadata(
         target.editor,
-        [persisted('server-a', '粘贴正文')],
+        [persisted('server-a', '粘贴正文', 'request-client')],
         [saved('request-client', null, '粘贴正文')],
       ),
     ).toBe(false);

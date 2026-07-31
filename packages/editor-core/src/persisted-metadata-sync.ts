@@ -49,12 +49,19 @@ function requestMapping(
   blocks: readonly PersistedEditorBlock[],
   requestSnapshot: readonly DraftSnapshotEditorBlock[],
 ): ReadonlyMap<string, PersistedEditorBlock> | null {
-  if (requestSnapshot.length !== blocks.length) return null;
+  const responseByClientId = new Map<string, PersistedEditorBlock>();
+  for (const block of blocks) {
+    const clientBlockId = optionalString(block.clientBlockId);
+    if (!clientBlockId) continue;
+    if (responseByClientId.has(clientBlockId)) return null;
+    responseByClientId.set(clientBlockId, block);
+  }
+
   const mapped = new Map<string, PersistedEditorBlock>();
-  for (const [index, savedBlock] of requestSnapshot.entries()) {
-    const persisted = blocks[index];
-    if (!persisted || mapped.has(savedBlock.clientBlockId)) return null;
-    if (!snapshotMatchesPersisted(savedBlock, persisted)) return null;
+  for (const savedBlock of requestSnapshot) {
+    if (savedBlock.logicalBlockId) continue;
+    const persisted = responseByClientId.get(savedBlock.clientBlockId);
+    if (!persisted || !snapshotMatchesPersisted(savedBlock, persisted)) return null;
     mapped.set(savedBlock.clientBlockId, persisted);
   }
   return mapped;

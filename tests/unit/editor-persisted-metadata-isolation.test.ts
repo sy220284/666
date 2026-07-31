@@ -18,8 +18,13 @@ const snapshot = (clientBlockId: string, text: string): DraftSnapshotEditorBlock
   attributes: {},
   locked: false,
 });
-const persisted = (logicalBlockId: string, text: string): PersistedEditorBlock => ({
+const persisted = (
+  logicalBlockId: string,
+  text: string,
+  clientBlockId: string,
+): PersistedEditorBlock => ({
   logicalBlockId,
+  clientBlockId,
   blockType: 'paragraph',
   text,
   attributes: {},
@@ -68,7 +73,7 @@ describe('save request isolation', () => {
     expect(
       synchronizePersistedBlockMetadata(
         target.editor,
-        [persisted('server-a', '相同正文')],
+        [persisted('server-a', '相同正文', 'chapter-a')],
         [snapshot('chapter-a', '相同正文')],
       ),
     ).toBe(false);
@@ -80,7 +85,7 @@ describe('save request isolation', () => {
     expect(
       synchronizePersistedBlockMetadata(
         target.editor,
-        [persisted('server-b', '相同正文')],
+        [persisted('server-b', '相同正文', 'chapter-b')],
         [snapshot('chapter-b', '相同正文')],
       ),
     ).toBe(true);

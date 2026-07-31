@@ -1,5 +1,5 @@
-name: V1 Repackage
-run-name: V1 repackage ${{ github.event.pull_request.head.sha }}
+name: V1 Repackage Finalize
+run-name: V1 repackage finalize ${{ github.event.pull_request.head.sha }}
 
 on:
   pull_request:
@@ -7,159 +7,60 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
+  actions: read
   contents: write
   pull-requests: read
 
 concurrency:
-  group: v1-repackage-${{ github.event.pull_request.number }}
+  group: v1-repackage-finalize-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
   RELEASE_VERSION: 1.0.0
   SOURCE_MAIN_SHA: 3448e5ae8ec0bdd2ce1f983141b0ba654957e2a9
+  PACKAGE_RUN_ID: '30668456301'
 
 jobs:
-  quality:
-    if: ${{ github.head_ref == 'tooling/v1-repackage-latest-main' }}
-    uses: ./.github/workflows/quality-core.yml
-    with:
-      checkout_ref: ${{ github.event.pull_request.head.sha }}
-      draft_mode: true
-      full_suite: false
-      package_smoke: false
-      security_suite: false
-      performance_eval: false
-
-  release-gate:
-    name: Repackage acceptance gate
+  checksums:
+    name: Generate final repackage checksums
     if: ${{ github.head_ref == 'tooling/v1-repackage-latest-main' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        with:
-          version: 11.13.0
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Assert source is latest verified main plus this workflow only
+      - name: Assert source main remains unchanged
         shell: bash
         run: |
           git merge-base --is-ancestor "$SOURCE_MAIN_SHA" HEAD
           changed="$(git diff --name-only "$SOURCE_MAIN_SHA"...HEAD)"
           test "$changed" = ".github/workflows/v1-repackage.yml"
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Recheck dependency and repository-secret safety
-        run: |
-          pnpm audit --audit-level=high
-          node scripts/scan-secrets.mjs --history
-      - name: Enforce actual product and task acceptance gates
-        run: |
-          node .github/governance/parallel-task-release-gate.mjs
-          node scripts/ui-acceptance-gate.mjs
-
-  build:
-    name: Repackage (${{ matrix.platform }})
-    if: ${{ github.head_ref == 'tooling/v1-repackage-latest-main' }}
-    needs: [quality, release-gate]
-    timeout-minutes: 50
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            platform: linux
-          - os: windows-latest
-            platform: windows
-          - os: macos-latest
-            platform: macos
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        with:
-          version: 11.13.0
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Install Linux display dependencies
-        if: matrix.platform == 'linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
-          fc-match "Noto Serif CJK SC"
-      - run: pnpm build
-      - name: Build platform package
-        run: >-
-          pnpm run package --
-          --platform=${{ matrix.platform }}
-          --version=${{ env.RELEASE_VERSION }}
-          --output=release/${{ matrix.platform }}
-      - name: Verify platform package assets
-        run: >-
-          node scripts/verify-package-assets.mjs
-          --platform "${{ matrix.platform }}"
-          --version "${{ env.RELEASE_VERSION }}"
-          --directory "release/${{ matrix.platform }}"
-      - name: Run Linux packaged startup smoke
-        if: matrix.platform == 'linux'
-        env:
-          WORLDFORGE_PACKAGED_SMOKE_ALLOW_NO_SANDBOX: '1'
-        run: >-
-          xvfb-run -a node scripts/smoke-packaged-desktop.mjs
-          --platform "${{ matrix.platform }}"
-          --directory "release/${{ matrix.platform }}"
-      - name: Run packaged startup smoke
-        if: matrix.platform != 'linux'
-        run: >-
-          node scripts/smoke-packaged-desktop.mjs
-          --platform "${{ matrix.platform }}"
-          --directory "release/${{ matrix.platform }}"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: worldforge-repack-${{ env.RELEASE_VERSION }}-${{ matrix.platform }}
-          path: release/${{ matrix.platform }}/
-          if-no-files-found: error
-          retention-days: 14
-
-  checksums:
-    name: Generate repackage checksums
-    if: ${{ github.head_ref == 'tooling/v1-repackage-latest-main' }}
-    needs: build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: worldforge-repack-1.0.0-*
           path: release
-      - name: Create checksums and source metadata
+          repository: ${{ github.repository }}
+          run-id: ${{ env.PACKAGE_RUN_ID }}
+          github-token: ${{ github.token }}
+      - name: Generate SHA-256 manifest and source metadata
         shell: bash
         run: |
-          node scripts/release-tool.mjs checksums \
-            --version "${{ env.RELEASE_VERSION }}" \
-            --assets release \
-            --output release/SHA256SUMS.txt
+          : > release/SHA256SUMS.txt
+          while IFS= read -r -d '' file; do
+            hash="$(sha256sum "$file" | cut -d' ' -f1)"
+            printf '%s  %s\n' "$hash" "${file#release/}" >> release/SHA256SUMS.txt
+          done < <(find release -type f ! -name SHA256SUMS.txt ! -name REPACKAGE_INFO.txt -print0 | sort -z)
+          test -s release/SHA256SUMS.txt
           cat > release/REPACKAGE_INFO.txt <<EOF
-          WorldForge version: ${{ env.RELEASE_VERSION }}
-          Verified source main: ${{ env.SOURCE_MAIN_SHA }}
-          Packaging workflow head: ${{ github.event.pull_request.head.sha }}
+          WorldForge version: $RELEASE_VERSION
+          Verified source main: $SOURCE_MAIN_SHA
+          Package workflow run: $PACKAGE_RUN_ID
+          Package workflow head: 633ebe571549dad34a25d05d9c30683bf8a77494
           Source PR: #${{ github.event.pull_request.number }}
+          Existing immutable v1.0.0 Release: unchanged
           EOF
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -173,7 +74,7 @@ jobs:
   cleanup:
     name: Remove one-time repackage workflow
     if: ${{ success() && github.head_ref == 'tooling/v1-repackage-latest-main' }}
-    needs: [quality, release-gate, build, checksums]
+    needs: checksums
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -181,7 +82,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Remove temporary workflow from the tooling branch
+      - name: Remove temporary workflow from tooling branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -60,7 +60,7 @@ jobs:
 
   windows-native-ime:
     name: windows-native-ime
-    if: ${{ contains(github.event.pull_request.body, 'worldforge-task: M8-07') }}
+    if: ${{ contains(github.event.pull_request.body, 'chinese-experience-verification-closure') }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:

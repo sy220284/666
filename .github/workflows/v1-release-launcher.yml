@@ -1,0 +1,23 @@
+name: V1 Stable Release Launcher
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/v1-release-launcher.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v1-stable-release-launcher
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release WorldForge 1.0.0
+    uses: ./.github/workflows/release.yml
+    with:
+      version: 1.0.0
+      release_kind: stable

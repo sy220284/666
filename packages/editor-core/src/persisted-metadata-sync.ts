@@ -81,7 +81,6 @@ function consumeRequestSnapshot(
   currentClientIds: ReadonlySet<string>,
 ): readonly DraftSnapshotEditorBlock[] | null {
   const snapshot = pendingSnapshot;
-  pendingSnapshot = null;
   if (!snapshot || snapshot.length !== blocks.length) return null;
 
   const clientBlockIds = new Set<string>();
@@ -98,7 +97,9 @@ function consumeRequestSnapshot(
     clientBlockIds.add(savedBlock.clientBlockId);
     if (currentClientIds.has(savedBlock.clientBlockId)) currentIdentityMatches += 1;
   }
-  return currentIdentityMatches > 0 ? snapshot : null;
+  if (currentIdentityMatches === 0) return null;
+  pendingSnapshot = null;
+  return snapshot;
 }
 
 function metadataForCurrentNode(

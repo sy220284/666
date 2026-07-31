@@ -57,6 +57,7 @@ function editorFor(
     clientBlockId: string;
     text: string;
     blockType?: 'paragraph' | 'dialogue' | 'heading';
+    headingLevel?: number;
     source?: WorldforgeBlockSource;
     locked?: boolean;
   }>,
@@ -72,7 +73,7 @@ function editorFor(
           source: block.source ?? 'manual',
           locked: block.locked ?? false,
           contentHash: block.logicalBlockId ? `old-${block.logicalBlockId}` : null,
-          ...(block.blockType === 'heading' ? { headingLevel: 2 } : {}),
+          ...(block.blockType === 'heading' ? { headingLevel: block.headingLevel ?? 2 } : {}),
         },
         content: block.text ? [{ type: 'text', text: block.text }] : undefined,
       })),
@@ -226,6 +227,102 @@ describe('persisted metadata synchronization during delayed autosave', () => {
       clientBlockId: 'temporary-1',
       contentHash: null,
     });
+  });
+
+  it('evicts the oldest pending snapshot while retaining the newest bounded entries', () => {
+    for (let index = 0; index < 9; index += 1) {
+      rememberPendingDraftSnapshot([snapshot(`temporary-${index}`, null, `快照-${index}`)]);
+    }
+
+    const oldest = editorFor([
+      { logicalBlockId: null, clientBlockId: 'temporary-0', text: '快照-0' },
+    ]);
+    synchronizePersistedBlockMetadata(oldest.editor, [persisted('server-0', '快照-0')]);
+    expect(oldest.state().doc.firstChild?.attrs.logicalBlockId).toBeNull();
+
+    const newest = editorFor([
+      { logicalBlockId: null, clientBlockId: 'temporary-8', text: '快照-8' },
+    ]);
+    synchronizePersistedBlockMetadata(newest.editor, [persisted('server-8', '快照-8')]);
+    expect(newest.state().doc.firstChild?.attrs.logicalBlockId).toBe('server-8');
+  });
+
+  it('uses heading semantics to preserve later level changes while attaching persisted identity', () => {
+    const target = editorFor([
+      {
+        logicalBlockId: null,
+        clientBlockId: 'heading-1',
+        text: '章节标题',
+        blockType: 'heading',
+        headingLevel: 4,
+        source: 'mixed',
+        locked: true,
+      },
+    ]);
+    rememberPendingDraftSnapshot([
+      snapshot('heading-1', null, '章节标题', {
+        blockType: 'heading',
+        attributes: { headingLevel: 3 },
+      }),
+    ]);
+
+    synchronizePersistedBlockMetadata(target.editor, [
+      persisted('server-heading', '章节标题', {
+        blockType: 'heading',
+        attributes: { headingLevel: 3 },
+        source: 'ai',
+        locked: false,
+      }),
+    ]);
+
+    expect(target.state().doc.firstChild?.attrs).toMatchObject({
+      logicalBlockId: 'server-heading',
+      clientBlockId: 'heading-1',
+      headingLevel: 4,
+      source: 'mixed',
+      locked: true,
+      contentHash: 'hash-server-heading',
+    });
+  });
+
+  it('synchronizes authoritative metadata when an existing heading is still unchanged', () => {
+    const target = editorFor([
+      {
+        logicalBlockId: 'server-heading',
+        clientBlockId: '',
+        text: '章节标题',
+        blockType: 'heading',
+        headingLevel: 2,
+      },
+    ]);
+
+    synchronizePersistedBlockMetadata(target.editor, [
+      persisted('server-heading', '章节标题', {
+        blockType: 'heading',
+        attributes: { headingLevel: 2 },
+        source: 'ai',
+        locked: true,
+      }),
+    ]);
+
+    expect(target.state().doc.firstChild?.attrs).toMatchObject({
+      logicalBlockId: 'server-heading',
+      clientBlockId: 'server-heading',
+      headingLevel: 2,
+      source: 'ai',
+      locked: true,
+      contentHash: 'hash-server-heading',
+    });
+  });
+
+  it('rejects a snapshot whose prior logical identity does not match the persisted response', () => {
+    const target = editorFor([
+      { logicalBlockId: null, clientBlockId: 'temporary-1', text: '原文' },
+    ]);
+    rememberPendingDraftSnapshot([snapshot('temporary-1', 'different-server', '原文')]);
+
+    synchronizePersistedBlockMetadata(target.editor, [persisted('server-1', '原文')]);
+    expect(target.state().doc.firstChild?.attrs.logicalBlockId).toBeNull();
   });
 
   it('rejects duplicate client identities before a patch can register an ambiguous snapshot', () => {

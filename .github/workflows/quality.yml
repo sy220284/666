@@ -58,6 +58,77 @@ jobs:
           echo "package_smoke=$package_smoke" >> "$GITHUB_OUTPUT"
           echo "PR quality full suite: $full_suite; package smoke: $package_smoke"
 
+  windows-native-ime:
+    name: windows-native-ime
+    if: ${{ contains(github.event.pull_request.body, 'chinese-experience-verification-closure') }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Assert clean working tree before Windows IME acceptance
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Verify built-in Microsoft Pinyin input profile
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path test-results/windows-ime | Out-Null
+          $tipId = '{81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E}'
+          $profileId = '{FA550B04-5AD7-411F-A5AC-CA038EC515D7}'
+          $inputTip = "0804:$tipId$profileId"
+          $profilePath = "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$tipId\LanguageProfile\0x00000804\$profileId"
+          if (-not (Test-Path $profilePath)) {
+            throw "M8_07_MICROSOFT_PINYIN_PROFILE_MISSING: $profilePath"
+          }
+          $registry = Get-ItemProperty -Path $profilePath
+          $values = [ordered]@{}
+          foreach ($property in $registry.PSObject.Properties) {
+            if ($property.Name -notlike 'PS*') {
+              $values[$property.Name] = [string]$property.Value
+            }
+          }
+          [pscustomobject]@{
+            inputTip = $inputTip
+            profilePath = $profilePath
+            registryValues = $values
+          } |
+            ConvertTo-Json -Depth 3 |
+            Out-File -FilePath test-results/windows-ime/microsoft-pinyin-profile.json -Encoding utf8
+          Start-Process "$env:WINDIR\System32\ctfmon.exe"
+          Start-Sleep -Seconds 2
+      - name: Build desktop
+        run: pnpm build
+      - name: Run real Windows Pinyin acceptance
+        shell: powershell
+        env:
+          WORLDFORGE_WINDOWS_IME_EVIDENCE_DIR: ${{ github.workspace }}\test-results\windows-ime
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pnpm exec playwright test --config tests/e2e/playwright.windows-ime.config.ts --workers=1 2>&1 |
+            Tee-Object -FilePath test-results/windows-ime/windows-ime-e2e.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Assert clean working tree after Windows IME acceptance
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload Windows native IME evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m8-07-windows-native-ime
+          path: test-results/windows-ime/
+          if-no-files-found: error
+          retention-days: 30
+
   quality:
     needs: route
     uses: ./.github/workflows/quality-core.yml

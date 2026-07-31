@@ -1,0 +1,24 @@
+M8-07 source commit: cd097424586af9ae42735953aee092feeb068859
+
+pnpm install --frozen-lockfile --prefer-offline
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm build
+pnpm test:e2e
+pnpm exec playwright test --config tests/e2e/playwright.windows-ime.config.ts --workers=1
+
+Quality run 30615390359: success
+Security: success
+Performance: success
+PR Policy: success
+Task Governance: success
+Repository Governance: success
+Evidence: success

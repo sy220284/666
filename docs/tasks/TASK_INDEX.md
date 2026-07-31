@@ -3,7 +3,7 @@
 > 状态：Active  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04、M8-05、M8-06、M8-07与M8-08，共40张独立任务卡。  
-> 当前任务：M8-07与M8-08按独立运行时并行推进，状态均为In Progress；main写入保持串行。
+> 当前任务：M8-07已Implemented，M8-08继续In Progress；main写入保持串行。
 
 ## 1. 执行入口
 
@@ -32,7 +32,7 @@ Blocked / Deferred / Removed
 | M2            | 编辑安全与版本核心             |          4 | Verified                                               |
 | M3            | 规划、设定与连续性             |         10 | Verified                                               |
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                                   |
-| M8            | 交付关闭、作者体验与长期维护   |          6 | M8-02—M8-06 Verified；M8-07、M8-08 In Progress         |
+| M8            | 交付关闭、作者体验与长期维护   |          6 | M8-02—M8-06 Verified；M8-07 Implemented；M8-08 In Progress |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                                      |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务           |
 
@@ -46,7 +46,7 @@ M0—M3 已完成产品底座
 → M8-04 作者体验与开发语言统一改造（Verified）
 → M8-05 运行时硬化与文档统一同步（Verified）
 → M8-06 发布资格与任务治理硬化（Verified）
-├─ M8-07 中文作者体验治理闭环与产品发布验收硬化（In Progress）
+├─ M8-07 中文作者体验治理闭环与产品发布验收硬化（Implemented）
 └─ M8-08 V1.0最终质量治理与封版闭环（In Progress）
 ```
 
@@ -117,7 +117,7 @@ M0—M3 已完成产品底座
 | M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                             | M8-02                        | Verified    |
 | M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)                     | M8-04                        | Verified    |
 | M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)                           | M8-05                        | Verified    |
-| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)              | M8-06                        | In Progress |
+| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)              | M8-06                        | Implemented |
 | M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)                             | 开发：M8-06；封版：M8-07     | In Progress |
 
 ## 3. 被吸收的需求来源
@@ -134,10 +134,10 @@ M0—M3 已完成产品底座
 | M5-04 | [`多候选融合与部分结果恢复`](M5/M5-04_CANDIDATE_MERGE_PARTIAL.md)                      | M5     | Removed（absorbed） | M4-04    |
 | M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md)                     | M5     | Removed（absorbed） | M4-04    |
 | M5-06 | [`真实状态提取与StateProposal接入`](M5/M5-06_STATE_EXTRACTION_PROPOSAL_INTEGRATION.md) | M5     | Removed（absorbed） | M4-04    |
-| M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATS_VALIDATION_TODOS.md)                 | M6     | Removed（absorbed） | M4-04    |
+| M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATUS_VALIDATION_TODOS.md)                 | M6     | Removed（absorbed） | M4-04    |
 | M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md)                 | M6     | Removed（absorbed） | M4-04    |
 | M6-03 | [`全项目搜索与安全批量替换`](M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md)                  | M6     | Removed（absorbed） | M4-04    |
-| M6-04 | [`网文节奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md)                        | M6     | Removed（absorbed） | M4-04    |
+| M6-04 | [`网文章奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md)                        | M6     | Removed（absorbed） | M4-04    |
 | M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md)                                | M6     | Removed（absorbed） | M4-04    |
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md)              | M6     | Removed（absorbed） | M4-04    |
 | M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md)              | M7     | Removed（absorbed） | M8-02    |
@@ -148,7 +148,7 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M0—M8-06保持Verified；M8-07与M8-08通过独立运行时并行推进。
+1. M0—M8-06保持Verified；M8-07已Implemented并等待main验证，M8-08继续In Progress。
 2. 每个PR绑定一个主任务并按自身`allowedPaths`验证；不同任务可以同时开放PR。
 3. main写入保持串行：一个PR合并并完成Main Verification后，才允许下一个PR写入main。
 4. M8-07未Verified前，M8-08不得完成最终封版合并、发布或进入`VERIFIED_HOLD`。

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M8-07",
+  "commit": "cd097424586af9ae42735953aee092feeb068859",
+  "generatedAt": "2026-07-31T16:28:00+08:00",
+  "acceptanceSource": "GITHUB_ACTIONS_AND_MANUAL_REVIEW",
+  "files": [
+    {
+      "path": "summary.md",
+      "bytes": 1595,
+      "sha256": "a3fe0b6837352915262f587c624192092bb01ad3fd0ce84ec62b6d517ecc0d57"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 574,
+      "sha256": "932682957e8d8a09de18763eddff6861a816c8992c9de46f6beb66146fab6e2a"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 710,
+      "sha256": "9fec7b925fcf0260134335438d8045d4cddef715aa442d58c923e74a221bbb72"
+    },
+    {
+      "path": "windows-native-ime.md",
+      "bytes": 829,
+      "sha256": "3ff8ce08d8649ced81a2656242703297b39f18921b90be6deaf8b69bf3e4c139"
+    },
+    {
+      "path": "visual-review.md",
+      "bytes": 1254,
+      "sha256": "4b3a74d3ceac2cc7eb353d508a897bec842c23518d6ec00d5f00c632d83bdc22"
+    }
+  ]
+}

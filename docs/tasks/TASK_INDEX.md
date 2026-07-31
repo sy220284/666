@@ -115,7 +115,7 @@ M0—M3 已完成产品底座
 | M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                             | M8-02 | Verified    |
 | M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)                     | M8-04 | Verified    |
 | M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)                           | M8-05 | Verified    |
-| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)              | M8-06 | Implemented |
+| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)              | M8-06 | Verified |
 
 ## 3. 被吸收的需求来源
 

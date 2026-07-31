@@ -121,7 +121,7 @@ M0—M3 已完成产品底座
 | M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)              | M8-05                    | Verified   |
 | M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md) | M8-06                    | Verified   |
 | M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | 开发：M8-06；封版：M8-07 | Verified   |
-| M8-09 | [`V1.0稳定性与生命周期治理`](M8/M8-09_V1_STABILITY_HARDENING.md)                      | M8-08                    | Implemented |
+| M8-09 | [`V1.0稳定性与生命周期治理`](M8/M8-09_V1_STABILITY_HARDENING.md)                      | M8-08                    | Verified |
 
 ## 3. 被吸收的需求来源
 

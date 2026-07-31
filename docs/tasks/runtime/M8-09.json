@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "M8-09",
-  "status": "IMPLEMENTED",
+  "status": "VERIFIED",
   "source": "docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md",
   "startedAt": "2026-07-31",
-  "dependencies": ["M8-08"],
+  "dependencies": [
+    "M8-08"
+  ],
   "branch": "work/m8-09-v1-stability-hardening",
   "priority": "P0",
   "scope": [
@@ -76,5 +78,11 @@
     "security": 30647482946,
     "performance": 30647482903,
     "quality": 30647483259
-  }
+  },
+  "verifiedAt": "2026-07-31T17:55:22.000Z",
+  "mainCommit": "07b5aa8c04628cbac5d74f0cc4139e9609626858",
+  "implementationHead": "80e68f639ff7547b443cb910883a734ef110508a",
+  "evidenceHead": "173276129fc8aa3c23cc08c13c8e67de773efb96",
+  "mainVerificationRun": 30652873306,
+  "sourcePr": 258
 }

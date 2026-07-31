@@ -1,10 +1,7 @@
-pnpm task:validate
-pnpm check:workspaces
-pnpm check:boundaries
-pnpm check:language
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm exec vitest run tests/unit/m8-09-v1-stability-invariants.test.ts
-pnpm test:integration
-pnpm build
+Task: M8-09
+Implementation commit: 6edb7a7ec7221fd709aba14bc30029acd397f69d
+Source PR: 258
+Source PR head: 80e68f639ff7547b443cb910883a734ef110508a
+Controlled main merge commit: 07b5aa8c04628cbac5d74f0cc4139e9609626858
+Main Verification Run: 30652873306 (success)
+Permanent PR gates: Quality, Security, Performance, Evidence, PR Policy and Task Governance (success)

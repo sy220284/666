@@ -1,6 +1,6 @@
 # M8-09 WorldForge V1.0 稳定性与生命周期治理
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M8 长期维护  
 > 优先级：P0  
 > 正式分支：`work/m8-09-v1-stability-hardening`
@@ -97,15 +97,18 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-## 8. 实施结果
+## 8. 实施与验证结果
 
 - 实施提交：`6edb7a7ec7221fd709aba14bc30029acd397f69d`。
-- 已通过任务治理、PR策略、Evidence、Security、Performance、静态检查、构建、单元测试、集成测试、Migration与覆盖率门禁。
-- PR转为Ready后重新执行最终桌面E2E与完整质量门，通过后方可受控合并。
+- 来源PR：#258；最终Head：`80e68f639ff7547b443cb910883a734ef110508a`。
+- 受控main合并提交：`07b5aa8c04628cbac5d74f0cc4139e9609626858`。
+- Main Verification Run：`30652873306`，结果成功。
+- 来源PR的Quality、Security、Performance、Evidence、PR Policy与Task Governance全部成功。
+- Unit、Integration、Migration、Coverage、Electron E2E、Build与Package Smoke全部通过。
 
-## 9. 完成条件
+## 9. 完成结论
 
-- 独立治理PR全部永久门禁成功。
-- PR Head对应代码、测试、任务状态和Evidence一致。
-- 使用`expected_head_sha`受控压缩合并。
-- 合并后Main Verification成功，再将M8-09关闭为Verified。
+- P0数据安全、P1生命周期与明确P2健壮性问题已完成代码修复和专项回归。
+- Evidence已绑定可达main提交与Main Verification Run。
+- M8-09已关闭为Verified，仓库恢复最终`VERIFIED_HOLD`。
+- 后续巨型组件拆分、CSS责任域与完整原生对话框替换需重新立项，不属于本任务遗留阻断。

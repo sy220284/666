@@ -3,7 +3,7 @@
 > 状态：Active  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04、M8-05、M8-06、M8-07与M8-08，共40张独立任务卡。  
-> 当前任务：M8-07已Verified，M8-08已Implemented并等待主分支验证；main写入保持串行。
+> 当前任务：M8-07与M8-08均已Verified，仓库进入最终VERIFIED_HOLD；main写入保持串行。
 
 ## 1. 执行入口
 
@@ -32,7 +32,7 @@ Blocked / Deferred / Removed
 | M2            | 编辑安全与版本核心             |          4 | Verified                                               |
 | M3            | 规划、设定与连续性             |         10 | Verified                                               |
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                                   |
-| M8            | 交付关闭、作者体验与长期维护   |          6 | M8-02—M8-07 Verified；M8-08 Implemented                |
+| M8            | 交付关闭、作者体验与长期维护   |          6 | M8-02—M8-08 Verified                                   |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                                      |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务           |
 
@@ -47,7 +47,7 @@ M0—M3 已完成产品底座
 → M8-05 运行时硬化与文档统一同步（Verified）
 → M8-06 发布资格与任务治理硬化（Verified）
 ├─ M8-07 中文作者体验治理闭环与产品发布验收硬化（Verified）
-└─ M8-08 V1.0最终质量治理与封版闭环（Implemented）
+└─ M8-08 V1.0最终质量治理与封版闭环（Verified）
 ```
 
 ## M0 工程、安全与运行底座
@@ -111,14 +111,14 @@ M0—M3 已完成产品底座
 
 ## M8 交付与体验任务
 
-| ID    | 任务卡                                                                                             | 依赖                         | 状态      |
-| ----- | -------------------------------------------------------------------------------------------------- | ---------------------------- | --------- |
-| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                              | M4-04                        | Verified  |
-| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                             | M8-02                        | Verified  |
-| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)                     | M8-04                        | Verified  |
-| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)                           | M8-05                        | Verified  |
-| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)              | M8-06                        | Verified  |
-| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)                             | 开发：M8-06；封版：M8-07     | Implemented |
+| ID    | 任务卡                                                                                             | 依赖                         | 状态     |
+| ----- | -------------------------------------------------------------------------------------------------- | ---------------------------- | -------- |
+| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                              | M4-04                        | Verified |
+| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                             | M8-02                        | Verified |
+| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)                     | M8-04                        | Verified |
+| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)                           | M8-05                        | Verified |
+| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)              | M8-06                        | Verified |
+| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)                             | 开发：M8-06；封版：M8-07     | Verified |
 
 ## 3. 被吸收的需求来源
 
@@ -148,10 +148,10 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M0—M8-07保持Verified；M8-08已Implemented并等待主分支验证。
+1. M0—M8-08全部保持Verified，仓库进入最终VERIFIED_HOLD。
 2. 每个PR绑定一个主任务并按自身`allowedPaths`验证；不同任务可以同时开放PR。
 3. main写入保持串行：一个PR合并并完成Main Verification后，才允许下一个PR写入main。
-4. M8-07已经Verified；M8-08完成全部封版条件后方可最终合并、发布或进入`VERIFIED_HOLD`。
+4. M8-08已完成最终封版条件；任何后续需求必须重新立项。
 5. M8-08不得改写M8-07及更早任务的历史Evidence。
 6. 任一releaseBlocking任务未Verified时，发布资格必须被拒绝。
 

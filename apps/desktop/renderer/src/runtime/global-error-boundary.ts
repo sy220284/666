@@ -13,7 +13,7 @@ function showGlobalFailure(id: string): void {
     notice.setAttribute('role', 'alert');
     document.body.prepend(notice);
   }
-  notice.textContent = `界面遇到异常，当前作品数据未被自动修改。请先保存或复制当前正文，再重试操作。诊断编号：${id}`;
+  notice.textContent = `界面遇到异常，系统无法确认刚才的操作是否完成。请先重新读取当前状态，避免重复提交重要操作；未保存正文请先复制。诊断编号：${id}`;
 }
 
 export function installGlobalRendererErrorBoundary(): () => void {

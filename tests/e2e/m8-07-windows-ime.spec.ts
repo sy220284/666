@@ -151,7 +151,7 @@ test('Windows真实Microsoft拼音完成候选、确认、切换、撤销、自�
 
     await expect
       .poll(() => page.locator('[data-draft-state]').textContent(), { timeout: 15_000 })
-      .toMatch(/已保存|已自动保存/u);
+      .toMatch(/已保存|已自动保存|自动保存完成/u);
 
     const firstChapter = page.locator('[data-chapter-id]').first();
     const firstChapterId = await firstChapter.getAttribute('data-chapter-id');

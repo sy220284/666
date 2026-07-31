@@ -316,7 +316,14 @@ export function AppShell({ bridge }: AppShellProps) {
         if (changed && navigationId === 'home') void refreshWorkspace();
       });
     },
-    [activeProject, disclosureMode, refreshWorkspace, route, transitionToRoute],
+    [
+      activeProject,
+      availability,
+      disclosureMode,
+      refreshWorkspace,
+      route,
+      transitionToRoute,
+    ],
   );
 
   const navigateToAuthorTarget = useCallback(

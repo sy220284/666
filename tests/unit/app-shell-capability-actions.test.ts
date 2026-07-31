@@ -10,6 +10,7 @@ describe('application shell capability actions', () => {
     expect(shell).toContain('const availability = capabilities.navigation');
     expect(shell).toContain('projectCapabilities={capabilities.project}');
     expect(shell).toContain('!capabilities.project.moveAvailable');
+    expect(shell).toContain('availability,\n      disclosureMode');
     expect(home).toContain('!projectCapabilities.draftReadable');
     expect(home).toContain('!projectCapabilities.structureReadable');
     expect(home).toContain('!projectCapabilities.canonReadable');

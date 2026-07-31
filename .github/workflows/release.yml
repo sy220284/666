@@ -16,17 +16,12 @@ on:
           - draft
           - prerelease
           - stable
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/release.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.version || '1.0.0' }}
+  group: release-${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
@@ -43,7 +38,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+      RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -85,7 +80,7 @@ jobs:
             platform: macos
     runs-on: ${{ matrix.os }}
     env:
-      RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+      RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -153,8 +148,8 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_KIND: ${{ inputs.release_kind || 'stable' }}
-      RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+      RELEASE_KIND: ${{ inputs.release_kind }}
+      RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:

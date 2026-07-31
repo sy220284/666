@@ -1,0 +1,101 @@
+name: M8-08 Cross-platform Evidence
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: ${{ github.head_ref == 'work/m8-08-v1-final-governance-closure' }}
+    name: package-${{ matrix.platform }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm build
+      - name: Run platform Electron startup smoke
+        run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts
+      - name: Build native portable package
+        run: >-
+          pnpm run package --
+          --platform "${{ matrix.platform }}"
+          --version "1.0.0"
+          --output "release/${{ matrix.platform }}"
+      - name: Verify native package assets
+        run: >-
+          node scripts/verify-package-assets.mjs
+          --platform "${{ matrix.platform }}"
+          --version "1.0.0"
+          --directory "release/${{ matrix.platform }}"
+      - name: Run Linux packaged startup smoke
+        if: matrix.platform == 'linux'
+        run: >-
+          xvfb-run -a node scripts/smoke-packaged-desktop.mjs
+          --platform "${{ matrix.platform }}"
+          --directory "release/${{ matrix.platform }}"
+      - name: Run packaged startup smoke
+        if: matrix.platform != 'linux'
+        run: >-
+          node scripts/smoke-packaged-desktop.mjs
+          --platform "${{ matrix.platform }}"
+          --directory "release/${{ matrix.platform }}"
+      - name: Write artifact inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const platform = process.env.PLATFORM;
+          const root = path.join('release', platform);
+          const files = [];
+          const walk = (dir) => {
+            for (const name of fs.readdirSync(dir).sort()) {
+              const full = path.join(dir, name);
+              const stat = fs.lstatSync(full);
+              if (stat.isDirectory()) walk(full);
+              else if (stat.isFile()) {
+                const content = fs.readFileSync(full);
+                files.push({ path: full.replaceAll('\\', '/'), bytes: content.byteLength, sha256: crypto.createHash('sha256').update(content).digest('hex') });
+              }
+            }
+          };
+          walk(root);
+          fs.writeFileSync(path.join(root, 'artifact-manifest.json'), JSON.stringify({ platform, version: '1.0.0', sourceHead: process.env.SOURCE_HEAD, files }, null, 2) + '\n');
+          NODE
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          SOURCE_HEAD: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: worldforge-v1-${{ matrix.platform }}
+          path: release/${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 30

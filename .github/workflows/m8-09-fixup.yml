@@ -1,0 +1,107 @@
+name: M8-09 Fixup
+
+on:
+  push:
+    branches:
+      - work/m8-09-v1-stability-hardening
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m8-09-fixup
+  cancel-in-progress: false
+
+jobs:
+  fix-and-verify:
+    if: ${{ !contains(github.event.head_commit.message, '[m8-09-fixup]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: work/m8-09-v1-stability-hardening
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Synchronize established contracts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          error_path = Path('apps/desktop/renderer/src/presentation/author-error-message.ts')
+          error_source = error_path.read_text(encoding='utf-8')
+          old = """export function authorErrorMessage(code: string, _fallbackMessage?: string): AuthorErrorMessage {
+            return (
+              AUTHOR_ERROR_MESSAGES[code] ??
+              domainErrorMessage(code) ?? {
+                title: '操作未完成',
+                message: '系统未能完成本次操作，现有内容保持不变。',
+                suggestedAction: '请查看技术详情后重试。',
+              }
+            );
+          }"""
+          new = """export function authorErrorMessage(code: string, fallbackMessage?: string): AuthorErrorMessage {
+            const known = AUTHOR_ERROR_MESSAGES[code] ?? domainErrorMessage(code);
+            if (known) return known;
+            const fallback = fallbackMessage?.trim();
+            return {
+              title: '操作未完成',
+              message:
+                fallback && /[\\u3400-\\u9fff]/u.test(fallback)
+                  ? fallback
+                  : '系统未能完成本次操作，现有内容保持不变。',
+              suggestedAction: '请查看技术详情后重试。',
+            };
+          }"""
+          if error_source.count(old) != 1:
+              raise SystemExit('author error fallback anchor not found')
+          error_path.write_text(error_source.replace(old, new, 1), encoding='utf-8')
+
+          shell_path = Path('apps/desktop/renderer/src/app/app-shell-m3.tsx')
+          shell_source = shell_path.read_text(encoding='utf-8')
+          old_order = """    disclosureMode,
+              availability,"""
+          new_order = """    availability,
+              disclosureMode,"""
+          count = shell_source.count(old_order)
+          if count < 2:
+              raise SystemExit(f'capability property anchors found: {count}')
+          shell_path.write_text(shell_source.replace(old_order, new_order), encoding='utf-8')
+          PY
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Format remediation files
+        run: >-
+          pnpm exec prettier --write
+          apps/desktop/renderer/src/app/app-shell-m3.tsx
+          apps/desktop/renderer/src/features/checks/search-panel.tsx
+          apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx
+          apps/desktop/renderer/src/presentation/author-error-message.ts
+          docs/tasks/runtime/M8-09.json
+          tests/integration/project-workspace-lifecycle.test.ts
+          tests/security/m8-09-project-authority.test.ts
+          tests/security/project-workspace.test.ts
+          tests/unit/m8-09-v1-stability-invariants.test.ts
+      - name: Verify format, types and unit tests
+        run: |
+          pnpm format:check
+          pnpm typecheck
+          pnpm test:unit
+      - name: Remove temporary workflow
+        run: rm .github/workflows/m8-09-fixup.yml
+      - name: Commit verified fixup
+        env:
+          BRANCH: work/m8-09-v1-stability-hardening
+        run: |
+          git config user.name "worldforge-governance-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "M8-09：同步中文回退契约并统一格式 [m8-09-fixup]"
+          git push origin "HEAD:$BRANCH"

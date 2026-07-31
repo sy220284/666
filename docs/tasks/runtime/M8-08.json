@@ -1,11 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "M8-08",
-  "status": "IMPLEMENTED",
+  "status": "VERIFIED",
   "source": "docs/tasks/M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md",
   "startedAt": "2026-07-30",
-  "dependencies": ["M8-06"],
-  "closureDependencies": ["M8-07"],
+  "dependencies": [
+    "M8-06"
+  ],
+  "closureDependencies": [
+    "M8-07"
+  ],
   "releaseBlocking": true,
   "allowedPaths": [
     "apps/desktop/renderer/src/",
@@ -82,7 +86,10 @@
   "implementationCommit": "695a74cb5e42901d7a0d177b8811c857a40736d3",
   "releaseEvidence": {
     "version": "1.0.0",
-    "artifactRuns": [30623725133, 30624246649],
+    "artifactRuns": [
+      30623725133,
+      30624246649
+    ],
     "artifacts": {
       "macos": {
         "id": 8790527645,
@@ -100,5 +107,10 @@
         "sha256": "7b6bd7777afa28f508a7adef1e6c3546c0696690058bb10c1ea9e0997eef633b"
       }
     }
-  }
+  },
+  "verifiedAt": "2026-07-31T11:56:00.000Z",
+  "mainCommit": "0e8328b023bccf4d79f338f05b1ae960fd6a6426",
+  "implementationHead": "e53c8e57d4113776db524b0ca08ca100fa119e6a",
+  "evidenceHead": "b679eb97d4ae5dde9801bff8b63e8f3c50b80ae0",
+  "mainVerificationRun": 30627656869
 }

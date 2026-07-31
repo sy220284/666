@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "taskId": "M8-08",
-  "commit": "695a74cb5e42901d7a0d177b8811c857a40736d3",
-  "generatedAt": "2026-07-31T18:50:00+08:00",
+  "commit": "0e8328b023bccf4d79f338f05b1ae960fd6a6426",
+  "generatedAt": "2026-07-31T11:53:26.000Z",
   "acceptanceSource": "GITHUB_ACTIONS",
   "files": [
     {
@@ -27,8 +27,8 @@
     },
     {
       "path": "commands.txt",
-      "bytes": 451,
-      "sha256": "507defffe0cfb238df0db1adb32e6d623f835da25cbc1da10655387b7dfc7d4d"
+      "bytes": 557,
+      "sha256": "9797e385b3bca897e24f9304d6f3987e596816627a26925507f10b30407c9a9d"
     },
     {
       "path": "cross-process-coverage.md",
@@ -52,8 +52,8 @@
     },
     {
       "path": "main-final-verification.md",
-      "bytes": 331,
-      "sha256": "a87941ba08829b0ec2e9e6befcd925683509abfce3e343698d594f282f3d8610"
+      "bytes": 393,
+      "sha256": "3c80f1bde583a28c957d1fb53c2384956c894effc6d1e3d9f79f2d857ef9244a"
     },
     {
       "path": "release-artifacts.md",
@@ -62,8 +62,8 @@
     },
     {
       "path": "summary.md",
-      "bytes": 1079,
-      "sha256": "960f51e2eb0d52cfcab78810aef6d196dbfc8cb767ae016b3f3a21027a110fd8"
+      "bytes": 954,
+      "sha256": "21256198a075768f3fcf70d1b36c0076fe3fc6e9fbb742ef44f8773457e8b4e7"
     }
   ]
 }

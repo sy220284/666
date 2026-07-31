@@ -1,11 +1,13 @@
-M8-08 implementation evidence head: 695a74cb5e42901d7a0d177b8811c857a40736d3
-Target version: 1.0.0
-PR: 243
-M8-07 verified main: 44fc199c0d4725a9aa169865309674954143f5cf
-Product quality run: 30623729016
+Task: M8-08
+Version: 1.0.0
+Implementation head: e53c8e57d4113776db524b0ca08ca100fa119e6a
+Source PR: 243
+Source PR quality run: 30626652448 (success)
+Controlled squash main commit: 0e8328b023bccf4d79f338f05b1ae960fd6a6426
+Main verification run: 30627656869 (success)
 Cross-platform run: 30623725133
 Linux controlled retry run: 30624246649
 Windows artifact: 8790649171
 macOS artifact: 8790527645
 Linux artifact: 8790691885
-Pending: current-head permanent gates, merge, final main verification, Verified hold, release
+Final verification: repository-native state transition reproduced as deterministic closure commit and revalidated by permanent PR gates

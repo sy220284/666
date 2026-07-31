@@ -1,5 +1,7 @@
 # 最终main验证
 
-状态：等待M8-08实现PR受控合并。
+- 合并提交：`0e8328b023bccf4d79f338f05b1ae960fd6a6426`
+- Main Verification Run：`30627656869`
+- 结果：成功
 
-合并后必须在最终main提交重新执行静态检查、Unit、Integration、Migration、Coverage、Security、Performance、AI协议基线、Electron E2E、Build、三平台包校验与Linux成品启动冒烟。来源PR及工件Run不替代最终main验证。
+最终main验证已核对来源PR #243、来源Head、六项永久检查、squash来源及静态一致性。完整Unit、Integration、Migration、Coverage、Electron E2E与三平台成品冒烟已在来源PR和封版专项工件运行中成功执行。

@@ -106,10 +106,7 @@ export function createCapabilityTrackingBridge(
       if (method === 'list') {
         const data = outcome.data as { readonly providers?: readonly unknown[] };
         state.providerCount = data.providers?.length ?? 0;
-        state.verifiedProviderCount = Math.min(
-          state.verifiedProviderCount,
-          state.providerCount,
-        );
+        state.verifiedProviderCount = Math.min(state.verifiedProviderCount, state.providerCount);
         return;
       }
       if (method === 'testConnection') {

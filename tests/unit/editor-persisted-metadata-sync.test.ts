@@ -11,8 +11,19 @@ import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const schema = createWorldforgeEditorSchema();
 
-function saved(clientBlockId: string, logicalBlockId: string | null, text: string): DraftSnapshotEditorBlock {
-  return { clientBlockId, logicalBlockId, blockType: 'paragraph', text, attributes: {}, locked: false };
+function saved(
+  clientBlockId: string,
+  logicalBlockId: string | null,
+  text: string,
+): DraftSnapshotEditorBlock {
+  return {
+    clientBlockId,
+    logicalBlockId,
+    blockType: 'paragraph',
+    text,
+    attributes: {},
+    locked: false,
+  };
 }
 
 function persisted(logicalBlockId: string, text: string): PersistedEditorBlock {
@@ -46,8 +57,14 @@ function editorFor(blocks: readonly DraftSnapshotEditorBlock[]) {
   });
   return {
     editor: contractInput<Parameters<typeof synchronizePersistedBlockMetadata>[0]>({
-      get state() { return state; },
-      view: { dispatch(transaction: Parameters<typeof state.apply>[0]) { state = state.apply(transaction); } },
+      get state() {
+        return state;
+      },
+      view: {
+        dispatch(transaction: Parameters<typeof state.apply>[0]) {
+          state = state.apply(transaction);
+        },
+      },
     }),
     state: () => state,
   };
@@ -57,7 +74,13 @@ describe('request-bound persisted metadata synchronization', () => {
   it('maps duplicate reordered text by the exact request client identity', () => {
     const request = [saved('client-a', null, '相同'), saved('client-b', null, '相同')];
     const target = editorFor([saved('client-b', null, '相同'), saved('client-a', null, '相同')]);
-    expect(synchronizePersistedBlockMetadata(target.editor, [persisted('server-a', '相同'), persisted('server-b', '相同')], request)).toBe(true);
+    expect(
+      synchronizePersistedBlockMetadata(
+        target.editor,
+        [persisted('server-a', '相同'), persisted('server-b', '相同')],
+        request,
+      ),
+    ).toBe(true);
     expect(target.state().doc.child(0).attrs.logicalBlockId).toBe('server-b');
     expect(target.state().doc.child(1).attrs.logicalBlockId).toBe('server-a');
   });
@@ -72,13 +95,25 @@ describe('request-bound persisted metadata synchronization', () => {
 
   it('rejects a response that does not match the explicit request snapshot', () => {
     const target = editorFor([saved('client-new', null, '新请求')]);
-    expect(synchronizePersistedBlockMetadata(target.editor, [persisted('server-old', '旧请求')], [saved('client-old', null, '旧请求')])).toBe(false);
+    expect(
+      synchronizePersistedBlockMetadata(
+        target.editor,
+        [persisted('server-old', '旧请求')],
+        [saved('client-old', null, '旧请求')],
+      ),
+    ).toBe(false);
     expect(target.state().doc.firstChild?.attrs.logicalBlockId).toBeNull();
   });
 
   it('does not guess an identity for a node without a stable client id', () => {
     const target = editorFor([saved('', null, '粘贴正文')]);
-    expect(synchronizePersistedBlockMetadata(target.editor, [persisted('server-a', '粘贴正文')], [saved('request-client', null, '粘贴正文')])).toBe(false);
+    expect(
+      synchronizePersistedBlockMetadata(
+        target.editor,
+        [persisted('server-a', '粘贴正文')],
+        [saved('request-client', null, '粘贴正文')],
+      ),
+    ).toBe(false);
     expect(target.state().doc.firstChild?.attrs.logicalBlockId).toBeNull();
   });
 });

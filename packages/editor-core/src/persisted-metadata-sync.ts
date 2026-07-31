@@ -102,7 +102,8 @@ export function synchronizePersistedBlockMetadata(
     const logicalBlockId = optionalString(node.attrs.logicalBlockId);
     const clientMatch = clientBlockId ? persistedByClientId?.get(clientBlockId) : undefined;
     const stableMatch = logicalBlockId ? persistedById.get(logicalBlockId) : undefined;
-    if (clientMatch && stableMatch && clientMatch.logicalBlockId !== stableMatch.logicalBlockId) return;
+    if (clientMatch && stableMatch && clientMatch.logicalBlockId !== stableMatch.logicalBlockId)
+      return;
     const block = clientMatch ?? stableMatch;
     if (!block || usedPersistedIds.has(block.logicalBlockId)) return;
 

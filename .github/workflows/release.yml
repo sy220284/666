@@ -29,7 +29,7 @@ jobs:
     name: Release quality
     uses: ./.github/workflows/quality-core.yml
     with:
-      package_smoke: false
+      package_smoke: true
       security_suite: true
       performance_eval: true
 
@@ -93,6 +93,12 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install Linux display dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
+          fc-match "Noto Serif CJK SC"
       - run: pnpm build
       - name: Run platform startup smoke
         run: node scripts/run-electron-e2e.mjs tests/e2e/electron-shell.spec.ts

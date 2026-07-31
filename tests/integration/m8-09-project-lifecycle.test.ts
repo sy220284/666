@@ -64,7 +64,7 @@ describe('M8-09 project lifecycle authority', () => {
         harness.parent,
       );
 
-      await expect(stat(summary.workspacePath)).resolves.toMatchObject({ isDirectory: expect.any(Function) });
+      expect((await stat(summary.workspacePath)).isDirectory()).toBe(true);
       expect(harness.service.activeProject).toMatchObject({
         projectId: summary.projectId,
         workspacePath: summary.workspacePath,
@@ -79,6 +79,7 @@ describe('M8-09 project lifecycle authority', () => {
 
   it('opens a healthy workspace even when refreshing its recent-project record fails', async () => {
     const harness = await createHarness();
+    let register: ReturnType<typeof vi.spyOn> | null = null;
     try {
       const created = await harness.service.create(
         randomUUID(),
@@ -87,7 +88,7 @@ describe('M8-09 project lifecycle authority', () => {
       );
       await harness.service.close(randomUUID(), created.projectId);
 
-      const register = vi
+      register = vi
         .spyOn(harness.appRuntime.recentProjects, 'register')
         .mockRejectedValueOnce(new Error('APP_RECENT_PROJECTS_WRITE_FAILED'));
       const opened = await harness.service.open(randomUUID(), {
@@ -101,8 +102,8 @@ describe('M8-09 project lifecycle authority', () => {
       });
       expect(harness.service.activeProject?.projectId).toBe(created.projectId);
       expect(register).toHaveBeenCalledOnce();
-      register.mockRestore();
     } finally {
+      register?.mockRestore();
       await closeHarness(harness);
     }
   });

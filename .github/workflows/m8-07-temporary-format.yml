@@ -47,3 +47,5 @@ jobs:
           git add tests/e2e/m8-07-windows-ime.spec.ts tests/e2e/playwright.windows-ime.config.ts .github/workflows/quality.yml
           git commit -m "style(M8-07): format Windows IME acceptance"
           git push origin HEAD:work/m8-07-chinese-experience-governance
+
+# Remove this workflow after the formatting commit lands.

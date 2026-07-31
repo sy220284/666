@@ -44,6 +44,7 @@ import {
 } from '../shell/navigation-target.js';
 import type { HomeHealthSignal } from '../shell/home-dashboard-model.js';
 import { resolveAiReadiness } from '../runtime/ai-readiness.js';
+import { deriveCapabilityMatrix } from '../runtime/capability-matrix.js';
 import { flushRegisteredDraft } from '../runtime/draft-flush-registry.js';
 import { RendererStatusArbitrator } from '../runtime/status-arbitrator.js';
 import {
@@ -107,6 +108,17 @@ export function AppShell({ bridge }: AppShellProps) {
   const aiReadiness = useMemo(
     () => resolveAiReadiness(providers, verifiedProviderIds),
     [providers, verifiedProviderIds],
+  );
+  const capabilities = useMemo(
+    () =>
+      deriveCapabilityMatrix({
+        hydrated,
+        coreStatus,
+        project: activeProject,
+        providerCount: providers.length,
+        verifiedProviderCount: verifiedProviderIds.size,
+      }),
+    [activeProject, coreStatus, hydrated, providers.length, verifiedProviderIds],
   );
 
   const applyProviders = useCallback((nextProviders: readonly ProviderSummary[]): void => {
@@ -256,14 +268,7 @@ export function AppShell({ bridge }: AppShellProps) {
     });
   }, [activeProject, dispatch]);
 
-  const availability = {
-    home: true,
-    planning: true,
-    writing: true,
-    canon: true,
-    checks: true,
-    settings: true,
-  } as const;
+  const availability = capabilities.navigation;
 
   const navigation = createPrimaryNavigationItems({
     activeProjectId: activeProject?.projectId ?? null,
@@ -819,6 +824,10 @@ export function AppShell({ bridge }: AppShellProps) {
   };
 
   const restartCore = async (): Promise<void> => {
+    if (!(await flushWriting())) {
+      setMessage('当前稿尚未安全保存，已阻止重启本地服务。');
+      return;
+    }
     setPendingKey('app.restartCore');
     const outcome = await bridge.app.restartCore();
     setPendingKey(null);
@@ -905,6 +914,12 @@ export function AppShell({ bridge }: AppShellProps) {
             <button
               className="quiet-button"
               data-open-continuity
+              disabled={!capabilities.project.canonReadable || Boolean(pendingKey)}
+              title={
+                capabilities.project.canonReadable
+                  ? undefined
+                  : '当前作品处于恢复保护状态，连续性账本暂不可读取。'
+              }
               type="button"
               onClick={() => {
                 setCanonSection('continuity');
@@ -916,6 +931,12 @@ export function AppShell({ bridge }: AppShellProps) {
             <button
               className="quiet-button"
               data-open-narrative-planning
+              disabled={!capabilities.project.canonReadable || Boolean(pendingKey)}
+              title={
+                capabilities.project.canonReadable
+                  ? undefined
+                  : '当前作品处于恢复保护状态，伏笔与弧光暂不可读取。'
+              }
               type="button"
               onClick={() => {
                 setCanonSection('narrative');
@@ -927,6 +948,12 @@ export function AppShell({ bridge }: AppShellProps) {
             <button
               className="quiet-button"
               data-open-state-proposals
+              disabled={!capabilities.project.canonReadable || Boolean(pendingKey)}
+              title={
+                capabilities.project.canonReadable
+                  ? undefined
+                  : '当前作品处于恢复保护状态，设定更新建议暂不可读取。'
+              }
               type="button"
               onClick={() => {
                 setCanonSection('proposals');
@@ -938,6 +965,11 @@ export function AppShell({ bridge }: AppShellProps) {
             <button
               className="quiet-button"
               data-open-recovery
+              disabled={
+                (!capabilities.project.restoreAvailable &&
+                  !capabilities.project.exportAvailable) ||
+                Boolean(pendingKey)
+              }
               type="button"
               onClick={() => {
                 setDataToolsSection('recovery');
@@ -949,6 +981,12 @@ export function AppShell({ bridge }: AppShellProps) {
             <button
               className="quiet-button"
               data-open-text-io
+              disabled={!capabilities.project.exportAvailable || Boolean(pendingKey)}
+              title={
+                capabilities.project.exportAvailable
+                  ? undefined
+                  : '当前作品无法安全导入或导出。'
+              }
               type="button"
               onClick={() => {
                 setDataToolsSection('import-export');
@@ -960,7 +998,7 @@ export function AppShell({ bridge }: AppShellProps) {
             <button
               className="quiet-button"
               data-move-project
-              disabled={activeProject.databaseMode === 'read-only' || Boolean(pendingKey)}
+              disabled={!capabilities.project.moveAvailable || Boolean(pendingKey)}
               type="button"
               onClick={() => void moveProject(activeProject.projectId)}
             >
@@ -1068,6 +1106,7 @@ export function AppShell({ bridge }: AppShellProps) {
               message={message}
               onboardingRequest={onboardingRequest}
               pendingKey={pendingKey}
+              projectCapabilities={capabilities.project}
               providerAvailable={aiReadiness.status === 'ready'}
               recentProjects={recentProjects}
               settings={settings}

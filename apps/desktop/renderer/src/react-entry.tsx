@@ -23,7 +23,7 @@ const legacySurface = createLegacySurfaceController();
 const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
 const retiredCompatibilityBoundary = createLegacyCompatibilityLoader(async () => undefined);
-const coreRecovery = createCoreRecoverySupervisor({ bridge });
+const coreRecovery = createCoreRecoverySupervisor({ bridge, flushDraft: flushRegisteredDraft });
 const runtime = createRendererFoundationRuntime({
   bridge,
   legacy: retiredCompatibilityBoundary,

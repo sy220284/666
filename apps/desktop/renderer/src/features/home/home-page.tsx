@@ -15,6 +15,7 @@ import {
   createHomeDashboardModel,
   type HomeHealthSignal,
 } from '../../shell/home-dashboard-model.js';
+import type { ProjectCapabilities } from '../../runtime/capability-matrix.js';
 import type { AppDisclosureMode, PrimaryNavigationId } from '../../shell/app-shell-model.js';
 
 export interface HomePageProps {
@@ -28,6 +29,7 @@ export interface HomePageProps {
   readonly message: string | null;
   readonly settings: AppSettings;
   readonly providerAvailable: boolean;
+  readonly projectCapabilities: ProjectCapabilities;
   readonly onboardingRequest: number;
   readonly onNavigate: (navigation: PrimaryNavigationId) => void;
   readonly onCreate: (plan: OnboardingProjectPlan) => Promise<boolean>;
@@ -159,6 +161,7 @@ export function HomePage(props: HomePageProps) {
             continuation={props.continuation}
             creativePath={props.settings.creativePath}
             pending={Boolean(props.pendingKey)}
+            projectCapabilities={props.projectCapabilities}
             providerAvailable={props.providerAvailable}
             onContinue={props.onContinue}
             onNavigate={props.onNavigate}
@@ -291,6 +294,7 @@ interface ActiveProjectCardProps {
   readonly pending: boolean;
   readonly creativePath: CreativePath;
   readonly providerAvailable: boolean;
+  readonly projectCapabilities: ProjectCapabilities;
   readonly onContinue: () => void;
   readonly onNavigate: (navigation: PrimaryNavigationId) => void;
   readonly onClose: () => void;
@@ -305,6 +309,7 @@ function ActiveProjectCard({
   pending,
   creativePath,
   providerAvailable,
+  projectCapabilities,
   onContinue,
   onNavigate,
   onClose,
@@ -351,21 +356,49 @@ function ActiveProjectCard({
         <small id="creative-path-note">只改变推荐入口和说明，不改变作品数据或可用功能。</small>
       </label>
       <div className="react-card-actions">
-        <button className="primary-button" data-continue-writing type="button" onClick={onContinue}>
+        <button
+          className="primary-button"
+          data-continue-writing
+          disabled={!projectCapabilities.draftReadable || pending}
+          title={
+            projectCapabilities.draftReadable
+              ? undefined
+              : '当前作品仅允许恢复与安全导出，正文暂不可读取。'
+          }
+          type="button"
+          onClick={onContinue}
+        >
           继续写作
         </button>
-        <button className="quiet-button" type="button" onClick={() => onNavigate('planning')}>
+        <button
+          className="quiet-button"
+          disabled={!projectCapabilities.structureReadable || pending}
+          type="button"
+          onClick={() => onNavigate('planning')}
+        >
           作品规划
         </button>
-        <button className="quiet-button" type="button" onClick={() => onNavigate('canon')}>
+        <button
+          className="quiet-button"
+          disabled={!projectCapabilities.canonReadable || pending}
+          type="button"
+          onClick={() => onNavigate('canon')}
+        >
           人物与设定
         </button>
-        <button className="quiet-button" type="button" onClick={onOpenRecovery}>
+        <button
+          className="quiet-button"
+          disabled={
+            (!projectCapabilities.restoreAvailable && !projectCapabilities.exportAvailable) || pending
+          }
+          type="button"
+          onClick={onOpenRecovery}
+        >
           恢复中心
         </button>
         <button
           className="quiet-button"
-          disabled={readOnly || pending}
+          disabled={!projectCapabilities.moveAvailable || pending}
           type="button"
           onClick={onMove}
         >

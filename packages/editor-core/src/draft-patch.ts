@@ -4,6 +4,7 @@ import type {
   WorldforgeBlockAttributes,
   WorldforgeBlockType,
 } from './draft-document.js';
+import { rememberPendingDraftSnapshot } from './persisted-metadata-sync.js';
 
 export interface DraftPatchNewBlock {
   readonly blockType: WorldforgeBlockType;
@@ -77,13 +78,18 @@ function assertUniquePersistedIds(blocks: readonly PersistedEditorBlock[]): void
 }
 
 function assertUniqueCurrentIds(blocks: readonly DraftSnapshotEditorBlock[]): void {
-  const ids = new Set<string>();
+  const logicalIds = new Set<string>();
+  const clientIds = new Set<string>();
   for (const block of blocks) {
+    if (clientIds.has(block.clientBlockId)) {
+      throw new RangeError(`Duplicate current clientBlockId: ${block.clientBlockId}`);
+    }
+    clientIds.add(block.clientBlockId);
     if (!block.logicalBlockId) continue;
-    if (ids.has(block.logicalBlockId)) {
+    if (logicalIds.has(block.logicalBlockId)) {
       throw new RangeError(`Duplicate current logicalBlockId: ${block.logicalBlockId}`);
     }
-    ids.add(block.logicalBlockId);
+    logicalIds.add(block.logicalBlockId);
   }
 }
 
@@ -217,5 +223,7 @@ export function buildDraftPatchOperations(
       locked: true,
     }));
 
-  return [...unlocks, ...deletions, ...moves, ...inserts, ...updates, ...locks];
+  const operations = [...unlocks, ...deletions, ...moves, ...inserts, ...updates, ...locks];
+  if (operations.length > 0) rememberPendingDraftSnapshot(current);
+  return operations;
 }

@@ -1,7 +1,7 @@
 # M9-03阶段证据摘要
 
-当前证据覆盖统一任务M9-03内的AR-03与AR-04检查点。AR-03完成Writing工具、Version、Candidate审阅和Generation展示拆分；AR-04完成章节会话状态机、Editor生命周期、Draft Autosave、不可变保存上下文和统一Flush的本地实现与验证。
+当前证据覆盖统一任务M9-03内的AR-03—AR-07检查点。AR-03、AR-04已通过PR #272进入main；续作PR #273已完成AR-05 Canon拆分、AR-06 Planning拆分和AR-07 AppShell拆分。
 
-AR-04代码检查点为`f7e17c1`，验证与回退说明检查点为`1bdf146`。组合根已收敛为235行，结构扫描保持15个既有债务且未新增循环依赖。
+AR-07受检实现Head为`18558ef8088cac6553609b0ffd3c5f3abe52468c`，Quality Run为`30701615058`。Evidence、治理、策略、安全、性能、格式、Lint、Typecheck、Unit、Integration、Migration、Coverage、Build、Electron E2E和Quality聚合全部通过。覆盖率为Statements 85.12%、Branches 75.34%、Functions 84.74%、Lines 86.93%。
 
-M9-03仍处于实施中。AR-04必须等待Draft PR在Linux、Windows和macOS上的高风险门禁全部成功，之后才能按冻结顺序进入AR-05；AR-03—AR-14全部完成前不得转Ready或合并。
+M9-03仍处于实施中，当前活动工作包切换为AR-08 Contracts拆分。AR-08—AR-14全部完成、续作PR永久门禁通过并合并、main复验成功前，不得转Ready、合并或关闭M9-03。

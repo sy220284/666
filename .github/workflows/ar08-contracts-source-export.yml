@@ -1,0 +1,30 @@
+name: AR08 Contracts Source Export
+
+on:
+  pull_request:
+    types: [synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ar08-contracts-source
+          path: |
+            packages/contracts/
+            tests/unit/provider-contracts.test.ts
+            tests/unit/generation-contracts.test.ts
+            tests/unit/structured-candidate-contracts.test.ts
+            tests/unit/capability-matrix.test.ts
+            tests/security/ipc-task-contracts.test.ts
+            tests/integration/preload-ipc-core.integration.test.ts
+          retention-days: 1

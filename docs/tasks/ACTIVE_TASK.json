@@ -183,12 +183,14 @@
       "M8-06",
       "M8-07",
       "M8-08",
-      "M8-09"
+      "M8-09",
+      "M9-00",
+      "M9-01"
     ],
-    "finalTask": true,
-    "nextTaskId": null,
+    "finalTask": false,
+    "nextTaskId": "M9-02",
     "heldAt": "2026-07-31T18:03:02.601Z",
-    "reason": "最终任务已经验证，保留终态锚点且不自动激活后续任务",
+    "reason": "M8-09保留为V1.0验证锚点；M9-00与M9-01已验证，M9-02通过独立Runtime继续实施",
     "allowedPaths": [
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",

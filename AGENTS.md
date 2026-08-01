@@ -15,21 +15,23 @@ WorldForge 是面向单一作者的本地优先桌面写作工作站。仓库实
 ```text
 1. AGENTS.md
 2. docs/PROJECT_EXECUTION_ENTRY.md
-3. docs/tasks/ACTIVE_TASK.json
-4. docs/tasks/ACTIVE_TASK.md
-5. ACTIVE_TASK 指向的独立任务卡
-6. 任务卡列出的专项文档
-7. 现有代码、测试、Migration、契约和追踪状态
+3. docs/tasks/TASK_AUTHORIZATION.json
+4. docs/tasks/TASK_INDEX.md
+5. 当前任务Runtime或ACTIVE_TASK兼容锚点
+6. 当前独立任务卡
+7. 任务卡列出的专项文档
+8. 现有代码、测试、Migration、契约和追踪状态
 ```
 
 固定规则：
 
-- `ACTIVE_TASK.json` 是授权模式、活动任务、工作分支、允许路径、禁止路径和验证命令的机器真源。
-- `ACTIVE_TASK.md` 是生成镜像，必须保持同步。
+- `TASK_AUTHORIZATION.json` 是并行任务模式、基线分支和main写入规则的全局机器真源。
+- `docs/tasks/runtime/<TASK_ID>.json` 是并行模式下每张任务状态、分支、允许路径、禁止路径和验证命令的机器真源。
+- `ACTIVE_TASK.json` 与`ACTIVE_TASK.md`在串行模式中是活动任务真源；进入并行模式后保留为历史关闭流程兼容锚点，二者仍必须同步。
 - 动态状态不得在本文件中重复固化；任务数量、当前阶段和当前授权以真实状态文件为准。
-- 同时只能有一张任务处于 `IN_PROGRESS`。
+- 串行模式同时只能有一张任务处于`IN_PROGRESS`；`parallel-pr`模式可并行开放互不冲突的任务Runtime，但main写入和验证关闭保持串行。
 - 里程碑摘要只做索引，不是可执行任务卡。
-- 每张活动任务必须且只能指向 `docs/tasks/M0/` 至 `M8/` 下的一张独立任务卡。
+- 每张活动任务必须且只能指向 `docs/tasks/M0/` 至 `M9/` 下的一张独立任务卡。
 
 ## 3. 文档权威顺序
 
@@ -136,7 +138,27 @@ V1.0 只包含本地单作者写作闭环，不实现：
 
 ## 6. 任务、分支与实施模式
 
-具体授权模式必须从 `ACTIVE_TASK.authorization` 读取，不得假设当前模式永远不变。
+具体授权模式优先从`TASK_AUTHORIZATION.json`读取；未启用并行任务模式时再读取`ACTIVE_TASK.authorization`。不得假设当前模式永远不变。
+
+在`parallel-pr`模式下：
+
+```text
+一个任务Runtime
+→ 一个正式任务分支
+→ 一个绑定worldforge-task标记的PR
+→ Draft快速反馈
+→ Implemented与受检Head
+→ Ready永久门禁
+→ expected_head_sha受控合并
+→ Main Verification
+→ 独立治理关闭为Verified
+```
+
+- 互不重叠且依赖已满足的任务可以同时开发和开放PR。
+- 每个PR只能绑定一个任务Runtime，只能修改自身`allowedPaths`，不得修改其他任务Runtime。
+- 高风险任务不得并行修改同一核心文件；共享入口、锁文件和全局治理状态必须由明确的治理任务统一修改。
+- main写入、Main Verification和Verified关闭始终串行；前一PR未完成主线验证时，后一PR不得写入main。
+- 每个任务的最终E2E、Evidence和回退说明必须绑定自身最终受检Head。
 
 在 `implementation-pr` 模式下：
 

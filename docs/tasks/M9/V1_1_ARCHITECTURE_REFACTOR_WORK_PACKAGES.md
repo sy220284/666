@@ -1,27 +1,27 @@
 # WorldForge V1.1 架构拆分重构工作包
 
-> 状态：规划冻结，未进入机器任务索引  
+> 状态：规划冻结并已进入机器任务索引
 > 上位方案：[`V1_1_ARCHITECTURE_REFACTOR_GOVERNANCE.md`](V1_1_ARCHITECTURE_REFACTOR_GOVERNANCE.md)  
 > 执行原则：一个工作包对应一个正式实施PR，禁止跨包混改
 
 ## 1. 总览
 
-| 工作包 | 主题 | 依赖 | 风险 | 主要结果 |
-|---|---|---|:---:|---|
-| AR-01 | 重构安全网 | M8-09 | 中 | 行为测试、结构基线、依赖门禁 |
-| AR-02 | Shared Structure | AR-01 | 中 | 消除Writing→Planning依赖 |
-| AR-03 | Writing工具与展示拆分 | AR-01、AR-02 | 中 | Candidate、Version、工具组件独立 |
-| AR-04 | Writing章节会话状态机 | AR-03 | 高 | 章节、编辑器、自动保存生命周期收敛 |
-| AR-05 | Canon拆分 | AR-01 | 中 | 四个独立业务Panel |
-| AR-06 | Planning拆分 | AR-02、AR-01 | 中 | 任务书、大纲、场景职责分离 |
-| AR-07 | AppShell拆分 | AR-04、AR-05、AR-06 | 高 | 应用启动、项目会话、导航和任务控制器 |
-| AR-08 | Contracts拆分 | AR-01 | 中 | Bridge与IPC聚合模块化 |
-| AR-09 | Preload拆分 | AR-08 | 中 | 领域Bridge Factory |
-| AR-10 | Main IPC拆分 | AR-08、AR-09 | 高 | 领域Handler注册器与统一Guard |
-| AR-11 | State Proposal与Generation拆分 | AR-01 | 高 | V1.5状态与生成基础模块化 |
-| AR-12 | Project Workspace拆分 | AR-01 | 高 | 创建、打开、移动、路径策略分离 |
-| AR-13 | Recovery与工具域拆分 | AR-12 | 高 | 备份恢复及第二梯队服务收敛 |
-| AR-14 | Legacy、CSS与最终结构收敛 | AR-02—AR-13 | 中 | 兼容层退役、预算收紧、最终验收 |
+| 工作包 | 主题                           | 依赖                | 风险 | 主要结果                             |
+| ------ | ------------------------------ | ------------------- | :--: | ------------------------------------ |
+| AR-01  | 重构安全网                     | M8-09               |  中  | 行为测试、结构基线、依赖门禁         |
+| AR-02  | Shared Structure               | AR-01               |  中  | 消除Writing→Planning依赖             |
+| AR-03  | Writing工具与展示拆分          | AR-01、AR-02        |  中  | Candidate、Version、工具组件独立     |
+| AR-04  | Writing章节会话状态机          | AR-03               |  高  | 章节、编辑器、自动保存生命周期收敛   |
+| AR-05  | Canon拆分                      | AR-01               |  中  | 四个独立业务Panel                    |
+| AR-06  | Planning拆分                   | AR-02、AR-01        |  中  | 任务书、大纲、场景职责分离           |
+| AR-07  | AppShell拆分                   | AR-04、AR-05、AR-06 |  高  | 应用启动、项目会话、导航和任务控制器 |
+| AR-08  | Contracts拆分                  | AR-01               |  中  | Bridge与IPC聚合模块化                |
+| AR-09  | Preload拆分                    | AR-08               |  中  | 领域Bridge Factory                   |
+| AR-10  | Main IPC拆分                   | AR-08、AR-09        |  高  | 领域Handler注册器与统一Guard         |
+| AR-11  | State Proposal与Generation拆分 | AR-01               |  高  | V1.5状态与生成基础模块化             |
+| AR-12  | Project Workspace拆分          | AR-01               |  高  | 创建、打开、移动、路径策略分离       |
+| AR-13  | Recovery与工具域拆分           | AR-12               |  高  | 备份恢复及第二梯队服务收敛           |
+| AR-14  | Legacy、CSS与最终结构收敛      | AR-02—AR-13         |  中  | 兼容层退役、预算收紧、最终验收       |
 
 ## 2. AR-01 重构安全网
 
@@ -454,4 +454,4 @@ core-service/src/recovery/
 - PR正文中的`worldforge-task`标记；
 - Runtime状态从`PLANNED`进入`IN_PROGRESS`。
 
-第一个正式任务只能是AR-01。高风险包不得并行修改同一核心文件；其他互不重叠的工作包是否并行，由激活治理根据实际文件范围决定。
+AR-01已经作为第一个正式工作包完成Verified，AR-02已按依赖激活。高风险包不得并行修改同一核心文件；其他互不重叠的工作包是否并行，由激活治理根据实际文件范围决定。

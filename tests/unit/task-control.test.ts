@@ -77,6 +77,26 @@ describe('task control', () => {
     ).toBe(true);
   });
 
+  it('allows M9 task and runtime closure records on a governance branch', () => {
+    expect(
+      isGovernanceOnlyPullRequest('fix/governance-m9-00-verified', [
+        'docs/tasks/ACTIVE_TASK.json',
+        'docs/tasks/TASK_INDEX.md',
+        'docs/tasks/M9/M9-00_ACTIVATION_GOVERNANCE.md',
+        'docs/tasks/M9/M9-02_SHARED_STRUCTURE.md',
+        'docs/tasks/runtime/M9-00.json',
+        'docs/tasks/runtime/M9-02.json',
+        'docs/test-evidence/M9-00/manifest.json',
+      ]),
+    ).toBe(true);
+    expect(
+      isGovernanceOnlyPullRequest('fix/governance-m9-00-verified', [
+        'docs/tasks/runtime/M9-00.json',
+        'apps/desktop/renderer/src/main.tsx',
+      ]),
+    ).toBe(false);
+  });
+
   it('allows frozen task planning documents only on task-plan policy branches', () => {
     expect(
       isGovernanceOnlyPullRequest('policy/task-plan-renderer-architecture', [

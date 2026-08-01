@@ -77,7 +77,7 @@ describe('task control', () => {
     ).toBe(true);
   });
 
-  it('allows M9 task and runtime closure records on a governance branch', () => {
+  it('allows M9 task, runtime and exact evidence closure records on a governance branch', () => {
     expect(
       isGovernanceOnlyPullRequest('fix/governance-m9-00-verified', [
         'docs/tasks/ACTIVE_TASK.json',
@@ -87,6 +87,7 @@ describe('task control', () => {
         'docs/tasks/runtime/M9-00.json',
         'docs/tasks/runtime/M9-02.json',
         'docs/test-evidence/M9-00/manifest.json',
+        'docs/test-evidence/M9-02/manifest.json',
       ]),
     ).toBe(true);
     expect(

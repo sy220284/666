@@ -1,6 +1,6 @@
 # M9-02 WorldForge V1.1 Shared Structure拆分
 
-> 状态：Implemented  
+> 状态：Verified
 > 里程碑：M9 V1.1架构治理  
 > 对应工作包：AR-02  
 > 优先级：P0  
@@ -109,10 +109,13 @@ pnpm release:check
 - 发布配置单元测试9项和`pnpm release:check`均通过。
 - TypeScript全仓检查通过。
 - 临时变换脚本与临时工作流已从最终差异中删除。
+- 来源PR #265的最终受检Head为`48b75233cfb6909aba28dd0467ed1e17b0e4ca30`，Draft与Ready两轮永久门禁均成功。
+- 受控main提交为`0d6920b1001bbe8c9f063efba6af5664f2c4745a`；Main Verification运行`30687173687`成功。
+- 最终四文件Evidence位于`docs/test-evidence/M9-02/`，任务状态已关闭为Verified。
 
 ## 10. 完成条件
 
 - 独立PR永久门禁成功。
 - 不存在Writing到Planning的代码依赖。
 - Shared Structure模块职责和后续拆分边界可追溯。
-- 合并后main验证成功，再将M9-02关闭为Verified。
+- 合并后main验证与Evidence完整性校验均成功，M9-02已关闭为Verified。

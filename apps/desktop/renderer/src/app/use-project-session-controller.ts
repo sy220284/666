@@ -107,7 +107,16 @@ export function useProjectSessionController({
       await projectChanged(outcome.data, '项目已创建，路径和数据库完整性校验通过。');
       dispatch({ type: 'navigate', route: 'writing' });
       return true;
-    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setMessage, setPendingKey],
+    },
+    [
+      bridge,
+      dispatch,
+      prepareProjectTransition,
+      projectChanged,
+      setFailure,
+      setMessage,
+      setPendingKey,
+    ],
   );
 
   const openSelected = useCallback(
@@ -131,7 +140,16 @@ export function useProjectSessionController({
         type: 'navigate',
         route: recover ? 'recovery' : continuationRoute(nextContinuation),
       });
-    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setMessage, setPendingKey],
+    },
+    [
+      bridge,
+      dispatch,
+      prepareProjectTransition,
+      projectChanged,
+      setFailure,
+      setMessage,
+      setPendingKey,
+    ],
   );
 
   const openRecent = useCallback(
@@ -146,7 +164,8 @@ export function useProjectSessionController({
       }
       const nextContinuation = await projectChanged(outcome.data, '最近作品已安全打开。');
       dispatch({ type: 'navigate', route: continuationRoute(nextContinuation) });
-    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setPendingKey],
+    },
+    [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setPendingKey],
   );
 
   const closeProject = useCallback(
@@ -165,7 +184,8 @@ export function useProjectSessionController({
       } finally {
         setPendingKey(null);
       }
-    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setPendingKey],
+    },
+    [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setPendingKey],
   );
 
   const moveProject = useCallback(
@@ -189,7 +209,8 @@ export function useProjectSessionController({
           ? '移动已完成；原位置未能清理，请确认后手动处理。'
           : '移动已完成，哈希与数据库完整性校验通过。',
       );
-    }, [bridge, prepareProjectTransition, projectChanged, setFailure, setMessage, setPendingKey],
+    },
+    [bridge, prepareProjectTransition, projectChanged, setFailure, setMessage, setPendingKey],
   );
 
   const relocateRecent = useCallback(
@@ -204,7 +225,8 @@ export function useProjectSessionController({
       }
       await refreshRecentProjects();
       setMessage('作品路径已重新定位。');
-    }, [bridge, refreshRecentProjects, setFailure, setMessage, setPendingKey],
+    },
+    [bridge, refreshRecentProjects, setFailure, setMessage, setPendingKey],
   );
 
   const removeRecent = useCallback(
@@ -220,7 +242,8 @@ export function useProjectSessionController({
         projects.filter((project) => project.projectId !== projectId),
       );
       setMessage('最近作品记录已移除，作品文件保持不变。');
-    }, [bridge, setFailure, setMessage, setPendingKey, setRecentProjects],
+    },
+    [bridge, setFailure, setMessage, setPendingKey, setRecentProjects],
   );
 
   return {

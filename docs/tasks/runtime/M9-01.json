@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "id": "M9-01",
+  "status": "IN_PROGRESS",
+  "source": "docs/tasks/M9/M9-01_REFACTOR_SAFETY_NET.md",
+  "startedAt": "2026-08-01",
+  "dependencies": [
+    "M8-09"
+  ],
+  "branch": "work/m9-01-refactor-safety-net",
+  "priority": "P0",
+  "scope": [
+    "建立同工作区循环依赖检测",
+    "建立Renderer Feature依赖门禁",
+    "建立巨型文件结构预算与债务基线",
+    "建立重构测试耦合清单和纯函数单测",
+    "把结构检查接入现有永久门禁"
+  ],
+  "allowedPaths": [
+    "scripts/",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/security/",
+    "tests/e2e/",
+    "docs/architecture/",
+    "docs/tasks/",
+    "package.json"
+  ],
+  "forbiddenPaths": [
+    "apps/desktop/main/src/",
+    "apps/desktop/preload/src/",
+    "apps/desktop/renderer/src/",
+    "packages/contracts/src/",
+    "packages/core-service/src/",
+    "packages/domain/src/",
+    "packages/editor-core/src/",
+    "packages/prompts/src/",
+    "migrations/",
+    "docs/test-evidence/M0/",
+    "docs/test-evidence/M1/",
+    "docs/test-evidence/M2/",
+    "docs/test-evidence/M3/",
+    "docs/test-evidence/M4-04/",
+    "docs/test-evidence/M8-02/",
+    "docs/test-evidence/M8-04/",
+    "docs/test-evidence/M8-05/",
+    "docs/test-evidence/M8-06/",
+    "docs/test-evidence/M8-07/",
+    "docs/test-evidence/M8-08/",
+    "docs/test-evidence/M8-09/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:language",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e",
+    "pnpm release:check"
+  ]
+}

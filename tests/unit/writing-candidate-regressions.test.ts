@@ -129,9 +129,7 @@ describe('Writing候选并发与只读回归', () => {
     const run = deferred<ReturnType<typeof success>>();
     const get = vi.fn(async ({ candidateId }: { candidateId: string }) =>
       success(
-        candidateId === 'candidate-a'
-          ? prose('candidate-a', 'run-a')
-          : skeleton('candidate-b'),
+        candidateId === 'candidate-a' ? prose('candidate-a', 'run-a') : skeleton('candidate-b'),
       ),
     );
     const getRun = vi.fn(() => run.promise);
@@ -159,9 +157,7 @@ describe('Writing候选并发与只读回归', () => {
   });
 
   it('只读会话不确认也不发起候选丢弃写请求', async () => {
-    const discard = vi.fn(async () =>
-      success({ status: 'discarded', resolvedAt: null }),
-    );
+    const discard = vi.fn(async () => success({ status: 'discarded', resolvedAt: null }));
     const bridge = contractInput<RendererBridgeAdapter>({
       candidate: { discard },
     });

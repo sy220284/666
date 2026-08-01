@@ -14,11 +14,7 @@ import type {
   GenerationRun,
   GenerationStartInput,
 } from './generation.js';
-import {
-  ProjectIdSchema,
-  TaskEventEnvelopeSchema,
-  type TaskSnapshot,
-} from './task-protocol.js';
+import { ProjectIdSchema, TaskEventEnvelopeSchema, type TaskSnapshot } from './task-protocol.js';
 import type { RendererLifecycleBridge } from './renderer-shutdown.js';
 import type {
   ProjectCloseResult,

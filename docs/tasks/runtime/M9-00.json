@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "M9-00",
+  "status": "IN_PROGRESS",
+  "source": "docs/tasks/M9/M9-00_ACTIVATION_GOVERNANCE.md",
+  "startedAt": "2026-08-01",
+  "dependencies": ["M8-09"],
+  "branch": "policy/m9-activation-sync",
+  "priority": "P0",
+  "scope": [
+    "同步M9激活授权与权威入口",
+    "登记M9工作包依赖和真实状态",
+    "保留M8-09 V1.0兼容锚点",
+    "修复M9机器Runtime与文档漂移"
+  ],
+  "allowedPaths": ["AGENTS.md", "docs/PROJECT_EXECUTION_ENTRY.md", "docs/tasks/"],
+  "forbiddenPaths": [
+    "apps/",
+    "packages/",
+    "migrations/",
+    ".github/",
+    "scripts/",
+    "tests/",
+    "docs/test-evidence/"
+  ],
+  "verification": ["pnpm task:validate", "pnpm check:language", "pnpm format:check", "pnpm lint"]
+}

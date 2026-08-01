@@ -27,23 +27,23 @@
     },
     {
       "path": "AR-08_CONTRACTS_SPLIT_VERIFICATION.md",
-      "bytes": 4589,
-      "sha256": "c2793ae99511c20f3f25d6d2a76c894b357d71152f7a180df7a1ec98745cd9b7"
+      "bytes": 3984,
+      "sha256": "bb405f8d4a301c51f2f063564d1191c2dea054dccd71d7445c9e4a6c19a137c2"
     },
     {
       "path": "commands.txt",
-      "bytes": 603,
-      "sha256": "742ca1f646824f4964add31c95acb8f7324788fe8ab17c2bed06e10ebf101750"
+      "bytes": 629,
+      "sha256": "6c5d65b741b7d71da0c12789f6885a7b4881ac1995063c83e62f5398ca5d1aa2"
     },
     {
       "path": "known-risks.md",
-      "bytes": 1008,
-      "sha256": "91c4615121fa1e0ec1cde0814f171b364091ac44a8f9f9fea428b333d6623707"
+      "bytes": 919,
+      "sha256": "7051b0a88bf185b74703c52e342136316058c41fb6bfe77bbc0d50ae971cc38d"
     },
     {
       "path": "summary.md",
-      "bytes": 1046,
-      "sha256": "4e9fe715c310c229e2076416920ac2f41dff22810094518d8a14d40a7948f1e9"
+      "bytes": 1026,
+      "sha256": "f4558316afaaee62bbab1a445b04675dfb6ddc0618bb282a8e884849d8a86457"
     }
   ]
 }

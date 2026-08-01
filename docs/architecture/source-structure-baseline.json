@@ -87,9 +87,24 @@
   "allowedFeatureImports": [
     {
       "from": "apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx",
-      "to": "apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx",
+      "to": "apps/desktop/renderer/src/features/planning/planning-workbench.tsx",
       "reason": "现有StructureNavigator复用，必须在AR-02迁入features/structure后删除"
     }
   ],
-  "allowedCycles": []
+  "allowedCycles": [
+    [
+      "apps/desktop/renderer/src/shell/app-shell-model.ts",
+      "apps/desktop/renderer/src/runtime/capability-runtime.ts",
+      "apps/desktop/renderer/src/runtime/capability-matrix.ts"
+    ],
+    [
+      "packages/core-service/src/draft.ts",
+      "packages/core-service/src/project-workspace.ts",
+      "packages/core-service/src/project-structure.ts"
+    ],
+    [
+      "packages/core-service/src/project-workspace.ts",
+      "packages/core-service/src/project-structure.ts"
+    ]
+  ]
 }

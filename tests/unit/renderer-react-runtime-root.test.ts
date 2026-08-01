@@ -147,19 +147,26 @@ describe('M3-08 React运行底座', () => {
 
   it('将M3-09业务入口迁到React并保留唯一设置控件选择器', async () => {
     const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
-    const [legacyHtml, shellLayout, startup, settingsSource, stylesSource, canonSource, planningSource] =
-      await Promise.all([
-        readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
-        readFile(path.join(rendererRoot, 'app/app-shell-layout.tsx'), 'utf8'),
-        readFile(path.join(rendererRoot, 'app/use-workspace-startup.ts'), 'utf8'),
-        readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
-        readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
-        readFile(path.join(rendererRoot, 'features/canon/continuity-panel.tsx'), 'utf8'),
-        readFile(
-          path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
-          'utf8',
-        ),
-      ]);
+    const [
+      legacyHtml,
+      shellLayout,
+      startup,
+      settingsSource,
+      stylesSource,
+      canonSource,
+      planningSource,
+    ] = await Promise.all([
+      readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/app-shell-layout.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/use-workspace-startup.ts'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/canon/continuity-panel.tsx'), 'utf8'),
+      readFile(
+        path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
+        'utf8',
+      ),
+    ]);
 
     expect(legacyHtml).not.toContain('data-legacy-open-continuity');
     expect(legacyHtml).not.toContain('data-planning-dialog');

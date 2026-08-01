@@ -191,7 +191,7 @@
     "finalTask": false,
     "nextTaskId": "M9-03",
     "heldAt": "2026-07-31T18:03:02.601Z",
-    "reason": "M8-09保留为V1.0验证锚点；M9-00—M9-02已验证，下一工作包为M9-03 Writing工具与展示拆分",
+    "reason": "M8-09保留为V1.0验证锚点；M9-00—M9-02已验证，M9-03通过独立Runtime实施Writing工具与展示拆分",
     "allowedPaths": [
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",

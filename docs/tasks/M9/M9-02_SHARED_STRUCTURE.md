@@ -1,6 +1,6 @@
 # M9-02 WorldForge V1.1 Shared Structure拆分
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M9 V1.1架构治理  
 > 对应工作包：AR-02  
 > 优先级：P0  
@@ -85,7 +85,20 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-## 8. 完成条件
+## 8. 实施结果
+
+- 实施提交：`85d4cd9f1513e696a36da92a31ce8ba5e4e024c5`。
+- 一次性确定性提取工作流：`30681522018`，结果成功。
+- 新增`features/structure/structure-navigator.tsx`，格式化后保持在默认800行结构预算以内。
+- 卷章目录、卷章编辑、回收站、拆章、并章和跨章移动逻辑已从Planning主工作台迁出。
+- Writing直接导入Shared Structure，不再依赖Planning Feature。
+- Planning通过Shared Structure完成原有装配，并保留兼容重导出。
+- M9-01中唯一`writing → planning`历史例外已删除，禁止规则继续保留。
+- 变换后全仓扫描：234个源码文件、653条相对导入边、15项既有结构债务；没有新增债务或循环例外。
+- Shared Structure专项边界测试2项通过，TypeScript全仓检查通过。
+- 临时变换脚本与临时工作流已从最终差异中删除。
+
+## 9. 完成条件
 
 - 独立PR永久门禁成功。
 - 不存在Writing到Planning的代码依赖。

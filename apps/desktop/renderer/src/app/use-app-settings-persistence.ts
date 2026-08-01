@@ -62,6 +62,10 @@ export function useAppSettingsPersistence({
     );
   }, []);
 
+  const flushSettings = useCallback(async (): Promise<void> => {
+    await writeQueue.current;
+  }, []);
+
   const saveSettings = useCallback(
     (update: AppSettingsUpdate): Promise<boolean> => {
       if (update.creativePath === 'ai-first' && aiReadiness.status !== 'ready') {
@@ -176,6 +180,7 @@ export function useAppSettingsPersistence({
     applySettings,
     applyAppearance,
     applyProviders,
+    flushSettings,
     saveSettings,
     resetSettings,
     saveAppearance,

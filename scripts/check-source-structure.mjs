@@ -26,7 +26,7 @@ async function listSourceFiles(directory) {
   const files = [];
   for (const entry of entries) {
     const target = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await listSourceFiles(target));
+    if (entry.isDirectory()) files.push(...(await listSourceFiles(target)));
     if (entry.isFile() && SOURCE_EXTENSIONS.includes(path.extname(entry.name))) files.push(target);
   }
   return files;

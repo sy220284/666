@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "M9-02",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "source": "docs/tasks/M9/M9-02_SHARED_STRUCTURE.md",
   "startedAt": "2026-08-01",
+  "implementedAt": "2026-08-01T11:15:00+08:00",
+  "implementationCommit": "85d4cd9f1513e696a36da92a31ce8ba5e4e024c5",
   "dependencies": [
     "M9-01"
   ],
@@ -68,5 +70,15 @@
     "pnpm build",
     "pnpm test:e2e",
     "pnpm release:check"
-  ]
+  ],
+  "evidence": {
+    "applyWorkflowRun": 30681522018,
+    "sharedStructureLines": 745,
+    "sourceFiles": 234,
+    "relativeImportEdges": 653,
+    "registeredStructuralDebts": 15,
+    "writingPlanningExceptions": 0,
+    "targetedTests": 2,
+    "typecheck": "success"
+  }
 }

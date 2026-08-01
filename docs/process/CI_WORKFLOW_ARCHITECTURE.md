@@ -10,13 +10,14 @@
 | `Security` | PR→main，含Draft | 凭据扫描始终执行；依赖与应用安全按变更路由 | `security` |
 | `Performance` | PR→main、手动，含Draft | 按性能敏感路径执行，未命中时显式成功退出 | `performance` |
 | `Evidence` | PR→main、每周、手动，含Draft | PR校验变化证据；定时/手动全量重放 | `evidence` |
+| `Engineering Validation` | 手动、可复用调用 | 对精确提交执行固定只读专项验证并输出诊断工件 | 否 |
 | `Controlled Merge` | 永久检查完成 | 聚合相同Head SHA并squash合并 | 否 |
 | `Main Verification` | 合并后幂等调度 | 核验最终SHA、来源门禁和静态一致性 | `main-verification` |
 | `Repository Governance` | 治理PR、每周、手动 | 审计永久自动化与原生Ruleset | 否 |
 | `Branch Hygiene` | 每周、手动 | 报告并可选清理安全废弃分支 | 否 |
 | `Release` | 手动 | 完整发布门和三平台打包 | 否 |
 
-`quality-core.yml`由Quality、Main Verification和Release复用。调用方显式选择静态模式或完整产品验证模式。PR Quality无论Draft或Ready都不得选择静态模式；Main Verification仍可在已通过来源PR完整门禁后执行最终SHA静态复核。
+`quality-core.yml`由Quality、Main Verification、Release和Engineering Validation复用。调用方显式选择静态模式或完整产品验证模式。PR Quality无论Draft或Ready都不得选择静态模式；Main Verification仍可在已通过来源PR完整门禁后执行最终SHA静态复核。
 
 ## 2. Draft持续验证
 
@@ -143,7 +144,51 @@ M3-06至M3-10连续实现，M3-10后统一执行M3批次复验；进入M4前完�
 - Release保持手动触发，完整执行Quality、Security、Performance和三平台Package；
 - 日常开发优化不得削弱Draft、Ready、发布门或数据安全门。
 
-## 10. 永久自动化约束
+## 10. 工程专项验证
+
+`engineering-validation.yml`用于跨任务复用的只读专项验证，输入只允许完整`source_sha`和固定`profile`。它不参与六项必需检查，也不替代普通PR Quality、Security、Performance或Evidence。
+
+固定Profile：
+
+```text
+static
+├─ 复用Quality Core静态路径
+
+full
+├─ 复用Quality Core完整产品验证
+
+package-smoke
+├─ 复用Quality Core完整验证与Package Smoke
+
+contract-surface
+├─ 构建Contracts
+├─ 采集公开运行时导出、IPC Channel、Registered Command和协议版本
+├─ 计算公开声明文件SHA-256
+└─ 上传诊断JSON
+
+windows-ime
+├─ 核验Microsoft拼音Profile
+├─ 构建Desktop
+├─ 运行真实Windows拼音验收
+└─ 上传IME诊断
+
+dependency-diagnostic
+├─ 冻结安装
+├─ 输出工具与依赖清单
+├─ 执行高危依赖审计
+└─ 上传依赖诊断
+```
+
+约束：
+
+- 必须精确检出输入提交，并验证完整40位SHA；
+- 只允许`contents: read`，不得使用Environment、Secrets或写权限；
+- 不接受任意命令、任意Runner、目标分支或Artifact路径输入；
+- 不得提交、推送、修改任务状态、产品文档或正式源码；
+- 输出只能作为诊断工件，不能替代PR Head和版本化Evidence；
+- 验证前后继续执行clean-tree检查。
+
+## 11. 永久自动化约束
 
 - 工作流必须通用，不得硬编码任务ID、固定PR、固定任务分支或一次性修复；
 - Draft状态只能限制合并，禁止作为整块跳过永久检查的条件；

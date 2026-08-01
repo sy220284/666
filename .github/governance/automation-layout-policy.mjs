@@ -8,6 +8,7 @@ const root = cwd();
 export const PERMANENT_WORKFLOWS = Object.freeze([
   'automerge.yml',
   'branch-hygiene.yml',
+  'engineering-validation.yml',
   'evidence.yml',
   'main-verification.yml',
   'performance.yml',

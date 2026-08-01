@@ -3,7 +3,7 @@
 > 状态：Active  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09及M9-00—M9-14，共56张独立任务卡或冻结工作包。
-> 当前任务：M9-00—M9-02已Verified；下一工作包为M9-03 Writing工具与展示拆分。
+> 当前任务：M9-00—M9-02已Verified；M9-03 Writing工具与展示拆分已激活并进入实施。
 
 ## 1. 执行入口
 
@@ -33,7 +33,7 @@ Blocked / Deferred / Removed
 | M3            | 规划、设定与连续性             |         10 | Verified                                     |
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
 | M8            | 交付关闭、作者体验与长期维护   |          7 | M8-02—M8-09 Verified                         |
-| M9            | V1.1保持行为的架构拆分治理     |         15 | M9-00—M9-02 Verified；M9-03 Planned          |
+| M9            | V1.1保持行为的架构拆分治理     |         15 | M9-00—M9-02 Verified；M9-03 In Progress      |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
@@ -52,7 +52,7 @@ M0—M3 已完成产品底座
 └─ M8-09 V1.0稳定性与生命周期治理（Verified）
    → M9-01 重构安全网（Verified）
    → M9-02 Shared Structure（Verified）
-   → M9-03 Writing工具与展示拆分（Next）
+   → M9-03 Writing工具与展示拆分（In Progress）
    → M9-04—M9-14按依赖逐包激活
 ```
 
@@ -134,7 +134,7 @@ M0—M3 已完成产品底座
 | M9-00 | [`M9激活治理与权威文档同步`](M9/M9-00_ACTIVATION_GOVERNANCE.md)                                                                  | M8-09               | Verified    |
 | M9-01 | [`重构安全网`](M9/M9-01_REFACTOR_SAFETY_NET.md)                                                                                  | M8-09               | Verified    |
 | M9-02 | [`Shared Structure拆分`](M9/M9-02_SHARED_STRUCTURE.md)                                                                           | M9-00、M9-01        | Verified    |
-| M9-03 | [`AR-03 Writing工具与展示拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#4-ar-03-writing工具与展示拆分)                    | M9-01、M9-02        | Planned     |
+| M9-03 | [`Writing工具与展示拆分`](M9/M9-03_WRITING_TOOLS_DISPLAY.md)                                                                     | M9-01、M9-02        | In Progress |
 | M9-04 | [`AR-04 Writing章节会话状态机`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#5-ar-04-writing章节会话状态机)                    | M9-03               | Planned     |
 | M9-05 | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-01               | Planned     |
 | M9-06 | [`AR-06 Planning拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#7-ar-06-planning拆分)                                      | M9-01、M9-02        | Planned     |

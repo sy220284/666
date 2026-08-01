@@ -27,7 +27,8 @@ describe('Preload capability surface', () => {
     expect(factories).not.toContain('contextBridge');
     expect(task).toContain('ipcRenderer.postMessage');
     expect(task).toContain('TaskEventEnvelopeSchema.safeParse');
-    expect(task).toContain('task: {');
+    expect(task).toContain("const task: WorldforgeBridge['task'] = {");
+    expect(task).toContain('return { task };');
     expect(app).toContain('settings: {');
     expect(project).toContain('project: {');
     expect(planning).toContain('planning: {');

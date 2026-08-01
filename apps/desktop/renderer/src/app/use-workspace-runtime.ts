@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type {
-  CoreStatus,
-  ProjectWorkspaceSummary,
-  TaskSnapshot,
-} from '@worldforge/contracts';
+import type { CoreStatus, ProjectWorkspaceSummary, TaskSnapshot } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import {

@@ -21,14 +21,20 @@
 5. 每个子包完成后必须运行受影响范围回归、记录结构变化和回退说明；前一子包存在失败时不得进入依赖它的后续子包。
 6. AR-10、AR-12和AR-13保持高风险检查点，必须分别保存回退说明和专项验证结果。
 7. M9-03只有在AR-03—AR-14全部完成、续作PR通过全量永久门禁、合并后main验证成功，才允许通过独立治理关闭为Verified。
+8. 续作分支已通过PR #275同步`main@e80552afec44916cc3821e933fc477badbad178a`，同步合并提交为`74dc1528b62d55c9333e83b82afffc74795c8078`，不重写既有任务历史。
+9. 专项验证统一使用永久`.github/workflows/engineering-validation.yml`；禁止在M9-03内新增、恢复或保留任务专属临时Workflow。
 
 ## 3. 当前检查点
 
 ```text
 AR-03 Writing工具与展示拆分          已合并（PR #272）
 AR-04 Writing章节会话状态机          已合并（PR #272）
-AR-05 Canon拆分                      当前执行
-AR-06—AR-14                          待按依赖推进
+AR-05 Canon拆分                      已验证
+AR-06 Planning拆分                   已验证
+AR-07 AppShell拆分                   已验证
+AR-08 Contracts拆分                  已验证
+AR-09 Preload拆分                    当前执行
+AR-10—AR-14                          待按依赖推进
 ```
 
 ## 4. 必须实施
@@ -85,11 +91,13 @@ AR-06—AR-14                          待按依赖推进
 - `docs/tasks/`
 - `docs/test-evidence/M9-03/`
 - `scripts/`
-- `.github/workflows/`
 - `vitest.coverage.config.ts`
+
+永久工作流由main治理任务维护。M9-03只调用既有`Engineering Validation`固定Profile，不得修改`.github/workflows/`。
 
 ## 8. 禁止范围
 
+- `.github/workflows/`
 - `migrations/`
 - `packages/domain/src/`
 - `packages/editor-core/src/`
@@ -142,11 +150,22 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-专项矩阵至少包括Writing会话、Canon行为、Renderer交互、IPC表面与安全、Core故障注入和事务回滚、项目生命周期、备份恢复、FTS、Diff、DOCX性能、三平台Build与Package Smoke。
+永久专项验证入口：
+
+```text
+Engineering Validation / full                  每个AR完整检查点
+Engineering Validation / contract-surface      Contracts公开表面复核
+Engineering Validation / windows-ime           Windows原生输入法专项验收
+Engineering Validation / package-smoke         三平台打包冒烟
+Engineering Validation / dependency-diagnostic 依赖与高危审计诊断
+```
+
+所有Profile必须绑定受检完整`source_sha`。专项矩阵至少包括Writing会话、Canon行为、Renderer交互、IPC表面与安全、Core故障注入和事务回滚、项目生命周期、备份恢复、FTS、Diff、DOCX性能、三平台Build与Package Smoke。
 
 ## 12. 回退
 
 - PR #272形成AR-03、AR-04已合并检查点；发现P0回归时可独立Revert提交`7adafeeadb973e5cb035c301602c511c2aa065c5`。
+- PR #275仅同步永久治理能力；如治理提交出现独立回归，可在不回退M9-03产品实现的情况下单独处理`e80552afec44916cc3821e933fc477badbad178a`。
 - AR-05—AR-14在续作分支内保持兼容Facade或组合根，并记录基线、实施Head、专项验证与回退边界。
 - AR-10、AR-12和AR-13必须在进入下一依赖子包前形成专门回退说明。
 - 子包失败时回退到续作分支内最近成功检查点，不在后续子包追补失败。

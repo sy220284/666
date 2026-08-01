@@ -44,6 +44,7 @@ export async function discardCandidate(
   candidate: CandidateDocument | null,
 ): Promise<void> {
   if (
+    input.readOnly ||
     !candidate ||
     candidate.status !== 'pending' ||
     !window.confirm('丢弃后不能再采用，当前稿不会改变。继续吗？')

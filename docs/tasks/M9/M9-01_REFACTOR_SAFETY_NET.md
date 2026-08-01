@@ -1,6 +1,6 @@
 # M9-01 WorldForge V1.1 重构安全网
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M9 V1.1架构治理  
 > 对应工作包：AR-01  
 > 优先级：P0  
@@ -82,9 +82,12 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-## 8. 实施结果
+## 8. 实施与验证结果
 
 - 实施提交：`c1fbec99684561cef5e118d03f995ecec40bb56d`。
+- 来源PR：#263；最终Head：`b6521bfe49a88f3ccb599b0fa201307d640d61a4`。
+- 受控main合并提交：`bf6697c6c3aed8cf4c45e1bcfc269ee3644323bf`。
+- Main Verification Run：`30680858858`，结果成功。
 - 新增源码结构扫描器，覆盖8个生产源码根目录。
 - 当前仓库扫描结果：233个源码文件、647条相对导入边。
 - 登记15项结构债务，均绑定AR-02—AR-13后续工作包。
@@ -94,18 +97,18 @@ pnpm release:check
 - `check:structure`已接入`check:boundaries`，没有另建旁路质量流程。
 - 结构检测纯函数测试、全仓真实扫描、静态检查、单元、集成、Migration、覆盖率、构建、Electron E2E和三平台Package Smoke全部通过。
 
-永久门禁运行：
+最终永久门禁运行：
 
-- Task Governance：`30679618668`，成功。
-- PR Policy：`30679618670`，成功。
-- Evidence：`30679618681`，成功。
-- Security：`30679618667`，成功。
-- Performance：`30679618711`，成功。
-- Quality：`30679618766`，成功。
+- Task Governance：`30680301795`，成功。
+- PR Policy：`30680301803`，成功。
+- Evidence：`30680301791`，成功。
+- Security：`30680301774`，成功。
+- Performance：`30680301773`，成功。
+- Quality：`30680301856`，成功。
 
-## 9. 完成条件
+## 9. 完成结论
 
-- M9-01独立PR全部永久门禁成功。
-- 结构门禁已进入仓库默认质量路径。
-- 当前结构债务、例外原因和后续清理工作包均可追溯。
-- 合并后main验证成功，再将M9-01关闭为Verified。
+- M9-01已建立可执行的源码结构、循环依赖、Feature依赖和文件预算安全网。
+- 当前结构债务均显式登记并绑定后续工作包，新增未登记债务由永久门禁阻断。
+- PR永久门禁和合并后main验证全部成功。
+- M9-01已完成为Verified，AR-02可以在独立任务中启动。

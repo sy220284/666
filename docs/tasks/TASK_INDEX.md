@@ -2,18 +2,17 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04、M8-05、M8-06、M8-07、M8-08与M8-09，共41张独立任务卡。  
-> 当前任务：M8-09已Implemented，等待Ready PR永久门禁、受控合并与main最终验证。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09及M9-00—M9-14，共56张独立任务卡或冻结工作包。
+> 当前任务：M9-00激活治理已Implemented，M9-02 Shared Structure处于In Progress；M9-01已Verified。
 
 ## 1. 执行入口
 
 1. [`TASK_AUTHORIZATION.json`](TASK_AUTHORIZATION.json)：多任务全局授权与main串行写入规则。
 2. [`runtime/`](runtime/)：每张活动任务的独立机器状态。
 3. [`ACTIVE_TASK.json`](ACTIVE_TASK.json)与[`ACTIVE_TASK.md`](ACTIVE_TASK.md)：历史关闭流程兼容锚点。
-4. M8-07任务卡：[`M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md)。
-5. M8-08任务卡：[`M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)。
-6. M8-09任务卡：[`M8/M8-09_V1_STABILITY_HARDENING.md`](M8/M8-09_V1_STABILITY_HARDENING.md)。
-7. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
+4. M8-09终态任务卡：[`M8/M8-09_V1_STABILITY_HARDENING.md`](M8/M8-09_V1_STABILITY_HARDENING.md)。
+5. M9任务入口：[`M9/README.md`](M9/README.md)。
+6. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
 
@@ -26,16 +25,17 @@ Blocked / Deferred / Removed
 
 ## 2. 执行总览
 
-| 阶段          | 定位                           | 独立任务数 | 当前结果                                     |
-| ------------- | ------------------------------ | ---------: | -------------------------------------------- |
-| M0            | 工程、安全与运行底座           |          7 | Verified                                     |
-| M1            | 基础写作MVP                    |          9 | Verified                                     |
-| M2            | 编辑安全与版本核心             |          4 | Verified                                     |
-| M3            | 规划、设定与连续性             |         10 | Verified                                     |
-| M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
-| M8            | 交付关闭、作者体验与长期维护   |          7 | M8-02—M8-08 Verified；M8-09 Implemented      |
-| 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
-| 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
+| 阶段          | 定位                           | 独立任务数 | 当前结果                                             |
+| ------------- | ------------------------------ | ---------: | ---------------------------------------------------- |
+| M0            | 工程、安全与运行底座           |          7 | Verified                                             |
+| M1            | 基础写作MVP                    |          9 | Verified                                             |
+| M2            | 编辑安全与版本核心             |          4 | Verified                                             |
+| M3            | 规划、设定与连续性             |         10 | Verified                                             |
+| M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                                 |
+| M8            | 交付关闭、作者体验与长期维护   |          7 | M8-02—M8-09 Verified                                 |
+| M9            | V1.1保持行为的架构拆分治理     |         15 | M9-01 Verified；M9-00 Implemented；M9-02 In Progress |
+| 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                                    |
+| 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务         |
 
 ```text
 M0—M3 已完成产品底座
@@ -49,7 +49,10 @@ M0—M3 已完成产品底座
 → M8-06 发布资格与任务治理硬化（Verified）
 ├─ M8-07 中文作者体验治理闭环与产品发布验收硬化（Verified）
 ├─ M8-08 V1.0最终质量治理与封版闭环（Verified）
-└─ M8-09 V1.0稳定性与生命周期治理（Implemented）
+└─ M8-09 V1.0稳定性与生命周期治理（Verified）
+   → M9-01 重构安全网（Verified）
+   → M9-02 Shared Structure（In Progress）
+   → M9-03—M9-14按依赖逐包激活
 ```
 
 ## M0 工程、安全与运行底座
@@ -113,15 +116,35 @@ M0—M3 已完成产品底座
 
 ## M8 交付与体验任务
 
-| ID    | 任务卡                                                                                | 依赖                     | 状态       |
-| ----- | ------------------------------------------------------------------------------------- | ------------------------ | ---------- |
-| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                 | M4-04                    | Verified   |
-| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                | M8-02                    | Verified   |
-| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)        | M8-04                    | Verified   |
-| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)              | M8-05                    | Verified   |
-| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md) | M8-06                    | Verified   |
-| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | 开发：M8-06；封版：M8-07 | Verified   |
+| ID    | 任务卡                                                                                | 依赖                     | 状态     |
+| ----- | ------------------------------------------------------------------------------------- | ------------------------ | -------- |
+| M8-02 | [`完整体验、硬化与自用交付关闭`](M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md)                 | M4-04                    | Verified |
+| M8-04 | [`作者体验与开发语言统一改造`](M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md)                | M8-02                    | Verified |
+| M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)        | M8-04                    | Verified |
+| M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)              | M8-05                    | Verified |
+| M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md) | M8-06                    | Verified |
+| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | 开发：M8-06；封版：M8-07 | Verified |
 | M8-09 | [`V1.0稳定性与生命周期治理`](M8/M8-09_V1_STABILITY_HARDENING.md)                      | M8-08                    | Verified |
+
+## M9 V1.1架构拆分治理
+
+| ID    | 任务卡                                                                                                                           | 依赖                | 状态        |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------- |
+| M9-00 | [`M9激活治理与权威文档同步`](M9/M9-00_ACTIVATION_GOVERNANCE.md)                                                                  | M8-09               | Implemented |
+| M9-01 | [`重构安全网`](M9/M9-01_REFACTOR_SAFETY_NET.md)                                                                                  | M8-09               | Verified    |
+| M9-02 | [`Shared Structure拆分`](M9/M9-02_SHARED_STRUCTURE.md)                                                                           | M9-01               | In Progress |
+| M9-03 | [`AR-03 Writing工具与展示拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#4-ar-03-writing工具与展示拆分)                    | M9-01、M9-02        | Planned     |
+| M9-04 | [`AR-04 Writing章节会话状态机`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#5-ar-04-writing章节会话状态机)                    | M9-03               | Planned     |
+| M9-05 | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-01               | Planned     |
+| M9-06 | [`AR-06 Planning拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#7-ar-06-planning拆分)                                      | M9-01、M9-02        | Planned     |
+| M9-07 | [`AR-07 AppShell拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分)                                      | M9-04、M9-05、M9-06 | Planned     |
+| M9-08 | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08-contracts拆分)                                    | M9-01               | Planned     |
+| M9-09 | [`AR-09 Preload拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#10-ar-09-preload拆分)                                       | M9-08               | Planned     |
+| M9-10 | [`AR-10 Main IPC拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#11-ar-10-main-ipc拆分)                                     | M9-08、M9-09        | Planned     |
+| M9-11 | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-01               | Planned     |
+| M9-12 | [`AR-12 Project Workspace拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#13-ar-12-project-workspace拆分)                   | M9-01               | Planned     |
+| M9-13 | [`AR-13 Recovery与工具域拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#14-ar-13-recovery与工具域拆分)                     | M9-12               | Planned     |
+| M9-14 | [`AR-14 Legacy、CSS与最终结构收敛`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#15-ar-14-legacycss与最终结构收敛)             | M9-02—M9-13         | Planned     |
 
 ## 3. 被吸收的需求来源
 
@@ -151,12 +174,13 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M0—M8-08保持Verified；M8-09处于Implemented，等待受控合并与main最终验证。
+1. M0—M8-09与M9-01保持Verified；M9-00和M9-02完成后方可激活依赖它们的工作包。
 2. 每个PR绑定一个主任务并按自身`allowedPaths`验证；不同任务可以同时开放PR。
 3. main写入保持串行：一个PR合并并完成Main Verification后，才允许下一个PR写入main。
-4. M8-09修复V1.0最终审计确认的数据安全与生命周期问题，不改变本地优先、AI作者裁决或数据库Schema。
-5. M8-09不得改写M8-08及更早任务的历史Evidence。
-6. 任一releaseBlocking任务未Verified时，发布资格必须被拒绝。
+4. M9只做保持行为的职责拆分，不改变本地优先、AI作者裁决、数据库Schema、IPC协议或正式错误码。
+5. M9不得改写M8-09及更早任务的历史Evidence。
+6. AR-04、AR-10、AR-12和AR-13必须保存独立回退说明；AR-14不得承接前序未完成拆分。
+7. 任一releaseBlocking任务未Verified时，发布资格必须被拒绝。
 
 ## 5. 状态原则
 

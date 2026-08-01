@@ -87,15 +87,17 @@ pnpm release:check
 
 ## 8. 实施结果
 
-- 实施提交：`85d4cd9f1513e696a36da92a31ce8ba5e4e024c5`。
+- 最终实施提交：`253a37705dc718748fd41df261a9078761f07e10`。
 - 一次性确定性提取工作流：`30681522018`，结果成功。
-- 新增`features/structure/structure-navigator.tsx`，格式化后保持在默认800行结构预算以内。
+- 最终合同修复工作流：`30681893371`，Lint、结构扫描和受影响单测全部成功。
+- 新增`features/structure/structure-navigator.tsx`，格式化后745行，保持在默认800行结构预算以内。
 - 卷章目录、卷章编辑、回收站、拆章、并章和跨章移动逻辑已从Planning主工作台迁出。
 - Writing直接导入Shared Structure，不再依赖Planning Feature。
 - Planning通过Shared Structure完成原有装配，并保留兼容重导出。
 - M9-01中唯一`writing → planning`历史例外已删除，禁止规则继续保留。
 - 变换后全仓扫描：234个源码文件、653条相对导入边、15项既有结构债务；没有新增债务或循环例外。
-- Shared Structure专项边界测试2项通过，TypeScript全仓检查通过。
+- Shared Structure专项边界测试与迁移后的M3工作台安全标记测试均通过。
+- TypeScript全仓检查通过。
 - 临时变换脚本与临时工作流已从最终差异中删除。
 
 ## 9. 完成条件

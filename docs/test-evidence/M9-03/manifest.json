@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "taskId": "M9-03",
-  "commit": "7adafeeadb973e5cb035c301602c511c2aa065c5",
-  "generatedAt": "2026-08-01T12:02:00.000Z",
+  "commit": "99f124369054ab20dcf919ec89aacfd41f592152",
+  "generatedAt": "2026-08-01T12:25:15.000Z",
   "acceptanceSource": "GITHUB_ACTIONS_VERIFIED_CHECKPOINT",
   "files": [
     {
@@ -14,6 +14,11 @@
       "path": "AR-05_CANON_SPLIT_VERIFICATION.md",
       "bytes": 3744,
       "sha256": "9644f4ac3ddbaf4ee035fc5fb945179b6f3d3646c49d95dbf15d3e584d7f1aa9"
+    },
+    {
+      "path": "AR-06_PLANNING_SPLIT_VERIFICATION.md",
+      "bytes": 4249,
+      "sha256": "25ffbfa6e7ef5c013d3e632bbc27e3ded34b5deac66d773e15cf8fedfd55b576"
     },
     {
       "path": "commands.txt",

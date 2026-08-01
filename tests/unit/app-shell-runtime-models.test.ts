@@ -62,11 +62,11 @@ function readiness(status: AiReadiness['status'], message = 'AI状态'): AiReadi
 
 describe('AppShell pure runtime models', () => {
   it('resolves writing routes, continuation routes, cancellation and author-facing failures', () => {
-    expect(['writing', 'versions', 'candidates'].map((route) => isWritingRoute(route))).toEqual([
-      true,
-      true,
-      true,
-    ]);
+    expect([
+      isWritingRoute('writing'),
+      isWritingRoute('versions'),
+      isWritingRoute('candidates'),
+    ]).toEqual([true, true, true]);
     expect(isWritingRoute('home')).toBe(false);
 
     expect(continuationRoute(null)).toBe('writing');
@@ -200,14 +200,17 @@ describe('AppShell pure runtime models', () => {
   });
 
   it('orders pending review, validation, stale search, backup, AI, missing and operation states', () => {
-    const base = {
+    const base: Omit<
+      Parameters<typeof buildGlobalStatus>[0],
+      'message' | 'workspaceAttention'
+    > = {
       activeProject: project(),
       aiReadiness: readiness('ready'),
       coreStatus: core('healthy'),
-      creativePath: 'offline-first' as const,
+      creativePath: 'offline-first',
       failure: null,
       recentProjects: [recent(null)],
-      tasks: [] as readonly TaskSnapshot[],
+      tasks: [],
     };
 
     expect(

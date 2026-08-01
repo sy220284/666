@@ -16,13 +16,13 @@ import {
 import { CoreProjectOperationSchema, CoreProjectResultSchema } from './project-workspace.js';
 import { DraftLockConflictSummarySchema } from './draft.js';
 import {
-  AppearancePreferencesSchema,
   CredentialRefSchema,
   PROTOCOL_VERSION,
-  RegisteredCommandSchema,
   RequestIdSchema,
-  WindowBoundsDipSchema,
   WindowPreferencesSchema,
+  type AppearancePreferencesSchema,
+  type RegisteredCommandSchema,
+  type WindowBoundsDipSchema,
 } from './protocol-registry.js';
 
 export const AppInfoSchema = z.strictObject({

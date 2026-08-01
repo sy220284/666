@@ -60,18 +60,21 @@ describe('AR-09 preload factory boundaries', () => {
     expect(source).toContain('channel.port1.close()');
   });
 
-  it('retains the existing independent bridge surfaces in the preload entry', () => {
-    const source = readSource('entry.ts');
-    for (const moduleName of [
-      'candidate-preview-bridge',
-      'continuity-bridge',
-      'narrative-planning-bridge',
-      'rhythm-bridge',
-      'search-tools-bridge',
-      'state-proposal-bridge',
-      'validation-bridge',
-    ]) {
-      expect(source).toContain(`./${moduleName}.js`);
+  it('retains all existing independent bridge surfaces', () => {
+    for (const [fileName, globalName] of [
+      ['continuity-bridge.ts', 'worldforgeContinuity'],
+      ['narrative-planning-bridge.ts', 'worldforgeNarrativePlanning'],
+      ['rhythm-bridge.ts', 'worldforgeRhythm'],
+      ['search-tools-bridge.ts', 'worldforgeSearchTools'],
+      ['state-proposal-bridge.ts', 'worldforgeStateProposal'],
+      ['validation-bridge.ts', 'worldforgeValidation'],
+    ] as const) {
+      expect(readSource(fileName)).toContain(
+        `contextBridge.exposeInMainWorld('${globalName}'`,
+      );
     }
+    expect(readSource('entry.ts')).toContain(
+      "contextBridge.exposeInMainWorld('worldforgeCandidatePreview'",
+    );
   });
 });

@@ -73,7 +73,7 @@ export function validateReleaseConfiguration({
   for (const token of [
     'workflow_dispatch:',
     'fetch-depth: 0',
-    'package_smoke: true',
+    'package_smoke: false',
     'pnpm audit --audit-level=high',
     'node scripts/scan-secrets.mjs',
     'pnpm release:gate',

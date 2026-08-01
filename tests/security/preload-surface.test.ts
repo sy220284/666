@@ -2,25 +2,37 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
+const preloadSource = 'apps/desktop/preload/src';
+const readPreload = (fileName: string) => readFile(`${preloadSource}/${fileName}`, 'utf8');
+
 describe('Preload capability surface', () => {
   it('exposes one named bridge without raw IPC or Node capabilities', async () => {
-    const source = await readFile('apps/desktop/preload/src/index.ts', 'utf8');
+    const [root, app, project, planning, writing, recovery, task] = await Promise.all([
+      readPreload('index.ts'),
+      readPreload('app-bridge-factory.ts'),
+      readPreload('project-bridge-factory.ts'),
+      readPreload('planning-bridge-factory.ts'),
+      readPreload('writing-bridge-factory.ts'),
+      readPreload('recovery-bridge-factory.ts'),
+      readPreload('task-bridge-factory.ts'),
+    ]);
+    const factories = [app, project, planning, writing, recovery, task].join('\n');
 
-    expect(source).toContain("contextBridge.exposeInMainWorld('worldforge', bridge)");
-    expect(source).not.toContain('ipcRenderer.send');
-    expect(source).not.toContain('ipcRenderer.on');
-    expect(source).not.toContain("from 'node:fs'");
-    expect(source).not.toContain('process.env');
-    expect(source).not.toContain('database');
-    expect(source).not.toMatch(/send\s*:\s*\(/);
-    expect(source).toContain('ipcRenderer.postMessage');
-    expect(source).toContain('TaskEventEnvelopeSchema.safeParse');
-    expect(source).toContain('task: {');
-    expect(source).toContain('settings: {');
-    expect(source).toContain('project: {');
-    expect(source).toContain('planning: {');
-    expect(source).toContain('trash: {');
-    expect(source).toContain('draft: {');
-    expect(source).not.toContain('workspacePath');
+    expect(root).toContain("contextBridge.exposeInMainWorld('worldforge', bridge)");
+    expect(root).not.toContain('ipcRenderer');
+    expect(factories).not.toContain("from 'node:fs'");
+    expect(factories).not.toContain('process.env');
+    expect(factories).not.toContain('database');
+    expect(factories).not.toMatch(/send\s*:\s*\(/);
+    expect(factories).not.toContain('contextBridge');
+    expect(task).toContain('ipcRenderer.postMessage');
+    expect(task).toContain('TaskEventEnvelopeSchema.safeParse');
+    expect(task).toContain('task: {');
+    expect(app).toContain('settings: {');
+    expect(project).toContain('project: {');
+    expect(planning).toContain('planning: {');
+    expect(project).toContain('trash: {');
+    expect(writing).toContain('draft: {');
+    expect(factories).not.toContain('workspacePath');
   });
 });

@@ -1,6 +1,6 @@
 # M9-00 WorldForge V1.1激活治理与权威文档同步
 
-> 状态：In Progress  
+> 状态：Implemented
 > 里程碑：M9 V1.1架构治理  
 > 优先级：P0  
 > 正式分支：`policy/m9-activation-sync`
@@ -68,3 +68,11 @@ pnpm lint
 - M9-01显示Verified，M9-02显示In Progress，M9-03—M9-14显示Planned。
 - 独立PR永久门禁成功。
 - 受控合并和main验证成功后，M9-00关闭为Verified。
+
+## 10. 实施结果
+
+- 实施提交：`d37db39f7d18a4160b99a6bec94a1b31b291ccdd`。
+- `AGENTS.md`、执行入口、任务索引、M9 README、治理方案和工作包状态已同步。
+- M8-09保留为V1.0验证锚点，`verificationHold`切换为非最终状态并指向M9-00 Runtime。
+- M9-01登记为Verified，M9-02登记为In Progress，M9-03—M9-14按冻结依赖登记为Planned。
+- 任务校验、正式中文名称检查、格式检查和Lint均成功。

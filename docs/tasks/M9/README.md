@@ -12,7 +12,7 @@ M8-09继续作为V1.0 `VERIFIED_HOLD`兼容锚点；M9使用`TASK_AUTHORIZATION.
 
 当前进度：
 
-- M9-00：激活治理与权威文档同步，In Progress。
+- M9-00：激活治理与权威文档同步，Implemented。
 - M9-01 / AR-01：重构安全网，Verified。
 - M9-02 / AR-02：Shared Structure，In Progress。
 - M9-03—M9-14：按冻结依赖保持Planned，逐包建立任务卡后激活。

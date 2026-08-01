@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
+import { format, resolveConfig } from 'prettier';
 import ts from 'typescript';
 
 const sourcePath = path.resolve('apps/desktop/preload/src/index.ts');
@@ -10,6 +11,7 @@ const outputDirectory = path.resolve(
 );
 const source = await readFile(sourcePath, 'utf8');
 const sourceFile = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+const prettierConfig = (await resolveConfig(sourcePath)) ?? {};
 
 function fail(message) {
   throw new Error(`AR-09 preload split generation failed: ${message}`);
@@ -122,8 +124,13 @@ function pickType(keys) {
 }
 
 async function writeGenerated(fileName, content) {
+  const filePath = path.join(outputDirectory, fileName);
+  const formatted = await format(`${content.trim()}\n`, {
+    ...prettierConfig,
+    filepath: filePath,
+  });
   await mkdir(outputDirectory, { recursive: true });
-  await writeFile(path.join(outputDirectory, fileName), `${content.trim()}\n`, 'utf8');
+  await writeFile(filePath, formatted, 'utf8');
 }
 
 await writeGenerated(

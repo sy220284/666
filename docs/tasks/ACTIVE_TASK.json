@@ -185,12 +185,13 @@
       "M8-08",
       "M8-09",
       "M9-00",
-      "M9-01"
+      "M9-01",
+      "M9-02"
     ],
     "finalTask": false,
-    "nextTaskId": "M9-02",
+    "nextTaskId": "M9-03",
     "heldAt": "2026-07-31T18:03:02.601Z",
-    "reason": "M8-09保留为V1.0验证锚点；M9-00与M9-01已验证，M9-02通过独立Runtime继续实施",
+    "reason": "M8-09保留为V1.0验证锚点；M9-00—M9-02已验证，下一工作包为M9-03 Writing工具与展示拆分",
     "allowedPaths": [
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",

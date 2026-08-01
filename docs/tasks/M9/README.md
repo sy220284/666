@@ -14,8 +14,9 @@ M8-09继续作为V1.0 `VERIFIED_HOLD`兼容锚点；M9使用`TASK_AUTHORIZATION.
 
 - M9-00：激活治理与权威文档同步，Verified。
 - M9-01 / AR-01：重构安全网，Verified。
-- M9-02 / AR-02：Shared Structure，Implemented，等待永久门禁与受控合并。
-- M9-03—M9-14：按冻结依赖保持Planned，逐包建立任务卡后激活。
+- M9-02 / AR-02：Shared Structure，Verified。
+- M9-03 / AR-03：Writing工具与展示拆分，下一工作包，待建立独立任务卡与Runtime后激活。
+- M9-04—M9-14：按冻结依赖保持Planned，逐包建立任务卡后激活。
 
 ## 文档入口
 
@@ -23,7 +24,7 @@ M8-09继续作为V1.0 `VERIFIED_HOLD`兼容锚点；M9使用`TASK_AUTHORIZATION.
 2. [`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`](V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md)：AR-01—AR-14工作包、范围、依赖、风险与验收标准。
 3. [`M9-00_ACTIVATION_GOVERNANCE.md`](M9-00_ACTIVATION_GOVERNANCE.md)：M9激活治理与权威文档同步。
 4. [`M9-01_REFACTOR_SAFETY_NET.md`](M9-01_REFACTOR_SAFETY_NET.md)：已完成的重构安全网。
-5. [`M9-02_SHARED_STRUCTURE.md`](M9-02_SHARED_STRUCTURE.md)：当前Shared Structure拆分。
+5. [`M9-02_SHARED_STRUCTURE.md`](M9-02_SHARED_STRUCTURE.md)：已验证的Shared Structure拆分。
 
 ## 激活规则
 

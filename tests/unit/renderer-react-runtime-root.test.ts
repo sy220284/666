@@ -138,7 +138,7 @@ describe('M3-08 React运行底座', () => {
         readFile(path.join(rendererRoot, 'app/app-shell-m3.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
-        readFile(path.join(rendererRoot, 'features/canon/canon-core-workbench.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'features/canon/continuity-panel.tsx'), 'utf8'),
         readFile(
           path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
           'utf8',

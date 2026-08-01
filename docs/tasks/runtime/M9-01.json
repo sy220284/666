@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "M9-01",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "source": "docs/tasks/M9/M9-01_REFACTOR_SAFETY_NET.md",
   "startedAt": "2026-08-01",
+  "implementedAt": "2026-08-01T09:44:00+08:00",
+  "implementationCommit": "c1fbec99684561cef5e118d03f995ecec40bb56d",
   "dependencies": [
     "M8-09"
   ],
@@ -66,5 +68,18 @@
     "pnpm build",
     "pnpm test:e2e",
     "pnpm release:check"
-  ]
+  ],
+  "evidence": {
+    "sourceFiles": 233,
+    "relativeImportEdges": 647,
+    "registeredStructuralDebts": 15,
+    "registeredCycles": 3,
+    "registeredFeatureExceptions": 1,
+    "taskGovernanceRun": 30679618668,
+    "prPolicyRun": 30679618670,
+    "evidenceRun": 30679618681,
+    "securityRun": 30679618667,
+    "performanceRun": 30679618711,
+    "qualityRun": 30679618766
+  }
 }

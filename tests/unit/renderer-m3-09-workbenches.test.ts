@@ -161,7 +161,13 @@ describe('M3 final React business workbenches', () => {
         ),
         readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'bridge/use-bridge-resource.ts'), 'utf8'),
-        readFile(path.join(rendererRoot, 'features/writing/writing-core-workbench.tsx'), 'utf8'),
+        Promise.all(
+          [
+            'writing-core-workbench.tsx',
+            'candidate-review-panel.tsx',
+            'candidate-review-loader.ts',
+          ].map((file) => readFile(path.join(rendererRoot, 'features/writing', file), 'utf8')),
+        ).then((sources) => sources.join('\n')),
       ]);
 
     expect(planning).toContain("from '../structure/structure-navigator.js'");

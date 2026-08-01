@@ -1,0 +1,279 @@
+import type {
+  DraftDocument,
+  GenerationIntent,
+  GenerationRun,
+  MergeSourceMapping,
+  RewriteSelectionAnchor,
+  SceneBeat,
+} from '@worldforge/contracts';
+
+import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import type {
+  ChapterGenerationSource,
+  GenerationMode,
+  MergeMappingMode,
+} from './generation-studio.js';
+
+interface GenerationStartInput {
+  readonly bridge: RendererBridgeAdapter;
+  readonly projectId: string;
+  readonly chapterId: string;
+  readonly draft: DraftDocument;
+  readonly providerId: string;
+  readonly readOnly: boolean;
+  readonly flush: () => Promise<boolean>;
+  readonly generationMode: GenerationMode;
+  readonly chapterSource: ChapterGenerationSource;
+  readonly chapterGoal: string;
+  readonly tendency: string;
+  readonly generationInstruction: string;
+  readonly targetCharacters: number;
+  readonly candidateCount: number;
+  readonly sceneBeats: readonly SceneBeat[];
+  readonly selectedSkeletonId: string;
+  readonly acknowledgeStaleSkeleton: boolean;
+  readonly mergeMappingMode: MergeMappingMode;
+  readonly mergeCandidateIds: ReadonlySet<string>;
+  readonly mergeBeatSources: Readonly<Record<string, string>>;
+  readonly getRewriteSelectionAnchor: () => Promise<RewriteSelectionAnchor | null>;
+  readonly continuationOfRunId: string | null;
+  readonly intentOverride: GenerationIntent | null;
+  readonly setPending: (pending: boolean) => void;
+  readonly setStatus: (status: string) => void;
+  readonly setLastIntent: (intent: GenerationIntent) => void;
+  readonly onStarted: (run: GenerationRun, taskId: string) => void;
+}
+
+export async function startGenerationTask(input: GenerationStartInput): Promise<void> {
+  if (!input.providerId || input.readOnly || !(await input.flush())) return;
+  const { continuationOfRunId, intentOverride } = input;
+  if (!continuationOfRunId && !intentOverride && !validateGenerationInput(input)) return;
+  input.setPending(true);
+  input.setStatus('正在校验权威输入并组装约束…');
+  const intent = await buildGenerationIntent(input);
+  if (!intent) {
+    input.setPending(false);
+    return;
+  }
+  input.setLastIntent(intent);
+  const outcome = await input.bridge.generation.start({
+    projectId: input.projectId,
+    chapterId: input.chapterId,
+    baseDraftId: input.draft.draftId,
+    baseDraftRevision: input.draft.revision,
+    providerId: input.providerId,
+    continuationOfRunId,
+    intent,
+  });
+  input.setPending(false);
+  if (outcome.state !== 'success') {
+    input.setStatus(
+      outcome.state === 'failure'
+        ? `生成未启动 · ${authorErrorSummary(outcome.error)}`
+        : '生成请求已取消或被新请求替代。',
+    );
+    return;
+  }
+  input.onStarted(outcome.data.run, outcome.data.taskId);
+  input.setStatus(`任务已启动 · ${outcome.data.run.stage}`);
+}
+
+function validateGenerationInput(input: GenerationStartInput): boolean {
+  const fail = (message: string): false => {
+    input.setStatus(message);
+    return false;
+  };
+  if (input.generationMode === 'skeleton' && !input.chapterGoal.trim())
+    return fail('请先填写本章目标。');
+  if (
+    input.generationMode === 'chapter' &&
+    input.chapterSource === 'direct_chapter_goal' &&
+    !input.chapterGoal.trim()
+  )
+    return fail('直接生成正文需要本章目标。');
+  if (
+    input.generationMode === 'chapter' &&
+    input.chapterSource === 'skeleton_candidate' &&
+    !input.selectedSkeletonId
+  )
+    return fail('请选择一个骨架候选。');
+  if (
+    input.generationMode === 'chapter' &&
+    input.chapterSource === 'canonical_scene_beats' &&
+    input.sceneBeats.length === 0
+  )
+    return fail('当前章节没有可用于生成的场景节拍。');
+  if (input.generationMode === 'rewrite' && !input.generationInstruction.trim())
+    return fail('请填写改写指令。');
+  return true;
+}
+
+async function buildGenerationIntent(
+  input: GenerationStartInput,
+): Promise<GenerationIntent | null> {
+  if (input.intentOverride) return input.intentOverride;
+  if (input.continuationOfRunId) {
+    return {
+      runType: 'chapter',
+      source: {
+        sourceType: 'direct_chapter_goal',
+        chapterGoal: input.chapterGoal.trim() || '从已保存的部分结果继续本章，不重复已有正文。',
+      },
+      targetLanguage: 'zh-CN',
+      targetCharacters: input.targetCharacters,
+      styleInstructions: instructionList(input.generationInstruction),
+    };
+  }
+  if (input.generationMode === 'skeleton') {
+    return {
+      runType: 'skeleton',
+      chapterGoal: input.chapterGoal.trim(),
+      tendency: input.tendency.trim(),
+      targetLanguage: 'zh-CN',
+      candidateCount: input.candidateCount,
+      requiredSceneBeatIds: input.sceneBeats.filter((beat) => beat.required).map((beat) => beat.id),
+    };
+  }
+  if (input.generationMode === 'chapter') return buildChapterIntent(input);
+  if (input.generationMode === 'rewrite') return buildRewriteIntent(input);
+  return buildMergeIntent(input);
+}
+
+function buildChapterIntent(input: GenerationStartInput): GenerationIntent {
+  return {
+    runType: 'chapter',
+    source:
+      input.chapterSource === 'skeleton_candidate'
+        ? {
+            sourceType: 'skeleton_candidate',
+            selectedSkeletonCandidateId: input.selectedSkeletonId,
+            acknowledgeStaleSource: input.acknowledgeStaleSkeleton,
+          }
+        : input.chapterSource === 'canonical_scene_beats'
+          ? {
+              sourceType: 'canonical_scene_beats',
+              sceneBeatIds: input.sceneBeats.map((beat) => beat.id),
+            }
+          : { sourceType: 'direct_chapter_goal', chapterGoal: input.chapterGoal.trim() },
+    targetLanguage: 'zh-CN',
+    targetCharacters: input.targetCharacters,
+    styleInstructions: instructionList(input.generationInstruction),
+  };
+}
+
+async function buildRewriteIntent(input: GenerationStartInput): Promise<GenerationIntent | null> {
+  const anchor = await input.getRewriteSelectionAnchor();
+  const eligible = input.draft.blocks.filter((block) => !block.locked && block.contentHash);
+  if (!anchor && eligible.length === 0) {
+    input.setStatus('没有可改写的未锁定正文块。');
+    return null;
+  }
+  return {
+    runType: 'rewrite',
+    scope: anchor
+      ? { scopeType: 'selection', anchor }
+      : {
+          scopeType: 'blocks',
+          logicalBlockIds: eligible.map((block) => block.logicalBlockId),
+          expectedBlockHashes: eligible.map((block) => block.contentHash!),
+        },
+    instruction: input.generationInstruction.trim(),
+    targetLanguage: 'zh-CN',
+  };
+}
+
+async function buildMergeIntent(input: GenerationStartInput): Promise<GenerationIntent | null> {
+  const chosenBeatSources = Object.entries(input.mergeBeatSources).filter(([, source]) => source);
+  if (
+    (input.mergeMappingMode === 'segment' && input.mergeCandidateIds.size < 2) ||
+    (input.mergeMappingMode === 'beat' && chosenBeatSources.length < 2)
+  ) {
+    input.setStatus('融合至少需要两个明确的来源单元。');
+    return null;
+  }
+  const ids =
+    input.mergeMappingMode === 'beat'
+      ? [
+          ...new Set(
+            chosenBeatSources.flatMap(([, source]) => (source === 'current_draft' ? [] : [source])),
+          ),
+        ]
+      : [...input.mergeCandidateIds];
+  const documents = await Promise.all(
+    ids.map((candidateId) =>
+      input.bridge.candidate.get({
+        projectId: input.projectId,
+        chapterId: input.chapterId,
+        candidateId,
+      }),
+    ),
+  );
+  if (
+    documents.some(
+      (outcome) => outcome.state !== 'success' || outcome.data.candidateType === 'skeleton',
+    )
+  ) {
+    input.setStatus('融合来源读取失败或包含骨架。');
+    return null;
+  }
+  const byId = new Map(
+    documents.flatMap((outcome) =>
+      outcome.state === 'success' && outcome.data.candidateType !== 'skeleton'
+        ? [[outcome.data.candidateId, outcome.data] as const]
+        : [],
+    ),
+  );
+  const mapping: MergeSourceMapping =
+    input.mergeMappingMode === 'beat'
+      ? {
+          mappingType: 'beat',
+          units: chosenBeatSources.map(([sceneBeatId, source]) =>
+            source === 'current_draft'
+              ? { sceneBeatId, sourceCandidateId: null, sourceBlockIds: [], keepCurrentDraft: true }
+              : {
+                  sceneBeatId,
+                  sourceCandidateId: source,
+                  sourceBlockIds:
+                    byId
+                      .get(source)
+                      ?.blocks.filter((block) => block.beatId === sceneBeatId)
+                      .map((block) => block.candidateBlockId) ?? [],
+                  keepCurrentDraft: false,
+                },
+          ),
+        }
+      : {
+          mappingType: 'segment',
+          units: documents.map((outcome, index) => {
+            if (outcome.state !== 'success' || outcome.data.candidateType === 'skeleton')
+              throw new Error('MERGE_SOURCE_INVALID');
+            return {
+              segmentId: crypto.randomUUID(),
+              sourceType: 'candidate' as const,
+              candidateId: outcome.data.candidateId,
+              sourceBlockIds: outcome.data.blocks.map((block) => block.candidateBlockId),
+              order: index + 1,
+            };
+          }),
+        };
+  if (
+    mapping.mappingType === 'beat' &&
+    mapping.units.some((unit) => !unit.keepCurrentDraft && unit.sourceBlockIds.length === 0)
+  ) {
+    input.setStatus('所选建议稿没有关联到对应场景节拍的正文块，请改用分段融合。');
+    return null;
+  }
+  return {
+    runType: 'merge',
+    mapping,
+    ...(input.generationInstruction.trim()
+      ? { instruction: input.generationInstruction.trim() }
+      : {}),
+    targetLanguage: 'zh-CN',
+  };
+}
+
+function instructionList(instruction: string): string[] {
+  return instruction.trim() ? [instruction.trim()] : [];
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { candidateConflictLabel } from '../../apps/desktop/renderer/src/features/writing/candidate-conflicts.js';
 import {
+  buildCandidateSelection,
   nullableFormText,
   toggleSelectionSet,
 } from '../../apps/desktop/renderer/src/features/writing/candidate-selection.js';
@@ -33,6 +34,20 @@ describe('Writing纯工具', () => {
     expect(source).toEqual(new Set(['a']));
     expect(added).toEqual(new Set(['a', 'b']));
     expect(removed).toEqual(new Set(['b']));
+  });
+
+  it('拒绝整稿采用不完整候选，并保留显式块选择', () => {
+    const preview = {
+      candidate: { completeness: 'partial' },
+    } as Parameters<typeof buildCandidateSelection>[0];
+    expect(buildCandidateSelection(preview, 'all', new Set(), new Set())).toBeNull();
+    expect(
+      buildCandidateSelection(preview, 'blocks', new Set(['block-b', 'block-a']), new Set()),
+    ).toEqual({
+      mode: 'blocks',
+      candidateBlockIds: ['block-b', 'block-a'],
+      deleteLogicalBlockIds: [],
+    });
   });
 
   it('规范可空表单文本与冲突作者提示', () => {

@@ -5,13 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('M4-04 C3 generation workbench', () => {
   it('exposes the complete author-controlled generation and Candidate workflow', async () => {
-    const source = await readFile(
-      path.join(
-        process.cwd(),
-        'apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx',
-      ),
-      'utf8',
-    );
+    const source = await readGenerationWorkbenchSources();
 
     for (const marker of [
       'data-generation-studio',
@@ -48,13 +42,7 @@ describe('M4-04 C3 generation workbench', () => {
   });
 
   it('shows persisted task stages and never renders a fabricated AI percentage', async () => {
-    const source = await readFile(
-      path.join(
-        process.cwd(),
-        'apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx',
-      ),
-      'utf8',
-    );
+    const source = await readGenerationWorkbenchSources();
 
     expect(source).toContain("update.event.type === 'ai.stage'");
     expect(source).toContain("update.event.type === 'ai.delta'");
@@ -62,3 +50,20 @@ describe('M4-04 C3 generation workbench', () => {
     expect(source).not.toMatch(/AI[^'\n]{0,32}\d+%/u);
   });
 });
+
+async function readGenerationWorkbenchSources(): Promise<string> {
+  const root = path.join(process.cwd(), 'apps/desktop/renderer/src/features/writing');
+  return Promise.all(
+    [
+      'writing-core-workbench.tsx',
+      'candidate-review-panel.tsx',
+      'candidate-preview-actions.ts',
+      'candidate-review-display.tsx',
+      'candidate-skeleton-review.tsx',
+      'generation-studio.tsx',
+      'generation-start.ts',
+      'generation-task-subscription.ts',
+      'use-generation-run-actions.ts',
+    ].map((file) => readFile(path.join(root, file), 'utf8')),
+  ).then((sources) => sources.join('\n'));
+}

@@ -62,6 +62,7 @@ export interface AppShellPagesProps {
   readonly onNavigate: (navigationId: PrimaryNavigationId) => void;
   readonly onNavigateToAuthorTarget: (target: AuthorNavigationTarget) => void;
   readonly onTransitionToRoute: (route: RendererRouteId) => Promise<boolean>;
+  readonly onCloseSettings: () => void;
   readonly onReturnToAuthorSource: () => Promise<void>;
   readonly onSaveSettings: (update: AppSettingsUpdate) => Promise<boolean>;
   readonly onResetSettings: () => Promise<void>;
@@ -133,7 +134,7 @@ export function AppShellPages(props: AppShellPagesProps) {
           onProvidersChanged={props.onProvidersChanged}
           onProviderConnectionVerified={props.onProviderConnectionVerified}
           onProviderInvalidated={props.onProviderInvalidated}
-          onClose={() => void props.onTransitionToRoute('home')}
+          onClose={props.onCloseSettings}
           onResetSettings={() => void props.onResetSettings()}
           onRestartCore={() => void props.onRestartCore()}
           onSaveAppearance={props.onSaveAppearance}

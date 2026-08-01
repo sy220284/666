@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "id": "M9-02",
+  "status": "IN_PROGRESS",
+  "source": "docs/tasks/M9/M9-02_SHARED_STRUCTURE.md",
+  "startedAt": "2026-08-01",
+  "dependencies": [
+    "M9-01"
+  ],
+  "branch": "work/m9-02-shared-structure",
+  "priority": "P0",
+  "scope": [
+    "提取Shared Structure领域",
+    "消除Writing到Planning反向依赖",
+    "迁移卷章目录与结构操作UI",
+    "删除M9-01历史Feature例外",
+    "保持V1.0行为与测试标记不变"
+  ],
+  "allowedPaths": [
+    "apps/desktop/renderer/src/features/structure/",
+    "apps/desktop/renderer/src/features/planning/",
+    "apps/desktop/renderer/src/features/writing/",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/e2e/",
+    "tests/security/",
+    "docs/architecture/",
+    "docs/tasks/",
+    "scripts/",
+    ".github/workflows/"
+  ],
+  "forbiddenPaths": [
+    "apps/desktop/main/src/",
+    "apps/desktop/preload/src/",
+    "packages/contracts/src/",
+    "packages/core-service/src/",
+    "packages/domain/src/",
+    "packages/editor-core/src/",
+    "packages/prompts/src/",
+    "migrations/",
+    "docs/test-evidence/M0/",
+    "docs/test-evidence/M1/",
+    "docs/test-evidence/M2/",
+    "docs/test-evidence/M3/",
+    "docs/test-evidence/M4-04/",
+    "docs/test-evidence/M8-02/",
+    "docs/test-evidence/M8-04/",
+    "docs/test-evidence/M8-05/",
+    "docs/test-evidence/M8-06/",
+    "docs/test-evidence/M8-07/",
+    "docs/test-evidence/M8-08/",
+    "docs/test-evidence/M8-09/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:language",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e",
+    "pnpm release:check"
+  ]
+}

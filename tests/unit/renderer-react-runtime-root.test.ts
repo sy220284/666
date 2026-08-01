@@ -95,10 +95,22 @@ describe('M3-08 React运行底座', () => {
 
   it('由React独占首页、项目生命周期和设置节点', async () => {
     const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
-    const [legacyHtml, packageEntry, shellSource, homeSource, settingsSource] = await Promise.all([
+    const [
+      legacyHtml,
+      packageEntry,
+      shellRoot,
+      shellLayout,
+      settingsController,
+      runtimeController,
+      homeSource,
+      settingsSource,
+    ] = await Promise.all([
       readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
       readFile(path.join(rendererRoot, 'index.ts'), 'utf8'),
       readFile(path.join(rendererRoot, 'app/app-shell-m3.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/app-shell-layout.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/use-app-settings-persistence.ts'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/use-workspace-runtime.ts'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/home/home-page.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
     ]);
@@ -120,11 +132,14 @@ describe('M3-08 React运行底座', () => {
     ]) {
       expect(packageEntry).not.toContain(operation);
     }
-    expect(shellSource).toContain('data-react-shell');
-    expect(shellSource).toContain("document.body.dataset.rendererReady = 'true'");
-    expect(shellSource).toContain('settingsWriteQueue.current.then');
-    expect(shellSource).toContain('confirmedSettings.current = outcome.data.settings');
-    expect(shellSource).not.toContain("navigationId === 'home' || navigationId === 'settings'");
+    expect(shellRoot).toContain("from './app-shell-layout.js'");
+    expect(shellRoot).toContain("from './app-shell-pages.js'");
+    expect(shellRoot).not.toContain('data-react-shell');
+    expect(shellLayout).toContain('data-react-shell');
+    expect(runtimeController).toContain("document.body.dataset.rendererReady = 'true'");
+    expect(settingsController).toContain('writeQueue.current.then');
+    expect(settingsController).toContain('confirmedSettings.current = next');
+    expect(shellRoot).not.toContain("navigationId === 'home' || navigationId === 'settings'");
     expect(packageEntry).not.toContain("document.body.dataset.rendererReady = 'true'");
     expect(homeSource).toContain('data-react-home');
     expect(settingsSource).toContain('data-react-settings');
@@ -132,10 +147,11 @@ describe('M3-08 React运行底座', () => {
 
   it('将M3-09业务入口迁到React并保留唯一设置控件选择器', async () => {
     const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
-    const [legacyHtml, shellSource, settingsSource, stylesSource, canonSource, planningSource] =
+    const [legacyHtml, shellLayout, startup, settingsSource, stylesSource, canonSource, planningSource] =
       await Promise.all([
         readFile(path.join(rendererRoot, 'index.html'), 'utf8'),
-        readFile(path.join(rendererRoot, 'app/app-shell-m3.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'app/app-shell-layout.tsx'), 'utf8'),
+        readFile(path.join(rendererRoot, 'app/use-workspace-startup.ts'), 'utf8'),
         readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
         readFile(path.join(rendererRoot, 'features/canon/continuity-panel.tsx'), 'utf8'),
@@ -147,11 +163,11 @@ describe('M3-08 React运行底座', () => {
 
     expect(legacyHtml).not.toContain('data-legacy-open-continuity');
     expect(legacyHtml).not.toContain('data-planning-dialog');
-    expect(shellSource).toContain('data-open-continuity');
+    expect(shellLayout).toContain('data-open-continuity');
     expect(canonSource).toContain('data-continuity-dialog');
     expect(planningSource).toContain('data-planning-dialog');
-    expect(shellSource).toContain('bridge.project.getContinuation');
-    expect(shellSource).toContain('route: restoreAppShellRoute(restoredRoute');
+    expect(startup).toContain('bridge.project.getContinuation');
+    expect(startup).toContain('route: restoreAppShellRoute(restoredRoute');
     expect(settingsSource.match(/data-ui-scale/gu)).toHaveLength(1);
     expect(settingsSource.match(/data-workspace-alignment/gu)).toHaveLength(1);
     expect(settingsSource.match(/data-theme-variant/gu)).toHaveLength(1);

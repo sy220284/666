@@ -85,9 +85,16 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-## 8. 实施结果
+## 8. 基线偏差与处理
 
-- 最终实施提交：`253a37705dc718748fd41df261a9078761f07e10`。
+- M9-02验证矩阵要求`pnpm release:check`成功，但基线中的Release工作流已将复用Quality Core配置为`package_smoke: false`，发布工具仍静态要求`package_smoke: true`，导致该验收项和正式Release接受门确定性失败。
+- 当前Release拓扑由后续Linux、Windows、macOS三平台Build矩阵执行打包和成品启动冒烟；Quality Core关闭重复打包是既定设计，不影响三平台发布验证。
+- 本任务将发布工具及其单元测试基准同步为`package_smoke: false`，不修改三平台Build矩阵、发布权限、校验和、不可变Release或产品代码。
+- 独立修复PR #266已关闭为重复工作，修复和验证证据统一纳入M9-02 PR #265。
+
+## 9. 实施结果
+
+- 最终实施提交：`c65e48edb7c90c31157eead829b91cdafec63d7c`。
 - 一次性确定性提取工作流：`30681522018`，结果成功。
 - 最终合同修复工作流：`30681893371`，Lint、结构扫描和受影响单测全部成功。
 - 新增`features/structure/structure-navigator.tsx`，格式化后745行，保持在默认800行结构预算以内。
@@ -97,10 +104,11 @@ pnpm release:check
 - M9-01中唯一`writing → planning`历史例外已删除，禁止规则继续保留。
 - 变换后全仓扫描：234个源码文件、653条相对导入边、15项既有结构债务；没有新增债务或循环例外。
 - Shared Structure专项边界测试与迁移后的M3工作台安全标记测试均通过。
+- 发布配置单元测试9项和`pnpm release:check`均通过。
 - TypeScript全仓检查通过。
 - 临时变换脚本与临时工作流已从最终差异中删除。
 
-## 9. 完成条件
+## 10. 完成条件
 
 - 独立PR永久门禁成功。
 - 不存在Writing到Planning的代码依赖。

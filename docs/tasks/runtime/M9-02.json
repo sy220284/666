@@ -5,7 +5,7 @@
   "source": "docs/tasks/M9/M9-02_SHARED_STRUCTURE.md",
   "startedAt": "2026-08-01",
   "implementedAt": "2026-08-01T11:24:00+08:00",
-  "implementationCommit": "253a37705dc718748fd41df261a9078761f07e10",
+  "implementationCommit": "c65e48edb7c90c31157eead829b91cdafec63d7c",
   "dependencies": [
     "M9-01"
   ],
@@ -80,6 +80,8 @@
     "registeredStructuralDebts": 15,
     "writingPlanningExceptions": 0,
     "targetedTests": 2,
+    "releaseToolUnitTests": 9,
+    "releaseCheck": "success",
     "lint": "success",
     "typecheck": "success"
   }

@@ -4,8 +4,8 @@
   "status": "IMPLEMENTED",
   "source": "docs/tasks/M9/M9-02_SHARED_STRUCTURE.md",
   "startedAt": "2026-08-01",
-  "implementedAt": "2026-08-01T11:15:00+08:00",
-  "implementationCommit": "85d4cd9f1513e696a36da92a31ce8ba5e4e024c5",
+  "implementedAt": "2026-08-01T11:24:00+08:00",
+  "implementationCommit": "253a37705dc718748fd41df261a9078761f07e10",
   "dependencies": [
     "M9-01"
   ],
@@ -73,12 +73,14 @@
   ],
   "evidence": {
     "applyWorkflowRun": 30681522018,
+    "finalContractWorkflowRun": 30681893371,
     "sharedStructureLines": 745,
     "sourceFiles": 234,
     "relativeImportEdges": 653,
     "registeredStructuralDebts": 15,
     "writingPlanningExceptions": 0,
     "targetedTests": 2,
+    "lint": "success",
     "typecheck": "success"
   }
 }

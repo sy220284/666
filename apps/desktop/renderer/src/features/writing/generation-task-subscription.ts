@@ -22,8 +22,7 @@ export function subscribeGenerationTask({
 
   const refresh = (): void => {
     if (disposed || refreshInFlight) return;
-    let current: Promise<void>;
-    current = Promise.resolve()
+    const current = Promise.resolve()
       .then(onTerminal)
       .catch(() => {
         if (!disposed) onStatus('任务状态刷新失败，请稍后重试。');

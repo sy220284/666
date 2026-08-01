@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import type { PlotNode } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
@@ -43,7 +45,7 @@ export function PlotTree({
     if (result) onStatus('大纲节点已移动；正文未发生变化。');
   };
 
-  const render = (node: PlotNode): React.JSX.Element => {
+  const render = (node: PlotNode): JSX.Element => {
     const children = sortedPlotNodes(nodes, node.id);
     const siblings = sortedPlotNodes(nodes, node.parentId);
     const siblingIndex = siblings.findIndex((candidate) => candidate.id === node.id);

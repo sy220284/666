@@ -14,5 +14,5 @@ pnpm test:perf
 pnpm build
 pnpm test:e2e
 pnpm release:check
-pnpm exec vitest run tests/unit/ar07-app-shell-boundaries.test.ts tests/unit/app-shell-runtime-models.test.ts tests/unit/app-shell-capability-actions.test.ts tests/unit/renderer-react-runtime-root.test.ts tests/unit/m8-09-v1-stability-invariants.test.ts
+pnpm exec vitest run tests/unit/ar08-contracts-public-surface.test.ts tests/unit/provider-contracts.test.ts tests/unit/generation-contracts.test.ts tests/unit/structured-candidate-contracts.test.ts tests/unit/capability-matrix.test.ts tests/security/ipc-task-contracts.test.ts tests/integration/preload-ipc-core.integration.test.ts
 git diff --check

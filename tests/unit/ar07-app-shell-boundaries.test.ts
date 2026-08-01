@@ -52,7 +52,9 @@ describe('AR-07 app shell boundaries', () => {
     expect(settings).toContain('await writeQueue.current');
     expect(project).toContain('await flushWriting()');
     expect(project).toContain('await flushSettings()');
-    expect(project.indexOf('await flushWriting()')).toBeLessThan(project.indexOf('await flushSettings()'));
+    expect(project.indexOf('await flushWriting()')).toBeLessThan(
+      project.indexOf('await flushSettings()'),
+    );
     for (const operation of [
       'bridge.project.create',
       'bridge.project.openSelected',

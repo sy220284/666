@@ -132,7 +132,7 @@ M0—M3 已完成产品底座
 | ----- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ----------- |
 | M9-00 | [`M9激活治理与权威文档同步`](M9/M9-00_ACTIVATION_GOVERNANCE.md)                                                                  | M8-09               | Verified    |
 | M9-01 | [`重构安全网`](M9/M9-01_REFACTOR_SAFETY_NET.md)                                                                                  | M8-09               | Verified    |
-| M9-02 | [`Shared Structure拆分`](M9/M9-02_SHARED_STRUCTURE.md)                                                                           | M9-01               | Implemented |
+| M9-02 | [`Shared Structure拆分`](M9/M9-02_SHARED_STRUCTURE.md)                                                                           | M9-00、M9-01        | Implemented |
 | M9-03 | [`AR-03 Writing工具与展示拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#4-ar-03-writing工具与展示拆分)                    | M9-01、M9-02        | Planned     |
 | M9-04 | [`AR-04 Writing章节会话状态机`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#5-ar-04-writing章节会话状态机)                    | M9-03               | Planned     |
 | M9-05 | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-01               | Planned     |

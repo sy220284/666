@@ -6,7 +6,7 @@
   "startedAt": "2026-08-01",
   "implementedAt": "2026-08-01T11:24:00+08:00",
   "implementationCommit": "54a0297beca882d920319e2fca3618fe5d4dc0d0",
-  "dependencies": ["M9-01"],
+  "dependencies": ["M9-00", "M9-01"],
   "branch": "work/m9-02-shared-structure",
   "priority": "P0",
   "scope": [
@@ -79,7 +79,7 @@
     "relativeImportEdges": 675,
     "registeredStructuralDebts": 15,
     "writingPlanningExceptions": 0,
-    "targetedTests": 6,
+    "targetedTests": 7,
     "releaseToolUnitTests": 9,
     "releaseCheck": "success",
     "lint": "success",

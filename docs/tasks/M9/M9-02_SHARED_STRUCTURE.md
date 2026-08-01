@@ -104,7 +104,8 @@ pnpm release:check
 - Planning通过Shared Structure完成原有装配，并保留兼容重导出。
 - M9-01中唯一`writing → planning`历史例外已删除，禁止规则继续保留。
 - 变换后全仓扫描：240个源码文件、675条相对导入边、15项既有结构债务；没有新增债务或循环例外。
-- Shared Structure专项边界测试与迁移后的M3工作台安全标记共6项通过，并固定七文件职责边界。
+- Shared Structure专项边界测试与迁移后的M3工作台安全标记共7项通过，并固定七文件职责边界及纯格式化函数的全部条件分支。
+- Runtime显式依赖已Verified的M9-00治理激活任务与M9-01结构冻结任务。
 - 发布配置单元测试9项和`pnpm release:check`均通过。
 - TypeScript全仓检查通过。
 - 临时变换脚本与临时工作流已从最终差异中删除。

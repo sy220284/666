@@ -27,7 +27,11 @@ async function listSourceFiles(directory) {
   for (const entry of entries) {
     const target = path.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...(await listSourceFiles(target)));
-    if (entry.isFile() && SOURCE_EXTENSIONS.includes(path.extname(entry.name))) files.push(target);
+    if (
+      entry.isFile() &&
+      SOURCE_EXTENSIONS.includes(path.extname(entry.name))
+    )
+      files.push(target);
   }
   return files;
 }
@@ -41,7 +45,8 @@ function candidatePaths(importer, specifier) {
     : absolute;
   const candidates = [];
   if (SOURCE_EXTENSIONS.includes(extension)) candidates.push(absolute);
-  for (const sourceExtension of SOURCE_EXTENSIONS) candidates.push(`${stem}${sourceExtension}`);
+  for (const sourceExtension of SOURCE_EXTENSIONS)
+    candidates.push(`${stem}${sourceExtension}`);
   for (const sourceExtension of SOURCE_EXTENSIONS) {
     candidates.push(path.join(stem, `index${sourceExtension}`));
   }
@@ -59,10 +64,16 @@ export function resolveRelativeImport(importer, specifier, knownFiles) {
 function canonicalCycle(cycle) {
   const body = cycle.at(-1) === cycle[0] ? cycle.slice(0, -1) : [...cycle];
   if (body.length === 0) return '';
-  const rotations = body.map((_, index) => [...body.slice(index), ...body.slice(0, index)]);
+  const rotations = body.map((_, index) => [
+    ...body.slice(index),
+    ...body.slice(0, index),
+  ]);
   const reversed = [...body].reverse();
   rotations.push(
-    ...reversed.map((_, index) => [...reversed.slice(index), ...reversed.slice(0, index)]),
+    ...reversed.map((_, index) => [
+      ...reversed.slice(index),
+      ...reversed.slice(0, index),
+    ]),
   );
   const canonical = rotations.map((value) => value.join(' -> ')).sort()[0];
   return canonical ?? '';
@@ -95,19 +106,28 @@ export function detectCycles(graph) {
 }
 
 function featureName(file) {
-  return /apps\/desktop\/renderer\/src\/features\/([^/]+)\//u.exec(normalize(file))?.[1] ?? null;
+  return (
+    /apps\/desktop\/renderer\/src\/features\/([^/]+)\//u.exec(
+      normalize(file),
+    )?.[1] ?? null
+  );
 }
 
 export function validateFeatureDependency(source, target, baseline) {
   const sourceFeature = featureName(source);
   const targetFeature = featureName(target);
-  if (!sourceFeature || !targetFeature || sourceFeature === targetFeature) return null;
+  if (!sourceFeature || !targetFeature || sourceFeature === targetFeature)
+    return null;
   const edge = `${sourceFeature}>${targetFeature}`;
   if (!baseline.forbiddenFeatureEdges.includes(edge)) return null;
   const allowed = baseline.allowedFeatureImports.some(
-    (entry) => normalize(entry.from) === normalize(source) && normalize(entry.to) === normalize(target),
+    (entry) =>
+      normalize(entry.from) === normalize(source) &&
+      normalize(entry.to) === normalize(target),
   );
-  return allowed ? null : `${normalize(source)} may not depend on ${targetFeature} (${normalize(target)})`;
+  return allowed
+    ? null
+    : `${normalize(source)} may not depend on ${targetFeature} (${normalize(target)})`;
 }
 
 function lineCount(source) {
@@ -139,9 +159,13 @@ function allowedCycleKeys(baseline) {
 }
 
 async function loadBaseline(rootDirectory) {
-  const source = await readFile(path.join(rootDirectory, BASELINE_PATH), 'utf8');
+  const source = await readFile(
+    path.join(rootDirectory, BASELINE_PATH),
+    'utf8',
+  );
   const baseline = JSON.parse(source);
-  if (baseline.schemaVersion !== 1) throw new Error('Unsupported source structure baseline');
+  if (baseline.schemaVersion !== 1)
+    throw new Error('Unsupported source structure baseline');
   return baseline;
 }
 
@@ -149,7 +173,9 @@ export async function inspectSourceStructure(rootDirectory = process.cwd()) {
   const baseline = await loadBaseline(rootDirectory);
   const absoluteFiles = [];
   for (const sourceRoot of SOURCE_ROOTS) {
-    absoluteFiles.push(...(await listSourceFiles(path.join(rootDirectory, sourceRoot))));
+    absoluteFiles.push(
+      ...(await listSourceFiles(path.join(rootDirectory, sourceRoot))),
+    );
   }
   const knownFiles = new Set(absoluteFiles.map((file) => path.resolve(file)));
   const graph = new Map();
@@ -158,16 +184,28 @@ export async function inspectSourceStructure(rootDirectory = process.cwd()) {
   for (const absoluteFile of absoluteFiles) {
     const relativeFile = normalize(path.relative(rootDirectory, absoluteFile));
     const source = await readFile(absoluteFile, 'utf8');
-    const lineViolation = validateLineBudget(relativeFile, lineCount(source), baseline);
+    const lineViolation = validateLineBudget(
+      relativeFile,
+      lineCount(source),
+      baseline,
+    );
     if (lineViolation) violations.push(lineViolation);
 
     const targets = new Set();
     for (const specifier of importsFrom(source, absoluteFile)) {
-      const resolved = resolveRelativeImport(absoluteFile, specifier, knownFiles);
+      const resolved = resolveRelativeImport(
+        absoluteFile,
+        specifier,
+        knownFiles,
+      );
       if (!resolved) continue;
       targets.add(resolved);
       const relativeTarget = normalize(path.relative(rootDirectory, resolved));
-      const featureViolation = validateFeatureDependency(relativeFile, relativeTarget, baseline);
+      const featureViolation = validateFeatureDependency(
+        relativeFile,
+        relativeTarget,
+        baseline,
+      );
       if (featureViolation) violations.push(featureViolation);
     }
     graph.set(absoluteFile, targets);
@@ -175,16 +213,23 @@ export async function inspectSourceStructure(rootDirectory = process.cwd()) {
 
   const allowedCycles = allowedCycleKeys(baseline);
   for (const cycle of detectCycles(graph)) {
-    const relativeCycle = cycle.map((file) => normalize(path.relative(rootDirectory, file)));
+    const relativeCycle = cycle.map((file) =>
+      normalize(path.relative(rootDirectory, file)),
+    );
     if (!allowedCycles.has(canonicalCycle(relativeCycle))) {
-      violations.push(`Circular source dependency: ${relativeCycle.join(' -> ')}`);
+      violations.push(
+        `Circular source dependency: ${relativeCycle.join(' -> ')}`,
+      );
     }
   }
 
   if (violations.length > 0) throw new Error(violations.sort().join('\n'));
   return {
     files: absoluteFiles.length,
-    edges: [...graph.values()].reduce((total, targets) => total + targets.size, 0),
+    edges: [...graph.values()].reduce(
+      (total, targets) => total + targets.size,
+      0,
+    ),
     registeredOversizedFiles: Object.keys(baseline.oversizedFiles).length,
   };
 }

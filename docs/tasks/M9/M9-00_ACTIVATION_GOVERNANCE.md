@@ -71,7 +71,7 @@ pnpm lint
 
 ## 10. 实施结果
 
-- 实施提交：`d37db39f7d18a4160b99a6bec94a1b31b291ccdd`。
+- 最终实施提交：`4b27181f321df3d593d93d36353987e1183853e9`。
 - `AGENTS.md`、执行入口、任务索引、M9 README、治理方案和工作包状态已同步。
 - `AGENTS.md`已区分`parallel-pr`任务Runtime与`ACTIVE_TASK`兼容锚点，明确任务可并行、main写入与关闭串行。
 - M8-09保留为V1.0验证锚点，`verificationHold`切换为非最终状态并指向M9-00 Runtime。

@@ -6,9 +6,9 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
-import { PlanningModeWorkbench, StructureNavigator } from './planning-mode-workbench.js';
+import { PlanningModeWorkbench } from './planning-mode-workbench.js';
 
-export { StructureNavigator };
+export { StructureNavigator } from '../structure/structure-navigator.js';
 
 interface PlanningWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;

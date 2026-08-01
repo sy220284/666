@@ -6,12 +6,9 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorTerm } from '../../presentation/author-terms.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
-import {
-  PlanningWorkbench as ProfessionalPlanningWorkbench,
-  StructureNavigator,
-} from './professional-planning-workbench.js';
+import { PlanningWorkbench as ProfessionalPlanningWorkbench } from './professional-planning-workbench.js';
 
-export { StructureNavigator };
+export { StructureNavigator } from '../structure/structure-navigator.js';
 
 interface PlanningModeWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;

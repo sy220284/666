@@ -42,7 +42,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { registerDraftFlushHandler } from '../../runtime/draft-flush-registry.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
-import { StructureNavigator } from '../planning/planning-workbench.js';
+import { StructureNavigator } from '../structure/structure-navigator.js';
 import { WritingAssistancePanel } from './writing-assistance-panel.js';
 import { ReviewDiffPanel } from './review-diff-panel.js';
 import {

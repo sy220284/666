@@ -56,14 +56,24 @@ describe('source structure policy', () => {
 
   it('enforces default and registered line ceilings', () => {
     expect(validateLineBudget('small.ts', 1200, baseline)).toBeNull();
-    expect(validateLineBudget('small.ts', 1201, baseline)).toContain('unregistered TS ceiling');
+    expect(validateLineBudget('small.ts', 1201, baseline)).toContain(
+      'unregistered TS ceiling',
+    );
     expect(validateLineBudget('large.tsx', 1000, baseline)).toBeNull();
-    expect(validateLineBudget('large.tsx', 1001, baseline)).toContain('AR-03 ceiling');
+    expect(validateLineBudget('large.tsx', 1001, baseline)).toContain(
+      'AR-03 ceiling',
+    );
   });
 
   it('resolves ESM .js imports to TypeScript source files', () => {
     const importer = path.resolve('/repo/src/feature/entry.ts');
     const target = path.resolve('/repo/src/feature/helper.ts');
-    expect(resolveRelativeImport(importer, './helper.js', new Set([importer, target]))).toBe(target);
+    expect(
+      resolveRelativeImport(
+        importer,
+        './helper.js',
+        new Set([importer, target]),
+      ),
+    ).toBe(target);
   });
 });

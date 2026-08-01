@@ -5,7 +5,7 @@
   "source": "docs/tasks/M9/M9-03_WRITING_TOOLS_DISPLAY.md",
   "startedAt": "2026-08-01",
   "dependencies": ["M9-01", "M9-02"],
-  "branch": "work/m9-03-v1-1-architecture-unified",
+  "branch": "work/m9-03-ar05-ar14-continuation",
   "priority": "P0",
   "workPackages": [
     "AR-03",
@@ -21,13 +21,15 @@
     "AR-13",
     "AR-14"
   ],
+  "completedWorkPackages": ["AR-03", "AR-04"],
+  "activeWorkPackage": "AR-05",
   "scope": [
     "拆分Writing工具、展示和章节会话状态机",
     "拆分Canon、Planning和AppShell",
     "拆分Contracts、Preload和Main IPC",
     "拆分State Proposal、Generation、Project Workspace、Recovery与工具域",
     "完成Legacy、CSS和最终结构预算收敛",
-    "在单一正式分支和PR中保持全部V1.0行为、协议、数据与安全边界"
+    "在同一M9-03任务下通过受控检查点PR保持全部V1.0行为、协议、数据与安全边界"
   ],
   "allowedPaths": [
     "apps/desktop/renderer/src/",
@@ -89,6 +91,9 @@
     "baselineWritingCoreLines": 3010,
     "baselineSourceFiles": 240,
     "baselineRelativeImportEdges": 675,
-    "baselineStructuralDebts": 15
+    "baselineStructuralDebts": 15,
+    "checkpointPullRequest": 272,
+    "checkpointHead": "9e331399ebae0017106d252d67639a64e986ff77",
+    "checkpointMainCommit": "7adafeeadb973e5cb035c301602c511c2aa065c5"
   }
 }

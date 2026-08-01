@@ -105,7 +105,9 @@ export function useAppSettingsPersistence({
         () => undefined,
       );
       return write;
-    }, [aiReadiness.status, applySettings, bridge, setFailure, setMessage, setPendingKey]);
+    },
+    [aiReadiness.status, applySettings, bridge, setFailure, setMessage, setPendingKey],
+  );
 
   const resetSettings = useCallback(async (): Promise<void> => {
     const outcome = await bridge.settings.reset();
@@ -134,7 +136,8 @@ export function useAppSettingsPersistence({
       });
       setMessage('显示设置已保存到应用数据库。');
       return true;
-    }, [applyAppearance, bridge, setFailure, setMessage, setPendingKey],
+    },
+    [applyAppearance, bridge, setFailure, setMessage, setPendingKey],
   );
 
   const verifyProvider = useCallback((result: ProviderConnectionTestResult): void => {

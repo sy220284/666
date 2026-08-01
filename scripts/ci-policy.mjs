@@ -15,6 +15,7 @@ const workflowDirectory = path.join(root, '.github', 'workflows');
 const requiredWorkflows = [
   'automerge.yml',
   'branch-hygiene.yml',
+  'engineering-validation.yml',
   'evidence.yml',
   'main-verification.yml',
   'performance.yml',
@@ -285,6 +286,36 @@ async function main() {
     'pnpm run package --',
   ]);
   forbidTokens(errors, 'release.yml', release, ['pull_request:', 'schedule:']);
+
+  const engineeringValidation = workflows.get('engineering-validation.yml') ?? '';
+  requireTokens(errors, 'engineering-validation.yml', engineeringValidation, [
+    'workflow_dispatch:',
+    'workflow_call:',
+    'source_sha:',
+    'profile:',
+    '- static',
+    '- full',
+    '- contract-surface',
+    '- windows-ime',
+    '- package-smoke',
+    '- dependency-diagnostic',
+    'quality-core.yml',
+    'contracts-public-surface.json',
+    'playwright.windows-ime.config.ts',
+    'pnpm audit --audit-level=high',
+    'name: engineering-validation',
+  ]);
+  forbidTokens(errors, 'engineering-validation.yml', engineeringValidation, [
+    'pull_request:',
+    'push:',
+    'schedule:',
+    'contents: write',
+    'statuses: write',
+    'environment:',
+    'command:',
+    'target_branch:',
+    'git push',
+  ]);
 
   for (const file of [
     'quality.yml',

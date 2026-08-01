@@ -141,3 +141,22 @@ jobs:
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
       security_suite: false
       performance_eval: false
+
+  package-smoke-gate:
+    name: quality / package-smoke
+    if: always()
+    needs:
+      - route
+      - quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Normalize optional package smoke result for Controlled Merge
+        shell: bash
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          PACKAGE_SMOKE_REQUIRED: ${{ needs.route.outputs.package_smoke }}
+        run: |
+          set -euo pipefail
+          test "$QUALITY_RESULT" = success
+          echo "Package smoke required for this PR: $PACKAGE_SMOKE_REQUIRED"

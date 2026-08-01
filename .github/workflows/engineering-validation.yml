@@ -1,0 +1,334 @@
+name: Engineering Validation
+run-name: Engineering Validation · ${{ inputs.profile }} · ${{ inputs.source_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full 40-character commit SHA to validate
+        required: true
+        type: string
+      profile:
+        description: Fixed read-only validation profile
+        required: true
+        default: static
+        type: choice
+        options:
+          - static
+          - full
+          - contract-surface
+          - windows-ime
+          - package-smoke
+          - dependency-diagnostic
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Full 40-character commit SHA to validate
+        required: true
+        type: string
+      profile:
+        description: Fixed read-only validation profile
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engineering-validation-${{ inputs.source_sha }}-${{ inputs.profile }}
+  cancel-in-progress: false
+
+jobs:
+  validate-input:
+    name: validate-input
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate exact source commit and profile
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          case "$PROFILE" in
+            static|full|contract-surface|windows-ime|package-smoke|dependency-diagnostic)
+              ;;
+            *)
+              echo "Unsupported engineering validation profile: $PROFILE" >&2
+              exit 1
+              ;;
+          esac
+      - name: Assert clean source checkout
+        run: node .github/governance/assert-clean-tree.mjs
+
+  quality:
+    name: quality-${{ inputs.profile }}
+    needs: validate-input
+    if: ${{ contains(fromJSON('["static","full","package-smoke"]'), inputs.profile) }}
+    uses: ./.github/workflows/quality-core.yml
+    with:
+      checkout_ref: ${{ inputs.source_sha }}
+      draft_mode: false
+      full_suite: ${{ inputs.profile != 'static' }}
+      package_smoke: ${{ inputs.profile == 'package-smoke' }}
+      security_suite: false
+      performance_eval: false
+
+  contract-surface:
+    name: contract-surface
+    needs: validate-input
+    if: ${{ inputs.profile == 'contract-surface' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Assert clean working tree before contract surface capture
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Build public contracts
+        run: pnpm --filter @worldforge/contracts build
+      - name: Capture public runtime and declaration surface
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/engineering-validation
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { readFile, writeFile } from 'node:fs/promises';
+          import path from 'node:path';
+          import { pathToFileURL } from 'node:url';
+
+          function normalize(value) {
+            if (Array.isArray(value)) {
+              return value
+                .map((entry) => normalize(entry))
+                .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+            }
+            if (value && typeof value === 'object') {
+              return Object.fromEntries(
+                Object.entries(value)
+                  .sort(([left], [right]) => left.localeCompare(right))
+                  .map(([key, entry]) => [key, normalize(entry)]),
+              );
+            }
+            return value;
+          }
+
+          const runtimePath = path.resolve('packages/contracts/dist/public-index.js');
+          const declarationPath = path.resolve('packages/contracts/dist/public-index.d.ts');
+          const runtime = await import(pathToFileURL(runtimePath).href);
+          const declaration = await readFile(declarationPath, 'utf8');
+          const surface = {
+            schemaVersion: 1,
+            sourceCommit: process.env.SOURCE_SHA,
+            protocolVersion: runtime.PROTOCOL_VERSION ?? null,
+            taskProtocolVersion: runtime.TASK_PROTOCOL_VERSION ?? null,
+            ipcChannels: normalize(runtime.IPC_CHANNELS ?? {}),
+            appCommands: normalize(runtime.APP_COMMANDS ?? {}),
+            runtimeExports: Object.keys(runtime).sort(),
+            declarationSha256: createHash('sha256').update(declaration).digest('hex'),
+          };
+          await writeFile(
+            'test-results/engineering-validation/contracts-public-surface.json',
+            `${JSON.stringify(surface, null, 2)}\n`,
+          );
+          NODE
+      - name: Assert clean working tree after contract surface capture
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload contract surface diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: engineering-validation-contract-surface-${{ inputs.source_sha }}
+          path: test-results/engineering-validation/contracts-public-surface.json
+          if-no-files-found: error
+          retention-days: 14
+
+  dependency-diagnostic:
+    name: dependency-diagnostic
+    needs: validate-input
+    if: ${{ inputs.profile == 'dependency-diagnostic' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Assert clean working tree before dependency diagnostic
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Capture tool and dependency inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/engineering-validation
+          {
+            node --version
+            pnpm --version
+          } > test-results/engineering-validation/tool-versions.txt
+          pnpm list --depth 0 --json > test-results/engineering-validation/dependency-tree.json
+      - name: Audit high-severity dependency advisories
+        id: dependency-audit
+        continue-on-error: true
+        shell: bash
+        run: pnpm audit --audit-level=high --json > test-results/engineering-validation/dependency-audit.json
+      - name: Assert clean working tree after dependency diagnostic
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload dependency diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: engineering-validation-dependency-${{ inputs.source_sha }}
+          path: test-results/engineering-validation/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce dependency audit result
+        if: always()
+        shell: bash
+        env:
+          AUDIT_OUTCOME: ${{ steps.dependency-audit.outcome }}
+        run: test "$AUDIT_OUTCOME" = success
+
+  windows-ime:
+    name: windows-ime
+    needs: validate-input
+    if: ${{ inputs.profile == 'windows-ime' }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Assert clean working tree before Windows IME acceptance
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Verify built-in Microsoft Pinyin input profile
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path test-results/windows-ime | Out-Null
+          $tipId = '{81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E}'
+          $profileId = '{FA550B04-5AD7-411F-A5AC-CA038EC515D7}'
+          $inputTip = "0804:$tipId$profileId"
+          $profilePath = "HKLM:\SOFTWARE\Microsoft\CTF\TIP\$tipId\LanguageProfile\0x00000804\$profileId"
+          if (-not (Test-Path $profilePath)) {
+            throw "MICROSOFT_PINYIN_PROFILE_MISSING: $profilePath"
+          }
+          $registry = Get-ItemProperty -Path $profilePath
+          $values = [ordered]@{}
+          foreach ($property in $registry.PSObject.Properties) {
+            if ($property.Name -notlike 'PS*') {
+              $values[$property.Name] = [string]$property.Value
+            }
+          }
+          [pscustomobject]@{
+            inputTip = $inputTip
+            profilePath = $profilePath
+            registryValues = $values
+          } |
+            ConvertTo-Json -Depth 3 |
+            Out-File -FilePath test-results/windows-ime/microsoft-pinyin-profile.json -Encoding utf8
+          Start-Process "$env:WINDIR\System32\ctfmon.exe"
+          Start-Sleep -Seconds 2
+      - name: Build desktop
+        run: pnpm build
+      - name: Run real Windows Pinyin acceptance
+        shell: powershell
+        env:
+          WORLDFORGE_WINDOWS_IME_EVIDENCE_DIR: ${{ github.workspace }}\test-results\windows-ime
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pnpm exec playwright test --config tests/e2e/playwright.windows-ime.config.ts --workers=1 2>&1 |
+            Tee-Object -FilePath test-results/windows-ime/windows-ime-e2e.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Assert clean working tree after Windows IME acceptance
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
+      - name: Upload Windows native IME evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: engineering-validation-windows-ime-${{ inputs.source_sha }}
+          path: test-results/windows-ime/
+          if-no-files-found: error
+          retention-days: 30
+
+  result:
+    name: engineering-validation
+    if: always()
+    needs:
+      - validate-input
+      - quality
+      - contract-surface
+      - dependency-diagnostic
+      - windows-ime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Enforce selected validation profile result
+        shell: bash
+        env:
+          PROFILE: ${{ inputs.profile }}
+          INPUT_RESULT: ${{ needs.validate-input.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          CONTRACT_RESULT: ${{ needs.contract-surface.result }}
+          DEPENDENCY_RESULT: ${{ needs.dependency-diagnostic.result }}
+          WINDOWS_IME_RESULT: ${{ needs.windows-ime.result }}
+        run: |
+          set -euo pipefail
+          test "$INPUT_RESULT" = success
+          case "$PROFILE" in
+            static|full|package-smoke)
+              test "$QUALITY_RESULT" = success
+              ;;
+            contract-surface)
+              test "$CONTRACT_RESULT" = success
+              ;;
+            dependency-diagnostic)
+              test "$DEPENDENCY_RESULT" = success
+              ;;
+            windows-ime)
+              test "$WINDOWS_IME_RESULT" = success
+              ;;
+            *)
+              exit 1
+              ;;
+          esac

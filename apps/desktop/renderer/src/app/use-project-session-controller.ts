@@ -8,7 +8,7 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
-import type { useRendererUiStore } from '../state/ui-store.js';
+import type { RendererUiStoreState } from '../state/ui-store.js';
 import {
   continuationRoute,
   failureFromOutcome,
@@ -16,12 +16,11 @@ import {
   type FailureView,
 } from './app-shell-helpers.js';
 
-type UiDispatch = ReturnType<typeof useRendererUiStore.getState>['dispatch'];
-
 interface ProjectSessionControllerInput {
   readonly bridge: RendererBridgeAdapter;
-  readonly dispatch: UiDispatch;
+  readonly dispatch: RendererUiStoreState['dispatch'];
   readonly flushWriting: () => Promise<boolean>;
+  readonly flushSettings: () => Promise<void>;
   readonly setPendingKey: (key: string | null) => void;
   readonly setMessage: (message: string | null) => void;
   readonly setFailure: (failure: FailureView | null) => void;
@@ -31,6 +30,7 @@ export function useProjectSessionController({
   bridge,
   dispatch,
   flushWriting,
+  flushSettings,
   setPendingKey,
   setMessage,
   setFailure,
@@ -45,6 +45,18 @@ export function useProjectSessionController({
       selection: { projectId: activeProject?.projectId ?? null },
     });
   }, [activeProject, dispatch]);
+
+  const prepareProjectTransition = useCallback(
+    async (blockedMessage: string): Promise<boolean> => {
+      if (!(await flushWriting())) {
+        setMessage(blockedMessage);
+        return false;
+      }
+      await flushSettings();
+      return true;
+    },
+    [flushSettings, flushWriting, setMessage],
+  );
 
   const refreshRecentProjects = useCallback(async (): Promise<void> => {
     const recent = await bridge.project.listRecent({ mode: 'replace' });
@@ -74,6 +86,7 @@ export function useProjectSessionController({
 
   const createProject = useCallback(
     async (input: ProjectCreateInput): Promise<boolean> => {
+      if (!(await prepareProjectTransition('自动保存失败，已阻止创建并切换项目。'))) return false;
       setPendingKey('project.create');
       setMessage('请选择保存位置…');
       const outcome = await bridge.project.create(input);
@@ -90,11 +103,12 @@ export function useProjectSessionController({
       await projectChanged(outcome.data, '项目已创建，路径和数据库完整性校验通过。');
       dispatch({ type: 'navigate', route: 'writing' });
       return true;
-    }, [bridge, dispatch, projectChanged, setFailure, setMessage, setPendingKey],
+    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setMessage, setPendingKey],
   );
 
   const openSelected = useCallback(
     async (recover: boolean): Promise<void> => {
+      if (!(await prepareProjectTransition('自动保存失败，已阻止切换作品。'))) return;
       setPendingKey('project.openSelected');
       setMessage('请选择作品目录…');
       const outcome = await bridge.project.openSelected();
@@ -113,11 +127,12 @@ export function useProjectSessionController({
         type: 'navigate',
         route: recover ? 'recovery' : continuationRoute(nextContinuation),
       });
-    }, [bridge, dispatch, projectChanged, setFailure, setMessage, setPendingKey],
+    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setMessage, setPendingKey],
   );
 
   const openRecent = useCallback(
     async (projectId: string): Promise<void> => {
+      if (!(await prepareProjectTransition('自动保存失败，已阻止切换作品。'))) return;
       setPendingKey(`project.openRecent:${projectId}`);
       const outcome = await bridge.project.openRecent(projectId);
       setPendingKey(null);
@@ -127,15 +142,12 @@ export function useProjectSessionController({
       }
       const nextContinuation = await projectChanged(outcome.data, '最近作品已安全打开。');
       dispatch({ type: 'navigate', route: continuationRoute(nextContinuation) });
-    }, [bridge, dispatch, projectChanged, setFailure, setPendingKey],
+    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setPendingKey],
   );
 
   const closeProject = useCallback(
     async (projectId: string): Promise<void> => {
-      if (!(await flushWriting())) {
-        setMessage('自动保存失败，已阻止关闭项目。');
-        return;
-      }
+      if (!(await prepareProjectTransition('自动保存失败，已阻止关闭项目。'))) return;
       setPendingKey(`project.close:${projectId}`);
       try {
         const outcome = await bridge.project.close(projectId);
@@ -149,15 +161,12 @@ export function useProjectSessionController({
       } finally {
         setPendingKey(null);
       }
-    }, [bridge, dispatch, flushWriting, projectChanged, setFailure, setMessage, setPendingKey],
+    }, [bridge, dispatch, prepareProjectTransition, projectChanged, setFailure, setPendingKey],
   );
 
   const moveProject = useCallback(
     async (projectId: string): Promise<void> => {
-      if (!(await flushWriting())) {
-        setMessage('自动保存失败，已阻止移动项目。');
-        return;
-      }
+      if (!(await prepareProjectTransition('自动保存失败，已阻止移动项目。'))) return;
       setPendingKey(`project.move:${projectId}`);
       setMessage('请选择新位置；本地服务将复制、校验后再切换。');
       const outcome = await bridge.project.move(projectId);
@@ -176,7 +185,7 @@ export function useProjectSessionController({
           ? '移动已完成；原位置未能清理，请确认后手动处理。'
           : '移动已完成，哈希与数据库完整性校验通过。',
       );
-    }, [bridge, flushWriting, projectChanged, setFailure, setMessage, setPendingKey],
+    }, [bridge, prepareProjectTransition, projectChanged, setFailure, setMessage, setPendingKey],
   );
 
   const relocateRecent = useCallback(

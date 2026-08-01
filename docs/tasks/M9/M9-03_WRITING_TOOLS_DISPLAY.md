@@ -79,6 +79,7 @@ AR-06—AR-14                          待按依赖推进
 - `packages/core-service/src/`
 - `packages/testkit/src/`
 - `tests/`
+- `docs/PROJECT_EXECUTION_ENTRY.md`
 - `docs/architecture/`
 - `docs/testing/`
 - `docs/tasks/`

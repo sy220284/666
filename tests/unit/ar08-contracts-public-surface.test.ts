@@ -3,10 +3,11 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import * as publicContracts from '@worldforge/contracts';
+import type { WorldforgeBridge as PublicWorldforgeBridge } from '@worldforge/contracts';
 import * as appRuntimeContracts from '../../packages/contracts/src/app-runtime-contracts.js';
+import * as sourceCompatibilityRoot from '../../packages/contracts/src/index.js';
 import * as protocolRegistry from '../../packages/contracts/src/protocol-registry.js';
 import type { WorldforgeBridge as InternalWorldforgeBridge } from '../../packages/contracts/src/worldforge-bridge.js';
-import type { WorldforgeBridge as PublicWorldforgeBridge } from '@worldforge/contracts';
 
 type IsExact<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
@@ -21,7 +22,7 @@ const BASELINE = {
   ipcChannelCount: 97,
   appCommandCount: 96,
   runtimeExportCount: 835,
-  sha256: '08b3af7bcac8ea200a3eec8b86ba3fd10ee1edd4e0a06bd0131e0aa0ed5891b9',
+  sha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 
 function publicSurfaceDigest(): string {
@@ -47,12 +48,14 @@ describe('AR-08 contracts public surface', () => {
     expect(publicSurfaceDigest()).toBe(BASELINE.sha256);
   });
 
-  it('keeps the compatibility root wired to the split modules', () => {
-    expect(publicContracts.IPC_CHANNELS).toBe(protocolRegistry.IPC_CHANNELS);
-    expect(publicContracts.APP_COMMANDS).toBe(protocolRegistry.APP_COMMANDS);
-    expect(publicContracts.RegisteredCommandSchema).toBe(protocolRegistry.RegisteredCommandSchema);
-    expect(publicContracts.AppInfoSchema).toBe(appRuntimeContracts.AppInfoSchema);
-    expect(publicContracts.CoreEventSchema).toBe(appRuntimeContracts.CoreEventSchema);
+  it('keeps the source compatibility root wired to the split modules', () => {
+    expect(sourceCompatibilityRoot.IPC_CHANNELS).toBe(protocolRegistry.IPC_CHANNELS);
+    expect(sourceCompatibilityRoot.APP_COMMANDS).toBe(protocolRegistry.APP_COMMANDS);
+    expect(sourceCompatibilityRoot.RegisteredCommandSchema).toBe(
+      protocolRegistry.RegisteredCommandSchema,
+    );
+    expect(sourceCompatibilityRoot.AppInfoSchema).toBe(appRuntimeContracts.AppInfoSchema);
+    expect(sourceCompatibilityRoot.CoreEventSchema).toBe(appRuntimeContracts.CoreEventSchema);
     expect(bridgeSurfaceIsExact).toBe(true);
   });
 });

@@ -17,6 +17,7 @@ export interface CandidateReviewLoader {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly chapterId: string;
+  readonly documentRequest: MutableRefObject<number>;
   readonly previewRequest: MutableRefObject<string | null>;
   readonly setCandidates: Dispatch<SetStateAction<readonly CandidateSummary[]>>;
   readonly setPreview: Dispatch<SetStateAction<CandidatePreview | null>>;
@@ -126,11 +127,20 @@ export async function loadCandidateDocument(
   candidateId: string,
 ): Promise<void> {
   if (!candidateId) return;
+
+  const documentRequest = input.documentRequest.current + 1;
+  input.documentRequest.current = documentRequest;
+  const stalePreviewRequest = input.previewRequest.current;
+  input.previewRequest.current = null;
+  input.setPending(false);
+  if (stalePreviewRequest) void input.bridge.candidateAction.cancelPreview(stalePreviewRequest);
+
   const outcome = await input.bridge.candidate.get({
     projectId: input.projectId,
     chapterId: input.chapterId,
     candidateId,
   });
+  if (input.documentRequest.current !== documentRequest) return;
   if (outcome.state !== 'success') {
     if (outcome.state === 'failure')
       input.setStatus(`建议稿读取失败 · ${authorErrorSummary(outcome.error)}`);
@@ -139,6 +149,7 @@ export async function loadCandidateDocument(
   input.setSelectedDocument(outcome.data);
   if (outcome.data.generationRunId) {
     const run = await input.bridge.generation.getRun(input.projectId, outcome.data.generationRunId);
+    if (input.documentRequest.current !== documentRequest) return;
     input.setSelectedRun(run.state === 'success' ? run.data : null);
   } else {
     input.setSelectedRun(null);
@@ -157,5 +168,6 @@ export async function loadCandidateDocument(
     );
     return;
   }
+  if (input.documentRequest.current !== documentRequest) return;
   await loadCandidatePreview(input, candidateId);
 }

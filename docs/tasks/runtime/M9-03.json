@@ -45,10 +45,10 @@
     "docs/tasks/",
     "docs/test-evidence/M9-03/",
     "scripts/",
-    ".github/workflows/",
     "vitest.coverage.config.ts"
   ],
   "forbiddenPaths": [
+    ".github/workflows/",
     "migrations/",
     "packages/domain/src/",
     "packages/editor-core/src/",
@@ -85,8 +85,15 @@
     "pnpm test:perf",
     "pnpm build",
     "pnpm test:e2e",
-    "pnpm release:check"
+    "pnpm release:check",
+    "Engineering Validation / full"
   ],
+  "validationWorkflow": {
+    "path": ".github/workflows/engineering-validation.yml",
+    "defaultProfile": "full",
+    "sourceShaRequired": true,
+    "taskSpecificWorkflowsAllowed": false
+  },
   "evidence": {
     "baselineMainCommit": "0171e2a62dccf176eab94d46c52ea274766d460f",
     "baselineWritingCoreLines": 3010,
@@ -96,6 +103,9 @@
     "checkpointPullRequest": 272,
     "checkpointHead": "9e331399ebae0017106d252d67639a64e986ff77",
     "checkpointMainCommit": "7adafeeadb973e5cb035c301602c511c2aa065c5",
+    "mainSyncPullRequest": 275,
+    "mainSyncCommit": "e80552afec44916cc3821e933fc477badbad178a",
+    "mainSyncMergeCommit": "74dc1528b62d55c9333e83b82afffc74795c8078",
     "ar05Head": "4f109cdbd57b2e0c3576f142d19778a120c74011",
     "ar05QualityRun": 30697997469,
     "ar05Evidence": "docs/test-evidence/M9-03/AR-05_CANON_SPLIT_VERIFICATION.md",

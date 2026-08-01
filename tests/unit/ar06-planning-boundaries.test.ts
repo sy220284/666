@@ -3,10 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const planningRoot = path.join(
-  process.cwd(),
-  'apps/desktop/renderer/src/features/planning',
-);
+const planningRoot = path.join(process.cwd(), 'apps/desktop/renderer/src/features/planning');
 
 async function source(relativePath: string): Promise<string> {
   return readFile(path.join(planningRoot, relativePath), 'utf8');
@@ -48,7 +45,7 @@ describe('AR-06 planning boundaries', () => {
     expect(beginner).toContain('endingIntent: brief.endingIntent');
     expect(beginner).toContain('required: brief.required');
     expect(beginner).toContain('forbidden: brief.forbidden');
-    expect(professional).toContain("data-save-brief");
+    expect(professional).toContain('data-save-brief');
   });
 
   it('preserves outline and scene-beat atomicity and explicit content boundaries', async () => {
@@ -59,7 +56,7 @@ describe('AR-06 planning boundaries', () => {
     ]);
 
     expect(plotTree).toContain('bridge.planning.movePlotNode');
-    expect(plotTree).toContain("placement:");
+    expect(plotTree).toContain('placement:');
     expect(plotTree).toContain('正文未发生变化');
     expect(scenePanel).toContain('bridge.planning.moveSceneBeat');
     expect(scenePanel).toContain('bridge.planning.previewMoveSceneBeat');

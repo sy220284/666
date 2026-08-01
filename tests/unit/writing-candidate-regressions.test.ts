@@ -162,7 +162,9 @@ describe('Writing候选并发与只读回归', () => {
     const discard = vi.fn(async () =>
       success({ status: 'discarded', resolvedAt: null }),
     );
-    const bridge = contractInput<RendererBridgeAdapter>({ candidate: { discard } });
+    const bridge = contractInput<RendererBridgeAdapter>({
+      candidate: { discard },
+    });
 
     await discardCandidate(
       contractInput({

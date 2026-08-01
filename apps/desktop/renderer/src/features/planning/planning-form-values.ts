@@ -22,10 +22,7 @@ export function lifecycleStatusLabel(status: LifecycleStatus): string {
   }[status];
 }
 
-export function sortedPlotNodes(
-  nodes: readonly PlotNode[],
-  parentId: string | null,
-): PlotNode[] {
+export function sortedPlotNodes(nodes: readonly PlotNode[], parentId: string | null): PlotNode[] {
   return nodes
     .filter((node) => node.parentId === parentId)
     .sort((left, right) => {

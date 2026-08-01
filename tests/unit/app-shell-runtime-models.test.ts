@@ -32,9 +32,7 @@ function core(status: string): CoreStatus {
   return contractInput<CoreStatus>({ status });
 }
 
-function project(
-  databaseMode: 'read-write' | 'read-only' = 'read-write',
-): ProjectWorkspaceSummary {
+function project(databaseMode: 'read-write' | 'read-only' = 'read-write'): ProjectWorkspaceSummary {
   return contractInput<ProjectWorkspaceSummary>({
     projectId: 'project-1',
     name: '测试作品',
@@ -200,10 +198,7 @@ describe('AppShell pure runtime models', () => {
   });
 
   it('orders pending review, validation, stale search, backup, AI, missing and operation states', () => {
-    const base: Omit<
-      Parameters<typeof buildGlobalStatus>[0],
-      'message' | 'workspaceAttention'
-    > = {
+    const base: Omit<Parameters<typeof buildGlobalStatus>[0], 'message' | 'workspaceAttention'> = {
       activeProject: project(),
       aiReadiness: readiness('ready'),
       coreStatus: core('healthy'),

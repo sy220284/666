@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   CandidateConflictItem,
@@ -18,8 +18,6 @@ import type {
   ProjectContinuationInput,
   ProjectContinuationSnapshot,
   ProjectWorkspaceSummary,
-  VersionDocument,
-  VersionSummary,
 } from '@worldforge/contracts';
 import {
   DraftAutosaveCoordinator,
@@ -43,8 +41,21 @@ import { registerDraftFlushHandler } from '../../runtime/draft-flush-registry.js
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { StructureNavigator } from '../structure/structure-navigator.js';
+import { candidateConflictLabel } from './candidate-conflicts.js';
+import { toggleSelectionSet } from './candidate-selection.js';
+import { captureContinuationAnchor, restoreContinuationAnchor } from './continuation-anchor.js';
+import {
+  captureRewriteSelectionAnchor,
+  getPersistedEditorSelection,
+  persistEditorSelection,
+  persistEditorSelectionRange,
+  restoreEditorSelection,
+} from './editor-selection.js';
+import { FindReplaceToolbar } from './find-replace-toolbar.js';
+import { sanitizePastedHtml } from './paste-sanitizer.js';
 import { WritingAssistancePanel } from './writing-assistance-panel.js';
 import { ReviewDiffPanel } from './review-diff-panel.js';
+import { VersionPanel } from './version-panel.js';
 import {
   candidateCompletenessLabel,
   candidateStatusLabel,
@@ -93,210 +104,6 @@ const EMPTY_STATISTICS: WritingStatistics = {
 
 function savedStatus(label: string, revision: number, disclosureMode: AppDisclosureMode): string {
   return disclosureMode === 'beginner' ? label : `${label} · 保存序号 ${revision}`;
-}
-
-interface PersistedEditorSelection {
-  readonly from: number;
-  readonly to: number;
-  readonly anchorPath?: readonly number[];
-  readonly anchorOffset?: number;
-  readonly focusPath?: readonly number[];
-  readonly focusOffset?: number;
-}
-
-const persistedSelectionByChapter = new Map<string, PersistedEditorSelection>();
-
-async function sha256Text(value: string): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-async function captureRewriteSelectionAnchor(
-  instance: Editor,
-  projectId: string,
-  chapter: Chapter,
-  draft: DraftDocument,
-): Promise<RewriteSelectionAnchor | null> {
-  const selection = instance.state.selection;
-  if (selection.empty) return null;
-  const blockAt = (position: typeof selection.$from) => {
-    for (let depth = position.depth; depth >= 1; depth -= 1) {
-      const node = position.node(depth);
-      const attributes = node.attrs as Record<string, unknown>;
-      if (
-        typeof attributes.logicalBlockId === 'string' &&
-        typeof attributes.contentHash === 'string'
-      ) {
-        return { depth, node, attributes };
-      }
-    }
-    return null;
-  };
-  const start = blockAt(selection.$from);
-  const end = blockAt(selection.$to);
-  if (
-    !start ||
-    !end ||
-    start.attributes.logicalBlockId !== end.attributes.logicalBlockId ||
-    start.attributes.locked === true
-  ) {
-    return null;
-  }
-  const selectionStart = selection.from - selection.$from.start(start.depth);
-  const selectionEnd = selection.to - selection.$to.start(end.depth);
-  const selectedText = start.node.textContent.slice(selectionStart, selectionEnd);
-  if (!selectedText) return null;
-  return {
-    projectId,
-    chapterId: chapter.id,
-    draftId: draft.draftId,
-    baseRevision: draft.revision,
-    logicalBlockId: String(start.attributes.logicalBlockId),
-    expectedBlockHash: String(start.attributes.contentHash),
-    selectionStart,
-    selectionEnd,
-    selectedTextHash: await sha256Text(selectedText),
-  };
-}
-
-function selectionKey(projectId: string, chapterId: string): string {
-  return `${projectId}:${chapterId}`;
-}
-
-function pathFromEditorRoot(root: Node, node: Node): readonly number[] | null {
-  const path: number[] = [];
-  let current: Node | null = node;
-  while (current && current !== root) {
-    const parent: ParentNode | null = current.parentNode;
-    if (!parent) return null;
-    const index = Array.prototype.indexOf.call(parent.childNodes, current) as number;
-    if (index < 0) return null;
-    path.unshift(index);
-    current = parent;
-  }
-  return current === root ? path : null;
-}
-
-function nodeFromEditorPath(root: Node, path: readonly number[]): Node | null {
-  let current: Node = root;
-  for (const index of path) {
-    const next = current.childNodes.item(index);
-    if (!next) return null;
-    current = next;
-  }
-  return current;
-}
-
-function clampEditorSelectionOffset(node: Node, offset: number): number {
-  const maximum = node.nodeType === 3 ? (node.textContent?.length ?? 0) : node.childNodes.length;
-  return Math.min(Math.max(0, offset), maximum);
-}
-
-function captureEditorSelection(instance: Editor): PersistedEditorSelection {
-  const persisted: PersistedEditorSelection = {
-    from: instance.state.selection.from,
-    to: instance.state.selection.to,
-  };
-  const root = instance.view.dom;
-  const selection = root.ownerDocument.getSelection();
-  if (!selection?.anchorNode || !selection.focusNode) return persisted;
-  if (!root.contains(selection.anchorNode) || !root.contains(selection.focusNode)) return persisted;
-  const anchorPath = pathFromEditorRoot(root, selection.anchorNode);
-  const focusPath = pathFromEditorRoot(root, selection.focusNode);
-  if (!anchorPath || !focusPath) return persisted;
-  return {
-    ...persisted,
-    anchorPath,
-    anchorOffset: selection.anchorOffset,
-    focusPath,
-    focusOffset: selection.focusOffset,
-  };
-}
-
-function persistEditorSelection(projectId: string, chapterId: string, instance: Editor): void {
-  const key = selectionKey(projectId, chapterId);
-  const captured = captureEditorSelection(instance);
-  const existing = persistedSelectionByChapter.get(key);
-  if (
-    !captured.anchorPath &&
-    existing?.anchorPath &&
-    existing.from === captured.from &&
-    existing.to === captured.to
-  ) {
-    return;
-  }
-  persistedSelectionByChapter.set(key, captured);
-}
-
-function restoreEditorSelection(instance: Editor, remembered: PersistedEditorSelection): void {
-  const maximum = Math.max(1, instance.state.doc.content.size);
-  instance.commands.setTextSelection({
-    from: Math.min(Math.max(1, remembered.from), maximum),
-    to: Math.min(Math.max(1, remembered.to), maximum),
-  });
-  instance.view.focus();
-  if (
-    !remembered.anchorPath ||
-    remembered.anchorOffset === undefined ||
-    !remembered.focusPath ||
-    remembered.focusOffset === undefined
-  ) {
-    return;
-  }
-  const root = instance.view.dom;
-  const anchorNode = nodeFromEditorPath(root, remembered.anchorPath);
-  const focusNode = nodeFromEditorPath(root, remembered.focusPath);
-  if (!anchorNode || !focusNode) return;
-  root.ownerDocument
-    .getSelection()
-    ?.setBaseAndExtent(
-      anchorNode,
-      clampEditorSelectionOffset(anchorNode, remembered.anchorOffset),
-      focusNode,
-      clampEditorSelectionOffset(focusNode, remembered.focusOffset),
-    );
-}
-
-function captureContinuationAnchor(instance: Editor): {
-  readonly logicalBlockId: string;
-  readonly expectedBlockHash: string;
-  readonly cursorOffset: number;
-} | null {
-  const position = instance.state.selection.$from;
-  for (let depth = position.depth; depth >= 1; depth -= 1) {
-    const node = position.node(depth);
-    const attributes = node.attrs as Record<string, unknown>;
-    if (
-      typeof attributes.logicalBlockId === 'string' &&
-      typeof attributes.contentHash === 'string'
-    ) {
-      return {
-        logicalBlockId: attributes.logicalBlockId,
-        expectedBlockHash: attributes.contentHash,
-        cursorOffset: Math.max(0, position.pos - position.start(depth)),
-      };
-    }
-  }
-  return null;
-}
-
-function restoreContinuationAnchor(
-  instance: Editor,
-  continuation: ProjectContinuationSnapshot,
-): void {
-  if (continuation.status !== 'ready') return;
-  let target: number | null = null;
-  instance.state.doc.descendants((node, position) => {
-    if (target !== null) return false;
-    const attributes = node.attrs as Record<string, unknown>;
-    if (attributes.logicalBlockId !== continuation.logicalBlockId) return true;
-    target = position + 1 + Math.min(continuation.cursorOffset, node.content.size);
-    return false;
-  });
-  if (target !== null) {
-    instance.commands.setTextSelection(target);
-    instance.commands.focus();
-  }
 }
 
 export function WritingWorkbench({
@@ -569,9 +376,7 @@ export function WritingWorkbench({
       const instance = editor.current;
       const currentChapter = activeChapter.current;
       if (!instance || !currentChapter) return;
-      const remembered = persistedSelectionByChapter.get(
-        selectionKey(project.projectId, currentChapter.id),
-      );
+      const remembered = getPersistedEditorSelection(project.projectId, currentChapter.id);
       if (remembered) restoreEditorSelection(instance, remembered);
     });
   }, [project.projectId]);
@@ -621,9 +426,7 @@ export function WritingWorkbench({
         setStatus('当前稿已更新；返回正文后重建编辑器。');
         return;
       }
-      const remembered = persistedSelectionByChapter.get(
-        selectionKey(project.projectId, nextChapter.id),
-      );
+      const remembered = getPersistedEditorSelection(project.projectId, nextChapter.id);
       const instance = new Editor({
         element: host,
         extensions: createWorldforgeEditorExtensions(temporaryClientBlockId),
@@ -649,10 +452,12 @@ export function WritingWorkbench({
           setStatus(composing.current ? '输入法组合中；自动保存与结构键已暂停。' : '等待自动保存…');
         },
         onSelectionUpdate: ({ editor: current }) => {
-          persistedSelectionByChapter.set(selectionKey(project.projectId, nextChapter.id), {
-            from: current.state.selection.from,
-            to: current.state.selection.to,
-          });
+          persistEditorSelectionRange(
+            project.projectId,
+            nextChapter.id,
+            current.state.selection.from,
+            current.state.selection.to,
+          );
           refreshLockState();
           scheduleContinuationSave();
         },
@@ -1196,56 +1001,21 @@ export function WritingWorkbench({
                 </span>
               </div>
 
-              <div className="draft-find" aria-label="当前章节查找替换">
-                <input
-                  data-draft-find
-                  type="search"
-                  aria-label="查找文本"
-                  placeholder="查找当前章节"
-                  value={findText}
-                  onChange={(event) => {
-                    setFindText(event.target.value);
-                    setFindIndex(0);
-                  }}
-                />
-                <button type="button" disabled={!findCount} onClick={() => selectMatch(-1)}>
-                  上一个
-                </button>
-                <button
-                  data-draft-find-next
-                  type="button"
-                  disabled={!findCount}
-                  onClick={() => selectMatch(1)}
-                >
-                  下一个
-                </button>
-                <span data-draft-find-status aria-live="polite">
-                  {findCount ? `${findIndex + 1}/${findCount}` : findText ? '未找到' : ''}
-                </span>
-                <input
-                  data-draft-replace
-                  type="text"
-                  aria-label="替换文本"
-                  placeholder="替换为"
-                  value={replaceText}
-                  onChange={(event) => setReplaceText(event.target.value)}
-                />
-                <button
-                  data-draft-replace-current
-                  type="button"
-                  disabled={!findCount || readOnly || isComposing}
-                  onClick={() => replaceMatches(false)}
-                >
-                  替换
-                </button>
-                <button
-                  type="button"
-                  disabled={!findCount || readOnly || isComposing}
-                  onClick={() => replaceMatches(true)}
-                >
-                  全部替换
-                </button>
-              </div>
+              <FindReplaceToolbar
+                findText={findText}
+                replaceText={replaceText}
+                findIndex={findIndex}
+                findCount={findCount}
+                readOnly={readOnly}
+                isComposing={isComposing}
+                onFindTextChange={(value) => {
+                  setFindText(value);
+                  setFindIndex(0);
+                }}
+                onReplaceTextChange={setReplaceText}
+                onSelectMatch={selectMatch}
+                onReplaceMatches={replaceMatches}
+              />
 
               <p
                 className={editorFailure ? 'draft-state is-error' : 'draft-state'}
@@ -1324,243 +1094,6 @@ export function WritingWorkbench({
             onNavigate={onNavigate}
           />
         ) : null}
-      </div>
-    </section>
-  );
-}
-
-function VersionPanel({
-  bridge,
-  chapter,
-  draft,
-  project,
-  navigationVersionId,
-  flush,
-  onClose,
-  onDraftReplace,
-}: {
-  readonly bridge: RendererBridgeAdapter;
-  readonly chapter: Chapter;
-  readonly draft: DraftDocument;
-  readonly project: ProjectWorkspaceSummary;
-  readonly navigationVersionId?: string | null;
-  readonly flush: () => Promise<boolean>;
-  readonly onClose: () => void;
-  readonly onDraftReplace: (draft: DraftDocument, message: string) => void;
-}) {
-  const readOnly = project.databaseMode !== 'read-write';
-  const [versions, setVersions] = useState<readonly VersionSummary[]>([]);
-  const [selected, setSelected] = useState<VersionDocument | null>(null);
-  const [status, setStatus] = useState('历史版本只读不可变；恢复会创建新的当前稿。');
-  const [pending, setPending] = useState(false);
-
-  const refresh = useCallback(async (): Promise<void> => {
-    const outcome = await bridge.version.list(project.projectId, chapter.id, { mode: 'replace' });
-    if (outcome.state === 'success') setVersions(outcome.data.versions);
-    else if (outcome.state === 'failure')
-      setStatus(`版本读取失败 · ${authorErrorSummary(outcome.error)}`);
-  }, [bridge, chapter.id, project.projectId]);
-
-  useEffect(() => void refresh(), [refresh]);
-
-  useEffect(() => {
-    if (!navigationVersionId) return;
-    void bridge.version
-      .get(
-        {
-          projectId: project.projectId,
-          chapterId: chapter.id,
-          versionId: navigationVersionId,
-        },
-        { mode: 'replace' },
-      )
-      .then((outcome) => {
-        if (outcome.state === 'success') {
-          setSelected(outcome.data);
-          setStatus(`正在比较：${outcome.data.title}`);
-        } else if (outcome.state === 'failure') {
-          setStatus('目标历史版本已经变化，请重新搜索。');
-        }
-      });
-  }, [bridge, chapter.id, navigationVersionId, project.projectId]);
-
-  const create = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    const form = event.currentTarget;
-    event.preventDefault();
-    if (readOnly || !(await flush())) {
-      setStatus('自动保存失败，未创建历史版本。');
-      return;
-    }
-    const values = new FormData(form);
-    const title = String(values.get('title') ?? '').trim();
-    if (!title) return;
-    setPending(true);
-    const outcome = await bridge.version.create({
-      projectId: project.projectId,
-      chapterId: chapter.id,
-      draftId: draft.draftId,
-      baseRevision: draft.revision,
-      versionType: 'manual',
-      parentVersionId: null,
-      sourceCandidateId: null,
-      title,
-      label: nullableText(values.get('label')),
-      description: String(values.get('description') ?? ''),
-    });
-    setPending(false);
-    if (outcome.state !== 'success') {
-      setStatus(
-        outcome.state === 'failure'
-          ? `创建失败 · ${authorErrorSummary(outcome.error)}`
-          : '创建已取消。',
-      );
-      return;
-    }
-    form.reset();
-    setStatus(`历史版本“${outcome.data.title}”已创建，内容不可修改。`);
-    await refresh();
-  };
-
-  const preview = async (versionId: string): Promise<void> => {
-    const outcome = await bridge.version.get(
-      { projectId: project.projectId, chapterId: chapter.id, versionId },
-      { mode: 'replace' },
-    );
-    if (outcome.state === 'success') {
-      setSelected(outcome.data);
-      setStatus(`正在比较：${outcome.data.title}`);
-    } else if (outcome.state === 'failure')
-      setStatus(`预览失败 · ${authorErrorSummary(outcome.error)}`);
-  };
-
-  const finalize = async (versionId: string): Promise<void> => {
-    if (readOnly) return;
-    const outcome = await bridge.version.setFinal({
-      projectId: project.projectId,
-      chapterId: chapter.id,
-      versionId,
-    });
-    if (outcome.state === 'success') {
-      setStatus(`已将“${outcome.data.title}”设为定稿。`);
-      await refresh();
-    } else if (outcome.state === 'failure')
-      setStatus(`定稿失败 · ${authorErrorSummary(outcome.error)}`);
-  };
-
-  const restore = async (versionId: string): Promise<void> => {
-    if (readOnly || !(await flush())) return;
-    const outcome = await bridge.version.restore({
-      projectId: project.projectId,
-      chapterId: chapter.id,
-      versionId,
-    });
-    if (outcome.state === 'success') {
-      onDraftReplace(outcome.data, '已从只读历史版本恢复为新当前稿。');
-      setStatus('恢复成功；原历史版本与原当前稿记录保持不变。');
-    } else if (outcome.state === 'failure')
-      setStatus(`恢复失败 · ${authorErrorSummary(outcome.error)}`);
-  };
-
-  return (
-    <section className="version-workbench" data-version-dialog>
-      <header className="feature-card__heading">
-        <div>
-          <h2>历史版本与比较</h2>
-          <p>历史版本不可变；左侧为当前已保存正文，右侧为选中的历史版本。</p>
-        </div>
-        <button data-close-versions type="button" onClick={onClose}>
-          返回正文
-        </button>
-      </header>
-      <form className="version-create-grid" onSubmit={(event) => void create(event)}>
-        <input data-version-title name="title" maxLength={240} placeholder="版本标题" required />
-        <input data-version-label name="label" maxLength={120} placeholder="标签（可选）" />
-        <input
-          data-version-description
-          name="description"
-          maxLength={2000}
-          placeholder="说明（可选）"
-        />
-        <button
-          className="primary-button"
-          data-confirm-version
-          disabled={readOnly || pending}
-          type="submit"
-        >
-          创建历史版本
-        </button>
-      </form>
-      <p className="feature-status" data-version-status role="status">
-        {status}
-      </p>
-      <div className="version-history-layout">
-        <div className="version-list">
-          {versions.length === 0 ? (
-            <p>还没有手动保存的历史版本。</p>
-          ) : (
-            versions.map((version) => (
-              <article
-                className="version-row"
-                data-version-id={version.versionId}
-                data-version-row
-                key={version.versionId}
-              >
-                <div>
-                  <strong>{version.title}</strong>
-                  <small>
-                    {version.wordCount}字 · 保存序号 {version.sourceRevision}
-                    {version.label ? ` · ${version.label}` : ''}
-                    {version.finalized ? ' · 定稿' : ''}
-                  </small>
-                </div>
-                <div className="version-row__actions">
-                  <button
-                    data-version-action="compare"
-                    type="button"
-                    onClick={() => void preview(version.versionId)}
-                  >
-                    比较
-                  </button>
-                  <button
-                    data-version-action="final"
-                    type="button"
-                    disabled={readOnly || version.finalized}
-                    onClick={() => void finalize(version.versionId)}
-                  >
-                    设为定稿
-                  </button>
-                  <button
-                    data-version-action="restore"
-                    type="button"
-                    disabled={readOnly}
-                    onClick={() => void restore(version.versionId)}
-                  >
-                    恢复为新当前稿
-                  </button>
-                  <button
-                    data-version-action="export"
-                    type="button"
-                    onClick={() =>
-                      void bridge.recovery.exportVersion({
-                        projectId: project.projectId,
-                        versionId: version.versionId,
-                      })
-                    }
-                  >
-                    导出TXT
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-        <ReviewDiffPanel
-          comparisonText={selected?.blocks.map((block) => block.text).join('\n\n') ?? ''}
-          comparisonTitle={selected?.title ?? '选择历史版本比较'}
-          currentText={draft.blocks.map((block) => block.text).join('\n\n')}
-          currentTitle="当前已保存稿"
-          marker="version"
-        />
       </div>
     </section>
   );
@@ -2542,7 +2075,11 @@ function CandidatePanel({
                       checked={mergeCandidateIds.has(candidate.candidateId)}
                       onChange={(event) =>
                         setMergeCandidateIds(
-                          toggleSet(mergeCandidateIds, candidate.candidateId, event.target.checked),
+                          toggleSelectionSet(
+                            mergeCandidateIds,
+                            candidate.candidateId,
+                            event.target.checked,
+                          ),
                         )
                       }
                     />
@@ -2861,7 +2398,11 @@ function CandidatePanel({
                       checked={selectedBlocks.has(block.candidateBlockId)}
                       onChange={(event) =>
                         setSelectedBlocks(
-                          toggleSet(selectedBlocks, block.candidateBlockId, event.target.checked),
+                          toggleSelectionSet(
+                            selectedBlocks,
+                            block.candidateBlockId,
+                            event.target.checked,
+                          ),
                         )
                       }
                     />
@@ -2884,7 +2425,9 @@ function CandidatePanel({
                       type="checkbox"
                       checked={selectedBeats.has(beatId)}
                       onChange={(event) =>
-                        setSelectedBeats(toggleSet(selectedBeats, beatId, event.target.checked))
+                        setSelectedBeats(
+                          toggleSelectionSet(selectedBeats, beatId, event.target.checked),
+                        )
                       }
                     />
                     {sceneBeatReviewLabel(sceneBeats, beatId)}
@@ -2935,76 +2478,6 @@ function CandidatePanel({
   );
 }
 
-function candidateConflictLabel(kind: CandidateConflictItem['kind']): string {
-  const labels: Readonly<Record<CandidateConflictItem['kind'], string>> = {
-    project: '建议稿不属于当前作品',
-    'candidate-status': '建议稿已经处理',
-    'partial-restricted': '未完成建议稿不能替换整章',
-    revision: '建议稿生成后当前稿已经变化',
-    hash: '正文内容与生成时不一致',
-    locked: '建议稿涉及已锁定的正文',
-    'missing-block': '建议稿引用的正文位置已经不存在',
-    structure: '建议稿与当前正文结构不一致',
-    'duplicate-apply': '建议稿已经采用过',
-    'undo-stale': '采用后当前稿已经变化，无法整体撤销',
-  };
-  return labels[kind];
-}
-
-function toggleSet(source: Set<string>, value: string, included: boolean): Set<string> {
-  const next = new Set(source);
-  if (included) next.add(value);
-  else next.delete(value);
-  return next;
-}
-
-function nullableText(value: FormDataEntryValue | null): string | null {
-  const result = String(value ?? '').trim();
-  return result || null;
-}
-
 function temporaryClientBlockId(): string {
   return `temporary-${globalThis.crypto.randomUUID()}`;
-}
-
-function sanitizePastedHtml(html: string): string {
-  const parsed = new DOMParser().parseFromString(html, 'text/html');
-  parsed
-    .querySelectorAll(
-      'script, style, noscript, template, iframe, object, embed, svg, canvas, [hidden], [aria-hidden="true"]',
-    )
-    .forEach((element) => element.remove());
-  parsed.querySelectorAll<HTMLElement>('[style]').forEach((element) => {
-    if (/\b(?:display\s*:\s*none|visibility\s*:\s*hidden)\b/iu.test(element.style.cssText)) {
-      element.remove();
-    }
-  });
-  const clean = document.createElement('div');
-  const appendTextBlock = (tag: 'p' | 'blockquote' | `h${number}`, value: string): void => {
-    const element = document.createElement(tag);
-    element.textContent = value;
-    clean.append(element);
-  };
-  const visit = (root: ParentNode): void => {
-    for (const child of root.childNodes) {
-      if (child.nodeType === Node.TEXT_NODE) {
-        const value = child.textContent?.trim() ?? '';
-        if (value) appendTextBlock('p', value);
-        continue;
-      }
-      if (!(child instanceof HTMLElement)) continue;
-      const tag = child.tagName.toLowerCase();
-      if (/^h[1-6]$/u.test(tag)) appendTextBlock(tag as `h${number}`, child.textContent ?? '');
-      else if (tag === 'blockquote') appendTextBlock('blockquote', child.textContent ?? '');
-      else if (tag === 'hr') clean.append(document.createElement('hr'));
-      else if (tag === 'p' || tag === 'li' || tag === 'pre')
-        appendTextBlock('p', child.textContent ?? '');
-      else if (child.querySelector('p, li, blockquote, h1, h2, h3, h4, h5, h6, hr')) visit(child);
-      else if ((child.textContent ?? '').trim()) appendTextBlock('p', child.textContent ?? '');
-    }
-  };
-  visit(parsed.body);
-  if (!clean.hasChildNodes()) clean.append(document.createElement('p'));
-  const serializer = new XMLSerializer();
-  return Array.from(clean.childNodes, (node) => serializer.serializeToString(node)).join('');
 }

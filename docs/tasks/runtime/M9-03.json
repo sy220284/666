@@ -21,8 +21,8 @@
     "AR-13",
     "AR-14"
   ],
-  "completedWorkPackages": ["AR-03", "AR-04"],
-  "activeWorkPackage": "AR-05",
+  "completedWorkPackages": ["AR-03", "AR-04", "AR-05"],
+  "activeWorkPackage": "AR-06",
   "scope": [
     "拆分Writing工具、展示和章节会话状态机",
     "拆分Canon、Planning和AppShell",
@@ -95,6 +95,9 @@
     "baselineStructuralDebts": 15,
     "checkpointPullRequest": 272,
     "checkpointHead": "9e331399ebae0017106d252d67639a64e986ff77",
-    "checkpointMainCommit": "7adafeeadb973e5cb035c301602c511c2aa065c5"
+    "checkpointMainCommit": "7adafeeadb973e5cb035c301602c511c2aa065c5",
+    "ar05Head": "4f109cdbd57b2e0c3576f142d19778a120c74011",
+    "ar05QualityRun": 30697997469,
+    "ar05Evidence": "docs/test-evidence/M9-03/AR-05_CANON_SPLIT_VERIFICATION.md"
   }
 }

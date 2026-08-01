@@ -1,10 +1,6 @@
 import { useCallback } from 'react';
 
-import type {
-  AppSettingsUpdate,
-  CoreStatus,
-  ProjectWorkspaceSummary,
-} from '@worldforge/contracts';
+import type { AppSettingsUpdate, CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import type { DataToolsSection } from '../features/data-tools/data-tools-workbench.js';

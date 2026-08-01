@@ -64,7 +64,14 @@ function setupLoader(bridge: RendererBridgeAdapter) {
     setStatus: vi.fn(),
     setPending,
   });
-  return { loader, previewRequest, setPending, setPreview, setSelectedDocument, setSelectedRun };
+  return {
+    loader,
+    previewRequest,
+    setPending,
+    setPreview,
+    setSelectedDocument,
+    setSelectedRun,
+  };
 }
 
 beforeEach(() => {
@@ -84,7 +91,9 @@ describe('Writing候选并发与只读回归', () => {
     );
     const bridge = contractInput<RendererBridgeAdapter>({
       candidate: { get },
-      candidateAction: { cancelPreview: vi.fn(async () => success({ cancelled: true })) },
+      candidateAction: {
+        cancelPreview: vi.fn(async () => success({ cancelled: true })),
+      },
     });
     const context = setupLoader(bridge);
 
@@ -129,7 +138,9 @@ describe('Writing候选并发与只读回归', () => {
     const bridge = contractInput<RendererBridgeAdapter>({
       candidate: { get },
       generation: { getRun },
-      candidateAction: { cancelPreview: vi.fn(async () => success({ cancelled: true })) },
+      candidateAction: {
+        cancelPreview: vi.fn(async () => success({ cancelled: true })),
+      },
     });
     const context = setupLoader(bridge);
 
@@ -148,7 +159,9 @@ describe('Writing候选并发与只读回归', () => {
   });
 
   it('只读会话不确认也不发起候选丢弃写请求', async () => {
-    const discard = vi.fn(async () => success({ status: 'discarded', resolvedAt: null }));
+    const discard = vi.fn(async () =>
+      success({ status: 'discarded', resolvedAt: null }),
+    );
     const bridge = contractInput<RendererBridgeAdapter>({ candidate: { discard } });
 
     await discardCandidate(

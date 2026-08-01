@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
 
 import type {
   ProjectContinuationSnapshot,
@@ -19,6 +19,10 @@ import {
 interface ProjectSessionControllerInput {
   readonly bridge: RendererBridgeAdapter;
   readonly dispatch: RendererUiStoreState['dispatch'];
+  readonly activeProject: ProjectWorkspaceSummary | null;
+  readonly setActiveProject: Dispatch<SetStateAction<ProjectWorkspaceSummary | null>>;
+  readonly setContinuation: Dispatch<SetStateAction<ProjectContinuationSnapshot | null>>;
+  readonly setRecentProjects: Dispatch<SetStateAction<readonly RecentProject[]>>;
   readonly flushWriting: () => Promise<boolean>;
   readonly flushSettings: () => Promise<void>;
   readonly setPendingKey: (key: string | null) => void;
@@ -29,16 +33,16 @@ interface ProjectSessionControllerInput {
 export function useProjectSessionController({
   bridge,
   dispatch,
+  activeProject,
+  setActiveProject,
+  setContinuation,
+  setRecentProjects,
   flushWriting,
   flushSettings,
   setPendingKey,
   setMessage,
   setFailure,
 }: ProjectSessionControllerInput) {
-  const [activeProject, setActiveProject] = useState<ProjectWorkspaceSummary | null>(null);
-  const [continuation, setContinuation] = useState<ProjectContinuationSnapshot | null>(null);
-  const [recentProjects, setRecentProjects] = useState<readonly RecentProject[]>([]);
-
   useEffect(() => {
     dispatch({
       type: 'select',
@@ -61,7 +65,7 @@ export function useProjectSessionController({
   const refreshRecentProjects = useCallback(async (): Promise<void> => {
     const recent = await bridge.project.listRecent({ mode: 'replace' });
     if (recent.state === 'success') setRecentProjects(recent.data.projects);
-  }, [bridge]);
+  }, [bridge, setRecentProjects]);
 
   const projectChanged = useCallback(
     async (
@@ -81,7 +85,7 @@ export function useProjectSessionController({
       setMessage(resultMessage);
       return nextContinuation;
     },
-    [bridge, refreshRecentProjects, setMessage],
+    [bridge, refreshRecentProjects, setActiveProject, setContinuation, setMessage],
   );
 
   const createProject = useCallback(
@@ -216,16 +220,10 @@ export function useProjectSessionController({
         projects.filter((project) => project.projectId !== projectId),
       );
       setMessage('最近作品记录已移除，作品文件保持不变。');
-    }, [bridge, setFailure, setMessage, setPendingKey],
+    }, [bridge, setFailure, setMessage, setPendingKey, setRecentProjects],
   );
 
   return {
-    activeProject,
-    continuation,
-    recentProjects,
-    setActiveProject,
-    setContinuation,
-    setRecentProjects,
     refreshRecentProjects,
     projectChanged,
     createProject,

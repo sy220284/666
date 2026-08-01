@@ -34,10 +34,13 @@ describe('M8-09 V1 stability invariants', () => {
   });
 
   it('implements reopen-last, request generations and retryable shutdown cleanup', async () => {
-    const shell = await source('apps/desktop/renderer/src/app/app-shell-m3.tsx');
-    const main = await source('apps/desktop/main/src/electron-main.ts');
-    expect(shell).toContain("startupBehavior === 'reopen-last'");
-    expect(shell).toContain('workspaceAttentionGeneration.current !== generation');
+    const [startup, runtime, main] = await Promise.all([
+      source('apps/desktop/renderer/src/app/use-workspace-startup.ts'),
+      source('apps/desktop/renderer/src/app/use-workspace-runtime.ts'),
+      source('apps/desktop/main/src/electron-main.ts'),
+    ]);
+    expect(startup).toContain("startupBehavior === 'reopen-last'");
+    expect(runtime).toContain('attentionGeneration.current !== generation');
     expect(main).toContain('finally {');
     expect(main).toContain('if (!shutdownCompleted) shutdownInFlight = null');
   });

@@ -87,7 +87,8 @@ export function useAppShellNavigation({
       setMessage(null);
       dispatch({ type: 'navigate', route: nextRoute });
       return true;
-    }, [dispatch, flushWriting, route, setFailure, setMessage],
+    },
+    [dispatch, flushWriting, route, setFailure, setMessage],
   );
 
   const navigate = useCallback(
@@ -109,7 +110,8 @@ export function useAppShellNavigation({
       void transitionToRoute(resolution.route).then((changed) => {
         if (changed && navigationId === 'home') void refreshWorkspace();
       });
-    }, [
+    },
+    [
       activeProjectId,
       availability,
       disclosureMode,
@@ -148,16 +150,8 @@ export function useAppShellNavigation({
           returnLocation: sourceLocation,
         });
       })();
-    }, [
-      dispatch,
-      filters,
-      flushWriting,
-      route,
-      selection,
-      setCanonEntities,
-      setFailure,
-      setMessage,
-    ],
+    },
+    [dispatch, filters, flushWriting, route, selection, setCanonEntities, setFailure, setMessage],
   );
 
   const returnToAuthorSource = useCallback(async (): Promise<void> => {

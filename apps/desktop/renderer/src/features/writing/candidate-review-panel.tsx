@@ -78,6 +78,7 @@ export function CandidateReviewPanel({
     `预览只读取已保存的当前稿（保存序号 ${draft.revision}），不会写入作品数据库。`,
   );
   const [pending, setPending] = useState(false);
+  const documentRequest = useRef(0);
   const previewRequest = useRef<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<CandidateDocument | null>(null);
   const {
@@ -113,6 +114,7 @@ export function CandidateReviewPanel({
       bridge,
       projectId: project.projectId,
       chapterId: chapter.id,
+      documentRequest,
       previewRequest,
       setCandidates,
       setPreview,
@@ -154,7 +156,9 @@ export function CandidateReviewPanel({
       void loadCandidate(first.candidateId);
     });
     return () => {
+      documentRequest.current += 1;
       const requestId = previewRequest.current;
+      previewRequest.current = null;
       if (requestId) void bridge.candidateAction.cancelPreview(requestId);
     };
   }, [bridge, loadCandidate, refreshList]);

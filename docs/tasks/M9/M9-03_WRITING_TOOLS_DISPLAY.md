@@ -4,22 +4,34 @@
 > 里程碑：M9 V1.1架构治理
 > 对应工作包：AR-03—AR-14
 > 优先级：P0
-> 正式分支：`work/m9-03-v1-1-architecture-unified`
+> 当前正式分支：`work/m9-03-ar05-ar14-continuation`
 
 ## 1. 目标
 
-在一个Runtime、一条正式分支和一个实施PR内完成AR-03—AR-14全部保持行为的架构拆分。M9-04—M9-14仅移除独立任务形式，其冻结需求、依赖、不变量、测试、回退和验收要求全部由本卡承接，不得删减或降级。
+在同一个M9-03 Runtime下完成AR-03—AR-14全部保持行为的架构拆分。M9-04—M9-14仅移除独立任务形式，其冻结需求、依赖、不变量、测试、回退和验收要求全部由本卡承接，不得删减或降级。
 
-## 2. 统一执行模型
+## 2. 当前执行模型
 
-1. M9-03是M9剩余架构拆分的唯一活动任务和机器真源。
-2. AR-03—AR-14作为本卡内的有序子包和审查检查点，不再建立独立任务卡、Runtime、正式分支或PR。
-3. 正式实施顺序为`AR-03 → AR-04 → AR-05 → AR-06 → AR-07 → AR-08 → AR-09 → AR-10 → AR-11 → AR-12 → AR-13 → AR-14`；不得越过冻结依赖。
-4. 每个子包完成后必须运行受影响范围回归、记录结构变化和回退说明；前一子包存在失败时不得进入依赖它的后续子包。
-5. AR-04、AR-10、AR-12和AR-13保持高风险检查点，必须分别保存回退说明和专项验证结果。
-6. 单一实施PR只在AR-03—AR-14全部完成并通过全量永久门禁后转Ready、合并和执行Main Verification。
+作者于2026-08-01明确要求先合并并闭环已完成检查点，再基于main继续推进。该指令覆盖旧版“全部AR只能在一个实施PR中完成”的限制，调整为同一任务内的受控分段交付：
 
-## 3. 必须实施
+1. M9-03仍是M9剩余架构拆分的唯一活动任务和机器真源。
+2. AR-03、AR-04已在PR #272完成，最终受检Head为`9e331399ebae0017106d252d67639a64e986ff77`，squash进入main提交`7adafeeadb973e5cb035c301602c511c2aa065c5`。
+3. AR-05—AR-14从上述main提交建立续作分支`work/m9-03-ar05-ar14-continuation`，通过新的M9-03 Draft PR继续实施。
+4. 正式实施顺序保持`AR-05 → AR-06 → AR-07 → AR-08 → AR-09 → AR-10 → AR-11 → AR-12 → AR-13 → AR-14`，不得越过冻结依赖。
+5. 每个子包完成后必须运行受影响范围回归、记录结构变化和回退说明；前一子包存在失败时不得进入依赖它的后续子包。
+6. AR-10、AR-12和AR-13保持高风险检查点，必须分别保存回退说明和专项验证结果。
+7. M9-03只有在AR-03—AR-14全部完成、续作PR通过全量永久门禁、合并后main验证成功，才允许通过独立治理关闭为Verified。
+
+## 3. 当前检查点
+
+```text
+AR-03 Writing工具与展示拆分          已合并（PR #272）
+AR-04 Writing章节会话状态机          已合并（PR #272）
+AR-05 Canon拆分                      当前执行
+AR-06—AR-14                          待按依赖推进
+```
+
+## 4. 必须实施
 
 - AR-03：拆分Writing纯工具、查找替换、Version、Candidate审阅和Generation展示组件。
 - AR-04：以显式状态机收敛章节打开、Editor生命周期、自动保存、IME、续写位置和统一Draft Flush。
@@ -34,9 +46,9 @@
 - AR-13：拆分Recovery及Search、Validation、Narrative、Structure Operations、Draft、Import/Export工具域。
 - AR-14：退役无职责Legacy Surface，整理CSS责任域，收紧全部结构预算并完成V1.1最终验证。
 
-[`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`](V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md)第4—15节是上述子包的规范性详细范围、依赖、风险和验收真源；本卡与其冲突时以作者最新统一执行指令和更严格的不变量为准。
+[`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`](V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md)第4—15节是上述子包的规范性详细范围、依赖、风险和验收真源；与本卡冲突时，以作者最新明确指令和本卡更新后的受控分段执行模型为准。
 
-## 4. 不可破坏的不变量
+## 5. 不可破坏的不变量
 
 - 不新增产品功能，不改变现有中文文案、测试标记、公开Props和用户工作流语义。
 - 不修改数据库Schema、历史Migration、IPC Channel字符串、`PROTOCOL_VERSION`、正式错误码或公开Bridge方法。
@@ -49,7 +61,7 @@
 - 项目创建、打开、移动、恢复、备份、导入导出、FTS、Diff和事件循环的原子性、安全与性能不得退化。
 - 兼容Facade和根入口只在全部调用方、行为测试与E2E完成迁移后退役。
 
-## 5. 职责与结构预算
+## 6. 职责与结构预算
 
 - 应用或工作台组合根目标不超过300行。
 - 普通React Panel不超过400行，Hook或Controller不超过300行，纯工具模块不超过250行。
@@ -58,7 +70,7 @@
 - 每个子包必须减少其归属的既有结构债务；不得登记新超限、循环依赖或Feature反向依赖例外。
 - AR-14必须将所有目标文件从渐进基线收紧到正式预算，不得承接前序未完成的核心拆分。
 
-## 6. 允许修改范围
+## 7. 允许修改范围
 
 - `apps/desktop/renderer/src/`
 - `apps/desktop/preload/src/`
@@ -75,7 +87,7 @@
 - `.github/workflows/`
 - `vitest.coverage.config.ts`
 
-## 7. 禁止范围
+## 8. 禁止范围
 
 - `migrations/`
 - `packages/domain/src/`
@@ -84,9 +96,19 @@
 - `docs/product/`
 - M9-03以外的历史Evidence目录
 
-若实现确实需要越过禁止范围、改变Schema/协议/公开行为或引入新功能，必须停止实施并重新取得作者授权，不得在本卡内静默扩张。
+若实现确实需要越过禁止范围、改变Schema、协议、公开行为或引入新功能，必须停止实施并重新取得作者授权，不得在本卡内静默扩张。
 
-## 8. 验收标准
+## 9. AR-05验收
+
+- 外层`canon-workbench.tsx`仅负责导航和Panel装配。
+- Entity Canon、Continuity、Narrative Planning和State Proposal四个Panel独立管理Bridge查询、命令和局部状态。
+- 表单解析、标签和值格式化迁入共享模块。
+- 删除、归档、状态失效和作者裁决安全边界保持不变。
+- 状态历史、时间线、知情、伏笔、人物弧和提案裁决行为无变化。
+- 选中实体和跨页面导航保持精确定位。
+- 四个Panel具备独立测试入口，结构预算不新增债务。
+
+## 10. 统一验收标准
 
 - AR-03—AR-14冻结工作包的每项“必须实施”“核心不变量”“强制测试”和“验收”均有可追踪结果。
 - Writing、Canon、Planning和AppShell组合根完成职责收敛，章节会话由显式状态机驱动。
@@ -96,9 +118,9 @@
 - 源码结构扫描无新增债务，目标文件全部满足正式预算。
 - 全量Unit、Integration、Migration、Coverage、Security、Performance、Electron E2E、Build、Package Smoke和Release Check通过。
 
-## 9. 验证矩阵
+## 11. 验证矩阵
 
-每个子包运行受影响专项回归；统一PR合并前运行：
+每个子包运行受影响专项回归；续作PR合并前运行：
 
 ```text
 pnpm task:validate
@@ -119,18 +141,19 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-专项矩阵至少包括Writing会话、Renderer交互、IPC表面与安全、Core故障注入和事务回滚、项目生命周期、备份恢复、FTS/Diff/DOCX性能、三平台Build与Package Smoke。
+专项矩阵至少包括Writing会话、Canon行为、Renderer交互、IPC表面与安全、Core故障注入和事务回滚、项目生命周期、备份恢复、FTS、Diff、DOCX性能、三平台Build与Package Smoke。
 
-## 10. 回退
+## 12. 回退
 
-- 每个AR子包保持兼容Facade或组合根，并在独立检查点记录基线、实施Head、专项验证与回退边界。
-- AR-04、AR-10、AR-12和AR-13必须在进入下一依赖子包前形成专门回退说明。
-- 子包失败时回退到统一分支内最近成功检查点，不在后续子包追补失败。
-- 统一PR合并前可按检查点回退；合并后发生P0回归时通过单次Revert回退整个M9-03，不修改持久化格式。
+- PR #272形成AR-03、AR-04已合并检查点；发现P0回归时可独立Revert提交`7adafeeadb973e5cb035c301602c511c2aa065c5`。
+- AR-05—AR-14在续作分支内保持兼容Facade或组合根，并记录基线、实施Head、专项验证与回退边界。
+- AR-10、AR-12和AR-13必须在进入下一依赖子包前形成专门回退说明。
+- 子包失败时回退到续作分支内最近成功检查点，不在后续子包追补失败。
+- 不修改持久化格式，不以治理文档掩盖未通过的实现或测试。
 
-## 11. 完成条件
+## 13. 完成条件
 
 - AR-03—AR-14全部完成且验收可追踪。
-- M9-04—M9-14保持`Removed（absorbed by M9-03）`，没有独立Runtime、正式分支或PR。
-- 统一实施PR永久门禁全部成功，并以受检`expected_head_sha`合并。
+- M9-04—M9-14保持`Removed（absorbed by M9-03）`，没有独立Runtime或独立任务状态。
+- 续作实施PR永久门禁全部成功，并以受检`expected_head_sha`合并。
 - 合并后main验证成功，再通过独立治理关闭M9-03为Verified并建立V1.1新的`VERIFIED_HOLD`锚点。

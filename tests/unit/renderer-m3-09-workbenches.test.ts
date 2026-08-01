@@ -139,7 +139,17 @@ describe('M3 final React business workbenches', () => {
           path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
           'utf8',
         ),
-        readFile(path.join(rendererRoot, 'features/structure/structure-navigator.tsx'), 'utf8'),
+        Promise.all(
+          [
+            'structure-navigator.tsx',
+            'structure-tree.tsx',
+            'volume-editor-dialog.tsx',
+            'chapter-editor-dialog.tsx',
+            'structure-operation-dialog.tsx',
+            'trash-panel.tsx',
+            'structure-formatters.ts',
+          ].map((file) => readFile(path.join(rendererRoot, 'features/structure', file), 'utf8')),
+        ).then((sources) => sources.join('\n')),
         readFile(path.join(rendererRoot, 'features/canon/canon-core-workbench.tsx'), 'utf8'),
         readFile(
           path.join(rendererRoot, 'features/canon/continuity-relationship-editor.tsx'),

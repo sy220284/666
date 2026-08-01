@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
@@ -26,5 +26,24 @@ describe('Shared Structure boundary', () => {
       "export { StructureNavigator } from '../structure/structure-navigator.js'",
     );
     expect(professional).not.toContain('export function StructureNavigator');
+  });
+
+  it('keeps the frozen Shared Structure responsibility split', async () => {
+    const root = 'apps/desktop/renderer/src/features/structure';
+    const files = [
+      'structure-navigator.tsx',
+      'structure-tree.tsx',
+      'volume-editor-dialog.tsx',
+      'chapter-editor-dialog.tsx',
+      'structure-operation-dialog.tsx',
+      'trash-panel.tsx',
+      'structure-formatters.ts',
+    ];
+
+    await Promise.all(files.map((file) => access(`${root}/${file}`)));
+    const sources = await Promise.all(files.map((file) => readFile(`${root}/${file}`, 'utf8')));
+    expect(
+      sources.filter((source) => source.includes('export function StructureNavigator')),
+    ).toHaveLength(1);
   });
 });

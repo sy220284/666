@@ -92,6 +92,7 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/test-evidence/M4-04/',
   'docs/test-evidence/M8-02/',
   'docs/test-evidence/M8-04/',
+  'docs/test-evidence/M9-00/',
   'docs/product/V1.0_TRACEABILITY_MATRIX.md',
   'README.md',
   'tests/integration/task-lifecycle.test.ts',

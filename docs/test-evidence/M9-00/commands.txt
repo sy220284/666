@@ -1,0 +1,9 @@
+pnpm task:validate
+pnpm check:language
+pnpm format:check
+pnpm lint
+pnpm exec vitest run tests/unit/task-control.test.ts
+node .github/governance/verification-hold-taskctl.mjs pr-policy
+node .github/governance/verification-hold-taskctl.mjs preflight
+gh pr checks 267 --repo sy220284/666
+gh run view 30684427077 --repo sy220284/666

@@ -86,6 +86,7 @@ describe('task control', () => {
         'docs/tasks/M9/M9-02_SHARED_STRUCTURE.md',
         'docs/tasks/runtime/M9-00.json',
         'docs/tasks/runtime/M9-02.json',
+        'docs/test-evidence/M9-00/manifest.json',
       ]),
     ).toBe(true);
     expect(

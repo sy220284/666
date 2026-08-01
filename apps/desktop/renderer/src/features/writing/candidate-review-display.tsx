@@ -146,7 +146,7 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
         <button
           data-discard-candidate
           type="button"
-          disabled={!selectedDocument || selectedDocument.status !== 'pending'}
+          disabled={readOnly || !selectedDocument || selectedDocument.status !== 'pending'}
           onClick={() => void discard()}
         >
           丢弃建议稿

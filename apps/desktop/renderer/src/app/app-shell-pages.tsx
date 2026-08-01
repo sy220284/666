@@ -27,7 +27,10 @@ import type { CapabilityMatrix } from '../runtime/capability-matrix.js';
 import type { AppDisclosureMode, PrimaryNavigationId } from '../shell/app-shell-model.js';
 import type { AuthorNavigationTarget } from '../shell/navigation-target.js';
 import type { HomeHealthSignal } from '../shell/home-dashboard-model.js';
-import type { RendererRouteId, RendererSelection } from '../state/ui-state-boundary.js';
+import type {
+  RendererRouteId,
+  RendererSelectionState,
+} from '../state/ui-state-boundary.js';
 import { continuationRoute, isWritingRoute } from './app-shell-helpers.js';
 
 export interface AppShellPagesProps {
@@ -50,7 +53,7 @@ export interface AppShellPagesProps {
   readonly canonSection: CanonSection;
   readonly dataToolsSection: DataToolsSection;
   readonly writingPanel: WritingPanel;
-  readonly selection: RendererSelection;
+  readonly selection: RendererSelectionState;
   readonly navigationQuery: string | null;
   readonly onCreateFromOnboarding: (plan: OnboardingProjectPlan) => Promise<boolean>;
   readonly onCloseProject: (projectId: string) => Promise<void>;

@@ -15,6 +15,12 @@ function replaceOnce(source, search, replacement, label) {
 let planning = await readFile(planningPath, 'utf8');
 planning = replaceOnce(
   planning,
+  "import { useCallback, useEffect, useState, type FormEvent } from 'react';",
+  "import { useCallback, useState, type FormEvent } from 'react';",
+  'remove unused Planning useEffect import',
+);
+planning = replaceOnce(
+  planning,
   `import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { StructureNavigator } from '../structure/structure-navigator.js';

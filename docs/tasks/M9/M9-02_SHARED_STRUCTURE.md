@@ -60,7 +60,7 @@
 - `StructureNavigator`仅由Shared Structure领域导出。
 - Planning与Writing均通过新共享模块完成原有装配。
 - M9-01结构扫描不再需要`writing → planning`例外。
-- 新共享TSX文件均满足默认800行预算，不登记新结构债务。
+- `StructureNavigator`组合根不超过300行，子Panel与Controller不超过400行，不登记新结构债务。
 - 原卷章、回收站、拆分、合并、跨章移动相关单元、集成与E2E全部通过。
 - 六项永久门禁全部成功。
 
@@ -94,16 +94,17 @@ pnpm release:check
 
 ## 9. 实施结果
 
-- 最终实施提交：`c65e48edb7c90c31157eead829b91cdafec63d7c`。
+- 最终实施提交：`54a0297beca882d920319e2fca3618fe5d4dc0d0`。
 - 一次性确定性提取工作流：`30681522018`，结果成功。
 - 最终合同修复工作流：`30681893371`，Lint、结构扫描和受影响单测全部成功。
-- 新增`features/structure/structure-navigator.tsx`，格式化后745行，保持在默认800行结构预算以内。
+- 完成冻结方案规定的七文件职责拆分：组合根、结构树、卷编辑、章节编辑、结构操作、回收站和纯格式化模块均独立落盘。
+- `StructureNavigator`组合根180行；子模块最大224行，分别满足300行组合根和400行Panel/Controller预算。
 - 卷章目录、卷章编辑、回收站、拆章、并章和跨章移动逻辑已从Planning主工作台迁出。
 - Writing直接导入Shared Structure，不再依赖Planning Feature。
 - Planning通过Shared Structure完成原有装配，并保留兼容重导出。
 - M9-01中唯一`writing → planning`历史例外已删除，禁止规则继续保留。
-- 变换后全仓扫描：234个源码文件、653条相对导入边、15项既有结构债务；没有新增债务或循环例外。
-- Shared Structure专项边界测试与迁移后的M3工作台安全标记测试均通过。
+- 变换后全仓扫描：240个源码文件、675条相对导入边、15项既有结构债务；没有新增债务或循环例外。
+- Shared Structure专项边界测试与迁移后的M3工作台安全标记共6项通过，并固定七文件职责边界。
 - 发布配置单元测试9项和`pnpm release:check`均通过。
 - TypeScript全仓检查通过。
 - 临时变换脚本与临时工作流已从最终差异中删除。

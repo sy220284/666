@@ -4,14 +4,13 @@ import {
   createPrimaryNavigationItems,
   resolvePrimaryNavigationIntent,
   type AppDisclosureMode,
+  type PrimaryNavigationAvailability,
   type PrimaryNavigationId,
 } from '../shell/app-shell-model.js';
 import {
   resolveAuthorNavigationTarget,
   type AuthorNavigationTarget,
 } from '../shell/navigation-target.js';
-import { deriveCapabilityMatrix } from '../runtime/capability-matrix.js';
-import { flushRegisteredDraft } from '../runtime/draft-flush-registry.js';
 import type { RendererReturnLocation, RendererRouteId } from '../state/ui-state-boundary.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 import {
@@ -24,7 +23,8 @@ import {
 interface AppShellNavigationInput {
   readonly activeProjectId: string | null;
   readonly disclosureMode: AppDisclosureMode;
-  readonly availability: ReturnType<typeof deriveCapabilityMatrix>['navigation'];
+  readonly availability: PrimaryNavigationAvailability;
+  readonly flushWriting: () => Promise<boolean>;
   readonly refreshWorkspace: () => Promise<void>;
   readonly setCanonEntities: () => void;
   readonly setFailure: (failure: FailureView | null) => void;
@@ -35,6 +35,7 @@ export function useAppShellNavigation({
   activeProjectId,
   disclosureMode,
   availability,
+  flushWriting,
   refreshWorkspace,
   setCanonEntities,
   setFailure,
@@ -74,8 +75,6 @@ export function useAppShellNavigation({
       }),
     [activeProjectId, availability, disclosureMode, route],
   );
-
-  const flushWriting = useCallback(async (): Promise<boolean> => flushRegisteredDraft(), []);
 
   const transitionToRoute = useCallback(
     async (nextRoute: RendererRouteId): Promise<boolean> => {
@@ -192,7 +191,6 @@ export function useAppShellNavigation({
     settingsTrigger,
     settingsReturnRoute,
     mainContent,
-    flushWriting,
     transitionToRoute,
     navigate,
     navigateToAuthorTarget,

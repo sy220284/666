@@ -176,10 +176,7 @@ describe('M3 final React business workbenches', () => {
         path.join(rendererRoot, 'features/canon/continuity-relationship-editor.tsx'),
         'utf8',
       ),
-      readFile(
-        path.join(rendererRoot, 'features/canon/narrative-relationship-editor.tsx'),
-        'utf8',
-      ),
+      readFile(path.join(rendererRoot, 'features/canon/narrative-relationship-editor.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'bridge/use-bridge-resource.ts'), 'utf8'),
       Promise.all(

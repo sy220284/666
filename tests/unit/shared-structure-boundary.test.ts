@@ -12,10 +12,11 @@ import {
 
 describe('Shared Structure boundary', () => {
   it('keeps Writing independent from Planning', async () => {
-    const writing = await readFile(
-      'apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx',
-      'utf8',
-    );
+    const writing = await Promise.all(
+      ['writing-core-workbench.tsx', 'writing-workbench-view.tsx'].map((file) =>
+        readFile(`apps/desktop/renderer/src/features/writing/${file}`, 'utf8'),
+      ),
+    ).then((sources) => sources.join('\n'));
     expect(writing).toContain("from '../structure/structure-navigator.js'");
     expect(writing).not.toMatch(/from ['"]\.\.\/planning\//u);
   });

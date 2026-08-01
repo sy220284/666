@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M9-03",
+  "commit": "1bdf14603432400f77984e73b44f09820a5a09fe",
+  "generatedAt": "2026-08-01T08:20:00.000Z",
+  "acceptanceSource": "LOCAL_AND_GITHUB_ACTIONS_PENDING",
+  "files": [
+    {
+      "path": "AR-04_ROLLBACK_AND_VERIFICATION.md",
+      "bytes": 2658,
+      "sha256": "ea3507b0f98e4f48ad5502b0fc7086f90edef8133a2abd197becdfd132da035c"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 393,
+      "sha256": "bfb321aeb63fddd546a6030cd516d9afb78ebdc149bbca3826e99205d61bb11a"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 606,
+      "sha256": "f2196d8958c18f991fb928f3929c07efa12e585587e2ce6dd3b7447fb50cdbb1"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 696,
+      "sha256": "660297742693124acdb3bdf88929e67137c81c6410b407b7442545badcdb88cf"
+    }
+  ]
+}

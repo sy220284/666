@@ -1,0 +1,9 @@
+pnpm check:boundaries
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:security
+pnpm exec vitest run tests/unit/writing-session-architecture.test.ts tests/unit/chapter-session-state.test.ts tests/unit/writing-save-context-contract.test.ts tests/unit/m8-09-v1-stability-invariants.test.ts tests/unit/shared-structure-boundary.test.ts
+pnpm check:language
+git diff --check

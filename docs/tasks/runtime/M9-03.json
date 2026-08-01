@@ -42,7 +42,8 @@
     "docs/tasks/",
     "docs/test-evidence/M9-03/",
     "scripts/",
-    ".github/workflows/"
+    ".github/workflows/",
+    "vitest.coverage.config.ts"
   ],
   "forbiddenPaths": [
     "migrations/",

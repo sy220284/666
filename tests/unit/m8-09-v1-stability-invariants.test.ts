@@ -11,16 +11,18 @@ const source = (file: string) => readFile(path.join(process.cwd(), file), 'utf8'
 describe('M8-09 V1 stability invariants', () => {
   it('keeps the old chapter session authoritative until the replacement draft loads', async () => {
     const content = await source(
-      'apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx',
+      'apps/desktop/renderer/src/features/writing/use-chapter-session.ts',
     );
     const openChapter = content.slice(
       content.indexOf('const openChapter = useCallback'),
-      content.indexOf('if (initialChapterRequested.current) return;'),
+      content.indexOf('useEffect(() => {'),
     );
-    expect(openChapter).toContain('openingChapter.current = nextChapter.id');
-    expect(openChapter).toContain('editor.current?.setEditable(false)');
-    expect(openChapter).not.toContain('setChapter(nextChapter)');
-    expect(openChapter).not.toContain('activeChapter.current = nextChapter');
+    expect(openChapter).toContain('const generation = ++requestGeneration.current');
+    expect(openChapter).toContain('input.editor.current?.setEditable(false)');
+    expect(openChapter).toContain('chapterRequestIsCurrent');
+    expect(openChapter.indexOf("outcome.state !== 'success'")).toBeLessThan(
+      openChapter.indexOf('input.mountEditor(outcome.data, nextChapter)'),
+    );
   });
 
   it('does not delete committed workspaces or fail healthy opens when recent metadata fails', async () => {

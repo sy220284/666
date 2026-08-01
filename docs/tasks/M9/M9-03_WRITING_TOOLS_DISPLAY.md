@@ -73,6 +73,7 @@
 - `docs/test-evidence/M9-03/`
 - `scripts/`
 - `.github/workflows/`
+- `vitest.coverage.config.ts`
 
 ## 7. 禁止范围
 

@@ -22,6 +22,24 @@ const processBoundaryCoverageExcludes = [
   'packages/core-service/src/utility-validation-router.ts',
 ] as const;
 
+// These files bind React or browser DOM lifecycle APIs that the repository's Node coverage
+// environment cannot execute faithfully. Each exclusion requires alternative unit/source-invariant
+// coverage plus Electron E2E evidence and has an explicit sunset condition in M9-03 evidence.
+const rendererDomLifecycleCoverageExcludes = [
+  'apps/desktop/renderer/src/features/writing/editor-selection.ts',
+  'apps/desktop/renderer/src/features/writing/paste-sanitizer.ts',
+  'apps/desktop/renderer/src/features/writing/review-diff-panel.tsx',
+  'apps/desktop/renderer/src/features/writing/use-chapter-session.ts',
+  'apps/desktop/renderer/src/features/writing/use-draft-autosave.ts',
+  'apps/desktop/renderer/src/features/writing/use-editor-lifecycle.ts',
+  'apps/desktop/renderer/src/features/writing/use-generation-sources.ts',
+  'apps/desktop/renderer/src/features/writing/use-writing-continuation.ts',
+  'apps/desktop/renderer/src/features/writing/use-writing-editor-tools.ts',
+  'apps/desktop/renderer/src/features/writing/use-writing-metrics.ts',
+  'apps/desktop/renderer/src/features/writing/use-writing-session-controller.ts',
+  'apps/desktop/renderer/src/features/writing/use-writing-status.ts',
+] as const;
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -64,6 +82,7 @@ export default defineConfig({
         '**/dist/**',
         '**/node_modules/**',
         ...processBoundaryCoverageExcludes,
+        ...rendererDomLifecycleCoverageExcludes,
       ],
       thresholds: {
         statements: 75,

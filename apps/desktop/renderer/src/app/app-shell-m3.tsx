@@ -216,7 +216,7 @@ export function AppShell({ bridge }: AppShellProps) {
       settings={settingsController.settings}
       failure={failure}
       globalStatus={globalStatus}
-      globalStatusAction={globalStatusAction}
+      {...(globalStatusAction ? { globalStatusAction } : {})}
       foregroundTaskId={navigation.foregroundTaskId}
       navOpen={navigation.navOpen}
       helpOpen={helpOpen}

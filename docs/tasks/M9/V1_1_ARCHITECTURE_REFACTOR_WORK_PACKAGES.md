@@ -1,8 +1,8 @@
 # WorldForge V1.1 架构拆分重构工作包
 
-> 状态：规划冻结并已进入机器任务索引
+> 状态：范围冻结；AR-01、AR-02已Verified，AR-03—AR-14已吸收进M9-03统一执行
 > 上位方案：[`V1_1_ARCHITECTURE_REFACTOR_GOVERNANCE.md`](V1_1_ARCHITECTURE_REFACTOR_GOVERNANCE.md)  
-> 执行原则：一个工作包对应一个正式实施PR，禁止跨包混改
+> 执行原则：AR-03—AR-14对应M9-03一个正式实施PR；每个工作包作为有序内部检查点，禁止在同一检查点跨职责混改
 
 ## 1. 总览
 
@@ -162,7 +162,7 @@ idle → loading → ready → flushing → switching → failed
 ### 禁止事项
 
 - 不改编辑器功能、工具栏布局和Candidate逻辑。
-- 不与其他工作台拆分合并。
+- 不在AR-04内部检查点混入其他工作台、视觉、文案或AI功能修改。
 
 ## 6. AR-05 Canon拆分
 
@@ -440,9 +440,9 @@ core-service/src/recovery/
 - 全量Quality、安全、性能、E2E、Build、Package Smoke和Release Check通过。
 - 建立V1.1新的Verified锚点。
 
-## 16. 任务激活模板
+## 16. 统一任务执行约束
 
-工作包转为正式任务时，任务卡必须包含：
+AR-03—AR-14已经统一归入M9-03，不再分别转为正式任务。M9-03任务卡和Runtime必须统一包含：
 
 - 精确允许路径与禁止路径；
 - 上游依赖；
@@ -451,7 +451,7 @@ core-service/src/recovery/
 - 回退方案；
 - 结构预算目标；
 - 不涉及Schema、协议和新功能的声明；
-- PR正文中的`worldforge-task`标记；
-- Runtime状态从`PLANNED`进入`IN_PROGRESS`。
+- 统一PR正文中的`worldforge-task: M9-03`标记；
+- AR-03—AR-14内部检查点顺序、专项验证和回退记录。
 
-AR-01已经作为第一个正式工作包完成Verified，AR-02已按依赖激活。高风险包不得并行修改同一核心文件；其他互不重叠的工作包是否并行，由激活治理根据实际文件范围决定。
+AR-01、AR-02已经完成Verified。AR-03—AR-14在M9-03同一正式分支内按冻结依赖推进；AR-04、AR-10、AR-12和AR-13完成专项验证和回退说明前，不得进入依赖它们的后续检查点。

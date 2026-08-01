@@ -1,81 +1,103 @@
-# M9-03 WorldForge V1.1 Writing工具与展示拆分
+# M9-03 WorldForge V1.1剩余架构拆分统一执行
 
 > 状态：In Progress
 > 里程碑：M9 V1.1架构治理
-> 对应工作包：AR-03
+> 对应工作包：AR-03—AR-14
 > 优先级：P0
-> 正式分支：`work/m9-03-writing-tools-display`
+> 正式分支：`work/m9-03-v1-1-architecture-unified`
 
 ## 1. 目标
 
-从`writing-core-workbench.tsx`先提取低风险纯工具、查找替换、Version、Candidate审阅与Generation展示组件，缩小Writing组合根，同时保持章节会话、自动保存、IME、Editor挂载和Bridge时序不变。
+在一个Runtime、一条正式分支和一个实施PR内完成AR-03—AR-14全部保持行为的架构拆分。M9-04—M9-14仅移除独立任务形式，其冻结需求、依赖、不变量、测试、回退和验收要求全部由本卡承接，不得删减或降级。
 
-## 2. 必须实施
+## 2. 统一执行模型
 
-1. 提取`paste-sanitizer.ts`。
-2. 提取`editor-selection.ts`。
-3. 提取`continuation-anchor.ts`。
-4. 提取`find-replace-toolbar.tsx`。
-5. 提取`version-panel.tsx`。
-6. 提取`historical-navigation-notice.tsx`。
-7. 提取`candidate-review-panel.tsx`。
-8. 提取`candidate-conflicts.ts`。
-9. 提取`candidate-selection.ts`。
-10. 将Generation表单、运行状态、候选预览和融合展示拆为职责单一的子组件。
-11. `WritingWorkbench`继续作为公开入口，现有Props、中文文案、`data-*`测试标记和Bridge调用顺序保持兼容。
-12. 将依赖源码位置的测试迁移到新职责文件，并补充纯工具和展示边界回归测试。
+1. M9-03是M9剩余架构拆分的唯一活动任务和机器真源。
+2. AR-03—AR-14作为本卡内的有序子包和审查检查点，不再建立独立任务卡、Runtime、正式分支或PR。
+3. 正式实施顺序为`AR-03 → AR-04 → AR-05 → AR-06 → AR-07 → AR-08 → AR-09 → AR-10 → AR-11 → AR-12 → AR-13 → AR-14`；不得越过冻结依赖。
+4. 每个子包完成后必须运行受影响范围回归、记录结构变化和回退说明；前一子包存在失败时不得进入依赖它的后续子包。
+5. AR-04、AR-10、AR-12和AR-13保持高风险检查点，必须分别保存回退说明和专项验证结果。
+6. 单一实施PR只在AR-03—AR-14全部完成并通过全量永久门禁后转Ready、合并和执行Main Verification。
 
-## 3. 不可破坏的不变量
+## 3. 必须实施
 
-- 不修改自动保存、切章、Editor创建/销毁、IME组合、续写位置保存和刷新前Flush顺序；这些生命周期属于M9-04。
-- 不修改数据库Schema、历史Migration、IPC Channel、协议版本、错误码或公开Bridge方法。
-- Candidate仍只能预览后采用；冲突、锁定块、撤销和Skeleton审阅语义不变。
+- AR-03：拆分Writing纯工具、查找替换、Version、Candidate审阅和Generation展示组件。
+- AR-04：以显式状态机收敛章节打开、Editor生命周期、自动保存、IME、续写位置和统一Draft Flush。
+- AR-05：将Canon拆为Entity Canon、Continuity、Narrative Planning和State Proposal四个独立业务Panel。
+- AR-06：拆分任务书、大纲、场景节拍和规划上下文，继续复用Shared Structure。
+- AR-07：拆分AppShell启动、项目会话、设置持久化、Workspace Attention、任务订阅、导航守卫、状态模型和布局。
+- AR-08：拆分Contracts领域聚合，保持所有公开导出、Channel、Schema、协议版本和Bridge签名完全兼容。
+- AR-09：将Preload Bridge拆为领域Factory，保持`window.worldforge`表面和MessagePort协议一致。
+- AR-10：将Main IPC拆为领域Handler注册器和统一安全、异常与释放边界。
+- AR-11：拆分State Proposal、Ending Snapshot、Derived Invalidation、Generation Run、Candidate持久化和模型支持档案。
+- AR-12：拆分Project Workspace创建、打开、移动、校验、路径策略、Manifest和数据库上下文。
+- AR-13：拆分Recovery及Search、Validation、Narrative、Structure Operations、Draft、Import/Export工具域。
+- AR-14：退役无职责Legacy Surface，整理CSS责任域，收紧全部结构预算并完成V1.1最终验证。
+
+[`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`](V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md)第4—15节是上述子包的规范性详细范围、依赖、风险和验收真源；本卡与其冲突时以作者最新统一执行指令和更严格的不变量为准。
+
+## 4. 不可破坏的不变量
+
+- 不新增产品功能，不改变现有中文文案、测试标记、公开Props和用户工作流语义。
+- 不修改数据库Schema、历史Migration、IPC Channel字符串、`PROTOCOL_VERSION`、正式错误码或公开Bridge方法。
+- `project.sqlite`继续是作品唯一权威真源；一次权威事务不得被拆成多个异步服务调用。
+- AI输出仍先进入Candidate，作者确认前不得修改Draft或已确认设定。
+- Candidate预览、采用、撤销、冲突、锁定块和Skeleton审阅语义不变。
 - Version创建、定稿、恢复为新稿、导出和历史定位语义不变。
-- AI输出仍只进入Candidate，作者确认前不得写入当前稿。
-- 不修改Core Service、Main、Preload或Contracts业务逻辑。
+- 快速切章、自动保存、IME组合、Editor代次、Draft Flush和关闭窗口时序必须满足冻结会话矩阵。
+- Credential Broker仍只在Main持有明文凭据；Renderer不得获得Node、文件系统、SQLite、环境变量或凭据能力。
+- 项目创建、打开、移动、恢复、备份、导入导出、FTS、Diff和事件循环的原子性、安全与性能不得退化。
+- 兼容Facade和根入口只在全部调用方、行为测试与E2E完成迁移后退役。
 
-## 4. 职责与结构预算
+## 5. 职责与结构预算
 
-- `writing-core-workbench.tsx`仅保留Writing组合、章节会话和M9-04待处理的生命周期逻辑，本任务不得增加其行数。
-- 新普通React Panel不超过400行，Hook或Controller不超过300行，纯工具模块不超过250行，任何非生成源码不得超过1000行。
-- `writing-core-workbench.tsx`现有超限债务继续归属AR-03/AR-04；本任务完成后必须显著下降，并由M9-04完成300行组合根目标。
-- 不登记新的结构债务、Feature反向依赖或循环依赖例外。
+- 应用或工作台组合根目标不超过300行。
+- 普通React Panel不超过400行，Hook或Controller不超过300行，纯工具模块不超过250行。
+- Main/Preload领域注册器不超过350行，普通Core事务服务不超过600行，强事务内聚服务不超过800行。
+- 任一非生成源码绝对不得超过1000行，除非符合冻结治理定义的正式例外。
+- 每个子包必须减少其归属的既有结构债务；不得登记新超限、循环依赖或Feature反向依赖例外。
+- AR-14必须将所有目标文件从渐进基线收紧到正式预算，不得承接前序未完成的核心拆分。
 
-## 5. 允许修改范围
+## 6. 允许修改范围
 
-- `apps/desktop/renderer/src/features/writing/`
-- `tests/unit/`
-- `tests/integration/`
-- `tests/e2e/`
-- `tests/security/`
-- `tests/performance/`
+- `apps/desktop/renderer/src/`
+- `apps/desktop/preload/src/`
+- `apps/desktop/main/src/`
+- `packages/contracts/src/`
+- `packages/core-service/src/`
+- `packages/testkit/src/`
+- `tests/`
 - `docs/architecture/`
+- `docs/testing/`
 - `docs/tasks/`
+- `docs/test-evidence/M9-03/`
 - `scripts/`
 - `.github/workflows/`
 
-## 6. 禁止范围
+## 7. 禁止范围
 
-- `apps/desktop/main/src/`
-- `apps/desktop/preload/src/`
-- `packages/contracts/src/`
-- `packages/core-service/src/`
+- `migrations/`
 - `packages/domain/src/`
 - `packages/editor-core/src/`
 - `packages/prompts/src/`
-- `migrations/`
-- 历史Evidence目录
+- `docs/product/`
+- M9-03以外的历史Evidence目录
 
-## 7. 验收标准
+若实现确实需要越过禁止范围、改变Schema/协议/公开行为或引入新功能，必须停止实施并重新取得作者授权，不得在本卡内静默扩张。
 
-- 冻结工作包列出的纯工具与展示模块全部独立落盘，职责边界可由测试验证。
-- Candidate预览、采用、撤销、冲突、锁定块和Skeleton审阅行为一致。
-- Version创建、定稿、恢复为新稿、导出和历史定位行为一致。
-- 粘贴清理、编辑器选择和续写锚点纯函数拥有直接单元测试。
-- 原Writing专项Unit、Integration、Security、Performance和Electron E2E全部通过。
-- 源码结构扫描无新增债务，永久门禁全部成功。
+## 8. 验收标准
 
-## 8. 验证矩阵
+- AR-03—AR-14冻结工作包的每项“必须实施”“核心不变量”“强制测试”和“验收”均有可追踪结果。
+- Writing、Canon、Planning和AppShell组合根完成职责收敛，章节会话由显式状态机驱动。
+- Contracts、Preload和Main IPC公开表面、Channel集合、Schema和错误语义与基线精确一致。
+- State Proposal、Generation、Project Workspace、Recovery和工具域完成内部模块化，事务与故障注入矩阵全部通过。
+- 无可达Legacy业务入口，CSS责任域明确，主题、无障碍、DPI和1280×800布局无回归。
+- 源码结构扫描无新增债务，目标文件全部满足正式预算。
+- 全量Unit、Integration、Migration、Coverage、Security、Performance、Electron E2E、Build、Package Smoke和Release Check通过。
+
+## 9. 验证矩阵
+
+每个子包运行受影响专项回归；统一PR合并前运行：
 
 ```text
 pnpm task:validate
@@ -96,13 +118,18 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-## 9. 回退
+专项矩阵至少包括Writing会话、Renderer交互、IPC表面与安全、Core故障注入和事务回滚、项目生命周期、备份恢复、FTS/Diff/DOCX性能、三平台Build与Package Smoke。
 
-- 本任务不改变持久化格式，可通过单次Revert恢复原Writing组合实现。
-- 若提取导致自动保存、切章、IME、Candidate或Version行为变化，立即回滚本工作包，不跨入M9-04追补。
+## 10. 回退
 
-## 10. 完成条件
+- 每个AR子包保持兼容Facade或组合根，并在独立检查点记录基线、实施Head、专项验证与回退边界。
+- AR-04、AR-10、AR-12和AR-13必须在进入下一依赖子包前形成专门回退说明。
+- 子包失败时回退到统一分支内最近成功检查点，不在后续子包追补失败。
+- 统一PR合并前可按检查点回退；合并后发生P0回归时通过单次Revert回退整个M9-03，不修改持久化格式。
 
-- 独立PR永久门禁成功。
-- 低风险工具与展示职责完成拆分，章节会话控制逻辑保持原位。
-- 合并后main验证成功，再通过独立治理关闭为Verified。
+## 11. 完成条件
+
+- AR-03—AR-14全部完成且验收可追踪。
+- M9-04—M9-14保持`Removed（absorbed by M9-03）`，没有独立Runtime、正式分支或PR。
+- 统一实施PR永久门禁全部成功，并以受检`expected_head_sha`合并。
+- 合并后main验证成功，再通过独立治理关闭M9-03为Verified并建立V1.1新的`VERIFIED_HOLD`锚点。

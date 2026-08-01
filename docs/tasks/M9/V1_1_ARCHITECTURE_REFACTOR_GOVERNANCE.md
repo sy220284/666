@@ -4,7 +4,7 @@
 > 基线：`main@3448e5ae8ec0bdd2ce1f983141b0ba654957e2a9`  
 > 适用版本：V1.0.0-r1之后、V1.5功能开发之前  
 > 方案性质：保持行为的架构治理，不新增产品功能  
-> 建议实施形式：独立工作包、独立分支、独立PR、逐包验证与可回退合并
+> 实施形式：AR-01、AR-02已独立Verified；AR-03—AR-14统一归入M9-03单一Runtime、正式分支和实施PR，按内部检查点逐包验证与回退
 
 ## 1. 治理目标
 
@@ -223,7 +223,7 @@ preload/src/bridge/
 
 ## 5. 实施顺序
 
-实施按十四个工作包推进，详细范围见同目录`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`。
+实施按十四个工作包推进，详细范围见同目录`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`。AR-01和AR-02已经独立Verified；AR-03—AR-14作为M9-03内部有序检查点，在同一正式分支和实施PR中完成。
 
 ```text
 AR-01 重构安全网
@@ -245,10 +245,10 @@ AR-14 Legacy、CSS与最终结构收敛
 依赖原则：
 
 - AR-01完成前不得开始生产代码拆分。
-- AR-04必须独立PR，不得与视觉、文案或AI功能修改混合。
+- AR-04必须作为独立高风险检查点，不得在该检查点混入视觉、文案或AI功能修改。
 - AR-08、AR-09、AR-10按Contracts→Preload→Main顺序推进。
 - AR-11完成后方可进入V1.5状态与记忆功能开发。
-- AR-12和AR-13必须分别提交，禁止合并为一个高风险PR。
+- AR-12和AR-13必须分别形成检查点、专项验证和回退说明，禁止把两个高风险职责混为一次不可审查的改动。
 - AR-14只做退役与收尾，不承载前序未完成的核心拆分。
 
 ## 6. 结构预算
@@ -309,7 +309,7 @@ AR-14 Legacy、CSS与最终结构收敛
 - trusted sender、统一异常边界、诊断ID和隐私日志保持一致。
 - Task MessagePort的ACK、重复事件、序号缺口和取消行为保持一致。
 
-## 8. 每个实施PR的强制门禁
+## 8. 统一实施PR的强制门禁
 
 ```text
 pnpm task:validate
@@ -339,14 +339,14 @@ pnpm release:check
 
 ## 9. PR治理规则
 
-- 每个工作包独立任务、独立分支、独立PR。
-- 单个PR只处理一个明确职责边界。
+- AR-03—AR-14统一绑定M9-03任务、Runtime、正式分支和实施PR；M9-04—M9-14不再独立激活。
+- 单个AR内部检查点只处理一个明确职责边界，并记录基线、专项验证和回退方案。
 - 不允许“顺手修复”无关功能、视觉或文案。
 - 数据库Schema、Migration、IPC协议或公开Bridge发生变化时，必须停止并重新立项。
 - 任何P0数据路径失败、E2E失败、覆盖率下降或安全门禁失败立即阻断。
 - 合并前记录基线Head、实施Head、永久门禁和专项验收结果。
 - 使用`expected_head_sha`受控合并，防止审核后Head漂移。
-- 合并后执行Main Verification；失败时回滚当前工作包，不跨包追补。
+- 全部内部检查点完成后合并统一PR并执行Main Verification；失败时回滚M9-03，不跨检查点追补。
 
 ## 10. 回退策略
 
@@ -362,21 +362,21 @@ AR-04、AR-10、AR-12和AR-13为高风险工作包，必须在合并前保存独
 
 ## 11. 激活状态
 
-M9通过独立激活治理进入`parallel-pr`实施模式：
+M9通过激活治理进入`parallel-pr`实施模式，并对剩余拆分采用统一任务：
 
 1. M8-09继续作为最后一个V1.0 `VERIFIED_HOLD`兼容锚点。
 2. M9任务通过`TASK_AUTHORIZATION.json`和独立Runtime激活，不改写V1.0终态锚点。
-3. AR-01已建立正式任务卡、Runtime和任务索引并完成Verified。
-4. AR-02已在AR-01之后独立激活；其他工作包保持Planned，按依赖逐包建立任务卡。
-5. 不同任务可并行开放PR，main写入、Main Verification和Verified关闭保持串行。
+3. AR-01和AR-02已通过各自正式任务卡、Runtime和PR完成Verified。
+4. AR-03—AR-14全部由M9-03统一任务卡和Runtime承接；M9-04—M9-14标记为`Removed（absorbed by M9-03）`，只移除独立执行形式。
+5. M9-03按冻结依赖推进内部检查点，使用一条正式分支和一个实施PR；main写入、Main Verification和Verified关闭保持串行。
 
-任何未建立独立任务卡和Runtime的工作包仍不属于实施授权范围。
+M9-03 Runtime的统一范围是AR-03—AR-14的唯一实施授权；不得为被吸收ID建立第二套状态或执行入口。
 
 ## 12. 完成定义
 
 V1.1架构治理完成必须同时满足：
 
-- 十四个工作包全部Verified。
+- AR-01、AR-02保持Verified，AR-03—AR-14内部检查点全部验收，并将M9-03关闭为Verified。
 - Writing会话由显式状态机驱动，巨型核心工作台不再承担全部职责。
 - AppShell、Canon、Planning、Contracts、Preload和Main IPC完成职责拆分。
 - V1.5直接相关的State Proposal、Generation、Project Workspace和Recovery完成内部模块化。

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "defaultMaxLines": {
+    "tsx": 800,
+    "ts": 1200
+  },
+  "oversizedFiles": {
+    "apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx": {
+      "maxLines": 3300,
+      "targetLines": 300,
+      "workPackage": "AR-03/AR-04"
+    },
+    "apps/desktop/renderer/src/features/canon/canon-core-workbench.tsx": {
+      "maxLines": 2100,
+      "targetLines": 300,
+      "workPackage": "AR-05"
+    },
+    "apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx": {
+      "maxLines": 2100,
+      "targetLines": 300,
+      "workPackage": "AR-06"
+    },
+    "apps/desktop/renderer/src/app/app-shell-m3.tsx": {
+      "maxLines": 1550,
+      "targetLines": 300,
+      "workPackage": "AR-07"
+    },
+    "apps/desktop/main/src/ipc-handlers.ts": {
+      "maxLines": 1700,
+      "targetLines": 350,
+      "workPackage": "AR-10"
+    },
+    "apps/desktop/preload/src/index.ts": {
+      "maxLines": 1350,
+      "targetLines": 250,
+      "workPackage": "AR-09"
+    },
+    "packages/contracts/src/index.ts": {
+      "maxLines": 1250,
+      "targetLines": 250,
+      "workPackage": "AR-08"
+    },
+    "packages/core-service/src/state-proposal.ts": {
+      "maxLines": 1500,
+      "targetLines": 700,
+      "workPackage": "AR-11"
+    },
+    "packages/core-service/src/generation-run.ts": {
+      "maxLines": 1550,
+      "targetLines": 700,
+      "workPackage": "AR-11"
+    },
+    "packages/core-service/src/project-workspace.ts": {
+      "maxLines": 1250,
+      "targetLines": 700,
+      "workPackage": "AR-12"
+    },
+    "packages/core-service/src/recovery.ts": {
+      "maxLines": 1450,
+      "targetLines": 700,
+      "workPackage": "AR-13"
+    },
+    "packages/core-service/src/search-index.ts": {
+      "maxLines": 1250,
+      "targetLines": 700,
+      "workPackage": "AR-13"
+    },
+    "packages/core-service/src/narrative-planning.ts": {
+      "maxLines": 1200,
+      "targetLines": 700,
+      "workPackage": "AR-13"
+    },
+    "packages/core-service/src/validation.ts": {
+      "maxLines": 1150,
+      "targetLines": 700,
+      "workPackage": "AR-13"
+    },
+    "packages/core-service/src/structure-operations.ts": {
+      "maxLines": 1150,
+      "targetLines": 700,
+      "workPackage": "AR-13"
+    }
+  },
+  "forbiddenFeatureEdges": [
+    "writing>planning"
+  ],
+  "allowedFeatureImports": [
+    {
+      "from": "apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx",
+      "to": "apps/desktop/renderer/src/features/planning/planning-workbench.tsx",
+      "reason": "现有StructureNavigator复用，必须在AR-02迁入features/structure后删除"
+    }
+  ],
+  "allowedCycles": [
+    [
+      "apps/desktop/renderer/src/shell/app-shell-model.ts",
+      "apps/desktop/renderer/src/runtime/capability-runtime.ts",
+      "apps/desktop/renderer/src/runtime/capability-matrix.ts"
+    ],
+    [
+      "packages/core-service/src/draft.ts",
+      "packages/core-service/src/project-workspace.ts",
+      "packages/core-service/src/project-structure.ts"
+    ],
+    [
+      "packages/core-service/src/project-workspace.ts",
+      "packages/core-service/src/project-structure.ts"
+    ]
+  ]
+}

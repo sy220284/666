@@ -1,7 +1,4 @@
-import type {
-  AppearancePreferences,
-  ProjectContinuationSnapshot,
-} from '@worldforge/contracts';
+import type { AppearancePreferences, ProjectContinuationSnapshot } from '@worldforge/contracts';
 
 import type { BridgeRequestOutcome } from '../bridge/request-lifecycle.js';
 import { authorErrorSummary } from '../presentation/author-error-message.js';

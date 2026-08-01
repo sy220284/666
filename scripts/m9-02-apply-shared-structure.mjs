@@ -49,8 +49,8 @@ function usedNames(names, body) {
   return names.filter((name) => new RegExp(`\\b${name}\\b`, 'u').test(body));
 }
 
-function callCount(source, name) {
-  return [...source.matchAll(new RegExp(`\\b${name}\\s*\\(`, 'gu'))].length;
+function referenceCount(source, name) {
+  return [...source.matchAll(new RegExp(`(?:\\b${name}\\s*\\(|<${name}\\b)`, 'gu'))].length;
 }
 
 const professionalOriginal = await readFile(professionalPath, 'utf8');
@@ -113,7 +113,7 @@ const helperDefinitions = new Map([
 ]);
 
 const movedHelpers = [...helperDefinitions.entries()]
-  .filter(([name]) => callCount(structureBlock, name) > 0)
+  .filter(([name]) => referenceCount(structureBlock, name) > 0)
   .map(([, source]) => source.trimEnd())
   .join('\n\n');
 const movedBody = `${structureBlock.trimEnd()}\n\n${movedHelpers}\n`;
@@ -135,7 +135,7 @@ let professional = replaceOnce(
   'remove StructureNavigator block',
 );
 for (const [name, helperSource] of helperDefinitions) {
-  if (callCount(professional, name) === 1) {
+  if (referenceCount(professional, name) === 1) {
     professional = replaceOnce(professional, helperSource, '', `remove moved helper ${name}`);
   }
 }

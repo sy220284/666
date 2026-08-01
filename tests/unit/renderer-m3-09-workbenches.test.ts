@@ -133,12 +133,13 @@ describe('M3 final React business workbenches', () => {
   });
 
   it('keeps safety hashes, complete relationship fields and independent cancellation state', async () => {
-    const [planning, canonCore, continuity, narrative, dataTools, hook, writing] =
+    const [planning, structure, canonCore, continuity, narrative, dataTools, hook, writing] =
       await Promise.all([
         readFile(
           path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
           'utf8',
         ),
+        readFile(path.join(rendererRoot, 'features/structure/structure-navigator.tsx'), 'utf8'),
         readFile(path.join(rendererRoot, 'features/canon/canon-core-workbench.tsx'), 'utf8'),
         readFile(
           path.join(rendererRoot, 'features/canon/continuity-relationship-editor.tsx'),
@@ -153,12 +154,13 @@ describe('M3 final React business workbenches', () => {
         readFile(path.join(rendererRoot, 'features/writing/writing-core-workbench.tsx'), 'utf8'),
       ]);
 
-    expect(planning).toContain('previewSplitChapter');
-    expect(planning).toContain('previewMergeChapters');
-    expect(planning).toContain('previewMoveBlocks');
-    expect(planning).toContain('previewPermanentDelete');
-    expect(planning).toContain('planHash: preview.planHash');
-    expect(planning).toContain('confirmationTitle = window.prompt');
+    expect(planning).toContain("from '../structure/structure-navigator.js'");
+    expect(structure).toContain('previewSplitChapter');
+    expect(structure).toContain('previewMergeChapters');
+    expect(structure).toContain('previewMoveBlocks');
+    expect(structure).toContain('previewPermanentDelete');
+    expect(structure).toContain('planHash: preview.planHash');
+    expect(structure).toContain('confirmationTitle = window.prompt');
     expect(canonCore).toContain("selected.status !== 'archived'");
     expect(canonCore).toContain('输入实体名称');
     expect(continuity).toContain('participantIds');

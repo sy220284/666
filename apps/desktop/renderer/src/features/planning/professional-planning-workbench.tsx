@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useState, type FormEvent } from 'react';
 
 import type {
   Entity,
@@ -12,7 +12,6 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
-import { StructureNavigator } from '../structure/structure-navigator.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import {
   authorCharacterArcStatusLabel,
@@ -21,6 +20,7 @@ import {
   authorPlotNodeTypeLabel,
   authorSceneBeatTypeLabel,
 } from '../../presentation/author-value-format.js';
+import { StructureNavigator } from '../structure/structure-navigator.js';
 
 interface PlanningWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;

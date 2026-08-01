@@ -16,6 +16,29 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          version: 11.13.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm --filter @worldforge/contracts build
+      - name: Capture public runtime surface
+        run: |
+          mkdir -p test-results/ar08
+          node --input-type=module <<'NODE'
+          import * as contracts from './packages/contracts/dist/public-index.js';
+          import { writeFile } from 'node:fs/promises';
+          const surface = {
+            protocolVersion: contracts.PROTOCOL_VERSION,
+            ipcChannels: contracts.IPC_CHANNELS,
+            appCommands: contracts.APP_COMMANDS,
+            runtimeExports: Object.keys(contracts).sort(),
+          };
+          await writeFile('test-results/ar08/contracts-public-runtime.json', `${JSON.stringify(surface, null, 2)}\n`);
+          NODE
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ar08-contracts-source
@@ -27,4 +50,5 @@ jobs:
             tests/unit/capability-matrix.test.ts
             tests/security/ipc-task-contracts.test.ts
             tests/integration/preload-ipc-core.integration.test.ts
+            test-results/ar08/contracts-public-runtime.json
           retention-days: 1

@@ -1,11 +1,16 @@
 {
   "schemaVersion": 1,
   "id": "M9-01",
-  "status": "IMPLEMENTED",
+  "status": "VERIFIED",
   "source": "docs/tasks/M9/M9-01_REFACTOR_SAFETY_NET.md",
   "startedAt": "2026-08-01",
   "implementedAt": "2026-08-01T09:44:00+08:00",
   "implementationCommit": "c1fbec99684561cef5e118d03f995ecec40bb56d",
+  "verifiedAt": "2026-08-01T11:54:55+09:00",
+  "implementationHead": "b6521bfe49a88f3ccb599b0fa201307d640d61a4",
+  "mainCommit": "bf6697c6c3aed8cf4c45e1bcfc269ee3644323bf",
+  "mainVerificationRun": 30680858858,
+  "sourcePr": 263,
   "dependencies": [
     "M8-09"
   ],
@@ -75,11 +80,11 @@
     "registeredStructuralDebts": 15,
     "registeredCycles": 3,
     "registeredFeatureExceptions": 1,
-    "taskGovernanceRun": 30679618668,
-    "prPolicyRun": 30679618670,
-    "evidenceRun": 30679618681,
-    "securityRun": 30679618667,
-    "performanceRun": 30679618711,
-    "qualityRun": 30679618766
+    "taskGovernanceRun": 30680301795,
+    "prPolicyRun": 30680301803,
+    "evidenceRun": 30680301791,
+    "securityRun": 30680301774,
+    "performanceRun": 30680301773,
+    "qualityRun": 30680301856
   }
 }

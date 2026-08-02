@@ -1,122 +1,63 @@
-import { execFile } from 'node:child_process';
-import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { promisify } from 'node:util';
-import { gunzipSync } from 'node:zlib';
+import { readFile } from 'node:fs/promises';
 
-import { format, resolveConfig } from 'prettier';
 import { describe, expect, it } from 'vitest';
 
-const execFileAsync = promisify(execFile);
+const searchRoot = 'packages/core-service/src/search';
 
-async function readCandidatePayloads(repositoryRoot: string): Promise<Record<string, string>> {
-  const payloadRoot = path.join(
-    repositoryRoot,
-    'tests',
-    'fixtures',
-    'ar13-search-candidate',
-  );
-  const parts = (await readdir(payloadRoot)).filter((name) => name.endsWith('.txt')).sort();
-  const encoded = (
-    await Promise.all(parts.map((name) => readFile(path.join(payloadRoot, name), 'utf8')))
-  ).join('');
-  return JSON.parse(gunzipSync(Buffer.from(encoded, 'base64')).toString('utf8')) as Record<
-    string,
-    string
-  >;
+async function source(file: string): Promise<string> {
+  return readFile(`${searchRoot}/${file}`, 'utf8');
 }
 
-describe('AR-13 Search candidate', () => {
-  it('formats and typechecks the frozen Search split without touching production source', async () => {
-    const repositoryRoot = process.cwd();
-    const artifactRoot = path.join(
-      repositoryRoot,
-      'test-results',
-      'unit',
-      'ar13-search-candidate',
-    );
-    const workspaceRoot = path.join(artifactRoot, 'workspace');
-    const packageRoot = path.join(workspaceRoot, 'packages', 'core-service');
-    await mkdir(path.dirname(packageRoot), { recursive: true });
-    await cp(path.join(repositoryRoot, 'packages', 'core-service'), packageRoot, {
-      recursive: true,
-    });
-    await cp(
-      path.join(repositoryRoot, 'tsconfig.base.json'),
-      path.join(workspaceRoot, 'tsconfig.base.json'),
-    );
+function lineCount(value: string): number {
+  return value.trimEnd().split('\n').length;
+}
 
-    const candidatePayloads = await readCandidatePayloads(repositoryRoot);
-    const candidatePaths = Object.keys(candidatePayloads).sort();
-    expect(candidatePaths).toHaveLength(9);
-    for (const [relativePath, source] of Object.entries(candidatePayloads)) {
-      const destination = path.join(packageRoot, 'src', relativePath);
-      await mkdir(path.dirname(destination), { recursive: true });
-      const config = await resolveConfig(path.join(repositoryRoot, relativePath));
-      const formatted = await format(source, {
-        ...(config ?? {}),
-        filepath: destination,
-      });
-      await writeFile(destination, formatted, 'utf8');
+describe('AR-13 Search boundaries', () => {
+  it('keeps the public entry as a compatibility re-export', async () => {
+    const root = await readFile('packages/core-service/src/search-tools.ts', 'utf8');
+
+    expect(root).toContain("./search/search-model.js");
+    expect(root).toContain("./search/search-tools-service.js");
+    expect(root).not.toContain('class SearchToolsService');
+    expect(lineCount(root)).toBeLessThanOrEqual(5);
+  });
+
+  it('separates index, dictionary, preview and apply responsibilities', async () => {
+    const [service, index, dictionary, preview, apply] = await Promise.all([
+      source('search-tools-service.ts'),
+      source('search-index-operations.ts'),
+      source('search-dictionary-operations.ts'),
+      source('replace-preview.ts'),
+      source('replace-apply.ts'),
+    ]);
+
+    expect(service).toContain('SearchIndexOperations');
+    expect(service).toContain('SearchDictionaryOperations');
+    expect(service).toContain('ReplacePreviewOperations');
+    expect(service).toContain('ReplaceApplyOperations');
+    expect(index).toContain('rebuild');
+    expect(index).not.toContain('listDictionary');
+    expect(dictionary).toContain('listDictionary');
+    expect(dictionary).not.toContain('previewReplace');
+    expect(preview).toContain('writeProject');
+    expect(preview).toContain('INSERT INTO replace_plans');
+    expect(apply).toContain('createOperationCheckpoint');
+    expect(apply).toContain("status = 'stale'");
+  });
+
+  it('preserves bounded facades and transaction modules', async () => {
+    const files = {
+      'search-tools-service.ts': 120,
+      'search-index-operations.ts': 50,
+      'search-dictionary-operations.ts': 50,
+      'replace-plan-repository.ts': 100,
+      'replace-preview.ts': 180,
+      'replace-apply.ts': 300,
+      'search-model.ts': 150,
+    } as const;
+
+    for (const [file, budget] of Object.entries(files)) {
+      expect(lineCount(await source(file))).toBeLessThanOrEqual(budget);
     }
-
-    const productionFormatRoot = path.join(artifactRoot, 'production-format');
-    const utilityControlPath = path.join(
-      repositoryRoot,
-      'packages',
-      'core-service',
-      'src',
-      'utility-control-router.ts',
-    );
-    const formattedUtilityControl = await format(await readFile(utilityControlPath, 'utf8'), {
-      ...((await resolveConfig(utilityControlPath)) ?? {}),
-      filepath: utilityControlPath,
-    });
-    const formattedUtilityControlPath = path.join(
-      productionFormatRoot,
-      'packages',
-      'core-service',
-      'src',
-      'utility-control-router.ts',
-    );
-    await mkdir(path.dirname(formattedUtilityControlPath), { recursive: true });
-    await writeFile(formattedUtilityControlPath, formattedUtilityControl, 'utf8');
-
-    let diagnostics = '';
-    try {
-      const result = await execFileAsync(
-        process.execPath,
-        [
-          path.join(repositoryRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
-          '-p',
-          path.join(packageRoot, 'tsconfig.json'),
-          '--noEmit',
-        ],
-        { cwd: workspaceRoot, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
-      );
-      diagnostics = `${result.stdout}${result.stderr}`.trim();
-    } catch (error) {
-      const failure = error as { stdout?: string; stderr?: string; message?: string };
-      diagnostics = `${failure.stdout ?? ''}${failure.stderr ?? ''}${failure.message ?? ''}`.trim();
-    }
-
-    await writeFile(path.join(artifactRoot, 'diagnostics.txt'), `${diagnostics}\n`, 'utf8');
-    await writeFile(
-      path.join(artifactRoot, 'checkpoint.json'),
-      `${JSON.stringify(
-        {
-          checkpoint: 'AR-13_SEARCH_CANDIDATE',
-          headSha: process.env.GITHUB_SHA ?? null,
-          files: candidatePaths,
-          diagnosticCount: diagnostics.length === 0 ? 0 : diagnostics.split(/\r?\n/u).length,
-        },
-        null,
-        2,
-      )}\n`,
-      'utf8',
-    );
-
-    expect(diagnostics).toBe('');
-    throw new Error('AR-13_SEARCH_CANDIDATE_READY');
   });
 });

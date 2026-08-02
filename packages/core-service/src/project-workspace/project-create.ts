@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { chmod, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -8,13 +9,13 @@ import {
   type ProjectCreateInput,
   type ProjectWorkspaceSummary,
 } from "@worldforge/contracts";
+import { normalizeDraftBlockSemantic, serializeDraftBlockSemantic } from "@worldforge/domain";
 
 import {
   ProjectDatabase,
   latestMigrationVersion,
   loadMigrations,
 } from "../database/index.js";
-import { initializeProjectStructure } from "../project-structure.js";
 import {
   existingDirectory,
   isPermissionFailure,
@@ -26,6 +27,87 @@ import {
   loadWorkspace,
   type ProjectWorkspaceOperationContext,
 } from "./workspace-verifier.js";
+
+function draftTablesAvailable(connection: DatabaseSync): boolean {
+  return Boolean(
+    connection
+      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='drafts'")
+      .get(),
+  );
+}
+
+function initializeChapterDraft(
+  connection: DatabaseSync,
+  chapterId: string,
+  timestamp: string,
+  idFactory: () => string,
+): void {
+  if (!draftTablesAvailable(connection)) return;
+  const draftId = idFactory();
+  const blockId = idFactory();
+  const logicalBlockId = idFactory();
+  const initial = normalizeDraftBlockSemantic({
+    blockType: "paragraph",
+    content: "",
+    attributes: {},
+  });
+  const contentHash = createHash("sha256")
+    .update(serializeDraftBlockSemantic(initial), "utf8")
+    .digest("hex");
+  connection
+    .prepare(
+      `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)
+       VALUES(?, ?, 'active', 0, ?, ?)`,
+    )
+    .run(draftId, chapterId, timestamp, timestamp);
+  connection
+    .prepare(
+      `INSERT INTO draft_blocks(
+         id, draft_id, logical_block_id, order_key, block_type, text, attributes_json,
+         source, locked, content_hash, revision
+       ) VALUES(?, ?, ?, 1024, ?, ?, ?, 'manual', 0, ?, 0)`,
+    )
+    .run(
+      blockId,
+      draftId,
+      logicalBlockId,
+      initial.blockType,
+      initial.content,
+      JSON.stringify(initial.attributes),
+      contentHash,
+    );
+  connection
+    .prepare("UPDATE chapters SET active_draft_id = ? WHERE id = ?")
+    .run(draftId, chapterId);
+}
+
+function initializeProjectStructure(
+  connection: DatabaseSync,
+  projectId: string,
+  mode: "starter" | "blank",
+  createdAt: string,
+  idFactory: () => string,
+): { readonly volumeId: string; readonly chapterId: string } | null {
+  if (mode === "blank") return null;
+  const volumeId = idFactory();
+  const chapterId = idFactory();
+  connection
+    .prepare(
+      `INSERT INTO volumes(id, project_id, title, order_key, status, deleted_at)
+       VALUES(?, ?, '第一卷', 1024, 'pending', NULL)`,
+    )
+    .run(volumeId, projectId);
+  connection
+    .prepare(
+      `INSERT INTO chapters(
+         id, volume_id, title, order_key, status, target_word_min, target_word_max,
+         active_draft_id, final_version_id, deleted_at
+       ) VALUES(?, ?, '第一章', 1024, 'pending', NULL, NULL, NULL, NULL, NULL)`,
+    )
+    .run(chapterId, volumeId);
+  initializeChapterDraft(connection, chapterId, createdAt, idFactory);
+  return { volumeId, chapterId };
+}
 
 function initializeOnboardingContent(
   connection: DatabaseSync,

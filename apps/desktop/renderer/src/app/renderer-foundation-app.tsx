@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
-import type { LegacySurfaceController } from '../compat/legacy-surface.js';
 import { DraftFlushFailureDialog } from '../components/draft-flush-failure-dialog.js';
 import { createCapabilityTrackingBridge } from '../runtime/capability-runtime.js';
 import type {
@@ -10,6 +9,7 @@ import type {
 } from '../runtime/renderer-foundation-runtime.js';
 import type { RendererStartupDiagnostic } from '../runtime/startup-diagnostics.js';
 import { AppShell } from './app-shell.js';
+import type { RendererApplicationController } from './renderer-application-controller.js';
 
 type FoundationViewState =
   | { readonly state: 'starting'; readonly diagnostic: null }
@@ -19,13 +19,13 @@ type FoundationViewState =
 export interface RendererFoundationAppProps {
   readonly runtime: RendererFoundationRuntime;
   readonly bridge: RendererBridgeAdapter;
-  readonly legacySurface: LegacySurfaceController;
+  readonly applicationController: RendererApplicationController;
 }
 
 export function RendererFoundationApp({
   runtime,
   bridge,
-  legacySurface,
+  applicationController,
 }: RendererFoundationAppProps) {
   const trackedBridge = useMemo(() => createCapabilityTrackingBridge(bridge), [bridge]);
   const [view, setView] = useState<FoundationViewState>({
@@ -70,7 +70,7 @@ export function RendererFoundationApp({
   if (view.state === 'running') {
     return (
       <>
-        <AppShell bridge={trackedBridge} legacySurface={legacySurface} />
+        <AppShell applicationController={applicationController} bridge={trackedBridge} />
         <DraftFlushFailureDialog />
       </>
     );
@@ -85,7 +85,7 @@ export function RendererFoundationApp({
       aria-live="polite"
     >
       <strong>正在启动React界面底座</strong>
-      <span>旧业务界面按任务边界单实例兼容加载</span>
+      <span>正在装载本地写作工作区</span>
     </section>
   );
 }

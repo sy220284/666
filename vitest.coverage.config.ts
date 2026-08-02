@@ -15,7 +15,6 @@ const processBoundaryCoverageExcludes = [
   'apps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts',
   'apps/desktop/renderer/src/bridge/request-lifecycle.ts',
   'apps/desktop/renderer/src/bridge/use-bridge-resource.ts',
-  'apps/desktop/renderer/src/compat/legacy-surface.ts',
   'packages/core-service/src/candidate-diff-worker.ts',
   'packages/core-service/src/utility-generation-router.ts',
   'packages/core-service/src/utility-search-rhythm-router.ts',

@@ -1,7 +1,5 @@
 import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
-import type { PrimaryNavigationAvailability } from '../shell/app-shell-model.js';
-
 export type ProjectOperatingMode =
   'closed' | 'normal' | 'read-only-compatible' | 'read-only-integrity-failed' | 'recovery-only';
 
@@ -30,10 +28,19 @@ export interface ProjectCapabilities {
   readonly moveAvailable: boolean;
 }
 
+export interface CapabilityNavigationAvailability {
+  readonly home: boolean;
+  readonly planning: boolean;
+  readonly writing: boolean;
+  readonly canon: boolean;
+  readonly checks: boolean;
+  readonly settings: boolean;
+}
+
 export interface CapabilityMatrix {
   readonly application: ApplicationCapabilities;
   readonly project: ProjectCapabilities;
-  readonly navigation: PrimaryNavigationAvailability;
+  readonly navigation: CapabilityNavigationAvailability;
 }
 
 const RECOVERY_ONLY_REASONS = new Set([

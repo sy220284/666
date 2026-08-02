@@ -18,10 +18,7 @@ import {
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { StructureOperationExecutionService } from './structure-operation-execution-service.js';
-import {
-  systemClock,
-  type StructureOperationServiceOptions,
-} from './structure-operation-model.js';
+import { systemClock, type StructureOperationServiceOptions } from './structure-operation-model.js';
 import { StructureOperationPreviewService } from './structure-operation-preview-service.js';
 import { StructureTrashOperationService } from './structure-trash-operation-service.js';
 

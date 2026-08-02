@@ -16,11 +16,7 @@ import {
 } from '@worldforge/contracts';
 import { planOrderKey, type OrderedSibling } from '@worldforge/domain';
 
-import {
-  activeDraft,
-  draftDocument,
-  readDraftBlocks,
-} from '../candidate-state.js';
+import { activeDraft, draftDocument, readDraftBlocks } from '../candidate-state.js';
 import type { DatabaseClock } from '../database/index.js';
 import { readStructure } from '../project-structure.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
@@ -343,8 +339,6 @@ export class StructureOperationExecutionService {
         callback: (connection: DatabaseSync) => Value,
       ): Value => callback(database),
     };
-    return new StructureOperationPreviewService(
-      facade as unknown as ProjectWorkspaceService,
-    );
+    return new StructureOperationPreviewService(facade as unknown as ProjectWorkspaceService);
   }
 }

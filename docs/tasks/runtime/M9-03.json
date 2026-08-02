@@ -4,7 +4,10 @@
   "status": "IN_PROGRESS",
   "source": "docs/tasks/M9/M9-03_WRITING_TOOLS_DISPLAY.md",
   "startedAt": "2026-08-01",
-  "dependencies": ["M9-01", "M9-02"],
+  "dependencies": [
+    "M9-01",
+    "M9-02"
+  ],
   "branch": "work/m9-03-ar05-ar14-continuation",
   "priority": "P0",
   "workPackages": [
@@ -21,8 +24,16 @@
     "AR-13",
     "AR-14"
   ],
-  "completedWorkPackages": ["AR-03", "AR-04", "AR-05", "AR-06", "AR-07", "AR-08"],
-  "activeWorkPackage": "AR-09",
+  "completedWorkPackages": [
+    "AR-03",
+    "AR-04",
+    "AR-05",
+    "AR-06",
+    "AR-07",
+    "AR-08",
+    "AR-09"
+  ],
+  "activeWorkPackage": "AR-10",
   "scope": [
     "拆分Writing工具、展示和章节会话状态机",
     "拆分Canon、Planning和AppShell",
@@ -117,6 +128,12 @@
     "ar07Evidence": "docs/test-evidence/M9-03/AR-07_APP_SHELL_SPLIT_VERIFICATION.md",
     "ar08Head": "e59aa7ea5733ea0042cad09a7bff73f3834ac4b2",
     "ar08QualityRun": 30703877307,
-    "ar08Evidence": "docs/test-evidence/M9-03/AR-08_CONTRACTS_SPLIT_VERIFICATION.md"
+    "ar08Evidence": "docs/test-evidence/M9-03/AR-08_CONTRACTS_SPLIT_VERIFICATION.md",
+    "ar09Head": "9a02b83f6fd83e45a76ed5a27e4618394422426f",
+    "ar09QualityRun": 30707436147,
+    "ar09SecurityRun": 30707436012,
+    "ar09PerformanceRun": 30707436014,
+    "ar09EvidenceRun": 30707436016,
+    "ar09Evidence": "docs/test-evidence/M9-03/AR-09_PRELOAD_SPLIT_VERIFICATION.md"
   }
 }

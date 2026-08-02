@@ -1,10 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 
-import {
-  parseStringArrayJson,
-  text,
-  type SearchIndexTarget,
-} from './search-index-model.js';
+import { parseStringArrayJson, text, type SearchIndexTarget } from './search-index-model.js';
 
 function deleteTarget(connection: DatabaseSync, target: SearchIndexTarget): void {
   const statements = {

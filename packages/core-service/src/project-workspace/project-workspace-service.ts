@@ -221,7 +221,20 @@ export class ProjectWorkspaceService {
   }
 
   #operationContext(): ProjectWorkspaceOperationContext {
-    const service = this;
+    const getActive = (): ActiveProjectContext | null => this.#active;
+    const setActive = (value: ActiveProjectContext | null): void => {
+      this.#active = value;
+    };
+    const assertNoActive = (): void => this.#assertNoActive();
+    const assertActiveContext = (
+      projectId: string,
+      requireWrite = false,
+    ): ActiveProjectContext => this.#assertActiveContext(projectId, requireWrite);
+    const registerRecentBestEffort = (
+      requestId: string,
+      summary: ProjectWorkspaceSummary,
+    ): Promise<boolean> => this.#registerRecentBestEffort(requestId, summary);
+
     return {
       migrationsDirectory: this.#migrationsDirectory,
       appVersion: this.#appVersion,
@@ -233,16 +246,14 @@ export class ProjectWorkspaceService {
       freeBytes: this.#freeBytes,
       idFactory: this.#idFactory,
       get active() {
-        return service.#active;
+        return getActive();
       },
       set active(value) {
-        service.#active = value;
+        setActive(value);
       },
-      assertNoActive: () => service.#assertNoActive(),
-      assertActiveContext: (projectId, requireWrite = false) =>
-        service.#assertActiveContext(projectId, requireWrite),
-      registerRecentBestEffort: (requestId, summary) =>
-        service.#registerRecentBestEffort(requestId, summary),
+      assertNoActive,
+      assertActiveContext,
+      registerRecentBestEffort,
     };
   }
 

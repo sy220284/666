@@ -1,7 +1,4 @@
-import {
-  type GenerationRunServiceContext,
-  GenerationRunServiceError,
-} from './run-repository.js';
+import { type GenerationRunServiceContext, GenerationRunServiceError } from './run-repository.js';
 import {
   type GenerationModelSupportInput,
   GenerationModelSupportInputSchema,

@@ -1,0 +1,552 @@
+/* Component responsibility segment: dialogs. */
+@layer components {
+.version-preview {
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  background: var(--color-bg-elevated);
+}
+@media (max-width: 760px) {
+  .version-create-grid,
+  .version-history-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recovery-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.recovery-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.recovery-columns section {
+  min-width: 0;
+}
+
+.recovery-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(42vh, 420px);
+  overflow: auto;
+}
+
+.recovery-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line-color, #d8d5cf);
+  border-radius: 10px;
+}
+
+.recovery-row div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.recovery-row strong,
+.recovery-row small {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 820px) {
+  .recovery-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.text-io-dialog {
+  width: min(1040px, calc(100vw - 32px));
+}
+.text-io-dialog__body {
+  max-height: min(760px, calc(100vh - 120px));
+  overflow: auto;
+}
+.text-io-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #d8d4cc);
+  border-radius: 12px;
+}
+.text-io-section > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+}
+.text-io-section h3 {
+  margin: 0;
+}
+.text-io-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+.text-io-controls label {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+}
+.text-io-plan,
+.text-io-export-list {
+  display: grid;
+  gap: 10px;
+}
+.text-io-plan-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-color, #d8d4cc);
+  border-radius: 10px;
+}
+.text-io-plan-row header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.text-io-plan-row header div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.text-io-plan-row textarea {
+  width: 100%;
+  resize: vertical;
+}
+.text-io-export-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid var(--border-color, #d8d4cc);
+  border-radius: 8px;
+}
+
+.planning-dialog {
+  width: min(1180px, calc(100vw - 32px));
+  max-width: 1180px;
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-paper);
+  box-shadow: var(--shadow-popover);
+}
+
+.planning-dialog::backdrop {
+  background: rgb(36 35 33 / 38%);
+}
+
+.planning-mode-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.planning-mode-switch .is-active {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, white);
+}
+
+.brief-rule-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.outline-root-drop {
+  padding: 8px 10px;
+  margin: 4px 0 10px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.outline-root-drop.is-drag-over,
+.plot-node__child-drop.is-drag-over,
+.plot-node.is-drag-over {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 8%, white);
+}
+
+.outline-tree {
+  display: grid;
+  gap: 8px;
+}
+
+.outline-empty {
+  padding: 28px 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.plot-node {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-paper);
+}
+
+.plot-node__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plot-node__summary {
+  min-width: 0;
+}
+
+.plot-node__summary strong,
+.plot-node__summary small {
+  display: block;
+}
+
+.plot-node__summary small {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+}
+
+.plot-node__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.plot-node__actions button {
+  min-height: 26px;
+  padding: 2px 7px;
+  font-size: 0.78em;
+}
+
+.plot-node__child-drop {
+  padding: 4px 8px;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.76em;
+}
+
+.plot-node__children {
+  display: grid;
+  gap: 8px;
+  padding-left: 18px;
+  border-left: 1px solid var(--color-border-subtle);
+}
+
+.planning-wide-field {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 820px) {
+  .planning-workspace__body {
+    grid-template-columns: 1fr;
+  }
+
+  .planning-workspace__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .brief-rule-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scene-beat-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+.scene-beat-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: var(--surface-raised);
+}
+.scene-beat-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.scene-beat-card__meta {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.scene-beat-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+}
+.scene-beat-card.is-required {
+  border-inline-start: 4px solid currentColor;
+}
+.scene-beat-trash {
+  margin-top: 0.8rem;
+}
+
+/* M3-03 Entity Canon workspace */
+.canon-dialog {
+  width: min(960px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+}
+
+.canon-dialog__body {
+  overflow: auto;
+}
+
+.canon-header,
+.canon-toolbar,
+.canon-section > header,
+.canon-fact-row > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.canon-toolbar {
+  flex-wrap: wrap;
+  margin-block: 16px;
+}
+
+.canon-toolbar label {
+  flex: 1 1 280px;
+}
+
+.canon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.canon-section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+.canon-section h3,
+.canon-section small {
+  margin: 0;
+}
+
+.canon-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.canon-form label,
+.canon-toolbar label {
+  display: grid;
+  gap: 6px;
+}
+
+.canon-form input,
+.canon-form select,
+.canon-form textarea,
+.canon-toolbar select {
+  width: 100%;
+}
+
+.canon-fact-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.canon-fact-row {
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.canon-fact-row[data-canon-fact-status='historical'] {
+  opacity: 0.72;
+}
+
+.canon-fact-row pre {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .canon-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* React runtime startup and failure status. */
+#react-root {
+  position: relative;
+  z-index: 30;
+}
+
+.react-foundation-status {
+  align-items: center;
+  background: var(--color-bg-panel, #f8f7f4);
+  border-bottom: 1px solid var(--color-border-subtle, #e6e2dc);
+  color: var(--color-text-secondary, #5f5d59);
+  display: flex;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 4px 16px;
+}
+
+.react-foundation-status strong {
+  color: var(--color-text-primary, #242321);
+  font-weight: 600;
+}
+
+.react-foundation-status[data-state='failed'] {
+  background: color-mix(in srgb, var(--color-danger, #b54a46) 9%, #fff);
+  border-bottom-color: var(--color-danger, #b54a46);
+  color: var(--color-danger, #b54a46);
+}
+
+.react-foundation-status__details {
+  margin-inline-start: 12px;
+  overflow-wrap: anywhere;
+}
+
+#react-root {
+  min-height: 100vh;
+}
+
+.react-brand {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.react-brand strong {
+  font-family: Georgia, 'Times New Roman', 'Songti SC', serif;
+  font-size: 1.08rem;
+}
+
+.react-brand span {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-react-structure-rail] {
+  position: fixed;
+  z-index: 40;
+  width: var(--left-panel-width);
+  padding: 10px;
+  overflow: auto;
+  pointer-events: auto;
+  background: var(--color-bg-panel);
+  border-right: 1px solid var(--color-border-subtle);
+}
+
+.react-legacy-heading {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-panel);
+  color: var(--color-text-secondary);
+  font-size: 0.76rem;
+}
+
+.react-legacy-heading strong {
+  color: var(--color-text-primary);
+  font-size: 0.88rem;
+}
+
+.react-home-page,
+.react-settings-page {
+  width: min(1180px, 100%);
+  margin-inline: auto;
+}
+
+.react-operation-message {
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-accent-primary);
+  background: var(--color-bg-panel);
+  color: var(--color-text-secondary);
+}
+
+.react-health-grid,
+.react-recent-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.react-health-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.react-health-card,
+.react-active-project,
+.react-recent-card,
+.react-empty-state,
+.react-settings-form,
+.react-safety-banner {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-paper);
+}
+
+.react-health-card,
+.react-empty-state {
+  padding: 16px;
+}
+
+.react-health-card p,
+.react-empty-state p {
+  margin-bottom: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+}
+
+.react-health-card[data-severity='data-risk'] {
+  border-color: var(--color-danger);
+}
+
+.react-active-project {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+  padding: clamp(18px, 3vw, 28px);
+}
+}

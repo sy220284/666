@@ -1,20 +1,23 @@
 import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
-import { type ProposalDraft } from './proposal-batch-repository.js';
 import {
   DerivedInvalidationInputSchema,
   DerivedInvalidationResultSchema,
   type EndingSnapshot,
   EndingSnapshotSchema,
   StateProposalBatchSchema,
+  type StateProposalGenerateInput,
   StateProposalSchema,
 } from '@worldforge/contracts';
+import { assertAuthorAuthority } from '@worldforge/domain';
 
 export interface StateProposalServiceContext {
   readonly workspace: ProjectWorkspaceService;
   readonly clock: DatabaseClock;
   readonly idFactory: () => string;
 }
+
+export type ProposalDraft = StateProposalGenerateInput['proposals'][number];
 
 export type ChangeType = Exclude<
   ReturnType<typeof DerivedInvalidationInputSchema.parse>['changeTypes'][number],
@@ -107,6 +110,18 @@ export class StateProposalServiceError extends Error {
     super(message, options);
     this.name = 'StateProposalServiceError';
     this.code = code;
+  }
+}
+
+export function authorOnly(authority: 'author' | 'ai'): void {
+  try {
+    assertAuthorAuthority(authority);
+  } catch (error) {
+    throw new StateProposalServiceError(
+      'STATE_PROPOSAL_AUTHOR_REQUIRED',
+      'Only an explicit author command may resolve proposals or refresh derived state.',
+      { cause: error },
+    );
   }
 }
 

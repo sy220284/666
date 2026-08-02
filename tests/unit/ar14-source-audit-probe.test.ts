@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 const rendererRoot = 'apps/desktop/renderer/src';
 const outputRoot = 'test-results/unit/ar14-source-audit';
 const keyFiles = [
+  'apps/desktop/renderer/build-assets.mjs',
+  'apps/desktop/renderer/src/index.html',
   'apps/desktop/renderer/src/react-entry.tsx',
   'apps/desktop/renderer/src/app/renderer-foundation-app.tsx',
   'apps/desktop/renderer/src/app/app-shell.tsx',
@@ -13,6 +15,8 @@ const keyFiles = [
   'apps/desktop/renderer/src/app/use-app-settings-persistence.ts',
   'apps/desktop/renderer/src/compat/legacy-surface.ts',
   'docs/architecture/source-structure-baseline.json',
+  'tests/unit/renderer-react-runtime-root.test.ts',
+  'vitest.coverage.config.ts',
 ];
 
 async function walk(directory: string): Promise<string[]> {

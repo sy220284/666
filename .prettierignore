@@ -1,0 +1,5 @@
+# Temporary AR-11 candidate-generation scaffolding; removed with atomic production landing.
+scripts/generate-ar11-service-split.mjs
+scripts/run-ar11-service-split-fixed.mjs
+scripts/typecheck-ar11-service-split.mjs
+tests/unit/ar11-service-split-candidate.test.ts

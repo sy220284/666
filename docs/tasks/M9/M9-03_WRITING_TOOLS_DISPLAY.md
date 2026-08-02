@@ -1,6 +1,6 @@
 # M9-03 WorldForge V1.1剩余架构拆分统一执行
 
-> 状态：In Progress
+> 状态：Implemented
 > 里程碑：M9 V1.1架构治理
 > 对应工作包：AR-03—AR-14
 > 优先级：P0
@@ -27,15 +27,26 @@
 ## 3. 当前检查点
 
 ```text
-AR-03 Writing工具与展示拆分          已合并（PR #272）
-AR-04 Writing章节会话状态机          已合并（PR #272）
+AR-03 Writing工具与展示拆分          已合并并验证（PR #272）
+AR-04 Writing章节会话状态机          已合并并验证（PR #272）
 AR-05 Canon拆分                      已验证
 AR-06 Planning拆分                   已验证
 AR-07 AppShell拆分                   已验证
 AR-08 Contracts拆分                  已验证
-AR-09 Preload拆分                    当前执行
-AR-10—AR-14                          待按依赖推进
+AR-09 Preload拆分                    已验证
+AR-10 Main IPC拆分                   已验证
+AR-11 Service Facade拆分             已验证
+AR-12 Project Workspace拆分          已验证
+AR-13 Recovery与工具域拆分           已验证
+AR-14 Legacy/CSS/结构预算收敛        已验证
 ```
+
+## 3.1 实施结果
+
+- AR-03—AR-14全部完成，续作正式Head为`68cf81469eabb2d9bebeed356e01faa71076faf9`。
+- AR-13正式六项外层门禁与Quality全绿；AR-14隔离完整矩阵及Electron E2E 33项全绿。
+- Legacy入口与旧CSS文件已删除；最终结构扫描为397个源码文件、1171条相对导入边、0项结构债务。
+- 当前状态为Implemed；正式PR永久门禁、Ready矩阵、main合并验证完成前不得标记Verified。
 
 ## 4. 必须实施
 
@@ -52,7 +63,7 @@ AR-10—AR-14                          待按依赖推进
 - AR-13：拆分Recovery及Search、Validation、Narrative、Structure Operations、Draft、Import/Export工具域。
 - AR-14：退役无职责Legacy Surface，整理CSS责任域，收紧全部结构预算并完成V1.1最终验证。
 
-[`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`](V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md)第4—15节是上述子包的规范性详细范围、依赖、风险和验收真源；与本卡冲突时，以作者最新明确指令和本卡更新后的受控分段执行模型为准。
+[`V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md`](V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md)第4—15节是上述子包的规范性详细范围、依赖、风险和验收真源；与本卡冲突旽，以作者最新明确指令和本卡更新后的受控分段执行模型为准。
 
 ## 5. 不可破坏的不变量
 
@@ -79,6 +90,7 @@ AR-10—AR-14                          待按依赖推进
 ## 7. 允许修改范围
 
 - `apps/desktop/renderer/src/`
+- `apps/desktop/renderer/build-assets.mjs`
 - `apps/desktop/preload/src/`
 - `apps/desktop/main/src/`
 - `packages/contracts/src/`
@@ -113,7 +125,7 @@ AR-10—AR-14                          待按依赖推进
 - Entity Canon、Continuity、Narrative Planning和State Proposal四个Panel独立管理Bridge查询、命令和局部状态。
 - 表单解析、标签和值格式化迁入共享模块。
 - 删除、归档、状态失效和作者裁决安全边界保持不变。
-- 状态历史、时间线、知情、伏笔、人物弧和提案裁决行为无变化。
+- 状态历史、时间线、知情、伏笔、人物弧和提案裁决行为旰变化。
 - 选中实体和跨页面导航保持精确定位。
 - 四个Panel具备独立测试入口，结构预算不新增债务。
 

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "taskId": "M9-03",
-  "commit": "03ebce1bb458df36118abc50091bba62676ffa14",
-  "generatedAt": "2026-08-02T07:05:00.000Z",
-  "acceptanceSource": "GITHUB_ACTIONS_VERIFIED_CHECKPOINT",
+  "commit": "68cf81469eabb2d9bebeed356e01faa71076faf9",
+  "generatedAt": "2026-08-02T13:50:00.000Z",
+  "acceptanceSource": "GITHUB_ACTIONS_IMPLEMENTED_CHECKPOINT",
   "files": [
     {
       "path": "AR-04_ROLLBACK_AND_VERIFICATION.md",
@@ -49,6 +49,16 @@
       "path": "AR-12_PROJECT_WORKSPACE_SPLIT_VERIFICATION.md",
       "bytes": 5924,
       "sha256": "27d60a3aca12effbc79cd41156d60a0c7b695a372fe5c93c6cd73cc4c5bb6923"
+    },
+    {
+      "path": "AR-13_UTILITY_DOMAINS_SPLIT_VERIFICATION.md",
+      "bytes": 1992,
+      "sha256": "33a1ab27192620fafe990dd15124c397fae2c614d7af737cc3c4ba8ae4456358"
+    },
+    {
+      "path": "AR-14_FINAL_STRUCTURE_VERIFICATION.md",
+      "bytes": 2754,
+      "sha256": "c0d54fe3c99195c2cbc72129e2a35a93eba62b71e8214382ec5ba4001ea4522e"
     },
     {
       "path": "commands.txt",

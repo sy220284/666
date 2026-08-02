@@ -1,6 +1,6 @@
 import { chapterPosition } from '../continuity-validation.js';
-import { authorOnly } from './proposal-batch-repository.js';
 import {
+  authorOnly,
   mapSnapshot,
   parseJson,
   type SnapshotRow,
@@ -364,8 +364,7 @@ export function readSnapshot(
       .prepare(
         `SELECT id, project_id AS projectId, chapter_id AS chapterId,
                   source_version_id AS sourceVersionId, status,
-                  content_json AS contentJson,
-                  stale_reasons_json AS staleReasonsJson,
+                  content_json AS contentJson, stale_reasons_json AS staleReasonsJson,
                   created_at AS createdAt, stale_at AS staleAt
              FROM ending_snapshots
             WHERE project_id = ? AND chapter_id = ? AND status = 'valid'

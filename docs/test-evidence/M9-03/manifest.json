@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "taskId": "M9-03",
-  "commit": "68cf81469eabb2d9bebeed356e01faa71076faf9",
-  "generatedAt": "2026-08-02T13:50:00.000Z",
-  "acceptanceSource": "GITHUB_ACTIONS_IMPLEMENTED_CHECKPOINT",
+  "commit": "f5add56154e99bc907376e08787b7037851835f0",
+  "generatedAt": "2026-08-02T15:56:33.000Z",
+  "acceptanceSource": "GITHUB_ACTIONS_VERIFIED_CLOSURE",
   "files": [
     {
       "path": "AR-04_ROLLBACK_AND_VERIFICATION.md",
@@ -62,18 +62,18 @@
     },
     {
       "path": "commands.txt",
-      "bytes": 695,
-      "sha256": "b3976d9afe191be2035f025457e70d6aec9f3c3af72a75191e93f9814f2f393d"
+      "bytes": 389,
+      "sha256": "f863265f66d595bac2724cd679b0fc9c5df0154821bc3d0aa3aa27da10372223"
     },
     {
       "path": "known-risks.md",
-      "bytes": 1316,
-      "sha256": "337dafb671ffffe97b6ce1abeda73035651811dca35361aff066a3e8c634c62b"
+      "bytes": 732,
+      "sha256": "43d6c3e07c5d73d942153a2e1997b523a9ee1e17d785cfe71e602ef98cc704b0"
     },
     {
       "path": "summary.md",
-      "bytes": 1194,
-      "sha256": "841f15d7f71a668f6ecee0f8189efe04dd5ada4db93cdb834583c7449691e2da"
+      "bytes": 959,
+      "sha256": "51786fc2d68af4dd8a4ebc5e9cd5d554832c462b8c2345969bce15d629ff8ef7"
     }
   ]
 }

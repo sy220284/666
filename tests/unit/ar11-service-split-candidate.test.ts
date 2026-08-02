@@ -59,5 +59,7 @@ describe('AR-11 service split candidate', () => {
     for (const file of summary.files) {
       expect((await stat(path.join(outputRoot, file))).size).toBeGreaterThan(0);
     }
+
+    throw new Error('AR-11 candidate artifact export checkpoint.');
   });
 });

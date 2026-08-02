@@ -23,12 +23,12 @@ import {
 } from './utility-runtime-context.js';
 import type { UtilityServiceContainer } from './utility-service-container.js';
 
-export interface UtilityControlRouterOptions extends UtilityServiceContainer {
+export type UtilityControlRouterOptions = UtilityServiceContainer & {
   readonly parentPort: UtilityParentPort;
   readonly startedAt: number;
   readonly taskProtocol: TaskProtocol;
   readonly taskCommands: TaskCommandRouter;
-}
+};
 
 export function createUtilityControlHandler(options: UtilityControlRouterOptions) {
   let shuttingDown = false;
@@ -187,16 +187,18 @@ export function createUtilityControlHandler(options: UtilityControlRouterOptions
           break;
         }
         track(
-          executeGenerationOperation(options.generationServices, requestId, operation).then(
-            (result) => {
-              send({
-                type: 'core.generation.result',
-                protocolVersion: PROTOCOL_VERSION,
-                requestId,
-                result,
-              });
-            },
-          ),
+          executeGenerationOperation(
+            options.generationServices,
+            requestId,
+            operation,
+          ).then((result) => {
+            send({
+              type: 'core.generation.result',
+              protocolVersion: PROTOCOL_VERSION,
+              requestId,
+              result,
+            });
+          }),
         );
         break;
       }
@@ -243,7 +245,10 @@ export function createUtilityControlHandler(options: UtilityControlRouterOptions
       case 'core.drain': {
         acceptingAppDataOperations = false;
         const requestId = parsed.data.requestId;
-        void Promise.all([options.taskProtocol.beginDrain(), ...activeAppDataOperations]).then(() => {
+        void Promise.all([
+          options.taskProtocol.beginDrain(),
+          ...activeAppDataOperations,
+        ]).then(() => {
           send({
             type: 'core.drained',
             protocolVersion: PROTOCOL_VERSION,

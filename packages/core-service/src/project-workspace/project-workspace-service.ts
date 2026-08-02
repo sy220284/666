@@ -226,10 +226,8 @@ export class ProjectWorkspaceService {
       this.#active = value;
     };
     const assertNoActive = (): void => this.#assertNoActive();
-    const assertActiveContext = (
-      projectId: string,
-      requireWrite = false,
-    ): ActiveProjectContext => this.#assertActiveContext(projectId, requireWrite);
+    const assertActiveContext = (projectId: string, requireWrite = false): ActiveProjectContext =>
+      this.#assertActiveContext(projectId, requireWrite);
     const registerRecentBestEffort = (
       requestId: string,
       summary: ProjectWorkspaceSummary,

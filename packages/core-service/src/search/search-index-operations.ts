@@ -1,6 +1,6 @@
 import type { SearchProjectInput } from '@worldforge/contracts';
 
-import { HardenedSearchIndexService } from '../search-index-hardening.js';
+import type { HardenedSearchIndexService } from '../search-index-hardening.js';
 
 export class SearchIndexOperations {
   readonly #search: HardenedSearchIndexService;

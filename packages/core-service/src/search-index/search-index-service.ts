@@ -42,11 +42,7 @@ import {
   type SearchIndexServiceOptions,
   type SearchIndexTarget,
 } from './search-index-model.js';
-import {
-  authoritativeItem,
-  authoritativeLike,
-  ftsHits,
-} from './search-index-query.js';
+import { authoritativeItem, authoritativeLike, ftsHits } from './search-index-query.js';
 import { indexTarget } from './search-index-writer.js';
 
 export class SearchIndexService {

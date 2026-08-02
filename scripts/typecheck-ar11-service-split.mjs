@@ -26,7 +26,9 @@ for (const fileName of generated.keys()) {
 
 const tsconfigPath = path.join(root, 'packages/core-service/tsconfig.json');
 const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
-if (configFile.error) throw new Error(ts.flattenDiagnosticMessageText(configFile.error.messageText, '\n'));
+if (configFile.error) {
+  throw new Error(ts.flattenDiagnosticMessageText(configFile.error.messageText, '\n'));
+}
 const parsed = ts.parseJsonConfigFileContent(
   configFile.config,
   ts.sys,
@@ -38,8 +40,10 @@ const host = ts.createCompilerHost(parsed.options);
 const originalReadFile = host.readFile.bind(host);
 const originalFileExists = host.fileExists.bind(host);
 const originalDirectoryExists = host.directoryExists?.bind(host) ?? ts.sys.directoryExists;
-host.fileExists = (fileName) => generated.has(path.normalize(fileName)) || originalFileExists(fileName);
-host.readFile = (fileName) => generated.get(path.normalize(fileName)) ?? originalReadFile(fileName);
+host.fileExists = (fileName) =>
+  generated.has(path.normalize(fileName)) || originalFileExists(fileName);
+host.readFile = (fileName) =>
+  generated.get(path.normalize(fileName)) ?? originalReadFile(fileName);
 host.directoryExists = (directoryName) =>
   generatedDirectories.has(path.normalize(directoryName)) || originalDirectoryExists(directoryName);
 host.getSourceFile = (fileName, languageVersion) => {
@@ -63,3 +67,6 @@ await writeFile(
   `${JSON.stringify({ ...summary, diagnosticCount: diagnostics.length }, null, 2)}\n`,
   'utf8',
 );
+if (diagnostics.length > 0) {
+  throw new Error(`AR-11 candidate has ${diagnostics.length} TypeScript diagnostics.`);
+}

@@ -42,13 +42,14 @@ const originalFileExists = host.fileExists.bind(host);
 const originalDirectoryExists = host.directoryExists?.bind(host) ?? ts.sys.directoryExists;
 host.fileExists = (fileName) =>
   generated.has(path.normalize(fileName)) || originalFileExists(fileName);
-host.readFile = (fileName) =>
-  generated.get(path.normalize(fileName)) ?? originalReadFile(fileName);
+host.readFile = (fileName) => generated.get(path.normalize(fileName)) ?? originalReadFile(fileName);
 host.directoryExists = (directoryName) =>
   generatedDirectories.has(path.normalize(directoryName)) || originalDirectoryExists(directoryName);
 host.getSourceFile = (fileName, languageVersion) => {
   const text = host.readFile(fileName);
-  return text === undefined ? undefined : ts.createSourceFile(fileName, text, languageVersion, true);
+  return text === undefined
+    ? undefined
+    : ts.createSourceFile(fileName, text, languageVersion, true);
 };
 const rootNames = [...new Set([...parsed.fileNames, ...generated.keys()])];
 const program = ts.createProgram({ rootNames, options: parsed.options, host });

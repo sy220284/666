@@ -27,20 +27,35 @@ describe('M3-08 React运行底座', () => {
     expect(tsconfigSource).toContain('"src/**/*.tsx"');
   });
 
-  it('加载M8-07主题与容器响应覆盖层', async () => {
+  it('按责任域加载Base、Layout、Components与Theme样式层', async () => {
     const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer');
-    const [buildSource, htmlSource, experienceStyles] = await Promise.all([
+    const [buildSource, htmlSource, baseStyles, layoutStyles, themeStyles] = await Promise.all([
       readFile(path.join(rendererRoot, 'build-assets.mjs'), 'utf8'),
       readFile(path.join(rendererRoot, 'src/index.html'), 'utf8'),
-      readFile(path.join(rendererRoot, 'src/m8-07.css'), 'utf8'),
+      readFile(path.join(rendererRoot, 'src/styles/base.css'), 'utf8'),
+      readFile(path.join(rendererRoot, 'src/styles/layout.css'), 'utf8'),
+      readFile(path.join(rendererRoot, 'src/styles/themes.css'), 'utf8'),
     ]);
 
-    expect(buildSource).toContain("new URL('./src/m8-07.css'");
-    expect(htmlSource).toContain('<link rel="stylesheet" href="./m8-07.css" />');
-    expect(experienceStyles).toContain('body {\n  color: var(--color-text-primary);');
-    expect(experienceStyles).toContain('container-type: inline-size');
-    expect(experienceStyles).toContain('@container author-main (max-width: 1120px)');
-    expect(experienceStyles).toContain("body[data-visual-theme-variant='dark'] .worldforge-editor");
+    for (const stylePath of [
+      'base.css',
+      'layout.css',
+      'components/01-shell.css',
+      'components/06-review.css',
+      'themes.css',
+    ]) {
+      expect(buildSource).toContain(`'${stylePath}'`);
+      expect(htmlSource).toContain(`href="./styles/${stylePath}"`);
+    }
+    expect(baseStyles).toContain('@layer base, layout, components, themes;');
+    expect(layoutStyles).toContain('@layer layout');
+    expect(themeStyles).toContain('@layer themes');
+    expect(themeStyles).toContain('container-type: inline-size');
+    expect(themeStyles).toContain('@container author-main (max-width: 1120px)');
+    expect(themeStyles).toContain("body[data-visual-theme-variant='dark'] .worldforge-editor");
+    for (const retiredStyle of ['styles.css', 'm3.css', 'm8-07.css']) {
+      await expect(readFile(path.join(rendererRoot, 'src', retiredStyle), 'utf8')).rejects.toThrow();
+    }
   });
 
   it('通过Zustand Store更新临时状态且不接受权威对象', () => {
@@ -101,6 +116,7 @@ describe('M3-08 React运行底座', () => {
       shellRoot,
       shellLayout,
       settingsController,
+      applicationController,
       runtimeController,
       homeSource,
       settingsSource,
@@ -110,6 +126,7 @@ describe('M3-08 React运行底座', () => {
       readFile(path.join(rendererRoot, 'app/app-shell-m3.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'app/app-shell-layout.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'app/use-app-settings-persistence.ts'), 'utf8'),
+      readFile(path.join(rendererRoot, 'app/renderer-application-controller.ts'), 'utf8'),
       readFile(path.join(rendererRoot, 'app/use-workspace-runtime.ts'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/home/home-page.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
@@ -139,6 +156,10 @@ describe('M3-08 React运行底座', () => {
     expect(runtimeController).toContain("document.body.dataset.rendererReady = 'true'");
     expect(settingsController).toContain('writeQueue.current.then');
     expect(settingsController).toContain('confirmedSettings.current = next');
+    expect(settingsController).toContain('applicationController.applyPresentation');
+    expect(applicationController).toContain('flushPendingDraft: flushRegisteredDraft');
+    expect(applicationController).toContain('applyPresentation(settings, appearance, projectState)');
+    expect(applicationController).toContain('layoutPolicyForViewport');
     expect(shellRoot).not.toContain("navigationId === 'home' || navigationId === 'settings'");
     expect(packageEntry).not.toContain("document.body.dataset.rendererReady = 'true'");
     expect(homeSource).toContain('data-react-home');
@@ -160,7 +181,7 @@ describe('M3-08 React运行底座', () => {
       readFile(path.join(rendererRoot, 'app/app-shell-layout.tsx'), 'utf8'),
       readFile(path.join(rendererRoot, 'app/use-workspace-startup.ts'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/settings/settings-page.tsx'), 'utf8'),
-      readFile(path.join(rendererRoot, 'styles.css'), 'utf8'),
+      readFile(path.join(rendererRoot, 'styles/themes.css'), 'utf8'),
       readFile(path.join(rendererRoot, 'features/canon/continuity-panel.tsx'), 'utf8'),
       readFile(
         path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
@@ -180,6 +201,12 @@ describe('M3-08 React运行底座', () => {
     expect(settingsSource.match(/data-theme-variant/gu)).toHaveLength(1);
     expect(settingsSource).toContain('disabled={item.disabled || Boolean(props.pendingKey)}');
     expect(stylesSource).not.toContain("body[data-theme-variant='");
+    const entrySource = await readFile(path.join(rendererRoot, 'react-entry.tsx'), 'utf8');
+    expect(entrySource).toContain('createRendererApplicationController');
+    expect(entrySource).not.toContain('legacy-surface');
+    await expect(
+      readFile(path.join(rendererRoot, 'compat/legacy-surface.ts'), 'utf8'),
+    ).rejects.toThrow();
     expect(stylesSource).toContain("body[data-visual-theme-variant='dark']");
   });
 });

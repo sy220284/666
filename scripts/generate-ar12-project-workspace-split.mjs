@@ -27,19 +27,19 @@ if (originalDigest !== '2f6e11c6a1e31e4b3ff830ca1586a981679bba2aa36eb17f767f3b82
 }
 
 const originalExportDeclaration = `function exportDeclaration(text, kind) {
-  const token = kind === 'async-function' ? 'async function ' : \`${kind} \`;
+  const token = kind === 'async-function' ? 'async function ' : \`\${kind} \`;
   if (!text.startsWith(token)) {
-    throw new Error(\`AR-12 export target does not start with ${token}\`);
+    throw new Error(\`AR-12 export target does not start with \${token}\`);
   }
-  return \`export ${text}\`;
+  return \`export \${text}\`;
 }`;
 const fixedExportDeclaration = `function exportDeclaration(text, kind) {
   if (text.startsWith('export ')) return text;
-  const token = kind === 'async-function' ? 'async function ' : \`${kind} \`;
+  const token = kind === 'async-function' ? 'async function ' : \`\${kind} \`;
   if (!text.startsWith(token)) {
-    throw new Error(\`AR-12 export target does not start with ${token}\`);
+    throw new Error(\`AR-12 export target does not start with \${token}\`);
   }
-  return \`export ${text}\`;
+  return \`export \${text}\`;
 }`;
 if (!source.includes(originalExportDeclaration)) {
   throw new Error('AR-12 export declaration patch target was not found.');

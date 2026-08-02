@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "M9-03",
-  "status": "IMPLEMENTED",
+  "status": "VERIFIED",
   "source": "docs/tasks/M9/M9-03_WRITING_TOOLS_DISPLAY.md",
   "startedAt": "2026-08-01",
   "dependencies": [
@@ -195,7 +195,24 @@
     "finalStructuralDebts": 0
   },
   "implementedAt": "2026-08-02T13:50:00.000Z",
-  "implementationHead": "68cf81469eabb2d9bebeed356e01faa71076faf9",
+  "implementationHead": "a5b24ab3a2809f2ae8f61222ef4b3ae31de9c807",
   "implementationCommit": "68cf81469eabb2d9bebeed356e01faa71076faf9",
-  "sourcePr": 273
+  "sourcePr": 273,
+  "verifiedAt": "2026-08-02T15:56:33.000Z",
+  "mainCommit": "f5add56154e99bc907376e08787b7037851835f0",
+  "mainVerificationRun": 30754708770,
+  "readyQualityRun": 30754109757,
+  "readyEvidenceRun": 30754109565,
+  "readyGovernanceRun": 30754109604,
+  "readyPrPolicyRun": 30754109570,
+  "readySecurityRun": 30754109578,
+  "readyPerformanceRun": 30754109603,
+  "nativePackageValidationPr": 289,
+  "nativePackageQualityRun": 30755377969,
+  "windowsImeJob": 91516519221,
+  "packageSmokeJobs": {
+    "linux": 91516534892,
+    "windows": 91516534853,
+    "macos": 91516534864
+  }
 }

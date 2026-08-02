@@ -3,7 +3,7 @@
 > 状态：Active  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09及M9-00—M9-03，共45张独立任务卡；M9-04—M9-14为被M9-03吸收的冻结工作包别名。
-> 当前任务：M9-00—M9-02已Verified；M9-03统一承接AR-03—AR-14并已完成实现，等待Ready验证与合并。
+> 当前任务：M9-00—M9-03已Verified；M9 V1.1保持行为架构治理已闭环。
 
 ## 1. 执行入口
 
@@ -33,7 +33,7 @@ Blocked / Deferred / Removed
 | M3            | 规划、设定与连续性             |         10 | Verified                                     |
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
 | M8            | 交付关闭、作者体验与长期维护   |          7 | M8-02—M8-09 Verified                         |
-| M9            | V1.1保持行为的架构拆分治理     |          4 | M9-00—M9-02 Verified；M9-03 Implemented      |
+| M9            | V1.1保持行为的架构拆分治理     |          4 | M9-00—M9-03 Verified                         |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
@@ -52,7 +52,7 @@ M0—M3 已完成产品底座
 └─ M8-09 V1.0稳定性与生命周期治理（Verified）
    → M9-01 重构安全网（Verified）
    → M9-02 Shared Structure（Verified）
-   → M9-03 / AR-03—AR-14统一执行（Implemented）
+   → M9-03 / AR-03—AR-14统一执行（Verified）
 ```
 
 ## M0 工程、安全与运行底座
@@ -133,18 +133,18 @@ M0—M3 已完成产品底座
 | M9-00 | [`M9激活治理与权威文档同步`](M9/M9-00_ACTIVATION_GOVERNANCE.md)                                                                  | M8-09               | Verified                            |
 | M9-01 | [`重构安全网`](M9/M9-01_REFACTOR_SAFETY_NET.md)                                                                                  | M8-09               | Verified                            |
 | M9-02 | [`Shared Structure拆分`](M9/M9-02_SHARED_STRUCTURE.md)                                                                           | M9-00、M9-01        | Verified                            |
-| M9-03 | [`V1.1剩余架构拆分统一执行`](M9/M9-03_WRITING_TOOLS_DISPLAY.md)                                                                  | M9-01、M9-02        | Implemented                         |
-| M9-04 | [`AR-04 Writing章节会话状态机`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#5-ar-04-writing章节会话状态机)                    | M9-03内部AR-03      | Removed（absorbed by M9-03）        |
-| M9-05 | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-03内部基线       | Removed（absorbed by M9-03）        |
-| M9-06 | [`AR-06 Planning拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#7-ar-06-planning拆分)                                      | M9-03内部AR-02      | Removed（absorbed by M9-03）        |
-| M9-07 | [`AR-07 AppShell拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分)                                      | M9-03内部AR-04—06   | Removed（absorbed by M9-03）        |
-| M9-08 | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08-contracts拆分)                                    | M9-03内部基线       | Removed（absorbed by M9-03）        |
-| M9-09 | [`AR-09 Preload拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#10-ar-09-preload拆分)                                       | M9-03内部AR-08      | Removed（absorbed by M9-03）        |
-| M9-10 | [`AR-10 Main IPC拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#11-ar-10-main-ipc拆分)                                     | M9-03内部AR-08、09  | Removed（absorbed by M9-03）        |
-| M9-11 | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-03内部基线       | Removed（absorbed by M9-03）        |
-| M9-12 | [`AR-12 Project Workspace拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#13-ar-12-project-workspace拆分)                   | M9-03内部基线       | Removed（absorbed by M9-03）        |
-| M9-13 | [`AR-13 Recovery与工具域拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#14-ar-13-recovery与工具域拆分)                     | M9-03内部AR-12      | Removed（absorbed by M9-03）        |
-| M9-14 | [`AR-14 Legacy、CSS与最终结构收敛`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#15-ar-14-legacycss与最终结构收敛)             | M9-03内部AR-03—13   | Removed（absorbed by M9-03）        |
+| M9-03 | [`V1.1剩余架构拆分统一执行`](M9/M9-03_WRITING_TOOLS_DISPLAY.md)                                                                  | M9-01、M9-02        | Verified |
+| `M9-04` | [`AR-04 Writing章节会话状态机`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#5-ar-04-writing章节会话状态机)                    | M9-03内部AR-03      | Removed（absorbed by M9-03）        |
+| `M9-05` | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-03内部基线       | Removed（absorbed by M9-03）        |
+| `M9-06` | [`AR-06 Planning拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#7-ar-06-planning拆分)                                      | M9-03内部AR-02      | Removed（absorbed by M9-03）        |
+| `M9-07` | [`AR-07 AppShell拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分)                                      | M9-03内部AR-04—06   | Removed（absorbed by M9-03）        |
+| `M9-08` | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08-contracts拆分)                                    | M9-03内部基线       | Removed（absorbed by M9-03）        |
+| `M9-09` | [`AR-09 Preload拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#10-ar-09-preload拆分)                                       | M9-03内部AR-08      | Removed（absorbed by M9-03）        |
+| `M9-10` | [`AR-10 Main IPC拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#11-ar-10-main-ipc拆分)                                     | M9-03内部AR-08、09  | Removed（absorbed by M9-03）        |
+| `M9-11` | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-03内部基线       | Removed（absorbed by M9-03）        |
+| `M9-12` | [`AR-12 Project Workspace拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#13-ar-12-project-workspace拆分)                   | M9-03内部基线       | Removed（absorbed by M9-03）        |
+| `M9-13` | [`AR-13 Recovery与工具域拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#14-ar-13-recovery与工具域拆分)                     | M9-03内部AR-12      | Removed（absorbed by M9-03）        |
+| `M9-14` | [`AR-14 Legacy、CSS与最终结构收敛`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#15-ar-14-legacycss与最终结构收敛)             | M9-03内部AR-03—13   | Removed（absorbed by M9-03）        |
 
 ## 3. 被吸收的需求来源
 
@@ -174,7 +174,7 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M0—M8-09与M9-00—M9-02保持Verified；M9-03已完成AR-03—AR-14实现，等待Ready模式永久门禁与主分支验证。
+1. M0—M8-09与M9-00—M9-03保持Verified；M9 V1.1架构治理已完成并进入最终验证保持。
 2. M9-03统一PR绑定一个主任务并按统一`allowedPaths`验证；不得为M9-04—M9-14开放独立PR。
 3. main写入保持串行：一个PR合并并完成Main Verification后，才允许下一个PR写入main。
 4. M9只做保持行为的职责拆分，不改变本地优先、AI作者裁决、数据库Schema、IPC协议或正式错误码。

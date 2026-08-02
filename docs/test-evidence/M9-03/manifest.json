@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "taskId": "M9-03",
-  "commit": "ee29a045492062983198c21d7cb8f35f5968a603",
-  "generatedAt": "2026-08-02T04:10:00.000Z",
-  "acceptanceSource": "GITHUB_ACTIONS_VERIFIED_CHECKPOINT",
+  "commit": "7236d545530b5a56b2375030e75989b429493385",
+  "generatedAt": "2026-08-02T04:30:00.000Z",
+  "acceptanceSource": "REVALIDATION_IN_PROGRESS",
   "files": [
     {
       "path": "AR-04_ROLLBACK_AND_VERIFICATION.md",
@@ -42,8 +42,8 @@
     },
     {
       "path": "AR-11_SERVICE_FACADE_SPLIT_VERIFICATION.md",
-      "bytes": 3977,
-      "sha256": "7a1a979067da3f40b3efedaaa2353d1234a148eecdc099efad2d18bc2b5ef9f8"
+      "bytes": 3207,
+      "sha256": "6cee9c36e88e174d564b3bc92c70f7b5e8301ff5ea15d860bb576c372108c211"
     },
     {
       "path": "commands.txt",

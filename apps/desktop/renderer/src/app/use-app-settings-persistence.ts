@@ -13,7 +13,8 @@ import {
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import { resolveAiReadiness } from '../runtime/ai-readiness.js';
-import { contentWidthPixels, failureFromOutcome, type FailureView } from './app-shell-helpers.js';
+import { failureFromOutcome, type FailureView } from './app-shell-helpers.js';
+import type { RendererApplicationController } from './renderer-application-controller.js';
 
 interface AppSettingsPersistenceInput {
   readonly bridge: RendererBridgeAdapter;
@@ -21,6 +22,7 @@ interface AppSettingsPersistenceInput {
   readonly setPendingKey: (key: string | null) => void;
   readonly setMessage: (message: string | null) => void;
   readonly setFailure: (failure: FailureView | null) => void;
+  readonly applicationController: RendererApplicationController;
 }
 
 export function useAppSettingsPersistence({
@@ -29,6 +31,7 @@ export function useAppSettingsPersistence({
   setPendingKey,
   setMessage,
   setFailure,
+  applicationController,
 }: AppSettingsPersistenceInput) {
   const writeQueue = useRef<Promise<void>>(Promise.resolve());
   const confirmedSettings = useRef<AppSettings>(DEFAULT_APP_SETTINGS);
@@ -153,26 +156,16 @@ export function useAppSettingsPersistence({
   }, []);
 
   useEffect(() => {
-    document.body.dataset.theme = settings.themeId;
-    document.body.dataset.visualThemeVariant = settings.themeVariant;
-    document.body.dataset.motionPreference = settings.reduceMotion ? 'reduced' : 'full';
-    document.body.dataset.authorMode = settings.defaultMode;
-    document.body.dataset.projectState = activeProject
-      ? activeProject.databaseMode === 'read-only'
-        ? 'read-only'
-        : 'open'
-      : 'closed';
-    document.documentElement.style.setProperty(
-      '--ui-scale',
-      String(appearance.uiScalePercent / 100),
+    applicationController.applyPresentation(
+      settings,
+      appearance,
+      activeProject
+        ? activeProject.databaseMode === 'read-only'
+          ? 'read-only'
+          : 'open'
+        : 'closed',
     );
-    document.documentElement.style.setProperty('--body-font-size', `${appearance.bodyFontSize}px`);
-    document.documentElement.style.setProperty(
-      '--content-width',
-      `${contentWidthPixels(appearance.contentWidth, window.innerWidth)}px`,
-    );
-    document.body.dataset.workspaceAlignment = appearance.workspaceAlignment;
-  }, [activeProject, appearance, settings]);
+  }, [activeProject, appearance, applicationController, settings]);
 
   return {
     settings,

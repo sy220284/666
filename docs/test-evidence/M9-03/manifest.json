@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "taskId": "M9-03",
-  "commit": "d3400deedff2ff7a04ab9b509a96df4f00dfc3dc",
-  "generatedAt": "2026-08-02T00:25:00.000Z",
+  "commit": "ee29a045492062983198c21d7cb8f35f5968a603",
+  "generatedAt": "2026-08-02T04:10:00.000Z",
   "acceptanceSource": "GITHUB_ACTIONS_VERIFIED_CHECKPOINT",
   "files": [
     {
@@ -39,6 +39,11 @@
       "path": "AR-10_MAIN_IPC_SPLIT_VERIFICATION.md",
       "bytes": 4599,
       "sha256": "d4d90f8be080af3c5c2150eef3078bbfff8e6950bcde8e31f4b7c5395625d8c2"
+    },
+    {
+      "path": "AR-11_SERVICE_FACADE_SPLIT_VERIFICATION.md",
+      "bytes": 3977,
+      "sha256": "7a1a979067da3f40b3efedaaa2353d1234a148eecdc099efad2d18bc2b5ef9f8"
     },
     {
       "path": "commands.txt",

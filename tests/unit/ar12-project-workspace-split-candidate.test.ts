@@ -71,5 +71,6 @@ describe('AR-12 Project Workspace split candidate', () => {
     for (const file of summary.files) {
       expect((await stat(path.join(outputRoot, file))).size).toBeGreaterThan(0);
     }
+    throw new Error('AR-12 candidate artifact checkpoint after zero diagnostics.');
   });
 });

@@ -1,3 +1,4 @@
+// Preserve the public Draft API while internal services remain transaction-focused.
 export { DraftService } from './draft/draft-service.js';
 export {
   DraftServiceError,

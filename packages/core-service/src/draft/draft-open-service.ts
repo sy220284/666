@@ -8,11 +8,7 @@ import {
 
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
-import {
-  DraftServiceError,
-  systemClock,
-  type DraftServiceOptions,
-} from './draft-model.js';
+import { DraftServiceError, systemClock, type DraftServiceOptions } from './draft-model.js';
 import {
   ensureStoredHashes,
   hasMissingHashes,

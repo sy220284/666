@@ -1,13 +1,10 @@
-import {
-  ProjectIdSchema,
-  type ProjectWorkspaceSummary,
-} from "@worldforge/contracts";
+import { ProjectIdSchema, type ProjectWorkspaceSummary } from '@worldforge/contracts';
 
 import {
   closeProjectContext,
   loadWorkspace,
   type ProjectWorkspaceOperationContext,
-} from "./workspace-verifier.js";
+} from './workspace-verifier.js';
 
 export type ProjectOpenInput =
   { readonly workspacePath: string } | { readonly recentProjectId: string };
@@ -19,7 +16,7 @@ export async function openProjectWorkspace(
 ): Promise<ProjectWorkspaceSummary> {
   runtime.assertNoActive();
   let workspacePath: string;
-  if ("recentProjectId" in input) {
+  if ('recentProjectId' in input) {
     const projectId = ProjectIdSchema.parse(input.recentProjectId);
     workspacePath = runtime.recentProjects.get(projectId).workspacePath;
   } else {

@@ -1,28 +1,20 @@
-import { createHash } from "node:crypto";
-import {
-  cp,
-  readFile,
-  readdir,
-  rename,
-  rm,
-  stat,
-  statfs,
-} from "node:fs/promises";
-import path from "node:path";
+import { createHash } from 'node:crypto';
+import { cp, readFile, readdir, rename, rm, stat, statfs } from 'node:fs/promises';
+import path from 'node:path';
 
-import { type ProjectWorkspaceSummary } from "@worldforge/contracts";
+import { type ProjectWorkspaceSummary } from '@worldforge/contracts';
 
 import {
   existingDirectory,
   isInside,
   ProjectWorkspaceError,
   workspaceExists,
-} from "./workspace-path-policy.js";
+} from './workspace-path-policy.js';
 import {
   closeProjectContext,
   loadWorkspace,
   type ProjectWorkspaceOperationContext,
-} from "./workspace-verifier.js";
+} from './workspace-verifier.js';
 
 async function workspaceSize(directory: string): Promise<bigint> {
   let total = 0n;
@@ -31,8 +23,8 @@ async function workspaceSize(directory: string): Promise<bigint> {
       const entryPath = path.join(current, entry.name);
       if (entry.isSymbolicLink()) {
         throw new ProjectWorkspaceError(
-          "PROJECT_PATH_OUTSIDE_SCOPE",
-          "Symbolic links are not allowed inside a project workspace.",
+          'PROJECT_PATH_OUTSIDE_SCOPE',
+          'Symbolic links are not allowed inside a project workspace.',
         );
       }
       if (entry.isDirectory()) await visit(entryPath);
@@ -43,10 +35,7 @@ async function workspaceSize(directory: string): Promise<bigint> {
   return total;
 }
 
-export async function defaultCopyWorkspace(
-  source: string,
-  target: string,
-): Promise<void> {
+export async function defaultCopyWorkspace(source: string, target: string): Promise<void> {
   await cp(source, target, {
     recursive: true,
     force: false,
@@ -57,39 +46,36 @@ export async function defaultCopyWorkspace(
 }
 
 export async function defaultHashWorkspace(directory: string): Promise<string> {
-  const hash = createHash("sha256");
-  const visit = async (
-    current: string,
-    relativeDirectory: string,
-  ): Promise<void> => {
+  const hash = createHash('sha256');
+  const visit = async (current: string, relativeDirectory: string): Promise<void> => {
     const entries = await readdir(current, { withFileTypes: true });
-    entries.sort((left, right) => left.name.localeCompare(right.name, "en"));
+    entries.sort((left, right) => left.name.localeCompare(right.name, 'en'));
     for (const entry of entries) {
       const entryPath = path.join(current, entry.name);
       const relativePath = path.posix.join(relativeDirectory, entry.name);
       if (entry.isSymbolicLink()) {
         throw new ProjectWorkspaceError(
-          "PROJECT_PATH_OUTSIDE_SCOPE",
-          "Symbolic links are not allowed inside a project workspace.",
+          'PROJECT_PATH_OUTSIDE_SCOPE',
+          'Symbolic links are not allowed inside a project workspace.',
         );
       }
       if (entry.isDirectory()) {
-        hash.update(`directory\0${relativePath}\0`, "utf8");
+        hash.update(`directory\0${relativePath}\0`, 'utf8');
         await visit(entryPath, relativePath);
       } else if (entry.isFile()) {
-        hash.update(`file\0${relativePath}\0`, "utf8");
+        hash.update(`file\0${relativePath}\0`, 'utf8');
         hash.update(await readFile(entryPath));
-        hash.update("\0", "utf8");
+        hash.update('\0', 'utf8');
       } else {
         throw new ProjectWorkspaceError(
-          "PROJECT_PATH_OUTSIDE_SCOPE",
-          "Unsupported filesystem entries are not allowed inside a project workspace.",
+          'PROJECT_PATH_OUTSIDE_SCOPE',
+          'Unsupported filesystem entries are not allowed inside a project workspace.',
         );
       }
     }
   };
-  await visit(directory, "");
-  return hash.digest("hex");
+  await visit(directory, '');
+  return hash.digest('hex');
 }
 
 export async function defaultFreeBytes(directory: string): Promise<bigint> {
@@ -108,8 +94,8 @@ export async function moveProjectWorkspace(
   const targetParent = await existingDirectory(targetParentDirectory, true);
   if (isInside(source, targetParent)) {
     throw new ProjectWorkspaceError(
-      "PROJECT_MOVE_FAILED",
-      "A project cannot be moved inside its own workspace.",
+      'PROJECT_MOVE_FAILED',
+      'A project cannot be moved inside its own workspace.',
     );
   }
   const target = path.join(targetParent, path.basename(source));
@@ -117,10 +103,7 @@ export async function moveProjectWorkspace(
     return { ...context.summary, sourceRetained: false };
   }
   if (await workspaceExists(target)) {
-    throw new ProjectWorkspaceError(
-      "PROJECT_TARGET_CONFLICT",
-      "The move target already exists.",
-    );
+    throw new ProjectWorkspaceError('PROJECT_TARGET_CONFLICT', 'The move target already exists.');
   }
 
   const staging = `${target}.move-${runtime.idFactory()}`;
@@ -134,13 +117,10 @@ export async function moveProjectWorkspace(
 
     const requiredBytes = await workspaceSize(source);
     const safetyMargin = requiredBytes / 10n + 64n * 1024n * 1024n;
-    if (
-      (await runtime.freeBytes(targetParent)) <
-      requiredBytes + safetyMargin
-    ) {
+    if ((await runtime.freeBytes(targetParent)) < requiredBytes + safetyMargin) {
       throw new ProjectWorkspaceError(
-        "PROJECT_MOVE_FAILED",
-        "The target volume does not have enough free space.",
+        'PROJECT_MOVE_FAILED',
+        'The target volume does not have enough free space.',
       );
     }
     await runtime.copyWorkspace(source, staging);
@@ -150,8 +130,8 @@ export async function moveProjectWorkspace(
     ]);
     if (sourceHash !== targetHash) {
       throw new ProjectWorkspaceError(
-        "PROJECT_MOVE_FAILED",
-        "The copied project did not match the source workspace.",
+        'PROJECT_MOVE_FAILED',
+        'The copied project did not match the source workspace.',
       );
     }
     const verification = await loadWorkspace(runtime, staging);
@@ -178,18 +158,15 @@ export async function moveProjectWorkspace(
       try {
         const restored = await loadWorkspace(runtime, source);
         runtime.active = restored;
-        await runtime.registerRecentBestEffort(
-          runtime.idFactory(),
-          restored.summary,
-        );
+        await runtime.registerRecentBestEffort(runtime.idFactory(), restored.summary);
       } catch {
         // Keep the original move error. The source remains untouched for manual recovery.
       }
     }
     if (error instanceof ProjectWorkspaceError) throw error;
     throw new ProjectWorkspaceError(
-      "PROJECT_MOVE_FAILED",
-      "The project move failed; the original workspace was retained.",
+      'PROJECT_MOVE_FAILED',
+      'The project move failed; the original workspace was retained.',
       { cause: error },
     );
   }

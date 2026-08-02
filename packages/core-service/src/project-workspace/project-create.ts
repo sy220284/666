@@ -1,38 +1,29 @@
-import { createHash } from "node:crypto";
-import { chmod, mkdir, rename, rm, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { createHash } from 'node:crypto';
+import { chmod, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 
 import {
   ProjectCreateInputSchema,
   ProjectWorkspaceManifestSchema,
   type ProjectCreateInput,
   type ProjectWorkspaceSummary,
-} from "@worldforge/contracts";
-import { normalizeDraftBlockSemantic, serializeDraftBlockSemantic } from "@worldforge/domain";
+} from '@worldforge/contracts';
+import { normalizeDraftBlockSemantic, serializeDraftBlockSemantic } from '@worldforge/domain';
 
-import {
-  ProjectDatabase,
-  latestMigrationVersion,
-  loadMigrations,
-} from "../database/index.js";
+import { ProjectDatabase, latestMigrationVersion, loadMigrations } from '../database/index.js';
 import {
   existingDirectory,
   isPermissionFailure,
   ProjectWorkspaceError,
   validWorkspaceName,
   workspaceExists,
-} from "./workspace-path-policy.js";
-import {
-  loadWorkspace,
-  type ProjectWorkspaceOperationContext,
-} from "./workspace-verifier.js";
+} from './workspace-path-policy.js';
+import { loadWorkspace, type ProjectWorkspaceOperationContext } from './workspace-verifier.js';
 
 function draftTablesAvailable(connection: DatabaseSync): boolean {
   return Boolean(
-    connection
-      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='drafts'")
-      .get(),
+    connection.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='drafts'").get(),
   );
 }
 
@@ -47,13 +38,13 @@ function initializeChapterDraft(
   const blockId = idFactory();
   const logicalBlockId = idFactory();
   const initial = normalizeDraftBlockSemantic({
-    blockType: "paragraph",
-    content: "",
+    blockType: 'paragraph',
+    content: '',
     attributes: {},
   });
-  const contentHash = createHash("sha256")
-    .update(serializeDraftBlockSemantic(initial), "utf8")
-    .digest("hex");
+  const contentHash = createHash('sha256')
+    .update(serializeDraftBlockSemantic(initial), 'utf8')
+    .digest('hex');
   connection
     .prepare(
       `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)
@@ -77,18 +68,18 @@ function initializeChapterDraft(
       contentHash,
     );
   connection
-    .prepare("UPDATE chapters SET active_draft_id = ? WHERE id = ?")
+    .prepare('UPDATE chapters SET active_draft_id = ? WHERE id = ?')
     .run(draftId, chapterId);
 }
 
 function initializeProjectStructure(
   connection: DatabaseSync,
   projectId: string,
-  mode: "starter" | "blank",
+  mode: 'starter' | 'blank',
   createdAt: string,
   idFactory: () => string,
 ): { readonly volumeId: string; readonly chapterId: string } | null {
-  if (mode === "blank") return null;
+  if (mode === 'blank') return null;
   const volumeId = idFactory();
   const chapterId = idFactory();
   connection
@@ -113,7 +104,7 @@ function initializeOnboardingContent(
   connection: DatabaseSync,
   projectId: string,
   chapterId: string | null,
-  input: ProjectCreateInput["onboarding"],
+  input: ProjectCreateInput['onboarding'],
   createdAt: string,
   idFactory: () => string,
 ): void {
@@ -142,13 +133,9 @@ function initializeOnboardingContent(
   }
 
   if (input.protagonist) {
-    const summary = [
-      input.protagonist.identity,
-      input.protagonist.goal,
-      input.protagonist.boundary,
-    ]
+    const summary = [input.protagonist.identity, input.protagonist.goal, input.protagonist.boundary]
       .filter(Boolean)
-      .join("；");
+      .join('；');
     connection
       .prepare(
         `INSERT INTO entities(
@@ -156,14 +143,7 @@ function initializeOnboardingContent(
            archived_at, created_at, updated_at
          ) VALUES(?, ?, 'character', ?, '[]', ?, 'active', NULL, ?, ?)`,
       )
-      .run(
-        idFactory(),
-        projectId,
-        input.protagonist.name,
-        summary,
-        createdAt,
-        createdAt,
-      );
+      .run(idFactory(), projectId, input.protagonist.name, summary, createdAt, createdAt);
   }
 
   if (!chapterId) return;
@@ -200,7 +180,7 @@ function initializeOnboardingContent(
         chapterId,
         `场景${index + 1}`,
         goal,
-        last ? "turn" : index === 0 ? "setup" : "development",
+        last ? 'turn' : index === 0 ? 'setup' : 'development',
         last ? 100 - basePercent * index : basePercent,
         (index + 1) * 1024,
         createdAt,
@@ -219,14 +199,11 @@ export async function createProjectWorkspace(
   const parent = await existingDirectory(parentDirectory, true);
   const workspaceName = validWorkspaceName(project.name);
   const finalPath = path.join(parent, workspaceName);
-  const stagingPath = path.join(
-    parent,
-    `.${workspaceName}.create-${runtime.idFactory()}`,
-  );
+  const stagingPath = path.join(parent, `.${workspaceName}.create-${runtime.idFactory()}`);
   if (await workspaceExists(finalPath)) {
     throw new ProjectWorkspaceError(
-      "PROJECT_TARGET_CONFLICT",
-      "A project workspace with the same name already exists.",
+      'PROJECT_TARGET_CONFLICT',
+      'A project workspace with the same name already exists.',
     );
   }
 
@@ -236,12 +213,9 @@ export async function createProjectWorkspace(
   try {
     await mkdir(stagingPath, { mode: 0o700 });
     await chmod(stagingPath, 0o700);
-    const migrations = await loadMigrations(
-      runtime.migrationsDirectory,
-      "project",
-    );
+    const migrations = await loadMigrations(runtime.migrationsDirectory, 'project');
     const projectSchemaVersion = latestMigrationVersion(migrations);
-    const databasePath = path.join(stagingPath, "project.sqlite");
+    const databasePath = path.join(stagingPath, 'project.sqlite');
     const database = await ProjectDatabase.open({
       path: databasePath,
       migrations,
@@ -249,13 +223,10 @@ export async function createProjectWorkspace(
       clock: runtime.clock,
     });
     try {
-      if (
-        database.mode !== "read-write" ||
-        database.schemaVersion !== projectSchemaVersion
-      ) {
+      if (database.mode !== 'read-write' || database.schemaVersion !== projectSchemaVersion) {
         throw new ProjectWorkspaceError(
-          "PROJECT_CREATE_FAILED",
-          "A new project database did not reach the latest registered schema version.",
+          'PROJECT_CREATE_FAILED',
+          'A new project database did not reach the latest registered schema version.',
         );
       }
       await database.write(requestId, (connection) => {
@@ -276,7 +247,7 @@ export async function createProjectWorkspace(
         const structure = initializeProjectStructure(
           connection,
           projectId,
-          project.initialStructure ?? "starter",
+          project.initialStructure ?? 'starter',
           createdAt,
           runtime.idFactory,
         );
@@ -289,24 +260,24 @@ export async function createProjectWorkspace(
           runtime.idFactory,
         );
       });
-      await database.checkpoint("TRUNCATE");
+      await database.checkpoint('TRUNCATE');
     } finally {
       await database.close();
     }
     await chmod(databasePath, 0o600);
     const manifest = ProjectWorkspaceManifestSchema.parse({
-      format: "worldforge-project",
+      format: 'worldforge-project',
       manifestVersion: 1,
       projectId,
       displayName: project.name,
-      databaseFile: "project.sqlite",
+      databaseFile: 'project.sqlite',
       projectSchemaVersion,
       createdAt,
     });
     await writeFile(
-      path.join(stagingPath, "manifest.json"),
+      path.join(stagingPath, 'manifest.json'),
       `${JSON.stringify(manifest, null, 2)}\n`,
-      { encoding: "utf8", mode: 0o600, flag: "wx" },
+      { encoding: 'utf8', mode: 0o600, flag: 'wx' },
     );
     await rename(stagingPath, finalPath);
     renamed = true;
@@ -321,14 +292,14 @@ export async function createProjectWorkspace(
     if (error instanceof ProjectWorkspaceError) throw error;
     if (isPermissionFailure(error)) {
       throw new ProjectWorkspaceError(
-        "PROJECT_DIRECTORY_READ_ONLY",
-        "The project workspace could not be created in the selected directory.",
+        'PROJECT_DIRECTORY_READ_ONLY',
+        'The project workspace could not be created in the selected directory.',
         { cause: error },
       );
     }
     throw new ProjectWorkspaceError(
-      "PROJECT_CREATE_FAILED",
-      "The project workspace could not be created safely.",
+      'PROJECT_CREATE_FAILED',
+      'The project workspace could not be created safely.',
       { cause: error },
     );
   }

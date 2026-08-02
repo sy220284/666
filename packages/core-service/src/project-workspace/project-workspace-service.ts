@@ -1,41 +1,41 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID } from 'node:crypto';
 
 import {
   ProjectIdSchema,
   RequestIdSchema,
   type ProjectCreateInput,
   type ProjectWorkspaceSummary,
-} from "@worldforge/contracts";
+} from '@worldforge/contracts';
 
-import { BoundedIdempotentPromiseCache } from "../bounded-idempotent-promise-cache.js";
+import { BoundedIdempotentPromiseCache } from '../bounded-idempotent-promise-cache.js';
 import type {
   DatabaseClock,
   DatabaseReadOperation,
   DatabaseWriteOperation,
-} from "../database/index.js";
-import type { RecentProjectsRepository } from "../recent-projects.js";
-import { createProjectWorkspace } from "./project-create.js";
+} from '../database/index.js';
+import type { RecentProjectsRepository } from '../recent-projects.js';
+import { createProjectWorkspace } from './project-create.js';
 import {
   defaultCopyWorkspace,
   defaultFreeBytes,
   defaultHashWorkspace,
   moveProjectWorkspace,
-} from "./project-move.js";
+} from './project-move.js';
 import {
   openProjectWorkspace,
   registerRecoveredProjectWorkspace,
   type ProjectOpenInput,
-} from "./project-open.js";
+} from './project-open.js';
 import {
   ProjectWorkspaceError,
   resolveWorkspacePath,
   type ProjectWorkspaceErrorCode,
-} from "./workspace-path-policy.js";
+} from './workspace-path-policy.js';
 import {
   closeProjectContext,
   type ActiveProjectContext,
   type ProjectWorkspaceOperationContext,
-} from "./workspace-verifier.js";
+} from './workspace-verifier.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -71,8 +71,7 @@ export class ProjectWorkspaceService {
   constructor(options: ProjectWorkspaceServiceOptions) {
     this.#migrationsDirectory = options.projectMigrationsDirectory;
     this.#appVersion = options.appVersion;
-    this.#projectMigrationRecoveryDirectory =
-      options.projectMigrationRecoveryDirectory;
+    this.#projectMigrationRecoveryDirectory = options.projectMigrationRecoveryDirectory;
     this.#recentProjects = options.recentProjects;
     this.#clock = options.clock ?? systemClock;
     this.#copyWorkspace = options.copyWorkspace ?? defaultCopyWorkspace;
@@ -91,28 +90,17 @@ export class ProjectWorkspaceService {
     parentDirectory: string,
   ): Promise<ProjectWorkspaceSummary> {
     return this.#idempotent(requestId, () =>
-      createProjectWorkspace(
-        this.#operationContext(),
-        requestId,
-        input,
-        parentDirectory,
-      ),
+      createProjectWorkspace(this.#operationContext(), requestId, input, parentDirectory),
     );
   }
 
-  open(
-    requestId: string,
-    input: ProjectOpenInput,
-  ): Promise<ProjectWorkspaceSummary> {
+  open(requestId: string, input: ProjectOpenInput): Promise<ProjectWorkspaceSummary> {
     return this.#idempotent(requestId, () =>
       openProjectWorkspace(this.#operationContext(), requestId, input),
     );
   }
 
-  close(
-    requestId: string,
-    projectId: string,
-  ): Promise<{ projectId: string; closed: true }> {
+  close(requestId: string, projectId: string): Promise<{ projectId: string; closed: true }> {
     return this.#idempotent(requestId, async () => {
       const context = this.#assertActiveContext(projectId);
       try {
@@ -130,12 +118,7 @@ export class ProjectWorkspaceService {
     targetParentDirectory: string,
   ): Promise<ProjectWorkspaceSummary & { readonly sourceRetained: boolean }> {
     return this.#idempotent(requestId, () =>
-      moveProjectWorkspace(
-        this.#operationContext(),
-        requestId,
-        projectId,
-        targetParentDirectory,
-      ),
+      moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
     );
   }
 
@@ -144,18 +127,11 @@ export class ProjectWorkspaceService {
     workspacePath: string,
   ): Promise<ProjectWorkspaceSummary> {
     return this.#idempotent(requestId, () =>
-      registerRecoveredProjectWorkspace(
-        this.#operationContext(),
-        requestId,
-        workspacePath,
-      ),
+      registerRecoveredProjectWorkspace(this.#operationContext(), requestId, workspacePath),
     );
   }
 
-  assertActiveProject(
-    projectId: string,
-    requireWrite = false,
-  ): ProjectWorkspaceSummary {
+  assertActiveProject(projectId: string, requireWrite = false): ProjectWorkspaceSummary {
     return this.#assertActiveContext(projectId, requireWrite).summary;
   }
 
@@ -163,8 +139,8 @@ export class ProjectWorkspaceService {
     const context = this.#assertActiveContext(projectId);
     if (!context.database) {
       throw new ProjectWorkspaceError(
-        "PROJECT_READ_ONLY",
-        "The project database is unreadable; only external recovery points are available.",
+        'PROJECT_READ_ONLY',
+        'The project database is unreadable; only external recovery points are available.',
       );
     }
     return context.database.read(operation);
@@ -178,17 +154,14 @@ export class ProjectWorkspaceService {
     const context = this.#assertActiveContext(projectId, true);
     if (!context.database) {
       throw new ProjectWorkspaceError(
-        "PROJECT_READ_ONLY",
-        "The project database is unreadable; write operations are disabled.",
+        'PROJECT_READ_ONLY',
+        'The project database is unreadable; write operations are disabled.',
       );
     }
     return (await context.database.write(requestId, operation)).value;
   }
 
-  async resolveProjectPath(
-    projectId: string,
-    relativePath: string,
-  ): Promise<string> {
+  async resolveProjectPath(projectId: string, relativePath: string): Promise<string> {
     const context = this.#assertActiveContext(projectId);
     return resolveWorkspacePath(context.summary.workspacePath, relativePath);
   }
@@ -223,28 +196,25 @@ export class ProjectWorkspaceService {
   #assertNoActive(): void {
     if (this.#active) {
       throw new ProjectWorkspaceError(
-        "PROJECT_ALREADY_ACTIVE",
-        "Close the active project before opening another project.",
+        'PROJECT_ALREADY_ACTIVE',
+        'Close the active project before opening another project.',
       );
     }
   }
 
-  #assertActiveContext(
-    projectId: string,
-    requireWrite = false,
-  ): ActiveProjectContext {
+  #assertActiveContext(projectId: string, requireWrite = false): ActiveProjectContext {
     const validProjectId = ProjectIdSchema.parse(projectId);
     const context = this.#active;
     if (!context || context.summary.projectId !== validProjectId) {
       throw new ProjectWorkspaceError(
-        "PROJECT_ID_MISMATCH",
-        "The command does not belong to the active project.",
+        'PROJECT_ID_MISMATCH',
+        'The command does not belong to the active project.',
       );
     }
-    if (requireWrite && context.summary.databaseMode !== "read-write") {
+    if (requireWrite && context.summary.databaseMode !== 'read-write') {
       throw new ProjectWorkspaceError(
-        "PROJECT_READ_ONLY",
-        "The active project is open in read-only compatibility mode.",
+        'PROJECT_READ_ONLY',
+        'The active project is open in read-only compatibility mode.',
       );
     }
     return context;
@@ -255,8 +225,7 @@ export class ProjectWorkspaceService {
     return {
       migrationsDirectory: this.#migrationsDirectory,
       appVersion: this.#appVersion,
-      projectMigrationRecoveryDirectory:
-        this.#projectMigrationRecoveryDirectory,
+      projectMigrationRecoveryDirectory: this.#projectMigrationRecoveryDirectory,
       recentProjects: this.#recentProjects,
       clock: this.#clock,
       copyWorkspace: this.#copyWorkspace,

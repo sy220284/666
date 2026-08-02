@@ -15,23 +15,14 @@ import {
   ValidationServiceError,
   type ValidationAiCompletionInput,
 } from './validation-model.js';
-import {
-  CONFIG_VERSION,
-  RULE_CONFIG,
-  RULE_VERSION,
-  rules,
-} from './validation-rules.js';
+import { CONFIG_VERSION, RULE_CONFIG, RULE_VERSION, rules } from './validation-rules.js';
 
 export class ValidationRuleOperations {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
   readonly #idFactory: () => string;
 
-  constructor(
-    workspace: ProjectWorkspaceService,
-    clock: DatabaseClock,
-    idFactory: () => string,
-  ) {
+  constructor(workspace: ProjectWorkspaceService, clock: DatabaseClock, idFactory: () => string) {
     this.#workspace = workspace;
     this.#clock = clock;
     this.#idFactory = idFactory;

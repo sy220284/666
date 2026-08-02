@@ -92,6 +92,11 @@ describe('M3 final React business workbenches', () => {
         'features/planning/planning-mode-workbench.tsx',
         'features/planning/professional-planning-workbench.tsx',
         'features/canon/canon-workbench.tsx',
+        'features/canon/canon-core-workbench.tsx',
+        'features/canon/entity-canon-panel.tsx',
+        'features/canon/continuity-panel.tsx',
+        'features/canon/narrative-planning-panel.tsx',
+        'features/canon/state-proposal-panel.tsx',
         'features/canon/continuity-relationship-editor.tsx',
         'features/canon/narrative-relationship-editor.tsx',
         'features/data-tools/data-tools-workbench.tsx',
@@ -108,7 +113,11 @@ describe('M3 final React business workbenches', () => {
     const html = await readFile(path.join(rendererRoot, 'index.html'), 'utf8');
     const packageEntry = await readFile(path.join(rendererRoot, 'index.ts'), 'utf8');
     expect(html).toContain('id="react-root"');
-    expect(html).toContain('./m3.css');
+    expect(html).toContain('./styles/base.css');
+    expect(html).toContain('./styles/layout.css');
+    expect(html).toContain('./styles/components/01-shell.css');
+    expect(html).toContain('./styles/themes.css');
+    expect(html).not.toContain('./m3.css');
     expect(html).not.toContain('legacy-root');
     expect(html).not.toContain('data-draft-workspace');
     expect(html).not.toContain('data-version-dialog');
@@ -127,48 +136,65 @@ describe('M3 final React business workbenches', () => {
       'state-proposal-ui.ts',
       'scene-beat-entity-selector.ts',
       'audit-trash-reference-guard.ts',
+      'styles.css',
+      'm3.css',
+      'm8-07.css',
+      'compat/legacy-surface.ts',
     ]) {
       await expect(access(path.join(rendererRoot, file))).rejects.toThrow();
     }
   });
 
   it('keeps safety hashes, complete relationship fields and independent cancellation state', async () => {
-    const [planning, structure, canonCore, continuity, narrative, dataTools, hook, writing] =
-      await Promise.all([
-        readFile(
-          path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
-          'utf8',
-        ),
-        Promise.all(
-          [
-            'structure-navigator.tsx',
-            'structure-tree.tsx',
-            'volume-editor-dialog.tsx',
-            'chapter-editor-dialog.tsx',
-            'structure-operation-dialog.tsx',
-            'trash-panel.tsx',
-            'structure-formatters.ts',
-          ].map((file) => readFile(path.join(rendererRoot, 'features/structure', file), 'utf8')),
-        ).then((sources) => sources.join('\n')),
-        readFile(path.join(rendererRoot, 'features/canon/canon-core-workbench.tsx'), 'utf8'),
-        readFile(
-          path.join(rendererRoot, 'features/canon/continuity-relationship-editor.tsx'),
-          'utf8',
-        ),
-        readFile(
-          path.join(rendererRoot, 'features/canon/narrative-relationship-editor.tsx'),
-          'utf8',
-        ),
-        readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
-        readFile(path.join(rendererRoot, 'bridge/use-bridge-resource.ts'), 'utf8'),
-        Promise.all(
-          [
-            'writing-core-workbench.tsx',
-            'candidate-review-panel.tsx',
-            'candidate-review-loader.ts',
-          ].map((file) => readFile(path.join(rendererRoot, 'features/writing', file), 'utf8')),
-        ).then((sources) => sources.join('\n')),
-      ]);
+    const [
+      planning,
+      structure,
+      canonCore,
+      entityCanon,
+      continuityPanel,
+      narrativePanel,
+      stateProposalPanel,
+      continuity,
+      narrative,
+      dataTools,
+      hook,
+      writing,
+    ] = await Promise.all([
+      readFile(
+        path.join(rendererRoot, 'features/planning/professional-planning-workbench.tsx'),
+        'utf8',
+      ),
+      Promise.all(
+        [
+          'structure-navigator.tsx',
+          'structure-tree.tsx',
+          'volume-editor-dialog.tsx',
+          'chapter-editor-dialog.tsx',
+          'structure-operation-dialog.tsx',
+          'trash-panel.tsx',
+          'structure-formatters.ts',
+        ].map((file) => readFile(path.join(rendererRoot, 'features/structure', file), 'utf8')),
+      ).then((sources) => sources.join('\n')),
+      readFile(path.join(rendererRoot, 'features/canon/canon-core-workbench.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/canon/entity-canon-panel.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/canon/continuity-panel.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/canon/narrative-planning-panel.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/canon/state-proposal-panel.tsx'), 'utf8'),
+      readFile(
+        path.join(rendererRoot, 'features/canon/continuity-relationship-editor.tsx'),
+        'utf8',
+      ),
+      readFile(path.join(rendererRoot, 'features/canon/narrative-relationship-editor.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'features/data-tools/data-tools-workbench.tsx'), 'utf8'),
+      readFile(path.join(rendererRoot, 'bridge/use-bridge-resource.ts'), 'utf8'),
+      Promise.all(
+        [
+          'writing-core-workbench.tsx',
+          'candidate-review-panel.tsx',
+          'candidate-review-loader.ts',
+        ].map((file) => readFile(path.join(rendererRoot, 'features/writing', file), 'utf8')),
+      ).then((sources) => sources.join('\n')),
+    ]);
 
     expect(planning).toContain("from '../structure/structure-navigator.js'");
     expect(structure).toContain('previewSplitChapter');
@@ -177,8 +203,17 @@ describe('M3 final React business workbenches', () => {
     expect(structure).toContain('previewPermanentDelete');
     expect(structure).toContain('planHash: preview.planHash');
     expect(structure).toContain('confirmationTitle = window.prompt');
-    expect(canonCore).toContain("selected.status !== 'archived'");
-    expect(canonCore).toContain('输入实体名称');
+    expect(canonCore).toContain("from './entity-canon-panel.js'");
+    expect(canonCore).toContain("from './continuity-panel.js'");
+    expect(canonCore).toContain("from './narrative-planning-panel.js'");
+    expect(canonCore).toContain("from './state-proposal-panel.js'");
+    expect(canonCore).not.toContain('useBridgeQuery');
+    expect(canonCore).not.toContain('useState');
+    expect(entityCanon).toContain("selected.status !== 'archived'");
+    expect(entityCanon).toContain('输入实体名称');
+    expect(continuityPanel).toContain('export function ContinuityPanel');
+    expect(narrativePanel).toContain('export function NarrativePlanningPanel');
+    expect(stateProposalPanel).toContain('export function StateProposalPanel');
     expect(continuity).toContain('participantIds');
     expect(continuity).toContain('witnessIds');
     expect(continuity).toContain('subjectIds');

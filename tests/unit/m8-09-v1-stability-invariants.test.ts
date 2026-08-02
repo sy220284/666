@@ -26,18 +26,28 @@ describe('M8-09 V1 stability invariants', () => {
   });
 
   it('does not delete committed workspaces or fail healthy opens when recent metadata fails', async () => {
-    const content = await source('packages/core-service/src/project-workspace.ts');
-    expect(content).toContain('if (!renamed && !this.#active)');
-    expect(content).not.toContain('rm(renamed ? finalPath : stagingPath');
-    expect(content).toContain('#registerRecentBestEffort');
-    expect(content).toContain('requiredBytes / 10n + 64n * 1024n * 1024n');
+    const [create, open, move, service] = await Promise.all([
+      source('packages/core-service/src/project-workspace/project-create.ts'),
+      source('packages/core-service/src/project-workspace/project-open.ts'),
+      source('packages/core-service/src/project-workspace/project-move.ts'),
+      source('packages/core-service/src/project-workspace/project-workspace-service.ts'),
+    ]);
+    expect(create).toContain('if (!renamed && !runtime.active)');
+    expect(create).not.toContain('rm(renamed ? finalPath : stagingPath');
+    expect(open).toContain('registerRecentBestEffort');
+    expect(service).toContain('#registerRecentBestEffort');
+    expect(service).toContain('return false');
+    expect(move).toContain('requiredBytes / 10n + 64n * 1024n * 1024n');
   });
 
   it('implements reopen-last, request generations and retryable shutdown cleanup', async () => {
-    const shell = await source('apps/desktop/renderer/src/app/app-shell-m3.tsx');
-    const main = await source('apps/desktop/main/src/electron-main.ts');
-    expect(shell).toContain("startupBehavior === 'reopen-last'");
-    expect(shell).toContain('workspaceAttentionGeneration.current !== generation');
+    const [startup, runtime, main] = await Promise.all([
+      source('apps/desktop/renderer/src/app/use-workspace-startup.ts'),
+      source('apps/desktop/renderer/src/app/use-workspace-runtime.ts'),
+      source('apps/desktop/main/src/electron-main.ts'),
+    ]);
+    expect(startup).toContain("startupBehavior === 'reopen-last'");
+    expect(runtime).toContain('attentionGeneration.current !== generation');
     expect(main).toContain('finally {');
     expect(main).toContain('if (!shutdownCompleted) shutdownInFlight = null');
   });
@@ -58,10 +68,10 @@ describe('M8-09 V1 stability invariants', () => {
   });
 
   it('installs structured Main and Renderer unexpected-error boundaries', async () => {
-    const ipc = await source('apps/desktop/main/src/ipc-handlers.ts');
+    const guard = await source('apps/desktop/main/src/handler-guard.ts');
     const entry = await source('apps/desktop/renderer/src/react-entry.tsx');
-    expect(ipc).toContain("'ipc.handler.unexpected'");
-    expect(ipc).toContain("'COMMON_INTERNAL_999'");
+    expect(guard).toContain("'ipc.handler.unexpected'");
+    expect(guard).toContain("'COMMON_INTERNAL_999'");
     expect(entry).toContain('installGlobalRendererErrorBoundary');
   });
 });

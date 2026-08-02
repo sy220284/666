@@ -1,14 +1,13 @@
 import { PROTOCOL_VERSION } from '@worldforge/contracts';
 import { createRoot } from 'react-dom/client';
 
+import { createRendererApplicationController } from './app/renderer-application-controller.js';
 import { RendererErrorBoundary } from './app/renderer-error-boundary.js';
 import { RendererFoundationApp } from './app/renderer-foundation-app.js';
 import { createWindowRendererBridgeAdapter } from './bridge/renderer-bridge-adapter.js';
 import { createLegacyCompatibilityLoader } from './compat/legacy-loader.js';
-import { createLegacySurfaceController } from './compat/legacy-surface.js';
 import { createCoreRecoverySupervisor } from './runtime/core-recovery-supervisor.js';
 import { installGlobalRendererErrorBoundary } from './runtime/global-error-boundary.js';
-import { flushRegisteredDraft } from './runtime/draft-flush-registry.js';
 import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
 import { createRendererFoundationRuntime } from './runtime/renderer-foundation-runtime.js';
 import { RendererStatusArbitrator } from './runtime/status-arbitrator.js';
@@ -20,11 +19,14 @@ if (rootElement.dataset.reactMounted === 'true') {
 }
 
 const bridge = createWindowRendererBridgeAdapter();
-const legacySurface = createLegacySurfaceController();
+const applicationController = createRendererApplicationController();
 const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
 const retiredCompatibilityBoundary = createLegacyCompatibilityLoader(async () => undefined);
-const coreRecovery = createCoreRecoverySupervisor({ bridge, flushDraft: flushRegisteredDraft });
+const coreRecovery = createCoreRecoverySupervisor({
+  bridge,
+  flushDraft: applicationController.flushPendingDraft,
+});
 const stopGlobalErrorBoundary = installGlobalRendererErrorBoundary();
 const runtime = createRendererFoundationRuntime({
   bridge,
@@ -39,7 +41,8 @@ const root = createRoot(rootElement);
 lifecycle.register('react-root', 'core-recovery-supervisor', () => coreRecovery.dispose());
 lifecycle.register('react-root', 'global-error-boundary', stopGlobalErrorBoundary);
 const stopShutdownListener = bridge.lifecycle.onShutdownPrepare((request) => {
-  void flushRegisteredDraft()
+  void applicationController
+    .flushPendingDraft()
     .then((saved) => bridge.lifecycle.acknowledgeShutdown({ ...request, saved }))
     .catch(() => bridge.lifecycle.acknowledgeShutdown({ ...request, saved: false }));
 });
@@ -48,7 +51,11 @@ coreRecovery.start();
 rootElement.dataset.reactMounted = 'true';
 root.render(
   <RendererErrorBoundary>
-    <RendererFoundationApp bridge={bridge} legacySurface={legacySurface} runtime={runtime} />
+    <RendererFoundationApp
+      applicationController={applicationController}
+      bridge={bridge}
+      runtime={runtime}
+    />
   </RendererErrorBoundary>,
 );
 

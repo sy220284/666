@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "taskId": "M9-03",
-  "commit": "1bdf14603432400f77984e73b44f09820a5a09fe",
-  "generatedAt": "2026-08-01T08:20:00.000Z",
-  "acceptanceSource": "LOCAL_AND_GITHUB_ACTIONS_PENDING",
+  "commit": "68cf81469eabb2d9bebeed356e01faa71076faf9",
+  "generatedAt": "2026-08-02T13:50:00.000Z",
+  "acceptanceSource": "GITHUB_ACTIONS_IMPLEMENTED_CHECKPOINT",
   "files": [
     {
       "path": "AR-04_ROLLBACK_AND_VERIFICATION.md",
@@ -11,19 +11,69 @@
       "sha256": "ea3507b0f98e4f48ad5502b0fc7086f90edef8133a2abd197becdfd132da035c"
     },
     {
+      "path": "AR-05_CANON_SPLIT_VERIFICATION.md",
+      "bytes": 3744,
+      "sha256": "9644f4ac3ddbaf4ee035fc5fb945179b6f3d3646c49d95dbf15d3e584d7f1aa9"
+    },
+    {
+      "path": "AR-06_PLANNING_SPLIT_VERIFICATION.md",
+      "bytes": 4249,
+      "sha256": "25ffbfa6e7ef5c013d3e632bbc27e3ded34b5deac66d773e15cf8fedfd55b576"
+    },
+    {
+      "path": "AR-07_APP_SHELL_SPLIT_VERIFICATION.md",
+      "bytes": 5172,
+      "sha256": "d6ad4f9f0da959ce240bd2fa4e0f6b19c0570e4233e00c07b96ee21b47dda837"
+    },
+    {
+      "path": "AR-08_CONTRACTS_SPLIT_VERIFICATION.md",
+      "bytes": 3984,
+      "sha256": "bb405f8d4a301c51f2f063564d1191c2dea054dccd71d7445c9e4a6c19a137c2"
+    },
+    {
+      "path": "AR-09_PRELOAD_SPLIT_VERIFICATION.md",
+      "bytes": 4527,
+      "sha256": "3a2b79227a39a0852b9b18512ddc9326b78101a38255de34c7b3dd319018f050"
+    },
+    {
+      "path": "AR-10_MAIN_IPC_SPLIT_VERIFICATION.md",
+      "bytes": 4599,
+      "sha256": "d4d90f8be080af3c5c2150eef3078bbfff8e6950bcde8e31f4b7c5395625d8c2"
+    },
+    {
+      "path": "AR-11_SERVICE_FACADE_SPLIT_VERIFICATION.md",
+      "bytes": 4881,
+      "sha256": "3c50d55d5ebb73128fd37b9e0a238935056c27999eb608403f5232161624fdba"
+    },
+    {
+      "path": "AR-12_PROJECT_WORKSPACE_SPLIT_VERIFICATION.md",
+      "bytes": 5924,
+      "sha256": "27d60a3aca12effbc79cd41156d60a0c7b695a372fe5c93c6cd73cc4c5bb6923"
+    },
+    {
+      "path": "AR-13_UTILITY_DOMAINS_SPLIT_VERIFICATION.md",
+      "bytes": 1992,
+      "sha256": "33a1ab27192620fafe990dd15124c397fae2c614d7af737cc3c4ba8ae4456358"
+    },
+    {
+      "path": "AR-14_FINAL_STRUCTURE_VERIFICATION.md",
+      "bytes": 2754,
+      "sha256": "c0d54fe3c99195c2cbc72129e2a35a93eba62b71e8214382ec5ba4001ea4522e"
+    },
+    {
       "path": "commands.txt",
-      "bytes": 393,
-      "sha256": "bfb321aeb63fddd546a6030cd516d9afb78ebdc149bbca3826e99205d61bb11a"
+      "bytes": 695,
+      "sha256": "b3976d9afe191be2035f025457e70d6aec9f3c3af72a75191e93f9814f2f393d"
     },
     {
       "path": "known-risks.md",
-      "bytes": 606,
-      "sha256": "f2196d8958c18f991fb928f3929c07efa12e585587e2ce6dd3b7447fb50cdbb1"
+      "bytes": 1316,
+      "sha256": "337dafb671ffffe97b6ce1abeda73035651811dca35361aff066a3e8c634c62b"
     },
     {
       "path": "summary.md",
-      "bytes": 696,
-      "sha256": "660297742693124acdb3bdf88929e67137c81c6410b407b7442545badcdb88cf"
+      "bytes": 1194,
+      "sha256": "841f15d7f71a668f6ecee0f8189efe04dd5ada4db93cdb834583c7449691e2da"
     }
   ]
 }

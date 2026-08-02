@@ -1,7 +1,9 @@
 # M9-03阶段证据摘要
 
-当前证据覆盖统一任务M9-03内的AR-03与AR-04检查点。AR-03完成Writing工具、Version、Candidate审阅和Generation展示拆分；AR-04完成章节会话状态机、Editor生命周期、Draft Autosave、不可变保存上下文和统一Flush的本地实现与验证。
+当前证据覆盖统一任务M9-03内的AR-03—AR-10检查点。AR-03、AR-04已通过PR #272进入main；续作PR #273已完成AR-05 Canon、AR-06 Planning、AR-07 AppShell、AR-08 Contracts、AR-09 Preload和AR-10 Main IPC拆分。
 
-AR-04代码检查点为`f7e17c1`，验证与回退说明检查点为`1bdf146`。组合根已收敛为235行，结构扫描保持15个既有债务且未新增循环依赖。
+AR-10受检Head为`d3400deedff2ff7a04ab9b509a96df4f00dfc3dc`，Quality Run为`30726171522`。Evidence、治理、策略、安全、性能、格式、Lint、Typecheck、Unit、Integration、Migration、Coverage、Build、Electron E2E和Quality聚合全部通过。覆盖率为232个测试文件、1025项测试，Statements 84.69%、Branches 75.03%、Functions 84.86%、Lines 86.78%。
 
-M9-03仍处于实施中。AR-04必须等待Draft PR在Linux、Windows和macOS上的高风险门禁全部成功，之后才能按冻结顺序进入AR-05；AR-03—AR-14全部完成前不得转Ready或合并。
+Main IPC根入口收敛为37行总注册与释放装配；统一Guard集中来源校验、Schema拒绝、异常转换和Query/Mutation错误语义，App、Project、Recovery、Planning、Canon、Structure、Writing和Task按领域拆分。正式通道、凭据隔离、Task MessagePort与释放语义保持不变。
+
+M9-03仍处于实施中，当前活动工作包切换为AR-11 State Proposal与Generation拆分。AR-11—AR-14全部完成、永久终验通过、续作PR合并并完成main复验前，不得转Ready、合并或关闭M9-03。

@@ -1,24 +1,18 @@
 import { useEffect } from 'react';
 
-import { layoutPolicyForViewport } from '../layout-model.js';
 import { AppShell as AppShellM3, type AppShellProps } from './app-shell-m3.js';
 
 export type { AppShellProps };
 
 export function AppShell(props: AppShellProps) {
-  useEffect(() => {
-    const applyLayoutState = (): void => {
-      const rawScale = getComputedStyle(document.documentElement).getPropertyValue('--ui-scale');
-      const scale = Number.parseFloat(rawScale) || 1;
-      const policy = layoutPolicyForViewport(window.innerWidth / scale);
-      document.body.dataset.layoutMode = policy.mode;
-      document.body.dataset.leftPanel = policy.leftPanel;
-    };
+  const { applicationController } = props;
 
-    applyLayoutState();
-    window.addEventListener('resize', applyLayoutState);
-    window.addEventListener('worldforge:presentation-changed', applyLayoutState);
-    const observer = new MutationObserver(applyLayoutState);
+  useEffect(() => {
+    applicationController.refreshPlacement();
+    const refreshPlacement = (): void => applicationController.refreshPlacement();
+    window.addEventListener('resize', refreshPlacement);
+    window.addEventListener('worldforge:presentation-changed', refreshPlacement);
+    const observer = new MutationObserver(refreshPlacement);
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['style'],
@@ -26,10 +20,10 @@ export function AppShell(props: AppShellProps) {
 
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', applyLayoutState);
-      window.removeEventListener('worldforge:presentation-changed', applyLayoutState);
+      window.removeEventListener('resize', refreshPlacement);
+      window.removeEventListener('worldforge:presentation-changed', refreshPlacement);
     };
-  }, []);
+  }, [applicationController]);
 
   return <AppShellM3 {...props} />;
 }

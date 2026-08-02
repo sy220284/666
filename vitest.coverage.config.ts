@@ -15,7 +15,6 @@ const processBoundaryCoverageExcludes = [
   'apps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts',
   'apps/desktop/renderer/src/bridge/request-lifecycle.ts',
   'apps/desktop/renderer/src/bridge/use-bridge-resource.ts',
-  'apps/desktop/renderer/src/compat/legacy-surface.ts',
   'packages/core-service/src/candidate-diff-worker.ts',
   'packages/core-service/src/utility-generation-router.ts',
   'packages/core-service/src/utility-search-rhythm-router.ts',
@@ -26,6 +25,12 @@ const processBoundaryCoverageExcludes = [
 // environment cannot execute faithfully. Each exclusion requires alternative unit/source-invariant
 // coverage plus Electron E2E evidence and has an explicit sunset condition in M9-03 evidence.
 const rendererDomLifecycleCoverageExcludes = [
+  'apps/desktop/renderer/src/app/use-app-settings-persistence.ts',
+  'apps/desktop/renderer/src/app/use-app-shell-actions.ts',
+  'apps/desktop/renderer/src/app/use-app-shell-navigation.ts',
+  'apps/desktop/renderer/src/app/use-project-session-controller.ts',
+  'apps/desktop/renderer/src/app/use-workspace-runtime.ts',
+  'apps/desktop/renderer/src/app/use-workspace-startup.ts',
   'apps/desktop/renderer/src/features/writing/editor-selection.ts',
   'apps/desktop/renderer/src/features/writing/paste-sanitizer.ts',
   'apps/desktop/renderer/src/features/writing/review-diff-panel.tsx',

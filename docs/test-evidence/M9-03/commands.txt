@@ -1,9 +1,18 @@
+pnpm task:validate
+pnpm check:workspaces
 pnpm check:boundaries
+pnpm check:language
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test:unit
 pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
 pnpm test:security
-pnpm exec vitest run tests/unit/writing-session-architecture.test.ts tests/unit/chapter-session-state.test.ts tests/unit/writing-save-context-contract.test.ts tests/unit/m8-09-v1-stability-invariants.test.ts tests/unit/shared-structure-boundary.test.ts
-pnpm check:language
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+pnpm release:check
+pnpm exec vitest run tests/unit/ar10-main-ipc-boundaries.test.ts tests/unit/ar10-main-ipc-domain-coverage.test.ts tests/unit/ar10-main-ipc-error-coverage.test.ts tests/unit/ipc-handlers-branch-coverage.test.ts tests/unit/ipc-handlers-real-surface-coverage.test.ts tests/security/ipc-bridge.test.ts tests/security/project-structure-ipc.test.ts tests/integration/preload-ipc-core.integration.test.ts
 git diff --check

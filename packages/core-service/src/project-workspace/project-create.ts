@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { chmod, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 
 import {
   ProjectCreateInputSchema,

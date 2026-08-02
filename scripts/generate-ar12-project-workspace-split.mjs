@@ -50,6 +50,52 @@ if (fixedDigest !== 'dca997245969f57ac14da5ed6a44281b67e36fb3600cf2c563a9bcb7906
   throw new Error(`AR-12 fixed generator digest mismatch: ${fixedDigest}`);
 }
 
+const privatePermissionHelper = "const isPermissionFailure = topLevelFunction('isPermissionFailure');";
+const exportedPermissionHelper = `const isPermissionFailure = exportDeclaration(
+  topLevelFunction('isPermissionFailure'),
+  'function',
+);`;
+const privateInsideHelper = "const isInside = topLevelFunction('isInside');";
+const exportedInsideHelper = `const isInside = exportDeclaration(
+  topLevelFunction('isInside'),
+  'function',
+);`;
+for (const [target, replacement] of [
+  [privatePermissionHelper, exportedPermissionHelper],
+  [privateInsideHelper, exportedInsideHelper],
+]) {
+  if (!source.includes(target)) {
+    throw new Error(`AR-12 helper export patch target was not found: ${target}`);
+  }
+  source = source.replace(target, replacement);
+}
+
+const verifierTransformAnchor =
+  "    .replaceAll('this.#readProjectRow(database)', 'readProjectRow(database)');";
+const verifierTransformPatch = `    .replaceAll('this.#readProjectRow(database)', 'readProjectRow(database)');
+
+  const recoveryPointStart = transformed.indexOf('prepareRecoveryPoint:');
+  const recoveryContextArgument = transformed.indexOf('context,', recoveryPointStart);
+  if (recoveryPointStart < 0 || recoveryContextArgument < 0) {
+    throw new Error('AR-12 migration recovery context patch target was not found.');
+  }
+  transformed =
+    transformed.slice(0, recoveryContextArgument) +
+    'recoveryContext,' +
+    transformed.slice(recoveryContextArgument + 'context,'.length);
+  transformed = transformed.replace(
+    'prepareRecoveryPoint: async (context)',
+    'prepareRecoveryPoint: async (recoveryContext)',
+  );`;
+if (!source.includes(verifierTransformAnchor)) {
+  throw new Error('AR-12 verifier transform patch anchor was not found.');
+}
+source = source.replace(verifierTransformAnchor, verifierTransformPatch);
+const candidateDigest = createHash('sha256').update(source).digest('hex');
+if (candidateDigest !== '95733520917273b39cc99523d67d0d2e52c234b9111a8d3d9c4fd2a7ac0169f7') {
+  throw new Error(`AR-12 candidate generator digest mismatch: ${candidateDigest}`);
+}
+
 await mkdir(targetDirectory, { recursive: true });
 await writeFile(targetPath, source, 'utf8');
 const result = spawnSync(process.execPath, [targetPath], {

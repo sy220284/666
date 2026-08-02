@@ -1,256 +1,254 @@
 /* Theme A/B variants, contrast modes, reduced motion and Chinese author experience overrides. */
 @layer themes {
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+
+  body[data-motion-preference='reduced'] *,
+  body[data-motion-preference='reduced'] *::before,
+  body[data-motion-preference='reduced'] *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
-}
 
-body[data-motion-preference='reduced'] *,
-body[data-motion-preference='reduced'] *::before,
-body[data-motion-preference='reduced'] *::after {
-  scroll-behavior: auto !important;
-  transition-duration: 0.01ms !important;
-  animation-duration: 0.01ms !important;
-}
-
-/* M3-08 React-owned application shell, home, project lifecycle and settings. */
-body[data-visual-theme-variant='dark'] {
-  color-scheme: dark;
-  --color-bg-canvas: #17191b;
-  --color-bg-paper: #202327;
-  --color-bg-panel: #1c1f22;
-  --color-bg-elevated: #272b2f;
-  --color-text-primary: #f1eee8;
-  --color-text-secondary: #c4c0b9;
-  --color-text-muted: #918d86;
-  --color-border-subtle: #363b40;
-  --color-border-strong: #555d64;
-  --color-accent-primary: #86a9c8;
-  --color-success: #80ad8b;
-  --color-danger: #ec7b74;
-}
-
-body[data-visual-theme-variant='eye-care'] {
-  --color-bg-canvas: #eef0df;
-  --color-bg-paper: #f8f7e9;
-  --color-bg-panel: #e7ead5;
-  --color-bg-elevated: #fbfaec;
-}
-
-body[data-visual-theme-variant='high-contrast'] {
-  --color-bg-canvas: #fff;
-  --color-bg-paper: #fff;
-  --color-bg-panel: #fff;
-  --color-bg-elevated: #fff;
-  --color-text-primary: #000;
-  --color-text-secondary: #171717;
-  --color-text-muted: #333;
-  --color-border-subtle: #000;
-  --color-border-strong: #000;
-  --color-accent-primary: #003bc5;
-}
-
-body[data-theme='theme-b'][data-visual-theme-variant='light'] {
-  color-scheme: light;
-  --color-bg-canvas: #f2eee6;
-  --color-bg-paper: #fffaf0;
-  --color-bg-panel: #ebe3d4;
-  --color-bg-elevated: #fffdf8;
-  --color-text-primary: #29221b;
-  --color-text-secondary: #66584a;
-  --color-text-muted: #8b7966;
-  --color-border-subtle: #ded1bf;
-  --color-border-strong: #bca88d;
-  --color-accent-primary: #784c33;
-  --color-success: #456d50;
-  --color-danger: #a33f38;
-}
-
-body[data-theme='theme-b'][data-visual-theme-variant='dark'] {
-  color-scheme: dark;
-  --color-bg-canvas: #1e1a17;
-  --color-bg-paper: #28221d;
-  --color-bg-panel: #231e1a;
-  --color-bg-elevated: #302821;
-  --color-text-primary: #f4eadb;
-  --color-text-secondary: #ccbaa5;
-  --color-text-muted: #9e8973;
-  --color-border-subtle: #453a31;
-  --color-border-strong: #6c5a49;
-  --color-accent-primary: #d49b72;
-  --color-success: #82ad89;
-  --color-danger: #ec7a70;
-}
-
-
-
-/* M8-07 中文作者体验、深色主题与实际内容宽度响应修复。 */
-
-body {
-  color: var(--color-text-primary);
-  font-family:
-    'Noto Sans CJK SC', 'Source Han Sans SC', 'Microsoft YaHei UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Segoe UI', system-ui, sans-serif;
-}
-
-.react-dialog,
-input,
-select,
-textarea,
-button {
-  color: var(--color-text-primary);
-}
-
-input,
-select,
-textarea {
-  border-color: var(--color-border-strong);
-  background: var(--color-bg-elevated);
-}
-
-.worldforge-editor {
-  color: var(--color-text-primary);
-  background: var(--color-bg-paper);
-}
-
-body[data-visual-theme-variant='dark'] .worldforge-editor,
-body[data-visual-theme-variant='dark'] .writing-editor-card,
-body[data-visual-theme-variant='dark'] .feature-card,
-body[data-visual-theme-variant='dark'] .structure-navigator,
-body[data-visual-theme-variant='dark'] .react-dialog,
-body[data-visual-theme-variant='dark'] input,
-body[data-visual-theme-variant='dark'] select,
-body[data-visual-theme-variant='dark'] textarea {
-  color: var(--color-text-primary);
-  background: var(--color-bg-paper);
-}
-
-body[data-visual-theme-variant='dark'] .draft-toolbar,
-body[data-visual-theme-variant='dark'] .draft-find,
-body[data-visual-theme-variant='dark'] .draft-metrics,
-body[data-visual-theme-variant='dark'] .draft-state,
-body[data-visual-theme-variant='dark'] .writing-assistance__item,
-body[data-visual-theme-variant='dark'] .writing-assistance__cards article {
-  color: var(--color-text-secondary);
-  border-color: var(--color-border-subtle);
-  background: var(--color-bg-panel);
-}
-
-.eyebrow,
-.nav-label,
-.panel-heading small {
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
-
-button:disabled {
-  cursor: not-allowed;
-}
-
-button[aria-busy='true'],
-[data-pending='true'] button,
-[data-loading='true'] button {
-  cursor: wait;
-}
-
-.react-main {
-  container-name: author-main;
-  container-type: inline-size;
-}
-
-.structure-chapter-title,
-.structure-chapter-title strong,
-.structure-chapter-title span,
-.react-primary-nav__item strong,
-.react-settings-nav__item strong {
-  word-break: normal;
-  overflow-wrap: break-word;
-}
-
-.structure-navigator.is-compact .structure-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: stretch;
-}
-
-.structure-navigator.is-compact .structure-chapter-title {
-  width: 100%;
-  min-width: 0;
-}
-
-.structure-navigator.is-compact .structure-row > .inline-actions {
-  width: 100%;
-  justify-content: flex-start;
-}
-
-.structure-navigator.is-compact .structure-row > span {
-  justify-self: start;
-}
-
-@container author-main (max-width: 1120px) {
-  .writing-grid {
-    grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  /* M3-08 React-owned application shell, home, project lifecycle and settings. */
+  body[data-visual-theme-variant='dark'] {
+    color-scheme: dark;
+    --color-bg-canvas: #17191b;
+    --color-bg-paper: #202327;
+    --color-bg-panel: #1c1f22;
+    --color-bg-elevated: #272b2f;
+    --color-text-primary: #f1eee8;
+    --color-text-secondary: #c4c0b9;
+    --color-text-muted: #918d86;
+    --color-border-subtle: #363b40;
+    --color-border-strong: #555d64;
+    --color-accent-primary: #86a9c8;
+    --color-success: #80ad8b;
+    --color-danger: #ec7b74;
   }
 
-  .writing-context {
-    position: static;
-    grid-column: 1 / -1;
-    max-height: none;
+  body[data-visual-theme-variant='eye-care'] {
+    --color-bg-canvas: #eef0df;
+    --color-bg-paper: #f8f7e9;
+    --color-bg-panel: #e7ead5;
+    --color-bg-elevated: #fbfaec;
   }
 
-  .version-create-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  body[data-visual-theme-variant='high-contrast'] {
+    --color-bg-canvas: #fff;
+    --color-bg-paper: #fff;
+    --color-bg-panel: #fff;
+    --color-bg-elevated: #fff;
+    --color-text-primary: #000;
+    --color-text-secondary: #171717;
+    --color-text-muted: #333;
+    --color-border-subtle: #000;
+    --color-border-strong: #000;
+    --color-accent-primary: #003bc5;
   }
-}
 
-@container author-main (max-width: 820px) {
-  .writing-grid,
-  .relationship-editor-grid,
-  .beginner-question-form,
-  .generation-grid,
-  .generation-provenance,
-  .version-compare-grid,
-  .candidate-compare-grid,
-  .version-create-grid {
+  body[data-theme='theme-b'][data-visual-theme-variant='light'] {
+    color-scheme: light;
+    --color-bg-canvas: #f2eee6;
+    --color-bg-paper: #fffaf0;
+    --color-bg-panel: #ebe3d4;
+    --color-bg-elevated: #fffdf8;
+    --color-text-primary: #29221b;
+    --color-text-secondary: #66584a;
+    --color-text-muted: #8b7966;
+    --color-border-subtle: #ded1bf;
+    --color-border-strong: #bca88d;
+    --color-accent-primary: #784c33;
+    --color-success: #456d50;
+    --color-danger: #a33f38;
+  }
+
+  body[data-theme='theme-b'][data-visual-theme-variant='dark'] {
+    color-scheme: dark;
+    --color-bg-canvas: #1e1a17;
+    --color-bg-paper: #28221d;
+    --color-bg-panel: #231e1a;
+    --color-bg-elevated: #302821;
+    --color-text-primary: #f4eadb;
+    --color-text-secondary: #ccbaa5;
+    --color-text-muted: #9e8973;
+    --color-border-subtle: #453a31;
+    --color-border-strong: #6c5a49;
+    --color-accent-primary: #d49b72;
+    --color-success: #82ad89;
+    --color-danger: #ec7a70;
+  }
+
+  /* M8-07 中文作者体验、深色主题与实际内容宽度响应修复。 */
+
+  body {
+    color: var(--color-text-primary);
+    font-family:
+      'Noto Sans CJK SC', 'Source Han Sans SC', 'Microsoft YaHei UI', 'PingFang SC',
+      'Hiragino Sans GB', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .react-dialog,
+  input,
+  select,
+  textarea,
+  button {
+    color: var(--color-text-primary);
+  }
+
+  input,
+  select,
+  textarea {
+    border-color: var(--color-border-strong);
+    background: var(--color-bg-elevated);
+  }
+
+  .worldforge-editor {
+    color: var(--color-text-primary);
+    background: var(--color-bg-paper);
+  }
+
+  body[data-visual-theme-variant='dark'] .worldforge-editor,
+  body[data-visual-theme-variant='dark'] .writing-editor-card,
+  body[data-visual-theme-variant='dark'] .feature-card,
+  body[data-visual-theme-variant='dark'] .structure-navigator,
+  body[data-visual-theme-variant='dark'] .react-dialog,
+  body[data-visual-theme-variant='dark'] input,
+  body[data-visual-theme-variant='dark'] select,
+  body[data-visual-theme-variant='dark'] textarea {
+    color: var(--color-text-primary);
+    background: var(--color-bg-paper);
+  }
+
+  body[data-visual-theme-variant='dark'] .draft-toolbar,
+  body[data-visual-theme-variant='dark'] .draft-find,
+  body[data-visual-theme-variant='dark'] .draft-metrics,
+  body[data-visual-theme-variant='dark'] .draft-state,
+  body[data-visual-theme-variant='dark'] .writing-assistance__item,
+  body[data-visual-theme-variant='dark'] .writing-assistance__cards article {
+    color: var(--color-text-secondary);
+    border-color: var(--color-border-subtle);
+    background: var(--color-bg-panel);
+  }
+
+  .eyebrow,
+  .nav-label,
+  .panel-heading small {
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  button[aria-busy='true'],
+  [data-pending='true'] button,
+  [data-loading='true'] button {
+    cursor: wait;
+  }
+
+  .react-main {
+    container-name: author-main;
+    container-type: inline-size;
+  }
+
+  .structure-chapter-title,
+  .structure-chapter-title strong,
+  .structure-chapter-title span,
+  .react-primary-nav__item strong,
+  .react-settings-nav__item strong {
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  .structure-navigator.is-compact .structure-row {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
   }
 
-  .writing-grid > .structure-navigator {
-    position: static;
-    max-height: none;
+  .structure-navigator.is-compact .structure-chapter-title {
+    width: 100%;
+    min-width: 0;
   }
 
-  .version-row {
-    flex-direction: column;
-  }
-
-  .version-row__actions {
+  .structure-navigator.is-compact .structure-row > .inline-actions {
+    width: 100%;
     justify-content: flex-start;
   }
-}
 
-@container author-main (max-width: 620px) {
-  .draft-toolbar,
-  .draft-find,
-  .draft-metrics,
-  .feature-heading,
-  .react-page-header {
-    align-items: stretch;
+  .structure-navigator.is-compact .structure-row > span {
+    justify-self: start;
   }
 
-  .feature-heading,
-  .react-page-header {
-    flex-direction: column;
+  @container author-main (max-width: 1120px) {
+    .writing-grid {
+      grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+    }
+
+    .writing-context {
+      position: static;
+      grid-column: 1 / -1;
+      max-height: none;
+    }
+
+    .version-create-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
-  .feature-heading__actions,
-  .react-page-actions {
-    justify-content: flex-start;
+  @container author-main (max-width: 820px) {
+    .writing-grid,
+    .relationship-editor-grid,
+    .beginner-question-form,
+    .generation-grid,
+    .generation-provenance,
+    .version-compare-grid,
+    .candidate-compare-grid,
+    .version-create-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .writing-grid > .structure-navigator {
+      position: static;
+      max-height: none;
+    }
+
+    .version-row {
+      flex-direction: column;
+    }
+
+    .version-row__actions {
+      justify-content: flex-start;
+    }
   }
-}
+
+  @container author-main (max-width: 620px) {
+    .draft-toolbar,
+    .draft-find,
+    .draft-metrics,
+    .feature-heading,
+    .react-page-header {
+      align-items: stretch;
+    }
+
+    .feature-heading,
+    .react-page-header {
+      flex-direction: column;
+    }
+
+    .feature-heading__actions,
+    .react-page-actions {
+      justify-content: flex-start;
+    }
+  }
 }

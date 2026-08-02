@@ -54,7 +54,9 @@ describe('M3-08 React运行底座', () => {
     expect(themeStyles).toContain('@container author-main (max-width: 1120px)');
     expect(themeStyles).toContain("body[data-visual-theme-variant='dark'] .worldforge-editor");
     for (const retiredStyle of ['styles.css', 'm3.css', 'm8-07.css']) {
-      await expect(readFile(path.join(rendererRoot, 'src', retiredStyle), 'utf8')).rejects.toThrow();
+      await expect(
+        readFile(path.join(rendererRoot, 'src', retiredStyle), 'utf8'),
+      ).rejects.toThrow();
     }
   });
 
@@ -158,7 +160,9 @@ describe('M3-08 React运行底座', () => {
     expect(settingsController).toContain('confirmedSettings.current = next');
     expect(settingsController).toContain('applicationController.applyPresentation');
     expect(applicationController).toContain('flushPendingDraft: flushRegisteredDraft');
-    expect(applicationController).toContain('applyPresentation(settings, appearance, projectState)');
+    expect(applicationController).toContain(
+      'applyPresentation(settings, appearance, projectState)',
+    );
     expect(applicationController).toContain('layoutPolicyForViewport');
     expect(shellRoot).not.toContain("navigationId === 'home' || navigationId === 'settings'");
     expect(packageEntry).not.toContain("document.body.dataset.rendererReady = 'true'");

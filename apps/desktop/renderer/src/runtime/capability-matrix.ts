@@ -1,11 +1,7 @@
 import type { CoreStatus, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
 export type ProjectOperatingMode =
-  | 'closed'
-  | 'normal'
-  | 'read-only-compatible'
-  | 'read-only-integrity-failed'
-  | 'recovery-only';
+  'closed' | 'normal' | 'read-only-compatible' | 'read-only-integrity-failed' | 'recovery-only';
 
 export interface ApplicationCapabilities {
   readonly shellAvailable: boolean;

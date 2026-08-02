@@ -7,7 +7,7 @@ import type { ProjectWorkspaceService } from './project-workspace.js';
 import { StateProposalService } from './state-proposal.js';
 import type { TaskProtocol } from './task-protocol.js';
 import type { UtilityGenerationServices } from './utility-generation-router.js';
-import { ValidationReviewService } from './validation/validation-review-service.js';
+import { ValidationService } from './validation.js';
 
 export function createUtilityGenerationServiceContainer(
   projectWorkspace: ProjectWorkspaceService,
@@ -17,7 +17,7 @@ export function createUtilityGenerationServiceContainer(
   const generationRuntime = new GenerationRuntime(generationRuns, taskProtocol);
   const candidates = new CandidateService(projectWorkspace);
   const stateProposals = new StateProposalService(projectWorkspace);
-  const validation = new ValidationReviewService(projectWorkspace);
+  const validation = new ValidationService(projectWorkspace);
   const generationServices: UtilityGenerationServices = {
     constraints: new HardenedConstraintPackageService(projectWorkspace),
     runs: generationRuns,

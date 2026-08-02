@@ -4,6 +4,8 @@ import {
   IPC_CHANNELS,
   PROTOCOL_VERSION,
   PROJECT_STRUCTURE_COMMANDS,
+  PROJECT_WORKSPACE_COMMANDS,
+  RECOVERY_COMMANDS,
 } from '@worldforge/contracts';
 import { registerIpcHandlers } from '../../apps/desktop/main/src/ipc-handlers.js';
 import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
@@ -136,12 +138,43 @@ const structureCases = [
   [IPC_CHANNELS.moveBlocks, PROJECT_STRUCTURE_COMMANDS.moveBlocks],
 ] as const;
 
+const recoveryCases = [
+  [IPC_CHANNELS.createCheckpoint, RECOVERY_COMMANDS.createCheckpoint],
+  [IPC_CHANNELS.createDailyBackup, RECOVERY_COMMANDS.createDailyBackup],
+  [IPC_CHANNELS.createNamedSnapshot, RECOVERY_COMMANDS.createNamedSnapshot],
+  [IPC_CHANNELS.getOverview, RECOVERY_COMMANDS.getOverview],
+  [IPC_CHANNELS.updatePolicy, RECOVERY_COMMANDS.updatePolicy],
+  [IPC_CHANNELS.setProtection, RECOVERY_COMMANDS.setProtection],
+  [IPC_CHANNELS.previewCleanup, RECOVERY_COMMANDS.previewCleanup],
+  [IPC_CHANNELS.applyCleanup, RECOVERY_COMMANDS.applyCleanup],
+  [IPC_CHANNELS.restoreCheckpoint, RECOVERY_COMMANDS.restoreCheckpoint],
+  [IPC_CHANNELS.exportVersion, RECOVERY_COMMANDS.exportVersion],
+] as const;
+
+const projectCases = [
+  [IPC_CHANNELS.getActive, PROJECT_WORKSPACE_COMMANDS.getActive],
+  [IPC_CHANNELS.getContinuation, PROJECT_WORKSPACE_COMMANDS.getContinuation],
+  [IPC_CHANNELS.saveContinuation, PROJECT_WORKSPACE_COMMANDS.saveContinuation],
+  [IPC_CHANNELS.create, PROJECT_WORKSPACE_COMMANDS.create],
+  [IPC_CHANNELS.openSelected, PROJECT_WORKSPACE_COMMANDS.openSelected],
+  [IPC_CHANNELS.openRecent, PROJECT_WORKSPACE_COMMANDS.openRecent],
+  [IPC_CHANNELS.close, PROJECT_WORKSPACE_COMMANDS.close],
+  [IPC_CHANNELS.move, PROJECT_WORKSPACE_COMMANDS.move],
+] as const;
+
 const invalidPayloadCases = structureCases.slice(1, 11);
 
 describe('AR-10 Main IPC rejection coverage', () => {
   it('rejects untrusted senders independently for every Structure handler', async () => {
     const handlers = createHandlers();
     for (const [channel, command] of structureCases) {
+      await expectInvalid(handlers, channel, envelope(command, {}), untrustedEvent);
+    }
+  });
+
+  it('rejects untrusted senders independently for Recovery and Project handlers', async () => {
+    const handlers = createHandlers();
+    for (const [channel, command] of [...recoveryCases, ...projectCases]) {
       await expectInvalid(handlers, channel, envelope(command, {}), untrustedEvent);
     }
   });

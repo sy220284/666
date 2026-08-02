@@ -14,5 +14,5 @@ pnpm test:perf
 pnpm build
 pnpm test:e2e
 pnpm release:check
-pnpm exec vitest run tests/unit/ar09-preload-factory-boundaries.test.ts tests/security/preload-surface.test.ts tests/integration/preload-ipc-core.integration.test.ts
+pnpm exec vitest run tests/unit/ar10-main-ipc-boundaries.test.ts tests/unit/ar10-main-ipc-domain-coverage.test.ts tests/unit/ar10-main-ipc-error-coverage.test.ts tests/unit/ipc-handlers-branch-coverage.test.ts tests/unit/ipc-handlers-real-surface-coverage.test.ts tests/security/ipc-bridge.test.ts tests/security/project-structure-ipc.test.ts tests/integration/preload-ipc-core.integration.test.ts
 git diff --check

@@ -33,14 +33,10 @@ async function exportCandidateDiagnostics(): Promise<void> {
 
 describe('AR-11 service split candidate', () => {
   it('exports 12 generated modules with zero TypeScript diagnostics', async () => {
-    const generation = spawnSync(
-      process.execPath,
-      ['scripts/run-ar11-service-split-fixed.mjs'],
-      {
-        cwd: root,
-        stdio: 'inherit',
-      },
-    );
+    const generation = spawnSync(process.execPath, ['scripts/generate-ar11-service-split.mjs'], {
+      cwd: root,
+      stdio: 'inherit',
+    });
     await exportCandidateDiagnostics();
     expect(generation.status).toBe(0);
 

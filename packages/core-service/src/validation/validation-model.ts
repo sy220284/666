@@ -9,9 +9,7 @@ import type { GenerationUsage } from '../generation-run.js';
 export const systemClock: DatabaseClock = { now: () => new Date() };
 
 export type ValidationServiceErrorCode =
-  | 'VALIDATION_NOT_FOUND'
-  | 'VALIDATION_INVALID'
-  | 'VALIDATION_CONFLICT';
+  'VALIDATION_NOT_FOUND' | 'VALIDATION_INVALID' | 'VALIDATION_CONFLICT';
 
 export class ValidationServiceError extends Error {
   readonly code: ValidationServiceErrorCode;

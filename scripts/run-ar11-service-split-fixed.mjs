@@ -34,6 +34,45 @@ const newExports = `  const publicExportText = [...publicByModule.entries()]
 if (!source.includes(oldExports)) throw new Error('AR-11 export patch target was not found.');
 source = source.replace(oldExports, newExports);
 
+const operationStartMarker = '  const allMethodNames = facade.members';
+const publicModulesMarker = '  const publicByModule = new Map();';
+const operationStart = source.indexOf(operationStartMarker);
+const publicModulesStart = source.indexOf(publicModulesMarker, operationStart);
+if (operationStart < 0 || publicModulesStart < 0) {
+  throw new Error('AR-11 service dependency patch target was not found.');
+}
+source = `${source.slice(0, operationStart)}  const serviceDirectory = path.posix.dirname(config.servicePath);\n${source.slice(publicModulesStart)}`;
+
+const optionsMarker = '  const optionsName = config.optionsName;';
+const serviceBodyMarker = '  const serviceBody =';
+const publicExportMarker = '${publicExportText}';
+const optionsStart = source.indexOf(optionsMarker);
+const optionsLineEnd = source.indexOf('\n', optionsStart);
+const serviceBodyStart = source.indexOf(serviceBodyMarker, optionsLineEnd);
+const publicExportStart = source.indexOf(publicExportMarker, serviceBodyStart);
+if (
+  optionsStart < 0 ||
+  optionsLineEnd < 0 ||
+  serviceBodyStart < 0 ||
+  publicExportStart < 0
+) {
+  throw new Error('AR-11 service import deduplication target was not found.');
+}
+source =
+  source.slice(0, optionsLineEnd + 1) +
+  '  const serviceBody = `${publicExportText}' +
+  source.slice(publicExportStart + publicExportMarker.length);
+
+const oldForeshadowingDeclarations = `        'historicalForeshadowings',
+        'historicalArcMilestones',`;
+const newForeshadowingDeclarations = `        'foreshadowingRole',
+        'historicalForeshadowings',
+        'historicalArcMilestones',`;
+if (!source.includes(oldForeshadowingDeclarations)) {
+  throw new Error('AR-11 foreshadowing helper patch target was not found.');
+}
+source = source.replace(oldForeshadowingDeclarations, newForeshadowingDeclarations);
+
 const oldCompilerHost = `const host = ts.createCompilerHost(parsedConfig.options);
 const originalReadFile = host.readFile.bind(host);
 const originalFileExists = host.fileExists.bind(host);

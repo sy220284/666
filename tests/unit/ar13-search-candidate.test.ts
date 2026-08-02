@@ -16,8 +16,8 @@ describe('AR-13 Search boundaries', () => {
   it('keeps the public entry as a compatibility re-export', async () => {
     const root = await readFile('packages/core-service/src/search-tools.ts', 'utf8');
 
-    expect(root).toContain("./search/search-model.js");
-    expect(root).toContain("./search/search-tools-service.js");
+    expect(root).toContain('./search/search-model.js');
+    expect(root).toContain('./search/search-tools-service.js');
     expect(root).not.toContain('class SearchToolsService');
     expect(lineCount(root)).toBeLessThanOrEqual(5);
   });

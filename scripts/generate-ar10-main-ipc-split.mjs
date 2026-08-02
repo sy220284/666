@@ -89,7 +89,6 @@ const registrationStatements = bodyStatements.filter((statement) => {
   const text = statementText(statement);
   return (
     text.includes('register(') ||
-    text.includes('registerProviderIpcHandlers(') ||
     text.includes('connectTaskEvents') ||
     text.includes('taskConnectEvents') ||
     name === 'diagnostics'
@@ -98,7 +97,14 @@ const registrationStatements = bodyStatements.filter((statement) => {
 
 function classify(statement) {
   const text = statementText(statement);
-  if (text.includes('taskConnectEvents') || text.includes('TaskGetSnapshotCommandSchema')) {
+  if (
+    text.includes('taskConnectEvents') ||
+    text.includes('connectTaskEvents') ||
+    text.includes('TaskGetSnapshotCommandSchema') ||
+    text.includes('TaskCancelCommandSchema') ||
+    text.includes('TaskListActiveCommandSchema') ||
+    text.includes('TaskPortConnectSchema')
+  ) {
     return 'task';
   }
   if (
@@ -106,10 +112,18 @@ function classify(statement) {
     text.includes('RECOVERY_COMMANDS') ||
     text.includes('ImportPreviewCommandSchema') ||
     text.includes('ImportCommitCommandSchema') ||
-    text.includes('ExportVersion') ||
+    text.includes('ExportVersionListCommandSchema') ||
+    text.includes('ExportVersionsCommandSchema') ||
     text.includes('TEXT_IO_COMMANDS')
   ) {
     return 'recovery';
+  }
+  if (
+    text.includes('Entity') ||
+    text.includes('CanonFact') ||
+    text.includes('ENTITY_CANON_COMMANDS')
+  ) {
+    return 'canon';
   }
   if (
     text.includes('ProjectGetBriefCommandSchema') ||
@@ -119,13 +133,6 @@ function classify(statement) {
     text.includes('SCENE_BEAT_COMMANDS')
   ) {
     return 'planning';
-  }
-  if (
-    text.includes('Entity') ||
-    text.includes('CanonFact') ||
-    text.includes('ENTITY_CANON_COMMANDS')
-  ) {
-    return 'canon';
   }
   if (
     text.includes('Structure') ||
@@ -143,22 +150,27 @@ function classify(statement) {
   if (
     text.includes('Draft') ||
     text.includes('Candidate') ||
-    text.includes('Version') ||
-    text.includes('AiSetCredential') ||
-    text.includes('AiRemoveCredential') ||
-    text.includes('AiHasCredential') ||
-    text.includes('CANDIDATE_COMMANDS') ||
-    text.includes('VERSION_COMMANDS')
+    text.includes('VersionCreateCommandSchema') ||
+    text.includes('VersionGetCommandSchema') ||
+    text.includes('VersionListCommandSchema') ||
+    text.includes('VersionRestoreCommandSchema') ||
+    text.includes('VersionSetFinalCommandSchema') ||
+    text.includes('VERSION_COMMANDS') ||
+    text.includes('AiSetCredentialCommandSchema') ||
+    text.includes('AiRemoveCredentialCommandSchema') ||
+    text.includes('AiHasCredentialCommandSchema') ||
+    text.includes('CANDIDATE_COMMANDS')
   ) {
     return 'writing';
   }
   if (
-    text.includes('ProjectGetActive') ||
-    text.includes('ProjectGetContinuation') ||
-    text.includes('ProjectSaveContinuation') ||
+    text.includes('ProjectGetActiveCommandSchema') ||
+    text.includes('ProjectGetContinuationCommandSchema') ||
+    text.includes('ProjectSaveContinuationCommandSchema') ||
     text.includes('ProjectCreateCommandSchema') ||
-    text.includes('ProjectOpen') ||
-    text.includes('ProjectClose') ||
+    text.includes('ProjectOpenSelectedCommandSchema') ||
+    text.includes('ProjectOpenRecentCommandSchema') ||
+    text.includes('ProjectCloseCommandSchema') ||
     text.includes('ProjectMoveCommandSchema') ||
     text.includes('PROJECT_WORKSPACE_COMMANDS')
   ) {
@@ -167,11 +179,17 @@ function classify(statement) {
   return 'app';
 }
 
-const groups = new Map(
-  ['app', 'project', 'recovery', 'planning', 'canon', 'structure', 'writing', 'task'].map(
-    (name) => [name, []],
-  ),
-);
+const groupNames = [
+  'app',
+  'project',
+  'recovery',
+  'planning',
+  'canon',
+  'structure',
+  'writing',
+  'task',
+];
+const groups = new Map(groupNames.map((name) => [name, []]));
 for (const statement of registrationStatements) groups.get(classify(statement)).push(statement);
 
 function collectIdentifiers(nodes) {
@@ -224,15 +242,26 @@ function exportOptionsInterface(text) {
   return text.replace(/^interface IpcHandlerOptions/u, 'export interface IpcHandlerOptions');
 }
 
+function indent(text, spaces) {
+  const prefix = ' '.repeat(spaces);
+  return text
+    .split('\n')
+    .map((line) => (line.length > 0 ? `${prefix}${line}` : line))
+    .join('\n');
+}
+
 const supportText = topLevelSupport.map(statementText).map(exportOptionsInterface).join('\n\n');
 const contextNodes = [...topLevelSupport, ...contextSetupStatements, ...sharedStatements];
 const contextImports = importText(contextNodes);
 const registerSetup = contextSetupStatements
   .map(statementText)
   .join('\n\n')
-  .replace('options.ipcMain.handle(channel, async (event, input) => {', "invokeChannels.add(channel);\n    options.ipcMain.handle(channel, async (event, input) => {");
+  .replace(
+    'options.ipcMain.handle(channel, async (event, input) => {',
+    "invokeChannels.add(channel);\n    options.ipcMain.handle(channel, async (event, input) => {",
+  );
 const sharedText = sharedStatements.map(statementText).join('\n\n');
-const guardSource = `${contextImports}\n\n${supportText}\n\nexport function createIpcHandlerContext(options: IpcHandlerOptions) {\n  const invokeChannels = new Set<string>();\n\n${indent(registerSetup, 2)}\n\n${indent(sharedText, 2)}\n\n  const disposeInvokeHandlers = (): void => {\n    for (const channel of invokeChannels) options.ipcMain.removeHandler(channel);\n    invokeChannels.clear();\n  };\n\n  return {\n    options,\n    register,\n    rejectUntrusted,\n    invalidRequest,\n    appDataFailure,\n    cancelledSelection,\n    invokeProject,\n    success,\n    failure,\n    disposeInvokeHandlers,\n  };\n}\n\nexport type IpcHandlerContext = ReturnType<typeof createIpcHandlerContext>;\n`;
+const guardSource = `${contextImports}\n\n${supportText}\n\nexport function createIpcHandlerContext(options: IpcHandlerOptions) {\n  const invokeChannels = new Set<string>();\n\n${indent(registerSetup, 2)}\n\n${indent(sharedText, 2)}\n\n  const disposeInvokeHandlers = (): void => {\n    for (const channel of invokeChannels) options.ipcMain.removeHandler(channel);\n    invokeChannels.clear();\n  };\n\n  return {\n    options,\n    register,\n    rejectUntrusted,\n    invalidRequest,\n    appDataFailure,\n    cancelledSelection,\n    invokeProject,\n    trustedSender,\n    success,\n    failure,\n    disposeInvokeHandlers,\n  };\n}\n\nexport type IpcHandlerContext = ReturnType<typeof createIpcHandlerContext>;\n`;
 
 const contextNames = [
   'options',
@@ -242,6 +271,7 @@ const contextNames = [
   'appDataFailure',
   'cancelledSelection',
   'invokeProject',
+  'trustedSender',
   'success',
   'failure',
 ];
@@ -261,14 +291,6 @@ function registrarFile(groupName, statements) {
 }
 
 const rootSource = `import { createIpcHandlerContext, type IpcHandlerOptions } from './handler-guard.js';\nimport { registerProviderIpcHandlers } from './provider-ipc-handlers.js';\nimport { registerAppIpcHandlers } from './app-ipc-handlers.js';\nimport { registerProjectIpcHandlers } from './project-ipc-handlers.js';\nimport { registerRecoveryIpcHandlers } from './recovery-ipc-handlers.js';\nimport { registerPlanningIpcHandlers } from './planning-ipc-handlers.js';\nimport { registerCanonIpcHandlers } from './canon-ipc-handlers.js';\nimport { registerStructureIpcHandlers } from './structure-ipc-handlers.js';\nimport { registerWritingIpcHandlers } from './writing-ipc-handlers.js';\nimport { registerTaskIpcHandlers } from './task-ipc-handlers.js';\n\nexport type { IpcHandlerOptions } from './handler-guard.js';\n\nexport function registerIpcHandlers(options: IpcHandlerOptions): () => void {\n  const context = createIpcHandlerContext(options);\n  const disposeProviderHandlers = registerProviderIpcHandlers({\n    ipcMain: options.ipcMain,\n    supervisor: options.supervisor,\n    credentialBroker: options.credentialBroker,\n    rendererUrl: options.rendererUrl,\n    logger: options.logger,\n  });\n\n  registerAppIpcHandlers(context);\n  registerProjectIpcHandlers(context);\n  registerRecoveryIpcHandlers(context);\n  registerPlanningIpcHandlers(context);\n  registerCanonIpcHandlers(context);\n  registerStructureIpcHandlers(context);\n  registerWritingIpcHandlers(context);\n  const disposeTaskHandlers = registerTaskIpcHandlers(context);\n\n  return () => {\n    disposeProviderHandlers();\n    context.disposeInvokeHandlers();\n    disposeTaskHandlers();\n  };\n}\n`;
-
-function indent(text, spaces) {
-  const prefix = ' '.repeat(spaces);
-  return text
-    .split('\n')
-    .map((line) => (line.length > 0 ? `${prefix}${line}` : line))
-    .join('\n');
-}
 
 async function formatAndWrite(relativePath, content) {
   const formatted = await prettier.format(content, { ...prettierConfig, filepath: relativePath });
@@ -290,7 +312,11 @@ await writeFile(
     {
       source: path.relative(repositoryRoot, sourcePath),
       groups: Object.fromEntries([...groups].map(([name, statements]) => [name, statements.length])),
-      files: ['ipc-handlers.ts', 'handler-guard.ts', ...[...groups.keys()].map((name) => `${name}-ipc-handlers.ts`)],
+      files: [
+        'ipc-handlers.ts',
+        'handler-guard.ts',
+        ...[...groups.keys()].map((name) => `${name}-ipc-handlers.ts`),
+      ],
     },
     null,
     2,

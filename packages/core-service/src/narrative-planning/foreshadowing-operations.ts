@@ -11,7 +11,10 @@ import {
 
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
-import { readNarrativePlanningCatalog, unresolvedForeshadowingRelations } from './narrative-planning-catalog.js';
+import {
+  readNarrativePlanningCatalog,
+  unresolvedForeshadowingRelations,
+} from './narrative-planning-catalog.js';
 import {
   assertForeshadowing,
   assertChapter,
@@ -123,8 +126,7 @@ function assertNoMutualExclusionConflict(
         LIMIT 1`,
     )
     .get(foreshadowingId, projectId, foreshadowingId, foreshadowingId) as
-    | { readonly title: string; readonly status: string }
-    | undefined;
+    { readonly title: string; readonly status: string } | undefined;
   if (conflict) {
     throw new NarrativePlanningServiceError(
       'NARRATIVE_CONFLICT',

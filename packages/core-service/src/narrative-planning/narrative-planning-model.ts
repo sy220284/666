@@ -157,11 +157,7 @@ export function assertForeshadowing(
   return row;
 }
 
-export function assertArc(
-  connection: DatabaseSync,
-  projectId: string,
-  arcId: string,
-): ArcRow {
+export function assertArc(connection: DatabaseSync, projectId: string, arcId: string): ArcRow {
   const row = connection
     .prepare(
       `SELECT id, project_id AS projectId, character_id AS characterId, title,

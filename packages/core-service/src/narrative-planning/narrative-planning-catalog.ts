@@ -141,10 +141,7 @@ function milestoneDependencyIds(connection: DatabaseSync, milestoneId: string): 
   return rows.map((row) => narrativeText(row.dependencyId));
 }
 
-function milestoneTimelineDependencyIds(
-  connection: DatabaseSync,
-  milestoneId: string,
-): string[] {
+function milestoneTimelineDependencyIds(connection: DatabaseSync, milestoneId: string): string[] {
   const rows = connection
     .prepare(
       `SELECT timeline_event_id AS timelineEventId

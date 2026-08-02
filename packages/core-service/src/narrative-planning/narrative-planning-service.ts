@@ -16,10 +16,7 @@ import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { CharacterArcOperations } from './character-arc-operations.js';
 import { ForeshadowingOperations } from './foreshadowing-operations.js';
 import { readNarrativePlanningCatalog } from './narrative-planning-catalog.js';
-import {
-  systemClock,
-  type NarrativePlanningServiceOptions,
-} from './narrative-planning-model.js';
+import { systemClock, type NarrativePlanningServiceOptions } from './narrative-planning-model.js';
 
 export class NarrativePlanningService {
   readonly #workspace: ProjectWorkspaceService;
@@ -41,35 +38,35 @@ export class NarrativePlanningService {
     );
   }
 
-  saveForeshadowing(
+  async saveForeshadowing(
     requestId: string,
     input: ForeshadowingSaveInput,
   ): Promise<NarrativePlanningCatalog> {
     return this.#foreshadowing.save(requestId, input);
   }
 
-  transitionForeshadowing(
+  async transitionForeshadowing(
     requestId: string,
     input: ForeshadowingTransitionInput,
   ): Promise<NarrativePlanningCatalog> {
     return this.#foreshadowing.transition(requestId, input);
   }
 
-  saveCharacterArc(
+  async saveCharacterArc(
     requestId: string,
     input: CharacterArcSaveInput,
   ): Promise<NarrativePlanningCatalog> {
     return this.#arcs.saveArc(requestId, input);
   }
 
-  saveArcMilestone(
+  async saveArcMilestone(
     requestId: string,
     input: ArcMilestoneSaveInput,
   ): Promise<NarrativePlanningCatalog> {
     return this.#arcs.saveMilestone(requestId, input);
   }
 
-  transitionArcMilestone(
+  async transitionArcMilestone(
     requestId: string,
     input: ArcMilestoneTransitionInput,
   ): Promise<NarrativePlanningCatalog> {

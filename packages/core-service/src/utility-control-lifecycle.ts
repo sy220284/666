@@ -2,10 +2,7 @@ import { PROTOCOL_VERSION, type CoreControlMessage } from '@worldforge/contracts
 
 import type { UtilityControlContext } from './utility-control-context.js';
 import { windowPreferencesError } from './utility-errors.js';
-import {
-  adaptTransferredPort,
-  type UtilityParentMessage,
-} from './utility-runtime-context.js';
+import { adaptTransferredPort, type UtilityParentMessage } from './utility-runtime-context.js';
 
 export function dispatchUtilityLifecycle(
   context: UtilityControlContext,
@@ -77,17 +74,16 @@ export function dispatchUtilityLifecycle(
       return;
     case 'core.drain':
       state.acceptingAppDataOperations = false;
-      void Promise.all([
-        options.taskProtocol.beginDrain(),
-        ...state.activeAppDataOperations,
-      ]).then(() => {
-        context.send({
-          type: 'core.drained',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId: message.requestId,
-          pendingTasks: 0,
-        });
-      });
+      void Promise.all([options.taskProtocol.beginDrain(), ...state.activeAppDataOperations]).then(
+        () => {
+          context.send({
+            type: 'core.drained',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId: message.requestId,
+            pendingTasks: 0,
+          });
+        },
+      );
       return;
     case 'core.shutdown':
       if (

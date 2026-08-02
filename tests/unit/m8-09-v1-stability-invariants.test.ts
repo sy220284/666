@@ -61,10 +61,10 @@ describe('M8-09 V1 stability invariants', () => {
   });
 
   it('installs structured Main and Renderer unexpected-error boundaries', async () => {
-    const ipc = await source('apps/desktop/main/src/ipc-handlers.ts');
+    const guard = await source('apps/desktop/main/src/handler-guard.ts');
     const entry = await source('apps/desktop/renderer/src/react-entry.tsx');
-    expect(ipc).toContain("'ipc.handler.unexpected'");
-    expect(ipc).toContain("'COMMON_INTERNAL_999'");
+    expect(guard).toContain("'ipc.handler.unexpected'");
+    expect(guard).toContain("'COMMON_INTERNAL_999'");
     expect(entry).toContain('installGlobalRendererErrorBoundary');
   });
 });

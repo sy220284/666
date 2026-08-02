@@ -124,13 +124,13 @@ export function createIpcHandlerContext(options: IpcHandlerOptions) {
     channel: string,
     handler: (event: IpcMainInvokeEvent, input: unknown) => Promise<unknown> | unknown,
   ): void => {
+    invokeChannels.add(channel);
     if (
       channel === CANDIDATE_IPC_CHANNELS.createFixtureCandidate &&
       options.enableTestFixtures !== true
     ) {
       return;
     }
-    invokeChannels.add(channel);
     options.ipcMain.handle(channel, async (event, input) => {
       try {
         return await handler(event, input);

@@ -14,11 +14,7 @@ export class ValidationCommentOperations {
   readonly #clock: DatabaseClock;
   readonly #idFactory: () => string;
 
-  constructor(
-    workspace: ProjectWorkspaceService,
-    clock: DatabaseClock,
-    idFactory: () => string,
-  ) {
+  constructor(workspace: ProjectWorkspaceService, clock: DatabaseClock, idFactory: () => string) {
     this.#workspace = workspace;
     this.#clock = clock;
     this.#idFactory = idFactory;

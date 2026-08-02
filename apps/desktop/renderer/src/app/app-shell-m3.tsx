@@ -11,13 +11,13 @@ import type { CanonSection } from '../features/canon/canon-workbench.js';
 import type { DataToolsSection } from '../features/data-tools/data-tools-workbench.js';
 import type { WritingPanel } from '../features/writing/writing-workbench.js';
 import { deriveCapabilityMatrix } from '../runtime/capability-matrix.js';
-import { flushRegisteredDraft } from '../runtime/draft-flush-registry.js';
 import { restoreAppShellRoute, type AppDisclosureMode } from '../shell/app-shell-model.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 import { AppShellLayout } from './app-shell-layout.js';
 import { AppShellPages } from './app-shell-pages.js';
 import { buildGlobalStatus, buildHomeHealthSignals } from './app-shell-status.js';
 import type { FailureView } from './app-shell-helpers.js';
+import type { RendererApplicationController } from './renderer-application-controller.js';
 import { useAppSettingsPersistence } from './use-app-settings-persistence.js';
 import { useAppShellActions } from './use-app-shell-actions.js';
 import { useAppShellNavigation } from './use-app-shell-navigation.js';
@@ -27,10 +27,10 @@ import { useWorkspaceStartup } from './use-workspace-startup.js';
 
 export interface AppShellProps {
   readonly bridge: RendererBridgeAdapter;
-  readonly legacySurface?: unknown;
+  readonly applicationController: RendererApplicationController;
 }
 
-export function AppShell({ bridge }: AppShellProps) {
+export function AppShell({ applicationController, bridge }: AppShellProps) {
   const route = useRendererUiStore((state) => state.route);
   const dispatch = useRendererUiStore((state) => state.dispatch);
   const [activeProject, setActiveProject] = useState<ProjectWorkspaceSummary | null>(null);
@@ -44,7 +44,10 @@ export function AppShell({ bridge }: AppShellProps) {
   const [canonSection, setCanonSection] = useState<CanonSection>('entities');
   const [dataToolsSection, setDataToolsSection] = useState<DataToolsSection>('recovery');
   const helpTrigger = useRef<HTMLButtonElement>(null);
-  const flushWriting = useCallback(async (): Promise<boolean> => flushRegisteredDraft(), []);
+  const flushWriting = useCallback(
+    async (): Promise<boolean> => applicationController.flushPendingDraft(),
+    [applicationController],
+  );
 
   const settingsController = useAppSettingsPersistence({
     bridge,
@@ -52,6 +55,7 @@ export function AppShell({ bridge }: AppShellProps) {
     setPendingKey,
     setMessage,
     setFailure,
+    applicationController,
   });
   const projectController = useProjectSessionController({
     bridge,

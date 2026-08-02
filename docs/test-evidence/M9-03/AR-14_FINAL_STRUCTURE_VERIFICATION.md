@@ -51,4 +51,4 @@ AR-14未修改Schema、Migration、IPC协议、错误码或持久化格式。回
 
 ## 6. 结论
 
-AR-03—AR-14实现已全部完成。M9-03可推进到Implemented，待正式PR永久门禁、Ready矩阵、合幹e��main验证后独立关闭为Verified。
+AR-03—AR-14实现已全部完成。M9-03可推进到Implemented，待正式PR永久门禁、Ready矩阵、合并及main验证后独立关闭为Verified。

@@ -55,16 +55,6 @@
       "targetLines": 700,
       "workPackage": "AR-12"
     },
-    "packages/core-service/src/recovery.ts": {
-      "maxLines": 1450,
-      "targetLines": 700,
-      "workPackage": "AR-13"
-    },
-    "packages/core-service/src/search-index.ts": {
-      "maxLines": 1250,
-      "targetLines": 700,
-      "workPackage": "AR-13"
-    },
     "packages/core-service/src/narrative-planning.ts": {
       "maxLines": 1200,
       "targetLines": 700,

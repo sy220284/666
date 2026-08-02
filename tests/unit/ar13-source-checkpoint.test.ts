@@ -31,9 +31,10 @@ const exportsToCapture = [
 describe('AR-13 source checkpoint', () => {
   it('exports the frozen Recovery and tool-domain source graph for offline candidate validation', async () => {
     const repositoryRoot = process.cwd();
-    const outputRoot = path.join(repositoryRoot, 'test-results', 'ci', 'ar13-source');
+    const outputRoot = path.join(repositoryRoot, 'test-results', 'unit', 'ar13-source');
     await mkdir(outputRoot, { recursive: true });
 
+    expect(exportsToCapture.length).toBeGreaterThan(0);
     for (const relativePath of exportsToCapture) {
       await cp(path.join(repositoryRoot, relativePath), path.join(outputRoot, relativePath), {
         recursive: true,
@@ -54,6 +55,6 @@ describe('AR-13 source checkpoint', () => {
       'utf8',
     );
 
-    expect.fail('AR-13_SOURCE_CHECKPOINT_READY');
+    throw new Error('AR-13_SOURCE_CHECKPOINT_READY');
   });
 });

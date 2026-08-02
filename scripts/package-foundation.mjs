@@ -5,6 +5,7 @@ import path from 'node:path';
 import { expectedWorkspaceDirectories } from './check-workspaces.mjs';
 
 const root = process.cwd();
+// Foundation packaging records compiled workspace outputs and remains independent of host packaging format.
 const buildable = expectedWorkspaceDirectories.filter((directory) => directory !== 'apps/desktop');
 const entries = [];
 

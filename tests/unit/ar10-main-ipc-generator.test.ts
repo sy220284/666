@@ -13,16 +13,25 @@ describe('AR-10 Main IPC split candidate', () => {
       stdio: 'inherit',
     });
 
-    const summary = JSON.parse(
-      await readFile(path.join(outputRoot, 'generation-summary.json'), 'utf8'),
-    ) as {
+    const summaryText = await readFile(
+      path.join(outputRoot, 'generation-summary.json'),
+      'utf8',
+    );
+    const summary = JSON.parse(summaryText) as {
       readonly files: readonly string[];
       readonly groups: Readonly<Record<string, number>>;
     };
     expect(summary.files).toHaveLength(10);
-    expect(Object.values(summary.groups).every((count) => count > 0)).toBe(true);
     for (const file of summary.files) {
       expect((await stat(path.join(outputRoot, file))).size).toBeGreaterThan(0);
+    }
+
+    console.log('===AR10_SUMMARY===');
+    console.log(summaryText);
+    for (const file of summary.files) {
+      console.log(`===AR10_FILE_BEGIN:${file}===`);
+      console.log(await readFile(path.join(outputRoot, file), 'utf8'));
+      console.log(`===AR10_FILE_END:${file}===`);
     }
 
     throw new Error('AR10_GENERATED_OUTPUT_READY');

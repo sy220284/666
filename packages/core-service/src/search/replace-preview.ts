@@ -7,11 +7,7 @@ import {
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { readReplacePlan } from './replace-plan-repository.js';
-import {
-  type DraftBlockRow,
-  findOccurrences,
-  SearchToolsServiceError,
-} from './search-model.js';
+import { type DraftBlockRow, findOccurrences, SearchToolsServiceError } from './search-model.js';
 
 export interface ReplacePreviewOperationsOptions {
   readonly workspace: ProjectWorkspaceService;

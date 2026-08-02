@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "taskId": "M9-03",
-  "commit": "e59aa7ea5733ea0042cad09a7bff73f3834ac4b2",
-  "generatedAt": "2026-08-01T14:48:00.000Z",
+  "commit": "9a02b83f6fd83e45a76ed5a27e4618394422426f",
+  "generatedAt": "2026-08-01T23:56:00.000Z",
   "acceptanceSource": "GITHUB_ACTIONS_VERIFIED_CHECKPOINT",
   "files": [
     {
@@ -31,19 +31,24 @@
       "sha256": "bb405f8d4a301c51f2f063564d1191c2dea054dccd71d7445c9e4a6c19a137c2"
     },
     {
+      "path": "AR-09_PRELOAD_SPLIT_VERIFICATION.md",
+      "bytes": 4527,
+      "sha256": "3a2b79227a39a0852b9b18512ddc9326b78101a38255de34c7b3dd319018f050"
+    },
+    {
       "path": "commands.txt",
-      "bytes": 629,
-      "sha256": "6c5d65b741b7d71da0c12789f6885a7b4881ac1995063c83e62f5398ca5d1aa2"
+      "bytes": 463,
+      "sha256": "2636f2dc1e55742813053fda633f8bedec0649241bd1260cc95721a26b2d11f1"
     },
     {
       "path": "known-risks.md",
-      "bytes": 919,
-      "sha256": "7051b0a88bf185b74703c52e342136316058c41fb6bfe77bbc0d50ae971cc38d"
+      "bytes": 1213,
+      "sha256": "da3781f65bb0d7691cee8fc2f5fd138d47e4770d3fd526ca76e6afa32b66dd8a"
     },
     {
       "path": "summary.md",
-      "bytes": 1026,
-      "sha256": "f4558316afaaee62bbab1a445b04675dfb6ddc0618bb282a8e884849d8a86457"
+      "bytes": 1108,
+      "sha256": "b97a0357e08c108ef68b9e3848800fe03e532e99cb331266b5dd351f3fd61aef"
     }
   ]
 }

@@ -4,7 +4,7 @@ import type {
   ProjectDictionaryUpsertInput,
 } from '@worldforge/contracts';
 
-import { HardenedSearchIndexService } from '../search-index-hardening.js';
+import type { HardenedSearchIndexService } from '../search-index-hardening.js';
 
 export class SearchDictionaryOperations {
   readonly #search: HardenedSearchIndexService;

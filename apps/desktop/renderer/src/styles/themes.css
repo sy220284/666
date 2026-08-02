@@ -161,6 +161,18 @@
     container-type: inline-size;
   }
 
+  body[data-workspace-alignment='left'] .react-home-page,
+  body[data-workspace-alignment='left'] .react-settings-page {
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+  body[data-workspace-alignment='right'] .react-home-page,
+  body[data-workspace-alignment='right'] .react-settings-page {
+    margin-left: auto;
+    margin-right: 0;
+  }
+
   .structure-chapter-title,
   .structure-chapter-title strong,
   .structure-chapter-title span,

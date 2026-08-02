@@ -28,7 +28,7 @@ import {
   StateProposalListInputSchema,
   type StateProposalResolveInput,
   StateProposalResolveInputSchema,
-  StateProposalSchema,
+  type StateProposalSchema,
 } from '@worldforge/contracts';
 import {
   assertAuthorAuthority,

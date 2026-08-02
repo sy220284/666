@@ -33,9 +33,10 @@
     "AR-08",
     "AR-09",
     "AR-10",
-    "AR-11"
+    "AR-11",
+    "AR-12"
   ],
-  "activeWorkPackage": "AR-12",
+  "activeWorkPackage": "AR-13",
   "scope": [
     "拆分Writing工具、展示和章节会话状态机",
     "拆分Canon、Planning和AppShell",
@@ -154,6 +155,16 @@
     "ar11EvidenceRun": 30732849188,
     "ar11GovernanceRun": 30732849122,
     "ar11PrPolicyRun": 30732849127,
-    "ar11Evidence": "docs/test-evidence/M9-03/AR-11_SERVICE_FACADE_SPLIT_VERIFICATION.md"
+    "ar11Evidence": "docs/test-evidence/M9-03/AR-11_SERVICE_FACADE_SPLIT_VERIFICATION.md",
+    "ar12ImplementationHead": "d4e5ece1361297c79a34f5eb203888747b987a03",
+    "ar12CycleRemovalCommit": "83504f76b63be58aab7781914cada03d3ad69234",
+    "ar12Head": "03ebce1bb458df36118abc50091bba62676ffa14",
+    "ar12QualityRun": 30736392281,
+    "ar12SecurityRun": 30736392153,
+    "ar12PerformanceRun": 30736392162,
+    "ar12EvidenceRun": 30736392159,
+    "ar12GovernanceRun": 30736392165,
+    "ar12PrPolicyRun": 30736392141,
+    "ar12Evidence": "docs/test-evidence/M9-03/AR-12_PROJECT_WORKSPACE_SPLIT_VERIFICATION.md"
   }
 }

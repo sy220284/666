@@ -26,11 +26,18 @@ describe('M8-09 V1 stability invariants', () => {
   });
 
   it('does not delete committed workspaces or fail healthy opens when recent metadata fails', async () => {
-    const content = await source('packages/core-service/src/project-workspace.ts');
-    expect(content).toContain('if (!renamed && !this.#active)');
-    expect(content).not.toContain('rm(renamed ? finalPath : stagingPath');
-    expect(content).toContain('#registerRecentBestEffort');
-    expect(content).toContain('requiredBytes / 10n + 64n * 1024n * 1024n');
+    const [create, open, move, service] = await Promise.all([
+      source('packages/core-service/src/project-workspace/project-create.ts'),
+      source('packages/core-service/src/project-workspace/project-open.ts'),
+      source('packages/core-service/src/project-workspace/project-move.ts'),
+      source('packages/core-service/src/project-workspace/project-workspace-service.ts'),
+    ]);
+    expect(create).toContain('if (!renamed && !runtime.active)');
+    expect(create).not.toContain('rm(renamed ? finalPath : stagingPath');
+    expect(open).toContain('registerRecentBestEffort');
+    expect(service).toContain('#registerRecentBestEffort');
+    expect(service).toContain('return false');
+    expect(move).toContain('requiredBytes / 10n + 64n * 1024n * 1024n');
   });
 
   it('implements reopen-last, request generations and retryable shutdown cleanup', async () => {

@@ -2,13 +2,7 @@ import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
 import { invalidateDerived } from './derived-invalidation-service.js';
 import { readSnapshot, refreshSnapshot } from './ending-snapshot-service.js';
-import {
-  catalog,
-  completeProviderBatch,
-  generate,
-  list,
-  resolve,
-} from './proposal-batch-repository.js';
+import { completeProviderBatch, generate, list, resolve } from './proposal-batch-repository.js';
 import {
   type ProviderProposalBatchCompletionInput,
   type StateProposalServiceContext,

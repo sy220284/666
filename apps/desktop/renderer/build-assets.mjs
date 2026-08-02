@@ -15,8 +15,8 @@ const styleFiles = [
   'themes.css',
 ];
 
+await mkdir(new URL('./dist/styles/components/', import.meta.url), { recursive: true });
 await Promise.all([
-  mkdir(new URL('./dist/styles/components/', import.meta.url), { recursive: true }),
   copyFile(
     new URL('./src/index.html', import.meta.url),
     new URL('./dist/index.html', import.meta.url),

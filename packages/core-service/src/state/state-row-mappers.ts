@@ -1,8 +1,8 @@
 import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
 import {
-  DerivedInvalidationInputSchema,
-  DerivedInvalidationResultSchema,
+  type DerivedInvalidationInputSchema,
+  type DerivedInvalidationResultSchema,
   type EndingSnapshot,
   EndingSnapshotSchema,
   StateProposalBatchSchema,

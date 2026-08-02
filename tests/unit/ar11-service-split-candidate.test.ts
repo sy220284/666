@@ -12,6 +12,10 @@ describe('AR-11 service split candidate', () => {
       cwd: process.cwd(),
       stdio: 'inherit',
     });
+    spawnSync(process.execPath, ['scripts/typecheck-ar11-service-split.mjs'], {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+    });
     const summaryText = await readFile(path.join(outputRoot, 'summary.json'), 'utf8');
     const diagnostics = await readFile(path.join(outputRoot, 'diagnostics.txt'), 'utf8');
     const summary = JSON.parse(summaryText) as {

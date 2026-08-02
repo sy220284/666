@@ -5,11 +5,7 @@ import {
 } from '@worldforge/contracts';
 
 import { collectLockGuardViolations } from '../draft-lock-guard.js';
-import {
-  DraftServiceError,
-  normalizeBlock,
-  type WorkingBlock,
-} from './draft-model.js';
+import { DraftServiceError, normalizeBlock, type WorkingBlock } from './draft-model.js';
 
 function blockIndex(blocks: readonly WorkingBlock[], logicalBlockId: string): number {
   const index = blocks.findIndex((block) => block.logicalBlockId === logicalBlockId);

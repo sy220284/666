@@ -17,26 +17,19 @@ describe('AR-12 Project Workspace path-policy branches', () => {
     expect(isInside(root, path.join(root, 'child'))).toBe(true);
     expect(isInside(root, path.dirname(root))).toBe(false);
 
-    expect(
-      isPermissionFailure(
-        Object.assign(new Error('read-only'), { code: 'EROFS' }),
-      ),
-    ).toBe(true);
+    expect(isPermissionFailure(Object.assign(new Error('read-only'), { code: 'EROFS' }))).toBe(
+      true,
+    );
     expect(isPermissionFailure(new Error('other'))).toBe(false);
     expect(isPermissionFailure({ code: 'EACCES' })).toBe(false);
   });
 
   it('rejects unsafe workspace names and preserves safe names', () => {
-    for (const name of [
-      '.',
-      '..',
-      'bad.',
-      'bad ',
-      `bad${String.fromCharCode(1)}`,
-    ]) {
+    for (const name of ['.', '..', 'bad.', 'bad?', `bad${String.fromCharCode(1)}`]) {
       expect(() => validWorkspaceName(name)).toThrow(ProjectWorkspaceError);
     }
 
     expect(validWorkspaceName('safe-project')).toBe('safe-project.worldforge');
+    expect(validWorkspaceName(' safe-project ')).toBe('safe-project.worldforge');
   });
 });

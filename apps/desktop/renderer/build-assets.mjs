@@ -3,20 +3,17 @@ import { URL, fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
 
-await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
+await mkdir(new URL('./dist/styles/', import.meta.url), { recursive: true });
 await Promise.all([
   copyFile(
     new URL('./src/index.html', import.meta.url),
     new URL('./dist/index.html', import.meta.url),
   ),
-  copyFile(
-    new URL('./src/styles.css', import.meta.url),
-    new URL('./dist/styles.css', import.meta.url),
-  ),
-  copyFile(new URL('./src/m3.css', import.meta.url), new URL('./dist/m3.css', import.meta.url)),
-  copyFile(
-    new URL('./src/m8-07.css', import.meta.url),
-    new URL('./dist/m8-07.css', import.meta.url),
+  ...['base.css', 'layout.css', 'components.css', 'themes.css'].map((fileName) =>
+    copyFile(
+      new URL(`./src/styles/${fileName}`, import.meta.url),
+      new URL(`./dist/styles/${fileName}`, import.meta.url),
+    ),
   ),
 ]);
 

@@ -113,7 +113,11 @@ describe('M3 final React business workbenches', () => {
     const html = await readFile(path.join(rendererRoot, 'index.html'), 'utf8');
     const packageEntry = await readFile(path.join(rendererRoot, 'index.ts'), 'utf8');
     expect(html).toContain('id="react-root"');
-    expect(html).toContain('./m3.css');
+    expect(html).toContain('./styles/base.css');
+    expect(html).toContain('./styles/layout.css');
+    expect(html).toContain('./styles/components/01-shell.css');
+    expect(html).toContain('./styles/themes.css');
+    expect(html).not.toContain('./m3.css');
     expect(html).not.toContain('legacy-root');
     expect(html).not.toContain('data-draft-workspace');
     expect(html).not.toContain('data-version-dialog');
@@ -132,6 +136,10 @@ describe('M3 final React business workbenches', () => {
       'state-proposal-ui.ts',
       'scene-beat-entity-selector.ts',
       'audit-trash-reference-guard.ts',
+      'styles.css',
+      'm3.css',
+      'm8-07.css',
+      'compat/legacy-surface.ts',
     ]) {
       await expect(access(path.join(rendererRoot, file))).rejects.toThrow();
     }

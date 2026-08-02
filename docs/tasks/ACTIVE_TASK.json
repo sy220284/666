@@ -186,12 +186,13 @@
       "M8-09",
       "M9-00",
       "M9-01",
-      "M9-02"
+      "M9-02",
+      "M9-03"
     ],
-    "finalTask": false,
-    "nextTaskId": "M9-03",
-    "heldAt": "2026-07-31T18:03:02.601Z",
-    "reason": "M8-09保留为V1.0验证锚点；M9-00—M9-02已验证，M9-03通过统一Runtime、正式分支和PR承接AR-03—AR-14全部剩余架构拆分",
+    "finalTask": true,
+    "nextTaskId": null,
+    "heldAt": "2026-08-02T15:56:33.000Z",
+    "reason": "M8-09保留为V1.0兼容锚点；M9-00—M9-03全部验证，V1.1保持行为架构治理闭环",
     "allowedPaths": [
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",

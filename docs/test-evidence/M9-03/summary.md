@@ -1,9 +1,12 @@
-# M9-03阶段证据摘要
+# M9-03 验证摘要
 
-当前证据覆盖统一任务M9-03内的AR-03—AR-10检查点。AR-03、AR-04已通过PR #272进入main；续作PR #273已完成AR-05 Canon、AR-06 Planning、AR-07 AppShell、AR-08 Contracts、AR-09 Preload和AR-10 Main IPC拆分。
-
-AR-10受检Head为`d3400deedff2ff7a04ab9b509a96df4f00dfc3dc`，Quality Run为`30726171522`。Evidence、治理、策略、安全、性能、格式、Lint、Typecheck、Unit、Integration、Migration、Coverage、Build、Electron E2E和Quality聚合全部通过。覆盖率为232个测试文件、1025项测试，Statements 84.69%、Branches 75.03%、Functions 84.86%、Lines 86.78%。
-
-Main IPC根入口收敛为37行总注册与释放装配；统一Guard集中来源校验、Schema拒绝、异常转换和Query/Mutation错误语义，App、Project、Recovery、Planning、Canon、Structure、Writing和Task按领域拆分。正式通道、凭据隔离、Task MessagePort与释放语义保持不变。
-
-M9-03仍处于实施中，当前活动工作包切换为AR-11 State Proposal与Generation拆分。AR-11—AR-14全部完成、永久终验通过、续作PR合并并完成main复验前，不得转Ready、合并或关闭M9-03。
+- 任务：M9-03 / AR-03—AR-14 V1.1保持行为架构拆分。
+- 来源实施PR：#273。
+- 最终受检Head：`a5b24ab3a2809f2ae8f61222ef4b3ae31de9c807`。
+- 受控main提交：`f5add56154e99bc907376e08787b7037851835f0`。
+- Ready永久门禁：Quality `30754109757`、Evidence `30754109565`、Task Governance `30754109604`、PR Policy `30754109570`、Security `30754109578`、Performance `30754109603`，均成功。
+- Main Verification：`30754708770`，成功。
+- 原生与打包验证：PR #289、Quality `30755377969`；Windows原生微软拼音和Linux、Windows、macOS三平台Package Smoke全部成功，PR已关闭且未合并。
+- AR-03—AR-14全部完成；公开协议、数据库Schema、错误码、持久化格式和作者裁决语义保持兼容。
+- 最终结构扫描：397个源码文件、1171条相对导入边、0项结构债务。
+- M9-03已关闭为Verified，M9 V1.1架构治理进入最终验证保持。

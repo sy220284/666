@@ -11,10 +11,11 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import type { BridgeRequestOutcome } from '../../bridge/request-lifecycle.js';
-import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorJsonValue } from '../../presentation/author-value-format.js';
+import { startSingleFlightPolling } from '../../runtime/single-flight-polling.js';
+import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 
 interface StateProposalView {
   readonly catalog: StateProposalCatalog;
@@ -42,6 +43,7 @@ export function StateProposalPanel({
   const [pendingExtraction, setPendingExtraction] = useState(false);
   const chapters = structure?.volumes.flatMap((volume) => volume.chapters) ?? [];
   const chapter = chapters.find((item) => item.id === chapterId) ?? null;
+  const activeRunId = activeRun?.runId ?? null;
 
   const refreshStructure = useCallback(async (): Promise<void> => {
     const outcome = await bridge.planning.listStructure(projectId, { mode: 'replace' });
@@ -82,10 +84,12 @@ export function StateProposalPanel({
   const catalog = resource.data?.catalog ?? null;
 
   useEffect(() => {
+    let active = true;
     void Promise.all([
       bridge.planning.listStructure(projectId, { mode: 'replace' }),
       bridge.providers.list({ mode: 'replace' }),
     ]).then(([structureOutcome, providerOutcome]) => {
+      if (!active) return;
       if (structureOutcome.state === 'success') {
         setStructure(structureOutcome.data);
         const firstFinal = structureOutcome.data.volumes
@@ -98,26 +102,35 @@ export function StateProposalPanel({
         setProviderId((current) => current || providerOutcome.data.providers[0]?.id || '');
       }
     });
+    return () => {
+      active = false;
+    };
   }, [bridge, projectId]);
 
   useEffect(() => {
-    if (!activeRun) return;
-    const timer = window.setInterval(() => {
-      void bridge.generation.getRun(projectId, activeRun.runId).then((outcome) => {
-        if (outcome.state !== 'success') return;
+    if (!activeRunId) return;
+    return startSingleFlightPolling({
+      intervalMs: 1_000,
+      poll: () => bridge.generation.getRun(projectId, activeRunId),
+      onResult: (outcome) => {
+        if (outcome.state !== 'success') return true;
         setActiveRun(outcome.data);
         setNotice(
           `状态提取 · ${stateExtractionStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
         );
         if (['succeeded', 'failed', 'cancelled'].includes(outcome.data.status)) {
-          window.clearInterval(timer);
           setPendingExtraction(false);
           void resource.refresh();
+          return false;
         }
-      });
-    }, 1_000);
-    return () => window.clearInterval(timer);
-  }, [activeRun?.runId, bridge, projectId, resource.refresh]);
+        return true;
+      },
+      onError: () => {
+        setNotice('状态提取进度读取失败，正在重试。');
+        return true;
+      },
+    });
+  }, [activeRunId, bridge, projectId, resource.refresh]);
 
   const extractWithProvider = async (): Promise<void> => {
     if (!chapter?.finalVersionId || !providerId || readOnly) return;

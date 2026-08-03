@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { expectedWorkspaceDirectories } from './check-workspaces.mjs';
 
+// M10-02全量审计将Foundation打包入口纳入三平台Package Smoke验证。
 const root = process.cwd();
 const buildable = expectedWorkspaceDirectories.filter((directory) => directory !== 'apps/desktop');
 const entries = [];

@@ -147,12 +147,7 @@ async function dependencyErrors(task) {
   const statuses = await loadCommitStatuses(baseCommit);
 
   for (const dependency of task.dependencies ?? []) {
-    let dependencyRuntime = null;
-    try {
-      dependencyRuntime = await loadJson(runtimePath(dependency));
-    } catch {
-      dependencyRuntime = null;
-    }
+    const dependencyRuntime = await loadJson(runtimePath(dependency)).catch(() => null);
     const verified = dependencyRuntime
       ? isRuntimeEffectivelyVerified(dependencyRuntime, statuses)
       : index.get(dependency)?.status === 'Verified';
@@ -207,7 +202,7 @@ async function validateTaskBoundary(taskId, files) {
 async function validateOpenPullRequestCount(event, authorization) {
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) return [];
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-  const response = await fetch(
+  const response = await globalThis.fetch(
     `https://api.github.com/repos/${owner}/${repo}/pulls?state=open&base=${authorization.baseBranch}&head=${owner}:${authorization.workBranch}&per_page=100`,
     {
       headers: {

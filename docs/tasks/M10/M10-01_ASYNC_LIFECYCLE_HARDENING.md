@@ -1,6 +1,6 @@
 # M10-01 异步生命周期与竞态硬化
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M10 稳定性续作  
 > 优先级：P1  
 > 分支：`work/m10-01-async-lifecycle-hardening`
@@ -17,6 +17,7 @@
 4. 增加章节状态策略、源码不变量、Task恢复交错和候选加载分支测试。
 5. 提高分支覆盖余量；不降低现有75%门槛，不扩大覆盖排除。
 6. 将根工程、永久Actions工作流和离线工具链中的pnpm统一从11.13.0升级至11.13.1。
+7. 将性能文件改为单文件串行执行，避免并行重负载污染事件循环预算；不修改预算阈值。
 
 ## 3. 行为不变量
 
@@ -33,6 +34,7 @@
 - `tests/unit/`
 - `docs/tasks/M10/`
 - `docs/tasks/runtime/M10-01.json`
+- `docs/tasks/TASK_INDEX.md`
 - `docs/test-evidence/M10-01/`
 - `docs/PROJECT_EXECUTION_ENTRY.md`
 - `package.json`
@@ -49,14 +51,15 @@
 - `packages/prompts/src/`
 - 历史Evidence目录
 
-## 6. 验收标准
+## 6. 验收结果
 
-- 连续切章不会触发并发Flush；加载中的旧请求可被新请求替代。
-- Flush失败后当前编辑器恢复至符合只读状态的可编辑性。
-- Task缺口恢复期间新增缺口会触发后续快照恢复。
-- 新增交错测试、现有单元测试、覆盖率、类型检查、构建和Electron E2E全部通过。
-- 覆盖率门槛保持不变，Renderer覆盖排除清单不得扩大。
-- 全仓不再存在执行用pnpm 11.13.0配置，Actions日志不再出现broken版本警告。
+- 连续切章不会触发并发Flush；加载中的旧请求可被新请求替代：通过。
+- Flush失败后当前编辑器恢复至符合只读状态的可编辑性：通过。
+- Task缺口恢复期间新增缺口会触发后续快照恢复：通过。
+- 静态、单元、集成、Migration、覆盖率、构建和Electron E2E：通过。
+- Linux、Windows、macOS包体构建及启动冒烟：通过。
+- 覆盖率门槛保持75%，Renderer覆盖排除清单未扩大；Branches由75.03%提升至75.46%。
+- 全部执行用pnpm配置已升级至11.13.1，成功工作流不再出现11.13.0 broken警告。
 
 ## 7. 验证矩阵
 
@@ -79,6 +82,25 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-## 8. 回退
+完整实现证据：[`../../test-evidence/M10-01/summary.md`](../../test-evidence/M10-01/summary.md)。
+
+## 8. 实施检查点
+
+- 实施受检Head：`8eb48404a7c9012be57983255c13cf325ed1a552`。
+- Quality：`30782157516`，成功。
+- Security：`30782157403`，成功。
+- Performance：`30782157416`，成功。
+- Evidence：`30782157400`，成功。
+- Task Governance：`30782157395`，成功。
+- Repository Governance：`30782157396`，成功。
+- PR Policy：`30782157423`，成功。
+- Electron E2E：33/33通过。
+- Coverage：242个测试文件、1053项测试通过；Statements 85.00%、Branches 75.46%、Functions 85.18%、Lines 87.09%。
+
+## 9. 回退
 
 按本任务提交整体回退章节状态策略、Task恢复协调器、专项测试和pnpm版本同步。回退不得单独删除测试而保留异步行为变更，也不得只回退部分工作流导致工具链版本分裂。
+
+## 10. 当前结论
+
+M10-01实现完成，等待Ready永久门禁、受控合并和main验证后关闭为Verified。

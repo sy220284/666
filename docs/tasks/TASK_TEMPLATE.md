@@ -22,7 +22,7 @@
 5. 必读文档与影响范围；
 6. 数据、Migration、IPC、事件、错误码、UI、安全、恢复和性能边界；
 7. 自动化、人工验收、Evidence和完成条件；
-8. 来源PR、受检Head与主分支验证绑定方案。
+8. 来源PR与主分支验证绑定方案。
 
 ## 3. Planned任务卡模板
 
@@ -104,14 +104,13 @@
 {
   "verificationBinding": {
     "sourcePr": 0,
-    "sourceHead": "<40位work Head SHA>",
     "mainContext": "main-verification",
     "taskContext": "task-verification/<TASK-ID>"
   }
 }
 ```
 
-最终main SHA和验证运行由GitHub提交状态绑定，不通过第二个关闭PR补写。
+`sourcePr`在PR建立后写入。最终受检Head由GitHub PR、Controlled Merge输入和Main Verification共同证明，不写入Runtime，避免提交SHA自引用。最终main SHA和验证运行由GitHub提交状态绑定，不通过第二个关闭PR补写。
 
 ## 5. UI与失败路径
 
@@ -141,6 +140,6 @@
 - 测试真实运行并记录；
 - 无TODO、空函数、固定假数据和伪造成功；
 - Runtime、TASK_INDEX和追踪矩阵同步；
-- `verificationBinding`绑定当前PR和受检Head。
+- `verificationBinding`绑定当前PR和稳定状态上下文。
 
-有效`VERIFIED`还要求Main Verification及任务验证提交状态成功，且来源绑定完全一致。
+有效`VERIFIED`还要求Main Verification及任务验证提交状态成功，且GitHub来源PR、来源Head与最终main绑定完全一致。

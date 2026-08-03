@@ -9,13 +9,13 @@
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/TASK_AUTHORIZATION.json
-→ docs/tasks/ACTIVE_TASK.json（V1.0/V1.1终态兼容锚点）
+→ docs/tasks/ACTIVE_TASK.json（终态兼容锚点）
 → docs/tasks/TASK_INDEX.md
 → 新任务Runtime与独立任务卡
 → 任务卡列出的专项真源、现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9和M10-01均已完成Verified闭环，当前没有活动开发任务。
+`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9、M10-01及M10-02均已完成Verified闭环，当前没有活动开发任务。
 
 ## 2. 当前基线
 
@@ -34,18 +34,23 @@ M8-09 V1.0稳定性治理（Verified）
    ├─ Task缺口恢复重复Snapshot收敛
    ├─ 覆盖率与异步交错测试补强
    └─ pnpm 11.13.1与性能测试隔离
+→ M10-02 全量代码测试与深度审计（Verified）
+   ├─ Renderer、Preload、Main IPC与Core全域审计
+   ├─ 设定提取轮询单飞与卸载保护
+   ├─ DOM安全边界、纯函数与轮询基线补测
+   └─ 同一Head完整质量矩阵与三平台包体复核
 ```
 
-M10-01来源PR #294已Squash合并至`main@7067e3ca6caf8c72b28c8e1bf16af5add478a39d`；Main Verification运行`30783708113`成功。Ready最终Head的Quality、Security、Performance、Evidence、Task Governance、Repository Governance和PR Policy永久门禁全部成功，Linux、Windows、macOS三平台Package Smoke通过。
+M10-02来源PR #297已Squash合并至产品代码基线`main@ca83d48c7493bba21252a37f9aec024d6aa0ca79`；Main Verification运行`30788229139`成功。最终Head的Quality、Security、Performance、Evidence、Task Governance和PR Policy永久门禁全部成功，Linux、Windows、macOS三平台Package Smoke通过。
 
-当前覆盖率：Statements 85.00%、Branches 75.46%、Functions 85.18%、Lines 87.09%；242个测试文件、1053项测试通过。Renderer具名覆盖排除和75%门槛均未放宽。
+当前覆盖率：Statements 85.35%、Branches 75.61%、Functions 85.81%、Lines 87.49%；246个测试文件、1063项测试通过。Electron E2E 33/33通过；覆盖门槛、性能预算和覆盖排除清单均未放宽。
 
 ## 3. 当前执行模式
 
 ```text
 仓库状态：VERIFIED_HOLD
 基线分支：main
-基线提交：7067e3ca6caf8c72b28c8e1bf16af5add478a39d
+产品代码基线：ca83d48c7493bba21252a37f9aec024d6aa0ca79
 main写入：serialized
 直接main提交：禁止
 活动任务：0
@@ -53,7 +58,7 @@ main写入：serialized
 活动PR：无
 ```
 
-后续开发必须重新立项，创建独立任务卡、Runtime、分支和PR绑定；不得沿用M9-03或M10-01的已关闭Runtime继续开发。
+后续开发必须重新立项，创建独立任务卡、Runtime、工作分支和PR绑定；不得沿用M9-03、M10-01或M10-02的已关闭Runtime继续开发。
 
 ## 4. 权威顺序
 
@@ -71,21 +76,23 @@ main写入：serialized
 
 ## 5. 已验证治理边界
 
-- M9保持行为完成架构拆分；M10-01只处理已核实的异步竞态、测试余量和工具链问题。
+- M9保持行为完成架构拆分；M10-01处理已核实的异步竞态与工具链问题；M10-02完成全量自动验证和源码深度审计。
 - 历史Migration、数据库Schema、IPC Channel字符串、`PROTOCOL_VERSION`、正式错误码和公开Bridge方法均保持不变。
 - AI输出继续先进入建议稿，设定更新建议继续由作者裁决，`project.sqlite`继续是作品唯一权威真源。
 - Renderer不得获得Node、文件系统、SQLite、环境变量或凭据能力。
+- 设定提取进度轮询使用单飞调度，慢IPC不会产生同键重叠请求；卸载后不再调度或回写。
 - Legacy入口与旧CSS责任域已完成退役和收敛，结构预算保持0项债务。
 - pnpm执行版本统一为11.13.1；性能预算未放宽，仅隔离测试文件间资源竞争。
 
 M9历史入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)。  
-M10-01任务卡：[`docs/tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md`](tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)。
+M10-01任务卡：[`docs/tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md`](tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)。  
+M10-02任务卡：[`docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md`](tasks/M10/M10-02_FULL_CODE_AUDIT.md)。
 
 ## 6. 后续任务标准闭环
 
 ```text
 重新立项并冻结范围
-→ 创建任务卡、Runtime、分支与PR绑定
+→ 创建任务卡、Runtime与统一工作分支PR绑定
 → 核对依赖、允许路径、行为不变量和结构预算
 → 建立行为测试或稳定复现
 → 实施并完成专项回归
@@ -111,7 +118,7 @@ Linux Electron显示依赖：fonts-noto-cjk、xvfb
 Windows中文输入：系统内置Microsoft Pinyin
 ```
 
-本地环境缺少同版工具或无法联网安装时，不得用其他版本冒充最终结论；允许先实施并由Draft PR Actions取得格式、类型、测试、构建和E2E的正式结果，再根据精确诊断收口。
+本地环境缺少同版工具或无法联网安装时，不得用其他版本冒充最终结论；应从GitHub Actions工作流或产物获取同版工具与诊断，再根据精确结果收口。
 
 ## 8. 强制规则
 

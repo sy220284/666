@@ -26,13 +26,13 @@ WorldForge 是面向单一作者的本地优先桌面写作工作站。仓库实
 固定规则：
 
 - `TASK_AUTHORIZATION.json` 是并行任务模式、基线分支和main写入规则的全局机器真源。
-- `docs/tasks/runtime/<TASK_ID>.json` 是并行模式下每张任务状态、分支、允许路径、禁止路径和验证命令的机器真源。
+- `docs/tasks/runtime/<TASK_ID>.json` 是并行模式下每张任务状态、允许路径、禁止路径和验证命令的机器真源；Runtime中的任务分支字段必须统一为`work`。
 - `ACTIVE_TASK.json` 与`ACTIVE_TASK.md`在串行模式中是活动任务真源；进入并行模式后保留为历史关闭流程兼容锚点，二者仍必须同步。
 - 动态状态不得在本文件中重复固化；任务数量、当前阶段和当前授权以真实状态文件为准。
-- 串行模式同时只能有一张任务处于`IN_PROGRESS`；`parallel-pr`模式可并行开放互不冲突的任务Runtime，但main写入和验证关闭保持串行。
+- 串行模式同时只能有一张任务处于`IN_PROGRESS`；并行任务可以在同一`work`分支内通过工作区隔离和提交协调并行推进，但main写入和验证关闭保持串行。
 - 里程碑摘要只做索引，不是可执行任务卡。
-- 每张活动任务必须且只能指向 `docs/tasks/M0/` 至 `M9/` 下的一张独立任务卡。
-- 作者已明确将M9-03及其后续工作包统一执行：AR-03—AR-14全部归入`M9-03`同一任务卡、Runtime、正式分支和实施PR；M9-04—M9-14不再作为独立活动任务，但原冻结需求、依赖、风险、回退和验收要求继续作为M9-03内部检查点生效。
+- 每张活动任务必须且只能指向 `docs/tasks/M0/` 至 `M10/` 下的一张独立任务卡。
+- 作者已明确将M9-03及其后续工作包统一执行：AR-03—AR-14全部归入`M9-03`同一任务卡和Runtime；M9-04—M9-14不再作为独立活动任务，但原冻结需求、依赖、风险、回退和验收要求继续作为M9-03内部检查点生效。
 
 ## 3. 文档权威顺序
 
@@ -139,65 +139,39 @@ V1.0 只包含本地单作者写作闭环，不实现：
 
 ## 6. 任务、分支与实施模式
 
-具体授权模式优先从`TASK_AUTHORIZATION.json`读取；未启用并行任务模式时再读取`ACTIVE_TASK.authorization`。不得假设当前模式永远不变。
+### 6.1 唯一分支规则
 
-在`parallel-pr`模式下：
+- 仓库长期只使用两个正式分支：`work` 用于全部任务实施、测试、审查、治理与证据集成，`main` 用于受控合并后的稳定主线。
+- 禁止为任何任务、修复、验证、治理关闭或并行工作新增分支，包括 `work/<任务>`、`feat/*`、`fix/*`、`chore/*`、`policy/*`、`probe/*`、`stage/*` 和 `validate/*`。
+- 所有任务必须先将唯一 `work` 快进同步到最新 `main`，再在 `work` 上实施；任务Runtime、活动任务和PR分支字段统一填写 `work`。
+- 并行开发只能通过独立工作区、文件所有权、提交顺序和集成协调实现，所有正式提交最终统一进入同一个 `work`；禁止使用辅助分支隔离并行工作。
+- 同一时刻只允许一个 `work → main` 正式PR、一个最终受检Head和一条主线合并链路。前一PR未完成受控合并与Main Verification，禁止创建或推进下一正式PR。
+- 任务完成后必须经过永久门禁、Controlled Merge和Main Verification；主分支验证成功后，将`work`快进同步到最新`main`，再开始下一项任务。
+- 普通任务、验证补充、Evidence落库和Verified关闭都必须继续使用同一个`work`及同一个正式PR完成，禁止创建第二个纯证据分支或关闭PR。
+- 历史分支仅作为只读记录，必须清理且不得复用；任何规则、脚本或状态文件不得再生成任务专属分支名。
 
-```text
-一个任务Runtime
-→ 一个正式任务分支
-→ 一个绑定worldforge-task标记的PR
-→ Draft快速反馈
-→ Implemented与受检Head
-→ Ready永久门禁
-→ expected_head_sha受控合并
-→ Main Verification
-→ 独立治理关闭为Verified
-```
-
-- 互不重叠且依赖已满足的任务可以同时开发和开放PR。
-- 每个PR只能绑定一个任务Runtime，只能修改自身`allowedPaths`，不得修改其他任务Runtime。
-- 高风险任务不得并行修改同一核心文件；共享入口、锁文件和全局治理状态必须由明确的治理任务统一修改。
-- main写入、Main Verification和Verified关闭始终串行；前一PR未完成主线验证时，后一PR不得写入main。
-- 每个任务的最终E2E、Evidence和回退说明必须绑定自身最终受检Head。
-
-在 `implementation-pr` 模式下：
+统一流程：
 
 ```text
-一个活动任务
-→ 一个正式任务集成分支
-→ 最小完整端到端实现
-→ 必要专项测试
-→ Draft 快速反馈
-→ Ready 永久门禁
-→ 按需登记 Implemented 与 deferredVerification
+最新main
+→ 唯一work分支
+→ 任务实施、测试、审查、文档与Evidence集成
+→ 一个Ready PR（work → main）
+→ 永久门禁
 → Controlled Merge
 → Main Verification
-→ 按 ACTIVE_TASK.authorization 决定推进或暂停
+→ work快进同步最新main
+→ 下一任务
 ```
 
-同一活动任务允许开发、测试、审查和文档并行，但必须遵守：
+### 6.2 任务与验证约束
 
-```text
-一个正式任务集成分支
-├─ 开发工作区或辅助分支
-├─ 测试工作区或辅助分支
-└─ 审查/文档工作区或辅助分支
-        ↓
-统一汇入正式任务集成分支
-        ↓
-一个 Ready PR
-        ↓
-一个受检 Head
-```
-
-- 辅助分支不得直接向 `main` 开普通任务 PR。
-- 只能有一个正式任务 PR 和一个最终受检 Head。
-- 开发、测试和审查可以并行；集成、Ready 门禁、合并和任务状态推进必须串行。
-- `package.json`、锁文件、任务状态、Evidence Manifest 和共享入口文件由集成负责人统一修改。
-- 最终 E2E、Evidence 提交绑定和 Verified 关闭必须在代码与测试汇合后完成。
+- 每个PR只能绑定当前执行范围内的任务Runtime，只能修改获批`allowedPaths`；多任务连续实施时，必须在同一`work`上按依赖顺序分段提交并保持状态可追溯。
+- 高风险任务不得同时修改同一核心文件；共享入口、锁文件、任务状态和全局治理文件必须串行集成。
+- main写入、Main Verification和Verified关闭始终串行。
+- 每个任务的最终E2E、Evidence和回退说明必须绑定`work`上对应的最终受检Head。
+- `package.json`、锁文件、任务状态、Evidence Manifest和共享入口文件由集成负责人统一修改。
 - 阶段切换前必须完成上一阶段任务卡规定的关闭条件、延期验证和阶段硬门。
-- 最终 Evidence、穷尽人工复核和 `Verified` 关闭可按里程碑批量处理；普通任务不得为关闭再创建第二个纯证据 PR。
 
 只有以下情况中断连续实现：
 

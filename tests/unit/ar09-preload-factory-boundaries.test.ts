@@ -49,15 +49,21 @@ describe('AR-09 preload factory boundaries', () => {
     }
   });
 
-  it('preserves task ACK, duplicate suppression and sequence-gap recovery', () => {
+  it('preserves task ACK, duplicate suppression and repeatable sequence-gap recovery', () => {
     const source = readSource('task-bridge-factory.ts');
+    const recovery = readSource('task-gap-recovery.ts');
     expect(source).toContain('TaskEventAckSchema.parse');
     expect(source).toContain('const cursor = new TaskEventCursor()');
+    expect(source).toContain('new TaskGapRecoveryCoordinator()');
     expect(source).toContain("disposition.kind === 'accepted'");
     expect(source).toContain("disposition.kind !== 'gap'");
-    expect(source).toContain('.getSnapshot(parsed.data.taskId, parsed.data.projectId)');
+    expect(source).toContain('recoveries.begin(taskId)');
+    expect(source).toContain('recoveries.run(taskId');
+    expect(source).toContain('.getSnapshot(taskId, parsed.data.projectId)');
     expect(source).toContain("reason: 'sequence-gap'");
     expect(source).toContain('channel.port1.close()');
+    expect(recovery).toContain('active.dirty = true');
+    expect(recovery).toContain('while (active.dirty)');
   });
 
   it('retains the existing independent bridge surfaces', () => {

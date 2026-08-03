@@ -6,6 +6,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTaskIndex } from '../../scripts/task-control-lib.mjs';
+import {
+  isRuntimeEffectivelyVerified,
+  loadCommitStatuses,
+} from './effective-task-status.mjs';
 
 const root = process.cwd();
 const authorizationPath = 'docs/tasks/TASK_AUTHORIZATION.json';
@@ -139,14 +143,20 @@ function baseRuntime(taskId) {
 async function dependencyErrors(task) {
   const errors = [];
   const index = parseTaskIndex(await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'));
+  const baseCommit = process.env.TASK_BASE_REF ?? git(['rev-parse', 'origin/main']);
+  const statuses = await loadCommitStatuses(baseCommit);
+
   for (const dependency of task.dependencies ?? []) {
-    let status = null;
+    let dependencyRuntime = null;
     try {
-      status = (await loadJson(runtimePath(dependency))).status;
+      dependencyRuntime = await loadJson(runtimePath(dependency));
     } catch {
-      status = index.get(dependency)?.status === 'Verified' ? 'VERIFIED' : null;
+      dependencyRuntime = null;
     }
-    if (status !== 'VERIFIED') errors.push(`${task.id} dependency ${dependency} is not Verified`);
+    const verified = dependencyRuntime
+      ? isRuntimeEffectivelyVerified(dependencyRuntime, statuses)
+      : index.get(dependency)?.status === 'Verified';
+    if (!verified) errors.push(`${task.id} dependency ${dependency} is not effectively Verified`);
   }
   return errors;
 }

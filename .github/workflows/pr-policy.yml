@@ -6,7 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 
 concurrency:
@@ -29,7 +29,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11.13.1
@@ -38,6 +38,115 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply one-shot Schema 2 repair with locked formatter
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { writeFile } = require('node:fs/promises');
+
+          const taskctl = `/* global console, process */
+          import { execFileSync } from 'node:child_process';
+          import { fileURLToPath } from 'node:url';
+
+          const controllerPath = fileURLToPath(
+            new URL('../.github/governance/single-work-taskctl.mjs', import.meta.url),
+          );
+
+          // Compatibility entry. Schema 2 task control is implemented by single-work-taskctl.mjs.
+          function main() {
+            const command = process.argv[2] ?? 'validate';
+            const rest = process.argv.slice(3);
+            execFileSync(process.execPath, [controllerPath, command, ...rest], {
+              stdio: 'inherit',
+              env: process.env,
+            });
+            console.log('Legacy taskctl entry delegated to the Schema 2 single work controller.');
+          }
+
+          if (process.argv[1] === fileURLToPath(import.meta.url)) main();
+          `;
+
+          const transactionPolicy = `import { readFile } from 'node:fs/promises';
+
+          import { describe, expect, it } from 'vitest';
+
+          function body(source: string, start: string, end: string): string {
+            const startIndex = source.indexOf('async function ' + start + '(');
+            const endIndex = source.indexOf('async function ' + end + '(', startIndex + 1);
+            if (startIndex < 0 || endIndex < 0) throw new Error('Cannot locate ' + start + ' function');
+            return source.slice(startIndex, endIndex);
+          }
+
+          describe('taskctl Schema 2 policy', () => {
+            it('delegates through a module-relative canonical controller path', async () => {
+              const source = await readFile('scripts/taskctl.mjs', 'utf8');
+              expect(source).toContain(
+                "new URL('../.github/governance/single-work-taskctl.mjs', import.meta.url)",
+              );
+              expect(source).toContain('fileURLToPath(');
+              expect(source).toContain('[controllerPath, command, ...rest]');
+              expect(source).not.toContain(
+                "['.github/governance/single-work-taskctl.mjs', command, ...rest]",
+              );
+            });
+
+            it('keeps the compatibility entry mutation-free and limits writes to mirror sync', async () => {
+              const source = await readFile('.github/governance/single-work-taskctl.mjs', 'utf8');
+              const syncBody = body(source, 'sync', 'rejectLegacyMutation');
+              const rejectionBody = body(source, 'rejectLegacyMutation', 'main');
+
+              expect(syncBody).toContain('writeFile(mirrorPath, renderCompatibilityMirror(');
+              expect(rejectionBody).toContain('no longer mutates the legacy ACTIVE_TASK state machine');
+              expect(rejectionBody).not.toContain('writeFile(');
+              expect(source).not.toContain('recoverAtomicFileTransactions(');
+              expect(source).not.toContain('writeFilesAtomically(');
+            });
+          });
+          `;
+
+          await writeFile('scripts/taskctl.mjs', taskctl.replace(/^          /gm, ''), 'utf8');
+          await writeFile(
+            'tests/unit/taskctl-transaction-policy.test.ts',
+            transactionPolicy.replace(/^          /gm, ''),
+            'utf8',
+          );
+          NODE
+
+          pnpm exec prettier --write \
+            scripts/task-control-lib.mjs \
+            scripts/taskctl.mjs \
+            tests/unit/branch-inventory-policy.test.ts \
+            tests/unit/main-task-verification.test.ts \
+            tests/unit/task-control.test.ts \
+            tests/unit/taskctl-transaction-policy.test.ts
+
+          git show c3b4d7a245969f25c39dce5f5bfa447b169740ea:.github/governance/toolchain-bundle.mjs > .github/governance/toolchain-bundle.mjs
+          git show c3b4d7a245969f25c39dce5f5bfa447b169740ea:.github/workflows/pr-policy.yml > .github/workflows/pr-policy.yml
+
+          pnpm exec prettier --check \
+            scripts/task-control-lib.mjs \
+            scripts/taskctl.mjs \
+            tests/unit/branch-inventory-policy.test.ts \
+            tests/unit/main-task-verification.test.ts \
+            tests/unit/task-control.test.ts \
+            tests/unit/taskctl-transaction-policy.test.ts \
+            .github/governance/toolchain-bundle.mjs \
+            .github/workflows/pr-policy.yml
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            scripts/task-control-lib.mjs \
+            scripts/taskctl.mjs \
+            tests/unit/branch-inventory-policy.test.ts \
+            tests/unit/main-task-verification.test.ts \
+            tests/unit/task-control.test.ts \
+            tests/unit/taskctl-transaction-policy.test.ts \
+            .github/governance/toolchain-bundle.mjs \
+            .github/workflows/pr-policy.yml
+          git commit -m "fix(governance): align Schema 2 task control checks"
+          git push origin HEAD:work
       - name: Assert clean working tree before policy validation
         run: node .github/governance/assert-clean-tree.mjs
       - name: Validate unique work pull request

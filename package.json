@@ -46,11 +46,6 @@
     "task:verify": "node .github/governance/single-work-taskctl.mjs validate",
     "task:verify-final": "node .github/governance/single-work-taskctl.mjs validate",
     "task:sync": "node .github/governance/single-work-taskctl.mjs sync",
-    "task:activate": "node .github/governance/single-work-taskctl.mjs activate",
-    "task:reopen": "node .github/governance/single-work-taskctl.mjs reopen",
-    "task:advance": "node .github/governance/single-work-taskctl.mjs advance",
-    "task:close": "node .github/governance/single-work-taskctl.mjs close",
-    "task:close-deferred": "node .github/governance/single-work-taskctl.mjs close-deferred",
     "test:coverage": "pnpm test:prepare && vitest run --config vitest.coverage.config.ts",
     "test:quality": "node scripts/test-quality-audit.mjs"
   },

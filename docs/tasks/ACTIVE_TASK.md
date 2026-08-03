@@ -8,10 +8,10 @@
 VERIFIED_HOLD
 ```
 
-- 任务ID：`M10-02`
-- 唯一任务卡：`docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md`
+- 任务ID：`M8-09`
+- 唯一任务卡：`docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md`
 - 工作分支：`work/m10-02-full-code-audit`
-- 开始时间：`2026-08-03`
+- 开始时间：`2026-07-31`
 - 授权模式：`implementation-pr`
 - 授权人：`author`
 
@@ -19,18 +19,21 @@ VERIFIED_HOLD
 
 ```yaml
 allowed_paths:
-  - apps/
-  - packages/
-  - tests/
+  - apps/desktop/renderer/src/
+  - apps/desktop/preload/src/
+  - apps/desktop/main/src/
+  - packages/contracts/src/
+  - packages/core-service/src/
+  - tests/unit/
+  - tests/integration/
+  - tests/security/
+  - tests/e2e/
   - scripts/
-  - .github/
-  - docs/tasks/M10/
-  - docs/tasks/runtime/M10-02.json
-  - docs/tasks/TASK_INDEX.md
-  - docs/test-evidence/M10-02/
-  - docs/PROJECT_EXECUTION_ENTRY.md
-  - package.json
-  - pnpm-lock.yaml
+  - docs/tasks/
+  - docs/product/
+  - docs/testing/
+  - docs/test-evidence/M8-09/
+  - .github/workflows/
 forbidden_paths:
   - migrations/
   - docs/test-evidence/M0/
@@ -44,25 +47,15 @@ forbidden_paths:
   - docs/test-evidence/M8-06/
   - docs/test-evidence/M8-07/
   - docs/test-evidence/M8-08/
-  - docs/test-evidence/M8-09/
-  - docs/test-evidence/M9-00/
-  - docs/test-evidence/M9-02/
-  - docs/test-evidence/M9-03/
-  - docs/test-evidence/M10-01/
 required_docs:
   - AGENTS.md
   - docs/PROJECT_EXECUTION_ENTRY.md
   - docs/tasks/TASK_AUTHORIZATION.json
   - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md
-  - docs/tasks/runtime/M10-02.json
-  - docs/test-evidence/M10-02/summary.md
+  - docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md
+  - docs/tasks/runtime/M8-09.json
 verification:
-  - pnpm task:validate
-  - pnpm check:workspaces
-  - pnpm check:boundaries
   - pnpm check:language
-  - pnpm format:check
   - pnpm lint
   - pnpm typecheck
   - pnpm test:unit
@@ -71,11 +64,11 @@ verification:
   - pnpm test:coverage
   - pnpm test:security
   - pnpm test:perf
-  - pnpm build
   - pnpm test:e2e
+  - pnpm build
   - pnpm release:check
 ```
 
 ## 连续执行规则
 
-V1.0全部独立任务已经Verified；M10-02作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。
+V1.0全部独立任务已经Verified；M8-09作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。

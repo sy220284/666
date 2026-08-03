@@ -7,8 +7,6 @@ import {
   validateTaskVerificationBinding,
 } from '../../scripts/main-verification.mjs';
 
-const sha = (value: string): string => value.repeat(40);
-
 describe('主分支任务有效验证', () => {
   it('解析PR任务标记', () => {
     expect(taskIdFromPullBody('<!-- worldforge-task: M10-03 -->')).toBe('M10-03');
@@ -24,17 +22,16 @@ describe('主分支任务有效验证', () => {
           executionBranch: 'work',
           verificationBinding: {
             sourcePr: 301,
-            sourceHead: sha('a'),
             mainContext: 'main-verification',
             taskContext: 'task-verification/M10-03',
           },
         },
-        { taskId: 'M10-03', sourcePr: 301, sourceHeadSha: sha('a') },
+        { taskId: 'M10-03', sourcePr: 301 },
       ),
     ).toEqual([]);
   });
 
-  it('拒绝来源Head或任务状态不一致', () => {
+  it('拒绝来源PR或任务状态不一致', () => {
     expect(
       validateTaskVerificationBinding(
         {
@@ -42,13 +39,12 @@ describe('主分支任务有效验证', () => {
           status: 'IN_PROGRESS',
           executionBranch: 'work',
           verificationBinding: {
-            sourcePr: 301,
-            sourceHead: sha('b'),
+            sourcePr: 302,
             mainContext: 'main-verification',
             taskContext: 'task-verification/M10-03',
           },
         },
-        { taskId: 'M10-03', sourcePr: 301, sourceHeadSha: sha('a') },
+        { taskId: 'M10-03', sourcePr: 301 },
       ),
     ).not.toEqual([]);
   });

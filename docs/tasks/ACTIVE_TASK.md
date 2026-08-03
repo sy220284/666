@@ -1,6 +1,6 @@
 # WorldForge 当前活动任务
 
-> 本文件是 `docs/tasks/ACTIVE_TASK.json` 的兼容镜像。全局分支与PR授权以 `docs/tasks/TASK_AUTHORIZATION.json` Schema 2为准。
+> 本文件是 `docs/tasks/ACTIVE_TASK.json` 的兼容镜像。全局授权以 `docs/tasks/TASK_AUTHORIZATION.json` Schema 2为准。
 
 ## 当前状态
 
@@ -14,7 +14,6 @@ VERIFIED_HOLD
 - 稳定分支：`main`
 - 全局授权模式：`single-work-pr`
 - 兼容状态机模式：`implementation-pr`（仅供旧状态读取）
-- 当前活动开发任务：无
 
 ## 当前仓库执行规则
 
@@ -35,7 +34,5 @@ VERIFIED_HOLD
 ## 兼容说明
 
 - `ACTIVE_TASK.json.authorization.mode`只维持历史状态机兼容。
-- `TASK_AUTHORIZATION.json`是唯一全局机器授权真源，当前Schema为2。
 - 新建及活动Runtime使用`executionBranch: work`。
-- 已Verified历史Runtime中的旧来源分支保持冻结。
-- 新任务必须重新立项；不得沿用已关闭任务Runtime继续开发。
+- 已Verified历史Runtime中的来源分支保持冻结。

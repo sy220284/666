@@ -11,7 +11,9 @@ function main() {
     ['.github/governance/single-work-taskctl.mjs', command, ...rest],
     { stdio: 'inherit', env: process.env },
   );
-  console.log('Legacy taskctl entry delegated to the Schema 2 single work controller.');
+  console.log(
+    'Legacy taskctl entry delegated to the Schema 2 single work controller.',
+  );
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();

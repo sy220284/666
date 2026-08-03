@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { synchronizationDecision } from '../../.github/governance/work-synchronization.mjs';
+import {
+  synchronizationDecision,
+  synchronizationRequest,
+} from '../../.github/governance/work-synchronization.mjs';
 
 const sha = (value: string): string => value.repeat(40);
 
@@ -58,5 +61,53 @@ describe('work安全同步决策', () => {
         openPulls: 1,
       }),
     ).toEqual({ action: 'blocked', reason: 'new-work-pull-request-open' });
+  });
+});
+
+describe('work同步请求来源', () => {
+  it('接受成功的Main Verification完成事件', () => {
+    expect(
+      synchronizationRequest({
+        workflow_run: {
+          name: 'Main Verification',
+          conclusion: 'success',
+          head_sha: sha('a'),
+        },
+      }),
+    ).toEqual({
+      mode: 'workflow-run',
+      mainSha: sha('a'),
+      sourcePr: null,
+      sourceHeadSha: null,
+    });
+  });
+
+  it('接受带完整来源绑定的手动恢复请求', () => {
+    expect(
+      synchronizationRequest({
+        inputs: {
+          expected_sha: sha('a'),
+          source_pr: '301',
+          source_head_sha: sha('b'),
+        },
+      }),
+    ).toEqual({
+      mode: 'workflow-dispatch',
+      mainSha: sha('a'),
+      sourcePr: 301,
+      sourceHeadSha: sha('b'),
+    });
+  });
+
+  it('拒绝缺少来源Head的手动恢复请求', () => {
+    expect(() =>
+      synchronizationRequest({
+        inputs: {
+          expected_sha: sha('a'),
+          source_pr: '301',
+          source_head_sha: '',
+        },
+      }),
+    ).toThrow('source_head_sha');
   });
 });

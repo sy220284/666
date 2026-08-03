@@ -1,7 +1,9 @@
 import type { CandidatePreview } from '@worldforge/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+import type {
+  RendererBridgeAdapter,
+} from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import {
   loadCandidateDocument,
   loadCandidateList,
@@ -66,14 +68,18 @@ describe('Writing候选加载分支', () => {
   it('读取列表时区分成功、失败与取消', async () => {
     const successContext = setupLoader(
       contractInput<RendererBridgeAdapter>({
-        candidate: { list: vi.fn(async () => success({ candidates: [{ candidateId: 'a' }] })) },
+        candidate: {
+          list: vi.fn(async () => success({ candidates: [{ candidateId: 'a' }] })),
+        },
       }),
     );
     expect(await loadCandidateList(successContext.loader)).toEqual([{ candidateId: 'a' }]);
     expect(successContext.setCandidates).toHaveBeenCalledWith([{ candidateId: 'a' }]);
 
     const failureContext = setupLoader(
-      contractInput<RendererBridgeAdapter>({ candidate: { list: vi.fn(async () => failure()) } }),
+      contractInput<RendererBridgeAdapter>({
+        candidate: { list: vi.fn(async () => failure()) },
+      }),
     );
     expect(await loadCandidateList(failureContext.loader)).toEqual([]);
     expect(failureContext.setStatus).toHaveBeenCalledWith(
@@ -82,7 +88,9 @@ describe('Writing候选加载分支', () => {
 
     const cancelledContext = setupLoader(
       contractInput<RendererBridgeAdapter>({
-        candidate: { list: vi.fn(async () => ({ state: 'cancelled' as const, generation: 1 })) },
+        candidate: {
+          list: vi.fn(async () => ({ state: 'cancelled' as const, generation: 1 })),
+        },
       }),
     );
     expect(await loadCandidateList(cancelledContext.loader)).toEqual([]);
@@ -175,7 +183,9 @@ describe('Writing候选加载分支', () => {
     const skeletonContext = setupLoader(
       contractInput<RendererBridgeAdapter>({
         candidate: { get: vi.fn(async () => success(staleSkeleton)) },
-        candidateAction: { cancelPreview: vi.fn(async () => success({ cancelled: true })) },
+        candidateAction: {
+          cancelPreview: vi.fn(async () => success({ cancelled: true })),
+        },
       }),
     );
     await loadCandidateDocument(skeletonContext.loader, 'skeleton-a');
@@ -204,7 +214,9 @@ describe('Writing候选加载分支', () => {
     const failedContext = setupLoader(
       contractInput<RendererBridgeAdapter>({
         candidate: { get: vi.fn(async () => failure()) },
-        candidateAction: { cancelPreview: vi.fn(async () => success({ cancelled: true })) },
+        candidateAction: {
+          cancelPreview: vi.fn(async () => success({ cancelled: true })),
+        },
       }),
     );
     await loadCandidateDocument(failedContext.loader, 'missing');

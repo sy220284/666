@@ -5,9 +5,18 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parseTaskIndex } from '../../scripts/task-control-lib.mjs';
+
 const root = process.cwd();
 const authorizationPath = 'docs/tasks/TASK_AUTHORIZATION.json';
 const taskMarkerPattern = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu;
+const activeStatuses = new Set(['IN_PROGRESS', 'IMPLEMENTED']);
+const runtimeTransitions = new Set([
+  'PLANNED:IN_PROGRESS',
+  'IN_PROGRESS:IN_PROGRESS',
+  'IN_PROGRESS:IMPLEMENTED',
+  'IMPLEMENTED:IMPLEMENTED',
+]);
 const governancePaths = [
   'AGENTS.md',
   'agent.md',
@@ -39,6 +48,10 @@ function isInside(file, allowed) {
     : normalizedFile === normalizedAllowed;
 }
 
+function runtimePath(taskId) {
+  return `docs/tasks/runtime/${taskId}.json`;
+}
+
 async function loadJson(file) {
   return JSON.parse(await readFile(path.join(root, file), 'utf8'));
 }
@@ -60,7 +73,9 @@ export function validateAuthorization(value) {
   if (value?.mainWriteMode !== 'serialized') errors.push('mainWriteMode must remain serialized');
   if (value?.mergeMethod !== 'squash') errors.push('mergeMethod must remain squash');
   if (value?.verificationClosure !== 'main-status') errors.push('verificationClosure must be main-status');
-  if (value?.workSynchronization !== 'verified-reset') errors.push('workSynchronization must be verified-reset');
+  if (value?.workSynchronization !== 'verified-reset') {
+    errors.push('workSynchronization must be verified-reset');
+  }
   return errors;
 }
 
@@ -76,9 +91,82 @@ export function taskIdFromBody(body) {
   return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
 }
 
+export function validateRuntime(task, expectedId) {
+  const errors = [];
+  if (task?.schemaVersion !== 1) errors.push(`${expectedId} runtime must use schemaVersion 1`);
+  if (task?.id !== expectedId) errors.push(`${expectedId} runtime id mismatch`);
+  if (!activeStatuses.has(task?.status)) {
+    errors.push(`${expectedId} must be IN_PROGRESS or IMPLEMENTED for a task PR`);
+  }
+  if (!Array.isArray(task?.allowedPaths) || task.allowedPaths.length === 0) {
+    errors.push(`${expectedId} runtime must declare allowedPaths`);
+  }
+  if (!Array.isArray(task?.forbiddenPaths)) {
+    errors.push(`${expectedId} runtime must declare forbiddenPaths`);
+  }
+  if (!Array.isArray(task?.dependencies)) {
+    errors.push(`${expectedId} runtime must declare dependencies`);
+  }
+  if (!Array.isArray(task?.verification) || task.verification.length === 0) {
+    errors.push(`${expectedId} runtime must declare verification commands`);
+  }
+  const executionBranch = task?.executionBranch ?? task?.branch;
+  if (executionBranch !== 'work') errors.push(`${expectedId} execution branch must be work`);
+  return errors;
+}
+
 function changedFiles() {
   const base = process.env.TASK_BASE_REF ?? 'HEAD^';
   return git(['diff', '--name-only', base, 'HEAD']).split(/\r?\n/u).filter(Boolean);
+}
+
+function baseRuntime(taskId) {
+  const base = process.env.TASK_BASE_REF;
+  if (!base) return null;
+  try {
+    return JSON.parse(git(['show', `${base}:${runtimePath(taskId)}`]));
+  } catch {
+    return null;
+  }
+}
+
+async function dependencyErrors(task) {
+  const errors = [];
+  const index = parseTaskIndex(await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'));
+  for (const dependency of task.dependencies ?? []) {
+    let status = null;
+    try {
+      status = (await loadJson(runtimePath(dependency))).status;
+    } catch {
+      status = index.get(dependency)?.status === 'Verified' ? 'VERIFIED' : null;
+    }
+    if (status !== 'VERIFIED') errors.push(`${task.id} dependency ${dependency} is not Verified`);
+  }
+  return errors;
+}
+
+function taskChangedPathErrors(files, task) {
+  const errors = [];
+  const ownRuntime = runtimePath(task.id);
+  for (const file of files) {
+    if (file === ownRuntime) continue;
+    if (file === authorizationPath) {
+      errors.push(`${file}: task PR cannot modify global task authorization`);
+      continue;
+    }
+    if (/^docs\/tasks\/runtime\/[^/]+\.json$/u.test(file)) {
+      errors.push(`${file}: task PR may only modify its own runtime`);
+      continue;
+    }
+    if ((task.forbiddenPaths ?? []).some((blocked) => isInside(file, blocked))) {
+      errors.push(`${file}: forbidden by ${task.id}`);
+      continue;
+    }
+    if (!(task.allowedPaths ?? []).some((allowed) => isInside(file, allowed))) {
+      errors.push(`${file}: outside ${task.id} allowedPaths`);
+    }
+  }
+  return errors;
 }
 
 async function validateTaskBoundary(taskId, files) {
@@ -87,23 +175,16 @@ async function validateTaskBoundary(taskId, files) {
       .filter((file) => !governancePaths.some((allowed) => isInside(file, allowed)))
       .map((file) => `${file}: governance PR changed a non-governance path`);
   }
-  const runtime = await loadJson(`docs/tasks/runtime/${taskId}.json`);
-  const errors = [];
-  if (runtime.id !== taskId) errors.push(`${taskId} runtime id mismatch`);
-  if (!['IN_PROGRESS', 'IMPLEMENTED'].includes(runtime.status)) {
-    errors.push(`${taskId} must be IN_PROGRESS or IMPLEMENTED for a task PR`);
-  }
-  const executionBranch = runtime.executionBranch ?? runtime.branch;
-  if (executionBranch !== 'work') errors.push(`${taskId} execution branch must be work`);
-  for (const file of files) {
-    if (file === `docs/tasks/runtime/${taskId}.json`) continue;
-    if ((runtime.forbiddenPaths ?? []).some((blocked) => isInside(file, blocked))) {
-      errors.push(`${file}: forbidden by ${taskId}`);
-      continue;
-    }
-    if (!(runtime.allowedPaths ?? []).some((allowed) => isInside(file, allowed))) {
-      errors.push(`${file}: outside ${taskId} allowedPaths`);
-    }
+
+  const task = await loadJson(runtimePath(taskId));
+  const errors = [
+    ...validateRuntime(task, taskId),
+    ...(await dependencyErrors(task)),
+    ...taskChangedPathErrors(files, task),
+  ];
+  const previous = baseRuntime(taskId);
+  if (previous && !runtimeTransitions.has(`${previous.status}:${task.status}`)) {
+    errors.push(`Invalid ${taskId} runtime transition: ${previous.status} -> ${task.status}`);
   }
   return errors;
 }
@@ -166,6 +247,39 @@ function selfTest() {
   assert.deepEqual(validatePullRequestShape({ head: 'work', base: 'main' }), []);
   assert.ok(validatePullRequestShape({ head: 'work/task', base: 'main' }).length > 0);
   assert.equal(taskIdFromBody('<!-- worldforge-task: M10-03 -->'), 'M10-03');
+  assert.deepEqual(
+    validateRuntime(
+      {
+        schemaVersion: 1,
+        id: 'M10-03',
+        status: 'IN_PROGRESS',
+        executionBranch: 'work',
+        allowedPaths: ['apps/'],
+        forbiddenPaths: [],
+        dependencies: [],
+        verification: ['pnpm test'],
+      },
+      'M10-03',
+    ),
+    [],
+  );
+  assert.ok(
+    validateRuntime(
+      {
+        schemaVersion: 1,
+        id: 'M10-03',
+        status: 'IN_PROGRESS',
+        executionBranch: 'work/task',
+        allowedPaths: ['apps/'],
+        forbiddenPaths: [],
+        dependencies: [],
+        verification: ['pnpm test'],
+      },
+      'M10-03',
+    ).length > 0,
+  );
+  assert.equal(runtimeTransitions.has('IN_PROGRESS:IMPLEMENTED'), true);
+  assert.equal(runtimeTransitions.has('IN_PROGRESS:VERIFIED'), false);
   console.log('Single work policy self-test passed.');
 }
 

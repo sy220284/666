@@ -192,9 +192,7 @@ export function isGovernanceOnlyPullRequest(branch, changedFiles) {
     ...TASK_PLANNING_ALLOWED_PATHS,
     ...SCHEMA_GOVERNANCE_ALLOWED_PATHS,
   ];
-  return changedFiles.every((file) =>
-    allowedPaths.some((allowed) => isPathInside(file, allowed)),
-  );
+  return changedFiles.every((file) => allowedPaths.some((allowed) => isPathInside(file, allowed)));
 }
 
 export function taskBranchFor() {
@@ -215,7 +213,8 @@ export function validateActiveState(state, taskIndex) {
   if (state.authorization?.executionModel !== 'single-work-pr') {
     errors.push('ACTIVE_TASK executionModel must be single-work-pr');
   }
-  if (state.authorization?.branch !== 'main') errors.push('Compatibility integration branch must be main');
+  if (state.authorization?.branch !== 'main')
+    errors.push('Compatibility integration branch must be main');
   if (state.authorization?.allowDirectMainCommits !== false) {
     errors.push('Direct main commits must remain disabled');
   }
@@ -251,9 +250,7 @@ export function extractBacktickBullets(markdown, heading) {
   const remainder = markdown.slice(start + heading.length + 3);
   const nextHeading = remainder.search(/^##\s/mu);
   const section = nextHeading >= 0 ? remainder.slice(0, nextHeading) : remainder;
-  return [...section.matchAll(/^\s*-\s+`([^`]+)`/gmu)]
-    .map((match) => match[1])
-    .filter(Boolean);
+  return [...section.matchAll(/^\s*-\s+`([^`]+)`/gmu)].map((match) => match[1]).filter(Boolean);
 }
 
 function taskStageNumber(taskId) {
@@ -303,7 +300,9 @@ export function stageClosureErrors(task, taskIndex, state = {}) {
       .map((entry) => entry?.id)
       .filter((id) => typeof id === 'string' && id.startsWith(prefix));
     if (deferred.length > 0) {
-      errors.push(`M${stage} deferredVerification must be empty before ${task.id}: ${deferred.join(', ')}`);
+      errors.push(
+        `M${stage} deferredVerification must be empty before ${task.id}: ${deferred.join(', ')}`,
+      );
     }
   }
   return errors;
@@ -318,11 +317,15 @@ export function dependenciesSatisfied(task, taskIndex, options = {}) {
     status === 'Verified' ||
     (options.allowImplemented === true && !strictStages.has(stage) && status === 'Implemented');
   for (const requiredId of new Set(dependencyText.match(/M\d+-\d{2}/gu) ?? [])) {
-    if (!dependencyReady(taskIndex.get(requiredId)?.status, taskStageNumber(requiredId))) return false;
+    if (!dependencyReady(taskIndex.get(requiredId)?.status, taskStageNumber(requiredId)))
+      return false;
   }
   for (const stage of dependencyStageNumbers(dependencyText)) {
     const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
-    if (stageTasks.length === 0 || stageTasks.some(({ status }) => !dependencyReady(status, stage))) {
+    if (
+      stageTasks.length === 0 ||
+      stageTasks.some(({ status }) => !dependencyReady(status, stage))
+    ) {
       return false;
     }
   }
@@ -348,12 +351,14 @@ export function replaceTaskIndexStatus(markdown, taskId, nextStatus) {
 
 export function verificationForTask(card) {
   const commands = ['pnpm lint', 'pnpm typecheck', 'pnpm test'];
-  if (/数据库|SQLite|Migration/iu.test(card)) commands.push('pnpm test:migration', 'pnpm test:integration');
+  if (/数据库|SQLite|Migration/iu.test(card))
+    commands.push('pnpm test:migration', 'pnpm test:integration');
   if (/Electron|IPC|路径|安全/iu.test(card)) commands.push('pnpm test:security', 'pnpm test:e2e');
   if (/Editor|Candidate|锁定|Revision|Patch/iu.test(card)) {
     commands.push('pnpm test:unit', 'pnpm test:integration', 'pnpm test:e2e');
   }
-  if (/Prompt|Provider|约束包/iu.test(card)) commands.push('pnpm test:eval', 'pnpm test:integration');
+  if (/Prompt|Provider|约束包/iu.test(card))
+    commands.push('pnpm test:eval', 'pnpm test:integration');
   if (/性能|DPI|高分屏/iu.test(card)) commands.push('pnpm test:perf', 'pnpm test:e2e');
   return [...new Set(commands)];
 }

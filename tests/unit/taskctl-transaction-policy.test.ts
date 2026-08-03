@@ -9,27 +9,28 @@ function body(source: string, start: string, end: string): string {
   return source.slice(startIndex, endIndex);
 }
 
-describe('taskctl transaction policy', () => {
-  it('routes every task-state mutation through recoverable transactions', async () => {
+describe('taskctl Schema 2 policy', () => {
+  it('delegates through a module-relative canonical controller path', async () => {
     const source = await readFile('scripts/taskctl.mjs', 'utf8');
-    expect(source).toContain('recoverAtomicFileTransactions(taskTransactionJournalDirectory())');
-    expect(source).toContain('writeFilesAtomically(');
-    expect(source).not.toMatch(/\bwriteFile\s*\(/u);
-    expect(source).not.toContain('Promise.all([\n    writeFile');
+    expect(source).toContain(
+      "new URL('../.github/governance/single-work-taskctl.mjs', import.meta.url)",
+    );
+    expect(source).toContain('fileURLToPath(');
+    expect(source).toContain('[controllerPath, command, ...rest]');
+    expect(source).not.toContain(
+      "['.github/governance/single-work-taskctl.mjs', command, ...rest]",
+    );
   });
 
-  it('validates the next task before any transition transaction is committed', async () => {
-    const source = await readFile('scripts/taskctl.mjs', 'utf8');
-    for (const [name, end, failure] of [
-      ['verifyTask', 'sync', 'No implementation-ready Planned task remains'],
-      ['close', 'advanceImplementation', 'No dependency-ready Planned task remains'],
-      ['advanceImplementation', 'main', 'No implementation-ready Planned task remains'],
-    ] as const) {
-      const functionBody = body(source, name, end);
-      expect(functionBody.indexOf(failure)).toBeGreaterThanOrEqual(0);
-      expect(functionBody.indexOf(failure)).toBeLessThan(
-        functionBody.lastIndexOf('writeTaskStateTransaction'),
-      );
-    }
+  it('keeps the compatibility entry mutation-free and limits writes to mirror sync', async () => {
+    const source = await readFile('.github/governance/single-work-taskctl.mjs', 'utf8');
+    const syncBody = body(source, 'sync', 'rejectLegacyMutation');
+    const rejectionBody = body(source, 'rejectLegacyMutation', 'main');
+
+    expect(syncBody).toContain('writeFile(mirrorPath, renderCompatibilityMirror(');
+    expect(rejectionBody).toContain('no longer mutates the legacy ACTIVE_TASK state machine');
+    expect(rejectionBody).not.toContain('writeFile(');
+    expect(source).not.toContain('recoverAtomicFileTransactions(');
+    expect(source).not.toContain('writeFilesAtomically(');
   });
 });

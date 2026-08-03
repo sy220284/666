@@ -79,10 +79,7 @@ describe('Schema 2共享任务控制', () => {
     expect(isGovernanceOnlyPullRequest('work', files)).toBe(true);
     expect(isGovernanceOnlyPullRequest('policy/governance', files)).toBe(false);
     expect(
-      isGovernanceOnlyPullRequest('work', [
-        ...files,
-        'apps/desktop/renderer/src/main.tsx',
-      ]),
+      isGovernanceOnlyPullRequest('work', [...files, 'apps/desktop/renderer/src/main.tsx']),
     ).toBe(false);
   });
 

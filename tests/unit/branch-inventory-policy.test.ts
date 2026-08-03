@@ -24,12 +24,6 @@ describe('仓库分支清单策略', () => {
         'validate/e2e',
         'release/v1',
       ]),
-    ).toEqual([
-      'fix/runtime',
-      'policy/governance',
-      'release/v1',
-      'validate/e2e',
-      'work/m10-03',
-    ]);
+    ).toEqual(['fix/runtime', 'policy/governance', 'release/v1', 'validate/e2e', 'work/m10-03']);
   });
 });

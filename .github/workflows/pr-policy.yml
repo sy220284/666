@@ -115,7 +115,6 @@ jobs:
             tests/unit/taskctl-transaction-policy.test.ts
 
           git show c3b4d7a245969f25c39dce5f5bfa447b169740ea:.github/governance/toolchain-bundle.mjs > .github/governance/toolchain-bundle.mjs
-          git show c3b4d7a245969f25c39dce5f5bfa447b169740ea:.github/workflows/pr-policy.yml > .github/workflows/pr-policy.yml
 
           pnpm exec prettier --check \
             scripts/task-control-lib.mjs \
@@ -124,8 +123,7 @@ jobs:
             tests/unit/main-task-verification.test.ts \
             tests/unit/task-control.test.ts \
             tests/unit/taskctl-transaction-policy.test.ts \
-            .github/governance/toolchain-bundle.mjs \
-            .github/workflows/pr-policy.yml
+            .github/governance/toolchain-bundle.mjs
 
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
@@ -136,7 +134,10 @@ jobs:
             tests/unit/main-task-verification.test.ts \
             tests/unit/task-control.test.ts \
             tests/unit/taskctl-transaction-policy.test.ts \
-            .github/governance/toolchain-bundle.mjs \
-            .github/workflows/pr-policy.yml
+            .github/governance/toolchain-bundle.mjs
+          if git diff --cached --quiet; then
+            echo "Schema 2 repair is already applied."
+            exit 0
+          fi
           git commit -m "fix(governance): align Schema 2 task control checks"
           git push origin HEAD:work

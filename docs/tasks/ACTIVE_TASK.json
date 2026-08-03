@@ -195,6 +195,7 @@
     "heldAt": "2026-08-03T04:15:43.000Z",
     "reason": "M8-09保留为V1.0兼容锚点；M9与M10-01全部验证，异步生命周期、竞态、覆盖余量和工具链硬化闭环",
     "allowedPaths": [
+      "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",
       "docs/test-evidence/M8-09/",

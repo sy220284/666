@@ -39,6 +39,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'required-checks.json',
   'secret-scan-allowlist.json',
   'single-work-policy.mjs',
+  'single-work-release-gate.mjs',
   'single-work-taskctl.mjs',
   'squash-provenance.mjs',
   'stage-close-policy.mjs',

@@ -1,9 +1,9 @@
 # M10-01 异步生命周期与竞态硬化
 
-> 状态：Implemented  
+> 状态：Verified  
 > 里程碑：M10 稳定性续作  
 > 优先级：P1  
-> 分支：`work/m10-01-async-lifecycle-hardening`
+> 实施分支：`work/m10-01-async-lifecycle-hardening`
 
 ## 1. 目标
 
@@ -24,7 +24,7 @@
 - 不修改数据库Schema、Migration、IPC Channel、协议版本、错误码和公开Bridge签名。
 - 不改变Draft Revision、自动保存、IME组合输入和只读模式语义。
 - Task事件继续校验Envelope、发送ACK、抑制重复事件并按项目隔离。
-- pnpm升级仅修复工具版本，不改变依赖解析结果和业务依赖版本。
+- pnpm升级仅修复工具版本，不改变业务依赖版本和持久化格式。
 - 不允许新增循环依赖、结构债务或Coverage排除。
 
 ## 4. 允许路径
@@ -82,25 +82,22 @@ pnpm test:e2e
 pnpm release:check
 ```
 
-完整实现证据：[`../../test-evidence/M10-01/summary.md`](../../test-evidence/M10-01/summary.md)。
+最终证据：[`../../test-evidence/M10-01/summary.md`](../../test-evidence/M10-01/summary.md)。
 
-## 8. 实施检查点
+## 8. 实施与关闭检查点
 
 - 实施受检Head：`8eb48404a7c9012be57983255c13cf325ed1a552`。
-- Quality：`30782157516`，成功。
-- Security：`30782157403`，成功。
-- Performance：`30782157416`，成功。
-- Evidence：`30782157400`，成功。
-- Task Governance：`30782157395`，成功。
-- Repository Governance：`30782157396`，成功。
-- PR Policy：`30782157423`，成功。
+- Ready最终受检Head：`138a2eacaf2ba2f9d2825473b5189137fea426d1`。
+- Ready永久门禁：Quality `30783010382`、Security `30783010303`、Performance `30783010325`、Evidence `30783010306`、Task Governance `30783010313`、Repository Governance `30783010304`、PR Policy `30783010310`，全部成功。
+- 来源PR：#294，Squash合并提交：`7067e3ca6caf8c72b28c8e1bf16af5add478a39d`。
+- Main Verification：`30783708113`，成功。
 - Electron E2E：33/33通过。
 - Coverage：242个测试文件、1053项测试通过；Statements 85.00%、Branches 75.46%、Functions 85.18%、Lines 87.09%。
 
 ## 9. 回退
 
-按本任务提交整体回退章节状态策略、Task恢复协调器、专项测试和pnpm版本同步。回退不得单独删除测试而保留异步行为变更，也不得只回退部分工作流导致工具链版本分裂。
+按本任务合并提交整体回退章节状态策略、Task恢复协调器、专项测试和pnpm版本同步。回退不得单独删除测试而保留异步行为变更，也不得只回退部分工作流导致工具链版本分裂。
 
-## 10. 当前结论
+## 10. 完成结论
 
-M10-01实现完成，等待Ready永久门禁、受控合并和main验证后关闭为Verified。
+M10-01已完成Ready永久门禁、受控合并和main验证，正式关闭为Verified。仓库恢复`VERIFIED_HOLD`，后续开发必须重新立项。

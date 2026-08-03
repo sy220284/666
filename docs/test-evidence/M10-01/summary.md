@@ -3,13 +3,10 @@
 - 任务：M10-01 异步生命周期与竞态硬化。
 - 来源PR：#294。
 - 实施受检Head：`8eb48404a7c9012be57983255c13cf325ed1a552`。
-- Quality：`30782157516`，成功。
-- Security：`30782157403`，成功。
-- Performance：`30782157416`，成功。
-- Evidence：`30782157400`，成功。
-- Task Governance：`30782157395`，成功。
-- Repository Governance：`30782157396`，成功。
-- PR Policy：`30782157423`，成功。
+- Ready最终受检Head：`138a2eacaf2ba2f9d2825473b5189137fea426d1`。
+- 合并提交：`7067e3ca6caf8c72b28c8e1bf16af5add478a39d`。
+- Main Verification：`30783708113`，成功。
+- Ready永久门禁：Quality `30783010382`、Security `30783010303`、Performance `30783010325`、Evidence `30783010306`、Task Governance `30783010313`、Repository Governance `30783010304`、PR Policy `30783010310`，全部成功。
 
 ## 实施结果
 
@@ -23,12 +20,13 @@
 ## 自动验证
 
 ```text
-Workspace / Boundaries / Format / Lint / Typecheck  PASS
-Unit / Integration / Migration / Coverage          PASS
-Build / Electron E2E 33/33                         PASS
-Security / Performance / Evidence                  PASS
-Task Governance / Repository Governance / PR Policy PASS
-Linux / Windows / macOS Package Smoke              PASS
+Workspace / Boundaries / Format / Lint / Typecheck   PASS
+Unit / Integration / Migration / Coverage           PASS
+Build / Electron E2E 33/33                          PASS
+Security / Performance / Evidence                   PASS
+Task / Repository Governance / PR Policy            PASS
+Linux / Windows / macOS Package Smoke               PASS
+Main Verification                                   PASS
 ```
 
 覆盖率：
@@ -48,6 +46,6 @@ Lines        87.09%
 
 本任务未修改数据库Schema、历史Migration、IPC Channel、协议版本、错误码、公开Bridge签名、Draft Revision和IME输入语义。
 
-## 当前状态
+## 最终状态
 
-M10-01实现与Draft完整矩阵已经通过，可以转入Ready永久门禁与受控合并。
+M10-01已完成Ready永久门禁、受控合并和main验证，正式关闭为Verified。仓库恢复`VERIFIED_HOLD`。

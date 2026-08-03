@@ -1,6 +1,6 @@
 # WorldForge 项目执行统一入口
 
-> 状态：M10 稳定性续作 Active
+> 状态：VERIFIED_HOLD
 > 面向：Codex、开发者、审查者、测试人员
 
 ## 1. 启动顺序
@@ -15,11 +15,9 @@ AGENTS.md
 → 任务卡列出的专项真源、现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9已完成Verified闭环，当前活动任务为M10-01异步生命周期与竞态硬化。
+`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9和M10-01均已完成Verified闭环，当前没有活动开发任务。
 
 ## 2. 当前基线
-
-M8-09已经完成V1.0稳定性与生命周期治理。M9在保持产品行为、持久化格式、IPC协议、错误码和发布边界的前提下完成V1.1架构拆分：
 
 ```text
 M8-09 V1.0稳定性治理（Verified）
@@ -31,27 +29,31 @@ M8-09 V1.0稳定性治理（Verified）
    ├─ Contracts、Preload与Main IPC拆分
    ├─ ServiceFacade、Project Workspace、Recovery与工具域拆分
    └─ Legacy退役、CSS分层与结构预算收敛
-→ M10-01 异步生命周期与竞态硬化（In Progress）
+→ M10-01 异步生命周期与竞态硬化（Verified）
+   ├─ 连续切章与编辑器可编辑状态修复
+   ├─ Task缺口恢复重复Snapshot收敛
+   ├─ 覆盖率与异步交错测试补强
+   └─ pnpm 11.13.1与性能测试隔离
 ```
 
-M9-03实施PR #273已合并至`main@f5add56154e99bc907376e08787b7037851835f0`；Main Verification运行`30754708770`成功。验证PR #289完成Windows原生微软拼音及Linux、Windows、macOS三平台Package Smoke。治理PR #292将M9-03关闭为Verified，最终关闭提交为`b72c591e6925f8f2ef92a3854fca857d05a3f103`。
+M10-01来源PR #294已Squash合并至`main@7067e3ca6caf8c72b28c8e1bf16af5add478a39d`；Main Verification运行`30783708113`成功。Ready最终Head的Quality、Security、Performance、Evidence、Task Governance、Repository Governance和PR Policy永久门禁全部成功，Linux、Windows、macOS三平台Package Smoke通过。
 
-最终结构扫描结果：397个源码文件、1171条相对导入边、0项结构债务。
+当前覆盖率：Statements 85.00%、Branches 75.46%、Functions 85.18%、Lines 87.09%；242个测试文件、1053项测试通过。Renderer具名覆盖排除和75%门槛均未放宽。
 
 ## 3. 当前执行模式
 
 ```text
-仓库状态：ACTIVE
+仓库状态：VERIFIED_HOLD
 基线分支：main
+基线提交：7067e3ca6caf8c72b28c8e1bf16af5add478a39d
 main写入：serialized
 直接main提交：禁止
-活动任务：M10-01
-活动分支：work/m10-01-async-lifecycle-hardening
-活动PR：#294
-PR绑定：<!-- worldforge-task: M10-01 -->
+活动任务：0
+活动分支：无
+活动PR：无
 ```
 
-M10-01仅处理章节切换竞态、Task缺口恢复、相关测试覆盖和被官方标记为broken的pnpm 11.13.0升级，不修改数据库Schema、历史Migration、IPC字符串、协议版本或公开Bridge方法。其他新增功能仍需独立立项。
+后续开发必须重新立项，创建独立任务卡、Runtime、分支和PR绑定；不得沿用M9-03或M10-01的已关闭Runtime继续开发。
 
 ## 4. 权威顺序
 
@@ -67,17 +69,17 @@ M10-01仅处理章节切换竞态、Task缺口恢复、相关测试覆盖和被�
 
 发现冲突时必须记录冲突来源、数据兼容、影响范围和解决方案，禁止静默选择。
 
-## 5. M9最终治理边界
+## 5. 已验证治理边界
 
-- M9只实施保持行为的架构拆分，没有新增产品功能。
+- M9保持行为完成架构拆分；M10-01只处理已核实的异步竞态、测试余量和工具链问题。
 - 历史Migration、数据库Schema、IPC Channel字符串、`PROTOCOL_VERSION`、正式错误码和公开Bridge方法均保持不变。
 - AI输出继续先进入建议稿，设定更新建议继续由作者裁决，`project.sqlite`继续是作品唯一权威真源。
 - Renderer不得获得Node、文件系统、SQLite、环境变量或凭据能力。
-- M9-03已统一承接并完成AR-03—AR-14；M9-04—M9-14不恢复独立Runtime或独立任务状态。
-- AR-04、AR-10、AR-12和AR-13的独立回退说明、专项验证及最终Evidence已保存。
-- Legacy入口与旧CSS责任域已完成退役和收敛，结构预算当前为0项债务。
+- Legacy入口与旧CSS责任域已完成退役和收敛，结构预算保持0项债务。
+- pnpm执行版本统一为11.13.1；性能预算未放宽，仅隔离测试文件间资源竞争。
 
-M9方案与历史证据入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)。
+M9历史入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)。  
+M10-01任务卡：[`docs/tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md`](tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)。
 
 ## 6. 后续任务标准闭环
 
@@ -95,8 +97,6 @@ M9方案与历史证据入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)�
 → 等待main-verification成功
 → 独立治理关闭为Verified或进入下一任务
 ```
-
-不得沿用已关闭的M9-03 Runtime继续开发，也不得将M9-04—M9-14恢复成独立活动任务。
 
 ## 7. GitHub Actions工具链
 
@@ -121,4 +121,4 @@ Windows中文输入：系统内置Microsoft Pinyin
 - 无AI写作、保存、历史版本、导出和恢复始终必须可用。
 - 测试、构建、发布和平台结论必须来自真实运行。
 - PR Head检查成功不等于main验证成功；合并后必须复核最终main SHA及`main-verification`。
-- 当前授权任务仅限M10-01任务卡与Runtime声明范围。
+- 当前无授权开发任务；任何新增改动必须先建立独立任务Runtime。

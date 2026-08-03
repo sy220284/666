@@ -1,6 +1,6 @@
 # WorldForge 当前活动任务
 
-> 本文件是 `docs/tasks/ACTIVE_TASK.json` 的兼容镜像。全局授权以 `docs/tasks/TASK_AUTHORIZATION.json` Schema 2为准。
+> 本文件是 `docs/tasks/ACTIVE_TASK.json` 的兼容镜像。全局授权以 `docs/tasks/TASK_AUTHORIZATION.json` 第2版结构为准。
 
 ## 当前状态
 
@@ -29,7 +29,7 @@ VERIFIED_HOLD
 → Work Synchronization受控重置work到main
 ```
 
-禁止任务专属分支、验证分支、治理分支、纯Evidence分支和纯关闭PR。
+禁止任务专属分支、验证分支、治理分支、纯验证记录分支和纯关闭PR。
 
 ## 兼容说明
 

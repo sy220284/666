@@ -1,6 +1,6 @@
 # WorldForge 项目执行统一入口
 
-> 状态：M9 V1.1 架构治理 VERIFIED_HOLD
+> 状态：M10 稳定性续作 Active
 > 面向：Codex、开发者、审查者、测试人员
 
 ## 1. 启动顺序
@@ -11,11 +11,11 @@ AGENTS.md
 → docs/tasks/TASK_AUTHORIZATION.json
 → docs/tasks/ACTIVE_TASK.json（V1.0/V1.1终态兼容锚点）
 → docs/tasks/TASK_INDEX.md
-→ 新任务Runtime与独立任务卡（仅在重新立项后存在）
+→ 新任务Runtime与独立任务卡
 → 任务卡列出的专项真源、现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。当前没有活动M9任务，`ACTIVE_TASK.json`保存M8-09兼容锚点及M9-03最终验证保持状态。
+`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9已完成Verified闭环，当前活动任务为M10-01异步生命周期与竞态硬化。
 
 ## 2. 当前基线
 
@@ -31,6 +31,7 @@ M8-09 V1.0稳定性治理（Verified）
    ├─ Contracts、Preload与Main IPC拆分
    ├─ ServiceFacade、Project Workspace、Recovery与工具域拆分
    └─ Legacy退役、CSS分层与结构预算收敛
+→ M10-01 异步生命周期与竞态硬化（In Progress）
 ```
 
 M9-03实施PR #273已合并至`main@f5add56154e99bc907376e08787b7037851835f0`；Main Verification运行`30754708770`成功。验证PR #289完成Windows原生微软拼音及Linux、Windows、macOS三平台Package Smoke。治理PR #292将M9-03关闭为Verified，最终关闭提交为`b72c591e6925f8f2ef92a3854fca857d05a3f103`。
@@ -40,16 +41,17 @@ M9-03实施PR #273已合并至`main@f5add56154e99bc907376e08787b7037851835f0`；
 ## 3. 当前执行模式
 
 ```text
-仓库状态：VERIFIED_HOLD
+仓库状态：ACTIVE
 基线分支：main
 main写入：serialized
 直接main提交：禁止
-活动任务：无
-新任务入口：重新立项并创建独立任务卡与Runtime
-PR绑定：<!-- worldforge-task: Mx-yy -->
+活动任务：M10-01
+活动分支：work/m10-01-async-lifecycle-hardening
+活动PR：#294
+PR绑定：<!-- worldforge-task: M10-01 -->
 ```
 
-M9-00—M9-03全部Verified，M9-04—M9-14继续保持`Removed（absorbed by M9-03）`。任何新功能、公开分发能力、行为修改或架构续作都必须重新立项，建立新的任务授权、Runtime、任务卡、验证矩阵和回退边界后再实施。
+M10-01仅处理章节切换竞态、Task缺口恢复、相关测试覆盖和被官方标记为broken的pnpm 11.13.0升级，不修改数据库Schema、历史Migration、IPC字符串、协议版本或公开Bridge方法。其他新增功能仍需独立立项。
 
 ## 4. 权威顺序
 
@@ -94,7 +96,7 @@ M9方案与历史证据入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)�
 → 独立治理关闭为Verified或进入下一任务
 ```
 
-不得在`VERIFIED_HOLD`状态下沿用M9-03 Runtime继续开发，也不得将M9-04—M9-14恢复成独立活动任务。
+不得沿用已关闭的M9-03 Runtime继续开发，也不得将M9-04—M9-14恢复成独立活动任务。
 
 ## 7. GitHub Actions工具链
 
@@ -103,7 +105,7 @@ M9方案与历史证据入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)�
 ```text
 Runner：Ubuntu 24.04 / Windows latest / macOS latest
 Node：24
-pnpm：11.13.0
+pnpm：11.13.1
 依赖安装：pnpm install --frozen-lockfile --prefer-offline
 Linux Electron显示依赖：fonts-noto-cjk、xvfb
 Windows中文输入：系统内置Microsoft Pinyin
@@ -119,4 +121,4 @@ Windows中文输入：系统内置Microsoft Pinyin
 - 无AI写作、保存、历史版本、导出和恢复始终必须可用。
 - 测试、构建、发布和平台结论必须来自真实运行。
 - PR Head检查成功不等于main验证成功；合并后必须复核最终main SHA及`main-verification`。
-- 当前没有授权中的开发任务；新增工作必须先完成正式立项。
+- 当前授权任务仅限M10-01任务卡与Runtime声明范围。

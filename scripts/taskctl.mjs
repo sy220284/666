@@ -1,6 +1,5 @@
-/* global console, process */
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { URL, fileURLToPath } from 'node:url';
 
 const controllerPath = fileURLToPath(
   new URL('../.github/governance/single-work-taskctl.mjs', import.meta.url),

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "M10-01",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "source": "docs/tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md",
   "startedAt": "2026-08-03",
   "dependencies": [
@@ -13,7 +13,8 @@
     "修复连续章节切换导致的编辑器禁用残留",
     "加固Task事件缺口恢复期间的后续事件处理",
     "增加异步交错测试并提高覆盖率余量",
-    "将官方标记为broken的pnpm 11.13.0统一升级至11.13.1"
+    "将官方标记为broken的pnpm 11.13.0统一升级至11.13.1",
+    "隔离性能测试文件间资源竞争且不放宽预算"
   ],
   "allowedPaths": [
     "apps/desktop/renderer/src/features/writing/",
@@ -21,6 +22,7 @@
     "tests/unit/",
     "docs/tasks/M10/",
     "docs/tasks/runtime/M10-01.json",
+    "docs/tasks/TASK_INDEX.md",
     "docs/test-evidence/M10-01/",
     "docs/PROJECT_EXECUTION_ENTRY.md",
     "package.json",
@@ -67,5 +69,32 @@
     "pnpm build",
     "pnpm test:e2e",
     "pnpm release:check"
-  ]
+  ],
+  "implementedAt": "2026-08-03T03:50:24.000Z",
+  "implementationHead": "8eb48404a7c9012be57983255c13cf325ed1a552",
+  "sourcePr": 294,
+  "evidence": {
+    "summary": "docs/test-evidence/M10-01/summary.md",
+    "qualityRun": 30782157516,
+    "securityRun": 30782157403,
+    "performanceRun": 30782157416,
+    "evidenceRun": 30782157400,
+    "taskGovernanceRun": 30782157395,
+    "repositoryGovernanceRun": 30782157396,
+    "prPolicyRun": 30782157423,
+    "testFiles": 242,
+    "tests": 1053,
+    "coverage": {
+      "statements": 85.0,
+      "branches": 75.46,
+      "functions": 85.18,
+      "lines": 87.09
+    },
+    "electronE2E": 33,
+    "packageSmoke": {
+      "linux": "success",
+      "windows": "success",
+      "macos": "success"
+    }
+  }
 }

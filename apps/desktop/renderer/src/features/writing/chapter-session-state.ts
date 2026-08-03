@@ -83,3 +83,11 @@ export function chapterRequestIsCurrent(
     state.requestGeneration === requestGeneration
   );
 }
+
+export function chapterOpenIsTemporarilyBlocked(state: ChapterSessionState): boolean {
+  return state.phase === 'flushing' || state.phase === 'switching';
+}
+
+export function chapterOpenRequiresFlush(state: ChapterSessionState): boolean {
+  return state.phase !== 'loading';
+}

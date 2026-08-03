@@ -31,11 +31,14 @@ jobs:
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PR_DRAFT: ${{ github.event.pull_request.draft || false }}
         run: |
           set -euo pipefail
           run=false
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             run=true
+          elif [ "$PR_DRAFT" = true ]; then
+            echo "Performance and AI evaluation are deferred until the pull request is Ready."
           else
             changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
             if [ -z "$changed_files" ] || printf '%s\n' "$changed_files" | grep -Eqv '^(docs/|.*\.md$)'; then
@@ -50,10 +53,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Skip performance budgets for documentation-only changes
+      - name: Skip performance budgets for Draft or documentation-only changes
         if: ${{ needs.route.outputs.run != 'true' }}
         run: |
-          echo "Performance suite skipped: only documentation changed."
+          echo "Performance suite deferred until Ready or skipped because only documentation changed."
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         if: ${{ needs.route.outputs.run == 'true' }}
         with:
@@ -95,10 +98,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Skip AI protocol baselines for documentation-only changes
+      - name: Skip AI protocol baselines for Draft or documentation-only changes
         if: ${{ needs.route.outputs.run != 'true' }}
         run: |
-          echo "AI evaluation skipped: only documentation changed."
+          echo "AI evaluation deferred until Ready or skipped because only documentation changed."
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         if: ${{ needs.route.outputs.run == 'true' }}
         with:

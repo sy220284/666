@@ -8,7 +8,7 @@ const apiRoot = 'https://api.github.com';
 const fullSha = /^[0-9a-f]{40}$/iu;
 
 async function api(pathname, options = {}, accepted = []) {
-  const response = await fetch(new URL(pathname, apiRoot), {
+  const response = await globalThis.fetch(new globalThis.URL(pathname, apiRoot), {
     ...options,
     headers: {
       Accept: 'application/vnd.github+json',

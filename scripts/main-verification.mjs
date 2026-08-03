@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { latestChecksByName, nextPagePath, requiredCheckState } from './automerge.mjs';
 
 const githubFetch = globalThis.fetch;
+const taskMarkerPattern = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu;
 
 export { latestChecksByName };
 
@@ -11,6 +12,30 @@ function assertFullSha(value, label) {
   if (!/^[0-9a-f]{40}$/iu.test(value ?? '')) {
     throw new Error(`${label} must be a full commit SHA`);
   }
+}
+
+export function taskIdFromPullBody(body) {
+  return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
+}
+
+export function validateTaskVerificationBinding(runtime, { taskId, sourcePr, sourceHeadSha }) {
+  const errors = [];
+  if (runtime?.id !== taskId) errors.push(`${taskId} runtime id mismatch`);
+  if (!['IMPLEMENTED', 'VERIFIED'].includes(runtime?.status)) {
+    errors.push(`${taskId} runtime must be IMPLEMENTED before main verification`);
+  }
+  const branch = runtime?.executionBranch ?? runtime?.branch;
+  if (branch !== 'work') errors.push(`${taskId} execution branch must be work`);
+  const binding = runtime?.verificationBinding;
+  if (binding?.sourcePr !== sourcePr) errors.push(`${taskId} sourcePr binding mismatch`);
+  if (binding?.sourceHead !== sourceHeadSha) errors.push(`${taskId} sourceHead binding mismatch`);
+  if (binding?.mainContext !== 'main-verification') {
+    errors.push(`${taskId} mainContext must be main-verification`);
+  }
+  if (binding?.taskContext !== `task-verification/${taskId}`) {
+    errors.push(`${taskId} taskContext mismatch`);
+  }
+  return errors;
 }
 
 export function validateMainVerification({
@@ -46,6 +71,9 @@ export function validateMainVerification({
   if (pull.base?.ref !== baseBranch) {
     throw new Error(`Pull request #${sourcePr} does not target ${baseBranch}`);
   }
+  if (pull.head?.ref !== 'work') {
+    throw new Error(`Pull request #${sourcePr} must originate from work`);
+  }
   if (pull.head?.sha !== sourceHeadSha) {
     throw new Error(`Pull request #${sourcePr} head SHA changed after permanent checks`);
   }
@@ -57,9 +85,7 @@ export function validateMainVerification({
   const missing = [];
   for (const name of requiredChecks) {
     const check = latest.get(name);
-    if (check?.status !== 'completed' || check.conclusion !== 'success') {
-      missing.push(name);
-    }
+    if (check?.status !== 'completed' || check.conclusion !== 'success') missing.push(name);
   }
   if (missing.length > 0) {
     throw new Error(`Source PR permanent checks are not successful: ${missing.join(', ')}`);
@@ -78,15 +104,11 @@ export async function waitForSourceReadyChecks({
   if (!Array.isArray(requiredChecks) || requiredChecks.length === 0) {
     throw new Error('Required checks are missing');
   }
-  if (typeof loadCheckRuns !== 'function') {
-    throw new Error('Source check loader is required');
-  }
+  if (typeof loadCheckRuns !== 'function') throw new Error('Source check loader is required');
   if (!Number.isSafeInteger(attempts) || attempts <= 0) {
     throw new Error('Source check attempts must be a positive integer');
   }
-
   if (initialDelayMs > 0) await sleep(initialDelayMs);
-
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const checkRuns = await loadCheckRuns();
     const checkState = requiredCheckState(checkRuns, requiredChecks);
@@ -94,7 +116,6 @@ export async function waitForSourceReadyChecks({
       throw new Error(`Source PR permanent checks failed: ${checkState.failed.join(', ')}`);
     }
     if (checkState.ready) return checkRuns;
-
     if (attempt === attempts) {
       throw new Error(
         `Timed out waiting for source PR permanent checks: ${checkState.pending.join(', ')}`,
@@ -105,18 +126,27 @@ export async function waitForSourceReadyChecks({
     }
     await sleep(delayMs);
   }
-
   throw new Error('Source PR permanent check polling ended unexpectedly');
 }
 
-export function mainVerificationStatusPayload(validateResult, qualityResult, targetUrl) {
-  const success = validateResult === 'success' && qualityResult === 'success';
+export function mainVerificationStatusPayload(success, targetUrl) {
   return {
     state: success ? 'success' : 'failure',
     context: 'main-verification',
     description: success
-      ? 'Final main SHA passed full Linux verification'
-      : 'Final main SHA failed provenance or quality verification',
+      ? 'Final main SHA passed provenance and static verification'
+      : 'Final main SHA failed provenance, task binding or quality verification',
+    target_url: targetUrl,
+  };
+}
+
+export function taskVerificationStatusPayload(taskId, success, targetUrl) {
+  return {
+    state: success ? 'success' : 'failure',
+    context: `task-verification/${taskId}`,
+    description: success
+      ? `${taskId} source binding and main verification passed`
+      : `${taskId} source binding or main verification failed`,
     target_url: targetUrl,
   };
 }
@@ -204,31 +234,69 @@ async function checkMain() {
   );
 }
 
+async function publishCommitStatus(token, repository, sha, payload) {
+  await api(token, `/repos/${repository}/statuses/${sha}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  console.log(`Published ${payload.context}=${payload.state} for ${sha}.`);
+}
+
 async function publishStatus() {
   const token = process.env.GITHUB_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY;
   const expectedSha = process.env.EXPECTED_SHA;
+  const sourcePr = Number(process.env.SOURCE_PR);
+  const sourceHeadSha = process.env.SOURCE_HEAD_SHA;
   const validateResult = process.env.VALIDATE_RESULT;
   const qualityResult = process.env.QUALITY_RESULT;
   const serverUrl = process.env.GITHUB_SERVER_URL ?? 'https://github.com';
   const runId = process.env.GITHUB_RUN_ID;
   if (!token || !repository || !runId) throw new Error('GitHub Actions environment is incomplete');
   assertFullSha(expectedSha, 'EXPECTED_SHA');
+  assertFullSha(sourceHeadSha, 'SOURCE_HEAD_SHA');
+  if (!Number.isSafeInteger(sourcePr) || sourcePr <= 0) throw new Error('SOURCE_PR is invalid');
 
-  const payload = mainVerificationStatusPayload(
-    validateResult,
-    qualityResult,
-    `${serverUrl}/${repository}/actions/runs/${runId}`,
+  const targetUrl = `${serverUrl}/${repository}/actions/runs/${runId}`;
+  const [owner, repo] = repository.split('/');
+  const pull = await api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`);
+  const taskId = taskIdFromPullBody(pull.body ?? '');
+  let taskBindingErrors = [];
+  if (taskId) {
+    try {
+      const runtime = JSON.parse(
+        await readFile(`docs/tasks/runtime/${taskId}.json`, 'utf8'),
+      );
+      taskBindingErrors = validateTaskVerificationBinding(runtime, {
+        taskId,
+        sourcePr,
+        sourceHeadSha,
+      });
+    } catch (error) {
+      taskBindingErrors = [`${taskId} runtime unavailable: ${error.message}`];
+    }
+  }
+
+  const success =
+    validateResult === 'success' && qualityResult === 'success' && taskBindingErrors.length === 0;
+  await publishCommitStatus(
+    token,
+    repository,
+    expectedSha,
+    mainVerificationStatusPayload(success, targetUrl),
   );
-  await api(token, `/repos/${repository}/statuses/${expectedSha}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  console.log(`Published ${payload.context}=${payload.state} for ${expectedSha}.`);
-  if (payload.state !== 'success') {
+  if (taskId) {
+    await publishCommitStatus(
+      token,
+      repository,
+      expectedSha,
+      taskVerificationStatusPayload(taskId, success, targetUrl),
+    );
+  }
+  if (!success) {
     throw new Error(
-      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}`,
+      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}, task=${taskBindingErrors.join('; ') || 'none'}`,
     );
   }
 }

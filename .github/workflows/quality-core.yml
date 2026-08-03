@@ -92,15 +92,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  tests:
-    name: tests-${{ matrix.suite }}
+  product-tests:
+    name: product-tests
     if: ${{ inputs.draft_mode == false }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        suite: [unit, integration, migration]
+    timeout-minutes: 35
     steps:
       - name: Skip product tests for documentation-only Ready PR
         if: ${{ inputs.full_suite == false }}
@@ -119,82 +115,109 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - name: Assert clean working tree before test suite
+      - name: Assert clean working tree before product tests
         if: ${{ inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
         if: ${{ inputs.full_suite }}
       - run: pnpm test:prepare
         if: ${{ inputs.full_suite }}
-      - name: Run ${{ matrix.suite }} tests
+      - name: Run unit tests
         if: ${{ inputs.full_suite }}
         shell: bash
         run: |
           mkdir -p test-results/ci
           set -o pipefail
-          pnpm exec vitest run "tests/${{ matrix.suite }}" 2>&1 | tee "test-results/ci/${{ matrix.suite }}.log"
-      - name: Assert clean working tree after test suite
-        if: ${{ always() && inputs.full_suite }}
-        run: node .github/governance/assert-clean-tree.mjs
-      - name: Upload ${{ matrix.suite }} test diagnostics
-        if: ${{ failure() && inputs.full_suite }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: test-${{ matrix.suite }}-diagnostics
-          path: |
-            test-results/ci/${{ matrix.suite }}.log
-            test-results/${{ matrix.suite }}/
-          if-no-files-found: warn
-          retention-days: 7
-
-  coverage:
-    name: coverage
-    if: ${{ inputs.draft_mode == false }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - name: Skip coverage for documentation-only Ready PR
-        if: ${{ inputs.full_suite == false }}
-        run: echo "Coverage is not required because only Markdown or docs/ files changed."
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+          pnpm exec vitest run tests/unit 2>&1 | tee test-results/ci/unit.log
+      - name: Run integration tests
         if: ${{ inputs.full_suite }}
-        with:
-          ref: ${{ inputs.checkout_ref || github.sha }}
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec vitest run tests/integration 2>&1 | tee test-results/ci/integration.log
+      - name: Run migration tests
         if: ${{ inputs.full_suite }}
-        with:
-          version: 11.13.1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        if: ${{ inputs.full_suite }}
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Assert clean working tree before coverage
-        if: ${{ inputs.full_suite }}
-        run: node .github/governance/assert-clean-tree.mjs
-      - run: pnpm install --frozen-lockfile --prefer-offline
-        if: ${{ inputs.full_suite }}
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec vitest run tests/migration 2>&1 | tee test-results/ci/migration.log
       - name: Run product source coverage threshold
         if: ${{ inputs.full_suite }}
         shell: bash
         run: |
-          mkdir -p test-results/ci
           set -o pipefail
-          pnpm test:coverage 2>&1 | tee test-results/ci/coverage.log
-      - name: Assert clean working tree after coverage
+          pnpm exec vitest run --config vitest.coverage.config.ts 2>&1 | tee test-results/ci/coverage.log
+      - name: Assert clean working tree after product tests
         if: ${{ always() && inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Upload product source coverage
+      - name: Upload product test diagnostics and coverage
         if: ${{ always() && inputs.full_suite }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: product-source-coverage
+          name: product-tests-and-coverage
           path: |
-            coverage/
+            test-results/ci/unit.log
+            test-results/ci/integration.log
+            test-results/ci/migration.log
             test-results/ci/coverage.log
+            test-results/unit/
+            test-results/integration/
+            test-results/migration/
+            coverage/
           if-no-files-found: warn
           retention-days: 7
+
+  tests:
+    name: tests-${{ matrix.suite }}
+    if: ${{ always() && inputs.draft_mode == false }}
+    needs: product-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [unit, integration, migration]
+    steps:
+      - name: Enforce consolidated product test result
+        shell: bash
+        env:
+          FULL_SUITE: ${{ inputs.full_suite }}
+          PRODUCT_TEST_RESULT: ${{ needs.product-tests.result }}
+        run: |
+          set -euo pipefail
+          echo "${{ matrix.suite }} is covered by the consolidated product-tests job."
+          if [ "$FULL_SUITE" = true ]; then
+            test "$PRODUCT_TEST_RESULT" = success
+          else
+            case "$PRODUCT_TEST_RESULT" in
+              success|skipped) ;;
+              *) exit 1 ;;
+            esac
+          fi
+
+  coverage:
+    name: coverage
+    if: ${{ always() && inputs.draft_mode == false }}
+    needs: product-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Enforce consolidated coverage result
+        shell: bash
+        env:
+          FULL_SUITE: ${{ inputs.full_suite }}
+          PRODUCT_TEST_RESULT: ${{ needs.product-tests.result }}
+        run: |
+          set -euo pipefail
+          echo "Coverage is produced by the consolidated product-tests job."
+          if [ "$FULL_SUITE" = true ]; then
+            test "$PRODUCT_TEST_RESULT" = success
+          else
+            case "$PRODUCT_TEST_RESULT" in
+              success|skipped) ;;
+              *) exit 1 ;;
+            esac
+          fi
 
   security-tests:
     name: security-tests
@@ -338,50 +361,27 @@ jobs:
 
   build:
     name: build
-    if: ${{ inputs.draft_mode == false }}
+    if: ${{ always() && inputs.draft_mode == false }}
+    needs: desktop-e2e
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
-      - name: Skip build for documentation-only Ready PR
-        if: ${{ inputs.full_suite == false }}
-        run: echo "Build is not required because only Markdown or docs/ files changed."
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        if: ${{ inputs.full_suite }}
-        with:
-          ref: ${{ inputs.checkout_ref || github.sha }}
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        if: ${{ inputs.full_suite }}
-        with:
-          version: 11.13.1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        if: ${{ inputs.full_suite }}
-        with:
-          node-version: 24
-          cache: pnpm
-      - name: Assert clean working tree before build
-        if: ${{ inputs.full_suite }}
-        run: node .github/governance/assert-clean-tree.mjs
-      - run: pnpm install --frozen-lockfile --prefer-offline
-        if: ${{ inputs.full_suite }}
-      - name: Build all workspaces
-        if: ${{ inputs.full_suite }}
+      - name: Enforce build performed by Electron E2E
         shell: bash
+        env:
+          FULL_SUITE: ${{ inputs.full_suite }}
+          E2E_RESULT: ${{ needs.desktop-e2e.result }}
         run: |
-          mkdir -p test-results/ci
-          set -o pipefail
-          pnpm build 2>&1 | tee test-results/ci/build.log
-      - name: Assert clean working tree after build
-        if: ${{ always() && inputs.full_suite }}
-        run: node .github/governance/assert-clean-tree.mjs
-      - name: Upload build diagnostics
-        if: ${{ failure() && inputs.full_suite }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: build-diagnostics
-          path: test-results/ci/build.log
-          if-no-files-found: warn
-          retention-days: 7
+          set -euo pipefail
+          echo "The Electron E2E command performs the full workspace build."
+          if [ "$FULL_SUITE" = true ]; then
+            test "$E2E_RESULT" = success
+          else
+            case "$E2E_RESULT" in
+              success|skipped) ;;
+              *) exit 1 ;;
+            esac
+          fi
 
   package-smoke:
     name: package-smoke-${{ matrix.platform }}

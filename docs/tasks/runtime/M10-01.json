@@ -12,7 +12,8 @@
   "scope": [
     "修复连续章节切换导致的编辑器禁用残留",
     "加固Task事件缺口恢复期间的后续事件处理",
-    "增加异步交错测试并提高覆盖率余量"
+    "增加异步交错测试并提高覆盖率余量",
+    "将官方标记为broken的pnpm 11.13.0统一升级至11.13.1"
   ],
   "allowedPaths": [
     "apps/desktop/renderer/src/features/writing/",
@@ -20,10 +21,13 @@
     "tests/unit/",
     "docs/tasks/M10/",
     "docs/tasks/runtime/M10-01.json",
-    "docs/test-evidence/M10-01/"
+    "docs/test-evidence/M10-01/",
+    "docs/PROJECT_EXECUTION_ENTRY.md",
+    "package.json",
+    ".github/workflows/",
+    ".github/governance/toolchain-bundle.mjs"
   ],
   "forbiddenPaths": [
-    ".github/workflows/",
     "migrations/",
     "packages/contracts/src/",
     "packages/core-service/src/",

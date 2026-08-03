@@ -11,29 +11,26 @@
     "modeAdjustedAt": "2026-07-30"
   },
   "activeTask": {
-    "id": "M8-09",
+    "id": "M10-02",
     "status": "VERIFIED_HOLD",
-    "source": "docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md",
-    "branch": "work/m8-09-v1-stability-hardening",
-    "startedAt": "2026-07-31",
-    "implementedAt": "2026-08-01T01:42:35+09:00",
-    "implementationCommit": "6edb7a7ec7221fd709aba14bc30029acd397f69d",
+    "source": "docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md",
+    "branch": "work/m10-02-full-code-audit",
+    "startedAt": "2026-08-03",
+    "implementedAt": "2026-08-03T05:48:39.000Z",
+    "implementationCommit": "ca83d48c7493bba21252a37f9aec024d6aa0ca79",
     "allowedPaths": [
-      "apps/desktop/renderer/src/",
-      "apps/desktop/preload/src/",
-      "apps/desktop/main/src/",
-      "packages/contracts/src/",
-      "packages/core-service/src/",
-      "tests/unit/",
-      "tests/integration/",
-      "tests/security/",
-      "tests/e2e/",
+      "apps/",
+      "packages/",
+      "tests/",
       "scripts/",
-      "docs/tasks/",
-      "docs/product/",
-      "docs/testing/",
-      "docs/test-evidence/M8-09/",
-      ".github/workflows/"
+      ".github/",
+      "docs/tasks/M10/",
+      "docs/tasks/runtime/M10-02.json",
+      "docs/tasks/TASK_INDEX.md",
+      "docs/test-evidence/M10-02/",
+      "docs/PROJECT_EXECUTION_ENTRY.md",
+      "package.json",
+      "pnpm-lock.yaml"
     ],
     "forbiddenPaths": [
       "migrations/",
@@ -47,18 +44,28 @@
       "docs/test-evidence/M8-05/",
       "docs/test-evidence/M8-06/",
       "docs/test-evidence/M8-07/",
-      "docs/test-evidence/M8-08/"
+      "docs/test-evidence/M8-08/",
+      "docs/test-evidence/M8-09/",
+      "docs/test-evidence/M9-00/",
+      "docs/test-evidence/M9-02/",
+      "docs/test-evidence/M9-03/",
+      "docs/test-evidence/M10-01/"
     ],
     "requiredDocs": [
       "AGENTS.md",
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/tasks/TASK_AUTHORIZATION.json",
       "docs/tasks/TASK_INDEX.md",
-      "docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md",
-      "docs/tasks/runtime/M8-09.json"
+      "docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md",
+      "docs/tasks/runtime/M10-02.json",
+      "docs/test-evidence/M10-02/summary.md"
     ],
     "verification": [
+      "pnpm task:validate",
+      "pnpm check:workspaces",
+      "pnpm check:boundaries",
       "pnpm check:language",
+      "pnpm format:check",
       "pnpm lint",
       "pnpm typecheck",
       "pnpm test:unit",
@@ -67,52 +74,42 @@
       "pnpm test:coverage",
       "pnpm test:security",
       "pnpm test:perf",
-      "pnpm test:e2e",
       "pnpm build",
+      "pnpm test:e2e",
       "pnpm release:check"
     ]
   },
   "lastVerifiedTask": {
-    "id": "M8-09",
-    "commit": "07b5aa8c04628cbac5d74f0cc4139e9609626858",
-    "verifiedAt": "2026-07-31T18:03:02.600Z",
-    "evidenceHead": "173276129fc8aa3c23cc08c13c8e67de773efb96",
-    "squashProvenance": {
-      "method": "identical-tree",
-      "implementationHead": "80e68f639ff7547b443cb910883a734ef110508a",
-      "mainCommit": "07b5aa8c04628cbac5d74f0cc4139e9609626858",
-      "implementationTree": "6166a1511e6874b2f57bc6a6a896ac23ba58c843",
-      "mainTree": "6166a1511e6874b2f57bc6a6a896ac23ba58c843"
-    }
+    "id": "M10-02",
+    "commit": "ca83d48c7493bba21252a37f9aec024d6aa0ca79",
+    "verifiedAt": "2026-08-03T05:50:00.000Z",
+    "evidenceHead": "b11f8574cdaa72713761a991b594cb7782473ff4"
   },
   "deferredVerification": [],
   "deferredTasks": [],
   "lastImplementedTask": {
-    "id": "M8-09",
-    "commit": "6edb7a7ec7221fd709aba14bc30029acd397f69d",
-    "implementedAt": "2026-08-01T01:42:35+09:00",
-    "source": "docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md",
-    "branch": "work/m8-09-v1-stability-hardening",
+    "id": "M10-02",
+    "commit": "ca83d48c7493bba21252a37f9aec024d6aa0ca79",
+    "implementedAt": "2026-08-03T05:48:39.000Z",
+    "source": "docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md",
+    "branch": "work/m10-02-full-code-audit",
     "nextTaskId": null,
     "finalTask": true,
     "activationDeferred": true,
-    "activationDeferredReason": "V1.0稳定性治理等待受控合并与主分支验证后关闭",
+    "activationDeferredReason": "M10-02已完成产品代码合并与main验证，等待治理证据关闭",
     "allowedPaths": [
-      "apps/desktop/renderer/src/",
-      "apps/desktop/preload/src/",
-      "apps/desktop/main/src/",
-      "packages/contracts/src/",
-      "packages/core-service/src/",
-      "tests/unit/",
-      "tests/integration/",
-      "tests/security/",
-      "tests/e2e/",
+      "apps/",
+      "packages/",
+      "tests/",
       "scripts/",
-      "docs/tasks/",
-      "docs/product/",
-      "docs/testing/",
-      "docs/test-evidence/M8-09/",
-      ".github/workflows/"
+      ".github/",
+      "docs/tasks/M10/",
+      "docs/tasks/runtime/M10-02.json",
+      "docs/tasks/TASK_INDEX.md",
+      "docs/test-evidence/M10-02/",
+      "docs/PROJECT_EXECUTION_ENTRY.md",
+      "package.json",
+      "pnpm-lock.yaml"
     ],
     "forbiddenPaths": [
       "migrations/",
@@ -126,7 +123,12 @@
       "docs/test-evidence/M8-05/",
       "docs/test-evidence/M8-06/",
       "docs/test-evidence/M8-07/",
-      "docs/test-evidence/M8-08/"
+      "docs/test-evidence/M8-08/",
+      "docs/test-evidence/M8-09/",
+      "docs/test-evidence/M9-00/",
+      "docs/test-evidence/M9-02/",
+      "docs/test-evidence/M9-03/",
+      "docs/test-evidence/M10-01/"
     ]
   },
   "integratedDelivery": {
@@ -141,7 +143,7 @@
     "deferredFinalTaskSource": "docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md"
   },
   "verificationHold": {
-    "taskId": "M8-09",
+    "taskId": "M10-02",
     "verifiedTasks": [
       "M0-01",
       "M0-02",
@@ -188,19 +190,17 @@
       "M9-01",
       "M9-02",
       "M9-03",
-      "M10-01"
+      "M10-01",
+      "M10-02"
     ],
     "finalTask": true,
     "nextTaskId": null,
-    "heldAt": "2026-08-03T04:15:43.000Z",
-    "reason": "M8-09保留为V1.0兼容锚点；M9与M10-01全部验证，异步生命周期、竞态、覆盖余量和工具链硬化闭环",
+    "heldAt": "2026-08-03T06:10:00.000Z",
+    "reason": "M10-02完成全量代码测试、源码深度审计、P2轮询竞态修复、完整质量矩阵、三平台包体验证与main验证，仓库恢复最终验证保持",
     "allowedPaths": [
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/tasks/",
-      "docs/product/V1.0_TRACEABILITY_MATRIX.md",
-      "docs/test-evidence/M8-09/",
-      "docs/test-evidence/M9-03/",
-      "docs/test-evidence/M10-01/"
+      "docs/test-evidence/M10-02/"
     ],
     "forbiddenPaths": []
   }

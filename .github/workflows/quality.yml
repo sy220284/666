@@ -60,7 +60,7 @@ jobs:
 
   windows-native-ime:
     name: windows-native-ime
-    if: ${{ contains(github.event.pull_request.body, 'chinese-experience-verification-closure') }}
+    if: ${{ github.event.pull_request.draft == false && contains(github.event.pull_request.body, 'chinese-experience-verification-closure') }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -134,8 +134,8 @@ jobs:
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
-      # Draft status controls merge eligibility, not validation depth.
-      draft_mode: false
+      # Draft runs static checks only; Ready runs the routed full matrix.
+      draft_mode: ${{ github.event.pull_request.draft }}
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
       # The default route remains package_smoke: false; packaging inputs opt in through route output.
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}

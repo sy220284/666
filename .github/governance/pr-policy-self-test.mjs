@@ -8,7 +8,10 @@ import {
   nextPagePath,
   requiredCheckState,
 } from '../../scripts/automerge.mjs';
-import { selfTest as parallelTaskSelfTest } from './parallel-task-policy.mjs';
+import {
+  validateAuthorization,
+  validatePullRequestShape,
+} from './single-work-policy.mjs';
 
 const job = (name, conclusion = 'success', steps = []) => ({
   name,
@@ -20,7 +23,7 @@ const workflow = {
   id: 1,
   status: 'completed',
   conclusion: 'success',
-  created_at: '2026-07-30T00:00:00Z',
+  created_at: '2026-08-03T00:00:00Z',
 };
 
 const oldSuccess = {
@@ -28,14 +31,14 @@ const oldSuccess = {
   name: 'security',
   status: 'completed',
   conclusion: 'success',
-  created_at: '2026-07-30T00:00:00Z',
+  created_at: '2026-08-03T00:00:00Z',
 };
 const newPending = {
   ...oldSuccess,
   id: 2,
   status: 'queued',
   conclusion: null,
-  created_at: '2026-07-30T00:01:00Z',
+  created_at: '2026-08-03T00:01:00Z',
 };
 assert.equal(latestChecksByName([oldSuccess, newPending]).get('security')?.id, 2);
 assert.deepEqual(requiredCheckState([oldSuccess, newPending], ['security']), {
@@ -63,5 +66,22 @@ assert.equal(
   ]).get('alice'),
   'APPROVED',
 );
-parallelTaskSelfTest();
+assert.deepEqual(
+  validateAuthorization({
+    schemaVersion: 2,
+    mode: 'single-work-pr',
+    baseBranch: 'main',
+    workBranch: 'work',
+    allowDirectMainCommits: false,
+    allowAdditionalBranches: false,
+    maxOpenWorkPullRequests: 1,
+    mainWriteMode: 'serialized',
+    mergeMethod: 'squash',
+    verificationClosure: 'main-status',
+    workSynchronization: 'verified-reset',
+  }),
+  [],
+);
+assert.deepEqual(validatePullRequestShape({ head: 'work', base: 'main' }), []);
+assert.ok(validatePullRequestShape({ head: 'work/task', base: 'main' }).length > 0);
 console.log('PR policy self-test passed.');

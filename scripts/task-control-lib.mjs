@@ -78,12 +78,15 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/PROJECT_EXECUTION_ENTRY.md',
   'docs/process/CODEX_EXECUTION_PLAYBOOK.md',
   'docs/process/DEVELOPMENT_AUTOMATION.md',
+  'docs/process/CI_PARALLEL_TOOLCHAIN_MULTITASK.md',
   'docs/process/CI_WORKFLOW_ARCHITECTURE.md',
   'docs/process/MAIN_BRANCH_PROTECTION.md',
   'docs/process/WORKFLOW_EXECUTION_ORDER.md',
+  'docs/tasks/TASK_AUTHORIZATION.json',
   'docs/tasks/ACTIVE_TASK.json',
   'docs/tasks/ACTIVE_TASK.md',
   'docs/tasks/TASK_INDEX.md',
+  'docs/tasks/TASK_TEMPLATE.md',
   'docs/tasks/M4/M4-04_PROMPT_REGISTRY_OUTPUT.md',
   'docs/tasks/M8/M8-02_PERFORMANCE_E2E_AI_EVAL.md',
   'docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md',
@@ -97,18 +100,13 @@ export const GOVERNANCE_ALLOWED_PATHS = [
   'docs/product/V1.0_TRACEABILITY_MATRIX.md',
   'README.md',
   'tests/integration/task-lifecycle.test.ts',
-  'tests/unit/evidence-policy.test.ts',
-  'tests/unit/squash-provenance.test.ts',
-  'tests/unit/task-control.test.ts',
-  'tests/unit/task-ordering.test.ts',
-  'tests/unit/testkit-fixtures-evidence.test.ts',
+  'tests/unit/',
 ];
 
 export function parseTaskIndex(markdown) {
   const tasks = new Map();
   const rowPattern =
     /^\|\s*(M\d+-\d{2})\s*\|\s*\[[^\]]+\]\(([^)]+)\)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$/gm;
-
   for (const match of markdown.matchAll(rowPattern)) {
     const [, id, source, dependencyText, status] = match;
     if (!id || !source || !dependencyText || !status) continue;
@@ -119,7 +117,6 @@ export function parseTaskIndex(markdown) {
       status: status.trim(),
     });
   }
-
   return tasks;
 }
 
@@ -136,10 +133,11 @@ export function replaceTaskCardStatus(markdown, currentStatus, nextStatus) {
 }
 
 export function isPathInside(filePath, allowedPath) {
-  const normalizedFile = filePath.replaceAll('\\', '/').replace(/^\.\//, '');
-  const normalizedAllowed = allowedPath.replaceAll('\\', '/').replace(/^\.\//, '');
-  if (normalizedAllowed.endsWith('/')) return normalizedFile.startsWith(normalizedAllowed);
-  return normalizedFile === normalizedAllowed;
+  const normalizedFile = filePath.replaceAll('\\', '/').replace(/^\.\//u, '');
+  const normalizedAllowed = allowedPath.replaceAll('\\', '/').replace(/^\.\//u, '');
+  return normalizedAllowed.endsWith('/')
+    ? normalizedFile.startsWith(normalizedAllowed)
+    : normalizedFile === normalizedAllowed;
 }
 
 export function validateChangedPaths(changedFiles, allowedPaths, forbiddenPaths) {
@@ -180,35 +178,25 @@ export function validateChangedPathsForTransition(changedFiles, state, baseState
     );
   }
   const states = [state, baseState].filter(Boolean);
-  const allowedPaths = states.flatMap((value) => value.activeTask?.allowedPaths ?? []);
-  const forbiddenPaths = states.flatMap((value) => value.activeTask?.forbiddenPaths ?? []);
   return validateChangedPaths(
     changedFiles,
-    [...new Set(allowedPaths)],
-    [...new Set(forbiddenPaths)],
+    [...new Set(states.flatMap((value) => value.activeTask?.allowedPaths ?? []))],
+    [...new Set(states.flatMap((value) => value.activeTask?.forbiddenPaths ?? []))],
   );
 }
 
 export function isGovernanceOnlyPullRequest(branch, changedFiles) {
-  const value = branch ?? '';
-  const governanceBranch = /^(?:policy\/|chore\/governance-|fix\/governance-)/u.test(value);
-  const planningBranch = /^policy\/task-plan-/u.test(value);
-  const schemaGovernanceBranch = /^(?:policy|fix)\/governance-schema-/u.test(value);
-  const allowedPaths = planningBranch
-    ? [...GOVERNANCE_ALLOWED_PATHS, ...TASK_PLANNING_ALLOWED_PATHS]
-    : schemaGovernanceBranch
-      ? [...GOVERNANCE_ALLOWED_PATHS, ...SCHEMA_GOVERNANCE_ALLOWED_PATHS]
-      : GOVERNANCE_ALLOWED_PATHS;
-  return (
-    governanceBranch &&
-    changedFiles.length > 0 &&
-    changedFiles.every((file) => allowedPaths.some((allowed) => isPathInside(file, allowed)))
-  );
+  if (branch !== 'work' || changedFiles.length === 0) return false;
+  const allowedPaths = [
+    ...GOVERNANCE_ALLOWED_PATHS,
+    ...TASK_PLANNING_ALLOWED_PATHS,
+    ...SCHEMA_GOVERNANCE_ALLOWED_PATHS,
+  ];
+  return changedFiles.every((file) => allowedPaths.some((allowed) => isPathInside(file, allowed)));
 }
 
-export function taskBranchFor(task) {
-  const cardName = path.posix.basename(task.source, '.md').toLowerCase().replaceAll('_', '-');
-  return `work/${cardName}`;
+export function taskBranchFor() {
+  return 'work';
 }
 
 export function validateActiveState(state, taskIndex) {
@@ -216,49 +204,28 @@ export function validateActiveState(state, taskIndex) {
   const activeStatusMap = new Map([
     ['IN_PROGRESS', 'In Progress'],
     ['IMPLEMENTED', 'Implemented'],
+    ['VERIFIED_HOLD', 'Verified'],
   ]);
-  if (state.schemaVersion !== 1) errors.push('Unsupported ACTIVE_TASK schemaVersion');
-  const authorizationModes = new Set([
-    'continuous-mainline',
-    'implementation-mainline',
-    'implementation-pr',
-  ]);
-  if (!authorizationModes.has(state.authorization?.mode)) {
-    errors.push('Unsupported task authorization mode');
+  if (state.schemaVersion !== 1) errors.push('Unsupported ACTIVE_TASK compatibility schemaVersion');
+  if (state.authorization?.compatibilityOnly !== true) {
+    errors.push('ACTIVE_TASK authorization must be marked compatibilityOnly');
   }
-  const implementationFirst = ['implementation-mainline', 'implementation-pr'].includes(
-    state.authorization?.mode,
-  );
-  if (implementationFirst && state.authorization?.deferVerificationUntilBatch !== true) {
-    errors.push('Implementation-first execution must explicitly defer verification until batch');
+  if (state.authorization?.executionModel !== 'single-work-pr') {
+    errors.push('ACTIVE_TASK executionModel must be single-work-pr');
   }
-  if (implementationFirst && !Array.isArray(state.deferredVerification)) {
-    errors.push('Implementation-first execution requires a deferredVerification ledger');
+  if (state.authorization?.branch !== 'main')
+    errors.push('Compatibility integration branch must be main');
+  if (state.authorization?.allowDirectMainCommits !== false) {
+    errors.push('Direct main commits must remain disabled');
   }
-
-  const pullRequestOnly = state.authorization?.mode === 'implementation-pr';
-  if (state.authorization?.branch !== 'main') {
-    errors.push('Authorized integration branch must be main');
-  }
-  if (pullRequestOnly && state.authorization?.allowDirectMainCommits !== false) {
-    errors.push('PR-only execution must disable direct main commits');
-  }
-
   const active = state.activeTask;
   if (!active || !activeStatusMap.has(active.status)) {
-    errors.push('Exactly one IN_PROGRESS or IMPLEMENTED task is required');
+    errors.push('ACTIVE_TASK compatibility anchor has an unsupported status');
   }
-  if (!active?.id || !/^M\d+-\d{2}$/.test(active.id)) errors.push('Invalid active task id');
-  if (pullRequestOnly) {
-    if (!active?.branch || active.branch === 'main') {
-      errors.push('PR-only execution requires a non-main task branch');
-    } else if (
-      !/^(?:work|feat|fix|refactor|test|docs|chore)\/[a-z0-9._/-]+$/u.test(active.branch)
-    ) {
-      errors.push('PR-only task branch must use an approved work prefix');
-    }
+  if (!active?.id || !/^M\d+-\d{2}$/u.test(active.id)) errors.push('Invalid active task id');
+  if ((active?.executionBranch ?? active?.branch) !== 'work' || active?.branch !== 'work') {
+    errors.push('Active task compatibility branch must be work');
   }
-
   const indexed = active?.id ? taskIndex.get(active.id) : undefined;
   if (!indexed) errors.push(`Active task ${active?.id ?? '<missing>'} is absent from TASK_INDEX`);
   if (indexed && indexed.source !== active.source) {
@@ -274,7 +241,6 @@ export function validateActiveState(state, taskIndex) {
   if (!Array.isArray(active?.verification) || active.verification.length === 0) {
     errors.push('Active task must declare verification commands');
   }
-
   return errors;
 }
 
@@ -282,9 +248,9 @@ export function extractBacktickBullets(markdown, heading) {
   const start = markdown.indexOf(`## ${heading}`);
   if (start < 0) return [];
   const remainder = markdown.slice(start + heading.length + 3);
-  const nextHeading = remainder.search(/^##\s/m);
+  const nextHeading = remainder.search(/^##\s/mu);
   const section = nextHeading >= 0 ? remainder.slice(0, nextHeading) : remainder;
-  return [...section.matchAll(/^\s*-\s+`([^`]+)`/gm)].map((match) => match[1]).filter(Boolean);
+  return [...section.matchAll(/^\s*-\s+`([^`]+)`/gmu)].map((match) => match[1]).filter(Boolean);
 }
 
 function taskStageNumber(taskId) {
@@ -346,18 +312,14 @@ export function dependenciesSatisfied(task, taskIndex, options = {}) {
   const dependencyText = task.dependencyText.trim();
   if (dependencyText === '无') return true;
   if (stageClosureErrors(task, taskIndex, options.state).length > 0) return false;
-
   const strictStages = new Set(stageCloseDependencyStages(task));
   const dependencyReady = (status, stage = null) =>
     status === 'Verified' ||
     (options.allowImplemented === true && !strictStages.has(stage) && status === 'Implemented');
-
-  const requiredIds = new Set(dependencyText.match(/M\d+-\d{2}/g) ?? []);
-  for (const requiredId of requiredIds) {
+  for (const requiredId of new Set(dependencyText.match(/M\d+-\d{2}/gu) ?? [])) {
     if (!dependencyReady(taskIndex.get(requiredId)?.status, taskStageNumber(requiredId)))
       return false;
   }
-
   for (const stage of dependencyStageNumbers(dependencyText)) {
     const stageTasks = [...taskIndex.values()].filter(({ id }) => id.startsWith(`M${stage}-`));
     if (
@@ -367,7 +329,6 @@ export function dependenciesSatisfied(task, taskIndex, options = {}) {
       return false;
     }
   }
-
   return true;
 }
 
@@ -377,7 +338,6 @@ export function findNextReadyTask(taskIndex, options = {}) {
   for (let index = 0; index < tasks.length; index += 1) {
     if (tasks[index]?.status !== 'Planned') executionFrontier = index;
   }
-
   const next = tasks.slice(executionFrontier + 1).find((task) => task.status === 'Planned');
   if (!next) return undefined;
   return dependenciesSatisfied(next, taskIndex, options) ? next : undefined;
@@ -391,68 +351,20 @@ export function replaceTaskIndexStatus(markdown, taskId, nextStatus) {
 
 export function verificationForTask(card) {
   const commands = ['pnpm lint', 'pnpm typecheck', 'pnpm test'];
-  if (/数据库|SQLite|Migration/i.test(card)) {
+  if (/数据库|SQLite|Migration/iu.test(card))
     commands.push('pnpm test:migration', 'pnpm test:integration');
-  }
-  if (/Electron|IPC|路径|安全/i.test(card)) commands.push('pnpm test:security', 'pnpm test:e2e');
-  if (/Editor|Candidate|锁定|Revision|Patch/i.test(card)) {
+  if (/Electron|IPC|路径|安全/iu.test(card)) commands.push('pnpm test:security', 'pnpm test:e2e');
+  if (/Editor|Candidate|锁定|Revision|Patch/iu.test(card)) {
     commands.push('pnpm test:unit', 'pnpm test:integration', 'pnpm test:e2e');
   }
-  if (/Prompt|Provider|约束包/i.test(card)) {
+  if (/Prompt|Provider|约束包/iu.test(card))
     commands.push('pnpm test:eval', 'pnpm test:integration');
-  }
-  if (/性能|DPI|高分屏/i.test(card)) commands.push('pnpm test:perf', 'pnpm test:e2e');
+  if (/性能|DPI|高分屏/iu.test(card)) commands.push('pnpm test:perf', 'pnpm test:e2e');
   return [...new Set(commands)];
 }
 
 export function renderActiveTask(state) {
   const task = state.activeTask;
-  const list = (values) => values.map((value) => `  - ${value}`).join('\n');
-  let continuationRule;
-  if (state.verificationHold?.finalTask === true) {
-    continuationRule = `V1.0全部独立任务已经Verified；${state.verificationHold.taskId}作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。`;
-  } else if (state.authorization.mode === 'implementation-pr') {
-    continuationRule =
-      '当前作者已授权实现优先的合并请求模式：每张任务必须在独立非main分支完成并提交合并请求；合并请求规则、任务治理、安全、性能、验证记录与质量门禁全部通过后，才允许执行受控合并。机器人和GitHub Actions不得直接推送main；任何代码、测试、安全或数据边界失败立即阻断。';
-  } else if (state.authorization.mode === 'implementation-mainline') {
-    continuationRule =
-      '当前作者已授权实现优先顺序推进：每次只编程一张任务卡；真实代码、必要专项测试和远端质量门通过后标记 Implemented，并把证据、截图、人工验收与最终 Verified 关闭登记到 deferredVerification 后推进下一张。任何代码、测试、安全或数据边界失败仍立即阻断；延期项不得冒充 Verified 或用于发布。';
-  } else {
-    continuationRule =
-      '当前作者已预授权在 `main` 上连续执行。每次仍只允许一张任务卡；当前任务达到 Verified、证据完整且依赖门通过后，可自动激活下一张依赖已满足的任务。失败时必须转为 Blocked，禁止跳过失败或伪造通过。';
-  }
-  return `# WorldForge 当前活动任务
-
-> 本文件由 \`docs/tasks/ACTIVE_TASK.json\` 生成，请勿手工维护任务字段。
-
-## 当前状态
-
-\`\`\`text
-${task.status}
-\`\`\`
-
-- 任务ID：\`${task.id}\`
-- 唯一任务卡：\`${task.source}\`
-- 工作分支：\`${task.branch}\`
-- 开始时间：\`${task.startedAt}\`
-- 授权模式：\`${state.authorization.mode}\`
-- 授权人：\`${state.authorization.approvedBy}\`
-
-## 执行范围
-
-\`\`\`yaml
-allowed_paths:
-${list(task.allowedPaths)}
-forbidden_paths:
-${list(task.forbiddenPaths)}
-required_docs:
-${list(task.requiredDocs)}
-verification:
-${list(task.verification)}
-\`\`\`
-
-## 连续执行规则
-
-${continuationRule}
-`;
+  const executionModel = state.authorization?.executionModel ?? 'single-work-pr';
+  return `# WorldForge 当前活动任务\n\n> 本文件是 \`docs/tasks/ACTIVE_TASK.json\` 的兼容镜像。全局分支与PR授权以 \`docs/tasks/TASK_AUTHORIZATION.json\` Schema 2为准。\n\n## 当前状态\n\n\`\`\`text\n${task?.status ?? 'NO_ACTIVE_TASK'}\n\`\`\`\n\n- 兼容锚点任务：\`${task?.id ?? '无'}\`\n- 任务卡：\`${task?.source ?? '无'}\`\n- 唯一工作分支：\`${task?.executionBranch ?? task?.branch ?? 'work'}\`\n- 稳定分支：\`main\`\n- 全局执行模型：\`${executionModel}\`\n- 兼容状态机模式：\`${state.authorization?.mode ?? '无'}\`（仅供旧状态读取）\n\n## 当前仓库执行规则\n\n\`\`\`text\n最新已验证main\n→ 唯一work\n→ 实施、测试、文档与Evidence\n→ 唯一work → main PR\n→ 永久门禁\n→ Controlled Merge（Squash）\n→ Main Verification\n→ 任务有效状态关闭\n→ Work Synchronization受控重置work到main\n\`\`\`\n\n禁止任务专属分支、验证分支、治理分支、纯Evidence分支和纯关闭PR。\n`;
 }

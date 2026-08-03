@@ -1,6 +1,6 @@
 # WorldForge 当前活动任务
 
-> 本文件由 `docs/tasks/ACTIVE_TASK.json` 生成，请勿手工维护任务字段。
+> 本文件是 `docs/tasks/ACTIVE_TASK.json` 的兼容镜像。全局授权以 `docs/tasks/TASK_AUTHORIZATION.json` 第2版结构为准。
 
 ## 当前状态
 
@@ -8,67 +8,31 @@
 VERIFIED_HOLD
 ```
 
-- 任务ID：`M8-09`
-- 唯一任务卡：`docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md`
-- 工作分支：`work`
-- 开始时间：`2026-07-31`
-- 授权模式：`implementation-pr`
-- 授权人：`author`
+- 兼容锚点任务：`M8-09`
+- 任务卡：`docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md`
+- 唯一工作分支：`work`
+- 稳定分支：`main`
+- 全局授权模式：`single-work-pr`
+- 兼容状态机模式：`implementation-pr`（仅供旧状态读取）
 
-## 执行范围
+## 当前仓库执行规则
 
-```yaml
-allowed_paths:
-  - apps/desktop/renderer/src/
-  - apps/desktop/preload/src/
-  - apps/desktop/main/src/
-  - packages/contracts/src/
-  - packages/core-service/src/
-  - tests/unit/
-  - tests/integration/
-  - tests/security/
-  - tests/e2e/
-  - scripts/
-  - docs/tasks/
-  - docs/product/
-  - docs/testing/
-  - docs/test-evidence/M8-09/
-  - .github/workflows/
-forbidden_paths:
-  - migrations/
-  - docs/test-evidence/M0/
-  - docs/test-evidence/M1/
-  - docs/test-evidence/M2/
-  - docs/test-evidence/M3/
-  - docs/test-evidence/M4-04/
-  - docs/test-evidence/M8-02/
-  - docs/test-evidence/M8-04/
-  - docs/test-evidence/M8-05/
-  - docs/test-evidence/M8-06/
-  - docs/test-evidence/M8-07/
-  - docs/test-evidence/M8-08/
-required_docs:
-  - AGENTS.md
-  - docs/PROJECT_EXECUTION_ENTRY.md
-  - docs/tasks/TASK_AUTHORIZATION.json
-  - docs/tasks/TASK_INDEX.md
-  - docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md
-  - docs/tasks/runtime/M8-09.json
-verification:
-  - pnpm check:language
-  - pnpm lint
-  - pnpm typecheck
-  - pnpm test:unit
-  - pnpm test:integration
-  - pnpm test:migration
-  - pnpm test:coverage
-  - pnpm test:security
-  - pnpm test:perf
-  - pnpm test:e2e
-  - pnpm build
-  - pnpm release:check
+```text
+最新已验证main
+→ 唯一work
+→ 实施、测试、文档与Evidence
+→ 唯一work → main PR
+→ 永久门禁
+→ Controlled Merge（Squash）
+→ Main Verification
+→ 任务有效状态关闭
+→ Work Synchronization受控重置work到main
 ```
 
-## 连续执行规则
+禁止任务专属分支、验证分支、治理分支、纯验证记录分支和纯关闭PR。
 
-V1.0全部独立任务已经Verified；M8-09作为终态验证锚点保留，不再激活后续任务。任何新功能或公开分发能力必须重新立项。
+## 兼容说明
+
+- `ACTIVE_TASK.json.authorization.mode`只维持历史状态机兼容。
+- 新建及活动Runtime使用`executionBranch: work`。
+- 已Verified历史Runtime中的来源分支保持冻结。

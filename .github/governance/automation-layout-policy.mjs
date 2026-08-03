@@ -21,13 +21,15 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'security.yml',
   'task-governance.yml',
   'toolchain-export.yml',
+  'work-synchronization.yml',
 ]);
 
 export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'assert-clean-tree.mjs',
   'automation-layout-policy.mjs',
   'automerge-base-gate.mjs',
-  'deferred-task-closure.mjs',
+  'branch-inventory-policy.mjs',
+  'effective-task-status.mjs',
   'main-protection.json',
   'main-verification-wait.self-test.mjs',
   'parallel-task-policy.mjs',
@@ -36,13 +38,13 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'pr-policy-self-test.mjs',
   'required-checks.json',
   'secret-scan-allowlist.json',
+  'single-work-policy.mjs',
+  'single-work-release-gate.mjs',
+  'single-work-taskctl.mjs',
   'squash-provenance.mjs',
-  'stage-close-policy.mjs',
-  'task-checkpoint-policy.mjs',
-  'task-transition-policy-core.mjs',
-  'task-transition-policy.mjs',
   'toolchain-bundle.mjs',
   'verification-hold-taskctl.mjs',
+  'work-synchronization.mjs',
   'workspace-architecture.json',
 ]);
 
@@ -58,10 +60,6 @@ const forbiddenWorkflowMarkers = Object.freeze([
   {
     label: 'fixed pull request number',
     pattern: /pull_request\.number\s*={2,3}\s*\d+/u,
-  },
-  {
-    label: 'fixed pull request branch',
-    pattern: /github\.head_ref\s*={2,3}\s*['"][^'"]+['"]/u,
   },
 ]);
 

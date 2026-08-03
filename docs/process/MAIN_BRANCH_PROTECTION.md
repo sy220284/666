@@ -1,25 +1,23 @@
-# main分支永久保护配置
+# main与work分支永久保护配置
 
-> 本文定义GitHub仓库设置层的永久门禁。工作流可以检测配置漂移；真正阻止管理员、本地Git或外部工具绕过PR，仍依赖GitHub Repository Ruleset。
+> 本文定义GitHub仓库设置层的永久门禁。工作流负责检测漂移，真正阻止绕过依赖GitHub Repository Ruleset。
 
-## 必须启用
+## 1. main规则集
 
-在仓库`Settings → Rules → Rulesets`中为默认分支创建Active规则集，配置由`.github/governance/main-protection.json`和`required-checks.json`定义：
+为默认分支`main`配置Active Ruleset：
 
-- Restrict deletions：开启
-- Block force pushes：开启
-- Require a pull request before merging：开启
-- Required approvals：0（单作者仓库）
-- Dismiss stale approvals：开启
-- Require conversation resolution：开启
-- Require status checks to pass：开启
-- Require branches to be up to date before merging：开启
-- Require linear history：开启
-- Bypass list：留空，不给Actions或机器人绕过权限
+- 禁止删除；
+- 禁止强推；
+- 要求Pull Request；
+- Required approvals：0；
+- 清除旧审查；
+- 要求解决会话；
+- 要求状态检查成功；
+- 要求分支基于最新main；
+- 要求线性历史；
+- Bypass列表为空。
 
-## 必需状态检查
-
-精确名称：
+必需检查：
 
 ```text
 pr-policy
@@ -30,64 +28,97 @@ performance
 evidence
 ```
 
-矩阵子Job不单独设置为必需检查，由各自聚合门负责统一判定。
+`main-verification`是合并后状态，不能加入合并前必需检查。
 
-`main-verification`是合并后附着到最终squash提交的复核状态，不加入PR Ruleset必需检查。将它加入合并前检查会造成循环依赖：PR必须先合并才能产生该检查，但Ruleset又会等待该检查后才允许合并。
+## 2. 合并方式
 
-## 合并方式
+- Allow squash merging：开启；
+- Allow merge commits：关闭；
+- Allow rebase merging：关闭；
+- Allow auto-merge：开启；
+- Automatically delete head branches：建议关闭，避免GitHub删除长期`work`；即使被删除，Work Synchronization也只能在来源验证成功后重建。
 
-- Allow squash merging：开启
-- Allow rebase merging：关闭
-- Allow merge commits：关闭
-- Allow auto-merge：开启
-- Automatically delete head branches：开启
+Controlled Merge固定使用Squash，并向Merge API绑定受检Head SHA。
 
-自动合并仍受全部必需检查、Draft状态、Changes Requested、未解决线程、头SHA一致性以及“未落后于当前main”限制，不得成为绕过Ruleset的旁路。
+## 3. work规则
 
-Controlled Merge使用全仓库串行并发组，避免两个已通过PR同时读取同一main基线并竞争合并。合并成功后，Post Merge Verification Dispatcher只负责幂等调度固定的`main-verification.yml`，不得修改Repository Ruleset或要求管理员级长期凭据。Main Verification会等待来源Head因`ready_for_review`等事件触发的最新永久检查完成，再校验最终SHA、来源PR和历史门禁，并运行完整Linux复核。
+仓库长期只允许`main`和`work`。为`work`配置规则：
 
-## Main Verification权限
+- 禁止删除或限制删除；
+- 禁止普通用户强推；
+- 允许`Work Synchronization`在严格CAS条件下更新引用；
+- 禁止通过`work`之外的分支创建正式PR；
+- 同一时刻最多一个`work → main` PR。
 
-- Controlled Merge：`actions: write`仅用于调度固定工作流；同时保留`checks: read`、`contents: write`和`pull-requests: write`。
-- Post Merge Verification Dispatcher：只使用`actions: write`调度Main Verification，保持`contents: read`和`pull-requests: read`，不读取或写入Repository Ruleset。
-- Main Verification：使用`contents: read`、`checks: read`和`pull-requests: read`完成只读复核；仅使用`statuses: write`把最终成功或失败状态写回目标main SHA。
-- 合并与Main Verification链路不使用PAT，不使用`repository_dispatch`，不允许工作流直接推送main。
-- 工作流输入必须包含最终main SHA、来源PR编号和来源头SHA。
-- 工作流运行SHA、PR的`merge_commit_sha`、来源头SHA及六项永久检查必须相互一致。
-- 聚合结果必须以`main-verification`上下文写入Commit Status；成功和失败都必须可见，且状态链接指向对应Actions Run。
+仓库原生Ruleset若无法按工作流身份精确授权，则保留work删除保护，由Repository Governance持续审计；Work Synchronization失败时由管理员按报告处理，不得扩大Bypass列表。
 
-## Release环境
+## 4. 权限边界
 
-在`Settings → Environments`创建`release`环境：
+### Controlled Merge
 
-- Required reviewers：作者本人或维护者
-- Deployment branches：仅`main`
-- 不存储GitHub PAT；使用最小权限`GITHUB_TOKEN`
+```text
+actions: write
+checks: read
+contents: write
+pull-requests: write
+```
 
-## 漂移审计
+仅调用Merge API和调度固定Main Verification，不得直接推送main。
 
-`Repository Governance`每周读取GitHub原生规则并与仓库配置进行完整比较。审计范围包括：
+### Main Verification
 
-- 规则集存在、目标为默认分支且状态为Active；
-- 禁止删除、禁止强推、要求线性历史；
-- 要求PR、清除旧审查、解决会话；
-- 状态检查要求分支基于最新main，且检查名称与配置完全一致；
-- Bypass列表为空。
+```text
+contents: read
+checks: read
+pull-requests: read
+statuses: write
+```
 
-任一项缺失或漂移都会使治理审计失败，并上传包含具体差异原因的报告。Ruleset写入属于显式管理员操作，不得耦合到每次合并：需要应用配置时，由仓库管理员在受控环境中提供具备Rulesets管理权限的`REPO_ADMIN_TOKEN`并执行`scripts/ruleset-policy.mjs apply`；普通PR、Controlled Merge、Post Merge Dispatcher和Main Verification均不得依赖该令牌。
+只读取来源、执行静态复核并发布提交状态。
 
-## 负向验证
+### Work Synchronization
 
-1. 本地或API直接推送`main`应被GitHub拒绝。
-2. 任一必需检查失败、缺失或未完成时PR应无法合并。
-3. Draft、Changes Requested或未解决线程应阻止自动合并。
-4. 落后于当前`main`的PR即使历史检查成功，也不得自动合并。
-5. Actions Token尝试直接写`main`应被规则集拒绝。
-6. Ruleset缺失、状态非Active、检查名单漂移或存在Bypass actor时，治理审计必须失败。
-7. Controlled Merge成功后未产生针对最终SHA的`main-verification`运行，应视为主线复核链路故障。
-8. Main Verification输入SHA、来源PR、来源头SHA或永久检查任一不一致时必须失败。
-9. Main Verification必须等待来源Head最新一轮Ready模式检查结束；显式失败立即阻断，Pending不得被误判为失败。
-10. Main Verification完成后未在最终SHA写入`main-verification`成功或失败状态，应视为状态发布故障。
-11. Post Merge Verification Dispatcher尝试读取或写入Ruleset、依赖管理员Token或因管理员Token缺失而失败，应视为权限边界回归。
+```text
+contents: write
+pull-requests: read
+```
 
-仓库代码不能自行授予管理员级权限；Ruleset和仓库Auto-merge开关必须由仓库管理员实际启用。
+只允许：
+
+- 读取main、work和来源PR；
+- 在work不存在时创建`refs/heads/work`；
+- 在work仍等于来源受检Head时，将work重置到已验证main。
+
+不得修改文件、main、Ruleset、Release或其他分支。
+
+### Branch Hygiene
+
+```text
+contents: read
+```
+
+只审计分支清单，不执行同步或删除。
+
+## 5. 负向验证
+
+1. 直接推送main应被拒绝。
+2. 任一必需检查失败、缺失或未完成时PR不得合并。
+3. 非`work → main` PR应由PR Policy拒绝。
+4. 第二个开放work PR应被拒绝。
+5. 仓库出现第三个分支时Branch Hygiene应失败。
+6. Main Verification输入SHA、来源PR或来源Head不一致时应失败。
+7. work在合并后出现新提交时Work Synchronization必须拒绝覆盖。
+8. 当前main已推进时旧验证运行不得同步work。
+9. Main Verification失败时不得触发work同步。
+10. Work Synchronization不得依赖管理员PAT或修改Ruleset。
+
+## 6. 漂移审计
+
+Repository Governance每周比较仓库原生配置与：
+
+```text
+.github/governance/main-protection.json
+.github/governance/required-checks.json
+```
+
+任一Ruleset缺失、状态非Active、检查名单漂移、存在Bypass actor、开放非Squash合并或允许直接写main时均应失败。

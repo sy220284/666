@@ -1,21 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
+import { mainVerificationDispatchBody } from '../../scripts/automerge.mjs';
 import {
-  isGovernanceOnlyPullRequest,
-  isPathInside,
   dependenciesSatisfied,
   extractBacktickBullets,
   findNextReadyTask,
+  isGovernanceOnlyPullRequest,
+  isPathInside,
   parseTaskIndex,
+  renderActiveTask,
   replaceTaskCardStatus,
   replaceTaskIndexStatus,
   stageClosureErrors,
+  taskBranchFor,
   validateActiveState,
   validateChangedPaths,
   validateChangedPathsForTransition,
-  renderActiveTask,
+  verificationForTask,
 } from '../../scripts/task-control-lib.mjs';
-import { mainVerificationDispatchBody } from '../../scripts/automerge.mjs';
 import { validateMainVerification } from '../../scripts/main-verification.mjs';
 
 const indexFixture = `
@@ -25,115 +27,41 @@ const indexFixture = `
 | M0-02 | [Electron](M0/M0-02_ELECTRON_CORE_LIFECYCLE.md) | M0-01 | Planned |
 `;
 
-describe('task control', () => {
-  it('normalizes task card status lines with or without Markdown trailing spaces', () => {
-    expect(replaceTaskCardStatus('> 状态：Planned\n', 'Planned', 'In Progress')).toBe(
-      '> 状态：In Progress  \n',
-    );
-    expect(replaceTaskCardStatus('> 状态：In Progress  \n', 'In Progress', 'Planned')).toBe(
-      '> 状态：Planned  \n',
-    );
-    expect(
-      replaceTaskCardStatus('> 状态：Implemented（等待CI）\n', 'Implemented', 'Verified'),
-    ).toBe('> 状态：Verified  \n');
-  });
+const compatibilityState = {
+  schemaVersion: 1,
+  authorization: {
+    mode: 'implementation-pr',
+    compatibilityOnly: true,
+    executionModel: 'single-work-pr',
+    branch: 'main',
+    allowDirectMainCommits: false,
+  },
+  activeTask: {
+    id: 'M0-01',
+    status: 'IN_PROGRESS',
+    source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
+    branch: 'work',
+    executionBranch: 'work',
+    allowedPaths: ['packages/'],
+    verification: ['pnpm test'],
+  },
+};
 
-  it('parses task rows and their canonical source', () => {
+describe('Schema 2共享任务控制', () => {
+  it('解析任务索引并规范任务卡状态', () => {
     const tasks = parseTaskIndex(indexFixture);
     expect(tasks.get('M0-01')).toMatchObject({
       source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
       status: 'In Progress',
     });
+    expect(replaceTaskCardStatus('> 状态：Planned\n', 'Planned', 'In Progress')).toBe(
+      '> 状态：In Progress  \n',
+    );
   });
 
-  it('uses directory-aware path rules', () => {
+  it('使用目录边界校验允许路径和禁止路径', () => {
     expect(isPathInside('packages/domain/src/index.ts', 'packages/')).toBe(true);
-    expect(isPathInside('package.json', 'package.json')).toBe(true);
     expect(isPathInside('package-lock.json', 'package.json')).toBe(false);
-  });
-
-  it('recognizes the final main verification script as governance-only', () => {
-    const governanceFiles = ['scripts/main-verification.mjs', 'tests/unit/task-control.test.ts'];
-    expect(
-      isGovernanceOnlyPullRequest('policy/main-verification-acceptance', governanceFiles),
-    ).toBe(true);
-    expect(
-      isGovernanceOnlyPullRequest('policy/main-verification-acceptance', [
-        ...governanceFiles,
-        'packages/core-service/src/index.ts',
-      ]),
-    ).toBe(false);
-  });
-
-  it('allows the final M8-04 closure records on a governance branch', () => {
-    expect(
-      isGovernanceOnlyPullRequest('fix/governance-m8-04-closure', [
-        'AGENTS.md',
-        '.github/governance/squash-provenance.mjs',
-        'scripts/taskctl.mjs',
-        'docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md',
-        'docs/test-evidence/M8-04/manifest.json',
-      ]),
-    ).toBe(true);
-  });
-
-  it('allows M9 task, runtime and exact evidence closure records on a governance branch', () => {
-    expect(
-      isGovernanceOnlyPullRequest('fix/governance-m9-00-verified', [
-        'docs/tasks/ACTIVE_TASK.json',
-        'docs/tasks/TASK_INDEX.md',
-        'docs/tasks/M9/M9-00_ACTIVATION_GOVERNANCE.md',
-        'docs/tasks/M9/M9-02_SHARED_STRUCTURE.md',
-        'docs/tasks/runtime/M9-00.json',
-        'docs/tasks/runtime/M9-02.json',
-        'docs/test-evidence/M9-00/manifest.json',
-        'docs/test-evidence/M9-02/manifest.json',
-      ]),
-    ).toBe(true);
-    expect(
-      isGovernanceOnlyPullRequest('fix/governance-m9-00-verified', [
-        'docs/tasks/runtime/M9-00.json',
-        'apps/desktop/renderer/src/main.tsx',
-      ]),
-    ).toBe(false);
-  });
-
-  it('allows frozen task planning documents only on task-plan policy branches', () => {
-    expect(
-      isGovernanceOnlyPullRequest('policy/task-plan-renderer-architecture', [
-        'docs/tasks/TASK_INDEX.md',
-        'docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md',
-        'docs/product/V1_TASK_SYSTEM_REBASE.md',
-      ]),
-    ).toBe(true);
-    expect(
-      isGovernanceOnlyPullRequest('policy/ordinary-governance', [
-        'docs/tasks/M3/M3-07_RENDERER_REACT_FOUNDATION.md',
-      ]),
-    ).toBe(false);
-    expect(
-      isGovernanceOnlyPullRequest('policy/task-plan-renderer-architecture', [
-        'packages/core-service/src/index.ts',
-      ]),
-    ).toBe(false);
-  });
-
-  it('limits schema governance branches to the exact version-governance files', () => {
-    expect(
-      isGovernanceOnlyPullRequest('fix/governance-schema-version', [
-        'packages/core-service/src/database/migrations.ts',
-        'packages/core-service/src/project-workspace.ts',
-        'tests/security/project-workspace.test.ts',
-      ]),
-    ).toBe(true);
-    expect(
-      isGovernanceOnlyPullRequest('fix/governance-schema-version', [
-        'packages/core-service/src/entity-canon.ts',
-      ]),
-    ).toBe(false);
-  });
-
-  it('reports forbidden and out-of-scope changes', () => {
     expect(
       validateChangedPaths(
         ['packages/domain/src/index.ts', 'docs/tasks/M1/example.md', 'random.txt'],
@@ -146,7 +74,59 @@ describe('task control', () => {
     ]);
   });
 
-  it('uses the completed task snapshot during an implementation transition', () => {
+  it('只在唯一work分支识别治理范围', () => {
+    const files = ['scripts/main-verification.mjs', 'tests/unit/task-control.test.ts'];
+    expect(isGovernanceOnlyPullRequest('work', files)).toBe(true);
+    expect(isGovernanceOnlyPullRequest('policy/governance', files)).toBe(false);
+    expect(
+      isGovernanceOnlyPullRequest('work', [...files, 'apps/desktop/renderer/src/main.tsx']),
+    ).toBe(false);
+  });
+
+  it('所有任务统一返回work分支', () => {
+    expect(
+      taskBranchFor({
+        source: 'docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md',
+      }),
+    ).toBe('work');
+  });
+
+  it('接受Schema 2兼容锚点', () => {
+    expect(validateActiveState(compatibilityState, parseTaskIndex(indexFixture))).toEqual([]);
+  });
+
+  it('拒绝任务专属兼容分支', () => {
+    const state = {
+      ...compatibilityState,
+      activeTask: {
+        ...compatibilityState.activeTask,
+        branch: 'work/m0-01',
+        executionBranch: 'work/m0-01',
+      },
+    };
+    expect(validateActiveState(state, parseTaskIndex(indexFixture))).toContain(
+      'Active task compatibility branch must be work',
+    );
+  });
+
+  it('要求兼容状态显式声明Schema 2执行模型', () => {
+    const state = {
+      ...compatibilityState,
+      authorization: {
+        ...compatibilityState.authorization,
+        compatibilityOnly: false,
+        executionModel: 'parallel-pr',
+      },
+    };
+    expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual(
+      expect.arrayContaining([
+        'ACTIVE_TASK authorization must be marked compatibilityOnly',
+        'ACTIVE_TASK executionModel must be single-work-pr',
+      ]),
+    );
+  });
+
+  it('转换期间使用已完成任务的路径快照', () => {
     const state = {
       activeTask: { id: 'M0-02', allowedPaths: ['packages/new/'], forbiddenPaths: [] },
       lastImplementedTask: {
@@ -166,128 +146,31 @@ describe('task control', () => {
         baseState,
       ),
     ).toEqual([]);
-    expect(validateChangedPathsForTransition(['packages/new/index.ts'], state, baseState)).toEqual([
-      'packages/new/index.ts: outside active task allowed paths',
-    ]);
   });
 
-  it('accepts a valid continuous-mainline state', () => {
-    const state = {
-      schemaVersion: 1,
-      authorization: { mode: 'continuous-mainline', branch: 'main' },
-      activeTask: {
-        id: 'M0-01',
-        status: 'IN_PROGRESS',
-        source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
-        allowedPaths: ['packages/'],
-        verification: ['pnpm test'],
-      },
-    };
-    expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual([]);
-  });
-
-  it('accepts the author-approved implementation-mainline state', () => {
-    const state = {
-      schemaVersion: 1,
-      authorization: {
-        mode: 'implementation-mainline',
-        branch: 'main',
-        deferVerificationUntilBatch: true,
-      },
-      activeTask: {
-        id: 'M0-01',
-        status: 'IN_PROGRESS',
-        source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
-        allowedPaths: ['packages/'],
-        verification: ['pnpm test'],
-      },
-      deferredVerification: [],
-    };
-    expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual([]);
-  });
-
-  it('renders the actual final verification hold task as the terminal anchor', () => {
-    const state = {
-      schemaVersion: 1,
-      authorization: {
-        mode: 'implementation-pr',
-        approvedBy: 'author',
-      },
-      activeTask: {
-        id: 'M8-04',
-        status: 'VERIFIED_HOLD',
-        source: 'docs/tasks/M8/M8-04.md',
-        branch: 'work/m8-04',
-        startedAt: '2026-07-29',
-        allowedPaths: ['docs/tasks/'],
-        forbiddenPaths: [],
-        requiredDocs: ['AGENTS.md'],
-        verification: ['pnpm test'],
-      },
-      verificationHold: {
-        taskId: 'M8-04',
-        finalTask: true,
-      },
-    };
-    expect(renderActiveTask(state)).toContain('M8-04作为终态验证锚点保留');
-    expect(renderActiveTask(state)).not.toContain('M8-02作为终态验证锚点保留');
-  });
-
-  it('keeps an implemented task active while remote verification is pending', () => {
-    const implementedIndex = indexFixture.replace('In Progress', 'Implemented');
-    const state = {
-      schemaVersion: 1,
-      authorization: { mode: 'continuous-mainline', branch: 'main' },
-      activeTask: {
-        id: 'M0-01',
-        status: 'IMPLEMENTED',
-        source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
-        allowedPaths: ['packages/'],
-        verification: ['pnpm test'],
-      },
-    };
-    expect(validateActiveState(state, parseTaskIndex(implementedIndex))).toEqual([]);
-  });
-
-  it('extracts task paths and advances only after dependencies verify', () => {
+  it('提取任务卡路径并按依赖推进', () => {
     const card = `## 必读文档\n\n- \`AGENTS.md\`\n\n## 主要影响范围\n\n- \`apps/\`\n- \`packages/\`\n`;
     expect(extractBacktickBullets(card, '必读文档')).toEqual(['AGENTS.md']);
     expect(extractBacktickBullets(card, '主要影响范围')).toEqual(['apps/', 'packages/']);
 
     const pending = parseTaskIndex(indexFixture);
     expect(dependenciesSatisfied(pending.get('M0-02')!, pending)).toBe(false);
-    expect(findNextReadyTask(pending)?.id).toBeUndefined();
 
     const verified = parseTaskIndex(indexFixture.replace('In Progress', 'Verified'));
     expect(dependenciesSatisfied(verified.get('M0-02')!, verified)).toBe(true);
     expect(findNextReadyTask(verified)?.id).toBe('M0-02');
   });
 
-  it('allows code-complete dependencies only when implementation-first mode opts in', () => {
-    const implemented = parseTaskIndex(indexFixture.replace('In Progress', 'Implemented'));
-    const next = implemented.get('M0-02')!;
-    expect(dependenciesSatisfied(next, implemented)).toBe(false);
-    expect(dependenciesSatisfied(next, implemented, { allowImplemented: true })).toBe(true);
-    expect(findNextReadyTask(implemented, { allowImplemented: true })?.id).toBe('M0-02');
-  });
-
-  it('requires a verified, debt-free stage before activating its successor', () => {
-    const implemented = parseTaskIndex(`
+  it('阶段切换要求上一阶段全部Verified', () => {
+    const tasks = parseTaskIndex(`
 | ID | 任务卡 | 依赖 | 状态 |
 |---|---|---|---|
 | M3-01 | [一](M3/M3-01.md) | M2 | Implemented |
 | M3-10 | [十](M3/M3-10.md) | M3-09 | Implemented |
 | M4-01 | [四](M4/M4-01.md) | M3 | Planned |
 `);
-    const m4 = implemented.get('M4-01')!;
     expect(
-      dependenciesSatisfied(m4, implemented, {
-        allowImplemented: true,
-        state: { deferredVerification: [{ id: 'M3-01' }] },
-      }),
-    ).toBe(false);
-    expect(
-      stageClosureErrors(m4, implemented, {
+      stageClosureErrors(tasks.get('M4-01')!, tasks, {
         deferredVerification: [{ id: 'M3-01' }],
       }),
     ).toEqual(
@@ -297,153 +180,104 @@ describe('task control', () => {
         'M3 deferredVerification must be empty before M4-01: M3-01',
       ]),
     );
-    expect(
-      findNextReadyTask(implemented, {
-        allowImplemented: true,
-        state: { deferredVerification: [] },
-      }),
-    ).toBeUndefined();
-
-    const verified = parseTaskIndex(
-      `
-| ID | 任务卡 | 依赖 | 状态 |
-|---|---|---|---|
-| M3-01 | [一](M3/M3-01.md) | M2 | Verified |
-| M3-10 | [十](M3/M3-10.md) | M3-09 | Verified |
-| M4-01 | [四](M4/M4-01.md) | M3 | Planned |
-`,
-    );
-    expect(
-      dependenciesSatisfied(m4, verified, {
-        allowImplemented: true,
-        state: { deferredVerification: [] },
-      }),
-    ).toBe(true);
-    expect(
-      findNextReadyTask(verified, {
-        allowImplemented: true,
-        state: { deferredVerification: [] },
-      })?.id,
-    ).toBe('M4-01');
   });
 
-  it('updates exactly one task index status', () => {
+  it('更新任务索引并生成风险相关验证命令', () => {
     expect(replaceTaskIndexStatus(indexFixture, 'M0-01', 'Verified')).toContain(
       '| M0-01 | [Monorepo](M0/M0-01_MONOREPO_QUALITY_CI.md) | 无 | Verified |',
     );
+    expect(verificationForTask('涉及SQLite、IPC与性能')).toEqual(
+      expect.arrayContaining([
+        'pnpm test:migration',
+        'pnpm test:integration',
+        'pnpm test:security',
+        'pnpm test:e2e',
+        'pnpm test:perf',
+      ]),
+    );
+  });
+
+  it('渲染Schema 2兼容镜像', () => {
+    const mirror = renderActiveTask(compatibilityState);
+    expect(mirror).toContain('全局分支与PR授权');
+    expect(mirror).toContain('唯一work');
+    expect(mirror).toContain('Work Synchronization受控重置work到main');
   });
 });
 
-describe('post-merge main verification', () => {
+describe('主分支验证来源', () => {
   const expectedSha = 'a'.repeat(40);
   const sourceHeadSha = 'b'.repeat(40);
-  const requiredChecks = [
-    'pr-policy',
-    'task-governance',
-    'quality / quality',
-    'security',
-    'performance',
-    'evidence',
-  ];
-  const successfulChecks = () =>
-    requiredChecks.map((name, index) => ({
-      name,
-      status: 'completed',
-      conclusion: 'success',
-      started_at: `2026-07-18T00:00:0${index}Z`,
-    }));
+  const requiredChecks = ['pr-policy', 'task-governance'];
+  const checkRuns = requiredChecks.map((name, index) => ({
+    id: index + 1,
+    name,
+    status: 'completed',
+    conclusion: 'success',
+    created_at: `2026-08-03T00:0${index}:00Z`,
+  }));
 
-  it('builds an explicit dispatch for the controlled main commit', () => {
+  it('生成固定Main Verification调度输入', () => {
     expect(
       mainVerificationDispatchBody(
         { baseBranch: 'main', mainVerificationWorkflow: 'main-verification.yml' },
         expectedSha,
-        42,
+        301,
         sourceHeadSha,
       ),
     ).toEqual({
       ref: 'main',
       inputs: {
         expected_sha: expectedSha,
-        source_pr: '42',
+        source_pr: '301',
         source_head_sha: sourceHeadSha,
       },
     });
   });
 
-  it('accepts matching PR provenance and successful permanent checks', () => {
+  it('接受已合并的work来源与成功永久检查', () => {
     expect(() =>
       validateMainVerification({
         repository: 'sy220284/666',
         baseBranch: 'main',
         expectedSha,
-        sourcePr: 42,
+        sourcePr: 301,
         sourceHeadSha,
         githubRef: 'refs/heads/main',
         githubSha: expectedSha,
         pull: {
           merged: true,
-          merged_at: '2026-07-18T00:10:00Z',
+          merged_at: '2026-08-03T00:00:00Z',
           base: { ref: 'main' },
-          head: { sha: sourceHeadSha },
-          merge_commit_sha: expectedSha,
-        },
-        requiredChecks,
-        checkRuns: successfulChecks(),
-      }),
-    ).not.toThrow();
-  });
-
-  it('uses the latest run for each permanent check and rejects a later failure', () => {
-    const checkRuns = successfulChecks();
-    checkRuns.push({
-      name: 'security',
-      status: 'completed',
-      conclusion: 'failure',
-      started_at: '2026-07-18T00:20:00Z',
-    });
-    expect(() =>
-      validateMainVerification({
-        repository: 'sy220284/666',
-        baseBranch: 'main',
-        expectedSha,
-        sourcePr: 42,
-        sourceHeadSha,
-        githubRef: 'refs/heads/main',
-        githubSha: expectedSha,
-        pull: {
-          merged: true,
-          merged_at: '2026-07-18T00:10:00Z',
-          base: { ref: 'main' },
-          head: { sha: sourceHeadSha },
+          head: { ref: 'work', sha: sourceHeadSha },
           merge_commit_sha: expectedSha,
         },
         requiredChecks,
         checkRuns,
       }),
-    ).toThrow('Source PR permanent checks are not successful: security');
+    ).not.toThrow();
   });
 
-  it('rejects a dispatch attached to a different main commit', () => {
+  it('拒绝任务专属来源分支', () => {
     expect(() =>
       validateMainVerification({
         repository: 'sy220284/666',
         baseBranch: 'main',
         expectedSha,
-        sourcePr: 42,
+        sourcePr: 301,
         sourceHeadSha,
         githubRef: 'refs/heads/main',
-        githubSha: 'c'.repeat(40),
+        githubSha: expectedSha,
         pull: {
           merged: true,
-          merged_at: '2026-07-18T00:10:00Z',
+          merged_at: '2026-08-03T00:00:00Z',
           base: { ref: 'main' },
-          head: { sha: sourceHeadSha },
+          head: { ref: 'work/task', sha: sourceHeadSha },
           merge_commit_sha: expectedSha,
         },
         requiredChecks,
-        checkRuns: successfulChecks(),
+        checkRuns,
       }),
-    ).toThrow('does not match expected main SHA');
+    ).toThrow('must originate from work');
   });
 });

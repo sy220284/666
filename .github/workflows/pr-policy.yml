@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: pr-policy-${{ github.event.pull_request.number }}
@@ -18,6 +19,7 @@ jobs:
     timeout-minutes: 25
     env:
       TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
+      TASK_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
       TASK_EVENT_NAME: pull_request
       TASK_PR_HEAD_REF: ${{ github.head_ref }}
       TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
@@ -38,13 +40,10 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Assert clean working tree before policy validation
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Validate real PR branch
-        run: |
-          if node .github/governance/parallel-task-policy.mjs has-marker; then
-            node .github/governance/parallel-task-policy.mjs pr-policy
-          else
-            node .github/governance/verification-hold-taskctl.mjs pr-policy
-          fi
+      - name: Validate unique work pull request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/governance/single-work-policy.mjs validate
       - name: Validate permanent automation inventory
         run: node .github/governance/automation-layout-policy.mjs
       - name: Validate permanent CI policy
@@ -75,11 +74,10 @@ jobs:
           retention-days: 1
       - name: Reject tracked root scratch artifacts
         run: test ! -e tmp
-      - name: Self-test workflow order guards
+      - name: Self-test permanent work policy
         run: |
+          node .github/governance/single-work-policy.mjs self-test
           node .github/governance/automerge-base-gate.mjs self-test
-          node .github/governance/task-transition-policy.mjs self-test
-          node .github/governance/verification-hold-taskctl.mjs self-test
           node .github/governance/pr-policy-self-test.mjs
       - name: Assert clean working tree after policy validation
         if: always()

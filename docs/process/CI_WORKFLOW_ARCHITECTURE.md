@@ -1,51 +1,41 @@
 # WorldForge CI与永久门禁架构
 
+> 状态：Active  
+> 分支模型：唯一`work`，稳定`main`
+
 ## 1. 工作流分层
 
 | 工作流 | 触发 | 职责 | 必需检查 |
 |---|---|---|---|
-| `PR Policy` | PR→main，含Draft | 分支、治理白名单、永久CI策略与Draft路由自检 | `pr-policy` |
-| `Task Governance` | PR→main，含Draft | 任务状态、镜像、允许路径和任务转换 | `task-governance` |
-| `Quality` | PR→main，含Draft | 静态检查；代码PR执行Unit、Integration、Migration、Coverage、Electron E2E和Build | `quality / quality` |
-| `Security` | PR→main，含Draft | 凭据扫描始终执行；依赖与应用安全按变更路由 | `security` |
-| `Performance` | PR→main、手动，含Draft | 按性能敏感路径执行，未命中时显式成功退出 | `performance` |
-| `Evidence` | PR→main、每周、手动，含Draft | PR校验变化证据；定时/手动全量重放 | `evidence` |
-| `Engineering Validation` | 手动、可复用调用 | 对精确提交执行固定只读专项验证并输出诊断工件 | 否 |
-| `Controlled Merge` | 永久检查完成 | 聚合相同Head SHA并squash合并 | 否 |
-| `Main Verification` | 合并后幂等调度 | 核验最终SHA、来源门禁和静态一致性 | `main-verification` |
-| `Repository Governance` | 治理PR、每周、手动 | 审计永久自动化与原生Ruleset | 否 |
-| `Branch Hygiene` | 每周、手动 | 报告并可选清理安全废弃分支 | 否 |
-| `Release` | 手动 | 完整发布门和三平台打包 | 否 |
+| PR Policy | PR→main | 验证唯一`work → main`、自动化布局和CI策略 | `pr-policy` |
+| Task Governance | PR→main | 验证授权Schema、任务Runtime和路径边界 | `task-governance` |
+| Quality | PR→main | 静态、Unit、Integration、Migration、Coverage、E2E和Build | `quality / quality` |
+| Security | PR→main | 凭据、依赖与应用安全 | `security` |
+| Performance | PR→main、手动 | 性能预算与AI Eval路由 | `performance` |
+| Evidence | PR、每周、手动 | 变化Evidence与全量Verified Evidence | `evidence` |
+| Controlled Merge | 永久检查完成 | 聚合同一Head并Squash合并 | 否 |
+| Main Verification | 合并后 | 核验最终main SHA、来源PR、来源Head和静态一致性 | `main-verification` |
+| Work Synchronization | Main Verification成功 | CAS保护下重置work到已验证main | 否 |
+| Branch Hygiene | 每周、手动、主分支验证后 | 审计仓库只存在main和work | 否 |
+| Repository Governance | 治理PR、每周、手动 | 审计永久自动化和原生Ruleset | 否 |
+| Release | 手动 | 发布门与三平台打包 | 否 |
 
-`quality-core.yml`由Quality、Main Verification、Release和Engineering Validation复用。调用方显式选择静态模式或完整产品验证模式。PR Quality无论Draft或Ready都不得选择静态模式；Main Verification仍可在已通过来源PR完整门禁后执行最终SHA静态复核。
+## 2. PR门禁
 
-## 2. Draft持续验证
-
-Draft用于阻止合并，不用于削弱代码验证。每次`opened`、`synchronize`、`reopened`、`ready_for_review`或`converted_to_draft`都重新运行永久检查。
-
-代码承载的Draft必须执行：
+所有正式PR必须满足：
 
 ```text
-PR Policy
-+ Task Governance
-+ Evidence变化文档检查
-+ Quality静态检查
-+ Unit / Integration / Migration
-+ Coverage
-+ Electron E2E
-+ Build
-+ Security凭据扫描
-+ 路由命中的Dependency Audit与Application Security
-+ 路由命中的Performance
+Head = work
+Base = main
+来源仓库 = 当前仓库
+开放work → main PR数量 = 1
 ```
 
-文档-only PR仍可由路径路由跳过产品测试、Coverage、E2E和Build，但必须执行静态、治理、Evidence与安全基础门。路径降级依据文件变化，禁止依据Draft状态降级。
+禁止通过分支前缀识别治理任务。治理或任务类型由PR正文标记、Runtime和变更路径共同确定。
 
-Draft结果不能授权合并。转为Ready后，同一Head会因`ready_for_review`再次运行全部永久检查，Controlled Merge只接受当前Head最新成功结果。
+Draft只限制合并，不用于跳过代码验证。文档-only降级必须基于变更路径。
 
-## 3. Ready门禁
-
-进入main前要求六项聚合检查成功：
+## 3. Ready聚合检查
 
 ```text
 pr-policy
@@ -56,144 +46,59 @@ pr-policy
 + evidence
 ```
 
-其中：
+Controlled Merge只接受当前Head最新一轮成功结果，并再次确认PR未落后main、无Changes Requested、无线程未解决。
 
-- Quality对代码PR运行Unit、Integration、Migration、Coverage、Electron E2E和Build；
-- Package Smoke留在Release或显式启用的复用发布门，不属于普通PR Quality；
-- Security的Dependency Audit只在依赖或Workflow输入变化时执行；
-- Application Security只在Main、Preload、IPC、Core、Migration、安全测试或相关策略变化时执行；
-- Performance只在性能敏感路径变化或手动触发时执行；
-- 未命中重型路由的工作流仍运行并返回同名成功检查，Controlled Merge无需猜测缺失状态；
-- Evidence校验本次变化的任务证据文档。
+## 4. Main Verification与任务关闭
 
-Node V8 Coverage只统计可以在同进程Unit、Integration、Migration与Security测试中执行的产品业务源。Electron主进程启动与IPC编排壳、Preload入口、Renderer边界生命周期壳、Utility Process路由入口和Worker入口由独立Security及Electron E2E强制验证，因此从Node覆盖率分母中显式排除。核心服务、数据库、合同、领域、编辑器和Prompt逻辑继续纳入统计，四项全局门槛均保持75%，不得通过降低门槛掩盖缺测。
-
-## 4. 职责去重
-
-三个治理门禁保持单一职责：
+Main Verification输入固定包含：
 
 ```text
-PR Policy
-└─ PR分支、自动化布局、CI策略、Draft路由不降级
-
-Task Governance
-└─ ACTIVE_TASK、镜像、allowedPaths、任务转换
-
-Evidence
-└─ 证据文档完整性与来源提交
+expected_sha
+source_pr
+source_head_sha
 ```
 
-Task Governance不得重复调用`taskctl pr-policy`或Evidence结构校验。Evidence不得重复验证任务分支和allowedPaths。
+验证内容：
 
-## 5. Controlled Merge
+1. 工作流运行SHA与最终main SHA一致；
+2. 来源PR为已合并的`work → main`；
+3. 来源Head与受检Head一致；
+4. 来源六项永久检查成功；
+5. 最终main静态检查成功；
+6. 发布`main-verification`及任务验证状态。
 
-Controlled Merge从`main`读取已审计脚本，聚合相同PR Head SHA的六项检查，并再次确认：
+PR Head中的Runtime最高声明到`IMPLEMENTED`。有效Verified由来源绑定和任务验证状态计算，不再通过第二个关闭PR写入。
 
-- PR为Ready且未变更Head；
-- 分支未落后`main`；
-- 没有Changes Requested；
-- 没有未解决线程；
-- 六项检查属于当前Head的最新运行；
-- 路由后的Security与Performance步骤真实成功。
+## 5. Work Synchronization
 
-合并固定使用squash，并向Merge API绑定受检SHA。
+该工作流拥有`contents: write`，仅用于更新`refs/heads/work`，不得写main或修改文件。
 
-## 6. Main Verification
+执行条件：
 
-合并后不重复来源PR已执行的完整套件。Main Verification执行：
+- Main Verification成功；
+- 当前main仍为受检SHA；
+- 能解析来源`work → main` PR；
+- work仍等于来源受检Head或已不存在；
+- 没有新的开放work PR。
 
-1. 最终`main` SHA和输入SHA一致；
-2. 来源PR、来源Head和merge SHA一致；
-3. 来源六项永久检查成功；
-4. 在最终提交上执行task、workspace、boundary、format、lint、typecheck；
-5. 发布`main-verification`状态。
+满足后将work受控重置为已验证main。work已移动时必须失败，禁止覆盖新提交。
 
-下一次Controlled Merge只等待当前main的最终状态，不重复运行Unit、Integration、Migration、E2E、Package、Security和Performance。
+## 6. Branch Hygiene
 
-## 7. Evidence
-
-Evidence采用文档记录：
+Branch Hygiene只读审计分支清单：
 
 ```text
-summary.md
-commands.txt
-known-risks.md
-manifest.json
+允许：main、work
+其他任何分支：失败并报告
 ```
 
-不要求截图、截图清单、单独人工验收文件或单独质量矩阵。人工复核和质量结论直接写入`summary.md`。
+分支同步由Work Synchronization负责；两类职责不得合并。
 
-运行范围：
+## 7. 永久自动化约束
 
-- PR，包括Draft：校验变化目录；
-- 每周或手动：全量重放全部`Verified`任务；
-- 里程碑与Release：按需手动全量运行。
-
-Actions Artifact只用于失败诊断，不能替代版本化文档，也不应为了证据生成无人查看的截图。
-
-## 8. 阶段关闭
-
-实现优先模式下，任务完成真实代码和专项验证后可登记`Implemented`并进入延期账本。普通任务不再逐张创建纯Evidence/Verified关闭PR。
-
-M3-06至M3-10连续实现，M3-10后统一执行M3批次复验；进入M4前完成M3全部必要关闭。
-
-## 9. 安全与发布边界
-
-- Secret Scan每个PR状态、每次提交均执行；
-- 数据、Migration、恢复、IPC、路径和凭据边界失败始终阻断；
-- Release保持手动触发，完整执行Quality、Security、Performance和三平台Package；
-- 日常开发优化不得削弱Draft、Ready、发布门或数据安全门。
-
-## 10. 工程专项验证
-
-`engineering-validation.yml`用于跨任务复用的只读专项验证，输入只允许完整`source_sha`和固定`profile`。它不参与六项必需检查，也不替代普通PR Quality、Security、Performance或Evidence。
-
-固定Profile：
-
-```text
-static
-├─ 复用Quality Core静态路径
-
-full
-├─ 复用Quality Core完整产品验证
-
-package-smoke
-├─ 复用Quality Core完整验证与Package Smoke
-
-contract-surface
-├─ 构建Contracts
-├─ 采集公开运行时导出、IPC Channel、Registered Command和协议版本
-├─ 计算公开声明文件SHA-256
-└─ 上传诊断JSON
-
-windows-ime
-├─ 核验Microsoft拼音Profile
-├─ 构建Desktop
-├─ 运行真实Windows拼音验收
-└─ 上传IME诊断
-
-dependency-diagnostic
-├─ 冻结安装
-├─ 输出工具与依赖清单
-├─ 执行高危依赖审计
-└─ 上传依赖诊断
-```
-
-约束：
-
-- 必须精确检出输入提交，并验证完整40位SHA；
-- 只允许`contents: read`，不得使用Environment、Secrets或写权限；
-- 不接受任意命令、任意Runner、目标分支或Artifact路径输入；
-- 不得提交、推送、修改任务状态、产品文档或正式源码；
-- 输出只能作为诊断工件，不能替代PR Head和版本化Evidence；
-- 验证前后继续执行clean-tree检查。
-
-## 11. 永久自动化约束
-
-- 工作流必须通用，不得硬编码任务ID、固定PR、固定任务分支或一次性修复；
-- Draft状态只能限制合并，禁止作为整块跳过永久检查的条件；
-- 文档-only或非敏感路径降级必须由明确文件路由决定；
-- 禁止`pull_request_target`、`repository_dispatch`和业务工作流直接写`main`；
-- Checkout关闭凭据持久化；
-- 正式门禁验证已提交PR Head，前后执行clean-tree检查；
-- 新增或改变永久能力必须同步更新CI策略和本架构文档。
+- 工作流必须通用，不得硬编码任务ID、PR编号或任务分支。
+- 禁止`pull_request_target`、`repository_dispatch`和业务工作流直接写main。
+- Checkout必须关闭凭据持久化。
+- 正式门禁验证已提交PR Head，前后执行clean-tree检查。
+- 只有Controlled Merge可以写main；只有Work Synchronization可以更新work。
+- 新增永久能力必须同步自动化库存、CI策略、文档和测试。

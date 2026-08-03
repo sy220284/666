@@ -7,10 +7,11 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: task-governance-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   task-governance:
@@ -18,6 +19,7 @@ jobs:
     timeout-minutes: 10
     env:
       TASK_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+      TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
       TASK_EVENT_NAME: ${{ github.event_name }}
       TASK_PR_HEAD_REF: ${{ github.head_ref }}
       TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
@@ -28,57 +30,21 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Resolve effective PR base
-        run: |
-          base_ref="$(git merge-base "origin/${TASK_BASE_BRANCH}" HEAD)"
-          echo "TASK_BASE_REF=${base_ref}" >> "$GITHUB_ENV"
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
       - name: Assert clean working tree before task validation
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Detect parallel task marker
-        id: parallel
+      - name: Validate unique work task governance
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/governance/single-work-policy.mjs validate
+      - name: Validate Schema 2 task state
+        run: node .github/governance/single-work-taskctl.mjs validate
+      - name: Self-test task governance
         run: |
-          if node .github/governance/parallel-task-policy.mjs has-marker; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Validate parallel task PR
-        if: ${{ steps.parallel.outputs.enabled == 'true' }}
-        run: node .github/governance/parallel-task-policy.mjs validate
-      - name: Materialize base task state
-        if: ${{ steps.parallel.outputs.enabled != 'true' }}
-        run: |
-          git show "${TASK_BASE_REF}:docs/tasks/ACTIVE_TASK.json" > "$RUNNER_TEMP/base-active-task.json"
-          git show "${TASK_BASE_REF}:docs/tasks/TASK_INDEX.md" > "$RUNNER_TEMP/base-task-index.md"
-      - name: Validate active task and generated mirror
-        if: ${{ steps.parallel.outputs.enabled != 'true' }}
-        run: node .github/governance/verification-hold-taskctl.mjs validate
-      - name: Validate changed paths
-        if: ${{ steps.parallel.outputs.enabled != 'true' }}
-        run: node .github/governance/verification-hold-taskctl.mjs preflight
-      - name: Self-test checkpoint policy
-        run: node .github/governance/task-checkpoint-policy.mjs self-test
-      - name: Validate task transition for Ready PRs
-        if: ${{ steps.parallel.outputs.enabled != 'true' && (startsWith(github.head_ref, 'policy/') || startsWith(github.head_ref, 'chore/governance-') || startsWith(github.head_ref, 'fix/governance-') || !contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->')) }}
-        env:
-          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
-          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
-        run: node .github/governance/task-transition-policy.mjs
-      - name: Validate active task checkpoint
-        if: ${{ steps.parallel.outputs.enabled != 'true' && !startsWith(github.head_ref, 'policy/') && !startsWith(github.head_ref, 'chore/governance-') && !startsWith(github.head_ref, 'fix/governance-') && contains(github.event.pull_request.body || '', '<!-- task-checkpoint -->') }}
-        env:
-          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
-          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
-        run: node .github/governance/task-checkpoint-policy.mjs
-      - name: Enforce milestone close and evidence reachability
-        if: ${{ steps.parallel.outputs.enabled != 'true' }}
-        env:
-          TASK_BASE_STATE_PATH: ${{ runner.temp }}/base-active-task.json
-          TASK_BASE_INDEX_PATH: ${{ runner.temp }}/base-task-index.md
-        run: node .github/governance/stage-close-policy.mjs
+          node .github/governance/single-work-policy.mjs self-test
+          node .github/governance/single-work-taskctl.mjs validate
       - name: Assert clean working tree after task validation
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

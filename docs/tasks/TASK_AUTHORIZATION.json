@@ -1,9 +1,15 @@
 {
-  "schemaVersion": 1,
-  "mode": "parallel-pr",
+  "schemaVersion": 2,
+  "mode": "single-work-pr",
   "baseBranch": "main",
+  "workBranch": "work",
   "allowDirectMainCommits": false,
+  "allowAdditionalBranches": false,
+  "maxOpenWorkPullRequests": 1,
   "mainWriteMode": "serialized",
+  "mergeMethod": "squash",
+  "verificationClosure": "main-status",
+  "workSynchronization": "verified-reset",
   "taskRuntimeDirectory": "docs/tasks/runtime",
   "prTaskMarker": "worldforge-task"
 }

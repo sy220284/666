@@ -15,7 +15,7 @@ AGENTS.md
 → 任务卡列出的专项真源、现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9、M10-01及M10-02均已完成Verified闭环，当前没有活动开发任务。
+`TASK_AUTHORIZATION.json`定义唯一`work`分支、任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9、M10-01及M10-02均已完成Verified闭环，当前没有活动开发任务。
 
 ## 2. 当前基线
 
@@ -49,16 +49,17 @@ M10-02来源PR #297已Squash合并至产品代码基线`main@ca83d48c7493bba2125
 
 ```text
 仓库状态：VERIFIED_HOLD
-基线分支：main
+稳定分支：main
+唯一工作分支：work
 产品代码基线：ca83d48c7493bba21252a37f9aec024d6aa0ca79
 main写入：serialized
 直接main提交：禁止
+允许正式PR：仅work → main
 活动任务：0
-活动分支：无
 活动PR：无
 ```
 
-后续开发必须重新立项，创建独立任务卡、Runtime、工作分支和PR绑定；不得沿用M9-03、M10-01或M10-02的已关闭Runtime继续开发。
+后续开发必须重新立项，创建独立任务卡和Runtime，并在唯一`work`分支执行；不得沿用M9-03、M10-01或M10-02的已关闭Runtime继续开发，不得创建任务专属分支。
 
 ## 4. 权威顺序
 
@@ -92,17 +93,19 @@ M10-02任务卡：[`docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md`](tasks/M10/M10-02_
 
 ```text
 重新立项并冻结范围
-→ 创建任务卡、Runtime与统一工作分支PR绑定
+→ 将唯一work同步至最新已验证main
+→ 创建任务卡、Runtime并绑定唯一work → main PR
 → 核对依赖、允许路径、行为不变量和结构预算
 → 建立行为测试或稳定复现
-→ 实施并完成专项回归
+→ 在work实施并完成专项回归
 → 执行完整质量矩阵
 → 更新任务卡、Runtime与Evidence
 → Draft转Ready
 → 永久门禁全部成功
 → 使用expected_head_sha受控合并
 → 等待main-verification成功
-→ 独立治理关闭为Verified或进入下一任务
+→ Work Synchronization在安全条件满足时同步work到main
+→ 重新读取main与work后再开始下一任务
 ```
 
 ## 7. GitHub Actions工具链
@@ -128,4 +131,4 @@ Windows中文输入：系统内置Microsoft Pinyin
 - 无AI写作、保存、历史版本、导出和恢复始终必须可用。
 - 测试、构建、发布和平台结论必须来自真实运行。
 - PR Head检查成功不等于main验证成功；合并后必须复核最终main SHA及`main-verification`。
-- 当前无授权开发任务；任何新增改动必须先建立独立任务Runtime。
+- 当前无授权开发任务；任何新增改动必须先建立独立任务Runtime，并在唯一`work`分支执行。

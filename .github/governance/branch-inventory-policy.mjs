@@ -4,6 +4,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const requiredBranches = Object.freeze(['main', 'work']);
+
 async function api(pathname) {
   const response = await fetch(new URL(pathname, 'https://api.github.com'), {
     headers: {
@@ -17,7 +19,21 @@ async function api(pathname) {
 }
 
 export function invalidBranches(names) {
-  return names.filter((name) => !['main', 'work'].includes(name)).sort();
+  return names.filter((name) => !requiredBranches.includes(name)).sort();
+}
+
+export function missingBranches(names) {
+  const actual = new Set(names);
+  return requiredBranches.filter((name) => !actual.has(name));
+}
+
+export function branchInventoryErrors(names) {
+  const errors = [];
+  const invalid = invalidBranches(names);
+  const missing = missingBranches(names);
+  if (invalid.length > 0) errors.push(`Unexpected repository branches: ${invalid.join(', ')}`);
+  if (missing.length > 0) errors.push(`Missing required repository branches: ${missing.join(', ')}`);
+  return errors;
 }
 
 async function main() {
@@ -32,18 +48,21 @@ async function main() {
     if (batch.length < 100) break;
   }
   const invalid = invalidBranches(branches);
+  const missing = missingBranches(branches);
+  const errors = branchInventoryErrors(branches);
   const output = process.env.BRANCH_INVENTORY_OUTPUT ?? 'artifacts/branch-hygiene';
   await mkdir(output, { recursive: true });
   await writeFile(
     path.join(output, 'branch-inventory.json'),
-    `${JSON.stringify({ branches: branches.sort(), invalid }, null, 2)}\n`,
+    `${JSON.stringify({ branches: branches.sort(), invalid, missing }, null, 2)}\n`,
   );
-  if (invalid.length > 0) throw new Error(`Unexpected repository branches: ${invalid.join(', ')}`);
-  console.log('Branch inventory contains only main and work.');
+  if (errors.length > 0) throw new Error(errors.join('\n'));
+  console.log('Branch inventory contains exactly main and work.');
 }
 
 function selfTest() {
-  assert.deepEqual(invalidBranches(['work', 'main']), []);
+  assert.deepEqual(branchInventoryErrors(['work', 'main']), []);
+  assert.deepEqual(missingBranches(['main']), ['work']);
   assert.deepEqual(invalidBranches(['main', 'work/task', 'policy/x']), ['policy/x', 'work/task']);
   console.log('Branch inventory self-test passed.');
 }

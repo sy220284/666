@@ -57,8 +57,8 @@ describe('主分支任务有效验证', () => {
     expect(mainVerificationStatusPayload(true, 'https://example.test').context).toBe(
       'main-verification',
     );
-    expect(taskVerificationStatusPayload('M10-03', true, 'https://example.test').context).toBe(
-      'task-verification/M10-03',
-    );
+    expect(
+      taskVerificationStatusPayload('M10-03', true, 'https://example.test').context,
+    ).toBe('task-verification/M10-03');
   });
 });

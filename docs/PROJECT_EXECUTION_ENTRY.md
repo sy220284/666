@@ -1,7 +1,7 @@
 # WorldForge 项目执行统一入口
 
-> 状态：VERIFIED_HOLD
-> 面向：Codex、开发者、审查者、测试人员
+> 状态：VERIFIED_HOLD  
+> 面向：开发、审查、测试、治理与发布
 
 ## 1. 启动顺序
 
@@ -9,123 +9,89 @@
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/TASK_AUTHORIZATION.json
-→ docs/tasks/ACTIVE_TASK.json（终态兼容锚点）
 → docs/tasks/TASK_INDEX.md
-→ 新任务Runtime与独立任务卡
-→ 任务卡列出的专项真源、现有代码、测试、Migration、IPC与Evidence
+→ 当前任务Runtime或ACTIVE_TASK兼容锚点
+→ 当前任务卡与专项真源
+→ 现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。M9、M10-01及M10-02均已完成Verified闭环，当前没有活动开发任务。
+`TASK_AUTHORIZATION.json`是分支、PR和main写入规则的全局机器真源。当前授权模式为`single-work-pr`。`ACTIVE_TASK.json`与`ACTIVE_TASK.md`只保留旧状态机兼容作用，不得覆盖Schema 2授权。
 
-## 2. 当前基线
-
-```text
-M8-09 V1.0稳定性治理（Verified）
-→ M9-00 治理激活与权威文档同步（Verified）
-→ M9-01 / AR-01 重构安全网（Verified）
-→ M9-02 / AR-02 Shared Structure（Verified）
-→ M9-03 / AR-03—AR-14 统一架构拆分（Verified）
-   ├─ Writing、Canon、Planning与AppShell拆分
-   ├─ Contracts、Preload与Main IPC拆分
-   ├─ ServiceFacade、Project Workspace、Recovery与工具域拆分
-   └─ Legacy退役、CSS分层与结构预算收敛
-→ M10-01 异步生命周期与竞态硬化（Verified）
-   ├─ 连续切章与编辑器可编辑状态修复
-   ├─ Task缺口恢复重复Snapshot收敛
-   ├─ 覆盖率与异步交错测试补强
-   └─ pnpm 11.13.1与性能测试隔离
-→ M10-02 全量代码测试与深度审计（Verified）
-   ├─ Renderer、Preload、Main IPC与Core全域审计
-   ├─ 设定提取轮询单飞与卸载保护
-   ├─ DOM安全边界、纯函数与轮询基线补测
-   └─ 同一Head完整质量矩阵与三平台包体复核
-```
-
-M10-02来源PR #297已Squash合并至产品代码基线`main@ca83d48c7493bba21252a37f9aec024d6aa0ca79`；Main Verification运行`30788229139`成功。最终Head的Quality、Security、Performance、Evidence、Task Governance和PR Policy永久门禁全部成功，Linux、Windows、macOS三平台Package Smoke通过。
-
-当前覆盖率：Statements 85.35%、Branches 75.61%、Functions 85.81%、Lines 87.49%；246个测试文件、1063项测试通过。Electron E2E 33/33通过；覆盖门槛、性能预算和覆盖排除清单均未放宽。
-
-## 3. 当前执行模式
+## 2. 当前仓库状态
 
 ```text
 仓库状态：VERIFIED_HOLD
-基线分支：main
-产品代码基线：ca83d48c7493bba21252a37f9aec024d6aa0ca79
-main写入：serialized
+稳定分支：main
+唯一工作分支：work
+活动开发任务：0
 直接main提交：禁止
-活动任务：0
-活动分支：无
-活动PR：无
+允许正式PR：仅work → main
+开放正式PR上限：1
+合并方式：Squash Controlled Merge
 ```
 
-后续开发必须重新立项，创建独立任务卡、Runtime、工作分支和PR绑定；不得沿用M9-03、M10-01或M10-02的已关闭Runtime继续开发。
+M9、M10-01和M10-02均已完成历史Verified闭环。后续开发必须重新立项，建立任务卡和Runtime，并在唯一`work`分支执行。
 
-## 4. 权威顺序
+## 3. 标准闭环
 
 ```text
-作者最新明确指令
-> TASK_AUTHORIZATION、任务Runtime与TASK_INDEX
-> 当前独立任务卡
-> docs/product/WORLDFORGE_V6.5_FULL_SPEC.md
-> 冻结专项规格、ADR、Schema、契约、UI、安全与P0验收
-> docs/decisions/IMPLEMENTATION_DECISIONS.md
-> 现有实现
+从最新已验证main受控同步work
+→ 冻结任务范围、依赖和允许路径
+→ 在work完成实现、测试、文档与Evidence
+→ 创建或更新唯一work → main PR
+→ Draft与Ready永久门禁
+→ Runtime登记IMPLEMENTED及来源绑定
+→ Controlled Merge以受检Head执行Squash
+→ Main Verification核验最终main SHA和来源PR
+→ 发布main-verification与任务验证状态
+→ 任务有效状态转为VERIFIED
+→ Work Synchronization在CAS条件满足时重置work到main
+→ 重新读取main、work和任务状态
 ```
 
-发现冲突时必须记录冲突来源、数据兼容、影响范围和解决方案，禁止静默选择。
+禁止独立任务分支、验证分支、治理分支、纯Evidence分支和纯关闭PR。
 
-## 5. 已验证治理边界
+## 4. 状态解释
 
-- M9保持行为完成架构拆分；M10-01处理已核实的异步竞态与工具链问题；M10-02完成全量自动验证和源码深度审计。
-- 历史Migration、数据库Schema、IPC Channel字符串、`PROTOCOL_VERSION`、正式错误码和公开Bridge方法均保持不变。
-- AI输出继续先进入建议稿，设定更新建议继续由作者裁决，`project.sqlite`继续是作品唯一权威真源。
-- Renderer不得获得Node、文件系统、SQLite、环境变量或凭据能力。
-- 设定提取进度轮询使用单飞调度，慢IPC不会产生同键重叠请求；卸载后不再调度或回写。
-- Legacy入口与旧CSS责任域已完成退役和收敛，结构预算保持0项债务。
-- pnpm执行版本统一为11.13.1；性能预算未放宽，仅隔离测试文件间资源竞争。
+- `PLANNED`：已立项，尚未进入正式实施。
+- `IN_PROGRESS`：正在唯一`work`上实施。
+- `IMPLEMENTED`：受检Head包含完整实现和合并前Evidence，等待主分支验证。
+- `VERIFICATION_PENDING`：计算状态；Main Verification尚未成功。
+- `VERIFIED`：计算状态；Runtime绑定、来源PR、来源Head、main SHA和任务验证提交状态全部一致。
+- `VERIFIED_HOLD`：当前没有自动激活的后续任务。
 
-M9历史入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)。  
-M10-01任务卡：[`docs/tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md`](tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)。  
-M10-02任务卡：[`docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md`](tasks/M10/M10-02_FULL_CODE_AUDIT.md)。
+`Implemented`不能满足发布或最终验收。Verified不再依赖第二个治理关闭PR。
 
-## 6. 后续任务标准闭环
+## 5. Work Synchronization
 
-```text
-重新立项并冻结范围
-→ 创建任务卡、Runtime与统一工作分支PR绑定
-→ 核对依赖、允许路径、行为不变量和结构预算
-→ 建立行为测试或稳定复现
-→ 实施并完成专项回归
-→ 执行完整质量矩阵
-→ 更新任务卡、Runtime与Evidence
-→ Draft转Ready
-→ 永久门禁全部成功
-→ 使用expected_head_sha受控合并
-→ 等待main-verification成功
-→ 独立治理关闭为Verified或进入下一任务
-```
+Main Verification成功后，只有以下条件全部成立才可重置`work`：
 
-## 7. GitHub Actions工具链
+- 受检main仍是当前main；
+- 来源PR确实是已合并的`work → main`；
+- 当前work仍等于来源受检Head，或已被GitHub自动删除；
+- 没有新的开放`work → main` PR；
+- work没有合并后的新提交。
 
-主线工作流是本项目安装与验证工具版本的权威来源：
+任一条件不满足时停止并报告，禁止覆盖新工作。
+
+## 6. GitHub Actions工具链
 
 ```text
 Runner：Ubuntu 24.04 / Windows latest / macOS latest
 Node：24
 pnpm：11.13.1
-依赖安装：pnpm install --frozen-lockfile --prefer-offline
+安装：pnpm install --frozen-lockfile --prefer-offline
 Linux Electron显示依赖：fonts-noto-cjk、xvfb
-Windows中文输入：系统内置Microsoft Pinyin
+Windows中文输入：Microsoft Pinyin
 ```
 
-本地环境缺少同版工具或无法联网安装时，不得用其他版本冒充最终结论；应从GitHub Actions工作流或产物获取同版工具与诊断，再根据精确结果收口。
+本地缺少同版工具或无法联网时，从永久Toolchain Export或Engineering Validation获取同版工具和诊断，不得使用其他版本冒充最终结论。
 
-## 8. 强制规则
+## 7. 强制规则
 
-- 不修改已Verified任务卡、历史Migration和历史Evidence Manifest。
-- 不建立第二套Prompt、任务协议、建议稿采用、导入、恢复、模式、主题或搜索数据真源。
-- 未接通能力不得显示可用，不得写入半成品权威数据。
-- 无AI写作、保存、历史版本、导出和恢复始终必须可用。
-- 测试、构建、发布和平台结论必须来自真实运行。
-- PR Head检查成功不等于main验证成功；合并后必须复核最终main SHA及`main-verification`。
-- 当前无授权开发任务；任何新增改动必须先建立独立任务Runtime。
+- 不修改历史Verified任务卡、Migration和Evidence来源记录。
+- 新建及活动Runtime使用`executionBranch: work`；历史来源分支字段保持冻结。
+- Renderer不得获得Node、文件系统、SQLite、环境变量或凭据能力。
+- AI输出先进入建议稿，设定更新由作者裁决，`project.sqlite`保持唯一作品真源。
+- PR Head成功不等于main验证成功；合并后必须核验最终main SHA和Main Verification。
+- 未真实运行、未写入真实PR Head或未完成主分支验证的内容不得声明完成。

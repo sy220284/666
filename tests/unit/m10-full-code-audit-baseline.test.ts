@@ -56,4 +56,19 @@ describe('M10-02 full-code audit baseline', () => {
     }
     expect(stalePins).toEqual([]);
   });
+
+  it('keeps interval polling limited to implementations with explicit single-flight guards', async () => {
+    const rendererFiles = await collectFiles('apps/desktop/renderer/src');
+    const intervalUsers: string[] = [];
+    for (const file of rendererFiles) {
+      const source = await readFile(path.join(root, file), 'utf8');
+      if (source.includes('setInterval(')) intervalUsers.push(file);
+    }
+    expect(intervalUsers.sort()).toEqual(
+      [
+        'apps/desktop/renderer/src/features/writing/generation-task-subscription.ts',
+        'apps/desktop/renderer/src/runtime/core-recovery-supervisor.ts',
+      ].sort(),
+    );
+  });
 });

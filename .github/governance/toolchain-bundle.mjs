@@ -23,7 +23,7 @@ const profileCommands = {
     ['tsc', ['--version']],
   ],
 };
-const bundledPnpmVersion = '11.13.0';
+const bundledPnpmVersion = '11.13.1';
 
 function option(name, fallback = null) {
   const index = process.argv.indexOf(`--${name}`);
@@ -58,8 +58,7 @@ async function prepare(profile, output, sourceSha) {
   const packages = ['pnpm', ...profileTools];
   const devDependencies = Object.fromEntries(
     packages.map((name) => {
-      const version =
-        name === 'pnpm' ? bundledPnpmVersion : rootPackage.devDependencies?.[name];
+      const version = name === 'pnpm' ? bundledPnpmVersion : rootPackage.devDependencies?.[name];
       if (!version || version.startsWith('workspace:')) {
         throw new Error(`Missing tool version: ${name}`);
       }

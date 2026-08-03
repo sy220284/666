@@ -41,4 +41,13 @@ describe('AR-04 Writing章节会话架构', () => {
     expect(view).toContain('autosave.current?.resume()');
     expect(view).toContain('autosave.current?.markDirty()');
   });
+
+  it('阻止重复Flush并在保存失败时恢复编辑器', async () => {
+    const session = await source('use-chapter-session.ts');
+    expect(session).toContain('chapterOpenIsTemporarilyBlocked(stateRef.current)');
+    expect(session).toContain('chapterOpenRequiresFlush(stateRef.current)');
+    expect(session).toMatch(
+      /if \(!\(await input\.flush\(\)\)\) \{[\s\S]*requestGeneration\.current \+= 1;[\s\S]*input\.editor\.current\?\.setEditable\(!input\.readOnly\);/u,
+    );
+  });
 });

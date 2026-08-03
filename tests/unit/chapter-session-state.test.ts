@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   INITIAL_CHAPTER_SESSION_STATE,
+  chapterOpenIsTemporarilyBlocked,
+  chapterOpenRequiresFlush,
   chapterRequestIsCurrent,
   reduceChapterSession,
+  type ChapterSessionPhase,
 } from '../../apps/desktop/renderer/src/features/writing/chapter-session-state.js';
 
 describe('Writing章节会话状态机', () => {
@@ -41,5 +44,17 @@ describe('Writing章节会话状态机', () => {
       activeDraftId: 'draft-a',
       failure: '读取失败',
     });
+  });
+
+  it('保存和挂载阶段阻止重复切换，加载阶段允许最新请求替代且不重复保存', () => {
+    const state = (phase: ChapterSessionPhase) => ({ ...INITIAL_CHAPTER_SESSION_STATE, phase });
+    expect(chapterOpenIsTemporarilyBlocked(state('flushing'))).toBe(true);
+    expect(chapterOpenIsTemporarilyBlocked(state('switching'))).toBe(true);
+    expect(chapterOpenIsTemporarilyBlocked(state('loading'))).toBe(false);
+    expect(chapterOpenIsTemporarilyBlocked(state('ready'))).toBe(false);
+    expect(chapterOpenRequiresFlush(state('loading'))).toBe(false);
+    for (const phase of ['idle', 'ready', 'flushing', 'switching', 'failed'] as const) {
+      expect(chapterOpenRequiresFlush(state(phase))).toBe(true);
+    }
   });
 });

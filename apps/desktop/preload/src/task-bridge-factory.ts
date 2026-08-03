@@ -17,6 +17,7 @@ import {
 import { ipcRenderer } from 'electron';
 
 import { envelope, invoke } from './bridge-runtime.js';
+import { TaskGapRecoveryCoordinator } from './task-gap-recovery.js';
 
 interface IsolatedMessagePort {
   onmessage: ((event: { readonly data: unknown }) => void) | null;
@@ -61,7 +62,7 @@ export function createTaskBridge(): Pick<WorldforgeBridge, 'task'> {
     subscribe: (listener, projectId) => {
       const channel = new MessageChannelConstructor();
       const cursor = new TaskEventCursor();
-      const recoveries = new Set<string>();
+      const recoveries = new TaskGapRecoveryCoordinator();
       let closed = false;
 
       channel.port1.onmessage = ({ data }) => {
@@ -84,20 +85,22 @@ export function createTaskBridge(): Pick<WorldforgeBridge, 'task'> {
           }
           return;
         }
-        if (disposition.kind !== 'gap' || recoveries.has(parsed.data.taskId)) {
+        if (disposition.kind !== 'gap') {
           acknowledge();
           return;
         }
 
-        recoveries.add(parsed.data.taskId);
-        void task
-          .getSnapshot(parsed.data.taskId, parsed.data.projectId)
-          .then((result) => {
-            if (!result.ok || closed) return;
+        const taskId = parsed.data.taskId;
+        const shouldRecover = recoveries.begin(taskId);
+        if (shouldRecover) {
+          void recoveries.run(taskId, async () => {
+            const result = await task.getSnapshot(taskId, parsed.data.projectId);
+            if (!result.ok || closed) return false;
             cursor.restore(result.data);
             listener({ kind: 'snapshot', snapshot: result.data, reason: 'sequence-gap' });
-          })
-          .finally(() => recoveries.delete(parsed.data.taskId));
+            return true;
+          });
+        }
         acknowledge();
       };
       channel.port1.start();

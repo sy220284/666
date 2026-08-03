@@ -5,7 +5,7 @@
   "description": "Local-first desktop writing workstation for a single author",
   "license": "AGPL-3.0-only",
   "type": "module",
-  "packageManager": "pnpm@11.13.0",
+  "packageManager": "pnpm@11.13.1",
   "engines": {
     "node": ">=24.0.0",
     "pnpm": ">=11.0.0"
@@ -30,7 +30,7 @@
     "test:e2e": "pnpm build && node scripts/run-electron-e2e.mjs",
     "test:security": "vitest run tests/security",
     "test:migration": "pnpm test:prepare && vitest run tests/migration",
-    "test:perf": "pnpm test:prepare && vitest run tests/performance",
+    "test:perf": "pnpm test:prepare && vitest run tests/performance --no-file-parallelism",
     "test:eval": "pnpm test:prepare && vitest run tests/performance/ai-output-protocol.test.ts tests/performance/ai-eval-baseline.test.ts",
     "check:language": "node scripts/check-author-language.mjs",
     "check:structure": "node scripts/check-source-structure.mjs",

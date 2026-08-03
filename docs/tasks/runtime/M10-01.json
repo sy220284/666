@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "M10-01",
+  "status": "IN_PROGRESS",
+  "source": "docs/tasks/M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md",
+  "startedAt": "2026-08-03",
+  "dependencies": [
+    "M9-03"
+  ],
+  "branch": "work/m10-01-async-lifecycle-hardening",
+  "priority": "P1",
+  "scope": [
+    "修复连续章节切换导致的编辑器禁用残留",
+    "加固Task事件缺口恢复期间的后续事件处理",
+    "增加异步交错测试并提高覆盖率余量"
+  ],
+  "allowedPaths": [
+    "apps/desktop/renderer/src/features/writing/",
+    "apps/desktop/preload/src/",
+    "tests/unit/",
+    "docs/tasks/M10/",
+    "docs/tasks/runtime/M10-01.json",
+    "docs/test-evidence/M10-01/"
+  ],
+  "forbiddenPaths": [
+    ".github/workflows/",
+    "migrations/",
+    "packages/contracts/src/",
+    "packages/core-service/src/",
+    "packages/domain/src/",
+    "packages/editor-core/src/",
+    "packages/prompts/src/",
+    "docs/test-evidence/M0/",
+    "docs/test-evidence/M1/",
+    "docs/test-evidence/M2/",
+    "docs/test-evidence/M3/",
+    "docs/test-evidence/M4-04/",
+    "docs/test-evidence/M8-02/",
+    "docs/test-evidence/M8-04/",
+    "docs/test-evidence/M8-05/",
+    "docs/test-evidence/M8-06/",
+    "docs/test-evidence/M8-07/",
+    "docs/test-evidence/M8-08/",
+    "docs/test-evidence/M8-09/",
+    "docs/test-evidence/M9-00/",
+    "docs/test-evidence/M9-02/",
+    "docs/test-evidence/M9-03/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:language",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e",
+    "pnpm release:check"
+  ]
+}

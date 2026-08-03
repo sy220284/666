@@ -198,6 +198,9 @@
     "allowedPaths": [
       "AGENTS.md",
       "agent.md",
+      ".github/workflows/branch-hygiene.yml",
+      "scripts/work-branch-policy.mjs",
+      "tests/unit/work-branch-policy.test.ts",
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",

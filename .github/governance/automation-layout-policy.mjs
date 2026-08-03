@@ -29,6 +29,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'automation-layout-policy.mjs',
   'automerge-base-gate.mjs',
   'branch-inventory-policy.mjs',
+  'effective-task-status.mjs',
   'main-protection.json',
   'main-verification-wait.self-test.mjs',
   'parallel-task-policy.mjs',

@@ -74,11 +74,10 @@ jobs:
           retention-days: 1
       - name: Reject tracked root scratch artifacts
         run: test ! -e tmp
-      - name: Self-test workflow order guards
+      - name: Self-test permanent work policy
         run: |
           node .github/governance/single-work-policy.mjs self-test
           node .github/governance/automerge-base-gate.mjs self-test
-          node .github/governance/task-transition-policy.mjs self-test
           node .github/governance/pr-policy-self-test.mjs
       - name: Assert clean working tree after policy validation
         if: always()

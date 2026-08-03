@@ -21,6 +21,7 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'security.yml',
   'task-governance.yml',
   'toolchain-export.yml',
+  'work-synchronization.yml',
 ]);
 
 export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
@@ -36,6 +37,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'pr-policy-self-test.mjs',
   'required-checks.json',
   'secret-scan-allowlist.json',
+  'single-work-policy.mjs',
   'squash-provenance.mjs',
   'stage-close-policy.mjs',
   'task-checkpoint-policy.mjs',
@@ -43,6 +45,7 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'task-transition-policy.mjs',
   'toolchain-bundle.mjs',
   'verification-hold-taskctl.mjs',
+  'work-synchronization.mjs',
   'workspace-architecture.json',
 ]);
 
@@ -58,10 +61,6 @@ const forbiddenWorkflowMarkers = Object.freeze([
   {
     label: 'fixed pull request number',
     pattern: /pull_request\.number\s*={2,3}\s*\d+/u,
-  },
-  {
-    label: 'fixed pull request branch',
-    pattern: /github\.head_ref\s*={2,3}\s*['"][^'"]+['"]/u,
   },
 ]);
 

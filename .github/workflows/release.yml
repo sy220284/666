@@ -1,5 +1,5 @@
 name: Release
-run-name: Release ${{ inputs.version || '1.0.0' }} (${{ github.event_name }}, attempt ${{ github.run_attempt }})
+run-name: Release ${{ inputs.version }} (${{ github.event_name }}, attempt ${{ github.run_attempt }})
 
 on:
   workflow_dispatch:
@@ -17,17 +17,12 @@ on:
           - draft
           - prerelease
           - stable
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/release.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.version || '1.0.0' }}
+  group: release-${{ inputs.version }}
   cancel-in-progress: true
 
 jobs:
@@ -38,7 +33,7 @@ jobs:
     permissions:
       statuses: write
     env:
-      STATUS_CONTEXT: release-${{ inputs.version || '1.0.0' }}
+      STATUS_CONTEXT: release-${{ inputs.version }}
       STATUS_SHA: ${{ github.sha }}
       STATUS_TARGET_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
@@ -68,7 +63,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+      RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -110,7 +105,7 @@ jobs:
             platform: macos
     runs-on: ${{ matrix.os }}
     env:
-      RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+      RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -176,7 +171,7 @@ jobs:
     permissions:
       statuses: write
     env:
-      STATUS_CONTEXT: release-${{ inputs.version || '1.0.0' }}
+      STATUS_CONTEXT: release-${{ inputs.version }}
       STATUS_SHA: ${{ github.sha }}
       STATUS_TARGET_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
@@ -204,8 +199,8 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_KIND: ${{ inputs.release_kind || 'stable' }}
-      RELEASE_VERSION: ${{ inputs.version || '1.0.0' }}
+      RELEASE_KIND: ${{ inputs.release_kind }}
+      RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -273,7 +268,7 @@ jobs:
       GATE_RESULT: ${{ needs.release-gate.result }}
       PUBLISH_RESULT: ${{ needs.publish.result }}
       QUALITY_RESULT: ${{ needs.quality.result }}
-      STATUS_CONTEXT: release-${{ inputs.version || '1.0.0' }}
+      STATUS_CONTEXT: release-${{ inputs.version }}
       STATUS_SHA: ${{ github.sha }}
       STATUS_TARGET_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:

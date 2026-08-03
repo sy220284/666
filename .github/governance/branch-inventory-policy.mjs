@@ -7,13 +7,16 @@ import { fileURLToPath } from 'node:url';
 const requiredBranches = Object.freeze(['main', 'work']);
 
 async function api(pathname) {
-  const response = await fetch(new URL(pathname, 'https://api.github.com'), {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-      'X-GitHub-Api-Version': '2022-11-28',
+  const response = await globalThis.fetch(
+    new globalThis.URL(pathname, 'https://api.github.com'),
+    {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
     },
-  });
+  );
   if (!response.ok) throw new Error(`GitHub API ${response.status}: ${pathname}`);
   return response.json();
 }

@@ -50,9 +50,9 @@ describe('主分支任务有效验证', () => {
   });
 
   it('发布稳定的主分支与任务状态上下文', () => {
-    expect(mainVerificationStatusPayload(true, 'https://example.test').context).toBe(
-      'main-verification',
-    );
+    expect(
+      mainVerificationStatusPayload(true, 'https://example.test').context,
+    ).toBe('main-verification');
     expect(
       taskVerificationStatusPayload('M10-03', true, 'https://example.test').context,
     ).toBe('task-verification/M10-03');

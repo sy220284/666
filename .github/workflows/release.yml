@@ -84,7 +84,7 @@ jobs:
       - name: Enforce product and task release acceptance gates
         run: |
           test "$GITHUB_REF_NAME" = main
-          node .github/governance/parallel-task-release-gate.mjs
+          node .github/governance/single-work-release-gate.mjs
           node scripts/ui-acceptance-gate.mjs
           pnpm release:gate -- --version "$RELEASE_VERSION"
       - run: pnpm release:check
@@ -212,7 +212,7 @@ jobs:
           path: release
       - name: Recheck gates and create checksums
         run: |
-          node .github/governance/parallel-task-release-gate.mjs
+          node .github/governance/single-work-release-gate.mjs
           node scripts/ui-acceptance-gate.mjs
           node scripts/release-tool.mjs gate --version "$RELEASE_VERSION"
           node scripts/release-tool.mjs checksums \

@@ -11,9 +11,7 @@ describe('workflow structure policy', () => {
     const source = await readFile('.github/workflows/quality.yml', 'utf8');
     const workflow = parseWorkflowDocument('quality.yml', source);
     expect(workflow.jobs.quality.uses).toBe('./.github/workflows/quality-core.yml');
-    expect(workflow.jobs.quality.with.draft_mode).toBe(
-      '${{ github.event.pull_request.draft }}',
-    );
+    expect(workflow.jobs.quality.with.draft_mode).toBe('${{ github.event.pull_request.draft }}');
     expect(validateWorkflowStructure('quality.yml', source)).toEqual([]);
   });
 

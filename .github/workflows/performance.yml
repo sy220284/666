@@ -51,12 +51,12 @@ jobs:
     name: performance
     needs: route
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
-      - name: Skip performance budgets for Draft or documentation-only changes
+      - name: Skip performance and AI baselines for Draft or documentation-only changes
         if: ${{ needs.route.outputs.run != 'true' }}
         run: |
-          echo "Performance suite deferred until Ready or skipped because only documentation changed."
+          echo "Performance and AI evaluation are deferred until Ready or skipped because only documentation changed."
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         if: ${{ needs.route.outputs.run == 'true' }}
         with:
@@ -72,6 +72,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
+        if: ${{ needs.route.outputs.run == 'true' }}
+      - run: pnpm test:prepare
         if: ${{ needs.route.outputs.run == 'true' }}
       - name: Run performance budgets
         if: ${{ needs.route.outputs.run == 'true' }}
@@ -80,54 +82,23 @@ jobs:
         run: |
           mkdir -p test-results/ci test-results/performance
           set -o pipefail
-          pnpm test:perf 2>&1 | tee test-results/ci/performance.log
+          pnpm exec vitest run tests/performance --no-file-parallelism 2>&1 | tee test-results/ci/performance.log
           test -s test-results/performance/m8-02.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        if: ${{ always() && needs.route.outputs.run == 'true' }}
-        with:
-          name: performance-budget-evidence
-          path: |
-            test-results/ci/performance.log
-            test-results/performance/
-          if-no-files-found: error
-          retention-days: 14
-
-  ai-eval:
-    name: ai-eval
-    needs: route
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - name: Skip AI protocol baselines for Draft or documentation-only changes
-        if: ${{ needs.route.outputs.run != 'true' }}
-        run: |
-          echo "AI evaluation deferred until Ready or skipped because only documentation changed."
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        if: ${{ needs.route.outputs.run == 'true' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        if: ${{ needs.route.outputs.run == 'true' }}
-        with:
-          version: 11.13.1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        if: ${{ needs.route.outputs.run == 'true' }}
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline
-        if: ${{ needs.route.outputs.run == 'true' }}
       - name: Run AI protocol baselines
         if: ${{ needs.route.outputs.run == 'true' }}
         run: |
-          mkdir -p test-results/ci
           set -o pipefail
-          pnpm test:eval 2>&1 | tee test-results/ci/ai-eval.log
+          pnpm exec vitest run \
+            tests/performance/ai-output-protocol.test.ts \
+            tests/performance/ai-eval-baseline.test.ts \
+            2>&1 | tee test-results/ci/ai-eval.log
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: ${{ always() && needs.route.outputs.run == 'true' }}
         with:
-          name: ai-eval-evidence
-          path: test-results/ci/ai-eval.log
+          name: performance-and-ai-eval-evidence
+          path: |
+            test-results/ci/performance.log
+            test-results/ci/ai-eval.log
+            test-results/performance/
           if-no-files-found: error
           retention-days: 14

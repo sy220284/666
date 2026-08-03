@@ -34,15 +34,9 @@ describe('唯一work合并请求策略', () => {
 
   it('只接受work到main', () => {
     expect(validatePullRequestShape({ head: 'work', base: 'main' })).toEqual([]);
-    expect(
-      validatePullRequestShape({ head: 'work/task', base: 'main' }),
-    ).not.toEqual([]);
-    expect(validatePullRequestShape({ head: 'fix/task', base: 'main' })).not.toEqual(
-      [],
-    );
-    expect(validatePullRequestShape({ head: 'work', base: 'release' })).not.toEqual(
-      [],
-    );
+    expect(validatePullRequestShape({ head: 'work/task', base: 'main' })).not.toEqual([]);
+    expect(validatePullRequestShape({ head: 'fix/task', base: 'main' })).not.toEqual([]);
+    expect(validatePullRequestShape({ head: 'work', base: 'release' })).not.toEqual([]);
     expect(
       validatePullRequestShape({ head: 'work', base: 'main', sameRepository: false }),
     ).not.toEqual([]);

@@ -1,3 +1,4 @@
+import type { CandidatePreview } from '@worldforge/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
@@ -45,8 +46,8 @@ function setupLoader(bridge: RendererBridgeAdapter) {
   return { loader, ...setters };
 }
 
-function previewCandidate(overrides: Record<string, unknown> = {}) {
-  return contractInput({
+function previewCandidate(overrides: Record<string, unknown> = {}): CandidatePreview {
+  return contractInput<CandidatePreview>({
     candidate: {
       candidateId: 'candidate-a',
       status: 'pending',

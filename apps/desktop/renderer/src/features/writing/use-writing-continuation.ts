@@ -66,15 +66,20 @@ export function useWritingContinuation(input: UseWritingContinuationInput) {
 
   useEffect(() => {
     if (input.readOnly) return;
+    let active = true;
     const next = derivePanelSwitchInput(persistence.committedInput(), input.panel);
     if (!next) return;
     void input.bridge.project.saveContinuation(next, { mode: 'replace' }).then((outcome) => {
+      if (!active) return;
       if (outcome.state === 'success') {
         persistence.commit(next);
         return;
       }
       if (outcome.state === 'failure') scheduleContinuationSave();
     });
+    return () => {
+      active = false;
+    };
   }, [input, persistence, scheduleContinuationSave]);
 
   return {

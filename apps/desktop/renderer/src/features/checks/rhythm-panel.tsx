@@ -18,11 +18,16 @@ export function RhythmPanel({
   const [notice, setNotice] = useState('所有节奏结果均为 P3 建议，不阻断写作、定稿或导出。');
 
   useEffect(() => {
+    let active = true;
     void bridge.rhythm.get({ projectId }, { mode: 'replace' }).then((outcome) => {
+      if (!active) return;
       if (outcome.state === 'success') setDashboard(outcome.data);
       else if (outcome.state === 'failure')
         setNotice(`节奏读取失败 · ${authorErrorSummary(outcome.error)}`);
     });
+    return () => {
+      active = false;
+    };
   }, [bridge, projectId]);
 
   const save = async (event: FormEvent<HTMLFormElement>): Promise<void> => {

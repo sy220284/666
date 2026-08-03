@@ -144,7 +144,9 @@ export function CandidateReviewPanel({
   );
 
   useEffect(() => {
+    let active = true;
     void refreshList().then((items) => {
+      if (!active) return;
       const first = items[0];
       if (!first) {
         setCandidateId('');
@@ -156,6 +158,7 @@ export function CandidateReviewPanel({
       void loadCandidate(first.candidateId);
     });
     return () => {
+      active = false;
       documentRequest.current += 1;
       const requestId = previewRequest.current;
       previewRequest.current = null;

@@ -1,64 +1,39 @@
 # WorldForge 任务卡模板
 
 > 状态：Active  
-> 适用：历史独立任务、整体实施任务和后续单独立项任务  
-> 原则：任务文件保留可导航需求；活动任务必须有机器授权、完整执行附件和真实Evidence。
+> 适用：后续独立任务和维护任务  
+> 执行分支：固定`work`  
+> 目标分支：固定`main`
 
-## 1. 当前任务结构
+## 1. 基本规则
 
-```text
-历史Verified任务
-├─ M0—M3
-└─ M4-01—M4-03
-
-当前活动任务
-└─ M4-04 C0—C7与C1并发硬化
-
-延期最终任务
-└─ M8-02 C8完整体验、硬化与发布关闭（Planned）
-```
-
-M4-04吸收原M4-05、M5-00—M5-06和M6-01—M6-06。M8-02吸收原M7-01—M7-03、M8-01和M8-03。
-
-被吸收来源保留详细目标、非目标、合同、测试和完成条件，但不独立激活。
+- 已Verified任务卡保持冻结；后续扩展必须新立项。
+- 新建及活动Runtime使用`executionBranch: work`。
+- 历史Runtime中的旧来源分支保持冻结，不得为表面统一修改。
+- 禁止填写或生成任务专属分支名。
+- 一个正式PR可以承载当前获批任务范围，且仓库同一时刻只允许一个`work → main` PR。
 
 ## 2. Planned任务卡必须包含
 
-1. 基本信息、状态、优先级和建议分支。
-2. 目标、阶段定位和非目标。
-3. 依赖与承接基线。
-4. 关联需求、功能ID和P0验收。
-5. 必读文档与主要影响范围。
-6. 职责边界与实施内容。
-7. 测试、Evidence和完成条件。
+1. 基本信息、状态和优先级；
+2. 目标、阶段定位和非目标；
+3. 依赖与真实承接基线；
+4. 关联需求、功能ID和验收；
+5. 必读文档与影响范围；
+6. 数据、Migration、IPC、事件、错误码、UI、安全、恢复和性能边界；
+7. 自动化、人工验收、Evidence和完成条件；
+8. 来源PR、受检Head与主分支验证绑定方案。
 
-已完成任务卡保持冻结；扩展由当前活动任务或新立项任务承接。
-
-## 3. 整体任务附加要求
-
-整体任务除普通字段外，必须包含：
-
-- 被吸收需求来源完整清单。
-- 编码前全量代码与文档审计门。
-- 已有、缺失、冲突和可复用能力矩阵。
-- 需求→用户路径→代码层→测试→P0映射。
-- 共享合同、Migration、IPC、错误码和共享入口总计划。
-- 内部实施阶段和原子提交组。
-- 每阶段横向、纵向复查与受影响回归。
-- 统一Evidence目录和阶段关闭标准。
-- 下一任务是否自动激活的明确规则。
-
-内部阶段不改变`ACTIVE_TASK`。跨任务延期必须通过`TASK_INDEX`与Implementation Hold表达，禁止只在PR描述中声明。
-
-## 4. Planned任务卡模板
+## 3. Planned任务卡模板
 
 ```markdown
 # <TASK-ID> <任务名称>
 
 > 状态：Planned
 > 里程碑：<阶段>
-> 优先级：P0 / P1
-> 建议分支：work/<id>-<short-name>
+> 优先级：P0 / P1 / P2
+> 执行分支：work
+> 目标分支：main
 
 ## 目标
 
@@ -68,9 +43,10 @@ M4-04吸收原M4-05、M5-00—M5-06和M6-01—M6-06。M8-02吸收原M7-01—M7-0
 
 ## 依赖
 
-## 承接基线
+## 真实承接基线
 
 ## 关联
+
 - 需求：
 - 功能ID：
 - 验收：
@@ -79,99 +55,92 @@ M4-04吸收原M4-05、M5-00—M5-06和M6-01—M6-06。M8-02吸收原M7-01—M7-0
 
 ## 主要影响范围
 
-## 职责边界
+## 数据库与Migration
+
+## IPC、事件与错误码
+
+## UI闭环
+
+## 安全、隐私与恢复
+
+## 性能预算
 
 ## 实施内容
 
-## 测试与证据
+## 自动化测试
 
-证据保存到：docs/test-evidence/<TASK-ID>/
+## 人工验收
+
+## Evidence
+
+保存到：`docs/test-evidence/<TASK-ID>/`
+
+## 回滚策略
 
 ## 完成条件
 ```
 
-## 5. ACTIVE_TASK执行附件
+## 4. Runtime最小结构
 
-任务进入`In Progress`前必须补齐：
+```json
+{
+  "schemaVersion": 2,
+  "id": "<TASK-ID>",
+  "status": "PLANNED",
+  "executionBranch": "work",
+  "dependencies": [],
+  "allowedPaths": [],
+  "forbiddenPaths": [],
+  "verification": [],
+  "verificationBinding": null
+}
+```
 
-### 已Verified依赖与真实基线
+任务进入`IN_PROGRESS`前，必须补齐真实基线、范围、允许路径、禁止路径、失败路径和验证命令。
 
-- 已有能力。
-- 缺失能力。
-- 冲突与漂移。
-- 可复用资产。
+任务登记`IMPLEMENTED`时，增加：
 
-### 输入与输出
+```json
+{
+  "verificationBinding": {
+    "sourcePr": 0,
+    "sourceHead": "<40位work Head SHA>",
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/<TASK-ID>"
+  }
+}
+```
 
-### 数据库与Migration
+最终main SHA和验证运行由GitHub提交状态绑定，不通过第二个关闭PR补写。
 
-### IPC、事件与错误码
+## 5. UI与失败路径
 
-### 最小UI闭环
+用户功能至少覆盖：
 
-- 空状态
-- 加载/进行中
-- 成功
-- 失败
-- 取消
-- 冲突
-- 只读/恢复
-- 关闭与重启
+- 空状态；
+- 加载/进行中；
+- 成功；
+- 失败；
+- 取消；
+- 冲突；
+- 只读；
+- 恢复；
+- 关闭与重启。
 
-### 安全与隐私
-
-### 失败、取消与冲突
-
-| 场景 | 预期行为 |
-|---|---|
-| 输入无效/额外字段 | |
-| 目标不存在/已删除/已处理 | |
-| 取消/超时/中断 | |
-| Revision/Hash/锁定冲突 | |
-| 数据库/磁盘/文件/网络失败 | |
-| 关闭与重启 | |
-| 恢复失败 | |
-
-### 自动化测试
-
-- [ ] Unit
-- [ ] Integration/Repository
-- [ ] Migration
-- [ ] Security
-- [ ] Electron E2E
-- [ ] Performance
-- [ ] AI Eval
-
-### 手动验收
-
-### 性能预算
-
-### 回滚策略
-
-### Evidence目录
+必须检查非法输入、目标不存在、重复请求、Revision/Hash冲突、锁定、项目越界、数据库/磁盘/网络失败和恢复失败。
 
 ## 6. Definition of Done
 
-任务只有同时满足以下条件才能标记Implemented或Verified：
+任务只有同时满足以下条件才能登记`IMPLEMENTED`：
 
-- 目标真实接通，非目标未提前引入。
-- 已完成依赖和历史任务卡保持冻结。
-- 用户功能形成Contracts→Core→Main→Preload→Renderer→测试纵向闭环。
-- 成功、失败、取消、冲突、只读、恢复和重启路径覆盖。
-- Schema、Migration、IPC、事件、错误码、UI、安全和文档同步。
-- 测试真实运行并记录退出状态。
-- Evidence绑定实际受检Head和可达main提交。
-- 无TODO、空函数、固定假数据和伪造成功。
-- TASK_INDEX、ACTIVE_TASK和追踪矩阵同步。
-- 被吸收需求没有遗漏或被错误视为删除。
+- 目标真实接通，非目标未提前引入；
+- 实现、测试、文档和Evidence存在于同一受检work Head；
+- Contracts→Core→Main→Preload→Renderer→测试纵向闭环；
+- 成功、失败、取消、冲突、只读、恢复和重启路径覆盖；
+- Schema、Migration、IPC、UI、安全和文档同步；
+- 测试真实运行并记录；
+- 无TODO、空函数、固定假数据和伪造成功；
+- Runtime、TASK_INDEX和追踪矩阵同步；
+- `verificationBinding`绑定当前PR和受检Head。
 
-Implemented表示工程实现已合并但验证或后续任务明确延期；Verified表示任务全部验收完成。
-
-## 7. 当前分阶段特例
-
-- M4-04只关闭C0—C7与C1并发硬化。
-- M4-04使用一个正式分支与一个阶段PR，统一Evidence目录为`docs/test-evidence/M4-04/`。
-- M4-04完成后进入Implementation Hold，不自动激活下一任务。
-- M8-02保持Planned，作者明确启动后使用独立分支与PR。
-- M8-02统一Evidence目录为`docs/test-evidence/M8-02/`。
-- C8完成前不得宣称V1最终发布验收完成。
+有效`VERIFIED`还要求Main Verification及任务验证提交状态成功，且来源绑定完全一致。

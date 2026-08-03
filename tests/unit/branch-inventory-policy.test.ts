@@ -10,9 +10,7 @@ describe('仓库分支清单策略', () => {
   it('要求main和work同时存在', () => {
     expect(branchInventoryErrors(['main', 'work'])).toEqual([]);
     expect(missingBranches(['main'])).toEqual(['work']);
-    expect(branchInventoryErrors(['main'])).toEqual([
-      'Missing required repository branches: work',
-    ]);
+    expect(branchInventoryErrors(['main'])).toEqual(['Missing required repository branches: work']);
   });
 
   it('拒绝任务、治理、验证和发布分支', () => {

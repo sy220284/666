@@ -262,7 +262,9 @@ async function main() {
   const qualityCore = workflows.get('quality-core.yml') ?? '';
   requireTokens(errors, 'quality-core.yml', qualityCore, [
     'static-checks:',
+    'product-tests:',
     'tests:',
+    'coverage:',
     'desktop-e2e:',
     'build:',
     'package-smoke:',
@@ -287,8 +289,12 @@ async function main() {
     'pull_request:',
     'workflow_dispatch:',
     'converted_to_draft',
+    'pnpm test:prepare',
     'Run performance budgets',
-    'pnpm test:perf',
+    'vitest run tests/performance --no-file-parallelism',
+    'Run AI protocol baselines',
+    'ai-output-protocol.test.ts',
+    'ai-eval-baseline.test.ts',
   ]);
   rejectWholeJobDraftSkip(errors, 'performance.yml', performance);
 

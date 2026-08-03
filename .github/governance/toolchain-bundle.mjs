@@ -161,8 +161,15 @@ async function exportBundle() {
   );
   await finalize(profile, output, sourceSha, packages);
   await verify(profile, output);
+  run('git', ['archive', '--format=tar', '--output', path.join(output, 'source.tar'), sourceSha]);
   const entries = await readdir(output);
-  for (const required of ['store', 'node_modules', 'manifest.json', 'SHA256SUMS.txt']) {
+  for (const required of [
+    'store',
+    'node_modules',
+    'manifest.json',
+    'SHA256SUMS.txt',
+    'source.tar',
+  ]) {
     if (!entries.includes(required)) throw new Error(`Toolchain bundle is missing ${required}`);
   }
   console.log(`Toolchain bundle verified at ${output}.`);

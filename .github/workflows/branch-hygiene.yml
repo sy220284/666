@@ -1,12 +1,16 @@
 name: Branch Hygiene
 
 on:
+  workflow_run:
+    workflows:
+      - Main Verification
+    types: [completed]
   schedule:
     - cron: '0 2 * * 0'
   workflow_dispatch:
     inputs:
       apply:
-        description: Delete only branches already classified as safe obsolete
+        description: Delete safe obsolete branches and enforce the canonical work branch
         required: false
         default: false
         type: boolean
@@ -21,11 +25,13 @@ concurrency:
 
 jobs:
   branch-hygiene:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: main
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -34,8 +40,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           BRANCH_HYGIENE_OUTPUT: artifacts/branch-hygiene
-          BRANCH_HYGIENE_APPLY: ${{ inputs.apply == true }}
+          BRANCH_HYGIENE_APPLY: ${{ github.event_name == 'workflow_run' || inputs.apply == true }}
         run: node scripts/branch-hygiene.mjs
+      - name: Archive legacy work branches and enforce the canonical work branch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WORK_BRANCH_POLICY_OUTPUT: artifacts/branch-hygiene
+          WORK_BRANCH_POLICY_APPLY: ${{ github.event_name == 'workflow_run' || inputs.apply == true }}
+        run: node scripts/work-branch-policy.mjs
       - name: Upload branch report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

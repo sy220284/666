@@ -1,9 +1,7 @@
 import type { CandidatePreview } from '@worldforge/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-  RendererBridgeAdapter,
-} from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import {
   loadCandidateDocument,
   loadCandidateList,
@@ -108,10 +106,7 @@ describe('Writing候选加载分支', () => {
       }),
     );
     expect(
-      await loadCandidateUndo(
-        lookupFailure.loader,
-        previewCandidate({ status: 'accepted' }),
-      ),
+      await loadCandidateUndo(lookupFailure.loader, previewCandidate({ status: 'accepted' })),
     ).toBe(false);
 
     const undo = contractInput({
@@ -127,10 +122,7 @@ describe('Writing候选加载分支', () => {
       }),
     );
     expect(
-      await loadCandidateUndo(
-        successContext.loader,
-        previewCandidate({ status: 'accepted' }),
-      ),
+      await loadCandidateUndo(successContext.loader, previewCandidate({ status: 'accepted' })),
     ).toBe(true);
     expect(successContext.setUndoPreview).toHaveBeenCalledWith(undo);
     expect(successContext.setConflicts).toHaveBeenCalledWith([{ kind: 'revision' }]);

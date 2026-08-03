@@ -38,7 +38,7 @@ AGENTS.md
 - 同一时刻只允许一个开放的`work → main` PR。
 - 禁止直接向`main`提交。
 - Squash后只允许在主分支验证成功、work未移动且没有新PR时受控重置。
-- 禁止纯Evidence分支和纯关闭PR。
+- 禁止纯验证记录分支和纯关闭PR。
 - `Implemented`不能充当`Verified`；有效Verified由Runtime、来源PR、来源Head、main SHA和提交状态共同确认。
 
 ## 最短可靠工作路径
@@ -62,14 +62,14 @@ AGENTS.md
 1. 作品数据、配置、日志和备份只保存在用户本机。
 2. AI输出先成为建议稿，未经作者采用不能进入当前稿。
 3. `project.sqlite` 是唯一作品数据真源。
-4. 锁定、Revision、Hash、事务、项目和路径边界由代码保证。
+4. 锁定、修订记录、Hash、事务、项目和路径边界由代码保证。
 5. AI只能提议，作者拥有最终裁决权。
 
 任一边界失败立即阻断。
 
 ## 工程与验证
 
-- 同时检查Renderer、Preload、Main、Core、Repository、SQLite及任务、契约、Evidence链路。
+- 同时检查应用界面、Preload、Main、本地服务、Repository、SQLite及任务、契约、验证记录链路。
 - 禁止无关重构、未经批准的生产依赖、TODO、空实现、固定成功、演示假数据、吞错和并行真源。
 - 修复必须复验原问题；新增必须验证主路径、边界路径、失败路径和用户可操作闭环。
 - 必须运行任务卡要求的真实命令；Runner成功、PR可合并或Artifact上传不能单独证明完成。

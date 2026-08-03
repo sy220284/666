@@ -20,6 +20,7 @@ const runtimeTransitions = new Set([
 const governancePaths = [
   'AGENTS.md',
   'agent.md',
+  'package.json',
   '.github/',
   'scripts/',
   'tests/unit/',
@@ -91,9 +92,14 @@ export function taskIdFromBody(body) {
   return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
 }
 
-export function validateRuntime(task, expectedId) {
+export function validateRuntime(task, expectedId, { requireSchema2 = false } = {}) {
   const errors = [];
-  if (task?.schemaVersion !== 1) errors.push(`${expectedId} runtime must use schemaVersion 1`);
+  if (![1, 2].includes(task?.schemaVersion)) {
+    errors.push(`${expectedId} runtime must use schemaVersion 1 or 2`);
+  }
+  if (requireSchema2 && task?.schemaVersion !== 2) {
+    errors.push(`${expectedId} new runtime must use schemaVersion 2`);
+  }
   if (task?.id !== expectedId) errors.push(`${expectedId} runtime id mismatch`);
   if (!activeStatuses.has(task?.status)) {
     errors.push(`${expectedId} must be IN_PROGRESS or IMPLEMENTED for a task PR`);
@@ -175,14 +181,13 @@ async function validateTaskBoundary(taskId, files) {
       .filter((file) => !governancePaths.some((allowed) => isInside(file, allowed)))
       .map((file) => `${file}: governance PR changed a non-governance path`);
   }
-
   const task = await loadJson(runtimePath(taskId));
+  const previous = baseRuntime(taskId);
   const errors = [
-    ...validateRuntime(task, taskId),
+    ...validateRuntime(task, taskId, { requireSchema2: previous === null }),
     ...(await dependencyErrors(task)),
     ...taskChangedPathErrors(files, task),
   ];
-  const previous = baseRuntime(taskId);
   if (previous && !runtimeTransitions.has(`${previous.status}:${task.status}`)) {
     errors.push(`Invalid ${taskId} runtime transition: ${previous.status} -> ${task.status}`);
   }
@@ -250,7 +255,7 @@ function selfTest() {
   assert.deepEqual(
     validateRuntime(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: 'M10-03',
         status: 'IN_PROGRESS',
         executionBranch: 'work',
@@ -260,13 +265,14 @@ function selfTest() {
         verification: ['pnpm test'],
       },
       'M10-03',
+      { requireSchema2: true },
     ),
     [],
   );
   assert.ok(
     validateRuntime(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         id: 'M10-03',
         status: 'IN_PROGRESS',
         executionBranch: 'work/task',

@@ -2,10 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppSettings, AppearancePreferences } from '@worldforge/contracts';
 
-import { createRendererApplicationController } from '../../apps/desktop/renderer/src/app/renderer-application-controller.js';
+import {
+  createRendererApplicationController,
+} from '../../apps/desktop/renderer/src/app/renderer-application-controller.js';
 import { installGlobalRendererErrorBoundary } from '../../apps/desktop/renderer/src/runtime/global-error-boundary.js';
 
-const originalGetComputedStyle = Object.getOwnPropertyDescriptor(globalThis, 'getComputedStyle');
+const originalGetComputedStyle = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'getComputedStyle',
+);
 const originalCustomEvent = Object.getOwnPropertyDescriptor(globalThis, 'CustomEvent');
 
 function restoreProperty(key: PropertyKey, descriptor?: PropertyDescriptor): void {
@@ -85,7 +90,9 @@ describe('renderer DOM runtime boundaries', () => {
     expect(properties.get('--content-width')).toMatch(/px$/u);
     expect(body.dataset.layoutMode).toBeTruthy();
     expect(body.dataset.leftPanel).toBeTruthy();
-    expect(dispatched.map((event) => event.type)).toContain('worldforge:presentation-changed');
+    expect(dispatched.map((event) => event.type)).toContain(
+      'worldforge:presentation-changed',
+    );
   });
 
   it('shows one reusable safety banner for errors and removes listeners on cleanup', () => {
@@ -99,7 +106,9 @@ describe('renderer DOM runtime boundaries', () => {
       remove: () => void;
     } | null = null;
     const windowValue = {
-      addEventListener: vi.fn((type: string, listener: EventListener) => listeners.set(type, listener)),
+      addEventListener: vi.fn((type: string, listener: EventListener) =>
+        listeners.set(type, listener),
+      ),
       removeEventListener: vi.fn((type: string) => listeners.delete(type)),
     };
     const documentValue = {
@@ -122,8 +131,14 @@ describe('renderer DOM runtime boundaries', () => {
         },
       }),
     };
-    Object.defineProperty(globalThis, 'window', { configurable: true, value: windowValue });
-    Object.defineProperty(globalThis, 'document', { configurable: true, value: documentValue });
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: windowValue,
+    });
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: documentValue,
+    });
 
     const cleanup = installGlobalRendererErrorBoundary();
     listeners.get('error')?.(new Event('error'));

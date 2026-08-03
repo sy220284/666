@@ -13,7 +13,9 @@ const githubFetch = globalThis.fetch;
 const fullShaPattern = /^[0-9a-f]{40}$/iu;
 
 async function api(pathname, options = {}, acceptedStatuses = []) {
-  if (typeof githubFetch !== 'function') throw new Error('Node fetch API is unavailable');
+  if (typeof githubFetch !== 'function') {
+    throw new Error('Node fetch API is unavailable');
+  }
   const url = new globalThis.URL(pathname, 'https://api.github.com');
   if (url.origin !== 'https://api.github.com') {
     throw new Error(`Unexpected GitHub API origin: ${url.origin}`);
@@ -64,13 +66,19 @@ export function isLegacyWorkBranch(name) {
 }
 
 export function archiveTagFor(branchName, branchSha) {
-  if (!isLegacyWorkBranch(branchName)) throw new Error('Archive source must be a legacy work branch');
-  if (!fullShaPattern.test(branchSha ?? '')) throw new Error('Archive source must use a full SHA');
+  if (!isLegacyWorkBranch(branchName)) {
+    throw new Error('Archive source must be a legacy work branch');
+  }
+  if (!fullShaPattern.test(branchSha ?? '')) {
+    throw new Error('Archive source must use a full SHA');
+  }
   const suffix = branchName
     .slice('work/'.length)
     .replace(/[^a-zA-Z0-9._-]+/gu, '-')
     .replace(/^-+|-+$/gu, '');
-  if (!suffix) throw new Error('Legacy work branch archive suffix is empty');
+  if (!suffix) {
+    throw new Error('Legacy work branch archive suffix is empty');
+  }
   return `archive/legacy-work/${suffix}-${branchSha.slice(0, 12)}`;
 }
 
@@ -105,7 +113,9 @@ async function main() {
     throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required');
   }
   const [owner, repo] = repository.split('/');
-  if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format');
+  if (!owner || !repo) {
+    throw new Error('GITHUB_REPOSITORY must use owner/repo format');
+  }
 
   const [branches, pulls] = await Promise.all([
     paged(`/repos/${owner}/${repo}/branches`),
@@ -113,7 +123,9 @@ async function main() {
   ]);
   const main = branches.find((branch) => branch.name === 'main');
   const mainSha = main?.commit?.sha;
-  if (!fullShaPattern.test(mainSha ?? '')) throw new Error('Cannot resolve the current main SHA');
+  if (!fullShaPattern.test(mainSha ?? '')) {
+    throw new Error('Cannot resolve the current main SHA');
+  }
 
   const openBranches = new Set(
     pulls
@@ -128,11 +140,20 @@ async function main() {
     const branchName = branch.name;
     const branchSha = branch.commit?.sha;
     if (!fullShaPattern.test(branchSha ?? '')) {
-      report.push({ branch: branchName, action: 'blocked', reason: 'missing-current-branch-head' });
+      report.push({
+        branch: branchName,
+        action: 'blocked',
+        reason: 'missing-current-branch-head',
+      });
       continue;
     }
     if (openBranches.has(branchName)) {
-      report.push({ branch: branchName, branchSha, action: 'keep', reason: 'open-pull-request' });
+      report.push({
+        branch: branchName,
+        branchSha,
+        action: 'keep',
+        reason: 'open-pull-request',
+      });
       continue;
     }
     if (!apply) {
@@ -149,7 +170,12 @@ async function main() {
     const refPath = `/repos/${owner}/${repo}/git/ref/heads/${escapedRef(branchName)}`;
     const currentRef = await api(refPath);
     if (currentRef?.object?.sha !== branchSha) {
-      report.push({ branch: branchName, branchSha, action: 'blocked', reason: 'changed-during-run' });
+      report.push({
+        branch: branchName,
+        branchSha,
+        action: 'blocked',
+        reason: 'changed-during-run',
+      });
       continue;
     }
     const archiveTag = await ensureArchiveTag(owner, repo, branchName, branchSha);
@@ -174,9 +200,19 @@ async function main() {
       body: JSON.stringify({ ref: 'refs/heads/work', sha: mainSha }),
     });
     remainingBranches.add('work');
-    report.push({ branch: 'work', branchSha: mainSha, action: 'created', reason: 'canonical-work' });
+    report.push({
+      branch: 'work',
+      branchSha: mainSha,
+      action: 'created',
+      reason: 'canonical-work',
+    });
   } else if (decision.action === 'create') {
-    report.push({ branch: 'work', branchSha: mainSha, action: 'create-candidate', reason: 'canonical-work' });
+    report.push({
+      branch: 'work',
+      branchSha: mainSha,
+      action: 'create-candidate',
+      reason: 'canonical-work',
+    });
   } else if (decision.action === 'keep') {
     report.push({ branch: 'work', action: 'keep', reason: 'canonical-work-exists' });
   } else {

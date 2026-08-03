@@ -79,13 +79,13 @@ export function validateWorkflowStructure(file, source) {
     if (quality?.uses !== './.github/workflows/quality-core.yml') {
       errors.push('quality.yml: quality must call quality-core.yml');
     }
-    for (const [name, expected] of [
-      ['draft_mode', false],
-      ['performance_eval', false],
-    ]) {
-      if (quality?.with?.[name] !== expected) {
-        errors.push(`quality.yml: quality.with.${name} must be ${String(expected)}`);
-      }
+    if (quality?.with?.draft_mode !== '${{ github.event.pull_request.draft }}') {
+      errors.push(
+        'quality.yml: quality.with.draft_mode must follow github.event.pull_request.draft',
+      );
+    }
+    if (quality?.with?.performance_eval !== false) {
+      errors.push('quality.yml: quality.with.performance_eval must be false');
     }
     if (quality?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}") {
       errors.push('quality.yml: quality.with.package_smoke must be controlled by the route output');

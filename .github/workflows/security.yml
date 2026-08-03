@@ -30,11 +30,14 @@ jobs:
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PR_DRAFT: ${{ github.event.pull_request.draft || false }}
         run: |
           set -euo pipefail
           run=false
           if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
             run=true
+          elif [ "$PR_DRAFT" = true ]; then
+            echo "Dependency audit deferred until the pull request is Ready."
           elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '(^|/)package\.json$|^pnpm-lock\.yaml$|^pnpm-workspace\.yaml$|^\.github/workflows/'; then
             run=true
           fi
@@ -59,7 +62,7 @@ jobs:
           if [ "${{ steps.route.outputs.run }}" = true ]; then
             pnpm audit --audit-level=high
           else
-            echo "Dependency audit skipped: dependency and workflow inputs are unchanged."
+            echo "Dependency audit skipped in Draft or because dependency and workflow inputs are unchanged."
           fi
       - name: Clean tree after dependency audit
         if: always()
@@ -79,18 +82,25 @@ jobs:
           node-version: 24
       - name: Clean tree before repository secret scan
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Scan tracked files and full Git history
+      - name: Scan repository secrets
         shell: bash
+        env:
+          PR_DRAFT: ${{ github.event.pull_request.draft || false }}
         run: |
           mkdir -p test-results/ci
           set -o pipefail
-          node scripts/scan-secrets.mjs --history 2>&1 | tee test-results/ci/secret-history-scan.log
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$PR_DRAFT" = true ]; then
+            echo "Draft mode: scanning the current tracked tree; full history runs when Ready."
+            node scripts/scan-secrets.mjs 2>&1 | tee test-results/ci/secret-scan.log
+          else
+            node scripts/scan-secrets.mjs --history 2>&1 | tee test-results/ci/secret-scan.log
+          fi
       - name: Upload secret scan diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: secret-history-scan-diagnostics
-          path: test-results/ci/secret-history-scan.log
+          name: secret-scan-diagnostics
+          path: test-results/ci/secret-scan.log
           if-no-files-found: error
           retention-days: 7
       - name: Clean tree after repository secret scan
@@ -111,11 +121,14 @@ jobs:
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PR_DRAFT: ${{ github.event.pull_request.draft || false }}
         run: |
           set -euo pipefail
           run=false
           if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
             run=true
+          elif [ "$PR_DRAFT" = true ]; then
+            echo "Application security tests deferred until the pull request is Ready."
           else
             changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
             if [ -z "$changed_files" ] || printf '%s\n' "$changed_files" | grep -Eqv '^(docs/|.*\.md$)'; then
@@ -146,7 +159,8 @@ jobs:
           if [ "${{ steps.route.outputs.run }}" = true ]; then
             pnpm test:security 2>&1 | tee test-results/ci/application-security.log
           else
-            echo "Application security suite skipped: only documentation changed." | tee test-results/ci/application-security.log
+            echo "Application security suite skipped in Draft or because only documentation changed." |
+              tee test-results/ci/application-security.log
           fi
       - name: Upload application security diagnostics
         if: failure()

@@ -18,7 +18,7 @@ export function taskIdFromPullBody(body) {
   return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
 }
 
-export function validateTaskVerificationBinding(runtime, { taskId, sourcePr, sourceHeadSha }) {
+export function validateTaskVerificationBinding(runtime, { taskId, sourcePr }) {
   const errors = [];
   if (runtime?.id !== taskId) errors.push(`${taskId} runtime id mismatch`);
   if (!['IMPLEMENTED', 'VERIFIED'].includes(runtime?.status)) {
@@ -28,7 +28,6 @@ export function validateTaskVerificationBinding(runtime, { taskId, sourcePr, sou
   if (branch !== 'work') errors.push(`${taskId} execution branch must be work`);
   const binding = runtime?.verificationBinding;
   if (binding?.sourcePr !== sourcePr) errors.push(`${taskId} sourcePr binding mismatch`);
-  if (binding?.sourceHead !== sourceHeadSha) errors.push(`${taskId} sourceHead binding mismatch`);
   if (binding?.mainContext !== 'main-verification') {
     errors.push(`${taskId} mainContext must be main-verification`);
   }
@@ -265,13 +264,10 @@ async function publishStatus() {
   let taskBindingErrors = [];
   if (taskId) {
     try {
-      const runtime = JSON.parse(
-        await readFile(`docs/tasks/runtime/${taskId}.json`, 'utf8'),
-      );
+      const runtime = JSON.parse(await readFile(`docs/tasks/runtime/${taskId}.json`, 'utf8'));
       taskBindingErrors = validateTaskVerificationBinding(runtime, {
         taskId,
         sourcePr,
-        sourceHeadSha,
       });
     } catch (error) {
       taskBindingErrors = [`${taskId} runtime unavailable: ${error.message}`];

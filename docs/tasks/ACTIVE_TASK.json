@@ -14,7 +14,7 @@
     "id": "M8-09",
     "status": "VERIFIED_HOLD",
     "source": "docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md",
-    "branch": "work/m10-02-full-code-audit",
+    "branch": "work",
     "startedAt": "2026-07-31",
     "implementedAt": "2026-08-01T01:42:35+09:00",
     "implementationCommit": "6edb7a7ec7221fd709aba14bc30029acd397f69d",

@@ -25,6 +25,17 @@ const profileCommands = {
   ],
 };
 const bundledPnpmVersion = '11.13.1';
+const sourceSnapshotFiles = [
+  '.github/governance/single-work-taskctl.mjs',
+  '.github/governance/toolchain-bundle.mjs',
+  'scripts/task-control-lib.mjs',
+  'scripts/taskctl.mjs',
+  'tests/integration/task-lifecycle.test.ts',
+  'tests/unit/branch-inventory-policy.test.ts',
+  'tests/unit/main-task-verification.test.ts',
+  'tests/unit/task-control.test.ts',
+  'tests/unit/taskctl-transaction-policy.test.ts',
+];
 
 function option(name, fallback = null) {
   const index = process.argv.indexOf(`--${name}`);
@@ -138,6 +149,14 @@ async function verify(profile, output) {
   }
 }
 
+async function copySourceSnapshot(output) {
+  for (const file of sourceSnapshotFiles) {
+    const destination = path.join(output, 'source', file);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await cp(path.join(root, file), destination);
+  }
+}
+
 async function exportBundle() {
   const profile = option('profile', 'formatter');
   const output = path.resolve(
@@ -161,8 +180,9 @@ async function exportBundle() {
   );
   await finalize(profile, output, sourceSha, packages);
   await verify(profile, output);
+  await copySourceSnapshot(output);
   const entries = await readdir(output);
-  for (const required of ['store', 'node_modules', 'manifest.json', 'SHA256SUMS.txt']) {
+  for (const required of ['store', 'node_modules', 'manifest.json', 'SHA256SUMS.txt', 'source']) {
     if (!entries.includes(required)) throw new Error(`Toolchain bundle is missing ${required}`);
   }
   console.log(`Toolchain bundle verified at ${output}.`);

@@ -13,7 +13,7 @@ export async function loadCommitStatuses(commitSha) {
   if (!/^[0-9a-f]{40}$/iu.test(commitSha ?? '')) return [];
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) return [];
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-  const response = await fetch(
+  const response = await globalThis.fetch(
     `https://api.github.com/repos/${owner}/${repo}/commits/${commitSha}/status`,
     {
       headers: {

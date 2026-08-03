@@ -1,113 +1,115 @@
 # WorldForge 开发自动化控制规范
 
 > 状态：Active  
-> 集成分支：`main`  
-> 授权来源：作者要求所有改动通过Pull Request进入`main`，并优先提升真实开发吞吐量。
+> 授权模式：`single-work-pr`
 
 ## 1. 目标
 
-工作流只保留四类控制：任务边界、代码质量、数据与安全边界、可追溯合并。自动化不得把日常开发变成重复的发布验收，也不得为同一提交重复运行等价套件。
+自动化只承担任务边界、代码质量、数据与安全边界、可追溯合并、主分支验证和安全同步。自动化不得生成业务代码、伪造任务状态或绕过真实验证。
 
 ## 2. 权威状态
 
-- `docs/tasks/ACTIVE_TASK.json`：唯一机器状态。
-- `docs/tasks/ACTIVE_TASK.md`：由JSON生成的可读镜像。
-- `docs/tasks/TASK_INDEX.md`：任务依赖与阶段状态。
-- 独立任务卡：目标、非目标、影响范围和验收要求。
+- `docs/tasks/TASK_AUTHORIZATION.json`：分支、PR、合并、关闭与同步规则。
+- `docs/tasks/runtime/<TASK-ID>.json`：任务范围、状态、依赖、允许路径、禁止路径和验证命令。
+- `docs/tasks/TASK_INDEX.md`：任务依赖和导航。
+- `docs/tasks/ACTIVE_TASK.json`与`.md`：旧状态机兼容锚点。
 
-`pnpm task:validate`负责校验机器状态、镜像和必读文档。镜像不一致时运行`pnpm task:sync`，禁止手工维护双重状态。
+新建及活动Runtime必须使用`executionBranch: work`。历史Verified Runtime的来源分支记录保持冻结。
 
-## 3. 开发主路径
+## 3. 唯一开发路径
 
 ```text
-激活一张任务
-→ 创建独立任务分支
-→ 校验依赖和allowedPaths
-→ 最小完整端到端实现
-→ 本地专项验证
-→ 原子更新正式PR Head
-→ Draft PR静态反馈
-→ Ready PR必要门禁
-→ Controlled Merge执行squash
-→ Main Verification核验最终SHA与静态一致性
-→ 进入下一任务或最终VERIFIED_HOLD
+最新已验证main
+→ Work Synchronization确认唯一work基线
+→ 在work完成实现、测试、文档与Evidence
+→ 唯一work → main PR
+→ PR Policy与Task Governance验证分支、任务和路径
+→ Quality、Security、Performance、Evidence执行永久门禁
+→ Controlled Merge绑定受检Head执行Squash
+→ Main Verification核验最终main和来源门禁
+→ 任务验证状态发布
+→ Work Synchronization受控重置work
 ```
 
 约束：
 
-1. 同一时刻只有一张`IN_PROGRESS`任务。
-2. 所有正式文件必须直接提交到任务分支，CI不得生成业务代码后代替开发提交。
-3. 任何数据库、Migration、安全、项目边界、事务、恢复或数据损坏失败立即阻断，不得延期。
-4. `Implemented`表示真实代码、必要专项测试和远端门禁已通过；不等于最终发布验收。
-5. `Verified`用于里程碑或批次关闭，不要求每张任务单独再开一张纯关闭PR；任务卡另有明确关闭要求时按任务卡执行。
-6. 禁止机器人直接写`main`；只有Controlled Merge可在永久检查通过后调用Merge API。
-7. 正式PR分支不是远程逐文件调试区。使用连接器写入时，必须先汇总完整文件，以Git Blob/Tree/Commit一次更新同一批改动；禁止连续`update_file`产生调试提交。确需修复时，应先完整定位失败原因，再用一个原子修复提交更新Head。
+1. 仓库只允许`main`和`work`。
+2. 同一时刻最多一个开放的`work → main` PR。
+3. 禁止机器人直接推送`main`；只有Controlled Merge可调用Merge API。
+4. 禁止辅助分支、验证分支、治理分支和纯关闭PR。
+5. 正式文件必须存在于PR Head，CI不得代替开发提交正式源码或状态。
+6. 数据、Migration、安全、事务、项目边界和恢复失败立即阻断。
 
-## 4. M3阶段冻结规则
+## 4. Draft与Ready门禁
 
-M3-06至M3-10按连续实现模式推进：
+Draft与Ready均按变更范围执行永久检查；Draft只阻止合并，不得用于跳过代码验证。
 
-```text
-实现任务
-→ 登记Implemented
-→ 记录deferredVerification
-→ 激活下一任务
-```
-
-在M3-10完成前，冻结M3普通任务的独立Verified关闭PR。只有以下情况可中断连续实现：
-
-- 数据安全或结构完整性缺陷；
-- 已实现代码阻断后续任务；
-- 任务状态或主线来源失真；
-- 作者明确要求立即复验。
-
-M3-10完成后统一执行一次M3批次复验，集中关闭M3-01、M3-03、M3-05及其他延期项。`taskctl`不得把`Implemented`视为跨阶段依赖已满足：激活M4-01前，M3全部任务必须为`Verified`，`deferredVerification`不得包含M3任务，并同步执行全量Verified Evidence扫描。任一条件失败时，`dependenciesSatisfied`、`findNextReadyTask`、`activate`和`advance`均必须阻断。
-
-## 5. Draft与Ready门禁
-
-### 5.1 Draft PR
-
-Draft只运行一套快速反馈：
+Ready合并前必须成功：
 
 ```text
-Quality
-└─ task:validate
-   workspace / boundary
-   format / lint / typecheck
+pr-policy
++ task-governance
++ quality / quality
++ security
++ performance
++ evidence
 ```
 
-PR Policy、Task Governance、Evidence、Security和Performance在Draft阶段不启动Runner，转为Ready后再针对当前Head执行。Draft绿色状态没有合并资格。
+- PR Policy：精确验证`work → main`、同仓库来源、唯一开放PR和永久自动化布局。
+- Task Governance：验证授权Schema、任务标记、Runtime、允许路径和禁止路径。
+- Quality：静态、Unit、Integration、Migration、Coverage、Electron E2E和Build按路径路由。
+- Security：凭据扫描始终执行，依赖与应用安全按风险路由。
+- Performance：性能敏感路径或任务明确要求时执行。
+- Evidence：验证本次变化任务目录的真实性和完整性。
 
-### 5.2 Ready PR
+## 5. Controlled Merge与Main Verification
 
-Ready执行：
+Controlled Merge必须确认：
 
-- PR Policy：真实分支、永久自动化与CI策略；
-- Task Governance：状态、镜像、allowedPaths和任务转换；
-- Quality：静态检查、Unit、Integration、Migration、Electron E2E和Build；`quality / package-smoke`仅保留轻量成功占位，不安装依赖、不构建、不打包；
-- Security：Secret Scan始终执行，Dependency Audit仅在依赖或Workflow输入变化时执行，Application Security仅在任务声明或安全边界变化时执行；
-- Performance：仅在任务明确要求`pnpm test:perf`、性能测试/Eval/Prompt/Editor路径变化或手动触发时执行；
-- Evidence：只检查本次变更的任务证据文档；
-- Controlled Merge：复核Head SHA、审查状态、未解决线程和六项检查结果后squash合并。
+- PR为Ready，Head未移动；
+- Head为`work`，Base为`main`；
+- PR未落后当前main；
+- 无Changes Requested和未解决线程；
+- 六项永久检查属于同一Head且全部成功；
+- 合并方式固定为Squash，并绑定expected_head_sha。
 
-保留`quality / package-smoke`检查名用于兼容Controlled Merge与Main Verification，但普通Ready只返回轻量成功状态。真实Package Smoke仅由Release或显式启用`package_smoke: true`的复用门执行。普通PR不承担全历史Evidence重放，也不在合并后再次执行完整发布级套件。
+Main Verification负责：
 
-## 6. Main Verification
+1. 核对最终main SHA；
+2. 核对来源PR与来源work Head；
+3. 核对来源六项永久门禁；
+4. 在最终main执行静态一致性检查；
+5. 发布`main-verification`及任务验证状态。
 
-Main Verification只负责最终提交真实性：
+## 6. 任务有效状态
 
-1. 核对最终`main` SHA；
-2. 核对来源PR、来源Head SHA和六项永久检查；
-3. 运行task、workspace、boundary、format、lint、typecheck静态复核；
-4. 发布`main-verification`状态。
+PR Head中的Runtime最高声明到`IMPLEMENTED`。有效状态由机器计算：
 
-全量Unit、Integration、Migration、Electron E2E、Security和Performance已经在Ready PR、专项门或里程碑门执行；Package只在Release或显式专项门执行，合并后不再重复。
+```text
+IMPLEMENTED且任务验证状态缺失
+→ VERIFICATION_PENDING
 
-## 7. 证据规则
+IMPLEMENTED且来源绑定、main SHA和任务验证状态一致
+→ VERIFIED
+```
 
-证据是文档记录，不是截图工程。
+Release Gate和下一任务激活必须读取有效状态。禁止通过第二个PR手工补写Verified来制造闭环。
 
-每个任务证据目录只强制：
+## 7. Work Synchronization
+
+Main Verification成功后，`Work Synchronization`检查：
+
+- 受检main仍是当前main；
+- 来源PR为已合并的`work → main`；
+- work仍等于来源受检Head，或已被自动删除；
+- 没有新的开放work PR；
+- work没有合并后的新提交。
+
+全部满足后，允许以CAS保护将`work`强制更新到已验证main。任一条件失败则停止并报告。
+
+## 8. Evidence
+
+新任务Evidence固定为：
 
 ```text
 docs/test-evidence/<TASK-ID>/
@@ -117,77 +119,34 @@ docs/test-evidence/<TASK-ID>/
 └─ manifest.json
 ```
 
-规则：
-
-- `summary.md`集中记录实现范围、实际测试结果、必要人工复核结论、质量结论和说明；
-- `commands.txt`记录真实自动化运行命令、退出码和必要上下文；
-- `known-risks.md`记录剩余风险，无风险时明确写“无”；
-- `manifest.json`负责文件完整性和可达来源提交绑定；
-- 真实Electron截图、完整日志Artifact或独立质量矩阵按任务风险选择，不作为所有任务的统一强制文件；
-- 不要求截图目录、截图清单、单独人工验收文件或单独质量矩阵；
-- 不得为了证据专门生成用户不查看的截图或Artifact；
-- 未运行、失败或环境限制必须如实写入文档，不得用模板文字伪装完成。
-
-旧证据包可保留历史截图和附加文件，只要Manifest完整；新证据强制四个文件和真实自动化运行记录，其他附件按风险增加。
-
-## 8. Evidence运行范围
-
-- PR事件：只校验本次发生变化的证据目录；
-- 每周定时：重放全部`Verified`证据；
-- 手动入口：在里程碑关闭、审计或发布前全量重放；
-- M3阶段关闭PR：必须运行`verified-evidence-scan`，扫描成功是M4-01机器激活条件；
-- Release：执行发布验收需要的最终证据检查。
-
-历史证据不会因普通业务代码提交自动变化，因此禁止在每个PR重复全量扫描。
+- `summary.md`记录实现范围、测试、人工复核和结论。
+- `commands.txt`只记录真实执行命令和退出结果。
+- `known-risks.md`记录剩余风险，无风险时明确写“无”。
+- `manifest.json`绑定文件完整性和受检work Head。
+- 合并后的main SHA与验证运行通过提交状态绑定，不要求第二个关闭PR。
+- 不得为了Evidence生成无人查看的截图或Artifact。
 
 ## 9. 测试路由
 
-| 变更范围                                      | 必要追加验证                                       |
-| --------------------------------------------- | -------------------------------------------------- |
-| Migration、Repository、事务                   | `test:migration`、`test:integration`               |
-| Electron Main、Preload、IPC、路径、恢复、安全 | `test:security`、`test:e2e`                        |
-| Editor、Candidate、Revision、Lock             | `test:unit`、`test:integration`、`test:e2e`        |
-| Prompt、Provider、约束包、Eval                | `test:eval`、`test:integration`，必要时`test:perf` |
-| 性能、DPI、FTS、搜索、流式处理                | `test:perf`，必要时`test:e2e`                      |
-| 发布工具、任务终态和Release Workflow          | `test:unit`、Task Governance、PR Policy            |
-| 纯文档和证据文本                              | 静态与治理检查，不运行无关业务套件                 |
+| 变更范围 | 必要追加验证 |
+|---|---|
+| Migration、Repository、事务 | `test:migration`、`test:integration` |
+| Main、Preload、IPC、路径、恢复、安全 | `test:security`、`test:e2e` |
+| Editor、Candidate、Revision、Lock | `test:unit`、`test:integration`、`test:e2e` |
+| Prompt、Provider、Eval | `test:eval`、`test:integration`，必要时`test:perf` |
+| 性能、DPI、FTS、搜索、流式处理 | `test:perf`，必要时`test:e2e` |
+| 治理、发布与任务状态 | Unit、Task Governance、PR Policy |
 
-路由不得跳过任务卡明确要求的专项测试。风险分类不确定时按更高风险执行。
+风险不确定时按更高风险执行。
 
-## 10. 发布边界与动态资格
+## 10. 完成真实性
 
-Release保持手工触发。正式发布仍执行：
+任何完成声明前必须确认：
 
-- 完整Quality；
-- Security与Performance；
-- Linux、Windows、macOS构建打包；
-- 动态Release Gate、校验和与不可变发布资产。
-
-发布资格不绑定固定任务编号。发布工具必须同时检查：
-
-```text
-全部独立任务Verified
-AND ACTIVE_TASK处于最终VERIFIED_HOLD
-AND 最终保持任务、活动任务和最近验证任务一致
-AND deferredVerification与deferredTasks为空
-AND 最终保持清单精确覆盖独立任务索引
-AND 受检提交和Evidence提交为发布提交的可达祖先
-```
-
-被吸收的`Removed（absorbed）`历史任务不属于独立任务发布判定。Release Gate和创建GitHub Release前的复核均必须获取完整Git历史。详细规则见`docs/process/RELEASE_QUALIFICATION.md`。
-
-发布级验证不下沉到每张日常任务卡；新增独立维护任务后，发布门应自动阻断，直到该任务完成Verified关闭。
-
-## 11. 完成真实性
-
-任何状态回写前必须确认：
-
-- 修改已存在于实际PR Head；
-- 入口、导出、IPC、Migration、UI与测试没有断链；
-- 声明通过的命令确实执行成功；
-- Evidence文档引用的是已提交且可达的main来源提交；
-- Squash合并后显式记录实现Head、main提交、双方Tree SHA并验证Tree一致；
-- `taskctl verify-task`必须接收`--expected-head`、`--implementation-head`和`--main-commit`，不得绕过来源校验；
-- Controlled Merge和Main Verification针对同一代提交。
-
-未实际落地或未复核的内容不得声明完成。
+- 修改存在于真实work PR Head；
+- 入口、导出、IPC、Migration、UI和测试没有断链；
+- 声明通过的命令真实成功；
+- Controlled Merge与Main Verification针对同一代来源；
+- 任务有效状态已闭环；
+- work已安全同步到已验证main；
+- 重新读取真实main、work和关键状态。

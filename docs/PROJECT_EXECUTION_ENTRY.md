@@ -1,6 +1,6 @@
 # WorldForge 项目执行统一入口
 
-> 状态：M9 V1.1 架构治理 Active
+> 状态：M9 V1.1 架构治理 VERIFIED_HOLD
 > 面向：Codex、开发者、审查者、测试人员
 
 ## 1. 启动顺序
@@ -9,39 +9,47 @@
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/TASK_AUTHORIZATION.json
-→ docs/tasks/ACTIVE_TASK.json（V1.0终态兼容锚点）
+→ docs/tasks/ACTIVE_TASK.json（V1.0/V1.1终态兼容锚点）
 → docs/tasks/TASK_INDEX.md
-→ 当前任务Runtime与独立任务卡
+→ 新任务Runtime与独立任务卡（仅在重新立项后存在）
 → 任务卡列出的专项真源、现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`定义并行任务PR与main串行写入规则；`docs/tasks/runtime/`是M9活动任务机器真源。`ACTIVE_TASK.json`继续保存M8-09的V1.0 `VERIFIED_HOLD`，不再承担M9并行任务状态。
+`TASK_AUTHORIZATION.json`定义任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务机器状态和历史验证记录。当前没有活动M9任务，`ACTIVE_TASK.json`保存M8-09兼容锚点及M9-03最终验证保持状态。
 
 ## 2. 当前基线
 
-M8-09已经完成V1.0稳定性与生命周期治理并建立Verified锚点。M9在不改变产品行为、持久化格式、IPC协议、错误码和发布边界的前提下执行V1.1架构拆分：
+M8-09已经完成V1.0稳定性与生命周期治理。M9在保持产品行为、持久化格式、IPC协议、错误码和发布边界的前提下完成V1.1架构拆分：
 
 ```text
-M8-09 Verified
+M8-09 V1.0稳定性治理（Verified）
+→ M9-00 治理激活与权威文档同步（Verified）
 → M9-01 / AR-01 重构安全网（Verified）
 → M9-02 / AR-02 Shared Structure（Verified）
-→ M9-03 / AR-03—AR-14 剩余架构拆分统一执行（In Progress）
-   ├─ AR-03、AR-04：PR #272已合并至main提交7adafeea
-   └─ AR-05—AR-14：续作分支work/m9-03-ar05-ar14-continuation
+→ M9-03 / AR-03—AR-14 统一架构拆分（Verified）
+   ├─ Writing、Canon、Planning与AppShell拆分
+   ├─ Contracts、Preload与Main IPC拆分
+   ├─ ServiceFacade、Project Workspace、Recovery与工具域拆分
+   └─ Legacy退役、CSS分层与结构预算收敛
 ```
+
+M9-03实施PR #273已合并至`main@f5add56154e99bc907376e08787b7037851835f0`；Main Verification运行`30754708770`成功。验证PR #289完成Windows原生微软拼音及Linux、Windows、macOS三平台Package Smoke。治理PR #292将M9-03关闭为Verified，最终关闭提交为`b72c591e6925f8f2ef92a3854fca857d05a3f103`。
+
+最终结构扫描结果：397个源码文件、1171条相对导入边、0项结构债务。
 
 ## 3. 当前执行模式
 
 ```text
-授权模式：parallel-pr
+仓库状态：VERIFIED_HOLD
 基线分支：main
 main写入：serialized
 直接main提交：禁止
-任务状态：docs/tasks/runtime/<TASK_ID>.json
+活动任务：无
+新任务入口：重新立项并创建独立任务卡与Runtime
 PR绑定：<!-- worldforge-task: Mx-yy -->
 ```
 
-互不重叠的任务可同时开放PR；每个PR只绑定一个任务和一个受检Head。M9剩余拆分只有M9-03一个活动任务。作者于2026-08-01要求先合并已完成的AR-03、AR-04检查点，再从main继续推进，因此M9-03采用同一Runtime下的受控分段交付：PR #272已闭环，AR-05—AR-14由新的续作PR继续。main合并、Main Verification及最终Verified关闭仍必须串行完成。
+M9-00—M9-03全部Verified，M9-04—M9-14继续保持`Removed（absorbed by M9-03）`。任何新功能、公开分发能力、行为修改或架构续作都必须重新立项，建立新的任务授权、Runtime、任务卡、验证矩阵和回退边界后再实施。
 
 ## 4. 权威顺序
 
@@ -57,35 +65,36 @@ PR绑定：<!-- worldforge-task: Mx-yy -->
 
 发现冲突时必须记录冲突来源、数据兼容、影响范围和解决方案，禁止静默选择。
 
-## 5. M9治理边界
+## 5. M9最终治理边界
 
-- M9只做保持行为的架构拆分，不新增产品功能。
-- 不修改历史Migration；重构PR不新增数据库Schema。
-- IPC Channel字符串、`PROTOCOL_VERSION`、正式错误码和公开Bridge方法保持不变。
+- M9只实施保持行为的架构拆分，没有新增产品功能。
+- 历史Migration、数据库Schema、IPC Channel字符串、`PROTOCOL_VERSION`、正式错误码和公开Bridge方法均保持不变。
 - AI输出继续先进入建议稿，设定更新建议继续由作者裁决，`project.sqlite`继续是作品唯一权威真源。
 - Renderer不得获得Node、文件系统、SQLite、环境变量或凭据能力。
-- M9-03统一承接AR-03—AR-14；M9-04—M9-14不恢复独立Runtime或独立任务状态。
-- 已合并检查点和续作检查点必须各自绑定受检Head、main提交、专项验证和回退边界。
-- AR-10、AR-12和AR-13是剩余高风险检查点，进入依赖它们的后续子包前必须保存独立回退说明和专项验证结果。
-- AR-14只做Legacy、CSS和预算收敛，不承载前序未完成的核心拆分。
+- M9-03已统一承接并完成AR-03—AR-14；M9-04—M9-14不恢复独立Runtime或独立任务状态。
+- AR-04、AR-10、AR-12和AR-13的独立回退说明、专项验证及最终Evidence已保存。
+- Legacy入口与旧CSS责任域已完成退役和收敛，结构预算当前为0项债务。
 
-M9方案入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)。
+M9方案与历史证据入口：[`docs/tasks/M9/README.md`](tasks/M9/README.md)。
 
-## 6. 标准实施闭环
+## 6. 后续任务标准闭环
 
 ```text
-读取任务卡、Runtime、冻结工作包与现有实现
+重新立项并冻结范围
+→ 创建任务卡、Runtime、分支与PR绑定
 → 核对依赖、允许路径、行为不变量和结构预算
 → 建立行为测试或稳定复现
-→ 按当前AR依赖完成拆分检查点
-→ 每个检查点专项回归，最终执行全量质量矩阵
-→ 更新任务卡和Runtime检查点状态
+→ 实施并完成专项回归
+→ 执行完整质量矩阵
+→ 更新任务卡、Runtime与Evidence
 → Draft转Ready
-→ 六项永久门禁全部成功
+→ 永久门禁全部成功
 → 使用expected_head_sha受控合并
 → 等待main-verification成功
-→ 继续下一未完成AR，或在AR-14后独立治理关闭M9-03为Verified
+→ 独立治理关闭为Verified或进入下一任务
 ```
+
+不得在`VERIFIED_HOLD`状态下沿用M9-03 Runtime继续开发，也不得将M9-04—M9-14恢复成独立活动任务。
 
 ## 7. GitHub Actions工具链
 
@@ -110,3 +119,4 @@ Windows中文输入：系统内置Microsoft Pinyin
 - 无AI写作、保存、历史版本、导出和恢复始终必须可用。
 - 测试、构建、发布和平台结论必须来自真实运行。
 - PR Head检查成功不等于main验证成功；合并后必须复核最终main SHA及`main-verification`。
+- 当前没有授权中的开发任务；新增工作必须先完成正式立项。

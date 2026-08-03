@@ -7,6 +7,8 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import {
   INITIAL_CHAPTER_SESSION_STATE,
+  chapterOpenIsTemporarilyBlocked,
+  chapterOpenRequiresFlush,
   chapterRequestIsCurrent,
   reduceChapterSession,
   type ChapterSessionAction,
@@ -74,12 +76,17 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
           input.mountEditor(input.activeDraft.current, nextChapter);
         return;
       }
-      transition({ type: 'flush' });
-      if (!(await input.flush())) {
-        const message = '自动保存失败，已阻止切换章节。';
-        transition({ type: 'fail', message });
-        input.onStatus(message);
-        return;
+      if (chapterOpenIsTemporarilyBlocked(stateRef.current)) return;
+      if (chapterOpenRequiresFlush(stateRef.current)) {
+        transition({ type: 'flush' });
+        if (!(await input.flush())) {
+          requestGeneration.current += 1;
+          input.editor.current?.setEditable(!input.readOnly);
+          const message = '自动保存失败，已阻止切换章节。';
+          transition({ type: 'fail', message });
+          input.onStatus(message);
+          return;
+        }
       }
       const generation = ++requestGeneration.current;
       transition({ type: 'load', chapterId: nextChapter.id, requestGeneration: generation });

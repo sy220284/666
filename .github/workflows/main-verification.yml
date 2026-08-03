@@ -78,6 +78,8 @@ jobs:
     timeout-minutes: 5
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
+      SOURCE_PR: ${{ inputs.source_pr }}
+      SOURCE_HEAD_SHA: ${{ inputs.source_head_sha }}
       VALIDATE_RESULT: ${{ needs.validate-main.result }}
       QUALITY_RESULT: ${{ needs.quality.result }}
       GITHUB_TOKEN: ${{ github.token }}
@@ -91,7 +93,7 @@ jobs:
           node-version: 24
       - name: Assert clean status publisher checkout
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Publish final main verification status
+      - name: Publish final main and task verification statuses
         run: node scripts/main-verification.mjs publish-status
       - name: Assert status publication did not mutate tracked files
         if: always()

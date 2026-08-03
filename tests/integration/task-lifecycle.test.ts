@@ -5,9 +5,78 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { renderActiveTask } from '../../scripts/task-control-lib.mjs';
+import { renderCompatibilityMirror } from '../../.github/governance/single-work-taskctl.mjs';
 
 const temporaryDirectories: string[] = [];
+const taskctlPath = path.resolve('scripts/taskctl.mjs');
+
+const authorization = {
+  schemaVersion: 2,
+  mode: 'single-work-pr',
+  baseBranch: 'main',
+  workBranch: 'work',
+  allowDirectMainCommits: false,
+  allowAdditionalBranches: false,
+  maxOpenWorkPullRequests: 1,
+  mainWriteMode: 'serialized',
+  mergeMethod: 'squash',
+  verificationClosure: 'main-status',
+  workSynchronization: 'verified-reset',
+  taskRuntimeDirectory: 'docs/tasks/runtime',
+  prTaskMarker: 'worldforge-task',
+};
+
+const activeState = {
+  schemaVersion: 1,
+  authorization: {
+    mode: 'implementation-pr',
+    compatibilityOnly: true,
+    supersededBy: 'docs/tasks/TASK_AUTHORIZATION.json',
+    executionModel: 'single-work-pr',
+    workBranch: 'work',
+    branch: 'main',
+    allowDirectMainCommits: false,
+  },
+  activeTask: {
+    id: 'M8-09',
+    status: 'VERIFIED_HOLD',
+    source: 'docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md',
+    branch: 'work',
+    executionBranch: 'work',
+  },
+};
+
+async function createFixture({ staleMirror = false, branch = 'work' } = {}) {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-schema2-task-'));
+  temporaryDirectories.push(root);
+  await mkdir(path.join(root, 'docs/tasks'), { recursive: true });
+  const state = {
+    ...activeState,
+    activeTask: {
+      ...activeState.activeTask,
+      branch,
+      executionBranch: branch,
+    },
+  };
+  await Promise.all([
+    writeFile(
+      path.join(root, 'docs/tasks/TASK_AUTHORIZATION.json'),
+      `${JSON.stringify(authorization, null, 2)}\n`,
+      'utf8',
+    ),
+    writeFile(
+      path.join(root, 'docs/tasks/ACTIVE_TASK.json'),
+      `${JSON.stringify(state, null, 2)}\n`,
+      'utf8',
+    ),
+    writeFile(
+      path.join(root, 'docs/tasks/ACTIVE_TASK.md'),
+      staleMirror ? '# stale\n' : renderCompatibilityMirror(authorization, state),
+      'utf8',
+    ),
+  ]);
+  return { root, state };
+}
 
 afterEach(async () => {
   await Promise.all(
@@ -15,209 +84,69 @@ afterEach(async () => {
   );
 });
 
-describe('continuous task lifecycle', () => {
-  it('closes an implemented task and activates the next dependency-ready task', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-task-'));
-    temporaryDirectories.push(root);
-    await Promise.all([
-      mkdir(path.join(root, 'docs/tasks/M0'), { recursive: true }),
-      mkdir(path.join(root, 'docs/test-evidence/M0-01'), { recursive: true }),
-    ]);
-
-    const state = {
-      schemaVersion: 1,
-      authorization: { mode: 'continuous-mainline', branch: 'main' },
-      activeTask: {
-        id: 'M0-01',
-        status: 'IMPLEMENTED',
-        source: 'docs/tasks/M0/M0-01.md',
-        branch: 'main',
-        startedAt: '2026-07-15',
-        allowedPaths: ['scripts/'],
-        forbiddenPaths: [],
-        requiredDocs: [],
-        verification: ['pnpm test'],
-      },
-    };
-    const index = `| ID | 任务卡 | 依赖 | 状态 |\n|---|---|---|---|\n| M0-01 | [基础](M0/M0-01.md) | 无 | Implemented |\n| M0-02 | [运行时](M0/M0-02.md) | M0-01 | Planned |\n`;
-    const currentCard = '# M0-01\n\n> 状态：Implemented（等待CI）\n';
-    const nextCard =
-      '# M0-02\n\n> 状态：Planned  \n\n## 必读文档\n\n- `AGENTS.md`\n\n## 主要影响范围\n\n- `apps/desktop/main/`\n';
-
-    await Promise.all([
-      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), JSON.stringify(state), 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), renderActiveTask(state), 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), index, 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/M0/M0-01.md'), currentCard, 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/M0/M0-02.md'), nextCard, 'utf8'),
-      writeFile(path.join(root, 'AGENTS.md'), '# fixture', 'utf8'),
-      writeFile(path.join(root, 'docs/test-evidence/M0-01/summary.md'), '# pass', 'utf8'),
-      writeFile(path.join(root, 'docs/test-evidence/M0-01/commands.txt'), 'exit 0', 'utf8'),
-      writeFile(path.join(root, 'docs/test-evidence/M0-01/known-risks.md'), '# none', 'utf8'),
-    ]);
-
-    execFileSync(
-      process.execPath,
-      [path.resolve('scripts/taskctl.mjs'), 'close', '--ci=success', '--commit=abcdef1'],
-      { cwd: root },
-    );
-
-    const updatedState = JSON.parse(
-      await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8'),
-    );
-    const updatedIndex = await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8');
-    expect(updatedState.lastVerifiedTask).toMatchObject({ id: 'M0-01', commit: 'abcdef1' });
-    expect(updatedState.activeTask).toMatchObject({ id: 'M0-02', status: 'IN_PROGRESS' });
-    expect(updatedIndex).toContain('| M0-01 | [基础](M0/M0-01.md) | 无 | Verified |');
-    expect(updatedIndex).toContain('| M0-02 | [运行时](M0/M0-02.md) | M0-01 | In Progress |');
-  });
-});
-
-describe('implementation-first task lifecycle', () => {
-  it('records deferred verification and advances after code and CI complete', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-implementation-task-'));
-    temporaryDirectories.push(root);
-    await mkdir(path.join(root, 'docs/tasks/M1'), { recursive: true });
-
-    const state = {
-      schemaVersion: 1,
-      authorization: {
-        mode: 'implementation-mainline',
-        branch: 'main',
-        deferVerificationUntilBatch: true,
-      },
-      activeTask: {
-        id: 'M1-01',
-        status: 'IN_PROGRESS',
-        source: 'docs/tasks/M1/M1-01.md',
-        branch: 'main',
-        startedAt: '2026-07-16',
-        allowedPaths: ['packages/core-service/', 'docs/tasks/M1/M1-01.md'],
-        forbiddenPaths: [],
-        requiredDocs: [],
-        verification: ['pnpm test'],
-      },
-      deferredVerification: [],
-    };
-    const index = `| ID | 任务卡 | 依赖 | 状态 |\n|---|---|---|---|\n| M1-01 | [设置](M1/M1-01.md) | M0 | In Progress |\n| M1-02 | [项目](M1/M1-02.md) | M1-01 | Planned |\n`;
-    const currentCard = '# M1-01\n\n> 状态：In Progress  \n';
-    const nextCard =
-      '# M1-02\n\n> 状态：Planned  \n\n## 必读文档\n\n- `AGENTS.md`\n\n## 主要影响范围\n\n- `packages/core-service/`\n';
-
-    await Promise.all([
-      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), JSON.stringify(state), 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), renderActiveTask(state), 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), index, 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/M1/M1-01.md'), currentCard, 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/M1/M1-02.md'), nextCard, 'utf8'),
-      writeFile(path.join(root, 'AGENTS.md'), '# fixture', 'utf8'),
-    ]);
-
-    execFileSync(
-      process.execPath,
-      [path.resolve('scripts/taskctl.mjs'), 'advance', '--ci=success', '--commit=abcdef1'],
-      { cwd: root },
-    );
-
-    const updatedState = JSON.parse(
-      await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8'),
-    );
-    const updatedIndex = await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8');
-    const updatedCard = await readFile(path.join(root, 'docs/tasks/M1/M1-01.md'), 'utf8');
-    expect(updatedState.lastImplementedTask).toMatchObject({
-      id: 'M1-01',
-      commit: 'abcdef1',
-      source: 'docs/tasks/M1/M1-01.md',
-      branch: 'main',
-      nextTaskId: 'M1-02',
+describe('Schema 2 task lifecycle', () => {
+  it('validates the unique work authorization and compatibility mirror', async () => {
+    const { root } = await createFixture();
+    const output = execFileSync(process.execPath, [taskctlPath, 'status'], {
+      cwd: root,
+      encoding: 'utf8',
     });
-    expect(updatedState.lastImplementedTask.allowedPaths).toContain('docs/tasks/M1/M1-01.md');
-    expect(updatedState.deferredVerification).toEqual([
-      expect.objectContaining({
-        id: 'M1-01',
-        implementationCommit: 'abcdef1',
-        pending: [
-          'four-file evidence package and real automated run records',
-          'necessary manual review conclusions recorded in summary.md',
-          'risk-based screenshots, full logs, or independent quality matrix when warranted',
-          'final traceability verification status',
-          'Verified closure',
-        ],
+    expect(output).toContain('Single work task state and compatibility mirror are valid.');
+    expect(output).toContain('"mode": "single-work-pr"');
+    expect(output).toContain('"workBranch": "work"');
+    expect(output).toContain('"activeStatus": "VERIFIED_HOLD"');
+  });
+
+  it('repairs a stale compatibility mirror through the Schema 2 sync command', async () => {
+    const { root, state } = await createFixture({ staleMirror: true });
+    expect(() =>
+      execFileSync(process.execPath, [taskctlPath, 'validate'], {
+        cwd: root,
+        stdio: 'pipe',
       }),
-    ]);
-    expect(updatedState.activeTask).toMatchObject({ id: 'M1-02', status: 'IN_PROGRESS' });
-    expect(updatedState.activeTask.allowedPaths).not.toContain('docs/tasks/M1/M1-01.md');
-    expect(updatedIndex).toContain('| M1-01 | [设置](M1/M1-01.md) | M0 | Implemented |');
-    expect(updatedIndex).toContain('| M1-02 | [项目](M1/M1-02.md) | M1-01 | In Progress |');
-    expect(updatedCard).toContain('> 状态：Implemented  ');
-  });
-});
-
-describe('M3 stage closure lifecycle', () => {
-  it('blocks implementation advance from M3-10 to M4-01 until M3 is Verified', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-m3-close-'));
-    temporaryDirectories.push(root);
-    await mkdir(path.join(root, 'docs/tasks/M3'), { recursive: true });
-    const state = {
-      schemaVersion: 1,
-      authorization: {
-        mode: 'implementation-mainline',
-        branch: 'main',
-        deferVerificationUntilBatch: true,
-      },
-      activeTask: {
-        id: 'M3-10',
-        status: 'IN_PROGRESS',
-        source: 'docs/tasks/M3/M3-10.md',
-        branch: 'main',
-        startedAt: '2026-07-21',
-        allowedPaths: ['apps/desktop/renderer/'],
-        forbiddenPaths: [],
-        requiredDocs: [],
-        verification: ['pnpm test'],
-      },
-      deferredVerification: [{ id: 'M3-01' }],
-    };
-    const index = `| ID | 任务卡 | 依赖 | 状态 |\n|---|---|---|---|\n| M3-01 | [一](M3/M3-01.md) | M2 | Implemented |\n| M3-10 | [十](M3/M3-10.md) | M3-09 | In Progress |\n| M4-01 | [四](M4/M4-01.md) | M3 | Planned |\n`;
-    await Promise.all([
-      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), JSON.stringify(state), 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), renderActiveTask(state), 'utf8'),
-      writeFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), index, 'utf8'),
-      writeFile(
-        path.join(root, 'docs/tasks/M3/M3-10.md'),
-        '# M3-10\n\n> 状态：In Progress  \n',
-        'utf8',
-      ),
-    ]);
-
-    expect(() =>
-      execFileSync(
-        process.execPath,
-        [path.resolve('scripts/taskctl.mjs'), 'advance', '--ci=success', '--commit=abcdef1'],
-        { cwd: root, stdio: 'pipe' },
-      ),
     ).toThrow();
-    expect(
-      JSON.parse(await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8')),
-    ).toEqual(state);
-    expect(await readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8')).toBe(index);
+
+    execFileSync(process.execPath, [taskctlPath, 'sync'], { cwd: root });
+    const mirror = await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), 'utf8');
+    expect(mirror).toBe(renderCompatibilityMirror(authorization, state));
+    expect(() =>
+      execFileSync(process.execPath, [taskctlPath, 'validate'], {
+        cwd: root,
+        stdio: 'pipe',
+      }),
+    ).not.toThrow();
   });
 
-  it('requires an explicit expected Head and squash provenance for verify-task', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'worldforge-verify-head-'));
-    temporaryDirectories.push(root);
+  it.each(['activate', 'advance', 'close', 'close-deferred', 'reopen'])(
+    'rejects the retired %s mutation and preserves state files',
+    async (command) => {
+      const { root } = await createFixture();
+      const activeBefore = await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8');
+      const mirrorBefore = await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), 'utf8');
+
+      expect(() =>
+        execFileSync(process.execPath, [taskctlPath, command], {
+          cwd: root,
+          stdio: 'pipe',
+        }),
+      ).toThrow();
+
+      expect(await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8')).toBe(
+        activeBefore,
+      );
+      expect(await readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.md'), 'utf8')).toBe(
+        mirrorBefore,
+      );
+    },
+  );
+
+  it('rejects a task-specific compatibility branch', async () => {
+    const { root } = await createFixture({ branch: 'work/m8-09' });
     expect(() =>
-      execFileSync(
-        process.execPath,
-        [
-          path.resolve('scripts/taskctl.mjs'),
-          'verify-task',
-          'M3-01',
-          '--ci=success',
-          '--commit=abcdef1',
-        ],
-        { cwd: root, stdio: 'pipe' },
-      ),
-    ).toThrow(/--expected-head/);
+      execFileSync(process.execPath, [taskctlPath, 'validate'], {
+        cwd: root,
+        stdio: 'pipe',
+      }),
+    ).toThrow();
   });
 });

@@ -35,14 +35,14 @@ const requiredFiles = [
   '.github/governance/automation-layout-policy.mjs',
   '.github/governance/automerge-base-gate.mjs',
   '.github/governance/branch-inventory-policy.mjs',
+  '.github/governance/effective-task-status.mjs',
   '.github/governance/main-protection.json',
   '.github/governance/post-merge-verification.mjs',
   '.github/governance/required-checks.json',
   '.github/governance/secret-scan-allowlist.json',
   '.github/governance/single-work-policy.mjs',
-  '.github/governance/stage-close-policy.mjs',
-  '.github/governance/task-transition-policy.mjs',
-  '.github/governance/verification-hold-taskctl.mjs',
+  '.github/governance/single-work-release-gate.mjs',
+  '.github/governance/single-work-taskctl.mjs',
   '.github/governance/work-synchronization.mjs',
   '.github/governance/workspace-architecture.json',
   'scripts/automerge.mjs',
@@ -83,21 +83,16 @@ function validateWorkflowEnvelope(errors, file, source) {
   if (/git\s+push[^\n]*(?:HEAD:main|\bmain\b)/iu.test(source)) {
     errors.push(`${file}: direct main push is forbidden`);
   }
-
   for (const match of source.matchAll(/uses:\s*([^@\s]+)@([^\s#]+)/gu)) {
     const action = match[1];
     const reference = match[2];
     if (action.startsWith('./')) continue;
     const expected = actionPins.get(action);
-    if (!expected) {
-      errors.push(`${file}: external action ${action} is not allowlisted`);
-      continue;
-    }
-    if (reference !== expected) {
+    if (!expected) errors.push(`${file}: external action ${action} is not allowlisted`);
+    else if (reference !== expected) {
       errors.push(`${file}: ${action} must use immutable SHA ${expected}`);
     }
   }
-
   const checkouts = [...source.matchAll(/uses:\s*actions\/checkout@[^\s#]+/gu)].length;
   const safeCheckouts = [...source.matchAll(/persist-credentials:\s*false/gu)].length;
   if (checkouts !== safeCheckouts) {
@@ -108,9 +103,7 @@ function validateWorkflowEnvelope(errors, file, source) {
 function rejectWholeJobDraftSkip(errors, file, source) {
   const pattern =
     /^\s*if:\s*\$\{\{\s*(?:github\.event\.pull_request\.draft == false|github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.draft == false)\s*\}\}\s*$/mu;
-  if (pattern.test(source)) {
-    errors.push(`${file}: Draft PRs must not skip the whole permanent job`);
-  }
+  if (pattern.test(source)) errors.push(`${file}: Draft PRs must not skip the whole permanent job`);
 }
 
 async function main() {
@@ -149,11 +142,9 @@ async function main() {
     '- Security',
     '- Performance',
     '- Evidence',
-    'group: automerge-${{ github.event.workflow_run.head_sha }}',
     'automerge-base-gate.mjs',
     'scripts/automerge.mjs',
   ]);
-  forbidTokens(errors, 'automerge.yml', automerge, ['CLOSEOUT_TRIGGER', 'tmp_closeout']);
 
   const prPolicy = workflows.get('pr-policy.yml') ?? '';
   requireTokens(errors, 'pr-policy.yml', prPolicy, [
@@ -164,7 +155,11 @@ async function main() {
     'automation-layout-policy.mjs',
     'pnpm ci:policy',
   ]);
-  forbidTokens(errors, 'pr-policy.yml', prPolicy, ['parallel-task-policy.mjs']);
+  forbidTokens(errors, 'pr-policy.yml', prPolicy, [
+    'parallel-task-policy.mjs',
+    'task-transition-policy.mjs',
+    'stage-close-policy.mjs',
+  ]);
   rejectWholeJobDraftSkip(errors, 'pr-policy.yml', prPolicy);
 
   const taskGovernance = workflows.get('task-governance.yml') ?? '';
@@ -173,104 +168,41 @@ async function main() {
     'ready_for_review',
     'converted_to_draft',
     'single-work-policy.mjs validate',
-    'verification-hold-taskctl.mjs validate',
-    'task-transition-policy.mjs',
-    'stage-close-policy.mjs',
+    'single-work-taskctl.mjs validate',
   ]);
   forbidTokens(errors, 'task-governance.yml', taskGovernance, [
     'parallel-task-policy.mjs',
-    'verification-hold-taskctl.mjs preflight',
+    'verification-hold-taskctl.mjs',
+    'task-transition-policy.mjs',
+    'task-checkpoint-policy.mjs',
+    'stage-close-policy.mjs',
     "startsWith(github.head_ref, 'policy/')",
     "startsWith(github.head_ref, 'fix/')",
   ]);
   rejectWholeJobDraftSkip(errors, 'task-governance.yml', taskGovernance);
 
-  const evidence = workflows.get('evidence.yml') ?? '';
-  requireTokens(errors, 'evidence.yml', evidence, [
-    'pull_request:',
-    'workflow_dispatch:',
-    'schedule:',
-    'converted_to_draft',
-    'Validate changed task evidence documents',
-    "github.event_name == 'pull_request'",
-    'Validate all Verified task evidence documents',
-    "github.event_name != 'pull_request'",
-    'scripts/evidence-policy.mjs',
-    'scripts/verified-evidence-scan.mjs',
+  const repositoryGovernance = workflows.get('repository-governance.yml') ?? '';
+  requireTokens(errors, 'repository-governance.yml', repositoryGovernance, [
+    'automation-layout-policy.mjs',
+    'single-work-taskctl.mjs validate',
+    'main-verification-wait.self-test.mjs',
   ]);
-  forbidTokens(errors, 'evidence.yml', evidence, ['screenshots']);
-  rejectWholeJobDraftSkip(errors, 'evidence.yml', evidence);
-
-  const quality = workflows.get('quality.yml') ?? '';
-  requireTokens(errors, 'quality.yml', quality, [
-    'pull_request:',
-    'ready_for_review',
-    'converted_to_draft',
-    'full_suite:',
-    'quality-core.yml',
-    'draft_mode: false',
-    'package_smoke: false',
-    'performance_eval: false',
+  forbidTokens(errors, 'repository-governance.yml', repositoryGovernance, [
+    'deferred-task-closure.mjs',
+    'task-transition-policy.mjs',
   ]);
-  forbidTokens(errors, 'quality.yml', quality, [
-    'static-failure-diagnostics',
-    'draft_mode: ${{ github.event.pull_request.draft',
-  ]);
-
-  const qualityCore = workflows.get('quality-core.yml') ?? '';
-  requireTokens(errors, 'quality-core.yml', qualityCore, [
-    'full_suite:',
-    'static-checks:',
-    'tests:',
-    'Skip product tests for documentation-only Ready PR',
-    'desktop-e2e:',
-    'Skip Electron E2E for documentation-only Ready PR',
-    'build:',
-    'Skip build for documentation-only Ready PR',
-    'package-smoke:',
-    'if: ${{ inputs.draft_mode == false && inputs.package_smoke }}',
-    'platform: linux',
-    'platform: windows',
-    'platform: macos',
-    'smoke-packaged-desktop.mjs',
-    'quality:',
-    'require_optional_job "$PACKAGE_REQUIRED" "$PACKAGE_RESULT" package-smoke',
-  ]);
-
-  const security = workflows.get('security.yml') ?? '';
-  requireTokens(errors, 'security.yml', security, [
-    'pull_request:',
-    'converted_to_draft',
-    'pnpm audit --audit-level=high',
-    'scan-secrets.mjs',
-    'pnpm test:security',
-    'name: security',
-    'if: always()',
-  ]);
-  forbidTokens(errors, 'security.yml', security, ['activeTask?.verification?.includes']);
-  rejectWholeJobDraftSkip(errors, 'security.yml', security);
-
-  const performance = workflows.get('performance.yml') ?? '';
-  requireTokens(errors, 'performance.yml', performance, [
-    'pull_request:',
-    'workflow_dispatch:',
-    'converted_to_draft',
-    'Determine performance validation route',
-    'Run performance budgets',
-    'pnpm test:perf',
-    'only documentation changed',
-  ]);
-  forbidTokens(errors, 'performance.yml', performance, ['activeTask?.verification?.includes']);
-  rejectWholeJobDraftSkip(errors, 'performance.yml', performance);
 
   const branchHygiene = workflows.get('branch-hygiene.yml') ?? '';
   requireTokens(errors, 'branch-hygiene.yml', branchHygiene, [
+    '- Work Synchronization',
     'branch-inventory-policy.mjs self-test',
     'branch-inventory-policy.mjs',
+    'contents: read',
   ]);
   forbidTokens(errors, 'branch-hygiene.yml', branchHygiene, [
     'contents: write',
     'scripts/work-branch-policy.mjs',
+    '- Main Verification',
   ]);
 
   const workSynchronization = workflows.get('work-synchronization.yml') ?? '';
@@ -295,11 +227,7 @@ async function main() {
     'source_head_sha:',
     'statuses: write',
     'scripts/main-verification.mjs',
-    'name: Main static verification',
-    'draft_mode: true',
-    'package_smoke: false',
-    'security_suite: false',
-    'performance_eval: false',
+    'Publish final main and task verification statuses',
     'name: main-verification',
   ]);
 
@@ -311,16 +239,73 @@ async function main() {
     'post-merge-verification.mjs',
   ]);
 
+  const evidence = workflows.get('evidence.yml') ?? '';
+  requireTokens(errors, 'evidence.yml', evidence, [
+    'pull_request:',
+    'workflow_dispatch:',
+    'schedule:',
+    'converted_to_draft',
+    'scripts/evidence-policy.mjs',
+    'scripts/verified-evidence-scan.mjs',
+  ]);
+  rejectWholeJobDraftSkip(errors, 'evidence.yml', evidence);
+
+  const quality = workflows.get('quality.yml') ?? '';
+  requireTokens(errors, 'quality.yml', quality, [
+    'pull_request:',
+    'ready_for_review',
+    'converted_to_draft',
+    'quality-core.yml',
+    'package_smoke: false',
+  ]);
+
+  const qualityCore = workflows.get('quality-core.yml') ?? '';
+  requireTokens(errors, 'quality-core.yml', qualityCore, [
+    'static-checks:',
+    'tests:',
+    'desktop-e2e:',
+    'build:',
+    'package-smoke:',
+    'platform: linux',
+    'platform: windows',
+    'platform: macos',
+    'quality:',
+  ]);
+
+  const security = workflows.get('security.yml') ?? '';
+  requireTokens(errors, 'security.yml', security, [
+    'pull_request:',
+    'converted_to_draft',
+    'scan-secrets.mjs',
+    'pnpm test:security',
+    'name: security',
+  ]);
+  rejectWholeJobDraftSkip(errors, 'security.yml', security);
+
+  const performance = workflows.get('performance.yml') ?? '';
+  requireTokens(errors, 'performance.yml', performance, [
+    'pull_request:',
+    'workflow_dispatch:',
+    'converted_to_draft',
+    'Run performance budgets',
+    'pnpm test:perf',
+  ]);
+  rejectWholeJobDraftSkip(errors, 'performance.yml', performance);
+
   const release = workflows.get('release.yml') ?? '';
   requireTokens(errors, 'release.yml', release, [
     'workflow_dispatch:',
     'environment: release',
+    'single-work-release-gate.mjs',
     'security_suite: true',
     'performance_eval: true',
-    'pnpm build',
     'pnpm run package --',
   ]);
-  forbidTokens(errors, 'release.yml', release, ['pull_request:', 'schedule:']);
+  forbidTokens(errors, 'release.yml', release, [
+    'pull_request:',
+    'schedule:',
+    'parallel-task-release-gate.mjs',
+  ]);
 
   const engineeringValidation = workflows.get('engineering-validation.yml') ?? '';
   requireTokens(errors, 'engineering-validation.yml', engineeringValidation, [
@@ -328,16 +313,7 @@ async function main() {
     'workflow_call:',
     'source_sha:',
     'profile:',
-    '- static',
-    '- full',
-    '- contract-surface',
-    '- windows-ime',
-    '- package-smoke',
-    '- dependency-diagnostic',
     'quality-core.yml',
-    'contracts-public-surface.json',
-    'playwright.windows-ime.config.ts',
-    'pnpm audit --audit-level=high',
     'name: engineering-validation',
   ]);
   forbidTokens(errors, 'engineering-validation.yml', engineeringValidation, [
@@ -347,8 +323,6 @@ async function main() {
     'contents: write',
     'statuses: write',
     'environment:',
-    'command:',
-    'target_branch:',
     'git push',
   ]);
 

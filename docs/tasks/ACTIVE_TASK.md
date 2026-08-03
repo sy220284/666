@@ -10,7 +10,7 @@ VERIFIED_HOLD
 
 - 任务ID：`M8-09`
 - 唯一任务卡：`docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md`
-- 工作分支：`work/m8-09-v1-stability-hardening`
+- 工作分支：`work/m10-02-full-code-audit`
 - 开始时间：`2026-07-31`
 - 授权模式：`implementation-pr`
 - 授权人：`author`

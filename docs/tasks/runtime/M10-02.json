@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "M10-02",
-  "status": "IN_PROGRESS",
+  "status": "VERIFIED",
   "source": "docs/tasks/M10/M10-02_FULL_CODE_AUDIT.md",
   "startedAt": "2026-08-03",
   "dependencies": [
@@ -23,6 +23,7 @@
     ".github/",
     "docs/tasks/M10/",
     "docs/tasks/runtime/M10-02.json",
+    "docs/tasks/TASK_INDEX.md",
     "docs/test-evidence/M10-02/",
     "docs/PROJECT_EXECUTION_ENTRY.md",
     "package.json",
@@ -64,5 +65,43 @@
     "pnpm build",
     "pnpm test:e2e",
     "pnpm release:check"
-  ]
+  ],
+  "implementedAt": "2026-08-03T05:48:39.000Z",
+  "implementationHead": "3da8156bf840cc7f55626ef3b120de2b7aeb5270",
+  "readyHead": "3da8156bf840cc7f55626ef3b120de2b7aeb5270",
+  "sourcePr": 297,
+  "mergedAt": "2026-08-03T05:49:05.000Z",
+  "mainCommit": "ca83d48c7493bba21252a37f9aec024d6aa0ca79",
+  "verifiedAt": "2026-08-03T05:50:00.000Z",
+  "mainVerificationRun": 30788229139,
+  "evidence": {
+    "summary": "docs/test-evidence/M10-02/summary.md",
+    "qualityRun": 30787490130,
+    "securityRun": 30787490055,
+    "performanceRun": 30787490030,
+    "evidenceRun": 30787490007,
+    "taskGovernanceRun": 30787490052,
+    "prPolicyRun": 30787490016,
+    "testFiles": 246,
+    "tests": 1063,
+    "coverage": {
+      "statements": 85.35,
+      "branches": 75.61,
+      "functions": 85.81,
+      "lines": 87.49
+    },
+    "electronE2E": 33,
+    "packageSmoke": {
+      "linux": "success",
+      "windows": "success",
+      "macos": "success"
+    },
+    "artifacts": {
+      "coverage": 8845790348,
+      "desktopE2E": 8846026096,
+      "linuxPackageSmoke": 8845788810,
+      "windowsPackageSmoke": 8845793324,
+      "macosPackageSmoke": 8845783201
+    }
+  }
 }

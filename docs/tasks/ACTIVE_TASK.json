@@ -196,6 +196,8 @@
     "heldAt": "2026-08-03T06:20:00.000Z",
     "reason": "M8-09继续作为V1.0兼容锚点；M9、M10-01和M10-02全部验证，全量代码测试、源码深度审计、P2轮询竞态修复与三平台包体闭环",
     "allowedPaths": [
+      "AGENTS.md",
+      "agent.md",
       "docs/PROJECT_EXECUTION_ENTRY.md",
       "docs/tasks/",
       "docs/product/V1.0_TRACEABILITY_MATRIX.md",

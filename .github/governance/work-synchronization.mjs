@@ -34,37 +34,90 @@ export function synchronizationDecision({ mainSha, workSha, sourceHeadSha, openP
   return { action: 'reset', reason: 'verified-squash-complete' };
 }
 
+export function synchronizationRequest(event) {
+  const run = event?.workflow_run;
+  if (run) {
+    if (run.name !== 'Main Verification' || run.conclusion !== 'success') {
+      throw new Error('Work synchronization requires a successful Main Verification workflow_run');
+    }
+    if (!fullSha.test(run.head_sha ?? '')) {
+      throw new Error('Main Verification workflow_run must provide a full head SHA');
+    }
+    return {
+      mode: 'workflow-run',
+      mainSha: run.head_sha,
+      sourcePr: null,
+      sourceHeadSha: null,
+    };
+  }
+
+  const mainSha = event?.inputs?.expected_sha;
+  const sourcePr = Number.parseInt(event?.inputs?.source_pr ?? '', 10);
+  const sourceHeadSha = event?.inputs?.source_head_sha;
+  if (!fullSha.test(mainSha ?? '')) {
+    throw new Error('Manual work synchronization requires expected_sha');
+  }
+  if (!Number.isSafeInteger(sourcePr) || sourcePr < 1) {
+    throw new Error('Manual work synchronization requires source_pr');
+  }
+  if (!fullSha.test(sourceHeadSha ?? '')) {
+    throw new Error('Manual work synchronization requires source_head_sha');
+  }
+  return {
+    mode: 'workflow-dispatch',
+    mainSha,
+    sourcePr,
+    sourceHeadSha,
+  };
+}
+
+function hasSuccessfulMainVerification(status) {
+  return status?.statuses?.some(
+    (entry) => entry.context === 'main-verification' && entry.state === 'success',
+  );
+}
+
 async function main() {
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY || !process.env.GITHUB_EVENT_PATH) {
     throw new Error('Missing GitHub Actions environment');
   }
   const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
-  const run = event.workflow_run;
-  if (run?.name !== 'Main Verification' || run?.conclusion !== 'success') {
-    throw new Error('Work synchronization requires a successful Main Verification workflow_run');
-  }
-  const mainSha = run.head_sha;
+  const request = synchronizationRequest(event);
+  const mainSha = request.mainSha;
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
   const mainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/main`);
   if (mainRef?.object?.sha !== mainSha) {
     throw new Error(`Verified main ${mainSha} is no longer current`);
   }
+  const status = await api(`/repos/${owner}/${repo}/commits/${mainSha}/status`);
+  if (!hasSuccessfulMainVerification(status)) {
+    throw new Error(`main-verification status is not successful for ${mainSha}`);
+  }
   const pulls = await api(`/repos/${owner}/${repo}/commits/${mainSha}/pulls?per_page=100`);
   const source = pulls.find(
-    (pull) => pull.merged_at && pull.base?.ref === 'main' && pull.head?.ref === 'work',
+    (pull) =>
+      pull.merged_at &&
+      pull.base?.ref === 'main' &&
+      pull.head?.ref === 'work' &&
+      (request.sourcePr === null || pull.number === request.sourcePr) &&
+      (request.sourceHeadSha === null || pull.head?.sha === request.sourceHeadSha),
   );
   if (!source || !fullSha.test(source.head?.sha ?? '')) {
     throw new Error('Cannot resolve the merged work pull request for the verified main commit');
   }
   const workRef = await api(`/repos/${owner}/${repo}/git/ref/heads/work`, {}, [404]);
-  const openPulls = await api(`/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:work&per_page=100`);
+  const openPulls = await api(
+    `/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:work&per_page=100`,
+  );
   const decision = synchronizationDecision({
     mainSha,
     workSha: workRef?.object?.sha ?? null,
     sourceHeadSha: source.head.sha,
     openPulls: openPulls.length,
   });
-  if (decision.action === 'blocked') throw new Error(`Work synchronization blocked: ${decision.reason}`);
+  if (decision.action === 'blocked') {
+    throw new Error(`Work synchronization blocked: ${decision.reason}`);
+  }
   if (decision.action === 'create') {
     await api(`/repos/${owner}/${repo}/git/refs`, {
       method: 'POST',
@@ -82,7 +135,17 @@ async function main() {
   await mkdir(output, { recursive: true });
   await writeFile(
     path.join(output, 'result.json'),
-    `${JSON.stringify({ mainSha, sourcePr: source.number, sourceHeadSha: source.head.sha, decision }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        mode: request.mode,
+        mainSha,
+        sourcePr: source.number,
+        sourceHeadSha: source.head.sha,
+        decision,
+      },
+      null,
+      2,
+    )}\n`,
   );
   console.log(`Work synchronization ${decision.action}: ${decision.reason}`);
 }
@@ -90,15 +153,38 @@ async function main() {
 function selfTest() {
   const a = 'a'.repeat(40);
   const b = 'b'.repeat(40);
-  assert.deepEqual(synchronizationDecision({ mainSha: a, workSha: b, sourceHeadSha: b, openPulls: 0 }), {
-    action: 'reset',
-    reason: 'verified-squash-complete',
-  });
+  assert.deepEqual(
+    synchronizationDecision({ mainSha: a, workSha: b, sourceHeadSha: b, openPulls: 0 }),
+    {
+      action: 'reset',
+      reason: 'verified-squash-complete',
+    },
+  );
   assert.equal(
-    synchronizationDecision({ mainSha: a, workSha: 'c'.repeat(40), sourceHeadSha: b, openPulls: 0 }).action,
+    synchronizationDecision({
+      mainSha: a,
+      workSha: 'c'.repeat(40),
+      sourceHeadSha: b,
+      openPulls: 0,
+    }).action,
     'blocked',
   );
-  assert.equal(synchronizationDecision({ mainSha: a, workSha: b, sourceHeadSha: b, openPulls: 1 }).action, 'blocked');
+  assert.equal(
+    synchronizationDecision({ mainSha: a, workSha: b, sourceHeadSha: b, openPulls: 1 }).action,
+    'blocked',
+  );
+  assert.deepEqual(
+    synchronizationRequest({
+      workflow_run: { name: 'Main Verification', conclusion: 'success', head_sha: a },
+    }),
+    { mode: 'workflow-run', mainSha: a, sourcePr: null, sourceHeadSha: null },
+  );
+  assert.deepEqual(
+    synchronizationRequest({
+      inputs: { expected_sha: a, source_pr: '301', source_head_sha: b },
+    }),
+    { mode: 'workflow-dispatch', mainSha: a, sourcePr: 301, sourceHeadSha: b },
+  );
   console.log('Work synchronization self-test passed.');
 }
 

@@ -8,7 +8,6 @@ import {
   ForeshadowingTransitionCommandSchema,
   NarrativePlanningCatalogResultSchema,
   NarrativePlanningListCommandSchema,
-  PROTOCOL_VERSION,
   type ArcMilestoneSaveInput,
   type ArcMilestoneTransitionInput,
   type CharacterArcSaveInput,
@@ -18,22 +17,23 @@ import {
   type NarrativePlanningCatalog,
   type NarrativePlanningListInput,
 } from '@worldforge/contracts';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge } from 'electron';
 
-async function invoke(
+import { invokeCommand, type Parser } from './bridge-runtime.js';
+
+function invoke(
   channel: string,
-  schema: { parse(input: unknown): unknown },
+  schema: Parser<unknown>,
   command: string,
   payload: unknown,
 ): Promise<CommandResult<NarrativePlanningCatalog>> {
-  const envelope = schema.parse({
-    protocolVersion: PROTOCOL_VERSION,
-    requestId: globalThis.crypto.randomUUID(),
+  return invokeCommand(
+    channel,
+    schema,
+    NarrativePlanningCatalogResultSchema,
     command,
     payload,
-    sentAt: new Date().toISOString(),
-  });
-  return NarrativePlanningCatalogResultSchema.parse(await ipcRenderer.invoke(channel, envelope));
+  );
 }
 
 const narrativePlanningBridge = {

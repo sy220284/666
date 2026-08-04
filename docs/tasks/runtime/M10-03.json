@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 2,
+  "id": "M10-03",
+  "status": "IN_PROGRESS",
+  "executionBranch": "work",
+  "source": "docs/tasks/M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md",
+  "priority": "P1",
+  "startedAt": "2026-08-04T11:02:00+08:00",
+  "dependencies": [
+    "M10-02"
+  ],
+  "baseline": {
+    "main": "bb415f3da773160928efda20b877083b321601a0",
+    "work": "bb415f3da773160928efda20b877083b321601a0",
+    "audit": "ca83d48c7493bba21252a37f9aec024d6aa0ca79"
+  },
+  "allowedPaths": [
+    "apps/desktop/main/src/",
+    "apps/desktop/preload/src/",
+    "packages/contracts/src/",
+    "tests/unit/",
+    "tests/security/",
+    "docs/PROJECT_EXECUTION_ENTRY.md",
+    "docs/decisions/IMPLEMENTATION_DECISIONS.md",
+    "docs/tasks/M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md",
+    "docs/tasks/runtime/M10-03.json",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/test-evidence/M10-03/"
+  ],
+  "forbiddenPaths": [
+    "migrations/",
+    "packages/core-service/src/database/write-queue.ts",
+    "apps/desktop/main/src/provider-operation-coordinator.ts",
+    "docs/tasks/ACTIVE_TASK.json",
+    "docs/tasks/ACTIVE_TASK.md",
+    "docs/test-evidence/M0/",
+    "docs/test-evidence/M1/",
+    "docs/test-evidence/M2/",
+    "docs/test-evidence/M3/",
+    "docs/test-evidence/M4-04/",
+    "docs/test-evidence/M8-02/",
+    "docs/test-evidence/M8-04/",
+    "docs/test-evidence/M8-05/",
+    "docs/test-evidence/M8-06/",
+    "docs/test-evidence/M8-07/",
+    "docs/test-evidence/M8-08/",
+    "docs/test-evidence/M8-09/",
+    "docs/test-evidence/M9-00/",
+    "docs/test-evidence/M9-02/",
+    "docs/test-evidence/M9-03/",
+    "docs/test-evidence/M10-01/",
+    "docs/test-evidence/M10-02/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:language",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e",
+    "pnpm release:check"
+  ],
+  "verificationBinding": null
+}

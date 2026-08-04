@@ -11,7 +11,7 @@ export interface RendererStartupContext {
   readonly occurredAt: string;
   readonly rendererVersion: string;
   readonly protocolVersion: number;
-  readonly phase: 'bridge' | 'react-root' | 'legacy-compatibility';
+  readonly phase: 'bridge' | 'react-root';
 }
 
 export interface RendererStartupDiagnostic {

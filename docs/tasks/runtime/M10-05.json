@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-05",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-05_GOVERNANCE_CLOSURE_CONSISTENCY.md",
   "priority": "P0",
   "startedAt": "2026-08-04T15:51:00+08:00",
+  "implementedAt": "2026-08-04T16:54:00+08:00",
   "dependencies": [
     "M10-04"
   ],

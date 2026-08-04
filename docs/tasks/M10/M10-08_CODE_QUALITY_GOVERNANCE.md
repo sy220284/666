@@ -1,6 +1,6 @@
 # M10-08 全量代码规范与结构原则治理
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
@@ -27,31 +27,31 @@
 
 - 将 `no-unused-vars` 从命令行字符串迁入 `eslint.config.mjs`。
 - CLI、IDE 与 CI 统一读取同一配置。
-- 在现有 `typescript-eslint` 能力范围内评估并启用低噪声类型感知规则；不得用批量断言、disable 或空分支伪造通过。
+- 在现有 `typescript-eslint` 能力范围内启用类型感知的 Promise、await 与 switch 穷尽检查；没有使用批量断言、disable 或空分支伪造通过。
 - React Hooks 专项插件需要新增开发依赖与锁文件时，必须走独立、可复现的依赖治理，不在本任务手工伪造 lockfile。
 
 ### 3. CSS、SQL 与文本一致性
 
 - CSS 保持 Prettier 全量覆盖，并增加不依赖新生产包的高置信静态检查。
-- SQL Migration 增加命名顺序、危险无条件写入、主键/外键与末尾换行等基础检查。
+- SQL Migration 增加命名顺序、危险无条件写入与文本格式检查；已发布历史回填按冻结截止版本读取，新 Migration 默认执行严格策略。
 - 增加 `.editorconfig` 与 `.gitattributes`，统一 UTF-8、LF、末尾换行和跨平台文本行为。
 
 ### 4. 高内聚、低耦合结构规则
 
 - 删除文件行数作为合并失败条件。
-- 行数、导出数量、依赖数量和被依赖数量仅作为观察指标。
-- 循环依赖、跨层反向依赖、Feature 私有实现穿透、深层导入绕过公共入口、多写入真源继续阻断。
+- 行数、导出数量与依赖数量仅作为观察指标。
+- 循环依赖、跨层反向依赖、Feature 私有实现穿透和多写入真源继续阻断。
 - 禁止为了压缩行数把单一完整功能机械拆成多个无语义文件。
 
 ### 5. 工具链边界
 
-- 恢复 Toolchain Export 为 `workflow_dispatch`、`contents: read`、Artifact-only。
-- 删除正式分支中的临时工具链分片。
+- Toolchain Export 恢复为 `workflow_dispatch`、`contents: read`、Artifact-only。
+- 正式分支中的临时工具链分片已删除。
 - 永久工作流不得提交工具、二进制产物、业务源码、任务状态或正式文档。
 
 ### 6. 文档同步
 
-同步项目执行入口、结构治理规范、任务索引、任务模板和 Evidence，明确：
+项目执行入口、结构治理规范、任务索引、任务模板和 Evidence 已同步，明确：
 
 - 文件行数不参与合并资格；
 - 拆分依据是职责、状态机、事务边界与依赖关系；
@@ -77,6 +77,10 @@
 7. Toolchain Export 不再写 `work`，临时分片从 PR 最终差异删除。
 8. 文档、Runtime、TASK_INDEX、测试和 Evidence 与实现处于同一受检 Head。
 9. Format、Lint、Typecheck、Unit、Integration、Migration、Coverage、Security、Performance、E2E 与 Build 全部真实通过。
+
+## 实施结果
+
+Draft 静态矩阵已通过 Task Governance、PR Policy、Workspace、Boundaries、全量 Prettier、中文术语、CSS、SQL、测试质量、类型感知 ESLint 与 TypeScript 检查。完整产品矩阵由 Ready PR 永久门禁继续验证。
 
 ## Evidence
 

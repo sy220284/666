@@ -28,7 +28,7 @@
     "tests/unit/",
     "tests/integration/",
     "tests/security/",
-    ".github/workflows/m10-07-format-repair.yml",
+    ".github/workflows/pr-policy.yml",
     "docs/tasks/TASK_INDEX.md",
     "docs/tasks/M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md",
     "docs/tasks/runtime/M10-07.json",

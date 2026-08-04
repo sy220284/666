@@ -81,6 +81,16 @@ const DEFAULT_DAILY_RETENTION_COUNT = 14;
 const DEFAULT_MAJOR_RETENTION_COUNT = 30;
 const DEFAULT_MAJOR_RETENTION_DAYS = 90;
 const DEFAULT_BACKUP_QUOTA_BYTES = 5 * 1024 * 1024 * 1024;
+const CURRENT_BACKUP_METADATA_FIELDS = [
+  'track',
+  'displayName',
+  'note',
+  'authorProtected',
+  'migrationProtected',
+  'schemaVersion',
+  'protectionReasons',
+  'sourceWorkspaceName',
+] as const;
 
 export function createRecoveryRuntime(
   workspace: ProjectWorkspaceService,
@@ -294,6 +304,60 @@ export async function rewriteBackupMetadata(
   }
 }
 
+function metadataRecord(raw: unknown): Record<string, unknown> | null {
+  return raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>)
+    : null;
+}
+
+function legacyBackupCandidate(raw: Record<string, unknown>): Record<string, unknown> {
+  const values = Object.fromEntries(
+    Object.entries(raw).filter(([key]) => key !== 'sourceWorkspaceName'),
+  );
+  const operation = values.operation;
+  return {
+    ...values,
+    track:
+      values.track ??
+      (operation === 'manual-protection'
+        ? 'named'
+        : operation === 'migration'
+          ? 'major'
+          : 'major'),
+    displayName:
+      values.displayName ?? (operation === 'manual-protection' ? '历史手动恢复点' : null),
+    note: values.note ?? null,
+    authorProtected: values.authorProtected ?? operation === 'manual-protection',
+    migrationProtected: values.migrationProtected ?? operation === 'migration',
+    schemaVersion: values.schemaVersion ?? 0,
+    protectionReasons: values.protectionReasons ?? [],
+  };
+}
+
+function metadataNeedsNormalization(raw: Record<string, unknown>): boolean {
+  return CURRENT_BACKUP_METADATA_FIELDS.some(
+    (field) => !Object.prototype.hasOwnProperty.call(raw, field),
+  );
+}
+
+async function normalizeBackupMetadata(
+  runtime: RecoveryRuntime,
+  metadataPath: string,
+  metadata: BackupMetadata,
+): Promise<void> {
+  const temporaryPath = `${metadataPath}.normalize-${runtime.idFactory()}`;
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(metadata, null, 2)}\n`, {
+      encoding: 'utf8',
+      mode: 0o600,
+      flag: 'wx',
+    });
+    await rename(temporaryPath, metadataPath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
+}
+
 export async function readBackupMetadata(
   runtime: RecoveryRuntime,
   projectId: string,
@@ -308,37 +372,29 @@ export async function readBackupMetadata(
   }
   const records: BackupRecord[] = [];
   for (const name of entries.filter((entry) => entry.endsWith('.json')).sort()) {
+    const metadataPath = path.join(directory, name);
     try {
-      const raw = JSON.parse(await readFile(path.join(directory, name), 'utf8')) as unknown;
-      const candidate =
-        raw && typeof raw === 'object'
-          ? (() => {
-              const values = Object.fromEntries(
-                Object.entries(raw).filter(([key]) => key !== 'sourceWorkspaceName'),
-              );
-              const operation = values.operation;
-              return {
-                ...values,
-                track:
-                  values.track ??
-                  (operation === 'manual-protection'
-                    ? 'named'
-                    : operation === 'migration'
-                      ? 'major'
-                      : 'major'),
-                displayName:
-                  values.displayName ??
-                  (operation === 'manual-protection' ? '历史手动恢复点' : null),
-                note: values.note ?? null,
-                authorProtected: values.authorProtected ?? operation === 'manual-protection',
-                migrationProtected: values.migrationProtected ?? operation === 'migration',
-                schemaVersion: values.schemaVersion ?? 0,
-                protectionReasons: [],
-              };
-            })()
-          : raw;
-      const parsed = BackupRecordSchema.safeParse(candidate);
-      if (parsed.success && parsed.data.projectId === projectId) records.push(parsed.data);
+      const raw = JSON.parse(await readFile(metadataPath, 'utf8')) as unknown;
+      const values = metadataRecord(raw);
+      if (!values) continue;
+      const parsed = BackupRecordSchema.safeParse(legacyBackupCandidate(values));
+      if (!parsed.success || parsed.data.projectId !== projectId) continue;
+      records.push(parsed.data);
+
+      if (metadataNeedsNormalization(values)) {
+        const sourceWorkspaceName =
+          typeof values.sourceWorkspaceName === 'string' && values.sourceWorkspaceName.length > 0
+            ? values.sourceWorkspaceName
+            : 'WorldForge';
+        try {
+          await normalizeBackupMetadata(runtime, metadataPath, {
+            ...parsed.data,
+            sourceWorkspaceName,
+          });
+        } catch {
+          // The parsed legacy record remains usable when normalization cannot replace the file.
+        }
+      }
     } catch {
       // Invalid metadata is ignored and cannot be selected for restore.
     }

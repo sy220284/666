@@ -62,10 +62,10 @@ export default defineConfig({
     testTimeout: 20_000,
     hookTimeout: 20_000,
     include: [
-      'tests/unit/**/*.test.ts',
-      'tests/integration/**/*.test.ts',
-      'tests/migration/**/*.test.ts',
-      'tests/security/**/*.test.ts',
+      'tests/unit/**/*.test.{ts,tsx}',
+      'tests/integration/**/*.test.{ts,tsx}',
+      'tests/migration/**/*.test.{ts,tsx}',
+      'tests/security/**/*.test.{ts,tsx}',
     ],
     coverage: {
       enabled: true,
@@ -75,7 +75,7 @@ export default defineConfig({
       include: [
         'apps/desktop/main/src/**/*.ts',
         'apps/desktop/preload/src/**/*.ts',
-        'apps/desktop/renderer/src/**/*.ts',
+        'apps/desktop/renderer/src/**/*.{ts,tsx}',
         'packages/contracts/src/**/*.ts',
         'packages/core-service/src/**/*.ts',
         'packages/domain/src/**/*.ts',

@@ -25,6 +25,7 @@ import {
 
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { stableJson } from './stable-json.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -111,14 +112,7 @@ interface PersistVersionInput {
 }
 
 function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right, 'en'))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
+  return stableJson(value);
 }
 
 function blockHash(row: BlockRow): string {

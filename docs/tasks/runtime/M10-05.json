@@ -19,6 +19,7 @@
     ".github/governance/effective-task-status.mjs",
     ".github/governance/work-synchronization.mjs",
     ".github/workflows/evidence.yml",
+    ".github/workflows/release.yml",
     ".github/workflows/work-synchronization.yml",
     "scripts/evidence-policy.mjs",
     "scripts/verified-evidence-scan.mjs",

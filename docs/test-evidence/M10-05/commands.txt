@@ -1,0 +1,10 @@
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:security
+pnpm test:perf
+node scripts/evidence-policy.mjs
+node .github/governance/single-work-policy.mjs

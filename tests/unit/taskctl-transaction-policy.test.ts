@@ -10,7 +10,9 @@ describe('taskctl Schema 2 policy', () => {
   it('keeps the canonical controller read-only and rejects retired mutations', async () => {
     const source = await readFile('.github/governance/single-work-taskctl.mjs', 'utf8');
 
-    expect(source).toContain("const authorizationPath = path.join(root, 'docs/tasks/TASK_AUTHORIZATION.json')");
+    expect(source).toContain(
+      "const authorizationPath = path.join(root, 'docs/tasks/TASK_AUTHORIZATION.json')",
+    );
     expect(source).toContain("command === 'validate'");
     expect(source).toContain("command === 'status'");
     expect(source).toContain('is not supported');

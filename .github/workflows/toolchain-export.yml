@@ -102,6 +102,7 @@ jobs:
             sha256sum "$archive_name".part-* > PART_SHA256SUMS.txt
             {
               printf 'schema_version=1\n'
+              printf 'run_id=%s\n' "${GITHUB_RUN_ID}"
               printf 'source_sha=%s\n' "$SOURCE_SHA"
               printf 'profile=quality\n'
               printf 'platform=linux\n'
@@ -116,5 +117,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add .github/toolchain-export
-          git commit -m "临时：暂存离线质量工具链分片 [skip ci]"
+          git commit -m "临时：暂存离线质量工具链分片与运行号 [skip ci]"
           git push origin HEAD:work

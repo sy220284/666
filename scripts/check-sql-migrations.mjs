@@ -27,12 +27,12 @@ export function validateMigrationSource(source, { allowHistoricalUnscopedWrites 
 
   const allowUnscopedWrite = allowHistoricalUnscopedWrites || source.includes(ALLOW_UNSCOPED_WRITE);
   for (const statement of statements(source)) {
-    if (/^DELETE\s+FROM\s+["`\[]?[A-Za-z_][\w$]*["`\]]?$/iu.test(statement)) {
+    if (/^DELETE\s+FROM\s+["`[]?[A-Za-z_][\w$]*["`\]]?$/iu.test(statement)) {
       if (!allowUnscopedWrite) {
         violations.push(`unscoped DELETE requires ${ALLOW_UNSCOPED_WRITE}`);
       }
     }
-    if (/^UPDATE\s+["`\[]?[A-Za-z_][\w$]*["`\]]?\s+SET\s+/iu.test(statement)) {
+    if (/^UPDATE\s+["`[]?[A-Za-z_][\w$]*["`\]]?\s+SET\s+/iu.test(statement)) {
       if (!/\bWHERE\b/iu.test(statement) && !allowUnscopedWrite) {
         violations.push(`unscoped UPDATE requires ${ALLOW_UNSCOPED_WRITE}`);
       }

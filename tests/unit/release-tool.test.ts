@@ -43,10 +43,11 @@ const runtime = (id: string, status = 'IMPLEMENTED') => ({
   verificationBinding: { taskContext: `task-verification/${id}` },
 });
 
-const successStatuses = verifiedTasks.map((task) => ({
+const taskStatuses = verifiedTasks.map((task) => ({
   context: `task-verification/${task.id}`,
   state: 'success',
 }));
+const successStatuses = [{ context: 'main-verification', state: 'success' }, ...taskStatuses];
 
 const authorization = {
   schemaVersion: 2,
@@ -120,6 +121,19 @@ describe('release tool', () => {
     expect(result.errors).toEqual([]);
   });
 
+  it('blocks publishing when the current commit lacks main verification', () => {
+    const result = evaluateReleaseGate({
+      taskIndexMarkdown: taskIndex(verifiedTasks),
+      runtimes: verifiedTasks.map((task) => runtime(task.id)),
+      statuses: taskStatuses,
+      packageVersion: '1.0.0',
+      requestedVersion: '1.0.0',
+      refName: 'main',
+    });
+
+    expect(result.errors).toContain('Current release commit must have main-verification=success');
+  });
+
   it('blocks publishing when a task is not effectively Verified', () => {
     const result = evaluateReleaseGate({
       taskIndexMarkdown: taskIndex(verifiedTasks),
@@ -143,7 +157,10 @@ describe('release tool', () => {
     const result = evaluateReleaseGate({
       taskIndexMarkdown: taskIndex(verifiedTasks),
       runtimes: [...verifiedTasks.map((task) => runtime(task.id)), runtime('M8-06')],
-      statuses: [...successStatuses, { context: 'task-verification/M8-06', state: 'success' }],
+      statuses: [
+        ...successStatuses,
+        { context: 'task-verification/M8-06', state: 'success' },
+      ],
       packageVersion: '1.0.0',
       requestedVersion: '1.0.0',
       refName: 'main',
@@ -152,7 +169,7 @@ describe('release tool', () => {
     expect(result.errors).toContain('Release-blocking runtimes are absent from TASK_INDEX: M8-06');
   });
 
-  it('allows publishing from main when all runtime statuses are successful', () => {
+  it('allows publishing from main when main and task statuses are successful', () => {
     const result = evaluateReleaseGate({
       taskIndexMarkdown: taskIndex(verifiedTasks),
       runtimes: verifiedTasks.map((task) => runtime(task.id)),

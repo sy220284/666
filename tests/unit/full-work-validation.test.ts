@@ -51,8 +51,10 @@ describe('work全量验证与依赖安全覆盖', () => {
       .join('\n');
     expect(governanceCommands).toContain('automation-layout-policy.mjs');
     expect(governanceCommands).toContain('pnpm ci:policy');
-    expect(governanceCommands).toContain('pnpm ci:evidence');
+    expect(governanceCommands).toContain('scripts/evidence-policy.mjs');
+    expect(governanceCommands).toContain('scripts/verified-evidence-scan.mjs');
     expect(governanceCommands).toContain('pnpm ci:ruleset');
+    expect(governanceCommands).toContain('ruleset-report.json');
 
     const securityCommands = (workflow.jobs.security.steps ?? [])
       .map((step) => step.run ?? '')

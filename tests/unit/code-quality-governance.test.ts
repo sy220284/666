@@ -72,7 +72,7 @@ describe('code quality governance', () => {
   });
 
   it('rejects malformed or remotely loaded CSS with file-local diagnostics', () => {
-    expect(validateCssSource(".panel { color: var(--text); }\n")).toEqual([]);
+    expect(validateCssSource('.panel { color: var(--text); }\n')).toEqual([]);
     expect(validateCssSource("@import url('https://example.com/theme.css');\n")).toContain(
       'must not load remote CSS or assets',
     );

@@ -439,7 +439,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                 data-author-return-key={`story-todo:${todo.todoId}`}
                 disabled={!todo.chapterId}
                 type="button"
-                onClick={() => navigateToDraftLocation(todo.chapterId, todo.logicalBlockId, '该待办')}
+                onClick={() =>
+                  navigateToDraftLocation(todo.chapterId, todo.logicalBlockId, '该待办')
+                }
               >
                 前往原文
               </button>

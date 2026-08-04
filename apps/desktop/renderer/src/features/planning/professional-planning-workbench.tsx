@@ -185,10 +185,7 @@ export function PlanningWorkbench({
           )}
         </main>
 
-        <PlanningContextPanel
-          entities={entities.data?.entities ?? []}
-          narrative={narrative.data}
-        />
+        <PlanningContextPanel entities={entities.data?.entities ?? []} narrative={narrative.data} />
       </div>
 
       {plotEditor ? (

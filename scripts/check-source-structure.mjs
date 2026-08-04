@@ -120,8 +120,11 @@ function lineCount(source) {
 }
 
 function exportedSymbolCount(source) {
-  return [...source.matchAll(/\bexport\s+(?:default\s+)?(?:async\s+)?(?:class|const|enum|function|interface|type|\{)/gu)]
-    .length;
+  return [
+    ...source.matchAll(
+      /\bexport\s+(?:default\s+)?(?:async\s+)?(?:class|const|enum|function|interface|type|\{)/gu,
+    ),
+  ].length;
 }
 
 export function sourceObservation(file, source, dependencyCount = 0) {

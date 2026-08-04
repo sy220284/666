@@ -3,10 +3,7 @@ import { useCallback, useState } from 'react';
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
-import {
-  ChapterNameSelect,
-  type CanonAuthorReferences,
-} from './canon-author-fields.js';
+import { ChapterNameSelect, type CanonAuthorReferences } from './canon-author-fields.js';
 import { ContinuityEditors } from './continuity-editors.js';
 import { ContinuityResults } from './continuity-results.js';
 

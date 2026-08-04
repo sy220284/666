@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import {
-  DRAFT_FLUSH_FAILED_EVENT,
-  flushRegisteredDraft,
-} from '../runtime/draft-flush-registry.js';
+import { DRAFT_FLUSH_FAILED_EVENT, flushRegisteredDraft } from '../runtime/draft-flush-registry.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 
 export function DraftFlushFailureDialog() {

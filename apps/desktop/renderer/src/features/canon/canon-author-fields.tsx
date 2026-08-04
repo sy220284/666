@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useState,
-  useSyncExternalStore,
-  type SelectHTMLAttributes,
-} from 'react';
+import { useEffect, useState, useSyncExternalStore, type SelectHTMLAttributes } from 'react';
 
 import type { Entity } from '@worldforge/contracts';
 

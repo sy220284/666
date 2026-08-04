@@ -283,6 +283,10 @@ export const AiHasCredentialCommandSchema = z.strictObject({
   payload: z.strictObject({ credentialRef: CredentialRefSchema }),
 });
 
+/**
+ * Central desktop bridge registry only; specialty bridge commands use their own strict schemas.
+ * This schema is not the repository-wide list of every registered IPC command.
+ */
 export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   AppGetInfoCommandSchema,
   AppGetCoreStatusCommandSchema,

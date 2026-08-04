@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-03",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md",
   "priority": "P1",
   "startedAt": "2026-08-04T11:02:00+08:00",
+  "implementedAt": "2026-08-04T11:53:00+08:00",
   "dependencies": [
     "M10-02"
   ],
@@ -69,5 +70,9 @@
     "pnpm test:e2e",
     "pnpm release:check"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 310,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-03"
+  }
 }

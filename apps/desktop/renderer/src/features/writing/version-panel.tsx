@@ -161,10 +161,7 @@ export function VersionPanel({
     });
     setPending(false);
     if (outcome.state === 'success') {
-      onDraftReplace(
-        outcome.data,
-        '已自动留档恢复前当前稿，并从只读历史版本创建新当前稿。',
-      );
+      onDraftReplace(outcome.data, '已自动留档恢复前当前稿，并从只读历史版本创建新当前稿。');
       setStatus('恢复成功；恢复前当前稿已自动保存为可读取的历史版本。');
     } else if (outcome.state === 'failure')
       setStatus(`恢复失败 · ${authorErrorSummary(outcome.error)}`);

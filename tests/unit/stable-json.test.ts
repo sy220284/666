@@ -26,8 +26,11 @@ describe('stable JSON serialization', () => {
   });
 
   it('keeps array order while sorting nested object keys', () => {
-    expect(stableJson([{ y: 1, x: 2 }, { b: 3, a: 4 }])).toBe(
-      '[{"x":2,"y":1},{"a":4,"b":3}]',
-    );
+    expect(
+      stableJson([
+        { y: 1, x: 2 },
+        { b: 3, a: 4 },
+      ]),
+    ).toBe('[{"x":2,"y":1},{"a":4,"b":3}]');
   });
 });

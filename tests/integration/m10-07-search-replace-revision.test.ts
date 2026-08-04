@@ -61,13 +61,15 @@ describe('M10-07 safe replacement block revisions', () => {
         ],
       });
 
-      const before = harness.workspace.readProject(seeded.project.projectId, (database) =>
-        database
-          .prepare(
-            `SELECT logical_block_id AS logicalBlockId, revision
+      const before = harness.workspace.readProject(
+        seeded.project.projectId,
+        (database) =>
+          database
+            .prepare(
+              `SELECT logical_block_id AS logicalBlockId, revision
                FROM draft_blocks WHERE draft_id = ? ORDER BY order_key, id`,
-          )
-          .all(draft.draftId) as Array<{ logicalBlockId: string; revision: number | bigint }>,
+            )
+            .all(draft.draftId) as Array<{ logicalBlockId: string; revision: number | bigint }>,
       );
       const beforeById = new Map(
         before.map((row) => [row.logicalBlockId, Number(row.revision)] as const),

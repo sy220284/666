@@ -77,17 +77,19 @@ describe('M10-07 Candidate Undo invariants', () => {
         }),
       ).resolves.toEqual(beforeUndo);
       expect(applyTableCounts(harness, project.projectId)).toEqual(beforeCounts);
-      const record = harness.workspace.readProject(project.projectId, (database) =>
-        database
-          .prepare(
-            `SELECT status, undone_revision AS undoneRevision, undone_at AS undoneAt
+      const record = harness.workspace.readProject(
+        project.projectId,
+        (database) =>
+          database
+            .prepare(
+              `SELECT status, undone_revision AS undoneRevision, undone_at AS undoneAt
                FROM candidate_apply_records WHERE id = ?`,
-          )
-          .get(applied.record.applyRecordId) as {
-          status: string;
-          undoneRevision: number | bigint | null;
-          undoneAt: string | null;
-        },
+            )
+            .get(applied.record.applyRecordId) as {
+            status: string;
+            undoneRevision: number | bigint | null;
+            undoneAt: string | null;
+          },
       );
       expect(record).toEqual({ status: 'applied', undoneRevision: null, undoneAt: null });
     } finally {

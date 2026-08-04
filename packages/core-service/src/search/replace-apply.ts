@@ -102,10 +102,7 @@ export class ReplaceApplyOperations {
             )
             .all(draftId, input.projectId) as unknown as DraftBlockRow[];
           const draftRevision = blocks[0] ? numericValue(blocks[0].draftRevision) : -1;
-          if (
-            blocks.length === 0 ||
-            items.some((item) => item.baseRevision !== draftRevision)
-          ) {
+          if (blocks.length === 0 || items.some((item) => item.baseRevision !== draftRevision)) {
             throw new SearchToolsServiceError(
               'SEARCH_REPLACE_STALE',
               'A target Draft revision changed after the ReplacePlan preview.',

@@ -12,9 +12,9 @@ describe('safe replacement secondary error diagnostics', () => {
     attachStaleMarkFailure(original, staleMarkError);
 
     expect(original).toMatchObject({ code: 'SEARCH_REPLACE_STALE', message: 'replace failed' });
-    expect(
-      (original as Error & { readonly staleMarkError?: unknown }).staleMarkError,
-    ).toBe(staleMarkError);
+    expect((original as Error & { readonly staleMarkError?: unknown }).staleMarkError).toBe(
+      staleMarkError,
+    );
     expect(Object.keys(original)).not.toContain('staleMarkError');
   });
 });

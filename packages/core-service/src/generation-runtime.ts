@@ -327,12 +327,10 @@ export class GenerationRuntime {
           ...(partialText ? { partialText } : {}),
         });
       } catch (persistenceError) {
-        if (
-          !(
-            persistenceError instanceof GenerationRunServiceError &&
-            persistenceError.code === 'GENERATION_RUN_TERMINAL'
-          )
-        ) {
+        if (!(
+          persistenceError instanceof GenerationRunServiceError &&
+          persistenceError.code === 'GENERATION_RUN_TERMINAL'
+        )) {
           task.fail('COMMON_INTERNAL_999', false);
           return;
         }

@@ -167,13 +167,15 @@ describe('M1-07 immutable manual Versions', () => {
           versionId: recoveryVersion!.versionId,
         }).blocks[0]!.text,
       ).toBe('后续修改');
-      const restorePatch = value.workspace.readProject(project.projectId, (database) =>
-        database
-          .prepare(
-            `SELECT mutation_origin AS origin
+      const restorePatch = value.workspace.readProject(
+        project.projectId,
+        (database) =>
+          database
+            .prepare(
+              `SELECT mutation_origin AS origin
                FROM draft_patch_log WHERE draft_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`,
-          )
-          .get(restored.draftId) as { origin: string },
+            )
+            .get(restored.draftId) as { origin: string },
       );
       expect(restorePatch.origin).toBe('restore');
 

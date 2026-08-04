@@ -185,7 +185,7 @@ describe('M10-03 IPC and protocol maintenance', () => {
     expect(decisions).toContain("type: 'set-lock'");
     expect(decisions).toContain('locked: boolean');
     expect(decisions).toContain('校验`expectedHash`');
-    expect(executionEntry).toContain('M10-02全量代码审计与完整矩阵基线');
+    expect(executionEntry).toContain('M10-02审计矩阵基线');
     expect(executionEntry).toContain('8f54dc4e5ed46d6ffca999fda29887f2302b1030');
     expect(executionEntry).toContain('M10-04 兼容面收敛治理');
   });

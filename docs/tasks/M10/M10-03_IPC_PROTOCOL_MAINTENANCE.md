@@ -13,7 +13,7 @@
 2. 修正项目执行入口的当前已验证仓库基线；
 3. 收敛Preload命令Envelope、Invoke和结果Schema校验；
 4. DEC-004补齐`set-lock`；
-5. 明确中央主桥命令Schema范围。
+5. 明确`RegisteredCommandSchema`只覆盖中央主桥命令。
 
 两项Info继续暂不处理：`SerializedWriteQueue`系统级超时、Provider幂等缓存O(n)淘汰。
 
@@ -28,7 +28,7 @@
 
 - 不修改数据库Schema、Migration、持久化格式；
 - 不修改IPC Channel、Command字符串、`PROTOCOL_VERSION`和正式错误码；
-- 不修改公开Bridge方法；
+- 不修改公开Bridge方法或Contracts公开导出集合；
 - 不修改`ACTIVE_TASK.json`与`ACTIVE_TASK.md`兼容锚点；
 - 不新增生产依赖、产品功能或第二套协议真源。
 
@@ -52,8 +52,8 @@
 
 - `PROJECT_EXECUTION_ENTRY.md`区分审计基线与当前已验证仓库基线；
 - DEC-004补齐`set-lock`、`expectedHash`、单批次Revision和事务回滚语义；
-- 新增`CentralBridgeCommandSchema`准确名称；
-- `RegisteredCommandSchema`继续兼容，专项命令继续使用各自严格Schema。
+- `RegisteredCommandSchema`保留原名称与公开表面，源码注释明确其只覆盖中央主桥；
+- Candidate、Generation、Continuity、Narrative Planning、State Proposal、Validation、Search、Rhythm继续使用各自严格Schema。
 
 ## 测试
 
@@ -63,10 +63,11 @@
 - Handler异常及Logger异常转换为标准失败；
 - 专项Preload不得重复构造协议字段或直接调用`ipcRenderer.invoke`；
 - DEC-004与现行`set-lock`一致；
-- 中央命令Schema准确命名与旧名称兼容；
+- `RegisteredCommandSchema`中央主桥范围及专项命令拒绝；
+- Contracts公开导出集合保持不变；
 - 项目执行入口引用正确基线。
 
-实现代码提交`8430b527272e14e7249b498a4d1d8b3409f4a92a`已通过Draft阶段Workspace、Boundaries、Format、Lint、Typecheck，以及Security、Performance、Evidence、Task Governance和PR Policy。
+实现代码提交`6c421a6bdd15c0ba0b3f75864e0fbc1a66d6e976`进入Ready完整矩阵；Draft阶段Workspace、Boundaries、Format、Lint、Typecheck、Security、Performance、Evidence、Task Governance和PR Policy已成功。
 
 ## Evidence
 
@@ -79,13 +80,14 @@
 
 - 进程内Guard无法中断永久阻塞的同步原生调用，该项保持Info；
 - Provider 1000项缓存淘汰仍为O(n)，该项保持Info；
-- 旧Schema名称暂时保留，后续大版本再评估移除；
+- Schema旧名称继续保留，范围通过源码注释和测试明确；
 - 可整体回退PR #310，无数据迁移恢复步骤。
 
 ## 完成条件
 
-- Ready完整Quality、Security、Performance、Evidence、Task Governance、PR Policy全部成功；
-- Unit、Integration、Migration、Coverage、Build、Electron E2E、三平台Package Smoke和Windows微软拼音验收成功；
+- Ready最终Head的Quality、Security、Performance、Evidence、Task Governance、PR Policy全部成功；
+- Static、Unit、Integration、Migration、Coverage和Electron E2E成功；
+- Package Smoke与Windows微软拼音按永久路径策略执行或明确判定不适用，跳过不得冒充成功；
 - 使用`expected_head_sha`受控Squash合并；
 - Main Verification与`task-verification/M10-03`成功；
 - Work Synchronization后`main == work`。

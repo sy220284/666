@@ -17,6 +17,7 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
+import { registerIpcInvokeHandler } from './handler-guard.js';
 import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
 
 export interface ContinuityIpcOptions {
@@ -89,7 +90,7 @@ export function registerContinuityIpc(options: ContinuityIpcOptions): () => void
   ] as const;
 
   for (const registration of registrations) {
-    options.ipcMain.handle(registration.channel, async (event, raw) => {
+    registerIpcInvokeHandler(options.ipcMain, registration.channel, async (event, raw) => {
       const parsed = registration.schema.safeParse(raw);
       if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
         return failure(

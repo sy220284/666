@@ -65,12 +65,10 @@ describe('work安全同步决策', () => {
   });
 
   it('复读最终work Ref并要求与main完全一致', () => {
-    expect(assertSynchronizedWorkRef({ object: { sha: sha('a') } }, sha('a'))).toBe(
-      sha('a'),
+    expect(assertSynchronizedWorkRef({ object: { sha: sha('a') } }, sha('a'))).toBe(sha('a'));
+    expect(() => assertSynchronizedWorkRef({ object: { sha: sha('b') } }, sha('a'))).toThrow(
+      'postcondition failed',
     );
-    expect(() =>
-      assertSynchronizedWorkRef({ object: { sha: sha('b') } }, sha('a')),
-    ).toThrow('postcondition failed');
   });
 });
 

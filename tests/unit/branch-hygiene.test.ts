@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { branchDeletionDecision } from '../../scripts/branch-hygiene.mjs';
+import { branchDeletionDecision, isProtectedBranch } from '../../scripts/branch-hygiene.mjs';
 
 const sha = (character: string): string => character.repeat(40);
+const authorization = { baseBranch: 'main', workBranch: 'work' };
 
 describe('branch hygiene deletion safety', () => {
+  it('protects only the authorized main and work branches', () => {
+    expect(isProtectedBranch('main', authorization)).toBe(true);
+    expect(isProtectedBranch('work', authorization)).toBe(true);
+    expect(isProtectedBranch('release/v1.0.0', authorization)).toBe(false);
+    expect(isProtectedBranch('feature/test', authorization)).toBe(false);
+  });
+
   it('allows deletion when the current branch head is fully reachable from main', () => {
     expect(
       branchDeletionDecision({

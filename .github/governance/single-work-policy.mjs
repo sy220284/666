@@ -25,6 +25,8 @@ const governancePaths = [
   'AGENTS.md',
   'agent.md',
   'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
   '.github/',
   'scripts/',
   'tests/unit/',

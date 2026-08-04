@@ -1,15 +1,12 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
-const unusedVariablesRule = [
-  'error',
-  {
-    argsIgnorePattern: '^_',
-    varsIgnorePattern: '^(_|CandidateSelection$)',
-    caughtErrorsIgnorePattern: '^_',
-    destructuredArrayIgnorePattern: '^_',
-  },
-];
+const unusedVariablesOptions = {
+  argsIgnorePattern: '^_',
+  varsIgnorePattern: '^(_|CandidateSelection$)',
+  caughtErrorsIgnorePattern: '^_',
+  destructuredArrayIgnorePattern: '^_',
+};
 
 export default tseslint.config(
   {
@@ -25,13 +22,16 @@ export default tseslint.config(
         process: 'readonly',
       },
     },
+    rules: {
+      'no-unused-vars': ['error', unusedVariablesOptions],
+    },
   },
   {
     files: ['**/*.{ts,tsx,mts,cts}'],
     rules: {
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': unusedVariablesRule,
+      '@typescript-eslint/no-unused-vars': ['error', unusedVariablesOptions],
     },
   },
   {

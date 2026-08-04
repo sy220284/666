@@ -20,6 +20,7 @@ import {
   type VersionRestoreInput,
   type VersionSetFinalInput,
   type VersionSummary,
+  type VersionType,
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from './database/index.js';
@@ -28,6 +29,7 @@ import type { ProjectWorkspaceService } from './project-workspace.js';
 const systemClock: DatabaseClock = { now: () => new Date() };
 
 type ParsedVersionCreateInput = ReturnType<typeof VersionCreateInputSchema.parse>;
+type ProjectDatabase = Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0];
 
 export type VersionServiceErrorCode =
   | 'VERSION_NOT_FOUND'
@@ -90,6 +92,22 @@ interface VersionRow {
 interface CandidateSourceRow {
   readonly baseDraftId: string;
   readonly baseDraftRevision: number | bigint;
+}
+
+interface PersistVersionInput {
+  readonly versionId: string;
+  readonly projectId: string;
+  readonly chapterId: string;
+  readonly sourceDraftId: string;
+  readonly sourceRevision: number;
+  readonly versionType: VersionType;
+  readonly parentVersionId: string | null;
+  readonly sourceCandidateId: string | null;
+  readonly title: string;
+  readonly description: string;
+  readonly label: string | null;
+  readonly createdAt: string;
+  readonly blocks: readonly VersionBlock[];
 }
 
 function stable(value: unknown): string {
@@ -178,10 +196,7 @@ function versionSelect(where: string): string {
          WHERE ${where}`;
 }
 
-function assertParentVersion(
-  database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-  input: ParsedVersionCreateInput,
-): void {
+function assertParentVersion(database: ProjectDatabase, input: ParsedVersionCreateInput): void {
   if (!input.parentVersionId) return;
   const parent = database
     .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
@@ -194,10 +209,7 @@ function assertParentVersion(
   }
 }
 
-function assertSourceCandidate(
-  database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-  input: ParsedVersionCreateInput,
-): void {
+function assertSourceCandidate(database: ProjectDatabase, input: ParsedVersionCreateInput): void {
   if (input.versionType === 'candidate' && !input.sourceCandidateId) {
     throw new VersionServiceError(
       'VERSION_CANDIDATE_CONFLICT',
@@ -232,6 +244,120 @@ function assertSourceCandidate(
       'The source Candidate does not match this Draft and Revision.',
     );
   }
+}
+
+function readDraftBlocksForVersion(database: ProjectDatabase, draftId: string): VersionBlock[] {
+  const rows = database
+    .prepare(
+      `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
+              block_type AS blockType, text, attributes_json AS attributesJson,
+              source, locked, content_hash AS contentHash
+         FROM draft_blocks WHERE draft_id = ? ORDER BY order_key`,
+    )
+    .all(draftId) as unknown as BlockRow[];
+  if (rows.length === 0) {
+    throw new VersionServiceError('VERSION_DRAFT_NOT_FOUND', 'The Draft contains no blocks.');
+  }
+  const updateHash = database.prepare(
+    'UPDATE draft_blocks SET content_hash = ? WHERE draft_id = ? AND logical_block_id = ? AND content_hash IS NULL',
+  );
+  return rows.map((row) => {
+    const hash = row.contentHash ?? blockHash(row);
+    if (!row.contentHash) updateHash.run(hash, draftId, row.logicalBlockId);
+    return mapBlock({ ...row, contentHash: hash });
+  });
+}
+
+function persistVersion(database: ProjectDatabase, input: PersistVersionInput): VersionDocument {
+  const contentHash = versionHash(input.blocks);
+  const count = wordCount(input.blocks);
+  try {
+    database
+      .prepare(
+        `INSERT INTO versions(
+           id, chapter_id, source_draft_id, source_revision, version_type,
+           parent_version_id, source_candidate_id, title, description,
+           label, word_count, content_hash, created_at
+         ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.versionId,
+        input.chapterId,
+        input.sourceDraftId,
+        input.sourceRevision,
+        input.versionType,
+        input.parentVersionId,
+        input.sourceCandidateId,
+        input.title,
+        input.description,
+        input.label,
+        count,
+        contentHash,
+        input.createdAt,
+      );
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('UNIQUE')) {
+      throw new VersionServiceError(
+        'VERSION_TITLE_CONFLICT',
+        'A Version with this title already exists.',
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  const insertBlock = database.prepare(
+    `INSERT INTO version_blocks(
+       version_id, logical_block_id, order_key, block_type, text,
+       attributes_json, source, locked, content_hash
+     ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  for (const block of input.blocks) {
+    insertBlock.run(
+      input.versionId,
+      block.logicalBlockId,
+      BigInt(block.orderKey),
+      block.blockType,
+      block.text,
+      JSON.stringify(block.attributes),
+      block.source,
+      block.locked ? 1 : 0,
+      block.contentHash,
+    );
+  }
+  return VersionDocumentSchema.parse({
+    versionId: input.versionId,
+    projectId: input.projectId,
+    chapterId: input.chapterId,
+    sourceDraftId: input.sourceDraftId,
+    sourceRevision: input.sourceRevision,
+    versionType: input.versionType,
+    parentVersionId: input.parentVersionId,
+    sourceCandidateId: input.sourceCandidateId,
+    title: input.title,
+    description: input.description,
+    label: input.label,
+    wordCount: count,
+    contentHash,
+    createdAt: input.createdAt,
+    finalized: false,
+    blocks: input.blocks,
+  });
+}
+
+function readVersionDocument(database: ProjectDatabase, input: VersionGetInput): VersionDocument {
+  const row = database
+    .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
+    .get(input.versionId, input.chapterId, input.projectId) as VersionRow | undefined;
+  if (!row) throw new VersionServiceError('VERSION_NOT_FOUND', 'The Version was not found.');
+  const blocks = database
+    .prepare(
+      `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
+              block_type AS blockType, text, attributes_json AS attributesJson,
+              source, locked, content_hash AS contentHash
+         FROM version_blocks WHERE version_id = ? ORDER BY order_key`,
+    )
+    .all(input.versionId) as unknown as BlockRow[];
+  return VersionDocumentSchema.parse({ ...mapVersion(row), blocks: blocks.map(mapBlock) });
 }
 
 export class VersionService {
@@ -270,82 +396,8 @@ export class VersionService {
       }
       assertParentVersion(database, input);
       assertSourceCandidate(database, input);
-
-      const rows = database
-        .prepare(
-          `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
-                  block_type AS blockType, text, attributes_json AS attributesJson,
-                  source, locked, content_hash AS contentHash
-             FROM draft_blocks WHERE draft_id = ? ORDER BY order_key`,
-        )
-        .all(input.draftId) as unknown as BlockRow[];
-      if (rows.length === 0) {
-        throw new VersionServiceError('VERSION_DRAFT_NOT_FOUND', 'The Draft contains no blocks.');
-      }
-      const updateHash = database.prepare(
-        'UPDATE draft_blocks SET content_hash = ? WHERE draft_id = ? AND logical_block_id = ? AND content_hash IS NULL',
-      );
-      const blocks = rows.map((row) => {
-        const hash = row.contentHash ?? blockHash(row);
-        if (!row.contentHash) updateHash.run(hash, input.draftId, row.logicalBlockId);
-        return mapBlock({ ...row, contentHash: hash });
-      });
-      const contentHash = versionHash(blocks);
-      const count = wordCount(blocks);
-      try {
-        database
-          .prepare(
-            `INSERT INTO versions(
-               id, chapter_id, source_draft_id, source_revision, version_type,
-               parent_version_id, source_candidate_id, title, description,
-               label, word_count, content_hash, created_at
-             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .run(
-            versionId,
-            input.chapterId,
-            input.draftId,
-            input.baseRevision,
-            input.versionType,
-            input.parentVersionId ?? null,
-            input.sourceCandidateId ?? null,
-            input.title,
-            input.description ?? '',
-            input.label ?? null,
-            count,
-            contentHash,
-            createdAt,
-          );
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('UNIQUE')) {
-          throw new VersionServiceError(
-            'VERSION_TITLE_CONFLICT',
-            'A Version with this title already exists.',
-            { cause: error },
-          );
-        }
-        throw error;
-      }
-      const insertBlock = database.prepare(
-        `INSERT INTO version_blocks(
-           version_id, logical_block_id, order_key, block_type, text,
-           attributes_json, source, locked, content_hash
-         ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      );
-      for (const block of blocks) {
-        insertBlock.run(
-          versionId,
-          block.logicalBlockId,
-          BigInt(block.orderKey),
-          block.blockType,
-          block.text,
-          JSON.stringify(block.attributes),
-          block.source,
-          block.locked ? 1 : 0,
-          block.contentHash,
-        );
-      }
-      return VersionDocumentSchema.parse({
+      const blocks = readDraftBlocksForVersion(database, input.draftId);
+      return persistVersion(database, {
         versionId,
         projectId: input.projectId,
         chapterId: input.chapterId,
@@ -357,10 +409,7 @@ export class VersionService {
         title: input.title,
         description: input.description ?? '',
         label: input.label ?? null,
-        wordCount: count,
-        contentHash,
         createdAt,
-        finalized: false,
         blocks,
       });
     });
@@ -395,21 +444,9 @@ export class VersionService {
 
   get(raw: VersionGetInput): VersionDocument {
     const input = VersionGetInputSchema.parse(raw);
-    return this.#workspace.readProject(input.projectId, (database) => {
-      const row = database
-        .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
-        .get(input.versionId, input.chapterId, input.projectId) as VersionRow | undefined;
-      if (!row) throw new VersionServiceError('VERSION_NOT_FOUND', 'The Version was not found.');
-      const blocks = database
-        .prepare(
-          `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
-                  block_type AS blockType, text, attributes_json AS attributesJson,
-                  source, locked, content_hash AS contentHash
-             FROM version_blocks WHERE version_id = ? ORDER BY order_key`,
-        )
-        .all(input.versionId) as unknown as BlockRow[];
-      return VersionDocumentSchema.parse({ ...mapVersion(row), blocks: blocks.map(mapBlock) });
-    });
+    return this.#workspace.readProject(input.projectId, (database) =>
+      readVersionDocument(database, input),
+    );
   }
 
   setFinal(requestId: string, raw: VersionSetFinalInput): Promise<VersionSummary> {
@@ -434,24 +471,61 @@ export class VersionService {
   restore(requestId: string, raw: VersionRestoreInput): Promise<DraftDocument> {
     const input = VersionRestoreInputSchema.parse(raw);
     const newDraftId = this.#idFactory();
+    const checkpointVersionId = this.#idFactory();
     const now = this.#clock.now().toISOString();
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
-      const version = this.get(input);
+      const version = readVersionDocument(database, input);
       const current = database
         .prepare(
-          `SELECT c.active_draft_id AS draftId
+          `SELECT d.id AS draftId, d.revision AS revision
              FROM chapters c
              JOIN volumes vo ON vo.id = c.volume_id
-            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL`,
+             JOIN drafts d ON d.id = c.active_draft_id
+            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL
+              AND d.status = 'active'`,
         )
-        .get(input.chapterId, input.projectId) as { draftId: string | null } | undefined;
+        .get(input.chapterId, input.projectId) as DraftRow | undefined;
       if (!current) {
-        throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The chapter was not found.');
+        throw new VersionServiceError('VERSION_DRAFT_NOT_FOUND', 'The active Draft was not found.');
       }
-      if (current.draftId) {
-        database
-          .prepare("UPDATE drafts SET status = 'archived', updated_at = ? WHERE id = ?")
-          .run(now, current.draftId);
+      if (
+        current.draftId !== input.expectedDraftId ||
+        Number(current.revision) !== input.expectedRevision
+      ) {
+        throw new VersionServiceError(
+          'VERSION_REVISION_CONFLICT',
+          'The active Draft changed before the Version restore was confirmed.',
+        );
+      }
+
+      const currentBlocks = readDraftBlocksForVersion(database, current.draftId);
+      persistVersion(database, {
+        versionId: checkpointVersionId,
+        projectId: input.projectId,
+        chapterId: input.chapterId,
+        sourceDraftId: current.draftId,
+        sourceRevision: Number(current.revision),
+        versionType: 'checkpoint',
+        parentVersionId: null,
+        sourceCandidateId: null,
+        title: `恢复前自动留档 · ${now} · ${checkpointVersionId.slice(0, 8)}`,
+        description: `恢复历史版本 ${input.versionId} 前自动保存的当前稿。`,
+        label: 'restore',
+        createdAt: now,
+        blocks: currentBlocks,
+      });
+
+      const archived = database
+        .prepare(
+          `UPDATE drafts SET status = 'archived', updated_at = ?
+            WHERE id = ? AND status = 'active' AND revision = ?`,
+        )
+        .run(now, current.draftId, current.revision);
+      if (Number(archived.changes) !== 1) {
+        throw new VersionServiceError(
+          'VERSION_REVISION_CONFLICT',
+          'The active Draft changed before it could be archived.',
+        );
       }
       database
         .prepare(
@@ -479,9 +553,43 @@ export class VersionService {
           block.contentHash,
         );
       }
+      const activated = database
+        .prepare(
+          `UPDATE chapters SET active_draft_id = ?, status = ?
+            WHERE id = ? AND active_draft_id = ?`,
+        )
+        .run(newDraftId, 'writing', input.chapterId, current.draftId);
+      if (Number(activated.changes) !== 1) {
+        throw new VersionServiceError(
+          'VERSION_REVISION_CONFLICT',
+          'The chapter active Draft changed before the restore committed.',
+        );
+      }
+      const operations = version.blocks.map((block, index) => ({
+        type: 'insert',
+        afterLogicalBlockId: index === 0 ? null : version.blocks[index - 1]!.logicalBlockId,
+        block: {
+          blockType: block.blockType,
+          content: block.text,
+          attributes: block.attributes,
+        },
+      }));
       database
-        .prepare('UPDATE chapters SET active_draft_id = ?, status = ? WHERE id = ?')
-        .run(newDraftId, 'writing', input.chapterId);
+        .prepare(
+          `INSERT INTO draft_patch_log(
+             id, draft_id, request_id, base_revision, committed_revision,
+             operations_json, before_blocks_json, after_blocks_json, created_at,
+             mutation_origin
+           ) VALUES(?, ?, ?, 0, 1, ?, '[]', ?, ?, 'restore')`,
+        )
+        .run(
+          this.#idFactory(),
+          newDraftId,
+          requestId,
+          JSON.stringify(operations),
+          JSON.stringify(version.blocks.map((block) => ({ ...block, revision: 1 }))),
+          now,
+        );
       return DraftDocumentSchema.parse({
         projectId: input.projectId,
         chapterId: input.chapterId,
@@ -493,10 +601,7 @@ export class VersionService {
     });
   }
 
-  #summaryFromDatabase(
-    database: Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0],
-    input: VersionGetInput,
-  ): VersionSummary {
+  #summaryFromDatabase(database: ProjectDatabase, input: VersionGetInput): VersionSummary {
     const row = database
       .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
       .get(input.versionId, input.chapterId, input.projectId) as VersionRow | undefined;

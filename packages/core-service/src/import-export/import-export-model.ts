@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { ImportPlan, ImportPlanBlock } from '@worldforge/contracts';
 
 import type { DatabaseClock } from '../database/index.js';
+import { stableJson } from '../stable-json.js';
 
 export const systemClock: DatabaseClock = { now: () => new Date() };
 export const MAX_IMPORT_BYTES = 20 * 1024 * 1024;
@@ -79,14 +80,7 @@ export function sha256(value: Uint8Array | string): string {
 }
 
 export function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right, 'en'))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
+  return stableJson(value);
 }
 
 export function blockHash(block: ImportPlanBlock): string {

@@ -1,9 +1,9 @@
 # WorldForge 任务索引
 
-> 状态：VERIFIED_HOLD  
+> 状态：IN_PROGRESS  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-02，共47张独立任务卡；M9-04—M9-14为被M9-03吸收的冻结工作包别名。
-> 当前任务：M10-02已Verified；当前无活动开发任务，仓库处于最终验证保持。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-03，共48张独立任务卡；M9-04—M9-14为被M9-03吸收的冻结工作包别名。
+> 当前任务：M10-03 IPC与协议维护治理，状态In Progress。
 
 ## 1. 执行入口
 
@@ -14,7 +14,8 @@
 5. M9任务入口：[`M9/README.md`](M9/README.md)。
 6. M10-01终态任务卡：[`M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md`](M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)。
 7. M10-02终态任务卡：[`M10/M10-02_FULL_CODE_AUDIT.md`](M10/M10-02_FULL_CODE_AUDIT.md)。
-8. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
+8. M10-03活动任务卡：[`M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md`](M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md)。
+9. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：专项文档路由。
 
 任务状态：
 
@@ -36,7 +37,7 @@ Blocked / Deferred / Removed
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
 | M8            | 交付关闭、作者体验与长期维护   |          7 | M8-02—M8-09 Verified                         |
 | M9            | V1.1保持行为的架构拆分治理     |          4 | M9-00—M9-03 Verified                         |
-| M10           | 异步生命周期、竞态与工具链硬化 |          2 | M10-01—M10-02 Verified                       |
+| M10           | 异步生命周期、竞态与工具链硬化 |          3 | M10-01—M10-02 Verified；M10-03 In Progress   |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
@@ -58,6 +59,7 @@ M0—M3 已完成产品底座
    → M9-03 / AR-03—AR-14统一执行（Verified）
    → M10-01 异步生命周期与竞态硬化（Verified）
    → M10-02 全量代码测试与深度审计（Verified）
+   → M10-03 IPC与协议维护治理（In Progress）
 ```
 
 ## M0 工程、安全与运行底座
@@ -153,10 +155,11 @@ M0—M3 已完成产品底座
 
 ## M10 稳定性续作
 
-| ID     | 任务卡                                                                                               | 依赖   | 状态     |
-| ------ | ---------------------------------------------------------------------------------------------------- | ------ | -------- |
-| M10-01 | [`异步生命周期与竞态硬化`](M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)                                 | M9-03  | Verified |
-| M10-02 | [`全量代码测试与深度审计`](M10/M10-02_FULL_CODE_AUDIT.md)                                           | M10-01 | Verified |
+| ID     | 任务卡                                                                                               | 依赖   | 状态       |
+| ------ | ---------------------------------------------------------------------------------------------------- | ------ | ---------- |
+| M10-01 | [`异步生命周期与竞态硬化`](M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)                                 | M9-03  | Verified   |
+| M10-02 | [`全量代码测试与深度审计`](M10/M10-02_FULL_CODE_AUDIT.md)                                           | M10-01 | Verified   |
+| M10-03 | [`IPC与协议维护治理`](M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md)                                       | M10-02 | In Progress |
 
 ## 3. 被吸收的需求来源
 
@@ -186,13 +189,13 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M0—M8-09、M9-00—M9-03及M10-01—M10-02保持Verified；仓库处于最终验证保持。
+1. M0—M8-09、M9-00—M9-03及M10-01—M10-02保持Verified；M10-03是当前唯一活动维护任务。
 2. M9-03统一PR绑定一个主任务并按统一`allowedPaths`验证；不得为M9-04—M9-14开放独立PR。
 3. main写入保持串行：一个PR合并并完成Main Verification后，才允许下一个PR写入main。
 4. M9只做保持行为的职责拆分，不改变本地优先、AI作者裁决、数据库Schema、IPC协议或正式错误码。
 5. M9不得改写M8-09及更早任务的历史Evidence。
 6. AR-04、AR-10、AR-12和AR-13必须在统一分支保存独立回退说明与专项验证；AR-14不得承接前序未完成拆分。
-7. M10-01—M10-02只处理已核实的异步竞态、全量审计、覆盖余量和工具链稳定性，不扩展产品功能。
+7. M10-03只关闭已确认的IPC异常保护、执行入口基线、Preload封装、DEC-004与中央命令Schema命名问题，不扩展产品功能，不处理两项Info。
 8. 任一releaseBlocking任务未Verified时，发布资格必须被拒绝。
 
 ## 5. 状态原则

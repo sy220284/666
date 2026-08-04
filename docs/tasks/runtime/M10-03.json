@@ -20,6 +20,7 @@
     "packages/contracts/src/",
     "tests/unit/",
     "tests/security/",
+    "package.json",
     "docs/PROJECT_EXECUTION_ENTRY.md",
     "docs/decisions/IMPLEMENTATION_DECISIONS.md",
     "docs/tasks/M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md",

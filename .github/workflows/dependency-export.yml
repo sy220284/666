@@ -74,8 +74,14 @@ jobs:
           pnpm install --frozen-lockfile --prefer-offline --store-dir "$STORE_DIR"
           node .github/governance/assert-clean-tree.mjs
           node -p "require('electron/package.json').version"
+          electron_dir="$(dirname "$(node -p "require.resolve('electron/package.json')")")"
           electron_path="$(node -e "process.stdout.write(require('electron'))")"
+          if [ ! -x "$electron_path" ]; then
+            node "$electron_dir/install.js"
+            electron_path="$(node -e "process.stdout.write(require('electron'))")"
+          fi
           test -x "$electron_path"
+          ELECTRON_RUN_AS_NODE=1 "$electron_path" --version
           pnpm exec esbuild --version
           pnpm exec vitest --version
           pnpm exec playwright --version

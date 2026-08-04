@@ -47,7 +47,10 @@ const taskStatuses = verifiedTasks.map((task) => ({
   context: `task-verification/${task.id}`,
   state: 'success',
 }));
-const successStatuses = [{ context: 'main-verification', state: 'success' }, ...taskStatuses];
+const successStatuses = [
+  { context: 'main-verification', state: 'success' },
+  ...taskStatuses,
+];
 
 const authorization = {
   schemaVersion: 2,
@@ -131,7 +134,9 @@ describe('release tool', () => {
       refName: 'main',
     });
 
-    expect(result.errors).toContain('Current release commit must have main-verification=success');
+    expect(result.errors).toContain(
+      'Current release commit must have main-verification=success',
+    );
   });
 
   it('blocks publishing when a task is not effectively Verified', () => {
@@ -166,7 +171,9 @@ describe('release tool', () => {
       refName: 'main',
     });
 
-    expect(result.errors).toContain('Release-blocking runtimes are absent from TASK_INDEX: M8-06');
+    expect(result.errors).toContain(
+      'Release-blocking runtimes are absent from TASK_INDEX: M8-06',
+    );
   });
 
   it('allows publishing from main when main and task statuses are successful', () => {
@@ -198,7 +205,7 @@ describe('release tool', () => {
       {
         path: 'linux/worldforge.AppImage',
         bytes: 5,
-        sha256: '8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8',
+        sha256: '8ed3f6ad685b959ead7022518e1af76cd816f8eec7ccdda1ed4018e8f2223f8',
       },
     ]);
     expect(renderChecksums(assets)).toBe(

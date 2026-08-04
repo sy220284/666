@@ -91,3 +91,11 @@
 - 使用`expected_head_sha`受控Squash合并；
 - Main Verification与`task-verification/M10-03`成功；
 - Work Synchronization后`main == work`。
+
+## 手动同步恢复
+
+- 2026-08-04 13:12（Asia/Singapore）确认PR #310已合并，`main-verification`与`task-verification/M10-03`均为成功；
+- 确认没有新的`work → main`开放PR，且`work`仍精确等于PR #310来源Head；
+- 受控强制同步`work`至已验证`main@8f54dc4e5ed46d6ffca999fda29887f2302b1030`；
+- 同步后复核`main == work`、ahead=0、behind=0；
+- 本记录用于建立终态关闭PR，任务状态在关闭PR绑定完成前仍保持Implemented。

@@ -12,6 +12,7 @@ import type { ProjectWorkspaceService } from '../project-workspace.js';
 import type { RecoveryService } from '../recovery.js';
 import { readReplacePlan } from './replace-plan-repository.js';
 import {
+  attachStaleMarkFailure,
   type DraftBlockRow,
   derivedReplaceRequestId,
   draftAudit,
@@ -85,7 +86,8 @@ export class ReplaceApplyOperations {
           const blocks = database
             .prepare(
               `SELECT block.id AS recordId, volume.project_id AS projectId,
-                      chapter.id AS chapterId, draft.id AS draftId, draft.revision,
+                      chapter.id AS chapterId, draft.id AS draftId,
+                      draft.revision AS draftRevision, block.revision AS revision,
                       block.logical_block_id AS logicalBlockId, block.order_key AS orderKey,
                       block.block_type AS blockType, block.text,
                       block.attributes_json AS attributesJson, block.source, block.locked,
@@ -99,9 +101,10 @@ export class ReplaceApplyOperations {
                 ORDER BY block.order_key, block.id`,
             )
             .all(draftId, input.projectId) as unknown as DraftBlockRow[];
+          const draftRevision = blocks[0] ? numericValue(blocks[0].draftRevision) : -1;
           if (
             blocks.length === 0 ||
-            items.some((item) => item.baseRevision !== numericValue(blocks[0]!.revision))
+            items.some((item) => item.baseRevision !== draftRevision)
           ) {
             throw new SearchToolsServiceError(
               'SEARCH_REPLACE_STALE',
@@ -110,7 +113,7 @@ export class ReplaceApplyOperations {
           }
           drafts.set(draftId, {
             chapterId: blocks[0]!.chapterId,
-            revision: numericValue(blocks[0]!.revision),
+            revision: draftRevision,
             blocks,
           });
           for (const item of items) {
@@ -164,10 +167,29 @@ export class ReplaceApplyOperations {
           const update = database.prepare(
             `UPDATE draft_blocks
                 SET text = ?, content_hash = ?, revision = ?
-              WHERE id = ? AND draft_id = ?`,
+              WHERE id = ? AND draft_id = ? AND revision = ? AND content_hash = ?`,
           );
-          for (const block of target.blocks) {
-            update.run(block.text, block.contentHash, committedRevision, block.recordId, draftId);
+          for (const logicalBlockId of byBlock.keys()) {
+            const previous = before.find((block) => block.logicalBlockId === logicalBlockId)!;
+            const block = target.blocks.find(
+              (candidate) => candidate.logicalBlockId === logicalBlockId,
+            )!;
+            const changed = update.run(
+              block.text,
+              block.contentHash,
+              committedRevision,
+              block.recordId,
+              draftId,
+              previous.revision,
+              previous.contentHash,
+            );
+            if (numericValue(changed.changes) !== 1) {
+              throw new SearchToolsServiceError(
+                'SEARCH_REPLACE_STALE',
+                'A target block changed before the replacement transaction committed.',
+              );
+            }
+            block.revision = committedRevision;
           }
           const changed = database
             .prepare('UPDATE drafts SET revision = ?, updated_at = ? WHERE id = ? AND revision = ?')
@@ -203,8 +225,8 @@ export class ReplaceApplyOperations {
               target.revision,
               committedRevision,
               JSON.stringify(operations),
-              JSON.stringify(draftAudit(before, target.revision)),
-              JSON.stringify(draftAudit(target.blocks, committedRevision)),
+              JSON.stringify(draftAudit(before)),
+              JSON.stringify(draftAudit(target.blocks)),
               now,
             );
           changedDrafts.push({
@@ -215,13 +237,19 @@ export class ReplaceApplyOperations {
             replacementCount: items.length,
           });
         }
-        database
+        const applied = database
           .prepare(
             `UPDATE replace_plans
                 SET status = 'applied', checkpoint_id = ?, updated_at = ?, applied_at = ?
               WHERE id = ? AND project_id = ? AND status = 'preview'`,
           )
           .run(checkpoint.backupId, now, now, input.planId, input.projectId);
+        if (numericValue(applied.changes) !== 1) {
+          throw new SearchToolsServiceError(
+            'SEARCH_REPLACE_CONFLICT',
+            'The ReplacePlan changed before the replacement transaction committed.',
+          );
+        }
         return ReplaceApplyResultSchema.parse({
           plan: readReplacePlan(database, input.projectId, input.planId),
           checkpoint,
@@ -230,14 +258,18 @@ export class ReplaceApplyOperations {
         });
       });
     } catch (error) {
-      await this.#workspace.writeProject(randomUUID(), input.projectId, (database) => {
-        database
-          .prepare(
-            `UPDATE replace_plans SET status = 'stale', updated_at = ?
-              WHERE id = ? AND project_id = ? AND status = 'preview'`,
-          )
-          .run(this.#clock.now().toISOString(), input.planId, input.projectId);
-      });
+      try {
+        await this.#workspace.writeProject(randomUUID(), input.projectId, (database) => {
+          database
+            .prepare(
+              `UPDATE replace_plans SET status = 'stale', updated_at = ?
+                WHERE id = ? AND project_id = ? AND status = 'preview'`,
+            )
+            .run(this.#clock.now().toISOString(), input.planId, input.projectId);
+        });
+      } catch (staleMarkError) {
+        attachStaleMarkFailure(error, staleMarkError);
+      }
       throw error;
     }
   }

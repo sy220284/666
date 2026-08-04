@@ -61,9 +61,7 @@ const candidateActionBridge = {
       CANDIDATE_APPLY_COMMANDS.applyCandidate,
       input,
     ),
-  findUndoRecord: (
-    input: CandidateUndoLookupInput,
-  ): Promise<CommandResult<CandidateUndoLookup>> =>
+  findUndoRecord: (input: CandidateUndoLookupInput): Promise<CommandResult<CandidateUndoLookup>> =>
     invokeCommand(
       CANDIDATE_APPLY_IPC_CHANNELS.findUndoRecord,
       CandidateUndoLookupCommandSchema,
@@ -71,9 +69,7 @@ const candidateActionBridge = {
       CANDIDATE_APPLY_COMMANDS.findUndoRecord,
       input,
     ),
-  previewUndo: (
-    input: CandidateUndoPreviewInput,
-  ): Promise<CommandResult<CandidateUndoPreview>> =>
+  previewUndo: (input: CandidateUndoPreviewInput): Promise<CommandResult<CandidateUndoPreview>> =>
     invokeCommand(
       CANDIDATE_APPLY_IPC_CHANNELS.previewUndo,
       CandidateUndoPreviewCommandSchema,

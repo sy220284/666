@@ -82,8 +82,13 @@ async function main() {
   }
   const [owner, repo] = repository.split('/');
   if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format');
-  const state = JSON.parse(await readFile('docs/tasks/ACTIVE_TASK.json', 'utf8'));
-  const activeBranch = state.activeTask?.branch;
+  const authorization = JSON.parse(
+    await readFile('docs/tasks/TASK_AUTHORIZATION.json', 'utf8'),
+  );
+  const workBranch = authorization.workBranch;
+  if (authorization.schemaVersion !== 2 || workBranch !== 'work') {
+    throw new Error('TASK_AUTHORIZATION must define the Schema 2 work branch');
+  }
   const [branches, pulls] = await Promise.all([
     paged(`/repos/${owner}/${repo}/branches`),
     paged(`/repos/${owner}/${repo}/pulls?state=all`),
@@ -99,7 +104,7 @@ async function main() {
   for (const branch of branches) {
     const name = branch.name;
     const branchSha = branch.commit?.sha;
-    if (name === 'main' || name === activeBranch || name.startsWith('release/')) {
+    if (name === authorization.baseBranch || name === workBranch || name.startsWith('release/')) {
       report.push({ branch: name, branchSha, classification: 'protected', action: 'keep' });
       continue;
     }
@@ -115,7 +120,7 @@ async function main() {
       continue;
     }
     const comparison = await api(
-      `/repos/${owner}/${repo}/compare/main...${encodeURIComponent(name)}`,
+      `/repos/${owner}/${repo}/compare/${encodeURIComponent(authorization.baseBranch)}...${encodeURIComponent(name)}`,
     );
     const decision = branchDeletionDecision({ branchSha, pull, comparison });
     let action = decision.safe ? 'delete-candidate' : 'manual-review';

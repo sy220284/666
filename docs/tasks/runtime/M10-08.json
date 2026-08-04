@@ -16,6 +16,7 @@
     ".github/workflows/toolchain-export.yml",
     ".editorconfig",
     ".gitattributes",
+    "AGENTS.md",
     "package.json",
     "eslint.config.mjs",
     "tsconfig.base.json",

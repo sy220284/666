@@ -1,10 +1,5 @@
 {
-  "schemaVersion": 1,
-  "defaultMaxLines": {
-    "tsx": 800,
-    "ts": 1200
-  },
-  "oversizedFiles": {},
+  "schemaVersion": 2,
   "forbiddenFeatureEdges": [
     "writing>planning"
   ],

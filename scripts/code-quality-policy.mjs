@@ -67,7 +67,8 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   ]);
 
   requireTokens(violations, 'eslint.config.mjs', eslintConfig, [
-    "'@typescript-eslint/no-unused-vars': unusedVariablesRule",
+    "'no-unused-vars': ['error', unusedVariablesOptions]",
+    "'@typescript-eslint/no-unused-vars': ['error', unusedVariablesOptions]",
     'projectService: true',
     "'@typescript-eslint/await-thenable': 'error'",
     "'@typescript-eslint/no-floating-promises': 'error'",

@@ -22,6 +22,7 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import type { CredentialBroker } from './credential-broker.js';
+import { registerIpcInvokeHandler } from './handler-guard.js';
 import type { PrivacyLogger } from './privacy-logger.js';
 
 export interface GenerationIpcOptions {
@@ -113,7 +114,7 @@ export function registerGenerationIpc(options: GenerationIpcOptions): () => void
   const invalid = (raw: unknown): CommandFailure =>
     failure(requestIdFrom(raw), 'COMMON_INVALID_INPUT_001');
 
-  options.ipcMain.handle(GENERATION_IPC_CHANNELS.start, async (event, raw) => {
+  registerIpcInvokeHandler(options.ipcMain, GENERATION_IPC_CHANNELS.start, async (event, raw) => {
     const rejected = rejectUntrusted(event, raw);
     if (rejected) return rejected;
     const command = GenerationStartCommandSchema.safeParse(raw);
@@ -172,7 +173,7 @@ export function registerGenerationIpc(options: GenerationIpcOptions): () => void
     },
   ] as const;
   for (const registration of registrations) {
-    options.ipcMain.handle(registration.channel, async (event, raw) => {
+    registerIpcInvokeHandler(options.ipcMain, registration.channel, async (event, raw) => {
       const rejected = rejectUntrusted(event, raw);
       if (rejected) return rejected;
       const command = registration.schema.safeParse(raw);

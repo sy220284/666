@@ -1,5 +1,4 @@
 import {
-  PROTOCOL_VERSION,
   RHYTHM_COMMANDS,
   RHYTHM_IPC_CHANNELS,
   RhythmDashboardResultSchema,
@@ -8,22 +7,12 @@ import {
   RhythmUpdateProfileCommandSchema,
   type RhythmProfileUpdateInput,
 } from '@worldforge/contracts';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge } from 'electron';
 
-async function invoke(
-  channel: string,
-  schema: { parse(input: unknown): unknown },
-  command: string,
-  payload: unknown,
-) {
-  const envelope = schema.parse({
-    protocolVersion: PROTOCOL_VERSION,
-    requestId: globalThis.crypto.randomUUID(),
-    command,
-    payload,
-    sentAt: new Date().toISOString(),
-  });
-  return RhythmDashboardResultSchema.parse(await ipcRenderer.invoke(channel, envelope));
+import { invokeCommand, type Parser } from './bridge-runtime.js';
+
+function invoke(channel: string, schema: Parser<unknown>, command: string, payload: unknown) {
+  return invokeCommand(channel, schema, RhythmDashboardResultSchema, command, payload);
 }
 
 const rhythmBridge = {

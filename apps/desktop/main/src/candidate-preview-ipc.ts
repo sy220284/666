@@ -18,6 +18,7 @@ import {
 import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
+import { registerIpcInvokeHandler } from './handler-guard.js';
 import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
 
 interface CandidatePreviewIpcOptions {
@@ -113,7 +114,7 @@ export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions)
   const undoPreviewChannel = CANDIDATE_APPLY_IPC_CHANNELS.previewUndo;
   const undoChannel = CANDIDATE_APPLY_IPC_CHANNELS.undoApply;
 
-  options.ipcMain.handle(previewChannel, async (event, raw) => {
+  registerIpcInvokeHandler(options.ipcMain, previewChannel, async (event, raw) => {
     const parsed = CandidatePreviewCommandSchema.safeParse(raw);
     if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
       const requestId = parsed.success ? parsed.data.requestId : crypto.randomUUID();
@@ -132,7 +133,7 @@ export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions)
     });
   });
 
-  options.ipcMain.handle(previewCancelChannel, async (event, raw) => {
+  registerIpcInvokeHandler(options.ipcMain, previewCancelChannel, async (event, raw) => {
     const parsed = CandidatePreviewCancelCommandSchema.safeParse(raw);
     if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
       const requestId = parsed.success ? parsed.data.requestId : crypto.randomUUID();
@@ -150,7 +151,7 @@ export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions)
     });
   });
 
-  options.ipcMain.handle(actionChannel, async (event, raw) => {
+  registerIpcInvokeHandler(options.ipcMain, actionChannel, async (event, raw) => {
     const parsed = CandidateApplyCommandSchema.safeParse(raw);
     if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
       const requestId = parsed.success ? parsed.data.requestId : crypto.randomUUID();
@@ -169,7 +170,7 @@ export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions)
     });
   });
 
-  options.ipcMain.handle(lookupChannel, async (event, raw) => {
+  registerIpcInvokeHandler(options.ipcMain, lookupChannel, async (event, raw) => {
     const parsed = CandidateUndoLookupCommandSchema.safeParse(raw);
     if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
       const requestId = parsed.success ? parsed.data.requestId : crypto.randomUUID();
@@ -187,7 +188,7 @@ export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions)
     });
   });
 
-  options.ipcMain.handle(undoPreviewChannel, async (event, raw) => {
+  registerIpcInvokeHandler(options.ipcMain, undoPreviewChannel, async (event, raw) => {
     const parsed = CandidateUndoPreviewCommandSchema.safeParse(raw);
     if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
       const requestId = parsed.success ? parsed.data.requestId : crypto.randomUUID();
@@ -205,7 +206,7 @@ export function registerCandidatePreviewIpc(options: CandidatePreviewIpcOptions)
     });
   });
 
-  options.ipcMain.handle(undoChannel, async (event, raw) => {
+  registerIpcInvokeHandler(options.ipcMain, undoChannel, async (event, raw) => {
     const parsed = CandidateUndoCommandSchema.safeParse(raw);
     if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
       const requestId = parsed.success ? parsed.data.requestId : crypto.randomUUID();

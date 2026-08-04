@@ -32,12 +32,14 @@ type BlockPatchOperation =
   | { type: 'insert'; afterLogicalBlockId: string | null; block: NewBlock }
   | { type: 'update'; logicalBlockId: string; expectedHash: string; content: string; attributes?: BlockAttributes }
   | { type: 'delete'; logicalBlockId: string; expectedHash: string }
-  | { type: 'move'; logicalBlockId: string; expectedHash: string; afterLogicalBlockId: string | null };
+  | { type: 'move'; logicalBlockId: string; expectedHash: string; afterLogicalBlockId: string | null }
+  | { type: 'set-lock'; logicalBlockId: string; expectedHash: string; locked: boolean };
 ```
 
 - 一个批次使用同一`baseRevision`。
 - Core先在内存工作集按顺序验证，全部通过后单事务写入。
 - 任一操作失败整批回滚。
+- `set-lock`与其他既有块操作一样校验`expectedHash`，锁状态变化属于同一Patch事务并只递增一次Revision。
 - 锁定检查覆盖源块及受拆分、合并影响的相邻块。
 
 ## DEC-005 logicalBlockId继承

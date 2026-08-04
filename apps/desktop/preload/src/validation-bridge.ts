@@ -1,5 +1,4 @@
 import {
-  PROTOCOL_VERSION,
   VALIDATION_COMMANDS,
   VALIDATION_IPC_CHANNELS,
   StoryCommentAddCommandSchema,
@@ -20,26 +19,17 @@ import {
   type ValidationRunRulesInput,
   type ValidationUpdateIssueInput,
 } from '@worldforge/contracts';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge } from 'electron';
 
-interface Parser<Result> {
-  parse(input: unknown): Result;
-}
+import { invokeCommand, type Parser } from './bridge-runtime.js';
 
-async function invoke(
+function invoke(
   channel: string,
   commandSchema: Parser<unknown>,
   command: string,
   payload: unknown,
 ): Promise<CommandResult<ValidationCatalog>> {
-  const envelope = commandSchema.parse({
-    protocolVersion: PROTOCOL_VERSION,
-    requestId: globalThis.crypto.randomUUID(),
-    command,
-    payload,
-    sentAt: new Date().toISOString(),
-  });
-  return ValidationCatalogResultSchema.parse(await ipcRenderer.invoke(channel, envelope));
+  return invokeCommand(channel, commandSchema, ValidationCatalogResultSchema, command, payload);
 }
 
 const validationBridge = {

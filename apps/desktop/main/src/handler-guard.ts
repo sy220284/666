@@ -49,6 +49,41 @@ export interface IpcHandlerOptions {
   readonly chooseDiagnosticsDirectory?: () => Promise<string | null>;
 }
 
+export type IpcInvokeHandler = (
+  event: IpcMainInvokeEvent,
+  input: unknown,
+) => Promise<unknown> | unknown;
+
+export type IpcInvokeRegister = (channel: string, handler: IpcInvokeHandler) => void;
+
+const activeInvokeGuards = new WeakMap<IpcMain, IpcInvokeRegister>();
+
+/**
+ * Installs the single production registration path used by specialty IPC modules.
+ * Direct module tests can still register against isolated IpcMain doubles when no production
+ * guard is active for that exact instance.
+ */
+export function installIpcInvokeGuard(ipcMain: IpcMain, register: IpcInvokeRegister): () => void {
+  if (activeInvokeGuards.has(ipcMain)) throw new Error('IPC_INVOKE_GUARD_ALREADY_INSTALLED');
+  activeInvokeGuards.set(ipcMain, register);
+  return () => {
+    if (activeInvokeGuards.get(ipcMain) === register) activeInvokeGuards.delete(ipcMain);
+  };
+}
+
+export function registerIpcInvokeHandler(
+  ipcMain: IpcMain,
+  channel: string,
+  handler: IpcInvokeHandler,
+): void {
+  const register = activeInvokeGuards.get(ipcMain);
+  if (register) {
+    register(channel, handler);
+    return;
+  }
+  ipcMain.handle(channel, handler);
+}
+
 function success<T>(requestId: string, data: T): CommandResult<T> {
   return { ok: true, requestId, data };
 }
@@ -120,10 +155,7 @@ function projectOperationKind(operation: string): CoreOperationKind {
 export function createIpcHandlerContext(options: IpcHandlerOptions) {
   const invokeChannels = new Set<string>();
 
-  const register = (
-    channel: string,
-    handler: (event: IpcMainInvokeEvent, input: unknown) => Promise<unknown> | unknown,
-  ): void => {
+  const register: IpcInvokeRegister = (channel, handler): void => {
     invokeChannels.add(channel);
     if (
       channel === CANDIDATE_IPC_CHANNELS.createFixtureCandidate &&

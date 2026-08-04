@@ -1,0 +1,16 @@
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:language
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+pnpm release:check

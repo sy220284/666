@@ -5,14 +5,22 @@ export interface Parser<Result> {
   parse(input: unknown): Result;
 }
 
+type RequestId = ReturnType<typeof globalThis.crypto.randomUUID>;
+
+export interface CommandEnvelopeOptions {
+  readonly projectId?: string;
+  readonly requestId?: RequestId;
+}
+
 export function envelope(
   command: string,
   payload: unknown,
   projectId?: string,
+  requestId: RequestId = globalThis.crypto.randomUUID(),
 ): Record<string, unknown> {
   return {
     protocolVersion: PROTOCOL_VERSION,
-    requestId: globalThis.crypto.randomUUID(),
+    requestId,
     command,
     ...(projectId ? { projectId } : {}),
     payload,
@@ -27,4 +35,18 @@ export async function invoke<Result>(
 ): Promise<Result> {
   const raw: unknown = await ipcRenderer.invoke(channel, command);
   return resultSchema.parse(raw);
+}
+
+export async function invokeCommand<Command, Result>(
+  channel: string,
+  commandSchema: Parser<Command>,
+  resultSchema: Parser<Result>,
+  command: string,
+  payload: unknown,
+  options: CommandEnvelopeOptions = {},
+): Promise<Result> {
+  const commandEnvelope = commandSchema.parse(
+    envelope(command, payload, options.projectId, options.requestId),
+  );
+  return invoke(channel, commandEnvelope, resultSchema);
 }

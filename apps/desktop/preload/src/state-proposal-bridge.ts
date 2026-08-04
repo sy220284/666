@@ -1,5 +1,4 @@
 import {
-  PROTOCOL_VERSION,
   STATE_PROPOSAL_COMMANDS,
   STATE_PROPOSAL_IPC_CHANNELS,
   DerivedInvalidationCommandSchema,
@@ -23,27 +22,18 @@ import {
   type StateProposalGenerateInput,
   type StateProposalResolveInput,
 } from '@worldforge/contracts';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge } from 'electron';
 
-interface Parser<Result> {
-  parse(input: unknown): Result;
-}
+import { invokeCommand, type Parser } from './bridge-runtime.js';
 
-async function invoke<Result>(
+function invoke<Result>(
   channel: string,
   commandSchema: Parser<unknown>,
   resultSchema: Parser<CommandResult<Result>>,
   command: string,
   payload: unknown,
 ): Promise<CommandResult<Result>> {
-  const envelope = commandSchema.parse({
-    protocolVersion: PROTOCOL_VERSION,
-    requestId: globalThis.crypto.randomUUID(),
-    command,
-    payload,
-    sentAt: new Date().toISOString(),
-  });
-  return resultSchema.parse(await ipcRenderer.invoke(channel, envelope));
+  return invokeCommand(channel, commandSchema, resultSchema, command, payload);
 }
 
 const stateProposalBridge = {

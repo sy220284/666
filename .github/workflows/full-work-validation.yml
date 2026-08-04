@@ -36,6 +36,8 @@ jobs:
     name: governance
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -81,12 +83,24 @@ jobs:
       - name: Self-test main verification wait behavior
         run: node .github/governance/main-verification-wait.self-test.mjs
       - name: Audit native main-branch protection
+        if: ${{ github.event_name != 'pull_request' && env.REPO_ADMIN_TOKEN != '' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
           RULESET_REPORT: artifacts/full-work-validation/ruleset-report.json
           RULESET_STRICT: true
         run: pnpm ci:ruleset
+      - name: Record native ruleset audit availability
+        if: ${{ github.event_name == 'pull_request' || env.REPO_ADMIN_TOKEN == '' }}
+        shell: bash
+        run: |
+          mkdir -p artifacts/full-work-validation
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            reason='native ruleset audit is covered by the trusted Repository Governance workflow'
+          else
+            reason='REPO_ADMIN_TOKEN is not configured; native ruleset audit was not available'
+          fi
+          printf '{"status":"unavailable","reason":"%s"}\n' "$reason" \
+            > artifacts/full-work-validation/ruleset-report.json
       - name: Assert governance validation did not mutate tracked files
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
@@ -96,7 +110,7 @@ jobs:
         with:
           name: full-work-governance-report
           path: artifacts/full-work-validation/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
 
   quality:

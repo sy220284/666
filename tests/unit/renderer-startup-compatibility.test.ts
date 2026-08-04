@@ -4,10 +4,6 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
-  assertLegacyOwnershipComplete,
-  LEGACY_RENDERER_OWNERSHIP,
-} from '../../apps/desktop/renderer/src/compat/legacy-ownership.js';
-import {
   createRendererStartupDiagnostic,
   serializeRendererStartupDiagnostic,
 } from '../../apps/desktop/renderer/src/runtime/startup-diagnostics.js';
@@ -19,6 +15,8 @@ const retiredLegacyModules = [
   'candidate-preview-ui.ts',
   'candidate-apply-bootstrap.ts',
   'candidate-apply-ui.ts',
+  'compat/legacy-loader.ts',
+  'compat/legacy-ownership.ts',
 ] as const;
 
 describe('M3 startup diagnostics', () => {
@@ -51,18 +49,18 @@ describe('M3 startup diagnostics', () => {
     expect(JSON.parse(serializeRendererStartupDiagnostic(diagnostic))).toEqual(diagnostic);
   });
 
-  it('does not offer a Core restart for a non-retryable compatibility failure', () => {
+  it('does not offer a Core restart for a non-retryable startup failure', () => {
     const diagnostic = createRendererStartupDiagnostic(
       {
-        code: 'LEGACY_COMPATIBILITY_FAILED',
-        message: 'Legacy compatibility initialization failed.',
+        code: 'RENDERER_CONFIGURATION_INVALID',
+        message: 'Renderer configuration is invalid.',
         retryable: false,
       },
       {
         occurredAt: '2026-07-21T12:00:00.000Z',
         rendererVersion: '0.1.0',
         protocolVersion: 1,
-        phase: 'legacy-compatibility',
+        phase: 'react-root',
       },
     );
 
@@ -70,11 +68,8 @@ describe('M3 startup diagnostics', () => {
   });
 });
 
-describe('M3-10 legacy ownership closure', () => {
-  it('keeps only a side-effect-free package entry and removes startup/business modules', async () => {
-    expect(LEGACY_RENDERER_OWNERSHIP).toEqual([]);
-    expect(() => assertLegacyOwnershipComplete([])).not.toThrow();
-
+describe('M3-10 legacy retirement boundary', () => {
+  it('keeps only a side-effect-free package entry and rejects retired startup modules', async () => {
     const rendererRoot = path.join(process.cwd(), 'apps/desktop/renderer/src');
     const packageEntry = await readFile(path.join(rendererRoot, 'index.ts'), 'utf8');
     expect(packageEntry).not.toContain("import './main.js'");
@@ -84,11 +79,5 @@ describe('M3-10 legacy ownership closure', () => {
     for (const module of retiredLegacyModules) {
       await expect(access(path.join(rendererRoot, module))).rejects.toThrow();
     }
-  });
-
-  it('fails closed if a retired module is reintroduced into the inventory', () => {
-    expect(() => assertLegacyOwnershipComplete(['main.ts'])).toThrow(
-      'Retired legacy Renderer modules remain: main.ts.',
-    );
   });
 });

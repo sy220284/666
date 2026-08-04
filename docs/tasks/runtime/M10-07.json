@@ -28,7 +28,7 @@
     "tests/unit/",
     "tests/integration/",
     "tests/security/",
-    ".github/governance/toolchain-bundle.mjs",
+    ".github/workflows/m10-07-format-repair.yml",
     "docs/tasks/TASK_INDEX.md",
     "docs/tasks/M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md",
     "docs/tasks/runtime/M10-07.json",
@@ -37,7 +37,6 @@
   "forbiddenPaths": [
     "migrations/",
     "packages/prompts/",
-    ".github/workflows/",
     "docs/tasks/runtime/M10-01.json",
     "docs/tasks/runtime/M10-02.json",
     "docs/tasks/runtime/M10-03.json",

@@ -4,11 +4,14 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  isRuntimeEffectivelyVerified,
+  loadCommitStatuses,
+} from '../.github/governance/effective-task-status.mjs';
 import { parseTaskIndex } from './task-control-lib.mjs';
 
 const root = process.cwd();
 const checksumFileName = 'SHA256SUMS.txt';
-export const RELEASE_HOLD_STATUS = 'VERIFIED_HOLD';
 
 export function parseReleaseVersion(value) {
   if (typeof value !== 'string' || value.trim() !== value || value.length === 0) {
@@ -41,7 +44,7 @@ function parseIndependentTaskIndex(markdown) {
 export function validateReleaseConfiguration({
   packageJson,
   taskIndexMarkdown,
-  activeTaskState,
+  authorization,
   workflowSource,
 }) {
   const errors = [];
@@ -67,8 +70,16 @@ export function validateReleaseConfiguration({
   if (parseIndependentTaskIndex(taskIndexMarkdown).size === 0) {
     errors.push('TASK_INDEX must contain at least one independent task');
   }
-  if (!activeTaskState || activeTaskState.schemaVersion !== 1) {
-    errors.push('ACTIVE_TASK must use schemaVersion 1');
+  if (
+    authorization?.schemaVersion !== 2 ||
+    authorization?.mode !== 'single-work-pr' ||
+    authorization?.baseBranch !== 'main' ||
+    authorization?.workBranch !== 'work' ||
+    authorization?.mainWriteMode !== 'serialized' ||
+    authorization?.verificationClosure !== 'main-status' ||
+    typeof authorization?.taskRuntimeDirectory !== 'string'
+  ) {
+    errors.push('TASK_AUTHORIZATION must define the complete Schema 2 release model');
   }
   for (const token of [
     'workflow_dispatch:',
@@ -84,23 +95,13 @@ export function validateReleaseConfiguration({
   return errors;
 }
 
-function taskSetDifference(left, right) {
-  const rightSet = new Set(right);
-  return left.filter((value) => !rightSet.has(value));
-}
-
-function validCommitReference(value) {
-  return typeof value === 'string' && /^[0-9a-f]{7,40}$/iu.test(value);
-}
-
 export function evaluateReleaseGate({
   taskIndexMarkdown,
-  activeTaskState,
+  runtimes,
+  statuses = [],
   packageVersion,
   requestedVersion,
   refName,
-  verifiedCommitReachable = true,
-  evidenceHeadReachable = true,
 }) {
   const errors = [];
   let version = null;
@@ -125,74 +126,45 @@ export function evaluateReleaseGate({
   }
 
   const tasks = [...parseIndependentTaskIndex(taskIndexMarkdown).values()];
-  if (tasks.length === 0) {
-    errors.push('TASK_INDEX contains no independent tasks');
+  if (tasks.length === 0) errors.push('TASK_INDEX contains no independent tasks');
+
+  const runtimeById = new Map(
+    (Array.isArray(runtimes) ? runtimes : [])
+      .filter((runtime) => typeof runtime?.id === 'string')
+      .map((runtime) => [runtime.id, runtime]),
+  );
+  const indexedIds = new Set(tasks.map((task) => task.id));
+  const unindexedRuntimes = [...runtimeById.values()]
+    .filter((runtime) => runtime.releaseBlocking !== false && !indexedIds.has(runtime.id))
+    .map((runtime) => runtime.id)
+    .sort();
+  if (unindexedRuntimes.length > 0) {
+    errors.push('Release-blocking runtimes are absent from TASK_INDEX: ' + unindexedRuntimes.join(', '));
   }
-  const unfinished = tasks.filter((task) => task.status !== 'Verified');
+
+  const unfinished = [];
+  for (const task of tasks) {
+    const runtime = runtimeById.get(task.id);
+    if (runtime?.releaseBlocking === false) continue;
+    const verified = runtime
+      ? isRuntimeEffectivelyVerified(runtime, statuses)
+      : task.status === 'Verified';
+    if (!verified) unfinished.push(`${task.id} ${runtime?.status ?? task.status}`);
+  }
   if (unfinished.length > 0) {
-    errors.push(
-      'All independent tasks must be Verified before publishing: ' +
-        unfinished.map((task) => `${task.id} ${task.status}`).join(', '),
-    );
+    errors.push('All independent tasks must be effectively Verified before publishing: ' + unfinished.join(', '));
   }
 
-  const active = activeTaskState?.activeTask;
-  const hold = activeTaskState?.verificationHold;
-  const lastVerified = activeTaskState?.lastVerifiedTask;
-  if (active?.status !== RELEASE_HOLD_STATUS) {
-    errors.push(
-      `ACTIVE_TASK must be ${RELEASE_HOLD_STATUS} before publishing, found ${active?.status ?? 'missing'}`,
-    );
-  }
-  if (!hold) {
-    errors.push('ACTIVE_TASK must contain verificationHold before publishing');
-  } else {
-    if (hold.taskId !== active?.id) {
-      errors.push('verificationHold.taskId must match activeTask.id');
-    }
-    if (hold.finalTask !== true || hold.nextTaskId !== null) {
-      errors.push('verificationHold must be final with nextTaskId=null');
-    }
-    const indexedTaskIds = tasks.map((task) => task.id);
-    const verifiedTaskIds = Array.isArray(hold.verifiedTasks) ? hold.verifiedTasks : [];
-    if (new Set(verifiedTaskIds).size !== verifiedTaskIds.length) {
-      errors.push('verificationHold.verifiedTasks must not contain duplicates');
-    }
-    const missingFromHold = taskSetDifference(indexedTaskIds, verifiedTaskIds);
-    const extraInHold = taskSetDifference(verifiedTaskIds, indexedTaskIds);
-    if (missingFromHold.length > 0 || extraInHold.length > 0) {
-      errors.push(
-        'verificationHold.verifiedTasks must exactly match TASK_INDEX' +
-          (missingFromHold.length > 0 ? `; missing ${missingFromHold.join(', ')}` : '') +
-          (extraInHold.length > 0 ? `; extra ${extraInHold.join(', ')}` : ''),
-      );
-    }
-  }
-
-  if ((activeTaskState?.deferredVerification ?? []).length > 0) {
-    errors.push('deferredVerification must be empty before publishing');
-  }
-  if ((activeTaskState?.deferredTasks ?? []).length > 0) {
-    errors.push('deferredTasks must be empty before publishing');
-  }
-  if (lastVerified?.id !== active?.id || lastVerified?.id !== hold?.taskId) {
-    errors.push('lastVerifiedTask.id must match the final verification hold task');
-  }
-  if (!validCommitReference(lastVerified?.commit)) {
-    errors.push('lastVerifiedTask.commit must reference a committed revision');
-  } else if (!verifiedCommitReachable) {
-    errors.push('lastVerifiedTask.commit is not reachable from the release commit');
-  }
-  if (!validCommitReference(lastVerified?.evidenceHead)) {
-    errors.push('lastVerifiedTask.evidenceHead must reference a committed revision');
-  } else if (!evidenceHeadReachable) {
-    errors.push('lastVerifiedTask.evidenceHead is not reachable from the release commit');
-  }
-
+  const latest = tasks.at(-1);
+  const latestRuntime = latest ? runtimeById.get(latest.id) : undefined;
   return {
     version,
-    taskId: active?.id ?? null,
-    taskStatus: active?.status ?? null,
+    taskId: latest?.id ?? null,
+    taskStatus: latestRuntime
+      ? isRuntimeEffectivelyVerified(latestRuntime, statuses)
+        ? 'VERIFIED'
+        : latestRuntime.status
+      : latest?.status ?? null,
     errors,
   };
 }
@@ -256,11 +228,7 @@ function readOption(name, fallback) {
   return fallback;
 }
 
-function git(argumentsList, options = {}) {
-  if (options.quiet) {
-    execFileSync('git', argumentsList, { cwd: root, stdio: 'ignore' });
-    return '';
-  }
+function git(argumentsList) {
   return execFileSync('git', argumentsList, {
     cwd: root,
     encoding: 'utf8',
@@ -272,42 +240,40 @@ function currentHead() {
   return git(['rev-parse', 'HEAD']);
 }
 
-function isAncestor(ancestor, descendant) {
-  if (!validCommitReference(ancestor) || !validCommitReference(descendant)) return false;
-  try {
-    git(['merge-base', '--is-ancestor', ancestor, descendant], { quiet: true });
-    return true;
-  } catch {
-    return false;
-  }
+async function loadRuntimes(directory) {
+  const files = (await readdir(directory)).filter((file) => file.endsWith('.json')).sort();
+  return Promise.all(
+    files.map((file) => readFile(path.join(directory, file), 'utf8').then(JSON.parse)),
+  );
 }
 
 async function loadReleaseState() {
-  const [packageSource, taskIndexMarkdown, activeTaskSource, workflowSource] = await Promise.all([
+  const [packageSource, taskIndexMarkdown, authorizationSource, workflowSource] = await Promise.all([
     readFile(path.join(root, 'package.json'), 'utf8'),
     readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'),
-    readFile(path.join(root, 'docs/tasks/ACTIVE_TASK.json'), 'utf8'),
+    readFile(path.join(root, 'docs/tasks/TASK_AUTHORIZATION.json'), 'utf8'),
     readFile(path.join(root, '.github/workflows/release.yml'), 'utf8'),
   ]);
+  const authorization = JSON.parse(authorizationSource);
+  const runtimes = await loadRuntimes(path.join(root, authorization.taskRuntimeDirectory));
   return {
     packageJson: JSON.parse(packageSource),
     taskIndexMarkdown,
-    activeTaskState: JSON.parse(activeTaskSource),
+    authorization,
+    runtimes,
     workflowSource,
   };
 }
 
-function evaluateCurrentReleaseState(state, requestedVersion, refName) {
-  const head = currentHead();
-  const lastVerified = state.activeTaskState.lastVerifiedTask;
+async function evaluateCurrentReleaseState(state, requestedVersion, refName) {
+  const statuses = await loadCommitStatuses(currentHead());
   return evaluateReleaseGate({
     taskIndexMarkdown: state.taskIndexMarkdown,
-    activeTaskState: state.activeTaskState,
+    runtimes: state.runtimes,
+    statuses,
     packageVersion: state.packageJson.version,
     requestedVersion,
     refName,
-    verifiedCommitReachable: isAncestor(lastVerified?.commit, head),
-    evidenceHeadReachable: isAncestor(lastVerified?.evidenceHead, head),
   });
 }
 
@@ -316,7 +282,7 @@ async function checkConfiguration() {
   const errors = validateReleaseConfiguration(state);
   if (errors.length > 0) throw new Error(errors.join('\n'));
 
-  const result = evaluateCurrentReleaseState(state, state.packageJson.version, 'main');
+  const result = await evaluateCurrentReleaseState(state, state.packageJson.version, 'main');
   const gateStatus =
     result.errors.length === 0
       ? `READY (${result.taskId})`
@@ -329,7 +295,11 @@ async function requireReleaseGate(requestedVersion) {
   const configurationErrors = validateReleaseConfiguration(state);
   if (configurationErrors.length > 0) throw new Error(configurationErrors.join('\n'));
 
-  const result = evaluateCurrentReleaseState(state, requestedVersion, process.env.GITHUB_REF_NAME);
+  const result = await evaluateCurrentReleaseState(
+    state,
+    requestedVersion,
+    process.env.GITHUB_REF_NAME,
+  );
   if (result.errors.length > 0) throw new Error(result.errors.join('\n'));
   console.log(`Release gate passed for v${result.version} through ${result.taskId}.`);
   return result.version;
@@ -377,8 +347,7 @@ async function main() {
   throw new Error('Unknown release-tool command: ' + command);
 }
 
-const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
-if (isDirectRun) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     await main();
   } catch (error) {

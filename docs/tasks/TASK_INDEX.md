@@ -1,9 +1,9 @@
 # WorldForge 任务索引
 
-> 状态：IN_PROGRESS  
+> 状态：IMPLEMENTED  
 > 基线：WorldForge V6.5  
 > 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-04，共49张独立任务卡；M9-04—M9-14为被M9-03吸收的冻结工作包别名。  
-> 当前任务：M10-04 兼容面收敛治理，状态In Progress。
+> 当前任务：M10-04 兼容面收敛治理，状态Implemented。
 
 ## 1. 执行入口
 
@@ -37,7 +37,7 @@ Blocked / Deferred / Removed
 | M4            | AI基础与V1核心功能             |          4 | M4-01—M4-04 Verified                         |
 | M8            | 交付关闭、作者体验与长期维护   |          7 | M8-02—M8-09 Verified                         |
 | M9            | V1.1保持行为的架构拆分治理     |          4 | M9-00—M9-03 Verified                         |
-| M10           | 稳定性、协议与兼容面治理       |          4 | M10-01—M10-03 Verified；M10-04 In Progress   |
+| M10           | 稳定性、协议与兼容面治理       |          4 | M10-01—M10-03 Verified；M10-04 Implemented   |
 | 原M4-05—M6-06 | AI写作、校验、搜索、导入与恢复 |          0 | 作为M4-04需求来源                            |
 | 原M7-01—M8-03 | 体验整合、硬化与发布验收       |          0 | 作为M8-02需求来源，M8-02自身已恢复为独立任务 |
 
@@ -60,7 +60,7 @@ M0—M3 已完成产品底座
    → M10-01 异步生命周期与竞态硬化（Verified）
    → M10-02 全量代码测试与深度审计（Verified）
    → M10-03 IPC与协议维护治理（Verified）
-   → M10-04 兼容面收敛治理（In Progress）
+   → M10-04 兼容面收敛治理（Implemented）
 ```
 
 ## M0 工程、安全与运行底座
@@ -161,7 +161,7 @@ M0—M3 已完成产品底座
 | M10-01 | [`异步生命周期与竞态硬化`](M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)                                 | M9-03  | Verified   |
 | M10-02 | [`全量代码测试与深度审计`](M10/M10-02_FULL_CODE_AUDIT.md)                                           | M10-01 | Verified   |
 | M10-03 | [`IPC与协议维护治理`](M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md)                                       | M10-02 | Verified   |
-| M10-04 | [`兼容面收敛治理`](M10/M10-04_COMPATIBILITY_CONVERGENCE.md)                                         | M10-03 | In Progress |
+| M10-04 | [`兼容面收敛治理`](M10/M10-04_COMPATIBILITY_CONVERGENCE.md)                                         | M10-03 | Implemented |
 
 ## 3. 被吸收的需求来源
 
@@ -191,7 +191,7 @@ M0—M3 已完成产品底座
 
 ## 4. 阶段门
 
-1. M0—M8-09、M9-00—M9-03及M10-01—M10-03保持Verified；M10-04是当前唯一In Progress治理任务。
+1. M0—M8-09、M9-00—M9-03及M10-01—M10-03保持Verified；M10-04是当前唯一Implemented治理任务。
 2. M9-03统一PR绑定一个主任务并按统一`allowedPaths`验证；不得为M9-04—M9-14开放独立PR。
 3. main写入保持串行：一个PR合并并完成Main Verification后，才允许下一个PR写入main。
 4. 已Verified历史任务、Migration和Evidence保持冻结，不因兼容面收敛批量重写。

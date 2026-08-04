@@ -1,0 +1,140 @@
+name: Temporary Workspace Dependency Export
+
+on:
+  push:
+    branches:
+      - work
+    paths:
+      - .github/workflows/dependency-export.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-workspace-dependency-export
+  cancel-in-progress: false
+
+env:
+  BASELINE_SHA: 21625e1e11e7c50071f0860d791e902637f0531f
+
+jobs:
+  export:
+    name: export-linux-x64-workspace-dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.BASELINE_SHA }}
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Validate exact main baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$BASELINE_SHA"
+          node .github/governance/assert-clean-tree.mjs
+      - name: Install complete workspace dependencies
+        shell: bash
+        env:
+          STORE_DIR: ${{ runner.temp }}/worldforge-pnpm-store
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --prefer-offline --store-dir "$STORE_DIR"
+          node .github/governance/assert-clean-tree.mjs
+          pnpm exec electron --version
+          pnpm exec esbuild --version
+          pnpm exec vitest --version
+          pnpm exec playwright --version
+      - name: Build dependency archive with symlinks preserved
+        id: bundle
+        shell: bash
+        env:
+          STORE_DIR: ${{ runner.temp }}/worldforge-pnpm-store
+          OUTPUT_DIR: ${{ runner.temp }}/worldforge-workspace-dependencies
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUTPUT_DIR"
+          metadata_dir='.worldforge-dependency-export'
+          mkdir -p "$metadata_dir"
+          pnpm list -r --depth -1 --json > "$metadata_dir/workspace-packages.json"
+          find . -type d -name node_modules -prune -print | sort > "$metadata_dir/node-modules-paths.txt"
+          find apps packages -type f -name package.json -print | sort > "$metadata_dir/workspace-manifests.txt"
+          node_modules_bytes="$(du -sb node_modules apps packages 2>/dev/null | awk '{sum += $1} END {print sum + 0}')"
+          store_bytes="$(du -sb "$STORE_DIR" | awk '{print $1}')"
+          cat > "$metadata_dir/MANIFEST.json" <<EOF
+          {
+            "schemaVersion": 1,
+            "repository": "sy220284/666",
+            "baselineCommit": "$BASELINE_SHA",
+            "platform": "linux",
+            "architecture": "x64",
+            "nodeVersion": "$(node --version)",
+            "npmVersion": "$(npm --version)",
+            "pnpmVersion": "$(pnpm --version)",
+            "lockfileSha256": "$(sha256sum pnpm-lock.yaml | awk '{print $1}')",
+            "nodeModulesBytes": $node_modules_bytes,
+            "storeBytes": $store_bytes,
+            "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          {
+            printf '%s\n' package.json pnpm-lock.yaml pnpm-workspace.yaml
+            cat "$metadata_dir/workspace-manifests.txt"
+            cat "$metadata_dir/node-modules-paths.txt"
+            printf '%s\n' "$metadata_dir"
+          } | awk 'NF && !seen[$0]++' > "$metadata_dir/archive-paths.txt"
+          archive_name="worldforge-workspace-dependencies-linux-x64-${BASELINE_SHA}.tar.zst"
+          archive_tar="$OUTPUT_DIR/worldforge-workspace-dependencies-linux-x64-${BASELINE_SHA}.tar"
+          tar -cf "$archive_tar" -C "$GITHUB_WORKSPACE" -T "$GITHUB_WORKSPACE/$metadata_dir/archive-paths.txt" -C "${RUNNER_TEMP}" worldforge-pnpm-store
+          zstd -T0 -10 --rm "$archive_tar" -o "$OUTPUT_DIR/$archive_name"
+          archive_sha="$(sha256sum "$OUTPUT_DIR/$archive_name" | awk '{print $1}')"
+          archive_size="$(stat -c '%s' "$OUTPUT_DIR/$archive_name")"
+          cp "$metadata_dir/MANIFEST.json" "$OUTPUT_DIR/DEPENDENCY_MANIFEST.json"
+          printf '%s  %s\n' "$archive_sha" "$archive_name" > "$OUTPUT_DIR/SHA256SUMS.txt"
+          printf 'archive_name=%s\n' "$archive_name" >> "$GITHUB_OUTPUT"
+          printf 'archive_sha=%s\n' "$archive_sha" >> "$GITHUB_OUTPUT"
+          printf 'archive_size=%s\n' "$archive_size" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: worldforge-workspace-dependencies-Linux-X64-${{ env.BASELINE_SHA }}
+          path: ${{ runner.temp }}/worldforge-workspace-dependencies/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+          compression-level: 0
+      - name: Publish run locator to work
+        shell: bash
+        env:
+          TRIGGER_SHA: ${{ github.sha }}
+          ARCHIVE_NAME: ${{ steps.bundle.outputs.archive_name }}
+          ARCHIVE_SHA: ${{ steps.bundle.outputs.archive_sha }}
+          ARCHIVE_SIZE: ${{ steps.bundle.outputs.archive_size }}
+        run: |
+          set -euo pipefail
+          git fetch origin work
+          git checkout -B work origin/work
+          locator=".github/dependency-export/${TRIGGER_SHA}"
+          rm -rf .github/dependency-export
+          mkdir -p "$locator"
+          cat > "$locator/MANIFEST.env" <<EOF
+          schema_version=1
+          run_id=${GITHUB_RUN_ID}
+          trigger_sha=${TRIGGER_SHA}
+          baseline_sha=${BASELINE_SHA}
+          artifact_name=worldforge-workspace-dependencies-Linux-X64-${BASELINE_SHA}
+          archive_name=${ARCHIVE_NAME}
+          archive_sha256=${ARCHIVE_SHA}
+          archive_size=${ARCHIVE_SIZE}
+          EOF
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .github/dependency-export
+          git commit -m "临时：登记完整workspace依赖导出 [skip ci]"
+          git push origin HEAD:work

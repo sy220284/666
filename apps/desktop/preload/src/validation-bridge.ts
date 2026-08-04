@@ -29,13 +29,7 @@ function invoke(
   command: string,
   payload: unknown,
 ): Promise<CommandResult<ValidationCatalog>> {
-  return invokeCommand(
-    channel,
-    commandSchema,
-    ValidationCatalogResultSchema,
-    command,
-    payload,
-  );
+  return invokeCommand(channel, commandSchema, ValidationCatalogResultSchema, command, payload);
 }
 
 const validationBridge = {

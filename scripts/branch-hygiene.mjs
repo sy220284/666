@@ -82,9 +82,7 @@ async function main() {
   }
   const [owner, repo] = repository.split('/');
   if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format');
-  const authorization = JSON.parse(
-    await readFile('docs/tasks/TASK_AUTHORIZATION.json', 'utf8'),
-  );
+  const authorization = JSON.parse(await readFile('docs/tasks/TASK_AUTHORIZATION.json', 'utf8'));
   const workBranch = authorization.workBranch;
   if (authorization.schemaVersion !== 2 || workBranch !== 'work') {
     throw new Error('TASK_AUTHORIZATION must define the Schema 2 work branch');

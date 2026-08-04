@@ -29,13 +29,7 @@ function invoke(
   command: string,
   payload: unknown,
 ): Promise<CommandResult<ContinuityCatalog>> {
-  return invokeCommand(
-    channel,
-    schema,
-    ContinuityCatalogResultSchema,
-    command,
-    payload,
-  );
+  return invokeCommand(channel, schema, ContinuityCatalogResultSchema, command, payload);
 }
 
 const continuityBridge = {

@@ -176,7 +176,7 @@ describe('M10-03 IPC and protocol maintenance', () => {
     ).toBe(false);
   });
 
-  it('keeps frozen decisions and the execution entry synchronized with the real baseline', async () => {
+  it('keeps frozen decisions and stable execution-entry rules synchronized', async () => {
     const [decisions, executionEntry] = await Promise.all([
       readFile('docs/decisions/IMPLEMENTATION_DECISIONS.md', 'utf8'),
       readFile('docs/PROJECT_EXECUTION_ENTRY.md', 'utf8'),
@@ -185,8 +185,10 @@ describe('M10-03 IPC and protocol maintenance', () => {
     expect(decisions).toContain("type: 'set-lock'");
     expect(decisions).toContain('locked: boolean');
     expect(decisions).toContain('校验`expectedHash`');
-    expect(executionEntry).toContain('M10-02审计矩阵基线');
-    expect(executionEntry).toContain('8f54dc4e5ed46d6ffca999fda29887f2302b1030');
-    expect(executionEntry).toContain('M10-04 兼容面收敛治理');
+    expect(executionEntry).toContain('M10-02全量审计矩阵');
+    expect(executionEntry).toContain('ca83d48c7493bba21252a37f9aec024d6aa0ca79');
+    expect(executionEntry).toContain('本文件不固化活动PR、瞬时任务状态或“最新提交SHA”');
+    expect(executionEntry).toContain('task-verification/<TASK-ID>=success');
+    expect(executionEntry).toContain('work受控重置后与main完全一致');
   });
 });

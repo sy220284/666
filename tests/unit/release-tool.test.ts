@@ -8,7 +8,6 @@ import {
   collectReleaseAssets,
   evaluateReleaseGate,
   parseReleaseVersion,
-  RELEASE_HOLD_STATUS,
   renderChecksums,
   validateReleaseConfiguration,
 } from '../../scripts/release-tool.mjs';
@@ -17,20 +16,6 @@ interface TaskIndexEntry {
   readonly id: string;
   readonly dependency: string;
   readonly status: string;
-}
-
-interface ActiveTaskOverrides {
-  readonly activeStatus?: string;
-  readonly activeId?: string;
-  readonly holdTaskId?: string;
-  readonly lastVerifiedTaskId?: string;
-  readonly holdVerifiedTasks?: readonly string[];
-  readonly deferredVerification?: readonly unknown[];
-  readonly deferredTasks?: readonly unknown[];
-  readonly finalTask?: boolean;
-  readonly nextTaskId?: string | null;
-  readonly commit?: string;
-  readonly evidenceHead?: string;
 }
 
 const temporaryDirectories: string[] = [];
@@ -48,32 +33,30 @@ const taskIndex = (entries: readonly TaskIndexEntry[]) =>
 const verifiedTasks = [
   { id: 'M8-02', dependency: 'M4-04', status: 'Verified' },
   { id: 'M8-04', dependency: 'M8-02', status: 'Verified' },
-  { id: 'M8-05', dependency: 'M8-04', status: 'Verified' },
+  { id: 'M8-05', dependency: 'M8-04', status: 'Implemented' },
 ] as const;
 
-function activeTaskState(overrides: ActiveTaskOverrides = {}) {
-  const activeId = overrides.activeId ?? 'M8-05';
-  return {
-    schemaVersion: 1,
-    activeTask: {
-      id: activeId,
-      status: overrides.activeStatus ?? RELEASE_HOLD_STATUS,
-    },
-    lastVerifiedTask: {
-      id: overrides.lastVerifiedTaskId ?? activeId,
-      commit: overrides.commit ?? 'a'.repeat(40),
-      evidenceHead: overrides.evidenceHead ?? 'b'.repeat(40),
-    },
-    deferredVerification: overrides.deferredVerification ?? [],
-    deferredTasks: overrides.deferredTasks ?? [],
-    verificationHold: {
-      taskId: overrides.holdTaskId ?? activeId,
-      verifiedTasks: overrides.holdVerifiedTasks ?? verifiedTasks.map((task) => task.id),
-      finalTask: overrides.finalTask ?? true,
-      nextTaskId: overrides.nextTaskId === undefined ? null : overrides.nextTaskId,
-    },
-  };
-}
+const runtime = (id: string, status = 'IMPLEMENTED') => ({
+  schemaVersion: 2,
+  id,
+  status,
+  verificationBinding: { taskContext: `task-verification/${id}` },
+});
+
+const successStatuses = verifiedTasks.map((task) => ({
+  context: `task-verification/${task.id}`,
+  state: 'success',
+}));
+
+const authorization = {
+  schemaVersion: 2,
+  mode: 'single-work-pr',
+  baseBranch: 'main',
+  workBranch: 'work',
+  mainWriteMode: 'serialized',
+  verificationClosure: 'main-status',
+  taskRuntimeDirectory: 'docs/tasks/runtime',
+};
 
 const releaseWorkflow = [
   'workflow_dispatch:',
@@ -110,12 +93,12 @@ describe('release tool', () => {
     expect(() => parseReleaseVersion('1.2.3-rc.01')).toThrow(/leading zeroes/);
   });
 
-  it('validates the release workflow, package scripts and task-state source', () => {
+  it('validates the release workflow, package scripts and Schema 2 sources', () => {
     expect(
       validateReleaseConfiguration({
         packageJson,
         taskIndexMarkdown: taskIndex(verifiedTasks),
-        activeTaskState: activeTaskState(),
+        authorization,
         workflowSource: releaseWorkflow,
       }),
     ).toEqual([]);
@@ -127,7 +110,8 @@ describe('release tool', () => {
         taskIndex(verifiedTasks) +
         '\n## 3. 被吸收的需求来源\n' +
         taskIndex([{ id: 'M4-05', dependency: 'M4-04', status: 'Removed（absorbed）' }]),
-      activeTaskState: activeTaskState(),
+      runtimes: verifiedTasks.map((task) => runtime(task.id)),
+      statuses: successStatuses,
       packageVersion: '1.0.0',
       requestedVersion: '1.0.0',
       refName: 'main',
@@ -136,14 +120,11 @@ describe('release tool', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('blocks publishing when a later independent task is not Verified', () => {
+  it('blocks publishing when a task is not effectively Verified', () => {
     const result = evaluateReleaseGate({
-      taskIndexMarkdown: taskIndex([
-        verifiedTasks[0],
-        verifiedTasks[1],
-        { id: 'M8-05', dependency: 'M8-04', status: 'Implemented' },
-      ]),
-      activeTaskState: activeTaskState({ activeStatus: 'IMPLEMENTED' }),
+      taskIndexMarkdown: taskIndex(verifiedTasks),
+      runtimes: verifiedTasks.map((task) => runtime(task.id)),
+      statuses: successStatuses.filter((status) => !status.context.endsWith('M8-05')),
       packageVersion: '1.0.0',
       requestedVersion: '1.0.1',
       refName: 'feature',
@@ -153,89 +134,40 @@ describe('release tool', () => {
       expect.arrayContaining([
         'Requested version 1.0.1 does not match package.json version 1.0.0',
         'Releases may only run from main, found feature',
-        'All independent tasks must be Verified before publishing: M8-05 Implemented',
-        'ACTIVE_TASK must be VERIFIED_HOLD before publishing, found IMPLEMENTED',
+        'All independent tasks must be effectively Verified before publishing: M8-05 IMPLEMENTED',
       ]),
     );
   });
 
-  it('blocks publishing while deferred work remains', () => {
+  it('blocks a release-blocking runtime that is absent from TASK_INDEX', () => {
     const result = evaluateReleaseGate({
       taskIndexMarkdown: taskIndex(verifiedTasks),
-      activeTaskState: activeTaskState({
-        deferredVerification: [{ id: 'M8-05' }],
-        deferredTasks: [{ id: 'M8-06' }],
-      }),
+      runtimes: [...verifiedTasks.map((task) => runtime(task.id)), runtime('M8-06')],
+      statuses: [...successStatuses, { context: 'task-verification/M8-06', state: 'success' }],
       packageVersion: '1.0.0',
       requestedVersion: '1.0.0',
       refName: 'main',
     });
 
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        'deferredVerification must be empty before publishing',
-        'deferredTasks must be empty before publishing',
-      ]),
+    expect(result.errors).toContain(
+      'Release-blocking runtimes are absent from TASK_INDEX: M8-06',
     );
   });
 
-  it('blocks inconsistent final hold state and incomplete verified-task coverage', () => {
+  it('allows publishing from main when all runtime statuses are successful', () => {
     const result = evaluateReleaseGate({
       taskIndexMarkdown: taskIndex(verifiedTasks),
-      activeTaskState: activeTaskState({
-        holdTaskId: 'M8-04',
-        lastVerifiedTaskId: 'M8-04',
-        holdVerifiedTasks: ['M8-02', 'M8-04', 'M8-99'],
-        finalTask: false,
-        nextTaskId: 'M8-06',
-      }),
+      runtimes: verifiedTasks.map((task) => runtime(task.id)),
+      statuses: successStatuses,
       packageVersion: '1.0.0',
       requestedVersion: '1.0.0',
       refName: 'main',
-    });
-
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        'verificationHold.taskId must match activeTask.id',
-        'verificationHold must be final with nextTaskId=null',
-        'verificationHold.verifiedTasks must exactly match TASK_INDEX; missing M8-05; extra M8-99',
-        'lastVerifiedTask.id must match the final verification hold task',
-      ]),
-    );
-  });
-
-  it('blocks publishing when verified commits are not reachable', () => {
-    const result = evaluateReleaseGate({
-      taskIndexMarkdown: taskIndex(verifiedTasks),
-      activeTaskState: activeTaskState(),
-      packageVersion: '1.0.0',
-      requestedVersion: '1.0.0',
-      refName: 'main',
-      verifiedCommitReachable: false,
-      evidenceHeadReachable: false,
-    });
-
-    expect(result.errors).toEqual([
-      'lastVerifiedTask.commit is not reachable from the release commit',
-      'lastVerifiedTask.evidenceHead is not reachable from the release commit',
-    ]);
-  });
-
-  it('allows publishing only from a complete final verification hold', () => {
-    const result = evaluateReleaseGate({
-      taskIndexMarkdown: taskIndex(verifiedTasks),
-      activeTaskState: activeTaskState(),
-      packageVersion: '1.0.0',
-      requestedVersion: '1.0.0',
-      refName: 'main',
-      verifiedCommitReachable: true,
-      evidenceHeadReachable: true,
     });
 
     expect(result).toMatchObject({
       version: '1.0.0',
       taskId: 'M8-05',
-      taskStatus: RELEASE_HOLD_STATUS,
+      taskStatus: 'VERIFIED',
       errors: [],
     });
   });

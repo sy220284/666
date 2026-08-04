@@ -24,30 +24,25 @@ on:
           - ubuntu-24.04
           - windows-latest
           - macos-latest
-  push:
-    branches:
-      - work
-    paths:
-      - .github/workflows/toolchain-export.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: toolchain-export-${{ inputs.source_sha || github.sha }}-${{ inputs.profile || 'quality' }}-${{ inputs.runner || 'ubuntu-24.04' }}
+  group: toolchain-export-${{ inputs.source_sha }}-${{ inputs.profile }}-${{ inputs.runner }}
   cancel-in-progress: false
 
 jobs:
   export:
-    name: export-${{ inputs.profile || 'quality' }}-${{ inputs.runner || 'ubuntu-24.04' }}
-    runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
+    name: export-${{ inputs.profile }}-${{ inputs.runner }}
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ inputs.source_sha || github.sha }}
+          ref: ${{ inputs.source_sha }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11.13.1
@@ -56,87 +51,24 @@ jobs:
           node-version: 24
       - name: Validate exact source commit
         shell: bash
-        env:
-          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
         run: |
           set -euo pipefail
-          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          [[ "${{ inputs.source_sha }}" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "${{ inputs.source_sha }}"
       - name: Assert clean source checkout
         run: node .github/governance/assert-clean-tree.mjs
       - name: Export and verify offline toolchain
         env:
           TOOLCHAIN_OUTPUT: ${{ runner.temp }}/worldforge-toolchain
-          TOOLCHAIN_PROFILE: ${{ inputs.profile || 'quality' }}
-          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
         run: >-
           node .github/governance/toolchain-bundle.mjs export
-          --profile "$TOOLCHAIN_PROFILE"
-          --source-sha "$SOURCE_SHA"
-      - name: Bundle exact Node runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          output="${RUNNER_TEMP}/worldforge-toolchain"
-          node_bin="$(readlink -f "$(command -v node)")"
-          node_root="$(dirname "$(dirname "$node_bin")")"
-          mkdir -p "$output/runtime"
-          cp -a "$node_root" "$output/runtime/node"
-          {
-            printf '{\n'
-            printf '  "nodeVersion": "%s",\n' "$(node --version)"
-            printf '  "npmVersion": "%s",\n' "$(npm --version)"
-            printf '  "platform": "%s",\n' "$(node -p 'process.platform')"
-            printf '  "architecture": "%s"\n' "$(node -p 'process.arch')"
-            printf '}\n'
-          } > "$output/RUNTIME_MANIFEST.json"
-          test -x "$output/runtime/node/bin/node"
-          "$output/runtime/node/bin/node" --version
+          --profile "${{ inputs.profile }}"
+          --source-sha "${{ inputs.source_sha }}"
       - name: Assert source checkout remained clean
         run: node .github/governance/assert-clean-tree.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: worldforge-toolchain-quality-node24-${{ runner.os }}-${{ runner.arch }}-${{ inputs.source_sha || github.sha }}
+          name: worldforge-toolchain-${{ inputs.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.source_sha }}
           path: ${{ runner.temp }}/worldforge-toolchain/
           if-no-files-found: error
-          include-hidden-files: true
           retention-days: 7
-      - name: Stage connector-downloadable bundle
-        if: github.event_name == 'push'
-        shell: bash
-        env:
-          SOURCE_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          export_root=".github/toolchain-export/${SOURCE_SHA}"
-          archive_name="worldforge-toolchain-quality-node24-linux-x64-${SOURCE_SHA}.tar.gz"
-          rm -rf .github/toolchain-export
-          mkdir -p "$export_root"
-          tar -C "${RUNNER_TEMP}" -czf "$export_root/$archive_name" worldforge-toolchain
-          archive_sha="$(sha256sum "$export_root/$archive_name" | awk '{print $1}')"
-          archive_size="$(stat -c '%s' "$export_root/$archive_name")"
-          split -b 20m -d -a 3 "$export_root/$archive_name" "$export_root/$archive_name.part-"
-          rm "$export_root/$archive_name"
-          (
-            cd "$export_root"
-            sha256sum "$archive_name".part-* > PART_SHA256SUMS.txt
-            {
-              printf 'schema_version=1\n'
-              printf 'run_id=%s\n' "${GITHUB_RUN_ID}"
-              printf 'source_sha=%s\n' "$SOURCE_SHA"
-              printf 'profile=quality\n'
-              printf 'node_version=%s\n' "$(node --version)"
-              printf 'platform=linux\n'
-              printf 'architecture=x64\n'
-              printf 'archive_name=%s\n' "$archive_name"
-              printf 'archive_sha256=%s\n' "$archive_sha"
-              printf 'archive_size=%s\n' "$archive_size"
-              printf 'part_count=%s\n' "$(find . -maxdepth 1 -type f -name "$archive_name.part-*" | wc -l)"
-              find . -maxdepth 1 -type f -name "$archive_name.part-*" -printf 'part=%f,%s\n' | sort
-            } > MANIFEST.env
-          )
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/toolchain-export
-          git commit -m "临时：暂存Node24离线质量工具链 [skip ci]"
-          git push origin HEAD:work

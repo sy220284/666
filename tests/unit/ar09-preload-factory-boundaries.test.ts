@@ -32,7 +32,7 @@ describe('AR-09 preload factory boundaries', () => {
   it('centralizes envelopes, command parsing and validated IPC invocation in one runtime', () => {
     const source = readSource('bridge-runtime.ts');
     expect(source).toContain('protocolVersion: PROTOCOL_VERSION');
-    expect(source).toContain('requestId = globalThis.crypto.randomUUID()');
+    expect(source).toContain('requestId: RequestId = globalThis.crypto.randomUUID()');
     expect(source).toContain('sentAt: new Date().toISOString()');
     expect(source).toContain('resultSchema.parse(raw)');
     expect(source).toContain('export async function invokeCommand');

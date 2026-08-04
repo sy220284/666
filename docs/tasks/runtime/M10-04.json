@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-04",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-04_COMPATIBILITY_CONVERGENCE.md",
   "priority": "P1",
   "startedAt": "2026-08-04T13:40:00+08:00",
+  "implementedAt": "2026-08-04T14:44:00+08:00",
   "dependencies": [
     "M10-03"
   ],
@@ -90,5 +91,10 @@
     "pnpm build",
     "pnpm test:e2e",
     "pnpm release:check"
-  ]
+  ],
+  "verificationBinding": {
+    "sourcePr": 312,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-04"
+  }
 }

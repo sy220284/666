@@ -1,6 +1,9 @@
 /* global process */
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
 
 const fullShaPattern = /^[0-9a-f]{40}$/iu;
+const root = process.cwd();
 
 export function hasSuccessfulCommitStatus(statuses = [], context) {
   return (
@@ -59,10 +62,7 @@ async function githubJson(pathname) {
   return response.json();
 }
 
-export async function loadCommitStatuses(commitSha) {
-  if (!fullShaPattern.test(commitSha ?? '')) return [];
-  const environment = githubEnvironment();
-  if (!environment) return [];
+async function commitStatuses(commitSha, environment) {
   const payload = await githubJson(
     `/repos/${environment.owner}/${environment.repo}/commits/${commitSha}/status`,
   );
@@ -86,12 +86,39 @@ export function validateRuntimeSourcePull(task, pull) {
   return pull.merge_commit_sha;
 }
 
-export async function loadRuntimeVerificationStatuses(runtimes = []) {
-  const environment = githubEnvironment();
-  if (!environment) throw new Error('Historical task verification requires repository credentials');
-  const entries = await Promise.all(
+export function mergeCurrentAndHistoricalTaskStatuses(current = [], historical = []) {
+  const merged = new Map();
+  for (const status of current) {
+    if (typeof status?.context === 'string') merged.set(status.context, status);
+  }
+  for (const status of historical) {
+    if (
+      typeof status?.context === 'string' &&
+      status.context.startsWith('task-verification/') &&
+      !merged.has(status.context)
+    ) {
+      merged.set(status.context, status);
+    }
+  }
+  return [...merged.values()];
+}
+
+async function loadImplementedRuntimes() {
+  const authorization = JSON.parse(
+    await readFile(path.join(root, 'docs', 'tasks', 'TASK_AUTHORIZATION.json'), 'utf8'),
+  );
+  const runtimeDirectory = path.join(root, authorization.taskRuntimeDirectory);
+  const files = (await readdir(runtimeDirectory)).filter((file) => file.endsWith('.json')).sort();
+  const runtimes = await Promise.all(
+    files.map((file) => readFile(path.join(runtimeDirectory, file), 'utf8').then(JSON.parse)),
+  );
+  return runtimes.filter((runtime) => runtime?.status === 'IMPLEMENTED');
+}
+
+async function loadHistoricalTaskStatuses(environment) {
+  const runtimes = await loadImplementedRuntimes();
+  const resolved = await Promise.all(
     runtimes.map(async (task) => {
-      if (task?.status !== 'IMPLEMENTED') return [task?.id, []];
       const sourcePr = task?.verificationBinding?.sourcePr;
       if (!Number.isSafeInteger(sourcePr) || sourcePr < 1) {
         throw new Error(`${task?.id ?? 'unknown task'} is missing a valid source PR`);
@@ -100,10 +127,25 @@ export async function loadRuntimeVerificationStatuses(runtimes = []) {
         `/repos/${environment.owner}/${environment.repo}/pulls/${sourcePr}`,
       );
       const mergeCommit = validateRuntimeSourcePull(task, pull);
-      return [task.id, await loadCommitStatuses(mergeCommit)];
+      const statuses = await commitStatuses(mergeCommit, environment);
+      const taskContext = task.verificationBinding.taskContext;
+      const status = statuses.find((entry) => entry?.context === taskContext);
+      if (!status) throw new Error(`${task.id} source merge is missing ${taskContext}`);
+      return status;
     }),
   );
-  return new Map(entries.filter(([taskId]) => typeof taskId === 'string'));
+  return resolved;
+}
+
+export async function loadCommitStatuses(commitSha) {
+  if (!fullShaPattern.test(commitSha ?? '')) return [];
+  const environment = githubEnvironment();
+  if (!environment) return [];
+  const [current, historical] = await Promise.all([
+    commitStatuses(commitSha, environment),
+    loadHistoricalTaskStatuses(environment),
+  ]);
+  return mergeCurrentAndHistoricalTaskStatuses(current, historical);
 }
 
 export async function runtimeEffectivelyVerified(task, commitSha, statuses = null) {

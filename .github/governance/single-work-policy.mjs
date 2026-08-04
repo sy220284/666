@@ -6,10 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTaskIndex } from '../../scripts/task-control-lib.mjs';
-import {
-  isRuntimeEffectivelyVerified,
-  loadCommitStatuses,
-} from './effective-task-status.mjs';
+import { isRuntimeEffectivelyVerified, loadCommitStatuses } from './effective-task-status.mjs';
 
 const root = process.cwd();
 const authorizationPath = 'docs/tasks/TASK_AUTHORIZATION.json';
@@ -25,6 +22,8 @@ const governancePaths = [
   'AGENTS.md',
   'agent.md',
   'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
   '.github/',
   'scripts/',
   'tests/unit/',
@@ -69,15 +68,20 @@ async function eventPayload() {
 export function validateAuthorization(value) {
   const errors = [];
   if (value?.schemaVersion !== 2) errors.push('TASK_AUTHORIZATION must use schemaVersion 2');
-  if (value?.mode !== 'single-work-pr') errors.push('TASK_AUTHORIZATION.mode must be single-work-pr');
+  if (value?.mode !== 'single-work-pr')
+    errors.push('TASK_AUTHORIZATION.mode must be single-work-pr');
   if (value?.baseBranch !== 'main') errors.push('baseBranch must be main');
   if (value?.workBranch !== 'work') errors.push('workBranch must be work');
-  if (value?.allowDirectMainCommits !== false) errors.push('Direct main commits must remain disabled');
-  if (value?.allowAdditionalBranches !== false) errors.push('Additional branches must remain disabled');
-  if (value?.maxOpenWorkPullRequests !== 1) errors.push('Exactly one open work pull request is allowed');
+  if (value?.allowDirectMainCommits !== false)
+    errors.push('Direct main commits must remain disabled');
+  if (value?.allowAdditionalBranches !== false)
+    errors.push('Additional branches must remain disabled');
+  if (value?.maxOpenWorkPullRequests !== 1)
+    errors.push('Exactly one open work pull request is allowed');
   if (value?.mainWriteMode !== 'serialized') errors.push('mainWriteMode must remain serialized');
   if (value?.mergeMethod !== 'squash') errors.push('mergeMethod must remain squash');
-  if (value?.verificationClosure !== 'main-status') errors.push('verificationClosure must be main-status');
+  if (value?.verificationClosure !== 'main-status')
+    errors.push('verificationClosure must be main-status');
   if (value?.workSynchronization !== 'verified-reset') {
     errors.push('workSynchronization must be verified-reset');
   }

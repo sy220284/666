@@ -10,6 +10,7 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'branch-hygiene.yml',
   'engineering-validation.yml',
   'evidence.yml',
+  'full-work-validation.yml',
   'main-verification.yml',
   'performance.yml',
   'post-merge-verification.yml',
@@ -101,7 +102,9 @@ export async function validateAutomationLayout(repositoryRoot = root) {
   const workflowDirectory = path.join(repositoryRoot, '.github', 'workflows');
   const governanceDirectory = path.join(repositoryRoot, '.github', 'governance');
   const errors = [];
-  const workflowFiles = (await regularFileNames(workflowDirectory)).filter((file) => /\.ya?ml$/u.test(file));
+  const workflowFiles = (await regularFileNames(workflowDirectory)).filter((file) =>
+    /\.ya?ml$/u.test(file),
+  );
   const governanceFiles = await regularFileNames(governanceDirectory);
   compareInventory(errors, '.github/workflows', workflowFiles, PERMANENT_WORKFLOWS);
   compareInventory(errors, '.github/governance', governanceFiles, PERMANENT_GOVERNANCE_FILES);
@@ -115,7 +118,9 @@ export async function validateAutomationLayout(repositoryRoot = root) {
 
 async function main() {
   const result = await validateAutomationLayout();
-  stdout.write(`Automation layout policy passed for ${result.workflows} workflows and ${result.governanceFiles} governance files.\n`);
+  stdout.write(
+    `Automation layout policy passed for ${result.workflows} workflows and ${result.governanceFiles} governance files.\n`,
+  );
 }
 
 if (argv[1] === fileURLToPath(import.meta.url)) await main();

@@ -55,7 +55,7 @@ main写入：serialized
 直接main提交：禁止
 允许正式PR：仅work → main
 活动任务：M10-04（Implemented）
-活动PR：#312（Draft，待Ready完整矩阵）
+活动PR：#312（永久门禁验证）
 ```
 
 M10-04只允许在任务Runtime列出的路径内实施；不得沿用已关闭Runtime，不得创建任务专属分支，不得改写历史Migration或已Verified Evidence。

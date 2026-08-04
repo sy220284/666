@@ -17,6 +17,8 @@ AGENTS.md
 
 `TASK_AUTHORIZATION.json`定义唯一`work`分支、任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务静态声明状态、边界、验证命令与最终状态绑定。`ACTIVE_TASK.json/.md`和旧`taskctl`已经退役，任何流程不得重新读取或生成。
 
+代码格式、结构与维护性治理必须同步读取 [`architecture/CODE_QUALITY_GOVERNANCE.md`](architecture/CODE_QUALITY_GOVERNANCE.md)。文件行数只作为观察指标，不参与合并资格；结构判断统一依据职责内聚、依赖方向、状态所有权、事务边界和公共接口。
+
 ## 2. 动态状态解析
 
 本文件不固化活动PR、瞬时任务状态或“最新提交SHA”。每次工作开始时必须从真实仓库状态解析：
@@ -76,6 +78,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - M10-03启动基线：`bb415f3da773160928efda20b877083b321601a0`。
 - M10-04启动基线：`8f54dc4e5ed46d6ffca999fda29887f2302b1030`。
 - M10-05启动基线：`f6197ed9b3c6c01ddabd5d42f6703c289b41cbc7`。
+- M10-07合并主线：`21625e1e11e7c50071f0860d791e902637f0531f`。
 
 当前Head必须从Git Ref读取，禁止从上述历史记录推断。
 
@@ -89,6 +92,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
 - Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。
 - SQLite逐级Migration、未来Schema只读打开、Provider适配和协议版本门禁继续保留。
+- Toolchain Export只能手动触发、只读检出并输出Actions Artifact；禁止向正式分支提交工具链或二进制分片。
 
 ## 6. 产品与架构不变量
 
@@ -97,3 +101,12 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - Renderer不得获得Node、文件系统、SQLite、环境变量或凭据能力。
 - 数据、索引、日志、备份和配置只保存在本地。
 - 未通过真实命令和永久门禁，不得声明验证成功。
+
+## 7. 代码质量与结构规则
+
+- Prettier必须覆盖TS、TSX、测试、CSS和配置文件，禁止因Glob遗漏形成假绿。
+- Renderer的TS与TSX必须进入真实Coverage分母。
+- ESLint关键规则写入配置，不得只通过命令行临时注入。
+- CSS与SQL使用高置信静态检查，不能替代运行测试和Migration测试。
+- 循环依赖、反向依赖、Feature私有穿透、深层导入绕过公共入口和多写入真源继续阻断。
+- 文件行数、导出数量和依赖数量只报告、不阻断；不得为了缩短文件机械拆散完整功能。

@@ -10,7 +10,9 @@ import {
   assertEvidenceHead,
   assertEvidenceSourceCommit,
   assertFinalEvidenceSemantics,
+  evidenceImplementationCommit,
   REQUIRED_EVIDENCE_FILES,
+  validateChangedEvidenceAtHead,
   validateTaskEvidence,
 } from '../../scripts/evidence-policy.mjs';
 
@@ -34,14 +36,14 @@ async function gitFixture() {
   git(root, 'add', 'source.txt');
   git(root, 'commit', '-m', 'source');
   const sourceCommit = git(root, 'rev-parse', 'HEAD');
-  await writeFile(path.join(root, 'evidence.txt'), 'evidence\n');
-  git(root, 'add', 'evidence.txt');
-  git(root, 'commit', '-m', 'evidence');
+  await writeFile(path.join(root, 'implementation.txt'), 'implementation\n');
+  git(root, 'add', 'implementation.txt');
+  git(root, 'commit', '-m', 'implementation');
   const head = git(root, 'rev-parse', 'HEAD');
   return { root, sourceCommit, head };
 }
 
-async function evidenceFixture() {
+async function evidenceFixture(schemaVersion: 1 | 2 = 1) {
   const root = await mkdtemp(path.join(tmpdir(), 'worldforge-evidence-policy-'));
   temporaryDirectories.push(root);
   const taskId = 'M9-99';
@@ -57,9 +59,9 @@ async function evidenceFixture() {
     await writeFile(absolute, content);
   }
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion,
     taskId,
-    commit: 'abcdef1',
+    ...(schemaVersion === 1 ? { commit: 'abcdef1' } : { implementationCommit: 'abcdef1' }),
     generatedAt: '2026-07-18T00:00:00.000Z',
     files: [...files].map(([relative, content]) => ({
       path: relative,
@@ -86,8 +88,23 @@ describe('evidence policy', () => {
   });
 
   it('verifies documentation bytes, hashes and complete file registration', async () => {
-    const fixture = await evidenceFixture();
-    await expect(validateTaskEvidence(fixture.taskId, fixture.root)).resolves.toBeUndefined();
+    const legacy = await evidenceFixture(1);
+    const current = await evidenceFixture(2);
+    await expect(validateTaskEvidence(legacy.taskId, legacy.root)).resolves.toBeUndefined();
+    await expect(validateTaskEvidence(current.taskId, current.root)).resolves.toBeUndefined();
+    expect(evidenceImplementationCommit(legacy.manifest)).toBe('abcdef1');
+    expect(evidenceImplementationCommit(current.manifest)).toBe('abcdef1');
+  });
+
+  it('returns cleanly when a revision changes no Evidence package and no legacy anchor exists', async () => {
+    const fixture = await gitFixture();
+    await expect(
+      validateChangedEvidenceAtHead({
+        repositoryRoot: fixture.root,
+        baseSha: fixture.sourceCommit,
+        expectedHead: fixture.head,
+      }),
+    ).resolves.toEqual([]);
   });
 
   it('rejects content changed after the manifest was generated', async () => {
@@ -115,7 +132,7 @@ describe('evidence policy', () => {
     );
   });
 
-  it('binds validation to the exact checked-out PR Head and a committed ancestor', async () => {
+  it('binds the CI check to the exact PR Head and the manifest to an implementation ancestor', async () => {
     const fixture = await gitFixture();
     expect(assertEvidenceHead(fixture.head, fixture.root)).toBe(fixture.head);
     expect(() =>
@@ -124,7 +141,7 @@ describe('evidence policy', () => {
     expect(() => assertEvidenceHead('0'.repeat(40), fixture.root)).toThrow('checkout SHA mismatch');
     expect(() =>
       assertEvidenceSourceCommit('M9-99', 'working-tree', fixture.head, fixture.root),
-    ).toThrow('committed source revision');
+    ).toThrow('committed implementation revision');
     expect(() =>
       assertEvidenceSourceCommit('M9-99', fixture.head, fixture.sourceCommit, fixture.root),
     ).toThrow('not an ancestor');
@@ -140,18 +157,26 @@ describe('final evidence semantics', () => {
 
   it('accepts committed documentation-only evidence with no stale state', () => {
     expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'a'.repeat(40) }, documents),
+      assertFinalEvidenceSemantics(
+        'M2-01',
+        { schemaVersion: 2, implementationCommit: 'a'.repeat(40) },
+        documents,
+      ),
     ).not.toThrow();
   });
 
   it('rejects working-tree and pending acceptance text', () => {
     expect(() =>
-      assertFinalEvidenceSemantics('M2-01', { commit: 'working-tree' }, documents),
-    ).toThrow('committed revision');
+      assertFinalEvidenceSemantics(
+        'M2-01',
+        { schemaVersion: 2, implementationCommit: 'working-tree' },
+        documents,
+      ),
+    ).toThrow('committed implementation revision');
     expect(() =>
       assertFinalEvidenceSemantics(
         'M2-01',
-        { commit: 'a'.repeat(40) },
+        { schemaVersion: 2, implementationCommit: 'a'.repeat(40) },
         {
           ...documents,
           summary: 'PENDING：等待CI。',

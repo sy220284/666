@@ -125,10 +125,7 @@ describe('M10-03 IPC and protocol maintenance', () => {
     async (loggerRejects) => {
       const handler = createUnexpectedHandler(loggerRejects);
       await expect(
-        handler(
-          { senderFrame: { url: 'file:///renderer.html' } },
-          { requestId },
-        ),
+        handler({ senderFrame: { url: 'file:///renderer.html' } }, { requestId }),
       ).resolves.toMatchObject({
         ok: false,
         requestId,

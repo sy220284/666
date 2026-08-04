@@ -11,7 +11,7 @@ describe('SQL migration policy', () => {
     ).toEqual([]);
   });
 
-  it('rejects unscoped destructive writes without an explicit migration annotation', () => {
+  it('rejects new unscoped destructive writes without an explicit migration annotation', () => {
     expect(validateMigrationSource('DELETE FROM records;\n')).toContain(
       'unscoped DELETE requires -- migration-policy: allow-unscoped-write',
     );
@@ -20,7 +20,7 @@ describe('SQL migration policy', () => {
     );
   });
 
-  it('allows reviewed unscoped data migrations through an explicit annotation', () => {
+  it('allows reviewed new data migrations through an explicit annotation', () => {
     expect(
       validateMigrationSource(
         "-- migration-policy: allow-unscoped-write\nUPDATE records SET id = 'normalized';\n",
@@ -28,8 +28,18 @@ describe('SQL migration policy', () => {
     ).toEqual([]);
   });
 
-  it('enforces LF and final newline', () => {
-    expect(validateMigrationSource('SELECT 1;')).toContain('must end with a newline');
+  it('preserves frozen historical backfills without rewriting published migrations', () => {
+    expect(
+      validateMigrationSource("UPDATE records SET id = 'historical';\n", {
+        allowHistoricalUnscopedWrites: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it('enforces LF and final newline even for frozen historical migrations', () => {
+    expect(
+      validateMigrationSource('SELECT 1;', { allowHistoricalUnscopedWrites: true }),
+    ).toContain('must end with a newline');
     expect(validateMigrationSource('SELECT 1;\r\n')).toContain('must use LF line endings');
   });
 });

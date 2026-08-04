@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-07，共52张独立任务卡。  
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-08，共53张独立任务卡。  
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -128,6 +128,7 @@ Runtime IMPLEMENTED
 | M10-05 | [`治理闭环一致性修复`](M10/M10-05_GOVERNANCE_CLOSURE_CONSISTENCY.md) | M10-04 | Implemented |
 | M10-06 | [`历史验证状态继承`](M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md) | M10-05 | Implemented |
 | M10-07 | [`正文变更与恢复安全收口`](M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md) | M10-06 | Implemented |
+| M10-08 | [`全量代码规范与结构原则治理`](M10/M10-08_CODE_QUALITY_GOVERNANCE.md) | M10-07 | In Progress |
 
 ## 3. 被吸收的需求来源
 
@@ -164,3 +165,4 @@ Runtime IMPLEMENTED
 5. Evidence manifest绑定实现提交；Evidence CI Check绑定精确PR Head。
 6. 分支长期只允许`main`与`work`，不存在`release/*`例外。
 7. 历史Implemented任务必须从其来源PR对应主线提交继承任务Context，禁止借用当前main上的其他任务Context。
+8. 文件行数只作为观察指标；结构门禁依据循环依赖、跨层方向、Feature边界和状态所有权，禁止机械拆分完整功能。

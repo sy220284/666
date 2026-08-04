@@ -41,7 +41,8 @@
     "docs/test-evidence/M10-04/",
     "tests/unit/",
     "tests/integration/",
-    "tests/migration/"
+    "tests/migration/",
+    "tests/security/"
   ],
   "forbiddenPaths": [
     "migrations/",

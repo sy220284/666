@@ -16,8 +16,12 @@ import { registerTaskIpcHandlers } from './task-ipc-handlers.js';
 export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
   const context = createIpcHandlerContext(options);
   const uninstallInvokeGuard = installIpcInvokeGuard(options.ipcMain, context.register);
+  const guardedProviderIpcMain = {
+    handle: (channel, handler) => context.register(channel, handler),
+    removeHandler: (channel) => options.ipcMain.removeHandler(channel),
+  } as IpcHandlerOptions['ipcMain'];
   const disposeProviderHandlers = registerProviderIpcHandlers({
-    ipcMain: options.ipcMain,
+    ipcMain: guardedProviderIpcMain,
     supervisor: options.supervisor,
     credentialBroker: options.credentialBroker,
     rendererUrl: options.rendererUrl,

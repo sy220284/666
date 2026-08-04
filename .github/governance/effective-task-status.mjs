@@ -1,12 +1,40 @@
 /* global process */
 
-export function isRuntimeEffectivelyVerified(task, statuses = []) {
-  if (task?.status === 'VERIFIED') return true;
-  const context = task?.verificationBinding?.taskContext;
-  if (task?.status !== 'IMPLEMENTED' || typeof context !== 'string' || context.length === 0) {
-    return false;
+export function hasSuccessfulCommitStatus(statuses = [], context) {
+  return (
+    typeof context === 'string' &&
+    context.length > 0 &&
+    statuses.some((status) => status?.context === context && status?.state === 'success')
+  );
+}
+
+function normalizedIndexStatus(indexStatus) {
+  const value = typeof indexStatus === 'string' ? indexStatus.trim().toUpperCase() : '';
+  if (value === 'VERIFIED') return 'VERIFIED';
+  if (value === 'IMPLEMENTED') return 'IMPLEMENTED';
+  if (value === 'IN PROGRESS' || value === 'IN_PROGRESS') return 'IN_PROGRESS';
+  if (value === 'PLANNED') return 'PLANNED';
+  return null;
+}
+
+export function effectiveTaskStatus(task, statuses = [], indexStatus = null) {
+  const declared = task?.status ?? normalizedIndexStatus(indexStatus);
+  if (declared === 'VERIFIED' || normalizedIndexStatus(indexStatus) === 'VERIFIED') {
+    return 'VERIFIED';
   }
-  return statuses.some((status) => status?.context === context && status?.state === 'success');
+  const context = task?.verificationBinding?.taskContext;
+  if (declared === 'IMPLEMENTED' && hasSuccessfulCommitStatus(statuses, context)) {
+    return 'VERIFIED';
+  }
+  return declared ?? 'UNKNOWN';
+}
+
+export function isRuntimeEffectivelyVerified(task, statuses = [], indexStatus = null) {
+  return effectiveTaskStatus(task, statuses, indexStatus) === 'VERIFIED';
+}
+
+export function isMainEffectivelyVerified(statuses = []) {
+  return hasSuccessfulCommitStatus(statuses, 'main-verification');
 }
 
 export async function loadCommitStatuses(commitSha) {

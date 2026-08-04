@@ -56,24 +56,18 @@ export type IpcInvokeHandler = (
 
 export type IpcInvokeRegister = (channel: string, handler: IpcInvokeHandler) => void;
 
-interface ActiveInvokeGuard {
-  readonly ipcMain: IpcMain;
-  readonly register: IpcInvokeRegister;
-}
-
-let activeInvokeGuard: ActiveInvokeGuard | null = null;
+const activeInvokeGuards = new WeakMap<IpcMain, IpcInvokeRegister>();
 
 /**
  * Installs the single production registration path used by specialty IPC modules.
  * Direct module tests can still register against isolated IpcMain doubles when no production
- * guard is active.
+ * guard is active for that exact instance.
  */
 export function installIpcInvokeGuard(ipcMain: IpcMain, register: IpcInvokeRegister): () => void {
-  if (activeInvokeGuard) throw new Error('IPC_INVOKE_GUARD_ALREADY_INSTALLED');
-  const installed: ActiveInvokeGuard = { ipcMain, register };
-  activeInvokeGuard = installed;
+  if (activeInvokeGuards.has(ipcMain)) throw new Error('IPC_INVOKE_GUARD_ALREADY_INSTALLED');
+  activeInvokeGuards.set(ipcMain, register);
   return () => {
-    if (activeInvokeGuard === installed) activeInvokeGuard = null;
+    if (activeInvokeGuards.get(ipcMain) === register) activeInvokeGuards.delete(ipcMain);
   };
 }
 
@@ -82,8 +76,9 @@ export function registerIpcInvokeHandler(
   channel: string,
   handler: IpcInvokeHandler,
 ): void {
-  if (activeInvokeGuard?.ipcMain === ipcMain) {
-    activeInvokeGuard.register(channel, handler);
+  const register = activeInvokeGuards.get(ipcMain);
+  if (register) {
+    register(channel, handler);
     return;
   }
   ipcMain.handle(channel, handler);

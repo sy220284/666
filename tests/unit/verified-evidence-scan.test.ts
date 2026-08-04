@@ -20,16 +20,19 @@ const implementedRuntime = {
 describe('verified evidence scan', () => {
   it('includes static Verified tasks and effectively Verified runtime tasks', () => {
     expect(
-      effectivelyVerifiedTaskIds(source, [implementedRuntime], [
-        { context: 'task-verification/M0-02', state: 'success' },
-      ]),
+      effectivelyVerifiedTaskIds(
+        source,
+        [implementedRuntime],
+        [{ context: 'task-verification/M0-02', state: 'success' }],
+      ),
     ).toEqual(['M0-01', 'M0-02', 'M1-01']);
   });
 
   it('excludes an Implemented runtime whose task status is absent or failed', () => {
-    expect(
-      effectivelyVerifiedTaskIds(source, [implementedRuntime], []),
-    ).toEqual(['M0-01', 'M1-01']);
+    expect(effectivelyVerifiedTaskIds(source, [implementedRuntime], [])).toEqual([
+      'M0-01',
+      'M1-01',
+    ]);
   });
 
   it('does not treat text outside task rows as a Verified task', () => {

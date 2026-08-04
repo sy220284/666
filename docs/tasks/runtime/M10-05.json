@@ -16,6 +16,7 @@
   "allowedPaths": [
     "AGENTS.md",
     "README.md",
+    "package.json",
     ".github/governance/effective-task-status.mjs",
     ".github/governance/work-synchronization.mjs",
     ".github/workflows/evidence.yml",

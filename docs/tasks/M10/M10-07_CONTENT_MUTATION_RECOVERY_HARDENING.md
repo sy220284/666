@@ -1,6 +1,6 @@
 # M10-07 正文变更与恢复安全收口
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 优先级：P1  
 > 基线：`main == work == 47bf112754a5ed28f7ede0565efeda5bb581f85e`
 
@@ -86,6 +86,20 @@
 6. Generation Prose/Structured 的取消、流中断、空输出、字符上限、usage、partial 与 terminal 行为保持回归一致。
 7. 统一序列化前后全部黄金 Hash 完全一致。
 8. 任务要求的格式、类型、单元、集成、安全、性能、构建与 E2E 门禁真实通过。
+
+## 已实施
+
+1. Safe Replace 读取并保留块级 Revision，只更新命中块，并对块、Draft 与 ReplacePlan 的条件写入逐层断言。
+2. stale 后置标记失败附着到原错误的非枚举诊断属性，主错误码与调用栈保持不变。
+3. Version Restore 契约绑定当前 Draft ID/Revision，事务内自动创建可读取的 checkpoint Version 后再归档和切换。
+4. Candidate Undo 对 ApplyRecord 状态迁移增加 affected-row 不变量，并以触发器故障注入验证整笔回滚。
+5. Generation Prose/Structured 已迁移到统一流式生命周期，保留各自解析与持久化策略。
+6. Core 已建立统一 stable JSON 工具，相关 Hash 调用点完成迁移并增加黄金向量。
+7. 锁定 Formatter Artifact 由 GitHub Actions 工作流导出并应用，临时工作流与权限改动已清除。
+
+## 当前验证
+
+实现提交 `6fb8c90147894398ba980e2efc192f607515b936` 已通过 Task Validation、Workspace、Boundaries、Format、Lint、Typecheck、Security、Performance、Evidence、Task Governance 与 PR Policy。最终完整矩阵由 PR #315 Ready Head 执行。
 
 ## Evidence
 

@@ -71,6 +71,17 @@ export function synchronizationRequest(event) {
   };
 }
 
+export function assertSynchronizedWorkRef(workRef, mainSha) {
+  const finalWorkSha = workRef?.object?.sha;
+  if (!fullSha.test(finalWorkSha ?? '')) {
+    throw new Error('Work synchronization postcondition could not read the final work SHA');
+  }
+  if (finalWorkSha !== mainSha) {
+    throw new Error(`Work synchronization postcondition failed: work=${finalWorkSha}, main=${mainSha}`);
+  }
+  return finalWorkSha;
+}
+
 function hasSuccessfulMainVerification(status) {
   return status?.statuses?.some(
     (entry) => entry.context === 'main-verification' && entry.state === 'success',
@@ -131,6 +142,9 @@ async function main() {
       body: JSON.stringify({ sha: mainSha, force: true }),
     });
   }
+  const finalWorkRef = await api(`/repos/${owner}/${repo}/git/ref/heads/work`);
+  const finalWorkSha = assertSynchronizedWorkRef(finalWorkRef, mainSha);
+
   const output = process.env.WORK_SYNCHRONIZATION_OUTPUT ?? 'artifacts/work-synchronization';
   await mkdir(output, { recursive: true });
   await writeFile(
@@ -141,13 +155,14 @@ async function main() {
         mainSha,
         sourcePr: source.number,
         sourceHeadSha: source.head.sha,
+        finalWorkSha,
         decision,
       },
       null,
       2,
     )}\n`,
   );
-  console.log(`Work synchronization ${decision.action}: ${decision.reason}`);
+  console.log(`Work synchronization ${decision.action}: ${decision.reason}; postcondition passed.`);
 }
 
 function selfTest() {
@@ -184,6 +199,11 @@ function selfTest() {
       inputs: { expected_sha: a, source_pr: '301', source_head_sha: b },
     }),
     { mode: 'workflow-dispatch', mainSha: a, sourcePr: 301, sourceHeadSha: b },
+  );
+  assert.equal(assertSynchronizedWorkRef({ object: { sha: a } }, a), a);
+  assert.throws(
+    () => assertSynchronizedWorkRef({ object: { sha: b } }, a),
+    /postcondition failed/u,
   );
   console.log('Work synchronization self-test passed.');
 }

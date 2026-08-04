@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  isMainEffectivelyVerified,
   isRuntimeEffectivelyVerified,
   loadCommitStatuses,
 } from '../.github/governance/effective-task-status.mjs';
@@ -124,6 +125,9 @@ export function evaluateReleaseGate({
   if (refName && refName !== 'main') {
     errors.push('Releases may only run from main, found ' + refName);
   }
+  if (!isMainEffectivelyVerified(statuses)) {
+    errors.push('Current release commit must have main-verification=success');
+  }
 
   const tasks = [...parseIndependentTaskIndex(taskIndexMarkdown).values()];
   if (tasks.length === 0) errors.push('TASK_INDEX contains no independent tasks');
@@ -148,9 +152,9 @@ export function evaluateReleaseGate({
   for (const task of tasks) {
     const runtime = runtimeById.get(task.id);
     if (runtime?.releaseBlocking === false) continue;
-    const verified =
-      task.status === 'Verified' ||
-      (runtime ? isRuntimeEffectivelyVerified(runtime, statuses) : false);
+    const verified = runtime
+      ? isRuntimeEffectivelyVerified(runtime, statuses, task.status)
+      : task.status === 'Verified';
     if (!verified) unfinished.push(`${task.id} ${runtime?.status ?? task.status}`);
   }
   if (unfinished.length > 0) {
@@ -162,9 +166,9 @@ export function evaluateReleaseGate({
 
   const latest = tasks.at(-1);
   const latestRuntime = latest ? runtimeById.get(latest.id) : undefined;
-  const latestVerified =
-    latest?.status === 'Verified' ||
-    (latestRuntime ? isRuntimeEffectivelyVerified(latestRuntime, statuses) : false);
+  const latestVerified = latestRuntime
+    ? isRuntimeEffectivelyVerified(latestRuntime, statuses, latest?.status)
+    : latest?.status === 'Verified';
   return {
     version,
     taskId: latest?.id ?? null,

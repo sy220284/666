@@ -1,17 +1,36 @@
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  isRuntimeEffectivelyVerified,
+  loadCommitStatuses,
+} from '../.github/governance/effective-task-status.mjs';
 import { validateTaskEvidence } from './evidence-policy.mjs';
+import { parseTaskIndex } from './task-control-lib.mjs';
 
-export function verifiedTaskIds(taskIndexSource) {
-  const tasks = [];
-  const rowPattern = /^\|\s*(M\d+-\d{2})\s*\|[^\n]*\|\s*Verified\s*\|\s*$/gmu;
-  for (const match of taskIndexSource.matchAll(rowPattern)) {
-    if (match[1]) tasks.push(match[1]);
-  }
-  return [...new Set(tasks)].sort((left, right) => left.localeCompare(right, 'en'));
+function independentTaskIndex(taskIndexSource) {
+  const [section = ''] = taskIndexSource.split(/^## 3\. 被吸收的需求来源\s*$/mu, 1);
+  return parseTaskIndex(section);
+}
+
+export function effectivelyVerifiedTaskIds(taskIndexSource, runtimes = [], statuses = []) {
+  const tasks = independentTaskIndex(taskIndexSource);
+  const runtimeById = new Map(
+    runtimes
+      .filter((runtime) => typeof runtime?.id === 'string')
+      .map((runtime) => [runtime.id, runtime]),
+  );
+  return [...tasks.values()]
+    .filter((task) => {
+      const runtime = runtimeById.get(task.id);
+      return runtime
+        ? isRuntimeEffectivelyVerified(runtime, statuses, task.status)
+        : task.status === 'Verified';
+    })
+    .map((task) => task.id)
+    .sort((left, right) => left.localeCompare(right, 'en'));
 }
 
 function gitHead(repositoryRoot) {
@@ -26,6 +45,14 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+async function loadRuntimes(repositoryRoot, directory) {
+  const absolute = path.join(repositoryRoot, directory);
+  const files = (await readdir(absolute)).filter((file) => file.endsWith('.json')).sort();
+  return Promise.all(
+    files.map((file) => readFile(path.join(absolute, file), 'utf8').then(JSON.parse)),
+  );
+}
+
 export async function validateAllVerifiedEvidence(
   repositoryRoot = process.cwd(),
   expectedHead = process.env.EVIDENCE_HEAD_SHA ?? gitHead(repositoryRoot),
@@ -33,12 +60,15 @@ export async function validateAllVerifiedEvidence(
   if (!/^[0-9a-f]{40}$/u.test(expectedHead)) {
     throw new Error('Verified evidence scan requires a full expected head SHA');
   }
-  const indexSource = await readFile(
-    path.join(repositoryRoot, 'docs', 'tasks', 'TASK_INDEX.md'),
-    'utf8',
-  );
-  const taskIds = verifiedTaskIds(indexSource);
-  if (taskIds.length === 0) throw new Error('No Verified tasks were found in TASK_INDEX');
+  const [indexSource, authorizationSource, statuses] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'docs', 'tasks', 'TASK_INDEX.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', 'tasks', 'TASK_AUTHORIZATION.json'), 'utf8'),
+    loadCommitStatuses(expectedHead),
+  ]);
+  const authorization = JSON.parse(authorizationSource);
+  const runtimes = await loadRuntimes(repositoryRoot, authorization.taskRuntimeDirectory);
+  const taskIds = effectivelyVerifiedTaskIds(indexSource, runtimes, statuses);
+  if (taskIds.length === 0) throw new Error('No effectively Verified tasks were found');
 
   const failures = [];
   for (const taskId of taskIds) {
@@ -57,7 +87,9 @@ export async function validateAllVerifiedEvidence(
     );
   }
 
-  console.log(`Validated all ${taskIds.length} Verified evidence package(s) at ${expectedHead}.`);
+  console.log(
+    `Validated all ${taskIds.length} effectively Verified evidence package(s) at ${expectedHead}.`,
+  );
   return taskIds;
 }
 

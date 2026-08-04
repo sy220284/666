@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  assertSynchronizedWorkRef,
   synchronizationDecision,
   synchronizationRequest,
 } from '../../.github/governance/work-synchronization.mjs';
@@ -61,6 +62,13 @@ describe('work安全同步决策', () => {
         openPulls: 1,
       }),
     ).toEqual({ action: 'blocked', reason: 'new-work-pull-request-open' });
+  });
+
+  it('复读最终work Ref并要求与main完全一致', () => {
+    expect(assertSynchronizedWorkRef({ object: { sha: sha('a') } }, sha('a'))).toBe(sha('a'));
+    expect(() => assertSynchronizedWorkRef({ object: { sha: sha('b') } }, sha('a'))).toThrow(
+      'postcondition failed',
+    );
   });
 });
 

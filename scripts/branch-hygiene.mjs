@@ -65,6 +65,10 @@ export function branchDeletionDecision({ branchSha, pull, comparison }) {
   return { safe: false, reason: 'branch-contains-unmerged-commits' };
 }
 
+export function isProtectedBranch(name, authorization) {
+  return name === authorization?.baseBranch || name === authorization?.workBranch;
+}
+
 function escapedRef(name) {
   return name
     .split('/')
@@ -84,8 +88,13 @@ async function main() {
   if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format');
   const authorization = JSON.parse(await readFile('docs/tasks/TASK_AUTHORIZATION.json', 'utf8'));
   const workBranch = authorization.workBranch;
-  if (authorization.schemaVersion !== 2 || workBranch !== 'work') {
-    throw new Error('TASK_AUTHORIZATION must define the Schema 2 work branch');
+  if (
+    authorization.schemaVersion !== 2 ||
+    authorization.baseBranch !== 'main' ||
+    workBranch !== 'work' ||
+    authorization.allowAdditionalBranches !== false
+  ) {
+    throw new Error('TASK_AUTHORIZATION must define the strict two-branch Schema 2 model');
   }
   const [branches, pulls] = await Promise.all([
     paged(`/repos/${owner}/${repo}/branches`),
@@ -102,7 +111,7 @@ async function main() {
   for (const branch of branches) {
     const name = branch.name;
     const branchSha = branch.commit?.sha;
-    if (name === authorization.baseBranch || name === workBranch || name.startsWith('release/')) {
+    if (isProtectedBranch(name, authorization)) {
       report.push({ branch: name, branchSha, classification: 'protected', action: 'keep' });
       continue;
     }

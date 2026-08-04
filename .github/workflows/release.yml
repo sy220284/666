@@ -20,6 +20,10 @@ on:
 
 permissions:
   contents: read
+  statuses: read
+
+env:
+  GITHUB_TOKEN: ${{ github.token }}
 
 concurrency:
   group: release-${{ inputs.version }}
@@ -197,6 +201,7 @@ jobs:
     environment: release
     permissions:
       contents: write
+      statuses: read
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_KIND: ${{ inputs.release_kind }}

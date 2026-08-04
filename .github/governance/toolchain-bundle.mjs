@@ -1,5 +1,5 @@
 /* global console, process */
-// PR Policy smoke marker: export the repository-locked formatter and quality toolchains for M10-07.
+// PR Policy smoke marker: export the repository-locked formatter and quality toolchains.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';

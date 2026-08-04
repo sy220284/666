@@ -139,7 +139,9 @@ export function evaluateReleaseGate({
     .map((runtime) => runtime.id)
     .sort();
   if (unindexedRuntimes.length > 0) {
-    errors.push('Release-blocking runtimes are absent from TASK_INDEX: ' + unindexedRuntimes.join(', '));
+    errors.push(
+      'Release-blocking runtimes are absent from TASK_INDEX: ' + unindexedRuntimes.join(', '),
+    );
   }
 
   const unfinished = [];
@@ -152,7 +154,10 @@ export function evaluateReleaseGate({
     if (!verified) unfinished.push(`${task.id} ${runtime?.status ?? task.status}`);
   }
   if (unfinished.length > 0) {
-    errors.push('All independent tasks must be effectively Verified before publishing: ' + unfinished.join(', '));
+    errors.push(
+      'All independent tasks must be effectively Verified before publishing: ' +
+        unfinished.join(', '),
+    );
   }
 
   const latest = tasks.at(-1);
@@ -164,7 +169,7 @@ export function evaluateReleaseGate({
       ? isRuntimeEffectivelyVerified(latestRuntime, statuses)
         ? 'VERIFIED'
         : latestRuntime.status
-      : latest?.status ?? null,
+      : (latest?.status ?? null),
     errors,
   };
 }
@@ -248,12 +253,14 @@ async function loadRuntimes(directory) {
 }
 
 async function loadReleaseState() {
-  const [packageSource, taskIndexMarkdown, authorizationSource, workflowSource] = await Promise.all([
-    readFile(path.join(root, 'package.json'), 'utf8'),
-    readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'),
-    readFile(path.join(root, 'docs/tasks/TASK_AUTHORIZATION.json'), 'utf8'),
-    readFile(path.join(root, '.github/workflows/release.yml'), 'utf8'),
-  ]);
+  const [packageSource, taskIndexMarkdown, authorizationSource, workflowSource] = await Promise.all(
+    [
+      readFile(path.join(root, 'package.json'), 'utf8'),
+      readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'),
+      readFile(path.join(root, 'docs/tasks/TASK_AUTHORIZATION.json'), 'utf8'),
+      readFile(path.join(root, '.github/workflows/release.yml'), 'utf8'),
+    ],
+  );
   const authorization = JSON.parse(authorizationSource);
   const runtimes = await loadRuntimes(path.join(root, authorization.taskRuntimeDirectory));
   return {

@@ -2,20 +2,20 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-05，共50张独立任务卡。  
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-06，共51张独立任务卡。  
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
 
-本索引记录任务的静态声明状态。最终有效状态必须结合Runtime和当前main提交的GitHub Commit Status计算：
+本索引记录任务的静态声明状态。最终有效状态必须结合Runtime与各任务来源合并提交的GitHub Commit Status计算：
 
 ```text
 Runtime IMPLEMENTED
-+ task-verification/<TASK-ID>=success
++ 来源PR对应主线提交上的task-verification/<TASK-ID>=success
 → 有效VERIFIED
 ```
 
-因此，索引中的`Implemented`不能单独解释为“尚未完成”，也不能单独充当发布资格。依赖、发布、Evidence全量扫描和下一任务启动统一使用`.github/governance/effective-task-status.mjs`。
+当前main的`main-verification`只证明当前主线提交可用，不能替代历史任务自己的任务Context。依赖、发布、Evidence全量扫描和下一任务启动统一使用`.github/governance/effective-task-status.mjs`。
 
 固定入口：
 
@@ -126,6 +126,7 @@ Runtime IMPLEMENTED
 | M10-03 | [`IPC与协议维护治理`](M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md) | M10-02 | Verified |
 | M10-04 | [`兼容面收敛治理`](M10/M10-04_COMPATIBILITY_CONVERGENCE.md) | M10-03 | Implemented |
 | M10-05 | [`治理闭环一致性修复`](M10/M10-05_GOVERNANCE_CLOSURE_CONSISTENCY.md) | M10-04 | Implemented |
+| M10-06 | [`历史验证状态继承`](M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md) | M10-05 | In Progress |
 
 ## 3. 被吸收的需求来源
 
@@ -161,4 +162,4 @@ Runtime IMPLEMENTED
 4. 任一releaseBlocking任务未有效Verified，或当前main缺少`main-verification`，发布资格必须拒绝。
 5. Evidence manifest绑定实现提交；Evidence CI Check绑定精确PR Head。
 6. 分支长期只允许`main`与`work`，不存在`release/*`例外。
-7. 动态状态不得从本文顶部快照、历史SHA或已关闭PR推断。
+7. 历史Implemented任务必须从其来源PR对应主线提交继承任务Context，禁止借用当前main上的其他任务Context。

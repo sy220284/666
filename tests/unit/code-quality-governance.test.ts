@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import { validateCssSource } from '../../scripts/check-css-quality.mjs';
+import { inspectCodeQualityPolicy } from '../../scripts/code-quality-policy.mjs';
 
 const read = (path: string): Promise<string> => readFile(path, 'utf8');
 
@@ -54,10 +55,11 @@ describe('code quality governance', () => {
   });
 
   it('locks cross-platform line endings without imposing file length limits', async () => {
-    const [editorConfig, attributes, structureBaseline] = await Promise.all([
+    const [editorConfig, attributes, structureBaseline, governance] = await Promise.all([
       read('.editorconfig'),
       read('.gitattributes'),
       read('docs/architecture/source-structure-baseline.json'),
+      read('docs/architecture/CODE_QUALITY_GOVERNANCE.md'),
     ]);
 
     expect(editorConfig).toContain('end_of_line = lf');
@@ -65,6 +67,8 @@ describe('code quality governance', () => {
     expect(attributes).toContain('* text=auto eol=lf');
     expect(structureBaseline).not.toContain('defaultMaxLines');
     expect(structureBaseline).not.toContain('oversizedFiles');
+    expect(governance).toContain('文件行数、函数数量和测试数量只用于观察');
+    expect(governance).toContain('禁止为了满足视觉长度');
   });
 
   it('rejects malformed or remotely loaded CSS with file-local diagnostics', () => {
@@ -73,5 +77,18 @@ describe('code quality governance', () => {
       'must not load remote CSS or assets',
     );
     expect(validateCssSource('.panel { color: red;\n')).toContain('contains unmatched braces');
+  });
+
+  it('runs the complete quality-scope policy from the permanent CI policy command', async () => {
+    const manifest = JSON.parse(await read('package.json')) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(manifest.scripts['ci:policy']).toContain('node scripts/code-quality-policy.mjs');
+    await expect(inspectCodeQualityPolicy()).resolves.toMatchObject({
+      typeAwareLint: true,
+      rendererTsxCoverage: true,
+      fileLengthGate: false,
+    });
   });
 });

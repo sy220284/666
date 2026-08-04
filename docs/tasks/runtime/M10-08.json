@@ -21,6 +21,14 @@
     "eslint.config.mjs",
     "tsconfig.base.json",
     "vitest.coverage.config.ts",
+    "apps/desktop/renderer/src/components/draft-flush-failure-dialog.tsx",
+    "apps/desktop/renderer/src/features/canon/canon-author-fields.tsx",
+    "apps/desktop/renderer/src/features/canon/continuity-panel.tsx",
+    "apps/desktop/renderer/src/features/canon/narrative-planning-panel.tsx",
+    "apps/desktop/renderer/src/features/checks/checks-workbench.tsx",
+    "apps/desktop/renderer/src/features/planning/brief/beginner-planning-questions.tsx",
+    "apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx",
+    "apps/desktop/renderer/src/features/writing/review-diff-panel.tsx",
     "scripts/check-source-structure.mjs",
     "scripts/check-css-quality.mjs",
     "scripts/check-sql-migrations.mjs",
@@ -38,7 +46,6 @@
     "docs/test-evidence/M10-08/"
   ],
   "forbiddenPaths": [
-    "apps/",
     "packages/",
     "migrations/",
     "pnpm-lock.yaml",

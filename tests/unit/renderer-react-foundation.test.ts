@@ -3,12 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CommandResult } from '@worldforge/contracts';
 
 import { createRendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
-
 import {
   BridgeRequestCoordinator,
   DuplicateBridgeRequestError,
 } from '../../apps/desktop/renderer/src/bridge/request-lifecycle.js';
-import { createLegacyCompatibilityLoader } from '../../apps/desktop/renderer/src/compat/legacy-loader.js';
 import { RendererLifecycleRegistry } from '../../apps/desktop/renderer/src/runtime/lifecycle-registry.js';
 import { RendererStatusArbitrator } from '../../apps/desktop/renderer/src/runtime/status-arbitrator.js';
 
@@ -190,12 +188,12 @@ describe('M3-07 renderer status arbitration', () => {
   });
 });
 
-describe('M3-07 compatibility lifecycle', () => {
+describe('M3-07 renderer lifecycle registry', () => {
   it('runs registered cleanup once and isolates cleanup by owner', async () => {
     const registry = new RendererLifecycleRegistry();
     const first = vi.fn();
     const second = vi.fn();
-    const unregister = registry.register('legacy-renderer', 'listener:first', first);
+    const unregister = registry.register('feature-a', 'listener:first', first);
     registry.register('react-root', 'listener:second', second);
 
     await unregister();
@@ -206,20 +204,6 @@ describe('M3-07 compatibility lifecycle', () => {
     await registry.disposeOwner('react-root');
     expect(second).toHaveBeenCalledTimes(1);
     expect(registry.size).toBe(0);
-  });
-
-  it('loads and disposes the legacy renderer once', async () => {
-    const load = vi.fn(async () => undefined);
-    const dispose = vi.fn(async () => undefined);
-    const loader = createLegacyCompatibilityLoader(load, dispose);
-
-    await Promise.all([loader.load(), loader.load(), loader.load()]);
-    expect(load).toHaveBeenCalledTimes(1);
-    expect(loader.state).toBe('loaded');
-
-    await Promise.all([loader.dispose(), loader.dispose()]);
-    expect(dispose).toHaveBeenCalledTimes(1);
-    expect(loader.state).toBe('idle');
   });
 });
 

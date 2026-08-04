@@ -3,7 +3,6 @@
   "paths": [
     "apps/desktop/renderer/src/app/",
     "apps/desktop/renderer/src/bridge/",
-    "apps/desktop/renderer/src/compat/",
     "apps/desktop/renderer/src/components/",
     "apps/desktop/renderer/src/features/",
     "apps/desktop/renderer/src/presentation/",
@@ -21,7 +20,6 @@
     "tests/unit/author-review-delivery.test.ts",
     "tests/e2e/m8-04-author-experience.spec.ts",
     "tests/e2e/writing-focus-assistance.spec.ts",
-    "docs/tasks/ACTIVE_TASK.md",
     "docs/tasks/M8/M8-04_AUTHOR_EXPERIENCE_LANGUAGE.md",
     "agent.md"
   ],

@@ -1,34 +1,35 @@
 # WorldForge 文档总索引
 
 > 基线：WorldForge V6.5  
-> 原则：产品设计真源集中；已完成任务冻结；后续工作重新立项；验收必须有真实证据。
+> 当前任务：M10-04兼容面收敛治理（Implemented）。
 
-## 1. 唯一工作入口
+## 1. 唯一执行入口
 
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
-→ docs/tasks/ACTIVE_TASK.json
-→ docs/tasks/ACTIVE_TASK.md
-→ M8-05终态任务卡
-→ 受影响专项文档
-→ 现有代码、测试、Migration、IPC和追踪矩阵
+→ docs/tasks/TASK_AUTHORIZATION.json
+→ docs/tasks/TASK_INDEX.md
+→ 当前任务Runtime
+→ 当前任务卡
+→ 专项文档、代码、测试、Migration、IPC与Evidence
 ```
 
 - [`../AGENTS.md`](../AGENTS.md)：仓库级强制规则。
-- [`../agent.md`](../agent.md)：人工和通用代理快速入口。
-- [`PROJECT_EXECUTION_ENTRY.md`](PROJECT_EXECUTION_ENTRY.md)：单一任务执行入口与专项路由。
-- [`tasks/ACTIVE_TASK.json`](tasks/ACTIVE_TASK.json)：机器可读活动任务与授权真源。
-- [`tasks/ACTIVE_TASK.md`](tasks/ACTIVE_TASK.md)：由JSON生成的人类可读镜像。
-- [`tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md`](tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)：运行时硬化与文档统一终态任务。
-- [`process/CODEX_EXECUTION_PLAYBOOK.md`](process/CODEX_EXECUTION_PLAYBOOK.md)：实施、测试、复查与关闭规则。
-- [`process/DEVELOPMENT_AUTOMATION.md`](process/DEVELOPMENT_AUTOMATION.md)：PR、质量门禁与受控合并。
+- [`PROJECT_EXECUTION_ENTRY.md`](PROJECT_EXECUTION_ENTRY.md)：当前执行状态与专项路由。
+- [`tasks/TASK_AUTHORIZATION.json`](tasks/TASK_AUTHORIZATION.json)：分支、PR、合并和同步规则。
+- [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：任务依赖、状态与导航。
+- [`tasks/runtime/`](tasks/runtime/)：任务状态、边界、验证命令与提交状态绑定。
+- [`tasks/M10/M10-04_COMPATIBILITY_CONVERGENCE.md`](tasks/M10/M10-04_COMPATIBILITY_CONVERGENCE.md)：当前任务卡。
+
+`ACTIVE_TASK.json/.md`与旧`taskctl`已经退役，不得重新作为执行入口或状态真源。
 
 ## 2. 权威层级
 
 ```text
 作者最新明确指令
-> ACTIVE_TASK与当前任务卡批准范围
+> TASK_AUTHORIZATION、当前Runtime与TASK_INDEX
+> 当前任务卡
 > product/WORLDFORGE_V6.5_FULL_SPEC.md
 > 冻结专项规格、ADR、Schema、契约、UI、安全与P0验收
 > decisions/IMPLEMENTATION_DECISIONS.md
@@ -36,41 +37,31 @@ AGENTS.md
 > 现有实现
 ```
 
-任务编号、状态和吸收关系以`TASK_INDEX.md`为准；产品、Schema、IPC、AI、UI和验收语义继续由专项真源负责。发现文档与代码冲突时，新立任务必须同时修正实现、测试、专项文档和追踪关系，禁止静默漂移。
+## 3. 产品与范围
 
-## 3. 产品、范围与路线
+- [`product/WORLDFORGE_V6.5_FULL_SPEC.md`](product/WORLDFORGE_V6.5_FULL_SPEC.md)：完整产品边界和真源路由。
+- [`product/FUNCTION_CATALOG.md`](product/FUNCTION_CATALOG.md)：功能ID与版本归属。
+- [`product/V1_SCOPE_AND_ACCEPTANCE.md`](product/V1_SCOPE_AND_ACCEPTANCE.md)：V1.0范围与关闭条件。
+- [`product/V1.0_TRACEABILITY_MATRIX.md`](product/V1.0_TRACEABILITY_MATRIX.md)：需求、任务、实现和验收追踪。
+- [`roadmap/V1.0_ROADMAP.md`](roadmap/V1.0_ROADMAP.md)：交付与后续演进。
 
-- [`product/WORLDFORGE_V6.5_FULL_SPEC.md`](product/WORLDFORGE_V6.5_FULL_SPEC.md)：产品原则、总体架构、完整功能边界和唯一真源路由。
-- [`product/V1_TASK_SYSTEM_REBASE.md`](product/V1_TASK_SYSTEM_REBASE.md)：M4-04历史任务收口基线及后续演进说明。
-- [`product/V1_SCOPE_AND_ACCEPTANCE.md`](product/V1_SCOPE_AND_ACCEPTANCE.md)：V1.0 P0/P1、V1.5延期项和关闭条件。
-- [`product/FUNCTION_CATALOG.md`](product/FUNCTION_CATALOG.md)：功能ID、设计语义和版本归属。
-- [`product/V1.0_TRACEABILITY_MATRIX.md`](product/V1.0_TRACEABILITY_MATRIX.md)：需求、任务、实现与验收追踪。
-- [`roadmap/V1.0_ROADMAP.md`](roadmap/V1.0_ROADMAP.md)：V1.0交付终态、维护任务和V1.5启动门。
+## 4. 任务与自动化
 
-## 4. 任务体系
+- [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：49张独立任务与吸收关系。
+- [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)：任务卡通用规则。
+- [`process/DEVELOPMENT_AUTOMATION.md`](process/DEVELOPMENT_AUTOMATION.md)：唯一work PR、永久门禁和同步闭环。
+- [`process/RELEASE_QUALIFICATION.md`](process/RELEASE_QUALIFICATION.md)：基于Runtime和提交状态的发布资格。
+- [`process/CODEX_EXECUTION_PLAYBOOK.md`](process/CODEX_EXECUTION_PLAYBOOK.md)：实施、复查与关闭规则。
 
-- [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：37张独立任务、吸收关系和当前状态。
-- [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)：任务卡和执行附件通用规则。
-- [`tasks/ACTIVE_TASK.md`](tasks/ACTIVE_TASK.md)：当前唯一任务控制镜像。
-- [`tasks/M0_TASKS.md`](tasks/M0_TASKS.md)至[`tasks/M4_TASKS.md`](tasks/M4_TASKS.md)：已完成阶段与历史整体任务摘要。
-- [`tasks/M5_TASKS.md`](tasks/M5_TASKS.md)至[`tasks/M7_TASKS.md`](tasks/M7_TASKS.md)：被吸收的需求摘要，不是独立执行入口。
-- [`tasks/M8_TASKS.md`](tasks/M8_TASKS.md)：自用交付、作者体验与长期维护任务摘要。
+当前状态：M0—M9及M10-01—M10-03有效Verified；M10-04处于Implemented并由PR #312执行永久门禁验证。
 
-```text
-M0—M3 Verified
-→ M4-01—M4-04 Verified
-→ M8-02 Verified
-→ M8-04 Verified
-→ M8-05 Verified / VERIFIED_HOLD
-```
+## 5. 架构与实现决策
 
-原M4-05—M6-06文件保留为M4-04详细需求来源；原M7-01—M8-03由M8-02承接。37张独立任务均已Verified；任何新工作必须重新立项，已完成任务卡和历史Evidence保持冻结。
-
-## 5. 工程架构与决策
-
-- 架构：[`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md)、[`architecture/MODULE_BOUNDARIES.md`](architecture/MODULE_BOUNDARIES.md)、[`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md)
-- ADR：[`decisions/README.md`](decisions/README.md)
-- 冻结实现：[`decisions/IMPLEMENTATION_DECISIONS.md`](decisions/IMPLEMENTATION_DECISIONS.md)
+- [`architecture/ARCHITECTURE.md`](architecture/ARCHITECTURE.md)
+- [`architecture/MODULE_BOUNDARIES.md`](architecture/MODULE_BOUNDARIES.md)
+- [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md)
+- [`architecture/RENDERER_COMPATIBILITY_OWNERSHIP.md`](architecture/RENDERER_COMPATIBILITY_OWNERSHIP.md)
+- [`decisions/IMPLEMENTATION_DECISIONS.md`](decisions/IMPLEMENTATION_DECISIONS.md)
 
 ## 6. 数据库、IPC与AI
 
@@ -80,11 +71,13 @@ M0—M3 Verified
 
 ## 7. UI与交互
 
-- 视觉与主题：[`ui/UI_SYSTEM.md`](ui/UI_SYSTEM.md)、[`ui/UI_SYSTEM_THEME_B.md`](ui/UI_SYSTEM_THEME_B.md)、[`ui/VISUAL_REFERENCE_BASELINE.md`](ui/VISUAL_REFERENCE_BASELINE.md)
-- 页面与交互：[`ui/INFORMATION_ARCHITECTURE.md`](ui/INFORMATION_ARCHITECTURE.md)、[`ui/SCREEN_SPECIFICATIONS.md`](ui/SCREEN_SPECIFICATIONS.md)、[`ui/INTERACTION_STATES.md`](ui/INTERACTION_STATES.md)
-- 编辑与建议稿：[`ui/EDITOR_INTERACTION_SPEC.md`](ui/EDITOR_INTERACTION_SPEC.md)、[`ui/CANDIDATE_REVIEW_SPEC.md`](ui/CANDIDATE_REVIEW_SPEC.md)
-- 向导与显示：[`ui/ONBOARDING_SPEC.md`](ui/ONBOARDING_SPEC.md)、[`ui/RESPONSIVE_AND_DPI.md`](ui/RESPONSIVE_AND_DPI.md)、[`ui/ACCESSIBILITY.md`](ui/ACCESSIBILITY.md)
-- 验收：[`ui/UI_ACCEPTANCE_CHECKLIST.md`](ui/UI_ACCEPTANCE_CHECKLIST.md)
+- [`ui/UI_SYSTEM.md`](ui/UI_SYSTEM.md)
+- [`ui/INFORMATION_ARCHITECTURE.md`](ui/INFORMATION_ARCHITECTURE.md)
+- [`ui/SCREEN_SPECIFICATIONS.md`](ui/SCREEN_SPECIFICATIONS.md)
+- [`ui/INTERACTION_STATES.md`](ui/INTERACTION_STATES.md)
+- [`ui/EDITOR_INTERACTION_SPEC.md`](ui/EDITOR_INTERACTION_SPEC.md)
+- [`ui/CANDIDATE_REVIEW_SPEC.md`](ui/CANDIDATE_REVIEW_SPEC.md)
+- [`ui/UI_ACCEPTANCE_CHECKLIST.md`](ui/UI_ACCEPTANCE_CHECKLIST.md)
 
 ## 8. 安全、测试与验收
 
@@ -99,11 +92,9 @@ M0—M3 Verified
 ## 9. 维护规则
 
 1. 功能变化同步范围、功能目录、追踪矩阵、当前任务卡和验证记录。
-2. 执行顺序变化同步路线图、任务索引、摘要、执行入口和活动任务真源。
+2. 执行顺序变化同步任务授权、Runtime、任务索引和执行入口。
 3. 数据变化同步Schema、数据字典、Migration、兼容策略和测试。
 4. IPC变化同步契约、错误码、事件、Preload和测试。
 5. Provider或Prompt变化同步协议、Eval、Registry和支持档案。
-6. UI变化同步信息架构、页面规格、交互状态、视觉基线和验收清单。
-7. 已完成任务卡和历史Evidence不得静默回写；兼容修复由新的独立维护任务承接。
-8. 被吸收任务的要求不得因取消独立执行而丢失。
-9. 文档与代码冲突时必须记录依据、影响和处理结果，禁止只改文案掩盖实现缺陷。
+6. 已Verified任务卡、Runtime、Migration和Evidence保持冻结；维护由新任务承接。
+7. 用户数据兼容不得因内部兼容层退役而削弱。

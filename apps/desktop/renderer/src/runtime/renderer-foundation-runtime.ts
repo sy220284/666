@@ -2,7 +2,6 @@ import type { CoreStatus } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import type { BridgeRequestOutcome } from '../bridge/request-lifecycle.js';
-import type { LegacyCompatibilityLoader } from '../compat/legacy-loader.js';
 import type { RendererLifecycleRegistry } from './lifecycle-registry.js';
 import {
   createRendererStartupDiagnostic,
@@ -25,7 +24,6 @@ interface RendererFoundationBridge {
 
 export interface RendererFoundationRuntimeOptions {
   readonly bridge: RendererFoundationBridge;
-  readonly legacy: LegacyCompatibilityLoader;
   readonly lifecycle: RendererLifecycleRegistry;
   readonly statuses: RendererStatusArbitrator;
   readonly rendererVersion: string;
@@ -122,30 +120,6 @@ export function createRendererFoundationRuntime(
         const bridgeFailure = failureFromCoreOutcome(core);
         if (bridgeFailure) return fail(bridgeFailure, 'bridge');
 
-        try {
-          await options.legacy.load();
-        } catch (error) {
-          return fail(
-            {
-              code: 'LEGACY_COMPATIBILITY_FAILED',
-              message: error instanceof Error ? error.message : '兼容层初始化失败。',
-              retryable: false,
-            },
-            'legacy-compatibility',
-          );
-        }
-        if (shutdownRequested) {
-          await options.legacy.dispose();
-          return fail(
-            {
-              code: 'RENDERER_START_CANCELLED',
-              message: '应用关闭过程中已取消界面启动。',
-              retryable: true,
-            },
-            'legacy-compatibility',
-          );
-        }
-
         state = 'running';
         options.statuses.publish({
           id: READY_STATUS_ID,
@@ -183,10 +157,7 @@ export function createRendererFoundationRuntime(
     disposePromise = Promise.resolve()
       .then(async () => {
         if (startPromise) await startPromise;
-        const results = await Promise.allSettled([
-          options.legacy.dispose(),
-          options.lifecycle.disposeAll(),
-        ]);
+        const results = await Promise.allSettled([options.lifecycle.disposeAll()]);
         options.statuses.clearAll();
         state = 'disposed';
         const failures = results

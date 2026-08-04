@@ -1,26 +1,25 @@
-# Renderer兼容面所有权与退出协议
+# Renderer旧兼容面退役记录
 
-## 当前入口
+## 当前结论
 
-M3-07期间，旧Renderer通过单一兼容加载器初始化一次。仍直接读取Preload Bridge的旧模块及资源所有权由`legacy-ownership.ts`登记，新增React代码不得直接接管旧DOM节点或读取`window.worldforge`。
+M3-10已经完成旧命令式Renderer退役。M10-04删除最后的空载Legacy Loader、空所有权清单及`legacy-compatibility`启动阶段；当前Renderer只有React入口和明确的生命周期注册表。
 
-## 所有权边界
+## 已退役对象
 
-| 旧模块 | 所有者 | 主要资源 | 退出任务 |
-| --- | --- | --- | --- |
-| `index.ts` | legacy-shell-and-writing | 全局事件、计时器、异步请求、Tiptap、Autosave、业务DOM | M3-10 |
-| Candidate两个Bootstrap及两个UI模块 | legacy-candidate-* | 事件、请求、Candidate DOM | M3-10 |
-| `canon-ui.ts` | legacy-canon | 事件、请求、Canon DOM | M3-09 |
-| continuity/narrative/state-proposal | legacy planning owners | 事件、请求、规划与连续性DOM | M3-09 |
-| scene-beat selector/trash guard | legacy data-tool owners | 事件、请求、数据工具DOM | M3-09 |
+- 旧`main.ts`与`entry.ts`启动入口。
+- Candidate Preview与Candidate Apply旧Bootstrap/UI模块。
+- 旧Canon、Planning、Continuity、Scene Beat工具直连模块。
+- `#legacy-root`、旧CSS入口及兼容DOM所有权。
+- `compat/legacy-loader.ts`与`compat/legacy-ownership.ts`。
 
-当前登记共11个仍直接读取Preload Bridge的Legacy模块。Bridge安全边界只允许`src/bridge/`和该显式清单继续直连；新文件未登记即失败。
+## 当前强制边界
 
-## 注销协议
+1. Renderer只能通过`src/bridge/`中的受控Adapter访问Preload Bridge。
+2. React组件不得直接读取`window.worldforge`、Node、文件系统、SQLite、环境变量或凭据。
+3. 事件监听、请求取消器、编辑器与Autosave资源必须登记到`RendererLifecycleRegistry`。
+4. 旧入口和兼容文件重新出现时，结构测试必须失败。
+5. CSS层固定为`base、layout、components、themes`，不得重新引入`#legacy-root`选择器。
 
-1. 每个迁移域建立唯一owner标识。
-2. 事件监听、计时器、请求取消器、编辑器销毁和Autosave刷新函数必须注册到生命周期注册表。
-3. 项目切换、窗口关闭或兼容面卸载时按owner执行一次清理。
-4. 清理函数必须幂等；单个清理失败不得阻止其余资源释放。
-5. React接管某一域前，先完成旧owner清理，再挂载新组件。
-6. M3-10删除旧入口前，所有清单项必须有对应迁移任务和验证结果。
+## 验证
+
+`tests/unit/renderer-startup-compatibility.test.ts`维护退役文件清单并验证旧模块不存在；Renderer Foundation测试验证并发启动单飞、Core健康门禁和资源幂等清理。

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  renderCompatibilityMirror,
-  validateSingleWorkState,
-} from '../../.github/governance/single-work-taskctl.mjs';
+import { validateSingleWorkState } from '../../.github/governance/single-work-taskctl.mjs';
 
 describe('Schema 2本地任务控制', () => {
   const authorization = {
@@ -14,35 +11,43 @@ describe('Schema 2本地任务控制', () => {
     allowDirectMainCommits: false,
     allowAdditionalBranches: false,
     maxOpenWorkPullRequests: 1,
-  };
-  const activeState = {
-    authorization: { mode: 'implementation-pr' },
-    activeTask: {
-      id: 'M8-09',
-      status: 'VERIFIED_HOLD',
-      source: 'docs/tasks/M8/M8-09_V1_STABILITY_HARDENING.md',
-      branch: 'work',
-      executionBranch: 'work',
-    },
+    mainWriteMode: 'serialized',
+    mergeMethod: 'squash',
+    verificationClosure: 'main-status',
+    workSynchronization: 'verified-reset',
   };
 
-  it('接受Schema 2授权和work兼容锚点', () => {
-    expect(validateSingleWorkState(authorization, activeState)).toEqual([]);
+  it('接受完整Schema 2授权', () => {
+    expect(validateSingleWorkState(authorization)).toEqual([]);
   });
 
-  it('拒绝任务专属分支', () => {
+  it('拒绝额外分支和非串行main写入', () => {
     expect(
-      validateSingleWorkState(authorization, {
-        ...activeState,
-        activeTask: { ...activeState.activeTask, branch: 'work/m8-09' },
+      validateSingleWorkState({
+        ...authorization,
+        allowAdditionalBranches: true,
+        mainWriteMode: 'parallel',
       }),
-    ).not.toEqual([]);
+    ).toEqual(
+      expect.arrayContaining([
+        'Additional branches must be disabled',
+        'mainWriteMode must be serialized',
+      ]),
+    );
   });
 
-  it('生成标明全局与兼容模式的镜像', () => {
-    const mirror = renderCompatibilityMirror(authorization, activeState);
-    expect(mirror).toContain('全局授权模式：`single-work-pr`');
-    expect(mirror).toContain('兼容状态机模式：`implementation-pr`');
-    expect(mirror).toContain('Work Synchronization受控重置work到main');
+  it('拒绝错误的验证关闭和work同步模式', () => {
+    expect(
+      validateSingleWorkState({
+        ...authorization,
+        verificationClosure: 'runtime-text',
+        workSynchronization: 'manual-copy',
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'verificationClosure must be main-status',
+        'workSynchronization must be verified-reset',
+      ]),
+    );
   });
 });

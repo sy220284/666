@@ -283,11 +283,8 @@ export const AiHasCredentialCommandSchema = z.strictObject({
   payload: z.strictObject({ credentialRef: CredentialRefSchema }),
 });
 
-/**
- * Central desktop bridge registry only; specialty bridge commands use their own strict schemas.
- * This schema is not the repository-wide list of every registered IPC command.
- */
-export const RegisteredCommandSchema = z.discriminatedUnion('command', [
+/** Central desktop bridge registry. Specialty bridge commands use their own strict schemas. */
+export const CentralBridgeCommandSchema = z.discriminatedUnion('command', [
   AppGetInfoCommandSchema,
   AppGetCoreStatusCommandSchema,
   AppRestartCoreCommandSchema,
@@ -362,3 +359,6 @@ export const RegisteredCommandSchema = z.discriminatedUnion('command', [
   TaskCancelCommandSchema,
   TaskListActiveCommandSchema,
 ]);
+
+/** @deprecated Use CentralBridgeCommandSchema. Kept as a V1 public compatibility alias. */
+export const RegisteredCommandSchema = CentralBridgeCommandSchema;

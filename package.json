@@ -45,7 +45,6 @@
     "task:branch-check": "node .github/governance/single-work-taskctl.mjs branch-check",
     "task:verify": "node .github/governance/single-work-taskctl.mjs validate",
     "task:verify-final": "node .github/governance/single-work-taskctl.mjs validate",
-    "task:sync": "node .github/governance/single-work-taskctl.mjs sync",
     "test:coverage": "pnpm test:prepare && vitest run --config vitest.coverage.config.ts",
     "test:quality": "node scripts/test-quality-audit.mjs"
   },

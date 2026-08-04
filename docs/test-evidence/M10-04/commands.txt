@@ -1,0 +1,12 @@
+# M10-04 Draft受检实现命令
+pnpm task:validate => success
+pnpm check:workspaces => success
+pnpm check:boundaries => success
+pnpm format:check => success
+pnpm lint => success
+pnpm typecheck => success
+Repository Governance => success
+PR Policy => success
+Task Governance => success
+Security => success
+Performance => success

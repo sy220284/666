@@ -17,15 +17,17 @@ type IsExact<A, B> =
     : false;
 
 const bridgeSurfaceIsExact: IsExact<PublicWorldforgeBridge, InternalWorldforgeBridge> = true;
+const APPROVED_RUNTIME_EXPORT_ADDITIONS = ['CentralBridgeCommandSchema'] as const;
 const BASELINE = {
   protocolVersion: 1,
   ipcChannelCount: 97,
   appCommandCount: 96,
-  runtimeExportCount: 835,
-  sha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
+  runtimeExportCount: 836,
+  legacySurfaceSha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 
-function publicSurfaceDigest(): string {
+function legacyPublicSurfaceDigest(): string {
+  const approvedAdditions = new Set<string>(APPROVED_RUNTIME_EXPORT_ADDITIONS);
   const normalized = {
     protocolVersion: publicContracts.PROTOCOL_VERSION,
     ipcChannels: Object.entries(publicContracts.IPC_CHANNELS).sort(([left], [right]) =>
@@ -34,18 +36,23 @@ function publicSurfaceDigest(): string {
     appCommands: Object.entries(publicContracts.APP_COMMANDS).sort(([left], [right]) =>
       left.localeCompare(right),
     ),
-    runtimeExports: Object.keys(publicContracts).sort(),
+    runtimeExports: Object.keys(publicContracts)
+      .filter((name) => !approvedAdditions.has(name))
+      .sort(),
   };
   return createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
 }
 
 describe('AR-08 contracts public surface', () => {
-  it('preserves the exact runtime export, command and channel baseline', () => {
+  it('preserves the legacy surface and admits only the approved central schema name', () => {
     expect(publicContracts.PROTOCOL_VERSION).toBe(BASELINE.protocolVersion);
     expect(Object.keys(publicContracts.IPC_CHANNELS)).toHaveLength(BASELINE.ipcChannelCount);
     expect(Object.keys(publicContracts.APP_COMMANDS)).toHaveLength(BASELINE.appCommandCount);
     expect(Object.keys(publicContracts)).toHaveLength(BASELINE.runtimeExportCount);
-    expect(publicSurfaceDigest()).toBe(BASELINE.sha256);
+    expect(legacyPublicSurfaceDigest()).toBe(BASELINE.legacySurfaceSha256);
+    expect(publicContracts.RegisteredCommandSchema).toBe(
+      publicContracts.CentralBridgeCommandSchema,
+    );
   });
 
   it('keeps the source compatibility root wired to the split modules', () => {
@@ -53,6 +60,9 @@ describe('AR-08 contracts public surface', () => {
     expect(sourceCompatibilityRoot.APP_COMMANDS).toBe(protocolRegistry.APP_COMMANDS);
     expect(sourceCompatibilityRoot.RegisteredCommandSchema).toBe(
       protocolRegistry.RegisteredCommandSchema,
+    );
+    expect(sourceCompatibilityRoot.CentralBridgeCommandSchema).toBe(
+      protocolRegistry.CentralBridgeCommandSchema,
     );
     expect(sourceCompatibilityRoot.AppInfoSchema).toBe(appRuntimeContracts.AppInfoSchema);
     expect(sourceCompatibilityRoot.CoreEventSchema).toBe(appRuntimeContracts.CoreEventSchema);

@@ -30,8 +30,6 @@ const governancePaths = [
   'tests/integration/',
   'docs/PROJECT_EXECUTION_ENTRY.md',
   'docs/process/',
-  'docs/tasks/ACTIVE_TASK.json',
-  'docs/tasks/ACTIVE_TASK.md',
   'docs/tasks/TASK_AUTHORIZATION.json',
   'docs/tasks/TASK_TEMPLATE.md',
 ];
@@ -68,20 +66,25 @@ async function eventPayload() {
 export function validateAuthorization(value) {
   const errors = [];
   if (value?.schemaVersion !== 2) errors.push('TASK_AUTHORIZATION must use schemaVersion 2');
-  if (value?.mode !== 'single-work-pr')
+  if (value?.mode !== 'single-work-pr') {
     errors.push('TASK_AUTHORIZATION.mode must be single-work-pr');
+  }
   if (value?.baseBranch !== 'main') errors.push('baseBranch must be main');
   if (value?.workBranch !== 'work') errors.push('workBranch must be work');
-  if (value?.allowDirectMainCommits !== false)
+  if (value?.allowDirectMainCommits !== false) {
     errors.push('Direct main commits must remain disabled');
-  if (value?.allowAdditionalBranches !== false)
+  }
+  if (value?.allowAdditionalBranches !== false) {
     errors.push('Additional branches must remain disabled');
-  if (value?.maxOpenWorkPullRequests !== 1)
+  }
+  if (value?.maxOpenWorkPullRequests !== 1) {
     errors.push('Exactly one open work pull request is allowed');
+  }
   if (value?.mainWriteMode !== 'serialized') errors.push('mainWriteMode must remain serialized');
   if (value?.mergeMethod !== 'squash') errors.push('mergeMethod must remain squash');
-  if (value?.verificationClosure !== 'main-status')
+  if (value?.verificationClosure !== 'main-status') {
     errors.push('verificationClosure must be main-status');
+  }
   if (value?.workSynchronization !== 'verified-reset') {
     errors.push('workSynchronization must be verified-reset');
   }
@@ -100,13 +103,10 @@ export function taskIdFromBody(body) {
   return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
 }
 
-export function validateRuntime(task, expectedId, { requireSchema2 = false } = {}) {
+export function validateRuntime(task, expectedId) {
   const errors = [];
-  if (![1, 2].includes(task?.schemaVersion)) {
-    errors.push(`${expectedId} runtime must use schemaVersion 1 or 2`);
-  }
-  if (requireSchema2 && task?.schemaVersion !== 2) {
-    errors.push(`${expectedId} new runtime must use schemaVersion 2`);
+  if (task?.schemaVersion !== 2) {
+    errors.push(`${expectedId} active runtime must use schemaVersion 2`);
   }
   if (task?.id !== expectedId) errors.push(`${expectedId} runtime id mismatch`);
   if (!activeStatuses.has(task?.status)) {
@@ -124,8 +124,7 @@ export function validateRuntime(task, expectedId, { requireSchema2 = false } = {
   if (!Array.isArray(task?.verification) || task.verification.length === 0) {
     errors.push(`${expectedId} runtime must declare verification commands`);
   }
-  const executionBranch = task?.executionBranch ?? task?.branch;
-  if (executionBranch !== 'work') errors.push(`${expectedId} execution branch must be work`);
+  if (task?.executionBranch !== 'work') errors.push(`${expectedId} execution branch must be work`);
   return errors;
 }
 
@@ -193,7 +192,7 @@ async function validateTaskBoundary(taskId, files) {
   const task = await loadJson(runtimePath(taskId));
   const previous = baseRuntime(taskId);
   const errors = [
-    ...validateRuntime(task, taskId, { requireSchema2: previous === null }),
+    ...validateRuntime(task, taskId),
     ...(await dependencyErrors(task)),
     ...taskChangedPathErrors(files, task),
   ];
@@ -260,12 +259,12 @@ function selfTest() {
   );
   assert.deepEqual(validatePullRequestShape({ head: 'work', base: 'main' }), []);
   assert.ok(validatePullRequestShape({ head: 'work/task', base: 'main' }).length > 0);
-  assert.equal(taskIdFromBody('<!-- worldforge-task: M10-03 -->'), 'M10-03');
+  assert.equal(taskIdFromBody('<!-- worldforge-task: M10-04 -->'), 'M10-04');
   assert.deepEqual(
     validateRuntime(
       {
         schemaVersion: 2,
-        id: 'M10-03',
+        id: 'M10-04',
         status: 'IN_PROGRESS',
         executionBranch: 'work',
         allowedPaths: ['apps/'],
@@ -273,24 +272,23 @@ function selfTest() {
         dependencies: [],
         verification: ['pnpm test'],
       },
-      'M10-03',
-      { requireSchema2: true },
+      'M10-04',
     ),
     [],
   );
   assert.ok(
     validateRuntime(
       {
-        schemaVersion: 2,
-        id: 'M10-03',
+        schemaVersion: 1,
+        id: 'M10-04',
         status: 'IN_PROGRESS',
-        executionBranch: 'work/task',
+        branch: 'work',
         allowedPaths: ['apps/'],
         forbiddenPaths: [],
         dependencies: [],
         verification: ['pnpm test'],
       },
-      'M10-03',
+      'M10-04',
     ).length > 0,
   );
   assert.equal(runtimeTransitions.has('IN_PROGRESS:IMPLEMENTED'), true);

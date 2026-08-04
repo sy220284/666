@@ -1,3 +1,7 @@
+/**
+ * Internal base contract aggregate.
+ * The package root and only supported external entry is public-index.ts via package.json exports.
+ */
 export * from './error-codes.js';
 export * from './ai-output-protocol.js';
 export * from './task-protocol.js';

@@ -15,7 +15,7 @@ WorldForge 是面向单一作者的本地优先桌面写作工作站，仓库实
 2. docs/PROJECT_EXECUTION_ENTRY.md
 3. docs/tasks/TASK_AUTHORIZATION.json
 4. docs/tasks/TASK_INDEX.md
-5. 当前任务Runtime或ACTIVE_TASK兼容锚点
+5. 当前任务Runtime
 6. 当前任务卡及其专项文档
 7. 现有代码、测试、Migration、契约和追踪状态
 ```
@@ -25,8 +25,8 @@ WorldForge 是面向单一作者的本地优先桌面写作工作站，仓库实
 - `TASK_AUTHORIZATION.json` 是分支模型、PR模型和main写入规则的全局机器真源。
 - 当前授权模式固定为 `single-work-pr`。
 - `docs/tasks/runtime/<TASK-ID>.json` 是任务状态、允许路径、禁止路径和验证命令的机器真源。
-- 新建及活动Runtime使用 `executionBranch: "work"`；已Verified Runtime中的历史来源分支保持冻结。
-- `ACTIVE_TASK.json` 与`ACTIVE_TASK.md`只承担旧状态机兼容和历史导航，不得覆盖Schema 2授权真源。
+- 新建及活动Runtime必须使用Schema 2和`executionBranch: "work"`；已Verified历史Runtime保持冻结，只允许读取。
+- `ACTIVE_TASK.json`、`ACTIVE_TASK.md`与旧`taskctl`兼容入口已经退役，不得重新引入或作为状态真源。
 - 动态任务数量、阶段和授权以真实状态文件为准，不在本文固化。
 
 ## 3. 文档权威顺序

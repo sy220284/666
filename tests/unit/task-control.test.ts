@@ -8,14 +8,11 @@ import {
   isGovernanceOnlyPullRequest,
   isPathInside,
   parseTaskIndex,
-  renderActiveTask,
   replaceTaskCardStatus,
   replaceTaskIndexStatus,
   stageClosureErrors,
   taskBranchFor,
-  validateActiveState,
   validateChangedPaths,
-  validateChangedPathsForTransition,
   verificationForTask,
 } from '../../scripts/task-control-lib.mjs';
 import { validateMainVerification } from '../../scripts/main-verification.mjs';
@@ -26,26 +23,6 @@ const indexFixture = `
 | M0-01 | [Monorepo](M0/M0-01_MONOREPO_QUALITY_CI.md) | 无 | In Progress |
 | M0-02 | [Electron](M0/M0-02_ELECTRON_CORE_LIFECYCLE.md) | M0-01 | Planned |
 `;
-
-const compatibilityState = {
-  schemaVersion: 1,
-  authorization: {
-    mode: 'implementation-pr',
-    compatibilityOnly: true,
-    executionModel: 'single-work-pr',
-    branch: 'main',
-    allowDirectMainCommits: false,
-  },
-  activeTask: {
-    id: 'M0-01',
-    status: 'IN_PROGRESS',
-    source: 'docs/tasks/M0/M0-01_MONOREPO_QUALITY_CI.md',
-    branch: 'work',
-    executionBranch: 'work',
-    allowedPaths: ['packages/'],
-    verification: ['pnpm test'],
-  },
-};
 
 describe('Schema 2共享任务控制', () => {
   it('解析任务索引并规范任务卡状态', () => {
@@ -84,68 +61,7 @@ describe('Schema 2共享任务控制', () => {
   });
 
   it('所有任务统一返回work分支', () => {
-    expect(
-      taskBranchFor({
-        source: 'docs/tasks/M3/M3-10_RENDERER_WRITING_CANDIDATE_CUTOVER.md',
-      }),
-    ).toBe('work');
-  });
-
-  it('接受Schema 2兼容锚点', () => {
-    expect(validateActiveState(compatibilityState, parseTaskIndex(indexFixture))).toEqual([]);
-  });
-
-  it('拒绝任务专属兼容分支', () => {
-    const state = {
-      ...compatibilityState,
-      activeTask: {
-        ...compatibilityState.activeTask,
-        branch: 'work/m0-01',
-        executionBranch: 'work/m0-01',
-      },
-    };
-    expect(validateActiveState(state, parseTaskIndex(indexFixture))).toContain(
-      'Active task compatibility branch must be work',
-    );
-  });
-
-  it('要求兼容状态显式声明Schema 2执行模型', () => {
-    const state = {
-      ...compatibilityState,
-      authorization: {
-        ...compatibilityState.authorization,
-        compatibilityOnly: false,
-        executionModel: 'parallel-pr',
-      },
-    };
-    expect(validateActiveState(state, parseTaskIndex(indexFixture))).toEqual(
-      expect.arrayContaining([
-        'ACTIVE_TASK authorization must be marked compatibilityOnly',
-        'ACTIVE_TASK executionModel must be single-work-pr',
-      ]),
-    );
-  });
-
-  it('转换期间使用已完成任务的路径快照', () => {
-    const state = {
-      activeTask: { id: 'M0-02', allowedPaths: ['packages/new/'], forbiddenPaths: [] },
-      lastImplementedTask: {
-        id: 'M0-01',
-        nextTaskId: 'M0-02',
-        allowedPaths: ['packages/previous/', 'docs/tasks/M0/M0-02.md'],
-        forbiddenPaths: [],
-      },
-    };
-    const baseState = {
-      activeTask: { id: 'M0-01', allowedPaths: ['stale/'], forbiddenPaths: [] },
-    };
-    expect(
-      validateChangedPathsForTransition(
-        ['packages/previous/index.ts', 'docs/tasks/M0/M0-02.md'],
-        state,
-        baseState,
-      ),
-    ).toEqual([]);
+    expect(taskBranchFor()).toBe('work');
   });
 
   it('提取任务卡路径并按依赖推进', () => {
@@ -195,13 +111,6 @@ describe('Schema 2共享任务控制', () => {
         'pnpm test:perf',
       ]),
     );
-  });
-
-  it('渲染Schema 2兼容镜像', () => {
-    const mirror = renderActiveTask(compatibilityState);
-    expect(mirror).toContain('全局分支与PR授权');
-    expect(mirror).toContain('唯一work');
-    expect(mirror).toContain('Work Synchronization受控重置work到main');
   });
 });
 

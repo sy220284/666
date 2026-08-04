@@ -3,9 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CoreStatus } from '@worldforge/contracts';
 
 import type { BridgeRequestOutcome } from '../../apps/desktop/renderer/src/bridge/request-lifecycle.js';
-import { createLegacyCompatibilityLoader } from '../../apps/desktop/renderer/src/compat/legacy-loader.js';
-import { createRendererFoundationRuntime } from '../../apps/desktop/renderer/src/runtime/renderer-foundation-runtime.js';
 import { RendererLifecycleRegistry } from '../../apps/desktop/renderer/src/runtime/lifecycle-registry.js';
+import { createRendererFoundationRuntime } from '../../apps/desktop/renderer/src/runtime/renderer-foundation-runtime.js';
 import { RendererStatusArbitrator } from '../../apps/desktop/renderer/src/runtime/status-arbitrator.js';
 
 const healthyCore = (): BridgeRequestOutcome<CoreStatus> => ({
@@ -22,12 +21,10 @@ const healthyCore = (): BridgeRequestOutcome<CoreStatus> => ({
 });
 
 describe('M3-07 renderer foundation runtime', () => {
-  it('starts bridge and legacy compatibility once for concurrent callers', async () => {
+  it('checks the bridge once for concurrent start callers', async () => {
     const getCoreStatus = vi.fn(async () => healthyCore());
-    const loadLegacy = vi.fn(async () => undefined);
     const runtime = createRendererFoundationRuntime({
       bridge: { app: { getCoreStatus }, cancelAll: vi.fn() },
-      legacy: createLegacyCompatibilityLoader(loadLegacy),
       lifecycle: new RendererLifecycleRegistry(),
       statuses: new RendererStatusArbitrator(),
       rendererVersion: '0.1.0',
@@ -39,14 +36,12 @@ describe('M3-07 renderer foundation runtime', () => {
       [{ ok: true }, { ok: true }, { ok: true }],
     );
     expect(getCoreStatus).toHaveBeenCalledTimes(1);
-    expect(loadLegacy).toHaveBeenCalledTimes(1);
     expect(runtime.state).toBe('running');
     expect(runtime.diagnostic).toBeNull();
   });
 
   it('converts contract failure metadata into a P0 startup diagnostic', async () => {
     const statuses = new RendererStatusArbitrator();
-    const loadLegacy = vi.fn(async () => undefined);
     const runtime = createRendererFoundationRuntime({
       bridge: {
         app: {
@@ -65,7 +60,6 @@ describe('M3-07 renderer foundation runtime', () => {
         },
         cancelAll: vi.fn(),
       },
-      legacy: createLegacyCompatibilityLoader(loadLegacy),
       lifecycle: new RendererLifecycleRegistry(),
       statuses,
       rendererVersion: '0.1.0',
@@ -82,13 +76,11 @@ describe('M3-07 renderer foundation runtime', () => {
         userAction: 'Update the application.',
       },
     });
-    expect(loadLegacy).not.toHaveBeenCalled();
     expect(runtime.state).toBe('failed');
     expect(statuses.current()).toMatchObject({ priority: 'P0', id: 'renderer-foundation-failed' });
   });
 
-  it('refuses a non-healthy Core before loading the legacy business surface', async () => {
-    const loadLegacy = vi.fn(async () => undefined);
+  it('refuses a non-healthy Core before entering the running state', async () => {
     const runtime = createRendererFoundationRuntime({
       bridge: {
         app: {
@@ -105,7 +97,6 @@ describe('M3-07 renderer foundation runtime', () => {
         },
         cancelAll: vi.fn(),
       },
-      legacy: createLegacyCompatibilityLoader(loadLegacy),
       lifecycle: new RendererLifecycleRegistry(),
       statuses: new RendererStatusArbitrator(),
       rendererVersion: '0.1.0',
@@ -120,18 +111,16 @@ describe('M3-07 renderer foundation runtime', () => {
         diagnosticId: 'diag-core-crashed',
       },
     });
-    expect(loadLegacy).not.toHaveBeenCalled();
+    expect(runtime.state).toBe('failed');
   });
 
-  it('cancels bridge requests and disposes legacy and registered resources once', async () => {
+  it('cancels bridge requests and disposes registered resources once', async () => {
     const cancelAll = vi.fn();
-    const disposeLegacy = vi.fn(async () => undefined);
     const cleanup = vi.fn(async () => undefined);
     const lifecycle = new RendererLifecycleRegistry();
     lifecycle.register('react-root', 'subscription:status', cleanup);
     const runtime = createRendererFoundationRuntime({
       bridge: { app: { getCoreStatus: vi.fn(async () => healthyCore()) }, cancelAll },
-      legacy: createLegacyCompatibilityLoader(async () => undefined, disposeLegacy),
       lifecycle,
       statuses: new RendererStatusArbitrator(),
       rendererVersion: '0.1.0',
@@ -142,7 +131,6 @@ describe('M3-07 renderer foundation runtime', () => {
     await Promise.all([runtime.dispose(), runtime.dispose()]);
 
     expect(cancelAll).toHaveBeenCalledTimes(1);
-    expect(disposeLegacy).toHaveBeenCalledTimes(1);
     expect(cleanup).toHaveBeenCalledTimes(1);
     expect(runtime.state).toBe('disposed');
     expect(lifecycle.size).toBe(0);

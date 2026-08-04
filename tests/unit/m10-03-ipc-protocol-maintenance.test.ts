@@ -1,6 +1,10 @@
 import { readFile } from 'node:fs/promises';
 
-import { PROTOCOL_VERSION, RegisteredCommandSchema } from '@worldforge/contracts';
+import {
+  CentralBridgeCommandSchema,
+  PROTOCOL_VERSION,
+  RegisteredCommandSchema,
+} from '@worldforge/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createIpcHandlerContext } from '../../apps/desktop/main/src/handler-guard.js';
@@ -156,12 +160,13 @@ describe('M10-03 IPC and protocol maintenance', () => {
     }
   });
 
-  it('documents RegisteredCommandSchema as the central bridge registry only', async () => {
+  it('uses an accurately named central bridge registry and retains one V1 alias', async () => {
     const registrySource = await readFile('packages/contracts/src/protocol-registry.ts', 'utf8');
-    expect(registrySource).toContain('Central desktop bridge registry only');
-    expect(registrySource).toContain('specialty bridge commands use their own strict schemas');
+    expect(registrySource).toContain('export const CentralBridgeCommandSchema');
+    expect(registrySource).toContain('RegisteredCommandSchema = CentralBridgeCommandSchema');
+    expect(RegisteredCommandSchema).toBe(CentralBridgeCommandSchema);
     expect(
-      RegisteredCommandSchema.safeParse({
+      CentralBridgeCommandSchema.safeParse({
         protocolVersion: PROTOCOL_VERSION,
         requestId,
         command: 'continuity.list',
@@ -180,8 +185,8 @@ describe('M10-03 IPC and protocol maintenance', () => {
     expect(decisions).toContain("type: 'set-lock'");
     expect(decisions).toContain('locked: boolean');
     expect(decisions).toContain('校验`expectedHash`');
-    expect(executionEntry).toContain('M10-02全量代码审计与完整矩阵基线');
-    expect(executionEntry).toContain('bb415f3da773160928efda20b877083b321601a0');
-    expect(executionEntry).toContain('M10-03 IPC与协议维护治理');
+    expect(executionEntry).toContain('M10-02审计矩阵基线');
+    expect(executionEntry).toContain('8f54dc4e5ed46d6ffca999fda29887f2302b1030');
+    expect(executionEntry).toContain('M10-04 兼容面收敛治理');
   });
 });

@@ -6,7 +6,7 @@ import { parse as parseYaml } from 'yaml';
 const repositoryFile = (path: string): URL => new URL(`../../${path}`, import.meta.url);
 
 describe('CI分层与任务命令清理', () => {
-  it('不再暴露已停用的任务状态变更命令', async () => {
+  it('不再暴露已停用的任务状态变更与兼容同步命令', async () => {
     const packageJson = JSON.parse(await readFile(repositoryFile('package.json'), 'utf8')) as {
       scripts: Record<string, string>;
     };
@@ -16,6 +16,7 @@ describe('CI分层与任务命令清理', () => {
       'task:advance',
       'task:close',
       'task:close-deferred',
+      'task:sync',
     ]) {
       expect(packageJson.scripts).not.toHaveProperty(command);
     }
@@ -24,7 +25,6 @@ describe('CI分层与任务命令清理', () => {
       'task:validate': expect.any(String),
       'task:preflight': expect.any(String),
       'task:branch-check': expect.any(String),
-      'task:sync': expect.any(String),
     });
   });
 

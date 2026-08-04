@@ -24,16 +24,22 @@ on:
           - ubuntu-24.04
           - windows-latest
           - macos-latest
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+    paths:
+      - .github/workflows/toolchain-export.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: toolchain-export-${{ inputs.source_sha }}-${{ inputs.profile }}-${{ inputs.runner }}
+  group: toolchain-export-${{ github.event_name }}-${{ github.event.pull_request.head.sha || inputs.source_sha }}
   cancel-in-progress: false
 
 jobs:
   export:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     name: export-${{ inputs.profile }}-${{ inputs.runner }}
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 30
@@ -72,3 +78,51 @@ jobs:
           path: ${{ runner.temp }}/worldforge-toolchain/
           if-no-files-found: error
           retention-days: 7
+
+  format-diagnostics:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply locked Prettier in isolated checkout
+        run: >-
+          pnpm exec prettier --write
+          scripts/check-source-structure.mjs
+          tests/unit/code-quality-governance.test.ts
+          apps/desktop/renderer/src/components/draft-flush-failure-dialog.tsx
+          apps/desktop/renderer/src/features/canon/canon-author-fields.tsx
+          apps/desktop/renderer/src/features/canon/continuity-panel.tsx
+          apps/desktop/renderer/src/features/canon/narrative-planning-panel.tsx
+          apps/desktop/renderer/src/features/checks/checks-workbench.tsx
+          apps/desktop/renderer/src/features/planning/brief/beginner-planning-questions.tsx
+          apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx
+          apps/desktop/renderer/src/features/writing/review-diff-panel.tsx
+      - name: Upload formatted complete files
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: m10-08-formatted-files-${{ github.event.pull_request.head.sha }}
+          path: |
+            scripts/check-source-structure.mjs
+            tests/unit/code-quality-governance.test.ts
+            apps/desktop/renderer/src/components/draft-flush-failure-dialog.tsx
+            apps/desktop/renderer/src/features/canon/canon-author-fields.tsx
+            apps/desktop/renderer/src/features/canon/continuity-panel.tsx
+            apps/desktop/renderer/src/features/canon/narrative-planning-panel.tsx
+            apps/desktop/renderer/src/features/checks/checks-workbench.tsx
+            apps/desktop/renderer/src/features/planning/brief/beginner-planning-questions.tsx
+            apps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx
+            apps/desktop/renderer/src/features/writing/review-diff-panel.tsx
+          if-no-files-found: error
+          retention-days: 1

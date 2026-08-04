@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-06",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md",
   "priority": "P0",
   "startedAt": "2026-08-04T17:40:00+08:00",
+  "implementedAt": "2026-08-04T17:56:00+08:00",
   "dependencies": ["M10-05"],
   "baseline": {
     "main": "78e279ebf719b7c3ae4d3a592b38e2ad681d4f1e",

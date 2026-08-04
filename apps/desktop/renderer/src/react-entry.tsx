@@ -5,7 +5,6 @@ import { createRendererApplicationController } from './app/renderer-application-
 import { RendererErrorBoundary } from './app/renderer-error-boundary.js';
 import { RendererFoundationApp } from './app/renderer-foundation-app.js';
 import { createWindowRendererBridgeAdapter } from './bridge/renderer-bridge-adapter.js';
-import { createLegacyCompatibilityLoader } from './compat/legacy-loader.js';
 import { createCoreRecoverySupervisor } from './runtime/core-recovery-supervisor.js';
 import { installGlobalRendererErrorBoundary } from './runtime/global-error-boundary.js';
 import { RendererLifecycleRegistry } from './runtime/lifecycle-registry.js';
@@ -22,7 +21,6 @@ const bridge = createWindowRendererBridgeAdapter();
 const applicationController = createRendererApplicationController();
 const lifecycle = new RendererLifecycleRegistry();
 const statuses = new RendererStatusArbitrator();
-const retiredCompatibilityBoundary = createLegacyCompatibilityLoader(async () => undefined);
 const coreRecovery = createCoreRecoverySupervisor({
   bridge,
   flushDraft: applicationController.flushPendingDraft,
@@ -30,7 +28,6 @@ const coreRecovery = createCoreRecoverySupervisor({
 const stopGlobalErrorBoundary = installGlobalRendererErrorBoundary();
 const runtime = createRendererFoundationRuntime({
   bridge,
-  legacy: retiredCompatibilityBoundary,
   lifecycle,
   statuses,
   rendererVersion: '1.0.0',

@@ -5,16 +5,18 @@ export interface Parser<Result> {
   parse(input: unknown): Result;
 }
 
+type RequestId = ReturnType<typeof globalThis.crypto.randomUUID>;
+
 export interface CommandEnvelopeOptions {
   readonly projectId?: string;
-  readonly requestId?: string;
+  readonly requestId?: RequestId;
 }
 
 export function envelope(
   command: string,
   payload: unknown,
   projectId?: string,
-  requestId = globalThis.crypto.randomUUID(),
+  requestId: RequestId = globalThis.crypto.randomUUID(),
 ): Record<string, unknown> {
   return {
     protocolVersion: PROTOCOL_VERSION,

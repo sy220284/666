@@ -148,9 +148,9 @@ export function evaluateReleaseGate({
   for (const task of tasks) {
     const runtime = runtimeById.get(task.id);
     if (runtime?.releaseBlocking === false) continue;
-    const verified = runtime
-      ? isRuntimeEffectivelyVerified(runtime, statuses)
-      : task.status === 'Verified';
+    const verified =
+      task.status === 'Verified' ||
+      (runtime ? isRuntimeEffectivelyVerified(runtime, statuses) : false);
     if (!verified) unfinished.push(`${task.id} ${runtime?.status ?? task.status}`);
   }
   if (unfinished.length > 0) {
@@ -162,14 +162,13 @@ export function evaluateReleaseGate({
 
   const latest = tasks.at(-1);
   const latestRuntime = latest ? runtimeById.get(latest.id) : undefined;
+  const latestVerified =
+    latest?.status === 'Verified' ||
+    (latestRuntime ? isRuntimeEffectivelyVerified(latestRuntime, statuses) : false);
   return {
     version,
     taskId: latest?.id ?? null,
-    taskStatus: latestRuntime
-      ? isRuntimeEffectivelyVerified(latestRuntime, statuses)
-        ? 'VERIFIED'
-        : latestRuntime.status
-      : (latest?.status ?? null),
+    taskStatus: latestVerified ? 'VERIFIED' : (latestRuntime?.status ?? latest?.status ?? null),
     errors,
   };
 }

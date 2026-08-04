@@ -23,7 +23,7 @@
     "scripts/check-source-structure.mjs",
     "scripts/check-css-quality.mjs",
     "scripts/check-sql-migrations.mjs",
-    "scripts/ci-policy.mjs",
+    "scripts/code-quality-policy.mjs",
     "docs/architecture/source-structure-baseline.json",
     "docs/architecture/CODE_QUALITY_GOVERNANCE.md",
     "docs/PROJECT_EXECUTION_ENTRY.md",
@@ -34,7 +34,6 @@
     "tests/unit/source-structure-policy.test.ts",
     "tests/unit/code-quality-governance.test.ts",
     "tests/unit/sql-migration-policy.test.ts",
-    "tests/unit/ci-policy.test.ts",
     "docs/test-evidence/M10-08/"
   ],
   "forbiddenPaths": [
@@ -53,6 +52,7 @@
     "pnpm check:boundaries",
     "pnpm format:check",
     "pnpm lint",
+    "pnpm ci:policy",
     "pnpm typecheck",
     "pnpm test:unit",
     "pnpm test:integration",

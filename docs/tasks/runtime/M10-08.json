@@ -63,5 +63,9 @@
     "pnpm build",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 316,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-08"
+  }
 }

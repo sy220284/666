@@ -10,6 +10,7 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'branch-hygiene.yml',
   'engineering-validation.yml',
   'evidence.yml',
+  'full-work-validation.yml',
   'main-verification.yml',
   'performance.yml',
   'post-merge-verification.yml',

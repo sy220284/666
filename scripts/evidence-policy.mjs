@@ -15,13 +15,13 @@ function git(argumentsList, repositoryRoot = root) {
   }).trim();
 }
 
-function changedFiles(baseSha) {
+function changedFiles(baseSha, repositoryRoot = root) {
   if (!baseSha) throw new Error('EVIDENCE_BASE_SHA is required');
   const allZero = /^0+$/u.test(baseSha);
   const argumentsList = allZero
     ? ['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', 'HEAD']
     : ['diff', '--name-only', baseSha, 'HEAD'];
-  const output = git(argumentsList);
+  const output = git(argumentsList, repositoryRoot);
   return output.split(/\r?\n/u).filter(Boolean);
 }
 
@@ -43,20 +43,24 @@ export function assertEvidenceSourceCommit(
   repositoryRoot = root,
 ) {
   if (!/^[0-9a-f]{7,40}$/u.test(sourceCommit ?? '')) {
-    throw new Error(`${taskId} evidence must reference a committed source revision`);
+    throw new Error(`${taskId} evidence must reference a committed implementation revision`);
   }
   try {
     git(['cat-file', '-e', `${sourceCommit}^{commit}`], repositoryRoot);
   } catch (error) {
-    throw new Error(`${taskId} evidence source commit does not exist`, { cause: error });
+    throw new Error(`${taskId} evidence implementation commit does not exist`, { cause: error });
   }
   try {
     git(['merge-base', '--is-ancestor', sourceCommit, expectedHead], repositoryRoot);
   } catch (error) {
-    throw new Error(`${taskId} evidence source commit is not an ancestor of the PR Head`, {
+    throw new Error(`${taskId} evidence implementation commit is not an ancestor of the PR Head`, {
       cause: error,
     });
   }
+}
+
+export function evidenceImplementationCommit(manifest) {
+  return manifest?.schemaVersion === 2 ? manifest.implementationCommit : manifest?.commit;
 }
 
 export function changedEvidenceTasks(files) {
@@ -104,14 +108,32 @@ async function regularFiles(directory, prefix = '') {
 }
 
 export function assertFinalEvidenceSemantics(taskId, manifest, documents) {
-  if (!/^[0-9a-f]{7,40}$/u.test(manifest.commit ?? '')) {
-    throw new Error(`${taskId} final evidence must reference a committed revision`);
+  const implementationCommit = evidenceImplementationCommit(manifest);
+  if (!/^[0-9a-f]{7,40}$/u.test(implementationCommit ?? '')) {
+    throw new Error(`${taskId} final evidence must reference a committed implementation revision`);
   }
   const stale =
     /working-tree|BLOCKED_BY_ENVIRONMENT|(?:^|\W)(?:BLOCKED|PENDING|DEFERRED)(?:\W|$)|人工待运行|桌面待运行|等待(?:有显示环境|implementation PR|PR|CI)|任务(?:保持|结论)[^\n]*(?:In Progress|Implemented)/imu;
   if (stale.test(documents.summary)) {
     throw new Error(`${taskId} final evidence contains stale implementation or acceptance state`);
   }
+}
+
+function validManifestMetadata(manifest, taskId) {
+  const implementationCommit = evidenceImplementationCommit(manifest);
+  const versionValid =
+    manifest.schemaVersion === 1
+      ? Object.prototype.hasOwnProperty.call(manifest, 'commit')
+      : manifest.schemaVersion === 2 &&
+        Object.prototype.hasOwnProperty.call(manifest, 'implementationCommit');
+  return (
+    versionValid &&
+    manifest.taskId === taskId &&
+    /^(?:working-tree|[0-9a-f]{7,40})$/u.test(implementationCommit ?? '') &&
+    !Number.isNaN(Date.parse(manifest.generatedAt ?? '')) &&
+    Array.isArray(manifest.files) &&
+    manifest.files.length > 0
+  );
 }
 
 export async function validateTaskEvidence(taskId, repositoryRoot = root, options = {}) {
@@ -124,18 +146,16 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
   } catch (error) {
     throw new Error(`${taskId} evidence manifest is missing or invalid`, { cause: error });
   }
-  if (
-    manifest.schemaVersion !== 1 ||
-    manifest.taskId !== taskId ||
-    !/^(?:working-tree|[0-9a-f]{7,40})$/u.test(manifest.commit ?? '') ||
-    Number.isNaN(Date.parse(manifest.generatedAt ?? '')) ||
-    !Array.isArray(manifest.files) ||
-    manifest.files.length === 0
-  ) {
+  if (!validManifestMetadata(manifest, taskId)) {
     throw new Error(`${taskId} evidence manifest metadata is invalid`);
   }
   if (options.expectedHead) {
-    assertEvidenceSourceCommit(taskId, manifest.commit, options.expectedHead, repositoryRoot);
+    assertEvidenceSourceCommit(
+      taskId,
+      evidenceImplementationCommit(manifest),
+      options.expectedHead,
+      repositoryRoot,
+    );
   }
 
   const entries = new Map();
@@ -200,20 +220,31 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
   console.log(`Evidence document gate passed for ${taskId}.`);
 }
 
-async function main() {
-  const expectedHead = assertEvidenceHead(process.env.EVIDENCE_HEAD_SHA);
-  const taskIds = changedEvidenceTasks(changedFiles(process.env.EVIDENCE_BASE_SHA));
+export async function validateChangedEvidenceAtHead({
+  repositoryRoot = root,
+  baseSha,
+  expectedHead,
+} = {}) {
+  const checkedHead = assertEvidenceHead(expectedHead, repositoryRoot);
+  const taskIds = changedEvidenceTasks(changedFiles(baseSha, repositoryRoot));
   if (taskIds.length === 0) {
-    const state = JSON.parse(await readFile('docs/tasks/ACTIVE_TASK.json', 'utf8'));
     console.log(
-      `No changed evidence documents at ${expectedHead}; final evidence is deferred for ${state.activeTask?.id ?? '<no-active-task>'}.`,
+      `No changed evidence documents at ${checkedHead}; no task Evidence package validation is required for this revision.`,
     );
-    return;
+    return [];
   }
   for (const taskId of taskIds) {
-    await validateTaskEvidence(taskId, root, { expectedHead });
+    await validateTaskEvidence(taskId, repositoryRoot, { expectedHead: checkedHead });
   }
-  console.log(`Validated ${taskIds.length} changed evidence document set(s) at ${expectedHead}.`);
+  console.log(`Validated ${taskIds.length} changed evidence document set(s) at ${checkedHead}.`);
+  return taskIds;
+}
+
+async function main() {
+  await validateChangedEvidenceAtHead({
+    baseSha: process.env.EVIDENCE_BASE_SHA,
+    expectedHead: process.env.EVIDENCE_HEAD_SHA,
+  });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

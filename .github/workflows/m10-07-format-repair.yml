@@ -1,0 +1,140 @@
+name: M10-07 Locked Format Repair
+
+on:
+  push:
+    branches: [work]
+    paths:
+      - '.github/workflows/m10-07-format-repair.yml'
+      - 'apps/desktop/renderer/src/features/writing/version-panel.tsx'
+      - 'packages/contracts/src/version.ts'
+      - 'packages/core-service/src/candidate-apply.ts'
+      - 'packages/core-service/src/candidate-integrity.ts'
+      - 'packages/core-service/src/candidate-state.ts'
+      - 'packages/core-service/src/draft-lock-guard.ts'
+      - 'packages/core-service/src/draft/draft-model.ts'
+      - 'packages/core-service/src/generation-runtime.ts'
+      - 'packages/core-service/src/import-export/import-export-model.ts'
+      - 'packages/core-service/src/recovery/backup-manifest.ts'
+      - 'packages/core-service/src/search/replace-apply.ts'
+      - 'packages/core-service/src/search/search-model.ts'
+      - 'packages/core-service/src/stable-json.ts'
+      - 'packages/core-service/src/version.ts'
+      - 'tests/integration/m10-07-candidate-undo-invariant.test.ts'
+      - 'tests/integration/m10-07-search-replace-revision.test.ts'
+      - 'tests/integration/version-service.test.ts'
+      - 'tests/unit/search-model-secondary-error.test.ts'
+      - 'tests/unit/stable-json.test.ts'
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: m10-07-locked-format-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: work
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Download verified formatter Artifact
+        env:
+          ARTIFACT_ID: '8892991829'
+          ARTIFACT_SHA256: '6b1b1f37c200e56c886ef2de77e0222abe2b3fc9bbdd8ce97290d35e748bd2e8'
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/worldforge-formatter.zip"
+          toolchain="$RUNNER_TEMP/worldforge-formatter"
+          curl --fail --location \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
+            --output "$archive"
+          echo "$ARTIFACT_SHA256  $archive" | sha256sum --check --strict
+          mkdir -p "$toolchain"
+          unzip -q "$archive" -d "$toolchain"
+          cd "$toolchain"
+          sha256sum --check --strict SHA256SUMS.txt
+          node -e "const fs=require('node:fs');const crypto=require('node:crypto');const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));const h=crypto.createHash('sha256').update(fs.readFileSync('$GITHUB_WORKSPACE/pnpm-lock.yaml')).digest('hex');if(m.profile!=='formatter'||m.toolVersions.prettier!=='3.9.5'||m.rootLockfileSha256!==h)process.exit(1)"
+          echo "TOOLCHAIN=$toolchain" >> "$GITHUB_ENV"
+      - name: Apply repository-locked Prettier
+        shell: bash
+        run: |
+          set -euo pipefail
+          prettier="$TOOLCHAIN/node_modules/prettier/bin/prettier.cjs"
+          test "$(node "$prettier" --version)" = '3.9.5'
+          targets=(
+            apps/desktop/renderer/src/features/writing/version-panel.tsx
+            packages/contracts/src/version.ts
+            packages/core-service/src/candidate-apply.ts
+            packages/core-service/src/candidate-integrity.ts
+            packages/core-service/src/candidate-state.ts
+            packages/core-service/src/draft-lock-guard.ts
+            packages/core-service/src/draft/draft-model.ts
+            packages/core-service/src/generation-runtime.ts
+            packages/core-service/src/import-export/import-export-model.ts
+            packages/core-service/src/recovery/backup-manifest.ts
+            packages/core-service/src/search/replace-apply.ts
+            packages/core-service/src/search/search-model.ts
+            packages/core-service/src/stable-json.ts
+            packages/core-service/src/version.ts
+            tests/integration/m10-07-candidate-undo-invariant.test.ts
+            tests/integration/m10-07-search-replace-revision.test.ts
+            tests/integration/version-service.test.ts
+            tests/unit/search-model-secondary-error.test.ts
+            tests/unit/stable-json.test.ts
+          )
+          node "$prettier" --config prettier.config.mjs --write "${targets[@]}"
+          node "$prettier" --config prettier.config.mjs --check \
+            'scripts/**/*.mjs' \
+            'apps/**/*.{ts,json,mjs,html,css}' \
+            'packages/**/*.{ts,json}' \
+            'tests/**/*.ts' \
+            'evals/**/*.{json,yaml,yml}' \
+            '.github/**/*.{yaml,yml,json,md}' \
+            '*.{json,yaml,yml,mjs,ts}'
+      - name: Commit exact formatter output
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'Locked formatter produced no changes.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/desktop/renderer/src/features/writing/version-panel.tsx \
+            packages/contracts/src/version.ts \
+            packages/core-service/src/candidate-apply.ts \
+            packages/core-service/src/candidate-integrity.ts \
+            packages/core-service/src/candidate-state.ts \
+            packages/core-service/src/draft-lock-guard.ts \
+            packages/core-service/src/draft/draft-model.ts \
+            packages/core-service/src/generation-runtime.ts \
+            packages/core-service/src/import-export/import-export-model.ts \
+            packages/core-service/src/recovery/backup-manifest.ts \
+            packages/core-service/src/search/replace-apply.ts \
+            packages/core-service/src/search/search-model.ts \
+            packages/core-service/src/stable-json.ts \
+            packages/core-service/src/version.ts \
+            tests/integration/m10-07-candidate-undo-invariant.test.ts \
+            tests/integration/m10-07-search-replace-revision.test.ts \
+            tests/integration/version-service.test.ts \
+            tests/unit/search-model-secondary-error.test.ts \
+            tests/unit/stable-json.test.ts
+          git commit -m '格式：应用工作流锁定Prettier结果'
+          git push origin HEAD:work

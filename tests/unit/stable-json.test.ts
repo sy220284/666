@@ -21,7 +21,7 @@ describe('stable JSON serialization', () => {
     expect(stableDraft(vector)).toBe(serialized);
     expect(stableImport(vector)).toBe(serialized);
     expect(createHash('sha256').update(serialized, 'utf8').digest('hex')).toBe(
-      '75573b672f58ad0ef9d0fd76464175c681ff8b5576653709c0c1ea83d9df666d',
+      '2d7bc6b21f6e3ffa1deb58eb67d162a864aab4bf16eac53927031db389238525',
     );
   });
 

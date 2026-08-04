@@ -7,9 +7,7 @@ const repositoryFile = (path: string): URL => new URL(`../../${path}`, import.me
 
 describe('work全量验证与依赖安全覆盖', () => {
   it('固定高危传递依赖到已修复版本', async () => {
-    const workspace = parseYaml(
-      await readFile(repositoryFile('pnpm-workspace.yaml'), 'utf8'),
-    ) as {
+    const workspace = parseYaml(await readFile(repositoryFile('pnpm-workspace.yaml'), 'utf8')) as {
       overrides: Record<string, string>;
     };
     expect(workspace.overrides).toMatchObject({

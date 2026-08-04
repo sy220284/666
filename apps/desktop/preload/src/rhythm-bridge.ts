@@ -11,12 +11,7 @@ import { contextBridge } from 'electron';
 
 import { invokeCommand, type Parser } from './bridge-runtime.js';
 
-function invoke(
-  channel: string,
-  schema: Parser<unknown>,
-  command: string,
-  payload: unknown,
-) {
+function invoke(channel: string, schema: Parser<unknown>, command: string, payload: unknown) {
   return invokeCommand(channel, schema, RhythmDashboardResultSchema, command, payload);
 }
 

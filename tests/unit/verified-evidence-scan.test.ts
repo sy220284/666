@@ -27,13 +27,12 @@ describe('verified evidence scan', () => {
   });
 
   it('excludes an Implemented runtime whose task status is absent or failed', () => {
-    expect(effectivelyVerifiedTaskIds(source, [implementedRuntime], [])).toEqual([
-      'M0-01',
-      'M1-01',
-    ]);
+    expect(
+      effectivelyVerifiedTaskIds(source, [implementedRuntime], []),
+    ).toEqual(['M0-01', 'M1-01']);
   });
 
   it('does not treat text outside task rows as a Verified task', () => {
-    expect(effectivelyVerifiedTaskIds('M2-04 is Verified in prose.', [], [])).toEqual([]);
+    expect(effectivelyVerifiedTaskIds('M2-04 is Verified in prose.')).toEqual([]);
   });
 });

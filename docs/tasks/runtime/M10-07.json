@@ -28,7 +28,6 @@
     "tests/unit/",
     "tests/integration/",
     "tests/security/",
-    ".github/workflows/pr-policy.yml",
     "docs/tasks/TASK_INDEX.md",
     "docs/tasks/M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md",
     "docs/tasks/runtime/M10-07.json",
@@ -37,6 +36,8 @@
   "forbiddenPaths": [
     "migrations/",
     "packages/prompts/",
+    ".github/workflows/",
+    ".github/governance/",
     "docs/tasks/runtime/M10-01.json",
     "docs/tasks/runtime/M10-02.json",
     "docs/tasks/runtime/M10-03.json",

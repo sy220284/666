@@ -102,7 +102,7 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add "${targets[@]}"
+          git add -f "${targets[@]}"
           git commit -m '格式：应用工作流锁定Prettier结果'
           git push origin HEAD:work
       - name: Assert clean working tree before policy validation

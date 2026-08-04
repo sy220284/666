@@ -16,6 +16,5 @@ export * from './version.js';
 export * from './recovery.js';
 export * from './import-export.js';
 export * from './protocol-registry.js';
-export * from './central-bridge-command.js';
 export * from './app-runtime-contracts.js';
 export * from './worldforge-bridge.js';

@@ -1,7 +1,7 @@
 # WorldForge 文档总索引
 
 > 基线：WorldForge V6.5  
-> 当前任务：M10-04兼容面收敛治理。
+> 当前任务：M10-04兼容面收敛治理（Implemented）。
 
 ## 1. 唯一执行入口
 
@@ -53,7 +53,7 @@ AGENTS.md
 - [`process/RELEASE_QUALIFICATION.md`](process/RELEASE_QUALIFICATION.md)：基于Runtime和提交状态的发布资格。
 - [`process/CODEX_EXECUTION_PLAYBOOK.md`](process/CODEX_EXECUTION_PLAYBOOK.md)：实施、复查与关闭规则。
 
-当前状态：M0—M9及M10-01—M10-03有效Verified；M10-04处于In Progress。
+当前状态：M0—M9及M10-01—M10-03有效Verified；M10-04处于Implemented并由PR #312执行永久门禁验证。
 
 ## 5. 架构与实现决策
 

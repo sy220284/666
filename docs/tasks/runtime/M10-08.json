@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-08",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-08_CODE_QUALITY_GOVERNANCE.md",
   "priority": "P1",
   "startedAt": "2026-08-04T22:23:00+08:00",
+  "implementedAt": "2026-08-04T23:50:00+08:00",
   "dependencies": ["M10-07"],
   "baseline": {
     "main": "21625e1e11e7c50071f0860d791e902637f0531f",

@@ -34,6 +34,6 @@ describe('verified evidence scan', () => {
   });
 
   it('does not treat text outside task rows as a Verified task', () => {
-    expect(effectivelyVerifiedTaskIds('M2-04 is Verified in prose.')).toEqual([]);
+    expect(effectivelyVerifiedTaskIds('M2-04 is Verified in prose.', [], [])).toEqual([]);
   });
 });

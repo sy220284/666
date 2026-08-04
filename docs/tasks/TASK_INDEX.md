@@ -125,7 +125,7 @@ Runtime IMPLEMENTED
 | M10-02 | [`全量代码测试与深度审计`](M10/M10-02_FULL_CODE_AUDIT.md) | M10-01 | Verified |
 | M10-03 | [`IPC与协议维护治理`](M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md) | M10-02 | Verified |
 | M10-04 | [`兼容面收敛治理`](M10/M10-04_COMPATIBILITY_CONVERGENCE.md) | M10-03 | Implemented |
-| M10-05 | [`治理闭环一致性修复`](M10/M10-05_GOVERNANCE_CLOSURE_CONSISTENCY.md) | M10-04 | In Progress |
+| M10-05 | [`治理闭环一致性修复`](M10/M10-05_GOVERNANCE_CLOSURE_CONSISTENCY.md) | M10-04 | Implemented |
 
 ## 3. 被吸收的需求来源
 

@@ -27,13 +27,7 @@ function invoke(
   command: string,
   payload: unknown,
 ): Promise<CommandResult<NarrativePlanningCatalog>> {
-  return invokeCommand(
-    channel,
-    schema,
-    NarrativePlanningCatalogResultSchema,
-    command,
-    payload,
-  );
+  return invokeCommand(channel, schema, NarrativePlanningCatalogResultSchema, command, payload);
 }
 
 const narrativePlanningBridge = {

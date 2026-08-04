@@ -2,6 +2,7 @@ import {
   createIpcHandlerContext,
   installIpcInvokeGuard,
   type IpcHandlerOptions,
+  type IpcInvokeHandler,
 } from './handler-guard.js';
 import { registerProviderIpcHandlers } from './provider-ipc-handlers.js';
 import { registerAppIpcHandlers } from './app-ipc-handlers.js';
@@ -17,9 +18,9 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
   const context = createIpcHandlerContext(options);
   const uninstallInvokeGuard = installIpcInvokeGuard(options.ipcMain, context.register);
   const guardedProviderIpcMain = {
-    handle: (channel, handler) => context.register(channel, handler),
-    removeHandler: (channel) => options.ipcMain.removeHandler(channel),
-  } as IpcHandlerOptions['ipcMain'];
+    handle: (channel: string, handler: IpcInvokeHandler) => context.register(channel, handler),
+    removeHandler: (channel: string) => options.ipcMain.removeHandler(channel),
+  } as unknown as IpcHandlerOptions['ipcMain'];
   const disposeProviderHandlers = registerProviderIpcHandlers({
     ipcMain: guardedProviderIpcMain,
     supervisor: options.supervisor,

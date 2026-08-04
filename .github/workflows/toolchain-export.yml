@@ -73,13 +73,33 @@ jobs:
           node .github/governance/toolchain-bundle.mjs export
           --profile "$TOOLCHAIN_PROFILE"
           --source-sha "$SOURCE_SHA"
+      - name: Bundle exact Node runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="${RUNNER_TEMP}/worldforge-toolchain"
+          node_bin="$(readlink -f "$(command -v node)")"
+          node_root="$(dirname "$(dirname "$node_bin")")"
+          mkdir -p "$output/runtime"
+          cp -a "$node_root" "$output/runtime/node"
+          {
+            printf '{\n'
+            printf '  "nodeVersion": "%s",\n' "$(node --version)"
+            printf '  "npmVersion": "%s",\n' "$(npm --version)"
+            printf '  "platform": "%s",\n' "$(node -p 'process.platform')"
+            printf '  "architecture": "%s"\n' "$(node -p 'process.arch')"
+            printf '}\n'
+          } > "$output/RUNTIME_MANIFEST.json"
+          test -x "$output/runtime/node/bin/node"
+          "$output/runtime/node/bin/node" --version
       - name: Assert source checkout remained clean
         run: node .github/governance/assert-clean-tree.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: worldforge-toolchain-${{ inputs.profile || 'quality' }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.source_sha || github.sha }}
+          name: worldforge-toolchain-quality-node24-${{ runner.os }}-${{ runner.arch }}-${{ inputs.source_sha || github.sha }}
           path: ${{ runner.temp }}/worldforge-toolchain/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
       - name: Stage connector-downloadable bundle
         if: github.event_name == 'push'
@@ -89,7 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           export_root=".github/toolchain-export/${SOURCE_SHA}"
-          archive_name="worldforge-toolchain-quality-linux-x64-${SOURCE_SHA}.tar.gz"
+          archive_name="worldforge-toolchain-quality-node24-linux-x64-${SOURCE_SHA}.tar.gz"
           rm -rf .github/toolchain-export
           mkdir -p "$export_root"
           tar -C "${RUNNER_TEMP}" -czf "$export_root/$archive_name" worldforge-toolchain
@@ -105,6 +125,7 @@ jobs:
               printf 'run_id=%s\n' "${GITHUB_RUN_ID}"
               printf 'source_sha=%s\n' "$SOURCE_SHA"
               printf 'profile=quality\n'
+              printf 'node_version=%s\n' "$(node --version)"
               printf 'platform=linux\n'
               printf 'architecture=x64\n'
               printf 'archive_name=%s\n' "$archive_name"
@@ -117,5 +138,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add .github/toolchain-export
-          git commit -m "临时：暂存离线质量工具链分片与运行号 [skip ci]"
+          git commit -m "临时：暂存Node24离线质量工具链 [skip ci]"
           git push origin HEAD:work

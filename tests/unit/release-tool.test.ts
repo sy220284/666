@@ -149,9 +149,7 @@ describe('release tool', () => {
       refName: 'main',
     });
 
-    expect(result.errors).toContain(
-      'Release-blocking runtimes are absent from TASK_INDEX: M8-06',
-    );
+    expect(result.errors).toContain('Release-blocking runtimes are absent from TASK_INDEX: M8-06');
   });
 
   it('allows publishing from main when all runtime statuses are successful', () => {

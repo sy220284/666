@@ -37,9 +37,9 @@ describe('SQL migration policy', () => {
   });
 
   it('enforces LF and final newline even for frozen historical migrations', () => {
-    expect(
-      validateMigrationSource('SELECT 1;', { allowHistoricalUnscopedWrites: true }),
-    ).toContain('must end with a newline');
+    expect(validateMigrationSource('SELECT 1;', { allowHistoricalUnscopedWrites: true })).toContain(
+      'must end with a newline',
+    );
     expect(validateMigrationSource('SELECT 1;\r\n')).toContain('must use LF line endings');
   });
 });

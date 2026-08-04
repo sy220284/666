@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 2,
+  "id": "M10-06",
+  "status": "IMPLEMENTED",
+  "executionBranch": "work",
+  "source": "docs/tasks/M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md",
+  "priority": "P0",
+  "startedAt": "2026-08-04T17:40:00+08:00",
+  "implementedAt": "2026-08-04T17:56:00+08:00",
+  "dependencies": ["M10-05"],
+  "baseline": {
+    "main": "78e279ebf719b7c3ae4d3a592b38e2ad681d4f1e",
+    "work": "78e279ebf719b7c3ae4d3a592b38e2ad681d4f1e"
+  },
+  "allowedPaths": [
+    ".github/governance/effective-task-status.mjs",
+    ".github/workflows/evidence.yml",
+    ".github/workflows/release.yml",
+    "scripts/release-tool.mjs",
+    "scripts/verified-evidence-scan.mjs",
+    "docs/PROJECT_EXECUTION_ENTRY.md",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/tasks/M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md",
+    "docs/tasks/runtime/M10-06.json",
+    "docs/test-evidence/M10-06/",
+    "tests/unit/"
+  ],
+  "forbiddenPaths": [
+    "apps/",
+    "packages/",
+    "migrations/",
+    "docs/tasks/runtime/M10-04.json",
+    "docs/tasks/runtime/M10-05.json",
+    "docs/test-evidence/M10-04/",
+    "docs/test-evidence/M10-05/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e"
+  ],
+  "verificationBinding": {
+    "sourcePr": 314,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-06"
+  }
+}

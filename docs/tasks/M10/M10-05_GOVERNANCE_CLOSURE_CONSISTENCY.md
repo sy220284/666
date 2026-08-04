@@ -1,6 +1,6 @@
 # M10-05 治理闭环一致性修复
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 优先级：P0  
 > 基线：`main == work == f6197ed9b3c6c01ddabd5d42f6703c289b41cbc7`
 
@@ -8,25 +8,17 @@
 
 修复 M10-04 兼容面退役后暴露的治理链残留，使 Evidence、发布资格、任务有效状态、分支卫生和合并后闭环使用同一套 Schema 2 语义。禁止恢复 `ACTIVE_TASK.json/.md` 或旧 `taskctl`。
 
-## 问题范围
+## 已实施
 
-1. Evidence 无变更路径仍读取已删除的 `ACTIVE_TASK.json`。
-2. 发布门未强制当前提交拥有 `main-verification=success`。
-3. 有效 Verified 与 TASK_INDEX 字面状态不一致，导致全量 Evidence 扫描漏项。
-4. Evidence 文档中的实现提交与 CI 精确受检 Head 语义混用。
-5. Branch Hygiene 仍对 `release/*` 保留额外分支例外。
-6. 合并完成、Main Verification 与 `work` 同步缺少统一的最终闭环判定。
-7. 权威执行入口固化活动 PR、瞬时状态和历史 SHA，合并后立即过期。
-
-## 实施原则
-
-- `.github/governance/effective-task-status.mjs` 作为有效任务状态与提交 Context 判断的唯一策略核心。
-- Evidence manifest 只绑定实现提交；CI Evidence Check 绑定精确 PR Head，二者职责分离。
-- 发布资格必须同时要求当前提交的 `main-verification` 成功。
-- 全量 Evidence 扫描读取 Runtime、索引和当前提交状态，纳入有效 Verified 任务。
-- Branch Hygiene 只保护授权中的 `main` 与 `work`。
-- Work Synchronization 完成后必须复读 `work` Ref 并断言等于已验证 `main`。
-- 权威入口只描述稳定规则；动态状态由 Runtime、开放 PR 与 Commit Status 解析。
+1. `evidence-policy.mjs` 的无 Evidence 变更路径不再读取任何已退役锚点。
+2. 发布门强制当前提交拥有 `main-verification=success`。
+3. `.github/governance/effective-task-status.mjs` 统一任务 Context 和主线 Context 判断。
+4. 全量 Evidence 扫描读取 Runtime、索引和当前提交状态，纳入有效 Verified 任务。
+5. Evidence manifest 使用 `implementationCommit`；CI Check 绑定精确 PR Head。
+6. Branch Hygiene 只保护授权中的 `main` 与 `work`，取消 `release/*` 例外。
+7. Work Synchronization 写入后复读 `work` Ref，并断言与已验证 `main` 相等。
+8. `PROJECT_EXECUTION_ENTRY` 和 `TASK_INDEX` 不再固化活动 PR、瞬时状态或当前 Head 快照。
+9. Evidence 与 Release 工作流使用最小 `statuses: read` 权限读取提交状态。
 
 ## 验收
 
@@ -38,6 +30,12 @@
 - Work Synchronization 对重置后的 Ref 执行后置断言。
 - PROJECT_EXECUTION_ENTRY 不再固化活动 PR、瞬时状态或“最新 SHA”快照。
 - Unit、Integration、Security、Performance、Evidence、Task Governance、PR Policy、Quality 全部按永久路由通过。
+
+## 当前验证
+
+实现提交 `e893677fbb037f01c70a28d12063395282fa37c0` 已通过 Draft 阶段的 Workspace、Boundaries、Format、Lint、Typecheck、Security、Performance、Evidence、Repository Governance、Task Governance 与 PR Policy。
+
+最终产品矩阵、E2E、构建和路径路由由 PR #313 的 Ready Head 执行；合并后由 `main-verification`、`task-verification/M10-05` 和 `main == work` 计算仓库闭环。
 
 ## 回退
 

@@ -73,8 +73,9 @@ jobs:
           set -euo pipefail
           pnpm install --frozen-lockfile --prefer-offline --store-dir "$STORE_DIR"
           node .github/governance/assert-clean-tree.mjs
-          test -x node_modules/electron/dist/electron
-          node -p "require('./node_modules/electron/package.json').version"
+          node -p "require('electron/package.json').version"
+          electron_path="$(node -e "process.stdout.write(require('electron'))")"
+          test -x "$electron_path"
           pnpm exec esbuild --version
           pnpm exec vitest --version
           pnpm exec playwright --version

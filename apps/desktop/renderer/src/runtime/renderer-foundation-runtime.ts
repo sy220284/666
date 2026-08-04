@@ -12,16 +12,10 @@ import {
 import type { RendererStatusArbitrator } from './status-arbitrator.js';
 
 export type RendererFoundationState =
-  | 'idle'
-  | 'starting'
-  | 'running'
-  | 'failed'
-  | 'disposing'
-  | 'disposed';
+  'idle' | 'starting' | 'running' | 'failed' | 'disposing' | 'disposed';
 
 export type RendererFoundationStartResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly diagnostic: RendererStartupDiagnostic };
+  { readonly ok: true } | { readonly ok: false; readonly diagnostic: RendererStartupDiagnostic };
 
 interface RendererFoundationBridge {
   readonly app: Pick<RendererBridgeAdapter['app'], 'getCoreStatus'>;

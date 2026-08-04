@@ -5,17 +5,20 @@
 
 ## 1. 核心原则
 
-发布资格属于仓库整体终态，不属于某一张固定任务卡。任何后续独立维护任务进入`main`后，必须完成实现、受控合并、Main Verification、Evidence绑定和最终Verified关闭，发布门才可重新放行。
+发布资格属于当前`main`的整体有效状态。任何独立维护任务进入任务索引后，在其完成受控合并、Main Verification、任务状态发布和Evidence绑定前，发布门必须保持阻断。
 
-发布门同时读取：
+发布门读取：
 
 ```text
 package.json
+TASK_AUTHORIZATION.json
 TASK_INDEX.md
-ACTIVE_TASK.json
-当前发布提交的Git历史
+docs/tasks/runtime/*.json
+当前发布提交的GitHub Commit Status
 release.yml
 ```
+
+`ACTIVE_TASK.json/.md`已经退役，不再参与发布资格。
 
 ## 2. 必须同时满足的条件
 
@@ -23,45 +26,40 @@ release.yml
 
 - 请求版本必须是严格SemVer且与`package.json`一致。
 - Release只能从`main`手工触发。
-- 发布工作流的资格检查与发布前复核都必须获取完整Git历史。
+- 发布工作流的资格检查与发布前复核必须读取当前提交状态。
 
 ### 2.2 任务终态
 
-- `TASK_INDEX.md`中全部独立任务均为`Verified`。
-- `ACTIVE_TASK.activeTask.status`必须为`VERIFIED_HOLD`。
-- `activeTask.id`、`verificationHold.taskId`和`lastVerifiedTask.id`必须一致。
-- `verificationHold.finalTask=true`且`nextTaskId=null`。
-- `verificationHold.verifiedTasks`必须无重复，并与任务索引中的全部独立任务精确一致。
+- `TASK_INDEX.md`中的每张独立任务必须有对应Runtime，或属于冻结历史任务且索引明确为Verified。
+- `releaseBlocking !== false`的Runtime必须存在于独立任务索引。
+- Schema 2 Runtime为`IMPLEMENTED`时，只有对应`task-verification/<TASK-ID>`在当前发布提交上成功，才计算为有效Verified。
+- 冻结历史Schema 1 Runtime的静态Verified记录继续只读接受，不允许作为新活动任务格式。
+- 任一In Progress、Implemented但未验证、Blocked或缺少状态绑定的任务都会阻断发布。
 
-### 2.3 延期账本
+### 2.3 提交状态
 
-以下账本必须为空：
+- 当前发布提交必须拥有成功的`main-verification`。
+- 每个当前模型下的releaseBlocking任务必须拥有成功的任务验证状态，或具备冻结历史Verified记录。
+- 状态必须属于当前发布提交，不得沿用其他分支或旧Head。
 
-```text
-deferredVerification
-deferredTasks
-```
+### 2.4 索引完整性
 
-任何延期验证、暂停任务或尚未关闭的后续维护任务都会阻断发布。
-
-### 2.4 受检提交可达性
-
-- `lastVerifiedTask.commit`必须是当前发布提交的可达祖先。
-- `lastVerifiedTask.evidenceHead`必须是当前发布提交的可达祖先。
-- 允许受检产品提交之后存在合法的治理关闭提交。
-- 不允许引用来自其他分支、已重写历史或当前发布提交不可达的Evidence来源。
+- 独立任务索引不能为空。
+- releaseBlocking Runtime不得游离于索引之外。
+- 被吸收需求来源不参与独立任务终态计算。
+- 新增任务时发布工具不得依赖固定任务编号，应通过索引和Runtime自动发现。
 
 ## 3. 典型阻断场景
 
 | 场景 | 结果 |
 |---|---|
-| M8-02已Verified，但后续M8-05为Implemented | 阻断 |
-| 全部任务Verified，但`deferredVerification`非空 | 阻断 |
-| 任务索引全部Verified，但活动状态不是`VERIFIED_HOLD` | 阻断 |
-| 最终保持任务与最近验证任务不一致 | 阻断 |
-| 最终保持清单漏掉任务或包含不存在的任务 | 阻断 |
-| Evidence提交不是当前发布提交祖先 | 阻断 |
-| 全部终态条件满足且版本、分支正确 | 放行 |
+| 索引含M10-04，但Runtime仍In Progress | 阻断 |
+| Runtime为Implemented，但任务验证状态缺失 | 阻断 |
+| 任务验证成功，但状态属于其他提交 | 阻断 |
+| releaseBlocking Runtime未登记到任务索引 | 阻断 |
+| 请求版本与`package.json`不一致 | 阻断 |
+| 非main触发Release | 阻断 |
+| 全部任务有效Verified且版本、分支正确 | 放行 |
 
 ## 4. 发布流程
 
@@ -79,16 +77,12 @@ deferredTasks
 
 ## 5. 交付边界
 
-当前发布仅供仓库所有者本人使用：
-
-- Windows、macOS、Linux便携包；
-- 不包含代码签名、公证、系统安装器和自动更新；
-- 不声明适合第三方公开分发；
-- 作品数据、数据库和备份继续与应用程序目录分离。
+当前发布仅供仓库所有者本人使用：Windows、macOS、Linux便携包；不包含代码签名、公证、系统安装器和自动更新；不声明适合第三方公开分发；作品数据、数据库和备份继续与应用程序目录分离。
 
 ## 6. 维护规则
 
-1. 新增独立任务时，不需要修改发布工具中的固定任务编号。
-2. 新任务激活后，发布门应自动因任务未Verified和非最终保持状态而阻断。
-3. 新任务治理关闭后，只有任务索引、最终保持、延期账本和提交可达性全部一致，发布门才恢复放行。
+1. 新增独立任务时，不修改发布工具中的固定任务编号。
+2. 新任务登记后，发布门自动因任务未有效Verified而阻断。
+3. Main Verification成功并发布任务验证状态后，发布资格自动恢复。
 4. 发布资格逻辑变化必须同步单元测试、本规范、开发自动化规范和任务Evidence。
+5. 不得恢复以兼容锚点或手工文本作为发布资格真源的旧设计。

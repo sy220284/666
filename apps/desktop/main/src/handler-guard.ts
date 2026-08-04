@@ -68,10 +68,7 @@ let activeInvokeGuard: ActiveInvokeGuard | null = null;
  * Direct module tests can still register against isolated IpcMain doubles when no production
  * guard is active.
  */
-export function installIpcInvokeGuard(
-  ipcMain: IpcMain,
-  register: IpcInvokeRegister,
-): () => void {
+export function installIpcInvokeGuard(ipcMain: IpcMain, register: IpcInvokeRegister): () => void {
   if (activeInvokeGuard) throw new Error('IPC_INVOKE_GUARD_ALREADY_INSTALLED');
   const installed: ActiveInvokeGuard = { ipcMain, register };
   activeInvokeGuard = installed;

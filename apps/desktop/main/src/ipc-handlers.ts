@@ -1,4 +1,8 @@
-import { createIpcHandlerContext, type IpcHandlerOptions } from './handler-guard.js';
+import {
+  createIpcHandlerContext,
+  installIpcInvokeGuard,
+  type IpcHandlerOptions,
+} from './handler-guard.js';
 import { registerProviderIpcHandlers } from './provider-ipc-handlers.js';
 import { registerAppIpcHandlers } from './app-ipc-handlers.js';
 import { registerProjectIpcHandlers } from './project-ipc-handlers.js';
@@ -11,6 +15,7 @@ import { registerTaskIpcHandlers } from './task-ipc-handlers.js';
 
 export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
   const context = createIpcHandlerContext(options);
+  const uninstallInvokeGuard = installIpcInvokeGuard(options.ipcMain, context.register);
   const disposeProviderHandlers = registerProviderIpcHandlers({
     ipcMain: options.ipcMain,
     supervisor: options.supervisor,
@@ -32,5 +37,6 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
     disposeProviderHandlers();
     context.disposeInvokeHandlers();
     disposeTaskHandlers();
+    uninstallInvokeGuard();
   };
 }

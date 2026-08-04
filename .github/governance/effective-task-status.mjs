@@ -6,6 +6,14 @@ import path from 'node:path';
 const fullShaPattern = /^[0-9a-f]{40}$/iu;
 const root = process.cwd();
 
+function git(argumentsList, repositoryRoot = root) {
+  return execFileSync('git', argumentsList, {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
 export function hasSuccessfulCommitStatus(statuses = [], context) {
   return (
     typeof context === 'string' &&
@@ -73,11 +81,7 @@ export function resolveRuntimeMergeCommit(task, headSha, repositoryRoot = root) 
   if (!fullShaPattern.test(headSha ?? '')) {
     throw new Error('Historical task verification requires a full head SHA');
   }
-  const output = execFileSync('git', ['log', headSha, '--format=%H%x09%s'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const output = git(['log', headSha, '--format=%H%x09%s'], repositoryRoot);
   const suffix = ` (#${sourcePr})`;
   const matches = output
     .split(/\r?\n/u)
@@ -91,6 +95,13 @@ export function resolveRuntimeMergeCommit(task, headSha, repositoryRoot = root) 
     throw new Error(`${task.id} source PR must resolve to exactly one controlled main commit`);
   }
   return matches[0].sha;
+}
+
+export function isCurrentPullRequestRuntime(task, baseSha, repositoryRoot = root) {
+  if (!fullShaPattern.test(baseSha ?? '') || typeof task?.id !== 'string') return false;
+  const runtimePath = `docs/tasks/runtime/${task.id}.json`;
+  const changed = git(['diff', '--name-only', baseSha, 'HEAD', '--', runtimePath], repositoryRoot);
+  return changed.split(/\r?\n/u).includes(runtimePath);
 }
 
 export function mergeCurrentAndHistoricalTaskStatuses(current = [], historical = []) {
@@ -124,16 +135,23 @@ async function loadImplementedRuntimes() {
 
 async function loadHistoricalTaskStatuses(headSha, environment) {
   const runtimes = await loadImplementedRuntimes();
-  return Promise.all(
+  const pullRequestBase = process.env.TASK_BASE_REF ?? process.env.EVIDENCE_BASE_SHA;
+  const resolved = await Promise.all(
     runtimes.map(async (task) => {
-      const mergeCommit = resolveRuntimeMergeCommit(task, headSha);
-      const statuses = await commitStatuses(mergeCommit, environment);
-      const taskContext = task.verificationBinding.taskContext;
-      const status = statuses.find((entry) => entry?.context === taskContext);
-      if (!status) throw new Error(`${task.id} source merge is missing ${taskContext}`);
-      return status;
+      try {
+        const mergeCommit = resolveRuntimeMergeCommit(task, headSha);
+        const statuses = await commitStatuses(mergeCommit, environment);
+        const taskContext = task.verificationBinding.taskContext;
+        const status = statuses.find((entry) => entry?.context === taskContext);
+        if (!status) throw new Error(`${task.id} source merge is missing ${taskContext}`);
+        return status;
+      } catch (error) {
+        if (isCurrentPullRequestRuntime(task, pullRequestBase)) return null;
+        throw error;
+      }
     }),
   );
+  return resolved.filter(Boolean);
 }
 
 export async function loadCommitStatuses(commitSha) {

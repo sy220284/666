@@ -1,10 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-import {
-  CentralBridgeCommandSchema,
-  PROTOCOL_VERSION,
-  RegisteredCommandSchema,
-} from '@worldforge/contracts';
+import { PROTOCOL_VERSION, RegisteredCommandSchema } from '@worldforge/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createIpcHandlerContext } from '../../apps/desktop/main/src/handler-guard.js';
@@ -160,10 +156,12 @@ describe('M10-03 IPC and protocol maintenance', () => {
     }
   });
 
-  it('provides a scope-accurate central bridge schema name while preserving compatibility', () => {
-    expect(CentralBridgeCommandSchema).toBe(RegisteredCommandSchema);
+  it('documents RegisteredCommandSchema as the central bridge registry only', async () => {
+    const registrySource = await readFile('packages/contracts/src/protocol-registry.ts', 'utf8');
+    expect(registrySource).toContain('Central desktop bridge registry only');
+    expect(registrySource).toContain('specialty bridge commands use their own strict schemas');
     expect(
-      CentralBridgeCommandSchema.safeParse({
+      RegisteredCommandSchema.safeParse({
         protocolVersion: PROTOCOL_VERSION,
         requestId,
         command: 'continuity.list',

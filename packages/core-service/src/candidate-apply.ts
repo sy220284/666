@@ -594,13 +594,19 @@ export class CandidateApplyService {
           JSON.stringify(auditBlocks(restored)),
           timestamp,
         );
-      database
+      const transitioned = database
         .prepare(
           `UPDATE candidate_apply_records
               SET status = 'undone', undone_revision = ?, undone_at = ?
             WHERE id = ? AND status = 'applied'`,
         )
         .run(committedRevision, timestamp, record.applyRecordId);
+      if (Number(transitioned.changes) !== 1) {
+        throw new CandidateApplyServiceError(
+          'CANDIDATE_APPLY_INVARIANT',
+          'The Candidate ApplyRecord could not transition from applied to undone.',
+        );
+      }
       return CandidateUndoOutcomeSchema.parse({
         outcome: 'undone',
         record: {

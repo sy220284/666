@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 2,
+  "id": "M10-07",
+  "status": "IMPLEMENTED",
+  "executionBranch": "work",
+  "source": "docs/tasks/M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md",
+  "priority": "P1",
+  "startedAt": "2026-08-04T20:08:00+08:00",
+  "implementedAt": "2026-08-04T21:12:00+08:00",
+  "dependencies": ["M10-06"],
+  "baseline": {
+    "main": "47bf112754a5ed28f7ede0565efeda5bb581f85e",
+    "work": "47bf112754a5ed28f7ede0565efeda5bb581f85e"
+  },
+  "allowedPaths": [
+    "packages/core-service/src/search/",
+    "packages/core-service/src/version.ts",
+    "packages/core-service/src/candidate-apply.ts",
+    "packages/core-service/src/generation-runtime.ts",
+    "packages/core-service/src/stable-json.ts",
+    "packages/core-service/src/candidate-state.ts",
+    "packages/core-service/src/candidate-integrity.ts",
+    "packages/core-service/src/draft/draft-model.ts",
+    "packages/core-service/src/draft-lock-guard.ts",
+    "packages/core-service/src/import-export/import-export-model.ts",
+    "packages/core-service/src/recovery/backup-manifest.ts",
+    "packages/contracts/src/version.ts",
+    "apps/desktop/renderer/src/features/writing/version-panel.tsx",
+    "tests/unit/",
+    "tests/integration/",
+    "tests/security/",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/tasks/M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md",
+    "docs/tasks/runtime/M10-07.json",
+    "docs/test-evidence/M10-07/"
+  ],
+  "forbiddenPaths": [
+    "migrations/",
+    "packages/prompts/",
+    ".github/workflows/",
+    ".github/governance/",
+    "docs/tasks/runtime/M10-01.json",
+    "docs/tasks/runtime/M10-02.json",
+    "docs/tasks/runtime/M10-03.json",
+    "docs/tasks/runtime/M10-04.json",
+    "docs/tasks/runtime/M10-05.json",
+    "docs/tasks/runtime/M10-06.json"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:language",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e"
+  ],
+  "verificationBinding": {
+    "sourcePr": 315,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-07"
+  }
+}

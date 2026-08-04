@@ -54,7 +54,8 @@ export interface DraftBlockRow {
   readonly projectId: string;
   readonly chapterId: string;
   readonly draftId: string;
-  readonly revision: number | bigint;
+  readonly draftRevision: number | bigint;
+  revision: number | bigint;
   readonly logicalBlockId: string;
   readonly orderKey: number | bigint;
   readonly blockType: 'paragraph' | 'dialogue' | 'heading' | 'separator';
@@ -97,7 +98,7 @@ export function derivedReplaceRequestId(requestId: string, draftId: string): str
   )}-${hash.slice(20, 32)}`;
 }
 
-export function draftAudit(blocks: readonly DraftBlockRow[], revision: number) {
+export function draftAudit(blocks: readonly DraftBlockRow[]) {
   return blocks.map((block, index) => ({
     logicalBlockId: block.logicalBlockId,
     orderKey: String((index + 1) * 1024),
@@ -107,8 +108,17 @@ export function draftAudit(blocks: readonly DraftBlockRow[], revision: number) {
     source: block.source,
     locked: Boolean(block.locked),
     contentHash: block.contentHash,
-    revision,
+    revision: numericValue(block.revision),
   }));
+}
+
+export function attachStaleMarkFailure(error: unknown, staleMarkError: unknown): void {
+  if ((typeof error !== 'object' && typeof error !== 'function') || error === null) return;
+  Object.defineProperty(error, 'staleMarkError', {
+    configurable: true,
+    enumerable: false,
+    value: staleMarkError,
+  });
 }
 
 export type EligibleReplaceItems = ReplacePlan['items'];

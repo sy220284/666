@@ -3,16 +3,10 @@ import { createHash } from 'node:crypto';
 import type { CandidateBlock, SkeletonCandidateOutput } from '@worldforge/contracts';
 
 import { draftContentHash } from './draft.js';
+import { stableJson } from './stable-json.js';
 
 export function stableCandidateSerialization(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableCandidateSerialization).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right, 'en'))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableCandidateSerialization(item)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
+  return stableJson(value);
 }
 
 export function candidateBlockContentHash(

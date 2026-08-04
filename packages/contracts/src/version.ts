@@ -92,7 +92,10 @@ export const VersionGetInputSchema = VersionChapterInputSchema.extend({
   versionId: DraftEntityIdSchema,
 }).strict();
 export const VersionSetFinalInputSchema = VersionGetInputSchema;
-export const VersionRestoreInputSchema = VersionGetInputSchema;
+export const VersionRestoreInputSchema = VersionGetInputSchema.extend({
+  expectedDraftId: DraftEntityIdSchema,
+  expectedRevision: z.number().int().nonnegative(),
+}).strict();
 
 const commandEnvelope = {
   protocolVersion: z.literal(TASK_PROTOCOL_VERSION),

@@ -35,7 +35,9 @@ export function VersionPanel({
   const readOnly = project.databaseMode !== 'read-write';
   const [versions, setVersions] = useState<readonly VersionSummary[]>([]);
   const [selected, setSelected] = useState<VersionDocument | null>(null);
-  const [status, setStatus] = useState('历史版本只读不可变；恢复会创建新的当前稿。');
+  const [status, setStatus] = useState(
+    '历史版本只读不可变；恢复前会自动留档当前稿，再创建新的当前稿。',
+  );
   const [pending, setPending] = useState(false);
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -132,15 +134,35 @@ export function VersionPanel({
   };
 
   const restore = async (versionId: string): Promise<void> => {
-    if (readOnly || !(await flush())) return;
+    if (readOnly || !(await flush())) {
+      setStatus('自动保存失败，未恢复历史版本。');
+      return;
+    }
+    setPending(true);
+    const current = await bridge.draft.open(
+      { projectId: project.projectId, chapterId: chapter.id },
+      { mode: 'replace' },
+    );
+    if (current.state !== 'success') {
+      setPending(false);
+      setStatus(
+        current.state === 'failure'
+          ? `当前稿确认失败 · ${authorErrorSummary(current.error)}`
+          : '当前稿确认已取消。',
+      );
+      return;
+    }
     const outcome = await bridge.version.restore({
       projectId: project.projectId,
       chapterId: chapter.id,
       versionId,
+      expectedDraftId: current.data.draftId,
+      expectedRevision: current.data.revision,
     });
+    setPending(false);
     if (outcome.state === 'success') {
-      onDraftReplace(outcome.data, '已从只读历史版本恢复为新当前稿。');
-      setStatus('恢复成功；原历史版本与原当前稿记录保持不变。');
+      onDraftReplace(outcome.data, '已自动留档恢复前当前稿，并从只读历史版本创建新当前稿。');
+      setStatus('恢复成功；恢复前当前稿已自动保存为可读取的历史版本。');
     } else if (outcome.state === 'failure')
       setStatus(`恢复失败 · ${authorErrorSummary(outcome.error)}`);
   };
@@ -150,7 +172,9 @@ export function VersionPanel({
       <header className="feature-card__heading">
         <div>
           <h2>历史版本与比较</h2>
-          <p>历史版本不可变；左侧为当前已保存正文，右侧为选中的历史版本。</p>
+          <p>
+            历史版本不可变；左侧为当前已保存正文，右侧为选中的历史版本。恢复前会自动留档当前稿。
+          </p>
         </div>
         <button data-close-versions type="button" onClick={onClose}>
           返回正文
@@ -180,7 +204,7 @@ export function VersionPanel({
       <div className="version-history-layout">
         <div className="version-list">
           {versions.length === 0 ? (
-            <p>还没有手动保存的历史版本。</p>
+            <p>还没有历史版本。</p>
           ) : (
             versions.map((version) => (
               <article
@@ -208,7 +232,7 @@ export function VersionPanel({
                   <button
                     data-version-action="final"
                     type="button"
-                    disabled={readOnly || version.finalized}
+                    disabled={readOnly || version.finalized || pending}
                     onClick={() => void finalize(version.versionId)}
                   >
                     设为定稿
@@ -216,7 +240,7 @@ export function VersionPanel({
                   <button
                     data-version-action="restore"
                     type="button"
-                    disabled={readOnly}
+                    disabled={readOnly || pending}
                     onClick={() => void restore(version.versionId)}
                   >
                     恢复为新当前稿
@@ -224,6 +248,7 @@ export function VersionPanel({
                   <button
                     data-version-action="export"
                     type="button"
+                    disabled={pending}
                     onClick={() =>
                       void bridge.recovery.exportVersion({
                         projectId: project.projectId,

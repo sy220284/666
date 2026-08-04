@@ -30,7 +30,10 @@ describe('code quality governance', () => {
       'pnpm check:language && pnpm check:css && pnpm check:sql && node scripts/test-quality-audit.mjs && eslint .',
     );
     expect(manifest.scripts.lint).not.toContain('--rule');
-    expect(eslintConfig).toContain("'@typescript-eslint/no-unused-vars': unusedVariablesRule");
+    expect(eslintConfig).toContain("'no-unused-vars': ['error', unusedVariablesOptions]");
+    expect(eslintConfig).toContain(
+      "'@typescript-eslint/no-unused-vars': ['error', unusedVariablesOptions]",
+    );
     expect(eslintConfig).toContain("'@typescript-eslint/no-floating-promises': 'error'");
     expect(eslintConfig).toContain('projectService: true');
   });

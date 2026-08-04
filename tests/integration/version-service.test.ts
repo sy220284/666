@@ -48,7 +48,7 @@ afterEach(async () => {
 });
 
 describe('M1-07 immutable manual Versions', () => {
-  it('creates, finalizes and restores a Version as a new active Draft', async () => {
+  it('creates, finalizes and restores a Version as a new active Draft with a recovery checkpoint', async () => {
     const value = await harness();
     try {
       const project = await value.workspace.create(
@@ -124,13 +124,59 @@ describe('M1-07 immutable manual Versions', () => {
           },
         ],
       });
+      await expect(
+        value.versions.restore(randomUUID(), {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          versionId: version.versionId,
+          expectedDraftId: changed.draftId,
+          expectedRevision: changed.revision - 1,
+        }),
+      ).rejects.toMatchObject({ code: 'VERSION_REVISION_CONFLICT' });
+      expect(
+        value.versions.list({ projectId: project.projectId, chapterId: chapter.id }).versions,
+      ).toHaveLength(1);
+
       const restored = await value.versions.restore(randomUUID(), {
         projectId: project.projectId,
         chapterId: chapter.id,
         versionId: version.versionId,
+        expectedDraftId: changed.draftId,
+        expectedRevision: changed.revision,
       });
       expect(restored.draftId).not.toBe(changed.draftId);
       expect(restored.blocks[0]!.text).toBe('首稿正文');
+      const versionsAfterRestore = value.versions.list({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+      }).versions;
+      expect(versionsAfterRestore).toHaveLength(2);
+      const recoveryVersion = versionsAfterRestore.find(
+        (candidate) => candidate.versionType === 'checkpoint',
+      );
+      expect(recoveryVersion).toMatchObject({
+        sourceDraftId: changed.draftId,
+        sourceRevision: changed.revision,
+        label: 'restore',
+      });
+      expect(recoveryVersion?.title).toContain('恢复前自动留档');
+      expect(
+        value.versions.get({
+          projectId: project.projectId,
+          chapterId: chapter.id,
+          versionId: recoveryVersion!.versionId,
+        }).blocks[0]!.text,
+      ).toBe('后续修改');
+      const restorePatch = value.workspace.readProject(project.projectId, (database) =>
+        database
+          .prepare(
+            `SELECT mutation_origin AS origin
+               FROM draft_patch_log WHERE draft_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`,
+          )
+          .get(restored.draftId) as { origin: string },
+      );
+      expect(restorePatch.origin).toBe('restore');
+
       const continued = await value.drafts.applyPatch(randomUUID(), {
         projectId: project.projectId,
         chapterId: chapter.id,
@@ -174,6 +220,8 @@ describe('M1-07 immutable manual Versions', () => {
           projectId: project.projectId,
           chapterId: chapter.id,
           versionId: randomUUID(),
+          expectedDraftId: beforeMissingRestore.draftId,
+          expectedRevision: beforeMissingRestore.revision,
         }),
       ).rejects.toMatchObject({ code: 'VERSION_NOT_FOUND' });
       await expect(
@@ -191,8 +239,11 @@ describe('M1-07 immutable manual Versions', () => {
         chapterId: chapter.id,
       });
       expect(reopened.finalVersionId).toBe(version.versionId);
-      expect(reopened.versions).toHaveLength(1);
-      expect(reopened.versions[0]).toMatchObject({
+      expect(reopened.versions).toHaveLength(2);
+      const reopenedOriginal = reopened.versions.find(
+        (candidate) => candidate.versionId === immutableSnapshot.versionId,
+      );
+      expect(reopenedOriginal).toMatchObject({
         versionId: immutableSnapshot.versionId,
         projectId: immutableSnapshot.projectId,
         chapterId: immutableSnapshot.chapterId,

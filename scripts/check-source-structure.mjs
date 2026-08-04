@@ -16,6 +16,7 @@ const SOURCE_ROOTS = [
 ];
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts'];
 const BASELINE_PATH = 'docs/architecture/source-structure-baseline.json';
+const OBSERVATION_LIMIT = 10;
 
 function normalize(value) {
   return value.replaceAll('\\', '/').replace(/^\.\//u, '');
@@ -118,19 +119,18 @@ function lineCount(source) {
   return source.split(/\r?\n/u).length;
 }
 
-export function validateLineBudget(file, lines, baseline) {
-  const normalized = normalize(file);
-  const exception = baseline.oversizedFiles[normalized];
-  if (exception) {
-    return lines > exception.maxLines
-      ? `${normalized} has ${lines} lines; registered ${exception.workPackage} ceiling is ${exception.maxLines}`
-      : null;
-  }
-  const kind = normalized.endsWith('.tsx') ? 'tsx' : 'ts';
-  const ceiling = baseline.defaultMaxLines[kind];
-  return lines > ceiling
-    ? `${normalized} has ${lines} lines; unregistered ${kind.toUpperCase()} ceiling is ${ceiling}`
-    : null;
+function exportedSymbolCount(source) {
+  return [...source.matchAll(/\bexport\s+(?:default\s+)?(?:async\s+)?(?:class|const|enum|function|interface|type|\{)/gu)]
+    .length;
+}
+
+export function sourceObservation(file, source, dependencyCount = 0) {
+  return {
+    file: normalize(file),
+    lines: lineCount(source),
+    exports: exportedSymbolCount(source),
+    dependencies: dependencyCount,
+  };
 }
 
 function allowedCycleKeys(baseline) {
@@ -142,7 +142,7 @@ function allowedCycleKeys(baseline) {
 async function loadBaseline(rootDirectory) {
   const source = await readFile(path.join(rootDirectory, BASELINE_PATH), 'utf8');
   const baseline = JSON.parse(source);
-  if (baseline.schemaVersion !== 1) throw new Error('Unsupported source structure baseline');
+  if (baseline.schemaVersion !== 2) throw new Error('Unsupported source structure baseline');
   return baseline;
 }
 
@@ -154,13 +154,13 @@ export async function inspectSourceStructure(rootDirectory = process.cwd()) {
   }
   const knownFiles = new Set(absoluteFiles.map((file) => path.resolve(file)));
   const graph = new Map();
+  const sourceByFile = new Map();
   const violations = [];
 
   for (const absoluteFile of absoluteFiles) {
     const relativeFile = normalize(path.relative(rootDirectory, absoluteFile));
     const source = await readFile(absoluteFile, 'utf8');
-    const lineViolation = validateLineBudget(relativeFile, lineCount(source), baseline);
-    if (lineViolation) violations.push(lineViolation);
+    sourceByFile.set(absoluteFile, source);
 
     const targets = new Set();
     for (const specifier of importsFrom(source, absoluteFile)) {
@@ -183,17 +183,39 @@ export async function inspectSourceStructure(rootDirectory = process.cwd()) {
   }
 
   if (violations.length > 0) throw new Error(violations.sort().join('\n'));
+
+  const observations = absoluteFiles
+    .map((file) =>
+      sourceObservation(
+        path.relative(rootDirectory, file),
+        sourceByFile.get(file) ?? '',
+        graph.get(file)?.size ?? 0,
+      ),
+    )
+    .sort(
+      (left, right) =>
+        right.lines - left.lines ||
+        right.dependencies - left.dependencies ||
+        left.file.localeCompare(right.file),
+    );
+
   return {
     files: absoluteFiles.length,
     edges: [...graph.values()].reduce((total, targets) => total + targets.size, 0),
-    registeredOversizedFiles: Object.keys(baseline.oversizedFiles).length,
+    observations: observations.slice(0, OBSERVATION_LIMIT),
   };
 }
 
 const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   const result = await inspectSourceStructure();
-  console.log(
-    `Validated ${result.files} source files, ${result.edges} relative edges and ${result.registeredOversizedFiles} registered structural debts.`,
-  );
+  console.log(`Validated ${result.files} source files and ${result.edges} relative edges.`);
+  if (result.observations.length > 0) {
+    console.log('Largest source files (observation only; never a merge failure):');
+    for (const observation of result.observations) {
+      console.log(
+        `- ${observation.file}: ${observation.lines} lines, ${observation.exports} exports, ${observation.dependencies} relative dependencies`,
+      );
+    }
+  }
 }

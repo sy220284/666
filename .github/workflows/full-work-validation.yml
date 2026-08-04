@@ -52,14 +52,32 @@ jobs:
       - name: Assert clean validation checkout
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Resolve validation commit identities
+        id: validation
+        shell: bash
+        env:
+          PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse HEAD)"
+          base_sha="${PULL_REQUEST_BASE_SHA:-$head_sha}"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
       - name: Audit permanent automation inventory
         run: node .github/governance/automation-layout-policy.mjs
       - name: Validate Schema 2 task authorization
         run: pnpm task:validate
       - name: Validate workflow and CI policies
         run: pnpm ci:policy
-      - name: Validate evidence policy
-        run: pnpm ci:evidence
+      - name: Validate changed task evidence documents
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          EVIDENCE_BASE_SHA: ${{ steps.validation.outputs.base_sha }}
+          EVIDENCE_HEAD_SHA: ${{ steps.validation.outputs.head_sha }}
+        run: node scripts/evidence-policy.mjs
+      - name: Validate all Verified task evidence documents
+        if: ${{ github.event_name != 'pull_request' }}
+        run: node scripts/verified-evidence-scan.mjs
       - name: Self-test main verification wait behavior
         run: node .github/governance/main-verification-wait.self-test.mjs
       - name: Audit native main-branch protection

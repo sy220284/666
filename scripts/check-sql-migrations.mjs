@@ -19,17 +19,13 @@ function statements(source) {
     .filter(Boolean);
 }
 
-export function validateMigrationSource(
-  source,
-  { allowHistoricalUnscopedWrites = false } = {},
-) {
+export function validateMigrationSource(source, { allowHistoricalUnscopedWrites = false } = {}) {
   const violations = [];
   if (!source.endsWith('\n')) violations.push('must end with a newline');
   if (source.includes('\r')) violations.push('must use LF line endings');
   if (/\t/u.test(source)) violations.push('must not contain tab indentation');
 
-  const allowUnscopedWrite =
-    allowHistoricalUnscopedWrites || source.includes(ALLOW_UNSCOPED_WRITE);
+  const allowUnscopedWrite = allowHistoricalUnscopedWrites || source.includes(ALLOW_UNSCOPED_WRITE);
   for (const statement of statements(source)) {
     if (/^DELETE\s+FROM\s+["`\[]?[A-Za-z_][\w$]*["`\]]?$/iu.test(statement)) {
       if (!allowUnscopedWrite) {

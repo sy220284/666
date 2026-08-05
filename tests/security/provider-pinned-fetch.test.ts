@@ -50,9 +50,9 @@ describe('M10-11 Provider pinned transport', () => {
 
     const origin = `http://provider.local:${address.port}`;
     const transport = createPinnedProviderFetch(binding(origin, 'provider.local'));
-    await expect(transport(`${origin}/v1/models`).then((response) => response.text())).resolves.toBe(
-      'bound',
-    );
+    await expect(
+      transport(`${origin}/v1/models`).then((response) => response.text()),
+    ).resolves.toBe('bound');
     expect(receivedHost).toBe(`provider.local:${address.port}`);
   });
 

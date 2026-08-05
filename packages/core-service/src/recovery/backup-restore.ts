@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -15,59 +15,89 @@ import {
   hashFile,
   isMissing,
   readBackupMetadata,
-  safeName,
   verifyDatabase,
   type RecoveryRuntime,
 } from './backup-manifest.js';
+import { safeFileName, safePathComponent } from './path-name.js';
 
-function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll('"', '""')}"`;
+interface RestoreRequestRecord {
+  readonly schemaVersion: 1;
+  readonly requestId: string;
+  readonly sourceProjectId: string;
+  readonly backupId: string;
+  readonly restoredProjectId: string;
+}
+
+function restoreRequestRecord(raw: unknown): RestoreRequestRecord | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  if (
+    value.schemaVersion !== 1 ||
+    typeof value.requestId !== 'string' ||
+    typeof value.sourceProjectId !== 'string' ||
+    typeof value.backupId !== 'string' ||
+    typeof value.restoredProjectId !== 'string'
+  ) {
+    return null;
+  }
+  return value as unknown as RestoreRequestRecord;
 }
 
 export function remapProjectIdentity(
   databasePath: string,
-  previousProjectId: string,
+  sourceProjectId: string,
   nextProjectId: string,
   nextName: string,
-  timestamp: string,
+  restoredAt: string,
 ): void {
   const database = new DatabaseSync(databasePath, {
     allowExtension: false,
-    enableForeignKeyConstraints: false,
+    enableForeignKeyConstraints: true,
     readBigInts: true,
   });
   try {
-    database.exec('PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE');
-    const tables = database
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-      .all()
-      .map((row) => String(row.name));
-    for (const table of tables) {
-      const references = database
-        .prepare(`PRAGMA foreign_key_list(${quoteIdentifier(table)})`)
-        .all();
-      for (const reference of references) {
-        if (String(reference.table) !== 'projects' || String(reference.to) !== 'id') continue;
-        const column = String(reference.from);
-        database
-          .prepare(
-            `UPDATE ${quoteIdentifier(table)} SET ${quoteIdentifier(column)} = ? WHERE ${quoteIdentifier(column)} = ?`,
-          )
-          .run(nextProjectId, previousProjectId);
+    database.exec('PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;');
+    try {
+      const project = database
+        .prepare('SELECT id FROM projects WHERE id = ?')
+        .get(sourceProjectId) as { id: string } | undefined;
+      if (!project) {
+        throw new RecoveryServiceError(
+          'RESTORE_SOURCE_INVALID',
+          'The checkpoint does not contain the expected project.',
+        );
       }
+      database
+        .prepare('UPDATE projects SET id = ?, name = ?, updated_at = ? WHERE id = ?')
+        .run(nextProjectId, nextName, restoredAt, sourceProjectId);
+      for (const table of [
+        'volumes',
+        'entities',
+        'project_briefs',
+        'continuation_state',
+        'backup_records',
+        'backup_failures',
+        'backup_policies',
+        'replace_plans',
+        'search_index_state',
+        'project_dictionary',
+      ]) {
+        database
+          .prepare(`UPDATE ${table} SET project_id = ? WHERE project_id = ?`)
+          .run(nextProjectId, sourceProjectId);
+      }
+      database.exec('COMMIT; PRAGMA foreign_keys = ON;');
+      if (database.prepare('PRAGMA foreign_key_check').all().length > 0) {
+        throw new RecoveryServiceError(
+          'RESTORE_VERIFY_FAILED',
+          'The restored project references are invalid.',
+        );
+      }
+    } catch (error) {
+      if (database.isTransaction) database.exec('ROLLBACK');
+      database.exec('PRAGMA foreign_keys = ON;');
+      throw error;
     }
-    const changed = database
-      .prepare('UPDATE projects SET id = ?, name = ?, created_at = ?, updated_at = ? WHERE id = ?')
-      .run(nextProjectId, nextName, timestamp, timestamp, previousProjectId);
-    if (Number(changed.changes) !== 1) throw new Error('PROJECT_ID_REMAP_FAILED');
-    if (database.prepare('PRAGMA foreign_key_check').all().length > 0) {
-      throw new Error('PROJECT_ID_REMAP_FOREIGN_KEY_FAILED');
-    }
-    database.exec('COMMIT');
-    database.exec('PRAGMA foreign_keys = ON');
-  } catch (error) {
-    if (database.isTransaction) database.exec('ROLLBACK');
-    throw error;
   } finally {
     database.close();
   }
@@ -78,6 +108,66 @@ export class BackupRestoreOperations {
 
   constructor(runtime: RecoveryRuntime) {
     this.#runtime = runtime;
+  }
+
+  async #replayExisting(
+    requestId: string,
+    input: RecoveryRestoreInput,
+    target: string,
+  ): Promise<RecoveryRestoredProject | null> {
+    try {
+      const details = await lstat(target);
+      if (!details.isDirectory()) {
+        throw new RecoveryServiceError(
+          'RESTORE_TARGET_CONFLICT',
+          'The recovery target already exists and is not a project directory.',
+        );
+      }
+    } catch (error) {
+      if (isMissing(error)) return null;
+      if (error instanceof RecoveryServiceError) throw error;
+      throw new RecoveryServiceError(
+        'RESTORE_TARGET_CONFLICT',
+        'The recovery target could not be inspected.',
+        { cause: error },
+      );
+    }
+
+    let replay: RestoreRequestRecord | null = null;
+    try {
+      replay = restoreRequestRecord(
+        JSON.parse(await readFile(path.join(target, 'restore-request.json'), 'utf8')) as unknown,
+      );
+    } catch {
+      replay = null;
+    }
+    if (
+      !replay ||
+      replay.requestId !== requestId ||
+      replay.sourceProjectId !== input.projectId ||
+      replay.backupId !== input.backupId ||
+      replay.restoredProjectId !== requestId
+    ) {
+      throw new RecoveryServiceError(
+        'RESTORE_TARGET_CONFLICT',
+        'The recovery target belongs to a different restore request.',
+      );
+    }
+
+    try {
+      const registered = await this.#runtime.workspace.registerRecoveredWorkspace(requestId, target);
+      return RecoveryRestoredProjectSchema.parse({
+        ...registered,
+        sourceProjectId: input.projectId,
+        backupId: input.backupId,
+      });
+    } catch (error) {
+      throw new RecoveryServiceError(
+        'RESTORE_VERIFY_FAILED',
+        'The completed recovery target could not be reopened safely.',
+        { cause: error },
+      );
+    }
   }
 
   async restoreCheckpoint(
@@ -122,22 +212,19 @@ export class BackupRestoreOperations {
     }
 
     const parent = await existingWritableDirectory(targetParentDirectory);
-    const nextProjectId = this.#runtime.idFactory();
+    const nextProjectId = requestId;
     const restoredAt = this.#runtime.clock.now().toISOString();
     const nextName = `${sourceProject.name}（恢复副本）`.slice(0, 240);
-    const directoryName = `${safeName(sourceProject.name)}-恢复-${input.backupId.slice(0, 8)}.worldforge`;
+    const directoryName = safeFileName(
+      `${safePathComponent(sourceProject.name, 140)}-恢复-${requestId.slice(0, 8)}`,
+      '.worldforge',
+    );
     const target = path.join(parent, directoryName);
-    const staging = path.join(parent, `.${directoryName}.restore-${this.#runtime.idFactory()}`);
-    try {
-      await lstat(target);
-      throw new RecoveryServiceError(
-        'RESTORE_TARGET_CONFLICT',
-        'The recovery target already exists.',
-      );
-    } catch (error) {
-      if (error instanceof RecoveryServiceError) throw error;
-      if (!isMissing(error)) throw error;
-    }
+    const replayed = await this.#replayExisting(requestId, input, target);
+    if (replayed) return replayed;
+
+    const staging = path.join(parent, `.${directoryName}.restore-${requestId}`);
+    await rm(staging, { recursive: true, force: true });
     const requiredBytes = BigInt(metadata.sizeBytes) * 2n + 1_048_576n;
     if ((await this.#runtime.freeBytes(parent)) < requiredBytes) {
       throw new RecoveryServiceError(
@@ -173,12 +260,25 @@ export class BackupRestoreOperations {
           flag: 'wx',
         },
       );
+      const replayRecord: RestoreRequestRecord = {
+        schemaVersion: 1,
+        requestId,
+        sourceProjectId: input.projectId,
+        backupId: input.backupId,
+        restoredProjectId: nextProjectId,
+      };
+      await writeFile(
+        path.join(staging, 'restore-request.json'),
+        `${JSON.stringify(replayRecord, null, 2)}\n`,
+        {
+          encoding: 'utf8',
+          mode: 0o600,
+          flag: 'wx',
+        },
+      );
       await rename(staging, target);
       targetCreated = true;
-      const registered = await this.#runtime.workspace.registerRecoveredWorkspace(
-        requestId,
-        target,
-      );
+      const registered = await this.#runtime.workspace.registerRecoveredWorkspace(requestId, target);
       return RecoveryRestoredProjectSchema.parse({
         ...registered,
         sourceProjectId: input.projectId,

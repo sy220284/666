@@ -19,6 +19,8 @@ AGENTS.md
 
 代码格式、结构与维护性治理必须同步读取 [`architecture/CODE_QUALITY_GOVERNANCE.md`](architecture/CODE_QUALITY_GOVERNANCE.md)。文件行数只作为观察指标，不参与合并资格；结构判断统一依据职责内聚、依赖方向、状态所有权、事务边界和公共接口。
 
+在当前ChatGPT持久化工作空间中执行工具安装、离线恢复、格式化、Lint、TypeScript、Vitest、Playwright、Electron或全仓验证时，必须同步读取 [`architecture/CURRENT_WORKSPACE_TOOLCHAIN.md`](architecture/CURRENT_WORKSPACE_TOOLCHAIN.md)。该文档只约束`/mnt/data`工作空间资产，不替代仓库锁文件和永久工作流。
+
 ## 2. 动态状态解析
 
 本文件不固化活动PR、瞬时任务状态或“最新提交SHA”。每次工作开始时必须从真实仓库状态解析：
@@ -91,7 +93,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - `.github/governance/effective-task-status.mjs`是任务有效状态与提交Context判定的策略核心。
 - Draft Evidence校验文件完整性、Hash和来源提交；Ready Evidence必须绑定当前任务最新实现提交。
 - Ready Head中`implementationCommit`之后只允许当前任务卡、当前Runtime、`TASK_INDEX.md`和当前任务Evidence目录；产品代码、测试、脚本、配置、工作流或跨任务Evidence后移必须阻断。
-- Evidence manifest不预写未来Squash SHA；Evidence CI Check绑定精确PR Head，最终main与任务Verified由提交状态证明。
+- Evidence manifest不预写未来Squash SHA；Evidence CI Check绑定精确PR Head，最终main与任务Verified由提交状态证明闭环。
 - 发布资格必须读取当前main提交的`main-verification`和任务状态。
 - Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
 - Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。
@@ -114,3 +116,17 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - CSS与SQL使用高置信静态检查，不能替代运行测试和Migration测试。
 - 循环依赖、反向依赖、Feature私有穿透、深层导入绕过公共入口和多写入真源继续阻断。
 - 文件行数、导出数量和依赖数量只报告、不阻断；不得为了缩短文件机械拆散完整功能。
+
+## 8. 当前ChatGPT工作空间工具链
+
+`docs/architecture/CURRENT_WORKSPACE_TOOLCHAIN.md`是当前ChatGPT持久化工作空间内666工具资产、绝对存储位置、激活命令、依赖恢复、浏览器替代路径、验证命令和更新规则的专项权威文档。
+
+固定入口：
+
+```bash
+source /mnt/data/activate-666-tools.sh
+/mnt/data/restore-666-workspace-dependencies.sh /path/to/666
+/mnt/data/verify-project-tools.sh full
+```
+
+使用前必须确认目标仓库`pnpm-lock.yaml`与离线依赖快照一致。锁文件不匹配时重新通过GitHub Actions导出，禁止强制挂载旧依赖或修改锁文件迎合缓存。

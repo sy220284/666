@@ -1,7 +1,4 @@
-import {
-  request as httpRequest,
-  type IncomingHttpHeaders,
-} from 'node:http';
+import { request as httpRequest, type IncomingHttpHeaders } from 'node:http';
 import {
   request as httpsRequest,
   type RequestOptions as HttpsRequestOptions,
@@ -9,10 +6,7 @@ import {
 import { isIP } from 'node:net';
 import { Readable } from 'node:stream';
 
-import type {
-  ProviderEndpointBinding,
-  ProviderResolvedAddress,
-} from './provider-endpoint.js';
+import type { ProviderEndpointBinding, ProviderResolvedAddress } from './provider-endpoint.js';
 import { ProviderRuntimeError } from './provider-errors.js';
 
 export interface ProviderPinnedFetchOptions {
@@ -34,7 +28,9 @@ function requestUrl(input: string | URL | Request): URL {
   return new URL(input);
 }
 
-async function requestBody(body: BodyInit | null | undefined): Promise<string | Uint8Array | undefined> {
+async function requestBody(
+  body: BodyInit | null | undefined,
+): Promise<string | Uint8Array | undefined> {
   if (body === null || body === undefined) return undefined;
   if (typeof body === 'string') return body;
   if (body instanceof URLSearchParams) return body.toString();

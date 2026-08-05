@@ -67,6 +67,11 @@ interface Execution {
   readonly completion: Promise<void>;
 }
 
+interface CancellationBarrier {
+  readonly decision: Promise<boolean>;
+  readonly resolve: (cancelled: boolean) => void;
+}
+
 interface GenerationLifecycleResult {
   readonly candidateIds: readonly string[];
   readonly resultRefs: readonly GenerationResultRef[];
@@ -116,10 +121,19 @@ function validateRequest(run: GenerationRun, request: GenerationRequest): Genera
   return parsed;
 }
 
+function cancellationBarrier(): CancellationBarrier {
+  let resolve!: (cancelled: boolean) => void;
+  const decision = new Promise<boolean>((resolveDecision) => {
+    resolve = resolveDecision;
+  });
+  return { decision, resolve };
+}
+
 export class GenerationRuntime {
   readonly #runs: GenerationRunService;
   readonly #tasks: TaskProtocol;
   readonly #executions = new Map<string, Execution>();
+  readonly #cancellations = new Map<string, CancellationBarrier>();
 
   constructor(runs: GenerationRunService, tasks: TaskProtocol) {
     this.#runs = runs;
@@ -127,7 +141,9 @@ export class GenerationRuntime {
   }
 
   async startProse(input: StartProseGenerationInput): Promise<StartedGeneration> {
-    const run = await this.#runs.create(input.requestId, input.run);
+    const creation = await this.#runs.createWithReplay(input.requestId, input.run);
+    const run = creation.run;
+    if (creation.replayed) return { run, taskId: run.taskId };
     const task = this.#startTask(run);
     const completion = this.#executeLifecycle(run, task, {
       provider: input.provider,
@@ -167,7 +183,9 @@ export class GenerationRuntime {
   }
 
   async startStructured(input: StartStructuredGenerationInput): Promise<StartedGeneration> {
-    const run = await this.#runs.create(input.requestId, input.run);
+    const creation = await this.#runs.createWithReplay(input.requestId, input.run);
+    const run = creation.run;
+    if (creation.replayed) return { run, taskId: run.taskId };
     const task = this.#startTask(run);
     const completion = this.#executeLifecycle(run, task, {
       provider: input.provider,
@@ -191,24 +209,43 @@ export class GenerationRuntime {
     requestId: string,
     input: { readonly projectId: string; readonly runId: string },
   ): Promise<GenerationRun> {
-    this.#runs.get(input);
-    const execution = this.#executions.get(input.runId);
-    if (execution) {
-      try {
-        this.#tasks.cancel(execution.taskId, input.projectId);
-      } catch (error) {
-        if (!(error instanceof TaskProtocolError)) throw error;
-        if (error.code === 'TASK_NOT_CANCELLABLE_001') throw error;
-      }
+    const current = this.#runs.get(input);
+    if (current.stage === 'saving_candidate') {
+      throw new TaskProtocolError(
+        'TASK_NOT_CANCELLABLE_001',
+        'The task is in an atomic stage that cannot be cancelled.',
+      );
     }
+    const execution = this.#executions.get(input.runId);
     const snapshot = execution
       ? this.#tasks.getSnapshot(execution.taskId, input.projectId)
       : undefined;
-    return this.#runs.cancel(
-      requestId,
-      input,
-      snapshot?.previewTruncated ? undefined : snapshot?.previewText,
-    );
+    const barrier = cancellationBarrier();
+    this.#cancellations.set(input.runId, barrier);
+    try {
+      const cancelled = await this.#runs.cancel(
+        requestId,
+        input,
+        snapshot?.previewTruncated ? undefined : snapshot?.previewText,
+      );
+      barrier.resolve(true);
+      if (execution) {
+        try {
+          this.#tasks.cancel(execution.taskId, input.projectId);
+        } catch (error) {
+          if (!(error instanceof TaskProtocolError)) throw error;
+          if (error.code === 'TASK_NOT_CANCELLABLE_001') throw error;
+        }
+      }
+      return cancelled;
+    } catch (error) {
+      barrier.resolve(false);
+      throw error;
+    } finally {
+      if (this.#cancellations.get(input.runId) === barrier) {
+        this.#cancellations.delete(input.runId);
+      }
+    }
   }
 
   #startTask(run: GenerationRun): RunningTask {
@@ -230,6 +267,10 @@ export class GenerationRuntime {
     this.#trimExecutions();
   }
 
+  async #cancelled(runId: string): Promise<boolean> {
+    return (await this.#cancellations.get(runId)?.decision) ?? false;
+  }
+
   async #executeLifecycle<Prepared>(
     initialRun: GenerationRun,
     task: RunningTask,
@@ -238,10 +279,12 @@ export class GenerationRuntime {
     let text = '';
     let usage: GenerationUsage = {};
     try {
+      if (await this.#cancelled(initialRun.runId)) return;
       await this.#runs.markRunning(randomUUID(), {
         projectId: initialRun.projectId,
         runId: initialRun.runId,
       });
+      if (await this.#cancelled(initialRun.runId)) return;
       task.setStage('calling_model', '正在请求模型');
       await this.#runs.markStage(randomUUID(), {
         projectId: initialRun.projectId,
@@ -251,6 +294,7 @@ export class GenerationRuntime {
       const request = validateRequest(initialRun, input.requestFor(initialRun.runId));
       let completed = false;
       for await (const event of input.provider.generate(request, task.signal)) {
+        if (await this.#cancelled(initialRun.runId)) return;
         switch (event.type) {
           case 'connected':
             task.setStage('receiving_output', '正在接收模型输出');
@@ -284,6 +328,7 @@ export class GenerationRuntime {
             break;
         }
       }
+      if (await this.#cancelled(initialRun.runId)) return;
       if (task.signal.aborted) return;
       if (!completed) {
         throw Object.assign(new Error('The Provider stream ended without completion.'), {
@@ -303,7 +348,9 @@ export class GenerationRuntime {
         runId: initialRun.runId,
         stage: 'parsing_output',
       });
+      if (await this.#cancelled(initialRun.runId)) return;
       const prepared = await input.prepare(text);
+      if (await this.#cancelled(initialRun.runId)) return;
       task.setStage('saving_candidate', '正在保存候选', { cancellable: false });
       await this.#runs.markStage(randomUUID(), {
         projectId: initialRun.projectId,
@@ -315,6 +362,7 @@ export class GenerationRuntime {
       for (const resultRef of result.resultRefs) task.saveResult(resultRef);
       task.completeResults(result.resultRefs);
     } catch (error) {
+      if (await this.#cancelled(initialRun.runId)) return;
       if (task.signal.aborted) return;
       const mapped = runtimeError(error);
       try {

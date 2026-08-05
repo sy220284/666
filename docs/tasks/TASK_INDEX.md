@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-08，共53张独立任务卡。  
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-09，共54张独立任务卡。  
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -129,6 +129,7 @@ Runtime IMPLEMENTED
 | M10-06 | [`历史验证状态继承`](M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md) | M10-05 | Implemented |
 | M10-07 | [`正文变更与恢复安全收口`](M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md) | M10-06 | Implemented |
 | M10-08 | [`全量代码规范与结构原则治理`](M10/M10-08_CODE_QUALITY_GOVERNANCE.md) | M10-07 | Implemented |
+| M10-09 | [`Evidence收口与自动合并竞态治理`](M10/M10-09_EVIDENCE_CLOSURE_RACE.md) | M10-08 | In Progress |
 
 ## 3. 被吸收的需求来源
 
@@ -162,7 +163,7 @@ Runtime IMPLEMENTED
 2. 一个`work → main` PR完成永久门禁、合并、Main Verification和Work Synchronization后，才能启动下一任务。
 3. 已Verified历史任务、Migration和Evidence保持冻结。
 4. 任一releaseBlocking任务未有效Verified，或当前main缺少`main-verification`，发布资格必须拒绝。
-5. Evidence manifest绑定实现提交；Evidence CI Check绑定精确PR Head。
+5. Ready Evidence manifest绑定当前任务最新实现提交；该提交之后只允许当前任务卡、Runtime、`TASK_INDEX.md`和当前任务Evidence收口，Evidence CI Check绑定精确PR Head。
 6. 分支长期只允许`main`与`work`，不存在`release/*`例外。
 7. 历史Implemented任务必须从其来源PR对应主线提交继承任务Context，禁止借用当前main上的其他任务Context。
 8. 文件行数只作为观察指标；结构门禁依据循环依赖、跨层方向、Feature边界和状态所有权，禁止机械拆分完整功能。

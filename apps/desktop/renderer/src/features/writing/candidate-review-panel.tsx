@@ -15,6 +15,7 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { refreshCandidateGenerationRun } from './candidate-generation-refresh.js';
 import { CandidateReviewDisplay } from './candidate-review-display.js';
 import {
   buildCandidateSelection,
@@ -168,44 +169,22 @@ export function CandidateReviewPanel({
     };
   }, [bridge, loadCandidate, refreshList]);
 
-  const refreshActiveRun = useCallback(async (): Promise<void> => {
-    if (!activeRun) return;
-    const epoch = generationEpoch.current;
-    const runId = activeRun.runId;
-    const isCurrent = (): boolean => generationEpoch.current === epoch;
-    const outcome = await bridge.generation.getRun(project.projectId, runId);
-    if (!isCurrent()) return;
-    if (outcome.state !== 'success') {
-      setActiveTaskId(null);
-      return;
-    }
-    setActiveRun(outcome.data);
-    setGenerationStatus(
-      `${outcome.data.stage} · ${outcome.data.status}${
-        outcome.data.outputTokens === null ? '' : ` · 输出 ${outcome.data.outputTokens} tokens`
-      }`,
-    );
-    if (
-      outcome.data.status === 'succeeded' ||
-      outcome.data.status === 'failed' ||
-      outcome.data.status === 'cancelled'
-    ) {
-      const items = await loadCandidateList(loader, isCurrent);
-      if (!isCurrent()) return;
-      const firstResult = outcome.data.resultRefs.find(
-        (result) => result.resultType === 'candidate',
-      );
-      const candidate = firstResult
-        ? items.find((item) => item.candidateId === firstResult.resultId)
-        : undefined;
-      if (candidate) {
-        setCandidateId(candidate.candidateId);
-        await loadCandidate(candidate.candidateId);
-        if (!isCurrent()) return;
-      }
-      setActiveTaskId(null);
-    }
-  }, [activeRun, bridge, loadCandidate, loader, project.projectId]);
+  const refreshActiveRun = useCallback(
+    () =>
+      refreshCandidateGenerationRun({
+        activeRun,
+        bridge,
+        projectId: project.projectId,
+        loader,
+        generationEpoch,
+        loadCandidate,
+        setActiveRun,
+        setGenerationStatus,
+        setCandidateId,
+        setActiveTaskId,
+      }),
+    [activeRun, bridge, loadCandidate, loader, project.projectId],
+  );
 
   useGenerationTaskSubscription({
     activeTaskId,

@@ -1,9 +1,11 @@
 import {
   request as httpRequest,
   type IncomingHttpHeaders,
-  type RequestOptions as HttpRequestOptions,
 } from 'node:http';
-import { request as httpsRequest } from 'node:https';
+import {
+  request as httpsRequest,
+  type RequestOptions as HttpsRequestOptions,
+} from 'node:https';
 import { isIP } from 'node:net';
 import { Readable } from 'node:stream';
 
@@ -19,6 +21,10 @@ export interface ProviderPinnedFetchOptions {
 
 function unsafe(message: string): never {
   throw new ProviderRuntimeError('AI_ENDPOINT_UNSAFE_013', message, false);
+}
+
+function normalizedHost(hostname: string): string {
+  return hostname.replace(/^\[/u, '').replace(/\]$/u, '').replace(/\.$/u, '').toLowerCase();
 }
 
 function requestUrl(input: string | URL | Request): URL {
@@ -58,16 +64,15 @@ function responseHeaders(raw: IncomingHttpHeaders): Headers {
   return headers;
 }
 
-function requestAddress(
+export function providerPinnedRequestOptions(
   binding: ProviderEndpointBinding,
   address: ProviderResolvedAddress,
   url: URL,
   init: RequestInit | undefined,
-  body: string | Uint8Array | undefined,
-  options: ProviderPinnedFetchOptions,
-): Promise<Response> {
+  options: ProviderPinnedFetchOptions = {},
+): HttpsRequestOptions {
   const secure = url.protocol === 'https:';
-  const requestOptions: HttpRequestOptions = {
+  return {
     protocol: url.protocol,
     hostname: address.address,
     family: address.family,
@@ -77,12 +82,21 @@ function requestAddress(
     headers: requestHeaders(init, url),
     agent: false,
     ...(init?.signal ? { signal: init.signal } : {}),
-    ...(secure && isIP(binding.hostname) === 0
-      ? { servername: binding.hostname, ...(options.ca ? { ca: options.ca } : {}) }
-      : secure && options.ca
-        ? { ca: options.ca }
-        : {}),
+    ...(secure && isIP(binding.hostname) === 0 ? { servername: binding.hostname } : {}),
+    ...(secure && options.ca ? { ca: options.ca } : {}),
   };
+}
+
+function requestAddress(
+  binding: ProviderEndpointBinding,
+  address: ProviderResolvedAddress,
+  url: URL,
+  init: RequestInit | undefined,
+  body: string | Uint8Array | undefined,
+  options: ProviderPinnedFetchOptions,
+): Promise<Response> {
+  const secure = url.protocol === 'https:';
+  const requestOptions = providerPinnedRequestOptions(binding, address, url, init, options);
 
   return new Promise<Response>((resolve, reject) => {
     const request = (secure ? httpsRequest : httpRequest)(requestOptions, (response) => {
@@ -110,7 +124,10 @@ export function createPinnedProviderFetch(
 
   return (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = requestUrl(input);
-    if (url.origin !== binding.endpoint.origin || url.hostname.toLowerCase() !== binding.hostname) {
+    if (
+      url.origin !== binding.endpoint.origin ||
+      normalizedHost(url.hostname) !== binding.hostname
+    ) {
       unsafe('The Provider request escaped its approved origin or hostname.');
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {

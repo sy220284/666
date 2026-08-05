@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  RendererBridgeAdapter,
-} from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
-import {
-  loadGenerationSources,
-} from '../../apps/desktop/renderer/src/features/writing/generation-sources-loader.js';
+import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+import { loadGenerationSources } from '../../apps/desktop/renderer/src/features/writing/generation-sources-loader.js';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -31,7 +27,10 @@ describe('M10-11 generation source request lifecycle', () => {
     const beatRequest = deferred<unknown>();
     const controller = new AbortController();
     const loading = loadGenerationSources(
-      bridgeWith(() => providerRequest.promise, () => beatRequest.promise),
+      bridgeWith(
+        () => providerRequest.promise,
+        () => beatRequest.promise,
+      ),
       'project-a',
       'chapter-old',
       controller.signal,

@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-11",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-11_RUNTIME_DATA_SAFETY_HARDENING.md",
   "priority": "P0",
   "startedAt": "2026-08-05T15:16:00+08:00",
-  "implementedAt": null,
+  "implementedAt": "2026-08-05T17:45:00+08:00",
   "dependencies": ["M10-10"],
   "baseline": {
     "main": "b77d67629006a0b94f3ad51146f3f95a90780e82",

@@ -16,10 +16,7 @@ import {
 import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
 import { completeProseCandidate, completeSkeletonCandidates } from './candidate-persistence.js';
-import {
-  generationCreateFingerprint,
-  readGenerationRunReplay,
-} from './run-command-identity.js';
+import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
 import { getModelSupport, upsertModelSupport } from './model-support-repository.js';
 import { discardPartial, recordPartial, savePartial } from './partial-result-service.js';
 import {

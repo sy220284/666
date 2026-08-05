@@ -25,6 +25,11 @@ function changedFiles(baseSha, repositoryRoot = root) {
   return output.split(/\r?\n/u).filter(Boolean);
 }
 
+function filesChangedAfter(commit, expectedHead, repositoryRoot = root) {
+  const output = git(['diff', '--name-only', commit, expectedHead], repositoryRoot);
+  return output.split(/\r?\n/u).filter(Boolean);
+}
+
 export function assertEvidenceHead(expectedHead, repositoryRoot = root) {
   if (!/^[0-9a-f]{40}$/u.test(expectedHead ?? '')) {
     throw new Error('EVIDENCE_HEAD_SHA must be the full pull request head SHA');
@@ -67,6 +72,15 @@ export function changedEvidenceTasks(files) {
   const tasks = new Set();
   for (const file of files) {
     const match = /^docs\/test-evidence\/(M\d+-\d{2})\//u.exec(file.replaceAll('\\', '/'));
+    if (match?.[1]) tasks.add(match[1]);
+  }
+  return [...tasks].sort();
+}
+
+export function changedRuntimeTasks(files) {
+  const tasks = new Set();
+  for (const file of files) {
+    const match = /^docs\/tasks\/runtime\/(M\d+-\d{2})\.json$/u.exec(file.replaceAll('\\', '/'));
     if (match?.[1]) tasks.add(match[1]);
   }
   return [...tasks].sort();
@@ -134,6 +148,66 @@ function validManifestMetadata(manifest, taskId) {
     Array.isArray(manifest.files) &&
     manifest.files.length > 0
   );
+}
+
+async function readTaskRuntime(taskId, repositoryRoot = root) {
+  const runtimePath = path.join(repositoryRoot, 'docs', 'tasks', 'runtime', `${taskId}.json`);
+  let runtime;
+  try {
+    runtime = JSON.parse(await readFile(runtimePath, 'utf8'));
+  } catch (error) {
+    throw new Error(`${taskId} Runtime is missing or invalid`, { cause: error });
+  }
+  if (
+    runtime?.schemaVersion !== 2 ||
+    runtime?.id !== taskId ||
+    typeof runtime?.source !== 'string' ||
+    !runtime.source.startsWith('docs/tasks/')
+  ) {
+    throw new Error(`${taskId} Runtime cannot define final Evidence closure paths`);
+  }
+  return runtime;
+}
+
+export function isAllowedFinalClosurePath(taskId, runtimeSource, file) {
+  const normalized = file.replaceAll('\\', '/');
+  return (
+    normalized === `docs/tasks/runtime/${taskId}.json` ||
+    normalized === runtimeSource ||
+    normalized === 'docs/tasks/TASK_INDEX.md' ||
+    normalized.startsWith(`docs/test-evidence/${taskId}/`)
+  );
+}
+
+export async function assertReadyEvidenceClosure(
+  taskId,
+  manifest,
+  expectedHead,
+  repositoryRoot = root,
+) {
+  if (manifest?.schemaVersion !== 2) {
+    throw new Error(`${taskId} Ready Evidence must use manifest schemaVersion 2`);
+  }
+  const implementationCommit = evidenceImplementationCommit(manifest);
+  if (!/^[0-9a-f]{40}$/u.test(implementationCommit ?? '')) {
+    throw new Error(`${taskId} Ready Evidence must bind a full implementation commit SHA`);
+  }
+  assertEvidenceSourceCommit(taskId, implementationCommit, expectedHead, repositoryRoot);
+  const runtime = await readTaskRuntime(taskId, repositoryRoot);
+  const changedAfterImplementation = filesChangedAfter(
+    implementationCommit,
+    expectedHead,
+    repositoryRoot,
+  );
+  const forbidden = changedAfterImplementation.filter(
+    (file) => !isAllowedFinalClosurePath(taskId, runtime.source, file),
+  );
+  if (forbidden.length > 0) {
+    throw new Error(
+      `${taskId} final Evidence is stale; non-closure changes follow implementationCommit: ${forbidden.join(', ')}`,
+    );
+  }
+  return changedAfterImplementation;
 }
 
 export async function validateTaskEvidence(taskId, repositoryRoot = root, options = {}) {
@@ -218,32 +292,68 @@ export async function validateTaskEvidence(taskId, repositoryRoot = root, option
     throw new Error(`${taskId} evidence contains unlisted files: ${unlisted.join(', ')}`);
   }
   console.log(`Evidence document gate passed for ${taskId}.`);
+  return manifest;
 }
 
 export async function validateChangedEvidenceAtHead({
   repositoryRoot = root,
   baseSha,
   expectedHead,
+  final = false,
 } = {}) {
   const checkedHead = assertEvidenceHead(expectedHead, repositoryRoot);
-  const taskIds = changedEvidenceTasks(changedFiles(baseSha, repositoryRoot));
+  const files = changedFiles(baseSha, repositoryRoot);
+  const taskIds = changedEvidenceTasks(files);
   if (taskIds.length === 0) {
+    if (final) {
+      throw new Error('Ready pull request must change the current task Evidence package');
+    }
     console.log(
       `No changed evidence documents at ${checkedHead}; no task Evidence package validation is required for this revision.`,
     );
     return [];
   }
-  for (const taskId of taskIds) {
-    await validateTaskEvidence(taskId, repositoryRoot, { expectedHead: checkedHead });
+
+  const runtimeTasks = changedRuntimeTasks(files);
+  let currentTaskId = null;
+  if (final) {
+    if (runtimeTasks.length !== 1) {
+      throw new Error(
+        `Ready Evidence closure requires exactly one changed task Runtime; found ${runtimeTasks.join(', ') || 'none'}`,
+      );
+    }
+    [currentTaskId] = runtimeTasks;
+    if (!taskIds.includes(currentTaskId)) {
+      throw new Error(`${currentTaskId} Ready pull request must change its own Evidence package`);
+    }
   }
+
+  let currentManifest = null;
+  for (const taskId of taskIds) {
+    const manifest = await validateTaskEvidence(taskId, repositoryRoot, {
+      expectedHead: checkedHead,
+      final: final && taskId === currentTaskId,
+    });
+    if (taskId === currentTaskId) currentManifest = manifest;
+  }
+
+  if (final && currentTaskId && currentManifest) {
+    await assertReadyEvidenceClosure(currentTaskId, currentManifest, checkedHead, repositoryRoot);
+  }
+
   console.log(`Validated ${taskIds.length} changed evidence document set(s) at ${checkedHead}.`);
   return taskIds;
+}
+
+function booleanEnvironment(value) {
+  return /^(?:1|true)$/iu.test(value ?? '');
 }
 
 async function main() {
   await validateChangedEvidenceAtHead({
     baseSha: process.env.EVIDENCE_BASE_SHA,
     expectedHead: process.env.EVIDENCE_HEAD_SHA,
+    final: booleanEnvironment(process.env.EVIDENCE_FINAL),
   });
 }
 

@@ -1,0 +1,25 @@
+implementationCommit=2ed140991b823987b2cd99524176bdeaea0056fe
+draft.task-governance.run=30972384120 conclusion=success
+draft.pr-policy.run=30972384103 conclusion=success
+draft.evidence.run=30972384117 conclusion=success
+draft.repository-governance.run=30972384108 conclusion=success
+draft.security.run=30972384102 conclusion=success
+draft.performance.run=30972384154 conclusion=success
+draft.quality.run=30972384220 conclusion=success
+
+ready.required=pnpm task:validate
+ready.required=pnpm check:language
+ready.required=pnpm check:workspaces
+ready.required=pnpm check:boundaries
+ready.required=pnpm format:check
+ready.required=pnpm lint
+ready.required=pnpm ci:policy
+ready.required=pnpm typecheck
+ready.required=pnpm test:unit
+ready.required=pnpm test:integration
+ready.required=pnpm test:migration
+ready.required=pnpm test:coverage
+ready.required=pnpm test:security
+ready.required=pnpm test:perf
+ready.required=pnpm build
+ready.required=pnpm test:e2e

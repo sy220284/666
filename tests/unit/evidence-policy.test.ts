@@ -10,7 +10,10 @@ import {
   assertEvidenceHead,
   assertEvidenceSourceCommit,
   assertFinalEvidenceSemantics,
+  assertReadyEvidenceClosure,
+  changedRuntimeTasks,
   evidenceImplementationCommit,
+  isAllowedFinalClosurePath,
   REQUIRED_EVIDENCE_FILES,
   validateChangedEvidenceAtHead,
   validateTaskEvidence,
@@ -26,6 +29,12 @@ function git(root: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 }
 
+async function commitAll(root: string, message: string): Promise<string> {
+  git(root, 'add', '-A');
+  git(root, 'commit', '-m', message);
+  return git(root, 'rev-parse', 'HEAD');
+}
+
 async function gitFixture() {
   const root = await mkdtemp(path.join(tmpdir(), 'worldforge-evidence-head-'));
   temporaryDirectories.push(root);
@@ -33,14 +42,83 @@ async function gitFixture() {
   git(root, 'config', 'user.email', 'ci@example.invalid');
   git(root, 'config', 'user.name', 'CI Fixture');
   await writeFile(path.join(root, 'source.txt'), 'source\n');
-  git(root, 'add', 'source.txt');
-  git(root, 'commit', '-m', 'source');
-  const sourceCommit = git(root, 'rev-parse', 'HEAD');
+  const sourceCommit = await commitAll(root, 'source');
   await writeFile(path.join(root, 'implementation.txt'), 'implementation\n');
-  git(root, 'add', 'implementation.txt');
-  git(root, 'commit', '-m', 'implementation');
-  const head = git(root, 'rev-parse', 'HEAD');
+  const head = await commitAll(root, 'implementation');
   return { root, sourceCommit, head };
+}
+
+async function writeEvidencePackage(
+  root: string,
+  taskId: string,
+  implementationCommit: string,
+  summary = '# 验证摘要\n\n状态：已完成并通过。\n',
+): Promise<void> {
+  const directory = path.join(root, 'docs', 'test-evidence', taskId);
+  const files = new Map<string, Buffer>([
+    ['summary.md', Buffer.from(summary)],
+    ['commands.txt', Buffer.from('pnpm test\nexit=0\n')],
+    ['known-risks.md', Buffer.from('# 已知风险\n\n- 无。\n')],
+  ]);
+  for (const [relative, content] of files) {
+    const absolute = path.join(directory, relative);
+    await mkdir(path.dirname(absolute), { recursive: true });
+    await writeFile(absolute, content);
+  }
+  const manifest = {
+    schemaVersion: 2,
+    taskId,
+    implementationCommit,
+    generatedAt: '2026-08-05T00:00:00.000Z',
+    files: [...files].map(([relative, content]) => ({
+      path: relative,
+      bytes: content.byteLength,
+      sha256: hash(content),
+    })),
+  };
+  await writeFile(path.join(directory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+async function readyClosureFixture() {
+  const root = await mkdtemp(path.join(tmpdir(), 'worldforge-evidence-ready-'));
+  temporaryDirectories.push(root);
+  git(root, 'init');
+  git(root, 'config', 'user.email', 'ci@example.invalid');
+  git(root, 'config', 'user.name', 'CI Fixture');
+  await writeFile(path.join(root, 'source.txt'), 'source\n');
+  const baseSha = await commitAll(root, 'source');
+
+  const taskId = 'M10-09';
+  const source = 'docs/tasks/M10/M10-09_EVIDENCE_CLOSURE_RACE.md';
+  await mkdir(path.join(root, 'scripts'), { recursive: true });
+  await writeFile(
+    path.join(root, 'scripts', 'evidence-policy.mjs'),
+    'export const policy = true;\n',
+  );
+  await mkdir(path.dirname(path.join(root, source)), { recursive: true });
+  await writeFile(path.join(root, source), '# M10-09\n\n状态：Implemented。\n');
+  await mkdir(path.join(root, 'docs', 'tasks', 'runtime'), { recursive: true });
+  await writeFile(
+    path.join(root, 'docs', 'tasks', 'runtime', `${taskId}.json`),
+    `${JSON.stringify(
+      {
+        schemaVersion: 2,
+        id: taskId,
+        status: 'IMPLEMENTED',
+        source,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  await writeFile(
+    path.join(root, 'docs', 'tasks', 'TASK_INDEX.md'),
+    `| ${taskId} | Evidence收口 | M10-08 | Implemented |\n`,
+  );
+  const implementationCommit = await commitAll(root, 'implementation');
+  await writeEvidencePackage(root, taskId, implementationCommit);
+  const head = await commitAll(root, 'final evidence');
+  return { root, taskId, source, baseSha, implementationCommit, head };
 }
 
 async function evidenceFixture(schemaVersion: 1 | 2 = 1) {
@@ -75,7 +153,9 @@ async function evidenceFixture(schemaVersion: 1 | 2 = 1) {
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })),
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
   );
 });
 
@@ -90,13 +170,17 @@ describe('evidence policy', () => {
   it('verifies documentation bytes, hashes and complete file registration', async () => {
     const legacy = await evidenceFixture(1);
     const current = await evidenceFixture(2);
-    await expect(validateTaskEvidence(legacy.taskId, legacy.root)).resolves.toBeUndefined();
-    await expect(validateTaskEvidence(current.taskId, current.root)).resolves.toBeUndefined();
+    await expect(validateTaskEvidence(legacy.taskId, legacy.root)).resolves.toMatchObject({
+      schemaVersion: 1,
+    });
+    await expect(validateTaskEvidence(current.taskId, current.root)).resolves.toMatchObject({
+      schemaVersion: 2,
+    });
     expect(evidenceImplementationCommit(legacy.manifest)).toBe('abcdef1');
     expect(evidenceImplementationCommit(current.manifest)).toBe('abcdef1');
   });
 
-  it('returns cleanly when a revision changes no Evidence package and no legacy anchor exists', async () => {
+  it('returns cleanly when a Draft revision changes no Evidence package', async () => {
     const fixture = await gitFixture();
     await expect(
       validateChangedEvidenceAtHead({
@@ -145,6 +229,117 @@ describe('evidence policy', () => {
     expect(() =>
       assertEvidenceSourceCommit('M9-99', fixture.head, fixture.sourceCommit, fixture.root),
     ).toThrow('not an ancestor');
+  });
+});
+
+describe('Ready Evidence closure', () => {
+  it('detects the single current Runtime and limits the closure surface', () => {
+    expect(
+      changedRuntimeTasks([
+        'docs/tasks/runtime/M10-09.json',
+        'docs/tasks/runtime/M10-09.json',
+        'docs/test-evidence/M10-09/summary.md',
+      ]),
+    ).toEqual(['M10-09']);
+    expect(
+      isAllowedFinalClosurePath(
+        'M10-09',
+        'docs/tasks/M10/M10-09_EVIDENCE_CLOSURE_RACE.md',
+        'docs/test-evidence/M10-09/summary.md',
+      ),
+    ).toBe(true);
+    expect(
+      isAllowedFinalClosurePath(
+        'M10-09',
+        'docs/tasks/M10/M10-09_EVIDENCE_CLOSURE_RACE.md',
+        'scripts/evidence-policy.mjs',
+      ),
+    ).toBe(false);
+  });
+
+  it('accepts a Ready Head whose implementation commit is followed only by final closure files', async () => {
+    const fixture = await readyClosureFixture();
+    await expect(
+      validateChangedEvidenceAtHead({
+        repositoryRoot: fixture.root,
+        baseSha: fixture.baseSha,
+        expectedHead: fixture.head,
+        final: true,
+      }),
+    ).resolves.toEqual([fixture.taskId]);
+
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(fixture.root, 'docs', 'test-evidence', fixture.taskId, 'manifest.json'),
+        'utf8',
+      ),
+    );
+    await expect(
+      assertReadyEvidenceClosure(fixture.taskId, manifest, fixture.head, fixture.root),
+    ).resolves.toEqual([
+      'docs/test-evidence/M10-09/commands.txt',
+      'docs/test-evidence/M10-09/known-risks.md',
+      'docs/test-evidence/M10-09/manifest.json',
+      'docs/test-evidence/M10-09/summary.md',
+    ]);
+  });
+
+  it('allows stale intermediate Evidence on Draft but rejects it on Ready', async () => {
+    const fixture = await readyClosureFixture();
+    await writeFile(
+      path.join(fixture.root, 'scripts', 'late-change.mjs'),
+      'export const late = true;\n',
+    );
+    const staleHead = await commitAll(fixture.root, 'late implementation change');
+
+    await expect(
+      validateChangedEvidenceAtHead({
+        repositoryRoot: fixture.root,
+        baseSha: fixture.baseSha,
+        expectedHead: staleHead,
+      }),
+    ).resolves.toEqual([fixture.taskId]);
+    await expect(
+      validateChangedEvidenceAtHead({
+        repositoryRoot: fixture.root,
+        baseSha: fixture.baseSha,
+        expectedHead: staleHead,
+        final: true,
+      }),
+    ).rejects.toThrow('non-closure changes follow implementationCommit: scripts/late-change.mjs');
+  });
+
+  it('rejects cross-task Evidence written after the current implementation commit', async () => {
+    const fixture = await readyClosureFixture();
+    await writeEvidencePackage(fixture.root, 'M10-08', fixture.implementationCommit);
+    const crossTaskHead = await commitAll(fixture.root, 'late historical evidence');
+
+    await expect(
+      validateChangedEvidenceAtHead({
+        repositoryRoot: fixture.root,
+        baseSha: fixture.baseSha,
+        expectedHead: crossTaskHead,
+        final: true,
+      }),
+    ).rejects.toThrow('docs/test-evidence/M10-08/commands.txt');
+  });
+
+  it('requires the Ready current task to change its own Evidence package', async () => {
+    const fixture = await gitFixture();
+    await mkdir(path.join(fixture.root, 'docs', 'tasks', 'runtime'), { recursive: true });
+    await writeFile(
+      path.join(fixture.root, 'docs', 'tasks', 'runtime', 'M10-09.json'),
+      '{"schemaVersion":2,"id":"M10-09","source":"docs/tasks/M10/M10-09.md"}\n',
+    );
+    const head = await commitAll(fixture.root, 'runtime only');
+    await expect(
+      validateChangedEvidenceAtHead({
+        repositoryRoot: fixture.root,
+        baseSha: fixture.sourceCommit,
+        expectedHead: head,
+        final: true,
+      }),
+    ).rejects.toThrow('Ready pull request must change the current task Evidence package');
   });
 });
 

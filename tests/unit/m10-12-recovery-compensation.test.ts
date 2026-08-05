@@ -21,10 +21,7 @@ describe('M10-12 Recovery补偿收敛', () => {
     expect(first).toHaveBeenCalledOnce();
     expect(second).toHaveBeenCalledOnce();
     expect(third).toHaveBeenCalledOnce();
-    expect(failures.map((failure) => failure.label)).toEqual([
-      'first-artifact',
-      'third-artifact',
-    ]);
+    expect(failures.map((failure) => failure.label)).toEqual(['first-artifact', 'third-artifact']);
   });
 
   it('补偿失败时保持原始Recovery错误码和作者消息', () => {

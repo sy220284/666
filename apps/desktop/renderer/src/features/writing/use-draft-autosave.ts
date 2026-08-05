@@ -19,8 +19,8 @@ import {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { registerDraftFlushHandler } from '../../runtime/draft-flush-registry.js';
-import { createDraftSaveContext, draftSaveContextIsCurrent } from './draft-save-context.js';
 import { persistedEditorBlocks } from './draft-blocks.js';
+import { createDraftSaveContext, draftSaveContextIsCurrent } from './draft-save-context.js';
 
 interface UseDraftAutosaveInput {
   readonly bridge: RendererBridgeAdapter;
@@ -39,6 +39,27 @@ interface UseDraftAutosaveInput {
   readonly setStatus: (message: string, failure?: boolean) => void;
   readonly savedStatus: (label: string, revision: number) => string;
   readonly temporaryClientBlockId: () => string;
+}
+
+interface PersistedDraftFeedbackInput {
+  readonly revision: number;
+  readonly editorChanged: boolean;
+  readonly saveContinuation: () => Promise<boolean>;
+  readonly setStatus: (message: string, failure?: boolean) => void;
+  readonly savedStatus: (label: string, revision: number) => string;
+}
+
+export async function reportPersistedDraft(
+  input: PersistedDraftFeedbackInput,
+): Promise<boolean> {
+  const continuationSaved = await input.saveContinuation();
+  const base = input.savedStatus('已保存', input.revision);
+  const changed = input.editorChanged ? ' · 编辑器仍有新输入' : '';
+  input.setStatus(
+    continuationSaved ? `${base}${changed}` : `${base}${changed} · 续写位置待重试`,
+    !continuationSaved,
+  );
+  return continuationSaved;
 }
 
 export function useDraftAutosave(input: UseDraftAutosaveInput) {
@@ -88,8 +109,9 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
           editor: input.editor.current,
           editorGeneration: input.editorGeneration.current,
         })
-      )
+      ) {
         return true;
+      }
       input.activeDraft.current = result.data;
       input.setDraft(result.data);
       input.synchronizing.current = true;
@@ -100,11 +122,13 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
       );
       input.synchronizing.current = false;
       input.refreshStatistics();
-      await input.saveContinuation();
-      input.setStatus(
-        `${input.savedStatus('已保存', result.data.revision)}${JSON.stringify(instance.getJSON()) === saveContext.documentFingerprint ? '' : ' · 编辑器仍有新输入'}`,
-      );
-      return true;
+      return reportPersistedDraft({
+        revision: result.data.revision,
+        editorChanged: JSON.stringify(instance.getJSON()) !== saveContext.documentFingerprint,
+        saveContinuation: input.saveContinuation,
+        setStatus: input.setStatus,
+        savedStatus: input.savedStatus,
+      });
     } catch {
       input.synchronizing.current = false;
       return false;
@@ -112,15 +136,17 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
   }, [input]);
 
   const flush = useCallback(async (): Promise<boolean> => {
-    const result = await (input.autosave.current?.flush() ?? Promise.resolve(true));
-    const continuationSaved = result ? await input.saveContinuation() : false;
+    const draftSaved = await (input.autosave.current?.flush() ?? Promise.resolve(true));
+    const continuationSaved = await input.saveContinuation();
     input.setStatus(
-      result && continuationSaved
-        ? input.savedStatus('已保存', input.activeDraft.current?.revision ?? 0)
-        : '保存失败；窗口内容仍保留。',
-      !result || !continuationSaved,
+      !draftSaved
+        ? '正文保存失败；窗口内容仍保留。'
+        : continuationSaved
+          ? input.savedStatus('已保存', input.activeDraft.current?.revision ?? 0)
+          : `${input.savedStatus('正文已保存', input.activeDraft.current?.revision ?? 0)} · 续写位置待重试`,
+      !draftSaved || !continuationSaved,
     );
-    return result && continuationSaved;
+    return draftSaved && continuationSaved;
   }, [input]);
 
   useEffect(() => registerDraftFlushHandler(flush), [flush]);

@@ -148,7 +148,7 @@ Runtime IMPLEMENTED
 | M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md) | M5 | Removed（absorbed） | M4-04 |
 | M5-06 | [`真实状态提取与StateProposal接入`](M5/M5-06_STATE_EXTRACTION_PROPOSAL_INTEGRATION.md) | M5 | Removed（absorbed） | M4-04 |
 | M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATUS_VALIDATION_TODOS.md) | M6 | Removed（absorbed） | M4-04 |
-| M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION_TODOS.md) | M6 | Removed（absorbed） | M4-04 |
+| M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md) | M6 | Removed（absorbed） | M4-04 |
 | M6-03 | [`全项目搜索与安全批量替换`](M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md) | M6 | Removed（absorbed） | M4-04 |
 | M6-04 | [`网文章奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md) | M6 | Removed（absorbed） | M4-04 |
 | M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md) | M6 | Removed（absorbed） | M4-04 |

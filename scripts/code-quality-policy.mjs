@@ -22,6 +22,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     manifestSource,
     eslintConfig,
     coverageConfig,
+    coverageBaseline,
     structureBaseline,
     toolchainExport,
     editorConfig,
@@ -30,6 +31,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     read('package.json'),
     read('eslint.config.mjs'),
     read('vitest.coverage.config.ts'),
+    read('docs/architecture/coverage-baseline.json'),
     read('docs/architecture/source-structure-baseline.json'),
     read('.github/workflows/toolchain-export.yml'),
     read('.editorconfig'),
@@ -37,6 +39,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   ]);
 
   const manifest = JSON.parse(manifestSource);
+  const coveragePolicy = JSON.parse(coverageBaseline);
   const violations = [];
   const formatCommands = [manifest.scripts?.format ?? '', manifest.scripts?.['format:check'] ?? ''];
 
@@ -63,6 +66,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   requireTokens(violations, 'package.json#ci:policy', ciPolicyCommand, [
     'node scripts/workflow-structure-policy.mjs',
     'node scripts/ci-policy.mjs',
+    'node scripts/check-coverage-policy.mjs',
     'node scripts/code-quality-policy.mjs',
   ]);
 
@@ -82,7 +86,22 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     "'tests/integration/**/*.test.{ts,tsx}'",
     "'tests/migration/**/*.test.{ts,tsx}'",
     "'tests/security/**/*.test.{ts,tsx}'",
+    "readFileSync(source('./docs/architecture/coverage-baseline.json'), 'utf8')",
+    '[coverageBaseline.core.pattern]: coverageBaseline.core.thresholdPercent',
+    '[coverageBaseline.rendererTsx.pattern]: rendererTsxThresholds',
   ]);
+
+  if (coveragePolicy?.policy !== 'dual-track') {
+    violations.push('coverage-baseline.json: policy must remain dual-track');
+  }
+  if (coveragePolicy?.core?.pattern !== '**/*.ts') {
+    violations.push('coverage-baseline.json: core pattern must remain **/*.ts');
+  }
+  if (coveragePolicy?.rendererTsx?.pattern !== 'apps/desktop/renderer/src/**/*.tsx') {
+    violations.push(
+      'coverage-baseline.json: Renderer TSX pattern must remain apps/desktop/renderer/src/**/*.tsx',
+    );
+  }
 
   forbidTokens(violations, 'source-structure-baseline.json', structureBaseline, [
     'defaultMaxLines',
@@ -127,6 +146,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     formatCommands: formatCommands.length,
     typeAwareLint: true,
     rendererTsxCoverage: true,
+    dualTrackCoverage: true,
     fileLengthGate: false,
   };
 }
@@ -135,6 +155,6 @@ const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   const result = await inspectCodeQualityPolicy();
   console.log(
-    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, Renderer TSX covered, file length non-blocking.`,
+    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, file length non-blocking.`,
   );
 }

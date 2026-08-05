@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "id": "M10-09",
+  "status": "IN_PROGRESS",
+  "executionBranch": "work",
+  "source": "docs/tasks/M10/M10-09_EVIDENCE_CLOSURE_RACE.md",
+  "priority": "P0",
+  "startedAt": "2026-08-05T11:00:00+08:00",
+  "dependencies": ["M10-08"],
+  "baseline": {
+    "main": "c5a4d118249fb67bded67e9d7c7fd286b10a9e03",
+    "work": "c5a4d118249fb67bded67e9d7c7fd286b10a9e03"
+  },
+  "allowedPaths": [
+    ".github/workflows/evidence.yml",
+    "scripts/evidence-policy.mjs",
+    "tests/unit/evidence-policy.test.ts",
+    "docs/PROJECT_EXECUTION_ENTRY.md",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/tasks/TASK_TEMPLATE.md",
+    "docs/tasks/M10/M10-08_CODE_QUALITY_GOVERNANCE.md",
+    "docs/tasks/M10/M10-09_EVIDENCE_CLOSURE_RACE.md",
+    "docs/tasks/runtime/M10-09.json",
+    "docs/test-evidence/M10-08/",
+    "docs/test-evidence/M10-09/"
+  ],
+  "forbiddenPaths": [
+    "apps/",
+    "packages/",
+    "migrations/",
+    "pnpm-lock.yaml",
+    ".github/governance/",
+    ".github/workflows/quality-core.yml",
+    "scripts/automerge.mjs",
+    "docs/product/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:language",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm ci:policy",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e"
+  ],
+  "verificationBinding": null
+}

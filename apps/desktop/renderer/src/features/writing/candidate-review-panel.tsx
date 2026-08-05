@@ -79,6 +79,7 @@ export function CandidateReviewPanel({
   );
   const [pending, setPending] = useState(false);
   const documentRequest = useRef(0);
+  const generationEpoch = useRef(0);
   const previewRequest = useRef<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<CandidateDocument | null>(null);
   const {
@@ -159,6 +160,7 @@ export function CandidateReviewPanel({
     });
     return () => {
       active = false;
+      generationEpoch.current += 1;
       documentRequest.current += 1;
       const requestId = previewRequest.current;
       previewRequest.current = null;
@@ -168,8 +170,15 @@ export function CandidateReviewPanel({
 
   const refreshActiveRun = useCallback(async (): Promise<void> => {
     if (!activeRun) return;
-    const outcome = await bridge.generation.getRun(project.projectId, activeRun.runId);
-    if (outcome.state !== 'success') return;
+    const epoch = generationEpoch.current;
+    const runId = activeRun.runId;
+    const isCurrent = (): boolean => generationEpoch.current === epoch;
+    const outcome = await bridge.generation.getRun(project.projectId, runId);
+    if (!isCurrent()) return;
+    if (outcome.state !== 'success') {
+      setActiveTaskId(null);
+      return;
+    }
     setActiveRun(outcome.data);
     setGenerationStatus(
       `${outcome.data.stage} · ${outcome.data.status}${
@@ -181,8 +190,8 @@ export function CandidateReviewPanel({
       outcome.data.status === 'failed' ||
       outcome.data.status === 'cancelled'
     ) {
-      setActiveTaskId(null);
-      const items = await refreshList();
+      const items = await loadCandidateList(loader, isCurrent);
+      if (!isCurrent()) return;
       const firstResult = outcome.data.resultRefs.find(
         (result) => result.resultType === 'candidate',
       );
@@ -192,9 +201,11 @@ export function CandidateReviewPanel({
       if (candidate) {
         setCandidateId(candidate.candidateId);
         await loadCandidate(candidate.candidateId);
+        if (!isCurrent()) return;
       }
+      setActiveTaskId(null);
     }
-  }, [activeRun, bridge, loadCandidate, project.projectId, refreshList]);
+  }, [activeRun, bridge, loadCandidate, loader, project.projectId]);
 
   useGenerationTaskSubscription({
     activeTaskId,
@@ -245,8 +256,11 @@ export function CandidateReviewPanel({
   const startGeneration = async (
     continuationOfRunId: string | null = null,
     intentOverride: GenerationIntent | null = null,
-  ): Promise<void> =>
-    startGenerationTask({
+  ): Promise<void> => {
+    generationEpoch.current += 1;
+    documentRequest.current += 1;
+    setActiveTaskId(null);
+    return startGenerationTask({
       bridge,
       projectId: project.projectId,
       chapterId: chapter.id,
@@ -278,6 +292,7 @@ export function CandidateReviewPanel({
         setActiveTaskId(taskId);
       },
     });
+  };
 
   const { cancelGeneration, decidePartial } = useGenerationRunActions({
     activeRun,

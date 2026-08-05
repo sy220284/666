@@ -38,7 +38,7 @@
     "check:structure": "node scripts/check-source-structure.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs && node scripts/check-source-structure.mjs",
     "check:workspaces": "node scripts/check-workspaces.mjs",
-    "ci:policy": "node scripts/workflow-structure-policy.mjs && node scripts/ci-policy.mjs && node scripts/code-quality-policy.mjs",
+    "ci:policy": "node scripts/workflow-structure-policy.mjs && node scripts/ci-policy.mjs && node scripts/check-coverage-policy.mjs && node scripts/code-quality-policy.mjs",
     "ci:evidence": "node scripts/evidence-policy.mjs",
     "ci:ruleset": "node scripts/ruleset-policy.mjs check",
     "task:status": "node .github/governance/single-work-taskctl.mjs status",

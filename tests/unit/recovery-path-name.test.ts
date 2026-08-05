@@ -30,10 +30,7 @@ describe('M10-11 recovery path component budget', () => {
 
   it('keeps temporary siblings below the conservative filesystem component limit', () => {
     const finalName = safeFileName('正文'.repeat(100), '.txt');
-    const temporary = safeTemporaryName(
-      finalName,
-      '.partial-550e8400-e29b-41d4-a716-446655440000',
-    );
+    const temporary = safeTemporaryName(finalName, '.partial-550e8400-e29b-41d4-a716-446655440000');
 
     expect(Buffer.byteLength(temporary, 'utf8')).toBeLessThanOrEqual(
       SAFE_TEMPORARY_COMPONENT_BYTES,

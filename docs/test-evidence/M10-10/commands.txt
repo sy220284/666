@@ -1,0 +1,21 @@
+# 已执行命令与检查
+
+GitHub状态与范围：
+- 读取`main`与`work`Ref并确认实施前一致
+- 读取`package.json`
+- 读取`.github/workflows/toolchain-export.yml`
+- 读取`AGENTS.md`
+- 读取`docs/PROJECT_EXECUTION_ENTRY.md`
+- 比较`main...work`
+- 创建并检查PR #318
+
+本地工作空间：
+- `/mnt/data/verify-project-tools.sh full`
+- `/mnt/data/run-666-playwright-chromium-smoke.sh`
+
+永久检查：
+- PR Policy：success
+- Task Governance：success
+- Performance：success
+- Evidence：在M10-10最终Evidence提交后复验
+- Quality与Security：由当前PR永久矩阵执行

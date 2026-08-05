@@ -26,6 +26,7 @@
     "apps/desktop/renderer/src/features/writing/",
     "tests/unit/",
     "tests/integration/",
+    "tests/migration/",
     "tests/security/",
     "docs/tasks/TASK_INDEX.md",
     "docs/tasks/M10/M10-12_COMMAND_IDENTITY_GENERATION_LIFECYCLE.md",

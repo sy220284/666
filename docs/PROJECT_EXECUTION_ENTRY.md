@@ -19,7 +19,7 @@ AGENTS.md
 
 代码格式、结构与维护性治理必须同步读取 [`architecture/CODE_QUALITY_GOVERNANCE.md`](architecture/CODE_QUALITY_GOVERNANCE.md)。文件行数只作为观察指标，不参与合并资格；结构判断统一依据职责内聚、依赖方向、状态所有权、事务边界和公共接口。
 
-在当前ChatGPT持久化工作空间中执行工具安装、离线恢复、格式化、Lint、TypeScript、Vitest、Playwright、Electron或全仓验证时，必须同步读取 [`architecture/CURRENT_WORKSPACE_TOOLCHAIN.md`](architecture/CURRENT_WORKSPACE_TOOLCHAIN.md)。该文档只约束`/mnt/data`工作空间资产，不替代仓库锁文件和永久工作流。
+在当前ChatGPT持久化工作空间中执行工具安装、离线恢复、格式化、Lint、TypeScript、Vitest、Playwright、Electron或全仓验证时，必须同步读取 [`process/CURRENT_WORKSPACE_TOOLCHAIN.md`](process/CURRENT_WORKSPACE_TOOLCHAIN.md)。该文档只约束`/mnt/data`工作空间资产，不替代仓库锁文件和永久工作流。
 
 ## 2. 动态状态解析
 
@@ -119,7 +119,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 
 ## 8. 当前ChatGPT工作空间工具链
 
-`docs/architecture/CURRENT_WORKSPACE_TOOLCHAIN.md`是当前ChatGPT持久化工作空间内666工具资产、绝对存储位置、激活命令、依赖恢复、浏览器替代路径、验证命令和更新规则的专项权威文档。
+`docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md`是当前ChatGPT持久化工作空间内666工具资产、绝对存储位置、激活命令、依赖恢复、浏览器替代路径、验证命令和更新规则的专项权威文档。
 
 固定入口：
 

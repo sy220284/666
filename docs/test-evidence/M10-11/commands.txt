@@ -1,0 +1,40 @@
+# 已执行命令与永久检查
+
+GitHub 范围与治理：
+- 读取并比较 `main`、`work` 与 PR #319
+- 审计 PR 全量变更、任务卡、Runtime、任务索引与 Review Threads
+- Task Governance：success
+- Repository Governance：success
+- PR Policy：success
+- Evidence：由最终收口 Head 复验
+
+静态与结构：
+- `pnpm task:validate`
+- `pnpm check:language`
+- `pnpm check:workspaces`
+- `pnpm check:boundaries`
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm typecheck`
+
+产品验证：
+- `pnpm test:unit`
+- `pnpm test:integration`
+- `pnpm test:migration`
+- `pnpm test:coverage`
+- `pnpm build`
+- `pnpm test:e2e`
+
+安全与性能：
+- `pnpm test:security`
+- `pnpm audit --prod --audit-level=high`
+- `pnpm test:perf`
+- AI 协议基线
+- Secret Scan 全历史扫描
+
+权威运行：
+- Quality：Run `30995935416`
+- Security：Run `30995936017`
+- Performance：Run `30995935614`
+- Product tests and Coverage：Artifact `8926237280`
+- Product Artifact SHA-256：`88e2bc4e7e31abb4fe8f0051dcca51c5a1442f83c275219fc1b4770e99d0fbfb`

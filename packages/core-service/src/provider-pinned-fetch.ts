@@ -55,6 +55,11 @@ function responseHeaders(raw: IncomingHttpHeaders): Headers {
   return headers;
 }
 
+function responseHasBody(method: string | undefined, status: number): boolean {
+  if (method?.toUpperCase() === 'HEAD') return false;
+  return status !== 204 && status !== 205 && status !== 304;
+}
+
 export function providerPinnedRequestOptions(
   binding: ProviderEndpointBinding,
   address: ProviderResolvedAddress,
@@ -91,10 +96,15 @@ function requestAddress(
 
   return new Promise<Response>((resolve, reject) => {
     const request = (secure ? httpsRequest : httpRequest)(requestOptions, (response) => {
-      const stream = Readable.toWeb(response) as ReadableStream<Uint8Array>;
+      const status = response.statusCode ?? 502;
+      const hasBody = responseHasBody(init?.method, status);
+      const stream = hasBody
+        ? (Readable.toWeb(response) as ReadableStream<Uint8Array>)
+        : null;
+      if (!hasBody) response.resume();
       resolve(
         new Response(stream, {
-          status: response.statusCode ?? 502,
+          status,
           ...(response.statusMessage ? { statusText: response.statusMessage } : {}),
           headers: responseHeaders(response.headers),
         }),

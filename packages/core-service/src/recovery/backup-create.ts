@@ -24,6 +24,10 @@ import {
   type RecoveryRuntime,
 } from './backup-manifest.js';
 import { safeFileName, safeTemporaryName } from './path-name.js';
+import {
+  rethrowRecoveryFailure,
+  settleRecoveryCompensation,
+} from './recovery-compensation.js';
 
 interface BackupClassification {
   readonly track: BackupRecord['track'];
@@ -462,17 +466,37 @@ export class BackupCreateOperations {
       await this.#registerRecord(requestId, record);
       return record;
     } catch (error) {
-      await Promise.all([
-        rm(partialPath, { force: true }),
-        rm(metadataPartialPath, { force: true }),
-        ...(finalBackupCreated ? [rm(finalPath, { force: true })] : []),
-        ...(finalMetadataCreated ? [rm(metadataPath, { force: true })] : []),
+      const failures = await settleRecoveryCompensation([
+        {
+          label: 'backup-partial',
+          run: () => rm(partialPath, { force: true }),
+        },
+        {
+          label: 'backup-metadata-partial',
+          run: () => rm(metadataPartialPath, { force: true }),
+        },
+        ...(finalBackupCreated
+          ? [
+              {
+                label: 'backup-final',
+                run: () => rm(finalPath, { force: true }),
+              },
+            ]
+          : []),
+        ...(finalMetadataCreated
+          ? [
+              {
+                label: 'backup-metadata-final',
+                run: () => rm(metadataPath, { force: true }),
+              },
+            ]
+          : []),
       ]);
-      if (error instanceof RecoveryServiceError) throw error;
-      throw new RecoveryServiceError(
+      rethrowRecoveryFailure(
+        error,
+        failures,
         'BACKUP_CREATE_FAILED',
         'The operation checkpoint could not be created.',
-        { cause: error },
       );
     }
   }

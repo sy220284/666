@@ -3,7 +3,10 @@ export interface ReplayableAbortBoundary {
   dispose(): void;
 }
 
-function invokeAbortListener(listener: EventListenerOrEventListenerObject, signal: AbortSignal): void {
+function invokeAbortListener(
+  listener: EventListenerOrEventListenerObject,
+  signal: AbortSignal,
+): void {
   const event = new Event('abort');
   if (typeof listener === 'function') listener.call(signal, event);
   else listener.handleEvent(event);
@@ -30,9 +33,7 @@ function replayingSignal(signal: AbortSignal): AbortSignal {
   });
 }
 
-export function createReplayableAbortBoundary(
-  parentSignal?: AbortSignal,
-): ReplayableAbortBoundary {
+export function createReplayableAbortBoundary(parentSignal?: AbortSignal): ReplayableAbortBoundary {
   if (!parentSignal) return { signal: undefined, dispose: () => undefined };
 
   const controller = new AbortController();

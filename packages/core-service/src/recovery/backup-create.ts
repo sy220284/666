@@ -33,6 +33,36 @@ interface BackupClassification {
   readonly migrationProtected: boolean;
 }
 
+function backupRecordFromRow(row: Record<string, unknown>): BackupRecord {
+  return BackupRecordSchema.parse({
+    ...row,
+    sizeBytes: Number(row.sizeBytes),
+    authorProtected: Number(row.authorProtected) === 1,
+    migrationProtected: Number(row.migrationProtected) === 1,
+    schemaVersion: Number(row.schemaVersion),
+    protectionReasons: [],
+  });
+}
+
+function samePersistedRecord(left: BackupRecord, right: BackupRecord): boolean {
+  return (
+    left.backupId === right.backupId &&
+    left.projectId === right.projectId &&
+    left.operation === right.operation &&
+    left.backupFileName === right.backupFileName &&
+    left.sizeBytes === right.sizeBytes &&
+    left.sha256 === right.sha256 &&
+    left.createdAt === right.createdAt &&
+    left.verifiedAt === right.verifiedAt &&
+    left.track === right.track &&
+    left.displayName === right.displayName &&
+    left.note === right.note &&
+    left.authorProtected === right.authorProtected &&
+    left.migrationProtected === right.migrationProtected &&
+    left.schemaVersion === right.schemaVersion
+  );
+}
+
 function sameIntent(
   record: BackupRecord,
   input: RecoveryCreateInput,
@@ -221,15 +251,7 @@ export class BackupCreateOperations {
             WHERE id = ? AND project_id = ?`,
         )
         .get(backupId, projectId) as Record<string, unknown> | undefined;
-      if (!row) return null;
-      return BackupRecordSchema.parse({
-        ...row,
-        sizeBytes: Number(row.sizeBytes),
-        authorProtected: Number(row.authorProtected) === 1,
-        migrationProtected: Number(row.migrationProtected) === 1,
-        schemaVersion: Number(row.schemaVersion),
-        protectionReasons: [],
-      });
+      return row ? backupRecordFromRow(row) : null;
     });
   }
 
@@ -275,6 +297,24 @@ export class BackupCreateOperations {
           record.migrationProtected ? 1 : 0,
           record.schemaVersion,
         );
+      const row = database
+        .prepare(
+          `SELECT id AS backupId, project_id AS projectId, operation,
+                  backup_file_name AS backupFileName, size_bytes AS sizeBytes, sha256,
+                  created_at AS createdAt, verified_at AS verifiedAt,
+                  backup_track AS track, display_name AS displayName, note,
+                  author_protected AS authorProtected,
+                  migration_protected AS migrationProtected, schema_version AS schemaVersion
+             FROM backup_records
+            WHERE id = ? AND project_id = ?`,
+        )
+        .get(record.backupId, record.projectId) as Record<string, unknown> | undefined;
+      if (!row || !samePersistedRecord(backupRecordFromRow(row), record)) {
+        throw new RecoveryServiceError(
+          'BACKUP_VERIFY_FAILED',
+          'The backup database registration does not match its verified files.',
+        );
+      }
       database
         .prepare(
           `UPDATE backup_failures
@@ -283,13 +323,6 @@ export class BackupCreateOperations {
         )
         .run(record.verifiedAt, record.projectId, record.track);
     });
-    const stored = this.#readDatabaseRecord(record.projectId, record.backupId);
-    if (!stored || stored.sha256 !== record.sha256 || stored.backupFileName !== record.backupFileName) {
-      throw new RecoveryServiceError(
-        'BACKUP_VERIFY_FAILED',
-        'The backup database registration does not match its verified files.',
-      );
-    }
   }
 
   async #existingBackup(
@@ -304,9 +337,18 @@ export class BackupCreateOperations {
       (record) => record.backupId === requestId,
     );
     const databaseRecord = this.#readDatabaseRecord(input.projectId, requestId);
+    if (metadataRecord && databaseRecord && !samePersistedRecord(metadataRecord, databaseRecord)) {
+      throw new RecoveryServiceError(
+        'BACKUP_VERIFY_FAILED',
+        'The backup metadata and database registration do not match.',
+      );
+    }
     const record = metadataRecord ?? databaseRecord;
     if (!record) return null;
-    if (!sameIntent(record, input, classification)) {
+    if (
+      record.backupFileName !== path.basename(backupPath) ||
+      !sameIntent(record, input, classification)
+    ) {
       throw new RecoveryServiceError(
         'BACKUP_CREATE_FAILED',
         'The requestId was already used for a different backup operation.',

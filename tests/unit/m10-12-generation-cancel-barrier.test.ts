@@ -12,16 +12,21 @@ import {
 } from '../../packages/core-service/src/generation-runtime.js';
 import { TaskProtocol } from '../../packages/core-service/src/task-protocol.js';
 
+const RUN_ID = '00000000-0000-4000-8000-000000000201';
+const TASK_ID = '00000000-0000-4000-8000-000000000202';
+const PROJECT_ID = '00000000-0000-4000-8000-000000000203';
+const CHAPTER_ID = '00000000-0000-4000-8000-000000000204';
+
 function generationRun(
   status: 'queued' | 'running' | 'cancelled',
   stage: 'queued' | 'parsing_output' | 'saving_candidate' | 'completed',
 ) {
   return GenerationRunSchema.parse({
-    runId: 'run-barrier',
+    runId: RUN_ID,
     requestId: '00000000-0000-4000-8000-000000000011',
-    taskId: 'task-barrier',
-    projectId: 'project-a',
-    chapterId: 'chapter-a',
+    taskId: TASK_ID,
+    projectId: PROJECT_ID,
+    chapterId: CHAPTER_ID,
     baseDraftId: null,
     baseDraftRevision: null,
     runType: 'chapter',
@@ -48,8 +53,8 @@ function generationRun(
 
 function constraints() {
   return ConstraintPackageSchema.parse({
-    projectId: 'project-a',
-    chapterId: 'chapter-a',
+    projectId: PROJECT_ID,
+    chapterId: CHAPTER_ID,
     taskType: 'chapter',
     snapshotSource: 'fallback_live_query',
     sections: { P0: [], P1: [], P2: [], P3: [], P4: [] },
@@ -111,8 +116,8 @@ describe('M10-12 Candidate保存前取消屏障', () => {
     const execution = await runtime.startProse({
       requestId: queued.requestId,
       run: {
-        projectId: 'project-a',
-        chapterId: 'chapter-a',
+        projectId: PROJECT_ID,
+        chapterId: CHAPTER_ID,
         baseDraftId: null,
         baseDraftRevision: null,
         runType: 'chapter',
@@ -123,7 +128,7 @@ describe('M10-12 Candidate保存前取消屏障', () => {
         actualModel: 'model-a',
         supportStatus: 'unverified',
         constraintPackage: constraints(),
-        taskId: 'task-barrier',
+        taskId: TASK_ID,
       },
       provider,
       requestFor: (runId) =>
@@ -147,15 +152,15 @@ describe('M10-12 Candidate保存前取消屏障', () => {
 
     await expect(
       runtime.cancel('00000000-0000-4000-8000-000000000012', {
-        projectId: 'project-a',
-        runId: 'run-barrier',
+        projectId: PROJECT_ID,
+        runId: RUN_ID,
       }),
     ).resolves.toMatchObject({ status: 'cancelled' });
     releaseSaving();
-    await runtime.waitFor('run-barrier');
+    await runtime.waitFor(RUN_ID);
 
     expect(persistCandidate).not.toHaveBeenCalled();
-    expect(tasks.getSnapshot(execution.taskId, 'project-a').status).toBe('cancelled');
+    expect(tasks.getSnapshot(execution.taskId, PROJECT_ID).status).toBe('cancelled');
     tasks.close();
   });
 });

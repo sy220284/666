@@ -10,10 +10,10 @@
 
 本文是666仓库在当前ChatGPT持久化工作空间中使用离线工具链、完整workspace依赖、恢复脚本和验证脚本的权威操作文档。
 
-本文只约束当前工作空间的工具资产和调用方式，不改变产品运行目录、正式安装目录、CI Runner配置或其他开发者机器的本地路径。发生版本冲突时，按以下顺序裁决：
+工具清单与永久工作流的机器真源为 [`CURRENT_WORKSPACE_TOOLCHAIN.json`](CURRENT_WORKSPACE_TOOLCHAIN.json)。本文负责说明存储与使用方法，JSON负责声明Profile、工具包、验证命令、Artifact结构和工作流关联。发生版本冲突时，按以下顺序裁决：
 
 ```text
-仓库当前 package.json、pnpm-lock.yaml 与永久工作流
+仓库当前 package.json、pnpm-lock.yaml、CURRENT_WORKSPACE_TOOLCHAIN.json与永久工作流
 > 本文记录的工作空间资产
 > 系统预装同名工具
 ```
@@ -103,28 +103,19 @@ source /mnt/data/activate-666-tools.sh
 cd /mnt/data/projects/666
 ```
 
-恢复脚本会：
-
-1. 检查目标目录存在；
-2. 检查目标仓库具有`pnpm-lock.yaml`；
-3. 对比目标锁文件与离线依赖快照；
-4. 锁文件不一致时立即拒绝恢复；
-5. 将各workspace的`node_modules`链接到持久化依赖目录；
-6. 检查恢复后没有断裂符号链接。
-
-成功标志：
+恢复脚本必须检查目标仓库锁文件、拒绝不一致快照，并在恢复后确认没有断裂符号链接。成功标志：
 
 ```text
 WORLD_FORGE_DEPENDENCIES_RESTORED
 ```
 
-离线依赖快照来源基线为：
+现有离线依赖快照来源基线为：
 
 ```text
 21625e1e11e7c50071f0860d791e902637f0531f
 ```
 
-当前仓库Head可能晚于该基线。恢复脚本的锁文件拒绝机制必须保留；出现不匹配时应重新从当前GitHub Actions工作流导出，禁止强行覆盖。
+当前仓库Head可能晚于该基线。出现锁文件不匹配时必须从当前永久工具工作流重新导出，禁止强制覆盖。
 
 ## 6. 常用调用
 
@@ -158,12 +149,6 @@ pnpm release:check
 /mnt/data/verify-project-tools.sh full
 ```
 
-或单独执行：
-
-```bash
-/mnt/data/run-666-playwright-chromium-smoke.sh
-```
-
 ## 7. 浏览器与桌面边界
 
 Playwright官方浏览器包未保留。当前工作空间固定使用系统Chromium：
@@ -178,15 +163,15 @@ Node代码中需要显式指定：
 chromium.launch({
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   headless: true,
-  args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });
 ```
 
 Electron在无图形桌面的环境中需要无头模式、Xvfb或仓库现有E2E启动器。不能因普通窗口无法直接显示而判定Electron依赖损坏。
 
-## 8. 验证状态
+## 8. 已验证状态
 
-当前已实际验证：
+当前工作空间历史快照已实际验证：
 
 - pnpm离线重建217个包，下载数为0；
 - 断裂符号链接为0；
@@ -204,13 +189,15 @@ PLAYWRIGHT_SYSTEM_CHROMIUM_OK
 PROJECT_TOOLS_OK mode=full
 ```
 
+这些结论只适用于对应锁文件Hash。新Artifact必须单独验证，不能继承旧快照结论。
+
 ## 9. 更新和维护规则
 
-1. 工具版本只从仓库锁文件、`package.json`和永久`Toolchain Export`工作流确定。
-2. 工具或依赖变更后，必须重新导出、校验、解压并更新两个JSON锁定清单和本文。
+1. 工具版本和导出配置只从仓库锁文件、`package.json`、`docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json`和永久工作流确定。
+2. 工具或依赖变更后，必须重新导出、校验、解压并更新两个工作空间JSON锁定清单和本文。
 3. 禁止手工修改离线`node_modules`来掩盖锁文件不一致。
 4. 禁止提交`/mnt/data`工具目录、二进制、缓存或软链接到仓库。
-5. 压缩包删除后不可依赖原Artifact恢复；重新获取必须走GitHub Actions。
+5. 重新获取工具必须走GitHub Actions Artifact，不能依赖已删除的历史压缩包。
 6. 清理缓存只能执行：
 
 ```bash
@@ -222,3 +209,50 @@ PROJECT_TOOLS_OK mode=full
 ```bash
 /mnt/data/verify-project-tools.sh full
 ```
+
+## 10. 永久工具工作流关联
+
+仓库内的权威关系固定为：
+
+| 职责 | 权威路径 |
+|---|---|
+| 机器可读工具清单 | `docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json` |
+| PR调用入口 | `.github/workflows/quality.yml` |
+| 永久可复用导出工作流 | `.github/workflows/toolchain-export.yml` |
+| Artifact生成与离线复验 | `.github/governance/toolchain-bundle.mjs` |
+| 工作空间使用说明 | `docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md` |
+
+`CURRENT_WORKSPACE_TOOLCHAIN.json`声明Profile、工具包、验证命令、Artifact必备路径、命名模板、保留期与可信调用分支。导出器直接读取该清单，工作流和脚本不得再维护独立工具集合。
+
+永久导出支持两种入口：
+
+1. `workflow_dispatch`：按完整提交SHA、Profile和Runner人工导出；
+2. `workflow_call`：由现有 `.github/workflows/quality.yml` 在同仓库 `work → main` PR检测到工具链相关路径变化时调用。
+
+PR调用必须同时满足：
+
+```text
+来源仓库等于当前仓库
++ Head分支等于work
++ 工具清单、锁文件、生成器、导出工作流、Quality调用入口或本文发生变化
+```
+
+外部Fork和其他分支不会获得工具打包能力。Artifact名称固定为：
+
+```text
+worldforge-toolchain-{profile}-{os}-{arch}-{sourceSha}
+```
+
+每个Artifact必须包含：
+
+```text
+store/
+node_modules/
+node_modules/.bin/
+node_modules/.pnpm/
+manifest.json
+toolchain-authority.json
+SHA256SUMS.txt
+```
+
+`actions/upload-artifact`必须启用`include-hidden-files: true`，否则pnpm链接层与命令入口会被排除。`manifest.json`必须记录源提交、源Tree、根锁文件Hash、工具版本，以及机器清单路径和Hash。下载后先校验`SHA256SUMS.txt`与`manifest.json`，再验证`.bin`和`.pnpm`存在并执行工具版本命令；禁止仅凭Artifact名称覆盖现有工具。

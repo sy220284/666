@@ -20,6 +20,7 @@ jobs:
     outputs:
       full_suite: ${{ steps.route.outputs.full_suite }}
       package_smoke: ${{ steps.route.outputs.package_smoke }}
+      toolchain_export: ${{ steps.route.outputs.toolchain_export }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -35,6 +36,7 @@ jobs:
           set -euo pipefail
           full_suite=false
           package_smoke=false
+          toolchain_export=false
           changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
           if [ -z "$changed_files" ]; then
             full_suite=true
@@ -52,11 +54,17 @@ jobs:
                   package_smoke=true
                   ;;
               esac
+              case "$file" in
+                package.json|pnpm-lock.yaml|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md|.github/governance/toolchain-bundle.mjs|.github/workflows/toolchain-export.yml|.github/workflows/quality.yml)
+                  toolchain_export=true
+                  ;;
+              esac
             done <<< "$changed_files"
           fi
           echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
           echo "package_smoke=$package_smoke" >> "$GITHUB_OUTPUT"
-          echo "PR quality full suite: $full_suite; package smoke: $package_smoke"
+          echo "toolchain_export=$toolchain_export" >> "$GITHUB_OUTPUT"
+          echo "PR quality full suite: $full_suite; package smoke: $package_smoke; toolchain export: $toolchain_export"
 
   windows-native-ime:
     name: windows-native-ime
@@ -141,6 +149,19 @@ jobs:
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
       security_suite: false
       performance_eval: false
+
+  toolchain-export:
+    name: quality / toolchain-export
+    needs: route
+    if: >-
+      needs.route.outputs.toolchain_export == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'work'
+    uses: ./.github/workflows/toolchain-export.yml
+    with:
+      source_sha: ${{ github.event.pull_request.head.sha }}
+      profile: quality
+      runner: ubuntu-24.04
 
   package-smoke-gate:
     name: quality / package-smoke

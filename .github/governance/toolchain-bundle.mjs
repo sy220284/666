@@ -2,29 +2,68 @@
 // PR Policy smoke marker: export the repository-locked formatter and quality toolchains.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
-const profilePackages = {
-  formatter: ['prettier'],
-  quality: ['@eslint/js', 'eslint', 'prettier', 'typescript', 'typescript-eslint'],
-};
-const profileCommands = {
-  formatter: [
-    ['pnpm', ['--version']],
-    ['prettier', ['--version']],
-  ],
-  quality: [
-    ['pnpm', ['--version']],
-    ['prettier', ['--version']],
-    ['eslint', ['--version']],
-    ['tsc', ['--version']],
-  ],
-};
-const bundledPnpmVersion = '11.13.1';
+const authorityRelativePath = 'docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json';
+const authorityPath = path.join(root, authorityRelativePath);
+
+function repositoryPath(relativePath) {
+  if (typeof relativePath !== 'string' || path.isAbsolute(relativePath)) {
+    throw new Error(`Invalid repository path in toolchain authority: ${String(relativePath)}`);
+  }
+  const resolved = path.resolve(root, relativePath);
+  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+    throw new Error(`Toolchain authority path escapes repository: ${relativePath}`);
+  }
+  return resolved;
+}
+
+async function readAuthority() {
+  const authority = JSON.parse(await readFile(authorityPath, 'utf8'));
+  if (authority.schemaVersion !== 1) throw new Error('Unsupported toolchain authority schema');
+  for (const field of [
+    'authorityDocument',
+    'callerWorkflow',
+    'exportWorkflow',
+    'generator',
+    'defaultProfile',
+    'trustedPullRequestBranch',
+    'bundledPnpmVersion',
+  ]) {
+    if (typeof authority[field] !== 'string' || !authority[field]) {
+      throw new Error(`Missing toolchain authority field: ${field}`);
+    }
+  }
+  if (!authority.profiles || typeof authority.profiles !== 'object') {
+    throw new Error('Toolchain authority profiles are missing');
+  }
+  if (!authority.profiles[authority.defaultProfile]) {
+    throw new Error('Toolchain authority default profile is not declared');
+  }
+  if (!Array.isArray(authority.requiredBundleEntries)) {
+    throw new Error('Toolchain authority required bundle entries are missing');
+  }
+  return authority;
+}
+
+const authority = await readAuthority();
+const profilePackages = Object.fromEntries(
+  Object.entries(authority.profiles).map(([profile, definition]) => [
+    profile,
+    definition.packages,
+  ]),
+);
+const profileCommands = Object.fromEntries(
+  Object.entries(authority.profiles).map(([profile, definition]) => [
+    profile,
+    definition.commands,
+  ]),
+);
+const bundledPnpmVersion = authority.bundledPnpmVersion;
 
 function option(name, fallback = null) {
   const index = process.argv.indexOf(`--${name}`);
@@ -45,6 +84,66 @@ function sha256(content) {
 
 async function fileHash(file) {
   return sha256(await readFile(file));
+}
+
+async function validateAuthority() {
+  const [document, callerWorkflow, exportWorkflow] = await Promise.all([
+    readFile(repositoryPath(authority.authorityDocument), 'utf8'),
+    readFile(repositoryPath(authority.callerWorkflow), 'utf8'),
+    readFile(repositoryPath(authority.exportWorkflow), 'utf8'),
+  ]);
+  repositoryPath(authority.generator);
+
+  for (const expected of [
+    authorityRelativePath,
+    authority.callerWorkflow,
+    authority.exportWorkflow,
+    authority.generator,
+  ]) {
+    if (!document.includes(expected)) {
+      throw new Error(`Toolchain authority document does not reference ${expected}`);
+    }
+  }
+  for (const expected of [
+    authorityRelativePath,
+    authority.generator,
+    'workflow_call:',
+    'workflow_dispatch:',
+    'validate-authority',
+    'include-hidden-files: true',
+  ]) {
+    if (!exportWorkflow.includes(expected)) {
+      throw new Error(`Toolchain export workflow does not reference ${expected}`);
+    }
+  }
+  for (const expected of [
+    `uses: ./${authority.exportWorkflow}`,
+    'toolchain_export',
+    `github.event.pull_request.head.ref == '${authority.trustedPullRequestBranch}'`,
+  ]) {
+    if (!callerWorkflow.includes(expected)) {
+      throw new Error(`Toolchain caller workflow does not reference ${expected}`);
+    }
+  }
+  for (const [profile, definition] of Object.entries(authority.profiles)) {
+    if (!Array.isArray(definition.packages) || !Array.isArray(definition.commands)) {
+      throw new Error(`Toolchain profile is incomplete: ${profile}`);
+    }
+  }
+  for (const required of [
+    'store',
+    'node_modules',
+    'node_modules/.bin',
+    'node_modules/.pnpm',
+    'manifest.json',
+    'toolchain-authority.json',
+    'SHA256SUMS.txt',
+  ]) {
+    if (!authority.requiredBundleEntries.includes(required)) {
+      throw new Error(`Toolchain authority is missing required bundle entry: ${required}`);
+    }
+  }
+  console.log(`Toolchain authority verified at ${authorityRelativePath}.`);
 }
 
 async function prepare(profile, output, sourceSha) {
@@ -90,6 +189,8 @@ async function installedPackageVersions(output, packages) {
 async function finalize(profile, output, sourceSha, packages) {
   const lockPath = path.join(output, 'pnpm-lock.yaml');
   const rootLockPath = path.join(root, 'pnpm-lock.yaml');
+  const authorityContent = await readFile(authorityPath);
+  await writeFile(path.join(output, 'toolchain-authority.json'), authorityContent);
   const toolVersions = await installedPackageVersions(output, packages);
   const manifest = {
     schemaVersion: 1,
@@ -104,10 +205,24 @@ async function finalize(profile, output, sourceSha, packages) {
     rootLockfileSha256: await fileHash(rootLockPath),
     generatedLockfileSha256: await fileHash(lockPath),
     toolVersions,
+    toolchainAuthority: {
+      schemaVersion: authority.schemaVersion,
+      manifestPath: authorityRelativePath,
+      manifestSha256: sha256(authorityContent),
+      authorityDocument: authority.authorityDocument,
+      callerWorkflow: authority.callerWorkflow,
+      exportWorkflow: authority.exportWorkflow,
+      generator: authority.generator,
+    },
     generatedAt: new Date().toISOString(),
   };
   await writeFile(path.join(output, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  const files = ['package.json', 'pnpm-lock.yaml', 'manifest.json'];
+  const files = [
+    'package.json',
+    'pnpm-lock.yaml',
+    'manifest.json',
+    'toolchain-authority.json',
+  ];
   const sums = [];
   for (const file of files) sums.push(`${await fileHash(path.join(output, file))}  ${file}`);
   await writeFile(path.join(output, 'SHA256SUMS.txt'), `${sums.join('\n')}\n`);
@@ -139,7 +254,8 @@ async function verify(profile, output) {
 }
 
 async function exportBundle() {
-  const profile = option('profile', 'formatter');
+  await validateAuthority();
+  const profile = option('profile', authority.defaultProfile);
   const output = path.resolve(
     option('output', process.env.TOOLCHAIN_OUTPUT ?? path.join(root, 'toolchain-bundle')),
   );
@@ -161,15 +277,15 @@ async function exportBundle() {
   );
   await finalize(profile, output, sourceSha, packages);
   await verify(profile, output);
-  const entries = await readdir(output);
-  for (const required of ['store', 'node_modules', 'manifest.json', 'SHA256SUMS.txt']) {
-    if (!entries.includes(required)) throw new Error(`Toolchain bundle is missing ${required}`);
+  for (const required of authority.requiredBundleEntries) {
+    await access(path.join(output, required));
   }
   console.log(`Toolchain bundle verified at ${output}.`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const command = process.argv[2] ?? 'export';
-  if (command !== 'export') throw new Error(`Unknown toolchain-bundle command: ${command}`);
-  await exportBundle();
+  if (command === 'export') await exportBundle();
+  else if (command === 'validate-authority') await validateAuthority();
+  else throw new Error(`Unknown toolchain-bundle command: ${command}`);
 }

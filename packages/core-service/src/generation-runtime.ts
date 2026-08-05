@@ -134,6 +134,7 @@ export class GenerationRuntime {
   readonly #tasks: TaskProtocol;
   readonly #executions = new Map<string, Execution>();
   readonly #cancellations = new Map<string, CancellationBarrier>();
+  readonly #lifecycleTails = new Map<string, Promise<void>>();
 
   constructor(runs: GenerationRunService, tasks: TaskProtocol) {
     this.#runs = runs;
@@ -209,41 +210,65 @@ export class GenerationRuntime {
     requestId: string,
     input: { readonly projectId: string; readonly runId: string },
   ): Promise<GenerationRun> {
-    const current = this.#runs.get(input);
-    if (current.stage === 'saving_candidate') {
-      throw new TaskProtocolError(
-        'TASK_NOT_CANCELLABLE_001',
-        'The task is in an atomic stage that cannot be cancelled.',
-      );
-    }
-    const execution = this.#executions.get(input.runId);
-    const snapshot = execution
-      ? this.#tasks.getSnapshot(execution.taskId, input.projectId)
-      : undefined;
-    const barrier = cancellationBarrier();
-    this.#cancellations.set(input.runId, barrier);
-    try {
-      const cancelled = await this.#runs.cancel(
-        requestId,
-        input,
-        snapshot?.previewTruncated ? undefined : snapshot?.previewText,
-      );
-      barrier.resolve(true);
-      if (execution) {
-        try {
-          this.#tasks.cancel(execution.taskId, input.projectId);
-        } catch (error) {
-          if (!(error instanceof TaskProtocolError)) throw error;
-          if (error.code === 'TASK_NOT_CANCELLABLE_001') throw error;
+    return this.#withLifecycleLock(input.runId, async () => {
+      const current = this.#runs.get(input);
+      if (current.stage === 'saving_candidate') {
+        throw new TaskProtocolError(
+          'TASK_NOT_CANCELLABLE_001',
+          'The task is in an atomic stage that cannot be cancelled.',
+        );
+      }
+      const execution = this.#executions.get(input.runId);
+      const snapshot = execution
+        ? this.#tasks.getSnapshot(execution.taskId, input.projectId)
+        : undefined;
+      const barrier = cancellationBarrier();
+      this.#cancellations.set(input.runId, barrier);
+      try {
+        const cancelled = await this.#runs.cancel(
+          requestId,
+          input,
+          snapshot?.previewTruncated ? undefined : snapshot?.previewText,
+        );
+        barrier.resolve(true);
+        if (execution) {
+          try {
+            this.#tasks.cancel(execution.taskId, input.projectId);
+          } catch (error) {
+            if (!(error instanceof TaskProtocolError)) throw error;
+            if (error.code === 'TASK_NOT_CANCELLABLE_001') throw error;
+          }
+        }
+        return cancelled;
+      } catch (error) {
+        barrier.resolve(false);
+        throw error;
+      } finally {
+        if (this.#cancellations.get(input.runId) === barrier) {
+          this.#cancellations.delete(input.runId);
         }
       }
-      return cancelled;
-    } catch (error) {
-      barrier.resolve(false);
-      throw error;
+    });
+  }
+
+  async #withLifecycleLock<Result>(
+    runId: string,
+    operation: () => Promise<Result>,
+  ): Promise<Result> {
+    const previous = this.#lifecycleTails.get(runId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => current);
+    this.#lifecycleTails.set(runId, tail);
+    await previous;
+    try {
+      return await operation();
     } finally {
-      if (this.#cancellations.get(input.runId) === barrier) {
-        this.#cancellations.delete(input.runId);
+      release();
+      if (this.#lifecycleTails.get(runId) === tail) {
+        this.#lifecycleTails.delete(runId);
       }
     }
   }
@@ -351,14 +376,21 @@ export class GenerationRuntime {
       if (await this.#cancelled(initialRun.runId)) return;
       const prepared = await input.prepare(text);
       if (await this.#cancelled(initialRun.runId)) return;
-      await this.#runs.markStage(randomUUID(), {
-        projectId: initialRun.projectId,
-        runId: initialRun.runId,
-        stage: 'saving_candidate',
+      const result = await this.#withLifecycleLock(initialRun.runId, async () => {
+        const current = this.#runs.get({
+          projectId: initialRun.projectId,
+          runId: initialRun.runId,
+        });
+        if (current.status !== 'queued' && current.status !== 'running') return null;
+        await this.#runs.markStage(randomUUID(), {
+          projectId: initialRun.projectId,
+          runId: initialRun.runId,
+          stage: 'saving_candidate',
+        });
+        task.setStage('saving_candidate', '正在保存候选', { cancellable: false });
+        return input.persist(prepared, text, usage);
       });
-      if (await this.#cancelled(initialRun.runId)) return;
-      task.setStage('saving_candidate', '正在保存候选', { cancellable: false });
-      const result = await input.persist(prepared, text, usage);
+      if (!result) return;
       for (const candidateId of result.candidateIds) task.saveCandidate(candidateId, 'complete');
       for (const resultRef of result.resultRefs) task.saveResult(resultRef);
       task.completeResults(result.resultRefs);

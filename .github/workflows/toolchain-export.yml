@@ -1,6 +1,20 @@
 name: Toolchain Export
 
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Full 40-character commit SHA to export from
+        required: true
+        type: string
+      profile:
+        description: Offline toolchain profile
+        required: true
+        type: string
+      runner:
+        description: Hosted runner used to build the platform-specific bundle
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       source_sha:
@@ -37,6 +51,8 @@ jobs:
     name: export-${{ inputs.profile }}-${{ inputs.runner }}
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 30
+    env:
+      TOOLCHAIN_AUTHORITY: docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -51,24 +67,33 @@ jobs:
           node-version: 24
       - name: Validate exact source commit
         shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           set -euo pipefail
-          [[ "${{ inputs.source_sha }}" =~ ^[0-9a-fA-F]{40}$ ]]
-          test "$(git rev-parse HEAD)" = "${{ inputs.source_sha }}"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-fA-F]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Validate permanent toolchain authority
+        run: node .github/governance/toolchain-bundle.mjs validate-authority
       - name: Assert clean source checkout
         run: node .github/governance/assert-clean-tree.mjs
       - name: Export and verify offline toolchain
         env:
           TOOLCHAIN_OUTPUT: ${{ runner.temp }}/worldforge-toolchain
+          TOOLCHAIN_PROFILE: ${{ inputs.profile }}
+          TOOLCHAIN_SOURCE_SHA: ${{ inputs.source_sha }}
         run: >-
           node .github/governance/toolchain-bundle.mjs export
-          --profile "${{ inputs.profile }}"
-          --source-sha "${{ inputs.source_sha }}"
+          --profile "$TOOLCHAIN_PROFILE"
+          --source-sha "$TOOLCHAIN_SOURCE_SHA"
       - name: Assert source checkout remained clean
         run: node .github/governance/assert-clean-tree.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: worldforge-toolchain-${{ inputs.profile }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.source_sha }}
+          name: >-
+            worldforge-toolchain-${{ inputs.profile }}-${{ runner.os }}-${{
+            runner.arch }}-${{ inputs.source_sha }}
           path: ${{ runner.temp }}/worldforge-toolchain/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7

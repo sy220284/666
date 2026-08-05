@@ -13,6 +13,7 @@
     "work": "9d79ef921d48805c1c7227f6ee524f00ad455a2b"
   },
   "allowedPaths": [
+    ".github/governance/secret-scan-allowlist.json",
     ".github/governance/toolchain-bundle.mjs",
     ".github/workflows/quality.yml",
     ".github/workflows/toolchain-export.yml",

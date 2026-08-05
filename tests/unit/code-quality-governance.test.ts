@@ -2,6 +2,10 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
+import {
+  inspectCoveragePolicy,
+  validateCoverageBaseline,
+} from '../../scripts/check-coverage-policy.mjs';
 import { validateCssSource } from '../../scripts/check-css-quality.mjs';
 import { inspectCodeQualityPolicy } from '../../scripts/code-quality-policy.mjs';
 
@@ -46,6 +50,49 @@ describe('code quality governance', () => {
     expect(coverage).toContain("'tests/integration/**/*.test.{ts,tsx}'");
   });
 
+  it('keeps core coverage at 75 percent and freezes Renderer TSX uncovered counts', async () => {
+    await expect(inspectCoveragePolicy()).resolves.toEqual({
+      policy: 'dual-track',
+      coreThresholdPercent: {
+        statements: 75,
+        branches: 75,
+        functions: 75,
+        lines: 75,
+      },
+      rendererTsxMaxUncovered: {
+        statements: 2683,
+        branches: 2322,
+        functions: 969,
+        lines: 2402,
+      },
+    });
+
+    expect(
+      validateCoverageBaseline({
+        schemaVersion: 1,
+        policy: 'dual-track',
+        core: {
+          pattern: '**/*.ts',
+          thresholdPercent: {
+            statements: 75,
+            branches: 75,
+            functions: 75,
+            lines: 75,
+          },
+        },
+        rendererTsx: {
+          pattern: 'apps/desktop/renderer/src/**/*.tsx',
+          metrics: {
+            statements: { covered: 1, total: 2, maxUncovered: 2, percent: 50 },
+            branches: { covered: 1, total: 2, maxUncovered: 1, percent: 50 },
+            functions: { covered: 1, total: 2, maxUncovered: 1, percent: 50 },
+            lines: { covered: 1, total: 2, maxUncovered: 1, percent: 50 },
+          },
+        },
+      }),
+    ).toContain('Renderer TSX statements maxUncovered must equal total - covered');
+  });
+
   it('keeps Toolchain Export read-only and artifact-only', async () => {
     const workflow = await read('.github/workflows/toolchain-export.yml');
 
@@ -87,10 +134,12 @@ describe('code quality governance', () => {
       scripts: Record<string, string>;
     };
 
+    expect(manifest.scripts['ci:policy']).toContain('node scripts/check-coverage-policy.mjs');
     expect(manifest.scripts['ci:policy']).toContain('node scripts/code-quality-policy.mjs');
     await expect(inspectCodeQualityPolicy()).resolves.toMatchObject({
       typeAwareLint: true,
       rendererTsxCoverage: true,
+      dualTrackCoverage: true,
       fileLengthGate: false,
     });
   });

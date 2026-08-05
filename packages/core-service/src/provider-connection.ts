@@ -11,7 +11,7 @@ import {
 import { createProviderAdapter } from './provider-adapter-runtime.js';
 import type { ProviderAdapterDependencies } from './provider-adapters.js';
 import {
-  inspectProviderEndpoint,
+  resolveProviderEndpoint,
   validateProviderEndpoint,
   type ProviderDnsLookup,
 } from './provider-endpoint.js';
@@ -49,10 +49,11 @@ export class ProviderConnectionService {
     credential: string | null,
     signal?: AbortSignal,
   ): Promise<ProviderConnectionTestResult> {
-    const endpoint = this.#options.lookup
-      ? await inspectProviderEndpoint(config.baseUrl, this.#options.lookup)
-      : await inspectProviderEndpoint(config.baseUrl);
+    const binding = this.#options.lookup
+      ? await resolveProviderEndpoint(config.baseUrl, this.#options.lookup)
+      : await resolveProviderEndpoint(config.baseUrl);
     const provider = createProviderAdapter(config, credential, {
+      binding,
       ...(this.#options.fetch ? { fetch: this.#options.fetch } : {}),
     });
     const started = performance.now();
@@ -60,7 +61,7 @@ export class ProviderConnectionService {
     return ProviderConnectionTestResultSchema.parse({
       providerId: config.id,
       protocol: config.protocol,
-      endpoint,
+      endpoint: binding.endpoint,
       reachable: true,
       authentication: credential ? 'verified' : 'not-required',
       modelList: probe.modelList,
@@ -70,7 +71,7 @@ export class ProviderConnectionService {
       tokenUsageAvailable: probe.tokenUsageAvailable,
       latencyMs: Math.max(0, Math.round(performance.now() - started)),
       checkedAt: (this.#options.clock?.now() ?? new Date()).toISOString(),
-      warnings: [...endpoint.warnings, ...probe.warnings],
+      warnings: [...binding.endpoint.warnings, ...probe.warnings],
     });
   }
 }

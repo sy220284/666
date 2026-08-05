@@ -161,13 +161,15 @@ describe('M1-08 operation checkpoints and restored copies', () => {
       expect(restored.projectId).not.toBe(project.projectId);
       expect(restored.sourceProjectId).toBe(project.projectId);
       expect(value.workspace.activeProject?.projectId).toBe(project.projectId);
-      await expect(
-        value.recovery.restoreCheckpoint(
-          randomUUID(),
-          { projectId: project.projectId, backupId: checkpoint.backupId },
-          value.restoreParent,
-        ),
-      ).rejects.toMatchObject({ code: 'RESTORE_TARGET_CONFLICT' });
+
+      const restoredAgain = await value.recovery.restoreCheckpoint(
+        randomUUID(),
+        { projectId: project.projectId, backupId: checkpoint.backupId },
+        value.restoreParent,
+      );
+      expect(restoredAgain.projectId).not.toBe(restored.projectId);
+      expect(restoredAgain.workspacePath).not.toBe(restored.workspacePath);
+      expect(await readdir(value.restoreParent)).toHaveLength(2);
 
       await value.workspace.close(randomUUID(), project.projectId);
       const reopened = await value.workspace.open(randomUUID(), {

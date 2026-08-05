@@ -13,9 +13,9 @@ import {
   existingWritableDirectory,
   hashFile,
   isMissing,
-  safeName,
   type RecoveryRuntime,
 } from './backup-manifest.js';
+import { safeFileName, safeTemporaryName } from './path-name.js';
 
 export class VersionExportOperations {
   readonly #runtime: RecoveryRuntime;
@@ -56,7 +56,10 @@ export class VersionExportOperations {
       return { version, blocks };
     });
     const directory = await existingWritableDirectory(targetDirectory);
-    const fileName = `${safeName(data.version.chapterTitle)}-${safeName(data.version.versionTitle)}.txt`;
+    const fileName = safeFileName(
+      `${data.version.chapterTitle}-${data.version.versionTitle}`,
+      '.txt',
+    );
     const filePath = path.join(directory, fileName);
     try {
       await lstat(filePath);
@@ -68,7 +71,11 @@ export class VersionExportOperations {
     const content = data.blocks
       .map((block) => (block.blockType === 'separator' ? '---' : block.text))
       .join('\n\n');
-    const temporaryPath = `${filePath}.partial-${this.#runtime.idFactory()}`;
+    const temporaryName = safeTemporaryName(
+      fileName,
+      `.partial-${this.#runtime.idFactory()}`,
+    );
+    const temporaryPath = path.join(directory, temporaryName);
     try {
       await writeFile(temporaryPath, `${content}\n`, {
         encoding: 'utf8',

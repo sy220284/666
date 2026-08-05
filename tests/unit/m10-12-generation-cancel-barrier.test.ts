@@ -70,36 +70,34 @@ function constraints() {
 
 describe('M10-12 Candidate保存前取消屏障', () => {
   it('取消成功后不会进入Candidate持久化', async () => {
-    let enterSaving!: () => void;
-    const savingEntered = new Promise<void>((resolve) => {
-      enterSaving = resolve;
+    let enterParsing!: () => void;
+    const parsingEntered = new Promise<void>((resolve) => {
+      enterParsing = resolve;
     });
-    let releaseSaving!: () => void;
-    const savingReleased = new Promise<void>((resolve) => {
-      releaseSaving = resolve;
+    let releaseParsing!: () => void;
+    const parsingReleased = new Promise<void>((resolve) => {
+      releaseParsing = resolve;
     });
-    let persistedStage: 'parsing_output' | 'saving_candidate' = 'parsing_output';
     const persistCandidate = vi.fn();
     const queued = generationRun('queued', 'queued');
     const running = generationRun('running', 'parsing_output');
     const cancelled = generationRun('cancelled', 'completed');
+    let current = running;
     const runs = {
       createWithReplay: async () => ({ run: queued, replayed: false }),
-      get: () =>
-        persistedStage === 'saving_candidate'
-          ? generationRun('running', 'saving_candidate')
-          : running,
+      get: () => current,
       markRunning: async () => running,
       markStage: async (_requestId: string, input: { stage: string }) => {
-        if (input.stage === 'saving_candidate') {
-          enterSaving();
-          await savingReleased;
-          persistedStage = 'saving_candidate';
-          return generationRun('running', 'saving_candidate');
+        if (input.stage === 'parsing_output') {
+          enterParsing();
+          await parsingReleased;
         }
         return running;
       },
-      cancel: async () => cancelled,
+      cancel: async () => {
+        current = cancelled;
+        return cancelled;
+      },
       fail: async () => running,
       completeProseCandidate: persistCandidate,
     } as unknown as GenerationRunService;
@@ -148,7 +146,7 @@ describe('M10-12 Candidate保存前取消屏障', () => {
       candidate: { title: '候选', candidateType: 'full' },
       parse: (text) => [{ blockType: 'paragraph', text, attributes: {} }],
     });
-    await savingEntered;
+    await parsingEntered;
 
     await expect(
       runtime.cancel('00000000-0000-4000-8000-000000000012', {
@@ -156,7 +154,7 @@ describe('M10-12 Candidate保存前取消屏障', () => {
         runId: RUN_ID,
       }),
     ).resolves.toMatchObject({ status: 'cancelled' });
-    releaseSaving();
+    releaseParsing();
     await runtime.waitFor(RUN_ID);
 
     expect(persistCandidate).not.toHaveBeenCalled();

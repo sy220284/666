@@ -16,7 +16,12 @@ import {
 } from '../../packages/core-service/src/generation-runtime.js';
 import { TaskProtocol } from '../../packages/core-service/src/task-protocol.js';
 
-const requestId = '00000000-0000-4000-8000-000000000021';
+const REQUEST_ID = '00000000-0000-4000-8000-000000000021';
+const RUN_ID = '00000000-0000-4000-8000-000000000221';
+const TASK_ID = '00000000-0000-4000-8000-000000000222';
+const PROJECT_ID = '00000000-0000-4000-8000-000000000223';
+const CHAPTER_ID = '00000000-0000-4000-8000-000000000224';
+const CANDIDATE_ID = '00000000-0000-4000-8000-000000000225';
 
 function generationRun(
   status: GenerationRun['status'],
@@ -24,11 +29,11 @@ function generationRun(
   resultRefs: GenerationRun['resultRefs'] = [],
 ): GenerationRun {
   return GenerationRunSchema.parse({
-    runId: 'run-persist-race',
-    requestId,
-    taskId: 'task-persist-race',
-    projectId: 'project-a',
-    chapterId: 'chapter-a',
+    runId: RUN_ID,
+    requestId: REQUEST_ID,
+    taskId: TASK_ID,
+    projectId: PROJECT_ID,
+    chapterId: CHAPTER_ID,
     baseDraftId: null,
     baseDraftRevision: null,
     runType: 'chapter',
@@ -55,8 +60,8 @@ function generationRun(
 
 function constraints() {
   return ConstraintPackageSchema.parse({
-    projectId: 'project-a',
-    chapterId: 'chapter-a',
+    projectId: PROJECT_ID,
+    chapterId: CHAPTER_ID,
     taskType: 'chapter',
     snapshotSource: 'fallback_live_query',
     sections: { P0: [], P1: [], P2: [], P3: [], P4: [] },
@@ -86,15 +91,15 @@ describe('M10-12 Candidate持久化与取消原子边界', () => {
       enterPersist();
       await persistReleased;
       current = generationRun('succeeded', 'completed', [
-        { resultType: 'candidate', resultId: 'candidate-a', candidateKind: 'full' },
+        { resultType: 'candidate', resultId: CANDIDATE_ID, candidateKind: 'full' },
       ]);
       return {
         run: current,
         candidate: {
-          candidateId: 'candidate-a',
-          projectId: 'project-a',
-          chapterId: 'chapter-a',
-          generationRunId: 'run-persist-race',
+          candidateId: CANDIDATE_ID,
+          projectId: PROJECT_ID,
+          chapterId: CHAPTER_ID,
+          generationRunId: RUN_ID,
           candidateType: 'full' as const,
           completeness: 'complete' as const,
           status: 'available' as const,
@@ -141,10 +146,10 @@ describe('M10-12 Candidate持久化与取消原子边界', () => {
     };
 
     const execution = await runtime.startProse({
-      requestId,
+      requestId: REQUEST_ID,
       run: {
-        projectId: 'project-a',
-        chapterId: 'chapter-a',
+        projectId: PROJECT_ID,
+        chapterId: CHAPTER_ID,
         baseDraftId: null,
         baseDraftRevision: null,
         runType: 'chapter',
@@ -155,7 +160,7 @@ describe('M10-12 Candidate持久化与取消原子边界', () => {
         actualModel: 'model-a',
         supportStatus: 'unverified',
         constraintPackage: constraints(),
-        taskId: 'task-persist-race',
+        taskId: TASK_ID,
       },
       provider,
       requestFor: (runId) =>
@@ -178,18 +183,18 @@ describe('M10-12 Candidate持久化与取消原子边界', () => {
     await persistEntered;
 
     const cancellation = runtime.cancel('00000000-0000-4000-8000-000000000022', {
-      projectId: 'project-a',
-      runId: 'run-persist-race',
+      projectId: PROJECT_ID,
+      runId: RUN_ID,
     });
     await Promise.resolve();
     expect(cancelCalled).toBe(false);
 
     releasePersist();
-    await runtime.waitFor('run-persist-race');
+    await runtime.waitFor(RUN_ID);
     await expect(cancellation).rejects.toMatchObject({ code: 'GENERATION_RUN_TERMINAL' });
 
     expect(persistCandidate).toHaveBeenCalledOnce();
-    expect(tasks.getSnapshot(execution.taskId, 'project-a').status).toBe('succeeded');
+    expect(tasks.getSnapshot(execution.taskId, PROJECT_ID).status).toBe('succeeded');
     tasks.close();
   });
 });

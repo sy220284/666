@@ -126,14 +126,9 @@ export class BackupRestoreOperations {
       );
     }
 
-    let replay: RestoreRequestRecord | null = null;
-    try {
-      replay = restoreRequestRecord(
-        JSON.parse(await readFile(path.join(target, 'restore-request.json'), 'utf8')) as unknown,
-      );
-    } catch {
-      replay = null;
-    }
+    const replay = await readFile(path.join(target, 'restore-request.json'), 'utf8')
+      .then((content) => restoreRequestRecord(JSON.parse(content) as unknown))
+      .catch(() => null);
     if (
       !replay ||
       replay.requestId !== requestId ||

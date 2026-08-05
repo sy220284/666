@@ -6,13 +6,14 @@
   "source": "docs/tasks/M10/M10-10_CURRENT_WORKSPACE_TOOLCHAIN_AUTHORITY.md",
   "priority": "P1",
   "startedAt": "2026-08-05T12:47:00+08:00",
-  "implementedAt": "2026-08-05T13:14:00+08:00",
+  "implementedAt": "2026-08-05T13:32:00+08:00",
   "dependencies": ["M10-09"],
   "baseline": {
     "main": "e71b6b3f58ed4d048fd57ede191687b138da25f9",
     "work": "e71b6b3f58ed4d048fd57ede191687b138da25f9"
   },
   "allowedPaths": [
+    ".github/workflows/performance.yml",
     "docs/PROJECT_EXECUTION_ENTRY.md",
     "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md",
     "docs/tasks/TASK_INDEX.md",
@@ -26,7 +27,6 @@
     "migrations/",
     "package.json",
     "pnpm-lock.yaml",
-    ".github/workflows/",
     ".github/governance/",
     "docs/product/"
   ],

@@ -46,6 +46,7 @@
     "tests/unit/source-structure-policy.test.ts",
     "tests/unit/code-quality-governance.test.ts",
     "tests/unit/sql-migration-policy.test.ts",
+    "tests/unit/app-shell-runtime-models.test.ts",
     "docs/test-evidence/M10-08/"
   ],
   "forbiddenPaths": [

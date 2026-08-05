@@ -16,7 +16,9 @@ import type {
   RecoveryVersionExport,
 } from '@worldforge/contracts';
 
+import { BoundedIdempotentPromiseCache } from '../bounded-idempotent-promise-cache.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
+import { stableJson } from '../stable-json.js';
 import { BackupCleanupOperations } from './backup-cleanup.js';
 import { BackupCreateOperations } from './backup-create.js';
 import { BackupRestoreOperations } from './backup-restore.js';
@@ -31,6 +33,7 @@ export class RecoveryService {
   readonly #cleanup: BackupCleanupOperations;
   readonly #restore: BackupRestoreOperations;
   readonly #versionExport: VersionExportOperations;
+  readonly #commands = new BoundedIdempotentPromiseCache();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     const runtime = createRecoveryRuntime(workspace, options);
@@ -41,15 +44,21 @@ export class RecoveryService {
   }
 
   createOperationCheckpoint(requestId: string, raw: RecoveryCreateInput): Promise<BackupRecord> {
-    return this.#create.createOperationCheckpoint(requestId, raw);
+    return this.#share('create-checkpoint', requestId, raw, () =>
+      this.#create.createOperationCheckpoint(requestId, raw),
+    );
   }
 
   createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
-    return this.#create.createDailyBackup(requestId, raw);
+    return this.#share('create-daily', requestId, raw, () =>
+      this.#create.createDailyBackup(requestId, raw),
+    );
   }
 
   createNamedSnapshot(requestId: string, raw: RecoveryNamedSnapshotInput): Promise<BackupRecord> {
-    return this.#create.createNamedSnapshot(requestId, raw);
+    return this.#share('create-named', requestId, raw, () =>
+      this.#create.createNamedSnapshot(requestId, raw),
+    );
   }
 
   getOverview(projectId: string): Promise<RecoveryOverview> {
@@ -57,11 +66,15 @@ export class RecoveryService {
   }
 
   updatePolicy(requestId: string, raw: RecoveryPolicyUpdateInput): Promise<BackupPolicy> {
-    return this.#cleanup.updatePolicy(requestId, raw);
+    return this.#share('update-policy', requestId, raw, () =>
+      this.#cleanup.updatePolicy(requestId, raw),
+    );
   }
 
   setProtection(requestId: string, raw: RecoveryProtectionInput): Promise<BackupRecord> {
-    return this.#cleanup.setProtection(requestId, raw);
+    return this.#share('set-protection', requestId, raw, () =>
+      this.#cleanup.setProtection(requestId, raw),
+    );
   }
 
   previewCleanup(projectId: string): Promise<BackupCleanupPreview> {
@@ -69,7 +82,9 @@ export class RecoveryService {
   }
 
   applyCleanup(requestId: string, raw: RecoveryCleanupApplyInput): Promise<RecoveryCleanupResult> {
-    return this.#cleanup.applyCleanup(requestId, raw);
+    return this.#share('apply-cleanup', requestId, raw, () =>
+      this.#cleanup.applyCleanup(requestId, raw),
+    );
   }
 
   restoreCheckpoint(
@@ -77,10 +92,21 @@ export class RecoveryService {
     raw: RecoveryRestoreInput,
     targetParentDirectory: string,
   ): Promise<RecoveryRestoredProject> {
-    return this.#restore.restoreCheckpoint(requestId, raw, targetParentDirectory);
+    return this.#share('restore-checkpoint', requestId, { raw, targetParentDirectory }, () =>
+      this.#restore.restoreCheckpoint(requestId, raw, targetParentDirectory),
+    );
   }
 
   exportVersion(raw: RecoveryExportInput, targetDirectory: string): Promise<RecoveryVersionExport> {
     return this.#versionExport.exportVersion(raw, targetDirectory);
+  }
+
+  #share<T>(
+    operation: string,
+    requestId: string,
+    input: unknown,
+    execute: () => Promise<T>,
+  ): Promise<T> {
+    return this.#commands.remember(`${operation}:${requestId}:${stableJson(input)}`, execute());
   }
 }

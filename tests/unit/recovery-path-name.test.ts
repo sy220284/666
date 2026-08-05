@@ -36,4 +36,10 @@ describe('M10-11 recovery path component budget', () => {
       SAFE_TEMPORARY_COMPONENT_BYTES,
     );
   });
+
+  it('prefixes Windows device names before adding an extension', () => {
+    expect(safeFileName('CON', '.txt')).toBe('WorldForge-CON.txt');
+    expect(safePathComponent('lpt9.backup')).toBe('WorldForge-lpt9.backup');
+    expect(safeFileName('普通标题', '.txt')).toBe('普通标题.txt');
+  });
 });

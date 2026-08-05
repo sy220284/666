@@ -4,30 +4,7 @@ import type { ProviderSummary, SceneBeat } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import type { MergeMappingMode } from './generation-studio.js';
-
-export interface GenerationSourcesLoadResult {
-  readonly providers: readonly ProviderSummary[] | null;
-  readonly sceneBeats: readonly SceneBeat[] | null;
-}
-
-export async function loadGenerationSources(
-  bridge: RendererBridgeAdapter,
-  projectId: string,
-  chapterId: string,
-  signal: AbortSignal,
-): Promise<GenerationSourcesLoadResult> {
-  const [providerRequest, beatRequest] = await Promise.allSettled([
-    bridge.providers.list({ mode: 'share', signal }),
-    bridge.planning.listSceneBeats({ projectId, chapterId }, { mode: 'share', signal }),
-  ]);
-  if (signal.aborted) return { providers: null, sceneBeats: null };
-  const providerOutcome = providerRequest.status === 'fulfilled' ? providerRequest.value : null;
-  const beatOutcome = beatRequest.status === 'fulfilled' ? beatRequest.value : null;
-  return {
-    providers: providerOutcome?.state === 'success' ? providerOutcome.data.providers : null,
-    sceneBeats: beatOutcome?.state === 'success' ? beatOutcome.data.beats : null,
-  };
-}
+import { loadGenerationSources } from './generation-sources-loader.js';
 
 export function useGenerationSources(
   bridge: RendererBridgeAdapter,
@@ -45,12 +22,13 @@ export function useGenerationSources(
     setMergeMappingMode('segment');
     void loadGenerationSources(bridge, projectId, chapterId, controller.signal).then((result) => {
       if (controller.signal.aborted) return;
-      if (result.providers) {
-        setProviders(result.providers);
+      const nextProviders = result.providers;
+      if (nextProviders) {
+        setProviders(nextProviders);
         setProviderId((current) =>
-          result.providers!.some((provider) => provider.id === current)
+          nextProviders.some((provider) => provider.id === current)
             ? current
-            : result.providers![0]?.id || '',
+            : nextProviders[0]?.id || '',
         );
       }
       if (result.sceneBeats) {

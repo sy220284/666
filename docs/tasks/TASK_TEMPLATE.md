@@ -14,6 +14,7 @@
 - 一个正式PR可以承载当前获批任务范围，且仓库同一时刻只允许一个`work → main` PR。
 - 代码结构遵循高内聚、低耦合；文件行数只用于观察，不作为强制拆分或合并失败条件。
 - 禁止为了缩短文件，将同一状态机、事务或业务生命周期机械拆成多个无语义文件。
+- Draft允许中间Evidence随实施推进；Ready必须使用Schema 2 manifest绑定最新实现提交，绑定提交之后只允许当前任务状态与Evidence收口路径。
 
 ## 2. Planned任务卡必须包含
 
@@ -117,7 +118,16 @@
 
 `sourcePr`在PR建立后写入。最终受检Head由GitHub PR、Controlled Merge输入和Main Verification共同证明，不写入Runtime，避免提交SHA自引用。最终main SHA和验证运行由GitHub提交状态绑定，不通过第二个关闭PR补写。
 
-## 5. UI与失败路径
+## 5. Evidence收口规则
+
+- manifest必须列出`summary.md`、`commands.txt`、`known-risks.md`并校验字节数与SHA-256。
+- Draft阶段可以使用中间Evidence，但不得伪造最终验收结论。
+- PR转Ready前，当前任务manifest必须使用Schema 2，并以完整40位`implementationCommit`绑定最新实现提交。
+- `implementationCommit`之后只允许修改当前任务卡、当前Runtime、`TASK_INDEX.md`和当前任务Evidence目录。
+- 产品代码、测试、脚本、配置、工作流或其他任务Evidence出现在收口区间时，Evidence必须失败；应重新完成实现验证并更新`implementationCommit`，禁止扩大收口白名单绕过。
+- Evidence manifest不绑定包含自身的最终Head，也不预写未来Squash SHA；最终main与任务有效Verified继续由提交状态证明。
+
+## 6. UI与失败路径
 
 用户功能至少覆盖：
 
@@ -133,7 +143,7 @@
 
 必须检查非法输入、目标不存在、重复请求、Revision/Hash冲突、锁定、项目越界、数据库/磁盘/网络失败和恢复失败。
 
-## 6. 结构治理要求
+## 7. 结构治理要求
 
 重构、拆分或合并模块时必须依据：
 
@@ -146,7 +156,7 @@
 
 单纯的文件行数、函数数量、测试数量或目录视觉长度不能作为拆分理由。大型文件只要职责单一、状态集中、依赖清晰，可以保留。
 
-## 7. Definition of Done
+## 8. Definition of Done
 
 任务只有同时满足以下条件才能登记`IMPLEMENTED`：
 
@@ -159,6 +169,7 @@
 - 无TODO、空函数、固定假数据和伪造成功；
 - Runtime、TASK_INDEX和追踪矩阵同步；
 - `verificationBinding`绑定当前PR和稳定状态上下文；
+- Ready Evidence绑定最新实现提交，且其后不存在非收口变更；
 - 结构变化符合职责内聚、依赖方向和单一状态所有权，不以行数制造碎片。
 
 有效`VERIFIED`还要求Main Verification及任务验证提交状态成功，且GitHub来源PR、来源Head与最终main绑定完全一致。

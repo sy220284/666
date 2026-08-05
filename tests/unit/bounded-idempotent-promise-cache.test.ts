@@ -67,15 +67,13 @@ describe('BoundedIdempotentPromiseCache', () => {
 
     expect(cache.remember('shared', 'generation:start:a', pending.promise)).toBe(pending.promise);
     expect(cache.get('shared', 'generation:start:a')).toBe(pending.promise);
-    expect(() => cache.get('shared', 'generation:start:b')).toThrow(
-      IdempotentRequestConflictError,
-    );
+    expect(() => cache.get('shared', 'generation:start:b')).toThrow(IdempotentRequestConflictError);
 
     pending.resolve('done');
     await expect(pending.promise).resolves.toBe('done');
     expect(cache.get('shared', 'generation:start:a')).toBe(pending.promise);
-    expect(() =>
-      cache.remember('shared', 'generation:start:b', Promise.resolve('wrong')),
-    ).toThrow(IdempotentRequestConflictError);
+    expect(() => cache.remember('shared', 'generation:start:b', Promise.resolve('wrong'))).toThrow(
+      IdempotentRequestConflictError,
+    );
   });
 });

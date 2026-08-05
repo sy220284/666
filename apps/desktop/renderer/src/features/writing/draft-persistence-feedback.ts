@@ -6,9 +6,7 @@ export interface PersistedDraftFeedbackInput {
   readonly savedStatus: (label: string, revision: number) => string;
 }
 
-export async function reportPersistedDraft(
-  input: PersistedDraftFeedbackInput,
-): Promise<boolean> {
+export async function reportPersistedDraft(input: PersistedDraftFeedbackInput): Promise<boolean> {
   const continuationSaved = await input.saveContinuation();
   const base = input.savedStatus('已保存', input.revision);
   const changed = input.editorChanged ? ' · 编辑器仍有新输入' : '';

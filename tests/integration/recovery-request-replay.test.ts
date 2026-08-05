@@ -25,10 +25,12 @@ describe('M10-11 Recovery request replay', () => {
     temporaryDirectories.push(root);
     const parent = path.join(root, 'projects');
     const restoreParent = path.join(root, 'restored');
+    const conflictingRestoreParent = path.join(root, 'restored-conflict');
     const backupRoot = path.join(root, 'backups');
     await Promise.all([
       mkdir(parent, { recursive: true }),
       mkdir(restoreParent, { recursive: true }),
+      mkdir(conflictingRestoreParent, { recursive: true }),
     ]);
     const clock = { now: () => new Date('2026-08-05T08:00:00.000Z') };
     const runtime = await openAppRuntime({
@@ -91,6 +93,19 @@ describe('M10-11 Recovery request replay', () => {
         200,
       );
       expect(await readdir(restoreParent)).toHaveLength(1);
+
+      const conflictingReplica = new RecoveryService(workspace, {
+        backupRootDirectory: backupRoot,
+        clock,
+      });
+      await expect(
+        conflictingReplica.restoreCheckpoint(
+          restoreRequestId,
+          { projectId: project.projectId, backupId: first.backupId },
+          conflictingRestoreParent,
+        ),
+      ).rejects.toMatchObject({ code: 'RESTORE_TARGET_CONFLICT' });
+      expect(await readdir(conflictingRestoreParent)).toHaveLength(0);
     } finally {
       await workspace.shutdown();
       await runtime.close();

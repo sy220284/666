@@ -357,6 +357,7 @@ export class GenerationRuntime {
         runId: initialRun.runId,
         stage: 'saving_candidate',
       });
+      if (await this.#cancelled(initialRun.runId)) return;
       const result = await input.persist(prepared, text, usage);
       for (const candidateId of result.candidateIds) task.saveCandidate(candidateId, 'complete');
       for (const resultRef of result.resultRefs) task.saveResult(resultRef);

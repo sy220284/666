@@ -1,10 +1,7 @@
 import type { GenerationRun } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
-import {
-  loadCandidateList,
-  type CandidateReviewLoader,
-} from './candidate-review-loader.js';
+import { loadCandidateList, type CandidateReviewLoader } from './candidate-review-loader.js';
 
 interface GenerationEpoch {
   readonly current: number;
@@ -54,9 +51,7 @@ export async function refreshCandidateGenerationRun(
 
   const items = await loadCandidateList(input.loader, isCurrent);
   if (!isCurrent()) return;
-  const firstResult = outcome.data.resultRefs.find(
-    (result) => result.resultType === 'candidate',
-  );
+  const firstResult = outcome.data.resultRefs.find((result) => result.resultType === 'candidate');
   const candidate = firstResult
     ? items.find((item) => item.candidateId === firstResult.resultId)
     : undefined;

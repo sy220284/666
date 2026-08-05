@@ -56,6 +56,8 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 
 ```text
 来源PR永久门禁成功
++ Ready Evidence绑定最新实现提交
++ implementationCommit之后仅存在当前任务收口文件
 + Controlled Merge完成
 + main-verification=success
 + task-verification/<TASK-ID>=success
@@ -87,7 +89,9 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - 新建及活动Runtime必须使用Schema 2和`executionBranch: "work"`。
 - 已Verified历史Schema 1 Runtime保持冻结，只用于历史读取。
 - `.github/governance/effective-task-status.mjs`是任务有效状态与提交Context判定的策略核心。
-- Evidence manifest绑定实现提交；Evidence CI Check绑定精确PR Head。
+- Draft Evidence校验文件完整性、Hash和来源提交；Ready Evidence必须绑定当前任务最新实现提交。
+- Ready Head中`implementationCommit`之后只允许当前任务卡、当前Runtime、`TASK_INDEX.md`和当前任务Evidence目录；产品代码、测试、脚本、配置、工作流或跨任务Evidence后移必须阻断。
+- Evidence manifest不预写未来Squash SHA；Evidence CI Check绑定精确PR Head，最终main与任务Verified由提交状态证明。
 - 发布资格必须读取当前main提交的`main-verification`和任务状态。
 - Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
 - Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。

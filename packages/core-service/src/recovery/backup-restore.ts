@@ -294,7 +294,7 @@ export class BackupRestoreOperations {
     const restoredAt = this.#runtime.clock.now().toISOString();
     const nextName = `${sourceProject.name}（恢复副本）`.slice(0, 240);
     const directoryName = safeFileName(
-      `${safePathComponent(sourceProject.name, 130)}-恢复-${requestId}`,
+      `${safePathComponent(sourceProject.name, 130)}-恢复-${input.backupId}`,
       '.worldforge',
     );
     const target = path.join(parent, directoryName);

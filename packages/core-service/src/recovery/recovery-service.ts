@@ -19,10 +19,10 @@ import type {
 import { BoundedIdempotentPromiseCache } from '../bounded-idempotent-promise-cache.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { stableJson } from '../stable-json.js';
-import { BackupCleanupOperations } from './backup-cleanup.js';
 import { BackupCreateOperations } from './backup-create.js';
 import { BackupRestoreOperations } from './backup-restore.js';
 import { createRecoveryRuntime, type RecoveryServiceOptions } from './backup-manifest.js';
+import { IdempotentBackupCleanupOperations } from './idempotent-cleanup.js';
 import { VersionExportOperations } from './version-export.js';
 
 export { RecoveryServiceError } from './backup-manifest.js';
@@ -30,7 +30,7 @@ export type { RecoveryServiceErrorCode, RecoveryServiceOptions } from './backup-
 
 export class RecoveryService {
   readonly #create: BackupCreateOperations;
-  readonly #cleanup: BackupCleanupOperations;
+  readonly #cleanup: IdempotentBackupCleanupOperations;
   readonly #restore: BackupRestoreOperations;
   readonly #versionExport: VersionExportOperations;
   readonly #commands = new BoundedIdempotentPromiseCache();
@@ -38,7 +38,7 @@ export class RecoveryService {
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     const runtime = createRecoveryRuntime(workspace, options);
     this.#create = new BackupCreateOperations(runtime);
-    this.#cleanup = new BackupCleanupOperations(runtime);
+    this.#cleanup = new IdempotentBackupCleanupOperations(runtime);
     this.#restore = new BackupRestoreOperations(runtime);
     this.#versionExport = new VersionExportOperations(runtime);
   }
@@ -107,6 +107,9 @@ export class RecoveryService {
     input: unknown,
     execute: () => Promise<T>,
   ): Promise<T> {
-    return this.#commands.remember(`${operation}:${requestId}:${stableJson(input)}`, execute());
+    const key = `${operation}:${requestId}:${stableJson(input)}`;
+    const existing = this.#commands.get<T>(key);
+    if (existing) return existing;
+    return this.#commands.remember(key, execute());
   }
 }

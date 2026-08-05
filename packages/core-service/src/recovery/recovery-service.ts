@@ -16,24 +16,36 @@ import type {
   RecoveryVersionExport,
 } from '@worldforge/contracts';
 
-import { BoundedIdempotentPromiseCache } from '../bounded-idempotent-promise-cache.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { stableJson } from '../stable-json.js';
 import { BackupCreateOperations } from './backup-create.js';
 import { BackupRestoreOperations } from './backup-restore.js';
-import { createRecoveryRuntime, type RecoveryServiceOptions } from './backup-manifest.js';
+import {
+  RecoveryServiceError,
+  createRecoveryRuntime,
+  type RecoveryServiceErrorCode,
+  type RecoveryServiceOptions,
+} from './backup-manifest.js';
 import { IdempotentBackupCleanupOperations } from './idempotent-cleanup.js';
 import { VersionExportOperations } from './version-export.js';
 
-export { RecoveryServiceError } from './backup-manifest.js';
-export type { RecoveryServiceErrorCode, RecoveryServiceOptions } from './backup-manifest.js';
+export { RecoveryServiceError };
+export type { RecoveryServiceErrorCode, RecoveryServiceOptions };
+
+interface RecoveryCommandEntry {
+  readonly fingerprint: string;
+  readonly promise: Promise<unknown>;
+  settled: boolean;
+}
+
+const MAXIMUM_RETAINED_RECOVERY_COMMANDS = 1_000;
 
 export class RecoveryService {
   readonly #create: BackupCreateOperations;
   readonly #cleanup: IdempotentBackupCleanupOperations;
   readonly #restore: BackupRestoreOperations;
   readonly #versionExport: VersionExportOperations;
-  readonly #commands = new BoundedIdempotentPromiseCache();
+  readonly #commands = new Map<string, RecoveryCommandEntry>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     const runtime = createRecoveryRuntime(workspace, options);
@@ -44,19 +56,19 @@ export class RecoveryService {
   }
 
   createOperationCheckpoint(requestId: string, raw: RecoveryCreateInput): Promise<BackupRecord> {
-    return this.#share('create-checkpoint', requestId, raw, () =>
+    return this.#share('create-checkpoint', requestId, raw, 'BACKUP_CREATE_FAILED', () =>
       this.#create.createOperationCheckpoint(requestId, raw),
     );
   }
 
   createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
-    return this.#share('create-daily', requestId, raw, () =>
+    return this.#share('create-daily', requestId, raw, 'BACKUP_CREATE_FAILED', () =>
       this.#create.createDailyBackup(requestId, raw),
     );
   }
 
   createNamedSnapshot(requestId: string, raw: RecoveryNamedSnapshotInput): Promise<BackupRecord> {
-    return this.#share('create-named', requestId, raw, () =>
+    return this.#share('create-named', requestId, raw, 'BACKUP_CREATE_FAILED', () =>
       this.#create.createNamedSnapshot(requestId, raw),
     );
   }
@@ -66,13 +78,13 @@ export class RecoveryService {
   }
 
   updatePolicy(requestId: string, raw: RecoveryPolicyUpdateInput): Promise<BackupPolicy> {
-    return this.#share('update-policy', requestId, raw, () =>
+    return this.#share('update-policy', requestId, raw, 'BACKUP_CLEANUP_STALE', () =>
       this.#cleanup.updatePolicy(requestId, raw),
     );
   }
 
   setProtection(requestId: string, raw: RecoveryProtectionInput): Promise<BackupRecord> {
-    return this.#share('set-protection', requestId, raw, () =>
+    return this.#share('set-protection', requestId, raw, 'BACKUP_CLEANUP_STALE', () =>
       this.#cleanup.setProtection(requestId, raw),
     );
   }
@@ -82,7 +94,7 @@ export class RecoveryService {
   }
 
   applyCleanup(requestId: string, raw: RecoveryCleanupApplyInput): Promise<RecoveryCleanupResult> {
-    return this.#share('apply-cleanup', requestId, raw, () =>
+    return this.#share('apply-cleanup', requestId, raw, 'BACKUP_CLEANUP_STALE', () =>
       this.#cleanup.applyCleanup(requestId, raw),
     );
   }
@@ -92,8 +104,12 @@ export class RecoveryService {
     raw: RecoveryRestoreInput,
     targetParentDirectory: string,
   ): Promise<RecoveryRestoredProject> {
-    return this.#share('restore-checkpoint', requestId, { raw, targetParentDirectory }, () =>
-      this.#restore.restoreCheckpoint(requestId, raw, targetParentDirectory),
+    return this.#share(
+      'restore-checkpoint',
+      requestId,
+      { raw, targetParentDirectory },
+      'RESTORE_TARGET_CONFLICT',
+      () => this.#restore.restoreCheckpoint(requestId, raw, targetParentDirectory),
     );
   }
 
@@ -105,11 +121,46 @@ export class RecoveryService {
     operation: string,
     requestId: string,
     input: unknown,
+    conflictCode: RecoveryServiceErrorCode,
     execute: () => Promise<T>,
   ): Promise<T> {
-    const key = `${operation}:${requestId}:${stableJson(input)}`;
-    const existing = this.#commands.get<T>(key);
-    if (existing) return existing;
-    return this.#commands.remember(key, execute());
+    const key = `${operation}:${requestId}`;
+    const fingerprint = stableJson(input);
+    const existing = this.#commands.get(key);
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        return Promise.reject(
+          new RecoveryServiceError(
+            conflictCode,
+            'The requestId was already used with different recovery command input.',
+          ),
+        );
+      }
+      return existing.promise as Promise<T>;
+    }
+
+    const promise = Promise.resolve().then(execute);
+    const entry: RecoveryCommandEntry = { fingerprint, promise, settled: false };
+    this.#commands.set(key, entry);
+    void promise.then(
+      () => {
+        if (this.#commands.get(key) !== entry) return;
+        entry.settled = true;
+        this.#trimSettledCommands();
+      },
+      () => {
+        if (this.#commands.get(key) === entry) this.#commands.delete(key);
+      },
+    );
+    this.#trimSettledCommands();
+    return promise;
+  }
+
+  #trimSettledCommands(): void {
+    while (this.#commands.size > MAXIMUM_RETAINED_RECOVERY_COMMANDS) {
+      const settled = [...this.#commands.entries()].find(([, entry]) => entry.settled);
+      if (!settled) return;
+      this.#commands.delete(settled[0]);
+    }
   }
 }

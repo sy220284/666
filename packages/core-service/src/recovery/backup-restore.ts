@@ -19,6 +19,10 @@ import {
   type RecoveryRuntime,
 } from './backup-manifest.js';
 import { safeFileName, safePathComponent } from './path-name.js';
+import {
+  rethrowRecoveryFailure,
+  settleRecoveryCompensation,
+} from './recovery-compensation.js';
 
 interface RestoreRequestRecord {
   readonly schemaVersion: 1;
@@ -364,13 +368,25 @@ export class BackupRestoreOperations {
         backupId: input.backupId,
       });
     } catch (error) {
-      await rm(staging, { recursive: true, force: true });
-      if (targetCreated) await rm(target, { recursive: true, force: true });
-      if (error instanceof RecoveryServiceError) throw error;
-      throw new RecoveryServiceError(
+      const failures = await settleRecoveryCompensation([
+        {
+          label: 'restore-staging',
+          run: () => rm(staging, { recursive: true, force: true }),
+        },
+        ...(targetCreated
+          ? [
+              {
+                label: 'restore-target',
+                run: () => rm(target, { recursive: true, force: true }),
+              },
+            ]
+          : []),
+      ]);
+      rethrowRecoveryFailure(
+        error,
+        failures,
         'RESTORE_VERIFY_FAILED',
         'The restored copy failed verification.',
-        { cause: error },
       );
     }
   }

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "policy": "dual-track",
+  "measuredAt": "2026-08-04T23:59:10+08:00",
+  "sourceHead": "ea49c8f5306c5b81f71de980e55d69ea196ea0f2",
+  "core": {
+    "pattern": "**/*.ts",
+    "thresholdPercent": {
+      "statements": 75,
+      "branches": 75,
+      "functions": 75,
+      "lines": 75
+    }
+  },
+  "rendererTsx": {
+    "pattern": "apps/desktop/renderer/src/**/*.tsx",
+    "metrics": {
+      "statements": {
+        "covered": 59,
+        "total": 2742,
+        "maxUncovered": 2683,
+        "percent": 2.15
+      },
+      "branches": {
+        "covered": 47,
+        "total": 2369,
+        "maxUncovered": 2322,
+        "percent": 1.98
+      },
+      "functions": {
+        "covered": 16,
+        "total": 985,
+        "maxUncovered": 969,
+        "percent": 1.62
+      },
+      "lines": {
+        "covered": 48,
+        "total": 2450,
+        "maxUncovered": 2402,
+        "percent": 1.95
+      }
+    }
+  }
+}

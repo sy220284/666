@@ -59,9 +59,7 @@ export function BeginnerPlanningQuestions({
         <div>
           <p className="eyebrow">简明规划</p>
           <h1>用四个问题建立作品方向</h1>
-          <p>
-            简明规划只减少当前显示内容，仍然读取和保存同一份{authorTerm('projectBrief')}。
-          </p>
+          <p>简明规划只减少当前显示内容，仍然读取和保存同一份{authorTerm('projectBrief')}。</p>
         </div>
         <div className="feature-heading__actions">
           <button
@@ -153,12 +151,7 @@ function BeginnerBriefForm({
         <textarea name="coreConflict" defaultValue={brief.coreConflict} />
       </label>
       <div className="inline-actions">
-        <button
-          className="primary-button"
-          data-save-brief
-          disabled={disabled}
-          type="submit"
-        >
+        <button className="primary-button" data-save-brief disabled={disabled} type="submit">
           保存四项核心方向
         </button>
         <button data-skip-brief type="button" onClick={onSkip}>

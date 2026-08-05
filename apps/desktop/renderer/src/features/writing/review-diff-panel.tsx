@@ -46,7 +46,8 @@ export function ReviewDiffPanel({
     () => visibleReviewLines(diff, changedIndexes, changedOnly),
     [changedIndexes, changedOnly, diff],
   );
-  const collapsed = !changedOnly && diff.length > LONG_DIFF_LINE_LIMIT && visible.length < diff.length;
+  const collapsed =
+    !changedOnly && diff.length > LONG_DIFF_LINE_LIMIT && visible.length < diff.length;
 
   useEffect(() => {
     setActiveChange((current) => Math.min(current, Math.max(0, changedIndexes.length - 1)));
@@ -159,11 +160,7 @@ export function visibleReviewLines(
   for (let index = 0; index < Math.min(EDGE_CONTEXT_LINES, diff.length); index += 1) {
     included.add(index);
   }
-  for (
-    let index = Math.max(0, diff.length - EDGE_CONTEXT_LINES);
-    index < diff.length;
-    index += 1
-  ) {
+  for (let index = Math.max(0, diff.length - EDGE_CONTEXT_LINES); index < diff.length; index += 1) {
     included.add(index);
   }
   for (const changedIndex of changedIndexes) {

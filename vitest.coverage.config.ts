@@ -1,8 +1,43 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
 
 const source = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
+
+type CoverageMetric = 'statements' | 'branches' | 'functions' | 'lines';
+
+interface CoverageBaseline {
+  schemaVersion: number;
+  policy: 'dual-track';
+  core: {
+    pattern: string;
+    thresholdPercent: Record<CoverageMetric, number>;
+  };
+  rendererTsx: {
+    pattern: string;
+    metrics: Record<
+      CoverageMetric,
+      {
+        covered: number;
+        total: number;
+        maxUncovered: number;
+        percent: number;
+      }
+    >;
+  };
+}
+
+const coverageBaseline = JSON.parse(
+  readFileSync(source('./docs/architecture/coverage-baseline.json'), 'utf8'),
+) as CoverageBaseline;
+
+const rendererTsxThresholds = {
+  statements: -coverageBaseline.rendererTsx.metrics.statements.maxUncovered,
+  branches: -coverageBaseline.rendererTsx.metrics.branches.maxUncovered,
+  functions: -coverageBaseline.rendererTsx.metrics.functions.maxUncovered,
+  lines: -coverageBaseline.rendererTsx.metrics.lines.maxUncovered,
+};
 
 const processBoundaryCoverageExcludes = [
   'apps/desktop/main/src/apply-fuses.ts',
@@ -62,10 +97,10 @@ export default defineConfig({
     testTimeout: 20_000,
     hookTimeout: 20_000,
     include: [
-      'tests/unit/**/*.test.ts',
-      'tests/integration/**/*.test.ts',
-      'tests/migration/**/*.test.ts',
-      'tests/security/**/*.test.ts',
+      'tests/unit/**/*.test.{ts,tsx}',
+      'tests/integration/**/*.test.{ts,tsx}',
+      'tests/migration/**/*.test.{ts,tsx}',
+      'tests/security/**/*.test.{ts,tsx}',
     ],
     coverage: {
       enabled: true,
@@ -75,7 +110,7 @@ export default defineConfig({
       include: [
         'apps/desktop/main/src/**/*.ts',
         'apps/desktop/preload/src/**/*.ts',
-        'apps/desktop/renderer/src/**/*.ts',
+        'apps/desktop/renderer/src/**/*.{ts,tsx}',
         'packages/contracts/src/**/*.ts',
         'packages/core-service/src/**/*.ts',
         'packages/domain/src/**/*.ts',
@@ -90,10 +125,8 @@ export default defineConfig({
         ...rendererDomLifecycleCoverageExcludes,
       ],
       thresholds: {
-        statements: 75,
-        branches: 75,
-        functions: 75,
-        lines: 75,
+        [coverageBaseline.core.pattern]: coverageBaseline.core.thresholdPercent,
+        [coverageBaseline.rendererTsx.pattern]: rendererTsxThresholds,
       },
     },
   },

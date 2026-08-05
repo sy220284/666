@@ -7,7 +7,7 @@ import type { ProviderEndpointBinding, ProviderResolvedAddress } from './provide
 import { ProviderRuntimeError } from './provider-errors.js';
 
 export interface ProviderPinnedFetchOptions {
-  readonly ca?: string | Buffer | readonly (string | Buffer)[];
+  readonly ca?: string | Buffer | (string | Buffer)[];
 }
 
 function unsafe(message: string): never {
@@ -25,9 +25,7 @@ function requestUrl(input: string | URL | Request): URL {
   return new URL(input);
 }
 
-async function requestBody(
-  body: BodyInit | null | undefined,
-): Promise<string | Uint8Array | undefined> {
+async function requestBody(body: RequestInit['body']): Promise<string | Uint8Array | undefined> {
   if (body === null || body === undefined) return undefined;
   if (typeof body === 'string') return body;
   if (body instanceof URLSearchParams) return body.toString();
@@ -97,7 +95,7 @@ function requestAddress(
       resolve(
         new Response(stream, {
           status: response.statusCode ?? 502,
-          statusText: response.statusMessage,
+          ...(response.statusMessage ? { statusText: response.statusMessage } : {}),
           headers: responseHeaders(response.headers),
         }),
       );

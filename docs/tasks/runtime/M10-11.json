@@ -21,6 +21,8 @@
     "packages/core-service/src/utility-generation-router.ts",
     "packages/core-service/src/recovery/",
     "packages/core-service/src/checkpoint-aware-recovery.ts",
+    "apps/desktop/renderer/src/features/writing/generation-sources-loader.ts",
+    "apps/desktop/renderer/src/features/writing/draft-persistence-feedback.ts",
     "apps/desktop/renderer/src/features/writing/use-generation-sources.ts",
     "apps/desktop/renderer/src/features/writing/use-draft-autosave.ts",
     "apps/desktop/renderer/src/features/writing/use-writing-continuation.ts",

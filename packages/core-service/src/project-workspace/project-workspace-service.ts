@@ -113,15 +113,19 @@ export class ProjectWorkspaceService {
   }
 
   close(requestId: string, projectId: string): Promise<{ projectId: string; closed: true }> {
-    return this.#idempotent(requestId, requestFingerprint('project.close', { projectId }), async () => {
-      const context = this.#assertActiveContext(projectId);
-      try {
-        await closeProjectContext(context);
-      } finally {
-        if (this.#active === context) this.#active = null;
-      }
-      return { projectId: context.summary.projectId, closed: true };
-    });
+    return this.#idempotent(
+      requestId,
+      requestFingerprint('project.close', { projectId }),
+      async () => {
+        const context = this.#assertActiveContext(projectId);
+        try {
+          await closeProjectContext(context);
+        } finally {
+          if (this.#active === context) this.#active = null;
+        }
+        return { projectId: context.summary.projectId, closed: true };
+      },
+    );
   }
 
   move(
@@ -133,12 +137,7 @@ export class ProjectWorkspaceService {
       requestId,
       requestFingerprint('project.move', { projectId, targetParentDirectory }),
       () =>
-        moveProjectWorkspace(
-          this.#operationContext(),
-          requestId,
-          projectId,
-          targetParentDirectory,
-        ),
+        moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
     );
   }
 
@@ -290,11 +289,7 @@ export class ProjectWorkspaceService {
     };
   }
 
-  #idempotent<T>(
-    requestId: string,
-    fingerprint: string,
-    operation: () => Promise<T>,
-  ): Promise<T> {
+  #idempotent<T>(requestId: string, fingerprint: string, operation: () => Promise<T>): Promise<T> {
     const validRequestId = RequestIdSchema.parse(requestId);
     try {
       const existing = this.#operations.get<T>(validRequestId, fingerprint);

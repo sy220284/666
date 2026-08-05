@@ -120,10 +120,7 @@ export function createPinnedProviderFetch(
 
   return (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = requestUrl(input);
-    if (
-      url.origin !== binding.endpoint.origin ||
-      normalizedHost(url.hostname) !== binding.hostname
-    ) {
+    if (url.origin !== binding.endpoint.origin || normalizedHost(url.hostname) !== binding.hostname) {
       unsafe('The Provider request escaped its approved origin or hostname.');
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {

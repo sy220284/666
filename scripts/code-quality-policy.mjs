@@ -46,10 +46,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   const coveragePolicy = JSON.parse(coverageBaseline);
   const toolchainAuthority = JSON.parse(toolchainAuthoritySource);
   const violations = [];
-  const formatCommands = [
-    manifest.scripts?.format ?? '',
-    manifest.scripts?.['format:check'] ?? '',
-  ];
+  const formatCommands = [manifest.scripts?.format ?? '', manifest.scripts?.['format:check'] ?? ''];
 
   for (const [index, command] of formatCommands.entries()) {
     const label = index === 0 ? 'package.json#format' : 'package.json#format:check';
@@ -137,7 +134,9 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     }
   }
   if (!toolchainAuthority?.profiles?.formatter || !toolchainAuthority?.profiles?.quality) {
-    violations.push('CURRENT_WORKSPACE_TOOLCHAIN.json: formatter and quality profiles are required');
+    violations.push(
+      'CURRENT_WORKSPACE_TOOLCHAIN.json: formatter and quality profiles are required',
+    );
   }
   for (const required of ['node_modules/.bin', 'node_modules/.pnpm']) {
     if (!toolchainAuthority?.requiredBundleEntries?.includes(required)) {

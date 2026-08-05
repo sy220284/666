@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { reportPersistedDraft } from '../../apps/desktop/renderer/src/features/writing/use-draft-autosave.js';
+import { reportPersistedDraft } from '../../apps/desktop/renderer/src/features/writing/draft-persistence-feedback.js';
 
 describe('M10-11 persisted Draft feedback', () => {
   it('reports a retryable continuation warning after the Draft itself is persisted', async () => {

@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  RendererBridgeAdapter,
-} from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
-import {
-  loadGenerationSources,
-} from '../../apps/desktop/renderer/src/features/writing/use-generation-sources.js';
+import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+import { loadGenerationSources } from '../../apps/desktop/renderer/src/features/writing/use-generation-sources.js';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

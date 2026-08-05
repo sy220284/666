@@ -11,10 +11,12 @@ import {
   BoundedIdempotentPromiseCache,
   IdempotentRequestConflictError,
 } from '../bounded-idempotent-promise-cache.js';
-import type {
-  DatabaseClock,
-  DatabaseReadOperation,
-  DatabaseWriteOperation,
+import { currentCommandFingerprint } from '../command-identity-context.js';
+import {
+  DatabaseFoundationError,
+  type DatabaseClock,
+  type DatabaseReadOperation,
+  type DatabaseWriteOperation,
 } from '../database/index.js';
 import type { RecentProjectsRepository } from '../recent-projects.js';
 import { stableJson } from '../stable-json.js';
@@ -170,7 +172,7 @@ export class ProjectWorkspaceService {
     requestId: string,
     projectId: string,
     operation: DatabaseWriteOperation<T>,
-    commandIdentity: unknown = operation.toString(),
+    commandIdentity: unknown = currentCommandFingerprint(operation.toString()),
   ): Promise<T> {
     const context = this.#assertActiveContext(projectId, true);
     if (!context.database) {
@@ -180,7 +182,18 @@ export class ProjectWorkspaceService {
       );
     }
     const fingerprint = requestFingerprint('project.write', { projectId, commandIdentity });
-    return (await context.database.write(requestId, operation, fingerprint)).value;
+    try {
+      return (await context.database.write(requestId, operation, fingerprint)).value;
+    } catch (error) {
+      if (error instanceof DatabaseFoundationError && error.code === 'REQUEST_ID_CONFLICT') {
+        throw new ProjectWorkspaceError(
+          'PROJECT_TARGET_CONFLICT',
+          'The requestId was already used for a different project command.',
+          { cause: error },
+        );
+      }
+      throw error;
+    }
   }
 
   async resolveProjectPath(projectId: string, relativePath: string): Promise<string> {

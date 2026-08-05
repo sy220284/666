@@ -13,7 +13,8 @@ export function validateCoverageBaseline(baseline) {
   const violations = [];
 
   if (baseline?.schemaVersion !== 1) violations.push('coverage baseline schemaVersion must be 1');
-  if (baseline?.policy !== 'dual-track') violations.push('coverage baseline policy must be dual-track');
+  if (baseline?.policy !== 'dual-track')
+    violations.push('coverage baseline policy must be dual-track');
   if (baseline?.core?.pattern !== '**/*.ts') {
     violations.push('core coverage pattern must remain **/*.ts');
   }

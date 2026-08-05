@@ -91,7 +91,7 @@ describe('M10-12 Candidate持久化与取消原子边界', () => {
       enterPersist();
       await persistReleased;
       current = generationRun('succeeded', 'completed', [
-        { resultType: 'candidate', resultId: CANDIDATE_ID, candidateKind: 'full' },
+        { resultType: 'candidate', resultId: CANDIDATE_ID, candidateKind: 'prose' },
       ]);
       return {
         run: current,

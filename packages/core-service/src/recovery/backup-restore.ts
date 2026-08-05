@@ -43,61 +43,54 @@ function restoreRequestRecord(raw: unknown): RestoreRequestRecord | null {
   return value as unknown as RestoreRequestRecord;
 }
 
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
+
 export function remapProjectIdentity(
   databasePath: string,
-  sourceProjectId: string,
+  previousProjectId: string,
   nextProjectId: string,
   nextName: string,
-  restoredAt: string,
+  timestamp: string,
 ): void {
   const database = new DatabaseSync(databasePath, {
     allowExtension: false,
-    enableForeignKeyConstraints: true,
+    enableForeignKeyConstraints: false,
     readBigInts: true,
   });
   try {
-    database.exec('PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;');
-    try {
-      const project = database
-        .prepare('SELECT id FROM projects WHERE id = ?')
-        .get(sourceProjectId) as { id: string } | undefined;
-      if (!project) {
-        throw new RecoveryServiceError(
-          'RESTORE_SOURCE_INVALID',
-          'The checkpoint does not contain the expected project.',
-        );
-      }
-      database
-        .prepare('UPDATE projects SET id = ?, name = ?, updated_at = ? WHERE id = ?')
-        .run(nextProjectId, nextName, restoredAt, sourceProjectId);
-      for (const table of [
-        'volumes',
-        'entities',
-        'project_briefs',
-        'continuation_state',
-        'backup_records',
-        'backup_failures',
-        'backup_policies',
-        'replace_plans',
-        'search_index_state',
-        'project_dictionary',
-      ]) {
+    database.exec('PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE');
+    const tables = database
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+      .all()
+      .map((row) => String(row.name));
+    for (const table of tables) {
+      const references = database
+        .prepare(`PRAGMA foreign_key_list(${quoteIdentifier(table)})`)
+        .all();
+      for (const reference of references) {
+        if (String(reference.table) !== 'projects' || String(reference.to) !== 'id') continue;
+        const column = String(reference.from);
         database
-          .prepare(`UPDATE ${table} SET project_id = ? WHERE project_id = ?`)
-          .run(nextProjectId, sourceProjectId);
+          .prepare(
+            `UPDATE ${quoteIdentifier(table)} SET ${quoteIdentifier(column)} = ? WHERE ${quoteIdentifier(column)} = ?`,
+          )
+          .run(nextProjectId, previousProjectId);
       }
-      database.exec('COMMIT; PRAGMA foreign_keys = ON;');
-      if (database.prepare('PRAGMA foreign_key_check').all().length > 0) {
-        throw new RecoveryServiceError(
-          'RESTORE_VERIFY_FAILED',
-          'The restored project references are invalid.',
-        );
-      }
-    } catch (error) {
-      if (database.isTransaction) database.exec('ROLLBACK');
-      database.exec('PRAGMA foreign_keys = ON;');
-      throw error;
     }
+    const changed = database
+      .prepare('UPDATE projects SET id = ?, name = ?, created_at = ?, updated_at = ? WHERE id = ?')
+      .run(nextProjectId, nextName, timestamp, timestamp, previousProjectId);
+    if (Number(changed.changes) !== 1) throw new Error('PROJECT_ID_REMAP_FAILED');
+    if (database.prepare('PRAGMA foreign_key_check').all().length > 0) {
+      throw new Error('PROJECT_ID_REMAP_FOREIGN_KEY_FAILED');
+    }
+    database.exec('COMMIT');
+    database.exec('PRAGMA foreign_keys = ON');
+  } catch (error) {
+    if (database.isTransaction) database.exec('ROLLBACK');
+    throw error;
   } finally {
     database.close();
   }

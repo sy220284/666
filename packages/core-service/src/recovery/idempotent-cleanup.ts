@@ -27,6 +27,7 @@ interface CleanupJournal {
   readonly schemaVersion: 1;
   readonly requestId: string;
   readonly projectId: string;
+  readonly authority: RecoveryCleanupApplyInput['authority'];
   readonly planHash: string;
   readonly totalBytes: number;
   readonly targets: readonly BackupRecord[];
@@ -35,7 +36,9 @@ interface CleanupJournal {
 }
 
 function derivedRequestId(requestId: string, backupId: string): string {
-  const bytes = Buffer.from(createHash('sha256').update(`${requestId}:${backupId}`).digest().subarray(0, 16));
+  const bytes = Buffer.from(
+    createHash('sha256').update(`${requestId}:${backupId}`).digest().subarray(0, 16),
+  );
   bytes[6] = (bytes[6]! & 0x0f) | 0x40;
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
   const value = bytes.toString('hex');
@@ -59,6 +62,7 @@ function parseJournal(raw: unknown): CleanupJournal | null {
     value.schemaVersion !== 1 ||
     typeof value.requestId !== 'string' ||
     typeof value.projectId !== 'string' ||
+    value.authority !== 'author' ||
     typeof value.planHash !== 'string' ||
     typeof value.totalBytes !== 'number' ||
     !Array.isArray(value.targets) ||
@@ -73,6 +77,7 @@ function parseJournal(raw: unknown): CleanupJournal | null {
     schemaVersion: 1,
     requestId: value.requestId,
     projectId: value.projectId,
+    authority: value.authority,
     planHash: value.planHash,
     totalBytes: value.totalBytes,
     targets,
@@ -118,6 +123,7 @@ export class IdempotentBackupCleanupOperations {
       if (
         journal.requestId !== requestId ||
         journal.projectId !== input.projectId ||
+        journal.authority !== input.authority ||
         journal.planHash !== input.planHash
       ) {
         throw new RecoveryServiceError(
@@ -153,6 +159,7 @@ export class IdempotentBackupCleanupOperations {
         schemaVersion: 1,
         requestId,
         projectId: input.projectId,
+        authority: input.authority,
         planHash: input.planHash,
         totalBytes: preview.totalBytes,
         targets,

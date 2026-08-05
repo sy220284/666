@@ -15,6 +15,12 @@ export interface ProviderResolvedAddress {
   readonly family: number;
 }
 
+export interface ProviderEndpointBinding {
+  readonly endpoint: ProviderEndpointInfo;
+  readonly hostname: string;
+  readonly addresses: readonly ProviderResolvedAddress[];
+}
+
 export type ProviderDnsLookup = (
   hostname: string,
   options: { readonly all: true; readonly verbatim: true },
@@ -164,24 +170,25 @@ export function validateProviderEndpoint(baseUrl: string): ProviderEndpointInfo 
   });
 }
 
-export async function inspectProviderEndpoint(
+export async function resolveProviderEndpoint(
   baseUrl: string,
   lookup: ProviderDnsLookup = systemLookup as ProviderDnsLookup,
-): Promise<ProviderEndpointInfo> {
-  const initial = validateProviderEndpoint(baseUrl);
+): Promise<ProviderEndpointBinding> {
+  const endpoint = validateProviderEndpoint(baseUrl);
   const url = new URL(baseUrl);
-  const host = normalizedHost(url.hostname);
-  if (
-    literalScope(host) ||
-    host === 'localhost' ||
-    host.endsWith('.localhost') ||
-    host.endsWith('.local')
-  ) {
-    return initial;
+  const hostname = normalizedHost(url.hostname);
+  const literalFamily = isIP(hostname);
+  if (literalFamily === 4 || literalFamily === 6) {
+    return {
+      endpoint,
+      hostname,
+      addresses: [{ address: hostname, family: literalFamily }],
+    };
   }
-  let addresses: readonly { readonly address: string; readonly family: number }[];
+
+  let resolved: readonly ProviderResolvedAddress[];
   try {
-    addresses = await lookup(host, { all: true, verbatim: true });
+    resolved = await lookup(hostname, { all: true, verbatim: true });
   } catch {
     throw new ProviderRuntimeError(
       'AI_CONNECTION_FAILED_003',
@@ -189,34 +196,53 @@ export async function inspectProviderEndpoint(
       true,
     );
   }
-  if (addresses.length === 0) {
+  if (resolved.length === 0) {
     throw new ProviderRuntimeError(
       'AI_CONNECTION_FAILED_003',
       'The Provider hostname has no address.',
       true,
     );
   }
+
   const scopes = new Set<ProviderEndpointScope>();
-  for (const address of addresses) {
-    const scope = literalScope(address.address);
-    if (!scope || scope === 'unsafe')
+  const addresses = new Map<string, ProviderResolvedAddress>();
+  for (const candidate of resolved) {
+    const address = normalizedHost(candidate.address);
+    const family = isIP(address);
+    const scope = literalScope(address);
+    if (
+      (family !== 4 && family !== 6) ||
+      family !== candidate.family ||
+      !scope ||
+      scope === 'unsafe'
+    ) {
       unsafe('The Provider hostname resolved to an unsafe address.');
+    }
     scopes.add(scope);
+    addresses.set(`${family}:${address}`, { address, family });
   }
-  if (scopes.size !== 1)
+  if (scopes.size !== 1) {
     unsafe('The Provider hostname resolved across mixed network trust boundaries.');
+  }
   const [resolvedScope] = scopes;
   if (!resolvedScope) unsafe('The Provider endpoint scope could not be determined.');
-  if (resolvedScope !== initial.scope) {
+  if (resolvedScope !== endpoint.scope) {
     unsafe('The Provider hostname resolved outside its declared network trust boundary.');
   }
   if (resolvedScope === 'external' && url.protocol !== 'https:') {
     unsafe('External Provider endpoints must use HTTPS.');
   }
-  return ProviderEndpointInfoSchema.parse({
-    scope: resolvedScope,
-    origin: url.origin,
-    secureTransport: url.protocol === 'https:',
-    warnings: endpointWarnings(resolvedScope, url.protocol === 'https:'),
-  });
+
+  return {
+    endpoint,
+    hostname,
+    addresses: [...addresses.values()],
+  };
+}
+
+export async function inspectProviderEndpoint(
+  baseUrl: string,
+  lookup: ProviderDnsLookup = systemLookup as ProviderDnsLookup,
+): Promise<ProviderEndpointInfo> {
+  return (await resolveProviderEndpoint(baseUrl, lookup)).endpoint;
 }

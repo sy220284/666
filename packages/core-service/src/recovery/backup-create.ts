@@ -1,4 +1,4 @@
-import { chmod, mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -23,6 +23,61 @@ import {
   type BackupMetadata,
   type RecoveryRuntime,
 } from './backup-manifest.js';
+import { safeFileName, safeTemporaryName } from './path-name.js';
+
+interface BackupClassification {
+  readonly track: BackupRecord['track'];
+  readonly displayName: string | null;
+  readonly note: string | null;
+  readonly authorProtected: boolean;
+  readonly migrationProtected: boolean;
+}
+
+function backupRecordFromRow(row: Record<string, unknown>): BackupRecord {
+  return BackupRecordSchema.parse({
+    ...row,
+    sizeBytes: Number(row.sizeBytes),
+    authorProtected: Number(row.authorProtected) === 1,
+    migrationProtected: Number(row.migrationProtected) === 1,
+    schemaVersion: Number(row.schemaVersion),
+    protectionReasons: [],
+  });
+}
+
+function samePersistedRecord(left: BackupRecord, right: BackupRecord): boolean {
+  return (
+    left.backupId === right.backupId &&
+    left.projectId === right.projectId &&
+    left.operation === right.operation &&
+    left.backupFileName === right.backupFileName &&
+    left.sizeBytes === right.sizeBytes &&
+    left.sha256 === right.sha256 &&
+    left.createdAt === right.createdAt &&
+    left.verifiedAt === right.verifiedAt &&
+    left.track === right.track &&
+    left.displayName === right.displayName &&
+    left.note === right.note &&
+    left.authorProtected === right.authorProtected &&
+    left.migrationProtected === right.migrationProtected &&
+    left.schemaVersion === right.schemaVersion
+  );
+}
+
+function sameIntent(
+  record: BackupRecord,
+  input: RecoveryCreateInput,
+  classification: BackupClassification,
+): boolean {
+  return (
+    record.projectId === input.projectId &&
+    record.operation === input.operation &&
+    record.track === classification.track &&
+    record.displayName === classification.displayName &&
+    record.note === classification.note &&
+    record.authorProtected === classification.authorProtected &&
+    record.migrationProtected === classification.migrationProtected
+  );
+}
 
 export class BackupCreateOperations {
   readonly #runtime: RecoveryRuntime;
@@ -123,13 +178,7 @@ export class BackupCreateOperations {
   async #createTrackedBackup(
     requestId: string,
     input: RecoveryCreateInput,
-    classification: {
-      readonly track: BackupRecord['track'];
-      readonly displayName: string | null;
-      readonly note: string | null;
-      readonly authorProtected: boolean;
-      readonly migrationProtected: boolean;
-    },
+    classification: BackupClassification,
   ): Promise<BackupRecord> {
     try {
       return await this.#createBackup(requestId, input, classification);
@@ -188,22 +237,175 @@ export class BackupCreateOperations {
     }
   }
 
+  #readDatabaseRecord(projectId: string, backupId: string): BackupRecord | null {
+    return this.#runtime.workspace.readProject(projectId, (database) => {
+      const row = database
+        .prepare(
+          `SELECT id AS backupId, project_id AS projectId, operation,
+                  backup_file_name AS backupFileName, size_bytes AS sizeBytes, sha256,
+                  created_at AS createdAt, verified_at AS verifiedAt,
+                  backup_track AS track, display_name AS displayName, note,
+                  author_protected AS authorProtected,
+                  migration_protected AS migrationProtected, schema_version AS schemaVersion
+             FROM backup_records
+            WHERE id = ? AND project_id = ?`,
+        )
+        .get(backupId, projectId) as Record<string, unknown> | undefined;
+      return row ? backupRecordFromRow(row) : null;
+    });
+  }
+
+  async #writeMetadata(projectName: string, record: BackupRecord, metadataPath: string): Promise<void> {
+    const metadata: BackupMetadata = { ...record, sourceWorkspaceName: projectName };
+    const partialPath = `${metadataPath}.repair-${this.#runtime.idFactory()}`;
+    try {
+      await writeFile(partialPath, `${JSON.stringify(metadata, null, 2)}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
+      await rename(partialPath, metadataPath);
+    } finally {
+      await rm(partialPath, { force: true });
+    }
+  }
+
+  async #registerRecord(requestId: string, record: BackupRecord): Promise<void> {
+    await this.#runtime.workspace.writeProject(requestId, record.projectId, (database) => {
+      database
+        .prepare(
+          `INSERT INTO backup_records(
+               id, project_id, operation, backup_file_name, size_bytes, sha256,
+               created_at, verified_at, backup_track, display_name, note,
+               author_protected, migration_protected, schema_version
+             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO NOTHING`,
+        )
+        .run(
+          record.backupId,
+          record.projectId,
+          record.operation,
+          record.backupFileName,
+          record.sizeBytes,
+          record.sha256,
+          record.createdAt,
+          record.verifiedAt,
+          record.track,
+          record.displayName,
+          record.note,
+          record.authorProtected ? 1 : 0,
+          record.migrationProtected ? 1 : 0,
+          record.schemaVersion,
+        );
+      const row = database
+        .prepare(
+          `SELECT id AS backupId, project_id AS projectId, operation,
+                  backup_file_name AS backupFileName, size_bytes AS sizeBytes, sha256,
+                  created_at AS createdAt, verified_at AS verifiedAt,
+                  backup_track AS track, display_name AS displayName, note,
+                  author_protected AS authorProtected,
+                  migration_protected AS migrationProtected, schema_version AS schemaVersion
+             FROM backup_records
+            WHERE id = ? AND project_id = ?`,
+        )
+        .get(record.backupId, record.projectId) as Record<string, unknown> | undefined;
+      if (!row || !samePersistedRecord(backupRecordFromRow(row), record)) {
+        throw new RecoveryServiceError(
+          'BACKUP_VERIFY_FAILED',
+          'The backup database registration does not match its verified files.',
+        );
+      }
+      database
+        .prepare(
+          `UPDATE backup_failures
+                SET resolved_at = ?
+              WHERE project_id = ? AND backup_track = ? AND resolved_at IS NULL`,
+        )
+        .run(record.verifiedAt, record.projectId, record.track);
+    });
+  }
+
+  async #existingBackup(
+    requestId: string,
+    input: RecoveryCreateInput,
+    classification: BackupClassification,
+    projectName: string,
+    backupPath: string,
+    metadataPath: string,
+  ): Promise<BackupRecord | null> {
+    const metadataRecord = (await readBackupMetadata(this.#runtime, input.projectId)).find(
+      (record) => record.backupId === requestId,
+    );
+    const databaseRecord = this.#readDatabaseRecord(input.projectId, requestId);
+    if (metadataRecord && databaseRecord && !samePersistedRecord(metadataRecord, databaseRecord)) {
+      throw new RecoveryServiceError(
+        'BACKUP_VERIFY_FAILED',
+        'The backup metadata and database registration do not match.',
+      );
+    }
+    const record = metadataRecord ?? databaseRecord;
+    if (!record) return null;
+    if (
+      record.backupFileName !== path.basename(backupPath) ||
+      !sameIntent(record, input, classification)
+    ) {
+      throw new RecoveryServiceError(
+        'BACKUP_CREATE_FAILED',
+        'The requestId was already used for a different backup operation.',
+      );
+    }
+    try {
+      if ((await hashFile(backupPath)) !== record.sha256) {
+        throw new RecoveryServiceError(
+          'BACKUP_VERIFY_FAILED',
+          'The replayed backup file does not match its recorded hash.',
+        );
+      }
+      verifyDatabase(backupPath, input.projectId);
+    } catch (error) {
+      if (error instanceof RecoveryServiceError) throw error;
+      throw new RecoveryServiceError('BACKUP_VERIFY_FAILED', 'The replayed backup is unavailable.', {
+        cause: error,
+      });
+    }
+    if (!metadataRecord) await this.#writeMetadata(projectName, record, metadataPath);
+    if (!databaseRecord) await this.#registerRecord(this.#runtime.idFactory(), record);
+    return record;
+  }
+
   async #createBackup(
     requestId: string,
     input: RecoveryCreateInput,
-    classification: {
-      readonly track: BackupRecord['track'];
-      readonly displayName: string | null;
-      readonly note: string | null;
-      readonly authorProtected: boolean;
-      readonly migrationProtected: boolean;
-    },
+    classification: BackupClassification,
   ): Promise<BackupRecord> {
     const project = this.#runtime.workspace.assertActiveProject(input.projectId, true);
     const sourceDatabasePath = path.join(project.workspacePath, 'project.sqlite');
     const backupDirectory = path.join(this.#runtime.backupRootDirectory, input.projectId);
     await mkdir(backupDirectory, { recursive: true, mode: 0o700 });
     await chmod(backupDirectory, 0o700);
+
+    const backupId = requestId;
+    const fileName = safeFileName(`backup-${backupId}`, '.sqlite');
+    const finalPath = path.join(backupDirectory, fileName);
+    const metadataPath = path.join(backupDirectory, `${backupId}.json`);
+    const existing = await this.#existingBackup(
+      requestId,
+      input,
+      classification,
+      project.name,
+      finalPath,
+      metadataPath,
+    );
+    if (existing) return existing;
+
+    try {
+      await lstat(finalPath);
+      await rm(finalPath, { force: true });
+    } catch (error) {
+      if (!isMissing(error)) throw error;
+    }
+    await rm(metadataPath, { force: true });
+
     const sourceBytes = BigInt((await stat(sourceDatabasePath)).size);
     const requiredBytes = sourceBytes * 2n + 1_048_576n;
     if ((await this.#runtime.freeBytes(backupDirectory)) < requiredBytes) {
@@ -213,13 +415,12 @@ export class BackupCreateOperations {
       );
     }
 
-    const backupId = this.#runtime.idFactory();
     const createdAt = this.#runtime.clock.now().toISOString();
-    const fileName = `${createdAt.replaceAll(':', '-').replaceAll('.', '-')}-${input.operation}-${backupId}.sqlite`;
-    const finalPath = path.join(backupDirectory, fileName);
-    const partialPath = `${finalPath}.partial`;
-    const metadataPath = path.join(backupDirectory, `${backupId}.json`);
-    const metadataPartialPath = `${metadataPath}.partial`;
+    const partialName = safeTemporaryName(fileName, `.partial-${this.#runtime.idFactory()}`);
+    const partialPath = path.join(backupDirectory, partialName);
+    const metadataPartialPath = `${metadataPath}.partial-${this.#runtime.idFactory()}`;
+    let finalBackupCreated = false;
+    let finalMetadataCreated = false;
     try {
       await this.#runtime.onlineBackup(sourceDatabasePath, partialPath);
       await this.#runtime.afterBackupCreated?.(partialPath);
@@ -255,50 +456,17 @@ export class BackupCreateOperations {
         flag: 'wx',
       });
       await rename(partialPath, finalPath);
+      finalBackupCreated = true;
       await rename(metadataPartialPath, metadataPath);
-      try {
-        await this.#runtime.workspace.writeProject(requestId, input.projectId, (database) => {
-          database
-            .prepare(
-              `INSERT INTO backup_records(
-                   id, project_id, operation, backup_file_name, size_bytes, sha256,
-                   created_at, verified_at, backup_track, display_name, note,
-                   author_protected, migration_protected, schema_version
-                 ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            )
-            .run(
-              record.backupId,
-              record.projectId,
-              record.operation,
-              record.backupFileName,
-              record.sizeBytes,
-              record.sha256,
-              record.createdAt,
-              record.verifiedAt,
-              record.track,
-              record.displayName,
-              record.note,
-              record.authorProtected ? 1 : 0,
-              record.migrationProtected ? 1 : 0,
-              record.schemaVersion,
-            );
-          database
-            .prepare(
-              `UPDATE backup_failures
-                    SET resolved_at = ?
-                  WHERE project_id = ? AND backup_track = ? AND resolved_at IS NULL`,
-            )
-            .run(record.verifiedAt, record.projectId, record.track);
-        });
-      } catch (error) {
-        await Promise.all([rm(finalPath, { force: true }), rm(metadataPath, { force: true })]);
-        throw error;
-      }
+      finalMetadataCreated = true;
+      await this.#registerRecord(requestId, record);
       return record;
     } catch (error) {
       await Promise.all([
         rm(partialPath, { force: true }),
         rm(metadataPartialPath, { force: true }),
+        ...(finalBackupCreated ? [rm(finalPath, { force: true })] : []),
+        ...(finalMetadataCreated ? [rm(metadataPath, { force: true })] : []),
       ]);
       if (error instanceof RecoveryServiceError) throw error;
       throw new RecoveryServiceError(

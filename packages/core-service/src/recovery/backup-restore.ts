@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, link, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -15,10 +15,62 @@ import {
   hashFile,
   isMissing,
   readBackupMetadata,
-  safeName,
   verifyDatabase,
   type RecoveryRuntime,
 } from './backup-manifest.js';
+import { safeFileName, safePathComponent } from './path-name.js';
+
+interface RestoreRequestRecord {
+  readonly schemaVersion: 1;
+  readonly requestId: string;
+  readonly sourceProjectId: string;
+  readonly backupId: string;
+  readonly restoredProjectId: string;
+}
+
+interface RestoreOperationJournal {
+  readonly schemaVersion: 1;
+  readonly requestId: string;
+  readonly sourceProjectId: string;
+  readonly backupId: string;
+  readonly targetParentDirectory: string;
+  readonly targetPath: string;
+}
+
+function restoreRequestRecord(raw: unknown): RestoreRequestRecord | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  if (
+    value.schemaVersion !== 1 ||
+    typeof value.requestId !== 'string' ||
+    typeof value.sourceProjectId !== 'string' ||
+    typeof value.backupId !== 'string' ||
+    typeof value.restoredProjectId !== 'string'
+  ) {
+    return null;
+  }
+  return value as unknown as RestoreRequestRecord;
+}
+
+function restoreOperationJournal(raw: unknown): RestoreOperationJournal | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  if (
+    value.schemaVersion !== 1 ||
+    typeof value.requestId !== 'string' ||
+    typeof value.sourceProjectId !== 'string' ||
+    typeof value.backupId !== 'string' ||
+    typeof value.targetParentDirectory !== 'string' ||
+    typeof value.targetPath !== 'string'
+  ) {
+    return null;
+  }
+  return value as unknown as RestoreOperationJournal;
+}
+
+function isAlreadyExists(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'EEXIST';
+}
 
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
@@ -80,6 +132,122 @@ export class BackupRestoreOperations {
     this.#runtime = runtime;
   }
 
+  async #bindRestoreOperation(
+    requestId: string,
+    input: RecoveryRestoreInput,
+    parent: string,
+    target: string,
+  ): Promise<void> {
+    const directory = path.join(this.#runtime.backupRootDirectory, input.projectId, '.operations');
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await chmod(directory, 0o700);
+    const journalPath = path.join(directory, `restore-${requestId}.json`);
+    const desired: RestoreOperationJournal = {
+      schemaVersion: 1,
+      requestId,
+      sourceProjectId: input.projectId,
+      backupId: input.backupId,
+      targetParentDirectory: parent,
+      targetPath: target,
+    };
+    const temporaryPath = `${journalPath}.partial-${this.#runtime.idFactory()}`;
+    try {
+      await writeFile(temporaryPath, `${JSON.stringify(desired, null, 2)}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
+      try {
+        await link(temporaryPath, journalPath);
+      } catch (error) {
+        if (!isAlreadyExists(error)) throw error;
+      }
+    } finally {
+      await rm(temporaryPath, { force: true });
+    }
+
+    try {
+      const details = await lstat(journalPath);
+      if (!details.isFile() || details.isSymbolicLink()) {
+        throw new Error('RESTORE_JOURNAL_FILE_INVALID');
+      }
+      const stored = restoreOperationJournal(
+        JSON.parse(await readFile(journalPath, 'utf8')) as unknown,
+      );
+      if (
+        !stored ||
+        stored.requestId !== desired.requestId ||
+        stored.sourceProjectId !== desired.sourceProjectId ||
+        stored.backupId !== desired.backupId ||
+        stored.targetParentDirectory !== desired.targetParentDirectory ||
+        stored.targetPath !== desired.targetPath
+      ) {
+        throw new Error('RESTORE_JOURNAL_INTENT_MISMATCH');
+      }
+    } catch (error) {
+      throw new RecoveryServiceError(
+        'RESTORE_TARGET_CONFLICT',
+        'The requestId belongs to a different restore target or backup.',
+        { cause: error },
+      );
+    }
+  }
+
+  async #replayExisting(
+    requestId: string,
+    input: RecoveryRestoreInput,
+    target: string,
+  ): Promise<RecoveryRestoredProject | null> {
+    try {
+      const details = await lstat(target);
+      if (!details.isDirectory()) {
+        throw new RecoveryServiceError(
+          'RESTORE_TARGET_CONFLICT',
+          'The recovery target already exists and is not a project directory.',
+        );
+      }
+    } catch (error) {
+      if (isMissing(error)) return null;
+      if (error instanceof RecoveryServiceError) throw error;
+      throw new RecoveryServiceError(
+        'RESTORE_TARGET_CONFLICT',
+        'The recovery target could not be inspected.',
+        { cause: error },
+      );
+    }
+
+    const replay = await readFile(path.join(target, 'restore-request.json'), 'utf8')
+      .then((content) => restoreRequestRecord(JSON.parse(content) as unknown))
+      .catch(() => null);
+    if (
+      !replay ||
+      replay.requestId !== requestId ||
+      replay.sourceProjectId !== input.projectId ||
+      replay.backupId !== input.backupId ||
+      replay.restoredProjectId !== requestId
+    ) {
+      throw new RecoveryServiceError(
+        'RESTORE_TARGET_CONFLICT',
+        'The recovery target belongs to a different restore request.',
+      );
+    }
+
+    try {
+      const registered = await this.#runtime.workspace.registerRecoveredWorkspace(requestId, target);
+      return RecoveryRestoredProjectSchema.parse({
+        ...registered,
+        sourceProjectId: input.projectId,
+        backupId: input.backupId,
+      });
+    } catch (error) {
+      throw new RecoveryServiceError(
+        'RESTORE_VERIFY_FAILED',
+        'The completed recovery target could not be reopened safely.',
+        { cause: error },
+      );
+    }
+  }
+
   async restoreCheckpoint(
     requestId: string,
     raw: RecoveryRestoreInput,
@@ -122,22 +290,20 @@ export class BackupRestoreOperations {
     }
 
     const parent = await existingWritableDirectory(targetParentDirectory);
-    const nextProjectId = this.#runtime.idFactory();
+    const nextProjectId = requestId;
     const restoredAt = this.#runtime.clock.now().toISOString();
     const nextName = `${sourceProject.name}（恢复副本）`.slice(0, 240);
-    const directoryName = `${safeName(sourceProject.name)}-恢复-${input.backupId.slice(0, 8)}.worldforge`;
+    const directoryName = safeFileName(
+      `${safePathComponent(sourceProject.name, 130)}-恢复-${input.backupId}`,
+      '.worldforge',
+    );
     const target = path.join(parent, directoryName);
-    const staging = path.join(parent, `.${directoryName}.restore-${this.#runtime.idFactory()}`);
-    try {
-      await lstat(target);
-      throw new RecoveryServiceError(
-        'RESTORE_TARGET_CONFLICT',
-        'The recovery target already exists.',
-      );
-    } catch (error) {
-      if (error instanceof RecoveryServiceError) throw error;
-      if (!isMissing(error)) throw error;
-    }
+    await this.#bindRestoreOperation(requestId, input, parent, target);
+    const replayed = await this.#replayExisting(requestId, input, target);
+    if (replayed) return replayed;
+
+    const staging = path.join(parent, `.${directoryName}.restore-${requestId}`);
+    await rm(staging, { recursive: true, force: true });
     const requiredBytes = BigInt(metadata.sizeBytes) * 2n + 1_048_576n;
     if ((await this.#runtime.freeBytes(parent)) < requiredBytes) {
       throw new RecoveryServiceError(
@@ -173,12 +339,25 @@ export class BackupRestoreOperations {
           flag: 'wx',
         },
       );
+      const replayRecord: RestoreRequestRecord = {
+        schemaVersion: 1,
+        requestId,
+        sourceProjectId: input.projectId,
+        backupId: input.backupId,
+        restoredProjectId: nextProjectId,
+      };
+      await writeFile(
+        path.join(staging, 'restore-request.json'),
+        `${JSON.stringify(replayRecord, null, 2)}\n`,
+        {
+          encoding: 'utf8',
+          mode: 0o600,
+          flag: 'wx',
+        },
+      );
       await rename(staging, target);
       targetCreated = true;
-      const registered = await this.#runtime.workspace.registerRecoveredWorkspace(
-        requestId,
-        target,
-      );
+      const registered = await this.#runtime.workspace.registerRecoveredWorkspace(requestId, target);
       return RecoveryRestoredProjectSchema.parse({
         ...registered,
         sourceProjectId: input.projectId,

@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-10，共55张独立任务卡。  
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-11，共56张独立任务卡。  
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -131,6 +131,7 @@ Runtime IMPLEMENTED
 | M10-08 | [`全量代码规范与结构原则治理`](M10/M10-08_CODE_QUALITY_GOVERNANCE.md) | M10-07 | Implemented |
 | M10-09 | [`Evidence收口与自动合并竞态治理`](M10/M10-09_EVIDENCE_CLOSURE_RACE.md) | M10-08 | Implemented |
 | M10-10 | [`当前工作空间工具链权威文档治理`](M10/M10-10_CURRENT_WORKSPACE_TOOLCHAIN_AUTHORITY.md) | M10-09 | Implemented |
+| M10-11 | [`运行时、恢复与异步安全硬化`](M10/M10-11_RUNTIME_DATA_SAFETY_HARDENING.md) | M10-10 | Implemented |
 
 ## 3. 被吸收的需求来源
 

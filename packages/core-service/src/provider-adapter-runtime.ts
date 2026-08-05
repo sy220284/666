@@ -5,10 +5,25 @@ import {
   type AIProvider,
   type ProviderAdapterDependencies,
 } from './provider-adapters.js';
+import {
+  resolveProviderEndpoint,
+  type ProviderDnsLookup,
+  type ProviderEndpointBinding,
+} from './provider-endpoint.js';
 import { ProviderRuntimeError } from './provider-errors.js';
+import {
+  createPinnedProviderFetch,
+  type ProviderPinnedFetchOptions,
+} from './provider-pinned-fetch.js';
 
 export const MAX_PROVIDER_RESPONSE_BYTES = 16 * 1024 * 1024;
 export const MAX_PROVIDER_SSE_EVENT_BYTES = 1024 * 1024;
+
+export interface ProviderRuntimeDependencies extends ProviderAdapterDependencies {
+  readonly lookup?: ProviderDnsLookup;
+  readonly binding?: ProviderEndpointBinding;
+  readonly pinnedFetchOptions?: ProviderPinnedFetchOptions;
+}
 
 function responseTooLarge(): ProviderRuntimeError {
   return new ProviderRuntimeError(
@@ -118,15 +133,50 @@ export function createBoundedProviderFetch(
   };
 }
 
-/** Public adapter factory. All production callers receive a bounded response stream. */
+async function productionProvider(
+  config: ProviderConfig,
+  credential: string | null,
+  dependencies: ProviderRuntimeDependencies,
+): Promise<AIProvider> {
+  if (dependencies.fetch) {
+    return createBaseProviderAdapter(config, credential, {
+      fetch: createBoundedProviderFetch(dependencies.fetch),
+    });
+  }
+  const binding =
+    dependencies.binding ??
+    (dependencies.lookup
+      ? await resolveProviderEndpoint(config.baseUrl, dependencies.lookup)
+      : await resolveProviderEndpoint(config.baseUrl));
+  const transport = createPinnedProviderFetch(binding, dependencies.pinnedFetchOptions);
+  return createBaseProviderAdapter(config, credential, {
+    fetch: createBoundedProviderFetch(transport),
+  });
+}
+
+/**
+ * Public adapter factory. Production callers resolve and bind the endpoint before the first
+ * network operation. A custom fetch remains a controlled test seam and is never supplied by
+ * product configuration or IPC input.
+ */
 export function createProviderAdapter(
   config: ProviderConfig,
   credential: string | null,
-  dependencies: ProviderAdapterDependencies = {},
+  dependencies: ProviderRuntimeDependencies = {},
 ): AIProvider {
-  const implementation = dependencies.fetch ?? globalThis.fetch;
-  return createBaseProviderAdapter(config, credential, {
-    ...dependencies,
-    fetch: createBoundedProviderFetch(implementation),
-  });
+  let pending: Promise<AIProvider> | null = null;
+  const resolve = (): Promise<AIProvider> => {
+    pending ??= productionProvider(config, credential, dependencies);
+    return pending;
+  };
+  return {
+    protocol: config.protocol,
+    async testConnection(signal) {
+      return (await resolve()).testConnection(signal);
+    },
+    async *generate(request, signal) {
+      const provider = await resolve();
+      yield* provider.generate(request, signal);
+    },
+  };
 }

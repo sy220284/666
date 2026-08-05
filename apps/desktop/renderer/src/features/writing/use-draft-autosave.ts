@@ -19,8 +19,9 @@ import {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { registerDraftFlushHandler } from '../../runtime/draft-flush-registry.js';
-import { createDraftSaveContext, draftSaveContextIsCurrent } from './draft-save-context.js';
 import { persistedEditorBlocks } from './draft-blocks.js';
+import { createDraftSaveContext, draftSaveContextIsCurrent } from './draft-save-context.js';
+import { reportFlushedDraft, reportPersistedDraft } from './draft-persistence-feedback.js';
 
 interface UseDraftAutosaveInput {
   readonly bridge: RendererBridgeAdapter;
@@ -88,8 +89,9 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
           editor: input.editor.current,
           editorGeneration: input.editorGeneration.current,
         })
-      )
+      ) {
         return true;
+      }
       input.activeDraft.current = result.data;
       input.setDraft(result.data);
       input.synchronizing.current = true;
@@ -100,11 +102,13 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
       );
       input.synchronizing.current = false;
       input.refreshStatistics();
-      await input.saveContinuation();
-      input.setStatus(
-        `${input.savedStatus('已保存', result.data.revision)}${JSON.stringify(instance.getJSON()) === saveContext.documentFingerprint ? '' : ' · 编辑器仍有新输入'}`,
-      );
-      return true;
+      return reportPersistedDraft({
+        revision: result.data.revision,
+        editorChanged: JSON.stringify(instance.getJSON()) !== saveContext.documentFingerprint,
+        saveContinuation: input.saveContinuation,
+        setStatus: input.setStatus,
+        savedStatus: input.savedStatus,
+      });
     } catch {
       input.synchronizing.current = false;
       return false;
@@ -112,15 +116,14 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
   }, [input]);
 
   const flush = useCallback(async (): Promise<boolean> => {
-    const result = await (input.autosave.current?.flush() ?? Promise.resolve(true));
-    const continuationSaved = result ? await input.saveContinuation() : false;
-    input.setStatus(
-      result && continuationSaved
-        ? input.savedStatus('已保存', input.activeDraft.current?.revision ?? 0)
-        : '保存失败；窗口内容仍保留。',
-      !result || !continuationSaved,
-    );
-    return result && continuationSaved;
+    const draftSaved = await (input.autosave.current?.flush() ?? Promise.resolve(true));
+    return reportFlushedDraft({
+      draftSaved,
+      revision: input.activeDraft.current?.revision ?? 0,
+      saveContinuation: input.saveContinuation,
+      setStatus: input.setStatus,
+      savedStatus: input.savedStatus,
+    });
   }, [input]);
 
   useEffect(() => registerDraftFlushHandler(flush), [flush]);

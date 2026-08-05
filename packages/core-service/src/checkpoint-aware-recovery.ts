@@ -19,20 +19,12 @@ import {
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { RecoveryService, RecoveryServiceError, type RecoveryServiceOptions } from './recovery.js';
+import { safeFileName, safeTemporaryName } from './recovery/path-name.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
-
-function safeName(value: string): string {
-  const forbidden = new Set(['<', '>', ':', '"', '/', String.fromCharCode(92), '|', '?', '*']);
-  const normalized = Array.from(value.trim(), (character) =>
-    (character.codePointAt(0) ?? 0) < 32 || forbidden.has(character) ? '-' : character,
-  ).join('');
-  const cleaned = normalized.replace(/[. ]+$/u, '').slice(0, 180);
-  return cleaned || 'WorldForge';
 }
 
 async function hashFile(filePath: string): Promise<string> {
@@ -115,8 +107,9 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     let database: DatabaseSync | null = null;
     try {
       const details = await lstat(backupPath);
-      if (!details.isFile() || details.isSymbolicLink() || details.size !== record.sizeBytes)
+      if (!details.isFile() || details.isSymbolicLink() || details.size !== record.sizeBytes) {
         return null;
+      }
       if ((await hashFile(backupPath)) !== record.sha256) return null;
       database = new DatabaseSync(backupPath, {
         readOnly: true,
@@ -223,7 +216,7 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     targetDirectory: string,
   ): Promise<RecoveryVersionExport> {
     const directory = await existingWritableDirectory(targetDirectory);
-    const fileName = `${safeName(data.chapterTitle)}-${safeName(data.versionTitle)}.txt`;
+    const fileName = safeFileName(`${data.chapterTitle}-${data.versionTitle}`, '.txt');
     const filePath = path.join(directory, fileName);
     try {
       await lstat(filePath);
@@ -235,9 +228,14 @@ export class CheckpointAwareRecoveryService extends RecoveryService {
     const content = data.blocks
       .map((block) => (block.blockType === 'separator' ? '---' : block.text))
       .join('\n\n');
-    const temporaryPath = `${filePath}.partial-${randomUUID()}`;
+    const temporaryName = safeTemporaryName(fileName, `.partial-${randomUUID()}`);
+    const temporaryPath = path.join(directory, temporaryName);
     try {
-      await writeFile(temporaryPath, `${content}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+      await writeFile(temporaryPath, `${content}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
       await rename(temporaryPath, filePath);
       return RecoveryVersionExportSchema.parse({
         projectId: input.projectId,

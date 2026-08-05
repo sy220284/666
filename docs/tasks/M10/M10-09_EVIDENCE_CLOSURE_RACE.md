@@ -1,6 +1,6 @@
 # M10-09 Evidence 收口与自动合并竞态治理
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M10 稳定性与治理续作  
 > 优先级：P0  
 > 执行分支：`work`  
@@ -39,8 +39,8 @@ M10-08 实施 Head `437e639055bb852e9e63ecada0455d3a0b8a7954` 完成全部永久
    - 从 `implementationCommit` 到当前 Head 的变更只能属于当前任务卡、Runtime、TASK_INDEX、Evidence 与明确授权的文档收口路径；
    - 产品代码、测试、脚本、配置、工作流或其他任务 Evidence 出现在该区间时立即失败。
 4. 增加单元测试，覆盖旧 Evidence、代码后移、跨任务 Evidence、非法收口路径、合法最终 Evidence Head。
-5. 将规则同步到执行入口、任务模板和任务索引。
-6. 将 M10-08 最终 Evidence 绑定已验证实施 Head，并记录 Ready Run、测试数量、Coverage 与 Artifact。
+5. 规则已同步到执行入口、任务模板和任务索引。
+6. M10-08 最终 Evidence 已绑定受控 Squash 后的主线提交 `c5a4d118249fb67bded67e9d7c7fd286b10a9e03`，原 PR 实施 Head 保留在摘要中用于测试追溯。
 
 ## 职责、状态所有权与依赖方向
 
@@ -56,8 +56,12 @@ M10-08 实施 Head `437e639055bb852e9e63ecada0455d3a0b8a7954` 完成全部永久
 3. `implementationCommit` 之后仅有当前任务 Evidence 与状态文档收口时，Evidence 通过。
 4. 跨任务 Evidence、产品代码、测试、脚本、配置或工作流出现在收口区间时，Evidence 失败并列出路径。
 5. Controlled Merge 不能在最终 Evidence 未绑定最新实现提交时合并。
-6. M10-08 最终 Evidence 与任务卡进入 `main`，且仍绑定 `437e639055bb852e9e63ecada0455d3a0b8a7954`。
+6. M10-08 最终 Evidence 与任务卡进入 `main`，且历史 manifest 绑定主线合并提交。
 7. Task Governance、PR Policy、Evidence、Format、Lint、Typecheck、Unit、Integration、Migration、Coverage、Security、Performance、Electron E2E 与 Build 全部通过。
+
+## 实施结果
+
+实现提交 `2ed140991b823987b2cd99524176bdeaea0056fe` 已完成 Draft 静态矩阵：Task Governance、PR Policy、Evidence、Repository Governance、Security、Performance 与 Quality 全部成功。当前收口 Head 只包含 M10-09 任务卡、Runtime、任务索引和 M10-09 Evidence；Ready 永久矩阵将验证新增单元测试、完整产品测试和自动合并竞态门禁。
 
 ## Evidence
 

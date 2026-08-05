@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-09",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-09_EVIDENCE_CLOSURE_RACE.md",
   "priority": "P0",
   "startedAt": "2026-08-05T11:00:00+08:00",
+  "implementedAt": "2026-08-05T11:32:00+08:00",
   "dependencies": ["M10-08"],
   "baseline": {
     "main": "c5a4d118249fb67bded67e9d7c7fd286b10a9e03",

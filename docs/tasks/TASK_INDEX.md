@@ -129,7 +129,7 @@ Runtime IMPLEMENTED
 | M10-06 | [`历史验证状态继承`](M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md) | M10-05 | Implemented |
 | M10-07 | [`正文变更与恢复安全收口`](M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md) | M10-06 | Implemented |
 | M10-08 | [`全量代码规范与结构原则治理`](M10/M10-08_CODE_QUALITY_GOVERNANCE.md) | M10-07 | Implemented |
-| M10-09 | [`Evidence收口与自动合并竞态治理`](M10/M10-09_EVIDENCE_CLOSURE_RACE.md) | M10-08 | In Progress |
+| M10-09 | [`Evidence收口与自动合并竞态治理`](M10/M10-09_EVIDENCE_CLOSURE_RACE.md) | M10-08 | Implemented |
 
 ## 3. 被吸收的需求来源
 

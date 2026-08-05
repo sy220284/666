@@ -1,11 +1,12 @@
 # M10-12 命令身份与生成生命周期一致性治理
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M10 稳定性与治理续作  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
-> 主线基线：`9d79ef921d48805c1c7227f6ee524f00ad455a2b`
+> 主线基线：`9d79ef921d48805c1c7227f6ee524f00ad455a2b`  
+> 实施提交：`1b0f6853124be74ded8441ef0cdf61570d89e02d`
 
 ## 目标
 
@@ -143,6 +144,16 @@ commandScope + requestId + stableInputFingerprint
 ## Evidence
 
 保存到：`docs/test-evidence/M10-12/`
+
+## 实施结果
+
+- 通用 Promise 缓存已绑定稳定输入指纹，跨命令或不同参数复用 `requestId` 会明确冲突；
+- Core 命令 Envelope 身份通过异步上下文传播到项目写事务与数据库写队列；
+- Generation 持久化重放会核对 Run、约束包和输入来源，重放不再创建第二条模型执行；
+- Generation 取消采用持久化先行与执行屏障，失败不提前中止，成功后不会进入 Candidate 持久化；
+- Provider 预取消通过可重放 Abort 边界立即传播；
+- Recovery 补偿使用 settled 语义，保留主错误并附加受限残留标签；
+- Renderer 启动异常始终释放 `pending`，旧 Run 刷新受代次守卫约束。
 
 ## 回滚策略
 

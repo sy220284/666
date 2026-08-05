@@ -91,7 +91,10 @@ async function readyClosureFixture() {
   const taskId = 'M10-09';
   const source = 'docs/tasks/M10/M10-09_EVIDENCE_CLOSURE_RACE.md';
   await mkdir(path.join(root, 'scripts'), { recursive: true });
-  await writeFile(path.join(root, 'scripts', 'evidence-policy.mjs'), 'export const policy = true;\n');
+  await writeFile(
+    path.join(root, 'scripts', 'evidence-policy.mjs'),
+    'export const policy = true;\n',
+  );
   await mkdir(path.dirname(path.join(root, source)), { recursive: true });
   await writeFile(path.join(root, source), '# M10-09\n\n状态：Implemented。\n');
   await mkdir(path.join(root, 'docs', 'tasks', 'runtime'), { recursive: true });
@@ -272,12 +275,7 @@ describe('Ready Evidence closure', () => {
       ),
     );
     await expect(
-      assertReadyEvidenceClosure(
-        fixture.taskId,
-        manifest,
-        fixture.head,
-        fixture.root,
-      ),
+      assertReadyEvidenceClosure(fixture.taskId, manifest, fixture.head, fixture.root),
     ).resolves.toEqual([
       'docs/test-evidence/M10-09/commands.txt',
       'docs/test-evidence/M10-09/known-risks.md',
@@ -288,7 +286,10 @@ describe('Ready Evidence closure', () => {
 
   it('allows stale intermediate Evidence on Draft but rejects it on Ready', async () => {
     const fixture = await readyClosureFixture();
-    await writeFile(path.join(fixture.root, 'scripts', 'late-change.mjs'), 'export const late = true;\n');
+    await writeFile(
+      path.join(fixture.root, 'scripts', 'late-change.mjs'),
+      'export const late = true;\n',
+    );
     const staleHead = await commitAll(fixture.root, 'late implementation change');
 
     await expect(

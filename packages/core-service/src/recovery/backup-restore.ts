@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, link, lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -28,6 +28,15 @@ interface RestoreRequestRecord {
   readonly restoredProjectId: string;
 }
 
+interface RestoreOperationJournal {
+  readonly schemaVersion: 1;
+  readonly requestId: string;
+  readonly sourceProjectId: string;
+  readonly backupId: string;
+  readonly targetParentDirectory: string;
+  readonly targetPath: string;
+}
+
 function restoreRequestRecord(raw: unknown): RestoreRequestRecord | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const value = raw as Record<string, unknown>;
@@ -41,6 +50,26 @@ function restoreRequestRecord(raw: unknown): RestoreRequestRecord | null {
     return null;
   }
   return value as unknown as RestoreRequestRecord;
+}
+
+function restoreOperationJournal(raw: unknown): RestoreOperationJournal | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  if (
+    value.schemaVersion !== 1 ||
+    typeof value.requestId !== 'string' ||
+    typeof value.sourceProjectId !== 'string' ||
+    typeof value.backupId !== 'string' ||
+    typeof value.targetParentDirectory !== 'string' ||
+    typeof value.targetPath !== 'string'
+  ) {
+    return null;
+  }
+  return value as unknown as RestoreOperationJournal;
+}
+
+function isAlreadyExists(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'EEXIST';
 }
 
 function quoteIdentifier(identifier: string): string {
@@ -101,6 +130,67 @@ export class BackupRestoreOperations {
 
   constructor(runtime: RecoveryRuntime) {
     this.#runtime = runtime;
+  }
+
+  async #bindRestoreOperation(
+    requestId: string,
+    input: RecoveryRestoreInput,
+    parent: string,
+    target: string,
+  ): Promise<void> {
+    const directory = path.join(this.#runtime.backupRootDirectory, input.projectId, '.operations');
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await chmod(directory, 0o700);
+    const journalPath = path.join(directory, `restore-${requestId}.json`);
+    const desired: RestoreOperationJournal = {
+      schemaVersion: 1,
+      requestId,
+      sourceProjectId: input.projectId,
+      backupId: input.backupId,
+      targetParentDirectory: parent,
+      targetPath: target,
+    };
+    const temporaryPath = `${journalPath}.partial-${this.#runtime.idFactory()}`;
+    try {
+      await writeFile(temporaryPath, `${JSON.stringify(desired, null, 2)}\n`, {
+        encoding: 'utf8',
+        mode: 0o600,
+        flag: 'wx',
+      });
+      try {
+        await link(temporaryPath, journalPath);
+      } catch (error) {
+        if (!isAlreadyExists(error)) throw error;
+      }
+    } finally {
+      await rm(temporaryPath, { force: true });
+    }
+
+    try {
+      const details = await lstat(journalPath);
+      if (!details.isFile() || details.isSymbolicLink()) {
+        throw new Error('RESTORE_JOURNAL_FILE_INVALID');
+      }
+      const stored = restoreOperationJournal(
+        JSON.parse(await readFile(journalPath, 'utf8')) as unknown,
+      );
+      if (
+        !stored ||
+        stored.requestId !== desired.requestId ||
+        stored.sourceProjectId !== desired.sourceProjectId ||
+        stored.backupId !== desired.backupId ||
+        stored.targetParentDirectory !== desired.targetParentDirectory ||
+        stored.targetPath !== desired.targetPath
+      ) {
+        throw new Error('RESTORE_JOURNAL_INTENT_MISMATCH');
+      }
+    } catch (error) {
+      throw new RecoveryServiceError(
+        'RESTORE_TARGET_CONFLICT',
+        'The requestId belongs to a different restore target or backup.',
+        { cause: error },
+      );
+    }
   }
 
   async #replayExisting(
@@ -204,10 +294,11 @@ export class BackupRestoreOperations {
     const restoredAt = this.#runtime.clock.now().toISOString();
     const nextName = `${sourceProject.name}（恢复副本）`.slice(0, 240);
     const directoryName = safeFileName(
-      `${safePathComponent(sourceProject.name, 140)}-恢复-${requestId.slice(0, 8)}`,
+      `${safePathComponent(sourceProject.name, 130)}-恢复-${requestId}`,
       '.worldforge',
     );
     const target = path.join(parent, directoryName);
+    await this.#bindRestoreOperation(requestId, input, parent, target);
     const replayed = await this.#replayExisting(requestId, input, target);
     if (replayed) return replayed;
 

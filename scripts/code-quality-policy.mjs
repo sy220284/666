@@ -46,7 +46,10 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   const coveragePolicy = JSON.parse(coverageBaseline);
   const toolchainAuthority = JSON.parse(toolchainAuthoritySource);
   const violations = [];
-  const formatCommands = [manifest.scripts?.format ?? '', manifest.scripts?.['format:check'] ?? ''];
+  const formatCommands = [
+    manifest.scripts?.format ?? '',
+    manifest.scripts?.['format:check'] ?? '',
+  ];
 
   for (const [index, command] of formatCommands.entries()) {
     const label = index === 0 ? 'package.json#format' : 'package.json#format:check';

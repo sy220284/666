@@ -52,7 +52,7 @@ describe('M10-11 Recovery request replay', () => {
     try {
       const project = await workspace.create(
         randomUUID(),
-        { name: '恢复重放'.repeat(30), channel: '长篇' },
+        { name: '恢复重放'.repeat(15), channel: '长篇' },
         parent,
       );
       const backupRequestId = randomUUID();

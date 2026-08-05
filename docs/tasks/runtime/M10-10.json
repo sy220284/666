@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "id": "M10-10",
+  "status": "IMPLEMENTED",
+  "executionBranch": "work",
+  "source": "docs/tasks/M10/M10-10_CURRENT_WORKSPACE_TOOLCHAIN_AUTHORITY.md",
+  "priority": "P1",
+  "startedAt": "2026-08-05T12:47:00+08:00",
+  "implementedAt": "2026-08-05T13:32:00+08:00",
+  "dependencies": ["M10-09"],
+  "baseline": {
+    "main": "e71b6b3f58ed4d048fd57ede191687b138da25f9",
+    "work": "e71b6b3f58ed4d048fd57ede191687b138da25f9"
+  },
+  "allowedPaths": [
+    ".github/workflows/performance.yml",
+    "docs/PROJECT_EXECUTION_ENTRY.md",
+    "docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/tasks/M10/M10-10_CURRENT_WORKSPACE_TOOLCHAIN_AUTHORITY.md",
+    "docs/tasks/runtime/M10-10.json",
+    "docs/test-evidence/M10-10/"
+  ],
+  "forbiddenPaths": [
+    "apps/",
+    "packages/",
+    "migrations/",
+    "package.json",
+    "pnpm-lock.yaml",
+    ".github/governance/",
+    "docs/product/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:language",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm ci:policy",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e"
+  ],
+  "verificationBinding": {
+    "sourcePr": 318,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-10"
+  }
+}

@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - name: Skip performance and AI baselines for Draft or documentation-only changes
+      - name: Document deferred or documentation-only performance route
         if: ${{ needs.route.outputs.run != 'true' }}
         run: |
           echo "Performance and AI evaluation are deferred until Ready or skipped because only documentation changed."
@@ -76,10 +76,15 @@ jobs:
       - run: pnpm test:prepare
         if: ${{ needs.route.outputs.run == 'true' }}
       - name: Run performance budgets
-        if: ${{ needs.route.outputs.run == 'true' }}
         env:
+          PERFORMANCE_ROUTE_ENABLED: ${{ needs.route.outputs.run }}
           WORLDFORGE_M8_PERF_OUTPUT: test-results/performance/m8-02.json
         run: |
+          set -euo pipefail
+          if [ "$PERFORMANCE_ROUTE_ENABLED" != true ]; then
+            echo "Performance budgets are not applicable to this Draft or documentation-only change."
+            exit 0
+          fi
           mkdir -p test-results/ci test-results/performance
           set -o pipefail
           pnpm exec vitest run tests/performance --no-file-parallelism 2>&1 | tee test-results/ci/performance.log

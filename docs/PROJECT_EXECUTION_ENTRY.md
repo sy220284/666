@@ -19,6 +19,8 @@ AGENTS.md
 
 代码格式、结构与维护性治理必须同步读取 [`architecture/CODE_QUALITY_GOVERNANCE.md`](architecture/CODE_QUALITY_GOVERNANCE.md)。文件行数只作为观察指标，不参与合并资格；结构判断统一依据职责内聚、依赖方向、状态所有权、事务边界和公共接口。
 
+在当前ChatGPT持久化工作空间中执行工具安装、离线恢复、格式化、Lint、TypeScript、Vitest、Playwright、Electron或全仓验证时，必须同步读取 [`process/CURRENT_WORKSPACE_TOOLCHAIN.md`](process/CURRENT_WORKSPACE_TOOLCHAIN.md)。该文档只约束`/mnt/data`工作空间资产，不替代仓库锁文件和永久工作流。
+
 ## 2. 动态状态解析
 
 本文件不固化活动PR、瞬时任务状态或“最新提交SHA”。每次工作开始时必须从真实仓库状态解析：
@@ -114,3 +116,17 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - CSS与SQL使用高置信静态检查，不能替代运行测试和Migration测试。
 - 循环依赖、反向依赖、Feature私有穿透、深层导入绕过公共入口和多写入真源继续阻断。
 - 文件行数、导出数量和依赖数量只报告、不阻断；不得为了缩短文件机械拆散完整功能。
+
+## 8. 当前ChatGPT工作空间工具链
+
+`docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md`是当前ChatGPT持久化工作空间内666工具资产、绝对存储位置、激活命令、依赖恢复、浏览器替代路径、验证命令和更新规则的专项权威文档。
+
+固定入口：
+
+```bash
+source /mnt/data/activate-666-tools.sh
+/mnt/data/restore-666-workspace-dependencies.sh /path/to/666
+/mnt/data/verify-project-tools.sh full
+```
+
+使用前必须确认目标仓库`pnpm-lock.yaml`与离线依赖快照一致。锁文件不匹配时重新通过GitHub Actions导出，禁止强制挂载旧依赖或修改锁文件迎合缓存。

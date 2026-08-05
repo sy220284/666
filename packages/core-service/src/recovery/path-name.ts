@@ -3,14 +3,20 @@ import { createHash } from 'node:crypto';
 export const SAFE_PATH_COMPONENT_BYTES = 200;
 export const SAFE_TEMPORARY_COMPONENT_BYTES = 250;
 
+function isWindowsDeviceName(value: string): boolean {
+  const stem = value.split('.', 1)[0]?.toLowerCase() ?? '';
+  return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/u.test(stem);
+}
+
 function sanitize(value: string): string {
   const forbidden = new Set(['<', '>', ':', '"', '/', String.fromCharCode(92), '|', '?', '*']);
-  const normalized = Array.from(value.trim(), (character) =>
+  const normalized = Array.from(value.normalize('NFC').trim(), (character) =>
     (character.codePointAt(0) ?? 0) < 32 || forbidden.has(character) ? '-' : character,
   )
     .join('')
     .replace(/[. ]+$/u, '');
-  return normalized || 'WorldForge';
+  if (!normalized) return 'WorldForge';
+  return isWindowsDeviceName(normalized) ? `WorldForge-${normalized}` : normalized;
 }
 
 function utf8Bytes(value: string): number {

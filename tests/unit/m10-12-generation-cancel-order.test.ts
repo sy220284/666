@@ -12,13 +12,19 @@ import {
 } from '../../packages/core-service/src/generation-runtime.js';
 import { TaskProtocol } from '../../packages/core-service/src/task-protocol.js';
 
+const RUN_ID = '00000000-0000-4000-8000-000000000101';
+const TASK_ID = '00000000-0000-4000-8000-000000000102';
+const PROJECT_ID = '00000000-0000-4000-8000-000000000103';
+const CHAPTER_ID = '00000000-0000-4000-8000-000000000104';
+const CANDIDATE_ID = '00000000-0000-4000-8000-000000000105';
+
 function run(status: 'queued' | 'running' | 'succeeded' = 'queued') {
   return GenerationRunSchema.parse({
-    runId: 'run-a',
+    runId: RUN_ID,
     requestId: '00000000-0000-4000-8000-000000000001',
-    taskId: 'task-a',
-    projectId: 'project-a',
-    chapterId: 'chapter-a',
+    taskId: TASK_ID,
+    projectId: PROJECT_ID,
+    chapterId: CHAPTER_ID,
     baseDraftId: null,
     baseDraftRevision: null,
     runType: 'chapter',
@@ -45,8 +51,8 @@ function run(status: 'queued' | 'running' | 'succeeded' = 'queued') {
 
 function constraints() {
   return ConstraintPackageSchema.parse({
-    projectId: 'project-a',
-    chapterId: 'chapter-a',
+    projectId: PROJECT_ID,
+    chapterId: CHAPTER_ID,
     taskType: 'chapter',
     snapshotSource: 'fallback_live_query',
     sections: { P0: [], P1: [], P2: [], P3: [], P4: [] },
@@ -96,10 +102,10 @@ describe('M10-12 Generation取消顺序', () => {
       completeProseCandidate: async () => ({
         run: succeeded,
         candidate: {
-          candidateId: 'candidate-a',
-          projectId: 'project-a',
-          chapterId: 'chapter-a',
-          generationRunId: 'run-a',
+          candidateId: CANDIDATE_ID,
+          projectId: PROJECT_ID,
+          chapterId: CHAPTER_ID,
+          generationRunId: RUN_ID,
           candidateType: 'full',
           completeness: 'complete',
           status: 'available',
@@ -120,8 +126,8 @@ describe('M10-12 Generation取消顺序', () => {
     const execution = await runtime.startProse({
       requestId: queued.requestId,
       run: {
-        projectId: 'project-a',
-        chapterId: 'chapter-a',
+        projectId: PROJECT_ID,
+        chapterId: CHAPTER_ID,
         baseDraftId: null,
         baseDraftRevision: null,
         runType: 'chapter',
@@ -132,7 +138,7 @@ describe('M10-12 Generation取消顺序', () => {
         actualModel: 'model-a',
         supportStatus: 'unverified',
         constraintPackage: constraints(),
-        taskId: 'task-a',
+        taskId: TASK_ID,
       },
       provider,
       requestFor: (runId) =>
@@ -156,15 +162,15 @@ describe('M10-12 Generation取消顺序', () => {
 
     await expect(
       runtime.cancel('00000000-0000-4000-8000-000000000002', {
-        projectId: 'project-a',
-        runId: 'run-a',
+        projectId: PROJECT_ID,
+        runId: RUN_ID,
       }),
     ).rejects.toThrow('DATABASE_WRITE_FAILED');
     expect(observedSignal?.aborted).toBe(false);
-    expect(tasks.getSnapshot(execution.taskId, 'project-a').status).toBe('running');
+    expect(tasks.getSnapshot(execution.taskId, PROJECT_ID).status).toBe('running');
 
     releaseProvider();
-    await runtime.waitFor('run-a');
+    await runtime.waitFor(RUN_ID);
     tasks.close();
   });
 });

@@ -80,9 +80,7 @@ export function changedEvidenceTasks(files) {
 export function changedRuntimeTasks(files) {
   const tasks = new Set();
   for (const file of files) {
-    const match = /^docs\/tasks\/runtime\/(M\d+-\d{2})\.json$/u.exec(
-      file.replaceAll('\\', '/'),
-    );
+    const match = /^docs\/tasks\/runtime\/(M\d+-\d{2})\.json$/u.exec(file.replaceAll('\\', '/'));
     if (match?.[1]) tasks.add(match[1]);
   }
   return [...tasks].sort();

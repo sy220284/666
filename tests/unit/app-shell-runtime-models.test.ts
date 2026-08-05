@@ -281,7 +281,16 @@ describe('AppShell pure runtime models', () => {
   });
 
   it('registers lifecycle-only hooks while keeping pure AppShell models in coverage', async () => {
-    const config = await readFile('vitest.coverage.config.ts', 'utf8');
+    const [config, baselineSource] = await Promise.all([
+      readFile('vitest.coverage.config.ts', 'utf8'),
+      readFile('docs/architecture/coverage-baseline.json', 'utf8'),
+    ]);
+    const baseline = JSON.parse(baselineSource) as {
+      core: {
+        thresholdPercent: Record<'statements' | 'branches' | 'functions' | 'lines', number>;
+      };
+    };
+
     for (const file of [
       'use-app-settings-persistence.ts',
       'use-app-shell-actions.ts',
@@ -295,6 +304,14 @@ describe('AppShell pure runtime models', () => {
     expect(config).not.toContain('apps/desktop/renderer/src/app/app-shell-helpers.ts');
     expect(config).not.toContain('apps/desktop/renderer/src/app/app-shell-status.ts');
     expect(config).toContain('thresholds:');
-    expect(config).toContain('branches: 75');
+    expect(config).toContain(
+      '[coverageBaseline.core.pattern]: coverageBaseline.core.thresholdPercent',
+    );
+    expect(baseline.core.thresholdPercent).toEqual({
+      statements: 75,
+      branches: 75,
+      functions: 75,
+      lines: 75,
+    });
   });
 });

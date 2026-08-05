@@ -47,10 +47,11 @@ function normalizedSources(sources: readonly GenerationInputSourceInput[]): read
       contentHash: source.contentHash ?? null,
       metadata: JSON.parse(JSON.stringify(source.metadata ?? {})) as unknown,
     }))
-    .sort((left, right) =>
-      left.sourceOrder - right.sourceOrder ||
-      left.sourceType.localeCompare(right.sourceType, 'en') ||
-      left.sourceId.localeCompare(right.sourceId, 'en'),
+    .sort(
+      (left, right) =>
+        left.sourceOrder - right.sourceOrder ||
+        left.sourceType.localeCompare(right.sourceType, 'en') ||
+        left.sourceId.localeCompare(right.sourceId, 'en'),
     );
 }
 

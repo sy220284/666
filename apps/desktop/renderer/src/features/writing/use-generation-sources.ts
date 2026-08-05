@@ -18,17 +18,13 @@ export async function loadGenerationSources(
 ): Promise<GenerationSourcesLoadResult> {
   const [providerRequest, beatRequest] = await Promise.allSettled([
     bridge.providers.list({ mode: 'share', signal }),
-    bridge.planning.listSceneBeats(
-      { projectId, chapterId },
-      { mode: 'share', signal },
-    ),
+    bridge.planning.listSceneBeats({ projectId, chapterId }, { mode: 'share', signal }),
   ]);
   if (signal.aborted) return { providers: null, sceneBeats: null };
   const providerOutcome = providerRequest.status === 'fulfilled' ? providerRequest.value : null;
   const beatOutcome = beatRequest.status === 'fulfilled' ? beatRequest.value : null;
   return {
-    providers:
-      providerOutcome?.state === 'success' ? providerOutcome.data.providers : null,
+    providers: providerOutcome?.state === 'success' ? providerOutcome.data.providers : null,
     sceneBeats: beatOutcome?.state === 'success' ? beatOutcome.data.beats : null,
   };
 }

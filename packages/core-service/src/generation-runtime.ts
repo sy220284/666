@@ -351,13 +351,13 @@ export class GenerationRuntime {
       if (await this.#cancelled(initialRun.runId)) return;
       const prepared = await input.prepare(text);
       if (await this.#cancelled(initialRun.runId)) return;
-      task.setStage('saving_candidate', '正在保存候选', { cancellable: false });
       await this.#runs.markStage(randomUUID(), {
         projectId: initialRun.projectId,
         runId: initialRun.runId,
         stage: 'saving_candidate',
       });
       if (await this.#cancelled(initialRun.runId)) return;
+      task.setStage('saving_candidate', '正在保存候选', { cancellable: false });
       const result = await input.persist(prepared, text, usage);
       for (const candidateId of result.candidateIds) task.saveCandidate(candidateId, 'complete');
       for (const resultRef of result.resultRefs) task.saveResult(resultRef);

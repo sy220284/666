@@ -21,7 +21,9 @@
 - Prettier 的 `format` 与 `format:check` 纳入 `ts`、`tsx`、测试、配置、CSS 与工作流文件。
 - Coverage 将 Renderer 的 TSX 纳入真实分母。
 - Vitest 测试发现范围支持 `.test.tsx`。
-- 新增回归测试，锁定 TSX 不得再次从格式或覆盖率范围中消失。
+- 核心 `.ts` 继续按 Statements、Branches、Functions、Lines 四项执行 75% 聚合硬阈值。
+- Renderer TSX 使用机器基线冻结最大未覆盖数量：Statements 2683、Branches 2322、Functions 969、Lines 2402；新增未测 TSX 会失败，真实改善后只能收紧。
+- 新增永久策略检查与回归测试，锁定 TSX 不得再次从格式、报告或基线门禁中消失。
 
 ### 2. ESLint 配置一致性
 
@@ -56,7 +58,8 @@
 - 文件行数不参与合并资格；
 - 拆分依据是职责、状态机、事务边界与依赖关系；
 - 大文件允许保留完整业务内聚性；
-- 质量门禁必须覆盖实际源文件类型，禁止“命令成功但范围漏检”。
+- 质量门禁必须覆盖实际源文件类型，禁止“命令成功但范围漏检”；
+- Coverage 按核心逻辑与 TSX 组合层双轨治理，禁止降低阈值、扩大基线或排除真实代码伪造通过。
 
 ## 非目标
 
@@ -64,23 +67,25 @@
 - 不新增生产依赖、云能力或额外分支。
 - 不按固定行数强制拆分生产代码或测试。
 - 不为了提升覆盖率排除真实 TSX 代码。
+- 不要求纯 JSX 组合层机械达到与核心业务逻辑相同的单元测试百分比。
 - 不手工编辑 `pnpm-lock.yaml` 伪造新开发依赖。
 
 ## 验收
 
 1. 任意新增或改动 TSX 均进入 Prettier 检查。
 2. Renderer TSX 进入 Coverage 分母，排除项逐项具备替代测试理由。
-3. `eslint .` 与 `pnpm lint` 的 unused-vars 行为一致。
-4. SQL 与 CSS 基础规范检查可在 CI 中独立失败并提供文件定位。
-5. 超长但职责单一的文件不会因行数失败；循环和非法依赖仍会失败。
-6. `.editorconfig` 与 `.gitattributes` 固化跨平台文本规则。
-7. Toolchain Export 不再写 `work`，临时分片从 PR 最终差异删除。
-8. 文档、Runtime、TASK_INDEX、测试和 Evidence 与实现处于同一受检 Head。
-9. Format、Lint、Typecheck、Unit、Integration、Migration、Coverage、Security、Performance、E2E 与 Build 全部真实通过。
+3. 核心 `.ts` 四项覆盖率均不低于 75%，TSX 最大未覆盖数量不得高于机器基线。
+4. `eslint .` 与 `pnpm lint` 的 unused-vars 行为一致。
+5. SQL 与 CSS 基础规范检查可在 CI 中独立失败并提供文件定位。
+6. 超长但职责单一的文件不会因行数失败；循环和非法依赖仍会失败。
+7. `.editorconfig` 与 `.gitattributes` 固化跨平台文本规则。
+8. Toolchain Export 不再写 `work`，临时分片从 PR 最终差异删除。
+9. 文档、Runtime、TASK_INDEX、测试和 Evidence 与实现处于同一受检 Head。
+10. Format、Lint、Typecheck、Unit、Integration、Migration、Coverage、Security、Performance、E2E 与 Build 全部真实通过。
 
 ## 实施结果
 
-Draft 静态矩阵已通过 Task Governance、PR Policy、Workspace、Boundaries、全量 Prettier、中文术语、CSS、SQL、测试质量、类型感知 ESLint 与 TypeScript 检查。完整产品矩阵由 Ready PR 永久门禁继续验证。
+Draft 静态矩阵已通过 Task Governance、PR Policy、Workspace、Boundaries、全量 Prettier、中文术语、CSS、SQL、测试质量、类型感知 ESLint 与 TypeScript 检查。首轮 Ready 产品矩阵确认 Unit 802、Integration 170、Migration 50 均通过，三平台安装包冒烟、安全与性能通过；统一全局 Coverage 因 TSX 首次进入分母而失败。现已改为机器可审计的双轨门禁，等待当前 Head 完成静态与 Ready 全量复验。
 
 ## Evidence
 

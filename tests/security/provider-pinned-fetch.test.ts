@@ -56,6 +56,26 @@ describe('M10-11 Provider pinned transport', () => {
     expect(receivedHost).toBe(`provider.local:${address.port}`);
   });
 
+  it('represents an approved empty response without constructing an invalid body stream', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(204);
+      response.end();
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    servers.push(server);
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('SERVER_ADDRESS_MISSING');
+
+    const origin = `http://provider.local:${address.port}`;
+    const response = await createPinnedProviderFetch(binding(origin, 'provider.local'))(
+      `${origin}/health`,
+    );
+
+    expect(response.status).toBe(204);
+    await expect(response.text()).resolves.toBe('');
+  });
+
   it('binds the socket address while preserving the original HTTPS Host and TLS SNI name', () => {
     const origin = 'https://provider.test:9443';
     const request = providerPinnedRequestOptions(

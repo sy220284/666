@@ -23,6 +23,8 @@
     "packages/core-service/src/utility-control-operations.ts",
     "packages/core-service/src/utility-errors.ts",
     "packages/core-service/src/utility-generation-router.ts",
+    "packages/core-service/src/provider-abort-signal.ts",
+    "packages/core-service/src/provider-connection.ts",
     "packages/core-service/src/provider-adapters.ts",
     "packages/core-service/src/recovery/",
     "apps/desktop/renderer/src/features/writing/",

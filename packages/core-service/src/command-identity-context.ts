@@ -8,15 +8,8 @@ interface CommandIdentityStore {
 
 const commandIdentityStorage = new AsyncLocalStorage<CommandIdentityStore>();
 
-export function runWithCommandIdentity<T>(
-  scope: string,
-  input: unknown,
-  operation: () => T,
-): T {
-  return commandIdentityStorage.run(
-    { fingerprint: stableJson({ scope, input }) },
-    operation,
-  );
+export function runWithCommandIdentity<T>(scope: string, input: unknown, operation: () => T): T {
+  return commandIdentityStorage.run({ fingerprint: stableJson({ scope, input }) }, operation);
 }
 
 export function currentCommandFingerprint(fallback: string): string {

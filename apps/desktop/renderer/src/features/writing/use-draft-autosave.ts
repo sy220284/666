@@ -20,7 +20,10 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { registerDraftFlushHandler } from '../../runtime/draft-flush-registry.js';
 import { persistedEditorBlocks } from './draft-blocks.js';
-import { createDraftSaveContext, draftSaveContextIsCurrent } from './draft-save-context.js';
+import {
+  createDraftSaveContext,
+  draftSaveContextIsCurrent,
+} from './draft-save-context.js';
 import {
   reportFlushedDraft,
   reportPersistedDraft,
@@ -50,13 +53,17 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
     const instance = input.editor.current;
     const currentDraft = input.activeDraft.current;
     const currentChapter = input.activeChapter.current;
-    if (!instance || !currentDraft || !currentChapter || input.readOnly) return true;
+    if (!instance || !currentDraft || !currentChapter || input.readOnly)
+      return true;
     if (input.composing.current || instance.view.composing) return false;
     try {
       const json = instance.getJSON();
       const signature = JSON.stringify(json);
       assertEditorNodeMetadata(json);
-      const nextBlocks = tiptapJsonToDraftSnapshot(json, input.temporaryClientBlockId);
+      const nextBlocks = tiptapJsonToDraftSnapshot(
+        json,
+        input.temporaryClientBlockId,
+      );
       const saveContext = createDraftSaveContext({
         projectId: input.projectId,
         chapterId: currentChapter.id,
@@ -67,7 +74,10 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
         documentFingerprint: signature,
         requestSnapshot: nextBlocks,
       });
-      const operations = buildDraftPatchOperations(persistedEditorBlocks(currentDraft), nextBlocks);
+      const operations = buildDraftPatchOperations(
+        persistedEditorBlocks(currentDraft),
+        nextBlocks,
+      );
       if (operations.length === 0) return true;
       const result = await input.bridge.draft.applyPatch({
         projectId: saveContext.projectId,
@@ -107,7 +117,9 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
       input.refreshStatistics();
       return reportPersistedDraft({
         revision: result.data.revision,
-        editorChanged: JSON.stringify(instance.getJSON()) !== saveContext.documentFingerprint,
+        editorChanged:
+          JSON.stringify(instance.getJSON()) !==
+          saveContext.documentFingerprint,
         saveContinuation: input.saveContinuation,
         setStatus: input.setStatus,
         savedStatus: input.savedStatus,
@@ -119,7 +131,8 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
   }, [input]);
 
   const flush = useCallback(async (): Promise<boolean> => {
-    const draftSaved = await (input.autosave.current?.flush() ?? Promise.resolve(true));
+    const draftSaved = await (input.autosave.current?.flush() ??
+      Promise.resolve(true));
     return reportFlushedDraft({
       draftSaved,
       revision: input.activeDraft.current?.revision ?? 0,

@@ -39,11 +39,7 @@ export function RecoveryOverviewGate({ bridge, projectId, children }: RecoveryOv
         <p role="status">
           {availability === 'loading' ? '正在读取本地恢复点、数据库模式与空间状态…' : message}
         </p>
-        <button
-          disabled={availability === 'loading'}
-          type="button"
-          onClick={resource.refresh}
-        >
+        <button disabled={availability === 'loading'} type="button" onClick={resource.refresh}>
           重新读取
         </button>
       </div>

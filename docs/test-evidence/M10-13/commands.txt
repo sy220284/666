@@ -1,10 +1,10 @@
 # 已执行命令与永久检查
 
 受检范围：
-- 来源PR：`#321`
-- 受检实现提交：`e36292cd517c763418ad12f4b0f7f3d033234260`
-- 基线：`main`与`work`共同祖先`113099dff4f0a97129c6f49d850a7933a72e6b29`
-- 实现提交之后仅允许M10-13任务卡、Runtime、任务索引与Evidence收口文件变化
+- 来源 PR：`#321`
+- 受检实现提交：`812c52fff89688a1751387c13d42a417618460b9`
+- 基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`
+- 实现提交之后仅允许 M10-13 任务卡、Runtime、任务索引与 Evidence 收口文件变化
 
 永久静态与结构命令：
 - `pnpm task:validate`
@@ -27,20 +27,23 @@
 - `pnpm test:e2e`
 
 专项回归：
-- 跨命令key聚合Pending所有权
-- 项目与章节切换后的旧命令失效
-- 自动保存期间章节切换阻止旧Generation启动
-- Bridge Resource与queryKey原子归属
-- Candidate读取、预览、写操作和Generation终态scope/epoch提交
-- Provider、项目会话与Generation订阅卸载失效
+- 跨命令 key 聚合 Pending 所有权
+- 项目与章节变化后的旧命令、订阅和 Resource 失效
+- 自动保存期间章节切换阻止旧 Generation 启动
+- 项目会话副作用命令互斥与项目/continuation 原子提交
+- Autosave、flush 与续写位置绑定 Draft revision
+- 章节会话卸载后禁止旧正文挂载
+- 不同项目重建 WritingWorkbench 生命周期
+- Candidate 读取、预览、写操作与 Generation 终态 scope/epoch 提交
+- Provider、项目会话与 Generation 订阅卸载失效
 - 结构永久删除单一业务引擎守卫
 
 权威工作流：
-- Quality：Draft静态门禁与Ready完整矩阵
+- Quality
 - Security
 - Performance
 - Evidence
 - Task Governance
 - PR Policy
 
-运行ID、测试数量、Coverage与Artifact在Ready完整矩阵完成后写入本文件；任何失败均使当前Evidence不具备合并资格。
+最新 Ready 完整矩阵的运行 ID、测试数量、Coverage 与 Artifact 在工作流完成后写入本文件。任何失败都会使当前 Evidence 失去合并资格。

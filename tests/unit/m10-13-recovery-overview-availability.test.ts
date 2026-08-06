@@ -4,7 +4,7 @@ import type { ProjectWorkspaceService } from '../../packages/core-service/src/pr
 import { RecoveryService } from '../../packages/core-service/src/recovery/recovery-service.js';
 
 describe('M10-13 Recovery overview availability', () => {
-  it('propagates a database availability failure instead of returning empty collections', async () => {
+  it('propagates a database availability failure instead of returning empty collections', () => {
     const failure = new Error('project database unavailable');
     const readProject = vi.fn(() => {
       throw failure;
@@ -13,7 +13,7 @@ describe('M10-13 Recovery overview availability', () => {
       backupRootDirectory: '/tmp/worldforge-recovery-unavailable',
     });
 
-    await expect(service.getOverview('project-a')).rejects.toBe(failure);
+    expect(() => service.getOverview('project-a')).toThrow(failure);
     expect(readProject).toHaveBeenCalledTimes(1);
   });
 });

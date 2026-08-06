@@ -46,11 +46,13 @@ function projectFailure(
   return CoreProjectResultSchema.parse({ ok: false, operation, errorCode });
 }
 
-export function appDataEvent(
-  requestId: string,
-  result: CoreAppDataResult,
-): CoreEvent {
-  return { type: 'core.app-data.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
+export function appDataEvent(requestId: string, result: CoreAppDataResult): CoreEvent {
+  return {
+    type: 'core.app-data.result',
+    protocolVersion: PROTOCOL_VERSION,
+    requestId,
+    result,
+  };
 }
 
 export function appDataHandlers(
@@ -71,11 +73,13 @@ export function cancelledAppDataEvent(
   return appDataEvent(requestId, appDataFailure(operation, 'COMMON_CANCELLED_004'));
 }
 
-export function providerEvent(
-  requestId: string,
-  result: CoreProviderResult,
-): CoreEvent {
-  return { type: 'core.provider.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
+export function providerEvent(requestId: string, result: CoreProviderResult): CoreEvent {
+  return {
+    type: 'core.provider.result',
+    protocolVersion: PROTOCOL_VERSION,
+    requestId,
+    result,
+  };
 }
 
 export function providerHandlers(
@@ -96,11 +100,13 @@ export function cancelledProviderEvent(
   return providerEvent(requestId, providerFailure(operation, 'COMMON_CANCELLED_004'));
 }
 
-export function generationEvent(
-  requestId: string,
-  result: CoreGenerationResult,
-): CoreEvent {
-  return { type: 'core.generation.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
+export function generationEvent(requestId: string, result: CoreGenerationResult): CoreEvent {
+  return {
+    type: 'core.generation.result',
+    protocolVersion: PROTOCOL_VERSION,
+    requestId,
+    result,
+  };
 }
 
 export function generationHandlers(
@@ -121,11 +127,13 @@ export function cancelledGenerationEvent(
   return generationEvent(requestId, generationFailure(operation, 'COMMON_CANCELLED_004'));
 }
 
-export function projectEvent(
-  requestId: string,
-  result: CoreProjectResult,
-): CoreEvent {
-  return { type: 'core.project.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
+export function projectEvent(requestId: string, result: CoreProjectResult): CoreEvent {
+  return {
+    type: 'core.project.result',
+    protocolVersion: PROTOCOL_VERSION,
+    requestId,
+    result,
+  };
 }
 
 export function projectHandlers(

@@ -20,6 +20,7 @@ describe('M10-12 Generation启动等待状态', () => {
       bridge,
       projectId: 'project-a',
       chapterId: 'chapter-a',
+      commandPrefix: 'writing:project-a:chapter-a:',
       draft: {
         draftId: 'draft-a',
         chapterId: 'chapter-a',
@@ -74,6 +75,7 @@ describe('M10-12 Generation启动等待状态', () => {
       bridge,
       projectId: 'project-a',
       chapterId: 'chapter-a',
+      commandPrefix: 'writing:project-a:chapter-a:',
       draft: {
         draftId: 'draft-a',
         chapterId: 'chapter-a',

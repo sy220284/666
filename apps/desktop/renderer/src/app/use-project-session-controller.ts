@@ -126,12 +126,18 @@ export function useProjectSessionController({
       failureTitle: string,
       operation: (scope: RendererCommandScope) => Promise<Value>,
     ): Promise<RendererCommandResult<Value>> => {
-      setPendingKey(pendingKey);
       const result = await commandCoordinator.run({
         key: PROJECT_SESSION_COMMAND,
-        policy: 'replace',
-        operation,
+        policy: 'reject',
+        operation: async (scope) => {
+          setPendingKey(pendingKey);
+          return operation(scope);
+        },
       });
+      if (result.state === 'rejected') {
+        setMessage('已有作品操作正在处理，请完成后再试。');
+        return result;
+      }
       if (commandCoordinator.isLatest(PROJECT_SESSION_COMMAND, result.token)) {
         setPendingKey(null);
         if (result.state === 'failed') {

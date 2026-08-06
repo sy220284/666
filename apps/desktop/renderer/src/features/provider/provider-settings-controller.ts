@@ -27,9 +27,7 @@ export async function refreshProviderSettings(
       input.setProviders(outcome.data.providers);
       input.onProvidersChanged(outcome.data.providers);
       input.setMessage(
-        outcome.data.providers.length
-          ? 'AI连接已加载。'
-          : '尚未配置AI连接；离线写作功能不受影响。',
+        outcome.data.providers.length ? 'AI连接已加载。' : '尚未配置AI连接；离线写作功能不受影响。',
       );
     } else if (outcome.state === 'failure') {
       input.setMessage(authorErrorSummary(outcome.error));

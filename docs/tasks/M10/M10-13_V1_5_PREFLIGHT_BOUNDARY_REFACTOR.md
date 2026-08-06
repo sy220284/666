@@ -1,11 +1,12 @@
 # M10-13 1.5前置边界重构与根因治理
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M10 稳定性与治理续作 / V1.5 Preflight  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
-> 主线基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`
+> 主线基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`  
+> 实施提交：`e36292cd517c763418ad12f4b0f7f3d033234260`
 
 ## 目标
 
@@ -75,15 +76,16 @@
 4. Provider初始刷新、项目会话和生成订阅缺少完整卸载失效；
 5. 结构永久删除存在Reference-aware与基础服务两套业务实现，引用阻断语义可能分叉。
 
-### 本轮处理决定
+### 本轮处理结果
 
 - Command Coordinator统一聚合全部活跃命令，仅在活跃数从0到1或从1到0时改变Pending；
 - Writing命令统一使用`writing:<projectId>:<chapterId>:`前缀，章节或项目切换时按前缀失效；
 - Candidate列表、Undo、Generation终态刷新和订阅提交均复核当前scope或epoch；
 - Bridge Resource将解析结果与queryKey绑定，不匹配时只返回加载态且不保留旧数据；
 - Provider与项目控制器卸载时统一`invalidateAll()`；
+- 生成前置自动保存纳入命令作用域，关闭cleanup之后旧调用重新启动Generation的窗口；
 - 结构永久删除影响计算、外键引用阻断、planHash校验和执行收敛至`StructureTrashOperationService`，旧Reference-aware类型只保留兼容入口；
-- 增加跨key Pending、跨上下文Resource、Candidate/Generation上下文和结构单引擎回归测试。
+- 增加跨key Pending、跨上下文Resource、Candidate/Generation上下文、自动保存竞态和结构单引擎回归测试。
 
 ### 审计逻辑族归属
 
@@ -95,7 +97,7 @@
 | Renderer命令生命周期 | 已统一关键链 | WP3项目、Generation、Candidate、Provider及公共命令Hook |
 | Renderer查询与旧结果失效 | 已统一公共资源边界 | queryKey归属、scope与epoch共同约束 |
 | 数据库写入命令身份 | 已统一 | AsyncLocal命令上下文，禁止源码推断 |
-| 结构永久删除 | 本轮统一 | 单一业务引擎，兼容类型不再持有业务逻辑 |
+| 结构永久删除 | 已统一 | 单一业务引擎，兼容类型不再持有业务逻辑 |
 | Main IPC注册描述 | 保留现状，后续P1 | 当前受边界与契约测试保护，本任务不扩大范围 |
 | Utility协议元数据 | 保留现状，后续P1 | 本任务只治理执行与发送生命周期 |
 | 异步任务会话抽象 | 保留现状，后续P1 | Generation现有持久化状态机继续作为权威真源 |
@@ -221,13 +223,14 @@ Renderer
 7. Renderer命令成功、失败、取消、异常均释放自身所有权；
 8. 多个不同key并发时，任一命令完成不得提前释放共享Pending；
 9. 项目或章节切换后旧命令、旧订阅和旧Resource不能覆盖新上下文；
-10. Rewrite Blocks重复ID被Schema拒绝；
-11. 产品写入缺少稳定命令身份时明确失败；
-12. Recovery Overview读取失败与空列表可区分；
-13. 结构永久删除只允许单一业务引擎；
-14. Autosave失败产生作者可见、无敏感内容的状态；
-15. 七条关键Renderer链进入行为测试或具备明确等价覆盖；
-16. 全量旧功能、Security、Performance、Build和Electron E2E不退化。
+10. 自动保存完成前切换章节不得启动旧Generation；
+11. Rewrite Blocks重复ID被Schema拒绝；
+12. 产品写入缺少稳定命令身份时明确失败；
+13. Recovery Overview读取失败与空列表可区分；
+14. 结构永久删除只允许单一业务引擎；
+15. Autosave失败产生作者可见、无敏感内容的状态；
+16. 七条关键Renderer链进入行为测试或具备明确等价覆盖；
+17. 全量旧功能、Security、Performance、Build和Electron E2E不退化。
 
 ## 验证命令
 
@@ -263,7 +266,7 @@ Evidence必须记录：
 
 ## 回滚策略
 
-按WP1—WP5独立回退公共机制和调用点，但不得恢复未消费拒绝、日志污染业务状态、requestId交叉匹配、旧命令释放新Pending、跨上下文旧结果回写、结构永久删除双源或生产写入函数源码身份回退。
+按WP1—WP5独立回退公共机制和调用点，但不得恢复未消费拒绝、日志污染业务状态、requestId交叉匹配、旧命令释放新Pending、跨上下文旧结果回写、自动保存后旧Generation启动、结构永久删除双源或生产写入函数源码身份回退。
 
 ## 完成条件
 

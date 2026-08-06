@@ -575,7 +575,6 @@ export class CoreSupervisor {
   }
 
   #waitForExit(process: UtilityProcessHandle, timeoutMs: number): ExitWaitHandle {
-    let waiter!: ExitWaiter;
     let settled = false;
     let settlePromise!: (exited: boolean) => void;
     const promise = new Promise<boolean>((resolve) => {
@@ -588,7 +587,7 @@ export class CoreSupervisor {
       this.#exitWaiters.delete(waiter);
       settlePromise(exited);
     };
-    waiter = {
+    const waiter: ExitWaiter = {
       process,
       settle,
       timer: setTimeout(() => settle(false), timeoutMs),

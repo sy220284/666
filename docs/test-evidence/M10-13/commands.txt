@@ -1,0 +1,40 @@
+# 已执行命令与永久检查
+
+GitHub范围与治理：
+- 读取并比较`main`、`work`与PR #321
+- 审计PR全量变更、任务卡、Runtime、任务索引、Evidence和Review Threads
+- Task Governance：Ready实现运行成功
+- PR Policy：Ready实现运行成功
+- Security：Run `31083381557`，success
+- Performance：Run `31083381241`，success
+
+静态与结构：
+- `pnpm task:validate`
+- `pnpm check:language`
+- `pnpm check:workspaces`
+- `pnpm check:boundaries`
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm ci:policy`
+- `pnpm typecheck`
+
+产品验证：
+- `pnpm test:unit`
+- Unit：162 files / 867 tests，success
+- `pnpm test:integration`
+- Integration：63 files / 174 tests，success
+- `pnpm test:migration`
+- Migration：27 files / 52 tests，success
+- `pnpm test:coverage`
+- Coverage：lines 73.77%，statements 71.74%，functions 65.50%，branches 59.69%，success
+- `pnpm build`
+- `pnpm test:e2e`
+- Electron E2E：33 tests，success
+
+权威运行与产物：
+- 受检实现提交：`10d364a8b5b8e415966cf7d55e6cb4f02d647c2a`
+- Quality Ready Run：`31083381600`
+- Product tests and Coverage Artifact：`8960467800`
+- Product Artifact SHA-256：`f8319f3823aeb19b1134d7c5d725fd75394fc6ca2484c1421985f2b6422f767d`
+- Electron E2E Artifact：`8961134947`
+- Electron E2E Artifact SHA-256：`751ca817e0912955868085fcb054d77320389f1373402ed014b82cdbfc36a8ac`

@@ -48,24 +48,24 @@ interface GenerationStartInput {
 }
 
 export async function startGenerationTask(input: GenerationStartInput): Promise<void> {
-  if (!input.providerId || input.readOnly || !(await input.flush())) return;
+  if (!input.providerId || input.readOnly) return;
   const { continuationOfRunId, intentOverride } = input;
-  if (!continuationOfRunId && !intentOverride && !validateGenerationInput(input)) return;
-
   const coordinator = rendererCommandCoordinatorFor(input.setPending);
   const commandKey = `${input.commandPrefix}generation-start`;
   const result = await coordinator.run({
     key: commandKey,
     policy: 'reject',
     operation: async (scope) => {
-      if (!scope.isCurrent()) return;
-      input.setStatus('正在校验权威输入并组装约束…');
+      if (!(await input.flush()) || !scope.isCurrent()) return;
       const guardedInput: GenerationStartInput = {
         ...input,
         setStatus: (status) => {
           if (scope.isCurrent()) input.setStatus(status);
         },
       };
+      if (!continuationOfRunId && !intentOverride && !validateGenerationInput(guardedInput)) return;
+      if (!scope.isCurrent()) return;
+      input.setStatus('正在校验权威输入并组装约束…');
       const intent = await buildGenerationIntent(guardedInput);
       if (!intent || !scope.isCurrent()) return;
       input.setLastIntent(intent);

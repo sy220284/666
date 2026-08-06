@@ -8,10 +8,13 @@ import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/brid
 const rendererRequire = createRequire(
   new URL('../../apps/desktop/renderer/package.json', import.meta.url),
 );
-const { createElement } = rendererRequire('react') as typeof import('react');
-const { renderToStaticMarkup } = rendererRequire(
-  'react-dom/server',
-) as typeof import('react-dom/server');
+type CreateElement = (type: unknown, props: unknown, ...children: unknown[]) => unknown;
+type RenderToStaticMarkup = (element: unknown) => string;
+
+const { createElement } = rendererRequire('react') as { createElement: CreateElement };
+const { renderToStaticMarkup } = rendererRequire('react-dom/server') as {
+  renderToStaticMarkup: RenderToStaticMarkup;
+};
 
 const mocks = vi.hoisted(() => ({
   useBridgeQuery: vi.fn(),
@@ -45,7 +48,7 @@ function renderGate(bridge: RendererBridgeAdapter) {
     createElement(RecoveryOverviewGate, {
       bridge,
       projectId,
-      children: (value) => {
+      children: (value: RendererBridgeAdapter) => {
         childBridge = value;
         return createElement('span', null, '恢复信息已加载');
       },

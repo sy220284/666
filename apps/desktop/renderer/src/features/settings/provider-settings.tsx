@@ -173,9 +173,7 @@ export function ProviderSettings({
         await refresh(scope);
         if (scope.isCurrent())
           setMessage(
-            outcome.data.removed
-              ? `已删除“${provider.name}”及其密钥引用。`
-              : '该AI连接已不存在。',
+            outcome.data.removed ? `已删除“${provider.name}”及其密钥引用。` : '该AI连接已不存在。',
           );
       } else if (outcome.state === 'failure') {
         setMessage(authorErrorSummary(outcome.error));

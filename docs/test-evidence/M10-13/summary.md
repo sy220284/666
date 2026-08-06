@@ -16,7 +16,7 @@ M10-13 已完成 V1.5 前置公共边界治理：Core RPC、Utility 异步承载
 
 - Core RPC 使用精确请求身份、单响应单消费，并统一处理超时、发送失败、进程退出与 Shutdown 清理。
 - Utility Router、结构化结果、Safe Send 与 Drain 纳入统一 Tracked Operation 生命周期。
-- Renderer Command Coordinator 统一 `replace`、`join`、`reject`；共享 Pending 由全部活跃命令聚合控制。
+- Renderer Command Coordinator 统一 `replace`、`join`、`reject`；共享忙碌状态由全部活跃命令聚合控制。
 - Candidate 与 Generation 命令绑定项目、章节作用域；上下文变化后旧请求、旧订阅和旧终态刷新失去提交权。
 - Bridge Resource 绑定当前 `queryKey`，刷新时清除旧数据，跨项目结果不能继续作为可用状态。
 - 项目会话副作用命令使用互斥策略；项目与 Continuation 读取完成后原子提交。

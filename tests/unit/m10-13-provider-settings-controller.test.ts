@@ -17,9 +17,7 @@ function deferred(): { readonly promise: Promise<void>; resolve(): void } {
   return { promise, resolve: resolvePromise };
 }
 
-function bridgeWithList(
-  list: RendererBridgeAdapter['providers']['list'],
-): RendererBridgeAdapter {
+function bridgeWithList(list: RendererBridgeAdapter['providers']['list']): RendererBridgeAdapter {
   return { providers: { list } } as unknown as RendererBridgeAdapter;
 }
 
@@ -57,10 +55,7 @@ describe('M10-13 Provider settings controller', () => {
     expect(setProviders).toHaveBeenNthCalledWith(2, []);
     expect(onProvidersChanged).toHaveBeenCalledTimes(2);
     expect(setMessage).toHaveBeenNthCalledWith(1, 'AI连接已加载。');
-    expect(setMessage).toHaveBeenNthCalledWith(
-      2,
-      '尚未配置AI连接；离线写作功能不受影响。',
-    );
+    expect(setMessage).toHaveBeenNthCalledWith(2, '尚未配置AI连接；离线写作功能不受影响。');
   });
 
   it('reports bridge failures while ignoring stale or replaced refreshes', async () => {

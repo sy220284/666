@@ -108,4 +108,23 @@ describe('RendererCommandCoordinator', () => {
     expect(result).toMatchObject({ state: 'failed', error });
     expect(coordinator.isLatest('project-session', result.token)).toBe(true);
   });
+
+  it('keeps aggregate pending active until every distinct command key settles', async () => {
+    const pending: boolean[] = [];
+    const coordinator = new RendererCommandCoordinator((active) => pending.push(active));
+    const firstGate = deferred<void>();
+    const secondGate = deferred<void>();
+
+    const first = coordinator.run({ key: 'candidate-preview', operation: () => firstGate.promise });
+    const second = coordinator.run({ key: 'candidate-mutation', operation: () => secondGate.promise });
+    expect(pending).toEqual([true]);
+
+    firstGate.resolve();
+    await first;
+    expect(pending).toEqual([true]);
+
+    secondGate.resolve();
+    await second;
+    expect(pending).toEqual([true, false]);
+  });
 });

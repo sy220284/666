@@ -13,7 +13,7 @@ M10-12 已完成命令身份与 Generation 生命周期一致性闭环：通用�
 - 取消：取消状态持久化与 Candidate 持久化进入同一 FIFO 生命周期锁，消除最后检查后的并发窗口。
 - Provider：父级 Abort 已发生时立即传播，不发起后续网络工作。
 - Recovery：补偿使用 settled 语义，保留原始业务错误并记录受限残留信息。
-- Renderer：旧 Run 刷新按 Generation 代次提交，启动异常始终释放 `pending`。
+- Renderer：旧 Run 刷新按 Generation 代次提交，启动异常始终释放忙碌标记。
 - 工具链：机器清单、永久导出工作流、生成器与 Quality 调用入口形成可验证闭环，Artifact 保留 `.bin` 与 `.pnpm` 并绑定精确 Head。
 
 ## 验证事实

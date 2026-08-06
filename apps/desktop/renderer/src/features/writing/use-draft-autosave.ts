@@ -109,11 +109,15 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
       );
       input.synchronizing.current = false;
       input.refreshStatistics();
+      const persistedRevision = result.data.revision;
       return reportPersistedDraft({
-        revision: result.data.revision,
+        revision: persistedRevision,
         editorChanged: JSON.stringify(instance.getJSON()) !== saveContext.documentFingerprint,
         saveContinuation: input.saveContinuation,
-        canCommit: () => saveContext !== null && saveContextIsCurrent(saveContext),
+        canCommit: () =>
+          saveContext !== null &&
+          saveContextIsCurrent(saveContext) &&
+          input.activeDraft.current?.revision === persistedRevision,
         setStatus: input.setStatus,
         savedStatus: input.savedStatus,
       });
@@ -130,15 +134,17 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
     const flushDraftId = input.activeDraft.current?.draftId ?? null;
     const flushEditor = input.editor.current;
     const flushEditorGeneration = input.editorGeneration.current;
+    const draftSaved = await (input.autosave.current?.flush() ?? Promise.resolve(true));
+    const flushedRevision = input.activeDraft.current?.revision ?? 0;
     const canCommit = (): boolean =>
       input.activeChapter.current?.id === flushChapterId &&
       input.activeDraft.current?.draftId === flushDraftId &&
+      input.activeDraft.current?.revision === flushedRevision &&
       input.editor.current === flushEditor &&
       input.editorGeneration.current === flushEditorGeneration;
-    const draftSaved = await (input.autosave.current?.flush() ?? Promise.resolve(true));
     return reportFlushedDraft({
       draftSaved,
-      revision: input.activeDraft.current?.revision ?? 0,
+      revision: flushedRevision,
       saveContinuation: input.saveContinuation,
       canCommit,
       setStatus: input.setStatus,

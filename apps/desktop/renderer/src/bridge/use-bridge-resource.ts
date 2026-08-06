@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { RendererCommandCoordinator } from '../runtime/command-coordinator.js';
 import type { BridgeRequestError, BridgeRequestOutcome } from './request-lifecycle.js';
 
 export type BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled';
@@ -57,37 +58,53 @@ export interface BridgeCommand {
 }
 
 export function useBridgeCommand(onSuccess?: () => void | Promise<void>): BridgeCommand {
-  const pendingRef = useRef(false);
+  const commandCoordinator = useMemo(() => new RendererCommandCoordinator(), []);
+  const commandKey = 'bridge-command';
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<BridgeRequestError | null>(null);
 
+  useEffect(
+    () => () => {
+      commandCoordinator.invalidate(commandKey);
+    },
+    [commandCoordinator],
+  );
+
   const run = useCallback(
     async <T>(operation: () => Promise<BridgeRequestOutcome<T>>): Promise<T | null> => {
-      if (pendingRef.current) return null;
-      pendingRef.current = true;
-      setPending(true);
-      setError(null);
-      try {
-        const outcome = await operation();
-        if (outcome.state !== 'success') {
-          if (outcome.state === 'failure') setError(outcome.error);
-          return null;
-        }
-        await onSuccess?.();
-        return outcome.data;
-      } catch (cause) {
+      const result = await commandCoordinator.run({
+        key: commandKey,
+        policy: 'reject',
+        operation: async (scope) => {
+          if (!scope.isCurrent()) return null;
+          setPending(true);
+          setError(null);
+          const outcome = await operation();
+          if (!scope.isCurrent()) return null;
+          if (outcome.state !== 'success') {
+            if (outcome.state === 'failure') setError(outcome.error);
+            return null;
+          }
+          await onSuccess?.();
+          return scope.isCurrent() ? outcome.data : null;
+        },
+      });
+
+      if (result.state === 'rejected') return null;
+      if (result.state === 'failed' && commandCoordinator.isLatest(commandKey, result.token)) {
         setError({
           code: 'BRIDGE_UNEXPECTED_FAILURE',
-          message: cause instanceof Error ? cause.message : 'Unexpected bridge command failure.',
+          message:
+            result.error instanceof Error
+              ? result.error.message
+              : 'Unexpected bridge command failure.',
           retryable: true,
         });
-        return null;
-      } finally {
-        pendingRef.current = false;
-        setPending(false);
       }
+      if (commandCoordinator.isLatest(commandKey, result.token)) setPending(false);
+      return result.state === 'completed' ? result.value : null;
     },
-    [onSuccess],
+    [commandCoordinator, onSuccess],
   );
 
   return { pending, error, run, clearError: () => setError(null) };

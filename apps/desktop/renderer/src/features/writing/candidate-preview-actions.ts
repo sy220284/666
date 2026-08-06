@@ -23,8 +23,11 @@ export interface CandidateActionContext {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly chapterId: string;
+  readonly commandPrefix: string;
   readonly readOnly: boolean;
-  readonly refreshList: () => Promise<readonly CandidateSummary[]>;
+  readonly refreshList: (
+    canCommit?: () => boolean,
+  ) => Promise<readonly CandidateSummary[]>;
   readonly onDraftReplace: (draft: DraftDocument, message: string) => void;
   readonly setPreview: Dispatch<SetStateAction<CandidatePreview | null>>;
   readonly setUndoPreview: Dispatch<SetStateAction<CandidateUndoPreview | null>>;
@@ -41,20 +44,17 @@ async function runCandidateMutation(
   operation: (scope: RendererCommandScope) => Promise<void>,
 ): Promise<void> {
   const coordinator = rendererCommandCoordinatorFor(input.setPending);
+  const commandKey = `${input.commandPrefix}${CANDIDATE_MUTATION_COMMAND}`;
   const result = await coordinator.run({
-    key: CANDIDATE_MUTATION_COMMAND,
+    key: commandKey,
     policy: 'reject',
-    operation: async (scope) => {
-      input.setPending(true);
-      await operation(scope);
-    },
+    operation,
   });
   if (result.state === 'rejected') {
     input.setStatus('已有建议稿操作正在处理，请完成后再试。');
     return;
   }
-  if (!coordinator.isLatest(CANDIDATE_MUTATION_COMMAND, result.token)) return;
-  input.setPending(false);
+  if (!coordinator.isLatest(commandKey, result.token)) return;
   if (result.state === 'failed') {
     input.setStatus('建议稿操作未完成，当前稿保持不变，请重试。');
   }
@@ -105,7 +105,7 @@ export async function discardCandidate(
             }
           : current,
       );
-      await input.refreshList();
+      await input.refreshList(scope.isCurrent);
       if (scope.isCurrent()) input.setStatus('建议稿已丢弃，当前稿未改变。');
     } else if (outcome.state === 'failure') {
       input.setStatus(`丢弃失败 · ${authorErrorSummary(outcome.error)}`);
@@ -116,7 +116,10 @@ export async function discardCandidate(
 export async function applyCandidate(
   input: CandidateActionContext & {
     readonly flush: () => Promise<boolean>;
-    readonly loadUndo: (preview: CandidatePreview) => Promise<boolean>;
+    readonly loadUndo: (
+      preview: CandidatePreview,
+      canCommit?: () => boolean,
+    ) => Promise<boolean>;
   },
   preview: CandidatePreview | null,
   selection: CandidateSelection | null,
@@ -155,9 +158,9 @@ export async function applyCandidate(
       draft: outcome.data.draft,
     };
     input.setPreview(nextPreview);
-    await input.loadUndo(nextPreview);
+    await input.loadUndo(nextPreview, scope.isCurrent);
     if (!scope.isCurrent()) return;
-    await input.refreshList();
+    await input.refreshList(scope.isCurrent);
     if (scope.isCurrent())
       input.setStatus(`采用成功 · 采用记录 ${outcome.data.record.applyRecordId.slice(0, 8)}…`);
   });
@@ -230,7 +233,7 @@ export async function saveSkeletonCandidate(
     input.setSelectedDocument(outcome.data);
     input.setSkeletonEndingHook(outcome.data.structuredPayload.endingHook);
     input.setSkeletonTendency(outcome.data.structuredPayload.tendency);
-    await input.refreshList();
+    await input.refreshList(scope.isCurrent);
     if (scope.isCurrent()) input.setStatus(`骨架修订 ${outcome.data.skeletonRevision} 已保存。`);
   });
 }

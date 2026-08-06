@@ -1,16 +1,15 @@
-import {
-  CoreAppDataResultSchema,
-  CoreGenerationResultSchema,
-  CoreProjectResultSchema,
-  CoreProviderResultSchema,
-  PROJECT_WORKSPACE_COMMANDS,
-  PROTOCOL_VERSION,
-  type CoreControlMessage,
-} from '@worldforge/contracts';
+import { PROJECT_WORKSPACE_COMMANDS, type CoreControlMessage } from '@worldforge/contracts';
 
 import { runWithCommandIdentity } from './command-identity-context.js';
 import { executeAppDataOperation } from './utility-app-data-router.js';
 import type { UtilityControlContext } from './utility-control-context.js';
+import {
+  appDataHandlers,
+  cancelledOperationEvent,
+  generationHandlers,
+  projectHandlers,
+  providerHandlers,
+} from './utility-control-results.js';
 import { executeGenerationOperation } from './utility-generation-router.js';
 import { executeProjectOperation } from './utility-project-router.js';
 import { executeProviderOperation } from './utility-provider-router.js';
@@ -26,139 +25,49 @@ export function dispatchUtilityOperation(
     case 'core.app-data.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send({
-          type: 'core.app-data.result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId,
-          result: CoreAppDataResultSchema.parse({
-            ok: false,
-            operation: operation.operation,
-            errorCode: 'COMMON_CANCELLED_004',
-          }),
-        });
+        context.send(cancelledOperationEvent(requestId, operation.operation, 'app-data'));
         return true;
       }
       context.track(
         runWithCommandIdentity('core.app-data.command', operation, () =>
           executeAppDataOperation(options.appRuntime, requestId, operation),
         ),
-        {
-          success: (result) => ({
-            type: 'core.app-data.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result,
-          }),
-          failure: () => ({
-            type: 'core.app-data.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result: CoreAppDataResultSchema.parse({
-              ok: false,
-              operation: operation.operation,
-              errorCode: 'COMMON_INTERNAL_999',
-            }),
-          }),
-          failureEvent: 'app-data.operation.failed',
-        },
+        appDataHandlers(requestId, operation.operation),
       );
       return true;
     }
     case 'core.provider.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send({
-          type: 'core.provider.result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId,
-          result: CoreProviderResultSchema.parse({
-            ok: false,
-            operation: operation.operation,
-            errorCode: 'COMMON_CANCELLED_004',
-          }),
-        });
+        context.send(cancelledOperationEvent(requestId, operation.operation, 'provider'));
         return true;
       }
       context.track(
         runWithCommandIdentity('core.provider.command', operation, () =>
           executeProviderOperation(options.appRuntime, requestId, operation),
         ),
-        {
-          success: (result) => ({
-            type: 'core.provider.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result,
-          }),
-          failure: () => ({
-            type: 'core.provider.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result: CoreProviderResultSchema.parse({
-              ok: false,
-              operation: operation.operation,
-              errorCode: 'COMMON_INTERNAL_999',
-            }),
-          }),
-          failureEvent: 'provider.operation.failed',
-        },
+        providerHandlers(requestId, operation.operation),
       );
       return true;
     }
     case 'core.generation.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send({
-          type: 'core.generation.result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId,
-          result: CoreGenerationResultSchema.parse({
-            ok: false,
-            operation: operation.operation,
-            errorCode: 'COMMON_CANCELLED_004',
-          }),
-        });
+        context.send(cancelledOperationEvent(requestId, operation.operation, 'generation'));
         return true;
       }
       context.track(
         runWithCommandIdentity('core.generation.command', operation, () =>
           executeGenerationOperation(options.generationServices, requestId, operation),
         ),
-        {
-          success: (result) => ({
-            type: 'core.generation.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result,
-          }),
-          failure: () => ({
-            type: 'core.generation.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result: CoreGenerationResultSchema.parse({
-              ok: false,
-              operation: operation.operation,
-              errorCode: 'COMMON_INTERNAL_999',
-            }),
-          }),
-          failureEvent: 'generation.operation.failed',
-        },
+        generationHandlers(requestId, operation.operation),
       );
       return true;
     }
     case 'core.project.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send({
-          type: 'core.project.result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId,
-          result: CoreProjectResultSchema.parse({
-            ok: false,
-            operation: operation.operation,
-            errorCode: 'COMMON_CANCELLED_004',
-          }),
-        });
+        context.send(cancelledOperationEvent(requestId, operation.operation, 'project'));
         return true;
       }
       context.track(
@@ -183,25 +92,7 @@ export function dispatchUtilityOperation(
             return result;
           }),
         ),
-        {
-          success: (result) => ({
-            type: 'core.project.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result,
-          }),
-          failure: () => ({
-            type: 'core.project.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result: CoreProjectResultSchema.parse({
-              ok: false,
-              operation: operation.operation,
-              errorCode: 'COMMON_INTERNAL_999',
-            }),
-          }),
-          failureEvent: 'project.operation.failed',
-        },
+        projectHandlers(requestId, operation.operation),
       );
       return true;
     }

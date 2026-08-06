@@ -13,7 +13,7 @@ export class ContinuationPersistenceTracker<Input> {
   #committedInput: Input | null = null;
   #committedSignature: string | null = null;
   #desiredSignature: string | null = null;
-  #desiredScope: unknown | typeof NO_SCOPE = NO_SCOPE;
+  #desiredScope: string | typeof NO_SCOPE = NO_SCOPE;
   #desiredPanel: unknown | typeof NO_PANEL = NO_PANEL;
 
   /** The last input Core confirmed as persisted, if any. */
@@ -26,11 +26,11 @@ export class ContinuationPersistenceTracker<Input> {
    * Whether persisting `next` can be skipped.
    *
    * A request is skipped when Core already holds the same state or when it was
-   * captured by an older panel render in the same project and has since been
-   * superseded by a newer panel intent.
+   * captured by an older panel render in the same project/chapter/Draft scope
+   * and has since been superseded by a newer panel intent.
    */
   isCommitted(next: Input): boolean {
-    const scope = fieldOf(next, 'projectId', NO_SCOPE);
+    const scope = scopeOf(next);
     const panel = fieldOf(next, 'panel', NO_PANEL);
     const sameScope = this.#desiredScope === NO_SCOPE || scope === this.#desiredScope;
 
@@ -50,13 +50,13 @@ export class ContinuationPersistenceTracker<Input> {
   /** Records the latest Renderer state that should eventually reach Core. */
   noteIntent(input: Input): void {
     this.#desiredSignature = signatureOf(input);
-    this.#desiredScope = fieldOf(input, 'projectId', NO_SCOPE);
+    this.#desiredScope = scopeOf(input);
     this.#desiredPanel = fieldOf(input, 'panel', NO_PANEL);
   }
 
-  /** Whether `input` would replace a newer panel intent in the same project. */
+  /** Whether `input` would replace a newer panel intent in the same scope. */
   hasDifferentPanelIntent(input: Input): boolean {
-    const scope = fieldOf(input, 'projectId', NO_SCOPE);
+    const scope = scopeOf(input);
     const panel = fieldOf(input, 'panel', NO_PANEL);
     return (
       this.#desiredScope !== NO_SCOPE &&
@@ -108,11 +108,21 @@ export function derivePanelSwitchInput<Input extends { readonly panel: Panel }, 
   return next;
 }
 
-function fieldOf(
+function scopeOf(input: unknown): string | typeof NO_SCOPE {
+  const values = ['projectId', 'chapterId', 'draftId'].map((field) =>
+    fieldOf(input, field, NO_SCOPE),
+  );
+  if (values.every((value) => value === NO_SCOPE)) return NO_SCOPE;
+  return values
+    .map((value) => (value === NO_SCOPE ? '' : (JSON.stringify(value) ?? String(value))))
+    .join('|');
+}
+
+function fieldOf<Fallback>(
   input: unknown,
   field: string,
-  fallback: typeof NO_SCOPE | typeof NO_PANEL,
-): unknown | typeof NO_SCOPE | typeof NO_PANEL {
+  fallback: Fallback,
+): unknown | Fallback {
   if (!input || typeof input !== 'object' || !(field in input)) return fallback;
   return (input as Record<string, unknown>)[field];
 }

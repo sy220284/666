@@ -1,11 +1,7 @@
 import type { CoreEvent } from '@worldforge/contracts';
 
 export type CoreRpcRequestState =
-  | 'response'
-  | 'timeout'
-  | 'send-failed'
-  | 'conflict'
-  | 'disconnected';
+  'response' | 'timeout' | 'send-failed' | 'conflict' | 'disconnected';
 
 export type CoreRpcRequestResult =
   | { readonly state: 'response'; readonly event: CoreEvent }

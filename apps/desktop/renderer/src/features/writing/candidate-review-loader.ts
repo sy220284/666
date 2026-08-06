@@ -20,10 +20,15 @@ import type { CandidateSelectionMode } from './candidate-selection.js';
 const CANDIDATE_DOCUMENT_COMMAND = 'candidate-document';
 const CANDIDATE_PREVIEW_COMMAND = 'candidate-preview';
 
+function commandKey(prefix: string, command: string): string {
+  return `${prefix}${command}`;
+}
+
 export interface CandidateReviewLoader {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly chapterId: string;
+  readonly commandPrefix: string;
   readonly documentRequest: MutableRefObject<number>;
   readonly previewRequest: MutableRefObject<string | null>;
   readonly setCandidates: Dispatch<SetStateAction<readonly CandidateSummary[]>>;
@@ -90,13 +95,13 @@ export async function loadCandidatePreview(
 ): Promise<void> {
   if (!candidateId) return;
   const coordinator = rendererCommandCoordinatorFor(input.setPending);
+  const previewKey = commandKey(input.commandPrefix, CANDIDATE_PREVIEW_COMMAND);
   const result = await coordinator.run({
-    key: CANDIDATE_PREVIEW_COMMAND,
+    key: previewKey,
     policy: 'replace',
     operation: async (scope) => {
       const requestId = crypto.randomUUID();
       input.previewRequest.current = requestId;
-      input.setPending(true);
       input.setStatus('正在计算结构与中文字符差异…');
       input.setConflicts([]);
       const outcome = await input.bridge.candidateAction.preview(
@@ -137,9 +142,8 @@ export async function loadCandidatePreview(
       );
     },
   });
-  if (!coordinator.isLatest(CANDIDATE_PREVIEW_COMMAND, result.token)) return;
+  if (!coordinator.isLatest(previewKey, result.token)) return;
   input.previewRequest.current = null;
-  input.setPending(false);
   if (result.state === 'failed') {
     input.setStatus('建议稿预览未完成，当前稿保持不变，请重试。');
   }
@@ -147,14 +151,9 @@ export async function loadCandidatePreview(
 
 function invalidateCandidatePreview(input: CandidateReviewLoader): void {
   const coordinator = rendererCommandCoordinatorFor(input.setPending);
-  void coordinator.run({
-    key: CANDIDATE_PREVIEW_COMMAND,
-    policy: 'replace',
-    operation: async () => undefined,
-  });
+  coordinator.invalidate(commandKey(input.commandPrefix, CANDIDATE_PREVIEW_COMMAND));
   const stalePreviewRequest = input.previewRequest.current;
   input.previewRequest.current = null;
-  input.setPending(false);
   if (stalePreviewRequest) void input.bridge.candidateAction.cancelPreview(stalePreviewRequest);
 }
 
@@ -167,8 +166,9 @@ export async function loadCandidateDocument(
   input.documentRequest.current += 1;
   invalidateCandidatePreview(input);
   const coordinator = rendererCommandCoordinatorFor(input.setPending);
+  const documentKey = commandKey(input.commandPrefix, CANDIDATE_DOCUMENT_COMMAND);
   const result = await coordinator.run({
-    key: CANDIDATE_DOCUMENT_COMMAND,
+    key: documentKey,
     policy: 'replace',
     operation: async (scope: RendererCommandScope) => {
       const outcome = await input.bridge.candidate.get({
@@ -211,7 +211,7 @@ export async function loadCandidateDocument(
       await loadCandidatePreview(input, candidateId);
     },
   });
-  if (result.state === 'failed' && coordinator.isLatest(CANDIDATE_DOCUMENT_COMMAND, result.token)) {
+  if (result.state === 'failed' && coordinator.isLatest(documentKey, result.token)) {
     input.setStatus('建议稿读取未完成，请重试。');
   }
 }

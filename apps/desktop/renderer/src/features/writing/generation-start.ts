@@ -20,6 +20,7 @@ interface GenerationStartInput {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly chapterId: string;
+  readonly commandPrefix: string;
   readonly draft: DraftDocument;
   readonly providerId: string;
   readonly readOnly: boolean;
@@ -52,13 +53,12 @@ export async function startGenerationTask(input: GenerationStartInput): Promise<
   if (!continuationOfRunId && !intentOverride && !validateGenerationInput(input)) return;
 
   const coordinator = rendererCommandCoordinatorFor(input.setPending);
-  const commandKey = `generation-start:${input.projectId}:${input.chapterId}`;
+  const commandKey = `${input.commandPrefix}generation-start`;
   const result = await coordinator.run({
     key: commandKey,
     policy: 'reject',
     operation: async (scope) => {
       if (!scope.isCurrent()) return;
-      input.setPending(true);
       input.setStatus('正在校验权威输入并组装约束…');
       const guardedInput: GenerationStartInput = {
         ...input,
@@ -97,7 +97,6 @@ export async function startGenerationTask(input: GenerationStartInput): Promise<
     return;
   }
   if (!coordinator.isLatest(commandKey, result.token)) return;
-  input.setPending(false);
   if (result.state === 'failed') {
     input.setStatus(
       `生成未启动 · ${authorErrorSummary({

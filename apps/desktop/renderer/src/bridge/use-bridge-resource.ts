@@ -18,6 +18,10 @@ export interface BridgeResourceSnapshot<T> {
   readonly error: BridgeRequestError | null;
 }
 
+interface OwnedBridgeResourceSnapshot<T> extends BridgeResourceSnapshot<T> {
+  readonly resolvedKey: string | null;
+}
+
 export function bridgeResourceForQueryKey<T>(
   queryKey: string,
   resolvedKey: string | null,
@@ -37,30 +41,58 @@ export function useBridgeQuery<T>(
   load: () => Promise<BridgeRequestOutcome<T>>,
 ): BridgeResource<T> {
   const generation = useRef(0);
-  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
-  const [state, setState] = useState<BridgeResourceState>('loading');
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<BridgeRequestError | null>(null);
+  const [snapshot, setSnapshot] = useState<OwnedBridgeResourceSnapshot<T>>({
+    resolvedKey: null,
+    state: 'loading',
+    data: null,
+    error: null,
+  });
 
   const refresh = useCallback(async (): Promise<void> => {
     const current = ++generation.current;
-    setState('loading');
-    setError(null);
-    const outcome = await load();
-    if (current !== generation.current || outcome.state === 'stale') return;
-    setResolvedKey(queryKey);
+    setSnapshot((previous) => ({ ...previous, state: 'loading', error: null }));
+    let outcome: BridgeRequestOutcome<T>;
+    try {
+      outcome = await load();
+    } catch {
+      if (current !== generation.current) return;
+      setSnapshot({
+        resolvedKey: queryKey,
+        state: 'failure',
+        data: null,
+        error: {
+          code: 'BRIDGE_UNEXPECTED_FAILURE',
+          message: 'The bridge query failed unexpectedly.',
+          retryable: true,
+        },
+      });
+      return;
+    }
+    if (current !== generation.current) return;
     if (outcome.state === 'success') {
-      setData(outcome.data);
-      setState('success');
+      setSnapshot({
+        resolvedKey: queryKey,
+        state: 'success',
+        data: outcome.data,
+        error: null,
+      });
       return;
     }
-    setData(null);
-    if (outcome.state === 'cancelled') {
-      setState('cancelled');
+    if (outcome.state === 'cancelled' || outcome.state === 'stale') {
+      setSnapshot({
+        resolvedKey: queryKey,
+        state: 'cancelled',
+        data: null,
+        error: null,
+      });
       return;
     }
-    setError(outcome.error);
-    setState('failure');
+    setSnapshot({
+      resolvedKey: queryKey,
+      state: 'failure',
+      data: null,
+      error: outcome.error,
+    });
   }, [load, queryKey]);
 
   useEffect(() => {
@@ -71,7 +103,7 @@ export function useBridgeQuery<T>(
   }, [queryKey, refresh]);
 
   return {
-    ...bridgeResourceForQueryKey(queryKey, resolvedKey, { state, data, error }),
+    ...bridgeResourceForQueryKey(queryKey, snapshot.resolvedKey, snapshot),
     refresh,
   };
 }

@@ -61,6 +61,13 @@ export function useProjectSessionController({
 }: ProjectSessionControllerInput) {
   const commandCoordinator = useRef(new RendererCommandCoordinator()).current;
 
+  useEffect(
+    () => () => {
+      commandCoordinator.invalidateAll();
+    },
+    [commandCoordinator],
+  );
+
   useEffect(() => {
     dispatch({
       type: 'select',

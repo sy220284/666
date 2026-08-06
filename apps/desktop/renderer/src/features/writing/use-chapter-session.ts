@@ -71,7 +71,8 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
         stateRef.current.requestedChapterId === nextChapter.id
       )
         return;
-      if (input.activeChapter.current?.id === nextChapter.id && input.activeDraft.current) {
+      const currentDraft = input.activeDraft.current;
+      if (input.activeChapter.current?.id === nextChapter.id && currentDraft) {
         if (stateRef.current.requestedChapterId) {
           requestGeneration.current += 1;
           if (!isCurrentSession()) return;
@@ -80,12 +81,12 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
           transition({
             type: 'ready',
             chapterId: nextChapter.id,
-            draftId: input.activeDraft.current.draftId,
+            draftId: currentDraft.draftId,
             editorGeneration: input.editorGeneration.current,
           });
         }
         if (isCurrentSession() && input.panel === 'editor' && !input.editor.current)
-          input.mountEditor(input.activeDraft.current, nextChapter);
+          input.mountEditor(currentDraft, nextChapter);
         return;
       }
       if (chapterOpenIsTemporarilyBlocked(stateRef.current)) return;

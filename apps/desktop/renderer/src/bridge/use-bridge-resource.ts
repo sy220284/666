@@ -50,7 +50,12 @@ export function useBridgeQuery<T>(
 
   const refresh = useCallback(async (): Promise<void> => {
     const current = ++generation.current;
-    setSnapshot((previous) => ({ ...previous, state: 'loading', error: null }));
+    setSnapshot({
+      resolvedKey: queryKey,
+      state: 'loading',
+      data: null,
+      error: null,
+    });
     let outcome: BridgeRequestOutcome<T>;
     try {
       outcome = await load();
@@ -102,8 +107,11 @@ export function useBridgeQuery<T>(
     };
   }, [queryKey, refresh]);
 
+  const visible = bridgeResourceForQueryKey(queryKey, snapshot.resolvedKey, snapshot);
   return {
-    ...bridgeResourceForQueryKey(queryKey, snapshot.resolvedKey, snapshot),
+    state: visible.state,
+    data: visible.data,
+    error: visible.error,
     refresh,
   };
 }

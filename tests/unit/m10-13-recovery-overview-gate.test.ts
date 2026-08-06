@@ -9,7 +9,9 @@ const rendererRequire = createRequire(
   new URL('../../apps/desktop/renderer/package.json', import.meta.url),
 );
 const { createElement } = rendererRequire('react') as typeof import('react');
-const { renderToStaticMarkup } = rendererRequire('react-dom/server') as typeof import('react-dom/server');
+const { renderToStaticMarkup } = rendererRequire(
+  'react-dom/server',
+) as typeof import('react-dom/server');
 
 const mocks = vi.hoisted(() => ({
   useBridgeQuery: vi.fn(),

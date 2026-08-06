@@ -1,15 +1,12 @@
 # 已执行命令与永久检查
 
-GitHub范围与治理：
-- 读取并比较`main`、`work`与PR #321
-- 审计PR全量变更、任务卡、Runtime、任务索引、Evidence和Review Threads
-- Task Governance：Run `31088405409`，success
-- PR Policy：Run `31088405466`，success
-- Security：Run `31088405956`，success
-- Performance：Run `31088405231`，success
-- Review Threads：0个未解决线程
+受检范围：
+- 来源PR：`#321`
+- 受检实现提交：`e36292cd517c763418ad12f4b0f7f3d033234260`
+- 基线：`main`与`work`共同祖先`113099dff4f0a97129c6f49d850a7933a72e6b29`
+- 实现提交之后仅允许M10-13任务卡、Runtime、任务索引与Evidence收口文件变化
 
-静态与结构：
+永久静态与结构命令：
 - `pnpm task:validate`
 - `pnpm check:language`
 - `pnpm check:workspaces`
@@ -19,25 +16,31 @@ GitHub范围与治理：
 - `pnpm ci:policy`
 - `pnpm typecheck`
 
-产品验证：
+永久产品验证命令：
 - `pnpm test:unit`
-- Unit：166 files / 879 tests，success
 - `pnpm test:integration`
-- Integration：63 files / 174 tests，success
 - `pnpm test:migration`
-- Migration：27 files / 52 tests，success
 - `pnpm test:coverage`
-- Coverage：lines 73.86%，statements 71.82%，functions 65.67%，branches 59.79%，success
+- `pnpm test:security`
+- `pnpm test:perf`
 - `pnpm build`
 - `pnpm test:e2e`
-- Electron E2E：33 tests，success（13.4m）
-- Build：success
-- Quality聚合：success
 
-权威运行与产物：
-- 受检实现提交：`d9421678ece1e5b08b2e4a62eabbe6b024b13d7a`
-- Quality Ready Run：`31088408259`
-- Product tests and Coverage Artifact：`8962463671`
-- Product Artifact SHA-256：`f74382d8048c0de4bc37db0e56b2b431862affae7999a3f36268ceadc37e72f5`
-- Electron E2E Artifact：`8962774110`
-- Electron E2E Artifact SHA-256：`a0916302e4f53caa24ca60b631d794808dc120e5d8cbf872ba0a15e9b42eade3`
+专项回归：
+- 跨命令key聚合Pending所有权
+- 项目与章节切换后的旧命令失效
+- 自动保存期间章节切换阻止旧Generation启动
+- Bridge Resource与queryKey原子归属
+- Candidate读取、预览、写操作和Generation终态scope/epoch提交
+- Provider、项目会话与Generation订阅卸载失效
+- 结构永久删除单一业务引擎守卫
+
+权威工作流：
+- Quality：Draft静态门禁与Ready完整矩阵
+- Security
+- Performance
+- Evidence
+- Task Governance
+- PR Policy
+
+运行ID、测试数量、Coverage与Artifact在Ready完整矩阵完成后写入本文件；任何失败均使当前Evidence不具备合并资格。

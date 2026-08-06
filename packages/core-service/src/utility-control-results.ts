@@ -18,21 +18,36 @@ import {
 
 import type { TrackedOperationHandlers } from './utility-control-context.js';
 
-function failureResult(
-  schema:
-    | typeof CoreAppDataResultSchema
-    | typeof CoreProviderResultSchema
-    | typeof CoreGenerationResultSchema
-    | typeof CoreProjectResultSchema,
-  operation: string,
+function appDataFailure(
+  operation: CoreAppDataOperation['operation'],
   errorCode: ErrorCode,
-) {
-  return schema.parse({ ok: false, operation, errorCode });
+): CoreAppDataResult {
+  return CoreAppDataResultSchema.parse({ ok: false, operation, errorCode });
+}
+
+function providerFailure(
+  operation: CoreProviderOperation['operation'],
+  errorCode: ErrorCode,
+): CoreProviderResult {
+  return CoreProviderResultSchema.parse({ ok: false, operation, errorCode });
+}
+
+function generationFailure(
+  operation: CoreGenerationOperation['operation'],
+  errorCode: ErrorCode,
+): CoreGenerationResult {
+  return CoreGenerationResultSchema.parse({ ok: false, operation, errorCode });
+}
+
+function projectFailure(
+  operation: CoreProjectOperation['operation'],
+  errorCode: ErrorCode,
+): CoreProjectResult {
+  return CoreProjectResultSchema.parse({ ok: false, operation, errorCode });
 }
 
 export function appDataEvent(
   requestId: string,
-  operation: CoreAppDataOperation['operation'],
   result: CoreAppDataResult,
 ): CoreEvent {
   return { type: 'core.app-data.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
@@ -43,20 +58,21 @@ export function appDataHandlers(
   operation: CoreAppDataOperation['operation'],
 ): TrackedOperationHandlers<CoreAppDataResult> {
   return {
-    success: (result) => appDataEvent(requestId, operation, result),
-    failure: () =>
-      appDataEvent(
-        requestId,
-        operation,
-        failureResult(CoreAppDataResultSchema, operation, 'COMMON_INTERNAL_999'),
-      ),
+    success: (result) => appDataEvent(requestId, result),
+    failure: () => appDataEvent(requestId, appDataFailure(operation, 'COMMON_INTERNAL_999')),
     failureEvent: 'app-data.operation.failed',
   };
 }
 
+export function cancelledAppDataEvent(
+  requestId: string,
+  operation: CoreAppDataOperation['operation'],
+): CoreEvent {
+  return appDataEvent(requestId, appDataFailure(operation, 'COMMON_CANCELLED_004'));
+}
+
 export function providerEvent(
   requestId: string,
-  operation: CoreProviderOperation['operation'],
   result: CoreProviderResult,
 ): CoreEvent {
   return { type: 'core.provider.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
@@ -67,20 +83,21 @@ export function providerHandlers(
   operation: CoreProviderOperation['operation'],
 ): TrackedOperationHandlers<CoreProviderResult> {
   return {
-    success: (result) => providerEvent(requestId, operation, result),
-    failure: () =>
-      providerEvent(
-        requestId,
-        operation,
-        failureResult(CoreProviderResultSchema, operation, 'COMMON_INTERNAL_999'),
-      ),
+    success: (result) => providerEvent(requestId, result),
+    failure: () => providerEvent(requestId, providerFailure(operation, 'COMMON_INTERNAL_999')),
     failureEvent: 'provider.operation.failed',
   };
 }
 
+export function cancelledProviderEvent(
+  requestId: string,
+  operation: CoreProviderOperation['operation'],
+): CoreEvent {
+  return providerEvent(requestId, providerFailure(operation, 'COMMON_CANCELLED_004'));
+}
+
 export function generationEvent(
   requestId: string,
-  operation: CoreGenerationOperation['operation'],
   result: CoreGenerationResult,
 ): CoreEvent {
   return { type: 'core.generation.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
@@ -91,20 +108,21 @@ export function generationHandlers(
   operation: CoreGenerationOperation['operation'],
 ): TrackedOperationHandlers<CoreGenerationResult> {
   return {
-    success: (result) => generationEvent(requestId, operation, result),
-    failure: () =>
-      generationEvent(
-        requestId,
-        operation,
-        failureResult(CoreGenerationResultSchema, operation, 'COMMON_INTERNAL_999'),
-      ),
+    success: (result) => generationEvent(requestId, result),
+    failure: () => generationEvent(requestId, generationFailure(operation, 'COMMON_INTERNAL_999')),
     failureEvent: 'generation.operation.failed',
   };
 }
 
+export function cancelledGenerationEvent(
+  requestId: string,
+  operation: CoreGenerationOperation['operation'],
+): CoreEvent {
+  return generationEvent(requestId, generationFailure(operation, 'COMMON_CANCELLED_004'));
+}
+
 export function projectEvent(
   requestId: string,
-  operation: CoreProjectOperation['operation'],
   result: CoreProjectResult,
 ): CoreEvent {
   return { type: 'core.project.result', protocolVersion: PROTOCOL_VERSION, requestId, result };
@@ -115,50 +133,15 @@ export function projectHandlers(
   operation: CoreProjectOperation['operation'],
 ): TrackedOperationHandlers<CoreProjectResult> {
   return {
-    success: (result) => projectEvent(requestId, operation, result),
-    failure: () =>
-      projectEvent(
-        requestId,
-        operation,
-        failureResult(CoreProjectResultSchema, operation, 'COMMON_INTERNAL_999'),
-      ),
+    success: (result) => projectEvent(requestId, result),
+    failure: () => projectEvent(requestId, projectFailure(operation, 'COMMON_INTERNAL_999')),
     failureEvent: 'project.operation.failed',
   };
 }
 
-export function cancelledOperationEvent(
+export function cancelledProjectEvent(
   requestId: string,
-  operation:
-    | CoreAppDataOperation['operation']
-    | CoreProviderOperation['operation']
-    | CoreGenerationOperation['operation']
-    | CoreProjectOperation['operation'],
-  kind: 'app-data' | 'provider' | 'generation' | 'project',
+  operation: CoreProjectOperation['operation'],
 ): CoreEvent {
-  switch (kind) {
-    case 'app-data':
-      return appDataEvent(
-        requestId,
-        operation as CoreAppDataOperation['operation'],
-        failureResult(CoreAppDataResultSchema, operation, 'COMMON_CANCELLED_004'),
-      );
-    case 'provider':
-      return providerEvent(
-        requestId,
-        operation as CoreProviderOperation['operation'],
-        failureResult(CoreProviderResultSchema, operation, 'COMMON_CANCELLED_004'),
-      );
-    case 'generation':
-      return generationEvent(
-        requestId,
-        operation as CoreGenerationOperation['operation'],
-        failureResult(CoreGenerationResultSchema, operation, 'COMMON_CANCELLED_004'),
-      );
-    case 'project':
-      return projectEvent(
-        requestId,
-        operation as CoreProjectOperation['operation'],
-        failureResult(CoreProjectResultSchema, operation, 'COMMON_CANCELLED_004'),
-      );
-  }
+  return projectEvent(requestId, projectFailure(operation, 'COMMON_CANCELLED_004'));
 }

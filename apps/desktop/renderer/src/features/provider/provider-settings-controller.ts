@@ -2,9 +2,9 @@ import type { ProviderEndpointScope, ProviderSummary } from '@worldforge/contrac
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
-import {
+import type {
   RendererCommandCoordinator,
-  type RendererCommandScope,
+  RendererCommandScope,
 } from '../../runtime/command-coordinator.js';
 
 const PROVIDER_COMMAND = 'provider-command';

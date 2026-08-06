@@ -119,7 +119,9 @@ export async function loadCandidatePreview(
       }
       input.setPreview(outcome.data);
       input.setSelectedDocument(outcome.data.candidate);
-      input.setSelectionMode(outcome.data.candidate.completeness === 'partial' ? 'blocks' : 'all');
+      input.setSelectionMode(
+        outcome.data.candidate.completeness === 'partial' ? 'blocks' : 'all',
+      );
       input.setSelectedBlocks(
         new Set(outcome.data.candidate.blocks.map((block) => block.candidateBlockId)),
       );

@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  PROTOCOL_VERSION,
-  type CoreControlMessage,
-  type CoreEvent,
-} from '@worldforge/contracts';
+import { PROTOCOL_VERSION, type CoreControlMessage, type CoreEvent } from '@worldforge/contracts';
 import { describe, expect, it } from 'vitest';
 
 import {

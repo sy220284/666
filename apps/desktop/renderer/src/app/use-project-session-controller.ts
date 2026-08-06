@@ -117,7 +117,7 @@ export function useProjectSessionController({
   );
 
   const runProjectCommand = useCallback(
-    async <Value,>(
+    async <Value>(
       pendingKey: string,
       failureTitle: string,
       operation: (scope: RendererCommandScope) => Promise<Value>,
@@ -143,9 +143,7 @@ export function useProjectSessionController({
   const createProject = useCallback(
     async (input: ProjectCreateInput): Promise<boolean> => {
       const result = await runProjectCommand('project.create', '作品创建失败', async (scope) => {
-        if (
-          !(await prepareProjectTransition('自动保存失败，已阻止创建并切换项目。', scope))
-        ) {
+        if (!(await prepareProjectTransition('自动保存失败，已阻止创建并切换项目。', scope))) {
           return false;
         }
         if (!scope.isCurrent()) return false;
@@ -161,11 +159,7 @@ export function useProjectSessionController({
           setMessage(null);
           return false;
         }
-        await projectChanged(
-          outcome.data,
-          '项目已创建，路径和数据库完整性校验通过。',
-          scope,
-        );
+        await projectChanged(outcome.data, '项目已创建，路径和数据库完整性校验通过。', scope);
         if (!scope.isCurrent()) return false;
         dispatch({ type: 'navigate', route: 'writing' });
         return true;
@@ -249,25 +243,21 @@ export function useProjectSessionController({
 
   const closeProject = useCallback(
     async (projectId: string): Promise<void> => {
-      await runProjectCommand(
-        `project.close:${projectId}`,
-        '作品关闭失败',
-        async (scope) => {
-          if (!(await prepareProjectTransition('自动保存失败，已阻止关闭项目。', scope))) {
-            return;
-          }
-          const outcome = await bridge.project.close(projectId);
-          if (!scope.isCurrent()) return;
-          if (outcome.state !== 'success') {
-            setFailure(failureFromOutcome('作品关闭失败', outcome));
-            return;
-          }
-          await projectChanged(null, '项目已安全关闭。', scope);
-          if (!scope.isCurrent()) return;
-          dispatch({ type: 'reset-project-context' });
-          dispatch({ type: 'navigate', route: 'home' });
-        },
-      );
+      await runProjectCommand(`project.close:${projectId}`, '作品关闭失败', async (scope) => {
+        if (!(await prepareProjectTransition('自动保存失败，已阻止关闭项目。', scope))) {
+          return;
+        }
+        const outcome = await bridge.project.close(projectId);
+        if (!scope.isCurrent()) return;
+        if (outcome.state !== 'success') {
+          setFailure(failureFromOutcome('作品关闭失败', outcome));
+          return;
+        }
+        await projectChanged(null, '项目已安全关闭。', scope);
+        if (!scope.isCurrent()) return;
+        dispatch({ type: 'reset-project-context' });
+        dispatch({ type: 'navigate', route: 'home' });
+      });
     },
     [bridge, dispatch, prepareProjectTransition, projectChanged, runProjectCommand, setFailure],
   );
@@ -303,14 +293,7 @@ export function useProjectSessionController({
         },
       );
     },
-    [
-      bridge,
-      prepareProjectTransition,
-      projectChanged,
-      runProjectCommand,
-      setFailure,
-      setMessage,
-    ],
+    [bridge, prepareProjectTransition, projectChanged, runProjectCommand, setFailure, setMessage],
   );
 
   const relocateRecent = useCallback(

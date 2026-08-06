@@ -34,7 +34,6 @@ export class CoreRpcChannel {
 
     return new Promise((resolve) => {
       let settled = false;
-      let pending!: PendingRequest;
       const settle = (result: CoreRpcRequestResult): void => {
         if (settled) return;
         settled = true;
@@ -42,7 +41,7 @@ export class CoreRpcChannel {
         if (this.#pending.get(input.key) === pending) this.#pending.delete(input.key);
         resolve(result);
       };
-      pending = {
+      const pending: PendingRequest = {
         matches: input.matches,
         settle,
         timer: setTimeout(() => settle({ state: 'timeout' }), input.timeoutMs),

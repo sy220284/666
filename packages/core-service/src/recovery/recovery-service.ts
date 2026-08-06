@@ -76,10 +76,14 @@ export class RecoveryService {
   }
 
   getOverview(projectId: string): Promise<RecoveryOverview> {
-    this.#workspace.readProject(projectId, (database) => {
-      database.prepare('SELECT 1 FROM backup_failures LIMIT 1').get();
-      database.prepare('SELECT 1 FROM versions LIMIT 1').get();
-    });
+    const project = this.#workspace.assertActiveProject(projectId);
+    if (project.databaseMode === 'read-write') {
+      this.#workspace.readProject(projectId, (database) => {
+        database.prepare('SELECT 1 FROM backup_failures LIMIT 1').get();
+        database.prepare('SELECT 1 FROM versions LIMIT 1').get();
+        database.prepare('SELECT 1 FROM backup_policies LIMIT 1').get();
+      });
+    }
     return this.#cleanup.getOverview(projectId);
   }
 

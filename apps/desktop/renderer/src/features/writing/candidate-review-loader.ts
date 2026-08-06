@@ -119,9 +119,7 @@ export async function loadCandidatePreview(
       }
       input.setPreview(outcome.data);
       input.setSelectedDocument(outcome.data.candidate);
-      input.setSelectionMode(
-        outcome.data.candidate.completeness === 'partial' ? 'blocks' : 'all',
-      );
+      input.setSelectionMode(outcome.data.candidate.completeness === 'partial' ? 'blocks' : 'all');
       input.setSelectedBlocks(
         new Set(outcome.data.candidate.blocks.map((block) => block.candidateBlockId)),
       );
@@ -213,10 +211,7 @@ export async function loadCandidateDocument(
       await loadCandidatePreview(input, candidateId);
     },
   });
-  if (
-    result.state === 'failed' &&
-    coordinator.isLatest(CANDIDATE_DOCUMENT_COMMAND, result.token)
-  ) {
+  if (result.state === 'failed' && coordinator.isLatest(CANDIDATE_DOCUMENT_COMMAND, result.token)) {
     input.setStatus('建议稿读取未完成，请重试。');
   }
 }

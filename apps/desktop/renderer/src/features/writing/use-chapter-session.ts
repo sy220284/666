@@ -45,6 +45,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
   const [state, dispatch] = useReducer(reduceChapterSession, INITIAL_CHAPTER_SESSION_STATE);
   const stateRef = useRef(state);
   const requestGeneration = useRef(0);
+  const sessionGeneration = useRef(0);
   const initialChapterRequested = useRef(false);
   const handledNavigationKey = useRef<string | null>(null);
 
@@ -53,8 +54,18 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
     dispatch(action);
   }, []);
 
+  useEffect(
+    () => () => {
+      sessionGeneration.current += 1;
+      requestGeneration.current += 1;
+    },
+    [],
+  );
+
   const openChapter = useCallback(
     async (nextChapter: Chapter): Promise<void> => {
+      const session = sessionGeneration.current;
+      const isCurrentSession = (): boolean => sessionGeneration.current === session;
       if (
         stateRef.current.phase === 'loading' &&
         stateRef.current.requestedChapterId === nextChapter.id
@@ -63,6 +74,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
       if (input.activeChapter.current?.id === nextChapter.id && input.activeDraft.current) {
         if (stateRef.current.requestedChapterId) {
           requestGeneration.current += 1;
+          if (!isCurrentSession()) return;
           input.editor.current?.setEditable(!input.readOnly);
           input.setStatus('已保留当前章节。');
           transition({
@@ -72,14 +84,16 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
             editorGeneration: input.editorGeneration.current,
           });
         }
-        if (input.panel === 'editor' && !input.editor.current)
+        if (isCurrentSession() && input.panel === 'editor' && !input.editor.current)
           input.mountEditor(input.activeDraft.current, nextChapter);
         return;
       }
       if (chapterOpenIsTemporarilyBlocked(stateRef.current)) return;
       if (chapterOpenRequiresFlush(stateRef.current)) {
         transition({ type: 'flush' });
-        if (!(await input.flush())) {
+        const flushed = await input.flush();
+        if (!isCurrentSession()) return;
+        if (!flushed) {
           requestGeneration.current += 1;
           input.editor.current?.setEditable(!input.readOnly);
           const message = '自动保存失败，已阻止切换章节。';
@@ -88,6 +102,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
           return;
         }
       }
+      if (!isCurrentSession()) return;
       const generation = ++requestGeneration.current;
       transition({ type: 'load', chapterId: nextChapter.id, requestGeneration: generation });
       input.editor.current?.setEditable(false);
@@ -96,7 +111,11 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
         { projectId: input.projectId, chapterId: nextChapter.id },
         { mode: 'replace' },
       );
-      if (!chapterRequestIsCurrent(stateRef.current, nextChapter.id, generation)) return;
+      if (
+        !isCurrentSession() ||
+        !chapterRequestIsCurrent(stateRef.current, nextChapter.id, generation)
+      )
+        return;
       if (outcome.state !== 'success') {
         input.editor.current?.setEditable(!input.readOnly);
         const message =
@@ -110,7 +129,9 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
         return;
       }
       transition({ type: 'switch' });
+      if (!isCurrentSession()) return;
       input.mountEditor(outcome.data, nextChapter);
+      if (!isCurrentSession()) return;
       transition({
         type: 'ready',
         chapterId: nextChapter.id,
@@ -176,6 +197,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
   }, [input, openChapter]);
 
   const reset = useCallback((): void => {
+    sessionGeneration.current += 1;
     requestGeneration.current += 1;
     transition({ type: 'idle', editorGeneration: input.editorGeneration.current });
   }, [input.editorGeneration, transition]);

@@ -18,6 +18,7 @@ import {
   DataToolsWorkbench,
   type DataToolsSection,
 } from '../features/data-tools/data-tools-workbench.js';
+import { RecoveryOverviewGate } from '../features/data-tools/recovery-overview-gate.js';
 import { HomePage, type OnboardingProjectPlan } from '../features/home/home-page.js';
 import { PlanningWorkbench } from '../features/planning/planning-workbench.js';
 import { SettingsPage } from '../features/settings/settings-page.js';
@@ -167,15 +168,19 @@ export function AppShellPages(props: AppShellPagesProps) {
       ) : null}
 
       {props.route === 'recovery' && props.activeProject ? (
-        <DataToolsWorkbench
-          bridge={props.bridge}
-          projectId={props.activeProject.projectId}
-          readOnly={readOnly}
-          section={props.dataToolsSection}
-          onClose={() => void props.onTransitionToRoute('writing')}
-          onProjectRestored={props.onProjectRestored}
-          onSectionChange={props.onDataToolsSectionChange}
-        />
+        <RecoveryOverviewGate bridge={props.bridge} projectId={props.activeProject.projectId}>
+          {(recoveryBridge) => (
+            <DataToolsWorkbench
+              bridge={recoveryBridge}
+              projectId={props.activeProject!.projectId}
+              readOnly={readOnly}
+              section={props.dataToolsSection}
+              onClose={() => void props.onTransitionToRoute('writing')}
+              onProjectRestored={props.onProjectRestored}
+              onSectionChange={props.onDataToolsSectionChange}
+            />
+          )}
+        </RecoveryOverviewGate>
       ) : null}
 
       {isWritingRoute(props.route) && props.activeProject ? (

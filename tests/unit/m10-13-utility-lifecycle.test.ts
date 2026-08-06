@@ -4,6 +4,10 @@ import { PROTOCOL_VERSION, type CoreEvent } from '@worldforge/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  requireCommandFingerprint,
+  runWithoutCommandIdentity,
+} from '../../packages/core-service/src/command-identity-context.js';
+import {
   createUtilityControlContext,
   type UtilityControlRouterOptions,
 } from '../../packages/core-service/src/utility-control-context.js';
@@ -55,6 +59,19 @@ function options(
   } as unknown as UtilityControlRouterOptions;
 }
 
+function preferences() {
+  return {
+    displayId: 'display-1',
+    boundsDip: { x: 0, y: 0, width: 1280, height: 800 },
+    scaleFactor: 1,
+    maximized: false,
+    workspaceAlignment: 'left' as const,
+    uiScalePercent: 100,
+    bodyFontSize: 18,
+    contentWidth: 'standard' as const,
+  };
+}
+
 describe('M10-13 Utility lifecycle boundary', () => {
   it('returns a structured task failure when command execution throws', () => {
     const postMessage = vi.fn();
@@ -94,6 +111,42 @@ describe('M10-13 Utility lifecycle boundary', () => {
     });
   });
 
+  it('binds window preference persistence to a stable command identity', async () => {
+    const postMessage = vi.fn();
+    let fingerprint: string | null = null;
+    const runtime = options(postMessage, {
+      savePreferences: async (_requestId, value) => {
+        fingerprint = requireCommandFingerprint();
+        return value;
+      },
+    });
+    const context = createUtilityControlContext(runtime);
+    const requestId = randomUUID();
+
+    runWithoutCommandIdentity(() =>
+      dispatchUtilityLifecycle(
+        context,
+        {
+          type: 'core.window-preferences.set',
+          protocolVersion: PROTOCOL_VERSION,
+          requestId,
+          preferences: preferences(),
+        },
+        [],
+      ),
+    );
+    const [tracked] = context.state.activeAppDataOperations;
+    expect(tracked).toBeDefined();
+    await tracked;
+
+    expect(fingerprint).not.toBeNull();
+    expect(postMessage.mock.calls[0]?.[0]).toMatchObject({
+      type: 'core.window-preferences-result',
+      requestId,
+      result: { ok: true },
+    });
+  });
+
   it('tracks window preference persistence and returns its structured failure', async () => {
     const postMessage = vi.fn();
     const runtime = options(postMessage, {
@@ -108,16 +161,7 @@ describe('M10-13 Utility lifecycle boundary', () => {
         type: 'core.window-preferences.set',
         protocolVersion: PROTOCOL_VERSION,
         requestId,
-        preferences: {
-          displayId: 'display-1',
-          boundsDip: { x: 0, y: 0, width: 1280, height: 800 },
-          scaleFactor: 1,
-          maximized: false,
-          workspaceAlignment: 'left',
-          uiScalePercent: 100,
-          bodyFontSize: 18,
-          contentWidth: 'standard',
-        },
+        preferences: preferences(),
       },
       [],
     );

@@ -8,7 +8,10 @@ import {
   BoundedIdempotentPromiseCache,
   IdempotentRequestConflictError,
 } from '../bounded-idempotent-promise-cache.js';
-import { currentCommandFingerprint } from '../command-identity-context.js';
+import {
+  CommandIdentityRequiredError,
+  requireCommandFingerprint,
+} from '../command-identity-context.js';
 import {
   applyPendingMigrations,
   inspectMigrations,
@@ -371,7 +374,7 @@ export abstract class ManagedDatabase {
   async write<T>(
     requestId: string,
     operation: DatabaseWriteOperation<T>,
-    commandFingerprint = currentCommandFingerprint(operation.toString()),
+    commandFingerprint?: string,
   ): Promise<IdempotentWriteResult<T>> {
     this.#assertOpen();
     if (!RequestIdSchema.safeParse(requestId).success) {
@@ -386,9 +389,23 @@ export abstract class ManagedDatabase {
       );
     }
 
+    let resolvedCommandFingerprint: string;
+    try {
+      resolvedCommandFingerprint = commandFingerprint ?? requireCommandFingerprint();
+    } catch (error) {
+      if (error instanceof CommandIdentityRequiredError) {
+        throw new DatabaseFoundationError(
+          'COMMAND_IDENTITY_REQUIRED',
+          'A stable command identity is required for product database writes.',
+          { cause: error },
+        );
+      }
+      throw error;
+    }
+
     let existing: Promise<T> | undefined;
     try {
-      existing = this.#idempotentResults.get<T>(requestId, commandFingerprint);
+      existing = this.#idempotentResults.get<T>(requestId, resolvedCommandFingerprint);
     } catch (error) {
       if (error instanceof IdempotentRequestConflictError) {
         throw new DatabaseFoundationError(
@@ -403,7 +420,7 @@ export abstract class ManagedDatabase {
 
     const result = this.#idempotentResults.remember(
       requestId,
-      commandFingerprint,
+      resolvedCommandFingerprint,
       queue.enqueue(() => this.#transaction(writer, operation)),
     );
     return { value: await result, replayed: false };

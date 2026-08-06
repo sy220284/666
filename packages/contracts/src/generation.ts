@@ -191,9 +191,21 @@ const generationIntentSchemas = [
           logicalBlockIds: z.array(DraftEntityIdSchema).min(1).max(500),
           expectedBlockHashes: z.array(DraftContentHashValueSchema).min(1).max(500),
         })
-        .refine((scope) => scope.logicalBlockIds.length === scope.expectedBlockHashes.length, {
-          path: ['expectedBlockHashes'],
-          message: 'Every rewrite block requires one expected content hash.',
+        .superRefine((scope, context) => {
+          if (scope.logicalBlockIds.length !== scope.expectedBlockHashes.length) {
+            context.addIssue({
+              code: 'custom',
+              path: ['expectedBlockHashes'],
+              message: 'Every rewrite block requires one expected content hash.',
+            });
+          }
+          if (new Set(scope.logicalBlockIds).size !== scope.logicalBlockIds.length) {
+            context.addIssue({
+              code: 'custom',
+              path: ['logicalBlockIds'],
+              message: 'Rewrite logicalBlockIds must be unique.',
+            });
+          }
         }),
     ]),
     instruction: z.string().trim().min(1).max(8_000),

@@ -11,7 +11,6 @@ import {
   BoundedIdempotentPromiseCache,
   IdempotentRequestConflictError,
 } from '../bounded-idempotent-promise-cache.js';
-import { currentCommandFingerprint } from '../command-identity-context.js';
 import {
   DatabaseFoundationError,
   type DatabaseClock,
@@ -171,7 +170,7 @@ export class ProjectWorkspaceService {
     requestId: string,
     projectId: string,
     operation: DatabaseWriteOperation<T>,
-    commandIdentity: unknown = currentCommandFingerprint(operation.toString()),
+    commandIdentity?: unknown,
   ): Promise<T> {
     const context = this.#assertActiveContext(projectId, true);
     if (!context.database) {
@@ -180,7 +179,10 @@ export class ProjectWorkspaceService {
         'The project database is unreadable; write operations are disabled.',
       );
     }
-    const fingerprint = requestFingerprint('project.write', { projectId, commandIdentity });
+    const fingerprint =
+      commandIdentity === undefined
+        ? undefined
+        : requestFingerprint('project.write', { projectId, commandIdentity });
     try {
       return (await context.database.write(requestId, operation, fingerprint)).value;
     } catch (error) {

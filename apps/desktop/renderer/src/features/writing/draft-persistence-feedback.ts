@@ -21,6 +21,7 @@ function mayCommit(input: { readonly canCommit?: () => boolean }): boolean {
 }
 
 export async function reportPersistedDraft(input: PersistedDraftFeedbackInput): Promise<boolean> {
+  if (!mayCommit(input)) return true;
   const continuationSaved = await input.saveContinuation();
   if (!mayCommit(input)) return true;
   const base = input.savedStatus('已保存', input.revision);
@@ -39,6 +40,7 @@ export async function reportFlushedDraft(input: FlushedDraftFeedbackInput): Prom
     return false;
   }
 
+  if (!mayCommit(input)) return true;
   const continuationSaved = await input.saveContinuation();
   if (!mayCommit(input)) return true;
   input.setStatus(

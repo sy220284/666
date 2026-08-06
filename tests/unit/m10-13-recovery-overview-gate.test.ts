@@ -1,10 +1,15 @@
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { createRequire } from 'node:module';
 
 import type { RecoveryOverview } from '@worldforge/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+
+const rendererRequire = createRequire(
+  new URL('../../apps/desktop/renderer/package.json', import.meta.url),
+);
+const { createElement } = rendererRequire('react') as typeof import('react');
+const { renderToStaticMarkup } = rendererRequire('react-dom/server') as typeof import('react-dom/server');
 
 const mocks = vi.hoisted(() => ({
   useBridgeQuery: vi.fn(),

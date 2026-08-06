@@ -40,15 +40,27 @@ export function dispatchUtilityOperation(
       }
       context.track(
         runWithCommandIdentity('core.app-data.command', operation, () =>
-          executeAppDataOperation(options.appRuntime, requestId, operation).then((result) => {
-            context.send({
-              type: 'core.app-data.result',
-              protocolVersion: PROTOCOL_VERSION,
-              requestId,
-              result,
-            });
-          }),
+          executeAppDataOperation(options.appRuntime, requestId, operation),
         ),
+        {
+          success: (result) => ({
+            type: 'core.app-data.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          }),
+          failure: () => ({
+            type: 'core.app-data.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result: CoreAppDataResultSchema.parse({
+              ok: false,
+              operation: operation.operation,
+              errorCode: 'COMMON_INTERNAL_999',
+            }),
+          }),
+          failureEvent: 'app-data.operation.failed',
+        },
       );
       return true;
     }
@@ -69,15 +81,27 @@ export function dispatchUtilityOperation(
       }
       context.track(
         runWithCommandIdentity('core.provider.command', operation, () =>
-          executeProviderOperation(options.appRuntime, requestId, operation).then((result) => {
-            context.send({
-              type: 'core.provider.result',
-              protocolVersion: PROTOCOL_VERSION,
-              requestId,
-              result,
-            });
-          }),
+          executeProviderOperation(options.appRuntime, requestId, operation),
         ),
+        {
+          success: (result) => ({
+            type: 'core.provider.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          }),
+          failure: () => ({
+            type: 'core.provider.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result: CoreProviderResultSchema.parse({
+              ok: false,
+              operation: operation.operation,
+              errorCode: 'COMMON_INTERNAL_999',
+            }),
+          }),
+          failureEvent: 'provider.operation.failed',
+        },
       );
       return true;
     }
@@ -98,17 +122,27 @@ export function dispatchUtilityOperation(
       }
       context.track(
         runWithCommandIdentity('core.generation.command', operation, () =>
-          executeGenerationOperation(options.generationServices, requestId, operation).then(
-            (result) => {
-              context.send({
-                type: 'core.generation.result',
-                protocolVersion: PROTOCOL_VERSION,
-                requestId,
-                result,
-              });
-            },
-          ),
+          executeGenerationOperation(options.generationServices, requestId, operation),
         ),
+        {
+          success: (result) => ({
+            type: 'core.generation.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          }),
+          failure: () => ({
+            type: 'core.generation.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result: CoreGenerationResultSchema.parse({
+              ok: false,
+              operation: operation.operation,
+              errorCode: 'COMMON_INTERNAL_999',
+            }),
+          }),
+          failureEvent: 'generation.operation.failed',
+        },
       );
       return true;
     }
@@ -137,19 +171,37 @@ export function dispatchUtilityOperation(
                 operation.operation === PROJECT_WORKSPACE_COMMANDS.openSelected) &&
               options.projectWorkspace.activeProject?.databaseMode === 'read-write'
             ) {
-              await options.generationRuns.recoverInterrupted(
-                derivedRequestId(requestId, 'generation-recovery'),
-                options.projectWorkspace.activeProject.projectId,
-              );
+              try {
+                await options.generationRuns.recoverInterrupted(
+                  derivedRequestId(requestId, 'generation-recovery'),
+                  options.projectWorkspace.activeProject.projectId,
+                );
+              } catch {
+                context.report('generation.recovery.failed');
+              }
             }
-            context.send({
-              type: 'core.project.result',
-              protocolVersion: PROTOCOL_VERSION,
-              requestId,
-              result,
-            });
+            return result;
           }),
         ),
+        {
+          success: (result) => ({
+            type: 'core.project.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result,
+          }),
+          failure: () => ({
+            type: 'core.project.result',
+            protocolVersion: PROTOCOL_VERSION,
+            requestId,
+            result: CoreProjectResultSchema.parse({
+              ok: false,
+              operation: operation.operation,
+              errorCode: 'COMMON_INTERNAL_999',
+            }),
+          }),
+          failureEvent: 'project.operation.failed',
+        },
       );
       return true;
     }

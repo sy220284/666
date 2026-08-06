@@ -9,7 +9,9 @@ import { PrivacyLogger } from '../../apps/desktop/main/src/privacy-logger.js';
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })));
+  await Promise.all(
+    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })),
+  );
 });
 
 describe('M10-13 PrivacyLogger boundary', () => {

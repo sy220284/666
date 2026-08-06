@@ -12,11 +12,32 @@ export interface BridgeResource<T> {
   readonly refresh: () => Promise<void>;
 }
 
+export interface BridgeResourceSnapshot<T> {
+  readonly state: BridgeResourceState;
+  readonly data: T | null;
+  readonly error: BridgeRequestError | null;
+}
+
+export function bridgeResourceForQueryKey<T>(
+  queryKey: string,
+  resolvedKey: string | null,
+  snapshot: BridgeResourceSnapshot<T>,
+): BridgeResourceSnapshot<T> {
+  return resolvedKey === queryKey
+    ? snapshot
+    : {
+        state: 'loading',
+        data: null,
+        error: null,
+      };
+}
+
 export function useBridgeQuery<T>(
   queryKey: string,
   load: () => Promise<BridgeRequestOutcome<T>>,
 ): BridgeResource<T> {
   const generation = useRef(0);
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
   const [state, setState] = useState<BridgeResourceState>('loading');
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<BridgeRequestError | null>(null);
@@ -27,18 +48,20 @@ export function useBridgeQuery<T>(
     setError(null);
     const outcome = await load();
     if (current !== generation.current || outcome.state === 'stale') return;
+    setResolvedKey(queryKey);
     if (outcome.state === 'success') {
       setData(outcome.data);
       setState('success');
       return;
     }
+    setData(null);
     if (outcome.state === 'cancelled') {
       setState('cancelled');
       return;
     }
     setError(outcome.error);
     setState('failure');
-  }, [load]);
+  }, [load, queryKey]);
 
   useEffect(() => {
     void refresh();
@@ -47,7 +70,10 @@ export function useBridgeQuery<T>(
     };
   }, [queryKey, refresh]);
 
-  return { state, data, error, refresh };
+  return {
+    ...bridgeResourceForQueryKey(queryKey, resolvedKey, { state, data, error }),
+    refresh,
+  };
 }
 
 export interface BridgeCommand {

@@ -35,6 +35,10 @@ const autosaveSource = readFileSync(
   'apps/desktop/renderer/src/features/writing/use-draft-autosave.ts',
   'utf8',
 );
+const chapterSessionSource = readFileSync(
+  'apps/desktop/renderer/src/features/writing/use-chapter-session.ts',
+  'utf8',
+);
 const pagesSource = readFileSync('apps/desktop/renderer/src/app/app-shell-pages.tsx', 'utf8');
 
 describe('M10-13 Writing上下文所有权', () => {
@@ -104,6 +108,16 @@ describe('M10-13 Writing上下文所有权', () => {
     );
     expect(autosaveSource).toContain('input.activeDraft.current?.revision === persistedRevision');
     expect(autosaveSource).toContain('input.activeDraft.current?.revision === flushedRevision');
+  });
+
+  it('章节会话在卸载和重置时失效flush与正文读取', () => {
+    expect(chapterSessionSource).toContain('const sessionGeneration = useRef(0);');
+    expect(chapterSessionSource).toContain('sessionGeneration.current += 1;');
+    expect(chapterSessionSource).toContain('if (!isCurrentSession()) return;');
+    const mountIndex = chapterSessionSource.indexOf('input.mountEditor(outcome.data, nextChapter);');
+    const guardIndex = chapterSessionSource.lastIndexOf('if (!isCurrentSession()) return;', mountIndex);
+    expect(guardIndex).toBeGreaterThan(-1);
+    expect(mountIndex).toBeGreaterThan(guardIndex);
   });
 
   it('不同项目使用独立WritingWorkbench生命周期', () => {

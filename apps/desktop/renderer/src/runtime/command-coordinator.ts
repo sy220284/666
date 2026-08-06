@@ -41,6 +41,16 @@ interface ActiveCommand {
   promise: Promise<RendererCommandResult<unknown>>;
 }
 
+const ownerCoordinators = new WeakMap<object, RendererCommandCoordinator>();
+
+export function rendererCommandCoordinatorFor(owner: object): RendererCommandCoordinator {
+  const existing = ownerCoordinators.get(owner);
+  if (existing) return existing;
+  const coordinator = new RendererCommandCoordinator();
+  ownerCoordinators.set(owner, coordinator);
+  return coordinator;
+}
+
 export class RendererCommandCoordinator {
   readonly #active = new Map<string, ActiveCommand>();
   readonly #latestTokens = new Map<string, number>();

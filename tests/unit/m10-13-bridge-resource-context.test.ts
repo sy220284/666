@@ -17,11 +17,13 @@ describe('M10-13 Bridge Resource上下文归属', () => {
       error: null,
     };
 
-    expect(bridgeResourceForQueryKey('recovery:project-b', 'recovery:project-a', previous)).toEqual({
-      state: 'loading',
-      data: null,
-      error: null,
-    });
+    expect(bridgeResourceForQueryKey('recovery:project-b', 'recovery:project-a', previous)).toEqual(
+      {
+        state: 'loading',
+        data: null,
+        error: null,
+      },
+    );
   });
 
   it('只向匹配的queryKey提交已解析资源', () => {

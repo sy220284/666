@@ -41,13 +41,17 @@ interface ActiveCommand {
   promise: Promise<RendererCommandResult<unknown>>;
 }
 
+export type RendererPendingOwner = (pending: boolean) => void;
+
 const MAX_RETAINED_LATEST_TOKENS = 512;
 const ownerCoordinators = new WeakMap<object, RendererCommandCoordinator>();
 
-export function rendererCommandCoordinatorFor(owner: object): RendererCommandCoordinator {
+export function rendererCommandCoordinatorFor(
+  owner: RendererPendingOwner,
+): RendererCommandCoordinator {
   const existing = ownerCoordinators.get(owner);
   if (existing) return existing;
-  const coordinator = new RendererCommandCoordinator();
+  const coordinator = new RendererCommandCoordinator(owner);
   ownerCoordinators.set(owner, coordinator);
   return coordinator;
 }
@@ -55,7 +59,13 @@ export function rendererCommandCoordinatorFor(owner: object): RendererCommandCoo
 export class RendererCommandCoordinator {
   readonly #active = new Map<string, ActiveCommand>();
   readonly #latestTokens = new Map<string, number>();
+  readonly #onActiveChange: RendererPendingOwner | null;
   #nextToken = 0;
+  #reportedActive = false;
+
+  constructor(onActiveChange: RendererPendingOwner | null = null) {
+    this.#onActiveChange = onActiveChange;
+  }
 
   get activeCount(): number {
     return this.#active.size;
@@ -82,6 +92,7 @@ export class RendererCommandCoordinator {
     const token = this.#nextToken + 1;
     this.#nextToken = token;
     this.#rememberLatest(key, token);
+    this.#notifyActiveChange();
     return existed;
   }
 
@@ -116,6 +127,13 @@ export class RendererCommandCoordinator {
     }
   }
 
+  #notifyActiveChange(): void {
+    const active = this.#active.size > 0;
+    if (active === this.#reportedActive) return;
+    this.#reportedActive = active;
+    this.#onActiveChange?.(active);
+  }
+
   run<Value>(input: RendererCommandInput<Value>): Promise<RendererCommandResult<Value>> {
     const existing = this.#active.get(input.key);
     const policy = input.policy ?? 'replace';
@@ -143,6 +161,7 @@ export class RendererCommandCoordinator {
     };
     this.#active.set(input.key, active);
     this.#rememberLatest(input.key, token);
+    this.#notifyActiveChange();
 
     const promise = Promise.resolve()
       .then(() => input.operation(scope))
@@ -157,7 +176,10 @@ export class RendererCommandCoordinator {
             : { state: 'stale', key: input.key, token },
       )
       .finally(() => {
-        if (scope.isCurrent()) this.#active.delete(input.key);
+        if (scope.isCurrent()) {
+          this.#active.delete(input.key);
+          this.#notifyActiveChange();
+        }
         this.#trimRetainedTokens();
       });
     active.promise = promise as Promise<RendererCommandResult<unknown>>;

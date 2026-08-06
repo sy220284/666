@@ -22,6 +22,7 @@ function contextFor(bridge: RendererBridgeAdapter) {
     bridge,
     projectId: 'project-a',
     chapterId: 'chapter-a',
+    commandPrefix: 'writing:project-a:chapter-a:',
     readOnly: false,
     refreshList: vi.fn(async () => []),
     onDraftReplace: vi.fn(),

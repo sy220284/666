@@ -49,6 +49,28 @@ describe('M10-13 Renderer命令失效边界', () => {
     expect(coordinator.activeCount).toBe(0);
   });
 
+  it('retains every active token while bounding completed token history', async () => {
+    const coordinator = new RendererCommandCoordinator();
+    const gates = Array.from({ length: 520 }, () => deferred<void>());
+    const commands = gates.map((gate, index) =>
+      coordinator.run({
+        key: `active:${index}`,
+        operation: () => gate.promise,
+      }),
+    );
+
+    expect(coordinator.activeCount).toBe(520);
+    for (let index = 0; index < gates.length; index += 1) {
+      expect(coordinator.currentToken(`active:${index}`)).not.toBeNull();
+    }
+
+    for (const gate of gates) gate.resolve();
+    await Promise.all(commands);
+
+    expect(coordinator.activeCount).toBe(0);
+    expect(coordinator.retainedTokenCount).toBeLessThanOrEqual(512);
+  });
+
   it('bounds completed command token retention without evicting active owners', async () => {
     const coordinator = new RendererCommandCoordinator();
 

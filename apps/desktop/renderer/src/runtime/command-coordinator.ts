@@ -103,6 +103,10 @@ export class RendererCommandCoordinator {
   #rememberLatest(key: string, token: number): void {
     this.#latestTokens.delete(key);
     this.#latestTokens.set(key, token);
+    this.#trimRetainedTokens();
+  }
+
+  #trimRetainedTokens(): void {
     while (this.#latestTokens.size > MAX_RETAINED_LATEST_TOKENS) {
       const removable = [...this.#latestTokens.keys()].find(
         (candidate) => !this.#active.has(candidate),
@@ -128,7 +132,6 @@ export class RendererCommandCoordinator {
 
     const token = this.#nextToken + 1;
     this.#nextToken = token;
-    this.#rememberLatest(input.key, token);
     const active: ActiveCommand = {
       token,
       promise: Promise.resolve({ state: 'stale', key: input.key, token }),
@@ -139,6 +142,7 @@ export class RendererCommandCoordinator {
       isCurrent: () => this.#active.get(input.key) === active,
     };
     this.#active.set(input.key, active);
+    this.#rememberLatest(input.key, token);
 
     const promise = Promise.resolve()
       .then(() => input.operation(scope))
@@ -154,6 +158,7 @@ export class RendererCommandCoordinator {
       )
       .finally(() => {
         if (scope.isCurrent()) this.#active.delete(input.key);
+        this.#trimRetainedTokens();
       });
     active.promise = promise as Promise<RendererCommandResult<unknown>>;
     return promise;

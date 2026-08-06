@@ -1,28 +1,32 @@
 # M10-13 1.5前置边界重构与根因治理 Evidence
 
-## 结论
-
-M10-13 的实现边界已按最新全量架构审计完成补充治理。成熟的数据、事务、恢复与生成持久化内核保持不变；进程通信、Utility异步承载、Renderer命令所有权、跨上下文资源提交和结构永久删除业务真源已完成收敛。
-
 ## 受检实现
 
-- 实现提交：`e36292cd517c763418ad12f4b0f7f3d033234260`
 - 来源 PR：`#321`
-- Core RPC：等待者绑定精确请求身份；单条响应只消费一个等待者；发送失败、超时、进程退出和Shutdown失败统一清理。
-- Utility：Router执行、结构化结果、Safe Send与Drain登记进入同一Tracked Operation生命周期。
-- Renderer命令：Command Coordinator统一`replace`、`join`、`reject`；共享Pending由全部活跃命令聚合所有权控制。
-- 上下文隔离：Writing命令使用项目与章节前缀；项目、章节或组件卸载后统一失效旧命令与旧订阅。
-- Resource归属：Bridge查询结果与当前`queryKey`绑定，跨项目旧数据不可继续作为可用结果。
-- Generation：前置自动保存、Intent组装和启动请求处于同一命令作用域，章节切换可阻止旧启动继续提交。
-- Candidate：读取、预览、采用、撤销、丢弃、骨架保存及Generation终态刷新均在提交前复核scope或epoch。
-- Provider与项目会话：初始刷新和异步命令在卸载时统一失效。
-- Structure：永久删除影响计算、外键引用阻断、planHash复核和执行由单一`StructureTrashOperationService`承担；兼容类型不再持有平行业务逻辑。
-- 保留内核：SQLite、Migration、单写队列、GenerationRun持久化、Provider DNS Pinning、Credential Broker、Recovery Journal与Electron安全壳均未重写。
+- 实现提交：`812c52fff89688a1751387c13d42a417618460b9`
+- 分支：`work → main`
+- 基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`
 
-## 审计映射
+## 已完成治理
 
-本任务完成Core RPC、Core生命周期、Utility执行、Renderer关键命令、Renderer查询归属、数据库命令身份与结构永久删除七类高风险逻辑的统一治理。Main IPC描述、Utility协议元数据、跨域任务会话抽象和通用两阶段流程保持现有安全机制，归入后续架构治理，未在本任务中虚报为全量重构完成。
+- Core RPC 使用精确请求身份、单响应单消费，并统一处理超时、发送失败、进程退出与 Shutdown 清理。
+- Utility Router、结构化结果、Safe Send 与 Drain 纳入统一 Tracked Operation 生命周期。
+- Renderer Command Coordinator 统一 `replace`、`join`、`reject`；共享 Pending 由全部活跃命令聚合控制。
+- Candidate 与 Generation 命令绑定项目、章节作用域；项目或章节变化后旧请求、旧订阅、旧终态刷新失去提交权。
+- Bridge Resource 绑定当前 `queryKey`，刷新时清除旧数据，跨项目结果不能继续作为可用状态。
+- 项目会话副作用命令使用互斥策略；项目与 continuation 读取完成后原子提交。
+- Autosave、flush、续写位置、章节读取与编辑器挂载绑定项目、章节、Draft、revision 和组件会话。
+- WritingWorkbench 按项目重建，阻断旧编辑器、定时器、Tracker 与新项目属性混用。
+- Provider 初始刷新、项目控制器和 Generation 订阅在卸载时统一失效。
+- 结构永久删除的影响计算、外键引用阻断、 planHash 复核和执行收敛至单一业务引擎。
+- SQLite、Migration、单写队列、GenerationRun、Provider DNS Pinning、Credential Broker、Recovery Journal 与 Electron 安全边界保持不变。
 
-## 验收入口
+## 审计结论
 
-永久验证命令、GitHub Actions运行和产物记录由`commands.txt`维护。Ready工作流以本manifest绑定的实现提交为受检对象；实现提交之后只允许任务卡、Runtime、任务索引和本Evidence包发生变化。合并后的最终有效状态由`main-verification`与`task-verification/M10-13`共同给出。
+本提交已处理最新文件库审计指出的高风险公共边界，并在复核中继续修复项目会话半提交、不可撤销副作用并发、Autosave/续写位置跨上下文回写、章节会话卸载后挂载旧正文等衍生问题。
+
+Main IPC 描述、Utility 协议元数据、跨域异步任务会话和通用两阶段抽象继续沿用现有契约与事务防线，归入后续架构治理。本任务未将这些范围误报为已完成重构。
+
+## 验收规则
+
+永久验证以最新 Ready Head 的 GitHub Actions 为唯一权威来源。实现提交之后仅允许任务卡、Runtime、任务索引和 `docs/test-evidence/M10-13/` 收口文件变化。当前静态状态为 `IMPLEMENTED`，合并与主线验证完成前的有效状态为 `VERIFICATION_PENDING`。

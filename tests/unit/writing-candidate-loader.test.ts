@@ -39,6 +39,7 @@ function setupLoader(bridge: RendererBridgeAdapter) {
     bridge,
     projectId: 'project-a',
     chapterId: 'chapter-a',
+    commandPrefix: 'writing:project-a:chapter-a:',
     documentRequest: { current: 0 },
     previewRequest: { current: null },
     ...setters,

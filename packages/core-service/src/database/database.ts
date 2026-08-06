@@ -4,7 +4,11 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { RequestIdSchema } from '@worldforge/contracts';
 
-import { BoundedIdempotentPromiseCache } from '../bounded-idempotent-promise-cache.js';
+import {
+  BoundedIdempotentPromiseCache,
+  IdempotentRequestConflictError,
+} from '../bounded-idempotent-promise-cache.js';
+import { currentCommandFingerprint } from '../command-identity-context.js';
 import {
   applyPendingMigrations,
   inspectMigrations,
@@ -313,13 +317,16 @@ async function openDatabaseState(
   }
 }
 
-function checkpointRaw(database: DatabaseSync, mode: 'PASSIVE' | 'FULL' | 'TRUNCATE') {
+function checkpointRaw(
+  database: DatabaseSync,
+  mode: 'PASSIVE' | 'FULL' | 'TRUNCATE',
+): WalCheckpointResult {
   const row = database.prepare(`PRAGMA wal_checkpoint(${mode})`).get();
   return {
     busy: numberValue(row?.busy),
     logFrames: numberValue(row?.log),
     checkpointedFrames: numberValue(row?.checkpointed),
-  } satisfies WalCheckpointResult;
+  };
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
@@ -364,6 +371,7 @@ export abstract class ManagedDatabase {
   async write<T>(
     requestId: string,
     operation: DatabaseWriteOperation<T>,
+    commandFingerprint = currentCommandFingerprint(operation.toString()),
   ): Promise<IdempotentWriteResult<T>> {
     this.#assertOpen();
     if (!RequestIdSchema.safeParse(requestId).success) {
@@ -378,13 +386,24 @@ export abstract class ManagedDatabase {
       );
     }
 
-    const existing = this.#idempotentResults.get<T>(requestId);
-    if (existing) {
-      return { value: await existing, replayed: true };
+    let existing: Promise<T> | undefined;
+    try {
+      existing = this.#idempotentResults.get<T>(requestId, commandFingerprint);
+    } catch (error) {
+      if (error instanceof IdempotentRequestConflictError) {
+        throw new DatabaseFoundationError(
+          'REQUEST_ID_CONFLICT',
+          'The requestId was already used for a different database write command.',
+          { cause: error },
+        );
+      }
+      throw error;
     }
+    if (existing) return { value: await existing, replayed: true };
 
     const result = this.#idempotentResults.remember(
       requestId,
+      commandFingerprint,
       queue.enqueue(() => this.#transaction(writer, operation)),
     );
     return { value: await result, replayed: false };

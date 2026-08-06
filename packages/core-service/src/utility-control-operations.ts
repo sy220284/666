@@ -8,6 +8,7 @@ import {
   type CoreControlMessage,
 } from '@worldforge/contracts';
 
+import { runWithCommandIdentity } from './command-identity-context.js';
 import { executeAppDataOperation } from './utility-app-data-router.js';
 import type { UtilityControlContext } from './utility-control-context.js';
 import { executeGenerationOperation } from './utility-generation-router.js';
@@ -38,14 +39,16 @@ export function dispatchUtilityOperation(
         return true;
       }
       context.track(
-        executeAppDataOperation(options.appRuntime, requestId, operation).then((result) => {
-          context.send({
-            type: 'core.app-data.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result,
-          });
-        }),
+        runWithCommandIdentity('core.app-data.command', operation, () =>
+          executeAppDataOperation(options.appRuntime, requestId, operation).then((result) => {
+            context.send({
+              type: 'core.app-data.result',
+              protocolVersion: PROTOCOL_VERSION,
+              requestId,
+              result,
+            });
+          }),
+        ),
       );
       return true;
     }
@@ -65,14 +68,16 @@ export function dispatchUtilityOperation(
         return true;
       }
       context.track(
-        executeProviderOperation(options.appRuntime, requestId, operation).then((result) => {
-          context.send({
-            type: 'core.provider.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result,
-          });
-        }),
+        runWithCommandIdentity('core.provider.command', operation, () =>
+          executeProviderOperation(options.appRuntime, requestId, operation).then((result) => {
+            context.send({
+              type: 'core.provider.result',
+              protocolVersion: PROTOCOL_VERSION,
+              requestId,
+              result,
+            });
+          }),
+        ),
       );
       return true;
     }
@@ -92,15 +97,17 @@ export function dispatchUtilityOperation(
         return true;
       }
       context.track(
-        executeGenerationOperation(options.generationServices, requestId, operation).then(
-          (result) => {
-            context.send({
-              type: 'core.generation.result',
-              protocolVersion: PROTOCOL_VERSION,
-              requestId,
-              result,
-            });
-          },
+        runWithCommandIdentity('core.generation.command', operation, () =>
+          executeGenerationOperation(options.generationServices, requestId, operation).then(
+            (result) => {
+              context.send({
+                type: 'core.generation.result',
+                protocolVersion: PROTOCOL_VERSION,
+                requestId,
+                result,
+              });
+            },
+          ),
         ),
       );
       return true;
@@ -121,26 +128,28 @@ export function dispatchUtilityOperation(
         return true;
       }
       context.track(
-        executeProjectOperation(options.services, requestId, operation).then(async (result) => {
-          if (
-            result.ok &&
-            (operation.operation === PROJECT_WORKSPACE_COMMANDS.create ||
-              operation.operation === PROJECT_WORKSPACE_COMMANDS.openRecent ||
-              operation.operation === PROJECT_WORKSPACE_COMMANDS.openSelected) &&
-            options.projectWorkspace.activeProject?.databaseMode === 'read-write'
-          ) {
-            await options.generationRuns.recoverInterrupted(
-              derivedRequestId(requestId, 'generation-recovery'),
-              options.projectWorkspace.activeProject.projectId,
-            );
-          }
-          context.send({
-            type: 'core.project.result',
-            protocolVersion: PROTOCOL_VERSION,
-            requestId,
-            result,
-          });
-        }),
+        runWithCommandIdentity('core.project.command', operation, () =>
+          executeProjectOperation(options.services, requestId, operation).then(async (result) => {
+            if (
+              result.ok &&
+              (operation.operation === PROJECT_WORKSPACE_COMMANDS.create ||
+                operation.operation === PROJECT_WORKSPACE_COMMANDS.openRecent ||
+                operation.operation === PROJECT_WORKSPACE_COMMANDS.openSelected) &&
+              options.projectWorkspace.activeProject?.databaseMode === 'read-write'
+            ) {
+              await options.generationRuns.recoverInterrupted(
+                derivedRequestId(requestId, 'generation-recovery'),
+                options.projectWorkspace.activeProject.projectId,
+              );
+            }
+            context.send({
+              type: 'core.project.result',
+              protocolVersion: PROTOCOL_VERSION,
+              requestId,
+              result,
+            });
+          }),
+        ),
       );
       return true;
     }

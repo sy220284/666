@@ -56,6 +56,7 @@ async function readGenerationWorkbenchSources(): Promise<string> {
   return Promise.all(
     [
       'writing-core-workbench.tsx',
+      'candidate-generation-refresh.ts',
       'candidate-review-panel.tsx',
       'candidate-preview-actions.ts',
       'candidate-review-display.tsx',

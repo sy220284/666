@@ -1,0 +1,50 @@
+# 已执行命令与永久检查
+
+GitHub 范围与治理：
+- 读取并比较 `main`、`work` 与 PR #320
+- 审计 PR 全量变更、任务卡、Runtime、任务索引、Evidence 与 Review Threads
+- Task Governance：Run `31025197793`，success
+- Repository Governance：Run `31025196080`，success
+- PR Policy：Run `31025198228`，success
+- Evidence：由 Evidence 收口提交触发精确 Head 复验
+
+工具链权威与获取：
+- `node .github/governance/toolchain-bundle.mjs validate-authority`
+- 永久工作流：`.github/workflows/toolchain-export.yml`
+- Quality 调用入口：`.github/workflows/quality.yml`
+- 工具链 Artifact：`8938315167`
+- 工具链 Artifact SHA-256：`f19575e92525c225011ca74a30eeeae9767397bde1a6430cbb21b69039cdbcc7`
+
+静态与结构：
+- `pnpm task:validate`
+- `pnpm check:language`
+- `pnpm check:workspaces`
+- `pnpm check:boundaries`
+- `pnpm format:check`
+- `pnpm lint`
+- `pnpm ci:policy`
+- `pnpm typecheck`
+
+产品验证：
+- `pnpm test:unit`
+- `pnpm test:integration`
+- `pnpm test:migration`
+- `pnpm test:coverage`
+- `pnpm build`
+- `pnpm test:e2e`
+
+安全与性能：
+- `pnpm test:security`
+- `pnpm audit --prod --audit-level=high`
+- `pnpm test:perf`
+- AI 协议基线
+- Secret Scan
+
+权威运行与产物：
+- Quality：Run `31025199290`，success
+- Security：Run `31025196414`，success
+- Performance：Run `31025198294`，success
+- Product tests and Coverage：Artifact `8938386029`
+- Product Artifact SHA-256：`fd153ed432356f204735ad871c756521916ee4309c9a3df9ba10b7f72a0f9061`
+- Electron E2E：Artifact `8938836896`
+- Electron E2E Artifact SHA-256：`d61ff29783214307c6f62d4c7da4691fa626aed1dc0918b9126db10d7bc73414`

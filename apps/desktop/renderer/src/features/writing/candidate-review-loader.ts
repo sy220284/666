@@ -37,16 +37,17 @@ export interface CandidateReviewLoader {
 
 export async function loadCandidateList(
   input: CandidateReviewLoader,
+  canCommit: () => boolean = () => true,
 ): Promise<readonly CandidateSummary[]> {
   const outcome = await input.bridge.candidate.list(input.projectId, input.chapterId, {
     mode: 'replace',
   });
   if (outcome.state !== 'success') {
-    if (outcome.state === 'failure')
+    if (outcome.state === 'failure' && canCommit())
       input.setStatus(`建议稿列表读取失败 · ${authorErrorSummary(outcome.error)}`);
     return [];
   }
-  input.setCandidates(outcome.data.candidates);
+  if (canCommit()) input.setCandidates(outcome.data.candidates);
   return outcome.data.candidates;
 }
 

@@ -93,15 +93,49 @@ describe('code quality governance', () => {
     ).toContain('Renderer TSX statements maxUncovered must equal total - covered');
   });
 
-  it('keeps Toolchain Export read-only and artifact-only', async () => {
-    const workflow = await read('.github/workflows/toolchain-export.yml');
+  it('keeps Toolchain Export read-only, reusable and artifact-only', async () => {
+    const [workflow, quality, authority] = await Promise.all([
+      read('.github/workflows/toolchain-export.yml'),
+      read('.github/workflows/quality.yml'),
+      read('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json'),
+    ]);
+    const parsedAuthority = JSON.parse(authority) as {
+      schemaVersion: number;
+      defaultProfile: string;
+      exportWorkflow: string;
+      callerWorkflow: string;
+      profiles: Record<string, unknown>;
+      requiredBundleEntries: string[];
+    };
 
+    expect(workflow).toContain('workflow_call:');
     expect(workflow).toContain('workflow_dispatch:');
     expect(workflow).toContain('contents: read');
     expect(workflow).toContain('persist-credentials: false');
-    expect(workflow).not.toContain('branches:\n      - work');
+    expect(workflow).toContain('include-hidden-files: true');
     expect(workflow).not.toContain('git push');
     expect(workflow).not.toContain('.github/toolchain-export');
+    expect(quality).toContain('uses: ./.github/workflows/toolchain-export.yml');
+    expect(quality).toContain("github.event.pull_request.head.ref == 'work'");
+    expect(parsedAuthority).toMatchObject({
+      schemaVersion: 1,
+      defaultProfile: 'quality',
+      exportWorkflow: '.github/workflows/toolchain-export.yml',
+      callerWorkflow: '.github/workflows/quality.yml',
+    });
+    expect(parsedAuthority.profiles).toHaveProperty('formatter');
+    expect(parsedAuthority.profiles).toHaveProperty('quality');
+    expect(parsedAuthority.requiredBundleEntries).toEqual(
+      expect.arrayContaining([
+        'store',
+        'node_modules',
+        'node_modules/.bin',
+        'node_modules/.pnpm',
+        'manifest.json',
+        'toolchain-authority.json',
+        'SHA256SUMS.txt',
+      ]),
+    );
   });
 
   it('locks cross-platform line endings without imposing file length limits', async () => {
@@ -141,6 +175,7 @@ describe('code quality governance', () => {
       rendererTsxCoverage: true,
       dualTrackCoverage: true,
       fileLengthGate: false,
+      reusableToolchainExport: true,
     });
   });
 });

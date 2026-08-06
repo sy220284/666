@@ -24,7 +24,9 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     coverageConfig,
     coverageBaseline,
     structureBaseline,
+    toolchainAuthoritySource,
     toolchainExport,
+    qualityWorkflow,
     editorConfig,
     gitAttributes,
   ] = await Promise.all([
@@ -33,13 +35,16 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     read('vitest.coverage.config.ts'),
     read('docs/architecture/coverage-baseline.json'),
     read('docs/architecture/source-structure-baseline.json'),
+    read('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json'),
     read('.github/workflows/toolchain-export.yml'),
+    read('.github/workflows/quality.yml'),
     read('.editorconfig'),
     read('.gitattributes'),
   ]);
 
   const manifest = JSON.parse(manifestSource);
   const coveragePolicy = JSON.parse(coverageBaseline);
+  const toolchainAuthority = JSON.parse(toolchainAuthoritySource);
   const violations = [];
   const formatCommands = [manifest.scripts?.format ?? '', manifest.scripts?.['format:check'] ?? ''];
 
@@ -113,11 +118,41 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     'allowedCycles',
   ]);
 
+  if (toolchainAuthority?.schemaVersion !== 1) {
+    violations.push('CURRENT_WORKSPACE_TOOLCHAIN.json: schemaVersion must remain 1');
+  }
+  for (const field of [
+    'authorityDocument',
+    'callerWorkflow',
+    'exportWorkflow',
+    'generator',
+    'defaultProfile',
+    'trustedPullRequestBranch',
+  ]) {
+    if (typeof toolchainAuthority?.[field] !== 'string' || !toolchainAuthority[field]) {
+      violations.push(`CURRENT_WORKSPACE_TOOLCHAIN.json: missing ${field}`);
+    }
+  }
+  if (!toolchainAuthority?.profiles?.formatter || !toolchainAuthority?.profiles?.quality) {
+    violations.push(
+      'CURRENT_WORKSPACE_TOOLCHAIN.json: formatter and quality profiles are required',
+    );
+  }
+  for (const required of ['node_modules/.bin', 'node_modules/.pnpm']) {
+    if (!toolchainAuthority?.requiredBundleEntries?.includes(required)) {
+      violations.push(`CURRENT_WORKSPACE_TOOLCHAIN.json: missing ${required}`);
+    }
+  }
+
   requireTokens(violations, 'toolchain-export.yml', toolchainExport, [
+    'workflow_call:',
     'workflow_dispatch:',
     'contents: read',
     'persist-credentials: false',
     'actions/upload-artifact@',
+    'include-hidden-files: true',
+    'docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json',
+    'validate-authority',
   ]);
   forbidTokens(violations, 'toolchain-export.yml', toolchainExport, [
     'contents: write',
@@ -128,6 +163,13 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   if (/^\s*push:/mu.test(toolchainExport)) {
     violations.push('toolchain-export.yml: push trigger is forbidden');
   }
+
+  requireTokens(violations, 'quality.yml', qualityWorkflow, [
+    'toolchain_export:',
+    'uses: ./.github/workflows/toolchain-export.yml',
+    "github.event.pull_request.head.ref == 'work'",
+    'docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json',
+  ]);
 
   requireTokens(violations, '.editorconfig', editorConfig, [
     'charset = utf-8',
@@ -148,6 +190,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     rendererTsxCoverage: true,
     dualTrackCoverage: true,
     fileLengthGate: false,
+    reusableToolchainExport: true,
   };
 }
 
@@ -155,6 +198,6 @@ const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   const result = await inspectCodeQualityPolicy();
   console.log(
-    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, file length non-blocking.`,
+    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, reusable toolchain export enabled, file length non-blocking.`,
   );
 }

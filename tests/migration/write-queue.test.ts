@@ -92,6 +92,45 @@ describe('serialized SQLite write queue', () => {
     await database.close();
   });
 
+  it('rejects the same requestId when the database command fingerprint changes', async () => {
+    const filePath = await databasePath();
+    const database = await ProjectDatabase.open({
+      path: filePath,
+      migrations: [migration],
+      appVersion: '0.1.0',
+    });
+    const requestId = randomUUID();
+    let conflictingExecutions = 0;
+
+    await expect(
+      database.write(
+        requestId,
+        (connection) => {
+          connection.prepare('INSERT INTO writes(id, value) VALUES(?, ?)').run('first', 1);
+          return 1;
+        },
+        'writes.insert:first',
+      ),
+    ).resolves.toEqual({ value: 1, replayed: false });
+
+    await expect(
+      database.write(
+        requestId,
+        (connection) => {
+          conflictingExecutions += 1;
+          connection.prepare('INSERT INTO writes(id, value) VALUES(?, ?)').run('second', 2);
+          return 2;
+        },
+        'writes.insert:second',
+      ),
+    ).rejects.toMatchObject({ code: 'REQUEST_ID_CONFLICT' });
+    expect(conflictingExecutions).toBe(0);
+    expect(
+      database.read((connection) => connection.prepare('SELECT id, value FROM writes').all()),
+    ).toEqual([{ id: 'first', value: 1n }]);
+    await database.close();
+  });
+
   it('rolls back interrupted transactions and drains accepted writes before close', async () => {
     const filePath = await databasePath();
     const database = await ProjectDatabase.open({

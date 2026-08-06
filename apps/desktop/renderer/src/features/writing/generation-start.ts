@@ -51,32 +51,39 @@ export async function startGenerationTask(input: GenerationStartInput): Promise<
   if (!continuationOfRunId && !intentOverride && !validateGenerationInput(input)) return;
   input.setPending(true);
   input.setStatus('正在校验权威输入并组装约束…');
-  const intent = await buildGenerationIntent(input);
-  if (!intent) {
-    input.setPending(false);
-    return;
-  }
-  input.setLastIntent(intent);
-  const outcome = await input.bridge.generation.start({
-    projectId: input.projectId,
-    chapterId: input.chapterId,
-    baseDraftId: input.draft.draftId,
-    baseDraftRevision: input.draft.revision,
-    providerId: input.providerId,
-    continuationOfRunId,
-    intent,
-  });
-  input.setPending(false);
-  if (outcome.state !== 'success') {
+  try {
+    const intent = await buildGenerationIntent(input);
+    if (!intent) return;
+    input.setLastIntent(intent);
+    const outcome = await input.bridge.generation.start({
+      projectId: input.projectId,
+      chapterId: input.chapterId,
+      baseDraftId: input.draft.draftId,
+      baseDraftRevision: input.draft.revision,
+      providerId: input.providerId,
+      continuationOfRunId,
+      intent,
+    });
+    if (outcome.state !== 'success') {
+      input.setStatus(
+        outcome.state === 'failure'
+          ? `生成未启动 · ${authorErrorSummary(outcome.error)}`
+          : '生成请求已取消或被新请求替代。',
+      );
+      return;
+    }
+    input.onStarted(outcome.data.run, outcome.data.taskId);
+    input.setStatus(`任务已启动 · ${outcome.data.run.stage}`);
+  } catch {
     input.setStatus(
-      outcome.state === 'failure'
-        ? `生成未启动 · ${authorErrorSummary(outcome.error)}`
-        : '生成请求已取消或被新请求替代。',
+      `生成未启动 · ${authorErrorSummary({
+        code: 'BRIDGE_UNEXPECTED_FAILURE',
+        message: 'The generation bridge call failed unexpectedly.',
+      })}`,
     );
-    return;
+  } finally {
+    input.setPending(false);
   }
-  input.onStarted(outcome.data.run, outcome.data.taskId);
-  input.setStatus(`任务已启动 · ${outcome.data.run.stage}`);
 }
 
 function validateGenerationInput(input: GenerationStartInput): boolean {

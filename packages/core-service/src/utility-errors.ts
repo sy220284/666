@@ -41,6 +41,7 @@ function errorChainIncludes(
 
 export function windowPreferencesError(error: unknown): ErrorCode {
   if (error instanceof DatabaseFoundationError) {
+    if (error.code === 'REQUEST_ID_CONFLICT') return 'COMMON_CONFLICT_003';
     if (error.code === 'DATABASE_READ_ONLY') return 'PROJECT_READ_ONLY_005';
     if (error.code === 'DATABASE_INTEGRITY_FAILED') return 'DB_INTEGRITY_FAILED_003';
     if (error.code === 'MIGRATION_FAILED') return 'DB_MIGRATION_FAILED_005';

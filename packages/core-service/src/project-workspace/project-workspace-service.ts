@@ -7,13 +7,19 @@ import {
   type ProjectWorkspaceSummary,
 } from '@worldforge/contracts';
 
-import { BoundedIdempotentPromiseCache } from '../bounded-idempotent-promise-cache.js';
-import type {
-  DatabaseClock,
-  DatabaseReadOperation,
-  DatabaseWriteOperation,
+import {
+  BoundedIdempotentPromiseCache,
+  IdempotentRequestConflictError,
+} from '../bounded-idempotent-promise-cache.js';
+import { currentCommandFingerprint } from '../command-identity-context.js';
+import {
+  DatabaseFoundationError,
+  type DatabaseClock,
+  type DatabaseReadOperation,
+  type DatabaseWriteOperation,
 } from '../database/index.js';
 import type { RecentProjectsRepository } from '../recent-projects.js';
+import { stableJson } from '../stable-json.js';
 import { createProjectWorkspace } from './project-create.js';
 import {
   defaultCopyWorkspace,
@@ -38,6 +44,10 @@ import {
 } from './workspace-verifier.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
+
+function requestFingerprint(scope: string, input: unknown): string {
+  return stableJson({ scope, input });
+}
 
 export type { ProjectWorkspaceErrorCode };
 export { ProjectWorkspaceError };
@@ -89,27 +99,33 @@ export class ProjectWorkspaceService {
     input: ProjectCreateInput,
     parentDirectory: string,
   ): Promise<ProjectWorkspaceSummary> {
-    return this.#idempotent(requestId, () =>
-      createProjectWorkspace(this.#operationContext(), requestId, input, parentDirectory),
+    return this.#idempotent(
+      requestId,
+      requestFingerprint('project.create', { input, parentDirectory }),
+      () => createProjectWorkspace(this.#operationContext(), requestId, input, parentDirectory),
     );
   }
 
   open(requestId: string, input: ProjectOpenInput): Promise<ProjectWorkspaceSummary> {
-    return this.#idempotent(requestId, () =>
+    return this.#idempotent(requestId, requestFingerprint('project.open', input), () =>
       openProjectWorkspace(this.#operationContext(), requestId, input),
     );
   }
 
   close(requestId: string, projectId: string): Promise<{ projectId: string; closed: true }> {
-    return this.#idempotent(requestId, async () => {
-      const context = this.#assertActiveContext(projectId);
-      try {
-        await closeProjectContext(context);
-      } finally {
-        if (this.#active === context) this.#active = null;
-      }
-      return { projectId: context.summary.projectId, closed: true };
-    });
+    return this.#idempotent(
+      requestId,
+      requestFingerprint('project.close', { projectId }),
+      async () => {
+        const context = this.#assertActiveContext(projectId);
+        try {
+          await closeProjectContext(context);
+        } finally {
+          if (this.#active === context) this.#active = null;
+        }
+        return { projectId: context.summary.projectId, closed: true };
+      },
+    );
   }
 
   move(
@@ -117,8 +133,11 @@ export class ProjectWorkspaceService {
     projectId: string,
     targetParentDirectory: string,
   ): Promise<ProjectWorkspaceSummary & { readonly sourceRetained: boolean }> {
-    return this.#idempotent(requestId, () =>
-      moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
+    return this.#idempotent(
+      requestId,
+      requestFingerprint('project.move', { projectId, targetParentDirectory }),
+      () =>
+        moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
     );
   }
 
@@ -126,8 +145,10 @@ export class ProjectWorkspaceService {
     requestId: string,
     workspacePath: string,
   ): Promise<ProjectWorkspaceSummary> {
-    return this.#idempotent(requestId, () =>
-      registerRecoveredProjectWorkspace(this.#operationContext(), requestId, workspacePath),
+    return this.#idempotent(
+      requestId,
+      requestFingerprint('project.register-recovered', { workspacePath }),
+      () => registerRecoveredProjectWorkspace(this.#operationContext(), requestId, workspacePath),
     );
   }
 
@@ -150,6 +171,7 @@ export class ProjectWorkspaceService {
     requestId: string,
     projectId: string,
     operation: DatabaseWriteOperation<T>,
+    commandIdentity: unknown = currentCommandFingerprint(operation.toString()),
   ): Promise<T> {
     const context = this.#assertActiveContext(projectId, true);
     if (!context.database) {
@@ -158,7 +180,19 @@ export class ProjectWorkspaceService {
         'The project database is unreadable; write operations are disabled.',
       );
     }
-    return (await context.database.write(requestId, operation)).value;
+    const fingerprint = requestFingerprint('project.write', { projectId, commandIdentity });
+    try {
+      return (await context.database.write(requestId, operation, fingerprint)).value;
+    } catch (error) {
+      if (error instanceof DatabaseFoundationError && error.code === 'REQUEST_ID_CONFLICT') {
+        throw new ProjectWorkspaceError(
+          'PROJECT_TARGET_CONFLICT',
+          'The requestId was already used for a different project command.',
+          { cause: error },
+        );
+      }
+      throw error;
+    }
   }
 
   async resolveProjectPath(projectId: string, relativePath: string): Promise<string> {
@@ -255,15 +289,26 @@ export class ProjectWorkspaceService {
     };
   }
 
-  #idempotent<T>(requestId: string, operation: () => Promise<T>): Promise<T> {
+  #idempotent<T>(requestId: string, fingerprint: string, operation: () => Promise<T>): Promise<T> {
     const validRequestId = RequestIdSchema.parse(requestId);
-    const existing = this.#operations.get<T>(validRequestId);
-    if (existing) return existing;
+    try {
+      const existing = this.#operations.get<T>(validRequestId, fingerprint);
+      if (existing) return existing;
+    } catch (error) {
+      if (error instanceof IdempotentRequestConflictError) {
+        throw new ProjectWorkspaceError(
+          'PROJECT_TARGET_CONFLICT',
+          'The requestId was already used for a different project lifecycle command.',
+          { cause: error },
+        );
+      }
+      throw error;
+    }
     const result = this.#lifecycleTail.then(operation);
     this.#lifecycleTail = result.then(
       () => undefined,
       () => undefined,
     );
-    return this.#operations.remember(validRequestId, result);
+    return this.#operations.remember(validRequestId, fingerprint, result);
   }
 }

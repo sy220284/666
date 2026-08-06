@@ -1,6 +1,18 @@
 interface CachedPromiseEntry {
+  readonly fingerprint: string;
   readonly promise: Promise<unknown>;
   settled: boolean;
+}
+
+export class IdempotentRequestConflictError extends Error {
+  readonly code = 'IDEMPOTENT_REQUEST_CONFLICT';
+  readonly requestId: string;
+
+  constructor(requestId: string) {
+    super('The requestId was already used with a different command identity.');
+    this.name = 'IdempotentRequestConflictError';
+    this.requestId = requestId;
+  }
 }
 
 export class BoundedIdempotentPromiseCache {
@@ -18,15 +30,18 @@ export class BoundedIdempotentPromiseCache {
     return this.#entries.size;
   }
 
-  get<T>(requestId: string): Promise<T> | undefined {
-    return this.#entries.get(requestId)?.promise as Promise<T> | undefined;
+  get<T>(requestId: string, fingerprint: string): Promise<T> | undefined {
+    const entry = this.#entries.get(requestId);
+    if (!entry) return undefined;
+    if (entry.fingerprint !== fingerprint) throw new IdempotentRequestConflictError(requestId);
+    return entry.promise as Promise<T>;
   }
 
-  remember<T>(requestId: string, promise: Promise<T>): Promise<T> {
-    const existing = this.get<T>(requestId);
+  remember<T>(requestId: string, fingerprint: string, promise: Promise<T>): Promise<T> {
+    const existing = this.get<T>(requestId, fingerprint);
     if (existing) return existing;
 
-    const entry: CachedPromiseEntry = { promise, settled: false };
+    const entry: CachedPromiseEntry = { fingerprint, promise, settled: false };
     this.#entries.set(requestId, entry);
     void promise.then(
       () => {

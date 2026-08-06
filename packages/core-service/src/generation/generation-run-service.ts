@@ -1,6 +1,22 @@
+import { randomUUID } from 'node:crypto';
+
+import {
+  type ErrorCode,
+  type GenerationGetRunInput,
+  type GenerationListRunsInput,
+  type GenerationModelSupportInput,
+  type GenerationRun,
+  type ModelSupportProfile,
+} from '@worldforge/contracts';
+
+import {
+  BoundedIdempotentPromiseCache,
+  IdempotentRequestConflictError,
+} from '../bounded-idempotent-promise-cache.js';
 import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
 import { completeProseCandidate, completeSkeletonCandidates } from './candidate-persistence.js';
+import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
 import { getModelSupport, upsertModelSupport } from './model-support-repository.js';
 import { discardPartial, recordPartial, savePartial } from './partial-result-service.js';
 import {
@@ -26,16 +42,8 @@ import {
   markStage,
   recoverInterrupted,
   updateUsage,
+  GenerationRunServiceError,
 } from './run-repository.js';
-import {
-  type ErrorCode,
-  type GenerationGetRunInput,
-  type GenerationListRunsInput,
-  type GenerationModelSupportInput,
-  type GenerationRun,
-  type ModelSupportProfile,
-} from '@worldforge/contracts';
-import { randomUUID } from 'node:crypto';
 
 export { GenerationRunServiceError } from './run-repository.js';
 export type {
@@ -56,10 +64,16 @@ export type {
   GenerationContinuationContext,
 } from './run-repository.js';
 
+export interface GenerationRunCreation {
+  readonly run: GenerationRun;
+  readonly replayed: boolean;
+}
+
 const systemClock: DatabaseClock = { now: () => new Date() };
 
 export class GenerationRunService {
   readonly #context: GenerationRunServiceContext;
+  readonly #creates = new BoundedIdempotentPromiseCache();
 
   constructor(workspace: ProjectWorkspaceService, options: GenerationRunServiceOptions = {}) {
     this.#context = {
@@ -69,8 +83,41 @@ export class GenerationRunService {
     };
   }
 
-  create(requestId: string, input: GenerationRunCreateInput): Promise<GenerationRun> {
-    return create(this.#context, requestId, input);
+  async create(requestId: string, input: GenerationRunCreateInput): Promise<GenerationRun> {
+    return (await this.createWithReplay(requestId, input)).run;
+  }
+
+  async createWithReplay(
+    requestId: string,
+    input: GenerationRunCreateInput,
+  ): Promise<GenerationRunCreation> {
+    const fingerprint = generationCreateFingerprint(input);
+    const cacheKey = `${input.projectId}:${requestId}`;
+    try {
+      const existing = this.#creates.get<GenerationRun>(cacheKey, fingerprint);
+      if (existing) return { run: await existing, replayed: true };
+    } catch (error) {
+      if (error instanceof IdempotentRequestConflictError) {
+        throw new GenerationRunServiceError(
+          'GENERATION_RESULT_CONFLICT',
+          'The requestId was already used for a different GenerationRun command.',
+          { cause: error },
+        );
+      }
+      throw error;
+    }
+
+    let replayed = false;
+    const operation = Promise.resolve().then(async () => {
+      const persisted = readGenerationRunReplay(this.#context.workspace, requestId, input);
+      if (persisted) {
+        replayed = true;
+        return persisted;
+      }
+      return create(this.#context, requestId, input);
+    });
+    const run = await this.#creates.remember(cacheKey, fingerprint, operation);
+    return { run, replayed };
   }
 
   get(raw: GenerationGetRunInput): GenerationRun {

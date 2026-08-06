@@ -19,7 +19,7 @@ AGENTS.md
 
 代码格式、结构与维护性治理必须同步读取 [`architecture/CODE_QUALITY_GOVERNANCE.md`](architecture/CODE_QUALITY_GOVERNANCE.md)。文件行数只作为观察指标，不参与合并资格；结构判断统一依据职责内聚、依赖方向、状态所有权、事务边界和公共接口。
 
-在当前ChatGPT持久化工作空间中执行工具安装、离线恢复、格式化、Lint、TypeScript、Vitest、Playwright、Electron或全仓验证时，必须同步读取 [`process/CURRENT_WORKSPACE_TOOLCHAIN.md`](process/CURRENT_WORKSPACE_TOOLCHAIN.md)。该文档只约束`/mnt/data`工作空间资产，不替代仓库锁文件和永久工作流。
+在当前ChatGPT持久化工作空间中执行工具安装、离线恢复、格式化、Lint、TypeScript、Vitest、Playwright、Electron或全仓验证时，必须同步读取 [`process/CURRENT_WORKSPACE_TOOLCHAIN.md`](process/CURRENT_WORKSPACE_TOOLCHAIN.md)和机器清单 [`process/CURRENT_WORKSPACE_TOOLCHAIN.json`](process/CURRENT_WORKSPACE_TOOLCHAIN.json)。它们只约束`/mnt/data`工作空间资产和永久工具导出入口，不替代仓库锁文件。
 
 ## 2. 动态状态解析
 
@@ -98,7 +98,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
 - Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。
 - SQLite逐级Migration、未来Schema只读打开、Provider适配和协议版本门禁继续保留。
-- Toolchain Export只能手动触发、只读检出并输出Actions Artifact；禁止向正式分支提交工具链或二进制分片。
+- Toolchain Export保持只读检出和Artifact-only；允许人工`workflow_dispatch`，也允许现有Quality工作流在同仓库`work → main` PR命中机器清单声明的工具链路径时通过`workflow_call`调用。禁止向正式分支提交工具链或二进制分片。
 
 ## 6. 产品与架构不变量
 
@@ -119,7 +119,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 
 ## 8. 当前ChatGPT工作空间工具链
 
-`docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md`是当前ChatGPT持久化工作空间内666工具资产、绝对存储位置、激活命令、依赖恢复、浏览器替代路径、验证命令和更新规则的专项权威文档。
+`docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md`是当前ChatGPT持久化工作空间内666工具资产、绝对存储位置、激活命令、依赖恢复、浏览器替代路径、验证命令和更新规则的专项权威文档；`docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json`是工具Profile与永久工作流关联的机器真源。
 
 固定入口：
 

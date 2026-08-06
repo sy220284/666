@@ -1,0 +1,106 @@
+import { readFileSync } from 'node:fs';
+
+import { describe, expect, it, vi } from 'vitest';
+
+import { ContinuationPersistenceTracker } from '../../apps/desktop/renderer/src/features/writing/continuation-persistence.js';
+import {
+  reportFlushedDraft,
+  reportPersistedDraft,
+} from '../../apps/desktop/renderer/src/features/writing/draft-persistence-feedback.js';
+
+interface ContinuationFixture {
+  readonly projectId: string;
+  readonly chapterId: string;
+  readonly draftId: string;
+  readonly draftRevision: number;
+  readonly panel: 'editor' | 'candidates';
+}
+
+function continuation(overrides: Partial<ContinuationFixture> = {}): ContinuationFixture {
+  return {
+    projectId: 'project-a',
+    chapterId: 'chapter-a',
+    draftId: 'draft-a',
+    draftRevision: 1,
+    panel: 'editor',
+    ...overrides,
+  };
+}
+
+const continuationSource = readFileSync(
+  'apps/desktop/renderer/src/features/writing/use-writing-continuation.ts',
+  'utf8',
+);
+const autosaveSource = readFileSync(
+  'apps/desktop/renderer/src/features/writing/use-draft-autosave.ts',
+  'utf8',
+);
+
+describe('M10-13 Writing上下文所有权', () => {
+  it('同项目的新章节或新Draft不会被误判为旧面板重试', () => {
+    const tracker = new ContinuationPersistenceTracker<ContinuationFixture>();
+    const old = continuation({ panel: 'candidates' });
+    tracker.noteIntent(old);
+    tracker.commit(old);
+
+    expect(
+      tracker.isCommitted(
+        continuation({ chapterId: 'chapter-b', draftId: 'draft-b', panel: 'editor' }),
+      ),
+    ).toBe(false);
+    expect(
+      tracker.isCommitted(continuation({ draftId: 'draft-c', panel: 'editor' })),
+    ).toBe(false);
+  });
+
+  it('续写位置只在项目章节Draft和revision仍匹配时提交Tracker', () => {
+    expect(continuationSource).toContain('function continuationIsCurrent');
+    const commitIndex = continuationSource.indexOf('persistence.commit(continuation)');
+    const guardIndex = continuationSource.lastIndexOf(
+      'if (!continuationIsCurrent(input, continuation)) return true;',
+      commitIndex,
+    );
+    expect(guardIndex).toBeGreaterThan(-1);
+    expect(commitIndex).toBeGreaterThan(guardIndex);
+  });
+
+  it('旧上下文完成续写保存后不写成功或失败状态', async () => {
+    const setStatus = vi.fn();
+    await expect(
+      reportPersistedDraft({
+        revision: 2,
+        editorChanged: false,
+        saveContinuation: async () => false,
+        canCommit: () => false,
+        setStatus,
+        savedStatus: (label, revision) => `${label}:${revision}`,
+      }),
+    ).resolves.toBe(true);
+    expect(setStatus).not.toHaveBeenCalled();
+  });
+
+  it('旧上下文flush失败也不覆盖新页面状态', async () => {
+    const setStatus = vi.fn();
+    const saveContinuation = vi.fn();
+    await expect(
+      reportFlushedDraft({
+        draftSaved: false,
+        revision: 2,
+        saveContinuation,
+        canCommit: () => false,
+        setStatus,
+        savedStatus: (label, revision) => `${label}:${revision}`,
+      }),
+    ).resolves.toBe(true);
+    expect(saveContinuation).not.toHaveBeenCalled();
+    expect(setStatus).not.toHaveBeenCalled();
+  });
+
+  it('Autosave在成功、失败和异常反馈前复核Draft上下文', () => {
+    expect(autosaveSource).toContain('if (!saveContextIsCurrent(saveContext)) return true;');
+    expect(autosaveSource).toContain(
+      'if (saveContext && !saveContextIsCurrent(saveContext)) return true;',
+    );
+    expect(autosaveSource).toContain('canCommit: () =>');
+  });
+});

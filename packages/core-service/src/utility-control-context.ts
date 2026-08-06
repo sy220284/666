@@ -66,8 +66,7 @@ export function createUtilityControlContext(
       operation: Promise<Result>,
       handlers: TrackedOperationHandlers<Result>,
     ): void => {
-      let tracked!: Promise<void>;
-      tracked = Promise.resolve(operation)
+      const tracked = Promise.resolve(operation)
         .then(
           (result) => {
             try {

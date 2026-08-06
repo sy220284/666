@@ -78,7 +78,8 @@ describe('M10-13 Provider settings controller', () => {
       onProvidersChanged: vi.fn(),
       setMessage,
     });
-    expect(setMessage).toHaveBeenCalledWith(expect.stringContaining('provider list failed'));
+    expect(setMessage).toHaveBeenCalledWith(expect.stringContaining('本地服务遇到异常'));
+    expect(setMessage).not.toHaveBeenCalledWith(expect.stringContaining('provider list failed'));
 
     const staleMessage = vi.fn();
     await refreshProviderSettings(

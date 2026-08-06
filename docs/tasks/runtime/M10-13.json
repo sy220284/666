@@ -39,6 +39,7 @@
     "packages/core-service/src/utility-control-context.ts",
     "packages/core-service/src/utility-control-lifecycle.ts",
     "packages/core-service/src/utility-control-operations.ts",
+    "packages/core-service/src/utility-control-results.ts",
     "packages/core-service/src/utility-control-router.ts",
     "packages/core-service/src/utility-errors.ts",
     "scripts/code-quality-policy.mjs",

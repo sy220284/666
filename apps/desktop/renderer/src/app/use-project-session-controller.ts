@@ -20,6 +20,7 @@ import {
   isCancelledOutcome,
   type FailureView,
 } from './app-shell-helpers.js';
+import { prepareProjectSessionTransition } from './project-session-transition.js';
 
 const PROJECT_SESSION_COMMAND = 'project-session';
 
@@ -103,22 +104,18 @@ export function useProjectSessionController({
       resultMessage: string,
       scope?: RendererCommandScope,
     ): Promise<ProjectContinuationSnapshot | null> => {
-      if (scope && !scope.isCurrent()) return null;
-      setActiveProject(project);
-      let nextContinuation: ProjectContinuationSnapshot | null = null;
-      if (project) {
-        const outcome = await bridge.project.getContinuation(project.projectId, {
-          mode: 'replace',
-        });
-        if (scope && !scope.isCurrent()) return null;
-        if (outcome.state === 'success') nextContinuation = outcome.data;
-      }
-      if (scope && !scope.isCurrent()) return null;
-      setContinuation(nextContinuation);
+      const transition = await prepareProjectSessionTransition({
+        bridge,
+        project,
+        isCurrent: () => scope?.isCurrent() ?? true,
+      });
+      if (transition.state === 'stale') return null;
+      setActiveProject(transition.project);
+      setContinuation(transition.continuation);
       await refreshRecentProjects(scope);
       if (scope && !scope.isCurrent()) return null;
       setMessage(resultMessage);
-      return nextContinuation;
+      return transition.continuation;
     },
     [bridge, refreshRecentProjects, setActiveProject, setContinuation, setMessage],
   );

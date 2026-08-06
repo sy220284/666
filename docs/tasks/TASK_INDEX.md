@@ -133,7 +133,7 @@ Runtime IMPLEMENTED
 | M10-10 | [`当前工作空间工具链权威文档治理`](M10/M10-10_CURRENT_WORKSPACE_TOOLCHAIN_AUTHORITY.md) | M10-09 | Implemented |
 | M10-11 | [`运行时、恢复与异步安全硬化`](M10/M10-11_RUNTIME_DATA_SAFETY_HARDENING.md) | M10-10 | Implemented |
 | M10-12 | [`命令身份与生成生命周期一致性治理`](M10/M10-12_COMMAND_IDENTITY_GENERATION_LIFECYCLE.md) | M10-11 | Implemented |
-| M10-13 | [`1.5前置边界重构与根因治理`](M10/M10-13_V1_5_PREFLIGHT_BOUNDARY_REFACTOR.md) | M10-12 | In Progress |
+| M10-13 | [`1.5前置边界重构与根因治理`](M10/M10-13_V1_5_PREFLIGHT_BOUNDARY_REFACTOR.md) | M10-12 | Implemented |
 
 ## 3. 被吸收的需求来源
 

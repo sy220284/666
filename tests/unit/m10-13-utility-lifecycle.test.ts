@@ -40,8 +40,7 @@ function options(
     },
     taskCommands: {
       execute:
-        overrides.execute ??
-        (() => ({ ok: true, requestId: randomUUID(), data: { tasks: [] } })),
+        overrides.execute ?? (() => ({ ok: true, requestId: randomUUID(), data: { tasks: [] } })),
     },
     appRuntime: {
       windowPreferences: {

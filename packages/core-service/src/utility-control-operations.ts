@@ -5,7 +5,10 @@ import { executeAppDataOperation } from './utility-app-data-router.js';
 import type { UtilityControlContext } from './utility-control-context.js';
 import {
   appDataHandlers,
-  cancelledOperationEvent,
+  cancelledAppDataEvent,
+  cancelledGenerationEvent,
+  cancelledProjectEvent,
+  cancelledProviderEvent,
   generationHandlers,
   projectHandlers,
   providerHandlers,
@@ -25,7 +28,7 @@ export function dispatchUtilityOperation(
     case 'core.app-data.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send(cancelledOperationEvent(requestId, operation.operation, 'app-data'));
+        context.send(cancelledAppDataEvent(requestId, operation.operation));
         return true;
       }
       context.track(
@@ -39,7 +42,7 @@ export function dispatchUtilityOperation(
     case 'core.provider.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send(cancelledOperationEvent(requestId, operation.operation, 'provider'));
+        context.send(cancelledProviderEvent(requestId, operation.operation));
         return true;
       }
       context.track(
@@ -53,7 +56,7 @@ export function dispatchUtilityOperation(
     case 'core.generation.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send(cancelledOperationEvent(requestId, operation.operation, 'generation'));
+        context.send(cancelledGenerationEvent(requestId, operation.operation));
         return true;
       }
       context.track(
@@ -67,7 +70,7 @@ export function dispatchUtilityOperation(
     case 'core.project.command': {
       const { requestId, operation } = message;
       if (!state.acceptingAppDataOperations) {
-        context.send(cancelledOperationEvent(requestId, operation.operation, 'project'));
+        context.send(cancelledProjectEvent(requestId, operation.operation));
         return true;
       }
       context.track(

@@ -1,7 +1,4 @@
-import type {
-  ProjectContinuationSnapshot,
-  ProjectWorkspaceSummary,
-} from '@worldforge/contracts';
+import type { ProjectContinuationSnapshot, ProjectWorkspaceSummary } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 
@@ -32,7 +29,5 @@ export async function prepareProjectSessionTransition({
     if (!isCurrent()) return { state: 'stale' };
     if (outcome.state === 'success') continuation = outcome.data;
   }
-  return isCurrent()
-    ? { state: 'ready', project, continuation }
-    : { state: 'stale' };
+  return isCurrent() ? { state: 'ready', project, continuation } : { state: 'stale' };
 }

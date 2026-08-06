@@ -504,12 +504,8 @@ export class CoreSupervisor {
       this.#expectedExit = false;
       exited.cancel();
       return this.#fail(
-        completed.state === 'send-failed'
-          ? 'CORE_SHUTDOWN_SEND_FAILED'
-          : 'CORE_SHUTDOWN_TIMEOUT',
-        completed.state === 'send-failed'
-          ? 'core.shutdown.send-failed'
-          : 'core.shutdown.timeout',
+        completed.state === 'send-failed' ? 'CORE_SHUTDOWN_SEND_FAILED' : 'CORE_SHUTDOWN_TIMEOUT',
+        completed.state === 'send-failed' ? 'core.shutdown.send-failed' : 'core.shutdown.timeout',
       );
     }
 

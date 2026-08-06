@@ -5,6 +5,7 @@
 - 受检实现提交：`812c52fff89688a1751387c13d42a417618460b9`
 - 基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`
 - 实现提交之后仅允许 M10-13 任务卡、Runtime、任务索引与 Evidence 收口文件变化
+- Ready 验证通过本 Evidence 收口后的 `synchronize` 事件触发
 
 永久静态与结构命令：
 - `pnpm task:validate`

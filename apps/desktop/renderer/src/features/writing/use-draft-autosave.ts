@@ -111,6 +111,7 @@ export function useDraftAutosave(input: UseDraftAutosaveInput) {
       });
     } catch {
       input.synchronizing.current = false;
+      input.setStatus('自动保存失败，当前内容仍保留，请重试。', true);
       return false;
     }
   }, [input]);

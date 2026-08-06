@@ -41,6 +41,7 @@ interface ActiveCommand {
   promise: Promise<RendererCommandResult<unknown>>;
 }
 
+const MAX_RETAINED_LATEST_TOKENS = 512;
 const ownerCoordinators = new WeakMap<object, RendererCommandCoordinator>();
 
 export function rendererCommandCoordinatorFor(owner: object): RendererCommandCoordinator {
@@ -56,6 +57,14 @@ export class RendererCommandCoordinator {
   readonly #latestTokens = new Map<string, number>();
   #nextToken = 0;
 
+  get activeCount(): number {
+    return this.#active.size;
+  }
+
+  get retainedTokenCount(): number {
+    return this.#latestTokens.size;
+  }
+
   isActive(key: string): boolean {
     return this.#active.has(key);
   }
@@ -66,6 +75,41 @@ export class RendererCommandCoordinator {
 
   isLatest(key: string, token: number): boolean {
     return this.#latestTokens.get(key) === token;
+  }
+
+  invalidate(key: string): boolean {
+    const existed = this.#active.delete(key);
+    const token = this.#nextToken + 1;
+    this.#nextToken = token;
+    this.#rememberLatest(key, token);
+    return existed;
+  }
+
+  invalidatePrefix(prefix: string): number {
+    const keys = new Set(
+      [...this.#latestTokens.keys(), ...this.#active.keys()].filter((key) =>
+        key.startsWith(prefix),
+      ),
+    );
+    for (const key of keys) this.invalidate(key);
+    return keys.size;
+  }
+
+  invalidateAll(): void {
+    const keys = new Set([...this.#latestTokens.keys(), ...this.#active.keys()]);
+    for (const key of keys) this.invalidate(key);
+  }
+
+  #rememberLatest(key: string, token: number): void {
+    this.#latestTokens.delete(key);
+    this.#latestTokens.set(key, token);
+    while (this.#latestTokens.size > MAX_RETAINED_LATEST_TOKENS) {
+      const removable = [...this.#latestTokens.keys()].find(
+        (candidate) => !this.#active.has(candidate),
+      );
+      if (!removable) return;
+      this.#latestTokens.delete(removable);
+    }
   }
 
   run<Value>(input: RendererCommandInput<Value>): Promise<RendererCommandResult<Value>> {
@@ -84,7 +128,7 @@ export class RendererCommandCoordinator {
 
     const token = this.#nextToken + 1;
     this.#nextToken = token;
-    this.#latestTokens.set(input.key, token);
+    this.#rememberLatest(input.key, token);
     const active: ActiveCommand = {
       token,
       promise: Promise.resolve({ state: 'stale', key: input.key, token }),

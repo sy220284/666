@@ -4,6 +4,7 @@ import {
   type CoreControlMessage,
 } from '@worldforge/contracts';
 
+import { runWithCommandIdentity } from './command-identity-context.js';
 import type { UtilityControlContext } from './utility-control-context.js';
 import { windowPreferencesError } from './utility-errors.js';
 import { adaptTransferredPort, type UtilityParentMessage } from './utility-runtime-context.js';
@@ -85,7 +86,9 @@ export function dispatchUtilityLifecycle(
       return;
     case 'core.window-preferences.set':
       context.track(
-        options.appRuntime.windowPreferences.save(message.requestId, message.preferences),
+        runWithCommandIdentity('core.window-preferences.set', message.preferences, () =>
+          options.appRuntime.windowPreferences.save(message.requestId, message.preferences),
+        ),
         {
           success: (preferences) => ({
             type: 'core.window-preferences-result',

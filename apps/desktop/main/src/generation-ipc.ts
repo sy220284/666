@@ -73,14 +73,6 @@ function failure(requestId: string, code: ErrorCode): CommandFailure {
   };
 }
 
-function hasDuplicateRewriteBlocks(command: unknown): boolean {
-  const parsed = GenerationStartCommandSchema.safeParse(command);
-  if (!parsed.success) return false;
-  const intent = parsed.data.payload.intent;
-  if (intent.runType !== 'rewrite' || intent.scope.scopeType !== 'blocks') return false;
-  return new Set(intent.scope.logicalBlockIds).size !== intent.scope.logicalBlockIds.length;
-}
-
 async function providerFor(
   options: GenerationIpcOptions,
   requestId: string,
@@ -126,7 +118,7 @@ export function registerGenerationIpc(options: GenerationIpcOptions): () => void
     const rejected = rejectUntrusted(event, raw);
     if (rejected) return rejected;
     const command = GenerationStartCommandSchema.safeParse(raw);
-    if (!command.success || hasDuplicateRewriteBlocks(raw)) return invalid(raw);
+    if (!command.success) return invalid(raw);
     const resolved = await providerFor(
       options,
       command.data.requestId,

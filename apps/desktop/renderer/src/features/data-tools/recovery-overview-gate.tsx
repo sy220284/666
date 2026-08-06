@@ -42,7 +42,7 @@ export function RecoveryOverviewGate({ bridge, projectId, children }: RecoveryOv
         <button
           disabled={availability === 'loading'}
           type="button"
-          onClick={() => void resource.refresh()}
+          onClick={resource.refresh}
         >
           重新读取
         </button>
@@ -51,7 +51,7 @@ export function RecoveryOverviewGate({ bridge, projectId, children }: RecoveryOv
   );
 }
 
-function bridgeWithInitialRecoveryOverview(
+export function bridgeWithInitialRecoveryOverview(
   bridge: RendererBridgeAdapter,
   overview: RecoveryOverview,
 ): RendererBridgeAdapter {

@@ -43,6 +43,7 @@ interface ActiveCommand {
 
 export class RendererCommandCoordinator {
   readonly #active = new Map<string, ActiveCommand>();
+  readonly #latestTokens = new Map<string, number>();
   #nextToken = 0;
 
   isActive(key: string): boolean {
@@ -51,6 +52,10 @@ export class RendererCommandCoordinator {
 
   currentToken(key: string): number | null {
     return this.#active.get(key)?.token ?? null;
+  }
+
+  isLatest(key: string, token: number): boolean {
+    return this.#latestTokens.get(key) === token;
   }
 
   run<Value>(input: RendererCommandInput<Value>): Promise<RendererCommandResult<Value>> {
@@ -69,6 +74,7 @@ export class RendererCommandCoordinator {
 
     const token = this.#nextToken + 1;
     this.#nextToken = token;
+    this.#latestTokens.set(input.key, token);
     const active: ActiveCommand = {
       token,
       promise: Promise.resolve({ state: 'stale', key: input.key, token }),

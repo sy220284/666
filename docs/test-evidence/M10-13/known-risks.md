@@ -2,20 +2,20 @@
 
 ## 风险
 
-1. Core RPC等待者保存在进程内存中。进程退出会拒绝全部请求，调用方应通过现有重试或重新发起机制恢复，禁止把等待者持久化为第二套业务真源。
-2. Utility异步命令必须经过Tracked Operation和Safe Send。Router中裸用Promise、分散维护Drain或绕开统一结果构造会重新引入未消费拒绝与生命周期分裂。
-3. Renderer Command Coordinator依赖稳定Owner、上下文Key和Token。新增命令必须声明并发策略；共享Pending不得由调用点直接写回`false`。
-4. Writing上下文前缀由`projectId`与`chapterId`组成。新增项目级、卷级或跨章节操作时必须选择匹配的资源作用域，禁止复用错误粒度的Key。
-5. Bridge Resource只允许当前`queryKey`拥有解析结果。新增缓存层时必须显式保存来源Key，不能用保留旧data的方式伪装加载体验。
-6. Candidate采用与Generation启动仍依赖权威Draft revision、内容Hash和服务端事务复核。Renderer上下文失效只负责界面提交权，不能替代Core冲突检测。
-7. 结构永久删除的兼容类仅用于保持依赖注入名称。任何新的影响计算、引用阻断或执行逻辑必须进入`StructureTrashOperationService`，禁止重新在兼容入口复制SQL。
-8. Recovery概览依据活动项目`databaseMode`区分可写数据库与只读恢复模式。新增模式时必须显式定义可用性语义，禁止以空数组吞掉读取错误。
-9. Quality工作流对同一PR启用并发取消。修改Head或切换Draft/Ready会取消当前运行；最终判定只采用最新Head对应的完整矩阵。
-10. 本任务未修改Migration、锁文件和生产依赖。后续涉及数据库结构或持久化语义的功能必须使用独立任务和Migration审查。
-11. 最新全量架构审计中的Main IPC描述、Utility协议元数据、通用异步任务会话与跨域两阶段抽象未在本任务整体重写；现有契约、事务和测试继续作为安全边界，后续任务应按优先级治理。
+1. Core RPC 等待者保存在进程内存中；进程退出会拒绝全部请求，调用方通过既有重试或重新发起机制恢复。
+2. Utility 异步命令必须经过 Tracked Operation 与 Safe Send，禁止 Router 裸用 Promise 或分散维护 Drain。
+3. Renderer 命令必须声明作用域和 `replace`、`join`、`reject` 策略；共享 Pending 禁止由单个调用点直接释放。
+4. 项目打开、关闭、移动等不可撤销副作用必须互斥执行，禁止使用 latest-wins 覆盖已经发生的 Core 操作。
+5. Writing 状态提交必须同时验证项目、章节、Draft、revision、编辑器代次或组件会话；上下文失效后不得触发续写保存或状态反馈。
+6. Bridge Resource 刷新必须进入真实 loading 并清除旧数据；新增缓存层必须显式保存来源 key。
+7. Candidate 采用与 Generation 启动继续依赖权威 revision、内容 Hash 和 Core 事务复核；Renderer 失效机制不能替代服务端冲突检测。
+8. 结构永久删除的兼容类型只保留依赖注入名称；新影响计算、引用阻断与执行逻辑必须进入 `StructureTrashOperationService`。
+9. Quality 工作流对同一 PR 启用并发取消；最终判定只采用最新 Head 对应的完整矩阵。
+10. 本任务未修改 Migration、锁文件和生产依赖。
+11. Main IPC 描述、Utility 协议元数据、通用任务会话与跨域两阶段抽象仍属于后续治理范围。
 
 ## 回退
 
-按Core RPC、Utility承载、Renderer协调、Resource归属、Provider/项目生命周期、Generation/Candidate上下文和结构永久删除引擎分别整体回退，并同步回退对应调用点与测试。
+按 Core RPC、Utility 承载、Renderer Coordinator、Resource 归属、项目会话、Writing 生命周期、Provider/Generation 订阅和结构删除引擎分别整体回退，并同步回退对应调用点与测试。
 
-回退不得恢复响应交叉匹配、未消费拒绝、日志污染业务结果、旧命令释放新Pending、跨项目或章节旧结果回写、旧Resource继续可用、自动保存结束后启动旧Generation、结构永久删除双源、重复Rewrite Block或可写数据库错误伪装为空数据。
+回退不得恢复响应交叉匹配、未消费拒绝、旧命令释放新 Pending、项目副作用并发覆盖、跨项目或章节旧结果回写、旧 Draft 触发续写副作用、旧 Resource 继续可用、章节卸载后挂载旧正文、结构永久删除双源或可写数据库错误伪装为空数据。

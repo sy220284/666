@@ -1,12 +1,11 @@
 # M10-13 1.5前置边界重构与根因治理
 
-> 状态：Implemented  
+> 状态：In Progress  
 > 里程碑：M10 稳定性与治理续作 / V1.5 Preflight  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
-> 主线基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`  
-> 实施提交：`10d364a8b5b8e415966cf7d55e6cb4f02d647c2a`
+> 主线基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`
 
 ## 目标
 
@@ -32,7 +31,7 @@
 - M10-12已通过`task-verification/M10-12=success`；
 - 当前`main`已通过`main-verification=success`；
 - 启动时`main == work == 113099dff4f0a97129c6f49d850a7933a72e6b29`；
-- 当前无开放`work → main` PR。
+- 当前来源PR为`#321`，精确使用`work → main`。
 
 ## 根因治理原则
 
@@ -55,6 +54,57 @@
 - 为通过测试增加平行真源、宽泛白名单或特殊分支；
 - 在成熟数据内核中进行无收益重写；
 - 只验证新路径，不验证旧功能与失败路径。
+
+## 最新审计复核与任务修订
+
+2026-08-07结合文件库最新全量架构审计报告与PR #321当前`work`代码复核。报告基于当时的`main`快照，不能直接替代`work`代码结论，因此逐项核对现有提交后再决定是否修改。
+
+### 已由原`work`实现覆盖
+
+- Core RPC精确等待者身份、单响应单消费、超时/退出/发送失败清理；
+- Utility Tracked Operation、Safe Send和Drain统一生命周期；
+- 显式数据库命令身份、Rewrite Block重复ID拒绝、Autosave稳定错误提示；
+- 项目、Generation、Candidate、Provider主要命令已接入Command Coordinator；
+- Recovery Overview已区分加载、失败、取消、真实空数据和可用数据。
+
+### 本轮审计确认的缺口
+
+1. Candidate/Generation命令key未绑定项目与章节，切换上下文后旧结果仍可能回写新页面；
+2. Candidate多个不同命令key共用单一布尔`pending`，旧命令可能提前解锁仍在运行的操作；
+3. `useBridgeQuery`在queryKey变化时仍可能暴露上一项目的数据；
+4. Provider初始刷新、项目会话和生成订阅缺少完整卸载失效；
+5. 结构永久删除存在Reference-aware与基础服务两套业务实现，引用阻断语义可能分叉。
+
+### 本轮处理决定
+
+- Command Coordinator统一聚合全部活跃命令，仅在活跃数从0到1或从1到0时改变Pending；
+- Writing命令统一使用`writing:<projectId>:<chapterId>:`前缀，章节或项目切换时按前缀失效；
+- Candidate列表、Undo、Generation终态刷新和订阅提交均复核当前scope或epoch；
+- Bridge Resource将解析结果与queryKey绑定，不匹配时只返回加载态且不保留旧数据；
+- Provider与项目控制器卸载时统一`invalidateAll()`；
+- 结构永久删除影响计算、外键引用阻断、planHash校验和执行收敛至`StructureTrashOperationService`，旧Reference-aware类型只保留兼容入口；
+- 增加跨key Pending、跨上下文Resource、Candidate/Generation上下文和结构单引擎回归测试。
+
+### 审计逻辑族归属
+
+| 逻辑族 | M10-13处理状态 | 归属说明 |
+|---|---|---|
+| Core RPC等待者匹配 | 已统一 | WP1精确身份与单消费机制 |
+| Core进程生命周期与诊断 | 已统一 | WP1状态机与Best Effort诊断 |
+| Utility异步执行与Safe Send | 已统一 | WP2 Tracked Operation |
+| Renderer命令生命周期 | 已统一关键链 | WP3项目、Generation、Candidate、Provider及公共命令Hook |
+| Renderer查询与旧结果失效 | 已统一公共资源边界 | queryKey归属、scope与epoch共同约束 |
+| 数据库写入命令身份 | 已统一 | AsyncLocal命令上下文，禁止源码推断 |
+| 结构永久删除 | 本轮统一 | 单一业务引擎，兼容类型不再持有业务逻辑 |
+| Main IPC注册描述 | 保留现状，后续P1 | 当前受边界与契约测试保护，本任务不扩大范围 |
+| Utility协议元数据 | 保留现状，后续P1 | 本任务只治理执行与发送生命周期 |
+| 异步任务会话抽象 | 保留现状，后续P1 | Generation现有持久化状态机继续作为权威真源 |
+| 两阶段业务流程 | 保留现状，后续P1 | planHash、revision与事务内复核继续硬阻断 |
+| 失败结果呈现 | 渐进统一 | 作者错误摘要和公共Bridge结果已覆盖关键链 |
+| 结果工厂 | 有理由保留 | 各域Schema和错误语义不同，不建立无收益万能工厂 |
+| 小型算法与归一化 | 域内保留 | 仅对高相似、高风险、跨域重复项继续治理 |
+
+未在本任务统一的逻辑族必须保留现有安全约束并进入后续架构治理，不得据此宣称14类全部完成重构。
 
 ## 已确认问题与处理方式
 
@@ -83,8 +133,9 @@
 
 建立统一Command Coordinator并优先迁移项目会话、生成、Candidate、Provider、Recovery和Structure：
 
-- Pending通过Token和代次所有权释放；
+- Pending由Coordinator聚合活跃命令所有权，不允许单个调用点直接释放共享状态；
 - 支持replace、join和reject并发策略；
+- 命令key必须包含必要的项目、章节或资源上下文；
 - 旧请求完成不得清除新请求状态或覆盖新页面；
 - 成功、失败、取消和异常使用统一结果模型；
 - 组件卸载或上下文变化后禁止旧结果回写。
@@ -124,7 +175,7 @@ Renderer
 - RPC Channel只拥有等待者与响应关联；
 - Diagnostics不拥有业务状态；
 - Utility Executor只拥有异步操作登记、异常收敛和安全发送；
-- Renderer Coordinator只拥有命令代次、Pending和并发策略；
+- Renderer Coordinator只拥有命令代次、聚合Pending和并发策略；
 - Feature Controller拥有业务状态迁移；
 - View组件只负责展示与事件绑定。
 
@@ -142,14 +193,15 @@ Renderer
 
 ## UI闭环
 
-关键命令必须覆盖空、加载、成功、失败、取消、冲突、只读、重启和旧结果失效状态。Pending只能由拥有相同Token的命令释放。
+关键命令必须覆盖空、加载、成功、失败、取消、冲突、只读、重启和旧结果失效状态。共享Pending只能由Coordinator根据全部活跃命令统一释放。
 
 ## 安全、隐私与恢复
 
 - 保持Electron Sandbox、CSP、Navigation Policy、Provider DNS Pinning和Credential Broker不变量；
 - 日志不得记录正文、Prompt、凭据和完整Provider响应；
 - 进程退出与重启必须清空等待者，禁止悬挂回调；
-- Recovery读取失败不得伪装成空数据。
+- Recovery读取失败不得伪装成空数据；
+- 项目或章节切换后，Resource数据必须与当前queryKey一致。
 
 ## 性能预算
 
@@ -166,14 +218,16 @@ Renderer
 4. 进程退出立即释放全部RPC等待者；
 5. Utility Router拒绝、发送失败和父端口关闭无未处理拒绝；
 6. Drain等待全部Tracked Operation终态；
-7. Renderer命令成功、失败、取消、异常均释放自身Pending；
-8. 旧命令不能清除新Token或覆盖新上下文；
-9. Rewrite Blocks重复ID被Schema拒绝；
-10. 产品写入缺少稳定命令身份时明确失败；
-11. Recovery Overview读取失败与空列表可区分；
-12. Autosave失败产生作者可见、无敏感内容的状态；
-13. 七条关键Renderer链进入行为测试；
-14. 全量旧功能、Security、Performance、Build和Electron E2E不退化。
+7. Renderer命令成功、失败、取消、异常均释放自身所有权；
+8. 多个不同key并发时，任一命令完成不得提前释放共享Pending；
+9. 项目或章节切换后旧命令、旧订阅和旧Resource不能覆盖新上下文；
+10. Rewrite Blocks重复ID被Schema拒绝；
+11. 产品写入缺少稳定命令身份时明确失败；
+12. Recovery Overview读取失败与空列表可区分；
+13. 结构永久删除只允许单一业务引擎；
+14. Autosave失败产生作者可见、无敏感内容的状态；
+15. 七条关键Renderer链进入行为测试或具备明确等价覆盖；
+16. 全量旧功能、Security、Performance、Build和Electron E2E不退化。
 
 ## 验证命令
 
@@ -198,15 +252,26 @@ Renderer
 
 保存到：`docs/test-evidence/M10-13/`
 
+Evidence必须记录：
+
+- 审计报告与`work`逐项差异核对；
+- 最终实现提交；
+- 新增回归测试及全量测试数量；
+- 结构永久删除单一引擎证明；
+- Ready Quality、Security、Performance与Electron E2E运行；
+- 剩余逻辑族归属和风险说明。
+
 ## 回滚策略
 
-按WP1—WP5独立回退公共机制和调用点，但不得恢复未消费拒绝、日志污染业务状态、requestId交叉匹配、旧命令释放新Pending或生产写入函数源码身份回退。
+按WP1—WP5独立回退公共机制和调用点，但不得恢复未消费拒绝、日志污染业务状态、requestId交叉匹配、旧命令释放新Pending、跨上下文旧结果回写、结构永久删除双源或生产写入函数源码身份回退。
 
 ## 完成条件
 
 - 根因治理原则进入`AGENTS.md`并由测试或治理检查锁定；
 - WP1—WP4完成实现和回归测试；
+- 审计确认的五项缺口全部完成重构并通过回归测试；
 - 七条Renderer关键链具备行为测试或明确的等价覆盖；
+- 结构永久删除只有一个业务实现；
 - 现有数据与业务内核不变量保持；
 - 全量永久门禁通过；
 - Ready Evidence绑定最终实现提交；

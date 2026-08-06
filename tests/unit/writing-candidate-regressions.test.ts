@@ -47,6 +47,7 @@ function setupLoader(bridge: RendererBridgeAdapter) {
     bridge,
     projectId: 'project-a',
     chapterId: 'chapter-a',
+    commandPrefix: 'writing:project-a:chapter-a:',
     documentRequest: { current: 0 },
     previewRequest,
     setCandidates: vi.fn(),
@@ -121,7 +122,8 @@ describe('Writing候选并发与只读回归', () => {
 
     expect(cancelPreview).toHaveBeenCalledWith('preview-a');
     expect(context.previewRequest.current).toBeNull();
-    expect(context.setPending).toHaveBeenCalledWith(false);
+    expect(context.setPending).toHaveBeenNthCalledWith(1, true);
+    expect(context.setPending).toHaveBeenLastCalledWith(false);
     expect(context.setPreview).toHaveBeenCalledWith(null);
   });
 
@@ -167,6 +169,7 @@ describe('Writing候选并发与只读回归', () => {
         bridge,
         projectId: 'project-a',
         chapterId: 'chapter-a',
+        commandPrefix: 'writing:project-a:chapter-a:',
         readOnly: true,
         refreshList: vi.fn(async () => []),
         onDraftReplace: vi.fn(),

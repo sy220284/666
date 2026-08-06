@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "taskId": "M10-13",
   "implementationCommit": "812c52fff89688a1751387c13d42a417618460b9",
-  "generatedAt": "2026-08-06T17:52:00Z",
+  "generatedAt": "2026-08-06T17:56:00Z",
   "acceptanceSource": "GITHUB_ACTIONS_READY_REQUIRED",
   "files": [
     {
@@ -12,8 +12,8 @@
     },
     {
       "path": "commands.txt",
-      "bytes": 1559,
-      "sha256": "de64c981ff401f67c31c512708d774cf324fafe5348efeb60f4bb416581e9993"
+      "bytes": 1632,
+      "sha256": "ad129a4408f5fff36e32f6ae5549a4b784604d017cbbc596f90b187214a832c9"
     },
     {
       "path": "known-risks.md",

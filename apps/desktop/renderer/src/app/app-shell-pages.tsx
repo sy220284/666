@@ -185,6 +185,7 @@ export function AppShellPages(props: AppShellPagesProps) {
 
       {isWritingRoute(props.route) && props.activeProject ? (
         <WritingWorkbench
+          key={props.activeProject.projectId}
           bridge={props.bridge}
           disclosureMode={props.disclosureMode}
           initialContinuation={props.continuation}

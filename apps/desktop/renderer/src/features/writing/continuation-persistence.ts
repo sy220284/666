@@ -118,11 +118,7 @@ function scopeOf(input: unknown): string | typeof NO_SCOPE {
     .join('|');
 }
 
-function fieldOf<Fallback>(
-  input: unknown,
-  field: string,
-  fallback: Fallback,
-): unknown | Fallback {
+function fieldOf<Fallback>(input: unknown, field: string, fallback: Fallback): unknown | Fallback {
   if (!input || typeof input !== 'object' || !(field in input)) return fallback;
   return (input as Record<string, unknown>)[field];
 }

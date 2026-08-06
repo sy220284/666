@@ -69,18 +69,20 @@ describe('M10-13 Writing上下文所有权', () => {
     expect(commitIndex).toBeGreaterThan(guardIndex);
   });
 
-  it('旧上下文完成续写保存后不写成功或失败状态', async () => {
+  it('旧上下文不触发续写保存，也不写成功或失败状态', async () => {
     const setStatus = vi.fn();
+    const saveContinuation = vi.fn(async () => false);
     await expect(
       reportPersistedDraft({
         revision: 2,
         editorChanged: false,
-        saveContinuation: async () => false,
+        saveContinuation,
         canCommit: () => false,
         setStatus,
         savedStatus: (label, revision) => `${label}:${revision}`,
       }),
     ).resolves.toBe(true);
+    expect(saveContinuation).not.toHaveBeenCalled();
     expect(setStatus).not.toHaveBeenCalled();
   });
 
@@ -90,6 +92,23 @@ describe('M10-13 Writing上下文所有权', () => {
     await expect(
       reportFlushedDraft({
         draftSaved: false,
+        revision: 2,
+        saveContinuation,
+        canCommit: () => false,
+        setStatus,
+        savedStatus: (label, revision) => `${label}:${revision}`,
+      }),
+    ).resolves.toBe(true);
+    expect(saveContinuation).not.toHaveBeenCalled();
+    expect(setStatus).not.toHaveBeenCalled();
+  });
+
+  it('旧上下文flush成功也不触发新上下文续写保存', async () => {
+    const setStatus = vi.fn();
+    const saveContinuation = vi.fn(async () => true);
+    await expect(
+      reportFlushedDraft({
+        draftSaved: true,
         revision: 2,
         saveContinuation,
         canCommit: () => false,

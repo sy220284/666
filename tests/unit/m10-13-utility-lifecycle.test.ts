@@ -19,7 +19,15 @@ function deferred<Value>() {
   return { promise, resolve, reject };
 }
 
-function options(postMessage: (message: CoreEvent) => void): UtilityControlRouterOptions {
+interface RuntimeOverrides {
+  readonly execute?: () => unknown;
+  readonly savePreferences?: (requestId: string, preferences: unknown) => Promise<unknown>;
+}
+
+function options(
+  postMessage: (message: CoreEvent) => void,
+  overrides: RuntimeOverrides = {},
+): UtilityControlRouterOptions {
   return {
     parentPort: { on: () => undefined, postMessage },
     startedAt: Date.now(),
@@ -30,11 +38,17 @@ function options(postMessage: (message: CoreEvent) => void): UtilityControlRoute
       attachPort: () => () => undefined,
       close: () => undefined,
     },
-    taskCommands: { execute: () => ({ ok: true, requestId: randomUUID(), data: { tasks: [] } }) },
+    taskCommands: {
+      execute:
+        overrides.execute ??
+        (() => ({ ok: true, requestId: randomUUID(), data: { tasks: [] } })),
+    },
     appRuntime: {
       windowPreferences: {
         get: () => null,
-        save: async (_requestId: string, preferences: unknown) => preferences,
+        save:
+          overrides.savePreferences ??
+          (async (_requestId: string, preferences: unknown) => preferences),
       },
       close: async () => undefined,
     },
@@ -45,10 +59,11 @@ function options(postMessage: (message: CoreEvent) => void): UtilityControlRoute
 describe('M10-13 Utility lifecycle boundary', () => {
   it('returns a structured task failure when command execution throws', () => {
     const postMessage = vi.fn();
-    const runtime = options(postMessage);
-    runtime.taskCommands.execute = () => {
-      throw new Error('unexpected task router failure');
-    };
+    const runtime = options(postMessage, {
+      execute: () => {
+        throw new Error('unexpected task router failure');
+      },
+    });
     const context = createUtilityControlContext(runtime);
     const requestId = randomUUID();
 
@@ -82,8 +97,9 @@ describe('M10-13 Utility lifecycle boundary', () => {
 
   it('tracks window preference persistence and returns its structured failure', async () => {
     const postMessage = vi.fn();
-    const runtime = options(postMessage);
-    runtime.appRuntime.windowPreferences.save = async () => Promise.reject(new Error('write failed'));
+    const runtime = options(postMessage, {
+      savePreferences: async () => Promise.reject(new Error('write failed')),
+    });
     const context = createUtilityControlContext(runtime);
     const requestId = randomUUID();
 

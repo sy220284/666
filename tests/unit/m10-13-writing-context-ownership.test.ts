@@ -35,6 +35,7 @@ const autosaveSource = readFileSync(
   'apps/desktop/renderer/src/features/writing/use-draft-autosave.ts',
   'utf8',
 );
+const pagesSource = readFileSync('apps/desktop/renderer/src/app/app-shell-pages.tsx', 'utf8');
 
 describe('M10-13 Writing上下文所有权', () => {
   it('同项目的新章节或新Draft不会被误判为旧面板重试', () => {
@@ -96,11 +97,16 @@ describe('M10-13 Writing上下文所有权', () => {
     expect(setStatus).not.toHaveBeenCalled();
   });
 
-  it('Autosave在成功、失败和异常反馈前复核Draft上下文', () => {
+  it('Autosave在成功、失败和异常反馈前复核Draft上下文与revision', () => {
     expect(autosaveSource).toContain('if (!saveContextIsCurrent(saveContext)) return true;');
     expect(autosaveSource).toContain(
       'if (saveContext && !saveContextIsCurrent(saveContext)) return true;',
     );
-    expect(autosaveSource).toContain('canCommit: () =>');
+    expect(autosaveSource).toContain('input.activeDraft.current?.revision === persistedRevision');
+    expect(autosaveSource).toContain('input.activeDraft.current?.revision === flushedRevision');
+  });
+
+  it('不同项目使用独立WritingWorkbench生命周期', () => {
+    expect(pagesSource).toContain('key={props.activeProject.projectId}');
   });
 });

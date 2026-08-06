@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import type {
   ProviderConnectionTestResult,
@@ -47,11 +47,23 @@ export function ProviderSettings({
   const [deleteArmed, setDeleteArmed] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderConnectionTestResult | null>(null);
   const commandCoordinator = useRef(new RendererCommandCoordinator()).current;
-  const refreshInput = { bridge, setProviders, onProvidersChanged, setMessage };
+  const refreshInput = useMemo(
+    () => ({ bridge, setProviders, onProvidersChanged, setMessage }),
+    [bridge, onProvidersChanged],
+  );
 
   useEffect(() => {
-    void refreshProviderSettings(refreshInput);
-  }, []);
+    void runProviderSettingsCommand({
+      coordinator: commandCoordinator,
+      pendingKey: 'load',
+      setPending,
+      setMessage,
+      operation: (scope) => refreshProviderSettings(refreshInput, scope),
+    });
+    return () => {
+      commandCoordinator.invalidateAll();
+    };
+  }, [commandCoordinator, refreshInput]);
 
   const choosePreset = (presetId: ProviderPresetId): void => {
     setDraft(applyProviderPreset(presetId));

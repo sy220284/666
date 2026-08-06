@@ -37,6 +37,7 @@ function setup(overrides: Partial<StartInput> = {}) {
     bridge,
     projectId: 'project-a',
     chapterId: 'chapter-a',
+    commandPrefix: 'writing:project-a:chapter-a:',
     draft: {
       draftId: 'draft-a',
       revision: 7,

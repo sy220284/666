@@ -274,7 +274,9 @@ export function sceneBeatValidationDigest(
         WHERE beat.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
         ORDER BY beat.order_key, beat.id, version_block.logical_block_id`,
     )
-    .all(sourceVersionId, projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
+    .all(sourceVersionId, projectId, chapterId) as unknown as Array<
+    Readonly<Record<string, unknown>>
+  >;
   return hash(stableJson(rows));
 }
 
@@ -300,10 +302,7 @@ export function ruleValidationFingerprint(
         resolved.version.projectId,
         resolved.version.chapterId,
       ),
-      authoritativeSemanticState: authoritativeSemanticDigest(
-        database,
-        resolved.version.projectId,
-      ),
+      authoritativeSemanticState: authoritativeSemanticDigest(database, resolved.version.projectId),
       ruleVersion,
       configVersion,
       config,
@@ -332,10 +331,7 @@ export function aiValidationFingerprint(
         resolved.version.projectId,
         resolved.version.chapterId,
       ),
-      authoritativeSemanticState: authoritativeSemanticDigest(
-        database,
-        resolved.version.projectId,
-      ),
+      authoritativeSemanticState: authoritativeSemanticDigest(database, resolved.version.projectId),
     }),
   );
 }

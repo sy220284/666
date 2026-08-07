@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-15",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md",
   "priority": "P1",
   "startedAt": "2026-08-07T19:31:00+08:00",
+  "implementedAt": "2026-08-07T21:13:53+08:00",
   "dependencies": ["M10-14"],
   "baseline": {
     "main": "233f76a9119b92e9bafe02471667872a60966177",
@@ -73,5 +74,9 @@
     "pnpm build",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 324,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-15"
+  }
 }

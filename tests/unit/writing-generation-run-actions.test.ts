@@ -5,6 +5,7 @@ import { useGenerationRunActions } from '../../apps/desktop/renderer/src/feature
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const success = <Data>(data: Data) => ({ state: 'success' as const, data });
+const commandPrefix = 'writing:project-a:chapter-a:';
 
 describe('Writing Generation运行操作', () => {
   it('没有活动Run时不调用取消或部分结果接口', async () => {
@@ -18,6 +19,8 @@ describe('Writing Generation运行操作', () => {
       activeRun: null,
       bridge,
       projectId: 'project-a',
+      commandPrefix,
+      setPending: vi.fn(),
       refreshCandidates: vi.fn(async () => undefined),
       setActiveRun: vi.fn(),
       setStatus: vi.fn(),
@@ -44,6 +47,8 @@ describe('Writing Generation运行操作', () => {
       activeRun: run,
       bridge: contractInput<RendererBridgeAdapter>({ generation: { cancel } }),
       projectId: 'project-a',
+      commandPrefix,
+      setPending: vi.fn(),
       refreshCandidates: vi.fn(async () => undefined),
       setActiveRun,
       setStatus,
@@ -73,6 +78,8 @@ describe('Writing Generation运行操作', () => {
         generation: { savePartial, discardPartial },
       }),
       projectId: 'project-a',
+      commandPrefix,
+      setPending: vi.fn(),
       refreshCandidates,
       setActiveRun,
       setStatus,

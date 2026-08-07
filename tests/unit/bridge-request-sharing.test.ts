@@ -107,4 +107,48 @@ describe('BridgeRequestCoordinator shared reads', () => {
     await Promise.resolve();
     expect(underlyingAborted).toBe(true);
   });
+
+  it('starts a fresh shared request when a new consumer arrives after every prior consumer aborts', async () => {
+    const coordinator = new BridgeRequestCoordinator();
+    const abort = new AbortController();
+    let calls = 0;
+    let markFirstStarted = () => undefined;
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    const operation = async ({ generation }: { readonly generation: number }) => {
+      calls += 1;
+      if (generation === 1) {
+        markFirstStarted();
+        return new Promise<{
+          readonly ok: true;
+          readonly requestId: string;
+          readonly data: { readonly checkpoints: number };
+        }>(() => undefined);
+      }
+      return {
+        ok: true as const,
+        requestId: 'shared-replacement',
+        data: { checkpoints: 3 },
+      };
+    };
+
+    const abandoned = coordinator.run('recovery.getOverview:replacement', operation, {
+      mode: 'share',
+      signal: abort.signal,
+    });
+    await firstStarted;
+    abort.abort('consumer-unmounted');
+
+    const replacement = coordinator.run('recovery.getOverview:replacement', operation, {
+      mode: 'share',
+    });
+    await expect(abandoned).resolves.toEqual({ state: 'stale', generation: 1 });
+    await expect(replacement).resolves.toMatchObject({
+      state: 'success',
+      generation: 2,
+      data: { checkpoints: 3 },
+    });
+    expect(calls).toBe(2);
+  });
 });

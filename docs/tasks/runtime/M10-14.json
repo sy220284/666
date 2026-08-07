@@ -18,6 +18,7 @@
     "docs/tasks/M10/M10-14_RECOVERY_BRIDGE_POST_AUDIT_HARDENING.md",
     "docs/tasks/runtime/M10-14.json",
     "docs/test-evidence/M10-14/",
+    "packages/core-service/src/checkpoint-aware-recovery.ts",
     "packages/core-service/src/provider-endpoint.ts",
     "packages/core-service/src/recovery/recovery-service.ts",
     "tests/integration/",

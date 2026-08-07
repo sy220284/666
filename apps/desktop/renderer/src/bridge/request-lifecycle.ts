@@ -202,10 +202,20 @@ export class BridgeRequestCoordinator {
     options: BridgeRequestOptions,
   ): Promise<BridgeRequestOutcome<T>> {
     const existing = this.#shared.get(requestKey);
-    if (existing) return this.#subscribeShared<T>(existing, options.signal);
+    if (existing && !existing.controller.signal.aborted) {
+      return this.#subscribeShared<T>(existing, options.signal);
+    }
+    const replacingAbandonedRequest = Boolean(existing);
+    if (existing) this.#shared.delete(requestKey);
 
     const controller = new AbortController();
-    const pending = this.#runImmediate(requestKey, operation, { signal: controller.signal });
+    const pending = this.#runImmediate(
+      requestKey,
+      operation,
+      replacingAbandonedRequest
+        ? { mode: 'replace', signal: controller.signal }
+        : { signal: controller.signal },
+    );
     const shared: SharedRequest = {
       generation: this.#active.get(requestKey)?.generation ?? 0,
       controller,

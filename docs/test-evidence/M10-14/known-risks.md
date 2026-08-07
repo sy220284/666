@@ -17,11 +17,15 @@
 5. **Recovery 错误交付契约（Low，已锁定）**  
    清理与 Daily Backup 的前置失败保持 Promise rejection；Base Recovery Overview 的数据库可用性错误保持既有同步传播语义。对应回归测试已锁定，后续重构不得无意改变调用契约。
 
+6. **Planning 状态完成顺序（Low，已锁定）**  
+   PlotNode 保存成功后，完成状态必须在等待 Outline 刷新前落地，避免旧操作在刷新结束后晚写状态并覆盖后续移动等新操作反馈。原真实桌面 E2E 已在不修改断言的情况下验证该竞态修复。
+
 ## 回退边界
 
 - 不回退 Recovery 清理 fail-closed；
 - 不恢复 `CheckpointAwareRecoveryService` 的平行 Daily Backup 状态机；
 - 不恢复 Bridge 跨消费者取消污染或已放弃共享请求复用；
 - 不放开 `FEC0::/10`；
+- 不恢复 Planning 旧保存状态晚写覆盖新操作反馈；
 - 不重新排除 `request-lifecycle.ts` 或降低 Coverage / Security / Performance / E2E 阈值；
 - 不通过 Migration、依赖升级或产品规格变化掩盖本任务问题。

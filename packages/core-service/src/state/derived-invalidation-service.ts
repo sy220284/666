@@ -120,12 +120,7 @@ export function invalidateDerived(
   const input = DerivedInvalidationInputSchema.parse(raw);
   authorOnly(input.authority);
   return context.workspace.writeProject(requestId, input.projectId, (connection) => {
-    assertFinalVersion(
-      connection,
-      input.projectId,
-      input.sourceChapterId,
-      input.sourceVersionId,
-    );
+    assertFinalVersion(connection, input.projectId, input.sourceChapterId, input.sourceVersionId);
     const semantic = [
       ...new Set(input.changeTypes.filter((type) => type !== 'prose')),
     ] as ChangeType[];

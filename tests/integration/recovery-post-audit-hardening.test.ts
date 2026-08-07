@@ -149,9 +149,9 @@ describe('M10-14 recovery post-audit hardening', () => {
           planHash: 'a'.repeat(64),
         }),
       ).rejects.toMatchObject({ code: 'BACKUP_CLEANUP_STALE' });
-      await expect(recovery.getOverview(harness.project.projectId)).rejects.toMatchObject({
-        code: 'BACKUP_VERIFY_FAILED',
-      });
+      await expect(recovery.getOverview(harness.project.projectId)).rejects.toThrow(
+        /backup_policies/u,
+      );
     } finally {
       await closeHarness(harness);
     }

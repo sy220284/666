@@ -25,9 +25,7 @@ export interface CandidateActionContext {
   readonly chapterId: string;
   readonly commandPrefix: string;
   readonly readOnly: boolean;
-  readonly refreshList: (
-    canCommit?: () => boolean,
-  ) => Promise<readonly CandidateSummary[]>;
+  readonly refreshList: (canCommit?: () => boolean) => Promise<readonly CandidateSummary[]>;
   readonly onDraftReplace: (draft: DraftDocument, message: string) => void;
   readonly setPreview: Dispatch<SetStateAction<CandidatePreview | null>>;
   readonly setUndoPreview: Dispatch<SetStateAction<CandidateUndoPreview | null>>;
@@ -116,10 +114,7 @@ export async function discardCandidate(
 export async function applyCandidate(
   input: CandidateActionContext & {
     readonly flush: () => Promise<boolean>;
-    readonly loadUndo: (
-      preview: CandidatePreview,
-      canCommit?: () => boolean,
-    ) => Promise<boolean>;
+    readonly loadUndo: (preview: CandidatePreview, canCommit?: () => boolean) => Promise<boolean>;
   },
   preview: CandidatePreview | null,
   selection: CandidateSelection | null,

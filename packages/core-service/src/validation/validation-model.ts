@@ -55,6 +55,11 @@ export interface BatchRow {
   readonly inputFingerprint: string | null;
   readonly issueCount: number | bigint;
   readonly createdAt: string;
+  readonly finalVersionId?: string | null;
+  readonly sourceContentHash?: string | null;
+  readonly promptId?: string | null;
+  readonly promptVersion?: number | bigint | null;
+  readonly constraintHash?: string | null;
 }
 
 export interface IssueRow {
@@ -173,6 +178,103 @@ export function finalVersion(
     );
   }
   return { version, blocks };
+}
+
+export function semanticInvalidationDigest(
+  database: DatabaseSync,
+  projectId: string,
+  chapterId: string,
+): string {
+  const rows = database
+    .prepare(
+      `SELECT id, source_chapter_id AS sourceChapterId,
+              source_version_id AS sourceVersionId, change_type AS changeType,
+              target_chapter_id AS targetChapterId, created_at AS createdAt
+         FROM derived_invalidations
+        WHERE project_id = ? AND scope = 'validation'
+          AND (target_chapter_id = ? OR target_chapter_id IS NULL)
+        ORDER BY created_at, id`,
+    )
+    .all(projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
+  return hash(JSON.stringify(rows));
+}
+
+export function sceneBeatValidationDigest(
+  database: DatabaseSync,
+  projectId: string,
+  chapterId: string,
+  sourceVersionId: string,
+): string {
+  const rows = database
+    .prepare(
+      `SELECT beat.id AS beatId, beat.title, beat.order_key AS orderKey,
+              beat.is_required AS isRequired,
+              version_block.logical_block_id AS logicalBlockId
+         FROM scene_beats beat
+         LEFT JOIN scene_beat_block_links link ON link.scene_beat_id = beat.id
+         LEFT JOIN draft_blocks draft_block ON draft_block.id = link.draft_block_id
+         LEFT JOIN version_blocks version_block
+           ON version_block.version_id = ?
+          AND version_block.logical_block_id = draft_block.logical_block_id
+        WHERE beat.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
+        ORDER BY beat.order_key, beat.id, version_block.logical_block_id`,
+    )
+    .all(sourceVersionId, projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
+  return hash(JSON.stringify(rows));
+}
+
+export function ruleValidationFingerprint(
+  database: DatabaseSync,
+  resolved: { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] },
+  ruleVersion: string,
+  configVersion: string,
+  config: unknown,
+): string {
+  return hash(
+    JSON.stringify({
+      version: resolved.version.contentHash,
+      blocks: resolved.blocks.map((block) => [block.logicalBlockId, block.contentHash]),
+      sceneBeatGraph: sceneBeatValidationDigest(
+        database,
+        resolved.version.projectId,
+        resolved.version.chapterId,
+        resolved.version.versionId,
+      ),
+      semanticInvalidations: semanticInvalidationDigest(
+        database,
+        resolved.version.projectId,
+        resolved.version.chapterId,
+      ),
+      ruleVersion,
+      configVersion,
+      config,
+    }),
+  );
+}
+
+export function aiValidationFingerprint(
+  database: DatabaseSync,
+  resolved: { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] },
+  identity: {
+    readonly constraintHash: string;
+    readonly promptId: string;
+    readonly promptVersion: number;
+  },
+): string {
+  return hash(
+    JSON.stringify({
+      version: resolved.version.contentHash,
+      blocks: resolved.blocks.map((block) => [block.logicalBlockId, block.contentHash]),
+      constraintHash: identity.constraintHash,
+      promptId: identity.promptId,
+      promptVersion: identity.promptVersion,
+      semanticInvalidations: semanticInvalidationDigest(
+        database,
+        resolved.version.projectId,
+        resolved.version.chapterId,
+      ),
+    }),
+  );
 }
 
 export function validateScopedIds(

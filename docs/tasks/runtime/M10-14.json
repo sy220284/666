@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-14",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-14_RECOVERY_BRIDGE_POST_AUDIT_HARDENING.md",
   "priority": "P1",
   "startedAt": "2026-08-07T09:59:00+08:00",
+  "implementedAt": "2026-08-07T10:20:00+08:00",
   "dependencies": ["M10-13"],
   "baseline": {
     "main": "d394d89766d2e85889c81f9599378e958681f3c0",

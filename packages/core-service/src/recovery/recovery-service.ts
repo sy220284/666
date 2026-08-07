@@ -54,13 +54,11 @@ export class RecoveryService {
   readonly #restore: BackupRestoreOperations;
   readonly #versionExport: VersionExportOperations;
   readonly #backupRootDirectory: string;
-  readonly #now: () => Date;
   readonly #commands = new Map<string, RecoveryCommandEntry>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     this.#workspace = workspace;
     this.#backupRootDirectory = path.resolve(options.backupRootDirectory);
-    this.#now = () => options.clock?.now() ?? new Date();
     const runtime = createRecoveryRuntime(workspace, options);
     this.#create = new BackupCreateOperations(runtime);
     this.#cleanup = new IdempotentBackupCleanupOperations(runtime);
@@ -76,11 +74,9 @@ export class RecoveryService {
 
   async createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
     const input = RecoveryDailyBackupInputSchema.parse(raw);
-    const day = this.#now().toISOString().slice(0, 10);
     const dailyKey = stableJson({
       backupRootDirectory: this.#backupRootDirectory,
       projectId: input.projectId,
-      day,
     });
     const existing = activeDailyBackups.get(dailyKey);
     if (existing) return existing;

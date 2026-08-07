@@ -7,7 +7,7 @@
 > 目标分支：`main`  
 > 来源 PR：`#323`  
 > 主线基线：`d394d89766d2e85889c81f9599378e958681f3c0`  
-> 实施提交：`30e167839045020a2ec32802d7f57d1717f0ee14`
+> 实施提交：`0fff980f7d682bd8a4d40e9b868454aac7017f77`
 
 ## 目标
 
@@ -27,23 +27,25 @@
 - 在公共入口修复状态所有权和 fail-closed，不复制平行业务逻辑；
 - Daily Backup 复用桌面单实例不变量，在 Recovery Service 层按备份根目录、项目、日期共享在途操作；底层文件锁继续承担崩溃残留协调；
 - `share` 使用“共享底层请求 + 消费者独立取消”，只有最后一个消费者退出时才取消底层等待；全员退出后的同 tick 新订阅必须启动新代次，不复用已放弃请求；
+- Recovery 清理和 Daily Backup 继续保持 Promise rejection 契约，前置校验不得把异步 API 退化为同步抛错；
 - Recovery Overview 增加真实明细预检，同时保留既有原始数据库可用性错误传播契约；
 - 不降低 Coverage 阈值，不新增排除，不增加生产依赖，不修改 Migration 或锁文件。
 
 ## 完成结果
 
 - Recovery 清理入口在读取/解析持久化策略失败时 fail-closed，预览和执行均拒绝继续；
+- Recovery 清理与 Daily Backup 的新增前置校验保持异步 Promise rejection 语义，不改变既有调用契约；
 - Recovery Overview 在可写数据库下预检真实失败记录、版本与策略查询，详细读取故障不再伪装为空数据，并继续透传既有数据库可用性错误；
 - Daily Backup 在 Recovery 公共服务层按备份根目录、项目和日期共享在途操作，两个服务实例不会重复启动同日真实备份；
 - Bridge `share` 改为共享底层请求、消费者独立取消，单个消费者退出不误杀其他调用方，最后一个消费者退出后中止底层等待；全员取消后的立即重订阅会替换已放弃请求并进入新代次；
 - Provider IPv6 分类阻断 `FEC0::/10` 已废弃 Site-Local 地址；
 - `request-lifecycle.ts` 从 Coverage 排除中移除，并增加共享读取取消与立即重订阅行为测试；
 - 增加 Recovery 长备份跨实例共享、策略读取失败关闭和 Provider IPv6 安全回归测试；
-- Ready 首轮 Unit 暴露 Recovery Overview 错误包装回归后，已恢复 M10-13 锁定的原始错误传播契约并保留新增预检。
+- Ready 验证先后暴露 Recovery Overview 错误包装回归和同步抛错回归，均已回到既有调用契约，同时保留新增 fail-closed 与真实明细预检。
 
 ## 验收范围
 
-- Recovery 清理在保留策略表读取或解析失败时拒绝预览与执行；
+- Recovery 清理在保留策略表读取或解析失败时以 Promise rejection 拒绝预览与执行；
 - Recovery Overview 的可写数据库详细查询失败不得伪装为空数据；
 - 两个 Recovery Service 实例同时发起同日备份只执行一次真实备份；
 - Bridge `share` 两个消费者共享一次调用，单个消费者取消不影响另一个；全部消费者取消时底层请求失效；全员取消后立即重订阅启动新请求；

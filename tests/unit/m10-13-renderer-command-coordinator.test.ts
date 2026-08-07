@@ -116,7 +116,10 @@ describe('RendererCommandCoordinator', () => {
     const secondGate = deferred<void>();
 
     const first = coordinator.run({ key: 'candidate-preview', operation: () => firstGate.promise });
-    const second = coordinator.run({ key: 'candidate-mutation', operation: () => secondGate.promise });
+    const second = coordinator.run({
+      key: 'candidate-mutation',
+      operation: () => secondGate.promise,
+    });
     expect(pending).toEqual([true]);
 
     firstGate.resolve();

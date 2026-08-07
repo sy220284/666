@@ -154,7 +154,7 @@ describe('M10-15 constraint authority policy', () => {
     expect(sources.some((source) => source.entityId === unreferenced.id)).toBe(false);
   });
 
-  it('projects future foreshadowing to upcoming and binds temporal provenance into the hash', async () => {
+  it('projects a target-relevant future foreshadowing to upcoming and binds temporal provenance into the hash', async () => {
     const value = await harness();
     const seeded = await seedContinuity(value);
     const constraints = new HardenedConstraintPackageService(value.workspace);
@@ -164,7 +164,7 @@ describe('M10-15 constraint authority policy', () => {
       foreshadowingId: null,
       title: '未来才种下的线索',
       description: '同一内容，只改变故事时间来源',
-      revealFromChapterId: null,
+      revealFromChapterId: seeded.chapter1.id,
       revealByChapterId: null,
       chapterLinks: [],
       relations: [],
@@ -179,8 +179,8 @@ describe('M10-15 constraint authority policy', () => {
     });
     const beforeSource = before.sections.P2.find(
       (source) => source.sourceType === 'foreshadowing' && source.sourceId === item.id,
-    )!;
-    expect(beforeSource.temporalStatus).toBe('current');
+    );
+    expect(beforeSource?.temporalStatus).toBe('current');
 
     catalog = await value.narrative.saveForeshadowing(randomUUID(), {
       projectId: seeded.project.projectId,
@@ -203,9 +203,11 @@ describe('M10-15 constraint authority policy', () => {
     });
     const afterSource = after.sections.P2.find(
       (source) => source.sourceType === 'foreshadowing' && source.sourceId === item.id,
-    )!;
-    expect(afterSource.temporalStatus).toBe('upcoming');
-    expect(afterSource.contentHash).toBe(beforeSource.contentHash);
+    );
+    expect(afterSource?.temporalStatus).toBe('upcoming');
+    expect(beforeSource).toBeDefined();
+    expect(afterSource).toBeDefined();
+    expect(afterSource?.contentHash).toBe(beforeSource?.contentHash);
     expect(after.constraintHash).not.toBe(before.constraintHash);
     expect(serializeConstraintPackage(after)).toContain('[foreshadowing][upcoming]');
     expect(serializeConstraintPackage(after)).toContain('temporalStatus: upcoming');

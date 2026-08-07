@@ -325,9 +325,7 @@ describe('M4-04 Provider state extraction and validation', () => {
         chapterId: seeded.chapter1.id,
         includeClosed: true,
       });
-      expect(
-        semanticStale.batches.find((batch) => batch.batchId === ai.batchId),
-      ).toMatchObject({
+      expect(semanticStale.batches.find((batch) => batch.batchId === ai.batchId)).toMatchObject({
         anchorFreshness: 'current',
         semanticFreshness: 'stale',
       });

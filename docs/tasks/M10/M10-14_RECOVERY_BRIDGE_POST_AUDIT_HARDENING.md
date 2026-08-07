@@ -7,7 +7,7 @@
 > 目标分支：`main`  
 > 来源 PR：`#323`  
 > 主线基线：`d394d89766d2e85889c81f9599378e958681f3c0`  
-> 实施提交：`10757c2c25a377f902276d6bbaa13d3db670c5af`
+> 实施提交：`68e6df009be28c0607e8c5dde5916a7332031e4d`
 
 ## 目标
 
@@ -27,17 +27,19 @@
 - 在公共入口修复状态所有权和 fail-closed，不复制平行业务逻辑；
 - Daily Backup 复用桌面单实例不变量，在 Recovery Service 层按备份根目录、项目、日期共享在途操作；底层文件锁继续承担崩溃残留协调；
 - `share` 使用“共享底层请求 + 消费者独立取消”，只有最后一个消费者退出时才取消底层等待；
+- Recovery Overview 增加真实明细预检，同时保留既有原始数据库可用性错误传播契约；
 - 不降低 Coverage 阈值，不新增排除，不增加生产依赖，不修改 Migration 或锁文件。
 
 ## 完成结果
 
 - Recovery 清理入口在读取/解析持久化策略失败时 fail-closed，预览和执行均拒绝继续；
-- Recovery Overview 在可写数据库下预检真实失败记录、版本与策略查询，详细读取故障不再伪装为空数据；
+- Recovery Overview 在可写数据库下预检真实失败记录、版本与策略查询，详细读取故障不再伪装为空数据，并继续透传既有数据库可用性错误；
 - Daily Backup 在 Recovery 公共服务层按备份根目录、项目和日期共享在途操作，两个服务实例不会重复启动同日真实备份；
 - Bridge `share` 改为共享底层请求、消费者独立取消，单个消费者退出不误杀其他调用方，最后一个消费者退出后中止底层等待；
 - Provider IPv6 分类阻断 `FEC0::/10` 已废弃 Site-Local 地址；
 - `request-lifecycle.ts` 从 Coverage 排除中移除，并增加共享读取取消行为测试；
-- 增加 Recovery 长备份跨实例共享、策略读取失败关闭和 Provider IPv6 安全回归测试。
+- 增加 Recovery 长备份跨实例共享、策略读取失败关闭和 Provider IPv6 安全回归测试；
+- Ready 首轮 Unit 暴露 Recovery Overview 错误包装回归后，已恢复 M10-13 锁定的原始错误传播契约并保留新增预检。
 
 ## 验收范围
 

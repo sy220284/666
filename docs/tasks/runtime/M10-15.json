@@ -23,7 +23,9 @@
     "packages/core-service/src/constraint-package-authority.ts",
     "packages/prompts/src/constraint-package-serializer.ts",
     "tests/integration/constraint-package-authority.test.ts",
-    "tests/unit/m10-15-generation-preflight.test.ts"
+    "tests/unit/m10-12-generation-start-pending.test.ts",
+    "tests/unit/m10-15-generation-preflight.test.ts",
+    "tests/unit/writing-generation-start.test.ts"
   ],
   "forbiddenPaths": [
     "migrations/app/",

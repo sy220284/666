@@ -23,4 +23,88 @@ describe('BridgeRequestCoordinator shared reads', () => {
     await expect(first).resolves.toMatchObject({ state: 'success', data: { checkpoints: 1 } });
     await expect(second).resolves.toMatchObject({ state: 'success', data: { checkpoints: 1 } });
   });
+
+  it('detaches one aborted consumer without cancelling the shared operation', async () => {
+    const coordinator = new BridgeRequestCoordinator();
+    const firstAbort = new AbortController();
+    const secondAbort = new AbortController();
+    let calls = 0;
+    let underlyingAborted = false;
+    let release = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const operation = async ({ signal }: { readonly signal: AbortSignal }) => {
+      calls += 1;
+      signal.addEventListener('abort', () => {
+        underlyingAborted = true;
+      });
+      await gate;
+      return { ok: true as const, requestId: 'shared-detach', data: { checkpoints: 2 } };
+    };
+
+    const first = coordinator.run('recovery.getOverview:detached', operation, {
+      mode: 'share',
+      signal: firstAbort.signal,
+    });
+    const second = coordinator.run('recovery.getOverview:detached', operation, {
+      mode: 'share',
+      signal: secondAbort.signal,
+    });
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    firstAbort.abort('consumer-unmounted');
+    await expect(first).resolves.toMatchObject({ state: 'stale' });
+    expect(underlyingAborted).toBe(false);
+
+    release();
+    await expect(second).resolves.toMatchObject({
+      state: 'success',
+      data: { checkpoints: 2 },
+    });
+    expect(underlyingAborted).toBe(false);
+  });
+
+  it('cancels the shared operation after every consumer detaches', async () => {
+    const coordinator = new BridgeRequestCoordinator();
+    const firstAbort = new AbortController();
+    const secondAbort = new AbortController();
+    let calls = 0;
+    let underlyingAborted = false;
+    const operation = async ({ signal }: { readonly signal: AbortSignal }) => {
+      calls += 1;
+      await new Promise<void>((resolve) => {
+        signal.addEventListener(
+          'abort',
+          () => {
+            underlyingAborted = true;
+            resolve();
+          },
+          { once: true },
+        );
+      });
+      return { ok: true as const, requestId: 'shared-cancelled', data: { checkpoints: 0 } };
+    };
+
+    const first = coordinator.run('recovery.getOverview:cancelled', operation, {
+      mode: 'share',
+      signal: firstAbort.signal,
+    });
+    const second = coordinator.run('recovery.getOverview:cancelled', operation, {
+      mode: 'share',
+      signal: secondAbort.signal,
+    });
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    firstAbort.abort('first-unmounted');
+    await expect(first).resolves.toMatchObject({ state: 'stale' });
+    expect(underlyingAborted).toBe(false);
+
+    secondAbort.abort('second-unmounted');
+    await expect(second).resolves.toMatchObject({ state: 'stale' });
+    await Promise.resolve();
+    expect(underlyingAborted).toBe(true);
+  });
 });

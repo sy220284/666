@@ -232,7 +232,7 @@ export class StructureTrashOperationService {
     ) {
       throw new ProjectStructureError(
         'STRUCTURE_CONFLICT',
-        'Permanent-delete impact, confirmation, or chapter references changed.',
+        'Permanent-delete impact or confirmation changed, or chapter references block deletion.',
       );
     }
     return preview;
@@ -253,7 +253,7 @@ export class StructureTrashOperationService {
       ) {
         throw new ProjectStructureError(
           'STRUCTURE_CONFLICT',
-          'Permanent-delete impact, confirmation, or chapter references changed.',
+          'Permanent-delete impact or confirmation changed, or chapter references block deletion.',
         );
       }
       const target = trashTarget(database, input);

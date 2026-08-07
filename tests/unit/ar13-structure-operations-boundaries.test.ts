@@ -44,9 +44,14 @@ describe('AR-13 Structure Operations boundaries', () => {
     expect(service).toContain('StructureTrashOperationService');
   });
 
-  it('keeps each module within the frozen AR-13 budget', async () => {
-    const budgets = [240, 320, 400, 300, 150] as const;
-    const sources = await Promise.all(modules.map((file) => readFile(file, 'utf8')));
-    sources.forEach((source, index) => expect(lines(source)).toBeLessThanOrEqual(budgets[index]));
+  it('keeps cohesive modules without restoring a file-length gate', async () => {
+    const [sources, governance] = await Promise.all([
+      Promise.all(modules.map((file) => readFile(file, 'utf8'))),
+      readFile('docs/architecture/CODE_QUALITY_GOVERNANCE.md', 'utf8'),
+    ]);
+
+    expect(sources.every((source) => source.trim().length > 0)).toBe(true);
+    expect(governance).toContain('文件行数、函数数量和测试数量只用于观察');
+    expect(governance).toContain('禁止为了满足视觉长度');
   });
 });

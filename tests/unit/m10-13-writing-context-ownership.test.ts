@@ -53,9 +53,7 @@ describe('M10-13 Writing上下文所有权', () => {
         continuation({ chapterId: 'chapter-b', draftId: 'draft-b', panel: 'editor' }),
       ),
     ).toBe(false);
-    expect(
-      tracker.isCommitted(continuation({ draftId: 'draft-c', panel: 'editor' })),
-    ).toBe(false);
+    expect(tracker.isCommitted(continuation({ draftId: 'draft-c', panel: 'editor' }))).toBe(false);
   });
 
   it('续写位置只在项目章节Draft和revision仍匹配时提交Tracker', () => {
@@ -133,8 +131,13 @@ describe('M10-13 Writing上下文所有权', () => {
     expect(chapterSessionSource).toContain('const sessionGeneration = useRef(0);');
     expect(chapterSessionSource).toContain('sessionGeneration.current += 1;');
     expect(chapterSessionSource).toContain('if (!isCurrentSession()) return;');
-    const mountIndex = chapterSessionSource.indexOf('input.mountEditor(outcome.data, nextChapter);');
-    const guardIndex = chapterSessionSource.lastIndexOf('if (!isCurrentSession()) return;', mountIndex);
+    const mountIndex = chapterSessionSource.indexOf(
+      'input.mountEditor(outcome.data, nextChapter);',
+    );
+    const guardIndex = chapterSessionSource.lastIndexOf(
+      'if (!isCurrentSession()) return;',
+      mountIndex,
+    );
     expect(guardIndex).toBeGreaterThan(-1);
     expect(mountIndex).toBeGreaterThan(guardIndex);
   });

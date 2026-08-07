@@ -34,6 +34,7 @@ export function subscribeGenerationTask({
   };
 
   const unsubscribe = bridge.task.subscribe((update) => {
+    if (disposed) return;
     const taskId = update.kind === 'event' ? update.event.taskId : update.snapshot.taskId;
     if (taskId !== activeTaskId) return;
     if (update.kind === 'event') {

@@ -1,14 +1,19 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import type {
   ProviderConnectionTestResult,
   ProviderEditableConfig,
-  ProviderEndpointScope,
   ProviderSummary,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { RendererCommandCoordinator } from '../../runtime/command-coordinator.js';
+import {
+  providerScopeLabel,
+  refreshProviderSettings,
+  runProviderSettingsCommand,
+} from '../provider/provider-settings-controller.js';
 import {
   applyProviderPreset,
   PROVIDER_PRESETS,
@@ -41,23 +46,24 @@ export function ProviderSettings({
   const [message, setMessage] = useState('正在读取本机AI连接…');
   const [deleteArmed, setDeleteArmed] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderConnectionTestResult | null>(null);
-
-  const refresh = async (): Promise<void> => {
-    const outcome = await bridge.providers.list({ mode: 'replace' });
-    if (outcome.state === 'success') {
-      setProviders(outcome.data.providers);
-      onProvidersChanged(outcome.data.providers);
-      setMessage(
-        outcome.data.providers.length ? 'AI连接已加载。' : '尚未配置AI连接；离线写作功能不受影响。',
-      );
-    } else if (outcome.state === 'failure') {
-      setMessage(authorErrorSummary(outcome.error));
-    }
-  };
+  const commandCoordinator = useRef(new RendererCommandCoordinator()).current;
+  const refreshInput = useMemo(
+    () => ({ bridge, setProviders, onProvidersChanged, setMessage }),
+    [bridge, onProvidersChanged],
+  );
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    void runProviderSettingsCommand({
+      coordinator: commandCoordinator,
+      pendingKey: 'load',
+      setPending,
+      setMessage,
+      operation: (scope) => refreshProviderSettings(refreshInput, scope),
+    });
+    return () => {
+      commandCoordinator.invalidateAll();
+    };
+  }, [commandCoordinator, refreshInput]);
 
   const choosePreset = (presetId: ProviderPresetId): void => {
     setDraft(applyProviderPreset(presetId));
@@ -90,35 +96,43 @@ export function ProviderSettings({
 
   const save = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    setPending('save');
-    setTestResult(null);
-    const outcome = await bridge.providers.save({
-      config: draft,
-      credential: credential
-        ? { action: 'replace', credential }
-        : removeCredential
-          ? { action: 'remove' }
-          : { action: 'preserve' },
+    await runProviderSettingsCommand({
+      coordinator: commandCoordinator,
+      pendingKey: 'save',
+      setPending,
+      setMessage,
+      operation: async (scope) => {
+        setTestResult(null);
+        const outcome = await bridge.providers.save({
+          config: draft,
+          credential: credential
+            ? { action: 'replace', credential }
+            : removeCredential
+              ? { action: 'remove' }
+              : { action: 'preserve' },
+        });
+        if (!scope.isCurrent()) return;
+        setCredential('');
+        setRemoveCredential(false);
+        if (outcome.state === 'success') {
+          onProviderInvalidated(outcome.data.id);
+          setDraft({
+            id: outcome.data.id,
+            name: outcome.data.name,
+            protocol: outcome.data.protocol,
+            baseUrl: outcome.data.baseUrl,
+            model: outcome.data.model,
+            timeoutMs: outcome.data.timeoutMs,
+            options: outcome.data.options,
+          });
+          await refreshProviderSettings(refreshInput, scope);
+          if (scope.isCurrent())
+            setMessage(`已保存“${outcome.data.name}”。实际密钥仅保存在系统安全存储。`);
+        } else if (outcome.state === 'failure') {
+          setMessage(authorErrorSummary(outcome.error));
+        }
+      },
     });
-    setPending(null);
-    setCredential('');
-    setRemoveCredential(false);
-    if (outcome.state === 'success') {
-      onProviderInvalidated(outcome.data.id);
-      setDraft({
-        id: outcome.data.id,
-        name: outcome.data.name,
-        protocol: outcome.data.protocol,
-        baseUrl: outcome.data.baseUrl,
-        model: outcome.data.model,
-        timeoutMs: outcome.data.timeoutMs,
-        options: outcome.data.options,
-      });
-      await refresh();
-      setMessage(`已保存“${outcome.data.name}”。实际密钥仅保存在系统安全存储。`);
-    } else if (outcome.state === 'failure') {
-      setMessage(authorErrorSummary(outcome.error));
-    }
   };
 
   const remove = async (provider: ProviderSummary): Promise<void> => {
@@ -127,35 +141,52 @@ export function ProviderSettings({
       setMessage(`再次点击删除“${provider.name}”以确认。`);
       return;
     }
-    setPending(`remove:${provider.id}`);
-    const outcome = await bridge.providers.remove(provider.id);
-    setPending(null);
-    setDeleteArmed(null);
-    if (outcome.state === 'success') {
-      onProviderInvalidated(provider.id);
-      if (draft.id === provider.id) reset();
-      await refresh();
-      setMessage(
-        outcome.data.removed ? `已删除“${provider.name}”及其密钥引用。` : '该AI连接已不存在。',
-      );
-    } else if (outcome.state === 'failure') {
-      setMessage(authorErrorSummary(outcome.error));
-    }
+    await runProviderSettingsCommand({
+      coordinator: commandCoordinator,
+      pendingKey: `remove:${provider.id}`,
+      setPending,
+      setMessage,
+      operation: async (scope) => {
+        const outcome = await bridge.providers.remove(provider.id);
+        if (!scope.isCurrent()) return;
+        setDeleteArmed(null);
+        if (outcome.state === 'success') {
+          onProviderInvalidated(provider.id);
+          if (draft.id === provider.id) reset();
+          await refreshProviderSettings(refreshInput, scope);
+          if (scope.isCurrent())
+            setMessage(
+              outcome.data.removed
+                ? `已删除“${provider.name}”及其密钥引用。`
+                : '该AI连接已不存在。',
+            );
+        } else if (outcome.state === 'failure') {
+          setMessage(authorErrorSummary(outcome.error));
+        }
+      },
+    });
   };
 
   const test = async (provider: ProviderSummary): Promise<void> => {
-    setPending(`test:${provider.id}`);
-    setTestResult(null);
-    setMessage(`正在测试“${provider.name}”…`);
-    const outcome = await bridge.providers.testConnection(provider.id, { mode: 'replace' });
-    setPending(null);
-    if (outcome.state === 'success') {
-      setTestResult(outcome.data);
-      onProviderConnectionVerified(outcome.data);
-      setMessage(`连接成功：${outcome.data.actualModel}，${outcome.data.latencyMs}毫秒。`);
-    } else if (outcome.state === 'failure') {
-      setMessage(authorErrorSummary(outcome.error));
-    }
+    await runProviderSettingsCommand({
+      coordinator: commandCoordinator,
+      pendingKey: `test:${provider.id}`,
+      setPending,
+      setMessage,
+      operation: async (scope) => {
+        setTestResult(null);
+        setMessage(`正在测试“${provider.name}”…`);
+        const outcome = await bridge.providers.testConnection(provider.id, { mode: 'replace' });
+        if (!scope.isCurrent()) return;
+        if (outcome.state === 'success') {
+          setTestResult(outcome.data);
+          onProviderConnectionVerified(outcome.data);
+          setMessage(`连接成功：${outcome.data.actualModel}，${outcome.data.latencyMs}毫秒。`);
+        } else if (outcome.state === 'failure') {
+          setMessage(authorErrorSummary(outcome.error));
+        }
+      },
+    });
   };
 
   const presetHint = activePreset
@@ -313,7 +344,7 @@ export function ProviderSettings({
                 {providerProtocolLabel(provider.protocol)} · {provider.model}
               </p>
               <p>
-                {scopeLabel(provider.endpoint.scope)} ·{' '}
+                {providerScopeLabel(provider.endpoint.scope)} ·{' '}
                 {provider.endpoint.secureTransport ? '加密连接' : '未加密连接'}
               </p>
               <p>{provider.credentialConfigured ? '已配置密钥' : '未配置密钥'}</p>
@@ -360,7 +391,7 @@ export function ProviderSettings({
         <dl className="react-diagnostic-list" data-provider-test-result>
           <div>
             <dt>连接范围</dt>
-            <dd>{scopeLabel(testResult.endpoint.scope)}</dd>
+            <dd>{providerScopeLabel(testResult.endpoint.scope)}</dd>
           </div>
           <div>
             <dt>模型列表</dt>
@@ -388,8 +419,4 @@ export function ProviderSettings({
       ) : null}
     </section>
   );
-}
-
-function scopeLabel(scope: ProviderEndpointScope): string {
-  return scope === 'loopback' ? '当前设备' : scope === 'lan' ? '局域网' : '外部网络';
 }

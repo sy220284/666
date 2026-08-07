@@ -28,6 +28,22 @@ interface TrashTarget {
   readonly volumeIds: readonly string[];
 }
 
+type DeleteAction = 'CASCADE' | 'RESTRICT' | 'NO ACTION' | 'SET NULL' | 'SET DEFAULT';
+
+interface ChapterReferenceBlocker {
+  readonly kind: 'chapter-reference';
+  readonly count: number;
+  readonly source: string;
+  readonly deleteAction: DeleteAction;
+}
+
+function safeIdentifier(value: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(value)) {
+    throw new ProjectStructureError('STRUCTURE_CONFLICT', 'An unsafe schema identifier was found.');
+  }
+  return `"${value}"`;
+}
+
 function trashTarget(database: DatabaseSync, input: TrashPermanentDeletePreviewInput): TrashTarget {
   const row = database
     .prepare(
@@ -83,7 +99,10 @@ function countWhere(
 ): number {
   if (values.length === 0) return 0;
   const row = database
-    .prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE ${column} IN (${placeholders(values)})`)
+    .prepare(
+      `SELECT COUNT(*) AS count FROM ${safeIdentifier(table)}
+        WHERE ${safeIdentifier(column)} IN (${placeholders(values)})`,
+    )
     .get(...values) as { count: number | bigint };
   return numberValue(row.count);
 }
@@ -108,6 +127,79 @@ function deleteImpact(database: DatabaseSync, target: TrashTarget): TrashDeleteI
     candidates: countWhere(database, 'candidates', 'chapter_id', target.chapterIds),
   };
 }
+
+function chapterReferenceBlockers(
+  database: DatabaseSync,
+  chapterIds: readonly string[],
+): ChapterReferenceBlocker[] {
+  if (chapterIds.length === 0) return [];
+  const controlled = new Set([
+    'drafts.chapter_id',
+    'versions.chapter_id',
+    'candidates.chapter_id',
+    'replace_plan_items.chapter_id',
+    'writing_sessions.chapter_id',
+  ]);
+  const tables = (
+    database
+      .prepare(
+        `SELECT name FROM sqlite_master
+          WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+          ORDER BY name`,
+      )
+      .all() as { name: string }[]
+  ).map((row) => row.name);
+  const blockers: ChapterReferenceBlocker[] = [];
+  for (const table of tables) {
+    const tableIdentifier = safeIdentifier(table);
+    const foreignKeys = database.prepare(`PRAGMA foreign_key_list(${tableIdentifier})`).all() as {
+      table: string;
+      from: string;
+      on_delete: string;
+    }[];
+    for (const foreignKey of foreignKeys) {
+      if (foreignKey.table !== 'chapters') continue;
+      const source = `${table}.${foreignKey.from}`;
+      if (controlled.has(source)) continue;
+      const count = countWhere(database, table, foreignKey.from, chapterIds);
+      if (count === 0) continue;
+      const deleteAction = foreignKey.on_delete.toUpperCase() as DeleteAction;
+      if (!['CASCADE', 'RESTRICT', 'NO ACTION', 'SET NULL', 'SET DEFAULT'].includes(deleteAction)) {
+        throw new ProjectStructureError(
+          'STRUCTURE_CONFLICT',
+          'An unknown foreign-key action was found.',
+        );
+      }
+      blockers.push({ kind: 'chapter-reference', count, source, deleteAction });
+    }
+  }
+  return blockers.sort((left, right) => left.source.localeCompare(right.source, 'en'));
+}
+
+function blockersFor(database: DatabaseSync, target: TrashTarget, impact: TrashDeleteImpact) {
+  return [
+    ...(impact.versions > 0 ? [{ kind: 'version' as const, count: impact.versions }] : []),
+    ...(impact.candidates > 0 ? [{ kind: 'candidate' as const, count: impact.candidates }] : []),
+    ...chapterReferenceBlockers(database, target.chapterIds),
+  ];
+}
+
+function previewWithDatabase(
+  database: DatabaseSync,
+  input: TrashPermanentDeletePreviewInput,
+): TrashPermanentDeletePreview {
+  const target = trashTarget(database, input);
+  const impact = deleteImpact(database, target);
+  const blockers = blockersFor(database, target, impact);
+  return TrashPermanentDeletePreviewSchema.parse({
+    entry: target.entry,
+    impact,
+    blockers,
+    canDelete: blockers.length === 0,
+    planHash: planHash({ entry: target.entry, impact, blockers }),
+  });
+}
+
 export class StructureTrashOperationService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #faultInjector: StructureOperationServiceOptions['faultInjector'];
@@ -122,45 +214,25 @@ export class StructureTrashOperationService {
 
   previewPermanentDelete(raw: TrashPermanentDeletePreviewInput): TrashPermanentDeletePreview {
     const input = TrashPermanentDeletePreviewInputSchema.parse(raw);
-    return this.#workspace.readProject(input.projectId, (database) => {
-      const target = trashTarget(database, input);
-      const impact = deleteImpact(database, target);
-      const blockers = [
-        ...(impact.versions > 0 ? [{ kind: 'version' as const, count: impact.versions }] : []),
-        ...(impact.candidates > 0
-          ? [{ kind: 'candidate' as const, count: impact.candidates }]
-          : []),
-      ];
-      return TrashPermanentDeletePreviewSchema.parse({
-        entry: target.entry,
-        impact,
-        blockers,
-        canDelete: blockers.length === 0,
-        planHash: planHash({ entry: target.entry, impact, blockers }),
-      });
-    });
+    return this.#workspace.readProject(input.projectId, (database) =>
+      previewWithDatabase(database, input),
+    );
   }
 
-  assertPermanentDeleteExecutable(input: TrashPermanentDeleteInput): TrashPermanentDeletePreview {
-    const parsed = TrashPermanentDeleteInputSchema.parse(input);
-    const { planHash: expectedPlanHash, confirmationTitle, ...previewInput } = parsed;
-    const preview = this.previewPermanentDelete(previewInput);
-    if (preview.planHash !== expectedPlanHash) {
+  assertPermanentDeleteExecutable(raw: TrashPermanentDeleteInput): TrashPermanentDeletePreview {
+    const input = TrashPermanentDeleteInputSchema.parse(raw);
+    const preview = this.previewPermanentDelete({
+      projectId: input.projectId,
+      trashEntryId: input.trashEntryId,
+    });
+    if (
+      preview.planHash !== input.planHash ||
+      preview.entry.title !== input.confirmationTitle ||
+      !preview.canDelete
+    ) {
       throw new ProjectStructureError(
         'STRUCTURE_CONFLICT',
-        'The permanent-delete impact changed after preview.',
-      );
-    }
-    if (preview.entry.title !== confirmationTitle) {
-      throw new ProjectStructureError(
-        'STRUCTURE_CONFLICT',
-        'The permanent-delete confirmation title does not match.',
-      );
-    }
-    if (!preview.canDelete) {
-      throw new ProjectStructureError(
-        'STRUCTURE_CONFLICT',
-        'Immutable Version or Candidate references block permanent deletion.',
+        'Permanent-delete impact or confirmation title changed, or chapter references block deletion.',
       );
     }
     return preview;
@@ -173,27 +245,18 @@ export class StructureTrashOperationService {
   ): Promise<TrashPermanentDeleteResult> {
     const input = TrashPermanentDeleteInputSchema.parse(raw);
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
-      const target = trashTarget(database, input);
-      const impact = deleteImpact(database, target);
-      const blockers = impact.versions + impact.candidates;
-      const currentHash = planHash({
-        entry: target.entry,
-        impact,
-        blockers: [
-          ...(impact.versions ? [{ kind: 'version', count: impact.versions }] : []),
-          ...(impact.candidates ? [{ kind: 'candidate', count: impact.candidates }] : []),
-        ],
-      });
+      const preview = previewWithDatabase(database, input);
       if (
-        currentHash !== input.planHash ||
-        target.entry.title !== input.confirmationTitle ||
-        blockers > 0
+        preview.planHash !== input.planHash ||
+        preview.entry.title !== input.confirmationTitle ||
+        !preview.canDelete
       ) {
         throw new ProjectStructureError(
           'STRUCTURE_CONFLICT',
-          'Permanent-delete impact, confirmation, or references changed.',
+          'Permanent-delete impact or confirmation title changed, or chapter references block deletion.',
         );
       }
+      const target = trashTarget(database, input);
       const draftIds =
         target.chapterIds.length === 0
           ? []
@@ -246,7 +309,7 @@ export class StructureTrashOperationService {
         deleted: true,
         trashEntryId: input.trashEntryId,
         backupId,
-        impact,
+        impact: preview.impact,
       });
     });
   }

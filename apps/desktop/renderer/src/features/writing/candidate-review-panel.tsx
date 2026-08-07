@@ -15,6 +15,7 @@ import type {
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { rendererCommandCoordinatorFor } from '../../runtime/command-coordinator.js';
 import { refreshCandidateGenerationRun } from './candidate-generation-refresh.js';
 import { CandidateReviewDisplay } from './candidate-review-display.js';
 import {
@@ -110,12 +111,18 @@ export function CandidateReviewPanel({
   const [skeletonEndingHook, setSkeletonEndingHook] = useState('');
   const [skeletonTendency, setSkeletonTendency] = useState('');
   const [lastGenerationIntent, setLastGenerationIntent] = useState<GenerationIntent | null>(null);
+  const commandPrefix = useMemo(
+    () => `writing:${project.projectId}:${chapter.id}:`,
+    [chapter.id, project.projectId],
+  );
+  const commandCoordinator = useMemo(() => rendererCommandCoordinatorFor(setPending), [setPending]);
 
   const loader = useMemo<CandidateReviewLoader>(
     () => ({
       bridge,
       projectId: project.projectId,
       chapterId: chapter.id,
+      commandPrefix,
       documentRequest,
       previewRequest,
       setCandidates,
@@ -133,11 +140,15 @@ export function CandidateReviewPanel({
       setStatus,
       setPending,
     }),
-    [bridge, chapter.id, project.projectId],
+    [bridge, chapter.id, commandPrefix, project.projectId],
   );
-  const refreshList = useCallback(() => loadCandidateList(loader), [loader]);
+  const refreshList = useCallback(
+    (canCommit?: () => boolean) => loadCandidateList(loader, canCommit),
+    [loader],
+  );
   const loadUndo = useCallback(
-    (nextPreview: CandidatePreview) => loadCandidateUndo(loader, nextPreview),
+    (nextPreview: CandidatePreview, canCommit?: () => boolean) =>
+      loadCandidateUndo(loader, nextPreview, canCommit),
     [loader],
   );
   const loadCandidate = useCallback(
@@ -147,12 +158,28 @@ export function CandidateReviewPanel({
 
   useEffect(() => {
     let active = true;
-    void refreshList().then((items) => {
+    setCandidates([]);
+    setCandidateId('');
+    setPreview(null);
+    setUndoPreview(null);
+    setSelectedDocument(null);
+    setSelectedRun(null);
+    setSelectedBlocks(new Set());
+    setSelectedBeats(new Set());
+    setConflicts([]);
+    setSelectedSkeletonId('');
+    setSkeletonEndingHook('');
+    setSkeletonTendency('');
+    setAcknowledgeStaleSkeleton(false);
+    setActiveRun(null);
+    setActiveTaskId(null);
+    setLastGenerationIntent(null);
+    setStatus('正在读取当前章节建议稿…');
+    setGenerationStatus('选择AI连接后可生成建议稿。');
+    void refreshList(() => active).then((items) => {
       if (!active) return;
       const first = items[0];
       if (!first) {
-        setCandidateId('');
-        setPreview(null);
         setStatus('当前章节没有建议稿。');
         return;
       }
@@ -161,13 +188,14 @@ export function CandidateReviewPanel({
     });
     return () => {
       active = false;
+      commandCoordinator.invalidatePrefix(commandPrefix);
       generationEpoch.current += 1;
       documentRequest.current += 1;
       const requestId = previewRequest.current;
       previewRequest.current = null;
       if (requestId) void bridge.candidateAction.cancelPreview(requestId);
     };
-  }, [bridge, loadCandidate, refreshList]);
+  }, [bridge, commandCoordinator, commandPrefix, loadCandidate, refreshList]);
 
   const refreshActiveRun = useCallback(
     () =>
@@ -200,7 +228,11 @@ export function CandidateReviewPanel({
   );
 
   const cancel = async (): Promise<void> => {
-    if (await cancelCandidatePreview(bridge, previewRequest.current))
+    const epoch = generationEpoch.current;
+    if (
+      (await cancelCandidatePreview(bridge, previewRequest.current)) &&
+      generationEpoch.current === epoch
+    )
       setStatus('正在取消差异计算…');
   };
 
@@ -209,6 +241,7 @@ export function CandidateReviewPanel({
       bridge,
       projectId: project.projectId,
       chapterId: chapter.id,
+      commandPrefix,
       readOnly,
       refreshList,
       onDraftReplace,
@@ -221,7 +254,7 @@ export function CandidateReviewPanel({
       setStatus,
       setPending,
     }),
-    [bridge, chapter.id, onDraftReplace, project.projectId, readOnly, refreshList],
+    [bridge, chapter.id, commandPrefix, onDraftReplace, project.projectId, readOnly, refreshList],
   );
   const discard = () => discardCandidate(actionContext, selectedDocument);
   const apply = () => applyCandidate({ ...actionContext, flush, loadUndo }, preview, selection);
@@ -243,6 +276,7 @@ export function CandidateReviewPanel({
       bridge,
       projectId: project.projectId,
       chapterId: chapter.id,
+      commandPrefix,
       draft,
       providerId,
       readOnly,
@@ -277,6 +311,8 @@ export function CandidateReviewPanel({
     activeRun,
     bridge,
     projectId: project.projectId,
+    commandPrefix,
+    setPending,
     refreshCandidates: refreshList,
     setActiveRun,
     setStatus: setGenerationStatus,

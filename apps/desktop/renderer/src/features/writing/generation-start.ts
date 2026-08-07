@@ -9,6 +9,7 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { rendererCommandCoordinatorFor } from '../../runtime/command-coordinator.js';
 import type {
   ChapterGenerationSource,
   GenerationMode,
@@ -19,6 +20,7 @@ interface GenerationStartInput {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly chapterId: string;
+  readonly commandPrefix: string;
   readonly draft: DraftDocument;
   readonly providerId: string;
   readonly readOnly: boolean;
@@ -46,43 +48,62 @@ interface GenerationStartInput {
 }
 
 export async function startGenerationTask(input: GenerationStartInput): Promise<void> {
-  if (!input.providerId || input.readOnly || !(await input.flush())) return;
+  if (!input.providerId || input.readOnly) return;
   const { continuationOfRunId, intentOverride } = input;
-  if (!continuationOfRunId && !intentOverride && !validateGenerationInput(input)) return;
-  input.setPending(true);
-  input.setStatus('正在校验权威输入并组装约束…');
-  try {
-    const intent = await buildGenerationIntent(input);
-    if (!intent) return;
-    input.setLastIntent(intent);
-    const outcome = await input.bridge.generation.start({
-      projectId: input.projectId,
-      chapterId: input.chapterId,
-      baseDraftId: input.draft.draftId,
-      baseDraftRevision: input.draft.revision,
-      providerId: input.providerId,
-      continuationOfRunId,
-      intent,
-    });
-    if (outcome.state !== 'success') {
-      input.setStatus(
-        outcome.state === 'failure'
-          ? `生成未启动 · ${authorErrorSummary(outcome.error)}`
-          : '生成请求已取消或被新请求替代。',
-      );
-      return;
-    }
-    input.onStarted(outcome.data.run, outcome.data.taskId);
-    input.setStatus(`任务已启动 · ${outcome.data.run.stage}`);
-  } catch {
+  const coordinator = rendererCommandCoordinatorFor(input.setPending);
+  const commandKey = `${input.commandPrefix}generation-start`;
+  const result = await coordinator.run({
+    key: commandKey,
+    policy: 'reject',
+    operation: async (scope) => {
+      if (!(await input.flush()) || !scope.isCurrent()) return;
+      const guardedInput: GenerationStartInput = {
+        ...input,
+        setStatus: (status) => {
+          if (scope.isCurrent()) input.setStatus(status);
+        },
+      };
+      if (!continuationOfRunId && !intentOverride && !validateGenerationInput(guardedInput)) return;
+      if (!scope.isCurrent()) return;
+      input.setStatus('正在校验权威输入并组装约束…');
+      const intent = await buildGenerationIntent(guardedInput);
+      if (!intent || !scope.isCurrent()) return;
+      input.setLastIntent(intent);
+      const outcome = await input.bridge.generation.start({
+        projectId: input.projectId,
+        chapterId: input.chapterId,
+        baseDraftId: input.draft.draftId,
+        baseDraftRevision: input.draft.revision,
+        providerId: input.providerId,
+        continuationOfRunId,
+        intent,
+      });
+      if (!scope.isCurrent()) return;
+      if (outcome.state !== 'success') {
+        input.setStatus(
+          outcome.state === 'failure'
+            ? `生成未启动 · ${authorErrorSummary(outcome.error)}`
+            : '生成请求已取消或被新请求替代。',
+        );
+        return;
+      }
+      input.onStarted(outcome.data.run, outcome.data.taskId);
+      input.setStatus(`任务已启动 · ${outcome.data.run.stage}`);
+    },
+  });
+
+  if (result.state === 'rejected') {
+    input.setStatus('生成启动请求正在处理中，请等待当前请求完成。');
+    return;
+  }
+  if (!coordinator.isLatest(commandKey, result.token)) return;
+  if (result.state === 'failed') {
     input.setStatus(
       `生成未启动 · ${authorErrorSummary({
         code: 'BRIDGE_UNEXPECTED_FAILURE',
         message: 'The generation bridge call failed unexpectedly.',
       })}`,
     );
-  } finally {
-    input.setPending(false);
   }
 }
 

@@ -41,6 +41,7 @@ interface RecoveryCommandEntry {
 const MAXIMUM_RETAINED_RECOVERY_COMMANDS = 1_000;
 
 export class RecoveryService {
+  readonly #workspace: ProjectWorkspaceService;
   readonly #create: BackupCreateOperations;
   readonly #cleanup: IdempotentBackupCleanupOperations;
   readonly #restore: BackupRestoreOperations;
@@ -48,6 +49,7 @@ export class RecoveryService {
   readonly #commands = new Map<string, RecoveryCommandEntry>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
+    this.#workspace = workspace;
     const runtime = createRecoveryRuntime(workspace, options);
     this.#create = new BackupCreateOperations(runtime);
     this.#cleanup = new IdempotentBackupCleanupOperations(runtime);
@@ -74,6 +76,14 @@ export class RecoveryService {
   }
 
   getOverview(projectId: string): Promise<RecoveryOverview> {
+    const project = this.#workspace.assertActiveProject(projectId);
+    if (project.databaseMode === 'read-write') {
+      this.#workspace.readProject(projectId, (database) => {
+        database.prepare('SELECT 1 FROM backup_failures LIMIT 1').get();
+        database.prepare('SELECT 1 FROM versions LIMIT 1').get();
+        database.prepare('SELECT 1 FROM backup_policies LIMIT 1').get();
+      });
+    }
     return this.#cleanup.getOverview(projectId);
   }
 

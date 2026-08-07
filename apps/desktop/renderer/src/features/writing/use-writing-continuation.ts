@@ -22,6 +22,19 @@ interface UseWritingContinuationInput {
   readonly activeChapter: MutableRefObject<Chapter | null>;
 }
 
+function continuationIsCurrent(
+  input: UseWritingContinuationInput,
+  continuation: ProjectContinuationInput,
+): boolean {
+  const draft = input.activeDraft.current;
+  return (
+    input.projectId === continuation.projectId &&
+    input.activeChapter.current?.id === continuation.chapterId &&
+    draft?.draftId === continuation.draftId &&
+    draft.revision === continuation.draftRevision
+  );
+}
+
 export function useWritingContinuation(input: UseWritingContinuationInput) {
   const continuationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const continuationScrollCleanup = useRef<(() => void) | null>(null);
@@ -50,6 +63,7 @@ export function useWritingContinuation(input: UseWritingContinuationInput) {
     const outcome = await input.bridge.project.saveContinuation(continuation, {
       mode: 'replace',
     });
+    if (!continuationIsCurrent(input, continuation)) return true;
     if (outcome.state !== 'success') return false;
     persistence.commit(continuation);
     return true;
@@ -67,10 +81,12 @@ export function useWritingContinuation(input: UseWritingContinuationInput) {
   useEffect(() => {
     if (input.readOnly) return;
     let active = true;
-    const next = derivePanelSwitchInput(persistence.committedInput(), input.panel);
+    const committed = persistence.committedInput();
+    if (!committed || !continuationIsCurrent(input, committed)) return;
+    const next = derivePanelSwitchInput(committed, input.panel);
     if (!next) return;
     void input.bridge.project.saveContinuation(next, { mode: 'replace' }).then((outcome) => {
-      if (!active) return;
+      if (!active || !continuationIsCurrent(input, next)) return;
       if (outcome.state === 'success') {
         persistence.commit(next);
         return;

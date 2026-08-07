@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  GenerationIntentSchema,
   GenerationResultRefSchema,
   GenerationRunSchema,
   ModelSupportProfileSchema,
@@ -125,5 +126,31 @@ describe('M4-04 generation contracts', () => {
     });
     expect(run).not.toHaveProperty('prompt');
     expect(run).not.toHaveProperty('response');
+  });
+  it('rejects repeated rewrite block identities before the request reaches Core', () => {
+    const blockId = id('20');
+    const hash = 'a'.repeat(64);
+    const result = GenerationIntentSchema.safeParse({
+      runType: 'rewrite',
+      scope: {
+        scopeType: 'blocks',
+        logicalBlockIds: [blockId, blockId],
+        expectedBlockHashes: [hash, hash],
+      },
+      instruction: '保持事实不变并压缩表达。',
+      targetLanguage: 'zh-CN',
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: ['scope', 'logicalBlockIds'],
+            message: 'Rewrite logicalBlockIds must be unique.',
+          }),
+        ]),
+      );
+    }
   });
 });

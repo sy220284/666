@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { RendererCommandCoordinator } from '../runtime/command-coordinator.js';
 import type { BridgeRequestError, BridgeRequestOutcome } from './request-lifecycle.js';
 
 export type BridgeResourceState = 'loading' | 'success' | 'failure' | 'cancelled';
@@ -11,33 +12,93 @@ export interface BridgeResource<T> {
   readonly refresh: () => Promise<void>;
 }
 
+export interface BridgeResourceSnapshot<T> {
+  readonly state: BridgeResourceState;
+  readonly data: T | null;
+  readonly error: BridgeRequestError | null;
+}
+
+interface OwnedBridgeResourceSnapshot<T> extends BridgeResourceSnapshot<T> {
+  readonly resolvedKey: string | null;
+}
+
+export function bridgeResourceForQueryKey<T>(
+  queryKey: string,
+  resolvedKey: string | null,
+  snapshot: BridgeResourceSnapshot<T>,
+): BridgeResourceSnapshot<T> {
+  return resolvedKey === queryKey
+    ? snapshot
+    : {
+        state: 'loading',
+        data: null,
+        error: null,
+      };
+}
+
 export function useBridgeQuery<T>(
   queryKey: string,
   load: () => Promise<BridgeRequestOutcome<T>>,
 ): BridgeResource<T> {
   const generation = useRef(0);
-  const [state, setState] = useState<BridgeResourceState>('loading');
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<BridgeRequestError | null>(null);
+  const [snapshot, setSnapshot] = useState<OwnedBridgeResourceSnapshot<T>>({
+    resolvedKey: null,
+    state: 'loading',
+    data: null,
+    error: null,
+  });
 
   const refresh = useCallback(async (): Promise<void> => {
     const current = ++generation.current;
-    setState('loading');
-    setError(null);
-    const outcome = await load();
-    if (current !== generation.current || outcome.state === 'stale') return;
+    setSnapshot({
+      resolvedKey: queryKey,
+      state: 'loading',
+      data: null,
+      error: null,
+    });
+    let outcome: BridgeRequestOutcome<T>;
+    try {
+      outcome = await load();
+    } catch {
+      if (current !== generation.current) return;
+      setSnapshot({
+        resolvedKey: queryKey,
+        state: 'failure',
+        data: null,
+        error: {
+          code: 'BRIDGE_UNEXPECTED_FAILURE',
+          message: 'The bridge query failed unexpectedly.',
+          retryable: true,
+        },
+      });
+      return;
+    }
+    if (current !== generation.current) return;
     if (outcome.state === 'success') {
-      setData(outcome.data);
-      setState('success');
+      setSnapshot({
+        resolvedKey: queryKey,
+        state: 'success',
+        data: outcome.data,
+        error: null,
+      });
       return;
     }
-    if (outcome.state === 'cancelled') {
-      setState('cancelled');
+    if (outcome.state === 'cancelled' || outcome.state === 'stale') {
+      setSnapshot({
+        resolvedKey: queryKey,
+        state: 'cancelled',
+        data: null,
+        error: null,
+      });
       return;
     }
-    setError(outcome.error);
-    setState('failure');
-  }, [load]);
+    setSnapshot({
+      resolvedKey: queryKey,
+      state: 'failure',
+      data: null,
+      error: outcome.error,
+    });
+  }, [load, queryKey]);
 
   useEffect(() => {
     void refresh();
@@ -46,7 +107,13 @@ export function useBridgeQuery<T>(
     };
   }, [queryKey, refresh]);
 
-  return { state, data, error, refresh };
+  const visible = bridgeResourceForQueryKey(queryKey, snapshot.resolvedKey, snapshot);
+  return {
+    state: visible.state,
+    data: visible.data,
+    error: visible.error,
+    refresh,
+  };
 }
 
 export interface BridgeCommand {
@@ -57,37 +124,53 @@ export interface BridgeCommand {
 }
 
 export function useBridgeCommand(onSuccess?: () => void | Promise<void>): BridgeCommand {
-  const pendingRef = useRef(false);
+  const commandCoordinator = useMemo(() => new RendererCommandCoordinator(), []);
+  const commandKey = 'bridge-command';
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<BridgeRequestError | null>(null);
 
+  useEffect(
+    () => () => {
+      commandCoordinator.invalidate(commandKey);
+    },
+    [commandCoordinator],
+  );
+
   const run = useCallback(
     async <T>(operation: () => Promise<BridgeRequestOutcome<T>>): Promise<T | null> => {
-      if (pendingRef.current) return null;
-      pendingRef.current = true;
-      setPending(true);
-      setError(null);
-      try {
-        const outcome = await operation();
-        if (outcome.state !== 'success') {
-          if (outcome.state === 'failure') setError(outcome.error);
-          return null;
-        }
-        await onSuccess?.();
-        return outcome.data;
-      } catch (cause) {
+      const result = await commandCoordinator.run({
+        key: commandKey,
+        policy: 'reject',
+        operation: async (scope) => {
+          if (!scope.isCurrent()) return null;
+          setPending(true);
+          setError(null);
+          const outcome = await operation();
+          if (!scope.isCurrent()) return null;
+          if (outcome.state !== 'success') {
+            if (outcome.state === 'failure') setError(outcome.error);
+            return null;
+          }
+          await onSuccess?.();
+          return scope.isCurrent() ? outcome.data : null;
+        },
+      });
+
+      if (result.state === 'rejected') return null;
+      if (result.state === 'failed' && commandCoordinator.isLatest(commandKey, result.token)) {
         setError({
           code: 'BRIDGE_UNEXPECTED_FAILURE',
-          message: cause instanceof Error ? cause.message : 'Unexpected bridge command failure.',
+          message:
+            result.error instanceof Error
+              ? result.error.message
+              : 'Unexpected bridge command failure.',
           retryable: true,
         });
-        return null;
-      } finally {
-        pendingRef.current = false;
-        setPending(false);
       }
+      if (commandCoordinator.isLatest(commandKey, result.token)) setPending(false);
+      return result.state === 'completed' ? result.value : null;
     },
-    [onSuccess],
+    [commandCoordinator, onSuccess],
   );
 
   return { pending, error, run, clearError: () => setError(null) };

@@ -13,9 +13,9 @@ import {
   PROTOCOL_VERSION,
   TaskCommandResultSchema,
   WindowPreferencesSchema,
-  type CoreControlMessage,
   type CoreAppDataOperation,
   type CoreAppDataResult,
+  type CoreControlMessage,
   type CoreEvent,
   type CoreGenerationOperation,
   type CoreGenerationResult,
@@ -25,11 +25,17 @@ import {
   type CoreProviderResult,
   type CoreStatus,
   type CoreWindowPreferencesResult,
+  type ErrorCode,
   type TaskCommand,
   type TaskCommandResult,
   type WindowPreferences,
 } from '@worldforge/contracts';
 
+import {
+  CoreRpcChannel,
+  type CoreRpcRequestResult,
+  type CoreRpcRequestState,
+} from './core-rpc-channel.js';
 import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
 import { createDiagnosticId, type LogFields, type LogLevel } from './privacy-logger.js';
 
@@ -57,16 +63,15 @@ export interface SupervisorOperationResult {
   readonly diagnosticId?: string;
 }
 
-interface MessageWaiter {
-  readonly matches: (message: CoreEvent) => boolean;
-  readonly resolve: (message: CoreEvent | null) => void;
+interface ExitWaiter {
+  readonly process: UtilityProcessHandle;
+  readonly settle: (exited: boolean) => void;
   readonly timer: NodeJS.Timeout;
 }
 
-interface ExitWaiter {
-  readonly process: UtilityProcessHandle;
-  readonly resolve: (exited: boolean) => void;
-  readonly timer: NodeJS.Timeout;
+interface ExitWaitHandle {
+  readonly promise: Promise<boolean>;
+  readonly cancel: () => void;
 }
 
 export class CoreSupervisor {
@@ -74,7 +79,7 @@ export class CoreSupervisor {
   readonly #logger: SupervisorLogger;
   readonly #startupTimeoutMs: number;
   readonly #commandTimeoutMs: number;
-  readonly #messageWaiters = new Set<MessageWaiter>();
+  readonly #rpc = new CoreRpcChannel();
   readonly #exitWaiters = new Set<ExitWaiter>();
   #process: UtilityProcessHandle | undefined;
   #state: CoreStatus['status'] = 'stopped';
@@ -114,24 +119,31 @@ export class CoreSupervisor {
     this.#diagnosticId = null;
     this.#expectedExit = false;
 
+    let process: UtilityProcessHandle;
     try {
-      const process = this.#spawn();
-      this.#process = process;
-      this.#bindProcess(process);
-      const ready = await this.#waitForMessage(
-        (message) => message.type === 'core.ready',
-        this.#startupTimeoutMs,
-      );
-      if (!ready) return this.#fail('CORE_START_TIMEOUT', 'core.start.timeout');
-      this.#state = 'healthy';
-      await this.#logger.log('info', 'core.start.ready', {
-        processStatus: this.#state,
-        restartCount: this.#restartCount,
-      });
-      return { ok: true };
+      process = this.#spawn();
     } catch {
       return this.#fail('CORE_SPAWN_FAILED', 'core.start.failed');
     }
+
+    this.#process = process;
+    this.#bindProcess(process);
+    const ready = await this.#rpc.request({
+      key: `core.ready:${process.pid ?? 'unknown'}`,
+      timeoutMs: this.#startupTimeoutMs,
+      matches: (message) => message.type === 'core.ready',
+      send: () => undefined,
+    });
+    if (ready.state !== 'response') {
+      return this.#fail('CORE_START_TIMEOUT', 'core.start.timeout');
+    }
+
+    this.#state = 'healthy';
+    await this.#safeLog('info', 'core.start.ready', {
+      processStatus: this.#state,
+      restartCount: this.#restartCount,
+    });
+    return { ok: true };
   }
 
   async ping(): Promise<SupervisorOperationResult> {
@@ -140,13 +152,18 @@ export class CoreSupervisor {
       return this.#fail('CORE_NOT_HEALTHY', 'core.health.rejected');
     }
     const requestId = randomUUID();
-    const response = this.#waitForMessage(
-      (message) => message.type === 'core.health' && message.requestId === requestId,
+    const result = await this.#request(
+      process,
+      `core.health:${requestId}`,
       this.#commandTimeoutMs,
+      (message) => message.type === 'core.health' && message.requestId === requestId,
+      { type: 'core.ping', protocolVersion: PROTOCOL_VERSION, requestId },
     );
-    process.postMessage({ type: 'core.ping', protocolVersion: PROTOCOL_VERSION, requestId });
-    if (!(await response)) return this.#fail('CORE_HEALTH_TIMEOUT', 'core.health.timeout');
-    return { ok: true };
+    if (result.state === 'response') return { ok: true };
+    return this.#fail(
+      result.state === 'send-failed' ? 'CORE_HEALTH_SEND_FAILED' : 'CORE_HEALTH_TIMEOUT',
+      result.state === 'send-failed' ? 'core.health.send-failed' : 'core.health.timeout',
+    );
   }
 
   async restart(): Promise<SupervisorOperationResult> {
@@ -172,28 +189,37 @@ export class CoreSupervisor {
       });
     }
 
-    const response = this.#waitForMessage(
-      (message) =>
-        message.type === 'core.command-result' && message.requestId === envelope.requestId,
+    const response = await this.#request(
+      process,
+      `core.command-result:${envelope.requestId}`,
       this.#commandTimeoutMs,
+      (message) =>
+        message.type === 'core.command-result' &&
+        message.requestId === envelope.requestId &&
+        message.result.requestId === envelope.requestId,
+      {
+        type: 'core.command',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId: envelope.requestId,
+        envelope,
+      },
     );
-    process.postMessage({
-      type: 'core.command',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId: envelope.requestId,
-      envelope,
-    });
-    const result = await response;
-    if (result?.type === 'core.command-result') return result.result;
+    if (response.state === 'response' && response.event.type === 'core.command-result') {
+      return response.event.result;
+    }
+
+    const code = this.#rpcErrorCode(response.state);
     const semantics = coreOperationFailureSemantics(
-      'COMMON_TIMEOUT_005',
-      'The task command timed out.',
+      code,
+      response.state === 'conflict'
+        ? 'The requestId already has an active Core task command.'
+        : 'The task command could not be completed by Core.',
       envelope.command === 'task.cancel' ? 'mutation' : 'query',
     );
     return TaskCommandResultSchema.parse({
       ok: false,
       requestId: envelope.requestId,
-      error: { code: 'COMMON_TIMEOUT_005', ...semantics },
+      error: { code, ...semantics },
     });
   }
 
@@ -211,22 +237,28 @@ export class CoreSupervisor {
       });
     }
 
-    const response = this.#waitForMessage(
-      (message) => message.type === 'core.app-data.result' && message.requestId === requestId,
+    const response = await this.#request(
+      process,
+      `core.app-data.result:${requestId}`,
       this.#commandTimeoutMs,
+      (message) =>
+        message.type === 'core.app-data.result' &&
+        message.requestId === requestId &&
+        message.result.operation === operation.operation,
+      {
+        type: 'core.app-data.command',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId,
+        operation,
+      },
     );
-    process.postMessage({
-      type: 'core.app-data.command',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-      operation,
-    });
-    const result = await response;
-    if (result?.type === 'core.app-data.result') return result.result;
+    if (response.state === 'response' && response.event.type === 'core.app-data.result') {
+      return response.event.result;
+    }
     return CoreAppDataResultSchema.parse({
       ok: false,
       operation: operation.operation,
-      errorCode: 'COMMON_TIMEOUT_005',
+      errorCode: this.#rpcErrorCode(response.state),
     });
   }
 
@@ -251,22 +283,28 @@ export class CoreSupervisor {
             Math.min(1_200_000, operation.config.timeoutMs * 4 + 5_000),
           )
         : this.#commandTimeoutMs;
-    const response = this.#waitForMessage(
-      (message) => message.type === 'core.provider.result' && message.requestId === requestId,
+    const response = await this.#request(
+      process,
+      `core.provider.result:${requestId}`,
       timeout,
+      (message) =>
+        message.type === 'core.provider.result' &&
+        message.requestId === requestId &&
+        message.result.operation === operation.operation,
+      {
+        type: 'core.provider.command',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId,
+        operation,
+      },
     );
-    process.postMessage({
-      type: 'core.provider.command',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-      operation,
-    });
-    const result = await response;
-    if (result?.type === 'core.provider.result') return result.result;
+    if (response.state === 'response' && response.event.type === 'core.provider.result') {
+      return response.event.result;
+    }
     return CoreProviderResultSchema.parse({
       ok: false,
       operation: operation.operation,
-      errorCode: 'COMMON_TIMEOUT_005',
+      errorCode: this.#rpcErrorCode(response.state),
     });
   }
 
@@ -283,22 +321,28 @@ export class CoreSupervisor {
         errorCode: 'COMMON_INTERNAL_999',
       });
     }
-    const response = this.#waitForMessage(
-      (message) => message.type === 'core.generation.result' && message.requestId === requestId,
+    const response = await this.#request(
+      process,
+      `core.generation.result:${requestId}`,
       Math.max(this.#commandTimeoutMs, 30_000),
+      (message) =>
+        message.type === 'core.generation.result' &&
+        message.requestId === requestId &&
+        message.result.operation === operation.operation,
+      {
+        type: 'core.generation.command',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId,
+        operation,
+      },
     );
-    process.postMessage({
-      type: 'core.generation.command',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-      operation,
-    });
-    const result = await response;
-    if (result?.type === 'core.generation.result') return result.result;
+    if (response.state === 'response' && response.event.type === 'core.generation.result') {
+      return response.event.result;
+    }
     return CoreGenerationResultSchema.parse({
       ok: false,
       operation: operation.operation,
-      errorCode: 'COMMON_TIMEOUT_005',
+      errorCode: this.#rpcErrorCode(response.state),
     });
   }
 
@@ -316,22 +360,28 @@ export class CoreSupervisor {
       });
     }
 
-    const response = this.#waitForMessage(
-      (message) => message.type === 'core.project.result' && message.requestId === requestId,
+    const response = await this.#request(
+      process,
+      `core.project.result:${requestId}`,
       Math.max(this.#commandTimeoutMs, 120_000),
+      (message) =>
+        message.type === 'core.project.result' &&
+        message.requestId === requestId &&
+        message.result.operation === operation.operation,
+      {
+        type: 'core.project.command',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId,
+        operation,
+      },
     );
-    process.postMessage({
-      type: 'core.project.command',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-      operation,
-    });
-    const result = await response;
-    if (result?.type === 'core.project.result') return result.result;
+    if (response.state === 'response' && response.event.type === 'core.project.result') {
+      return response.event.result;
+    }
     return CoreProjectResultSchema.parse({
       ok: false,
       operation: operation.operation,
-      errorCode: 'COMMON_TIMEOUT_005',
+      errorCode: this.#rpcErrorCode(response.state),
     });
   }
 
@@ -341,19 +391,22 @@ export class CoreSupervisor {
       return { ok: false, errorCode: 'COMMON_INTERNAL_999' };
     }
     const requestId = randomUUID();
-    const response = this.#waitForMessage(
+    const response = await this.#request(
+      process,
+      `core.window-preferences-result:${requestId}`,
+      this.#commandTimeoutMs,
       (message) =>
         message.type === 'core.window-preferences-result' && message.requestId === requestId,
-      this.#commandTimeoutMs,
+      {
+        type: 'core.window-preferences.get',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId,
+      },
     );
-    process.postMessage({
-      type: 'core.window-preferences.get',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-    });
-    const result = await response;
-    if (result?.type === 'core.window-preferences-result') return result.result;
-    return { ok: false, errorCode: 'COMMON_TIMEOUT_005' };
+    if (response.state === 'response' && response.event.type === 'core.window-preferences-result') {
+      return response.event.result;
+    }
+    return { ok: false, errorCode: this.#rpcErrorCode(response.state) };
   }
 
   async setWindowPreferences(input: WindowPreferences): Promise<CoreWindowPreferencesResult> {
@@ -363,20 +416,23 @@ export class CoreSupervisor {
     }
     const preferences = WindowPreferencesSchema.parse(input);
     const requestId = randomUUID();
-    const response = this.#waitForMessage(
+    const response = await this.#request(
+      process,
+      `core.window-preferences-result:${requestId}`,
+      this.#commandTimeoutMs,
       (message) =>
         message.type === 'core.window-preferences-result' && message.requestId === requestId,
-      this.#commandTimeoutMs,
+      {
+        type: 'core.window-preferences.set',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId,
+        preferences,
+      },
     );
-    process.postMessage({
-      type: 'core.window-preferences.set',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId,
-      preferences,
-    });
-    const result = await response;
-    if (result?.type === 'core.window-preferences-result') return result.result;
-    return { ok: false, errorCode: 'COMMON_TIMEOUT_005' };
+    if (response.state === 'response' && response.event.type === 'core.window-preferences-result') {
+      return response.event.result;
+    }
+    return { ok: false, errorCode: this.#rpcErrorCode(response.state) };
   }
 
   attachTaskPort(connectionId: string, port: unknown): SupervisorOperationResult {
@@ -408,42 +464,60 @@ export class CoreSupervisor {
 
     this.#state = 'draining';
     const drainRequestId = randomUUID();
-    const drained = this.#waitForMessage(
+    const drained = await this.#request(
+      process,
+      `core.drained:${drainRequestId}`,
+      this.#commandTimeoutMs,
       (message) =>
         message.type === 'core.drained' &&
         message.requestId === drainRequestId &&
         message.pendingTasks === 0,
-      this.#commandTimeoutMs,
+      {
+        type: 'core.drain',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId: drainRequestId,
+      },
     );
-    process.postMessage({
-      type: 'core.drain',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId: drainRequestId,
-    });
-    if (!(await drained)) return this.#fail('CORE_DRAIN_TIMEOUT', 'core.drain.timeout');
+    if (drained.state !== 'response') {
+      return this.#fail(
+        drained.state === 'send-failed' ? 'CORE_DRAIN_SEND_FAILED' : 'CORE_DRAIN_TIMEOUT',
+        drained.state === 'send-failed' ? 'core.drain.send-failed' : 'core.drain.timeout',
+      );
+    }
 
     const shutdownRequestId = randomUUID();
-    const completed = this.#waitForMessage(
-      (message) =>
-        message.type === 'core.shutdown-complete' && message.requestId === shutdownRequestId,
-      this.#commandTimeoutMs,
-    );
     const exited = this.#waitForExit(process, this.#commandTimeoutMs);
     this.#expectedExit = true;
-    process.postMessage({
-      type: 'core.shutdown',
-      protocolVersion: PROTOCOL_VERSION,
-      requestId: shutdownRequestId,
-    });
+    const completed = await this.#request(
+      process,
+      `core.shutdown-complete:${shutdownRequestId}`,
+      this.#commandTimeoutMs,
+      (message) =>
+        message.type === 'core.shutdown-complete' && message.requestId === shutdownRequestId,
+      {
+        type: 'core.shutdown',
+        protocolVersion: PROTOCOL_VERSION,
+        requestId: shutdownRequestId,
+      },
+    );
+    if (completed.state !== 'response') {
+      this.#expectedExit = false;
+      exited.cancel();
+      return this.#fail(
+        completed.state === 'send-failed' ? 'CORE_SHUTDOWN_SEND_FAILED' : 'CORE_SHUTDOWN_TIMEOUT',
+        completed.state === 'send-failed' ? 'core.shutdown.send-failed' : 'core.shutdown.timeout',
+      );
+    }
 
-    const [shutdownComplete, processExited] = await Promise.all([completed, exited]);
-    if (!shutdownComplete || !processExited) {
+    const processExited = await exited.promise;
+    if (!processExited) {
       this.#expectedExit = false;
       return this.#fail('CORE_SHUTDOWN_TIMEOUT', 'core.shutdown.timeout');
     }
 
+    this.#expectedExit = false;
     this.#state = 'stopped';
-    await this.#logger.log('info', 'core.shutdown.complete', { processStatus: this.#state });
+    await this.#safeLog('info', 'core.shutdown.complete', { processStatus: this.#state });
     return { ok: true };
   }
 
@@ -453,40 +527,29 @@ export class CoreSupervisor {
     this.#removeMessageListener = process.onMessage((message) => {
       const parsed = CoreEventSchema.safeParse(message);
       if (!parsed.success) {
-        void this.#logger.log('warn', 'core.message.rejected', {
+        void this.#safeLog('warn', 'core.message.rejected', {
           errorCode: 'CORE_PROTOCOL_INVALID',
         });
         return;
       }
-      for (const waiter of [...this.#messageWaiters]) {
-        if (!waiter.matches(parsed.data)) continue;
-        clearTimeout(waiter.timer);
-        this.#messageWaiters.delete(waiter);
-        waiter.resolve(parsed.data);
-      }
+      this.#rpc.accept(parsed.data);
     });
     this.#removeExitListener = process.onExit((exitCode) => {
       if (process !== this.#process) return;
       this.#process = undefined;
-      for (const waiter of [...this.#messageWaiters]) {
-        clearTimeout(waiter.timer);
-        this.#messageWaiters.delete(waiter);
-        waiter.resolve(null);
-      }
+      this.#rpc.disconnect();
       for (const waiter of [...this.#exitWaiters]) {
-        if (waiter.process !== process) continue;
-        clearTimeout(waiter.timer);
-        this.#exitWaiters.delete(waiter);
-        waiter.resolve(true);
+        if (waiter.process === process) waiter.settle(true);
       }
       if (this.#expectedExit) {
+        this.#expectedExit = false;
         this.#state = 'stopped';
         return;
       }
       this.#state = 'crashed';
       this.#lastErrorCode = 'CORE_PROCESS_EXIT';
       this.#diagnosticId = createDiagnosticId();
-      void this.#logger.log('error', 'core.process.exited', {
+      void this.#safeLog('error', 'core.process.exited', {
         processStatus: this.#state,
         exitCode,
         errorCode: this.#lastErrorCode,
@@ -495,42 +558,63 @@ export class CoreSupervisor {
     });
   }
 
-  #waitForMessage(
-    matches: (message: CoreEvent) => boolean,
+  #request(
+    process: UtilityProcessHandle,
+    key: string,
     timeoutMs: number,
-  ): Promise<CoreEvent | null> {
-    return new Promise((resolve) => {
-      const waiter: MessageWaiter = {
-        matches,
-        resolve,
-        timer: setTimeout(() => {
-          this.#messageWaiters.delete(waiter);
-          resolve(null);
-        }, timeoutMs),
-      };
-      this.#messageWaiters.add(waiter);
+    matches: (message: CoreEvent) => boolean,
+    message: CoreControlMessage,
+    transfer?: readonly unknown[],
+  ): Promise<CoreRpcRequestResult> {
+    return this.#rpc.request({
+      key,
+      timeoutMs,
+      matches,
+      send: () => process.postMessage(message, transfer),
     });
   }
 
-  #waitForExit(process: UtilityProcessHandle, timeoutMs: number): Promise<boolean> {
-    return new Promise((resolve) => {
-      const waiter: ExitWaiter = {
-        process,
-        resolve,
-        timer: setTimeout(() => {
-          this.#exitWaiters.delete(waiter);
-          resolve(false);
-        }, timeoutMs),
-      };
-      this.#exitWaiters.add(waiter);
+  #waitForExit(process: UtilityProcessHandle, timeoutMs: number): ExitWaitHandle {
+    let settled = false;
+    let settlePromise!: (exited: boolean) => void;
+    const promise = new Promise<boolean>((resolve) => {
+      settlePromise = resolve;
     });
+    const settle = (exited: boolean): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(waiter.timer);
+      this.#exitWaiters.delete(waiter);
+      settlePromise(exited);
+    };
+    const waiter: ExitWaiter = {
+      process,
+      settle,
+      timer: setTimeout(() => settle(false), timeoutMs),
+    };
+    this.#exitWaiters.add(waiter);
+    return { promise, cancel: () => settle(false) };
+  }
+
+  #rpcErrorCode(state: CoreRpcRequestState): ErrorCode {
+    if (state === 'conflict') return 'COMMON_CONFLICT_003';
+    if (state === 'timeout') return 'COMMON_TIMEOUT_005';
+    return 'COMMON_INTERNAL_999';
+  }
+
+  async #safeLog(level: LogLevel, event: string, fields?: LogFields): Promise<void> {
+    try {
+      await this.#logger.log(level, event, fields);
+    } catch {
+      // Diagnostics are best effort and must never alter process or business state.
+    }
   }
 
   #fail(errorCode: string, event: string): SupervisorOperationResult {
     this.#state = this.#process ? 'degraded' : 'crashed';
     this.#lastErrorCode = errorCode;
     this.#diagnosticId = createDiagnosticId();
-    void this.#logger.log('error', event, {
+    void this.#safeLog('error', event, {
       processStatus: this.#state,
       errorCode,
       diagnosticId: this.#diagnosticId,

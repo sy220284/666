@@ -49,30 +49,39 @@ export function createDiagnosticId(): string {
 export class PrivacyLogger {
   readonly #directory: string;
   readonly #component: string;
+  #writeFailureCount = 0;
 
   constructor(directory: string, component: string) {
     this.#directory = directory;
     this.#component = component;
   }
 
+  get writeFailureCount(): number {
+    return this.#writeFailureCount;
+  }
+
   async log(level: LogLevel, event: string, fields: LogFields = {}): Promise<void> {
-    await mkdir(this.#directory, { recursive: true, mode: 0o700 });
-    const timestamp = new Date().toISOString();
-    const day = timestamp.slice(0, 10);
-    const record = {
-      timestamp,
-      level,
-      component: this.#component,
-      event: event.slice(0, 128),
-      ...sanitizeLogFields(fields),
-    };
-    await appendFile(
-      path.join(this.#directory, `app-${day}.jsonl`),
-      `${JSON.stringify(record)}\n`,
-      {
-        encoding: 'utf8',
-        mode: 0o600,
-      },
-    );
+    try {
+      await mkdir(this.#directory, { recursive: true, mode: 0o700 });
+      const timestamp = new Date().toISOString();
+      const day = timestamp.slice(0, 10);
+      const record = {
+        timestamp,
+        level,
+        component: this.#component,
+        event: event.slice(0, 128),
+        ...sanitizeLogFields(fields),
+      };
+      await appendFile(
+        path.join(this.#directory, `app-${day}.jsonl`),
+        `${JSON.stringify(record)}\n`,
+        {
+          encoding: 'utf8',
+          mode: 0o600,
+        },
+      );
+    } catch {
+      this.#writeFailureCount += 1;
+    }
   }
 }

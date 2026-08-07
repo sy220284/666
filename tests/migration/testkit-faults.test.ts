@@ -77,6 +77,7 @@ describe('temporary WorldForge workspace', () => {
               .prepare('INSERT INTO app_settings(key, value_json, updated_at) VALUES(?, ?, ?)')
               .run('fault-probe', '{}', workspace.clock.now().toISOString()),
           ),
+          'testkit.transaction-fault.after-mutation',
         ),
       ).rejects.toMatchObject({ fault: 'transaction-interrupted' });
       expect(

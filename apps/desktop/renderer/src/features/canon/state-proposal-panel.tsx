@@ -187,7 +187,13 @@ export function StateProposalPanel({
         ],
       }),
     );
-    if (result) setNotice('作者裁决已提交，权威状态与尾快照已刷新。');
+    if (result) {
+      setNotice(
+        decision === 'reject'
+          ? '建议已拒绝，历史记录已保留。'
+          : '作者裁决已提交，权威状态、语义失效与章节尾快照已刷新。',
+      );
+    }
   };
 
   return (
@@ -287,6 +293,11 @@ export function StateProposalPanel({
                 {authorStatusLabel(proposal.status)} · {stateProposalSourceLabel(proposal.source)} ·
                 可信度 {Math.round(proposal.confidence * 100)}%
               </p>
+              {proposal.freshness === 'stale' ? (
+                <p data-state-proposal-stale>来源定稿已变化 · 仅可拒绝</p>
+              ) : (
+                <p>来源定稿有效 · 可由作者采纳或拒绝</p>
+              )}
               <p>原值：{authorJsonValue(proposal.previousValue)}</p>
               <p>建议值：{authorJsonValue(proposal.proposedValue)}</p>
               <details>
@@ -305,14 +316,14 @@ export function StateProposalPanel({
                 <div className="inline-actions">
                   <button
                     data-accept-state-proposal={proposal.id}
-                    disabled={readOnly || command.pending}
+                    disabled={readOnly || command.pending || proposal.actionability !== 'accept'}
                     type="button"
                     onClick={() => void resolve(proposal, 'accept')}
                   >
                     接受
                   </button>
                   <button
-                    disabled={readOnly || command.pending}
+                    disabled={readOnly || command.pending || proposal.actionability !== 'accept'}
                     type="button"
                     onClick={() => void resolve(proposal, 'edit_accept')}
                   >

@@ -5,7 +5,7 @@
 - 任务：`M10-14`
 - 来源 PR：`#323`
 - 主线基线：`d394d89766d2e85889c81f9599378e958681f3c0`
-- 最终实施提交：`119da9ac1c8ba64d049eda60b438c63bfd2ef064`
+- 最终实施提交：`ed06fe1317f3c23d67c06cb4469852829ff34c3a`
 - 静态状态：`IMPLEMENTED`
 - 当前有效状态：合并前 `VERIFICATION_PENDING`
 
@@ -18,21 +18,21 @@
 5. Renderer Bridge `share` 使用共享底层请求与消费者独立取消；单消费者退出不污染其他消费者，全员退出、`cancelAll`、单 key cancel 后立即重订阅均进入新代次。
 6. Provider IPv6 边界阻断已废弃的 `FEC0::/10` Site-Local 地址。
 7. `request-lifecycle.ts` 已重新进入 V8 Coverage 分母，并以共享、取消、重订阅等直接行为测试覆盖；未降低 Coverage 阈值、未新增排除。
-8. 未修改 Migration、数据库 Schema、生产依赖、`pnpm-lock.yaml` 或产品规格。
+8. Planning 大纲节点保存状态改为在等待 Outline 刷新前同步提交，消除旧保存回调晚写覆盖后续“节点已移动”等新操作状态的竞态；原 `project-planning` E2E 未修改断言即恢复通过。
+9. 未修改 Migration、数据库 Schema、生产依赖、`pnpm-lock.yaml` 或产品规格。
 
 ## 永久验证
 
-- Quality：run `31143014872`。Static、Unit、Integration、Migration、Coverage、Build、Electron E2E 与聚合 Quality 均成功。
-  - `product-tests-and-coverage`：`sha256:bbbf4fbf263445f6be8aaaec8c6825ce487007edc5b80e258eff4e661dceb597`
-  - `desktop-e2e-evidence`：`sha256:ed175e532eb685377d99b8a5ac271af9a90179270085e1eb88797ea9fb597a7a`
-- Security：run `31143013967`，应用安全测试、依赖审计、Secret Scan 与聚合 Security 均成功。
-  - `security-test-evidence`：`sha256:0a0750b22c729966842edcc28101592f614400f8981aa208fd7451ce5edf2f91`
-  - `secret-scan-evidence`：`sha256:d7fa821ffc0d87fb5fce0783f87ba3bd0fab51d5a9581d8417b308b4f64c5863`
-- Performance：run `31143013922`，性能预算、AI Eval 与聚合 Performance 均成功。
-  - `performance-and-ai-eval-evidence`：`sha256:813c970c5c4d2e37efbb46e1be501b11c150d71649b0290d9caf31f49ad7aa61`
-- Task Governance：run `31143014509`，成功。
-- PR Policy：run `31143014039`，成功。
+- Quality：run `31148118685`。Static、Unit、Integration、Migration、Coverage、Build、Electron E2E 与聚合 Quality 均成功。
+  - `product-tests-and-coverage`：`sha256:d76696cdc7618ef2fdc1e4ef2890b9c404920a4a6d1aea2470204002c162045f`
+  - `desktop-e2e-evidence`：`sha256:a587e9d0c8e39640259fb1eccae7f681ebb8a3feafeb30ba9911f95b714e9bbe`
+- Security：run `31148118560`，成功。
+  - `secret-scan-diagnostics`：`sha256:d2b57358046dbb81417f61d403d25c96b53cebc9705c92408dbdb94e53f9a943`
+- Performance：run `31148118567`，性能预算与 AI Eval 成功。
+  - `performance-and-ai-eval-evidence`：`sha256:1742dde58f59ed24dda19dcff64dd81b6ff21857f671c05aa3de218cdb0f7d35`
+- Task Governance：run `31148118656`，成功。
+- PR Policy：run `31148118539`，成功。
 
 ## 审计结论
 
-最终 `main..119da9ac1c8ba64d049eda60b438c63bfd2ef064` 差异重新按 Recovery、Renderer Bridge、Provider、安全、覆盖率与治理边界复核；未发现新增 P0/P1。当前证据只证明实现与 Ready 永久矩阵通过，任务仍需完成 Controlled Merge、`main-verification`、`task-verification/M10-14` 与 `work` 同步后才能取得有效 `VERIFIED`。
+最终 `main..ed06fe1317f3c23d67c06cb4469852829ff34c3a` 差异重新按 Recovery、Renderer Bridge、Provider、Planning 状态所有权、安全、覆盖率与治理边界复核；未发现新增 P0/P1。当前证据只证明实现与 Ready 永久矩阵通过，任务仍需完成 Controlled Merge、`main-verification`、`task-verification/M10-14` 与 `work` 同步后才能取得有效 `VERIFIED`。

@@ -19,6 +19,7 @@
     "packages/contracts/src/state-proposal.ts",
     "packages/contracts/src/validation.ts",
     "packages/core-service/src/state/derived-invalidation-service.ts",
+    "packages/core-service/src/state/ending-snapshot-service.ts",
     "packages/core-service/src/state/proposal-batch-repository.ts",
     "packages/core-service/src/state/state-row-mappers.ts",
     "packages/core-service/src/validation/validation-model.ts",

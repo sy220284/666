@@ -19,7 +19,11 @@ import {
 } from './validation-model.js';
 import { CONFIG_VERSION, RULE_CONFIG, RULE_VERSION } from './validation-rules.js';
 
-export function batchRows(database: DatabaseSync, projectId: string): BatchRow[] {
+type CatalogBatchRow = BatchRow & {
+  readonly generationCreatedAt: string | null;
+};
+
+export function batchRows(database: DatabaseSync, projectId: string): CatalogBatchRow[] {
   return database
     .prepare(
       `SELECT batch.id AS batchId, batch.project_id AS projectId,
@@ -32,6 +36,7 @@ export function batchRows(database: DatabaseSync, projectId: string): BatchRow[]
               version.content_hash AS sourceContentHash,
               generation.prompt_id AS promptId,
               generation.prompt_version AS promptVersion,
+              generation.created_at AS generationCreatedAt,
               constraint_package.constraint_hash AS constraintHash
          FROM validation_batches batch
          LEFT JOIN chapters chapter ON chapter.id = batch.chapter_id
@@ -42,7 +47,7 @@ export function batchRows(database: DatabaseSync, projectId: string): BatchRow[]
         WHERE batch.project_id = ?
         ORDER BY batch.created_at DESC, batch.id DESC`,
     )
-    .all(projectId) as unknown as BatchRow[];
+    .all(projectId) as unknown as CatalogBatchRow[];
 }
 
 export function issueRows(database: DatabaseSync, projectId: string): IssueRow[] {
@@ -74,7 +79,7 @@ export function issueRows(database: DatabaseSync, projectId: string): IssueRow[]
 
 function sourceForBatch(
   database: DatabaseSync,
-  row: BatchRow,
+  row: CatalogBatchRow,
 ): { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] } | null {
   if (!row.sourceContentHash) return null;
   const blocks = database
@@ -107,11 +112,12 @@ interface FreshnessCache {
   >;
   readonly invalidationByChapter: Map<string, string>;
   readonly sceneBeatBySource: Map<string, string>;
+  readonly mutationSinceRun: Map<string, boolean>;
 }
 
 function semanticIdentity(
   database: DatabaseSync,
-  row: BatchRow,
+  row: CatalogBatchRow,
   cache: FreshnessCache,
 ): ValidationSemanticIdentity {
   let semanticInvalidations = cache.invalidationByChapter.get(row.chapterId);
@@ -137,9 +143,84 @@ function semanticIdentity(
   };
 }
 
+function semanticMutationOccurredAfterRun(
+  database: DatabaseSync,
+  row: CatalogBatchRow,
+  cache: FreshnessCache,
+): boolean {
+  if (!row.generationCreatedAt || !row.generationRunId) return true;
+  const cacheKey = `${row.generationRunId}:${row.generationCreatedAt}`;
+  const cached = cache.mutationSinceRun.get(cacheKey);
+  if (cached !== undefined) return cached;
+  const changed = database
+    .prepare(
+      `WITH bounds(project_id, chapter_id, since) AS (VALUES(?, ?, ?))
+       SELECT 1
+         FROM bounds
+        WHERE EXISTS (
+          SELECT 1 FROM scene_beats beat
+           WHERE beat.project_id = bounds.project_id
+             AND beat.chapter_id = bounds.chapter_id
+             AND beat.updated_at > bounds.since
+          UNION ALL
+          SELECT 1 FROM entities entity
+           WHERE entity.project_id = bounds.project_id
+             AND entity.updated_at > bounds.since
+          UNION ALL
+          SELECT 1 FROM canon_facts fact
+           WHERE fact.project_id = bounds.project_id
+             AND (
+               fact.created_at > bounds.since OR fact.confirmed_at > bounds.since
+               OR COALESCE(fact.superseded_at, '') > bounds.since
+             )
+          UNION ALL
+          SELECT 1 FROM entity_states state
+           WHERE state.project_id = bounds.project_id
+             AND (
+               state.created_at > bounds.since
+               OR COALESCE(state.superseded_at, '') > bounds.since
+             )
+          UNION ALL
+          SELECT 1 FROM knowledge_states knowledge
+           WHERE knowledge.project_id = bounds.project_id
+             AND (
+               knowledge.created_at > bounds.since
+               OR COALESCE(knowledge.superseded_at, '') > bounds.since
+             )
+          UNION ALL
+          SELECT 1 FROM timeline_events event
+           WHERE event.project_id = bounds.project_id
+             AND event.updated_at > bounds.since
+          UNION ALL
+          SELECT 1 FROM foreshadowings foreshadowing
+           WHERE foreshadowing.project_id = bounds.project_id
+             AND foreshadowing.updated_at > bounds.since
+          UNION ALL
+          SELECT 1 FROM character_arcs arc
+           WHERE arc.project_id = bounds.project_id
+             AND arc.updated_at > bounds.since
+          UNION ALL
+          SELECT 1 FROM arc_milestones milestone
+           WHERE milestone.project_id = bounds.project_id
+             AND milestone.updated_at > bounds.since
+          UNION ALL
+          SELECT 1 FROM derived_invalidations invalidation
+           WHERE invalidation.project_id = bounds.project_id
+             AND invalidation.scope = 'validation'
+             AND invalidation.target_chapter_id = bounds.chapter_id
+             AND invalidation.created_at > bounds.since
+        )
+        LIMIT 1`,
+    )
+    .get(row.projectId, row.chapterId, row.generationCreatedAt);
+  const result = Boolean(changed);
+  cache.mutationSinceRun.set(cacheKey, result);
+  return result;
+}
+
 function semanticFreshness(
   database: DatabaseSync,
-  row: BatchRow,
+  row: CatalogBatchRow,
   cache: FreshnessCache,
 ): 'current' | 'stale' {
   if (!row.inputFingerprint) return 'stale';
@@ -169,6 +250,7 @@ function semanticFreshness(
     row.promptVersion !== null &&
     row.promptVersion !== undefined
   ) {
+    if (semanticMutationOccurredAfterRun(database, row, cache)) return 'stale';
     const current = aiValidationFingerprint(
       database,
       source,
@@ -192,6 +274,7 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
     sourceByVersion: new Map(),
     invalidationByChapter: new Map(),
     sceneBeatBySource: new Map(),
+    mutationSinceRun: new Map(),
   };
   const todos = database
     .prepare(

@@ -45,6 +45,14 @@ interface ActiveRequest {
   readonly controller: AbortController;
 }
 
+interface SharedRequest {
+  readonly generation: number;
+  readonly controller: AbortController;
+  readonly promise: Promise<BridgeRequestOutcome<unknown>>;
+  subscribers: number;
+  settled: boolean;
+}
+
 interface LatestOnlyRequest {
   readonly generation: number;
   readonly execute: () => Promise<BridgeRequestOutcome<unknown>>;
@@ -131,7 +139,7 @@ function withGeneration<T>(
 export class BridgeRequestCoordinator {
   readonly #active = new Map<string, ActiveRequest>();
   readonly #latestOnly = new Map<string, LatestOnlyLane>();
-  readonly #shared = new Map<string, Promise<BridgeRequestOutcome<unknown>>>();
+  readonly #shared = new Map<string, SharedRequest>();
 
   isPending(requestKey: string): boolean {
     const laneKey = latestOnlyLaneKey(requestKey);
@@ -160,6 +168,11 @@ export class BridgeRequestCoordinator {
       return cancelled;
     }
 
+    const shared = this.#shared.get(requestKey);
+    if (shared && !shared.settled) {
+      shared.controller.abort();
+      return true;
+    }
     const active = this.#active.get(requestKey);
     if (!active) return false;
     active.controller.abort();
@@ -174,6 +187,9 @@ export class BridgeRequestCoordinator {
         lane.pending = null;
       }
     }
+    for (const shared of this.#shared.values()) {
+      if (!shared.settled) shared.controller.abort();
+    }
     for (const active of this.#active.values()) active.controller.abort();
   }
 
@@ -182,7 +198,7 @@ export class BridgeRequestCoordinator {
     operation: (context: BridgeRequestContext) => Promise<CommandResult<T>>,
     options: BridgeRequestOptions = {},
   ): Promise<BridgeRequestOutcome<T>> {
-    if (options.mode === 'share') return this.#runShared(requestKey, operation);
+    if (options.mode === 'share') return this.#runShared(requestKey, operation, options);
     const laneKey = options.mode === 'replace' ? latestOnlyLaneKey(requestKey) : null;
     if (laneKey) return this.#runLatestOnly(laneKey, operation, options);
     return this.#runImmediate(requestKey, operation, options);
@@ -191,17 +207,77 @@ export class BridgeRequestCoordinator {
   #runShared<T>(
     requestKey: string,
     operation: (context: BridgeRequestContext) => Promise<CommandResult<T>>,
+    options: BridgeRequestOptions,
   ): Promise<BridgeRequestOutcome<T>> {
     const existing = this.#shared.get(requestKey);
-    if (existing) return existing as Promise<BridgeRequestOutcome<T>>;
-    const pending = this.#runImmediate(requestKey, operation);
-    const shared = pending as Promise<BridgeRequestOutcome<unknown>>;
+    if (existing && !existing.controller.signal.aborted) {
+      return this.#subscribeShared<T>(existing, options.signal);
+    }
+    const replacingAbandonedRequest = Boolean(existing);
+    if (existing) this.#shared.delete(requestKey);
+
+    const controller = new AbortController();
+    const pending = this.#runImmediate(
+      requestKey,
+      operation,
+      replacingAbandonedRequest
+        ? { mode: 'replace', signal: controller.signal }
+        : { signal: controller.signal },
+    );
+    const shared: SharedRequest = {
+      generation: this.#active.get(requestKey)?.generation ?? 0,
+      controller,
+      promise: pending as Promise<BridgeRequestOutcome<unknown>>,
+      subscribers: 0,
+      settled: false,
+    };
     this.#shared.set(requestKey, shared);
     const clear = (): void => {
+      shared.settled = true;
       if (this.#shared.get(requestKey) === shared) this.#shared.delete(requestKey);
     };
     void pending.then(clear, clear);
-    return pending;
+    return this.#subscribeShared<T>(shared, options.signal);
+  }
+
+  #subscribeShared<T>(
+    shared: SharedRequest,
+    signal: AbortSignal | undefined,
+  ): Promise<BridgeRequestOutcome<T>> {
+    shared.subscribers += 1;
+    return new Promise<BridgeRequestOutcome<T>>((resolve, reject) => {
+      let released = false;
+      const release = (cancelUnderlying: boolean): boolean => {
+        if (released) return false;
+        released = true;
+        signal?.removeEventListener('abort', abortSubscriber);
+        shared.subscribers = Math.max(0, shared.subscribers - 1);
+        if (cancelUnderlying && shared.subscribers === 0 && !shared.settled) {
+          shared.controller.abort(signal?.reason);
+        }
+        return true;
+      };
+      const abortSubscriber = (): void => {
+        if (!release(true)) return;
+        resolve({ state: 'stale', generation: shared.generation });
+      };
+
+      if (signal?.aborted) {
+        abortSubscriber();
+        return;
+      }
+      signal?.addEventListener('abort', abortSubscriber, { once: true });
+      void shared.promise.then(
+        (outcome) => {
+          if (!release(false)) return;
+          resolve(outcome as BridgeRequestOutcome<T>);
+        },
+        (error: unknown) => {
+          if (!release(false)) return;
+          reject(error instanceof Error ? error : new Error('Shared bridge request failed.'));
+        },
+      );
+    });
   }
 
   #runLatestOnly<T>(

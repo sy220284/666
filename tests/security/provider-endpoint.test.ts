@@ -47,6 +47,7 @@ describe('M4-03 Provider endpoint boundary', () => {
       'https://192.0.2.1/v1',
       'https://198.18.0.1/v1',
       'https://[2001:db8::1]/v1',
+      'https://[fec0::1]/v1',
     ];
     for (const value of blocked) {
       expect(
@@ -67,6 +68,7 @@ describe('M4-03 Provider endpoint boundary', () => {
     const metadataLookup: ProviderDnsLookup = async () => [
       { address: '169.254.169.254', family: 4 },
     ];
+    const siteLocalLookup: ProviderDnsLookup = async () => [{ address: 'fec0::1', family: 6 }];
 
     await expect(
       inspectProviderEndpoint('https://api.example.com/v1', mixedLookup),
@@ -76,6 +78,9 @@ describe('M4-03 Provider endpoint boundary', () => {
     ).rejects.toMatchObject({ code: 'AI_ENDPOINT_UNSAFE_013' });
     await expect(
       inspectProviderEndpoint('https://api.example.com/v1', metadataLookup),
+    ).rejects.toMatchObject({ code: 'AI_ENDPOINT_UNSAFE_013' });
+    await expect(
+      inspectProviderEndpoint('https://api.example.com/v1', siteLocalLookup),
     ).rejects.toMatchObject({ code: 'AI_ENDPOINT_UNSAFE_013' });
   });
 });

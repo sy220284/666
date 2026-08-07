@@ -112,7 +112,9 @@ function ipv6Scope(host: string): ProviderEndpointScope | 'unsafe' {
   }
   const first = words[0]!;
   if ((first & 0xfe00) === 0xfc00) return 'lan';
-  if ((first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00) return 'unsafe';
+  if ((first & 0xffc0) === 0xfe80 || (first & 0xffc0) === 0xfec0 || (first & 0xff00) === 0xff00) {
+    return 'unsafe';
+  }
   if (first === 0x2001 && words[1] === 0x0db8) return 'unsafe';
   return 'external';
 }

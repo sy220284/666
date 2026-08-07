@@ -196,8 +196,8 @@ export function PlanningWorkbench({
           onClose={() => setPlotEditor(null)}
           onSaved={async () => {
             setPlotEditor(null);
-            await outline.refresh();
             setStatus('大纲节点已保存。');
+            await outline.refresh();
           }}
         />
       ) : null}

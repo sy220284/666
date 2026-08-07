@@ -48,7 +48,6 @@ const processBoundaryCoverageExcludes = [
   'apps/desktop/preload/src/entry.ts',
   'apps/desktop/renderer/src/app/renderer-error-boundary.tsx',
   'apps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts',
-  'apps/desktop/renderer/src/bridge/request-lifecycle.ts',
   'apps/desktop/renderer/src/bridge/use-bridge-resource.ts',
   'packages/core-service/src/candidate-diff-worker.ts',
   'packages/core-service/src/utility-generation-router.ts',

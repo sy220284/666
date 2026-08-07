@@ -1,0 +1,48 @@
+# M10-14 验证命令与权威运行
+
+## 实施边界
+
+git rev-parse main
+# expected: d394d89766d2e85889c81f9599378e958681f3c0
+
+git rev-parse work
+# implementation commit: ed06fe1317f3c23d67c06cb4469852829ff34c3a
+
+git diff --name-only d394d89766d2e85889c81f9599378e958681f3c0..ed06fe1317f3c23d67c06cb4469852829ff34c3a
+git diff --check d394d89766d2e85889c81f9599378e958681f3c0..ed06fe1317f3c23d67c06cb4469852829ff34c3a
+
+## 永久矩阵
+
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+## GitHub Ready 权威运行
+
+Quality: 31148118685
+Security: 31148118560
+Performance: 31148118567
+Task Governance: 31148118656
+PR Policy: 31148118539
+
+## 合并后闭环
+
+git rev-parse main
+git diff --exit-code main..work
+
+# 来源 PR 对应主线提交必须满足：
+main-verification=success
+task-verification/M10-14=success

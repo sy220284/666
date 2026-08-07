@@ -4,24 +4,19 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
-  RecoveryDailyBackupInputSchema,
   RecoveryExportInputSchema,
   RecoveryOverviewSchema,
   RecoveryVersionExportSchema,
   type BackupRecord,
-  type RecoveryDailyBackupInput,
   type RecoveryExportInput,
   type RecoveryOverview,
   type RecoveryVersionExport,
   type RecoveryVersionSummary,
 } from '@worldforge/contracts';
 
-import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { RecoveryService, RecoveryServiceError, type RecoveryServiceOptions } from './recovery.js';
 import { safeFileName, safeTemporaryName } from './recovery/path-name.js';
-
-const systemClock: DatabaseClock = { now: () => new Date() };
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
@@ -69,34 +64,11 @@ interface VersionExportData {
 export class CheckpointAwareRecoveryService extends RecoveryService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #backupRootDirectory: string;
-  readonly #clock: DatabaseClock;
-  readonly #dailyBackups = new Map<string, Promise<BackupRecord>>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     super(workspace, options);
     this.#workspace = workspace;
     this.#backupRootDirectory = path.resolve(options.backupRootDirectory);
-    this.#clock = options.clock ?? systemClock;
-  }
-
-  override createDailyBackup(
-    requestId: string,
-    raw: RecoveryDailyBackupInput,
-  ): Promise<BackupRecord> {
-    const input = RecoveryDailyBackupInputSchema.parse(raw);
-    const day = this.#clock.now().toISOString().slice(0, 10);
-    const key = `${input.projectId}:${day}`;
-    const existing = this.#dailyBackups.get(key);
-    if (existing) return existing;
-    const operation = super.createDailyBackup(requestId, input);
-    this.#dailyBackups.set(key, operation);
-    const clear = (): void => {
-      if (this.#dailyBackups.get(key) === operation) {
-        this.#dailyBackups.delete(key);
-      }
-    };
-    void operation.then(clear, clear);
-    return operation;
   }
 
   async #openVerifiedCheckpoint(record: BackupRecord): Promise<CheckpointReader | null> {

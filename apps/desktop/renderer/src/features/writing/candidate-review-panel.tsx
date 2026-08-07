@@ -254,15 +254,7 @@ export function CandidateReviewPanel({
       setStatus,
       setPending,
     }),
-    [
-      bridge,
-      chapter.id,
-      commandPrefix,
-      onDraftReplace,
-      project.projectId,
-      readOnly,
-      refreshList,
-    ],
+    [bridge, chapter.id, commandPrefix, onDraftReplace, project.projectId, readOnly, refreshList],
   );
   const discard = () => discardCandidate(actionContext, selectedDocument);
   const apply = () => applyCandidate({ ...actionContext, flush, loadUndo }, preview, selection);

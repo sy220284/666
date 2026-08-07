@@ -19,7 +19,10 @@ interface AuthorityProjection {
   readonly targetOrder: number;
   readonly archivedEntities: readonly Record<string, unknown>[];
   readonly archivedCanonFacts: readonly Record<string, unknown>[];
-  readonly foreshadowing: ReadonlyMap<string, { status: string; temporalStatus: ConstraintTemporalStatus }>;
+  readonly foreshadowing: ReadonlyMap<
+    string,
+    { status: string; temporalStatus: ConstraintTemporalStatus }
+  >;
 }
 
 const PRIORITIES: readonly ConstraintPriority[] = ['P0', 'P1', 'P2', 'P3', 'P4'];
@@ -233,7 +236,10 @@ function loadProjection(
   });
 }
 
-function projectArcSource(source: ConstraintSource, projection: AuthorityProjection): ConstraintSource {
+function projectArcSource(
+  source: ConstraintSource,
+  projection: AuthorityProjection,
+): ConstraintSource {
   if (source.sourceType !== 'character_arc') return source;
   const parsed = parseContent(source.content);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return source;
@@ -348,7 +354,10 @@ export function applyConstraintAuthorityPolicy(
   const contentHash = sha256(
     stableSerialize(
       Object.fromEntries(
-        PRIORITIES.map((priority) => [priority, sections[priority].map((source) => source.content)]),
+        PRIORITIES.map((priority) => [
+          priority,
+          sections[priority].map((source) => source.content),
+        ]),
       ),
     ),
   );

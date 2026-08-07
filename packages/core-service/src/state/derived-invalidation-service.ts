@@ -1,6 +1,6 @@
 import { assertFinalVersion } from './ending-snapshot-service.js';
-import { authorOnly } from './proposal-batch-repository.js';
 import {
+  authorOnly,
   type ChangeType,
   type InvalidationScope,
   type StateProposalServiceContext,

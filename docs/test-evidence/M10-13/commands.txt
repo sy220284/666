@@ -2,10 +2,17 @@
 
 受检范围：
 - 来源 PR：`#321`
-- 受检实现提交：`69d883525cbe0ebc0032a5cdd7cbbe2e3a85ea4f`
+- 实施提交：`75fffa5eddb5c564398ee5a1bbda42d7c1d31231`
 - 基线：`113099dff4f0a97129c6f49d850a7933a72e6b29`
-- 实现提交之后仅允许 M10-13 任务卡、Runtime、任务索引与 Evidence 收口文件变化
-- Ready 验证通过本 Evidence 收口后的 `synchronize` 事件触发
+- 实施提交之后只允许 M10-13 任务卡、Runtime、任务索引与 Evidence 收口文件变化
+
+工具链权威：
+- `docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json`
+- `.github/workflows/quality.yml`
+- `.github/workflows/toolchain-export.yml`
+- `.github/governance/toolchain-bundle.mjs`
+- 锁定格式工具来自永久 Toolchain Export Artifact `8938315167`
+- Prettier `3.9.5`
 
 永久静态与结构命令：
 - `pnpm task:validate`
@@ -27,24 +34,35 @@
 - `pnpm build`
 - `pnpm test:e2e`
 
+权威运行：
+- Quality：Run `31135208977`，success
+- Security：Run `31135208731`，success
+- Performance：Run `31135208771`，success
+- Task Governance：Run `31135208696`，success
+- PR Policy：Run `31135208694`，success
+
+产品验证结果：
+- Unit：171 files / 899 tests passed
+- Integration：63 files / 174 tests passed
+- Migration：27 files / 52 tests passed
+- Electron E2E：33 tests passed
+- Coverage：Statements 72.20%、Branches 60.29%、Functions 65.86%、Lines 74.25%
+
+权威产物：
+- Product Tests and Coverage Artifact：`8977735359`
+- Product Artifact SHA-256：`f072c48ab873dd9276d028260bec625b419aa33fa92dd0ff6e063dc63a5e4e44`
+- Electron E2E Evidence Artifact：`8977971781`
+- Electron E2E Artifact SHA-256：`ab7528446591a67fa5f5d0c48207b7e2526241e778df7bdce1a764c990ff55db`
+
 专项回归：
-- 跨命令 key 聚合 Pending 所有权
+- 跨命令 key 聚合忙碌状态所有权
 - 项目与章节变化后的旧命令、订阅和 Resource 失效
 - 自动保存期间章节切换阻止旧 Generation 启动
-- 项目会话副作用命令互斥与项目/continuation 原子提交
-- Autosave、flush 与续写位置绑定 Draft revision
+- 项目会话副作用互斥与项目/Continuation 原子提交
+- Autosave、Flush 与续写位置绑定 Draft Revision
 - 章节会话卸载后禁止旧正文挂载
 - 不同项目重建 WritingWorkbench 生命周期
-- Candidate 读取、预览、写操作与 Generation 终态 scope/epoch 提交
+- Candidate 读取、预览、写操作与 Generation 终态作用域提交
 - Provider、项目会话与 Generation 订阅卸载失效
-- 结构永久删除单一业务引擎守卫
-
-权威工作流：
-- Quality
-- Security
-- Performance
-- Evidence
-- Task Governance
-- PR Policy
-
-最新 Ready 完整矩阵的运行 ID、测试数量、Coverage 与 Artifact 在工作流完成后写入本文件。任何失败都会使当前 Evidence 失去合并资格。
+- 结构永久删除单一业务引擎及引用阻断
+- Candidate Workbench 服务端渲染覆盖

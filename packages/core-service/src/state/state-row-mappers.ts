@@ -45,6 +45,8 @@ export interface ProposalRow {
   readonly evidenceJson: string;
   readonly confidence: number;
   readonly status: string;
+  readonly freshness?: 'current' | 'stale';
+  readonly actionability?: 'accept' | 'reject_only';
   readonly resolvedValueJson: string | null;
   readonly validUntilChapterId: string | null;
   readonly createdAt: string;
@@ -164,6 +166,8 @@ export function mapProposal(row: ProposalRow) {
     evidence: parseJson(row.evidenceJson),
     confidence: row.confidence,
     status: row.status,
+    freshness: row.freshness ?? 'current',
+    actionability: row.actionability ?? 'accept',
     resolvedValue: parseJson(row.resolvedValueJson),
     validUntilChapterId: row.validUntilChapterId,
     createdAt: row.createdAt,

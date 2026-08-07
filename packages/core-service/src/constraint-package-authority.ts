@@ -138,6 +138,8 @@ function conflictsFor(sources: readonly ConstraintSource[]): ConstraintConflict[
 
 function roleStatus(role: string | null): string {
   switch (role) {
+    case null:
+      return 'planned';
     case 'plant':
       return 'planted';
     case 'reinforce':

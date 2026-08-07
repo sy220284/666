@@ -53,7 +53,6 @@ function applicationCapabilities(
   hydrated: boolean,
   coreStatus: CoreStatus | null,
   providerCount: number,
-  verifiedProviderCount: number,
 ): ApplicationCapabilities {
   const coreAvailable = coreStatus?.status === 'healthy';
   return {
@@ -61,7 +60,7 @@ function applicationCapabilities(
     coreAvailable,
     settingsAvailable: hydrated,
     providerAvailable: coreAvailable && providerCount > 0,
-    generationAvailable: coreAvailable && verifiedProviderCount > 0,
+    generationAvailable: coreAvailable && providerCount > 0,
     diagnosticsAvailable: hydrated,
   };
 }
@@ -154,7 +153,6 @@ export function deriveCapabilityMatrix(input: {
     input.hydrated,
     input.coreStatus,
     input.providerCount,
-    input.verifiedProviderCount,
   );
   const project = projectCapabilities(input.project, application.coreAvailable);
   return {

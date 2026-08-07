@@ -151,4 +151,85 @@ describe('BridgeRequestCoordinator shared reads', () => {
     });
     expect(calls).toBe(2);
   });
+
+  it('starts a fresh shared request immediately after cancelAll abandons the prior request', async () => {
+    const coordinator = new BridgeRequestCoordinator();
+    let calls = 0;
+    let markFirstStarted = () => undefined;
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    const operation = async ({ generation }: { readonly generation: number }) => {
+      calls += 1;
+      if (generation === 1) {
+        markFirstStarted();
+        return new Promise<{
+          readonly ok: true;
+          readonly requestId: string;
+          readonly data: { readonly checkpoints: number };
+        }>(() => undefined);
+      }
+      return {
+        ok: true as const,
+        requestId: 'shared-after-cancel-all',
+        data: { checkpoints: 4 },
+      };
+    };
+
+    const abandoned = coordinator.run('recovery.getOverview:cancel-all', operation, {
+      mode: 'share',
+    });
+    await firstStarted;
+    coordinator.cancelAll();
+    const replacement = coordinator.run('recovery.getOverview:cancel-all', operation, {
+      mode: 'share',
+    });
+
+    await expect(abandoned).resolves.toEqual({ state: 'stale', generation: 1 });
+    await expect(replacement).resolves.toMatchObject({
+      state: 'success',
+      generation: 2,
+      data: { checkpoints: 4 },
+    });
+    expect(calls).toBe(2);
+  });
+
+  it('starts a fresh shared request immediately after cancelling that shared key', async () => {
+    const coordinator = new BridgeRequestCoordinator();
+    let calls = 0;
+    let markFirstStarted = () => undefined;
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    const operation = async ({ generation }: { readonly generation: number }) => {
+      calls += 1;
+      if (generation === 1) {
+        markFirstStarted();
+        return new Promise<{
+          readonly ok: true;
+          readonly requestId: string;
+          readonly data: { readonly checkpoints: number };
+        }>(() => undefined);
+      }
+      return {
+        ok: true as const,
+        requestId: 'shared-after-key-cancel',
+        data: { checkpoints: 5 },
+      };
+    };
+    const requestKey = 'recovery.getOverview:key-cancel';
+
+    const abandoned = coordinator.run(requestKey, operation, { mode: 'share' });
+    await firstStarted;
+    expect(coordinator.cancel(requestKey)).toBe(true);
+    const replacement = coordinator.run(requestKey, operation, { mode: 'share' });
+
+    await expect(abandoned).resolves.toEqual({ state: 'stale', generation: 1 });
+    await expect(replacement).resolves.toMatchObject({
+      state: 'success',
+      generation: 2,
+      data: { checkpoints: 5 },
+    });
+    expect(calls).toBe(2);
+  });
 });

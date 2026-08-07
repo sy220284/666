@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-14，共59张独立任务卡。  
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-15，共60张独立任务卡。  
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -135,6 +135,7 @@ Runtime IMPLEMENTED
 | M10-12 | [`命令身份与生成生命周期一致性治理`](M10/M10-12_COMMAND_IDENTITY_GENERATION_LIFECYCLE.md) | M10-11 | Implemented |
 | M10-13 | [`1.5前置边界重构与根因治理`](M10/M10-13_V1_5_PREFLIGHT_BOUNDARY_REFACTOR.md) | M10-12 | Implemented |
 | M10-14 | [`Recovery、Bridge与边界审计收口`](M10/M10-14_RECOVERY_BRIDGE_POST_AUDIT_HARDENING.md) | M10-13 | Implemented |
+| M10-15 | [`AI权威上下文与生成前置一致性收口`](M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md) | M10-14 | Implemented |
 
 ## 3. 被吸收的需求来源
 

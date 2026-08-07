@@ -57,8 +57,22 @@ export async function startGenerationTask(input: GenerationStartInput): Promise<
     policy: 'reject',
     operation: async (scope) => {
       if (!(await input.flush()) || !scope.isCurrent()) return;
+      const draftOutcome = await input.bridge.draft.open({
+        projectId: input.projectId,
+        chapterId: input.chapterId,
+      });
+      if (!scope.isCurrent()) return;
+      if (draftOutcome.state !== 'success') {
+        input.setStatus(
+          draftOutcome.state === 'failure'
+            ? `生成未启动 · ${authorErrorSummary(draftOutcome.error)}`
+            : '生成请求已取消或被新请求替代。',
+        );
+        return;
+      }
       const guardedInput: GenerationStartInput = {
         ...input,
+        draft: draftOutcome.data,
         setStatus: (status) => {
           if (scope.isCurrent()) input.setStatus(status);
         },
@@ -72,8 +86,8 @@ export async function startGenerationTask(input: GenerationStartInput): Promise<
       const outcome = await input.bridge.generation.start({
         projectId: input.projectId,
         chapterId: input.chapterId,
-        baseDraftId: input.draft.draftId,
-        baseDraftRevision: input.draft.revision,
+        baseDraftId: guardedInput.draft.draftId,
+        baseDraftRevision: guardedInput.draft.revision,
         providerId: input.providerId,
         continuationOfRunId,
         intent,

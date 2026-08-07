@@ -1,0 +1,60 @@
+# M10-15 验证命令与权威运行
+
+## 实施边界
+
+git rev-parse main
+# baseline: 233f76a9119b92e9bafe02471667872a60966177
+
+git rev-parse work
+# final implementation commit: 2e2ca2937754eeb260dc72e6dd90896c2ce35a90
+# Ready validation head: 52c3d9a8858b607ea638084e1f59363cd701c5f3
+
+git diff --name-only 233f76a9119b92e9bafe02471667872a60966177..2e2ca2937754eeb260dc72e6dd90896c2ce35a90
+git diff --check 233f76a9119b92e9bafe02471667872a60966177..2e2ca2937754eeb260dc72e6dd90896c2ce35a90
+
+## 永久矩阵
+
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+## GitHub Ready 权威运行
+
+Quality: 31182517882
+Security: 31182517179
+Performance: 31182517192
+Task Governance: 31182517281
+PR Policy: 31182517516
+
+## 当前工作空间工具恢复
+
+Toolchain Export run: 30918292931
+Toolchain artifact: 8896001630
+Toolchain zip sha256: 7a99fc475e860f3d9796f3ee77e61332613e56b42fc15f27a78c3695fbf440b0
+Workspace Dependencies run: 30919968937
+Workspace Dependencies artifact: 8896648569
+Dependencies zip sha256: 348f04a9a695e9c7cd31c6ffe7ebf915ceb8c3c48a254975e0eb3f00ed37e25b
+/mnt/data/verify-project-tools.sh full
+# PROJECT_TOOLS_OK mode=full
+
+## 合并后闭环
+
+git rev-parse main
+git diff --exit-code main..work
+
+# 来源 PR 对应主线提交必须满足：
+main-verification=success
+task-verification/M10-15=success

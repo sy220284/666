@@ -8,6 +8,7 @@ export function serializeConstraintPackage(value: ConstraintPackage): string {
     `contentHash: ${value.contentHash}`,
     `snapshotSource: ${value.snapshotSource}`,
     `estimatedTokens: ${value.estimatedTokens}/${value.budget.usableTokens}`,
+    'temporalSemantics: current=当前故事时点事实；historical=历史来源不得冒充当前；upcoming=未来规划不得视为已发生；snapshot=前章已确认快照',
   ];
   for (const priority of priorities) {
     lines.push('', `## ${priority}`);
@@ -18,8 +19,10 @@ export function serializeConstraintPackage(value: ConstraintPackage): string {
     }
     for (const source of sources) {
       lines.push(
-        `- [${source.sourceType}] ${source.label}`,
+        `- [${source.sourceType}][${source.temporalStatus}] ${source.label}`,
         `  source: ${source.sourceId}`,
+        `  temporalStatus: ${source.temporalStatus}`,
+        ...(source.sourceVersionId ? [`  sourceVersionId: ${source.sourceVersionId}`] : []),
         `  semanticKey: ${source.semanticKey}`,
         `  content: ${source.content}`,
       );

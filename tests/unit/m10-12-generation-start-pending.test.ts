@@ -19,17 +19,24 @@ function inputFor(
   statuses: string[],
   flush: () => Promise<boolean> = async () => true,
 ) {
+  const draft = {
+    draftId: 'draft-a',
+    chapterId: 'chapter-a',
+    revision: 1,
+    blocks: [],
+  };
   return {
-    bridge,
+    bridge: contractInput<RendererBridgeAdapter>({
+      ...bridge,
+      draft: {
+        open: async () => ({ state: 'success' as const, data: draft }),
+        ...bridge.draft,
+      },
+    }),
     projectId: 'project-a',
     chapterId: 'chapter-a',
     commandPrefix: 'writing:project-a:chapter-a:',
-    draft: {
-      draftId: 'draft-a',
-      chapterId: 'chapter-a',
-      revision: 1,
-      blocks: [],
-    },
+    draft,
     providerId: 'provider-a',
     readOnly: false,
     flush,

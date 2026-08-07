@@ -278,14 +278,6 @@ export function snapshotRow(
 ): EndingSnapshot {
   assertFinalVersion(connection, projectId, chapterId, sourceVersionId);
   const content = snapshotContent(connection, projectId, chapterId);
-  connection
-    .prepare(
-      `UPDATE ending_snapshots
-          SET status = 'stale', stale_at = ?, stale_reasons_json = ?
-        WHERE project_id = ? AND chapter_id = ? AND status = 'valid'
-          AND source_version_id <> ?`,
-    )
-    .run(now, '[]', projectId, chapterId, sourceVersionId);
   const existing = connection
     .prepare(
       `SELECT id FROM ending_snapshots

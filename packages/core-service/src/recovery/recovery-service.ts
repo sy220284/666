@@ -1,20 +1,26 @@
-import type {
-  BackupCleanupPreview,
-  BackupPolicy,
-  BackupRecord,
-  RecoveryCleanupApplyInput,
-  RecoveryCleanupResult,
-  RecoveryCreateInput,
-  RecoveryDailyBackupInput,
-  RecoveryExportInput,
-  RecoveryNamedSnapshotInput,
-  RecoveryOverview,
-  RecoveryPolicyUpdateInput,
-  RecoveryProtectionInput,
-  RecoveryRestoreInput,
-  RecoveryRestoredProject,
-  RecoveryVersionExport,
+import {
+  BackupFailureRecordSchema,
+  BackupPolicySchema,
+  RecoveryCleanupApplyInputSchema,
+  RecoveryDailyBackupInputSchema,
+  RecoveryVersionSummarySchema,
+  type BackupCleanupPreview,
+  type BackupPolicy,
+  type BackupRecord,
+  type RecoveryCleanupApplyInput,
+  type RecoveryCleanupResult,
+  type RecoveryCreateInput,
+  type RecoveryDailyBackupInput,
+  type RecoveryExportInput,
+  type RecoveryNamedSnapshotInput,
+  type RecoveryOverview,
+  type RecoveryPolicyUpdateInput,
+  type RecoveryProtectionInput,
+  type RecoveryRestoreInput,
+  type RecoveryRestoredProject,
+  type RecoveryVersionExport,
 } from '@worldforge/contracts';
+import path from 'node:path';
 
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { stableJson } from '../stable-json.js';
@@ -39,6 +45,7 @@ interface RecoveryCommandEntry {
 }
 
 const MAXIMUM_RETAINED_RECOVERY_COMMANDS = 1_000;
+const activeDailyBackups = new Map<string, Promise<BackupRecord>>();
 
 export class RecoveryService {
   readonly #workspace: ProjectWorkspaceService;
@@ -46,10 +53,14 @@ export class RecoveryService {
   readonly #cleanup: IdempotentBackupCleanupOperations;
   readonly #restore: BackupRestoreOperations;
   readonly #versionExport: VersionExportOperations;
+  readonly #backupRootDirectory: string;
+  readonly #now: () => Date;
   readonly #commands = new Map<string, RecoveryCommandEntry>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     this.#workspace = workspace;
+    this.#backupRootDirectory = path.resolve(options.backupRootDirectory);
+    this.#now = () => options.clock?.now() ?? new Date();
     const runtime = createRecoveryRuntime(workspace, options);
     this.#create = new BackupCreateOperations(runtime);
     this.#cleanup = new IdempotentBackupCleanupOperations(runtime);
@@ -64,9 +75,25 @@ export class RecoveryService {
   }
 
   createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
-    return this.#share('create-daily', requestId, raw, 'BACKUP_CREATE_FAILED', () =>
-      this.#create.createDailyBackup(requestId, raw),
+    const input = RecoveryDailyBackupInputSchema.parse(raw);
+    const day = this.#now().toISOString().slice(0, 10);
+    const dailyKey = stableJson({
+      backupRootDirectory: this.#backupRootDirectory,
+      projectId: input.projectId,
+      day,
+    });
+    const existing = activeDailyBackups.get(dailyKey);
+    if (existing) return existing;
+
+    const operation = this.#share('create-daily', requestId, input, 'BACKUP_CREATE_FAILED', () =>
+      this.#create.createDailyBackup(requestId, input),
     );
+    activeDailyBackups.set(dailyKey, operation);
+    const clear = (): void => {
+      if (activeDailyBackups.get(dailyKey) === operation) activeDailyBackups.delete(dailyKey);
+    };
+    void operation.then(clear, clear);
+    return operation;
   }
 
   createNamedSnapshot(requestId: string, raw: RecoveryNamedSnapshotInput): Promise<BackupRecord> {
@@ -78,11 +105,62 @@ export class RecoveryService {
   getOverview(projectId: string): Promise<RecoveryOverview> {
     const project = this.#workspace.assertActiveProject(projectId);
     if (project.databaseMode === 'read-write') {
-      this.#workspace.readProject(projectId, (database) => {
-        database.prepare('SELECT 1 FROM backup_failures LIMIT 1').get();
-        database.prepare('SELECT 1 FROM versions LIMIT 1').get();
-        database.prepare('SELECT 1 FROM backup_policies LIMIT 1').get();
-      });
+      try {
+        this.#workspace.readProject(projectId, (database) => {
+          database
+            .prepare(
+              `SELECT id AS failureId, project_id AS projectId, operation,
+                      backup_track AS track, error_code AS errorCode,
+                      occurred_at AS occurredAt, resolved_at AS resolvedAt
+                 FROM backup_failures
+                WHERE project_id = ? AND resolved_at IS NULL
+                ORDER BY occurred_at DESC, id DESC
+                LIMIT 20`,
+            )
+            .all(projectId)
+            .forEach((row) => BackupFailureRecordSchema.parse(row));
+
+          database
+            .prepare(
+              `SELECT v.id AS versionId, c.id AS chapterId, c.title AS chapterTitle,
+                      v.title AS versionTitle, v.word_count AS wordCount,
+                      v.created_at AS createdAt,
+                      CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized
+                 FROM versions v
+                 JOIN chapters c ON c.id = v.chapter_id
+                 JOIN volumes vo ON vo.id = c.volume_id
+                WHERE vo.project_id = ?
+                ORDER BY v.created_at DESC, v.id DESC`,
+            )
+            .all(projectId)
+            .forEach((row) =>
+              RecoveryVersionSummarySchema.parse({
+                versionId: String(row.versionId),
+                chapterId: String(row.chapterId),
+                chapterTitle: String(row.chapterTitle),
+                title: String(row.versionTitle),
+                wordCount: Number(row.wordCount),
+                createdAt: String(row.createdAt),
+                finalized: Number(row.finalized) === 1,
+              }),
+            );
+
+          this.#parsePersistedPolicy(projectId, database.prepare(
+            `SELECT project_id AS projectId, policy_version AS policyVersion,
+                    daily_retention_count AS dailyRetentionCount,
+                    major_retention_count AS majorRetentionCount,
+                    major_retention_days AS majorRetentionDays,
+                    quota_bytes AS quotaBytes, updated_at AS updatedAt
+               FROM backup_policies WHERE project_id = ?`,
+          ).get(projectId));
+        });
+      } catch (error) {
+        throw new RecoveryServiceError(
+          'BACKUP_VERIFY_FAILED',
+          'Recovery overview data could not be read safely.',
+          { cause: error },
+        );
+      }
     }
     return this.#cleanup.getOverview(projectId);
   }
@@ -100,12 +178,15 @@ export class RecoveryService {
   }
 
   previewCleanup(projectId: string): Promise<BackupCleanupPreview> {
+    this.#assertCleanupPolicyReadable(projectId);
     return this.#cleanup.previewCleanup(projectId);
   }
 
   applyCleanup(requestId: string, raw: RecoveryCleanupApplyInput): Promise<RecoveryCleanupResult> {
-    return this.#share('apply-cleanup', requestId, raw, 'BACKUP_CLEANUP_STALE', () =>
-      this.#cleanup.applyCleanup(requestId, raw),
+    const input = RecoveryCleanupApplyInputSchema.parse(raw);
+    this.#assertCleanupPolicyReadable(input.projectId);
+    return this.#share('apply-cleanup', requestId, input, 'BACKUP_CLEANUP_STALE', () =>
+      this.#cleanup.applyCleanup(requestId, input),
     );
   }
 
@@ -125,6 +206,53 @@ export class RecoveryService {
 
   exportVersion(raw: RecoveryExportInput, targetDirectory: string): Promise<RecoveryVersionExport> {
     return this.#versionExport.exportVersion(raw, targetDirectory);
+  }
+
+  #assertCleanupPolicyReadable(projectId: string): void {
+    this.#workspace.assertActiveProject(projectId, true);
+    try {
+      this.#workspace.readProject(projectId, (database) => {
+        const row = database
+          .prepare(
+            `SELECT project_id AS projectId, policy_version AS policyVersion,
+                    daily_retention_count AS dailyRetentionCount,
+                    major_retention_count AS majorRetentionCount,
+                    major_retention_days AS majorRetentionDays,
+                    quota_bytes AS quotaBytes, updated_at AS updatedAt
+               FROM backup_policies WHERE project_id = ?`,
+          )
+          .get(projectId);
+        this.#parsePersistedPolicy(projectId, row);
+      });
+    } catch (error) {
+      if (error instanceof RecoveryServiceError) throw error;
+      throw new RecoveryServiceError(
+        'BACKUP_CLEANUP_STALE',
+        'Backup cleanup is disabled because the retention policy cannot be read safely.',
+        { cause: error },
+      );
+    }
+  }
+
+  #parsePersistedPolicy(projectId: string, row: Record<string, unknown> | undefined): void {
+    if (!row) return;
+    try {
+      BackupPolicySchema.parse({
+        projectId: String(row.projectId),
+        policyVersion: Number(row.policyVersion),
+        dailyRetentionCount: Number(row.dailyRetentionCount),
+        majorRetentionCount: Number(row.majorRetentionCount),
+        majorRetentionDays: Number(row.majorRetentionDays),
+        quotaBytes: Number(row.quotaBytes),
+        updatedAt: String(row.updatedAt),
+      });
+    } catch (error) {
+      throw new RecoveryServiceError(
+        'BACKUP_CLEANUP_STALE',
+        `The persisted backup policy for project ${projectId} is invalid.`,
+        { cause: error },
+      );
+    }
   }
 
   #share<T>(

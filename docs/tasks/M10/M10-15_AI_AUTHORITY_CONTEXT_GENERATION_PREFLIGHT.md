@@ -27,27 +27,28 @@
 3. ConstraintSource 内部拥有 `temporalStatus/sourceVersionId`，Prompt 序列化却丢失时序来源。
 4. `constraintHash` 未纳入 `temporalStatus`，时序语义变化不能稳定改变约束身份。
 5. `validate/state_extract` 仍注入 Current Draft，可能污染指定 Final Version 的判断。
-6. 当前章节 SceneBeat 明确引用已归档 Entity 时，Constraint 查询按 `entity.status='active'` 过滤，历史返修丢失实体/Canon 上下文。
+6. 当前章节 SceneBeat 明确引用已归档 Entity 时，Constraint 查询按 active 目录过滤，历史返修丢失实体/Canon 上下文。
 
 ## 实施原则
 
+- 已验证 `constraint-package.ts` 保持字节不变；新策略只通过既有 `HardenedConstraintPackageService` 公共包装层接入。
 - 不修改数据库 Schema、Migration、生产依赖或锁文件。
 - 不把“未验证 Provider”改成 Core 硬阻断；`generationAvailable` 表示可尝试生成，风险等级仍由 AiReadiness/ModelSupportProfile 表达。
 - Generation 启动以 Flush 后重新读取的活动 Draft 作为唯一 Revision 真源。
 - `validate/state_extract` 不读取 Current Draft；其他任务保持既有 Draft 策略。
 - 时序来源进入 Prompt 与 `constraintHash`，历史/快照/未来来源对模型可见。
-- 归档 Entity 只有在目标章节 SceneBeat 明确引用时才进入约束包，并保留归档来源标记；不恢复全局 active 语义。
+- 归档 Entity 只有在目标章节 SceneBeat 明确引用时才进入约束包，并保留归档来源标记；不恢复全局 active 语义，也不把目录归档错误解释成故事时间 historical。
 - 不建立第二套 GenerationRun、Snapshot、Provider 或 Constraint 真源。
 
 ## 主要影响范围
 
 - `apps/desktop/renderer/src/runtime/capability-matrix.ts`
 - `apps/desktop/renderer/src/features/writing/generation-start.ts`
-- `packages/core-service/src/constraint-package.ts`
+- `packages/core-service/src/constraint-package-hardening.ts`
+- `packages/core-service/src/constraint-package-authority.ts`
 - `packages/prompts/src/constraint-package-serializer.ts`
-- `tests/unit/capability-matrix.test.ts`
-- `tests/unit/writing-generation-start.test.ts`
-- `tests/integration/constraint-package.test.ts`
+- `tests/unit/m10-15-generation-preflight.test.ts`
+- `tests/integration/constraint-package-authority.test.ts`
 - `docs/INDEX.md`
 - 当前任务治理与 Evidence 文件
 
@@ -58,6 +59,7 @@
 - `validate/state_extract` ConstraintPackage 不包含 `current_draft`。
 - Prompt 序列化输出 `temporalStatus/sourceVersionId`，且 temporalStatus 改变会改变 `constraintHash`。
 - SceneBeat 引用 archived Entity 时，该实体与 Canon 仍进入目标章节 Constraint，并标记归档来源；未引用归档实体仍不进入。
+- 当前章之前/之后的伏笔与人物弧光状态按目标章节投影，未来 `revealed/hit` 不作为当前事实进入模型上下文。
 - 既有 P0/P1 不可裁剪、历史 Version 标记、未来补充检索过滤保持回归。
 
 ## 验证命令

@@ -25,7 +25,9 @@
     "packages/core-service/src/validation/validation-catalog.ts",
     "packages/core-service/src/validation/validation-rule-operations.ts",
     "apps/desktop/renderer/src/features/canon/state-proposal-panel.tsx",
-    "tests/integration/state-proposal-snapshot.test.ts"
+    "apps/desktop/renderer/src/features/checks/checks-workbench.tsx",
+    "tests/integration/state-proposal-snapshot.test.ts",
+    "tests/integration/state-validation-provider.test.ts"
   ],
   "forbiddenPaths": [
     "migrations/app/",

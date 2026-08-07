@@ -32,7 +32,12 @@ describe('AR-04 Writing章节会话架构', () => {
       source('use-chapter-session.ts'),
       source('writing-workbench-view.tsx'),
     ]);
-    expect(session).toContain('if (!(await input.flush()))');
+    const flushIndex = session.indexOf('const flushed = await input.flush();');
+    const sessionGuardIndex = session.indexOf('if (!isCurrentSession()) return;', flushIndex);
+    const failureIndex = session.indexOf('if (!flushed) {', sessionGuardIndex);
+    expect(flushIndex).toBeGreaterThan(-1);
+    expect(sessionGuardIndex).toBeGreaterThan(flushIndex);
+    expect(failureIndex).toBeGreaterThan(sessionGuardIndex);
     expect(controller).toContain('if (!(await flush()))');
     expect(view).toContain('onBeforeWrite={flush}');
     expect(view).toContain('onCompositionStart');
@@ -42,12 +47,12 @@ describe('AR-04 Writing章节会话架构', () => {
     expect(view).toContain('autosave.current?.markDirty()');
   });
 
-  it('阻止重复Flush并在保存失败时恢复编辑器', async () => {
+  it('阻止重复Flush并在当前会话保存失败时恢复编辑器', async () => {
     const session = await source('use-chapter-session.ts');
     expect(session).toContain('chapterOpenIsTemporarilyBlocked(stateRef.current)');
     expect(session).toContain('chapterOpenRequiresFlush(stateRef.current)');
     expect(session).toMatch(
-      /if \(!\(await input\.flush\(\)\)\) \{[\s\S]*requestGeneration\.current \+= 1;[\s\S]*input\.editor\.current\?\.setEditable\(!input\.readOnly\);/u,
+      /const flushed = await input\.flush\(\);[\s\S]*if \(!isCurrentSession\(\)\) return;[\s\S]*if \(!flushed\) \{[\s\S]*requestGeneration\.current \+= 1;[\s\S]*input\.editor\.current\?\.setEditable\(!input\.readOnly\);/u,
     );
   });
 });

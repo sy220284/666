@@ -1,11 +1,13 @@
 # M10-15 AI权威上下文与生成前置一致性收口
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M10 稳定性与治理续作 / V1.5 Preflight  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
-> 主线基线：`233f76a9119b92e9bafe02471667872a60966177`
+> 来源 PR：`#324`  
+> 主线基线：`233f76a9119b92e9bafe02471667872a60966177`  
+> 实施提交：`b1745c3b6d35dd04b1c574751aadf347dd89a2e2`
 
 ## 目标
 
@@ -40,6 +42,16 @@
 - 归档 Entity 只有在目标章节 SceneBeat 明确引用时才进入约束包，并保留归档来源标记；不恢复全局 active 语义，也不把目录归档错误解释成故事时间 historical。
 - 不建立第二套 GenerationRun、Snapshot、Provider 或 Constraint 真源。
 
+## 实施结果
+
+- Capability Matrix 的 `generationAvailable` 改为“Core 健康且存在 Provider 即可尝试生成”；已验证/受限/未验证风险等级继续由既有 AI Readiness 与 ModelSupportProfile 承担，没有新增 Core 硬阻断。
+- Generation 启动在 Flush 成功后重新 `draft.open()`，后续 Intent 与 `generation.start` 统一绑定最新活动 Draft；Draft 重读失败或上下文已失效时停止启动。
+- 新增 `applyConstraintAuthorityPolicy()` 作为既有 Hardened Constraint 公共包装层：`validate/state_extract` 移除 `current_draft`，伏笔与人物弧光按目标章节投影未来状态，并在最终 `constraintHash` 中加入 `temporalStatus`。
+- Prompt 序列化显式输出 `temporalStatus` 与可用的 `sourceVersionId`，模型能够区分 current / historical / upcoming / snapshot。
+- 目标章节 SceneBeat 仍引用归档 Entity 时，恢复该实体及其当前 Canon 作为 P2 历史编辑上下文，并标记 `catalogStatus=archived_reference`；未被目标章节引用的归档实体继续过滤。
+- `constraint-package.ts`、Migration、生产依赖与锁文件保持不变。
+- 新增 M10-15 专项 Unit / Integration 测试，并同步既有 Generation 启动测试的权威 Draft Bridge；Draft 静态门已通过 Format、Lint、Typecheck、Workspace 与 Boundary 检查。
+
 ## 主要影响范围
 
 - `apps/desktop/renderer/src/runtime/capability-matrix.ts`
@@ -48,6 +60,8 @@
 - `packages/core-service/src/constraint-package-authority.ts`
 - `packages/prompts/src/constraint-package-serializer.ts`
 - `tests/unit/m10-15-generation-preflight.test.ts`
+- `tests/unit/m10-12-generation-start-pending.test.ts`
+- `tests/unit/writing-generation-start.test.ts`
 - `tests/integration/constraint-package-authority.test.ts`
 - `docs/INDEX.md`
 - 当前任务治理与 Evidence 文件
@@ -89,9 +103,9 @@ pnpm test:e2e
 
 ## 完成条件
 
-- [ ] 六类根因全部在单一权威入口修复。
-- [ ] 新增成功、失败、脏稿、时序、Final-only 与 archived-history 回归测试。
-- [ ] 不降低 Coverage、安全、性能或 E2E 门禁。
+- [x] 六类根因全部在单一权威入口修复。
+- [x] 新增成功、失败、脏稿、时序、Final-only 与 archived-history 回归测试。
+- [ ] Ready Head 的 Unit、Integration、Migration、Coverage、Build、Security、Performance 与 Electron E2E 全部通过。
 - [ ] Ready Evidence 绑定最终 implementation commit。
 - [ ] Controlled Merge 完成。
 - [ ] `main-verification` 与 `task-verification/M10-15` 成功。

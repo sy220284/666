@@ -188,8 +188,7 @@ export class ValidationRuleOperations {
              FROM generation_constraint_packages WHERE run_id = ?`,
         )
         .get(raw.runId) as
-        | { readonly constraintHash: string; readonly sourcesJson: string }
-        | undefined;
+        { readonly constraintHash: string; readonly sourcesJson: string } | undefined;
       if (!constraint) {
         throw new ValidationServiceError(
           'VALIDATION_CONFLICT',

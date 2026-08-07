@@ -27,6 +27,7 @@
     "packages/core-service/src/validation/validation-rule-operations.ts",
     "apps/desktop/renderer/src/features/canon/state-proposal-panel.tsx",
     "apps/desktop/renderer/src/features/checks/checks-workbench.tsx",
+    "tests/integration/m10-16-semantic-freshness.test.ts",
     "tests/integration/state-proposal-snapshot.test.ts",
     "tests/integration/state-validation-provider.test.ts"
   ],

@@ -9,6 +9,7 @@ import {
   type SearchResultItem,
 } from '@worldforge/contracts';
 
+import { applyConstraintAuthorityPolicy } from './constraint-package-authority.js';
 import {
   ConstraintPackageService as BaseConstraintPackageService,
   type ConstraintPackageServiceOptions,
@@ -68,9 +69,10 @@ class ConstraintAwareSearchIndexService extends HardenedSearchIndexService {
 }
 
 /**
- * Constraint package runtime that filters supplemental recall before applying the caller's limit.
- * Future chapters and the current active draft therefore cannot consume the limited supplemental
- * slots or duplicate the authoritative current_draft section.
+ * Constraint package runtime that applies the authoritative chapter-time policy after the base
+ * package is assembled. Supplemental recall is filtered before its caller limit, while the final
+ * package removes Final-only current drafts, projects future narrative state, and restores archived
+ * entities only when the target chapter still references them through SceneBeat authority.
  */
 export class HardenedConstraintPackageService extends BaseConstraintPackageService {
   readonly #workspace: ProjectWorkspaceService;
@@ -90,7 +92,9 @@ export class HardenedConstraintPackageService extends BaseConstraintPackageServi
 
   override build(raw: ConstraintPackageBuildInput): ConstraintPackage {
     const input = ConstraintPackageBuildInputSchema.parse(raw);
-    if (!this.#contextualSearch) return super.build(input);
+    if (!this.#contextualSearch) {
+      return applyConstraintAuthorityPolicy(this.#workspace, input, super.build(input));
+    }
 
     const chapterIds = this.#workspace.readProject(input.projectId, (connection) =>
       connection
@@ -106,9 +110,11 @@ export class HardenedConstraintPackageService extends BaseConstraintPackageServi
         .map((row) => String(row.id)),
     );
     const chapterIndex = chapterIds.indexOf(input.chapterId);
-    if (chapterIndex < 0) return super.build(input);
+    if (chapterIndex < 0) {
+      return applyConstraintAuthorityPolicy(this.#workspace, input, super.build(input));
+    }
 
-    return this.#contextualSearch.runWithContext(
+    const packageValue = this.#contextualSearch.runWithContext(
       {
         projectId: input.projectId,
         currentChapterId: input.chapterId,
@@ -116,5 +122,6 @@ export class HardenedConstraintPackageService extends BaseConstraintPackageServi
       },
       () => super.build(input),
     );
+    return applyConstraintAuthorityPolicy(this.#workspace, input, packageValue);
   }
 }

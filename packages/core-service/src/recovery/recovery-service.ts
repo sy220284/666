@@ -44,8 +44,13 @@ interface RecoveryCommandEntry {
   settled: boolean;
 }
 
+interface DailyBackupLaneEntry {
+  readonly day: string;
+  readonly promise: Promise<BackupRecord>;
+}
+
 const MAXIMUM_RETAINED_RECOVERY_COMMANDS = 1_000;
-const activeDailyBackups = new Map<string, Promise<BackupRecord>>();
+const dailyBackupLanes = new Map<string, DailyBackupLaneEntry>();
 
 export class RecoveryService {
   readonly #workspace: ProjectWorkspaceService;
@@ -54,11 +59,13 @@ export class RecoveryService {
   readonly #restore: BackupRestoreOperations;
   readonly #versionExport: VersionExportOperations;
   readonly #backupRootDirectory: string;
+  readonly #now: () => Date;
   readonly #commands = new Map<string, RecoveryCommandEntry>();
 
   constructor(workspace: ProjectWorkspaceService, options: RecoveryServiceOptions) {
     this.#workspace = workspace;
     this.#backupRootDirectory = path.resolve(options.backupRootDirectory);
+    this.#now = () => options.clock?.now() ?? new Date();
     const runtime = createRecoveryRuntime(workspace, options);
     this.#create = new BackupCreateOperations(runtime);
     this.#cleanup = new IdempotentBackupCleanupOperations(runtime);
@@ -74,19 +81,23 @@ export class RecoveryService {
 
   async createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
     const input = RecoveryDailyBackupInputSchema.parse(raw);
-    const dailyKey = stableJson({
+    const day = this.#now().toISOString().slice(0, 10);
+    const laneKey = stableJson({
       backupRootDirectory: this.#backupRootDirectory,
       projectId: input.projectId,
     });
-    const existing = activeDailyBackups.get(dailyKey);
-    if (existing) return existing;
+    const existing = dailyBackupLanes.get(laneKey);
+    if (existing?.day === day) return existing.promise;
 
-    const operation = this.#share('create-daily', requestId, input, 'BACKUP_CREATE_FAILED', () =>
-      this.#create.createDailyBackup(requestId, input),
-    );
-    activeDailyBackups.set(dailyKey, operation);
+    const execute = (): Promise<BackupRecord> =>
+      this.#share('create-daily', requestId, input, 'BACKUP_CREATE_FAILED', () =>
+        this.#create.createDailyBackup(requestId, input),
+      );
+    const operation = existing ? existing.promise.then(execute, execute) : execute();
+    const entry: DailyBackupLaneEntry = { day, promise: operation };
+    dailyBackupLanes.set(laneKey, entry);
     const clear = (): void => {
-      if (activeDailyBackups.get(dailyKey) === operation) activeDailyBackups.delete(dailyKey);
+      if (dailyBackupLanes.get(laneKey) === entry) dailyBackupLanes.delete(laneKey);
     };
     void operation.then(clear, clear);
     return operation;

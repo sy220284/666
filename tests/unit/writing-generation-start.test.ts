@@ -29,28 +29,36 @@ function setup(overrides: Partial<StartInput> = {}) {
   const get = vi.fn(async ({ candidateId }: { candidateId: string }) =>
     success(candidateDocument(candidateId)),
   );
+  const defaultDraft = {
+    draftId: 'draft-a',
+    revision: 7,
+    blocks: [
+      {
+        logicalBlockId: 'block-a',
+        contentHash: 'hash-a',
+        locked: false,
+      },
+      { logicalBlockId: 'block-b', contentHash: null, locked: false },
+      { logicalBlockId: 'block-c', contentHash: 'hash-c', locked: true },
+    ],
+  } as StartInput['draft'];
+  const { bridge: bridgeOverride, ...inputOverrides } = overrides;
+  const authoritativeDraft = inputOverrides.draft ?? defaultDraft;
   const bridge = contractInput<RendererBridgeAdapter>({
-    generation: { start },
-    candidate: { get },
+    ...bridgeOverride,
+    draft: {
+      open: async () => success(authoritativeDraft),
+      ...bridgeOverride?.draft,
+    },
+    generation: { start, ...bridgeOverride?.generation },
+    candidate: { get, ...bridgeOverride?.candidate },
   });
   const input = contractInput<StartInput>({
     bridge,
     projectId: 'project-a',
     chapterId: 'chapter-a',
     commandPrefix: 'writing:project-a:chapter-a:',
-    draft: {
-      draftId: 'draft-a',
-      revision: 7,
-      blocks: [
-        {
-          logicalBlockId: 'block-a',
-          contentHash: 'hash-a',
-          locked: false,
-        },
-        { logicalBlockId: 'block-b', contentHash: null, locked: false },
-        { logicalBlockId: 'block-c', contentHash: 'hash-c', locked: true },
-      ],
-    },
+    draft: defaultDraft,
     providerId: 'provider-a',
     readOnly: false,
     flush: async () => true,
@@ -77,7 +85,7 @@ function setup(overrides: Partial<StartInput> = {}) {
     setStatus: (value) => statuses.push(value),
     setLastIntent: (value) => intents.push(value),
     onStarted: (_run, taskId) => started.push(taskId),
-    ...overrides,
+    ...inputOverrides,
   });
   return { bridge, get, input, intents, pending, start, started, statuses };
 }

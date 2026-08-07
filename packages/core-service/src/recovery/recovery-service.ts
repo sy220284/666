@@ -174,12 +174,15 @@ export class RecoveryService {
     );
   }
 
-  previewCleanup(projectId: string): Promise<BackupCleanupPreview> {
+  async previewCleanup(projectId: string): Promise<BackupCleanupPreview> {
     this.#assertCleanupPolicyReadable(projectId);
     return this.#cleanup.previewCleanup(projectId);
   }
 
-  applyCleanup(requestId: string, raw: RecoveryCleanupApplyInput): Promise<RecoveryCleanupResult> {
+  async applyCleanup(
+    requestId: string,
+    raw: RecoveryCleanupApplyInput,
+  ): Promise<RecoveryCleanupResult> {
     const input = RecoveryCleanupApplyInputSchema.parse(raw);
     this.#assertCleanupPolicyReadable(input.projectId);
     return this.#share('apply-cleanup', requestId, input, 'BACKUP_CLEANUP_STALE', () =>

@@ -57,7 +57,9 @@ function affectedChapterIds(
           )
         ORDER BY target_volume.order_key, target_chapter.order_key, target_chapter.id`,
     )
-    .all(sourceChapterId, projectId) as unknown as Array<{ readonly chapterId: string }>;
+    .all(sourceChapterId, projectId) as unknown as Array<{
+    readonly chapterId: string;
+  }>;
   return rows.map((row) => row.chapterId);
 }
 
@@ -76,11 +78,7 @@ export function recordDerivedInvalidation(
   }
 
   const queuedScopes = [...new Set(semantic.flatMap(scopesFor))];
-  const targetChapterIds = affectedChapterIds(
-    connection,
-    input.projectId,
-    input.sourceChapterId,
-  );
+  const targetChapterIds = affectedChapterIds(connection, input.projectId, input.sourceChapterId);
 
   for (const changeType of semantic) {
     for (const scope of scopesFor(changeType)) {
@@ -122,7 +120,12 @@ export function invalidateDerived(
   const input = DerivedInvalidationInputSchema.parse(raw);
   authorOnly(input.authority);
   return context.workspace.writeProject(requestId, input.projectId, (connection) => {
-    assertFinalVersion(connection, input.projectId, input.sourceChapterId, input.sourceVersionId);
+    assertFinalVersion(
+      connection,
+      input.projectId,
+      input.sourceChapterId,
+      input.sourceVersionId,
+    );
     const semantic = [
       ...new Set(input.changeTypes.filter((type) => type !== 'prose')),
     ] as ChangeType[];

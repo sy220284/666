@@ -125,6 +125,12 @@ export function hash(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    typeof item === 'bigint' ? item.toString() : item,
+  );
+}
+
 export function stableUuid(value: string): string {
   const valueHash = hash(value);
   return `${valueHash.slice(0, 8)}-${valueHash.slice(8, 12)}-5${valueHash.slice(
@@ -196,7 +202,56 @@ export function semanticInvalidationDigest(
         ORDER BY created_at, id`,
     )
     .all(projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
-  return hash(JSON.stringify(rows));
+  return hash(stableJson(rows));
+}
+
+export function authoritativeSemanticDigest(database: DatabaseSync, projectId: string): string {
+  const read = (sql: string): readonly unknown[] =>
+    database.prepare(sql).all(projectId) as unknown as readonly unknown[];
+  return hash(
+    stableJson({
+      entityStates: read(
+        `SELECT * FROM entity_states WHERE project_id = ?
+         ORDER BY entity_id, state_key, valid_from_chapter_id, id`,
+      ),
+      knowledgeStates: read(
+        `SELECT * FROM knowledge_states WHERE project_id = ?
+         ORDER BY character_id, information_key, valid_from_chapter_id, id`,
+      ),
+      timelineEvents: read(
+        `SELECT * FROM timeline_events WHERE project_id = ?
+         ORDER BY start_value, id`,
+      ),
+      foreshadowings: read(
+        `SELECT * FROM foreshadowings WHERE project_id = ?
+         ORDER BY id`,
+      ),
+      foreshadowingChapters: read(
+        `SELECT * FROM foreshadowing_chapters WHERE project_id = ?
+         ORDER BY foreshadowing_id, chapter_id, role`,
+      ),
+      foreshadowingRelations: read(
+        `SELECT * FROM foreshadowing_relations WHERE project_id = ?
+         ORDER BY source_foreshadowing_id, target_foreshadowing_id, relation_kind`,
+      ),
+      characterArcs: read(
+        `SELECT * FROM character_arcs WHERE project_id = ?
+         ORDER BY id`,
+      ),
+      arcMilestones: read(
+        `SELECT * FROM arc_milestones WHERE project_id = ?
+         ORDER BY arc_id, sort_index, id`,
+      ),
+      milestoneDependencies: read(
+        `SELECT * FROM arc_milestone_dependencies WHERE project_id = ?
+         ORDER BY milestone_id, dependency_milestone_id`,
+      ),
+      timelineDependencies: read(
+        `SELECT * FROM arc_milestone_timeline_dependencies WHERE project_id = ?
+         ORDER BY milestone_id, timeline_event_id`,
+      ),
+    }),
+  );
 }
 
 export function sceneBeatValidationDigest(
@@ -220,7 +275,7 @@ export function sceneBeatValidationDigest(
         ORDER BY beat.order_key, beat.id, version_block.logical_block_id`,
     )
     .all(sourceVersionId, projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
-  return hash(JSON.stringify(rows));
+  return hash(stableJson(rows));
 }
 
 export function ruleValidationFingerprint(
@@ -231,7 +286,7 @@ export function ruleValidationFingerprint(
   config: unknown,
 ): string {
   return hash(
-    JSON.stringify({
+    stableJson({
       version: resolved.version.contentHash,
       blocks: resolved.blocks.map((block) => [block.logicalBlockId, block.contentHash]),
       sceneBeatGraph: sceneBeatValidationDigest(
@@ -244,6 +299,10 @@ export function ruleValidationFingerprint(
         database,
         resolved.version.projectId,
         resolved.version.chapterId,
+      ),
+      authoritativeSemanticState: authoritativeSemanticDigest(
+        database,
+        resolved.version.projectId,
       ),
       ruleVersion,
       configVersion,
@@ -262,7 +321,7 @@ export function aiValidationFingerprint(
   },
 ): string {
   return hash(
-    JSON.stringify({
+    stableJson({
       version: resolved.version.contentHash,
       blocks: resolved.blocks.map((block) => [block.logicalBlockId, block.contentHash]),
       constraintHash: identity.constraintHash,
@@ -272,6 +331,10 @@ export function aiValidationFingerprint(
         database,
         resolved.version.projectId,
         resolved.version.chapterId,
+      ),
+      authoritativeSemanticState: authoritativeSemanticDigest(
+        database,
+        resolved.version.projectId,
       ),
     }),
   );

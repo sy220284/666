@@ -117,6 +117,12 @@ export interface CommentRow {
   readonly resolvedAt: string | null;
 }
 
+export interface ValidationSemanticIdentity {
+  readonly sceneBeatGraph: string;
+  readonly semanticInvalidations: string;
+  readonly authoritativeSemanticState: string;
+}
+
 export function json(value: string | null): unknown | null {
   return value === null ? null : (JSON.parse(value) as unknown);
 }
@@ -210,6 +216,14 @@ export function authoritativeSemanticDigest(database: DatabaseSync, projectId: s
     database.prepare(sql).all(projectId) as unknown as readonly unknown[];
   return hash(
     stableJson({
+      entities: read(
+        `SELECT * FROM entities WHERE project_id = ?
+         ORDER BY entity_type, name, id`,
+      ),
+      canonFacts: read(
+        `SELECT * FROM canon_facts WHERE project_id = ?
+         ORDER BY entity_id, fact_key, confirmed_at, id`,
+      ),
       entityStates: read(
         `SELECT * FROM entity_states WHERE project_id = ?
          ORDER BY entity_id, state_key, valid_from_chapter_id, id`,
@@ -260,24 +274,65 @@ export function sceneBeatValidationDigest(
   chapterId: string,
   sourceVersionId: string,
 ): string {
-  const rows = database
+  const beats = database
     .prepare(
-      `SELECT beat.id AS beatId, beat.title, beat.order_key AS orderKey,
-              beat.is_required AS isRequired,
-              version_block.logical_block_id AS logicalBlockId
+      `SELECT id, plot_node_id AS plotNodeId, title, goal,
+              core_conflict AS coreConflict, expected_result AS expectedResult,
+              beat_type AS beatType, word_target_percent AS wordTargetPercent,
+              is_required AS isRequired, order_key AS orderKey,
+              character_ids_json AS legacyCharacterIdsJson,
+              location_ids_json AS legacyLocationIdsJson
+         FROM scene_beats
+        WHERE project_id = ? AND chapter_id = ? AND deleted_at IS NULL
+        ORDER BY order_key, id`,
+    )
+    .all(projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
+  const entities = database
+    .prepare(
+      `SELECT relation.scene_beat_id AS sceneBeatId, relation.entity_id AS entityId, relation.role
+         FROM scene_beat_entities relation
+         JOIN scene_beats beat ON beat.id = relation.scene_beat_id
+        WHERE relation.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
+        ORDER BY relation.scene_beat_id, relation.role, relation.entity_id`,
+    )
+    .all(projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
+  const blockMapping = database
+    .prepare(
+      `SELECT beat.id AS sceneBeatId, draft_block.logical_block_id AS logicalBlockId,
+              version_block.content_hash AS blockHash
          FROM scene_beats beat
-         LEFT JOIN scene_beat_block_links link ON link.scene_beat_id = beat.id
-         LEFT JOIN draft_blocks draft_block ON draft_block.id = link.draft_block_id
+         JOIN scene_beat_block_links link ON link.scene_beat_id = beat.id
+         JOIN draft_blocks draft_block ON draft_block.id = link.draft_block_id
          LEFT JOIN version_blocks version_block
            ON version_block.version_id = ?
           AND version_block.logical_block_id = draft_block.logical_block_id
         WHERE beat.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
-        ORDER BY beat.order_key, beat.id, version_block.logical_block_id`,
+        ORDER BY beat.order_key, beat.id, draft_block.logical_block_id`,
     )
     .all(sourceVersionId, projectId, chapterId) as unknown as Array<
     Readonly<Record<string, unknown>>
   >;
-  return hash(stableJson(rows));
+  return hash(stableJson({ beats, entities, blockMapping }));
+}
+
+export function validationSemanticIdentity(
+  database: DatabaseSync,
+  resolved: { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] },
+): ValidationSemanticIdentity {
+  return {
+    sceneBeatGraph: sceneBeatValidationDigest(
+      database,
+      resolved.version.projectId,
+      resolved.version.chapterId,
+      resolved.version.versionId,
+    ),
+    semanticInvalidations: semanticInvalidationDigest(
+      database,
+      resolved.version.projectId,
+      resolved.version.chapterId,
+    ),
+    authoritativeSemanticState: authoritativeSemanticDigest(database, resolved.version.projectId),
+  };
 }
 
 export function ruleValidationFingerprint(
@@ -286,23 +341,13 @@ export function ruleValidationFingerprint(
   ruleVersion: string,
   configVersion: string,
   config: unknown,
+  semanticIdentity: ValidationSemanticIdentity = validationSemanticIdentity(database, resolved),
 ): string {
   return hash(
     stableJson({
       version: resolved.version.contentHash,
       blocks: resolved.blocks.map((block) => [block.logicalBlockId, block.contentHash]),
-      sceneBeatGraph: sceneBeatValidationDigest(
-        database,
-        resolved.version.projectId,
-        resolved.version.chapterId,
-        resolved.version.versionId,
-      ),
-      semanticInvalidations: semanticInvalidationDigest(
-        database,
-        resolved.version.projectId,
-        resolved.version.chapterId,
-      ),
-      authoritativeSemanticState: authoritativeSemanticDigest(database, resolved.version.projectId),
+      ...semanticIdentity,
       ruleVersion,
       configVersion,
       config,
@@ -318,6 +363,7 @@ export function aiValidationFingerprint(
     readonly promptId: string;
     readonly promptVersion: number;
   },
+  semanticIdentity: ValidationSemanticIdentity = validationSemanticIdentity(database, resolved),
 ): string {
   return hash(
     stableJson({
@@ -326,12 +372,7 @@ export function aiValidationFingerprint(
       constraintHash: identity.constraintHash,
       promptId: identity.promptId,
       promptVersion: identity.promptVersion,
-      semanticInvalidations: semanticInvalidationDigest(
-        database,
-        resolved.version.projectId,
-        resolved.version.chapterId,
-      ),
-      authoritativeSemanticState: authoritativeSemanticDigest(database, resolved.version.projectId),
+      ...semanticIdentity,
     }),
   );
 }

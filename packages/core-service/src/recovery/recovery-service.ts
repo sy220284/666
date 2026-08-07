@@ -74,7 +74,7 @@ export class RecoveryService {
     );
   }
 
-  createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
+  async createDailyBackup(requestId: string, raw: RecoveryDailyBackupInput): Promise<BackupRecord> {
     const input = RecoveryDailyBackupInputSchema.parse(raw);
     const day = this.#now().toISOString().slice(0, 10);
     const dailyKey = stableJson({

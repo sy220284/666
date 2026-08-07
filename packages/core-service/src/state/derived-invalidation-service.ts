@@ -30,7 +30,7 @@ export function scopesFor(changeType: ChangeType): readonly InvalidationScope[] 
   return ['continuity', 'validation', 'cache'];
 }
 
-function laterChapterIds(
+function affectedChapterIds(
   connection: DatabaseSync,
   projectId: string,
   sourceChapterId: string,
@@ -52,7 +52,7 @@ function laterChapterIds(
             target_volume.order_key > source_volume.order_key
             OR (
               target_volume.order_key = source_volume.order_key
-              AND target_chapter.order_key > source_chapter.order_key
+              AND target_chapter.order_key >= source_chapter.order_key
             )
           )
         ORDER BY target_volume.order_key, target_chapter.order_key, target_chapter.id`,
@@ -76,9 +76,11 @@ export function recordDerivedInvalidation(
   }
 
   const queuedScopes = [...new Set(semantic.flatMap(scopesFor))];
-  const laterChapters = laterChapterIds(connection, input.projectId, input.sourceChapterId);
-  const targetChapterIds: readonly (string | null)[] =
-    laterChapters.length > 0 ? laterChapters : [null];
+  const targetChapterIds = affectedChapterIds(
+    connection,
+    input.projectId,
+    input.sourceChapterId,
+  );
 
   for (const changeType of semantic) {
     for (const scope of scopesFor(changeType)) {

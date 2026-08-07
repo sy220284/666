@@ -168,6 +168,11 @@ export class BridgeRequestCoordinator {
       return cancelled;
     }
 
+    const shared = this.#shared.get(requestKey);
+    if (shared && !shared.settled) {
+      shared.controller.abort();
+      return true;
+    }
     const active = this.#active.get(requestKey);
     if (!active) return false;
     active.controller.abort();
@@ -181,6 +186,9 @@ export class BridgeRequestCoordinator {
         lane.pending.resolve({ state: 'stale', generation: lane.pending.generation });
         lane.pending = null;
       }
+    }
+    for (const shared of this.#shared.values()) {
+      if (!shared.settled) shared.controller.abort();
     }
     for (const active of this.#active.values()) active.controller.abort();
   }

@@ -8,9 +8,10 @@ import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { catalog } from './validation-catalog.js';
 import {
+  aiValidationFingerprint,
   finalVersion,
-  hash,
   json,
+  ruleValidationFingerprint,
   stableUuid,
   ValidationServiceError,
   type ValidationAiCompletionInput,
@@ -32,14 +33,12 @@ export class ValidationRuleOperations {
     const input = ValidationRunRulesInputSchema.parse(raw);
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
       const resolved = finalVersion(database, input.projectId, input.sourceVersionId);
-      const fingerprint = hash(
-        JSON.stringify({
-          version: resolved.version.contentHash,
-          blocks: resolved.blocks.map((block) => [block.logicalBlockId, block.contentHash]),
-          ruleVersion: RULE_VERSION,
-          configVersion: CONFIG_VERSION,
-          config: RULE_CONFIG,
-        }),
+      const fingerprint = ruleValidationFingerprint(
+        database,
+        resolved,
+        RULE_VERSION,
+        CONFIG_VERSION,
+        RULE_CONFIG,
       );
       const existing = database
         .prepare(
@@ -147,11 +146,18 @@ export class ValidationRuleOperations {
       }
       const run = database
         .prepare(
-          `SELECT status, run_type AS runType, chapter_id AS chapterId
+          `SELECT status, run_type AS runType, chapter_id AS chapterId,
+                  prompt_id AS promptId, prompt_version AS promptVersion
              FROM generation_runs WHERE id = ? AND project_id = ?`,
         )
         .get(raw.runId, raw.projectId) as
-        | { readonly status: string; readonly runType: string; readonly chapterId: string }
+        | {
+            readonly status: string;
+            readonly runType: string;
+            readonly chapterId: string;
+            readonly promptId: string;
+            readonly promptVersion: number | bigint;
+          }
         | undefined;
       if (
         !run ||
@@ -178,12 +184,20 @@ export class ValidationRuleOperations {
       }
       const constraint = database
         .prepare(
-          `SELECT sources_json AS sourcesJson
+          `SELECT constraint_hash AS constraintHash, sources_json AS sourcesJson
              FROM generation_constraint_packages WHERE run_id = ?`,
         )
-        .get(raw.runId) as { readonly sourcesJson: string } | undefined;
+        .get(raw.runId) as
+        | { readonly constraintHash: string; readonly sourcesJson: string }
+        | undefined;
+      if (!constraint) {
+        throw new ValidationServiceError(
+          'VALIDATION_CONFLICT',
+          'The validation GenerationRun is missing its authoritative ConstraintPackage.',
+        );
+      }
       const allowedEvidence = new Set(resolved.blocks.map((block) => block.logicalBlockId));
-      for (const item of (json(constraint?.sourcesJson ?? null) ?? []) as Array<{
+      for (const item of (json(constraint.sourcesJson) ?? []) as Array<{
         readonly sourceId?: unknown;
         readonly id?: unknown;
       }>) {
@@ -213,6 +227,11 @@ export class ValidationRuleOperations {
           );
         }
       }
+      const fingerprint = aiValidationFingerprint(database, resolved, {
+        constraintHash: constraint.constraintHash,
+        promptId: run.promptId,
+        promptVersion: Number(run.promptVersion),
+      });
       const now = this.#clock.now().toISOString();
       const batchId = this.#idFactory();
       database
@@ -221,7 +240,7 @@ export class ValidationRuleOperations {
              id, project_id, chapter_id, source_version_id, generation_run_id,
              source, rule_version, config_version, input_fingerprint,
              issue_count, created_at
-           ) VALUES(?, ?, ?, ?, ?, 'ai', NULL, NULL, NULL, ?, ?)`,
+           ) VALUES(?, ?, ?, ?, ?, 'ai', NULL, NULL, ?, ?, ?)`,
         )
         .run(
           batchId,
@@ -229,6 +248,7 @@ export class ValidationRuleOperations {
           raw.chapterId,
           raw.sourceVersionId,
           raw.runId,
+          fingerprint,
           output.issues.length,
           now,
         );

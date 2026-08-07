@@ -7,6 +7,7 @@ import { backup, DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import { CheckpointAwareRecoveryService } from '../../packages/core-service/src/checkpoint-aware-recovery.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
 import { RecoveryService } from '../../packages/core-service/src/recovery.js';
 
@@ -59,7 +60,7 @@ async function closeHarness(harness: Awaited<ReturnType<typeof createHarness>>):
 }
 
 describe('M10-14 recovery post-audit hardening', () => {
-  it('serializes daily backups across midnight while preserving the next-day backup', async () => {
+  it('serializes daily backups across midnight through the product recovery service', async () => {
     const harness = await createHarness('daily-owner');
     let backupCalls = 0;
     let releaseBackup = () => undefined;
@@ -94,12 +95,12 @@ describe('M10-14 recovery post-audit hardening', () => {
         source.close();
       }
     };
-    const firstService = new RecoveryService(harness.workspace, {
+    const firstService = new CheckpointAwareRecoveryService(harness.workspace, {
       backupRootDirectory: harness.backupRoot,
       clock: harness.clock,
       onlineBackup,
     });
-    const secondService = new RecoveryService(harness.workspace, {
+    const secondService = new CheckpointAwareRecoveryService(harness.workspace, {
       backupRootDirectory: harness.backupRoot,
       clock: harness.clock,
       onlineBackup,

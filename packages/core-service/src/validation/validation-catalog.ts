@@ -4,12 +4,16 @@ import { ValidationCatalogSchema, type ValidationCatalog } from '@worldforge/con
 
 import {
   aiValidationFingerprint,
+  authoritativeSemanticDigest,
   json,
   ruleValidationFingerprint,
+  sceneBeatValidationDigest,
+  semanticInvalidationDigest,
   type BatchRow,
   type CommentRow,
   type IssueRow,
   type TodoRow,
+  type ValidationSemanticIdentity,
   type VersionBlockRow,
   type VersionRow,
 } from './validation-model.js';
@@ -95,10 +99,57 @@ function sourceForBatch(
   };
 }
 
-function semanticFreshness(database: DatabaseSync, row: BatchRow): 'current' | 'stale' {
+interface FreshnessCache {
+  readonly authoritativeSemanticState: string;
+  readonly sourceByVersion: Map<
+    string,
+    { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] } | null
+  >;
+  readonly invalidationByChapter: Map<string, string>;
+  readonly sceneBeatBySource: Map<string, string>;
+}
+
+function semanticIdentity(
+  database: DatabaseSync,
+  row: BatchRow,
+  cache: FreshnessCache,
+): ValidationSemanticIdentity {
+  let semanticInvalidations = cache.invalidationByChapter.get(row.chapterId);
+  if (!semanticInvalidations) {
+    semanticInvalidations = semanticInvalidationDigest(database, row.projectId, row.chapterId);
+    cache.invalidationByChapter.set(row.chapterId, semanticInvalidations);
+  }
+  const sceneBeatKey = `${row.chapterId}:${row.sourceVersionId}`;
+  let sceneBeatGraph = cache.sceneBeatBySource.get(sceneBeatKey);
+  if (!sceneBeatGraph) {
+    sceneBeatGraph = sceneBeatValidationDigest(
+      database,
+      row.projectId,
+      row.chapterId,
+      row.sourceVersionId,
+    );
+    cache.sceneBeatBySource.set(sceneBeatKey, sceneBeatGraph);
+  }
+  return {
+    sceneBeatGraph,
+    semanticInvalidations,
+    authoritativeSemanticState: cache.authoritativeSemanticState,
+  };
+}
+
+function semanticFreshness(
+  database: DatabaseSync,
+  row: BatchRow,
+  cache: FreshnessCache,
+): 'current' | 'stale' {
   if (!row.inputFingerprint) return 'stale';
-  const source = sourceForBatch(database, row);
+  let source = cache.sourceByVersion.get(row.sourceVersionId);
+  if (source === undefined) {
+    source = sourceForBatch(database, row);
+    cache.sourceByVersion.set(row.sourceVersionId, source);
+  }
   if (!source) return 'stale';
+  const currentSemanticIdentity = semanticIdentity(database, row, cache);
   if (row.source === 'rule') {
     if (row.ruleVersion !== RULE_VERSION || row.configVersion !== CONFIG_VERSION) return 'stale';
     const current = ruleValidationFingerprint(
@@ -107,6 +158,7 @@ function semanticFreshness(database: DatabaseSync, row: BatchRow): 'current' | '
       RULE_VERSION,
       CONFIG_VERSION,
       RULE_CONFIG,
+      currentSemanticIdentity,
     );
     return current === row.inputFingerprint ? 'current' : 'stale';
   }
@@ -117,11 +169,16 @@ function semanticFreshness(database: DatabaseSync, row: BatchRow): 'current' | '
     row.promptVersion !== null &&
     row.promptVersion !== undefined
   ) {
-    const current = aiValidationFingerprint(database, source, {
-      constraintHash: row.constraintHash,
-      promptId: row.promptId,
-      promptVersion: Number(row.promptVersion),
-    });
+    const current = aiValidationFingerprint(
+      database,
+      source,
+      {
+        constraintHash: row.constraintHash,
+        promptId: row.promptId,
+        promptVersion: Number(row.promptVersion),
+      },
+      currentSemanticIdentity,
+    );
     return current === row.inputFingerprint ? 'current' : 'stale';
   }
   return 'stale';
@@ -130,6 +187,12 @@ function semanticFreshness(database: DatabaseSync, row: BatchRow): 'current' | '
 export function catalog(database: DatabaseSync, projectId: string): ValidationCatalog {
   const batches = batchRows(database, projectId);
   const issues = issueRows(database, projectId);
+  const freshnessCache: FreshnessCache = {
+    authoritativeSemanticState: authoritativeSemanticDigest(database, projectId),
+    sourceByVersion: new Map(),
+    invalidationByChapter: new Map(),
+    sceneBeatBySource: new Map(),
+  };
   const todos = database
     .prepare(
       `SELECT id AS todoId, project_id AS projectId, chapter_id AS chapterId,
@@ -165,7 +228,7 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
       configVersion: row.configVersion,
       inputFingerprint: row.inputFingerprint,
       anchorFreshness: row.finalVersionId === row.sourceVersionId ? 'current' : 'stale',
-      semanticFreshness: semanticFreshness(database, row),
+      semanticFreshness: semanticFreshness(database, row, freshnessCache),
       constraintHash: row.constraintHash ?? null,
       promptId: row.promptId ?? null,
       promptVersion:

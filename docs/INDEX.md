@@ -1,7 +1,7 @@
 # WorldForge 文档总索引
 
 > 基线：WorldForge V6.5  
-> 当前任务：M10-04兼容面收敛治理（Implemented）。
+> 当前有效任务、PR、Head与验证状态：按 `PROJECT_EXECUTION_ENTRY.md` 动态解析，本索引不固化瞬时状态。
 
 ## 1. 唯一执行入口
 
@@ -20,7 +20,7 @@ AGENTS.md
 - [`tasks/TASK_AUTHORIZATION.json`](tasks/TASK_AUTHORIZATION.json)：分支、PR、合并和同步规则。
 - [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：任务依赖、状态与导航。
 - [`tasks/runtime/`](tasks/runtime/)：任务状态、边界、验证命令与提交状态绑定。
-- [`tasks/M10/M10-04_COMPATIBILITY_CONVERGENCE.md`](tasks/M10/M10-04_COMPATIBILITY_CONVERGENCE.md)：当前任务卡。
+- 当前任务卡：由 `PROJECT_EXECUTION_ENTRY.md`、`TASK_AUTHORIZATION.json`、Runtime 与开放 `work → main` PR 动态解析。
 
 `ACTIVE_TASK.json/.md`与旧`taskctl`已经退役，不得重新作为执行入口或状态真源。
 
@@ -47,13 +47,13 @@ AGENTS.md
 
 ## 4. 任务与自动化
 
-- [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：49张独立任务与吸收关系。
+- [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：独立任务、吸收关系与静态声明状态。
 - [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)：任务卡通用规则。
 - [`process/DEVELOPMENT_AUTOMATION.md`](process/DEVELOPMENT_AUTOMATION.md)：唯一work PR、永久门禁和同步闭环。
 - [`process/RELEASE_QUALIFICATION.md`](process/RELEASE_QUALIFICATION.md)：基于Runtime和提交状态的发布资格。
 - [`process/CODEX_EXECUTION_PLAYBOOK.md`](process/CODEX_EXECUTION_PLAYBOOK.md)：实施、复查与关闭规则。
 
-当前状态：M0—M9及M10-01—M10-03有效Verified；M10-04处于Implemented并由PR #312执行永久门禁验证。
+当前任务与有效状态不在本索引固化；必须按 `PROJECT_EXECUTION_ENTRY.md` 从 Git Ref、开放 PR、Runtime 与 Commit Status 动态解析。
 
 ## 5. 架构与实现决策
 

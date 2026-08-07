@@ -7,7 +7,7 @@
 > 目标分支：`main`  
 > 来源 PR：`#324`  
 > 主线基线：`233f76a9119b92e9bafe02471667872a60966177`  
-> 实施提交：`b1745c3b6d35dd04b1c574751aadf347dd89a2e2`
+> 实施提交：`2e2ca2937754eeb260dc72e6dd90896c2ce35a90`
 
 ## 目标
 
@@ -50,7 +50,7 @@
 - Prompt 序列化显式输出 `temporalStatus` 与可用的 `sourceVersionId`，模型能够区分 current / historical / upcoming / snapshot。
 - 目标章节 SceneBeat 仍引用归档 Entity 时，恢复该实体及其当前 Canon 作为 P2 历史编辑上下文，并标记 `catalogStatus=archived_reference`；未被目标章节引用的归档实体继续过滤。
 - `constraint-package.ts`、Migration、生产依赖与锁文件保持不变。
-- 新增 M10-15 专项 Unit / Integration 测试，并同步既有 Generation 启动测试的权威 Draft Bridge；Draft 静态门已通过 Format、Lint、Typecheck、Workspace 与 Boundary 检查。
+- 新增 M10-15 专项 Unit / Integration 测试，并同步既有 Generation 启动测试的权威 Draft Bridge；首轮 Ready Integration 暴露的“无关未来伏笔不应出现在当前约束”测试建模错误已修正，最终场景只对目标章本就相关、但故事事件发生在未来的伏笔验证 `upcoming` 时序，不扩大基础 Constraint 召回范围。
 
 ## 主要影响范围
 
@@ -73,7 +73,8 @@
 - `validate/state_extract` ConstraintPackage 不包含 `current_draft`。
 - Prompt 序列化输出 `temporalStatus/sourceVersionId`，且 temporalStatus 改变会改变 `constraintHash`。
 - SceneBeat 引用 archived Entity 时，该实体与 Canon 仍进入目标章节 Constraint，并标记归档来源；未引用归档实体仍不进入。
-- 当前章之前/之后的伏笔与人物弧光状态按目标章节投影，未来 `revealed/hit` 不作为当前事实进入模型上下文。
+- 与目标章节无关的未来伏笔继续不进入当前约束；因目标章揭示边界相关但事件链接位于未来章节的伏笔按 `upcoming` 投影。
+- 当前章之前/之后的人物弧光状态按目标章节投影，未来 `hit` 不作为当前事实进入模型上下文。
 - 既有 P0/P1 不可裁剪、历史 Version 标记、未来补充检索过滤保持回归。
 
 ## 验证命令

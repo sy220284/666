@@ -733,8 +733,10 @@ export function resolve(
           'Accepted StateProposals for one chapter must share the same Final Version.',
         );
       }
-      const accepted =
-        existing ?? { versionId: proposal.sourceVersionId, changeTypes: new Set<ChangeType>() };
+      const accepted = existing ?? {
+        versionId: proposal.sourceVersionId,
+        changeTypes: new Set<ChangeType>(),
+      };
       accepted.changeTypes.add(
         proposal.proposalType === 'entity_state' ? 'entity_state' : 'arc_milestone',
       );

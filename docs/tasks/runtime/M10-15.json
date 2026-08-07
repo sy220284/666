@@ -19,11 +19,11 @@
     "docs/tasks/M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md",
     "docs/tasks/runtime/M10-15.json",
     "docs/test-evidence/M10-15/",
-    "packages/core-service/src/constraint-package.ts",
+    "packages/core-service/src/constraint-package-hardening.ts",
+    "packages/core-service/src/constraint-package-authority.ts",
     "packages/prompts/src/constraint-package-serializer.ts",
-    "tests/integration/constraint-package.test.ts",
-    "tests/unit/capability-matrix.test.ts",
-    "tests/unit/writing-generation-start.test.ts"
+    "tests/integration/constraint-package-authority.test.ts",
+    "tests/unit/m10-15-generation-preflight.test.ts"
   ],
   "forbiddenPaths": [
     "migrations/app/",

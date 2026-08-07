@@ -491,11 +491,7 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
       expect(new Set(semantic.queuedScopes)).toEqual(
         new Set(['continuity', 'timeline', 'foreshadowing', 'validation', 'cache']),
       );
-      for (const targetChapterId of [
-        seeded.chapter1.id,
-        seeded.chapter2.id,
-        seeded.chapter3.id,
-      ]) {
+      for (const targetChapterId of [seeded.chapter1.id, seeded.chapter2.id, seeded.chapter3.id]) {
         expect(
           harness.proposals.readSnapshot({
             projectId: seeded.project.projectId,

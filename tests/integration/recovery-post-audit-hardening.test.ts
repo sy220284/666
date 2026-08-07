@@ -26,8 +26,11 @@ async function createHarness(name: string) {
   const projectParent = path.join(root, 'projects');
   const backupRoot = path.join(root, 'backups');
   await mkdir(projectParent, { recursive: true });
-  const current = new Date('2026-08-07T01:00:00.000Z');
+  let current = new Date('2026-08-07T01:00:00.000Z');
   const clock = { now: () => current };
+  const setCurrent = (value: Date): void => {
+    current = value;
+  };
   const appRuntime = await openAppRuntime({
     databasePath: path.join(root, 'app.sqlite'),
     migrationsDirectory: 'migrations/app',
@@ -47,7 +50,7 @@ async function createHarness(name: string) {
     { name: '恢复审计', channel: '长篇' },
     projectParent,
   );
-  return { root, backupRoot, clock, appRuntime, workspace, project };
+  return { root, backupRoot, clock, setCurrent, appRuntime, workspace, project };
 }
 
 async function closeHarness(harness: Awaited<ReturnType<typeof createHarness>>): Promise<void> {
@@ -56,21 +59,29 @@ async function closeHarness(harness: Awaited<ReturnType<typeof createHarness>>):
 }
 
 describe('M10-14 recovery post-audit hardening', () => {
-  it('shares one long-running daily backup across RecoveryService instances', async () => {
+  it('serializes daily backups across midnight while preserving the next-day backup', async () => {
     const harness = await createHarness('daily-owner');
     let backupCalls = 0;
     let releaseBackup = () => undefined;
     let markStarted = () => undefined;
+    let markSecondStarted = () => undefined;
     const started = new Promise<void>((resolve) => {
       markStarted = resolve;
+    });
+    const secondStarted = new Promise<void>((resolve) => {
+      markSecondStarted = resolve;
     });
     const gate = new Promise<void>((resolve) => {
       releaseBackup = resolve;
     });
     const onlineBackup = async (sourceDatabasePath: string, targetDatabasePath: string) => {
       backupCalls += 1;
-      markStarted();
-      await gate;
+      if (backupCalls === 1) {
+        markStarted();
+        await gate;
+      } else {
+        markSecondStarted();
+      }
       const source = new DatabaseSync(sourceDatabasePath, {
         readOnly: true,
         allowExtension: false,
@@ -99,15 +110,21 @@ describe('M10-14 recovery post-audit hardening', () => {
         projectId: harness.project.projectId,
       });
       await started;
+      harness.setCurrent(new Date('2026-08-08T01:00:00.000Z'));
       const second = secondService.createDailyBackup(randomUUID(), {
         projectId: harness.project.projectId,
       });
+      await Promise.resolve();
       expect(backupCalls).toBe(1);
 
       releaseBackup();
-      const [firstRecord, secondRecord] = await Promise.all([first, second]);
-      expect(secondRecord.backupId).toBe(firstRecord.backupId);
-      expect(backupCalls).toBe(1);
+      const firstRecord = await first;
+      await secondStarted;
+      const secondRecord = await second;
+      expect(backupCalls).toBe(2);
+      expect(secondRecord.backupId).not.toBe(firstRecord.backupId);
+      expect(firstRecord.createdAt.slice(0, 10)).toBe('2026-08-07');
+      expect(secondRecord.createdAt.slice(0, 10)).toBe('2026-08-08');
     } finally {
       releaseBackup();
       await closeHarness(harness);

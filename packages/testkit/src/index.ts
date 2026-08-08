@@ -9,4 +9,5 @@ export * from './evidence.js';
 export * from './faults.js';
 export * from './fixtures.js';
 export * from './provider-stub.js';
+export * from './project-migrations.js';
 export * from './temporary-workspace.js';

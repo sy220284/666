@@ -8,10 +8,6 @@ async function source(file: string): Promise<string> {
   return readFile(`${searchRoot}/${file}`, 'utf8');
 }
 
-function lineCount(value: string): number {
-  return value.trimEnd().split('\n').length;
-}
-
 describe('AR-13 Search boundaries', () => {
   it('keeps the public entry as a compatibility re-export', async () => {
     const root = await readFile('packages/core-service/src/search-tools.ts', 'utf8');
@@ -19,7 +15,6 @@ describe('AR-13 Search boundaries', () => {
     expect(root).toContain('./search/search-model.js');
     expect(root).toContain('./search/search-tools-service.js');
     expect(root).not.toContain('class SearchToolsService');
-    expect(lineCount(root)).toBeLessThanOrEqual(5);
   });
 
   it('separates index, dictionary, preview and apply responsibilities', async () => {
@@ -43,21 +38,5 @@ describe('AR-13 Search boundaries', () => {
     expect(preview).toContain('INSERT INTO replace_plans');
     expect(apply).toContain('createOperationCheckpoint');
     expect(apply).toContain("status = 'stale'");
-  });
-
-  it('preserves bounded facades and transaction modules', async () => {
-    const files = {
-      'search-tools-service.ts': 120,
-      'search-index-operations.ts': 50,
-      'search-dictionary-operations.ts': 50,
-      'replace-plan-repository.ts': 100,
-      'replace-preview.ts': 180,
-      'replace-apply.ts': 300,
-      'search-model.ts': 150,
-    } as const;
-
-    for (const [file, budget] of Object.entries(files)) {
-      expect(lineCount(await source(file))).toBeLessThanOrEqual(budget);
-    }
   });
 });

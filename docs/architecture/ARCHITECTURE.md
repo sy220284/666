@@ -1,8 +1,9 @@
 # WorldForge 工程架构说明
 
-> 状态：Frozen  
+> 状态：Frozen Baseline with M10-21 Lifecycle Authority Addendum
 > 基线：WorldForge V6.5  
 > 目标：将产品总方案收敛成Codex和开发者可直接遵守的工程结构。
+> 更新日期：2026-08-09
 
 ## 1. 架构目标
 
@@ -122,12 +123,14 @@ IPC命令
 
 ```text
 startGeneration
-→ 创建GenerationRun
+→ 创建持久GenerationRun（业务生命周期权威）
+→ 创建TaskSnapshot（运行态与事件投影）
 → 组装约束包
 → Provider Adapter
 → 批量流式事件
 → 解析与Schema验证
 → 保存Candidate
+→ 原子收口GenerationRun与结果引用
 → 可选校验
 ```
 
@@ -158,23 +161,44 @@ scripts/
 
 ## 8. 数据权威
 
-| 数据 | 权威来源 |
-|---|---|
-| 应用设置与最近项目 | `app.sqlite` |
-| 正文、设定、状态、候选、版本、日记 | 项目`project.sqlite` |
-| API凭据 | OS Credential Store |
-| Tiptap文档 | 临时编辑视图，可由DraftBlock重建 |
-| FTS、摘要、统计、缓存 | 派生数据，可重建 |
-| 导出文件 | 交付副本，不反向成为项目真源 |
+| 数据                               | 权威来源                                             |
+| ---------------------------------- | ---------------------------------------------------- |
+| 应用设置与最近项目                 | `app.sqlite`                                         |
+| 正文、设定、状态、候选、版本、日记 | 项目`project.sqlite`                                 |
+| AI生成业务生命周期                 | 项目库`generation_runs`；TaskSnapshot不是替代真源    |
+| 跨重启命令重放                     | 领域持久记录或显式`command_receipts`；能力按命令声明 |
+| 权威语义新鲜度                     | 项目库`semantic_revision`及Schema Trigger            |
+| API凭据                            | OS Credential Store                                  |
+| Tiptap文档                         | 临时编辑视图，可由DraftBlock重建                     |
+| FTS、摘要、统计、缓存              | 派生数据，可重建                                     |
+| 导出文件                           | 交付副本，不反向成为项目真源                         |
 
 ## 9. 并发模型
 
 - SQLite业务写入始终串行。
 - 只读查询可并行，但不得读取未提交事务中间状态。
 - AI网络请求异步运行，不占用写队列。
-- 流式delta只进入任务内存和Renderer临时视图。
+- 流式delta只进入任务内存和Renderer临时视图；持久业务终态由GenerationRun承担。
 - Candidate在完成或保存部分结果时一次持久化。
 - CPU密集Diff、导入和索引任务若超过事件循环预算，应使用Worker，但不提前拆进程。
+
+### 9.1 生命周期Owner与Project quiescence
+
+```text
+GenerationRun
+  持久业务状态、取消结果、partial边界、结果引用
+
+TaskProtocol / TaskSnapshot
+  阶段、进度、delta序号、重连与作者可见状态
+
+GenerationRuntime
+  两者之间的领域桥，拥有Provider abort与execution completion
+
+ProjectTaskBarrier
+  Close/Move/Shutdown释放Project DB前的quiescence门
+```
+
+取消顺序固定为：持久化GenerationRun终态与partial边界 → abort Provider → Task terminal → await execution completion。普通Task可以由TaskProtocol直接处理；Generation Task必须经过GenerationRuntime。Task显示终态不能授权提前关闭数据库。
 
 ## 10. Core拆分门槛
 
@@ -211,9 +235,9 @@ Renderer页面围绕三个工作台：
 - 输入错误：边界Schema拒绝。
 - 业务冲突：返回稳定错误码和冲突数据。
 - 数据库错误：事务回滚；必要时项目转只读。
-- AI错误：GenerationRun失败，Draft不变。
+- AI错误：GenerationRun持久化失败或取消终态，Draft不变；Task投影不得掩盖Run状态。
 - 导入/导出/备份错误：临时结果清理，已提交数据不受影响。
-- Core异常：Main报告状态并允许安全重启。
+- Core异常：Main报告状态并允许安全重启；支持durable replay的命令从领域记录或CommandReceipt恢复，其他命令不得伪装成已重放。
 
 ## 14. 不建设的架构
 

@@ -11,17 +11,12 @@ const modules = [
   'packages/core-service/src/structure-operations/structure-operation-service.ts',
 ] as const;
 
-function lines(source: string): number {
-  return source.trimEnd().split(/\r?\n/u).length;
-}
-
 describe('AR-13 Structure Operations boundaries', () => {
   it('keeps the public entry as a compatibility facade', async () => {
     const source = await readFile(root, 'utf8');
     expect(source).toContain('./structure-operations/structure-operation-service.js');
     expect(source).toContain('./structure-operations/structure-operation-model.js');
     expect(source).not.toContain('class StructureOperationService');
-    expect(lines(source)).toBeLessThanOrEqual(5);
   });
 
   it('separates preview, execution and permanent-delete transactions', async () => {

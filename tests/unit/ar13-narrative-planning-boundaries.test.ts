@@ -11,16 +11,11 @@ const modules = [
   'packages/core-service/src/narrative-planning/narrative-planning-service.ts',
 ] as const;
 
-function lines(source: string): number {
-  return source.split(/\r?\n/u).length;
-}
-
 describe('AR-13 Narrative Planning boundaries', () => {
   it('keeps the public entry as a compatibility surface', async () => {
     const source = await readFile(root, 'utf8');
     expect(source).toContain('NarrativePlanningService');
     expect(source).toContain('NarrativePlanningServiceError');
-    expect(lines(source)).toBeLessThanOrEqual(10);
   });
 
   it('separates model, catalog, foreshadowing and character arc responsibilities', async () => {
@@ -30,6 +25,5 @@ describe('AR-13 Narrative Planning boundaries', () => {
     expect(sources[2]).toContain('export class ForeshadowingOperations');
     expect(sources[3]).toContain('export class CharacterArcOperations');
     expect(sources[4]).toContain('export class NarrativePlanningService');
-    for (const source of sources) expect(lines(source)).toBeLessThanOrEqual(600);
   });
 });

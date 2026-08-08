@@ -1,6 +1,7 @@
 # WorldForge V1.0 数据流说明
 
-> 状态：Frozen
+> 状态：Frozen Baseline with M10-21 Authority Flow Addendum
+> 更新日期：2026-08-09
 
 ## 1. 编辑与自动保存
 
@@ -25,7 +26,8 @@
 ```text
 用户发起T0/T1/改写/融合/校验/状态提取
 → ai.startGeneration
-→ 创建GenerationRun
+→ 创建持久GenerationRun（业务生命周期权威）
+→ 创建TaskSnapshot（运行态/事件投影）
 → 组装ConstraintPackage
 → 记录promptId/promptVersion/constraintHash/snapshotSource
 → Provider Adapter直连用户配置端点
@@ -34,10 +36,27 @@
 → 完成/取消/断流
 → Core解析、Cleaner和Schema验证
 → 保存complete或partial Candidate / StateProposal
+→ GenerationRun与结果引用原子收口为终态
+→ Task进入对应展示终态
 → Renderer查询权威结果
 ```
 
 AI流不直接进入Draft。切换章节只改变Renderer视图，不改变Run归属。
+
+取消与生命周期顺序：
+
+```text
+ai.cancelGeneration / task.cancel / Project Close / Move / Core Shutdown
+→ GenerationRuntime定位GenerationRun
+→ 持久化cancelled与可保存partial边界
+→ abort Provider并停止未来delta
+→ Task发布terminal投影
+→ await真实execution completion
+→ ProjectTaskBarrier确认quiescent
+→ 才允许释放、移动Project DB或关闭Core
+```
+
+`saving_candidate`等不可取消原子阶段不强制中断；生命周期操作等待事务自然收口。Task terminal不能替代GenerationRun终态或execution quiescence。
 
 ## 3. Candidate采用
 
@@ -73,6 +92,20 @@ AI流不直接进入Draft。切换章节只改变Renderer视图，不改变Run�
 ```
 
 pending提案不得修改EntityState或ArcMilestone。弧光一致性校验只读已确认里程碑。
+
+ArcMilestone还有作者直接裁决入口：
+
+```text
+作者transitionMilestone(author)
+或 StateProposal resolve(state_proposal)
+→ unresolvedArcMilestoneHitDependencies
+   ├─ Arc前置节点必须hit
+   └─ TimelineEvent必须active、有章节锚点且不晚于实际命中章节
+→ 同一领域事务推进状态
+→ 写入对应confirmationSource
+```
+
+两条入口不得各自维护依赖规则。
 
 ## 5. EndingSnapshot读取
 
@@ -131,6 +164,10 @@ pending提案不得修改EntityState或ArcMilestone。弧光一致性校验只�
 查询结果
 → previewReplace生成ReplacePlan
 → 作者确认
+→ 重新读取Active Structure Authority
+   ├─ Chapter未软删除
+   ├─ 父Volume未软删除
+   └─ 目标Draft仍是Chapter的active Draft且status=active
 → 重新校验Revision/Hash/锁定
 → 创建重大恢复点
 → 单事务应用Patch
@@ -147,12 +184,16 @@ pending提案不得修改EntityState或ArcMilestone。弧光一致性校验只�
 → 作者预览分章、合并、拆分和重命名
 → 创建恢复点
 → transfer.importCommit
-→ 单事务创建卷/章/Draft/Block
+→ 先按requestId读取command_receipts
+├─ 命中且fingerprint一致：直接重放首次结果
+├─ 命中但fingerprint不同：拒绝命令身份冲突
+└─ 未命中：单事务创建卷/章/Draft/Block/Version
+             + 写入command_receipts结果
 → 写索引队列
 → 清理临时文件
 ```
 
-预览阶段不修改项目数据库。
+预览阶段不修改项目数据库。Import业务结果、恢复边界和CommandReceipt必须形成一致提交语义；SQLite已提交而Core在响应前崩溃时，相同请求不得生成第二套ID、内容或Checkpoint。
 
 ## 9. 导出
 
@@ -206,7 +247,9 @@ Renderer提交密钥
 
 密钥不返回Renderer，不进入项目库和日志。
 
-## 12. 长任务与事件恢复
+## 12. 长任务、Generation与事件恢复
+
+### 12.1 普通Task
 
 ```text
 长任务启动
@@ -219,6 +262,18 @@ Renderer提交密钥
 
 任务事件不作为权威业务数据；完成后Renderer按ID重新查询数据库。
 
+### 12.2 Generation authority split
+
+```text
+GenerationRun（project.sqlite）
+  = queued/running/succeeded/failed/cancelled业务生命周期权威
+
+TaskSnapshot（运行内存与事件协议）
+  = 阶段、进度、delta序号、取消反馈和重连投影
+```
+
+重连可以恢复TaskSnapshot展示，但重启后的业务判断必须读取GenerationRun及持久结果；已经消失的网络流不得伪装为仍在运行。
+
 ## 13. 派生数据重建
 
 ```text
@@ -226,7 +281,23 @@ Renderer提交密钥
 ├─ 重建FTS5
 ├─ 重算字数/统计
 ├─ 重建约束缓存
-└─ 重算校验与节奏建议
+├─ SemanticRevision Trigger增量推进权威语义修订
+└─ Validation读取SemanticRevision + 章节内容digest重算校验与节奏建议
 ```
 
 重建任务不能反向修改Draft、Version、Canon、EntityState或ArcMilestone。
+
+## 14. Entity永久删除依赖裁决
+
+```text
+trash.previewPermanentDelete(entity)
+→ PRAGMA foreign_key_list扫描指向entities的真实FK
+→ 仅收集RESTRICT/NO ACTION引用
+→ 映射稳定作者提示与blocker摘要
+→ 作者确认
+→ permanentDelete重新使用同一dependency authority
+├─ blocker仍存在：拒绝
+└─ 无blocker：事务删除；CASCADE从属数据按Schema执行
+```
+
+Preview和Delete不得维护两份手写依赖清单；未来新增RESTRICT FK后，无需额外业务枚举即可自动成为阻断来源。

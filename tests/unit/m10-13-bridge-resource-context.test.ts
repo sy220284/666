@@ -1,13 +1,6 @@
-import { readFileSync } from 'node:fs';
-
 import { describe, expect, it } from 'vitest';
 
 import { bridgeResourceForQueryKey } from '../../apps/desktop/renderer/src/bridge/use-bridge-resource.js';
-
-const resourceSource = readFileSync(
-  'apps/desktop/renderer/src/bridge/use-bridge-resource.ts',
-  'utf8',
-);
 
 describe('M10-13 Bridge Resource上下文归属', () => {
   it('在queryKey切换后隐藏上一上下文的数据与错误', () => {
@@ -39,11 +32,13 @@ describe('M10-13 Bridge Resource上下文归属', () => {
   });
 
   it('同一queryKey刷新时也先清除旧数据并进入真实loading', () => {
-    expect(resourceSource).toContain('resolvedKey: queryKey');
-    expect(resourceSource).toContain("state: 'loading'");
-    expect(resourceSource).toContain('data: null');
-    expect(resourceSource).not.toContain(
-      "setSnapshot((previous) => ({ ...previous, state: 'loading', error: null }))",
+    const loading = {
+      state: 'loading' as const,
+      data: null,
+      error: null,
+    };
+    expect(bridgeResourceForQueryKey('recovery:project-a', 'recovery:project-a', loading)).toBe(
+      loading,
     );
   });
 });

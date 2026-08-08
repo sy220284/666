@@ -15,6 +15,12 @@ CREATE TABLE semantic_revision (
 INSERT INTO semantic_revision(project_id, revision)
 SELECT id, 0 FROM projects;
 
+CREATE TRIGGER semantic_revision_projects_insert
+AFTER INSERT ON projects BEGIN
+  INSERT INTO semantic_revision(project_id, revision) VALUES(NEW.id, 0)
+  ON CONFLICT(project_id) DO NOTHING;
+END;
+
 CREATE TRIGGER semantic_revision_entities_insert
 AFTER INSERT ON entities BEGIN
   INSERT INTO semantic_revision(project_id, revision) VALUES(NEW.project_id, 1)
@@ -27,8 +33,7 @@ AFTER UPDATE ON entities BEGIN
 END;
 CREATE TRIGGER semantic_revision_entities_delete
 AFTER DELETE ON entities BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_canon_facts_insert
@@ -43,8 +48,7 @@ AFTER UPDATE ON canon_facts BEGIN
 END;
 CREATE TRIGGER semantic_revision_canon_facts_delete
 AFTER DELETE ON canon_facts BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_entity_states_insert
@@ -59,8 +63,7 @@ AFTER UPDATE ON entity_states BEGIN
 END;
 CREATE TRIGGER semantic_revision_entity_states_delete
 AFTER DELETE ON entity_states BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_knowledge_states_insert
@@ -75,8 +78,7 @@ AFTER UPDATE ON knowledge_states BEGIN
 END;
 CREATE TRIGGER semantic_revision_knowledge_states_delete
 AFTER DELETE ON knowledge_states BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_timeline_events_insert
@@ -91,8 +93,37 @@ AFTER UPDATE ON timeline_events BEGIN
 END;
 CREATE TRIGGER semantic_revision_timeline_events_delete
 AFTER DELETE ON timeline_events BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
+END;
+
+CREATE TRIGGER semantic_revision_timeline_event_entities_insert
+AFTER INSERT ON timeline_event_entities BEGIN
+  INSERT INTO semantic_revision(project_id, revision) VALUES(NEW.project_id, 1)
   ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER semantic_revision_timeline_event_entities_update
+AFTER UPDATE ON timeline_event_entities BEGIN
+  INSERT INTO semantic_revision(project_id, revision) VALUES(NEW.project_id, 1)
+  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER semantic_revision_timeline_event_entities_delete
+AFTER DELETE ON timeline_event_entities BEGIN
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
+END;
+
+CREATE TRIGGER semantic_revision_timeline_event_dependencies_insert
+AFTER INSERT ON timeline_event_dependencies BEGIN
+  INSERT INTO semantic_revision(project_id, revision) VALUES(NEW.project_id, 1)
+  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER semantic_revision_timeline_event_dependencies_update
+AFTER UPDATE ON timeline_event_dependencies BEGIN
+  INSERT INTO semantic_revision(project_id, revision) VALUES(NEW.project_id, 1)
+  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER semantic_revision_timeline_event_dependencies_delete
+AFTER DELETE ON timeline_event_dependencies BEGIN
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_foreshadowings_insert
@@ -107,8 +138,7 @@ AFTER UPDATE ON foreshadowings BEGIN
 END;
 CREATE TRIGGER semantic_revision_foreshadowings_delete
 AFTER DELETE ON foreshadowings BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_foreshadowing_chapters_insert
@@ -123,8 +153,7 @@ AFTER UPDATE ON foreshadowing_chapters BEGIN
 END;
 CREATE TRIGGER semantic_revision_foreshadowing_chapters_delete
 AFTER DELETE ON foreshadowing_chapters BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_foreshadowing_relations_insert
@@ -139,8 +168,7 @@ AFTER UPDATE ON foreshadowing_relations BEGIN
 END;
 CREATE TRIGGER semantic_revision_foreshadowing_relations_delete
 AFTER DELETE ON foreshadowing_relations BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_character_arcs_insert
@@ -155,8 +183,7 @@ AFTER UPDATE ON character_arcs BEGIN
 END;
 CREATE TRIGGER semantic_revision_character_arcs_delete
 AFTER DELETE ON character_arcs BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_arc_milestones_insert
@@ -171,8 +198,7 @@ AFTER UPDATE ON arc_milestones BEGIN
 END;
 CREATE TRIGGER semantic_revision_arc_milestones_delete
 AFTER DELETE ON arc_milestones BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_arc_milestone_dependencies_insert
@@ -187,8 +213,7 @@ AFTER UPDATE ON arc_milestone_dependencies BEGIN
 END;
 CREATE TRIGGER semantic_revision_arc_milestone_dependencies_delete
 AFTER DELETE ON arc_milestone_dependencies BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_arc_milestone_timeline_dependencies_insert
@@ -203,8 +228,7 @@ AFTER UPDATE ON arc_milestone_timeline_dependencies BEGIN
 END;
 CREATE TRIGGER semantic_revision_arc_milestone_timeline_dependencies_delete
 AFTER DELETE ON arc_milestone_timeline_dependencies BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 CREATE TRIGGER semantic_revision_derived_invalidations_insert
@@ -219,8 +243,7 @@ AFTER UPDATE ON derived_invalidations BEGIN
 END;
 CREATE TRIGGER semantic_revision_derived_invalidations_delete
 AFTER DELETE ON derived_invalidations BEGIN
-  INSERT INTO semantic_revision(project_id, revision) VALUES(OLD.project_id, 1)
-  ON CONFLICT(project_id) DO UPDATE SET revision = revision + 1;
+  UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
 UPDATE projects SET schema_version = 30;

@@ -578,7 +578,7 @@ export class VersionService {
              id, draft_id, request_id, base_revision, committed_revision,
              operations_json, before_blocks_json, after_blocks_json, created_at,
              mutation_origin
-           ) VALUES(?, ?, ?, 0, 1, ?, '[]', ?, ?, ?, 'restore')`,
+           ) VALUES(?, ?, ?, 0, 1, ?, '[]', ?, ?, 'restore')`,
         )
         .run(
           this.#idFactory(),

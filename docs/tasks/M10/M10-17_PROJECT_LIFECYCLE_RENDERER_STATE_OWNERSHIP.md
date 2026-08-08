@@ -6,7 +6,7 @@
 > 执行分支：`work`  
 > 目标分支：`main`  
 > 主线基线：`1caa3fbccc15d84b35e82e80f415717d07a39ba7`  
-> 最终产品实现提交：`e991ae55abc972b8b636e905ee4be73d70a056d1`
+> 最终产品实现提交：`b126aec35e2efb562634ee10a86b50da1c947a78`
 
 ## 目标
 
@@ -85,7 +85,8 @@
 - Rhythm 已完成 `get` 纯读、`run/updateProfile` 写路径拆分；缺 Profile 的读取不落库。
 - Startup 已建立 `loaded / empty / degraded` 三态；Provider/Task/Continuation 失败不再覆写成空值；Task subscription 建立后主动重拉完整活动任务快照。
 - Timeline Event 已支持从 Renderer 选择现有事件、回填章节/地点/人物角色/依赖/时间字段并按原 `eventId` 更新。
-- 最终产品提交 `e991ae55abc972b8b636e905ee4be73d70a056d1` 的 Draft Quality 已通过 Workspace、Boundary、Format、Lint、Typecheck；同一 Head 的 Security、Performance、Task Governance、PR Policy、Draft Evidence 均成功。
+- 首轮 Ready Coverage 发现 TSX 未覆盖函数为 971，超过冻结预算 969；没有提高预算或扩大排除，而是增加真实 Unit 执行，覆盖 `PlanningModeWorkbench` 组件及两条受控模式切换回调。
+- 最终产品提交 `b126aec35e2efb562634ee10a86b50da1c947a78` 的 Draft Quality 已通过 Workspace、Boundary、Format、Lint、Typecheck；同一 Head 的 Security、Performance、Task Governance、PR Policy、Draft Evidence 均成功。
 
 ## 永久验收
 

@@ -10,6 +10,21 @@ import {
 } from '../runtime/workspace-attention.js';
 import type { RendererRouteId } from '../state/ui-state-boundary.js';
 
+export type WorkspaceStartupResource = 'tasks' | 'providers' | 'continuation';
+export type WorkspaceStartupResourceState = 'loaded' | 'empty' | 'degraded';
+
+export interface WorkspaceStartupResourceStates {
+  readonly tasks: WorkspaceStartupResourceState | null;
+  readonly providers: WorkspaceStartupResourceState | null;
+  readonly continuation: WorkspaceStartupResourceState | null;
+}
+
+const INITIAL_STARTUP_RESOURCE_STATES: WorkspaceStartupResourceStates = {
+  tasks: null,
+  providers: null,
+  continuation: null,
+};
+
 export function useWorkspaceRuntime({
   bridge,
   activeProject,
@@ -20,21 +35,43 @@ export function useWorkspaceRuntime({
   readonly route: RendererRouteId;
 }) {
   const attentionGeneration = useRef(0);
+  const projectIdRef = useRef<string | undefined>(activeProject?.projectId);
   const [coreStatus, setCoreStatus] = useState<CoreStatus | null>(null);
   const [tasks, setTasks] = useState<readonly TaskSnapshot[]>([]);
+  const [startupResources, setStartupResources] = useState<WorkspaceStartupResourceStates>(
+    INITIAL_STARTUP_RESOURCE_STATES,
+  );
   const [workspaceAttention, setWorkspaceAttention] =
     useState<WorkspaceAttention>(EMPTY_WORKSPACE_ATTENTION);
   const [hydrated, setHydrated] = useState(false);
 
+  const setStartupResourceState = useCallback(
+    (resource: WorkspaceStartupResource, state: WorkspaceStartupResourceState): void => {
+      setStartupResources((current) => ({ ...current, [resource]: state }));
+    },
+    [],
+  );
+
+  const projectId = activeProject?.projectId;
+  projectIdRef.current = projectId;
   const refreshTasks = useCallback(async (): Promise<void> => {
-    const outcome = await bridge.task.listActive(undefined, { mode: 'replace' });
-    if (outcome.state === 'success') setTasks(outcome.data.tasks);
-  }, [bridge]);
+    const outcome = await bridge.task.listActive(projectIdRef.current, { mode: 'replace' });
+    if (outcome.state === 'success') {
+      setTasks(outcome.data.tasks);
+      setStartupResourceState('tasks', outcome.data.tasks.length === 0 ? 'empty' : 'loaded');
+      return;
+    }
+    setStartupResourceState('tasks', 'degraded');
+  }, [bridge, setStartupResourceState]);
 
   useEffect(() => {
     const unsubscribe = bridge.task.subscribe(() => void refreshTasks());
     return unsubscribe;
   }, [bridge, refreshTasks]);
+
+  useEffect(() => {
+    void refreshTasks();
+  }, [projectId, refreshTasks]);
 
   const refreshWorkspaceAttention = useCallback(async (): Promise<void> => {
     const generation = attentionGeneration.current + 1;
@@ -62,10 +99,12 @@ export function useWorkspaceRuntime({
   return {
     coreStatus,
     tasks,
+    startupResources,
     workspaceAttention,
     hydrated,
     setCoreStatus,
     setTasks,
+    setStartupResourceState,
     setHydrated,
     refreshTasks,
     refreshWorkspaceAttention,

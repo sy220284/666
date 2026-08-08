@@ -149,6 +149,8 @@ export function AppShellPages(props: AppShellPagesProps) {
           bridge={props.bridge}
           projectId={props.activeProject.projectId}
           readOnly={readOnly}
+          disclosureMode={props.disclosureMode}
+          onDisclosureModeChange={(mode) => void props.onSaveSettings({ defaultMode: mode })}
           onClose={() => void props.onTransitionToRoute('writing')}
           onReturn={() => void props.onReturnToAuthorSource()}
         />

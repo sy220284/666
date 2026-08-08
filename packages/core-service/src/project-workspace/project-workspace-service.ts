@@ -19,6 +19,7 @@ import {
 } from '../database/index.js';
 import type { RecentProjectsRepository } from '../recent-projects.js';
 import { stableJson } from '../stable-json.js';
+import { TaskProtocolError } from '../task-protocol.js';
 import { createProjectWorkspace } from './project-create.js';
 import {
   defaultCopyWorkspace,
@@ -51,6 +52,14 @@ function requestFingerprint(scope: string, input: unknown): string {
 export type { ProjectWorkspaceErrorCode };
 export { ProjectWorkspaceError };
 
+export interface ProjectTaskDrain {
+  withProjectDrain<T>(projectId: string, operation: () => Promise<T>): Promise<T>;
+}
+
+const immediateProjectTaskDrain: ProjectTaskDrain = {
+  withProjectDrain: (_projectId, operation) => operation(),
+};
+
 export interface ProjectWorkspaceServiceOptions {
   readonly projectMigrationsDirectory: string;
   readonly projectMigrationRecoveryDirectory: string;
@@ -61,6 +70,7 @@ export interface ProjectWorkspaceServiceOptions {
   readonly hashWorkspace?: (workspacePath: string) => Promise<string>;
   readonly freeBytes?: (directory: string) => Promise<bigint>;
   readonly idFactory?: () => string;
+  readonly taskDrain?: ProjectTaskDrain;
 }
 
 export class ProjectWorkspaceService {
@@ -73,6 +83,7 @@ export class ProjectWorkspaceService {
   readonly #hashWorkspace: (workspacePath: string) => Promise<string>;
   readonly #freeBytes: (directory: string) => Promise<bigint>;
   readonly #idFactory: () => string;
+  readonly #taskDrain: ProjectTaskDrain;
   readonly #operations = new BoundedIdempotentPromiseCache();
   #lifecycleTail: Promise<void> = Promise.resolve();
   #active: ActiveProjectContext | null = null;
@@ -87,6 +98,7 @@ export class ProjectWorkspaceService {
     this.#hashWorkspace = options.hashWorkspace ?? defaultHashWorkspace;
     this.#freeBytes = options.freeBytes ?? defaultFreeBytes;
     this.#idFactory = options.idFactory ?? randomUUID;
+    this.#taskDrain = options.taskDrain ?? immediateProjectTaskDrain;
   }
 
   get activeProject(): ProjectWorkspaceSummary | null {
@@ -112,18 +124,13 @@ export class ProjectWorkspaceService {
   }
 
   close(requestId: string, projectId: string): Promise<{ projectId: string; closed: true }> {
-    return this.#idempotent(
-      requestId,
-      requestFingerprint('project.close', { projectId }),
-      async () => {
+    return this.#idempotent(requestId, requestFingerprint('project.close', { projectId }), () =>
+      this.#withProjectTaskDrain(projectId, async () => {
         const context = this.#assertActiveContext(projectId);
-        try {
-          await closeProjectContext(context);
-        } finally {
-          if (this.#active === context) this.#active = null;
-        }
+        await closeProjectContext(context);
+        if (this.#active === context) this.#active = null;
         return { projectId: context.summary.projectId, closed: true };
-      },
+      }),
     );
   }
 
@@ -136,7 +143,14 @@ export class ProjectWorkspaceService {
       requestId,
       requestFingerprint('project.move', { projectId, targetParentDirectory }),
       () =>
-        moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
+        this.#withProjectTaskDrain(projectId, () =>
+          moveProjectWorkspace(
+            this.#operationContext(),
+            requestId,
+            projectId,
+            targetParentDirectory,
+          ),
+        ),
     );
   }
 
@@ -210,6 +224,21 @@ export class ProjectWorkspaceService {
       await closeProjectContext(context);
     } finally {
       if (this.#active === context) this.#active = null;
+    }
+  }
+
+  async #withProjectTaskDrain<T>(projectId: string, operation: () => Promise<T>): Promise<T> {
+    try {
+      return await this.#taskDrain.withProjectDrain(projectId, operation);
+    } catch (error) {
+      if (error instanceof TaskProtocolError) {
+        throw new ProjectWorkspaceError(
+          'PROJECT_TARGET_CONFLICT',
+          'The project still has a background task in an atomic stage; try the lifecycle action again after it settles.',
+          { cause: error },
+        );
+      }
+      throw error;
     }
   }
 

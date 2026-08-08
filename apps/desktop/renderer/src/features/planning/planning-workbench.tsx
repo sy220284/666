@@ -4,8 +4,8 @@ import type { SceneBeat } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
-import { useRendererUiStore } from '../../state/ui-store.js';
 import type { AppDisclosureMode } from '../../shell/app-shell-model.js';
+import { useRendererUiStore } from '../../state/ui-store.js';
 import { PlanningModeWorkbench } from './planning-mode-workbench.js';
 
 export { StructureNavigator } from '../structure/structure-navigator.js';
@@ -14,7 +14,8 @@ interface PlanningWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;
   readonly projectId: string;
   readonly readOnly: boolean;
-  readonly disclosureMode?: AppDisclosureMode;
+  readonly disclosureMode: AppDisclosureMode;
+  readonly onDisclosureModeChange: (mode: AppDisclosureMode) => void;
   readonly onClose: () => void;
   readonly onReturn: () => void;
 }
@@ -90,7 +91,14 @@ export function PlanningWorkbench(props: PlanningWorkbenchProps) {
           ) : null}
         </section>
       ) : null}
-      <PlanningModeWorkbench {...props} />
+      <PlanningModeWorkbench
+        bridge={props.bridge}
+        projectId={props.projectId}
+        readOnly={props.readOnly}
+        mode={props.disclosureMode}
+        onChangeMode={props.onDisclosureModeChange}
+        onClose={props.onClose}
+      />
     </>
   );
 }

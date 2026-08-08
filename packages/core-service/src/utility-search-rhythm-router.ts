@@ -52,10 +52,14 @@ export async function routeSearchRhythmOperation(
         await services.searchTools.deleteDictionary(requestId, operation.input),
       );
     case RHYTHM_COMMANDS.get:
-    case RHYTHM_COMMANDS.run:
       return success(
         operation.operation,
         await services.rhythm.get(requestId, operation.input.projectId),
+      );
+    case RHYTHM_COMMANDS.run:
+      return success(
+        operation.operation,
+        await services.rhythm.run(requestId, operation.input.projectId),
       );
     case RHYTHM_COMMANDS.updateProfile:
       return success(

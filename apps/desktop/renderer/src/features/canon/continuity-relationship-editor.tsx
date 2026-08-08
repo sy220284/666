@@ -39,9 +39,12 @@ export function ContinuityRelationshipEditor({
   const resource = useBridgeQuery(`continuity-relations:${projectId}`, load);
   const command = useBridgeCommand(resource.refresh);
   const references = useCanonAuthorReferences(bridge, projectId);
+  const [editingTimelineEventId, setEditingTimelineEventId] = useState<string | null>(null);
   const [status, setStatus] = useState(
     '完整关系编辑会保留证据锚点、人物角色和事件依赖，不再固定为空数组。',
   );
+  const editingTimelineEvent =
+    resource.data?.timelineEvents.find((item) => item.id === editingTimelineEventId) ?? null;
 
   const saveState = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -92,11 +95,12 @@ export function ContinuityRelationshipEditor({
     const witnessIds = selectedValues(values, 'witnessIds');
     const subjectIds = selectedValues(values, 'subjectIds');
     const dependencyIds = selectedValues(values, 'dependencyIds');
+    const eventId = editingTimelineEvent?.id ?? null;
     const result = await command.run(() =>
       bridge.continuity.saveTimelineEvent({
         projectId,
         authority: 'author',
-        eventId: null,
+        eventId,
         title: String(values.get('title') ?? '').trim(),
         startValue: String(values.get('startValue') ?? '').trim(),
         endValue: nullableString(values.get('endValue')),
@@ -113,9 +117,9 @@ export function ContinuityRelationshipEditor({
       }),
     );
     if (result) {
-      event.currentTarget.reset();
+      setEditingTimelineEventId(null);
       setStatus(
-        `时间线事件已保存：参与者 ${participantIds.length}、见证者 ${witnessIds.length}、主体 ${subjectIds.length}、依赖 ${dependencyIds.length}。`,
+        `${eventId ? '时间线事件已更新' : '时间线事件已创建'}：参与者 ${participantIds.length}、见证者 ${witnessIds.length}、主体 ${subjectIds.length}、依赖 ${dependencyIds.length}。`,
       );
     }
   };
@@ -184,22 +188,48 @@ export function ContinuityRelationshipEditor({
 
         <details open>
           <summary>时间线人物角色与依赖</summary>
-          <form className="stacked-form" onSubmit={(event) => void saveTimeline(event)}>
+          <label>
+            编辑已有事件
+            <select
+              data-timeline-event-editor-selector
+              value={editingTimelineEventId ?? ''}
+              onChange={(event) => setEditingTimelineEventId(event.currentTarget.value || null)}
+            >
+              <option value="">新建事件</option>
+              {resource.data?.timelineEvents
+                .filter((item) => item.status === 'active')
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <form
+            key={editingTimelineEvent?.id ?? 'new'}
+            className="stacked-form"
+            data-timeline-event-editor={editingTimelineEvent?.id ?? 'new'}
+            onSubmit={(event) => void saveTimeline(event)}
+          >
             <label>
               标题
-              <input name="title" required />
+              <input name="title" defaultValue={editingTimelineEvent?.title ?? ''} required />
             </label>
             <label>
               起始值
-              <input name="startValue" required />
+              <input
+                name="startValue"
+                defaultValue={editingTimelineEvent?.startValue ?? ''}
+                required
+              />
             </label>
             <label>
               结束值
-              <input name="endValue" />
+              <input name="endValue" defaultValue={editingTimelineEvent?.endValue ?? ''} />
             </label>
             <label>
               精度
-              <select name="precision" defaultValue="unknown">
+              <select name="precision" defaultValue={editingTimelineEvent?.precision ?? 'unknown'}>
                 {['exact', 'day', 'month', 'year', 'approximate', 'unknown'].map((value) => (
                   <option key={value} value={value}>
                     {timelinePrecisionLabel(value)}
@@ -209,40 +239,69 @@ export function ContinuityRelationshipEditor({
             </label>
             <label>
               关联章节
-              <ChapterNameSelect name="chapterId" references={references} />
+              <ChapterNameSelect
+                name="chapterId"
+                references={references}
+                defaultValue={editingTimelineEvent?.chapterId ?? ''}
+              />
             </label>
             <label>
               发生地点
-              <EntityNameSelect entityType="location" name="locationId" references={references} />
+              <EntityNameSelect
+                entityType="location"
+                name="locationId"
+                references={references}
+                defaultValue={editingTimelineEvent?.locationId ?? ''}
+              />
             </label>
             <label>
               说明
-              <textarea name="description" />
+              <textarea name="description" defaultValue={editingTimelineEvent?.description ?? ''} />
             </label>
             <label>
               参与者
-              <EntityMultiSelect name="participantIds" references={references} />
+              <EntityMultiSelect
+                name="participantIds"
+                references={references}
+                defaultValue={editingTimelineEvent?.participantIds ?? []}
+              />
             </label>
             <label>
               见证者
-              <EntityMultiSelect name="witnessIds" references={references} />
+              <EntityMultiSelect
+                name="witnessIds"
+                references={references}
+                defaultValue={editingTimelineEvent?.witnessIds ?? []}
+              />
             </label>
             <label>
               事件主体
-              <EntityMultiSelect name="subjectIds" references={references} />
+              <EntityMultiSelect
+                name="subjectIds"
+                references={references}
+                defaultValue={editingTimelineEvent?.subjectIds ?? []}
+              />
             </label>
             <label>
               前置事件
-              <select multiple name="dependencyIds">
-                {resource.data?.timelineEvents.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
+              <select
+                multiple
+                name="dependencyIds"
+                defaultValue={editingTimelineEvent?.dependencyIds ?? []}
+              >
+                {resource.data?.timelineEvents
+                  .filter(
+                    (item) => item.status === 'active' && item.id !== editingTimelineEvent?.id,
+                  )
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title}
+                    </option>
+                  ))}
               </select>
             </label>
             <button disabled={readOnly || command.pending} type="submit">
-              保存完整时间线事件
+              {editingTimelineEvent ? '更新完整时间线事件' : '保存完整时间线事件'}
             </button>
           </form>
         </details>
@@ -277,12 +336,14 @@ export function ContinuityRelationshipEditor({
 function EntityMultiSelect({
   name,
   references,
+  defaultValue,
 }: {
   readonly name: string;
   readonly references: ReturnType<typeof useCanonAuthorReferences>;
+  readonly defaultValue?: readonly string[];
 }) {
   return (
-    <select multiple name={name}>
+    <select multiple name={name} defaultValue={defaultValue ? [...defaultValue] : []}>
       {references.entities.map((entity) => (
         <option key={entity.id} value={entity.id}>
           {entity.name}

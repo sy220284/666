@@ -16,6 +16,10 @@ import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js
 import { restoreAppShellRoute } from '../shell/app-shell-model.js';
 import type { RendererUiStoreState } from '../state/ui-store.js';
 import { continuationRoute, failureFromOutcome, type FailureView } from './app-shell-helpers.js';
+import type {
+  WorkspaceStartupResource,
+  WorkspaceStartupResourceState,
+} from './use-workspace-runtime.js';
 
 interface WorkspaceStartupInput {
   readonly bridge: RendererBridgeAdapter;
@@ -28,9 +32,21 @@ interface WorkspaceStartupInput {
   readonly setContinuation: (continuation: ProjectContinuationSnapshot | null) => void;
   readonly setRecentProjects: (projects: readonly RecentProject[]) => void;
   readonly setTasks: (tasks: readonly TaskSnapshot[]) => void;
+  readonly setResourceState: (
+    resource: WorkspaceStartupResource,
+    state: WorkspaceStartupResourceState,
+  ) => void;
   readonly setHydrated: (hydrated: boolean) => void;
   readonly setFailure: (failure: FailureView | null) => void;
   readonly setMessage: (message: string | null) => void;
+}
+
+export function collectionStartupState(values: readonly unknown[]): WorkspaceStartupResourceState {
+  return values.length === 0 ? 'empty' : 'loaded';
+}
+
+export function nullableStartupState(value: unknown | null): WorkspaceStartupResourceState {
+  return value === null ? 'empty' : 'loaded';
 }
 
 export function useWorkspaceStartup({
@@ -44,6 +60,7 @@ export function useWorkspaceStartup({
   setContinuation,
   setRecentProjects,
   setTasks,
+  setResourceState,
   setHydrated,
   setFailure,
   setMessage,
@@ -101,18 +118,27 @@ export function useWorkspaceStartup({
         }
       }
       setActiveProject(resolvedProject);
-      let nextContinuation: ProjectContinuationSnapshot | null = null;
+      let routeContinuation: ProjectContinuationSnapshot | null = null;
       if (resolvedProject) {
         const continuationOutcome = await bridge.project.getContinuation(
           resolvedProject.projectId,
           { mode: 'replace' },
         );
-        if (continuationOutcome.state === 'success') nextContinuation = continuationOutcome.data;
+        if (continuationOutcome.state === 'success') {
+          routeContinuation = continuationOutcome.data;
+          setContinuation(routeContinuation);
+          setResourceState('continuation', nullableStartupState(routeContinuation));
+        } else {
+          setResourceState('continuation', 'degraded');
+          nextFailure ??= failureFromOutcome('续写状态读取失败', continuationOutcome);
+        }
+      } else {
+        setContinuation(null);
+        setResourceState('continuation', 'empty');
       }
-      setContinuation(nextContinuation);
       if (!initialWorkspaceResolved.current) {
         initialWorkspaceResolved.current = true;
-        const restoredRoute = resolvedProject ? continuationRoute(nextContinuation) : 'home';
+        const restoredRoute = resolvedProject ? continuationRoute(routeContinuation) : 'home';
         dispatch({
           type: 'navigate',
           route: restoreAppShellRoute(restoredRoute, {
@@ -124,10 +150,27 @@ export function useWorkspaceStartup({
           }),
         });
       }
-    } else nextFailure ??= failureFromOutcome('项目状态读取失败', project);
+    } else {
+      setResourceState('continuation', 'degraded');
+      nextFailure ??= failureFromOutcome('项目状态读取失败', project);
+    }
 
-    if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
-    if (providers.state === 'success') applyProviders(providers.data.providers);
+    if (activeTasks.state === 'success') {
+      setTasks(activeTasks.data.tasks);
+      setResourceState('tasks', collectionStartupState(activeTasks.data.tasks));
+    } else {
+      setResourceState('tasks', 'degraded');
+      nextFailure ??= failureFromOutcome('活动任务读取失败', activeTasks);
+    }
+
+    if (providers.state === 'success') {
+      applyProviders(providers.data.providers);
+      setResourceState('providers', collectionStartupState(providers.data.providers));
+    } else {
+      setResourceState('providers', 'degraded');
+      nextFailure ??= failureFromOutcome('AI连接配置读取失败', providers);
+    }
+
     setFailure(nextFailure);
     setMessage(null);
     setHydrated(true);
@@ -144,6 +187,7 @@ export function useWorkspaceStartup({
     setHydrated,
     setMessage,
     setRecentProjects,
+    setResourceState,
     setTasks,
   ]);
 

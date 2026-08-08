@@ -140,7 +140,7 @@ Runtime IMPLEMENTED
 | M10-17 | [`项目生命周期与Renderer状态所有权收口`](M10/M10-17_PROJECT_LIFECYCLE_RENDERER_STATE_OWNERSHIP.md) | M10-16 | Implemented |
 | M10-18 | [`导入幂等、实体删除与弧光依赖一致性收口`](M10/M10-18_IMPORT_ENTITY_ARC_DEPENDENCY_CONSISTENCY.md) | M10-17 | Implemented |
 | M10-19 | [`权威生命周期、结构与跨域一致性治理`](M10/M10-19_AUTHORITY_LIFECYCLE_STRUCTURE_GOVERNANCE.md) | M10-18 | Implemented |
-| M10-20 | [`全量审计问题修复与发布链路收口`](M10/M10-20_FULL_AUDIT_REMEDIATION.md) | M10-19 | In Progress |
+| M10-20 | [`全量审计问题修复与发布链路收口`](M10/M10-20_FULL_AUDIT_REMEDIATION.md) | M10-19 | Implemented |
 
 ## 3. 被吸收的需求来源
 

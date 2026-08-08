@@ -241,6 +241,78 @@ function readCatalog(connection: DatabaseSync, input: EntityListInput): EntityCa
   });
 }
 
+function referenceCount(
+  connection: DatabaseSync,
+  statement: string,
+  ...parameters: readonly string[]
+): number {
+  return count(connection.prepare(statement).get(...parameters)?.total);
+}
+
+function readDeletePreview(
+  connection: DatabaseSync,
+  projectId: string,
+  entityId: string,
+): EntityDeletePreview {
+  const entity = entityRow(connection, projectId, entityId);
+  const sceneBeatReferenceCount = referenceCount(
+    connection,
+    'SELECT COUNT(*) AS total FROM scene_beat_entities WHERE project_id = ? AND entity_id = ?',
+    projectId,
+    entityId,
+  );
+  const canonFactCount = referenceCount(
+    connection,
+    'SELECT COUNT(*) AS total FROM canon_facts WHERE project_id = ? AND entity_id = ?',
+    projectId,
+    entityId,
+  );
+  const timelineLocationReferenceCount = referenceCount(
+    connection,
+    'SELECT COUNT(*) AS total FROM timeline_events WHERE project_id = ? AND location_id = ?',
+    projectId,
+    entityId,
+  );
+  const timelineEntityReferenceCount = referenceCount(
+    connection,
+    'SELECT COUNT(*) AS total FROM timeline_event_entities WHERE project_id = ? AND entity_id = ?',
+    projectId,
+    entityId,
+  );
+  const characterArcReferenceCount = referenceCount(
+    connection,
+    'SELECT COUNT(*) AS total FROM character_arcs WHERE project_id = ? AND character_id = ?',
+    projectId,
+    entityId,
+  );
+  const blockers: string[] = [];
+  if (entity.status !== 'archived') {
+    blockers.push('Archive the Entity before permanent deletion.');
+  }
+  if (sceneBeatReferenceCount > 0) {
+    blockers.push('Remove SceneBeat references before permanent deletion.');
+  }
+  if (timelineLocationReferenceCount > 0) {
+    blockers.push('Remove Timeline location references before permanent deletion.');
+  }
+  if (timelineEntityReferenceCount > 0) {
+    blockers.push('Remove Timeline entity references before permanent deletion.');
+  }
+  if (characterArcReferenceCount > 0) {
+    blockers.push('Remove Character Arc references before permanent deletion.');
+  }
+  return EntityDeletePreviewSchema.parse({
+    projectId,
+    entityId,
+    entityName: entity.name,
+    archived: entity.status === 'archived',
+    sceneBeatReferenceCount,
+    canonFactCount,
+    canDelete: blockers.length === 0,
+    blockers,
+  });
+}
+
 export class EntityCanonService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
@@ -423,61 +495,41 @@ export class EntityCanonService {
 
   previewDelete(input: EntityDeletePreviewInput): EntityDeletePreview {
     const valid = EntityDeletePreviewInputSchema.parse(input);
-    return this.#workspace.readProject(valid.projectId, (connection) => {
-      const entity = entityRow(connection, valid.projectId, valid.entityId);
-      const sceneBeatReferenceCount = count(
-        connection
-          .prepare('SELECT COUNT(*) AS total FROM scene_beat_entities WHERE entity_id = ?')
-          .get(valid.entityId)?.total,
-      );
-      const canonFactCount = count(
-        connection
-          .prepare('SELECT COUNT(*) AS total FROM canon_facts WHERE entity_id = ?')
-          .get(valid.entityId)?.total,
-      );
-      const blockers: string[] = [];
-      if (entity.status !== 'archived')
-        blockers.push('Archive the Entity before permanent deletion.');
-      if (sceneBeatReferenceCount > 0)
-        blockers.push('Remove SceneBeat references before permanent deletion.');
-      return EntityDeletePreviewSchema.parse({
-        projectId: valid.projectId,
-        entityId: valid.entityId,
-        entityName: entity.name,
-        archived: entity.status === 'archived',
-        sceneBeatReferenceCount,
-        canonFactCount,
-        canDelete: blockers.length === 0,
-        blockers,
-      });
-    });
+    return this.#workspace.readProject(valid.projectId, (connection) =>
+      readDeletePreview(connection, valid.projectId, valid.entityId),
+    );
   }
 
   async delete(requestId: string, input: EntityDeleteInput): Promise<EntityDeleteResult> {
     const valid = EntityDeleteInputSchema.parse(input);
     authorOnly(valid.authority);
-    const preview = this.previewDelete({ projectId: valid.projectId, entityId: valid.entityId });
-    if (!preview.canDelete) {
-      throw new EntityCanonServiceError('ENTITY_REFERENCED', preview.blockers.join(' '));
-    }
-    if (normalizeEntityName(valid.confirmName) !== preview.entityName) {
-      throw new EntityCanonServiceError(
-        'ENTITY_INVALID',
-        'Entity name confirmation does not match.',
-      );
-    }
-    return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      const result = connection
-        .prepare("DELETE FROM entities WHERE id = ? AND project_id = ? AND status = 'archived'")
-        .run(valid.entityId, valid.projectId);
-      if (Number(result.changes) !== 1) {
-        throw new EntityCanonServiceError('ENTITY_CONFLICT', 'The Entity could not be deleted.');
-      }
-      return EntityDeleteResultSchema.parse({
-        projectId: valid.projectId,
-        entityId: valid.entityId,
-        deleted: true,
-      });
-    });
+    return this.#workspace.writeProject(
+      requestId,
+      valid.projectId,
+      (connection) => {
+        const preview = readDeletePreview(connection, valid.projectId, valid.entityId);
+        if (!preview.canDelete) {
+          throw new EntityCanonServiceError('ENTITY_REFERENCED', preview.blockers.join(' '));
+        }
+        if (normalizeEntityName(valid.confirmName) !== preview.entityName) {
+          throw new EntityCanonServiceError(
+            'ENTITY_INVALID',
+            'Entity name confirmation does not match.',
+          );
+        }
+        const result = connection
+          .prepare("DELETE FROM entities WHERE id = ? AND project_id = ? AND status = 'archived'")
+          .run(valid.entityId, valid.projectId);
+        if (Number(result.changes) !== 1) {
+          throw new EntityCanonServiceError('ENTITY_CONFLICT', 'The Entity could not be deleted.');
+        }
+        return EntityDeleteResultSchema.parse({
+          projectId: valid.projectId,
+          entityId: valid.entityId,
+          deleted: true,
+        });
+      },
+      { operation: 'canon.deleteEntity', input: valid },
+    );
   }
 }

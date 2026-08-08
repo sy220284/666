@@ -11,7 +11,7 @@ import {
 
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
-import { ensureRhythmProfile } from './writing-metrics.js';
+import { DEFAULT_RHYTHM_PROFILE, ensureRhythmProfile } from './writing-metrics.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -42,6 +42,25 @@ interface ProfileRow {
   readonly updatedAt: string;
 }
 
+function defaultProfile(database: DatabaseSync, projectId: string): GenreRhythmProfile {
+  const project = database
+    .prepare(
+      `SELECT channel, created_at AS createdAt
+         FROM projects WHERE id = ?`,
+    )
+    .get(projectId) as { readonly channel: string; readonly createdAt: string } | undefined;
+  if (!project) throw new RhythmServiceError('RHYTHM_NOT_FOUND', 'Rhythm project not found.');
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  return GenreRhythmProfileSchema.parse({
+    projectId,
+    channel: project.channel,
+    ...DEFAULT_RHYTHM_PROFILE,
+    timeZone,
+    statisticsStartedAt: project.createdAt,
+    updatedAt: project.createdAt,
+  });
+}
+
 function profile(database: DatabaseSync, projectId: string): GenreRhythmProfile {
   const row = database
     .prepare(
@@ -55,7 +74,7 @@ function profile(database: DatabaseSync, projectId: string): GenreRhythmProfile 
          FROM genre_rhythm_profiles WHERE project_id = ?`,
     )
     .get(projectId) as ProfileRow | undefined;
-  if (!row) throw new RhythmServiceError('RHYTHM_NOT_FOUND', 'Rhythm profile not found.');
+  if (!row) return defaultProfile(database, projectId);
   return GenreRhythmProfileSchema.parse({
     ...row,
     enabled: Boolean(row.enabled),
@@ -243,12 +262,12 @@ export class RhythmService {
     this.#clock = options.clock ?? systemClock;
   }
 
-  get(requestId: string, projectId: string): Promise<RhythmDashboard> {
-    return this.#workspace.writeProject(requestId, projectId, (database) => {
-      const now = this.#clock.now();
-      ensureRhythmProfile(database, projectId, now.toISOString());
-      return dashboard(database, projectId, now);
-    });
+  get(_requestId: string, projectId: string): Promise<RhythmDashboard> {
+    return Promise.resolve(
+      this.#workspace.readProject(projectId, (database) =>
+        dashboard(database, projectId, this.#clock.now()),
+      ),
+    );
   }
 
   updateProfile(requestId: string, raw: RhythmProfileUpdateInput): Promise<RhythmDashboard> {

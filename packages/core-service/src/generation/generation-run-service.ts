@@ -15,6 +15,7 @@ import {
 } from '../bounded-idempotent-promise-cache.js';
 import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
+import { finalVersion, validationSemanticIdentity } from '../validation/validation-model.js';
 import { completeProseCandidate, completeSkeletonCandidates } from './candidate-persistence.js';
 import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
 import { getModelSupport, upsertModelSupport } from './model-support-repository.js';
@@ -70,6 +71,54 @@ export interface GenerationRunCreation {
 }
 
 const systemClock: DatabaseClock = { now: () => new Date() };
+const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
+
+function withValidationSemanticIdentity(
+  context: GenerationRunServiceContext,
+  input: GenerationRunCreateInput,
+): GenerationRunCreateInput {
+  if (input.runType !== 'validate') return input;
+  const sources = input.inputSources ?? [];
+  const versionSource =
+    sources.find(
+      (source) => source.sourceType === 'version' && source.metadata?.final === true,
+    ) ??
+    sources.find(
+      (source) =>
+        source.sourceType === 'version' &&
+        input.constraintPackage.sourceVersionIds.includes(source.sourceId),
+    );
+  if (!versionSource) {
+    throw new GenerationRunServiceError(
+      'GENERATION_BASE_CONFLICT',
+      'Validation GenerationRun requires an authoritative Final Version input source.',
+    );
+  }
+  const identity = context.workspace.readProject(input.projectId, (database) => {
+    const resolved = finalVersion(database, input.projectId, versionSource.sourceId);
+    if (resolved.version.chapterId !== input.chapterId) {
+      throw new GenerationRunServiceError(
+        'GENERATION_BASE_CONFLICT',
+        'Validation GenerationRun Final Version input belongs to another chapter.',
+      );
+    }
+    return validationSemanticIdentity(database, resolved);
+  });
+  return {
+    ...input,
+    inputSources: sources.map((source) =>
+      source === versionSource
+        ? {
+            ...source,
+            metadata: {
+              ...(source.metadata ?? {}),
+              [VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY]: identity,
+            },
+          }
+        : source,
+    ),
+  };
+}
 
 export class GenerationRunService {
   readonly #context: GenerationRunServiceContext;
@@ -114,7 +163,7 @@ export class GenerationRunService {
         replayed = true;
         return persisted;
       }
-      return create(this.#context, requestId, input);
+      return create(this.#context, requestId, withValidationSemanticIdentity(this.#context, input));
     });
     const run = await this.#creates.remember(cacheKey, fingerprint, operation);
     return { run, replayed };

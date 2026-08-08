@@ -28,6 +28,7 @@ export function createUtilityGenerationServiceContainer(
 
   return {
     generationRuns,
+    generationRuntime,
     candidates,
     stateProposals,
     validation,

@@ -34,8 +34,11 @@ export async function openUtilityServiceContainer(options: UtilityServiceContain
   const recovery = new CheckpointAwareRecoveryService(projectWorkspace, {
     backupRootDirectory: options.requiredAbsolutePath('project-operation-recovery'),
   });
-  const { generationRuns, candidates, generationServices } =
+  const { generationRuns, generationRuntime, candidates, generationServices } =
     createUtilityGenerationServiceContainer(projectWorkspace, options.projectTaskBarrier);
+  options.projectTaskBarrier.setDomainCanceller((taskId, projectId) =>
+    generationRuntime.cancelTask(taskId, projectId),
+  );
   const services = createUtilityProjectServiceContainer({
     projectWorkspace,
     recovery,
@@ -47,6 +50,7 @@ export async function openUtilityServiceContainer(options: UtilityServiceContain
     appRuntime,
     projectWorkspace,
     generationRuns,
+    generationRuntime,
     generationServices,
     services,
   };

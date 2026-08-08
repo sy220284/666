@@ -22,6 +22,8 @@ import { TaskProtocolError, type RunningTask, type TaskProtocol } from './task-p
 
 const MAX_GENERATION_TEXT_CHARACTERS = 2_000_000;
 
+export type GenerationTaskProtocol = Pick<TaskProtocol, 'startTask' | 'getSnapshot' | 'cancel'>;
+
 export interface GenerationRuntimeProvider {
   generate(request: GenerationRequest, signal: AbortSignal): AsyncIterable<ProviderEvent>;
 }
@@ -131,12 +133,12 @@ function cancellationBarrier(): CancellationBarrier {
 
 export class GenerationRuntime {
   readonly #runs: GenerationRunService;
-  readonly #tasks: TaskProtocol;
+  readonly #tasks: GenerationTaskProtocol;
   readonly #executions = new Map<string, Execution>();
   readonly #cancellations = new Map<string, CancellationBarrier>();
   readonly #lifecycleTails = new Map<string, Promise<void>>();
 
-  constructor(runs: GenerationRunService, tasks: TaskProtocol) {
+  constructor(runs: GenerationRunService, tasks: GenerationTaskProtocol) {
     this.#runs = runs;
     this.#tasks = tasks;
   }

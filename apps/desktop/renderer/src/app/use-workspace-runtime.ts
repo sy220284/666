@@ -59,7 +59,7 @@ export function useWorkspaceRuntime({
     const generation = taskRefreshGeneration.current + 1;
     taskRefreshGeneration.current = generation;
     const requestedProjectId = projectIdRef.current;
-    const outcome = await bridge.task.listActive(requestedProjectId, { mode: 'replace' });
+    const outcome = await bridge.task.listActive(projectIdRef.current, { mode: 'replace' });
     if (
       taskRefreshGeneration.current !== generation ||
       projectIdRef.current !== requestedProjectId

@@ -33,6 +33,7 @@
     "packages/core-service/src/search/replace-apply.ts",
     "packages/core-service/src/state/proposal-batch-repository.ts",
     "packages/core-service/src/utility-control-lifecycle.ts",
+    "packages/core-service/src/utility-control-task-command.ts",
     "packages/core-service/src/utility-generation-service-container.ts",
     "packages/core-service/src/utility-service-container.ts",
     "packages/core-service/src/validation/validation-model.ts",

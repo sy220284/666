@@ -155,6 +155,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
         failure,
         message,
         recentProjects,
+        startupResources: runtime.startupResources,
         tasks: runtime.tasks,
         workspaceAttention: runtime.workspaceAttention,
       }),
@@ -164,6 +165,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
       message,
       recentProjects,
       runtime.coreStatus,
+      runtime.startupResources,
       runtime.tasks,
       runtime.workspaceAttention,
       settingsController.aiReadiness,
@@ -173,6 +175,8 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
   const globalStatusAction = useMemo(() => {
     if (!globalStatus) return undefined;
     if (globalStatus.id === 'failure' && failure?.retryable)
+      return { label: '重新读取', run: () => void refreshWorkspace() };
+    if (globalStatus.id === 'startup-degraded')
       return { label: '重新读取', run: () => void refreshWorkspace() };
     if (globalStatus.id === 'read-only')
       return { label: '恢复与导出', run: () => void navigation.transitionToRoute('recovery') };

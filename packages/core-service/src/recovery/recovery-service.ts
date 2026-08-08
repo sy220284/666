@@ -109,7 +109,7 @@ export class RecoveryService {
 
   getOverview(projectId: string): Promise<RecoveryOverview> {
     const project = this.#workspace.assertActiveProject(projectId);
-    if (project.databaseMode === 'read-write') this.#assertCleanupPolicyReadable(projectId);
+    if (project.databaseMode === 'read-write') this.#assertPersistedPolicyReadable(projectId);
     return this.#cleanup.getOverview(projectId);
   }
 
@@ -159,22 +159,26 @@ export class RecoveryService {
     return this.#versionExport.exportVersion(raw, targetDirectory);
   }
 
+  #assertPersistedPolicyReadable(projectId: string): void {
+    this.#workspace.readProject(projectId, (database) => {
+      const row = database
+        .prepare(
+          `SELECT project_id AS projectId, policy_version AS policyVersion,
+                  daily_retention_count AS dailyRetentionCount,
+                  major_retention_count AS majorRetentionCount,
+                  major_retention_days AS majorRetentionDays,
+                  quota_bytes AS quotaBytes, updated_at AS updatedAt
+             FROM backup_policies WHERE project_id = ?`,
+        )
+        .get(projectId);
+      this.#parsePersistedPolicy(projectId, row);
+    });
+  }
+
   #assertCleanupPolicyReadable(projectId: string): void {
     this.#workspace.assertActiveProject(projectId, true);
     try {
-      this.#workspace.readProject(projectId, (database) => {
-        const row = database
-          .prepare(
-            `SELECT project_id AS projectId, policy_version AS policyVersion,
-                    daily_retention_count AS dailyRetentionCount,
-                    major_retention_count AS majorRetentionCount,
-                    major_retention_days AS majorRetentionDays,
-                    quota_bytes AS quotaBytes, updated_at AS updatedAt
-               FROM backup_policies WHERE project_id = ?`,
-          )
-          .get(projectId);
-        this.#parsePersistedPolicy(projectId, row);
-      });
+      this.#assertPersistedPolicyReadable(projectId);
     } catch (error) {
       if (error instanceof RecoveryServiceError) throw error;
       throw new RecoveryServiceError(

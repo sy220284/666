@@ -32,7 +32,9 @@ function assertMilestoneTargets(
   input: ArcMilestoneSaveInput,
 ): void {
   assertArc(connection, projectId, input.arcId);
-  if (input.plannedChapterId) assertChapter(connection, projectId, input.plannedChapterId);
+  if (input.plannedChapterId) {
+    assertChapter(connection, projectId, input.plannedChapterId);
+  }
   for (const dependencyId of input.dependencyMilestoneIds) {
     if (dependencyId === milestoneId) {
       throw new NarrativePlanningServiceError(
@@ -79,7 +81,10 @@ function assertMilestoneDependencyGraph(
   }[];
   const graph = new Map<string, string[]>();
   for (const row of rows) {
-    graph.set(row.milestoneId, [...(graph.get(row.milestoneId) ?? []), row.dependencyId]);
+    graph.set(row.milestoneId, [
+      ...(graph.get(row.milestoneId) ?? []),
+      row.dependencyId,
+    ]);
   }
   graph.set(milestoneId, [...dependencies]);
   const visiting = new Set<string>();
@@ -105,13 +110,20 @@ export class CharacterArcOperations {
   readonly #clock: DatabaseClock;
   readonly #idFactory: () => string;
 
-  constructor(workspace: ProjectWorkspaceService, clock: DatabaseClock, idFactory: () => string) {
+  constructor(
+    workspace: ProjectWorkspaceService,
+    clock: DatabaseClock,
+    idFactory: () => string,
+  ) {
     this.#workspace = workspace;
     this.#clock = clock;
     this.#idFactory = idFactory;
   }
 
-  saveArc(requestId: string, input: CharacterArcSaveInput): Promise<NarrativePlanningCatalog> {
+  saveArc(
+    requestId: string,
+    input: CharacterArcSaveInput,
+  ): Promise<NarrativePlanningCatalog> {
     const valid = CharacterArcSaveInputSchema.parse(input);
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
@@ -177,9 +189,16 @@ export class CharacterArcOperations {
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
       const id = valid.milestoneId ?? this.#idFactory();
-      const current = valid.milestoneId ? assertMilestone(connection, valid.projectId, id) : null;
+      const current = valid.milestoneId
+        ? assertMilestone(connection, valid.projectId, id)
+        : null;
       assertMilestoneTargets(connection, valid.projectId, id, valid);
-      assertMilestoneDependencyGraph(connection, valid.projectId, id, valid.dependencyMilestoneIds);
+      assertMilestoneDependencyGraph(
+        connection,
+        valid.projectId,
+        id,
+        valid.dependencyMilestoneIds,
+      );
       const now = this.#clock.now().toISOString();
       if (current) {
         connection
@@ -220,7 +239,9 @@ export class CharacterArcOperations {
             now,
           );
       }
-      connection.prepare('DELETE FROM arc_milestone_dependencies WHERE milestone_id = ?').run(id);
+      connection
+        .prepare('DELETE FROM arc_milestone_dependencies WHERE milestone_id = ?')
+        .run(id);
       connection
         .prepare('DELETE FROM arc_milestone_timeline_dependencies WHERE milestone_id = ?')
         .run(id);

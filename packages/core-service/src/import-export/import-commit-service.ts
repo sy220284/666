@@ -73,11 +73,7 @@ export class ImportCommitService {
       throw error;
     }
 
-    return this.#commits.remember(
-      requestId,
-      fingerprint,
-      this.#commitImportOnce(requestId, input),
-    );
+    return this.#commits.remember(requestId, fingerprint, this.#commitImportOnce(requestId, input));
   }
 
   async #commitImportOnce(

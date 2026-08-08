@@ -1,36 +1,10 @@
-import {
-  ErrorCodeSchema,
-  PROTOCOL_VERSION,
-  TaskCommandResultSchema,
-  type CoreControlMessage,
-  type TaskCommandResult,
-} from '@worldforge/contracts';
+import { PROTOCOL_VERSION, type CoreControlMessage } from '@worldforge/contracts';
 
 import { runWithCommandIdentity } from './command-identity-context.js';
 import type { UtilityControlContext } from './utility-control-context.js';
+import { dispatchUtilityTaskCommand } from './utility-control-task-command.js';
 import { windowPreferencesError } from './utility-errors.js';
 import { adaptTransferredPort, type UtilityParentMessage } from './utility-runtime-context.js';
-
-function generationTaskFailure(requestId: string, error: unknown): TaskCommandResult {
-  const code = ErrorCodeSchema.safeParse(
-    error && typeof error === 'object' && 'code' in error ? error.code : undefined,
-  );
-  const message = error instanceof Error ? error.message : 'The task could not be cancelled safely.';
-  const retryable =
-    error !== null &&
-    typeof error === 'object' &&
-    'retryable' in error &&
-    error.retryable === true;
-  return TaskCommandResultSchema.parse({
-    ok: false,
-    requestId,
-    error: {
-      code: code.success ? code.data : 'COMMON_INTERNAL_999',
-      message,
-      retryable,
-    },
-  });
-}
 
 export function dispatchUtilityLifecycle(
   context: UtilityControlContext,
@@ -50,64 +24,7 @@ export function dispatchUtilityLifecycle(
       });
       return;
     case 'core.command':
-      if (
-        message.envelope.command === 'task.cancel' &&
-        message.envelope.projectId !== undefined
-      ) {
-        context.track(
-          options.generationRuntime
-            .cancelTask(message.envelope.payload.taskId, message.envelope.projectId)
-            .then((handled) =>
-              handled
-                ? TaskCommandResultSchema.parse({
-                    ok: true,
-                    requestId: message.requestId,
-                    data: { accepted: true, status: 'cancelled' },
-                  })
-                : options.taskCommands.execute(message.envelope),
-            ),
-          {
-            success: (result) => ({
-              type: 'core.command-result',
-              protocolVersion: PROTOCOL_VERSION,
-              requestId: message.requestId,
-              result,
-            }),
-            failure: (error) => ({
-              type: 'core.command-result',
-              protocolVersion: PROTOCOL_VERSION,
-              requestId: message.requestId,
-              result: generationTaskFailure(message.requestId, error),
-            }),
-            failureEvent: 'generation-task.cancel.failed',
-          },
-        );
-        return;
-      }
-      try {
-        context.send({
-          type: 'core.command-result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId: message.requestId,
-          result: options.taskCommands.execute(message.envelope),
-        });
-      } catch {
-        context.report('task-command.execute.failed');
-        context.send({
-          type: 'core.command-result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId: message.requestId,
-          result: TaskCommandResultSchema.parse({
-            ok: false,
-            requestId: message.requestId,
-            error: {
-              code: 'COMMON_INTERNAL_999',
-              message: 'The task command could not be completed.',
-              retryable: true,
-            },
-          }),
-        });
-      }
+      dispatchUtilityTaskCommand(context, message);
       return;
     case 'core.attach-task-port': {
       const port = ports[0];
@@ -163,10 +80,10 @@ export function dispatchUtilityLifecycle(
         },
       );
       return;
-    case 'core.drain':
+    case 'core.drain': {
       state.acceptingAppDataOperations = false;
-      void options.generationRuntime
-        .drainAll()
+      const generationDrain = options.generationRuntime?.drainAll() ?? Promise.resolve();
+      void generationDrain
         .then(() => Promise.all([options.taskProtocol.beginDrain(), ...state.activeAppDataOperations]))
         .then(() => {
           context.send({
@@ -178,6 +95,7 @@ export function dispatchUtilityLifecycle(
         })
         .catch(() => context.report('core.drain.failed'));
       return;
+    }
     case 'core.shutdown':
       if (
         options.taskProtocol.accepting ||

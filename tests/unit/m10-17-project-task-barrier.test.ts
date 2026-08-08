@@ -18,9 +18,9 @@ describe('M10-17 project task barrier', () => {
 
     const draining = protocol.withProjectDrain(projectId, async () => 'closed');
     expect(protocol.isProjectDraining(projectId)).toBe(true);
-    expect(() =>
-      protocol.startTask({ taskType: 'ai.generation', projectId }),
-    ).toThrowError(TaskProtocolError);
+    expect(() => protocol.startTask({ taskType: 'ai.generation', projectId })).toThrowError(
+      TaskProtocolError,
+    );
 
     const unrelated = protocol.startTask({
       taskType: 'ai.generation',

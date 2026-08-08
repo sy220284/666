@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "taskId": "M10-19",
+  "implementationCommit": "5a040a467c469b688ebbf720f4e52ec7006e422d",
+  "generatedAt": "2026-08-08T18:10:00+08:00",
+  "files": [
+    {"path":"summary.md","bytes":562,"sha256":"684adf61bcb837033d372895a8b5a202f77e0bb3831676672c9869c5c583b2ec"},
+    {"path":"commands.txt","bytes":612,"sha256":"ba2f4202b74ef43c1e9a97b04684a6d195b345d44610a93144bcd259fd40523a"},
+    {"path":"known-risks.md","bytes":2071,"sha256":"4c6f1c13d2e939de7db5aead606193d7ff1cacb4fe2ae52847e0471cf688d338"}
+  ]
+}

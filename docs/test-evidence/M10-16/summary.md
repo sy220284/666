@@ -14,7 +14,7 @@
 1. EndingSnapshot 的 stale 写入收敛到既有数据库 Trigger；`DerivedInvalidationService` 与 `snapshotRow()` 不再平行改写旧快照状态。
 2. `derived_invalidations` 保留为 Semantic Invalidation Ledger；具备合法 Final Version 锚点的 StateProposal/语义写入在同一 SQLite 写事务登记失效事实。
 3. Timeline、Foreshadowing 等缺少合法 `sourceVersionId` 的直接领域编辑不伪造版本来源；Validation 通过权威领域状态摘要参与 semantic fingerprint。
-4. StateProposal 持久化状态仍为 `pending/accepted/edited/rejected`，新增计算型 freshness/actionability；旧 Final 来源可 Reject，Accept/Edit-Accept 被稳定冲突阻断。
+4. StateProposal 既有持久化四态保持不变，新增计算型 freshness/actionability；旧 Final 来源可 Reject，Accept/Edit-Accept 被稳定冲突阻断。
 5. Rule Validation fingerprint 覆盖 Final/Block、SceneBeat 语义图/Block 映射/实体关系、Rule/Config、Semantic Ledger 与权威领域状态。
 6. AI Validation 绑定 ConstraintPackage hash、Prompt ID/version 与 semantic identity。Validate Run 在模型调用前把起点 semantic identity 写入现有 `generation_input_sources.metadata_json`；Catalog 与当前身份比较，不再依赖跨时钟时间戳。
 7. requestId replay 在命令身份比较时剥离上述内部 metadata key，保持原命令幂等语义。

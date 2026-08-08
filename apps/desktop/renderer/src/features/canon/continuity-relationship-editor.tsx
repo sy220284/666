@@ -263,7 +263,7 @@ export function ContinuityRelationshipEditor({
               <EntityMultiSelect
                 name="participantIds"
                 references={references}
-                defaultValue={editingTimelineEvent?.participantIds}
+                defaultValue={editingTimelineEvent?.participantIds ?? []}
               />
             </label>
             <label>
@@ -271,7 +271,7 @@ export function ContinuityRelationshipEditor({
               <EntityMultiSelect
                 name="witnessIds"
                 references={references}
-                defaultValue={editingTimelineEvent?.witnessIds}
+                defaultValue={editingTimelineEvent?.witnessIds ?? []}
               />
             </label>
             <label>
@@ -279,7 +279,7 @@ export function ContinuityRelationshipEditor({
               <EntityMultiSelect
                 name="subjectIds"
                 references={references}
-                defaultValue={editingTimelineEvent?.subjectIds}
+                defaultValue={editingTimelineEvent?.subjectIds ?? []}
               />
             </label>
             <label>

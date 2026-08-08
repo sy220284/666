@@ -1,0 +1,68 @@
+# M10-16 验证命令与权威运行
+
+## 实施边界
+
+git rev-parse main
+# baseline: 960f0ee94069b40c84e546486dd4d3dd9f630adf
+
+git rev-parse work
+# final implementation commit: aa722ef7a87ab746faf04a69520d7a3ef3bd37d1
+
+git diff --name-only 960f0ee94069b40c84e546486dd4d3dd9f630adf..aa722ef7a87ab746faf04a69520d7a3ef3bd37d1
+git diff --check 960f0ee94069b40c84e546486dd4d3dd9f630adf..aa722ef7a87ab746faf04a69520d7a3ef3bd37d1
+
+## 永久矩阵
+
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+## 关键专项回归
+
+pnpm vitest run tests/unit/ar08-contracts-public-surface.test.ts
+pnpm vitest run tests/integration/m10-16-semantic-freshness.test.ts
+pnpm vitest run tests/integration/state-proposal-snapshot.test.ts
+pnpm vitest run tests/integration/state-validation-provider.test.ts
+pnpm playwright test tests/e2e/project-planning.spec.ts
+
+## 已通过的最终产品候选运行
+
+# Quality
+# run: 31234554428
+# product-tests-and-coverage:
+# sha256:93c62716bd2a29617afb983044b66b6f5092bd42d390d8f51d57244fdc129327
+# desktop-e2e-evidence:
+# sha256:21785b6d6e88b7dd6526831d9d447a5307cf1ae56e59160f65308aac6f94963b
+
+# Security
+# run: 31234554319
+# secret-scan-diagnostics:
+# sha256:2e3997ade178b25f9403aadee367156788512bdd3682bde14c93a9c0db0914c0
+
+# Performance
+# run: 31234554324
+# performance-and-ai-eval-evidence:
+# sha256:13c084298c8b8dd6d0ef771678190b9a6cd2941c2905e2f08318aaec842e5b82
+
+# Task Governance: 31234554318
+# PR Policy: 31234554320
+
+## 合并后验证
+
+main-verification=success
+task-verification/M10-16=success
+
+git diff --exit-code main..work

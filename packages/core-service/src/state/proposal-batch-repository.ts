@@ -3,8 +3,10 @@ import {
   validateChapterRange,
   validateEvidence,
 } from '../continuity-validation.js';
+import { recordDerivedInvalidation } from './derived-invalidation-service.js';
 import { assertFinalVersion, snapshotRow } from './ending-snapshot-service.js';
 import {
+  type ChangeType,
   type EntityStateRow,
   type InvalidationRow,
   mapBatch,
@@ -440,11 +442,16 @@ export function catalog(connection: DatabaseSync, projectId: string): StatePropo
               proposal.proposed_value_json AS proposedValueJson,
               proposal.evidence_json AS evidenceJson,
               proposal.confidence, proposal.status,
+              CASE WHEN chapter.final_version_id = proposal.source_version_id
+                   THEN 'current' ELSE 'stale' END AS freshness,
+              CASE WHEN chapter.final_version_id = proposal.source_version_id
+                   THEN 'accept' ELSE 'reject_only' END AS actionability,
               proposal.resolved_value_json AS resolvedValueJson,
               proposal.valid_until_chapter_id AS validUntilChapterId,
               proposal.created_at AS createdAt, proposal.resolved_at AS resolvedAt
          FROM state_proposals proposal
          JOIN state_proposal_batches batch ON batch.id = proposal.batch_id
+         JOIN chapters chapter ON chapter.id = proposal.chapter_id
         WHERE proposal.project_id = ?
         ORDER BY proposal.status = 'pending' DESC, proposal.created_at DESC, proposal.id`,
     )
@@ -630,7 +637,10 @@ export function resolve(
       );
     }
     const now = context.clock.now().toISOString();
-    const acceptedSources = new Map<string, string>();
+    const acceptedChanges = new Map<
+      string,
+      { readonly versionId: string; readonly changeTypes: Set<ChangeType> }
+    >();
     const affectedBatchIds = new Set<string>();
     for (const resolution of input.resolutions) {
       const row = connection
@@ -647,11 +657,16 @@ export function resolve(
                     proposal.proposed_value_json AS proposedValueJson,
                     proposal.evidence_json AS evidenceJson,
                     proposal.confidence, proposal.status,
+                    CASE WHEN chapter.final_version_id = proposal.source_version_id
+                         THEN 'current' ELSE 'stale' END AS freshness,
+                    CASE WHEN chapter.final_version_id = proposal.source_version_id
+                         THEN 'accept' ELSE 'reject_only' END AS actionability,
                     proposal.resolved_value_json AS resolvedValueJson,
                     proposal.valid_until_chapter_id AS validUntilChapterId,
                     proposal.created_at AS createdAt, proposal.resolved_at AS resolvedAt
                FROM state_proposals proposal
                JOIN state_proposal_batches batch ON batch.id = proposal.batch_id
+               JOIN chapters chapter ON chapter.id = proposal.chapter_id
               WHERE proposal.id = ? AND proposal.project_id = ?`,
         )
         .get(resolution.proposalId, input.projectId) as ProposalRow | undefined;
@@ -669,12 +684,6 @@ export function resolve(
           'Only pending StateProposals may be resolved.',
         );
       }
-      assertFinalVersion(
-        connection,
-        proposal.projectId,
-        proposal.chapterId,
-        proposal.sourceVersionId,
-      );
       if (resolution.decision === 'reject') {
         connection
           .prepare(
@@ -685,6 +694,18 @@ export function resolve(
           .run(now, proposal.id, proposal.projectId);
         continue;
       }
+      if (proposal.actionability !== 'accept') {
+        throw new StateProposalServiceError(
+          'STATE_PROPOSAL_CONFLICT',
+          'The source Final Version changed; this stale StateProposal may only be rejected.',
+        );
+      }
+      assertFinalVersion(
+        connection,
+        proposal.projectId,
+        proposal.chapterId,
+        proposal.sourceVersionId,
+      );
       const value =
         resolution.decision === 'edit_accept' ? resolution.editedValue : proposal.proposedValue;
       if (proposal.proposalType === 'entity_state') {
@@ -705,10 +726,42 @@ export function resolve(
           proposal.id,
           proposal.projectId,
         );
-      acceptedSources.set(proposal.chapterId, proposal.sourceVersionId);
+      const existing = acceptedChanges.get(proposal.chapterId);
+      if (existing && existing.versionId !== proposal.sourceVersionId) {
+        throw new StateProposalServiceError(
+          'STATE_PROPOSAL_INVARIANT',
+          'Accepted StateProposals for one chapter must share the same Final Version.',
+        );
+      }
+      const accepted = existing ?? {
+        versionId: proposal.sourceVersionId,
+        changeTypes: new Set<ChangeType>(),
+      };
+      accepted.changeTypes.add(
+        proposal.proposalType === 'entity_state' ? 'entity_state' : 'arc_milestone',
+      );
+      acceptedChanges.set(proposal.chapterId, accepted);
     }
-    for (const [chapterId, versionId] of acceptedSources) {
-      snapshotRow(connection, input.projectId, chapterId, versionId, now, context.idFactory);
+    for (const [chapterId, accepted] of acceptedChanges) {
+      recordDerivedInvalidation(
+        connection,
+        {
+          projectId: input.projectId,
+          sourceChapterId: chapterId,
+          sourceVersionId: accepted.versionId,
+          changeTypes: [...accepted.changeTypes],
+        },
+        now,
+        context.idFactory,
+      );
+      snapshotRow(
+        connection,
+        input.projectId,
+        chapterId,
+        accepted.versionId,
+        now,
+        context.idFactory,
+      );
     }
     for (const batchId of affectedBatchIds) refreshBatchStatus(connection, batchId);
     return catalog(connection, input.projectId);

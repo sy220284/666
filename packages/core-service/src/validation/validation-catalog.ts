@@ -3,26 +3,61 @@ import type { DatabaseSync } from 'node:sqlite';
 import { ValidationCatalogSchema, type ValidationCatalog } from '@worldforge/contracts';
 
 import {
+  aiValidationFingerprint,
+  authoritativeSemanticDigest,
   json,
+  ruleValidationFingerprint,
+  sceneBeatValidationDigest,
+  semanticInvalidationDigest,
   type BatchRow,
   type CommentRow,
   type IssueRow,
   type TodoRow,
+  type ValidationSemanticIdentity,
+  type VersionBlockRow,
+  type VersionRow,
 } from './validation-model.js';
+import { CONFIG_VERSION, RULE_CONFIG, RULE_VERSION } from './validation-rules.js';
 
-export function batchRows(database: DatabaseSync, projectId: string): BatchRow[] {
+const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
+
+type CatalogBatchRow = BatchRow & {
+  readonly generationSourceMetadataJson: string | null;
+};
+
+export function batchRows(database: DatabaseSync, projectId: string): CatalogBatchRow[] {
   return database
     .prepare(
-      `SELECT id AS batchId, project_id AS projectId, chapter_id AS chapterId,
-              source_version_id AS sourceVersionId, generation_run_id AS generationRunId,
-              source, rule_version AS ruleVersion, config_version AS configVersion,
-              input_fingerprint AS inputFingerprint, issue_count AS issueCount,
-              created_at AS createdAt
-         FROM validation_batches
-        WHERE project_id = ?
-        ORDER BY created_at DESC, id DESC`,
+      `SELECT batch.id AS batchId, batch.project_id AS projectId,
+              batch.chapter_id AS chapterId, batch.source_version_id AS sourceVersionId,
+              batch.generation_run_id AS generationRunId, batch.source,
+              batch.rule_version AS ruleVersion, batch.config_version AS configVersion,
+              batch.input_fingerprint AS inputFingerprint, batch.issue_count AS issueCount,
+              batch.created_at AS createdAt,
+              chapter.final_version_id AS finalVersionId,
+              version.content_hash AS sourceContentHash,
+              generation.prompt_id AS promptId,
+              generation.prompt_version AS promptVersion,
+              constraint_package.constraint_hash AS constraintHash,
+              (
+                SELECT source.metadata_json
+                  FROM generation_input_sources source
+                 WHERE source.run_id = batch.generation_run_id
+                   AND source.source_type = 'version'
+                   AND source.source_id = batch.source_version_id
+                 ORDER BY source.source_order, source.source_id
+                 LIMIT 1
+              ) AS generationSourceMetadataJson
+         FROM validation_batches batch
+         LEFT JOIN chapters chapter ON chapter.id = batch.chapter_id
+         LEFT JOIN versions version ON version.id = batch.source_version_id
+         LEFT JOIN generation_runs generation ON generation.id = batch.generation_run_id
+         LEFT JOIN generation_constraint_packages constraint_package
+           ON constraint_package.run_id = batch.generation_run_id
+        WHERE batch.project_id = ?
+        ORDER BY batch.created_at DESC, batch.id DESC`,
     )
-    .all(projectId) as unknown as BatchRow[];
+    .all(projectId) as unknown as CatalogBatchRow[];
 }
 
 export function issueRows(database: DatabaseSync, projectId: string): IssueRow[] {
@@ -52,9 +87,167 @@ export function issueRows(database: DatabaseSync, projectId: string): IssueRow[]
     .all(projectId) as unknown as IssueRow[];
 }
 
+function sourceForBatch(
+  database: DatabaseSync,
+  row: CatalogBatchRow,
+): { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] } | null {
+  if (!row.sourceContentHash) return null;
+  const blocks = database
+    .prepare(
+      `SELECT logical_block_id AS logicalBlockId, block_type AS blockType, text,
+              content_hash AS contentHash, locked, order_key AS orderKey
+         FROM version_blocks
+        WHERE version_id = ?
+        ORDER BY order_key, logical_block_id`,
+    )
+    .all(row.sourceVersionId) as unknown as VersionBlockRow[];
+  if (blocks.length === 0) return null;
+  return {
+    version: {
+      versionId: row.sourceVersionId,
+      projectId: row.projectId,
+      chapterId: row.chapterId,
+      finalVersionId: row.finalVersionId ?? null,
+      contentHash: row.sourceContentHash,
+    },
+    blocks,
+  };
+}
+
+interface FreshnessCache {
+  readonly authoritativeSemanticState: string;
+  readonly sourceByVersion: Map<
+    string,
+    { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] } | null
+  >;
+  readonly invalidationByChapter: Map<string, string>;
+  readonly sceneBeatBySource: Map<string, string>;
+}
+
+function semanticIdentity(
+  database: DatabaseSync,
+  row: CatalogBatchRow,
+  cache: FreshnessCache,
+): ValidationSemanticIdentity {
+  let semanticInvalidations = cache.invalidationByChapter.get(row.chapterId);
+  if (!semanticInvalidations) {
+    semanticInvalidations = semanticInvalidationDigest(database, row.projectId, row.chapterId);
+    cache.invalidationByChapter.set(row.chapterId, semanticInvalidations);
+  }
+  const sceneBeatKey = `${row.chapterId}:${row.sourceVersionId}`;
+  let sceneBeatGraph = cache.sceneBeatBySource.get(sceneBeatKey);
+  if (!sceneBeatGraph) {
+    sceneBeatGraph = sceneBeatValidationDigest(
+      database,
+      row.projectId,
+      row.chapterId,
+      row.sourceVersionId,
+    );
+    cache.sceneBeatBySource.set(sceneBeatKey, sceneBeatGraph);
+  }
+  return {
+    sceneBeatGraph,
+    semanticInvalidations,
+    authoritativeSemanticState: cache.authoritativeSemanticState,
+  };
+}
+
+function startSemanticIdentity(row: CatalogBatchRow): ValidationSemanticIdentity | null {
+  if (!row.generationSourceMetadataJson) return null;
+  try {
+    const metadata = JSON.parse(row.generationSourceMetadataJson) as unknown;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+    const identity = (metadata as Readonly<Record<string, unknown>>)[
+      VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY
+    ];
+    if (!identity || typeof identity !== 'object' || Array.isArray(identity)) return null;
+    const value = identity as Readonly<Record<string, unknown>>;
+    if (
+      typeof value.sceneBeatGraph !== 'string' ||
+      typeof value.semanticInvalidations !== 'string' ||
+      typeof value.authoritativeSemanticState !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      sceneBeatGraph: value.sceneBeatGraph,
+      semanticInvalidations: value.semanticInvalidations,
+      authoritativeSemanticState: value.authoritativeSemanticState,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function sameSemanticIdentity(
+  left: ValidationSemanticIdentity,
+  right: ValidationSemanticIdentity,
+): boolean {
+  return (
+    left.sceneBeatGraph === right.sceneBeatGraph &&
+    left.semanticInvalidations === right.semanticInvalidations &&
+    left.authoritativeSemanticState === right.authoritativeSemanticState
+  );
+}
+
+function semanticFreshness(
+  database: DatabaseSync,
+  row: CatalogBatchRow,
+  cache: FreshnessCache,
+): 'current' | 'stale' {
+  if (!row.inputFingerprint) return 'stale';
+  let source = cache.sourceByVersion.get(row.sourceVersionId);
+  if (source === undefined) {
+    source = sourceForBatch(database, row);
+    cache.sourceByVersion.set(row.sourceVersionId, source);
+  }
+  if (!source) return 'stale';
+  const currentSemanticIdentity = semanticIdentity(database, row, cache);
+  if (row.source === 'rule') {
+    if (row.ruleVersion !== RULE_VERSION || row.configVersion !== CONFIG_VERSION) return 'stale';
+    const current = ruleValidationFingerprint(
+      database,
+      source,
+      RULE_VERSION,
+      CONFIG_VERSION,
+      RULE_CONFIG,
+      currentSemanticIdentity,
+    );
+    return current === row.inputFingerprint ? 'current' : 'stale';
+  }
+  if (
+    row.source === 'ai' &&
+    row.constraintHash &&
+    row.promptId &&
+    row.promptVersion !== null &&
+    row.promptVersion !== undefined
+  ) {
+    const startedWith = startSemanticIdentity(row);
+    if (!startedWith || !sameSemanticIdentity(startedWith, currentSemanticIdentity)) return 'stale';
+    const current = aiValidationFingerprint(
+      database,
+      source,
+      {
+        constraintHash: row.constraintHash,
+        promptId: row.promptId,
+        promptVersion: Number(row.promptVersion),
+      },
+      currentSemanticIdentity,
+    );
+    return current === row.inputFingerprint ? 'current' : 'stale';
+  }
+  return 'stale';
+}
+
 export function catalog(database: DatabaseSync, projectId: string): ValidationCatalog {
   const batches = batchRows(database, projectId);
   const issues = issueRows(database, projectId);
+  const freshnessCache: FreshnessCache = {
+    authoritativeSemanticState: authoritativeSemanticDigest(database, projectId),
+    sourceByVersion: new Map(),
+    invalidationByChapter: new Map(),
+    sceneBeatBySource: new Map(),
+  };
   const todos = database
     .prepare(
       `SELECT id AS todoId, project_id AS projectId, chapter_id AS chapterId,
@@ -79,7 +272,27 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
     .all(projectId) as unknown as CommentRow[];
   return ValidationCatalogSchema.parse({
     projectId,
-    batches: batches.map((row) => ({ ...row, issueCount: Number(row.issueCount) })),
+    batches: batches.map((row) => ({
+      batchId: row.batchId,
+      projectId: row.projectId,
+      chapterId: row.chapterId,
+      sourceVersionId: row.sourceVersionId,
+      generationRunId: row.generationRunId,
+      source: row.source,
+      ruleVersion: row.ruleVersion,
+      configVersion: row.configVersion,
+      inputFingerprint: row.inputFingerprint,
+      anchorFreshness: row.finalVersionId === row.sourceVersionId ? 'current' : 'stale',
+      semanticFreshness: semanticFreshness(database, row, freshnessCache),
+      constraintHash: row.constraintHash ?? null,
+      promptId: row.promptId ?? null,
+      promptVersion:
+        row.promptVersion === null || row.promptVersion === undefined
+          ? null
+          : Number(row.promptVersion),
+      issueCount: Number(row.issueCount),
+      createdAt: row.createdAt,
+    })),
     issues: issues.map((row) => ({
       issueId: row.issueId,
       batchId: row.batchId,

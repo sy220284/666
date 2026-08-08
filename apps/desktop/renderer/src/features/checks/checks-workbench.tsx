@@ -65,6 +65,10 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
       ),
     [catalog?.issues, chapterId, includeClosed],
   );
+  const batchById = useMemo(
+    () => new Map((catalog?.batches ?? []).map((batch) => [batch.batchId, batch] as const)),
+    [catalog?.batches],
+  );
 
   const refreshCatalog = useCallback(async (): Promise<void> => {
     const outcome = await bridge.validation.list(
@@ -384,7 +388,10 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                 <p>
                   {issue.source === 'rule' ? '确定性规则' : 'AI语义检查'} ·{' '}
                   {authorStatusLabel(issue.status)} · 原文位置{' '}
-                  {issue.anchor.state === 'current' ? '有效' : '已经变化'}
+                  {issue.anchor.state === 'current' ? '有效' : '已经变化'} · 语义上下文{' '}
+                  {batchById.get(issue.batchId)?.semanticFreshness === 'current'
+                    ? '有效'
+                    : '已经变化'}
                 </p>
                 <p>{issue.rationale}</p>
                 {issue.anchor.textQuote ? <blockquote>{issue.anchor.textQuote}</blockquote> : null}

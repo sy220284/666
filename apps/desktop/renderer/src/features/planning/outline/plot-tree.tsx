@@ -26,7 +26,7 @@ export function PlotTree({
   readonly onRefresh: () => Promise<void>;
   readonly onStatus: (status: string) => void;
 }) {
-  const command = useBridgeCommand(onRefresh);
+  const command = useBridgeCommand();
   const move = async (
     nodeId: string,
     parentId: string | null,
@@ -42,7 +42,9 @@ export function PlotTree({
         placement,
       }),
     );
-    if (result) onStatus('大纲节点已移动；正文未发生变化。');
+    if (!result) return;
+    await onRefresh();
+    onStatus('大纲节点已移动；正文未发生变化。');
   };
 
   const render = (node: PlotNode): JSX.Element => {
@@ -105,10 +107,14 @@ export function PlotTree({
               type="button"
               disabled={readOnly}
               onClick={() => {
-                if (window.confirm(`删除“${node.title}”及其子节点？`))
-                  void command.run(() =>
-                    bridge.planning.deletePlotNode({ projectId, nodeId: node.id }),
-                  );
+                if (window.confirm(`删除“${node.title}”及其子节点？`)) {
+                  void (async () => {
+                    const result = await command.run(() =>
+                      bridge.planning.deletePlotNode({ projectId, nodeId: node.id }),
+                    );
+                    if (result) await onRefresh();
+                  })();
+                }
               }}
             >
               删除

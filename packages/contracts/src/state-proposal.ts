@@ -29,6 +29,8 @@ export const StateProposalSourceSchema = z.enum(['rule', 'provider_stub', 'provi
 export const LegacyStateProposalSourceSchema = z.enum(['rule', 'provider_stub']);
 export const StateProposalBatchStatusSchema = z.enum(['pending', 'resolved', 'rejected', 'mixed']);
 export const StateProposalDecisionSchema = z.enum(['accept', 'edit_accept', 'reject']);
+const StateProposalFreshnessSchema = z.enum(['current', 'stale']);
+const StateProposalActionabilitySchema = z.enum(['accept', 'reject_only']);
 export const ProposedArcMilestoneStatusSchema = z.enum(['hit', 'skipped']);
 export const ArcMilestoneResolutionValueSchema = z
   .strictObject({
@@ -54,6 +56,7 @@ export const DerivedChangeTypeSchema = z.enum([
   'timeline',
   'foreshadowing',
 ]);
+const EndingSnapshotStaleReasonSchema = z.union([DerivedChangeTypeSchema, z.literal('validation')]);
 export const DerivedInvalidationScopeSchema = z.enum([
   'continuity',
   'arc',
@@ -118,6 +121,8 @@ export const StateProposalSchema = z
     evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
     confidence: z.number().finite().min(0).max(1),
     status: StateProposalStatusSchema,
+    freshness: StateProposalFreshnessSchema.default('current'),
+    actionability: StateProposalActionabilitySchema.default('accept'),
     resolvedValue: z.json().nullable(),
     validUntilChapterId: z.uuid().nullable(),
     createdAt: z.iso.datetime(),
@@ -136,6 +141,13 @@ export const StateProposalSchema = z
         code: 'custom',
         path: ['generationRunId'],
         message: 'Provider proposals require a batch and GenerationRun.',
+      });
+    }
+    if (value.freshness === 'stale' && value.actionability !== 'reject_only') {
+      context.addIssue({
+        code: 'custom',
+        path: ['actionability'],
+        message: 'A stale StateProposal may only remain rejectable.',
       });
     }
   });
@@ -207,7 +219,7 @@ export const EndingSnapshotSchema = z.strictObject({
   sourceVersionId: z.uuid(),
   status: EndingSnapshotStatusSchema,
   content: EndingSnapshotContentSchema,
-  staleReasons: z.array(DerivedChangeTypeSchema).max(20),
+  staleReasons: z.array(EndingSnapshotStaleReasonSchema).max(20),
   createdAt: z.iso.datetime(),
   staleAt: z.iso.datetime().nullable(),
 });

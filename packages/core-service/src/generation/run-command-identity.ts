@@ -12,6 +12,8 @@ import {
   runSelect,
 } from './run-repository.js';
 
+const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
+
 interface ConstraintPackageRow {
   readonly constraintHash: string;
   readonly contentHash: string;
@@ -38,6 +40,13 @@ function parsedJson(value: string): unknown {
   }
 }
 
+function commandMetadata(metadata: unknown): unknown {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return metadata;
+  const copy = { ...(metadata as Readonly<Record<string, unknown>>) };
+  delete copy[VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY];
+  return copy;
+}
+
 function normalizedSources(sources: readonly GenerationInputSourceInput[]): readonly unknown[] {
   return sources
     .map((source) => ({
@@ -45,7 +54,7 @@ function normalizedSources(sources: readonly GenerationInputSourceInput[]): read
       sourceId: source.sourceId,
       sourceOrder: source.sourceOrder,
       contentHash: source.contentHash ?? null,
-      metadata: JSON.parse(JSON.stringify(source.metadata ?? {})) as unknown,
+      metadata: commandMetadata(JSON.parse(JSON.stringify(source.metadata ?? {})) as unknown),
     }))
     .sort(
       (left, right) =>
@@ -71,7 +80,7 @@ function persistedSources(database: DatabaseSync, runId: string): readonly unkno
     sourceId: row.sourceId,
     sourceOrder: Number(row.sourceOrder),
     contentHash: row.contentHash,
-    metadata: parsedJson(row.metadataJson),
+    metadata: commandMetadata(parsedJson(row.metadataJson)),
   }));
 }
 

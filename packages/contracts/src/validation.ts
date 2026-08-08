@@ -34,6 +34,7 @@ export const ValidationIssueStatusSchema = z.enum([
   'false_positive',
 ]);
 export const ValidationAnchorStateSchema = z.enum(['current', 'stale']);
+const ValidationSemanticStateSchema = z.enum(['current', 'stale']);
 export const ValidationRangeHintSchema = z
   .strictObject({
     start: z.number().int().nonnegative(),
@@ -65,6 +66,11 @@ export const ValidationBatchSchema = z.strictObject({
   ruleVersion: z.string().min(1).max(120).nullable(),
   configVersion: z.string().min(1).max(120).nullable(),
   inputFingerprint: DraftContentHashValueSchema.nullable(),
+  anchorFreshness: ValidationAnchorStateSchema.default('current'),
+  semanticFreshness: ValidationSemanticStateSchema.default('current'),
+  constraintHash: DraftContentHashValueSchema.nullable().default(null),
+  promptId: z.string().min(1).max(120).nullable().default(null),
+  promptVersion: z.number().int().positive().nullable().default(null),
   issueCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
 });

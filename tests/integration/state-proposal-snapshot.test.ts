@@ -139,6 +139,18 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         proposals.proposals.find((proposal) => proposal.id === milestoneProposal.id),
       ).toMatchObject({ status: 'accepted' });
       expect(
+        proposals.invalidations.some(
+          (item) =>
+            item.changeType === 'entity_state' && item.targetChapterId === seeded.chapter1.id,
+        ),
+      ).toBe(true);
+      expect(
+        proposals.invalidations.some(
+          (item) =>
+            item.changeType === 'arc_milestone' && item.targetChapterId === seeded.chapter1.id,
+        ),
+      ).toBe(true);
+      expect(
         listContinuityAt(harness, seeded.project.projectId, seeded.chapter1.id).entityStates[0],
       ).toMatchObject({
         entityId: seeded.character.id,
@@ -349,7 +361,77 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
     }
   });
 
-  it('does not propagate prose-only revisions and marks only later snapshots stale for semantic changes', async () => {
+  it('keeps proposals from an obsolete Final Version rejectable but not acceptable', async () => {
+    const harness = await createContinuityHarness();
+    try {
+      const seeded = await seedContinuity(harness);
+      await harness.versions.setFinal(randomUUID(), {
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        versionId: seeded.version.versionId,
+      });
+      const blockId = seeded.version.blocks[0]!.logicalBlockId;
+      const generated = await harness.proposals.generate(randomUUID(), {
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        sourceVersionId: seeded.version.versionId,
+        source: 'rule',
+        proposals: [
+          {
+            proposalType: 'entity_state',
+            entityId: seeded.character.id,
+            stateKey: 'health',
+            proposedValue: 'injured',
+            validUntilChapterId: null,
+            evidence: [{ kind: 'logicalBlock', targetId: blockId, note: '' }],
+            confidence: 0.9,
+          },
+        ],
+      });
+      const proposal = generated.proposals[0]!;
+      const replacement = await finalizeChapter(
+        harness,
+        seeded.project.projectId,
+        seeded.chapter1.id,
+        '第一章新定稿',
+      );
+      expect(replacement.versionId).not.toBe(seeded.version.versionId);
+
+      const stale = harness.proposals
+        .list({
+          projectId: seeded.project.projectId,
+          chapterId: seeded.chapter1.id,
+          includeResolved: true,
+        })
+        .proposals.find((item) => item.id === proposal.id);
+      expect(stale).toMatchObject({
+        status: 'pending',
+        freshness: 'stale',
+        actionability: 'reject_only',
+      });
+      await expect(
+        harness.proposals.resolve(randomUUID(), {
+          projectId: seeded.project.projectId,
+          authority: 'author',
+          resolutions: [{ proposalId: proposal.id, decision: 'accept' }],
+        }),
+      ).rejects.toMatchObject({ code: 'STATE_PROPOSAL_CONFLICT' });
+      const rejected = await harness.proposals.resolve(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        resolutions: [{ proposalId: proposal.id, decision: 'reject' }],
+      });
+      expect(rejected.proposals.find((item) => item.id === proposal.id)).toMatchObject({
+        status: 'rejected',
+        freshness: 'stale',
+        actionability: 'reject_only',
+      });
+    } finally {
+      await closeContinuityHarness(harness);
+    }
+  });
+
+  it('records semantic invalidation without taking ownership of snapshot stale state', async () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
@@ -376,13 +458,13 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         chapterId: seeded.chapter1.id,
         sourceVersionId: seeded.version.versionId,
       });
-      const snapshot2 = await harness.proposals.refreshSnapshot(randomUUID(), {
+      await harness.proposals.refreshSnapshot(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
         chapterId: seeded.chapter2.id,
         sourceVersionId: version2.versionId,
       });
-      const snapshot3 = await harness.proposals.refreshSnapshot(randomUUID(), {
+      await harness.proposals.refreshSnapshot(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',
         chapterId: seeded.chapter3.id,
@@ -397,12 +479,6 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         changeTypes: ['prose'],
       });
       expect(prose).toEqual({ invalidatedSnapshotIds: [], queuedScopes: [] });
-      expect(
-        harness.proposals.readSnapshot({
-          projectId: seeded.project.projectId,
-          chapterId: seeded.chapter2.id,
-        }).snapshotSource,
-      ).toBe('snapshot');
 
       const semantic = await harness.proposals.invalidateDerived(randomUUID(), {
         projectId: seeded.project.projectId,
@@ -411,34 +487,32 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         sourceVersionId: seeded.version.versionId,
         changeTypes: ['entity_state', 'event', 'timeline', 'foreshadowing'],
       });
-      expect(new Set(semantic.invalidatedSnapshotIds)).toEqual(
-        new Set([snapshot2.id, snapshot3.id]),
-      );
+      expect(semantic.invalidatedSnapshotIds).toEqual([]);
       expect(new Set(semantic.queuedScopes)).toEqual(
         new Set(['continuity', 'timeline', 'foreshadowing', 'validation', 'cache']),
       );
-      expect(
-        harness.proposals.readSnapshot({
-          projectId: seeded.project.projectId,
-          chapterId: seeded.chapter1.id,
-        }).snapshotSource,
-      ).toBe('snapshot');
-      const fallback = harness.proposals.readSnapshot({
-        projectId: seeded.project.projectId,
-        chapterId: seeded.chapter2.id,
-      });
-      expect(fallback).toMatchObject({
-        snapshotSource: 'fallback_live_query',
-        snapshot: null,
-      });
+      for (const targetChapterId of [seeded.chapter1.id, seeded.chapter2.id, seeded.chapter3.id]) {
+        expect(
+          harness.proposals.readSnapshot({
+            projectId: seeded.project.projectId,
+            chapterId: targetChapterId,
+          }).snapshotSource,
+        ).toBe('snapshot');
+      }
       const catalog = harness.proposals.list({
         projectId: seeded.project.projectId,
         chapterId: null,
         includeResolved: true,
       });
-      expect(catalog.snapshots.filter((snapshot) => snapshot.status === 'stale')).toHaveLength(2);
+      expect(catalog.snapshots.filter((snapshot) => snapshot.status === 'stale')).toHaveLength(0);
       expect(catalog.invalidations.some((item) => item.changeType === 'foreshadowing')).toBe(true);
       expect(catalog.invalidations.some((item) => item.changeType === 'timeline')).toBe(true);
+      expect(
+        catalog.invalidations.some(
+          (item) =>
+            item.changeType === 'entity_state' && item.targetChapterId === seeded.chapter1.id,
+        ),
+      ).toBe(true);
     } finally {
       await closeContinuityHarness(harness);
     }

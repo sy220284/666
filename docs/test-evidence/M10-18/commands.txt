@@ -1,0 +1,25 @@
+# M10-18 verification commands
+# implementationCommit=1c4d522c71061a8ee5caa235d7f314b50033cb9c
+
+# Draft static verification (Quality run 31246270654)
+pnpm task:validate
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm typecheck
+
+# Ready product and governance matrix
+pnpm check:language
+pnpm ci:policy
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# Permanent focused regression included in integration suite
+pnpm vitest run tests/integration/m10-18-import-entity-arc-consistency.test.ts

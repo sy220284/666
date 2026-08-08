@@ -10,9 +10,13 @@ import {
   type NarrativePlanningCatalog,
 } from '@worldforge/contracts';
 
+import { chapterPosition } from '../continuity-validation.js';
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
-import { readNarrativePlanningCatalog } from './narrative-planning-catalog.js';
+import {
+  readNarrativePlanningCatalog,
+  unresolvedMilestoneTimelineDependencies,
+} from './narrative-planning-catalog.js';
 import {
   assertArc,
   assertChapter,
@@ -43,12 +47,18 @@ function assertMilestoneTargets(
   }
   for (const timelineEventId of input.dependencyTimelineEventIds) {
     const row = connection
-      .prepare('SELECT 1 FROM timeline_events WHERE id = ? AND project_id = ?')
-      .get(timelineEventId, projectId);
+      .prepare('SELECT status FROM timeline_events WHERE id = ? AND project_id = ?')
+      .get(timelineEventId, projectId) as { readonly status: string } | undefined;
     if (!row) {
       throw new NarrativePlanningServiceError(
         'NARRATIVE_NOT_FOUND',
         'Timeline event dependency not found.',
+      );
+    }
+    if (row.status !== 'active') {
+      throw new NarrativePlanningServiceError(
+        'NARRATIVE_CONFLICT',
+        'Arc milestone cannot depend on an archived Timeline event.',
       );
     }
   }
@@ -295,6 +305,18 @@ export class CharacterArcOperations {
         }
         assertChapter(connection, valid.projectId, valid.actualChapterId);
         assertMilestoneDependenciesHit(connection, valid.projectId, valid.milestoneId);
+        const timelineWarnings = unresolvedMilestoneTimelineDependencies(
+          connection,
+          valid.projectId,
+          valid.milestoneId,
+          chapterPosition(connection, valid.projectId, valid.actualChapterId),
+        );
+        if (timelineWarnings.length > 0) {
+          throw new NarrativePlanningServiceError(
+            'NARRATIVE_CONFLICT',
+            `Arc milestone Timeline dependencies are not satisfied: ${timelineWarnings.join(' ')}`,
+          );
+        }
       }
       if (valid.status === 'planned' && valid.actualChapterId) {
         throw new NarrativePlanningServiceError(

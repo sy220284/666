@@ -1,12 +1,28 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import type { ReactElement } from 'react';
+
+import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
+import { PlanningModeWorkbench } from '../../apps/desktop/renderer/src/features/planning/planning-mode-workbench.js';
+import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const root = process.cwd();
 
 async function source(relativePath: string): Promise<string> {
   return readFile(path.join(root, relativePath), 'utf8');
+}
+
+interface ElementProps {
+  readonly children?: ReactElement | readonly ReactElement[];
+  readonly onClick?: () => void;
+  readonly onOpenProfessional?: () => void;
+}
+
+function propsOf(element: ReactElement): ElementProps {
+  return element.props as ElementProps;
 }
 
 describe('M10-17 planning disclosure ownership', () => {
@@ -22,6 +38,43 @@ describe('M10-17 planning disclosure ownership', () => {
     expect(modeWorkbench).not.toContain('MutationObserver');
     expect(modeWorkbench).not.toContain('currentDisclosureMode');
     expect(modeWorkbench).not.toContain('useState');
+  });
+
+  it('executes both controlled mode transitions without creating local state', () => {
+    const bridge = contractInput<RendererBridgeAdapter>({});
+    const onChangeMode = vi.fn();
+    const onClose = vi.fn();
+
+    const beginner = PlanningModeWorkbench({
+      bridge,
+      projectId: 'project-a',
+      readOnly: false,
+      mode: 'beginner',
+      onChangeMode,
+      onClose,
+    }) as ReactElement;
+    propsOf(beginner).onOpenProfessional?.();
+    expect(onChangeMode).toHaveBeenLastCalledWith('professional');
+
+    const professional = PlanningModeWorkbench({
+      bridge,
+      projectId: 'project-a',
+      readOnly: false,
+      mode: 'professional',
+      onChangeMode,
+      onClose,
+    }) as ReactElement;
+    const sectionChildren = propsOf(professional).children as readonly ReactElement[];
+    const disclosureBar = sectionChildren[0];
+    expect(disclosureBar).toBeDefined();
+    const barChildren = propsOf(disclosureBar!).children as readonly ReactElement[];
+    const switchButton = barChildren[1];
+    expect(switchButton).toBeDefined();
+    propsOf(switchButton!).onClick?.();
+
+    expect(onChangeMode).toHaveBeenNthCalledWith(1, 'professional');
+    expect(onChangeMode).toHaveBeenNthCalledWith(2, 'beginner');
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('passes the App Settings mode through the planning hierarchy and persists changes', async () => {

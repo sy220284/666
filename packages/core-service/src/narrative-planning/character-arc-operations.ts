@@ -10,13 +10,10 @@ import {
   type NarrativePlanningCatalog,
 } from '@worldforge/contracts';
 
-import { chapterPosition } from '../continuity-validation.js';
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
-import {
-  readNarrativePlanningCatalog,
-  unresolvedMilestoneTimelineDependencies,
-} from './narrative-planning-catalog.js';
+import { unresolvedArcMilestoneHitDependencies } from './arc-milestone-policy.js';
+import { readNarrativePlanningCatalog } from './narrative-planning-catalog.js';
 import {
   assertArc,
   assertChapter,
@@ -101,30 +98,6 @@ function assertMilestoneDependencyGraph(
     visited.add(id);
   };
   visit(milestoneId);
-}
-
-function assertMilestoneDependenciesHit(
-  connection: DatabaseSync,
-  projectId: string,
-  milestoneId: string,
-): void {
-  const unresolved = connection
-    .prepare(
-      `SELECT 1
-         FROM arc_milestone_dependencies d
-         JOIN arc_milestones dependency
-           ON dependency.id = d.dependency_milestone_id
-          AND dependency.project_id = d.project_id
-        WHERE d.project_id = ? AND d.milestone_id = ? AND dependency.status <> 'hit'
-        LIMIT 1`,
-    )
-    .get(projectId, milestoneId);
-  if (unresolved) {
-    throw new NarrativePlanningServiceError(
-      'NARRATIVE_CONFLICT',
-      'Arc milestone dependencies must be hit first.',
-    );
-  }
 }
 
 export class CharacterArcOperations {
@@ -304,17 +277,16 @@ export class CharacterArcOperations {
           );
         }
         assertChapter(connection, valid.projectId, valid.actualChapterId);
-        assertMilestoneDependenciesHit(connection, valid.projectId, valid.milestoneId);
-        const timelineWarnings = unresolvedMilestoneTimelineDependencies(
+        const unresolved = unresolvedArcMilestoneHitDependencies(
           connection,
           valid.projectId,
           valid.milestoneId,
-          chapterPosition(connection, valid.projectId, valid.actualChapterId),
+          valid.actualChapterId,
         );
-        if (timelineWarnings.length > 0) {
+        if (unresolved.length > 0) {
           throw new NarrativePlanningServiceError(
             'NARRATIVE_CONFLICT',
-            `Arc milestone Timeline dependencies are not satisfied: ${timelineWarnings.join(' ')}`,
+            `Arc milestone dependencies are not satisfied: ${unresolved.join(' ')}`,
           );
         }
       }

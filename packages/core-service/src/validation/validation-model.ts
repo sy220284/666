@@ -4,7 +4,6 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { SemanticValidationOutput } from '@worldforge/contracts';
 
 import type { DatabaseClock } from '../database/index.js';
-import type { GenerationUsage } from '../generation-run.js';
 
 export const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -426,5 +425,8 @@ export interface ValidationAiCompletionInput {
   readonly sourceVersionId: string;
   readonly runId: string;
   readonly output: SemanticValidationOutput;
-  readonly usage?: GenerationUsage;
+  readonly usage?: {
+    readonly inputTokens?: number;
+    readonly outputTokens?: number;
+  };
 }

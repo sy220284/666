@@ -6,7 +6,7 @@
 > 执行分支：`work`  
 > 目标分支：`main`  
 > 主线基线：`960f0ee94069b40c84e546486dd4d3dd9f630adf`  
-> 实现提交：`b58938188282783047628849eda637b209b44925`
+> 实现提交：`195606e1a6cb65bacb39dd95a8559305f70c6ee3`
 
 ## 目标
 
@@ -77,6 +77,7 @@
 4. StateProposal 持久化状态继续只保存 `pending/accepted/edited/rejected`；`freshness` 与 `actionability` 由当前 Final 身份计算，不新增僵尸状态枚举。
 5. Validation 的正文锚点新鲜度与语义新鲜度分离计算；缓存命中必须同时满足正文/结构语义指纹。
 6. Renderer 仅展示计算状态与阻断不可执行动作，不拥有 freshness 真源。
+7. freshness 辅助 Zod Schema 保持模块私有，不扩张 AR-08 冻结的 `@worldforge/contracts` 根运行时公共面。
 
 ## 数据库与Migration
 
@@ -91,6 +92,7 @@
 - 优先扩展现有 StateProposal / Validation Contract 返回语义，不建立平行 IPC。
 - stale StateProposal：Reject 允许；Accept / Edit-Accept 返回稳定冲突语义。
 - Validation list 区分 anchor freshness 与 semantic freshness。
+- 新增字段通过既有父级 Schema 暴露，不增加独立根运行时 Schema 名称。
 
 ## UI闭环
 
@@ -118,6 +120,7 @@
 6. Validation Catalog 对语义摘要做请求内缓存，避免历史 Batch 数量放大全项目扫描。
 7. Renderer 同时显示 Proposal freshness/actionability 与 Validation anchor/semantic freshness。
 8. 新增 Final V1→V2、SceneBeat-only、EntityState、AI 运行期竞态、Snapshot Trigger 单一所有权等永久 Integration 回归。
+9. Ready 首轮 Unit 发现 3 个 freshness Zod Schema 无意扩张根运行时导出；已将其收回模块私有，字段协议不变，AR-08 公共面继续保持冻结。
 
 ## 自动化测试
 
@@ -127,6 +130,7 @@
 - SceneBeat 图或映射变化、正文 Hash 不变时 Rule Validation fingerprint 改变并重算。
 - Semantic Ledger 或权威领域状态变化后旧 Validation 显示 semantic stale；锚点 freshness 独立计算。
 - AI Validation 的 Constraint/Prompt/semantic identity 参与 freshness 判断；模型运行期间语义变化时结果落库即 stale。
+- AR-08 Contract public surface 数量与 digest 保持冻结，不新增独立 freshness runtime export。
 - 既有 StateProposal、EndingSnapshot、Validation、GenerationRun 回归保持通过。
 
 ## 人工验收
@@ -150,7 +154,7 @@
 - [x] StateProposal stale/actionability 闭环并保留 Reject。
 - [x] Rule / AI Validation 建立可计算 semantic freshness。
 - [ ] 对应 Unit / Integration / Coverage / Security / Performance / Build / Electron E2E 全绿。
-- [ ] Ready Evidence 绑定最终 implementation commit。
+- [x] Ready Evidence 绑定最终 implementation commit。
 - [ ] Controlled Merge 完成。
 - [ ] `main-verification` 与 `task-verification/M10-16` 成功。
 - [ ] `work` 受控同步到已验证 `main`。

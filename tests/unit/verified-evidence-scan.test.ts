@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { effectivelyVerifiedTaskIds } from '../../scripts/verified-evidence-scan.mjs';
+import {
+  effectivelyVerifiedTaskIds,
+  historicalEvidenceBindingCommit,
+} from '../../scripts/verified-evidence-scan.mjs';
 
 const source = `
 | ID | 任务卡 | 依赖 | 状态 |
@@ -37,5 +40,53 @@ describe('verified evidence scan', () => {
 
   it('does not treat text outside task rows as a Verified task', () => {
     expect(effectivelyVerifiedTaskIds('M2-04 is Verified in prose.')).toEqual([]);
+  });
+
+  it('binds an orphaned Schema 1 Evidence commit to its controlled squash merge', () => {
+    const orphan = 'a'.repeat(40);
+    const controlledMerge = 'b'.repeat(40);
+    const runtime = {
+      schemaVersion: 2,
+      verificationBinding: { sourcePr: 310 },
+    };
+
+    expect(
+      historicalEvidenceBindingCommit(
+        { schemaVersion: 1, commit: orphan },
+        runtime,
+        false,
+        () => controlledMerge,
+      ),
+    ).toBe(controlledMerge);
+    expect(
+      historicalEvidenceBindingCommit(
+        { schemaVersion: 1, commit: orphan },
+        runtime,
+        true,
+        () => controlledMerge,
+      ),
+    ).toBe(orphan);
+  });
+
+  it('does not weaken current Schema 2 or legacy unbound Evidence commits', () => {
+    const sourceCommit = 'c'.repeat(40);
+    const controlledMerge = 'd'.repeat(40);
+
+    expect(
+      historicalEvidenceBindingCommit(
+        { schemaVersion: 2, implementationCommit: sourceCommit },
+        { schemaVersion: 2, verificationBinding: { sourcePr: 311 } },
+        false,
+        () => controlledMerge,
+      ),
+    ).toBe(sourceCommit);
+    expect(
+      historicalEvidenceBindingCommit(
+        { schemaVersion: 1, commit: sourceCommit },
+        { schemaVersion: 1, sourcePr: 263 },
+        false,
+        () => controlledMerge,
+      ),
+    ).toBe(sourceCommit);
   });
 });

@@ -60,10 +60,10 @@ describe('code quality governance', () => {
         lines: 75,
       },
       rendererTsxMaxUncovered: {
-        statements: 2683,
-        branches: 2322,
-        functions: 969,
-        lines: 2402,
+        statements: 2588,
+        branches: 2281,
+        functions: 934,
+        lines: 2309,
       },
     });
 

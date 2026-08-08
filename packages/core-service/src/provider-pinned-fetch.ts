@@ -10,6 +10,13 @@ export interface ProviderPinnedFetchOptions {
   readonly ca?: string | Buffer | (string | Buffer)[];
 }
 
+class ProviderAddressRequestFailure {
+  constructor(
+    readonly cause: unknown,
+    readonly connectionEstablished: boolean,
+  ) {}
+}
+
 function unsafe(message: string): never {
   throw new ProviderRuntimeError('AI_ENDPOINT_UNSAFE_013', message, false);
 }
@@ -60,6 +67,10 @@ function responseHasBody(method: string | undefined, status: number): boolean {
   return status !== 204 && status !== 205 && status !== 304;
 }
 
+function requestCanBeReplayed(method: string | undefined): boolean {
+  return ['GET', 'HEAD', 'OPTIONS'].includes((method ?? 'GET').toUpperCase());
+}
+
 export function providerPinnedRequestOptions(
   binding: ProviderEndpointBinding,
   address: ProviderResolvedAddress,
@@ -95,6 +106,7 @@ function requestAddress(
   const requestOptions = providerPinnedRequestOptions(binding, address, url, init, options);
 
   return new Promise<Response>((resolve, reject) => {
+    let connectionEstablished = false;
     const request = (secure ? httpsRequest : httpRequest)(requestOptions, (response) => {
       const status = response.statusCode ?? 502;
       const hasBody = responseHasBody(init?.method, status);
@@ -108,7 +120,18 @@ function requestAddress(
         }),
       );
     });
-    request.once('error', reject);
+    request.once('socket', (socket) => {
+      if (!socket.connecting) {
+        connectionEstablished = true;
+        return;
+      }
+      socket.once(secure ? 'secureConnect' : 'connect', () => {
+        connectionEstablished = true;
+      });
+    });
+    request.once('error', (error) => {
+      reject(new ProviderAddressRequestFailure(error, connectionEstablished));
+    });
     request.end(body);
   });
 }
@@ -134,13 +157,19 @@ export function createPinnedProviderFetch(
     }
 
     const body = await requestBody(init?.body);
+    const replayable = requestCanBeReplayed(init?.method);
     let lastError: unknown;
     for (const address of binding.addresses) {
       try {
         return await requestAddress(binding, address, url, init, body, options);
       } catch (error) {
-        if (init?.signal?.aborted) throw error;
-        lastError = error;
+        const failure =
+          error instanceof ProviderAddressRequestFailure
+            ? error
+            : new ProviderAddressRequestFailure(error, false);
+        if (init?.signal?.aborted) throw failure.cause;
+        if (!replayable && failure.connectionEstablished) throw failure.cause;
+        lastError = failure.cause;
       }
     }
     throw lastError ?? new Error('PROVIDER_CONNECTION_ADDRESS_UNAVAILABLE');

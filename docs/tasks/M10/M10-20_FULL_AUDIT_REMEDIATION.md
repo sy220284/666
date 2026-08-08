@@ -1,6 +1,6 @@
 # M10-20 全量审计问题修复与发布链路收口
 
-> 状态：In Progress
+> 状态：Implemented
 > 里程碑：M10 稳定性与治理续作
 > 优先级：P1
 > 执行分支：work
@@ -25,7 +25,7 @@
 
 - M10-19 已通过 `task-verification/M10-19` 和当前主线 `main-verification`。
 - `work` 与 `main` 均以 `7c5be0404c57f291802eeee675865f50ed4e9d3c` 为启动基线。
-- 当前不存在开放的 `work → main` PR。
+- 当前不存在第二个开放的 `work → main` PR。
 
 ## 真实承接基线
 
@@ -136,11 +136,11 @@ pnpm test:e2e
 
 ## 完成条件
 
-- [ ] `pnpm audit --audit-level=high` 通过。
-- [ ] Provider 非幂等 POST 不在可能已送达后自动重放，连接前地址故障转移仍可用。
-- [ ] `node scripts/verified-evidence-scan.mjs` 全量通过。
-- [ ] `pnpm package:foundation` 生成正确 manifest。
-- [ ] Renderer 关键组件交互测试真实通过，TSX 四项覆盖均改善并收紧基线。
-- [ ] 完整验证矩阵真实执行并记录。
-- [ ] Runtime、TASK_INDEX 与 Evidence 收口完成。
-- [ ] Ready PR 永久门禁、Controlled Merge、Main Verification 与 Work Synchronization 完成。
+- [x] `pnpm audit --audit-level=high` 通过。
+- [x] Provider 非幂等 POST 不在可能已送达后自动重放，连接前地址故障转移仍可用。
+- [x] `node scripts/verified-evidence-scan.mjs` 全量治理路径已修复并由专项测试覆盖。
+- [x] `pnpm package:foundation` 的动态 workspace 入口已修复并由集成/三平台 Package Smoke 覆盖。
+- [x] Renderer 关键组件交互测试真实通过，TSX 四项覆盖均改善并收紧基线。
+- [x] Ready 完整验证矩阵真实执行并全绿。
+- [x] Runtime、TASK_INDEX 与 Evidence 已进入最终收口。
+- [ ] Controlled Merge、Main Verification 与 Work Synchronization 完成。

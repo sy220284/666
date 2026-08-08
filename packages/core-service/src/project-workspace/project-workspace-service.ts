@@ -124,16 +124,13 @@ export class ProjectWorkspaceService {
   }
 
   close(requestId: string, projectId: string): Promise<{ projectId: string; closed: true }> {
-    return this.#idempotent(
-      requestId,
-      requestFingerprint('project.close', { projectId }),
-      () =>
-        this.#withProjectTaskDrain(projectId, async () => {
-          const context = this.#assertActiveContext(projectId);
-          await closeProjectContext(context);
-          if (this.#active === context) this.#active = null;
-          return { projectId: context.summary.projectId, closed: true };
-        }),
+    return this.#idempotent(requestId, requestFingerprint('project.close', { projectId }), () =>
+      this.#withProjectTaskDrain(projectId, async () => {
+        const context = this.#assertActiveContext(projectId);
+        await closeProjectContext(context);
+        if (this.#active === context) this.#active = null;
+        return { projectId: context.summary.projectId, closed: true };
+      }),
     );
   }
 
@@ -147,7 +144,12 @@ export class ProjectWorkspaceService {
       requestFingerprint('project.move', { projectId, targetParentDirectory }),
       () =>
         this.#withProjectTaskDrain(projectId, () =>
-          moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
+          moveProjectWorkspace(
+            this.#operationContext(),
+            requestId,
+            projectId,
+            targetParentDirectory,
+          ),
         ),
     );
   }

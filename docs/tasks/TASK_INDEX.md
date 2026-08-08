@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-17，共62张独立任务卡。  
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-18，共63张独立任务卡。  
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -115,7 +115,7 @@ Runtime IMPLEMENTED
 | `M9-11` | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-03内部基线 | Removed（absorbed by M9-03） |
 | `M9-12` | [`AR-12 Project Workspace拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#13-ar-12-project-workspace拆分) | M9-03内部基线 | Removed（absorbed by M9-03） |
 | `M9-13` | [`AR-13 Recovery与工具域拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#14-ar-13-recovery与工具域拆分) | M9-03内部AR-12 | Removed（absorbed by M9-03） |
-| `M9-14` | [`AR-14 Legacy、CSS与最终结构收敛`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#15-ar-14-legacycss与最终结构收敛) | M9-03内部AR-03—13 | Removed（absorbed by M9-03） |
+| `M9-14` | [`AR-14 Legacy、CSS与最终结构收敛`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#15-ar-14-legacycss最终结构收敛) | M9-03内部AR-03—13 | Removed（absorbed by M9-03） |
 
 ### M10 稳定性与治理续作
 
@@ -138,6 +138,7 @@ Runtime IMPLEMENTED
 | M10-15 | [`AI权威上下文与生成前置一致性收口`](M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md) | M10-14 | Implemented |
 | M10-16 | [`语义新鲜度与派生失效一致性收口`](M10/M10-16_SEMANTIC_FRESHNESS_DERIVED_INVALIDATION.md) | M10-15 | Implemented |
 | M10-17 | [`项目生命周期与Renderer状态所有权收口`](M10/M10-17_PROJECT_LIFECYCLE_RENDERER_STATE_OWNERSHIP.md) | M10-16 | Implemented |
+| M10-18 | [`导入幂等、实体删除与弧光依赖一致性收口`](M10/M10-18_IMPORT_ENTITY_ARC_DEPENDENCY_CONSISTENCY.md) | M10-17 | In Progress |
 
 ## 3. 被吸收的需求来源
 
@@ -161,7 +162,7 @@ Runtime IMPLEMENTED
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md) | M6 | Removed（absorbed） | M4-04 |
 | M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md) | M7 | Removed（absorbed） | M8-02 |
 | M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md) | M7 | Removed（absorbed） | M8-02 |
-| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md) | M7 | Removed（absorbed） | M8-02 |
+| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#10-ar-09-preload拆分) | M7 | Removed（absorbed） | M8-02 |
 | M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md) | M8 | Removed（absorbed） | M8-02 |
 | M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | M8 | Removed（absorbed） | M8-02 |
 

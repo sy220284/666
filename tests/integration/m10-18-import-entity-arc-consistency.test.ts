@@ -57,14 +57,12 @@ describe('M10-18 import, Entity delete and Arc Timeline dependency consistency',
       expect(
         harness.workspace.readProject(seeded.project.projectId, (database) => ({
           importedVolumes: Number(
-            database
-              .prepare("SELECT COUNT(*) AS total FROM volumes WHERE title = '幂等导入'")
-              .get()?.total ?? 0,
+            database.prepare("SELECT COUNT(*) AS total FROM volumes WHERE title = '幂等导入'").get()
+              ?.total ?? 0,
           ),
           importedVersions: Number(
-            database
-              .prepare("SELECT COUNT(*) AS total FROM versions WHERE label = 'import'")
-              .get()?.total ?? 0,
+            database.prepare("SELECT COUNT(*) AS total FROM versions WHERE label = 'import'").get()
+              ?.total ?? 0,
           ),
           checkpoints: Number(
             database.prepare('SELECT COUNT(*) AS total FROM backup_records').get()?.total ?? 0,
@@ -134,7 +132,9 @@ describe('M10-18 import, Entity delete and Arc Timeline dependency consistency',
       expect(characterBlockers).toContain(
         'Remove Timeline entity references before permanent deletion.',
       );
-      expect(characterBlockers).toContain('Remove Character Arc references before permanent deletion.');
+      expect(characterBlockers).toContain(
+        'Remove Character Arc references before permanent deletion.',
+      );
 
       const transient = (
         await harness.canon.create(randomUUID(), {
@@ -194,10 +194,12 @@ describe('M10-18 import, Entity delete and Arc Timeline dependency consistency',
         }),
       ).rejects.toMatchObject({ code: 'ENTITY_REFERENCED' });
       expect(
-        harness.canon.list({
-          projectId: seeded.project.projectId,
-          includeArchived: true,
-        }).entities.some((entity) => entity.id === transient.id),
+        harness.canon
+          .list({
+            projectId: seeded.project.projectId,
+            includeArchived: true,
+          })
+          .entities.some((entity) => entity.id === transient.id),
       ).toBe(true);
 
       await harness.workspace.writeProject(

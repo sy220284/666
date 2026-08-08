@@ -201,11 +201,18 @@ describe('M4-04 Provider state extraction and validation', () => {
         sourceVersionId: seeded.version.versionId,
       });
       expect(recalculated.batches).toHaveLength(2);
-      expect(recalculated.batches[0]).toMatchObject({
+      expect(
+        recalculated.batches.filter((batch) => batch.semanticFreshness === 'current'),
+      ).toHaveLength(1);
+      expect(
+        recalculated.batches.find((batch) => batch.semanticFreshness === 'current'),
+      ).toMatchObject({
         source: 'rule',
         anchorFreshness: 'current',
-        semanticFreshness: 'current',
       });
+      expect(
+        recalculated.batches.filter((batch) => batch.semanticFreshness === 'stale'),
+      ).toHaveLength(1);
 
       const issue = first.issues[0]!;
       let catalog = await harness.validation.createTodoFromIssue(randomUUID(), {
@@ -326,6 +333,74 @@ describe('M4-04 Provider state extraction and validation', () => {
         includeClosed: true,
       });
       expect(semanticStale.batches.find((batch) => batch.batchId === ai.batchId)).toMatchObject({
+        anchorFreshness: 'current',
+        semanticFreshness: 'stale',
+      });
+
+      const racingRun = await harness.generation.create(randomUUID(), {
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        baseDraftId: null,
+        baseDraftRevision: null,
+        runType: 'validate',
+        promptId: 'worldforge.validate',
+        promptVersion: 1,
+        outputMode: 'structured',
+        providerId: 'provider-test',
+        actualModel: 'model-test',
+        supportStatus: 'verified',
+        constraintPackage: constraints(
+          seeded.project.projectId,
+          seeded.chapter1.id,
+          seeded.version.versionId,
+          'validate',
+        ),
+        inputSources: [
+          {
+            sourceType: 'version',
+            sourceId: seeded.version.versionId,
+            sourceOrder: 0,
+            contentHash: seeded.version.contentHash,
+            metadata: { final: true },
+          },
+        ],
+      });
+      await harness.generation.markRunning(randomUUID(), {
+        projectId: seeded.project.projectId,
+        runId: racingRun.runId,
+      });
+      await harness.continuity.setEntityState(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        entityId: seeded.character.id,
+        stateKey: 'health',
+        value: 'recovering',
+        validFromChapterId: seeded.chapter1.id,
+        validUntilChapterId: null,
+        evidence: [{ kind: 'version', targetId: seeded.version.versionId, note: '' }],
+        sourceVersionId: seeded.version.versionId,
+      });
+      const raced = await harness.validation.completeAiBatch(randomUUID(), {
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        sourceVersionId: seeded.version.versionId,
+        runId: racingRun.runId,
+        output: {
+          issues: [
+            {
+              type: 'semantic.character_motivation',
+              severity: 'medium',
+              logicalBlockId: blockId,
+              rationale: '运行期间语义状态变化后的结果仅可作为历史检查。',
+              evidenceIds: [blockId],
+              suggestion: '基于最新状态重新运行检查。',
+              confidence: 0.68,
+            },
+          ],
+        },
+      });
+      expect(raced.catalog.batches.find((batch) => batch.batchId === raced.batchId)).toMatchObject({
+        source: 'ai',
         anchorFreshness: 'current',
         semanticFreshness: 'stale',
       });

@@ -19,8 +19,10 @@ import {
 } from './validation-model.js';
 import { CONFIG_VERSION, RULE_CONFIG, RULE_VERSION } from './validation-rules.js';
 
+const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
+
 type CatalogBatchRow = BatchRow & {
-  readonly generationCreatedAt: string | null;
+  readonly generationSourceMetadataJson: string | null;
 };
 
 export function batchRows(database: DatabaseSync, projectId: string): CatalogBatchRow[] {
@@ -36,8 +38,16 @@ export function batchRows(database: DatabaseSync, projectId: string): CatalogBat
               version.content_hash AS sourceContentHash,
               generation.prompt_id AS promptId,
               generation.prompt_version AS promptVersion,
-              generation.created_at AS generationCreatedAt,
-              constraint_package.constraint_hash AS constraintHash
+              constraint_package.constraint_hash AS constraintHash,
+              (
+                SELECT source.metadata_json
+                  FROM generation_input_sources source
+                 WHERE source.run_id = batch.generation_run_id
+                   AND source.source_type = 'version'
+                   AND source.source_id = batch.source_version_id
+                 ORDER BY source.source_order, source.source_id
+                 LIMIT 1
+              ) AS generationSourceMetadataJson
          FROM validation_batches batch
          LEFT JOIN chapters chapter ON chapter.id = batch.chapter_id
          LEFT JOIN versions version ON version.id = batch.source_version_id
@@ -112,7 +122,6 @@ interface FreshnessCache {
   >;
   readonly invalidationByChapter: Map<string, string>;
   readonly sceneBeatBySource: Map<string, string>;
-  readonly mutationSinceRun: Map<string, boolean>;
 }
 
 function semanticIdentity(
@@ -143,79 +152,42 @@ function semanticIdentity(
   };
 }
 
-function semanticMutationOccurredAfterRun(
-  database: DatabaseSync,
-  row: CatalogBatchRow,
-  cache: FreshnessCache,
+function startSemanticIdentity(row: CatalogBatchRow): ValidationSemanticIdentity | null {
+  if (!row.generationSourceMetadataJson) return null;
+  try {
+    const metadata = JSON.parse(row.generationSourceMetadataJson) as unknown;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+    const identity = (metadata as Readonly<Record<string, unknown>>)[
+      VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY
+    ];
+    if (!identity || typeof identity !== 'object' || Array.isArray(identity)) return null;
+    const value = identity as Readonly<Record<string, unknown>>;
+    if (
+      typeof value.sceneBeatGraph !== 'string' ||
+      typeof value.semanticInvalidations !== 'string' ||
+      typeof value.authoritativeSemanticState !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      sceneBeatGraph: value.sceneBeatGraph,
+      semanticInvalidations: value.semanticInvalidations,
+      authoritativeSemanticState: value.authoritativeSemanticState,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function sameSemanticIdentity(
+  left: ValidationSemanticIdentity,
+  right: ValidationSemanticIdentity,
 ): boolean {
-  if (!row.generationCreatedAt || !row.generationRunId) return true;
-  const cacheKey = `${row.generationRunId}:${row.generationCreatedAt}`;
-  const cached = cache.mutationSinceRun.get(cacheKey);
-  if (cached !== undefined) return cached;
-  const changed = database
-    .prepare(
-      `WITH bounds(project_id, chapter_id, since) AS (VALUES(?, ?, ?))
-       SELECT 1
-         FROM bounds
-        WHERE EXISTS (
-          SELECT 1 FROM scene_beats beat
-           WHERE beat.project_id = bounds.project_id
-             AND beat.chapter_id = bounds.chapter_id
-             AND beat.updated_at > bounds.since
-          UNION ALL
-          SELECT 1 FROM entities entity
-           WHERE entity.project_id = bounds.project_id
-             AND entity.updated_at > bounds.since
-          UNION ALL
-          SELECT 1 FROM canon_facts fact
-           WHERE fact.project_id = bounds.project_id
-             AND (
-               fact.created_at > bounds.since OR fact.confirmed_at > bounds.since
-               OR COALESCE(fact.superseded_at, '') > bounds.since
-             )
-          UNION ALL
-          SELECT 1 FROM entity_states state
-           WHERE state.project_id = bounds.project_id
-             AND (
-               state.created_at > bounds.since
-               OR COALESCE(state.superseded_at, '') > bounds.since
-             )
-          UNION ALL
-          SELECT 1 FROM knowledge_states knowledge
-           WHERE knowledge.project_id = bounds.project_id
-             AND (
-               knowledge.created_at > bounds.since
-               OR COALESCE(knowledge.superseded_at, '') > bounds.since
-             )
-          UNION ALL
-          SELECT 1 FROM timeline_events event
-           WHERE event.project_id = bounds.project_id
-             AND event.updated_at > bounds.since
-          UNION ALL
-          SELECT 1 FROM foreshadowings foreshadowing
-           WHERE foreshadowing.project_id = bounds.project_id
-             AND foreshadowing.updated_at > bounds.since
-          UNION ALL
-          SELECT 1 FROM character_arcs arc
-           WHERE arc.project_id = bounds.project_id
-             AND arc.updated_at > bounds.since
-          UNION ALL
-          SELECT 1 FROM arc_milestones milestone
-           WHERE milestone.project_id = bounds.project_id
-             AND milestone.updated_at > bounds.since
-          UNION ALL
-          SELECT 1 FROM derived_invalidations invalidation
-           WHERE invalidation.project_id = bounds.project_id
-             AND invalidation.scope = 'validation'
-             AND invalidation.target_chapter_id = bounds.chapter_id
-             AND invalidation.created_at > bounds.since
-        )
-        LIMIT 1`,
-    )
-    .get(row.projectId, row.chapterId, row.generationCreatedAt);
-  const result = Boolean(changed);
-  cache.mutationSinceRun.set(cacheKey, result);
-  return result;
+  return (
+    left.sceneBeatGraph === right.sceneBeatGraph &&
+    left.semanticInvalidations === right.semanticInvalidations &&
+    left.authoritativeSemanticState === right.authoritativeSemanticState
+  );
 }
 
 function semanticFreshness(
@@ -250,7 +222,8 @@ function semanticFreshness(
     row.promptVersion !== null &&
     row.promptVersion !== undefined
   ) {
-    if (semanticMutationOccurredAfterRun(database, row, cache)) return 'stale';
+    const startedWith = startSemanticIdentity(row);
+    if (!startedWith || !sameSemanticIdentity(startedWith, currentSemanticIdentity)) return 'stale';
     const current = aiValidationFingerprint(
       database,
       source,
@@ -274,7 +247,6 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
     sourceByVersion: new Map(),
     invalidationByChapter: new Map(),
     sceneBeatBySource: new Map(),
-    mutationSinceRun: new Map(),
   };
   const todos = database
     .prepare(

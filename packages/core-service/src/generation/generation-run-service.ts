@@ -80,9 +80,7 @@ function withValidationSemanticIdentity(
   if (input.runType !== 'validate') return input;
   const sources = input.inputSources ?? [];
   const versionSource =
-    sources.find(
-      (source) => source.sourceType === 'version' && source.metadata?.final === true,
-    ) ??
+    sources.find((source) => source.sourceType === 'version' && source.metadata?.final === true) ??
     sources.find(
       (source) =>
         source.sourceType === 'version' &&

@@ -22,6 +22,7 @@
     "packages/core-service/src/project-workspace/project-move.ts",
     "packages/core-service/src/utility-entry.ts",
     "packages/core-service/src/utility-service-container.ts",
+    "packages/core-service/src/utility-search-rhythm-router.ts",
     "packages/core-service/src/rhythm.ts",
     "apps/desktop/renderer/src/app/use-workspace-startup.ts",
     "apps/desktop/renderer/src/app/use-workspace-runtime.ts",

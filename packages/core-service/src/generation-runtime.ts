@@ -240,18 +240,35 @@ export class GenerationRuntime {
   }
 
   async drainProject(projectId: string): Promise<void> {
-    const tasks = [...this.#executions.values()]
-      .filter((execution) => execution.projectId === projectId)
-      .map((execution) => execution.taskId);
-    for (const taskId of tasks) await this.cancelTask(taskId, projectId);
+    const executions = [...this.#executions.values()].filter(
+      (execution) => execution.projectId === projectId,
+    );
+    for (const execution of executions) {
+      try {
+        await this.cancelTask(execution.taskId, execution.projectId);
+      } catch (error) {
+        if (error instanceof TaskProtocolError && error.code === 'TASK_NOT_CANCELLABLE_001') {
+          await execution.completion;
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   async drainAll(): Promise<void> {
-    const tasks = [...this.#executions.values()].map((execution) => ({
-      taskId: execution.taskId,
-      projectId: execution.projectId,
-    }));
-    for (const task of tasks) await this.cancelTask(task.taskId, task.projectId);
+    const executions = [...this.#executions.values()];
+    for (const execution of executions) {
+      try {
+        await this.cancelTask(execution.taskId, execution.projectId);
+      } catch (error) {
+        if (error instanceof TaskProtocolError && error.code === 'TASK_NOT_CANCELLABLE_001') {
+          await execution.completion;
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   async cancel(

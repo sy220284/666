@@ -333,12 +333,16 @@ export class GenerationRuntime {
   }
 
   #rememberExecution(run: GenerationRun, completion: Promise<void>): void {
-    this.#executions.set(run.runId, {
+    const execution: Execution = {
       projectId: run.projectId,
       taskId: run.taskId,
       completion,
-    });
-    this.#trimExecutions();
+    };
+    this.#executions.set(run.runId, execution);
+    const clear = (): void => {
+      if (this.#executions.get(run.runId) === execution) this.#executions.delete(run.runId);
+    };
+    void completion.then(clear, clear);
   }
 
   async #cancelled(runId: string): Promise<boolean> {
@@ -466,14 +470,6 @@ export class GenerationRuntime {
         }
       }
       task.fail(mapped.code, mapped.retryable);
-    }
-  }
-
-  #trimExecutions(): void {
-    while (this.#executions.size > 1_000) {
-      const oldest = this.#executions.keys().next().value;
-      if (typeof oldest !== 'string') break;
-      this.#executions.delete(oldest);
     }
   }
 }

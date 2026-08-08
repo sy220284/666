@@ -1,11 +1,12 @@
 # M10-17 项目生命周期与 Renderer 状态所有权收口
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M10 稳定性与治理续作 / V1.5 跨域语义与运行一致性收口  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
-> 主线基线：`1caa3fbccc15d84b35e82e80f415717d07a39ba7`
+> 主线基线：`1caa3fbccc15d84b35e82e80f415717d07a39ba7`  
+> 最终产品实现提交：`e991ae55abc972b8b636e905ee4be73d70a056d1`
 
 ## 目标
 
@@ -49,11 +50,15 @@
 ## 主要影响范围
 
 - `packages/core-service/src/task-protocol.ts`
+- `packages/core-service/src/project-task-protocol.ts`
 - `packages/core-service/src/project-workspace/project-workspace-service.ts`
 - `packages/core-service/src/project-workspace/project-move.ts`
+- `packages/core-service/src/utility-entry.ts`
 - `packages/core-service/src/utility-service-container.ts`
+- `packages/core-service/src/utility-search-rhythm-router.ts`
 - `packages/core-service/src/rhythm.ts`
 - `apps/desktop/renderer/src/app/use-workspace-startup.ts`
+- `apps/desktop/renderer/src/app/use-workspace-runtime.ts`
 - `apps/desktop/renderer/src/app/app-shell-pages.tsx`
 - `apps/desktop/renderer/src/app/app-shell-m3.tsx`
 - `apps/desktop/renderer/src/features/planning/planning-workbench.tsx`
@@ -63,15 +68,24 @@
 
 ## 职责与状态所有权
 
-1. TaskProtocol 持有活动 Task 与项目 drain 状态；ProjectWorkspace 只通过项目级 Barrier 协调生命周期，不复制 Task 状态。
+1. TaskProtocol 持有活动 Task；`ProjectTaskProtocol` 只在同一 TaskProtocol 状态机上增加项目级 drain guard，不复制任务状态。
 2. Close / Move 在关闭数据库前先进入项目 draining：禁止该项目新任务，取消可取消任务，等待不可取消原子阶段进入 terminal。
 3. Barrier 失败时项目继续保持打开；成功关闭/移动后释放项目 drain 标记，后续重新打开同一项目仍可启动任务。
-4. Planning disclosure mode 由 AppShell/PlanningModeWorkbench 的单一上层状态持有；子工作台只接收 `mode` 与 `onChangeMode`，不维护第二份 `professional` 状态。
-5. Rhythm 查询必须使用 `readProject`；Profile 不存在时返回内存默认投影，不写数据库。只有显式 update/run 类命令可写。
-6. read-only-compatible 可读取已有 Rhythm Profile/Results；禁止修改 Profile 或触发需要写入的重新计算。
-7. Startup 对 Provider、Active Task、Continuation 读取结果显式区分 `loaded / empty / degraded`，失败不得回写成空集合或 null 伪装成功。
+4. Planning disclosure mode 由 App Settings `defaultMode` 单一持有；子工作台只接收 `mode` 与 `onChangeMode`，不维护第二份 `professional` 状态。
+5. Rhythm `get` 使用 `readProject`；Profile 不存在时返回内存默认投影，不写数据库。`run/updateProfile` 使用写路径。
+6. read-only-compatible 可读取 Rhythm Profile/Results；禁止修改 Profile 或触发需要写入的重新计算。
+7. Startup 对 Provider、Active Task、Continuation 读取结果显式区分 `loaded / empty / degraded`，失败保留此前权威值并显示失败状态。
 8. Task 通道建立/恢复后使用 `task.listActive(projectId)` 重新同步项目活动任务。
-9. Timeline Event 编辑复用既有 `eventId != null` Core update 路径；Renderer 选择已有事件后填充表单并携带原 eventId 保存。
+9. Timeline Event 编辑复用既有 `eventId != null` Core update 路径；Renderer 选择已有事件后完整回填并携带原 eventId 保存。
+
+## 实施结果
+
+- ProjectTaskBarrier 已覆盖同项目新任务阻断、可取消任务取消、不可取消原子阶段等待、超时保持项目打开以及 Close/Move 顺序。
+- Planning disclosure mode 已收敛为 Settings 单真源。
+- Rhythm 已完成 `get` 纯读、`run/updateProfile` 写路径拆分；缺 Profile 的读取不落库。
+- Startup 已建立 `loaded / empty / degraded` 三态；Provider/Task/Continuation 失败不再覆写成空值；Task subscription 建立后主动重拉完整活动任务快照。
+- Timeline Event 已支持从 Renderer 选择现有事件、回填章节/地点/人物角色/依赖/时间字段并按原 `eventId` 更新。
+- 最终产品提交 `e991ae55abc972b8b636e905ee4be73d70a056d1` 的 Draft Quality 已通过 Workspace、Boundary、Format、Lint、Typecheck；同一 Head 的 Security、Performance、Task Governance、PR Policy、Draft Evidence 均成功。
 
 ## 永久验收
 
@@ -91,11 +105,11 @@
 
 ## 完成条件
 
-- [ ] ProjectTaskBarrier 完成并覆盖关闭/移动原子阶段。
-- [ ] Planning Mode 单真源完成。
-- [ ] Rhythm Read/Write 分离及 read-only-compatible 闭环完成。
-- [ ] Startup degraded 与 Task 重同步完成。
-- [ ] Timeline Event 编辑入口完成。
+- [x] ProjectTaskBarrier 完成并覆盖关闭/移动原子阶段。
+- [x] Planning Mode 单真源完成。
+- [x] Rhythm Read/Write 分离及 read-only-compatible 闭环完成。
+- [x] Startup degraded 与 Task 重同步完成。
+- [x] Timeline Event 编辑入口完成。
 - [ ] Unit / Integration / Coverage / Security / Performance / Build / Electron E2E 全绿。
 - [ ] Ready Evidence 绑定最终 implementation commit。
 - [ ] Controlled Merge 完成。

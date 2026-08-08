@@ -1,0 +1,47 @@
+# M10-16 验证命令与权威运行
+
+## 实施边界
+
+git rev-parse main
+# baseline: 960f0ee94069b40c84e546486dd4d3dd9f630adf
+
+git rev-parse work
+# implementation commit: b58938188282783047628849eda637b209b44925
+
+git diff --name-only 960f0ee94069b40c84e546486dd4d3dd9f630adf..b58938188282783047628849eda637b209b44925
+git diff --check 960f0ee94069b40c84e546486dd4d3dd9f630adf..b58938188282783047628849eda637b209b44925
+
+## 永久矩阵
+
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+## 关键专项回归
+
+pnpm vitest run tests/integration/m10-16-semantic-freshness.test.ts
+pnpm vitest run tests/integration/state-proposal-snapshot.test.ts
+pnpm vitest run tests/integration/state-validation-provider.test.ts
+
+## Ready / 合并验证
+
+# 来源 PR：#325
+# Ready Quality / Security / Performance / Governance 以当前 PR Head 的 GitHub Checks 为权威。
+# Controlled Merge 后必须满足：
+main-verification=success
+task-verification/M10-16=success
+
+git diff --exit-code main..work

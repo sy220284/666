@@ -137,7 +137,7 @@ Runtime IMPLEMENTED
 | M10-14 | [`Recovery、Bridge与边界审计收口`](M10/M10-14_RECOVERY_BRIDGE_POST_AUDIT_HARDENING.md) | M10-13 | Implemented |
 | M10-15 | [`AI权威上下文与生成前置一致性收口`](M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md) | M10-14 | Implemented |
 | M10-16 | [`语义新鲜度与派生失效一致性收口`](M10/M10-16_SEMANTIC_FRESHNESS_DERIVED_INVALIDATION.md) | M10-15 | Implemented |
-| M10-17 | [`项目生命周期与Renderer状态所有权收口`](M10/M10-17_PROJECT_LIFECYCLE_RENDERER_STATE_OWNERSHIP.md) | M10-16 | In Progress |
+| M10-17 | [`项目生命周期与Renderer状态所有权收口`](M10/M10-17_PROJECT_LIFECYCLE_RENDERER_STATE_OWNERSHIP.md) | M10-16 | Implemented |
 
 ## 3. 被吸收的需求来源
 

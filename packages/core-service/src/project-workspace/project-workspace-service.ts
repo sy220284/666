@@ -51,6 +51,14 @@ function requestFingerprint(scope: string, input: unknown): string {
 export type { ProjectWorkspaceErrorCode };
 export { ProjectWorkspaceError };
 
+export interface ProjectTaskDrain {
+  withProjectDrain<T>(projectId: string, operation: () => Promise<T>): Promise<T>;
+}
+
+const immediateProjectTaskDrain: ProjectTaskDrain = {
+  withProjectDrain: (_projectId, operation) => operation(),
+};
+
 export interface ProjectWorkspaceServiceOptions {
   readonly projectMigrationsDirectory: string;
   readonly projectMigrationRecoveryDirectory: string;
@@ -61,6 +69,7 @@ export interface ProjectWorkspaceServiceOptions {
   readonly hashWorkspace?: (workspacePath: string) => Promise<string>;
   readonly freeBytes?: (directory: string) => Promise<bigint>;
   readonly idFactory?: () => string;
+  readonly taskDrain?: ProjectTaskDrain;
 }
 
 export class ProjectWorkspaceService {
@@ -73,6 +82,7 @@ export class ProjectWorkspaceService {
   readonly #hashWorkspace: (workspacePath: string) => Promise<string>;
   readonly #freeBytes: (directory: string) => Promise<bigint>;
   readonly #idFactory: () => string;
+  readonly #taskDrain: ProjectTaskDrain;
   readonly #operations = new BoundedIdempotentPromiseCache();
   #lifecycleTail: Promise<void> = Promise.resolve();
   #active: ActiveProjectContext | null = null;
@@ -87,6 +97,7 @@ export class ProjectWorkspaceService {
     this.#hashWorkspace = options.hashWorkspace ?? defaultHashWorkspace;
     this.#freeBytes = options.freeBytes ?? defaultFreeBytes;
     this.#idFactory = options.idFactory ?? randomUUID;
+    this.#taskDrain = options.taskDrain ?? immediateProjectTaskDrain;
   }
 
   get activeProject(): ProjectWorkspaceSummary | null {
@@ -115,15 +126,16 @@ export class ProjectWorkspaceService {
     return this.#idempotent(
       requestId,
       requestFingerprint('project.close', { projectId }),
-      async () => {
-        const context = this.#assertActiveContext(projectId);
-        try {
-          await closeProjectContext(context);
-        } finally {
-          if (this.#active === context) this.#active = null;
-        }
-        return { projectId: context.summary.projectId, closed: true };
-      },
+      () =>
+        this.#taskDrain.withProjectDrain(projectId, async () => {
+          const context = this.#assertActiveContext(projectId);
+          try {
+            await closeProjectContext(context);
+          } finally {
+            if (this.#active === context) this.#active = null;
+          }
+          return { projectId: context.summary.projectId, closed: true };
+        }),
     );
   }
 
@@ -136,7 +148,9 @@ export class ProjectWorkspaceService {
       requestId,
       requestFingerprint('project.move', { projectId, targetParentDirectory }),
       () =>
-        moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
+        this.#taskDrain.withProjectDrain(projectId, () =>
+          moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
+        ),
     );
   }
 

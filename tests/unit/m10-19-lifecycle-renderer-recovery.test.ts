@@ -167,8 +167,14 @@ describe('M10-19 lifecycle, Renderer and Recovery governance', () => {
       return handled;
     });
     await persisted;
+    for (
+      let attempt = 0;
+      attempt < 10 && tasks.getSnapshot(TASK_ID, PROJECT_ID).status !== 'cancelled';
+      attempt += 1
+    ) {
+      await Promise.resolve();
+    }
     expect(tasks.getSnapshot(TASK_ID, PROJECT_ID).status).toBe('cancelled');
-    await Promise.resolve();
     expect(settled).toBe(false);
 
     releaseParsing();

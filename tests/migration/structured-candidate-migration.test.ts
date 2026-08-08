@@ -53,7 +53,7 @@ describe('M4-04 structured Candidate migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 29n,
+        schema_version: 30n,
       });
       for (const table of [
         'candidate_skeleton_revisions',

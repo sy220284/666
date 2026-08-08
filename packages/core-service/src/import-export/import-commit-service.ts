@@ -39,6 +39,16 @@ function commandFingerprint(input: ImportCommitInput): string {
     .digest('hex');
 }
 
+function derivedRequestId(requestId: string, purpose: string): string {
+  const bytes = Buffer.from(
+    createHash('sha256').update(`${requestId}:${purpose}`, 'utf8').digest().subarray(0, 16),
+  );
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const value = bytes.toString('hex');
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
 function receiptResult(
   row: { readonly fingerprint: string; readonly resultJson: string } | undefined,
   requestId: string,
@@ -165,10 +175,13 @@ export class ImportCommitService {
         'Imported chapter titles must be unique inside the new volume.',
       );
     }
-    const checkpoint = await this.#recovery.createOperationCheckpoint(requestId, {
-      projectId: input.projectId,
-      operation: 'import',
-    });
+    const checkpoint = await this.#recovery.createOperationCheckpoint(
+      derivedRequestId(requestId, 'import-checkpoint'),
+      {
+        projectId: input.projectId,
+        operation: 'import',
+      },
+    );
     this.#faultInjector?.('after-checkpoint');
     const now = this.#clock.now().toISOString();
     const volumeId = this.#idFactory();

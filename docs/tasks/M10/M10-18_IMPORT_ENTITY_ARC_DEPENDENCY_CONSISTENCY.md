@@ -1,11 +1,12 @@
 # M10-18 导入幂等、实体删除与弧光依赖一致性收口
 
-> 状态：Planned  
+> 状态：Implemented  
 > 里程碑：M10 稳定性与治理续作 / V1.5 跨域语义与运行一致性收口  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
-> 主线基线：`8671dcdfe2e7220915de1d8787f8244a26f406a0`
+> 主线基线：`8671dcdfe2e7220915de1d8787f8244a26f406a0`  
+> 最终产品实现提交：`1c4d522c71061a8ee5caa235d7f314b50033cb9c`
 
 ## 目标
 
@@ -57,9 +58,7 @@
 - `packages/core-service/src/entity-canon.ts`
 - `packages/core-service/src/narrative-planning/character-arc-operations.ts`
 - `packages/core-service/src/narrative-planning/narrative-planning-catalog.ts`
-- `tests/integration/import-export-service.test.ts`
-- `tests/integration/entity-canon.test.ts`
-- `tests/integration/narrative-character-arc.test.ts`
+- `tests/integration/m10-18-import-entity-arc-consistency.test.ts`
 - 当前任务 Runtime、TASK_INDEX 与 Evidence。
 
 ## 职责、状态所有权与依赖方向
@@ -90,7 +89,7 @@
 
 - 不新增 UI 状态机。
 - Entity Preview 的现有 `blockers` 继续承载阻断原因，因此无需扩张公共 Contract。
-- Narrative Planning Catalog 的 `attention/warnings` 必须纳入 Timeline dependency，现有 Renderer 自动消费。
+- Narrative Planning Catalog 的 `attention/warnings` 已纳入 Timeline dependency，现有 Renderer 自动消费。
 
 ## 安全、隐私与恢复
 
@@ -103,15 +102,17 @@
 
 - Import 幂等只增加 O(1) 有界 request cache 查找。
 - Entity delete 依赖检查使用现有按 entity/project 建立的索引；单次删除只执行固定数量 COUNT/EXISTS 查询。
-- Arc Timeline dependency 在单 milestone transition 内按当前 milestone 做有界查询；Catalog 必须避免按全项目无界扫描。
+- Arc Timeline dependency 在单 milestone transition 内按当前 milestone 做有界查询；Catalog 不增加全项目无界扫描。
 
-## 实施内容
+## 实施结果
 
-1. 为 ImportCommitService 建立完整 commit 生命周期的有界幂等包装，并让 DB transaction 返回真实 ImportCommitResult。
-2. 抽取事务可复用 Entity Delete Preview/Dependency 判定；Preview 使用 readProject，Delete 在 writeProject 内重新权威计算并完成确认与删除。
-3. 补齐 Timeline location、Timeline entity link、Character Arc 的永久删除 blockers。
-4. 建立 Arc Timeline dependency 统一判定，覆盖 Catalog blocked warning 与 `hit` transition。
-5. 新增重复 Import、requestId payload 冲突、Entity 依赖竞态/跨域引用、Timeline dependency 未锚定/晚于 milestone/满足后的 Integration 回归。
+1. ImportCommitService 已复用现有 `BoundedIdempotentPromiseCache` 建立完整 commit 生命周期幂等；Plan/source 校验、Recovery checkpoint、随机 ID、SQLite transaction 与最终结果共享同一个 request Promise。事务 callback 直接返回真实 `ImportCommitResult`，成功重放不再依赖已删除的 Plan，也不生成第二份 checkpoint/ID。
+2. 相同 Import requestId 使用不同 payload 时稳定映射为既有 `IMPORT_COMMIT_FAILED`；失败 Promise 继续由现有有界缓存移除，可在外部条件修复后重试。
+3. Entity Delete Preview/Dependency 判定已抽取为可复用事务内读取；Preview 继续用于 UI 提示，Delete 在 `writeProject` 内重新计算权威 blockers 后才确认并删除，关闭 Preview→Delete TOCTOU。
+4. Entity blocker 已覆盖 SceneBeat、Timeline location、Timeline participant/subject/witness 共用的 entity link、Character Arc；Canon Fact 等既有 CASCADE 从属数据不被误判为独立引用。
+5. Arc Timeline dependency 已建立统一判定：保存时拒绝不存在或 archived Event；Catalog 在有 reference chapter 时将未锚定/晚于当前章的依赖标记 blocked；`hit` transition 使用实际命中章节复用同一判定并返回 `NARRATIVE_CONFLICT`。
+6. 新增 `m10-18-import-entity-arc-consistency.test.ts`，锁定并发/已完成 Import replay、requestId payload 冲突、Entity 跨域依赖与 Preview 后新增引用竞态、CASCADE 从属数据，以及 Timeline dependency 章节先后/未锚定语义。
+7. 产品实现候选 `1c4d522c71061a8ee5caa235d7f314b50033cb9c` 的 Draft Static 已通过 Task Validation、Workspace、Boundary、Format、Lint、Typecheck；完整 Unit/Integration/Migration/Coverage/Build/Electron E2E 仍由 Ready 永久矩阵裁决。
 
 ## 自动化测试
 
@@ -151,9 +152,9 @@ pnpm test:e2e
 
 ## 完成条件
 
-- [ ] Import Commit 完整生命周期幂等闭环。
-- [ ] Entity Permanent Delete 事务内依赖裁决闭环。
-- [ ] Arc Timeline Dependency 具备 attention 与 transition 真实运行语义。
+- [x] Import Commit 完整生命周期幂等闭环。
+- [x] Entity Permanent Delete 事务内依赖裁决闭环。
+- [x] Arc Timeline Dependency 具备 attention 与 transition 真实运行语义。
 - [ ] Unit / Integration / Migration / Coverage / Security / Performance / Build / Electron E2E 全绿。
 - [ ] Ready Evidence 绑定最终 implementation commit。
 - [ ] Controlled Merge 完成。

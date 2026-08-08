@@ -351,7 +351,8 @@ export function validateScopedIds(
             AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
       )
       .get(input.sceneBeatId, input.projectId);
-    if (!beat) throw new ValidationServiceError('VALIDATION_NOT_FOUND', 'Active SceneBeat not found.');
+    if (!beat)
+      throw new ValidationServiceError('VALIDATION_NOT_FOUND', 'Active SceneBeat not found.');
   }
   if (input.logicalBlockId) {
     const block = database

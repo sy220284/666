@@ -41,10 +41,7 @@ function commandFingerprint(input: ImportCommitInput): string {
 
 function derivedRequestId(requestId: string, purpose: string): string {
   const bytes = Buffer.from(
-    createHash('sha256')
-      .update(`${requestId}:${purpose}`, 'utf8')
-      .digest()
-      .subarray(0, 16),
+    createHash('sha256').update(`${requestId}:${purpose}`, 'utf8').digest().subarray(0, 16),
   );
   bytes[6] = (bytes[6]! & 0x0f) | 0x40;
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
@@ -100,10 +97,7 @@ export class ImportCommitService {
     this.#faultInjector = options.faultInjector;
   }
 
-  async commitImport(
-    requestId: string,
-    raw: ImportCommitInput,
-  ): Promise<ImportCommitResult> {
+  async commitImport(requestId: string, raw: ImportCommitInput): Promise<ImportCommitResult> {
     const input = ImportCommitInputSchema.parse(raw);
     const fingerprint = commandFingerprint(input);
     try {
@@ -143,8 +137,7 @@ export class ImportCommitService {
               WHERE request_id = ? AND command_name = ?`,
           )
           .get(requestId, IMPORT_COMMIT_RECEIPT_COMMAND) as
-          | { readonly fingerprint: string; readonly resultJson: string }
-          | undefined,
+          { readonly fingerprint: string; readonly resultJson: string } | undefined,
         requestId,
         fingerprint,
       ),
@@ -174,9 +167,7 @@ export class ImportCommitService {
         'The import source changed after preview.',
       );
     }
-    const chapters = input.chapters.map((chapter) =>
-      ImportPlanChapterSchema.parse(chapter),
-    );
+    const chapters = input.chapters.map((chapter) => ImportPlanChapterSchema.parse(chapter));
     if (new Set(chapters.map((chapter) => chapter.title)).size !== chapters.length) {
       throw new ImportExportServiceError(
         'IMPORT_COMMIT_FAILED',
@@ -210,8 +201,7 @@ export class ImportCommitService {
                   WHERE request_id = ? AND command_name = ?`,
               )
               .get(requestId, IMPORT_COMMIT_RECEIPT_COMMAND) as
-              | { readonly fingerprint: string; readonly resultJson: string }
-              | undefined,
+              { readonly fingerprint: string; readonly resultJson: string } | undefined,
             requestId,
             fingerprint,
           );
@@ -346,9 +336,7 @@ export class ImportCommitService {
                 draftId,
                 `${requestId}:import:${draftId}`,
                 JSON.stringify(operations),
-                JSON.stringify(
-                  versionBlocks.map((block) => ({ ...block, revision: 1 })),
-                ),
+                JSON.stringify(versionBlocks.map((block) => ({ ...block, revision: 1 }))),
                 now,
               );
             this.#faultInjector?.('during-import');

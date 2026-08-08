@@ -37,10 +37,7 @@ import {
 } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
-import {
-  entityReferenceBlockerMessage,
-  entityReferenceBlockers,
-} from './entity-delete-policy.js';
+import { entityReferenceBlockerMessage, entityReferenceBlockers } from './entity-delete-policy.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };

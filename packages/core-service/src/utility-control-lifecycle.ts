@@ -13,6 +13,7 @@ export function dispatchUtilityLifecycle(
 ): void {
   const { options, state } = context;
 
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- Lifecycle routing intentionally receives the full union after operation messages were delegated.
   switch (message.type) {
     case 'core.ping':
       context.send({
@@ -84,7 +85,9 @@ export function dispatchUtilityLifecycle(
       state.acceptingAppDataOperations = false;
       const generationDrain = options.generationRuntime?.drainAll() ?? Promise.resolve();
       void generationDrain
-        .then(() => Promise.all([options.taskProtocol.beginDrain(), ...state.activeAppDataOperations]))
+        .then(() =>
+          Promise.all([options.taskProtocol.beginDrain(), ...state.activeAppDataOperations]),
+        )
         .then(() => {
           context.send({
             type: 'core.drained',

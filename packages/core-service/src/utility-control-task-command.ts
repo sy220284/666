@@ -14,12 +14,10 @@ function generationTaskFailure(requestId: string, error: unknown): TaskCommandRe
   const code = ErrorCodeSchema.safeParse(
     error && typeof error === 'object' && 'code' in error ? error.code : undefined,
   );
-  const message = error instanceof Error ? error.message : 'The task could not be cancelled safely.';
+  const message =
+    error instanceof Error ? error.message : 'The task could not be cancelled safely.';
   const retryable =
-    error !== null &&
-    typeof error === 'object' &&
-    'retryable' in error &&
-    error.retryable === true;
+    error !== null && typeof error === 'object' && 'retryable' in error && error.retryable === true;
   return TaskCommandResultSchema.parse({
     ok: false,
     requestId,

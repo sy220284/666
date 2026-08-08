@@ -84,6 +84,8 @@
 
 ## 自动化回归
 
+Draft Static CI 跟进确认：Utility Control 与 Project Operation 使用分片路由链，未匹配联合类型成员必须通过 `default` 委派给下一路由器。全量联合类型上的穷尽检查无法表达该委派边界，因此仅在 8 个分片 `switch` 上保留带原因的局部规则豁免；不修改路由顺序、消息契约或业务分支。
+
 新增：
 
 - `tests/integration/m10-19-authority-governance.test.ts`

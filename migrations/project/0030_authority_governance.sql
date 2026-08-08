@@ -246,4 +246,5 @@ AFTER DELETE ON derived_invalidations BEGIN
   UPDATE semantic_revision SET revision = revision + 1 WHERE project_id = OLD.project_id;
 END;
 
+-- migration-policy: allow-unscoped-write
 UPDATE projects SET schema_version = 30;

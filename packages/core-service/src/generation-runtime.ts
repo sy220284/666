@@ -223,10 +223,7 @@ export class GenerationRuntime {
       await this.cancel(randomUUID(), { projectId, runId });
       await execution.completion;
     } catch (error) {
-      if (
-        error instanceof GenerationRunServiceError &&
-        error.code === 'GENERATION_RUN_TERMINAL'
-      ) {
+      if (error instanceof GenerationRunServiceError && error.code === 'GENERATION_RUN_TERMINAL') {
         await execution.completion;
         return true;
       }

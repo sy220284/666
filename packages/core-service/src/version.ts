@@ -191,7 +191,11 @@ function versionSelect(where: string): string {
          WHERE ${where}`;
 }
 
-function assertActiveChapter(database: ProjectDatabase, projectId: string, chapterId: string): void {
+function assertActiveChapter(
+  database: ProjectDatabase,
+  projectId: string,
+  chapterId: string,
+): void {
   if (!readActiveChapterScope(database, projectId, chapterId)) {
     throw new VersionServiceError(
       'VERSION_CHAPTER_MISMATCH',
@@ -421,7 +425,10 @@ export class VersionService {
     return this.#workspace.readProject(input.projectId, (database) => {
       const chapter = readActiveChapterScope(database, input.projectId, input.chapterId);
       if (!chapter) {
-        throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The active chapter was not found.');
+        throw new VersionServiceError(
+          'VERSION_CHAPTER_MISMATCH',
+          'The active chapter was not found.',
+        );
       }
       const rows = database
         .prepare(
@@ -461,7 +468,10 @@ export class VersionService {
         )
         .run(input.versionId, 'finalized', input.chapterId, input.projectId);
       if (Number(changed.changes) !== 1) {
-        throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The active chapter was not found.');
+        throw new VersionServiceError(
+          'VERSION_CHAPTER_MISMATCH',
+          'The active chapter was not found.',
+        );
       }
       return VersionSummarySchema.parse({ ...existing, finalized: true });
     });

@@ -19,6 +19,8 @@
     "docs/test-evidence/M10-16/",
     "packages/contracts/src/state-proposal.ts",
     "packages/contracts/src/validation.ts",
+    "packages/core-service/src/generation/generation-run-service.ts",
+    "packages/core-service/src/generation/run-command-identity.ts",
     "packages/core-service/src/state/derived-invalidation-service.ts",
     "packages/core-service/src/state/ending-snapshot-service.ts",
     "packages/core-service/src/state/proposal-batch-repository.ts",

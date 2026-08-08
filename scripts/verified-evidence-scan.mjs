@@ -6,8 +6,13 @@ import { fileURLToPath } from 'node:url';
 import {
   isRuntimeEffectivelyVerified,
   loadCommitStatuses,
+  resolveRuntimeMergeCommit,
 } from '../.github/governance/effective-task-status.mjs';
-import { validateTaskEvidence } from './evidence-policy.mjs';
+import {
+  assertEvidenceSourceCommit,
+  evidenceImplementationCommit,
+  validateTaskEvidence,
+} from './evidence-policy.mjs';
 import { parseTaskIndex } from './task-control-lib.mjs';
 
 function independentTaskIndex(taskIndexSource) {
@@ -41,6 +46,34 @@ function gitHead(repositoryRoot) {
   }).trim();
 }
 
+function commitExists(commit, repositoryRoot) {
+  try {
+    execFileSync('git', ['cat-file', '-e', `${commit}^{commit}`], {
+      cwd: repositoryRoot,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function historicalEvidenceBindingCommit(
+  manifest,
+  runtime,
+  sourceCommitExists,
+  resolveControlledMergeCommit,
+) {
+  const sourceCommit = evidenceImplementationCommit(manifest);
+  if (sourceCommitExists) return sourceCommit;
+  const controlledSquashBinding =
+    manifest?.schemaVersion === 1 &&
+    runtime?.schemaVersion === 2 &&
+    Number.isSafeInteger(runtime?.verificationBinding?.sourcePr) &&
+    runtime.verificationBinding.sourcePr > 0;
+  return controlledSquashBinding ? resolveControlledMergeCommit() : sourceCommit;
+}
+
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -67,16 +100,25 @@ export async function validateAllVerifiedEvidence(
   ]);
   const authorization = JSON.parse(authorizationSource);
   const runtimes = await loadRuntimes(repositoryRoot, authorization.taskRuntimeDirectory);
+  const runtimeById = new Map(runtimes.map((runtime) => [runtime.id, runtime]));
   const taskIds = effectivelyVerifiedTaskIds(indexSource, runtimes, statuses);
   if (taskIds.length === 0) throw new Error('No effectively Verified tasks were found');
 
   const failures = [];
   for (const taskId of taskIds) {
     try {
-      await validateTaskEvidence(taskId, repositoryRoot, {
+      const manifest = await validateTaskEvidence(taskId, repositoryRoot, {
         final: true,
-        expectedHead,
       });
+      const runtime = runtimeById.get(taskId);
+      const sourceCommit = evidenceImplementationCommit(manifest);
+      const bindingCommit = historicalEvidenceBindingCommit(
+        manifest,
+        runtime,
+        commitExists(sourceCommit, repositoryRoot),
+        () => resolveRuntimeMergeCommit(runtime, expectedHead, repositoryRoot),
+      );
+      assertEvidenceSourceCommit(taskId, bindingCommit, expectedHead, repositoryRoot);
     } catch (error) {
       failures.push(`${taskId}: ${errorMessage(error)}`);
     }

@@ -11,7 +11,11 @@ import {
 
 const servers: ReturnType<typeof createServer>[] = [];
 
-function binding(origin: string, hostname: string): ProviderEndpointBinding {
+function binding(
+  origin: string,
+  hostname: string,
+  addresses: ProviderEndpointBinding['addresses'] = [{ address: '127.0.0.1', family: 4 }],
+): ProviderEndpointBinding {
   return {
     endpoint: {
       scope: origin.startsWith('https:') ? 'external' : 'lan',
@@ -20,7 +24,7 @@ function binding(origin: string, hostname: string): ProviderEndpointBinding {
       warnings: [],
     },
     hostname,
-    addresses: [{ address: '127.0.0.1', family: 4 }],
+    addresses,
   };
 }
 
@@ -100,5 +104,80 @@ describe('M10-11 Provider pinned transport', () => {
     await expect(transport('https://other.test/v1/models')).rejects.toMatchObject({
       code: 'AI_ENDPOINT_UNSAFE_013',
     });
+  });
+
+  it('fails over a POST when the first approved address never establishes a connection', async () => {
+    let received = 0;
+    const server = createServer((request, response) => {
+      request.resume();
+      request.once('end', () => {
+        received += 1;
+        response.end('accepted');
+      });
+    });
+    server.listen(0, '127.0.0.2');
+    await once(server, 'listening');
+    servers.push(server);
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('SERVER_ADDRESS_MISSING');
+
+    const origin = `http://provider.local:${address.port}`;
+    const transport = createPinnedProviderFetch(
+      binding(origin, 'provider.local', [
+        { address: '127.0.0.1', family: 4 },
+        { address: '127.0.0.2', family: 4 },
+      ]),
+    );
+
+    await expect(
+      transport(`${origin}/v1/chat/completions`, { method: 'POST', body: 'generation' }).then(
+        (response) => response.text(),
+      ),
+    ).resolves.toBe('accepted');
+    expect(received).toBe(1);
+  });
+
+  it('does not replay a POST after the first approved address receives it', async () => {
+    let firstReceives = 0;
+    let secondReceives = 0;
+    const first = createServer((request) => {
+      request.resume();
+      request.once('end', () => {
+        firstReceives += 1;
+        request.socket.destroy();
+      });
+    });
+    first.listen(0, '127.0.0.1');
+    await once(first, 'listening');
+    servers.push(first);
+    const firstAddress = first.address();
+    if (!firstAddress || typeof firstAddress === 'string') {
+      throw new Error('SERVER_ADDRESS_MISSING');
+    }
+
+    const second = createServer((request, response) => {
+      request.resume();
+      request.once('end', () => {
+        secondReceives += 1;
+        response.end('duplicate');
+      });
+    });
+    second.listen(firstAddress.port, '127.0.0.2');
+    await once(second, 'listening');
+    servers.push(second);
+
+    const origin = `http://provider.local:${firstAddress.port}`;
+    const transport = createPinnedProviderFetch(
+      binding(origin, 'provider.local', [
+        { address: '127.0.0.1', family: 4 },
+        { address: '127.0.0.2', family: 4 },
+      ]),
+    );
+
+    await expect(
+      transport(`${origin}/v1/chat/completions`, { method: 'POST', body: 'billable' }),
+    ).rejects.toMatchObject({ code: 'ECONNRESET' });
+    expect(firstReceives).toBe(1);
+    expect(secondReceives).toBe(0);
   });
 });

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M9-01",
+  "commit": "bf6697c6c3aed8cf4c45e1bcfc269ee3644323bf",
+  "generatedAt": "2026-08-08T14:45:00.000Z",
+  "acceptanceSource": "HISTORICAL_CONTROLLED_MAIN_RECONSTRUCTION",
+  "files": [
+    {
+      "path": "commands.txt",
+      "bytes": 280,
+      "sha256": "1323627a411a8fa454500b0373266e11e2c5ed25ecb666a2845daaac8645b902"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 530,
+      "sha256": "db646e1f1c35016f1165c5aa028806746e369746bc4fbea08428e11d5578d968"
+    },
+    {
+      "path": "summary.md",
+      "bytes": 1123,
+      "sha256": "2b7cf437c340989fb8e00c666dd25b9f6c9ba8f884bee29595ee9c12a6693f92"
+    }
+  ]
+}

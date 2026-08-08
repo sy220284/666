@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-20",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-20_FULL_AUDIT_REMEDIATION.md",
   "priority": "P1",
   "startedAt": "2026-08-08T22:30:00+08:00",
+  "implementedAt": "2026-08-09T04:55:00+08:00",
   "dependencies": ["M10-19"],
   "baseline": {
     "main": "7c5be0404c57f291802eeee675865f50ed4e9d3c",
@@ -85,5 +86,9 @@
     "node scripts/verified-evidence-scan.mjs",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 329,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-20"
+  }
 }

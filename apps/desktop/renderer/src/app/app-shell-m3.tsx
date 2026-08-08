@@ -82,6 +82,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
     setContinuation,
     setRecentProjects,
     setTasks: runtime.setTasks,
+    setResourceState: runtime.setStartupResourceState,
     setHydrated: runtime.setHydrated,
     setFailure,
     setMessage,

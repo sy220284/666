@@ -6,8 +6,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
-import { ProjectTaskProtocol } from '../../packages/core-service/src/project-task-protocol.js';
+import { ProjectTaskBarrier } from '../../packages/core-service/src/project-task-protocol.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
+import { TaskProtocol } from '../../packages/core-service/src/task-protocol.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -15,7 +16,8 @@ interface Harness {
   readonly root: string;
   readonly parent: string;
   readonly appRuntime: AppRuntime;
-  readonly tasks: ProjectTaskProtocol;
+  readonly tasks: TaskProtocol;
+  readonly barrier: ProjectTaskBarrier;
   readonly service: ProjectWorkspaceService;
 }
 
@@ -32,16 +34,17 @@ async function createHarness(timeoutMs = 1_000): Promise<Harness> {
     appVersion: '1.0.0',
     clock,
   });
-  const tasks = new ProjectTaskProtocol({}, { timeoutMs, pollIntervalMs: 2 });
+  const tasks = new TaskProtocol();
+  const barrier = new ProjectTaskBarrier(tasks, { timeoutMs, pollIntervalMs: 2 });
   const service = new ProjectWorkspaceService({
     projectMigrationsDirectory: 'migrations/project',
     projectMigrationRecoveryDirectory: path.join(root, 'project-migration-recovery'),
     appVersion: '1.0.0',
     recentProjects: appRuntime.recentProjects,
     clock,
-    taskDrain: tasks,
+    taskDrain: barrier,
   });
-  return { root, parent, appRuntime, tasks, service };
+  return { root, parent, appRuntime, tasks, barrier, service };
 }
 
 async function closeHarness(harness: Harness): Promise<void> {
@@ -65,23 +68,23 @@ describe('M10-17 project lifecycle task barrier', () => {
         { name: '关闭屏障作品', channel: '网络小说' },
         harness.parent,
       );
-      const atomicTask = harness.tasks.startTask({
+      const atomicTask = harness.barrier.startTask({
         taskType: 'ai.generation',
         projectId: project.projectId,
         cancellable: false,
       });
 
       const closing = harness.service.close(randomUUID(), project.projectId);
-      await vi.waitFor(() => expect(harness.tasks.isProjectDraining(project.projectId)).toBe(true));
+      await vi.waitFor(() => expect(harness.barrier.isProjectDraining(project.projectId)).toBe(true));
       expect(harness.service.activeProject?.projectId).toBe(project.projectId);
       expect(() =>
-        harness.tasks.startTask({ taskType: 'ai.generation', projectId: project.projectId }),
+        harness.barrier.startTask({ taskType: 'ai.generation', projectId: project.projectId }),
       ).toThrowError();
 
       atomicTask.complete();
       await expect(closing).resolves.toEqual({ projectId: project.projectId, closed: true });
       expect(harness.service.activeProject).toBeNull();
-      expect(harness.tasks.isProjectDraining(project.projectId)).toBe(false);
+      expect(harness.barrier.isProjectDraining(project.projectId)).toBe(false);
     } finally {
       await closeHarness(harness);
     }
@@ -95,7 +98,7 @@ describe('M10-17 project lifecycle task barrier', () => {
         { name: '超时保留作品', channel: '网络小说' },
         harness.parent,
       );
-      const atomicTask = harness.tasks.startTask({
+      const atomicTask = harness.barrier.startTask({
         taskType: 'ai.generation',
         projectId: project.projectId,
         cancellable: false,
@@ -105,7 +108,7 @@ describe('M10-17 project lifecycle task barrier', () => {
         code: 'PROJECT_TARGET_CONFLICT',
       });
       expect(harness.service.activeProject?.projectId).toBe(project.projectId);
-      expect(harness.tasks.isProjectDraining(project.projectId)).toBe(false);
+      expect(harness.barrier.isProjectDraining(project.projectId)).toBe(false);
 
       atomicTask.complete();
     } finally {
@@ -123,14 +126,14 @@ describe('M10-17 project lifecycle task barrier', () => {
         { name: '移动屏障作品', channel: '网络小说' },
         harness.parent,
       );
-      const atomicTask = harness.tasks.startTask({
+      const atomicTask = harness.barrier.startTask({
         taskType: 'ai.generation',
         projectId: project.projectId,
         cancellable: false,
       });
 
       const moving = harness.service.move(randomUUID(), project.projectId, targetParent);
-      await vi.waitFor(() => expect(harness.tasks.isProjectDraining(project.projectId)).toBe(true));
+      await vi.waitFor(() => expect(harness.barrier.isProjectDraining(project.projectId)).toBe(true));
       expect(harness.service.activeProject?.workspacePath).toBe(project.workspacePath);
 
       atomicTask.complete();

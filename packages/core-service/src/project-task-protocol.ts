@@ -49,7 +49,9 @@ export class ProjectTaskBarrier {
   }
 
   startTask(options: StartTaskOptions): RunningTask {
-    const projectId = options.projectId ? ProjectIdSchema.parse(options.projectId) : undefined;
+    const projectId = options.projectId
+      ? ProjectIdSchema.parse(options.projectId)
+      : undefined;
     if (projectId && this.#drainingProjects.has(projectId)) {
       throw new TaskProtocolError(
         'COMMON_CONFLICT_003',
@@ -74,7 +76,10 @@ export class ProjectTaskBarrier {
     return this.#drainingProjects.has(ProjectIdSchema.parse(projectId));
   }
 
-  async withProjectDrain<T>(projectId: string, operation: () => Promise<T>): Promise<T> {
+  async withProjectDrain<T>(
+    projectId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
     const validProjectId = ProjectIdSchema.parse(projectId);
     if (this.#drainingProjects.has(validProjectId)) {
       throw new TaskProtocolError(
@@ -110,15 +115,24 @@ export class ProjectTaskBarrier {
     }
   }
 
-  async #cancelCancellable(tasks: readonly TaskSnapshot[], projectId: string): Promise<void> {
+  async #cancelCancellable(
+    tasks: readonly TaskSnapshot[],
+    projectId: string,
+  ): Promise<void> {
     for (const task of tasks) {
       try {
-        if (this.#domainCanceller && (await this.#domainCanceller(task.taskId, projectId))) {
+        if (
+          this.#domainCanceller &&
+          (await this.#domainCanceller(task.taskId, projectId))
+        ) {
           continue;
         }
         this.#tasks.cancel(task.taskId, projectId);
       } catch (error) {
-        if (error instanceof TaskProtocolError && error.code === 'TASK_NOT_CANCELLABLE_001') {
+        if (
+          error instanceof TaskProtocolError &&
+          error.code === 'TASK_NOT_CANCELLABLE_001'
+        ) {
           continue;
         }
         throw error;

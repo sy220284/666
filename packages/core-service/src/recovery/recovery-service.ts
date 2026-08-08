@@ -108,8 +108,8 @@ export class RecoveryService {
   }
 
   getOverview(projectId: string): Promise<RecoveryOverview> {
-    this.#workspace.assertActiveProject(projectId);
-    this.#workspace.readProject(projectId, () => undefined);
+    const project = this.#workspace.assertActiveProject(projectId);
+    if (project.databaseMode === 'read-write') this.#assertCleanupPolicyReadable(projectId);
     return this.#cleanup.getOverview(projectId);
   }
 

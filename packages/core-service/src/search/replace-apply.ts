@@ -6,6 +6,7 @@ import {
   type ReplaceApplyResult,
 } from '@worldforge/contracts';
 
+import { readActiveDraftScope } from '../active-structure.js';
 import { draftContentHash } from '../draft.js';
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
@@ -83,6 +84,13 @@ export class ReplaceApplyOperations {
           }
         >();
         for (const [draftId, items] of byDraft) {
+          const activeScope = readActiveDraftScope(database, input.projectId, draftId);
+          if (!activeScope) {
+            throw new SearchToolsServiceError(
+              'SEARCH_REPLACE_STALE',
+              'A target chapter, volume or active Draft changed after the ReplacePlan preview.',
+            );
+          }
           const blocks = database
             .prepare(
               `SELECT block.id AS recordId, volume.project_id AS projectId,
@@ -98,11 +106,16 @@ export class ReplaceApplyOperations {
                  JOIN volumes volume ON volume.id = chapter.volume_id
                 WHERE draft.id = ? AND volume.project_id = ?
                   AND draft.status = 'active' AND chapter.active_draft_id = draft.id
+                  AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
                 ORDER BY block.order_key, block.id`,
             )
             .all(draftId, input.projectId) as unknown as DraftBlockRow[];
           const draftRevision = blocks[0] ? numericValue(blocks[0].draftRevision) : -1;
-          if (blocks.length === 0 || items.some((item) => item.baseRevision !== draftRevision)) {
+          if (
+            blocks.length === 0 ||
+            numericValue(activeScope.draftRevision) !== draftRevision ||
+            items.some((item) => item.baseRevision !== draftRevision)
+          ) {
             throw new SearchToolsServiceError(
               'SEARCH_REPLACE_STALE',
               'A target Draft revision changed after the ReplacePlan preview.',

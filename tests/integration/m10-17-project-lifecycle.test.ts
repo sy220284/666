@@ -75,7 +75,9 @@ describe('M10-17 project lifecycle task barrier', () => {
       });
 
       const closing = harness.service.close(randomUUID(), project.projectId);
-      await vi.waitFor(() => expect(harness.barrier.isProjectDraining(project.projectId)).toBe(true));
+      await vi.waitFor(() =>
+        expect(harness.barrier.isProjectDraining(project.projectId)).toBe(true),
+      );
       expect(harness.service.activeProject?.projectId).toBe(project.projectId);
       expect(() =>
         harness.barrier.startTask({ taskType: 'ai.generation', projectId: project.projectId }),
@@ -133,7 +135,9 @@ describe('M10-17 project lifecycle task barrier', () => {
       });
 
       const moving = harness.service.move(randomUUID(), project.projectId, targetParent);
-      await vi.waitFor(() => expect(harness.barrier.isProjectDraining(project.projectId)).toBe(true));
+      await vi.waitFor(() =>
+        expect(harness.barrier.isProjectDraining(project.projectId)).toBe(true),
+      );
       expect(harness.service.activeProject?.workspacePath).toBe(project.workspacePath);
 
       atomicTask.complete();

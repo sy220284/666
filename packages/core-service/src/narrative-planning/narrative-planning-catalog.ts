@@ -153,6 +153,49 @@ function milestoneTimelineDependencyIds(connection: DatabaseSync, milestoneId: s
   return rows.map((row) => narrativeText(row.timelineEventId));
 }
 
+export function unresolvedMilestoneTimelineDependencies(
+  connection: DatabaseSync,
+  projectId: string,
+  milestoneId: string,
+  reference: ChapterPosition | null,
+): string[] {
+  const rows = connection
+    .prepare(
+      `SELECT event.id AS eventId, event.title, event.chapter_id AS chapterId, event.status
+         FROM arc_milestone_timeline_dependencies dependency
+         JOIN timeline_events event
+           ON event.id = dependency.timeline_event_id
+          AND event.project_id = dependency.project_id
+        WHERE dependency.project_id = ? AND dependency.milestone_id = ?
+        ORDER BY event.title, event.id`,
+    )
+    .all(projectId, milestoneId) as unknown as {
+    readonly eventId: string;
+    readonly title: string;
+    readonly chapterId: string | null;
+    readonly status: string;
+  }[];
+  const warnings: string[] = [];
+  for (const row of rows) {
+    const title = narrativeText(row.title);
+    if (row.status !== 'active') {
+      warnings.push(`Timeline event is archived: ${title}`);
+      continue;
+    }
+    if (row.chapterId === null) {
+      warnings.push(`Timeline event has no chapter anchor: ${title}`);
+      continue;
+    }
+    if (
+      reference &&
+      compareChapterPosition(chapterPosition(connection, projectId, row.chapterId), reference) > 0
+    ) {
+      warnings.push(`Waiting for timeline event: ${title}`);
+    }
+  }
+  return warnings;
+}
+
 function milestoneAttention(
   connection: DatabaseSync,
   row: MilestoneRow,
@@ -176,6 +219,15 @@ function milestoneAttention(
         (dependency) => `Waiting for milestone: ${narrativeText(dependency.title)}`,
       ),
     };
+  }
+  const timelineWarnings = unresolvedMilestoneTimelineDependencies(
+    connection,
+    row.projectId,
+    row.id,
+    reference,
+  );
+  if (timelineWarnings.length > 0) {
+    return { attention: 'blocked', warnings: timelineWarnings };
   }
   if (!reference || !row.plannedChapterId) return { attention: 'none', warnings: [] };
   const planned = chapterPosition(connection, row.projectId, row.plannedChapterId);

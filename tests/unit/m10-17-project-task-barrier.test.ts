@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { ProjectTaskBarrier } from '../../packages/core-service/src/project-task-protocol.js';
 import { TaskProtocol, TaskProtocolError } from '../../packages/core-service/src/task-protocol.js';
 
-function setupBarrier(options: { readonly timeoutMs?: number; readonly pollIntervalMs?: number } = {}) {
+function setupBarrier(
+  options: { readonly timeoutMs?: number; readonly pollIntervalMs?: number } = {},
+) {
   const tasks = new TaskProtocol();
   const barrier = new ProjectTaskBarrier(tasks, options);
   return { tasks, barrier };

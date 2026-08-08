@@ -7,7 +7,7 @@
 - 主线基线：`960f0ee94069b40c84e546486dd4d3dd9f630adf`
 - 最终产品实现提交：`aa722ef7a87ab746faf04a69520d7a3ef3bd37d1`
 - 静态状态：`IMPLEMENTED`
-- 当前有效状态：合并前 `VERIFICATION_PENDING`
+- 有效 VERIFIED 仍以 Controlled Merge 后主线任务 Context 为准。
 
 ## 修复结论
 

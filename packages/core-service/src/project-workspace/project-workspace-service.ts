@@ -19,6 +19,7 @@ import {
 } from '../database/index.js';
 import type { RecentProjectsRepository } from '../recent-projects.js';
 import { stableJson } from '../stable-json.js';
+import { TaskProtocolError } from '../task-protocol.js';
 import { createProjectWorkspace } from './project-create.js';
 import {
   defaultCopyWorkspace,
@@ -127,13 +128,10 @@ export class ProjectWorkspaceService {
       requestId,
       requestFingerprint('project.close', { projectId }),
       () =>
-        this.#taskDrain.withProjectDrain(projectId, async () => {
+        this.#withProjectTaskDrain(projectId, async () => {
           const context = this.#assertActiveContext(projectId);
-          try {
-            await closeProjectContext(context);
-          } finally {
-            if (this.#active === context) this.#active = null;
-          }
+          await closeProjectContext(context);
+          if (this.#active === context) this.#active = null;
           return { projectId: context.summary.projectId, closed: true };
         }),
     );
@@ -148,7 +146,7 @@ export class ProjectWorkspaceService {
       requestId,
       requestFingerprint('project.move', { projectId, targetParentDirectory }),
       () =>
-        this.#taskDrain.withProjectDrain(projectId, () =>
+        this.#withProjectTaskDrain(projectId, () =>
           moveProjectWorkspace(this.#operationContext(), requestId, projectId, targetParentDirectory),
         ),
     );
@@ -224,6 +222,21 @@ export class ProjectWorkspaceService {
       await closeProjectContext(context);
     } finally {
       if (this.#active === context) this.#active = null;
+    }
+  }
+
+  async #withProjectTaskDrain<T>(projectId: string, operation: () => Promise<T>): Promise<T> {
+    try {
+      return await this.#taskDrain.withProjectDrain(projectId, operation);
+    } catch (error) {
+      if (error instanceof TaskProtocolError) {
+        throw new ProjectWorkspaceError(
+          'PROJECT_TARGET_CONFLICT',
+          'The project still has a background task in an atomic stage; try the lifecycle action again after it settles.',
+          { cause: error },
+        );
+      }
+      throw error;
     }
   }
 

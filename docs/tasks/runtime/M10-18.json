@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M10-18",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M10/M10-18_IMPORT_ENTITY_ARC_DEPENDENCY_CONSISTENCY.md",
   "priority": "P1",
   "startedAt": "2026-08-08T14:45:00+08:00",
+  "implementedAt": "2026-08-08T15:34:00+08:00",
   "dependencies": ["M10-17"],
   "baseline": {
     "main": "8671dcdfe2e7220915de1d8787f8244a26f406a0",

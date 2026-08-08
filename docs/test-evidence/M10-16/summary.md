@@ -5,7 +5,7 @@
 - 任务：`M10-16`
 - 来源 PR：`#325`
 - 主线基线：`960f0ee94069b40c84e546486dd4d3dd9f630adf`
-- 最终产品实现提交：`b58938188282783047628849eda637b209b44925`
+- 最终产品实现提交：`195606e1a6cb65bacb39dd95a8559305f70c6ee3`
 - Evidence 闭包只允许任务卡、Runtime、TASK_INDEX 与 `docs/test-evidence/M10-16/` 发生后续变化。
 
 ## 实施结论
@@ -19,7 +19,8 @@
 7. Validation Catalog 分离 `anchorFreshness` 与 `semanticFreshness`，并在单次请求内缓存项目/章节/版本摘要，避免历史 Batch 放大全表扫描。
 8. Renderer 对 Proposal 与 Validation 的新鲜度分别展示；历史记录保留，不通过删除记录伪造当前状态。
 9. 新增 Integration 回归覆盖 Final V1→V2、SceneBeat-only 变化、EntityState 变化、AI 运行期竞态与 Snapshot Trigger 单一所有权。
-10. 已发布 Migration、数据库 Schema、`package.json`、`pnpm-lock.yaml` 与历史 Evidence 均未修改。
+10. Ready 首轮 Unit 暴露 3 个 freshness Zod Schema 被无意加入 `@worldforge/contracts` 根运行时导出；最终修复将它们收回模块私有，保持 AR-08 冻结公共面 836 项不扩张，同时保留字段校验与类型推导。
+11. 已发布 Migration、数据库 Schema、`package.json`、`pnpm-lock.yaml` 与历史 Evidence 均未修改。
 
 ## 永久验证口径
 
@@ -36,4 +37,4 @@
 
 ## 审计结论
 
-`main..work` 的产品差异集中在 M10-16 授权路径；Snapshot、Proposal、Validation 三类 freshness 已形成单一职责链，没有新增平行状态机，也没有为缺失来源制造虚假 Final Version 身份。
+`main..work` 的产品差异集中在 M10-16 授权路径；Snapshot、Proposal、Validation 三类 freshness 已形成单一职责链，没有新增平行状态机，也没有为缺失来源制造虚假 Final Version 身份。公共 Contract 根运行时导出仍保持 AR-08 冻结兼容面。

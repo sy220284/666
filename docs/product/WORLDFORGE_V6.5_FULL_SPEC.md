@@ -1,26 +1,27 @@
 # WorldForge V6.5 完整产品与技术规格
 
-> 状态：Frozen with Verified M8-05 Maintenance Addendum  
+> 状态：Frozen Baseline with M10-21 Current Authority Addendum
 > 目标版本：V1.0核心写作闭环；V1.5超长篇增强  
-> 更新日期：2026-07-30
+> 更新日期：2026-08-09
 
 ## 1. 文档职责与唯一真源
 
 本文件定义产品定位、V1.0功能边界、总体架构、核心数据关系和不可变原则。
 
-| 内容 | 唯一真源 |
-|---|---|
-| V1.0/P1/V1.5范围 | `V1_SCOPE_AND_ACCEPTANCE.md` |
-| 功能ID和功能关系 | `FUNCTION_CATALOG.md` |
-| 当前任务编号、状态和吸收关系 | `../tasks/TASK_INDEX.md`、`../tasks/ACTIVE_TASK.json` |
-| 历史任务收口过程 | `V1_TASK_SYSTEM_REBASE.md` |
-| 最终维护任务 | `../tasks/M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md` |
-| P0验收编号和通过标准 | `../testing/P0_ACCEPTANCE_MATRIX.md` |
-| 数据表、字段和事务 | `../database/DATABASE_SCHEMA.md` |
-| IPC、事件和错误码 | `../contracts/` |
-| Prompt、Provider和Eval | `../ai/` |
-| UI、主题、交互和显示 | `../ui/` |
-| 冻结技术选择 | `../decisions/IMPLEMENTATION_DECISIONS.md`与ADR |
+| 内容                             | 唯一真源                                                             |
+| -------------------------------- | -------------------------------------------------------------------- |
+| V1.0/P1/V1.5范围                 | `V1_SCOPE_AND_ACCEPTANCE.md`                                         |
+| 功能ID和功能关系                 | `FUNCTION_CATALOG.md`                                                |
+| 当前任务编号、静态状态和吸收关系 | `../tasks/TASK_INDEX.md`、`../tasks/runtime/`                        |
+| 有效任务状态、分支与PR授权       | `../tasks/TASK_AUTHORIZATION.json`、`../PROJECT_EXECUTION_ENTRY.md`  |
+| 历史任务收口过程                 | `V1_TASK_SYSTEM_REBASE.md`                                           |
+| 当前维护任务                     | 从开放`work → main` PR marker或最新Runtime动态解析，禁止在本文件固化 |
+| P0验收编号和通过标准             | `../testing/P0_ACCEPTANCE_MATRIX.md`                                 |
+| 数据表、字段和事务               | `../database/DATABASE_SCHEMA.md`                                     |
+| IPC、事件和错误码                | `../contracts/`                                                      |
+| Prompt、Provider和Eval           | `../ai/`                                                             |
+| UI、主题、交互和显示             | `../ui/`                                                             |
+| 冻结技术选择                     | `../decisions/IMPLEMENTATION_DECISIONS.md`与ADR                      |
 
 专项文档不得改变本文件的产品原则。代码、专项规格与本文件发生冲突时，必须通过新的独立任务同步修正实现、测试、追踪和Evidence。
 
@@ -65,7 +66,7 @@ WorldForge不建设：
 ## 4. 五项核心不变量
 
 1. 项目数据默认只在用户本机。
-2. AI正文输出必须先成为建议稿，状态变化必须先成为pending设定更新建议。
+2. AI正文输出必须先成为建议稿；AI或规则推导的状态变化必须先成为pending设定更新建议。作者可通过受控领域命令直接裁决权威状态。
 3. 每项目`project.sqlite`是项目唯一权威数据源；`app.sqlite`只保存应用级信息。
 4. 锁定、保存序号、SHA-256内容Hash、不可变历史版本、项目与路径边界由代码保证。
 5. AI只能提议，作者拥有正文、已确认设定、动态状态、弧光节点和定稿的最终裁决权。
@@ -114,7 +115,7 @@ WorldForge不建设：
 - 静态已确认设定与动态状态分离。
 - 时间线、人物知情信息和伏笔生命周期。
 - 人物弧光与弧光里程碑。
-- 弧光节点命中必须经设定更新建议确认。
+- 弧光节点可由作者直接裁决，或由作者接受pending设定更新建议；两条入口复用同一Arc/Timeline依赖策略并记录确认来源。
 - 章节尾快照和旧章返修失效传播。
 - 规划变化只产生影响提示，不自动修改正文。
 
@@ -125,17 +126,17 @@ WorldForge不建设：
 - FTS5公共索引、作品词典和可重建索引队列。
 - P0—P4约束包、时序过滤、来源追溯、Token估算与裁剪。
 - 版本化Prompt Registry、严格输入输出Schema、受控Cleaner和Parser。
-- 复用TaskProtocol建立GenerationRun、真实阶段、流式、取消、错误映射、未完成建议稿和重启查询。
+- `GenerationRun`持久化生成业务生命周期；`TaskProtocol/TaskSnapshot`投影真实阶段、流式进度、取消反馈和运行事件。取消、项目关闭、移动与Core关闭必须先收口GenerationRun，再等待实际执行静默。
 - GenerationRun记录Prompt版本、约束来源、裁剪日志、Provider、Model、usage、错误和结果引用。
 
 ### 5.5 Provider资源边界
 
 所有生产Provider调用经过有界Fetch：
 
-| 范围 | 默认上限 | 超限行为 |
-|---|---:|---|
-| 单次原始HTTP响应总量 | 16 MiB | 取消响应体或Reader，返回`AI_RESPONSE_TOO_LARGE_014` |
-| 单个SSE事件 | 1 MiB | 在事件完成前停止读取，返回同一独立错误码 |
+| 范围                 | 默认上限 | 超限行为                                            |
+| -------------------- | -------: | --------------------------------------------------- |
+| 单次原始HTTP响应总量 |   16 MiB | 取消响应体或Reader，返回`AI_RESPONSE_TOO_LARGE_014` |
+| 单个SSE事件          |    1 MiB | 在事件完成前停止读取，返回同一独立错误码            |
 
 - 先检查有效`Content-Length`，再按实际流式字节累计。
 - 无长度声明、跨分片和无事件分隔符仍受限制。
@@ -257,6 +258,7 @@ project.sqlite
 ├─ EndingSnapshot / ValidationIssue / StoryTodo / Comment
 ├─ GenerationRun / ConstraintPackage / ModelSupportProfile
 ├─ GenreRhythmProfile / WritingSession / ProjectDictionary / FTS索引队列
+├─ CommandReceipt / SemanticRevision
 └─ BackupRecord / TrashEntry / ProjectSetting / MigrationJournal
 ```
 
@@ -267,6 +269,8 @@ project.sqlite
 - 所有业务写入通过Core单写队列。
 - 正文补丁、建议稿采用、历史版本创建、设定更新建议、结构操作、导入和Migration必须单事务。
 - GenerationRun成功与建议稿或设定更新建议结果引用必须原子收口。
+- 需要跨Core重启重放的高副作用命令必须在同一业务事务写入领域持久日志或CommandReceipt；普通requestId缓存不得被描述为durable replay。
+- 权威语义表变化由Schema Trigger推进SemanticRevision，Validation以该修订号判断语义新鲜度。
 - 高风险操作调用统一恢复点。
 - 全文索引、统计、摘要和缓存属于可重建派生数据。
 
@@ -282,15 +286,15 @@ project.sqlite
 
 ## 11. 性能基线
 
-| 指标 | V1目标 |
-|---|---:|
-| 2K键入P95 | ≤50ms |
-| 自动保存事务P95 | ≤150ms |
-| 编辑IPC P95 | ≤200ms |
-| AI取消反馈 | ≤500ms |
-| 5000字差异首屏 | ≤500ms |
-| 5000字完整差异 | ≤1.2s |
-| 正文滚动 | ≥50fps |
+| 指标                 | V1目标 |
+| -------------------- | -----: |
+| 2K键入P95            |  ≤50ms |
+| 自动保存事务P95      | ≤150ms |
+| 编辑IPC P95          | ≤200ms |
+| AI取消反馈           | ≤500ms |
+| 5000字差异首屏       | ≤500ms |
+| 5000字完整差异       |  ≤1.2s |
+| 正文滚动             | ≥50fps |
 | Core单次事件循环阻塞 | <100ms |
 
 ## 12. 验收与发布
@@ -307,30 +311,23 @@ P0验收项以`../testing/P0_ACCEPTANCE_MATRIX.md`中的P0-001—P0-075为唯一
 6. Windows、macOS和Linux有真实自用便携构建验证。
 7. Provider资源超限安全失败，搜索工具交叉操作不产生永久等待。
 
-## 13. 任务路线与终态
+## 13. 任务路线与当前维护状态
 
-V1历史规格保留54份任务文件；当前独立执行体系为37张任务：
+历史V1交付由M0—M8完成；后续M9负责架构拆分，M10负责稳定性、边界与治理续作。当前独立执行体系为M0—M3、M4-01—M4-04、M8、M9及M10-01—M10-21，共66张独立任务卡。
 
-```text
-M0—M3 Verified
-→ M4-01—M4-04 Verified
-→ M8-02 Verified
-→ M8-04 Verified
-→ M8-05 Verified / VERIFIED_HOLD
-```
+任务卡中的静态`Implemented`不能替代有效`Verified`。当前任务、来源PR、受检Head、`main-verification`和`task-verification/<TASK-ID>`必须按`PROJECT_EXECUTION_ENTRY.md`动态解析。本文件只保存产品与技术权威，不再固化“最终任务”或瞬时Head。
 
-M4-04完成C0—C7；M8-02完成C8与自用交付；M8-04完成作者体验维护；M8-05完成运行时竞态、Provider错误语义和文档漂移修复。
-
-M8-05正式PR #229受控合并为main提交`02a595a247cdad83b74634dc5059b72dd93c9451`，Main Verification运行`30512257330`成功。37张独立任务全部Verified，当前不自动激活后续任务。
+M10-19已收口Generation生命周期、Active Structure、Arc依赖、FK删除、Import durable replay与SemanticRevision；M10-20完成全量审计整改和发布链路收口；M10-21同步当前权威文档与测试架构。历史任务卡、Migration与Evidence继续冻结。
 
 ## 14. 开发入口
 
 ```text
 AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
-→ docs/tasks/ACTIVE_TASK.json
-→ docs/tasks/ACTIVE_TASK.md
-→ M8-05终态任务卡
+→ docs/tasks/TASK_AUTHORIZATION.json
+→ docs/tasks/TASK_INDEX.md
+→ 当前任务Runtime
+→ 当前任务卡
 → 受影响专项真源
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```

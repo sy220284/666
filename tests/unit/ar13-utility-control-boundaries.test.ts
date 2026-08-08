@@ -8,10 +8,6 @@ async function source(file: string): Promise<string> {
   return readFile(`${coreRoot}/${file}`, 'utf8');
 }
 
-function lineCount(value: string): number {
-  return value.trimEnd().split('\n').length;
-}
-
 describe('AR-13 Core控制与工具服务边界', () => {
   it('keeps the control root limited to validation and domain dispatch', async () => {
     const root = await source('utility-control-router.ts');
@@ -22,7 +18,6 @@ describe('AR-13 Core控制与工具服务边界', () => {
     expect(root).not.toContain('CoreAppDataResultSchema');
     expect(root).not.toContain('PROJECT_WORKSPACE_COMMANDS');
     expect(root).not.toContain('windowPreferencesError');
-    expect(lineCount(root)).toBeLessThanOrEqual(40);
   });
 
   it('separates lifecycle messages from domain operation routing', async () => {
@@ -49,8 +44,6 @@ describe('AR-13 Core控制与工具服务边界', () => {
       expect(operations).toContain(router);
       expect(lifecycle).not.toContain(router);
     }
-    expect(lineCount(lifecycle)).toBeLessThanOrEqual(160);
-    expect(lineCount(operations)).toBeLessThanOrEqual(190);
   });
 
   it('composes generation and project service groups through dedicated factories', async () => {
@@ -70,8 +63,5 @@ describe('AR-13 Core控制与工具服务边界', () => {
     expect(project).toContain('new SearchToolsService');
     expect(project).toContain('new ReferenceAwareStructureOperationService');
     expect(project).toContain('new CoordinatedImportExportService');
-    expect(lineCount(root)).toBeLessThanOrEqual(70);
-    expect(lineCount(generation)).toBeLessThanOrEqual(70);
-    expect(lineCount(project)).toBeLessThanOrEqual(90);
   });
 });

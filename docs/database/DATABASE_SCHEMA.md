@@ -1,7 +1,9 @@
 # WorldForge V1.0 数据库Schema规格
 
-> 状态：Frozen  
+> 状态：Frozen Baseline with Schema 30 Authority Addendum
 > 原则：`app.sqlite`只保存应用级信息；每项目`project.sqlite`是唯一权威数据源。
+> 当前Project Schema：30（`0030_authority_governance.sql`）
+> 更新日期：2026-08-09
 
 ## 1. 全局约束
 
@@ -89,6 +91,41 @@ PRAGMA synchronous = NORMAL;
 #### `projects`
 
 `id TEXT PK, name TEXT, channel TEXT, active_style_profile_id TEXT NULL, schema_version INTEGER, created_at TEXT, updated_at TEXT`
+
+`schema_version`必须与已应用的最新Project Migration一致；Schema 30项目值为`30`。
+
+#### `command_receipts`（Schema 30）
+
+用于需要跨Core崩溃或重启重放的高副作用命令结果：
+
+| 字段         | 类型 | 约束与语义                                             |
+| ------------ | ---- | ------------------------------------------------------ |
+| request_id   | TEXT | 与`command_name`组成主键                               |
+| command_name | TEXT | 1—120字符的稳定命令名                                  |
+| fingerprint  | TEXT | 64字符SHA-256输入指纹；相同requestId但输入不同必须拒绝 |
+| result_json  | TEXT | 合法JSON；保存首次已提交结果                           |
+| created_at   | TEXT | UTC ISO-8601毫秒时间                                   |
+
+表为`WITHOUT ROWID, STRICT`。Receipt必须与其证明的业务结果在同一SQLite事务提交。Schema 30首先将其用于`transfer.importCommit`：数据库已提交而Core尚未响应即崩溃时，相同`requestId + command_name + fingerprint`返回首次结果，不生成第二套卷章、正文、Version或Checkpoint。该表不表示所有写命令自动获得durable replay；其他命令仍可能使用领域专属持久日志或仅提供进程生命周期内幂等。
+
+#### `semantic_revision`（Schema 30）
+
+`project_id TEXT PRIMARY KEY FK projects ON DELETE CASCADE, revision INTEGER NOT NULL DEFAULT 0 CHECK(revision >= 0)`
+
+每个项目一行，记录权威语义图的单调递增修订号。项目创建时初始化为0；Validation读取该值作为O(1)语义新鲜度输入，不再每次扫描并Hash全部语义表。
+
+Schema 30为下列权威表及关系的`INSERT/UPDATE/DELETE`建立`semantic_revision_*` Trigger：
+
+```text
+entities / canon_facts / entity_states / knowledge_states
+timeline_events / timeline_event_entities / timeline_event_dependencies
+foreshadowings / foreshadowing_chapters / foreshadowing_relations
+character_arcs / arc_milestones
+arc_milestone_dependencies / arc_milestone_timeline_dependencies
+derived_invalidations
+```
+
+Trigger与业务写入处于同一SQLite事务；回滚业务写入时修订号同步回滚。`semantic_revision_projects_insert`负责为新项目补齐初始行。
 
 #### `project_briefs`
 
@@ -498,6 +535,7 @@ ResearchNote属于P1/V1.5范围，V1.0 P0不预建相关业务表或索引。
 - Version和VersionBlock无业务UPDATE路径；定稿Version默认不可删除。
 - Canon、EntityState、KnowledgeState和TimelineEvent使用保留历史的失效/归档命令，不以物理删除替代历史账本。
 - 伏笔和弧光存在引用时，永久删除必须展示影响。
+- Entity永久删除的阻断集合以SQLite真实`FOREIGN KEY` metadata中指向`entities`且采用`RESTRICT/NO ACTION`的引用为准；Preview与Delete必须复用同一依赖权威，`CASCADE`从属数据不得误报为独立blocker。
 
 ## 6. 强制事务边界
 
@@ -510,8 +548,9 @@ ResearchNote属于P1/V1.5范围，V1.0 P0不预建相关业务表或索引。
 7. StateProposal批量裁决、EntityState或ArcMilestone更新与EndingSnapshot重建。
 8. 旧章语义变化的后续Snapshot失效与DerivedInvalidation记录。
 9. 拆章、并章和跨章移动。
-10. 导入提交。
+10. 导入业务结果与`command_receipts` durable receipt。
 11. 每个Migration。
+12. 权威语义写入与`semantic_revision` Trigger递增。
 
 ## 7. 实现同步要求
 
@@ -538,3 +577,10 @@ M1-09不新增Schema。确认导入复用`volumes`、`chapters`、`drafts`、`dr
 - `backup_failures`只记录项目ID、备份轨道、操作类型、稳定错误码和发生/解除时间，不记录路径、正文或异常消息。
 - 失败记录保持未解除，直至同项目同轨道产生已验证备份；Recovery Overview仅返回未解除记录。
 - 该表是StatusArbiter展示备份失败的唯一权威来源，Renderer不得从瞬时错误消息推导历史状态。
+
+## Schema 30 权威治理摘要
+
+- 新增`command_receipts`与`semantic_revision`，不修改任何历史Migration。
+- `command_receipts`当前承担Import跨Core重启重放；能力必须按命令声明，不能由通用IPC文案扩大解释。
+- `semantic_revision`由数据库Trigger维护，覆盖权威语义实体、关系与失效记录；Validation读取修订号，正文级SceneBeat内容仍使用章节内容digest。
+- Schema 30升级完成后`projects.schema_version=30`；未来Schema只允许追加新Migration。

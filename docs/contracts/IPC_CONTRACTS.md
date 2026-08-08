@@ -1,8 +1,8 @@
 # WorldForge V1.0 IPC契约规格
 
-> 状态：Frozen with M8-05 Maintenance Addendum  
+> 状态：Frozen Baseline with M10-21 Command Identity Addendum
 > 适用：Electron Main、Preload、Renderer与Core Service  
-> 更新日期：2026-07-30
+> 更新日期：2026-08-09
 
 ## 1. 原则
 
@@ -46,7 +46,7 @@ interface CommandFailure {
 }
 ```
 
-`requestId`用于命令幂等与追踪，不代替GenerationRun、Task ID、搜索请求代次或建议稿预览标识。
+`requestId`用于命令身份、幂等与追踪，不代替GenerationRun、Task ID、搜索请求代次或建议稿预览标识。所有写命令都必须拒绝同一requestId对应不同语义输入；是否能跨Core崩溃或重启重放首次结果，必须由具体命令的持久机制明确声明。
 
 ## 3. Preload边界
 
@@ -72,21 +72,21 @@ lifecycle
 
 ## 4. 应用与项目
 
-| 命令 | 输入 | 输出 |
-|---|---|---|
-| `app.getInfo` | 空 | 版本、平台、协议版本 |
-| `app.getCoreStatus` | 空 | Core状态、PID、重启次数与安全诊断ID |
-| `app.restartCore` | 空 | 接收状态与最新Core状态 |
-| `app.getWindowPreferences` | 空 | 当前DIP窗口状态与显示偏好 |
-| `app.setAppearancePreferences` | 工作区对齐、UI缩放、正文字号、正文宽度 | 完整本地偏好 |
-| `app.getDisplays` | 空 | 显示器DIP信息 |
-| `project.create` | 名称、频道、初始化结构；目录由Main选择器提供 | 项目摘要 |
-| `project.open` | 项目路径 | 项目摘要、兼容与只读状态 |
-| `project.close` | projectId | 刷新与关闭结果 |
-| `project.move` | projectId、目标目录 | 新路径与校验结果 |
-| `project.listRecent` | 空 | 最近项目列表 |
-| `project.relocateRecent` | projectId、新路径 | 更新结果 |
-| `project.removeRecent` | projectId | 更新结果 |
+| 命令                           | 输入                                         | 输出                                |
+| ------------------------------ | -------------------------------------------- | ----------------------------------- |
+| `app.getInfo`                  | 空                                           | 版本、平台、协议版本                |
+| `app.getCoreStatus`            | 空                                           | Core状态、PID、重启次数与安全诊断ID |
+| `app.restartCore`              | 空                                           | 接收状态与最新Core状态              |
+| `app.getWindowPreferences`     | 空                                           | 当前DIP窗口状态与显示偏好           |
+| `app.setAppearancePreferences` | 工作区对齐、UI缩放、正文字号、正文宽度       | 完整本地偏好                        |
+| `app.getDisplays`              | 空                                           | 显示器DIP信息                       |
+| `project.create`               | 名称、频道、初始化结构；目录由Main选择器提供 | 项目摘要                            |
+| `project.open`                 | 项目路径                                     | 项目摘要、兼容与只读状态            |
+| `project.close`                | projectId                                    | 刷新与关闭结果                      |
+| `project.move`                 | projectId、目标目录                          | 新路径与校验结果                    |
+| `project.listRecent`           | 空                                           | 最近项目列表                        |
+| `project.relocateRecent`       | projectId、新路径                            | 更新结果                            |
+| `project.removeRecent`         | projectId                                    | 更新结果                            |
 
 ## 5. 规划与结构
 
@@ -116,15 +116,15 @@ planning.previewMoveBlocks / moveBlocks
 
 ## 6. 当前稿与历史版本
 
-| 命令 | 输入 | 输出 |
-|---|---|---|
-| `draft.open` | projectId、chapterId | 活动当前稿与有序正文块 |
-| `draft.applyPatch` | draftId、baseRevision、operations | 新保存序号与正文块 |
-| `draft.undoPersistentOperation` | applyRecordId | 新保存序号 |
-| `version.create` | chapterId、draftRevision、类型、标签 | 历史版本摘要 |
-| `version.list` | chapterId | 历史版本列表 |
-| `version.get` | versionId | 历史版本与正文块 |
-| `version.restoreToDraft` | versionId | 新活动当前稿与保存序号 |
+| 命令                            | 输入                                 | 输出                   |
+| ------------------------------- | ------------------------------------ | ---------------------- |
+| `draft.open`                    | projectId、chapterId                 | 活动当前稿与有序正文块 |
+| `draft.applyPatch`              | draftId、baseRevision、operations    | 新保存序号与正文块     |
+| `draft.undoPersistentOperation` | applyRecordId                        | 新保存序号             |
+| `version.create`                | chapterId、draftRevision、类型、标签 | 历史版本摘要           |
+| `version.list`                  | chapterId                            | 历史版本列表           |
+| `version.get`                   | versionId                            | 历史版本与正文块       |
+| `version.restoreToDraft`        | versionId                            | 新活动当前稿与保存序号 |
 
 `draft.applyPatch`必须校验项目、保存序号、预期Hash和锁定正文块。锁定与解锁使用受控`set-lock` Patch operation；历史版本没有业务更新路径。
 
@@ -202,6 +202,7 @@ settings.get / set / reset
 
 - 全项目搜索只读当前稿、历史版本和实体。
 - 批量替换只修改活动当前稿正文块，先生成ReplacePlan并在提交时重校验。
+- Apply必须重新验证Chapter未删除、父Volume未删除、目标Draft仍是活动Draft；Preview时的结构状态不能替代提交时Active Structure Authority。
 - 词典写入使用专用命令，不通过搜索结果间接修改实体。
 - Renderer内搜索、替换、词典和索引使用独立请求代次；这是展示层时序控制，不改变IPC命令和Core事务。
 
@@ -247,7 +248,16 @@ interface RendererLifecycleBridge {
 
 ## 12. 幂等、权限与范围
 
-- 所有写命令必须带`requestId`；重复标识返回首次结果，不重复执行。
+- 所有写命令必须带`requestId`，并在同一可见生命周期内阻止重复副作用；但持久范围按命令区分：
+
+| 能力                   | 持久边界                       | 当前机制与示例                                                                                     |
+| ---------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| 进程生命周期内有界幂等 | Core/数据库连接存活期间        | Promise/cache/repository identity；缓存有容量且数据库关闭时清理                                    |
+| 领域专属durable replay | 对应项目库记录存续期间         | `draft_patch_log.request_id`、`candidate_apply_records.request_id`、`generation_runs.request_id`等 |
+| 通用持久回执           | `command_receipts`记录存续期间 | Schema 30当前用于`transfer.importCommit`跨Core重启重放                                             |
+
+- `transfer.importCommit`必须将业务结果与CommandReceipt同事务提交；重放要求`requestId + command_name`命中且输入fingerprint一致。
+- 未声明持久机制的写命令不能承诺Core重启后返回首次完全相同结果。调用方不得把通用进程缓存推断成durable replay。
 - 查询命令不持久化幂等结果，但Renderer可以用请求代次忽略过期响应。
 - 每条项目命令验证活动项目、对象归属、真实路径、只读状态、锁定、保存序号和内容Hash。
 - Renderer不能传入SQL、表名、任意路径、任意URL或代码扩展能力。
@@ -257,7 +267,9 @@ interface RendererLifecycleBridge {
 - 普通查询默认30秒以内；长任务返回taskId。
 - AI、导入、导出、备份、差异和索引重建支持取消或明确不可取消阶段。
 - 取消只停止未来工作，不回滚已经原子提交的事务。
-- 应用关闭前按任务类型处理取消、等待或保留持久化结果。
+- Generation取消必须先持久化`GenerationRun.cancelled`和可保存partial边界，再abort Provider、发布Task terminal，并等待真实execution completion。
+- Project Close/Move与Core Shutdown通过领域感知的Task Barrier等待Generation execution quiescent；TaskSnapshot显示terminal不能单独授权释放Project DB。
+- 应用关闭前按任务类型处理取消、等待或保留持久化结果；不可取消原子阶段等待自然收口。
 - 重启后只查询真实持久化任务状态，不伪装恢复已经消失的网络流。
 
 ## 14. 契约测试
@@ -268,6 +280,9 @@ interface RendererLifecycleBridge {
 - 可信Renderer来源、多余字段、非法UUID和错误命令名拒绝。
 - Core项目操作联合类型覆盖全部公开命令。
 - 建议稿预览取消、应用事务、重启幂等和冲突路径。
+- 每个写命令的requestId测试必须标注保障范围：进程内、领域持久记录或CommandReceipt；只有后两类可以测试Core重建后重放。
+- Import覆盖“SQLite已commit、Core响应前崩溃、相同requestId重放原结果且不生成第二套ID/Checkpoint/内容”。
+- Generation覆盖“持久取消先于Task terminal，Project Close/Move/Core Shutdown晚于execution quiescence”。
 - 生命周期关闭握手的来源校验、请求标识、strict Schema、保存失败和超时。
 - Provider响应超限错误码通过IPC后保持稳定且不泄露原始响应。
 - 搜索、替换、词典和索引的请求代次隔离在Renderer单元与Electron端到端中验证。

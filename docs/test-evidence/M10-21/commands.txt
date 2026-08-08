@@ -1,0 +1,19 @@
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# Local Electron E2E stopped at the container Unix-socket restriction.
+# GitHub Actions Quality run 31282457579 executed the same command successfully.

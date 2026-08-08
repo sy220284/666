@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
+import { latestProjectMigrationVersion } from '../../packages/testkit/src/index.js';
 
 const directories: string[] = [];
 const clock = { now: () => new Date('2026-07-28T08:45:00.000Z') };
@@ -52,7 +53,7 @@ describe('M8-02 backup failure ledger migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 30n,
+        schema_version: BigInt(await latestProjectMigrationVersion()),
       });
       expect(
         database

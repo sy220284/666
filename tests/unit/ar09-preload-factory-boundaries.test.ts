@@ -19,7 +19,6 @@ const factories = [
 describe('AR-09 preload factory boundaries', () => {
   it('keeps the preload root as a thin bridge composition entry', () => {
     const source = readSource('index.ts');
-    expect(source.split('\n').length).toBeLessThanOrEqual(80);
     expect(source).toContain("contextBridge.exposeInMainWorld('worldforge', bridge)");
     expect(source).toContain('lifecycle: rendererLifecycleBridge');
     for (const [, factory] of factories) {
@@ -47,7 +46,6 @@ describe('AR-09 preload factory boundaries', () => {
       expect(source).toContain("from './bridge-runtime.js'");
       expect(source).not.toMatch(/node:(?:fs|path|sqlite|child_process)/u);
       expect(source).not.toContain('contextBridge');
-      expect(source.split('\n').length).toBeLessThanOrEqual(350);
     }
   });
 

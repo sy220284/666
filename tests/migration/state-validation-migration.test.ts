@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -8,9 +8,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { openAppRuntime } from '../../packages/core-service/src/app-runtime.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
+import {
+  latestProjectMigrationVersion,
+  materializeProjectMigrationsThrough,
+} from '../../packages/testkit/src/index.js';
 
 const temporaryDirectories: string[] = [];
 const clock = { now: () => new Date('2026-07-26T08:00:00.000Z') };
+const historicalSchemaVersion = 27;
 const schema28Triggers = [
   'trg_story_todo_anchor_scope_insert_0028',
   'trg_story_todo_anchor_scope_update_0028',
@@ -43,32 +48,14 @@ afterEach(async () => {
   );
 });
 
-function removeSchema30AuthorityObjects(database: DatabaseSync): void {
-  const triggerNames = database
-    .prepare(
-      `SELECT name
-         FROM sqlite_master
-        WHERE type = 'trigger'
-          AND name LIKE 'semantic_revision_%'`,
-    )
-    .all()
-    .map((row) => String(row.name));
-  for (const triggerName of triggerNames) {
-    if (!/^semantic_revision_[a-z0-9_]+$/u.test(triggerName)) {
-      throw new Error(`Unexpected schema 30 trigger name: ${triggerName}`);
-    }
-    database.exec(`DROP TRIGGER ${triggerName}`);
-  }
-  database.exec('DROP TABLE IF EXISTS command_receipts');
-  database.exec('DROP TABLE IF EXISTS semantic_revision');
-}
-
 async function createSchema27Fixture(state: HistoricalFixtureState): Promise<Schema27Fixture> {
   const root = await mkdtemp(path.join(tmpdir(), 'worldforge-state-validation-migration-'));
   temporaryDirectories.push(root);
   const parent = path.join(root, 'projects');
   const recoveryRoot = path.join(root, 'project-migration-recovery');
+  const historicalMigrationsDirectory = path.join(root, 'project-migrations-v27');
   await mkdir(parent, { recursive: true });
+  await materializeProjectMigrationsThrough(historicalSchemaVersion, historicalMigrationsDirectory);
   const appRuntime = await openAppRuntime({
     databasePath: path.join(root, 'app.sqlite'),
     migrationsDirectory: 'migrations/app',
@@ -77,7 +64,7 @@ async function createSchema27Fixture(state: HistoricalFixtureState): Promise<Sch
     clock,
   });
   const workspace = new ProjectWorkspaceService({
-    projectMigrationsDirectory: 'migrations/project',
+    projectMigrationsDirectory: historicalMigrationsDirectory,
     projectMigrationRecoveryDirectory: recoveryRoot,
     appVersion: '0.1.0',
     recentProjects: appRuntime.recentProjects,
@@ -93,11 +80,6 @@ async function createSchema27Fixture(state: HistoricalFixtureState): Promise<Sch
   const databasePath = path.join(project.workspacePath, 'project.sqlite');
   const database = new DatabaseSync(databasePath, { readBigInts: true });
   try {
-    removeSchema30AuthorityObjects(database);
-    for (const trigger of schema28Triggers) database.exec(`DROP TRIGGER ${trigger}`);
-    database.exec('DROP TABLE IF EXISTS backup_failures');
-    database.prepare('DELETE FROM schema_migrations WHERE version IN (28, 29, 30)').run();
-    database.prepare('UPDATE projects SET schema_version = 27').run();
     if (state === 'dirty-todo') {
       database
         .prepare(
@@ -135,11 +117,6 @@ async function createSchema27Fixture(state: HistoricalFixtureState): Promise<Sch
   } finally {
     database.close();
   }
-
-  const manifestPath = path.join(project.workspacePath, 'manifest.json');
-  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>;
-  manifest.projectSchemaVersion = 27;
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
   return {
     databasePath,
@@ -181,6 +158,7 @@ async function expectDirtySchema27Rejected(
   expected: Pick<SchemaInspection, 'dirtyTodoCount' | 'dirtyCommentCount'>,
 ): Promise<void> {
   const fixture = await createSchema27Fixture(state);
+  const latestVersion = await latestProjectMigrationVersion();
   const workspace = new ProjectWorkspaceService({
     projectMigrationsDirectory: 'migrations/project',
     projectMigrationRecoveryDirectory: fixture.recoveryRoot,
@@ -198,7 +176,9 @@ async function expectDirtySchema27Rejected(
       readOnlyReason: 'migration-failed',
     });
     expect(await readdir(path.join(fixture.recoveryRoot, fixture.projectId))).toEqual([
-      expect.stringMatching(/^project-v27-to-v30-.*\.sqlite$/u),
+      expect.stringMatching(
+        new RegExp(`^project-v${historicalSchemaVersion}-to-v${latestVersion}-.*\\.sqlite$`, 'u'),
+      ),
     ]);
   } finally {
     await workspace.shutdown();
@@ -249,7 +229,7 @@ describe('M4-04 state and validation migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 30n,
+        schema_version: BigInt(await latestProjectMigrationVersion()),
       });
       for (const table of [
         'state_proposal_batches',
@@ -302,6 +282,7 @@ describe('M4-04 state and validation migration', () => {
 
   it('upgrades a clean schema 27 database through schema 28 to the latest schema', async () => {
     const fixture = await createSchema27Fixture('clean');
+    const latestVersion = await latestProjectMigrationVersion();
     const workspace = new ProjectWorkspaceService({
       projectMigrationsDirectory: 'migrations/project',
       projectMigrationRecoveryDirectory: fixture.recoveryRoot,
@@ -313,7 +294,7 @@ describe('M4-04 state and validation migration', () => {
       const opened = await workspace.open(randomUUID(), { workspacePath: fixture.workspacePath });
       expect(opened).toMatchObject({
         projectId: fixture.projectId,
-        schemaVersion: 30,
+        schemaVersion: latestVersion,
         databaseMode: 'read-write',
         compatibility: 'migrated',
       });
@@ -323,7 +304,7 @@ describe('M4-04 state and validation migration', () => {
     }
 
     expect(inspectSchema28(fixture.databasePath)).toEqual({
-      schemaVersion: 30n,
+      schemaVersion: BigInt(latestVersion),
       triggerCount: 4n,
       dirtyTodoCount: 0n,
       dirtyCommentCount: 0n,

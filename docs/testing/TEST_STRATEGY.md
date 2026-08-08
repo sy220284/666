@@ -1,7 +1,8 @@
 # WorldForge V1.0 测试策略
 
-> 状态：Frozen  
+> 状态：Frozen Baseline with M10-21 Invariant Addendum
 > 目标：证明功能真实可用、数据边界未破坏，并为每个完成结论提供可复核证据。
+> 更新日期：2026-08-09
 
 ## 1. 原则
 
@@ -14,17 +15,17 @@
 
 ## 2. 测试层级
 
-| 层级 | 工具 | 覆盖 |
-|---|---|---|
-| 单元 | Vitest | 领域不变量、Patch、锁定、Diff、裁剪、状态提案和错误映射 |
-| Repository | Vitest + 临时SQLite | Schema、SQL、索引、事务、外键、并发和项目归属 |
-| 集成 | Vitest | 契约→Preload→Core Use Case→SQLite/Provider Stub |
-| Migration | Vitest + Schema Fixture | 新库、旧库、中断、checksum、回填和兼容 |
-| 安全 | Vitest/Playwright | Electron隔离、IPC白名单、路径、日志和导入限制 |
-| 桌面E2E | Playwright Electron | 基础写作、AI、连续性、交付和恢复 |
-| 性能 | 基准 + Playwright | 键入、保存、IPC、Diff、FTS、项目打开和显示 |
-| AI Eval | 固定Fixture | T0/T1、改写、融合、状态/弧光提取和语义校验 |
-| 人工验收 | 任务脚本 | 视觉、IME、DPI、系统对话框和真实Provider |
+| 层级       | 工具                    | 覆盖                                                    |
+| ---------- | ----------------------- | ------------------------------------------------------- |
+| 单元       | Vitest                  | 领域不变量、Patch、锁定、Diff、裁剪、状态提案和错误映射 |
+| Repository | Vitest + 临时SQLite     | Schema、SQL、索引、事务、外键、并发和项目归属           |
+| 集成       | Vitest                  | 契约→Preload→Core Use Case→SQLite/Provider Stub         |
+| Migration  | Vitest + Schema Fixture | 新库、旧库、中断、checksum、回填和兼容                  |
+| 安全       | Vitest/Playwright       | Electron隔离、IPC白名单、路径、日志和导入限制           |
+| 桌面E2E    | Playwright Electron     | 基础写作、AI、连续性、交付和恢复                        |
+| 性能       | 基准 + Playwright       | 键入、保存、IPC、Diff、FTS、项目打开和显示              |
+| AI Eval    | 固定Fixture             | T0/T1、改写、融合、状态/弧光提取和语义校验              |
+| 人工验收   | 任务脚本                | 视觉、IME、DPI、系统对话框和真实Provider                |
 
 ## 3. 必须保持为0
 
@@ -80,10 +81,24 @@
 
 自动保存与AI并行至少100轮，不能把`SQLITE_BUSY`直接暴露给用户。
 
+### M10-19后跨域不变量
+
+| 不变量                | 必须证明                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Generation生命周期    | GenerationRun取消和partial边界先持久化；Task terminal后仍等待execution quiescent；Close/Move/Shutdown不得提前释放DB |
+| Active Structure      | Replace Apply及Version写入口同时校验Chapter、父Volume和活动Draft                                                    |
+| Arc依赖               | 作者transition与StateProposal accept复用同一Arc/Timeline dependency policy                                          |
+| Entity永久删除        | Preview与Delete基于相同SQLite RESTRICT/NO ACTION FK metadata                                                        |
+| Import durable replay | SQLite提交后Core在响应前崩溃，相同requestId重放首次结果且不产生第二套ID、Checkpoint或内容                           |
+| SemanticRevision      | 权威语义实体/关系写入增量推进修订；Validation读取O(1)修订并保持章节内容digest                                       |
+| Renderer所有权        | 旧项目Task/Query响应不能覆盖新项目；degraded retained data必须显式标记刷新失败                                      |
+
 ## 6. Migration
 
 - 空库升级到最新。
 - 每个支持旧版本逐级升级。
+- latest Project Schema由Migration序列动态推导，历史测试不得复制当前版本数字。
+- 历史Fixture必须从Migration 1正向执行到目标版本；禁止创建最新库后删除新表、Trigger或Migration记录来伪造旧库。
 - 中断后重启。
 - checksum不一致。
 - 高版本只读。
@@ -91,6 +106,16 @@
 - 外文件迁移`migration_journal`继续与回滚。
 - 升级后`foreign_key_check`、`quick_check`和核心查询。
 - FTS和派生索引重建。
+
+公共Testkit统一提供latest version、目标版本序列和历史Migration目录物化能力；测试不得各自维护平行Migration runner。
+
+## 6.1 结构与实现测试政策
+
+- 文件行数、函数数量、导出数量和测试数量只作观察，不得成为单元测试hard fail。
+- 循环依赖、跨层反向依赖、Feature私有穿透、Renderer能力泄漏、状态Owner和单一IPC runtime继续作为硬门。
+- 业务行为优先通过公开接口、纯函数、状态机、Repository/Integration或E2E证明。
+- 依赖方向和导出拓扑使用AST或架构策略；仅在安全边界“不应存在”时保留高置信源码扫描。
+- 不要求私有函数具有固定名称，不用语句相对位置或特定局部变量字面量证明领域不变量。
 
 ## 7. E2E核心场景
 
@@ -144,15 +169,15 @@ Theme A/B切换→候选采用→定稿→减少动态→1280×800/2K/21:9/混�
 
 ## 9. 性能基线
 
-| 指标 | 目标 |
-|---|---:|
-| 2K键入P95 | ≤50ms |
-| 自动保存事务P95 | ≤150ms |
-| 编辑IPC P95 | ≤200ms |
-| AI取消反馈 | ≤500ms |
-| 5000字Diff首屏 | ≤500ms |
-| 5000字完整Diff | ≤1.2s |
-| 正文滚动 | ≥50fps |
+| 指标             |   目标 |
+| ---------------- | -----: |
+| 2K键入P95        |  ≤50ms |
+| 自动保存事务P95  | ≤150ms |
+| 编辑IPC P95      | ≤200ms |
+| AI取消反馈       | ≤500ms |
+| 5000字Diff首屏   | ≤500ms |
+| 5000字完整Diff   |  ≤1.2s |
+| 正文滚动         | ≥50fps |
 | Core事件循环阻塞 | <100ms |
 
 报告记录机器、系统、缩放、数据规模和样本数。
@@ -185,11 +210,11 @@ Theme A/B切换→候选采用→定稿→减少动态→1280×800/2K/21:9/混�
 docs/test-evidence/<TASK-ID>/
 ├─ summary.md
 ├─ commands.txt
-├─ test-results/
-├─ screenshots/
-├─ performance.json
-└─ known-risks.md
+├─ known-risks.md
+└─ manifest.json
 ```
+
+任务需要的结构化结果、截图或性能文件可以按Runtime增加，但不为满足模板生成无人复核的Artifact。Ready Evidence必须绑定真实受检work Head。
 
 ## 13. 完成规则
 

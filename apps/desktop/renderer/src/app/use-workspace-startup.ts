@@ -107,7 +107,11 @@ export function useWorkspaceStartup({
           resolvedProject.projectId,
           { mode: 'replace' },
         );
-        if (continuationOutcome.state === 'success') nextContinuation = continuationOutcome.data;
+        if (continuationOutcome.state === 'success') {
+          nextContinuation = continuationOutcome.data;
+        } else {
+          nextFailure ??= failureFromOutcome('续写状态读取失败', continuationOutcome);
+        }
       }
       setContinuation(nextContinuation);
       if (!initialWorkspaceResolved.current) {
@@ -127,7 +131,11 @@ export function useWorkspaceStartup({
     } else nextFailure ??= failureFromOutcome('项目状态读取失败', project);
 
     if (activeTasks.state === 'success') setTasks(activeTasks.data.tasks);
+    else nextFailure ??= failureFromOutcome('活动任务读取失败', activeTasks);
+
     if (providers.state === 'success') applyProviders(providers.data.providers);
+    else nextFailure ??= failureFromOutcome('AI连接配置读取失败', providers);
+
     setFailure(nextFailure);
     setMessage(null);
     setHydrated(true);

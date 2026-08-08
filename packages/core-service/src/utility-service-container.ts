@@ -1,7 +1,8 @@
 import { openAppRuntime } from './app-runtime.js';
 import { CheckpointAwareRecoveryService } from './checkpoint-aware-recovery.js';
-import type { ProjectTaskProtocol } from './project-task-protocol.js';
+import type { ProjectTaskBarrier } from './project-task-protocol.js';
 import { ProjectWorkspaceService } from './project-workspace.js';
+import type { TaskProtocol } from './task-protocol.js';
 import { createUtilityGenerationServiceContainer } from './utility-generation-service-container.js';
 import { createUtilityProjectServiceContainer } from './utility-project-service-container.js';
 
@@ -11,7 +12,8 @@ interface UtilityStartupArguments {
 }
 
 export interface UtilityServiceContainerOptions extends UtilityStartupArguments {
-  readonly taskProtocol: ProjectTaskProtocol;
+  readonly taskProtocol: TaskProtocol;
+  readonly projectTaskBarrier: ProjectTaskBarrier;
   readonly checkpointRequestId: (requestId: string) => string;
 }
 
@@ -27,13 +29,13 @@ export async function openUtilityServiceContainer(options: UtilityServiceContain
     projectMigrationRecoveryDirectory: options.requiredAbsolutePath('project-migration-recovery'),
     appVersion: options.requiredArgument('app-version'),
     recentProjects: appRuntime.recentProjects,
-    taskDrain: options.taskProtocol,
+    taskDrain: options.projectTaskBarrier,
   });
   const recovery = new CheckpointAwareRecoveryService(projectWorkspace, {
     backupRootDirectory: options.requiredAbsolutePath('project-operation-recovery'),
   });
   const { generationRuns, candidates, generationServices } =
-    createUtilityGenerationServiceContainer(projectWorkspace, options.taskProtocol);
+    createUtilityGenerationServiceContainer(projectWorkspace, options.projectTaskBarrier);
   const services = createUtilityProjectServiceContainer({
     projectWorkspace,
     recovery,

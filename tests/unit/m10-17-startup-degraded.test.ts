@@ -32,8 +32,10 @@ describe('M10-17 startup degraded state', () => {
     expect(startup).toContain("failureFromOutcome('续写状态读取失败'");
 
     expect(runtime).toContain("WorkspaceStartupResourceState = 'loaded' | 'empty' | 'degraded'");
-    expect(runtime).toContain('void refreshTasks();');
-    expect(runtime).toContain('bridge.task.subscribe(() => void refreshTasks(), projectId)');
+    expect(runtime).toContain('bridge.task.listActive(projectIdRef.current');
+    expect(runtime).toContain('bridge.task.subscribe(() => void refreshTasks())');
+    expect(runtime).not.toContain('bridge.task.subscribe(() => void refreshTasks(), projectId)');
+    expect(runtime).toContain('[projectId, refreshTasks]');
     expect(runtime).toContain("setStartupResourceState('tasks', 'degraded')");
   });
 });

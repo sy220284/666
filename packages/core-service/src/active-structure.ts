@@ -61,10 +61,6 @@ export function isActiveChapter(
   return readActiveChapterScope(database, projectId, chapterId) !== undefined;
 }
 
-export function isActiveDraft(
-  database: DatabaseSync,
-  projectId: string,
-  draftId: string,
-): boolean {
+export function isActiveDraft(database: DatabaseSync, projectId: string, draftId: string): boolean {
   return readActiveDraftScope(database, projectId, draftId) !== undefined;
 }

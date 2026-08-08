@@ -5,9 +5,8 @@ import { ProjectIdSchema, type TaskSnapshot } from '@worldforge/contracts';
 import {
   TaskProtocol,
   TaskProtocolError,
-  type StartTaskOptions,
   type RunningTask,
-  type TaskProtocolOptions,
+  type StartTaskOptions,
 } from './task-protocol.js';
 
 export interface ProjectTaskDrainOptions {
@@ -16,24 +15,25 @@ export interface ProjectTaskDrainOptions {
 }
 
 /**
- * Adds project-scoped draining without duplicating TaskProtocol task state.
- * TaskProtocol remains authoritative for task status, cancellation and terminal transitions.
+ * Project-scoped lifecycle barrier over the authoritative TaskProtocol instance.
+ * The global TaskProtocol remains unchanged and continues to own Core drain/shutdown.
  */
-export class ProjectTaskProtocol extends TaskProtocol {
+export class ProjectTaskBarrier {
+  readonly #tasks: TaskProtocol;
   readonly #drainingProjects = new Set<string>();
   readonly #timeoutMs: number;
   readonly #pollIntervalMs: number;
 
-  constructor(taskOptions: TaskProtocolOptions = {}, drainOptions: ProjectTaskDrainOptions = {}) {
-    super(taskOptions);
-    this.#timeoutMs = drainOptions.timeoutMs ?? 30_000;
-    this.#pollIntervalMs = drainOptions.pollIntervalMs ?? 20;
+  constructor(tasks: TaskProtocol, options: ProjectTaskDrainOptions = {}) {
+    this.#tasks = tasks;
+    this.#timeoutMs = options.timeoutMs ?? 30_000;
+    this.#pollIntervalMs = options.pollIntervalMs ?? 20;
     if (this.#timeoutMs < 1 || this.#pollIntervalMs < 1) {
       throw new Error('PROJECT_TASK_DRAIN_CONFIGURATION_INVALID');
     }
   }
 
-  override startTask(options: StartTaskOptions): RunningTask {
+  startTask(options: StartTaskOptions): RunningTask {
     const projectId = options.projectId ? ProjectIdSchema.parse(options.projectId) : undefined;
     if (projectId && this.#drainingProjects.has(projectId)) {
       throw new TaskProtocolError(
@@ -41,7 +41,18 @@ export class ProjectTaskProtocol extends TaskProtocol {
         'The project is draining and cannot start another background task.',
       );
     }
-    return super.startTask(options);
+    return this.#tasks.startTask(options);
+  }
+
+  getSnapshot(taskId: string, projectId?: string): TaskSnapshot {
+    return this.#tasks.getSnapshot(taskId, projectId);
+  }
+
+  cancel(
+    taskId: string,
+    projectId?: string,
+  ): { readonly accepted: true; readonly status: 'cancelled' } {
+    return this.#tasks.cancel(taskId, projectId);
   }
 
   isProjectDraining(projectId: string): boolean {
@@ -69,10 +80,10 @@ export class ProjectTaskProtocol extends TaskProtocol {
   async #drainProject(projectId: string): Promise<void> {
     const startedAt = Date.now();
     while (true) {
-      const active = this.listActive(projectId);
+      const active = this.#tasks.listActive(projectId);
       if (active.length === 0) return;
       this.#cancelCancellable(active, projectId);
-      if (this.listActive(projectId).length === 0) return;
+      if (this.#tasks.listActive(projectId).length === 0) return;
       if (Date.now() - startedAt >= this.#timeoutMs) {
         throw new TaskProtocolError(
           'COMMON_TIMEOUT_005',
@@ -87,7 +98,7 @@ export class ProjectTaskProtocol extends TaskProtocol {
   #cancelCancellable(tasks: readonly TaskSnapshot[], projectId: string): void {
     for (const task of tasks) {
       try {
-        this.cancel(task.taskId, projectId);
+        this.#tasks.cancel(task.taskId, projectId);
       } catch (error) {
         if (error instanceof TaskProtocolError && error.code === 'TASK_NOT_CANCELLABLE_001') {
           continue;

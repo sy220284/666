@@ -49,7 +49,15 @@
     "apps/desktop/renderer/src/app/app-shell-status.ts",
     "apps/desktop/renderer/src/app/use-workspace-runtime.ts",
     "tests/integration/m10-19-authority-governance.test.ts",
-    "tests/unit/m10-19-lifecycle-renderer-recovery.test.ts"
+    "tests/unit/m10-19-lifecycle-renderer-recovery.test.ts",
+    "tests/migration/backup-failure-ledger-migration.test.ts",
+    "tests/migration/backup-tracks-migration.test.ts",
+    "tests/migration/generation-runtime-migration.test.ts",
+    "tests/migration/project-continuation-migration.test.ts",
+    "tests/migration/search-index-migration.test.ts",
+    "tests/migration/search-replace-rhythm-migration.test.ts",
+    "tests/migration/state-validation-migration.test.ts",
+    "tests/migration/structured-candidate-migration.test.ts"
   ],
   "forbiddenPaths": [
     "migrations/app/",

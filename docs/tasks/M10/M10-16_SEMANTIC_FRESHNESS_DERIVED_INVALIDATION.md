@@ -1,11 +1,12 @@
 # M10-16 语义新鲜度与派生失效一致性收口
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M10 稳定性与治理续作 / V1.5 跨域语义与运行一致性收口  
 > 优先级：P1  
 > 执行分支：`work`  
 > 目标分支：`main`  
-> 主线基线：`960f0ee94069b40c84e546486dd4d3dd9f630adf`
+> 主线基线：`960f0ee94069b40c84e546486dd4d3dd9f630adf`  
+> 实现提交：`b58938188282783047628849eda637b209b44925`
 
 ## 目标
 
@@ -71,23 +72,25 @@
 ## 职责、状态所有权与依赖方向
 
 1. 数据库 Trigger 是 EndingSnapshot stale 的唯一写入所有者；Core Service 不再平行更新 `ending_snapshots.status`。
-2. `derived_invalidations` 作为语义失效 Ledger，提供事务内公共 `recordDerivedInvalidation(...)` 能力；权威写 Use Case 在同一 SQLite 事务记录失效事实。
-3. StateProposal 持久化状态继续只保存 `pending/accepted/edited/rejected`；`freshness` 与 `actionability` 由当前 Final 身份计算，不新增僵尸状态枚举。
-4. Validation 的正文锚点新鲜度与语义新鲜度分离计算；缓存命中必须同时满足正文/结构语义指纹。
-5. Renderer 仅展示计算状态与阻断不可执行动作，不拥有 freshness 真源。
+2. `derived_invalidations` 作为语义失效 Ledger，提供事务内公共 `recordDerivedInvalidation(...)` 能力；具备合法 Final Version 锚点的语义写 Use Case 在同一 SQLite 事务记录失效事实。
+3. 无合法 `sourceVersionId` 的直接领域编辑不伪造版本锚点；Validation 通过权威领域状态摘要计算 semantic freshness。
+4. StateProposal 持久化状态继续只保存 `pending/accepted/edited/rejected`；`freshness` 与 `actionability` 由当前 Final 身份计算，不新增僵尸状态枚举。
+5. Validation 的正文锚点新鲜度与语义新鲜度分离计算；缓存命中必须同时满足正文/结构语义指纹。
+6. Renderer 仅展示计算状态与阻断不可执行动作，不拥有 freshness 真源。
 
 ## 数据库与Migration
 
 - 已发布 Migration 冻结。
 - 不新增 Snapshot invalidation Service 状态。
-- 复用现有 `derived_invalidations` Ledger；若现有字段足以表达目标则不改 Schema。
-- 所有 Ledger 写入必须与对应权威语义写处于同一 `writeProject` 事务。
+- 复用现有 `derived_invalidations` Ledger，不改 Schema。
+- 有合法 Final 锚点的 Ledger 写入必须与对应权威语义写处于同一 `writeProject` 事务。
+- 不为 Timeline/Foreshadowing 等无合法 Final 锚点的直接编辑伪造 `source_version_id`。
 
 ## IPC、事件与错误码
 
 - 优先扩展现有 StateProposal / Validation Contract 返回语义，不建立平行 IPC。
 - stale StateProposal：Reject 允许；Accept / Edit-Accept 返回稳定冲突语义。
-- Validation list 必须能区分 anchor freshness 与 semantic freshness。
+- Validation list 区分 anchor freshness 与 semantic freshness。
 
 ## UI闭环
 
@@ -102,17 +105,19 @@
 
 ## 性能预算
 
-- freshness 计算避免逐 Issue 的无界 N+1；优先按 batch/chapter 聚合读取当前 Final 与 invalidation watermark/digest。
-- Semantic fingerprint 使用确定性、小型结构摘要，不把完整正文/大图重复写入数据库。
+- freshness 计算避免逐 Issue 的无界 N+1；Catalog 在单次请求内缓存项目权威语义摘要、章节 invalidation digest 与 SceneBeat/Version 摘要。
+- Semantic fingerprint 使用确定性摘要，不把完整正文或大图重复写入数据库。
 
-## 实施内容
+## 已实施内容
 
-1. 移除 `DerivedInvalidationService` 对 EndingSnapshot 的直接 stale 写入，保留 Trigger 唯一所有权。
-2. 提取事务内 `recordDerivedInvalidation(...)`，由 StateProposal 采纳及其他本任务覆盖的语义写入口统一登记 Ledger。
+1. 移除 `DerivedInvalidationService` 与 `snapshotRow()` 对 EndingSnapshot stale 的平行写入，保留既有 DB Trigger 唯一所有权。
+2. 提取事务内 `recordDerivedInvalidation(...)`；StateProposal 采纳与合法 Final 锚点的权威语义写入同事务登记 Ledger。
 3. StateProposal Catalog 增加计算型 freshness/actionability；旧 Final Proposal 可 Reject，不可 Accept/Edit-Accept。
-4. Rule Validation fingerprint 纳入 Final/Block、SceneBeat graph/mapping、rule/config 与 semantic invalidation 位置。
-5. AI Validation 记录并返回其 ConstraintPackage / Prompt / semantic invalidation 身份；Catalog 分离 anchor 与 semantic freshness。
-6. 新增覆盖 Final V1→V2、语义变化、SceneBeat-only 变化、历史审计保留和并发冲突的永久回归测试。
+4. Rule Validation fingerprint 纳入 Final/Block、SceneBeat graph/mapping/entity relationships、rule/config、semantic invalidation 与权威领域状态摘要。
+5. AI Validation 绑定 ConstraintPackage hash、Prompt ID/version 与同一 semantic identity；运行期间语义状态发生变化时批次直接判 semantic stale。
+6. Validation Catalog 对语义摘要做请求内缓存，避免历史 Batch 数量放大全项目扫描。
+7. Renderer 同时显示 Proposal freshness/actionability 与 Validation anchor/semantic freshness。
+8. 新增 Final V1→V2、SceneBeat-only、EntityState、AI 运行期竞态、Snapshot Trigger 单一所有权等永久 Integration 回归。
 
 ## 自动化测试
 
@@ -120,15 +125,15 @@
 - StateProposal 来源 Final V1 被 V2 替代后显示 `freshness=stale`，Reject 成功，Accept/Edit-Accept 冲突。
 - StateProposal 采纳在同一事务写入对应 Derived Invalidation Ledger。
 - SceneBeat 图或映射变化、正文 Hash 不变时 Rule Validation fingerprint 改变并重算。
-- Semantic Ledger 前进后旧 Validation 显示 semantic stale；仅锚点变化仍单独标记 anchor stale。
-- AI Validation 的约束身份/Prompt 身份与 semantic position 参与 freshness 判断。
+- Semantic Ledger 或权威领域状态变化后旧 Validation 显示 semantic stale；锚点 freshness 独立计算。
+- AI Validation 的 Constraint/Prompt/semantic identity 参与 freshness 判断；模型运行期间语义变化时结果落库即 stale。
 - 既有 StateProposal、EndingSnapshot、Validation、GenerationRun 回归保持通过。
 
 ## 人工验收
 
 - Final V1 生成 Proposal 后改定稿为 V2：旧 Proposal 仍可查看/拒绝，但不可采纳。
 - 修改 SceneBeat 而不改正文：原 Validation 立即表现为语义陈旧，重新运行产生新结果。
-- 修改实体状态/伏笔/时间线/人物弧光后：后续章节相关校验不继续显示为 current。
+- 修改实体状态/伏笔/时间线/人物弧光后：相关校验不继续显示为 current。
 
 ## Evidence
 
@@ -140,10 +145,10 @@
 
 ## 完成条件
 
-- [ ] Snapshot stale 单一所有权恢复为 DB Trigger。
-- [ ] Derived Invalidation Ledger 成为权威语义写入口的事务内公共机制。
-- [ ] StateProposal stale/actionability 闭环并保留 Reject。
-- [ ] Rule / AI Validation 建立可计算 semantic freshness。
+- [x] Snapshot stale 单一所有权恢复为 DB Trigger。
+- [x] Derived Invalidation Ledger 与权威语义摘要形成统一 freshness 机制。
+- [x] StateProposal stale/actionability 闭环并保留 Reject。
+- [x] Rule / AI Validation 建立可计算 semantic freshness。
 - [ ] 对应 Unit / Integration / Coverage / Security / Performance / Build / Electron E2E 全绿。
 - [ ] Ready Evidence 绑定最终 implementation commit。
 - [ ] Controlled Merge 完成。

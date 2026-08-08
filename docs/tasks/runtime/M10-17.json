@@ -82,5 +82,10 @@
     "pnpm test:perf",
     "pnpm build",
     "pnpm test:e2e"
-  ]
+  ],
+  "verificationBinding": {
+    "sourcePr": 326,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-17"
+  }
 }

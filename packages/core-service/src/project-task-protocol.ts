@@ -3,10 +3,10 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { ProjectIdSchema, type TaskSnapshot } from '@worldforge/contracts';
 
 import {
-  TaskProtocol,
   TaskProtocolError,
   type RunningTask,
   type StartTaskOptions,
+  type TaskProtocol,
 } from './task-protocol.js';
 
 export interface ProjectTaskDrainOptions {

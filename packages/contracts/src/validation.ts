@@ -34,7 +34,7 @@ export const ValidationIssueStatusSchema = z.enum([
   'false_positive',
 ]);
 export const ValidationAnchorStateSchema = z.enum(['current', 'stale']);
-export const ValidationSemanticStateSchema = z.enum(['current', 'stale']);
+const ValidationSemanticStateSchema = z.enum(['current', 'stale']);
 export const ValidationRangeHintSchema = z
   .strictObject({
     start: z.number().int().nonnegative(),

@@ -109,6 +109,7 @@ export class RecoveryService {
 
   getOverview(projectId: string): Promise<RecoveryOverview> {
     this.#workspace.assertActiveProject(projectId);
+    this.#workspace.readProject(projectId, () => undefined);
     return this.#cleanup.getOverview(projectId);
   }
 

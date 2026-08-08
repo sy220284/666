@@ -56,10 +56,7 @@ export const DerivedChangeTypeSchema = z.enum([
   'timeline',
   'foreshadowing',
 ]);
-const EndingSnapshotStaleReasonSchema = z.union([
-  DerivedChangeTypeSchema,
-  z.literal('validation'),
-]);
+const EndingSnapshotStaleReasonSchema = z.union([DerivedChangeTypeSchema, z.literal('validation')]);
 export const DerivedInvalidationScopeSchema = z.enum([
   'continuity',
   'arc',

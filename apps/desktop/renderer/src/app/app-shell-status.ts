@@ -73,7 +73,7 @@ export function buildGlobalStatus({
   readonly failure: FailureView | null;
   readonly message: string | null;
   readonly recentProjects: readonly RecentProject[];
-  readonly startupResources: WorkspaceStartupResourceStates;
+  readonly startupResources?: WorkspaceStartupResourceStates;
   readonly tasks: readonly TaskSnapshot[];
   readonly workspaceAttention: WorkspaceAttention;
 }): RendererStatus | null {
@@ -112,7 +112,7 @@ export function buildGlobalStatus({
       ['continuation', '续写位置'],
     ] as const
   )
-    .filter(([resource]) => startupResources[resource] === 'degraded')
+    .filter(([resource]) => startupResources?.[resource] === 'degraded')
     .map(([, label]) => label);
   if (degradedResources.length > 0) {
     arbitrator.publish({

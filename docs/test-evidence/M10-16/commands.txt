@@ -6,10 +6,10 @@ git rev-parse main
 # baseline: 960f0ee94069b40c84e546486dd4d3dd9f630adf
 
 git rev-parse work
-# implementation commit: b58938188282783047628849eda637b209b44925
+# implementation commit: 195606e1a6cb65bacb39dd95a8559305f70c6ee3
 
-git diff --name-only 960f0ee94069b40c84e546486dd4d3dd9f630adf..b58938188282783047628849eda637b209b44925
-git diff --check 960f0ee94069b40c84e546486dd4d3dd9f630adf..b58938188282783047628849eda637b209b44925
+git diff --name-only 960f0ee94069b40c84e546486dd4d3dd9f630adf..195606e1a6cb65bacb39dd95a8559305f70c6ee3
+git diff --check 960f0ee94069b40c84e546486dd4d3dd9f630adf..195606e1a6cb65bacb39dd95a8559305f70c6ee3
 
 ## 永久矩阵
 
@@ -32,6 +32,7 @@ pnpm test:e2e
 
 ## 关键专项回归
 
+pnpm vitest run tests/unit/ar08-contracts-public-surface.test.ts
 pnpm vitest run tests/integration/m10-16-semantic-freshness.test.ts
 pnpm vitest run tests/integration/state-proposal-snapshot.test.ts
 pnpm vitest run tests/integration/state-validation-provider.test.ts

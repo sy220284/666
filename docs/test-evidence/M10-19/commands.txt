@@ -1,17 +1,17 @@
 # M10-19 verification commands
-# implementationCommit=5a040a467c469b688ebbf720f4e52ec7006e422d
+# implementationCommit=5c9d5912149cd72beb4dddc2ac2dc0e88540fc27
 
-# Draft static verification
+# Static and governance
 pnpm task:validate
+pnpm check:language
 pnpm check:workspaces
 pnpm check:boundaries
 pnpm format:check
 pnpm lint
+pnpm ci:policy
 pnpm typecheck
 
-# Ready product and governance matrix
-pnpm check:language
-pnpm ci:policy
+# Product verification
 pnpm test:unit
 pnpm test:integration
 pnpm test:migration

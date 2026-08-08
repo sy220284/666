@@ -6,7 +6,7 @@
 > 执行分支：`work`  
 > 目标分支：`main`  
 > 主线基线：`1caa3fbccc15d84b35e82e80f415717d07a39ba7`  
-> 最终产品实现提交：`b126aec35e2efb562634ee10a86b50da1c947a78`
+> 最终产品实现提交：`92fe88c8b39de748d180d21636a93bb7a272c1d3`
 
 ## 目标
 
@@ -53,8 +53,10 @@
 - `packages/core-service/src/project-task-protocol.ts`
 - `packages/core-service/src/project-workspace/project-workspace-service.ts`
 - `packages/core-service/src/project-workspace/project-move.ts`
+- `packages/core-service/src/generation-runtime.ts`
 - `packages/core-service/src/utility-entry.ts`
 - `packages/core-service/src/utility-service-container.ts`
+- `packages/core-service/src/utility-generation-service-container.ts`
 - `packages/core-service/src/utility-search-rhythm-router.ts`
 - `packages/core-service/src/rhythm.ts`
 - `apps/desktop/renderer/src/app/use-workspace-startup.ts`
@@ -68,7 +70,7 @@
 
 ## 职责与状态所有权
 
-1. TaskProtocol 持有活动 Task；`ProjectTaskProtocol` 只在同一 TaskProtocol 状态机上增加项目级 drain guard，不复制任务状态。
+1. 原生 `TaskProtocol` 持有唯一活动 Task 状态，并继续独占 Core 全局 `beginDrain()/close()` 与 shutdown 生命周期；`ProjectTaskBarrier` 仅组合包装同一实例，增加项目级 drain guard，不继承、不替换生产全局 TaskProtocol，也不复制任务状态。
 2. Close / Move 在关闭数据库前先进入项目 draining：禁止该项目新任务，取消可取消任务，等待不可取消原子阶段进入 terminal。
 3. Barrier 失败时项目继续保持打开；成功关闭/移动后释放项目 drain 标记，后续重新打开同一项目仍可启动任务。
 4. Planning disclosure mode 由 App Settings `defaultMode` 单一持有；子工作台只接收 `mode` 与 `onChangeMode`，不维护第二份 `professional` 状态。
@@ -81,18 +83,21 @@
 ## 实施结果
 
 - ProjectTaskBarrier 已覆盖同项目新任务阻断、可取消任务取消、不可取消原子阶段等待、超时保持项目打开以及 Close/Move 顺序。
+- 全局关闭链保持原生 `TaskProtocol`：项目级 Barrier 改为组合式协调层，Generation 与 ProjectWorkspace 共用同一 Barrier 视图；专项 Unit 锁定项目 drain 与全局 `beginDrain()/close()` 可独立收敛。
 - Planning disclosure mode 已收敛为 Settings 单真源。
 - Rhythm 已完成 `get` 纯读、`run/updateProfile` 写路径拆分；缺 Profile 的读取不落库。
 - Startup 已建立 `loaded / empty / degraded` 三态；Provider/Task/Continuation 失败不再覆写成空值；Task subscription 建立后主动重拉完整活动任务快照。
 - Timeline Event 已支持从 Renderer 选择现有事件、回填章节/地点/人物角色/依赖/时间字段并按原 `eventId` 更新。
 - 首轮 Ready Coverage 发现 TSX 未覆盖函数为 971，超过冻结预算 969；没有提高预算或扩大排除，而是增加真实 Unit 执行，覆盖 `PlanningModeWorkbench` 组件及两条受控模式切换回调。
-- 最终产品提交 `b126aec35e2efb562634ee10a86b50da1c947a78` 的 Draft Quality 已通过 Workspace、Boundary、Format、Lint、Typecheck；同一 Head 的 Security、Performance、Task Governance、PR Policy、Draft Evidence 均成功。
+- 首轮 Ready Electron E2E 的业务断言未先失败，统一卡在 `closeGracefully()`；根因范围收敛到全局关闭链所有权漂移。最终实现撤销项目 Task 子类替换生产全局 TaskProtocol 的拓扑，恢复成熟 Core drain/shutdown 边界。
+- 最终产品提交 `92fe88c8b39de748d180d21636a93bb7a272c1d3` 的 Draft Quality 已通过 Workspace、Boundary、Format、Lint、Typecheck；同一实现后的治理闭包只修改任务卡、Runtime、Evidence 与 PR 元数据。
 
 ## 永久验收
 
 - AI 运行中关闭项目：可取消阶段先 cancel，任务 terminal 后数据库才关闭。
 - AI `saving_candidate` 等不可取消阶段移动项目：等待原子阶段完成后移动，或返回明确稳定错误；不得半关闭。
 - draining 期间同项目不能启动新 Task；其他项目/无项目 Task 不受影响。
+- 项目级 Barrier 存在时，全局 `TaskProtocol.beginDrain()/close()` 保持独立正常收敛，应用关闭不得因项目生命周期协调器挂死。
 - Planning 模式切换只有一个真源，父子 UI 不发生状态漂移。
 - read-only 打开检查/节奏页面：已有 Rhythm 数据可读，更新与运行写命令被拒绝。
 - Profile 不存在时读取返回默认投影，但数据库不新增 `genre_rhythm_profiles` 行。
@@ -102,7 +107,7 @@
 
 ## 回滚策略
 
-整体回退 M10-17 产品实现与 UI 扩展；不回滚 M10-16 与任何 Migration。禁止恢复项目生命周期无 Task 屏障、Rhythm 读路径隐式写入或 Startup 失败即空数据的旧行为。
+整体回退 M10-17 产品实现与 UI 扩展；不回滚 M10-16 与任何 Migration。禁止恢复项目生命周期无 Task 屏障、项目 Task 子类替换生产全局 TaskProtocol、Rhythm 读路径隐式写入或 Startup 失败即空数据的旧行为。
 
 ## 完成条件
 

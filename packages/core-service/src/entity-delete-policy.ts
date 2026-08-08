@@ -43,8 +43,9 @@ export function entityReferenceBlockers(
   const blockers: EntityReferenceBlocker[] = [];
 
   for (const table of tables) {
-    const rows = database.prepare(`PRAGMA foreign_key_list(${safeIdentifier(table)})`).all() as unknown as
-      ForeignKeyRow[];
+    const rows = database
+      .prepare(`PRAGMA foreign_key_list(${safeIdentifier(table)})`)
+      .all() as unknown as ForeignKeyRow[];
     const groups = new Map<number, ForeignKeyRow[]>();
     for (const row of rows) {
       if (row.table !== 'entities') continue;
@@ -77,7 +78,9 @@ export function entityReferenceBlockers(
   return blockers.sort((left, right) => left.source.localeCompare(right.source, 'en'));
 }
 
-export function entityReferenceBlockerMessage(blocker: EntityReferenceBlocker): string {
+export function entityReferenceBlockerMessage(
+  blocker: EntityReferenceBlocker,
+): string {
   switch (blocker.source) {
     case 'scene_beat_entities.entity_id':
       return 'Remove SceneBeat references before permanent deletion.';

@@ -192,9 +192,9 @@ test('writes, displays and edits continuity data through the real Electron proce
 
     const relationshipEditor = page.locator('[data-continuity-relationship-editor]');
     await expect(relationshipEditor).toBeVisible();
-    await relationshipEditor.locator('[data-timeline-event-editor-selector]').selectOption(
-      bridgeResult.eventId,
-    );
+    await relationshipEditor
+      .locator('[data-timeline-event-editor-selector]')
+      .selectOption(bridgeResult.eventId);
     const timelineForm = relationshipEditor.locator(
       `[data-timeline-event-editor="${bridgeResult.eventId}"]`,
     );

@@ -121,7 +121,7 @@ pnpm test:e2e
 
 - 复现 Provider 首地址收包后断连，确认第二地址不再收到同一 POST。
 - 复现首地址未建立连接，确认仍可安全切换到下一地址。
-- 检查 Foundation manifest 只包含自动发现且可构建的非桌面 workspace。
+- 检查 Foundation manifest 只包含自动发现且 `policy.buildable=true` 的 workspace，并排除非 buildable 聚合 workspace `apps/desktop`。
 - 检查 M9-01 补录明确标注追溯来源，M10-03 原 Evidence 文件未被修改。
 
 ## Evidence

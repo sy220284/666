@@ -49,7 +49,9 @@ describe('M10-17 rhythm read/write ownership', () => {
         projectParent,
       );
       await workspace.writeProject(randomUUID(), project.projectId, (database) => {
-        database.prepare('DELETE FROM genre_rhythm_profiles WHERE project_id = ?').run(project.projectId);
+        database
+          .prepare('DELETE FROM genre_rhythm_profiles WHERE project_id = ?')
+          .run(project.projectId);
       });
 
       const countProfiles = (): number =>

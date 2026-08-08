@@ -1,0 +1,26 @@
+# M10-19 verification commands
+# implementationCommit=5c9d5912149cd72beb4dddc2ac2dc0e88540fc27
+
+# Static and governance
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+
+# Product verification
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# Permanent focused regressions
+pnpm vitest run tests/unit/m10-19-lifecycle-renderer-recovery.test.ts
+pnpm vitest run tests/integration/m10-19-authority-governance.test.ts

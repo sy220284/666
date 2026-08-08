@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 describe('M8-02 backup failure ledger migration', () => {
-  it('creates a strict project-scoped failure ledger at schema 29', async () => {
+  it('preserves the schema 29 failure ledger in the latest schema', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-backup-failure-migration-'));
     directories.push(root);
     const parent = path.join(root, 'projects');
@@ -52,7 +52,7 @@ describe('M8-02 backup failure ledger migration', () => {
     });
     try {
       expect(database.prepare('SELECT schema_version FROM projects').get()).toEqual({
-        schema_version: 29n,
+        schema_version: 30n,
       });
       expect(
         database

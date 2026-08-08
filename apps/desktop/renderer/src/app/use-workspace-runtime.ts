@@ -35,6 +35,7 @@ export function useWorkspaceRuntime({
   readonly route: RendererRouteId;
 }) {
   const attentionGeneration = useRef(0);
+  const taskRefreshGeneration = useRef(0);
   const projectIdRef = useRef<string | undefined>(activeProject?.projectId);
   const [coreStatus, setCoreStatus] = useState<CoreStatus | null>(null);
   const [tasks, setTasks] = useState<readonly TaskSnapshot[]>([]);
@@ -55,7 +56,16 @@ export function useWorkspaceRuntime({
   const projectId = activeProject?.projectId;
   projectIdRef.current = projectId;
   const refreshTasks = useCallback(async (): Promise<void> => {
+    const generation = taskRefreshGeneration.current + 1;
+    taskRefreshGeneration.current = generation;
+    const requestedProjectId = projectIdRef.current;
     const outcome = await bridge.task.listActive(projectIdRef.current, { mode: 'replace' });
+    if (
+      taskRefreshGeneration.current !== generation ||
+      projectIdRef.current !== requestedProjectId
+    ) {
+      return;
+    }
     if (outcome.state === 'success') {
       setTasks(outcome.data.tasks);
       setStartupResourceState('tasks', outcome.data.tasks.length === 0 ? 'empty' : 'loaded');
@@ -71,6 +81,9 @@ export function useWorkspaceRuntime({
 
   useEffect(() => {
     void refreshTasks();
+    return () => {
+      taskRefreshGeneration.current += 1;
+    };
   }, [projectId, refreshTasks]);
 
   const refreshWorkspaceAttention = useCallback(async (): Promise<void> => {

@@ -3,6 +3,7 @@ import {
   validateChapterRange,
   validateEvidence,
 } from '../continuity-validation.js';
+import { unresolvedArcMilestoneHitDependencies } from '../narrative-planning/arc-milestone-policy.js';
 import { recordDerivedInvalidation } from './derived-invalidation-service.js';
 import { assertFinalVersion, snapshotRow } from './ending-snapshot-service.js';
 import {
@@ -226,31 +227,6 @@ export function applyEntityState(
     );
 }
 
-export function assertMilestoneDependenciesHit(
-  connection: DatabaseSync,
-  projectId: string,
-  milestoneId: string,
-): void {
-  const unresolved = connection
-    .prepare(
-      `SELECT 1
-         FROM arc_milestone_dependencies dependency_link
-         JOIN arc_milestones dependency
-           ON dependency.id = dependency_link.dependency_milestone_id
-          AND dependency.project_id = dependency_link.project_id
-        WHERE dependency_link.project_id = ? AND dependency_link.milestone_id = ?
-          AND dependency.status <> 'hit'
-        LIMIT 1`,
-    )
-    .get(projectId, milestoneId);
-  if (unresolved) {
-    throw new StateProposalServiceError(
-      'STATE_PROPOSAL_CONFLICT',
-      'ArcMilestone dependencies must be hit before proposal acceptance.',
-    );
-  }
-}
-
 export function applyArcMilestone(
   connection: DatabaseSync,
   proposal: ReturnType<typeof StateProposalSchema.parse>,
@@ -275,7 +251,24 @@ export function applyArcMilestone(
     chapterPosition(connection, proposal.projectId, resolved.actualChapterId);
   }
   if (resolved.status === 'hit') {
-    assertMilestoneDependenciesHit(connection, proposal.projectId, proposal.arcMilestoneId);
+    if (!resolved.actualChapterId) {
+      throw new StateProposalServiceError(
+        'STATE_PROPOSAL_INVALID',
+        'A hit ArcMilestone proposal requires an actual chapter.',
+      );
+    }
+    const unresolved = unresolvedArcMilestoneHitDependencies(
+      connection,
+      proposal.projectId,
+      proposal.arcMilestoneId,
+      resolved.actualChapterId,
+    );
+    if (unresolved.length > 0) {
+      throw new StateProposalServiceError(
+        'STATE_PROPOSAL_CONFLICT',
+        `ArcMilestone dependencies are not satisfied: ${unresolved.join(' ')}`,
+      );
+    }
   }
   connection
     .prepare(

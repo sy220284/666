@@ -23,6 +23,7 @@ import {
   type VersionType,
 } from '@worldforge/contracts';
 
+import { readActiveChapterScope, readActiveDraftScope } from './active-structure.js';
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { stableJson } from './stable-json.js';
@@ -190,15 +191,32 @@ function versionSelect(where: string): string {
          WHERE ${where}`;
 }
 
+function assertActiveChapter(
+  database: ProjectDatabase,
+  projectId: string,
+  chapterId: string,
+): void {
+  if (!readActiveChapterScope(database, projectId, chapterId)) {
+    throw new VersionServiceError(
+      'VERSION_CHAPTER_MISMATCH',
+      'The active chapter was not found in the active project structure.',
+    );
+  }
+}
+
 function assertParentVersion(database: ProjectDatabase, input: ParsedVersionCreateInput): void {
   if (!input.parentVersionId) return;
   const parent = database
-    .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
+    .prepare(
+      versionSelect(
+        'v.id = ? AND v.chapter_id = ? AND p.id = ? AND c.deleted_at IS NULL AND vo.deleted_at IS NULL',
+      ),
+    )
     .get(input.parentVersionId, input.chapterId, input.projectId);
   if (!parent) {
     throw new VersionServiceError(
       'VERSION_PARENT_CONFLICT',
-      'The parent Version does not belong to this chapter and project.',
+      'The parent Version does not belong to this active chapter and project.',
     );
   }
 }
@@ -224,7 +242,8 @@ function assertSourceCandidate(database: ProjectDatabase, input: ParsedVersionCr
          FROM candidates ca
          JOIN chapters ch ON ch.id = ca.chapter_id
          JOIN volumes vo ON vo.id = ch.volume_id
-        WHERE ca.id = ? AND ca.chapter_id = ? AND vo.project_id = ?`,
+        WHERE ca.id = ? AND ca.chapter_id = ? AND vo.project_id = ?
+          AND ch.deleted_at IS NULL AND vo.deleted_at IS NULL`,
     )
     .get(input.sourceCandidateId, input.chapterId, input.projectId) as
     CandidateSourceRow | undefined;
@@ -235,7 +254,7 @@ function assertSourceCandidate(database: ProjectDatabase, input: ParsedVersionCr
   ) {
     throw new VersionServiceError(
       'VERSION_CANDIDATE_CONFLICT',
-      'The source Candidate does not match this Draft and Revision.',
+      'The source Candidate does not match this active Draft and Revision.',
     );
   }
 }
@@ -370,19 +389,11 @@ export class VersionService {
     const versionId = this.#idFactory();
     const createdAt = this.#clock.now().toISOString();
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
-      const draft = database
-        .prepare(
-          `SELECT d.id AS draftId, d.revision AS revision
-             FROM chapters c
-             JOIN volumes vo ON vo.id = c.volume_id
-             JOIN drafts d ON d.id = c.active_draft_id
-            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL`,
-        )
-        .get(input.chapterId, input.projectId) as DraftRow | undefined;
-      if (!draft || draft.draftId !== input.draftId) {
+      const activeDraft = readActiveDraftScope(database, input.projectId, input.draftId);
+      if (!activeDraft || activeDraft.chapterId !== input.chapterId) {
         throw new VersionServiceError('VERSION_DRAFT_NOT_FOUND', 'The active Draft was not found.');
       }
-      if (Number(draft.revision) !== input.baseRevision) {
+      if (Number(activeDraft.draftRevision) !== input.baseRevision) {
         throw new VersionServiceError(
           'VERSION_REVISION_CONFLICT',
           'The Draft Revision changed before Version creation.',
@@ -412,20 +423,18 @@ export class VersionService {
   list(raw: { projectId: string; chapterId: string }): VersionList {
     const input = VersionChapterInputSchema.parse(raw);
     return this.#workspace.readProject(input.projectId, (database) => {
-      const chapter = database
-        .prepare(
-          `SELECT c.final_version_id AS finalVersionId
-             FROM chapters c
-             JOIN volumes vo ON vo.id = c.volume_id
-            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL`,
-        )
-        .get(input.chapterId, input.projectId) as { finalVersionId: string | null } | undefined;
+      const chapter = readActiveChapterScope(database, input.projectId, input.chapterId);
       if (!chapter) {
-        throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The chapter was not found.');
+        throw new VersionServiceError(
+          'VERSION_CHAPTER_MISMATCH',
+          'The active chapter was not found.',
+        );
       }
       const rows = database
         .prepare(
-          `${versionSelect('v.chapter_id = ? AND p.id = ?')}
+          `${versionSelect(
+            'v.chapter_id = ? AND p.id = ? AND c.deleted_at IS NULL AND vo.deleted_at IS NULL',
+          )}
            ORDER BY v.created_at DESC, v.id DESC`,
         )
         .all(input.chapterId, input.projectId) as unknown as VersionRow[];
@@ -446,17 +455,23 @@ export class VersionService {
   setFinal(requestId: string, raw: VersionSetFinalInput): Promise<VersionSummary> {
     const input = VersionSetFinalInputSchema.parse(raw);
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
+      assertActiveChapter(database, input.projectId, input.chapterId);
       const existing = this.#summaryFromDatabase(database, input);
       const changed = database
         .prepare(
           `UPDATE chapters
               SET final_version_id = ?, status = ?
             WHERE id = ? AND deleted_at IS NULL
-              AND volume_id IN (SELECT id FROM volumes WHERE project_id = ?)`,
+              AND volume_id IN (
+                SELECT id FROM volumes WHERE project_id = ? AND deleted_at IS NULL
+              )`,
         )
         .run(input.versionId, 'finalized', input.chapterId, input.projectId);
       if (Number(changed.changes) !== 1) {
-        throw new VersionServiceError('VERSION_CHAPTER_MISMATCH', 'The chapter was not found.');
+        throw new VersionServiceError(
+          'VERSION_CHAPTER_MISMATCH',
+          'The active chapter was not found.',
+        );
       }
       return VersionSummarySchema.parse({ ...existing, finalized: true });
     });
@@ -468,17 +483,13 @@ export class VersionService {
     const checkpointVersionId = this.#idFactory();
     const now = this.#clock.now().toISOString();
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
+      assertActiveChapter(database, input.projectId, input.chapterId);
       const version = readVersionDocument(database, input);
-      const current = database
-        .prepare(
-          `SELECT d.id AS draftId, d.revision AS revision
-             FROM chapters c
-             JOIN volumes vo ON vo.id = c.volume_id
-             JOIN drafts d ON d.id = c.active_draft_id
-            WHERE c.id = ? AND vo.project_id = ? AND c.deleted_at IS NULL
-              AND d.status = 'active'`,
-        )
-        .get(input.chapterId, input.projectId) as DraftRow | undefined;
+      const activeDraft = readActiveDraftScope(database, input.projectId, input.expectedDraftId);
+      const current: DraftRow | undefined =
+        activeDraft && activeDraft.chapterId === input.chapterId
+          ? { draftId: activeDraft.draftId, revision: activeDraft.draftRevision }
+          : undefined;
       if (!current) {
         throw new VersionServiceError('VERSION_DRAFT_NOT_FOUND', 'The active Draft was not found.');
       }
@@ -550,9 +561,12 @@ export class VersionService {
       const activated = database
         .prepare(
           `UPDATE chapters SET active_draft_id = ?, status = ?
-            WHERE id = ? AND active_draft_id = ?`,
+            WHERE id = ? AND active_draft_id = ? AND deleted_at IS NULL
+              AND volume_id IN (
+                SELECT id FROM volumes WHERE project_id = ? AND deleted_at IS NULL
+              )`,
         )
-        .run(newDraftId, 'writing', input.chapterId, current.draftId);
+        .run(newDraftId, 'writing', input.chapterId, current.draftId, input.projectId);
       if (Number(activated.changes) !== 1) {
         throw new VersionServiceError(
           'VERSION_REVISION_CONFLICT',
@@ -597,7 +611,11 @@ export class VersionService {
 
   #summaryFromDatabase(database: ProjectDatabase, input: VersionGetInput): VersionSummary {
     const row = database
-      .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
+      .prepare(
+        versionSelect(
+          'v.id = ? AND v.chapter_id = ? AND p.id = ? AND c.deleted_at IS NULL AND vo.deleted_at IS NULL',
+        ),
+      )
       .get(input.versionId, input.chapterId, input.projectId) as VersionRow | undefined;
     if (!row) throw new VersionServiceError('VERSION_NOT_FOUND', 'The Version was not found.');
     return mapVersion(row);

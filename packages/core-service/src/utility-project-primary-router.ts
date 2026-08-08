@@ -20,6 +20,7 @@ export async function routePrimaryProjectOperation(
   requestId: string,
   operation: CoreProjectOperation,
 ): Promise<CoreProjectResult | null> {
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- This partial router returns null so unmatched operations can be delegated.
   switch (operation.operation) {
     case PROJECT_WORKSPACE_COMMANDS.getActive:
       return success(operation.operation, services.projectWorkspace.activeProject);

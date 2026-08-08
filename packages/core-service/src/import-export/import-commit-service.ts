@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 import {
@@ -31,6 +31,47 @@ import {
   type ImportPlanStore,
 } from './import-export-model.js';
 
+const IMPORT_COMMIT_RECEIPT_COMMAND = 'import.commit';
+
+function commandFingerprint(input: ImportCommitInput): string {
+  return createHash('sha256')
+    .update(stable({ operation: IMPORT_COMMIT_RECEIPT_COMMAND, input }), 'utf8')
+    .digest('hex');
+}
+
+function derivedRequestId(requestId: string, purpose: string): string {
+  const bytes = Buffer.from(
+    createHash('sha256').update(`${requestId}:${purpose}`, 'utf8').digest().subarray(0, 16),
+  );
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const value = bytes.toString('hex');
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
+function receiptResult(
+  row: { readonly fingerprint: string; readonly resultJson: string } | undefined,
+  requestId: string,
+  fingerprint: string,
+): ImportCommitResult | undefined {
+  if (!row) return undefined;
+  if (row.fingerprint !== fingerprint) {
+    throw new ImportExportServiceError(
+      'IMPORT_COMMIT_FAILED',
+      'The import requestId was already used with a different commit payload.',
+    );
+  }
+  try {
+    return ImportCommitResultSchema.parse(JSON.parse(row.resultJson) as unknown);
+  } catch (error) {
+    throw new ImportExportServiceError(
+      'IMPORT_COMMIT_FAILED',
+      'The durable import command receipt is invalid.',
+      { cause: error },
+    );
+  }
+}
+
 export class ImportCommitService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #recovery: RecoveryService;
@@ -58,7 +99,7 @@ export class ImportCommitService {
 
   async commitImport(requestId: string, raw: ImportCommitInput): Promise<ImportCommitResult> {
     const input = ImportCommitInputSchema.parse(raw);
-    const fingerprint = stable({ operation: 'import.commit', input });
+    const fingerprint = commandFingerprint(input);
     try {
       const existing = this.#commits.get<ImportCommitResult>(requestId, fingerprint);
       if (existing) return existing;
@@ -73,12 +114,40 @@ export class ImportCommitService {
       throw error;
     }
 
-    return this.#commits.remember(requestId, fingerprint, this.#commitImportOnce(requestId, input));
+    const durable = this.#readReceipt(requestId, input.projectId, fingerprint);
+    if (durable) return durable;
+    return this.#commits.remember(
+      requestId,
+      fingerprint,
+      this.#commitImportOnce(requestId, input, fingerprint),
+    );
+  }
+
+  #readReceipt(
+    requestId: string,
+    projectId: string,
+    fingerprint: string,
+  ): ImportCommitResult | undefined {
+    return this.#workspace.readProject(projectId, (database) =>
+      receiptResult(
+        database
+          .prepare(
+            `SELECT fingerprint, result_json AS resultJson
+               FROM command_receipts
+              WHERE request_id = ? AND command_name = ?`,
+          )
+          .get(requestId, IMPORT_COMMIT_RECEIPT_COMMAND) as
+          { readonly fingerprint: string; readonly resultJson: string } | undefined,
+        requestId,
+        fingerprint,
+      ),
+    );
   }
 
   async #commitImportOnce(
     requestId: string,
     input: ImportCommitInput,
+    fingerprint: string,
   ): Promise<ImportCommitResult> {
     const stored = this.#plans.get(input.planId);
     if (
@@ -105,10 +174,13 @@ export class ImportCommitService {
         'Imported chapter titles must be unique inside the new volume.',
       );
     }
-    const checkpoint = await this.#recovery.createOperationCheckpoint(this.#idFactory(), {
-      projectId: input.projectId,
-      operation: 'import',
-    });
+    const checkpoint = await this.#recovery.createOperationCheckpoint(
+      derivedRequestId(requestId, 'import-checkpoint'),
+      {
+        projectId: input.projectId,
+        operation: 'import',
+      },
+    );
     this.#faultInjector?.('after-checkpoint');
     const now = this.#clock.now().toISOString();
     const volumeId = this.#idFactory();
@@ -121,6 +193,20 @@ export class ImportCommitService {
         requestId,
         input.projectId,
         (database) => {
+          const replay = receiptResult(
+            database
+              .prepare(
+                `SELECT fingerprint, result_json AS resultJson
+                   FROM command_receipts
+                  WHERE request_id = ? AND command_name = ?`,
+              )
+              .get(requestId, IMPORT_COMMIT_RECEIPT_COMMAND) as
+              { readonly fingerprint: string; readonly resultJson: string } | undefined,
+            requestId,
+            fingerprint,
+          );
+          if (replay) return replay;
+
           const currentOrder = database
             .prepare(
               'SELECT COALESCE(MAX(order_key), 0) AS orderKey FROM volumes WHERE project_id = ? AND deleted_at IS NULL',
@@ -258,7 +344,7 @@ export class ImportCommitService {
           database
             .prepare('UPDATE projects SET updated_at = ? WHERE id = ?')
             .run(now, input.projectId);
-          return ImportCommitResultSchema.parse({
+          const committed = ImportCommitResultSchema.parse({
             projectId: input.projectId,
             checkpointId: checkpoint.backupId,
             volumeId,
@@ -267,6 +353,20 @@ export class ImportCommitService {
             versionIds,
             importedChapterCount: chapterIds.length,
           });
+          database
+            .prepare(
+              `INSERT INTO command_receipts(
+                 request_id, command_name, fingerprint, result_json, created_at
+               ) VALUES(?, ?, ?, ?, ?)`,
+            )
+            .run(
+              requestId,
+              IMPORT_COMMIT_RECEIPT_COMMAND,
+              fingerprint,
+              JSON.stringify(committed),
+              now,
+            );
+          return committed;
         },
         { operation: 'import.commit', input },
       );

@@ -11,6 +11,7 @@ import { RendererStatusArbitrator, type RendererStatus } from '../runtime/status
 import type { WorkspaceAttention } from '../runtime/workspace-attention.js';
 import type { HomeHealthSignal } from '../shell/home-dashboard-model.js';
 import type { FailureView } from './app-shell-helpers.js';
+import type { WorkspaceStartupResourceStates } from './use-workspace-runtime.js';
 
 export function buildHomeHealthSignals({
   activeProject,
@@ -61,6 +62,7 @@ export function buildGlobalStatus({
   failure,
   message,
   recentProjects,
+  startupResources,
   tasks,
   workspaceAttention,
 }: {
@@ -71,6 +73,7 @@ export function buildGlobalStatus({
   readonly failure: FailureView | null;
   readonly message: string | null;
   readonly recentProjects: readonly RecentProject[];
+  readonly startupResources?: WorkspaceStartupResourceStates;
   readonly tasks: readonly TaskSnapshot[];
   readonly workspaceAttention: WorkspaceAttention;
 }): RendererStatus | null {
@@ -100,6 +103,24 @@ export function buildGlobalStatus({
       message: `作品处于只读保护：${activeProject.readOnlyReason ?? '兼容性保护'}。`,
       persistence: 'sticky',
       createdAt: 3,
+    });
+  }
+  const degradedResources = (
+    [
+      ['tasks', '任务状态'],
+      ['providers', 'AI连接'],
+      ['continuation', '续写位置'],
+    ] as const
+  )
+    .filter(([resource]) => startupResources?.[resource] === 'degraded')
+    .map(([, label]) => label);
+  if (degradedResources.length > 0) {
+    arbitrator.publish({
+      id: 'startup-degraded',
+      priority: 'P1',
+      message: `${degradedResources.join('、')}读取失败；界面保留上一次可信值，请重新读取后再据此判断当前状态。`,
+      persistence: 'sticky',
+      createdAt: 71,
     });
   }
   if (tasks.length > 0) {

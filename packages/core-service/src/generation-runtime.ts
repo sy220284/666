@@ -208,6 +208,66 @@ export class GenerationRuntime {
     await this.#executions.get(runId)?.completion;
   }
 
+  async cancelTask(taskId: string, projectId: string): Promise<boolean> {
+    const found = [...this.#executions.entries()].find(
+      ([, execution]) => execution.taskId === taskId && execution.projectId === projectId,
+    );
+    if (!found) return false;
+    const [runId, execution] = found;
+    const snapshot = this.#tasks.getSnapshot(taskId, projectId);
+    if (snapshot.status !== 'queued' && snapshot.status !== 'running') {
+      await execution.completion;
+      return true;
+    }
+    try {
+      await this.cancel(randomUUID(), { projectId, runId });
+      await execution.completion;
+    } catch (error) {
+      if (error instanceof GenerationRunServiceError && error.code === 'GENERATION_RUN_TERMINAL') {
+        await execution.completion;
+        return true;
+      }
+      if (error instanceof TaskProtocolError && error.code === 'COMMON_CONFLICT_003') {
+        await execution.completion;
+        return true;
+      }
+      throw error;
+    }
+    return true;
+  }
+
+  async drainProject(projectId: string): Promise<void> {
+    const executions = [...this.#executions.values()].filter(
+      (execution) => execution.projectId === projectId,
+    );
+    for (const execution of executions) {
+      try {
+        await this.cancelTask(execution.taskId, execution.projectId);
+      } catch (error) {
+        if (error instanceof TaskProtocolError && error.code === 'TASK_NOT_CANCELLABLE_001') {
+          await execution.completion;
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  async drainAll(): Promise<void> {
+    const executions = [...this.#executions.values()];
+    for (const execution of executions) {
+      try {
+        await this.cancelTask(execution.taskId, execution.projectId);
+      } catch (error) {
+        if (error instanceof TaskProtocolError && error.code === 'TASK_NOT_CANCELLABLE_001') {
+          await execution.completion;
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
   async cancel(
     requestId: string,
     input: { readonly projectId: string; readonly runId: string },
@@ -227,7 +287,7 @@ export class GenerationRuntime {
       const barrier = cancellationBarrier();
       this.#cancellations.set(input.runId, barrier);
       try {
-        const cancelled = await this.#runs.cancel(
+        const persisted = await this.#runs.cancel(
           requestId,
           input,
           snapshot?.previewTruncated ? undefined : snapshot?.previewText,
@@ -241,7 +301,7 @@ export class GenerationRuntime {
             if (error.code === 'TASK_NOT_CANCELLABLE_001') throw error;
           }
         }
-        return cancelled;
+        return persisted;
       } catch (error) {
         barrier.resolve(false);
         throw error;
@@ -286,12 +346,16 @@ export class GenerationRuntime {
   }
 
   #rememberExecution(run: GenerationRun, completion: Promise<void>): void {
-    this.#executions.set(run.runId, {
+    const execution: Execution = {
       projectId: run.projectId,
       taskId: run.taskId,
       completion,
-    });
-    this.#trimExecutions();
+    };
+    this.#executions.set(run.runId, execution);
+    const clear = (): void => {
+      if (this.#executions.get(run.runId) === execution) this.#executions.delete(run.runId);
+    };
+    void completion.then(clear, clear);
   }
 
   async #cancelled(runId: string): Promise<boolean> {
@@ -419,14 +483,6 @@ export class GenerationRuntime {
         }
       }
       task.fail(mapped.code, mapped.retryable);
-    }
-  }
-
-  #trimExecutions(): void {
-    while (this.#executions.size > 1_000) {
-      const oldest = this.#executions.keys().next().value;
-      if (typeof oldest !== 'string') break;
-      this.#executions.delete(oldest);
     }
   }
 }

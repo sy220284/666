@@ -1,11 +1,8 @@
-import {
-  PROTOCOL_VERSION,
-  TaskCommandResultSchema,
-  type CoreControlMessage,
-} from '@worldforge/contracts';
+import { PROTOCOL_VERSION, type CoreControlMessage } from '@worldforge/contracts';
 
 import { runWithCommandIdentity } from './command-identity-context.js';
 import type { UtilityControlContext } from './utility-control-context.js';
+import { dispatchUtilityTaskCommand } from './utility-control-task-command.js';
 import { windowPreferencesError } from './utility-errors.js';
 import { adaptTransferredPort, type UtilityParentMessage } from './utility-runtime-context.js';
 
@@ -16,6 +13,7 @@ export function dispatchUtilityLifecycle(
 ): void {
   const { options, state } = context;
 
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- Lifecycle routing intentionally receives the full union after operation messages were delegated.
   switch (message.type) {
     case 'core.ping':
       context.send({
@@ -27,30 +25,7 @@ export function dispatchUtilityLifecycle(
       });
       return;
     case 'core.command':
-      try {
-        context.send({
-          type: 'core.command-result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId: message.requestId,
-          result: options.taskCommands.execute(message.envelope),
-        });
-      } catch {
-        context.report('task-command.execute.failed');
-        context.send({
-          type: 'core.command-result',
-          protocolVersion: PROTOCOL_VERSION,
-          requestId: message.requestId,
-          result: TaskCommandResultSchema.parse({
-            ok: false,
-            requestId: message.requestId,
-            error: {
-              code: 'COMMON_INTERNAL_999',
-              message: 'The task command could not be completed.',
-              retryable: true,
-            },
-          }),
-        });
-      }
+      dispatchUtilityTaskCommand(context, message);
       return;
     case 'core.attach-task-port': {
       const port = ports[0];
@@ -106,9 +81,13 @@ export function dispatchUtilityLifecycle(
         },
       );
       return;
-    case 'core.drain':
+    case 'core.drain': {
       state.acceptingAppDataOperations = false;
-      void Promise.all([options.taskProtocol.beginDrain(), ...state.activeAppDataOperations])
+      const generationDrain = options.generationRuntime?.drainAll() ?? Promise.resolve();
+      void generationDrain
+        .then(() =>
+          Promise.all([options.taskProtocol.beginDrain(), ...state.activeAppDataOperations]),
+        )
         .then(() => {
           context.send({
             type: 'core.drained',
@@ -119,6 +98,7 @@ export function dispatchUtilityLifecycle(
         })
         .catch(() => context.report('core.drain.failed'));
       return;
+    }
     case 'core.shutdown':
       if (
         options.taskProtocol.accepting ||

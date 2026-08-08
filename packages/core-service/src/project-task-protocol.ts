@@ -14,15 +14,20 @@ export interface ProjectTaskDrainOptions {
   readonly pollIntervalMs?: number;
 }
 
+export type ProjectTaskDomainCanceller = (taskId: string, projectId: string) => Promise<boolean>;
+
 /**
  * Project-scoped lifecycle barrier over the authoritative TaskProtocol instance.
  * The global TaskProtocol remains unchanged and continues to own Core drain/shutdown.
+ * Domain-owned tasks may register one canceller so their persistent lifecycle reaches
+ * a terminal state before the project database is closed or moved.
  */
 export class ProjectTaskBarrier {
   readonly #tasks: TaskProtocol;
   readonly #drainingProjects = new Set<string>();
   readonly #timeoutMs: number;
   readonly #pollIntervalMs: number;
+  #domainCanceller: ProjectTaskDomainCanceller | undefined;
 
   constructor(tasks: TaskProtocol, options: ProjectTaskDrainOptions = {}) {
     this.#tasks = tasks;
@@ -31,6 +36,13 @@ export class ProjectTaskBarrier {
     if (this.#timeoutMs < 1 || this.#pollIntervalMs < 1) {
       throw new Error('PROJECT_TASK_DRAIN_CONFIGURATION_INVALID');
     }
+  }
+
+  setDomainCanceller(canceller: ProjectTaskDomainCanceller): void {
+    if (this.#domainCanceller && this.#domainCanceller !== canceller) {
+      throw new Error('PROJECT_TASK_DOMAIN_CANCELLER_ALREADY_REGISTERED');
+    }
+    this.#domainCanceller = canceller;
   }
 
   startTask(options: StartTaskOptions): RunningTask {
@@ -82,7 +94,7 @@ export class ProjectTaskBarrier {
     while (true) {
       const active = this.#tasks.listActive(projectId);
       if (active.length === 0) return;
-      this.#cancelCancellable(active, projectId);
+      await this.#cancelCancellable(active, projectId);
       if (this.#tasks.listActive(projectId).length === 0) return;
       if (Date.now() - startedAt >= this.#timeoutMs) {
         throw new TaskProtocolError(
@@ -95,9 +107,12 @@ export class ProjectTaskBarrier {
     }
   }
 
-  #cancelCancellable(tasks: readonly TaskSnapshot[], projectId: string): void {
+  async #cancelCancellable(tasks: readonly TaskSnapshot[], projectId: string): Promise<void> {
     for (const task of tasks) {
       try {
+        if (this.#domainCanceller && (await this.#domainCanceller(task.taskId, projectId))) {
+          continue;
+        }
         this.#tasks.cancel(task.taskId, projectId);
       } catch (error) {
         if (error instanceof TaskProtocolError && error.code === 'TASK_NOT_CANCELLABLE_001') {

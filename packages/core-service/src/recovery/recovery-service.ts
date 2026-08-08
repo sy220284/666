@@ -1,9 +1,7 @@
 import {
-  BackupFailureRecordSchema,
   BackupPolicySchema,
   RecoveryCleanupApplyInputSchema,
   RecoveryDailyBackupInputSchema,
-  RecoveryVersionSummarySchema,
   type BackupCleanupPreview,
   type BackupPolicy,
   type BackupRecord,
@@ -111,61 +109,7 @@ export class RecoveryService {
 
   getOverview(projectId: string): Promise<RecoveryOverview> {
     const project = this.#workspace.assertActiveProject(projectId);
-    if (project.databaseMode === 'read-write') {
-      this.#workspace.readProject(projectId, (database) => {
-        database
-          .prepare(
-            `SELECT id AS failureId, project_id AS projectId, operation,
-                    backup_track AS track, error_code AS errorCode,
-                    occurred_at AS occurredAt, resolved_at AS resolvedAt
-               FROM backup_failures
-              WHERE project_id = ? AND resolved_at IS NULL
-              ORDER BY occurred_at DESC, id DESC
-              LIMIT 20`,
-          )
-          .all(projectId)
-          .forEach((row) => BackupFailureRecordSchema.parse(row));
-
-        database
-          .prepare(
-            `SELECT v.id AS versionId, c.id AS chapterId, c.title AS chapterTitle,
-                    v.title AS versionTitle, v.word_count AS wordCount,
-                    v.created_at AS createdAt,
-                    CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized
-               FROM versions v
-               JOIN chapters c ON c.id = v.chapter_id
-               JOIN volumes vo ON vo.id = c.volume_id
-              WHERE vo.project_id = ?
-              ORDER BY v.created_at DESC, v.id DESC`,
-          )
-          .all(projectId)
-          .forEach((row) =>
-            RecoveryVersionSummarySchema.parse({
-              versionId: String(row.versionId),
-              chapterId: String(row.chapterId),
-              chapterTitle: String(row.chapterTitle),
-              title: String(row.versionTitle),
-              wordCount: Number(row.wordCount),
-              createdAt: String(row.createdAt),
-              finalized: Number(row.finalized) === 1,
-            }),
-          );
-
-        this.#parsePersistedPolicy(
-          projectId,
-          database
-            .prepare(
-              `SELECT project_id AS projectId, policy_version AS policyVersion,
-                      daily_retention_count AS dailyRetentionCount,
-                      major_retention_count AS majorRetentionCount,
-                      major_retention_days AS majorRetentionDays,
-                      quota_bytes AS quotaBytes, updated_at AS updatedAt
-                 FROM backup_policies WHERE project_id = ?`,
-            )
-            .get(projectId),
-        );
-      });
-    }
+    if (project.databaseMode === 'read-write') this.#assertPersistedPolicyReadable(projectId);
     return this.#cleanup.getOverview(projectId);
   }
 
@@ -215,22 +159,26 @@ export class RecoveryService {
     return this.#versionExport.exportVersion(raw, targetDirectory);
   }
 
+  #assertPersistedPolicyReadable(projectId: string): void {
+    this.#workspace.readProject(projectId, (database) => {
+      const row = database
+        .prepare(
+          `SELECT project_id AS projectId, policy_version AS policyVersion,
+                  daily_retention_count AS dailyRetentionCount,
+                  major_retention_count AS majorRetentionCount,
+                  major_retention_days AS majorRetentionDays,
+                  quota_bytes AS quotaBytes, updated_at AS updatedAt
+             FROM backup_policies WHERE project_id = ?`,
+        )
+        .get(projectId);
+      this.#parsePersistedPolicy(projectId, row);
+    });
+  }
+
   #assertCleanupPolicyReadable(projectId: string): void {
     this.#workspace.assertActiveProject(projectId, true);
     try {
-      this.#workspace.readProject(projectId, (database) => {
-        const row = database
-          .prepare(
-            `SELECT project_id AS projectId, policy_version AS policyVersion,
-                    daily_retention_count AS dailyRetentionCount,
-                    major_retention_count AS majorRetentionCount,
-                    major_retention_days AS majorRetentionDays,
-                    quota_bytes AS quotaBytes, updated_at AS updatedAt
-               FROM backup_policies WHERE project_id = ?`,
-          )
-          .get(projectId);
-        this.#parsePersistedPolicy(projectId, row);
-      });
+      this.#assertPersistedPolicyReadable(projectId);
     } catch (error) {
       if (error instanceof RecoveryServiceError) throw error;
       throw new RecoveryServiceError(

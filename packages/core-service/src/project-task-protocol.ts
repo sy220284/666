@@ -24,10 +24,7 @@ export class ProjectTaskProtocol extends TaskProtocol {
   readonly #timeoutMs: number;
   readonly #pollIntervalMs: number;
 
-  constructor(
-    taskOptions: TaskProtocolOptions = {},
-    drainOptions: ProjectTaskDrainOptions = {},
-  ) {
+  constructor(taskOptions: TaskProtocolOptions = {}, drainOptions: ProjectTaskDrainOptions = {}) {
     super(taskOptions);
     this.#timeoutMs = drainOptions.timeoutMs ?? 30_000;
     this.#pollIntervalMs = drainOptions.pollIntervalMs ?? 20;

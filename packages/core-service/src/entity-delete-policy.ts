@@ -88,7 +88,7 @@ export function entityReferenceBlockerMessage(blocker: EntityReferenceBlocker): 
     case 'character_arcs.character_id':
       return 'Remove Character Arc references before permanent deletion.';
     case 'state_proposals.entity_id':
-      return 'Resolve the StateProposal retention dependency before permanent deletion.';
+      return 'StateProposal history retains this Entity; permanent deletion is unavailable while that history exists.';
     default:
       return `Remove ${blocker.source} references before permanent deletion.`;
   }

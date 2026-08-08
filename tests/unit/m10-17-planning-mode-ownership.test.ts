@@ -34,7 +34,7 @@ describe('M10-17 planning disclosure ownership', () => {
     expect(planningWorkbench).toContain('onChangeMode={props.onDisclosureModeChange}');
     expect(pages).toContain('disclosureMode={props.disclosureMode}');
     expect(pages).toContain(
-      "onDisclosureModeChange={(mode) => void props.onSaveSettings({ defaultMode: mode })}",
+      'onDisclosureModeChange={(mode) => void props.onSaveSettings({ defaultMode: mode })}',
     );
   });
 });

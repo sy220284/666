@@ -6,7 +6,7 @@
 > 执行分支：`work`  
 > 目标分支：`main`  
 > 主线基线：`1caa3fbccc15d84b35e82e80f415717d07a39ba7`  
-> 最终产品实现提交：`92fe88c8b39de748d180d21636a93bb7a272c1d3`
+> 最终产品实现提交：`d7216870d93c22070dc85ce46a1f44b1aa90f27d`
 
 ## 目标
 
@@ -73,11 +73,11 @@
 1. 原生 `TaskProtocol` 持有唯一活动 Task 状态，并继续独占 Core 全局 `beginDrain()/close()` 与 shutdown 生命周期；`ProjectTaskBarrier` 仅组合包装同一实例，增加项目级 drain guard，不继承、不替换生产全局 TaskProtocol，也不复制任务状态。
 2. Close / Move 在关闭数据库前先进入项目 draining：禁止该项目新任务，取消可取消任务，等待不可取消原子阶段进入 terminal。
 3. Barrier 失败时项目继续保持打开；成功关闭/移动后释放项目 drain 标记，后续重新打开同一项目仍可启动任务。
-4. Planning disclosure mode 由 App Settings `defaultMode` 单一持有；子工作台只接收 `mode` 与 `onChangeMode`，不维护第二份 `professional` 状态。
-5. Rhythm `get` 使用 `readProject`；Profile 不存在时返回内存默认投影，不写数据库。`run/updateProfile` 使用写路径。
-6. read-only-compatible 可读取 Rhythm Profile/Results；禁止修改 Profile 或触发需要写入的重新计算。
-7. Startup 对 Provider、Active Task、Continuation 读取结果显式区分 `loaded / empty / degraded`，失败保留此前权威值并显示失败状态。
-8. Task 通道建立/恢复后使用 `task.listActive(projectId)` 重新同步项目活动任务。
+4. Task event MessagePort 是应用会话级长连接，不随 `projectId` 切换销毁重建；项目切换和 Task event 只通过 `task.listActive(projectId)` 重同步当前项目权威活动任务快照。
+5. Planning disclosure mode 由 App Settings `defaultMode` 单一持有；子工作台只接收 `mode` 与 `onChangeMode`，不维护第二份 `professional` 状态。
+6. Rhythm `get` 使用 `readProject`；Profile 不存在时返回内存默认投影，不写数据库。`run/updateProfile` 使用写路径。
+7. read-only-compatible 可读取 Rhythm Profile/Results；禁止修改 Profile 或触发需要写入的重新计算。
+8. Startup 对 Provider、Active Task、Continuation 读取结果显式区分 `loaded / empty / degraded`，失败保留此前权威值并显示失败状态。
 9. Timeline Event 编辑复用既有 `eventId != null` Core update 路径；Renderer 选择已有事件后完整回填并携带原 eventId 保存。
 
 ## 实施结果
@@ -86,38 +86,42 @@
 - 全局关闭链保持原生 `TaskProtocol`：项目级 Barrier 改为组合式协调层，Generation 与 ProjectWorkspace 共用同一 Barrier 视图；专项 Unit 锁定项目 drain 与全局 `beginDrain()/close()` 可独立收敛。
 - Planning disclosure mode 已收敛为 Settings 单真源。
 - Rhythm 已完成 `get` 纯读、`run/updateProfile` 写路径拆分；缺 Profile 的读取不落库。
-- Startup 已建立 `loaded / empty / degraded` 三态；Provider/Task/Continuation 失败不再覆写成空值；Task subscription 建立后主动重拉完整活动任务快照。
+- Startup 已建立 `loaded / empty / degraded` 三态；Provider/Task/Continuation 失败不再覆写成空值。
+- Task 事件订阅恢复稳定单端口模型；`projectId` 变化只触发 scoped `listActive(projectId)` snapshot，不再触发 MessagePort cleanup/reconnect；Task event callback 读取最新 projectId 后重拉权威快照。
 - Timeline Event 已支持从 Renderer 选择现有事件、回填章节/地点/人物角色/依赖/时间字段并按原 `eventId` 更新。
 - 首轮 Ready Coverage 发现 TSX 未覆盖函数为 971，超过冻结预算 969；没有提高预算或扩大排除，而是增加真实 Unit 执行，覆盖 `PlanningModeWorkbench` 组件及两条受控模式切换回调。
-- 首轮 Ready Electron E2E 的业务断言未先失败，统一卡在 `closeGracefully()`；根因范围收敛到全局关闭链所有权漂移。最终实现撤销项目 Task 子类替换生产全局 TaskProtocol 的拓扑，恢复成熟 Core drain/shutdown 边界。
-- 最终产品提交 `92fe88c8b39de748d180d21636a93bb7a272c1d3` 的 Draft Quality 已通过 Workspace、Boundary、Format、Lint、Typecheck；同一实现后的治理闭包只修改任务卡、Runtime、Evidence 与 PR 元数据。
+- 前两轮 Ready Electron E2E 均在 30 分钟硬预算被取消。第二轮 Artifact 还原出真正首错：Candidate、Continuation、Continuity 与 Electron Shell 多条用例在项目创建后先出现项目内 UI selector 超时，`closeGracefully()` 为 finally 阶段第二错误。
+- 对照 M10-16 最终候选 `aa722ef7a87ab746faf04a69520d7a3ef3bd37d1`：同日、同 Ubuntu 24.04 / Node 24.18.0 / pnpm 11.13.1 / Electron 43.1.1 / Playwright 1.61.1 工具链下 33/33 Electron E2E 约 14 分钟通过，因此排除 Runner 与工具链漂移。
+- 回归范围进一步收敛到 M10-17 新增的 project-scoped Task subscription 重建。最终候选 `d7216870d93c22070dc85ce46a1f44b1aa90f27d` 拆分 Task port 与 snapshot 生命周期，并更新永久 Unit，禁止再次把 `projectId` 作为 Task subscription 重建条件。
+- `d7216870d93c22070dc85ce46a1f44b1aa90f27d` 的 Draft Quality 已通过 Workspace、Boundary、Format、Lint、Typecheck；同一 Head 的 Security、Performance、Task Governance、PR Policy、Evidence 与 Draft Quality 均成功。
 
 ## 永久验收
 
 - AI 运行中关闭项目：可取消阶段先 cancel，任务 terminal 后数据库才关闭。
 - AI `saving_candidate` 等不可取消阶段移动项目：等待原子阶段完成后移动，或返回明确稳定错误；不得半关闭。
 - draining 期间同项目不能启动新 Task；其他项目/无项目 Task 不受影响。
-- 项目级 Barrier 存在时，全局 `TaskProtocol.beginDrain()/close()` 保持独立正常收敛，应用关闭不得因项目生命周期协调器挂死。
+- 项目级 Barrier 存在时，全局 `TaskProtocol.beginDrain()/close()` 保持独立正常收敛。
+- Task event port 在创建/打开/关闭/切换项目时不重建；项目变化后 `listActive(projectId)` 必须恢复当前项目活动任务。
 - Planning 模式切换只有一个真源，父子 UI 不发生状态漂移。
 - read-only 打开检查/节奏页面：已有 Rhythm 数据可读，更新与运行写命令被拒绝。
 - Profile 不存在时读取返回默认投影，但数据库不新增 `genre_rhythm_profiles` 行。
 - Provider/Task/Continuation 查询失败显示 degraded，不能显示“0 Provider / 0 Task / 无续写状态”。
-- Task 通道重连后通过 listActive 恢复现存任务。
 - Timeline Event 选择已有事件后可编辑依赖、见证者、主体、地点、时间与章节，保存沿用同一 eventId。
+- Electron E2E 必须真实验证创建项目后的 Writing、Planning、Continuity 页面可达，并正常完成 graceful close；不得只看最终异常而忽略 trace 中更早的业务首错。
 
 ## 回滚策略
 
-整体回退 M10-17 产品实现与 UI 扩展；不回滚 M10-16 与任何 Migration。禁止恢复项目生命周期无 Task 屏障、项目 Task 子类替换生产全局 TaskProtocol、Rhythm 读路径隐式写入或 Startup 失败即空数据的旧行为。
+整体回退 M10-17 产品实现与 UI 扩展；不回滚 M10-16 与任何 Migration。禁止恢复项目生命周期无 Task 屏障、项目 Task 子类替换生产全局 TaskProtocol、Task subscription 随 projectId 反复重建、Rhythm 读路径隐式写入或 Startup 失败即空数据的旧行为。
 
 ## 完成条件
 
 - [x] ProjectTaskBarrier 完成并覆盖关闭/移动原子阶段。
 - [x] Planning Mode 单真源完成。
 - [x] Rhythm Read/Write 分离及 read-only-compatible 闭环完成。
-- [x] Startup degraded 与 Task 重同步完成。
+- [x] Startup degraded 与稳定 Task port + scoped snapshot 重同步完成。
 - [x] Timeline Event 编辑入口完成。
 - [ ] Unit / Integration / Coverage / Security / Performance / Build / Electron E2E 全绿。
-- [ ] Ready Evidence 绑定最终 implementation commit。
+- [x] Ready Evidence 已绑定当前 implementation candidate；仍须由下一轮 Ready 全量矩阵裁决。
 - [ ] Controlled Merge 完成。
 - [ ] `main-verification` 与 `task-verification/M10-17` 成功。
 - [ ] `work` 受控同步到已验证 `main`。

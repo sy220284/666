@@ -8,7 +8,7 @@
 
 - Import Commit 复用现有有界幂等 Promise Cache，把 Plan/source 复核、Recovery checkpoint、随机 ID、SQLite transaction 与最终结果纳入同一 requestId 生命周期；相同命令并发/完成后重放共享同一结果，不重复 checkpoint，不生成第二套持久 ID；同 requestId 不同 payload 映射为既有 `IMPORT_COMMIT_FAILED`。
 - Entity Permanent Delete 的权威依赖裁决移入同一 `writeProject` 事务；Preview 继续只做 UI 提示。删除时重新检查 SceneBeat、Timeline location、Timeline entity link、Character Arc 等独立领域引用，关闭 Preview→Delete TOCTOU；Canon Fact 等既有 CASCADE 从属数据保持原语义。
-- Arc Milestone 的 Timeline Event dependency 从“仅持久化”升级为真实运行约束：保存时拒绝不存在/archived Event；Catalog 在 reference chapter 下暴露 blocked/warnings；`hit` transition 以实际命中章节复用同一判定，未锚定或晚于命中章节时稳定返回 `NARRATIVE_CONFLICT`。
+- Arc Milestone 的 Timeline Event dependency 从“仅持久化”升级为真实运行约束：保存时拒绝不存在/archived Event；Catalog 在 reference chapter 下暴露 attention/warnings；`hit` transition 以实际命中章节复用同一判定，未锚定或晚于命中章节时稳定返回 `NARRATIVE_CONFLICT`。
 - 新增专项 Integration 回归 `tests/integration/m10-18-import-entity-arc-consistency.test.ts`，覆盖并发/已完成 Import replay、requestId payload 冲突、Entity 跨域引用与 Preview 后新增依赖竞态、CASCADE 从属删除，以及 Timeline dependency 未锚定/章节先后/满足后的命中语义。
 
 边界保持：

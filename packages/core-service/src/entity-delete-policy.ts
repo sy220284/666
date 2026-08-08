@@ -78,9 +78,7 @@ export function entityReferenceBlockers(
   return blockers.sort((left, right) => left.source.localeCompare(right.source, 'en'));
 }
 
-export function entityReferenceBlockerMessage(
-  blocker: EntityReferenceBlocker,
-): string {
+export function entityReferenceBlockerMessage(blocker: EntityReferenceBlocker): string {
   switch (blocker.source) {
     case 'scene_beat_entities.entity_id':
       return 'Remove SceneBeat references before permanent deletion.';

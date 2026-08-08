@@ -136,7 +136,7 @@ Runtime IMPLEMENTED
 | M10-13 | [`1.5前置边界重构与根因治理`](M10/M10-13_V1_5_PREFLIGHT_BOUNDARY_REFACTOR.md) | M10-12 | Implemented |
 | M10-14 | [`Recovery、Bridge与边界审计收口`](M10/M10-14_RECOVERY_BRIDGE_POST_AUDIT_HARDENING.md) | M10-13 | Implemented |
 | M10-15 | [`AI权威上下文与生成前置一致性收口`](M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md) | M10-14 | Implemented |
-| M10-16 | [`语义新鲜度与派生失效一致性收口`](M10/M10-16_SEMANTIC_FRESHNESS_DERIVED_INVALIDATION.md) | M10-15 | In Progress |
+| M10-16 | [`语义新鲜度与派生失效一致性收口`](M10/M10-16_SEMANTIC_FRESHNESS_DERIVED_INVALIDATION.md) | M10-15 | Implemented |
 
 ## 3. 被吸收的需求来源
 
@@ -160,7 +160,7 @@ Runtime IMPLEMENTED
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md) | M6 | Removed（absorbed） | M4-04 |
 | M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md) | M7 | Removed（absorbed） | M8-02 |
 | M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md) | M7 | Removed（absorbed） | M8-02 |
-| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md) | M7 | Removed（absorbed） | M8-02 |
+| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分) | M7 | Removed（absorbed） | M8-02 |
 | M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md) | M8 | Removed（absorbed） | M8-02 |
 | M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md) | M8 | Removed（absorbed） | M8-02 |
 

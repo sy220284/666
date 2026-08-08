@@ -221,6 +221,7 @@ export class GenerationRuntime {
     }
     try {
       await this.cancel(randomUUID(), { projectId, runId });
+      await execution.completion;
     } catch (error) {
       if (
         error instanceof GenerationRunServiceError &&
@@ -257,8 +258,7 @@ export class GenerationRuntime {
     requestId: string,
     input: { readonly projectId: string; readonly runId: string },
   ): Promise<GenerationRun> {
-    const execution = this.#executions.get(input.runId);
-    const cancelled = await this.#withLifecycleLock(input.runId, async () => {
+    return this.#withLifecycleLock(input.runId, async () => {
       const current = this.#runs.get(input);
       if (current.stage === 'saving_candidate') {
         throw new TaskProtocolError(
@@ -266,6 +266,7 @@ export class GenerationRuntime {
           'The task is in an atomic stage that cannot be cancelled.',
         );
       }
+      const execution = this.#executions.get(input.runId);
       const snapshot = execution
         ? this.#tasks.getSnapshot(execution.taskId, input.projectId)
         : undefined;
@@ -296,8 +297,6 @@ export class GenerationRuntime {
         }
       }
     });
-    if (execution) await execution.completion;
-    return cancelled;
   }
 
   async #withLifecycleLock<Result>(

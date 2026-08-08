@@ -37,6 +37,10 @@ import {
 } from '@worldforge/domain';
 
 import type { DatabaseClock } from './database/index.js';
+import {
+  entityReferenceBlockerMessage,
+  entityReferenceBlockers,
+} from './entity-delete-policy.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
@@ -267,39 +271,13 @@ function readDeletePreview(
     projectId,
     entityId,
   );
-  const timelineLocationReferenceCount = referenceCount(
-    connection,
-    'SELECT COUNT(*) AS total FROM timeline_events WHERE project_id = ? AND location_id = ?',
-    projectId,
-    entityId,
-  );
-  const timelineEntityReferenceCount = referenceCount(
-    connection,
-    'SELECT COUNT(*) AS total FROM timeline_event_entities WHERE project_id = ? AND entity_id = ?',
-    projectId,
-    entityId,
-  );
-  const characterArcReferenceCount = referenceCount(
-    connection,
-    'SELECT COUNT(*) AS total FROM character_arcs WHERE project_id = ? AND character_id = ?',
-    projectId,
-    entityId,
-  );
   const blockers: string[] = [];
   if (entity.status !== 'archived') {
     blockers.push('Archive the Entity before permanent deletion.');
   }
-  if (sceneBeatReferenceCount > 0) {
-    blockers.push('Remove SceneBeat references before permanent deletion.');
-  }
-  if (timelineLocationReferenceCount > 0) {
-    blockers.push('Remove Timeline location references before permanent deletion.');
-  }
-  if (timelineEntityReferenceCount > 0) {
-    blockers.push('Remove Timeline entity references before permanent deletion.');
-  }
-  if (characterArcReferenceCount > 0) {
-    blockers.push('Remove Character Arc references before permanent deletion.');
+  for (const blocker of entityReferenceBlockers(connection, projectId, entityId)) {
+    const message = entityReferenceBlockerMessage(blocker);
+    if (!blockers.includes(message)) blockers.push(message);
   }
   return EntityDeletePreviewSchema.parse({
     projectId,

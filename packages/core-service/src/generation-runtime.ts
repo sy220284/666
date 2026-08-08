@@ -208,11 +208,57 @@ export class GenerationRuntime {
     await this.#executions.get(runId)?.completion;
   }
 
+  async cancelTask(taskId: string, projectId: string): Promise<boolean> {
+    const found = [...this.#executions.entries()].find(
+      ([, execution]) => execution.taskId === taskId && execution.projectId === projectId,
+    );
+    if (!found) return false;
+    const [runId, execution] = found;
+    const snapshot = this.#tasks.getSnapshot(taskId, projectId);
+    if (snapshot.status !== 'queued' && snapshot.status !== 'running') {
+      await execution.completion;
+      return true;
+    }
+    try {
+      await this.cancel(randomUUID(), { projectId, runId });
+    } catch (error) {
+      if (
+        error instanceof GenerationRunServiceError &&
+        error.code === 'GENERATION_RUN_TERMINAL'
+      ) {
+        await execution.completion;
+        return true;
+      }
+      if (error instanceof TaskProtocolError && error.code === 'COMMON_CONFLICT_003') {
+        await execution.completion;
+        return true;
+      }
+      throw error;
+    }
+    return true;
+  }
+
+  async drainProject(projectId: string): Promise<void> {
+    const tasks = [...this.#executions.values()]
+      .filter((execution) => execution.projectId === projectId)
+      .map((execution) => execution.taskId);
+    for (const taskId of tasks) await this.cancelTask(taskId, projectId);
+  }
+
+  async drainAll(): Promise<void> {
+    const tasks = [...this.#executions.values()].map((execution) => ({
+      taskId: execution.taskId,
+      projectId: execution.projectId,
+    }));
+    for (const task of tasks) await this.cancelTask(task.taskId, task.projectId);
+  }
+
   async cancel(
     requestId: string,
     input: { readonly projectId: string; readonly runId: string },
   ): Promise<GenerationRun> {
-    return this.#withLifecycleLock(input.runId, async () => {
+    const execution = this.#executions.get(input.runId);
+    const cancelled = await this.#withLifecycleLock(input.runId, async () => {
       const current = this.#runs.get(input);
       if (current.stage === 'saving_candidate') {
         throw new TaskProtocolError(
@@ -220,14 +266,13 @@ export class GenerationRuntime {
           'The task is in an atomic stage that cannot be cancelled.',
         );
       }
-      const execution = this.#executions.get(input.runId);
       const snapshot = execution
         ? this.#tasks.getSnapshot(execution.taskId, input.projectId)
         : undefined;
       const barrier = cancellationBarrier();
       this.#cancellations.set(input.runId, barrier);
       try {
-        const cancelled = await this.#runs.cancel(
+        const persisted = await this.#runs.cancel(
           requestId,
           input,
           snapshot?.previewTruncated ? undefined : snapshot?.previewText,
@@ -241,7 +286,7 @@ export class GenerationRuntime {
             if (error.code === 'TASK_NOT_CANCELLABLE_001') throw error;
           }
         }
-        return cancelled;
+        return persisted;
       } catch (error) {
         barrier.resolve(false);
         throw error;
@@ -251,6 +296,8 @@ export class GenerationRuntime {
         }
       }
     });
+    if (execution) await execution.completion;
+    return cancelled;
   }
 
   async #withLifecycleLock<Result>(

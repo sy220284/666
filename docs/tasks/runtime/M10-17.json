@@ -36,7 +36,8 @@
     "tests/unit/m10-17-startup-degraded.test.ts",
     "tests/integration/m10-17-project-lifecycle.test.ts",
     "tests/integration/m10-17-rhythm-readonly.test.ts",
-    "tests/e2e/electron-shell.spec.ts"
+    "tests/e2e/electron-shell.spec.ts",
+    "tests/e2e/continuity-ledger.spec.ts"
   ],
   "forbiddenPaths": [
     "migrations/app/",

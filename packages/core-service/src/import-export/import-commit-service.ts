@@ -183,30 +183,32 @@ export class ImportCommitService {
             );
             insertDraft.run(draftId, chapterId, now, now);
             activateDraft.run(draftId, chapterId);
-            const versionBlocks: ImportedVersionBlock[] = chapter.blocks.map((block, blockIndex) => {
-              const logicalBlockId = this.#idFactory();
-              const contentHash = blockHash(block);
-              const orderKey = BigInt(blockIndex + 1) * ORDER_STEP;
-              insertDraftBlock.run(
-                this.#idFactory(),
-                draftId,
-                logicalBlockId,
-                orderKey,
-                block.blockType,
-                block.text,
-                contentHash,
-              );
-              return {
-                logicalBlockId,
-                orderKey: String(orderKey),
-                blockType: block.blockType,
-                text: block.text,
-                attributes: {},
-                source: 'imported',
-                locked: false,
-                contentHash,
-              };
-            });
+            const versionBlocks: ImportedVersionBlock[] = chapter.blocks.map(
+              (block, blockIndex) => {
+                const logicalBlockId = this.#idFactory();
+                const contentHash = blockHash(block);
+                const orderKey = BigInt(blockIndex + 1) * ORDER_STEP;
+                insertDraftBlock.run(
+                  this.#idFactory(),
+                  draftId,
+                  logicalBlockId,
+                  orderKey,
+                  block.blockType,
+                  block.text,
+                  contentHash,
+                );
+                return {
+                  logicalBlockId,
+                  orderKey: String(orderKey),
+                  blockType: block.blockType,
+                  text: block.text,
+                  attributes: {},
+                  source: 'imported',
+                  locked: false,
+                  contentHash,
+                };
+              },
+            );
             insertVersion.run(
               versionId,
               chapterId,

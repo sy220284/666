@@ -26,15 +26,17 @@ export function useWorkspaceRuntime({
     useState<WorkspaceAttention>(EMPTY_WORKSPACE_ATTENTION);
   const [hydrated, setHydrated] = useState(false);
 
+  const projectId = activeProject?.projectId;
   const refreshTasks = useCallback(async (): Promise<void> => {
-    const outcome = await bridge.task.listActive(undefined, { mode: 'replace' });
+    const outcome = await bridge.task.listActive(projectId, { mode: 'replace' });
     if (outcome.state === 'success') setTasks(outcome.data.tasks);
-  }, [bridge]);
+  }, [bridge, projectId]);
 
   useEffect(() => {
-    const unsubscribe = bridge.task.subscribe(() => void refreshTasks());
+    void refreshTasks();
+    const unsubscribe = bridge.task.subscribe(() => void refreshTasks(), projectId);
     return unsubscribe;
-  }, [bridge, refreshTasks]);
+  }, [bridge, projectId, refreshTasks]);
 
   const refreshWorkspaceAttention = useCallback(async (): Promise<void> => {
     const generation = attentionGeneration.current + 1;

@@ -52,7 +52,7 @@ test.afterEach(async () => {
   );
 });
 
-test('writes and displays continuity data through the real Electron process boundary', async () => {
+test('writes, displays and edits continuity data through the real Electron process boundary', async () => {
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-continuity-e2e-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'projects');
@@ -143,6 +143,8 @@ test('writes and displays continuity data through the real Electron process boun
         dependencyIds: [],
       });
       if (!event.ok) throw new Error(`EVENT_WRITE_FAILED:${event.error.code}`);
+      const createdEvent = event.data.timelineEvents.find((item) => item.title === '南城目击');
+      if (!createdEvent) throw new Error('EVENT_MISSING');
       const knowledge = await continuity.setKnowledgeState({
         projectId,
         authority: 'author',
@@ -166,6 +168,7 @@ test('writes and displays continuity data through the real Electron process boun
       if (!catalog.ok) throw new Error(`CONTINUITY_READ_FAILED:${catalog.error.code}`);
       return {
         projectId,
+        eventId: createdEvent.id,
         counts: [
           catalog.data.entityStates.length,
           catalog.data.timelineEvents.length,
@@ -186,6 +189,44 @@ test('writes and displays continuity data through the real Electron process boun
     await expect(page.locator('[data-continuity-results]')).toContainText('身体状态');
     await expect(page.locator('[data-continuity-results]')).toContainText('南城目击');
     await expect(page.locator('[data-continuity-results]')).toContainText('traitor-identity');
+
+    const relationshipEditor = page.locator('[data-continuity-relationship-editor]');
+    await expect(relationshipEditor).toBeVisible();
+    await relationshipEditor.locator('[data-timeline-event-editor-selector]').selectOption(
+      bridgeResult.eventId,
+    );
+    const timelineForm = relationshipEditor.locator(
+      `[data-timeline-event-editor="${bridgeResult.eventId}"]`,
+    );
+    await expect(timelineForm.locator('input[name="title"]')).toHaveValue('南城目击');
+    await expect(timelineForm.locator('input[name="startValue"]')).toHaveValue('2026-07-20');
+    await expect(timelineForm.locator('select[name="precision"]')).toHaveValue('day');
+    await timelineForm.locator('input[name="title"]').fill('南城目击·更新');
+    await timelineForm.getByRole('button', { name: '更新完整时间线事件' }).click();
+    await expect(relationshipEditor.getByRole('status')).toContainText('时间线事件已更新');
+
+    const updated = await page.evaluate(
+      async ({ projectId, eventId }) => {
+        const rootWindow = globalThis as unknown as {
+          readonly worldforgeContinuity: ContinuityBridge;
+        };
+        const catalog = await rootWindow.worldforgeContinuity.list({
+          projectId,
+          query: '',
+          includeHistory: true,
+          includeArchivedEvents: false,
+          effectiveAtChapterId: null,
+        });
+        if (!catalog.ok) throw new Error(`CONTINUITY_READ_FAILED:${catalog.error.code}`);
+        const event = catalog.data.timelineEvents.find((item) => item.id === eventId);
+        return {
+          eventCount: catalog.data.timelineEvents.length,
+          title: event?.title ?? null,
+        };
+      },
+      { projectId: bridgeResult.projectId, eventId: bridgeResult.eventId },
+    );
+    expect(updated).toEqual({ eventCount: 1, title: '南城目击·更新' });
   } finally {
     await closeGracefully(application);
   }

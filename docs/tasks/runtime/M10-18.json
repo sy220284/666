@@ -22,7 +22,8 @@
     "packages/core-service/src/narrative-planning/narrative-planning-catalog.ts",
     "tests/integration/import-export-service.test.ts",
     "tests/integration/entity-canon.test.ts",
-    "tests/integration/narrative-character-arc.test.ts"
+    "tests/integration/narrative-character-arc.test.ts",
+    "tests/integration/m10-18-import-entity-arc-consistency.test.ts"
   ],
   "forbiddenPaths": [
     "migrations/app/",

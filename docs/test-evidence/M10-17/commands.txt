@@ -1,0 +1,25 @@
+# M10-17 authoritative verification commands
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# Targeted regression coverage
+pnpm exec vitest run tests/unit/m10-17-project-task-barrier.test.ts
+pnpm exec vitest run tests/unit/m10-17-planning-mode-ownership.test.ts
+pnpm exec vitest run tests/unit/m10-17-startup-degraded.test.ts
+pnpm exec vitest run tests/integration/m10-17-project-lifecycle.test.ts
+pnpm exec vitest run tests/integration/m10-17-rhythm-readonly.test.ts
+pnpm exec playwright test tests/e2e/continuity-ledger.spec.ts

@@ -1,6 +1,6 @@
 # M10-21 当前权威文档与测试架构现代化
 
-> 状态：In Progress
+> 状态：Implemented
 > 里程碑：M10 稳定性与治理续作
 > 优先级：P1
 > 执行分支：`work`
@@ -98,5 +98,5 @@ pnpm test:e2e
 - [x] 7 个 AR 行数硬门移除且结构语义检查保留。
 - [x] 4 个 M10-13 高风险源码实现断言完成现代化。
 - [x] 10 份当前权威文档同步完成。
-- [ ] 专项与完整验证矩阵通过，Evidence 绑定最终实现提交。
+- [x] 专项与完整验证矩阵通过，Evidence 绑定最终实现提交。
 - [ ] Controlled Merge、Main Verification 与 Work Synchronization 完成。

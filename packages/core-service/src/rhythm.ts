@@ -270,6 +270,14 @@ export class RhythmService {
     );
   }
 
+  run(requestId: string, projectId: string): Promise<RhythmDashboard> {
+    return this.#workspace.writeProject(requestId, projectId, (database) => {
+      const now = this.#clock.now();
+      ensureRhythmProfile(database, projectId, now.toISOString());
+      return dashboard(database, projectId, now);
+    });
+  }
+
   updateProfile(requestId: string, raw: RhythmProfileUpdateInput): Promise<RhythmDashboard> {
     const input = RhythmProfileUpdateInputSchema.parse(raw);
     if (input.authority !== 'author') {

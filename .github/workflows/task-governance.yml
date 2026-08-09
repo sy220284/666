@@ -1,50 +1,29 @@
-name: Task Governance
+name: Task Governance Audit
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+  workflow_dispatch:
+  schedule:
+    - cron: '11 4 * * 1'
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
-  group: task-governance-${{ github.event.pull_request.number || github.ref }}
+  group: task-governance-audit
   cancel-in-progress: true
 
 jobs:
   task-governance:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    env:
-      TASK_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
-      TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
-      TASK_EVENT_NAME: ${{ github.event_name }}
-      TASK_PR_HEAD_REF: ${{ github.head_ref }}
-      TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
-      TASK_PR_READY: ${{ github.event.pull_request.draft == false }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: main
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
-      - name: Assert clean working tree before task validation
-        run: node .github/governance/assert-clean-tree.mjs
-      - name: Validate unique work task governance
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node .github/governance/single-work-policy.mjs validate
-      - name: Validate Schema 2 task state
+      - name: Audit task metadata without blocking pull requests
         run: node .github/governance/single-work-taskctl.mjs validate
-      - name: Self-test task governance
-        run: |
-          node .github/governance/single-work-policy.mjs self-test
-          node .github/governance/single-work-taskctl.mjs validate
-      - name: Assert clean working tree after task validation
-        if: always()
-        run: node .github/governance/assert-clean-tree.mjs

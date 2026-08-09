@@ -2,11 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import {
-  modeAwareChecksState,
-  nextPagePath,
-  requiredCheckState,
-} from './automerge.mjs';
+import { modeAwareChecksState, nextPagePath, requiredCheckState } from './automerge.mjs';
 
 const apiRoot = 'https://api.github.com';
 const fullSha = /^[0-9a-f]{40}$/iu;
@@ -172,7 +168,10 @@ async function loadSignals(e, sha) {
       `/repos/${e.owner}/${e.repo}/commits/${sha}/check-runs?per_page=100`,
       'check_runs',
     ),
-    paginatedCollection(e.token, `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`),
+    paginatedCollection(
+      e.token,
+      `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`,
+    ),
   ]);
   return [...checks, ...statuses];
 }
@@ -227,7 +226,8 @@ async function publishStatus() {
   if (!fullSha.test(sha ?? '')) throw new Error('EXPECTED_SHA is invalid');
   if (!Number.isSafeInteger(sourcePr) || sourcePr <= 0) throw new Error('SOURCE_PR is invalid');
 
-  const targetUrl = `${process.env.GITHUB_SERVER_URL ?? 'https://github.com'}/${e.repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+  const targetUrl =
+    `${process.env.GITHUB_SERVER_URL ?? 'https://github.com'}/${e.repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
   const pull = await api(e.token, `/repos/${e.owner}/${e.repo}/pulls/${sourcePr}`);
   const taskId = taskIdFromPullBody(pull.body ?? '');
   let taskBindingErrors = [];

@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const apiRoot = 'https://api.github.com';
 const supportedTriggers = new Set(['Quality', 'Security', 'Performance']);
+const modeAwareWorkflows = Object.freeze([
+  { workflow: 'quality.yml', kind: 'quality', checkName: 'quality / quality' },
+  { workflow: 'security.yml', kind: 'security', checkName: 'security' },
+  { workflow: 'performance.yml', kind: 'performance', checkName: 'performance' },
+]);
 
 function env() {
   const {
@@ -66,15 +71,24 @@ async function pages(token, pathname, key = null) {
   return items;
 }
 
-function signalName(signal) {
-  return signal?.name ?? signal?.context ?? null;
+function orderOf(value) {
+  const timestamp = Date.parse(
+    value?.created_at ?? value?.updated_at ?? value?.started_at ?? value?.completed_at ?? '',
+  );
+  return {
+    timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+    id: Number(value?.id ?? 0),
+  };
 }
 
-function signalTime(signal) {
-  const timestamp = Date.parse(
-    signal?.created_at ?? signal?.updated_at ?? signal?.started_at ?? '',
-  );
-  return [Number.isFinite(timestamp) ? timestamp : 0, Number(signal?.id ?? 0)];
+function isLater(left, right) {
+  const a = orderOf(left);
+  const b = orderOf(right);
+  return a.timestamp > b.timestamp || (a.timestamp === b.timestamp && a.id > b.id);
+}
+
+function signalName(signal) {
+  return signal?.name ?? signal?.context ?? null;
 }
 
 export function latestChecksByName(signals = []) {
@@ -83,9 +97,14 @@ export function latestChecksByName(signals = []) {
     const name = signalName(signal);
     if (!name) continue;
     const previous = latest.get(name);
-    if (!previous || signalTime(signal).join(':') > signalTime(previous).join(':'))
-      latest.set(name, signal);
+    if (!previous || isLater(signal, previous)) latest.set(name, signal);
   }
+  return latest;
+}
+
+export function latestWorkflowRun(workflowRuns = []) {
+  let latest = null;
+  for (const run of workflowRuns) if (!latest || isLater(run, latest)) latest = run;
   return latest;
 }
 
@@ -119,18 +138,21 @@ export function modeAwareRunState(kind, workflowRun, jobs = []) {
   if (!workflowRun || workflowRun.status !== 'completed')
     return { ready: false, pending: [kind], failed: [] };
   if (workflowRun.conclusion !== 'success') return { ready: false, pending: [], failed: [kind] };
+
   const required =
     kind === 'quality'
-      ? ['quality / quality']
+      ? ['quality / quality', 'quality / release-audit', 'quality / package-smoke']
       : kind === 'security'
         ? ['security']
         : kind === 'performance'
           ? ['performance']
           : [];
   if (required.length === 0) throw new Error(`Unknown mode-aware workflow kind: ${kind}`);
-  const byName = new Map(jobs.map((job) => [job.name, job]));
-  const failed = required.some((name) => stateOf(byName.get(name)) === 'failed');
-  const pending = required.some((name) => stateOf(byName.get(name)) === 'pending');
+
+  const jobsByName = new Map(jobs.map((job) => [job.name, job]));
+  const states = required.map((name) => stateOf(jobsByName.get(name)));
+  const failed = states.includes('failed');
+  const pending = states.includes('pending');
   return {
     ready: !failed && !pending,
     pending: pending ? [kind] : [],
@@ -146,15 +168,44 @@ async function signals(token, owner, repo, sha) {
   return [...checks, ...statuses];
 }
 
+export async function modeAwareChecksState(token, owner, repo, sha) {
+  const pending = [];
+  const failed = [];
+  for (const specification of modeAwareWorkflows) {
+    const workflow = encodeURIComponent(specification.workflow);
+    const runs = await pages(
+      token,
+      `/repos/${owner}/${repo}/actions/workflows/${workflow}/runs?event=pull_request&head_sha=${sha}&per_page=100`,
+      'workflow_runs',
+    );
+    const latest = latestWorkflowRun(runs.filter((run) => run.head_sha === sha));
+    const jobs = latest
+      ? await pages(token, `/repos/${owner}/${repo}/actions/runs/${latest.id}/jobs?per_page=100`, 'jobs')
+      : [];
+    const state = modeAwareRunState(specification.kind, latest, jobs);
+    pending.push(...state.pending.map(() => specification.checkName));
+    failed.push(...state.failed.map(() => specification.checkName));
+  }
+  return {
+    ready: pending.length === 0 && failed.length === 0,
+    pending,
+    failed,
+  };
+}
+
 async function waitChecks(token, owner, repo, sha, requiredChecks) {
   await delay(5_000);
   for (let attempt = 1; attempt <= 90; attempt += 1) {
-    const state = requiredCheckState(await signals(token, owner, repo, sha), requiredChecks);
-    if (state.failed.length > 0 || state.ready) return state;
-    if (attempt === 90)
-      throw new Error(`Timed out waiting for checks: ${state.pending.join(', ')}`);
+    const checkState = requiredCheckState(await signals(token, owner, repo, sha), requiredChecks);
+    const modeState = await modeAwareChecksState(token, owner, repo, sha);
+    const failed = [...new Set([...checkState.failed, ...modeState.failed])];
+    if (failed.length > 0) return { ready: false, pending: [], failed };
+    if (checkState.ready && modeState.ready) return { ready: true, pending: [], failed: [] };
+
+    const pending = [...new Set([...checkState.pending, ...modeState.pending])];
+    if (attempt === 90) throw new Error(`Timed out waiting for checks: ${pending.join(', ')}`);
     if (attempt === 1 || attempt % 6 === 0)
-      console.log(`Waiting for checks: ${state.pending.join(', ')}`);
+      console.log(`Waiting for current validation runs: ${pending.join(', ')}`);
     await delay(10_000);
   }
   throw new Error('Check polling ended unexpectedly');

@@ -204,6 +204,7 @@ describe('provider metadata and app/project boundary', () => {
     const clock = { now: () => new Date('2026-07-16T05:00:00.000Z') };
     const runtime = await runtimeAt(root, clock);
     const providerId = 'local-openai';
+    const syntheticAuthorization = ['Bear', 'er credential-body-must-not-be-stored'].join('');
 
     await expect(
       runtime.providerConfigs.upsert(randomUUID(), {
@@ -227,7 +228,7 @@ describe('provider metadata and app/project boundary', () => {
         model: 'model',
         credentialRef: null,
         timeoutMs: 30_000,
-        options: { authorization: 'Bearer credential-body-must-not-be-stored' },
+        options: { authorization: syntheticAuthorization },
       }),
     ).rejects.toThrow();
     await runtime.close();

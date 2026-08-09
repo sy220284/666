@@ -47,13 +47,14 @@ afterEach(async () => {
 });
 
 describe('任务有效状态计算', () => {
-  it('历史静态Verified保持有效', () => {
-    expect(isRuntimeEffectivelyVerified({ status: 'VERIFIED' }, [])).toBe(true);
+  it('冻结Schema 1历史静态Verified保持有效', () => {
+    expect(isRuntimeEffectivelyVerified({ schemaVersion: 1, status: 'VERIFIED' }, [])).toBe(true);
     expect(isRuntimeEffectivelyVerified(null, [], 'Verified')).toBe(true);
   });
 
-  it('Implemented通过任务提交状态后视为有效Verified', () => {
+  it('Schema 2 Implemented通过任务提交状态后视为有效Verified', () => {
     const task = {
+      schemaVersion: 2,
       status: 'IMPLEMENTED',
       verificationBinding: { taskContext: 'task-verification/M10-03' },
     };
@@ -62,8 +63,9 @@ describe('任务有效状态计算', () => {
     expect(effectiveTaskStatus(task, statuses, 'Implemented')).toBe('VERIFIED');
   });
 
-  it('拒绝缺失、失败或错误上下文', () => {
+  it('Schema 2拒绝缺失、失败或错误上下文', () => {
     const task = {
+      schemaVersion: 2,
       status: 'IMPLEMENTED',
       verificationBinding: { taskContext: 'task-verification/M10-03' },
     };

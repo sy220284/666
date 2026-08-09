@@ -21,21 +21,36 @@ export class RequestGeneration {
  */
 export class RequestGenerationGroup<Key extends string> {
   readonly #requests = new Map<Key, RequestGeneration>();
+  readonly #active = new Map<Key, number>();
 
   begin(key: Key): number {
-    return this.#request(key).begin();
+    const generation = this.#request(key).begin();
+    this.#active.set(key, generation);
+    return generation;
+  }
+
+  complete(key: Key, generation: number): boolean {
+    if (!this.isCurrent(key, generation) || this.#active.get(key) !== generation) return false;
+    this.#active.delete(key);
+    return true;
   }
 
   invalidate(key: Key): void {
     this.#request(key).invalidate();
+    this.#active.delete(key);
   }
 
   invalidateAll(): void {
     for (const request of this.#requests.values()) request.invalidate();
+    this.#active.clear();
   }
 
   isCurrent(key: Key, generation: number): boolean {
     return this.#request(key).isCurrent(generation);
+  }
+
+  isActive(key: Key): boolean {
+    return this.#active.has(key);
   }
 
   #request(key: Key): RequestGeneration {

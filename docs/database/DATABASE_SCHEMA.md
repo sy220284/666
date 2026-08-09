@@ -3,6 +3,7 @@
 > 状态：Frozen Baseline with Schema 30 Authority Addendum
 > 原则：`app.sqlite`只保存应用级信息；每项目`project.sqlite`是唯一权威数据源。
 > 当前Project Schema：30（`0030_authority_governance.sql`）
+> 当前App Schema：3（`0003_provider_options_allowlist.sql`）
 > 更新日期：2026-08-09
 
 ## 1. 全局约束
@@ -49,10 +50,10 @@ PRAGMA synchronous = NORMAL;
 | model                   | TEXT      | 默认模型                               |
 | credential_ref          | TEXT NULL | OS凭据引用                             |
 | timeout_ms              | INTEGER   | 超时                                   |
-| options_json            | TEXT      | 高级选项                               |
+| options_json            | TEXT      | 按protocol白名单验证的高级选项         |
 | created_at / updated_at | TEXT      | 时间                                   |
 
-不得保存凭据正文。
+不得保存凭据正文。`openai_compatible`与历史`custom`只允许空对象；`anthropic`只允许可选`anthropicVersion`。Schema 3 Migration清理旧任意字段，只保留合法Anthropic版本；历史custom行可读，但公共保存入口禁止新增或修改custom配置。
 
 ### 2.4 `window_preferences`
 
@@ -73,6 +74,10 @@ PRAGMA synchronous = NORMAL;
 | updated_at                           | TEXT       | UTC ISO-8601毫秒时间              |
 
 该表由`0002_window_preferences.sql`创建。Electron Main负责读取窗口状态并处理显示器事件，Core Service通过单写队列执行唯一持久化写入；Renderer和Main均不得直接打开`app.sqlite`。从已有Schema升级前创建经`quick_check`验证、合并WAL并设为`0600`的SQLite恢复点。
+
+### 2.5 恢复克隆语义
+
+Project Schema本身仍由顺序Migration定义；“恢复为新项目”额外执行穷举`ProjectClonePolicy`。内容与配置表重映射新`project_id`，外部备份血缘和运行历史删除，FTS/搜索派生状态重建。新增项目表若未加入策略，恢复必须失败，不能默认按外键复制。
 
 ## 3. `project.sqlite`
 

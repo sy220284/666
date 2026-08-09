@@ -1,4 +1,5 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -10,54 +11,12 @@ import {
   parseReleaseVersion,
   renderChecksums,
   validateReleaseConfiguration,
+  verifyReleaseAssetSet,
 } from '../../scripts/release-tool.mjs';
-
-interface TaskIndexEntry {
-  readonly id: string;
-  readonly dependency: string;
-  readonly status: string;
-}
 
 const temporaryDirectories: string[] = [];
 
-const taskIndex = (entries: readonly TaskIndexEntry[]) =>
-  '\n| ID | 任务卡 | 依赖 | 状态 |\n' +
-  '|---|---|---|---|\n' +
-  entries
-    .map(
-      (entry) => `| ${entry.id} | [任务](${entry.id}.md) | ${entry.dependency} | ${entry.status} |`,
-    )
-    .join('\n') +
-  '\n';
-
-const verifiedTasks = [
-  { id: 'M8-02', dependency: 'M4-04', status: 'Verified' },
-  { id: 'M8-04', dependency: 'M8-02', status: 'Verified' },
-  { id: 'M8-05', dependency: 'M8-04', status: 'Implemented' },
-] as const;
-
-const runtime = (id: string, status = 'IMPLEMENTED') => ({
-  schemaVersion: 2,
-  id,
-  status,
-  verificationBinding: { taskContext: `task-verification/${id}` },
-});
-
-const taskStatuses = verifiedTasks.map((task) => ({
-  context: `task-verification/${task.id}`,
-  state: 'success',
-}));
-const successStatuses = [{ context: 'main-verification', state: 'success' }, ...taskStatuses];
-
-const authorization = {
-  schemaVersion: 2,
-  mode: 'single-work-pr',
-  baseBranch: 'main',
-  workBranch: 'work',
-  mainWriteMode: 'serialized',
-  verificationClosure: 'main-status',
-  taskRuntimeDirectory: 'docs/tasks/runtime',
-};
+const successStatuses = [{ context: 'main-verification', state: 'success' }];
 
 const releaseWorkflow = [
   'workflow_dispatch:',
@@ -65,7 +24,11 @@ const releaseWorkflow = [
   'package_smoke: false',
   'pnpm audit --audit-level=high',
   'node scripts/scan-secrets.mjs',
-  'pnpm release:gate',
+  'main-verification',
+  '--distribution-trust',
+  'verify-package-assets.mjs',
+  'MACOS_CERTIFICATE_BASE64',
+  'WINDOWS_CERTIFICATE_BASE64',
   'gh release create',
 ].join('\n');
 
@@ -94,38 +57,24 @@ describe('release tool', () => {
     expect(() => parseReleaseVersion('1.2.3-rc.01')).toThrow(/leading zeroes/);
   });
 
-  it('validates the release workflow, package scripts and Schema 2 sources', () => {
+  it('validates the release workflow and package scripts without Task Runtime authority', () => {
     expect(
       validateReleaseConfiguration({
         packageJson,
-        taskIndexMarkdown: taskIndex(verifiedTasks),
-        authorization,
         workflowSource: releaseWorkflow,
       }),
     ).toEqual([]);
-  });
-
-  it('ignores absorbed historical task rows when checking independent tasks', () => {
-    const result = evaluateReleaseGate({
-      taskIndexMarkdown:
-        taskIndex(verifiedTasks) +
-        '\n## 3. 被吸收的需求来源\n' +
-        taskIndex([{ id: 'M4-05', dependency: 'M4-04', status: 'Removed（absorbed）' }]),
-      runtimes: verifiedTasks.map((task) => runtime(task.id)),
-      statuses: successStatuses,
-      packageVersion: '1.0.0',
-      requestedVersion: '1.0.0',
-      refName: 'main',
-    });
-
-    expect(result.errors).toEqual([]);
+    expect(
+      validateReleaseConfiguration({
+        packageJson,
+        workflowSource: releaseWorkflow + '\nnode .github/governance/single-work-release-gate.mjs',
+      }),
+    ).toContain('Release workflow must not use Task Runtime as a release authority');
   });
 
   it('blocks publishing when the current commit lacks main verification', () => {
     const result = evaluateReleaseGate({
-      taskIndexMarkdown: taskIndex(verifiedTasks),
-      runtimes: verifiedTasks.map((task) => runtime(task.id)),
-      statuses: taskStatuses,
+      statuses: [],
       packageVersion: '1.0.0',
       requestedVersion: '1.0.0',
       refName: 'main',
@@ -134,54 +83,134 @@ describe('release tool', () => {
     expect(result.errors).toContain('Current release commit must have main-verification=success');
   });
 
-  it('blocks publishing when a task is not effectively Verified', () => {
+  it('blocks version drift, non-main publication, and unsigned stable policy', () => {
     const result = evaluateReleaseGate({
-      taskIndexMarkdown: taskIndex(verifiedTasks),
-      runtimes: verifiedTasks.map((task) => runtime(task.id)),
-      statuses: successStatuses.filter((status) => !status.context.endsWith('M8-05')),
+      statuses: successStatuses,
       packageVersion: '1.0.0',
       requestedVersion: '1.0.1',
       refName: 'feature',
+      releaseKind: 'stable',
+      distributionTrust: 'allow-unsigned',
     });
 
     expect(result.errors).toEqual(
       expect.arrayContaining([
         'Requested version 1.0.1 does not match package.json version 1.0.0',
         'Releases may only run from main, found feature',
-        'All independent tasks must be effectively Verified before publishing: M8-05 IMPLEMENTED',
+        'Stable releases must require platform distribution trust',
       ]),
     );
   });
 
-  it('blocks a release-blocking runtime that is absent from TASK_INDEX', () => {
+  it('allows publishing from main solely from engineering and release acceptance authority', () => {
     const result = evaluateReleaseGate({
-      taskIndexMarkdown: taskIndex(verifiedTasks),
-      runtimes: [...verifiedTasks.map((task) => runtime(task.id)), runtime('M8-06')],
-      statuses: [...successStatuses, { context: 'task-verification/M8-06', state: 'success' }],
-      packageVersion: '1.0.0',
-      requestedVersion: '1.0.0',
-      refName: 'main',
-    });
-
-    expect(result.errors).toContain('Release-blocking runtimes are absent from TASK_INDEX: M8-06');
-  });
-
-  it('allows publishing from main when main and task statuses are successful', () => {
-    const result = evaluateReleaseGate({
-      taskIndexMarkdown: taskIndex(verifiedTasks),
-      runtimes: verifiedTasks.map((task) => runtime(task.id)),
       statuses: successStatuses,
       packageVersion: '1.0.0',
       requestedVersion: '1.0.0',
       refName: 'main',
+      releaseKind: 'stable',
+      distributionTrust: 'required',
     });
 
     expect(result).toMatchObject({
       version: '1.0.0',
-      taskId: 'M8-05',
-      taskStatus: 'VERIFIED',
+      releaseKind: 'stable',
+      distributionTrust: 'required',
       errors: [],
     });
+  });
+
+  it('requires one verified package manifest per platform before publication', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-release-trust-'));
+    temporaryDirectories.push(directory);
+    const content = Buffer.from('artifact');
+    const sha256 = createHash('sha256').update(content).digest('hex');
+    for (const platform of ['linux', 'windows', 'macos'] as const) {
+      const packageDirectory = path.join(directory, platform);
+      await mkdir(packageDirectory);
+      const artifact = `WorldForge-${platform}.zip`;
+      await writeFile(path.join(packageDirectory, artifact), content);
+      const evidence =
+        platform === 'windows'
+          ? {
+              signing: 'authenticode-sha256',
+              signatureVerification: 'Get-AuthenticodeSignature:Valid',
+              timestamped: true,
+            }
+          : platform === 'macos'
+            ? {
+                signing: 'developer-id-application',
+                hardenedRuntime: true,
+                signatureVerification: 'codesign:strict',
+                notarizationVerification: 'stapler:validated',
+                gatekeeperAssessment: 'spctl:accepted',
+              }
+            : null;
+      await writeFile(
+        path.join(packageDirectory, 'package-manifest.json'),
+        JSON.stringify({
+          schemaVersion: 2,
+          product: 'WorldForge',
+          version: '1.0.0',
+          platform,
+          releaseKind: 'stable',
+          distributionTrustMode: 'required',
+          architecture: 'x64',
+          artifact,
+          bytes: content.byteLength,
+          sha256,
+          packageKind: 'portable-electron-bundle',
+          signed: platform !== 'linux',
+          notarized: platform === 'macos',
+          stapled: platform === 'macos',
+          distributionTrustEvidence: evidence,
+          fusesApplied: true,
+          asar: true,
+          appAsarSha256: 'a'.repeat(64),
+          appAsarHeaderSha256: 'b'.repeat(64),
+          fuses: {
+            runAsNode: false,
+            onlyLoadAppFromAsar: true,
+            embeddedAsarIntegrityValidation: true,
+            grantFileProtocolExtraPrivileges: false,
+            loadBrowserProcessSpecificV8Snapshot: false,
+          },
+          ...(platform === 'linux'
+            ? {
+                portableLauncher: {
+                  launcher: 'worldforge',
+                  runtimeBinary: 'worldforge-bin',
+                  sandbox: 'user-namespace',
+                },
+              }
+            : {}),
+        }),
+      );
+    }
+
+    await expect(
+      verifyReleaseAssetSet({
+        assetDirectory: directory,
+        version: '1.0.0',
+        releaseKind: 'stable',
+        distributionTrust: 'required',
+      }),
+    ).resolves.toHaveLength(3);
+
+    const windowsManifestPath = path.join(directory, 'windows', 'package-manifest.json');
+    const windowsManifest = JSON.parse(await readFile(windowsManifestPath, 'utf8'));
+    await writeFile(
+      windowsManifestPath,
+      JSON.stringify({ ...windowsManifest, signed: false, distributionTrustEvidence: null }),
+    );
+    await expect(
+      verifyReleaseAssetSet({
+        assetDirectory: directory,
+        version: '1.0.0',
+        releaseKind: 'stable',
+        distributionTrust: 'required',
+      }),
+    ).rejects.toThrow(/Authenticode/);
   });
 
   it('creates deterministic SHA-256 entries for nested assets', async () => {

@@ -5,177 +5,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  isMainEffectivelyVerified,
-  isRuntimeEffectivelyVerified,
-  loadCommitStatuses,
-} from '../.github/governance/effective-task-status.mjs';
-import { parseTaskIndex } from './task-control-lib.mjs';
+  evaluateReleaseAcceptance,
+  loadReleaseCommitStatuses,
+  parseReleaseVersion,
+  validateReleaseConfiguration,
+} from '../.github/governance/release-acceptance.mjs';
+import { verifyPackageAssets } from './verify-package-assets.mjs';
+
+export { evaluateReleaseAcceptance as evaluateReleaseGate };
+export { parseReleaseVersion, validateReleaseConfiguration };
 
 const root = process.cwd();
 const checksumFileName = 'SHA256SUMS.txt';
-
-export function parseReleaseVersion(value) {
-  if (typeof value !== 'string' || value.trim() !== value || value.length === 0) {
-    throw new Error('Release version must be a non-empty SemVer value without surrounding spaces');
-  }
-  const match =
-    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(
-      value,
-    );
-  if (!match) throw new Error('Release version must use SemVer without a leading v');
-
-  const prerelease = match[4];
-  if (
-    prerelease
-      ?.split('.')
-      .some(
-        (identifier) => /^\d+$/.test(identifier) && identifier.length > 1 && identifier[0] === '0',
-      )
-  ) {
-    throw new Error('Numeric prerelease identifiers must not contain leading zeroes');
-  }
-  return value;
-}
-
-function parseIndependentTaskIndex(markdown) {
-  const [independentSection = ''] = markdown.split(/^## 3\. 被吸收的需求来源\s*$/mu, 1);
-  return parseTaskIndex(independentSection);
-}
-
-export function validateReleaseConfiguration({
-  packageJson,
-  taskIndexMarkdown,
-  authorization,
-  workflowSource,
-}) {
-  const errors = [];
-  try {
-    parseReleaseVersion(packageJson.version);
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-  }
-
-  const expectedScripts = {
-    package: 'node scripts/package-desktop.mjs',
-    'package:foundation': 'node scripts/package-foundation.mjs',
-    'release:check': 'node scripts/release-tool.mjs check',
-    'release:gate': 'node scripts/release-tool.mjs gate',
-    'release:checksums': 'node scripts/release-tool.mjs checksums',
-  };
-  for (const [name, expected] of Object.entries(expectedScripts)) {
-    if (packageJson.scripts?.[name] !== expected) {
-      errors.push('package.json must define ' + name + ' as "' + expected + '"');
-    }
-  }
-
-  if (parseIndependentTaskIndex(taskIndexMarkdown).size === 0) {
-    errors.push('TASK_INDEX must contain at least one independent task');
-  }
-  if (
-    authorization?.schemaVersion !== 2 ||
-    authorization?.mode !== 'single-work-pr' ||
-    authorization?.baseBranch !== 'main' ||
-    authorization?.workBranch !== 'work' ||
-    authorization?.mainWriteMode !== 'serialized' ||
-    authorization?.verificationClosure !== 'main-status' ||
-    typeof authorization?.taskRuntimeDirectory !== 'string'
-  ) {
-    errors.push('TASK_AUTHORIZATION must define the complete Schema 2 release model');
-  }
-  for (const token of [
-    'workflow_dispatch:',
-    'fetch-depth: 0',
-    'package_smoke: false',
-    'pnpm audit --audit-level=high',
-    'node scripts/scan-secrets.mjs',
-    'pnpm release:gate',
-    'gh release create',
-  ]) {
-    if (!workflowSource.includes(token)) errors.push('Release workflow is missing: ' + token);
-  }
-  return errors;
-}
-
-export function evaluateReleaseGate({
-  taskIndexMarkdown,
-  runtimes,
-  statuses = [],
-  packageVersion,
-  requestedVersion,
-  refName,
-}) {
-  const errors = [];
-  let version = null;
-  try {
-    version = parseReleaseVersion(requestedVersion);
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-  }
-
-  try {
-    parseReleaseVersion(packageVersion);
-  } catch {
-    errors.push('package.json version is not valid SemVer');
-  }
-  if (version && packageVersion !== version) {
-    errors.push(
-      'Requested version ' + version + ' does not match package.json version ' + packageVersion,
-    );
-  }
-  if (refName && refName !== 'main') {
-    errors.push('Releases may only run from main, found ' + refName);
-  }
-  if (!isMainEffectivelyVerified(statuses)) {
-    errors.push('Current release commit must have main-verification=success');
-  }
-
-  const tasks = [...parseIndependentTaskIndex(taskIndexMarkdown).values()];
-  if (tasks.length === 0) errors.push('TASK_INDEX contains no independent tasks');
-
-  const runtimeById = new Map(
-    (Array.isArray(runtimes) ? runtimes : [])
-      .filter((runtime) => typeof runtime?.id === 'string')
-      .map((runtime) => [runtime.id, runtime]),
-  );
-  const indexedIds = new Set(tasks.map((task) => task.id));
-  const unindexedRuntimes = [...runtimeById.values()]
-    .filter((runtime) => runtime.releaseBlocking !== false && !indexedIds.has(runtime.id))
-    .map((runtime) => runtime.id)
-    .sort();
-  if (unindexedRuntimes.length > 0) {
-    errors.push(
-      'Release-blocking runtimes are absent from TASK_INDEX: ' + unindexedRuntimes.join(', '),
-    );
-  }
-
-  const unfinished = [];
-  for (const task of tasks) {
-    const runtime = runtimeById.get(task.id);
-    if (runtime?.releaseBlocking === false) continue;
-    const verified = runtime
-      ? isRuntimeEffectivelyVerified(runtime, statuses, task.status)
-      : task.status === 'Verified';
-    if (!verified) unfinished.push(`${task.id} ${runtime?.status ?? task.status}`);
-  }
-  if (unfinished.length > 0) {
-    errors.push(
-      'All independent tasks must be effectively Verified before publishing: ' +
-        unfinished.join(', '),
-    );
-  }
-
-  const latest = tasks.at(-1);
-  const latestRuntime = latest ? runtimeById.get(latest.id) : undefined;
-  const latestVerified = latestRuntime
-    ? isRuntimeEffectivelyVerified(latestRuntime, statuses, latest?.status)
-    : latest?.status === 'Verified';
-  return {
-    version,
-    taskId: latest?.id ?? null,
-    taskStatus: latestVerified ? 'VERIFIED' : (latestRuntime?.status ?? latest?.status ?? null),
-    errors,
-  };
-}
 
 function toPosix(filePath) {
   return filePath.replaceAll('\\', '/');
@@ -248,43 +89,99 @@ function currentHead() {
   return git(['rev-parse', 'HEAD']);
 }
 
-async function loadRuntimes(directory) {
-  const files = (await readdir(directory)).filter((file) => file.endsWith('.json')).sort();
-  return Promise.all(
-    files.map((file) => readFile(path.join(directory, file), 'utf8').then(JSON.parse)),
-  );
-}
-
 async function loadReleaseState() {
-  const [packageSource, taskIndexMarkdown, authorizationSource, workflowSource] = await Promise.all(
-    [
-      readFile(path.join(root, 'package.json'), 'utf8'),
-      readFile(path.join(root, 'docs/tasks/TASK_INDEX.md'), 'utf8'),
-      readFile(path.join(root, 'docs/tasks/TASK_AUTHORIZATION.json'), 'utf8'),
-      readFile(path.join(root, '.github/workflows/release.yml'), 'utf8'),
-    ],
-  );
-  const authorization = JSON.parse(authorizationSource);
-  const runtimes = await loadRuntimes(path.join(root, authorization.taskRuntimeDirectory));
+  const [packageSource, workflowSource] = await Promise.all([
+    readFile(path.join(root, 'package.json'), 'utf8'),
+    readFile(path.join(root, '.github/workflows/release.yml'), 'utf8'),
+  ]);
   return {
     packageJson: JSON.parse(packageSource),
-    taskIndexMarkdown,
-    authorization,
-    runtimes,
     workflowSource,
   };
 }
 
-async function evaluateCurrentReleaseState(state, requestedVersion, refName) {
-  const statuses = await loadCommitStatuses(currentHead());
-  return evaluateReleaseGate({
-    taskIndexMarkdown: state.taskIndexMarkdown,
-    runtimes: state.runtimes,
+async function evaluateCurrentReleaseState(
+  state,
+  requestedVersion,
+  refName,
+  releaseKind,
+  distributionTrust,
+) {
+  const statuses = await loadReleaseCommitStatuses(currentHead());
+  return evaluateReleaseAcceptance({
     statuses,
     packageVersion: state.packageJson.version,
     requestedVersion,
     refName,
+    releaseKind,
+    distributionTrust,
   });
+}
+
+async function findPackageManifestDirectories(assetDirectory) {
+  const directories = [];
+  async function visit(directory) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Release assets may not contain symbolic links: ${entry.name}`);
+      }
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) await visit(entryPath);
+      if (entry.isFile() && entry.name === 'package-manifest.json') directories.push(directory);
+    }
+  }
+  await visit(path.resolve(assetDirectory));
+  return directories.sort((left, right) => left.localeCompare(right, 'en'));
+}
+
+export async function verifyReleaseAssetSet({
+  assetDirectory,
+  version,
+  releaseKind,
+  distributionTrust,
+}) {
+  const directories = await findPackageManifestDirectories(assetDirectory);
+  if (directories.length !== 3) {
+    throw new Error(
+      `Release assets must contain exactly three package manifests, found ${directories.length}`,
+    );
+  }
+  const verified = [];
+  for (const directory of directories) {
+    const manifest = JSON.parse(
+      await readFile(path.join(directory, 'package-manifest.json'), 'utf8'),
+    );
+    if (!['linux', 'windows', 'macos'].includes(manifest.platform)) {
+      throw new Error(
+        `Unsupported package platform in release assets: ${String(manifest.platform)}`,
+      );
+    }
+    verified.push(
+      await verifyPackageAssets(
+        [
+          '--platform',
+          manifest.platform,
+          '--version',
+          version,
+          '--release-kind',
+          releaseKind,
+          '--distribution-trust',
+          distributionTrust,
+          '--directory',
+          directory,
+        ],
+        root,
+      ),
+    );
+  }
+  const platforms = verified.map((manifest) => manifest.platform).sort();
+  if (platforms.join(',') !== 'linux,macos,windows') {
+    throw new Error(
+      `Release assets must contain one package per platform, found ${platforms.join(',')}`,
+    );
+  }
+  return verified;
 }
 
 async function checkConfiguration() {
@@ -292,15 +189,23 @@ async function checkConfiguration() {
   const errors = validateReleaseConfiguration(state);
   if (errors.length > 0) throw new Error(errors.join('\n'));
 
-  const result = await evaluateCurrentReleaseState(state, state.packageJson.version, 'main');
-  const gateStatus =
-    result.errors.length === 0
-      ? `READY (${result.taskId})`
-      : `BLOCKED (${result.errors.join('; ')})`;
+  const result = await evaluateCurrentReleaseState(
+    state,
+    state.packageJson.version,
+    'main',
+    'draft',
+    'allow-unsigned',
+  );
+  const gateStatus = result.errors.length === 0 ? 'READY' : `BLOCKED (${result.errors.join('; ')})`;
   console.log('Release tooling is configured. Publishing gate: ' + gateStatus + '.');
 }
 
-async function requireReleaseGate(requestedVersion) {
+async function requireReleaseGate(
+  requestedVersion,
+  releaseKind,
+  distributionTrust,
+  assetDirectory,
+) {
   const state = await loadReleaseState();
   const configurationErrors = validateReleaseConfiguration(state);
   if (configurationErrors.length > 0) throw new Error(configurationErrors.join('\n'));
@@ -309,15 +214,37 @@ async function requireReleaseGate(requestedVersion) {
     state,
     requestedVersion,
     process.env.GITHUB_REF_NAME,
+    releaseKind,
+    distributionTrust,
   );
   if (result.errors.length > 0) throw new Error(result.errors.join('\n'));
-  console.log(`Release gate passed for v${result.version} through ${result.taskId}.`);
+  if (assetDirectory) {
+    await verifyReleaseAssetSet({
+      assetDirectory,
+      version: result.version,
+      releaseKind: result.releaseKind,
+      distributionTrust: result.distributionTrust,
+    });
+  }
+  console.log(
+    `Release acceptance passed for v${result.version} (${result.releaseKind}, ${result.distributionTrust}).`,
+  );
   return result.version;
 }
 
 async function writeChecksums(requestedVersion) {
-  const version = await requireReleaseGate(requestedVersion);
   const assetDirectory = path.resolve(root, readOption('--assets', 'release'));
+  const releaseKind = readOption('--kind', 'draft');
+  const distributionTrust = readOption(
+    '--distribution-trust',
+    releaseKind === 'stable' ? 'required' : 'allow-unsigned',
+  );
+  const version = await requireReleaseGate(
+    requestedVersion,
+    releaseKind,
+    distributionTrust,
+    assetDirectory,
+  );
   const outputPath = path.resolve(
     root,
     readOption('--output', path.join(path.relative(root, assetDirectory), checksumFileName)),
@@ -345,7 +272,13 @@ async function main() {
   if (command === 'gate') {
     const version = readOption('--version');
     if (!version) throw new Error('gate requires --version');
-    await requireReleaseGate(version);
+    const releaseKind = readOption('--kind', 'draft');
+    const distributionTrust = readOption(
+      '--distribution-trust',
+      releaseKind === 'stable' ? 'required' : 'allow-unsigned',
+    );
+    const assetDirectory = readOption('--assets', null);
+    await requireReleaseGate(version, releaseKind, distributionTrust, assetDirectory);
     return;
   }
   if (command === 'checksums') {

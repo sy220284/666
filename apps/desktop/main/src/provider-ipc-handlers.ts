@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   IPC_CHANNELS,
   PROVIDER_CORE_OPERATIONS,
+  ProviderConfigInputSchema,
   ProviderListCommandSchema,
   ProviderRemoveCommandSchema,
   ProviderSaveCommandSchema,
@@ -202,7 +203,7 @@ async function resolveCredentialForProvider(
 }
 
 function providerConfigInput(config: ProviderConfig) {
-  return {
+  return ProviderConfigInputSchema.parse({
     id: config.id,
     name: config.name,
     protocol: config.protocol,
@@ -211,7 +212,7 @@ function providerConfigInput(config: ProviderConfig) {
     credentialRef: config.credentialRef,
     timeoutMs: config.timeoutMs,
     options: config.options,
-  };
+  });
 }
 
 async function restoreProviderConfig(

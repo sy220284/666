@@ -146,6 +146,11 @@ class SilentTaskProcess implements UtilityProcessHandle {
   readonly #messageListeners = new Set<(message: unknown) => void>();
   readonly #exitListeners = new Set<(exitCode: number | null) => void>();
 
+  terminate(): boolean {
+    for (const listener of this.#exitListeners) listener(143);
+    return true;
+  }
+
   postMessage(_message: CoreControlMessage): void {}
 
   onMessage(listener: (message: unknown) => void): () => void {

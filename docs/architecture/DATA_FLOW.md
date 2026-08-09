@@ -301,3 +301,61 @@ trash.previewPermanentDelete(entity)
 ```
 
 Preview和Delete不得维护两份手写依赖清单；未来新增RESTRICT FK后，无需额外业务枚举即可自动成为阻断来源。
+
+## 15. M10-22故障、恢复与发行流
+
+### 15.1 Core强制恢复
+
+```text
+health/RPC超时
+→ graceful drain
+→ graceful shutdown
+→ 超时则terminate Utility Process
+→ 确认旧generation exit
+→ disconnect RPC + remove listeners
+→ spawn新Core
+→ handshake + health check
+```
+
+### 15.2 恢复克隆
+
+```text
+验证备份与目标目录W_OK
+→ 复制为临时恢复库
+→ 枚举真实Project Schema表
+→ ProjectClonePolicy逐表执行remap/drop/regenerate/preserve
+→ 未分类表：阻断
+→ 重映射projectId与workspace
+→ quick_check / foreign_key_check
+→ 原子注册新项目
+```
+
+`backup_records`、`backup_failures`、命令回执和瞬时计划不随副本继承；`backup_policies`属于项目策略，可随项目重映射。
+
+### 15.3 每日备份lease
+
+```text
+原子创建tokenized lease
+→ heartbeat续租
+→ SQLite online backup + 验证
+→ assertOwner fencing
+→ 原子提交文件
+→ assertOwner fencing
+→ 写BackupRecord
+→ token一致才释放
+```
+
+### 15.4 Release Acceptance
+
+```text
+main-verification(current SHA)
++ Quality/Security/Performance/UI
++ 三平台原生package/startup/hash/ASAR/Fuse
++ Windows Authenticode证据（required）
++ macOS Developer ID/notarization/stapling证据（required）
+→ 聚合复验三份manifest
+→ checksums
+→ GitHub Release
+```
+
+Task Runtime不在该数据流中。

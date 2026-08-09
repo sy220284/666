@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   AppSettingsSchema,
   ProviderBaseUrlSchema,
+  ProviderConfigInputSchema,
   ProviderOptionsSchema,
+  ProviderSaveInputSchema,
 } from '@worldforge/contracts';
 import {
   ORDER_KEY_INTERVAL,
@@ -224,25 +226,64 @@ describe('application configuration contracts', () => {
     ).toBe(false);
   });
 
-  it('rejects credentials at any nested provider option path', () => {
+  it('accepts only protocol-specific provider option allowlists', () => {
+    expect(ProviderOptionsSchema.safeParse({}).success).toBe(true);
+    expect(ProviderOptionsSchema.safeParse({ anthropicVersion: '2023-06-01' }).success).toBe(true);
+    for (const options of [
+      { temperature: 0.7 },
+      { authorization: 'Bearer secret' },
+      { authHeader: 'secret' },
+      { nested: { access_token: 'secret' } },
+    ]) {
+      expect(ProviderOptionsSchema.safeParse(options).success).toBe(false);
+    }
+
+    const baseConfig = {
+      id: 'strict-provider',
+      name: 'Strict provider',
+      baseUrl: 'https://example.invalid/v1',
+      model: 'model',
+      credentialRef: null,
+      timeoutMs: 30_000,
+    } as const;
     expect(
-      ProviderOptionsSchema.safeParse({
-        temperature: 0.7,
-        enabled: true,
-        nullable: null,
-        nested: [{ mode: 'strict' }, false],
+      ProviderConfigInputSchema.safeParse({
+        ...baseConfig,
+        protocol: 'openai_compatible',
+        options: {},
       }).success,
     ).toBe(true);
-    const result = ProviderOptionsSchema.safeParse({
-      nested: [{ access_token: 'secret' }],
-      password: 'secret',
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.map((issue) => issue.path)).toEqual(
-        expect.arrayContaining([['nested', 0, 'access_token'], ['password']]),
-      );
-    }
+    expect(
+      ProviderConfigInputSchema.safeParse({
+        ...baseConfig,
+        protocol: 'openai_compatible',
+        options: { anthropicVersion: '2023-06-01' },
+      }).success,
+    ).toBe(false);
+    expect(
+      ProviderConfigInputSchema.safeParse({
+        ...baseConfig,
+        protocol: 'anthropic',
+        options: { anthropicVersion: '2023-06-01' },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('keeps legacy custom providers read-only at the public save boundary', () => {
+    expect(
+      ProviderSaveInputSchema.safeParse({
+        config: {
+          id: 'legacy-custom',
+          name: 'Legacy custom',
+          protocol: 'custom',
+          baseUrl: 'https://example.invalid/v1',
+          model: 'model',
+          timeoutMs: 30_000,
+          options: {},
+        },
+        credential: { action: 'preserve' },
+      }).success,
+    ).toBe(false);
   });
 
   it('accepts credential-free HTTP(S) URLs and rejects other protocols or embedded credentials', () => {

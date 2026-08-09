@@ -62,7 +62,7 @@ describe('app window preference migration and repository', () => {
       clock,
       recoveryId: () => 'migration-recovery-001',
     });
-    expect(runtime.database.schemaVersion).toBe(2);
+    expect(runtime.database.schemaVersion).toBe(3);
     expect(runtime.windowPreferences.get()).toBeNull();
 
     const requestId = randomUUID();
@@ -81,7 +81,7 @@ describe('app window preference migration and repository', () => {
     await runtime.close();
 
     const recoveryFiles = await readdir(recoveryDirectory);
-    expect(recoveryFiles).toEqual(['app-v1-to-v2-migration-recovery-001.sqlite']);
+    expect(recoveryFiles).toEqual(['app-v1-to-v3-migration-recovery-001.sqlite']);
     const recoveryPath = path.join(recoveryDirectory, recoveryFiles[0] ?? '');
     expect((await stat(recoveryDirectory)).mode & 0o777).toBe(0o700);
     expect((await stat(recoveryPath)).mode & 0o777).toBe(0o600);

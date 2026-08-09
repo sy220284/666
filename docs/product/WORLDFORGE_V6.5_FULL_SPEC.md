@@ -310,14 +310,15 @@ P0验收项以`../testing/P0_ACCEPTANCE_MATRIX.md`中的P0-001—P0-075为唯一
 5. 单元、集成、Migration、安全、桌面E2E、性能和AI Eval证据完整。
 6. Windows、macOS和Linux有真实自用便携构建验证。
 7. Provider资源超限安全失败，搜索工具交叉操作不产生永久等待。
+8. stable Release具有Windows Authenticode签名，以及macOS Developer ID签名、公证、stapling与原生验证证据。
 
 ## 13. 任务路线与当前维护状态
 
-历史V1交付由M0—M8完成；后续M9负责架构拆分，M10负责稳定性、边界与治理续作。当前独立执行体系为M0—M3、M4-01—M4-04、M8、M9及M10-01—M10-21，共66张独立任务卡。
+历史V1交付由M0—M8完成；后续M9负责架构拆分，M10负责稳定性、边界与治理续作。当前独立执行体系为M0—M3、M4-01—M4-04、M8、M9及M10-01—M10-22，共67张独立任务卡。
 
 任务卡中的静态`Implemented`不能替代有效`Verified`。当前任务、来源PR、受检Head、`main-verification`和`task-verification/<TASK-ID>`必须按`PROJECT_EXECUTION_ENTRY.md`动态解析。本文件只保存产品与技术权威，不再固化“最终任务”或瞬时Head。
 
-M10-19已收口Generation生命周期、Active Structure、Arc依赖、FK删除、Import durable replay与SemanticRevision；M10-20完成全量审计整改和发布链路收口；M10-21同步当前权威文档与测试架构。历史任务卡、Migration与Evidence继续冻结。
+M10-19已收口Generation生命周期、Active Structure、Arc依赖、FK删除、Import durable replay与SemanticRevision；M10-20完成全量审计整改和发布链路收口；M10-21同步当前权威文档与测试架构；M10-22统一Core/Renderer异步所有权、Recovery一致性、Provider严格契约和Release唯一权威。历史任务卡、Migration与Evidence继续冻结。
 
 ## 14. 开发入口
 

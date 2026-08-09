@@ -116,6 +116,7 @@ function spawnCore(): UtilityProcessHandle {
   );
   return {
     ...(child.pid ? { pid: child.pid } : {}),
+    terminate: () => child.kill(),
     postMessage: (message, transfer) =>
       child.postMessage(message, transfer ? ([...transfer] as MessagePortMain[]) : undefined),
     onMessage: (listener) => {

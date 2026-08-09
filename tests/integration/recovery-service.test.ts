@@ -131,6 +131,27 @@ describe('M1-08 operation checkpoints and restored copies', () => {
         expect.arrayContaining([checkpoint.backupFileName, `${checkpoint.backupId}.json`]),
       );
 
+      await value.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        database
+          .prepare(
+            `INSERT INTO backup_failures(
+               id, project_id, operation, backup_track, error_code, occurred_at, resolved_at
+             ) VALUES(?, ?, 'replace', 'major', 'BACKUP_CREATE_FAILED', ?, NULL)`,
+          )
+          .run(randomUUID(), project.projectId, '2026-07-17T00:00:00.000Z');
+        database
+          .prepare(
+            `INSERT INTO migration_journal(
+               id, migration_version, stage, payload_json, status, created_at, updated_at
+             ) VALUES(?, 1, 'restore-test', '{}', 'completed', ?, ?)`,
+          )
+          .run(randomUUID(), '2026-07-17T00:00:00.000Z', '2026-07-17T00:00:00.000Z');
+      });
+      const lineageCheckpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: project.projectId,
+        operation: 'replace',
+      });
+
       const changed = await value.drafts.applyPatch(randomUUID(), {
         projectId: project.projectId,
         chapterId: chapter.id,
@@ -155,7 +176,7 @@ describe('M1-08 operation checkpoints and restored copies', () => {
 
       const restored = await value.recovery.restoreCheckpoint(
         randomUUID(),
-        { projectId: project.projectId, backupId: checkpoint.backupId },
+        { projectId: project.projectId, backupId: lineageCheckpoint.backupId },
         value.restoreParent,
       );
       expect(restored.projectId).not.toBe(project.projectId);
@@ -164,7 +185,7 @@ describe('M1-08 operation checkpoints and restored copies', () => {
       await expect(
         value.recovery.restoreCheckpoint(
           randomUUID(),
-          { projectId: project.projectId, backupId: checkpoint.backupId },
+          { projectId: project.projectId, backupId: lineageCheckpoint.backupId },
           value.restoreParent,
         ),
       ).rejects.toMatchObject({ code: 'RESTORE_TARGET_CONFLICT' });
@@ -173,6 +194,19 @@ describe('M1-08 operation checkpoints and restored copies', () => {
       const reopened = await value.workspace.open(randomUUID(), {
         workspacePath: restored.workspacePath,
       });
+      expect(
+        value.workspace.readProject(reopened.projectId, (database) => ({
+          records: Number(
+            database.prepare('SELECT COUNT(*) AS count FROM backup_records').get()?.count,
+          ),
+          failures: Number(
+            database.prepare('SELECT COUNT(*) AS count FROM backup_failures').get()?.count,
+          ),
+          migrationJournal: Number(
+            database.prepare('SELECT COUNT(*) AS count FROM migration_journal').get()?.count,
+          ),
+        })),
+      ).toEqual({ records: 0, failures: 0, migrationJournal: 0 });
       const restoredStructure = value.structure.list(reopened.projectId);
       const restoredChapter = restoredStructure.volumes[0]!.chapters[0]!;
       const restoredDraft = await value.drafts.open(randomUUID(), {

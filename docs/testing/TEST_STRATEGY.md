@@ -93,6 +93,18 @@
 | SemanticRevision      | 权威语义实体/关系写入增量推进修订；Validation读取O(1)修订并保持章节内容digest                                       |
 | Renderer所有权        | 旧项目Task/Query响应不能覆盖新项目；degraded retained data必须显式标记刷新失败                                      |
 
+### M10-22治理不变量
+
+| 不变量            | 必须证明                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| Core强制接管      | 活进程完全不响应时会terminate并等待exit；旧generation事件不能影响新Core；并发restart保持single-flight |
+| Clone Policy      | 当前Project Schema所有业务表均已分类；未知表fail closed；恢复副本不继承备份血缘或运行历史             |
+| Backup Lease      | heartbeat中的活owner不会被mtime误抢；过期lease可接管；旧token不能释放或提交新owner资源                |
+| Recovery能力      | 目录预检明确使用`W_OK`，ACL或特殊挂载失败在写入前暴露                                                 |
+| Renderer请求Owner | dictionary mutation期间reload不可用；stale completion不能清除新owner或提前解除pending                 |
+| Provider契约      | 未知options、authorization/authHeader等字段被strict schema拒绝；Schema 2→3迁移清理旧任意字段          |
+| Release Authority | Task Runtime变化不影响Release；stable unsigned Windows或未签名/未公证/未staple macOS工件必定失败      |
+
 ## 6. Migration
 
 - 空库升级到最新。

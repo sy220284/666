@@ -16,6 +16,7 @@ import {
 } from '../provider/provider-settings-controller.js';
 import {
   applyProviderPreset,
+  editableProviderConfig,
   PROVIDER_PRESETS,
   providerPreset,
   providerProtocolLabel,
@@ -76,15 +77,7 @@ export function ProviderSettings({
   };
 
   const edit = (provider: ProviderSummary): void => {
-    setDraft({
-      id: provider.id,
-      name: provider.name,
-      protocol: provider.protocol,
-      baseUrl: provider.baseUrl,
-      model: provider.model,
-      timeoutMs: provider.timeoutMs,
-      options: provider.options,
-    });
+    setDraft(editableProviderConfig(provider));
     setActivePreset(null);
     setCredential('');
     setRemoveCredential(false);
@@ -116,15 +109,7 @@ export function ProviderSettings({
         setRemoveCredential(false);
         if (outcome.state === 'success') {
           onProviderInvalidated(outcome.data.id);
-          setDraft({
-            id: outcome.data.id,
-            name: outcome.data.name,
-            protocol: outcome.data.protocol,
-            baseUrl: outcome.data.baseUrl,
-            model: outcome.data.model,
-            timeoutMs: outcome.data.timeoutMs,
-            options: outcome.data.options,
-          });
+          setDraft(editableProviderConfig(outcome.data));
           await refreshProviderSettings(refreshInput, scope);
           if (scope.isCurrent())
             setMessage(`已保存“${outcome.data.name}”。实际密钥仅保存在系统安全存储。`);
@@ -273,12 +258,18 @@ export function ProviderSettings({
               <select
                 data-provider-protocol
                 value={draft.protocol}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    protocol: event.target.value as ProviderEditableConfig['protocol'],
-                  })
-                }
+                onChange={(event) => {
+                  const protocol = event.target.value as 'openai_compatible' | 'anthropic';
+                  setDraft(
+                    protocol === 'anthropic'
+                      ? {
+                          ...draft,
+                          protocol,
+                          options: { anthropicVersion: '2023-06-01' },
+                        }
+                      : { ...draft, protocol, options: {} },
+                  );
+                }}
               >
                 <option value="openai_compatible">OpenAI兼容接口</option>
                 <option value="anthropic">Anthropic原生接口</option>
@@ -358,16 +349,16 @@ export function ProviderSettings({
               <footer>
                 <button
                   className="quiet-button"
-                  disabled={Boolean(pending)}
+                  disabled={Boolean(pending) || provider.protocol === 'custom'}
                   type="button"
                   onClick={() => edit(provider)}
                 >
-                  编辑
+                  {provider.protocol === 'custom' ? '历史配置只读' : '编辑'}
                 </button>
                 <button
                   className="primary-button"
                   data-provider-test={provider.id}
-                  disabled={Boolean(pending)}
+                  disabled={Boolean(pending) || provider.protocol === 'custom'}
                   type="button"
                   onClick={() => void test(provider)}
                 >

@@ -39,9 +39,27 @@ export const ProviderEndpointInfoSchema = z.strictObject({
   warnings: z.array(z.string().min(1).max(512)).max(16),
 });
 
-export const ProviderEditableConfigSchema = ProviderConfigInputSchema.omit({
+const [
+  OpenAiCompatibleProviderConfigInputSchema,
+  AnthropicProviderConfigInputSchema,
+  CustomProviderConfigInputSchema,
+] = ProviderConfigInputSchema.options;
+
+const OpenAiCompatibleProviderEditableConfigSchema = OpenAiCompatibleProviderConfigInputSchema.omit(
+  { credentialRef: true },
+);
+const AnthropicProviderEditableConfigSchema = AnthropicProviderConfigInputSchema.omit({
   credentialRef: true,
 });
+const CustomProviderEditableConfigSchema = CustomProviderConfigInputSchema.omit({
+  credentialRef: true,
+});
+
+export const ProviderEditableConfigSchema = z.discriminatedUnion('protocol', [
+  OpenAiCompatibleProviderEditableConfigSchema,
+  AnthropicProviderEditableConfigSchema,
+  CustomProviderEditableConfigSchema,
+]);
 
 export const ProviderCredentialChangeSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('preserve') }),
@@ -52,17 +70,32 @@ export const ProviderCredentialChangeSchema = z.discriminatedUnion('action', [
   }),
 ]);
 
-export const ProviderSaveInputSchema = z.strictObject({
-  config: ProviderEditableConfigSchema,
-  credential: ProviderCredentialChangeSchema,
-});
+export const ProviderSaveInputSchema = z
+  .strictObject({
+    config: ProviderEditableConfigSchema,
+    credential: ProviderCredentialChangeSchema,
+  })
+  .superRefine((input, context) => {
+    if (input.config.protocol === 'custom') {
+      context.addIssue({
+        code: 'custom',
+        path: ['config', 'protocol'],
+        message: 'Legacy custom providers are read-only and cannot be created or updated.',
+      });
+    }
+  });
 
-export const ProviderSummarySchema = ProviderEditableConfigSchema.extend({
+const providerSummaryFields = {
   credentialConfigured: z.boolean(),
   endpoint: ProviderEndpointInfoSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
-}).strict();
+} as const;
+export const ProviderSummarySchema = z.discriminatedUnion('protocol', [
+  OpenAiCompatibleProviderEditableConfigSchema.extend(providerSummaryFields),
+  AnthropicProviderEditableConfigSchema.extend(providerSummaryFields),
+  CustomProviderEditableConfigSchema.extend(providerSummaryFields),
+]);
 
 export const ProviderConnectionTestResultSchema = z.strictObject({
   providerId: ProviderConfigIdSchema,

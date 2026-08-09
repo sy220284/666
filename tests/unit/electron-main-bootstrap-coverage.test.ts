@@ -37,6 +37,7 @@ const state = vi.hoisted(() => ({
   protocolHandle: vi.fn(),
   protocolRegister: vi.fn(),
   childPostMessage: vi.fn(),
+  childKill: vi.fn(() => true),
   childOn: vi.fn(),
   childOff: vi.fn(),
   supervisorRestart: vi.fn(async () => ({ ok: true })),
@@ -117,6 +118,7 @@ vi.mock('electron', () => {
 
   const child = () => ({
     pid: state.childPid,
+    kill: state.childKill,
     postMessage: state.childPostMessage,
     on: (name: string, listener: (...args: unknown[]) => unknown) => {
       state.childListeners.set(name, listener);
@@ -494,10 +496,12 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     );
     expect(state.spawnHandle).toMatchObject({ pid: 123 });
     const handle = state.spawnHandle as {
+      terminate(): boolean;
       postMessage(message: unknown, transfer?: readonly unknown[]): void;
       onMessage(listener: (...args: unknown[]) => unknown): () => void;
       onExit(listener: (...args: unknown[]) => unknown): () => void;
     };
+    expect(handle.terminate()).toBe(true);
     handle.postMessage({ one: true });
     handle.postMessage({ two: true }, [{}]);
     const stopMessage = handle.onMessage(vi.fn());
@@ -505,6 +509,7 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     stopMessage();
     stopExit();
     expect(state.childPostMessage).toHaveBeenCalledTimes(2);
+    expect(state.childKill).toHaveBeenCalledTimes(1);
     expect(state.childOn).toHaveBeenCalledTimes(2);
     expect(state.childOff).toHaveBeenCalledTimes(2);
 

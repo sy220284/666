@@ -11,7 +11,7 @@ import { createPackage, getRawHeader } from '@electron/asar';
 import { flipFuses, FuseV1Options, FuseVersion } from '@electron/fuses';
 import { resedit } from '@electron/packager/resedit';
 
-import { parseReleaseVersion } from './release-tool.mjs';
+import { parseReleaseVersion } from '../.github/governance/release-acceptance.mjs';
 
 const root = process.cwd();
 const require = createRequire(import.meta.url);
@@ -21,6 +21,8 @@ const platformByNode = Object.freeze({
   darwin: 'macos',
 });
 const supportedPlatforms = new Set(Object.values(platformByNode));
+const supportedReleaseKinds = new Set(['draft', 'prerelease', 'stable']);
+const supportedDistributionTrustModes = new Set(['allow-unsigned', 'required']);
 
 function option(argumentsList, name) {
   const inlinePrefix = `${name}=`;
@@ -44,7 +46,13 @@ export function parsePackageArguments(
   { packageVersion, nodePlatform = process.platform, repositoryRoot = root } = {},
 ) {
   argumentsList = argumentsList.filter((argument) => argument !== '--');
-  const known = new Set(['--platform', '--version', '--output']);
+  const known = new Set([
+    '--platform',
+    '--version',
+    '--output',
+    '--release-kind',
+    '--distribution-trust',
+  ]);
   for (let index = 0; index < argumentsList.length; index += 1) {
     const argument = argumentsList[index];
     const name = argument.includes('=') ? argument.slice(0, argument.indexOf('=')) : argument;
@@ -70,6 +78,20 @@ export function parsePackageArguments(
     );
   }
 
+  const releaseKind = option(argumentsList, '--release-kind') ?? 'draft';
+  if (!supportedReleaseKinds.has(releaseKind)) {
+    throw new Error(`Unsupported release kind: ${releaseKind}`);
+  }
+  const distributionTrust =
+    option(argumentsList, '--distribution-trust') ??
+    (releaseKind === 'stable' ? 'required' : 'allow-unsigned');
+  if (!supportedDistributionTrustModes.has(distributionTrust)) {
+    throw new Error(`Unsupported distribution trust mode: ${distributionTrust}`);
+  }
+  if (releaseKind === 'stable' && distributionTrust !== 'required') {
+    throw new Error('Stable packages must require distribution trust');
+  }
+
   const output = path.resolve(
     repositoryRoot,
     option(argumentsList, '--output') ?? path.join('release', platform),
@@ -83,7 +105,7 @@ export function parsePackageArguments(
   ) {
     throw new Error('Package output must be located inside the repository');
   }
-  return { platform, hostPlatform, version, output };
+  return { platform, hostPlatform, version, releaseKind, distributionTrust, output };
 }
 
 function run(command, argumentsList, options = {}) {
@@ -100,6 +122,7 @@ function run(command, argumentsList, options = {}) {
       result.error ? { cause: result.error } : undefined,
     );
   }
+  return result.stdout.trim();
 }
 
 async function requirePath(filePath, label) {
@@ -245,11 +268,24 @@ async function copyElectronRuntime(stagingDirectory, platform, version) {
     await rename(sourceExecutable, executablePath);
     const plistPath = path.join(bundlePath, 'Contents', 'Info.plist');
     const plist = await readFile(plistPath, 'utf8');
+    const bundleVersion = version.split(/[+-]/u, 1)[0];
     await writeFile(
       plistPath,
-      plist
-        .replaceAll('<string>Electron</string>', '<string>WorldForge</string>')
-        .replaceAll('<string>electron</string>', '<string>worldforge</string>'),
+      replacePlistString(
+        replacePlistString(
+          replacePlistString(
+            plist
+              .replaceAll('<string>Electron</string>', '<string>WorldForge</string>')
+              .replaceAll('<string>electron</string>', '<string>worldforge</string>'),
+            'CFBundleIdentifier',
+            'com.worldforge.desktop',
+          ),
+          'CFBundleShortVersionString',
+          bundleVersion,
+        ),
+        'CFBundleVersion',
+        bundleVersion,
+      ),
       'utf8',
     );
     return {
@@ -281,6 +317,12 @@ async function copyElectronRuntime(stagingDirectory, platform, version) {
     plistPath: null,
     resourcesPath: path.join(bundlePath, 'resources'),
   };
+}
+
+export function replacePlistString(source, key, value) {
+  const pattern = new RegExp(`(<key>${key}</key>\\s*)<string>[^<]*</string>`, 'u');
+  if (!pattern.test(source)) throw new Error(`macOS Info.plist is missing ${key}`);
+  return source.replace(pattern, `$1<string>${value}</string>`);
 }
 
 export function asarHeaderIntegrity(headerString) {
@@ -388,6 +430,124 @@ async function configurePortableLauncher(runtime, platform) {
   };
 }
 
+function completeEnvironmentGroup(environment, names, label) {
+  const values = names.map((name) => environment[name]?.trim() ?? '');
+  if (values.every((value) => value.length === 0)) return null;
+  if (values.some((value) => value.length === 0)) {
+    throw new Error(`${label} configuration is incomplete`);
+  }
+  return Object.fromEntries(names.map((name, index) => [name, values[index]]));
+}
+
+async function establishWindowsDistributionTrust(runtime, environment) {
+  const credentials = completeEnvironmentGroup(
+    environment,
+    ['WINDOWS_CERTIFICATE_FILE', 'WINDOWS_CERTIFICATE_PASSWORD'],
+    'Windows signing',
+  );
+  if (!credentials) {
+    return { signed: false, notarized: false, stapled: false, evidence: null };
+  }
+
+  const { sign } = await import('@electron/windows-sign');
+  await sign({
+    appDirectory: runtime.bundlePath,
+    certificateFile: credentials.WINDOWS_CERTIFICATE_FILE,
+    certificatePassword: credentials.WINDOWS_CERTIFICATE_PASSWORD,
+    hashes: ['sha256'],
+    description: 'WorldForge local-first writing workstation',
+  });
+  run('powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    `$signature = Get-AuthenticodeSignature -LiteralPath '${runtime.executablePath.replaceAll("'", "''")}'; if ($signature.Status -ne 'Valid' -or $null -eq $signature.TimeStamperCertificate) { exit 1 }`,
+  ]);
+  return {
+    signed: true,
+    notarized: false,
+    stapled: false,
+    evidence: {
+      signing: 'authenticode-sha256',
+      signatureVerification: 'Get-AuthenticodeSignature:Valid',
+      timestamped: true,
+    },
+  };
+}
+
+async function establishMacosDistributionTrust(runtime, environment) {
+  const signing = completeEnvironmentGroup(
+    environment,
+    ['WORLDFORGE_MACOS_SIGN_IDENTITY', 'WORLDFORGE_MACOS_KEYCHAIN'],
+    'macOS signing',
+  );
+  const notarization = completeEnvironmentGroup(
+    environment,
+    ['APPLE_API_KEY', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER'],
+    'macOS notarization',
+  );
+  if (!signing && !notarization) {
+    return { signed: false, notarized: false, stapled: false, evidence: null };
+  }
+  if (!signing || !notarization) {
+    throw new Error('macOS signing and notarization must be configured together');
+  }
+
+  const [{ sign }, { notarize }] = await Promise.all([
+    import('@electron/osx-sign'),
+    import('@electron/notarize'),
+  ]);
+  await sign({
+    app: runtime.bundlePath,
+    platform: 'darwin',
+    identity: signing.WORLDFORGE_MACOS_SIGN_IDENTITY,
+    keychain: signing.WORLDFORGE_MACOS_KEYCHAIN,
+    preAutoEntitlements: false,
+  });
+  run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', runtime.bundlePath]);
+  await notarize({
+    appPath: runtime.bundlePath,
+    appleApiKey: notarization.APPLE_API_KEY,
+    appleApiKeyId: notarization.APPLE_API_KEY_ID,
+    appleApiIssuer: notarization.APPLE_API_ISSUER,
+  });
+  run('xcrun', ['stapler', 'staple', runtime.bundlePath]);
+  run('xcrun', ['stapler', 'validate', runtime.bundlePath]);
+  run('spctl', ['--assess', '--type', 'execute', '--verbose=2', runtime.bundlePath]);
+  return {
+    signed: true,
+    notarized: true,
+    stapled: true,
+    evidence: {
+      signing: 'developer-id-application',
+      hardenedRuntime: true,
+      signatureVerification: 'codesign:strict',
+      notarizationVerification: 'stapler:validated',
+      gatekeeperAssessment: 'spctl:accepted',
+    },
+  };
+}
+
+export async function establishDistributionTrust(runtime, platform, environment = process.env) {
+  if (platform === 'windows') return establishWindowsDistributionTrust(runtime, environment);
+  if (platform === 'macos') return establishMacosDistributionTrust(runtime, environment);
+  return { signed: false, notarized: false, stapled: false, evidence: null };
+}
+
+export function assertRequiredDistributionTrust(platform, trust) {
+  if (platform === 'windows' && trust.signed !== true) {
+    throw new Error('Windows distribution trust is required but Authenticode signing is absent');
+  }
+  if (
+    platform === 'macos' &&
+    (trust.signed !== true || trust.notarized !== true || trust.stapled !== true)
+  ) {
+    throw new Error(
+      'macOS distribution trust is required but signing, notarization, or stapling is absent',
+    );
+  }
+}
+
 function archiveExtension(platform) {
   return platform === 'linux' ? 'tar.gz' : 'zip';
 }
@@ -460,6 +620,10 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
     await prepareApplication(runtime.resourcesPath, options.version);
     const hardening = await hardenPackagedRuntime(runtime, options.platform, options.version);
     const portableLauncher = await configurePortableLauncher(runtime, options.platform);
+    const distributionTrust = await establishDistributionTrust(runtime, options.platform);
+    if (options.distributionTrust === 'required') {
+      assertRequiredDistributionTrust(options.platform, distributionTrust);
+    }
     const artifactName = `WorldForge-v${options.version}-${options.platform}-${runtime.architecture}.${archiveExtension(options.platform)}`;
     const artifactPath = path.join(options.output, artifactName);
     createArchive({
@@ -469,17 +633,21 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
       artifactPath,
     });
     const metadata = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       product: 'WorldForge',
       version: options.version,
       platform: options.platform,
+      releaseKind: options.releaseKind,
+      distributionTrustMode: options.distributionTrust,
       architecture: runtime.architecture,
       artifact: artifactName,
       bytes: (await stat(artifactPath)).size,
       sha256: await sha256(artifactPath),
       packageKind: 'portable-electron-bundle',
-      signed: false,
-      notarized: false,
+      signed: distributionTrust.signed,
+      notarized: distributionTrust.notarized,
+      stapled: distributionTrust.stapled,
+      distributionTrustEvidence: distributionTrust.evidence,
       fusesApplied: true,
       asar: true,
       appAsarSha256: await sha256(hardening.asarPath),
@@ -493,7 +661,10 @@ export async function packageDesktop(argumentsList = process.argv.slice(2)) {
         wasmTrapHandlers: true,
       },
       ...(portableLauncher ? { portableLauncher } : {}),
-      limitations: ['Code signing and notarization are separate release acceptance gates.'],
+      limitations:
+        distributionTrust.evidence === null
+          ? ['This package has no platform distribution signature or notarization evidence.']
+          : [],
     };
     await writeFile(
       path.join(options.output, 'package-manifest.json'),

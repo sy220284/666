@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { ProviderProtocolSchema } from './ai-output-protocol.js';
 import { ErrorCodeSchema } from './error-codes.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
@@ -129,53 +128,16 @@ export const RecentProjectRegistrationSchema = z.strictObject({
   displayName: z.string().trim().min(1).max(240),
 });
 
-type ProviderOptionValue =
-  | string
-  | number
-  | boolean
-  | null
-  | readonly ProviderOptionValue[]
-  | { readonly [key: string]: ProviderOptionValue };
-
-const ProviderOptionValueSchema: z.ZodType<ProviderOptionValue> = z.lazy(() =>
-  z.union([
-    z.string().max(4_096),
-    z.number().finite(),
-    z.boolean(),
-    z.null(),
-    z.array(ProviderOptionValueSchema).max(256),
-    z.record(z.string().min(1).max(128), ProviderOptionValueSchema),
-  ]),
-);
-
-const sensitiveOptionKey = /(?:api[-_]?key|access[-_]?token|token|secret|password|credential)/i;
-
-function reportSensitiveKeys(
-  value: ProviderOptionValue,
-  context: z.RefinementCtx,
-  path: readonly (string | number)[] = [],
-): void {
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => reportSensitiveKeys(item, context, [...path, index]));
-    return;
-  }
-  if (!value || typeof value !== 'object') return;
-  for (const [key, item] of Object.entries(value)) {
-    const itemPath = [...path, key];
-    if (sensitiveOptionKey.test(key)) {
-      context.addIssue({
-        code: 'custom',
-        path: itemPath,
-        message: 'Provider credentials must be stored only through credentialRef.',
-      });
-    }
-    reportSensitiveKeys(item, context, itemPath);
-  }
-}
-
-export const ProviderOptionsSchema = z
-  .record(z.string().min(1).max(128), ProviderOptionValueSchema)
-  .superRefine((options, context) => reportSensitiveKeys(options, context));
+const OpenAiCompatibleProviderOptionsSchema = z.strictObject({});
+const AnthropicProviderOptionsSchema = z.strictObject({
+  anthropicVersion: z.string().trim().min(1).max(64).optional(),
+});
+const CustomProviderOptionsSchema = z.strictObject({});
+export const ProviderOptionsSchema = z.union([
+  OpenAiCompatibleProviderOptionsSchema,
+  AnthropicProviderOptionsSchema,
+  CustomProviderOptionsSchema,
+]);
 
 export const ProviderBaseUrlSchema = z.url().superRefine((value, context) => {
   const separator = value.indexOf('://');
@@ -188,20 +150,45 @@ export const ProviderBaseUrlSchema = z.url().superRefine((value, context) => {
     });
   }
 });
-export const ProviderConfigInputSchema = z.strictObject({
+const providerConfigInputFields = {
   id: ProviderConfigIdSchema,
   name: z.string().trim().min(1).max(240),
-  protocol: ProviderProtocolSchema,
   baseUrl: ProviderBaseUrlSchema,
   model: z.string().trim().min(1).max(512),
   credentialRef: ProviderCredentialRefSchema.nullable(),
   timeoutMs: z.number().int().min(1_000).max(600_000),
-  options: ProviderOptionsSchema,
+} as const;
+
+const OpenAiCompatibleProviderConfigInputSchema = z.strictObject({
+  ...providerConfigInputFields,
+  protocol: z.literal('openai_compatible'),
+  options: OpenAiCompatibleProviderOptionsSchema,
 });
-export const ProviderConfigSchema = ProviderConfigInputSchema.extend({
+const AnthropicProviderConfigInputSchema = z.strictObject({
+  ...providerConfigInputFields,
+  protocol: z.literal('anthropic'),
+  options: AnthropicProviderOptionsSchema,
+});
+const CustomProviderConfigInputSchema = z.strictObject({
+  ...providerConfigInputFields,
+  protocol: z.literal('custom'),
+  options: CustomProviderOptionsSchema,
+});
+export const ProviderConfigInputSchema = z.discriminatedUnion('protocol', [
+  OpenAiCompatibleProviderConfigInputSchema,
+  AnthropicProviderConfigInputSchema,
+  CustomProviderConfigInputSchema,
+]);
+
+const providerConfigStoredFields = {
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
-}).strict();
+} as const;
+export const ProviderConfigSchema = z.discriminatedUnion('protocol', [
+  OpenAiCompatibleProviderConfigInputSchema.extend(providerConfigStoredFields),
+  AnthropicProviderConfigInputSchema.extend(providerConfigStoredFields),
+  CustomProviderConfigInputSchema.extend(providerConfigStoredFields),
+]);
 
 const commandEnvelope = {
   protocolVersion: z.literal(TASK_PROTOCOL_VERSION),
@@ -324,6 +311,9 @@ export type OnboardingTip = z.infer<typeof OnboardingTipSchema>;
 export type RecentProject = z.infer<typeof RecentProjectSchema>;
 export type RecentProjectRegistration = z.infer<typeof RecentProjectRegistrationSchema>;
 export type ProviderOptions = z.infer<typeof ProviderOptionsSchema>;
+export type OpenAiCompatibleProviderOptions = z.infer<typeof OpenAiCompatibleProviderOptionsSchema>;
+export type AnthropicProviderOptions = z.infer<typeof AnthropicProviderOptionsSchema>;
+export type CustomProviderOptions = z.infer<typeof CustomProviderOptionsSchema>;
 export type ProviderConfigInput = z.infer<typeof ProviderConfigInputSchema>;
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 export type CoreAppDataOperation = z.infer<typeof CoreAppDataOperationSchema>;

@@ -23,6 +23,11 @@ import {
   rethrowRecoveryFailure,
   settleRecoveryCompensation,
 } from './recovery-compensation.js';
+import {
+  prepareProjectClone,
+  projectCloneAction,
+  projectCloneTables,
+} from './project-clone-policy.js';
 
 interface RestoreRequestRecord {
   readonly schemaVersion: 1;
@@ -94,11 +99,11 @@ export function remapProjectIdentity(
   });
   try {
     database.exec('PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE');
-    const tables = database
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-      .all()
-      .map((row) => String(row.name));
+    prepareProjectClone(database, timestamp);
+    const tables = projectCloneTables(database);
     for (const table of tables) {
+      const action = projectCloneAction(table);
+      if (action === 'preserve' || action === 'identity' || action === 'regenerate') continue;
       const references = database
         .prepare(`PRAGMA foreign_key_list(${quoteIdentifier(table)})`)
         .all();

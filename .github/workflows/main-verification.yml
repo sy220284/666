@@ -93,8 +93,74 @@ jobs:
           node-version: 24
       - name: Assert clean status publisher checkout
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Publish final main and task verification statuses
+      - name: Publish final main verification status
         run: node scripts/main-verification.mjs publish-status
       - name: Assert status publication did not mutate tracked files
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
+
+  synchronize-work:
+    name: synchronize-work
+    needs: main-verification
+    if: ${{ needs.main-verification.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Self-test synchronization guards
+        run: node .github/governance/work-synchronization.mjs self-test
+      - name: Synchronize verified work
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WORK_SYNCHRONIZATION_OUTPUT: artifacts/work-synchronization
+        run: node .github/governance/work-synchronization.mjs
+      - name: Upload synchronization report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: work-synchronization-${{ inputs.expected_sha }}
+          path: artifacts/work-synchronization/
+          if-no-files-found: error
+          retention-days: 30
+
+  branch-hygiene:
+    name: branch-hygiene
+    needs: synchronize-work
+    if: ${{ needs.synchronize-work.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Self-test branch inventory policy
+        run: node .github/governance/branch-inventory-policy.mjs self-test
+      - name: Repair and enforce exact main/work branch inventory
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BRANCH_INVENTORY_OUTPUT: artifacts/branch-hygiene
+        run: node .github/governance/branch-inventory-policy.mjs --repair
+      - name: Upload branch report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: branch-hygiene-report-${{ inputs.expected_sha }}
+          path: artifacts/branch-hygiene/
+          if-no-files-found: error
+          retention-days: 30

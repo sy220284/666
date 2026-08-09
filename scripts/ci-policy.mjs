@@ -144,21 +144,35 @@ async function main() {
     'REPO_ADMIN_TOKEN',
   ]);
 
-  requireText(errors, 'branch-hygiene.yml', workflows.get('branch-hygiene.yml'), [
+  const branchHygiene = workflows.get('branch-hygiene.yml');
+  requireText(errors, 'branch-hygiene.yml', branchHygiene, [
+    'schedule:',
+    'workflow_dispatch:',
     'contents: write',
     'branch-inventory-policy.mjs --repair',
   ]);
-  requireText(errors, 'work-synchronization.yml', workflows.get('work-synchronization.yml'), [
-    '- Main Verification',
+  forbidText(errors, 'branch-hygiene.yml', branchHygiene, ['workflow_run:']);
+
+  const workSynchronization = workflows.get('work-synchronization.yml');
+  requireText(errors, 'work-synchronization.yml', workSynchronization, [
+    'workflow_dispatch:',
     'contents: write',
     'work-synchronization.mjs',
   ]);
-  requireText(errors, 'main-verification.yml', workflows.get('main-verification.yml'), [
+  forbidText(errors, 'work-synchronization.yml', workSynchronization, ['workflow_run:']);
+
+  const mainVerification = workflows.get('main-verification.yml');
+  requireText(errors, 'main-verification.yml', mainVerification, [
     'workflow_dispatch:',
     'source_head_sha:',
     'statuses: write',
     'scripts/main-verification.mjs',
+    'synchronize-work:',
+    'work-synchronization.mjs',
+    'branch-hygiene:',
+    'branch-inventory-policy.mjs --repair',
   ]);
+
   requireText(errors, 'quality-core.yml', workflows.get('quality-core.yml'), [
     'static-checks:',
     'product-tests:',

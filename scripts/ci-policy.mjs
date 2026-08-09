@@ -276,6 +276,7 @@ async function main() {
     'workflow_dispatch:',
     'schedule:',
     'converted_to_draft',
+    "contains(github.event.pull_request.body, '<!-- worldforge-task:')",
     'scripts/evidence-policy.mjs',
     'scripts/verified-evidence-scan.mjs',
   ]);

@@ -286,7 +286,7 @@ async function main() {
     if (
       pull.base.ref !== config.baseBranch ||
       pull.head.sha !== sha ||
-      pull.head.repo.ful_name !== repository
+      pull.head.repo.full_name !== repository
     )
       continue;
     if (pull.merged) {
@@ -320,15 +320,14 @@ async function main() {
     const merged = await api(token, `/repos/${owner}/${repo}/pulls/${number}/merge`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify {
+      body: JSON.stringify({
         sha,
         merge_method: config.mergeMethod,
         commit_title: `${pull.title} (#${number})`,
       }),
     });
-    if (!merged.merged) throw new Error(
-      `GitHub refused to merge #${number}: ${merged.message}`,
-    );
+    if (!merged.merged)
+      throw new Error(`GitHub refused to merge #${number}: ${merged.message}`);
     await ensureMainVerification(owner, repo, config, merged.sha, number, sha, token);
   }
 }

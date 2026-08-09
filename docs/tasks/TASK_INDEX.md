@@ -15,11 +15,11 @@ Runtime IMPLEMENTED
 → 有效VERIFIED
 ```
 
-当前main的`main-verification`只证明当前主线提交可用，不能替代历史任务自己的任务Context。任务依赖、Evidence全量扫描和下一任务启动统一使用`.github/governance/effective-task-status.mjs`。Release不再从任务Runtime推导产品资格，统一使用`.github/governance/release-acceptance.mjs`。
+当前main的`main-verification`只证明当前主线提交可用，不能替代历史任务自己的任务Context。任务依赖、Evidence全量扫描和下一任务启动统一使用`.github/governance/effective-task-status.mjs`。Release不再从任务Runtime推导产品资格，统一使用`scripts/release-acceptance.mjs`。
 
 固定入口：
 
-1. [`TASK_AUTHORIZATION.json`](TASK_AUTHORIZATION.json)：分支、PR和main写入授权。
+1. [`TASK_AUTHORIZATION.json`](TASK_AUTHORIZATION.json)：分支、PR与main串行写入形态约束，不承担任务预授权。
 2. [`runtime/`](runtime/)：静态状态、边界、验证命令和任务Context绑定。
 3. [`../PROJECT_EXECUTION_ENTRY.md`](../PROJECT_EXECUTION_ENTRY.md)：动态状态解析与闭环条件。
 4. 任务卡：范围、验收和回退依据。
@@ -142,7 +142,7 @@ Runtime IMPLEMENTED
 | M10-19 | [`权威生命周期、结构与跨域一致性治理`](M10/M10-19_AUTHORITY_LIFECYCLE_STRUCTURE_GOVERNANCE.md)            | M10-18 | Implemented |
 | M10-20 | [`全量审计问题修复与发布链路收口`](M10/M10-20_FULL_AUDIT_REMEDIATION.md)                                  | M10-19 | Implemented |
 | M10-21 | [`当前权威文档与测试架构现代化`](M10/M10-21_CURRENT_AUTHORITY_TEST_ARCHITECTURE_MODERNIZATION.md)         | M10-20 | Implemented |
-| M10-22 | [`运行时所有权、恢复一致性与发布权威统一治理`](M10/M10-22_UNIFIED_RUNTIME_RECOVERY_RELEASE_GOVERNANCE.md) | M10-21 | In Progress |
+| M10-22 | [`运行时所有权、恢复一致性与发布权威统一治理`](M10/M10-22_UNIFIED_RUNTIME_RECOVERY_RELEASE_GOVERNANCE.md) | M10-21 | Implemented |
 
 ## 3. 被吸收的需求来源
 
@@ -176,7 +176,7 @@ Runtime IMPLEMENTED
 2. 一个`work → main` PR完成永久门禁、合并、Main Verification和Work Synchronization后，才能启动下一任务。
 3. 已Verified历史任务、Migration和Evidence保持冻结。
 4. 任务有效状态只约束任务依赖、Evidence和下一任务启动；Release必须由当前main的`main-verification`、产品门禁、三平台产物完整性与发行信任证据独立判定。
-5. Ready Evidence manifest绑定当前任务最新实现提交；该提交之后只允许当前任务卡、Runtime、`TASK_INDEX.md`和当前任务Evidence收口，Evidence CI Check绑定精确PR Head。
+5. Ready Evidence manifest绑定当前任务最新实现提交；该提交之后只允许当前任务卡、Runtime、`TASK_INDEX.md`和当前任务Evidence收口，`quality / release-audit`绑定精确PR Head并参与最新Quality Workflow Run判定。
 6. 分支长期只允许`main`与`work`，不存在`release/*`例外。
 7. 历史Implemented任务必须从其来源PR对应主线提交继承任务Context，禁止借用当前main上的其他任务Context。
 8. 文件行数只作为观察指标；结构门禁依据循环依赖、跨层方向、Feature边界和状态所有权，禁止机械拆分完整功能。

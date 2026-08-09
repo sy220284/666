@@ -19,3 +19,5 @@ M10-21 已完成当前权威文档与测试架构现代化：10 份当前设计�
 ## 边界
 
 本任务没有修改生产实现、数据库 Migration、Schema、IPC method、依赖或历史 Evidence。受限本地容器禁止 Unix socket，无法承载 Electron/Xvfb；完整 Electron E2E 已由标准 GitHub Actions Ubuntu runner 成功执行。最终 Evidence 绑定上述实现提交，后续闭包提交仅包含当前任务卡、Runtime、TASK_INDEX 与 M10-21 Evidence。
+
+PR #330 受控合并后的 Main Verification `31283708818` 成功复核来源、主线与静态质量，但状态发布阶段因 Runtime 缺少 `verificationBinding.sourcePr` 正确地 fail-closed。PR #331 只补充该真实来源绑定并更新当前 Evidence 完整性；实现提交、测试结果和产品边界不变。

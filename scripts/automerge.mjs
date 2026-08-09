@@ -326,8 +326,7 @@ async function main() {
         commit_title: `${pull.title} (#${number})`,
       }),
     });
-    if (!merged.merged)
-      throw new Error(`GitHub refused to merge #${number}: ${merged.message}`);
+    if (!merged.merged) throw new Error(`GitHub refused to merge #${number}: ${merged.message}`);
     await ensureMainVerification(owner, repo, config, merged.sha, number, sha, token);
   }
 }

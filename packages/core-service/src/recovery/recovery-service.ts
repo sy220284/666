@@ -72,7 +72,7 @@ function backupRecordFromRow(row: Record<string, unknown>): BackupRecord {
   });
 }
 
-function backupRecordValues(record: BackupRecord): readonly unknown[] {
+function backupRecordValues(record: BackupRecord): (string | number | null)[] {
   return [
     record.backupId,
     record.projectId,
@@ -255,7 +255,7 @@ export class RecoveryService {
               WHERE project_id = ?
                 AND backup_track = 'daily'
                 AND substr(created_at, 1, 10) = ?
-              ORDER BY created_at ASC, id ASC`,
+              ORDER BY rowid ASC`,
           )
           .all(projectId, day)
           .map((row) => backupRecordFromRow(row as Record<string, unknown>));

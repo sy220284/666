@@ -12,8 +12,9 @@ const actionPins = new Map([
   ['pnpm/action-setup', 'b906affcce14559ad1aafd4ab0e942779e9f58b1'],
 ]);
 
+const fullValidationDraftMarker = '<!-- full-validation-draft -->';
 const guardedDraftMode =
-  "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body, 'full-validation-draft') }}";
+  "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}";
 
 export function parseWorkflowDocument(file, source) {
   let workflow;
@@ -84,8 +85,12 @@ export function validateWorkflowStructure(file, source) {
     }
     if (quality?.with?.draft_mode !== guardedDraftMode) {
       errors.push(
-        'quality.yml: quality.with.draft_mode must keep Draft merge blocking while allowing only the explicit full-validation-draft diagnostic mode',
+        'quality.yml: quality.with.draft_mode must keep Draft merge blocking while allowing only the exact full-validation-draft HTML marker',
       );
+    }
+    const releaseAuditCondition = String(workflow.jobs['release-audit']?.if ?? '');
+    if (!releaseAuditCondition.includes(fullValidationDraftMarker)) {
+      errors.push('quality.yml: release-audit must use the exact full-validation-draft HTML marker');
     }
     if (quality?.with?.performance_eval !== false) {
       errors.push('quality.yml: quality.with.performance_eval must be false');
@@ -131,6 +136,13 @@ export function validateWorkflowStructure(file, source) {
     if (!Array.isArray(needs) || required.some((name) => !needs.includes(name))) {
       errors.push('security.yml: aggregate security job must need every security sub-job');
     }
+    if (!source.includes(fullValidationDraftMarker)) {
+      errors.push('security.yml: full validation must use the exact HTML marker');
+    }
+  }
+
+  if (file === 'performance.yml' && !source.includes(fullValidationDraftMarker)) {
+    errors.push('performance.yml: full validation must use the exact HTML marker');
   }
 
   return errors;

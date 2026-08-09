@@ -35,33 +35,15 @@ export function synchronizationDecision({ mainSha, workSha, sourceHeadSha, openP
 }
 
 export function synchronizationRequest(event) {
-  const run = event?.workflow_run;
-  if (run) {
-    if (run.name !== 'Main Verification' || run.conclusion !== 'success') {
-      throw new Error('Work synchronization requires a successful Main Verification workflow_run');
-    }
-    if (!fullSha.test(run.head_sha ?? '')) {
-      throw new Error('Main Verification workflow_run must provide a full head SHA');
-    }
-    return {
-      mode: 'workflow-run',
-      mainSha: run.head_sha,
-      sourcePr: null,
-      sourceHeadSha: null,
-    };
-  }
-
   const mainSha = event?.inputs?.expected_sha;
   const sourcePr = Number.parseInt(event?.inputs?.source_pr ?? '', 10);
   const sourceHeadSha = event?.inputs?.source_head_sha;
-  if (!fullSha.test(mainSha ?? '')) {
-    throw new Error('Manual work synchronization requires expected_sha');
-  }
+  if (!fullSha.test(mainSha ?? '')) throw new Error('Work synchronization requires expected_sha');
   if (!Number.isSafeInteger(sourcePr) || sourcePr < 1) {
-    throw new Error('Manual work synchronization requires source_pr');
+    throw new Error('Work synchronization requires source_pr');
   }
   if (!fullSha.test(sourceHeadSha ?? '')) {
-    throw new Error('Manual work synchronization requires source_head_sha');
+    throw new Error('Work synchronization requires source_head_sha');
   }
   return {
     mode: 'workflow-dispatch',
@@ -77,7 +59,9 @@ export function assertSynchronizedWorkRef(workRef, mainSha) {
     throw new Error('Work synchronization postcondition could not read the final work SHA');
   }
   if (finalWorkSha !== mainSha) {
-    throw new Error(`Work synchronization postcondition failed: work=${finalWorkSha}, main=${mainSha}`);
+    throw new Error(
+      `Work synchronization postcondition failed: work=${finalWorkSha}, main=${mainSha}`,
+    );
   }
   return finalWorkSha;
 }
@@ -89,7 +73,11 @@ function hasSuccessfulMainVerification(status) {
 }
 
 async function main() {
-  if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY || !process.env.GITHUB_EVENT_PATH) {
+  if (
+    !process.env.GITHUB_TOKEN ||
+    !process.env.GITHUB_REPOSITORY ||
+    !process.env.GITHUB_EVENT_PATH
+  ) {
     throw new Error('Missing GitHub Actions environment');
   }
   const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
@@ -187,12 +175,6 @@ function selfTest() {
   assert.equal(
     synchronizationDecision({ mainSha: a, workSha: b, sourceHeadSha: b, openPulls: 1 }).action,
     'blocked',
-  );
-  assert.deepEqual(
-    synchronizationRequest({
-      workflow_run: { name: 'Main Verification', conclusion: 'success', head_sha: a },
-    }),
-    { mode: 'workflow-run', mainSha: a, sourcePr: null, sourceHeadSha: null },
   );
   assert.deepEqual(
     synchronizationRequest({

@@ -33,6 +33,7 @@
 - [ ] Task Governance
 - [ ] Trusted Governance（启用为必需检查后）
 - [ ] 正式中文名称检查
+- [ ] Trusted Governance
 - [ ] Quality
 - [ ] Security
 - [ ] Performance
@@ -51,4 +52,4 @@
 - 风险：
 - 回退方式：
 
-> 仓库同一时刻只允许一个`work → main`正式PR。Ready Head通过六项永久门禁后由Controlled Merge执行Squash；Main Verification成功后计算任务有效状态，Work Synchronization仅在work未移动且无新PR时受控重置到已验证main。
+> 仓库同一时刻只允许一个`work → main`正式PR。Ready Head通过七项永久门禁后由Controlled Merge执行Squash；Main Verification成功后计算任务有效状态，并在work未移动且无新PR时受控同步到已验证main。

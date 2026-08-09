@@ -60,7 +60,10 @@ describe('daily backup sqlite winner arbitration', () => {
       const duplicateId = randomUUID();
       const duplicateFile = `backup-${duplicateId}.sqlite`;
       const directory = path.join(backupRoot, project.projectId);
-      await copyFile(path.join(directory, first.backupFileName), path.join(directory, duplicateFile));
+      await copyFile(
+        path.join(directory, first.backupFileName),
+        path.join(directory, duplicateFile),
+      );
       const duplicate = {
         ...first,
         backupId: duplicateId,
@@ -117,9 +120,7 @@ describe('daily backup sqlite winner arbitration', () => {
         ),
       ).toEqual([first.backupId]);
       expect(await readdir(directory)).not.toEqual(expect.arrayContaining([duplicateFile]));
-      expect(await readdir(directory)).not.toEqual(
-        expect.arrayContaining([`${duplicateId}.json`]),
-      );
+      expect(await readdir(directory)).not.toEqual(expect.arrayContaining([`${duplicateId}.json`]));
     } finally {
       await workspace.shutdown();
       await appRuntime.close();

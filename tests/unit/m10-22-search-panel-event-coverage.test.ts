@@ -35,9 +35,8 @@ function findReloadButton(value: unknown): ElementLike | null {
 
 describe('M10-22 SearchPanel事件覆盖', () => {
   it('重新读取按钮通过函数式状态更新推进reload token', async () => {
-    const { SearchPanel } = await import(
-      '../../apps/desktop/renderer/src/features/checks/search-panel.js'
-    );
+    const { SearchPanel } =
+      await import('../../apps/desktop/renderer/src/features/checks/search-panel.js');
     const tree = SearchPanel({
       bridge: {} as RendererBridgeAdapter,
       projectId: '00000000-0000-4000-8000-000000000022',

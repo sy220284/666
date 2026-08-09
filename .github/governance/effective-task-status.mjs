@@ -32,13 +32,17 @@ function normalizedIndexStatus(indexStatus) {
 }
 
 export function effectiveTaskStatus(task, statuses = [], indexStatus = null) {
-  const declared = task?.status ?? normalizedIndexStatus(indexStatus);
-  if (declared === 'VERIFIED' || normalizedIndexStatus(indexStatus) === 'VERIFIED') {
-    return 'VERIFIED';
-  }
-  const context = task?.verificationBinding?.taskContext;
-  if (declared === 'IMPLEMENTED' && hasSuccessfulCommitStatus(statuses, context)) {
-    return 'VERIFIED';
+  const indexed = normalizedIndexStatus(indexStatus);
+  if (!task) return indexed ?? 'UNKNOWN';
+
+  const declared = task.status ?? indexed;
+  if (task.schemaVersion === 1) return declared ?? 'UNKNOWN';
+  if (task.schemaVersion !== 2) return declared === 'VERIFIED' ? 'UNKNOWN' : (declared ?? 'UNKNOWN');
+
+  if (declared === 'PLANNED' || declared === 'IN_PROGRESS') return declared;
+  if (declared === 'IMPLEMENTED' || declared === 'VERIFIED') {
+    const context = task.verificationBinding?.taskContext;
+    return hasSuccessfulCommitStatus(statuses, context) ? 'VERIFIED' : 'VERIFICATION_PENDING';
   }
   return declared ?? 'UNKNOWN';
 }

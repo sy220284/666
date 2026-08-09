@@ -3,7 +3,7 @@ name: PR Policy
 on:
   pull_request_target:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, closed]
 
 permissions:
   contents: read
@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   pr-policy:
+    if: ${{ github.event.action != 'closed' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -28,10 +29,10 @@ jobs:
       CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout trusted base policy
+      - name: Checkout trusted main policy
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: main
           path: trusted
           fetch-depth: 0
           persist-credentials: false
@@ -81,8 +82,8 @@ jobs:
                 context: 'pr-policy',
                 description:
                   state === 'success'
-                    ? 'Trusted base policy accepted the candidate'
-                    : 'Trusted base policy rejected the candidate',
+                    ? 'Trusted main policy accepted the candidate'
+                    : 'Trusted main policy rejected the candidate',
                 target_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
               }),
             },

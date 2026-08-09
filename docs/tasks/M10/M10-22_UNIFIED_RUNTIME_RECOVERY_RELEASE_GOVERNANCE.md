@@ -1,6 +1,6 @@
 # M10-22 运行时所有权、恢复一致性与发布权威统一治理
 
-> 状态：In Progress
+> 状态：Implemented
 > 里程碑：M10 稳定性与治理续作
 > 优先级：P1
 > 执行分支：`work`
@@ -74,7 +74,7 @@
 
 - 永久工程Context保持`pr-policy / quality / quality / security / performance`四项，不重新增加Task Governance或Evidence阻塞。
 - `quality / release-audit`与`quality / package-smoke`作为最新Quality Workflow Run内部必过Job，由Controlled Merge显式复核。
-- Draft可用`full-validation-draft`提前跑完整矩阵，但Draft结果永远不能成为Ready合并凭据。
+- Draft可用精确全量验证控制标记提前跑完整矩阵，但Draft结果永远不能成为Ready合并凭据。
 - Ready即使不改变Head SHA，也必须以最新Quality/Security/Performance Workflow Run重新判定；旧Draft成功Context不得复用。
 - Main Verification再次复核来源Head的最新Workflow Run。
 - 带`worldforge-task` marker的任务PR在最终main读取Schema 2 Runtime，并发布`task-verification/<TASK-ID>`；该动作是合并后事实证明，不是开发授权。
@@ -127,18 +127,18 @@ pnpm test:e2e
 
 保存到：`docs/test-evidence/M10-22/`
 
-Evidence必须绑定最终受检work Head；历史Runtime、Migration和Evidence保持冻结。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者不得混为一套门禁。
+Evidence绑定最终实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`；历史Runtime、Migration和Evidence保持冻结。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者不得混为一套门禁。
 
-## 当前验证进度
+## 验证结果
 
-自动化纠偏后的轻量Draft Head已真实通过：
+最终实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`已真实通过：
 
-- Workspace、边界、Format、Lint、TypeScript。
-- 可信PR Policy。
-- Draft轻量Security与Performance路由。
-- 重型Product Tests、Coverage、E2E、package smoke与Release Audit在无控制标记时均正确跳过。
-
-当前#341继续保持Draft，并已启用精确全量验证控制标记。下一轮以当前统一逻辑重新执行Unit、Integration、Migration、Coverage、Electron E2E、三平台package smoke、Release Audit、完整Security与真实Performance；Draft状态继续阻止Controlled Merge。
+- Quality Run `31325332376`：Static、Unit、Integration、Migration、Coverage、Electron E2E、Build、Linux/Windows/macOS package smoke和Release Audit全部成功。
+- Security Run `31325332269`：依赖审计、全历史Secret Scan、应用安全与聚合Security成功。
+- Performance Run `31325332252`：真实性能预算与AI协议基线成功。
+- Recovery并发回归覆盖stale lease reclaim多竞争者和SQLite同项目同日期唯一Daily winner。
+- 自动化回归覆盖同SHA Draft→Ready验证轮次新鲜度、Quality内部Release Audit/package gate、Schema 2 task-verification权威与精确Draft全量控制标记。
+- Evidence manifest、Runtime与TASK_INDEX已进入最终收口链；静态状态保持Implemented，最终有效Verified由合并后的`task-verification/M10-22`证明。
 
 ## 回滚
 
@@ -150,7 +150,7 @@ Evidence必须绑定最终受检work Head；历史Runtime、Migration和Evidence
 - [x] 旧Core generation不能影响新Core或提交迟到RPC结果。
 - [x] Clone Policy覆盖全部Project Schema业务表，新增未分类表时CI失败。
 - [x] 新恢复项目不继承旧备份记录、失败账本或外部派生血缘。
-- [ ] Daily backup lease与最终提交仲裁完整证明同一日期只有一个有效winner，包含并发stale reclaim竞态。
+- [x] Daily backup lease与最终提交仲裁证明同一日期只有一个有效winner，包含并发stale reclaim竞态。
 - [x] Recovery目录预检使用真实`W_OK`能力。
 - [x] Dictionary mutation与reload竞态不再产生旧UI或提前解除pending。
 - [x] Provider未知options不能写入SQLite，历史配置完成白名单归一化。
@@ -158,6 +158,6 @@ Evidence必须绑定最终受检work Head；历史Runtime、Migration和Evidence
 - [x] Controlled Merge代码恢复最新Workflow Run校验，Quality最新轮次要求Release Audit与package gate。
 - [x] Main Verification代码恢复Schema 2任务来源绑定与task-verification发布。
 - [x] Effective Status禁止TASK_INDEX把Schema 2任务静态提升为Verified。
-- [ ] 自动化纠偏后的专项与完整验证矩阵真实通过，Evidence绑定最终实现提交。
-- [ ] Runtime改为IMPLEMENTED、Evidence与TASK_INDEX完成最终收口。
+- [x] 自动化纠偏后的专项与完整验证矩阵真实通过，Evidence绑定最终实现提交。
+- [x] Runtime改为IMPLEMENTED、Evidence与TASK_INDEX完成最终收口。
 - [ ] Controlled Merge、Main Verification、task-verification、Work Synchronization和Branch Hygiene实际闭环。

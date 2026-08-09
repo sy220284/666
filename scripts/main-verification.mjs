@@ -27,13 +27,10 @@ export function validateMainVerification({
     throw new Error('SOURCE_PR must be a positive integer');
   if (githubRef !== `refs/heads/${baseBranch}` || githubSha !== expectedSha)
     throw new Error('Main verification checkout does not match expected main SHA');
-  if (
-    !pull?.merged ||
-    !pull.merged_at ||
-    pull.base?.ref !== baseBranch ||
-    pull.head?.ref !== 'work'
-  )
+  if (!pull?.merged || !pull.merged_at || pull.base?.ref !== baseBranch)
     throw new Error(`Pull request #${sourcePr} provenance is invalid`);
+  if (pull.head?.ref !== 'work')
+    throw new Error(`Pull request #${sourcePr} must originate from work`);
   if (pull.head?.sha !== sourceHeadSha || pull.merge_commit_sha !== expectedSha)
     throw new Error(`Pull request #${sourcePr} SHA provenance is invalid`);
   const state = requiredCheckState(checkRuns, requiredChecks);
@@ -84,8 +81,8 @@ export function mainVerificationStatusPayload(success, targetUrl) {
 }
 
 async function api(token, pathname, options = {}) {
-  const url = new URL(pathname, apiRoot);
-  const response = await fetch(url, {
+  const url = new globalThis.URL(pathname, apiRoot);
+  const response = await globalThis.fetch(url, {
     ...options,
     headers: {
       Accept: 'application/vnd.github+json',

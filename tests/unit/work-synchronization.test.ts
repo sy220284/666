@@ -73,7 +73,24 @@ describe('work安全同步决策', () => {
 });
 
 describe('work同步请求来源', () => {
-  it('接受Main Verification或手动恢复传入的完整来源绑定', () => {
+  it('接受成功的Main Verification完成事件', () => {
+    expect(
+      synchronizationRequest({
+        workflow_run: {
+          name: 'Main Verification',
+          conclusion: 'success',
+          head_sha: sha('a'),
+        },
+      }),
+    ).toEqual({
+      mode: 'workflow-run',
+      mainSha: sha('a'),
+      sourcePr: null,
+      sourceHeadSha: null,
+    });
+  });
+
+  it('接受带完整来源绑定的手动恢复请求', () => {
     expect(
       synchronizationRequest({
         inputs: {

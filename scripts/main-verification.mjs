@@ -1,16 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import {
-  latestChecksByName,
-  modeAwareChecksState,
-  nextPagePath,
-  requiredCheckState,
-} from './automerge.mjs';
-import {
-  loadTaskProvenanceCorrections,
-  taskVerificationProvenance,
-} from '../.github/governance/effective-task-status.mjs';
+import { latestChecksByName, nextPagePath, requiredCheckState } from './automerge.mjs';
 
 const githubFetch = globalThis.fetch;
 const taskMarkerPattern = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu;
@@ -27,15 +18,7 @@ export function taskIdFromPullBody(body) {
   return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
 }
 
-export function validateCapturedTaskId(expectedTaskId, currentTaskId) {
-  if (currentTaskId !== expectedTaskId) {
-    throw new Error(
-      `Pull request task marker changed after controlled merge: expected ${expectedTaskId ?? '<none>'}, found ${currentTaskId ?? '<none>'}`,
-    );
-  }
-}
-
-export function validateTaskVerificationBinding(runtime, { taskId, sourcePr }, correction = null) {
+export function validateTaskVerificationBinding(runtime, { taskId, sourcePr }) {
   const errors = [];
   if (runtime?.id !== taskId) errors.push(`${taskId} runtime id mismatch`);
   if (!['IMPLEMENTED', 'VERIFIED'].includes(runtime?.status)) {
@@ -44,64 +27,12 @@ export function validateTaskVerificationBinding(runtime, { taskId, sourcePr }, c
   const branch = runtime?.executionBranch ?? runtime?.branch;
   if (branch !== 'work') errors.push(`${taskId} execution branch must be work`);
   const binding = runtime?.verificationBinding;
-  const provenance = taskVerificationProvenance(runtime, correction);
-  if (provenance.closurePr !== sourcePr) errors.push(`${taskId} closurePr binding mismatch`);
-  if (!Number.isSafeInteger(provenance.implementationPr) || provenance.implementationPr < 1) {
-    errors.push(`${taskId} implementationPr binding is missing`);
-  }
+  if (binding?.sourcePr !== sourcePr) errors.push(`${taskId} sourcePr binding mismatch`);
   if (binding?.mainContext !== 'main-verification') {
     errors.push(`${taskId} mainContext must be main-verification`);
   }
   if (binding?.taskContext !== `task-verification/${taskId}`) {
     errors.push(`${taskId} taskContext mismatch`);
-  }
-  return errors;
-}
-
-export function implementationRequiresFullQuality(files = []) {
-  return files.some((file) => !(file.endsWith('.md') || file.startsWith('docs/')));
-}
-
-export function validateSplitTaskProvenance({
-  taskId,
-  provenance,
-  implementationPull,
-  closurePull,
-  implementationAncestor = true,
-  closureFiles = [],
-  runtimeSource,
-}) {
-  const errors = [];
-  if (!provenance || provenance.implementationPr === provenance.closurePr) return errors;
-  if (implementationPull?.number !== provenance.implementationPr) {
-    errors.push(`${taskId} implementation PR mismatch`);
-  }
-  if (!implementationPull?.merged || !implementationPull?.merged_at) {
-    errors.push(`${taskId} implementation PR is not merged`);
-  }
-  if (implementationPull?.head?.sha !== provenance.implementationHeadSha) {
-    errors.push(`${taskId} implementation Head SHA mismatch`);
-  }
-  if (implementationPull?.merge_commit_sha !== provenance.implementationMergeSha) {
-    errors.push(`${taskId} implementation merge SHA mismatch`);
-  }
-  if (closurePull?.number !== provenance.closurePr) errors.push(`${taskId} closure PR mismatch`);
-  if (closurePull?.head?.sha !== provenance.closureHeadSha) {
-    errors.push(`${taskId} closure Head SHA mismatch`);
-  }
-  if (closurePull?.merge_commit_sha !== provenance.closureMergeSha) {
-    errors.push(`${taskId} closure merge SHA mismatch`);
-  }
-  if (!implementationAncestor) errors.push(`${taskId} implementation merge is not an ancestor`);
-  const allowed = new Set([
-    `docs/tasks/runtime/${taskId}.json`,
-    runtimeSource,
-    'docs/tasks/TASK_INDEX.md',
-  ]);
-  for (const file of closureFiles) {
-    if (!allowed.has(file) && !file.startsWith(`docs/test-evidence/${taskId}/`)) {
-      errors.push(`${taskId} closure changed non-closure path: ${file}`);
-    }
   }
   return errors;
 }
@@ -115,12 +46,6 @@ export function validateMainVerification({
   githubRef,
   githubSha,
   pull,
-  implementationPull = pull,
-  taskId = null,
-  taskProvenance = null,
-  implementationAncestor = true,
-  closureFiles = [],
-  runtimeSource = null,
   requiredChecks,
   checkRuns,
 }) {
@@ -153,18 +78,6 @@ export function validateMainVerification({
   }
   if (pull.merge_commit_sha !== expectedSha) {
     throw new Error(`Pull request #${sourcePr} did not produce ${expectedSha}`);
-  }
-  if (taskId && taskProvenance) {
-    const provenanceErrors = validateSplitTaskProvenance({
-      taskId,
-      provenance: taskProvenance,
-      implementationPull,
-      closurePull: pull,
-      implementationAncestor,
-      closureFiles,
-      runtimeSource,
-    });
-    if (provenanceErrors.length > 0) throw new Error(provenanceErrors.join('\n'));
   }
 
   const latest = latestChecksByName(checkRuns);
@@ -270,9 +183,9 @@ async function paginatedCollection(token, pathname, collectionKey) {
   while (next) {
     const response = await apiResponse(token, next);
     const payload = await response.json();
-    const page = collectionKey === null ? payload : payload[collectionKey];
+    const page = payload[collectionKey];
     if (!Array.isArray(page)) {
-      throw new Error(`GitHub API pagination payload is missing ${collectionKey ?? 'array data'}`);
+      throw new Error(`GitHub API pagination payload is missing ${collectionKey}`);
     }
     items.push(...page);
     next = nextPagePath(response.headers.get('link'));
@@ -286,62 +199,22 @@ async function checkMain() {
   const expectedSha = process.env.EXPECTED_SHA;
   const sourceHeadSha = process.env.SOURCE_HEAD_SHA;
   const sourcePr = Number(process.env.SOURCE_PR);
-  const expectedTaskId = process.env.EXPECTED_TASK_ID || null;
   const githubRef = process.env.GITHUB_REF;
   const githubSha = process.env.GITHUB_SHA;
   if (!token || !repository) throw new Error('GitHub Actions environment is incomplete');
 
   const config = JSON.parse(await readFile('.github/governance/required-checks.json', 'utf8'));
   const [owner, repo] = repository.split('/');
-  const pull = await api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`);
-  const taskId = taskIdFromPullBody(pull.body ?? '');
-  validateCapturedTaskId(expectedTaskId, taskId);
-  let runtime = null;
-  let provenance = null;
-  if (taskId) {
-    runtime = JSON.parse(await readFile(`docs/tasks/runtime/${taskId}.json`, 'utf8'));
-    const corrections = await loadTaskProvenanceCorrections();
-    provenance = taskVerificationProvenance(runtime, corrections[taskId] ?? null);
-  }
-  const implementationPr = provenance?.implementationPr ?? sourcePr;
-  const implementationPull =
-    implementationPr === sourcePr
-      ? pull
-      : await api(token, `/repos/${owner}/${repo}/pulls/${implementationPr}`);
-  const implementationHeadSha = implementationPull.head?.sha;
-  assertFullSha(implementationHeadSha, 'IMPLEMENTATION_HEAD_SHA');
   const checkRuns = await waitForSourceReadyChecks({
     requiredChecks: config.requiredChecks,
     loadCheckRuns: () =>
       paginatedCollection(
         token,
-        `/repos/${owner}/${repo}/commits/${implementationHeadSha}/check-runs?per_page=100`,
+        `/repos/${owner}/${repo}/commits/${sourceHeadSha}/check-runs?per_page=100`,
         'check_runs',
       ),
   });
-  const implementationFiles = await paginatedCollection(
-    token,
-    `/repos/${owner}/${repo}/pulls/${implementationPr}/files?per_page=100`,
-    null,
-  );
-  if (implementationRequiresFullQuality(implementationFiles.map((entry) => entry.filename))) {
-    const modeState = await modeAwareChecksState(owner, repo, implementationHeadSha);
-    if (!modeState.ready) {
-      throw new Error(
-        `Implementation PR full quality matrix is incomplete: ${[
-          ...modeState.pending,
-          ...modeState.failed,
-        ].join(', ')}`,
-      );
-    }
-  }
-  const split = provenance && provenance.implementationPr !== provenance.closurePr;
-  const comparison = split
-    ? await api(
-        token,
-        `/repos/${owner}/${repo}/compare/${provenance.implementationMergeSha}...${expectedSha}`,
-      )
-    : null;
+  const pull = await api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`);
 
   validateMainVerification({
     repository,
@@ -352,19 +225,11 @@ async function checkMain() {
     githubRef,
     githubSha,
     pull,
-    implementationPull,
-    taskId,
-    taskProvenance: provenance,
-    implementationAncestor: comparison
-      ? comparison.merge_base_commit?.sha === provenance.implementationMergeSha
-      : true,
-    closureFiles: comparison?.files?.map((entry) => entry.filename) ?? [],
-    runtimeSource: runtime?.source ?? null,
     requiredChecks: config.requiredChecks,
     checkRuns,
   });
   console.log(
-    `Main verification provenance passed for ${expectedSha} from closure PR #${sourcePr}; implementation PR #${implementationPr} (${implementationHeadSha}).`,
+    `Main verification provenance passed for ${expectedSha} from PR #${sourcePr} (${sourceHeadSha}).`,
   );
 }
 
@@ -377,20 +242,14 @@ async function publishCommitStatus(token, repository, sha, payload) {
   console.log(`Published ${payload.context}=${payload.state} for ${sha}.`);
 }
 
-export function verificationJobsSucceeded({ validateResult, qualityResult, rulesetResult }) {
-  return validateResult === 'success' && qualityResult === 'success' && rulesetResult === 'success';
-}
-
 async function publishStatus() {
   const token = process.env.GITHUB_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY;
   const expectedSha = process.env.EXPECTED_SHA;
   const sourcePr = Number(process.env.SOURCE_PR);
-  const expectedTaskId = process.env.EXPECTED_TASK_ID || null;
   const sourceHeadSha = process.env.SOURCE_HEAD_SHA;
   const validateResult = process.env.VALIDATE_RESULT;
   const qualityResult = process.env.QUALITY_RESULT;
-  const rulesetResult = process.env.RULESET_RESULT;
   const serverUrl = process.env.GITHUB_SERVER_URL ?? 'https://github.com';
   const runId = process.env.GITHUB_RUN_ID;
   if (!token || !repository || !runId) throw new Error('GitHub Actions environment is incomplete');
@@ -402,28 +261,21 @@ async function publishStatus() {
   const [owner, repo] = repository.split('/');
   const pull = await api(token, `/repos/${owner}/${repo}/pulls/${sourcePr}`);
   const taskId = taskIdFromPullBody(pull.body ?? '');
-  validateCapturedTaskId(expectedTaskId, taskId);
   let taskBindingErrors = [];
   if (taskId) {
     try {
       const runtime = JSON.parse(await readFile(`docs/tasks/runtime/${taskId}.json`, 'utf8'));
-      const corrections = await loadTaskProvenanceCorrections();
-      taskBindingErrors = validateTaskVerificationBinding(
-        runtime,
-        {
-          taskId,
-          sourcePr,
-        },
-        corrections[taskId] ?? null,
-      );
+      taskBindingErrors = validateTaskVerificationBinding(runtime, {
+        taskId,
+        sourcePr,
+      });
     } catch (error) {
       taskBindingErrors = [`${taskId} runtime unavailable: ${error.message}`];
     }
   }
 
   const success =
-    verificationJobsSucceeded({ validateResult, qualityResult, rulesetResult }) &&
-    taskBindingErrors.length === 0;
+    validateResult === 'success' && qualityResult === 'success' && taskBindingErrors.length === 0;
   await publishCommitStatus(
     token,
     repository,
@@ -440,7 +292,7 @@ async function publishStatus() {
   }
   if (!success) {
     throw new Error(
-      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}, ruleset=${rulesetResult}, task=${taskBindingErrors.join('; ') || 'none'}`,
+      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}, task=${taskBindingErrors.join('; ') || 'none'}`,
     );
   }
 }

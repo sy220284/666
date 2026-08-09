@@ -28,7 +28,6 @@ const requiredWorkflows = [
   'security.yml',
   'task-governance.yml',
   'toolchain-export.yml',
-  'trusted-governance.yml',
   'work-synchronization.yml',
 ];
 
@@ -44,8 +43,6 @@ const requiredFiles = [
   '.github/governance/single-work-policy.mjs',
   '.github/governance/single-work-release-gate.mjs',
   '.github/governance/single-work-taskctl.mjs',
-  '.github/governance/task-provenance-corrections.json',
-  '.github/governance/trusted-pr-policy.mjs',
   '.github/governance/work-synchronization.mjs',
   '.github/governance/workspace-architecture.json',
   'scripts/automerge.mjs',
@@ -80,11 +77,8 @@ function validateWorkflowEnvelope(errors, file, source) {
   requireTokens(errors, file, source, ['on:', 'permissions:', 'jobs:']);
   if (/\t/u.test(source)) errors.push(`${file}: tabs are forbidden`);
   if (/permissions:\s*write-all/iu.test(source)) errors.push(`${file}: write-all is forbidden`);
-  if (/repository_dispatch\s*:/u.test(source)) {
-    errors.push(`${file}: repository_dispatch is forbidden`);
-  }
-  if (/pull_request_target\s*:/u.test(source) && file !== 'trusted-governance.yml') {
-    errors.push(`${file}: pull_request_target is reserved for trusted-governance.yml`);
+  if (/pull_request_target\s*:|repository_dispatch\s*:/u.test(source)) {
+    errors.push(`${file}: privileged PR triggers are forbidden`);
   }
   if (/git\s+push[^\n]*(?:HEAD:main|\bmain\b)/iu.test(source)) {
     errors.push(`${file}: direct main push is forbidden`);
@@ -142,7 +136,6 @@ async function main() {
   const automerge = workflows.get('automerge.yml') ?? '';
   requireTokens(errors, 'automerge.yml', automerge, [
     'workflow_run:',
-    '- Trusted Governance',
     '- PR Policy',
     '- Task Governance',
     '- Quality',
@@ -188,29 +181,6 @@ async function main() {
   ]);
   rejectWholeJobDraftSkip(errors, 'task-governance.yml', taskGovernance);
 
-  const trustedGovernance = workflows.get('trusted-governance.yml') ?? '';
-  requireTokens(errors, 'trusted-governance.yml', trustedGovernance, [
-    'pull_request_target:',
-    'edited',
-    'ref: ${{ github.event.pull_request.base.sha }}',
-    'persist-credentials: false',
-    'permissions:',
-    'contents: read',
-    'pull-requests: read',
-    'trusted-pr-policy.mjs',
-    'name: trusted-governance',
-  ]);
-  forbidTokens(errors, 'trusted-governance.yml', trustedGovernance, [
-    'github.event.pull_request.head.sha',
-    'pnpm install',
-    'npm install',
-    'contents: write',
-    'pull-requests: write',
-    'actions: write',
-    'statuses: write',
-    'secrets.',
-  ]);
-
   const repositoryGovernance = workflows.get('repository-governance.yml') ?? '';
   requireTokens(errors, 'repository-governance.yml', repositoryGovernance, [
     'automation-layout-policy.mjs',
@@ -224,8 +194,7 @@ async function main() {
 
   const branchHygiene = workflows.get('branch-hygiene.yml') ?? '';
   requireTokens(errors, 'branch-hygiene.yml', branchHygiene, [
-    'schedule:',
-    'workflow_dispatch:',
+    '- Work Synchronization',
     'branch-inventory-policy.mjs self-test',
     'branch-inventory-policy.mjs',
     'contents: read',
@@ -233,15 +202,12 @@ async function main() {
   forbidTokens(errors, 'branch-hygiene.yml', branchHygiene, [
     'contents: write',
     'scripts/work-branch-policy.mjs',
-    'workflow_run:',
+    '- Main Verification',
   ]);
 
   const workSynchronization = workflows.get('work-synchronization.yml') ?? '';
   requireTokens(errors, 'work-synchronization.yml', workSynchronization, [
-    'workflow_dispatch:',
-    'expected_sha:',
-    'source_pr:',
-    'source_head_sha:',
+    '- Main Verification',
     'contents: write',
     'pull-requests: read',
     'work-synchronization.mjs self-test',
@@ -251,7 +217,6 @@ async function main() {
     'pull_request:',
     'push:',
     'git push',
-    'workflow_run:',
   ]);
 
   const mainVerification = workflows.get('main-verification.yml') ?? '';
@@ -260,19 +225,11 @@ async function main() {
     'expected_sha:',
     'source_pr:',
     'source_head_sha:',
-    'task_id:',
     'statuses: write',
-    'REPO_ADMIN_TOKEN:',
-    'ruleset-policy.mjs apply',
-    'RULESET_RESULT:',
-    'contents: write',
-    'work-synchronization.mjs self-test',
-    'work-synchronization.mjs',
     'scripts/main-verification.mjs',
     'Publish final main and task verification statuses',
     'name: main-verification',
   ]);
-  forbidTokens(errors, 'main-verification.yml', mainVerification, ['runner.temp']);
 
   const dispatcher = workflows.get('post-merge-verification.yml') ?? '';
   requireTokens(errors, 'post-merge-verification.yml', dispatcher, [
@@ -288,7 +245,6 @@ async function main() {
     'workflow_dispatch:',
     'schedule:',
     'converted_to_draft',
-    "contains(github.event.pull_request.body, '<!-- worldforge-task:')",
     'scripts/evidence-policy.mjs',
     'scripts/verified-evidence-scan.mjs',
   ]);

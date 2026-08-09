@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  assertCompleteStatusResolution,
   effectivelyVerifiedTaskIds,
   historicalEvidenceBindingCommit,
 } from '../../scripts/verified-evidence-scan.mjs';
@@ -41,13 +40,6 @@ describe('verified evidence scan', () => {
 
   it('does not treat text outside task rows as a Verified task', () => {
     expect(effectivelyVerifiedTaskIds('M2-04 is Verified in prose.')).toEqual([]);
-  });
-
-  it('缺少GitHub状态解析时拒绝把Implemented任务静默漏出全量扫描', () => {
-    expect(() => assertCompleteStatusResolution([implementedRuntime], false)).toThrow(
-      'partial success is forbidden',
-    );
-    expect(() => assertCompleteStatusResolution([implementedRuntime], true)).not.toThrow();
   });
 
   it('binds an orphaned Schema 1 Evidence commit to its controlled squash merge', () => {

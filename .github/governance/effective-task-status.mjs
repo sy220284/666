@@ -5,11 +5,6 @@ import path from 'node:path';
 
 const fullShaPattern = /^[0-9a-f]{40}$/iu;
 const root = process.cwd();
-const provenanceCorrectionsPath = path.join(
-  '.github',
-  'governance',
-  'task-provenance-corrections.json',
-);
 
 function git(argumentsList, repositoryRoot = root) {
   return execFileSync('git', argumentsList, {
@@ -56,61 +51,10 @@ export function isMainEffectivelyVerified(statuses = []) {
   return hasSuccessfulCommitStatus(statuses, 'main-verification');
 }
 
-function validPositiveInteger(value) {
-  return Number.isSafeInteger(value) && value > 0;
-}
-
-export function taskVerificationProvenance(task, correction = null) {
-  const binding = task?.verificationBinding ?? {};
-  const implementationPr =
-    correction?.implementationPr ?? binding.implementationPr ?? binding.sourcePr;
-  const closurePr = correction?.closurePr ?? binding.closurePr ?? binding.sourcePr;
-  return {
-    implementationPr,
-    closurePr,
-    implementationHeadSha: correction?.implementationHeadSha ?? null,
-    implementationMergeSha: correction?.implementationMergeSha ?? null,
-    closureHeadSha: correction?.closureHeadSha ?? null,
-    closureMergeSha: correction?.closureMergeSha ?? null,
-  };
-}
-
-export async function loadTaskProvenanceCorrections(repositoryRoot = root) {
-  const payload = JSON.parse(
-    await readFile(path.join(repositoryRoot, provenanceCorrectionsPath), 'utf8'),
-  );
-  if (payload?.schemaVersion !== 1 || typeof payload?.corrections !== 'object') {
-    throw new Error('Task provenance corrections are invalid');
-  }
-  for (const [taskId, correction] of Object.entries(payload.corrections)) {
-    const values = [correction?.implementationPr, correction?.closurePr];
-    const shas = [
-      correction?.implementationHeadSha,
-      correction?.implementationMergeSha,
-      correction?.closureHeadSha,
-      correction?.closureMergeSha,
-    ];
-    if (
-      !/^M\d+-\d{2}$/u.test(taskId) ||
-      values.some((value) => !validPositiveInteger(value)) ||
-      shas.some((value) => !fullShaPattern.test(value ?? '')) ||
-      typeof correction?.reason !== 'string' ||
-      correction.reason.length === 0
-    ) {
-      throw new Error(`${taskId} task provenance correction is invalid`);
-    }
-  }
-  return payload.corrections;
-}
-
 function githubEnvironment() {
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) return null;
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
   return owner && repo ? { owner, repo } : null;
-}
-
-export function commitStatusResolutionAvailable(environment = process.env) {
-  return Boolean(environment.GITHUB_TOKEN && environment.GITHUB_REPOSITORY);
 }
 
 async function commitStatuses(commitSha, environment) {
@@ -129,16 +73,16 @@ async function commitStatuses(commitSha, environment) {
   return Array.isArray(payload.statuses) ? payload.statuses : [];
 }
 
-export function resolveRuntimeMergeCommit(task, headSha, repositoryRoot = root, correction = null) {
-  const { closurePr } = taskVerificationProvenance(task, correction);
-  if (!validPositiveInteger(closurePr)) {
-    throw new Error(`${task?.id ?? 'unknown task'} is missing a valid closure PR`);
+export function resolveRuntimeMergeCommit(task, headSha, repositoryRoot = root) {
+  const sourcePr = task?.verificationBinding?.sourcePr;
+  if (!Number.isSafeInteger(sourcePr) || sourcePr < 1) {
+    throw new Error(`${task?.id ?? 'unknown task'} is missing a valid source PR`);
   }
   if (!fullShaPattern.test(headSha ?? '')) {
     throw new Error('Historical task verification requires a full head SHA');
   }
   const output = git(['log', headSha, '--format=%H%x09%s'], repositoryRoot);
-  const suffix = ` (#${closurePr})`;
+  const suffix = ` (#${sourcePr})`;
   const matches = output
     .split(/\r?\n/u)
     .filter(Boolean)
@@ -190,20 +134,12 @@ async function loadImplementedRuntimes() {
 }
 
 async function loadHistoricalTaskStatuses(headSha, environment) {
-  const [runtimes, corrections] = await Promise.all([
-    loadImplementedRuntimes(),
-    loadTaskProvenanceCorrections(),
-  ]);
+  const runtimes = await loadImplementedRuntimes();
   const pullRequestBase = process.env.TASK_BASE_REF ?? process.env.EVIDENCE_BASE_SHA;
   const resolved = await Promise.all(
     runtimes.map(async (task) => {
       try {
-        const mergeCommit = resolveRuntimeMergeCommit(
-          task,
-          headSha,
-          root,
-          corrections[task.id] ?? null,
-        );
+        const mergeCommit = resolveRuntimeMergeCommit(task, headSha);
         const statuses = await commitStatuses(mergeCommit, environment);
         const taskContext = task.verificationBinding.taskContext;
         const status = statuses.find((entry) => entry?.context === taskContext);

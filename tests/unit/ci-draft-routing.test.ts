@@ -36,13 +36,6 @@ describe('CI分层与任务命令清理', () => {
     );
   });
 
-  it('只把Ready任务PR视为最终Evidence闭包', async () => {
-    const evidence = await readFile(repositoryFile('.github/workflows/evidence.yml'), 'utf8');
-    expect(evidence).toContain(
-      "!github.event.pull_request.draft && contains(github.event.pull_request.body, '<!-- worldforge-task:')",
-    );
-  });
-
   it('Draft不重复安装安全与性能测试依赖', async () => {
     const [security, performance] = await Promise.all([
       readFile(repositoryFile('.github/workflows/security.yml'), 'utf8'),

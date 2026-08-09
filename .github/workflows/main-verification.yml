@@ -17,6 +17,11 @@ on:
         description: Pull request head SHA whose permanent checks passed
         required: true
         type: string
+      task_id:
+        description: Task marker captured at controlled merge time; empty for governance PR
+        required: false
+        default: ''
+        type: string
 
 permissions:
   actions: read
@@ -38,6 +43,7 @@ jobs:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       SOURCE_PR: ${{ inputs.source_pr }}
       SOURCE_HEAD_SHA: ${{ inputs.source_head_sha }}
+      EXPECTED_TASK_ID: ${{ inputs.task_id }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -80,6 +86,7 @@ jobs:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       SOURCE_PR: ${{ inputs.source_pr }}
       SOURCE_HEAD_SHA: ${{ inputs.source_head_sha }}
+      EXPECTED_TASK_ID: ${{ inputs.task_id }}
       VALIDATE_RESULT: ${{ needs.validate-main.result }}
       QUALITY_RESULT: ${{ needs.quality.result }}
       GITHUB_TOKEN: ${{ github.token }}

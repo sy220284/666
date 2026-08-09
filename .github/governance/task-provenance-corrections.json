@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "corrections": {
+    "M10-21": {
+      "implementationPr": 330,
+      "implementationHeadSha": "1b45ed6594371540dfbbf041e90fbbc34ab506ce",
+      "implementationMergeSha": "2d1550adee692f1b8e447c0c4e27911691f9e817",
+      "closurePr": 331,
+      "closureHeadSha": "8e31b230e889fffe11b82145e98adaba79a1e7e0",
+      "closureMergeSha": "81290953770116d8c21fdd7b6d52e2f8e65747db",
+      "reason": "PR #330承载实现与完整质量矩阵；PR #331仅修复验证绑定并完成闭包。"
+    }
+  }
+}

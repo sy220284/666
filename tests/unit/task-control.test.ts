@@ -140,8 +140,18 @@ describe('主分支验证来源', () => {
         expected_sha: expectedSha,
         source_pr: '301',
         source_head_sha: sourceHeadSha,
+        task_id: '',
       },
     });
+    expect(
+      mainVerificationDispatchBody(
+        { baseBranch: 'main', mainVerificationWorkflow: 'main-verification.yml' },
+        expectedSha,
+        301,
+        sourceHeadSha,
+        'M10-22',
+      ).inputs.task_id,
+    ).toBe('M10-22');
   });
 
   it('接受已合并的work来源与成功永久检查', () => {

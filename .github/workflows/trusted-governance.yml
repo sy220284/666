@@ -1,0 +1,44 @@
+name: Trusted Governance
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: trusted-governance-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  trusted-governance:
+    name: trusted-governance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Assert trusted base checkout
+        shell: bash
+        env:
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_BASE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Validate pull request with base-side policy
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/governance/trusted-pr-policy.mjs
+      - name: Assert trusted policy did not mutate checkout
+        if: always()
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"

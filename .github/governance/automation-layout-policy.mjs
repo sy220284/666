@@ -22,6 +22,7 @@ export const PERMANENT_WORKFLOWS = Object.freeze([
   'security.yml',
   'task-governance.yml',
   'toolchain-export.yml',
+  'trusted-governance.yml',
   'work-synchronization.yml',
 ]);
 
@@ -43,7 +44,9 @@ export const PERMANENT_GOVERNANCE_FILES = Object.freeze([
   'single-work-release-gate.mjs',
   'single-work-taskctl.mjs',
   'squash-provenance.mjs',
+  'task-provenance-corrections.json',
   'toolchain-bundle.mjs',
+  'trusted-pr-policy.mjs',
   'verification-hold-taskctl.mjs',
   'work-synchronization.mjs',
   'workspace-architecture.json',

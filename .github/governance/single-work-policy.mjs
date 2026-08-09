@@ -11,13 +11,28 @@ import { isRuntimeEffectivelyVerified, loadCommitStatuses } from './effective-ta
 const root = process.cwd();
 const authorizationPath = 'docs/tasks/TASK_AUTHORIZATION.json';
 const taskMarkerPattern = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu;
+const taskAuthorizationMarkerPattern =
+  /<!--\s*worldforge-task-authorization:\s*(M\d+-\d{2})\s*-->/iu;
 const activeStatuses = new Set(['IN_PROGRESS', 'IMPLEMENTED']);
+const plannedStatuses = new Set(['PLANNED']);
 const runtimeTransitions = new Set([
   'PLANNED:IN_PROGRESS',
+  'PLANNED:IMPLEMENTED',
   'IN_PROGRESS:IN_PROGRESS',
   'IN_PROGRESS:IMPLEMENTED',
   'IMPLEMENTED:IMPLEMENTED',
 ]);
+const immutableRuntimeFields = [
+  'id',
+  'executionBranch',
+  'source',
+  'priority',
+  'dependencies',
+  'baseline',
+  'allowedPaths',
+  'forbiddenPaths',
+  'verification',
+];
 const governancePaths = [
   'AGENTS.md',
   'agent.md',
@@ -103,6 +118,10 @@ export function taskIdFromBody(body) {
   return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
 }
 
+export function taskAuthorizationIdFromBody(body) {
+  return taskAuthorizationMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
+}
+
 export function validateRuntime(task, expectedId) {
   const errors = [];
   if (task?.schemaVersion !== 2) {
@@ -124,7 +143,76 @@ export function validateRuntime(task, expectedId) {
   if (!Array.isArray(task?.verification) || task.verification.length === 0) {
     errors.push(`${expectedId} runtime must declare verification commands`);
   }
+  if (typeof task?.source !== 'string' || !task.source.startsWith('docs/tasks/')) {
+    errors.push(`${expectedId} runtime must declare a task-card source`);
+  }
   if (task?.executionBranch !== 'work') errors.push(`${expectedId} execution branch must be work`);
+  return errors;
+}
+
+export function validatePlannedRuntime(task, expectedId, baseSha) {
+  const errors = validateRuntime({ ...task, status: 'IN_PROGRESS' }, expectedId);
+  if (!plannedStatuses.has(task?.status)) {
+    errors.push(`${expectedId} authorization runtime must be PLANNED`);
+  }
+  if (task?.baseline?.main !== baseSha || task?.baseline?.work !== baseSha) {
+    errors.push(`${expectedId} authorization baseline must equal the pull request base SHA`);
+  }
+  if (task?.verificationBinding !== undefined) {
+    errors.push(`${expectedId} PLANNED runtime cannot declare verificationBinding`);
+  }
+  const sourcePattern = new RegExp(`^docs/tasks/M\\d+/${expectedId}(?:_[A-Z0-9_]+)?\\.md$`, 'u');
+  if (!sourcePattern.test(task?.source ?? '')) {
+    errors.push(`${expectedId} authorization source must be its own task card`);
+  }
+  return errors;
+}
+
+export function runtimeAuthorizationErrors(previous, current) {
+  const errors = [];
+  if (!previous) return ['Task implementation requires a Runtime already authorized on main'];
+  for (const field of immutableRuntimeFields) {
+    if (JSON.stringify(previous?.[field]) !== JSON.stringify(current?.[field])) {
+      errors.push(
+        `${current?.id ?? previous?.id ?? 'Task'} runtime authorization changed: ${field}`,
+      );
+    }
+  }
+  return errors;
+}
+
+export function runtimeTransitionErrors(previous, current) {
+  if (!previous) return [];
+  const transition = `${previous.status}:${current?.status}`;
+  return runtimeTransitions.has(transition)
+    ? []
+    : [
+        `Invalid ${current?.id ?? previous.id} runtime transition: ${previous.status} -> ${current?.status}`,
+      ];
+}
+
+export function implementationBindingErrors(task, taskId, pullNumber) {
+  if (task?.status !== 'IMPLEMENTED') return [];
+  const binding = task.verificationBinding;
+  const errors = [];
+  if (!Number.isSafeInteger(pullNumber) || pullNumber < 1) {
+    return [`${taskId} implementation PR number is unavailable`];
+  }
+  if (binding?.implementationPr !== pullNumber) {
+    errors.push(`${taskId} implementationPr must equal the current pull request`);
+  }
+  if (binding?.closurePr !== pullNumber) {
+    errors.push(`${taskId} closurePr must equal the current pull request`);
+  }
+  if (binding?.sourcePr !== undefined) {
+    errors.push(`${taskId} new Runtime cannot use legacy sourcePr binding`);
+  }
+  if (binding?.mainContext !== 'main-verification') {
+    errors.push(`${taskId} mainContext must be main-verification`);
+  }
+  if (binding?.taskContext !== `task-verification/${taskId}`) {
+    errors.push(`${taskId} taskContext mismatch`);
+  }
   return errors;
 }
 
@@ -159,7 +247,7 @@ async function dependencyErrors(task) {
   return errors;
 }
 
-function taskChangedPathErrors(files, task) {
+export function taskChangedPathErrors(files, task) {
   const errors = [];
   const ownRuntime = runtimePath(task.id);
   for (const file of files) {
@@ -183,7 +271,21 @@ function taskChangedPathErrors(files, task) {
   return errors;
 }
 
-async function validateTaskBoundary(taskId, files) {
+export function taskAuthorizationPathErrors(files, task) {
+  const required = [runtimePath(task.id), task.source, 'docs/tasks/TASK_INDEX.md'];
+  const allowed = new Set(required);
+  const errors = files
+    .filter((file) => !allowed.has(file))
+    .map(
+      (file) => `${file}: task authorization PR may only change its task card, Runtime and index`,
+    );
+  for (const file of required) {
+    if (!files.includes(file)) errors.push(`${file}: task authorization PR must update this file`);
+  }
+  return errors;
+}
+
+async function validateTaskBoundary(taskId, files, pullNumber = null) {
   if (!taskId) {
     return files
       .filter((file) => !governancePaths.some((allowed) => isInside(file, allowed)))
@@ -191,13 +293,29 @@ async function validateTaskBoundary(taskId, files) {
   }
   const task = await loadJson(runtimePath(taskId));
   const previous = baseRuntime(taskId);
+  const authority = previous ?? task;
   const errors = [
     ...validateRuntime(task, taskId),
-    ...(await dependencyErrors(task)),
-    ...taskChangedPathErrors(files, task),
+    ...implementationBindingErrors(task, taskId, pullNumber),
+    ...runtimeAuthorizationErrors(previous, task),
+    ...(await dependencyErrors(authority)),
+    ...taskChangedPathErrors(files, authority),
   ];
-  if (previous && !runtimeTransitions.has(`${previous.status}:${task.status}`)) {
-    errors.push(`Invalid ${taskId} runtime transition: ${previous.status} -> ${task.status}`);
+  errors.push(...runtimeTransitionErrors(previous, task));
+  return errors;
+}
+
+async function validateTaskAuthorizationBoundary(taskId, files) {
+  const task = await loadJson(runtimePath(taskId));
+  const previous = baseRuntime(taskId);
+  const baseSha = process.env.TASK_BASE_REF ?? git(['rev-parse', 'origin/main']);
+  const errors = [
+    ...validatePlannedRuntime(task, taskId, baseSha),
+    ...(await dependencyErrors(task)),
+    ...taskAuthorizationPathErrors(files, task),
+  ];
+  if (previous && previous.status !== 'PLANNED') {
+    errors.push(`${taskId} authorization cannot replace a ${previous.status} Runtime`);
   }
   return errors;
 }
@@ -225,6 +343,13 @@ async function validateOpenPullRequestCount(event, authorization) {
 async function validate() {
   const [authorization, event] = await Promise.all([loadJson(authorizationPath), eventPayload()]);
   const pull = event.pull_request ?? {};
+  const body = pull.body ?? '';
+  const taskId = taskIdFromBody(body);
+  const authorizationTaskId = taskAuthorizationIdFromBody(body);
+  if (taskId && authorizationTaskId) {
+    throw new Error('Pull request cannot combine task implementation and authorization markers');
+  }
+  const files = changedFiles();
   const errors = [
     ...validateAuthorization(authorization),
     ...validatePullRequestShape({
@@ -234,7 +359,9 @@ async function validate() {
         !pull.head?.repo?.full_name || pull.head.repo.full_name === process.env.GITHUB_REPOSITORY,
     }),
     ...(await validateOpenPullRequestCount(event, authorization)),
-    ...(await validateTaskBoundary(taskIdFromBody(pull.body ?? ''), changedFiles())),
+    ...(authorizationTaskId
+      ? await validateTaskAuthorizationBoundary(authorizationTaskId, files)
+      : await validateTaskBoundary(taskId, files, pull.number)),
   ];
   if (errors.length > 0) throw new Error(errors.join('\n'));
   console.log('Single work pull request policy passed.');
@@ -260,6 +387,10 @@ function selfTest() {
   assert.deepEqual(validatePullRequestShape({ head: 'work', base: 'main' }), []);
   assert.ok(validatePullRequestShape({ head: 'work/task', base: 'main' }).length > 0);
   assert.equal(taskIdFromBody('<!-- worldforge-task: M10-04 -->'), 'M10-04');
+  assert.equal(
+    taskAuthorizationIdFromBody('<!-- worldforge-task-authorization: M10-22 -->'),
+    'M10-22',
+  );
   assert.deepEqual(
     validateRuntime(
       {
@@ -271,6 +402,7 @@ function selfTest() {
         forbiddenPaths: [],
         dependencies: [],
         verification: ['pnpm test'],
+        source: 'docs/tasks/M10/M10-04.md',
       },
       'M10-04',
     ),
@@ -287,12 +419,20 @@ function selfTest() {
         forbiddenPaths: [],
         dependencies: [],
         verification: ['pnpm test'],
+        source: 'docs/tasks/M10/M10-04.md',
       },
       'M10-04',
     ).length > 0,
   );
   assert.equal(runtimeTransitions.has('IN_PROGRESS:IMPLEMENTED'), true);
   assert.equal(runtimeTransitions.has('IN_PROGRESS:VERIFIED'), false);
+  assert.deepEqual(
+    runtimeAuthorizationErrors(
+      { id: 'M10-22', allowedPaths: ['apps/'] },
+      { id: 'M10-22', allowedPaths: ['packages/'] },
+    ),
+    ['M10-22 runtime authorization changed: allowedPaths'],
+  );
   console.log('Single work policy self-test passed.');
 }
 

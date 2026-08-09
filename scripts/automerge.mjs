@@ -6,6 +6,7 @@ const token = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY;
 const eventPath = process.env.GITHUB_EVENT_PATH;
 const githubFetch = globalThis.fetch;
+const taskMarkerPattern = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu;
 
 const supportedTriggers = new Set([
   'PR Policy',
@@ -14,6 +15,7 @@ const supportedTriggers = new Set([
   'Security',
   'Performance',
   'Evidence',
+  'Trusted Governance',
 ]);
 
 const modeAwareWorkflows = [
@@ -338,6 +340,10 @@ export function latestReviewStates(reviews = []) {
   return latest;
 }
 
+export function taskIdFromPullBody(body) {
+  return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
+}
+
 async function hasChangesRequested(owner, repo, number) {
   const reviews = await paginatedCollection(
     `/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`,
@@ -345,7 +351,13 @@ async function hasChangesRequested(owner, repo, number) {
   return [...latestReviewStates(reviews).values()].includes('CHANGES_REQUESTED');
 }
 
-export function mainVerificationDispatchBody(config, mergeSha, number, sourceHeadSha) {
+export function mainVerificationDispatchBody(
+  config,
+  mergeSha,
+  number,
+  sourceHeadSha,
+  taskId = null,
+) {
   if (!/^[0-9a-f]{40}$/iu.test(mergeSha ?? '')) {
     throw new Error('Controlled merge did not return a full commit SHA');
   }
@@ -364,6 +376,7 @@ export function mainVerificationDispatchBody(config, mergeSha, number, sourceHea
       expected_sha: mergeSha,
       source_pr: String(number),
       source_head_sha: sourceHeadSha,
+      task_id: taskId ?? '',
     },
   };
 }
@@ -377,7 +390,15 @@ async function hasMainVerificationRun(owner, repo, workflow, sha) {
   return runs.some((run) => run.head_sha === sha);
 }
 
-export async function ensureMainVerification(owner, repo, config, mergeSha, number, sourceHeadSha) {
+export async function ensureMainVerification(
+  owner,
+  repo,
+  config,
+  mergeSha,
+  number,
+  sourceHeadSha,
+  taskId = null,
+) {
   const mainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`);
   if (mainRef.object.sha !== mergeSha) {
     console.log(
@@ -393,7 +414,9 @@ export async function ensureMainVerification(owner, repo, config, mergeSha, numb
   await api(`/repos/${owner}/${repo}/actions/workflows/${encodedWorkflow}/dispatches`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(mainVerificationDispatchBody(config, mergeSha, number, sourceHeadSha)),
+    body: JSON.stringify(
+      mainVerificationDispatchBody(config, mergeSha, number, sourceHeadSha, taskId),
+    ),
   });
   console.log(`Scheduled ${config.mainVerificationWorkflow} for ${mergeSha}.`);
 }
@@ -422,7 +445,15 @@ async function main() {
     if (pull.head.repo.full_name !== repository) continue;
 
     if (pull.merged) {
-      await ensureMainVerification(owner, repo, config, pull.merge_commit_sha, number, sha);
+      await ensureMainVerification(
+        owner,
+        repo,
+        config,
+        pull.merge_commit_sha,
+        number,
+        sha,
+        taskIdFromPullBody(pull.body),
+      );
       continue;
     }
     if (pull.state !== 'open') continue;
@@ -480,7 +511,15 @@ async function main() {
       }),
     });
     if (!merged.merged) throw new Error(`GitHub refused to merge #${number}: ${merged.message}`);
-    await ensureMainVerification(owner, repo, config, merged.sha, number, sha);
+    await ensureMainVerification(
+      owner,
+      repo,
+      config,
+      merged.sha,
+      number,
+      sha,
+      taskIdFromPullBody(pull.body),
+    );
   }
 }
 

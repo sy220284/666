@@ -2,6 +2,7 @@
 
 <!-- 普通任务PR必须填写；治理PR可留空。 -->
 <!-- worldforge-task: M10-03 -->
+<!-- 新任务授权PR改用：worldforge-task-authorization: M10-03 -->
 <!-- worldforge-change-set: concise-change-set-name -->
 
 - 任务编号：
@@ -30,6 +31,7 @@
 
 - [ ] PR Policy
 - [ ] Task Governance
+- [ ] Trusted Governance（启用为必需检查后）
 - [ ] 正式中文名称检查
 - [ ] Quality
 - [ ] Security

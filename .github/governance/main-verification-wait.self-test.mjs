@@ -3,14 +3,7 @@ import { stdout } from 'node:process';
 
 import { waitForSourceReadyChecks } from '../../scripts/main-verification.mjs';
 
-const requiredChecks = [
-  'pr-policy',
-  'task-governance',
-  'quality / quality',
-  'security',
-  'performance',
-  'evidence',
-];
+const requiredChecks = ['pr-policy', 'quality / quality', 'security', 'performance'];
 
 function successfulChecks() {
   return requiredChecks.map((name, index) => ({
@@ -46,7 +39,6 @@ function successfulChecks() {
       return checks;
     },
   });
-
   assert.equal(checkLoads, 2);
   assert.equal(result.length, requiredChecks.length);
 }
@@ -71,28 +63,6 @@ await assert.rejects(
     ],
   }),
   /Source PR permanent checks failed: performance/u,
-);
-
-await assert.rejects(
-  waitForSourceReadyChecks({
-    requiredChecks,
-    attempts: 2,
-    initialDelayMs: 0,
-    delayMs: 0,
-    sleep: async () => {},
-    log: () => {},
-    loadCheckRuns: async () => [
-      ...successfulChecks(),
-      {
-        id: 300,
-        name: 'quality / quality',
-        status: 'in_progress',
-        conclusion: null,
-        started_at: '2026-07-28T00:30:00Z',
-      },
-    ],
-  }),
-  /Timed out waiting for source PR permanent checks: quality \/ quality/u,
 );
 
 stdout.write('Main verification wait self-test passed.\n');

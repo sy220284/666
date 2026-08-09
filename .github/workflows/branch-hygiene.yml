@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: branch-hygiene
@@ -31,11 +31,11 @@ jobs:
           node-version: 24
       - name: Self-test branch inventory policy
         run: node .github/governance/branch-inventory-policy.mjs self-test
-      - name: Enforce exact main and work branch inventory
+      - name: Repair and enforce exact main/work branch inventory
         env:
           GITHUB_TOKEN: ${{ github.token }}
           BRANCH_INVENTORY_OUTPUT: artifacts/branch-hygiene
-        run: node .github/governance/branch-inventory-policy.mjs
+        run: node .github/governance/branch-inventory-policy.mjs --repair
       - name: Upload branch report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

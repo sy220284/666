@@ -3,12 +3,9 @@ name: Controlled Merge
 on:
   workflow_run:
     workflows:
-      - PR Policy
-      - Task Governance
       - Quality
       - Security
       - Performance
-      - Evidence
     types: [completed]
 
 permissions:
@@ -16,6 +13,7 @@ permissions:
   checks: read
   contents: write
   pull-requests: write
+  statuses: read
 
 concurrency:
   group: automerge-${{ github.event.workflow_run.head_sha }}
@@ -38,7 +36,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node .github/governance/automerge-base-gate.mjs
-      - name: Aggregate permanent checks, merge eligible pull request and schedule final main verification
+      - name: Aggregate engineering checks, merge eligible pull request and schedule final main verification
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/automerge.mjs

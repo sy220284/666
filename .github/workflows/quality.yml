@@ -43,7 +43,7 @@ jobs:
           else
             while IFS= read -r file; do
               case "$file" in
-                *.md|docs/*)
+                *.md|docs/*|.github/*|scripts/*policy.mjs|scripts/automerge.mjs|scripts/main-verification.mjs)
                   ;;
                 *)
                   full_suite=true
@@ -142,10 +142,9 @@ jobs:
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
-      # Draft runs static checks only; Ready runs the routed full matrix.
+      # Draft runs static checks only; Ready runs the risk-routed matrix.
       draft_mode: ${{ github.event.pull_request.draft }}
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
-      # The default route remains package_smoke: false; packaging inputs opt in through route output.
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
       security_suite: false
       performance_eval: false

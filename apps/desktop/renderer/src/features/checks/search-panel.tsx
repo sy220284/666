@@ -11,7 +11,10 @@ import type {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorTerm } from '../../presentation/author-terms.js';
-import { RequestGenerationGroup } from '../../runtime/request-generation.js';
+import {
+  nextRequestGeneration,
+  RequestGenerationGroup,
+} from '../../runtime/request-generation.js';
 import {
   searchResultNavigationTarget,
   type AuthorNavigationTarget,
@@ -51,7 +54,7 @@ export function SearchPanel({
   const indexPending = requests.current.isActive('index');
   const searchToolsPending = searchPending || replacePending || dictionaryPending || indexPending;
 
-  const requestStateChanged = (): void => setRequestStateVersion((value) => value + 1);
+  const requestStateChanged = (): void => setRequestStateVersion(nextRequestGeneration);
   const beginRequest = (lane: SearchPanelRequestLane): number => {
     const generation = requests.current.begin(lane);
     requestStateChanged();
@@ -275,7 +278,7 @@ export function SearchPanel({
           <button
             disabled={searchToolsPending}
             type="button"
-            onClick={() => setReloadToken((value) => value + 1)}
+            onClick={() => setReloadToken(nextRequestGeneration)}
           >
             重新读取搜索状态
           </button>

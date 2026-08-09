@@ -75,12 +75,13 @@ describe('daily backup file lease', () => {
     directories.push(directory);
     const lockPath = path.join(directory, '.daily.lock');
     await writeFile(lockPath, '');
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    const staleAt = new Date(Date.now() - 5_000);
+    await utimes(lockPath, staleAt, staleAt);
 
     const lease = await acquireFileLease(lockPath, {
-      durationMs: 20,
-      heartbeatMs: 5,
-      waitTimeoutMs: 50,
+      durationMs: 100,
+      heartbeatMs: 20,
+      waitTimeoutMs: 100,
       retryDelayMs: 5,
     });
     try {

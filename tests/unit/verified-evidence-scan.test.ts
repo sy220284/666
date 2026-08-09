@@ -55,20 +55,10 @@ describe('verified evidence scan', () => {
       { schemaVersion: 2, implementationCommit: orphan },
     ]) {
       expect(
-        historicalEvidenceBindingCommit(
-          manifest,
-          runtime,
-          false,
-          () => controlledMerge,
-        ),
+        historicalEvidenceBindingCommit(manifest, runtime, false, () => controlledMerge),
       ).toBe(controlledMerge);
       expect(
-        historicalEvidenceBindingCommit(
-          manifest,
-          runtime,
-          true,
-          () => controlledMerge,
-        ),
+        historicalEvidenceBindingCommit(manifest, runtime, true, () => controlledMerge),
       ).toBe(orphan);
     }
   });

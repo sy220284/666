@@ -9,6 +9,7 @@ on:
       - Security
       - Performance
       - Evidence
+      - Trusted Governance
     types: [completed]
 
 permissions:

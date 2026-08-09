@@ -84,6 +84,8 @@ work：全部任务、修复、验证、治理、文档和Evidence集成
 - 同一时刻最多存在一个开放的 `work → main` PR。
 - 禁止直接向`main`提交；`main`只允许永久门禁通过后的Controlled Merge写入。
 - 开始新工作前，`work`必须与最新已验证`main`一致。
+- 新任务或授权范围变更必须先以`worldforge-task-authorization`标记提交仅含任务卡、`PLANNED` Runtime和`TASK_INDEX`的授权PR；实现PR只能读取已经合入`main`的Runtime授权字段。
+- 实现PR不得修改`source`、`priority`、`dependencies`、`baseline`、`allowedPaths`、`forbiddenPaths`或`verification`；这些字段只能在独立授权PR中变更。
 - 并行开发只允许使用独立工作区、文件所有权、提交顺序和集成协调；所有正式提交最终进入同一个`work`。
 - 禁止验证专用分支、治理专用分支、纯Evidence分支和纯关闭PR。
 
@@ -91,10 +93,12 @@ work：全部任务、修复、验证、治理、文档和Evidence集成
 
 ```text
 已验证main
+→ 任务授权PR（只登记任务卡、PLANNED Runtime与索引）
+→ Controlled Merge、Main Verification与Work Synchronization
 → 唯一work
 → 实施、测试、审查、文档与Evidence
 → 一个Ready PR（work → main）
-→ 六项永久门禁
+→ 永久门禁
 → Controlled Merge（Squash）
 → Main Verification
 → 任务有效状态关闭
@@ -126,6 +130,7 @@ IMPLEMENTED + 来源绑定一致 + task-verification/<TASK-ID>成功
 
 - `Implemented`只证明实现已进入受检PR Head，不能充当最终验收或发布资格。
 - Main Verification成功后发布 `main-verification`及任务验证状态，不再创建第二个关闭PR。
+- `verificationBinding`区分`implementationPr`与`closurePr`；普通任务二者相同，历史闭包纠正通过受治理保护的provenance correction记录，不改写冻结Evidence。
 - Release Gate和后续任务依赖必须读取有效状态，不能只相信Runtime中的静态文字。
 - 最终Evidence在合并前记录来源PR和受检Head；合并后的main SHA、验证运行和状态由GitHub提交状态完成闭环。
 - 已Verified历史任务、Migration和Evidence保持冻结。

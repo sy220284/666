@@ -12,6 +12,8 @@
 - 历史Runtime中的旧来源分支保持冻结，不得为表面统一修改。
 - 禁止填写或生成任务专属分支名。
 - 一个正式PR可以承载当前获批任务范围，且仓库同一时刻只允许一个`work → main` PR。
+- 新任务先提交仅含任务卡、`PLANNED` Runtime和`TASK_INDEX`的授权PR；授权合入main并完成同步后，才允许提交实现PR。
+- 实现PR以base Runtime为授权真源，不得在同一PR扩大依赖、路径或验证范围。
 - 代码结构遵循高内聚、低耦合；文件行数只用于观察，不作为强制拆分或合并失败条件。
 - 禁止为了缩短文件，将同一状态机、事务或业务生命周期机械拆成多个无语义文件。
 - Draft允许中间Evidence随实施推进；Ready必须使用Schema 2 manifest绑定最新实现提交，绑定提交之后只允许当前任务状态与Evidence收口路径。
@@ -103,20 +105,22 @@
 ```
 
 任务进入`IN_PROGRESS`前，必须补齐真实基线、范围、允许路径、禁止路径、失败路径和验证命令。
+这些字段在任务授权PR中以`PLANNED`状态进入main；实现PR只允许推进`status`和填写验证绑定。
 
 任务登记`IMPLEMENTED`时，增加：
 
 ```json
 {
   "verificationBinding": {
-    "sourcePr": 0,
+    "implementationPr": 0,
+    "closurePr": 0,
     "mainContext": "main-verification",
     "taskContext": "task-verification/<TASK-ID>"
   }
 }
 ```
 
-`sourcePr`在PR建立后写入。最终受检Head由GitHub PR、Controlled Merge输入和Main Verification共同证明，不写入Runtime，避免提交SHA自引用。最终main SHA和验证运行由GitHub提交状态绑定，不通过第二个关闭PR补写。
+`implementationPr`与`closurePr`在实现PR建立后写入；普通任务二者相同。历史上实现与闭包分属不同PR时，必须由受治理保护的provenance correction精确绑定双方Head和merge SHA。最终受检Head由GitHub PR、Controlled Merge输入和Main Verification共同证明，不写入Runtime，避免提交SHA自引用。
 
 ## 5. Evidence收口规则
 

@@ -28,6 +28,8 @@ performance
 evidence
 ```
 
+`trusted-governance`采用两步引导：先合并base侧只读工作流与策略，确认它能在后续PR产生可信检查；随后把它加入`required-checks.json`并应用Ruleset。引导完成前不得启动产品实现任务。
+
 `main-verification`是合并后状态，不能加入合并前必需检查。
 
 ## 2. 合并方式
@@ -111,6 +113,8 @@ contents: read
 8. 当前main已推进时旧验证运行不得同步work。
 9. Main Verification失败时不得触发work同步。
 10. Work Synchronization不得依赖管理员PAT或修改Ruleset。
+11. 修改Head Runtime扩大`allowedPaths`、缩小`forbiddenPaths`或移除依赖时，base侧Trusted Governance必须失败。
+12. 新任务实现与新任务授权不得出现在同一个PR。
 
 ## 6. 漂移审计
 

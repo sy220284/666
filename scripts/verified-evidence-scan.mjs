@@ -4,9 +4,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  commitStatusResolutionAvailable,
   isRuntimeEffectivelyVerified,
   loadCommitStatuses,
+  loadTaskProvenanceCorrections,
   resolveRuntimeMergeCommit,
+  taskVerificationProvenance,
 } from '../.github/governance/effective-task-status.mjs';
 import {
   assertEvidenceSourceCommit,
@@ -66,11 +69,12 @@ export function historicalEvidenceBindingCommit(
 ) {
   const sourceCommit = evidenceImplementationCommit(manifest);
   if (sourceCommitExists) return sourceCommit;
+  const provenance = taskVerificationProvenance(runtime);
   const controlledSquashBinding =
     manifest?.schemaVersion === 1 &&
     runtime?.schemaVersion === 2 &&
-    Number.isSafeInteger(runtime?.verificationBinding?.sourcePr) &&
-    runtime.verificationBinding.sourcePr > 0;
+    Number.isSafeInteger(provenance.closurePr) &&
+    provenance.closurePr > 0;
   return controlledSquashBinding ? resolveControlledMergeCommit() : sourceCommit;
 }
 
@@ -86,6 +90,14 @@ async function loadRuntimes(repositoryRoot, directory) {
   );
 }
 
+export function assertCompleteStatusResolution(runtimes, available) {
+  if (runtimes.some((runtime) => runtime?.status === 'IMPLEMENTED') && !available) {
+    throw new Error(
+      'Verified evidence scan cannot resolve Implemented task statuses without GITHUB_TOKEN and GITHUB_REPOSITORY; partial success is forbidden',
+    );
+  }
+}
+
 export async function validateAllVerifiedEvidence(
   repositoryRoot = process.cwd(),
   expectedHead = process.env.EVIDENCE_HEAD_SHA ?? gitHead(repositoryRoot),
@@ -93,13 +105,15 @@ export async function validateAllVerifiedEvidence(
   if (!/^[0-9a-f]{40}$/u.test(expectedHead)) {
     throw new Error('Verified evidence scan requires a full expected head SHA');
   }
-  const [indexSource, authorizationSource, statuses] = await Promise.all([
+  const [indexSource, authorizationSource, statuses, corrections] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', 'tasks', 'TASK_INDEX.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'tasks', 'TASK_AUTHORIZATION.json'), 'utf8'),
     loadCommitStatuses(expectedHead),
+    loadTaskProvenanceCorrections(repositoryRoot),
   ]);
   const authorization = JSON.parse(authorizationSource);
   const runtimes = await loadRuntimes(repositoryRoot, authorization.taskRuntimeDirectory);
+  assertCompleteStatusResolution(runtimes, commitStatusResolutionAvailable());
   const runtimeById = new Map(runtimes.map((runtime) => [runtime.id, runtime]));
   const taskIds = effectivelyVerifiedTaskIds(indexSource, runtimes, statuses);
   if (taskIds.length === 0) throw new Error('No effectively Verified tasks were found');
@@ -116,7 +130,13 @@ export async function validateAllVerifiedEvidence(
         manifest,
         runtime,
         commitExists(sourceCommit, repositoryRoot),
-        () => resolveRuntimeMergeCommit(runtime, expectedHead, repositoryRoot),
+        () =>
+          resolveRuntimeMergeCommit(
+            runtime,
+            expectedHead,
+            repositoryRoot,
+            corrections[taskId] ?? null,
+          ),
       );
       assertEvidenceSourceCommit(taskId, bindingCommit, expectedHead, repositoryRoot);
     } catch (error) {

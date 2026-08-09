@@ -28,7 +28,9 @@ AGENTS.md
 ```text
 读取main与work Ref
 → 查询开放的work → main PR
-→ 有开放PR：从PR marker解析任务ID，读取对应Schema 2 Runtime
+→ 有开放PR：区分任务授权marker与实现marker
+→ 授权PR：只允许任务卡、PLANNED Runtime与TASK_INDEX
+→ 实现PR：从main读取已授权Runtime，从Head读取状态与验证绑定
 → 无开放PR：读取main Commit Status
 → 用effective-task-status计算任务有效状态
 → 核对main-verification
@@ -89,8 +91,11 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 ## 5. 当前治理边界
 
 - 新建及活动Runtime必须使用Schema 2和`executionBranch: "work"`。
+- 新任务必须先通过独立授权PR把`PLANNED` Runtime合入main；实现PR不得从Head扩大授权字段。
+- `.github/workflows/trusted-governance.yml`只检出PR base并执行base侧策略，读取Head Runtime时只把它当数据，禁止执行Head代码、安装Head依赖或授予写权限。
 - 已Verified历史Schema 1 Runtime保持冻结，只用于历史读取。
 - `.github/governance/effective-task-status.mjs`是任务有效状态与提交Context判定的策略核心。
+- 任务来源分别记录实现PR与闭包PR；M10-21等历史例外由`.github/governance/task-provenance-corrections.json`精确绑定双方Head和merge SHA。
 - Draft Evidence校验文件完整性、Hash和来源提交；Ready Evidence必须绑定当前任务最新实现提交。
 - Ready Head中`implementationCommit`之后只允许当前任务卡、当前Runtime、`TASK_INDEX.md`和当前任务Evidence目录；产品代码、测试、脚本、配置、工作流或跨任务Evidence后移必须阻断。
 - Evidence manifest不预写未来Squash SHA；Evidence CI Check绑定精确PR Head，最终main与任务Verified由提交状态证明。

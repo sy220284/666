@@ -20,6 +20,7 @@
 必需检查：
 
 ```text
+trusted-governance
 pr-policy
 task-governance
 quality / quality
@@ -28,7 +29,7 @@ performance
 evidence
 ```
 
-`trusted-governance`采用两步引导：先合并base侧只读工作流与策略，确认它能在后续PR产生可信检查；随后把它加入`required-checks.json`并应用Ruleset。引导完成前不得启动产品实现任务。
+`trusted-governance`必须由`pull_request_target`从PR base执行，只读访问PR元数据和Head文件数据，禁止检出或执行Head代码。Main Verification在每次受控合并后幂等应用并复读Ruleset，配置漂移或管理员凭据缺失时不得发布成功状态。
 
 `main-verification`是合并后状态，不能加入合并前必需检查。
 
@@ -76,16 +77,16 @@ pull-requests: read
 statuses: write
 ```
 
-只读取来源、执行静态复核并发布提交状态。
+主验证只读取来源、执行静态复核并发布提交状态；其Ruleset Job使用独立的管理员凭据且只调用Ruleset API，其同步Job使用独立的`contents: write`权限。任一前置Job失败都不得发布成功状态。
 
-### Work Synchronization
+### Work Synchronization Job
 
 ```text
 contents: write
 pull-requests: read
 ```
 
-只允许：
+该Job位于Main Verification末尾；独立工作流只用于人工恢复。它只允许：
 
 - 读取main、work和来源PR；
 - 在work不存在时创建`refs/heads/work`；

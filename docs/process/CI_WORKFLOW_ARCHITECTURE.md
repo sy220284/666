@@ -5,21 +5,21 @@
 
 ## 1. 工作流分层
 
-| 工作流                | 触发                     | 职责                                                     | 必需检查                           |
-| --------------------- | ------------------------ | -------------------------------------------------------- | ---------------------------------- |
-| PR Policy             | PR→main                  | 验证唯一`work → main`、自动化布局和CI策略                | `pr-policy`                        |
-| Task Governance       | PR→main                  | 验证授权Schema、任务Runtime和路径边界                    | `task-governance`                  |
-| Trusted Governance    | PR target→main           | 从base执行只读策略，阻断Head自签Runtime或治理脚本        | 引导合并后启用`trusted-governance` |
-| Quality               | PR→main                  | 静态、Unit、Integration、Migration、Coverage、E2E和Build | `quality / quality`                |
-| Security              | PR→main                  | 凭据、依赖与应用安全                                     | `security`                         |
-| Performance           | PR→main、手动            | 性能预算与AI Eval路由                                    | `performance`                      |
-| Evidence              | PR、每周、手动           | 变化Evidence与全量Verified Evidence                      | `evidence`                         |
-| Controlled Merge      | 永久检查完成             | 聚合同一Head并Squash合并                                 | 否                                 |
-| Main Verification     | 合并后                   | 核验最终main SHA、来源PR、来源Head和静态一致性           | `main-verification`                |
-| Work Synchronization  | Main Verification成功    | CAS保护下重置work到已验证main                            | 否                                 |
-| Branch Hygiene        | 每周、手动、主分支验证后 | 审计仓库只存在main和work                                 | 否                                 |
-| Repository Governance | 治理PR、每周、手动       | 审计永久自动化和原生Ruleset                              | 否                                 |
-| Release               | 手动                     | 发布门与三平台打包                                       | 否                                 |
+| 工作流                | 触发                  | 职责                                                     | 必需检查             |
+| --------------------- | --------------------- | -------------------------------------------------------- | -------------------- |
+| PR Policy             | PR→main               | 验证唯一`work → main`、自动化布局和CI策略                | `pr-policy`          |
+| Task Governance       | PR→main               | 验证授权Schema、任务Runtime和路径边界                    | `task-governance`    |
+| Trusted Governance    | PR target→main        | 从base执行只读策略，阻断Head自签Runtime或治理脚本        | `trusted-governance` |
+| Quality               | PR→main               | 静态、Unit、Integration、Migration、Coverage、E2E和Build | `quality / quality`  |
+| Security              | PR→main               | 凭据、依赖与应用安全                                     | `security`           |
+| Performance           | PR→main、手动         | 性能预算与AI Eval路由                                    | `performance`        |
+| Evidence              | PR、每周、手动        | 变化Evidence与全量Verified Evidence                      | `evidence`           |
+| Controlled Merge      | 永久检查完成          | 聚合同一Head并Squash合并                                 | 否                   |
+| Main Verification     | 合并后                | 核验最终main SHA、来源PR、来源Head和静态一致性           | `main-verification`  |
+| Work Synchronization  | Main Verification末尾 | CAS保护下重置work到已验证main                            | 否                   |
+| Branch Hygiene        | 每周、手动            | 审计仓库只存在main和work                                 | 否                   |
+| Repository Governance | 治理PR、每周、手动    | 审计永久自动化和原生Ruleset                              | 否                   |
+| Release               | 手动                  | 发布门与三平台打包                                       | 否                   |
 
 ## 2. PR门禁
 
@@ -41,7 +41,8 @@ Draft只限制合并，不用于跳过代码验证。文档-only降级必须基�
 ## 3. Ready聚合检查
 
 ```text
-pr-policy
+trusted-governance
++ pr-policy
 + task-governance
 + quality / quality
 + security
@@ -69,13 +70,17 @@ task_id
 3. 闭包Head与受检Head一致；
 4. 实现PR的永久检查与按差异路由的完整质量矩阵成功；
 5. 最终main静态检查成功；
-6. 发布`main-verification`及任务验证状态。
+6. 应用并复读原生main Ruleset，确保必需检查与仓库配置一致；
+7. 发布`main-verification`及任务验证状态；
+8. 在同一工作流的最小写权限Job中同步work并复读后置条件。
 
 PR Head中的Runtime最高声明到`IMPLEMENTED`。有效Verified由来源绑定和任务验证状态计算，不再通过第二个关闭PR写入。
 
 ## 5. Work Synchronization
 
-该工作流拥有`contents: write`，仅用于更新`refs/heads/work`，不得写main或修改文件。
+该能力由Main Verification末尾的独立最小权限Job执行；`work-synchronization.yml`只保留为带完整来源输入的手动恢复入口。同步Job拥有`contents: write`，仅用于更新`refs/heads/work`，不得写main或修改文件。
+
+不得再通过`workflow_run`监听由仓库`GITHUB_TOKEN`调度的Main Verification。GitHub的[工作流触发规则](https://docs.github.com/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow)明确规定：除`workflow_dispatch`和`repository_dispatch`外，`GITHUB_TOKEN`产生的后续事件不会创建新工作流运行。自动同步因此必须作为Main Verification内部的后继Job执行。
 
 执行条件：
 
@@ -96,7 +101,7 @@ Branch Hygiene只读审计分支清单：
 其他任何分支：失败并报告
 ```
 
-分支同步由Work Synchronization负责；两类职责不得合并。
+分支同步仍由独立的Work Synchronization脚本和Job负责；Branch Hygiene保持只读，两类职责不得混合。
 
 ## 7. 永久自动化约束
 

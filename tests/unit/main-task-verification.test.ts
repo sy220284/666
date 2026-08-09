@@ -5,6 +5,7 @@ import {
   mainVerificationStatusPayload,
   taskIdFromPullBody,
   taskVerificationStatusPayload,
+  verificationJobsSucceeded,
   validateCapturedTaskId,
   validateSplitTaskProvenance,
   validateTaskVerificationBinding,
@@ -66,6 +67,23 @@ describe('主分支任务有效验证', () => {
     expect(taskVerificationStatusPayload('M10-03', true, 'https://example.test').context).toBe(
       'task-verification/M10-03',
     );
+  });
+
+  it('原生Ruleset应用失败时不得发布主分支成功状态', () => {
+    expect(
+      verificationJobsSucceeded({
+        validateResult: 'success',
+        qualityResult: 'success',
+        rulesetResult: 'success',
+      }),
+    ).toBe(true);
+    expect(
+      verificationJobsSucceeded({
+        validateResult: 'success',
+        qualityResult: 'success',
+        rulesetResult: 'failure',
+      }),
+    ).toBe(false);
   });
 
   it('区分实现来源与闭包来源并锁定精确提交', () => {

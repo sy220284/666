@@ -46,7 +46,8 @@
 Draft用于提前运行治理和静态诊断。Ready合并前必须成功：
 
 ```text
-pr-policy
+trusted-governance
++ pr-policy
 + task-governance
 + quality / quality
 + security
@@ -63,7 +64,7 @@ pr-policy
 
 ## 5. Controlled Merge与Main Verification
 
-Controlled Merge必须确认：PR为Ready、Head未移动、Head为`work`、Base为`main`、PR未落后main、无阻断审查、六项永久检查属于同一Head且成功。合并方式固定为Squash并绑定`expected_head_sha`。
+Controlled Merge必须确认：PR为Ready、Head未移动、Head为`work`、Base为`main`、PR未落后main、无阻断审查、七项永久检查属于同一Head且成功。合并方式固定为Squash并绑定`expected_head_sha`。
 
 Main Verification核对最终main SHA、来源PR、来源work Head和来源永久门禁，在最终main执行一致性检查，并发布`main-verification`及任务验证状态。
 
@@ -99,14 +100,14 @@ Evidence必须绑定真实受检work提交。失败、跳过和环境限制必�
 
 ## 9. 测试路由
 
-| 变更范围 | 必要追加验证 |
-|---|---|
-| Migration、Repository、事务 | Migration、Integration |
-| Main、Preload、IPC、路径、恢复、安全 | Security、Electron E2E |
-| Editor、Candidate、Revision、Lock | Unit、Integration、Electron E2E |
-| Prompt、Provider、Eval | Eval、Integration，必要时Performance |
-| 性能、DPI、FTS、搜索、流式处理 | Performance，必要时Electron E2E |
-| 治理、发布与任务状态 | Unit、Task Governance、PR Policy |
+| 变更范围                             | 必要追加验证                         |
+| ------------------------------------ | ------------------------------------ |
+| Migration、Repository、事务          | Migration、Integration               |
+| Main、Preload、IPC、路径、恢复、安全 | Security、Electron E2E               |
+| Editor、Candidate、Revision、Lock    | Unit、Integration、Electron E2E      |
+| Prompt、Provider、Eval               | Eval、Integration，必要时Performance |
+| 性能、DPI、FTS、搜索、流式处理       | Performance，必要时Electron E2E      |
+| 治理、发布与任务状态                 | Unit、Task Governance、PR Policy     |
 
 风险不确定时按更高风险执行。
 

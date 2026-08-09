@@ -377,6 +377,10 @@ async function publishCommitStatus(token, repository, sha, payload) {
   console.log(`Published ${payload.context}=${payload.state} for ${sha}.`);
 }
 
+export function verificationJobsSucceeded({ validateResult, qualityResult, rulesetResult }) {
+  return validateResult === 'success' && qualityResult === 'success' && rulesetResult === 'success';
+}
+
 async function publishStatus() {
   const token = process.env.GITHUB_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY;
@@ -386,6 +390,7 @@ async function publishStatus() {
   const sourceHeadSha = process.env.SOURCE_HEAD_SHA;
   const validateResult = process.env.VALIDATE_RESULT;
   const qualityResult = process.env.QUALITY_RESULT;
+  const rulesetResult = process.env.RULESET_RESULT;
   const serverUrl = process.env.GITHUB_SERVER_URL ?? 'https://github.com';
   const runId = process.env.GITHUB_RUN_ID;
   if (!token || !repository || !runId) throw new Error('GitHub Actions environment is incomplete');
@@ -417,7 +422,8 @@ async function publishStatus() {
   }
 
   const success =
-    validateResult === 'success' && qualityResult === 'success' && taskBindingErrors.length === 0;
+    verificationJobsSucceeded({ validateResult, qualityResult, rulesetResult }) &&
+    taskBindingErrors.length === 0;
   await publishCommitStatus(
     token,
     repository,
@@ -434,7 +440,7 @@ async function publishStatus() {
   }
   if (!success) {
     throw new Error(
-      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}, task=${taskBindingErrors.join('; ') || 'none'}`,
+      `Final main verification failed: validate=${validateResult}, quality=${qualityResult}, ruleset=${rulesetResult}, task=${taskBindingErrors.join('; ') || 'none'}`,
     );
   }
 }

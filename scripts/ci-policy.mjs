@@ -224,7 +224,8 @@ async function main() {
 
   const branchHygiene = workflows.get('branch-hygiene.yml') ?? '';
   requireTokens(errors, 'branch-hygiene.yml', branchHygiene, [
-    '- Work Synchronization',
+    'schedule:',
+    'workflow_dispatch:',
     'branch-inventory-policy.mjs self-test',
     'branch-inventory-policy.mjs',
     'contents: read',
@@ -232,12 +233,15 @@ async function main() {
   forbidTokens(errors, 'branch-hygiene.yml', branchHygiene, [
     'contents: write',
     'scripts/work-branch-policy.mjs',
-    '- Main Verification',
+    'workflow_run:',
   ]);
 
   const workSynchronization = workflows.get('work-synchronization.yml') ?? '';
   requireTokens(errors, 'work-synchronization.yml', workSynchronization, [
-    '- Main Verification',
+    'workflow_dispatch:',
+    'expected_sha:',
+    'source_pr:',
+    'source_head_sha:',
     'contents: write',
     'pull-requests: read',
     'work-synchronization.mjs self-test',
@@ -247,6 +251,7 @@ async function main() {
     'pull_request:',
     'push:',
     'git push',
+    'workflow_run:',
   ]);
 
   const mainVerification = workflows.get('main-verification.yml') ?? '';
@@ -257,6 +262,12 @@ async function main() {
     'source_head_sha:',
     'task_id:',
     'statuses: write',
+    'REPO_ADMIN_TOKEN:',
+    'ruleset-policy.mjs apply',
+    'RULESET_RESULT:',
+    'contents: write',
+    'work-synchronization.mjs self-test',
+    'work-synchronization.mjs',
     'scripts/main-verification.mjs',
     'Publish final main and task verification statuses',
     'name: main-verification',

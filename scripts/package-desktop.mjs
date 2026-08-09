@@ -11,7 +11,7 @@ import { createPackage, getRawHeader } from '@electron/asar';
 import { flipFuses, FuseV1Options, FuseVersion } from '@electron/fuses';
 import { resedit } from '@electron/packager/resedit';
 
-import { parseReleaseVersion } from '../.github/governance/release-acceptance.mjs';
+import { parseReleaseVersion } from './release-acceptance.mjs';
 
 const root = process.cwd();
 const require = createRequire(import.meta.url);

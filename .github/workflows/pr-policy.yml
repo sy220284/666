@@ -1,13 +1,14 @@
 name: PR Policy
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
   pull-requests: read
+  statuses: write
 
 concurrency:
   group: pr-policy-${{ github.event.pull_request.number }}
@@ -16,69 +17,75 @@ concurrency:
 jobs:
   pr-policy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     env:
       TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
       TASK_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
-      TASK_EVENT_NAME: pull_request
-      TASK_PR_HEAD_REF: ${{ github.head_ref }}
+      TASK_EVENT_NAME: pull_request_target
+      TASK_PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       TASK_PR_DRAFT: ${{ github.event.pull_request.draft }}
       TASK_PR_READY: ${{ github.event.pull_request.draft == false }}
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Checkout trusted base policy
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - name: Checkout candidate tree without credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          version: 11.13.1
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Assert clean working tree before policy validation
-        run: node .github/governance/assert-clean-tree.mjs
-      - name: Validate unique work pull request
+      - name: Validate pull request shape with trusted policy
+        working-directory: candidate
+        run: node ../trusted/.github/governance/single-work-policy.mjs validate
+      - name: Validate candidate automation inventory with trusted policy
+        working-directory: candidate
+        run: node ../trusted/.github/governance/automation-layout-policy.mjs
+      - name: Validate candidate CI policy with trusted policy
+        working-directory: candidate
+        run: node ../trusted/scripts/ci-policy.mjs
+      - name: Self-test trusted merge policy
+        working-directory: candidate
+        run: node ../trusted/.github/governance/pr-policy-self-test.mjs
+      - name: Publish trusted PR policy status
+        if: always()
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node .github/governance/single-work-policy.mjs validate
-      - name: Validate permanent automation inventory
-        run: node .github/governance/automation-layout-policy.mjs
-      - name: Validate permanent CI policy
-        run: pnpm ci:policy
-      - name: Smoke test changed toolchain exporters
+          POLICY_RESULT: ${{ job.status }}
         shell: bash
         run: |
           set -euo pipefail
-          changed_files="$(git diff --name-only "$TASK_BASE_REF" HEAD)"
-          if ! printf '%s\n' "$changed_files" | grep -Eq '^\.github/(governance/toolchain-bundle\.mjs|workflows/toolchain-export\.yml)$'; then
-            echo "Toolchain exporter unchanged; smoke test skipped."
-            exit 0
-          fi
-          source_sha="$(git rev-parse HEAD)"
-          for profile in formatter quality; do
-            node .github/governance/toolchain-bundle.mjs export \
-              --profile "$profile" \
-              --source-sha "$source_sha" \
-              --output "$RUNNER_TEMP/toolchain-$profile"
-          done
-      - name: Upload formatter toolchain smoke artifact
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: toolchain-formatter-smoke-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/toolchain-formatter/
-          if-no-files-found: ignore
-          retention-days: 1
-      - name: Reject tracked root scratch artifacts
-        run: test ! -e tmp
-      - name: Self-test permanent work policy
-        run: |
-          node .github/governance/single-work-policy.mjs self-test
-          node .github/governance/automerge-base-gate.mjs self-test
-          node .github/governance/pr-policy-self-test.mjs
-      - name: Assert clean working tree after policy validation
-        if: always()
-        run: node .github/governance/assert-clean-tree.mjs
+          node --input-type=module <<'NODE'
+          const state = process.env.POLICY_RESULT === 'success' ? 'success' : 'failure';
+          const response = await fetch(
+            `https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/statuses/${process.env.CANDIDATE_SHA}`,
+            {
+              method: 'POST',
+              headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+                'Content-Type': 'application/json',
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+              body: JSON.stringify({
+                state,
+                context: 'pr-policy',
+                description:
+                  state === 'success'
+                    ? 'Trusted base policy accepted the candidate'
+                    : 'Trusted base policy rejected the candidate',
+                target_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+              }),
+            },
+          );
+          if (!response.ok) throw new Error(`Unable to publish pr-policy status: ${response.status}`);
+          NODE

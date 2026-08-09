@@ -33,7 +33,7 @@
 → 唯一work
 → 所有任务实施、测试、文档和Evidence集成
 → 唯一work → main PR
-→ 七项永久门禁
+→ 六项永久门禁
 → Controlled Merge（Squash）
 → Main Verification
 → 任务有效状态关闭

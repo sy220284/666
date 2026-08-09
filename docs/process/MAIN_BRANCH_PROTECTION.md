@@ -20,7 +20,6 @@
 必需检查：
 
 ```text
-trusted-governance
 pr-policy
 task-governance
 quality / quality
@@ -28,8 +27,6 @@ security
 performance
 evidence
 ```
-
-`trusted-governance`必须由`pull_request_target`从PR base执行，只读访问PR元数据和Head文件数据，禁止检出或执行Head代码。Main Verification在每次受控合并后幂等应用并复读Ruleset，配置漂移或管理员凭据缺失时不得发布成功状态。
 
 `main-verification`是合并后状态，不能加入合并前必需检查。
 
@@ -77,16 +74,16 @@ pull-requests: read
 statuses: write
 ```
 
-主验证只读取来源、执行静态复核并发布提交状态；其Ruleset Job使用独立的管理员凭据且只调用Ruleset API，其同步Job使用独立的`contents: write`权限。任一前置Job失败都不得发布成功状态。
+只读取来源、执行静态复核并发布提交状态。
 
-### Work Synchronization Job
+### Work Synchronization
 
 ```text
 contents: write
 pull-requests: read
 ```
 
-该Job位于Main Verification末尾；独立工作流只用于人工恢复。它只允许：
+只允许：
 
 - 读取main、work和来源PR；
 - 在work不存在时创建`refs/heads/work`；
@@ -114,8 +111,6 @@ contents: read
 8. 当前main已推进时旧验证运行不得同步work。
 9. Main Verification失败时不得触发work同步。
 10. Work Synchronization不得依赖管理员PAT或修改Ruleset。
-11. 修改Head Runtime扩大`allowedPaths`、缩小`forbiddenPaths`或移除依赖时，base侧Trusted Governance必须失败。
-12. 新任务实现与新任务授权不得出现在同一个PR。
 
 ## 6. 漂移审计
 

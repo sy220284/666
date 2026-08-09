@@ -12,7 +12,7 @@
 → 更新唯一work → main PR
 → Draft持续执行永久检查
 → Runtime登记IMPLEMENTED与来源PR/Head绑定
-→ Ready Head七项永久门禁成功
+→ Ready Head六项永久门禁成功
 → 使用expected_head_sha串行Controlled Merge
 → 等待Main Verification成功
 → 发布任务验证提交状态

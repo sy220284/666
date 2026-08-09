@@ -173,7 +173,7 @@ Main Verification成功后，工作流检查：
 - 原始目标和非目标逐项复核；
 - 实现真实存在于受检work Head；
 - 专项验证与关联回归真实通过；
-- 七项永久门禁属于同一Head；
+- 六项永久门禁属于同一Head；
 - Controlled Merge实际完成；
 - Main Verification成功；
 - 任务有效状态为Verified；

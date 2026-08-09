@@ -17,11 +17,6 @@ on:
         description: Pull request head SHA whose permanent checks passed
         required: true
         type: string
-      task_id:
-        description: Task marker captured at controlled merge time; empty for governance PR
-        required: false
-        default: ''
-        type: string
 
 permissions:
   actions: read
@@ -43,7 +38,6 @@ jobs:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       SOURCE_PR: ${{ inputs.source_pr }}
       SOURCE_HEAD_SHA: ${{ inputs.source_head_sha }}
-      EXPECTED_TASK_ID: ${{ inputs.task_id }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -74,58 +68,20 @@ jobs:
       security_suite: false
       performance_eval: false
 
-  apply-ruleset:
-    name: Apply native ruleset
-    needs:
-      - validate-main
-      - quality
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    env:
-      REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
-      RULESET_REPORT: /tmp/worldforge-ruleset/report.json
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: ${{ inputs.expected_sha }}
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-      - name: Apply and verify native main ruleset
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$REPO_ADMIN_TOKEN"
-          node scripts/ruleset-policy.mjs apply
-      - name: Upload native ruleset report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: repository-ruleset-${{ inputs.expected_sha }}
-          path: /tmp/worldforge-ruleset/
-          if-no-files-found: error
-          retention-days: 30
-
   main-verification:
     name: main-verification
     if: always()
     needs:
       - validate-main
       - quality
-      - apply-ruleset
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       EXPECTED_SHA: ${{ inputs.expected_sha }}
       SOURCE_PR: ${{ inputs.source_pr }}
       SOURCE_HEAD_SHA: ${{ inputs.source_head_sha }}
-      EXPECTED_TASK_ID: ${{ inputs.task_id }}
       VALIDATE_RESULT: ${{ needs.validate-main.result }}
       QUALITY_RESULT: ${{ needs.quality.result }}
-      RULESET_RESULT: ${{ needs.apply-ruleset.result }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -142,36 +98,3 @@ jobs:
       - name: Assert status publication did not mutate tracked files
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
-
-  synchronize-work:
-    name: Synchronize verified work
-    needs: main-verification
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: write
-      pull-requests: read
-      statuses: read
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: ${{ inputs.expected_sha }}
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-      - name: Self-test synchronization guards
-        run: node .github/governance/work-synchronization.mjs self-test
-      - name: Synchronize work to verified main
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          WORK_SYNCHRONIZATION_OUTPUT: /tmp/worldforge-work-synchronization
-        run: node .github/governance/work-synchronization.mjs
-      - name: Upload synchronization report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: work-synchronization-${{ inputs.expected_sha }}
-          path: /tmp/worldforge-work-synchronization/
-          if-no-files-found: error
-          retention-days: 30

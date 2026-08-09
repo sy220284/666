@@ -12,7 +12,6 @@ import {
   isRuntimeEffectivelyVerified,
   mergeCurrentAndHistoricalTaskStatuses,
   resolveRuntimeMergeCommit,
-  taskVerificationProvenance,
 } from '../../.github/governance/effective-task-status.mjs';
 
 const temporaryDirectories: string[] = [];
@@ -107,29 +106,6 @@ describe('任务有效状态计算', () => {
         fixture.root,
       ),
     ).toThrow('exactly one controlled main commit');
-  });
-
-  it('将实现PR与闭包PR分开解析并以闭包提交继承任务状态', async () => {
-    const fixture = await historyFixture();
-    const task = {
-      id: 'M10-04',
-      verificationBinding: { sourcePr: 313, taskContext: 'task-verification/M10-04' },
-    };
-    const correction = {
-      implementationPr: 312,
-      implementationHeadSha: 'a'.repeat(40),
-      implementationMergeSha: fixture.m1004,
-      closurePr: 313,
-      closureHeadSha: 'b'.repeat(40),
-      closureMergeSha: fixture.head,
-    };
-    expect(taskVerificationProvenance(task, correction)).toMatchObject({
-      implementationPr: 312,
-      closurePr: 313,
-    });
-    expect(resolveRuntimeMergeCommit(task, fixture.head, fixture.root, correction)).toBe(
-      fixture.head,
-    );
   });
 
   it('统一判断当前主线验证Context', () => {

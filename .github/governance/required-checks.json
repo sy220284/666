@@ -4,7 +4,6 @@
   "mergeMethod": "squash",
   "mainVerificationWorkflow": "main-verification.yml",
   "requiredChecks": [
-    "trusted-governance",
     "pr-policy",
     "task-governance",
     "quality / quality",

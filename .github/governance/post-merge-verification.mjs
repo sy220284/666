@@ -1,7 +1,7 @@
 /* global console, process */
 import { readFile } from 'node:fs/promises';
 
-import { ensureMainVerification, taskIdFromPullBody } from '../../scripts/automerge.mjs';
+import { ensureMainVerification } from '../../scripts/automerge.mjs';
 
 const eventPath = process.env.GITHUB_EVENT_PATH;
 const repository = process.env.GITHUB_REPOSITORY;
@@ -21,6 +21,5 @@ if (!pull?.merged) {
     pull.merge_commit_sha,
     pull.number,
     pull.head.sha,
-    taskIdFromPullBody(pull.body),
   );
 }

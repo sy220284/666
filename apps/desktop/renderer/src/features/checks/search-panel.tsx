@@ -11,10 +11,7 @@ import type {
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorTerm } from '../../presentation/author-terms.js';
-import {
-  nextRequestGeneration,
-  RequestGenerationGroup,
-} from '../../runtime/request-generation.js';
+import { nextRequestGeneration, RequestGenerationGroup } from '../../runtime/request-generation.js';
 import {
   searchResultNavigationTarget,
   type AuthorNavigationTarget,

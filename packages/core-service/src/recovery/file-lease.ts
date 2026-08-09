@@ -314,10 +314,10 @@ export async function acquireFileLease(
     const current = await inspectLease(lockPath);
     const now = Date.now();
     if (expiredLease(current, now, timing)) {
-      await reclaimExpiredFileLease(lockPath, timing);
-      continue;
+      const reclaimed = await reclaimExpiredFileLease(lockPath, timing);
+      if (reclaimed) continue;
     }
-    if (now - startedAt >= timing.waitTimeoutMs) {
+    if (Date.now() - startedAt >= timing.waitTimeoutMs) {
       throw failure('Daily backup coordination timed out.');
     }
     await new Promise((resolve) => setTimeout(resolve, timing.retryDelayMs));

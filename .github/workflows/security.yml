@@ -31,14 +31,14 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           PR_DRAFT: ${{ github.event.pull_request.draft || false }}
-          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body, 'full-validation-draft') }}
+          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
         run: |
           set -euo pipefail
           run=false
           if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
             run=true
           elif [ "$PR_DRAFT" = true ] && [ "$FULL_VALIDATION_DRAFT" != true ]; then
-            echo "Dependency audit deferred until Ready or full-validation-draft."
+            echo "Dependency audit deferred until Ready or the exact full-validation-draft marker."
           elif git diff --name-only "$BASE_SHA" HEAD | grep -Eq '(^|/)package\.json$|^pnpm-lock\.yaml$|^pnpm-workspace\.yaml$|^\.github/workflows/'; then
             run=true
           fi
@@ -87,12 +87,12 @@ jobs:
         shell: bash
         env:
           PR_DRAFT: ${{ github.event.pull_request.draft || false }}
-          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body, 'full-validation-draft') }}
+          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
         run: |
           mkdir -p test-results/ci
           set -o pipefail
           if [ "$GITHUB_EVENT_NAME" = pull_request ] && [ "$PR_DRAFT" = true ] && [ "$FULL_VALIDATION_DRAFT" != true ]; then
-            echo "Draft mode: scanning the current tracked tree; full history runs when Ready or full-validation-draft."
+            echo "Draft mode: scanning the current tracked tree; full history runs when Ready or the exact full-validation-draft marker."
             node scripts/scan-secrets.mjs 2>&1 | tee test-results/ci/secret-scan.log
           else
             node scripts/scan-secrets.mjs --history 2>&1 | tee test-results/ci/secret-scan.log
@@ -124,14 +124,14 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           PR_DRAFT: ${{ github.event.pull_request.draft || false }}
-          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body, 'full-validation-draft') }}
+          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
         run: |
           set -euo pipefail
           run=false
           if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
             run=true
           elif [ "$PR_DRAFT" = true ] && [ "$FULL_VALIDATION_DRAFT" != true ]; then
-            echo "Application security tests deferred until Ready or full-validation-draft."
+            echo "Application security tests deferred until Ready or the exact full-validation-draft marker."
           else
             changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
             if [ -z "$changed_files" ] || printf '%s\n' "$changed_files" | grep -Eqv '^(docs/|.*\.md$)'; then

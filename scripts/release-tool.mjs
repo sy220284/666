@@ -9,7 +9,7 @@ import {
   loadReleaseCommitStatuses,
   parseReleaseVersion,
   validateReleaseConfiguration,
-} from '../.github/governance/release-acceptance.mjs';
+} from './release-acceptance.mjs';
 import { verifyPackageAssets } from './verify-package-assets.mjs';
 
 export { evaluateReleaseAcceptance as evaluateReleaseGate };

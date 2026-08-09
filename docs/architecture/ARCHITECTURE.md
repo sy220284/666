@@ -257,3 +257,23 @@ Renderer页面围绕三个工作台：
 - 所有业务写入可追踪到Core Use Case和事务。
 - AI、搜索、摘要和日记不会成为权威真源。
 - 故障注入时Draft和不可变Version保持一致。
+
+## 16. M10-22所有权与发布权威
+
+### 16.1 Core进程Owner
+
+Main为Utility Process的唯一owner。正常路径使用drain/shutdown；超时或RPC失联后撤销旧owner、调用进程终止、等待exit、销毁RPC和listener，再创建新generation并重新握手。旧generation的message、exit或迟到结果不得改变新Core状态。restart与shutdown为single-flight。
+
+### 16.2 Recovery资源Owner
+
+恢复克隆不再把“拥有`projects.id`外键”等同于“可克隆”。`ProjectClonePolicy`对每张项目业务表显式指定`clone-remap/preserve/drop/regenerate/identity`；未知表fail closed。备份记录、失败账本和瞬时运行状态不进入新项目血缘，FTS与索引状态重建。
+
+每日备份互斥使用owner PID、随机token、heartbeat和expiry组成的文件lease。提交备份文件与写BackupRecord前再次fence owner；旧owner释放时必须比较token，不能删除新owner的锁。
+
+### 16.3 Renderer请求Owner
+
+SearchPanel的search、replace、dictionary-read、dictionary-mutation和index各自拥有generation。pending只由当前active owner派生；完成、invalidate和卸载必须针对对应generation，旧响应不能清除新请求或提交UI状态。
+
+### 16.4 Provider与Release边界
+
+Provider配置按protocol使用strict options allowlist；凭据仍只经CredentialBroker。Release唯一权威为当前SHA的`main-verification`、产品验证矩阵、三平台工件完整性和策略要求的原生发行信任证据。Task Runtime仅为审计记录，不参与发布判定。

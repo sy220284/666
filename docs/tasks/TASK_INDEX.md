@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-21，共66张独立任务卡。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-22，共67张独立任务卡。
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -15,7 +15,7 @@ Runtime IMPLEMENTED
 → 有效VERIFIED
 ```
 
-当前main的`main-verification`只证明当前主线提交可用，不能替代历史任务自己的任务Context。依赖、发布、Evidence全量扫描和下一任务启动统一使用`.github/governance/effective-task-status.mjs`。
+当前main的`main-verification`只证明当前主线提交可用，不能替代历史任务自己的任务Context。任务依赖、Evidence全量扫描和下一任务启动统一使用`.github/governance/effective-task-status.mjs`。Release不再从任务Runtime推导产品资格，统一使用`.github/governance/release-acceptance.mjs`。
 
 固定入口：
 
@@ -119,29 +119,30 @@ Runtime IMPLEMENTED
 
 ### M10 稳定性与治理续作
 
-| ID     | 任务卡                                                                                             | 依赖   | 状态        |
-| ------ | -------------------------------------------------------------------------------------------------- | ------ | ----------- |
-| M10-01 | [`异步生命周期与竞态硬化`](M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)                                | M9-03  | Verified    |
-| M10-02 | [`全量代码测试与深度审计`](M10/M10-02_FULL_CODE_AUDIT.md)                                          | M10-01 | Verified    |
-| M10-03 | [`IPC与协议维护治理`](M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md)                                      | M10-02 | Verified    |
-| M10-04 | [`兼容面收敛治理`](M10/M10-04_COMPATIBILITY_CONVERGENCE.md)                                        | M10-03 | Implemented |
-| M10-05 | [`治理闭环一致性修复`](M10/M10-05_GOVERNANCE_CLOSURE_CONSISTENCY.md)                               | M10-04 | Implemented |
-| M10-06 | [`历史验证状态继承`](M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md)                            | M10-05 | Implemented |
-| M10-07 | [`正文变更与恢复安全收口`](M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md)                      | M10-06 | Implemented |
-| M10-08 | [`全量代码规范与结构原则治理`](M10/M10-08_CODE_QUALITY_GOVERNANCE.md)                              | M10-07 | Implemented |
-| M10-09 | [`Evidence收口与自动合并竞态治理`](M10/M10-09_EVIDENCE_CLOSURE_RACE.md)                            | M10-08 | Implemented |
-| M10-10 | [`当前工作空间工具链权威文档治理`](M10/M10-10_CURRENT_WORKSPACE_TOOLCHAIN_AUTHORITY.md)            | M10-09 | Implemented |
-| M10-11 | [`运行时、恢复与异步安全硬化`](M10/M10-11_RUNTIME_DATA_SAFETY_HARDENING.md)                        | M10-10 | Implemented |
-| M10-12 | [`命令身份与生成生命周期一致性治理`](M10/M10-12_COMMAND_IDENTITY_GENERATION_LIFECYCLE.md)          | M10-11 | Implemented |
-| M10-13 | [`1.5前置边界重构与根因治理`](M10/M10-13_V1_5_PREFLIGHT_BOUNDARY_REFACTOR.md)                      | M10-12 | Implemented |
-| M10-14 | [`Recovery、Bridge与边界审计收口`](M10/M10-14_RECOVERY_BRIDGE_POST_AUDIT_HARDENING.md)             | M10-13 | Implemented |
-| M10-15 | [`AI权威上下文与生成前置一致性收口`](M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md)      | M10-14 | Implemented |
-| M10-16 | [`语义新鲜度与派生失效一致性收口`](M10/M10-16_SEMANTIC_FRESHNESS_DERIVED_INVALIDATION.md)          | M10-15 | Implemented |
-| M10-17 | [`项目生命周期与Renderer状态所有权收口`](M10/M10-17_PROJECT_LIFECYCLE_RENDERER_STATE_OWNERSHIP.md) | M10-16 | Implemented |
-| M10-18 | [`导入幂等、实体删除与弧光依赖一致性收口`](M10/M10-18_IMPORT_ENTITY_ARC_DEPENDENCY_CONSISTENCY.md) | M10-17 | Implemented |
-| M10-19 | [`权威生命周期、结构与跨域一致性治理`](M10/M10-19_AUTHORITY_LIFECYCLE_STRUCTURE_GOVERNANCE.md)     | M10-18 | Implemented |
-| M10-20 | [`全量审计问题修复与发布链路收口`](M10/M10-20_FULL_AUDIT_REMEDIATION.md)                           | M10-19 | Implemented |
-| M10-21 | [`当前权威文档与测试架构现代化`](M10/M10-21_CURRENT_AUTHORITY_TEST_ARCHITECTURE_MODERNIZATION.md)  | M10-20 | Implemented |
+| ID     | 任务卡                                                                                                    | 依赖   | 状态        |
+| ------ | --------------------------------------------------------------------------------------------------------- | ------ | ----------- |
+| M10-01 | [`异步生命周期与竞态硬化`](M10/M10-01_ASYNC_LIFECYCLE_HARDENING.md)                                       | M9-03  | Verified    |
+| M10-02 | [`全量代码测试与深度审计`](M10/M10-02_FULL_CODE_AUDIT.md)                                                 | M10-01 | Verified    |
+| M10-03 | [`IPC与协议维护治理`](M10/M10-03_IPC_PROTOCOL_MAINTENANCE.md)                                             | M10-02 | Verified    |
+| M10-04 | [`兼容面收敛治理`](M10/M10-04_COMPATIBILITY_CONVERGENCE.md)                                               | M10-03 | Implemented |
+| M10-05 | [`治理闭环一致性修复`](M10/M10-05_GOVERNANCE_CLOSURE_CONSISTENCY.md)                                      | M10-04 | Implemented |
+| M10-06 | [`历史验证状态继承`](M10/M10-06_HISTORICAL_VERIFICATION_INHERITANCE.md)                                   | M10-05 | Implemented |
+| M10-07 | [`正文变更与恢复安全收口`](M10/M10-07_CONTENT_MUTATION_RECOVERY_HARDENING.md)                             | M10-06 | Implemented |
+| M10-08 | [`全量代码规范与结构原则治理`](M10/M10-08_CODE_QUALITY_GOVERNANCE.md)                                     | M10-07 | Implemented |
+| M10-09 | [`Evidence收口与自动合并竞态治理`](M10/M10-09_EVIDENCE_CLOSURE_RACE.md)                                   | M10-08 | Implemented |
+| M10-10 | [`当前工作空间工具链权威文档治理`](M10/M10-10_CURRENT_WORKSPACE_TOOLCHAIN_AUTHORITY.md)                   | M10-09 | Implemented |
+| M10-11 | [`运行时、恢复与异步安全硬化`](M10/M10-11_RUNTIME_DATA_SAFETY_HARDENING.md)                               | M10-10 | Implemented |
+| M10-12 | [`命令身份与生成生命周期一致性治理`](M10/M10-12_COMMAND_IDENTITY_GENERATION_LIFECYCLE.md)                 | M10-11 | Implemented |
+| M10-13 | [`1.5前置边界重构与根因治理`](M10/M10-13_V1_5_PREFLIGHT_BOUNDARY_REFACTOR.md)                             | M10-12 | Implemented |
+| M10-14 | [`Recovery、Bridge与边界审计收口`](M10/M10-14_RECOVERY_BRIDGE_POST_AUDIT_HARDENING.md)                    | M10-13 | Implemented |
+| M10-15 | [`AI权威上下文与生成前置一致性收口`](M10/M10-15_AI_AUTHORITY_CONTEXT_GENERATION_PREFLIGHT.md)             | M10-14 | Implemented |
+| M10-16 | [`语义新鲜度与派生失效一致性收口`](M10/M10-16_SEMANTIC_FRESHNESS_DERIVED_INVALIDATION.md)                 | M10-15 | Implemented |
+| M10-17 | [`项目生命周期与Renderer状态所有权收口`](M10/M10-17_PROJECT_LIFECYCLE_RENDERER_STATE_OWNERSHIP.md)        | M10-16 | Implemented |
+| M10-18 | [`导入幂等、实体删除与弧光依赖一致性收口`](M10/M10-18_IMPORT_ENTITY_ARC_DEPENDENCY_CONSISTENCY.md)        | M10-17 | Implemented |
+| M10-19 | [`权威生命周期、结构与跨域一致性治理`](M10/M10-19_AUTHORITY_LIFECYCLE_STRUCTURE_GOVERNANCE.md)            | M10-18 | Implemented |
+| M10-20 | [`全量审计问题修复与发布链路收口`](M10/M10-20_FULL_AUDIT_REMEDIATION.md)                                  | M10-19 | Implemented |
+| M10-21 | [`当前权威文档与测试架构现代化`](M10/M10-21_CURRENT_AUTHORITY_TEST_ARCHITECTURE_MODERNIZATION.md)         | M10-20 | Implemented |
+| M10-22 | [`运行时所有权、恢复一致性与发布权威统一治理`](M10/M10-22_UNIFIED_RUNTIME_RECOVERY_RELEASE_GOVERNANCE.md) | M10-21 | In Progress |
 
 ## 3. 被吸收的需求来源
 
@@ -174,7 +175,7 @@ Runtime IMPLEMENTED
 1. 新建和活动Runtime必须使用Schema 2；历史Schema 1 Runtime只读冻结。
 2. 一个`work → main` PR完成永久门禁、合并、Main Verification和Work Synchronization后，才能启动下一任务。
 3. 已Verified历史任务、Migration和Evidence保持冻结。
-4. 任一releaseBlocking任务未有效Verified，或当前main缺少`main-verification`，发布资格必须拒绝。
+4. 任务有效状态只约束任务依赖、Evidence和下一任务启动；Release必须由当前main的`main-verification`、产品门禁、三平台产物完整性与发行信任证据独立判定。
 5. Ready Evidence manifest绑定当前任务最新实现提交；该提交之后只允许当前任务卡、Runtime、`TASK_INDEX.md`和当前任务Evidence收口，Evidence CI Check绑定精确PR Head。
 6. 分支长期只允许`main`与`work`，不存在`release/*`例外。
 7. 历史Implemented任务必须从其来源PR对应主线提交继承任务Context，禁止借用当前main上的其他任务Context。

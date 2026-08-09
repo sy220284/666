@@ -41,6 +41,7 @@ import { createDiagnosticId, type LogFields, type LogLevel } from './privacy-log
 
 export interface UtilityProcessHandle {
   readonly pid?: number;
+  terminate(): boolean;
   postMessage(message: CoreControlMessage, transfer?: readonly unknown[]): void;
   onMessage(listener: (message: unknown) => void): () => void;
   onExit(listener: (exitCode: number | null) => void): () => void;
@@ -86,7 +87,10 @@ export class CoreSupervisor {
   #restartCount = 0;
   #lastErrorCode: string | null = null;
   #diagnosticId: string | null = null;
-  #expectedExit = false;
+  #expectedExitProcess: UtilityProcessHandle | undefined;
+  #processGeneration = 0;
+  #shutdownInFlight: Promise<SupervisorOperationResult> | undefined;
+  #restartInFlight: Promise<SupervisorOperationResult> | undefined;
   #removeMessageListener: (() => void) | undefined;
   #removeExitListener: (() => void) | undefined;
 
@@ -117,7 +121,7 @@ export class CoreSupervisor {
     this.#state = 'starting';
     this.#lastErrorCode = null;
     this.#diagnosticId = null;
-    this.#expectedExit = false;
+    this.#expectedExitProcess = undefined;
 
     let process: UtilityProcessHandle;
     try {
@@ -135,7 +139,11 @@ export class CoreSupervisor {
       send: () => undefined,
     });
     if (ready.state !== 'response') {
-      return this.#fail('CORE_START_TIMEOUT', 'core.start.timeout');
+      const terminated = await this.#forceTerminate(process, 'CORE_START_TIMEOUT');
+      return this.#fail(
+        terminated ? 'CORE_START_TIMEOUT' : 'CORE_FORCE_TERMINATE_FAILED',
+        terminated ? 'core.start.timeout' : 'core.terminate.failed',
+      );
     }
 
     this.#state = 'healthy';
@@ -167,12 +175,14 @@ export class CoreSupervisor {
   }
 
   async restart(): Promise<SupervisorOperationResult> {
-    if (this.#process) {
-      const stopped = await this.shutdown();
-      if (!stopped.ok) return stopped;
+    if (this.#restartInFlight) return this.#restartInFlight;
+    const operation = this.#restart();
+    this.#restartInFlight = operation;
+    try {
+      return await operation;
+    } finally {
+      if (this.#restartInFlight === operation) this.#restartInFlight = undefined;
     }
-    this.#restartCount += 1;
-    return this.start();
   }
 
   async invokeTaskCommand(envelope: TaskCommand): Promise<TaskCommandResult> {
@@ -456,6 +466,26 @@ export class CoreSupervisor {
   }
 
   async shutdown(): Promise<SupervisorOperationResult> {
+    if (this.#shutdownInFlight) return this.#shutdownInFlight;
+    const operation = this.#shutdown();
+    this.#shutdownInFlight = operation;
+    try {
+      return await operation;
+    } finally {
+      if (this.#shutdownInFlight === operation) this.#shutdownInFlight = undefined;
+    }
+  }
+
+  async #restart(): Promise<SupervisorOperationResult> {
+    if (this.#process) {
+      const stopped = await this.shutdown();
+      if (!stopped.ok) return stopped;
+    }
+    this.#restartCount += 1;
+    return this.start();
+  }
+
+  async #shutdown(): Promise<SupervisorOperationResult> {
     const process = this.#process;
     if (!process) {
       this.#state = 'stopped';
@@ -479,15 +509,14 @@ export class CoreSupervisor {
       },
     );
     if (drained.state !== 'response') {
-      return this.#fail(
-        drained.state === 'send-failed' ? 'CORE_DRAIN_SEND_FAILED' : 'CORE_DRAIN_TIMEOUT',
-        drained.state === 'send-failed' ? 'core.drain.send-failed' : 'core.drain.timeout',
-      );
+      const errorCode =
+        drained.state === 'send-failed' ? 'CORE_DRAIN_SEND_FAILED' : 'CORE_DRAIN_TIMEOUT';
+      return this.#forcedShutdown(process, errorCode);
     }
 
     const shutdownRequestId = randomUUID();
     const exited = this.#waitForExit(process, this.#commandTimeoutMs);
-    this.#expectedExit = true;
+    this.#expectedExitProcess = process;
     const completed = await this.#request(
       process,
       `core.shutdown-complete:${shutdownRequestId}`,
@@ -501,21 +530,18 @@ export class CoreSupervisor {
       },
     );
     if (completed.state !== 'response') {
-      this.#expectedExit = false;
       exited.cancel();
-      return this.#fail(
-        completed.state === 'send-failed' ? 'CORE_SHUTDOWN_SEND_FAILED' : 'CORE_SHUTDOWN_TIMEOUT',
-        completed.state === 'send-failed' ? 'core.shutdown.send-failed' : 'core.shutdown.timeout',
-      );
+      const errorCode =
+        completed.state === 'send-failed' ? 'CORE_SHUTDOWN_SEND_FAILED' : 'CORE_SHUTDOWN_TIMEOUT';
+      return this.#forcedShutdown(process, errorCode);
     }
 
     const processExited = await exited.promise;
     if (!processExited) {
-      this.#expectedExit = false;
-      return this.#fail('CORE_SHUTDOWN_TIMEOUT', 'core.shutdown.timeout');
+      return this.#forcedShutdown(process, 'CORE_SHUTDOWN_TIMEOUT');
     }
 
-    this.#expectedExit = false;
+    this.#expectedExitProcess = undefined;
     this.#state = 'stopped';
     await this.#safeLog('info', 'core.shutdown.complete', { processStatus: this.#state });
     return { ok: true };
@@ -524,7 +550,9 @@ export class CoreSupervisor {
   #bindProcess(process: UtilityProcessHandle): void {
     this.#removeMessageListener?.();
     this.#removeExitListener?.();
+    const generation = ++this.#processGeneration;
     this.#removeMessageListener = process.onMessage((message) => {
+      if (process !== this.#process || generation !== this.#processGeneration) return;
       const parsed = CoreEventSchema.safeParse(message);
       if (!parsed.success) {
         void this.#safeLog('warn', 'core.message.rejected', {
@@ -535,14 +563,19 @@ export class CoreSupervisor {
       this.#rpc.accept(parsed.data);
     });
     this.#removeExitListener = process.onExit((exitCode) => {
-      if (process !== this.#process) return;
+      if (process !== this.#process || generation !== this.#processGeneration) return;
+      const expected = this.#expectedExitProcess === process;
       this.#process = undefined;
+      this.#expectedExitProcess = undefined;
+      this.#removeMessageListener?.();
+      this.#removeExitListener?.();
+      this.#removeMessageListener = undefined;
+      this.#removeExitListener = undefined;
       this.#rpc.disconnect();
       for (const waiter of [...this.#exitWaiters]) {
         if (waiter.process === process) waiter.settle(true);
       }
-      if (this.#expectedExit) {
-        this.#expectedExit = false;
+      if (expected) {
         this.#state = 'stopped';
         return;
       }
@@ -556,6 +589,54 @@ export class CoreSupervisor {
         diagnosticId: this.#diagnosticId,
       });
     });
+  }
+
+  async #forcedShutdown(
+    process: UtilityProcessHandle,
+    reason: string,
+  ): Promise<SupervisorOperationResult> {
+    const terminated = await this.#forceTerminate(process, reason);
+    if (!terminated) return this.#fail('CORE_FORCE_TERMINATE_FAILED', 'core.terminate.failed');
+    this.#state = 'stopped';
+    this.#lastErrorCode = null;
+    this.#diagnosticId = null;
+    await this.#safeLog('warn', 'core.shutdown.forced', {
+      processStatus: this.#state,
+      errorCode: reason,
+      retryable: true,
+    });
+    return { ok: true };
+  }
+
+  async #forceTerminate(process: UtilityProcessHandle, reason: string): Promise<boolean> {
+    if (this.#process !== process) return true;
+    const exited = this.#waitForExit(process, this.#commandTimeoutMs);
+    this.#expectedExitProcess = process;
+    let signalled: boolean;
+    try {
+      signalled = process.terminate();
+    } catch {
+      signalled = false;
+    }
+    if (!signalled) {
+      this.#expectedExitProcess = undefined;
+      exited.cancel();
+      await this.#safeLog('error', 'core.terminate.signal-failed', {
+        processStatus: this.#state,
+        errorCode: reason,
+      });
+      return false;
+    }
+    const processExited = await exited.promise;
+    if (!processExited) {
+      this.#expectedExitProcess = undefined;
+      await this.#safeLog('error', 'core.terminate.timeout', {
+        processStatus: this.#state,
+        errorCode: reason,
+      });
+      return false;
+    }
+    return true;
   }
 
   #request(

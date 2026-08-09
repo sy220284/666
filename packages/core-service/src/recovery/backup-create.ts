@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -24,6 +24,7 @@ import {
   type RecoveryRuntime,
 } from './backup-manifest.js';
 import { safeFileName, safeTemporaryName } from './path-name.js';
+import { acquireFileLease } from './file-lease.js';
 import {
   rethrowRecoveryFailure,
   settleRecoveryCompensation,
@@ -112,33 +113,7 @@ export class BackupCreateOperations {
     await mkdir(backupDirectory, { recursive: true, mode: 0o700 });
     await chmod(backupDirectory, 0o700);
     const lockPath = path.join(backupDirectory, `.daily-${today}.lock`);
-    const startedAt = Date.now();
-    let lock: Awaited<ReturnType<typeof open>>;
-    for (;;) {
-      try {
-        lock = await open(lockPath, 'wx', 0o600);
-        break;
-      } catch (error) {
-        if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) throw error;
-        if (Date.now() - startedAt >= 30_000) {
-          try {
-            const details = await stat(lockPath);
-            if (Date.now() - details.mtimeMs >= 30_000) {
-              await rm(lockPath, { force: true });
-              continue;
-            }
-          } catch (lockError) {
-            if (isMissing(lockError)) continue;
-            throw lockError;
-          }
-          throw new RecoveryServiceError(
-            'BACKUP_CREATE_FAILED',
-            'Daily backup coordination timed out.',
-          );
-        }
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-    }
+    const lease = await acquireFileLease(lockPath, this.#runtime.dailyBackupLeaseTiming);
     try {
       const existing = (await readBackupMetadata(this.#runtime, input.projectId)).find(
         (record) => record.track === 'daily' && record.createdAt.slice(0, 10) === today,
@@ -154,10 +129,10 @@ export class BackupCreateOperations {
           authorProtected: false,
           migrationProtected: false,
         },
+        () => lease.assertOwner(),
       );
     } finally {
-      await lock.close();
-      await rm(lockPath, { force: true });
+      await lease.release();
     }
   }
 
@@ -183,9 +158,10 @@ export class BackupCreateOperations {
     requestId: string,
     input: RecoveryCreateInput,
     classification: BackupClassification,
+    assertOwnership?: () => Promise<void>,
   ): Promise<BackupRecord> {
     try {
-      return await this.#createBackup(requestId, input, classification);
+      return await this.#createBackup(requestId, input, classification, assertOwnership);
     } catch (error) {
       await this.#recordBackupFailure(input, classification.track, error);
       throw error;
@@ -381,6 +357,7 @@ export class BackupCreateOperations {
     requestId: string,
     input: RecoveryCreateInput,
     classification: BackupClassification,
+    assertOwnership?: () => Promise<void>,
   ): Promise<BackupRecord> {
     const project = this.#runtime.workspace.assertActiveProject(input.projectId, true);
     const sourceDatabasePath = path.join(project.workspacePath, 'project.sqlite');
@@ -459,10 +436,12 @@ export class BackupCreateOperations {
         mode: 0o600,
         flag: 'wx',
       });
+      await assertOwnership?.();
       await rename(partialPath, finalPath);
       finalBackupCreated = true;
       await rename(metadataPartialPath, metadataPath);
       finalMetadataCreated = true;
+      await assertOwnership?.();
       await this.#registerRecord(requestId, record);
       return record;
     } catch (error) {

@@ -175,6 +175,7 @@ describe('AI连接预设', () => {
     expect(ollama.baseUrl).toBe('http://127.0.0.1:11434/v1');
     expect(lmStudio.baseUrl).toBe('http://127.0.0.1:1234/v1');
     expect(providerProtocolLabel(ollama.protocol)).toBe('OpenAI兼容接口');
+    expect(providerProtocolLabel('custom')).toBe('历史自定义接口（只读）');
   });
 
   it('Anthropic预设使用原生接口', () => {

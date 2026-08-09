@@ -5,10 +5,12 @@ import { describe, expect, it } from 'vitest';
 import {
   archiveInvocation,
   asarHeaderIntegrity,
+  assertRequiredDistributionTrust,
   linuxPortableLauncher,
   packagePlatformForNode,
   parsePackageArguments,
   pnpmInvocation,
+  replacePlistString,
   workspaceDeployArguments,
 } from '../../scripts/package-desktop.mjs';
 import {
@@ -37,6 +39,8 @@ describe('desktop package command', () => {
       platform: 'linux',
       hostPlatform: 'linux',
       version: '1.2.3',
+      releaseKind: 'draft',
+      distributionTrust: 'allow-unsigned',
       output: path.join(repositoryRoot, 'release', 'linux'),
     });
     expect(
@@ -71,6 +75,40 @@ describe('desktop package command', () => {
         repositoryRoot,
       }),
     ).toThrow(/inside the repository/);
+    expect(() =>
+      parsePackageArguments(
+        ['--release-kind', 'stable', '--distribution-trust', 'allow-unsigned'],
+        {
+          packageVersion: '1.2.3',
+          nodePlatform: 'linux',
+          repositoryRoot,
+        },
+      ),
+    ).toThrow(/Stable packages must require distribution trust/);
+  });
+
+  it('requires native trust evidence for stable Windows and macOS packages', () => {
+    expect(() =>
+      assertRequiredDistributionTrust('windows', {
+        signed: false,
+        notarized: false,
+        stapled: false,
+      }),
+    ).toThrow(/Authenticode/);
+    expect(() =>
+      assertRequiredDistributionTrust('macos', {
+        signed: true,
+        notarized: true,
+        stapled: false,
+      }),
+    ).toThrow(/notarization, or stapling/);
+    expect(() =>
+      assertRequiredDistributionTrust('linux', {
+        signed: false,
+        notarized: false,
+        stapled: false,
+      }),
+    ).not.toThrow();
   });
 
   it('rejects unknown and missing options', () => {
@@ -95,6 +133,16 @@ describe('desktop package command', () => {
       algorithm: 'SHA256',
       hash: '1e0584a25d9f43bf5cbd0aec01eb1af2220ed085b4e7f1837b0d89958cae353a',
     });
+  });
+
+  it('writes an explicit macOS bundle identity and rejects missing plist keys', () => {
+    const source = '<key>CFBundleIdentifier</key>\n<string>com.github.Electron</string>';
+    expect(replacePlistString(source, 'CFBundleIdentifier', 'com.worldforge.desktop')).toContain(
+      '<string>com.worldforge.desktop</string>',
+    );
+    expect(() => replacePlistString(source, 'CFBundleVersion', '1.2.3')).toThrow(
+      /missing CFBundleVersion/,
+    );
   });
 
   it('uses a Linux portable launcher that keeps Chromium user-namespace sandboxing enabled', () => {

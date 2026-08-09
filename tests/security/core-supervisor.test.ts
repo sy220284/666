@@ -22,11 +22,18 @@ class FakeUtilityProcess implements UtilityProcessHandle {
   respondToDrain = true;
   respondToShutdown = true;
   exited = false;
+  terminateCalls = 0;
   lastTransfer: readonly unknown[] = [];
   windowPreferences: WindowPreferences | null = null;
 
   constructor(pid: number) {
     this.pid = pid;
+  }
+
+  terminate(): boolean {
+    this.terminateCalls += 1;
+    this.exit(143);
+    return true;
   }
 
   postMessage(message: CoreControlMessage, transfer: readonly unknown[] = []): void {
@@ -255,7 +262,7 @@ describe('Core Utility Process supervision', () => {
     });
   });
 
-  it('keeps a non-draining process alive and reports a diagnostic instead of force-killing it', async () => {
+  it('force-terminates a non-draining process and releases the lifecycle owner', async () => {
     const processes: FakeUtilityProcess[] = [];
     const supervisor = new CoreSupervisor({
       spawn: spawnReady(processes),
@@ -271,10 +278,42 @@ describe('Core Utility Process supervision', () => {
     process.respondToDrain = false;
     const result = await supervisor.shutdown();
 
-    expect(result).toMatchObject({ ok: false, errorCode: 'CORE_DRAIN_TIMEOUT' });
-    expect(result.diagnosticId).toMatch(/^diag_/);
-    expect(process.exited).toBe(false);
-    expect(supervisor.getStatus().status).toBe('degraded');
+    expect(result).toEqual({ ok: true });
+    expect(process.exited).toBe(true);
+    expect(process.terminateCalls).toBe(1);
+    expect(supervisor.getStatus()).toMatchObject({ status: 'stopped', pid: null });
+  });
+
+  it('restarts after force-terminating a live but unresponsive process', async () => {
+    const processes: FakeUtilityProcess[] = [];
+    const supervisor = new CoreSupervisor({
+      spawn: spawnReady(processes),
+      logger: quietLogger,
+      startupTimeoutMs: 50,
+      commandTimeoutMs: 10,
+    });
+
+    await supervisor.start();
+    const oldProcess = processes[0];
+    expect(oldProcess).toBeDefined();
+    if (!oldProcess) return;
+    oldProcess.respondToDrain = false;
+
+    await expect(Promise.all([supervisor.restart(), supervisor.restart()])).resolves.toEqual([
+      { ok: true },
+      { ok: true },
+    ]);
+    expect(oldProcess.terminateCalls).toBe(1);
+    expect(processes).toHaveLength(2);
+    expect(supervisor.getStatus()).toMatchObject({ status: 'healthy', restartCount: 1 });
+
+    oldProcess.emitMessage({
+      type: 'core.ready',
+      protocolVersion: PROTOCOL_VERSION,
+      startedAt: new Date().toISOString(),
+    });
+    oldProcess.exit(9);
+    expect(supervisor.getStatus()).toMatchObject({ status: 'healthy', pid: 1_001 });
   });
 
   it('surfaces startup timeout without claiming a healthy state', async () => {
@@ -289,9 +328,10 @@ describe('Core Utility Process supervision', () => {
     const result = await supervisor.start();
     expect(result).toMatchObject({ ok: false, errorCode: 'CORE_START_TIMEOUT' });
     expect(supervisor.getStatus()).toMatchObject({
-      status: 'degraded',
+      status: 'crashed',
       lastErrorCode: 'CORE_START_TIMEOUT',
     });
-    expect(process.exited).toBe(false);
+    expect(process.exited).toBe(true);
+    expect(process.terminateCalls).toBe(1);
   });
 });

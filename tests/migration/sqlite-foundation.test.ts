@@ -49,7 +49,7 @@ describe('SQLite foundation migrations', () => {
 
     expect(database.mode).toBe('read-write');
     expect(database.compatibility).toBe('migrated');
-    expect(database.schemaVersion).toBe(2);
+    expect(database.schemaVersion).toBe(3);
     expect(
       database.read((connection) => ({
         journalMode: scalar(connection, 'PRAGMA journal_mode'),
@@ -106,6 +106,13 @@ describe('SQLite foundation migrations', () => {
         version: 2n,
         name: 'window_preferences',
         checksum: migrations[1]?.checksum,
+        applied_at: '2026-07-15T01:02:03.456Z',
+        app_version: '0.1.0',
+      },
+      {
+        version: 3n,
+        name: 'provider_options_allowlist',
+        checksum: migrations[2]?.checksum,
         applied_at: '2026-07-15T01:02:03.456Z',
         app_version: '0.1.0',
       },

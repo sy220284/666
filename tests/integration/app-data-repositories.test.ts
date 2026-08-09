@@ -214,22 +214,20 @@ describe('provider metadata and app/project boundary', () => {
         model: 'writer-model',
         credentialRef: null,
         timeoutMs: 30_000,
-        options: { temperature: 0.7, stream: true },
+        options: {},
       }),
     ).resolves.toMatchObject({ id: providerId, credentialRef: null });
-    expect(runtime.providerConfigs.list()).toMatchObject([
-      { id: providerId, options: { temperature: 0.7, stream: true } },
-    ]);
+    expect(runtime.providerConfigs.list()).toMatchObject([{ id: providerId, options: {} }]);
     await expect(
       runtime.providerConfigs.upsert(randomUUID(), {
         id: 'unsafe-provider',
         name: '不安全配置',
-        protocol: 'custom',
+        protocol: 'openai_compatible',
         baseUrl: 'https://example.invalid/v1',
         model: 'model',
         credentialRef: null,
         timeoutMs: 30_000,
-        options: { apiKey: 'credential-body-must-not-be-stored' },
+        options: { authorization: 'Bearer credential-body-must-not-be-stored' },
       }),
     ).rejects.toThrow();
     await runtime.close();
@@ -253,7 +251,7 @@ describe('provider metadata and app/project boundary', () => {
       .get(providerId);
     expect(stored).toEqual({
       credential_ref: null,
-      options_json: JSON.stringify({ temperature: 0.7, stream: true }),
+      options_json: JSON.stringify({}),
     });
     expect(JSON.stringify(stored)).not.toContain('credential-body-must-not-be-stored');
     database.close();

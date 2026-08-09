@@ -50,7 +50,7 @@ Runtime IMPLEMENTED
 → VERIFIED
 ```
 
-Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得覆盖GitHub Commit Status计算出的有效Verified。发布、依赖、Evidence全量扫描和下一任务启动必须调用统一有效状态策略。
+Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得覆盖GitHub Commit Status计算出的有效Verified。任务依赖、Evidence全量扫描和下一任务启动必须调用统一有效状态策略。Release不读取任务Runtime作为产品发布权威，统一由`release-acceptance.mjs`校验当前main、产品门禁、产物完整性与发行信任证据。
 
 ## 3. 仓库闭环条件
 
@@ -70,7 +70,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 任一条件缺失：
 
 - 不得启动下一任务；
-- 不得发布；
+- 不得把包含该任务实现但尚未进入并验证于main的提交作为Release来源；
 - 不得把“PR已合并”表述为仓库已闭环；
 - 自动同步失败时允许按相同CAS条件执行手动恢复，但必须复核`main == work`。
 
@@ -94,7 +94,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - Draft Evidence校验文件完整性、Hash和来源提交；Ready Evidence必须绑定当前任务最新实现提交。
 - Ready Head中`implementationCommit`之后只允许当前任务卡、当前Runtime、`TASK_INDEX.md`和当前任务Evidence目录；产品代码、测试、脚本、配置、工作流或跨任务Evidence后移必须阻断。
 - Evidence manifest不预写未来Squash SHA；Evidence CI Check绑定精确PR Head，最终main与任务Verified由提交状态证明。
-- 发布资格必须读取当前main提交的`main-verification`和任务状态。
+- Release资格必须读取当前main提交的`main-verification`、产品门禁、三平台产物完整性和发行信任证据；Task Runtime只保留任务管理与历史审计职责。
 - Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
 - Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。
 - SQLite逐级Migration、未来Schema只读打开、Provider适配和协议版本门禁继续保留。

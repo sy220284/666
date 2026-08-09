@@ -280,16 +280,20 @@ open | ignored_chapter | silenced_project | downgraded | false_positive | resolv
 
 ## 7. 导入、导出与备份
 
-| 名称                 | 定义                                      |
-| -------------------- | ----------------------------------------- |
-| ImportPlan           | 临时导入预览，不修改项目真源              |
-| export Version       | 被选中用于导出的不可变Version             |
-| daily backup         | 日常滚动备份                              |
-| operation checkpoint | Migration、导入、替换和结构操作前的恢复点 |
-| manual snapshot      | 作者命名的长期快照                        |
-| verified backup      | 通过完整性检查和Hash验证的备份            |
-| restore copy         | 从备份恢复到新目录的新项目副本            |
-| TrashEntry           | 软删除对象原位置与恢复信息                |
+| 名称                 | 定义                                                        |
+| -------------------- | ----------------------------------------------------------- |
+| ImportPlan           | 临时导入预览，不修改项目真源                                |
+| export Version       | 被选中用于导出的不可变Version                               |
+| daily backup         | 日常滚动备份                                                |
+| operation checkpoint | Migration、导入、替换和结构操作前的恢复点                   |
+| manual snapshot      | 作者命名的长期快照                                          |
+| verified backup      | 通过完整性检查和Hash验证的备份                              |
+| restore copy         | 从备份恢复到新目录的新项目副本                              |
+| ProjectClonePolicy   | 恢复副本逐表声明remap、保留、删除或重建语义                 |
+| FileLease            | 具有owner token、heartbeat、expiry与fencing的跨进程备份租约 |
+| TrashEntry           | 软删除对象原位置与恢复信息                                  |
+
+恢复副本的`backup_records`和`backup_failures`不属于作品内容或项目配置，不得继承；`backup_policies`属于可继承项目策略。FileLease只协调运行态，不进入项目业务Schema。
 
 ## 8. UI术语映射
 

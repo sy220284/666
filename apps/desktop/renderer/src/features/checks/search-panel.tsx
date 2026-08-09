@@ -17,7 +17,8 @@ import {
   type AuthorNavigationTarget,
 } from '../../shell/navigation-target.js';
 
-type SearchPanelRequestLane = 'search' | 'replace' | 'dictionary' | 'index';
+type SearchPanelRequestLane =
+  'search' | 'replace' | 'dictionary-read' | 'dictionary-mutation' | 'index';
 
 export function SearchPanel({
   bridge,
@@ -38,31 +39,44 @@ export function SearchPanel({
   const [indexState, setIndexState] = useState<SearchIndexState | null>(null);
   const [plan, setPlan] = useState<ReplacePlan | null>(null);
   const [dictionary, setDictionary] = useState<readonly ProjectDictionaryEntry[]>([]);
-  const [searchPending, setSearchPending] = useState(false);
-  const [replacePending, setReplacePending] = useState(false);
-  const [dictionaryPending, setDictionaryPending] = useState(false);
-  const [indexPending, setIndexPending] = useState(false);
+  const [, setRequestStateVersion] = useState(0);
   const [notice, setNotice] = useState('搜索覆盖当前稿、历史版本与人物世界设定。');
   const [reloadToken, setReloadToken] = useState(0);
   const requests = useRef(new RequestGenerationGroup<SearchPanelRequestLane>());
-  const searchToolsPending = searchPending || replacePending || indexPending;
+  const searchPending = requests.current.isActive('search');
+  const replacePending = requests.current.isActive('replace');
+  const dictionaryReadPending = requests.current.isActive('dictionary-read');
+  const dictionaryMutationPending = requests.current.isActive('dictionary-mutation');
+  const dictionaryPending = dictionaryReadPending || dictionaryMutationPending;
+  const indexPending = requests.current.isActive('index');
+  const searchToolsPending = searchPending || replacePending || dictionaryPending || indexPending;
 
-  const beginRequest = (lane: SearchPanelRequestLane): number => requests.current.begin(lane);
+  const requestStateChanged = (): void => setRequestStateVersion((value) => value + 1);
+  const beginRequest = (lane: SearchPanelRequestLane): number => {
+    const generation = requests.current.begin(lane);
+    requestStateChanged();
+    return generation;
+  };
+  const completeRequest = (lane: SearchPanelRequestLane, generation: number): void => {
+    if (requests.current.complete(lane, generation)) requestStateChanged();
+  };
   const isCurrentRequest = (lane: SearchPanelRequestLane, generation: number): boolean =>
     requests.current.isCurrent(lane, generation);
 
   useEffect(() => {
-    const indexGeneration = requests.current.begin('index');
-    const dictionaryGeneration = requests.current.begin('dictionary');
-    let active = true;
+    requests.current.invalidateAll();
+    requestStateChanged();
     setResult(null);
     setPlan(null);
     setIndexState(null);
     setDictionary([]);
-    setSearchPending(false);
-    setReplacePending(false);
-    setDictionaryPending(false);
-    setIndexPending(false);
+    return () => requests.current.invalidateAll();
+  }, [bridge, projectId]);
+
+  useEffect(() => {
+    const indexGeneration = beginRequest('index');
+    const dictionaryGeneration = beginRequest('dictionary-read');
+    let active = true;
     setNotice('正在读取当前作品的全文搜索状态…');
     void Promise.all([
       bridge.searchTools.getIndexState({ projectId }, { mode: 'replace' }),
@@ -71,7 +85,10 @@ export function SearchPanel({
       .then(([stateOutcome, dictionaryOutcome]) => {
         if (!active) return;
         const indexCurrent = requests.current.isCurrent('index', indexGeneration);
-        const dictionaryCurrent = requests.current.isCurrent('dictionary', dictionaryGeneration);
+        const dictionaryCurrent = requests.current.isCurrent(
+          'dictionary-read',
+          dictionaryGeneration,
+        );
         const failures: string[] = [];
         if (indexCurrent && stateOutcome.state === 'success') setIndexState(stateOutcome.data);
         else if (indexCurrent && stateOutcome.state === 'failure')
@@ -91,10 +108,15 @@ export function SearchPanel({
       })
       .catch(() => {
         if (active) setNotice('搜索工具读取异常；现有作品数据没有变化，可以重新读取。');
+      })
+      .finally(() => {
+        completeRequest('index', indexGeneration);
+        completeRequest('dictionary-read', dictionaryGeneration);
       });
     return () => {
       active = false;
-      requests.current.invalidateAll();
+      requests.current.invalidate('index');
+      requests.current.invalidate('dictionary-read');
     };
   }, [bridge, projectId, reloadToken]);
 
@@ -102,7 +124,6 @@ export function SearchPanel({
     event.preventDefault();
     if (!query.trim() || sourceTypes.size === 0) return;
     const generation = beginRequest('search');
-    setSearchPending(true);
     try {
       const outcome = await bridge.searchTools.search({
         projectId,
@@ -119,7 +140,7 @@ export function SearchPanel({
         );
       } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
     } finally {
-      if (isCurrentRequest('search', generation)) setSearchPending(false);
+      completeRequest('search', generation);
     }
   };
 
@@ -128,7 +149,6 @@ export function SearchPanel({
     if (readOnly) return;
     const generation = beginRequest('replace');
     const values = new FormData(event.currentTarget);
-    setReplacePending(true);
     try {
       const outcome = await bridge.searchTools.previewReplace({
         projectId,
@@ -145,14 +165,13 @@ export function SearchPanel({
         );
       } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
     } finally {
-      if (isCurrentRequest('replace', generation)) setReplacePending(false);
+      completeRequest('replace', generation);
     }
   };
 
   const applyReplace = async (): Promise<void> => {
     if (!plan || readOnly) return;
     const generation = beginRequest('replace');
-    setReplacePending(true);
     try {
       const outcome = await bridge.searchTools.applyReplace({
         projectId,
@@ -166,19 +185,18 @@ export function SearchPanel({
         setNotice(authorErrorSummary(outcome.error));
       }
     } finally {
-      if (isCurrentRequest('replace', generation)) setReplacePending(false);
+      completeRequest('replace', generation);
     }
   };
 
   const saveDictionary = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (readOnly) return;
-    const generation = beginRequest('dictionary');
+    const generation = beginRequest('dictionary-mutation');
     const form = event.currentTarget;
     const values = new FormData(form);
     const action = String(values.get('action')) as 'canonical' | 'alias' | 'ignore' | 'replace';
     const replacementTerm = String(values.get('replacementTerm') ?? '').trim();
-    setDictionaryPending(true);
     try {
       const outcome = await bridge.searchTools.upsertDictionary({
         projectId,
@@ -189,20 +207,19 @@ export function SearchPanel({
         replacementTerm: replacementTerm || null,
         notes: String(values.get('notes') ?? ''),
       });
-      if (!isCurrentRequest('dictionary', generation)) return;
+      if (!isCurrentRequest('dictionary-mutation', generation)) return;
       if (outcome.state === 'success') {
         setDictionary(outcome.data.entries);
         form.reset();
         setNotice('作品词典已保存。');
       } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
     } finally {
-      if (isCurrentRequest('dictionary', generation)) setDictionaryPending(false);
+      completeRequest('dictionary-mutation', generation);
     }
   };
 
   const rebuildIndex = async (): Promise<void> => {
     const generation = beginRequest('index');
-    setIndexPending(true);
     try {
       const outcome = await bridge.searchTools.rebuildIndex({ projectId });
       if (!isCurrentRequest('index', generation)) return;
@@ -216,26 +233,25 @@ export function SearchPanel({
       if (!isCurrentRequest('index', generation)) return;
       if (stateOutcome.state === 'success') setIndexState(stateOutcome.data);
     } finally {
-      if (isCurrentRequest('index', generation)) setIndexPending(false);
+      completeRequest('index', generation);
     }
   };
 
   const deleteDictionary = async (entry: ProjectDictionaryEntry): Promise<void> => {
-    const generation = beginRequest('dictionary');
-    setDictionaryPending(true);
+    const generation = beginRequest('dictionary-mutation');
     try {
       const outcome = await bridge.searchTools.deleteDictionary({
         projectId,
         authority: 'author',
         term: entry.term,
       });
-      if (!isCurrentRequest('dictionary', generation)) return;
+      if (!isCurrentRequest('dictionary-mutation', generation)) return;
       if (outcome.state === 'success') {
         setDictionary(outcome.data.entries);
         setNotice('作品词典词条已删除。');
       } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
     } finally {
-      if (isCurrentRequest('dictionary', generation)) setDictionaryPending(false);
+      completeRequest('dictionary-mutation', generation);
     }
   };
 
@@ -383,7 +399,7 @@ export function SearchPanel({
           <input name="replacementTerm" placeholder="别名或替换目标" />
           <input name="notes" placeholder="备注" />
           <button disabled={dictionaryPending || readOnly} type="submit">
-            {dictionaryPending ? '正在保存…' : '保存词条'}
+            {dictionaryMutationPending ? '正在保存…' : '保存词条'}
           </button>
         </form>
         {dictionary.map((entry) => (

@@ -21,7 +21,13 @@ V1.0交付形态为Windows、macOS和Linux自用便携包。用户自行下载�
 - 合成视口、缩放矩阵、键盘与焦点、无障碍语义、输入边界、Electron E2E、协议Fixture和离线降级测试通过。
 - 未完成的Actions可执行项必须如实记录，不得把未执行验证标记为通过。
 
-## 3. 明确非目标
+## 3. 自用候选与正式稳定版边界
+
+`draft`默认仍可生成未签名作者自用候选；`prerelease`可通过工作流输入明确选择是否要求发行信任。`stable`即使仍由仓库所有者使用，也必须通过Windows Authenticode和macOS Developer ID签名、公证、stapling门禁。GitHub Release的“stable”标签不再允许表达未签名内部候选。
+
+未签名工件只能保留为draft或显式允许的prerelease，manifest必须如实记录`allow-unsigned`、`signed: false`和`notarized: false`，不得宣传为可信分发包。
+
+## 4. 明确非目标
 
 以下事项不属于V1.0自用发布完成条件，不得作为M8-02转Ready、Verified或生成自用Release的阻断项：
 
@@ -29,22 +35,22 @@ V1.0交付形态为Windows、macOS和Linux自用便携包。用户自行下载�
 - 实体屏幕阅读器、人工IME、自定义字体、人工视觉复核和线下五分钟新手流程。
 - Linux实体自用主机启动记录。
 - 真实Provider账号、线下模型质量测试和第三方环境稳定性背书。
-- Windows代码签名及SmartScreen发布者信誉。
-- macOS Developer ID签名与Apple公证。
+- Windows SmartScreen历史信誉积累；代码签名本身是stable门禁。
+- Mac App Store上架；Developer ID签名与Apple公证本身是stable门禁。
 - MSI、MSIX、PKG、DMG安装器或Linux DEB/RPM安装包。
 - 安装、修复、覆盖升级、自动更新和卸载生命周期矩阵。
 - 面向第三方的可信发布、企业部署或应用商店上架。
 
-`package-manifest.json`中的`signed: false`与`notarized: false`属于事实记录，不代表自用便携包验收失败。
+`package-manifest.json`中的`signed: false`与`notarized: false`只允许出现在未要求发行信任的候选包；stable出现该状态必须失败。
 
-## 4. 使用限制
+## 5. 使用限制
 
-- Windows或macOS可能显示未签名应用警告，由仓库所有者本人确认并放行。
-- macOS可能需要在系统安全设置中手动允许启动。
+- 未签名draft/prerelease可能显示系统警告，由仓库所有者本人确认并放行。
+- stable的签名、公证可建立发行身份，但不承诺立即获得Windows SmartScreen信誉。
 - Linux GitHub Actions中使用的CI专用回退只证明自动化环境下功能链路通过，不代表所有Linux主机配置均已覆盖。
 - GitHub Actions无法真实复现的硬件、系统策略或第三方服务差异作为已知限制记录，不阻断V1.0自用交付。
 - 自用工件不得宣传为已签名、已公证、可公开分发或具备安装器生命周期保证。
 
-## 5. 未来范围变化
+## 6. 未来范围变化
 
-若后续决定面向第三方公开发布，必须重新立项并恢复代码签名、Apple公证、安装器、升级卸载、渠道安全和真实用户环境验收，不得沿用本自用策略直接对外发布。
+若后续决定面向第三方公开推广，仍须另行立项安装器、升级卸载、渠道安全、隐私与真实用户环境验收；现有stable签名门只证明工件身份与Apple公证，不等于完成公开商业分发验收。

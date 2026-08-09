@@ -15,6 +15,11 @@ class BoundaryProcess implements UtilityProcessHandle {
   readonly #exits = new Set<(exitCode: number | null) => void>();
   throwOnShutdown = false;
 
+  terminate(): boolean {
+    this.exit(143);
+    return true;
+  }
+
   postMessage(message: CoreControlMessage): void {
     if (message.type === 'core.ping') {
       this.emit({
@@ -132,21 +137,18 @@ describe('M10-13 CoreSupervisor boundary', () => {
     });
   });
 
-  it('restores unexpected-exit semantics when shutdown send fails', async () => {
+  it('force-terminates when graceful shutdown transport fails', async () => {
     const process = new BoundaryProcess();
     const supervisor = supervisorFor(process, { log: () => undefined });
     await supervisor.start();
     process.throwOnShutdown = true;
 
-    await expect(supervisor.shutdown()).resolves.toMatchObject({
-      ok: false,
-      errorCode: 'CORE_SHUTDOWN_SEND_FAILED',
-    });
+    await expect(supervisor.shutdown()).resolves.toEqual({ ok: true });
     process.exit(9);
 
     expect(supervisor.getStatus()).toMatchObject({
-      status: 'crashed',
-      lastErrorCode: 'CORE_PROCESS_EXIT',
+      status: 'stopped',
+      lastErrorCode: null,
     });
   });
 });

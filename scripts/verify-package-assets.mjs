@@ -9,12 +9,73 @@ function option(argumentsList, name) {
   return argumentsList[index + 1];
 }
 
+function optionalOption(argumentsList, name, fallback) {
+  const index = argumentsList.indexOf(name);
+  if (index < 0) return fallback;
+  if (!argumentsList[index + 1]) throw new Error(`${name} requires a value`);
+  return argumentsList[index + 1];
+}
+
+export function verifyDistributionTrust(manifest, platform, trustMode) {
+  if (!['allow-unsigned', 'required'].includes(trustMode)) {
+    throw new Error(`Unsupported distribution trust mode: ${trustMode}`);
+  }
+  const evidence = manifest.distributionTrustEvidence;
+  if (manifest.signed === true && !evidence) {
+    throw new Error('Package claims a signature without native verification evidence');
+  }
+  if (manifest.signed !== true && evidence) {
+    throw new Error('Unsigned package must not contain distribution trust evidence');
+  }
+  if ((manifest.notarized === true || manifest.stapled === true) && manifest.signed !== true) {
+    throw new Error('Notarization evidence requires a signed package');
+  }
+  if (manifest.notarized === true && manifest.stapled !== true) {
+    throw new Error('Package claims notarization without a stapled ticket');
+  }
+  if (manifest.stapled === true && manifest.notarized !== true) {
+    throw new Error('Package claims a stapled ticket without notarization');
+  }
+  if (trustMode !== 'required') return;
+
+  if (
+    platform === 'windows' &&
+    (manifest.signed !== true ||
+      evidence?.signing !== 'authenticode-sha256' ||
+      evidence?.signatureVerification !== 'Get-AuthenticodeSignature:Valid' ||
+      evidence?.timestamped !== true)
+  ) {
+    throw new Error('Stable Windows assets require verified, timestamped Authenticode signing');
+  }
+  if (
+    platform === 'macos' &&
+    (manifest.signed !== true ||
+      manifest.notarized !== true ||
+      manifest.stapled !== true ||
+      evidence?.signing !== 'developer-id-application' ||
+      evidence?.hardenedRuntime !== true ||
+      evidence?.signatureVerification !== 'codesign:strict' ||
+      evidence?.notarizationVerification !== 'stapler:validated' ||
+      evidence?.gatekeeperAssessment !== 'spctl:accepted')
+  ) {
+    throw new Error(
+      'Stable macOS assets require Developer ID signing, hardened runtime, notarization, stapling, and Gatekeeper acceptance',
+    );
+  }
+}
+
 export async function verifyPackageAssets(
   argumentsList = process.argv.slice(2),
   root = process.cwd(),
 ) {
   const platform = option(argumentsList, '--platform');
   const version = option(argumentsList, '--version');
+  const releaseKind = optionalOption(argumentsList, '--release-kind', 'draft');
+  const trustMode = optionalOption(
+    argumentsList,
+    '--distribution-trust',
+    releaseKind === 'stable' ? 'required' : 'allow-unsigned',
+  );
   const directory = path.resolve(root, option(argumentsList, '--directory'));
   const manifest = JSON.parse(
     await readFile(path.join(directory, 'package-manifest.json'), 'utf8'),
@@ -22,6 +83,17 @@ export async function verifyPackageAssets(
   if (manifest.platform !== platform || manifest.version !== version) {
     throw new Error('Package manifest platform or version does not match the release matrix');
   }
+  if (
+    manifest.schemaVersion !== 2 ||
+    manifest.releaseKind !== releaseKind ||
+    manifest.distributionTrustMode !== trustMode
+  ) {
+    throw new Error('Package manifest does not match the requested release trust policy');
+  }
+  if (releaseKind === 'stable' && trustMode !== 'required') {
+    throw new Error('Stable packages cannot allow unsigned distribution artifacts');
+  }
+  verifyDistributionTrust(manifest, platform, trustMode);
   if (
     manifest.packageKind !== 'portable-electron-bundle' ||
     manifest.asar !== true ||

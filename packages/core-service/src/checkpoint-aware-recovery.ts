@@ -1,5 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { access, lstat, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  access,
+  constants,
+  lstat,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -39,7 +49,7 @@ async function existingWritableDirectory(directory: string): Promise<string> {
     const canonical = await realpath(path.normalize(directory));
     const details = await stat(canonical);
     if (!details.isDirectory() || (details.mode & 0o222) === 0) throw new Error('NOT_WRITABLE');
-    await access(canonical);
+    await access(canonical, constants.W_OK);
     return canonical;
   } catch (error) {
     throw new RecoveryServiceError(

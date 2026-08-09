@@ -42,14 +42,14 @@ describe('M1-08 recovered project identity remap', () => {
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         ) STRICT;
-        CREATE TABLE project_children(
+        CREATE TABLE project_settings(
           id TEXT PRIMARY KEY,
           project_id TEXT NOT NULL REFERENCES projects(id)
         ) STRICT;
         CREATE TRIGGER inject_invalid_project_reference
         AFTER UPDATE OF id ON projects
         BEGIN
-          INSERT INTO project_children(id, project_id)
+          INSERT INTO project_settings(id, project_id)
           VALUES('invalid-child', 'missing-project');
         END;
       `);
@@ -75,12 +75,49 @@ describe('M1-08 recovered project identity remap', () => {
       expect(verified.prepare('SELECT id, name FROM projects').all()).toEqual([
         { id: previousProjectId, name: '原项目' },
       ]);
-      expect(verified.prepare('SELECT COUNT(*) AS count FROM project_children').get()).toEqual({
+      expect(verified.prepare('SELECT COUNT(*) AS count FROM project_settings').get()).toEqual({
         count: 0n,
       });
       expect(verified.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
       verified.close();
     }
+  });
+
+  it('fails closed when a restored schema contains an unclassified project table', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-recovery-policy-'));
+    temporaryDirectories.push(directory);
+    const databasePath = path.join(directory, 'project.sqlite');
+    const previousProjectId = randomUUID();
+    const database = openDatabase(databasePath);
+    try {
+      database.exec(`
+        CREATE TABLE projects(
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        ) STRICT;
+        CREATE TABLE future_external_artifacts(
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL REFERENCES projects(id)
+        ) STRICT;
+      `);
+      database
+        .prepare('INSERT INTO projects(id, name, created_at, updated_at) VALUES(?, ?, ?, ?)')
+        .run(previousProjectId, '原项目', '2026-08-09T00:00:00.000Z', '2026-08-09T00:00:00.000Z');
+    } finally {
+      database.close();
+    }
+
+    expect(() =>
+      remapProjectIdentity(
+        databasePath,
+        previousProjectId,
+        randomUUID(),
+        '恢复副本',
+        '2026-08-09T01:00:00.000Z',
+      ),
+    ).toThrow('PROJECT_CLONE_POLICY_INCOMPLETE unknown=future_external_artifacts');
   });
 });

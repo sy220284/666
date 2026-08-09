@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   access,
+  constants,
   copyFile,
   readFile,
   readdir,
@@ -24,6 +25,7 @@ import {
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { stableJson } from '../stable-json.js';
+import type { FileLeaseTiming } from './file-lease-types.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -60,6 +62,7 @@ export interface RecoveryServiceOptions {
   readonly copyBackup?: (source: string, target: string) => Promise<void>;
   readonly afterBackupCreated?: (backupPath: string) => Promise<void> | void;
   readonly afterRestoreCopied?: (databasePath: string) => Promise<void> | void;
+  readonly dailyBackupLeaseTiming?: FileLeaseTiming;
 }
 
 export interface RecoveryRuntime {
@@ -72,6 +75,7 @@ export interface RecoveryRuntime {
   readonly copyBackup: (source: string, target: string) => Promise<void>;
   readonly afterBackupCreated: ((backupPath: string) => Promise<void> | void) | undefined;
   readonly afterRestoreCopied: ((databasePath: string) => Promise<void> | void) | undefined;
+  readonly dailyBackupLeaseTiming: FileLeaseTiming | undefined;
 }
 
 export interface BackupMetadata extends BackupRecord {
@@ -107,6 +111,7 @@ export function createRecoveryRuntime(
     copyBackup: options.copyBackup ?? copyFile,
     afterBackupCreated: options.afterBackupCreated,
     afterRestoreCopied: options.afterRestoreCopied,
+    dailyBackupLeaseTiming: options.dailyBackupLeaseTiming,
   };
 }
 
@@ -193,7 +198,7 @@ export async function existingWritableDirectory(directory: string): Promise<stri
     const canonical = await realpath(path.normalize(directory));
     const details = await stat(canonical);
     if (!details.isDirectory() || (details.mode & 0o222) === 0) throw new Error('NOT_WRITABLE');
-    await access(canonical);
+    await access(canonical, constants.W_OK);
     return canonical;
   } catch (error) {
     throw new RecoveryServiceError(

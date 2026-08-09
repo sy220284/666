@@ -1,41 +1,43 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
-const sourcePath = path.join(
-  process.cwd(),
-  'apps/desktop/renderer/src/features/checks/search-panel.tsx',
-);
+import { RequestGenerationGroup } from '../../apps/desktop/renderer/src/runtime/request-generation.js';
 
 describe('全文搜索面板异步通道', () => {
-  it('为搜索、替换、作品词典和索引保留独立代次与等待状态', async () => {
-    const source = await readFile(sourcePath, 'utf8');
+  it('把等待状态绑定到对应通道的当前owner', () => {
+    const requests = new RequestGenerationGroup<'dictionary-read' | 'dictionary-mutation'>();
+    const mutation = requests.begin('dictionary-mutation');
+    const read = requests.begin('dictionary-read');
 
-    expect(source).toContain(
-      "type SearchPanelRequestLane = 'search' | 'replace' | 'dictionary' | 'index';",
-    );
-    expect(source).toContain('new RequestGenerationGroup<SearchPanelRequestLane>()');
-    expect(source).toContain("beginRequest('search')");
-    expect(source).toContain("beginRequest('replace')");
-    expect(source).toContain("beginRequest('dictionary')");
-    expect(source).toContain("beginRequest('index')");
-    expect(source).toContain('setSearchPending(false)');
-    expect(source).toContain('setReplacePending(false)');
-    expect(source).toContain('setDictionaryPending(false)');
-    expect(source).toContain('setIndexPending(false)');
-    expect(source).toContain('requests.current.invalidateAll()');
+    expect(requests.isActive('dictionary-mutation')).toBe(true);
+    expect(requests.isActive('dictionary-read')).toBe(true);
+    expect(requests.complete('dictionary-read', read)).toBe(true);
+    expect(requests.isActive('dictionary-read')).toBe(false);
+    expect(requests.isActive('dictionary-mutation')).toBe(true);
+    expect(requests.complete('dictionary-mutation', mutation)).toBe(true);
+    expect(requests.isActive('dictionary-mutation')).toBe(false);
   });
 
-  it('作品词典等待状态不参与搜索与替换工具区互斥', async () => {
-    const source = await readFile(sourcePath, 'utf8');
+  it('旧响应不能结束新owner的等待状态', () => {
+    const requests = new RequestGenerationGroup<'dictionary-mutation'>();
+    const first = requests.begin('dictionary-mutation');
+    const second = requests.begin('dictionary-mutation');
 
-    expect(source).toContain(
-      'const searchToolsPending = searchPending || replacePending || indexPending;',
-    );
-    expect(source).not.toContain(
-      'searchPending || replacePending || dictionaryPending || indexPending',
-    );
-    expect(source).toContain('disabled={dictionaryPending || readOnly}');
+    expect(requests.complete('dictionary-mutation', first)).toBe(false);
+    expect(requests.isActive('dictionary-mutation')).toBe(true);
+    expect(requests.complete('dictionary-mutation', second)).toBe(true);
+    expect(requests.isActive('dictionary-mutation')).toBe(false);
+  });
+
+  it('invalidate明确结束owner并使迟到响应失效', () => {
+    const requests = new RequestGenerationGroup<'dictionary-mutation' | 'index'>();
+    const mutation = requests.begin('dictionary-mutation');
+    requests.begin('index');
+
+    requests.invalidateAll();
+
+    expect(requests.isActive('dictionary-mutation')).toBe(false);
+    expect(requests.isActive('index')).toBe(false);
+    expect(requests.isCurrent('dictionary-mutation', mutation)).toBe(false);
+    expect(requests.complete('dictionary-mutation', mutation)).toBe(false);
   });
 });

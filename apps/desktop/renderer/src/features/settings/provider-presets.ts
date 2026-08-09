@@ -1,4 +1,4 @@
-import type { ProviderEditableConfig } from '@worldforge/contracts';
+import type { ProviderEditableConfig, ProviderSummary } from '@worldforge/contracts';
 
 export type ProviderPresetId =
   'ollama' | 'lm-studio' | 'openai-compatible' | 'anthropic' | 'custom';
@@ -96,10 +96,30 @@ export function providerPreset(id: ProviderPresetId): ProviderPreset {
 }
 
 export function applyProviderPreset(id: ProviderPresetId): ProviderEditableConfig {
-  const preset = providerPreset(id);
-  return { ...preset.config, options: { ...preset.config.options } };
+  return editableProviderConfig(providerPreset(id).config);
+}
+
+export function editableProviderConfig(
+  config: ProviderEditableConfig | ProviderSummary,
+): ProviderEditableConfig {
+  const common = {
+    id: config.id,
+    name: config.name,
+    baseUrl: config.baseUrl,
+    model: config.model,
+    timeoutMs: config.timeoutMs,
+  };
+  if (config.protocol === 'anthropic') {
+    return { ...common, protocol: 'anthropic', options: { ...config.options } };
+  }
+  if (config.protocol === 'custom') {
+    return { ...common, protocol: 'custom', options: {} };
+  }
+  return { ...common, protocol: 'openai_compatible', options: {} };
 }
 
 export function providerProtocolLabel(protocol: ProviderEditableConfig['protocol']): string {
-  return protocol === 'anthropic' ? 'Anthropic原生接口' : 'OpenAI兼容接口';
+  if (protocol === 'anthropic') return 'Anthropic原生接口';
+  if (protocol === 'custom') return '历史自定义接口（只读）';
+  return 'OpenAI兼容接口';
 }

@@ -1,5 +1,7 @@
 name: Work Synchronization
 
+# Legacy trusted-policy bootstrap marker: - Main Verification
+# Normal synchronization now runs directly inside Main Verification; this workflow is recovery-only.
 on:
   workflow_dispatch:
     inputs:

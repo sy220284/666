@@ -90,7 +90,9 @@ export function validateWorkflowStructure(file, source) {
     }
     const releaseAuditCondition = String(workflow.jobs['release-audit']?.if ?? '');
     if (!releaseAuditCondition.includes(fullValidationDraftMarker)) {
-      errors.push('quality.yml: release-audit must use the exact full-validation-draft HTML marker');
+      errors.push(
+        'quality.yml: release-audit must use the exact full-validation-draft HTML marker',
+      );
     }
     if (quality?.with?.performance_eval !== false) {
       errors.push('quality.yml: quality.with.performance_eval must be false');

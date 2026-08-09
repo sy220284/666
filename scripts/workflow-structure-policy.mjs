@@ -12,6 +12,9 @@ const actionPins = new Map([
   ['pnpm/action-setup', 'b906affcce14559ad1aafd4ab0e942779e9f58b1'],
 ]);
 
+const guardedDraftMode =
+  "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body, 'full-validation-draft') }}";
+
 export function parseWorkflowDocument(file, source) {
   let workflow;
   try {
@@ -79,9 +82,9 @@ export function validateWorkflowStructure(file, source) {
     if (quality?.uses !== './.github/workflows/quality-core.yml') {
       errors.push('quality.yml: quality must call quality-core.yml');
     }
-    if (quality?.with?.draft_mode !== '${{ github.event.pull_request.draft }}') {
+    if (quality?.with?.draft_mode !== guardedDraftMode) {
       errors.push(
-        'quality.yml: quality.with.draft_mode must follow github.event.pull_request.draft',
+        'quality.yml: quality.with.draft_mode must keep Draft merge blocking while allowing only the explicit full-validation-draft diagnostic mode',
       );
     }
     if (quality?.with?.performance_eval !== false) {

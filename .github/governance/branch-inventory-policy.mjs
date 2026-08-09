@@ -5,20 +5,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const requiredBranches = Object.freeze(['main', 'work']);
+const apiRoot = 'https://api.github.com';
 
-async function api(pathname) {
-  const response = await globalThis.fetch(
-    new globalThis.URL(pathname, 'https://api.github.com'),
-    {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+async function api(pathname, options = {}, accepted = []) {
+  const response = await globalThis.fetch(new globalThis.URL(pathname, apiRoot), {
+    ...options,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(options.headers ?? {}),
     },
-  );
-  if (!response.ok) throw new Error(`GitHub API ${response.status}: ${pathname}`);
-  return response.json();
+  });
+  const body = await response.text();
+  if (!response.ok && !accepted.includes(response.status)) {
+    throw new Error(`GitHub API ${response.status}: ${pathname}\n${body}`);
+  }
+  return response.ok && body ? JSON.parse(body) : null;
 }
 
 export function invalidBranches(names) {
@@ -39,17 +42,47 @@ export function branchInventoryErrors(names) {
   return errors;
 }
 
-async function main() {
-  if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) {
-    throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required');
-  }
-  const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+async function listBranches(owner, repo) {
   const branches = [];
   for (let page = 1; ; page += 1) {
     const batch = await api(`/repos/${owner}/${repo}/branches?per_page=100&page=${page}`);
     branches.push(...batch.map((branch) => branch.name));
     if (batch.length < 100) break;
   }
+  return branches.sort();
+}
+
+async function repairBranches(owner, repo, names) {
+  const invalid = invalidBranches(names);
+  for (const name of invalid) {
+    const encoded = name.split('/').map(encodeURIComponent).join('/');
+    await api(`/repos/${owner}/${repo}/git/refs/heads/${encoded}`, { method: 'DELETE' });
+    console.log(`Deleted unexpected branch ${name}.`);
+  }
+
+  if (!names.includes('work')) {
+    const main = await api(`/repos/${owner}/${repo}/git/ref/heads/main`);
+    await api(`/repos/${owner}/${repo}/git/refs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: 'refs/heads/work', sha: main.object.sha }),
+    });
+    console.log('Recreated missing work branch from main.');
+  }
+}
+
+async function main() {
+  if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) {
+    throw new Error('GITHUB_TOKEN and GITHUB_REPOSITORY are required');
+  }
+  const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+  let branches = await listBranches(owner, repo);
+  const repair = process.argv.includes('--repair');
+  if (repair && branchInventoryErrors(branches).length > 0) {
+    await repairBranches(owner, repo, branches);
+    branches = await listBranches(owner, repo);
+  }
+
   const invalid = invalidBranches(branches);
   const missing = missingBranches(branches);
   const errors = branchInventoryErrors(branches);
@@ -57,7 +90,7 @@ async function main() {
   await mkdir(output, { recursive: true });
   await writeFile(
     path.join(output, 'branch-inventory.json'),
-    `${JSON.stringify({ branches: branches.sort(), invalid, missing }, null, 2)}\n`,
+    `${JSON.stringify({ branches, invalid, missing, repaired: repair }, null, 2)}\n`,
   );
   if (errors.length > 0) throw new Error(errors.join('\n'));
   console.log('Branch inventory contains exactly main and work.');

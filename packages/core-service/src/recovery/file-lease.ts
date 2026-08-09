@@ -3,13 +3,9 @@ import { lstat, open, readFile, rm } from 'node:fs/promises';
 import process from 'node:process';
 
 import { RecoveryServiceError } from './backup-manifest.js';
+import type { FileLeaseTiming } from './file-lease-types.js';
 
-export interface FileLeaseTiming {
-  readonly durationMs: number;
-  readonly heartbeatMs: number;
-  readonly waitTimeoutMs: number;
-  readonly retryDelayMs: number;
-}
+export type { FileLeaseTiming } from './file-lease-types.js';
 
 interface FileLeaseDocument {
   readonly schemaVersion: 1;
@@ -51,10 +47,7 @@ function normalizeTiming(input?: FileLeaseTiming): FileLeaseTiming {
       throw failure(`Invalid file lease timing: ${name}`);
     }
   }
-  if (timing.heartbeatMs >= timing.durationMs) {
-    return { ...timing };
-  }
-  return timing;
+  return { ...timing };
 }
 
 function parseLeaseDocument(raw: string): FileLeaseDocument | null {

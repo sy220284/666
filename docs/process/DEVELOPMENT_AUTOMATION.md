@@ -14,8 +14,8 @@ Task Governance、Evidence与Runtime不再作为开发授权或PR工程门禁；
 - `docs/tasks/runtime/<TASK-ID>.json`：任务范围、静态状态、依赖、验证命令和合并后状态绑定。
 - `docs/tasks/TASK_INDEX.md`：任务导航与静态进度镜像，不得把Schema 2任务单方面提升为有效Verified。
 - GitHub Commit Status：`main-verification`与`task-verification/<TASK-ID>`提供有效Verified事实。
-- `.github/governance/required-checks.json`：服务器Ruleset与Controlled Merge共同读取的工程检查真源。
-- GitHub Actions最新Workflow Run：Controlled Merge必须核对当前Head的最新Quality、Security、Performance运行，旧Draft成功结果不得被Ready复用。
+- `.github/governance/required-checks.json`：服务器Ruleset与Controlled Merge共同读取的最小工程Context真源。
+- GitHub Actions最新Workflow Run：Controlled Merge必须核对当前Head的最新Quality、Security、Performance运行；Quality最新轮次内部同时承担Release Audit与package gate。
 
 新建及活动Runtime必须使用Schema 2和`executionBranch: work`。历史Verified Schema 1 Runtime保持冻结，只允许读取。
 
@@ -56,19 +56,18 @@ Task Governance、Evidence与Runtime不再作为开发授权或PR工程门禁；
 
 `full-validation-draft`只用于提前获得完整矩阵结果，不能充当Ready合并凭据。Draft转Ready时即使Head SHA没有变化，也必须产生新的Ready验证轮次；Controlled Merge按Workflow Run创建时间与ID读取最新轮次，不能只读取Commit上残留的旧成功Context。
 
-Ready合并前的永久工程检查为：
+Ready合并前的永久工程Context保持最小四项：
 
 ```text
 pr-policy
 + quality / quality
-+ quality / release-audit
 + security
 + performance
 ```
 
 - PR Policy：验证`work → main`、同仓库来源、唯一开放PR和永久自动化布局。
 - Quality：静态、Unit、Integration、Migration、Coverage、Electron E2E、Build和三平台package smoke按路径路由。
-- Release Audit：执行CI Policy、Release Check、历史Verified Evidence扫描与本PR Evidence校验；它是现有轻量Job，不增加重复产品测试。
+- Release Audit：作为Quality Workflow内部必过Job执行CI Policy、Release Check、历史Verified Evidence扫描与本PR Evidence校验；它不新增第五个永久Context，也不重复产品测试。
 - Security：凭据扫描始终执行；Ready或`full-validation-draft`执行完整历史扫描、依赖审计与应用安全。
 - Performance：Ready或`full-validation-draft`对相关代码执行真实性能预算与AI协议基线。
 
@@ -76,12 +75,12 @@ pr-policy
 
 Controlled Merge必须同时满足两层事实：
 
-1. `required-checks.json`中的永久Context在当前Head成功；
+1. `required-checks.json`中的四个永久Context在当前Head成功；
 2. 当前Head最新的Quality、Security、Performance Workflow Run均已`completed + success`，且最新Quality Run中的`quality / quality`、`quality / release-audit`、`quality / package-smoke`全部成功。
 
 只要最新一轮仍在运行、失败或被取消，即使同一SHA以前存在成功结果也不得合并。合并前还要复核PR仍为Ready、Head未移动、Base为当前main、无Changes Requested与未解决线程。合并方式固定为Squash并绑定受检Head SHA。
 
-Main Verification再次核对最终main SHA、来源PR、来源work Head、永久Context和最新来源Workflow Run，并在最终main执行静态一致性检查。
+Main Verification再次核对最终main SHA、来源PR、来源work Head、四个永久Context和最新来源Workflow Run，并在最终main执行静态一致性检查。
 
 若来源PR正文包含：
 
@@ -130,7 +129,7 @@ docs/test-evidence/<TASK-ID>/
 
 Evidence必须绑定真实受检work提交。失败、跳过和环境限制必须如实记录。需要完整矩阵结果才能生成Evidence时，先用`full-validation-draft`取得结果，再把Evidence和Runtime收口写入同一PR，最后转Ready触发新的Ready验证轮次。
 
-Evidence通过`quality / release-audit`进入永久合并门禁；Task Verification则在合并后的Main Verification发布，两者职责不得混用。
+Evidence通过最新Quality Workflow中的`quality / release-audit`参与自动合并判定；Task Verification则在合并后的Main Verification发布，两者职责不得混用。
 
 ## 9. 测试路由
 

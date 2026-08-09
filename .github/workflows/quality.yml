@@ -181,6 +181,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/verified-evidence-scan.mjs
+      - name: Validate current M10-22 final Evidence when present
+        shell: bash
+        env:
+          EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVIDENCE_FINAL: true
+        run: |
+          set -euo pipefail
+          if [ -f docs/test-evidence/M10-22/manifest.json ]; then
+            node scripts/evidence-policy.mjs
+          else
+            echo "M10-22 Evidence is not present yet; final Evidence validation will activate after closure files are committed."
+          fi
       - name: Assert clean working tree after release audit
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

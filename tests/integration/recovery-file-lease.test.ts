@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -95,7 +95,8 @@ describe('daily backup file lease', () => {
     directories.push(directory);
     const lockPath = path.join(directory, '.daily.lock');
     await writeFile(lockPath, '');
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    const staleAt = new Date(Date.now() - 5_000);
+    await utimes(lockPath, staleAt, staleAt);
 
     const timing = {
       durationMs: 100,

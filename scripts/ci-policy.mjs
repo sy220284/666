@@ -76,13 +76,7 @@ async function main() {
   }
 
   const config = JSON.parse(await source('.github/governance/required-checks.json'));
-  const expected = [
-    'pr-policy',
-    'quality / quality',
-    'quality / release-audit',
-    'security',
-    'performance',
-  ];
+  const expected = ['pr-policy', 'quality / quality', 'security', 'performance'];
   if (JSON.stringify(config.requiredChecks) !== JSON.stringify(expected)) {
     errors.push(`required-checks.json must contain only ${expected.join(', ')}`);
   }

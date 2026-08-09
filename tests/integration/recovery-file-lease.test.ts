@@ -89,4 +89,33 @@ describe('daily backup file lease', () => {
       await lease.release();
     }
   });
+
+  it('serializes concurrent reclaimers so only one stale-lock contender owns the lease', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-reclaim-race-'));
+    directories.push(directory);
+    const lockPath = path.join(directory, '.daily.lock');
+    await writeFile(lockPath, '');
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const timing = {
+      durationMs: 100,
+      heartbeatMs: 20,
+      waitTimeoutMs: 45,
+      retryDelayMs: 2,
+    } as const;
+    const contenders = await Promise.allSettled(
+      Array.from({ length: 6 }, () => acquireFileLease(lockPath, timing)),
+    );
+    const winners = contenders.filter(
+      (result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof acquireFileLease>>> =>
+        result.status === 'fulfilled',
+    );
+    try {
+      expect(winners).toHaveLength(1);
+      await expect(winners[0]!.value.assertOwner()).resolves.toBeUndefined();
+      expect(contenders.filter((result) => result.status === 'rejected')).toHaveLength(5);
+    } finally {
+      await Promise.all(winners.map((result) => result.value.release()));
+    }
+  });
 });

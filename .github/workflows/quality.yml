@@ -142,8 +142,8 @@ jobs:
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
-      # Draft runs static checks only; Ready runs the risk-routed matrix.
-      draft_mode: ${{ github.event.pull_request.draft }}
+      # Draft stays merge-blocked. `full-validation-draft` may opt into the full matrix before Ready.
+      draft_mode: ${{ github.event.pull_request.draft && !contains(github.event.pull_request.body, 'full-validation-draft') }}
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
       security_suite: false

@@ -143,8 +143,8 @@ jobs:
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
-      # Draft stays merge-blocked. `full-validation-draft` may opt into the full matrix before Ready.
-      draft_mode: ${{ github.event.pull_request.draft && !contains(github.event.pull_request.body, 'full-validation-draft') }}
+      # Draft stays merge-blocked. Only the exact HTML marker opts into the full matrix before Ready.
+      draft_mode: ${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
       security_suite: false
@@ -152,7 +152,7 @@ jobs:
 
   release-audit:
     name: quality / release-audit
-    if: ${{ github.event.pull_request.draft == false || contains(github.event.pull_request.body, 'full-validation-draft') }}
+    if: ${{ github.event.pull_request.draft == false || contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

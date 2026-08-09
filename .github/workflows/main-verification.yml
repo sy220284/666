@@ -85,7 +85,7 @@ jobs:
       contents: read
     env:
       REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
-      RULESET_REPORT: ${{ runner.temp }}/repository-ruleset/report.json
+      RULESET_REPORT: /tmp/worldforge-ruleset/report.json
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -105,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: repository-ruleset-${{ inputs.expected_sha }}
-          path: ${{ runner.temp }}/repository-ruleset/
+          path: /tmp/worldforge-ruleset/
           if-no-files-found: error
           retention-days: 30
 
@@ -165,13 +165,13 @@ jobs:
       - name: Synchronize work to verified main
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WORK_SYNCHRONIZATION_OUTPUT: ${{ runner.temp }}/work-synchronization
+          WORK_SYNCHRONIZATION_OUTPUT: /tmp/worldforge-work-synchronization
         run: node .github/governance/work-synchronization.mjs
       - name: Upload synchronization report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: work-synchronization-${{ inputs.expected_sha }}
-          path: ${{ runner.temp }}/work-synchronization/
+          path: /tmp/worldforge-work-synchronization/
           if-no-files-found: error
           retention-days: 30

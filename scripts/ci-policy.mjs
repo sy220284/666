@@ -272,6 +272,7 @@ async function main() {
     'Publish final main and task verification statuses',
     'name: main-verification',
   ]);
+  forbidTokens(errors, 'main-verification.yml', mainVerification, ['runner.temp']);
 
   const dispatcher = workflows.get('post-merge-verification.yml') ?? '';
   requireTokens(errors, 'post-merge-verification.yml', dispatcher, [

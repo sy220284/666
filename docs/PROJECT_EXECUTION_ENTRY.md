@@ -15,7 +15,7 @@ AGENTS.md
 → 专项真源、现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`定义唯一`work`分支、任务PR与main串行写入规则；`docs/tasks/runtime/`保存任务静态声明状态、边界、验证命令与最终状态绑定。`ACTIVE_TASK.json/.md`和旧`taskctl`已经退役，任何流程不得重新读取或生成。
+`TASK_AUTHORIZATION.json`只定义唯一`work`分支、单一work PR与main串行写入等仓库形态；它不承担任务预授权。`docs/tasks/runtime/`保存任务静态声明、边界、验证命令和合并后状态绑定。`ACTIVE_TASK.json/.md`和旧`taskctl`已经退役，任何流程不得重新读取或生成。
 
 代码格式、结构与维护性治理必须同步读取 [`architecture/CODE_QUALITY_GOVERNANCE.md`](architecture/CODE_QUALITY_GOVERNANCE.md)。文件行数只作为观察指标，不参与合并资格；结构判断统一依据职责内聚、依赖方向、状态所有权、事务边界和公共接口。
 
@@ -28,14 +28,16 @@ AGENTS.md
 ```text
 读取main与work Ref
 → 查询开放的work → main PR
-→ 有开放PR：从PR marker解析任务ID，读取对应Schema 2 Runtime
+→ 有开放PR且存在worldforge-task marker：读取对应Schema 2 Runtime
+→ 无任务marker：按维护PR处理，不伪造任务ID
 → 无开放PR：读取main Commit Status
 → 用effective-task-status计算任务有效状态
 → 核对main-verification
 → 核对main与work是否identical
+→ 核对远端是否只剩main/work
 ```
 
-状态语义：
+Schema 2状态语义：
 
 ```text
 Runtime IN_PROGRESS
@@ -50,14 +52,35 @@ Runtime IMPLEMENTED
 → VERIFIED
 ```
 
-Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得覆盖GitHub Commit Status计算出的有效Verified。任务依赖、Evidence全量扫描和下一任务启动必须调用统一有效状态策略。Release不读取任务Runtime作为产品发布权威，统一由`release-acceptance.mjs`校验当前main、产品门禁、产物完整性与发行信任证据。
+Schema 2 的`TASK_INDEX.md`状态只做镜像，不能单方面把任务抬成Verified。冻结Schema 1历史Runtime保持既有静态Verified兼容。任务依赖、Evidence全量扫描和下一任务启动必须调用统一Effective Status。
 
-## 3. 仓库闭环条件
+Release不读取任务Runtime作为产品发布权威，统一由`release-acceptance.mjs`校验当前main、产品门禁、产物完整性与发行信任证据。
 
-一项任务只有在以下条件全部成立时才完成仓库闭环：
+## 3. 合并资格与最新验证轮次
+
+Ready PR不得只按Commit SHA上残留的Context判断合并资格。同一Head可以先经历Draft诊断、`full-validation-draft`完整诊断，再转Ready；因此Controlled Merge必须读取当前Head最新的Quality、Security、Performance Workflow Run。
+
+Ready合并需要同时满足：
 
 ```text
-来源PR永久门禁成功
+pr-policy=success
++ quality / quality=success
++ quality / release-audit=success
++ security=success
++ performance=success
++ 最新Quality Workflow Run=success
++ 最新Security Workflow Run=success
++ 最新Performance Workflow Run=success
+```
+
+最新Quality Run还必须包含并通过`quality / quality`、`quality / release-audit`和`quality / package-smoke`。旧Draft成功结果不得被Ready同SHA复用。
+
+## 4. 仓库闭环条件
+
+一项Schema 2任务只有在以下条件全部成立时才完成仓库闭环：
+
+```text
+来源PR Ready最新验证轮次成功
 + Ready Evidence绑定最新实现提交
 + implementationCommit之后仅存在当前任务收口文件
 + Controlled Merge完成
@@ -65,6 +88,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 + task-verification/<TASK-ID>=success
 + 无新的开放work → main PR
 + work受控重置后与main完全一致
++ 远端只保留main/work
 ```
 
 任一条件缺失：
@@ -74,7 +98,27 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - 不得把“PR已合并”表述为仓库已闭环；
 - 自动同步失败时允许按相同CAS条件执行手动恢复，但必须复核`main == work`。
 
-## 4. 稳定历史基线
+## 5. Main Verification与任务事实
+
+Main Verification属于合并后的事实验证，不属于PR预授权。
+
+如果来源PR正文含：
+
+```text
+<!-- worldforge-task: M10-22 -->
+```
+
+则最终main必须读取对应Schema 2 Runtime并验证：
+
+- `status`为`IMPLEMENTED`；
+- `executionBranch`为`work`；
+- `verificationBinding.sourcePr`等于真实来源PR；
+- `mainContext`为`main-verification`；
+- `taskContext`为`task-verification/<TASK-ID>`。
+
+成功后发布`main-verification`与任务Context。非任务维护PR可不带marker，此时只发布`main-verification`。
+
+## 6. 稳定历史基线
 
 以下SHA只表示历史审计或任务启动点，不表示当前仓库Head：
 
@@ -86,21 +130,21 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 
 当前Head必须从Git Ref读取，禁止从上述历史记录推断。
 
-## 5. 当前治理边界
+## 7. 当前治理边界
 
 - 新建及活动Runtime必须使用Schema 2和`executionBranch: "work"`。
 - 已Verified历史Schema 1 Runtime保持冻结，只用于历史读取。
 - `.github/governance/effective-task-status.mjs`是任务有效状态与提交Context判定的策略核心。
 - Draft Evidence校验文件完整性、Hash和来源提交；Ready Evidence必须绑定当前任务最新实现提交。
 - Ready Head中`implementationCommit`之后只允许当前任务卡、当前Runtime、`TASK_INDEX.md`和当前任务Evidence目录；产品代码、测试、脚本、配置、工作流或跨任务Evidence后移必须阻断。
-- Evidence manifest不预写未来Squash SHA；Evidence CI Check绑定精确PR Head，最终main与任务Verified由提交状态证明。
+- Evidence manifest不预写未来Squash SHA；Evidence由`quality / release-audit`参与合并门禁，最终任务Verified由Main Verification提交状态证明。
 - Release资格必须读取当前main提交的`main-verification`、产品门禁、三平台产物完整性和发行信任证据；Task Runtime只保留任务管理与历史审计职责。
 - Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
 - Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。
 - SQLite逐级Migration、未来Schema只读打开、Provider适配和协议版本门禁继续保留。
 - Toolchain Export保持只读检出和Artifact-only；允许人工`workflow_dispatch`，也允许现有Quality工作流在同仓库`work → main` PR命中机器清单声明的工具链路径时通过`workflow_call`调用。禁止向正式分支提交工具链或二进制分片。
 
-## 6. 产品与架构不变量
+## 8. 产品与架构不变量
 
 - AI输出先进入建议稿，作者明确采用后才能进入当前稿。
 - `project.sqlite`是作品唯一权威真源。
@@ -108,7 +152,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - 数据、索引、日志、备份和配置只保存在本地。
 - 未通过真实命令和永久门禁，不得声明验证成功。
 
-## 7. 代码质量与结构规则
+## 9. 代码质量与结构规则
 
 - Prettier必须覆盖TS、TSX、测试、CSS和配置文件，禁止因Glob遗漏形成假绿。
 - Renderer的TS与TSX必须进入真实Coverage分母。
@@ -117,7 +161,7 @@ Runtime、任务卡和任务索引中的`Implemented`属于静态声明，不得
 - 循环依赖、反向依赖、Feature私有穿透、深层导入绕过公共入口和多写入真源继续阻断。
 - 文件行数、导出数量和依赖数量只报告、不阻断；不得为了缩短文件机械拆散完整功能。
 
-## 8. 当前ChatGPT工作空间工具链
+## 10. 当前ChatGPT工作空间工具链
 
 `docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md`是当前ChatGPT持久化工作空间内666工具资产、绝对存储位置、激活命令、依赖恢复、浏览器替代路径、验证命令和更新规则的专项权威文档；`docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json`是工具Profile与永久工作流关联的机器真源。
 

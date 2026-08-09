@@ -3,7 +3,13 @@
   "baseBranch": "main",
   "mergeMethod": "squash",
   "mainVerificationWorkflow": "main-verification.yml",
-  "requiredChecks": ["pr-policy", "quality / quality", "security", "performance"],
+  "requiredChecks": [
+    "pr-policy",
+    "quality / quality",
+    "quality / release-audit",
+    "security",
+    "performance"
+  ],
   "blockDrafts": true,
   "blockChangesRequested": true,
   "blockUnresolvedThreads": true

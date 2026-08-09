@@ -2,7 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { modeAwareChecksState, requiredCheckState } from './automerge.mjs';
+import {
+  modeAwareChecksState,
+  nextPagePath,
+  requiredCheckState,
+} from './automerge.mjs';
 
 const apiRoot = 'https://api.github.com';
 const fullSha = /^[0-9a-f]{40}$/iu;
@@ -115,7 +119,7 @@ export function taskVerificationStatusPayload(taskId, success, targetUrl) {
   };
 }
 
-async function api(token, pathname, options = {}) {
+async function apiResponse(token, pathname, options = {}) {
   const url = new globalThis.URL(pathname, apiRoot);
   const response = await globalThis.fetch(url, {
     ...options,
@@ -130,7 +134,27 @@ async function api(token, pathname, options = {}) {
     throw new Error(
       `GitHub API ${response.status}: ${url.pathname}${url.search}\n${await response.text()}`,
     );
+  return response;
+}
+
+async function api(token, pathname, options = {}) {
+  const response = await apiResponse(token, pathname, options);
   return response.status === 204 ? null : response.json();
+}
+
+async function paginatedCollection(token, pathname, collectionKey = null) {
+  const items = [];
+  let next = pathname;
+  while (next) {
+    const response = await apiResponse(token, next);
+    const payload = await response.json();
+    const page = collectionKey === null ? payload : payload[collectionKey];
+    if (!Array.isArray(page))
+      throw new Error(`GitHub pagination payload is missing ${collectionKey ?? 'array'}`);
+    items.push(...page);
+    next = nextPagePath(response.headers.get('link'));
+  }
+  return items;
 }
 
 function env() {
@@ -143,10 +167,14 @@ function env() {
 
 async function loadSignals(e, sha) {
   const [checks, statuses] = await Promise.all([
-    api(e.token, `/repos/${e.owner}/${e.repo}/commits/${sha}/check-runs?per_page=100`),
-    api(e.token, `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`),
+    paginatedCollection(
+      e.token,
+      `/repos/${e.owner}/${e.repo}/commits/${sha}/check-runs?per_page=100`,
+      'check_runs',
+    ),
+    paginatedCollection(e.token, `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`),
   ]);
-  return [...(checks.check_runs ?? []), ...(statuses ?? [])];
+  return [...checks, ...statuses];
 }
 
 async function checkMain() {

@@ -67,7 +67,7 @@ export function historicalEvidenceBindingCommit(
   const sourceCommit = evidenceImplementationCommit(manifest);
   if (sourceCommitExists) return sourceCommit;
   const controlledSquashBinding =
-    manifest?.schemaVersion === 1 &&
+    (manifest?.schemaVersion === 1 || manifest?.schemaVersion === 2) &&
     runtime?.schemaVersion === 2 &&
     Number.isSafeInteger(runtime?.verificationBinding?.sourcePr) &&
     runtime.verificationBinding.sourcePr > 0;

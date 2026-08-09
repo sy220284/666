@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  statuses: read
 
 concurrency:
   group: quality-${{ github.event.pull_request.number || github.ref }}
@@ -142,12 +143,53 @@ jobs:
     uses: ./.github/workflows/quality-core.yml
     with:
       checkout_ref: ${{ github.event.pull_request.head.sha }}
-      # Draft runs static checks only; Ready runs the risk-routed matrix.
-      draft_mode: ${{ github.event.pull_request.draft }}
+      # Draft stays merge-blocked. Only the exact HTML marker opts into the full matrix before Ready.
+      draft_mode: ${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
       security_suite: false
       performance_eval: false
+
+  release-audit:
+    name: quality / release-audit
+    if: ${{ github.event.pull_request.draft == false || contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.13.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Assert clean working tree before release audit
+        run: node .github/governance/assert-clean-tree.mjs
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Run CI policy validation
+        run: pnpm ci:policy
+      - name: Run release configuration check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm release:check
+      - name: Scan effective Verified Evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/verified-evidence-scan.mjs
+      - name: Validate changed Evidence documents
+        env:
+          EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVIDENCE_FINAL: ${{ github.event.pull_request.draft == false }}
+        run: node scripts/evidence-policy.mjs
+      - name: Assert clean working tree after release audit
+        if: always()
+        run: node .github/governance/assert-clean-tree.mjs
 
   toolchain-export:
     name: quality / toolchain-export

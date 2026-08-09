@@ -122,7 +122,7 @@ function run(command, argumentsList, options = {}) {
       result.error ? { cause: result.error } : undefined,
     );
   }
-  return result.stdout.trim();
+  return typeof result.stdout === 'string' ? result.stdout.trim() : '';
 }
 
 async function requirePath(filePath, label) {

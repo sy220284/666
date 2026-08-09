@@ -1,0 +1,35 @@
+# M10-22 implementation commit
+f55bde319b5ba2b32db0b5d4513ea9a0a833a502
+
+# Repository / static validation
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+
+# Product validation
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# Release / governance validation
+pnpm release:check
+pnpm audit --audit-level=high
+node scripts/verified-evidence-scan.mjs
+
+# GitHub Actions evidence
+Quality run 31325332376: success
+Security run 31325332269: success
+Performance run 31325332252: success
+Quality package smoke: linux success; windows success; macos success
+Quality Electron E2E: success
+Quality release audit: success

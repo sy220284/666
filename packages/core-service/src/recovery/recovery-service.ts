@@ -1,5 +1,10 @@
+import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import path from 'node:path';
+
 import {
   BackupPolicySchema,
+  BackupRecordSchema,
   RecoveryCleanupApplyInputSchema,
   RecoveryDailyBackupInputSchema,
   type BackupCleanupPreview,
@@ -18,7 +23,6 @@ import {
   type RecoveryRestoredProject,
   type RecoveryVersionExport,
 } from '@worldforge/contracts';
-import path from 'node:path';
 
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { stableJson } from '../stable-json.js';
@@ -27,6 +31,8 @@ import { BackupRestoreOperations } from './backup-restore.js';
 import {
   RecoveryServiceError,
   createRecoveryRuntime,
+  hashFile,
+  verifyDatabase,
   type RecoveryServiceErrorCode,
   type RecoveryServiceOptions,
 } from './backup-manifest.js';
@@ -47,8 +53,43 @@ interface DailyBackupLaneEntry {
   readonly promise: Promise<BackupRecord>;
 }
 
+interface DailyBackupArbitration {
+  readonly winner: BackupRecord;
+  readonly losers: readonly BackupRecord[];
+}
+
 const MAXIMUM_RETAINED_RECOVERY_COMMANDS = 1_000;
 const dailyBackupLanes = new Map<string, DailyBackupLaneEntry>();
+
+function backupRecordFromRow(row: Record<string, unknown>): BackupRecord {
+  return BackupRecordSchema.parse({
+    ...row,
+    sizeBytes: Number(row.sizeBytes),
+    authorProtected: Number(row.authorProtected) === 1,
+    migrationProtected: Number(row.migrationProtected) === 1,
+    schemaVersion: Number(row.schemaVersion),
+    protectionReasons: [],
+  });
+}
+
+function backupRecordValues(record: BackupRecord): (string | number | null)[] {
+  return [
+    record.backupId,
+    record.projectId,
+    record.operation,
+    record.backupFileName,
+    record.sizeBytes,
+    record.sha256,
+    record.createdAt,
+    record.verifiedAt,
+    record.track,
+    record.displayName,
+    record.note,
+    record.authorProtected ? 1 : 0,
+    record.migrationProtected ? 1 : 0,
+    record.schemaVersion,
+  ];
+}
 
 export class RecoveryService {
   readonly #workspace: ProjectWorkspaceService;
@@ -88,9 +129,10 @@ export class RecoveryService {
     if (existing?.day === day) return existing.promise;
 
     const execute = (): Promise<BackupRecord> =>
-      this.#share('create-daily', requestId, input, 'BACKUP_CREATE_FAILED', () =>
-        this.#create.createDailyBackup(requestId, input),
-      );
+      this.#share('create-daily', requestId, input, 'BACKUP_CREATE_FAILED', async () => {
+        const candidate = await this.#create.createDailyBackup(requestId, input);
+        return this.#finalizeDailyWinner(input.projectId, day, candidate);
+      });
     const operation = existing ? existing.promise.then(execute, execute) : execute();
     const entry: DailyBackupLaneEntry = { day, promise: operation };
     dailyBackupLanes.set(laneKey, entry);
@@ -157,6 +199,98 @@ export class RecoveryService {
 
   exportVersion(raw: RecoveryExportInput, targetDirectory: string): Promise<RecoveryVersionExport> {
     return this.#versionExport.exportVersion(raw, targetDirectory);
+  }
+
+  async #finalizeDailyWinner(
+    projectId: string,
+    day: string,
+    candidate: BackupRecord,
+  ): Promise<BackupRecord> {
+    if (
+      candidate.projectId !== projectId ||
+      candidate.track !== 'daily' ||
+      candidate.createdAt.slice(0, 10) !== day
+    ) {
+      throw new RecoveryServiceError(
+        'BACKUP_VERIFY_FAILED',
+        'The daily backup candidate does not match its project and date.',
+      );
+    }
+    const candidatePath = path.join(
+      this.#backupRootDirectory,
+      projectId,
+      candidate.backupFileName,
+    );
+    if ((await hashFile(candidatePath)) !== candidate.sha256) {
+      throw new RecoveryServiceError(
+        'BACKUP_VERIFY_FAILED',
+        'The daily backup candidate does not match its recorded hash.',
+      );
+    }
+    verifyDatabase(candidatePath, projectId);
+
+    const arbitration = await this.#workspace.writeProject(
+      randomUUID(),
+      projectId,
+      (database): DailyBackupArbitration => {
+        database
+          .prepare(
+            `INSERT INTO backup_records(
+               id, project_id, operation, backup_file_name, size_bytes, sha256,
+               created_at, verified_at, backup_track, display_name, note,
+               author_protected, migration_protected, schema_version
+             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO NOTHING`,
+          )
+          .run(...backupRecordValues(candidate));
+        const rows = database
+          .prepare(
+            `SELECT id AS backupId, project_id AS projectId, operation,
+                    backup_file_name AS backupFileName, size_bytes AS sizeBytes, sha256,
+                    created_at AS createdAt, verified_at AS verifiedAt,
+                    backup_track AS track, display_name AS displayName, note,
+                    author_protected AS authorProtected,
+                    migration_protected AS migrationProtected, schema_version AS schemaVersion
+               FROM backup_records
+              WHERE project_id = ?
+                AND backup_track = 'daily'
+                AND substr(created_at, 1, 10) = ?
+              ORDER BY rowid ASC`,
+          )
+          .all(projectId, day)
+          .map((row) => backupRecordFromRow(row as Record<string, unknown>));
+        const winner = rows[0];
+        if (!winner) {
+          throw new RecoveryServiceError(
+            'BACKUP_VERIFY_FAILED',
+            'Daily backup arbitration did not produce a winner.',
+          );
+        }
+        const losers = rows.slice(1);
+        const remove = database.prepare('DELETE FROM backup_records WHERE id = ? AND project_id = ?');
+        for (const loser of losers) remove.run(loser.backupId, projectId);
+        database
+          .prepare(
+            `UPDATE backup_failures
+                SET resolved_at = ?
+              WHERE project_id = ? AND backup_track = 'daily' AND resolved_at IS NULL`,
+          )
+          .run(winner.verifiedAt, projectId);
+        return { winner, losers };
+      },
+      { operation: 'recovery.daily-winner', day },
+    );
+
+    await Promise.allSettled(
+      arbitration.losers.map(async (loser) => {
+        const directory = path.join(this.#backupRootDirectory, projectId);
+        await Promise.all([
+          rm(path.join(directory, loser.backupFileName), { force: true }),
+          rm(path.join(directory, `${loser.backupId}.json`), { force: true }),
+        ]);
+      }),
+    );
+    return arbitration.winner;
   }
 
   #assertPersistedPolicyReadable(projectId: string): void {

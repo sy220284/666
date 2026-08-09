@@ -42,51 +42,60 @@ describe('verified evidence scan', () => {
     expect(effectivelyVerifiedTaskIds('M2-04 is Verified in prose.')).toEqual([]);
   });
 
-  it('binds an orphaned Schema 1 Evidence commit to its controlled squash merge', () => {
+  it('binds orphaned controlled Evidence commits to their source PR squash commit', () => {
     const orphan = 'a'.repeat(40);
     const controlledMerge = 'b'.repeat(40);
     const runtime = {
       schemaVersion: 2,
       verificationBinding: { sourcePr: 310 },
     };
+    const resolveControlledMerge = () => controlledMerge;
+    const manifests = [
+      { schemaVersion: 1, commit: orphan },
+      { schemaVersion: 2, implementationCommit: orphan },
+    ];
 
-    expect(
-      historicalEvidenceBindingCommit(
-        { schemaVersion: 1, commit: orphan },
+    for (const manifest of manifests) {
+      const orphanBinding = historicalEvidenceBindingCommit(
+        manifest,
         runtime,
         false,
-        () => controlledMerge,
-      ),
-    ).toBe(controlledMerge);
-    expect(
-      historicalEvidenceBindingCommit(
-        { schemaVersion: 1, commit: orphan },
+        resolveControlledMerge,
+      );
+      const existingBinding = historicalEvidenceBindingCommit(
+        manifest,
         runtime,
         true,
-        () => controlledMerge,
-      ),
-    ).toBe(orphan);
+        resolveControlledMerge,
+      );
+      expect(orphanBinding).toBe(controlledMerge);
+      expect(existingBinding).toBe(orphan);
+    }
   });
 
-  it('does not weaken current Schema 2 or legacy unbound Evidence commits', () => {
+  it('does not invent a squash binding for legacy unbound Evidence', () => {
     const sourceCommit = 'c'.repeat(40);
     const controlledMerge = 'd'.repeat(40);
+    const resolveControlledMerge = () => controlledMerge;
+    const legacyManifest = { schemaVersion: 1, commit: sourceCommit };
+    const legacyRuntime = { schemaVersion: 1, sourcePr: 263 };
+    const currentManifest = { schemaVersion: 2, implementationCommit: sourceCommit };
+    const currentRuntime = { schemaVersion: 2, verificationBinding: {} };
 
-    expect(
-      historicalEvidenceBindingCommit(
-        { schemaVersion: 2, implementationCommit: sourceCommit },
-        { schemaVersion: 2, verificationBinding: { sourcePr: 311 } },
-        false,
-        () => controlledMerge,
-      ),
-    ).toBe(sourceCommit);
-    expect(
-      historicalEvidenceBindingCommit(
-        { schemaVersion: 1, commit: sourceCommit },
-        { schemaVersion: 1, sourcePr: 263 },
-        false,
-        () => controlledMerge,
-      ),
-    ).toBe(sourceCommit);
+    const legacyBinding = historicalEvidenceBindingCommit(
+      legacyManifest,
+      legacyRuntime,
+      false,
+      resolveControlledMerge,
+    );
+    const currentBinding = historicalEvidenceBindingCommit(
+      currentManifest,
+      currentRuntime,
+      false,
+      resolveControlledMerge,
+    );
+
+    expect(legacyBinding).toBe(sourceCommit);
+    expect(currentBinding).toBe(sourceCommit);
   });
 });

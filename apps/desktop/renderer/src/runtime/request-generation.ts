@@ -1,13 +1,17 @@
+export function nextRequestGeneration(value: number): number {
+  return value + 1;
+}
+
 export class RequestGeneration {
   #current = 0;
 
   begin(): number {
-    this.#current += 1;
+    this.#current = nextRequestGeneration(this.#current);
     return this.#current;
   }
 
   invalidate(): void {
-    this.#current += 1;
+    this.#current = nextRequestGeneration(this.#current);
   }
 
   isCurrent(generation: number): boolean {

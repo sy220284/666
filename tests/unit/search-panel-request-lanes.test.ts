@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { RequestGenerationGroup } from '../../apps/desktop/renderer/src/runtime/request-generation.js';
+import {
+  nextRequestGeneration,
+  RequestGenerationGroup,
+} from '../../apps/desktop/renderer/src/runtime/request-generation.js';
 
 describe('全文搜索面板异步通道', () => {
+  it('使用统一的单调代次推进函数', () => {
+    expect(nextRequestGeneration(0)).toBe(1);
+    expect(nextRequestGeneration(41)).toBe(42);
+  });
+
   it('把等待状态绑定到对应通道的当前owner', () => {
     const requests = new RequestGenerationGroup<'dictionary-read' | 'dictionary-mutation'>();
     const mutation = requests.begin('dictionary-mutation');

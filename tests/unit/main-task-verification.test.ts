@@ -44,9 +44,9 @@ describe('主分支验证状态发布', () => {
     expect(validateTaskVerificationBinding(runtime, { taskId: 'M10-22', sourcePr: 341 })).toEqual(
       [],
     );
-    expect(
-      validateTaskVerificationBinding(runtime, { taskId: 'M10-22', sourcePr: 340 }),
-    ).toContain('M10-22 sourcePr binding mismatch');
+    expect(validateTaskVerificationBinding(runtime, { taskId: 'M10-22', sourcePr: 340 })).toContain(
+      'M10-22 sourcePr binding mismatch',
+    );
     expect(
       validateTaskVerificationBinding(
         { ...runtime, status: 'IN_PROGRESS' },

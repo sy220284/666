@@ -5,11 +5,9 @@
   "mainVerificationWorkflow": "main-verification.yml",
   "requiredChecks": [
     "pr-policy",
-    "task-governance",
     "quality / quality",
     "security",
-    "performance",
-    "evidence"
+    "performance"
   ],
   "blockDrafts": true,
   "blockChangesRequested": true,

@@ -25,7 +25,7 @@ import {
 import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { stableJson } from '../stable-json.js';
-import type { FileLeaseTiming } from './file-lease.js';
+import type { FileLeaseTiming } from './file-lease-types.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 

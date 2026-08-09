@@ -7,31 +7,11 @@ const repository = process.env.GITHUB_REPOSITORY;
 const eventPath = process.env.GITHUB_EVENT_PATH;
 const githubFetch = globalThis.fetch;
 
-const supportedTriggers = new Set([
-  'PR Policy',
-  'Task Governance',
-  'Quality',
-  'Security',
-  'Performance',
-  'Evidence',
-]);
-
+const supportedTriggers = new Set(['Quality', 'Security', 'Performance']);
 const modeAwareWorkflows = [
-  {
-    checkName: 'quality / quality',
-    workflow: 'quality.yml',
-    kind: 'quality',
-  },
-  {
-    checkName: 'security',
-    workflow: 'security.yml',
-    kind: 'security',
-  },
-  {
-    checkName: 'performance',
-    workflow: 'performance.yml',
-    kind: 'performance',
-  },
+  { checkName: 'quality / quality', workflow: 'quality.yml', kind: 'quality' },
+  { checkName: 'security', workflow: 'security.yml', kind: 'security' },
+  { checkName: 'performance', workflow: 'performance.yml', kind: 'performance' },
 ];
 
 async function apiResponse(pathname, options = {}) {
@@ -75,11 +55,11 @@ export function nextPagePath(linkHeader) {
   return null;
 }
 
-async function paginatedCollection(pathname, collectionKey = null, options = {}) {
+async function paginatedCollection(pathname, collectionKey = null) {
   const items = [];
   let next = pathname;
   while (next) {
-    const response = await apiResponse(next, options);
+    const response = await apiResponse(next);
     const payload = await response.json();
     const page = collectionKey === null ? payload : payload[collectionKey];
     if (!Array.isArray(page)) {
@@ -101,71 +81,82 @@ async function graphql(query, variables) {
   return result.data;
 }
 
-function runOrder(run) {
-  const timestamp = Date.parse(run.created_at ?? run.started_at ?? run.completed_at ?? '');
+function signalName(signal) {
+  return signal?.name ?? signal?.context ?? null;
+}
+
+function signalOrder(signal) {
+  const timestamp = Date.parse(
+    signal?.created_at ?? signal?.updated_at ?? signal?.started_at ?? signal?.completed_at ?? '',
+  );
   return {
     timestamp: Number.isFinite(timestamp) ? timestamp : 0,
-    id: Number(run.id ?? 0),
+    id: Number(signal?.id ?? 0),
   };
 }
 
-export function latestChecksByName(checkRuns = []) {
+export function latestChecksByName(signals = []) {
   const latest = new Map();
-  for (const run of checkRuns) {
-    const previous = latest.get(run.name);
+  for (const signal of signals) {
+    const name = signalName(signal);
+    if (!name) continue;
+    const previous = latest.get(name);
     if (!previous) {
-      latest.set(run.name, run);
+      latest.set(name, signal);
       continue;
     }
-    const currentOrder = runOrder(run);
-    const previousOrder = runOrder(previous);
+    const currentOrder = signalOrder(signal);
+    const previousOrder = signalOrder(previous);
     if (
       currentOrder.timestamp > previousOrder.timestamp ||
       (currentOrder.timestamp === previousOrder.timestamp && currentOrder.id > previousOrder.id)
     ) {
-      latest.set(run.name, run);
+      latest.set(name, signal);
     }
   }
   return latest;
 }
 
-export function latestWorkflowRun(workflowRuns = []) {
+function requiredSignalState(signal) {
+  if (!signal) return 'pending';
+  if (typeof signal.context === 'string') {
+    if (signal.state === 'success') return 'ready';
+    if (signal.state === 'failure' || signal.state === 'error') return 'failed';
+    return 'pending';
+  }
+  if (signal.status !== 'completed') return 'pending';
+  return signal.conclusion === 'success' ? 'ready' : 'failed';
+}
+
+export function requiredCheckState(signals, requiredChecks) {
+  const latest = latestChecksByName(signals);
+  const pending = [];
+  const failed = [];
+  for (const name of requiredChecks) {
+    const state = requiredSignalState(latest.get(name));
+    if (state === 'pending') pending.push(name);
+    if (state === 'failed') failed.push(name);
+  }
+  return { ready: pending.length === 0 && failed.length === 0, pending, failed };
+}
+
+function latestWorkflowRun(workflowRuns = []) {
   let latest = null;
   for (const run of workflowRuns) {
     if (!latest) {
       latest = run;
       continue;
     }
-    const currentOrder = runOrder(run);
-    const previousOrder = runOrder(latest);
+    const current = signalOrder(run);
+    const previous = signalOrder(latest);
     if (
-      currentOrder.timestamp > previousOrder.timestamp ||
-      (currentOrder.timestamp === previousOrder.timestamp && currentOrder.id > previousOrder.id)
+      current.timestamp > previous.timestamp ||
+      (current.timestamp === previous.timestamp && current.id > previous.id)
     ) {
       latest = run;
     }
   }
   return latest;
-}
-
-export function requiredCheckState(checkRuns, requiredChecks) {
-  const latest = latestChecksByName(checkRuns);
-  const pending = [];
-  const failed = [];
-  for (const name of requiredChecks) {
-    const check = latest.get(name);
-    if (!check || check.status !== 'completed') {
-      pending.push(name);
-      continue;
-    }
-    if (check.conclusion === 'success') continue;
-    failed.push(name);
-  }
-  return {
-    ready: pending.length === 0 && failed.length === 0,
-    pending,
-    failed,
-  };
 }
 
 function jobState(job) {
@@ -245,7 +236,7 @@ export function modeAwareRunState(kind, workflowRun, jobs = []) {
   throw new Error(`Unknown mode-aware workflow kind: ${kind}`);
 }
 
-export async function modeAwareChecksState(owner, repo, sha) {
+async function modeAwareChecksState(owner, repo, sha) {
   const pending = [];
   const failed = [];
   for (const specification of modeAwareWorkflows) {
@@ -256,10 +247,7 @@ export async function modeAwareChecksState(owner, repo, sha) {
     );
     const latest = latestWorkflowRun(runs);
     const jobs = latest
-      ? await paginatedCollection(
-          `/repos/${owner}/${repo}/actions/runs/${latest.id}/jobs?per_page=100`,
-          'jobs',
-        )
+      ? await paginatedCollection(`/repos/${owner}/${repo}/actions/runs/${latest.id}/jobs?per_page=100`, 'jobs')
       : [];
     const state = modeAwareRunState(specification.kind, latest, jobs);
     pending.push(...state.pending.map(() => specification.checkName));
@@ -272,16 +260,21 @@ export async function modeAwareChecksState(owner, repo, sha) {
   };
 }
 
+async function loadRequiredSignals(owner, repo, sha) {
+  const [checkRuns, statuses] = await Promise.all([
+    paginatedCollection(`/repos/${owner}/${repo}/commits/${sha}/check-runs?per_page=100`, 'check_runs'),
+    paginatedCollection(`/repos/${owner}/${repo}/commits/${sha}/statuses?per_page=100`),
+  ]);
+  return [...checkRuns, ...statuses];
+}
+
 async function waitForRequiredChecks(owner, repo, sha, requiredChecks) {
   const attempts = 90;
   const delayMs = 10_000;
   await delay(5_000);
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const checkRuns = await paginatedCollection(
-      `/repos/${owner}/${repo}/commits/${sha}/check-runs?per_page=100`,
-      'check_runs',
-    );
-    const checkState = requiredCheckState(checkRuns, requiredChecks);
+    const signals = await loadRequiredSignals(owner, repo, sha);
+    const checkState = requiredCheckState(signals, requiredChecks);
     if (checkState.failed.length > 0) return checkState;
 
     const modeState = await modeAwareChecksState(owner, repo, sha);
@@ -311,13 +304,8 @@ async function hasUnresolvedThreads(owner, repo, number) {
           repository(owner: $owner, name: $repo) {
             pullRequest(number: $number) {
               reviewThreads(first: 100, after: $after) {
-                nodes {
-                  isResolved
-                }
-                pageInfo {
-                  hasNextPage
-                  endCursor
-                }
+                nodes { isResolved }
+                pageInfo { hasNextPage endCursor }
               }
             }
           }
@@ -339,9 +327,7 @@ export function latestReviewStates(reviews = []) {
 }
 
 async function hasChangesRequested(owner, repo, number) {
-  const reviews = await paginatedCollection(
-    `/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`,
-  );
+  const reviews = await paginatedCollection(`/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`);
   return [...latestReviewStates(reviews).values()].includes('CHANGES_REQUESTED');
 }
 
@@ -380,9 +366,7 @@ async function hasMainVerificationRun(owner, repo, workflow, sha) {
 export async function ensureMainVerification(owner, repo, config, mergeSha, number, sourceHeadSha) {
   const mainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`);
   if (mainRef.object.sha !== mergeSha) {
-    console.log(
-      `Skipping obsolete main verification for ${mergeSha}; ${config.baseBranch} is ${mainRef.object.sha}.`,
-    );
+    console.log(`Skipping obsolete main verification for ${mergeSha}; ${config.baseBranch} is ${mainRef.object.sha}.`);
     return;
   }
   if (await hasMainVerificationRun(owner, repo, config.mainVerificationWorkflow, mergeSha)) {
@@ -432,8 +416,7 @@ async function main() {
     }
 
     const mainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`);
-    const mainSha = mainRef.object.sha;
-    const comparison = await api(`/repos/${owner}/${repo}/compare/${mainSha}...${sha}`);
+    const comparison = await api(`/repos/${owner}/${repo}/compare/${mainRef.object.sha}...${sha}`);
     if (comparison.behind_by > 0) {
       console.log(`Skipping #${number}; its head is behind ${config.baseBranch}.`);
       continue;
@@ -455,20 +438,15 @@ async function main() {
     ) {
       continue;
     }
-    const refreshedMainRef = await api(
-      `/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`,
-    );
-    const refreshedComparison = await api(
-      `/repos/${owner}/${repo}/compare/${refreshedMainRef.object.sha}...${sha}`,
-    );
+
+    const refreshedMainRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${config.baseBranch}`);
+    const refreshedComparison = await api(`/repos/${owner}/${repo}/compare/${refreshedMainRef.object.sha}...${sha}`);
     if (refreshedComparison.behind_by > 0) {
       console.log(`Skipping #${number}; ${config.baseBranch} advanced during aggregation.`);
       continue;
     }
     if (config.blockChangesRequested && (await hasChangesRequested(owner, repo, number))) continue;
-    if (config.blockUnresolvedThreads && (await hasUnresolvedThreads(owner, repo, number))) {
-      continue;
-    }
+    if (config.blockUnresolvedThreads && (await hasUnresolvedThreads(owner, repo, number))) continue;
 
     const merged = await api(`/repos/${owner}/${repo}/pulls/${number}/merge`, {
       method: 'PUT',

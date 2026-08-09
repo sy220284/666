@@ -180,7 +180,11 @@ export async function modeAwareChecksState(token, owner, repo, sha) {
     );
     const latest = latestWorkflowRun(runs.filter((run) => run.head_sha === sha));
     const jobs = latest
-      ? await pages(token, `/repos/${owner}/${repo}/actions/runs/${latest.id}/jobs?per_page=100`, 'jobs')
+      ? await pages(
+          token,
+          `/repos/${owner}/${repo}/actions/runs/${latest.id}/jobs?per_page=100`,
+          'jobs',
+        )
       : [];
     const state = modeAwareRunState(specification.kind, latest, jobs);
     pending.push(...state.pending.map(() => specification.checkName));

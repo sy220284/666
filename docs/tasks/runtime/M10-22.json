@@ -26,16 +26,25 @@
     "packages/core-service/src/provider-configs.ts",
     "packages/core-service/src/recovery/",
     "migrations/app/0003_provider_options_allowlist.sql",
-    ".github/workflows/release.yml",
+    ".github/governance/effective-task-status.mjs",
+    ".github/governance/required-checks.json",
     ".github/governance/single-work-release-gate.mjs",
+    ".github/workflows/quality.yml",
+    ".github/workflows/release.yml",
+    "scripts/automerge.mjs",
+    "scripts/ci-policy.mjs",
+    "scripts/main-verification.mjs",
     "scripts/package-desktop.mjs",
     "scripts/release-acceptance.mjs",
     "scripts/release-tool.mjs",
+    "scripts/verified-evidence-scan.mjs",
     "scripts/verify-package-assets.mjs",
+    "scripts/workflow-structure-policy.mjs",
     "package.json",
     "pnpm-lock.yaml",
     "tests/",
     "docs/PROJECT_EXECUTION_ENTRY.md",
+    "docs/process/DEVELOPMENT_AUTOMATION.md",
     "docs/product/SELF_USE_RELEASE_POLICY.md",
     "docs/product/V1.0_TRACEABILITY_MATRIX.md",
     "docs/product/WORLDFORGE_V6.5_FULL_SPEC.md",
@@ -107,6 +116,8 @@
     "pnpm test:e2e"
   ],
   "verificationBinding": {
-    "mainContext": "main-verification"
+    "sourcePr": 341,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M10-22"
   }
 }

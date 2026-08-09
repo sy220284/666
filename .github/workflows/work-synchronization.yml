@@ -1,10 +1,6 @@
 name: Work Synchronization
 
 on:
-  workflow_run:
-    workflows:
-      - Main Verification
-    types: [completed]
   workflow_dispatch:
     inputs:
       expected_sha:
@@ -31,7 +27,6 @@ concurrency:
 
 jobs:
   synchronize:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -53,7 +48,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: work-synchronization-${{ github.event.workflow_run.head_sha || inputs.expected_sha }}
+          name: work-synchronization-${{ inputs.expected_sha }}
           path: artifacts/work-synchronization/
           if-no-files-found: error
           retention-days: 30

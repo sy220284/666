@@ -32,13 +32,14 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           PR_DRAFT: ${{ github.event.pull_request.draft || false }}
+          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body || '', 'full-validation-draft') }}
         run: |
           set -euo pipefail
           run=false
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             run=true
-          elif [ "$PR_DRAFT" = true ]; then
-            echo "Performance and AI evaluation are deferred until the pull request is Ready."
+          elif [ "$PR_DRAFT" = true ] && [ "$FULL_VALIDATION_DRAFT" != true ]; then
+            echo "Performance and AI evaluation are deferred until Ready or full-validation-draft."
           else
             changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
             if [ -z "$changed_files" ] || printf '%s\n' "$changed_files" | grep -Eqv '^(docs/|.*\.md$)'; then
@@ -56,7 +57,7 @@ jobs:
       - name: Document deferred or documentation-only performance route
         if: ${{ needs.route.outputs.run != 'true' }}
         run: |
-          echo "Performance and AI evaluation are deferred until Ready or skipped because only documentation changed."
+          echo "Performance and AI evaluation are deferred or skipped because only documentation changed."
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         if: ${{ needs.route.outputs.run == 'true' }}
         with:
@@ -82,7 +83,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$PERFORMANCE_ROUTE_ENABLED" != true ]; then
-            echo "Performance budgets are not applicable to this Draft or documentation-only change."
+            echo "Performance budgets are not applicable to this change."
             exit 0
           fi
           mkdir -p test-results/ci test-results/performance

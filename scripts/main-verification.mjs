@@ -226,8 +226,7 @@ async function publishStatus() {
   if (!fullSha.test(sha ?? '')) throw new Error('EXPECTED_SHA is invalid');
   if (!Number.isSafeInteger(sourcePr) || sourcePr <= 0) throw new Error('SOURCE_PR is invalid');
 
-  const targetUrl =
-    `${process.env.GITHUB_SERVER_URL ?? 'https://github.com'}/${e.repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+  const targetUrl = `${process.env.GITHUB_SERVER_URL ?? 'https://github.com'}/${e.repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
   const pull = await api(e.token, `/repos/${e.owner}/${e.repo}/pulls/${sourcePr}`);
   const taskId = taskIdFromPullBody(pull.body ?? '');
   let taskBindingErrors = [];

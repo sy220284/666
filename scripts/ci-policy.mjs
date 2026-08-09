@@ -76,7 +76,13 @@ async function main() {
   }
 
   const config = JSON.parse(await source('.github/governance/required-checks.json'));
-  const expected = ['pr-policy', 'quality / quality', 'security', 'performance'];
+  const expected = [
+    'pr-policy',
+    'quality / quality',
+    'quality / release-audit',
+    'security',
+    'performance',
+  ];
   if (JSON.stringify(config.requiredChecks) !== JSON.stringify(expected)) {
     errors.push(`required-checks.json must contain only ${expected.join(', ')}`);
   }
@@ -118,6 +124,14 @@ async function main() {
     'scripts/automerge.mjs',
   ]);
   forbidText(errors, 'automerge.yml', automerge, ['- Task Governance', '- Evidence']);
+
+  const automergeScript = await source('scripts/automerge.mjs');
+  requireText(errors, 'scripts/automerge.mjs', automergeScript, [
+    'modeAwareChecksState',
+    'latestWorkflowRun',
+    'quality / release-audit',
+    'quality / package-smoke',
+  ]);
 
   const prPolicy = workflows.get('pr-policy.yml');
   requireText(errors, 'pr-policy.yml', prPolicy, [
@@ -171,6 +185,20 @@ async function main() {
     'work-synchronization.mjs',
     'branch-hygiene:',
     'branch-inventory-policy.mjs --repair',
+  ]);
+
+  const mainVerificationScript = await source('scripts/main-verification.mjs');
+  requireText(errors, 'scripts/main-verification.mjs', mainVerificationScript, [
+    'task-verification/',
+    'validateTaskVerificationBinding',
+    'modeAwareChecksState',
+  ]);
+
+  const qualityWorkflow = workflows.get('quality.yml');
+  requireText(errors, 'quality.yml', qualityWorkflow, [
+    'name: quality / release-audit',
+    'EVIDENCE_FINAL:',
+    'scripts/evidence-policy.mjs',
   ]);
 
   requireText(errors, 'quality-core.yml', workflows.get('quality-core.yml'), [

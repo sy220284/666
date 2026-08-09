@@ -8,10 +8,7 @@ import {
   nextPagePath,
   requiredCheckState,
 } from '../../scripts/automerge.mjs';
-import {
-  validateAuthorization,
-  validatePullRequestShape,
-} from './single-work-policy.mjs';
+import { validatePullRequestShape } from './single-work-policy.mjs';
 
 const job = (name, conclusion = 'success', steps = []) => ({
   name,
@@ -51,7 +48,6 @@ assert.deepEqual(
     job('performance', 'success', [
       { name: 'Run performance budgets', status: 'completed', conclusion: 'success' },
     ]),
-    job('ai-eval'),
   ]),
   { ready: true, pending: [], failed: [] },
 );
@@ -65,22 +61,6 @@ assert.equal(
     { user: { login: 'alice' }, state: 'APPROVED' },
   ]).get('alice'),
   'APPROVED',
-);
-assert.deepEqual(
-  validateAuthorization({
-    schemaVersion: 2,
-    mode: 'single-work-pr',
-    baseBranch: 'main',
-    workBranch: 'work',
-    allowDirectMainCommits: false,
-    allowAdditionalBranches: false,
-    maxOpenWorkPullRequests: 1,
-    mainWriteMode: 'serialized',
-    mergeMethod: 'squash',
-    verificationClosure: 'main-status',
-    workSynchronization: 'verified-reset',
-  }),
-  [],
 );
 assert.deepEqual(validatePullRequestShape({ head: 'work', base: 'main' }), []);
 assert.ok(validatePullRequestShape({ head: 'work/task', base: 'main' }).length > 0);

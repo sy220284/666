@@ -16,6 +16,13 @@ interface FileLeaseDocument {
   readonly expiresAt: number;
 }
 
+interface ReclaimDocument {
+  readonly schemaVersion: 1;
+  readonly ownerPid: number;
+  readonly token: string;
+  readonly acquiredAt: number;
+}
+
 export interface FileLease {
   assertOwner(): Promise<void>;
   release(): Promise<void>;
@@ -70,6 +77,24 @@ function parseLeaseDocument(raw: string): FileLeaseDocument | null {
   }
 }
 
+function parseReclaimDocument(raw: string): ReclaimDocument | null {
+  try {
+    const value = JSON.parse(raw) as Partial<ReclaimDocument>;
+    if (
+      value.schemaVersion !== 1 ||
+      !Number.isInteger(value.ownerPid) ||
+      typeof value.token !== 'string' ||
+      value.token.length < 16 ||
+      !Number.isFinite(value.acquiredAt)
+    ) {
+      return null;
+    }
+    return value as ReclaimDocument;
+  } catch {
+    return null;
+  }
+}
+
 async function inspectLease(
   lockPath: string,
 ): Promise<{ readonly document: FileLeaseDocument | null; readonly mtimeMs: number } | null> {
@@ -85,6 +110,17 @@ async function inspectLease(
     if (error instanceof RecoveryServiceError) throw error;
     throw failure('Unable to inspect the daily backup lease.', error);
   }
+}
+
+function expiredLease(
+  current: Awaited<ReturnType<typeof inspectLease>>,
+  now: number,
+  timing: FileLeaseTiming,
+): boolean {
+  if (!current) return false;
+  return current.document
+    ? current.document.expiresAt <= now
+    : now - current.mtimeMs >= timing.durationMs;
 }
 
 async function writeLeaseDocument(
@@ -123,6 +159,78 @@ async function refreshLease(
     return false;
   } finally {
     await handle?.close().catch(() => undefined);
+  }
+}
+
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return isCode(error, 'EPERM');
+  }
+}
+
+async function clearDeadReclaim(reclaimPath: string): Promise<boolean> {
+  try {
+    const details = await lstat(reclaimPath);
+    if (!details.isFile() || details.isSymbolicLink()) {
+      throw failure('Daily backup reclaim path is not a regular file.');
+    }
+    const document = parseReclaimDocument(await readFile(reclaimPath, 'utf8'));
+    if (document && processAlive(document.ownerPid)) return false;
+    await rm(reclaimPath, { force: true });
+    return true;
+  } catch (error) {
+    if (isCode(error, 'ENOENT')) return true;
+    if (error instanceof RecoveryServiceError) throw error;
+    throw failure('Unable to inspect the daily backup reclaim owner.', error);
+  }
+}
+
+export async function reclaimExpiredFileLease(
+  lockPath: string,
+  timingInput?: FileLeaseTiming,
+): Promise<boolean> {
+  const timing = normalizeTiming(timingInput);
+  const reclaimPath = `${lockPath}.reclaim`;
+  const token = randomUUID();
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    try {
+      handle = await open(reclaimPath, 'wx', 0o600);
+      await handle.writeFile(
+        `${JSON.stringify({
+          schemaVersion: 1,
+          ownerPid: process.pid,
+          token,
+          acquiredAt: Date.now(),
+        } satisfies ReclaimDocument)}\n`,
+        'utf8',
+      );
+      await handle.sync();
+    } catch (error) {
+      await handle?.close().catch(() => undefined);
+      handle = undefined;
+      if (!isCode(error, 'EEXIST')) throw error;
+      await clearDeadReclaim(reclaimPath);
+      return false;
+    }
+
+    const current = await inspectLease(lockPath);
+    if (!current) return true;
+    if (!expiredLease(current, Date.now(), timing)) return false;
+    await rm(lockPath, { force: true });
+    return true;
+  } catch (error) {
+    if (error instanceof RecoveryServiceError) throw error;
+    throw failure('Unable to reclaim the expired daily backup lease.', error);
+  } finally {
+    await handle?.close().catch(() => undefined);
+    const current = await readFile(reclaimPath, 'utf8')
+      .then(parseReclaimDocument)
+      .catch(() => null);
+    if (current?.token === token) await rm(reclaimPath, { force: true }).catch(() => undefined);
   }
 }
 
@@ -204,13 +312,9 @@ export async function acquireFileLease(
     }
 
     const current = await inspectLease(lockPath);
-    if (!current) continue;
     const now = Date.now();
-    const expired = current.document
-      ? current.document.expiresAt <= now
-      : now - current.mtimeMs >= timing.durationMs;
-    if (expired) {
-      await rm(lockPath, { force: true });
+    if (expiredLease(current, now, timing)) {
+      await reclaimExpiredFileLease(lockPath, timing);
       continue;
     }
     if (now - startedAt >= timing.waitTimeoutMs) {

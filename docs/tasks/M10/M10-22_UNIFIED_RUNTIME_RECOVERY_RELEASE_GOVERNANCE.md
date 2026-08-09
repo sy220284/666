@@ -43,7 +43,8 @@
 - 所有Project Schema业务表必须显式分类；未知表阻断恢复和CI。
 - `backup_records`、`backup_failures`与运行历史不进入新项目血缘。
 - 派生索引与临时状态重建或清理；`backup_policies`保留并重映射。
-- 每日备份锁升级为owner token、heartbeat、lease expiry和提交前fencing。
+- 每日备份锁升级为owner token、heartbeat、lease expiry、stale reclaim互斥和提交前fencing。
+- SQLite写事务对同项目同日期Daily Backup执行最终唯一winner仲裁，外部文件loser随后清理。
 - Recovery写入目录使用`constants.W_OK`验证真实能力。
 
 ### C. Renderer Async Ownership
@@ -130,16 +131,14 @@ Evidence必须绑定最终受检work Head；历史Runtime、Migration和Evidence
 
 ## 当前验证进度
 
-在自动化纠偏前的工程Head上已真实通过：
+自动化纠偏后的轻量Draft Head已真实通过：
 
-- Static、Unit、Integration、Migration、Coverage。
-- Electron E2E。
-- Linux、Windows、macOS package smoke与启动smoke。
-- Security完整矩阵。
-- Performance真实预算与AI协议基线。
-- CI Policy、Release Check、Verified Evidence历史扫描。
+- Workspace、边界、Format、Lint、TypeScript。
+- 可信PR Policy。
+- Draft轻量Security与Performance路由。
+- 重型Product Tests、Coverage、E2E、package smoke与Release Audit在无控制标记时均正确跳过。
 
-随后整体审计确认：#340提前合并根因是#338重构时删除最新Workflow Run校验；Task Verified链则是Main Verification删掉任务Context后，Effective Status和权威文档未同步迁移。当前#341保持Draft，正在把这两条链统一后重新执行最终完整矩阵。
+当前#341继续保持Draft，并已启用精确全量验证控制标记。下一轮以当前统一逻辑重新执行Unit、Integration、Migration、Coverage、Electron E2E、三平台package smoke、Release Audit、完整Security与真实Performance；Draft状态继续阻止Controlled Merge。
 
 ## 回滚
 

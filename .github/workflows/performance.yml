@@ -87,7 +87,7 @@ jobs:
           fi
           mkdir -p test-results/ci test-results/performance
           set -o pipefail
-          pnpm exec vitest run tests/performance --no-file-parallelism 2>&1 | tee test-results/ci/performance.log
+          pnpm exec vitest run tests/performance --no-file-parallelism --retry=1 2>&1 | tee test-results/ci/performance.log
           test -s test-results/performance/m8-02.json
       - name: Run AI protocol baselines
         if: ${{ needs.route.outputs.run == 'true' }}

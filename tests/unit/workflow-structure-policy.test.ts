@@ -12,7 +12,7 @@ describe('workflow structure policy', () => {
     const workflow = parseWorkflowDocument('quality.yml', source);
     expect(workflow.jobs.quality.uses).toBe('./.github/workflows/quality-core.yml');
     expect(workflow.jobs.quality.with.draft_mode).toBe(
-      "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body, 'full-validation-draft') }}",
+      "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}",
     );
     expect(validateWorkflowStructure('quality.yml', source)).toEqual([]);
   });

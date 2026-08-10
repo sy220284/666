@@ -12,10 +12,7 @@
     "work": "c774f981a345c8d515bb54d1bbc908e0e4eb1731"
   },
   "allowedPaths": [
-    "apps/desktop/renderer/src/features/planning/",
-    "apps/desktop/renderer/src/features/writing/",
-    "apps/desktop/renderer/src/features/canon/",
-    "apps/desktop/renderer/src/presentation/",
+    "apps/desktop/renderer/src/",
     "scripts/check-author-language.mjs",
     "tests/",
     "docs/product/AUTHOR_LANGUAGE_GLOSSARY.md",

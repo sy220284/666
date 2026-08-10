@@ -102,13 +102,15 @@ describe('Shared Structure boundary', () => {
     expect(chapterMeta(chapter)).toBe('待规划');
     expect(chapterMeta({ ...chapter, targetWordMax: 1200 })).toBe('待规划 · 0—1200 字');
     expect(chapterMeta({ ...chapter, targetWordMin: 800 })).toBe('待规划 · 800—∞ 字');
-    expect(previewMessage(preview)).toBe('影响正文块 1 · 源章 3→2 · 目标章 2→3');
+    expect(previewMessage(preview)).toBe('影响正文段落 1 · 源章 3→2 · 目标章 2→3');
     expect(
       previewMessage({
         ...preview,
         lockedLogicalBlockIds: ['block-2'],
         warnings: ['目标章接近字数上限', '请复核上下文'],
       }),
-    ).toBe('影响正文块 1 · 源章 3→2 · 目标章 2→3 · 锁定块 1 · 目标章接近字数上限；请复核上下文');
+    ).toBe(
+      '影响正文段落 1 · 源章 3→2 · 目标章 2→3 · 锁定段落 1 · 目标章接近字数上限；请复核上下文',
+    );
   });
 });

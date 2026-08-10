@@ -170,7 +170,6 @@ async function prepare(profile, output, sourceSha) {
     name: `worldforge-${profile}-toolchain`,
     private: true,
     type: 'module',
-    packageManager: `pnpm@${bundledPnpmVersion}`,
     devDependencies,
   };
   await writeFile(path.join(output, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`);

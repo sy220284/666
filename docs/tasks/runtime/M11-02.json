@@ -17,6 +17,7 @@
     "apps/desktop/renderer/src/presentation/",
     "apps/desktop/renderer/src/app/",
     "apps/desktop/renderer/src/shell/",
+    ".github/governance/effective-task-status.mjs",
     "scripts/check-author-language.mjs",
     "tests/",
     "docs/product/AUTHOR_LANGUAGE_GLOSSARY.md",

@@ -242,39 +242,62 @@ function createLease(
 ): FileLease {
   let released = false;
   let ownershipLost = false;
-  const heartbeat = setInterval(() => {
-    if (released || ownershipLost) return;
-    void refreshLease(lockPath, token, acquiredAt, timing).then((owned) => {
+  let heartbeatScheduled = false;
+  let operationTail: Promise<void> = Promise.resolve();
+
+  function runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const run = operationTail.then(operation, operation);
+    operationTail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  function scheduleHeartbeat(): void {
+    if (released || ownershipLost || heartbeatScheduled) return;
+    heartbeatScheduled = true;
+    void runExclusive(async () => {
+      if (released || ownershipLost) return;
+      const owned = await refreshLease(lockPath, token, acquiredAt, timing);
       if (!owned) ownershipLost = true;
+    }).finally(() => {
+      heartbeatScheduled = false;
     });
-  }, timing.heartbeatMs);
+  }
+
+  const heartbeat = setInterval(scheduleHeartbeat, timing.heartbeatMs);
   heartbeat.unref();
 
   return {
     async assertOwner(): Promise<void> {
-      if (released || ownershipLost) {
-        throw failure('Daily backup lease ownership was lost.');
-      }
-      const current = await inspectLease(lockPath);
-      if (
-        !current?.document ||
-        current.document.token !== token ||
-        current.document.expiresAt <= Date.now()
-      ) {
-        ownershipLost = true;
-        throw failure('Daily backup lease ownership was lost.');
-      }
+      await runExclusive(async () => {
+        if (released || ownershipLost) {
+          throw failure('Daily backup lease ownership was lost.');
+        }
+        const current = await inspectLease(lockPath);
+        if (
+          !current?.document ||
+          current.document.token !== token ||
+          current.document.expiresAt <= Date.now()
+        ) {
+          ownershipLost = true;
+          throw failure('Daily backup lease ownership was lost.');
+        }
+      });
     },
 
     async release(): Promise<void> {
       if (released) return;
       released = true;
       clearInterval(heartbeat);
-      const current = await inspectLease(lockPath).catch(() => null);
-      if (!current?.document || current.document.token !== token) return;
-      const confirmed = await inspectLease(lockPath).catch(() => null);
-      if (!confirmed?.document || confirmed.document.token !== token) return;
-      await rm(lockPath, { force: true });
+      await runExclusive(async () => {
+        const current = await inspectLease(lockPath).catch(() => null);
+        if (!current?.document || current.document.token !== token) return;
+        const confirmed = await inspectLease(lockPath).catch(() => null);
+        if (!confirmed?.document || confirmed.document.token !== token) return;
+        await rm(lockPath, { force: true });
+      });
     },
   };
 }

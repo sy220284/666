@@ -51,7 +51,7 @@ jobs:
                   ;;
               esac
               case "$file" in
-                package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality-core.yml)
+                package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)
                   package_smoke=true
                   ;;
               esac

@@ -44,6 +44,7 @@
 - `backup_records`、`backup_failures`与运行历史不进入新项目血缘。
 - 派生索引与临时状态重建或清理；`backup_policies`保留并重映射。
 - 每日备份锁升级为owner token、heartbeat、lease expiry、stale reclaim互斥和提交前fencing。
+- 同一lease内部heartbeat、`assertOwner`与`release`必须串行；heartbeat使用single-flight，禁止异步`truncate/write/fsync`重叠造成owner自竞争或瞬时无效读取。
 - SQLite写事务对同项目同日期Daily Backup执行最终唯一winner仲裁，外部文件loser随后清理。
 - Recovery写入目录使用`constants.W_OK`验证真实能力。
 
@@ -131,7 +132,9 @@ pnpm test:e2e
 
 #341中的Evidence曾绑定实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`，该实现矩阵本身真实通过；但#341来源Ready Quality失败，合并后的`main-verification`和`task-verification/M10-22`均失败，因此该Evidence不能证明任务已经Verified。
 
-#342的最终Evidence已重新绑定冻结实现提交`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者职责独立且共同进入任务闭环。
+#342上一轮Evidence绑定`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`，其Full Draft完整矩阵真实通过；但随后Fresh Ready轮次在`tests/integration/recovery-file-lease.test.ts`暴露live-owner heartbeat自竞争。该提交因此被新的Recovery修复取代，旧Evidence不再作为最终证据。
+
+新的最终Evidence必须绑定本次heartbeat串行化修复后的最新完整验证提交。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者职责独立且共同进入任务闭环。
 
 ## 验证结果与恢复链
 
@@ -139,16 +142,18 @@ pnpm test:e2e
 
 随后#341 Ready最新Quality因Verified Evidence Scan把当前IMPLEMENTED Runtime错误解析为历史任务而失败；PR进入main后，Main Verification正确拒绝该来源并将`main-verification`与`task-verification/M10-22`发布为failure。因此#341没有形成M10-22的有效Verified事实，Work Synchronization与Branch Hygiene也没有完成。
 
-#342以#341 squash main提交重新同步`work`后完成修复：
+#342以#341 squash main提交重新同步`work`后完成治理修复：
 
 - `quality / quality`升级为顶层最终聚合Context，服务器Ruleset与Controlled Merge共享同一Quality权威。
 - Verified Evidence Scan收到当前PR base SHA，当前Runtime不再走历史来源解析。
 - 顶层`quality.yml`自身变化进入真实三平台package smoke路由。
 - workflow structure policy和单测锁定上述接线。
 - `docs/process/DEVELOPMENT_AUTOMATION.md`与`docs/PROJECT_EXECUTION_ENTRY.md`同步同一权威语义。
-- 冻结实现提交`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`的Quality Run `31349008834`、Security Run `31349008741`、Performance Run `31349008664`全部成功。
-- Quality完整通过Release Audit、Verified Evidence Scan、最终`quality / quality`、Unit、Integration、Migration、Coverage、Electron E2E、Linux/Windows/macOS package smoke与Toolchain Export。
-- Runtime `verificationBinding.sourcePr`已更新为`342`，Evidence manifest使用Schema 2并绑定上述冻结实现提交。
+- 实现提交`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`的Quality Run `31349008834`、Security Run `31349008741`、Performance Run `31349008664`全部成功，包含Release Audit、Unit、Integration、Migration、Coverage、Electron E2E和三平台package smoke。
+- Fresh Ready轮次再次证明新鲜度门禁生效，但Integration中“live owner beyond lease duration through heartbeat”单项失败，自动合并保持阻断。
+- 根因是同一owner内部异步heartbeat可重叠`refreshLease`，并与`assertOwner`/`release`并发访问同一锁文件；在高I/O延迟下可能读到刷新中的瞬时状态并错误丢失所有权。
+- 现已将同一lease的heartbeat、assert和release放入串行操作队列，heartbeat做single-flight；测试使用500ms lease/50ms heartbeat跨过初始expiry验证续租，同时保留expired-owner fencing与并发stale reclaim测试。
+- 新实现Draft静态链已通过Format、Lint、TypeScript、Workspace、边界与PR Policy；当前重新运行Full Draft完整矩阵。
 
 ## 回滚
 
@@ -170,7 +175,8 @@ pnpm test:e2e
 - [x] Recovery并发stale reclaim与SQLite Daily winner仲裁已完成并进入完整回归。
 - [x] 服务器`quality / quality`与Controlled Merge的Release Audit/package权威统一为同一最终Quality事实。
 - [x] Ready Verified Evidence扫描能区分当前IMPLEMENTED Runtime与历史Implemented任务。
-- [x] #342完整Draft矩阵真实通过，Evidence重新绑定最终实现提交`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`。
-- [x] Runtime `sourcePr`更新为#342并完成最终Ready Evidence收口。
-- [ ] #342 Ready最新Quality/Security/Performance全部成功并由Controlled Merge自动合并。
+- [x] Runtime `sourcePr`更新为#342。
+- [ ] heartbeat串行化后的#342完整Draft矩阵真实通过并冻结新的implementationCommit。
+- [ ] Evidence重新绑定新的最终实现提交并完成Ready收口。
+- [ ] #342 Fresh Ready Quality/Security/Performance全部成功并由Controlled Merge自动合并。
 - [ ] 合并后的main-verification、task-verification/M10-22、Work Synchronization和Branch Hygiene实际闭环。

@@ -78,7 +78,7 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
-          git commit -m "chore: upgrade and verify governed toolchain"
+          git commit -m "chore: upgrade and verify governed toolchain [skip ci]"
           git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:chore/toolchain-governance-20260810
 
       - name: Persist failure evidence
@@ -92,7 +92,7 @@ jobs:
             git config user.name github-actions[bot]
             git config user.email 41898282+github-actions[bot]@users.noreply.github.com
             git add .toolchain-governance-failure.log
-            git commit -m "ci: record toolchain governance validation failure"
+            git commit -m "ci: record toolchain governance validation failure [skip ci]"
             git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:chore/toolchain-governance-20260810
           fi
 

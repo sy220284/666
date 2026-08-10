@@ -10,8 +10,6 @@ import { fileURLToPath } from 'node:url';
 const root = process.cwd();
 const authorityRelativePath = 'docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json';
 const authorityPath = path.join(root, authorityRelativePath);
-const bundleWorkspaceConfigFile = 'pnpm-workspace.yaml';
-const bundleWorkspaceConfig = 'trustLockfile: true\n';
 
 function repositoryPath(relativePath) {
   if (typeof relativePath !== 'string' || path.isAbsolute(relativePath)) {
@@ -135,10 +133,10 @@ async function validateAuthority() {
   }
   for (const required of [
     'store',
+    'cache',
     'node_modules',
     'node_modules/.bin',
     'node_modules/.pnpm',
-    bundleWorkspaceConfigFile,
     'manifest.json',
     'toolchain-authority.json',
     'SHA256SUMS.txt',
@@ -176,7 +174,6 @@ async function prepare(profile, output, sourceSha) {
     devDependencies,
   };
   await writeFile(path.join(output, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`);
-  await writeFile(path.join(output, bundleWorkspaceConfigFile), bundleWorkspaceConfig);
   return { packages };
 }
 
@@ -192,7 +189,6 @@ async function installedPackageVersions(output, packages) {
 
 async function finalize(profile, output, sourceSha, packages) {
   const lockPath = path.join(output, 'pnpm-lock.yaml');
-  const workspaceConfigPath = path.join(output, bundleWorkspaceConfigFile);
   const rootLockPath = path.join(root, 'pnpm-lock.yaml');
   const authorityContent = await readFile(authorityPath);
   await writeFile(path.join(output, 'toolchain-authority.json'), authorityContent);
@@ -209,7 +205,6 @@ async function finalize(profile, output, sourceSha, packages) {
     bundledPnpmVersion: toolVersions.pnpm,
     rootLockfileSha256: await fileHash(rootLockPath),
     generatedLockfileSha256: await fileHash(lockPath),
-    generatedWorkspaceConfigSha256: await fileHash(workspaceConfigPath),
     toolVersions,
     toolchainAuthority: {
       schemaVersion: authority.schemaVersion,
@@ -227,7 +222,6 @@ async function finalize(profile, output, sourceSha, packages) {
   const files = [
     'package.json',
     'pnpm-lock.yaml',
-    bundleWorkspaceConfigFile,
     'manifest.json',
     'toolchain-authority.json',
   ];
@@ -238,10 +232,11 @@ async function finalize(profile, output, sourceSha, packages) {
 
 async function verify(profile, output) {
   const temporary = await mkdtemp(path.join(os.tmpdir(), 'worldforge-toolchain-'));
+  const storeDir = path.join(output, 'store');
+  const cacheDir = path.join(output, 'cache');
   try {
-    for (const file of ['package.json', 'pnpm-lock.yaml', bundleWorkspaceConfigFile]) {
-      await cp(path.join(output, file), path.join(temporary, file));
-    }
+    await cp(path.join(output, 'package.json'), path.join(temporary, 'package.json'));
+    await cp(path.join(output, 'pnpm-lock.yaml'), path.join(temporary, 'pnpm-lock.yaml'));
     run(
       'pnpm',
       [
@@ -250,7 +245,9 @@ async function verify(profile, output) {
         '--frozen-lockfile',
         '--ignore-scripts',
         '--store-dir',
-        path.join(output, 'store'),
+        storeDir,
+        '--cache-dir',
+        cacheDir,
       ],
       temporary,
     );
@@ -269,9 +266,15 @@ async function exportBundle() {
     option('output', process.env.TOOLCHAIN_OUTPUT ?? path.join(root, 'toolchain-bundle')),
   );
   const sourceSha = option('source-sha', process.env.GITHUB_SHA ?? '');
+  const storeDir = path.join(output, 'store');
+  const cacheDir = path.join(output, 'cache');
   const { packages } = await prepare(profile, output, sourceSha);
-  run('pnpm', ['install', '--lockfile-only', '--ignore-scripts'], output);
-  run('pnpm', ['fetch', '--store-dir', path.join(output, 'store')], output);
+  run(
+    'pnpm',
+    ['install', '--lockfile-only', '--ignore-scripts', '--cache-dir', cacheDir],
+    output,
+  );
+  run('pnpm', ['fetch', '--store-dir', storeDir, '--cache-dir', cacheDir], output);
   run(
     'pnpm',
     [
@@ -280,7 +283,9 @@ async function exportBundle() {
       '--frozen-lockfile',
       '--ignore-scripts',
       '--store-dir',
-      path.join(output, 'store'),
+      storeDir,
+      '--cache-dir',
+      cacheDir,
     ],
     output,
   );

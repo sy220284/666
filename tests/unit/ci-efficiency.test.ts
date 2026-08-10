@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { baseGateAction } from '../../.github/governance/automerge-base-gate.mjs';
 import { evidenceEntryDecision } from '../../scripts/evidence-policy-entry.mjs';
+import { securityPerformanceRoute } from '../../scripts/ci-risk-policy.mjs';
 import { fullQualityRunPassed, taskIdFromPullBody } from '../../scripts/ready-closure-route.mjs';
 
 describe('自动化恢复效率', () => {
@@ -41,6 +42,47 @@ describe('维护PR的Evidence路由', () => {
         files: ['packages/core-service/src/core.ts'],
       }),
     ).toMatchObject({ action: 'delegate' });
+  });
+});
+
+describe('Security与Performance风险路由', () => {
+  it('普通治理维护只保留Secret Scan，不跑应用安全/依赖审计/性能预算', () => {
+    expect(
+      securityPerformanceRoute([
+        '.github/governance/automerge-base-gate.mjs',
+        'scripts/evidence-policy-entry.mjs',
+        'docs/process/DEVELOPMENT_AUTOMATION.md',
+      ]),
+    ).toEqual({
+      dependencyAudit: false,
+      applicationSecurity: false,
+      performance: false,
+    });
+  });
+
+  it('产品运行时代码触发应用安全和性能', () => {
+    expect(securityPerformanceRoute(['packages/core-service/src/core.ts'])).toEqual({
+      dependencyAudit: false,
+      applicationSecurity: true,
+      performance: true,
+    });
+  });
+
+  it('依赖变化同时触发三类风险检查', () => {
+    expect(securityPerformanceRoute(['pnpm-lock.yaml'])).toEqual({
+      dependencyAudit: true,
+      applicationSecurity: true,
+      performance: true,
+    });
+  });
+
+  it('安全或性能工作流自身变化会实跑对应套件', () => {
+    expect(securityPerformanceRoute(['.github/workflows/security.yml'])).toMatchObject({
+      applicationSecurity: true,
+    });
+    expect(securityPerformanceRoute(['.github/workflows/performance.yml'])).toMatchObject({
+      performance: true,
+    });
   });
 });
 

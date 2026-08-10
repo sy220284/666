@@ -66,7 +66,7 @@ describe('workflow structure policy', () => {
     ].join('\n');
     const errors = validateWorkflowStructure('unsafe.yml', source);
     expect(errors).toContain(
-      'unsafe.yml: actions/checkout must use immutable SHA d23441a48e516b6c34aea4fa41551a30e30af803',
+      'unsafe.yml: actions/checkout must use immutable SHA de0fac2e4500dabe0009e67214ff5f5447ce83dd',
     );
     expect(errors).toContain('unsafe.yml: every checkout must set persist-credentials: false');
   });

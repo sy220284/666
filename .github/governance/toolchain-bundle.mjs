@@ -33,6 +33,7 @@ async function readAuthority() {
     'defaultProfile',
     'trustedPullRequestBranch',
     'bundledPnpmVersion',
+    'nodeRuntimeVersion',
   ]) {
     if (typeof authority[field] !== 'string' || !authority[field]) {
       throw new Error(`Missing toolchain authority field: ${field}`);
@@ -213,6 +214,7 @@ async function finalize(profile, output, sourceSha, packages) {
       callerWorkflow: authority.callerWorkflow,
       exportWorkflow: authority.exportWorkflow,
       generator: authority.generator,
+      nodeRuntimeVersion: authority.nodeRuntimeVersion,
     },
     generatedAt: new Date().toISOString(),
   };

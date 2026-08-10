@@ -19,16 +19,8 @@ interface StructureOperationDialogProps {
 interface StructureOperations {
   readonly command: BridgeCommand;
   readonly previewCommand: BridgeCommand;
-  readonly mergeChapter: (
-    volume: Volume,
-    chapter: Chapter,
-    chapterIndex: number,
-  ) => Promise<void>;
-  readonly moveBlocks: (
-    volume: Volume,
-    chapter: Chapter,
-    chapterIndex: number,
-  ) => Promise<void>;
+  readonly mergeChapter: (volume: Volume, chapter: Chapter, chapterIndex: number) => Promise<void>;
+  readonly moveBlocks: (volume: Volume, chapter: Chapter, chapterIndex: number) => Promise<void>;
   readonly moveVolumeUp: (volume: Volume, previous: Volume) => Promise<void>;
   readonly removeChapter: (chapter: Chapter) => Promise<void>;
   readonly removeVolume: (volume: Volume) => Promise<void>;

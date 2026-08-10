@@ -68,6 +68,7 @@ const profileCommands = Object.fromEntries(
 );
 const bundledPnpmVersion = authority.bundledPnpmVersion;
 const bundledPnpmAgeExclusion = `pnpm@${bundledPnpmVersion}`;
+process.env.PNPM_CONFIG_MINIMUM_RELEASE_AGE_EXCLUDE = JSON.stringify([bundledPnpmAgeExclusion]);
 
 function option(name, fallback = null) {
   const index = process.argv.indexOf(`--${name}`);
@@ -360,7 +361,6 @@ async function verify(profile, output) {
       'pnpm',
       [
         'install',
-        `--minimum-release-age-exclude=${bundledPnpmAgeExclusion}`,
         '--offline',
         '--frozen-lockfile',
         '--ignore-scripts',
@@ -393,7 +393,6 @@ async function exportBundle() {
     'pnpm',
     [
       'install',
-      `--minimum-release-age-exclude=${bundledPnpmAgeExclusion}`,
       '--ignore-scripts',
       '--store-dir',
       storeDir,
@@ -409,7 +408,6 @@ async function exportBundle() {
     'pnpm',
     [
       'install',
-      `--minimum-release-age-exclude=${bundledPnpmAgeExclusion}`,
       '--offline',
       '--frozen-lockfile',
       '--ignore-scripts',

@@ -104,10 +104,10 @@ export function GenerationStudio(props: GenerationStudioProps) {
             value={generationMode}
             onChange={(event) => props.onGenerationModeChange(event.target.value as GenerationMode)}
           >
-            <option value="skeleton">T0 · 生成骨架</option>
-            <option value="chapter">T1 · 生成正文</option>
+            <option value="skeleton">生成章节骨架</option>
+            <option value="chapter">生成正文</option>
             <option value="rewrite">快速改写</option>
-            <option value="merge">融合候选</option>
+            <option value="merge">融合建议稿</option>
           </select>
         </label>
         <label>
@@ -135,9 +135,9 @@ export function GenerationStudio(props: GenerationStudioProps) {
                 props.onChapterSourceChange(event.target.value as ChapterGenerationSource)
               }
             >
-              <option value="direct_chapter_goal">直接章节目标</option>
-              <option value="skeleton_candidate">已选骨架</option>
-              <option value="canonical_scene_beats">正式场景节拍</option>
+              <option value="direct_chapter_goal">直接使用本章目标</option>
+              <option value="skeleton_candidate">已选章节骨架</option>
+              <option value="canonical_scene_beats">已确认场景</option>
             </select>
           </label>
         ) : null}
@@ -170,7 +170,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
         ) : null}
         {generationMode === 'chapter' && chapterSource === 'skeleton_candidate' ? (
           <label>
-            骨架
+            章节骨架
             <select
               data-selected-skeleton
               value={selectedSkeletonId}
@@ -234,7 +234,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
             onChange={(event) => props.onGenerationInstructionChange(event.target.value)}
             placeholder={
               generationMode === 'rewrite'
-                ? '优先改写编辑器中的单块选区；没有选区时改写全部未锁定块。'
+                ? '优先改写编辑器中的单个正文段落选区；没有选区时改写全部未锁定正文段落。'
                 : '只填写本次任务需要的额外要求。'
             }
           />
@@ -252,7 +252,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
             checked={acknowledgeStaleSkeleton}
             onChange={(event) => props.onAcknowledgeStaleSkeletonChange(event.target.checked)}
           />
-          我已知晓正式场景节拍或基础稿已变化，仍使用此骨架生成正文
+          我已知晓已确认场景或基础稿已变化，仍使用此章节骨架生成正文
         </label>
       ) : null}
       {generationMode === 'merge' ? (
@@ -268,8 +268,8 @@ export function GenerationStudio(props: GenerationStudioProps) {
                   props.onMergeMappingModeChange(event.target.value as MergeMappingMode)
                 }
               >
-                <option value="beat">按正式场景节拍</option>
-                <option value="segment">按候选片段</option>
+                <option value="beat">按已确认场景</option>
+                <option value="segment">按建议稿片段</option>
               </select>
             </label>
           ) : null}
@@ -293,7 +293,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
             ))
           ) : (
             <>
-              <p>选择至少两个正文建议稿；建议稿没有场景节拍关联时使用此模式。</p>
+              <p>选择至少两个正文建议稿；建议稿没有关联场景时使用此模式。</p>
               {proseCandidates.map((candidate) => (
                 <label key={candidate.candidateId}>
                   <input
@@ -313,7 +313,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
       ) : null}
       {generationMode === 'rewrite' ? (
         <p className="feature-status">
-          选择同一正文块内的文字可精确改写；跨块、空选区或锁定块不会作为选区来源。
+          选择同一正文段落内的文字可精确改写；跨段落、空选区或锁定段落不会作为选区来源。
         </p>
       ) : null}
       <div className="inline-actions">

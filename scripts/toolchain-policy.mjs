@@ -17,10 +17,7 @@ const expectedElectron = rootPackage.devDependencies.electron;
 
 if (rootPackage.packageManager !== `pnpm@${expectedPnpm}`)
   fail(`packageManager ${rootPackage.packageManager} != pnpm@${expectedPnpm}`);
-if (
-  !rootPackage.engines.node.includes('>=24.0.0') ||
-  !rootPackage.engines.node.includes('<25.0.0')
-)
+if (!rootPackage.engines.node.includes('>=24.0.0') || !rootPackage.engines.node.includes('<25.0.0'))
   fail(`Node engine is not constrained to Node 24: ${rootPackage.engines.node}`);
 if (
   !rootPackage.engines.pnpm.includes(expectedPnpm) ||

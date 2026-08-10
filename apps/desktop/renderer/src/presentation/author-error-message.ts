@@ -51,7 +51,7 @@ const AUTHOR_ERROR_MESSAGES: Readonly<Record<string, AuthorErrorMessage>> = {
   },
   LOCK_CONFLICT: {
     title: '部分内容已经锁定',
-    message: '本次操作涉及受保护的正文块，系统没有修改这些内容。',
+    message: '本次操作涉及受保护的正文段落，系统没有修改这些内容。',
     suggestedAction: '请检查锁定范围，或只处理未锁定内容。',
   },
   READ_ONLY: {
@@ -238,7 +238,7 @@ function domainErrorMessage(code: string): AuthorErrorMessage | null {
     return {
       title: '检查依据已经变化',
       message: '本次检查所依据的版本或内容不再是当前状态。',
-      suggestedAction: '请重新选择当前定稿版本并再次检查。',
+      suggestedAction: '请重新选择当前定稿并再次检查。',
     };
   if (code.startsWith('TASK_'))
     return {

@@ -5,6 +5,7 @@ import type { Entity, PlotNode, SceneBeat } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../../bridge/use-bridge-resource.js';
 import { authorSceneBeatTypeLabel } from '../../../presentation/author-value-format.js';
+import { useDraftBlockPicker } from '../../writing/draft-block-picker.js';
 import { SceneBeatDialog } from './scene-beat-dialog.js';
 
 export function SceneBeatPanel({
@@ -40,6 +41,7 @@ export function SceneBeatPanel({
   } | null>(null);
   const command = useBridgeCommand(resource.refresh);
   const previewCommand = useBridgeCommand();
+  const { pickMultipleBlocks, picker } = useDraftBlockPicker();
 
   const remove = async (beat: SceneBeat): Promise<void> => {
     if (!window.confirm(`删除场景“${beat.title}”？正文不会变化。`)) return;
@@ -51,33 +53,28 @@ export function SceneBeatPanel({
 
   const selectLogicalBlocks = async (
     defaultIds: readonly string[] = [],
+    allowEmpty = false,
   ): Promise<string[] | null> => {
     const draft = await previewCommand.run(() =>
       bridge.draft.open({ projectId, chapterId }, { mode: 'replace' }),
     );
     if (!draft) return null;
-    const defaultIndices = draft.blocks
-      .flatMap((block, index) => (defaultIds.includes(block.logicalBlockId) ? [index + 1] : []))
-      .join(',');
-    const raw = window.prompt(
-      `选择正文段落序号（逗号分隔，1—${draft.blocks.length}）：`,
-      defaultIndices || '1',
-    );
-    if (!raw) return null;
-    const indices = [...new Set(raw.split(/[,，\s]+/u).map(Number))];
-    const ids = indices.flatMap((index) => {
-      const block = draft.blocks[index - 1];
-      return block ? [block.logicalBlockId] : [];
+    return pickMultipleBlocks({
+      title: defaultIds.length ? '选择与场景关联的正文段落' : '选择要转换为场景的正文段落',
+      description: defaultIds.length
+        ? '直接勾选正文内容。取消勾选不会删除正文，只会解除场景关联。'
+        : '直接勾选正文内容，确认后再填写场景信息。正文内容和顺序不会变化。',
+      blocks: draft.blocks,
+      initialIds: defaultIds,
+      allowEmpty,
     });
-    if (ids.length !== indices.length) {
-      onStatus('正文段落序号无效，未修改场景。');
-      return null;
-    }
-    return ids;
   };
 
   const setBlockLinks = async (beat: SceneBeat): Promise<void> => {
-    const ids = await selectLogicalBlocks(beat.blockLinks.map((link) => link.logicalBlockId));
+    const ids = await selectLogicalBlocks(
+      beat.blockLinks.map((link) => link.logicalBlockId),
+      true,
+    );
     if (!ids) return;
     const result = await command.run(() =>
       bridge.planning.setSceneBeatBlockLinks({
@@ -271,6 +268,7 @@ export function SceneBeatPanel({
           }}
         />
       ) : null}
+      {picker}
     </section>
   );
 }

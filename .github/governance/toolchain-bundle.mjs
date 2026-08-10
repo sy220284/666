@@ -1,4 +1,4 @@
-/* global console, process, setTimeout */
+/* global console, fetch, process, setTimeout */
 // PR Policy smoke marker: export the repository-locked formatter and quality toolchains.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';

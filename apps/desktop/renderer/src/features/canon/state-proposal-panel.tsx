@@ -279,7 +279,12 @@ export function StateProposalPanel({
           </select>
         </label>
       </div>
-      <p className="feature-status" data-ai-review-summary data-state-proposal-status>
+      <p className="feature-status" data-ai-review-summary>
+        {resource.state === 'success'
+          ? `作品：${projectName} · 待确认 ${reviewCatalog?.summary.pending ?? 0} · 已处理 ${reviewCatalog?.summary.resolved ?? 0} · 来源变化 ${reviewCatalog?.summary.stale ?? 0}`
+          : `作品：${projectName} · 审阅汇总读取中…`}
+      </p>
+      <p className="feature-status" data-state-proposal-status>
         {command.error
           ? `处理失败：${authorErrorSummary(command.error)}`
           : resource.error
@@ -287,7 +292,7 @@ export function StateProposalPanel({
             : notice
               ? notice
               : resource.state === 'success'
-                ? `作品：${projectName} · 待确认 ${reviewCatalog?.summary.pending ?? 0} · 已处理 ${reviewCatalog?.summary.resolved ?? 0} · 来源变化 ${reviewCatalog?.summary.stale ?? 0}`
+                ? 'AI审阅已同步。'
                 : '读取中…'}
       </p>
       <div className="ledger-list" data-state-proposal-batches>

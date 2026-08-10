@@ -243,6 +243,7 @@ function createLease(
   let released = false;
   let ownershipLost = false;
   let heartbeatScheduled = false;
+  let heartbeatPending = false;
   let operationTail: Promise<void> = Promise.resolve();
 
   function runExclusive<T>(operation: () => Promise<T>): Promise<T> {
@@ -255,14 +256,23 @@ function createLease(
   }
 
   function scheduleHeartbeat(): void {
-    if (released || ownershipLost || heartbeatScheduled) return;
+    if (released || ownershipLost) return;
+    if (heartbeatScheduled) {
+      heartbeatPending = true;
+      return;
+    }
     heartbeatScheduled = true;
+    heartbeatPending = false;
     void runExclusive(async () => {
       if (released || ownershipLost) return;
       const owned = await refreshLease(lockPath, token, acquiredAt, timing);
       if (!owned) ownershipLost = true;
     }).finally(() => {
       heartbeatScheduled = false;
+      if (heartbeatPending && !released && !ownershipLost) {
+        heartbeatPending = false;
+        scheduleHeartbeat();
+      }
     });
   }
 

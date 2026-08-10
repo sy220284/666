@@ -59,6 +59,8 @@ jobs:
         run: |
           set +e
           set -o pipefail
+          rm -f .toolchain-governance-failure.log
+          python3 -c "from pathlib import Path; p=Path('scripts/toolchain-governance-upgrade-runner.mjs'); s=p.read_text(); p.write_text(s.replace(r'\\1  version', r'\\1 {2}version'))"
           node scripts/toolchain-governance-upgrade-runner.mjs 2>&1 | tee /tmp/toolchain-governance-validation.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then

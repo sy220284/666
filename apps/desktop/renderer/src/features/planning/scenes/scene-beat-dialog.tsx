@@ -72,10 +72,10 @@ export function SceneBeatDialog({
         <header>
           <h2>
             {beat
-              ? '编辑场景节拍'
+              ? '编辑场景'
               : convertingLogicalBlockIds.length
-                ? `从 ${convertingLogicalBlockIds.length} 个正文块转换`
-                : '新建场景节拍'}
+                ? `从 ${convertingLogicalBlockIds.length} 个正文段落转换`
+                : '新建场景'}
           </h2>
           <button type="button" onClick={onClose}>
             关闭

@@ -34,6 +34,22 @@ for (const setting of [
 ]) {
   if (!workspace.includes(setting)) fail(`missing pnpm workspace setting: ${setting}`);
 }
+
+const bundleGenerator = await readText(authority.generator);
+if (!authority.requiredBundleEntries.includes('cache')) {
+  fail('toolchain artifact does not require the pnpm metadata cache');
+}
+if (authority.requiredBundleEntries.includes('pnpm-workspace.yaml')) {
+  fail('toolchain artifact must not bypass lockfile verification with a synthetic workspace policy');
+}
+if (bundleGenerator.includes('trustLockfile: true')) {
+  fail('toolchain bundle must preserve pnpm lockfile supply-chain verification');
+}
+const cacheDirFlags = bundleGenerator.match(/'--cache-dir'/gu)?.length ?? 0;
+if (cacheDirFlags < 4) {
+  fail(`toolchain bundle does not bind all install/fetch verification paths to cache-dir: ${cacheDirFlags}`);
+}
+
 for (const file of [
   'apps/desktop/main/package.json',
   'apps/desktop/preload/package.json',

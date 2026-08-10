@@ -1,23 +1,41 @@
 # M10-22 验证摘要
 
-M10-22 将运行时故障接管、Recovery 一致性、Renderer 异步所有权、Provider 严格契约、Release 权威与自动化验证状态统一到同一套工程语义。
+## 结论
 
-最终实现提交：`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`
+M10-22 的工程实现与治理纠偏已在 PR #342 的冻结实现提交 `9ad7ce71cc64b0518c5f0830ed8d48c89f068468` 上完成完整验证。
 
-该实现提交已在 GitHub Actions 完成并通过：
+本轮修复将服务器 Ruleset、Controlled Merge、Release Audit 和任务状态链收敛为同一事实模型：
 
-- Quality Run `31325332376`：Static、Unit、Integration、Migration、Coverage、Electron E2E、Build、Linux/Windows/macOS package smoke、Release Audit 全部成功。
-- Security Run `31325332269`：依赖审计、全历史 Secret Scan、应用安全与聚合 Security 成功。
-- Performance Run `31325332252`：真实性能预算与 AI 协议基线成功。
-- Recovery 新增并发回归覆盖 stale lease reclaim 多竞争者，以及 SQLite 同项目同日期唯一 Daily backup winner。
-- 自动化回归覆盖同 SHA Draft→Ready 验证轮次新鲜度、Quality 内部 Release Audit/package gate、Schema 2 task-verification 权威和精确 Draft 全量控制标记。
+- 服务器可见 `quality / quality` 是最终聚合门，同时依赖 Core Quality、Release Audit 与 package gate。
+- Controlled Merge 在同一 Quality 事实之上校验当前 Head 最新 Quality / Security / Performance 运行，旧 Draft 成功结果不能替代 Ready 轮次。
+- Ready Verified Evidence 扫描通过 `TASK_BASE_REF` 区分本 PR 的 Schema 2 `IMPLEMENTED` Runtime 与历史 Implemented 任务。
+- 顶层 `quality.yml` 自身变化会触发真实 Linux、Windows、macOS package smoke。
+- Schema 2 任务仍只能由合并后的 `task-verification/<TASK-ID>` 从 `IMPLEMENTED` 提升为有效 `VERIFIED`。
 
-当前工程权威：
+## 冻结实现验证
 
-- PR 永久工程 Context 保持 `pr-policy / quality / quality / security / performance` 四项。
-- Controlled Merge 额外读取当前 Head 最新 Quality、Security、Performance Workflow Run；最新 Quality 必须同时通过 `quality / quality`、`quality / release-audit`、`quality / package-smoke`。
-- Main Verification 在任务 PR 合并后验证 Schema 2 Runtime 的 sourcePr 与 taskContext，并发布 `task-verification/<TASK-ID>`。
-- Schema 2 Runtime 的有效 Verified 只来自真实 task-verification；TASK_INDEX 仅镜像状态。
-- Release 资格独立读取 main-verification、产品门禁、产物完整性与发行信任，不由 Task Runtime 决定。
+实现提交：`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`
 
-正式 Stable 发行的 Windows Authenticode、macOS Developer ID、公证与 stapling 仍由具备正式发行 Secrets 的原生发行环境执行。本次工程验收已经验证其实现路径与缺少凭据时的 fail-closed 行为，没有宣称真实生产证书已经完成发行资格验收。
+GitHub Actions：
+
+- Quality run `31349008834`: success。
+- Security run `31349008741`: success。
+- Performance run `31349008664`: success。
+- `quality / release-audit`: success；Verified Evidence Scan 与 changed Evidence validation 均成功。
+- `quality / quality`: success，且在 Core Quality、Release Audit、package gate 完成后才发布最终结果。
+- Unit、Integration、Migration、Coverage: success。
+- Electron E2E: success。
+- Linux、Windows、macOS package smoke: success。
+- Toolchain export: success。
+
+## #341 纠偏事实
+
+#341 的工程实现提交曾通过完整矩阵，但其最新 Ready Quality 因当前 Runtime 被误判为历史任务而失败。该 PR 进入 main 后，Main Verification 正确将 `main-verification` 与 `task-verification/M10-22` 发布为 failure，因此不能作为 M10-22 的最终验证事实。
+
+PR #342 从 #341 squash main 基线重新建立 `work`，修复最终 Quality 权威和当前 Runtime 识别，并重新执行完整验证。新的任务来源绑定为 PR #342。
+
+## 最终状态语义
+
+Runtime 静态声明保持 `IMPLEMENTED`。PR #342 合并后，只有 `main-verification=success` 且 `task-verification/M10-22=success` 时，统一 Effective Status 才计算为有效 `VERIFIED`。
+
+Stable 正式发行仍独立要求真实 Windows Authenticode 与 macOS Developer ID / notarization / stapling 信任证据；缺少发行凭据时继续 fail-closed。

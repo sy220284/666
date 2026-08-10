@@ -264,9 +264,12 @@ store/
 node_modules/
 node_modules/.bin/
 node_modules/.pnpm/
+pnpm-workspace.yaml
 manifest.json
 toolchain-authority.json
 SHA256SUMS.txt
 ```
 
-`actions/upload-artifact`必须启用`include-hidden-files: true`，否则pnpm链接层与命令入口会被排除。`manifest.json`必须记录源提交、源Tree、根锁文件Hash、工具版本，以及机器清单路径和Hash。下载后先校验`SHA256SUMS.txt`与`manifest.json`，再验证`.bin`和`.pnpm`存在并执行工具版本命令；禁止仅凭Artifact名称覆盖现有工具。
+bundle 内的 `pnpm-workspace.yaml` 仅声明 `trustLockfile: true`。该信任只适用于导出器在同一次受控运行中生成的 bundle lockfile：精确工具版本来自仓库权威配置，生成 lockfile、bundle 配置和机器权威清单均进入 manifest/SHA256 校验，fresh verify 仍使用 `--offline --frozen-lockfile --ignore-scripts` 和 bundle 自带 store。根仓库的 `pnpm-workspace.yaml` 不启用 `trustLockfile`，继续执行 `minimumReleaseAge` 等供应链元数据检查。
+
+`actions/upload-artifact`必须启用`include-hidden-files: true`，否则pnpm链接层与命令入口会被排除。`manifest.json`必须记录源提交、源Tree、根锁文件Hash、生成 lockfile Hash、bundle 配置 Hash、工具版本，以及机器清单路径和Hash。下载后先校验`SHA256SUMS.txt`与`manifest.json`，再验证`.bin`和`.pnpm`存在并执行工具版本命令；禁止仅凭Artifact名称覆盖现有工具。

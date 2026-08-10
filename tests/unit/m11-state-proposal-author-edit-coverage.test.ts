@@ -54,9 +54,10 @@ describe('M11 作者可读 AI 设定建议编辑', () => {
     expect(prompt).toHaveBeenLastCalledWith('所在地点：直接填写最终内容', '清河');
 
     prompt.mockReturnValueOnce('12');
-    expect(
-      editProposalValue(proposal({ stateKey: 'custom-number', proposedValue: 10 })),
-    ).toEqual({ state: 'ready', value: 12 });
+    expect(editProposalValue(proposal({ stateKey: 'custom-number', proposedValue: 10 }))).toEqual({
+      state: 'ready',
+      value: 12,
+    });
     expect(prompt).toHaveBeenLastCalledWith('最终内容：请输入数字', '10');
 
     prompt.mockReturnValueOnce('是');
@@ -67,9 +68,7 @@ describe('M11 作者可读 AI 设定建议编辑', () => {
 
     prompt.mockReturnValueOnce('令牌\n密信');
     expect(
-      editProposalValue(
-        proposal({ stateKey: 'custom-list', proposedValue: ['令牌', '旧信'] }),
-      ),
+      editProposalValue(proposal({ stateKey: 'custom-list', proposedValue: ['令牌', '旧信'] })),
     ).toEqual({ state: 'ready', value: ['令牌', '密信'] });
     expect(prompt).toHaveBeenLastCalledWith('最终内容：每行填写一项', '令牌\n旧信');
 
@@ -77,9 +76,10 @@ describe('M11 作者可读 AI 设定建议编辑', () => {
     expect(editProposalValue(proposal())).toEqual({ state: 'cancelled' });
 
     prompt.mockReturnValueOnce('十二');
-    expect(
-      editProposalValue(proposal({ stateKey: 'custom-number', proposedValue: 10 })),
-    ).toEqual({ state: 'invalid', message: '请输入有效数字。' });
+    expect(editProposalValue(proposal({ stateKey: 'custom-number', proposedValue: 10 }))).toEqual({
+      state: 'invalid',
+      message: '请输入有效数字。',
+    });
   });
 
   it('覆盖配置列表在旧值不是数组时的空缺默认值', () => {
@@ -91,7 +91,7 @@ describe('M11 作者可读 AI 设定建议编辑', () => {
       state: 'ready',
       value: ['令牌', '密信'],
     });
-    expect(prompt).toHaveBeenLastCalledWith('持有物：每行填写一项', '');
+    expect(prompt).toHaveBeenLastCalledWith('持有物品：每行填写一项', '');
   });
 
   it('用作者语言编辑人物成长节点的发生、跳过、取消和非法输入', () => {

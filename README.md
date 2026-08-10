@@ -113,6 +113,3 @@ V1.0仅供仓库所有者本人使用。交付形态为三平台便携包，要�
 - [`docs/ui/UI_ACCEPTANCE_CHECKLIST.md`](./docs/ui/UI_ACCEPTANCE_CHECKLIST.md)
 - [`docs/INDEX.md`](./docs/INDEX.md)
 
-## 许可证
-
-AGPL-3.0-only。面向第三方分发前必须重新完成依赖、许可证、签名和分发合规审查。

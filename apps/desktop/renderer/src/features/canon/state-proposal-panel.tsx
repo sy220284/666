@@ -16,10 +16,7 @@ import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorJsonValue } from '../../presentation/author-value-format.js';
 import { startSingleFlightPolling } from '../../runtime/single-flight-polling.js';
-import {
-  editProposalValue,
-  proposalConfidenceLabel,
-} from './state-proposal-author-edit.js';
+import { editProposalValue, proposalConfidenceLabel } from './state-proposal-author-edit.js';
 
 interface StateProposalView {
   readonly catalog: StateProposalCatalog;

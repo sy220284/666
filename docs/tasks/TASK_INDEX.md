@@ -109,7 +109,7 @@ Runtime IMPLEMENTED
 | `M9-05` | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-06` | [`AR-06 Planning拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#7-ar-06-planning拆分)                                      | M9-03内部AR-02     | Removed（absorbed by M9-03） |
 | `M9-07` | [`AR-07 AppShell拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分)                                      | M9-03内部AR-04—06  | Removed（absorbed by M9-03） |
-| `M9-08` | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08-contracts拆分)                                    | M9-03内部基线      | Removed（absorbed by M9-03） |
+| `M9-08` | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08contracts拆分)                                    | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-09` | [`AR-09 Preload拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#10-ar-09-preload拆分)                                       | M9-03内部AR-08     | Removed（absorbed by M9-03） |
 | `M9-10` | [`AR-10 Main IPC拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#11-ar-10-main-ipc拆分)                                     | M9-03内部AR-08、09 | Removed（absorbed by M9-03） |
 | `M9-11` | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-03内部基线      | Removed（absorbed by M9-03） |
@@ -148,7 +148,7 @@ Runtime IMPLEMENTED
 
 | ID     | 任务卡                                                                                 | 依赖   | 状态        |
 | ------ | -------------------------------------------------------------------------------------- | ------ | ----------- |
-| M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | In Progress |
+| M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | Implemented |
 
 ## 3. 被吸收的需求来源
 
@@ -170,7 +170,7 @@ Runtime IMPLEMENTED
 | M6-04 | [`网文章奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md)                        | M6     | Removed（absorbed） | M4-04    |
 | M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md)                                | M6     | Removed（absorbed） | M4-04    |
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md)              | M6     | Removed（absorbed） | M4-04    |
-| M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md)              | M7     | Removed（absorbed） | M8-02    |
+| M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md)               | M7     | Removed（absorbed） | M8-02    |
 | M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md)         | M7     | Removed（absorbed） | M8-02    |
 | M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md)        | M7     | Removed（absorbed） | M8-02    |
 | M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md)       | M8     | Removed（absorbed） | M8-02    |

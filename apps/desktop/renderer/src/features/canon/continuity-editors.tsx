@@ -119,7 +119,9 @@ export function ContinuityEditors({
     );
   };
 
-  const selectKnowledgeSourceBlock = async (form: HTMLFormElement | null): Promise<void> => {
+  const selectKnowledgeSourceBlock = async (
+    form: HTMLFormElement | null,
+  ): Promise<void> => {
     if (!form) return;
     const sourceVersionId = String(new FormData(form).get('sourceVersionId') ?? '');
     const reference = references.versions.find((version) => version.id === sourceVersionId);
@@ -149,7 +151,9 @@ export function ContinuityEditors({
     if (!selectedId) return;
     const selectedIndex = version.blocks.findIndex((block) => block.logicalBlockId === selectedId);
     setKnowledgeSourceBlockId(selectedId);
-    setKnowledgeSourceBlockLabel(selectedIndex >= 0 ? `第 ${selectedIndex + 1} 段` : '已选择原文段落');
+    setKnowledgeSourceBlockLabel(
+      selectedIndex >= 0 ? `第 ${selectedIndex + 1} 段` : '已选择原文段落',
+    );
   };
 
   return (

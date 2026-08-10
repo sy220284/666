@@ -200,7 +200,7 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
           setEndingHook={setSkeletonEndingHook}
           setGenerationMode={setGenerationMode}
           setSelectedSkeletonId={setSelectedSkeletonId}
-          setTendency={skeletonTendency}
+          setTendency={setSkeletonTendency}
           tendency={skeletonTendency}
         />
       ) : null}

@@ -256,3 +256,5 @@ SHA256SUMS.txt
 ```
 
 `actions/upload-artifact`必须启用`include-hidden-files: true`，否则pnpm链接层与命令入口会被排除。`manifest.json`必须记录源提交、源Tree、根锁文件Hash、工具版本，以及机器清单路径和Hash。下载后先校验`SHA256SUMS.txt`与`manifest.json`，再验证`.bin`和`.pnpm`存在并执行工具版本命令；禁止仅凭Artifact名称覆盖现有工具。
+
+<!-- M11-01 temporary formatter export trigger -->

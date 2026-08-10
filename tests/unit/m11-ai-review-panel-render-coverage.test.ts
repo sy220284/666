@@ -56,6 +56,6 @@ describe('M11 AI审阅工作台服务端渲染覆盖', () => {
     expect(html).toContain('data-ai-review-status-filter');
     expect(html).toContain('data-ai-review-type-filter');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>分析定稿<\/button>/u);
-    expect(html).toContain('当前没有AI审阅建议');
+    expect(html).toContain('当前筛选条件下没有AI审阅建议');
   });
 });

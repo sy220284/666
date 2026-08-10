@@ -5,7 +5,7 @@
   "description": "Local-first desktop writing workstation for a single author",
   "license": "AGPL-3.0-only",
   "type": "module",
-  "packageManager": "pnpm@11.13.1",
+  "packageManager": "pnpm@11.21.0",
   "engines": {
     "node": ">=24.0.0",
     "pnpm": ">=11.0.0"

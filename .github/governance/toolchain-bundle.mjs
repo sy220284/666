@@ -67,6 +67,7 @@ const profileCommands = Object.fromEntries(
   ]),
 );
 const bundledPnpmVersion = authority.bundledPnpmVersion;
+const bundledPnpmAgeExclusion = `pnpm@${bundledPnpmVersion}`;
 
 function option(name, fallback = null) {
   const index = process.argv.indexOf(`--${name}`);
@@ -320,6 +321,7 @@ async function finalize(profile, output, sourceSha, packages) {
     nodeVersion: process.version,
     generatorPnpmVersion: run('pnpm', ['--version']),
     bundledPnpmVersion: toolVersions.pnpm,
+    minimumReleaseAgeExclude: [bundledPnpmAgeExclusion],
     rootLockfileSha256: await fileHash(rootLockPath),
     generatedLockfileSha256: await fileHash(lockPath),
     toolVersions,
@@ -358,6 +360,7 @@ async function verify(profile, output) {
       'pnpm',
       [
         'install',
+        `--minimum-release-age-exclude=${bundledPnpmAgeExclusion}`,
         '--offline',
         '--frozen-lockfile',
         '--ignore-scripts',
@@ -390,6 +393,7 @@ async function exportBundle() {
     'pnpm',
     [
       'install',
+      `--minimum-release-age-exclude=${bundledPnpmAgeExclusion}`,
       '--ignore-scripts',
       '--store-dir',
       storeDir,
@@ -405,6 +409,7 @@ async function exportBundle() {
     'pnpm',
     [
       'install',
+      `--minimum-release-age-exclude=${bundledPnpmAgeExclusion}`,
       '--offline',
       '--frozen-lockfile',
       '--ignore-scripts',

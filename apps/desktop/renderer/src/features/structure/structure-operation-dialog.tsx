@@ -62,11 +62,11 @@ export function StructureOperationDialog({
       bridge.draft.open({ projectId, chapterId: chapter.id }, { mode: 'replace' }),
     );
     if (!draft || draft.blocks.length < 2) {
-      onStatus?.('章节至少需要两个正文块才能拆分。');
+      onStatus?.('章节至少需要两个正文段落才能拆分。');
       return;
     }
     const rawPosition = window.prompt(
-      `在第几个正文块后拆分？请输入1—${draft.blocks.length - 1}：`,
+      `在第几个正文段落后拆分？请输入1—${draft.blocks.length - 1}：`,
       String(Math.max(1, Math.floor(draft.blocks.length / 2))),
     );
     const position = Number(rawPosition);
@@ -149,13 +149,13 @@ export function StructureOperationDialog({
       bridge.draft.open({ projectId, chapterId: target.id }, { mode: 'replace' }),
     ]);
     if (sourceOutcome.state !== 'success' || targetOutcome.state !== 'success') {
-      onStatus?.('正文块移动预览读取正文失败，未修改项目。');
+      onStatus?.('正文段落移动预览读取正文失败，未修改项目。');
       return;
     }
     const sourceDraft = sourceOutcome.data;
     const targetDraft = targetOutcome.data;
     const rawIndices = window.prompt(
-      `选择从“${chapter.title}”移动的正文块序号（逗号分隔，1—${sourceDraft.blocks.length}）：`,
+      `选择从“${chapter.title}”移动的正文段落序号（逗号分隔，1—${sourceDraft.blocks.length}）：`,
       '1',
     );
     if (!rawIndices) return;
@@ -165,11 +165,11 @@ export function StructureOperationDialog({
       return block ? [block.logicalBlockId] : [];
     });
     if (logicalBlockIds.length !== indices.length) {
-      onStatus?.('正文块序号无效，未修改项目。');
+      onStatus?.('正文段落序号无效，未修改项目。');
       return;
     }
     const afterRaw = window.prompt(
-      `插入到“${target.title}”第几个块之后？0表示开头，最多${targetDraft.blocks.length}：`,
+      `插入到“${target.title}”第几个段落之后？0表示开头，最多${targetDraft.blocks.length}：`,
       String(targetDraft.blocks.length),
     );
     const afterIndex = Number(afterRaw);
@@ -197,7 +197,7 @@ export function StructureOperationDialog({
     const result = await command.run(() =>
       bridge.planning.moveBlocks({ ...input, planHash: preview.planHash }),
     );
-    if (result) onStatus?.(`正文块已跨章移动 · 恢复点 ${result.backupId.slice(0, 8)}…`);
+    if (result) onStatus?.(`正文段落已跨章移动 · 恢复点 ${result.backupId.slice(0, 8)}…`);
   };
 
   const moveVolumeUp = async (volume: Volume, previous: Volume): Promise<void> => {

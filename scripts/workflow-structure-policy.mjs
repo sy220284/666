@@ -97,15 +97,15 @@ export function validateWorkflowStructure(file, source) {
     if (qualityCore?.with?.performance_eval !== false) {
       errors.push('quality.yml: quality-core.with.performance_eval must be false');
     }
-    if (
-      qualityCore?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}"
-    ) {
+    if (qualityCore?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}") {
       errors.push(
         'quality.yml: quality-core.with.package_smoke must be controlled by the route output',
       );
     }
     if (qualityCore?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
-      errors.push('quality.yml: quality-core.with.full_suite must be controlled by the route output');
+      errors.push(
+        'quality.yml: quality-core.with.full_suite must be controlled by the route output',
+      );
     }
 
     const releaseAudit = workflow.jobs['release-audit'];

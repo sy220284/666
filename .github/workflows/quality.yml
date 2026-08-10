@@ -202,7 +202,8 @@ jobs:
           EVIDENCE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           EVIDENCE_FINAL: ${{ github.event.pull_request.draft == false }}
-        run: node scripts/evidence-policy.mjs
+          EVIDENCE_PR_BODY: ${{ github.event.pull_request.body || '' }}
+        run: node scripts/evidence-policy-entry.mjs scripts/evidence-policy.mjs
       - name: Assert clean working tree after release audit
         if: always()
         run: node .github/governance/assert-clean-tree.mjs

@@ -78,17 +78,17 @@ export function BeginnerPlanningQuestions({
 
       <p className="feature-status" data-planning-status role="status">
         {resource.error
-          ? '作品任务书读取失败，请重试。'
+          ? '作品核心读取失败，请重试。'
           : resource.state === 'cancelled'
-            ? '作品任务书读取已取消。'
+            ? '作品核心读取已取消。'
             : command.error
-              ? '作品任务书保存失败，已有内容保持不变。'
+              ? '作品核心保存失败，已有内容保持不变。'
               : status}
       </p>
 
       {skipped ? (
         <section className="feature-card beginner-planning-skip" data-brief-skipped>
-          <h2>已暂时跳过作品任务书</h2>
+          <h2>已暂时跳过作品核心</h2>
           <p>可以直接进入写作；已有内容没有被清空。</p>
           <button type="button" data-restore-brief onClick={() => setSkipped(false)}>
             继续回答
@@ -120,8 +120,8 @@ function BeginnerBriefForm({
   readonly onSave: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   readonly onSkip: () => void;
 }) {
-  if (loading) return <p>正在读取作品任务书…</p>;
-  if (!brief) return <p>作品任务书暂不可用。</p>;
+  if (loading) return <p>正在读取作品核心…</p>;
+  if (!brief) return <p>作品核心暂不可用。</p>;
 
   return (
     <form

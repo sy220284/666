@@ -98,10 +98,7 @@ describe('Writing生成启动编排', () => {
     [{ generationMode: 'skeleton', chapterGoal: '' }, '请先填写本章目标。'],
     [{ chapterGoal: '' }, '直接生成正文需要本章目标。'],
     [{ chapterSource: 'skeleton_candidate', selectedSkeletonId: '' }, '请选择一个骨架候选。'],
-    [
-      { chapterSource: 'canonical_scene_beats', sceneBeats: [] },
-      '当前章节没有可用于生成的场景。',
-    ],
+    [{ chapterSource: 'canonical_scene_beats', sceneBeats: [] }, '当前章节没有可用于生成的场景。'],
     [{ generationMode: 'rewrite', generationInstruction: '' }, '请填写改写指令。'],
   ] satisfies ReadonlyArray<readonly [Partial<StartInput>, string | undefined]>)(
     '拒绝不满足前置条件的请求 %#',

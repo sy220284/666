@@ -53,12 +53,8 @@ export interface PickBlockAnchorInput {
 }
 
 export function useDraftBlockPicker(): {
-  readonly pickMultipleBlocks: (
-    input: PickMultipleBlocksInput,
-  ) => Promise<string[] | null>;
-  readonly pickBlockAnchor: (
-    input: PickBlockAnchorInput,
-  ) => Promise<string | null | undefined>;
+  readonly pickMultipleBlocks: (input: PickMultipleBlocksInput) => Promise<string[] | null>;
+  readonly pickBlockAnchor: (input: PickBlockAnchorInput) => Promise<string | null | undefined>;
   readonly picker: ReactNode;
 } {
   const [request, setRequest] = useState<PickerRequest | null>(null);
@@ -194,10 +190,7 @@ function DraftBlockPickerDialog({
             if (request.kind === 'multiple') {
               const disabled = request.disableLocked && block.locked;
               return (
-                <label
-                  key={block.logicalBlockId}
-                  data-draft-block-choice={block.logicalBlockId}
-                >
+                <label key={block.logicalBlockId} data-draft-block-choice={block.logicalBlockId}>
                   <input
                     checked={selectedIds.has(block.logicalBlockId)}
                     disabled={disabled}
@@ -221,10 +214,7 @@ function DraftBlockPickerDialog({
               );
             }
             return (
-              <label
-                key={block.logicalBlockId}
-                data-draft-block-choice={block.logicalBlockId}
-              >
+              <label key={block.logicalBlockId} data-draft-block-choice={block.logicalBlockId}>
                 <input
                   checked={anchorId === block.logicalBlockId}
                   name="draft-block-anchor"

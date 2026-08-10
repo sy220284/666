@@ -5,6 +5,7 @@ export * from './continuity-control.js';
 export * from './narrative-planning.js';
 export * from './state-proposal.js';
 export * from './state-proposal-ipc.js';
+export * from './review-proposal.js';
 export * from './search-index.js';
 export * from './constraint-package.js';
 export * from './validation.js';

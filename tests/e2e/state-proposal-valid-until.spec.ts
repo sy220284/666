@@ -186,7 +186,9 @@ test('preserves a finite EntityState interval across the real Electron boundary'
     const proposal = page.locator(`[data-state-proposal="${seeded.proposalId}"]`);
     await expect(proposal).toContainText('等待处理');
     await proposal.locator(`[data-accept-state-proposal="${seeded.proposalId}"]`).click();
-    await expect(proposal).toContainText('已采用');
+    await page.locator('[data-ai-review-status-filter]').selectOption('resolved');
+    const resolvedProposal = page.locator(`[data-ai-review-proposal="${seeded.proposalId}"]`);
+    await expect(resolvedProposal).toContainText('已采用');
 
     const result = await page.evaluate(async ({ projectId, chapter1Id, chapter2Id }) => {
       const bridge = (

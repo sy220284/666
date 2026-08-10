@@ -24,6 +24,7 @@ interface AnchorPickerRequest extends PickerBaseRequest {
   readonly kind: 'anchor';
   readonly initialId: string | null;
   readonly allowStart: boolean;
+  readonly labelMode: 'after' | 'select';
 }
 
 type PickerRequest = MultiplePickerRequest | AnchorPickerRequest;
@@ -48,6 +49,7 @@ export interface PickBlockAnchorInput {
   readonly blocks: readonly DraftBlockChoice[];
   readonly initialId?: string | null;
   readonly allowStart?: boolean;
+  readonly labelMode?: 'after' | 'select';
 }
 
 export function useDraftBlockPicker(): {
@@ -117,6 +119,7 @@ export function useDraftBlockPicker(): {
         blocks: input.blocks,
         initialId: input.initialId ?? null,
         allowStart: input.allowStart ?? false,
+        labelMode: input.labelMode ?? 'after',
       });
       return result.kind === 'anchor' ? result.id : undefined;
     },
@@ -219,7 +222,11 @@ function DraftBlockPickerDialog({
                   onChange={() => setAnchorId(block.logicalBlockId)}
                 />
                 <span>
-                  <strong>第 {index + 1} 段之后</strong>
+                  <strong>
+                    {request.labelMode === 'select'
+                      ? `第 ${index + 1} 段`
+                      : `第 ${index + 1} 段之后`}
+                  </strong>
                   <small>{excerpt}</small>
                 </span>
               </label>

@@ -96,9 +96,7 @@ export function filterAIReviewProposals(
   return catalog.proposals.filter((proposal) => {
     const statusMatches =
       filter.status === 'all' ||
-      (filter.status === 'pending'
-        ? proposal.status === 'pending'
-        : proposal.status !== 'pending');
+      (filter.status === 'pending' ? proposal.status === 'pending' : proposal.status !== 'pending');
     const typeMatches = filter.reviewType === 'all' || proposal.reviewType === filter.reviewType;
     return statusMatches && typeMatches;
   });

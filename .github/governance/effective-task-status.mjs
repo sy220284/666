@@ -86,19 +86,29 @@ export function resolveRuntimeMergeCommit(task, headSha, repositoryRoot = root) 
     throw new Error('Historical task verification requires a full head SHA');
   }
   const output = git(['log', headSha, '--format=%H%x09%s'], repositoryRoot);
-  const suffix = ` (#${sourcePr})`;
-  const matches = output
+  const entries = output
     .split(/\r?\n/u)
     .filter(Boolean)
     .map((line) => {
       const separator = line.indexOf('\t');
       return { sha: line.slice(0, separator), subject: line.slice(separator + 1) };
     })
-    .filter((entry) => fullShaPattern.test(entry.sha) && entry.subject.endsWith(suffix));
-  if (matches.length !== 1) {
+    .filter((entry) => fullShaPattern.test(entry.sha));
+  const controlledSuffix = ` (#${sourcePr})`;
+  const controlledMatches = entries.filter((entry) => entry.subject.endsWith(controlledSuffix));
+  if (controlledMatches.length === 1) return controlledMatches[0].sha;
+  if (controlledMatches.length > 1) {
     throw new Error(`${task.id} source PR must resolve to exactly one controlled main commit`);
   }
-  return matches[0].sha;
+
+  const standardMergePrefix = `Merge pull request #${sourcePr} from `;
+  const standardMergeMatches = entries.filter((entry) =>
+    entry.subject.startsWith(standardMergePrefix),
+  );
+  if (standardMergeMatches.length !== 1) {
+    throw new Error(`${task.id} source PR must resolve to exactly one controlled main commit`);
+  }
+  return standardMergeMatches[0].sha;
 }
 
 export function isCurrentPullRequestRuntime(task, baseSha, repositoryRoot = root) {

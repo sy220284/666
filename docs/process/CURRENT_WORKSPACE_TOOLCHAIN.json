@@ -68,6 +68,7 @@
     "node_modules",
     "node_modules/.bin",
     "node_modules/.pnpm",
+    "pnpm-workspace.yaml",
     "manifest.json",
     "toolchain-authority.json",
     "SHA256SUMS.txt"

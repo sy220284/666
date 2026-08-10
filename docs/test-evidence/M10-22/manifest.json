@@ -1,18 +1,18 @@
 {
   "schemaVersion": 2,
   "taskId": "M10-22",
-  "implementationCommit": "9ad7ce71cc64b0518c5f0830ed8d48c89f068468",
-  "generatedAt": "2026-08-10T10:28:09+08:00",
+  "implementationCommit": "e1d75ac55985454eddf690932546bedb9cd92b89",
+  "generatedAt": "2026-08-10T11:40:00+08:00",
   "files": [
     {
       "path": "summary.md",
-      "bytes": 2452,
-      "sha256": "46760d3be02cb5869d05bc69dfbd578a754cbb96fe4843ebeded058f0664621f"
+      "bytes": 2744,
+      "sha256": "f99d9af57c5e1103a03d64081c66c22206b5b3fa9ca8b7219ea3916d04c234f1"
     },
     {
       "path": "commands.txt",
-      "bytes": 1109,
-      "sha256": "b31b57650b1b63a8754b46ce64a2c9fe819b64dee1d487a2d4108aa367aed613"
+      "bytes": 1146,
+      "sha256": "9190dbe7bd0d12362c4bc6126f80aab89e5bfcfd6b4e09529466b78bb4a29996"
     },
     {
       "path": "known-risks.md",

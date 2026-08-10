@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { baseGateAction } from '../../.github/governance/automerge-base-gate.mjs';
+import { waitForSynchronizedWorkRef } from '../../.github/governance/work-synchronization.mjs';
 import { evidenceEntryDecision } from '../../scripts/evidence-policy-entry.mjs';
 import { securityPerformanceRoute } from '../../scripts/ci-risk-policy.mjs';
 import { fullQualityRunPassed, taskIdFromPullBody } from '../../scripts/ready-closure-route.mjs';
@@ -10,6 +11,23 @@ describe('自动化恢复效率', () => {
     expect(baseGateAction('ready')).toBe('proceed');
     expect(baseGateAction('failed')).toBe('heal');
     expect(baseGateAction('pending')).toBe('wait');
+  });
+
+  it('work ref更新后允许GitHub短暂返回旧值', async () => {
+    const mainSha = 'a'.repeat(40);
+    const oldSha = 'b'.repeat(40);
+    let reads = 0;
+    await expect(
+      waitForSynchronizedWorkRef(
+        async () => {
+          reads += 1;
+          return { object: { sha: reads < 3 ? oldSha : mainSha } };
+        },
+        mainSha,
+        { attempts: 3, intervalMs: 0 },
+      ),
+    ).resolves.toBe(mainSha);
+    expect(reads).toBe(3);
   });
 });
 

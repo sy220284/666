@@ -131,22 +131,24 @@ pnpm test:e2e
 
 #341中的Evidence曾绑定实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`，该实现矩阵本身真实通过；但#341来源Ready Quality失败，合并后的`main-verification`和`task-verification/M10-22`均失败，因此该Evidence不能证明任务已经Verified。
 
-#342修复最终Quality权威与Ready Evidence当前Runtime识别后，必须重新生成Evidence并绑定#342新的最终实现提交。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者不得混为一套门禁。
+#342的最终Evidence已重新绑定冻结实现提交`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者职责独立且共同进入任务闭环。
 
 ## 验证结果与恢复链
 
 #341实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`已真实通过完整工程矩阵：Quality Run `31325332376`、Security Run `31325332269`、Performance Run `31325332252`均成功，包含Unit、Integration、Migration、Coverage、Electron E2E和三平台package smoke。
 
-随后#341 Ready最新Quality因Verified Evidence Scan把当前IMPLEMENTED Runtime错误解析为历史任务而失败；PR进入main后，Main Verification正确拒绝该来源并将`main-verification`与`task-verification/M10-22`发布为failure。因此M10-22有效状态保持`VERIFICATION_PENDING`，Work Synchronization与Branch Hygiene也没有完成。
+随后#341 Ready最新Quality因Verified Evidence Scan把当前IMPLEMENTED Runtime错误解析为历史任务而失败；PR进入main后，Main Verification正确拒绝该来源并将`main-verification`与`task-verification/M10-22`发布为failure。因此#341没有形成M10-22的有效Verified事实，Work Synchronization与Branch Hygiene也没有完成。
 
-#342以#341 squash main提交重新同步`work`后进行修复：
+#342以#341 squash main提交重新同步`work`后完成修复：
 
-- `quality / quality`升级为顶层最终聚合Context，服务器Ruleset与Controlled Merge不再分裂。
+- `quality / quality`升级为顶层最终聚合Context，服务器Ruleset与Controlled Merge共享同一Quality权威。
 - Verified Evidence Scan收到当前PR base SHA，当前Runtime不再走历史来源解析。
+- 顶层`quality.yml`自身变化进入真实三平台package smoke路由。
 - workflow structure policy和单测锁定上述接线。
 - `docs/process/DEVELOPMENT_AUTOMATION.md`与`docs/PROJECT_EXECUTION_ENTRY.md`同步同一权威语义。
-- Draft静态Head `578b682580d7b1e6bcb70229598da9942811fa48`已通过PR Policy、Workspace、边界、Format、Lint、TypeScript以及新的顶层Quality聚合。
-- 当前使用精确全量Draft标记触发#342完整矩阵；通过后再冻结新的implementationCommit并重写Evidence/Runtime来源绑定。
+- 冻结实现提交`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`的Quality Run `31349008834`、Security Run `31349008741`、Performance Run `31349008664`全部成功。
+- Quality完整通过Release Audit、Verified Evidence Scan、最终`quality / quality`、Unit、Integration、Migration、Coverage、Electron E2E、Linux/Windows/macOS package smoke与Toolchain Export。
+- Runtime `verificationBinding.sourcePr`已更新为`342`，Evidence manifest使用Schema 2并绑定上述冻结实现提交。
 
 ## 回滚
 
@@ -168,7 +170,7 @@ pnpm test:e2e
 - [x] Recovery并发stale reclaim与SQLite Daily winner仲裁已完成并进入完整回归。
 - [x] 服务器`quality / quality`与Controlled Merge的Release Audit/package权威统一为同一最终Quality事实。
 - [x] Ready Verified Evidence扫描能区分当前IMPLEMENTED Runtime与历史Implemented任务。
-- [ ] #342完整Draft矩阵真实通过，Evidence重新绑定新的最终实现提交。
-- [ ] Runtime `sourcePr`更新为#342并完成最终Ready Evidence收口。
+- [x] #342完整Draft矩阵真实通过，Evidence重新绑定最终实现提交`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`。
+- [x] Runtime `sourcePr`更新为#342并完成最终Ready Evidence收口。
 - [ ] #342 Ready最新Quality/Security/Performance全部成功并由Controlled Merge自动合并。
 - [ ] 合并后的main-verification、task-verification/M10-22、Work Synchronization和Branch Hygiene实际闭环。

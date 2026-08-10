@@ -186,9 +186,9 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
       return { label: '审阅建议稿', run: () => void navigation.transitionToRoute('candidates') };
     if (globalStatus.id === 'proposal-pending')
       return {
-        label: '处理AI设定建议',
+        label: '打开AI审阅',
         run: () => {
-          setCanonSection('continuity');
+          setCanonSection('proposals');
           void navigation.transitionToRoute('canon');
         },
       };
@@ -297,7 +297,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
         onDataToolsSectionChange={setDataToolsSection}
         onProjectRestored={async () => {
           await refreshWorkspace();
-          setMessage('项目恢复完成，已重新读取项目上下文。');
+          setMessage('作品恢复完成，已重新读取作品上下文。');
         }}
         onWritingStatus={setMessage}
       />

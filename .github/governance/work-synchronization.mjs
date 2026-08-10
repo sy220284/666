@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 const apiRoot = 'https://api.github.com';
@@ -82,16 +83,40 @@ export function assertSynchronizedWorkRef(workRef, mainSha) {
   return finalWorkSha;
 }
 
+export async function waitForSynchronizedWorkRef(
+  readWorkRef,
+  mainSha,
+  { attempts = 20, intervalMs = 500 } = {},
+) {
+  if (!Number.isSafeInteger(attempts) || attempts < 1) throw new Error('attempts must be positive');
+  if (!Number.isSafeInteger(intervalMs) || intervalMs < 0) {
+    throw new Error('intervalMs must be a non-negative integer');
+  }
+  let last = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    last = await readWorkRef();
+    if (last?.object?.sha === mainSha) return assertSynchronizedWorkRef(last, mainSha);
+    if (attempt < attempts) await delay(intervalMs);
+  }
+  return assertSynchronizedWorkRef(last, mainSha);
+}
+
 function hasSuccessfulMainVerification(status) {
   return status?.statuses?.some(
     (entry) => entry.context === 'main-verification' && entry.state === 'success',
   );
 }
 
+async function writeReport(output, name, payload) {
+  await mkdir(output, { recursive: true });
+  await writeFile(path.join(output, name), `${JSON.stringify(payload, null, 2)}\n`);
+}
+
 async function main() {
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY || !process.env.GITHUB_EVENT_PATH) {
     throw new Error('Missing GitHub Actions environment');
   }
+  const output = process.env.WORK_SYNCHRONIZATION_OUTPUT ?? 'artifacts/work-synchronization';
   const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
   const request = synchronizationRequest(event);
   const mainSha = request.mainSha;
@@ -142,26 +167,33 @@ async function main() {
       body: JSON.stringify({ sha: mainSha, force: true }),
     });
   }
-  const finalWorkRef = await api(`/repos/${owner}/${repo}/git/ref/heads/work`);
-  const finalWorkSha = assertSynchronizedWorkRef(finalWorkRef, mainSha);
 
-  const output = process.env.WORK_SYNCHRONIZATION_OUTPUT ?? 'artifacts/work-synchronization';
-  await mkdir(output, { recursive: true });
-  await writeFile(
-    path.join(output, 'result.json'),
-    `${JSON.stringify(
-      {
-        mode: request.mode,
-        mainSha,
-        sourcePr: source.number,
-        sourceHeadSha: source.head.sha,
-        finalWorkSha,
-        decision,
-      },
-      null,
-      2,
-    )}\n`,
-  );
+  let finalWorkSha;
+  try {
+    finalWorkSha = await waitForSynchronizedWorkRef(
+      () => api(`/repos/${owner}/${repo}/git/ref/heads/work`),
+      mainSha,
+    );
+  } catch (error) {
+    await writeReport(output, 'failure.json', {
+      mode: request.mode,
+      mainSha,
+      sourcePr: source.number,
+      sourceHeadSha: source.head.sha,
+      decision,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+
+  await writeReport(output, 'result.json', {
+    mode: request.mode,
+    mainSha,
+    sourcePr: source.number,
+    sourceHeadSha: source.head.sha,
+    finalWorkSha,
+    decision,
+  });
   console.log(`Work synchronization ${decision.action}: ${decision.reason}; postcondition passed.`);
 }
 

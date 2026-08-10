@@ -17,12 +17,22 @@ type IsExact<A, B> =
     : false;
 
 const bridgeSurfaceIsExact: IsExact<PublicWorldforgeBridge, InternalWorldforgeBridge> = true;
-const APPROVED_RUNTIME_EXPORT_ADDITIONS = ['CentralBridgeCommandSchema'] as const;
+const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
+  'AIReviewCatalogSchema',
+  'AIReviewSummarySchema',
+  'CentralBridgeCommandSchema',
+  'ReviewProposalActionabilitySchema',
+  'ReviewProposalConfidenceSchema',
+  'ReviewProposalFreshnessSchema',
+  'ReviewProposalSchema',
+  'ReviewProposalTargetSchema',
+  'ReviewProposalTypeSchema',
+] as const;
 const BASELINE = {
   protocolVersion: 1,
   ipcChannelCount: 97,
   appCommandCount: 96,
-  runtimeExportCount: 836,
+  runtimeExportCount: 844,
   legacySurfaceSha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 
@@ -44,7 +54,7 @@ function legacyPublicSurfaceDigest(): string {
 }
 
 describe('AR-08 contracts public surface', () => {
-  it('preserves the legacy surface and admits only the approved central schema name', () => {
+  it('preserves the legacy surface and admits only explicitly approved additive schemas', () => {
     expect(publicContracts.PROTOCOL_VERSION).toBe(BASELINE.protocolVersion);
     expect(Object.keys(publicContracts.IPC_CHANNELS)).toHaveLength(BASELINE.ipcChannelCount);
     expect(Object.keys(publicContracts.APP_COMMANDS)).toHaveLength(BASELINE.appCommandCount);
@@ -53,6 +63,8 @@ describe('AR-08 contracts public surface', () => {
     expect(publicContracts.RegisteredCommandSchema).toBe(
       publicContracts.CentralBridgeCommandSchema,
     );
+    expect(publicContracts.ReviewProposalSchema).toBeDefined();
+    expect(publicContracts.AIReviewCatalogSchema).toBeDefined();
   });
 
   it('keeps the source compatibility root wired to the split modules', () => {

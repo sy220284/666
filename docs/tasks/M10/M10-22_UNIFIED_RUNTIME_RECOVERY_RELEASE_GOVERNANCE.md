@@ -22,7 +22,7 @@
 - Renderer使用request lane owner与pending单一状态所有权。
 - Provider在IPC与持久化边界使用协议白名单Schema。
 - Release只相信当前main、产品门禁、真实产物和发行信任证据。
-- Controlled Merge只相信当前Head最新Workflow Run，不能复用同SHA旧Draft绿灯。
+- 服务器Ruleset与Controlled Merge共享同一个最终`quality / quality`权威；Controlled Merge另外验证最新Workflow Run新鲜度。
 - Schema 2任务只由`task-verification/<TASK-ID>`把`IMPLEMENTED`提升为有效`VERIFIED`。
 
 保留SQLite单写队列、正文原子写入、Revision/Hash、Candidate/Version、Provider CredentialBroker、SSRF防护和现有三平台便携包内核。
@@ -73,7 +73,9 @@
 ### F. Automated Verification Authority
 
 - 永久工程Context保持`pr-policy / quality / quality / security / performance`四项，不重新增加Task Governance或Evidence阻塞。
-- `quality / release-audit`与`quality / package-smoke`作为最新Quality Workflow Run内部必过Job，由Controlled Merge显式复核。
+- 服务器可见`quality / quality`必须是Quality顶层最终聚合门，同时依赖Core Quality、`quality / release-audit`与`quality / package-smoke`；Release Audit失败不得留下可用于原生合并的Quality绿灯。
+- Controlled Merge继续读取当前Head最新Quality、Security、Performance Workflow Run，并交叉复核Quality内部三个权威Job；这层只负责验证轮次新鲜度，不能与服务器Ruleset形成第二套业务门禁。
+- Ready Verified Evidence扫描必须显式传入当前PR `base.sha`，当前Schema 2 IMPLEMENTED Runtime在合并前排除历史`task-verification`解析，历史Implemented任务保持严格来源提交核验。
 - Draft可用精确全量验证控制标记提前跑完整矩阵，但Draft结果永远不能成为Ready合并凭据。
 - Ready即使不改变Head SHA，也必须以最新Quality/Security/Performance Workflow Run重新判定；旧Draft成功Context不得复用。
 - Main Verification再次复核来源Head的最新Workflow Run。
@@ -127,18 +129,24 @@ pnpm test:e2e
 
 保存到：`docs/test-evidence/M10-22/`
 
-Evidence绑定最终实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`；历史Runtime、Migration和Evidence保持冻结。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者不得混为一套门禁。
+#341中的Evidence曾绑定实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`，该实现矩阵本身真实通过；但#341来源Ready Quality失败，合并后的`main-verification`和`task-verification/M10-22`均失败，因此该Evidence不能证明任务已经Verified。
 
-## 验证结果
+#342修复最终Quality权威与Ready Evidence当前Runtime识别后，必须重新生成Evidence并绑定#342新的最终实现提交。`quality / release-audit`负责Ready Evidence校验；合并后的`task-verification/M10-22`负责最终任务Verified事实，两者不得混为一套门禁。
 
-最终实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`已真实通过：
+## 验证结果与恢复链
 
-- Quality Run `31325332376`：Static、Unit、Integration、Migration、Coverage、Electron E2E、Build、Linux/Windows/macOS package smoke和Release Audit全部成功。
-- Security Run `31325332269`：依赖审计、全历史Secret Scan、应用安全与聚合Security成功。
-- Performance Run `31325332252`：真实性能预算与AI协议基线成功。
-- Recovery并发回归覆盖stale lease reclaim多竞争者和SQLite同项目同日期唯一Daily winner。
-- 自动化回归覆盖同SHA Draft→Ready验证轮次新鲜度、Quality内部Release Audit/package gate、Schema 2 task-verification权威与精确Draft全量控制标记。
-- Evidence manifest、Runtime与TASK_INDEX已进入最终收口链；静态状态保持Implemented，最终有效Verified由合并后的`task-verification/M10-22`证明。
+#341实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`已真实通过完整工程矩阵：Quality Run `31325332376`、Security Run `31325332269`、Performance Run `31325332252`均成功，包含Unit、Integration、Migration、Coverage、Electron E2E和三平台package smoke。
+
+随后#341 Ready最新Quality因Verified Evidence Scan把当前IMPLEMENTED Runtime错误解析为历史任务而失败；PR进入main后，Main Verification正确拒绝该来源并将`main-verification`与`task-verification/M10-22`发布为failure。因此M10-22有效状态保持`VERIFICATION_PENDING`，Work Synchronization与Branch Hygiene也没有完成。
+
+#342以#341 squash main提交重新同步`work`后进行修复：
+
+- `quality / quality`升级为顶层最终聚合Context，服务器Ruleset与Controlled Merge不再分裂。
+- Verified Evidence Scan收到当前PR base SHA，当前Runtime不再走历史来源解析。
+- workflow structure policy和单测锁定上述接线。
+- `docs/process/DEVELOPMENT_AUTOMATION.md`与`docs/PROJECT_EXECUTION_ENTRY.md`同步同一权威语义。
+- Draft静态Head `578b682580d7b1e6bcb70229598da9942811fa48`已通过PR Policy、Workspace、边界、Format、Lint、TypeScript以及新的顶层Quality聚合。
+- 当前使用精确全量Draft标记触发#342完整矩阵；通过后再冻结新的implementationCommit并重写Evidence/Runtime来源绑定。
 
 ## 回滚
 
@@ -155,9 +163,12 @@ Evidence绑定最终实现提交`f55bde319b5ba2b32db0b5d4513ea9a0a833a502`；历
 - [x] Dictionary mutation与reload竞态不再产生旧UI或提前解除pending。
 - [x] Provider未知options不能写入SQLite，历史配置完成白名单归一化。
 - [x] Release不再读取Task Runtime作为权威；unsigned stable被硬阻断，prerelease策略必须显式。
-- [x] Controlled Merge代码恢复最新Workflow Run校验，Quality最新轮次要求Release Audit与package gate。
-- [x] Main Verification代码恢复Schema 2任务来源绑定与task-verification发布。
-- [x] Effective Status禁止TASK_INDEX把Schema 2任务静态提升为Verified。
-- [x] 自动化纠偏后的专项与完整验证矩阵真实通过，Evidence绑定最终实现提交。
-- [x] Runtime改为IMPLEMENTED、Evidence与TASK_INDEX完成最终收口。
-- [ ] Controlled Merge、Main Verification、task-verification、Work Synchronization和Branch Hygiene实际闭环。
+- [x] Controlled Merge与Main Verification只接受当前Head最新Workflow Run，旧Draft绿灯不能复用。
+- [x] Schema 2任务只由真实task-verification提升为Verified。
+- [x] Recovery并发stale reclaim与SQLite Daily winner仲裁已完成并进入完整回归。
+- [x] 服务器`quality / quality`与Controlled Merge的Release Audit/package权威统一为同一最终Quality事实。
+- [x] Ready Verified Evidence扫描能区分当前IMPLEMENTED Runtime与历史Implemented任务。
+- [ ] #342完整Draft矩阵真实通过，Evidence重新绑定新的最终实现提交。
+- [ ] Runtime `sourcePr`更新为#342并完成最终Ready Evidence收口。
+- [ ] #342 Ready最新Quality/Security/Performance全部成功并由Controlled Merge自动合并。
+- [ ] 合并后的main-verification、task-verification/M10-22、Work Synchronization和Branch Hygiene实际闭环。

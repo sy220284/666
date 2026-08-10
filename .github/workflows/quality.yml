@@ -58,7 +58,7 @@ jobs:
             else
               while IFS= read -r file; do
                 case "$file" in
-                  *.md|docs/*|.github/*|scripts/*policy.mjs|scripts/automerge.mjs|scripts/main-verification.mjs)
+                  *.md|docs/*|.github/*|scripts/*policy.mjs|scripts/automerge.mjs|scripts/main-verification.mjs|scripts/ready-closure-route.mjs|scripts/evidence-policy-entry.mjs|tests/unit/ci-*.test.ts|tests/unit/automated-verification-authority.test.ts|tests/unit/evidence-policy.test.ts)
                     ;;
                   *)
                     full_suite=true
@@ -186,6 +186,13 @@ jobs:
       - name: Assert clean working tree before release audit
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Run governance unit tests
+        run: >-
+          pnpm exec vitest run
+          tests/unit/ci-efficiency.test.ts
+          tests/unit/ci-draft-routing.test.ts
+          tests/unit/automated-verification-authority.test.ts
+          tests/unit/evidence-policy.test.ts
       - name: Run CI policy validation
         run: pnpm ci:policy
       - name: Run release configuration check

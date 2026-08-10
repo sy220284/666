@@ -119,9 +119,7 @@ export function ContinuityEditors({
     );
   };
 
-  const selectKnowledgeSourceBlock = async (
-    form: HTMLFormElement | null,
-  ): Promise<void> => {
+  const selectKnowledgeSourceBlock = async (form: HTMLFormElement | null): Promise<void> => {
     if (!form) return;
     const sourceVersionId = String(new FormData(form).get('sourceVersionId') ?? '');
     const reference = references.versions.find((version) => version.id === sourceVersionId);

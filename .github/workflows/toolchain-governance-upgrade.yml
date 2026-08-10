@@ -22,371 +22,56 @@ jobs:
         with:
           ref: chore/toolchain-governance-20260810
           fetch-depth: 0
-
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
-        with:
-          version: 11.21.0
+          persist-credentials: false
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 24.18.1
 
-      - name: Apply governed manifests, CI pins and documentation baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          import path from 'node:path';
-          import { execFileSync } from 'node:child_process';
-
-          const root = process.cwd();
-          const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
-          const write = (file, content) => fs.writeFileSync(path.join(root, file), content);
-          const updateJson = (file, mutate) => {
-            const value = JSON.parse(read(file));
-            mutate(value);
-            write(file, `${JSON.stringify(value, null, 2)}\n`);
-          };
-          const versions = {
-            node: '24.18.1',
-            pnpm: '11.21.0',
-            nodeTypes: '24.13.3',
-            electron: '43.2.0',
-            playwright: '1.62.0',
-            eslint: '10.8.0',
-            prettier: '3.9.6',
-            typescriptEslint: '8.65.0',
-            npm: execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(),
-          };
-
-          updateJson('package.json', (pkg) => {
-            pkg.packageManager = `pnpm@${versions.pnpm}`;
-            pkg.engines.node = '>=24.0.0 <25.0.0';
-            pkg.engines.pnpm = `>=${versions.pnpm} <12.0.0`;
-            pkg.scripts['toolchain:check'] = 'node scripts/toolchain-policy.mjs';
-            pkg.scripts['ci:policy'] =
-              'node scripts/toolchain-policy.mjs && node scripts/workflow-structure-policy.mjs && node scripts/ci-policy.mjs && node scripts/check-coverage-policy.mjs && node scripts/code-quality-policy.mjs';
-            Object.assign(pkg.devDependencies, {
-              '@playwright/test': versions.playwright,
-              '@types/node': versions.nodeTypes,
-              electron: versions.electron,
-              eslint: versions.eslint,
-              prettier: versions.prettier,
-              'typescript-eslint': versions.typescriptEslint,
-            });
-          });
-
-          for (const file of [
-            'apps/desktop/main/package.json',
-            'apps/desktop/preload/package.json',
-            'packages/core-service/package.json',
-            'packages/testkit/package.json',
-          ]) {
-            updateJson(file, (pkg) => {
-              if (pkg.devDependencies?.['@types/node']) pkg.devDependencies['@types/node'] = versions.nodeTypes;
-              if (pkg.devDependencies?.electron) pkg.devDependencies.electron = versions.electron;
-            });
-          }
-
-          write(
-            'pnpm-workspace.yaml',
-            `packages:\n  - apps/desktop\n  - apps/desktop/*\n  - packages/*\n\nengineStrict: true\npreferFrozenLockfile: true\nstrictPeerDependencies: true\n\nallowBuilds:\n  electron: true\n  esbuild: true\noverrides:\n  brace-expansion: 5.0.9\n  undici: 7.29.0\n\ncatalog:\n  typescript: 6.0.3\n`,
-          );
-          if (fs.existsSync(path.join(root, '.npmrc'))) fs.rmSync(path.join(root, '.npmrc'));
-
-          updateJson('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json', (authority) => {
-            authority.bundledPnpmVersion = versions.pnpm;
-            authority.nodeRuntimeVersion = versions.node;
-          });
-
-          let bundle = read('.github/governance/toolchain-bundle.mjs');
-          if (!bundle.includes("'nodeRuntimeVersion',")) {
-            bundle = bundle.replace(
-              "    'bundledPnpmVersion',\n",
-              "    'bundledPnpmVersion',\n    'nodeRuntimeVersion',\n",
-            );
-          }
-          if (!bundle.includes('nodeRuntimeVersion: authority.nodeRuntimeVersion')) {
-            bundle = bundle.replace(
-              '      generator: authority.generator,\n',
-              '      generator: authority.generator,\n      nodeRuntimeVersion: authority.nodeRuntimeVersion,\n',
-            );
-          }
-          write('.github/governance/toolchain-bundle.mjs', bundle);
-
-          const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
-            .split('\0')
-            .filter(Boolean);
-          const shaReplacements = new Map([
-            ['d23441a48e516b6c34aea4fa41551a30e30af803', 'de0fac2e4500dabe0009e67214ff5f5447ce83dd'],
-            ['b906affcce14559ad1aafd4ab0e942779e9f58b1', '0ebf47130e4866e96fce0953f49152a61190b271'],
-            ['249970729cb0ef3589644e2896645e5dc5ba9c38', '48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e'],
-          ]);
-          for (const file of tracked) {
-            const absolute = path.join(root, file);
-            if (!fs.statSync(absolute).isFile()) continue;
-            let content;
-            try {
-              content = fs.readFileSync(absolute, 'utf8');
-            } catch {
-              continue;
-            }
-            let next = content;
-            for (const [from, to] of shaReplacements) next = next.replaceAll(from, to);
-            if (next !== content) fs.writeFileSync(absolute, next);
-          }
-
-          const workflowDir = path.join(root, '.github/workflows');
-          for (const name of fs.readdirSync(workflowDir)) {
-            if ((!name.endsWith('.yml') && !name.endsWith('.yaml')) || name === 'toolchain-governance-upgrade.yml') continue;
-            const file = path.join(workflowDir, name);
-            let content = fs.readFileSync(file, 'utf8');
-            content = content
-              .replaceAll(
-                'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6',
-                'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2',
-              )
-              .replaceAll(
-                'pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v4',
-                'pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9',
-              )
-              .replaceAll(
-                'actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6',
-                'actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0',
-              )
-              .replaceAll('node-version: 24\n', `node-version: ${versions.node}\n`)
-              .replace(/\n([ \t]+)with:\n\1  version: 11\.13\.1\n/gu, '\n');
-            fs.writeFileSync(file, content);
-          }
-
-          let baselineTest = read('tests/unit/m10-full-code-audit-baseline.test.ts');
-          baselineTest = baselineTest.replace("toBe('pnpm@11.13.1')", `toBe('pnpm@${versions.pnpm}')`);
-          write('tests/unit/m10-full-code-audit-baseline.test.ts', baselineTest);
-
-          let doc = read('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md');
-          const docReplacements = [
-            ['> 状态：Approved  ', '> 状态：Approved（仓库基线已升级；持久化快照待重新导出）  '],
-            ['文档日期：2026-08-05', '文档日期：2026-08-10'],
-            ['## 3. 工具版本', '## 3. 仓库权威目标版本'],
-            ['| Node.js | 24.18.0 |', `| Node.js | ${versions.node} |`],
-            ['| npm | 11.16.0 |', `| npm | ${versions.npm} |`],
-            ['| pnpm | 11.13.1 |', `| pnpm | ${versions.pnpm} |`],
-            ['| Prettier | 3.9.5 |', `| Prettier | ${versions.prettier} |`],
-            ['| ESLint | 10.7.0 |', `| ESLint | ${versions.eslint} |`],
-            ['| typescript-eslint | 8.64.0 |', `| typescript-eslint | ${versions.typescriptEslint} |`],
-            ['| Electron | 43.1.1 |', `| Electron | ${versions.electron} |`],
-            ['| Playwright | 1.61.1 |', `| Playwright | ${versions.playwright} |`],
-            ['仓库当前要求Node `>=24.0.0`、pnpm `>=11.0.0`，并在`package.json`中锁定pnpm 11.13.1。', `仓库当前要求Node \`>=24.0.0 <25.0.0\`、pnpm \`>=${versions.pnpm} <12.0.0\`，并在\`package.json\`中锁定pnpm ${versions.pnpm}。`],
-          ];
-          for (const [from, to] of docReplacements) doc = doc.replaceAll(from, to);
-          const section = `## 3.1 2026-08-10 工具链治理升级\n\n仓库权威基线升级为 Node.js ${versions.node} LTS、pnpm ${versions.pnpm}、Electron ${versions.electron}、Playwright ${versions.playwright}、ESLint ${versions.eslint}、Prettier ${versions.prettier}、typescript-eslint ${versions.typescriptEslint}。\`@types/node\` 固定到 Node 24 类型线 ${versions.nodeTypes}；TypeScript 保持 6.0.3，继续处于 typescript-eslint 官方支持范围内。\n\n项目级 pnpm 配置统一迁入 \`pnpm-workspace.yaml\`：\`engineStrict\`、\`preferFrozenLockfile\`、\`strictPeerDependencies\` 由 workspace 文件声明。此次治理迁移先按人工核验的稳定版本重建锁文件，随后启用 \`minimumReleaseAge: 1440\`；从下一次依赖解析开始，默认延迟采用发布时间不足 24 小时的新包。紧急安全升级如需绕过，应只对精确版本作一次性例外，禁止长期保留宽泛豁免。原仅承载这三项设置的 \`.npmrc\` 删除。\n\nGitHub Actions 固定到 checkout v6.0.2、pnpm/action-setup v6.0.9、setup-node v6.4.0 的完整提交 SHA。永久 workflow 不再重复声明 pnpm 版本，由根 \`package.json#packageManager\` 提供；Node CI 运行时固定为 ${versions.node}。当前仍保留 pnpm/action-setup，暂不迁移到 pnpm/setup，以避免 pnpm 11 在 Intel macOS 独立二进制上的兼容边界影响现有跨平台打包矩阵。\n\n新增 \`pnpm toolchain:check\` 并接入 \`pnpm ci:policy\`，持续检查 packageManager、Node 运行时、工具链权威清单、pnpm workspace 安全设置、重复依赖版本及 workflow 版本来源，防止后续再次漂移。\n\n### 持久化工作空间状态\n\n本节版本表描述升级后的**仓库权威目标基线**。\`/mnt/data/666-toolchain\` 与 \`/mnt/data/666-workspace-dependencies\` 中此前导出的 2026-08-05 快照在新的 \`pnpm-lock.yaml\` 生成后立即视为 **STALE**，不得继续恢复到升级后的仓库。必须从新锁文件重新导出工具链 Artifact、校验 Hash、完成离线复验后，才能替换持久化工作空间资产；旧快照只能用于历史追溯。\n\n`;
-          if (!doc.includes('## 3.1 2026-08-10 工具链治理升级')) {
-            doc = doc.replace('## 4. 激活方式', `${section}## 4. 激活方式`);
-          }
-          write('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md', doc);
-          NODE
-
-          cat > scripts/toolchain-policy.mjs <<'EOF'
-          import { readFile, readdir } from 'node:fs/promises';
-          import path from 'node:path';
-
-          const root = process.cwd();
-          const readText = (file) => readFile(path.join(root, file), 'utf8');
-          const readJson = async (file) => JSON.parse(await readText(file));
-          const fail = (message) => {
-            throw new Error(`TOOLCHAIN_POLICY: ${message}`);
-          };
-
-          const rootPackage = await readJson('package.json');
-          const authority = await readJson('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json');
-          const expectedPnpm = authority.bundledPnpmVersion;
-          const expectedNode = authority.nodeRuntimeVersion;
-          const expectedNodeTypes = rootPackage.devDependencies['@types/node'];
-          const expectedElectron = rootPackage.devDependencies.electron;
-
-          if (rootPackage.packageManager !== `pnpm@${expectedPnpm}`) {
-            fail(`packageManager ${rootPackage.packageManager} != pnpm@${expectedPnpm}`);
-          }
-          if (!rootPackage.engines.node.includes('>=24.0.0') || !rootPackage.engines.node.includes('<25.0.0')) {
-            fail(`Node engine is not constrained to Node 24: ${rootPackage.engines.node}`);
-          }
-          if (!rootPackage.engines.pnpm.includes(expectedPnpm) || !rootPackage.engines.pnpm.includes('<12.0.0')) {
-            fail(`pnpm engine does not match governed v11 baseline: ${rootPackage.engines.pnpm}`);
-          }
-
-          const workspace = await readText('pnpm-workspace.yaml');
-          for (const setting of [
-            'engineStrict: true',
-            'preferFrozenLockfile: true',
-            'strictPeerDependencies: true',
-            'minimumReleaseAge: 1440',
-          ]) {
-            if (!workspace.includes(setting)) fail(`missing pnpm workspace setting: ${setting}`);
-          }
-
-          for (const file of [
-            'apps/desktop/main/package.json',
-            'apps/desktop/preload/package.json',
-            'packages/core-service/package.json',
-            'packages/testkit/package.json',
-          ]) {
-            const pkg = await readJson(file);
-            if (pkg.devDependencies?.['@types/node'] && pkg.devDependencies['@types/node'] !== expectedNodeTypes) {
-              fail(`${file} @types/node ${pkg.devDependencies['@types/node']} != ${expectedNodeTypes}`);
-            }
-            if (pkg.devDependencies?.electron && pkg.devDependencies.electron !== expectedElectron) {
-              fail(`${file} electron ${pkg.devDependencies.electron} != ${expectedElectron}`);
-            }
-          }
-
-          const workflowsDir = path.join(root, '.github/workflows');
-          for (const name of await readdir(workflowsDir)) {
-            if ((!name.endsWith('.yml') && !name.endsWith('.yaml')) || name === 'toolchain-governance-upgrade.yml') continue;
-            const lines = (await readFile(path.join(workflowsDir, name), 'utf8')).split('\n');
-            for (let index = 0; index < lines.length; index += 1) {
-              if (lines[index].includes('node-version:') && !lines[index].includes(expectedNode)) {
-                fail(`${name} uses a Node runtime other than ${expectedNode}: ${lines[index].trim()}`);
-              }
-              if (!lines[index].includes('pnpm/action-setup@')) continue;
-              const stepIndent = lines[index].search(/\S/u);
-              for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
-                const trimmed = lines[cursor].trim();
-                const indent = lines[cursor].search(/\S/u);
-                if (trimmed.startsWith('- ') && indent === stepIndent) break;
-                if (/^version:/u.test(trimmed)) fail(`${name} duplicates pnpm version instead of packageManager`);
-              }
-            }
-          }
-
-          console.log(
-            `Toolchain policy OK: Node ${expectedNode}; pnpm ${expectedPnpm}; @types/node ${expectedNodeTypes}; Electron ${expectedElectron}.`,
-          );
-          EOF
+      - name: Install governed pnpm runtime
+        run: npm install --global pnpm@11.21.0
 
       - name: Install Electron display dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
 
-      - name: Regenerate, validate and finalize governed toolchain
+      - name: Apply and validate governance upgrade
+        id: upgrade
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          node scripts/toolchain-governance-upgrade-runner.mjs 2>&1 | tee /tmp/toolchain-governance-validation.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/toolchain-governance-validation.log .toolchain-governance-failure.log
+          fi
+          exit "$status"
+
+      - name: Commit verified governance upgrade
+        if: ${{ success() }}
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          set +e
-          set -o pipefail
-          {
-            echo '== lockfile migration =='
-            pnpm install --lockfile-only
-            node --input-type=module <<'NODE'
-            import fs from 'node:fs';
-            const file = 'pnpm-workspace.yaml';
-            let content = fs.readFileSync(file, 'utf8');
-            if (!content.includes('minimumReleaseAge: 1440')) {
-              content = content.replace(
-                'strictPeerDependencies: true\n',
-                'strictPeerDependencies: true\nminimumReleaseAge: 1440\n',
-              );
-            }
-            fs.writeFileSync(file, content);
-            NODE
-            pnpm install --frozen-lockfile --prefer-offline
-            pnpm format
-            echo '== versions =='
-            node --version
-            npm --version
-            pnpm --version
-            pnpm exec prettier --version
-            pnpm exec eslint --version
-            pnpm exec tsc --version
-            pnpm exec playwright --version
-            pnpm exec electron --version
-            echo '== policy =='
-            pnpm toolchain:check
-            pnpm ci:policy
-            echo '== static =='
-            pnpm format:check
-            pnpm lint
-            pnpm typecheck
-            echo '== tests =='
-            pnpm test:unit
-            pnpm test:integration
-            pnpm test:migration
-            pnpm test:security
-            pnpm test:coverage
-            echo '== build and desktop e2e =='
-            pnpm build
-            pnpm test:e2e
-            echo '== packaging =='
-            pnpm package
-            echo '== release configuration =='
-            pnpm release:check
-          } 2>&1 | tee /tmp/toolchain-governance-validation.log
-          status=${PIPESTATUS[0]}
+          set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          if [ "$status" -ne 0 ]; then
-            cp /tmp/toolchain-governance-validation.log .toolchain-governance-failure.log
-            git add .toolchain-governance-failure.log
-            git commit -m "ci: record toolchain governance validation failure"
-            git push origin HEAD:chore/toolchain-governance-20260810
-            exit "$status"
-          fi
-
-          node_version="$(node --version)"
-          npm_version="$(npm --version)"
-          pnpm_version="$(pnpm --version)"
-          prettier_version="$(pnpm exec prettier --version)"
-          eslint_version="$(pnpm exec eslint --version)"
-          typescript_version="$(pnpm exec tsc --version)"
-          playwright_version="$(pnpm exec playwright --version)"
-          electron_version="$(pnpm exec electron --version)"
-          cat > docs/process/TOOLCHAIN_UPGRADE_2026-08-10.md <<EOF
-          # 2026-08-10 工具链治理升级验证记录
-
-          状态：VERIFIED
-
-          基线提交来源：main@c774f981a345c8d515bb54d1bbc908e0e4eb1731
-          治理分支：chore/toolchain-governance-20260810
-          验证环境：GitHub Actions ubuntu-24.04
-
-          ## 实际工具版本
-
-          - Node.js: ${node_version}
-          - npm: ${npm_version}
-          - pnpm: ${pnpm_version}
-          - Prettier: ${prettier_version}
-          - ESLint: ${eslint_version}
-          - TypeScript: ${typescript_version}
-          - Playwright: ${playwright_version}
-          - Electron: ${electron_version}
-
-          ## 已通过验证
-
-          - pnpm install --lockfile-only
-          - pnpm install --frozen-lockfile --prefer-offline
-          - pnpm toolchain:check
-          - pnpm ci:policy
-          - pnpm format:check
-          - pnpm lint
-          - pnpm typecheck
-          - pnpm test:unit
-          - pnpm test:integration
-          - pnpm test:migration
-          - pnpm test:security
-          - pnpm test:coverage
-          - pnpm build
-          - pnpm test:e2e
-          - pnpm package
-          - pnpm release:check
-
-          ## 结论
-
-          新依赖锁文件、Node/pnpm 运行基线、GitHub Actions 固定版本、pnpm 项目级配置和工具链权威文档已完成一致性验证。旧 /mnt/data 离线工具快照因锁文件改变必须视为 STALE，待依据新锁文件重新导出并复验后才能替换。
-          EOF
-          rm -f .toolchain-governance-failure.log .toolchain-governance-runner-ok
-          rm -f .github/workflows/toolchain-governance-upgrade.yml
           git add -A
           git commit -m "chore: upgrade and verify governed toolchain"
-          git push origin HEAD:chore/toolchain-governance-20260810
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:chore/toolchain-governance-20260810
+
+      - name: Persist failure evidence
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -f .toolchain-governance-failure.log
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add .toolchain-governance-failure.log
+          git commit -m "ci: record toolchain governance validation failure"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:chore/toolchain-governance-20260810

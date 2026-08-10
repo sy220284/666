@@ -1,4 +1,4 @@
-/* global console, process, URL */
+/* global URL */
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';

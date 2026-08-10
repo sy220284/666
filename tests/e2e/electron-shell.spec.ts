@@ -730,7 +730,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(lockButton).toBeEnabled();
     await lockButton.click();
     await expect(lockButton).toHaveAttribute('aria-pressed', 'true');
-    await expect(lockButton).toHaveText('解锁当前块');
+    await expect(lockButton).toHaveText('解锁当前段落');
     await expect(blocks.first()).toHaveAttribute('data-locked', 'true');
     expect(
       await blocks.first().evaluate((element) => getComputedStyle(element).borderInlineStartWidth),

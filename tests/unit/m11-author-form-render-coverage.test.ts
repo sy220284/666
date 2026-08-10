@@ -1,12 +1,25 @@
-import { renderToStaticMarkup } from 'react-dom/server';
+import { createRequire } from 'node:module';
+
 import { describe, expect, it } from 'vitest';
 
 import type { ContinuityCatalog } from '@worldforge/contracts';
+import type { createElement as createReactElement } from 'react';
+import type { renderToStaticMarkup as renderReactToStaticMarkup } from 'react-dom/server';
 
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import type { CanonAuthorReferences } from '../../apps/desktop/renderer/src/features/canon/canon-author-fields.js';
 import { ContinuityEditors } from '../../apps/desktop/renderer/src/features/canon/continuity-editors.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
+
+const rendererRequire = createRequire(
+  new URL('../../apps/desktop/renderer/package.json', import.meta.url),
+);
+const { createElement } = rendererRequire('react') as {
+  readonly createElement: typeof createReactElement;
+};
+const { renderToStaticMarkup } = rendererRequire('react-dom/server') as {
+  readonly renderToStaticMarkup: typeof renderReactToStaticMarkup;
+};
 
 const projectId = '11111111-1111-4111-8111-111111111111';
 const chapterId = '22222222-2222-4222-8222-222222222222';
@@ -71,7 +84,7 @@ const catalog = contractInput<ContinuityCatalog>({
 describe('M11 作者表单服务端渲染覆盖', () => {
   it('渲染动态状态、时间线和知情状态的作者可读入口', () => {
     const html = renderToStaticMarkup(
-      ContinuityEditors({
+      createElement(ContinuityEditors, {
         bridge: contractInput<RendererBridgeAdapter>({}),
         catalog,
         projectId,
@@ -96,7 +109,7 @@ describe('M11 作者表单服务端渲染覆盖', () => {
 
   it('覆盖只读状态和空引用提示', () => {
     const html = renderToStaticMarkup(
-      ContinuityEditors({
+      createElement(ContinuityEditors, {
         bridge: contractInput<RendererBridgeAdapter>({}),
         catalog: contractInput<ContinuityCatalog>({
           projectId,

@@ -188,7 +188,7 @@ test('keeps a proposal pending until the author accepts it and then exposes the 
     await proposal.locator(`[data-accept-state-proposal="${seeded.proposalId}"]`).click();
     await expect(proposal).toContainText('已采用');
     await expect(page.locator('[data-ending-snapshot="snapshot"]')).toBeVisible();
-    await expect(page.locator('[data-state-proposal-snapshot]')).toContainText('实体状态 1');
+    await expect(page.locator('[data-state-proposal-snapshot]')).toContainText('人物与世界状态 1');
 
     const accepted = await page.evaluate(async ({ projectId, chapterId, locationId }) => {
       const bridge = (

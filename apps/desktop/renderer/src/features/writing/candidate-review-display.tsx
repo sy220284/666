@@ -200,13 +200,13 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
           setEndingHook={setSkeletonEndingHook}
           setGenerationMode={setGenerationMode}
           setSelectedSkeletonId={setSelectedSkeletonId}
-          setTendency={setSkeletonTendency}
+          setTendency={skeletonTendency}
           tendency={skeletonTendency}
         />
       ) : null}
       {preview?.candidate.completeness === 'partial' ? (
         <div className="safety-inline partial-candidate-actions" data-candidate-preview-warning>
-          <span>不完整建议稿只能按正文块或场景节拍采用，不能整稿替换。</span>
+          <span>不完整建议稿只能按正文段落或场景采用，不能整稿替换。</span>
           {preview.candidate.generationRunId ? (
             <button
               data-continue-partial-candidate
@@ -247,8 +247,8 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
                 <option value="all" disabled={preview.candidate.completeness === 'partial'}>
                   整稿
                 </option>
-                <option value="blocks">按块</option>
-                <option value="scene-beats">按场景节拍</option>
+                <option value="blocks">按正文段落</option>
+                <option value="scene-beats">按场景</option>
               </select>
             </label>
             {selectionMode === 'blocks' ? (
@@ -268,7 +268,7 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
                         )
                       }
                     />
-                    块 {index + 1} · {block.text.slice(0, 80)}
+                    正文段落 {index + 1} · {block.text.slice(0, 80)}
                   </label>
                 ))}
               </div>

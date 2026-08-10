@@ -186,7 +186,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
       return { label: '审阅建议稿', run: () => void navigation.transitionToRoute('candidates') };
     if (globalStatus.id === 'proposal-pending')
       return {
-        label: '处理设定更新建议',
+        label: '处理AI设定建议',
         run: () => {
           setCanonSection('continuity');
           void navigation.transitionToRoute('canon');

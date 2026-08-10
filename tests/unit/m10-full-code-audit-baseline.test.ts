@@ -46,7 +46,7 @@ describe('M10-02 full-code audit baseline', () => {
     const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')) as {
       packageManager?: string;
     };
-    expect(packageJson.packageManager).toBe('pnpm@11.13.1');
+    expect(packageJson.packageManager).toBe('pnpm@11.21.0');
 
     const workflowFiles = await collectFiles('.github');
     const stalePins: string[] = [];

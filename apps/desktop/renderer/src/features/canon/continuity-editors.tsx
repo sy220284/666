@@ -1,10 +1,11 @@
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import type { ContinuityCatalog } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { useDraftBlockPicker } from '../writing/draft-block-picker.js';
 import {
   ChapterNameSelect,
   COMMON_STATE_FIELDS,
@@ -34,6 +35,10 @@ export function ContinuityEditors({
   readonly onRefresh: () => Promise<void>;
 }) {
   const command = useBridgeCommand(onRefresh);
+  const sourceCommand = useBridgeCommand();
+  const { pickBlockAnchor, picker } = useDraftBlockPicker();
+  const [knowledgeSourceBlockId, setKnowledgeSourceBlockId] = useState<string | null>(null);
+  const [knowledgeSourceBlockLabel, setKnowledgeSourceBlockLabel] = useState<string | null>(null);
 
   const setEntityState = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -108,9 +113,44 @@ export function ContinuityEditors({
         validFromChapterId: String(values.get('validFromChapterId')),
         validUntilChapterId: nullableString(values.get('validUntilChapterId')),
         sourceVersionId: nullableString(values.get('sourceVersionId')),
-        sourceLogicalBlockId: nullableString(values.get('sourceLogicalBlockId')),
+        sourceLogicalBlockId: knowledgeSourceBlockId,
         notes: String(values.get('notes') ?? ''),
       }),
+    );
+  };
+
+  const selectKnowledgeSourceBlock = async (form: HTMLFormElement | null): Promise<void> => {
+    if (!form) return;
+    const sourceVersionId = String(new FormData(form).get('sourceVersionId') ?? '');
+    const reference = references.versions.find((version) => version.id === sourceVersionId);
+    if (!reference) return;
+    const version = await sourceCommand.run(() =>
+      bridge.version.get(
+        {
+          projectId,
+          chapterId: reference.chapterId,
+          versionId: reference.id,
+        },
+        { mode: 'replace' },
+      ),
+    );
+    if (!version) return;
+    const selectedId = await pickBlockAnchor({
+      title: '选择知情状态的来源正文',
+      description: '直接选择人物获得、相信或误解这条信息的原文段落。内部标识由系统保存。',
+      blocks: version.blocks.map((block) => ({
+        logicalBlockId: block.logicalBlockId,
+        text: block.text,
+        locked: false,
+      })),
+      initialId: knowledgeSourceBlockId,
+      labelMode: 'select',
+    });
+    if (!selectedId) return;
+    const selectedIndex = version.blocks.findIndex((block) => block.logicalBlockId === selectedId);
+    setKnowledgeSourceBlockId(selectedId);
+    setKnowledgeSourceBlockLabel(
+      selectedIndex >= 0 ? `第 ${selectedIndex + 1} 段` : '已选择原文段落',
     );
   };
 
@@ -141,7 +181,6 @@ export function ContinuityEditors({
               <option value="number">数字</option>
               <option value="boolean">是 / 否</option>
               <option value="list">多项内容</option>
-              <option value="json">原始JSON（高级）</option>
             </select>
           </label>
           <label>
@@ -157,7 +196,7 @@ export function ContinuityEditors({
             <ChapterNameSelect name="validUntilChapterId" references={references} />
           </label>
           <label>
-            依据的定稿版本
+            依据的定稿
             <FinalVersionSelect name="sourceVersionId" references={references} required />
           </label>
           <details>
@@ -303,16 +342,38 @@ export function ContinuityEditors({
             <ChapterNameSelect name="validUntilChapterId" references={references} />
           </label>
           <label>
-            依据的定稿版本
-            <FinalVersionSelect name="sourceVersionId" references={references} />
+            依据的定稿
+            <FinalVersionSelect
+              name="sourceVersionId"
+              references={references}
+              onChange={() => {
+                setKnowledgeSourceBlockId(null);
+                setKnowledgeSourceBlockLabel(null);
+              }}
+            />
           </label>
-          <details>
-            <summary>高级来源定位</summary>
-            <label>
-              来源正文块内部标识
-              <input name="sourceLogicalBlockId" />
-            </label>
-          </details>
+          <div className="inline-actions">
+            <button
+              data-select-knowledge-source-block
+              disabled={readOnly || sourceCommand.pending}
+              type="button"
+              onClick={(event) => void selectKnowledgeSourceBlock(event.currentTarget.form)}
+            >
+              选择来源正文段落
+            </button>
+            {knowledgeSourceBlockId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setKnowledgeSourceBlockId(null);
+                  setKnowledgeSourceBlockLabel(null);
+                }}
+              >
+                清除来源段落
+              </button>
+            ) : null}
+            <span>{knowledgeSourceBlockLabel ?? '可选：尚未指定原文段落'}</span>
+          </div>
           <label>
             备注
             <textarea name="notes" />
@@ -346,6 +407,10 @@ export function ContinuityEditors({
         </div>
       </details>
       {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
+      {sourceCommand.error ? (
+        <p className="form-error">{authorErrorSummary(sourceCommand.error)}</p>
+      ) : null}
+      {picker}
     </div>
   );
 }

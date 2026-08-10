@@ -67,7 +67,7 @@ export function PlanningWorkbench(props: PlanningWorkbenchProps) {
     <>
       {returnLocation ? (
         <section className="feature-card navigation-return" data-navigation-return role="status">
-          <span>已从来源页面打开目标场景节拍。</span>
+          <span>已从来源页面打开目标场景。</span>
           <button type="button" onClick={props.onReturn}>
             返回来源页面
           </button>
@@ -75,11 +75,11 @@ export function PlanningWorkbench(props: PlanningWorkbenchProps) {
       ) : null}
       {selectedSceneBeatId ? (
         <section className="feature-card" data-scene-beat-navigation={selectedSceneBeatId}>
-          <h2>目标场景节拍</h2>
-          {target.status === 'loading' ? <p>正在读取目标场景节拍…</p> : null}
+          <h2>目标场景</h2>
+          {target.status === 'loading' ? <p>正在读取目标场景…</p> : null}
           {target.status === 'failed' ? <p>{target.message}</p> : null}
           {target.status === 'missing' ? (
-            <p>目标场景节拍已经变化或被删除，系统保留来源上下文。</p>
+            <p>目标场景已经变化或被删除，系统保留来源上下文。</p>
           ) : null}
           {target.status === 'ready' ? (
             <article>

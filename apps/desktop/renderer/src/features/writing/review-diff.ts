@@ -518,6 +518,6 @@ export function candidateCompletenessLabel(completeness: CandidateSummary['compl
 
 export function sceneBeatReviewLabel(beats: readonly SceneBeat[], beatId: string): string {
   const beat = beats.find((item) => item.id === beatId);
-  if (!beat) return '场景节拍已变化';
+  if (!beat) return '场景已变化';
   return beat.goal ? `${beat.title} · ${beat.goal}` : beat.title;
 }

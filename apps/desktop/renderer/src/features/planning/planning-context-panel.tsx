@@ -32,8 +32,8 @@ export function PlanningContextPanel({
       </section>
       <section className="feature-card">
         <h2>权威边界</h2>
-        <p>作品任务书、大纲节点与场景节拍均属于规划；正文块移动需要单独预览与确认。</p>
-        <p>动态状态和设定更新建议不会在此自动确认为已确认设定。</p>
+        <p>作品核心、大纲节点与场景均属于规划；正文段落移动需要单独预览与确认。</p>
+        <p>动态状态和AI设定建议不会在此自动确认为已确认设定。</p>
       </section>
       <section className="feature-card">
         <h2>伏笔与弧光摘要</h2>

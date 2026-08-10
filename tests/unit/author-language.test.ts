@@ -23,18 +23,24 @@ import {
 describe('正式中文名称', () => {
   it('为核心写作概念提供唯一中文名称', () => {
     expect(authorTerm('draft')).toBe('当前稿');
+    expect(authorTerm('draftBlock')).toBe('正文段落');
     expect(authorTerm('version')).toBe('历史版本');
-    expect(authorTerm('candidate')).toBe('建议稿');
+    expect(authorTerm('finalVersion')).toBe('定稿');
+    expect(authorTerm('candidate')).toBe('AI建议稿');
     expect(authorTerm('provider')).toBe('AI连接');
-    expect(authorTerm('stateProposal')).toBe('设定更新建议');
-    expect(authorTerm('validation')).toBe('作品检查');
+    expect(authorTerm('projectBrief')).toBe('作品核心');
+    expect(authorTerm('sceneBeat')).toBe('场景');
+    expect(authorTerm('canon')).toBe('人物与世界');
+    expect(authorTerm('stateProposal')).toBe('AI设定建议');
+    expect(authorTerm('validation')).toBe('内容检查');
+    expect(authorTerm('storyTodo')).toBe('修改任务');
     expect(authorTerm('beginnerMode')).toBe('简明模式');
     expect(authorTerm('professionalMode')).toBe('完整模式');
   });
 
   it('技术详情保持中文名称在前并保留内部标识', () => {
     expect(technicalTermDetail('candidate', 'CandidateDocument')).toEqual({
-      authorLabel: '建议稿',
+      authorLabel: 'AI建议稿',
       internalName: 'CandidateDocument',
     });
   });

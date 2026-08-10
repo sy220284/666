@@ -571,7 +571,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
 
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文块重建。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文段落重建。');
     const editor = page.locator('[data-draft-content]');
     const blocks = editor.locator(':scope > [data-block-type]');
     await expect(editor).toHaveAttribute('contenteditable', 'true');
@@ -730,7 +730,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(lockButton).toBeEnabled();
     await lockButton.click();
     await expect(lockButton).toHaveAttribute('aria-pressed', 'true');
-    await expect(lockButton).toHaveText('解锁当前块');
+    await expect(lockButton).toHaveText('解锁当前段落');
     await expect(blocks.first()).toHaveAttribute('data-locked', 'true');
     expect(
       await blocks.first().evaluate((element) => getComputedStyle(element).borderInlineStartWidth),
@@ -780,7 +780,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.locator('[data-close-project]').click();
     await page.locator('[data-open-recent]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文块重建。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文段落重建。');
     await expect(page.locator('[data-draft-content]')).toContainText('雨落在旧站台。终风又起。');
     await expect(page.locator('[data-draft-content] > [data-locked="true"]')).toHaveCount(1);
     const reopenedIds = await page

@@ -148,8 +148,8 @@ export function useWritingEditorTools(input: UseWritingEditorToolsInput) {
     input.refreshLockState();
     input.setStatus(
       selectedWorldforgeBlockLocked(instance)
-        ? '当前正文块已锁定；修改、删除和移动将被阻止。'
-        : '当前正文块已解锁。',
+        ? '当前正文段落已锁定；修改、删除和移动将被阻止。'
+        : '当前正文段落已解锁。',
     );
   }, [input]);
 

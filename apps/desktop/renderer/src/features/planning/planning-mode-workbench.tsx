@@ -15,7 +15,7 @@ interface PlanningModeWorkbenchProps {
 }
 
 /**
- * 简明规划和完整规划共用同一份作品任务书数据。
+ * 简明规划和完整规划共用同一份作品核心数据。
  * 模式状态由上层 Settings 单一持有，本组件只展示并发出切换意图。
  */
 export function PlanningModeWorkbench({
@@ -32,7 +32,7 @@ export function PlanningModeWorkbench({
         <div className="planning-disclosure-bar">
           <div>
             <strong>完整规划模式</strong>
-            <span>完整大纲树、卷章、场景节拍和作品任务书全部字段。</span>
+            <span>查看完整大纲、卷章、场景和作品核心全部内容。</span>
           </div>
           <button
             className="quiet-button"

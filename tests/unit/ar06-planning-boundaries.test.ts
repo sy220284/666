@@ -62,7 +62,7 @@ describe('AR-06 planning boundaries', () => {
     expect(scenePanel).toContain('bridge.planning.previewMoveSceneBeat');
     expect(scenePanel).toContain('bridge.planning.moveSceneBeatAcrossChapters');
     expect(scenePanel).toContain('planHash: preview.planHash');
-    expect(scenePanel).toContain('正文块如需移动必须另行确认');
+    expect(scenePanel).toContain('正文段落如需移动必须另行确认');
     expect(scenePanel).toContain('bridge.planning.setSceneBeatBlockLinks');
     expect(sceneDialog).toContain('bridge.planning.convertBlocksToSceneBeat');
     expect(sceneDialog).toContain('data-scene-beat-entity-selector="character"');

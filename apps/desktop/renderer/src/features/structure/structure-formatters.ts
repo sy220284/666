@@ -25,8 +25,8 @@ export function chapterMeta(chapter: Chapter): string {
 
 export function previewMessage(preview: StructureOperationPreview): string {
   const lockNotice = preview.lockedLogicalBlockIds.length
-    ? ` · 锁定块 ${preview.lockedLogicalBlockIds.length}`
+    ? ` · 锁定段落 ${preview.lockedLogicalBlockIds.length}`
     : '';
   const warnings = preview.warnings.length ? ` · ${preview.warnings.join('；')}` : '';
-  return `影响正文块 ${preview.movedLogicalBlockIds.length} · 源章 ${preview.sourceBlockCount}→${preview.resultingSourceBlockCount} · 目标章 ${preview.targetBlockCount}→${preview.resultingTargetBlockCount}${lockNotice}${warnings}`;
+  return `影响正文段落 ${preview.movedLogicalBlockIds.length} · 源章 ${preview.sourceBlockCount}→${preview.resultingSourceBlockCount} · 目标章 ${preview.targetBlockCount}→${preview.resultingTargetBlockCount}${lockNotice}${warnings}`;
 }

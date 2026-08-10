@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version: 24.18.1
       - name: Assert clean final main checkout
         run: node .github/governance/assert-clean-tree.mjs
       - name: Verify final main commit and source PR checks
@@ -90,7 +90,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version: 24.18.1
       - name: Assert clean status publisher checkout
         run: node .github/governance/assert-clean-tree.mjs
       - name: Publish final main verification status
@@ -116,7 +116,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version: 24.18.1
       - name: Self-test synchronization guards
         run: node .github/governance/work-synchronization.mjs self-test
       - name: Synchronize verified work
@@ -148,7 +148,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version: 24.18.1
       - name: Self-test branch inventory policy
         run: node .github/governance/branch-inventory-policy.mjs self-test
       - name: Repair and enforce exact main/work branch inventory

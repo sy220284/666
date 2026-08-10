@@ -571,7 +571,7 @@ function TextIoPanel({
                     }
                   />
                 </label>
-                <span>{chapter.blocks.length} 个正文块</span>
+                <span>{chapter.blocks.length} 个正文段落</span>
                 <div className="inline-actions">
                   <button
                     data-import-plan-action="split"
@@ -605,7 +605,7 @@ function TextIoPanel({
       </div>
       <div className="feature-card">
         <h2>历史版本与整书导出</h2>
-        <p>只导出明确选择的历史版本；整书导出会一次选择全部定稿版本，不读取未定稿当前稿。</p>
+        <p>只导出明确选择的历史版本；整书导出会一次选择全部定稿，不读取未定稿当前稿。</p>
         <div className="inline-actions export-selection-actions">
           <button
             data-select-finalized-versions

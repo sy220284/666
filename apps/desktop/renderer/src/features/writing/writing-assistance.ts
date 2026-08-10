@@ -187,11 +187,11 @@ export async function loadWritingAssistance(
 
   const structureData = successData(structure, '卷章目录', warnings);
   const outlineData = successData(outline, '故事大纲', warnings);
-  const beatData = successData(beats, '场景节拍', warnings);
+  const beatData = successData(beats, '场景', warnings);
   const entityData = successData(entities, '人物设定', warnings);
   const continuityData = successData(continuity, '人物动态状态', warnings);
   const narrativeData = successData(narrative, '伏笔与成长线', warnings);
-  const validationData = successData(validation, '写作待办', warnings);
+  const validationData = successData(validation, '修改任务', warnings);
 
   const chapters = structureData?.volumes.flatMap((volume) => volume.chapters) ?? [];
   const chapterIndex = chapters.findIndex((chapter) => chapter.id === chapterId);
@@ -261,7 +261,7 @@ async function loadPreviousEnding(
         source: 'final-version',
       };
     }
-    warnings.push('上一章定稿版本暂时无法读取');
+    warnings.push('上一章定稿暂时无法读取');
   }
 
   const draft = await bridge.draft.open({ projectId, chapterId: chapter.id }, { mode: 'replace' });

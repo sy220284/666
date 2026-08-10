@@ -24,6 +24,6 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version: 24.18.1
       - name: Audit task metadata without blocking pull requests
         run: node .github/governance/single-work-taskctl.mjs validate

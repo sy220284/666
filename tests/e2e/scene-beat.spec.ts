@@ -131,7 +131,7 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
     await page.locator('[data-save-scene-beat]').click();
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('[data-scene-beat-list]')).toContainText('发现第一条反证');
-    await expect(page.locator('[data-planning-status]')).toContainText('场景节拍已保存');
+    await expect(page.locator('[data-planning-status]')).toContainText('场景已保存');
 
     const saved = await page.evaluate(async ({ projectId, chapterId }) => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
@@ -150,7 +150,7 @@ test('creates and deletes a SceneBeat with entity selectors while preserving Dra
       .locator('[data-scene-beat-list] .scene-beat-card')
       .getByRole('button', { name: '删除' })
       .click();
-    await expect(page.locator('[data-scene-beat-list]')).toContainText('当前章节尚无场景节拍');
+    await expect(page.locator('[data-scene-beat-list]')).toContainText('当前章节尚无场景');
     await expect(page.locator('[data-deleted-scene-beat-list]')).toContainText('发现第一条反证');
 
     const after = await page.evaluate(async ({ projectId, chapterId }) => {

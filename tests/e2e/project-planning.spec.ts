@@ -35,7 +35,7 @@ test.afterEach(async () => {
   );
 });
 
-test('skips and completes ProjectBrief, drags PlotNodes, and leaves Draft unchanged', async () => {
+test('skips and completes 作品核心, drags PlotNodes, and leaves Draft unchanged', async () => {
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-planning-e2e-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'projects');
@@ -87,7 +87,7 @@ test('skips and completes ProjectBrief, drags PlotNodes, and leaves Draft unchan
     await briefForm.locator('textarea[name="required"]').fill('每卷回收线索\n主角保有选择权');
     await briefForm.locator('textarea[name="forbidden"]').fill('无代价复活');
     await page.locator('[data-save-brief]').click();
-    await expect(page.locator('[data-planning-status]')).toContainText('任务书已保存');
+    await expect(page.locator('[data-planning-status]')).toContainText('作品核心已保存');
 
     const createNode = async (title: string, type: 'volume' | 'arc' | 'chapter') => {
       await page.locator('[data-create-root-plot-node]').click();

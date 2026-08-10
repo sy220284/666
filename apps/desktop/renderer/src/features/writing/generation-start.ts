@@ -145,7 +145,7 @@ function validateGenerationInput(input: GenerationStartInput): boolean {
     input.chapterSource === 'canonical_scene_beats' &&
     input.sceneBeats.length === 0
   )
-    return fail('当前章节没有可用于生成的场景节拍。');
+    return fail('当前章节没有可用于生成的场景。');
   if (input.generationMode === 'rewrite' && !input.generationInstruction.trim())
     return fail('请填写改写指令。');
   return true;
@@ -208,7 +208,7 @@ async function buildRewriteIntent(input: GenerationStartInput): Promise<Generati
   const anchor = await input.getRewriteSelectionAnchor();
   const eligible = input.draft.blocks.filter((block) => !block.locked && block.contentHash);
   if (!anchor && eligible.length === 0) {
-    input.setStatus('没有可改写的未锁定正文块。');
+    input.setStatus('没有可改写的未锁定正文段落。');
     return null;
   }
   return {
@@ -303,7 +303,7 @@ async function buildMergeIntent(input: GenerationStartInput): Promise<Generation
     mapping.mappingType === 'beat' &&
     mapping.units.some((unit) => !unit.keepCurrentDraft && unit.sourceBlockIds.length === 0)
   ) {
-    input.setStatus('所选建议稿没有关联到对应场景节拍的正文块，请改用分段融合。');
+    input.setStatus('所选建议稿没有关联到对应场景的正文段落，请改用分段融合。');
     return null;
   }
   return {

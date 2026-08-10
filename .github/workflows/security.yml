@@ -46,12 +46,10 @@ jobs:
           echo "run=$run" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         if: ${{ steps.route.outputs.run == 'true' }}
-        with:
-          version: 11.13.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: ${{ steps.route.outputs.run == 'true' }}
         with:
-          node-version: 24
+          node-version: 24.18.1
           cache: pnpm
       - name: Clean tree before dependency audit
         run: node .github/governance/assert-clean-tree.mjs
@@ -81,7 +79,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24
+          node-version: 24.18.1
       - name: Clean tree before repository secret scan
         run: node .github/governance/assert-clean-tree.mjs
       - name: Scan repository secrets
@@ -144,12 +142,10 @@ jobs:
           echo "run=$run" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         if: ${{ steps.route.outputs.run == 'true' }}
-        with:
-          version: 11.13.1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: ${{ steps.route.outputs.run == 'true' }}
         with:
-          node-version: 24
+          node-version: 24.18.1
           cache: pnpm
       - name: Clean tree before application checks
         run: node .github/governance/assert-clean-tree.mjs

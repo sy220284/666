@@ -58,7 +58,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     // Prepare the two-block Draft through the actual editor so Renderer and Core share one state path.
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文块重建。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文段落重建。');
     const editor = page.locator('[data-draft-content]');
     const blocks = editor.locator(':scope > [data-block-type]');
     await expect(blocks).toHaveCount(1);
@@ -100,12 +100,16 @@ test('previews split and permanent delete, blocks current chapter references, an
 
     // Exercise the real UI command and verify stale structure reads cannot overwrite its result.
     await page.evaluate(() => {
-      const answers = ['拆出章节', '1'];
-      window.prompt = () => answers.shift() ?? null;
+      window.prompt = () => '拆出章节';
       window.confirm = () => true;
     });
 
     await page.locator('.chapter-node').first().locator('[data-split-chapter]').click();
+    const splitPicker = page.locator('[data-draft-block-picker]');
+    await expect(splitPicker).toBeVisible();
+    await expect(splitPicker.locator('[data-draft-block-choice]')).toHaveCount(1);
+    await splitPicker.locator('[data-confirm-draft-block-picker]').click();
+    await expect(splitPicker).not.toBeVisible();
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
     await captureAcceptanceScreenshot(page, 'M2-04', 'split-chapter-result.png');

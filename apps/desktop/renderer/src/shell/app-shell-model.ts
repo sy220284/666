@@ -91,9 +91,9 @@ const PRIMARY_NAVIGATION_DEFINITIONS = [
   {
     id: 'canon',
     route: 'canon',
-    label: '设定',
-    beginnerDescription: '管理人物、地点和关键设定',
-    professionalDescription: `人物、地点、${authorTerm('canon')}、动态状态、时间线、知情状态与伏笔`,
+    label: authorTerm('canon'),
+    beginnerDescription: '管理人物、地点、关系和世界设定',
+    professionalDescription: '人物、地点、组织、动态状态、时间线、知情状态、伏笔与人物成长线',
     requiresProject: true,
   },
   {

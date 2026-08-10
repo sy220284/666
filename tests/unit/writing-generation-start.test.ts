@@ -98,10 +98,7 @@ describe('Writing生成启动编排', () => {
     [{ generationMode: 'skeleton', chapterGoal: '' }, '请先填写本章目标。'],
     [{ chapterGoal: '' }, '直接生成正文需要本章目标。'],
     [{ chapterSource: 'skeleton_candidate', selectedSkeletonId: '' }, '请选择一个骨架候选。'],
-    [
-      { chapterSource: 'canonical_scene_beats', sceneBeats: [] },
-      '当前章节没有可用于生成的场景节拍。',
-    ],
+    [{ chapterSource: 'canonical_scene_beats', sceneBeats: [] }, '当前章节没有可用于生成的场景。'],
     [{ generationMode: 'rewrite', generationInstruction: '' }, '请填写改写指令。'],
   ] satisfies ReadonlyArray<readonly [Partial<StartInput>, string | undefined]>)(
     '拒绝不满足前置条件的请求 %#',
@@ -151,7 +148,7 @@ describe('Writing生成启动编排', () => {
     expect(explicit.intents[0]).toBe(override);
   });
 
-  it('组装续写与选择/正文块改写范围', async () => {
+  it('组装续写与选择/正文段落改写范围', async () => {
     const continuation = setup({
       continuationOfRunId: 'run-old',
       chapterGoal: '',
@@ -192,10 +189,10 @@ describe('Writing生成启动编排', () => {
       draft: { draftId: 'draft-a', revision: 1, blocks: [] } as StartInput['draft'],
     });
     await startGenerationTask(unavailable.input);
-    expect(unavailable.statuses.at(-1)).toBe('没有可改写的未锁定正文块。');
+    expect(unavailable.statuses.at(-1)).toBe('没有可改写的未锁定正文段落。');
   });
 
-  it('校验并组装分段与节拍融合', async () => {
+  it('校验并组装分段与场景融合', async () => {
     const tooFew = setup({ generationMode: 'merge', mergeCandidateIds: new Set(['one']) });
     await startGenerationTask(tooFew.input);
     expect(tooFew.statuses.at(-1)).toBe('融合至少需要两个明确的来源单元。');
@@ -232,7 +229,7 @@ describe('Writing生成启动编排', () => {
       mergeBeatSources: { 'beat-missing': 'candidate-a', 'beat-b': 'current_draft' },
     });
     await startGenerationTask(missingBeat.input);
-    expect(missingBeat.statuses.at(-1)).toContain('没有关联到对应场景节拍');
+    expect(missingBeat.statuses.at(-1)).toContain('没有关联到对应场景的正文段落');
   });
 
   it('处理读取失败、启动失败与取消结果', async () => {

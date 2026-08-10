@@ -5,11 +5,50 @@ import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
 const actionPins = new Map([
-  ['actions/checkout', 'd23441a48e516b6c34aea4fa41551a30e30af803'],
-  ['actions/setup-node', '249970729cb0ef3589644e2896645e5dc5ba9c38'],
-  ['actions/upload-artifact', '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'],
-  ['actions/download-artifact', '3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'],
-  ['pnpm/action-setup', 'b906affcce14559ad1aafd4ab0e942779e9f58b1'],
+  [
+    'actions/checkout',
+    {
+      preferred: 'de0fac2e4500dabe0009e67214ff5f5447ce83dd',
+      allowed: new Set([
+        'd23441a48e516b6c34aea4fa41551a30e30af803',
+        'de0fac2e4500dabe0009e67214ff5f5447ce83dd',
+      ]),
+    },
+  ],
+  [
+    'actions/setup-node',
+    {
+      preferred: '48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e',
+      allowed: new Set([
+        '249970729cb0ef3589644e2896645e5dc5ba9c38',
+        '48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e',
+      ]),
+    },
+  ],
+  [
+    'actions/upload-artifact',
+    {
+      preferred: '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
+      allowed: new Set(['043fb46d1a93c77aae656e7c1c64a875d1fc6a0a']),
+    },
+  ],
+  [
+    'actions/download-artifact',
+    {
+      preferred: '3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c',
+      allowed: new Set(['3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c']),
+    },
+  ],
+  [
+    'pnpm/action-setup',
+    {
+      preferred: '0ebf47130e4866e96fce0953f49152a61190b271',
+      allowed: new Set([
+        'b906affcce14559ad1aafd4ab0e942779e9f58b1',
+        '0ebf47130e4866e96fce0953f49152a61190b271',
+      ]),
+    },
+  ],
 ]);
 
 const fullValidationDraftMarker = '<!-- full-validation-draft -->';
@@ -38,13 +77,13 @@ function validateAction(errors, file, step) {
   const separator = step.uses.lastIndexOf('@');
   const action = separator > 0 ? step.uses.slice(0, separator) : step.uses;
   const reference = separator > 0 ? step.uses.slice(separator + 1) : '';
-  const expected = actionPins.get(action);
-  if (!expected) {
+  const policy = actionPins.get(action);
+  if (!policy) {
     errors.push(`${file}: external action ${action} is not allowlisted`);
     return;
   }
-  if (reference !== expected) {
-    errors.push(`${file}: ${action} must use immutable SHA ${expected}`);
+  if (!policy.allowed.has(reference)) {
+    errors.push(`${file}: ${action} must use immutable SHA ${policy.preferred}`);
   }
   if (action === 'actions/checkout' && step.with?.['persist-credentials'] !== false) {
     errors.push(`${file}: every checkout must set persist-credentials: false`);

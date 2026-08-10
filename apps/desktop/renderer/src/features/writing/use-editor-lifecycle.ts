@@ -186,7 +186,7 @@ export function useEditorLifecycle(input: UseEditorLifecycleInput) {
       current.refreshLockState();
       current.setEditorReady(true);
       current.setStatus(
-        current.readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从正文块重建。',
+        current.readOnly ? '只读浏览：可以选择和复制，写入已禁用。' : '已从正文段落重建。',
       );
     },
     [destroyEditor],

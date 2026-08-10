@@ -11,11 +11,12 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import type { BridgeRequestOutcome } from '../../bridge/request-lifecycle.js';
+import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorJsonValue } from '../../presentation/author-value-format.js';
 import { startSingleFlightPolling } from '../../runtime/single-flight-polling.js';
-import { useBridgeCommand, useBridgeQuery } from '../../bridge/use-bridge-resource.js';
+import { editProposalValue, proposalConfidenceLabel } from './state-proposal-author-edit.js';
 
 interface StateProposalView {
   readonly catalog: StateProposalCatalog;
@@ -116,7 +117,7 @@ export function StateProposalPanel({
         if (outcome.state !== 'success') return true;
         setActiveRun(outcome.data);
         setNotice(
-          `状态提取 · ${stateExtractionStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
+          `AI分析 · ${stateExtractionStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
         );
         if (['succeeded', 'failed', 'cancelled'].includes(outcome.data.status)) {
           setPendingExtraction(false);
@@ -126,7 +127,7 @@ export function StateProposalPanel({
         return true;
       },
       onError: () => {
-        setNotice('状态提取进度读取失败，正在重试。');
+        setNotice('AI分析进度读取失败，正在重试。');
         return true;
       },
     });
@@ -146,7 +147,7 @@ export function StateProposalPanel({
     });
     if (outcome.state === 'success') {
       setActiveRun(outcome.data.run);
-      setNotice(`AI连接状态提取已启动 · ${stateExtractionStageLabel(outcome.data.run.stage)}`);
+      setNotice(`AI分析已启动 · ${stateExtractionStageLabel(outcome.data.run.stage)}`);
     } else {
       setPendingExtraction(false);
       setNotice(outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。');
@@ -162,17 +163,13 @@ export function StateProposalPanel({
       RendererBridgeAdapter['stateProposal']['resolve']
     >[0]['resolutions'][number]['editedValue'];
     if (decision === 'edit_accept') {
-      const edited = window.prompt(
-        '请输入合法JSON作为最终值：',
-        JSON.stringify(proposal.proposedValue),
-      );
-      if (edited === null) return;
-      try {
-        editedValue = JSON.parse(edited) as NonNullable<typeof editedValue>;
-      } catch {
-        setNotice('JSON格式无效，未执行裁决。');
+      const edited = editProposalValue(proposal);
+      if (edited.state === 'cancelled') return;
+      if (edited.state === 'invalid') {
+        setNotice(edited.message);
         return;
       }
+      editedValue = edited.value as NonNullable<typeof editedValue>;
     }
     const result = await command.run(() =>
       bridge.stateProposal.resolve({
@@ -190,8 +187,8 @@ export function StateProposalPanel({
     if (result) {
       setNotice(
         decision === 'reject'
-          ? '建议已拒绝，历史记录已保留。'
-          : '作者裁决已提交，权威状态、语义失效与章节尾快照已刷新。',
+          ? '建议已忽略，历史记录仍会保留。'
+          : '作者决定已保存，相关状态和章节快照已刷新。',
       );
     }
   };
@@ -200,20 +197,20 @@ export function StateProposalPanel({
     <section className="feature-card" data-state-proposal-dialog>
       <div className="feature-card__heading">
         <div>
-          <h2>设定更新建议与章节尾快照</h2>
-          <p>等待处理的提案不会改变已确认状态，必须由作者裁决。</p>
+          <h2>AI设定建议与章节状态</h2>
+          <p>AI只负责分析和提出建议，只有作者确认后才会更新人物与世界。</p>
         </div>
         <button
           data-refresh-state-proposals
           type="button"
           onClick={() => void Promise.all([refreshStructure(), resource.refresh()])}
         >
-          读取
+          刷新
         </button>
       </div>
       <div className="filter-bar">
         <label>
-          定稿版本章节
+          定稿章节
           <select
             data-state-proposal-chapter
             value={chapterId}
@@ -223,7 +220,7 @@ export function StateProposalPanel({
             {chapters.map((item) => (
               <option disabled={!item.finalVersionId} key={item.id} value={item.id}>
                 {item.title}
-                {item.finalVersionId ? '' : '（尚无定稿版本）'}
+                {item.finalVersionId ? '' : '（尚未定稿）'}
               </option>
             ))}
           </select>
@@ -244,7 +241,7 @@ export function StateProposalPanel({
           type="button"
           onClick={() => void extractWithProvider()}
         >
-          从定稿版本提取
+          分析定稿
         </button>
         <label>
           <input
@@ -253,55 +250,55 @@ export function StateProposalPanel({
             checked={includeResolved}
             onChange={(event) => setIncludeResolved(event.target.checked)}
           />
-          包含已裁决
+          包含已处理
         </label>
       </div>
       <p className="feature-status" data-state-proposal-status>
         {command.error
-          ? `裁决失败：${authorErrorSummary(command.error)}`
+          ? `处理失败：${authorErrorSummary(command.error)}`
           : resource.error
             ? `读取失败：${authorErrorSummary(resource.error)}`
             : notice
               ? notice
               : resource.state === 'success'
-                ? `项目：${projectName} · 提案 ${catalog?.proposals.length ?? 0}`
+                ? `作品：${projectName} · 建议 ${catalog?.proposals.length ?? 0}`
                 : '读取中…'}
       </p>
       <div className="ledger-list" data-state-proposal-batches>
         {catalog?.batches.map((batch) => (
           <article className="ledger-record" key={batch.batchId}>
-            <h4>提案批次 · {stateProposalSourceLabel(batch.source)}</h4>
+            <h4>分析批次 · {stateProposalSourceLabel(batch.source)}</h4>
             <p>
-              {authorStatusLabel(batch.status)} · {batch.proposalCount} 项 · 来源定稿版本已记录
+              {authorStatusLabel(batch.status)} · {batch.proposalCount} 项 · 来源定稿已记录
             </p>
             <details>
               <summary>技术详情</summary>
               <p>来源版本标识：{batch.sourceVersionId}</p>
-              {batch.generationRunId ? <p>生成记录标识：{batch.generationRunId}</p> : null}
+              {batch.generationRunId ? <p>AI任务标识：{batch.generationRunId}</p> : null}
             </details>
           </article>
         ))}
       </div>
       <div data-state-proposal-list>
         {catalog?.proposals.length === 0 ? (
-          <p>当前没有设定更新建议。</p>
+          <p>当前没有AI设定建议。</p>
         ) : (
           catalog?.proposals.map((proposal) => (
             <article className="ledger-record" data-state-proposal={proposal.id} key={proposal.id}>
               <h4>{stateProposalTypeLabel(proposal.proposalType)}</h4>
               <p>
                 {authorStatusLabel(proposal.status)} · {stateProposalSourceLabel(proposal.source)} ·
-                可信度 {Math.round(proposal.confidence * 100)}%
+                可信度 {proposalConfidenceLabel(proposal.confidence)}
               </p>
               {proposal.freshness === 'stale' ? (
-                <p data-state-proposal-stale>来源定稿已变化 · 仅可拒绝</p>
+                <p data-state-proposal-stale>来源定稿已经变化 · 这条旧建议只能忽略</p>
               ) : (
-                <p>来源定稿有效 · 可由作者采纳或拒绝</p>
+                <p>来源定稿仍然有效 · 可以接受、修改后接受或忽略</p>
               )}
-              <p>原值：{authorJsonValue(proposal.previousValue)}</p>
-              <p>建议值：{authorJsonValue(proposal.proposedValue)}</p>
+              <p>当前记录：{authorJsonValue(proposal.previousValue)}</p>
+              <p>AI建议：{authorJsonValue(proposal.proposedValue)}</p>
               <details>
-                <summary>查看原始值技术详情</summary>
+                <summary>技术详情</summary>
                 <p>原始已确认值</p>
                 <pre>{JSON.stringify(proposal.previousValue, null, 2)}</pre>
                 <p>原始建议值</p>
@@ -323,18 +320,19 @@ export function StateProposalPanel({
                     接受
                   </button>
                   <button
+                    data-edit-accept-state-proposal={proposal.id}
                     disabled={readOnly || command.pending || proposal.actionability !== 'accept'}
                     type="button"
                     onClick={() => void resolve(proposal, 'edit_accept')}
                   >
-                    编辑后接受
+                    修改后接受
                   </button>
                   <button
                     disabled={readOnly || command.pending}
                     type="button"
                     onClick={() => void resolve(proposal, 'reject')}
                   >
-                    拒绝
+                    忽略
                   </button>
                 </div>
               ) : null}
@@ -351,7 +349,7 @@ function SnapshotSummary({ snapshot }: { readonly snapshot: EndingSnapshotReadRe
   if (!snapshot)
     return (
       <div data-state-proposal-snapshot>
-        <p>选择已有定稿版本的章节后读取章节尾快照。</p>
+        <p>选择已经定稿的章节后，可以查看该章结束时的人物与世界状态。</p>
       </div>
     );
   return (
@@ -360,15 +358,15 @@ function SnapshotSummary({ snapshot }: { readonly snapshot: EndingSnapshotReadRe
       data-ending-snapshot={snapshot.snapshotSource}
       data-state-proposal-snapshot
     >
-      <h3>章节尾快照</h3>
+      <h3>章节状态快照</h3>
       <p>
         来源：{snapshotSourceLabel(snapshot.snapshotSource)} ·{' '}
         {snapshot.snapshot ? authorStatusLabel(snapshot.snapshot.status) : '即时读取'}
       </p>
       <p>
-        实体状态 {snapshot.content.entityStates.length} · 知情{' '}
+        人物与世界状态 {snapshot.content.entityStates.length} · 知情{' '}
         {snapshot.content.knowledgeStates.length} · 伏笔 {snapshot.content.foreshadowings.length} ·
-        弧光节点 {snapshot.content.arcMilestones.length}
+        成长节点 {snapshot.content.arcMilestones.length}
       </p>
     </div>
   );
@@ -389,16 +387,16 @@ function stateExtractionStageLabel(stage: string): string {
 function stateProposalTypeLabel(type: string): string {
   const labels: Readonly<Record<string, string>> = {
     entity_state: '人物与世界状态',
-    arc_milestone: '人物弧光里程碑',
+    arc_milestone: '人物成长节点',
   };
-  return labels[type] ?? '设定更新建议';
+  return labels[type] ?? 'AI设定建议';
 }
 
 function stateProposalSourceLabel(source: string): string {
   const labels: Readonly<Record<string, string>> = {
-    rule: '确定性规则',
-    provider_stub: '确定性测试连接',
-    provider: 'AI连接',
+    rule: '系统规则',
+    provider_stub: '测试分析',
+    provider: 'AI分析',
   };
   return labels[source] ?? '未知来源';
 }
@@ -406,14 +404,14 @@ function stateProposalSourceLabel(source: string): string {
 function evidenceAnchorKindLabel(kind: string): string {
   const labels: Readonly<Record<string, string>> = {
     chapter: '章节',
-    sceneBeat: '场景节拍',
+    sceneBeat: '场景',
     version: '历史版本',
-    entity: '人物与世界设定',
-    logicalBlock: '正文位置',
+    entity: '人物与世界',
+    logicalBlock: '正文段落',
   };
   return labels[kind] ?? '来源位置';
 }
 
 function snapshotSourceLabel(source: string): string {
-  return source === 'snapshot' ? '已保存的章节尾快照' : '当前已确认状态';
+  return source === 'snapshot' ? '已保存的章节状态' : '当前已确认状态';
 }

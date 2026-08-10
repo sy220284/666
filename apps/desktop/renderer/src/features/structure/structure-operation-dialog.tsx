@@ -4,6 +4,7 @@ import type { Chapter, Volume } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, type BridgeCommand } from '../../bridge/use-bridge-resource.js';
+import { useDraftBlockPicker } from '../writing/draft-block-picker.js';
 import { previewMessage } from './structure-formatters.js';
 
 interface StructureOperationDialogProps {
@@ -36,6 +37,7 @@ export function StructureOperationDialog({
 }: StructureOperationDialogProps) {
   const command = useBridgeCommand(onRefresh);
   const previewCommand = useBridgeCommand();
+  const { pickMultipleBlocks, pickBlockAnchor, picker } = useDraftBlockPicker();
 
   const removeVolume = async (volume: Volume): Promise<void> => {
     if (!window.confirm(`将“${volume.title}”移入回收站？`)) return;
@@ -62,25 +64,24 @@ export function StructureOperationDialog({
       bridge.draft.open({ projectId, chapterId: chapter.id }, { mode: 'replace' }),
     );
     if (!draft || draft.blocks.length < 2) {
-      onStatus?.('章节至少需要两个正文块才能拆分。');
+      onStatus?.('章节至少需要两个正文段落才能拆分。');
       return;
     }
-    const rawPosition = window.prompt(
-      `在第几个正文块后拆分？请输入1—${draft.blocks.length - 1}：`,
-      String(Math.max(1, Math.floor(draft.blocks.length / 2))),
-    );
-    const position = Number(rawPosition);
-    const splitAfter = Number.isInteger(position) ? draft.blocks[position - 1] : undefined;
-    if (!splitAfter || position < 1 || position >= draft.blocks.length) {
-      onStatus?.('拆分位置无效，未修改项目。');
-      return;
-    }
+    const defaultSplitIndex = Math.max(0, Math.floor(draft.blocks.length / 2) - 1);
+    const splitAfterLogicalBlockId = await pickBlockAnchor({
+      title: `选择“${chapter.title}”的拆分位置`,
+      description:
+        '选择一个正文段落；该段及之前内容保留在本章，其后的内容进入新章节。确认后仍会显示影响预览。',
+      blocks: draft.blocks.slice(0, -1),
+      initialId: draft.blocks[defaultSplitIndex]?.logicalBlockId ?? null,
+    });
+    if (!splitAfterLogicalBlockId) return;
     const input = {
       projectId,
       chapterId: chapter.id,
       draftId: draft.draftId,
       baseRevision: draft.revision,
-      splitAfterLogicalBlockId: splitAfter.logicalBlockId,
+      splitAfterLogicalBlockId,
       newChapterTitle: title,
     };
     const preview = await previewCommand.run(() => bridge.planning.previewSplitChapter(input));
@@ -149,32 +150,27 @@ export function StructureOperationDialog({
       bridge.draft.open({ projectId, chapterId: target.id }, { mode: 'replace' }),
     ]);
     if (sourceOutcome.state !== 'success' || targetOutcome.state !== 'success') {
-      onStatus?.('正文块移动预览读取正文失败，未修改项目。');
+      onStatus?.('正文段落移动预览读取正文失败，未修改项目。');
       return;
     }
     const sourceDraft = sourceOutcome.data;
     const targetDraft = targetOutcome.data;
-    const rawIndices = window.prompt(
-      `选择从“${chapter.title}”移动的正文块序号（逗号分隔，1—${sourceDraft.blocks.length}）：`,
-      '1',
-    );
-    if (!rawIndices) return;
-    const indices = [...new Set(rawIndices.split(/[,，\s]+/u).map(Number))];
-    const logicalBlockIds = indices.flatMap((index) => {
-      const block = sourceDraft.blocks[index - 1];
-      return block ? [block.logicalBlockId] : [];
+    const logicalBlockIds = await pickMultipleBlocks({
+      title: `选择从“${chapter.title}”移动的正文段落`,
+      description: `目标章节为“${target.title}”。已锁定段落不能选择；确认后仍会进行完整预览和冲突检查。`,
+      blocks: sourceDraft.blocks,
+      disableLocked: true,
     });
-    if (logicalBlockIds.length !== indices.length) {
-      onStatus?.('正文块序号无效，未修改项目。');
-      return;
-    }
-    const afterRaw = window.prompt(
-      `插入到“${target.title}”第几个块之后？0表示开头，最多${targetDraft.blocks.length}：`,
-      String(targetDraft.blocks.length),
-    );
-    const afterIndex = Number(afterRaw);
-    if (!Number.isInteger(afterIndex) || afterIndex < 0 || afterIndex > targetDraft.blocks.length)
-      return;
+    if (!logicalBlockIds?.length) return;
+    const afterTargetLogicalBlockId = await pickBlockAnchor({
+      title: `选择插入到“${target.title}”的位置`,
+      description:
+        '选择章节开头，或选择某一正文段落之后。正文不会在此步骤直接移动，确认后先生成影响预览。',
+      blocks: targetDraft.blocks,
+      initialId: targetDraft.blocks.at(-1)?.logicalBlockId ?? null,
+      allowStart: true,
+    });
+    if (afterTargetLogicalBlockId === undefined) return;
     const input = {
       projectId,
       sourceChapterId: chapter.id,
@@ -184,7 +180,7 @@ export function StructureOperationDialog({
       targetDraftId: targetDraft.draftId,
       targetBaseRevision: targetDraft.revision,
       logicalBlockIds,
-      afterTargetLogicalBlockId: targetDraft.blocks[afterIndex - 1]?.logicalBlockId ?? null,
+      afterTargetLogicalBlockId,
     };
     const preview = await previewCommand.run(() => bridge.planning.previewMoveBlocks(input));
     if (!preview) return;
@@ -197,7 +193,7 @@ export function StructureOperationDialog({
     const result = await command.run(() =>
       bridge.planning.moveBlocks({ ...input, planHash: preview.planHash }),
     );
-    if (result) onStatus?.(`正文块已跨章移动 · 恢复点 ${result.backupId.slice(0, 8)}…`);
+    if (result) onStatus?.(`正文段落已跨章移动 · 恢复点 ${result.backupId.slice(0, 8)}…`);
   };
 
   const moveVolumeUp = async (volume: Volume, previous: Volume): Promise<void> => {
@@ -211,14 +207,19 @@ export function StructureOperationDialog({
     if (result) onStatus?.('卷顺序已更新。');
   };
 
-  return children({
-    command,
-    previewCommand,
-    mergeChapter,
-    moveBlocks,
-    moveVolumeUp,
-    removeChapter,
-    removeVolume,
-    splitChapter,
-  });
+  return (
+    <>
+      {children({
+        command,
+        previewCommand,
+        mergeChapter,
+        moveBlocks,
+        moveVolumeUp,
+        removeChapter,
+        removeVolume,
+        splitChapter,
+      })}
+      {picker}
+    </>
+  );
 }

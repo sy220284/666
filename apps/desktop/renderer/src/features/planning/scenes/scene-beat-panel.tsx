@@ -5,6 +5,7 @@ import type { Entity, PlotNode, SceneBeat } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../../bridge/use-bridge-resource.js';
 import { authorSceneBeatTypeLabel } from '../../../presentation/author-value-format.js';
+import { useDraftBlockPicker } from '../../writing/draft-block-picker.js';
 import { SceneBeatDialog } from './scene-beat-dialog.js';
 
 export function SceneBeatPanel({
@@ -40,44 +41,40 @@ export function SceneBeatPanel({
   } | null>(null);
   const command = useBridgeCommand(resource.refresh);
   const previewCommand = useBridgeCommand();
+  const { pickMultipleBlocks, picker } = useDraftBlockPicker();
 
   const remove = async (beat: SceneBeat): Promise<void> => {
-    if (!window.confirm(`删除场景节拍“${beat.title}”？正文不会变化。`)) return;
+    if (!window.confirm(`删除场景“${beat.title}”？正文不会变化。`)) return;
     const result = await command.run(() =>
       bridge.planning.deleteSceneBeat({ projectId, sceneBeatId: beat.id }),
     );
-    if (result) onStatus('场景节拍已移入已删除列表；正文未变化。');
+    if (result) onStatus('场景已移入已删除列表；正文未变化。');
   };
 
   const selectLogicalBlocks = async (
     defaultIds: readonly string[] = [],
+    allowEmpty = false,
   ): Promise<string[] | null> => {
     const draft = await previewCommand.run(() =>
       bridge.draft.open({ projectId, chapterId }, { mode: 'replace' }),
     );
     if (!draft) return null;
-    const defaultIndices = draft.blocks
-      .flatMap((block, index) => (defaultIds.includes(block.logicalBlockId) ? [index + 1] : []))
-      .join(',');
-    const raw = window.prompt(
-      `选择正文块序号（逗号分隔，1—${draft.blocks.length}）：`,
-      defaultIndices || '1',
-    );
-    if (!raw) return null;
-    const indices = [...new Set(raw.split(/[,，\s]+/u).map(Number))];
-    const ids = indices.flatMap((index) => {
-      const block = draft.blocks[index - 1];
-      return block ? [block.logicalBlockId] : [];
+    return pickMultipleBlocks({
+      title: defaultIds.length ? '选择与场景关联的正文段落' : '选择要转换为场景的正文段落',
+      description: defaultIds.length
+        ? '直接勾选正文内容。取消勾选不会删除正文，只会解除场景关联。'
+        : '直接勾选正文内容，确认后再填写场景信息。正文内容和顺序不会变化。',
+      blocks: draft.blocks,
+      initialIds: defaultIds,
+      allowEmpty,
     });
-    if (ids.length !== indices.length) {
-      onStatus('正文块序号无效，未修改场景节拍。');
-      return null;
-    }
-    return ids;
   };
 
   const setBlockLinks = async (beat: SceneBeat): Promise<void> => {
-    const ids = await selectLogicalBlocks(beat.blockLinks.map((link) => link.logicalBlockId));
+    const ids = await selectLogicalBlocks(
+      beat.blockLinks.map((link) => link.logicalBlockId),
+      true,
+    );
     if (!ids) return;
     const result = await command.run(() =>
       bridge.planning.setSceneBeatBlockLinks({
@@ -86,7 +83,7 @@ export function SceneBeatPanel({
         logicalBlockIds: ids,
       }),
     );
-    if (result) onStatus('场景节拍的正文块引用已更新；正文内容和顺序未变化。');
+    if (result) onStatus('场景的正文段落引用已更新；正文内容和顺序未变化。');
   };
 
   const moveWithinChapter = async (beat: SceneBeat, direction: -1 | 1): Promise<void> => {
@@ -105,7 +102,7 @@ export function SceneBeatPanel({
         },
       }),
     );
-    if (result) onStatus('场景节拍顺序已更新；正文未变化。');
+    if (result) onStatus('场景顺序已更新；正文未变化。');
   };
 
   const moveAcrossChapters = async (beat: SceneBeat): Promise<void> => {
@@ -115,7 +112,7 @@ export function SceneBeatPanel({
       ) ?? [];
     const targets = chapters.filter(({ chapter }) => chapter.id !== chapterId);
     if (!targets.length) {
-      onStatus('需要至少两个章节才能跨章移动场景节拍。');
+      onStatus('需要至少两个章节才能跨章移动场景。');
       return;
     }
     const choice = window.prompt(
@@ -134,27 +131,27 @@ export function SceneBeatPanel({
     };
     const preview = await previewCommand.run(() => bridge.planning.previewMoveSceneBeat(input));
     if (!preview) return;
-    const impact = `关联正文块 ${preview.linkedBlockCount} · 关联人物 ${preview.linkedCharacterCount}${preview.warnings.length ? ` · ${preview.warnings.join('；')}` : ''}`;
-    onStatus(`场景节拍跨章预览：${impact}`);
+    const impact = `关联正文段落 ${preview.linkedBlockCount} · 关联人物 ${preview.linkedCharacterCount}${preview.warnings.length ? ` · ${preview.warnings.join('；')}` : ''}`;
+    onStatus(`场景跨章预览：${impact}`);
     if (
       !preview.canExecute ||
       !window.confirm(
-        `将“${beat.title}”移动到“${target.title}”？\n${impact}\n此步骤只移动规划；正文块如需移动必须另行确认。`,
+        `将“${beat.title}”移动到“${target.title}”？\n${impact}\n此步骤只移动规划；正文段落如需移动必须另行确认。`,
       )
     )
       return;
     const result = await command.run(() =>
       bridge.planning.moveSceneBeatAcrossChapters({ ...input, planHash: preview.planHash }),
     );
-    if (result) onStatus('场景节拍已跨章移动；正文块未自动移动。');
+    if (result) onStatus('场景已跨章移动；正文段落未自动移动。');
   };
 
   return (
     <section className="feature-card">
       <div className="feature-card__heading">
         <div>
-          <h2>章节与场景节拍</h2>
-          <p>规划节拍与正文块保持显式分离。</p>
+          <h2>章节与场景</h2>
+          <p>场景规划与正文段落保持显式分离。</p>
         </div>
         <div className="inline-actions">
           <button
@@ -168,7 +165,7 @@ export function SceneBeatPanel({
               })
             }
           >
-            从正文块转换
+            从正文段落转换
           </button>
           <button
             className="primary-button"
@@ -177,12 +174,12 @@ export function SceneBeatPanel({
             type="button"
             onClick={() => setEditor({ beat: null, logicalBlockIds: [] })}
           >
-            新建场景节拍
+            新建场景
           </button>
         </div>
       </div>
       <div data-scene-beat-list>
-        {resource.data?.beats.length === 0 ? <p>当前章节尚无场景节拍。</p> : null}
+        {resource.data?.beats.length === 0 ? <p>当前章节尚无场景。</p> : null}
         {resource.data?.beats.map((beat, index) => (
           <article className="scene-beat-card" key={beat.id}>
             <div>
@@ -213,7 +210,7 @@ export function SceneBeatPanel({
                 ↓
               </button>
               <button disabled={readOnly} type="button" onClick={() => void setBlockLinks(beat)}>
-                关联正文块
+                关联正文段落
               </button>
               <button
                 disabled={readOnly}
@@ -230,7 +227,7 @@ export function SceneBeatPanel({
         ))}
       </div>
       <details>
-        <summary>已删除场景节拍</summary>
+        <summary>已删除场景</summary>
         <div data-deleted-scene-beat-list>
           {resource.data?.deletedBeats.length === 0 ? (
             <p>无</p>
@@ -267,10 +264,11 @@ export function SceneBeatPanel({
           onSaved={async () => {
             setEditor(null);
             await resource.refresh();
-            onStatus('场景节拍已保存；正文未发生变化。');
+            onStatus('场景已保存；正文未发生变化。');
           }}
         />
       ) : null}
+      {picker}
     </section>
   );
 }

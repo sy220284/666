@@ -4,10 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  evidenceImplementationCommit,
-  isAllowedFinalClosurePath,
-} from './evidence-policy.mjs';
+import { evidenceImplementationCommit, isAllowedFinalClosurePath } from './evidence-policy.mjs';
 
 const apiRoot = 'https://api.github.com';
 const fullShaPattern = /^[0-9a-f]{40}$/iu;
@@ -27,7 +24,9 @@ export function taskIdFromPullBody(body) {
 }
 
 function successfulJob(jobs, name) {
-  return jobs.find((job) => job?.name === name && job?.status === 'completed' && job?.conclusion === 'success');
+  return jobs.find(
+    (job) => job?.name === name && job?.status === 'completed' && job?.conclusion === 'success',
+  );
 }
 
 function successfulStep(job, name) {
@@ -151,9 +150,10 @@ async function closureCandidate({ pullBody, headSha, repositoryRoot = root }) {
   let manifest;
   try {
     [runtime, manifest] = await Promise.all([
-      readFile(path.join(repositoryRoot, 'docs', 'tasks', 'runtime', `${taskId}.json`), 'utf8').then(
-        JSON.parse,
-      ),
+      readFile(
+        path.join(repositoryRoot, 'docs', 'tasks', 'runtime', `${taskId}.json`),
+        'utf8',
+      ).then(JSON.parse),
       readFile(
         path.join(repositoryRoot, 'docs', 'test-evidence', taskId, 'manifest.json'),
         'utf8',
@@ -209,7 +209,8 @@ export async function readyClosureRoute({
   if (draft) return { reuseQuality: false, reason: 'pull request is Draft' };
   const candidate = await closureCandidate({ pullBody, headSha, repositoryRoot });
   if (!candidate.reusable) return { reuseQuality: false, reason: candidate.reason };
-  if (!token || !repository) return { reuseQuality: false, reason: 'GitHub Actions context is missing' };
+  if (!token || !repository)
+    return { reuseQuality: false, reason: 'GitHub Actions context is missing' };
   const run = await reusableQualityRun(token, repository, candidate.implementationCommit);
   if (!run) {
     return {

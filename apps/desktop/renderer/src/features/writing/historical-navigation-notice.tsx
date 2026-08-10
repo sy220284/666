@@ -47,7 +47,7 @@ export function HistoricalNavigationNotice({
   return (
     <section className="feature-card" data-version-navigation-context role="status">
       <h2>检查问题原文位置</h2>
-      {state.status === 'loading' ? <p>正在读取问题所依据的定稿版本…</p> : null}
+      {state.status === 'loading' ? <p>正在读取问题所依据的定稿…</p> : null}
       {state.status === 'missing' ? (
         <p>目标版本或段落已经变化。系统保留检查问题上下文，没有跳转到可能错误的正文。</p>
       ) : null}

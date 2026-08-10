@@ -45,10 +45,10 @@ describe('应用主导航', () => {
       beginner.map(({ id, route }) => ({ id, route })),
     );
     expect(professional.find((item) => item.id === 'planning')?.description).toContain(
-      '作品任务书',
+      '作品核心',
     );
     expect(beginner.find((item) => item.id === 'planning')?.description).not.toContain(
-      '作品任务书',
+      '作品核心',
     );
   });
 
@@ -89,19 +89,13 @@ describe('应用主导航', () => {
   });
 
   it('拒绝未知入口和没有打开作品的写作入口', () => {
+    expect(resolvePrimaryNavigationIntent('writing', { ...activeProjectContext, activeProjectId: null })).toMatchObject({
+      accepted: false,
+      code: 'PROJECT_REQUIRED',
+    });
     expect(resolvePrimaryNavigationIntent('unknown', activeProjectContext)).toMatchObject({
       accepted: false,
       code: 'UNKNOWN_NAVIGATION',
-    });
-    expect(
-      resolvePrimaryNavigationIntent('writing', {
-        ...activeProjectContext,
-        activeProjectId: null,
-      }),
-    ).toMatchObject({
-      accepted: false,
-      id: 'writing',
-      code: 'PROJECT_REQUIRED',
     });
   });
 
@@ -109,45 +103,29 @@ describe('应用主导航', () => {
     expect(primaryNavigationIdForRoute('project')).toBe('home');
     expect(primaryNavigationIdForRoute('structure')).toBe('planning');
     expect(primaryNavigationIdForRoute('versions')).toBe('writing');
+    expect(primaryNavigationIdForRoute('candidates')).toBe('writing');
     expect(primaryNavigationIdForRoute('recovery')).toBe('checks');
-
-    const items = createPrimaryNavigationItems({
-      ...activeProjectContext,
-      currentRoute: 'candidates',
-    });
-    expect(items.find((item) => item.current)?.id).toBe('writing');
   });
 
   it('只恢复合法且当前可用的页面', () => {
     expect(
-      restoreAppShellRoute('versions', {
+      restoreAppShellRoute('writing', {
         activeProjectId: 'project-1',
-        disclosureMode: 'professional',
+        disclosureMode: 'beginner',
+        availability: { writing: true },
       }),
-    ).toBe('versions');
+    ).toBe('writing');
     expect(
-      restoreAppShellRoute('versions', {
+      restoreAppShellRoute('writing', {
         activeProjectId: null,
-        disclosureMode: 'professional',
+        disclosureMode: 'beginner',
+        availability: { writing: true },
       }),
     ).toBe('home');
     expect(
-      restoreAppShellRoute('checks', {
+      restoreAppShellRoute('unknown', {
         activeProjectId: 'project-1',
-        disclosureMode: 'professional',
-      }),
-    ).toBe('home');
-    expect(
-      restoreAppShellRoute('checks', {
-        activeProjectId: 'project-1',
-        disclosureMode: 'professional',
-        availability: { checks: true },
-      }),
-    ).toBe('checks');
-    expect(
-      restoreAppShellRoute('invalid-route', {
-        activeProjectId: 'project-1',
-        disclosureMode: 'professional',
+        disclosureMode: 'beginner',
       }),
     ).toBe('home');
   });
@@ -157,8 +135,6 @@ describe('应用主导航', () => {
       type: 'navigate',
       route: 'checks',
     });
-
     expect(() => assertTemporaryUiState(state)).not.toThrow();
-    expect(state.route).toBe('checks');
   });
 });

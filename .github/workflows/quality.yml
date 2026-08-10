@@ -6,6 +6,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
+  actions: read
   contents: read
   statuses: read
 
@@ -22,50 +23,64 @@ jobs:
       full_suite: ${{ steps.route.outputs.full_suite }}
       package_smoke: ${{ steps.route.outputs.package_smoke }}
       toolchain_export: ${{ steps.route.outputs.toolchain_export }}
+      reuse_quality: ${{ steps.closure.outputs.reuse_quality }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Detect reusable frozen implementation Quality
+        id: closure
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_BODY: ${{ github.event.pull_request.body || '' }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/ready-closure-route.mjs
       - name: Determine PR quality route
         id: route
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REUSE_QUALITY: ${{ steps.closure.outputs.reuse_quality }}
         run: |
           set -euo pipefail
           full_suite=false
           package_smoke=false
           toolchain_export=false
-          changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
-          if [ -z "$changed_files" ]; then
-            full_suite=true
+          if [ "$REUSE_QUALITY" = true ]; then
+            echo "Frozen implementation already has a complete Quality run; validating only the closure Head."
           else
-            while IFS= read -r file; do
-              case "$file" in
-                *.md|docs/*|.github/*|scripts/*policy.mjs|scripts/automerge.mjs|scripts/main-verification.mjs)
-                  ;;
-                *)
-                  full_suite=true
-                  ;;
-              esac
-              case "$file" in
-                package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)
-                  package_smoke=true
-                  ;;
-              esac
-              case "$file" in
-                package.json|pnpm-lock.yaml|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md|.github/governance/toolchain-bundle.mjs|.github/workflows/toolchain-export.yml|.github/workflows/quality.yml)
-                  toolchain_export=true
-                  ;;
-              esac
-            done <<< "$changed_files"
+            changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
+            if [ -z "$changed_files" ]; then
+              full_suite=true
+            else
+              while IFS= read -r file; do
+                case "$file" in
+                  *.md|docs/*|.github/*|scripts/*policy.mjs|scripts/automerge.mjs|scripts/main-verification.mjs)
+                    ;;
+                  *)
+                    full_suite=true
+                    ;;
+                esac
+                case "$file" in
+                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality-core.yml)
+                    package_smoke=true
+                    ;;
+                esac
+                case "$file" in
+                  package.json|pnpm-lock.yaml|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md|.github/governance/toolchain-bundle.mjs|.github/workflows/toolchain-export.yml)
+                    toolchain_export=true
+                    ;;
+                esac
+              done <<< "$changed_files"
+            fi
           fi
           echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
           echo "package_smoke=$package_smoke" >> "$GITHUB_OUTPUT"
           echo "toolchain_export=$toolchain_export" >> "$GITHUB_OUTPUT"
-          echo "PR quality full suite: $full_suite; package smoke: $package_smoke; toolchain export: $toolchain_export"
+          echo "PR quality full suite: $full_suite; package smoke: $package_smoke; toolchain export: $toolchain_export; frozen Quality reuse: $REUSE_QUALITY"
 
   windows-native-ime:
     name: windows-native-ime

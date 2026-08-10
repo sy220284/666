@@ -19,8 +19,16 @@ interface StructureOperationDialogProps {
 interface StructureOperations {
   readonly command: BridgeCommand;
   readonly previewCommand: BridgeCommand;
-  readonly mergeChapter: (volume: Volume, chapter: Chapter, chapterIndex: number) => Promise<void>;
-  readonly moveBlocks: (volume: Volume, chapter: Chapter, chapterIndex: number) => Promise<void>;
+  readonly mergeChapter: (
+    volume: Volume,
+    chapter: Chapter,
+    chapterIndex: number,
+  ) => Promise<void>;
+  readonly moveBlocks: (
+    volume: Volume,
+    chapter: Chapter,
+    chapterIndex: number,
+  ) => Promise<void>;
   readonly moveVolumeUp: (volume: Volume, previous: Volume) => Promise<void>;
   readonly removeChapter: (chapter: Chapter) => Promise<void>;
   readonly removeVolume: (volume: Volume) => Promise<void>;
@@ -70,7 +78,8 @@ export function StructureOperationDialog({
     const defaultSplitIndex = Math.max(0, Math.floor(draft.blocks.length / 2) - 1);
     const splitAfterLogicalBlockId = await pickBlockAnchor({
       title: `选择“${chapter.title}”的拆分位置`,
-      description: '选择一个正文段落；该段及之前内容保留在本章，其后的内容进入新章节。确认后仍会显示影响预览。',
+      description:
+        '选择一个正文段落；该段及之前内容保留在本章，其后的内容进入新章节。确认后仍会显示影响预览。',
       blocks: draft.blocks.slice(0, -1),
       initialId: draft.blocks[defaultSplitIndex]?.logicalBlockId ?? null,
     });
@@ -163,7 +172,8 @@ export function StructureOperationDialog({
     if (!logicalBlockIds?.length) return;
     const afterTargetLogicalBlockId = await pickBlockAnchor({
       title: `选择插入到“${target.title}”的位置`,
-      description: '选择章节开头，或选择某一正文段落之后。正文不会在此步骤直接移动，确认后先生成影响预览。',
+      description:
+        '选择章节开头，或选择某一正文段落之后。正文不会在此步骤直接移动，确认后先生成影响预览。',
       blocks: targetDraft.blocks,
       initialId: targetDraft.blocks.at(-1)?.logicalBlockId ?? null,
       allowStart: true,

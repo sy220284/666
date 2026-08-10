@@ -269,7 +269,7 @@ export function SearchPanel({
       <div className="feature-card__heading">
         <div>
           <h2>全文搜索与安全替换</h2>
-          <p>历史版本与设定只读；替换范围只能包含正在使用的当前稿正文块。</p>
+          <p>历史版本与设定只读；替换范围只能包含正在使用的当前稿正文段落。</p>
         </div>
         <div>
           <button

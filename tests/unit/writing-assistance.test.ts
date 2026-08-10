@@ -299,7 +299,7 @@ describe('本章写作辅助聚合', () => {
     expect(view.previousEnding?.source).toBe('current-draft');
     expect(view.previousEnding?.text).toHaveLength(601);
     expect(view.previousEnding?.text.startsWith('…')).toBe(true);
-    expect(view.warnings).toContain('上一章定稿版本暂时无法读取');
+    expect(view.warnings).toContain('上一章定稿暂时无法读取');
   });
 
   it('各聚合源和上一章当前稿不可用时安全返回空集合与中文说明', async () => {

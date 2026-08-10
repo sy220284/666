@@ -93,7 +93,7 @@ export function WritingAssistancePanel({
           </section>
 
           <section>
-            <h3>场景节拍</h3>
+            <h3>场景</h3>
             {view.sceneBeats.length ? (
               <ol className="compact-list">
                 {view.sceneBeats.map((beat) => (
@@ -117,13 +117,13 @@ export function WritingAssistancePanel({
                         })
                       }
                     >
-                      前往场景节拍
+                      前往场景
                     </button>
                   </li>
                 ))}
               </ol>
             ) : (
-              <p>当前章节尚无场景节拍。</p>
+              <p>当前章节尚无场景。</p>
             )}
           </section>
 
@@ -152,12 +152,12 @@ export function WritingAssistancePanel({
                 ))}
               </div>
             ) : (
-              <p>场景节拍尚未关联人物。</p>
+              <p>场景尚未关联人物。</p>
             )}
           </section>
 
           <section>
-            <h3>伏笔与待办</h3>
+            <h3>伏笔与修改任务</h3>
             {view.foreshadowings.map((item) => (
               <article className="writing-assistance__item" key={item.id}>
                 <strong>{item.title}</strong>
@@ -185,7 +185,7 @@ export function WritingAssistancePanel({
             ))}
             {view.todos.map((todo) => (
               <article className="writing-assistance__item" key={todo.todoId}>
-                <strong>待办：{todo.title}</strong>
+                <strong>修改任务：{todo.title}</strong>
                 <button
                   type="button"
                   data-author-return-key={`writing-assistance:todo:${todo.todoId}`}
@@ -200,7 +200,7 @@ export function WritingAssistancePanel({
                     })
                   }
                 >
-                  前往待办位置
+                  前往任务位置
                 </button>
               </article>
             ))}
@@ -213,7 +213,7 @@ export function WritingAssistancePanel({
               <>
                 <p>
                   {view.previousEnding.chapterTitle} ·{' '}
-                  {view.previousEnding.source === 'final-version' ? '定稿版本' : '当前稿'}
+                  {view.previousEnding.source === 'final-version' ? '定稿' : '当前稿'}
                 </p>
                 <blockquote>{view.previousEnding.text}</blockquote>
               </>

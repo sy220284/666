@@ -82,20 +82,16 @@ describe('M11 作者可读 AI 设定建议编辑', () => {
     ).toEqual({ state: 'invalid', message: '请输入有效数字。' });
   });
 
-  it('覆盖布尔和列表的空缺默认值分支', () => {
+  it('覆盖配置列表在旧值不是数组时的空缺默认值', () => {
     const prompt = vi.fn();
     vi.stubGlobal('window', { prompt });
 
-    prompt.mockReturnValueOnce('否');
-    expect(
-      editProposalValue(proposal({ stateKey: 'custom-boolean', proposedValue: '未知' })),
-    ).toEqual({ state: 'ready', value: false });
-    expect(prompt).toHaveBeenLastCalledWith('最终内容：请输入“是”或“否”', '');
-
-    prompt.mockReturnValueOnce('一\n二');
-    expect(
-      editProposalValue(proposal({ stateKey: 'custom-list', proposedValue: ['一', '二'] })),
-    ).toEqual({ state: 'ready', value: ['一', '二'] });
+    prompt.mockReturnValueOnce('令牌\n密信');
+    expect(editProposalValue(proposal({ stateKey: 'possession', proposedValue: '未知' }))).toEqual({
+      state: 'ready',
+      value: ['令牌', '密信'],
+    });
+    expect(prompt).toHaveBeenLastCalledWith('持有物：每行填写一项', '');
   });
 
   it('用作者语言编辑人物成长节点的发生、跳过、取消和非法输入', () => {

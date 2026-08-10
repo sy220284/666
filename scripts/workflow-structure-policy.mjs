@@ -16,6 +16,8 @@ const fullValidationDraftMarker = '<!-- full-validation-draft -->';
 const guardedDraftMode =
   "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}";
 const pullRequestBaseSha = '${{ github.event.pull_request.base.sha }}';
+const packageWorkflowRoute =
+  '.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)';
 
 export function parseWorkflowDocument(file, source) {
   let workflow;
@@ -105,6 +107,15 @@ export function validateWorkflowStructure(file, source) {
     if (qualityCore?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
       errors.push(
         'quality.yml: quality-core.with.full_suite must be controlled by the route output',
+      );
+    }
+    const routeScript = String(
+      workflow.jobs.route?.steps?.find((step) => step?.name === 'Determine PR quality route')?.run ??
+        '',
+    );
+    if (!routeScript.includes(packageWorkflowRoute)) {
+      errors.push(
+        'quality.yml: package smoke routing must include release.yml, quality.yml and quality-core.yml',
       );
     }
 

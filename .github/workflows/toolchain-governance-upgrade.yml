@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: toolchain-governance-upgrade
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   upgrade:
@@ -166,7 +166,9 @@ jobs:
 
           let doc = read('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md');
           const docReplacements = [
+            ['> 状态：Approved  ', '> 状态：Approved（仓库基线已升级；持久化快照待重新导出）  '],
             ['文档日期：2026-08-05', '文档日期：2026-08-10'],
+            ['## 3. 工具版本', '## 3. 仓库权威目标版本'],
             ['| Node.js | 24.18.0 |', `| Node.js | ${versions.node} |`],
             ['| npm | 11.16.0 |', `| npm | ${versions.npm} |`],
             ['| pnpm | 11.13.1 |', `| pnpm | ${versions.pnpm} |`],
@@ -262,45 +264,12 @@ jobs:
           );
           EOF
 
-      - name: Regenerate lockfile before enabling future release-age quarantine
-        shell: bash
-        run: |
-          set -euo pipefail
-          pnpm install --lockfile-only
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const file = 'pnpm-workspace.yaml';
-          let content = fs.readFileSync(file, 'utf8');
-          if (!content.includes('minimumReleaseAge: 1440')) {
-            content = content.replace(
-              'strictPeerDependencies: true\n',
-              'strictPeerDependencies: true\nminimumReleaseAge: 1440\n',
-            );
-          }
-          fs.writeFileSync(file, content);
-          NODE
-          pnpm install --frozen-lockfile --prefer-offline
-          pnpm format
-          pnpm format:check
-          pnpm toolchain:check
-
-      - name: Commit regenerated governance baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f .toolchain-governance-runner-ok .toolchain-governance-failure.log
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -A
-          git commit -m "chore: upgrade and govern toolchain"
-          git push origin HEAD:chore/toolchain-governance-20260810
-
       - name: Install Electron display dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
 
-      - name: Run full toolchain validation
+      - name: Regenerate, validate and finalize governed toolchain
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -308,6 +277,22 @@ jobs:
           set +e
           set -o pipefail
           {
+            echo '== lockfile migration =='
+            pnpm install --lockfile-only
+            node --input-type=module <<'NODE'
+            import fs from 'node:fs';
+            const file = 'pnpm-workspace.yaml';
+            let content = fs.readFileSync(file, 'utf8');
+            if (!content.includes('minimumReleaseAge: 1440')) {
+              content = content.replace(
+                'strictPeerDependencies: true\n',
+                'strictPeerDependencies: true\nminimumReleaseAge: 1440\n',
+              );
+            }
+            fs.writeFileSync(file, content);
+            NODE
+            pnpm install --frozen-lockfile --prefer-offline
+            pnpm format
             echo '== versions =='
             node --version
             npm --version
@@ -339,6 +324,8 @@ jobs:
             pnpm release:check
           } 2>&1 | tee /tmp/toolchain-governance-validation.log
           status=${PIPESTATUS[0]}
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           if [ "$status" -ne 0 ]; then
             cp /tmp/toolchain-governance-validation.log .toolchain-governance-failure.log
             git add .toolchain-governance-failure.log
@@ -347,10 +334,6 @@ jobs:
             exit "$status"
           fi
 
-      - name: Record verified governance result and remove bootstrap workflow
-        shell: bash
-        run: |
-          set -euo pipefail
           node_version="$(node --version)"
           npm_version="$(npm --version)"
           pnpm_version="$(pnpm --version)"
@@ -405,5 +388,5 @@ jobs:
           rm -f .toolchain-governance-failure.log .toolchain-governance-runner-ok
           rm -f .github/workflows/toolchain-governance-upgrade.yml
           git add -A
-          git commit -m "docs: record verified toolchain governance upgrade"
+          git commit -m "chore: upgrade and verify governed toolchain"
           git push origin HEAD:chore/toolchain-governance-20260810

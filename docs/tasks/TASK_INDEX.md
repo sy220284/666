@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03及M10-01—M10-22，共67张独立任务卡。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03、M10-01—M10-22及M11-01，共68张独立任务卡。
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -143,6 +143,12 @@ Runtime IMPLEMENTED
 | M10-20 | [`全量审计问题修复与发布链路收口`](M10/M10-20_FULL_AUDIT_REMEDIATION.md)                                  | M10-19 | Implemented |
 | M10-21 | [`当前权威文档与测试架构现代化`](M10/M10-21_CURRENT_AUTHORITY_TEST_ARCHITECTURE_MODERNIZATION.md)         | M10-20 | Implemented |
 | M10-22 | [`运行时所有权、恢复一致性与发布权威统一治理`](M10/M10-22_UNIFIED_RUNTIME_RECOVERY_RELEASE_GOVERNANCE.md) | M10-21 | Implemented |
+
+### M11 产品体验与 AI 创作协同
+
+| ID     | 任务卡                                                                                 | 依赖   | 状态        |
+| ------ | -------------------------------------------------------------------------------------- | ------ | ----------- |
+| M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | In Progress |
 
 ## 3. 被吸收的需求来源
 

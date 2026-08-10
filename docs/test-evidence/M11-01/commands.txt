@@ -1,0 +1,42 @@
+# M11-01 implementation commit
+c16a90ed34685cd8828c5c98eb89cd35cb59e93b
+
+# Repository / static validation
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm format:check
+pnpm lint
+pnpm ci:policy
+pnpm typecheck
+
+# Product validation
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# GitHub Actions evidence for frozen implementation
+Quality run 31393481910: success
+Security run 31393481445: success
+Performance run 31393481556: success
+Full Work Validation run 31393481895: success
+Quality release audit: success
+Quality static checks: success
+Quality Unit: success
+Quality Integration: success
+Quality Migration: success
+Quality Coverage: success
+Quality Electron E2E: 33/33 success (14.1m)
+Quality package smoke Linux: success
+Quality package smoke Windows: success
+Quality package smoke macOS: success
+Full Work Windows native Microsoft Pinyin acceptance: success
+Quality toolchain export: success
+Toolchain Artifact 9064681503 ZIP sha256: a7837c0449c57c9d2982119a28a9defa6637aba124c3517258a23bd8cc11cef9
+Desktop E2E Artifact 9065128340 sha256: 16f7c6211e77d360c0a93b68bd37391df2b08ad7c4f6d0d3a62b7334ae6633c9

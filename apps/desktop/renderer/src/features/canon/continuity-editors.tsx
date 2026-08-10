@@ -157,7 +157,7 @@ export function ContinuityEditors({
             <ChapterNameSelect name="validUntilChapterId" references={references} />
           </label>
           <label>
-            依据的定稿版本
+            依据的定稿
             <FinalVersionSelect name="sourceVersionId" references={references} required />
           </label>
           <details>
@@ -303,13 +303,13 @@ export function ContinuityEditors({
             <ChapterNameSelect name="validUntilChapterId" references={references} />
           </label>
           <label>
-            依据的定稿版本
+            依据的定稿
             <FinalVersionSelect name="sourceVersionId" references={references} />
           </label>
           <details>
             <summary>高级来源定位</summary>
             <label>
-              来源正文块内部标识
+              来源正文段落内部标识
               <input name="sourceLogicalBlockId" />
             </label>
           </details>

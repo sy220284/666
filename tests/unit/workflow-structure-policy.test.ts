@@ -18,6 +18,12 @@ describe('workflow structure policy', () => {
     expect(workflow.jobs.quality.needs).toEqual(
       expect.arrayContaining(['quality-core', 'release-audit', 'package-smoke-gate']),
     );
+    const routeScript = workflow.jobs.route.steps.find(
+      (step: { name?: string }) => step.name === 'Determine PR quality route',
+    ).run;
+    expect(routeScript).toContain(
+      '.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)',
+    );
     const evidenceScan = workflow.jobs['release-audit'].steps.find(
       (step: { name?: string }) => step.name === 'Scan effective Verified Evidence',
     );
@@ -33,6 +39,17 @@ describe('workflow structure policy', () => {
     );
     expect(validateWorkflowStructure('quality.yml', unsafe)).toContain(
       'quality.yml: Verified Evidence scan must receive the current pull request base SHA as TASK_BASE_REF',
+    );
+  });
+
+  it('rejects a quality workflow that skips package smoke when its orchestration changes', async () => {
+    const source = await readFile('.github/workflows/quality.yml', 'utf8');
+    const unsafe = source.replace(
+      '|.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)',
+      '|.github/workflows/release.yml|.github/workflows/quality-core.yml)',
+    );
+    expect(validateWorkflowStructure('quality.yml', unsafe)).toContain(
+      'quality.yml: package smoke routing must include release.yml, quality.yml and quality-core.yml',
     );
   });
 

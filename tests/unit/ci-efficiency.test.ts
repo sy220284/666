@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { baseGateAction } from '../../.github/governance/automerge-base-gate.mjs';
+import { evidenceEntryDecision } from '../../scripts/evidence-policy-entry.mjs';
 import {
   fullQualityRunPassed,
   taskIdFromPullBody,
@@ -11,6 +12,38 @@ describe('自动化恢复效率', () => {
     expect(baseGateAction('ready')).toBe('proceed');
     expect(baseGateAction('failed')).toBe('heal');
     expect(baseGateAction('pending')).toBe('wait');
+  });
+});
+
+describe('维护PR的Evidence路由', () => {
+  it('纯治理维护Ready无需制造任务Evidence', () => {
+    expect(
+      evidenceEntryDecision({
+        final: true,
+        pullBody: '',
+        files: ['.github/workflows/quality.yml', 'scripts/ready-closure-route.mjs'],
+      }),
+    ).toMatchObject({ action: 'maintenance' });
+  });
+
+  it('产品改动无任务标记时仍然拒绝', () => {
+    expect(
+      evidenceEntryDecision({
+        final: true,
+        pullBody: '',
+        files: ['packages/core-service/src/core.ts'],
+      }),
+    ).toMatchObject({ action: 'reject' });
+  });
+
+  it('带任务标记继续走严格Evidence闭包', () => {
+    expect(
+      evidenceEntryDecision({
+        final: true,
+        pullBody: '<!-- worldforge-task: M10-23 -->',
+        files: ['packages/core-service/src/core.ts'],
+      }),
+    ).toMatchObject({ action: 'delegate' });
   });
 });
 
@@ -61,16 +94,21 @@ describe('Evidence收口复用完整Quality', () => {
 
   it('只复用真正执行过产品测试和Electron E2E的完整Quality', () => {
     expect(fullQualityRunPassed(completeRun, jobs)).toBe(true);
-    expect(
-      fullQualityRunPassed(
-        completeRun,
-        jobs.map((job) =>
-          job.name === 'quality-core / desktop-e2e'
-            ? { ...job, steps: [{ name: 'Run Electron E2E and capture diagnostics', status: 'completed', conclusion: 'skipped' }] }
-            : job,
-        ),
-      ),
-    ).toBe(false);
+    const missingE2e = jobs.map((job) =>
+      job.name === 'quality-core / desktop-e2e'
+        ? {
+            ...job,
+            steps: [
+              {
+                name: 'Run Electron E2E and capture diagnostics',
+                status: 'completed',
+                conclusion: 'skipped',
+              },
+            ],
+          }
+        : job,
+    );
+    expect(fullQualityRunPassed(completeRun, missingE2e)).toBe(false);
   });
 
   it('任务标记采用精确HTML格式', () => {

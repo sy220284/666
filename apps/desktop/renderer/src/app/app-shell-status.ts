@@ -162,7 +162,7 @@ export function buildGlobalStatus({
     arbitrator.publish({
       id: 'proposal-pending',
       priority: 'P2',
-      message: `有${workspaceAttention.pendingProposalCount}条设定更新建议等待作者裁决；尚未写入权威状态。`,
+      message: `有${workspaceAttention.pendingProposalCount}条AI设定建议等待作者处理；尚未写入人物与世界。`,
       persistence: 'sticky',
       createdAt: 58,
     });

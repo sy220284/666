@@ -5,6 +5,9 @@ import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
+const rootPackage = createRequire(import.meta.url)('../../package.json') as {
+  devDependencies: { electron: string };
+};
 
 describe('Electron Core SQLite runtime', () => {
   it('ships node:sqlite with FTS5 trigram support', async () => {
@@ -36,7 +39,7 @@ describe('Electron Core SQLite runtime', () => {
     const result: unknown = JSON.parse(stdout.trim());
 
     expect(result).toMatchObject({
-      electron: '43.1.1',
+      electron: rootPackage.devDependencies.electron,
       fts5: 1,
     });
     expect(result).toHaveProperty('node');

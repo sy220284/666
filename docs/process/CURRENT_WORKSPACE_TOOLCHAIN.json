@@ -6,22 +6,60 @@
   "generator": ".github/governance/toolchain-bundle.mjs",
   "defaultProfile": "quality",
   "trustedPullRequestBranch": "work",
-  "bundledPnpmVersion": "11.13.1",
+  "bundledPnpmVersion": "11.21.0",
   "profiles": {
     "formatter": {
-      "packages": ["prettier"],
+      "packages": [
+        "prettier"
+      ],
       "commands": [
-        ["pnpm", ["--version"]],
-        ["prettier", ["--version"]]
+        [
+          "pnpm",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "prettier",
+          [
+            "--version"
+          ]
+        ]
       ]
     },
     "quality": {
-      "packages": ["@eslint/js", "eslint", "prettier", "typescript", "typescript-eslint"],
+      "packages": [
+        "@eslint/js",
+        "eslint",
+        "prettier",
+        "typescript",
+        "typescript-eslint"
+      ],
       "commands": [
-        ["pnpm", ["--version"]],
-        ["prettier", ["--version"]],
-        ["eslint", ["--version"]],
-        ["tsc", ["--version"]]
+        [
+          "pnpm",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "prettier",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "eslint",
+          [
+            "--version"
+          ]
+        ],
+        [
+          "tsc",
+          [
+            "--version"
+          ]
+        ]
       ]
     }
   },
@@ -35,5 +73,6 @@
     "SHA256SUMS.txt"
   ],
   "artifactName": "worldforge-toolchain-{profile}-{os}-{arch}-{sourceSha}",
-  "retentionDays": 7
+  "retentionDays": 7,
+  "nodeRuntimeVersion": "24.18.1"
 }

@@ -1,9 +1,9 @@
 # WorldForge 当前ChatGPT工作空间工具链、存储与调用权威清单
 
-> 状态：Approved  
+> 状态：Approved（仓库基线已升级；持久化快照待重新导出）  
 > 权威范围：当前ChatGPT Linux持久化工作空间（`/mnt/data`）  
 > 适用仓库：`sy220284/666`  
-> 文档日期：2026-08-05  
+> 文档日期：2026-08-10  
 > 环境架构：Linux x86_64、Debian 13、无GPU
 
 ## 1. 权威范围
@@ -36,25 +36,39 @@
 
 压缩Artifact已清理。上述解压目录是当前唯一保留的工作空间副本。
 
-## 3. 工具版本
+## 3. 仓库权威目标版本
 
 | 工具 | 版本 | 实际入口 |
 |---|---:|---|
-| Node.js | 24.18.0 | `/mnt/data/666-toolchain/runtime/node/bin/node` |
+| Node.js | 24.18.1 | `/mnt/data/666-toolchain/runtime/node/bin/node` |
 | npm | 11.16.0 | `/mnt/data/666-toolchain/runtime/node/bin/npm` |
-| pnpm | 11.13.1 | 激活后执行`pnpm` |
-| Prettier | 3.9.5 | 激活后执行`prettier` |
-| ESLint | 10.7.0 | 激活后执行`eslint` |
+| pnpm | 11.21.0 | 激活后执行`pnpm` |
+| Prettier | 3.9.6 | 激活后执行`prettier` |
+| ESLint | 10.8.0 | 激活后执行`eslint` |
 | TypeScript | 6.0.3 | 激活后执行`tsc` |
-| typescript-eslint | 8.64.0 | workspace依赖 |
-| Electron | 43.1.1 | 激活后执行`electron` |
+| typescript-eslint | 8.65.0 | workspace依赖 |
+| Electron | 43.2.0 | 激活后执行`electron` |
 | Vitest | 4.1.10 | 激活后执行`vitest` |
-| Playwright | 1.61.1 | 激活后执行`playwright` |
+| Playwright | 1.62.0 | 激活后执行`playwright` |
 | esbuild | 0.28.1 | 激活后执行`esbuild` |
 | Electron Packager | 20.0.4 | 激活后执行`electron-packager` |
 | ASAR | 4.2.1 | 激活后执行`asar` |
 
-仓库当前要求Node `>=24.0.0`、pnpm `>=11.0.0`，并在`package.json`中锁定pnpm 11.13.1。当前工作空间版本满足该约束。
+仓库当前要求Node `>=24.0.0 <25.0.0`、pnpm `>=11.21.0 <12.0.0`，并在`package.json`中锁定pnpm 11.21.0。当前工作空间版本满足该约束。
+
+## 3.1 2026-08-10 工具链治理升级
+
+仓库权威基线升级为 Node.js 24.18.1 LTS、pnpm 11.21.0、Electron 43.2.0、Playwright 1.62.0、ESLint 10.8.0、Prettier 3.9.6、typescript-eslint 8.65.0。`@types/node` 固定到 Node 24 类型线 24.13.3；TypeScript 保持 6.0.3，继续处于 typescript-eslint 当前支持范围内。
+
+项目级 pnpm 配置统一迁入 `pnpm-workspace.yaml`：`engineStrict`、`preferFrozenLockfile`、`strictPeerDependencies` 由 workspace 文件声明。此次治理迁移先按已核验稳定版本重建锁文件，随后启用 `minimumReleaseAge: 1440`；从下一次依赖解析开始，默认延迟采用发布时间不足 24 小时的新包。紧急安全升级如需绕过，只允许精确版本的一次性例外。原仅承载这三项设置的 `.npmrc` 删除。
+
+GitHub Actions 固定到 checkout v6.0.2、pnpm/action-setup v6.0.9、setup-node v6.4.0 的完整提交 SHA。永久 workflow 不再重复声明 pnpm 版本，由根 `package.json#packageManager` 提供；Node CI 运行时固定为 24.18.1。当前仍保留 pnpm/action-setup，暂不迁移到 pnpm/setup，以避免 pnpm 11 在 Intel macOS 独立二进制上的兼容边界影响现有跨平台打包矩阵。
+
+新增 `pnpm toolchain:check` 并接入 `pnpm ci:policy`，持续检查 packageManager、Node 运行时、工具链权威清单、pnpm workspace 安全设置、重复依赖版本及 workflow 版本来源，防止后续再次漂移。
+
+### 持久化工作空间状态
+
+本节版本表描述升级后的**仓库权威目标基线**。`/mnt/data/666-toolchain` 与 `/mnt/data/666-workspace-dependencies` 中此前导出的 2026-08-05 快照在新的 `pnpm-lock.yaml` 生成后视为 **STALE**，不得继续恢复到升级后的仓库。必须从新锁文件重新导出工具链 Artifact、校验 Hash、完成离线复验后，才能替换持久化工作空间资产；旧快照只用于历史追溯。
 
 ## 4. 激活方式
 

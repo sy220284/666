@@ -44,12 +44,8 @@ describe('应用主导航', () => {
     expect(professional.map(({ id, route }) => ({ id, route }))).toEqual(
       beginner.map(({ id, route }) => ({ id, route })),
     );
-    expect(professional.find((item) => item.id === 'planning')?.description).toContain(
-      '作品核心',
-    );
-    expect(beginner.find((item) => item.id === 'planning')?.description).not.toContain(
-      '作品核心',
-    );
+    expect(professional.find((item) => item.id === 'planning')?.description).toContain('作品核心');
+    expect(beginner.find((item) => item.id === 'planning')?.description).not.toContain('作品核心');
   });
 
   it('没有打开本地作品时禁用依赖作品的入口', () => {

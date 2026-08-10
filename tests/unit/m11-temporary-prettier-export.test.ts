@@ -1,0 +1,26 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+
+import { format, resolveConfig } from 'prettier';
+import { describe, expect, it } from 'vitest';
+
+const TARGETS = [
+  'apps/desktop/renderer/src/features/canon/continuity-editors.tsx',
+  'apps/desktop/renderer/src/features/structure/structure-operation-dialog.tsx',
+  'apps/desktop/renderer/src/features/writing/draft-block-picker.tsx',
+] as const;
+
+describe('M11 temporary locked Prettier export', () => {
+  it('writes exact repository formatter output into ignored unit artifacts', async () => {
+    const outputRoot = path.join(process.cwd(), 'test-results/unit/m11-prettier-output');
+    for (const target of TARGETS) {
+      const source = await readFile(target, 'utf8');
+      const config = (await resolveConfig(target)) ?? {};
+      const formatted = await format(source, { ...config, filepath: target });
+      const outputPath = path.join(outputRoot, target);
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, formatted, 'utf8');
+      expect(formatted.length).toBeGreaterThan(0);
+    }
+  });
+});

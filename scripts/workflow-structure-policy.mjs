@@ -15,6 +15,7 @@ const actionPins = new Map([
 const fullValidationDraftMarker = '<!-- full-validation-draft -->';
 const guardedDraftMode =
   "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}";
+const pullRequestBaseSha = '${{ github.event.pull_request.base.sha }}';
 
 export function parseWorkflowDocument(file, source) {
   let workflow;
@@ -48,6 +49,11 @@ function validateAction(errors, file, step) {
   }
 }
 
+function hasEveryNeed(job, required) {
+  const needs = job?.needs;
+  return Array.isArray(needs) && required.every((name) => needs.includes(name));
+}
+
 export function validateWorkflowStructure(file, source) {
   const errors = [];
   let workflow;
@@ -79,29 +85,58 @@ export function validateWorkflowStructure(file, source) {
   }
 
   if (file === 'quality.yml') {
-    const quality = workflow.jobs.quality;
-    if (quality?.uses !== './.github/workflows/quality-core.yml') {
-      errors.push('quality.yml: quality must call quality-core.yml');
+    const qualityCore = workflow.jobs['quality-core'];
+    if (qualityCore?.uses !== './.github/workflows/quality-core.yml') {
+      errors.push('quality.yml: quality-core must call quality-core.yml');
     }
-    if (quality?.with?.draft_mode !== guardedDraftMode) {
+    if (qualityCore?.with?.draft_mode !== guardedDraftMode) {
       errors.push(
-        'quality.yml: quality.with.draft_mode must keep Draft merge blocking while allowing only the exact full-validation-draft HTML marker',
+        'quality.yml: quality-core.with.draft_mode must keep Draft merge blocking while allowing only the exact full-validation-draft HTML marker',
       );
     }
-    const releaseAuditCondition = String(workflow.jobs['release-audit']?.if ?? '');
+    if (qualityCore?.with?.performance_eval !== false) {
+      errors.push('quality.yml: quality-core.with.performance_eval must be false');
+    }
+    if (
+      qualityCore?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}"
+    ) {
+      errors.push(
+        'quality.yml: quality-core.with.package_smoke must be controlled by the route output',
+      );
+    }
+    if (qualityCore?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
+      errors.push('quality.yml: quality-core.with.full_suite must be controlled by the route output');
+    }
+
+    const releaseAudit = workflow.jobs['release-audit'];
+    const releaseAuditCondition = String(releaseAudit?.if ?? '');
     if (!releaseAuditCondition.includes(fullValidationDraftMarker)) {
       errors.push(
         'quality.yml: release-audit must use the exact full-validation-draft HTML marker',
       );
     }
-    if (quality?.with?.performance_eval !== false) {
-      errors.push('quality.yml: quality.with.performance_eval must be false');
+    const evidenceScan = releaseAudit?.steps?.find(
+      (step) => step?.name === 'Scan effective Verified Evidence',
+    );
+    if (evidenceScan?.env?.TASK_BASE_REF !== pullRequestBaseSha) {
+      errors.push(
+        'quality.yml: Verified Evidence scan must receive the current pull request base SHA as TASK_BASE_REF',
+      );
     }
-    if (quality?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}") {
-      errors.push('quality.yml: quality.with.package_smoke must be controlled by the route output');
+
+    const packageGate = workflow.jobs['package-smoke-gate'];
+    if (!hasEveryNeed(packageGate, ['route', 'quality-core'])) {
+      errors.push('quality.yml: package-smoke-gate must depend on route and quality-core');
     }
-    if (quality?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
-      errors.push('quality.yml: quality.with.full_suite must be controlled by the route output');
+
+    const quality = workflow.jobs.quality;
+    if (quality?.name !== 'quality / quality') {
+      errors.push('quality.yml: final quality authority must publish quality / quality');
+    }
+    if (!hasEveryNeed(quality, ['quality-core', 'release-audit', 'package-smoke-gate'])) {
+      errors.push(
+        'quality.yml: final quality authority must depend on quality-core, release-audit and package-smoke-gate',
+      );
     }
   }
 

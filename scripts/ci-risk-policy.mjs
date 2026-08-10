@@ -2,7 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 function normalized(file) {
-  return String(file ?? '').replaceAll('\\', '/').trim();
+  return String(file ?? '')
+    .replaceAll('\\', '/')
+    .trim();
 }
 
 function isDependencyInput(file) {

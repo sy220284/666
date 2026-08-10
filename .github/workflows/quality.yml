@@ -51,7 +51,7 @@ jobs:
                   ;;
               esac
               case "$file" in
-                package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality-core.yml)
+                package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)
                   package_smoke=true
                   ;;
               esac
@@ -138,7 +138,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  quality:
+  quality-core:
     needs: route
     uses: ./.github/workflows/quality-core.yml
     with:
@@ -180,6 +180,7 @@ jobs:
       - name: Scan effective Verified Evidence
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          TASK_BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: node scripts/verified-evidence-scan.mjs
       - name: Validate changed Evidence documents
         env:
@@ -209,16 +210,50 @@ jobs:
     if: always()
     needs:
       - route
-      - quality
+      - quality-core
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Normalize optional package smoke result for Controlled Merge
         shell: bash
         env:
-          QUALITY_RESULT: ${{ needs.quality.result }}
+          QUALITY_RESULT: ${{ needs.quality-core.result }}
           PACKAGE_SMOKE_REQUIRED: ${{ needs.route.outputs.package_smoke }}
         run: |
           set -euo pipefail
           test "$QUALITY_RESULT" = success
           echo "Package smoke required for this PR: $PACKAGE_SMOKE_REQUIRED"
+
+  quality:
+    name: quality / quality
+    if: always()
+    needs:
+      - quality-core
+      - release-audit
+      - package-smoke-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Enforce final PR quality authority
+        shell: bash
+        env:
+          CORE_RESULT: ${{ needs.quality-core.result }}
+          RELEASE_AUDIT_RESULT: ${{ needs.release-audit.result }}
+          PACKAGE_GATE_RESULT: ${{ needs.package-smoke-gate.result }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          FULL_VALIDATION_DRAFT: ${{ contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
+        run: |
+          set -euo pipefail
+          printf 'core=%s\nrelease-audit=%s\npackage-gate=%s\ndraft=%s\nfull-validation-draft=%s\n' \
+            "$CORE_RESULT" "$RELEASE_AUDIT_RESULT" "$PACKAGE_GATE_RESULT" \
+            "$PR_DRAFT" "$FULL_VALIDATION_DRAFT"
+          test "$CORE_RESULT" = success
+          test "$PACKAGE_GATE_RESULT" = success
+          if [ "$PR_DRAFT" = false ] || [ "$FULL_VALIDATION_DRAFT" = true ]; then
+            test "$RELEASE_AUDIT_RESULT" = success
+          else
+            case "$RELEASE_AUDIT_RESULT" in
+              success|skipped) ;;
+              *) exit 1 ;;
+            esac
+          fi

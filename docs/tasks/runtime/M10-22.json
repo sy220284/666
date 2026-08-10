@@ -116,7 +116,7 @@
     "pnpm test:e2e"
   ],
   "verificationBinding": {
-    "sourcePr": 341,
+    "sourcePr": 342,
     "mainContext": "main-verification",
     "taskContext": "task-verification/M10-22"
   }

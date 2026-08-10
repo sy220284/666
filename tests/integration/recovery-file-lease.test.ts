@@ -20,20 +20,20 @@ describe('daily backup file lease', () => {
     directories.push(directory);
     const lockPath = path.join(directory, '.daily.lock');
     const owner = await acquireFileLease(lockPath, {
-      durationMs: 60,
-      heartbeatMs: 10,
-      waitTimeoutMs: 30,
-      retryDelayMs: 5,
+      durationMs: 500,
+      heartbeatMs: 50,
+      waitTimeoutMs: 100,
+      retryDelayMs: 10,
     });
     try {
-      await new Promise((resolve) => setTimeout(resolve, 90));
+      await new Promise((resolve) => setTimeout(resolve, 650));
       await expect(owner.assertOwner()).resolves.toBeUndefined();
       await expect(
         acquireFileLease(lockPath, {
-          durationMs: 60,
-          heartbeatMs: 10,
-          waitTimeoutMs: 25,
-          retryDelayMs: 5,
+          durationMs: 500,
+          heartbeatMs: 50,
+          waitTimeoutMs: 100,
+          retryDelayMs: 10,
         }),
       ).rejects.toMatchObject({ code: 'BACKUP_CREATE_FAILED' });
     } finally {

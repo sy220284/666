@@ -1,5 +1,5 @@
 # M10-22 implementation commit
-f55bde319b5ba2b32db0b5d4513ea9a0a833a502
+e1d75ac55985454eddf690932546bedb9cd92b89
 
 # Repository / static validation
 pnpm task:validate
@@ -26,10 +26,21 @@ pnpm release:check
 pnpm audit --audit-level=high
 node scripts/verified-evidence-scan.mjs
 
-# GitHub Actions evidence
-Quality run 31325332376: success
-Security run 31325332269: success
-Performance run 31325332252: success
-Quality package smoke: linux success; windows success; macos success
-Quality Electron E2E: success
+# GitHub Actions evidence for frozen implementation
+Quality run 31351259907: success
+Security run 31351259803: success
+Performance run 31351259799: success
 Quality release audit: success
+Verified Evidence Scan: success
+Changed Evidence validation: success
+Final quality / quality aggregate: success
+Quality static checks: success
+Quality Unit: success
+Quality Integration: success
+Quality Migration: success
+Quality Coverage: success
+Quality Electron E2E: 33/33 success
+Quality package smoke Linux: success
+Quality package smoke Windows: success
+Quality package smoke macOS: success
+Quality toolchain export: success

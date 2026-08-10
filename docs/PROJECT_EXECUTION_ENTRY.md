@@ -69,7 +69,11 @@ pr-policy=success
 + performance=success
 ```
 
-在此基础上，Controlled Merge还必须确认当前Head最新的Quality Workflow Run整体成功，并且其中`quality / quality`、`quality / release-audit`和`quality / package-smoke`全部成功；最新Security与Performance Workflow Run也必须成功。旧Draft成功结果不得被Ready同SHA复用。
+`quality / quality`必须是Quality Workflow的服务器可见最终聚合门，依赖Core Quality、`quality / release-audit`与`quality / package-smoke`。Ready状态下任一内部权威失败，最终`quality / quality`必须失败；禁止让服务器Ruleset看到的Quality与Controlled Merge额外读取的Release Audit形成两套互不一致的合并判断。
+
+Controlled Merge在四个永久Context成功后仍必须读取当前Head最新的Quality、Security、Performance Workflow Run，并交叉核验最新Quality中的最终`quality / quality`、`quality / release-audit`和`quality / package-smoke`。这层复核负责验证轮次新鲜度，防止旧Draft成功结果被Ready同SHA复用；它不再补偿服务器Context缺失的业务门禁。
+
+Ready Evidence全量扫描必须把当前PR的`base.sha`传给Effective Status。当前Schema 2 Runtime即使已静态收口到`IMPLEMENTED`，合并前也必须识别为本PR Runtime并排除历史`task-verification`解析；历史Implemented Runtime继续按各自来源Squash提交和任务Context严格核验。
 
 ## 4. 仓库闭环条件
 
@@ -77,6 +81,7 @@ pr-policy=success
 
 ```text
 来源PR Ready最新验证轮次成功
++ 服务器可见最终quality / quality成功
 + Ready Evidence绑定最新实现提交
 + implementationCommit之后仅存在当前任务收口文件
 + Controlled Merge完成
@@ -93,6 +98,8 @@ pr-policy=success
 - 不得把包含该任务实现但尚未进入并验证于main的提交作为Release来源；
 - 不得把“PR已合并”表述为仓库已闭环；
 - 自动同步失败时允许按相同CAS条件执行手动恢复，但必须复核`main == work`。
+
+如果PR已经进入main但Main Verification发现来源PR最新Ready轮次失败，则该任务仍处于`VERIFICATION_PENDING`。Work Synchronization和Branch Hygiene应保持阻断；修复必须从当前main重新建立受控`work`基线并通过新的来源PR完成验证事实，禁止沿用失败来源PR伪造成功Context。
 
 ## 5. Main Verification与任务事实
 
@@ -112,7 +119,7 @@ Main Verification属于合并后的事实验证，不属于PR预授权。
 - `mainContext`为`main-verification`；
 - `taskContext`为`task-verification/<TASK-ID>`。
 
-成功后发布`main-verification`与任务Context。非任务维护PR可不带marker，此时只发布`main-verification`。
+成功后发布`main-verification`与任务Context。非任务维护PR可不带marker，此时只发布`main-verification`。Main Verification还必须重新读取来源Head最新Quality/Security/Performance运行；来源Ready Quality失败时，主线状态必须保持failure。
 
 ## 6. 稳定历史基线
 
@@ -133,7 +140,8 @@ Main Verification属于合并后的事实验证，不属于PR预授权。
 - `.github/governance/effective-task-status.mjs`是任务有效状态与提交Context判定的策略核心。
 - Draft Evidence校验文件完整性、Hash和来源提交；Ready Evidence必须绑定当前任务最新实现提交。
 - Ready Head中`implementationCommit`之后只允许当前任务卡、当前Runtime、`TASK_INDEX.md`和当前任务Evidence目录；产品代码、测试、脚本、配置、工作流或跨任务Evidence后移必须阻断。
-- Evidence manifest不预写未来Squash SHA；Evidence通过最新Quality Workflow中的`quality / release-audit`参与自动合并判定，最终任务Verified由Main Verification提交状态证明。
+- Evidence manifest不预写未来Squash SHA；Evidence通过最新Quality Workflow中的`quality / release-audit`校验，并由最终`quality / quality`聚合后进入服务器合并门；最终任务Verified由Main Verification提交状态证明。
+- Ready阶段Verified Evidence扫描必须提供`TASK_BASE_REF`，避免当前PR的Implemented Runtime被误判成历史已合并任务。
 - Release资格必须读取当前main提交的`main-verification`、产品门禁、三平台产物完整性和发行信任证据；Task Runtime只保留任务管理与历史审计职责。
 - Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
 - Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。

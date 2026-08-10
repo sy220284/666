@@ -41,21 +41,21 @@ export function ProjectBriefEditor({
         forbidden: lineValues(values.get('forbidden')),
       }),
     );
-    if (result) onStatus('项目任务书已保存。');
+    if (result) onStatus('作品核心已保存。');
   };
 
   return (
     <section className="feature-card">
       <div className="feature-card__heading">
         <div>
-          <h2>ProjectBrief</h2>
-          <p>读者承诺与创作边界。</p>
+          <h2>作品核心</h2>
+          <p>明确故事方向、读者期待与不可突破的创作边界。</p>
         </div>
         <button className="quiet-button" data-skip-brief type="button" onClick={onSkip}>
           稍后填写
         </button>
       </div>
-      {loading ? <p>正在读取任务书…</p> : null}
+      {loading ? <p>正在读取作品核心…</p> : null}
       {brief ? (
         <form
           className="stacked-form"
@@ -80,12 +80,12 @@ export function ProjectBriefEditor({
             <textarea name="coreConflict" defaultValue={brief.coreConflict} />
           </label>
           <label>
-            结局意图
+            结局方向
             <textarea name="endingIntent" defaultValue={brief.endingIntent} />
           </label>
           <div className="two-column-form">
             <label>
-              必须出现
+              必须兑现
               <textarea name="required" defaultValue={brief.required.join('\n')} />
             </label>
             <label>
@@ -99,7 +99,7 @@ export function ProjectBriefEditor({
             disabled={disabled || command.pending}
             type="submit"
           >
-            保存任务书
+            保存作品核心
           </button>
           {command.error ? <p className="form-error">{authorErrorSummary(command.error)}</p> : null}
         </form>

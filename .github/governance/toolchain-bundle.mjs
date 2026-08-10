@@ -1,4 +1,4 @@
-/* global console, fetch, process, setTimeout */
+/* global URL, console, fetch, process, setTimeout */
 // PR Policy smoke marker: export the repository-locked formatter and quality toolchains.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -124,7 +124,7 @@ function packageNamesFromLockfile(lockfile) {
   for (let index = packageSection + 1; index < lines.length; index += 1) {
     const line = lines[index];
     if (line && !line.startsWith(' ')) break;
-    const match = /^ {2}(.+):$/u.exec(line);
+    const match = /^ {2}(\S.*):$/u.exec(line);
     if (match) packageNames.add(packageNameFromLockfileKey(match[1]));
   }
   if (packageNames.size === 0) {

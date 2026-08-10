@@ -253,7 +253,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     });
     if (outcome.state === 'success') {
       setCatalog(outcome.data);
-      setNotice('已创建与问题原文位置关联的写作待办。');
+      setNotice('已创建与问题原文位置关联的修改任务。');
     } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   };
 
@@ -307,12 +307,12 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
   };
 
   return (
-    <section className="checks-workbench" data-checks-workbench aria-label="作品检查工作台">
+    <section className="checks-workbench" data-checks-workbench aria-label="内容检查工作台">
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">作品检查</p>
+          <p className="eyebrow">内容检查</p>
           <h1>规则与AI语义检查</h1>
-          <p>检查结果保留内容依据；只有作者可以处理、忽略或转为写作待办。</p>
+          <p>检查结果保留内容依据；只有作者可以处理、忽略或转为修改任务。</p>
         </div>
       </header>
       <SearchPanel
@@ -331,7 +331,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
               {chapters.map((item) => (
                 <option disabled={!item.finalVersionId} key={item.id} value={item.id}>
                   {item.title}
-                  {item.finalVersionId ? '' : '（尚无定稿版本）'}
+                  {item.finalVersionId ? '' : '（尚未定稿）'}
                 </option>
               ))}
             </select>
@@ -398,8 +398,8 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                 {issue.suggestion ? <p>修改建议：{issue.suggestion}</p> : null}
                 <details>
                   <summary>技术详情</summary>
-                  <p>定稿版本标识：{issue.anchor.versionId ?? '作品级问题'}</p>
-                  <p>正文块标识：{issue.anchor.logicalBlockId ?? '没有正文块位置'}</p>
+                  <p>定稿标识：{issue.anchor.versionId ?? '作品级问题'}</p>
+                  <p>正文段落标识：{issue.anchor.logicalBlockId ?? '没有正文段落位置'}</p>
                   <p>内容依据标识：{issue.evidenceIds.join(' · ') || '无'}</p>
                 </details>
                 <div className="inline-actions">
@@ -422,7 +422,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                     </button>
                   ))}
                   <button disabled={readOnly} type="button" onClick={() => void createTodo(issue)}>
-                    转为写作待办
+                    转为修改任务
                   </button>
                   <button disabled={readOnly} type="button" onClick={() => void addComment(issue)}>
                     添加批注
@@ -435,7 +435,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
       </section>
 
       <section className="feature-card">
-        <h2>写作待办与批注</h2>
+        <h2>修改任务与批注</h2>
         {(catalog?.todos ?? []).map((todo) => (
           <article className="ledger-record" data-writing-todo={todo.todoId} key={todo.todoId}>
             <p>
@@ -447,7 +447,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                 disabled={!todo.chapterId}
                 type="button"
                 onClick={() =>
-                  navigateToDraftLocation(todo.chapterId, todo.logicalBlockId, '该待办')
+                  navigateToDraftLocation(todo.chapterId, todo.logicalBlockId, '该任务')
                 }
               >
                 前往原文

@@ -57,9 +57,7 @@ export function evidenceEntryDecision({ final, pullBody, files }) {
 
 function changedFiles(baseSha) {
   if (!/^[0-9a-f]{40}$/iu.test(baseSha ?? '')) throw new Error('EVIDENCE_BASE_SHA is required');
-  return git(['diff', '--name-only', baseSha, 'HEAD'])
-    .split(/\r?\n/u)
-    .filter(Boolean);
+  return git(['diff', '--name-only', baseSha, 'HEAD']).split(/\r?\n/u).filter(Boolean);
 }
 
 function booleanEnvironment(value) {

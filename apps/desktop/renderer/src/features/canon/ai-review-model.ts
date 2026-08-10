@@ -22,7 +22,9 @@ export function reviewConfidenceLevel(confidence: number): ReviewProposal['confi
   return 'low';
 }
 
-export function reviewConfidenceLabel(level: ReviewProposal['confidenceLevel']): '高' | '中' | '低' {
+export function reviewConfidenceLabel(
+  level: ReviewProposal['confidenceLevel'],
+): '高' | '中' | '低' {
   if (level === 'high') return '高';
   if (level === 'medium') return '中';
   return '低';

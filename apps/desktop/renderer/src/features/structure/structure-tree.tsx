@@ -161,7 +161,7 @@ export function StructureTree({
                   </button>
                   <button
                     data-move-blocks
-                    title="预览并跨章移动正文块"
+                    title="预览并跨章移动正文段落"
                     type="button"
                     disabled={
                       readOnly || volume.chapters.length < 2 || commandPending || previewPending

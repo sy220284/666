@@ -2,40 +2,41 @@
 
 ## 结论
 
-M10-22 的工程实现与治理纠偏已在 PR #342 的冻结实现提交 `9ad7ce71cc64b0518c5f0830ed8d48c89f068468` 上完成完整验证。
+M10-22 的最终工程实现已冻结在 PR #342 提交 `e1d75ac55985454eddf690932546bedb9cd92b89`，并完成完整 Draft 验证。
 
-本轮修复将服务器 Ruleset、Controlled Merge、Release Audit 和任务状态链收敛为同一事实模型：
+本轮最终收口统一了四类权威事实：
 
-- 服务器可见 `quality / quality` 是最终聚合门，同时依赖 Core Quality、Release Audit 与 package gate。
-- Controlled Merge 在同一 Quality 事实之上校验当前 Head 最新 Quality / Security / Performance 运行，旧 Draft 成功结果不能替代 Ready 轮次。
-- Ready Verified Evidence 扫描通过 `TASK_BASE_REF` 区分本 PR 的 Schema 2 `IMPLEMENTED` Runtime 与历史 Implemented 任务。
-- 顶层 `quality.yml` 自身变化会触发真实 Linux、Windows、macOS package smoke。
-- Schema 2 任务仍只能由合并后的 `task-verification/<TASK-ID>` 从 `IMPLEMENTED` 提升为有效 `VERIFIED`。
+- 服务器可见 `quality / quality` 是最终聚合门，依赖 Core Quality、Release Audit 与 package gate。
+- Controlled Merge 在同一 Quality 事实之上核对当前 Head 最新 Quality / Security / Performance Workflow Run，旧 Draft 成功结果不能替代 Ready 轮次。
+- Ready Verified Evidence Scan 通过 `TASK_BASE_REF` 区分当前 Schema 2 Runtime 与历史 Implemented Runtime。
+- Daily Backup file lease 将同一 owner 的 heartbeat、`assertOwner`、`release` 串行化；heartbeat 使用 single-flight，并通过 `heartbeatPending` 保留慢 I/O 期间产生的续租需求，避免 owner 自竞争和续租 tick 丢失。
 
 ## 冻结实现验证
 
-实现提交：`9ad7ce71cc64b0518c5f0830ed8d48c89f068468`
+实现提交：`e1d75ac55985454eddf690932546bedb9cd92b89`
 
 GitHub Actions：
 
-- Quality run `31349008834`: success。
-- Security run `31349008741`: success。
-- Performance run `31349008664`: success。
+- Quality run `31351259907`: success。
+- Security run `31351259803`: success。
+- Performance run `31351259799`: success。
 - `quality / release-audit`: success；Verified Evidence Scan 与 changed Evidence validation 均成功。
-- `quality / quality`: success，且在 Core Quality、Release Audit、package gate 完成后才发布最终结果。
-- Unit、Integration、Migration、Coverage: success。
-- Electron E2E: success。
-- Linux、Windows、macOS package smoke: success。
-- Toolchain export: success。
+- 静态检查：Workspace、边界、Format、Lint、TypeScript 全部成功。
+- Unit、Integration、Migration、Coverage 全部成功。
+- Recovery Integration 同时通过 live-owner heartbeat、expired-owner fencing、legacy stale reclaim、并发 stale reclaim 与 SQLite Daily winner 回归。
+- Electron E2E：33/33 success，运行 14.3 分钟，并上传 `desktop-e2e-evidence` Artifact。
+- Linux、Windows、macOS package smoke 全部成功。
+- Toolchain export 成功。
+- 最终 `quality / quality` 在 Core Quality、Release Audit 与 package gate 全部完成后成功。
 
-## #341 纠偏事实
+## #341 / #342 纠偏链
 
-#341 的工程实现提交曾通过完整矩阵，但其最新 Ready Quality 因当前 Runtime 被误判为历史任务而失败。该 PR 进入 main 后，Main Verification 正确将 `main-verification` 与 `task-verification/M10-22` 发布为 failure，因此不能作为 M10-22 的最终验证事实。
+#341 的工程实现曾通过完整矩阵，但其最新 Ready Quality 因当前 Runtime 被误判为历史任务而失败。#341 进入 main 后，Main Verification 正确发布失败状态，因此该来源不能形成 M10-22 的有效 Verified 事实。
 
-PR #342 从 #341 squash main 基线重新建立 `work`，修复最终 Quality 权威和当前 Runtime 识别，并重新执行完整验证。新的任务来源绑定为 PR #342。
+PR #342 从 #341 squash main 基线重新建立 `work`，修复最终 Quality 权威、Ready Evidence 当前 Runtime 识别、顶层 Quality package 路由以及 Ready 轮次暴露的 file lease heartbeat 竞态，并重新完成完整验证。
 
 ## 最终状态语义
 
-Runtime 静态声明保持 `IMPLEMENTED`。PR #342 合并后，只有 `main-verification=success` 且 `task-verification/M10-22=success` 时，统一 Effective Status 才计算为有效 `VERIFIED`。
+Runtime Schema 2 静态状态继续使用 `IMPLEMENTED`。PR #342 合并后，只有 `main-verification=success` 与 `task-verification/M10-22=success` 同时成立，统一 Effective Status 才计算为有效 `VERIFIED`。
 
 Stable 正式发行仍独立要求真实 Windows Authenticode 与 macOS Developer ID / notarization / stapling 信任证据；缺少发行凭据时继续 fail-closed。

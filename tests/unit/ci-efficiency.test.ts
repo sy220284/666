@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { baseGateAction } from '../../.github/governance/automerge-base-gate.mjs';
 import { evidenceEntryDecision } from '../../scripts/evidence-policy-entry.mjs';
-import {
-  fullQualityRunPassed,
-  taskIdFromPullBody,
-} from '../../scripts/ready-closure-route.mjs';
+import { fullQualityRunPassed, taskIdFromPullBody } from '../../scripts/ready-closure-route.mjs';
 
 describe('自动化恢复效率', () => {
   it('坏main进入healing路径而不是阻塞后续修复PR', () => {

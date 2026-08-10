@@ -8,14 +8,14 @@ Scope: all 11 workspace projects
 ? Verifying lockfile against supply-chain policies (281 entries)...
 ✓ Lockfile passes supply-chain policies (281 entries in 2s)
 Progress: resolved 1, reused 0, downloaded 0, added 0
-Progress: resolved 146, reused 0, downloaded 0, added 0
+Progress: resolved 145, reused 0, downloaded 0, added 0
 Progress: resolved 219, reused 0, downloaded 0, added 0
 Progress: resolved 279, reused 0, downloaded 0, added 0, done
 
 Done in 5.4s using pnpm v11.21.0
 $ pnpm install --frozen-lockfile --prefer-offline
 Scope: all 11 workspace projects
-✓ Lockfile passes supply-chain policies (verified 566ms ago)
+✓ Lockfile passes supply-chain policies (verified 560ms ago)
 Lockfile is up to date, resolution step is skipped
 Progress: resolved 1, reused 0, downloaded 0, added 0
 Packages: +222
@@ -23,7 +23,7 @@ Packages: +222
 Packages are hard linked from the content-addressable store to the virtual store.
   Content-addressable store is at: /home/runner/.local/share/pnpm/store/v11
   Virtual store is at:             node_modules/.pnpm
-Progress: resolved 222, reused 0, downloaded 102, added 4
+Progress: resolved 222, reused 0, downloaded 95, added 4
 Progress: resolved 222, reused 0, downloaded 222, added 222, done
 .../esbuild@0.28.1/node_modules/esbuild postinstall$ node install.js
 .../esbuild@0.28.1/node_modules/esbuild postinstall: Done
@@ -50,352 +50,352 @@ devDependencies:
 + vitest 4.1.10
 + yaml 2.9.0
 
-Done in 2.7s using pnpm v11.21.0
+Done in 2.6s using pnpm v11.21.0
 $ pnpm format
 $ prettier --write "scripts/**/*.mjs" "apps/**/*.{ts,tsx,json,mjs,html,css}" "packages/**/*.{ts,tsx,json}" "tests/**/*.{ts,tsx}" "evals/**/*.{json,yaml,yml}" ".github/**/*.{yaml,yml,json,md}" "*.{json,yaml,yml,mjs,ts,tsx}"
-[90mscripts/atomic-file-transaction.mjs[39m 95ms (unchanged)
-[90mscripts/audit-remediation-policy.mjs[39m 26ms (unchanged)
-[90mscripts/automerge.mjs[39m 59ms (unchanged)
-[90mscripts/branch-hygiene.mjs[39m 19ms (unchanged)
-[90mscripts/check-author-language.mjs[39m 29ms (unchanged)
-[90mscripts/check-boundaries.mjs[39m 12ms (unchanged)
-[90mscripts/check-coverage-policy.mjs[39m 7ms (unchanged)
-[90mscripts/check-css-quality.mjs[39m 9ms (unchanged)
-[90mscripts/check-source-structure.mjs[39m 24ms (unchanged)
-[90mscripts/check-sql-migrations.mjs[39m 9ms (unchanged)
-[90mscripts/check-workspaces.mjs[39m 10ms (unchanged)
-[90mscripts/ci-policy.mjs[39m 10ms (unchanged)
+[90mscripts/atomic-file-transaction.mjs[39m 89ms (unchanged)
+[90mscripts/audit-remediation-policy.mjs[39m 27ms (unchanged)
+[90mscripts/automerge.mjs[39m 55ms (unchanged)
+[90mscripts/branch-hygiene.mjs[39m 23ms (unchanged)
+[90mscripts/check-author-language.mjs[39m 25ms (unchanged)
+[90mscripts/check-boundaries.mjs[39m 7ms (unchanged)
+[90mscripts/check-coverage-policy.mjs[39m 8ms (unchanged)
+[90mscripts/check-css-quality.mjs[39m 8ms (unchanged)
+[90mscripts/check-source-structure.mjs[39m 23ms (unchanged)
+[90mscripts/check-sql-migrations.mjs[39m 8ms (unchanged)
+[90mscripts/check-workspaces.mjs[39m 13ms (unchanged)
+[90mscripts/ci-policy.mjs[39m 12ms (unchanged)
 [90mscripts/ci-risk-policy.mjs[39m 4ms (unchanged)
 [90mscripts/code-quality-policy.mjs[39m 10ms (unchanged)
-[90mscripts/evidence-policy-entry.mjs[39m 7ms (unchanged)
-[90mscripts/evidence-policy.mjs[39m 24ms (unchanged)
-[90mscripts/main-verification.mjs[39m 28ms (unchanged)
-[90mscripts/package-desktop.mjs[39m 34ms (unchanged)
-[90mscripts/package-foundation.mjs[39m 5ms (unchanged)
-[90mscripts/ready-closure-route.mjs[39m 20ms (unchanged)
-[90mscripts/release-acceptance.mjs[39m 10ms (unchanged)
-[90mscripts/release-tool.mjs[39m 14ms (unchanged)
+[90mscripts/evidence-policy-entry.mjs[39m 6ms (unchanged)
+[90mscripts/evidence-policy.mjs[39m 20ms (unchanged)
+[90mscripts/main-verification.mjs[39m 19ms (unchanged)
+[90mscripts/package-desktop.mjs[39m 39ms (unchanged)
+[90mscripts/package-foundation.mjs[39m 6ms (unchanged)
+[90mscripts/ready-closure-route.mjs[39m 14ms (unchanged)
+[90mscripts/release-acceptance.mjs[39m 8ms (unchanged)
+[90mscripts/release-tool.mjs[39m 16ms (unchanged)
 [90mscripts/ruleset-policy.mjs[39m 14ms (unchanged)
-[90mscripts/run-electron-e2e.mjs[39m 5ms (unchanged)
-[90mscripts/scan-secrets.mjs[39m 16ms (unchanged)
+[90mscripts/run-electron-e2e.mjs[39m 4ms (unchanged)
+[90mscripts/scan-secrets.mjs[39m 15ms (unchanged)
 [90mscripts/smoke-packaged-desktop.mjs[39m 13ms (unchanged)
-[90mscripts/task-control-lib.mjs[39m 17ms (unchanged)
+[90mscripts/task-control-lib.mjs[39m 16ms (unchanged)
 [90mscripts/test-quality-audit.mjs[39m 10ms (unchanged)
-scripts/toolchain-governance-upgrade-runner.mjs 15ms
+scripts/toolchain-governance-upgrade-runner.mjs 12ms
 scripts/toolchain-policy.mjs 6ms
-[90mscripts/ui-acceptance-gate.mjs[39m 10ms (unchanged)
-[90mscripts/verified-evidence-scan.mjs[39m 11ms (unchanged)
-[90mscripts/verify-package-assets.mjs[39m 7ms (unchanged)
-[90mscripts/workflow-structure-policy.mjs[39m 12ms (unchanged)
-[90mscripts/write-test-evidence.mjs[39m 4ms (unchanged)
+[90mscripts/ui-acceptance-gate.mjs[39m 8ms (unchanged)
+[90mscripts/verified-evidence-scan.mjs[39m 8ms (unchanged)
+[90mscripts/verify-package-assets.mjs[39m 5ms (unchanged)
+[90mscripts/workflow-structure-policy.mjs[39m 9ms (unchanged)
+[90mscripts/write-test-evidence.mjs[39m 3ms (unchanged)
 [90mapps/desktop/main/package.json[39m 2ms (unchanged)
-[90mapps/desktop/main/src/app-ipc-handlers.ts[39m 91ms (unchanged)
-[90mapps/desktop/main/src/apply-fuses.ts[39m 6ms (unchanged)
-[90mapps/desktop/main/src/candidate-preview-ipc.ts[39m 29ms (unchanged)
-[90mapps/desktop/main/src/canon-ipc-handlers.ts[39m 6ms (unchanged)
+[90mapps/desktop/main/src/app-ipc-handlers.ts[39m 82ms (unchanged)
+[90mapps/desktop/main/src/apply-fuses.ts[39m 5ms (unchanged)
+[90mapps/desktop/main/src/candidate-preview-ipc.ts[39m 23ms (unchanged)
+[90mapps/desktop/main/src/canon-ipc-handlers.ts[39m 5ms (unchanged)
 [90mapps/desktop/main/src/continuity-ipc.ts[39m 9ms (unchanged)
 [90mapps/desktop/main/src/core-rpc-channel.ts[39m 10ms (unchanged)
-[90mapps/desktop/main/src/core-supervisor.ts[39m 72ms (unchanged)
-[90mapps/desktop/main/src/credential-broker.ts[39m 32ms (unchanged)
-[90mapps/desktop/main/src/diagnostic-export.ts[39m 9ms (unchanged)
-[90mapps/desktop/main/src/electron-main.ts[39m 48ms (unchanged)
+[90mapps/desktop/main/src/core-supervisor.ts[39m 61ms (unchanged)
+[90mapps/desktop/main/src/credential-broker.ts[39m 27ms (unchanged)
+[90mapps/desktop/main/src/diagnostic-export.ts[39m 8ms (unchanged)
+[90mapps/desktop/main/src/electron-main.ts[39m 44ms (unchanged)
 [90mapps/desktop/main/src/fuse-policy.ts[39m 2ms (unchanged)
-[90mapps/desktop/main/src/generation-ipc.ts[39m 23ms (unchanged)
-[90mapps/desktop/main/src/handler-guard.ts[39m 23ms (unchanged)
+[90mapps/desktop/main/src/generation-ipc.ts[39m 21ms (unchanged)
+[90mapps/desktop/main/src/handler-guard.ts[39m 17ms (unchanged)
 [90mapps/desktop/main/src/index.ts[39m 2ms (unchanged)
-[90mapps/desktop/main/src/ipc-error-semantics.ts[39m 3ms (unchanged)
-[90mapps/desktop/main/src/ipc-handlers.ts[39m 4ms (unchanged)
-[90mapps/desktop/main/src/narrative-planning-ipc.ts[39m 19ms (unchanged)
-[90mapps/desktop/main/src/navigation-policy.ts[39m 5ms (unchanged)
-[90mapps/desktop/main/src/planning-ipc-handlers.ts[39m 9ms (unchanged)
+[90mapps/desktop/main/src/ipc-error-semantics.ts[39m 2ms (unchanged)
+[90mapps/desktop/main/src/ipc-handlers.ts[39m 3ms (unchanged)
+[90mapps/desktop/main/src/narrative-planning-ipc.ts[39m 16ms (unchanged)
+[90mapps/desktop/main/src/navigation-policy.ts[39m 4ms (unchanged)
+[90mapps/desktop/main/src/planning-ipc-handlers.ts[39m 7ms (unchanged)
 [90mapps/desktop/main/src/privacy-logger.ts[39m 7ms (unchanged)
 [90mapps/desktop/main/src/project-ipc-handlers.ts[39m 12ms (unchanged)
-[90mapps/desktop/main/src/provider-ipc-handlers.ts[39m 43ms (unchanged)
-[90mapps/desktop/main/src/provider-operation-coordinator.ts[39m 7ms (unchanged)
-[90mapps/desktop/main/src/recovery-ipc-handlers.ts[39m 16ms (unchanged)
-[90mapps/desktop/main/src/renderer-protocol.ts[39m 7ms (unchanged)
+[90mapps/desktop/main/src/provider-ipc-handlers.ts[39m 30ms (unchanged)
+[90mapps/desktop/main/src/provider-operation-coordinator.ts[39m 6ms (unchanged)
+[90mapps/desktop/main/src/recovery-ipc-handlers.ts[39m 12ms (unchanged)
+[90mapps/desktop/main/src/renderer-protocol.ts[39m 5ms (unchanged)
 [90mapps/desktop/main/src/renderer-shutdown-ipc.ts[39m 4ms (unchanged)
-[90mapps/desktop/main/src/security-policy.ts[39m 2ms (unchanged)
-[90mapps/desktop/main/src/structure-ipc-handlers.ts[39m 15ms (unchanged)
+[90mapps/desktop/main/src/security-policy.ts[39m 1ms (unchanged)
+[90mapps/desktop/main/src/structure-ipc-handlers.ts[39m 11ms (unchanged)
 [90mapps/desktop/main/src/task-ipc-handlers.ts[39m 4ms (unchanged)
-[90mapps/desktop/main/src/window-state.ts[39m 10ms (unchanged)
-[90mapps/desktop/main/src/writing-ipc-handlers.ts[39m 12ms (unchanged)
+[90mapps/desktop/main/src/window-state.ts[39m 12ms (unchanged)
+[90mapps/desktop/main/src/writing-ipc-handlers.ts[39m 14ms (unchanged)
 [90mapps/desktop/main/tsconfig.json[39m 1ms (unchanged)
 [90mapps/desktop/package.json[39m 1ms (unchanged)
 [90mapps/desktop/preload/package.json[39m 1ms (unchanged)
 [90mapps/desktop/preload/src/app-bridge-factory.ts[39m 7ms (unchanged)
-[90mapps/desktop/preload/src/bridge-runtime.ts[39m 5ms (unchanged)
-[90mapps/desktop/preload/src/continuity-bridge.ts[39m 5ms (unchanged)
+[90mapps/desktop/preload/src/bridge-runtime.ts[39m 3ms (unchanged)
+[90mapps/desktop/preload/src/continuity-bridge.ts[39m 2ms (unchanged)
 [90mapps/desktop/preload/src/continuity-entry.ts[39m 1ms (unchanged)
-[90mapps/desktop/preload/src/entry.ts[39m 5ms (unchanged)
+[90mapps/desktop/preload/src/entry.ts[39m 3ms (unchanged)
 [90mapps/desktop/preload/src/index.ts[39m 2ms (unchanged)
 [90mapps/desktop/preload/src/lifecycle-bridge.ts[39m 2ms (unchanged)
-[90mapps/desktop/preload/src/narrative-planning-bridge.ts[39m 3ms (unchanged)
-[90mapps/desktop/preload/src/planning-bridge-factory.ts[39m 12ms (unchanged)
-[90mapps/desktop/preload/src/project-bridge-factory.ts[39m 7ms (unchanged)
-[90mapps/desktop/preload/src/recovery-bridge-factory.ts[39m 5ms (unchanged)
-[90mapps/desktop/preload/src/rhythm-bridge.ts[39m 3ms (unchanged)
-[90mapps/desktop/preload/src/search-tools-bridge.ts[39m 4ms (unchanged)
-[90mapps/desktop/preload/src/state-proposal-bridge.ts[39m 4ms (unchanged)
-[90mapps/desktop/preload/src/task-bridge-factory.ts[39m 6ms (unchanged)
+[90mapps/desktop/preload/src/narrative-planning-bridge.ts[39m 2ms (unchanged)
+[90mapps/desktop/preload/src/planning-bridge-factory.ts[39m 11ms (unchanged)
+[90mapps/desktop/preload/src/project-bridge-factory.ts[39m 6ms (unchanged)
+[90mapps/desktop/preload/src/recovery-bridge-factory.ts[39m 4ms (unchanged)
+[90mapps/desktop/preload/src/rhythm-bridge.ts[39m 2ms (unchanged)
+[90mapps/desktop/preload/src/search-tools-bridge.ts[39m 3ms (unchanged)
+[90mapps/desktop/preload/src/state-proposal-bridge.ts[39m 3ms (unchanged)
+[90mapps/desktop/preload/src/task-bridge-factory.ts[39m 7ms (unchanged)
 [90mapps/desktop/preload/src/task-gap-recovery.ts[39m 3ms (unchanged)
 [90mapps/desktop/preload/src/validation-bridge.ts[39m 3ms (unchanged)
 [90mapps/desktop/preload/src/writing-bridge-factory.ts[39m 5ms (unchanged)
 [90mapps/desktop/preload/tsconfig.json[39m 1ms (unchanged)
 [90mapps/desktop/renderer/build-assets.mjs[39m 3ms (unchanged)
 [90mapps/desktop/renderer/package.json[39m 1ms (unchanged)
-[90mapps/desktop/renderer/src/app/app-shell-helpers.ts[39m 6ms (unchanged)
-[90mapps/desktop/renderer/src/app/app-shell-layout.tsx[39m 37ms (unchanged)
-[90mapps/desktop/renderer/src/app/app-shell-m3.tsx[39m 31ms (unchanged)
-[90mapps/desktop/renderer/src/app/app-shell-pages.tsx[39m 24ms (unchanged)
-[90mapps/desktop/renderer/src/app/app-shell-status.ts[39m 19ms (unchanged)
-[90mapps/desktop/renderer/src/app/app-shell.tsx[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/app/project-session-transition.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/app/renderer-application-controller.ts[39m 5ms (unchanged)
-[90mapps/desktop/renderer/src/app/renderer-error-boundary.tsx[39m 12ms (unchanged)
-[90mapps/desktop/renderer/src/app/renderer-foundation-app.tsx[39m 10ms (unchanged)
-[90mapps/desktop/renderer/src/app/use-app-settings-persistence.ts[39m 16ms (unchanged)
-[90mapps/desktop/renderer/src/app/use-app-shell-actions.ts[39m 13ms (unchanged)
-[90mapps/desktop/renderer/src/app/use-app-shell-navigation.ts[39m 15ms (unchanged)
-[90mapps/desktop/renderer/src/app/use-project-session-controller.ts[39m 15ms (unchanged)
-[90mapps/desktop/renderer/src/app/use-workspace-runtime.ts[39m 8ms (unchanged)
-[90mapps/desktop/renderer/src/app/use-workspace-startup.ts[39m 12ms (unchanged)
-[90mapps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts[39m 39ms (unchanged)
-[90mapps/desktop/renderer/src/bridge/request-lifecycle.ts[39m 52ms (unchanged)
-[90mapps/desktop/renderer/src/bridge/use-bridge-resource.ts[39m 13ms (unchanged)
+[90mapps/desktop/renderer/src/app/app-shell-helpers.ts[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/app/app-shell-layout.tsx[39m 41ms (unchanged)
+[90mapps/desktop/renderer/src/app/app-shell-m3.tsx[39m 27ms (unchanged)
+[90mapps/desktop/renderer/src/app/app-shell-pages.tsx[39m 17ms (unchanged)
+[90mapps/desktop/renderer/src/app/app-shell-status.ts[39m 13ms (unchanged)
+[90mapps/desktop/renderer/src/app/app-shell.tsx[39m 3ms (unchanged)
+[90mapps/desktop/renderer/src/app/project-session-transition.ts[39m 2ms (unchanged)
+[90mapps/desktop/renderer/src/app/renderer-application-controller.ts[39m 4ms (unchanged)
+[90mapps/desktop/renderer/src/app/renderer-error-boundary.tsx[39m 8ms (unchanged)
+[90mapps/desktop/renderer/src/app/renderer-foundation-app.tsx[39m 8ms (unchanged)
+[90mapps/desktop/renderer/src/app/use-app-settings-persistence.ts[39m 17ms (unchanged)
+[90mapps/desktop/renderer/src/app/use-app-shell-actions.ts[39m 12ms (unchanged)
+[90mapps/desktop/renderer/src/app/use-app-shell-navigation.ts[39m 14ms (unchanged)
+[90mapps/desktop/renderer/src/app/use-project-session-controller.ts[39m 19ms (unchanged)
+[90mapps/desktop/renderer/src/app/use-workspace-runtime.ts[39m 7ms (unchanged)
+[90mapps/desktop/renderer/src/app/use-workspace-startup.ts[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts[39m 27ms (unchanged)
+[90mapps/desktop/renderer/src/bridge/request-lifecycle.ts[39m 33ms (unchanged)
+[90mapps/desktop/renderer/src/bridge/use-bridge-resource.ts[39m 12ms (unchanged)
 [90mapps/desktop/renderer/src/components/author-error-notice.tsx[39m 6ms (unchanged)
-[90mapps/desktop/renderer/src/components/context-help.tsx[39m 9ms (unchanged)
+[90mapps/desktop/renderer/src/components/context-help.tsx[39m 8ms (unchanged)
 [90mapps/desktop/renderer/src/components/draft-flush-failure-dialog.tsx[39m 6ms (unchanged)
-[90mapps/desktop/renderer/src/components/safety-banner.tsx[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/components/task-bar.tsx[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/components/safety-banner.tsx[39m 4ms (unchanged)
+[90mapps/desktop/renderer/src/components/task-bar.tsx[39m 7ms (unchanged)
 [90mapps/desktop/renderer/src/continuity-global.d.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/canon-author-fields.tsx[39m 31ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/canon-core-workbench.tsx[39m 5ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/canon-panel-shared.tsx[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/canon-workbench.tsx[39m 18ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/continuity-editors.tsx[39m 31ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/continuity-panel.tsx[39m 9ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/continuity-relationship-editor.tsx[39m 29ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/continuity-results.tsx[39m 7ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/entity-canon-panel.tsx[39m 29ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/narrative-planning-editors.tsx[39m 22ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/canon-author-fields.tsx[39m 24ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/canon-core-workbench.tsx[39m 9ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/canon-panel-shared.tsx[39m 3ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/canon-workbench.tsx[39m 14ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/continuity-editors.tsx[39m 27ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/continuity-panel.tsx[39m 8ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/continuity-relationship-editor.tsx[39m 21ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/continuity-results.tsx[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/entity-canon-panel.tsx[39m 35ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/narrative-planning-editors.tsx[39m 18ms (unchanged)
 [90mapps/desktop/renderer/src/features/canon/narrative-planning-panel.tsx[39m 5ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/narrative-planning-results.tsx[39m 7ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/narrative-relationship-editor.tsx[39m 27ms (unchanged)
-[90mapps/desktop/renderer/src/features/canon/state-proposal-panel.tsx[39m 28ms (unchanged)
-[90mapps/desktop/renderer/src/features/checks/checks-workbench.tsx[39m 33ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/narrative-planning-results.tsx[39m 6ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/narrative-relationship-editor.tsx[39m 24ms (unchanged)
+[90mapps/desktop/renderer/src/features/canon/state-proposal-panel.tsx[39m 25ms (unchanged)
+[90mapps/desktop/renderer/src/features/checks/checks-workbench.tsx[39m 37ms (unchanged)
 [90mapps/desktop/renderer/src/features/checks/generation-polling-policy.ts[39m 2ms (unchanged)
 [90mapps/desktop/renderer/src/features/checks/rhythm-panel.tsx[39m 11ms (unchanged)
-[90mapps/desktop/renderer/src/features/checks/search-panel.tsx[39m 26ms (unchanged)
-[90mapps/desktop/renderer/src/features/data-tools/data-tools-workbench.tsx[39m 35ms (unchanged)
-[90mapps/desktop/renderer/src/features/data-tools/recovery-overview-gate.tsx[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/features/checks/search-panel.tsx[39m 23ms (unchanged)
+[90mapps/desktop/renderer/src/features/data-tools/data-tools-workbench.tsx[39m 45ms (unchanged)
+[90mapps/desktop/renderer/src/features/data-tools/recovery-overview-gate.tsx[39m 4ms (unchanged)
 [90mapps/desktop/renderer/src/features/data-tools/recovery-overview-state.ts[39m 1ms (unchanged)
 [90mapps/desktop/renderer/src/features/data-tools/text-export-selection.ts[39m 2ms (unchanged)
-[90mapps/desktop/renderer/src/features/home/home-page.tsx[39m 32ms (unchanged)
+[90mapps/desktop/renderer/src/features/home/home-page.tsx[39m 43ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/brief/beginner-planning-questions.tsx[39m 7ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/brief/project-brief-editor.tsx[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/outline/plot-node-dialog.tsx[39m 7ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/outline/plot-tree.tsx[39m 8ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/planning-context-panel.tsx[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/planning/planning-form-values.ts[39m 3ms (unchanged)
+[90mapps/desktop/renderer/src/features/planning/planning-form-values.ts[39m 4ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/planning-inline-error.tsx[39m 1ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/planning-mode-workbench.tsx[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/planning/planning-workbench.tsx[39m 7ms (unchanged)
+[90mapps/desktop/renderer/src/features/planning/planning-workbench.tsx[39m 8ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/professional-planning-workbench.tsx[39m 10ms (unchanged)
 [90mapps/desktop/renderer/src/features/planning/scenes/scene-beat-dialog.tsx[39m 11ms (unchanged)
-[90mapps/desktop/renderer/src/features/planning/scenes/scene-beat-panel.tsx[39m 17ms (unchanged)
+[90mapps/desktop/renderer/src/features/planning/scenes/scene-beat-panel.tsx[39m 16ms (unchanged)
 [90mapps/desktop/renderer/src/features/provider/provider-settings-controller.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/features/settings/provider-presets.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/features/settings/provider-settings.tsx[39m 23ms (unchanged)
-[90mapps/desktop/renderer/src/features/settings/settings-page.tsx[39m 32ms (unchanged)
-[90mapps/desktop/renderer/src/features/structure/chapter-editor-dialog.tsx[39m 9ms (unchanged)
+[90mapps/desktop/renderer/src/features/settings/provider-presets.ts[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/features/settings/provider-settings.tsx[39m 24ms (unchanged)
+[90mapps/desktop/renderer/src/features/settings/settings-page.tsx[39m 31ms (unchanged)
+[90mapps/desktop/renderer/src/features/structure/chapter-editor-dialog.tsx[39m 7ms (unchanged)
 [90mapps/desktop/renderer/src/features/structure/structure-formatters.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/structure/structure-navigator.tsx[39m 15ms (unchanged)
+[90mapps/desktop/renderer/src/features/structure/structure-navigator.tsx[39m 12ms (unchanged)
 [90mapps/desktop/renderer/src/features/structure/structure-operation-dialog.tsx[39m 15ms (unchanged)
-[90mapps/desktop/renderer/src/features/structure/structure-tree.tsx[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/features/structure/structure-tree.tsx[39m 13ms (unchanged)
 [90mapps/desktop/renderer/src/features/structure/trash-panel.tsx[39m 6ms (unchanged)
 [90mapps/desktop/renderer/src/features/structure/volume-editor-dialog.tsx[39m 5ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/candidate-conflicts.ts[39m 2ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/candidate-conflicts.ts[39m 1ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/candidate-generation-refresh.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/candidate-preview-actions.ts[39m 12ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/candidate-preview-actions.ts[39m 14ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/candidate-review-display.tsx[39m 12ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/candidate-review-loader.ts[39m 12ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/candidate-review-panel.tsx[39m 17ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/candidate-selection.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/candidate-skeleton-review.tsx[39m 5ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/chapter-session-state.ts[39m 5ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/continuation-anchor.ts[39m 4ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/candidate-review-loader.ts[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/candidate-review-panel.tsx[39m 19ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/candidate-selection.ts[39m 3ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/candidate-skeleton-review.tsx[39m 9ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/chapter-session-state.ts[39m 4ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/continuation-anchor.ts[39m 3ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/continuation-persistence.ts[39m 9ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/draft-blocks.ts[39m 1ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/draft-persistence-feedback.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/draft-save-context.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/editor-selection.ts[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/draft-save-context.ts[39m 3ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/editor-selection.ts[39m 9ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/find-replace-toolbar.tsx[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/generation-sources-loader.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/generation-start.ts[39m 15ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/generation-studio.tsx[39m 22ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/generation-task-subscription.ts[39m 6ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/generation-sources-loader.ts[39m 2ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/generation-start.ts[39m 14ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/generation-studio.tsx[39m 16ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/generation-task-subscription.ts[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/historical-navigation-notice.tsx[39m 3ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/paste-sanitizer.ts[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/review-diff-panel.tsx[39m 10ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/review-diff.ts[39m 37ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/review-diff.ts[39m 30ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/use-chapter-session.ts[39m 16ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/use-draft-autosave.ts[39m 8ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/use-draft-autosave.ts[39m 7ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/use-editor-lifecycle.ts[39m 10ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/use-generation-run-actions.ts[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/use-generation-sources.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/use-writing-continuation.ts[39m 6ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/use-writing-editor-tools.ts[39m 8ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/use-writing-metrics.ts[39m 2ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/use-writing-session-controller.ts[39m 9ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/use-writing-continuation.ts[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/use-writing-editor-tools.ts[39m 9ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/use-writing-metrics.ts[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/use-writing-session-controller.ts[39m 11ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/use-writing-status.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/version-panel.tsx[39m 11ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/writing-assistance-panel.tsx[39m 12ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/writing-assistance.ts[39m 13ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/writing-core-workbench.tsx[39m 7ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/version-panel.tsx[39m 13ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/writing-assistance-panel.tsx[39m 13ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/writing-assistance.ts[39m 17ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/writing-core-workbench.tsx[39m 6ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/writing-workbench-header.tsx[39m 4ms (unchanged)
 [90mapps/desktop/renderer/src/features/writing/writing-workbench-types.ts[39m 1ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/writing-workbench-view.tsx[39m 13ms (unchanged)
-[90mapps/desktop/renderer/src/features/writing/writing-workbench.tsx[39m 12ms (unchanged)
-[90mapps/desktop/renderer/src/global.d.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/index.html[39m 26ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/writing-workbench-view.tsx[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/features/writing/writing-workbench.tsx[39m 13ms (unchanged)
+[90mapps/desktop/renderer/src/global.d.ts[39m 4ms (unchanged)
+[90mapps/desktop/renderer/src/index.html[39m 33ms (unchanged)
 [90mapps/desktop/renderer/src/index.ts[39m 1ms (unchanged)
 [90mapps/desktop/renderer/src/layout-model.ts[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/narrative-planning-global.d.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/presentation/author-error-message.ts[39m 8ms (unchanged)
-[90mapps/desktop/renderer/src/presentation/author-status-labels.ts[39m 2ms (unchanged)
-[90mapps/desktop/renderer/src/presentation/author-terms.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/presentation/author-value-format.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/react-entry.tsx[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/ai-readiness.ts[39m 2ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/capability-matrix.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/capability-runtime.ts[39m 9ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/command-coordinator.ts[39m 12ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/core-recovery-supervisor.ts[39m 17ms (unchanged)
+[90mapps/desktop/renderer/src/presentation/author-error-message.ts[39m 9ms (unchanged)
+[90mapps/desktop/renderer/src/presentation/author-status-labels.ts[39m 3ms (unchanged)
+[90mapps/desktop/renderer/src/presentation/author-terms.ts[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/presentation/author-value-format.ts[39m 6ms (unchanged)
+[90mapps/desktop/renderer/src/react-entry.tsx[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/ai-readiness.ts[39m 3ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/capability-matrix.ts[39m 6ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/capability-runtime.ts[39m 12ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/command-coordinator.ts[39m 14ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/core-recovery-supervisor.ts[39m 18ms (unchanged)
 [90mapps/desktop/renderer/src/runtime/draft-flush-registry.ts[39m 2ms (unchanged)
 [90mapps/desktop/renderer/src/runtime/global-error-boundary.ts[39m 2ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/lifecycle-registry.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/renderer-foundation-runtime.ts[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/lifecycle-registry.ts[39m 5ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/renderer-foundation-runtime.ts[39m 9ms (unchanged)
 [90mapps/desktop/renderer/src/runtime/request-generation.ts[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/runtime/single-flight-polling.ts[39m 3ms (unchanged)
-[90mapps/desktop/renderer/src/runtime/startup-diagnostics.ts[39m 2ms (unchanged)
+[90mapps/desktop/renderer/src/runtime/startup-diagnostics.ts[39m 3ms (unchanged)
 [90mapps/desktop/renderer/src/runtime/status-arbitrator.ts[39m 3ms (unchanged)
 [90mapps/desktop/renderer/src/runtime/workspace-attention.ts[39m 10ms (unchanged)
 [90mapps/desktop/renderer/src/search-rhythm-global.d.ts[39m 1ms (unchanged)
-[90mapps/desktop/renderer/src/shell/app-shell-model.ts[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/shell/app-shell-model.ts[39m 9ms (unchanged)
 [90mapps/desktop/renderer/src/shell/home-dashboard-model.ts[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/shell/navigation-target.ts[39m 6ms (unchanged)
 [90mapps/desktop/renderer/src/shell/settings-navigation-model.ts[39m 5ms (unchanged)
 [90mapps/desktop/renderer/src/shell/task-bar-model.ts[39m 4ms (unchanged)
 [90mapps/desktop/renderer/src/state-proposal-global.d.ts[39m 1ms (unchanged)
-[90mapps/desktop/renderer/src/state/ui-state-boundary.ts[39m 16ms (unchanged)
-[90mapps/desktop/renderer/src/state/ui-store.ts[39m 4ms (unchanged)
-[90mapps/desktop/renderer/src/styles/base.css[39m 46ms (unchanged)
-[90mapps/desktop/renderer/src/styles/components/01-shell.css[39m 46ms (unchanged)
-[90mapps/desktop/renderer/src/styles/components/02-workspace.css[39m 38ms (unchanged)
-[90mapps/desktop/renderer/src/styles/components/03-dialogs.css[39m 38ms (unchanged)
-[90mapps/desktop/renderer/src/styles/components/04-features.css[39m 34ms (unchanged)
-[90mapps/desktop/renderer/src/styles/components/05-writing.css[39m 32ms (unchanged)
-[90mapps/desktop/renderer/src/styles/components/06-review.css[39m 18ms (unchanged)
-[90mapps/desktop/renderer/src/styles/layout.css[39m 56ms (unchanged)
+[90mapps/desktop/renderer/src/state/ui-state-boundary.ts[39m 10ms (unchanged)
+[90mapps/desktop/renderer/src/state/ui-store.ts[39m 2ms (unchanged)
+[90mapps/desktop/renderer/src/styles/base.css[39m 38ms (unchanged)
+[90mapps/desktop/renderer/src/styles/components/01-shell.css[39m 45ms (unchanged)
+[90mapps/desktop/renderer/src/styles/components/02-workspace.css[39m 36ms (unchanged)
+[90mapps/desktop/renderer/src/styles/components/03-dialogs.css[39m 36ms (unchanged)
+[90mapps/desktop/renderer/src/styles/components/04-features.css[39m 29ms (unchanged)
+[90mapps/desktop/renderer/src/styles/components/05-writing.css[39m 30ms (unchanged)
+[90mapps/desktop/renderer/src/styles/components/06-review.css[39m 19ms (unchanged)
+[90mapps/desktop/renderer/src/styles/layout.css[39m 64ms (unchanged)
 [90mapps/desktop/renderer/src/styles/themes.css[39m 11ms (unchanged)
 [90mapps/desktop/renderer/src/types.ts[39m 2ms (unchanged)
 [90mapps/desktop/renderer/src/validation-global.d.ts[39m 1ms (unchanged)
 [90mapps/desktop/renderer/tsconfig.json[39m 1ms (unchanged)
 [90mpackages/contracts/package.json[39m 1ms (unchanged)
-[90mpackages/contracts/src/ai-output-protocol.ts[39m 30ms (unchanged)
-[90mpackages/contracts/src/app-data.ts[39m 22ms (unchanged)
-[90mpackages/contracts/src/app-runtime-contracts.ts[39m 22ms (unchanged)
-[90mpackages/contracts/src/candidate-apply.ts[39m 20ms (unchanged)
-[90mpackages/contracts/src/candidate.ts[39m 13ms (unchanged)
+[90mpackages/contracts/src/ai-output-protocol.ts[39m 26ms (unchanged)
+[90mpackages/contracts/src/app-data.ts[39m 21ms (unchanged)
+[90mpackages/contracts/src/app-runtime-contracts.ts[39m 24ms (unchanged)
+[90mpackages/contracts/src/candidate-apply.ts[39m 22ms (unchanged)
+[90mpackages/contracts/src/candidate.ts[39m 16ms (unchanged)
 [90mpackages/contracts/src/constraint-package.ts[39m 7ms (unchanged)
 [90mpackages/contracts/src/continuity-control.ts[39m 1ms (unchanged)
-[90mpackages/contracts/src/continuity.ts[39m 16ms (unchanged)
-[90mpackages/contracts/src/draft.ts[39m 13ms (unchanged)
-[90mpackages/contracts/src/entity-canon.ts[39m 13ms (unchanged)
+[90mpackages/contracts/src/continuity.ts[39m 18ms (unchanged)
+[90mpackages/contracts/src/draft.ts[39m 12ms (unchanged)
+[90mpackages/contracts/src/entity-canon.ts[39m 15ms (unchanged)
 [90mpackages/contracts/src/error-codes.ts[39m 2ms (unchanged)
 [90mpackages/contracts/src/generation.ts[39m 21ms (unchanged)
-[90mpackages/contracts/src/import-export.ts[39m 13ms (unchanged)
+[90mpackages/contracts/src/import-export.ts[39m 16ms (unchanged)
 [90mpackages/contracts/src/index.ts[39m 2ms (unchanged)
-[90mpackages/contracts/src/narrative-planning.ts[39m 25ms (unchanged)
-[90mpackages/contracts/src/project-planning.ts[39m 14ms (unchanged)
-[90mpackages/contracts/src/project-structure.ts[39m 52ms (unchanged)
-[90mpackages/contracts/src/project-workspace.ts[39m 21ms (unchanged)
-[90mpackages/contracts/src/protocol-registry.ts[39m 18ms (unchanged)
-[90mpackages/contracts/src/provider.ts[39m 11ms (unchanged)
+[90mpackages/contracts/src/narrative-planning.ts[39m 26ms (unchanged)
+[90mpackages/contracts/src/project-planning.ts[39m 15ms (unchanged)
+[90mpackages/contracts/src/project-structure.ts[39m 44ms (unchanged)
+[90mpackages/contracts/src/project-workspace.ts[39m 24ms (unchanged)
+[90mpackages/contracts/src/protocol-registry.ts[39m 10ms (unchanged)
+[90mpackages/contracts/src/provider.ts[39m 13ms (unchanged)
 [90mpackages/contracts/src/public-index.ts[39m 1ms (unchanged)
-[90mpackages/contracts/src/recovery.ts[39m 46ms (unchanged)
-[90mpackages/contracts/src/renderer-shutdown.ts[39m 3ms (unchanged)
-[90mpackages/contracts/src/rhythm.ts[39m 11ms (unchanged)
-[90mpackages/contracts/src/scene-beat.ts[39m 17ms (unchanged)
-[90mpackages/contracts/src/search-index.ts[39m 10ms (unchanged)
+[90mpackages/contracts/src/recovery.ts[39m 40ms (unchanged)
+[90mpackages/contracts/src/renderer-shutdown.ts[39m 2ms (unchanged)
+[90mpackages/contracts/src/rhythm.ts[39m 10ms (unchanged)
+[90mpackages/contracts/src/scene-beat.ts[39m 16ms (unchanged)
+[90mpackages/contracts/src/search-index.ts[39m 9ms (unchanged)
 [90mpackages/contracts/src/search-tools.ts[39m 12ms (unchanged)
-[90mpackages/contracts/src/state-proposal-ipc.ts[39m 3ms (unchanged)
-[90mpackages/contracts/src/state-proposal.ts[39m 19ms (unchanged)
-[90mpackages/contracts/src/task-protocol.ts[39m 16ms (unchanged)
-[90mpackages/contracts/src/validation.ts[39m 17ms (unchanged)
+[90mpackages/contracts/src/state-proposal-ipc.ts[39m 4ms (unchanged)
+[90mpackages/contracts/src/state-proposal.ts[39m 23ms (unchanged)
+[90mpackages/contracts/src/task-protocol.ts[39m 15ms (unchanged)
+[90mpackages/contracts/src/validation.ts[39m 18ms (unchanged)
 [90mpackages/contracts/src/version.ts[39m 10ms (unchanged)
-[90mpackages/contracts/src/worldforge-bridge.ts[39m 25ms (unchanged)
+[90mpackages/contracts/src/worldforge-bridge.ts[39m 14ms (unchanged)
 [90mpackages/contracts/tsconfig.json[39m 1ms (unchanged)
 [90mpackages/core-service/package.json[39m 1ms (unchanged)
 [90mpackages/core-service/src/active-structure.ts[39m 4ms (unchanged)
-[90mpackages/core-service/src/app-data-errors.ts[39m 1ms (unchanged)
+[90mpackages/core-service/src/app-data-errors.ts[39m 2ms (unchanged)
 [90mpackages/core-service/src/app-runtime.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/app-settings.ts[39m 5ms (unchanged)
 [90mpackages/core-service/src/bounded-idempotent-promise-cache.ts[39m 4ms (unchanged)
-[90mpackages/core-service/src/candidate-apply-diff.ts[39m 26ms (unchanged)
-[90mpackages/core-service/src/candidate-apply-plan-core.ts[39m 22ms (unchanged)
+[90mpackages/core-service/src/candidate-apply-diff.ts[39m 25ms (unchanged)
+[90mpackages/core-service/src/candidate-apply-plan-core.ts[39m 23ms (unchanged)
 [90mpackages/core-service/src/candidate-apply-plan.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/candidate-apply.ts[39m 22ms (unchanged)
-[90mpackages/core-service/src/candidate-diff-worker.ts[39m 2ms (unchanged)
+[90mpackages/core-service/src/candidate-apply.ts[39m 25ms (unchanged)
+[90mpackages/core-service/src/candidate-diff-worker.ts[39m 3ms (unchanged)
 [90mpackages/core-service/src/candidate-integrity.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/candidate-state.ts[39m 25ms (unchanged)
-[90mpackages/core-service/src/candidate.ts[39m 26ms (unchanged)
-[90mpackages/core-service/src/checkpoint-aware-recovery.ts[39m 23ms (unchanged)
+[90mpackages/core-service/src/candidate-state.ts[39m 24ms (unchanged)
+[90mpackages/core-service/src/candidate.ts[39m 27ms (unchanged)
+[90mpackages/core-service/src/checkpoint-aware-recovery.ts[39m 14ms (unchanged)
 [90mpackages/core-service/src/command-identity-context.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/constraint-package-authority.ts[39m 29ms (unchanged)
-[90mpackages/core-service/src/constraint-package-hardening.ts[39m 6ms (unchanged)
-[90mpackages/core-service/src/constraint-package.ts[39m 41ms (unchanged)
-[90mpackages/core-service/src/continuity-model.ts[39m 6ms (unchanged)
-[90mpackages/core-service/src/continuity-read.ts[39m 8ms (unchanged)
-[90mpackages/core-service/src/continuity-state.ts[39m 9ms (unchanged)
-[90mpackages/core-service/src/continuity-timeline.ts[39m 6ms (unchanged)
+[90mpackages/core-service/src/constraint-package-authority.ts[39m 36ms (unchanged)
+[90mpackages/core-service/src/constraint-package-hardening.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/constraint-package.ts[39m 30ms (unchanged)
+[90mpackages/core-service/src/continuity-model.ts[39m 8ms (unchanged)
+[90mpackages/core-service/src/continuity-read.ts[39m 9ms (unchanged)
+[90mpackages/core-service/src/continuity-state.ts[39m 8ms (unchanged)
+[90mpackages/core-service/src/continuity-timeline.ts[39m 8ms (unchanged)
 [90mpackages/core-service/src/continuity-validation.ts[39m 6ms (unchanged)
 [90mpackages/core-service/src/continuity.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/coordinated-import-export.ts[39m 7ms (unchanged)
-[90mpackages/core-service/src/database/database.ts[39m 16ms (unchanged)
+[90mpackages/core-service/src/coordinated-import-export.ts[39m 8ms (unchanged)
+[90mpackages/core-service/src/database/database.ts[39m 24ms (unchanged)
 [90mpackages/core-service/src/database/index.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/database/migrations.ts[39m 11ms (unchanged)
+[90mpackages/core-service/src/database/migrations.ts[39m 10ms (unchanged)
 [90mpackages/core-service/src/database/types.ts[39m 3ms (unchanged)
 [90mpackages/core-service/src/database/write-queue.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/docx-transfer.ts[39m 25ms (unchanged)
-[90mpackages/core-service/src/draft-lock-guard.ts[39m 6ms (unchanged)
+[90mpackages/core-service/src/docx-transfer.ts[39m 23ms (unchanged)
+[90mpackages/core-service/src/draft-lock-guard.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/draft.ts[39m 1ms (unchanged)
 [90mpackages/core-service/src/draft/draft-model.ts[39m 7ms (unchanged)
-[90mpackages/core-service/src/draft/draft-open-service.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/draft/draft-operation-policy.ts[39m 9ms (unchanged)
-[90mpackages/core-service/src/draft/draft-patch-replay.ts[39m 6ms (unchanged)
-[90mpackages/core-service/src/draft/draft-patch-service.ts[39m 15ms (unchanged)
-[90mpackages/core-service/src/draft/draft-record-reader.ts[39m 9ms (unchanged)
-[90mpackages/core-service/src/draft/draft-record-writer.ts[39m 3ms (unchanged)
+[90mpackages/core-service/src/draft/draft-open-service.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/draft/draft-operation-policy.ts[39m 14ms (unchanged)
+[90mpackages/core-service/src/draft/draft-patch-replay.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/draft/draft-patch-service.ts[39m 11ms (unchanged)
+[90mpackages/core-service/src/draft/draft-record-reader.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/draft/draft-record-writer.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/draft/draft-service.ts[39m 3ms (unchanged)
 [90mpackages/core-service/src/draft/draft-snapshot-service.ts[39m 4ms (unchanged)
-[90mpackages/core-service/src/entity-canon.ts[39m 22ms (unchanged)
-[90mpackages/core-service/src/entity-delete-policy.ts[39m 8ms (unchanged)
+[90mpackages/core-service/src/entity-canon.ts[39m 24ms (unchanged)
+[90mpackages/core-service/src/entity-delete-policy.ts[39m 6ms (unchanged)
 [90mpackages/core-service/src/export-selection-guard.ts[39m 2ms (unchanged)
 [90mpackages/core-service/src/generation-run.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/generation-runtime.ts[39m 20ms (unchanged)
-[90mpackages/core-service/src/generation-source-resolver.ts[39m 32ms (unchanged)
-[90mpackages/core-service/src/generation/candidate-persistence.ts[39m 14ms (unchanged)
-[90mpackages/core-service/src/generation/generation-run-service.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/generation-runtime.ts[39m 19ms (unchanged)
+[90mpackages/core-service/src/generation-source-resolver.ts[39m 30ms (unchanged)
+[90mpackages/core-service/src/generation/candidate-persistence.ts[39m 17ms (unchanged)
+[90mpackages/core-service/src/generation/generation-run-service.ts[39m 8ms (unchanged)
 [90mpackages/core-service/src/generation/model-support-repository.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/generation/partial-result-service.ts[39m 6ms (unchanged)
-[90mpackages/core-service/src/generation/run-command-identity.ts[39m 10ms (unchanged)
+[90mpackages/core-service/src/generation/partial-result-service.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/generation/run-command-identity.ts[39m 7ms (unchanged)
 [90mpackages/core-service/src/generation/run-repository.ts[39m 19ms (unchanged)
 [90mpackages/core-service/src/import-export.ts[39m 1ms (unchanged)
 [90mpackages/core-service/src/import-export/export-file-policy.ts[39m 3ms (unchanged)
 [90mpackages/core-service/src/import-export/export-renderer.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/import-export/export-version-service.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/import-export/export-version-service.ts[39m 6ms (unchanged)
 [90mpackages/core-service/src/import-export/import-commit-service.ts[39m 11ms (unchanged)
 [90mpackages/core-service/src/import-export/import-export-model.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/import-export/import-export-service.ts[39m 2ms (unchanged)
@@ -403,472 +403,472 @@ scripts/toolchain-policy.mjs 6ms
 [90mpackages/core-service/src/import-export/import-preview-service.ts[39m 5ms (unchanged)
 [90mpackages/core-service/src/import-export/import-source-parser.ts[39m 10ms (unchanged)
 [90mpackages/core-service/src/index.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/migration-recovery.ts[39m 4ms (unchanged)
+[90mpackages/core-service/src/migration-recovery.ts[39m 5ms (unchanged)
 [90mpackages/core-service/src/narrative-planning.ts[39m 1ms (unchanged)
 [90mpackages/core-service/src/narrative-planning/arc-milestone-policy.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/narrative-planning/character-arc-operations.ts[39m 10ms (unchanged)
+[90mpackages/core-service/src/narrative-planning/character-arc-operations.ts[39m 9ms (unchanged)
 [90mpackages/core-service/src/narrative-planning/foreshadowing-operations.ts[39m 9ms (unchanged)
 [90mpackages/core-service/src/narrative-planning/narrative-planning-catalog.ts[39m 13ms (unchanged)
 [90mpackages/core-service/src/narrative-planning/narrative-planning-model.ts[39m 7ms (unchanged)
 [90mpackages/core-service/src/narrative-planning/narrative-planning-service.ts[39m 3ms (unchanged)
 [90mpackages/core-service/src/project-continuation.ts[39m 6ms (unchanged)
-[90mpackages/core-service/src/project-migration-preflight.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/project-planning.ts[39m 18ms (unchanged)
-[90mpackages/core-service/src/project-structure.ts[39m 29ms (unchanged)
+[90mpackages/core-service/src/project-migration-preflight.ts[39m 2ms (unchanged)
+[90mpackages/core-service/src/project-planning.ts[39m 17ms (unchanged)
+[90mpackages/core-service/src/project-structure.ts[39m 27ms (unchanged)
 [90mpackages/core-service/src/project-task-protocol.ts[39m 6ms (unchanged)
 [90mpackages/core-service/src/project-workspace.ts[39m 1ms (unchanged)
 [90mpackages/core-service/src/project-workspace/project-create.ts[39m 9ms (unchanged)
-[90mpackages/core-service/src/project-workspace/project-move.ts[39m 7ms (unchanged)
-[90mpackages/core-service/src/project-workspace/project-open.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/project-workspace/project-workspace-service.ts[39m 13ms (unchanged)
+[90mpackages/core-service/src/project-workspace/project-move.ts[39m 8ms (unchanged)
+[90mpackages/core-service/src/project-workspace/project-open.ts[39m 3ms (unchanged)
+[90mpackages/core-service/src/project-workspace/project-workspace-service.ts[39m 16ms (unchanged)
 [90mpackages/core-service/src/project-workspace/workspace-manifest.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/project-workspace/workspace-path-policy.ts[39m 7ms (unchanged)
-[90mpackages/core-service/src/project-workspace/workspace-verifier.ts[39m 14ms (unchanged)
+[90mpackages/core-service/src/project-workspace/workspace-path-policy.ts[39m 6ms (unchanged)
+[90mpackages/core-service/src/project-workspace/workspace-verifier.ts[39m 13ms (unchanged)
 [90mpackages/core-service/src/provider-abort-signal.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/provider-adapter-runtime.ts[39m 8ms (unchanged)
-[90mpackages/core-service/src/provider-adapters.ts[39m 50ms (unchanged)
-[90mpackages/core-service/src/provider-configs.ts[39m 8ms (unchanged)
-[90mpackages/core-service/src/provider-connection.ts[39m 4ms (unchanged)
-[90mpackages/core-service/src/provider-endpoint.ts[39m 14ms (unchanged)
-[90mpackages/core-service/src/provider-errors.ts[39m 1ms (unchanged)
+[90mpackages/core-service/src/provider-adapters.ts[39m 53ms (unchanged)
+[90mpackages/core-service/src/provider-configs.ts[39m 9ms (unchanged)
+[90mpackages/core-service/src/provider-connection.ts[39m 8ms (unchanged)
+[90mpackages/core-service/src/provider-endpoint.ts[39m 19ms (unchanged)
+[90mpackages/core-service/src/provider-errors.ts[39m 2ms (unchanged)
 [90mpackages/core-service/src/provider-pinned-fetch.ts[39m 11ms (unchanged)
-[90mpackages/core-service/src/recent-projects.ts[39m 11ms (unchanged)
+[90mpackages/core-service/src/recent-projects.ts[39m 13ms (unchanged)
 [90mpackages/core-service/src/recovery.ts[39m 1ms (unchanged)
 [90mpackages/core-service/src/reference-aware-structure-operations.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/rhythm.ts[39m 15ms (unchanged)
+[90mpackages/core-service/src/rhythm.ts[39m 18ms (unchanged)
 [90mpackages/core-service/src/scene-beat.ts[39m 45ms (unchanged)
-[90mpackages/core-service/src/search-index-hardening.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/search-index-hardening.ts[39m 13ms (unchanged)
 [90mpackages/core-service/src/search-index.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/search-index/search-index-model.ts[39m 13ms (unchanged)
+[90mpackages/core-service/src/search-index/search-index-model.ts[39m 17ms (unchanged)
 [90mpackages/core-service/src/search-index/search-index-query.ts[39m 9ms (unchanged)
-[90mpackages/core-service/src/search-index/search-index-service.ts[39m 13ms (unchanged)
+[90mpackages/core-service/src/search-index/search-index-service.ts[39m 12ms (unchanged)
 [90mpackages/core-service/src/search-index/search-index-writer.ts[39m 5ms (unchanged)
 [90mpackages/core-service/src/search-tools.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/search/replace-apply.ts[39m 17ms (unchanged)
-[90mpackages/core-service/src/search/replace-plan-repository.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/search/replace-preview.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/search/replace-apply.ts[39m 10ms (unchanged)
+[90mpackages/core-service/src/search/replace-plan-repository.ts[39m 2ms (unchanged)
+[90mpackages/core-service/src/search/replace-preview.ts[39m 5ms (unchanged)
 [90mpackages/core-service/src/search/search-dictionary-operations.ts[39m 2ms (unchanged)
 [90mpackages/core-service/src/search/search-index-operations.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/search/search-model.ts[39m 5ms (unchanged)
-[90mpackages/core-service/src/search/search-tools-service.ts[39m 3ms (unchanged)
+[90mpackages/core-service/src/search/search-model.ts[39m 6ms (unchanged)
+[90mpackages/core-service/src/search/search-tools-service.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/stable-json.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/state-proposal.ts[39m 0ms (unchanged)
+[90mpackages/core-service/src/state-proposal.ts[39m 1ms (unchanged)
 [90mpackages/core-service/src/state/derived-invalidation-service.ts[39m 5ms (unchanged)
-[90mpackages/core-service/src/state/ending-snapshot-service.ts[39m 12ms (unchanged)
-[90mpackages/core-service/src/state/proposal-batch-repository.ts[39m 21ms (unchanged)
+[90mpackages/core-service/src/state/ending-snapshot-service.ts[39m 13ms (unchanged)
+[90mpackages/core-service/src/state/proposal-batch-repository.ts[39m 24ms (unchanged)
 [90mpackages/core-service/src/state/state-proposal-service.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/state/state-row-mappers.ts[39m 10ms (unchanged)
+[90mpackages/core-service/src/state/state-row-mappers.ts[39m 7ms (unchanged)
 [90mpackages/core-service/src/structure-operations.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/structure-operations/structure-operation-execution-service.ts[39m 11ms (unchanged)
+[90mpackages/core-service/src/structure-operations/structure-operation-execution-service.ts[39m 12ms (unchanged)
 [90mpackages/core-service/src/structure-operations/structure-operation-model.ts[39m 7ms (unchanged)
-[90mpackages/core-service/src/structure-operations/structure-operation-preview-service.ts[39m 11ms (unchanged)
-[90mpackages/core-service/src/structure-operations/structure-operation-service.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/structure-operations/structure-trash-operation-service.ts[39m 14ms (unchanged)
-[90mpackages/core-service/src/task-protocol.ts[39m 42ms (unchanged)
+[90mpackages/core-service/src/structure-operations/structure-operation-preview-service.ts[39m 12ms (unchanged)
+[90mpackages/core-service/src/structure-operations/structure-operation-service.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/structure-operations/structure-trash-operation-service.ts[39m 15ms (unchanged)
+[90mpackages/core-service/src/task-protocol.ts[39m 47ms (unchanged)
 [90mpackages/core-service/src/utility-app-data-router.ts[39m 3ms (unchanged)
 [90mpackages/core-service/src/utility-control-context.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/utility-control-lifecycle.ts[39m 5ms (unchanged)
 [90mpackages/core-service/src/utility-control-operations.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/utility-control-results.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/utility-control-router.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/utility-control-task-command.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/utility-entry.ts[39m 1ms (unchanged)
-[90mpackages/core-service/src/utility-errors.ts[39m 6ms (unchanged)
-[90mpackages/core-service/src/utility-generation-router.ts[39m 24ms (unchanged)
+[90mpackages/core-service/src/utility-control-task-command.ts[39m 4ms (unchanged)
+[90mpackages/core-service/src/utility-entry.ts[39m 2ms (unchanged)
+[90mpackages/core-service/src/utility-errors.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/utility-generation-router.ts[39m 30ms (unchanged)
 [90mpackages/core-service/src/utility-generation-service-container.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/utility-project-content-router.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/utility-project-content-router.ts[39m 6ms (unchanged)
 [90mpackages/core-service/src/utility-project-narrative-router.ts[39m 4ms (unchanged)
-[90mpackages/core-service/src/utility-project-primary-router.ts[39m 7ms (unchanged)
+[90mpackages/core-service/src/utility-project-primary-router.ts[39m 6ms (unchanged)
 [90mpackages/core-service/src/utility-project-router.ts[39m 2ms (unchanged)
 [90mpackages/core-service/src/utility-project-service-container.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/utility-project-services.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/utility-project-structure-router.ts[39m 6ms (unchanged)
+[90mpackages/core-service/src/utility-project-services.ts[39m 1ms (unchanged)
+[90mpackages/core-service/src/utility-project-structure-router.ts[39m 5ms (unchanged)
 [90mpackages/core-service/src/utility-provider-router.ts[39m 5ms (unchanged)
-[90mpackages/core-service/src/utility-runtime-context.ts[39m 4ms (unchanged)
-[90mpackages/core-service/src/utility-search-rhythm-router.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/utility-service-container.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/utility-validation-router.ts[39m 2ms (unchanged)
-[90mpackages/core-service/src/validation.ts[39m 0ms (unchanged)
-[90mpackages/core-service/src/validation/validation-catalog.ts[39m 10ms (unchanged)
+[90mpackages/core-service/src/utility-runtime-context.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/utility-search-rhythm-router.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/utility-service-container.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/utility-validation-router.ts[39m 4ms (unchanged)
+[90mpackages/core-service/src/validation.ts[39m 1ms (unchanged)
+[90mpackages/core-service/src/validation/validation-catalog.ts[39m 9ms (unchanged)
 [90mpackages/core-service/src/validation/validation-comment-operations.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/validation/validation-issue-operations.ts[39m 4ms (unchanged)
-[90mpackages/core-service/src/validation/validation-model.ts[39m 10ms (unchanged)
-[90mpackages/core-service/src/validation/validation-rule-operations.ts[39m 11ms (unchanged)
+[90mpackages/core-service/src/validation/validation-model.ts[39m 11ms (unchanged)
+[90mpackages/core-service/src/validation/validation-rule-operations.ts[39m 9ms (unchanged)
 [90mpackages/core-service/src/validation/validation-rules.ts[39m 10ms (unchanged)
-[90mpackages/core-service/src/validation/validation-service.ts[39m 5ms (unchanged)
+[90mpackages/core-service/src/validation/validation-service.ts[39m 4ms (unchanged)
 [90mpackages/core-service/src/validation/validation-todo-operations.ts[39m 3ms (unchanged)
 [90mpackages/core-service/src/version.ts[39m 23ms (unchanged)
-[90mpackages/core-service/src/window-preferences.ts[39m 3ms (unchanged)
-[90mpackages/core-service/src/writing-metrics.ts[39m 4ms (unchanged)
+[90mpackages/core-service/src/window-preferences.ts[39m 4ms (unchanged)
+[90mpackages/core-service/src/writing-metrics.ts[39m 5ms (unchanged)
 [90mpackages/core-service/tsconfig.json[39m 1ms (unchanged)
 [90mpackages/domain/package.json[39m 1ms (unchanged)
 [90mpackages/domain/src/canon.ts[39m 4ms (unchanged)
 [90mpackages/domain/src/constraint-package.ts[39m 8ms (unchanged)
-[90mpackages/domain/src/continuity.ts[39m 5ms (unchanged)
-[90mpackages/domain/src/draft-semantic.ts[39m 2ms (unchanged)
+[90mpackages/domain/src/continuity.ts[39m 6ms (unchanged)
+[90mpackages/domain/src/draft-semantic.ts[39m 3ms (unchanged)
 [90mpackages/domain/src/index.ts[39m 1ms (unchanged)
-[90mpackages/domain/src/order-key.ts[39m 4ms (unchanged)
+[90mpackages/domain/src/order-key.ts[39m 6ms (unchanged)
 [90mpackages/domain/tsconfig.json[39m 1ms (unchanged)
 [90mpackages/editor-core/package.json[39m 1ms (unchanged)
 [90mpackages/editor-core/src/autosave.ts[39m 9ms (unchanged)
-[90mpackages/editor-core/src/candidate-diff.ts[39m 17ms (unchanged)
-[90mpackages/editor-core/src/character-diff.ts[39m 12ms (unchanged)
-[90mpackages/editor-core/src/draft-document.ts[39m 31ms (unchanged)
+[90mpackages/editor-core/src/candidate-diff.ts[39m 18ms (unchanged)
+[90mpackages/editor-core/src/character-diff.ts[39m 16ms (unchanged)
+[90mpackages/editor-core/src/draft-document.ts[39m 36ms (unchanged)
 [90mpackages/editor-core/src/draft-patch.ts[39m 11ms (unchanged)
 [90mpackages/editor-core/src/index.ts[39m 1ms (unchanged)
-[90mpackages/editor-core/src/persisted-metadata-sync.ts[39m 6ms (unchanged)
-[90mpackages/editor-core/src/writing-tools.ts[39m 6ms (unchanged)
+[90mpackages/editor-core/src/persisted-metadata-sync.ts[39m 7ms (unchanged)
+[90mpackages/editor-core/src/writing-tools.ts[39m 3ms (unchanged)
 [90mpackages/editor-core/tsconfig.json[39m 1ms (unchanged)
 [90mpackages/prompts/package.json[39m 1ms (unchanged)
 [90mpackages/prompts/src/cleaners.ts[39m 3ms (unchanged)
 [90mpackages/prompts/src/constraint-package-serializer.ts[39m 3ms (unchanged)
 [90mpackages/prompts/src/index.ts[39m 1ms (unchanged)
-[90mpackages/prompts/src/mode-policy.ts[39m 2ms (unchanged)
-[90mpackages/prompts/src/parsers.ts[39m 7ms (unchanged)
-[90mpackages/prompts/src/registry.ts[39m 11ms (unchanged)
+[90mpackages/prompts/src/mode-policy.ts[39m 3ms (unchanged)
+[90mpackages/prompts/src/parsers.ts[39m 6ms (unchanged)
+[90mpackages/prompts/src/registry.ts[39m 9ms (unchanged)
 [90mpackages/prompts/src/types.ts[39m 2ms (unchanged)
 [90mpackages/prompts/tsconfig.json[39m 1ms (unchanged)
 [90mpackages/testkit/package.json[39m 1ms (unchanged)
 [90mpackages/testkit/src/ai-protocol-harness.ts[39m 4ms (unchanged)
 [90mpackages/testkit/src/determinism.ts[39m 3ms (unchanged)
-[90mpackages/testkit/src/evidence.ts[39m 12ms (unchanged)
+[90mpackages/testkit/src/evidence.ts[39m 15ms (unchanged)
 [90mpackages/testkit/src/faults.ts[39m 8ms (unchanged)
-[90mpackages/testkit/src/fixtures.ts[39m 21ms (unchanged)
+[90mpackages/testkit/src/fixtures.ts[39m 14ms (unchanged)
 [90mpackages/testkit/src/index.ts[39m 1ms (unchanged)
 [90mpackages/testkit/src/project-migrations.ts[39m 3ms (unchanged)
-[90mpackages/testkit/src/provider-stub.ts[39m 7ms (unchanged)
+[90mpackages/testkit/src/provider-stub.ts[39m 6ms (unchanged)
 [90mpackages/testkit/src/temporary-workspace.ts[39m 6ms (unchanged)
 [90mpackages/testkit/tsconfig.json[39m 1ms (unchanged)
 [90mtests/e2e/acceptance-screenshot.ts[39m 2ms (unchanged)
-[90mtests/e2e/candidate-action.spec.ts[39m 12ms (unchanged)
-[90mtests/e2e/candidate-preview.spec.ts[39m 27ms (unchanged)
-[90mtests/e2e/candidate-protection.spec.ts[39m 15ms (unchanged)
-[90mtests/e2e/candidate-undo.spec.ts[39m 10ms (unchanged)
+[90mtests/e2e/candidate-action.spec.ts[39m 8ms (unchanged)
+[90mtests/e2e/candidate-preview.spec.ts[39m 21ms (unchanged)
+[90mtests/e2e/candidate-protection.spec.ts[39m 10ms (unchanged)
+[90mtests/e2e/candidate-undo.spec.ts[39m 12ms (unchanged)
 [90mtests/e2e/continuation-panel-race.spec.ts[39m 8ms (unchanged)
-[90mtests/e2e/continuity-ledger.spec.ts[39m 13ms (unchanged)
-[90mtests/e2e/electron-shell.spec.ts[39m 81ms (unchanged)
-[90mtests/e2e/m1-09-import-export.spec.ts[39m 11ms (unchanged)
+[90mtests/e2e/continuity-ledger.spec.ts[39m 12ms (unchanged)
+[90mtests/e2e/electron-shell.spec.ts[39m 93ms (unchanged)
+[90mtests/e2e/m1-09-import-export.spec.ts[39m 12ms (unchanged)
 [90mtests/e2e/m1-acceptance.playwright.config.ts[39m 1ms (unchanged)
-[90mtests/e2e/m1-deferred-acceptance.spec.ts[39m 16ms (unchanged)
-[90mtests/e2e/m8-04-author-experience.spec.ts[39m 7ms (unchanged)
+[90mtests/e2e/m1-deferred-acceptance.spec.ts[39m 18ms (unchanged)
+[90mtests/e2e/m8-04-author-experience.spec.ts[39m 8ms (unchanged)
 [90mtests/e2e/m8-07-chinese-experience.spec.ts[39m 10ms (unchanged)
-[90mtests/e2e/m8-07-windows-ime.spec.ts[39m 9ms (unchanged)
+[90mtests/e2e/m8-07-windows-ime.spec.ts[39m 13ms (unchanged)
 [90mtests/e2e/narrative-planning-ledger.spec.ts[39m 12ms (unchanged)
 [90mtests/e2e/playwright.config.ts[39m 1ms (unchanged)
 [90mtests/e2e/playwright.windows-ime.config.ts[39m 1ms (unchanged)
-[90mtests/e2e/project-planning.spec.ts[39m 9ms (unchanged)
-[90mtests/e2e/provider-settings.spec.ts[39m 4ms (unchanged)
-[90mtests/e2e/scene-beat.spec.ts[39m 10ms (unchanged)
-[90mtests/e2e/state-proposal-valid-until.spec.ts[39m 12ms (unchanged)
-[90mtests/e2e/state-proposal-workflow.spec.ts[39m 12ms (unchanged)
+[90mtests/e2e/project-planning.spec.ts[39m 10ms (unchanged)
+[90mtests/e2e/provider-settings.spec.ts[39m 5ms (unchanged)
+[90mtests/e2e/scene-beat.spec.ts[39m 12ms (unchanged)
+[90mtests/e2e/state-proposal-valid-until.spec.ts[39m 22ms (unchanged)
+[90mtests/e2e/state-proposal-workflow.spec.ts[39m 15ms (unchanged)
 [90mtests/e2e/structure-recovery.spec.ts[39m 12ms (unchanged)
-[90mtests/e2e/unreadable-project-recovery.spec.ts[39m 8ms (unchanged)
-[90mtests/e2e/writing-focus-assistance.spec.ts[39m 7ms (unchanged)
-[90mtests/integration/app-data-repositories.test.ts[39m 13ms (unchanged)
+[90mtests/e2e/unreadable-project-recovery.spec.ts[39m 9ms (unchanged)
+[90mtests/e2e/writing-focus-assistance.spec.ts[39m 8ms (unchanged)
+[90mtests/integration/app-data-repositories.test.ts[39m 14ms (unchanged)
 [90mtests/integration/app-settings-concurrency.test.ts[39m 3ms (unchanged)
-[90mtests/integration/audit-m0-m2-remediation.test.ts[39m 24ms (unchanged)
-[90mtests/integration/candidate-apply-contract.test.ts[39m 4ms (unchanged)
+[90mtests/integration/audit-m0-m2-remediation.test.ts[39m 13ms (unchanged)
+[90mtests/integration/candidate-apply-contract.test.ts[39m 5ms (unchanged)
 [90mtests/integration/candidate-apply-diff.test.ts[39m 3ms (unchanged)
-[90mtests/integration/candidate-apply-fixture.ts[39m 5ms (unchanged)
-[90mtests/integration/candidate-apply-transaction.test.ts[39m 57ms (unchanged)
-[90mtests/integration/candidate-preview-zero-write.test.ts[39m 9ms (unchanged)
+[90mtests/integration/candidate-apply-fixture.ts[39m 6ms (unchanged)
+[90mtests/integration/candidate-apply-transaction.test.ts[39m 65ms (unchanged)
+[90mtests/integration/candidate-preview-zero-write.test.ts[39m 11ms (unchanged)
 [90mtests/integration/candidate-project-list.test.ts[39m 6ms (unchanged)
 [90mtests/integration/candidate-version-model.test.ts[39m 13ms (unchanged)
-[90mtests/integration/constraint-package-authority.test.ts[39m 9ms (unchanged)
-[90mtests/integration/constraint-package.test.ts[39m 20ms (unchanged)
+[90mtests/integration/constraint-package-authority.test.ts[39m 10ms (unchanged)
+[90mtests/integration/constraint-package.test.ts[39m 21ms (unchanged)
 [90mtests/integration/continuity-authority-hardening.test.ts[39m 5ms (unchanged)
-[90mtests/integration/continuity-hardening-harness.ts[39m 7ms (unchanged)
-[90mtests/integration/continuity-interval-hardening.test.ts[39m 5ms (unchanged)
-[90mtests/integration/continuity-logical-block.test.ts[39m 6ms (unchanged)
+[90mtests/integration/continuity-hardening-harness.ts[39m 8ms (unchanged)
+[90mtests/integration/continuity-interval-hardening.test.ts[39m 9ms (unchanged)
+[90mtests/integration/continuity-logical-block.test.ts[39m 8ms (unchanged)
 [90mtests/integration/continuity-service.test.ts[39m 13ms (unchanged)
-[90mtests/integration/continuity-timeline-hardening.test.ts[39m 7ms (unchanged)
-[90mtests/integration/coordinated-import-export-service.test.ts[39m 6ms (unchanged)
+[90mtests/integration/continuity-timeline-hardening.test.ts[39m 8ms (unchanged)
+[90mtests/integration/coordinated-import-export-service.test.ts[39m 7ms (unchanged)
 [90mtests/integration/database-boundaries.test.ts[39m 1ms (unchanged)
-[90mtests/integration/docx-transfer.test.ts[39m 9ms (unchanged)
-[90mtests/integration/draft-document.test.ts[39m 9ms (unchanged)
-[90mtests/integration/draft-lock-guard.test.ts[39m 16ms (unchanged)
-[90mtests/integration/draft-patch.test.ts[39m 13ms (unchanged)
+[90mtests/integration/docx-transfer.test.ts[39m 11ms (unchanged)
+[90mtests/integration/draft-document.test.ts[39m 10ms (unchanged)
+[90mtests/integration/draft-lock-guard.test.ts[39m 15ms (unchanged)
+[90mtests/integration/draft-patch.test.ts[39m 16ms (unchanged)
 [90mtests/integration/electron-sqlite-runtime.test.ts[39m 2ms (unchanged)
-[90mtests/integration/ending-snapshot-temporal-projection.test.ts[39m 11ms (unchanged)
-[90mtests/integration/entity-canon.test.ts[39m 10ms (unchanged)
-[90mtests/integration/generation-run.test.ts[39m 17ms (unchanged)
-[90mtests/integration/generation-runtime.test.ts[39m 16ms (unchanged)
-[90mtests/integration/generation-source-resolver.test.ts[39m 12ms (unchanged)
-[90mtests/integration/import-export-service.test.ts[39m 15ms (unchanged)
-[90mtests/integration/m10-07-candidate-undo-invariant.test.ts[39m 4ms (unchanged)
-[90mtests/integration/m10-07-search-replace-revision.test.ts[39m 6ms (unchanged)
-[90mtests/integration/m10-12-generation-identity.test.ts[39m 6ms (unchanged)
-[90mtests/integration/m10-16-semantic-freshness.test.ts[39m 3ms (unchanged)
-[90mtests/integration/m10-17-project-lifecycle.test.ts[39m 7ms (unchanged)
-[90mtests/integration/m10-17-rhythm-readonly.test.ts[39m 11ms (unchanged)
-[90mtests/integration/m10-18-import-entity-arc-consistency.test.ts[39m 14ms (unchanged)
-[90mtests/integration/m10-19-authority-governance.test.ts[39m 18ms (unchanged)
+[90mtests/integration/ending-snapshot-temporal-projection.test.ts[39m 12ms (unchanged)
+[90mtests/integration/entity-canon.test.ts[39m 12ms (unchanged)
+[90mtests/integration/generation-run.test.ts[39m 18ms (unchanged)
+[90mtests/integration/generation-runtime.test.ts[39m 26ms (unchanged)
+[90mtests/integration/generation-source-resolver.test.ts[39m 14ms (unchanged)
+[90mtests/integration/import-export-service.test.ts[39m 16ms (unchanged)
+[90mtests/integration/m10-07-candidate-undo-invariant.test.ts[39m 5ms (unchanged)
+[90mtests/integration/m10-07-search-replace-revision.test.ts[39m 7ms (unchanged)
+[90mtests/integration/m10-12-generation-identity.test.ts[39m 7ms (unchanged)
+[90mtests/integration/m10-16-semantic-freshness.test.ts[39m 5ms (unchanged)
+[90mtests/integration/m10-17-project-lifecycle.test.ts[39m 8ms (unchanged)
+[90mtests/integration/m10-17-rhythm-readonly.test.ts[39m 8ms (unchanged)
+[90mtests/integration/m10-18-import-entity-arc-consistency.test.ts[39m 22ms (unchanged)
+[90mtests/integration/m10-19-authority-governance.test.ts[39m 14ms (unchanged)
 [90mtests/integration/m2-03-core-boundary.test.ts[39m 1ms (unchanged)
-[90mtests/integration/m4-search-constraint-hardening.test.ts[39m 9ms (unchanged)
+[90mtests/integration/m4-search-constraint-hardening.test.ts[39m 12ms (unchanged)
 [90mtests/integration/m8-09-project-lifecycle.test.ts[39m 5ms (unchanged)
-[90mtests/integration/narrative-character-arc.test.ts[39m 22ms (unchanged)
-[90mtests/integration/narrative-foreshadowing.test.ts[39m 13ms (unchanged)
-[90mtests/integration/preload-ipc-core.integration.test.ts[39m 17ms (unchanged)
+[90mtests/integration/narrative-character-arc.test.ts[39m 23ms (unchanged)
+[90mtests/integration/narrative-foreshadowing.test.ts[39m 14ms (unchanged)
+[90mtests/integration/preload-ipc-core.integration.test.ts[39m 19ms (unchanged)
 [90mtests/integration/project-continuation.test.ts[39m 12ms (unchanged)
-[90mtests/integration/project-planning.test.ts[39m 20ms (unchanged)
-[90mtests/integration/project-structure.test.ts[39m 24ms (unchanged)
+[90mtests/integration/project-planning.test.ts[39m 23ms (unchanged)
+[90mtests/integration/project-structure.test.ts[39m 18ms (unchanged)
 [90mtests/integration/provider-connection.test.ts[39m 16ms (unchanged)
-[90mtests/integration/recovery-backup-consistency.test.ts[39m 6ms (unchanged)
-[90mtests/integration/recovery-daily-winner.test.ts[39m 5ms (unchanged)
-[90mtests/integration/recovery-failure-ledger.test.ts[39m 4ms (unchanged)
-[90mtests/integration/recovery-file-lease.test.ts[39m 5ms (unchanged)
+[90mtests/integration/recovery-backup-consistency.test.ts[39m 4ms (unchanged)
+[90mtests/integration/recovery-daily-winner.test.ts[39m 6ms (unchanged)
+[90mtests/integration/recovery-failure-ledger.test.ts[39m 6ms (unchanged)
+[90mtests/integration/recovery-file-lease.test.ts[39m 8ms (unchanged)
 [90mtests/integration/recovery-identity-remap.test.ts[39m 4ms (unchanged)
 [90mtests/integration/recovery-metadata-boundary.test.ts[39m 7ms (unchanged)
-[90mtests/integration/recovery-post-audit-hardening.test.ts[39m 8ms (unchanged)
-[90mtests/integration/recovery-request-replay.test.ts[39m 13ms (unchanged)
-[90mtests/integration/recovery-service.test.ts[39m 23ms (unchanged)
-[90mtests/integration/scene-beat-entity-references.test.ts[39m 9ms (unchanged)
+[90mtests/integration/recovery-post-audit-hardening.test.ts[39m 9ms (unchanged)
+[90mtests/integration/recovery-request-replay.test.ts[39m 12ms (unchanged)
+[90mtests/integration/recovery-service.test.ts[39m 24ms (unchanged)
+[90mtests/integration/scene-beat-entity-references.test.ts[39m 10ms (unchanged)
 [90mtests/integration/scene-beat.test.ts[39m 13ms (unchanged)
-[90mtests/integration/search-index.test.ts[39m 24ms (unchanged)
-[90mtests/integration/search-replace-rhythm.test.ts[39m 10ms (unchanged)
-[90mtests/integration/state-proposal-snapshot.test.ts[39m 30ms (unchanged)
+[90mtests/integration/search-index.test.ts[39m 22ms (unchanged)
+[90mtests/integration/search-replace-rhythm.test.ts[39m 11ms (unchanged)
+[90mtests/integration/state-proposal-snapshot.test.ts[39m 27ms (unchanged)
 [90mtests/integration/state-proposal-valid-until-boundaries.test.ts[39m 5ms (unchanged)
-[90mtests/integration/state-proposal-valid-until.test.ts[39m 11ms (unchanged)
-[90mtests/integration/state-validation-provider.test.ts[39m 17ms (unchanged)
-[90mtests/integration/story-anchor-scope.test.ts[39m 6ms (unchanged)
-[90mtests/integration/structure-operations.test.ts[39m 27ms (unchanged)
+[90mtests/integration/state-proposal-valid-until.test.ts[39m 10ms (unchanged)
+[90mtests/integration/state-validation-provider.test.ts[39m 18ms (unchanged)
+[90mtests/integration/story-anchor-scope.test.ts[39m 10ms (unchanged)
+[90mtests/integration/structure-operations.test.ts[39m 31ms (unchanged)
 [90mtests/integration/structured-partial-safety.test.ts[39m 6ms (unchanged)
-[90mtests/integration/task-lifecycle.test.ts[39m 4ms (unchanged)
-[90mtests/integration/task-protocol.test.ts[39m 13ms (unchanged)
-[90mtests/integration/three-track-recovery.test.ts[39m 7ms (unchanged)
-[90mtests/integration/version-service.test.ts[39m 10ms (unchanged)
-[90mtests/integration/workspace-graph.test.ts[39m 2ms (unchanged)
-[90mtests/migration/backup-failure-ledger-migration.test.ts[39m 3ms (unchanged)
-[90mtests/migration/backup-tracks-migration.test.ts[39m 3ms (unchanged)
-[90mtests/migration/continuity-migration.test.ts[39m 6ms (unchanged)
-[90mtests/migration/draft-migration.test.ts[39m 14ms (unchanged)
-[90mtests/migration/entity-canon-migration.test.ts[39m 4ms (unchanged)
-[90mtests/migration/final-coordination-remediation.test.ts[39m 19ms (unchanged)
-[90mtests/migration/generation-runtime-migration.test.ts[39m 3ms (unchanged)
-[90mtests/migration/integrated-coordination-migration.test.ts[39m 7ms (unchanged)
-[90mtests/migration/m10-12-command-identity-context.test.ts[39m 3ms (unchanged)
+[90mtests/integration/task-lifecycle.test.ts[39m 5ms (unchanged)
+[90mtests/integration/task-protocol.test.ts[39m 18ms (unchanged)
+[90mtests/integration/three-track-recovery.test.ts[39m 8ms (unchanged)
+[90mtests/integration/version-service.test.ts[39m 12ms (unchanged)
+[90mtests/integration/workspace-graph.test.ts[39m 3ms (unchanged)
+[90mtests/migration/backup-failure-ledger-migration.test.ts[39m 4ms (unchanged)
+[90mtests/migration/backup-tracks-migration.test.ts[39m 5ms (unchanged)
+[90mtests/migration/continuity-migration.test.ts[39m 8ms (unchanged)
+[90mtests/migration/draft-migration.test.ts[39m 9ms (unchanged)
+[90mtests/migration/entity-canon-migration.test.ts[39m 5ms (unchanged)
+[90mtests/migration/final-coordination-remediation.test.ts[39m 20ms (unchanged)
+[90mtests/migration/generation-runtime-migration.test.ts[39m 4ms (unchanged)
+[90mtests/migration/integrated-coordination-migration.test.ts[39m 8ms (unchanged)
+[90mtests/migration/m10-12-command-identity-context.test.ts[39m 4ms (unchanged)
 [90mtests/migration/migration-trigger-syntax.test.ts[39m 1ms (unchanged)
-[90mtests/migration/narrative-planning-migration.test.ts[39m 7ms (unchanged)
-[90mtests/migration/project-continuation-migration.test.ts[39m 3ms (unchanged)
-[90mtests/migration/project-planning-migration.test.ts[39m 3ms (unchanged)
-[90mtests/migration/project-structure-migration.test.ts[39m 8ms (unchanged)
-[90mtests/migration/provider-options-allowlist.test.ts[39m 3ms (unchanged)
-[90mtests/migration/recovery-migration-v8.cases.ts[39m 4ms (unchanged)
+[90mtests/migration/narrative-planning-migration.test.ts[39m 6ms (unchanged)
+[90mtests/migration/project-continuation-migration.test.ts[39m 4ms (unchanged)
+[90mtests/migration/project-planning-migration.test.ts[39m 4ms (unchanged)
+[90mtests/migration/project-structure-migration.test.ts[39m 10ms (unchanged)
+[90mtests/migration/provider-options-allowlist.test.ts[39m 4ms (unchanged)
+[90mtests/migration/recovery-migration-v8.cases.ts[39m 5ms (unchanged)
 [90mtests/migration/recovery-migration.test.ts[39m 5ms (unchanged)
 [90mtests/migration/scene-beat-entity-truth-migration.test.ts[39m 6ms (unchanged)
 [90mtests/migration/scene-beat-migration.test.ts[39m 3ms (unchanged)
 [90mtests/migration/search-index-migration.test.ts[39m 4ms (unchanged)
 [90mtests/migration/search-replace-rhythm-migration.test.ts[39m 4ms (unchanged)
-[90mtests/migration/sqlite-foundation.test.ts[39m 15ms (unchanged)
+[90mtests/migration/sqlite-foundation.test.ts[39m 17ms (unchanged)
 [90mtests/migration/sqlite-header-integrity.test.ts[39m 2ms (unchanged)
-[90mtests/migration/state-validation-migration.test.ts[39m 10ms (unchanged)
-[90mtests/migration/structured-candidate-migration.test.ts[39m 3ms (unchanged)
+[90mtests/migration/state-validation-migration.test.ts[39m 12ms (unchanged)
+[90mtests/migration/structured-candidate-migration.test.ts[39m 4ms (unchanged)
 [90mtests/migration/testkit-faults.test.ts[39m 6ms (unchanged)
-[90mtests/migration/version-migration.test.ts[39m 4ms (unchanged)
-[90mtests/migration/window-preferences.test.ts[39m 5ms (unchanged)
-[90mtests/migration/write-queue.test.ts[39m 7ms (unchanged)
+[90mtests/migration/version-migration.test.ts[39m 5ms (unchanged)
+[90mtests/migration/window-preferences.test.ts[39m 6ms (unchanged)
+[90mtests/migration/write-queue.test.ts[39m 10ms (unchanged)
 [90mtests/performance/ai-eval-baseline.test.ts[39m 2ms (unchanged)
-[90mtests/performance/ai-output-protocol.test.ts[39m 9ms (unchanged)
+[90mtests/performance/ai-output-protocol.test.ts[39m 11ms (unchanged)
 [90mtests/performance/candidate-preview-diff-strategy.test.ts[39m 4ms (unchanged)
-[90mtests/performance/chinese-diff.test.ts[39m 25ms (unchanged)
-[90mtests/performance/constraint-package-performance.test.ts[39m 8ms (unchanged)
+[90mtests/performance/chinese-diff.test.ts[39m 13ms (unchanged)
+[90mtests/performance/constraint-package-performance.test.ts[39m 6ms (unchanged)
 [90mtests/performance/display-layout.test.ts[39m 5ms (unchanged)
 [90mtests/performance/m1-writing-performance.test.ts[39m 7ms (unchanged)
 [90mtests/performance/m8-author-review-diff-performance.test.ts[39m 3ms (unchanged)
-[90mtests/performance/m8-release-evidence.test.ts[39m 19ms (unchanged)
+[90mtests/performance/m8-release-evidence.test.ts[39m 20ms (unchanged)
 [90mtests/performance/scene-beat-rebind-performance.test.ts[39m 6ms (unchanged)
-[90mtests/performance/search-index-performance.test.ts[39m 7ms (unchanged)
+[90mtests/performance/search-index-performance.test.ts[39m 8ms (unchanged)
 [90mtests/performance/writing-tools-performance.test.ts[39m 1ms (unchanged)
-[90mtests/security/app-data-ipc.test.ts[39m 13ms (unchanged)
-[90mtests/security/backup-transfer-ipc.test.ts[39m 9ms (unchanged)
-[90mtests/security/candidate-apply-ipc.test.ts[39m 5ms (unchanged)
-[90mtests/security/candidate-ipc.test.ts[39m 8ms (unchanged)
-[90mtests/security/candidate-preview-ipc.test.ts[39m 7ms (unchanged)
+[90mtests/security/app-data-ipc.test.ts[39m 14ms (unchanged)
+[90mtests/security/backup-transfer-ipc.test.ts[39m 11ms (unchanged)
+[90mtests/security/candidate-apply-ipc.test.ts[39m 7ms (unchanged)
+[90mtests/security/candidate-ipc.test.ts[39m 10ms (unchanged)
+[90mtests/security/candidate-preview-ipc.test.ts[39m 9ms (unchanged)
 [90mtests/security/candidate-undo-ipc.test.ts[39m 5ms (unchanged)
-[90mtests/security/common-ipc-timeout-semantics.test.ts[39m 8ms (unchanged)
-[90mtests/security/continuity-ipc.test.ts[39m 9ms (unchanged)
-[90mtests/security/core-supervisor.test.ts[39m 12ms (unchanged)
-[90mtests/security/diagnostic-export.test.ts[39m 3ms (unchanged)
-[90mtests/security/diagnostic-ipc-confirmation.test.ts[39m 6ms (unchanged)
+[90mtests/security/common-ipc-timeout-semantics.test.ts[39m 10ms (unchanged)
+[90mtests/security/continuity-ipc.test.ts[39m 11ms (unchanged)
+[90mtests/security/core-supervisor.test.ts[39m 19ms (unchanged)
+[90mtests/security/diagnostic-export.test.ts[39m 4ms (unchanged)
+[90mtests/security/diagnostic-ipc-confirmation.test.ts[39m 7ms (unchanged)
 [90mtests/security/docx-archive-security.test.ts[39m 3ms (unchanged)
-[90mtests/security/draft-ipc.test.ts[39m 7ms (unchanged)
-[90mtests/security/electron-security.test.ts[39m 12ms (unchanged)
-[90mtests/security/generation-ipc.test.ts[39m 7ms (unchanged)
-[90mtests/security/ipc-task-contracts.test.ts[39m 8ms (unchanged)
+[90mtests/security/draft-ipc.test.ts[39m 8ms (unchanged)
+[90mtests/security/electron-security.test.ts[39m 9ms (unchanged)
+[90mtests/security/generation-ipc.test.ts[39m 8ms (unchanged)
+[90mtests/security/ipc-task-contracts.test.ts[39m 9ms (unchanged)
 [90mtests/security/m10-13-generation-rewrite-contract.test.ts[39m 3ms (unchanged)
-[90mtests/security/m8-09-project-authority.test.ts[39m 4ms (unchanged)
+[90mtests/security/m8-09-project-authority.test.ts[39m 5ms (unchanged)
 [90mtests/security/narrative-planning-ipc.test.ts[39m 6ms (unchanged)
 [90mtests/security/preload-surface.test.ts[39m 3ms (unchanged)
-[90mtests/security/project-planning-ipc.test.ts[39m 6ms (unchanged)
-[90mtests/security/project-structure-ipc.test.ts[39m 8ms (unchanged)
-[90mtests/security/project-workspace.test.ts[39m 21ms (unchanged)
-[90mtests/security/provider-branch-coverage.test.ts[39m 16ms (unchanged)
+[90mtests/security/project-planning-ipc.test.ts[39m 7ms (unchanged)
+[90mtests/security/project-structure-ipc.test.ts[39m 11ms (unchanged)
+[90mtests/security/project-workspace.test.ts[39m 24ms (unchanged)
+[90mtests/security/provider-branch-coverage.test.ts[39m 19ms (unchanged)
 [90mtests/security/provider-endpoint.test.ts[39m 3ms (unchanged)
-[90mtests/security/provider-ipc.test.ts[39m 8ms (unchanged)
-[90mtests/security/provider-pinned-fetch.test.ts[39m 7ms (unchanged)
-[90mtests/security/provider-transaction-hardening.test.ts[39m 6ms (unchanged)
-[90mtests/security/recovery-readonly.test.ts[39m 4ms (unchanged)
+[90mtests/security/provider-ipc.test.ts[39m 9ms (unchanged)
+[90mtests/security/provider-pinned-fetch.test.ts[39m 8ms (unchanged)
+[90mtests/security/provider-transaction-hardening.test.ts[39m 7ms (unchanged)
+[90mtests/security/recovery-readonly.test.ts[39m 5ms (unchanged)
 [90mtests/security/renderer-bridge-boundary.test.ts[39m 3ms (unchanged)
 [90mtests/security/renderer-protocol.test.ts[39m 3ms (unchanged)
 [90mtests/security/renderer-react-boundary.test.ts[39m 3ms (unchanged)
 [90mtests/security/scene-beat-ipc.test.ts[39m 5ms (unchanged)
 [90mtests/security/search-rhythm-ipc.test.ts[39m 7ms (unchanged)
-[90mtests/security/state-proposal-ipc.test.ts[39m 5ms (unchanged)
+[90mtests/security/state-proposal-ipc.test.ts[39m 10ms (unchanged)
 [90mtests/security/validation-ipc.test.ts[39m 5ms (unchanged)
 [90mtests/setup/restore-global-state.ts[39m 2ms (unchanged)
-[90mtests/testkit/strict-result-envelope.ts[39m 2ms (unchanged)
+[90mtests/testkit/strict-result-envelope.ts[39m 3ms (unchanged)
 [90mtests/testkit/strict-test-doubles.ts[39m 2ms (unchanged)
 [90mtests/unit/ai-readiness.test.ts[39m 2ms (unchanged)
-[90mtests/unit/app-shell-capability-actions.test.ts[39m 2ms (unchanged)
-[90mtests/unit/app-shell-runtime-models.test.ts[39m 9ms (unchanged)
-[90mtests/unit/ar06-planning-boundaries.test.ts[39m 3ms (unchanged)
-[90mtests/unit/ar07-app-shell-boundaries.test.ts[39m 3ms (unchanged)
-[90mtests/unit/ar08-contracts-public-surface.test.ts[39m 8ms (unchanged)
-[90mtests/unit/ar09-preload-factory-boundaries.test.ts[39m 7ms (unchanged)
-[90mtests/unit/ar10-main-ipc-boundaries.test.ts[39m 4ms (unchanged)
-[90mtests/unit/ar10-main-ipc-domain-coverage.test.ts[39m 12ms (unchanged)
-[90mtests/unit/ar10-main-ipc-error-coverage.test.ts[39m 8ms (unchanged)
-[90mtests/unit/ar12-project-workspace-path-policy-branches.test.ts[39m 2ms (unchanged)
+[90mtests/unit/app-shell-capability-actions.test.ts[39m 3ms (unchanged)
+[90mtests/unit/app-shell-runtime-models.test.ts[39m 11ms (unchanged)
+[90mtests/unit/ar06-planning-boundaries.test.ts[39m 4ms (unchanged)
+[90mtests/unit/ar07-app-shell-boundaries.test.ts[39m 5ms (unchanged)
+[90mtests/unit/ar08-contracts-public-surface.test.ts[39m 5ms (unchanged)
+[90mtests/unit/ar09-preload-factory-boundaries.test.ts[39m 5ms (unchanged)
+[90mtests/unit/ar10-main-ipc-boundaries.test.ts[39m 5ms (unchanged)
+[90mtests/unit/ar10-main-ipc-domain-coverage.test.ts[39m 14ms (unchanged)
+[90mtests/unit/ar10-main-ipc-error-coverage.test.ts[39m 9ms (unchanged)
+[90mtests/unit/ar12-project-workspace-path-policy-branches.test.ts[39m 3ms (unchanged)
 [90mtests/unit/ar13-narrative-planning-boundaries.test.ts[39m 2ms (unchanged)
-[90mtests/unit/ar13-search-candidate.test.ts[39m 2ms (unchanged)
+[90mtests/unit/ar13-search-candidate.test.ts[39m 3ms (unchanged)
 [90mtests/unit/ar13-search-index-boundaries.test.ts[39m 2ms (unchanged)
-[90mtests/unit/ar13-structure-operations-boundaries.test.ts[39m 3ms (unchanged)
+[90mtests/unit/ar13-structure-operations-boundaries.test.ts[39m 5ms (unchanged)
 [90mtests/unit/ar13-utility-control-boundaries.test.ts[39m 3ms (unchanged)
 [90mtests/unit/ar13-validation-boundaries.test.ts[39m 2ms (unchanged)
 [90mtests/unit/ar14-workspace-alignment-contract.test.ts[39m 1ms (unchanged)
-[90mtests/unit/atomic-file-transaction.test.ts[39m 5ms (unchanged)
+[90mtests/unit/atomic-file-transaction.test.ts[39m 6ms (unchanged)
 [90mtests/unit/audit-remediation-manifest-discovery.test.ts[39m 4ms (unchanged)
 [90mtests/unit/author-error-message.test.ts[39m 1ms (unchanged)
 [90mtests/unit/author-language.test.ts[39m 4ms (unchanged)
-[90mtests/unit/author-review-delivery.test.ts[39m 8ms (unchanged)
+[90mtests/unit/author-review-delivery.test.ts[39m 9ms (unchanged)
 [90mtests/unit/automated-verification-authority.test.ts[39m 3ms (unchanged)
-[90mtests/unit/autosave-writing-tools.test.ts[39m 15ms (unchanged)
+[90mtests/unit/autosave-writing-tools.test.ts[39m 13ms (unchanged)
 [90mtests/unit/backup-metadata-compatibility.test.ts[39m 4ms (unchanged)
 [90mtests/unit/boundaries.test.ts[39m 2ms (unchanged)
-[90mtests/unit/bounded-idempotent-promise-cache.test.ts[39m 5ms (unchanged)
+[90mtests/unit/bounded-idempotent-promise-cache.test.ts[39m 6ms (unchanged)
 [90mtests/unit/branch-hygiene.test.ts[39m 3ms (unchanged)
-[90mtests/unit/branch-inventory-policy.test.ts[39m 1ms (unchanged)
-[90mtests/unit/bridge-request-detachment.test.ts[39m 5ms (unchanged)
-[90mtests/unit/bridge-request-sharing.test.ts[39m 18ms (unchanged)
-[90mtests/unit/canon-author-fields.test.ts[39m 10ms (unchanged)
-[90mtests/unit/capability-matrix.test.ts[39m 8ms (unchanged)
-[90mtests/unit/capability-runtime-navigation.test.ts[39m 9ms (unchanged)
+[90mtests/unit/branch-inventory-policy.test.ts[39m 2ms (unchanged)
+[90mtests/unit/bridge-request-detachment.test.ts[39m 6ms (unchanged)
+[90mtests/unit/bridge-request-sharing.test.ts[39m 13ms (unchanged)
+[90mtests/unit/canon-author-fields.test.ts[39m 7ms (unchanged)
+[90mtests/unit/capability-matrix.test.ts[39m 9ms (unchanged)
+[90mtests/unit/capability-runtime-navigation.test.ts[39m 10ms (unchanged)
 [90mtests/unit/capability-runtime-provider.test.ts[39m 3ms (unchanged)
 [90mtests/unit/chapter-session-state.test.ts[39m 3ms (unchanged)
 [90mtests/unit/checks-generation-polling.test.ts[39m 2ms (unchanged)
-[90mtests/unit/ci-draft-routing.test.ts[39m 10ms (unchanged)
-[90mtests/unit/ci-efficiency.test.ts[39m 5ms (unchanged)
-[90mtests/unit/code-quality-governance.test.ts[39m 7ms (unchanged)
-[90mtests/unit/constraint-package-domain.test.ts[39m 3ms (unchanged)
-[90mtests/unit/core-candidate-diff-coverage.test.ts[39m 18ms (unchanged)
-[90mtests/unit/core-narrative-router-coverage.test.ts[39m 12ms (unchanged)
-[90mtests/unit/core-project-routers-coverage.test.ts[39m 16ms (unchanged)
-[90mtests/unit/core-recovery-supervisor-branch-coverage.test.ts[39m 25ms (unchanged)
+[90mtests/unit/ci-draft-routing.test.ts[39m 9ms (unchanged)
+[90mtests/unit/ci-efficiency.test.ts[39m 6ms (unchanged)
+[90mtests/unit/code-quality-governance.test.ts[39m 9ms (unchanged)
+[90mtests/unit/constraint-package-domain.test.ts[39m 5ms (unchanged)
+[90mtests/unit/core-candidate-diff-coverage.test.ts[39m 19ms (unchanged)
+[90mtests/unit/core-narrative-router-coverage.test.ts[39m 14ms (unchanged)
+[90mtests/unit/core-project-routers-coverage.test.ts[39m 21ms (unchanged)
+[90mtests/unit/core-recovery-supervisor-branch-coverage.test.ts[39m 21ms (unchanged)
 [90mtests/unit/core-recovery-supervisor-dom.test.ts[39m 10ms (unchanged)
 [90mtests/unit/core-recovery-supervisor.test.ts[39m 12ms (unchanged)
-[90mtests/unit/core-utility-entry-coverage.test.ts[39m 17ms (unchanged)
-[90mtests/unit/core-utility-errors-coverage.test.ts[39m 7ms (unchanged)
-[90mtests/unit/core-utility-router-coverage.test.ts[39m 14ms (unchanged)
-[90mtests/unit/credential-broker.test.ts[39m 9ms (unchanged)
-[90mtests/unit/domain-invariants-coverage.test.ts[39m 22ms (unchanged)
-[90mtests/unit/draft-flush-recovery-safety.test.ts[39m 3ms (unchanged)
-[90mtests/unit/draft-flush-registry.test.ts[39m 4ms (unchanged)
-[90mtests/unit/draft-semantic.test.ts[39m 5ms (unchanged)
-[90mtests/unit/editor-core-diff-coverage.test.ts[39m 12ms (unchanged)
-[90mtests/unit/editor-core-draft-document-coverage.test.ts[39m 15ms (unchanged)
-[90mtests/unit/editor-core-lock-guard-coverage.test.ts[39m 10ms (unchanged)
-[90mtests/unit/editor-document.test.ts[39m 19ms (unchanged)
-[90mtests/unit/editor-draft-patch.test.ts[39m 7ms (unchanged)
-[90mtests/unit/editor-lock-patch.test.ts[39m 2ms (unchanged)
+[90mtests/unit/core-utility-entry-coverage.test.ts[39m 21ms (unchanged)
+[90mtests/unit/core-utility-errors-coverage.test.ts[39m 9ms (unchanged)
+[90mtests/unit/core-utility-router-coverage.test.ts[39m 18ms (unchanged)
+[90mtests/unit/credential-broker.test.ts[39m 7ms (unchanged)
+[90mtests/unit/domain-invariants-coverage.test.ts[39m 16ms (unchanged)
+[90mtests/unit/draft-flush-recovery-safety.test.ts[39m 2ms (unchanged)
+[90mtests/unit/draft-flush-registry.test.ts[39m 5ms (unchanged)
+[90mtests/unit/draft-semantic.test.ts[39m 4ms (unchanged)
+[90mtests/unit/editor-core-diff-coverage.test.ts[39m 13ms (unchanged)
+[90mtests/unit/editor-core-draft-document-coverage.test.ts[39m 20ms (unchanged)
+[90mtests/unit/editor-core-lock-guard-coverage.test.ts[39m 11ms (unchanged)
+[90mtests/unit/editor-document.test.ts[39m 20ms (unchanged)
+[90mtests/unit/editor-draft-patch.test.ts[39m 8ms (unchanged)
+[90mtests/unit/editor-lock-patch.test.ts[39m 3ms (unchanged)
 [90mtests/unit/editor-persisted-metadata-isolation.test.ts[39m 4ms (unchanged)
 [90mtests/unit/editor-persisted-metadata-missing-client-id.test.ts[39m 1ms (unchanged)
 [90mtests/unit/editor-persisted-metadata-sync.test.ts[39m 5ms (unchanged)
-[90mtests/unit/effective-task-status.test.ts[39m 5ms (unchanged)
+[90mtests/unit/effective-task-status.test.ts[39m 7ms (unchanged)
 [90mtests/unit/electron-e2e-runner.test.ts[39m 2ms (unchanged)
 [90mtests/unit/electron-main-bootstrap-coverage.test.ts[39m 28ms (unchanged)
-[90mtests/unit/electron-window-state-coverage.test.ts[39m 4ms (unchanged)
-[90mtests/unit/evidence-policy.test.ts[39m 14ms (unchanged)
+[90mtests/unit/electron-window-state-coverage.test.ts[39m 5ms (unchanged)
+[90mtests/unit/evidence-policy.test.ts[39m 16ms (unchanged)
 [90mtests/unit/export-selection-guard.test.ts[39m 2ms (unchanged)
-[90mtests/unit/full-work-validation.test.ts[39m 3ms (unchanged)
+[90mtests/unit/full-work-validation.test.ts[39m 4ms (unchanged)
 [90mtests/unit/generation-contracts.test.ts[39m 5ms (unchanged)
-[90mtests/unit/generation-polling-policy.test.ts[39m 1ms (unchanged)
+[90mtests/unit/generation-polling-policy.test.ts[39m 2ms (unchanged)
 [90mtests/unit/gitignore.test.ts[39m 1ms (unchanged)
 [90mtests/unit/ipc-error-semantics.test.ts[39m 1ms (unchanged)
-[90mtests/unit/ipc-handlers-branch-coverage.test.ts[39m 16ms (unchanged)
-[90mtests/unit/ipc-handlers-real-surface-coverage.test.ts[39m 11ms (unchanged)
-[90mtests/unit/m10-03-ipc-protocol-maintenance.test.ts[39m 9ms (unchanged)
-[90mtests/unit/m10-12-generation-cancel-barrier.test.ts[39m 8ms (unchanged)
-[90mtests/unit/m10-12-generation-cancel-order.test.ts[39m 6ms (unchanged)
-[90mtests/unit/m10-12-generation-persist-cancel-race.test.ts[39m 6ms (unchanged)
-[90mtests/unit/m10-12-generation-start-pending.test.ts[39m 5ms (unchanged)
+[90mtests/unit/ipc-handlers-branch-coverage.test.ts[39m 18ms (unchanged)
+[90mtests/unit/ipc-handlers-real-surface-coverage.test.ts[39m 12ms (unchanged)
+[90mtests/unit/m10-03-ipc-protocol-maintenance.test.ts[39m 10ms (unchanged)
+[90mtests/unit/m10-12-generation-cancel-barrier.test.ts[39m 7ms (unchanged)
+[90mtests/unit/m10-12-generation-cancel-order.test.ts[39m 7ms (unchanged)
+[90mtests/unit/m10-12-generation-persist-cancel-race.test.ts[39m 7ms (unchanged)
+[90mtests/unit/m10-12-generation-start-pending.test.ts[39m 6ms (unchanged)
 [90mtests/unit/m10-12-recovery-compensation.test.ts[39m 3ms (unchanged)
-[90mtests/unit/m10-12-renderer-generation-epoch.test.ts[39m 11ms (unchanged)
+[90mtests/unit/m10-12-renderer-generation-epoch.test.ts[39m 12ms (unchanged)
 [90mtests/unit/m10-13-bridge-resource-context.test.ts[39m 2ms (unchanged)
-[90mtests/unit/m10-13-candidate-command-ownership.test.ts[39m 4ms (unchanged)
+[90mtests/unit/m10-13-candidate-command-ownership.test.ts[39m 5ms (unchanged)
 [90mtests/unit/m10-13-candidate-review-render.test.ts[39m 3ms (unchanged)
-[90mtests/unit/m10-13-command-identity-contract.test.ts[39m 2ms (unchanged)
-[90mtests/unit/m10-13-core-rpc-channel.test.ts[39m 3ms (unchanged)
+[90mtests/unit/m10-13-command-identity-contract.test.ts[39m 1ms (unchanged)
+[90mtests/unit/m10-13-core-rpc-channel.test.ts[39m 4ms (unchanged)
 [90mtests/unit/m10-13-core-supervisor-boundary.test.ts[39m 6ms (unchanged)
 [90mtests/unit/m10-13-privacy-logger-boundary.test.ts[39m 2ms (unchanged)
-[90mtests/unit/m10-13-project-session-transition.test.ts[39m 4ms (unchanged)
+[90mtests/unit/m10-13-project-session-transition.test.ts[39m 5ms (unchanged)
 [90mtests/unit/m10-13-provider-settings-controller.test.ts[39m 7ms (unchanged)
-[90mtests/unit/m10-13-recovery-overview-availability.test.ts[39m 1ms (unchanged)
+[90mtests/unit/m10-13-recovery-overview-availability.test.ts[39m 2ms (unchanged)
 [90mtests/unit/m10-13-recovery-overview-gate.test.ts[39m 6ms (unchanged)
 [90mtests/unit/m10-13-recovery-overview-state.test.ts[39m 1ms (unchanged)
-[90mtests/unit/m10-13-renderer-command-coordinator.test.ts[39m 6ms (unchanged)
-[90mtests/unit/m10-13-renderer-command-invalidation.test.ts[39m 4ms (unchanged)
+[90mtests/unit/m10-13-renderer-command-coordinator.test.ts[39m 7ms (unchanged)
+[90mtests/unit/m10-13-renderer-command-invalidation.test.ts[39m 5ms (unchanged)
 [90mtests/unit/m10-13-root-cause-governance.test.ts[39m 1ms (unchanged)
 [90mtests/unit/m10-13-structure-delete-engine.test.ts[39m 2ms (unchanged)
 [90mtests/unit/m10-13-utility-control-context.test.ts[39m 3ms (unchanged)
-[90mtests/unit/m10-13-utility-lifecycle.test.ts[39m 10ms (unchanged)
-[90mtests/unit/m10-13-writing-context-ownership.test.ts[39m 8ms (unchanged)
+[90mtests/unit/m10-13-utility-lifecycle.test.ts[39m 11ms (unchanged)
+[90mtests/unit/m10-13-writing-context-ownership.test.ts[39m 6ms (unchanged)
 [90mtests/unit/m10-15-generation-preflight.test.ts[39m 6ms (unchanged)
 [90mtests/unit/m10-17-planning-mode-ownership.test.ts[39m 4ms (unchanged)
-[90mtests/unit/m10-17-project-task-barrier.test.ts[39m 6ms (unchanged)
+[90mtests/unit/m10-17-project-task-barrier.test.ts[39m 5ms (unchanged)
 [90mtests/unit/m10-17-startup-degraded.test.ts[39m 2ms (unchanged)
 [90mtests/unit/m10-19-lifecycle-renderer-recovery.test.ts[39m 8ms (unchanged)
-[90mtests/unit/m10-22-renderer-ownership-render.test.ts[39m 2ms (unchanged)
+[90mtests/unit/m10-22-renderer-ownership-render.test.ts[39m 3ms (unchanged)
 [90mtests/unit/m10-full-code-audit-baseline.test.ts[39m 4ms (unchanged)
-[90mtests/unit/m8-09-v1-stability-invariants.test.ts[39m 3ms (unchanged)
+[90mtests/unit/m8-09-v1-stability-invariants.test.ts[39m 4ms (unchanged)
 [90mtests/unit/main-task-verification.test.ts[39m 2ms (unchanged)
-[90mtests/unit/package-desktop.test.ts[39m 9ms (unchanged)
+[90mtests/unit/package-desktop.test.ts[39m 10ms (unchanged)
 [90mtests/unit/packaged-product-readiness.test.ts[39m 1ms (unchanged)
-[90mtests/unit/preload-bridge-coverage.test.ts[39m 14ms (unchanged)
+[90mtests/unit/preload-bridge-coverage.test.ts[39m 15ms (unchanged)
 [90mtests/unit/prompts-coverage.test.ts[39m 25ms (unchanged)
 [90mtests/unit/provider-abort-signal.test.ts[39m 2ms (unchanged)
 [90mtests/unit/provider-contracts.test.ts[39m 3ms (unchanged)
 [90mtests/unit/provider-integrated-hardening.test.ts[39m 7ms (unchanged)
 [90mtests/unit/recovery-path-name.test.ts[39m 2ms (unchanged)
-[90mtests/unit/release-tool.test.ts[39m 6ms (unchanged)
+[90mtests/unit/release-tool.test.ts[39m 7ms (unchanged)
 [90mtests/unit/renderer-app-shell-model.test.ts[39m 5ms (unchanged)
 [90mtests/unit/renderer-c3-generation-workbench.test.ts[39m 3ms (unchanged)
 [90mtests/unit/renderer-continuation-persistence.test.ts[39m 5ms (unchanged)
-[90mtests/unit/renderer-continuation-request-coordination.test.ts[39m 11ms (unchanged)
+[90mtests/unit/renderer-continuation-request-coordination.test.ts[39m 18ms (unchanged)
 [90mtests/unit/renderer-draft-continuation-feedback.test.ts[39m 3ms (unchanged)
-[90mtests/unit/renderer-foundation-runtime.test.ts[39m 5ms (unchanged)
+[90mtests/unit/renderer-foundation-runtime.test.ts[39m 6ms (unchanged)
 [90mtests/unit/renderer-generation-sources-race.test.ts[39m 4ms (unchanged)
-[90mtests/unit/renderer-home-settings-taskbar.test.ts[39m 9ms (unchanged)
+[90mtests/unit/renderer-home-settings-taskbar.test.ts[39m 8ms (unchanged)
 [90mtests/unit/renderer-layout-model-coverage.test.ts[39m 2ms (unchanged)
-[90mtests/unit/renderer-m3-09-workbenches.test.ts[39m 8ms (unchanged)
+[90mtests/unit/renderer-m3-09-workbenches.test.ts[39m 9ms (unchanged)
 [90mtests/unit/renderer-navigation-target.test.ts[39m 5ms (unchanged)
-[90mtests/unit/renderer-presentation-interactions.test.ts[39m 15ms (unchanged)
-[90mtests/unit/renderer-react-foundation.test.ts[39m 9ms (unchanged)
-[90mtests/unit/renderer-react-runtime-root.test.ts[39m 8ms (unchanged)
-[90mtests/unit/renderer-runtime-dom-boundaries.test.ts[39m 6ms (unchanged)
-[90mtests/unit/renderer-shell-bridge-adapter.test.ts[39m 6ms (unchanged)
-[90mtests/unit/renderer-shutdown-ipc.test.ts[39m 4ms (unchanged)
-[90mtests/unit/renderer-startup-compatibility.test.ts[39m 2ms (unchanged)
-[90mtests/unit/renderer-ui-state-boundary.test.ts[39m 8ms (unchanged)
+[90mtests/unit/renderer-presentation-interactions.test.ts[39m 16ms (unchanged)
+[90mtests/unit/renderer-react-foundation.test.ts[39m 10ms (unchanged)
+[90mtests/unit/renderer-react-runtime-root.test.ts[39m 10ms (unchanged)
+[90mtests/unit/renderer-runtime-dom-boundaries.test.ts[39m 8ms (unchanged)
+[90mtests/unit/renderer-shell-bridge-adapter.test.ts[39m 7ms (unchanged)
+[90mtests/unit/renderer-shutdown-ipc.test.ts[39m 5ms (unchanged)
+[90mtests/unit/renderer-startup-compatibility.test.ts[39m 3ms (unchanged)
+[90mtests/unit/renderer-ui-state-boundary.test.ts[39m 9ms (unchanged)
 [90mtests/unit/renderer-zero-coverage-helpers.test.ts[39m 3ms (unchanged)
 [90mtests/unit/request-generation.test.ts[39m 3ms (unchanged)
 [90mtests/unit/scan-secrets.test.ts[39m 3ms (unchanged)
 [90mtests/unit/search-model-secondary-error.test.ts[39m 1ms (unchanged)
-[90mtests/unit/search-panel-request-lanes.test.ts[39m 3ms (unchanged)
-[90mtests/unit/shared-structure-boundary.test.ts[39m 5ms (unchanged)
+[90mtests/unit/search-panel-request-lanes.test.ts[39m 4ms (unchanged)
+[90mtests/unit/shared-structure-boundary.test.ts[39m 6ms (unchanged)
 [90mtests/unit/single-flight-polling.test.ts[39m 3ms (unchanged)
 [90mtests/unit/single-work-policy.test.ts[39m 2ms (unchanged)
 [90mtests/unit/single-work-taskctl.test.ts[39m 2ms (unchanged)
-[90mtests/unit/source-structure-policy.test.ts[39m 2ms (unchanged)
+[90mtests/unit/source-structure-policy.test.ts[39m 3ms (unchanged)
 [90mtests/unit/sql-migration-policy.test.ts[39m 2ms (unchanged)
 [90mtests/unit/squash-provenance.test.ts[39m 4ms (unchanged)
 [90mtests/unit/stable-json.test.ts[39m 2ms (unchanged)
@@ -880,28 +880,28 @@ scripts/toolchain-policy.mjs 6ms
 [90mtests/unit/taskctl-transaction-policy.test.ts[39m 1ms (unchanged)
 [90mtests/unit/test-quality-audit.test.ts[39m 4ms (unchanged)
 [90mtests/unit/testkit-determinism-provider.test.ts[39m 6ms (unchanged)
-[90mtests/unit/testkit-fixtures-evidence.test.ts[39m 7ms (unchanged)
-[90mtests/unit/testkit-project-migrations.test.ts[39m 3ms (unchanged)
+[90mtests/unit/testkit-fixtures-evidence.test.ts[39m 8ms (unchanged)
+[90mtests/unit/testkit-project-migrations.test.ts[39m 4ms (unchanged)
 [90mtests/unit/tooling-hardening.test.ts[39m 4ms (unchanged)
 [90mtests/unit/ui-acceptance-gate.test.ts[39m 4ms (unchanged)
-[90mtests/unit/validation-trigger-error-mapping.test.ts[39m 2ms (unchanged)
-[90mtests/unit/verified-evidence-scan.test.ts[39m 3ms (unchanged)
-[90mtests/unit/work-synchronization.test.ts[39m 4ms (unchanged)
+[90mtests/unit/validation-trigger-error-mapping.test.ts[39m 4ms (unchanged)
+[90mtests/unit/verified-evidence-scan.test.ts[39m 6ms (unchanged)
+[90mtests/unit/work-synchronization.test.ts[39m 5ms (unchanged)
 [90mtests/unit/workflow-structure-policy.test.ts[39m 3ms (unchanged)
 [90mtests/unit/workspace-attention.test.ts[39m 2ms (unchanged)
-[90mtests/unit/writing-assistance.test.ts[39m 11ms (unchanged)
-[90mtests/unit/writing-candidate-actions.test.ts[39m 11ms (unchanged)
-[90mtests/unit/writing-candidate-loader.test.ts[39m 10ms (unchanged)
-[90mtests/unit/writing-candidate-regressions.test.ts[39m 9ms (unchanged)
-[90mtests/unit/writing-generation-run-actions.test.ts[39m 5ms (unchanged)
-[90mtests/unit/writing-generation-start.test.ts[39m 11ms (unchanged)
-[90mtests/unit/writing-generation-subscription.test.ts[39m 6ms (unchanged)
+[90mtests/unit/writing-assistance.test.ts[39m 12ms (unchanged)
+[90mtests/unit/writing-candidate-actions.test.ts[39m 13ms (unchanged)
+[90mtests/unit/writing-candidate-loader.test.ts[39m 11ms (unchanged)
+[90mtests/unit/writing-candidate-regressions.test.ts[39m 10ms (unchanged)
+[90mtests/unit/writing-generation-run-actions.test.ts[39m 6ms (unchanged)
+[90mtests/unit/writing-generation-start.test.ts[39m 13ms (unchanged)
+[90mtests/unit/writing-generation-subscription.test.ts[39m 7ms (unchanged)
 [90mtests/unit/writing-save-context-contract.test.ts[39m 2ms (unchanged)
 [90mtests/unit/writing-session-architecture.test.ts[39m 3ms (unchanged)
-[90mtests/unit/writing-tools.test.ts[39m 5ms (unchanged)
+[90mtests/unit/writing-tools.test.ts[39m 6ms (unchanged)
 [90mevals/baselines/m0-07-protocol.json[39m 1ms (unchanged)
 [90mevals/fixtures/catalog.json[39m 1ms (unchanged)
-[90mevals/fixtures/common/chapter-continuity-001.yaml[39m 22ms (unchanged)
+[90mevals/fixtures/common/chapter-continuity-001.yaml[39m 21ms (unchanged)
 [90mevals/fixtures/protocol/skeleton-output-001.yaml[39m 3ms (unchanged)
 [90mevals/fixtures/protocol/structured-envelope-001.yaml[39m 2ms (unchanged)
 [90mevals/fixtures/safety/knowledge-boundary-001.yaml[39m 3ms (unchanged)
@@ -924,28 +924,28 @@ scripts/toolchain-policy.mjs 6ms
 [90m.github/governance/required-checks.json[39m 1ms (unchanged)
 [90m.github/governance/secret-scan-allowlist.json[39m 1ms (unchanged)
 [90m.github/governance/workspace-architecture.json[39m 1ms (unchanged)
-[90m.github/pull_request_template.md[39m 45ms (unchanged)
+[90m.github/pull_request_template.md[39m 46ms (unchanged)
 [90m.github/workflows/automerge.yml[39m 5ms (unchanged)
 [90m.github/workflows/branch-hygiene.yml[39m 5ms (unchanged)
-[90m.github/workflows/engineering-validation.yml[39m 22ms (unchanged)
-[90m.github/workflows/evidence.yml[39m 3ms (unchanged)
+[90m.github/workflows/engineering-validation.yml[39m 23ms (unchanged)
+[90m.github/workflows/evidence.yml[39m 4ms (unchanged)
 [90m.github/workflows/full-work-validation.yml[39m 14ms (unchanged)
 [90m.github/workflows/main-verification.yml[39m 8ms (unchanged)
 [90m.github/workflows/performance.yml[39m 5ms (unchanged)
 [90m.github/workflows/post-merge-verification.yml[39m 2ms (unchanged)
-[90m.github/workflows/pr-policy.yml[39m 3ms (unchanged)
-[90m.github/workflows/quality-core.yml[39m 24ms (unchanged)
+[90m.github/workflows/pr-policy.yml[39m 5ms (unchanged)
+[90m.github/workflows/quality-core.yml[39m 22ms (unchanged)
 [90m.github/workflows/quality.yml[39m 8ms (unchanged)
-[90m.github/workflows/release.yml[39m 14ms (unchanged)
-[90m.github/workflows/repository-governance.yml[39m 4ms (unchanged)
-[90m.github/workflows/security.yml[39m 8ms (unchanged)
+[90m.github/workflows/release.yml[39m 16ms (unchanged)
+[90m.github/workflows/repository-governance.yml[39m 3ms (unchanged)
+[90m.github/workflows/security.yml[39m 6ms (unchanged)
 [90m.github/workflows/task-governance.yml[39m 1ms (unchanged)
-[90m.github/workflows/toolchain-export.yml[39m 3ms (unchanged)
+[90m.github/workflows/toolchain-export.yml[39m 4ms (unchanged)
 [90m.github/workflows/toolchain-governance-upgrade.yml[39m 4ms (unchanged)
-[90m.github/workflows/work-synchronization.yml[39m 4ms (unchanged)
+[90m.github/workflows/work-synchronization.yml[39m 3ms (unchanged)
 [90meslint.config.mjs[39m 4ms (unchanged)
 [90mpackage.json[39m 1ms (unchanged)
-pnpm-lock.yaml 141ms
+pnpm-lock.yaml 157ms
 [90mpnpm-workspace.yaml[39m 1ms (unchanged)
 [90mprettier.config.mjs[39m 1ms (unchanged)
 [90mtsconfig.base.json[39m 1ms (unchanged)
@@ -1025,18 +1025,529 @@ $ tsc -p tsconfig.json
 $ tsc -p tsconfig.json
 $ tsc -p tsconfig.json
 $ tsc -p tsconfig.json
-src/provider-abort-signal.ts(6,22): error TS2304: Cannot find name 'EventListener'.
-src/provider-abort-signal.ts(6,38): error TS2304: Cannot find name 'EventListenerObject'.
-src/provider-abort-signal.ts(21,31): error TS2552: Cannot find name 'AddEventListenerOptions'. Did you mean 'EventListenerOptions'?
-/home/runner/work/666/666/packages/core-service:
-[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @worldforge/core-service@1.0.0 build: `tsc -p tsconfig.json`
-Exit status 2
-[ELIFECYCLE] Command failed with exit code 2.
+Scope: 10 of 11 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json --noEmit
+packages/domain typecheck$ tsc -p tsconfig.json --noEmit
+packages/editor-core typecheck$ tsc -p tsconfig.json --noEmit
+packages/domain typecheck: Done
+packages/editor-core typecheck: Done
+packages/contracts typecheck: Done
+apps/desktop/main typecheck$ tsc -p tsconfig.json --noEmit
+apps/desktop/preload typecheck$ tsc -p tsconfig.json --noEmit
+apps/desktop/renderer typecheck$ tsc -p tsconfig.json --noEmit
+packages/prompts typecheck$ tsc -p tsconfig.json --noEmit
+packages/prompts typecheck: Done
+apps/desktop/preload typecheck: Done
+apps/desktop/main typecheck: Done
+apps/desktop/renderer typecheck: Done
+packages/core-service typecheck$ tsc -p tsconfig.json --noEmit
+packages/core-service typecheck: Done
+packages/testkit typecheck$ tsc -p tsconfig.json --noEmit
+packages/testkit typecheck: Done
+$ pnpm test:unit
+$ pnpm test:prepare && vitest run tests/unit
+$ pnpm --filter @worldforge/domain build && pnpm --filter @worldforge/contracts build && pnpm --filter @worldforge/prompts build && pnpm --filter @worldforge/editor-core build && pnpm --filter @worldforge/core-service build
+$ tsc -p tsconfig.json
+$ tsc -p tsconfig.json
+$ tsc -p tsconfig.json
+$ tsc -p tsconfig.json
+$ tsc -p tsconfig.json
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/666/666[39m
+
+ [32m✓[39m tests/unit/electron-main-bootstrap-coverage.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 113[2mms[22m[39m
+ [32m✓[39m tests/unit/core-project-routers-coverage.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-presentation-interactions.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mevidence policy[2m > [22m[2mverifies documentation bytes, hashes and complete file registration
+[22m[39mEvidence document gate passed for M9-99.
+
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mevidence policy[2m > [22m[2mverifies documentation bytes, hashes and complete file registration
+[22m[39mEvidence document gate passed for M9-99.
+
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mevidence policy[2m > [22m[2mreturns cleanly when a Draft revision changes no Evidence package
+[22m[39mNo changed evidence documents at abd3b5ed942f76683cb152a2cfa76495e360bf22; no task Evidence package validation is required for this revision.
+
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+[worldforge-core] window-preferences.save.failed
+[worldforge-core] core.shutdown.failed
+ [32m✓[39m tests/unit/core-utility-entry-coverage.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1521[2mms[22m[39m
+     [33m[2m✓[22m[39m requires a parent port and all absolute startup arguments [33m 1401[2mms[22m[39m
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mReady Evidence closure[2m > [22m[2maccepts a Ready Head whose implementation commit is followed only by final closure files
+[22m[39mEvidence document gate passed for M10-09.
+
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mReady Evidence closure[2m > [22m[2maccepts a Ready Head whose implementation commit is followed only by final closure files
+[22m[39mValidated 1 changed evidence document set(s) at 7db6cd1c9307c4aae9873a25691d5d8f6073f802.
+
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mReady Evidence closure[2m > [22m[2mallows stale intermediate Evidence on Draft but rejects it on Ready
+[22m[39mEvidence document gate passed for M10-09.
+
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mReady Evidence closure[2m > [22m[2mallows stale intermediate Evidence on Draft but rejects it on Ready
+[22m[39mValidated 1 changed evidence document set(s) at 9c60cc7839d07a632255934d2524b33bdfdd056c.
+
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mReady Evidence closure[2m > [22m[2mallows stale intermediate Evidence on Draft but rejects it on Ready
+[22m[39mEvidence document gate passed for M10-09.
+
+ [32m✓[39m tests/unit/core-recovery-supervisor-branch-coverage.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mReady Evidence closure[2m > [22m[2mrejects cross-task Evidence written after the current implementation commit
+[22m[39mEvidence document gate passed for M10-08.
+
+[90mstdout[2m | tests/unit/evidence-policy.test.ts[2m > [22m[2mReady Evidence closure[2m > [22m[2mrejects cross-task Evidence written after the current implementation commit
+[22m[39mEvidence document gate passed for M10-09.
+
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+ [32m✓[39m tests/unit/evidence-policy.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 782[2mms[22m[39m
+ [32m✓[39m tests/unit/prompts-coverage.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+[90mstdout[2m | tests/unit/ipc-handlers-branch-coverage.test.ts
+[22m[39mDownloading Electron binary...
+
+ [32m✓[39m tests/unit/ar10-main-ipc-domain-coverage.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m tests/unit/ipc-handlers-branch-coverage.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-core-draft-document-coverage.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-document.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-assistance.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m tests/unit/domain-invariants-coverage.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m tests/unit/preload-bridge-coverage.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1076[2mms[22m[39m
+     [33m[2m✓[22m[39m uses exact channels and authoritative schemas for representative capabilities [33m 323[2mms[22m[39m
+ [32m✓[39m tests/unit/core-utility-router-coverage.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m tests/unit/app-shell-runtime-models.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-generation-start.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-react-runtime-root.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-m3-09-workbenches.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m tests/unit/core-candidate-diff-coverage.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m tests/unit/ipc-handlers-real-surface-coverage.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-candidate-actions.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m tests/unit/core-utility-errors-coverage.test.ts [2m([22m[2m84 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-12-renderer-generation-epoch.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 141[2mms[22m[39m
+ [32m✓[39m tests/unit/package-desktop.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m tests/unit/capability-runtime-navigation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-continuation-request-coordination.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 184[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-candidate-loader.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m tests/unit/core-recovery-supervisor.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m tests/unit/core-narrative-router-coverage.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/unit/bridge-request-sharing.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/author-review-delivery.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-core-diff-coverage.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/unit/autosave-writing-tools.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+[90mstdout[2m | tests/unit/release-tool.test.ts[2m > [22m[2mrelease tool[2m > [22m[2mrequires one verified package manifest per platform before publication
+[22m[39mVerified WorldForge-linux.zip for linux.
+
+[90mstdout[2m | tests/unit/release-tool.test.ts[2m > [22m[2mrelease tool[2m > [22m[2mrequires one verified package manifest per platform before publication
+[22m[39mVerified WorldForge-macos.zip for macos.
+
+[90mstdout[2m | tests/unit/release-tool.test.ts[2m > [22m[2mrelease tool[2m > [22m[2mrequires one verified package manifest per platform before publication
+[22m[39mVerified WorldForge-windows.zip for windows.
+
+[90mstdout[2m | tests/unit/release-tool.test.ts[2m > [22m[2mrelease tool[2m > [22m[2mrequires one verified package manifest per platform before publication
+[22m[39mVerified WorldForge-linux.zip for linux.
+
+[90mstdout[2m | tests/unit/release-tool.test.ts[2m > [22m[2mrelease tool[2m > [22m[2mrequires one verified package manifest per platform before publication
+[22m[39mVerified WorldForge-macos.zip for macos.
+
+ [32m✓[39m tests/unit/release-tool.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-ui-state-boundary.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-19-lifecycle-renderer-recovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/unit/ar10-main-ipc-error-coverage.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-03-ipc-protocol-maintenance.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-home-settings-taskbar.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-react-foundation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m tests/unit/code-quality-governance.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-core-lock-guard-coverage.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/unit/core-recovery-supervisor-dom.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 135[2mms[22m[39m
+[worldforge-core] task-command.execute.failed
+[worldforge-core] window-preferences.save.failed
+ [32m✓[39m tests/unit/m10-13-utility-lifecycle.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-12-generation-persist-cancel-race.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-candidate-regressions.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m tests/unit/task-control.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-navigation-target.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/unit/ci-efficiency.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-provider-settings-controller.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m tests/unit/testkit-fixtures-evidence.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 208[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-12-generation-cancel-order.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-runtime-dom-boundaries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-12-generation-cancel-barrier.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-app-shell-model.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/unit/provider-integrated-hardening.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-writing-context-ownership.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/ci-draft-routing.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 105[2mms[22m[39m
+ [32m✓[39m tests/unit/atomic-file-transaction.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 84[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-renderer-command-coordinator.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-15-generation-preflight.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-foundation-runtime.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-generation-subscription.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/author-language.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-tools.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+ [32m✓[39m tests/unit/effective-task-status.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 119[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-core-supervisor-boundary.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-recovery-overview-gate.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m tests/unit/testkit-determinism-provider.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/shared-structure-boundary.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-12-generation-start-pending.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m tests/unit/generation-contracts.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-persisted-metadata-sync.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/unit/canon-author-fields.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-generation-run-actions.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m tests/unit/structured-candidate-contracts.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/unit/m8-09-v1-stability-invariants.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m tests/unit/capability-matrix.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/unit/ui-acceptance-gate.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-draft-patch.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/unit/ar09-preload-factory-boundaries.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/electron-window-state-coverage.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m tests/unit/tooling-hardening.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-17-planning-mode-ownership.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-shell-bridge-adapter.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/test-quality-audit.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 178[2mms[22m[39m
+ [32m✓[39m tests/unit/ar06-planning-boundaries.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/audit-remediation-manifest-discovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-project-session-transition.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/unit/bridge-request-detachment.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-17-project-task-barrier.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32m✓[39m tests/unit/workflow-structure-policy.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 106[2mms[22m[39m
+ [32m✓[39m tests/unit/ar07-app-shell-boundaries.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/work-synchronization.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-candidate-command-ownership.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/unit/squash-provenance.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 332[2mms[22m[39m
+ [32m✓[39m tests/unit/ar08-contracts-public-surface.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/verified-evidence-scan.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/unit/credential-broker.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-renderer-command-invalidation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-generation-sources-race.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/unit/bounded-idempotent-promise-cache.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-session-architecture.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-shutdown-ipc.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/unit/automated-verification-authority.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/backup-metadata-compatibility.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-continuation-persistence.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/unit/ar10-main-ipc-boundaries.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-c3-generation-workbench.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/unit/ar13-structure-operations-boundaries.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-persisted-metadata-isolation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-startup-compatibility.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/unit/full-work-validation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+ [32m✓[39m tests/unit/ar13-utility-control-boundaries.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-full-code-audit-baseline.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 443[2mms[22m[39m
+     [33m[2m✓[22m[39m contains no unresolved merge conflict markers in production and governance sources [33m 362[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-zero-coverage-helpers.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+[worldforge-core] parent-port.send.failed
+[worldforge-core] test.operation.failed
+[worldforge-core] test.success-build.failed.success-build.failed
+ [32m✓[39m tests/unit/m10-13-utility-control-context.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m tests/unit/strict-testkit.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m tests/unit/draft-semantic.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/chapter-session-state.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-draft-continuation-feedback.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/app-shell-capability-actions.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m tests/unit/task-ordering.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-core-rpc-channel.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-22-renderer-ownership-render.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-candidate-review-render.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m tests/unit/branch-hygiene.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/search-panel-request-lanes.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/scan-secrets.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/unit/provider-contracts.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-12-recovery-compensation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/unit/main-task-verification.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/draft-flush-registry.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/source-structure-policy.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/single-flight-polling.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/unit/request-generation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/task-gap-recovery.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/capability-runtime-provider.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/unit/ar13-validation-boundaries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-17-startup-degraded.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/testkit-project-migrations.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 118[2mms[22m[39m
+ [32m✓[39m tests/unit/recovery-path-name.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/electron-e2e-runner.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-lock-patch.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/constraint-package-domain.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/unit/sql-migration-policy.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/unit/ar13-search-candidate.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/workspace-attention.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/unit/ar13-narrative-planning-boundaries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m tests/unit/renderer-layout-model-coverage.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m tests/unit/single-work-taskctl.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/writing-save-context-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-structure-delete-engine.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m tests/unit/validation-trigger-error-mapping.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/unit/ar12-project-workspace-path-policy-branches.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/stable-json.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/checks-generation-polling.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/unit/ai-readiness.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/unit/provider-abort-signal.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/unit/ar13-search-index-boundaries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/ipc-error-semantics.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-bridge-resource-context.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-privacy-logger-boundary.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/ar14-workspace-alignment-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/boundaries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/unit/taskctl-transaction-policy.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m tests/unit/export-selection-guard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-command-identity-contract.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-root-cause-governance.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/generation-polling-policy.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/single-work-policy.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-recovery-overview-availability.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m tests/unit/branch-inventory-policy.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/search-model-secondary-error.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/editor-persisted-metadata-missing-client-id.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/draft-flush-recovery-safety.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m tests/unit/m10-13-recovery-overview-state.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m tests/unit/author-error-message.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/unit/gitignore.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m tests/unit/packaged-product-readiness.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m181 passed[39m[22m[90m (181)[39m
+[2m      Tests [22m [1m[32m943 passed[39m[22m[90m (943)[39m
+[2m   Start at [22m 09:34:35
+[2m   Duration [22m 25.22s[2m (transform 6.60s, setup 3.06s, import 30.61s, tests 10.61s, environment 27ms)[22m
+
+$ pnpm test:integration
+$ vitest run tests/integration
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/runner/work/666/666[39m
+
+ [32m✓[39m tests/integration/state-proposal-snapshot.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 983[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps pending proposals non-authoritative, applies edited and accepted decisions atomically, and creates a traceable snapshot [33m 314[2mms[22m[39m
+ [32m✓[39m tests/integration/structure-operations.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1852[2mms[22m[39m
+ [32m✓[39m tests/integration/constraint-package.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 876[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-apply-transaction.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 3198[2mms[22m[39m
+     [33m[2m✓[22m[39m finds an ApplyRecord after restart and restores the pre-apply Draft as a new Revision [33m 326[2mms[22m[39m
+ [32m✓[39m tests/integration/search-index.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 751[2mms[22m[39m
+     [33m[2m✓[22m[39m indexes authority sources and falls back while stale [33m 304[2mms[22m[39m
+ [32m✓[39m tests/integration/state-validation-provider.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 487[2mms[22m[39m
+ [32m✓[39m tests/integration/generation-run.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1175[2mms[22m[39m
+ [32m✓[39m tests/integration/project-planning.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 958[2mms[22m[39m
+ [32m✓[39m tests/integration/generation-runtime.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 872[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-19-authority-governance.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1207[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects Replace and Version mutations after their parent structure enters trash [33m 315[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-18-import-entity-arc-consistency.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 1009[2mms[22m[39m
+     [33m[2m✓[22m[39m replays one complete Import commit without duplicating checkpoint or persisted IDs [33m 659[2mms[22m[39m
+ [32m✓[39m tests/integration/draft-lock-guard.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1634[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects update, delete and move until the block is explicitly unlocked [33m 984[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-version-model.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 997[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects Version and Candidate provenance from another project [33m 355[2mms[22m[39m
+ [32m✓[39m tests/integration/project-structure.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1588[2mms[22m[39m
+     [33m[2m✓[22m[39m creates the starter hierarchy by default and supports an explicit professional blank project [33m 435[2mms[22m[39m
+ [32m✓[39m tests/integration/draft-patch.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 788[2mms[22m[39m
+     [33m[2m✓[22m[39m persists requestId idempotency across reopen and rolls back injected failures [33m 326[2mms[22m[39m
+ [32m✓[39m tests/integration/generation-source-resolver.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 236[2mms[22m[39m
+ [32m✓[39m tests/integration/narrative-character-arc.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 702[2mms[22m[39m
+     [33m[2m✓[22m[39m orders milestones, moves planned chapters, enforces dependencies, and records author confirmation [33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects dependency cycles, foreign timeline events, invalid custom arcs, and AI writes [33m 381[2mms[22m[39m
+ [32m✓[39m tests/integration/import-export-service.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 778[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-service.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 6519[2mms[22m[39m
+     [33m[2m✓[22m[39m creates a verified online checkpoint, exports a Version and restores a new writable project [33m 857[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects low space and corrupted backup output without recording an unverified checkpoint [33m 429[2mms[22m[39m
+     [33m[2m✓[22m[39m removes an interrupted restored copy and keeps the source workspace active [33m 303[2mms[22m[39m
+     [33m[2m✓[22m[39m opens a physically unreadable project in recovery-only mode and restores an external checkpoint [33m 4929[2mms[22m[39m
+ [32m✓[39m tests/integration/narrative-foreshadowing.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 504[2mms[22m[39m
+     [33m[2m✓[22m[39m tracks reveal windows, dependency blocking, search, and legal author transitions [33m 307[2mms[22m[39m
+ [32m✓[39m tests/integration/task-protocol.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-service.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 514[2mms[22m[39m
+ [32m✓[39m tests/integration/scene-beat.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 706[2mms[22m[39m
+     [33m[2m✓[22m[39m creates, orders, soft-deletes, restores, and keeps Draft content unchanged [33m 308[2mms[22m[39m
+ [32m✓[39m tests/integration/version-service.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 277[2mms[22m[39m
+ [32m✓[39m tests/integration/provider-connection.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 2121[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps cancellation and timeout active after streaming response headers arrive [33m 1005[2mms[22m[39m
+     [33m[2m✓[22m[39m normalizes authentication, rate-limit, model, timeout, interruption, and cancellation failures [33m 1006[2mms[22m[39m
+ [32m✓[39m tests/integration/preload-ipc-core.integration.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 520[2mms[22m[39m
+ [32m✓[39m tests/integration/app-data-repositories.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 84[2mms[22m[39m
+ [32m✓[39m tests/integration/entity-canon.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 679[2mms[22m[39m
+ [32m✓[39m tests/integration/audit-m0-m2-remediation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 4910[2mms[22m[39m
+     [33m[2m✓[22m[39m lists and exports Versions from a verified checkpoint when project.sqlite is unreadable [33m 4409[2mms[22m[39m
+ [32m✓[39m tests/integration/search-replace-rhythm.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 564[2mms[22m[39m
+     [33m[2m✓[22m[39m searches authoritative Draft/Version/Entity data and applies only unlocked active Draft matches [33m 348[2mms[22m[39m
+ [32m✓[39m tests/integration/draft-document.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 457[2mms[22m[39m
+ [32m✓[39m tests/integration/state-proposal-valid-until.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 759[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-preview-zero-write.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 510[2mms[22m[39m
+ [32m✓[39m tests/integration/m4-search-constraint-hardening.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 501[2mms[22m[39m
+ [32m✓[39m tests/integration/project-continuation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 706[2mms[22m[39m
+ [32m✓[39m tests/integration/scene-beat-entity-references.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 327[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects invalid legacy IDs and synchronizes valid references into the relation table [33m 324[2mms[22m[39m
+ [32m✓[39m tests/integration/constraint-package-authority.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 680[2mms[22m[39m
+ [32m✓[39m tests/integration/docx-transfer.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 1748[2mms[22m[39m
+     [33m[2m✓[22m[39m round-trips selected immutable Versions and records import without manual writing time [33m 362[2mms[22m[39m
+     [33m[2m✓[22m[39m imports a deterministic seven-million-character DOCX within archive limits [33m 1202[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-request-replay.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 735[2mms[22m[39m
+     [33m[2m✓[22m[39m replays backup creation and restore across service instances without duplicate artifacts [33m 390[2mms[22m[39m
+     [33m[2m✓[22m[39m returns the original cleanup result when the same plan request is replayed [33m 343[2mms[22m[39m
+ [32m✓[39m tests/integration/ending-snapshot-temporal-projection.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 327[2mms[22m[39m
+     [33m[2m✓[22m[39m derives foreshadowing events and ArcMilestones at the target chapter [33m 326[2mms[22m[39m
+ [32m✓[39m tests/integration/three-track-recovery.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 423[2mms[22m[39m
+     [33m[2m✓[22m[39m deduplicates concurrent daily backups, protects named/migration/last and applies a stale-safe cleanup [33m 421[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-timeline-hardening.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 353[2mms[22m[39m
+     [33m[2m✓[22m[39m enforces presence, precision, ordering, archive, and all knowledge statuses [33m 350[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-post-audit-hardening.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 569[2mms[22m[39m
+     [33m[2m✓[22m[39m serializes daily backups across midnight through the product recovery service [33m 349[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-17-rhythm-readonly.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 503[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-17-project-lifecycle.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 859[2mms[22m[39m
+     [33m[2m✓[22m[39m waits for the atomic stage before moving the workspace [33m 388[2mms[22m[39m
+ [32m✓[39m tests/integration/structured-partial-safety.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 320[2mms[22m[39m
+     [33m[2m✓[22m[39m does not expose incomplete structured JSON as a saveable prose partial [33m 318[2mms[22m[39m
+ [32m✓[39m tests/integration/story-anchor-scope.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 451[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-12-generation-identity.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 243[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-07-search-replace-revision.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 317[2mms[22m[39m
+     [33m[2m✓[22m[39m advances only matched blocks and keeps database and Patch audit revisions aligned [33m 315[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-logical-block.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 274[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-daily-winner.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 287[2mms[22m[39m
+ [32m✓[39m tests/integration/coordinated-import-export-service.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 505[2mms[22m[39m
+     [33m[2m✓[22m[39m bounds retained preview plans and makes evicted plans explicitly stale [33m 303[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-interval-hardening.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 307[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves explicit gaps and same-start revisions for state and knowledge [33m 304[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-project-list.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 238[2mms[22m[39m
+ [32m✓[39m tests/integration/continuity-authority-hardening.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 247[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-identity-remap.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/integration/state-proposal-valid-until-boundaries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 627[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves validUntilChapterId when the author edits the accepted value [33m 303[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a validUntilChapterId that belongs to another project [33m 323[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-apply-contract.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-file-lease.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 890[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a live owner beyond the lease duration through heartbeat [33m 784[2mms[22m[39m
+ [32m✓[39m tests/integration/m8-09-project-lifecycle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 418[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-metadata-boundary.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 227[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-07-candidate-undo-invariant.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 284[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-failure-ledger.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 330[2mms[22m[39m
+     [33m[2m✓[22m[39m persists a privacy-safe failure and resolves it after a successful backup on the same track [33m 328[2mms[22m[39m
+ [32m✓[39m tests/integration/task-lifecycle.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 477[2mms[22m[39m
+ [32m✓[39m tests/integration/recovery-backup-consistency.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 240[2mms[22m[39m
+ [32m✓[39m tests/integration/candidate-apply-diff.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m tests/integration/m10-16-semantic-freshness.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 302[2mms[22m[39m
+ [32m✓[39m tests/integration/app-settings-concurrency.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 42[2mms[22m[39m
+ [31m❯[39m tests/integration/electron-sqlite-runtime.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 275[2mms[22m[39m
+[31m     [31m×[31m ships node:sqlite with FTS5 trigram support[39m[32m 272[2mms[22m[39m
+ [32m✓[39m tests/integration/workspace-graph.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 78[2mms[22m[39m
+ [32m✓[39m tests/integration/database-boundaries.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m tests/integration/m2-03-core-boundary.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/integration/electron-sqlite-runtime.test.ts[2m > [22mElectron Core SQLite runtime[2m > [22mships node:sqlite with FTS5 trigram support
+[31m[1mAssertionError[22m: expected { electron: '43.2.0', …(3) } to match object { electron: '43.1.1', fts5: 1 }
+(2 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "electron": "43.1.1",[39m
+[31m+   "electron": "43.2.0",[39m
+[2m    "fts5": 1,[22m
+[2m  }[22m
+
+[36m [2m❯[22m tests/integration/electron-sqlite-runtime.test.ts:[2m38:20[22m[39m
+    [90m 36|[39m     [35mconst[39m result[33m:[39m unknown [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(stdout[33m.[39m[34mtrim[39m())[33m;[39m
+    [90m 37|[39m
+    [90m 38|[39m     [34mexpect[39m(result)[33m.[39m[34mtoMatchObject[39m({
+    [90m   |[39m                    [31m^[39m
+    [90m 39|[39m       electron[33m:[39m [32m'43.1.1'[39m[33m,[39m
+    [90m 40|[39m       fts5[33m:[39m [34m1[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m71 passed[39m[22m[90m (72)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m200 passed[39m[22m[90m (201)[39m
+[2m   Start at [22m 09:35:01
+[2m   Duration [22m 35.74s[2m (transform 4.79s, setup 1.25s, import 38.79s, tests 54.50s, environment 11ms)[22m
+
+
+::error file=/home/runner/work/666/666/tests/integration/electron-sqlite-runtime.test.ts,title=tests/integration/electron-sqlite-runtime.test.ts > Electron Core SQLite runtime > ships node%3Asqlite with FTS5 trigram support,line=38,column=20::AssertionError: expected { electron: '43.2.0', …(3) } to match object { electron: '43.1.1', fts5: 1 }%0A(2 matching properties omitted from actual)%0A%0A- Expected%0A+ Received%0A%0A  {%0A-   "electron": "43.1.1",%0A+   "electron": "43.2.0",%0A    "fts5": 1,%0A  }%0A%0A ❯ tests/integration/electron-sqlite-runtime.test.ts:38:20%0A%0A
+[ELIFECYCLE] Command failed with exit code 1.
 node:internal/errors:985
   const err = new Error(message);
               ^
 
-Error: Command failed: pnpm typecheck
+Error: Command failed: pnpm test:integration
     at genericNodeError (node:internal/errors:985:15)
     at wrappedFn (node:internal/errors:539:14)
     at checkExecSyncError (node:child_process:925:11)
@@ -1046,10 +1557,10 @@ Error: Command failed: pnpm typecheck
     at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
     at async node:internal/modules/esm/loader:643:26
     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
-  status: 2,
+  status: 1,
   signal: null,
   output: [ null, null, null ],
-  pid: 3167,
+  pid: 5421,
   stdout: null,
   stderr: null
 }

@@ -53,4 +53,33 @@ describe('M11-01 中文作者体验与交互减负', () => {
     expect(authorEdit).toContain("value: { status: 'hit', actualChapterId: proposal.chapterId }");
     expect(authorEdit).toContain("value: { status: 'skipped', actualChapterId: null }");
   });
+
+  it('场景关联、拆章和跨章移段使用可视正文选择且保留安全预览', async () => {
+    const [scenePanel, structureOperations, picker] = await Promise.all([
+      rendererSource('features/planning/scenes/scene-beat-panel.tsx'),
+      rendererSource('features/structure/structure-operation-dialog.tsx'),
+      rendererSource('features/writing/draft-block-picker.tsx'),
+    ]);
+
+    expect(scenePanel).toContain('pickMultipleBlocks({');
+    expect(scenePanel).not.toContain('正文段落序号');
+    expect(structureOperations).toContain('pickMultipleBlocks({');
+    expect(structureOperations).toContain('pickBlockAnchor({');
+    expect(structureOperations).not.toContain('在第几个正文段落后拆分');
+    expect(structureOperations).not.toContain('正文段落序号');
+    expect(structureOperations).toContain('planHash: preview.planHash');
+    expect(structureOperations).toContain('确认移动并创建恢复点');
+    expect(picker).toContain('data-draft-block-picker');
+    expect(picker).toContain('disableLocked');
+  });
+
+  it('普通连续性录入不暴露JSON或内部段落标识输入', async () => {
+    const continuity = await rendererSource('features/canon/continuity-editors.tsx');
+
+    expect(continuity).not.toContain('<option value="json">');
+    expect(continuity).not.toContain('name="sourceLogicalBlockId"');
+    expect(continuity).toContain('选择来源正文段落');
+    expect(continuity).toContain("labelMode: 'select'");
+    expect(continuity).toContain('sourceLogicalBlockId: knowledgeSourceBlockId');
+  });
 });

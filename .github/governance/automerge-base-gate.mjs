@@ -28,6 +28,12 @@ export function baseVerificationDecision(statuses = []) {
   return 'pending';
 }
 
+export function baseGateAction(decision) {
+  if (decision === 'ready') return 'proceed';
+  if (decision === 'failed') return 'heal';
+  return 'wait';
+}
+
 async function api(token, pathname) {
   const url = new URL(pathname, 'https://api.github.com');
   const response = await githubFetch(url, {
@@ -84,12 +90,16 @@ async function waitForVerifiedBase() {
         `/repos/${owner}/${repo}/commits/${pull.base.sha}/status`,
       );
       const decision = baseVerificationDecision(combined.statuses ?? []);
-      if (decision === 'ready') {
+      const action = baseGateAction(decision);
+      if (action === 'proceed') {
         console.log(`Base main verification is ready for #${pull.number} at ${pull.base.sha}.`);
         break;
       }
-      if (decision === 'failed') {
-        throw new Error(`Base main verification failed for ${pull.base.sha}`);
+      if (action === 'heal') {
+        console.log(
+          `Base main verification failed for ${pull.base.sha}; allowing #${pull.number} to continue only through fresh PR validation as a healing merge.`,
+        );
+        break;
       }
       if (attempt === 90) {
         throw new Error(`Timed out waiting for base main verification: ${pull.base.sha}`);
@@ -125,6 +135,9 @@ function selfTest() {
     ]),
     'pending',
   );
+  assert.equal(baseGateAction('ready'), 'proceed');
+  assert.equal(baseGateAction('failed'), 'heal');
+  assert.equal(baseGateAction('pending'), 'wait');
   console.log('automerge base gate self-test passed');
 }
 

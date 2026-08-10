@@ -98,7 +98,7 @@ describe('M11 作者表单服务端渲染覆盖', () => {
     expect(html).toContain('所在地点');
     expect(html).toContain('赵二');
     expect(html).toContain('清河');
-    expect(html).toContain('第三章 夜渡清河');
+    expect(html).toContain('请选择章节');
     expect(html).toContain('第三章 · 定稿 1');
     expect(html).toContain('夜渡清河');
     expect(html).toContain('追兵暗号');
@@ -129,9 +129,9 @@ describe('M11 作者表单服务端渲染覆盖', () => {
       }),
     );
 
-    expect(html).toContain('当前没有可选对象');
-    expect(html).toContain('当前没有可选章节');
-    expect(html).toContain('当前没有可选定稿');
+    expect(html).toContain('>请选择</option>');
+    expect(html).toContain('请选择章节');
+    expect(html).toContain('请选择定稿');
     expect(html).toContain('disabled');
   });
 });

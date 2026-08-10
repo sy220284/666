@@ -271,15 +271,8 @@ async function exportBundle() {
   const { packages } = await prepare(profile, output, sourceSha);
   run(
     'pnpm',
-    ['install', '--lockfile-only', '--ignore-scripts', '--cache-dir', cacheDir],
-    output,
-  );
-  run('pnpm', ['fetch', '--store-dir', storeDir, '--cache-dir', cacheDir], output);
-  run(
-    'pnpm',
     [
       'install',
-      '--frozen-lockfile',
       '--ignore-scripts',
       '--store-dir',
       storeDir,
@@ -288,6 +281,8 @@ async function exportBundle() {
     ],
     output,
   );
+  run('pnpm', ['fetch', '--store-dir', storeDir, '--cache-dir', cacheDir], output);
+  await rm(path.join(output, 'node_modules'), { recursive: true, force: true });
   run(
     'pnpm',
     [

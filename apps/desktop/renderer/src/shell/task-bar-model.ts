@@ -27,7 +27,7 @@ const TASK_LABELS: Readonly<Record<string, string>> = {
   'candidate.apply': '采用建议稿',
   'candidate.merge': '融合建议稿',
   'candidate.rewrite': '生成改写建议稿',
-  'state.extract': '分析AI设定建议',
+  'state.extract': '生成AI审阅建议',
   'validation.run': '运行内容检查',
   'search.rebuild': '重建全文搜索',
   'backup.create': '创建备份',

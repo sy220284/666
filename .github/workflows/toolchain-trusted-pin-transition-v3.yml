@@ -6,7 +6,7 @@ on:
     types: [synchronize]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: toolchain-trusted-pin-transition-v3
@@ -22,7 +22,7 @@ jobs:
         with:
           ref: work
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24.18.1
@@ -134,12 +134,9 @@ jobs:
           node scripts/toolchain-policy.mjs
           pnpm exec vitest run tests/unit/workflow-structure-policy.test.ts
       - name: Commit transition and self-clean
-        env:
-          REPO_ADMIN_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$REPO_ADMIN_TOKEN"
           git fetch origin work
           test "$(git rev-parse origin/work)" = "$(git rev-parse HEAD)"
           rm -f \
@@ -149,4 +146,4 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
           git commit -m "ci: stage trusted action pin migration [skip ci]"
-          git push "https://x-access-token:${REPO_ADMIN_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:work
+          git push origin HEAD:work

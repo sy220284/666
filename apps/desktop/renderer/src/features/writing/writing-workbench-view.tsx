@@ -156,7 +156,7 @@ export function WritingWorkbenchView({
         <main className="writing-editor-card">
           {panel === 'editor' ? (
             <>
-              <div className="draft-toolbar" role="toolbar" aria-label="正文块工具">
+              <div className="draft-toolbar" role="toolbar" aria-label="正文段落工具">
                 <button
                   data-set-block-type="paragraph"
                   type="button"
@@ -196,7 +196,7 @@ export function WritingWorkbenchView({
                   disabled={editorUnavailable || selectedLocked === null}
                   onClick={toggleLock}
                 >
-                  {selectedLocked ? '解锁当前块' : '锁定当前块'}
+                  {selectedLocked ? '解锁当前段落' : '锁定当前段落'}
                 </button>
                 <button
                   data-undo-draft

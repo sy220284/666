@@ -39,6 +39,8 @@ jobs:
       - name: Apply and validate governance upgrade
         id: upgrade
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set +e
           set -o pipefail

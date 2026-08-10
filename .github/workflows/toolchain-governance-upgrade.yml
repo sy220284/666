@@ -87,6 +87,11 @@ jobs:
           set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          # The runner removes its temporary workflow from the working tree, but
+          # GITHUB_TOKEN must not push workflow-file mutations. Keep this one file
+          # until the verified result has been written back; the connected GitHub
+          # client removes it after success.
+          git checkout HEAD -- .github/workflows/toolchain-governance-upgrade.yml
           git add -A
           git commit -m "chore: upgrade and verify governed toolchain [skip ci]"
           git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:chore/toolchain-governance-20260810

@@ -84,7 +84,7 @@ export function ContinuityRelationshipEditor({
     );
     if (result) {
       event.currentTarget.reset();
-      setStatus('动态状态已保存，并绑定所选定稿版本作为依据。');
+      setStatus('动态状态已保存，并绑定所选定稿作为依据。');
     }
   };
 
@@ -173,7 +173,7 @@ export function ContinuityRelationshipEditor({
               <ChapterNameSelect name="validUntilChapterId" references={references} />
             </label>
             <label>
-              依据的定稿版本
+              依据的定稿
               <FinalVersionSelect name="sourceVersionId" references={references} required />
             </label>
             <label>

@@ -110,8 +110,8 @@ export function validateWorkflowStructure(file, source) {
       );
     }
     const routeScript = String(
-      workflow.jobs.route?.steps?.find((step) => step?.name === 'Determine PR quality route')?.run ??
-        '',
+      workflow.jobs.route?.steps?.find((step) => step?.name === 'Determine PR quality route')
+        ?.run ?? '',
     );
     if (!routeScript.includes(packageWorkflowRoute)) {
       errors.push(

@@ -1,6 +1,6 @@
 name: One-time Trusted Toolchain Pin Transition Push
 
-# Re-trigger after this workflow exists in the parent commit.
+# Final retry after all direct pin updates are complete; keep work stable until self-clean.
 on:
   push:
     branches: [work]

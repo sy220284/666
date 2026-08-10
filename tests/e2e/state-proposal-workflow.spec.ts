@@ -187,6 +187,7 @@ test('keeps AI review pending until the author accepts it and then exposes the e
     await expect(proposal).toContainText('等待处理');
     await expect(proposal).toContainText('沈砚走入南城');
     await proposal.locator(`[data-accept-state-proposal="${seeded.proposalId}"]`).click();
+    await expect(page.locator('[data-state-proposal-status]')).toContainText('作者决定已保存');
     await expect(page.locator('[data-ai-review-summary]')).toContainText('待确认 0');
     await page.locator('[data-ai-review-status-filter]').selectOption('resolved');
     const resolvedProposal = page.locator(`[data-ai-review-proposal="${seeded.proposalId}"]`);

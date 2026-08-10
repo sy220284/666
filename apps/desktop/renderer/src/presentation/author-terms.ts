@@ -35,6 +35,8 @@ export const AUTHOR_TERMS = {
   canonFact: '已确认事实',
   entityState: '动态状态',
   stateProposal: 'AI设定建议',
+  aiReview: 'AI审阅',
+  reviewProposal: 'AI审阅建议',
   timelineEvent: '时间线事件',
   knowledgeState: '人物知情状态',
   characterArc: '人物成长线',

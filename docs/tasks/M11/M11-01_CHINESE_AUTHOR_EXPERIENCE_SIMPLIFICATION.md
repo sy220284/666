@@ -100,7 +100,7 @@ pnpm build
 pnpm test:e2e
 ```
 
-产品运行时变更进入仓库现有 Quality / Security / Performance 风险路由，不降低永久工程门禁。
+产品运行时变更进入仓库现有 Quality / Security / Performance 风险路由，不降低永久工程门禁。本 PR 同时承接已独立验证的工作区工具链治理落仓，并通过 Full Work Validation、工具链导出与正式工程矩阵复核集成后的真实工作区状态；该治理集成不扩大 M11-01 的产品功能边界。
 
 ## 回滚
 

@@ -279,6 +279,19 @@ async function exportBundle() {
     'pnpm',
     [
       'install',
+      '--frozen-lockfile',
+      '--ignore-scripts',
+      '--store-dir',
+      storeDir,
+      '--cache-dir',
+      cacheDir,
+    ],
+    output,
+  );
+  run(
+    'pnpm',
+    [
+      'install',
       '--offline',
       '--frozen-lockfile',
       '--ignore-scripts',

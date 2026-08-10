@@ -1,4 +1,4 @@
-/* global console, process */
+/* global console, process, setTimeout */
 // PR Policy smoke marker: export the repository-locked formatter and quality toolchains.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 const root = process.cwd();
 const authorityRelativePath = 'docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json';
 const authorityPath = path.join(root, authorityRelativePath);
+const npmRegistry = new URL('https://registry.npmjs.org/');
+const fullMetadataAccept = 'application/json; q=1.0, */*';
 
 function repositoryPath(relativePath) {
   if (typeof relativePath !== 'string' || path.isAbsolute(relativePath)) {
@@ -85,6 +87,121 @@ function sha256(content) {
 
 async function fileHash(file) {
   return sha256(await readFile(file));
+}
+
+function unquoteYamlKey(value) {
+  if (
+    (value.startsWith("'") && value.endsWith("'")) ||
+    (value.startsWith('"') && value.endsWith('"'))
+  ) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
+
+function packageNameFromLockfileKey(rawKey) {
+  let key = unquoteYamlKey(rawKey);
+  const peerSuffix = key.indexOf('(');
+  if (peerSuffix >= 0) key = key.slice(0, peerSuffix);
+  const versionSeparator = key.startsWith('@')
+    ? key.indexOf('@', key.indexOf('/') + 1)
+    : key.indexOf('@');
+  if (versionSeparator <= 0) {
+    throw new Error(`Unsupported registry package key in toolchain lockfile: ${rawKey}`);
+  }
+  const packageName = key.slice(0, versionSeparator);
+  if (packageName.includes('..') || packageName.includes('\\')) {
+    throw new Error(`Unsafe registry package name in toolchain lockfile: ${packageName}`);
+  }
+  return packageName;
+}
+
+function packageNamesFromLockfile(lockfile) {
+  const lines = lockfile.split(/\r?\n/u);
+  const packageSection = lines.indexOf('packages:');
+  if (packageSection < 0) throw new Error('Generated toolchain lockfile has no packages section');
+  const packageNames = new Set();
+  for (let index = packageSection + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line && !line.startsWith(' ')) break;
+    const match = /^ {2}(.+):$/u.exec(line);
+    if (match) packageNames.add(packageNameFromLockfileKey(match[1]));
+  }
+  if (packageNames.size === 0) {
+    throw new Error('Generated toolchain lockfile contains no registry packages');
+  }
+  return [...packageNames].sort();
+}
+
+function encodePackageName(packageName) {
+  return packageName === packageName.toLowerCase()
+    ? packageName
+    : `${packageName}_${sha256(packageName)}`;
+}
+
+function fullMetadataPath(cacheDir, packageName) {
+  return path.join(
+    cacheDir,
+    'v11',
+    'metadata-full',
+    npmRegistry.host,
+    `${encodePackageName(packageName)}.jsonl`,
+  );
+}
+
+async function fetchFullMetadata(packageName) {
+  const url = new URL(encodeURIComponent(packageName), npmRegistry);
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          accept: fullMetadataAccept,
+          'user-agent': 'worldforge-toolchain-export/1',
+        },
+      });
+      if (!response.ok) {
+        const error = new Error(`Registry returned ${response.status} for ${packageName}`);
+        if (response.status !== 429 && response.status < 500) throw error;
+        lastError = error;
+      } else {
+        const jsonText = await response.text();
+        const metadata = JSON.parse(jsonText);
+        return {
+          etag: response.headers.get('etag') ?? undefined,
+          modified: metadata.modified ?? metadata.time?.modified,
+          jsonText,
+        };
+      }
+    } catch (error) {
+      lastError = error;
+      if (attempt === 3) break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+  }
+  throw lastError ?? new Error(`Failed to fetch full registry metadata for ${packageName}`);
+}
+
+async function warmFullMetadataCache(output, cacheDir) {
+  const lockfile = await readFile(path.join(output, 'pnpm-lock.yaml'), 'utf8');
+  const packageNames = packageNamesFromLockfile(lockfile);
+  let cursor = 0;
+  const workerCount = Math.min(6, packageNames.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (cursor < packageNames.length) {
+        const index = cursor;
+        cursor += 1;
+        const packageName = packageNames[index];
+        const metadata = await fetchFullMetadata(packageName);
+        const target = fullMetadataPath(cacheDir, packageName);
+        await mkdir(path.dirname(target), { recursive: true });
+        const headers = JSON.stringify({ etag: metadata.etag, modified: metadata.modified });
+        await writeFile(target, `${headers}\n${metadata.jsonText}`);
+      }
+    }),
+  );
+  console.log(`Prewarmed pnpm full metadata for ${packageNames.length} registry packages.`);
 }
 
 async function validateAuthority() {
@@ -282,6 +399,7 @@ async function exportBundle() {
     output,
   );
   run('pnpm', ['fetch', '--store-dir', storeDir, '--cache-dir', cacheDir], output);
+  await warmFullMetadataCache(output, cacheDir);
   await rm(path.join(output, 'node_modules'), { recursive: true, force: true });
   run(
     'pnpm',

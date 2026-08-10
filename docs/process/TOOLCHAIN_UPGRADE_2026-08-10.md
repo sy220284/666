@@ -40,6 +40,8 @@
 
 独立治理分支已使用新 Actions pins 完成验证。由于 main 上的可信 PR Policy 使用 main 自身的 ci-policy 校验候选，而旧策略仅接受升级前的 Action SHA，主线落仓采用两阶段迁移。第一阶段仅让受可信策略直接检查的永久 workflow 暂时保留升级前的 Action 实现 SHA；Node 继续固定 24.18.1，pnpm 继续由 packageManager 提供 11.21.0，Electron 与依赖锁文件均不回退。候选策略只允许升级前 SHA 与已验证新 SHA 两组精确值。待该过渡策略进入 main 后，第二阶段将这些 workflow 全部切换到已验证新 SHA，并删除旧 SHA 白名单。
 
+第一阶段现已在 `work` 完成落仓：受 trusted main 策略直接检查的 13 个永久 workflow 已切换到升级前的可信 Action 实现 SHA，同时保持 Node 24.18.1 与 pnpm 11.21.0；双 SHA 精确白名单策略已落仓，临时迁移 workflow 与 helper 已清理。当前进入 PR #346 最新 Head 的 trusted PR Policy 与永久 Quality / Security / Performance / Full Work Validation 复核。
+
 ## 结论
 
 新依赖锁文件、Node/pnpm 运行基线、GitHub Actions 固定版本、pnpm 项目级配置和工具链权威文档已完成 Ubuntu 治理验证。Windows/macOS 跨平台打包矩阵仍由正式 PR Quality/Release 工作流执行。旧 /mnt/data 离线工具快照因锁文件改变必须视为 STALE，待依据新锁文件重新导出并复验后才能替换。

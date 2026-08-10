@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 function normalized(file) {
@@ -43,9 +42,15 @@ export function securityPerformanceRoute(files = []) {
   };
 }
 
+async function stdinText() {
+  let input = '';
+  for await (const chunk of process.stdin) input += chunk;
+  return input;
+}
+
 async function main() {
   const mode = process.argv[2];
-  const input = await readFile(0, 'utf8');
+  const input = await stdinText();
   const route = securityPerformanceRoute(input.split(/\r?\n/u));
   const key =
     mode === 'dependency-audit'

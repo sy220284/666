@@ -121,7 +121,7 @@ export function useCanonAuthorReferences(
                 {
                   id: chapter.finalVersionId,
                   chapterId: chapter.id,
-                  label: `${chapter.label} · 定稿版本`,
+                  label: `${chapter.label} · 定稿`,
                 },
               ]
             : [],
@@ -191,7 +191,7 @@ export function ChapterNameSelect({
 
 export function FinalVersionSelect({
   references,
-  emptyLabel = '请选择定稿版本',
+  emptyLabel = '请选择定稿',
   ...props
 }: ReferenceSelectProps & { readonly references: CanonAuthorReferences }) {
   return (

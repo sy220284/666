@@ -58,7 +58,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     // Prepare the two-block Draft through the actual editor so Renderer and Core share one state path.
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文块重建。');
+    await expect(page.locator('[data-draft-state]')).toHaveText('已从正文段落重建。');
     const editor = page.locator('[data-draft-content]');
     const blocks = editor.locator(':scope > [data-block-type]');
     await expect(blocks).toHaveCount(1);

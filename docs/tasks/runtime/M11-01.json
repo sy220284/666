@@ -12,12 +12,13 @@
     "work": "c774f981a345c8d515bb54d1bbc908e0e4eb1731"
   },
   "allowedPaths": [
-    "apps/desktop/renderer/src/presentation/author-terms.ts",
-    "apps/desktop/renderer/src/features/planning/planning-mode-workbench.tsx",
-    "apps/desktop/renderer/src/features/planning/brief/project-brief-editor.tsx",
-    "apps/desktop/renderer/src/features/canon/state-proposal-panel.tsx",
-    "apps/desktop/renderer/src/features/canon/canon-author-fields.tsx",
+    "apps/desktop/renderer/src/features/planning/",
+    "apps/desktop/renderer/src/features/writing/",
+    "apps/desktop/renderer/src/features/canon/",
+    "apps/desktop/renderer/src/presentation/",
+    "scripts/check-author-language.mjs",
     "tests/",
+    "docs/product/AUTHOR_LANGUAGE_GLOSSARY.md",
     "docs/product/V1.1_AUTHOR_AI_EXPERIENCE_IMPLEMENTATION_PLAN.md",
     "docs/tasks/TASK_INDEX.md",
     "docs/tasks/M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md",

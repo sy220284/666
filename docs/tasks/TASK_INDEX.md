@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03、M10-01—M10-22及M11-01，共68张独立任务卡。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03、M10-01—M10-22及M11-01—M11-02，共69张独立任务卡。
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -109,7 +109,7 @@ Runtime IMPLEMENTED
 | `M9-05` | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-06` | [`AR-06 Planning拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#7-ar-06-planning拆分)                                      | M9-03内部AR-02     | Removed（absorbed by M9-03） |
 | `M9-07` | [`AR-07 AppShell拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分)                                      | M9-03内部AR-04—06  | Removed（absorbed by M9-03） |
-| `M9-08` | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08-contracts拆分)                                    | M9-03内部基线      | Removed（absorbed by M9-03） |
+| `M9-08` | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08contracts拆分)                                     | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-09` | [`AR-09 Preload拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#10-ar-09-preload拆分)                                       | M9-03内部AR-08     | Removed（absorbed by M9-03） |
 | `M9-10` | [`AR-10 Main IPC拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#11-ar-10-main-ipc拆分)                                     | M9-03内部AR-08、09 | Removed（absorbed by M9-03） |
 | `M9-11` | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-03内部基线      | Removed（absorbed by M9-03） |
@@ -149,6 +149,7 @@ Runtime IMPLEMENTED
 | ID     | 任务卡                                                                                 | 依赖   | 状态        |
 | ------ | -------------------------------------------------------------------------------------- | ------ | ----------- |
 | M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | Implemented |
+| M11-02 | [`统一 AI 审阅底座`](M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md)                      | M11-01 | In Progress |
 
 ## 3. 被吸收的需求来源
 

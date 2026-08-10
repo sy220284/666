@@ -139,9 +139,9 @@ describe('M11 unified AI review model', () => {
     expect(
       filterAIReviewProposals(review, { status: 'resolved', reviewType: 'arc_milestone' }),
     ).toHaveLength(1);
-    expect(filterAIReviewProposals(review, { status: 'all', reviewType: 'entity_state' })).toHaveLength(
-      2,
-    );
+    expect(
+      filterAIReviewProposals(review, { status: 'all', reviewType: 'entity_state' }),
+    ).toHaveLength(2);
     expect(review.proposals).toHaveLength(3);
   });
 

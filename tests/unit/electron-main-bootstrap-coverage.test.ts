@@ -36,6 +36,8 @@ const state = vi.hoisted(() => ({
   utilityFork: vi.fn(),
   protocolHandle: vi.fn(),
   protocolRegister: vi.fn(),
+  ipcHandle: vi.fn(),
+  ipcRemoveHandler: vi.fn(),
   childPostMessage: vi.fn(),
   childKill: vi.fn(() => true),
   childOn: vi.fn(),
@@ -148,7 +150,10 @@ vi.mock('electron', () => {
     dialog: {
       showOpenDialog: state.dialogShow,
     },
-    ipcMain: {},
+    ipcMain: {
+      handle: state.ipcHandle,
+      removeHandler: state.ipcRemoveHandler,
+    },
     protocol: {
       handle: state.protocolHandle,
       registerSchemesAsPrivileged: state.protocolRegister,
@@ -405,6 +410,10 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     expect(state.registerContinuity).toHaveBeenCalled();
     expect(state.registerGeneration).toHaveBeenCalled();
     expect(state.registerNarrative).toHaveBeenCalled();
+    expect(state.ipcHandle).toHaveBeenCalledWith(
+      'worldforge:story-knowledge:project',
+      expect.any(Function),
+    );
     expect(state.registerPreview).toHaveBeenCalled();
     expect(state.navigationAdapter).toBeDefined();
 
@@ -463,6 +472,7 @@ describe('Electron main bootstrap and lifecycle coverage', () => {
     expect(state.unregisterContinuity).toHaveBeenCalled();
     expect(state.unregisterGeneration).toHaveBeenCalled();
     expect(state.unregisterNarrative).toHaveBeenCalled();
+    expect(state.ipcRemoveHandler).toHaveBeenCalledWith('worldforge:story-knowledge:project');
     expect(state.unregisterPreview).toHaveBeenCalled();
     expect(window.destroy).toHaveBeenCalled();
     expect(state.appQuit).toHaveBeenCalled();

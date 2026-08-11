@@ -216,7 +216,16 @@ evidence[]
 
 Release Gate会比较`verifiedCommit → 当前发布提交`。只要`scope`覆盖的文件在验收后发生变化，该PASS自动成为stale并阻断发布，直到重新完成真实验收并更新证据。
 
-Windows真实中文输入法由Risk Plan触发。Phase 3增加Visual Regression和自动Accessibility扫描。
+Windows真实中文输入法由Risk Plan触发。
+
+Phase 3首批Visual Regression已落地：Linux CI固定1280×800，复用M8-07中文作者体验场景，对Theme A/B × Light/Dark四个稳定状态执行严格截图SHA-256与尺寸验证。Baseline机器真源与执行入口为：
+
+```text
+tests/e2e/visual-baselines/manifest.json
+tests/e2e/visual-regression.spec.ts
+```
+
+Baseline manifest同时绑定两次独立、完整全绿Electron E2E Artifact作为source与stability witness，二者不得复用同一commit、run或artifact。截图hash或尺寸漂移会直接阻断现有Electron E2E；失败时actual PNG进入现有`desktop-e2e-evidence` Artifact供差异审查。Baseline判定逻辑由独立Unit覆盖。Accessibility自动扫描继续在Phase 3推进。
 
 ## 10. G7：Artifact / Release
 
@@ -341,7 +350,12 @@ pnpm check:docs
 
 ### Phase 3 — 当前实施
 
-- Visual Regression；
+已落地：
+
+- Linux 1280×800 Visual Regression：M8-07四主题稳定基线、双独立全绿Artifact provenance、严格SHA-256/尺寸阻断、actual PNG诊断与Unit判定覆盖。
+
+继续推进：
+
 - Accessibility自动扫描；
 - 大作品性能；
 - Memory Leak；

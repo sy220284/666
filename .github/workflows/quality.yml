@@ -23,6 +23,7 @@ jobs:
       full_suite: ${{ steps.route.outputs.full_suite }}
       package_smoke: ${{ steps.route.outputs.package_smoke }}
       toolchain_export: ${{ steps.route.outputs.toolchain_export }}
+      windows_ime: ${{ steps.route.outputs.windows_ime }}
       reuse_quality: ${{ steps.closure.outputs.reuse_quality }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -38,7 +39,7 @@ jobs:
           PR_DRAFT: ${{ github.event.pull_request.draft }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/ready-closure-route.mjs
-      - name: Determine PR quality route
+      - name: Determine PR quality route from unified risk plan
         id: route
         shell: bash
         env:
@@ -49,42 +50,26 @@ jobs:
           full_suite=false
           package_smoke=false
           toolchain_export=false
+          windows_ime=false
           if [ "$REUSE_QUALITY" = true ]; then
             echo "Frozen implementation already has a complete Quality run; validating only the closure Head."
           else
             changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
-            if [ -z "$changed_files" ]; then
-              full_suite=true
-            else
-              while IFS= read -r file; do
-                case "$file" in
-                  *.md|docs/*|.github/*|scripts/*policy.mjs|scripts/automerge.mjs|scripts/main-verification.mjs|scripts/ready-closure-route.mjs|scripts/evidence-policy-entry.mjs|tests/unit/ci-*.test.ts|tests/unit/automated-verification-authority.test.ts|tests/unit/evidence-policy.test.ts)
-                    ;;
-                  *)
-                    full_suite=true
-                    ;;
-                esac
-                case "$file" in
-                  package.json|pnpm-lock.yaml|pnpm-workspace.yaml|scripts/package-desktop.mjs|scripts/package-foundation.mjs|scripts/release-tool.mjs|.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)
-                    package_smoke=true
-                    ;;
-                esac
-                case "$file" in
-                  package.json|pnpm-lock.yaml|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json|docs/process/CURRENT_WORKSPACE_TOOLCHAIN.md|.github/governance/toolchain-bundle.mjs|.github/workflows/toolchain-export.yml)
-                    toolchain_export=true
-                    ;;
-                esac
-              done <<< "$changed_files"
-            fi
+            full_suite="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs full-suite)"
+            package_smoke="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs package-smoke)"
+            toolchain_export="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs toolchain-export)"
+            windows_ime="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs windows-ime)"
           fi
           echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
           echo "package_smoke=$package_smoke" >> "$GITHUB_OUTPUT"
           echo "toolchain_export=$toolchain_export" >> "$GITHUB_OUTPUT"
-          echo "PR quality full suite: $full_suite; package smoke: $package_smoke; toolchain export: $toolchain_export; frozen Quality reuse: $REUSE_QUALITY"
+          echo "windows_ime=$windows_ime" >> "$GITHUB_OUTPUT"
+          echo "PR risk plan: full suite=$full_suite; package smoke=$package_smoke; toolchain export=$toolchain_export; Windows IME=$windows_ime; frozen Quality reuse=$REUSE_QUALITY"
 
   windows-native-ime:
     name: windows-native-ime
-    if: ${{ github.event.pull_request.draft == false && contains(github.event.pull_request.body, 'chinese-experience-verification-closure') }}
+    needs: route
+    if: ${{ github.event.pull_request.draft == false && needs.route.outputs.windows_ime == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -189,6 +174,8 @@ jobs:
           tests/unit/ci-draft-routing.test.ts
           tests/unit/automated-verification-authority.test.ts
           tests/unit/evidence-policy.test.ts
+          tests/unit/ui-acceptance-gate.test.ts
+          tests/unit/quality-system-v2.test.ts
       - name: Run CI policy validation
         run: pnpm ci:policy
       - name: Run release configuration check

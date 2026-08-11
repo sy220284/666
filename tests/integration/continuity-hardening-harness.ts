@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import { CandidateService } from '../../packages/core-service/src/candidate.js';
 import { ContinuityService } from '../../packages/core-service/src/continuity.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import { EntityCanonService } from '../../packages/core-service/src/entity-canon.js';
@@ -11,6 +12,7 @@ import { GenerationRunService } from '../../packages/core-service/src/generation
 import { NarrativePlanningService } from '../../packages/core-service/src/narrative-planning.js';
 import { ProjectStructureService } from '../../packages/core-service/src/project-structure.js';
 import { ProjectWorkspaceService } from '../../packages/core-service/src/project-workspace.js';
+import { RecoveryService } from '../../packages/core-service/src/recovery.js';
 import { StateProposalService } from '../../packages/core-service/src/state-proposal.js';
 import { ValidationService } from '../../packages/core-service/src/validation.js';
 import { RhythmService } from '../../packages/core-service/src/rhythm.js';
@@ -45,6 +47,11 @@ export async function createContinuityHarness() {
     structure: new ProjectStructureService(workspace, { clock: hardeningClock }),
     drafts: new DraftService(workspace, { clock: hardeningClock }),
     versions: new VersionService(workspace, { clock: hardeningClock }),
+    candidates: new CandidateService(workspace, { clock: hardeningClock }),
+    recovery: new RecoveryService(workspace, {
+      backupRootDirectory: path.join(root, 'project-backups'),
+      clock: hardeningClock,
+    }),
     canon: new EntityCanonService(workspace, { clock: hardeningClock }),
     continuity: new ContinuityService(workspace, { clock: hardeningClock }),
     narrative: new NarrativePlanningService(workspace, { clock: hardeningClock }),

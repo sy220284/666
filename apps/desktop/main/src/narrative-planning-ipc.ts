@@ -63,7 +63,8 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import { registerIpcInvokeHandler } from './handler-guard.js';
-import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
+import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
+import { projectOperationKind, type ProjectOperationName } from './project-operation-semantics.js';
 
 export interface NarrativePlanningIpcOptions {
   readonly ipcMain: IpcMain;
@@ -89,8 +90,7 @@ interface ResultSchema {
 interface Registration {
   readonly channel: string;
   readonly schema: CommandSchema;
-  readonly operation: string;
-  readonly operationKind: CoreOperationKind;
+  readonly operation: ProjectOperationName;
   readonly resultSchema: ResultSchema;
   readonly failureMessage: string;
 }
@@ -100,9 +100,9 @@ function failure(
   requestId: string,
   code: ErrorCode,
   message: string,
-  operationKind: CoreOperationKind,
+  operation: ProjectOperationName,
 ): unknown {
-  const semantics = coreOperationFailureSemantics(code, message, operationKind);
+  const semantics = coreOperationFailureSemantics(code, message, projectOperationKind(operation));
   return resultSchema.parse({
     ok: false,
     requestId,
@@ -121,7 +121,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.list,
       schema: NarrativePlanningListCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.list,
-      operationKind: 'query',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -129,7 +128,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.saveForeshadowing,
       schema: ForeshadowingSaveCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.saveForeshadowing,
-      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -137,7 +135,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.transitionForeshadowing,
       schema: ForeshadowingTransitionCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.transitionForeshadowing,
-      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -145,7 +142,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.saveCharacterArc,
       schema: CharacterArcSaveCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.saveCharacterArc,
-      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -153,7 +149,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.saveArcMilestone,
       schema: ArcMilestoneSaveCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.saveArcMilestone,
-      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -161,7 +156,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: NARRATIVE_PLANNING_IPC_CHANNELS.transitionArcMilestone,
       schema: ArcMilestoneTransitionCommandSchema,
       operation: NARRATIVE_PLANNING_COMMANDS.transitionArcMilestone,
-      operationKind: 'mutation',
       resultSchema: narrativeResult,
       failureMessage: 'The narrative planning operation could not be completed.',
     },
@@ -169,7 +163,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.list,
       schema: StateProposalListCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.list,
-      operationKind: 'query',
       resultSchema: StateProposalCatalogResultSchema,
       failureMessage: 'The state proposal operation could not be completed.',
     },
@@ -177,7 +170,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.generate,
       schema: StateProposalGenerateCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.generate,
-      operationKind: 'mutation',
       resultSchema: StateProposalCatalogResultSchema,
       failureMessage: 'The state proposal operation could not be completed.',
     },
@@ -185,7 +177,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.resolve,
       schema: StateProposalResolveCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.resolve,
-      operationKind: 'mutation',
       resultSchema: StateProposalCatalogResultSchema,
       failureMessage: 'The state proposal operation could not be completed.',
     },
@@ -193,7 +184,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.refreshSnapshot,
       schema: EndingSnapshotRefreshCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.refreshSnapshot,
-      operationKind: 'mutation',
       resultSchema: EndingSnapshotResultSchema,
       failureMessage: 'The ending snapshot operation could not be completed.',
     },
@@ -201,7 +191,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.readSnapshot,
       schema: EndingSnapshotReadCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.readSnapshot,
-      operationKind: 'query',
       resultSchema: EndingSnapshotReadResultEnvelopeSchema,
       failureMessage: 'The ending snapshot operation could not be completed.',
     },
@@ -209,7 +198,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: STATE_PROPOSAL_IPC_CHANNELS.invalidateDerived,
       schema: DerivedInvalidationCommandSchema,
       operation: STATE_PROPOSAL_COMMANDS.invalidateDerived,
-      operationKind: 'mutation',
       resultSchema: DerivedInvalidationResultEnvelopeSchema,
       failureMessage: 'The derived invalidation operation could not be completed.',
     },
@@ -217,7 +205,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.list,
       schema: ValidationListCommandSchema,
       operation: VALIDATION_COMMANDS.list,
-      operationKind: 'query',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation operation could not be completed.',
     },
@@ -225,7 +212,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.runRules,
       schema: ValidationRunRulesCommandSchema,
       operation: VALIDATION_COMMANDS.runRules,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation operation could not be completed.',
     },
@@ -233,7 +219,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.updateIssue,
       schema: ValidationUpdateIssueCommandSchema,
       operation: VALIDATION_COMMANDS.updateIssue,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation operation could not be completed.',
     },
@@ -241,7 +226,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.createTodoFromIssue,
       schema: ValidationCreateTodoCommandSchema,
       operation: VALIDATION_COMMANDS.createTodoFromIssue,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation operation could not be completed.',
     },
@@ -249,7 +233,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.saveTodo,
       schema: StoryTodoSaveCommandSchema,
       operation: VALIDATION_COMMANDS.saveTodo,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation operation could not be completed.',
     },
@@ -257,7 +240,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.addComment,
       schema: StoryCommentAddCommandSchema,
       operation: VALIDATION_COMMANDS.addComment,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation operation could not be completed.',
     },
@@ -265,7 +247,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.resolveComment,
       schema: StoryCommentResolveCommandSchema,
       operation: VALIDATION_COMMANDS.resolveComment,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation operation could not be completed.',
     },
@@ -273,7 +254,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.rememberException,
       schema: ValidationExceptionRememberCommandSchema,
       operation: VALIDATION_COMMANDS.rememberException,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation exception could not be saved.',
     },
@@ -281,7 +261,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: VALIDATION_IPC_CHANNELS.disableException,
       schema: ValidationExceptionDisableCommandSchema,
       operation: VALIDATION_COMMANDS.disableException,
-      operationKind: 'mutation',
       resultSchema: ValidationCatalogResultSchema,
       failureMessage: 'The validation exception could not be disabled.',
     },
@@ -289,7 +268,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.search,
       schema: SearchProjectCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.search,
-      operationKind: 'query',
       resultSchema: SearchProjectCommandResultSchema,
       failureMessage: 'The project search could not be completed.',
     },
@@ -297,7 +275,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.getIndexState,
       schema: SearchIndexStateCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.getIndexState,
-      operationKind: 'query',
       resultSchema: SearchIndexStateCommandResultSchema,
       failureMessage: 'The search index state could not be read.',
     },
@@ -305,7 +282,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.rebuildIndex,
       schema: SearchIndexRebuildCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.rebuildIndex,
-      operationKind: 'mutation',
       resultSchema: SearchIndexRebuildCommandResultSchema,
       failureMessage: 'The search index could not be rebuilt.',
     },
@@ -313,7 +289,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.previewReplace,
       schema: ReplacePreviewCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.previewReplace,
-      operationKind: 'mutation',
       resultSchema: ReplacePreviewCommandResultSchema,
       failureMessage: 'The replacement preview could not be created.',
     },
@@ -321,7 +296,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.applyReplace,
       schema: ReplaceApplyCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.applyReplace,
-      operationKind: 'mutation',
       resultSchema: ReplaceApplyCommandResultSchema,
       failureMessage: 'The replacement plan could not be applied.',
     },
@@ -329,7 +303,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.listDictionary,
       schema: ProjectDictionaryListCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.listDictionary,
-      operationKind: 'query',
       resultSchema: ProjectDictionaryCommandResultSchema,
       failureMessage: 'The project dictionary could not be read.',
     },
@@ -337,7 +310,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.upsertDictionary,
       schema: ProjectDictionaryUpsertCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.upsertDictionary,
-      operationKind: 'mutation',
       resultSchema: ProjectDictionaryCommandResultSchema,
       failureMessage: 'The project dictionary could not be updated.',
     },
@@ -345,7 +317,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: SEARCH_TOOLS_IPC_CHANNELS.deleteDictionary,
       schema: ProjectDictionaryDeleteCommandSchema,
       operation: SEARCH_TOOLS_COMMANDS.deleteDictionary,
-      operationKind: 'mutation',
       resultSchema: ProjectDictionaryCommandResultSchema,
       failureMessage: 'The project dictionary entry could not be deleted.',
     },
@@ -353,7 +324,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: RHYTHM_IPC_CHANNELS.get,
       schema: RhythmGetCommandSchema,
       operation: RHYTHM_COMMANDS.get,
-      operationKind: 'query',
       resultSchema: RhythmDashboardResultSchema,
       failureMessage: 'The rhythm dashboard could not be read.',
     },
@@ -361,7 +331,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: RHYTHM_IPC_CHANNELS.run,
       schema: RhythmRunCommandSchema,
       operation: RHYTHM_COMMANDS.run,
-      operationKind: 'mutation',
       resultSchema: RhythmDashboardResultSchema,
       failureMessage: 'The rhythm analysis could not be completed.',
     },
@@ -369,7 +338,6 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
       channel: RHYTHM_IPC_CHANNELS.updateProfile,
       schema: RhythmUpdateProfileCommandSchema,
       operation: RHYTHM_COMMANDS.updateProfile,
-      operationKind: 'mutation',
       resultSchema: RhythmDashboardResultSchema,
       failureMessage: 'The rhythm profile could not be updated.',
     },
@@ -384,7 +352,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
           parsed.success ? parsed.data.requestId : randomUUID(),
           'COMMON_INVALID_INPUT_001',
           registration.failureMessage,
-          registration.operationKind,
+          registration.operation,
         );
       }
       const coreOperation = CoreProjectOperationSchema.parse({
@@ -401,7 +369,7 @@ export function registerNarrativePlanningIpc(options: NarrativePlanningIpcOption
           parsed.data.requestId,
           result.errorCode,
           registration.failureMessage,
-          registration.operationKind,
+          registration.operation,
         );
       }
       return registration.resultSchema.parse({

@@ -15,6 +15,18 @@ import { withPromptIdentity } from '../../packages/prompts/src/types.js';
 
 const hash = 'a'.repeat(64);
 const id = (suffix: string) => `00000000-0000-4000-8000-${suffix.padStart(12, '0')}`;
+const validationInput = {
+  constraintHash: hash,
+  constraintContext: 'P0：权威设定',
+  versionId: id('1'),
+  blocks: [{ logicalBlockId: id('2'), content: '正文。' }],
+};
+const extractionInput = {
+  constraintHash: hash,
+  constraintContext: 'P0：权威设定',
+  finalVersionId: id('3'),
+  blocks: [{ logicalBlockId: id('4'), content: '人物受伤。' }],
+};
 
 describe('M11 Prompt Version Authority', () => {
   it('registers every prompt identity exactly once', () => {
@@ -36,18 +48,18 @@ describe('M11 Prompt Version Authority', () => {
     expect(getPromptDefinition(VALIDATE_PROMPT_ID, 2)).toBe(validatePrompt);
     expect(getPromptDefinition(STATE_EXTRACT_PROMPT_ID, 1)).toBe(stateExtractPromptV1);
     expect(getPromptDefinition(STATE_EXTRACT_PROMPT_ID, 2)).toBe(stateExtractPrompt);
-    expect(validatePromptV1.system).toBeUndefined();
+    expect(validatePromptV1.build(validationInput).system).not.toBe(
+      validatePrompt.build(validationInput).system,
+    );
+    expect(stateExtractPromptV1.build(extractionInput).system).not.toBe(
+      stateExtractPrompt.build(extractionInput).system,
+    );
     expect(validatePrompt.version).toBe(2);
     expect(stateExtractPrompt.version).toBe(2);
   });
 
   it('derives bundle metadata from the same identity as the definition', () => {
-    const validateBundle = validatePrompt.build({
-      constraintHash: hash,
-      constraintContext: 'P0：权威设定',
-      versionId: id('1'),
-      blocks: [{ logicalBlockId: id('2'), content: '正文。' }],
-    });
+    const validateBundle = validatePrompt.build(validationInput);
     expect(validateBundle.metadata).toEqual({
       promptId: validatePrompt.identity.promptId,
       promptVersion: validatePrompt.identity.version,
@@ -55,12 +67,7 @@ describe('M11 Prompt Version Authority', () => {
       constraintHash: hash,
     });
 
-    const extractionBundle = stateExtractPrompt.build({
-      constraintHash: hash,
-      constraintContext: 'P0：权威设定',
-      finalVersionId: id('3'),
-      blocks: [{ logicalBlockId: id('4'), content: '人物受伤。' }],
-    });
+    const extractionBundle = stateExtractPrompt.build(extractionInput);
     expect(extractionBundle.metadata).toEqual({
       promptId: stateExtractPrompt.identity.promptId,
       promptVersion: stateExtractPrompt.identity.version,
@@ -69,7 +76,7 @@ describe('M11 Prompt Version Authority', () => {
     });
   });
 
-  it('fails closed for unknown prompt versions and cannot overwrite a registered key', () => {
+  it('fails closed for unknown prompt versions and derives metadata without a second version field', () => {
     expect(() => getPromptDefinition(VALIDATE_PROMPT_ID, 3)).toThrow(
       `Unknown prompt version: ${VALIDATE_PROMPT_ID}@3`,
     );

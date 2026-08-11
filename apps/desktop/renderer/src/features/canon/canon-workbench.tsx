@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { NarrativePlanningCatalog } from '@worldforge/contracts';
 
@@ -32,15 +32,14 @@ type ForeshadowingNavigationState =
   | { readonly status: 'ready'; readonly foreshadowing: Foreshadowing };
 
 export function CanonWorkbench(props: CanonWorkbenchProps) {
-  const bridge = useMemo(() => coalesceCanonReads(props.bridge), [props.bridge]);
+  const bridge = props.bridge;
   const selectedForeshadowingId = useRendererUiStore(
     (state) => state.filters['navigation.foreshadowingId'] ?? null,
   );
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const [target, setTarget] = useState<ForeshadowingNavigationState>({ status: 'idle' });
   const loadHealth = useCallback(
-    () =>
-      bridge.canon.list({ projectId: props.projectId, includeArchived: true }, { mode: 'replace' }),
+    () => bridge.canon.list({ projectId: props.projectId, includeArchived: true }, { mode: 'share' }),
     [bridge, props.projectId],
   );
   const health = useBridgeQuery(`canon-health:${props.projectId}`, loadHealth);
@@ -56,7 +55,7 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
       setTarget({ status: 'idle' });
       return;
     }
-    let active = true;
+    const controller = new AbortController();
     setTarget({ status: 'loading' });
     void bridge.narrativePlanning
       .list(
@@ -66,10 +65,10 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
           includeResolved: true,
           referenceChapterId: null,
         },
-        { mode: 'replace' },
+        { mode: 'share', signal: controller.signal },
       )
       .then((outcome) => {
-        if (!active) return;
+        if (controller.signal.aborted) return;
         if (outcome.state === 'failure') {
           setTarget({ status: 'failed', message: authorErrorSummary(outcome.error) });
           return;
@@ -83,9 +82,7 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
         );
         setTarget(foreshadowing ? { status: 'ready', foreshadowing } : { status: 'missing' });
       });
-    return () => {
-      active = false;
-    };
+    return () => controller.abort();
   }, [bridge, props.projectId, selectedForeshadowingId]);
 
   return (
@@ -103,9 +100,7 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
           <h2>目标伏笔</h2>
           {target.status === 'loading' ? <p>正在读取目标伏笔…</p> : null}
           {target.status === 'failed' ? <p>{target.message}</p> : null}
-          {target.status === 'missing' ? (
-            <p>目标伏笔已经变化或被删除，系统保留来源上下文。</p>
-          ) : null}
+          {target.status === 'missing' ? <p>目标伏笔已经变化或被删除，系统保留来源上下文。</p> : null}
           {target.status === 'ready' ? (
             <article>
               <strong>{target.foreshadowing.title}</strong>
@@ -145,54 +140,4 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
       ) : null}
     </section>
   );
-}
-
-function coalesceCanonReads(bridge: RendererBridgeAdapter): RendererBridgeAdapter {
-  type CanonList = RendererBridgeAdapter['canon']['list'];
-  type ContinuityList = RendererBridgeAdapter['continuity']['list'];
-  type NarrativeList = RendererBridgeAdapter['narrativePlanning']['list'];
-
-  const canonList = coalescedMethod<CanonList>((...args) => bridge.canon.list(...args));
-  const continuityList = coalescedMethod<ContinuityList>((...args) =>
-    bridge.continuity.list(...args),
-  );
-  const narrativeList = coalescedMethod<NarrativeList>((...args) =>
-    bridge.narrativePlanning.list(...args),
-  );
-
-  return {
-    ...bridge,
-    canon: methodProxy(bridge.canon, 'list', canonList),
-    continuity: methodProxy(bridge.continuity, 'list', continuityList),
-    narrativePlanning: methodProxy(bridge.narrativePlanning, 'list', narrativeList),
-  };
-}
-
-function coalescedMethod<Method extends (...args: never[]) => Promise<unknown>>(
-  method: Method,
-): Method {
-  const pending = new Map<string, ReturnType<Method>>();
-  return ((...args: Parameters<Method>) => {
-    const key = JSON.stringify(args[0] ?? null);
-    const current = pending.get(key);
-    if (current) return current;
-    const request = method(...args) as ReturnType<Method>;
-    pending.set(key, request);
-    void request.finally(() => {
-      if (pending.get(key) === request) pending.delete(key);
-    });
-    return request;
-  }) as unknown as Method;
-}
-
-function methodProxy<Domain extends object, Method extends keyof Domain>(
-  domain: Domain,
-  method: Method,
-  implementation: Domain[Method],
-): Domain {
-  return new Proxy(domain, {
-    get(target, property, receiver) {
-      return property === method ? implementation : Reflect.get(target, property, receiver);
-    },
-  });
 }

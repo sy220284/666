@@ -52,9 +52,8 @@ describe('reliability: daily backup lease release fencing', () => {
       };
     });
 
-    const { acquireFileLease } = await import(
-      '../../packages/core-service/src/recovery/file-lease.js'
-    );
+    const { acquireFileLease } =
+      await import('../../packages/core-service/src/recovery/file-lease.js');
     const owner = await acquireFileLease(lockPath, {
       durationMs: 5_000,
       heartbeatMs: 4_000,

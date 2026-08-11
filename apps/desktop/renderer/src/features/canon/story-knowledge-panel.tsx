@@ -9,6 +9,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
+import { StoryKnowledgeHistoryMetadata } from './story-knowledge-history-metadata.js';
 
 export type StoryKnowledgeView =
   | 'character-card'
@@ -470,49 +471,53 @@ function History({
   const nextVersionId = projection.nextBeforeVersionId;
   return (
     <div className="story-knowledge-stack" data-story-history data-history-projection>
-      <div className="row-between">
-        <h3>章节历史</h3>
-        {historyCursor ? (
-          <button type="button" onClick={() => onHistoryCursor(null)}>
-            回到最新
+      <section className="feature-card story-knowledge-group">
+        <div className="row-between">
+          <h3>章节版本</h3>
+          {historyCursor ? (
+            <button type="button" onClick={() => onHistoryCursor(null)}>
+              回到最新
+            </button>
+          ) : null}
+        </div>
+        {projection.items.length === 0 ? (
+          <p className="empty-copy">当前页没有版本记录。</p>
+        ) : (
+          <ol className="story-timeline">
+            {projection.items.map((item) => (
+              <li key={item.versionId}>
+                <button
+                  type="button"
+                  className="feature-card story-timeline-item"
+                  onClick={() =>
+                    onNavigate({
+                      type: 'version',
+                      projectId: projection.projectId,
+                      chapterId: item.chapterId,
+                      versionId: item.versionId,
+                      query: null,
+                    })
+                  }
+                >
+                  <small>{new Date(item.createdAt).toLocaleString()}</small>
+                  <strong>{item.title}</strong>
+                  <span>{item.finalized ? '当前定稿' : item.versionType}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
+        {nextCreatedAt && nextVersionId ? (
+          <button
+            type="button"
+            onClick={() => onHistoryCursor({ createdAt: nextCreatedAt, versionId: nextVersionId })}
+          >
+            查看更早版本
           </button>
         ) : null}
-      </div>
-      {projection.items.length === 0 ? (
-        <p className="empty-copy">当前页没有历史记录。</p>
-      ) : (
-        <ol className="story-timeline">
-          {projection.items.map((item) => (
-            <li key={item.versionId}>
-              <button
-                type="button"
-                className="feature-card story-timeline-item"
-                onClick={() =>
-                  onNavigate({
-                    type: 'version',
-                    projectId: projection.projectId,
-                    chapterId: item.chapterId,
-                    versionId: item.versionId,
-                    query: null,
-                  })
-                }
-              >
-                <small>{new Date(item.createdAt).toLocaleString()}</small>
-                <strong>{item.title}</strong>
-                <span>{item.finalized ? '当前定稿' : item.versionType}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      )}
-      {nextCreatedAt && nextVersionId ? (
-        <button
-          type="button"
-          onClick={() => onHistoryCursor({ createdAt: nextCreatedAt, versionId: nextVersionId })}
-        >
-          查看更早记录
-        </button>
-      ) : null}
+      </section>
+
+      <StoryKnowledgeHistoryMetadata projection={projection} />
     </div>
   );
 }

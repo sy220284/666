@@ -7,6 +7,7 @@ import {
   cleanupContinuityHarnesses,
   closeContinuityHarness,
   createContinuityHarness,
+  hardeningClock,
   seedContinuity,
 } from './continuity-hardening-harness.js';
 
@@ -74,6 +75,80 @@ describe('M11-04 故事知识历史分页', () => {
       expect(allItems.filter((item) => item.finalized).map((item) => item.versionId)).toEqual([
         second.versionId,
       ]);
+    } finally {
+      await closeContinuityHarness(harness);
+    }
+  });
+
+  it('聚合当前章节候选稿与项目恢复元数据，并保持各窗口有界', async () => {
+    const harness = await createContinuityHarness();
+    try {
+      const seeded = await seedContinuity(harness);
+      const candidate = await harness.candidates.createFixture(randomUUID(), {
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        draftId: seeded.draft.draftId,
+        baseDraftRevision: seeded.draft.revision,
+        candidateType: 'rewrite',
+        completeness: 'complete',
+        title: '候选历史稿',
+        sourceVersionId: seeded.version.versionId,
+        blocks: [{ blockType: 'paragraph', text: '候选内容', attributes: {} }],
+      });
+      const checkpoint = await harness.recovery.createNamedSnapshot(randomUUID(), {
+        projectId: seeded.project.projectId,
+        authority: 'author',
+        name: '历史快照',
+        note: '用于历史投影验证',
+      });
+      const failureId = randomUUID();
+      await harness.workspace.writeProject(randomUUID(), seeded.project.projectId, (connection) => {
+        connection
+          .prepare(
+            `INSERT INTO backup_failures(
+               id, project_id, operation, backup_track, error_code, occurred_at, resolved_at
+             ) VALUES (?, ?, 'replace', 'major', 'BACKUP_VERIFY_FAILED', ?, NULL)`,
+          )
+          .run(failureId, seeded.project.projectId, hardeningClock.now().toISOString());
+        return true;
+      });
+
+      const story = new StoryKnowledgeProjectionService(harness.workspace);
+      const projection = story.project({
+        view: 'history',
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        beforeCreatedAt: null,
+        beforeVersionId: null,
+        limit: 10,
+      });
+      expect(projection.view).toBe('history');
+      if (projection.view !== 'history') throw new Error('投影类型错误');
+      expect(projection.candidates).toEqual([
+        expect.objectContaining({
+          candidateId: candidate.candidateId,
+          title: '候选历史稿',
+          candidateType: 'rewrite',
+          status: 'pending',
+        }),
+      ]);
+      expect(projection.candidatesTruncated).toBe(false);
+      expect(projection.recovery.checkpoints).toEqual([
+        expect.objectContaining({
+          backupId: checkpoint.backupId,
+          displayName: '历史快照',
+          track: 'named',
+        }),
+      ]);
+      expect(projection.recovery.backupFailures).toEqual([
+        expect.objectContaining({
+          failureId,
+          errorCode: 'BACKUP_VERIFY_FAILED',
+          resolvedAt: null,
+        }),
+      ]);
+      expect(projection.recovery.checkpoints.length).toBeLessThanOrEqual(10);
+      expect(projection.recovery.backupFailures.length).toBeLessThanOrEqual(10);
     } finally {
       await closeContinuityHarness(harness);
     }

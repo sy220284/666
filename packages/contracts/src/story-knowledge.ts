@@ -57,6 +57,7 @@ export const StoryKnowledgeProjectionInputSchema = z.discriminatedUnion('view', 
     projectId: ProjectIdSchema,
     chapterId,
     beforeCreatedAt: z.iso.datetime().nullable().default(null),
+    beforeVersionId: z.uuid().nullable().default(null),
     limit,
   }),
   z.strictObject({
@@ -235,6 +236,7 @@ export const StoryKnowledgeProjectionSchema = z.discriminatedUnion('view', [
     chapterId: z.uuid(),
     items: z.array(StoryKnowledgeHistoryItemSchema).max(100),
     nextBeforeCreatedAt: z.iso.datetime().nullable(),
+    nextBeforeVersionId: z.uuid().nullable(),
   }),
   z.strictObject({
     ...projectionBase,

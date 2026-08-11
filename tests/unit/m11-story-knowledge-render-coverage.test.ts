@@ -127,9 +127,7 @@ describe('M11-04 故事知识工作台服务端渲染覆盖', () => {
       },
     });
 
-    const html = renderToStaticMarkup(
-      createElement(StoryKnowledgeHistoryMetadata, { projection }),
-    );
+    const html = renderToStaticMarkup(createElement(StoryKnowledgeHistoryMetadata, { projection }));
 
     expect(html).toContain('data-history-candidates');
     expect(html).toContain('河边改写稿');
@@ -167,9 +165,7 @@ describe('M11-04 故事知识工作台服务端渲染覆盖', () => {
       },
     });
 
-    const html = renderToStaticMarkup(
-      createElement(StoryKnowledgeHistoryMetadata, { projection }),
-    );
+    const html = renderToStaticMarkup(createElement(StoryKnowledgeHistoryMetadata, { projection }));
 
     expect(html).toContain('当前章节没有候选稿记录。');
     expect(html).toContain('当前作品没有恢复点记录。');

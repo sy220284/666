@@ -4,10 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  desktopDistRuntimePolicy,
-  pruneDesktopDist,
-} from '../../scripts/prune-desktop-dist.mjs';
+import { desktopDistRuntimePolicy, pruneDesktopDist } from '../../scripts/prune-desktop-dist.mjs';
 
 const roots: string[] = [];
 

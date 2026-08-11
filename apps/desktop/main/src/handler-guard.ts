@@ -2,23 +2,15 @@ import { type CoreSupervisor } from './core-supervisor.js';
 import { type CredentialBroker } from './credential-broker.js';
 import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
 import { createDiagnosticId, type PrivacyLogger } from './privacy-logger.js';
+import { projectOperationKind } from './project-operation-semantics.js';
 import {
   type AppearancePreferences,
-  CANDIDATE_COMMANDS,
   CANDIDATE_IPC_CHANNELS,
   type CommandFailure,
   type CommandResult,
   type DiagnosticPreview,
-  ENTITY_CANON_COMMANDS,
   type ErrorCode,
-  PROJECT_PLANNING_COMMANDS,
-  PROJECT_STRUCTURE_COMMANDS,
-  PROJECT_WORKSPACE_COMMANDS,
-  RECOVERY_COMMANDS,
   RequestIdSchema,
-  SCENE_BEAT_COMMANDS,
-  TEXT_IO_COMMANDS,
-  VERSION_COMMANDS,
   type WindowPreferences,
 } from '@worldforge/contracts';
 import { type IpcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
@@ -121,35 +113,6 @@ function requestIdFrom(raw: unknown): string {
     if (parsed.success) return parsed.data;
   }
   return randomUUID();
-}
-
-const QUERY_PROJECT_OPERATIONS = new Set<string>([
-  PROJECT_WORKSPACE_COMMANDS.getActive,
-  PROJECT_WORKSPACE_COMMANDS.getContinuation,
-  PROJECT_PLANNING_COMMANDS.getBrief,
-  PROJECT_PLANNING_COMMANDS.listPlotNodes,
-  SCENE_BEAT_COMMANDS.listSceneBeats,
-  SCENE_BEAT_COMMANDS.previewMoveSceneBeat,
-  ENTITY_CANON_COMMANDS.listEntities,
-  ENTITY_CANON_COMMANDS.previewDeleteEntity,
-  PROJECT_STRUCTURE_COMMANDS.listStructure,
-  PROJECT_STRUCTURE_COMMANDS.listTrash,
-  PROJECT_STRUCTURE_COMMANDS.previewPermanentDelete,
-  PROJECT_STRUCTURE_COMMANDS.previewSplitChapter,
-  PROJECT_STRUCTURE_COMMANDS.previewMergeChapters,
-  PROJECT_STRUCTURE_COMMANDS.previewMoveBlocks,
-  CANDIDATE_COMMANDS.listCandidates,
-  CANDIDATE_COMMANDS.getCandidate,
-  VERSION_COMMANDS.listVersions,
-  VERSION_COMMANDS.getVersion,
-  RECOVERY_COMMANDS.getOverview,
-  RECOVERY_COMMANDS.previewCleanup,
-  TEXT_IO_COMMANDS.previewImport,
-  TEXT_IO_COMMANDS.listExportVersions,
-]);
-
-function projectOperationKind(operation: string): CoreOperationKind {
-  return QUERY_PROJECT_OPERATIONS.has(operation) ? 'query' : 'mutation';
 }
 
 export function createIpcHandlerContext(options: IpcHandlerOptions) {

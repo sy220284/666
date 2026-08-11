@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "taskId": "M8-07",
-  "updatedAt": "2026-07-31T23:14:45+08:00",
+  "updatedAt": "2026-08-11T13:11:00+08:00",
   "releaseBlockingSeverities": ["P0", "P1"],
   "items": [
     {
@@ -10,6 +10,11 @@
       "description": "作者可见主路径不得残留未批准英文术语或中英混排按钮。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": [
+        "apps/desktop/renderer/**",
+        "scripts/check-author-language.mjs",
+        "docs/product/AUTHOR_LANGUAGE_GLOSSARY.md"
+      ],
       "evidence": ["docs/test-evidence/M8-07/summary.md"]
     },
     {
@@ -18,6 +23,12 @@
       "description": "错误提示必须转换为作者可理解的信息，并提供下一步操作。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": [
+        "apps/desktop/renderer/**",
+        "apps/desktop/preload/**",
+        "apps/desktop/main/**",
+        "packages/contracts/**"
+      ],
       "evidence": ["docs/test-evidence/M8-07/summary.md"]
     },
     {
@@ -26,6 +37,11 @@
       "description": "保存、生成、检查和任务状态必须使用作者语义。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": [
+        "apps/desktop/renderer/**",
+        "apps/desktop/preload/**",
+        "packages/contracts/**"
+      ],
       "evidence": ["docs/test-evidence/M8-07/summary.md"]
     },
     {
@@ -34,6 +50,12 @@
       "description": "Windows真实中文输入法必须通过候选、确认、切换、撤销、自动保存、切章和恢复链路。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": [
+        "apps/desktop/renderer/**",
+        "apps/desktop/preload/**",
+        "tests/e2e/playwright.windows-ime.config.ts",
+        "scripts/run-electron-e2e.mjs"
+      ],
       "evidence": ["docs/test-evidence/M8-07/windows-native-ime.md"]
     },
     {
@@ -42,6 +64,7 @@
       "description": "核心工作台必须提供可用浅色与深色主题。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": ["apps/desktop/renderer/**", "docs/ui/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -50,6 +73,7 @@
       "description": "Theme B深浅色变体必须覆盖写作工作台并满足文本对比度。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": ["apps/desktop/renderer/**", "docs/ui/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -58,6 +82,7 @@
       "description": "1280×800必须无整页横向滚动、关键按钮遮挡、标题逐字挤压或正文不可达。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": ["apps/desktop/renderer/**", "tests/e2e/**", "docs/ui/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -66,6 +91,7 @@
       "description": "写作区在1280×800和高DPI矩阵下必须保持正文、目录和操作入口可达。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": ["apps/desktop/renderer/**", "tests/e2e/**", "docs/ui/**"],
       "evidence": ["docs/test-evidence/M8-07/visual-review.md"]
     },
     {
@@ -74,6 +100,7 @@
       "description": "键盘路径、焦点可见性、错误关联和常见缩放必须通过。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": ["apps/desktop/renderer/**", "tests/e2e/**", "docs/ui/**"],
       "evidence": ["docs/test-evidence/M8-07/summary.md"]
     },
     {
@@ -82,6 +109,11 @@
       "description": "M8-07必须存在绑定受检提交的最终Evidence和完整机器验收状态。",
       "status": "PASS",
       "verifiedCommit": "9f309ef2a813c7cbe852ce9572c0ea4c57c34053",
+      "scope": [
+        "scripts/ui-acceptance-gate.mjs",
+        "docs/test-evidence/M8-07/**",
+        ".github/workflows/release.yml"
+      ],
       "evidence": ["docs/test-evidence/M8-07/manifest.json"]
     }
   ]

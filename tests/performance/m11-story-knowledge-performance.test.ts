@@ -170,6 +170,7 @@ describe('M11-04 故事知识长篇性能预算', () => {
       passed: metric.result <= metric.budget,
     }));
 
+    process.stdout.write(`${JSON.stringify({ benchmark: 'm11-04-story-knowledge', metrics: evaluated })}\n`);
     expect(evaluated.every((metric) => metric.passed)).toBe(true);
     const output = process.env.WORLDFORGE_M11_04_PERF_OUTPUT;
     if (output) {

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Local-first desktop writing workstation for a single author",
-  "license": "AGPL-3.0-only",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.21.0",
   "engines": {

@@ -219,7 +219,8 @@ async function main() {
     'source_head_sha:',
     'statuses: write',
     'scripts/main-verification.mjs',
-    'synchronize-integrations:',
+    'synchronize-work:',
+    'name: synchronize-integrations',
     'INTEGRATION_SYNCHRONIZATION_OUTPUT:',
     'work-synchronization.mjs',
     'branch-hygiene:',
@@ -261,20 +262,23 @@ async function main() {
 }
 
 const governancePrefixes = Object.freeze(['.github/', 'scripts/', 'tests/', 'docs/process/']);
-const governanceExactFiles = new Set(['package.json', 'docs/PROJECT_EXECUTION_ENTRY.md']);
+const governanceExactFiles = new Set([
+  'AGENTS.md',
+  'agent.md',
+  'package.json',
+  'docs/PROJECT_EXECUTION_ENTRY.md',
+]);
 
 function isGovernanceMaintenancePath(file) {
   return (
-    governanceExactFiles.has(file) ||
-    governancePrefixes.some((prefix) => file.startsWith(prefix)) ||
-    file.endsWith('.md')
+    governanceExactFiles.has(file) || governancePrefixes.some((prefix) => file.startsWith(prefix))
   );
 }
 
 export function allowedPathsForBranch(branch) {
   if (branch === 'work') return ['<all repository paths>'];
   if (branch === 'governance') {
-    return [...governancePrefixes, ...governanceExactFiles, '<markdown maintenance files>'];
+    return [...governancePrefixes, ...governanceExactFiles];
   }
   return [];
 }

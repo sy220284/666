@@ -20,7 +20,7 @@ const untrustedEvent = {
 } as unknown as IpcMainInvokeEvent;
 
 describe('M4-04 validation IPC boundary', () => {
-  it('strictly validates seven operations and rejects untrusted or expanded payloads', async () => {
+  it('strictly validates nine operations and rejects untrusted or expanded payloads', async () => {
     const handlers = new Map<
       string,
       (event: IpcMainInvokeEvent, raw: unknown) => Promise<unknown> | unknown
@@ -38,6 +38,7 @@ describe('M4-04 validation IPC boundary', () => {
     const chapterId = randomUUID();
     const versionId = randomUUID();
     const issueId = randomUUID();
+    const exceptionId = randomUUID();
     const commentId = randomUUID();
     const createdAt = '2026-07-26T08:30:00.000Z';
     const invokeProjectOperation = vi.fn(
@@ -104,6 +105,26 @@ describe('M4-04 validation IPC boundary', () => {
         operation: VALIDATION_COMMANDS.resolveComment,
         payload: { projectId, commentId },
       },
+      {
+        channel: VALIDATION_IPC_CHANNELS.rememberException,
+        operation: VALIDATION_COMMANDS.rememberException,
+        payload: {
+          projectId,
+          issueId,
+          exceptionType: 'dream',
+          scopeType: 'issue',
+          entityId: null,
+          validFromChapterId: null,
+          validUntilChapterId: null,
+          projectRuleKey: null,
+          notes: '作者确认为梦境',
+        },
+      },
+      {
+        channel: VALIDATION_IPC_CHANNELS.disableException,
+        operation: VALIDATION_COMMANDS.disableException,
+        payload: { projectId, exceptionId },
+      },
     ] as const;
 
     for (const item of cases) {
@@ -142,6 +163,6 @@ describe('M4-04 validation IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(30);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(32);
   });
 });

@@ -130,13 +130,14 @@ type BlockPatchOperation =
 
 对应任务：`M4-02_CONSTRAINT_PACKAGE.md`。
 
-## DEC-017 StateProposal双类型
+## DEC-017 StateProposal统一多类型
 
-- `proposal_type`仅允许`entity_state | arc_milestone`。
-- entity_state提案目标为`entity_id + state_key`。
-- arc_milestone提案目标为`arc_milestone_id`，建议值为`hit`或`skipped`。
-- pending提案不能改变EntityState或ArcMilestone。
-- 接受、编辑接受和拒绝均通过统一StateProposal Use Case。
+- `state_proposals`继续是唯一持久化AI事实变化建议模型；`ReviewProposal`仅作为作者审阅读模型，不成为第二份持久真源。
+- `proposal_type`允许`entity_state | knowledge_state | timeline_event | character_relationship | foreshadowing | arc_milestone | entity_create | canon_fact`。
+- 每种提案使用与`proposal_type`严格匹配的结构化`target`；目标身份不得在编辑接受时被偷换。
+- `entity_state`的语义类型与有效期属于结构化建议值；旧记录迁移为兼容结构时不从自由文本推断语义。
+- pending提案不能改变Canon、Continuity或NarrativePlanning权威状态；AI只能创建建议。
+- 接受、编辑接受和拒绝仍通过统一StateProposal Use Case；接受时复用各权威领域的事务级operation和既有不变量，禁止复制平行SQL写路径。
 
 ## DEC-018 V1.0数据最小化
 

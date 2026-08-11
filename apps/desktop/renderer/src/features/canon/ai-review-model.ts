@@ -31,23 +31,20 @@ export function reviewConfidenceLabel(
 }
 
 export function reviewTypeLabel(reviewType: ReviewProposalType): string {
-  return reviewType === 'entity_state' ? '人物与世界状态' : '人物成长节点';
+  const labels: Readonly<Record<ReviewProposalType, string>> = {
+    entity_state: '人物与世界状态',
+    arc_milestone: '人物成长节点',
+    knowledge_state: '人物知情状态',
+    timeline_event: '时间线事件',
+    character_relationship: '人物关系',
+    foreshadowing: '伏笔进度',
+    entity_create: '新人物或设定',
+    canon_fact: '设定事实',
+  };
+  return labels[reviewType];
 }
 
 export function stateProposalToReviewProposal(proposal: StateProposal): ReviewProposal {
-  const target =
-    proposal.proposalType === 'entity_state'
-      ? {
-          targetType: 'entity_state' as const,
-          entityId: requiredTarget(proposal.entityId, '人物与世界状态建议缺少目标。'),
-          stateKey: requiredTarget(proposal.stateKey, '人物与世界状态建议缺少状态字段。'),
-          validUntilChapterId: proposal.validUntilChapterId,
-        }
-      : {
-          targetType: 'arc_milestone' as const,
-          arcMilestoneId: requiredTarget(proposal.arcMilestoneId, '人物成长建议缺少成长节点。'),
-        };
-
   return ReviewProposalSchema.parse({
     id: proposal.id,
     batchId: proposal.batchId,
@@ -57,7 +54,7 @@ export function stateProposalToReviewProposal(proposal: StateProposal): ReviewPr
     sourceVersionId: proposal.sourceVersionId,
     reviewType: proposal.proposalType,
     source: proposal.source,
-    target,
+    target: proposal.target,
     currentValue: proposal.previousValue,
     proposedValue: proposal.proposedValue,
     evidence: proposal.evidence,
@@ -100,9 +97,4 @@ export function filterAIReviewProposals(
     const typeMatches = filter.reviewType === 'all' || proposal.reviewType === filter.reviewType;
     return statusMatches && typeMatches;
   });
-}
-
-function requiredTarget<T>(value: T | null, message: string): T {
-  if (value === null) throw new Error(message);
-  return value;
 }

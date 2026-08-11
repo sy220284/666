@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 
-import type { ContinuityCatalog } from '@worldforge/contracts';
+import type { ContinuityCatalog, EntityStateSemanticKind } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../bridge/use-bridge-resource.js';
@@ -39,6 +39,7 @@ export function ContinuityEditors({
   const { pickBlockAnchor, picker } = useDraftBlockPicker();
   const [knowledgeSourceBlockId, setKnowledgeSourceBlockId] = useState<string | null>(null);
   const [knowledgeSourceBlockLabel, setKnowledgeSourceBlockLabel] = useState<string | null>(null);
+  const [stateSemanticKind, setStateSemanticKind] = useState<EntityStateSemanticKind>('custom');
 
   const setEntityState = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -51,10 +52,19 @@ export function ContinuityEditors({
     if (!stateKey) return;
     let value: Parameters<RendererBridgeAdapter['continuity']['setEntityState']>[0]['value'];
     try {
-      value = parseAuthorValue(
-        String(values.get('valueType') ?? 'text') as AuthorValueType,
-        String(values.get('value') ?? ''),
-      ) as typeof value;
+      if (stateSemanticKind === 'location' || stateSemanticKind === 'holder') {
+        value = String(values.get('semanticEntityId') ?? '').trim();
+        if (!value) return;
+      } else if (stateSemanticKind === 'life_status') {
+        value = String(values.get('lifeStatus') ?? 'alive');
+      } else {
+        value = parseAuthorValue(
+          stateSemanticKind === 'age'
+            ? 'number'
+            : (String(values.get('valueType') ?? 'text') as AuthorValueType),
+          String(values.get('value') ?? ''),
+        ) as typeof value;
+      }
     } catch {
       return;
     }
@@ -64,11 +74,34 @@ export function ContinuityEditors({
         authority: 'author',
         entityId: String(values.get('entityId')),
         stateKey,
+        semanticKind: stateSemanticKind,
         value,
         validFromChapterId: String(values.get('validFromChapterId')),
         validUntilChapterId: nullableString(values.get('validUntilChapterId')),
         sourceVersionId: String(values.get('sourceVersionId')),
         evidence: [],
+      }),
+    );
+  };
+
+  const setCharacterRelationship = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const sourceVersionId = String(values.get('sourceVersionId') ?? '');
+    await command.run(() =>
+      bridge.continuity.setCharacterRelationship({
+        projectId,
+        authority: 'author',
+        fromCharacterId: String(values.get('fromCharacterId') ?? ''),
+        toCharacterId: String(values.get('toCharacterId') ?? ''),
+        category: String(values.get('category') ?? 'custom') as Parameters<
+          RendererBridgeAdapter['continuity']['setCharacterRelationship']
+        >[0]['category'],
+        label: String(values.get('label') ?? ''),
+        validFromChapterId: String(values.get('validFromChapterId') ?? ''),
+        validUntilChapterId: nullableString(values.get('validUntilChapterId')),
+        sourceVersionId,
+        evidence: [{ kind: 'version', targetId: sourceVersionId, note: '作者确认的人物关系' }],
       }),
     );
   };
@@ -184,9 +217,48 @@ export function ContinuityEditors({
             </select>
           </label>
           <label>
-            当前内容
-            <textarea name="value" required />
+            状态语义
+            <select
+              name="semanticKind"
+              value={stateSemanticKind}
+              onChange={(event) =>
+                setStateSemanticKind(event.target.value as EntityStateSemanticKind)
+              }
+            >
+              <option value="custom">自由状态（不启用硬规则）</option>
+              <option value="life_status">生死状态</option>
+              <option value="location">唯一地点</option>
+              <option value="age">年龄</option>
+              <option value="holder">唯一持有人</option>
+              <option value="identity">身份</option>
+              <option value="health">健康</option>
+              <option value="ability">能力</option>
+            </select>
           </label>
+          {stateSemanticKind === 'location' || stateSemanticKind === 'holder' ? (
+            <label>
+              {stateSemanticKind === 'location' ? '地点' : '持有人'}
+              <EntityNameSelect
+                entityType={stateSemanticKind === 'location' ? 'location' : 'character'}
+                name="semanticEntityId"
+                references={references}
+                required
+              />
+            </label>
+          ) : stateSemanticKind === 'life_status' ? (
+            <label>
+              生死状态
+              <select name="lifeStatus" defaultValue="alive">
+                <option value="alive">生存</option>
+                <option value="dead">死亡</option>
+              </select>
+            </label>
+          ) : (
+            <label>
+              当前内容
+              <textarea name="value" required />
+            </label>
+          )}
           <label>
             从哪一章开始生效
             <ChapterNameSelect name="validFromChapterId" references={references} required />
@@ -230,6 +302,84 @@ export function ContinuityEditors({
                 }
               >
                 失效：{item.stateKey}
+              </button>
+            ))}
+        </div>
+      </details>
+      <details className="feature-card">
+        <summary>记录人物关系</summary>
+        <form className="stacked-form" onSubmit={(event) => void setCharacterRelationship(event)}>
+          <label>
+            关系发起人物
+            <EntityNameSelect
+              entityType="character"
+              name="fromCharacterId"
+              references={references}
+              required
+            />
+          </label>
+          <label>
+            关系指向人物
+            <EntityNameSelect
+              entityType="character"
+              name="toCharacterId"
+              references={references}
+              required
+            />
+          </label>
+          <label>
+            关系类别
+            <select name="category" defaultValue="custom">
+              <option value="family">亲属</option>
+              <option value="romantic">情感</option>
+              <option value="friendship">友谊</option>
+              <option value="hostility">敌对</option>
+              <option value="alliance">同盟</option>
+              <option value="mentorship">师承</option>
+              <option value="hierarchy">上下级</option>
+              <option value="rivalry">竞争</option>
+              <option value="custom">自定义</option>
+            </select>
+          </label>
+          <label>
+            具体关系
+            <input name="label" placeholder="例如：师父、宿敌、救命恩人" required />
+          </label>
+          <label>
+            从哪一章开始生效
+            <ChapterNameSelect name="validFromChapterId" references={references} required />
+          </label>
+          <label>
+            到哪一章结束
+            <ChapterNameSelect name="validUntilChapterId" references={references} />
+          </label>
+          <label>
+            依据的定稿
+            <FinalVersionSelect name="sourceVersionId" references={references} required />
+          </label>
+          <button disabled={readOnly || command.pending} type="submit">
+            确认人物关系
+          </button>
+        </form>
+        <div className="compact-list">
+          {(catalog?.relationships ?? [])
+            .filter((item) => item.recordStatus === 'current')
+            .map((item) => (
+              <button
+                disabled={readOnly || command.pending}
+                key={item.id}
+                type="button"
+                onClick={() =>
+                  void command.run(() =>
+                    bridge.continuity.invalidateCharacterRelationship({
+                      projectId,
+                      authority: 'author',
+                      relationshipId: item.id,
+                    }),
+                  )
+                }
+              >
+                失效：{item.label}
               </button>
             ))}
         </div>

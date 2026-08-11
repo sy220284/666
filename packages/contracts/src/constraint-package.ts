@@ -19,6 +19,8 @@ export const ConstraintSourceTypeSchema = z.enum([
   'ending_snapshot',
   'entity_state',
   'knowledge_state',
+  'character_relationship',
+  'validation_exception',
   'foreshadowing',
   'entity',
   'canon_fact',

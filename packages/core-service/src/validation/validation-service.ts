@@ -10,6 +10,7 @@ import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { catalog } from './validation-catalog.js';
 import { ValidationCommentOperations } from './validation-comment-operations.js';
+import { ValidationExceptionOperations } from './validation-exception-operations.js';
 import { ValidationIssueOperations } from './validation-issue-operations.js';
 import {
   systemClock,
@@ -25,6 +26,7 @@ export class ValidationService {
   readonly #issues: ValidationIssueOperations;
   readonly #todos: ValidationTodoOperations;
   readonly #comments: ValidationCommentOperations;
+  readonly #exceptions: ValidationExceptionOperations;
 
   constructor(workspace: ProjectWorkspaceService, options: ValidationServiceOptions = {}) {
     const clock: DatabaseClock = options.clock ?? systemClock;
@@ -34,6 +36,7 @@ export class ValidationService {
     this.#issues = new ValidationIssueOperations(workspace, clock, idFactory);
     this.#todos = new ValidationTodoOperations(workspace, clock, idFactory);
     this.#comments = new ValidationCommentOperations(workspace, clock, idFactory);
+    this.#exceptions = new ValidationExceptionOperations(workspace, clock, idFactory);
   }
 
   list(raw: unknown): ValidationCatalog {
@@ -90,5 +93,13 @@ export class ValidationService {
 
   resolveComment(requestId: string, raw: unknown): Promise<ValidationCatalog> {
     return this.#comments.resolveComment(requestId, raw);
+  }
+
+  rememberException(requestId: string, raw: unknown): Promise<ValidationCatalog> {
+    return this.#exceptions.remember(requestId, raw);
+  }
+
+  disableException(requestId: string, raw: unknown): Promise<ValidationCatalog> {
+    return this.#exceptions.disable(requestId, raw);
   }
 }

@@ -63,7 +63,13 @@ function assistanceBridge(options?: {
     },
     continuity: {
       list: vi.fn(() =>
-        source({ projectId, entityStates: [], timelineEvents: [], knowledgeStates: [] }),
+        source({
+          projectId,
+          entityStates: [],
+          timelineEvents: [],
+          knowledgeStates: [],
+          relationships: [],
+        }),
       ),
     },
     narrativePlanning: {

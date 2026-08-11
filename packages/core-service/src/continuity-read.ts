@@ -2,12 +2,14 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import {
   ContinuityCatalogSchema,
+  CharacterRelationshipSchema,
   EntityStateSchema,
   KnowledgeStateSchema,
   TimelineEventSchema,
   type ContinuityCatalog,
   type ContinuityListInput,
   type EntityState,
+  type CharacterRelationship,
   type TimelineEvent,
 } from '@worldforge/contracts';
 import { chapterRangeContains, compareChapterPosition } from '@worldforge/domain';
@@ -21,12 +23,29 @@ import {
 } from './continuity-model.js';
 import { chapterPosition } from './continuity-validation.js';
 
+interface RelationshipRow {
+  readonly id: string;
+  readonly projectId: string;
+  readonly fromCharacterId: string;
+  readonly toCharacterId: string;
+  readonly category: string;
+  readonly label: string;
+  readonly validFromChapterId: string;
+  readonly validUntilChapterId: string | null;
+  readonly sourceVersionId: string;
+  readonly evidenceJson: string;
+  readonly recordStatus: 'current' | 'historical' | 'invalid';
+  readonly createdAt: string;
+  readonly supersededAt: string | null;
+}
+
 export function parseState(row: StateRow): EntityState {
   return EntityStateSchema.parse({
     id: row.id,
     projectId: row.projectId,
     entityId: row.entityId,
     stateKey: row.stateKey,
+    semanticKind: row.semanticKind,
     value: parseJson(text(row.valueJson), 'EntityState value'),
     validFromChapterId: row.validFromChapterId,
     validUntilChapterId: row.validUntilChapterId,
@@ -76,7 +95,8 @@ export function stateRows(connection: DatabaseSync, projectId: string): StateRow
   return connection
     .prepare(
       `SELECT id, project_id AS projectId, entity_id AS entityId, state_key AS stateKey,
-              value_json AS valueJson, valid_from_chapter_id AS validFromChapterId,
+              semantic_kind AS semanticKind, value_json AS valueJson,
+              valid_from_chapter_id AS validFromChapterId,
               valid_until_chapter_id AS validUntilChapterId, record_status AS recordStatus,
               evidence_json AS evidenceJson, source_version_id AS sourceVersionId,
               created_at AS createdAt, superseded_at AS supersededAt
@@ -119,7 +139,32 @@ export function knowledgeRows(connection: DatabaseSync, projectId: string): Know
     .all(projectId) as unknown as KnowledgeRow[];
 }
 
-function selectEffective<T extends StateRow | KnowledgeRow>(
+function relationshipRows(connection: DatabaseSync, projectId: string): RelationshipRow[] {
+  return connection
+    .prepare(
+      `SELECT id, project_id AS projectId, from_character_id AS fromCharacterId,
+              to_character_id AS toCharacterId, category, label,
+              valid_from_chapter_id AS validFromChapterId,
+              valid_until_chapter_id AS validUntilChapterId,
+              source_version_id AS sourceVersionId, evidence_json AS evidenceJson,
+              record_status AS recordStatus,
+              created_at AS createdAt, superseded_at AS supersededAt
+         FROM character_relationships
+        WHERE project_id = ?
+        ORDER BY from_character_id, to_character_id, category, label, created_at DESC, id`,
+    )
+    .all(projectId) as unknown as RelationshipRow[];
+}
+
+function parseRelationship(row: RelationshipRow): CharacterRelationship {
+  const { evidenceJson, ...fields } = row;
+  return CharacterRelationshipSchema.parse({
+    ...fields,
+    evidence: parseJson(evidenceJson, 'CharacterRelationship evidence'),
+  });
+}
+
+function selectEffective<T extends StateRow | KnowledgeRow | RelationshipRow>(
   connection: DatabaseSync,
   projectId: string,
   rows: readonly T[],
@@ -154,6 +199,7 @@ export function readCatalog(
   const query = input.query.toLocaleLowerCase('zh-CN');
   const statesRaw = stateRows(connection, input.projectId);
   const knowledgeRaw = knowledgeRows(connection, input.projectId);
+  const relationshipsRaw = relationshipRows(connection, input.projectId);
   const states = input.effectiveAtChapterId
     ? selectEffective(
         connection,
@@ -179,6 +225,18 @@ export function readCatalog(
   const events = eventRows(connection, input.projectId)
     .filter((row) => input.includeArchivedEvents || row.status === 'active')
     .map((row) => parseEvent(connection, row));
+  const relationships = input.effectiveAtChapterId
+    ? selectEffective(
+        connection,
+        input.projectId,
+        relationshipsRaw,
+        input.effectiveAtChapterId,
+        (row) =>
+          `${row.fromCharacterId}\u0000${row.toCharacterId}\u0000${row.category}\u0000${row.label}`,
+      ).map(parseRelationship)
+    : relationshipsRaw
+        .filter((row) => input.includeHistory || row.recordStatus === 'current')
+        .map(parseRelationship);
   const matches = (values: readonly string[]) =>
     !query || values.some((value) => value.toLocaleLowerCase('zh-CN').includes(query));
   return ContinuityCatalogSchema.parse({
@@ -188,5 +246,6 @@ export function readCatalog(
     knowledgeStates: knowledge.filter((row) =>
       matches([row.informationKey, row.knowledgeStatus, row.notes]),
     ),
+    relationships: relationships.filter((row) => matches([row.category, row.label])),
   });
 }

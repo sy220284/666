@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { remapProjectIdentity } from '../../packages/core-service/src/recovery.js';
+import { projectCloneAction } from '../../packages/core-service/src/recovery/project-clone-policy.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -27,6 +28,10 @@ afterEach(async () => {
 });
 
 describe('M1-08 recovered project identity remap', () => {
+  it('classifies M11 relationship and validation exception authority tables for identity remap', () => {
+    expect(projectCloneAction('character_relationships')).toBe('clone-remap');
+    expect(projectCloneAction('validation_exceptions')).toBe('clone-remap');
+  });
   it('rolls back the identity change when foreign_key_check fails before commit', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-recovery-remap-'));
     temporaryDirectories.push(directory);

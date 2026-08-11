@@ -1,8 +1,8 @@
 # WorldForge V1.0 测试策略
 
-> 状态：Frozen Baseline with M10-21 Invariant Addendum
+> 状态：Frozen Baseline with M10-21 Invariant and M11-03 AI Organization Addenda
 > 目标：证明功能真实可用、数据边界未破坏，并为每个完成结论提供可复核证据。
-> 更新日期：2026-08-09
+> 更新日期：2026-08-11
 
 ## 1. 原则
 
@@ -32,7 +32,7 @@
 - 锁定块被修改。
 - 未确认Candidate写入Draft。
 - Revision或Hash冲突静默覆盖。
-- AI直接修改Canon、EntityState或ArcMilestone。
+- AI直接修改Canon、Continuity或NarrativePlanning中的任何权威状态。
 - 跨项目读写。
 - 凭据进入普通日志或数据库。
 - 恢复覆盖原项目。
@@ -50,17 +50,20 @@
 
 ### 连续性
 
-- EntityState有效期和历史状态。
-- StateProposal双类型判别与目标互斥。
-- pending提案不修改权威状态。
+- EntityState有效期、语义类型和历史状态。
+- StateProposal八类判别、`proposalType`与结构化`target`严格匹配。
+- pending提案不修改权威状态；接受与编辑接受复用对应领域事务不变量。
+- CharacterRelationship有效区间、跨项目、实体归档、永久删除阻断和恢复身份重映射。
 - ArcMilestone状态机和时间线依赖。
-- EndingSnapshot有效、stale和缺失回退。
+- ValidationException作用域、停用、重新扫描与去重行为。
+- EndingSnapshot有效、stale、关系内容和缺失回退。
 
 ### AI与解析
 
 - Prompt注册和整数版本。
 - T0/T1/rewrite/merge Schema。
-- entity_state与arc_milestone提案Schema。
+- entity_state、knowledge_state、timeline_event、character_relationship、foreshadowing、arc_milestone、entity_create、canon_fact提案Schema。
+- validate语义问题经过结构化Schema与Evidence白名单校验。
 - Cleaner正反例。
 - 无效输出明确失败，不无限猜测。
 
@@ -104,6 +107,18 @@
 | Renderer请求Owner | dictionary mutation期间reload不可用；stale completion不能清除新owner或提前解除pending                 |
 | Provider契约      | 未知options、authorization/authHeader等字段被strict schema拒绝；Schema 2→3迁移清理旧任意字段          |
 | Release Authority | Task Runtime变化不影响Release；stable unsigned Windows或未签名/未公证/未staple macOS工件必定失败      |
+
+### M11-03 AI自动整理与冲突不变量
+
+| 不变量                 | 必须证明                                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 单一Proposal真源       | 八类AI事实变化共用`state_proposals`，不出现第二套review/conflict持久表；ReviewProposal只读适配                            |
+| 作者裁决               | AI只创建pending建议；接受/编辑接受必须由author触发并复用Canon、Continuity、NarrativePlanning事务operation                 |
+| 确定性冲突单一实现     | 时间线依赖、人物死亡后活动、年龄倒退、同时多地等规则进入现有Validation，写入阻断与扫描共享同一策略或预检查               |
+| 合理例外               | issue/chapter/entity/chapter_range/project_rule等受控作用域正确匹配；记住例外后同一作用域不重复制造相同open问题          |
+| 新权威引用生命周期     | CharacterRelationship与语义EntityState接入SemanticRevision、DerivedInvalidation、EndingSnapshot、ConstraintPackage      |
+| 恢复与删除             | 新表完整进入ClonePolicy与身份重映射；未知表仍fail closed；实体删除预览与执行均阻断关系引用                               |
+| 真实桌面闭环           | Main→Preload→Renderer→Core→SQLite的AI审阅、人物关系、有限期状态和ValidationException至少有真实Electron E2E或等价纵向证据 |
 
 ## 6. Migration
 
@@ -149,13 +164,13 @@
 
 生成期间修改同一段→候选完成→采用→显示ConflictSet→作者选择→无静默覆盖。
 
-### E2E-05 连续性与弧光
+### E2E-05 连续性与AI审阅
 
-创建人物、状态、弧光和里程碑→定稿→生成entity_state与arc_milestone提案→pending不改变状态→接受→下一章约束包包含确认状态→返修前章→快照与校验标记stale。
+创建人物、状态、关系、时间线、伏笔和弧光→定稿→生成混合八类StateProposal→pending不改变权威状态→在统一AI审阅中接受/编辑接受/拒绝→原有设定与连续性区域立即可见→下一章约束包包含确认状态→返修前章→快照与校验标记stale。
 
 ### E2E-06 校验与节奏
 
-运行确定性/统计/语义校验→转StoryTodo→完成后重跑→设置GenreRhythmProfile→关闭节奏建议→黄金三章只对前3章生效。
+运行确定性/统计/语义校验→检查双侧Evidence→忽略本次或记住合理例外→重新扫描验证作用域→转StoryTodo→完成后重跑→设置GenreRhythmProfile→关闭节奏建议→黄金三章只对前3章生效。
 
 ### E2E-07 导入导出
 
@@ -210,11 +225,14 @@ Theme A/B切换→候选采用→定稿→减少动态→1280×800/2K/21:9/混�
 - T1事件覆盖、连续性和专名。
 - 快速改写保真与结构性改写升级。
 - 多候选融合来源、重复和过渡。
-- EntityState提案Precision。
+- 八类StateProposal的结构化解析、Evidence有效性、Precision与未确认写入率0。
+- EntityState语义类型与有限有效期正确保留。
 - ArcMilestone提案Precision和未确认写入率0。
+- 知情泄露、时间线语义、人物关系、伏笔状态与新实体/Canon事实建议的误报率。
+- Validation语义问题的Evidence双侧引用与合理例外作用域。
 - 弧光一致性校验证据。
 - 节奏提示范围、关闭行为和P3等级。
-- 知情泄露和中文模型废话。
+- 中文模型废话。
 
 ## 12. 证据目录
 

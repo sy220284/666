@@ -253,33 +253,7 @@ export class ForeshadowingOperations {
     const valid = ForeshadowingTransitionInputSchema.parse(input);
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      const current = assertForeshadowing(connection, valid.projectId, valid.foreshadowingId);
-      assertTransition(current.status as ForeshadowingStatus, valid.status);
-      assertNoMutualExclusionConflict(
-        connection,
-        valid.projectId,
-        valid.foreshadowingId,
-        valid.status,
-      );
-      if (valid.status === 'revealed') {
-        const unresolved = unresolvedForeshadowingRelations(
-          connection,
-          valid.projectId,
-          valid.foreshadowingId,
-        );
-        if (unresolved.length > 0) {
-          throw new NarrativePlanningServiceError(
-            'NARRATIVE_CONFLICT',
-            'Foreshadowing cannot be revealed while dependencies remain unresolved.',
-          );
-        }
-      }
-      connection
-        .prepare(
-          `UPDATE foreshadowings SET status = ?, updated_at = ?
-            WHERE id = ? AND project_id = ?`,
-        )
-        .run(valid.status, this.#clock.now().toISOString(), valid.foreshadowingId, valid.projectId);
+      applyForeshadowingTransition(connection, valid, this.#clock.now().toISOString());
       return readNarrativePlanningCatalog(connection, {
         projectId: valid.projectId,
         query: '',
@@ -288,4 +262,33 @@ export class ForeshadowingOperations {
       });
     });
   }
+}
+
+export function applyForeshadowingTransition(
+  connection: DatabaseSync,
+  valid: ForeshadowingTransitionInput,
+  now: string,
+): void {
+  const current = assertForeshadowing(connection, valid.projectId, valid.foreshadowingId);
+  assertTransition(current.status as ForeshadowingStatus, valid.status);
+  assertNoMutualExclusionConflict(connection, valid.projectId, valid.foreshadowingId, valid.status);
+  if (valid.status === 'revealed') {
+    const unresolved = unresolvedForeshadowingRelations(
+      connection,
+      valid.projectId,
+      valid.foreshadowingId,
+    );
+    if (unresolved.length > 0) {
+      throw new NarrativePlanningServiceError(
+        'NARRATIVE_CONFLICT',
+        'Foreshadowing cannot be revealed while dependencies remain unresolved.',
+      );
+    }
+  }
+  connection
+    .prepare(
+      `UPDATE foreshadowings SET status = ?, updated_at = ?
+        WHERE id = ? AND project_id = ?`,
+    )
+    .run(valid.status, now, valid.foreshadowingId, valid.projectId);
 }

@@ -80,6 +80,7 @@ interface BaseContext {
   readonly canonFacts: readonly Record<string, unknown>[];
   readonly foreshadowings: readonly Record<string, unknown>[];
   readonly arcs: readonly Record<string, unknown>[];
+  readonly validationExceptions: readonly Record<string, unknown>[];
   readonly draftBlocks: readonly Record<string, unknown>[];
 }
 
@@ -353,6 +354,19 @@ function loadBaseContext(
         ORDER BY block.order_key, block.id`,
     )
     .all(chapterId, projectId) as unknown as Record<string, unknown>[];
+  const validationExceptions = connection
+    .prepare(
+      `SELECT id, exception_type AS exceptionType, scope_type AS scopeType,
+              issue_type AS issueType, validation_issue_id AS validationIssueId,
+              chapter_id AS chapterId, entity_id AS entityId,
+              valid_from_chapter_id AS validFromChapterId,
+              valid_until_chapter_id AS validUntilChapterId,
+              project_rule_key AS projectRuleKey, notes
+         FROM validation_exceptions
+        WHERE project_id = ? AND active = 1
+        ORDER BY created_at, id`,
+    )
+    .all(projectId) as unknown as Record<string, unknown>[];
   return {
     project,
     chapter,
@@ -365,6 +379,7 @@ function loadBaseContext(
     canonFacts,
     foreshadowings,
     arcs,
+    validationExceptions,
     draftBlocks,
   };
 }
@@ -386,7 +401,28 @@ function addSnapshotSources(
         entityId: state.entityId,
         semanticKey: `entity:${state.entityId}:${state.stateKey}`,
         label: `实体状态 ${state.stateKey}`,
-        content: { stateKey: state.stateKey, value: state.value },
+        content: {
+          stateKey: state.stateKey,
+          semanticKind: state.semanticKind,
+          value: state.value,
+        },
+        relevance: 0.95,
+        temporalStatus: 'snapshot',
+      }),
+    );
+  }
+  for (const relationship of content.relationships) {
+    target.push(
+      makeSource({
+        priority: 'P2',
+        sourceType: 'character_relationship',
+        sourceId: relationship.id,
+        sourceVersionId: relationship.sourceVersionId,
+        chapterId,
+        entityId: relationship.fromCharacterId,
+        semanticKey: `relationship:${relationship.fromCharacterId}:${relationship.toCharacterId}:${relationship.category}:${relationship.label}`,
+        label: `人物关系 ${relationship.label}`,
+        content: relationship,
         relevance: 0.95,
         temporalStatus: 'snapshot',
       }),
@@ -492,6 +528,7 @@ export class ConstraintPackageService {
           content: {
             entityStates: [],
             knowledgeStates: [],
+            relationships: [],
             foreshadowings: [],
             arcMilestones: [],
           },
@@ -629,6 +666,22 @@ export class ConstraintPackageService {
       snapshotChapterId,
       snapshotResult.snapshot?.sourceVersionId ?? null,
     );
+
+    for (const exception of context.validationExceptions) {
+      const id = text(exception.id, 'validationException.id');
+      add({
+        priority: input.taskType === 'validate' ? 'P0' : 'P2',
+        sourceType: 'validation_exception',
+        sourceId: id,
+        chapterId: nullableText(exception.chapterId, 'validationException.chapterId'),
+        entityId: nullableText(exception.entityId, 'validationException.entityId'),
+        semanticKey: `validation-exception:${id}`,
+        label: `作者确认例外 ${text(exception.exceptionType, 'validationException.exceptionType')}`,
+        content: exception,
+        relevance: 1,
+        required: input.taskType === 'validate',
+      });
+    }
 
     for (const entity of context.linkedEntities) {
       const entityId = text(entity.id, 'entity.id');

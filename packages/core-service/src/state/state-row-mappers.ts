@@ -37,9 +37,7 @@ export interface ProposalRow {
   readonly sourceVersionId: string;
   readonly proposalType: string;
   readonly source: string;
-  readonly entityId: string | null;
-  readonly stateKey: string | null;
-  readonly arcMilestoneId: string | null;
+  readonly targetJson: string;
   readonly previousValueJson: string | null;
   readonly proposedValueJson: string;
   readonly evidenceJson: string;
@@ -48,7 +46,6 @@ export interface ProposalRow {
   readonly freshness?: 'current' | 'stale';
   readonly actionability?: 'accept' | 'reject_only';
   readonly resolvedValueJson: string | null;
-  readonly validUntilChapterId: string | null;
   readonly createdAt: string;
   readonly resolvedAt: string | null;
 }
@@ -158,9 +155,7 @@ export function mapProposal(row: ProposalRow) {
     sourceVersionId: row.sourceVersionId,
     proposalType: row.proposalType,
     source: row.source,
-    entityId: row.entityId,
-    stateKey: row.stateKey,
-    arcMilestoneId: row.arcMilestoneId,
+    target: parseJson(row.targetJson),
     previousValue: parseJson(row.previousValueJson),
     proposedValue: parseJson(row.proposedValueJson),
     evidence: parseJson(row.evidenceJson),
@@ -169,7 +164,6 @@ export function mapProposal(row: ProposalRow) {
     freshness: row.freshness ?? 'current',
     actionability: row.actionability ?? 'accept',
     resolvedValue: parseJson(row.resolvedValueJson),
-    validUntilChapterId: row.validUntilChapterId,
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
   });

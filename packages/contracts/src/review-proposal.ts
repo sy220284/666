@@ -1,30 +1,21 @@
 import { z } from 'zod';
 
-import { EvidenceAnchorSchema, EntityStateKeySchema } from './continuity.js';
+import { EvidenceAnchorSchema } from './continuity.js';
 import { ProjectIdSchema } from './task-protocol.js';
 import {
+  AIReviewProposalTypeSchema,
+  StateProposalTargetSchema,
   StateProposalBatchSchema,
   StateProposalSourceSchema,
   StateProposalStatusSchema,
 } from './state-proposal.js';
 
-export const ReviewProposalTypeSchema = z.enum(['entity_state', 'arc_milestone']);
+export const ReviewProposalTypeSchema = AIReviewProposalTypeSchema;
 export const ReviewProposalFreshnessSchema = z.enum(['current', 'stale']);
 export const ReviewProposalActionabilitySchema = z.enum(['accept', 'reject_only']);
 export const ReviewProposalConfidenceSchema = z.enum(['high', 'medium', 'low']);
 
-export const ReviewProposalTargetSchema = z.discriminatedUnion('targetType', [
-  z.strictObject({
-    targetType: z.literal('entity_state'),
-    entityId: z.uuid(),
-    stateKey: EntityStateKeySchema,
-    validUntilChapterId: z.uuid().nullable(),
-  }),
-  z.strictObject({
-    targetType: z.literal('arc_milestone'),
-    arcMilestoneId: z.uuid(),
-  }),
-]);
+export const ReviewProposalTargetSchema = StateProposalTargetSchema;
 
 export const ReviewProposalSchema = z
   .strictObject({

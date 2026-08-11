@@ -79,19 +79,19 @@ ai.cancelGeneration / task.cancel / Project Close / Move / Core Shutdown
 → 不可变Version/VersionBlock事务
 → 可选state_extract GenerationRun
 → StateProposal列表
-   ├─ proposal_type=entity_state
-   │  └─ 目标：entityId + stateKey + proposedValue
-   └─ proposal_type=arc_milestone
-      └─ 目标：arcMilestoneId + proposedStatus(hit/skipped)
+   ├─ 状态：EntityState / KnowledgeState
+   ├─ 结构：TimelineEvent / CharacterRelationship / Foreshadowing / ArcMilestone
+   └─ 设定：新Entity / CanonFact
 → 作者接受/编辑接受/拒绝
 → 单事务更新对应权威对象
-   ├─ EntityState
-   └─ ArcMilestone.status
+   ├─ Continuity：EntityState / KnowledgeState / TimelineEvent / CharacterRelationship
+   ├─ Narrative Planning：Foreshadowing / ArcMilestone
+   └─ Canon：Entity / CanonFact
 → 生成EndingSnapshot
 → 下一章约束包读取
 ```
 
-pending提案不得修改EntityState或ArcMilestone。弧光一致性校验只读已确认里程碑。
+pending提案不得修改任何权威对象。来源定稿变化后只可拒绝；弧光与语义一致性校验只读作者已确认对象。
 
 ArcMilestone还有作者直接裁决入口：
 

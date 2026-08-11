@@ -283,7 +283,7 @@ interface SemanticValidationOutput {
 - stale快照必须回退权威查询并记录`snapshotSource`。
 - 结果不自动修改正文、设定、状态或弧光。
 
-## 11. 状态与弧光提取
+## 11. 人物与世界整理提取
 
 状态提取输出必须对齐当前StateProposalDraft合同：
 
@@ -310,7 +310,13 @@ type StateProposalOutput =
       actualChapterId: string | null;
       evidence: EvidenceAnchor[];
       confidence: number;
-    };
+    }
+  | KnowledgeStateProposal
+  | TimelineEventProposal
+  | CharacterRelationshipProposal
+  | ForeshadowingProposal
+  | EntityCreateProposal
+  | CanonFactProposal;
 
 interface StateExtractionOutput {
   proposals: StateProposalOutput[];
@@ -326,10 +332,11 @@ interface StateExtractionOutput {
 - EntityState有效期由Core验证章节区间。
 - `arcMilestoneId`必须属于输入项目中状态为`planned`的节点。
 - `hit`必须提供有效`actualChapterId`。
-- Canon变化只生成冲突提示，不进入StateProposal。
+- 新类型按严格判别联合输出，未知字段、类型与目标不匹配或缺少必填字段均整批拒绝。
+- 新Entity和CanonFact只形成待作者裁决建议，模型不得直接写Canon。
 - 无效目标、跨项目引用、无证据、重复目标或非法区间整批拒绝。
-- 输出只进入pending `state_proposals`。
-- pending提案不修改EntityState、ArcMilestone或EndingSnapshot，也不进入后续权威校验上下文。
+- 所有类型统一写入`state_proposals`，以严格`target/proposedValue`判别结构表达目标和值；禁止建立平行Proposal表。
+- pending提案不修改任何权威对象或EndingSnapshot，也不进入后续权威校验上下文。
 - 接受、编辑接受和拒绝继续由作者通过M3-06既有Use Case执行。
 
 ## 12. 节奏分析

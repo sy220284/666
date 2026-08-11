@@ -93,7 +93,9 @@ export function StateProposalPanel({
   const visibleProposals = reviewCatalog
     ? filterAIReviewProposals(reviewCatalog, { status: statusFilter, reviewType: typeFilter })
     : [];
-  const proposalById = new Map(catalog?.proposals.map((proposal) => [proposal.id, proposal]) ?? []);
+  const proposalById = new Map<string, StateProposal>(
+    catalog?.proposals.map((proposal) => [proposal.id, proposal] as const) ?? [],
+  );
 
   useEffect(() => {
     let active = true;
@@ -276,6 +278,12 @@ export function StateProposalPanel({
             <option value="all">全部类型</option>
             <option value="entity_state">人物与世界状态</option>
             <option value="arc_milestone">人物成长节点</option>
+            <option value="knowledge_state">人物知情状态</option>
+            <option value="timeline_event">时间线事件</option>
+            <option value="character_relationship">人物关系</option>
+            <option value="foreshadowing">伏笔进度</option>
+            <option value="entity_create">新人物或设定</option>
+            <option value="canon_fact">设定事实</option>
           </select>
         </label>
       </div>

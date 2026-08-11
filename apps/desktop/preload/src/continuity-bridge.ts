@@ -3,6 +3,8 @@ import {
   CONTINUITY_IPC_CHANNELS,
   ContinuityCatalogResultSchema,
   ContinuityListCommandSchema,
+  CharacterRelationshipInvalidateCommandSchema,
+  CharacterRelationshipSetCommandSchema,
   EntityStateInvalidateCommandSchema,
   EntityStateSetCommandSchema,
   KnowledgeStateInvalidateCommandSchema,
@@ -12,6 +14,8 @@ import {
   type CommandResult,
   type ContinuityCatalog,
   type ContinuityListInput,
+  type CharacterRelationshipInvalidateInput,
+  type CharacterRelationshipSetInput,
   type EntityStateInvalidateInput,
   type EntityStateSetInput,
   type KnowledgeStateInvalidateInput,
@@ -80,6 +84,20 @@ const continuityBridge = {
       CONTINUITY_IPC_CHANNELS.invalidateKnowledgeState,
       KnowledgeStateInvalidateCommandSchema,
       CONTINUITY_COMMANDS.invalidateKnowledgeState,
+      input,
+    ),
+  setCharacterRelationship: (input: CharacterRelationshipSetInput) =>
+    invoke(
+      CONTINUITY_IPC_CHANNELS.setCharacterRelationship,
+      CharacterRelationshipSetCommandSchema,
+      CONTINUITY_COMMANDS.setCharacterRelationship,
+      input,
+    ),
+  invalidateCharacterRelationship: (input: CharacterRelationshipInvalidateInput) =>
+    invoke(
+      CONTINUITY_IPC_CHANNELS.invalidateCharacterRelationship,
+      CharacterRelationshipInvalidateCommandSchema,
+      CONTINUITY_COMMANDS.invalidateCharacterRelationship,
       input,
     ),
 } as const;

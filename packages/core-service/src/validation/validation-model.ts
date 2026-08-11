@@ -77,6 +77,8 @@ export interface IssueRow {
   readonly severity: string;
   readonly rationale: string;
   readonly evidenceIdsJson: string;
+  readonly currentEvidenceIdsJson: string;
+  readonly conflictEvidenceIdsJson: string;
   readonly suggestion: string | null;
   readonly confidence: number | null;
   readonly ruleId: string | null;

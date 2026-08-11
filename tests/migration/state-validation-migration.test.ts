@@ -234,8 +234,10 @@ describe('M4-04 state and validation migration', () => {
       for (const table of [
         'state_proposal_batches',
         'state_proposals',
+        'character_relationships',
         'validation_batches',
         'validation_issues',
+        'validation_exceptions',
         'story_todos',
         'story_comments',
         'generation_input_sources',
@@ -254,6 +256,22 @@ describe('M4-04 state and validation migration', () => {
         .get('generation_result_refs') as { readonly sql: string };
       expect(resultRefSql.sql).toContain("'state_proposal_batch'");
       expect(resultRefSql.sql).toContain("'validation_batch'");
+      const proposalColumns = database
+        .prepare(`SELECT name FROM pragma_table_info('state_proposals') ORDER BY cid`)
+        .all()
+        .map((row) => row.name);
+      expect(proposalColumns).toContain('target_json');
+      expect(proposalColumns).not.toContain('entity_id');
+      expect(
+        database
+          .prepare(
+            `SELECT COUNT(*) AS count FROM sqlite_master WHERE name = 'organization_proposals'`,
+          )
+          .get(),
+      ).toEqual({ count: 0n });
+      expect(
+        database.prepare(`SELECT name FROM pragma_table_info('entity_states')`).all(),
+      ).toContainEqual({ name: 'semantic_kind' });
       expect(
         database
           .prepare(

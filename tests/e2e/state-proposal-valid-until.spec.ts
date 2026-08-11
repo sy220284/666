@@ -168,7 +168,10 @@ test('preserves a finite EntityState interval across the real Electron boundary'
       if (!generated.ok) throw new Error(`PROPOSAL_GENERATE_FAILED:${generated.error.code}`);
       const proposal = generated.data.proposals.find((item) => item.status === 'pending');
       if (!proposal) throw new Error('PROPOSAL_MISSING');
-      if (proposal.validUntilChapterId !== chapter2.id) throw new Error('INTERVAL_END_DROPPED');
+      const proposedValue = proposal.proposedValue as { validUntilChapterId?: string | null };
+      if (proposedValue.validUntilChapterId !== chapter2.id) {
+        throw new Error('INTERVAL_END_DROPPED');
+      }
       return {
         projectId,
         chapter1Id: chapter1.id,
@@ -212,12 +215,17 @@ test('preserves a finite EntityState interval across the real Electron boundary'
         includeResolved: true,
       });
       if (!catalog.ok) throw new Error(`PROPOSAL_LIST_FAILED:${catalog.error.code}`);
+      const listedProposal = catalog.data.proposals[0];
+      if (!listedProposal) throw new Error('PROPOSAL_LIST_MISSING');
+      const proposedValue = listedProposal.proposedValue as {
+        validUntilChapterId?: string | null;
+      };
       return {
         chapter1Source: chapter1.data.snapshotSource,
         chapter1EntityStates: chapter1.data.content.entityStates,
         chapter2Source: chapter2.data.snapshotSource,
         chapter2EntityStates: chapter2.data.content.entityStates,
-        validUntilChapterId: catalog.data.proposals[0]?.validUntilChapterId ?? null,
+        validUntilChapterId: proposedValue.validUntilChapterId ?? null,
       };
     }, seeded);
 

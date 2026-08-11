@@ -9,6 +9,8 @@ import {
   ValidationListCommandSchema,
   ValidationRunRulesCommandSchema,
   ValidationUpdateIssueCommandSchema,
+  ValidationExceptionDisableCommandSchema,
+  ValidationExceptionRememberCommandSchema,
   type CommandResult,
   type StoryCommentAddInput,
   type StoryCommentResolveInput,
@@ -18,6 +20,8 @@ import {
   type ValidationListInput,
   type ValidationRunRulesInput,
   type ValidationUpdateIssueInput,
+  type ValidationExceptionDisableInput,
+  type ValidationExceptionRememberInput,
 } from '@worldforge/contracts';
 import { contextBridge } from 'electron';
 
@@ -80,6 +84,20 @@ const validationBridge = {
       VALIDATION_IPC_CHANNELS.resolveComment,
       StoryCommentResolveCommandSchema,
       VALIDATION_COMMANDS.resolveComment,
+      input,
+    ),
+  rememberException: (input: ValidationExceptionRememberInput) =>
+    invoke(
+      VALIDATION_IPC_CHANNELS.rememberException,
+      ValidationExceptionRememberCommandSchema,
+      VALIDATION_COMMANDS.rememberException,
+      input,
+    ),
+  disableException: (input: ValidationExceptionDisableInput) =>
+    invoke(
+      VALIDATION_IPC_CHANNELS.disableException,
+      ValidationExceptionDisableCommandSchema,
+      VALIDATION_COMMANDS.disableException,
       input,
     ),
 } as const;

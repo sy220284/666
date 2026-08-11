@@ -210,7 +210,8 @@ export function snapshotContent(
   const positions = chapterPositions(connection, projectId);
   const entityRows = connection
     .prepare(
-      `SELECT entity_id AS entityId, state_key AS stateKey, value_json AS valueJson,
+      `SELECT entity_id AS entityId, state_key AS stateKey,
+              semantic_kind AS semanticKind, value_json AS valueJson,
               source_version_id AS sourceVersionId,
               valid_from_chapter_id AS validFromChapterId,
               valid_until_chapter_id AS validUntilChapterId
@@ -221,6 +222,7 @@ export function snapshotContent(
     .all(projectId) as unknown as {
     readonly entityId: string;
     readonly stateKey: string;
+    readonly semanticKind: string;
     readonly valueJson: string;
     readonly sourceVersionId: string;
     readonly validFromChapterId: string;
@@ -243,6 +245,27 @@ export function snapshotContent(
     readonly validFromChapterId: string;
     readonly validUntilChapterId: string | null;
   }[];
+  const relationshipRows = connection
+    .prepare(
+      `SELECT id, from_character_id AS fromCharacterId,
+              to_character_id AS toCharacterId, category, label,
+              source_version_id AS sourceVersionId,
+              valid_from_chapter_id AS validFromChapterId,
+              valid_until_chapter_id AS validUntilChapterId
+         FROM character_relationships
+        WHERE project_id = ? AND record_status = 'current'
+        ORDER BY from_character_id, to_character_id, category, label, id`,
+    )
+    .all(projectId) as unknown as Array<{
+    readonly id: string;
+    readonly fromCharacterId: string;
+    readonly toCharacterId: string;
+    readonly category: string;
+    readonly label: string;
+    readonly sourceVersionId: string;
+    readonly validFromChapterId: string;
+    readonly validUntilChapterId: string | null;
+  }>;
   return EndingSnapshotContentSchema.parse({
     entityStates: entityRows
       .filter((row) =>
@@ -251,6 +274,7 @@ export function snapshotContent(
       .map((row) => ({
         entityId: row.entityId,
         stateKey: row.stateKey,
+        semanticKind: row.semanticKind,
         value: parseJson(row.valueJson),
         sourceVersionId: row.sourceVersionId,
       })),
@@ -263,6 +287,11 @@ export function snapshotContent(
         informationKey: row.informationKey,
         knowledgeStatus: row.knowledgeStatus,
       })),
+    relationships: relationshipRows
+      .filter((row) =>
+        effectiveAt(positions, target, row.validFromChapterId, row.validUntilChapterId),
+      )
+      .map(({ validFromChapterId: _start, validUntilChapterId: _end, ...row }) => row),
     foreshadowings: historicalForeshadowings(connection, projectId, positions, target),
     arcMilestones: historicalArcMilestones(connection, projectId, positions, target),
   });

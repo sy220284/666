@@ -309,29 +309,8 @@ export class EntityCanonService {
   async create(requestId: string, input: EntityCreateInput): Promise<EntityCatalog> {
     const valid = EntityCreateInputSchema.parse(input);
     authorOnly(valid.authority);
-    const name = normalizeEntityName(valid.name);
-    const aliases = normalizeEntityAliases(valid.aliases);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      assertProject(connection, valid.projectId);
-      assertNameAvailable(connection, valid.projectId, valid.entityType, name);
-      const now = this.#clock.now().toISOString();
-      connection
-        .prepare(
-          `INSERT INTO entities(
-             id, project_id, entity_type, name, aliases_json, summary,
-             status, archived_at, created_at, updated_at
-           ) VALUES(?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?)`,
-        )
-        .run(
-          this.#idFactory(),
-          valid.projectId,
-          valid.entityType,
-          name,
-          JSON.stringify(aliases),
-          valid.summary.trim(),
-          now,
-          now,
-        );
+      applyEntityCreate(connection, valid, this.#clock.now().toISOString(), this.#idFactory);
       return readCatalog(connection, { projectId: valid.projectId, includeArchived: true });
     });
   }
@@ -391,42 +370,8 @@ export class EntityCanonService {
   async setFact(requestId: string, input: CanonFactSetInput): Promise<EntityCatalog> {
     const valid = CanonFactSetInputSchema.parse(input);
     authorOnly(valid.authority);
-    const factKey = normalizeFactKey(valid.factKey);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      const entity = entityRow(connection, valid.projectId, valid.entityId);
-      if (entity.status !== 'active') {
-        throw new EntityCanonServiceError(
-          'ENTITY_CONFLICT',
-          'Archived Entities cannot receive new facts.',
-        );
-      }
-      const now = this.#clock.now().toISOString();
-      connection
-        .prepare(
-          `UPDATE canon_facts
-              SET status = 'historical', superseded_at = ?
-            WHERE entity_id = ? AND fact_key = ? AND status = 'current'`,
-        )
-        .run(now, valid.entityId, factKey);
-      connection
-        .prepare(
-          `INSERT INTO canon_facts(
-             id, project_id, entity_id, fact_key, value_json, description,
-             source_type, source_id, status, confirmed_at, superseded_at, created_at
-           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'current', ?, NULL, ?)`,
-        )
-        .run(
-          this.#idFactory(),
-          valid.projectId,
-          valid.entityId,
-          factKey,
-          JSON.stringify(valid.value),
-          valid.description.trim(),
-          valid.sourceType,
-          valid.sourceId,
-          now,
-          now,
-        );
+      applyCanonFact(connection, valid, this.#clock.now().toISOString(), this.#idFactory);
       return readCatalog(connection, { projectId: valid.projectId, includeArchived: true });
     });
   }
@@ -507,4 +452,79 @@ export class EntityCanonService {
       { operation: 'canon.deleteEntity', input: valid },
     );
   }
+}
+
+export function applyEntityCreate(
+  connection: DatabaseSync,
+  valid: EntityCreateInput,
+  now: string,
+  idFactory: () => string,
+): string {
+  const name = normalizeEntityName(valid.name);
+  const aliases = normalizeEntityAliases(valid.aliases);
+  assertProject(connection, valid.projectId);
+  assertNameAvailable(connection, valid.projectId, valid.entityType, name);
+  const entityId = idFactory();
+  connection
+    .prepare(
+      `INSERT INTO entities(
+         id, project_id, entity_type, name, aliases_json, summary,
+         status, archived_at, created_at, updated_at
+       ) VALUES(?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?)`,
+    )
+    .run(
+      entityId,
+      valid.projectId,
+      valid.entityType,
+      name,
+      JSON.stringify(aliases),
+      valid.summary.trim(),
+      now,
+      now,
+    );
+  return entityId;
+}
+
+export function applyCanonFact(
+  connection: DatabaseSync,
+  valid: CanonFactSetInput,
+  now: string,
+  idFactory: () => string,
+): string {
+  const factKey = normalizeFactKey(valid.factKey);
+  const entity = entityRow(connection, valid.projectId, valid.entityId);
+  if (entity.status !== 'active') {
+    throw new EntityCanonServiceError(
+      'ENTITY_CONFLICT',
+      'Archived Entities cannot receive new facts.',
+    );
+  }
+  connection
+    .prepare(
+      `UPDATE canon_facts
+          SET status = 'historical', superseded_at = ?
+        WHERE entity_id = ? AND fact_key = ? AND status = 'current'`,
+    )
+    .run(now, valid.entityId, factKey);
+  const factId = idFactory();
+  connection
+    .prepare(
+      `INSERT INTO canon_facts(
+         id, project_id, entity_id, fact_key, value_json, description,
+         source_type, source_id, status, confirmed_at, superseded_at, created_at
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'current', ?, NULL, ?)`,
+    )
+    .run(
+      factId,
+      valid.projectId,
+      valid.entityId,
+      factKey,
+      JSON.stringify(valid.value),
+      valid.description.trim(),
+      valid.sourceType,
+      valid.sourceId,
+      now,
+      now,
+    );
+  return factId;
 }

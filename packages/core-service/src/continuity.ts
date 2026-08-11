@@ -1,5 +1,7 @@
 import {
   ContinuityListInputSchema,
+  type CharacterRelationshipInvalidateInput,
+  type CharacterRelationshipSetInput,
   type ContinuityCatalog,
   type ContinuityListInput,
   type EntityStateInvalidateInput,
@@ -16,6 +18,10 @@ import {
   type ContinuityServiceOptions,
 } from './continuity-model.js';
 import { readCatalog } from './continuity-read.js';
+import {
+  invalidateCharacterRelationship,
+  setCharacterRelationship,
+} from './continuity-relationship.js';
 import {
   invalidateEntityState,
   invalidateKnowledgeState,
@@ -73,5 +79,19 @@ export class ContinuityService {
     input: KnowledgeStateInvalidateInput,
   ): Promise<ContinuityCatalog> {
     return invalidateKnowledgeState(this.#context, requestId, input);
+  }
+
+  setCharacterRelationship(
+    requestId: string,
+    input: CharacterRelationshipSetInput,
+  ): Promise<ContinuityCatalog> {
+    return setCharacterRelationship(this.#context, requestId, input);
+  }
+
+  invalidateCharacterRelationship(
+    requestId: string,
+    input: CharacterRelationshipInvalidateInput,
+  ): Promise<ContinuityCatalog> {
+    return invalidateCharacterRelationship(this.#context, requestId, input);
   }
 }

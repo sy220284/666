@@ -71,6 +71,8 @@ export function issueRows(database: DatabaseSync, projectId: string): IssueRow[]
               issue.text_quote AS textQuote, issue.range_hint_json AS rangeHintJson,
               issue.issue_type AS issueType, issue.source, issue.severity,
               issue.rationale, issue.evidence_ids_json AS evidenceIdsJson,
+              issue.current_evidence_ids_json AS currentEvidenceIdsJson,
+              issue.conflict_evidence_ids_json AS conflictEvidenceIdsJson,
               issue.suggestion, issue.confidence, issue.rule_id AS ruleId,
               issue.rule_version AS ruleVersion, issue.config_version AS configVersion,
               issue.status, issue.created_at AS createdAt, issue.updated_at AS updatedAt,
@@ -270,6 +272,20 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
         ORDER BY status = 'open' DESC, updated_at DESC, id`,
     )
     .all(projectId) as unknown as CommentRow[];
+  const exceptions = database
+    .prepare(
+      `SELECT id AS exceptionId, project_id AS projectId,
+              exception_type AS exceptionType, scope_type AS scopeType,
+              issue_type AS issueType, validation_issue_id AS validationIssueId,
+              chapter_id AS chapterId, entity_id AS entityId,
+              valid_from_chapter_id AS validFromChapterId,
+              valid_until_chapter_id AS validUntilChapterId,
+              project_rule_key AS projectRuleKey, notes, active,
+              created_at AS createdAt, updated_at AS updatedAt
+         FROM validation_exceptions WHERE project_id = ?
+        ORDER BY active DESC, updated_at DESC, id`,
+    )
+    .all(projectId) as unknown as Array<Readonly<Record<string, unknown>>>;
   return ValidationCatalogSchema.parse({
     projectId,
     batches: batches.map((row) => ({
@@ -302,6 +318,8 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
       severity: row.severity,
       rationale: row.rationale,
       evidenceIds: json(row.evidenceIdsJson),
+      currentEvidenceIds: json(row.currentEvidenceIdsJson),
+      conflictEvidenceIds: json(row.conflictEvidenceIdsJson),
       suggestion: row.suggestion,
       confidence: row.confidence,
       ruleId: row.ruleId,
@@ -328,5 +346,9 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
     })),
     todos,
     comments,
+    exceptions: exceptions.map((exception) => ({
+      ...exception,
+      active: Number(exception['active']) === 1,
+    })),
   });
 }

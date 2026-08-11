@@ -75,6 +75,30 @@ export function entityReferenceBlockers(
     }
   }
 
+  if (tables.includes('state_proposals')) {
+    const countRow = database
+      .prepare(
+        `SELECT COUNT(*) AS count
+           FROM state_proposals
+          WHERE project_id = ?
+            AND (json_extract(target_json, '$.entityId') = ?
+              OR json_extract(target_json, '$.characterId') = ?
+              OR json_extract(target_json, '$.fromCharacterId') = ?
+              OR json_extract(target_json, '$.toCharacterId') = ?)`,
+      )
+      .get(projectId, entityId, entityId, entityId, entityId) as {
+      readonly count: number | bigint;
+    };
+    const count = numberValue(countRow.count);
+    if (count > 0) {
+      blockers.push({
+        source: 'state_proposals.target_json',
+        count,
+        deleteAction: 'RESTRICT',
+      });
+    }
+  }
+
   return blockers.sort((left, right) => left.source.localeCompare(right.source, 'en'));
 }
 
@@ -88,7 +112,10 @@ export function entityReferenceBlockerMessage(blocker: EntityReferenceBlocker): 
       return 'Remove Timeline entity references before permanent deletion.';
     case 'character_arcs.character_id':
       return 'Remove Character Arc references before permanent deletion.';
-    case 'state_proposals.entity_id':
+    case 'character_relationships.from_character_id':
+    case 'character_relationships.to_character_id':
+      return 'Remove CharacterRelationship references before permanent deletion.';
+    case 'state_proposals.target_json':
       return 'StateProposal history retains this Entity; permanent deletion is unavailable while that history exists.';
     default:
       return `Remove ${blocker.source} references before permanent deletion.`;

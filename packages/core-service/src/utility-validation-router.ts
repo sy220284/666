@@ -42,6 +42,16 @@ export async function routeValidationOperation(
         operation.operation,
         await validation.resolveComment(requestId, operation.input),
       );
+    case VALIDATION_COMMANDS.rememberException:
+      return success(
+        operation.operation,
+        await validation.rememberException(requestId, operation.input),
+      );
+    case VALIDATION_COMMANDS.disableException:
+      return success(
+        operation.operation,
+        await validation.disableException(requestId, operation.input),
+      );
     default:
       return null;
   }

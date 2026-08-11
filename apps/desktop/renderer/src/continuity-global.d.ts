@@ -2,6 +2,8 @@ import type {
   CommandResult,
   ContinuityCatalog,
   ContinuityListInput,
+  CharacterRelationshipInvalidateInput,
+  CharacterRelationshipSetInput,
   EntityStateInvalidateInput,
   EntityStateSetInput,
   KnowledgeStateInvalidateInput,
@@ -25,6 +27,12 @@ declare global {
       setKnowledgeState(input: KnowledgeStateSetInput): Promise<CommandResult<ContinuityCatalog>>;
       invalidateKnowledgeState(
         input: KnowledgeStateInvalidateInput,
+      ): Promise<CommandResult<ContinuityCatalog>>;
+      setCharacterRelationship(
+        input: CharacterRelationshipSetInput,
+      ): Promise<CommandResult<ContinuityCatalog>>;
+      invalidateCharacterRelationship(
+        input: CharacterRelationshipInvalidateInput,
       ): Promise<CommandResult<ContinuityCatalog>>;
     };
   }

@@ -185,6 +185,7 @@ test('writes, displays and edits continuity data through the real Electron proce
       '动态状态（1）',
       '时间线事件（1）',
       '知情状态（1）',
+      '人物关系（0）',
     ]);
     await expect(page.locator('[data-continuity-results]')).toContainText('身体状态');
     await expect(page.locator('[data-continuity-results]')).toContainText('南城目击');

@@ -1,8 +1,25 @@
 import { z } from 'zod';
 
-import { CanonAuthoritySchema } from './entity-canon.js';
+import {
+  CanonAuthoritySchema,
+  CanonFactDescriptionSchema,
+  CanonFactKeySchema,
+  EntityAliasesSchema,
+  EntityNameSchema,
+  EntitySummarySchema,
+  EntityTypeSchema,
+} from './entity-canon.js';
 import { ErrorCodeSchema } from './error-codes.js';
-import { EvidenceAnchorSchema, EntityStateKeySchema } from './continuity.js';
+import {
+  CharacterRelationshipCategorySchema,
+  ContinuityKeySchema,
+  EvidenceAnchorSchema,
+  EntityStateSemanticKindSchema,
+  EntityStateKeySchema,
+  KnowledgeStatusSchema,
+  TimelinePrecisionSchema,
+} from './continuity.js';
+import { ForeshadowingStatusSchema } from './narrative-planning.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const STATE_PROPOSAL_IPC_CHANNELS = {
@@ -23,7 +40,17 @@ export const STATE_PROPOSAL_COMMANDS = {
   invalidateDerived: 'stateProposal.invalidateDerived',
 } as const;
 
-export const StateProposalTypeSchema = z.enum(['entity_state', 'arc_milestone']);
+export const StateProposalTypeSchema = z.enum([
+  'entity_state',
+  'knowledge_state',
+  'timeline_event',
+  'character_relationship',
+  'foreshadowing',
+  'arc_milestone',
+  'entity_create',
+  'canon_fact',
+]);
+export const AIReviewProposalTypeSchema = StateProposalTypeSchema;
 export const StateProposalStatusSchema = z.enum(['pending', 'accepted', 'edited', 'rejected']);
 export const StateProposalSourceSchema = z.enum(['rule', 'provider_stub', 'provider']);
 export const LegacyStateProposalSourceSchema = z.enum(['rule', 'provider_stub']);
@@ -55,6 +82,9 @@ export const DerivedChangeTypeSchema = z.enum([
   'event',
   'timeline',
   'foreshadowing',
+  'knowledge',
+  'relationship',
+  'canon',
 ]);
 const EndingSnapshotStaleReasonSchema = z.union([DerivedChangeTypeSchema, z.literal('validation')]);
 export const DerivedInvalidationScopeSchema = z.enum([
@@ -71,10 +101,17 @@ const proposalBase = {
   confidence: z.number().finite().min(0).max(1),
 };
 
+export const EntityStateProposalValueSchema = z.strictObject({
+  value: z.json(),
+  semanticKind: EntityStateSemanticKindSchema.default('custom'),
+  validUntilChapterId: z.uuid().nullable().default(null),
+});
+
 export const EntityStateProposalDraftSchema = z.strictObject({
   proposalType: z.literal('entity_state'),
   entityId: z.uuid(),
   stateKey: EntityStateKeySchema,
+  semanticKind: EntityStateSemanticKindSchema.default('custom'),
   proposedValue: z.json(),
   validUntilChapterId: z.uuid().nullable().default(null),
   ...proposalBase,
@@ -98,24 +135,154 @@ export const ArcMilestoneProposalDraftSchema = z
     }
   });
 
+export const KnowledgeStateProposalValueSchema = z.strictObject({
+  knowledgeStatus: KnowledgeStatusSchema,
+  validUntilChapterId: z.uuid().nullable().default(null),
+  notes: z.string().trim().max(20_000).default(''),
+});
+export const KnowledgeStateProposalDraftSchema = z.strictObject({
+  proposalType: z.literal('knowledge_state'),
+  characterId: z.uuid(),
+  informationKey: ContinuityKeySchema,
+  proposedKnowledge: KnowledgeStateProposalValueSchema,
+  ...proposalBase,
+});
+
+export const TimelineEventProposalValueSchema = z.strictObject({
+  eventId: z.uuid().nullable().default(null),
+  title: z.string().trim().min(1).max(240),
+  startValue: z.string().trim().min(1).max(120),
+  endValue: z.string().trim().min(1).max(120).nullable().default(null),
+  precision: TimelinePrecisionSchema,
+  locationId: z.uuid().nullable().default(null),
+  description: z.string().trim().max(20_000).default(''),
+  participantIds: z.array(z.uuid()).max(200).default([]),
+  witnessIds: z.array(z.uuid()).max(200).default([]),
+  subjectIds: z.array(z.uuid()).max(200).default([]),
+  dependencyIds: z.array(z.uuid()).max(200).default([]),
+});
+export const TimelineEventProposalDraftSchema = z.strictObject({
+  proposalType: z.literal('timeline_event'),
+  proposedEvent: TimelineEventProposalValueSchema,
+  ...proposalBase,
+});
+
+export const CharacterRelationshipProposalValueSchema = z.strictObject({
+  category: CharacterRelationshipCategorySchema,
+  label: z.string().trim().min(1).max(120),
+  validUntilChapterId: z.uuid().nullable().default(null),
+});
+export const CharacterRelationshipProposalDraftSchema = z
+  .strictObject({
+    proposalType: z.literal('character_relationship'),
+    fromCharacterId: z.uuid(),
+    toCharacterId: z.uuid(),
+    proposedRelationship: CharacterRelationshipProposalValueSchema,
+    ...proposalBase,
+  })
+  .refine((value) => value.fromCharacterId !== value.toCharacterId, {
+    path: ['toCharacterId'],
+    message: 'A CharacterRelationship requires two different Characters.',
+  });
+
+export const ForeshadowingProposalValueSchema = z.strictObject({
+  foreshadowingId: z.uuid(),
+  status: ForeshadowingStatusSchema,
+});
+export const ForeshadowingProposalDraftSchema = z.strictObject({
+  proposalType: z.literal('foreshadowing'),
+  proposedForeshadowing: ForeshadowingProposalValueSchema,
+  ...proposalBase,
+});
+
+export const EntityCreateProposalValueSchema = z.strictObject({
+  entityType: EntityTypeSchema,
+  name: EntityNameSchema,
+  aliases: EntityAliasesSchema.default([]),
+  summary: EntitySummarySchema.default(''),
+});
+export const EntityCreateProposalDraftSchema = z.strictObject({
+  proposalType: z.literal('entity_create'),
+  proposedEntity: EntityCreateProposalValueSchema,
+  ...proposalBase,
+});
+
+export const CanonFactProposalValueSchema = z.strictObject({
+  value: z.json(),
+  description: CanonFactDescriptionSchema.default(''),
+});
+export const CanonFactProposalDraftSchema = z.strictObject({
+  proposalType: z.literal('canon_fact'),
+  entityId: z.uuid(),
+  factKey: CanonFactKeySchema,
+  proposedFact: CanonFactProposalValueSchema,
+  ...proposalBase,
+});
+
 export const StateProposalDraftSchema = z.discriminatedUnion('proposalType', [
   EntityStateProposalDraftSchema,
   ArcMilestoneProposalDraftSchema,
+  KnowledgeStateProposalDraftSchema,
+  TimelineEventProposalDraftSchema,
+  CharacterRelationshipProposalDraftSchema,
+  ForeshadowingProposalDraftSchema,
+  EntityCreateProposalDraftSchema,
+  CanonFactProposalDraftSchema,
+]);
+
+export const StateProposalTargetSchema = z.discriminatedUnion('targetType', [
+  z.strictObject({
+    targetType: z.literal('entity_state'),
+    entityId: z.uuid(),
+    stateKey: EntityStateKeySchema,
+  }),
+  z.strictObject({
+    targetType: z.literal('knowledge_state'),
+    characterId: z.uuid(),
+    informationKey: ContinuityKeySchema,
+  }),
+  z.strictObject({
+    targetType: z.literal('timeline_event'),
+    eventId: z.uuid().nullable(),
+  }),
+  z.strictObject({
+    targetType: z.literal('character_relationship'),
+    fromCharacterId: z.uuid(),
+    toCharacterId: z.uuid(),
+    category: CharacterRelationshipCategorySchema,
+    label: z.string().trim().min(1).max(120),
+  }),
+  z.strictObject({
+    targetType: z.literal('foreshadowing'),
+    foreshadowingId: z.uuid(),
+  }),
+  z.strictObject({
+    targetType: z.literal('arc_milestone'),
+    arcMilestoneId: z.uuid(),
+  }),
+  z.strictObject({
+    targetType: z.literal('entity_create'),
+    entityType: EntityTypeSchema,
+    name: EntityNameSchema,
+  }),
+  z.strictObject({
+    targetType: z.literal('canon_fact'),
+    entityId: z.uuid(),
+    factKey: CanonFactKeySchema,
+  }),
 ]);
 
 export const StateProposalSchema = z
   .strictObject({
     id: z.uuid(),
-    batchId: z.uuid().nullable().default(null),
-    generationRunId: z.uuid().nullable().default(null),
+    batchId: z.uuid(),
+    generationRunId: z.uuid().nullable(),
     projectId: ProjectIdSchema,
     chapterId: z.uuid(),
     sourceVersionId: z.uuid(),
     proposalType: StateProposalTypeSchema,
     source: StateProposalSourceSchema,
-    entityId: z.uuid().nullable(),
-    stateKey: EntityStateKeySchema.nullable(),
-    arcMilestoneId: z.uuid().nullable(),
+    target: StateProposalTargetSchema,
     previousValue: z.json().nullable(),
     proposedValue: z.json(),
     evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
@@ -124,30 +291,29 @@ export const StateProposalSchema = z
     freshness: StateProposalFreshnessSchema.default('current'),
     actionability: StateProposalActionabilitySchema.default('accept'),
     resolvedValue: z.json().nullable(),
-    validUntilChapterId: z.uuid().nullable(),
     createdAt: z.iso.datetime(),
     resolvedAt: z.iso.datetime().nullable(),
   })
-  .superRefine((value, context) => {
-    if (value.proposalType === 'arc_milestone' && value.validUntilChapterId !== null) {
+  .superRefine((proposal, context) => {
+    if (proposal.proposalType !== proposal.target.targetType) {
       context.addIssue({
         code: 'custom',
-        path: ['validUntilChapterId'],
-        message: 'ArcMilestone proposals cannot define a chapter validity end.',
+        path: ['target'],
+        message: 'StateProposal target must match its proposal type.',
       });
     }
-    if (value.source === 'provider' && (!value.batchId || !value.generationRunId)) {
-      context.addIssue({
-        code: 'custom',
-        path: ['generationRunId'],
-        message: 'Provider proposals require a batch and GenerationRun.',
-      });
-    }
-    if (value.freshness === 'stale' && value.actionability !== 'reject_only') {
+    if (proposal.freshness === 'stale' && proposal.actionability !== 'reject_only') {
       context.addIssue({
         code: 'custom',
         path: ['actionability'],
         message: 'A stale StateProposal may only remain rejectable.',
+      });
+    }
+    if (proposal.source === 'provider' && proposal.generationRunId === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['generationRunId'],
+        message: 'Provider proposals require a GenerationRun.',
       });
     }
   });
@@ -179,6 +345,7 @@ export const EndingSnapshotContentSchema = z.strictObject({
     z.strictObject({
       entityId: z.uuid(),
       stateKey: EntityStateKeySchema,
+      semanticKind: EntityStateSemanticKindSchema.default('custom'),
       value: z.json(),
       sourceVersionId: z.uuid(),
     }),
@@ -190,6 +357,18 @@ export const EndingSnapshotContentSchema = z.strictObject({
       knowledgeStatus: z.enum(['knows', 'believes', 'suspects', 'misunderstands', 'unknown']),
     }),
   ),
+  relationships: z
+    .array(
+      z.strictObject({
+        id: z.uuid(),
+        fromCharacterId: z.uuid(),
+        toCharacterId: z.uuid(),
+        category: CharacterRelationshipCategorySchema,
+        label: z.string().trim().min(1).max(120),
+        sourceVersionId: z.uuid(),
+      }),
+    )
+    .default([]),
   foreshadowings: z.array(
     z.strictObject({
       id: z.uuid(),
@@ -402,6 +581,8 @@ export const CoreStateProposalResultSchema = z.union([
 ]);
 
 export type StateProposal = z.infer<typeof StateProposalSchema>;
+export type StateProposalDraft = z.infer<typeof StateProposalDraftSchema>;
+export type StateProposalTarget = z.infer<typeof StateProposalTargetSchema>;
 export type StateProposalBatch = z.infer<typeof StateProposalBatchSchema>;
 export type StateProposalCatalog = z.infer<typeof StateProposalCatalogSchema>;
 export type StateProposalGenerateInput = z.infer<typeof StateProposalGenerateInputSchema>;

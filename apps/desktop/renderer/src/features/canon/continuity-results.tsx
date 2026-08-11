@@ -62,6 +62,19 @@ export function ContinuityResults({
           />
         ))}
       </LedgerSection>
+      <LedgerSection title={`人物关系（${catalog?.relationships.length ?? 0}）`}>
+        {catalog?.relationships.map((relationship) => (
+          <LedgerRecord
+            key={relationship.id}
+            title={`${entityName(references, relationship.fromCharacterId)} → ${entityName(references, relationship.toCharacterId)}`}
+            lines={[
+              `${relationship.category} · ${relationship.label}`,
+              recordStatusLabel(relationship.recordStatus),
+              `${chapterName(references, relationship.validFromChapterId)} → ${chapterName(references, relationship.validUntilChapterId)}`,
+            ]}
+          />
+        ))}
+      </LedgerSection>
     </div>
   );
 }

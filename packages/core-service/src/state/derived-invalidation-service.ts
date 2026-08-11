@@ -27,6 +27,9 @@ export function scopesFor(changeType: ChangeType): readonly InvalidationScope[] 
     return ['timeline', 'validation', 'cache'];
   }
   if (changeType === 'foreshadowing') return ['foreshadowing', 'validation', 'cache'];
+  if (changeType === 'knowledge') return ['continuity', 'validation', 'cache'];
+  if (changeType === 'relationship') return ['continuity', 'validation', 'cache'];
+  if (changeType === 'canon') return ['continuity', 'validation', 'cache'];
   return ['continuity', 'validation', 'cache'];
 }
 

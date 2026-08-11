@@ -223,6 +223,16 @@ export async function routePrimaryProjectOperation(
         operation.operation,
         await services.continuity.invalidateKnowledgeState(requestId, operation.input),
       );
+    case CONTINUITY_COMMANDS.setCharacterRelationship:
+      return success(
+        operation.operation,
+        await services.continuity.setCharacterRelationship(requestId, operation.input),
+      );
+    case CONTINUITY_COMMANDS.invalidateCharacterRelationship:
+      return success(
+        operation.operation,
+        await services.continuity.invalidateCharacterRelationship(requestId, operation.input),
+      );
     default:
       return null;
   }

@@ -6,12 +6,13 @@ import { validateGovernanceAuthorities } from '../../scripts/governance-self-che
 import { validateLicenseMetadata } from '../../scripts/license-policy.mjs';
 
 describe('统一风险矩阵', () => {
-  it('Renderer变化触发产品、性能、安全、UI和Windows IME风险', () => {
+  it('Renderer变化触发产品、性能、安全、可靠性、UI和Windows IME风险', () => {
     expect(riskPlan(['apps/desktop/renderer/src/App.tsx'])).toMatchObject({
       fullSuite: true,
       dependencyAudit: false,
       applicationSecurity: true,
       performance: true,
+      reliability: true,
       uiAcceptance: true,
       windowsIme: true,
     });
@@ -23,7 +24,19 @@ describe('统一风险矩阵', () => {
       dependencyAudit: false,
       applicationSecurity: false,
       performance: false,
+      reliability: false,
       governanceMeta: true,
+    });
+  });
+
+  it('可靠性测试和核心运行时代码变化触发Reliability', () => {
+    expect(riskPlan(['tests/reliability/file-lease-stress.test.ts'])).toMatchObject({
+      fullSuite: true,
+      reliability: true,
+    });
+    expect(riskPlan(['packages/core-service/src/recovery/file-lease.ts'])).toMatchObject({
+      fullSuite: true,
+      reliability: true,
     });
   });
 
@@ -35,6 +48,7 @@ describe('统一风险矩阵', () => {
       dependencyAudit: true,
       applicationSecurity: true,
       performance: true,
+      reliability: true,
       governanceMeta: true,
     });
   });
@@ -95,14 +109,16 @@ describe('Active文档一致性', () => {
 
 describe('Meta-Governance权威链', () => {
   const sources = {
-    quality: 'name: quality / quality\nquality / release-audit\nquality / package-smoke',
+    quality:
+      'name: quality / quality\nquality / release-audit\nquality / package-smoke\nci-risk-policy.mjs reliability\nreliability_suite:',
     security: 'name: security',
     performance: 'name: performance',
     release:
       'node scripts/ui-acceptance-gate.mjs\npnpm release:gate\ntest "$GITHUB_REF_NAME" = main',
     mainVerification:
       'name: main-verification\nname: synchronize-integrations\nmain/work/governance branch inventory',
-    riskPolicy: "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' 'windows-ime'",
+    riskPolicy:
+      "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' reliability: 'reliability' 'windows-ime'",
     riskMatrix: JSON.stringify({
       schemaVersion: 1,
       routes: Object.fromEntries(
@@ -110,6 +126,7 @@ describe('Meta-Governance权威链', () => {
           'dependencyAudit',
           'applicationSecurity',
           'performance',
+          'reliability',
           'packageSmoke',
           'toolchainExport',
           'uiAcceptance',

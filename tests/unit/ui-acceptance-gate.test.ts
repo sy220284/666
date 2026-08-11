@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   evaluateUiAcceptanceState,
+  filterScopeChanges,
+  scopeMatches,
   validateUiAcceptanceEvidence,
 } from '../../scripts/ui-acceptance-gate.mjs';
 
@@ -13,9 +15,9 @@ const temporaryDirectories: string[] = [];
 
 function acceptanceState(overrides: Record<string, unknown> = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     taskId: 'M8-07',
-    updatedAt: '2026-07-30T15:46:00+08:00',
+    updatedAt: '2026-08-11T13:11:00+08:00',
     releaseBlockingSeverities: ['P0', 'P1'],
     items: [
       {
@@ -24,6 +26,7 @@ function acceptanceState(overrides: Record<string, unknown> = {}) {
         status: 'PASS',
         description: '正式中文名称通过',
         verifiedCommit: 'a'.repeat(40),
+        scope: ['apps/desktop/renderer/**'],
         evidence: ['manual:windows-ime'],
         waiver: null,
       },
@@ -39,11 +42,12 @@ afterEach(async () => {
 });
 
 describe('UI acceptance gate', () => {
-  it('accepts release-blocking items only when PASS has reachable evidence', () => {
+  it('accepts release-blocking items only when PASS remains fresh and evidence is reachable', () => {
     expect(
       evaluateUiAcceptanceState(acceptanceState(), {
         head: 'b'.repeat(40),
         isReachable: () => true,
+        changedSinceVerification: () => [],
       }),
     ).toEqual([]);
   });
@@ -57,6 +61,7 @@ describe('UI acceptance gate', () => {
           status: 'FAIL',
           description: '深色主题未通过',
           verifiedCommit: null,
+          scope: ['apps/desktop/renderer/**'],
           evidence: [],
           waiver: null,
         },
@@ -73,8 +78,47 @@ describe('UI acceptance gate', () => {
       evaluateUiAcceptanceState(acceptanceState(), {
         head: 'b'.repeat(40),
         isReachable: () => false,
+        changedSinceVerification: () => [],
       }),
     ).toContain('CHN-TERM-001: verifiedCommit is not reachable from the release commit');
+  });
+
+  it('blocks stale PASS when a scoped file changed after verifiedCommit', () => {
+    expect(
+      evaluateUiAcceptanceState(acceptanceState(), {
+        head: 'b'.repeat(40),
+        isReachable: () => true,
+        changedSinceVerification: () => ['apps/desktop/renderer/src/App.tsx'],
+      }),
+    ).toContain(
+      'CHN-TERM-001: acceptance is stale because scoped files changed after verifiedCommit: apps/desktop/renderer/src/App.tsx',
+    );
+  });
+
+  it('requires every PASS to declare a freshness scope', () => {
+    const state = acceptanceState();
+    delete (state.items[0] as { scope?: string[] }).scope;
+    expect(evaluateUiAcceptanceState(state)).toContain(
+      'CHN-TERM-001: PASS requires a non-empty freshness scope',
+    );
+  });
+
+  it('matches exact and recursive UI freshness scopes', () => {
+    expect(scopeMatches('apps/desktop/renderer/src/App.tsx', 'apps/desktop/renderer/**')).toBe(
+      true,
+    );
+    expect(scopeMatches('scripts/ui-acceptance-gate.mjs', 'scripts/ui-acceptance-gate.mjs')).toBe(
+      true,
+    );
+    expect(scopeMatches('packages/core-service/src/core.ts', 'apps/desktop/renderer/**')).toBe(
+      false,
+    );
+    expect(
+      filterScopeChanges(
+        ['apps/desktop/renderer/src/App.tsx', 'packages/core-service/src/core.ts'],
+        ['apps/desktop/renderer/**'],
+      ),
+    ).toEqual(['apps/desktop/renderer/src/App.tsx']);
   });
 
   it('blocks expired accepted-risk waivers', () => {
@@ -87,6 +131,7 @@ describe('UI acceptance gate', () => {
           status: 'ACCEPTED_RISK',
           description: '非阻断限制',
           verifiedCommit: null,
+          scope: [],
           evidence: [],
           waiver: {
             reason: '设备暂不可用',
@@ -98,7 +143,9 @@ describe('UI acceptance gate', () => {
     });
 
     expect(
-      evaluateUiAcceptanceState(state, { now: Date.parse('2026-07-30T00:00:00.000Z') }),
+      evaluateUiAcceptanceState(state, {
+        now: Date.parse('2026-07-30T00:00:00.000Z'),
+      }),
     ).toContain('P2-LIMITATION: accepted-risk waiver has expired');
   });
 
@@ -114,6 +161,7 @@ describe('UI acceptance gate', () => {
           status: 'PASS',
           description: '布局通过',
           verifiedCommit: 'a'.repeat(40),
+          scope: ['apps/desktop/renderer/**'],
           evidence: ['evidence.txt', 'run:30500000000', 'artifact:display-matrix'],
           waiver: null,
         },

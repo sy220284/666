@@ -35,15 +35,48 @@ function isAncestor(ancestor, descendant) {
   }
 }
 
+export function scopeMatches(file, scopeEntry) {
+  const normalizedFile = String(file ?? '').replaceAll('\\', '/');
+  const normalizedScope = String(scopeEntry ?? '').replaceAll('\\', '/');
+  if (!normalizedFile || !normalizedScope) return false;
+  if (normalizedScope.endsWith('/**')) {
+    return normalizedFile.startsWith(normalizedScope.slice(0, -2));
+  }
+  return normalizedFile === normalizedScope;
+}
+
+export function filterScopeChanges(files, scope) {
+  if (!Array.isArray(scope) || scope.length === 0) return [];
+  return files
+    .map((file) =>
+      String(file ?? '')
+        .replaceAll('\\', '/')
+        .trim(),
+    )
+    .filter(Boolean)
+    .filter((file) => scope.some((entry) => scopeMatches(file, entry)));
+}
+
+function changedFilesBetween(ancestor, descendant) {
+  if (!COMMIT_PATTERN.test(ancestor ?? '') || !COMMIT_PATTERN.test(descendant ?? '')) return [];
+  const output = execFileSync('git', ['diff', '--name-only', `${ancestor}..${descendant}`], {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+  return output ? output.split(/\r?\n/u) : [];
+}
+
 export function evaluateUiAcceptanceState(state, options = {}) {
   const errors = [];
   const releaseSeverities = new Set(state?.releaseBlockingSeverities ?? ['P0', 'P1']);
   const items = Array.isArray(state?.items) ? state.items : [];
   const head = options.head ?? null;
   const reachable = options.isReachable ?? (() => true);
+  const changedSinceVerification = options.changedSinceVerification ?? (() => []);
 
-  if (!state || state.schemaVersion !== 1) {
-    errors.push('UI acceptance state must use schemaVersion 1');
+  if (!state || state.schemaVersion !== 2) {
+    errors.push('UI acceptance state must use schemaVersion 2');
   }
   if (typeof state?.taskId !== 'string' || !/^M\d+-\d{2}$/u.test(state.taskId)) {
     errors.push('UI acceptance state must identify a valid taskId');
@@ -86,6 +119,16 @@ export function evaluateUiAcceptanceState(state, options = {}) {
       }
       if (!Array.isArray(item?.evidence) || item.evidence.length === 0) {
         errors.push(`${id}: PASS requires at least one evidence reference`);
+      }
+      if (!Array.isArray(item?.scope) || item.scope.length === 0) {
+        errors.push(`${id}: PASS requires a non-empty freshness scope`);
+      } else if (head && COMMIT_PATTERN.test(item?.verifiedCommit ?? '')) {
+        const stalePaths = changedSinceVerification(item.verifiedCommit, item.scope, head);
+        if (stalePaths.length > 0) {
+          errors.push(
+            `${id}: acceptance is stale because scoped files changed after verifiedCommit: ${stalePaths.slice(0, 8).join(', ')}`,
+          );
+        }
       }
     }
 
@@ -136,6 +179,8 @@ export async function runUiAcceptanceGate() {
     ...evaluateUiAcceptanceState(state, {
       head,
       isReachable: isAncestor,
+      changedSinceVerification: (verifiedCommit, scope, releaseHead) =>
+        filterScopeChanges(changedFilesBetween(verifiedCommit, releaseHead), scope),
     }),
     ...(await validateUiAcceptanceEvidence(state)),
   ];

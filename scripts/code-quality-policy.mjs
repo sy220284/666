@@ -27,6 +27,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     toolchainAuthoritySource,
     toolchainExport,
     qualityWorkflow,
+    riskMatrixSource,
     editorConfig,
     gitAttributes,
   ] = await Promise.all([
@@ -38,6 +39,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     read('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json'),
     read('.github/workflows/toolchain-export.yml'),
     read('.github/workflows/quality.yml'),
+    read('docs/process/CI_RISK_MATRIX.json'),
     read('.editorconfig'),
     read('.gitattributes'),
   ]);
@@ -45,6 +47,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   const manifest = JSON.parse(manifestSource);
   const coveragePolicy = JSON.parse(coverageBaseline);
   const toolchainAuthority = JSON.parse(toolchainAuthoritySource);
+  const riskMatrix = JSON.parse(riskMatrixSource);
   const violations = [];
   const formatCommands = [manifest.scripts?.format ?? '', manifest.scripts?.['format:check'] ?? ''];
 
@@ -73,6 +76,9 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     'node scripts/ci-policy.mjs',
     'node scripts/check-coverage-policy.mjs',
     'node scripts/code-quality-policy.mjs',
+    'pnpm check:license',
+    'pnpm check:docs',
+    'pnpm check:governance',
   ]);
 
   requireTokens(violations, 'eslint.config.mjs', eslintConfig, [
@@ -168,8 +174,18 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     'toolchain_export:',
     'uses: ./.github/workflows/toolchain-export.yml',
     "github.event.pull_request.head.ref == 'work'",
-    'docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json',
+    'ci-risk-policy.mjs toolchain-export',
   ]);
+  if (
+    !Array.isArray(riskMatrix?.routes?.toolchainExport?.any) ||
+    !riskMatrix.routes.toolchainExport.any.includes(
+      '^docs/process/CURRENT_WORKSPACE_TOOLCHAIN\\.(?:json|md)$',
+    )
+  ) {
+    violations.push(
+      'CI_RISK_MATRIX.json: toolchainExport must cover CURRENT_WORKSPACE_TOOLCHAIN authority files',
+    );
+  }
 
   requireTokens(violations, '.editorconfig', editorConfig, [
     'charset = utf-8',
@@ -191,6 +207,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     dualTrackCoverage: true,
     fileLengthGate: false,
     reusableToolchainExport: true,
+    unifiedRiskRouting: true,
   };
 }
 
@@ -198,6 +215,6 @@ const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   const result = await inspectCodeQualityPolicy();
   console.log(
-    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, reusable toolchain export enabled, file length non-blocking.`,
+    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, reusable toolchain export enabled, unified risk routing enabled, file length non-blocking.`,
   );
 }

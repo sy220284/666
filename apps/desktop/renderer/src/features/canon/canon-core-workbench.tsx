@@ -7,7 +7,12 @@ import { NarrativePlanningPanel } from './narrative-planning-panel.js';
 import { StateProposalPanel } from './state-proposal-panel.js';
 import { StoryKnowledgePanel } from './story-knowledge-panel.js';
 
-export type CanonSection = 'entities' | 'continuity' | 'narrative' | 'proposals' | 'knowledge';
+export type CanonSection =
+  | 'entities'
+  | 'continuity'
+  | 'narrative'
+  | 'proposals'
+  | 'knowledge';
 
 interface CanonWorkbenchProps {
   readonly bridge: RendererBridgeAdapter;

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ErrorCodeSchema } from './error-codes.js';
 import { EntityStatusSchema, EntityTypeSchema } from './entity-canon.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
+import { storyKnowledgeHistoryMetadataShape } from './story-knowledge-history.js';
 import { StoryTodoSchema } from './validation.js';
 
 export const STORY_KNOWLEDGE_IPC_CHANNELS = {
@@ -232,6 +233,7 @@ export const StoryKnowledgeProjectionSchema = z.discriminatedUnion('view', [
   }),
   z.strictObject({
     ...projectionBase,
+    ...storyKnowledgeHistoryMetadataShape,
     view: z.literal('history'),
     chapterId: z.uuid(),
     items: z.array(StoryKnowledgeHistoryItemSchema).max(100),

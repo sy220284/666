@@ -1,7 +1,7 @@
 # WorldForge Quality System V2
 
 > 状态：Active  
-> 生效阶段：Phase 2B  
+> 生效阶段：Phase 3  
 > 适用范围：产品代码、测试、数据库、桌面运行时、AI协议、UI体验、构建发布与仓库治理
 
 ## 1. 目标
@@ -125,7 +125,7 @@ Phase 2A增加确定性的连续序列不变量测试，用于覆盖单次示例
 
 Phase 2B继续把Correctness提升到跨版本、跨生命周期与失败恢复：所有历史Project Schema必须能安全迁移到当前最新版并在二次打开时保持幂等；高频作品切换与保存/关闭交错必须保持作品身份和最新正文；事务或恢复流程中途失败后必须保留最后一个已提交权威状态，并允许安全重试。
 
-Property-Based生成测试已经在Testkit建立确定性seed重放、独立run seed、Arbitrary生成与counterexample shrinking，并先接入Draft Revision/CAS真实SQLite状态机；高风险Mutation Test继续在Phase 2B评估，优先对象为Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release和AI结构化协议。引入新依赖前必须同步锁文件和供应链验证，不手工伪造依赖状态。
+Property-Based生成测试已经在Testkit建立确定性seed重放、独立run seed、Arbitrary生成与counterexample shrinking，并先接入Draft Revision/CAS真实SQLite状态机。Targeted Mutation Test已经对Draft CAS、File Lease release fencing和Release main-verification fail-closed三个权威保护条件建立真实变异验证；baseline必须先绿，任何survivor都会阻断Reliability Gate，源码在每个mutant后必须原字节恢复。引入新依赖前仍必须同步锁文件和供应链验证，不手工伪造依赖状态。
 
 ## 7. G4：Security
 
@@ -151,9 +151,19 @@ Phase 4增加：
 
 ```bash
 pnpm test:reliability
+pnpm test:mutation
 ```
 
-`quality-core.yml`提供独立`reliability-tests` Job；PR由统一Risk Plan决定是否执行，正式Release使用默认`reliability_suite: true`，不得显式关闭。
+`quality-core.yml`提供独立`reliability-tests` Job；PR由统一Risk Plan决定是否执行，正式Release使用默认`reliability_suite: true`，不得显式关闭。`test:reliability`在可靠性不变量通过后继续执行targeted Mutation Test，因此Mutation作为同一内部Gate的一部分，不新增服务器Required Context。
+
+Mutation机器真源：
+
+```text
+docs/process/MUTATION_TEST_MATRIX.json
+scripts/mutation-test.mjs
+```
+
+Mutation runner先在未变异源码上执行全部killer tests，baseline必须成功；随后单次只注入一个mutant，search必须在源码中恰好出现一次，对应killer test必须失败才视为killed。任何survivor、search漂移、进程异常或源码恢复失败都按fail-closed处理。每个mutant都在`finally`恢复源码，Reliability Job结束前再由clean-tree检查兜底。
 
 仓库既有Testkit已经具备事务中断、真实SQLite Busy、可重复SQLite Full和SQLite Header Corruption等Fault Harness；Recovery、Migration、Draft CAS和File Lease也已有专项测试。Phase 2不复制这些基础设施，重点补系统级不变量和重复竞态。
 
@@ -162,7 +172,7 @@ Phase 2A已新增：
 - Draft CAS连续Unicode写入序列：每轮成功提交Revision只增加1；旧Revision覆盖必须失败；reopen必须保持最新提交；Patch Log只记录真实成功提交。
 - Daily Backup File Lease重复竞争：多路竞争始终只有当前owner；release后successor可接管；旧owner在token被替换后必须被fence，且不得删除successor锁。
 
-Phase 2B当前新增：
+Phase 2B已新增：
 
 - 全历史Project Migration Matrix：从每一个旧Schema版本迁移到当前latest，要求项目身份、名称、完整migration history和foreign key完整性保持；首次迁移必须生成恢复副本，二次reopen不得重复迁移或新增恢复副本。
 - 高频作品切换：连续16轮排队执行`open A → close A → open B → close B`，验证lifecycle tail严格保持调用顺序、active project最终释放、两部作品正文不串写。
@@ -172,6 +182,7 @@ Phase 2B当前新增：
 - Backup Cleanup部分失败重放：多目标清理在前序目标已提交删除、后续目标数据库删除瞬时失败时，必须把已完成目标持久化到cleanup journal，同时恢复未提交目标的SQLite文件、metadata和数据库记录一致性；使用同一cleanup requestId与planHash跨RecoveryService重试必须跳过已完成目标并继续剩余删除，最终不得残留`.deleting-*`文件。
 - Backup创建补偿残留自修复：已验证SQLite与metadata进入终态后若数据库注册失败，且补偿删除也失败，必须保留可验证残片与真实失败记录；恢复文件系统条件后，同一backup requestId与相同意图跨RecoveryService重试必须复用终态文件、修复唯一`backup_records`记录、resolve原失败且不得生成`.partial-*`残片。
 - Property-Based Draft CAS：Testkit使用确定性seed、独立run派生、可重放生成和greedy shrinking；Draft CAS生成Unicode、Emoji、CR/LF、Tab及结构字符序列，每个run与shrink candidate都使用独立真实SQLite项目，持续验证Revision单调递增、正文正规化、旧Revision拒绝、reopen一致性与Patch Log计数。
+- Targeted Mutation Test：首批三个mutant分别禁用Draft stale-revision guard、File Lease release前第二次successor token确认、Release main-verification强制条件；三个mutant均已被对应killer test真实杀死。File Lease还新增确定性TOCTOU竞态测试，在第一次release inspect后立即安装successor token，确保第二次确认缺失时测试必然失败。
 
 已有覆盖继续复用而不重复建设：
 
@@ -179,12 +190,6 @@ Phase 2B当前新增：
 - Provider断流后的partial安全状态；
 - 显式取消后Provider Abort与迟到delta隔离；
 - Core受控重启、失联强制终止与旧进程事件隔离。
-
-Phase 2B剩余重点：
-
-```text
-高风险Mutation Test
-```
 
 关键不变量：
 
@@ -211,7 +216,7 @@ evidence[]
 
 Release Gate会比较`verifiedCommit → 当前发布提交`。只要`scope`覆盖的文件在验收后发生变化，该PASS自动成为stale并阻断发布，直到重新完成真实验收并更新证据。
 
-Windows真实中文输入法由Risk Plan触发。后续Phase 3增加Visual Regression和自动Accessibility扫描。
+Windows真实中文输入法由Risk Plan触发。Phase 3增加Visual Regression和自动Accessibility扫描。
 
 ## 10. G7：Artifact / Release
 
@@ -320,9 +325,7 @@ pnpm check:docs
 - Release默认强制Reliability；
 - Workflow与Meta-Governance永久策略。
 
-### Phase 2B — 当前实施
-
-已落地：
+### Phase 2B — 已闭环
 
 - 全历史Project Migration Matrix；
 - 高频跨作品Lifecycle队列；
@@ -332,13 +335,11 @@ pnpm check:docs
 - Backup Cleanup部分失败journal续跑、同requestId跨实例重放与三方状态收敛；
 - Backup创建注册失败、补偿删除失败后的同requestId跨实例自修复与失败记录收敛；
 - Property-Based确定性生成、seed重放、counterexample shrinking与Draft CAS真实SQLite属性验证；
+- Targeted Mutation Test机器真源、baseline防伪、survivor阻断、源码恢复检查与三项高风险mutant真实kill；
+- File Lease release TOCTOU确定性竞态验证；
 - 复用现有Backup/Restore、Provider断流和Core Restart覆盖，避免重复测试。
 
-继续推进：
-
-- 高风险Mutation Test。
-
-### Phase 3 — Experience
+### Phase 3 — 当前实施
 
 - Visual Regression；
 - Accessibility自动扫描；

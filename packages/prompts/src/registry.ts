@@ -271,10 +271,7 @@ export const mergePrompt = definePrompt<MergePromptInput, ChapterCandidateOutput
   },
 );
 
-function validationPrompt(
-  identity: PromptIdentity<'validate'>,
-  system: string,
-) {
+function validationPrompt(identity: PromptIdentity<'validate'>, system: string) {
   return definePrompt<SemanticValidationPromptInput, SemanticValidationOutput>(identity, {
     inputSchema: SemanticValidationPromptInputSchema,
     outputSchema: SemanticValidationOutputSchema,
@@ -303,10 +300,7 @@ export const validatePrompt = validationPrompt(
   '你是小说连续性审阅员。确定性规则已先行运行；你只补充无法机械判断的语义问题，包括人物行为或语言偏离已确认设定、使用尚未知情的信息、人物关系无过渡跳变、伏笔提前泄露、世界规则冲突和因果链缺环。每条必须同时引用正文或权威事实证据，使用“可能”和“建议核对”等审慎措辞；无证据不得标为高风险；不修改正文或设定。',
 );
 
-function extractionPrompt(
-  identity: PromptIdentity<'state_extract'>,
-  system: string,
-) {
+function extractionPrompt(identity: PromptIdentity<'state_extract'>, system: string) {
   return definePrompt<StateExtractionPromptInput, StateExtractionOutput>(identity, {
     inputSchema: StateExtractionPromptInputSchema,
     outputSchema: StateExtractionOutputSchema,

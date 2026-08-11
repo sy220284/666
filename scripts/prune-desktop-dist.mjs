@@ -36,12 +36,18 @@ async function pathExists(filePath) {
 
 async function runtimeFiles(directory) {
   const files = [];
-  const entries = await readdir(directory, { withFileTypes: true, recursive: true });
-  for (const entry of entries) {
-    if (!entry.isFile() || !isRuntimeJavaScript(entry.name)) continue;
-    const parent = entry.parentPath ?? entry.path;
-    files.push(path.join(parent, entry.name));
+  async function visit(currentDirectory) {
+    const entries = await readdir(currentDirectory, { withFileTypes: true });
+    for (const entry of entries) {
+      const entryPath = path.join(currentDirectory, entry.name);
+      if (entry.isDirectory()) {
+        await visit(entryPath);
+      } else if (entry.isFile() && isRuntimeJavaScript(entry.name)) {
+        files.push(entryPath);
+      }
+    }
   }
+  await visit(directory);
   return files;
 }
 

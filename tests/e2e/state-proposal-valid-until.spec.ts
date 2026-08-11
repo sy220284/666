@@ -215,15 +215,17 @@ test('preserves a finite EntityState interval across the real Electron boundary'
         includeResolved: true,
       });
       if (!catalog.ok) throw new Error(`PROPOSAL_LIST_FAILED:${catalog.error.code}`);
-      const proposedValue = catalog.data.proposals[0]?.proposedValue as
-        | { validUntilChapterId?: string | null }
-        | undefined;
+      const listedProposal = catalog.data.proposals[0];
+      if (!listedProposal) throw new Error('PROPOSAL_LIST_MISSING');
+      const proposedValue = listedProposal.proposedValue as {
+        validUntilChapterId?: string | null;
+      };
       return {
         chapter1Source: chapter1.data.snapshotSource,
         chapter1EntityStates: chapter1.data.content.entityStates,
         chapter2Source: chapter2.data.snapshotSource,
         chapter2EntityStates: chapter2.data.content.entityStates,
-        validUntilChapterId: proposedValue?.validUntilChapterId ?? null,
+        validUntilChapterId: proposedValue.validUntilChapterId ?? null,
       };
     }, seeded);
 

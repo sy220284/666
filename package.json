@@ -12,8 +12,8 @@
   },
   "scripts": {
     "build": "pnpm -r --if-present build && node scripts/prune-desktop-dist.mjs",
-    "package": "node scripts/prune-desktop-dist.mjs && node scripts/package-desktop.mjs",
-    "package:foundation": "node scripts/prune-desktop-dist.mjs && node scripts/package-foundation.mjs",
+    "package": "node scripts/package-desktop.mjs",
+    "package:foundation": "node scripts/package-foundation.mjs",
     "release:check": "node scripts/release-tool.mjs check",
     "release:gate": "node scripts/release-tool.mjs gate",
     "release:checksums": "node scripts/release-tool.mjs checksums",

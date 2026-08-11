@@ -202,6 +202,15 @@ Phase 2B已新增：
 
 性能继续以真实作者流程和P50/P95/P99趋势为主，覆盖大作品、启动、打开、切章、Autosave、搜索、备份、恢复和AI上下文组装。
 
+Phase 3真实大作品核心交互性能门已接入现有独立Performance权威，机器入口与Evidence为：
+
+```text
+tests/performance/phase3-large-project-performance.test.ts
+test-results/performance/phase3-large-project.json
+```
+
+真实Fixture固定为10卷、500章、每章约3000中文字符（正文合计不少于150万字符）、150实体及当前Canon Fact、200伏笔、50人物弧光和100 Manual Versions。Fixture构造时间不计入指标，测试直接复用Frozen与既有机器预算，不建立第二套阈值。Ready CI run `31545126270` / Artifact `9122181787` 已验证：project reopen 37.57ms / 3000ms；跨章Draft open P95 0.53ms / 800ms；Autosave P95 1.93ms / 150ms；FTS rebuild 472.58ms / 10000ms；FTS query P95 4.44ms / 200ms；Constraint Package P95 5.03ms / 1000ms，六项全部通过并由`performance`永久Context阻断。备份/恢复目前没有Frozen数值阻断预算，继续只做真实趋势与后续预算收敛，不凭空增加毫秒阈值。
+
 ## 9. G6：Product Experience
 
 UI验收状态使用Schema 2。
@@ -364,10 +373,11 @@ pnpm check:docs
 
 - Linux 1280×800 Visual Regression：M8-07四主题稳定基线、双独立全绿Artifact provenance、严格SHA-256/尺寸阻断、actual PNG诊断与Unit判定覆盖。
 - Accessibility自动验证：首页/新建作品Modal/写作工作台高置信扫描、Accessible Name与DOM语义规则、Modal焦点圈/Tab/Escape回焦、Unit判定覆盖与真实Electron E2E阻断。
+- 真实大作品核心交互性能门：10卷/500章/≥150万字符/150实体/200伏笔/50人物弧/100版本真实SQLite Fixture，覆盖reopen、跨章open、Autosave、FTS rebuild/query与AI Constraint Package，并复用现有Performance永久Context阻断。
 
 继续推进：
 
-- 大作品性能；
+- 大作品备份/恢复趋势与阻断预算收敛；
 - Memory Leak；
 - 三平台体验矩阵。
 

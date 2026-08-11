@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "status": "calibration-required",
+  "gcPasses": 3,
+  "draftSteadyState": {
+    "warmupOperations": 1200,
+    "batches": 5,
+    "operationsPerBatch": 250,
+    "budget": null
+  },
+  "projectLifecycle": {
+    "warmupCycles": 600,
+    "batches": 5,
+    "cyclesPerBatch": 100,
+    "budget": null
+  }
+}

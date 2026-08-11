@@ -6,10 +6,7 @@ import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter
 import { useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
-import {
-  CanonWorkbench as CanonCoreWorkbench,
-  type CanonSection,
-} from './canon-core-workbench.js';
+import { CanonWorkbench as CanonCoreWorkbench, type CanonSection } from './canon-core-workbench.js';
 import { ContinuityRelationshipEditor } from './continuity-relationship-editor.js';
 import { NarrativeRelationshipEditor } from './narrative-relationship-editor.js';
 
@@ -107,9 +104,7 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
           <h2>目标伏笔</h2>
           {target.status === 'loading' ? <p>正在读取目标伏笔…</p> : null}
           {target.status === 'failed' ? <p>{target.message}</p> : null}
-          {target.status === 'missing' ? (
-            <p>目标伏笔已经变化或被删除，系统保留来源上下文。</p>
-          ) : null}
+          {target.status === 'missing' ? <p>目标伏笔已经变化或被删除，系统保留来源上下文。</p> : null}
           {target.status === 'ready' ? (
             <article>
               <strong>{target.foreshadowing.title}</strong>

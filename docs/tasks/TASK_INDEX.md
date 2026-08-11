@@ -94,7 +94,7 @@ Runtime IMPLEMENTED
 | M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)        | M8-04                    | Verified |
 | M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)              | M8-05                    | Verified |
 | M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md) | M8-06                    | Verified |
-| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | 开发：M8-06；封版：M8-07 | Verified |
+| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | M8-05                    | Verified |
 | M8-09 | [`V1.0稳定性与生命周期治理`](M8/M8-09_V1_STABILITY_HARDENING.md)                      | M8-08                    | Verified |
 
 ### M9 V1.1架构拆分治理
@@ -150,10 +150,10 @@ Runtime IMPLEMENTED
 | ------ | -------------------------------------------------------------------------------------- | ------ | ----------- |
 | M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | Implemented |
 | M11-02 | [`统一 AI 审阅底座`](M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md)                      | M11-01 | Implemented |
-| M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md) | M11-02 | In Progress |
-| M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md) | M11-03 | Planned |
-| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md) | M11-04 | Planned |
-| M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md) | M11-05 | Planned |
+| M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md)                | M11-02 | Implemented |
+| M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md)                  | M11-03 | Planned     |
+| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md)                                              | M11-04 | Planned     |
+| M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md)             | M11-05 | Planned     |
 
 ## 3. 被吸收的需求来源
 
@@ -170,7 +170,7 @@ Runtime IMPLEMENTED
 | M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md)                     | M5     | Removed（absorbed） | M4-04    |
 | M5-06 | [`真实状态提取与StateProposal接入`](M5/M5-06_STATE_EXTRACTION_PROPOSAL_INTEGRATION.md) | M5     | Removed（absorbed） | M4-04    |
 | M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATUS_VALIDATION_TODOS.md)                | M6     | Removed（absorbed） | M4-04    |
-| M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md)                 | M6     | Removed（absorbed） | M4-04    |
+| M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md)                | M6     | Removed（absorbed） | M4-04    |
 | M6-03 | [`全项目搜索与安全批量替换`](M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md)                  | M6     | Removed（absorbed） | M4-04    |
 | M6-04 | [`网文章奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md)                        | M6     | Removed（absorbed） | M4-04    |
 | M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md)                                | M6     | Removed（absorbed） | M4-04    |

@@ -177,7 +177,9 @@ test('keeps AI review pending until the author accepts it and then exposes the e
         ],
       });
       if (!generated.ok) throw new Error(`PROPOSAL_GENERATE_FAILED:${generated.error.code}`);
-      const proposal = generated.data.proposals.find((item) => item.status === 'pending');
+      const proposal = generated.data.proposals.find(
+        (item) => item.status === 'pending' && item.proposalType === 'entity_state',
+      );
       if (!proposal) throw new Error('PROPOSAL_MISSING');
       const organizationProposal = generated.data.proposals.find(
         (item) => item.status === 'pending' && item.proposalType === 'entity_create',

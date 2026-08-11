@@ -125,7 +125,7 @@ Phase 2A增加确定性的连续序列不变量测试，用于覆盖单次示例
 
 Phase 2B继续把Correctness提升到跨版本、跨生命周期与失败恢复：所有历史Project Schema必须能安全迁移到当前最新版并在二次打开时保持幂等；高频作品切换与保存/关闭交错必须保持作品身份和最新正文；事务或恢复流程中途失败后必须保留最后一个已提交权威状态，并允许安全重试。
 
-真正的Property-Based生成器与高风险Mutation Test继续在Phase 2B评估，优先对象为Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release和AI结构化协议。引入新依赖前必须同步锁文件和供应链验证，不手工伪造依赖状态。
+Property-Based生成测试已经在Testkit建立确定性seed重放、独立run seed、Arbitrary生成与counterexample shrinking，并先接入Draft Revision/CAS真实SQLite状态机；高风险Mutation Test继续在Phase 2B评估，优先对象为Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release和AI结构化协议。引入新依赖前必须同步锁文件和供应链验证，不手工伪造依赖状态。
 
 ## 7. G4：Security
 
@@ -171,6 +171,7 @@ Phase 2B当前新增：
 - Restore瞬时故障重试：恢复副本完成数据库复制后注入一次故障，要求staging/target完整清理、源作品继续保持活动且正文不变；使用同一restore requestId与相同意图重试必须成功，并得到唯一可写恢复副本。
 - Backup Cleanup部分失败重放：多目标清理在前序目标已提交删除、后续目标数据库删除瞬时失败时，必须把已完成目标持久化到cleanup journal，同时恢复未提交目标的SQLite文件、metadata和数据库记录一致性；使用同一cleanup requestId与planHash跨RecoveryService重试必须跳过已完成目标并继续剩余删除，最终不得残留`.deleting-*`文件。
 - Backup创建补偿残留自修复：已验证SQLite与metadata进入终态后若数据库注册失败，且补偿删除也失败，必须保留可验证残片与真实失败记录；恢复文件系统条件后，同一backup requestId与相同意图跨RecoveryService重试必须复用终态文件、修复唯一`backup_records`记录、resolve原失败且不得生成`.partial-*`残片。
+- Property-Based Draft CAS：Testkit使用确定性seed、独立run派生、可重放生成和greedy shrinking；Draft CAS生成Unicode、Emoji、CR/LF、Tab及结构字符序列，每个run与shrink candidate都使用独立真实SQLite项目，持续验证Revision单调递增、正文正规化、旧Revision拒绝、reopen一致性与Patch Log计数。
 
 已有覆盖继续复用而不重复建设：
 
@@ -182,7 +183,6 @@ Phase 2B当前新增：
 Phase 2B剩余重点：
 
 ```text
-真正Property-Based生成测试
 高风险Mutation Test
 ```
 
@@ -331,11 +331,11 @@ pnpm check:docs
 - Restore瞬时故障清理与同意图安全重试；
 - Backup Cleanup部分失败journal续跑、同requestId跨实例重放与三方状态收敛；
 - Backup创建注册失败、补偿删除失败后的同requestId跨实例自修复与失败记录收敛；
+- Property-Based确定性生成、seed重放、counterexample shrinking与Draft CAS真实SQLite属性验证；
 - 复用现有Backup/Restore、Provider断流和Core Restart覆盖，避免重复测试。
 
 继续推进：
 
-- Property-Based生成测试；
 - 高风险Mutation Test。
 
 ### Phase 3 — Experience

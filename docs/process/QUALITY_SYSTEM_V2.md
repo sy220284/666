@@ -50,7 +50,7 @@ performance
 机器权威：
 
 ```text
-.github/governance/risk-matrix.json
+docs/process/CI_RISK_MATRIX.json
 scripts/ci-risk-policy.mjs
 ```
 

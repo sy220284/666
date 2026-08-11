@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
-const matrixPath = path.join(root, '.github', 'governance', 'risk-matrix.json');
+const matrixPath = path.join(root, 'docs', 'process', 'CI_RISK_MATRIX.json');
 
 function normalized(file) {
   return String(file ?? '')

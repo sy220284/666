@@ -94,7 +94,7 @@ Runtime IMPLEMENTED
 | M8-05 | [`运行时硬化与文档统一同步`](M8/M8-05_RUNTIME_HARDENING_DOCUMENTATION_SYNC.md)        | M8-04                    | Verified |
 | M8-06 | [`发布资格与任务治理硬化`](M8/M8-06_RELEASE_QUALIFICATION_GOVERNANCE.md)              | M8-05                    | Verified |
 | M8-07 | [`中文作者体验治理闭环与产品发布验收硬化`](M8/M8-07_CHINESE_EXPERIENCE_GOVERNANCE.md) | M8-06                    | Verified |
-| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | M8-05                    | Verified |
+| M8-08 | [`V1.0最终质量治理与封版闭环`](M8/M8-08_V1_FINAL_GOVERNANCE_CLOSURE.md)               | 开发：M8-06；封版：M8-07 | Verified |
 | M8-09 | [`V1.0稳定性与生命周期治理`](M8/M8-09_V1_STABILITY_HARDENING.md)                      | M8-08                    | Verified |
 
 ### M9 V1.1架构拆分治理
@@ -109,7 +109,7 @@ Runtime IMPLEMENTED
 | `M9-05` | [`AR-05 Canon拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#6-ar-05-canon拆分)                                            | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-06` | [`AR-06 Planning拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#7-ar-06-planning拆分)                                      | M9-03内部AR-02     | Removed（absorbed by M9-03） |
 | `M9-07` | [`AR-07 AppShell拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分)                                      | M9-03内部AR-04—06  | Removed（absorbed by M9-03） |
-| `M9-08` | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08-contracts拆分)                                    | M9-03内部基线      | Removed（absorbed by M9-03） |
+| `M9-08` | [`AR-08 Contracts拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#9-ar-08contracts拆分)                                    | M9-03内部基线      | Removed（absorbed by M9-03） |
 | `M9-09` | [`AR-09 Preload拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#10-ar-09-preload拆分)                                       | M9-03内部AR-08     | Removed（absorbed by M9-03） |
 | `M9-10` | [`AR-10 Main IPC拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#11-ar-10-main-ipc拆分)                                     | M9-03内部AR-08、09 | Removed（absorbed by M9-03） |
 | `M9-11` | [`AR-11 State Proposal与Generation拆分`](M9/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#12-ar-11-state-proposal与generation拆分) | M9-03内部基线      | Removed（absorbed by M9-03） |
@@ -150,10 +150,10 @@ Runtime IMPLEMENTED
 | ------ | -------------------------------------------------------------------------------------- | ------ | ----------- |
 | M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | Implemented |
 | M11-02 | [`统一 AI 审阅底座`](M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md)                      | M11-01 | Implemented |
-| M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md)                | M11-02 | Implemented |
-| M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md)                  | M11-03 | Planned     |
-| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md)                                              | M11-04 | Planned     |
-| M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md)             | M11-05 | Planned     |
+| M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md) | M11-02 | Implemented |
+| M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md) | M11-03 | Planned |
+| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md) | M11-04 | Planned |
+| M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md) | M11-05 | Planned |
 
 ## 3. 被吸收的需求来源
 
@@ -161,7 +161,7 @@ Runtime IMPLEMENTED
 
 | 原ID  | 来源文件                                                                               | 原阶段 | 独立执行状态        | 统一归属 |
 | ----- | -------------------------------------------------------------------------------------- | ------ | ------------------- | -------- |
-| M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md)         | M4     | Removed（absorbed） | M4-04    |
+| M4-05 | [`GenerationRun、流式运行与模型支持档案`](M4/M4-05_GENERATION_RUNTIME_EVAL.md#5-ar-04-writing章节会话状态机)                    | M9-03内部AR-03     | Removed（absorbed） | M4-04    |
 | M5-00 | [`作者工作流与产品体验收口`](M5/M5-00_AUTHOR_WORKFLOW_PRODUCT_EXPERIENCE.md)           | M5     | Removed（absorbed） | M4-04    |
 | M5-01 | [`T0多候选骨架`](M5/M5-01_T0_SKELETON.md)                                              | M5     | Removed（absorbed） | M4-04    |
 | M5-02 | [`T1章节扩写`](M5/M5-02_T1_CHAPTER_GENERATION.md)                                      | M5     | Removed（absorbed） | M4-04    |
@@ -170,14 +170,14 @@ Runtime IMPLEMENTED
 | M5-05 | [`候选审阅、采用与冲突工作台`](M5/M5-05_CANDIDATE_REVIEW_APPLY.md)                     | M5     | Removed（absorbed） | M4-04    |
 | M5-06 | [`真实状态提取与StateProposal接入`](M5/M5-06_STATE_EXTRACTION_PROPOSAL_INTEGRATION.md) | M5     | Removed（absorbed） | M4-04    |
 | M6-01 | [`确定性/统计校验与修订待办`](M6/M6-01_RULE_STATUS_VALIDATION_TODOS.md)                | M6     | Removed（absorbed） | M4-04    |
-| M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md)                | M6     | Removed（absorbed） | M4-04    |
+| M6-02 | [`AI语义与人物弧光一致性校验`](M6/M6-02_AI_SEMANTIC_ARC_VALIDATION.md)                 | M6     | Removed（absorbed） | M4-04    |
 | M6-03 | [`全项目搜索与安全批量替换`](M6/M6-03_PROJECT_SEARCH_SAFE_REPLACE.md)                  | M6     | Removed（absorbed） | M4-04    |
 | M6-04 | [`网文章奏与连载指标`](M6/M6-04_GENRE_RHYTHM_SERIAL_METRICS.md)                        | M6     | Removed（absorbed） | M4-04    |
 | M6-05 | [`DOCX安全导入与多格式导出`](M6/M6-05_DOCX_TRANSFER.md)                                | M6     | Removed（absorbed） | M4-04    |
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md)              | M6     | Removed（absorbed） | M4-04    |
 | M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md)              | M7     | Removed（absorbed） | M8-02    |
 | M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md)         | M7     | Removed（absorbed） | M8-02    |
-| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md)        | M7     | Removed（absorbed） | M8-02    |
+| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md)     | M7     | Removed（absorbed） | M8-02    |
 | M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md)       | M8     | Removed（absorbed） | M8-02    |
 | M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md)        | M8     | Removed（absorbed） | M8-02    |
 

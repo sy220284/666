@@ -42,15 +42,15 @@ Runtime IMPLEMENTED
 
 | ID    | 任务卡                                                                         | 依赖         | 状态     |
 | ----- | ------------------------------------------------------------------------------ | ------------ | -------- |
-| M1-01 | [`app.sqlite、应用设置与最近项目`](M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md)   | 无                         | Verified |
-| M1-02 | [`项目工作空间、路径边界与只读打开`](M1/M1-02_PROJECT_WORKSPACE_PATHS.md)      | M1-01                      | Verified |
-| M1-03 | [`卷与章节基础生命周期`](M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md)                 | M1-02                      | Verified |
-| M1-04 | [`Draft、Tiptap与中文输入`](M1/M1-04_DRAFT_EDITOR_IME.md)                      | M1-03                      | Verified |
-| M1-05 | [`Block Patch、内容Hash与Revision`](M1/M1-05_BLOCK_PATCH_REVISION.md)          | M1-04                      | Verified |
-| M1-06 | [`自动保存、字数与当前章查找`](M1/M1-06_AUTOSAVE_STATS_FIND.md)                | M1-05                      | Verified |
-| M1-07 | [`手动Version、定稿与历史恢复`](M1/M1-07_MANUAL_VERSION_FINALIZE.md)           | M1-06                      | Verified |
-| M1-08 | [`基础恢复点、完整性检查与只读恢复`](M1/M1-08_RECOVERY_READONLY_FOUNDATION.md) | M1-02、M0-03               | Verified |
-| M1-09 | [`TXT与Markdown基础导入导出`](M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md)              | M1-07、M1-08               | Verified |
+| M1-01 | [`app.sqlite、应用设置与最近项目`](M1/M1-01_APP_SETTINGS_RECENT_PROJECTS.md)   | 无           | Verified |
+| M1-02 | [`项目工作空间、路径边界与只读打开`](M1/M1-02_PROJECT_WORKSPACE_PATHS.md)      | M1-01        | Verified |
+| M1-03 | [`卷与章节基础生命周期`](M1/M1-03_VOLUME_CHAPTER_LIFECYCLE.md)                 | M1-02        | Verified |
+| M1-04 | [`Draft、Tiptap与中文输入`](M1/M1-04_DRAFT_EDITOR_IME.md)                      | M1-03        | Verified |
+| M1-05 | [`Block Patch、内容Hash与Revision`](M1/M1-05_BLOCK_PATCH_REVISION.md)          | M1-04        | Verified |
+| M1-06 | [`自动保存、字数与当前章查找`](M1/M1-06_AUTOSAVE_STATS_FIND.md)                | M1-05        | Verified |
+| M1-07 | [`手动Version、定稿与历史恢复`](M1/M1-07_MANUAL_VERSION_FINALIZE.md)           | M1-06        | Verified |
+| M1-08 | [`基础恢复点、完整性检查与只读恢复`](M1/M1-08_RECOVERY_READONLY_FOUNDATION.md) | M1-02、M0-03 | Verified |
+| M1-09 | [`TXT与Markdown基础导入导出`](M1/M1-09_TEXT_IMPORT_EXPORT_MVP.md)              | M1-07、M1-08 | Verified |
 
 ### M2 编辑安全与版本核心
 
@@ -146,14 +146,14 @@ Runtime IMPLEMENTED
 
 ### M11 产品体验与 AI 创作协同
 
-| ID     | 任务卡                                                                                           | 依赖   | 状态        |
-| ------ | ------------------------------------------------------------------------------------------------ | ------ | ----------- |
-| M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)               | M10-22 | Implemented |
-| M11-02 | [`统一 AI 审阅底座`](M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md)                                | M11-01 | Implemented |
-| M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md)                          | M11-02 | Planned     |
-| M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md)                            | M11-03 | Planned     |
-| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md)                                                        | M11-04 | Planned     |
-| M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md)                       | M11-05 | Planned     |
+| ID     | 任务卡                                                                                 | 依赖   | 状态        |
+| ------ | -------------------------------------------------------------------------------------- | ------ | ----------- |
+| M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | Implemented |
+| M11-02 | [`统一 AI 审阅底座`](M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md)                      | M11-01 | Implemented |
+| M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md) | M11-02 | Planned |
+| M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md) | M11-03 | Planned |
+| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md) | M11-04 | Planned |
+| M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md) | M11-05 | Planned |
 
 ## 3. 被吸收的需求来源
 
@@ -177,7 +177,7 @@ Runtime IMPLEMENTED
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md)              | M6     | Removed（absorbed） | M4-04    |
 | M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md)              | M7     | Removed（absorbed） | M8-02    |
 | M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md)         | M7     | Removed（absorbed） | M8-02    |
-| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md)        | M7     | Removed（absorbed） | M8-02    |
+| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分) | M7 | Removed（absorbed） | M8-02 |
 | M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md)       | M8     | Removed（absorbed） | M8-02    |
 | M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md)        | M8     | Removed（absorbed） | M8-02    |
 

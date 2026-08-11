@@ -81,10 +81,7 @@ function recordMetric(
 
 function createChapterText(index: number): string {
   const marker = index % 25 === 0 ? SEARCH_PHRASE : '普通长篇章节';
-  const seed = `${marker}。第${String(index + 1).padStart(
-    3,
-    '0',
-  )}章用于真实大作品性能基线，人物行动、伏笔推进与场景细节持续展开。`;
+  const seed = `${marker}。第${String(index + 1).padStart(3, '0')}章用于真实大作品性能基线，人物行动、伏笔推进与场景细节持续展开。`;
   return seed
     .repeat(Math.ceil(CHAPTER_CHARACTERS / seed.length))
     .slice(0, CHAPTER_CHARACTERS);
@@ -167,11 +164,7 @@ async function seedLargeProject(harness: Harness): Promise<{
          ) VALUES(?, ?, ?, 1024, 'paragraph', ?, '{}', 'manual', 0, ?, 0)`,
       );
 
-      for (
-        let volumeIndex = 0;
-        volumeIndex < VOLUME_COUNT;
-        volumeIndex += 1
-      ) {
+      for (let volumeIndex = 0; volumeIndex < VOLUME_COUNT; volumeIndex += 1) {
         const volumeId = randomUUID();
         insertVolume.run(
           volumeId,
@@ -259,8 +252,7 @@ async function seedLargeProject(harness: Harness): Promise<{
       );
       for (let index = 0; index < FORESHADOWING_COUNT; index += 1) {
         const from = chapters[index * 2]!;
-        const to =
-          chapters[Math.min(CHAPTER_COUNT - 1, index * 2 + 80)]!;
+        const to = chapters[Math.min(CHAPTER_COUNT - 1, index * 2 + 80)]!;
         insertForeshadowing.run(
           randomUUID(),
           project.projectId,

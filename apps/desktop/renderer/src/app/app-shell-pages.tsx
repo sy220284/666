@@ -164,6 +164,8 @@ export function AppShellPages(props: AppShellPagesProps) {
           readOnly={readOnly}
           section={props.canonSection}
           selectedEntityId={props.selection.entityId}
+          selectedChapterId={props.selection.chapterId}
+          onNavigate={props.onNavigateToAuthorTarget}
           onSectionChange={props.onCanonSectionChange}
           onReturn={() => void props.onReturnToAuthorSource()}
         />

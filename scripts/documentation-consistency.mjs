@@ -33,7 +33,7 @@ export function validateActiveDocumentation(documents) {
     'quality / quality',
     'security',
     'performance',
-    'synchronize-integrations',
+    'Integration Branch Synchronization',
   ]);
   requireMarkers(errors, 'RELEASE_QUALIFICATION', documents.release ?? '', [
     'ReleaseAcceptance',

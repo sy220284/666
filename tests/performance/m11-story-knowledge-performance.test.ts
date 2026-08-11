@@ -69,22 +69,14 @@ async function measureStoryKnowledge(chapterCount: (typeof chapterCounts)[number
         const start = Number(maximum.value);
         const insert = connection.prepare(
           `INSERT INTO chapters(
-             id, volume_id, title, status, order_key, final_version_id,
-             target_word_min, target_word_max, created_at, updated_at, deleted_at
-           ) VALUES (?, ?, ?, 'draft', ?, NULL, NULL, NULL, ?, ?, NULL)`,
+             id, volume_id, title, status, order_key, target_word_min,
+             target_word_max, active_draft_id, final_version_id, deleted_at
+           ) VALUES (?, ?, ?, 'writing', ?, NULL, NULL, NULL, NULL, NULL)`,
         );
-        const timestamp = clock.now().toISOString();
         for (let index = 0; index < chapterCount - 1; index += 1) {
           const chapterId = randomUUID();
           inserted.push(chapterId);
-          insert.run(
-            chapterId,
-            volume.id,
-            `性能章${index + 2}`,
-            start + index + 1,
-            timestamp,
-            timestamp,
-          );
+          insert.run(chapterId, volume.id, `性能章${index + 2}`, start + index + 1);
         }
         return true;
       });

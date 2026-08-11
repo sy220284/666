@@ -32,6 +32,10 @@ function continuationRequestKey(projectId: string, panel: string): string {
   return `project.saveContinuation:{"panel":"${panel}","projectId":"${projectId}"}`;
 }
 
+function continuationLaneKey(projectId: string): string {
+  return `project.saveContinuation:${projectId}`;
+}
+
 interface ContinuationFixture {
   readonly projectId: string;
   readonly chapterId: string;
@@ -54,6 +58,7 @@ describe('M4-04 continuation request coordination', () => {
     const coordinator = new BridgeRequestCoordinator();
     const firstGate = deferred<CommandResult<string>>();
     const started: string[] = [];
+    const laneKey = continuationLaneKey('project-1');
 
     const first = coordinator.run(
       continuationRequestKey('project-1', 'editor'),
@@ -61,7 +66,7 @@ describe('M4-04 continuation request coordination', () => {
         started.push('editor');
         return firstGate.promise;
       },
-      { mode: 'replace' },
+      { mode: 'replace', laneKey },
     );
 
     await vi.waitFor(() => expect(started).toEqual(['editor']));
@@ -72,7 +77,7 @@ describe('M4-04 continuation request coordination', () => {
         started.push('versions');
         return success('request-versions', 'versions');
       },
-      { mode: 'replace' },
+      { mode: 'replace', laneKey },
     );
     const latest = coordinator.run(
       continuationRequestKey('project-1', 'candidates'),
@@ -80,7 +85,7 @@ describe('M4-04 continuation request coordination', () => {
         started.push('candidates');
         return success('request-candidates', 'candidates');
       },
-      { mode: 'replace' },
+      { mode: 'replace', laneKey },
     );
 
     await expect(middle).resolves.toEqual({ state: 'stale', generation: 2 });
@@ -109,7 +114,7 @@ describe('M4-04 continuation request coordination', () => {
         started.push('project-1');
         return firstProjectGate.promise;
       },
-      { mode: 'replace' },
+      { mode: 'replace', laneKey: continuationLaneKey('project-1') },
     );
     const secondProject = coordinator.run(
       continuationRequestKey('project-2', 'editor'),
@@ -117,7 +122,7 @@ describe('M4-04 continuation request coordination', () => {
         started.push('project-2');
         return success('request-project-2', 'project-2');
       },
-      { mode: 'replace' },
+      { mode: 'replace', laneKey: continuationLaneKey('project-2') },
     );
 
     await expect(secondProject).resolves.toMatchObject({
@@ -134,7 +139,7 @@ describe('M4-04 continuation request coordination', () => {
     });
   });
 
-  it('does not collapse malformed continuation keys into a shared fallback lane', async () => {
+  it('does not collapse replace requests without a lane into a shared fallback lane', async () => {
     const coordinator = new BridgeRequestCoordinator();
     const firstGate = deferred<CommandResult<string>>();
     const started: string[] = [];
@@ -196,6 +201,7 @@ describe('M4-04 continuation request coordination', () => {
     const versions = derivePanelSwitchInput(tracker.committedInput(), 'versions');
     expect(versions).not.toBeNull();
     if (!versions) return;
+    const laneKey = continuationLaneKey(versions.projectId);
 
     const versionsRequest = coordinator.run(
       continuationRequestKey(versions.projectId, versions.panel),
@@ -205,7 +211,7 @@ describe('M4-04 continuation request coordination', () => {
         persisted.push('versions');
         return result;
       },
-      { mode: 'replace' },
+      { mode: 'replace', laneKey },
     );
     await vi.waitFor(() => expect(started).toEqual(['versions']));
 
@@ -220,7 +226,7 @@ describe('M4-04 continuation request coordination', () => {
         persisted.push('editor');
         return success('request-editor-restored', 'editor');
       },
-      { mode: 'replace' },
+      { mode: 'replace', laneKey },
     );
 
     versionsGate.resolve(success('request-versions', 'versions'));

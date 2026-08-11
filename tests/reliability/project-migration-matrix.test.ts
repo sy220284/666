@@ -60,10 +60,7 @@ describe('reliability: full project migration matrix', () => {
       for (let historicalVersion = 1; historicalVersion < latestVersion; historicalVersion += 1) {
         const suffix = historicalVersion.toString().padStart(2, '0');
         const historicalMigrationsDirectory = path.join(root, `project-migrations-v${suffix}`);
-        await materializeProjectMigrationsThrough(
-          historicalVersion,
-          historicalMigrationsDirectory,
-        );
+        await materializeProjectMigrationsThrough(historicalVersion, historicalMigrationsDirectory);
         const historicalWorkspace = new ProjectWorkspaceService({
           projectMigrationsDirectory: historicalMigrationsDirectory,
           projectMigrationRecoveryDirectory: path.join(root, `historical-recovery-v${suffix}`),
@@ -98,9 +95,7 @@ describe('reliability: full project migration matrix', () => {
 
         const persisted = currentWorkspace.readProject(project.projectId, (database) => {
           const projectRow = database
-            .prepare(
-              'SELECT id, name, schema_version AS schemaVersion FROM projects WHERE id = ?',
-            )
+            .prepare('SELECT id, name, schema_version AS schemaVersion FROM projects WHERE id = ?')
             .get(project.projectId) as
             | { readonly id: string; readonly name: string; readonly schemaVersion: number }
             | undefined;
@@ -133,10 +128,7 @@ describe('reliability: full project migration matrix', () => {
         const recoveryFiles = await readdir(recoveryDirectory);
         expect(recoveryFiles).toEqual([
           expect.stringMatching(
-            new RegExp(
-              `^project-v${historicalVersion}-to-v${latestVersion}-.*\\.sqlite$`,
-              'u',
-            ),
+            new RegExp(`^project-v${historicalVersion}-to-v${latestVersion}-.*\\.sqlite$`, 'u'),
           ),
         ]);
 

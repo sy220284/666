@@ -9,6 +9,27 @@ import {
 
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
+const CHAPTER_ASSIST_CHARACTER_LIMIT = 20;
+
+export type StoryKnowledgeProjectionServiceErrorCode =
+  | 'STORY_KNOWLEDGE_NOT_FOUND'
+  | 'STORY_KNOWLEDGE_INVALID'
+  | 'STORY_KNOWLEDGE_INVARIANT';
+
+export class StoryKnowledgeProjectionServiceError extends Error {
+  readonly code: StoryKnowledgeProjectionServiceErrorCode;
+
+  constructor(
+    code: StoryKnowledgeProjectionServiceErrorCode,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = 'StoryKnowledgeProjectionServiceError';
+    this.code = code;
+  }
+}
+
 interface EntityRow {
   readonly id: string;
   readonly entityType: string;
@@ -34,8 +55,8 @@ interface TimelineRow {
   readonly title: string;
   readonly chapterId: string;
   readonly chapterTitle: string;
-  readonly startValue: number;
-  readonly endValue: number | null;
+  readonly startValue: string;
+  readonly endValue: string | null;
   readonly precision: string;
   readonly locationId: string | null;
 }
@@ -58,14 +79,22 @@ interface ArcMilestoneRow {
   readonly status: string;
   readonly plannedChapterId: string | null;
   readonly actualChapterId: string | null;
-  readonly sortIndex: number;
+  readonly sortIndex: number | bigint;
 }
 
 function parseJson(value: string): unknown {
-  return JSON.parse(value) as unknown;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch (error) {
+    throw new StoryKnowledgeProjectionServiceError(
+      'STORY_KNOWLEDGE_INVARIANT',
+      'Persisted Story Knowledge JSON is invalid.',
+      { cause: error },
+    );
+  }
 }
 
-function entity(connection: DatabaseSync, projectId: string, entityId: string): EntityRow {
+function character(connection: DatabaseSync, projectId: string, entityId: string): EntityRow {
   const row = connection
     .prepare(
       `SELECT id, entity_type AS entityType, name, summary, status
@@ -73,15 +102,37 @@ function entity(connection: DatabaseSync, projectId: string, entityId: string): 
         WHERE project_id = ? AND id = ?`,
     )
     .get(projectId, entityId) as unknown as EntityRow | undefined;
-  if (!row) throw new Error('STORY_KNOWLEDGE_ENTITY_NOT_FOUND');
+  if (!row) {
+    throw new StoryKnowledgeProjectionServiceError(
+      'STORY_KNOWLEDGE_NOT_FOUND',
+      'The requested Story Knowledge entity was not found.',
+    );
+  }
+  if (row.entityType !== 'character') {
+    throw new StoryKnowledgeProjectionServiceError(
+      'STORY_KNOWLEDGE_INVALID',
+      'Character projections require a Character entity.',
+    );
+  }
   return row;
 }
 
-function chapterExists(connection: DatabaseSync, projectId: string, chapterId: string): void {
+function assertChapter(connection: DatabaseSync, projectId: string, chapterId: string): void {
   const row = connection
-    .prepare(`SELECT 1 AS found FROM chapters WHERE project_id = ? AND id = ?`)
-    .get(projectId, chapterId) as unknown as { readonly found: number } | undefined;
-  if (!row) throw new Error('STORY_KNOWLEDGE_CHAPTER_NOT_FOUND');
+    .prepare(
+      `SELECT 1 AS found
+         FROM chapters chapter
+         JOIN volumes volume ON volume.id = chapter.volume_id
+        WHERE chapter.id = ? AND volume.project_id = ?
+          AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
+    )
+    .get(chapterId, projectId) as unknown as { readonly found: number } | undefined;
+  if (!row) {
+    throw new StoryKnowledgeProjectionServiceError(
+      'STORY_KNOWLEDGE_NOT_FOUND',
+      'The requested Story Knowledge chapter was not found.',
+    );
+  }
 }
 
 function relationships(
@@ -91,29 +142,31 @@ function relationships(
   chapterId: string | null,
   limit: number,
 ): { readonly items: RelationshipRow[]; readonly truncated: boolean } {
-  const args: Array<string | number> = [projectId, characterId, characterId];
   const chapterFilter = chapterId
     ? `AND EXISTS (
          SELECT 1
-           FROM chapters target
-           JOIN volumes target_volume ON target_volume.id = target.volume_id
+           FROM chapters anchor_chapter
+           JOIN volumes anchor_volume ON anchor_volume.id = anchor_chapter.volume_id
            JOIN chapters start_chapter ON start_chapter.id = relationship.valid_from_chapter_id
            JOIN volumes start_volume ON start_volume.id = start_chapter.volume_id
            LEFT JOIN chapters end_chapter ON end_chapter.id = relationship.valid_until_chapter_id
            LEFT JOIN volumes end_volume ON end_volume.id = end_chapter.volume_id
-          WHERE target.project_id = relationship.project_id
-            AND target.id = ?
+          WHERE anchor_chapter.id = ? AND anchor_volume.project_id = relationship.project_id
+            AND anchor_chapter.deleted_at IS NULL AND anchor_volume.deleted_at IS NULL
             AND (
-              start_volume.order_key < target_volume.order_key OR
-              (start_volume.order_key = target_volume.order_key AND start_chapter.order_key <= target.order_key)
+              start_volume.order_key < anchor_volume.order_key OR
+              (start_volume.order_key = anchor_volume.order_key
+                AND start_chapter.order_key <= anchor_chapter.order_key)
             )
             AND (
               relationship.valid_until_chapter_id IS NULL OR
-              target_volume.order_key < end_volume.order_key OR
-              (target_volume.order_key = end_volume.order_key AND target.order_key < end_chapter.order_key)
+              anchor_volume.order_key < end_volume.order_key OR
+              (anchor_volume.order_key = end_volume.order_key
+                AND anchor_chapter.order_key < end_chapter.order_key)
             )
        )`
     : `AND relationship.record_status = 'current'`;
+  const args: Array<string | number> = [projectId, characterId, characterId];
   if (chapterId) args.push(chapterId);
   args.push(limit + 1);
   const rows = connection
@@ -127,8 +180,12 @@ function relationships(
               relationship.valid_from_chapter_id AS validFromChapterId,
               relationship.valid_until_chapter_id AS validUntilChapterId
          FROM character_relationships relationship
-         JOIN entities source ON source.id = relationship.from_character_id
-         JOIN entities target ON target.id = relationship.to_character_id
+         JOIN entities source
+           ON source.id = relationship.from_character_id
+          AND source.project_id = relationship.project_id
+         JOIN entities target
+           ON target.id = relationship.to_character_id
+          AND target.project_id = relationship.project_id
         WHERE relationship.project_id = ?
           AND relationship.record_status <> 'invalid'
           AND (relationship.from_character_id = ? OR relationship.to_character_id = ?)
@@ -153,17 +210,21 @@ function timelineSide(
   const before = direction === 'before';
   const characterJoin = characterId
     ? `JOIN timeline_event_entities event_entity
-         ON event_entity.event_id = event.id AND event_entity.entity_id = ?`
+         ON event_entity.event_id = event.id
+        AND event_entity.project_id = event.project_id
+        AND event_entity.entity_id = ?`
     : '';
-  const args: Array<string | number> = characterId ? [characterId, projectId, chapterId] : [projectId, chapterId];
-  args.push(limit + 1);
+  const args: Array<string | number> = [chapterId, projectId];
+  if (characterId) args.push(characterId);
+  args.push(projectId, limit + 1);
   return connection
     .prepare(
       `WITH anchor AS (
          SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
-          WHERE chapter.project_id = ? AND chapter.id = ?
+          WHERE chapter.id = ? AND volume.project_id = ?
+            AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
        )
        SELECT event.id, event.title, event.chapter_id AS chapterId,
               chapter.title AS chapterTitle, event.start_value AS startValue,
@@ -175,16 +236,18 @@ function timelineSide(
          ${characterJoin}
          CROSS JOIN anchor
         WHERE event.project_id = ? AND event.status = 'active'
-          AND ${before ? '(' : '('}
+          AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
+          AND (
             volume.order_key ${before ? '<' : '>'} anchor.volumeOrder OR
-            (volume.order_key = anchor.volumeOrder AND chapter.order_key ${before ? '<=' : '>'} anchor.chapterOrder)
+            (volume.order_key = anchor.volumeOrder
+              AND chapter.order_key ${before ? '<=' : '>'} anchor.chapterOrder)
           )
         ORDER BY volume.order_key ${before ? 'DESC' : 'ASC'},
                  chapter.order_key ${before ? 'DESC' : 'ASC'},
                  event.start_value ${before ? 'DESC' : 'ASC'}, event.id ${before ? 'DESC' : 'ASC'}
         LIMIT ?`,
     )
-    .all(...(characterId ? [projectId, chapterId, characterId, projectId, limit + 1] : [projectId, chapterId, projectId, limit + 1])) as unknown as TimelineRow[];
+    .all(...args) as unknown as TimelineRow[];
 }
 
 function timeline(
@@ -216,7 +279,8 @@ function foreshadowings(
          SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
-          WHERE chapter.project_id = ? AND chapter.id = ?
+          WHERE chapter.id = ? AND volume.project_id = ?
+            AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
        )
        SELECT item.id, item.title, item.description, item.status,
               item.reveal_from_chapter_id AS revealFromChapterId,
@@ -227,20 +291,32 @@ function foreshadowings(
          LEFT JOIN chapters reveal_by ON reveal_by.id = item.reveal_by_chapter_id
          LEFT JOIN volumes reveal_by_volume ON reveal_by_volume.id = reveal_by.volume_id
          CROSS JOIN anchor
-        WHERE item.project_id = ?
-          AND item.status <> 'cancelled'
+        WHERE item.project_id = ? AND item.status <> 'cancelled'
           AND (
-            item.reveal_by_chapter_id IS NULL OR
-            anchor.volumeOrder < reveal_by_volume.order_key OR
-            (anchor.volumeOrder = reveal_by_volume.order_key AND anchor.chapterOrder <= reveal_by.order_key) OR
-            item.status = 'revealed'
+            EXISTS (
+              SELECT 1 FROM foreshadowing_chapters link
+               WHERE link.project_id = item.project_id
+                 AND link.foreshadowing_id = item.id AND link.chapter_id = ?
+            )
+            OR item.reveal_from_chapter_id = ?
+            OR item.reveal_by_chapter_id = ?
+            OR (
+              item.status <> 'revealed'
+              AND (
+                item.reveal_by_chapter_id IS NULL OR
+                anchor.volumeOrder < reveal_by_volume.order_key OR
+                (anchor.volumeOrder = reveal_by_volume.order_key
+                  AND anchor.chapterOrder <= reveal_by.order_key)
+              )
+            )
           )
-        ORDER BY item.status IN ('revealed', 'cancelled'),
+        ORDER BY item.status = 'revealed',
                  COALESCE(reveal_from_volume.order_key, 2147483647),
                  COALESCE(reveal_from.order_key, 2147483647), item.updated_at DESC, item.id
         LIMIT ?`,
     )
-    .all(projectId, chapterId, projectId, limit + 1) as unknown as ForeshadowingRow[];
+    .all(chapterId, projectId, projectId, chapterId, chapterId, chapterId, limit + 1) as unknown as
+    ForeshadowingRow[];
   return { items: rows.slice(0, limit), truncated: rows.length > limit };
 }
 
@@ -265,7 +341,10 @@ function arcMilestones(
         LIMIT ?`,
     )
     .all(projectId, characterId, limit + 1) as unknown as ArcMilestoneRow[];
-  return { items: rows.slice(0, limit), truncated: rows.length > limit };
+  return {
+    items: rows.slice(0, limit).map((row) => ({ ...row, sortIndex: Number(row.sortIndex) })),
+    truncated: rows.length > limit,
+  };
 }
 
 function versionHistory(
@@ -277,14 +356,17 @@ function versionHistory(
 ) {
   const rows = connection
     .prepare(
-      `SELECT id AS versionId, chapter_id AS chapterId, title, description,
-              version_type AS versionType, word_count AS wordCount,
-              created_at AS createdAt,
-              version_type = 'final' AS finalized
-         FROM versions
-        WHERE project_id = ? AND chapter_id = ?
-          AND (? IS NULL OR created_at < ?)
-        ORDER BY created_at DESC, id DESC
+      `SELECT version.id AS versionId, version.chapter_id AS chapterId,
+              version.title, version.description, version.version_type AS versionType,
+              version.word_count AS wordCount, version.created_at AS createdAt,
+              CASE WHEN chapter.final_version_id = version.id THEN 1 ELSE 0 END AS finalized
+         FROM versions version
+         JOIN chapters chapter ON chapter.id = version.chapter_id
+         JOIN volumes volume ON volume.id = chapter.volume_id
+        WHERE volume.project_id = ? AND version.chapter_id = ?
+          AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
+          AND (? IS NULL OR version.created_at < ?)
+        ORDER BY version.created_at DESC, version.id DESC
         LIMIT ?`,
     )
     .all(projectId, chapterId, beforeCreatedAt, beforeCreatedAt, limit + 1) as unknown as Array<{
@@ -293,25 +375,34 @@ function versionHistory(
       readonly title: string;
       readonly description: string;
       readonly versionType: string;
-      readonly wordCount: number;
+      readonly wordCount: number | bigint;
       readonly createdAt: string;
-      readonly finalized: number;
+      readonly finalized: number | bigint;
     }>;
-  const items = rows.slice(0, limit).map((row) => ({ ...row, finalized: row.finalized === 1 }));
+  const items = rows.slice(0, limit).map((row) => ({
+    ...row,
+    wordCount: Number(row.wordCount),
+    finalized: Number(row.finalized) === 1,
+  }));
   return {
     items,
     nextBeforeCreatedAt: rows.length > limit ? (items.at(-1)?.createdAt ?? null) : null,
   };
 }
 
-function characterFacts(connection: DatabaseSync, projectId: string, characterId: string, limit: number) {
+function characterFacts(
+  connection: DatabaseSync,
+  projectId: string,
+  characterId: string,
+  limit: number,
+) {
   return (
     connection
       .prepare(
         `SELECT id, fact_key AS key, value_json AS valueJson, description
            FROM canon_facts
-          WHERE project_id = ? AND entity_id = ? AND status = 'active'
-          ORDER BY fact_key, id
+          WHERE project_id = ? AND entity_id = ? AND status = 'current'
+          ORDER BY fact_key, confirmed_at DESC, id
           LIMIT ?`,
       )
       .all(projectId, characterId, limit) as unknown as Array<{
@@ -359,37 +450,45 @@ function characterStates(
            SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
              FROM chapters chapter
              JOIN volumes volume ON volume.id = chapter.volume_id
-            WHERE chapter.project_id = ? AND chapter.id = ?
+            WHERE chapter.id = ? AND volume.project_id = ?
+              AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
          ), ranked AS (
            SELECT state.id, state.state_key AS key, state.semantic_kind AS semanticKind,
                   state.value_json AS valueJson,
                   state.valid_from_chapter_id AS validFromChapterId,
                   state.valid_until_chapter_id AS validUntilChapterId,
-                  ROW_NUMBER() OVER (PARTITION BY state.state_key
+                  ROW_NUMBER() OVER (
+                    PARTITION BY state.state_key
                     ORDER BY start_volume.order_key DESC, start_chapter.order_key DESC,
-                             state.created_at DESC, state.id DESC) AS rank
+                             state.created_at DESC, state.id DESC
+                  ) AS rank
              FROM entity_states state
              JOIN chapters start_chapter ON start_chapter.id = state.valid_from_chapter_id
              JOIN volumes start_volume ON start_volume.id = start_chapter.volume_id
              LEFT JOIN chapters end_chapter ON end_chapter.id = state.valid_until_chapter_id
              LEFT JOIN volumes end_volume ON end_volume.id = end_chapter.volume_id
              CROSS JOIN anchor
-            WHERE state.project_id = ? AND state.entity_id = ? AND state.record_status <> 'invalid'
+            WHERE state.project_id = ? AND state.entity_id = ?
+              AND state.record_status NOT IN ('invalid', 'superseded')
               AND (
                 start_volume.order_key < anchor.volumeOrder OR
-                (start_volume.order_key = anchor.volumeOrder AND start_chapter.order_key <= anchor.chapterOrder)
+                (start_volume.order_key = anchor.volumeOrder
+                  AND start_chapter.order_key <= anchor.chapterOrder)
               )
               AND (
                 state.valid_until_chapter_id IS NULL OR
                 anchor.volumeOrder < end_volume.order_key OR
-                (anchor.volumeOrder = end_volume.order_key AND anchor.chapterOrder < end_chapter.order_key)
+                (anchor.volumeOrder = end_volume.order_key
+                  AND anchor.chapterOrder < end_chapter.order_key)
               )
          )
          SELECT id, key, semanticKind, valueJson, validFromChapterId, validUntilChapterId
-           FROM ranked WHERE rank = 1
-          ORDER BY key, id LIMIT ?`,
+           FROM ranked
+          WHERE rank = 1
+          ORDER BY key, id
+          LIMIT ?`,
       )
-      .all(projectId, chapterId, projectId, characterId, limit) as unknown as Array<{
+      .all(chapterId, projectId, projectId, characterId, limit) as unknown as Array<{
       readonly id: string;
       readonly key: string;
       readonly semanticKind: string;
@@ -400,20 +499,27 @@ function characterStates(
   ).map(({ valueJson, ...row }) => ({ ...row, value: parseJson(valueJson) }));
 }
 
-function chapterCharacters(connection: DatabaseSync, projectId: string, chapterId: string, limit: number) {
+function chapterCharacters(
+  connection: DatabaseSync,
+  projectId: string,
+  chapterId: string,
+  limit: number,
+) {
   return connection
     .prepare(
       `SELECT DISTINCT entity.id, entity.entity_type AS entityType, entity.name,
               entity.summary, entity.status
          FROM scene_beat_entities link
-         JOIN scene_beats beat ON beat.id = link.scene_beat_id
-         JOIN entities entity ON entity.id = link.entity_id
+         JOIN scene_beats beat
+           ON beat.id = link.scene_beat_id AND beat.project_id = link.project_id
+         JOIN entities entity
+           ON entity.id = link.entity_id AND entity.project_id = link.project_id
         WHERE beat.project_id = ? AND beat.chapter_id = ?
-          AND entity.project_id = ? AND entity.entity_type = 'character'
+          AND entity.entity_type = 'character' AND entity.status = 'active'
         ORDER BY entity.name, entity.id
         LIMIT ?`,
     )
-    .all(projectId, chapterId, projectId, limit) as unknown as EntityRow[];
+    .all(projectId, chapterId, limit) as unknown as EntityRow[];
 }
 
 export class StoryKnowledgeProjectionService {
@@ -422,10 +528,12 @@ export class StoryKnowledgeProjectionService {
   project(rawInput: StoryKnowledgeProjectionInput): StoryKnowledgeProjection {
     const input = StoryKnowledgeProjectionInputSchema.parse(rawInput);
     return this.workspace.readProject(input.projectId, (connection) => {
-      if ('chapterId' in input && input.chapterId) chapterExists(connection, input.projectId, input.chapterId);
+      if ('chapterId' in input && input.chapterId) {
+        assertChapter(connection, input.projectId, input.chapterId);
+      }
       switch (input.view) {
         case 'character_card': {
-          const character = entity(connection, input.projectId, input.characterId);
+          const center = character(connection, input.projectId, input.characterId);
           const relationResult = relationships(
             connection,
             input.projectId,
@@ -437,7 +545,7 @@ export class StoryKnowledgeProjectionService {
             view: input.view,
             projectId: input.projectId,
             bounded: true,
-            character,
+            character: center,
             facts: characterFacts(connection, input.projectId, input.characterId, input.limit),
             states: characterStates(
               connection,
@@ -450,7 +558,7 @@ export class StoryKnowledgeProjectionService {
           });
         }
         case 'relationships': {
-          const center = entity(connection, input.projectId, input.characterId);
+          const center = character(connection, input.projectId, input.characterId);
           const result = relationships(
             connection,
             input.projectId,
@@ -468,6 +576,7 @@ export class StoryKnowledgeProjectionService {
           });
         }
         case 'timeline': {
+          if (input.characterId) character(connection, input.projectId, input.characterId);
           const result = timeline(
             connection,
             input.projectId,
@@ -495,13 +604,13 @@ export class StoryKnowledgeProjectionService {
           });
         }
         case 'arc': {
-          const character = entity(connection, input.projectId, input.characterId);
+          const center = character(connection, input.projectId, input.characterId);
           const result = arcMilestones(connection, input.projectId, input.characterId, input.limit);
           return StoryKnowledgeProjectionSchema.parse({
             view: input.view,
             projectId: input.projectId,
             bounded: true,
-            character,
+            character: center,
             milestones: result.items,
             truncated: result.truncated,
           });
@@ -523,15 +632,27 @@ export class StoryKnowledgeProjectionService {
           });
         }
         case 'chapter_assist': {
-          const characters = chapterCharacters(connection, input.projectId, input.chapterId, input.limit);
+          const characterLimit = Math.min(input.limit, CHAPTER_ASSIST_CHARACTER_LIMIT);
+          const characters = chapterCharacters(
+            connection,
+            input.projectId,
+            input.chapterId,
+            characterLimit,
+          );
           const characterIds = characters.map((item) => item.id);
-          const relationItems = characterIds.flatMap((characterId) =>
-            relationships(connection, input.projectId, characterId, input.chapterId, input.limit).items,
+          const relationItems = characterIds.flatMap(
+            (characterId) =>
+              relationships(
+                connection,
+                input.projectId,
+                characterId,
+                input.chapterId,
+                input.limit,
+              ).items,
           );
-          const uniqueRelationships = [...new Map(relationItems.map((item) => [item.id, item])).values()].slice(
-            0,
-            input.limit,
-          );
+          const uniqueRelationships = [
+            ...new Map(relationItems.map((item) => [item.id, item])).values(),
+          ].slice(0, input.limit);
           const timelineResult = timeline(
             connection,
             input.projectId,

@@ -189,6 +189,6 @@ describe('M10-03 IPC and protocol maintenance', () => {
     expect(executionEntry).toContain('ca83d48c7493bba21252a37f9aec024d6aa0ca79');
     expect(executionEntry).toContain('本文件不固化活动PR、瞬时任务状态或“最新提交SHA”');
     expect(executionEntry).toContain('task-verification/<TASK-ID>=success');
-    expect(executionEntry).toContain('work受控重置后与main完全一致');
+    expect(executionEntry).toContain('work受控同步后与main完全一致');
   });
 });

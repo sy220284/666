@@ -53,10 +53,7 @@ export function definePrompt<Input, Output>(
   };
 }
 
-export function promptMetadata(
-  identity: PromptIdentity,
-  constraintHash: string,
-): PromptMetadata {
+export function promptMetadata(identity: PromptIdentity, constraintHash: string): PromptMetadata {
   return {
     promptId: identity.promptId,
     promptVersion: identity.version,

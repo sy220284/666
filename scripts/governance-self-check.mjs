@@ -26,6 +26,8 @@ export function validateGovernanceAuthorities(sources) {
     'name: quality / quality',
     'quality / release-audit',
     'quality / package-smoke',
+    'ci-risk-policy.mjs reliability',
+    'reliability_suite:',
   ]);
   requireMarkers(errors, 'Security', sources.security ?? '', ['name: security']);
   requireMarkers(errors, 'Performance', sources.performance ?? '', ['name: performance']);
@@ -43,6 +45,7 @@ export function validateGovernanceAuthorities(sources) {
     'CI_RISK_MATRIX.json',
     'export function riskPlan',
     "'dependency-audit'",
+    "reliability: 'reliability'",
     "'windows-ime'",
   ]);
 
@@ -57,6 +60,7 @@ export function validateGovernanceAuthorities(sources) {
     'dependencyAudit',
     'applicationSecurity',
     'performance',
+    'reliability',
     'packageSmoke',
     'toolchainExport',
     'uiAcceptance',

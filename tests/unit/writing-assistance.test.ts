@@ -127,8 +127,8 @@ function assistanceBridge(options?: {
   } as RendererBridgeAdapter;
 }
 
-describe('本章写作辅助 bounded projection', () => {
-  it('只通过 Story Knowledge 读取本章目标、人物状态、伏笔和待办', async () => {
+describe('本章写作辅助的有界投影', () => {
+  it('只通过故事知识投影读取本章目标、人物状态、伏笔和待办', async () => {
     const bridge = assistanceBridge();
     const view = await loadWritingAssistance(bridge, projectId, chapterId);
 
@@ -179,7 +179,7 @@ describe('本章写作辅助 bounded projection', () => {
     expect(view.warnings).toContain('上一章定稿暂时无法读取');
   });
 
-  it('没有上一章时不读取 Version 或 Draft；Projection 失败则 fail-closed', async () => {
+  it('没有上一章时不读取历史版本或当前稿；投影失败则安全失败', async () => {
     const firstChapterBridge = assistanceBridge({ noPreviousChapter: true });
     const firstChapter = await loadWritingAssistance(firstChapterBridge, projectId, chapterId);
     expect(firstChapter.previousEnding).toBeNull();

@@ -82,6 +82,15 @@ describe('Active文档一致性', () => {
       }),
     ).toContain('CI documentation still declares the retired two-branch inventory');
   });
+
+  it('README重新声明退役AGPL元数据时阻断', () => {
+    expect(
+      validateActiveDocumentation({
+        ...current,
+        readme: `${current.readme}\npackage.json: AGPL-3.0-only`,
+      }),
+    ).toContain('README still declares the retired AGPL-3.0-only package metadata');
+  });
 });
 
 describe('Meta-Governance权威链', () => {

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { inspectWorkspaces } from './check-workspaces.mjs';
 
-function workspaceExportPath(directory, manifest) {
+export function workspaceExportPath(directory, manifest) {
   const entry = manifest.exports;
   if (typeof entry !== 'string' || !entry.startsWith('./')) {
     throw new Error(`${directory} must expose a relative string package export`);

@@ -101,7 +101,7 @@ describe('M11 atomic author navigation', () => {
       returnLocation: sourceLocation(),
     });
 
-    expect(next.filters).toEqual({ 'navigation.todoId': 'todo-1', persistent: '保留' });
+    expect(next.filters).toEqual({ persistent: '保留' });
   });
 
   it('restores route, selection and filters from the captured source in one return action', () => {

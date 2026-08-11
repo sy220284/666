@@ -93,11 +93,12 @@ describe('code quality governance', () => {
     ).toContain('Renderer TSX statements maxUncovered must equal total - covered');
   });
 
-  it('keeps Toolchain Export read-only, reusable and artifact-only', async () => {
-    const [workflow, quality, authority] = await Promise.all([
+  it('keeps Toolchain Export read-only, reusable, artifact-only and risk-routed', async () => {
+    const [workflow, quality, authority, riskMatrixSource] = await Promise.all([
       read('.github/workflows/toolchain-export.yml'),
       read('.github/workflows/quality.yml'),
       read('docs/process/CURRENT_WORKSPACE_TOOLCHAIN.json'),
+      read('docs/process/CI_RISK_MATRIX.json'),
     ]);
     const parsedAuthority = JSON.parse(authority) as {
       schemaVersion: number;
@@ -106,6 +107,9 @@ describe('code quality governance', () => {
       callerWorkflow: string;
       profiles: Record<string, unknown>;
       requiredBundleEntries: string[];
+    };
+    const riskMatrix = JSON.parse(riskMatrixSource) as {
+      routes: { toolchainExport: { any: string[] } };
     };
 
     expect(workflow).toContain('workflow_call:');
@@ -117,6 +121,10 @@ describe('code quality governance', () => {
     expect(workflow).not.toContain('.github/toolchain-export');
     expect(quality).toContain('uses: ./.github/workflows/toolchain-export.yml');
     expect(quality).toContain("github.event.pull_request.head.ref == 'work'");
+    expect(quality).toContain('ci-risk-policy.mjs toolchain-export');
+    expect(riskMatrix.routes.toolchainExport.any).toContain(
+      '^docs/process/CURRENT_WORKSPACE_TOOLCHAIN\\.(?:json|md)$',
+    );
     expect(parsedAuthority).toMatchObject({
       schemaVersion: 1,
       defaultProfile: 'quality',
@@ -170,12 +178,16 @@ describe('code quality governance', () => {
 
     expect(manifest.scripts['ci:policy']).toContain('node scripts/check-coverage-policy.mjs');
     expect(manifest.scripts['ci:policy']).toContain('node scripts/code-quality-policy.mjs');
+    expect(manifest.scripts['ci:policy']).toContain('pnpm check:license');
+    expect(manifest.scripts['ci:policy']).toContain('pnpm check:docs');
+    expect(manifest.scripts['ci:policy']).toContain('pnpm check:governance');
     await expect(inspectCodeQualityPolicy()).resolves.toMatchObject({
       typeAwareLint: true,
       rendererTsxCoverage: true,
       dualTrackCoverage: true,
       fileLengthGate: false,
       reusableToolchainExport: true,
+      unifiedRiskRouting: true,
     });
   });
 });

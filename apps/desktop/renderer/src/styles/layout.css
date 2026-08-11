@@ -725,17 +725,6 @@
     overflow: auto;
   }
 
-  .react-main[data-legacy-placeholder='true'] {
-    padding: 0;
-    pointer-events: none;
-    overflow: visible;
-    background: var(--color-bg-canvas);
-  }
-
-  .react-main[data-legacy-placeholder='true'] > .react-safety-banner {
-    pointer-events: auto;
-  }
-
   [data-react-structure-rail] .structure-navigator {
     box-shadow: none;
   }

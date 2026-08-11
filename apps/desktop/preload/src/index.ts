@@ -20,8 +20,3 @@ const bridge: WorldforgeBridge & CandidateBridge = {
 };
 
 contextBridge.exposeInMainWorld('worldforge', bridge);
-
-export const preloadLayer = {
-  name: '@worldforge/preload',
-  responsibility: 'validated-minimal-renderer-bridge',
-} as const;

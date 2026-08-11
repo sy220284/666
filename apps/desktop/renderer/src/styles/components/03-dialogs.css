@@ -474,24 +474,6 @@
     border-right: 1px solid var(--color-border-subtle);
   }
 
-  .react-legacy-heading {
-    display: flex;
-    min-height: 46px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--color-border-subtle);
-    background: var(--color-bg-panel);
-    color: var(--color-text-secondary);
-    font-size: 0.76rem;
-  }
-
-  .react-legacy-heading strong {
-    color: var(--color-text-primary);
-    font-size: 0.88rem;
-  }
-
   .react-home-page,
   .react-settings-page {
     width: min(1180px, 100%);

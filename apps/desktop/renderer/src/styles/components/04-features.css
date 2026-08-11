@@ -217,15 +217,6 @@
     border-left: 3px solid var(--color-accent-primary);
   }
 
-  .legacy-project-placeholder {
-    padding-block: clamp(48px, 12vh, 120px);
-    text-align: center;
-  }
-
-  .legacy-project-placeholder p {
-    color: var(--color-text-secondary);
-  }
-
   @media (max-width: 640px) {
     .react-top-bar {
       min-height: 54px;
@@ -260,10 +251,6 @@
 
     .react-settings-form {
       padding: 16px;
-    }
-
-    .react-legacy-heading span {
-      display: none;
     }
   }
 

@@ -38,6 +38,8 @@ export interface BridgeRequestContext {
 export interface BridgeRequestOptions {
   readonly mode?: 'reject' | 'replace' | 'share';
   readonly signal?: AbortSignal;
+  readonly requestKey?: string;
+  readonly laneKey?: string;
 }
 
 interface ActiveRequest {
@@ -94,22 +96,6 @@ function unexpectedFailure(error: unknown): BridgeRequestError {
   };
 }
 
-const CONTINUATION_REQUEST_PREFIX = 'project.saveContinuation:';
-
-function latestOnlyLaneKey(requestKey: string): string | null {
-  if (!requestKey.startsWith(CONTINUATION_REQUEST_PREFIX)) return null;
-  const identity = requestKey.slice(CONTINUATION_REQUEST_PREFIX.length);
-  try {
-    const input: unknown = JSON.parse(identity);
-    if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
-    const projectId = (input as Record<string, unknown>).projectId;
-    if (typeof projectId !== 'string' || projectId.length === 0) return null;
-    return `${CONTINUATION_REQUEST_PREFIX}${JSON.stringify(projectId)}`;
-  } catch {
-    return null;
-  }
-}
-
 function withGeneration<T>(
   outcome: BridgeRequestOutcome<T>,
   generation: number,
@@ -141,14 +127,16 @@ export class BridgeRequestCoordinator {
   readonly #latestOnly = new Map<string, LatestOnlyLane>();
   readonly #shared = new Map<string, SharedRequest>();
 
-  isPending(requestKey: string): boolean {
-    const laneKey = latestOnlyLaneKey(requestKey);
+  isPending(requestKey: string, laneKey?: string): boolean {
     const lane = laneKey ? this.#latestOnly.get(laneKey) : undefined;
-    return this.#active.has(requestKey) || Boolean(lane?.inFlight || lane?.pending);
+    return (
+      this.#active.has(requestKey) ||
+      Boolean(this.#shared.get(requestKey) && !this.#shared.get(requestKey)?.settled) ||
+      Boolean(lane?.inFlight || lane?.pending)
+    );
   }
 
-  cancel(requestKey: string): boolean {
-    const laneKey = latestOnlyLaneKey(requestKey);
+  cancel(requestKey: string, laneKey?: string): boolean {
     if (laneKey) {
       const lane = this.#latestOnly.get(laneKey);
       let cancelled = false;
@@ -157,6 +145,7 @@ export class BridgeRequestCoordinator {
         if (lane.pending) {
           lane.pending.resolve({ state: 'stale', generation: lane.pending.generation });
           lane.pending = null;
+          cancelled = true;
         }
         cancelled = lane.inFlight || cancelled;
       }
@@ -199,8 +188,9 @@ export class BridgeRequestCoordinator {
     options: BridgeRequestOptions = {},
   ): Promise<BridgeRequestOutcome<T>> {
     if (options.mode === 'share') return this.#runShared(requestKey, operation, options);
-    const laneKey = options.mode === 'replace' ? latestOnlyLaneKey(requestKey) : null;
-    if (laneKey) return this.#runLatestOnly(laneKey, operation, options);
+    if (options.mode === 'replace' && options.laneKey) {
+      return this.#runLatestOnly(options.laneKey, operation, options);
+    }
     return this.#runImmediate(requestKey, operation, options);
   }
 
@@ -379,9 +369,6 @@ export class BridgeRequestCoordinator {
     try {
       const settled = await Promise.race([operationPromise, aborted]);
       if (settled.kind === 'aborted') {
-        // The caller stops waiting immediately. The underlying IPC may still
-        // complete, so its eventual result is consumed but never presented as
-        // a successful cancellation or used to mutate Renderer state.
         void operationPromise.then(() => undefined);
         return { state: 'stale', generation };
       }

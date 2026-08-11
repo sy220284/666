@@ -116,9 +116,10 @@ export function validateVisualBaselineManifest(value: unknown): VisualBaselineMa
   };
 }
 
-export function readPngDimensions(
-  bytes: Buffer,
-): { readonly width: number; readonly height: number } {
+export function readPngDimensions(bytes: Buffer): {
+  readonly width: number;
+  readonly height: number;
+} {
   if (
     bytes.length < 33 ||
     !bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE) ||

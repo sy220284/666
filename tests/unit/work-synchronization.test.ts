@@ -138,9 +138,9 @@ describe('集成分支安全同步决策', () => {
       'governance',
     );
     expect(governanceRef).toBe(sha('a'));
-    expect(() =>
-      assertSynchronizedIntegrationRef({ object: { sha: sha('b') } }, sha('a')),
-    ).toThrow('postcondition failed');
+    expect(() => assertSynchronizedIntegrationRef({ object: { sha: sha('b') } }, sha('a'))).toThrow(
+      'postcondition failed',
+    );
   });
 });
 

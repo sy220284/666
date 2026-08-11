@@ -39,7 +39,11 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
   const returnLocation = useRendererUiStore((state) => state.returnLocation);
   const [target, setTarget] = useState<ForeshadowingNavigationState>({ status: 'idle' });
   const loadHealth = useCallback(
-    () => bridge.canon.list({ projectId: props.projectId, includeArchived: true }, { mode: 'share' }),
+    () =>
+      bridge.canon.list(
+        { projectId: props.projectId, includeArchived: true },
+        { mode: 'share' },
+      ),
     [bridge, props.projectId],
   );
   const health = useBridgeQuery(`canon-health:${props.projectId}`, loadHealth);

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const apiRoot = 'https://api.github.com';
 const fullSha = /^[0-9a-f]{40}$/iu;
-const integrationBranches = new Set(['work', 'governance']);
+const integrationBranches = Object.freeze(['work', 'governance']);
 
 async function api(pathname, options = {}, accepted = []) {
   const response = await globalThis.fetch(new globalThis.URL(pathname, apiRoot), {
@@ -26,22 +26,56 @@ async function api(pathname, options = {}, accepted = []) {
   return response.ok && body ? JSON.parse(body) : null;
 }
 
+function validComparison(comparison) {
+  return (
+    Number.isSafeInteger(comparison?.ahead_by) &&
+    comparison.ahead_by >= 0 &&
+    Number.isSafeInteger(comparison?.behind_by) &&
+    comparison.behind_by >= 0
+  );
+}
+
 export function synchronizationDecision({
   mainSha,
-  workSha,
+  branchSha,
   sourceHeadSha,
   openPulls,
   branchName = 'work',
+  isSourceBranch = true,
+  comparison = null,
 }) {
   if (!fullSha.test(mainSha ?? '')) return { action: 'blocked', reason: 'invalid-main-sha' };
-  if (openPulls > 0) return { action: 'blocked', reason: `new-${branchName}-pull-request-open` };
-  if (workSha === null) return { action: 'create', reason: `${branchName}-missing` };
-  if (!fullSha.test(workSha ?? '')) return { action: 'blocked', reason: `invalid-${branchName}-sha` };
-  if (workSha === mainSha) return { action: 'keep', reason: 'already-synchronized' };
-  if (workSha !== sourceHeadSha) {
-    return { action: 'blocked', reason: `${branchName}-advanced-after-merge` };
+  if (!Number.isSafeInteger(openPulls) || openPulls < 0) {
+    return { action: 'blocked', reason: `invalid-${branchName}-open-pull-count` };
   }
-  return { action: 'reset', reason: 'verified-squash-complete' };
+  if (openPulls > 0) {
+    return isSourceBranch
+      ? { action: 'blocked', reason: `new-${branchName}-pull-request-open` }
+      : { action: 'skip', reason: `active-${branchName}-pull-request-open` };
+  }
+  if (branchSha === null) return { action: 'create', reason: `${branchName}-missing` };
+  if (!fullSha.test(branchSha ?? '')) {
+    return { action: 'blocked', reason: `invalid-${branchName}-sha` };
+  }
+  if (branchSha === mainSha) return { action: 'keep', reason: 'already-synchronized' };
+
+  if (isSourceBranch) {
+    if (!fullSha.test(sourceHeadSha ?? '')) {
+      return { action: 'blocked', reason: 'invalid-source-head-sha' };
+    }
+    if (branchSha !== sourceHeadSha) {
+      return { action: 'blocked', reason: `${branchName}-advanced-after-merge` };
+    }
+    return { action: 'reset', reason: 'verified-squash-complete' };
+  }
+
+  if (!validComparison(comparison)) {
+    return { action: 'blocked', reason: `invalid-${branchName}-main-comparison` };
+  }
+  if (comparison.behind_by === 0 && comparison.ahead_by > 0) {
+    return { action: 'fast-forward', reason: 'idle-branch-behind-verified-main' };
+  }
+  return { action: 'blocked', reason: `${branchName}-not-fast-forwardable-to-main` };
 }
 
 export function synchronizationRequest(event) {
@@ -81,8 +115,8 @@ export function synchronizationRequest(event) {
   };
 }
 
-export function assertSynchronizedWorkRef(workRef, mainSha, branchName = 'work') {
-  const finalBranchSha = workRef?.object?.sha;
+export function assertSynchronizedIntegrationRef(branchRef, mainSha, branchName = 'work') {
+  const finalBranchSha = branchRef?.object?.sha;
   if (!fullSha.test(finalBranchSha ?? '')) {
     throw new Error(`Branch synchronization postcondition could not read the final ${branchName} SHA`);
   }
@@ -94,8 +128,8 @@ export function assertSynchronizedWorkRef(workRef, mainSha, branchName = 'work')
   return finalBranchSha;
 }
 
-export async function waitForSynchronizedWorkRef(
-  readWorkRef,
+export async function waitForSynchronizedIntegrationRef(
+  readBranchRef,
   mainSha,
   { attempts = 20, intervalMs = 500, branchName = 'work' } = {},
 ) {
@@ -105,12 +139,17 @@ export async function waitForSynchronizedWorkRef(
   }
   let last = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    last = await readWorkRef();
-    if (last?.object?.sha === mainSha) return assertSynchronizedWorkRef(last, mainSha, branchName);
+    last = await readBranchRef();
+    if (last?.object?.sha === mainSha) {
+      return assertSynchronizedIntegrationRef(last, mainSha, branchName);
+    }
     if (attempt < attempts) await delay(intervalMs);
   }
-  return assertSynchronizedWorkRef(last, mainSha, branchName);
+  return assertSynchronizedIntegrationRef(last, mainSha, branchName);
 }
+
+// Compatibility export for older tests/tools; new code should use the integration-branch name.
+export const assertSynchronizedWorkRef = assertSynchronizedIntegrationRef;
 
 function hasSuccessfulMainVerification(status) {
   return status?.statuses?.some(
@@ -123,11 +162,94 @@ async function writeReport(output, name, payload) {
   await writeFile(path.join(output, name), `${JSON.stringify(payload, null, 2)}\n`);
 }
 
+async function branchComparison(owner, repo, branchSha, mainSha) {
+  if (!fullSha.test(branchSha ?? '') || branchSha === mainSha) return null;
+  return api(
+    `/repos/${owner}/${repo}/compare/${encodeURIComponent(branchSha)}...${encodeURIComponent(mainSha)}`,
+  );
+}
+
+async function synchronizeBranch({
+  owner,
+  repo,
+  branchName,
+  mainSha,
+  sourceBranch,
+  sourceHeadSha,
+}) {
+  const isSourceBranch = branchName === sourceBranch;
+  const branchRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, {}, [404]);
+  const branchSha = branchRef?.object?.sha ?? null;
+  const openPulls = await api(
+    `/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:${branchName}&per_page=100`,
+  );
+  const comparison = isSourceBranch
+    ? null
+    : await branchComparison(owner, repo, branchSha, mainSha);
+  const decision = synchronizationDecision({
+    mainSha,
+    branchSha,
+    sourceHeadSha,
+    openPulls: openPulls.length,
+    branchName,
+    isSourceBranch,
+    comparison,
+  });
+
+  if (decision.action === 'blocked') {
+    throw new Error(`Branch synchronization blocked for ${branchName}: ${decision.reason}`);
+  }
+  if (decision.action === 'skip') {
+    return {
+      branchName,
+      isSourceBranch,
+      initialBranchSha: branchSha,
+      finalBranchSha: branchSha,
+      decision,
+    };
+  }
+  if (decision.action === 'create') {
+    await api(`/repos/${owner}/${repo}/git/refs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha: mainSha }),
+    });
+  } else if (decision.action === 'reset') {
+    await api(`/repos/${owner}/${repo}/git/refs/heads/${branchName}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sha: mainSha, force: true }),
+    });
+  } else if (decision.action === 'fast-forward') {
+    await api(`/repos/${owner}/${repo}/git/refs/heads/${branchName}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sha: mainSha, force: false }),
+    });
+  }
+
+  const finalBranchSha = await waitForSynchronizedIntegrationRef(
+    () => api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`),
+    mainSha,
+    { branchName },
+  );
+  return {
+    branchName,
+    isSourceBranch,
+    initialBranchSha: branchSha,
+    finalBranchSha,
+    decision,
+  };
+}
+
 async function main() {
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY || !process.env.GITHUB_EVENT_PATH) {
     throw new Error('Missing GitHub Actions environment');
   }
-  const output = process.env.WORK_SYNCHRONIZATION_OUTPUT ?? 'artifacts/work-synchronization';
+  const output =
+    process.env.INTEGRATION_SYNCHRONIZATION_OUTPUT ??
+    process.env.WORK_SYNCHRONIZATION_OUTPUT ??
+    'artifacts/integration-synchronization';
   const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
   const request = synchronizationRequest(event);
   const mainSha = request.mainSha;
@@ -145,7 +267,7 @@ async function main() {
     (pull) =>
       pull.merged_at &&
       pull.base?.ref === 'main' &&
-      integrationBranches.has(pull.head?.ref) &&
+      integrationBranches.includes(pull.head?.ref) &&
       (request.sourcePr === null || pull.number === request.sourcePr) &&
       (request.sourceHeadSha === null || pull.head?.sha === request.sourceHeadSha),
   );
@@ -154,41 +276,20 @@ async function main() {
   }
 
   const sourceBranch = source.head.ref;
-  const sourceRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${sourceBranch}`, {}, [404]);
-  const openPulls = await api(
-    `/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:${sourceBranch}&per_page=100`,
-  );
-  const decision = synchronizationDecision({
-    mainSha,
-    workSha: sourceRef?.object?.sha ?? null,
-    sourceHeadSha: source.head.sha,
-    openPulls: openPulls.length,
-    branchName: sourceBranch,
-  });
-  if (decision.action === 'blocked') {
-    throw new Error(`Branch synchronization blocked: ${decision.reason}`);
-  }
-  if (decision.action === 'create') {
-    await api(`/repos/${owner}/${repo}/git/refs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ref: `refs/heads/${sourceBranch}`, sha: mainSha }),
-    });
-  } else if (decision.action === 'reset') {
-    await api(`/repos/${owner}/${repo}/git/refs/heads/${sourceBranch}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sha: mainSha, force: true }),
-    });
-  }
-
-  let finalBranchSha;
+  const branchResults = [];
   try {
-    finalBranchSha = await waitForSynchronizedWorkRef(
-      () => api(`/repos/${owner}/${repo}/git/ref/heads/${sourceBranch}`),
-      mainSha,
-      { branchName: sourceBranch },
-    );
+    for (const branchName of integrationBranches) {
+      branchResults.push(
+        await synchronizeBranch({
+          owner,
+          repo,
+          branchName,
+          mainSha,
+          sourceBranch,
+          sourceHeadSha: source.head.sha,
+        }),
+      );
+    }
   } catch (error) {
     await writeReport(output, 'failure.json', {
       mode: request.mode,
@@ -196,7 +297,7 @@ async function main() {
       sourcePr: source.number,
       sourceHeadSha: source.head.sha,
       sourceBranch,
-      decision,
+      branchResults,
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
@@ -208,44 +309,72 @@ async function main() {
     sourcePr: source.number,
     sourceHeadSha: source.head.sha,
     sourceBranch,
-    finalBranchSha,
-    decision,
+    branchResults,
   });
-  console.log(
-    `${sourceBranch} synchronization ${decision.action}: ${decision.reason}; postcondition passed.`,
-  );
+  for (const result of branchResults) {
+    console.log(
+      `${result.branchName} synchronization ${result.decision.action}: ${result.decision.reason}.`,
+    );
+  }
 }
 
 function selfTest() {
   const a = 'a'.repeat(40);
   const b = 'b'.repeat(40);
   assert.deepEqual(
-    synchronizationDecision({ mainSha: a, workSha: b, sourceHeadSha: b, openPulls: 0 }),
-    {
-      action: 'reset',
-      reason: 'verified-squash-complete',
-    },
+    synchronizationDecision({
+      mainSha: a,
+      branchSha: b,
+      sourceHeadSha: b,
+      openPulls: 0,
+      isSourceBranch: true,
+    }),
+    { action: 'reset', reason: 'verified-squash-complete' },
+  );
+  assert.deepEqual(
+    synchronizationDecision({
+      mainSha: a,
+      branchSha: b,
+      sourceHeadSha: 'c'.repeat(40),
+      openPulls: 0,
+      branchName: 'work',
+      isSourceBranch: false,
+      comparison: { ahead_by: 1, behind_by: 0 },
+    }),
+    { action: 'fast-forward', reason: 'idle-branch-behind-verified-main' },
+  );
+  assert.deepEqual(
+    synchronizationDecision({
+      mainSha: a,
+      branchSha: b,
+      sourceHeadSha: 'c'.repeat(40),
+      openPulls: 1,
+      branchName: 'work',
+      isSourceBranch: false,
+      comparison: { ahead_by: 1, behind_by: 0 },
+    }),
+    { action: 'skip', reason: 'active-work-pull-request-open' },
   );
   assert.equal(
     synchronizationDecision({
       mainSha: a,
-      workSha: 'c'.repeat(40),
-      sourceHeadSha: b,
+      branchSha: b,
+      sourceHeadSha: 'c'.repeat(40),
       openPulls: 0,
+      branchName: 'work',
+      isSourceBranch: false,
+      comparison: { ahead_by: 1, behind_by: 1 },
     }).action,
-    'blocked',
-  );
-  assert.equal(
-    synchronizationDecision({ mainSha: a, workSha: b, sourceHeadSha: b, openPulls: 1 }).action,
     'blocked',
   );
   assert.deepEqual(
     synchronizationDecision({
       mainSha: a,
-      workSha: null,
+      branchSha: null,
       sourceHeadSha: b,
       openPulls: 0,
       branchName: 'governance',
+      isSourceBranch: false,
     }),
     { action: 'create', reason: 'governance-missing' },
   );
@@ -261,10 +390,10 @@ function selfTest() {
     }),
     { mode: 'workflow-dispatch', mainSha: a, sourcePr: 301, sourceHeadSha: b },
   );
-  assert.equal(assertSynchronizedWorkRef({ object: { sha: a } }, a), a);
-  assert.equal(assertSynchronizedWorkRef({ object: { sha: a } }, a, 'governance'), a);
+  assert.equal(assertSynchronizedIntegrationRef({ object: { sha: a } }, a), a);
+  assert.equal(assertSynchronizedIntegrationRef({ object: { sha: a } }, a, 'governance'), a);
   assert.throws(
-    () => assertSynchronizedWorkRef({ object: { sha: b } }, a),
+    () => assertSynchronizedIntegrationRef({ object: { sha: b } }, a),
     /postcondition failed/u,
   );
   console.log('Integration branch synchronization self-test passed.');

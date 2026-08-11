@@ -61,6 +61,9 @@ export function validateActiveDocumentation(documents) {
       errors.push('Release documentation appears to restore Task Runtime as release authority');
     }
   }
+  if ((documents.readme ?? '').includes('AGPL-3.0-only')) {
+    errors.push('README still declares the retired AGPL-3.0-only package metadata');
+  }
   return errors;
 }
 

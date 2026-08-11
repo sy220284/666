@@ -34,7 +34,7 @@ export function ContinuityPanel({
           includeArchivedEvents: archived,
           effectiveAtChapterId: effectiveChapter || null,
         },
-        { mode: 'replace' },
+        { mode: 'share' },
       ),
     [archived, bridge, effectiveChapter, history, projectId, query],
   );

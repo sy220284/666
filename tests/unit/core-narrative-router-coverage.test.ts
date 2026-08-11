@@ -17,22 +17,12 @@ vi.mock('@worldforge/contracts', async (importOriginal) => {
   };
 });
 
-vi.mock('../../packages/core-service/src/continuity.js', () => ({
-  ContinuityServiceError: class ContinuityServiceError extends Error {
-    readonly code: string;
-    constructor(code: string, message: string, options?: ErrorOptions) {
-      super(message, options);
-      this.name = 'ContinuityServiceError';
-      this.code = code;
-    }
-  },
-}));
-
 vi.mock('../../packages/core-service/src/narrative-planning.js', () => {
   class NarrativePlanningServiceError extends Error {
     readonly code: string;
     constructor(code: string, message: string) {
       super(message);
+      this.name = 'NarrativePlanningServiceError';
       this.code = code;
     }
   }
@@ -73,6 +63,7 @@ vi.mock('../../packages/core-service/src/state-proposal.js', () => {
     readonly code: string;
     constructor(code: string, message: string) {
       super(message);
+      this.name = 'StateProposalServiceError';
       this.code = code;
     }
   }
@@ -109,7 +100,8 @@ vi.mock('../../packages/core-service/src/state-proposal.js', () => {
 });
 
 import { NARRATIVE_PLANNING_COMMANDS, STATE_PROPOSAL_COMMANDS } from '@worldforge/contracts';
-import { ContinuityServiceError } from '../../packages/core-service/src/continuity.js';
+import { NarrativePlanningServiceError } from '../../packages/core-service/src/narrative-planning.js';
+import { StateProposalServiceError } from '../../packages/core-service/src/state-proposal.js';
 import { routeNarrativePlanningOperation } from '../../packages/core-service/src/utility-project-narrative-router.js';
 import { contractInput, strictTestDouble } from '../testkit/strict-test-doubles.js';
 
@@ -175,37 +167,37 @@ describe('Core narrative planning router exact mapping', () => {
   });
 
   it.each([
-    ['NARRATIVE_NOT_FOUND', 'CONTINUITY_NOT_FOUND'],
-    ['NARRATIVE_CONFLICT', 'CONTINUITY_CONFLICT'],
-    ['NARRATIVE_AUTHOR_REQUIRED', 'CONTINUITY_INVALID'],
-    ['NARRATIVE_INVALID', 'CONTINUITY_INVALID'],
-    ['NARRATIVE_INVARIANT', 'CONTINUITY_INVARIANT'],
-  ])('translates narrative error %s', async (code, expected) => {
+    'NARRATIVE_NOT_FOUND',
+    'NARRATIVE_CONFLICT',
+    'NARRATIVE_AUTHOR_REQUIRED',
+    'NARRATIVE_INVALID',
+    'NARRATIVE_INVARIANT',
+  ])('preserves narrative error %s', async (code) => {
     routeState.narrativeError = { code, message: 'narrative failed' };
     const error = await routeNarrativePlanningOperation(
       services,
       requestId,
       operation(NARRATIVE_PLANNING_COMMANDS.list),
     ).catch((caught: unknown) => caught);
-    expect(error).toBeInstanceOf(ContinuityServiceError);
-    expect(error).toMatchObject({ code: expected, cause: expect.any(Error) });
+    expect(error).toBeInstanceOf(NarrativePlanningServiceError);
+    expect(error).toMatchObject({ code, message: 'narrative failed' });
   });
 
   it.each([
-    ['STATE_PROPOSAL_NOT_FOUND', 'CONTINUITY_NOT_FOUND'],
-    ['STATE_PROPOSAL_CONFLICT', 'CONTINUITY_CONFLICT'],
-    ['STATE_PROPOSAL_AUTHOR_REQUIRED', 'CONTINUITY_INVALID'],
-    ['STATE_PROPOSAL_INVALID', 'CONTINUITY_INVALID'],
-    ['STATE_PROPOSAL_INVARIANT', 'CONTINUITY_INVARIANT'],
-  ])('translates state proposal error %s', async (code, expected) => {
+    'STATE_PROPOSAL_NOT_FOUND',
+    'STATE_PROPOSAL_CONFLICT',
+    'STATE_PROPOSAL_AUTHOR_REQUIRED',
+    'STATE_PROPOSAL_INVALID',
+    'STATE_PROPOSAL_INVARIANT',
+  ])('preserves state proposal error %s', async (code) => {
     routeState.proposalError = { code, message: 'proposal failed' };
     const error = await routeNarrativePlanningOperation(
       services,
       requestId,
       operation(STATE_PROPOSAL_COMMANDS.list),
     ).catch((caught: unknown) => caught);
-    expect(error).toBeInstanceOf(ContinuityServiceError);
-    expect(error).toMatchObject({ code: expected, cause: expect.any(Error) });
+    expect(error).toBeInstanceOf(StateProposalServiceError);
+    expect(error).toMatchObject({ code, message: 'proposal failed' });
   });
 
   it('rethrows errors outside the known service classes unchanged', async () => {

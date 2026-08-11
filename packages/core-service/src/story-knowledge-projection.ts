@@ -12,9 +12,7 @@ import type { ProjectWorkspaceService } from './project-workspace.js';
 const CHAPTER_ASSIST_CHARACTER_LIMIT = 20;
 
 export type StoryKnowledgeProjectionServiceErrorCode =
-  | 'STORY_KNOWLEDGE_NOT_FOUND'
-  | 'STORY_KNOWLEDGE_INVALID'
-  | 'STORY_KNOWLEDGE_INVARIANT';
+  'STORY_KNOWLEDGE_NOT_FOUND' | 'STORY_KNOWLEDGE_INVALID' | 'STORY_KNOWLEDGE_INVARIANT';
 
 export class StoryKnowledgeProjectionServiceError extends Error {
   readonly code: StoryKnowledgeProjectionServiceErrorCode;
@@ -315,8 +313,15 @@ function foreshadowings(
                  COALESCE(reveal_from.order_key, 2147483647), item.updated_at DESC, item.id
         LIMIT ?`,
     )
-    .all(chapterId, projectId, projectId, chapterId, chapterId, chapterId, limit + 1) as unknown as
-    ForeshadowingRow[];
+    .all(
+      chapterId,
+      projectId,
+      projectId,
+      chapterId,
+      chapterId,
+      chapterId,
+      limit + 1,
+    ) as unknown as ForeshadowingRow[];
   return { items: rows.slice(0, limit), truncated: rows.length > limit };
 }
 
@@ -370,15 +375,15 @@ function versionHistory(
         LIMIT ?`,
     )
     .all(projectId, chapterId, beforeCreatedAt, beforeCreatedAt, limit + 1) as unknown as Array<{
-      readonly versionId: string;
-      readonly chapterId: string;
-      readonly title: string;
-      readonly description: string;
-      readonly versionType: string;
-      readonly wordCount: number | bigint;
-      readonly createdAt: string;
-      readonly finalized: number | bigint;
-    }>;
+    readonly versionId: string;
+    readonly chapterId: string;
+    readonly title: string;
+    readonly description: string;
+    readonly versionType: string;
+    readonly wordCount: number | bigint;
+    readonly createdAt: string;
+    readonly finalized: number | bigint;
+  }>;
   const items = rows.slice(0, limit).map((row) => ({
     ...row,
     wordCount: Number(row.wordCount),
@@ -642,13 +647,8 @@ export class StoryKnowledgeProjectionService {
           const characterIds = characters.map((item) => item.id);
           const relationItems = characterIds.flatMap(
             (characterId) =>
-              relationships(
-                connection,
-                input.projectId,
-                characterId,
-                input.chapterId,
-                input.limit,
-              ).items,
+              relationships(connection, input.projectId, characterId, input.chapterId, input.limit)
+                .items,
           );
           const uniqueRelationships = [
             ...new Map(relationItems.map((item) => [item.id, item])).values(),
@@ -668,8 +668,9 @@ export class StoryKnowledgeProjectionService {
             input.limit,
           );
           const milestoneItems = characterIds
-            .flatMap((characterId) =>
-              arcMilestones(connection, input.projectId, characterId, input.limit).items,
+            .flatMap(
+              (characterId) =>
+                arcMilestones(connection, input.projectId, characterId, input.limit).items,
             )
             .slice(0, input.limit);
           return StoryKnowledgeProjectionSchema.parse({

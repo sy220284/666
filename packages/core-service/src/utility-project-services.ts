@@ -10,9 +10,10 @@ import type { ProjectStructureService } from './project-structure.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import type { RecoveryService } from './recovery.js';
 import type { SceneBeatService } from './scene-beat.js';
+import type { SearchToolsService } from './search-tools.js';
+import type { StoryKnowledgeProjectionService } from './story-knowledge-projection.js';
 import type { StructureOperationService } from './structure-operations.js';
 import type { VersionService } from './version.js';
-import type { SearchToolsService } from './search-tools.js';
 import type { RhythmService } from './rhythm.js';
 
 export interface UtilityProjectServices {
@@ -23,6 +24,7 @@ export interface UtilityProjectServices {
   readonly sceneBeats: SceneBeatService;
   readonly entityCanon: EntityCanonService;
   readonly continuity: ContinuityService;
+  readonly storyKnowledge: StoryKnowledgeProjectionService;
   readonly structureOperations: StructureOperationService;
   readonly drafts: DraftService;
   readonly candidates: CandidateService;

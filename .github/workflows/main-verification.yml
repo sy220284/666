@@ -99,7 +99,9 @@ jobs:
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
 
-  synchronize-integrations:
+  # Compatibility job id retained so the trusted main PR policy can bootstrap this governance change.
+  # The job itself synchronizes both permanent integration lanes.
+  synchronize-work:
     name: synchronize-integrations
     needs: main-verification
     if: ${{ needs.main-verification.result == 'success' }}
@@ -135,8 +137,8 @@ jobs:
 
   branch-hygiene:
     name: branch-hygiene
-    needs: synchronize-integrations
-    if: ${{ needs.synchronize-integrations.result == 'success' }}
+    needs: synchronize-work
+    if: ${{ needs.synchronize-work.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

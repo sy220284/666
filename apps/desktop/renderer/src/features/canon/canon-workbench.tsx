@@ -5,6 +5,7 @@ import type { NarrativePlanningCatalog } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { useBridgeQuery } from '../../bridge/use-bridge-resource.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 import { useRendererUiStore } from '../../state/ui-store.js';
 import { CanonWorkbench as CanonCoreWorkbench, type CanonSection } from './canon-core-workbench.js';
 import { ContinuityRelationshipEditor } from './continuity-relationship-editor.js';
@@ -19,7 +20,9 @@ interface CanonWorkbenchProps {
   readonly readOnly: boolean;
   readonly section: CanonSection;
   readonly selectedEntityId?: string | null;
+  readonly selectedChapterId?: string | null;
   readonly onSectionChange: (section: CanonSection) => void;
+  readonly onNavigate: (target: AuthorNavigationTarget) => void;
   readonly onReturn: () => void;
 }
 

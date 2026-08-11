@@ -59,6 +59,7 @@ const unifiedQualityRoutes = [
   'ci-risk-policy.mjs full-suite',
   'ci-risk-policy.mjs package-smoke',
   'ci-risk-policy.mjs toolchain-export',
+  'ci-risk-policy.mjs reliability',
   'ci-risk-policy.mjs windows-ime',
 ];
 
@@ -147,6 +148,11 @@ export function validateWorkflowStructure(file, source) {
         'quality.yml: quality-core.with.package_smoke must be controlled by the route output',
       );
     }
+    if (qualityCore?.with?.reliability_suite !== "${{ needs.route.outputs.reliability == 'true' }}") {
+      errors.push(
+        'quality.yml: quality-core.with.reliability_suite must be controlled by the route output',
+      );
+    }
     if (qualityCore?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
       errors.push(
         'quality.yml: quality-core.with.full_suite must be controlled by the route output',
@@ -205,6 +211,26 @@ export function validateWorkflowStructure(file, source) {
     }
   }
 
+  if (file === 'quality-core.yml') {
+    const reliabilityInput = workflow.on?.workflow_call?.inputs?.reliability_suite;
+    if (reliabilityInput?.type !== 'boolean' || reliabilityInput?.default !== true) {
+      errors.push('quality-core.yml: reliability_suite must be a boolean defaulting to true');
+    }
+    const reliability = workflow.jobs['reliability-tests'];
+    if (!String(reliability?.if ?? '').includes('inputs.reliability_suite')) {
+      errors.push('quality-core.yml: reliability-tests must be controlled by reliability_suite');
+    }
+    const reliabilityRun = reliability?.steps?.find(
+      (step) => step?.name === 'Run reliability invariants',
+    );
+    if (!String(reliabilityRun?.run ?? '').includes('pnpm test:reliability')) {
+      errors.push('quality-core.yml: reliability-tests must run pnpm test:reliability');
+    }
+    if (!hasEveryNeed(workflow.jobs.quality, ['reliability-tests'])) {
+      errors.push('quality-core.yml: aggregate quality must depend on reliability-tests');
+    }
+  }
+
   if (file === 'release.yml') {
     const quality = workflow.jobs.quality;
     if (quality?.uses !== './.github/workflows/quality-core.yml') {
@@ -218,6 +244,9 @@ export function validateWorkflowStructure(file, source) {
       if (quality?.with?.[name] !== expected) {
         errors.push(`release.yml: quality.with.${name} must be ${String(expected)}`);
       }
+    }
+    if (quality?.with?.reliability_suite === false) {
+      errors.push('release.yml: release quality must not disable reliability_suite');
     }
     if (workflow.jobs.build?.needs !== 'release-gate') {
       errors.push('release.yml: build must need release-gate');

@@ -23,6 +23,7 @@ export default defineConfig({
     'm8-04-author-experience.spec.ts',
     'm8-07-chinese-experience.spec.ts',
     'visual-regression.spec.ts',
+    'accessibility.spec.ts',
     'writing-focus-assistance.spec.ts',
   ],
   fullyParallel: false,

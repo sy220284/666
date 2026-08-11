@@ -111,7 +111,8 @@ export const skeletonSpikePrompt = definePrompt<SkeletonPromptInput, SkeletonCan
     build(input): PromptBundle {
       const validated = SkeletonPromptInputSchema.parse(input);
       return withPromptIdentity(SKELETON_SPIKE_PROMPT_IDENTITY, validated.constraintHash, {
-        system: '这是协议验证用骨架Prompt。仅输出符合Schema的章节骨架，不输出整章正文或协议外说明。',
+        system:
+          '这是协议验证用骨架Prompt。仅输出符合Schema的章节骨架，不输出整章正文或协议外说明。',
         messages: [
           {
             role: 'user',

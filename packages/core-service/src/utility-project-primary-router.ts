@@ -4,6 +4,7 @@ import {
   PROJECT_PLANNING_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   SCENE_BEAT_COMMANDS,
+  STORY_KNOWLEDGE_COMMANDS,
   CoreProjectResultSchema,
   type CoreProjectOperation,
   type CoreProjectResult,
@@ -233,6 +234,8 @@ export async function routePrimaryProjectOperation(
         operation.operation,
         await services.continuity.invalidateCharacterRelationship(requestId, operation.input),
       );
+    case STORY_KNOWLEDGE_COMMANDS.project:
+      return success(operation.operation, services.storyKnowledge.project(operation.input));
     default:
       return null;
   }

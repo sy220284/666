@@ -97,25 +97,25 @@ const StoryKnowledgeRelationshipSchema = z.strictObject({
   toCharacterId: z.uuid(),
   toCharacterName: z.string().min(1).max(240),
   category: z.string().min(1).max(80),
-  label: z.string().max(500),
+  label: z.string().max(120),
   validFromChapterId: z.uuid(),
   validUntilChapterId: z.uuid().nullable(),
 });
 
 const StoryKnowledgeTimelineItemSchema = z.strictObject({
   id: z.uuid(),
-  title: z.string().min(1).max(500),
+  title: z.string().min(1).max(240),
   chapterId: z.uuid(),
   chapterTitle: z.string().min(1).max(240),
-  startValue: z.number(),
-  endValue: z.number().nullable(),
+  startValue: z.string().min(1).max(120),
+  endValue: z.string().min(1).max(120).nullable(),
   precision: z.string().min(1).max(80),
   locationId: z.uuid().nullable(),
 });
 
 const StoryKnowledgeForeshadowingItemSchema = z.strictObject({
   id: z.uuid(),
-  title: z.string().min(1).max(500),
+  title: z.string().min(1).max(240),
   description: z.string().max(20_000),
   status: z.string().min(1).max(80),
   revealFromChapterId: z.uuid().nullable(),
@@ -125,8 +125,8 @@ const StoryKnowledgeForeshadowingItemSchema = z.strictObject({
 const StoryKnowledgeArcMilestoneSchema = z.strictObject({
   id: z.uuid(),
   arcId: z.uuid(),
-  arcTitle: z.string().min(1).max(500),
-  title: z.string().min(1).max(500),
+  arcTitle: z.string().min(1).max(240),
+  title: z.string().min(1).max(240),
   description: z.string().max(20_000),
   status: z.string().min(1).max(80),
   plannedChapterId: z.uuid().nullable(),

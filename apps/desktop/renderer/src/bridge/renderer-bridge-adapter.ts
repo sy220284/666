@@ -370,8 +370,7 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
   return (
     keys.length > 0 &&
     keys.every(
-      (key) =>
-        key === 'mode' || key === 'signal' || key === 'requestKey' || key === 'laneKey',
+      (key) => key === 'mode' || key === 'signal' || key === 'requestKey' || key === 'laneKey',
     ) &&
     (!('mode' in value) ||
       value.mode === 'reject' ||
@@ -379,8 +378,7 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
       value.mode === 'share') &&
     (!('requestKey' in value) ||
       (typeof value.requestKey === 'string' && value.requestKey.length > 0)) &&
-    (!('laneKey' in value) ||
-      (typeof value.laneKey === 'string' && value.laneKey.length > 0))
+    (!('laneKey' in value) || (typeof value.laneKey === 'string' && value.laneKey.length > 0))
   );
 }
 

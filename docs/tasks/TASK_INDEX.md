@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03、M10-01—M10-22及M11-01—M11-02，共69张独立任务卡。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03、M10-01—M10-22及M11-01—M11-06，共73张独立任务卡。
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -150,6 +150,10 @@ Runtime IMPLEMENTED
 | ------ | -------------------------------------------------------------------------------------- | ------ | ----------- |
 | M11-01 | [`中文作者体验与交互减负`](M11/M11-01_CHINESE_AUTHOR_EXPERIENCE_SIMPLIFICATION.md)     | M10-22 | Implemented |
 | M11-02 | [`统一 AI 审阅底座`](M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md)                      | M11-01 | Implemented |
+| M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md) | M11-02 | Planned |
+| M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md) | M11-03 | Planned |
+| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md) | M11-04 | Planned |
+| M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md) | M11-05 | Planned |
 
 ## 3. 被吸收的需求来源
 
@@ -184,6 +188,6 @@ Runtime IMPLEMENTED
 3. 已Verified历史任务、Migration和Evidence保持冻结。
 4. 任务有效状态只约束任务依赖、Evidence和下一任务启动；Release必须由当前main的`main-verification`、产品门禁、三平台产物完整性与发行信任证据独立判定。
 5. Ready Evidence manifest绑定当前任务最新实现提交；该提交之后只允许当前任务卡、Runtime、`TASK_INDEX.md`和当前任务Evidence收口，`quality / release-audit`绑定精确PR Head并参与最新Quality Workflow Run判定。
-6. 分支长期只允许`main`与`work`，不存在`release/*`例外。
+6. 长期分支只允许`main`、`work`与`governance`；产品任务固定`work → main`，仓库治理固定`governance → main`。
 7. 历史Implemented任务必须从其来源PR对应主线提交继承任务Context，禁止借用当前main上的其他任务Context。
 8. 文件行数只作为观察指标；结构门禁依据循环依赖、跨层方向、Feature边界和状态所有权，禁止机械拆分完整功能。

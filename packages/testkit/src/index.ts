@@ -1,8 +1,3 @@
-export const testkitLayer = {
-  name: '@worldforge/testkit',
-  responsibility: 'fixtures-stubs-and-fault-injection',
-} as const;
-
 export * from './ai-protocol-harness.js';
 export * from './determinism.js';
 export * from './evidence.js';

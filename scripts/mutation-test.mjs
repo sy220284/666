@@ -107,7 +107,9 @@ function absoluteRepositoryPath(repositoryRoot, relativePath) {
 function commandResult(result) {
   if (result.error) throw result.error;
   if (result.status === null) {
-    throw new Error(`Mutation killer tests terminated without an exit code (${result.signal ?? 'unknown'}).`);
+    throw new Error(
+      `Mutation killer tests terminated without an exit code (${result.signal ?? 'unknown'}).`,
+    );
   }
   return {
     exitCode: result.status,
@@ -192,7 +194,9 @@ export async function runMutationSuite({
     await mkdir(path.dirname(absoluteReportPath), { recursive: true });
     await writeFile(absoluteReportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   }
-  const survivors = results.filter((entry) => entry.outcome === 'survived').map((entry) => entry.id);
+  const survivors = results
+    .filter((entry) => entry.outcome === 'survived')
+    .map((entry) => entry.id);
   if (survivors.length > 0) throw new MutationSurvivedError(survivors);
   return report;
 }
@@ -202,7 +206,7 @@ const invokedDirectly = process.argv[1]
   : false;
 if (invokedDirectly) {
   runMutationSuite().catch((error) => {
-    console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+    console.error(error instanceof Error ? (error.stack ?? error.message) : String(error));
     process.exitCode = 1;
   });
 }

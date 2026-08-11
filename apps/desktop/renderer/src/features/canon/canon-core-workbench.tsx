@@ -130,10 +130,7 @@ function Tab({
   readonly current: boolean;
   readonly label: string;
   readonly marker?:
-    | 'open-continuity'
-    | 'open-narrative-planning'
-    | 'open-state-proposals'
-    | 'open-story-knowledge';
+    'open-continuity' | 'open-narrative-planning' | 'open-state-proposals' | 'open-story-knowledge';
   readonly onClick: () => void;
 }) {
   return (

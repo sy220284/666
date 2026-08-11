@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "id": "M11-02",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md",
   "priority": "P0",
@@ -79,5 +79,9 @@
     "pnpm build",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 349,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M11-02"
+  }
 }

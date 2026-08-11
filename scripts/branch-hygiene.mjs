@@ -100,7 +100,9 @@ async function main() {
     governanceBranch !== 'governance' ||
     authorization.allowAdditionalBranches !== false
   ) {
-    throw new Error('TASK_AUTHORIZATION must define the strict main/work/governance Schema 2 model');
+    throw new Error(
+      'TASK_AUTHORIZATION must define the strict main/work/governance Schema 2 model',
+    );
   }
   const [branches, pulls] = await Promise.all([
     paged(`/repos/${owner}/${repo}/branches`),

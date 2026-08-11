@@ -1,4 +1,9 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const root = process.cwd();
+const matrixPath = path.join(root, '.github', 'governance', 'risk-matrix.json');
 
 function normalized(file) {
   return String(file ?? '')
@@ -6,39 +11,62 @@ function normalized(file) {
     .trim();
 }
 
-function isDependencyInput(file) {
-  return ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml'].includes(file);
+function compilePatterns(patterns, label) {
+  if (!Array.isArray(patterns)) throw new Error(`${label} must be an array of regex strings`);
+  return patterns.map((pattern) => {
+    if (typeof pattern !== 'string' || pattern.length === 0) {
+      throw new Error(`${label} contains an invalid pattern`);
+    }
+    return new RegExp(pattern, 'u');
+  });
 }
 
-function isProductRuntime(file) {
-  return /^(?:apps|packages|migrations)\//u.test(file);
-}
-
-function isPerformanceAuthority(file) {
-  return (
-    file === '.github/workflows/performance.yml' ||
-    file.startsWith('tests/performance/') ||
-    isDependencyInput(file)
-  );
-}
-
-function isApplicationSecurityAuthority(file) {
-  return (
-    file === '.github/workflows/security.yml' ||
-    file.startsWith('tests/security/') ||
-    /^scripts\/(?:scan-secrets|release|verify-package|package-).*\.mjs$/u.test(file) ||
-    isDependencyInput(file)
-  );
-}
-
-export function securityPerformanceRoute(files = []) {
-  const changed = files.map(normalized).filter(Boolean);
+export function loadRiskMatrix(filePath = matrixPath) {
+  const matrix = JSON.parse(readFileSync(filePath, 'utf8'));
+  if (matrix?.schemaVersion !== 1 || !matrix.routes || !matrix.fullQuality) {
+    throw new Error('Risk matrix must use schemaVersion 1 with routes and fullQuality');
+  }
+  const compiledRoutes = {};
+  for (const [name, route] of Object.entries(matrix.routes)) {
+    compiledRoutes[name] = compilePatterns(route?.any, `routes.${name}.any`);
+  }
   return {
-    dependencyAudit: changed.some(isDependencyInput),
-    applicationSecurity: changed.some(
-      (file) => isProductRuntime(file) || isApplicationSecurityAuthority(file),
+    ...matrix,
+    compiledRoutes,
+    compiledLightweightOnly: compilePatterns(
+      matrix.fullQuality.lightweightOnly,
+      'fullQuality.lightweightOnly',
     ),
-    performance: changed.some((file) => isProductRuntime(file) || isPerformanceAuthority(file)),
+  };
+}
+
+export function riskPlan(files = [], matrix = loadRiskMatrix()) {
+  const changed = files.map(normalized).filter(Boolean);
+  const routeEnabled = (name) =>
+    changed.some((file) => (matrix.compiledRoutes[name] ?? []).some((pattern) => pattern.test(file)));
+  const fullSuite =
+    changed.length === 0 ||
+    !changed.every((file) => matrix.compiledLightweightOnly.some((pattern) => pattern.test(file)));
+
+  return {
+    fullSuite,
+    packageSmoke: routeEnabled('packageSmoke'),
+    toolchainExport: routeEnabled('toolchainExport'),
+    dependencyAudit: routeEnabled('dependencyAudit'),
+    applicationSecurity: routeEnabled('applicationSecurity'),
+    performance: routeEnabled('performance'),
+    uiAcceptance: routeEnabled('uiAcceptance'),
+    windowsIme: routeEnabled('windowsIme'),
+    governanceMeta: routeEnabled('governanceMeta'),
+  };
+}
+
+export function securityPerformanceRoute(files = [], matrix = loadRiskMatrix()) {
+  const plan = riskPlan(files, matrix);
+  return {
+    dependencyAudit: plan.dependencyAudit,
+    applicationSecurity: plan.applicationSecurity,
+    performance: plan.performance,
   };
 }
 
@@ -51,17 +79,21 @@ async function stdinText() {
 async function main() {
   const mode = process.argv[2];
   const input = await stdinText();
-  const route = securityPerformanceRoute(input.split(/\r?\n/u));
-  const key =
-    mode === 'dependency-audit'
-      ? 'dependencyAudit'
-      : mode === 'application-security'
-        ? 'applicationSecurity'
-        : mode === 'performance'
-          ? 'performance'
-          : null;
+  const plan = riskPlan(input.split(/\r?\n/u));
+  const keyByMode = {
+    'full-suite': 'fullSuite',
+    'package-smoke': 'packageSmoke',
+    'toolchain-export': 'toolchainExport',
+    'dependency-audit': 'dependencyAudit',
+    'application-security': 'applicationSecurity',
+    performance: 'performance',
+    'ui-acceptance': 'uiAcceptance',
+    'windows-ime': 'windowsIme',
+    'governance-meta': 'governanceMeta',
+  };
+  const key = keyByMode[mode];
   if (!key) throw new Error(`Unknown CI risk route: ${mode ?? 'missing'}`);
-  process.stdout.write(route[key] ? 'true\n' : 'false\n');
+  process.stdout.write(plan[key] ? 'true\n' : 'false\n');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

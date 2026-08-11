@@ -122,7 +122,7 @@ async function seedLargeProject(harness: Harness): Promise<{
   await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
     const insertVolume = connection.prepare(
       `INSERT INTO volumes(id, project_id, title, order_key, status, deleted_at)
-         VALUES(?, ?, ?, ?, 'active', NULL)`,
+         VALUES(?, ?, ?, ?, 'writing', NULL)`,
     );
     const insertChapter = connection.prepare(
       `INSERT INTO chapters(

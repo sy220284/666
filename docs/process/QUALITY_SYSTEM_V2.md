@@ -225,7 +225,17 @@ tests/e2e/visual-baselines/manifest.json
 tests/e2e/visual-regression.spec.ts
 ```
 
-Baseline manifest同时绑定两次独立、完整全绿Electron E2E Artifact作为source与stability witness，二者不得复用同一commit、run或artifact。截图hash或尺寸漂移会直接阻断现有Electron E2E；失败时actual PNG进入现有`desktop-e2e-evidence` Artifact供差异审查。Baseline判定逻辑由独立Unit覆盖。Accessibility自动扫描继续在Phase 3推进。
+Baseline manifest同时绑定两次独立、完整全绿Electron E2E Artifact作为source与stability witness，二者不得复用同一commit、run或artifact。截图hash或尺寸漂移会直接阻断现有Electron E2E；失败时actual PNG进入现有`desktop-e2e-evidence` Artifact供差异审查。Baseline判定逻辑由独立Unit覆盖。
+
+Phase 3首批Accessibility自动验证已落地，机器真源与真实执行入口为：
+
+```text
+tests/e2e/accessibility-audit.ts
+tests/e2e/accessibility.spec.ts
+tests/unit/accessibility-audit.test.ts
+```
+
+扫描复用现有Playwright/Electron，无新增第三方无障碍依赖；真实覆盖首页、新建作品Modal与写作工作台。当前高置信规则要求可见交互控件和Dialog具有计算Accessible Name，禁止正`tabindex`、重复DOM id、缺失`img alt`以及`aria-hidden=true`区域包含仍可聚焦元素。Modal场景同时验证`role=dialog`、`aria-modal=true`、打开后焦点进入、连续Tab不逃逸、Escape关闭与焦点回到触发按钮。判定逻辑由Unit覆盖，真实Electron E2E失败直接阻断现有Quality Gate，不建立waiver baseline。
 
 ## 10. G7：Artifact / Release
 
@@ -353,10 +363,10 @@ pnpm check:docs
 已落地：
 
 - Linux 1280×800 Visual Regression：M8-07四主题稳定基线、双独立全绿Artifact provenance、严格SHA-256/尺寸阻断、actual PNG诊断与Unit判定覆盖。
+- Accessibility自动验证：首页/新建作品Modal/写作工作台高置信扫描、Accessible Name与DOM语义规则、Modal焦点圈/Tab/Escape回焦、Unit判定覆盖与真实Electron E2E阻断。
 
 继续推进：
 
-- Accessibility自动扫描；
 - 大作品性能；
 - Memory Leak；
 - 三平台体验矩阵。

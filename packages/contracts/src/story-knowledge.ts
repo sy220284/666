@@ -232,7 +232,11 @@ const commandFailure = z.strictObject({
 });
 
 export const StoryKnowledgeProjectionResultSchema = z.union([
-  z.strictObject({ ok: z.literal(true), requestId: z.uuid(), data: StoryKnowledgeProjectionSchema }),
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: StoryKnowledgeProjectionSchema,
+  }),
   commandFailure,
 ]);
 

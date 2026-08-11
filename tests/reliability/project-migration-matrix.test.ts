@@ -97,14 +97,25 @@ describe('reliability: full project migration matrix', () => {
           const projectRow = database
             .prepare('SELECT id, name, schema_version AS schemaVersion FROM projects WHERE id = ?')
             .get(project.projectId) as
-            | { readonly id: string; readonly name: string; readonly schemaVersion: number }
+            | { readonly id: string; readonly name: string; readonly schemaVersion: bigint }
             | undefined;
           const versions = database
             .prepare('SELECT version FROM schema_migrations ORDER BY version')
             .all()
             .map((row) => Number(row.version));
           const foreignKeyErrors = database.prepare('PRAGMA foreign_key_check').all();
-          return { projectRow, versions, foreignKeyErrors };
+          return {
+            projectRow:
+              projectRow === undefined
+                ? undefined
+                : {
+                    id: projectRow.id,
+                    name: projectRow.name,
+                    schemaVersion: Number(projectRow.schemaVersion),
+                  },
+            versions,
+            foreignKeyErrors,
+          };
         });
         expect(persisted.projectRow).toEqual({
           id: project.projectId,

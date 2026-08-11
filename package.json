@@ -30,6 +30,7 @@
     "test:e2e": "pnpm build && node scripts/run-electron-e2e.mjs",
     "test:security": "vitest run tests/security",
     "test:migration": "pnpm test:prepare && vitest run tests/migration",
+    "test:reliability": "pnpm test:prepare && vitest run tests/reliability --no-file-parallelism",
     "test:perf": "pnpm test:prepare && vitest run tests/performance --no-file-parallelism --retry=1",
     "test:eval": "pnpm test:prepare && vitest run tests/performance/ai-output-protocol.test.ts tests/performance/ai-eval-baseline.test.ts",
     "check:language": "node scripts/check-author-language.mjs",

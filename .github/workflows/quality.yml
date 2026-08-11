@@ -23,6 +23,7 @@ jobs:
       full_suite: ${{ steps.route.outputs.full_suite }}
       package_smoke: ${{ steps.route.outputs.package_smoke }}
       toolchain_export: ${{ steps.route.outputs.toolchain_export }}
+      reliability: ${{ steps.route.outputs.reliability }}
       windows_ime: ${{ steps.route.outputs.windows_ime }}
       reuse_quality: ${{ steps.closure.outputs.reuse_quality }}
     steps:
@@ -50,6 +51,7 @@ jobs:
           full_suite=false
           package_smoke=false
           toolchain_export=false
+          reliability=false
           windows_ime=false
           if [ "$REUSE_QUALITY" = true ]; then
             echo "Frozen implementation already has a complete Quality run; validating only the closure Head."
@@ -58,13 +60,15 @@ jobs:
             full_suite="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs full-suite)"
             package_smoke="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs package-smoke)"
             toolchain_export="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs toolchain-export)"
+            reliability="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs reliability)"
             windows_ime="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs windows-ime)"
           fi
           echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
           echo "package_smoke=$package_smoke" >> "$GITHUB_OUTPUT"
           echo "toolchain_export=$toolchain_export" >> "$GITHUB_OUTPUT"
+          echo "reliability=$reliability" >> "$GITHUB_OUTPUT"
           echo "windows_ime=$windows_ime" >> "$GITHUB_OUTPUT"
-          echo "PR risk plan: full suite=$full_suite; package smoke=$package_smoke; toolchain export=$toolchain_export; Windows IME=$windows_ime; frozen Quality reuse=$REUSE_QUALITY"
+          echo "PR risk plan: full suite=$full_suite; package smoke=$package_smoke; toolchain export=$toolchain_export; reliability=$reliability; Windows IME=$windows_ime; frozen Quality reuse=$REUSE_QUALITY"
 
   windows-native-ime:
     name: windows-native-ime
@@ -145,6 +149,7 @@ jobs:
       draft_mode: ${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}
       full_suite: ${{ needs.route.outputs.full_suite == 'true' }}
       package_smoke: ${{ needs.route.outputs.package_smoke == 'true' }}
+      reliability_suite: ${{ needs.route.outputs.reliability == 'true' }}
       security_suite: false
       performance_eval: false
 

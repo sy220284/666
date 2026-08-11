@@ -1,7 +1,7 @@
 # WorldForge Quality System V2
 
 > 状态：Active  
-> 生效阶段：Phase 1  
+> 生效阶段：Phase 2A  
 > 适用范围：产品代码、测试、数据库、桌面运行时、AI协议、UI体验、构建发布与仓库治理
 
 ## 1. 目标
@@ -43,7 +43,7 @@ security
 performance
 ```
 
-内部专项验证由上述Context聚合，不新增大量服务器Required Context。
+Reliability作为`quality / quality`内部Gate执行，不新增服务器Required Context。
 
 ## 3. G0：统一风险真源
 
@@ -62,11 +62,12 @@ scripts/ci-risk-policy.mjs
 - `dependencyAudit`
 - `applicationSecurity`
 - `performance`
+- `reliability`
 - `uiAcceptance`
 - `windowsIme`
 - `governanceMeta`
 
-Quality、Security和Performance调用同一个Risk Plan。Windows真实中文输入法验收由变更风险触发，不依赖历史任务marker。
+Quality、Security、Performance和Reliability读取同一个Risk Plan。Windows真实中文输入法验收由变更风险触发，不依赖历史任务marker。
 
 ## 4. G1：Architecture
 
@@ -82,7 +83,7 @@ Quality、Security和Performance调用同一个Risk Plan。Windows真实中文�
 - 同一权威实体存在多个写入入口；
 - 为绕过边界复制业务逻辑或建立第二真源。
 
-后续Phase增加Architecture Diff、IPC/API Contract Diff和Authority Ownership报告。
+后续增加Architecture Diff、IPC/API Contract Diff和Authority Ownership报告。
 
 ## 5. G2：Static Quality
 
@@ -120,13 +121,9 @@ pnpm ci:policy
 - Coverage；
 - Electron E2E。
 
-Phase 2优先建设：
+Phase 2A增加确定性的连续序列不变量测试，用于覆盖单次示例测试难以发现的跨多轮状态错误。首批对象为Draft Revision/CAS和Recovery File Lease。
 
-- Property-Based Test；
-- State Machine Test；
-- 高风险模块Mutation Test。
-
-优先对象：Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release、AI结构化协议。
+后续Phase 2B继续评估引入真正的Property-Based生成器与高风险Mutation Test，优先对象为Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release和AI结构化协议。引入新依赖前必须同步锁文件和供应链验证，不手工伪造依赖状态。
 
 ## 7. G4：Security
 
@@ -148,24 +145,32 @@ Phase 4增加：
 
 ## 8. G5：Reliability / Performance
 
-Phase 2新增专门的生命周期、并发和Fault Injection矩阵：
+机器入口：
+
+```bash
+pnpm test:reliability
+```
+
+`quality-core.yml`提供独立`reliability-tests` Job；PR由统一Risk Plan决定是否执行，正式Release使用默认`reliability_suite: true`，不得显式关闭。
+
+仓库既有Testkit已经具备事务中断、真实SQLite Busy、可重复SQLite Full和SQLite Header Corruption等Fault Harness；Recovery、Migration、Draft CAS和File Lease也已有专项测试。Phase 2不复制这些基础设施，重点补系统级不变量和重复竞态。
+
+Phase 2A首批新增：
+
+- Draft CAS连续Unicode写入序列：每轮成功提交Revision只增加1；旧Revision覆盖必须失败；reopen必须保持最新提交；Patch Log只记录真实成功提交。
+- Daily Backup File Lease重复竞争：多路竞争始终只有当前owner；release后successor可接管；旧owner在token被替换后必须被fence，且不得删除successor锁。
+
+后续Phase 2B继续扩展：
 
 ```text
-旧请求后返回
-新请求先返回
-重复操作
 快速切作品
 关闭过程中保存
-保存过程中崩溃
+保存过程中故障
 Core死亡/重启
-heartbeat延迟
-锁过期竞争
-SQLite busy/corruption
-ENOSPC
-EACCES
 Provider断流
-半JSON
-恢复中再次崩溃
+恢复中再次故障
+Backup/Restore逻辑等价Roundtrip
+跨版本Migration Matrix
 ```
 
 关键不变量：
@@ -181,7 +186,7 @@ Provider断流
 
 ## 9. G6：Product Experience
 
-UI验收状态已升级为Schema 2。
+UI验收状态使用Schema 2。
 
 每个`PASS`必须同时包含：
 
@@ -203,6 +208,7 @@ Stable要求：
 
 - 当前main拥有`main-verification=success`；
 - Release Quality/Security/Performance/UI Acceptance全部通过；
+- Reliability内部Gate通过；
 - Linux/Windows/macOS原生构建与启动冒烟；
 - Windows Authenticode；
 - macOS Developer ID、Notarization、Stapling和Gatekeeper验证；
@@ -237,6 +243,7 @@ scripts/governance-self-check.mjs
 当前至少验证：
 
 - Quality最终聚合权威存在；
+- Reliability风险路由与Quality输入存在；
 - Security/Performance最终Context存在；
 - Release仍强制UI Acceptance与Release Gate；
 - Main Verification与双集成lane同步链存在；
@@ -280,7 +287,7 @@ pnpm check:docs
 
 ## 14. Phase计划
 
-### Phase 1 — 当前实施
+### Phase 1 — 已闭环
 
 - MIT许可证权威统一；
 - Unified Risk Matrix；
@@ -291,14 +298,22 @@ pnpm check:docs
 - Active文档一致性；
 - 对应机器单测与CI策略接入。
 
-### Phase 2 — Reliability
+### Phase 2A — 当前实施
 
-- Concurrency；
-- Lifecycle；
-- Fault Injection；
-- Property-Based；
+- Reliability独立内部Gate；
+- Reliability统一风险路由；
+- Draft CAS连续序列不变量；
+- File Lease重复竞争与fencing不变量；
+- Release默认强制Reliability；
+- Workflow与Meta-Governance永久策略。
+
+### Phase 2B — 后续可靠性扩展
+
+- Lifecycle跨服务场景；
+- 系统级Fault Injection链路；
 - Backup Roundtrip；
 - Migration Matrix；
+- Property-Based生成测试；
 - 高风险Mutation Test。
 
 ### Phase 3 — Experience

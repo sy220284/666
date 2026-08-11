@@ -14,6 +14,9 @@ describe('workflow structure policy', () => {
     expect(workflow.jobs['quality-core'].with.draft_mode).toBe(
       "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}",
     );
+    expect(workflow.jobs['quality-core'].with.reliability_suite).toBe(
+      "${{ needs.route.outputs.reliability == 'true' }}",
+    );
     expect(workflow.jobs.quality.name).toBe('quality / quality');
     expect(workflow.jobs.quality.needs).toEqual(
       expect.arrayContaining(['quality-core', 'release-audit', 'package-smoke-gate']),
@@ -25,6 +28,7 @@ describe('workflow structure policy', () => {
     expect(routeScript).toContain('ci-risk-policy.mjs full-suite');
     expect(routeScript).toContain('ci-risk-policy.mjs package-smoke');
     expect(routeScript).toContain('ci-risk-policy.mjs toolchain-export');
+    expect(routeScript).toContain('ci-risk-policy.mjs reliability');
     expect(routeScript).toContain('ci-risk-policy.mjs windows-ime');
     expect(workflow.jobs['windows-native-ime'].needs).toBe('route');
     expect(workflow.jobs['windows-native-ime'].if).toContain(
@@ -36,6 +40,23 @@ describe('workflow structure policy', () => {
     );
     expect(evidenceScan.env.TASK_BASE_REF).toBe('${{ github.event.pull_request.base.sha }}');
     expect(validateWorkflowStructure('quality.yml', source)).toEqual([]);
+  });
+
+  it('keeps Reliability enabled by default in reusable Quality Core', async () => {
+    const source = await readFile('.github/workflows/quality-core.yml', 'utf8');
+    const workflow = parseWorkflowDocument('quality-core.yml', source);
+    expect(workflow.on.workflow_call.inputs.reliability_suite).toMatchObject({
+      type: 'boolean',
+      default: true,
+    });
+    expect(workflow.jobs['reliability-tests'].if).toContain('inputs.reliability_suite');
+    expect(
+      workflow.jobs['reliability-tests'].steps.find(
+        (step: { name?: string }) => step.name === 'Run reliability invariants',
+      ).run,
+    ).toContain('pnpm test:reliability');
+    expect(workflow.jobs.quality.needs).toContain('reliability-tests');
+    expect(validateWorkflowStructure('quality-core.yml', source)).toEqual([]);
   });
 
   it('rejects a quality workflow that can scan the current runtime as historical', async () => {
@@ -57,6 +78,17 @@ describe('workflow structure policy', () => {
     );
     expect(validateWorkflowStructure('quality.yml', unsafe)).toContain(
       'quality.yml: unified risk routing must invoke ci-risk-policy.mjs package-smoke',
+    );
+  });
+
+  it('rejects a quality workflow that bypasses the reliability risk route', async () => {
+    const source = await readFile('.github/workflows/quality.yml', 'utf8');
+    const unsafe = source.replace(
+      'ci-risk-policy.mjs reliability',
+      'ci-risk-policy.mjs full-suite',
+    );
+    expect(validateWorkflowStructure('quality.yml', unsafe)).toContain(
+      'quality.yml: unified risk routing must invoke ci-risk-policy.mjs reliability',
     );
   });
 

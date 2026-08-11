@@ -26,6 +26,19 @@
         "^pnpm-workspace\\.yaml$"
       ]
     },
+    "reliability": {
+      "any": [
+        "^(?:apps|packages|migrations)/",
+        "^package\\.json$",
+        "^tests/reliability/",
+        "^tests/integration/(?:draft-patch|recovery-|recovery-service|core-).*\\.test\\.ts$",
+        "^packages/testkit/src/faults\\.ts$",
+        "^scripts/ci-risk-policy\\.mjs$",
+        "^docs/process/CI_RISK_MATRIX\\.json$",
+        "^\\.github/workflows/quality\\.yml$",
+        "^\\.github/workflows/quality-core\\.yml$"
+      ]
+    },
     "packageSmoke": {
       "any": [
         "^package\\.json$",

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  StoryKnowledgeBridge,
-  StoryKnowledgeProjectionInput,
-} from '@worldforge/contracts';
+import type { StoryKnowledgeBridge, StoryKnowledgeProjectionInput } from '@worldforge/contracts';
 
 import { createRendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import { BridgeRequestCoordinator } from '../../apps/desktop/renderer/src/bridge/request-lifecycle.js';

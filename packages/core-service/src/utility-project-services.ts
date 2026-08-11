@@ -11,7 +11,7 @@ import type { ProjectWorkspaceService } from './project-workspace.js';
 import type { RecoveryService } from './recovery.js';
 import type { SceneBeatService } from './scene-beat.js';
 import type { SearchToolsService } from './search-tools.js';
-import type { StoryKnowledgeProjectionService } from './story-knowledge-projection.js';
+import type { StoryKnowledgeProjectionService } from './story-knowledge-service.js';
 import type { StructureOperationService } from './structure-operations.js';
 import type { VersionService } from './version.js';
 import type { RhythmService } from './rhythm.js';

@@ -35,6 +35,10 @@ function continuationIsCurrent(
   );
 }
 
+function continuationLaneKey(projectId: string): string {
+  return `project.saveContinuation:${projectId}`;
+}
+
 export function useWritingContinuation(input: UseWritingContinuationInput) {
   const continuationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const continuationScrollCleanup = useRef<(() => void) | null>(null);
@@ -62,6 +66,7 @@ export function useWritingContinuation(input: UseWritingContinuationInput) {
     if (persistence.isCommitted(continuation)) return true;
     const outcome = await input.bridge.project.saveContinuation(continuation, {
       mode: 'replace',
+      laneKey: continuationLaneKey(continuation.projectId),
     });
     if (!continuationIsCurrent(input, continuation)) return true;
     if (outcome.state !== 'success') return false;
@@ -85,14 +90,19 @@ export function useWritingContinuation(input: UseWritingContinuationInput) {
     if (!committed || !continuationIsCurrent(input, committed)) return;
     const next = derivePanelSwitchInput(committed, input.panel);
     if (!next) return;
-    void input.bridge.project.saveContinuation(next, { mode: 'replace' }).then((outcome) => {
-      if (!active || !continuationIsCurrent(input, next)) return;
-      if (outcome.state === 'success') {
-        persistence.commit(next);
-        return;
-      }
-      if (outcome.state === 'failure') scheduleContinuationSave();
-    });
+    void input.bridge.project
+      .saveContinuation(next, {
+        mode: 'replace',
+        laneKey: continuationLaneKey(next.projectId),
+      })
+      .then((outcome) => {
+        if (!active || !continuationIsCurrent(input, next)) return;
+        if (outcome.state === 'success') {
+          persistence.commit(next);
+          return;
+        }
+        if (outcome.state === 'failure') scheduleContinuationSave();
+      });
     return () => {
       active = false;
     };

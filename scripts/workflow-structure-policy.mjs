@@ -55,8 +55,12 @@ const fullValidationDraftMarker = '<!-- full-validation-draft -->';
 const guardedDraftMode =
   "${{ github.event.pull_request.draft && !contains(github.event.pull_request.body || '', '<!-- full-validation-draft -->') }}";
 const pullRequestBaseSha = '${{ github.event.pull_request.base.sha }}';
-const packageWorkflowRoute =
-  '.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)';
+const unifiedQualityRoutes = [
+  'ci-risk-policy.mjs full-suite',
+  'ci-risk-policy.mjs package-smoke',
+  'ci-risk-policy.mjs toolchain-export',
+  'ci-risk-policy.mjs windows-ime',
+];
 
 export function parseWorkflowDocument(file, source) {
   let workflow;
@@ -148,14 +152,25 @@ export function validateWorkflowStructure(file, source) {
         'quality.yml: quality-core.with.full_suite must be controlled by the route output',
       );
     }
-    const routeScript = String(
-      workflow.jobs.route?.steps?.find((step) => step?.name === 'Determine PR quality route')
-        ?.run ?? '',
+    const routeStep = workflow.jobs.route?.steps?.find(
+      (step) => step?.name === 'Determine PR quality route from unified risk plan',
     );
-    if (!routeScript.includes(packageWorkflowRoute)) {
-      errors.push(
-        'quality.yml: package smoke routing must include release.yml, quality.yml and quality-core.yml',
-      );
+    const routeScript = String(routeStep?.run ?? '');
+    for (const route of unifiedQualityRoutes) {
+      if (!routeScript.includes(route)) {
+        errors.push(`quality.yml: unified risk routing must invoke ${route}`);
+      }
+    }
+
+    const windowsIme = workflow.jobs['windows-native-ime'];
+    if (windowsIme?.needs !== 'route') {
+      errors.push('quality.yml: windows-native-ime must depend on the risk route');
+    }
+    if (!String(windowsIme?.if ?? '').includes("needs.route.outputs.windows_ime == 'true'")) {
+      errors.push('quality.yml: windows-native-ime must be enabled by the unified risk route');
+    }
+    if (source.includes('chinese-experience-verification-closure')) {
+      errors.push('quality.yml: Windows IME must not depend on the retired task-specific marker');
     }
 
     const releaseAudit = workflow.jobs['release-audit'];

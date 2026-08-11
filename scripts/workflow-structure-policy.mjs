@@ -143,25 +143,19 @@ export function validateWorkflowStructure(file, source) {
     if (qualityCore?.with?.performance_eval !== false) {
       errors.push('quality.yml: quality-core.with.performance_eval must be false');
     }
-    if (
-      qualityCore?.with?.package_smoke !==
-      "${{ needs.route.outputs.package_smoke == 'true' }}"
-    ) {
+    if (qualityCore?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}") {
       errors.push(
         'quality.yml: quality-core.with.package_smoke must be controlled by the route output',
       );
     }
     if (
-      qualityCore?.with?.reliability_suite !==
-      "${{ needs.route.outputs.reliability == 'true' }}"
+      qualityCore?.with?.reliability_suite !== "${{ needs.route.outputs.reliability == 'true' }}"
     ) {
       errors.push(
         'quality.yml: quality-core.with.reliability_suite must be controlled by the route output',
       );
     }
-    if (
-      qualityCore?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}"
-    ) {
+    if (qualityCore?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
       errors.push(
         'quality.yml: quality-core.with.full_suite must be controlled by the route output',
       );
@@ -180,9 +174,7 @@ export function validateWorkflowStructure(file, source) {
     if (windowsIme?.needs !== 'route') {
       errors.push('quality.yml: windows-native-ime must depend on the risk route');
     }
-    if (
-      !String(windowsIme?.if ?? '').includes("needs.route.outputs.windows_ime == 'true'")
-    ) {
+    if (!String(windowsIme?.if ?? '').includes("needs.route.outputs.windows_ime == 'true'")) {
       errors.push('quality.yml: windows-native-ime must be enabled by the unified risk route');
     }
     if (source.includes('chinese-experience-verification-closure')) {

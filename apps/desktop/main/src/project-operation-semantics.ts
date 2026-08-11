@@ -13,6 +13,7 @@ import {
   SCENE_BEAT_COMMANDS,
   SEARCH_TOOLS_COMMANDS,
   STATE_PROPOSAL_COMMANDS,
+  STORY_KNOWLEDGE_COMMANDS,
   TEXT_IO_COMMANDS,
   VALIDATION_COMMANDS,
   VERSION_COMMANDS,
@@ -127,6 +128,8 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [RHYTHM_COMMANDS.get]: 'query',
   [RHYTHM_COMMANDS.updateProfile]: 'mutation',
   [RHYTHM_COMMANDS.run]: 'mutation',
+
+  [STORY_KNOWLEDGE_COMMANDS.project]: 'query',
 
   [DRAFT_COMMANDS.openDraft]: 'query',
   [DRAFT_COMMANDS.applyPatch]: 'mutation',

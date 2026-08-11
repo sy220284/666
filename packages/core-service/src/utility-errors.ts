@@ -17,6 +17,7 @@ import { RhythmServiceError } from './rhythm.js';
 import { SceneBeatServiceError } from './scene-beat.js';
 import { SearchToolsServiceError } from './search-tools.js';
 import { StateProposalServiceError } from './state-proposal.js';
+import { StoryKnowledgeProjectionServiceError } from './story-knowledge-projection.js';
 import { ValidationServiceError } from './validation.js';
 import { VersionServiceError } from './version.js';
 
@@ -75,6 +76,11 @@ export function projectOperationError(error: unknown): ErrorCode {
     errorChainIncludes(error, STORY_ANCHOR_SCOPE_MARKERS)
   ) {
     return 'COMMON_INVALID_INPUT_001';
+  }
+  if (error instanceof StoryKnowledgeProjectionServiceError) {
+    if (error.code === 'STORY_KNOWLEDGE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'STORY_KNOWLEDGE_INVALID') return 'COMMON_INVALID_INPUT_001';
+    return 'COMMON_INTERNAL_999';
   }
   if (error instanceof SearchToolsServiceError) {
     if (error.code === 'SEARCH_REPLACE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';

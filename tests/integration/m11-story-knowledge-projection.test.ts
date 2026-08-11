@@ -175,25 +175,36 @@ describe('M11-04 故事知识有界投影', () => {
       const seeded = await seedContinuity(harness);
       const story = new StoryKnowledgeProjectionService(harness.workspace);
       const inserted: string[] = [];
-      await harness.workspace.writeProject(randomUUID(), seeded.project.projectId, (connection) => {
-        const maximum = connection
-          .prepare(`SELECT MAX(order_key) AS value FROM chapters WHERE volume_id = ?`)
-          .get(seeded.chapter1.volumeId) as unknown as { readonly value: number | bigint };
-        const start = Number(maximum.value);
-        const insert = connection.prepare(
-          `INSERT INTO chapters(
-             id, volume_id, title, status, order_key, final_version_id,
-             target_word_min, target_word_max, created_at, updated_at, deleted_at
-           ) VALUES (?, ?, ?, 'draft', ?, NULL, NULL, NULL, ?, ?, NULL)`,
-        );
-        for (let index = 0; index < 996; index += 1) {
-          const id = randomUUID();
-          inserted.push(id);
-          const timestamp = hardeningClock.now().toISOString();
-          insert.run(id, seeded.chapter1.volumeId, `扩展章${index + 1}`, start + index + 1, timestamp, timestamp);
-        }
-        return true;
-      });
+      await harness.workspace.writeProject(
+        randomUUID(),
+        seeded.project.projectId,
+        (connection) => {
+          const maximum = connection
+            .prepare(`SELECT MAX(order_key) AS value FROM chapters WHERE volume_id = ?`)
+            .get(seeded.chapter1.volumeId) as unknown as { readonly value: number | bigint };
+          const start = Number(maximum.value);
+          const insert = connection.prepare(
+            `INSERT INTO chapters(
+               id, volume_id, title, status, order_key, final_version_id,
+               target_word_min, target_word_max, created_at, updated_at, deleted_at
+             ) VALUES (?, ?, ?, 'draft', ?, NULL, NULL, NULL, ?, ?, NULL)`,
+          );
+          for (let index = 0; index < 996; index += 1) {
+            const id = randomUUID();
+            inserted.push(id);
+            const timestamp = hardeningClock.now().toISOString();
+            insert.run(
+              id,
+              seeded.chapter1.volumeId,
+              `扩展章${index + 1}`,
+              start + index + 1,
+              timestamp,
+              timestamp,
+            );
+          }
+          return true;
+        },
+      );
 
       const anchorId = inserted.at(-1)!;
       const previousId = inserted.at(-2)!;

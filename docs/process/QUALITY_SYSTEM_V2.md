@@ -170,6 +170,7 @@ Phase 2B当前新增：
 - Draft事务中断恢复：在Block、Revision、Patch Log和写作Session均已进入同一写事务后注入`after-patch-persist`故障，要求事务整体回滚；失败后正文、Revision、Patch Log和写作Session均保持故障前状态，同一requestId随后可安全重试且只提交一次。
 - Restore瞬时故障重试：恢复副本完成数据库复制后注入一次故障，要求staging/target完整清理、源作品继续保持活动且正文不变；使用同一restore requestId与相同意图重试必须成功，并得到唯一可写恢复副本。
 - Backup Cleanup部分失败重放：多目标清理在前序目标已提交删除、后续目标数据库删除瞬时失败时，必须把已完成目标持久化到cleanup journal，同时恢复未提交目标的SQLite文件、metadata和数据库记录一致性；使用同一cleanup requestId与planHash跨RecoveryService重试必须跳过已完成目标并继续剩余删除，最终不得残留`.deleting-*`文件。
+- Backup创建补偿残留自修复：已验证SQLite与metadata进入终态后若数据库注册失败，且补偿删除也失败，必须保留可验证残片与真实失败记录；恢复文件系统条件后，同一backup requestId与相同意图跨RecoveryService重试必须复用终态文件、修复唯一`backup_records`记录、resolve原失败且不得生成`.partial-*`残片。
 
 已有覆盖继续复用而不重复建设：
 
@@ -181,7 +182,6 @@ Phase 2B当前新增：
 Phase 2B剩余重点：
 
 ```text
-Backup创建补偿残留Fault Chain
 真正Property-Based生成测试
 高风险Mutation Test
 ```
@@ -330,11 +330,11 @@ pnpm check:docs
 - Draft post-persist事务故障全回滚与同requestId安全重试；
 - Restore瞬时故障清理与同意图安全重试；
 - Backup Cleanup部分失败journal续跑、同requestId跨实例重放与三方状态收敛；
+- Backup创建注册失败、补偿删除失败后的同requestId跨实例自修复与失败记录收敛；
 - 复用现有Backup/Restore、Provider断流和Core Restart覆盖，避免重复测试。
 
 继续推进：
 
-- Backup创建补偿残留Fault Chain；
 - Property-Based生成测试；
 - 高风险Mutation Test。
 

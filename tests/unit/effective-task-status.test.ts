@@ -36,8 +36,11 @@ async function historyFixture() {
   await writeFile(path.join(root, 'state.txt'), 'm10-05\n');
   git(root, 'add', 'state.txt');
   git(root, 'commit', '-m', '治理：闭环一致性 (#313)');
-  const head = git(root, 'rev-parse', 'HEAD');
-  return { root, m1004, head };
+  await writeFile(path.join(root, 'state.txt'), 'm11-01\n');
+  git(root, 'add', 'state.txt');
+  git(root, 'commit', '-m', 'Merge pull request #346 from sy220284/work');
+  const m1101 = git(root, 'rev-parse', 'HEAD');
+  return { root, m1004, m1101, head: m1101 };
 }
 
 afterEach(async () => {
@@ -94,7 +97,7 @@ describe('任务有效状态计算', () => {
     expect(isMainEffectivelyVerified(statuses)).toBe(false);
   });
 
-  it('从当前祖先链精确解析Runtime来源PR的受控合并提交', async () => {
+  it('优先从当前祖先链解析Runtime来源PR的受控收口提交', async () => {
     const fixture = await historyFixture();
     const task = {
       id: 'M10-04',
@@ -108,6 +111,23 @@ describe('任务有效状态计算', () => {
         fixture.root,
       ),
     ).toThrow('exactly one controlled main commit');
+  });
+
+  it('受控收口格式不存在时精确继承唯一的GitHub标准merge commit', async () => {
+    const fixture = await historyFixture();
+    const task = {
+      id: 'M11-01',
+      verificationBinding: { sourcePr: 346, taskContext: 'task-verification/M11-01' },
+    };
+    expect(resolveRuntimeMergeCommit(task, fixture.head, fixture.root)).toBe(fixture.m1101);
+
+    await writeFile(path.join(fixture.root, 'state.txt'), 'duplicate merge\n');
+    git(fixture.root, 'add', 'state.txt');
+    git(fixture.root, 'commit', '-m', 'Merge pull request #346 from fixture/work');
+    const ambiguousHead = git(fixture.root, 'rev-parse', 'HEAD');
+    expect(() => resolveRuntimeMergeCommit(task, ambiguousHead, fixture.root)).toThrow(
+      'exactly one controlled main commit',
+    );
   });
 
   it('统一判断当前主线验证Context', () => {

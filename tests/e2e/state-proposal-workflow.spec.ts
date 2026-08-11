@@ -37,7 +37,7 @@ test.afterEach(async () => {
   );
 });
 
-test('keeps a proposal pending until the author accepts it and then exposes the ending snapshot', async () => {
+test('keeps AI review pending until the author accepts it and then exposes the ending snapshot', async () => {
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-state-proposal-e2e-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'projects');
@@ -178,15 +178,20 @@ test('keeps a proposal pending until the author accepts it and then exposes the 
     expect(seeded.beforeEntityStateCount).toBe(0);
 
     await page.locator('[data-open-state-proposals]').click();
-    await expect(page.locator('[data-state-proposal-dialog]')).toBeVisible();
+    await expect(page.locator('[data-ai-review-dialog]')).toBeVisible();
     await page.locator('[data-refresh-state-proposals]').click();
     await page.locator('[data-state-proposal-chapter]').selectOption(seeded.chapterId);
     await page.locator('[data-refresh-state-proposals]').click();
-    const proposal = page.locator(`[data-state-proposal="${seeded.proposalId}"]`);
+    await expect(page.locator('[data-ai-review-summary]')).toContainText('待确认 1');
+    const proposal = page.locator(`[data-ai-review-proposal="${seeded.proposalId}"]`);
     await expect(proposal).toContainText('等待处理');
     await expect(proposal).toContainText('沈砚走入南城');
     await proposal.locator(`[data-accept-state-proposal="${seeded.proposalId}"]`).click();
-    await expect(proposal).toContainText('已采用');
+    await expect(page.locator('[data-state-proposal-status]')).toContainText('作者决定已保存');
+    await expect(page.locator('[data-ai-review-summary]')).toContainText('待确认 0');
+    await page.locator('[data-ai-review-status-filter]').selectOption('resolved');
+    const resolvedProposal = page.locator(`[data-ai-review-proposal="${seeded.proposalId}"]`);
+    await expect(resolvedProposal).toContainText('已采用');
     await expect(page.locator('[data-ending-snapshot="snapshot"]')).toBeVisible();
     await expect(page.locator('[data-state-proposal-snapshot]')).toContainText('人物与世界状态 1');
 

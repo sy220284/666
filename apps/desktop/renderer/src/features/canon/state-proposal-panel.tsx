@@ -16,7 +16,15 @@ import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorJsonValue } from '../../presentation/author-value-format.js';
 import { startSingleFlightPolling } from '../../runtime/single-flight-polling.js';
-import { editProposalValue, proposalConfidenceLabel } from './state-proposal-author-edit.js';
+import {
+  filterAIReviewProposals,
+  reviewConfidenceLabel,
+  reviewTypeLabel,
+  stateProposalCatalogToAIReviewCatalog,
+  type AIReviewStatusFilter,
+  type AIReviewTypeFilter,
+} from './ai-review-model.js';
+import { editProposalValue } from './state-proposal-author-edit.js';
 
 interface StateProposalView {
   readonly catalog: StateProposalCatalog;
@@ -35,7 +43,8 @@ export function StateProposalPanel({
   readonly readOnly: boolean;
 }) {
   const [chapterId, setChapterId] = useState('');
-  const [includeResolved, setIncludeResolved] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<AIReviewStatusFilter>('pending');
+  const [typeFilter, setTypeFilter] = useState<AIReviewTypeFilter>('all');
   const [notice, setNotice] = useState<string | null>(null);
   const [structure, setStructure] = useState<ProjectStructure | null>(null);
   const [providers, setProviders] = useState<readonly ProviderSummary[]>([]);
@@ -60,7 +69,7 @@ export function StateProposalPanel({
 
   const load = useCallback(async (): Promise<BridgeRequestOutcome<StateProposalView>> => {
     const response = await bridge.stateProposal.list(
-      { projectId, chapterId: chapterId || null, includeResolved },
+      { projectId, chapterId: chapterId || null, includeResolved: true },
       { mode: 'replace' },
     );
     if (response.state !== 'success') return response;
@@ -76,13 +85,15 @@ export function StateProposalPanel({
       ...snapshotResult,
       data: { catalog: response.data, snapshot: snapshotResult.data },
     };
-  }, [bridge, chapterId, includeResolved, projectId]);
-  const resource = useBridgeQuery(
-    `state-proposals:${projectId}:${chapterId}:${includeResolved}`,
-    load,
-  );
+  }, [bridge, chapterId, projectId]);
+  const resource = useBridgeQuery(`ai-review:${projectId}:${chapterId}`, load);
   const command = useBridgeCommand(resource.refresh);
   const catalog = resource.data?.catalog ?? null;
+  const reviewCatalog = catalog ? stateProposalCatalogToAIReviewCatalog(catalog) : null;
+  const visibleProposals = reviewCatalog
+    ? filterAIReviewProposals(reviewCatalog, { status: statusFilter, reviewType: typeFilter })
+    : [];
+  const proposalById = new Map(catalog?.proposals.map((proposal) => [proposal.id, proposal]) ?? []);
 
   useEffect(() => {
     let active = true;
@@ -194,11 +205,11 @@ export function StateProposalPanel({
   };
 
   return (
-    <section className="feature-card" data-state-proposal-dialog>
+    <section className="feature-card" data-ai-review-dialog data-state-proposal-dialog>
       <div className="feature-card__heading">
         <div>
-          <h2>AI设定建议与章节状态</h2>
-          <p>AI只负责分析和提出建议，只有作者确认后才会更新人物与世界。</p>
+          <h2>AI审阅与章节状态</h2>
+          <p>AI负责整理和提出建议，只有作者确认后才会更新人物与世界。</p>
         </div>
         <button
           data-refresh-state-proposals
@@ -244,15 +255,35 @@ export function StateProposalPanel({
           分析定稿
         </button>
         <label>
-          <input
-            data-state-proposal-include-resolved
-            type="checkbox"
-            checked={includeResolved}
-            onChange={(event) => setIncludeResolved(event.target.checked)}
-          />
-          包含已处理
+          处理状态
+          <select
+            data-ai-review-status-filter
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as AIReviewStatusFilter)}
+          >
+            <option value="pending">待确认</option>
+            <option value="resolved">已处理</option>
+            <option value="all">全部</option>
+          </select>
+        </label>
+        <label>
+          建议类型
+          <select
+            data-ai-review-type-filter
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value as AIReviewTypeFilter)}
+          >
+            <option value="all">全部类型</option>
+            <option value="entity_state">人物与世界状态</option>
+            <option value="arc_milestone">人物成长节点</option>
+          </select>
         </label>
       </div>
+      <p className="feature-status" data-ai-review-summary>
+        {resource.state === 'success'
+          ? `作品：${projectName} · 待确认 ${reviewCatalog?.summary.pending ?? 0} · 已处理 ${reviewCatalog?.summary.resolved ?? 0} · 来源变化 ${reviewCatalog?.summary.stale ?? 0}`
+          : `作品：${projectName} · 审阅汇总读取中…`}
+      </p>
       <p className="feature-status" data-state-proposal-status>
         {command.error
           ? `处理失败：${authorErrorSummary(command.error)}`
@@ -261,11 +292,11 @@ export function StateProposalPanel({
             : notice
               ? notice
               : resource.state === 'success'
-                ? `作品：${projectName} · 建议 ${catalog?.proposals.length ?? 0}`
+                ? 'AI审阅已同步。'
                 : '读取中…'}
       </p>
       <div className="ledger-list" data-state-proposal-batches>
-        {catalog?.batches.map((batch) => (
+        {reviewCatalog?.batches.map((batch) => (
           <article className="ledger-record" key={batch.batchId}>
             <h4>分析批次 · {stateProposalSourceLabel(batch.source)}</h4>
             <p>
@@ -279,65 +310,76 @@ export function StateProposalPanel({
           </article>
         ))}
       </div>
-      <div data-state-proposal-list>
-        {catalog?.proposals.length === 0 ? (
-          <p>当前没有AI设定建议。</p>
+      <div data-ai-review-list data-state-proposal-list>
+        {reviewCatalog?.summary.total === 0 ? (
+          <p>当前没有AI审阅建议。</p>
+        ) : visibleProposals.length === 0 ? (
+          <p>当前筛选条件下没有AI审阅建议。</p>
         ) : (
-          catalog?.proposals.map((proposal) => (
-            <article className="ledger-record" data-state-proposal={proposal.id} key={proposal.id}>
-              <h4>{stateProposalTypeLabel(proposal.proposalType)}</h4>
-              <p>
-                {authorStatusLabel(proposal.status)} · {stateProposalSourceLabel(proposal.source)} ·
-                可信度 {proposalConfidenceLabel(proposal.confidence)}
-              </p>
-              {proposal.freshness === 'stale' ? (
-                <p data-state-proposal-stale>来源定稿已经变化 · 这条旧建议只能忽略</p>
-              ) : (
-                <p>来源定稿仍然有效 · 可以接受、修改后接受或忽略</p>
-              )}
-              <p>当前记录：{authorJsonValue(proposal.previousValue)}</p>
-              <p>AI建议：{authorJsonValue(proposal.proposedValue)}</p>
-              <details>
-                <summary>技术详情</summary>
-                <p>原始已确认值</p>
-                <pre>{JSON.stringify(proposal.previousValue, null, 2)}</pre>
-                <p>原始建议值</p>
-                <pre>{JSON.stringify(proposal.proposedValue, null, 2)}</pre>
-              </details>
-              {proposal.evidence.map((anchor, index) => (
-                <p key={`${anchor.targetId}-${index}`}>
-                  {evidenceAnchorKindLabel(anchor.kind)} · {anchor.note}
+          visibleProposals.map((review) => {
+            const proposal = proposalById.get(review.id);
+            if (!proposal) return null;
+            return (
+              <article
+                className="ledger-record"
+                data-ai-review-proposal={review.id}
+                data-state-proposal={review.id}
+                key={review.id}
+              >
+                <h4>{reviewTypeLabel(review.reviewType)}</h4>
+                <p>
+                  {authorStatusLabel(review.status)} · {stateProposalSourceLabel(review.source)} ·
+                  可信度 {reviewConfidenceLabel(review.confidenceLevel)}
                 </p>
-              ))}
-              {proposal.status === 'pending' ? (
-                <div className="inline-actions">
-                  <button
-                    data-accept-state-proposal={proposal.id}
-                    disabled={readOnly || command.pending || proposal.actionability !== 'accept'}
-                    type="button"
-                    onClick={() => void resolve(proposal, 'accept')}
-                  >
-                    接受
-                  </button>
-                  <button
-                    data-edit-accept-state-proposal={proposal.id}
-                    disabled={readOnly || command.pending || proposal.actionability !== 'accept'}
-                    type="button"
-                    onClick={() => void resolve(proposal, 'edit_accept')}
-                  >
-                    修改后接受
-                  </button>
-                  <button
-                    disabled={readOnly || command.pending}
-                    type="button"
-                    onClick={() => void resolve(proposal, 'reject')}
-                  >
-                    忽略
-                  </button>
-                </div>
-              ) : null}
-            </article>
-          ))
+                {review.freshness === 'stale' ? (
+                  <p data-state-proposal-stale>来源定稿已经变化 · 这条旧建议只能忽略</p>
+                ) : (
+                  <p>来源定稿仍然有效 · 可以接受、修改后接受或忽略</p>
+                )}
+                <p>当前记录：{authorJsonValue(review.currentValue)}</p>
+                <p>AI建议：{authorJsonValue(review.proposedValue)}</p>
+                <details>
+                  <summary>技术详情</summary>
+                  <p>原始已确认值</p>
+                  <pre>{JSON.stringify(review.currentValue, null, 2)}</pre>
+                  <p>原始建议值</p>
+                  <pre>{JSON.stringify(review.proposedValue, null, 2)}</pre>
+                </details>
+                {review.evidence.map((anchor, index) => (
+                  <p key={`${anchor.targetId}-${index}`}>
+                    {evidenceAnchorKindLabel(anchor.kind)} · {anchor.note}
+                  </p>
+                ))}
+                {review.status === 'pending' ? (
+                  <div className="inline-actions">
+                    <button
+                      data-accept-state-proposal={review.id}
+                      disabled={readOnly || command.pending || review.actionability !== 'accept'}
+                      type="button"
+                      onClick={() => void resolve(proposal, 'accept')}
+                    >
+                      接受
+                    </button>
+                    <button
+                      data-edit-accept-state-proposal={review.id}
+                      disabled={readOnly || command.pending || review.actionability !== 'accept'}
+                      type="button"
+                      onClick={() => void resolve(proposal, 'edit_accept')}
+                    >
+                      修改后接受
+                    </button>
+                    <button
+                      disabled={readOnly || command.pending}
+                      type="button"
+                      onClick={() => void resolve(proposal, 'reject')}
+                    >
+                      忽略
+                    </button>
+                  </div>
+                ) : null}
+              </article>
+            );
+          })
         )}
       </div>
       <SnapshotSummary snapshot={resource.data?.snapshot ?? null} />
@@ -382,14 +424,6 @@ function stateExtractionStageLabel(stage: string): string {
     completed: '已完成',
   };
   return labels[stage] ?? '处理中';
-}
-
-function stateProposalTypeLabel(type: string): string {
-  const labels: Readonly<Record<string, string>> = {
-    entity_state: '人物与世界状态',
-    arc_milestone: '人物成长节点',
-  };
-  return labels[type] ?? 'AI设定建议';
 }
 
 function stateProposalSourceLabel(source: string): string {

@@ -31,7 +31,9 @@ describe('正式中文名称', () => {
     expect(authorTerm('projectBrief')).toBe('作品核心');
     expect(authorTerm('sceneBeat')).toBe('场景');
     expect(authorTerm('canon')).toBe('人物与世界');
-    expect(authorTerm('stateProposal')).toBe('AI设定建议');
+    expect(authorTerm('aiReview')).toBe('AI审阅');
+    expect(authorTerm('stateProposal')).toBe('AI审阅建议');
+    expect(authorTerm('reviewProposal')).toBe('AI审阅建议');
     expect(authorTerm('validation')).toBe('内容检查');
     expect(authorTerm('storyTodo')).toBe('修改任务');
     expect(authorTerm('beginnerMode')).toBe('简明模式');
@@ -45,10 +47,11 @@ describe('正式中文名称', () => {
     });
   });
 
-  it('正式名称不存在空值或重复值', () => {
+  it('正式名称不存在空值，兼容键只允许映射到同一现行名称', () => {
     const labels = Object.values(AUTHOR_TERMS);
     expect(labels.every((label) => label.trim().length > 0)).toBe(true);
-    expect(new Set(labels).size).toBe(labels.length);
+    const duplicateLabels = labels.filter((label, index) => labels.indexOf(label) !== index);
+    expect([...new Set(duplicateLabels)]).toEqual(['AI审阅建议']);
   });
 });
 

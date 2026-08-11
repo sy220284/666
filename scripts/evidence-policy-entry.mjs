@@ -25,7 +25,7 @@ export function isMaintenancePath(file) {
   );
 }
 
-export function evidenceEntryDecision({ final, pullBody, files }) {
+export function evidenceEntryDecision({ final, pullBody, files, headRef = '' }) {
   if (!final) return { action: 'delegate', reason: 'Draft evidence validation remains unchanged' };
   if (taskIdFromPullBody(pullBody)) {
     return { action: 'delegate', reason: 'Task PR requires strict final Evidence closure' };
@@ -39,6 +39,12 @@ export function evidenceEntryDecision({ final, pullBody, files }) {
     return {
       action: 'reject',
       reason: 'Task Runtime or Evidence changes require a worldforge-task marker',
+    };
+  }
+  if (headRef === 'governance') {
+    return {
+      action: 'maintenance',
+      reason: 'Governance integration PR does not require task Evidence closure',
     };
   }
   const productFiles = files.filter((file) => !isMaintenancePath(file));
@@ -81,6 +87,7 @@ function main() {
     final: booleanEnvironment(process.env.EVIDENCE_FINAL),
     pullBody: process.env.EVIDENCE_PR_BODY ?? '',
     files: changedFiles(process.env.EVIDENCE_BASE_SHA),
+    headRef: process.env.EVIDENCE_PR_HEAD_REF ?? '',
   });
   if (decision.action === 'reject') throw new Error(decision.reason);
   if (decision.action === 'maintenance') {

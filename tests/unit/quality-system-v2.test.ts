@@ -93,7 +93,7 @@ describe('Meta-Governance权威链', () => {
       'node scripts/ui-acceptance-gate.mjs\npnpm release:gate\ntest "$GITHUB_REF_NAME" = main',
     mainVerification:
       'name: main-verification\nname: synchronize-integrations\nmain/work/governance branch inventory',
-    riskPolicy: "risk-matrix.json export function riskPlan 'dependency-audit' 'windows-ime'",
+    riskPolicy: "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' 'windows-ime'",
     riskMatrix: JSON.stringify({
       schemaVersion: 1,
       routes: Object.fromEntries(

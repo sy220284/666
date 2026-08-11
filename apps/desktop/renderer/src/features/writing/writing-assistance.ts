@@ -1,54 +1,13 @@
-import type {
-  ContinuityCatalog,
-  Entity,
-  NarrativePlanningCatalog,
-  PlotNode,
-  SceneBeat,
-  StoryKnowledgeProjection,
-  ValidationCatalog,
-} from '@worldforge/contracts';
+import type { StoryKnowledgeProjection } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 
-type StoryTodo = ValidationCatalog['todos'][number];
 type ChapterAssistProjection = Extract<StoryKnowledgeProjection, { readonly view: 'chapter_assist' }>;
 
-export interface WritingAssistanceGoal {
-  readonly title: string;
-  readonly goal: string;
-  readonly coreConflict: string;
-  readonly expectedResult: string;
-}
-
-export interface WritingAssistanceBeat {
-  readonly id: string;
-  readonly title: string;
-  readonly goal: string;
-  readonly required: boolean;
-  readonly wordTargetPercent: number;
-}
-
-export interface WritingAssistanceCharacter {
-  readonly id: string;
-  readonly name: string;
-  readonly summary: string;
-  readonly states: readonly {
-    readonly key: string;
-    readonly value: unknown;
-  }[];
-  readonly knowledge: readonly {
-    readonly information: string;
-    readonly status: string;
-  }[];
-}
-
-export interface WritingAssistanceForeshadowing {
-  readonly id: string;
-  readonly title: string;
-  readonly description: string;
-  readonly status: string;
-  readonly attention: string;
-}
+export type WritingAssistanceGoal = NonNullable<ChapterAssistProjection['goal']>;
+export type WritingAssistanceBeat = ChapterAssistProjection['sceneBeats'][number];
+export type WritingAssistanceCharacter = ChapterAssistProjection['characters'][number];
+export type WritingAssistanceForeshadowing = ChapterAssistProjection['foreshadowings'][number];
 
 export interface WritingAssistancePreviousEnding {
   readonly chapterId: string;
@@ -59,98 +18,14 @@ export interface WritingAssistancePreviousEnding {
 
 export interface WritingAssistanceView {
   readonly chapterId: string;
-  readonly chapterTitle: string | null;
+  readonly chapterTitle: string;
   readonly goal: WritingAssistanceGoal | null;
   readonly sceneBeats: readonly WritingAssistanceBeat[];
   readonly characters: readonly WritingAssistanceCharacter[];
   readonly foreshadowings: readonly WritingAssistanceForeshadowing[];
-  readonly todos: readonly StoryTodo[];
+  readonly todos: ChapterAssistProjection['todos'];
   readonly previousEnding: WritingAssistancePreviousEnding | null;
   readonly warnings: readonly string[];
-}
-
-export interface WritingAssistanceSource {
-  readonly chapterId: string;
-  readonly chapterTitle: string | null;
-  readonly plotNodes: readonly PlotNode[];
-  readonly sceneBeats: readonly SceneBeat[];
-  readonly entities: readonly Entity[];
-  readonly continuity: ContinuityCatalog;
-  readonly narrative: NarrativePlanningCatalog;
-  readonly todos: readonly StoryTodo[];
-  readonly previousEnding: WritingAssistancePreviousEnding | null;
-  readonly warnings?: readonly string[];
-}
-
-export function buildWritingAssistanceView(source: WritingAssistanceSource): WritingAssistanceView {
-  const plotNodeIds = new Set(
-    source.sceneBeats.flatMap((beat) => (beat.plotNodeId ? [beat.plotNodeId] : [])),
-  );
-  const goalNode =
-    source.plotNodes.find((node) => plotNodeIds.has(node.id)) ??
-    source.plotNodes.find(
-      (node) => node.nodeType === 'chapter' && node.title === source.chapterTitle,
-    ) ??
-    null;
-
-  const characterIds = new Set(source.sceneBeats.flatMap((beat) => beat.characterIds));
-  const characters = source.entities
-    .filter((entity) => entity.entityType === 'character' && characterIds.has(entity.id))
-    .map((entity) => ({
-      id: entity.id,
-      name: entity.name,
-      summary: entity.summary,
-      states: source.continuity.entityStates
-        .filter((state) => state.entityId === entity.id && state.recordStatus === 'current')
-        .map((state) => ({ key: state.stateKey, value: state.value })),
-      knowledge: source.continuity.knowledgeStates
-        .filter((state) => state.characterId === entity.id && state.recordStatus === 'current')
-        .map((state) => ({
-          information: state.informationKey,
-          status: state.knowledgeStatus,
-        })),
-    }));
-
-  const foreshadowings = source.narrative.foreshadowings
-    .filter(
-      (item) =>
-        item.chapterLinks.some((link) => link.chapterId === source.chapterId) ||
-        item.revealFromChapterId === source.chapterId ||
-        item.revealByChapterId === source.chapterId ||
-        item.attention !== 'none',
-    )
-    .map((item) => ({
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      status: item.status,
-      attention: item.attention,
-    }));
-
-  return {
-    chapterId: source.chapterId,
-    chapterTitle: source.chapterTitle,
-    goal: goalNode
-      ? {
-          title: goalNode.title,
-          goal: goalNode.goal,
-          coreConflict: goalNode.coreConflict,
-          expectedResult: goalNode.expectedResult,
-        }
-      : null,
-    sceneBeats: source.sceneBeats.map((beat) => ({
-      id: beat.id,
-      title: beat.title,
-      goal: beat.goal,
-      required: beat.required,
-      wordTargetPercent: beat.wordTargetPercent,
-    })),
-    characters,
-    foreshadowings,
-    todos: source.todos.filter((todo) => todo.status === 'open'),
-    previousEnding: source.previousEnding,
-    warnings: source.warnings ?? [],
-  };
 }
 
 function projectionView(

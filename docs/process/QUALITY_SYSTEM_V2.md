@@ -123,7 +123,7 @@ pnpm ci:policy
 
 Phase 2A增加确定性的连续序列不变量测试，用于覆盖单次示例测试难以发现的跨多轮状态错误。首批对象为Draft Revision/CAS和Recovery File Lease。
 
-Phase 2B继续把Correctness提升到跨版本与跨生命周期：所有历史Project Schema必须能安全迁移到当前最新版并在二次打开时保持幂等；高频作品切换与保存/关闭交错必须保持作品身份和最新正文。
+Phase 2B继续把Correctness提升到跨版本、跨生命周期与失败恢复：所有历史Project Schema必须能安全迁移到当前最新版并在二次打开时保持幂等；高频作品切换与保存/关闭交错必须保持作品身份和最新正文；事务或恢复流程中途失败后必须保留最后一个已提交权威状态，并允许安全重试。
 
 真正的Property-Based生成器与高风险Mutation Test继续在Phase 2B评估，优先对象为Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release和AI结构化协议。引入新依赖前必须同步锁文件和供应链验证，不手工伪造依赖状态。
 
@@ -167,6 +167,8 @@ Phase 2B当前新增：
 - 全历史Project Migration Matrix：从每一个旧Schema版本迁移到当前latest，要求项目身份、名称、完整migration history和foreign key完整性保持；首次迁移必须生成恢复副本，二次reopen不得重复迁移或新增恢复副本。
 - 高频作品切换：连续16轮排队执行`open A → close A → open B → close B`，验证lifecycle tail严格保持调用顺序、active project最终释放、两部作品正文不串写。
 - 保存/关闭交错：连续12轮在Draft写入进入数据库队列后立即触发Project Close，要求写入成功、关闭成功、重新打开后正文和Revision等于最新已提交状态。
+- Draft事务中断恢复：在Block、Revision、Patch Log和写作Session均已进入同一写事务后注入`after-patch-persist`故障，要求事务整体回滚；失败后正文、Revision、Patch Log和写作Session均保持故障前状态，同一requestId随后可安全重试且只提交一次。
+- Restore瞬时故障重试：恢复副本完成数据库复制后注入一次故障，要求staging/target完整清理、源作品继续保持活动且正文不变；使用同一restore requestId与相同意图重试必须成功，并得到唯一可写恢复副本。
 
 已有覆盖继续复用而不重复建设：
 
@@ -178,9 +180,7 @@ Phase 2B当前新增：
 Phase 2B剩余重点：
 
 ```text
-保存过程中Fault Injection
-恢复中再次故障
-Backup/Recovery系统级故障链
+Backup创建/清理系统级Fault Chain
 真正Property-Based生成测试
 高风险Mutation Test
 ```
@@ -326,12 +326,13 @@ pnpm check:docs
 - 全历史Project Migration Matrix；
 - 高频跨作品Lifecycle队列；
 - Draft Save / Project Close交错不变量；
+- Draft post-persist事务故障全回滚与同requestId安全重试；
+- Restore瞬时故障清理与同意图安全重试；
 - 复用现有Backup/Restore、Provider断流和Core Restart覆盖，避免重复测试。
 
 继续推进：
 
-- 系统级Fault Injection链路；
-- 保存/恢复二次故障；
+- Backup创建/清理系统级Fault Chain；
 - Property-Based生成测试；
 - 高风险Mutation Test。
 

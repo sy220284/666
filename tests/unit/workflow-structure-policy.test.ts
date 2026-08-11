@@ -19,11 +19,18 @@ describe('workflow structure policy', () => {
       expect.arrayContaining(['quality-core', 'release-audit', 'package-smoke-gate']),
     );
     const routeScript = workflow.jobs.route.steps.find(
-      (step: { name?: string }) => step.name === 'Determine PR quality route',
+      (step: { name?: string }) =>
+        step.name === 'Determine PR quality route from unified risk plan',
     ).run;
-    expect(routeScript).toContain(
-      '.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)',
+    expect(routeScript).toContain('ci-risk-policy.mjs full-suite');
+    expect(routeScript).toContain('ci-risk-policy.mjs package-smoke');
+    expect(routeScript).toContain('ci-risk-policy.mjs toolchain-export');
+    expect(routeScript).toContain('ci-risk-policy.mjs windows-ime');
+    expect(workflow.jobs['windows-native-ime'].needs).toBe('route');
+    expect(workflow.jobs['windows-native-ime'].if).toContain(
+      "needs.route.outputs.windows_ime == 'true'",
     );
+    expect(source).not.toContain('chinese-experience-verification-closure');
     const evidenceScan = workflow.jobs['release-audit'].steps.find(
       (step: { name?: string }) => step.name === 'Scan effective Verified Evidence',
     );
@@ -42,14 +49,19 @@ describe('workflow structure policy', () => {
     );
   });
 
-  it('rejects a quality workflow that skips package smoke when its orchestration changes', async () => {
+  it('rejects a quality workflow that bypasses the package risk route', async () => {
     const source = await readFile('.github/workflows/quality.yml', 'utf8');
-    const unsafe = source.replace(
-      '|.github/workflows/release.yml|.github/workflows/quality.yml|.github/workflows/quality-core.yml)',
-      '|.github/workflows/release.yml|.github/workflows/quality-core.yml)',
-    );
+    const unsafe = source.replace('ci-risk-policy.mjs package-smoke', 'ci-risk-policy.mjs full-suite');
     expect(validateWorkflowStructure('quality.yml', unsafe)).toContain(
-      'quality.yml: package smoke routing must include release.yml, quality.yml and quality-core.yml',
+      'quality.yml: unified risk routing must invoke ci-risk-policy.mjs package-smoke',
+    );
+  });
+
+  it('rejects task-specific Windows IME routing', async () => {
+    const source = await readFile('.github/workflows/quality.yml', 'utf8');
+    const unsafe = `${source}\n# chinese-experience-verification-closure\n`;
+    expect(validateWorkflowStructure('quality.yml', unsafe)).toContain(
+      'quality.yml: Windows IME must not depend on the retired task-specific marker',
     );
   });
 

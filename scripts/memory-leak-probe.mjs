@@ -57,9 +57,13 @@ async function writeDraftOperations({ drafts, projectId, chapterId, draft, count
   for (let index = 0; index < count; index += 1) {
     const operationIndex = offset + index;
     const block = current.blocks[0];
-    if (!block?.contentHash) throw new Error('MEMORY_FIXTURE_INVALID: active draft block is missing.');
+    if (!block?.contentHash)
+      throw new Error('MEMORY_FIXTURE_INVALID: active draft block is missing.');
     const prefix = `稳定态写作-${String(operationIndex).padStart(5, '0')}-`;
-    const content = `${prefix}${'长篇正文'.repeat(Math.ceil((3000 - prefix.length) / 4))}`.slice(0, 3000);
+    const content = `${prefix}${'长篇正文'.repeat(Math.ceil((3000 - prefix.length) / 4))}`.slice(
+      0,
+      3000,
+    );
     const requestId = randomUUID();
     current = await runCommand(
       'memory.draft.applyPatch',
@@ -107,7 +111,8 @@ async function runProjectCycles({ workspace, workspacePath, projectId, count, of
 
 async function main() {
   const budget = await loadBudget();
-  if (budget.schemaVersion !== 1) throw new Error('MEMORY_BUDGET_INVALID: unsupported schemaVersion.');
+  if (budget.schemaVersion !== 1)
+    throw new Error('MEMORY_BUDGET_INVALID: unsupported schemaVersion.');
   if (!Number.isInteger(budget.gcPasses) || budget.gcPasses < 2) {
     throw new Error('MEMORY_BUDGET_INVALID: gcPasses must be an integer >= 2.');
   }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile as actualReadFile, rm, writeFile } from 'node:fs/promises';
+import * as actualFs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -11,20 +11,24 @@ afterEach(async () => {
   vi.doUnmock('node:fs/promises');
   vi.resetModules();
   await Promise.all(
-    directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+    directories
+      .splice(0)
+      .map((directory) => actualFs.rm(directory, { recursive: true, force: true })),
   );
 });
 
 describe('reliability: daily backup lease release fencing', () => {
   it('re-checks the token immediately before removal when a successor takes over mid-release', async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), 'worldforge-reliability-release-race-'));
+    const directory = await actualFs.mkdtemp(
+      path.join(tmpdir(), 'worldforge-reliability-release-race-'),
+    );
     directories.push(directory);
     const lockPath = path.join(directory, '.daily.lock');
     const successorToken = randomUUID();
     let intercepted = false;
 
     vi.doMock('node:fs/promises', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('node:fs/promises')>();
+      const actual = (await importOriginal()) as typeof actualFs;
       return {
         ...actual,
         readFile: async (...args: Parameters<typeof actual.readFile>) => {
@@ -64,7 +68,7 @@ describe('reliability: daily backup lease release fencing', () => {
     await owner.release();
 
     expect(intercepted).toBe(true);
-    const successor = JSON.parse(await actualReadFile(lockPath, 'utf8')) as { token: string };
+    const successor = JSON.parse(await actualFs.readFile(lockPath, 'utf8')) as { token: string };
     expect(successor.token).toBe(successorToken);
   });
 });

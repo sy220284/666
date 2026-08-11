@@ -8,6 +8,7 @@ import {
   type PrimaryNavigationId,
 } from '../shell/app-shell-model.js';
 import {
+  authorNavigationTargetBelongsToProject,
   resolveAuthorNavigationTarget,
   type AuthorNavigationTarget,
 } from '../shell/navigation-target.js';
@@ -125,7 +126,7 @@ export function useAppShellNavigation({
   const navigateToAuthorTarget = useCallback(
     (target: AuthorNavigationTarget): void => {
       void (async () => {
-        if (!activeProjectId || target.projectId !== activeProjectId) {
+        if (!authorNavigationTargetBelongsToProject(activeProjectId, target)) {
           setMessage('目标不属于当前项目，已阻止跨项目跳转。');
           return;
         }

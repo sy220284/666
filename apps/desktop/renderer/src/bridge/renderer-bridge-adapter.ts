@@ -33,13 +33,14 @@ import type {
   KnowledgeStateSetInput,
   NarrativePlanningCatalog,
   NarrativePlanningListInput,
-  StateProposalBridge,
-  ValidationBridge,
-  SearchToolsBridge,
   RhythmBridge,
+  SearchToolsBridge,
+  StateProposalBridge,
+  StoryKnowledgeBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
+  ValidationBridge,
   WorldforgeBridge,
 } from '@worldforge/contracts';
 
@@ -153,6 +154,7 @@ interface AuxiliaryRendererBridges {
   readonly validation?: ValidationBridge;
   readonly searchTools?: SearchToolsBridge;
   readonly rhythm?: RhythmBridge;
+  readonly storyKnowledge?: StoryKnowledgeBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -197,6 +199,7 @@ export interface RendererBridgeAdapter {
   readonly validation: AdaptedDomain<ValidationBridge>;
   readonly searchTools: AdaptedDomain<SearchToolsBridge>;
   readonly rhythm: AdaptedDomain<RhythmBridge>;
+  readonly storyKnowledge: AdaptedDomain<StoryKnowledgeBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -268,6 +271,11 @@ export function createRendererBridgeAdapter(
       coordinator,
     ),
     rhythm: adaptDomain('rhythm', requireDomain(auxiliary.rhythm, 'rhythm'), coordinator),
+    storyKnowledge: adaptDomain(
+      'storyKnowledge',
+      requireDomain(auxiliary.storyKnowledge, 'storyKnowledge'),
+      coordinator,
+    ),
     candidateAction: adaptDomain(
       'candidateAction',
       requireDomain(auxiliary.candidateAction, 'candidateAction'),
@@ -293,6 +301,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeValidation ||
     !window.worldforgeSearchTools ||
     !window.worldforgeRhythm ||
+    !window.worldforgeStoryKnowledge ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -304,6 +313,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     validation: window.worldforgeValidation,
     searchTools: window.worldforgeSearchTools,
     rhythm: window.worldforgeRhythm,
+    storyKnowledge: window.worldforgeStoryKnowledge,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }

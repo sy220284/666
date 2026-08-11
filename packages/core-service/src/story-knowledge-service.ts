@@ -10,6 +10,7 @@ import {
   projectChapterAssist,
   projectForeshadowingLane,
 } from './story-knowledge-chapter-assist.js';
+import { projectHistory } from './story-knowledge-history.js';
 import {
   StoryKnowledgeProjectionService as BaseStoryKnowledgeProjectionService,
   StoryKnowledgeProjectionServiceError,
@@ -26,7 +27,11 @@ export class StoryKnowledgeProjectionService {
 
   project(rawInput: StoryKnowledgeProjectionInput): StoryKnowledgeProjection {
     const input = StoryKnowledgeProjectionInputSchema.parse(rawInput);
-    if (input.view !== 'foreshadowing' && input.view !== 'chapter_assist') {
+    if (
+      input.view !== 'foreshadowing' &&
+      input.view !== 'history' &&
+      input.view !== 'chapter_assist'
+    ) {
       return this.#base.project(input);
     }
     return this.workspace.readProject(input.projectId, (connection) => {
@@ -45,11 +50,13 @@ export class StoryKnowledgeProjectionService {
           'The requested Story Knowledge chapter was not found.',
         );
       }
-      return StoryKnowledgeProjectionSchema.parse(
+      const projection =
         input.view === 'chapter_assist'
           ? projectChapterAssist(connection, input)
-          : projectForeshadowingLane(connection, input),
-      );
+          : input.view === 'history'
+            ? projectHistory(connection, input)
+            : projectForeshadowingLane(connection, input);
+      return StoryKnowledgeProjectionSchema.parse(projection);
     });
   }
 }

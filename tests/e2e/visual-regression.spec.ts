@@ -98,45 +98,46 @@ test.afterEach(async () => {
   );
 });
 
-test('Phase 3 Linux 1280×800四主题视觉基线', async () => {
-  test.skip(process.platform !== 'linux', 'Phase 3首批视觉基线固定在Linux CI环境。');
-  test.setTimeout(180_000);
-  const manifest = await loadVisualBaselineManifest(root);
-  expect(manifest.baselines).toHaveLength(4);
+if (process.platform === 'linux') {
+  test('Phase 3 Linux 1280×800四主题视觉基线', async () => {
+    test.setTimeout(180_000);
+    const manifest = await loadVisualBaselineManifest(root);
+    expect(manifest.baselines).toHaveLength(4);
 
-  const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-visual-regression-'));
-  temporaryDirectories.push(userDataPath);
-  const createParent = path.join(userDataPath, 'works');
-  await mkdir(createParent, { recursive: true });
-  const application = await launch(userDataPath, createParent);
+    const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-visual-regression-'));
+    temporaryDirectories.push(userDataPath);
+    const createParent = path.join(userDataPath, 'works');
+    await mkdir(createParent, { recursive: true });
+    const application = await launch(userDataPath, createParent);
 
-  try {
-    const page = await application.firstWindow();
-    await setViewport(application);
-    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    try {
+      const page = await application.firstWindow();
+      await setViewport(application);
+      await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
 
-    await page.locator('[data-create-project]').click();
-    await page.locator('[data-project-name]').fill('M8-07中文体验验收');
-    await page.locator('[data-confirm-create-project]').click();
-    await expect(page.locator('[data-writing-workbench]')).toBeVisible();
-    await expect(page.locator('body')).toHaveAttribute('data-author-mode', 'beginner');
+      await page.locator('[data-create-project]').click();
+      await page.locator('[data-project-name]').fill('M8-07中文体验验收');
+      await page.locator('[data-confirm-create-project]').click();
+      await expect(page.locator('[data-writing-workbench]')).toBeVisible();
+      await expect(page.locator('body')).toHaveAttribute('data-author-mode', 'beginner');
 
-    const editor = page.locator('[data-draft-content]');
-    await editor.click();
-    await page.keyboard.insertText('清河落雨，檐下灯火映着未写完的故事。');
-    await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText('已手动保存');
-    await expect(page.locator('[data-draft-state]')).not.toContainText('保存序号');
-    await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
+      const editor = page.locator('[data-draft-content]');
+      await editor.click();
+      await page.keyboard.insertText('清河落雨，檐下灯火映着未写完的故事。');
+      await page.locator('[data-save-draft]').click();
+      await expect(page.locator('[data-draft-state]')).toHaveText('已手动保存');
+      await expect(page.locator('[data-draft-state]')).not.toContainText('保存序号');
+      await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
 
-    await expectBaseline(page, manifest, 'theme-a-light-1280x800.png');
-    await applyTheme(page, 'theme-a', 'dark');
-    await expectBaseline(page, manifest, 'theme-a-dark-1280x800.png');
-    await applyTheme(page, 'theme-b', 'light');
-    await expectBaseline(page, manifest, 'theme-b-light-1280x800.png');
-    await applyTheme(page, 'theme-b', 'dark');
-    await expectBaseline(page, manifest, 'theme-b-dark-1280x800.png');
-  } finally {
-    await closeGracefully(application);
-  }
-});
+      await expectBaseline(page, manifest, 'theme-a-light-1280x800.png');
+      await applyTheme(page, 'theme-a', 'dark');
+      await expectBaseline(page, manifest, 'theme-a-dark-1280x800.png');
+      await applyTheme(page, 'theme-b', 'light');
+      await expectBaseline(page, manifest, 'theme-b-light-1280x800.png');
+      await applyTheme(page, 'theme-b', 'dark');
+      await expectBaseline(page, manifest, 'theme-b-dark-1280x800.png');
+    } finally {
+      await closeGracefully(application);
+    }
+  });
+}

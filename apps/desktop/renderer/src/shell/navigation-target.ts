@@ -60,6 +60,13 @@ export interface AuthorNavigationResolution {
   readonly filters: Readonly<Record<string, string | null>>;
 }
 
+export function authorNavigationTargetBelongsToProject(
+  activeProjectId: string | null,
+  target: AuthorNavigationTarget,
+): boolean {
+  return activeProjectId !== null && target.projectId === activeProjectId;
+}
+
 export function resolveAuthorNavigationTarget(
   target: AuthorNavigationTarget,
 ): AuthorNavigationResolution {

@@ -141,10 +141,11 @@ async function measureStoryKnowledge(chapterCount: (typeof chapterCounts)[number
   }
 }
 
-describe('M11-04 Story Knowledge 长篇性能预算', () => {
-  it('100/300/1000章项目保持有界查询与Renderer投影体积', async () => {
-    const datasets = [];
-    for (const chapterCount of chapterCounts) datasets.push(await measureStoryKnowledge(chapterCount));
+describe('M11-04 故事知识长篇性能预算', () => {
+  it('100/300/1000章项目保持有界查询与渲染层投影体积', async () => {
+    const datasets: Awaited<ReturnType<typeof measureStoryKnowledge>>[] = [];
+    for (const chapterCount of chapterCounts)
+      datasets.push(await measureStoryKnowledge(chapterCount));
 
     const metrics = datasets.flatMap((dataset) => [
       {
@@ -172,7 +173,10 @@ describe('M11-04 Story Knowledge 长篇性能预算', () => {
         budget: 128 * 1024,
       },
     ]);
-    const evaluated = metrics.map((metric) => ({ ...metric, passed: metric.result <= metric.budget }));
+    const evaluated = metrics.map((metric) => ({
+      ...metric,
+      passed: metric.result <= metric.budget,
+    }));
 
     expect(evaluated.every((metric) => metric.passed)).toBe(true);
     const output = process.env.WORLDFORGE_M11_04_PERF_OUTPUT;

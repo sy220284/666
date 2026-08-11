@@ -15,7 +15,7 @@ WorldForge 是面向单一作者的本地优先桌面写作工作站，仓库实
 2. docs/PROJECT_EXECUTION_ENTRY.md
 3. docs/tasks/TASK_AUTHORIZATION.json
 4. docs/tasks/TASK_INDEX.md
-5. 当前任务Runtime
+5. 产品任务时读取当前任务Runtime
 6. 当前任务卡及其专项文档
 7. 现有代码、测试、Migration、契约和追踪状态
 ```
@@ -23,9 +23,9 @@ WorldForge 是面向单一作者的本地优先桌面写作工作站，仓库实
 固定规则：
 
 - `TASK_AUTHORIZATION.json` 是分支模型、PR模型和main写入规则的全局机器真源。
-- 当前授权模式固定为 `single-work-pr`。
-- `docs/tasks/runtime/<TASK-ID>.json` 是任务状态、允许路径、禁止路径和验证命令的机器真源。
-- 新建及活动Runtime必须使用Schema 2和`executionBranch: "work"`；已Verified历史Runtime保持冻结，只允许读取。
+- 当前授权模型固定为Schema 2：`main`稳定主线、`work`产品任务集成lane、`governance`仓库治理集成lane；配置中的`mode: single-work-pr`表示产品任务仍只使用唯一`work`，不否定永久`governance` lane。
+- `docs/tasks/runtime/<TASK-ID>.json` 是产品任务状态、允许路径、禁止路径和验证命令的机器真源。
+- 新建及活动产品Runtime必须使用Schema 2和`executionBranch: "work"`；治理维护不得伪造产品Runtime。已Verified历史Runtime保持冻结，只允许读取。
 - `ACTIVE_TASK.json`、`ACTIVE_TASK.md`与旧`taskctl`兼容入口已经退役，不得重新引入或作为状态真源。
 - 动态任务数量、阶段和授权以真实状态文件为准，不在本文固化。
 
@@ -68,41 +68,66 @@ AI可以提议文本和状态变化，但不得直接修改已确认设定、定
 
 任一不变量失败必须阻断合并和发布。
 
-## 5. 唯一分支与PR规则
+## 5. 永久分支与PR规则
 
-仓库长期只允许两个分支：
+仓库长期且只允许三个分支：
 
 ```text
 main：受控合并后的稳定主线
-work：全部任务、修复、验证、治理、文档和Evidence集成
+work：产品任务、产品修复、任务验证、任务文档和Evidence集成
+governance：仓库治理、CI、测试治理、流程文档和构建治理集成
 ```
 
 强制规则：
 
-- 禁止新增或复用 `work/*`、`feat/*`、`fix/*`、`chore/*`、`policy/*`、`probe/*`、`stage/*`、`validate/*`、`release/*`及其他分支。
-- 所有正式PR必须精确为 `work → main`，来源仓库必须是当前仓库。
-- 同一时刻最多存在一个开放的 `work → main` PR。
-- 禁止直接向`main`提交；`main`只允许永久门禁通过后的Controlled Merge写入。
-- 开始新工作前，`work`必须与最新已验证`main`一致。
-- 并行开发只允许使用独立工作区、文件所有权、提交顺序和集成协调；所有正式提交最终进入同一个`work`。
-- 禁止验证专用分支、治理专用分支、纯Evidence分支和纯关闭PR。
+- 禁止新增或复用 `work/*`、`governance/*`、`feat/*`、`fix/*`、`chore/*`、`policy/*`、`probe/*`、`stage/*`、`validate/*`、`release/*`及其他第四分支。
+- 产品正式PR必须精确为 `work → main`；仓库治理PR必须精确为 `governance → main`；来源仓库必须是当前仓库。
+- 同一时刻每条集成lane最多一个开放PR；`work`与`governance`可以各有一个PR并行准备，但main写入始终串行。
+- 禁止直接向`main`提交；`main`只允许四项永久门禁通过后的Controlled Merge写入。
+- 开始新的产品工作前，`work`必须与最新已验证`main`一致；开始新的治理维护前，`governance`必须建立在最新安全基线上。
+- 无任务marker的`governance` PR不得修改产品功能、数据库、IPC、Task Runtime或任务Evidence；若范围触及这些内容，必须转入`work`正式任务闭包。
+- 禁止验证专用分支、临时治理分支、纯Evidence分支和纯关闭PR。
 
-标准流程：
+产品流程：
 
 ```text
 已验证main
-→ 唯一work
+→ work
 → 实施、测试、审查、文档与Evidence
-→ 一个Ready PR（work → main）
-→ 六项永久门禁
+→ Ready PR（work → main）
+→ 四项永久门禁
 → Controlled Merge（Squash）
 → Main Verification
-→ 任务有效状态关闭
-→ Work Synchronization受控重置work到已验证main
+→ task-verification/<TASK-ID>
+→ Integration Branch Synchronization
+→ Branch Inventory/Hygiene
 → 下一任务
 ```
 
-Squash后`work`与`main`提交身份不同，同步动作统一称为“受控重置”。
+治理流程：
+
+```text
+已验证main
+→ governance
+→ 治理、CI、测试、流程文档或构建治理修改
+→ Ready PR（governance → main）
+→ 四项永久门禁
+→ Controlled Merge（Squash）
+→ Main Verification
+→ Integration Branch Synchronization
+→ Branch Inventory/Hygiene
+```
+
+四项永久门禁固定为：
+
+```text
+pr-policy
+quality / quality
+security
+performance
+```
+
+`quality / quality`必须聚合Core Quality、Release Audit和Package Gate。Task Governance与Evidence不再作为第五、第六个永久Context。
 
 ## 6. 任务状态与关闭
 
@@ -130,18 +155,29 @@ IMPLEMENTED + 来源绑定一致 + task-verification/<TASK-ID>成功
 - 最终Evidence在合并前记录来源PR和受检Head；合并后的main SHA、验证运行和状态由GitHub提交状态完成闭环。
 - 已Verified历史任务、Migration和Evidence保持冻结。
 
-## 7. Work Synchronization安全条件
+## 7. Integration Branch Synchronization安全条件
 
-只有以下条件全部成立，永久工作流才可以将`work`受控重置到已验证`main`：
+Main Verification成功后，永久同步流程同时检查`work`和`governance`。
+
+来源lane只有以下条件全部成立才可同步：
 
 - Main Verification结论为success；
 - 当前main SHA等于该验证运行的Head SHA；
-- 能解析出已合并的 `work → main` 来源PR；
-- 当前work仍等于来源PR受检Head，或work已被GitHub自动删除；
-- 当前没有新的开放 `work → main` PR；
-- work未出现合并后的新提交。
+- 能解析出已合并的 `work → main` 或 `governance → main` 来源PR；
+- 当前来源lane仍等于来源PR受检Head，或该永久分支已缺失；
+- 当前没有新的同lane开放PR；
+- 来源lane未出现合并后的新提交。
 
-任一条件不满足必须停止并报告，禁止覆盖新工作。
+满足后，来源lane按已验证Squash事实受控重置到main。
+
+另一条兄弟lane采用更保守规则：
+
+- 已等于main：保持；
+- 无开放PR、没有独有提交、当前Head只是main祖先：仅允许非强制fast-forward到最新main；
+- 存在开放PR：明确skip并保留正在进行的工作；
+- 无开放PR但存在独有/分叉提交：fail-closed，禁止force覆盖。
+
+每次写Ref后必须重新读取最终Ref确认结果。`governance → main`合并并通过Main Verification后，空闲`work`应自动同步最新main；`work → main`对空闲`governance`同理。
 
 ## 8. 整体工程质量
 
@@ -281,7 +317,7 @@ Evidence必须绑定真实受检work Head；失败、跳过和环境限制必须
 - 单文件可使用Contents API；多文件修改应使用原子Git Tree/Commit，避免可见中间态。
 - 禁止任务专属Workflow、一次性Runner、临时补丁目录和CI代写业务源码。
 - 正式门禁在验证前后执行clean-tree检查。
-- 写入前确认仓库、`work`、基线SHA、任务ID和允许路径；写入后重新读取真实PR Head。
+- 写入前确认仓库、执行lane、基线SHA和允许路径；产品任务还必须确认任务ID与Runtime边界。写入后重新读取真实PR Head。
 
 ## 14. 提交与合并说明
 

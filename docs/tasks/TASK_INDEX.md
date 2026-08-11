@@ -177,7 +177,7 @@ Runtime IMPLEMENTED
 | M6-06 | [`三轨备份、恢复中心与空间清理`](M6/M6-06_THREE_TRACK_BACKUP_RECOVERY.md)              | M6     | Removed（absorbed） | M4-04    |
 | M7-01 | [`新手/专业模式、向导与三条创作路径`](M7/M7-01_ONBOARDING_MODES_PATHS.md)              | M7     | Removed（absorbed） | M8-02    |
 | M7-02 | [`统一工作台、沉浸视图与交互状态`](M7/M7-02_UNIFIED_WORKBENCH_INTERACTIONS.md)         | M7     | Removed（absorbed） | M8-02    |
-| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/V1_1_ARCHITECTURE_REFACTOR_WORK_PACKAGES.md#8-ar-07-appshell拆分) | M7 | Removed（absorbed） | M8-02 |
+| M7-03 | [`双视觉主题、无障碍与响应式验收`](M7/M7-03_THEMES_ACCESSIBILITY_RESPONSIVE.md)        | M7     | Removed（absorbed） | M8-02    |
 | M8-01 | [`安全、数据、Migration与隐私硬化`](M8/M8-01_SECURITY_DATA_PRIVACY_HARDENING.md)       | M8     | Removed（absorbed） | M8-02    |
 | M8-03 | [`跨平台构建、P0追踪与发布关闭`](M8/M8-03_CROSS_PLATFORM_RELEASE_ACCEPTANCE.md)        | M8     | Removed（absorbed） | M8-02    |
 

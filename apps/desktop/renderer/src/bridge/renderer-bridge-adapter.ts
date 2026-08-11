@@ -376,8 +376,10 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
       value.mode === 'reject' ||
       value.mode === 'replace' ||
       value.mode === 'share') &&
-    (!('requestKey' in value) || (typeof value.requestKey === 'string' && value.requestKey.length > 0)) &&
-    (!('laneKey' in value) || (typeof value.laneKey === 'string' && value.laneKey.length > 0))
+    (!('requestKey' in value) ||
+      (typeof value.requestKey === 'string' && value.requestKey.length > 0)) &&
+    (!('laneKey' in value) ||
+      (typeof value.laneKey === 'string' && value.laneKey.length > 0))
   );
 }
 

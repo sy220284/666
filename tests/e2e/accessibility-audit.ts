@@ -107,16 +107,19 @@ export async function collectAccessibilityDomSnapshot(
 
 export async function assertAccessibleSurface(page: Page, label: string): Promise<void> {
   const snapshot = await collectAccessibilityDomSnapshot(page);
-  expect(auditAccessibilityDomSnapshot(snapshot), `${label}: static accessibility scan`).toEqual([]);
+  expect(auditAccessibilityDomSnapshot(snapshot), `${label}: static accessibility scan`).toEqual(
+    [],
+  );
 
   const interactive = page.locator(INTERACTIVE_SELECTOR);
   const count = await interactive.count();
   for (let index = 0; index < count; index += 1) {
     const control = interactive.nth(index);
     if (!(await control.isVisible())) continue;
-    await expect(control, `${label}: visible interactive element ${index + 1}`).toHaveAccessibleName(
-      /\S/u,
-    );
+    await expect(
+      control,
+      `${label}: visible interactive element ${index + 1}`,
+    ).toHaveAccessibleName(/\S/u);
   }
 
   const dialogs = page.locator('[role="dialog"], dialog');

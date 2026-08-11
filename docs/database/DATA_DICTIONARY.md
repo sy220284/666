@@ -71,11 +71,13 @@ Candidate完整度：`complete | partial`
 | TimelineEvent       | 有起止、精度、人物角色、地点、章节、归档状态和前置依赖的事件          |
 | TimelineEntityRole  | TimelineEvent中的`participant`、`witness`或`subject`关系              |
 | KnowledgeState      | 人物在章节区间内对信息的知道、相信、怀疑、误解或未知状态              |
+| CharacterRelationship | 两个人物之间带章节区间、分类、自由标签、来源定稿与证据的权威关系历史 |
 | Foreshadowing       | 有埋设、强化、揭示和取消生命周期的伏笔                                |
 | CharacterArc        | 人物长期成长、黑化、觉醒、堕落、救赎或自定义弧光                      |
 | ArcMilestone        | 弧光中的可确认里程碑节点                                              |
 | EndingSnapshot      | 定稿后供下一章读取的最小连续性入口                                    |
-| StateProposal       | AI或规则提出的`entity_state`或`arc_milestone`变化候选                 |
+| StateProposal       | AI或规则提出并等待作者裁决的统一人物与世界变化候选                    |
+| ValidationException | 作者确认并可跨扫描复用的受控校验例外                                  |
 | DerivedInvalidation | 旧章语义变化对后续快照、校验和缓存造成的失效记录                      |
 | stale               | 派生数据因上游修改而过期，不能继续当作有效输入                        |
 
@@ -144,7 +146,8 @@ current | historical | invalid
 StateProposal类型：
 
 ```text
-entity_state | arc_milestone
+entity_state | knowledge_state | timeline_event | character_relationship |
+foreshadowing | arc_milestone | entity_create | canon_fact
 ```
 
 StateProposal状态：
@@ -156,10 +159,18 @@ pending | accepted | edited | rejected
 StateProposal来源：
 
 ```text
-rule | provider_stub
+rule | provider_stub | provider
 ```
 
-`pending`只表示待作者裁决的候选，不改变EntityState或ArcMilestone。EntityState提案可携带`validUntilChapterId`；非空终点必须属于同项目、保持活动状态并严格位于提案章节之后，采用`[chapterId, validUntilChapterId)`半开语义。`accept`使用提议值，`edit_accept`使用作者编辑后的合法JSON值，两者都保留提案终点；`reject`不产生权威写入。一批裁决任一失败时整批回滚。接受`entity_state`会结束旧current并写入带相同终点的新current；接受`arc_milestone`会以`confirmationSource=state_proposal`推进节点，并在同一事务重建章节尾快照。
+`pending`只表示待作者裁决的候选，不改变任何权威对象。全部类型保存在同一`state_proposals`账本，目标和值使用严格JSON判别结构；不存在平行Proposal表。`accept`使用提议值，`edit_accept`使用经类型Schema验证的作者值，`reject`不产生权威写入；一批裁决任一失败时整批回滚。接受动作复用EntityState、KnowledgeState、TimelineEvent、CharacterRelationship、Foreshadowing、Entity/CanonFact和ArcMilestone各自的Core权威operation。
+
+EntityState语义类型：
+
+```text
+custom | life_status | location | age | holder | identity | health | ability
+```
+
+旧记录只迁移为`custom`。状态自由键`stateKey`继续保留，确定性规则只依据明确`semanticKind`，不得猜测旧键名。
 
 EndingSnapshot状态：
 

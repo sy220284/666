@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   ChapterCandidateOutputSchema,
   CoreGenerationResultSchema,
@@ -681,6 +683,10 @@ async function startGeneration(
       input.chapterId,
       intent.sourceVersionId,
     );
+    await services.validation.runRules(randomUUID(), {
+      projectId: input.projectId,
+      sourceVersionId: resolved.versionId,
+    });
     const constraints = services.constraints.build({
       projectId: input.projectId,
       chapterId: input.chapterId,

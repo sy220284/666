@@ -1,8 +1,10 @@
 import type { DatabaseSync } from 'node:sqlite';
 
 import type { VersionBlockRow, VersionRow } from './validation-model.js';
+import { authorityConflictRules } from './authority-conflict-rules.js';
+import type { RuleIssue } from './validation-rule-model.js';
 
-export const RULE_VERSION = 'worldforge.rules.v1';
+export const RULE_VERSION = 'worldforge.rules.v2';
 export const CONFIG_VERSION = 'general-writing.v1';
 export const RULE_CONFIG = {
   longParagraphCharacters: 1_000,
@@ -11,19 +13,6 @@ export const RULE_CONFIG = {
   lowDialogueRatio: 0.05,
   highDialogueRatio: 0.8,
 } as const;
-
-export interface RuleIssue {
-  readonly issueType: string;
-  readonly severity: 'high' | 'medium' | 'low' | 'info';
-  readonly rationale: string;
-  readonly suggestion: string;
-  readonly logicalBlockId: string | null;
-  readonly expectedBlockHash: string | null;
-  readonly textQuote: string | null;
-  readonly rangeHint: { readonly start: number; readonly end: number } | null;
-  readonly evidenceIds: readonly string[];
-  readonly ruleId: string;
-}
 
 export function rules(
   database: DatabaseSync,
@@ -155,5 +144,5 @@ export function rules(
       ruleId: 'structure.required_scene_beat',
     });
   }
-  return issues;
+  return [...issues, ...authorityConflictRules(database, version)];
 }

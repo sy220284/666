@@ -17,6 +17,26 @@ export function normalizeContinuityKey(value: string, maxLength = 240): string {
   return normalized;
 }
 
+export function normalizeCharacterRelationshipLabel(value: string): string {
+  return normalizeContinuityKey(value, 120);
+}
+
+export function normalizeEntityStateSemanticValue(semanticKind: string, value: unknown): unknown {
+  if (semanticKind === 'life_status') {
+    if (value !== 'alive' && value !== 'dead') throw new Error('LIFE_STATUS_VALUE_INVALID');
+  } else if (semanticKind === 'age') {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      throw new Error('AGE_VALUE_INVALID');
+    }
+  } else if (semanticKind === 'location' || semanticKind === 'holder') {
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new Error('ENTITY_REFERENCE_STATE_VALUE_INVALID');
+    }
+    return value.trim();
+  }
+  return value;
+}
+
 function dateParts(value: string, precision: TimelinePrecision): number[] | null {
   if (precision === 'year') {
     const match = /^(\d{4})$/u.exec(value);
@@ -89,6 +109,31 @@ export function dependencyDefinitelyOutOfOrder(
   event: ComparableTimeRange,
 ): boolean {
   return dependency.startMs >= event.endMs;
+}
+
+export function findDependencyCycle(
+  graph: ReadonlyMap<string, readonly string[]>,
+): readonly string[] | null {
+  const visiting: string[] = [];
+  const visited = new Set<string>();
+  const visit = (id: string): readonly string[] | null => {
+    const cycleStart = visiting.indexOf(id);
+    if (cycleStart >= 0) return [...visiting.slice(cycleStart), id];
+    if (visited.has(id)) return null;
+    visiting.push(id);
+    for (const dependency of graph.get(id) ?? []) {
+      const cycle = visit(dependency);
+      if (cycle) return cycle;
+    }
+    visiting.pop();
+    visited.add(id);
+    return null;
+  };
+  for (const id of graph.keys()) {
+    const cycle = visit(id);
+    if (cycle) return cycle;
+  }
+  return null;
 }
 
 export function compareChapterPosition(

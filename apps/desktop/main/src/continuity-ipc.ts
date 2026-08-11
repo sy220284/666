@@ -6,6 +6,8 @@ import {
   ContinuityCatalogResultSchema,
   CoreProjectOperationSchema,
   ContinuityListCommandSchema,
+  CharacterRelationshipInvalidateCommandSchema,
+  CharacterRelationshipSetCommandSchema,
   EntityStateInvalidateCommandSchema,
   EntityStateSetCommandSchema,
   KnowledgeStateInvalidateCommandSchema,
@@ -85,6 +87,18 @@ export function registerContinuityIpc(options: ContinuityIpcOptions): () => void
       channel: CONTINUITY_IPC_CHANNELS.invalidateKnowledgeState,
       schema: KnowledgeStateInvalidateCommandSchema,
       operation: CONTINUITY_COMMANDS.invalidateKnowledgeState,
+      operationKind: 'mutation',
+    },
+    {
+      channel: CONTINUITY_IPC_CHANNELS.setCharacterRelationship,
+      schema: CharacterRelationshipSetCommandSchema,
+      operation: CONTINUITY_COMMANDS.setCharacterRelationship,
+      operationKind: 'mutation',
+    },
+    {
+      channel: CONTINUITY_IPC_CHANNELS.invalidateCharacterRelationship,
+      schema: CharacterRelationshipInvalidateCommandSchema,
+      operation: CONTINUITY_COMMANDS.invalidateCharacterRelationship,
       operationKind: 'mutation',
     },
   ] as const;

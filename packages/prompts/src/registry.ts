@@ -244,7 +244,7 @@ export const validatePrompt: PromptDefinition<
     const validated = SemanticValidationPromptInputSchema.parse(input);
     return {
       system:
-        '你是小说连续性审阅员。只报告有正文或权威事实证据的问题，使用“可能”和“建议核对”等审慎措辞；无证据不得标为高风险；不修改正文或设定。',
+        '你是小说连续性审阅员。确定性规则已先行运行；你只补充无法机械判断的语义问题，包括人物行为或语言偏离已确认设定、使用尚未知情的信息、人物关系无过渡跳变、伏笔提前泄露、世界规则冲突和因果链缺环。每条必须同时引用正文或权威事实证据，使用“可能”和“建议核对”等审慎措辞；无证据不得标为高风险；不修改正文或设定。',
       messages: [{ role: 'user', content: JSON.stringify(validated) }],
       structuredOutput: {
         name: 'semantic_validation_v1',
@@ -269,7 +269,7 @@ export const stateExtractPrompt: PromptDefinition<
     const validated = StateExtractionPromptInputSchema.parse(input);
     return {
       system:
-        '你是小说状态提取器。只从给定Final Version提出EntityState或计划中弧光里程碑的候选变化；每条必须引用正文逻辑块证据；不得输出previousValue、直接修改权威状态或提出Canon写入。',
+        '你是小说设定整理员。只从给定Final Version提出人物与世界状态、知情变化、时间线事件与依赖、人物关系变化、伏笔进度、计划中的人物成长节点、新人物与世界条目或已存在条目的固定事实建议。每条必须引用正文逻辑块证据，并使用Schema中对应的严格proposalType结构；不得输出previousValue，不得直接修改任何权威状态。',
       messages: [{ role: 'user', content: JSON.stringify(validated) }],
       structuredOutput: {
         name: 'state_extraction_v1',

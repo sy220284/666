@@ -36,6 +36,8 @@ describe('M3-04 continuity IPC boundary', () => {
     } as unknown as IpcMain;
     const projectId = randomUUID();
     const entityId = randomUUID();
+    const relatedEntityId = randomUUID();
+    const relationshipId = randomUUID();
     const chapterId = randomUUID();
     const versionId = randomUUID();
     const eventId = randomUUID();
@@ -49,6 +51,7 @@ describe('M3-04 continuity IPC boundary', () => {
             entityStates: [],
             timelineEvents: [],
             knowledgeStates: [],
+            relationships: [],
           },
         }) as CoreProjectResult,
     );
@@ -80,6 +83,7 @@ describe('M3-04 continuity IPC boundary', () => {
           authority: 'author',
           entityId,
           stateKey: 'health',
+          semanticKind: 'custom',
           value: 'well',
           validFromChapterId: chapterId,
           validUntilChapterId: null,
@@ -143,6 +147,27 @@ describe('M3-04 continuity IPC boundary', () => {
           characterId: entityId,
         },
       },
+      {
+        channel: CONTINUITY_IPC_CHANNELS.setCharacterRelationship,
+        operation: CONTINUITY_COMMANDS.setCharacterRelationship,
+        payload: {
+          projectId,
+          authority: 'author',
+          fromCharacterId: entityId,
+          toCharacterId: relatedEntityId,
+          category: 'alliance',
+          label: '盟友',
+          validFromChapterId: chapterId,
+          validUntilChapterId: null,
+          sourceVersionId: versionId,
+          evidence: [{ kind: 'entity', targetId: relatedEntityId, note: '人物关系依据' }],
+        },
+      },
+      {
+        channel: CONTINUITY_IPC_CHANNELS.invalidateCharacterRelationship,
+        operation: CONTINUITY_COMMANDS.invalidateCharacterRelationship,
+        payload: { projectId, authority: 'author', relationshipId },
+      },
     ] as const;
 
     for (const item of cases) {
@@ -178,6 +203,7 @@ describe('M3-04 continuity IPC boundary', () => {
           entityStates: [],
           timelineEvents: [],
           knowledgeStates: [],
+          relationships: [],
         },
       });
       expect(invokeProjectOperation).toHaveBeenLastCalledWith(requestId, {
@@ -187,6 +213,6 @@ describe('M3-04 continuity IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(7);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(9);
   });
 });

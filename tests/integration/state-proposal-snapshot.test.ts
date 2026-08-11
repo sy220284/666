@@ -127,14 +127,25 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
           {
             proposalId: entityProposal.id,
             decision: 'edit_accept',
-            editedValue: { locationId: seeded.north.id },
+            editedValue: {
+              value: { locationId: seeded.north.id },
+              semanticKind: 'custom',
+              validUntilChapterId: null,
+            },
           },
           { proposalId: milestoneProposal.id, decision: 'accept' },
         ],
       });
       expect(
         proposals.proposals.find((proposal) => proposal.id === entityProposal.id),
-      ).toMatchObject({ status: 'edited', resolvedValue: { locationId: seeded.north.id } });
+      ).toMatchObject({
+        status: 'edited',
+        resolvedValue: {
+          value: { locationId: seeded.north.id },
+          semanticKind: 'custom',
+          validUntilChapterId: null,
+        },
+      });
       expect(
         proposals.proposals.find((proposal) => proposal.id === milestoneProposal.id),
       ).toMatchObject({ status: 'accepted' });
@@ -208,7 +219,10 @@ describe('M3-06 StateProposal and EndingSnapshot', () => {
         ],
       });
       const injury = rejected.proposals.find(
-        (proposal) => proposal.status === 'pending' && proposal.stateKey === 'injury',
+        (proposal) =>
+          proposal.status === 'pending' &&
+          proposal.target.targetType === 'entity_state' &&
+          proposal.target.stateKey === 'injury',
       )!;
       await harness.proposals.resolve(randomUUID(), {
         projectId: seeded.project.projectId,

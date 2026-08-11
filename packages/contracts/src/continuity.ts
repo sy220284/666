@@ -12,6 +12,8 @@ export const CONTINUITY_IPC_CHANNELS = {
   archiveTimelineEvent: 'worldforge:continuity:archive-timeline-event',
   setKnowledgeState: 'worldforge:continuity:set-knowledge-state',
   invalidateKnowledgeState: 'worldforge:continuity:invalidate-knowledge-state',
+  setCharacterRelationship: 'worldforge:continuity:set-character-relationship',
+  invalidateCharacterRelationship: 'worldforge:continuity:invalidate-character-relationship',
 } as const;
 
 export const CONTINUITY_COMMANDS = {
@@ -22,6 +24,8 @@ export const CONTINUITY_COMMANDS = {
   archiveTimelineEvent: 'continuity.archiveTimelineEvent',
   setKnowledgeState: 'continuity.setKnowledgeState',
   invalidateKnowledgeState: 'continuity.invalidateKnowledgeState',
+  setCharacterRelationship: 'continuity.setCharacterRelationship',
+  invalidateCharacterRelationship: 'continuity.invalidateCharacterRelationship',
 } as const;
 
 export const ContinuityKeySchema = z.string().trim().min(1).max(240);
@@ -31,6 +35,16 @@ export const EntityStateRecordStatusSchema = z.enum([
   'historical',
   'superseded',
   'invalid',
+]);
+export const EntityStateSemanticKindSchema = z.enum([
+  'custom',
+  'life_status',
+  'location',
+  'age',
+  'holder',
+  'identity',
+  'health',
+  'ability',
 ]);
 export const TimelinePrecisionSchema = z.enum([
   'exact',
@@ -50,6 +64,18 @@ export const KnowledgeStatusSchema = z.enum([
   'unknown',
 ]);
 export const KnowledgeRecordStatusSchema = z.enum(['current', 'historical', 'invalid']);
+export const CharacterRelationshipCategorySchema = z.enum([
+  'family',
+  'romantic',
+  'friendship',
+  'hostility',
+  'alliance',
+  'mentorship',
+  'hierarchy',
+  'rivalry',
+  'custom',
+]);
+export const CharacterRelationshipRecordStatusSchema = z.enum(['current', 'historical', 'invalid']);
 export const EvidenceAnchorKindSchema = z.enum([
   'chapter',
   'sceneBeat',
@@ -69,6 +95,7 @@ export const EntityStateSchema = z.strictObject({
   projectId: ProjectIdSchema,
   entityId: z.uuid(),
   stateKey: EntityStateKeySchema,
+  semanticKind: EntityStateSemanticKindSchema.default('custom'),
   value: z.json(),
   validFromChapterId: z.uuid(),
   validUntilChapterId: z.uuid().nullable(),
@@ -115,11 +142,33 @@ export const KnowledgeStateSchema = z.strictObject({
   supersededAt: z.iso.datetime().nullable(),
 });
 
+export const CharacterRelationshipSchema = z
+  .strictObject({
+    id: z.uuid(),
+    projectId: ProjectIdSchema,
+    fromCharacterId: z.uuid(),
+    toCharacterId: z.uuid(),
+    category: CharacterRelationshipCategorySchema,
+    label: z.string().trim().min(1).max(120),
+    validFromChapterId: z.uuid(),
+    validUntilChapterId: z.uuid().nullable(),
+    sourceVersionId: z.uuid(),
+    evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
+    recordStatus: CharacterRelationshipRecordStatusSchema,
+    createdAt: z.iso.datetime(),
+    supersededAt: z.iso.datetime().nullable(),
+  })
+  .refine((value) => value.fromCharacterId !== value.toCharacterId, {
+    path: ['toCharacterId'],
+    message: 'A CharacterRelationship requires two different Characters.',
+  });
+
 export const ContinuityCatalogSchema = z.strictObject({
   projectId: ProjectIdSchema,
   entityStates: z.array(EntityStateSchema),
   timelineEvents: z.array(TimelineEventSchema),
   knowledgeStates: z.array(KnowledgeStateSchema),
+  relationships: z.array(CharacterRelationshipSchema).default([]),
 });
 
 export const ContinuityListInputSchema = z.strictObject({
@@ -135,11 +184,36 @@ export const EntityStateSetInputSchema = z.strictObject({
   authority: CanonAuthoritySchema,
   entityId: z.uuid(),
   stateKey: EntityStateKeySchema,
+  semanticKind: EntityStateSemanticKindSchema.default('custom'),
   value: z.json(),
   validFromChapterId: z.uuid(),
   validUntilChapterId: z.uuid().nullable().default(null),
   evidence: z.array(EvidenceAnchorSchema).max(100).default([]),
   sourceVersionId: z.uuid(),
+});
+
+export const CharacterRelationshipSetInputSchema = z
+  .strictObject({
+    projectId: ProjectIdSchema,
+    authority: CanonAuthoritySchema,
+    fromCharacterId: z.uuid(),
+    toCharacterId: z.uuid(),
+    category: CharacterRelationshipCategorySchema,
+    label: z.string().trim().min(1).max(120),
+    validFromChapterId: z.uuid(),
+    validUntilChapterId: z.uuid().nullable().default(null),
+    sourceVersionId: z.uuid(),
+    evidence: z.array(EvidenceAnchorSchema).min(1).max(100),
+  })
+  .refine((value) => value.fromCharacterId !== value.toCharacterId, {
+    path: ['toCharacterId'],
+    message: 'A CharacterRelationship requires two different Characters.',
+  });
+
+export const CharacterRelationshipInvalidateInputSchema = z.strictObject({
+  projectId: ProjectIdSchema,
+  authority: CanonAuthoritySchema,
+  relationshipId: z.uuid(),
 });
 
 export const EntityStateInvalidateInputSchema = z.strictObject({
@@ -231,6 +305,14 @@ export const KnowledgeStateInvalidateCommandSchema = command(
   CONTINUITY_COMMANDS.invalidateKnowledgeState,
   KnowledgeStateInvalidateInputSchema,
 );
+export const CharacterRelationshipSetCommandSchema = command(
+  CONTINUITY_COMMANDS.setCharacterRelationship,
+  CharacterRelationshipSetInputSchema,
+);
+export const CharacterRelationshipInvalidateCommandSchema = command(
+  CONTINUITY_COMMANDS.invalidateCharacterRelationship,
+  CharacterRelationshipInvalidateInputSchema,
+);
 
 const commandFailure = z.strictObject({
   ok: z.literal(false),
@@ -282,6 +364,14 @@ export const CoreContinuityOperationSchema = z.discriminatedUnion('operation', [
     operation: z.literal(CONTINUITY_COMMANDS.invalidateKnowledgeState),
     input: KnowledgeStateInvalidateInputSchema,
   }),
+  z.strictObject({
+    operation: z.literal(CONTINUITY_COMMANDS.setCharacterRelationship),
+    input: CharacterRelationshipSetInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(CONTINUITY_COMMANDS.invalidateCharacterRelationship),
+    input: CharacterRelationshipInvalidateInputSchema,
+  }),
 ]);
 
 const coreSuccess = <Operation extends string>(operation: Operation) =>
@@ -299,6 +389,8 @@ export const CoreContinuityResultSchema = z.union([
   coreSuccess(CONTINUITY_COMMANDS.archiveTimelineEvent),
   coreSuccess(CONTINUITY_COMMANDS.setKnowledgeState),
   coreSuccess(CONTINUITY_COMMANDS.invalidateKnowledgeState),
+  coreSuccess(CONTINUITY_COMMANDS.setCharacterRelationship),
+  coreSuccess(CONTINUITY_COMMANDS.invalidateCharacterRelationship),
   z.strictObject({
     ok: z.literal(false),
     operation: z.enum(CONTINUITY_COMMANDS),
@@ -307,14 +399,20 @@ export const CoreContinuityResultSchema = z.union([
 ]);
 
 export type EvidenceAnchor = z.infer<typeof EvidenceAnchorSchema>;
+export type EntityStateSemanticKind = z.infer<typeof EntityStateSemanticKindSchema>;
 export type EntityState = z.infer<typeof EntityStateSchema>;
 export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 export type KnowledgeState = z.infer<typeof KnowledgeStateSchema>;
+export type CharacterRelationship = z.infer<typeof CharacterRelationshipSchema>;
 export type ContinuityCatalog = z.infer<typeof ContinuityCatalogSchema>;
 export type ContinuityListInput = z.infer<typeof ContinuityListInputSchema>;
-export type EntityStateSetInput = z.infer<typeof EntityStateSetInputSchema>;
+export type EntityStateSetInput = z.input<typeof EntityStateSetInputSchema>;
 export type EntityStateInvalidateInput = z.infer<typeof EntityStateInvalidateInputSchema>;
 export type TimelineEventSaveInput = z.infer<typeof TimelineEventSaveInputSchema>;
 export type TimelineEventArchiveInput = z.infer<typeof TimelineEventArchiveInputSchema>;
 export type KnowledgeStateSetInput = z.infer<typeof KnowledgeStateSetInputSchema>;
 export type KnowledgeStateInvalidateInput = z.infer<typeof KnowledgeStateInvalidateInputSchema>;
+export type CharacterRelationshipSetInput = z.input<typeof CharacterRelationshipSetInputSchema>;
+export type CharacterRelationshipInvalidateInput = z.infer<
+  typeof CharacterRelationshipInvalidateInputSchema
+>;

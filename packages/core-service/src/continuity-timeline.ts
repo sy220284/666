@@ -6,6 +6,7 @@ import {
   type TimelineEventSaveInput,
 } from '@worldforge/contracts';
 import { dependencyDefinitelyOutOfOrder, timeRangesOverlap } from '@worldforge/domain';
+import type { DatabaseSync } from 'node:sqlite';
 
 import {
   ContinuityServiceError,
@@ -29,81 +30,94 @@ export async function saveTimelineEvent(
   const valid = TimelineEventSaveInputSchema.parse(input);
   authorOnly(valid.authority);
   const eventId = valid.eventId ?? context.idFactory();
+  return context.workspace.writeProject(requestId, valid.projectId, (connection) => {
+    applyTimelineEvent(connection, valid, eventId, context.clock.now().toISOString());
+    return readCatalog(connection, {
+      projectId: valid.projectId,
+      query: '',
+      includeHistory: true,
+      includeArchivedEvents: true,
+      effectiveAtChapterId: null,
+    });
+  });
+}
+
+export function applyTimelineEvent(
+  connection: DatabaseSync,
+  valid: TimelineEventSaveInput,
+  eventId: string,
+  now: string,
+): void {
   const participants = uniqueIds(valid.participantIds);
   const witnesses = uniqueIds(valid.witnessIds);
   const subjects = uniqueIds(valid.subjectIds);
   const presentEntityIds = uniqueIds([...participants, ...witnesses]);
   const dependencies = uniqueIds(valid.dependencyIds);
   const nextRange = comparableRange(valid);
-  return context.workspace.writeProject(requestId, valid.projectId, (connection) => {
-    if (valid.eventId) {
-      const existing = connection
-        .prepare('SELECT 1 FROM timeline_events WHERE id = ? AND project_id = ?')
-        .get(eventId, valid.projectId);
-      if (!existing) {
-        throw new ContinuityServiceError('CONTINUITY_NOT_FOUND', 'TimelineEvent not found.');
-      }
+  if (valid.eventId) {
+    const existing = connection
+      .prepare('SELECT 1 FROM timeline_events WHERE id = ? AND project_id = ?')
+      .get(eventId, valid.projectId);
+    if (!existing) {
+      throw new ContinuityServiceError('CONTINUITY_NOT_FOUND', 'TimelineEvent not found.');
     }
-    if (valid.chapterId) chapterPosition(connection, valid.projectId, valid.chapterId);
-    if (valid.locationId) assertEntity(connection, valid.projectId, valid.locationId, 'location');
-    for (const entityId of [...participants, ...witnesses, ...subjects]) {
-      assertEntity(connection, valid.projectId, entityId);
+  }
+  if (valid.chapterId) chapterPosition(connection, valid.projectId, valid.chapterId);
+  if (valid.locationId) assertEntity(connection, valid.projectId, valid.locationId, 'location');
+  for (const entityId of [...participants, ...witnesses, ...subjects]) {
+    assertEntity(connection, valid.projectId, entityId);
+  }
+  const existingEvents = eventRows(connection, valid.projectId);
+  for (const dependencyId of dependencies) {
+    if (dependencyId === eventId) {
+      throw new ContinuityServiceError('CONTINUITY_CONFLICT', 'An event cannot depend on itself.');
     }
-    const existingEvents = eventRows(connection, valid.projectId);
-    for (const dependencyId of dependencies) {
-      if (dependencyId === eventId) {
-        throw new ContinuityServiceError(
-          'CONTINUITY_CONFLICT',
-          'An event cannot depend on itself.',
-        );
-      }
-      const dependency = existingEvents.find(
-        (row) => row.id === dependencyId && row.status === 'active',
+    const dependency = existingEvents.find(
+      (row) => row.id === dependencyId && row.status === 'active',
+    );
+    if (!dependency) {
+      throw new ContinuityServiceError('CONTINUITY_NOT_FOUND', 'Dependency event not found.');
+    }
+    const dependencyRange = comparableRange(dependency);
+    if (
+      dependencyRange &&
+      nextRange &&
+      dependencyDefinitelyOutOfOrder(dependencyRange, nextRange)
+    ) {
+      throw new ContinuityServiceError(
+        'CONTINUITY_CONFLICT',
+        'A dependency is definitely later than the dependent event.',
       );
-      if (!dependency) {
-        throw new ContinuityServiceError('CONTINUITY_NOT_FOUND', 'Dependency event not found.');
-      }
-      const dependencyRange = comparableRange(dependency);
+    }
+  }
+  assertNoDependencyCycle(connection, valid.projectId, eventId, dependencies);
+  if (nextRange && valid.locationId && presentEntityIds.length > 0) {
+    for (const row of existingEvents) {
       if (
-        dependencyRange &&
-        nextRange &&
-        dependencyDefinitelyOutOfOrder(dependencyRange, nextRange)
+        row.id === eventId ||
+        row.status !== 'active' ||
+        !row.locationId ||
+        row.locationId === valid.locationId
       ) {
+        continue;
+      }
+      const existingRange = comparableRange(row);
+      if (!existingRange || !timeRangesOverlap(nextRange, existingRange)) continue;
+      const existingPresentEntityIds = new Set([
+        ...roleIds(connection, row.id, 'participant'),
+        ...roleIds(connection, row.id, 'witness'),
+      ]);
+      if (presentEntityIds.some((id) => existingPresentEntityIds.has(id))) {
         throw new ContinuityServiceError(
           'CONTINUITY_CONFLICT',
-          'A dependency is definitely later than the dependent event.',
+          'The same present entity cannot occupy different locations in overlapping time ranges.',
         );
       }
     }
-    assertNoDependencyCycle(connection, valid.projectId, eventId, dependencies);
-    if (nextRange && valid.locationId && presentEntityIds.length > 0) {
-      for (const row of existingEvents) {
-        if (
-          row.id === eventId ||
-          row.status !== 'active' ||
-          !row.locationId ||
-          row.locationId === valid.locationId
-        ) {
-          continue;
-        }
-        const existingRange = comparableRange(row);
-        if (!existingRange || !timeRangesOverlap(nextRange, existingRange)) continue;
-        const existingPresentEntityIds = new Set([
-          ...roleIds(connection, row.id, 'participant'),
-          ...roleIds(connection, row.id, 'witness'),
-        ]);
-        if (presentEntityIds.some((id) => existingPresentEntityIds.has(id))) {
-          throw new ContinuityServiceError(
-            'CONTINUITY_CONFLICT',
-            'The same present entity cannot occupy different locations in overlapping time ranges.',
-          );
-        }
-      }
-    }
-    const now = context.clock.now().toISOString();
-    connection
-      .prepare(
-        `INSERT INTO timeline_events(
+  }
+  connection
+    .prepare(
+      `INSERT INTO timeline_events(
            id, project_id, title, start_value, end_value, precision, chapter_id,
            location_id, description, status, archived_at, created_at, updated_at
          ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?)
@@ -118,51 +132,43 @@ export async function saveTimelineEvent(
            status = 'active',
            archived_at = NULL,
            updated_at = excluded.updated_at`,
-      )
-      .run(
-        eventId,
-        valid.projectId,
-        valid.title.trim(),
-        valid.startValue.trim(),
-        valid.endValue?.trim() ?? null,
-        valid.precision,
-        valid.chapterId,
-        valid.locationId,
-        valid.description.trim(),
-        now,
-        now,
-      );
-    connection.prepare('DELETE FROM timeline_event_entities WHERE event_id = ?').run(eventId);
-    connection.prepare('DELETE FROM timeline_event_dependencies WHERE event_id = ?').run(eventId);
-    const insertEntity = connection.prepare(
-      `INSERT INTO timeline_event_entities(project_id, event_id, entity_id, role, created_at)
-       VALUES(?, ?, ?, ?, ?)`,
+    )
+    .run(
+      eventId,
+      valid.projectId,
+      valid.title.trim(),
+      valid.startValue.trim(),
+      valid.endValue?.trim() ?? null,
+      valid.precision,
+      valid.chapterId,
+      valid.locationId,
+      valid.description.trim(),
+      now,
+      now,
     );
-    for (const [role, ids] of [
-      ['participant', participants],
-      ['witness', witnesses],
-      ['subject', subjects],
-    ] as const) {
-      for (const entityId of ids) {
-        insertEntity.run(valid.projectId, eventId, entityId, role, now);
-      }
+  connection.prepare('DELETE FROM timeline_event_entities WHERE event_id = ?').run(eventId);
+  connection.prepare('DELETE FROM timeline_event_dependencies WHERE event_id = ?').run(eventId);
+  const insertEntity = connection.prepare(
+    `INSERT INTO timeline_event_entities(project_id, event_id, entity_id, role, created_at)
+       VALUES(?, ?, ?, ?, ?)`,
+  );
+  for (const [role, ids] of [
+    ['participant', participants],
+    ['witness', witnesses],
+    ['subject', subjects],
+  ] as const) {
+    for (const entityId of ids) {
+      insertEntity.run(valid.projectId, eventId, entityId, role, now);
     }
-    const insertDependency = connection.prepare(
-      `INSERT INTO timeline_event_dependencies(
+  }
+  const insertDependency = connection.prepare(
+    `INSERT INTO timeline_event_dependencies(
          project_id, event_id, dependency_event_id, created_at
        ) VALUES(?, ?, ?, ?)`,
-    );
-    for (const dependencyId of dependencies) {
-      insertDependency.run(valid.projectId, eventId, dependencyId, now);
-    }
-    return readCatalog(connection, {
-      projectId: valid.projectId,
-      query: '',
-      includeHistory: true,
-      includeArchivedEvents: true,
-      effectiveAtChapterId: null,
-    });
-  });
+  );
+  for (const dependencyId of dependencies) {
+    insertDependency.run(valid.projectId, eventId, dependencyId, now);
+  }
 }
 
 export async function archiveTimelineEvent(

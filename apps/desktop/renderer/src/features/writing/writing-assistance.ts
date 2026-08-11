@@ -212,6 +212,7 @@ export async function loadWritingAssistance(
       entityStates: [],
       timelineEvents: [],
       knowledgeStates: [],
+      relationships: [],
     },
     narrative: narrativeData ?? {
       projectId,

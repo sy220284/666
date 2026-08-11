@@ -68,7 +68,7 @@ describe('M3-06 finite StateProposal intervals', () => {
       const proposal = generated.proposals.find((entry) => entry.status === 'pending')!;
       expect(proposal).toMatchObject({
         proposalType: 'entity_state',
-        validUntilChapterId: seeded.chapter2.id,
+        proposedValue: { validUntilChapterId: seeded.chapter2.id },
       });
 
       await harness.proposals.resolve(randomUUID(), {

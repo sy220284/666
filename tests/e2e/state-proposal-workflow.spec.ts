@@ -5,6 +5,8 @@ import path from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 import type { StateProposalBridge, WorldforgeBridge } from '@worldforge/contracts';
 
+import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
+
 const root = process.cwd();
 const temporaryDirectories: string[] = [];
 
@@ -143,7 +145,8 @@ test('keeps AI review pending until the author accepts it and then exposes the e
             proposalType: 'entity_state',
             entityId: character.id,
             stateKey: 'location',
-            proposedValue: { locationId: location.id },
+            semanticKind: 'location',
+            proposedValue: location.id,
             validUntilChapterId: null,
             evidence: [
               {
@@ -154,11 +157,32 @@ test('keeps AI review pending until the author accepts it and then exposes the e
             ],
             confidence: 0.93,
           },
+          {
+            proposalType: 'entity_create',
+            proposedEntity: {
+              entityType: 'faction',
+              name: '南城夜巡司',
+              aliases: ['夜巡司'],
+              summary: '负责南城夜间巡防。',
+            },
+            evidence: [
+              {
+                kind: 'logicalBlock',
+                targetId: evidenceBlock.logicalBlockId,
+                note: '正文提及南城夜间巡防力量',
+              },
+            ],
+            confidence: 0.84,
+          },
         ],
       });
       if (!generated.ok) throw new Error(`PROPOSAL_GENERATE_FAILED:${generated.error.code}`);
       const proposal = generated.data.proposals.find((item) => item.status === 'pending');
       if (!proposal) throw new Error('PROPOSAL_MISSING');
+      const organizationProposal = generated.data.proposals.find(
+        (item) => item.status === 'pending' && item.proposalType === 'entity_create',
+      );
+      if (!organizationProposal) throw new Error('ORGANIZATION_PROPOSAL_MISSING');
       const before = await stateProposal.readSnapshot({
         projectId,
         chapterId: chapter.id,
@@ -168,6 +192,7 @@ test('keeps AI review pending until the author accepts it and then exposes the e
         projectId,
         chapterId: chapter.id,
         proposalId: proposal.id,
+        organizationProposalId: organizationProposal.id,
         locationId: location.id,
         beforeSource: before.data.snapshotSource,
         beforeEntityStateCount: before.data.content.entityStates.length,
@@ -182,7 +207,19 @@ test('keeps AI review pending until the author accepts it and then exposes the e
     await page.locator('[data-refresh-state-proposals]').click();
     await page.locator('[data-state-proposal-chapter]').selectOption(seeded.chapterId);
     await page.locator('[data-refresh-state-proposals]').click();
+    await expect(page.locator('[data-ai-review-summary]')).toContainText('待确认 2');
+    await page.locator('[data-ai-review-type-filter]').selectOption('entity_create');
+    const organizationProposal = page.locator(
+      `[data-ai-review-proposal="${seeded.organizationProposalId}"]`,
+    );
+    await expect(organizationProposal).toContainText('新人物或设定');
+    await expect(organizationProposal).toContainText('南城夜巡司');
+    await captureAcceptanceScreenshot(page, 'M11-03', 'ai-review-new-entity.png');
+    await organizationProposal
+      .locator(`[data-accept-state-proposal="${seeded.organizationProposalId}"]`)
+      .click();
     await expect(page.locator('[data-ai-review-summary]')).toContainText('待确认 1');
+    await page.locator('[data-ai-review-type-filter]').selectOption('all');
     const proposal = page.locator(`[data-ai-review-proposal="${seeded.proposalId}"]`);
     await expect(proposal).toContainText('等待处理');
     await expect(proposal).toContainText('沈砚走入南城');
@@ -215,7 +252,8 @@ test('keeps AI review pending until the author accepts it and then exposes the e
       status: 'valid',
       entityState: {
         stateKey: 'location',
-        value: { locationId: seeded.locationId },
+        semanticKind: 'location',
+        value: seeded.locationId,
       },
     });
   } finally {

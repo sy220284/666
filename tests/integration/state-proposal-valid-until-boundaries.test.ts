@@ -56,15 +56,22 @@ describe('M3-06 finite StateProposal interval boundaries', () => {
           {
             proposalId: proposal.id,
             decision: 'edit_accept',
-            editedValue: { locationId: seeded.north.id },
+            editedValue: {
+              value: { locationId: seeded.north.id },
+              semanticKind: 'custom',
+              validUntilChapterId: seeded.chapter3.id,
+            },
           },
         ],
       });
 
       expect(resolved.proposals.find((entry) => entry.id === proposal.id)).toMatchObject({
         status: 'edited',
-        resolvedValue: { locationId: seeded.north.id },
-        validUntilChapterId: seeded.chapter3.id,
+        resolvedValue: {
+          value: { locationId: seeded.north.id },
+          semanticKind: 'custom',
+          validUntilChapterId: seeded.chapter3.id,
+        },
       });
       expect(
         listContinuityAt(harness, seeded.project.projectId, seeded.chapter1.id).entityStates[0],

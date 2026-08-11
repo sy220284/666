@@ -168,7 +168,10 @@ test('preserves a finite EntityState interval across the real Electron boundary'
       if (!generated.ok) throw new Error(`PROPOSAL_GENERATE_FAILED:${generated.error.code}`);
       const proposal = generated.data.proposals.find((item) => item.status === 'pending');
       if (!proposal) throw new Error('PROPOSAL_MISSING');
-      if (proposal.validUntilChapterId !== chapter2.id) throw new Error('INTERVAL_END_DROPPED');
+      const proposedValue = proposal.proposedValue as { validUntilChapterId?: string | null };
+      if (proposedValue.validUntilChapterId !== chapter2.id) {
+        throw new Error('INTERVAL_END_DROPPED');
+      }
       return {
         projectId,
         chapter1Id: chapter1.id,

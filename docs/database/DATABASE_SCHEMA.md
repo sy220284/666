@@ -359,6 +359,31 @@ Core不暴露Version或VersionBlock的UPDATE/DELETE业务命令；定稿只更�
 - 部分唯一索引分别保证同章节、同来源Version、同Entity状态键或同ArcMilestone最多一条pending提案。
 - pending只写候选账本，不修改EntityState或ArcMilestone；作者批量裁决与权威状态更新在单事务完成，`accept/edit_accept`均将终点写入`entity_states.valid_until_chapter_id`。
 
+Schema 31将`state_proposals`泛化为唯一Proposal账本：
+
+`id TEXT PK, batch_id TEXT FK, project_id TEXT FK, chapter_id TEXT FK, source_version_id TEXT FK, proposal_type TEXT, source TEXT, target_json TEXT, previous_value_json TEXT NULL, proposed_value_json TEXT, evidence_json TEXT, confidence REAL, status TEXT, resolved_value_json TEXT NULL, created_at TEXT, resolved_at TEXT NULL`
+
+- 类型为`entity_state/knowledge_state/timeline_event/character_relationship/foreshadowing/arc_milestone/entity_create/canon_fact`；目标和值由Contracts严格判别联合校验。
+- 旧`entity_state/arc_milestone`数据通过追加Migration转换为同一`target_json`结构，不保留平行旧列或第二张Proposal表。
+- 每条必须绑定来源定稿与正文证据；来源定稿变化后只可拒绝。
+- 作者接受时在同一写事务内复用Continuity、Canon或Narrative Planning权威operation；任一失败时整批回滚。
+
+#### `character_relationships`（Schema 31）
+
+`id TEXT PK, project_id TEXT FK, from_character_id TEXT FK, to_character_id TEXT FK, category TEXT, label TEXT, valid_from_chapter_id TEXT FK, valid_until_chapter_id TEXT FK NULL, record_status TEXT, source_version_id TEXT FK, evidence_json TEXT, created_at TEXT, superseded_at TEXT NULL`
+
+- 两端必须是同项目活动Character且不得相同；`category`只保存稳定分类，具体中文关系保存在自由`label`。
+- 第一版不保存强度、亲密度或情感百分比，避免没有权威来源的伪精确。
+- 同一有向人物对的新当前关系由Core单事务写入并历史化旧记录；章节区间使用`[valid_from, valid_until)`半开语义。
+- M11-04关系图只读取本表的有界投影，不持久化图谱快照。
+
+#### `validation_exceptions`（Schema 31）
+
+`id TEXT PK, project_id TEXT FK, exception_type TEXT, scope_type TEXT, issue_type TEXT, validation_issue_id TEXT FK NULL, chapter_id TEXT FK NULL, entity_id TEXT FK NULL, valid_from_chapter_id TEXT FK NULL, valid_until_chapter_id TEXT FK NULL, project_rule_key TEXT NULL, notes TEXT, active INTEGER, created_at TEXT, updated_at TEXT`
+
+- 作用域为`issue/chapter/entity/chapter_range/project_rule`；“忽略本次”仍只改变当前ValidationIssue状态，“记住这个例外”才写本表。
+- 确定性规则与`validate`约束包读取同一有效例外；停用例外不删除历史。
+
 #### `foreshadowings`
 
 由`0014_foreshadowing_character_arc.sql`建立：
@@ -464,7 +489,7 @@ Core不暴露Version或VersionBlock的UPDATE/DELETE业务命令；定稿只更�
 
 #### `validation_issues`
 
-`id TEXT PK, chapter_id TEXT NULL, version_id TEXT NULL, issue_type TEXT, severity TEXT, anchor_json TEXT, expected_json TEXT, description TEXT, suggestion TEXT, source_type TEXT, status TEXT, created_at TEXT`
+Schema 31在既有ValidationIssue账本追加`current_evidence_ids_json`与`conflict_evidence_ids_json`。确定性高风险冲突分别保存权威当前依据和冲突依据，同时保留合并后的`evidence_ids_json`以兼容既有流程；解决、忽略、误报、转修改任务和批注入口不变。`entity_states`同时增加`semantic_kind`，旧数据固定为`custom`且迁移阶段不猜测。
 
 #### `style_profiles`
 

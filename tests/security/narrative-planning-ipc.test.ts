@@ -185,6 +185,6 @@ describe('M3-05 narrative planning IPC boundary', () => {
     }
 
     unregister();
-    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(30);
+    expect(ipcMain.removeHandler).toHaveBeenCalledTimes(32);
   });
 });

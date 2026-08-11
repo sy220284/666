@@ -42,6 +42,7 @@ export interface StateRow {
   readonly projectId: string;
   readonly entityId: string;
   readonly stateKey: string;
+  readonly semanticKind: string;
   readonly valueJson: string;
   readonly validFromChapterId: string;
   readonly validUntilChapterId: string | null;

@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-
 import type {
   GenerationRun,
   ProjectStructure,
@@ -13,6 +11,7 @@ import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import { authorStatusLabel } from '../../presentation/author-status-labels.js';
 import { authorTerm } from '../../presentation/author-terms.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
+import { useCallback, useEffect, useMemo, useState } from './react-hooks.js';
 import {
   generationPollingDelay,
   registerGenerationPollingFailure,
@@ -257,6 +256,32 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
   };
 
+  const rememberException = async (issue: ValidationIssue): Promise<void> => {
+    if (readOnly) return;
+    const selected = window.prompt(
+      '例外类型：倒叙、梦境、幻觉、谎言、不可靠叙述、隐藏身份、特殊规则、时间循环、替身、平行世界、作者有意或自定义。',
+      '作者有意',
+    );
+    if (selected === null) return;
+    const exceptionType = validationExceptionType(selected);
+    if (!exceptionType) {
+      setNotice('例外类型无法识别，未保存。');
+      return;
+    }
+    const notes = window.prompt('补充说明（可选）：', '') ?? '';
+    const outcome = await bridge.validation.rememberException({
+      projectId,
+      issueId: issue.issueId,
+      exceptionType,
+      scopeType: 'issue',
+      notes,
+    });
+    if (outcome.state === 'success') {
+      setCatalog(outcome.data);
+      setNotice('已记住这个例外；后续检查会读取该例外，当前问题已忽略。');
+    } else if (outcome.state === 'failure') setNotice(authorErrorSummary(outcome.error));
+  };
+
   const addComment = async (issue: ValidationIssue): Promise<void> => {
     if (readOnly) return;
     const body = window.prompt('添加审阅批注：')?.trim();
@@ -394,6 +419,12 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                     : '已经变化'}
                 </p>
                 <p>{issue.rationale}</p>
+                {issue.currentEvidenceIds.length > 0 || issue.conflictEvidenceIds.length > 0 ? (
+                  <div className="validation-evidence-pair" data-validation-evidence-pair>
+                    <p>当前依据：{issue.currentEvidenceIds.join(' · ') || '无'}</p>
+                    <p>冲突依据：{issue.conflictEvidenceIds.join(' · ') || '无'}</p>
+                  </div>
+                ) : null}
                 {issue.anchor.textQuote ? <blockquote>{issue.anchor.textQuote}</blockquote> : null}
                 {issue.suggestion ? <p>修改建议：{issue.suggestion}</p> : null}
                 <details>
@@ -421,6 +452,14 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                       {label}
                     </button>
                   ))}
+                  <button
+                    data-remember-validation-exception={issue.issueId}
+                    disabled={readOnly}
+                    type="button"
+                    onClick={() => void rememberException(issue)}
+                  >
+                    记住这个例外
+                  </button>
                   <button disabled={readOnly} type="button" onClick={() => void createTodo(issue)}>
                     转为修改任务
                   </button>
@@ -515,9 +554,78 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             </div>
           </article>
         ))}
+        {(catalog?.exceptions ?? []).map((exception) => (
+          <article className="ledger-record" key={exception.exceptionId}>
+            <p>
+              已记住的例外 · {exceptionTypeLabel(exception.exceptionType)} ·{' '}
+              {exception.active ? '生效中' : '已停用'}
+            </p>
+            {exception.notes ? <p>{exception.notes}</p> : null}
+            {exception.active ? (
+              <button
+                disabled={readOnly}
+                type="button"
+                onClick={() =>
+                  void bridge.validation
+                    .disableException({ projectId, exceptionId: exception.exceptionId })
+                    .then((outcome) => {
+                      if (outcome.state === 'success') setCatalog(outcome.data);
+                      else if (outcome.state === 'failure') {
+                        setNotice(authorErrorSummary(outcome.error));
+                      }
+                    })
+                }
+              >
+                停用此例外
+              </button>
+            ) : null}
+          </article>
+        ))}
       </section>
     </section>
   );
+}
+
+function validationExceptionType(value: string) {
+  const normalized = value.trim().toLowerCase();
+  const values = {
+    倒叙: 'flashback',
+    flashback: 'flashback',
+    梦境: 'dream',
+    dream: 'dream',
+    幻觉: 'illusion',
+    illusion: 'illusion',
+    谎言: 'lie',
+    lie: 'lie',
+    不可靠叙述: 'unreliable_narration',
+    隐藏身份: 'hidden_identity',
+    特殊规则: 'special_rule',
+    时间循环: 'time_loop',
+    替身: 'double',
+    平行世界: 'parallel_world',
+    作者有意: 'intentional_exception',
+    自定义: 'custom',
+    custom: 'custom',
+  } as const;
+  return values[normalized as keyof typeof values] ?? null;
+}
+
+function exceptionTypeLabel(value: string): string {
+  const labels: Readonly<Record<string, string>> = {
+    flashback: '倒叙',
+    dream: '梦境',
+    illusion: '幻觉',
+    lie: '谎言',
+    unreliable_narration: '不可靠叙述',
+    hidden_identity: '隐藏身份',
+    special_rule: '特殊规则',
+    time_loop: '时间循环',
+    double: '替身',
+    parallel_world: '平行世界',
+    intentional_exception: '作者有意',
+    custom: '自定义',
+  };
+  return labels[value] ?? value;
 }
 
 function generationStageLabel(stage: string): string {

@@ -102,6 +102,71 @@ function assertMilestoneDependencyGraph(
   visit(milestoneId);
 }
 
+export function applyArcMilestoneTransitionInTransaction(
+  connection: DatabaseSync,
+  valid: ArcMilestoneTransitionInput,
+  now: string,
+  confirmationSource: 'author' | 'state_proposal' = 'author',
+): void {
+  const current = assertMilestone(connection, valid.projectId, valid.milestoneId);
+  if (current.status === valid.status) {
+    throw new NarrativePlanningServiceError(
+      'NARRATIVE_CONFLICT',
+      'Arc milestone is already in the requested status.',
+    );
+  }
+  if (current.status !== 'planned' && valid.status !== 'planned') {
+    throw new NarrativePlanningServiceError(
+      'NARRATIVE_CONFLICT',
+      'Hit and skipped milestones must return to planned before another terminal decision.',
+    );
+  }
+  if (valid.status === 'hit') {
+    if (!valid.actualChapterId) {
+      throw new NarrativePlanningServiceError(
+        'NARRATIVE_INVALID',
+        'A hit milestone requires the actual chapter.',
+      );
+    }
+    assertChapter(connection, valid.projectId, valid.actualChapterId);
+    const unresolved = unresolvedArcMilestoneHitDependencies(
+      connection,
+      valid.projectId,
+      valid.milestoneId,
+      valid.actualChapterId,
+    );
+    if (unresolved.length > 0) {
+      throw new NarrativePlanningServiceError(
+        'NARRATIVE_CONFLICT',
+        `Arc milestone dependencies are not satisfied: ${unresolved.join(' ')}`,
+      );
+    }
+  }
+  if (valid.status === 'planned' && valid.actualChapterId) {
+    throw new NarrativePlanningServiceError(
+      'NARRATIVE_INVALID',
+      'A planned milestone cannot keep an actual chapter.',
+    );
+  }
+  if (valid.status === 'skipped' && valid.actualChapterId) {
+    assertChapter(connection, valid.projectId, valid.actualChapterId);
+  }
+  connection
+    .prepare(
+      `UPDATE arc_milestones
+          SET status = ?, actual_chapter_id = ?, confirmation_source = ?, updated_at = ?
+        WHERE id = ? AND project_id = ?`,
+    )
+    .run(
+      valid.status,
+      valid.status === 'planned' ? null : valid.actualChapterId,
+      valid.status === 'planned' ? null : confirmationSource,
+      now,
+      valid.milestoneId,
+      valid.projectId,
+    );
+}
+
 export class CharacterArcOperations {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
@@ -258,63 +323,7 @@ export class CharacterArcOperations {
     const valid = ArcMilestoneTransitionInputSchema.parse(input);
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      const current = assertMilestone(connection, valid.projectId, valid.milestoneId);
-      if (current.status === valid.status) {
-        throw new NarrativePlanningServiceError(
-          'NARRATIVE_CONFLICT',
-          'Arc milestone is already in the requested status.',
-        );
-      }
-      if (current.status !== 'planned' && valid.status !== 'planned') {
-        throw new NarrativePlanningServiceError(
-          'NARRATIVE_CONFLICT',
-          'Hit and skipped milestones must return to planned before another terminal decision.',
-        );
-      }
-      if (valid.status === 'hit') {
-        if (!valid.actualChapterId) {
-          throw new NarrativePlanningServiceError(
-            'NARRATIVE_INVALID',
-            'A hit milestone requires the actual chapter.',
-          );
-        }
-        assertChapter(connection, valid.projectId, valid.actualChapterId);
-        const unresolved = unresolvedArcMilestoneHitDependencies(
-          connection,
-          valid.projectId,
-          valid.milestoneId,
-          valid.actualChapterId,
-        );
-        if (unresolved.length > 0) {
-          throw new NarrativePlanningServiceError(
-            'NARRATIVE_CONFLICT',
-            `Arc milestone dependencies are not satisfied: ${unresolved.join(' ')}`,
-          );
-        }
-      }
-      if (valid.status === 'planned' && valid.actualChapterId) {
-        throw new NarrativePlanningServiceError(
-          'NARRATIVE_INVALID',
-          'A planned milestone cannot keep an actual chapter.',
-        );
-      }
-      if (valid.status === 'skipped' && valid.actualChapterId) {
-        assertChapter(connection, valid.projectId, valid.actualChapterId);
-      }
-      connection
-        .prepare(
-          `UPDATE arc_milestones
-              SET status = ?, actual_chapter_id = ?, confirmation_source = ?, updated_at = ?
-            WHERE id = ? AND project_id = ?`,
-        )
-        .run(
-          valid.status,
-          valid.status === 'planned' ? null : valid.actualChapterId,
-          valid.status === 'planned' ? null : 'author',
-          this.#clock.now().toISOString(),
-          valid.milestoneId,
-          valid.projectId,
-        );
+      applyArcMilestoneTransitionInTransaction(connection, valid, this.#clock.now().toISOString());
       return readNarrativePlanningCatalog(connection, {
         projectId: valid.projectId,
         query: '',

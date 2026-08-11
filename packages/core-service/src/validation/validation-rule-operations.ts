@@ -17,6 +17,7 @@ import {
   type ValidationAiCompletionInput,
 } from './validation-model.js';
 import { CONFIG_VERSION, RULE_CONFIG, RULE_VERSION, rules } from './validation-rules.js';
+import { isValidationExceptionActive } from './validation-exception-policy.js';
 
 export class ValidationRuleOperations {
   readonly #workspace: ProjectWorkspaceService;
@@ -48,7 +49,15 @@ export class ValidationRuleOperations {
         )
         .get(input.projectId, input.sourceVersionId, fingerprint);
       if (existing) return catalog(database, input.projectId);
-      const found = rules(database, resolved.version, resolved.blocks);
+      const found = rules(database, resolved.version, resolved.blocks).filter(
+        (issue) =>
+          !isValidationExceptionActive(
+            database,
+            input.projectId,
+            resolved.version.chapterId,
+            issue,
+          ),
+      );
       const batchId = this.#idFactory();
       const now = this.#clock.now().toISOString();
       database
@@ -75,16 +84,17 @@ export class ValidationRuleOperations {
            id, batch_id, project_id, chapter_id, source_version_id,
            logical_block_id, expected_block_hash, text_quote, range_hint_json,
            issue_type, source, severity, rationale, evidence_ids_json,
+           current_evidence_ids_json, conflict_evidence_ids_json,
            suggestion, confidence, rule_id, rule_version, config_version,
            status, created_at, updated_at
-         ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'rule', ?, ?, ?, ?, NULL, ?, ?, ?,
+         ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'rule', ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?,
                   'open', ?, ?)`,
       );
       for (const issue of found) {
         const issueId = stableUuid(
           `${fingerprint}:${issue.ruleId}:${issue.logicalBlockId ?? resolved.version.chapterId}:${
             issue.rangeHint?.start ?? 0
-          }`,
+          }:${issue.evidenceIds.join(':')}`,
         );
         insert.run(
           issueId,
@@ -100,6 +110,8 @@ export class ValidationRuleOperations {
           issue.severity,
           issue.rationale,
           JSON.stringify(issue.evidenceIds),
+          JSON.stringify(issue.currentEvidenceIds ?? []),
+          JSON.stringify(issue.conflictEvidenceIds ?? []),
           issue.suggestion,
           issue.ruleId,
           RULE_VERSION,
@@ -204,7 +216,14 @@ export class ValidationRuleOperations {
         if (typeof item.id === 'string') allowedEvidence.add(item.id);
       }
       const blockById = new Map(resolved.blocks.map((block) => [block.logicalBlockId, block]));
-      for (const issue of output.issues) {
+      const acceptedIssues = output.issues.filter(
+        (issue) =>
+          !isValidationExceptionActive(database, raw.projectId, raw.chapterId, {
+            issueType: issue.type,
+            evidenceIds: issue.evidenceIds,
+          }),
+      );
+      for (const issue of acceptedIssues) {
         if (issue.evidenceIds.some((id) => !allowedEvidence.has(id))) {
           throw new ValidationServiceError(
             'VALIDATION_INVALID',
@@ -248,7 +267,7 @@ export class ValidationRuleOperations {
           raw.sourceVersionId,
           raw.runId,
           fingerprint,
-          output.issues.length,
+          acceptedIssues.length,
           now,
         );
       const insert = database.prepare(
@@ -261,7 +280,7 @@ export class ValidationRuleOperations {
          ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'ai', ?, ?, ?, ?, ?, NULL, NULL, NULL,
                   'open', ?, ?)`,
       );
-      for (const issue of output.issues) {
+      for (const issue of acceptedIssues) {
         const block = issue.logicalBlockId ? blockById.get(issue.logicalBlockId) : undefined;
         insert.run(
           this.#idFactory(),

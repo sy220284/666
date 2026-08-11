@@ -117,8 +117,16 @@ describe('M4-04 Provider state extraction and validation', () => {
         status: 'pending',
         freshness: 'current',
         actionability: 'accept',
-        previousValue: 'well',
-        proposedValue: 'injured',
+        previousValue: {
+          value: 'well',
+          semanticKind: 'custom',
+          validUntilChapterId: null,
+        },
+        proposedValue: {
+          value: 'injured',
+          semanticKind: 'custom',
+          validUntilChapterId: null,
+        },
       });
       expect(
         harness.continuity.list({
@@ -156,7 +164,7 @@ describe('M4-04 Provider state extraction and validation', () => {
       expect(first.batches).toHaveLength(1);
       expect(first.batches[0]).toMatchObject({
         source: 'rule',
-        ruleVersion: 'worldforge.rules.v1',
+        ruleVersion: 'worldforge.rules.v2',
         configVersion: 'general-writing.v1',
         anchorFreshness: 'current',
         semanticFreshness: 'current',

@@ -4,6 +4,7 @@ import type { EvidenceAnchor, TimelineEventSaveInput } from '@worldforge/contrac
 import {
   compareChapterPosition,
   eventTimeRange,
+  findDependencyCycle,
   type ComparableTimeRange,
 } from '@worldforge/domain';
 
@@ -170,17 +171,7 @@ export function assertNoDependencyCycle(
     graph.set(row.eventId, [...(graph.get(row.eventId) ?? []), row.dependencyId]);
   }
   graph.set(eventId, [...dependencies]);
-  const visiting = new Set<string>();
-  const visited = new Set<string>();
-  const visit = (id: string): void => {
-    if (visiting.has(id)) {
-      throw new ContinuityServiceError('CONTINUITY_CONFLICT', 'Timeline dependency cycle.');
-    }
-    if (visited.has(id)) return;
-    visiting.add(id);
-    for (const dependency of graph.get(id) ?? []) visit(dependency);
-    visiting.delete(id);
-    visited.add(id);
-  };
-  visit(eventId);
+  if (findDependencyCycle(graph)) {
+    throw new ContinuityServiceError('CONTINUITY_CONFLICT', 'Timeline dependency cycle.');
+  }
 }

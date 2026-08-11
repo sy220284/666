@@ -20,6 +20,8 @@ import type {
   CandidateUndoPreview,
   CandidateUndoPreviewInput,
   CharacterArcSaveInput,
+  CharacterRelationshipInvalidateInput,
+  CharacterRelationshipSetInput,
   CommandResult,
   ContinuityCatalog,
   ContinuityListInput,
@@ -96,6 +98,12 @@ interface ContinuityBridgePort {
   ) => Promise<CommandResult<ContinuityCatalog>>;
   readonly invalidateKnowledgeState: (
     input: KnowledgeStateInvalidateInput,
+  ) => Promise<CommandResult<ContinuityCatalog>>;
+  readonly setCharacterRelationship: (
+    input: CharacterRelationshipSetInput,
+  ) => Promise<CommandResult<ContinuityCatalog>>;
+  readonly invalidateCharacterRelationship: (
+    input: CharacterRelationshipInvalidateInput,
   ) => Promise<CommandResult<ContinuityCatalog>>;
 }
 

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "mutants": [
+    {
+      "id": "draft-cas-stale-revision",
+      "sourcePath": "packages/core-service/src/draft/draft-patch-service.ts",
+      "search": "if (draft.revision !== valid.baseRevision) {",
+      "replacement": "if (false) {",
+      "tests": ["tests/integration/draft-patch.test.ts"]
+    },
+    {
+      "id": "file-lease-successor-fencing",
+      "sourcePath": "packages/core-service/src/recovery/file-lease.ts",
+      "search": "if (!confirmed?.document || confirmed.document.token !== token) return;",
+      "replacement": "if (!confirmed?.document) return;",
+      "tests": ["tests/reliability/file-lease-stress.test.ts"]
+    },
+    {
+      "id": "release-main-verification-fail-closed",
+      "sourcePath": "scripts/release-acceptance.mjs",
+      "search": "if (!isMainEffectivelyVerified(statuses)) {",
+      "replacement": "if (false) {",
+      "tests": ["tests/unit/release-tool.test.ts"]
+    }
+  ]
+}

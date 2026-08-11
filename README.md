@@ -1,115 +1,896 @@
 # WorldForge（创世工坊）
 
-WorldForge是面向单个作者的本地优先桌面长篇写作工作站。作者负责裁决，AI只生成建议；作品、数据库、索引、日志、备份和配置全部保存在本机。
+> 面向长篇中文创作的本地优先桌面写作工作站。  
+> 从作品规划、人物与世界设定、正文写作，到 AI 生成、审阅、连续性管理、内容检查和备份恢复，都围绕同一个本地作品工作区完成。
 
-## 产品原则
+**当前程序版本：`1.0.0`**  
+**支持平台：Windows / macOS / Linux**  
+**使用模式：单作者 · 本地项目 · 可选 AI 协作**
 
-1. 项目数据默认只在用户本机。
-2. AI输出先成为建议稿或待确认设定更新建议。
-3. `project.sqlite`是项目唯一权威数据源。
-4. 锁定、Revision、内容Hash、不可变历史版本及路径边界由代码保证。
-5. AI只能提议，作者拥有正文、已确认设定和状态的最终裁决权。
+---
 
-AI接入只允许：
+## WorldForge 是什么
 
-- 本地应用调用用户自行配置的模型API；
-- 本地应用连接用户已经运行的本地兼容模型服务。
+WorldForge 希望解决长篇写作里最麻烦的一件事：
 
-WorldForge不建设自有云端AI服务，不保存用户作品到云端，不代理模型请求。
+**正文越来越长之后，大纲、人物、设定、时间线、伏笔、历史版本和 AI 上下文开始彼此脱节。**
 
-## 当前状态
-
-当前目标版本为`1.0.0`。M0—M9及M10-01—M10-03已经完成有效Verified闭环；M10-04已完成工程实现并由PR #312执行永久门禁验证。最新已验证仓库基线为：
+因此，WorldForge 将这些内容放进同一个作品系统里管理：
 
 ```text
-main == work == 8f54dc4e5ed46d6ffca999fda29887f2302b1030
+创建作品
+  ↓
+作品核心 / 大纲 / 卷章 / 场景
+  ↓
+人物与世界 / 动态状态 / 时间线 / 伏笔 / 人物弧光
+  ↓
+正文写作
+  ↓
+历史版本 / 定稿
+  ↓
+AI生成、改写、融合、审阅
+  ↓
+作者比较、修改、采用或拒绝
+  ↓
+内容检查 / 搜索 / 节奏分析
+  ↓
+备份 / 恢复 / 导出
 ```
 
-M10-04保留用户数据兼容、Provider适配和协议版本门禁，退役空载Renderer Legacy层、旧任务状态入口及永久动态双读。
+WorldForge 的核心原则很简单：
 
-## 已实现能力
+1. **作品归作者所有**：正文、设定、索引、日志和备份保存在本机。
+2. **作者拥有最终决定权**：AI 输出先进入建议稿或 AI 审阅，不能直接覆盖权威正文和已确认设定。
+3. **长篇创作围绕统一上下文运行**：正文、人物状态、时间线、伏笔、场景规划等可以互相引用。
+4. **所有重要修改都要可追踪、可检查、可恢复**。
 
-- Electron安全壳、Utility Process Core、SQLite Migration、单写队列、严格IPC和任务协议。
-- 项目、卷章、Tiptap中文正文、自动保存、查找、历史版本、只读打开和恢复。
-- Block Patch、Revision、Hash、锁定、Candidate、Diff、冲突、采用、撤销与结构恢复。
-- 任务书、大纲、Scene Beat、Entity、Canon、动态状态、时间线、伏笔、人物弧光和状态提案。
-- FTS5全文搜索、作品词典、约束包、确定性与AI语义校验、节奏分析和安全替换。
-- OpenAI兼容、Anthropic及批准的Custom Provider适配，凭据隔离与有界响应读取。
-- T0/T1生成、快速改写、结构性改写、多候选融合、审阅与安全采用。
-- TXT、Markdown和DOCX导入导出，三轨备份、恢复副本和空间清理。
-- React统一工作台、双主题、响应式、DPI、键盘、焦点、无障碍和Windows中文输入验收。
-- Windows、macOS、Linux便携工件、ASAR、Fuses、Hash与启动验证。
+---
 
-## 核心数据关系
+## 已实现功能
+
+### 1. 本地作品工作区
+
+每部作品拥有独立的本地工作目录和 `project.sqlite` 数据库。
+
+当前支持：
+
+- 新建作品
+- 打开本地作品
+- 最近作品列表
+- 继续上次写作位置
+- 最近作品路径重新定位
+- 移动作品目录
+- 关闭当前作品
+- 检测异常或不兼容作品
+- 只读保护打开
+- 受损作品恢复入口
+- 本地恢复与安全导出
+
+新建作品提供四种入口：
+
+- 快速开始
+- 完整创建
+- 从旧稿导入
+- 空白作品
+
+创作过程中还可以选择：
+
+- 自主创作
+- 人机协作
+- AI 优先
+
+这些模式只调整推荐工作流，不会改变作品数据结构和已有功能。
+
+---
+
+### 2. 作品规划
+
+WorldForge 提供简明规划和完整规划两种界面，两种模式共用同一份作品数据。
+
+#### 简明规划
+
+适合先回答核心创作问题，再逐步展开：
+
+- 故事讲什么
+- 主角是谁
+- 核心目标是什么
+- 核心冲突是什么
+- 阅读承诺是什么
+- 有哪些必须遵守或禁止出现的内容
+
+#### 完整规划
+
+支持：
+
+- 作品核心
+- 故事大纲树
+- 卷管理
+- 章节管理
+- 章节目标
+- 场景节拍
+- 场景目标
+- 核心冲突
+- 预期结果
+- 场景人物与地点
+- 场景与正文块关联
+- 大纲节点层级调整
+- 场景跨章节移动
+- 章节拆分
+- 章节合并
+- 正文块跨章节移动
+
+结构操作和正文修改保持独立，并在高风险操作前执行预检查与恢复保护。
+
+---
+
+### 3. 长篇正文编辑
+
+正文编辑器以稳定的正文块作为持久化基础。
+
+当前支持：
+
+- 正文
+- 对话
+- 小标题
+- 分隔线
+- 段落锁定 / 解锁
+- 撤销 / 重做
+- 自动保存
+- 手动保存
+- 全文复制
+- 当前章查找
+- 当前章替换
+- 字符统计
+- 纯文字统计
+- 段落统计
+- 目标字数进度
+- 左侧卷章导航
+- 右侧本章写作辅助
+- 沉浸写作模式
+- 隐藏 / 展开大纲和写作辅助区域
+
+针对中文写作，编辑器专门处理输入法组合状态。
+
+中文输入法正在组词时，会暂停可能破坏输入状态的保存和结构操作；组合结束后再恢复自动保存。
+
+切换章节、关闭作品和进入其他关键流程前，也会先刷新未提交的正文修改。
+
+---
+
+## 历史版本与正文安全
+
+WorldForge 将“正在写的当前稿”和“历史版本”分开管理。
+
+可以：
+
+- 手动创建历史版本
+- 查看章节历史版本
+- 将版本标记为定稿
+- 只读查看历史正文
+- 从历史版本恢复
+- 恢复后生成新的当前稿
+- 保留原历史版本不变
+
+正文修改同时使用：
+
+- Revision
+- 内容 Hash
+- 稳定正文块标识
+- 段落锁定
+- 冲突检测
+
+如果当前稿已经发生变化，旧基线不能静默覆盖新内容。
+
+---
+
+## AI 创作
+
+AI 是 WorldForge 的可选能力。
+
+没有配置 AI 时，作品规划、正文写作、版本、设定、搜索、备份等本地功能仍然可以独立使用。
+
+当前 AI 创作工作台支持：
+
+### 情节骨架
+
+可以先生成结构化的情节 / 场景方案，再决定是否继续扩写。
+
+### 章节生成
+
+可结合：
+
+- 当前章节目标
+- 场景节拍
+- 人物与世界设定
+- 当前人物状态
+- 前文连续性
+- 写作要求
+- 用户附加指令
+
+生成正文建议稿。
+
+### 快速改写
+
+针对选中的正文进行局部改写。
+
+### 结构性改写
+
+针对跨段、场景或更大正文范围生成新的建议稿。
+
+### 多建议稿生成
+
+同一次生成可以产生多个候选方案，由作者比较后选择。
+
+### 多建议稿融合
+
+可以选择多个已有建议稿，并按场景来源重新组合成新的融合版本。
+
+### 生成任务管理
+
+生成过程拥有独立运行记录，支持：
+
+- 运行阶段
+- 进度状态
+- 流式响应
+- 取消
+- 失败状态
+- 未完成结果
+- 保留未完成结果
+- 丢弃未完成结果
+- 重试
+
+---
+
+## 建议稿审阅
+
+AI 生成的正文不会直接进入当前稿。
+
+建议稿先进入审阅工作台：
+
+```text
+当前权威正文
+    +
+AI建议稿
+    ↓
+差异计算
+    ↓
+冲突检查
+    ↓
+作者审阅
+    ↓
+全部采用 / 局部采用 / 放弃
+    ↓
+事务写入当前稿
+```
+
+当前支持：
+
+- 建议稿列表
+- 建议稿正文查看
+- 差异预览
+- 修改内容过滤
+- 正文块级选择
+- 场景级选择
+- 整稿采用
+- 局部采用
+- 冲突提示
+- 放弃建议稿
+- 采用后撤销
+- 中断建议稿状态识别
+
+锁定正文块不会被 AI 建议静默覆盖。
+
+---
+
+## 人物与世界设定
+
+设定工作台目前分为四部分。
+
+### 人物与世界设定
+
+支持统一管理：
+
+- 人物
+- 地点
+- 势力
+- 道具
+- 能力
+- 世界规则
+- 事件
+- 自定义实体
+- 已确认事实
+
+设定可以和场景建立关联。
+
+删除存在引用关系的设定时，系统会先预览影响。
+
+### 动态状态与时间线
+
+用于记录会随着剧情变化的内容：
+
+- 人物当前状态
+- 状态历史
+- 时间线事件
+- 人物与地点
+- 生效范围
+- 知情状态
+- 相信
+- 怀疑
+- 误解
+- 未知
+
+历史状态可以失效，但不会简单覆盖掉已经发生过的剧情事实。
+
+### 伏笔与人物弧光
+
+支持：
+
+- 伏笔创建
+- 埋设
+- 强化
+- 部分揭示
+- 揭示
+- 取消
+- 人物弧光
+- 弧光里程碑
+- 里程碑状态变化
+- 章节与时间线关联
+
+---
+
+## AI 审阅
+
+AI 审阅用于处理“AI 从已定稿正文中发现的设定变化”。
+
+当前统一 AI 审阅已经接入：
+
+- 人物 / 实体动态状态建议
+- 人物弧光里程碑建议
+
+作者可以主动选择一个已经定稿的章节进行分析。
+
+AI 给出的结果会进入统一审阅列表，并显示：
+
+- 当前已有记录
+- AI 建议内容
+- 内容依据
+- 来源章节
+- 来源版本
+- 可信度
+- 来源是否仍然有效
+
+作者可以：
+
+- 接受
+- 修改后接受
+- 忽略
+
+来源正文已经变化的旧建议会失效，不能重新写入当前权威状态。
+
+AI 审阅和正文建议稿遵循同一个原则：
+
+**AI 可以发现和建议，最终写入由作者确认。**
+
+---
+
+## 内容检查
+
+WorldForge 提供两类内容检查。
+
+### 确定性规则检查
+
+适合检查可以稳定判断的问题。
+
+### AI 语义检查
+
+用于发现需要理解上下文才能判断的风险。
+
+检查结果会保留：
+
+- 问题类型
+- 严重程度
+- 原文依据
+- 修改建议
+- 来源版本
+- 正文位置
+- 来源是否已经变化
+
+作者可以对问题执行：
+
+- 标记已处理
+- 忽略
+- 停用规则
+- 降低重要程度
+- 标记误报
+- 重新打开
+- 创建修改任务
+- 添加审阅批注
+- 跳转到对应正文
+
+检查不会自动修改正文。
+
+---
+
+## 全项目搜索与安全替换
+
+WorldForge 内置项目级全文索引。
+
+当前支持搜索：
+
+- 当前正文
+- 历史版本
+- 人物与世界实体
+
+同时支持：
+
+- 索引状态检查
+- 手动重建索引
+- 作品词典
+- 词典新增 / 修改 / 删除
+- 全项目批量替换预览
+- 锁定段落识别
+- 修改基线校验
+- 内容 Hash 校验
+- 替换前恢复点
+- 原子批量提交
+
+批量替换必须先生成替换计划，再执行实际写入。
+
+---
+
+## 写作节奏辅助
+
+当前写作检查还包括：
+
+- 爽点密度
+- 章末钩子
+- 更新节奏
+- 目标字数与写作速度
+- 黄金三章检查
+
+这些结果属于写作建议，不直接修改作品。
+
+---
+
+## 导入与导出
+
+当前支持：
+
+### 导入
+
+- TXT
+- Markdown
+- DOCX
+
+导入流程包含：
+
+```text
+选择文件
+→ 读取与编码检测
+→ 分章预览
+→ 作者确认
+→ 创建恢复点
+→ 单事务导入
+```
+
+DOCX 使用受限解析流程，并隔离不需要的外部对象。
+
+### 导出
+
+支持：
+
+- TXT
+- Markdown
+- DOCX
+- 指定历史版本导出
+- 多章节 / 整书导出
+
+导出读取明确的历史版本，不依赖编辑器当前未保存状态。
+
+---
+
+## 本地备份与恢复
+
+WorldForge 内置完整的作品恢复体系。
+
+### 日常备份
+
+可以创建滚动日常备份。
+
+### 重大恢复点
+
+导入、Migration、批量替换和结构性操作等高风险动作可以建立恢复点。
+
+### 命名快照
+
+作者可以手动创建长期保存的命名快照，并添加备注。
+
+### 备份保护
+
+支持作者主动保护重要备份，避免普通空间清理删除。
+
+### 空间管理
+
+可配置：
+
+- 日常备份保留数量
+- 重大恢复点保留数量
+- 重大恢复点保留天数
+- 备份空间配额
+
+空间清理必须先预览清理方案，再按同一方案执行。
+
+### 恢复
+
+恢复操作会创建一个新的作品副本。
+
+原作品不会被恢复流程直接覆盖。
+
+---
+
+## 回收站
+
+卷、章节等结构内容采用安全删除流程。
+
+支持：
+
+- 软删除
+- 回收站查看
+- 恢复到原结构
+- 永久删除影响预览
+- 确认后永久删除
+
+---
+
+## AI 连接
+
+WorldForge 当前提供以下连接预设：
+
+| 类型 | 用途 |
+| --- | --- |
+| Ollama | 连接本机 Ollama |
+| LM Studio | 连接本机 LM Studio |
+| OpenAI 兼容服务 | OpenAI API 或其他兼容接口 |
+| Anthropic | Anthropic 原生 Messages 接口 |
+| 自定义服务 | 其他兼容模型服务 |
+
+可以为每个连接配置：
+
+- 服务地址
+- 模型
+- 超时时间
+- API 密钥
+- 协议参数
+
+连接保存后可以单独执行连接测试。
+
+### 本地模型
+
+Ollama 和 LM Studio 可以直接连接 `127.0.0.1` 上运行的模型服务。
+
+模型推理数据可以完全留在本机。
+
+### 网络模型
+
+如果配置 OpenAI、Anthropic 或其他网络 API，执行 AI 任务时，任务所需的上下文会发送到用户自己配置的服务。
+
+WorldForge 不提供自有云端 AI 中转服务，也不代管作品。
+
+---
+
+## 本地数据与权威边界
+
+应用数据和作品数据分开保存。
 
 ```text
 app.sqlite
-└─ 应用设置、最近作品、Provider元数据、窗口与UI偏好
+├─ 应用设置
+├─ 最近作品
+├─ AI连接元数据
+└─ 窗口与界面偏好
 
-project.sqlite
-├─ Volume / Chapter / Draft / DraftBlock
-├─ Candidate / Version / ApplyRecord
-├─ ProjectBrief / PlotNode / SceneBeat
-├─ Entity / CanonFact / EntityState
-├─ Timeline / Knowledge / Foreshadowing / CharacterArc
-├─ GenerationRun / ConstraintPackage / ValidationIssue
-└─ BackupRecord / TrashEntry / Dictionary
+每个作品目录
+└─ project.sqlite
+   ├─ 卷 / 章节
+   ├─ 当前稿 / 正文块
+   ├─ 历史版本
+   ├─ 建议稿
+   ├─ 大纲 / 场景
+   ├─ 人物与世界设定
+   ├─ 动态状态 / 时间线 / 知情信息
+   ├─ 伏笔 / 人物弧光
+   ├─ AI运行记录
+   ├─ 检查结果
+   ├─ 搜索索引
+   └─ 作品词典
 ```
 
-AI不会直接写当前稿或权威状态：
+`project.sqlite` 是作品结构化数据的权威来源。
+
+AI 的标准写入链路为：
 
 ```text
-约束包
-→ GenerationRun
-→ 建议稿
-→ 差异与冲突检查
-→ 作者选择
-→ 正文补丁
-→ Revision +1
+权威作品数据
+    ↓
+上下文与约束组装
+    ↓
+GenerationRun
+    ↓
+建议稿 / AI审阅建议
+    ↓
+差异、来源和冲突检查
+    ↓
+作者决策
+    ↓
+事务写入
+    ↓
+新的Revision / 状态记录 / 历史版本
 ```
+
+---
+
+## 安全架构
+
+桌面应用采用分层进程结构：
+
+```text
+React Renderer
+      │
+      │ Typed Preload Bridge
+      ↓
+Electron Main
+      │
+      ├─ 窗口与系统能力
+      ├─ 安全凭据
+      └─ Core Supervisor
+              │
+              ↓
+       Utility Process Core
+              │
+              ├─ 项目业务规则
+              ├─ AI运行
+              ├─ 搜索与检查
+              ├─ 备份恢复
+              └─ SQLite
+```
+
+Renderer 不直接访问 Node.js 和作品数据库。
+
+关键边界包括：
+
+- Electron 安全 WebPreferences
+- Content Security Policy
+- 受控导航
+- 严格 IPC 合同
+- Core 独立 Utility Process
+- SQLite 单写入边界
+- 路径边界检查
+- 凭据隔离
+- Electron `safeStorage`
+- 隐私日志
+- 诊断包导出前预览与确认
+- ASAR 完整性
+- Electron Fuses
+
+---
+
+## 项目结构
+
+```text
+apps/
+└─ desktop/
+   ├─ main/        Electron主进程
+   ├─ preload/     受控IPC桥
+   └─ renderer/    React桌面界面
+
+packages/
+├─ contracts/      IPC、数据和任务合同
+├─ domain/         领域规则
+├─ core-service/   本地核心服务
+├─ editor-core/    正文编辑核心
+├─ prompts/        AI提示词与输出协议
+└─ testkit/        测试基础设施
+
+migrations/
+├─ app/
+└─ project/
+
+tests/
+scripts/
+docs/
+```
+
+各 Workspace 之间存在明确的依赖边界，并由仓库检查脚本持续验证。
+
+---
 
 ## 技术栈
 
-- Electron + React + TypeScript
-- Tiptap + ProseMirror
-- Node `node:sqlite` + SQLite FTS5
-- Zod
-- Vitest + Playwright
-- pnpm workspace
+当前主要技术栈：
 
-## 开发入口
+- Electron 43
+- React 19
+- TypeScript 6
+- Tiptap 3 / ProseMirror
+- Zustand 5
+- Node.js 24
+- `node:sqlite`
+- SQLite FTS5
+- Zod
+- Vitest 4
+- Playwright
+- pnpm Workspace
+- ESLint
+- Prettier
+
+---
+
+## 开发环境
+
+要求：
 
 ```text
-AGENTS.md
-→ docs/PROJECT_EXECUTION_ENTRY.md
-→ docs/tasks/TASK_AUTHORIZATION.json
-→ docs/tasks/TASK_INDEX.md
-→ 当前任务Runtime
-→ 当前任务卡
-→ 专项文档、代码、测试、Migration与Evidence
+Node.js >= 24.0.0 < 25.0.0
+pnpm >= 11.21.0 < 12.0.0
 ```
 
-当前活动任务：[`M10-04 兼容面收敛治理`](./docs/tasks/M10/M10-04_COMPATIBILITY_CONVERGENCE.md)。
+仓库固定使用：
 
-- 任务索引：[`docs/tasks/TASK_INDEX.md`](./docs/tasks/TASK_INDEX.md)
-- 执行入口：[`docs/PROJECT_EXECUTION_ENTRY.md`](./docs/PROJECT_EXECUTION_ENTRY.md)
-- 自动化规范：[`docs/process/DEVELOPMENT_AUTOMATION.md`](./docs/process/DEVELOPMENT_AUTOMATION.md)
-- 发布资格：[`docs/process/RELEASE_QUALIFICATION.md`](./docs/process/RELEASE_QUALIFICATION.md)
+```text
+pnpm 11.21.0
+```
 
-## 自用发布边界
+安装依赖：
 
-V1.0仅供仓库所有者本人使用。交付形态为三平台便携包，要求原生构建、ASAR/Fuse/Hash、启动、既有作品兼容和本地数据安全。
+```bash
+pnpm install --frozen-lockfile
+```
 
-不属于V1.0范围：代码签名与公证、系统安装器、自动更新及面向第三方或应用商店的公开分发保证。
+构建：
+
+```bash
+pnpm build
+```
+
+类型检查：
+
+```bash
+pnpm typecheck
+```
+
+代码检查：
+
+```bash
+pnpm lint
+pnpm format:check
+pnpm check:boundaries
+pnpm check:workspaces
+```
+
+测试：
+
+```bash
+pnpm test:unit
+pnpm test:integration
+pnpm test:coverage
+pnpm test:e2e
+```
+
+完整测试入口：
+
+```bash
+pnpm test
+```
+
+---
+
+## 打包
+
+在当前操作系统原生打包：
+
+```bash
+pnpm package
+```
+
+默认产物位于：
+
+```text
+release/<platform>/
+```
+
+Windows、macOS 和 Linux 必须分别在对应平台构建，不允许跨平台伪造原生产物。
+
+打包流程包含：
+
+- Electron Runtime
+- production workspace deploy
+- ASAR
+- ASAR SHA-256 完整性
+- Electron Fuses
+- 平台元数据
+- package manifest
+- 启动验证
+
+发布资格还可以通过：
+
+```bash
+pnpm release:check
+pnpm release:gate
+pnpm release:checksums
+```
+
+进行检查。
+
+---
+
+## 当前发布边界
+
+WorldForge 当前仍以仓库所有者自用为主要交付边界。
+
+支持生成 Windows、macOS 和 Linux 便携包。
+
+当前没有承诺：
+
+- 系统安装器
+- 自动更新
+- 应用商店发布
+- 企业部署
+- 面向第三方的正式公开分发
+
+`draft` 和允许未签名的 `prerelease` 可以作为内部自用候选。
+
+`stable` 发布要求更严格的发行信任：
+
+- Windows Authenticode
+- macOS Developer ID
+- macOS Notarization
+- Stapling
+- ASAR / Fuse / Hash / 启动验证
+
+---
+
+## 测试与质量治理
+
+仓库当前包含多层自动化验证：
+
+- 单元测试
+- 集成测试
+- Migration 测试
+- 安全测试
+- 性能测试
+- AI Eval
+- Coverage
+- Electron E2E
+- UI 验收门禁
+- Workspace 边界检查
+- IPC / 协议检查
+- SQL Migration 检查
+- 中文作者语言检查
+- CI 策略检查
+- 发布资格检查
+
+工程任务、实现状态、Evidence 与主线验证记录保存在 `docs/tasks/` 与相关测试证据目录中。
+
+README 只描述当前产品能力；具体工程治理状态以任务索引和 CI 结果为准。
+
+---
 
 ## 关键文档
 
-- [`docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`](./docs/product/WORLDFORGE_V6.5_FULL_SPEC.md)
-- [`docs/product/FUNCTION_CATALOG.md`](./docs/product/FUNCTION_CATALOG.md)
-- [`docs/product/V1_SCOPE_AND_ACCEPTANCE.md`](./docs/product/V1_SCOPE_AND_ACCEPTANCE.md)
-- [`docs/process/RELEASE_QUALIFICATION.md`](./docs/process/RELEASE_QUALIFICATION.md)
-- [`docs/contracts/IPC_CONTRACTS.md`](./docs/contracts/IPC_CONTRACTS.md)
-- [`docs/ai/PROVIDER_PROTOCOL.md`](./docs/ai/PROVIDER_PROTOCOL.md)
-- [`docs/ui/UI_ACCEPTANCE_CHECKLIST.md`](./docs/ui/UI_ACCEPTANCE_CHECKLIST.md)
-- [`docs/INDEX.md`](./docs/INDEX.md)
+- [`docs/product/WORLDFORGE_V6.5_FULL_SPEC.md`](./docs/product/WORLDFORGE_V6.5_FULL_SPEC.md) — 产品完整设计
+- [`docs/product/FUNCTION_CATALOG.md`](./docs/product/FUNCTION_CATALOG.md) — 功能与实现关系
+- [`docs/product/AUTHOR_LANGUAGE_GLOSSARY.md`](./docs/product/AUTHOR_LANGUAGE_GLOSSARY.md) — 中文作者术语
+- [`docs/architecture/ARCHITECTURE.md`](./docs/architecture/ARCHITECTURE.md) — 系统架构
+- [`docs/contracts/IPC_CONTRACTS.md`](./docs/contracts/IPC_CONTRACTS.md) — IPC 合同
+- [`docs/ai/PROVIDER_PROTOCOL.md`](./docs/ai/PROVIDER_PROTOCOL.md) — AI Provider 协议
+- [`docs/process/RELEASE_QUALIFICATION.md`](./docs/process/RELEASE_QUALIFICATION.md) — 发布资格
+- [`docs/tasks/TASK_INDEX.md`](./docs/tasks/TASK_INDEX.md) — 工程任务状态
+- [`docs/INDEX.md`](./docs/INDEX.md) — 文档索引
 
+---
+
+## License
+
+仓库根目录 [`LICENSE`](./LICENSE) 当前采用 **MIT License**。
+
+> 注意：根 `package.json` 当前仍声明 `AGPL-3.0-only`。这是仓库现有许可证元数据不一致，README 以实际 `LICENSE` 文件为准；后续应单独统一该元数据。

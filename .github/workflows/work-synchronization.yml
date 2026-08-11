@@ -1,20 +1,20 @@
-name: Work Synchronization
+name: Integration Branch Synchronization
 
 # Legacy trusted-policy bootstrap marker: - Main Verification
-# Normal synchronization now runs directly inside Main Verification; this workflow is recovery-only.
+# Normal synchronization runs directly inside Main Verification; this workflow is recovery-only.
 on:
   workflow_dispatch:
     inputs:
       expected_sha:
-        description: Exact verified main commit SHA to synchronize work to
+        description: Exact verified main commit SHA to synchronize integration branches to
         required: true
         type: string
       source_pr:
-        description: Merged work pull request number that produced the main commit
+        description: Merged work/governance pull request number that produced the main commit
         required: true
         type: string
       source_head_sha:
-        description: Exact source work head SHA that is safe to replace
+        description: Exact source integration head SHA that is safe to replace
         required: true
         type: string
 
@@ -24,7 +24,7 @@ permissions:
   statuses: read
 
 concurrency:
-  group: work-synchronization
+  group: integration-branch-synchronization
   cancel-in-progress: false
 
 jobs:
@@ -39,18 +39,18 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24.18.1
-      - name: Self-test synchronization guards
+      - name: Self-test integration synchronization guards
         run: node .github/governance/work-synchronization.mjs self-test
-      - name: Synchronize work to verified main
+      - name: Synchronize idle integration branches to verified main
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WORK_SYNCHRONIZATION_OUTPUT: artifacts/work-synchronization
+          INTEGRATION_SYNCHRONIZATION_OUTPUT: artifacts/integration-synchronization
         run: node .github/governance/work-synchronization.mjs
-      - name: Upload synchronization report
+      - name: Upload integration synchronization report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: work-synchronization-${{ inputs.expected_sha }}
-          path: artifacts/work-synchronization/
+          name: integration-synchronization-${{ inputs.expected_sha }}
+          path: artifacts/integration-synchronization/
           if-no-files-found: error
           retention-days: 30

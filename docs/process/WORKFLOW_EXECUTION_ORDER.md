@@ -1,42 +1,72 @@
 # WorldForge 工作流执行顺序
 
 > 状态：Active  
-> 分支模型：`single-work-pr`
+> 分支模型：`main` + `work` + `governance`
 
-## 标准顺序
+## 1. 产品任务标准顺序
 
 ```text
-核对任务、依赖、范围与最新main
-→ 确认work与已验证main一致
-→ 在唯一work实施、测试、文档和Evidence
-→ 更新唯一work → main PR
-→ Draft持续执行永久检查
-→ Runtime登记IMPLEMENTED与来源PR/Head绑定
-→ Ready Head六项永久门禁成功
-→ 使用expected_head_sha串行Controlled Merge
-→ 等待Main Verification成功
-→ 发布任务验证提交状态
+核对任务、依赖、范围与最新已验证main
+→ 确认work无开放冲突且已同步main
+→ 在work实施、测试、文档和Evidence
+→ work → main PR
+→ Draft诊断；必要时full-validation-draft跑完整矩阵
+→ Runtime登记IMPLEMENTED并绑定来源PR
+→ 转Ready
+→ 当前Head最新pr-policy + quality / quality + security + performance成功
+→ Controlled Merge按expected_head_sha串行Squash
+→ Main Verification成功
+→ 发布main-verification与task-verification/<TASK-ID>
 → 任务有效状态转为VERIFIED
-→ Work Synchronization安全重置work到已验证main
-→ 重新读取main、work、Runtime与提交状态
+→ Integration Branch Synchronization同步来源work，并处理空闲governance
+→ Branch Inventory确认仅main/work/governance
+→ 重新读取真实Refs与提交状态
 ```
 
-禁止独立正式分支、验证分支、治理关闭分支、纯Evidence分支和第二个关闭PR。
+## 2. 治理维护标准顺序
 
-## 状态边界
+```text
+核对最新已验证main
+→ 确认governance基线安全
+→ 在governance修改治理/测试/流程文档/构建治理表面
+→ governance → main PR
+→ 当前Head最新四项永久门禁成功
+→ Controlled Merge串行Squash
+→ Main Verification成功
+→ Integration Branch Synchronization同步来源governance
+→ 若work空闲且只是落后main，则自动非强制fast-forward到最新main
+→ 若work有开放PR则保留，不覆盖
+→ Branch Inventory确认仅main/work/governance
+→ 重新读取真实Refs与提交状态
+```
 
-不得混淆：
+治理PR无任务marker，不生成产品Runtime或任务Evidence。需要修改产品功能、数据库、IPC、产品数据模型时必须转`work`正式任务。
 
-- Draft检查成功：当前Head通过反馈门，不具备合并资格。
-- Ready检查成功：当前Head具备受控合并资格。
-- PR已合并：GitHub完成Squash，尚未证明最终main有效。
-- Main Verification成功：最终main SHA、来源PR和永久门禁一致。
-- 任务验证状态成功：任务Runtime绑定与最终main闭环，计算状态为Verified。
-- Work Synchronization成功：work在无新提交、无新PR条件下与已验证main重新一致。
+## 3. 状态边界
 
-只有最后一项完成并重新读取真实分支后，才能声明主线闭环。
+不得混淆以下事实：
 
-## 任务状态
+- Draft检查成功：用于反馈与诊断，不具备合并资格。
+- Ready永久门禁成功：当前Head具备进入Controlled Merge的工程资格。
+- PR已合并：GitHub已完成Squash，最终main尚需Main Verification。
+- Main Verification成功：最终main、来源PR/Head与Fresh来源门禁一致。
+- `task-verification/<TASK-ID>`成功：产品Schema 2任务可计算为Verified。
+- Integration Branch Synchronization成功：来源lane已回到已验证main；空闲兄弟lane也已同步，或因开放PR被明确保留。
+- Branch Inventory成功：远端固定库存为`main/work/governance`。
+
+产品任务只有完成任务Context、work同步和最终复读后才能声明仓库闭环。治理维护只有完成Main Verification、来源governance同步和最终复读后才能声明治理闭环。
+
+## 4. 分支与并行规则
+
+- 永久分支只有`main`、`work`、`governance`。
+- 产品PR精确为`work → main`；治理PR精确为`governance → main`。
+- 每条集成lane最多一个开放PR；两条lane可并行工作。
+- main写入、Controlled Merge与Main Verification始终串行。
+- 一条lane合并后，另一条lane仅在安全时同步：无开放PR且没有独有提交才fast-forward。
+- 另一条lane存在开放PR时跳过同步，禁止覆盖其Head。
+- 另一条lane无开放PR但存在独有/分叉提交时fail-closed，必须人工确认来源后再恢复。
+
+## 5. 任务状态
 
 ```text
 PLANNED
@@ -46,30 +76,36 @@ PLANNED
 → VERIFIED（计算）
 ```
 
-- `IMPLEMENTED`由PR Head中的Runtime声明。
-- `VERIFICATION_PENDING`表示尚无匹配的任务验证成功状态。
-- `VERIFIED`要求任务ID、来源PR、来源work Head、最终main SHA和任务验证状态完全一致。
-- `VERIFIED_HOLD`表示当前没有自动激活的后续任务。
+- `IMPLEMENTED`由产品PR Head中的Schema 2 Runtime声明。
+- `VERIFICATION_PENDING`表示合并后尚无匹配的任务验证成功Context。
+- `VERIFIED`要求任务ID、来源PR、来源work Head、最终main提交与`task-verification/<TASK-ID>`完全一致。
+- 治理PR不进入这条产品任务状态机。
 
-## 分支与并行规则
+## 6. 失败处理
 
-- 仓库只允许`main`和`work`。
-- 所有正式PR必须精确为`work → main`。
-- 同一时刻最多一个开放正式PR。
-- 并行工作只能通过本地工作区、文件所有权和提交顺序协调，最终统一进入`work`。
-- main写入、Main Verification、任务关闭和work同步始终串行。
-- 共享入口、锁文件、任务状态和Evidence Manifest必须串行集成。
-
-## 失败处理
-
-任何门禁或同步失败：
+永久门禁、Main Verification或同步失败时：
 
 ```text
-停止合并或同步
-→ 定位真实原因
-→ 在同一work修复
-→ 重跑受影响检查和永久门禁
-→ 更新Runtime、Evidence与风险说明
+停止后续合并/同步
+→ 定位真实失败原因
+→ 在对应集成lane修复
+→ 重跑受影响检查和Fresh永久门禁
+→ 重新执行受控合并/主线验证
+→ 重新读取main、work、governance真实Refs
 ```
 
-禁止跳过失败检查、缩小验证范围、复用其他Head的Evidence、强行覆盖已移动的work或手工改写成功结论。
+禁止跳过失败检查、缩小必须验证的范围、复用其他Head的成功事实、强制覆盖有开放PR或独有提交的兄弟lane、手工伪造任务或主线成功状态。
+
+## 7. 完成复查
+
+每次工作结束至少确认：
+
+```text
+PR Head = 实际修改Head
+四项永久门禁 = 当前Ready轮次成功
+main-verification = success
+产品任务需要时 task-verification/<TASK-ID> = success
+来源lane = main
+空闲兄弟lane = main；有开放PR时明确保留
+远端分支 = main/work/governance
+```

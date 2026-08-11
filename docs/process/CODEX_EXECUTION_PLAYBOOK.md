@@ -1,7 +1,7 @@
 # WorldForge Codex闭环执行手册
 
 > 状态：Active  
-> 作用：规定任务从接收、实现、验证、合并、主分支关闭到work同步的完整路径。
+> 作用：规定产品任务与仓库治理从接收、实现、验证、合并、主线验证到集成分支同步的完整路径。
 
 ## 1. 工作入口
 
@@ -10,34 +10,35 @@ AGENTS.md
 → docs/PROJECT_EXECUTION_ENTRY.md
 → docs/tasks/TASK_AUTHORIZATION.json
 → docs/tasks/TASK_INDEX.md
-→ 当前任务Runtime或ACTIVE_TASK兼容锚点
+→ 产品任务时读取当前Schema 2 Runtime
 → 当前任务卡与专项文档
 → 现有代码、测试、Migration、IPC和追踪矩阵
 ```
 
-授权模式固定为`single-work-pr`。仓库只允许`main`和`work`，所有正式PR必须是`work → main`。
+固定分支为`main/work/governance`：产品任务使用`work → main`，仓库治理使用`governance → main`。两条lane各最多一个开放PR，main写入始终串行。
 
-## 2. 任务接收
+## 2. 产品任务接收
 
 开始实施前确认：
 
 - 目标、非目标、依赖和验收；
 - 当前Runtime状态、允许路径和禁止路径；
-- 最新已验证main与work是否一致；
+- 最新已验证main与work关系；
 - 数据库、Migration、IPC、事件、错误码、UI、安全、恢复和性能影响；
 - 已有、缺失、冲突和可复用能力；
 - 是否存在重复实现、并行真源或过期任务假设。
 
-缺失范围、依赖倒置或真实实现与任务卡冲突时，先修正任务卡和实施方案。
+产品任务固定在`work`完成实现、测试、文档与Evidence。治理维护不得借`governance`修改产品功能；范围触及产品代码、数据库、IPC或任务数据时转回正式产品任务。
 
 ## 3. 开工前输出
 
 ```text
-任务ID：
+任务ID（治理维护可无）：
 目标：
 非目标：
 依赖：
 真实基线：
+执行lane：work / governance
 允许路径：
 禁止路径：
 数据库/Migration影响：
@@ -51,7 +52,7 @@ UI影响：
 验证命令：
 ```
 
-## 4. 标准实施顺序
+## 4. 产品标准实施顺序
 
 ```text
 失败测试或稳定复现
@@ -67,7 +68,7 @@ UI影响：
 → 文档、追踪与Evidence
 ```
 
-不涉及的层级必须明确说明“无影响”。
+不涉及的层级明确记录“无影响”。
 
 ## 5. 编码规则
 
@@ -79,33 +80,36 @@ UI影响：
 - Provider不查询项目数据、不保存Candidate。
 - AI输出先进入建议稿，作者采用后才能修改当前稿。
 - Renderer禁止Node、SQLite、文件系统、环境变量和凭据。
-- 新功能必须覆盖空、加载、成功、失败、取消、冲突、只读和恢复。
+- 新功能覆盖空、加载、成功、失败、取消、冲突、只读和恢复。
 
-## 6. 唯一分支与PR
+## 6. 分支与PR
 
 ```text
-最新已验证main
-→ work
-→ 唯一work → main PR
+产品：最新已验证main → work → main PR
+治理：最新已验证main → governance → main PR
 ```
 
 禁止：
 
-- 创建`work/*`、`feat/*`、`fix/*`、`policy/*`、`validate/*`或任何其他分支；
-- 创建验证专用PR、纯Evidence PR或纯关闭PR；
+- 创建`work/*`、`governance/*`、`feat/*`、`fix/*`、`policy/*`、`validate/*`等第四分支；
+- 验证专用PR、纯Evidence关闭PR或第二个同lane PR；
 - 直接提交main；
-- 同时开放第二个work PR。
+- 用治理PR承载产品任务实现。
 
-并行工作只通过本地工作区、文件所有权和提交顺序协调，正式结果统一进入work。
+`work`与`governance`可以并行持有各自PR，但共享main的Controlled Merge与Main Verification必须串行。
 
 ## 7. 测试路由
 
 基础命令：
 
 ```bash
+pnpm task:validate
 pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
 pnpm format:check
 pnpm lint
+pnpm ci:policy
 pnpm typecheck
 pnpm test:unit
 pnpm test:integration
@@ -113,14 +117,16 @@ pnpm test:migration
 pnpm test:coverage
 pnpm test:security
 pnpm test:perf
-pnpm test:e2e
 pnpm build
 pnpm release:check
+pnpm test:e2e
 ```
 
-按任务卡和风险范围执行。未运行、失败或受环境限制必须如实记录。
+按任务卡和风险范围执行。未运行、失败或受环境限制必须如实记录。CI/永久门禁属于最终工程事实，不以本地输出替代。
 
 ## 8. Evidence
+
+产品任务Evidence：
 
 ```text
 docs/test-evidence/<TASK-ID>/
@@ -130,54 +136,57 @@ docs/test-evidence/<TASK-ID>/
 └─ manifest.json
 ```
 
-合并前：
+合并前Runtime最高登记`IMPLEMENTED`，Evidence绑定真实implementation commit与来源PR。治理维护无任务marker时不制造产品Runtime或Evidence。
 
-- Runtime状态最高登记到`IMPLEMENTED`；
-- Evidence绑定来源PR与受检work Head；
-- commands只记录真实执行结果。
+合并后Main Verification发布`main-verification`；产品任务额外发布`task-verification/<TASK-ID>`。有效Verified由Runtime绑定与Commit Status计算。
 
-合并后：
-
-- Main Verification发布最终main验证状态；
-- 任务验证状态绑定任务ID、来源PR、来源Head和main SHA；
-- 有效状态计算为Verified，无需第二个关闭PR。
-
-## 9. 合并与关闭
+## 9. 合并与主线验证
 
 ```text
-Ready Head永久门禁成功
-→ Controlled Merge绑定expected_head_sha执行Squash
-→ Main Verification核验最终main与来源
-→ 发布main-verification和任务验证状态
-→ 有效状态变为VERIFIED
+Ready Head四项永久门禁成功
+→ Controlled Merge读取最新Quality/Security/Performance轮次
+→ 绑定expected_head_sha执行Squash
+→ Main Verification核验最终main与来源PR/Head
+→ 发布main-verification
+→ 产品任务额外发布task-verification/<TASK-ID>
+→ Integration Branch Synchronization
+→ Branch Inventory/Hygiene
 ```
 
-PR已合并不等于任务Verified；Main Verification成功但任务绑定不一致也不得关闭。
+PR已合并不等于任务或治理已闭环；必须继续核对Main Verification与分支同步事实。
 
-## 10. Work Synchronization
+## 10. Integration Branch Synchronization
 
-Main Verification成功后，工作流检查：
+Main Verification成功后同时处理`work`和`governance`：
 
-- 当前main仍等于验证SHA；
-- 来源PR是已合并的work → main；
-- work仍等于来源受检Head或已不存在；
-- 没有新的开放work PR；
-- work没有新提交。
+- 来源lane仍等于受检来源Head且无新同lane PR：受控重置到已验证main；
+- 另一条lane已经等于main：保持；
+- 另一条lane无开放PR且只是落后main：非强制fast-forward到最新main；
+- 另一条lane存在开放PR：skip，保留其工作；
+- 另一条lane无开放PR但含独有/分叉提交：fail-closed，禁止强制覆盖。
 
-全部满足后，将work受控重置到已验证main。条件不满足时停止并报告，禁止覆盖新工作。
+每次写Ref后必须复读确认。`governance → main`合并成功时，空闲`work`应自动跟上最新main；反向同理。
 
 ## 11. 完成声明
 
-只有以下条件全部成立才能声明闭环：
+产品任务闭环前确认：
 
 - 原始目标和非目标逐项复核；
 - 实现真实存在于受检work Head；
 - 专项验证与关联回归真实通过；
-- 六项永久门禁属于同一Head；
+- 四项永久门禁来自当前Ready Head；
 - Controlled Merge实际完成；
-- Main Verification成功；
-- 任务有效状态为Verified；
-- Work Synchronization成功；
-- 重新读取真实main、work、Runtime和关键文件。
+- `main-verification`与任务Context成功；
+- `work == main`；
+- 空闲`governance == main`，或其开放PR被明确保留；
+- 远端分支库存恰好`main/work/governance`。
 
-PR可合并、Runner成功、Artifact上传或补丁生成不能单独证明完成。
+治理维护闭环前确认：
+
+- 修改真实存在于受检governance Head；
+- 四项永久门禁与Main Verification成功；
+- `governance == main`；
+- 空闲`work == main`，或其开放PR被明确保留；
+- 最终Ref与关键文件重新读取验证。
+
+Runner成功、Artifact上传或“PR可合并”都不能单独证明完成。

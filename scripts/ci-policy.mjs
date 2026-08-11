@@ -203,13 +203,15 @@ async function main() {
   ]);
   forbidText(errors, 'branch-hygiene.yml', branchHygiene, ['workflow_run:']);
 
-  const workSynchronization = workflows.get('work-synchronization.yml');
-  requireText(errors, 'work-synchronization.yml', workSynchronization, [
+  const integrationSynchronization = workflows.get('work-synchronization.yml');
+  requireText(errors, 'work-synchronization.yml', integrationSynchronization, [
+    'name: Integration Branch Synchronization',
     'workflow_dispatch:',
     'contents: write',
+    'INTEGRATION_SYNCHRONIZATION_OUTPUT:',
     'work-synchronization.mjs',
   ]);
-  forbidText(errors, 'work-synchronization.yml', workSynchronization, ['workflow_run:']);
+  forbidText(errors, 'work-synchronization.yml', integrationSynchronization, ['workflow_run:']);
 
   const mainVerification = workflows.get('main-verification.yml');
   requireText(errors, 'main-verification.yml', mainVerification, [
@@ -218,6 +220,8 @@ async function main() {
     'statuses: write',
     'scripts/main-verification.mjs',
     'synchronize-work:',
+    'name: synchronize-integrations',
+    'INTEGRATION_SYNCHRONIZATION_OUTPUT:',
     'work-synchronization.mjs',
     'branch-hygiene:',
     'branch-inventory-policy.mjs --repair',
@@ -257,22 +261,35 @@ async function main() {
   console.log('CI policy is valid for the automated engineering-gate model.');
 }
 
-export function allowedPathsForBranch(branch) {
-  return branch === 'work' ? ['<all repository paths>'] : [];
+const governancePrefixes = Object.freeze(['.github/', 'scripts/', 'tests/', 'docs/process/']);
+const governanceExactFiles = new Set([
+  'AGENTS.md',
+  'agent.md',
+  'package.json',
+  'docs/PROJECT_EXECUTION_ENTRY.md',
+]);
+
+function isGovernanceMaintenancePath(file) {
+  return (
+    governanceExactFiles.has(file) || governancePrefixes.some((prefix) => file.startsWith(prefix))
+  );
 }
 
-export function recommendBranch() {
-  return 'work';
+export function allowedPathsForBranch(branch) {
+  if (branch === 'work') return ['<all repository paths>'];
+  if (branch === 'governance') {
+    return [...governancePrefixes, ...governanceExactFiles];
+  }
+  return [];
+}
+
+export function recommendBranch(files = []) {
+  return Array.isArray(files) && files.length > 0 && files.every(isGovernanceMaintenancePath)
+    ? 'governance'
+    : 'work';
 }
 
 export function validateBranchPlan(branch, files) {
-  if (branch !== 'work') {
-    return {
-      ok: false,
-      violations: [`Branch ${branch || '<missing>'} is forbidden; use work.`],
-      recommendedBranch: 'work',
-    };
-  }
   if (!Array.isArray(files) || files.length === 0) {
     return {
       ok: false,
@@ -280,7 +297,20 @@ export function validateBranchPlan(branch, files) {
       recommendedBranch: 'work',
     };
   }
-  return { ok: true, violations: [], recommendedBranch: 'work' };
+  if (branch === 'work') return { ok: true, violations: [], recommendedBranch: 'work' };
+  if (branch === 'governance') {
+    const violations = files.filter((file) => !isGovernanceMaintenancePath(file));
+    return {
+      ok: violations.length === 0,
+      violations: violations.map((file) => `Governance branch cannot change product path: ${file}`),
+      recommendedBranch: violations.length === 0 ? 'governance' : 'work',
+    };
+  }
+  return {
+    ok: false,
+    violations: [`Branch ${branch || '<missing>'} is forbidden; use work or governance.`],
+    recommendedBranch: recommendBranch(files),
+  };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

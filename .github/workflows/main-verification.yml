@@ -99,8 +99,10 @@ jobs:
         if: always()
         run: node .github/governance/assert-clean-tree.mjs
 
+  # Compatibility job id retained so the trusted main PR policy can bootstrap this governance change.
+  # The job itself synchronizes both permanent integration lanes.
   synchronize-work:
-    name: synchronize-work
+    name: synchronize-integrations
     needs: main-verification
     if: ${{ needs.main-verification.result == 'success' }}
     runs-on: ubuntu-24.04
@@ -117,19 +119,19 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24.18.1
-      - name: Self-test synchronization guards
+      - name: Self-test integration synchronization guards
         run: node .github/governance/work-synchronization.mjs self-test
-      - name: Synchronize verified work
+      - name: Synchronize idle integration branches to verified main
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          WORK_SYNCHRONIZATION_OUTPUT: artifacts/work-synchronization
+          INTEGRATION_SYNCHRONIZATION_OUTPUT: artifacts/integration-synchronization
         run: node .github/governance/work-synchronization.mjs
-      - name: Upload synchronization report
+      - name: Upload integration synchronization report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: work-synchronization-${{ inputs.expected_sha }}
-          path: artifacts/work-synchronization/
+          name: integration-synchronization-${{ inputs.expected_sha }}
+          path: artifacts/integration-synchronization/
           if-no-files-found: error
           retention-days: 30
 
@@ -151,7 +153,7 @@ jobs:
           node-version: 24.18.1
       - name: Self-test branch inventory policy
         run: node .github/governance/branch-inventory-policy.mjs self-test
-      - name: Repair and enforce exact main/work branch inventory
+      - name: Repair and enforce exact main/work/governance branch inventory
         env:
           GITHUB_TOKEN: ${{ github.token }}
           BRANCH_INVENTORY_OUTPUT: artifacts/branch-hygiene

@@ -15,7 +15,7 @@ AGENTS.md
 → 专项真源、现有代码、测试、Migration、IPC与Evidence
 ```
 
-`TASK_AUTHORIZATION.json`只定义唯一`work`分支、单一work PR与main串行写入等仓库形态；它不承担任务预授权。`docs/tasks/runtime/`保存任务静态声明、边界、验证命令和合并后状态绑定。`ACTIVE_TASK.json/.md`和旧`taskctl`已经退役，任何流程不得重新读取或生成。
+`TASK_AUTHORIZATION.json`定义固定`main/work/governance`三分支、产品`work → main`与治理`governance → main`两条集成lane、每条lane最多一个开放PR以及main串行写入规则；它不承担任务预授权。`docs/tasks/runtime/`保存任务静态声明、边界、验证命令和合并后状态绑定。`ACTIVE_TASK.json/.md`和旧`taskctl`已经退役，任何流程不得重新读取或生成。
 
 代码格式、结构与维护性治理必须同步读取 [`architecture/CODE_QUALITY_GOVERNANCE.md`](architecture/CODE_QUALITY_GOVERNANCE.md)。文件行数只作为观察指标，不参与合并资格；结构判断统一依据职责内聚、依赖方向、状态所有权、事务边界和公共接口。
 
@@ -26,15 +26,16 @@ AGENTS.md
 本文件不固化活动PR、瞬时任务状态或“最新提交SHA”。每次工作开始时必须从真实仓库状态解析：
 
 ```text
-读取main与work Ref
-→ 查询开放的work → main PR
-→ 有开放PR且存在worldforge-task marker：读取对应Schema 2 Runtime
+读取main、work与governance Ref
+→ 查询开放的work → main与governance → main PR
+→ work PR存在worldforge-task marker：读取对应Schema 2 Runtime
 → 无任务marker：按维护PR处理，不伪造任务ID
-→ 无开放PR：读取main Commit Status
+→ 无开放任务PR：读取main Commit Status
 → 用effective-task-status计算任务有效状态
 → 核对main-verification
-→ 核对main与work是否identical
-→ 核对远端是否只剩main/work
+→ 核对来源集成分支是否已同步到已验证main
+→ 核对另一条集成分支：空闲时应与main一致；存在开放PR时允许保留其受控工作
+→ 核对远端分支库存是否恰好为main/work/governance
 ```
 
 Schema 2状态语义：
@@ -77,10 +78,10 @@ Ready Evidence全量扫描必须把当前PR的`base.sha`传给Effective Status�
 
 ## 4. 仓库闭环条件
 
-一项Schema 2任务只有在以下条件全部成立时才完成仓库闭环：
+一项Schema 2产品任务只有在以下条件全部成立时才完成仓库闭环：
 
 ```text
-来源PR Ready最新验证轮次成功
+来源work PR Ready最新验证轮次成功
 + 服务器可见最终quality / quality成功
 + Ready Evidence绑定最新实现提交
 + implementationCommit之后仅存在当前任务收口文件
@@ -88,24 +89,26 @@ Ready Evidence全量扫描必须把当前PR的`base.sha`传给Effective Status�
 + main-verification=success
 + task-verification/<TASK-ID>=success
 + 无新的开放work → main PR
-+ work受控重置后与main完全一致
-+ 远端只保留main/work
++ work受控同步后与main完全一致
++ 远端分支库存恰好为main/work/governance
 ```
 
-任一条件缺失：
+`governance`作为独立治理lane允许与产品工作并行：没有开放`governance → main` PR时，成功的Main Verification会把空闲governance快进到当前已验证main；若治理PR已开放，则保留其受控Head，不把“governance必须等于main”作为产品任务闭环条件。
 
-- 不得启动下一任务；
+任一任务条件缺失：
+
+- 不得启动下一产品任务；
 - 不得把包含该任务实现但尚未进入并验证于main的提交作为Release来源；
 - 不得把“PR已合并”表述为仓库已闭环；
-- 自动同步失败时允许按相同CAS条件执行手动恢复，但必须复核`main == work`。
+- 自动同步失败时允许按相同CAS/快进条件执行手动恢复，但必须复核来源lane与main关系，并确认没有覆盖另一条lane的开放工作。
 
-如果PR已经进入main但Main Verification发现来源PR最新Ready轮次失败，则该任务仍处于`VERIFICATION_PENDING`。Work Synchronization和Branch Hygiene应保持阻断；修复必须从当前main重新建立受控`work`基线并通过新的来源PR完成验证事实，禁止沿用失败来源PR伪造成功Context。
+如果PR已经进入main但Main Verification发现来源PR最新Ready轮次失败，则该任务仍处于`VERIFICATION_PENDING`。Integration Branch Synchronization和Branch Hygiene应保持阻断；修复必须从当前main重新建立受控`work`基线并通过新的来源PR完成验证事实，禁止沿用失败来源PR伪造成功Context。
 
 ## 5. Main Verification与任务事实
 
 Main Verification属于合并后的事实验证，不属于PR预授权。
 
-如果来源PR正文含：
+如果来源work PR正文含：
 
 ```text
 <!-- worldforge-task: M10-22 -->
@@ -119,7 +122,16 @@ Main Verification属于合并后的事实验证，不属于PR预授权。
 - `mainContext`为`main-verification`；
 - `taskContext`为`task-verification/<TASK-ID>`。
 
-成功后发布`main-verification`与任务Context。非任务维护PR可不带marker，此时只发布`main-verification`。Main Verification还必须重新读取来源Head最新Quality/Security/Performance运行；来源Ready Quality失败时，主线状态必须保持failure。
+成功后发布`main-verification`与任务Context。非任务维护PR以及`governance → main`治理PR可不带marker，此时只发布`main-verification`。Main Verification还必须重新读取来源Head最新Quality/Security/Performance运行；来源Ready Quality失败时，主线状态必须保持failure。
+
+Main Verification成功后进入Integration Branch Synchronization：
+
+1. 本次来源lane仍必须与来源PR受检Head一致，随后按Squash事实受控重置到已验证main；
+2. 另一条lane若无开放PR且当前Head只是main的祖先，则仅执行非强制快进到已验证main；
+3. 另一条lane若存在开放PR，则跳过同步并保留其工作；
+4. 另一条lane若没有开放PR但含独有/分叉提交，则fail-closed，禁止强制覆盖。
+
+因此`governance → main`治理合并完成并通过Main Verification后，只要`work`处于空闲且没有独有提交，`work`会自动同步到最新main；反向的`work → main`合并对空闲governance同理。
 
 ## 6. 稳定历史基线
 
@@ -135,7 +147,7 @@ Main Verification属于合并后的事实验证，不属于PR预授权。
 
 ## 7. 当前治理边界
 
-- 新建及活动Runtime必须使用Schema 2和`executionBranch: "work"`。
+- 新建及活动产品Runtime必须使用Schema 2和`executionBranch: "work"`；治理维护通过`governance → main`，不伪造产品任务Runtime。
 - 已Verified历史Schema 1 Runtime保持冻结，只用于历史读取。
 - `.github/governance/effective-task-status.mjs`是任务有效状态与提交Context判定的策略核心。
 - Draft Evidence校验文件完整性、Hash和来源提交；Ready Evidence必须绑定当前任务最新实现提交。
@@ -143,10 +155,11 @@ Main Verification属于合并后的事实验证，不属于PR预授权。
 - Evidence manifest不预写未来Squash SHA；Evidence通过最新Quality Workflow中的`quality / release-audit`校验，并由最终`quality / quality`聚合后进入服务器合并门；最终任务Verified由Main Verification提交状态证明。
 - Ready阶段Verified Evidence扫描必须提供`TASK_BASE_REF`，避免当前PR的Implemented Runtime被误判成历史已合并任务。
 - Release资格必须读取当前main提交的`main-verification`、产品门禁、三平台产物完整性和发行信任证据；Task Runtime只保留任务管理与历史审计职责。
-- Branch Hygiene只保护`main`与`work`，不允许`release/*`或其他额外分支例外。
-- Work Synchronization完成写入后必须复读work Ref并断言与已验证main一致。
+- Branch Inventory固定且只允许`main`、`work`、`governance`；Branch Hygiene保护三者并删除其他漂移分支。
+- Integration Branch Synchronization完成写入后必须复读被同步Ref；来源lane必须与已验证main一致，空闲兄弟lane也必须同步；存在开放PR的兄弟lane只记录skip，不得强制覆盖。
 - SQLite逐级Migration、未来Schema只读打开、Provider适配和协议版本门禁继续保留。
-- Toolchain Export保持只读检出和Artifact-only；允许人工`workflow_dispatch`，也允许现有Quality工作流在同仓库`work → main` PR命中机器清单声明的工具链路径时通过`workflow_call`调用。禁止向正式分支提交工具链或二进制分片。
+- Toolchain Export保持只读检出和Artifact-only；允许人工`workflow_dispatch`，也允许现有Quality工作流在同仓库`work → main`或`governance → main` PR命中机器清单声明的工具链路径时通过`workflow_call`调用。禁止向正式分支提交工具链或二进制分片。
+- Foundation打包入口必须读取各buildable workspace真实`package.json exports`，禁止再次假定所有包都使用`dist/index.js`；桌面构建/打包前清理Renderer与Preload的TSC影子运行JS，只保留真实运行入口和非运行资产。
 
 ## 8. 产品与架构不变量
 

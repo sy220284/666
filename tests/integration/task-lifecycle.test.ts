@@ -53,7 +53,9 @@ describe('Schema 2 task lifecycle', () => {
       cwd: root,
       encoding: 'utf8',
     });
-    expect(output).toContain('Task authorization is valid for work and governance integration lanes.');
+    expect(output).toContain(
+      'Task authorization is valid for work and governance integration lanes.',
+    );
     expect(output).toContain('"mode": "single-work-pr"');
     expect(output).toContain('"workBranch": "work"');
     expect(output).toContain('"governanceBranch": "governance"');

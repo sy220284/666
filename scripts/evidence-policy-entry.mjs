@@ -87,7 +87,7 @@ function main() {
     final: booleanEnvironment(process.env.EVIDENCE_FINAL),
     pullBody: process.env.EVIDENCE_PR_BODY ?? '',
     files: changedFiles(process.env.EVIDENCE_BASE_SHA),
-    headRef: process.env.EVIDENCE_PR_HEAD_REF ?? '',
+    headRef: process.env.EVIDENCE_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF ?? '',
   });
   if (decision.action === 'reject') throw new Error(decision.reason);
   if (decision.action === 'maintenance') {

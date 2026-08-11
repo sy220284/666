@@ -341,8 +341,9 @@ function adaptDomain<Domain extends object>(
               new Error(`The ${domainName}.${property} bridge method is unavailable.`),
             );
           }
+          const derivedRequestKey = requestKey(domainName, property, args);
           return coordinator.run(
-            requestKey(domainName, property, args),
+            options?.requestKey ?? derivedRequestKey,
             () =>
               (method as (...values: unknown[]) => Promise<CommandResult<unknown>>).apply(
                 domain,
@@ -368,11 +369,15 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
   const keys = Object.keys(value);
   return (
     keys.length > 0 &&
-    keys.every((key) => key === 'mode' || key === 'signal') &&
+    keys.every(
+      (key) => key === 'mode' || key === 'signal' || key === 'requestKey' || key === 'laneKey',
+    ) &&
     (!('mode' in value) ||
       value.mode === 'reject' ||
       value.mode === 'replace' ||
-      value.mode === 'share')
+      value.mode === 'share') &&
+    (!('requestKey' in value) || (typeof value.requestKey === 'string' && value.requestKey.length > 0)) &&
+    (!('laneKey' in value) || (typeof value.laneKey === 'string' && value.laneKey.length > 0))
   );
 }
 

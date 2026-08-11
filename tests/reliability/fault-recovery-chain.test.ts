@@ -131,11 +131,11 @@ describe('reliability: system fault recovery chains', () => {
           patchLogCount: Number(
             database.prepare('SELECT COUNT(*) AS count FROM draft_patch_log').get()?.count ?? 0,
           ),
-          mutationCount: Number(
-            database.prepare('SELECT COUNT(*) AS count FROM writing_mutations').get()?.count ?? 0,
+          sessionCount: Number(
+            database.prepare('SELECT COUNT(*) AS count FROM writing_sessions').get()?.count ?? 0,
           ),
         })),
-      ).toEqual({ patchLogCount: 0, mutationCount: 0 });
+      ).toEqual({ patchLogCount: 0, sessionCount: 0 });
 
       const retried = await harness.drafts.applyPatch(requestId, operation);
       expect(retried.revision).toBe(baseline.revision + 1);
@@ -145,11 +145,11 @@ describe('reliability: system fault recovery chains', () => {
           patchLogCount: Number(
             database.prepare('SELECT COUNT(*) AS count FROM draft_patch_log').get()?.count ?? 0,
           ),
-          mutationCount: Number(
-            database.prepare('SELECT COUNT(*) AS count FROM writing_mutations').get()?.count ?? 0,
+          sessionCount: Number(
+            database.prepare('SELECT COUNT(*) AS count FROM writing_sessions').get()?.count ?? 0,
           ),
         })),
-      ).toEqual({ patchLogCount: 1, mutationCount: 1 });
+      ).toEqual({ patchLogCount: 1, sessionCount: 1 });
     } finally {
       await closeHarness(harness);
     }

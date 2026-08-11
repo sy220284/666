@@ -1,8 +1,8 @@
 # WorldForge V1.0 IPC契约规格
 
-> 状态：Frozen Baseline with M10-21 Command Identity Addendum
+> 状态：Frozen Baseline with M10-21 Command Identity and M11-03 AI Organization Addenda
 > 适用：Electron Main、Preload、Renderer与Core Service  
-> 更新日期：2026-08-09
+> 更新日期：2026-08-11
 
 ## 1. 原则
 
@@ -156,12 +156,17 @@ canon.create / update / archive / list
 continuity.list / setEntityState / invalidateEntityState
 continuity.saveTimelineEvent / archiveTimelineEvent
 continuity.setKnowledgeState / invalidateKnowledgeState
+continuity.setCharacterRelationship / invalidateCharacterRelationship
 narrativePlanning.list / saveForeshadowing / transitionForeshadowing
 narrativePlanning.saveCharacterArc / saveArcMilestone / transitionArcMilestone
 stateProposal.list / generate / resolve / refreshSnapshot / readSnapshot / invalidateDerived
 ```
 
-所有权威写命令只接受作者权限；项目、章节、人物、事件、历史版本和正文证据引用均在进入单写事务前校验。AI只能创建pending设定更新建议，不能直接写权威状态。
+所有权威写命令只接受作者权限；项目、章节、人物、事件、历史版本和正文证据引用均在进入单写事务前校验。AI只能创建pending建议，不能直接写权威状态。
+
+`stateProposal`统一承载`entity_state`、`knowledge_state`、`timeline_event`、`character_relationship`、`foreshadowing`、`arc_milestone`、`entity_create`与`canon_fact`八类建议。每类建议的结构化target必须与proposal type匹配；接受或编辑接受继续走统一StateProposal命令，并在Core内复用对应Canon、Continuity或NarrativePlanning事务operation。
+
+CharacterRelationship使用具名Continuity命令，Renderer不得保存关系副本或传入任意SQL/表名。关系写入必须校验双方人物归属、章节有效区间、作者权限、来源Version与Evidence。
 
 ## 9. AI与Provider
 
@@ -185,6 +190,7 @@ ai.getModelSupport
 
 ```text
 validation.run / list / resolve / ignore / silence / downgrade / markFalsePositive
+validation.rememberException / disableException
 rhythm.getProfile / updateProfile / run / getResults
 todo.create / update / complete / reopen / list / delete
 comment.create / update / list / delete
@@ -197,6 +203,8 @@ recovery.createCheckpoint / getOverview / restoreCheckpoint / exportVersion
 trash.list / restore / permanentDelete
 settings.get / set / reset
 ```
+
+ValidationException只能通过具名`rememberException`与`disableException`修改；作用域限定为issue、chapter、entity、chapter_range或project_rule，并在Core按项目与规则身份重新匹配。Renderer不能通过“忽略”动作隐式创建永久例外。
 
 搜索和词典规则：
 
@@ -280,6 +288,8 @@ interface RendererLifecycleBridge {
 - 可信Renderer来源、多余字段、非法UUID和错误命令名拒绝。
 - Core项目操作联合类型覆盖全部公开命令。
 - 建议稿预览取消、应用事务、重启幂等和冲突路径。
+- StateProposal八类target/type匹配、作者权限、stale拒绝接受和编辑接受目标身份不可变。
+- CharacterRelationship与ValidationException具名IPC覆盖合法输入、额外字段、跨项目、只读和错误映射。
 - 每个写命令的requestId测试必须标注保障范围：进程内、领域持久记录或CommandReceipt；只有后两类可以测试Core重建后重放。
 - Import覆盖“SQLite已commit、Core响应前崩溃、相同requestId重放原结果且不生成第二套ID/Checkpoint/内容”。
 - Generation覆盖“持久取消先于Task terminal，Project Close/Move/Core Shutdown晚于execution quiescence”。

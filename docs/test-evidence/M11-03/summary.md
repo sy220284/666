@@ -10,7 +10,7 @@
 ## 已完成能力
 
 1. `state_proposals` 泛化为八类统一 AI 事实变化建议：`entity_state`、`knowledge_state`、`timeline_event`、`character_relationship`、`foreshadowing`、`arc_milestone`、`entity_create`、`canon_fact`；`ReviewProposal` 继续只做作者审阅读模型。
-2. Proposal 接受/编辑接受复用 Canon、Continuity、NarrativePlanning 的事务级 operation；AI 只能生成 pending 建议，作者裁决前不改变权威状态。
+2. Proposal 接受/编辑接受复用 Canon、Continuity、NarrativePlanning 的事务级 operation；AI 只能生成待审阅建议，作者裁决前不改变权威状态。
 3. 新增 CharacterRelationship 权威模型、EntityState semantic kind、ValidationException，并接入具名 Contracts → Main → Preload → Renderer → Core 链路。
 4. 确定性连续性冲突与 AI 语义问题统一进入现有 Validation；合理例外支持受控作用域、停用和重新扫描。
 5. EndingSnapshot、ConstraintPackage、SemanticRevision、DerivedInvalidation、Clone/Delete/Recovery 与新权威引用完成联动；未知恢复表继续 fail closed。

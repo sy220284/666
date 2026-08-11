@@ -1,7 +1,7 @@
 # WorldForge Quality System V2
 
 > 状态：Active  
-> 生效阶段：Phase 2A  
+> 生效阶段：Phase 2B  
 > 适用范围：产品代码、测试、数据库、桌面运行时、AI协议、UI体验、构建发布与仓库治理
 
 ## 1. 目标
@@ -123,7 +123,9 @@ pnpm ci:policy
 
 Phase 2A增加确定性的连续序列不变量测试，用于覆盖单次示例测试难以发现的跨多轮状态错误。首批对象为Draft Revision/CAS和Recovery File Lease。
 
-后续Phase 2B继续评估引入真正的Property-Based生成器与高风险Mutation Test，优先对象为Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release和AI结构化协议。引入新依赖前必须同步锁文件和供应链验证，不手工伪造依赖状态。
+Phase 2B继续把Correctness提升到跨版本与跨生命周期：所有历史Project Schema必须能安全迁移到当前最新版并在二次打开时保持幂等；高频作品切换与保存/关闭交错必须保持作品身份和最新正文。
+
+真正的Property-Based生成器与高风险Mutation Test继续在Phase 2B评估，优先对象为Revision/CAS、Backup/Recovery、Migration、Lifecycle、Release和AI结构化协议。引入新依赖前必须同步锁文件和供应链验证，不手工伪造依赖状态。
 
 ## 7. G4：Security
 
@@ -155,22 +157,32 @@ pnpm test:reliability
 
 仓库既有Testkit已经具备事务中断、真实SQLite Busy、可重复SQLite Full和SQLite Header Corruption等Fault Harness；Recovery、Migration、Draft CAS和File Lease也已有专项测试。Phase 2不复制这些基础设施，重点补系统级不变量和重复竞态。
 
-Phase 2A首批新增：
+Phase 2A已新增：
 
 - Draft CAS连续Unicode写入序列：每轮成功提交Revision只增加1；旧Revision覆盖必须失败；reopen必须保持最新提交；Patch Log只记录真实成功提交。
 - Daily Backup File Lease重复竞争：多路竞争始终只有当前owner；release后successor可接管；旧owner在token被替换后必须被fence，且不得删除successor锁。
 
-后续Phase 2B继续扩展：
+Phase 2B当前新增：
+
+- 全历史Project Migration Matrix：从每一个旧Schema版本迁移到当前latest，要求项目身份、名称、完整migration history和foreign key完整性保持；首次迁移必须生成恢复副本，二次reopen不得重复迁移或新增恢复副本。
+- 高频作品切换：连续16轮排队执行`open A → close A → open B → close B`，验证lifecycle tail严格保持调用顺序、active project最终释放、两部作品正文不串写。
+- 保存/关闭交错：连续12轮在Draft写入进入数据库队列后立即触发Project Close，要求写入成功、关闭成功、重新打开后正文和Revision等于最新已提交状态。
+
+已有覆盖继续复用而不重复建设：
+
+- Backup创建→Restore新副本→重新打开→继续写作的真实Roundtrip；
+- Provider断流后的partial安全状态；
+- 显式取消后Provider Abort与迟到delta隔离；
+- Core受控重启、失联强制终止与旧进程事件隔离。
+
+Phase 2B剩余重点：
 
 ```text
-快速切作品
-关闭过程中保存
-保存过程中故障
-Core死亡/重启
-Provider断流
+保存过程中Fault Injection
 恢复中再次故障
-Backup/Restore逻辑等价Roundtrip
-跨版本Migration Matrix
+Backup/Recovery系统级故障链
+真正Property-Based生成测试
+高风险Mutation Test
 ```
 
 关键不变量：
@@ -298,7 +310,7 @@ pnpm check:docs
 - Active文档一致性；
 - 对应机器单测与CI策略接入。
 
-### Phase 2A — 当前实施
+### Phase 2A — 已闭环
 
 - Reliability独立内部Gate；
 - Reliability统一风险路由；
@@ -307,12 +319,19 @@ pnpm check:docs
 - Release默认强制Reliability；
 - Workflow与Meta-Governance永久策略。
 
-### Phase 2B — 后续可靠性扩展
+### Phase 2B — 当前实施
 
-- Lifecycle跨服务场景；
+已落地：
+
+- 全历史Project Migration Matrix；
+- 高频跨作品Lifecycle队列；
+- Draft Save / Project Close交错不变量；
+- 复用现有Backup/Restore、Provider断流和Core Restart覆盖，避免重复测试。
+
+继续推进：
+
 - 系统级Fault Injection链路；
-- Backup Roundtrip；
-- Migration Matrix；
+- 保存/恢复二次故障；
 - Property-Based生成测试；
 - 高风险Mutation Test。
 

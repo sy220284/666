@@ -38,7 +38,8 @@ export function summarizeMemorySeries(samples) {
     numerator += x * (sample.heapUsedBytes - meanY);
     denominator += x * x;
   }
-  if (denominator === 0) throw new RangeError('Memory sample operation counts cannot be identical.');
+  if (denominator === 0)
+    throw new RangeError('Memory sample operation counts cannot be identical.');
 
   const heapValues = normalized.map((sample) => sample.heapUsedBytes);
   return {

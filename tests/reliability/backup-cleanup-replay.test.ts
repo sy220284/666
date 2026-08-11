@@ -107,12 +107,15 @@ describe('reliability: backup cleanup replay', () => {
       expect(deleteIds.length).toBeGreaterThanOrEqual(2);
 
       const before = await recovery.getOverview(project.projectId);
-      const records = new Map(before.checkpoints.map((record) => [record.backupId, record]));
+      const records = new Map(
+        before.checkpoints.map((record) => [record.backupId, record]),
+      );
       const firstRecord = records.get(deleteIds[0]!);
       const secondRecord = records.get(deleteIds[1]!);
       expect(firstRecord).toBeDefined();
       expect(secondRecord).toBeDefined();
-      if (!firstRecord || !secondRecord) throw new Error('Cleanup preview referenced a missing backup.');
+      if (!firstRecord || !secondRecord)
+        throw new Error('Cleanup preview referenced a missing backup.');
 
       const cleanupRequestId = randomUUID();
       const input = {
@@ -160,7 +163,9 @@ describe('reliability: backup cleanup replay', () => {
       expect(await exists(path.join(backupDirectory, `${firstRecord.backupId}.json`))).toBe(false);
       expect(await exists(path.join(backupDirectory, secondRecord.backupFileName))).toBe(true);
       expect(await exists(path.join(backupDirectory, `${secondRecord.backupId}.json`))).toBe(true);
-      expect((await readdir(backupDirectory)).some((name) => name.includes('.deleting-'))).toBe(false);
+      expect(
+        (await readdir(backupDirectory)).some((name) => name.includes('.deleting-')),
+      ).toBe(false);
 
       const replica = new RecoveryService(workspace, { backupRootDirectory: backupRoot, clock });
       const retried = await replica.applyCleanup(cleanupRequestId, input);
@@ -188,7 +193,9 @@ describe('reliability: backup cleanup replay', () => {
         expect(await exists(path.join(backupDirectory, record.backupFileName))).toBe(false);
         expect(await exists(path.join(backupDirectory, `${record.backupId}.json`))).toBe(false);
       }
-      expect((await readdir(backupDirectory)).some((name) => name.includes('.deleting-'))).toBe(false);
+      expect(
+        (await readdir(backupDirectory)).some((name) => name.includes('.deleting-')),
+      ).toBe(false);
 
       const replayed = await recovery.applyCleanup(cleanupRequestId, input);
       expect(replayed).toEqual(retried);

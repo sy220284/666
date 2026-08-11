@@ -36,6 +36,7 @@ import {
   RENDERER_SCHEMES,
 } from './renderer-protocol.js';
 import { buildSecureWebPreferences, CONTENT_SECURITY_POLICY } from './security-policy.js';
+import { registerStoryKnowledgeIpc } from './story-knowledge-ipc.js';
 import {
   captureWindowPreferences,
   restoreWindowPreferences,
@@ -423,6 +424,11 @@ async function bootstrap(): Promise<void> {
     supervisor,
     rendererUrl,
   });
+  const unregisterStoryKnowledgeIpc = registerStoryKnowledgeIpc({
+    ipcMain,
+    supervisor,
+    rendererUrl,
+  });
   const unregisterPreviewIpc = registerCandidatePreviewIpc({
     ipcMain,
     supervisor,
@@ -430,6 +436,7 @@ async function bootstrap(): Promise<void> {
   });
   unregisterIpc = () => {
     unregisterPreviewIpc();
+    unregisterStoryKnowledgeIpc();
     unregisterNarrativePlanningIpc();
     unregisterGenerationIpc();
     unregisterContinuityIpc();

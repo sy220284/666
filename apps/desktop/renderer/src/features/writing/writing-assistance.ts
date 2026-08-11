@@ -2,7 +2,10 @@ import type { StoryKnowledgeProjection } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 
-type ChapterAssistProjection = Extract<StoryKnowledgeProjection, { readonly view: 'chapter_assist' }>;
+type ChapterAssistProjection = Extract<
+  StoryKnowledgeProjection,
+  { readonly view: 'chapter_assist' }
+>;
 
 export type WritingAssistanceGoal = NonNullable<ChapterAssistProjection['goal']>;
 export type WritingAssistanceBeat = ChapterAssistProjection['sceneBeats'][number];

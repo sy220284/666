@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { runWithCommandIdentity } from '../packages/core-service/dist/command-identity-context.js';
 import {
   DraftService,
   ProjectStructureService,
@@ -47,6 +48,10 @@ async function loadBudget() {
   return JSON.parse(await readFile(budgetPath, 'utf8'));
 }
 
+async function runCommand(scope, input, operation) {
+  return await runWithCommandIdentity(scope, input, operation);
+}
+
 async function writeDraftOperations({ drafts, projectId, chapterId, draft, count, offset }) {
   let current = draft;
   for (let index = 0; index < count; index += 1) {
@@ -55,31 +60,48 @@ async function writeDraftOperations({ drafts, projectId, chapterId, draft, count
     if (!block?.contentHash) throw new Error('MEMORY_FIXTURE_INVALID: active draft block is missing.');
     const prefix = `稳定态写作-${String(operationIndex).padStart(5, '0')}-`;
     const content = `${prefix}${'长篇正文'.repeat(Math.ceil((3000 - prefix.length) / 4))}`.slice(0, 3000);
-    current = await drafts.applyPatch(randomUUID(), {
-      projectId,
-      chapterId,
-      draftId: current.draftId,
-      baseRevision: current.revision,
-      operations: [
-        {
-          type: 'update',
-          logicalBlockId: block.logicalBlockId,
-          expectedHash: block.contentHash,
-          content,
-        },
-      ],
-    });
+    const requestId = randomUUID();
+    current = await runCommand(
+      'memory.draft.applyPatch',
+      { requestId, projectId, chapterId, operationIndex },
+      () =>
+        drafts.applyPatch(requestId, {
+          projectId,
+          chapterId,
+          draftId: current.draftId,
+          baseRevision: current.revision,
+          operations: [
+            {
+              type: 'update',
+              logicalBlockId: block.logicalBlockId,
+              expectedHash: block.contentHash,
+              content,
+            },
+          ],
+        }),
+    );
   }
   return current;
 }
 
-async function runProjectCycles({ workspace, workspacePath, projectId, count }) {
+async function runProjectCycles({ workspace, workspacePath, projectId, count, offset }) {
   for (let index = 0; index < count; index += 1) {
-    const opened = await workspace.open(randomUUID(), { workspacePath });
+    const cycleIndex = offset + index;
+    const openRequestId = randomUUID();
+    const opened = await runCommand(
+      'memory.project.open',
+      { requestId: openRequestId, projectId, workspacePath, cycleIndex },
+      () => workspace.open(openRequestId, { workspacePath }),
+    );
     if (opened.projectId !== projectId) {
       throw new Error('MEMORY_FIXTURE_INVALID: project identity changed during lifecycle cycle.');
     }
-    await workspace.close(randomUUID(), projectId);
+    const closeRequestId = randomUUID();
+    await runCommand(
+      'memory.project.close',
+      { requestId: closeRequestId, projectId, cycleIndex },
+      () => workspace.close(closeRequestId, projectId),
+    );
   }
 }
 
@@ -112,17 +134,29 @@ async function main() {
 
   let evidence;
   try {
-    const project = await workspace.create(
-      randomUUID(),
-      { name: 'Phase3内存稳定性', channel: '长篇' },
-      projectParent,
+    const createRequestId = randomUUID();
+    const project = await runCommand(
+      'memory.project.create',
+      { requestId: createRequestId, name: 'Phase3内存稳定性', channel: '长篇' },
+      () =>
+        workspace.create(
+          createRequestId,
+          { name: 'Phase3内存稳定性', channel: '长篇' },
+          projectParent,
+        ),
     );
     const chapter = structure.list(project.projectId).volumes[0]?.chapters[0];
     if (!chapter) throw new Error('MEMORY_FIXTURE_INVALID: starter chapter was not created.');
-    let draft = await drafts.open(randomUUID(), {
-      projectId: project.projectId,
-      chapterId: chapter.id,
-    });
+    const draftOpenRequestId = randomUUID();
+    let draft = await runCommand(
+      'memory.draft.open',
+      { requestId: draftOpenRequestId, projectId: project.projectId, chapterId: chapter.id },
+      () =>
+        drafts.open(draftOpenRequestId, {
+          projectId: project.projectId,
+          chapterId: chapter.id,
+        }),
+    );
 
     const draftConfig = budget.draftSteadyState;
     draft = await writeDraftOperations({
@@ -152,7 +186,12 @@ async function main() {
     const draftSummary = summarizeMemorySeries(draftSamples);
     const draftEvaluation = evaluateMemoryBudget(draftSummary, draftConfig.budget);
 
-    await workspace.close(randomUUID(), project.projectId);
+    const initialCloseRequestId = randomUUID();
+    await runCommand(
+      'memory.project.close',
+      { requestId: initialCloseRequestId, projectId: project.projectId, cycleIndex: -1 },
+      () => workspace.close(initialCloseRequestId, project.projectId),
+    );
     await forceGc(budget.gcPasses);
 
     const lifecycleConfig = budget.projectLifecycle;
@@ -161,6 +200,7 @@ async function main() {
       workspacePath: project.workspacePath,
       projectId: project.projectId,
       count: lifecycleConfig.warmupCycles,
+      offset: 0,
     });
     await forceGc(budget.gcPasses);
     const lifecycleSamples = [captureMemory('warm-cache-baseline', lifecycleConfig.warmupCycles)];
@@ -171,6 +211,7 @@ async function main() {
         workspacePath: project.workspacePath,
         projectId: project.projectId,
         count: lifecycleConfig.cyclesPerBatch,
+        offset: lifecycleCycles,
       });
       lifecycleCycles += lifecycleConfig.cyclesPerBatch;
       await forceGc(budget.gcPasses);

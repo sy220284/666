@@ -8,7 +8,7 @@ import {
 
 const sha = (value: string): string => value.repeat(40);
 
-describe('work安全同步决策', () => {
+describe('集成分支安全同步决策', () => {
   it('允许来源Head未移动时重置到已验证main', () => {
     expect(
       synchronizationDecision({
@@ -31,7 +31,19 @@ describe('work安全同步决策', () => {
     ).toEqual({ action: 'create', reason: 'work-missing' });
   });
 
-  it('work已经等于main时保持不动', () => {
+  it('governance缺失时允许从main重建', () => {
+    expect(
+      synchronizationDecision({
+        mainSha: sha('a'),
+        workSha: null,
+        sourceHeadSha: sha('b'),
+        openPulls: 0,
+        branchName: 'governance',
+      }),
+    ).toEqual({ action: 'create', reason: 'governance-missing' });
+  });
+
+  it('来源分支已经等于main时保持不动', () => {
     expect(
       synchronizationDecision({
         mainSha: sha('a'),
@@ -42,37 +54,42 @@ describe('work安全同步决策', () => {
     ).toEqual({ action: 'keep', reason: 'already-synchronized' });
   });
 
-  it('work出现新提交时拒绝覆盖', () => {
+  it('governance出现新提交时拒绝覆盖', () => {
     expect(
       synchronizationDecision({
         mainSha: sha('a'),
         workSha: sha('c'),
         sourceHeadSha: sha('b'),
         openPulls: 0,
+        branchName: 'governance',
       }),
-    ).toEqual({ action: 'blocked', reason: 'work-advanced-after-merge' });
+    ).toEqual({ action: 'blocked', reason: 'governance-advanced-after-merge' });
   });
 
-  it('存在新work合并请求时拒绝同步', () => {
+  it('存在新governance合并请求时拒绝同步', () => {
     expect(
       synchronizationDecision({
         mainSha: sha('a'),
         workSha: sha('b'),
         sourceHeadSha: sha('b'),
         openPulls: 1,
+        branchName: 'governance',
       }),
-    ).toEqual({ action: 'blocked', reason: 'new-work-pull-request-open' });
+    ).toEqual({ action: 'blocked', reason: 'new-governance-pull-request-open' });
   });
 
-  it('复读最终work Ref并要求与main完全一致', () => {
+  it('复读最终来源Ref并要求与main完全一致', () => {
     expect(assertSynchronizedWorkRef({ object: { sha: sha('a') } }, sha('a'))).toBe(sha('a'));
+    expect(
+      assertSynchronizedWorkRef({ object: { sha: sha('a') } }, sha('a'), 'governance'),
+    ).toBe(sha('a'));
     expect(() => assertSynchronizedWorkRef({ object: { sha: sha('b') } }, sha('a'))).toThrow(
       'postcondition failed',
     );
   });
 });
 
-describe('work同步请求来源', () => {
+describe('集成分支同步请求来源', () => {
   it('接受成功的Main Verification完成事件', () => {
     expect(
       synchronizationRequest({

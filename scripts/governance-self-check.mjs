@@ -11,7 +11,7 @@ const authorityFiles = {
   release: '.github/workflows/release.yml',
   mainVerification: '.github/workflows/main-verification.yml',
   riskPolicy: 'scripts/ci-risk-policy.mjs',
-  riskMatrix: '.github/governance/risk-matrix.json',
+  riskMatrix: 'docs/process/CI_RISK_MATRIX.json',
 };
 
 function requireMarkers(errors, label, source, markers) {
@@ -40,7 +40,7 @@ export function validateGovernanceAuthorities(sources) {
     'main/work/governance branch inventory',
   ]);
   requireMarkers(errors, 'Risk policy', sources.riskPolicy ?? '', [
-    'risk-matrix.json',
+    'CI_RISK_MATRIX.json',
     'export function riskPlan',
     "'dependency-audit'",
     "'windows-ime'",

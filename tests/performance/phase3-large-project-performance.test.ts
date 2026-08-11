@@ -6,7 +6,10 @@ import path from 'node:path';
 
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
-import { openAppRuntime, type AppRuntime } from '../../packages/core-service/src/app-runtime.js';
+import {
+  openAppRuntime,
+  type AppRuntime,
+} from '../../packages/core-service/src/app-runtime.js';
 import { ConstraintPackageService } from '../../packages/core-service/src/constraint-package.js';
 import { DraftService } from '../../packages/core-service/src/draft.js';
 import { draftContentHash } from '../../packages/core-service/src/draft/draft-model.js';
@@ -58,10 +61,17 @@ const metrics: LargeProjectMetric[] = [];
 
 function percentile95(samples: readonly number[]): number {
   const sorted = [...samples].sort((left, right) => left - right);
-  return sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)] ?? Number.POSITIVE_INFINITY;
+  return (
+    sorted[Math.max(0, Math.ceil(sorted.length * 0.95) - 1)] ??
+    Number.POSITIVE_INFINITY
+  );
 }
 
-function recordMetric(metric: string, samples: readonly number[], budgetMs: number): number {
+function recordMetric(
+  metric: string,
+  samples: readonly number[],
+  budgetMs: number,
+): number {
   const resultMs = samples.length === 1 ? samples[0]! : percentile95(samples);
   const passed = resultMs <= budgetMs;
   metrics.push({ metric, samples: samples.length, resultMs, budgetMs, passed });
@@ -71,12 +81,19 @@ function recordMetric(metric: string, samples: readonly number[], budgetMs: numb
 
 function createChapterText(index: number): string {
   const marker = index % 25 === 0 ? SEARCH_PHRASE : '普通长篇章节';
-  const seed = `${marker}。第${String(index + 1).padStart(3, '0')}章用于真实大作品性能基线，人物行动、伏笔推进与场景细节持续展开。`;
-  return seed.repeat(Math.ceil(CHAPTER_CHARACTERS / seed.length)).slice(0, CHAPTER_CHARACTERS);
+  const seed = `${marker}。第${String(index + 1).padStart(
+    3,
+    '0',
+  )}章用于真实大作品性能基线，人物行动、伏笔推进与场景细节持续展开。`;
+  return seed
+    .repeat(Math.ceil(CHAPTER_CHARACTERS / seed.length))
+    .slice(0, CHAPTER_CHARACTERS);
 }
 
 async function createHarness(): Promise<Harness> {
-  const root = await mkdtemp(path.join(tmpdir(), 'worldforge-phase3-large-project-'));
+  const root = await mkdtemp(
+    path.join(tmpdir(), 'worldforge-phase3-large-project-'),
+  );
   temporaryDirectories.push(root);
   const parent = path.join(root, 'projects');
   await mkdir(parent, { recursive: true });
@@ -89,7 +106,10 @@ async function createHarness(): Promise<Harness> {
   });
   const workspace = new ProjectWorkspaceService({
     projectMigrationsDirectory: 'migrations/project',
-    projectMigrationRecoveryDirectory: path.join(root, 'project-migration-recovery'),
+    projectMigrationRecoveryDirectory: path.join(
+      root,
+      'project-migration-recovery',
+    ),
     appVersion: '0.1.0',
     recentProjects: appRuntime.recentProjects,
     clock,
@@ -119,139 +139,159 @@ async function seedLargeProject(harness: Harness): Promise<{
   const chapters: ChapterFixture[] = [];
   const entityIds: string[] = [];
 
-  await harness.workspace.writeProject(randomUUID(), project.projectId, (connection) => {
-    const insertVolume = connection.prepare(
-      `INSERT INTO volumes(id, project_id, title, order_key, status, deleted_at)
-       VALUES(?, ?, ?, ?, 'active', NULL)`,
-    );
-    const insertChapter = connection.prepare(
-      `INSERT INTO chapters(
-         id, volume_id, title, order_key, status, target_word_min, target_word_max,
-         active_draft_id, final_version_id, deleted_at
-       ) VALUES(?, ?, ?, ?, 'writing', 2500, 4000, NULL, NULL, NULL)`,
-    );
-    const insertDraft = connection.prepare(
-      `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)
-       VALUES(?, ?, 'active', 0, ?, ?)`,
-    );
-    const attachDraft = connection.prepare(
-      'UPDATE chapters SET active_draft_id = ? WHERE id = ?',
-    );
-    const insertBlock = connection.prepare(
-      `INSERT INTO draft_blocks(
-         id, draft_id, logical_block_id, order_key, block_type, text,
-         attributes_json, source, locked, content_hash, revision
-       ) VALUES(?, ?, ?, 1024, 'paragraph', ?, '{}', 'manual', 0, ?, 0)`,
-    );
-
-    for (let volumeIndex = 0; volumeIndex < VOLUME_COUNT; volumeIndex += 1) {
-      const volumeId = randomUUID();
-      insertVolume.run(
-        volumeId,
-        project.projectId,
-        `第${volumeIndex + 1}卷`,
-        (volumeIndex + 1) * 1024,
+  await harness.workspace.writeProject(
+    randomUUID(),
+    project.projectId,
+    (connection) => {
+      const insertVolume = connection.prepare(
+        `INSERT INTO volumes(id, project_id, title, order_key, status, deleted_at)
+         VALUES(?, ?, ?, ?, 'active', NULL)`,
       );
-      for (let localIndex = 0; localIndex < CHAPTERS_PER_VOLUME; localIndex += 1) {
-        const chapterIndex = volumeIndex * CHAPTERS_PER_VOLUME + localIndex;
-        const chapterId = randomUUID();
-        const draftId = randomUUID();
-        const logicalBlockId = randomUUID();
-        const text = createChapterText(chapterIndex);
-        const contentHash = draftContentHash({
-          blockType: 'paragraph',
-          content: text,
-          attributes: {},
-        });
-        insertChapter.run(
-          chapterId,
+      const insertChapter = connection.prepare(
+        `INSERT INTO chapters(
+           id, volume_id, title, order_key, status, target_word_min, target_word_max,
+           active_draft_id, final_version_id, deleted_at
+         ) VALUES(?, ?, ?, ?, 'writing', 2500, 4000, NULL, NULL, NULL)`,
+      );
+      const insertDraft = connection.prepare(
+        `INSERT INTO drafts(id, chapter_id, status, revision, created_at, updated_at)
+         VALUES(?, ?, 'active', 0, ?, ?)`,
+      );
+      const attachDraft = connection.prepare(
+        'UPDATE chapters SET active_draft_id = ? WHERE id = ?',
+      );
+      const insertBlock = connection.prepare(
+        `INSERT INTO draft_blocks(
+           id, draft_id, logical_block_id, order_key, block_type, text,
+           attributes_json, source, locked, content_hash, revision
+         ) VALUES(?, ?, ?, 1024, 'paragraph', ?, '{}', 'manual', 0, ?, 0)`,
+      );
+
+      for (
+        let volumeIndex = 0;
+        volumeIndex < VOLUME_COUNT;
+        volumeIndex += 1
+      ) {
+        const volumeId = randomUUID();
+        insertVolume.run(
           volumeId,
-          `第${chapterIndex + 1}章`,
-          (localIndex + 1) * 1024,
+          project.projectId,
+          `第${volumeIndex + 1}卷`,
+          (volumeIndex + 1) * 1024,
         );
-        insertDraft.run(draftId, chapterId, timestamp, timestamp);
-        attachDraft.run(draftId, chapterId);
-        insertBlock.run(randomUUID(), draftId, logicalBlockId, text, contentHash);
-        chapters.push({ chapterId, draftId, logicalBlockId, text });
+        for (
+          let localIndex = 0;
+          localIndex < CHAPTERS_PER_VOLUME;
+          localIndex += 1
+        ) {
+          const chapterIndex = volumeIndex * CHAPTERS_PER_VOLUME + localIndex;
+          const chapterId = randomUUID();
+          const draftId = randomUUID();
+          const logicalBlockId = randomUUID();
+          const text = createChapterText(chapterIndex);
+          const contentHash = draftContentHash({
+            blockType: 'paragraph',
+            content: text,
+            attributes: {},
+          });
+          insertChapter.run(
+            chapterId,
+            volumeId,
+            `第${chapterIndex + 1}章`,
+            (localIndex + 1) * 1024,
+          );
+          insertDraft.run(draftId, chapterId, timestamp, timestamp);
+          attachDraft.run(draftId, chapterId);
+          insertBlock.run(
+            randomUUID(),
+            draftId,
+            logicalBlockId,
+            text,
+            contentHash,
+          );
+          chapters.push({ chapterId, draftId, logicalBlockId, text });
+        }
       }
-    }
 
-    const insertEntity = connection.prepare(
-      `INSERT INTO entities(
-         id, project_id, entity_type, name, aliases_json, summary, status,
-         archived_at, created_at, updated_at
-       ) VALUES(?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?)`,
-    );
-    const insertFact = connection.prepare(
-      `INSERT INTO canon_facts(
-         id, project_id, entity_id, fact_key, value_json, description,
-         source_type, source_id, status, confirmed_at, superseded_at, created_at
-       ) VALUES(?, ?, ?, '定位', ?, ?, 'author', NULL, 'current', ?, NULL, ?)`,
-    );
-    for (let index = 0; index < ENTITY_COUNT; index += 1) {
-      const entityId = randomUUID();
-      const entityType = index < 100 ? 'character' : index < 125 ? 'location' : 'faction';
-      entityIds.push(entityId);
-      insertEntity.run(
-        entityId,
-        project.projectId,
-        entityType,
-        `实体${String(index + 1).padStart(3, '0')}`,
-        JSON.stringify([`别名${index + 1}`]),
-        `长篇作品核心${entityType}设定${index + 1}`,
-        timestamp,
-        timestamp,
+      const insertEntity = connection.prepare(
+        `INSERT INTO entities(
+           id, project_id, entity_type, name, aliases_json, summary, status,
+           archived_at, created_at, updated_at
+         ) VALUES(?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?)`,
       );
-      insertFact.run(
-        randomUUID(),
-        project.projectId,
-        entityId,
-        JSON.stringify(`设定值${index + 1}`),
-        `权威事实${index + 1}`,
-        timestamp,
-        timestamp,
+      const insertFact = connection.prepare(
+        `INSERT INTO canon_facts(
+           id, project_id, entity_id, fact_key, value_json, description,
+           source_type, source_id, status, confirmed_at, superseded_at, created_at
+         ) VALUES(?, ?, ?, '定位', ?, ?, 'author', NULL, 'current', ?, NULL, ?)`,
       );
-    }
+      for (let index = 0; index < ENTITY_COUNT; index += 1) {
+        const entityId = randomUUID();
+        const entityType =
+          index < 100 ? 'character' : index < 125 ? 'location' : 'faction';
+        entityIds.push(entityId);
+        insertEntity.run(
+          entityId,
+          project.projectId,
+          entityType,
+          `实体${String(index + 1).padStart(3, '0')}`,
+          JSON.stringify([`别名${index + 1}`]),
+          `长篇作品核心${entityType}设定${index + 1}`,
+          timestamp,
+          timestamp,
+        );
+        insertFact.run(
+          randomUUID(),
+          project.projectId,
+          entityId,
+          JSON.stringify(`设定值${index + 1}`),
+          `权威事实${index + 1}`,
+          timestamp,
+          timestamp,
+        );
+      }
 
-    const insertForeshadowing = connection.prepare(
-      `INSERT INTO foreshadowings(
-         id, project_id, title, description, status, reveal_from_chapter_id,
-         reveal_by_chapter_id, created_at, updated_at
-       ) VALUES(?, ?, ?, ?, 'planned', ?, ?, ?, ?)`,
-    );
-    for (let index = 0; index < FORESHADOWING_COUNT; index += 1) {
-      const from = chapters[index * 2]!;
-      const to = chapters[Math.min(CHAPTER_COUNT - 1, index * 2 + 80)]!;
-      insertForeshadowing.run(
-        randomUUID(),
-        project.projectId,
-        `伏笔${String(index + 1).padStart(3, '0')}`,
-        `跨章节伏笔链${index + 1}`,
-        from.chapterId,
-        to.chapterId,
-        timestamp,
-        timestamp,
+      const insertForeshadowing = connection.prepare(
+        `INSERT INTO foreshadowings(
+           id, project_id, title, description, status, reveal_from_chapter_id,
+           reveal_by_chapter_id, created_at, updated_at
+         ) VALUES(?, ?, ?, ?, 'planned', ?, ?, ?, ?)`,
       );
-    }
+      for (let index = 0; index < FORESHADOWING_COUNT; index += 1) {
+        const from = chapters[index * 2]!;
+        const to =
+          chapters[Math.min(CHAPTER_COUNT - 1, index * 2 + 80)]!;
+        insertForeshadowing.run(
+          randomUUID(),
+          project.projectId,
+          `伏笔${String(index + 1).padStart(3, '0')}`,
+          `跨章节伏笔链${index + 1}`,
+          from.chapterId,
+          to.chapterId,
+          timestamp,
+          timestamp,
+        );
+      }
 
-    const insertArc = connection.prepare(
-      `INSERT INTO character_arcs(
-         id, project_id, character_id, title, arc_type, custom_type, status,
-         author_intent, created_at, updated_at
-       ) VALUES(?, ?, ?, ?, 'growth', NULL, 'active', ?, ?, ?)`,
-    );
-    for (let index = 0; index < CHARACTER_ARC_COUNT; index += 1) {
-      insertArc.run(
-        randomUUID(),
-        project.projectId,
-        entityIds[index]!,
-        `人物弧光${String(index + 1).padStart(2, '0')}`,
-        `人物${index + 1}在长篇中的阶段性成长`,
-        timestamp,
-        timestamp,
+      const insertArc = connection.prepare(
+        `INSERT INTO character_arcs(
+           id, project_id, character_id, title, arc_type, custom_type, status,
+           author_intent, created_at, updated_at
+         ) VALUES(?, ?, ?, ?, 'growth', NULL, 'active', ?, ?, ?)`,
       );
-    }
-  });
+      for (let index = 0; index < CHARACTER_ARC_COUNT; index += 1) {
+        insertArc.run(
+          randomUUID(),
+          project.projectId,
+          entityIds[index]!,
+          `人物弧光${String(index + 1).padStart(2, '0')}`,
+          `人物${index + 1}在长篇中的阶段性成长`,
+          timestamp,
+          timestamp,
+        );
+      }
+    },
+  );
 
   for (let index = 0; index < VERSION_COUNT; index += 1) {
     const chapter = chapters[index * 5]!;
@@ -267,7 +307,11 @@ async function seedLargeProject(harness: Harness): Promise<{
     });
   }
 
-  return { projectId: project.projectId, workspacePath: project.workspacePath, chapters };
+  return {
+    projectId: project.projectId,
+    workspacePath: project.workspacePath,
+    chapters,
+  };
 }
 
 afterEach(async () => {
@@ -281,7 +325,10 @@ afterEach(async () => {
 afterAll(async () => {
   const existingOutput = process.env.WORLDFORGE_M8_PERF_OUTPUT;
   if (!existingOutput) return;
-  const output = path.join(path.dirname(existingOutput), 'phase3-large-project.json');
+  const output = path.join(
+    path.dirname(existingOutput),
+    'phase3-large-project.json',
+  );
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(
     output,
@@ -331,13 +378,22 @@ describe('Phase 3 realistic large-project performance', () => {
 
         await harness.workspace.close(randomUUID(), fixture.projectId);
         const reopenStartedAt = performance.now();
-        await harness.workspace.open(randomUUID(), { workspacePath: fixture.workspacePath });
-        recordMetric('medium_project_reopen_ms', [performance.now() - reopenStartedAt], 3_000);
+        await harness.workspace.open(randomUUID(), {
+          workspacePath: fixture.workspacePath,
+        });
+        recordMetric(
+          'medium_project_reopen_ms',
+          [performance.now() - reopenStartedAt],
+          3_000,
+        );
 
         const structure = harness.structure.list(fixture.projectId);
         expect(structure.volumes).toHaveLength(VOLUME_COUNT);
         expect(
-          structure.volumes.reduce((total, volume) => total + volume.chapters.length, 0),
+          structure.volumes.reduce(
+            (total, volume) => total + volume.chapters.length,
+            0,
+          ),
         ).toBe(CHAPTER_COUNT);
 
         const chapterOpenSamples: number[] = [];
@@ -362,7 +418,10 @@ describe('Phase 3 realistic large-project performance', () => {
         const autosaveSamples: number[] = [];
         for (let sample = 0; sample < 30; sample += 1) {
           const block = opened.blocks[0]!;
-          const nextText = `${autosaveChapter.text.slice(0, CHAPTER_CHARACTERS - 12)}保存性能${String(sample).padStart(2, '0')}`;
+          const nextText = `${autosaveChapter.text.slice(
+            0,
+            CHAPTER_CHARACTERS - 12,
+          )}保存性能${String(sample).padStart(2, '0')}`;
           const startedAt = performance.now();
           opened = await harness.drafts.applyPatch(randomUUID(), {
             projectId: fixture.projectId,
@@ -380,10 +439,17 @@ describe('Phase 3 realistic large-project performance', () => {
           });
           autosaveSamples.push(performance.now() - startedAt);
         }
-        recordMetric('large_project_autosave_p95_ms', autosaveSamples, 150);
+        recordMetric(
+          'large_project_autosave_p95_ms',
+          autosaveSamples,
+          150,
+        );
 
         const rebuildStartedAt = performance.now();
-        const rebuilt = await harness.search.rebuild(randomUUID(), fixture.projectId);
+        const rebuilt = await harness.search.rebuild(
+          randomUUID(),
+          fixture.projectId,
+        );
         const rebuildMs = performance.now() - rebuildStartedAt;
         expect(rebuilt.status).toBe('ready');
         expect(rebuilt.failedCount).toBe(0);
@@ -426,9 +492,15 @@ describe('Phase 3 realistic large-project performance', () => {
           const startedAt = performance.now();
           const result = harness.constraints.build(constraintInput);
           constraintSamples.push(performance.now() - startedAt);
-          expect(result.estimatedTokens).toBeLessThanOrEqual(result.budget.usableTokens);
+          expect(result.estimatedTokens).toBeLessThanOrEqual(
+            result.budget.usableTokens,
+          );
         }
-        recordMetric('large_project_constraint_package_p95_ms', constraintSamples, 1_000);
+        recordMetric(
+          'large_project_constraint_package_p95_ms',
+          constraintSamples,
+          1_000,
+        );
       } finally {
         await harness.workspace.shutdown();
         await harness.appRuntime.close();

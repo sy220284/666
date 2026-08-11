@@ -217,7 +217,8 @@ jobs:
     if: >-
       needs.route.outputs.toolchain_export == 'true' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'work'
+      (github.event.pull_request.head.ref == 'work' ||
+       github.event.pull_request.head.ref == 'governance')
     uses: ./.github/workflows/toolchain-export.yml
     with:
       source_sha: ${{ github.event.pull_request.head.sha }}

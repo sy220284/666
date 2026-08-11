@@ -13,6 +13,7 @@ import type { RecoveryService } from './recovery.js';
 import { RhythmService } from './rhythm.js';
 import { SceneBeatService } from './scene-beat.js';
 import { SearchToolsService } from './search-tools.js';
+import { StoryKnowledgeProjectionService } from './story-knowledge-projection.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
 import { VersionService } from './version.js';
 
@@ -38,6 +39,7 @@ export function createUtilityProjectServiceContainer(
     sceneBeats: new SceneBeatService(projectWorkspace),
     entityCanon: new EntityCanonService(projectWorkspace),
     continuity: new ContinuityService(projectWorkspace),
+    storyKnowledge: new StoryKnowledgeProjectionService(projectWorkspace),
     structureOperations: new ReferenceAwareStructureOperationService(projectWorkspace),
     drafts: new DraftService(projectWorkspace),
     candidates,

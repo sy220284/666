@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  evaluateMemoryBudget,
-  summarizeMemorySeries,
-} from '../../scripts/memory-leak-policy.mjs';
+import { evaluateMemoryBudget, summarizeMemorySeries } from '../../scripts/memory-leak-policy.mjs';
 
 const mib = 1024 * 1024;
 

@@ -4,7 +4,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const requiredBranches = Object.freeze(['main', 'work']);
+const requiredBranches = Object.freeze(['main', 'work', 'governance']);
+const integrationBranches = Object.freeze(['work', 'governance']);
 const apiRoot = 'https://api.github.com';
 
 async function api(pathname, options = {}, accepted = []) {
@@ -60,14 +61,15 @@ async function repairBranches(owner, repo, names) {
     console.log(`Deleted unexpected branch ${name}.`);
   }
 
-  if (!names.includes('work')) {
-    const main = await api(`/repos/${owner}/${repo}/git/ref/heads/main`);
+  const main = await api(`/repos/${owner}/${repo}/git/ref/heads/main`);
+  for (const branch of integrationBranches) {
+    if (names.includes(branch)) continue;
     await api(`/repos/${owner}/${repo}/git/refs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ref: 'refs/heads/work', sha: main.object.sha }),
+      body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: main.object.sha }),
     });
-    console.log('Recreated missing work branch from main.');
+    console.log(`Recreated missing ${branch} branch from main.`);
   }
 }
 
@@ -93,13 +95,16 @@ async function main() {
     `${JSON.stringify({ branches, invalid, missing, repaired: repair }, null, 2)}\n`,
   );
   if (errors.length > 0) throw new Error(errors.join('\n'));
-  console.log('Branch inventory contains exactly main and work.');
+  console.log('Branch inventory contains exactly main, work and governance.');
 }
 
 function selfTest() {
-  assert.deepEqual(branchInventoryErrors(['work', 'main']), []);
-  assert.deepEqual(missingBranches(['main']), ['work']);
-  assert.deepEqual(invalidBranches(['main', 'work/task', 'policy/x']), ['policy/x', 'work/task']);
+  assert.deepEqual(branchInventoryErrors(['work', 'governance', 'main']), []);
+  assert.deepEqual(missingBranches(['main']), ['work', 'governance']);
+  assert.deepEqual(invalidBranches(['main', 'work', 'governance', 'work/task', 'policy/x']), [
+    'policy/x',
+    'work/task',
+  ]);
   console.log('Branch inventory self-test passed.');
 }
 

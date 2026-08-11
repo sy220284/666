@@ -57,6 +57,13 @@ export type RendererUiAction =
       readonly returnLocation?: RendererReturnLocation | null;
     }
   | {
+      readonly type: 'apply-navigation';
+      readonly route: RendererRouteId;
+      readonly selection: Partial<RendererSelectionState>;
+      readonly filters: Readonly<Record<string, string | null>>;
+      readonly returnLocation: RendererReturnLocation | null;
+    }
+  | {
       readonly type: 'select';
       readonly selection: Partial<RendererSelectionState>;
     }
@@ -116,6 +123,20 @@ export function reduceRendererUiState(
       route: action.route,
       returnLocation:
         'returnLocation' in action ? (action.returnLocation ?? null) : state.returnLocation,
+    };
+  }
+  if (action.type === 'apply-navigation') {
+    const filters = { ...state.filters };
+    for (const [key, value] of Object.entries(action.filters)) {
+      if (value === null) delete filters[key];
+      else filters[key] = value;
+    }
+    return {
+      ...state,
+      route: action.route,
+      selection: { ...state.selection, ...action.selection },
+      filters,
+      returnLocation: action.returnLocation,
     };
   }
   if (action.type === 'select') {

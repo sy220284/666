@@ -19,7 +19,8 @@ export function StoryKnowledgeHistoryMetadata({
               <li key={candidate.candidateId} className="compact-card">
                 <strong>{candidate.title}</strong>
                 <span>
-                  {candidateTypeLabel(candidate.candidateType)} · {candidateStatusLabel(candidate.status)}
+                  {candidateTypeLabel(candidate.candidateType)} ·{' '}
+                  {candidateStatusLabel(candidate.status)}
                 </span>
                 <small>
                   {candidate.completeness === 'complete' ? '完整候选稿' : '部分候选稿'} ·{' '}
@@ -84,7 +85,9 @@ export function StoryKnowledgeHistoryMetadata({
   );
 }
 
-function candidateTypeLabel(type: HistoryProjection['candidates'][number]['candidateType']): string {
+function candidateTypeLabel(
+  type: HistoryProjection['candidates'][number]['candidateType'],
+): string {
   switch (type) {
     case 'skeleton':
       return '骨架候选稿';
@@ -108,7 +111,9 @@ function candidateStatusLabel(status: HistoryProjection['candidates'][number]['s
   }
 }
 
-function backupTrackLabel(track: HistoryProjection['recovery']['checkpoints'][number]['track']): string {
+function backupTrackLabel(
+  track: HistoryProjection['recovery']['checkpoints'][number]['track'],
+): string {
   switch (track) {
     case 'daily':
       return '日常备份';

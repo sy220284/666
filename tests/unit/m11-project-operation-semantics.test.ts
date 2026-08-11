@@ -15,6 +15,7 @@ import {
   SCENE_BEAT_COMMANDS,
   SEARCH_TOOLS_COMMANDS,
   STATE_PROPOSAL_COMMANDS,
+  STORY_KNOWLEDGE_COMMANDS,
   TEXT_IO_COMMANDS,
   VALIDATION_COMMANDS,
   VERSION_COMMANDS,
@@ -36,6 +37,7 @@ const commandGroups = [
   VALIDATION_COMMANDS,
   SEARCH_TOOLS_COMMANDS,
   RHYTHM_COMMANDS,
+  STORY_KNOWLEDGE_COMMANDS,
   DRAFT_COMMANDS,
   CANDIDATE_COMMANDS,
   CANDIDATE_APPLY_COMMANDS,
@@ -64,6 +66,7 @@ describe('M11 Project Operation Semantics', () => {
     expect(projectOperationKind(SEARCH_TOOLS_COMMANDS.previewReplace)).toBe('mutation');
     expect(projectOperationKind(RHYTHM_COMMANDS.get)).toBe('query');
     expect(projectOperationKind(RHYTHM_COMMANDS.run)).toBe('mutation');
+    expect(projectOperationKind(STORY_KNOWLEDGE_COMMANDS.project)).toBe('query');
   });
 
   it('does not default unknown read-like candidate operations to mutation semantics', () => {

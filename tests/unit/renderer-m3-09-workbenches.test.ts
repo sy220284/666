@@ -64,6 +64,9 @@ describe('M3 final React business workbenches', () => {
         validation: {},
         searchTools: {},
         rhythm: {},
+        storyKnowledge: {
+          project: vi.fn(async () => success('story-knowledge', {})),
+        },
         candidateAction: {},
       }),
     );
@@ -97,6 +100,8 @@ describe('M3 final React business workbenches', () => {
         'features/canon/continuity-panel.tsx',
         'features/canon/narrative-planning-panel.tsx',
         'features/canon/state-proposal-panel.tsx',
+        'features/canon/story-knowledge-panel.tsx',
+        'features/canon/story-knowledge-history-metadata.tsx',
         'features/canon/continuity-relationship-editor.tsx',
         'features/canon/narrative-relationship-editor.tsx',
         'features/data-tools/data-tools-workbench.tsx',
@@ -207,6 +212,7 @@ describe('M3 final React business workbenches', () => {
     expect(canonCore).toContain("from './continuity-panel.js'");
     expect(canonCore).toContain("from './narrative-planning-panel.js'");
     expect(canonCore).toContain("from './state-proposal-panel.js'");
+    expect(canonCore).toContain("from './story-knowledge-panel.js'");
     expect(canonCore).not.toContain('useBridgeQuery');
     expect(canonCore).not.toContain('useState');
     expect(entityCanon).toContain("selected.status !== 'archived'");

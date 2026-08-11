@@ -13,7 +13,7 @@
       "sourcePath": "packages/core-service/src/recovery/file-lease.ts",
       "search": "if (!confirmed?.document || confirmed.document.token !== token) return;",
       "replacement": "if (!confirmed?.document) return;",
-      "tests": ["tests/reliability/file-lease-stress.test.ts"]
+      "tests": ["tests/reliability/file-lease-release-race.test.ts"]
     },
     {
       "id": "release-main-verification-fail-closed",

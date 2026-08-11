@@ -23,7 +23,7 @@ AGENTS.md
 ```text
 最新已验证main
 → work
-→ 实施、测试、审查、文档与Evidence
+→ 实施、测试、审查、文档与验证证据
 → work → main PR
 → 四项永久门禁
 → Controlled Merge（Squash）
@@ -55,7 +55,7 @@ AGENTS.md
 - 每条集成lane最多一个开放PR；`work`与`governance`可并行准备，main写入始终串行。
 - 禁止直接向`main`提交。
 - 四项永久门禁为`pr-policy`、`quality / quality`、`security`、`performance`。
-- 产品Runtime固定`executionBranch: work`；治理PR不得伪造产品Runtime或任务Evidence。
+- 产品Runtime固定`executionBranch: work`；治理PR不得伪造产品Runtime或任务验证证据。
 - Main Verification成功后来源lane受控同步；另一条lane空闲且仅落后main时自动fast-forward，有开放PR时明确保留，存在无PR分叉时fail-closed。
 - `Implemented`不能充当`Verified`；有效Verified由Runtime、来源PR、来源Head、main SHA和任务提交状态共同确认。
 
@@ -69,7 +69,7 @@ AGENTS.md
 → 完成最小完整纵向实现
 → 验证主路径、边界、失败、取消、冲突和恢复
 → 执行关联回归
-→ 同步契约、Migration、文档、任务状态与Evidence（治理维护按实际范围）
+→ 同步契约、Migration、文档、任务状态与验证证据（治理维护按实际范围）
 → 运行Fresh永久门禁
 → 受控合并与Main Verification
 → 重新读取main、work、governance后再声明完成

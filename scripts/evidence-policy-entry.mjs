@@ -17,6 +17,7 @@ export function taskIdFromPullBody(body) {
 export function isMaintenancePath(file) {
   const normalized = file.replaceAll('\\', '/');
   return (
+    normalized === 'docs/tasks/TASK_AUTHORIZATION.json' ||
     normalized.startsWith('.github/') ||
     normalized.startsWith('scripts/') ||
     normalized.startsWith('tests/') ||

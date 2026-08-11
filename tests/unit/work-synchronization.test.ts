@@ -63,7 +63,10 @@ describe('集成分支安全同步决策', () => {
         openPulls: 0,
         branchName: 'governance',
       }),
-    ).toEqual({ action: 'blocked', reason: 'governance-advanced-after-merge' });
+    ).toEqual({
+      action: 'blocked',
+      reason: 'governance-advanced-after-merge',
+    });
   });
 
   it('存在新governance合并请求时拒绝同步', () => {
@@ -75,7 +78,10 @@ describe('集成分支安全同步决策', () => {
         openPulls: 1,
         branchName: 'governance',
       }),
-    ).toEqual({ action: 'blocked', reason: 'new-governance-pull-request-open' });
+    ).toEqual({
+      action: 'blocked',
+      reason: 'new-governance-pull-request-open',
+    });
   });
 
   it('复读最终来源Ref并要求与main完全一致', () => {

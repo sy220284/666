@@ -39,23 +39,33 @@ function failure(requestId: string, code: ErrorCode) {
 }
 
 export function registerStoryKnowledgeIpc(options: StoryKnowledgeIpcOptions): () => void {
-  registerIpcInvokeHandler(options.ipcMain, STORY_KNOWLEDGE_IPC_CHANNELS.project, async (event, raw) => {
-    const parsed = StoryKnowledgeProjectCommandSchema.safeParse(raw);
-    if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
-      return failure(parsed.success ? parsed.data.requestId : randomUUID(), 'COMMON_INVALID_INPUT_001');
-    }
-    const coreOperation = CoreProjectOperationSchema.parse({
-      operation: STORY_KNOWLEDGE_COMMANDS.project,
-      input: parsed.data.payload,
-    });
-    const result = await options.supervisor.invokeProjectOperation(parsed.data.requestId, coreOperation);
-    if (!result.ok) return failure(parsed.data.requestId, result.errorCode);
-    return StoryKnowledgeProjectionResultSchema.parse({
-      ok: true,
-      requestId: parsed.data.requestId,
-      data: result.data,
-    });
-  });
+  registerIpcInvokeHandler(
+    options.ipcMain,
+    STORY_KNOWLEDGE_IPC_CHANNELS.project,
+    async (event, raw) => {
+      const parsed = StoryKnowledgeProjectCommandSchema.safeParse(raw);
+      if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
+        return failure(
+          parsed.success ? parsed.data.requestId : randomUUID(),
+          'COMMON_INVALID_INPUT_001',
+        );
+      }
+      const coreOperation = CoreProjectOperationSchema.parse({
+        operation: STORY_KNOWLEDGE_COMMANDS.project,
+        input: parsed.data.payload,
+      });
+      const result = await options.supervisor.invokeProjectOperation(
+        parsed.data.requestId,
+        coreOperation,
+      );
+      if (!result.ok) return failure(parsed.data.requestId, result.errorCode);
+      return StoryKnowledgeProjectionResultSchema.parse({
+        ok: true,
+        requestId: parsed.data.requestId,
+        data: result.data,
+      });
+    },
+  );
 
   return () => options.ipcMain.removeHandler(STORY_KNOWLEDGE_IPC_CHANNELS.project);
 }

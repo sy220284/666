@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ErrorCodeSchema } from './error-codes.js';
 import { EntityStatusSchema, EntityTypeSchema } from './entity-canon.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
+import { StoryTodoSchema } from './validation.js';
 
 export const STORY_KNOWLEDGE_IPC_CHANNELS = {
   project: 'worldforge:story-knowledge:project',
@@ -118,6 +119,7 @@ const StoryKnowledgeForeshadowingItemSchema = z.strictObject({
   title: z.string().min(1).max(240),
   description: z.string().max(20_000),
   status: z.string().min(1).max(80),
+  attention: z.enum(['none', 'due', 'overdue', 'blocked']),
   revealFromChapterId: z.uuid().nullable(),
   revealByChapterId: z.uuid().nullable(),
 });
@@ -143,6 +145,45 @@ const StoryKnowledgeHistoryItemSchema = z.strictObject({
   wordCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
   finalized: z.boolean(),
+});
+
+const StoryKnowledgeChapterGoalSchema = z.strictObject({
+  title: z.string().min(1).max(240),
+  goal: z.string().max(20_000),
+  coreConflict: z.string().max(20_000),
+  expectedResult: z.string().max(20_000),
+});
+
+const StoryKnowledgeSceneBeatSchema = z.strictObject({
+  id: z.uuid(),
+  title: z.string().min(1).max(240),
+  goal: z.string().max(20_000),
+  required: z.boolean(),
+  wordTargetPercent: z.number().int().min(0).max(100),
+});
+
+const StoryKnowledgeChapterStateSchema = z.strictObject({
+  key: z.string().min(1).max(120),
+  value: z.json(),
+});
+
+const StoryKnowledgeChapterKnowledgeSchema = z.strictObject({
+  information: z.string().min(1).max(240),
+  status: z.enum(['knows', 'believes', 'suspects', 'misunderstands', 'unknown']),
+});
+
+const StoryKnowledgeChapterCharacterSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string().min(1).max(240),
+  summary: z.string().max(20_000),
+  states: z.array(StoryKnowledgeChapterStateSchema).max(100),
+  knowledge: z.array(StoryKnowledgeChapterKnowledgeSchema).max(100),
+});
+
+const StoryKnowledgePreviousChapterSchema = z.strictObject({
+  chapterId: z.uuid(),
+  chapterTitle: z.string().min(1).max(240),
+  finalVersionId: z.uuid().nullable(),
 });
 
 const projectionBase = {
@@ -199,11 +240,16 @@ export const StoryKnowledgeProjectionSchema = z.discriminatedUnion('view', [
     ...projectionBase,
     view: z.literal('chapter_assist'),
     chapterId: z.uuid(),
-    characters: z.array(StoryKnowledgeEntitySummarySchema).max(100),
+    chapterTitle: z.string().min(1).max(240),
+    goal: StoryKnowledgeChapterGoalSchema.nullable(),
+    sceneBeats: z.array(StoryKnowledgeSceneBeatSchema).max(100),
+    characters: z.array(StoryKnowledgeChapterCharacterSchema).max(20),
     relationships: z.array(StoryKnowledgeRelationshipSchema).max(100),
     timeline: z.array(StoryKnowledgeTimelineItemSchema).max(100),
     foreshadowings: z.array(StoryKnowledgeForeshadowingItemSchema).max(100),
     milestones: z.array(StoryKnowledgeArcMilestoneSchema).max(100),
+    todos: z.array(StoryTodoSchema).max(100),
+    previousChapter: StoryKnowledgePreviousChapterSchema.nullable(),
   }),
 ]);
 

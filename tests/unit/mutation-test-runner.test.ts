@@ -40,7 +40,9 @@ const matrix = {
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
   );
 });
 
@@ -93,9 +95,7 @@ describe('targeted mutation runner', () => {
     expect(() =>
       validateMutationMatrix({
         schemaVersion: 1,
-        mutants: [
-          { ...matrix.mutants[0], sourcePath: '../escape.ts' },
-        ],
+        mutants: [{ ...matrix.mutants[0], sourcePath: '../escape.ts' }],
       }),
     ).toThrow(/escape/u);
     expect(() =>

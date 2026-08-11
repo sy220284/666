@@ -8,20 +8,23 @@ describe('Schema 2本地任务控制', () => {
     mode: 'single-work-pr',
     baseBranch: 'main',
     workBranch: 'work',
+    governanceBranch: 'governance',
     allowDirectMainCommits: false,
     allowAdditionalBranches: false,
     maxOpenWorkPullRequests: 1,
+    maxOpenGovernancePullRequests: 1,
     mainWriteMode: 'serialized',
     mergeMethod: 'squash',
     verificationClosure: 'main-status',
     workSynchronization: 'verified-reset',
+    governanceSynchronization: 'verified-reset',
   };
 
-  it('接受完整Schema 2授权', () => {
+  it('接受work与governance双集成通道授权', () => {
     expect(validateSingleWorkState(authorization)).toEqual([]);
   });
 
-  it('拒绝额外分支和非串行main写入', () => {
+  it('拒绝未声明分支和非串行main写入', () => {
     expect(
       validateSingleWorkState({
         ...authorization,
@@ -30,8 +33,23 @@ describe('Schema 2本地任务控制', () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        'Additional branches must be disabled',
+        'Undeclared branches must be disabled',
         'mainWriteMode must be serialized',
+      ]),
+    );
+  });
+
+  it('拒绝错误的治理分支与同步模式', () => {
+    expect(
+      validateSingleWorkState({
+        ...authorization,
+        governanceBranch: 'policy/governance',
+        governanceSynchronization: 'manual-copy',
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        'governanceBranch must be governance',
+        'governanceSynchronization must be verified-reset',
       ]),
     );
   });

@@ -42,6 +42,36 @@ describe('维护PR的Evidence路由', () => {
     ).toMatchObject({ action: 'maintenance' });
   });
 
+  it('governance分支允许治理源码和授权文件，不要求任务Evidence', () => {
+    expect(
+      evidenceEntryDecision({
+        final: true,
+        pullBody: '',
+        headRef: 'governance',
+        files: ['docs/tasks/TASK_AUTHORIZATION.json', 'packages/core-service/src/index.ts'],
+      }),
+    ).toMatchObject({ action: 'maintenance' });
+  });
+
+  it('governance分支仍不能绕过任务Runtime或Evidence约束', () => {
+    expect(
+      evidenceEntryDecision({
+        final: true,
+        pullBody: '',
+        headRef: 'governance',
+        files: ['docs/tasks/runtime/M11-03.json'],
+      }),
+    ).toMatchObject({ action: 'reject' });
+    expect(
+      evidenceEntryDecision({
+        final: true,
+        pullBody: '',
+        headRef: 'governance',
+        files: ['docs/test-evidence/M11-03/summary.md'],
+      }),
+    ).toMatchObject({ action: 'reject' });
+  });
+
   it('产品改动无任务标记时仍然拒绝', () => {
     expect(
       evidenceEntryDecision({

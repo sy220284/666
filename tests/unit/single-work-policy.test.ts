@@ -2,18 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import { validatePullRequestShape } from '../../.github/governance/single-work-policy.mjs';
 
-describe('唯一work合并请求策略', () => {
-  it('只接受work到main', () => {
+describe('main集成分支策略', () => {
+  it('接受work和governance到main', () => {
     expect(validatePullRequestShape({ head: 'work', base: 'main' })).toEqual([]);
+    expect(validatePullRequestShape({ head: 'governance', base: 'main' })).toEqual([]);
     expect(validatePullRequestShape({ head: 'work/task', base: 'main' })).not.toEqual([]);
+    expect(validatePullRequestShape({ head: 'governance/task', base: 'main' })).not.toEqual([]);
     expect(validatePullRequestShape({ head: 'fix/task', base: 'main' })).not.toEqual([]);
     expect(validatePullRequestShape({ head: 'work', base: 'release' })).not.toEqual([]);
     expect(
-      validatePullRequestShape({ head: 'work', base: 'main', sameRepository: false }),
+      validatePullRequestShape({ head: 'governance', base: 'main', sameRepository: false }),
     ).not.toEqual([]);
   });
 
-  it('不再要求任务授权、Runtime权限范围或任务标记', () => {
+  it('产品任务仍走work，仓库治理可独立走governance', () => {
     expect(validatePullRequestShape({ head: 'work', base: 'main' })).toEqual([]);
+    expect(validatePullRequestShape({ head: 'governance', base: 'main' })).toEqual([]);
   });
 });

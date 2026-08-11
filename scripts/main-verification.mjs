@@ -7,6 +7,7 @@ import { modeAwareChecksState, nextPagePath, requiredCheckState } from './autome
 const apiRoot = 'https://api.github.com';
 const fullSha = /^[0-9a-f]{40}$/iu;
 const taskMarkerPattern = /<!--\s*worldforge-task:\s*(M\d+-\d{2})\s*-->/iu;
+const integrationBranches = new Set(['work', 'governance']);
 
 export function taskIdFromPullBody(body) {
   return taskMarkerPattern.exec(body ?? '')?.[1]?.toUpperCase() ?? null;
@@ -50,8 +51,8 @@ export function validateMainVerification({
     throw new Error('Main verification checkout does not match expected main SHA');
   if (!pull?.merged || !pull.merged_at || pull.base?.ref !== baseBranch)
     throw new Error(`Pull request #${sourcePr} provenance is invalid`);
-  if (pull.head?.ref !== 'work')
-    throw new Error(`Pull request #${sourcePr} must originate from work`);
+  if (!integrationBranches.has(pull.head?.ref))
+    throw new Error(`Pull request #${sourcePr} must originate from work or governance`);
   if (pull.head?.sha !== sourceHeadSha || pull.merge_commit_sha !== expectedSha)
     throw new Error(`Pull request #${sourcePr} SHA provenance is invalid`);
   const state = requiredCheckState(checkRuns, requiredChecks);

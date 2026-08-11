@@ -13,13 +13,16 @@ const authorization = {
   mode: 'single-work-pr',
   baseBranch: 'main',
   workBranch: 'work',
+  governanceBranch: 'governance',
   allowDirectMainCommits: false,
   allowAdditionalBranches: false,
   maxOpenWorkPullRequests: 1,
+  maxOpenGovernancePullRequests: 1,
   mainWriteMode: 'serialized',
   mergeMethod: 'squash',
   verificationClosure: 'main-status',
   workSynchronization: 'verified-reset',
+  governanceSynchronization: 'verified-reset',
   taskRuntimeDirectory: 'docs/tasks/runtime',
   prTaskMarker: 'worldforge-task',
 };
@@ -44,15 +47,18 @@ afterEach(async () => {
 });
 
 describe('Schema 2 task lifecycle', () => {
-  it('validates the unique work authorization', async () => {
+  it('validates work and governance integration authorization', async () => {
     const { root } = await createFixture();
     const output = execFileSync(process.execPath, [taskctlPath, 'status'], {
       cwd: root,
       encoding: 'utf8',
     });
-    expect(output).toContain('Single work task authorization is valid.');
+    expect(output).toContain(
+      'Task authorization is valid for work and governance integration lanes.',
+    );
     expect(output).toContain('"mode": "single-work-pr"');
     expect(output).toContain('"workBranch": "work"');
+    expect(output).toContain('"governanceBranch": "governance"');
     expect(output).toContain('"verificationClosure": "main-status"');
   });
 
@@ -60,6 +66,7 @@ describe('Schema 2 task lifecycle', () => {
     ['allowAdditionalBranches', true],
     ['mainWriteMode', 'parallel'],
     ['workBranch', 'work/task'],
+    ['governanceBranch', 'governance/task'],
   ] as const)('rejects invalid authorization field %s', async (field, value) => {
     const { root } = await createFixture({ [field]: value });
     expect(() =>

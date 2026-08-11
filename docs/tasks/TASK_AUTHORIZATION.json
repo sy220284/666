@@ -3,13 +3,16 @@
   "mode": "single-work-pr",
   "baseBranch": "main",
   "workBranch": "work",
+  "governanceBranch": "governance",
   "allowDirectMainCommits": false,
   "allowAdditionalBranches": false,
   "maxOpenWorkPullRequests": 1,
+  "maxOpenGovernancePullRequests": 1,
   "mainWriteMode": "serialized",
   "mergeMethod": "squash",
   "verificationClosure": "main-status",
   "workSynchronization": "verified-reset",
+  "governanceSynchronization": "verified-reset",
   "taskRuntimeDirectory": "docs/tasks/runtime",
   "prTaskMarker": "worldforge-task"
 }

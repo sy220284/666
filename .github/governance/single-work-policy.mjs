@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
+const integrationBranches = new Set(['work', 'governance']);
+
 async function eventPayload() {
   if (!process.env.GITHUB_EVENT_PATH) return {};
   return JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, 'utf8'));
@@ -10,7 +12,9 @@ async function eventPayload() {
 
 export function validatePullRequestShape({ head, base, sameRepository = true }) {
   const errors = [];
-  if (head !== 'work') errors.push(`Pull request head must be work, found ${head || '<missing>'}`);
+  if (!integrationBranches.has(head)) {
+    errors.push(`Pull request head must be work or governance, found ${head || '<missing>'}`);
+  }
   if (base !== 'main') errors.push(`Pull request base must be main, found ${base || '<missing>'}`);
   if (!sameRepository) errors.push('Pull request head must belong to this repository');
   return errors;
@@ -19,8 +23,10 @@ export function validatePullRequestShape({ head, base, sameRepository = true }) 
 async function validateOpenPullRequestCount(event) {
   if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPOSITORY) return [];
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+  const head = event.pull_request?.head?.ref ?? process.env.TASK_PR_HEAD_REF ?? process.env.GITHUB_HEAD_REF;
+  if (!integrationBranches.has(head)) return [];
   const response = await globalThis.fetch(
-    `https://api.github.com/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:work&per_page=100`,
+    `https://api.github.com/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:${head}&per_page=100`,
     {
       headers: {
         Accept: 'application/vnd.github+json',
@@ -29,11 +35,11 @@ async function validateOpenPullRequestCount(event) {
       },
     },
   );
-  if (!response.ok) return [`Unable to inspect open work pull requests: ${response.status}`];
+  if (!response.ok) return [`Unable to inspect open ${head} pull requests: ${response.status}`];
   const pulls = await response.json();
   const current = event.pull_request?.number;
   const distinct = pulls.filter((pull) => pull.number !== current);
-  return distinct.length > 0 ? ['Another work to main pull request is already open'] : [];
+  return distinct.length > 0 ? [`Another ${head} to main pull request is already open`] : [];
 }
 
 async function validate() {
@@ -49,17 +55,19 @@ async function validate() {
     ...(await validateOpenPullRequestCount(event)),
   ];
   if (errors.length > 0) throw new Error(errors.join('\n'));
-  console.log('Single work pull request policy passed without task authorization gating.');
+  console.log('Integration pull request policy passed for work/governance -> main.');
 }
 
 function selfTest() {
   assert.deepEqual(validatePullRequestShape({ head: 'work', base: 'main' }), []);
+  assert.deepEqual(validatePullRequestShape({ head: 'governance', base: 'main' }), []);
   assert.ok(validatePullRequestShape({ head: 'work/task', base: 'main' }).length > 0);
+  assert.ok(validatePullRequestShape({ head: 'governance/task', base: 'main' }).length > 0);
   assert.ok(validatePullRequestShape({ head: 'work', base: 'release' }).length > 0);
   assert.ok(
-    validatePullRequestShape({ head: 'work', base: 'main', sameRepository: false }).length > 0,
+    validatePullRequestShape({ head: 'governance', base: 'main', sameRepository: false }).length > 0,
   );
-  console.log('Single work policy self-test passed.');
+  console.log('Integration pull request policy self-test passed.');
 }
 
 const command = process.argv[2] ?? 'validate';

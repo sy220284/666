@@ -66,7 +66,11 @@ export function branchDeletionDecision({ branchSha, pull, comparison }) {
 }
 
 export function isProtectedBranch(name, authorization) {
-  return name === authorization?.baseBranch || name === authorization?.workBranch;
+  return (
+    name === authorization?.baseBranch ||
+    name === authorization?.workBranch ||
+    name === authorization?.governanceBranch
+  );
 }
 
 function escapedRef(name) {
@@ -88,13 +92,17 @@ async function main() {
   if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must use owner/repo format');
   const authorization = JSON.parse(await readFile('docs/tasks/TASK_AUTHORIZATION.json', 'utf8'));
   const workBranch = authorization.workBranch;
+  const governanceBranch = authorization.governanceBranch;
   if (
     authorization.schemaVersion !== 2 ||
     authorization.baseBranch !== 'main' ||
     workBranch !== 'work' ||
+    governanceBranch !== 'governance' ||
     authorization.allowAdditionalBranches !== false
   ) {
-    throw new Error('TASK_AUTHORIZATION must define the strict two-branch Schema 2 model');
+    throw new Error(
+      'TASK_AUTHORIZATION must define the strict main/work/governance Schema 2 model',
+    );
   }
   const [branches, pulls] = await Promise.all([
     paged(`/repos/${owner}/${repo}/branches`),

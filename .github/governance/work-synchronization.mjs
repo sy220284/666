@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const apiRoot = 'https://api.github.com';
 const fullSha = /^[0-9a-f]{40}$/iu;
+const integrationBranches = new Set(['work', 'governance']);
 
 async function api(pathname, options = {}, accepted = []) {
   const response = await globalThis.fetch(new globalThis.URL(pathname, apiRoot), {
@@ -25,13 +26,21 @@ async function api(pathname, options = {}, accepted = []) {
   return response.ok && body ? JSON.parse(body) : null;
 }
 
-export function synchronizationDecision({ mainSha, workSha, sourceHeadSha, openPulls }) {
+export function synchronizationDecision({
+  mainSha,
+  workSha,
+  sourceHeadSha,
+  openPulls,
+  branchName = 'work',
+}) {
   if (!fullSha.test(mainSha ?? '')) return { action: 'blocked', reason: 'invalid-main-sha' };
-  if (openPulls > 0) return { action: 'blocked', reason: 'new-work-pull-request-open' };
-  if (workSha === null) return { action: 'create', reason: 'work-missing' };
-  if (!fullSha.test(workSha ?? '')) return { action: 'blocked', reason: 'invalid-work-sha' };
+  if (openPulls > 0) return { action: 'blocked', reason: `new-${branchName}-pull-request-open` };
+  if (workSha === null) return { action: 'create', reason: `${branchName}-missing` };
+  if (!fullSha.test(workSha ?? '')) return { action: 'blocked', reason: `invalid-${branchName}-sha` };
   if (workSha === mainSha) return { action: 'keep', reason: 'already-synchronized' };
-  if (workSha !== sourceHeadSha) return { action: 'blocked', reason: 'work-advanced-after-merge' };
+  if (workSha !== sourceHeadSha) {
+    return { action: 'blocked', reason: `${branchName}-advanced-after-merge` };
+  }
   return { action: 'reset', reason: 'verified-squash-complete' };
 }
 
@@ -39,7 +48,7 @@ export function synchronizationRequest(event) {
   const run = event?.workflow_run;
   if (run) {
     if (run.name !== 'Main Verification' || run.conclusion !== 'success') {
-      throw new Error('Work synchronization requires a successful Main Verification workflow_run');
+      throw new Error('Branch synchronization requires a successful Main Verification workflow_run');
     }
     if (!fullSha.test(run.head_sha ?? '')) {
       throw new Error('Main Verification workflow_run must provide a full head SHA');
@@ -56,13 +65,13 @@ export function synchronizationRequest(event) {
   const sourcePr = Number.parseInt(event?.inputs?.source_pr ?? '', 10);
   const sourceHeadSha = event?.inputs?.source_head_sha;
   if (!fullSha.test(mainSha ?? '')) {
-    throw new Error('Manual work synchronization requires expected_sha');
+    throw new Error('Manual branch synchronization requires expected_sha');
   }
   if (!Number.isSafeInteger(sourcePr) || sourcePr < 1) {
-    throw new Error('Manual work synchronization requires source_pr');
+    throw new Error('Manual branch synchronization requires source_pr');
   }
   if (!fullSha.test(sourceHeadSha ?? '')) {
-    throw new Error('Manual work synchronization requires source_head_sha');
+    throw new Error('Manual branch synchronization requires source_head_sha');
   }
   return {
     mode: 'workflow-dispatch',
@@ -72,21 +81,23 @@ export function synchronizationRequest(event) {
   };
 }
 
-export function assertSynchronizedWorkRef(workRef, mainSha) {
-  const finalWorkSha = workRef?.object?.sha;
-  if (!fullSha.test(finalWorkSha ?? '')) {
-    throw new Error('Work synchronization postcondition could not read the final work SHA');
+export function assertSynchronizedWorkRef(workRef, mainSha, branchName = 'work') {
+  const finalBranchSha = workRef?.object?.sha;
+  if (!fullSha.test(finalBranchSha ?? '')) {
+    throw new Error(`Branch synchronization postcondition could not read the final ${branchName} SHA`);
   }
-  if (finalWorkSha !== mainSha) {
-    throw new Error(`Work synchronization postcondition failed: work=${finalWorkSha}, main=${mainSha}`);
+  if (finalBranchSha !== mainSha) {
+    throw new Error(
+      `Branch synchronization postcondition failed: ${branchName}=${finalBranchSha}, main=${mainSha}`,
+    );
   }
-  return finalWorkSha;
+  return finalBranchSha;
 }
 
 export async function waitForSynchronizedWorkRef(
   readWorkRef,
   mainSha,
-  { attempts = 20, intervalMs = 500 } = {},
+  { attempts = 20, intervalMs = 500, branchName = 'work' } = {},
 ) {
   if (!Number.isSafeInteger(attempts) || attempts < 1) throw new Error('attempts must be positive');
   if (!Number.isSafeInteger(intervalMs) || intervalMs < 0) {
@@ -95,10 +106,10 @@ export async function waitForSynchronizedWorkRef(
   let last = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     last = await readWorkRef();
-    if (last?.object?.sha === mainSha) return assertSynchronizedWorkRef(last, mainSha);
+    if (last?.object?.sha === mainSha) return assertSynchronizedWorkRef(last, mainSha, branchName);
     if (attempt < attempts) await delay(intervalMs);
   }
-  return assertSynchronizedWorkRef(last, mainSha);
+  return assertSynchronizedWorkRef(last, mainSha, branchName);
 }
 
 function hasSuccessfulMainVerification(status) {
@@ -134,45 +145,49 @@ async function main() {
     (pull) =>
       pull.merged_at &&
       pull.base?.ref === 'main' &&
-      pull.head?.ref === 'work' &&
+      integrationBranches.has(pull.head?.ref) &&
       (request.sourcePr === null || pull.number === request.sourcePr) &&
       (request.sourceHeadSha === null || pull.head?.sha === request.sourceHeadSha),
   );
   if (!source || !fullSha.test(source.head?.sha ?? '')) {
-    throw new Error('Cannot resolve the merged work pull request for the verified main commit');
+    throw new Error('Cannot resolve the merged work/governance pull request for the verified main commit');
   }
-  const workRef = await api(`/repos/${owner}/${repo}/git/ref/heads/work`, {}, [404]);
+
+  const sourceBranch = source.head.ref;
+  const sourceRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${sourceBranch}`, {}, [404]);
   const openPulls = await api(
-    `/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:work&per_page=100`,
+    `/repos/${owner}/${repo}/pulls?state=open&base=main&head=${owner}:${sourceBranch}&per_page=100`,
   );
   const decision = synchronizationDecision({
     mainSha,
-    workSha: workRef?.object?.sha ?? null,
+    workSha: sourceRef?.object?.sha ?? null,
     sourceHeadSha: source.head.sha,
     openPulls: openPulls.length,
+    branchName: sourceBranch,
   });
   if (decision.action === 'blocked') {
-    throw new Error(`Work synchronization blocked: ${decision.reason}`);
+    throw new Error(`Branch synchronization blocked: ${decision.reason}`);
   }
   if (decision.action === 'create') {
     await api(`/repos/${owner}/${repo}/git/refs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ref: 'refs/heads/work', sha: mainSha }),
+      body: JSON.stringify({ ref: `refs/heads/${sourceBranch}`, sha: mainSha }),
     });
   } else if (decision.action === 'reset') {
-    await api(`/repos/${owner}/${repo}/git/refs/heads/work`, {
+    await api(`/repos/${owner}/${repo}/git/refs/heads/${sourceBranch}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sha: mainSha, force: true }),
     });
   }
 
-  let finalWorkSha;
+  let finalBranchSha;
   try {
-    finalWorkSha = await waitForSynchronizedWorkRef(
-      () => api(`/repos/${owner}/${repo}/git/ref/heads/work`),
+    finalBranchSha = await waitForSynchronizedWorkRef(
+      () => api(`/repos/${owner}/${repo}/git/ref/heads/${sourceBranch}`),
       mainSha,
+      { branchName: sourceBranch },
     );
   } catch (error) {
     await writeReport(output, 'failure.json', {
@@ -180,6 +195,7 @@ async function main() {
       mainSha,
       sourcePr: source.number,
       sourceHeadSha: source.head.sha,
+      sourceBranch,
       decision,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -191,10 +207,13 @@ async function main() {
     mainSha,
     sourcePr: source.number,
     sourceHeadSha: source.head.sha,
-    finalWorkSha,
+    sourceBranch,
+    finalBranchSha,
     decision,
   });
-  console.log(`Work synchronization ${decision.action}: ${decision.reason}; postcondition passed.`);
+  console.log(
+    `${sourceBranch} synchronization ${decision.action}: ${decision.reason}; postcondition passed.`,
+  );
 }
 
 function selfTest() {
@@ -221,6 +240,16 @@ function selfTest() {
     'blocked',
   );
   assert.deepEqual(
+    synchronizationDecision({
+      mainSha: a,
+      workSha: null,
+      sourceHeadSha: b,
+      openPulls: 0,
+      branchName: 'governance',
+    }),
+    { action: 'create', reason: 'governance-missing' },
+  );
+  assert.deepEqual(
     synchronizationRequest({
       workflow_run: { name: 'Main Verification', conclusion: 'success', head_sha: a },
     }),
@@ -233,11 +262,12 @@ function selfTest() {
     { mode: 'workflow-dispatch', mainSha: a, sourcePr: 301, sourceHeadSha: b },
   );
   assert.equal(assertSynchronizedWorkRef({ object: { sha: a } }, a), a);
+  assert.equal(assertSynchronizedWorkRef({ object: { sha: a } }, a, 'governance'), a);
   assert.throws(
     () => assertSynchronizedWorkRef({ object: { sha: b } }, a),
     /postcondition failed/u,
   );
-  console.log('Work synchronization self-test passed.');
+  console.log('Integration branch synchronization self-test passed.');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

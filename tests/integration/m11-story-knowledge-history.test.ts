@@ -67,7 +67,7 @@ describe('M11-04 故事知识历史分页', () => {
       expect(secondPage.nextBeforeVersionId).toBeNull();
 
       const allItems = [...firstPage.items, ...secondPage.items];
-      expect(new Set(allItems.map((item) => item.versionId))).toHaveLength(3);
+      expect(new Set(allItems.map((item) => item.versionId)).size).toBe(3);
       expect(allItems.map((item) => item.versionId)).toEqual(
         expect.arrayContaining([seeded.version.versionId, second.versionId, third.versionId]),
       );

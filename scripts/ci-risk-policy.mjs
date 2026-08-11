@@ -1,33 +1,30 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
-const matrixPath = path.join(root, ".github", "governance", "risk-matrix.json");
+const matrixPath = path.join(root, '.github', 'governance', 'risk-matrix.json');
 
 function normalized(file) {
-  return String(file ?? "")
-    .replaceAll("\\", "/")
+  return String(file ?? '')
+    .replaceAll('\\', '/')
     .trim();
 }
 
 function compilePatterns(patterns, label) {
-  if (!Array.isArray(patterns))
-    throw new Error(`${label} must be an array of regex strings`);
+  if (!Array.isArray(patterns)) throw new Error(`${label} must be an array of regex strings`);
   return patterns.map((pattern) => {
-    if (typeof pattern !== "string" || pattern.length === 0) {
+    if (typeof pattern !== 'string' || pattern.length === 0) {
       throw new Error(`${label} contains an invalid pattern`);
     }
-    return new RegExp(pattern, "u");
+    return new RegExp(pattern, 'u');
   });
 }
 
 export function loadRiskMatrix(filePath = matrixPath) {
-  const matrix = JSON.parse(readFileSync(filePath, "utf8"));
+  const matrix = JSON.parse(readFileSync(filePath, 'utf8'));
   if (matrix?.schemaVersion !== 1 || !matrix.routes || !matrix.fullQuality) {
-    throw new Error(
-      "Risk matrix must use schemaVersion 1 with routes and fullQuality",
-    );
+    throw new Error('Risk matrix must use schemaVersion 1 with routes and fullQuality');
   }
   const compiledRoutes = {};
   for (const [name, route] of Object.entries(matrix.routes)) {
@@ -38,7 +35,7 @@ export function loadRiskMatrix(filePath = matrixPath) {
     compiledRoutes,
     compiledLightweightOnly: compilePatterns(
       matrix.fullQuality.lightweightOnly,
-      "fullQuality.lightweightOnly",
+      'fullQuality.lightweightOnly',
     ),
   };
 }
@@ -51,27 +48,22 @@ export function riskPlan(files = [], matrix = loadRiskMatrix()) {
     );
   const fullSuite =
     changed.length === 0 ||
-    !changed.every((file) =>
-      matrix.compiledLightweightOnly.some((pattern) => pattern.test(file)),
-    );
+    !changed.every((file) => matrix.compiledLightweightOnly.some((pattern) => pattern.test(file)));
 
   return {
     fullSuite,
-    packageSmoke: routeEnabled("packageSmoke"),
-    toolchainExport: routeEnabled("toolchainExport"),
-    dependencyAudit: routeEnabled("dependencyAudit"),
-    applicationSecurity: routeEnabled("applicationSecurity"),
-    performance: routeEnabled("performance"),
-    uiAcceptance: routeEnabled("uiAcceptance"),
-    windowsIme: routeEnabled("windowsIme"),
-    governanceMeta: routeEnabled("governanceMeta"),
+    packageSmoke: routeEnabled('packageSmoke'),
+    toolchainExport: routeEnabled('toolchainExport'),
+    dependencyAudit: routeEnabled('dependencyAudit'),
+    applicationSecurity: routeEnabled('applicationSecurity'),
+    performance: routeEnabled('performance'),
+    uiAcceptance: routeEnabled('uiAcceptance'),
+    windowsIme: routeEnabled('windowsIme'),
+    governanceMeta: routeEnabled('governanceMeta'),
   };
 }
 
-export function securityPerformanceRoute(
-  files = [],
-  matrix = loadRiskMatrix(),
-) {
+export function securityPerformanceRoute(files = [], matrix = loadRiskMatrix()) {
   const plan = riskPlan(files, matrix);
   return {
     dependencyAudit: plan.dependencyAudit,
@@ -81,7 +73,7 @@ export function securityPerformanceRoute(
 }
 
 async function stdinText() {
-  let input = "";
+  let input = '';
   for await (const chunk of process.stdin) input += chunk;
   return input;
 }
@@ -91,19 +83,19 @@ async function main() {
   const input = await stdinText();
   const plan = riskPlan(input.split(/\r?\n/u));
   const keyByMode = {
-    "full-suite": "fullSuite",
-    "package-smoke": "packageSmoke",
-    "toolchain-export": "toolchainExport",
-    "dependency-audit": "dependencyAudit",
-    "application-security": "applicationSecurity",
-    performance: "performance",
-    "ui-acceptance": "uiAcceptance",
-    "windows-ime": "windowsIme",
-    "governance-meta": "governanceMeta",
+    'full-suite': 'fullSuite',
+    'package-smoke': 'packageSmoke',
+    'toolchain-export': 'toolchainExport',
+    'dependency-audit': 'dependencyAudit',
+    'application-security': 'applicationSecurity',
+    performance: 'performance',
+    'ui-acceptance': 'uiAcceptance',
+    'windows-ime': 'windowsIme',
+    'governance-meta': 'governanceMeta',
   };
   const key = keyByMode[mode];
-  if (!key) throw new Error(`Unknown CI risk route: ${mode ?? "missing"}`);
-  process.stdout.write(plan[key] ? "true\n" : "false\n");
+  if (!key) throw new Error(`Unknown CI risk route: ${mode ?? 'missing'}`);
+  process.stdout.write(plan[key] ? 'true\n' : 'false\n');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

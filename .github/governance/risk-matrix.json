@@ -3,11 +3,7 @@
   "description": "Single machine-readable routing authority for WorldForge PR risk and validation scope.",
   "routes": {
     "dependencyAudit": {
-      "any": [
-        "^package\\.json$",
-        "^pnpm-lock\\.yaml$",
-        "^pnpm-workspace\\.yaml$"
-      ]
+      "any": ["^package\\.json$", "^pnpm-lock\\.yaml$", "^pnpm-workspace\\.yaml$"]
     },
     "applicationSecurity": {
       "any": [

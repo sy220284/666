@@ -1,9 +1,9 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
-const expectedSpdx = "MIT";
+const expectedSpdx = 'MIT';
 
 export function validateLicenseMetadata({ packageJson, licenseSource }) {
   const errors = [];
@@ -12,25 +12,22 @@ export function validateLicenseMetadata({ packageJson, licenseSource }) {
       `package.json license must be ${expectedSpdx}, found ${String(packageJson?.license)}`,
     );
   }
-  if (
-    typeof licenseSource !== "string" ||
-    !licenseSource.trimStart().startsWith("MIT License")
-  ) {
-    errors.push("Root LICENSE must contain the MIT License text");
+  if (typeof licenseSource !== 'string' || !licenseSource.trimStart().startsWith('MIT License')) {
+    errors.push('Root LICENSE must contain the MIT License text');
   }
   return errors;
 }
 
 export async function runLicensePolicy(repositoryRoot = root) {
   const [packageSource, licenseSource] = await Promise.all([
-    readFile(path.join(repositoryRoot, "package.json"), "utf8"),
-    readFile(path.join(repositoryRoot, "LICENSE"), "utf8"),
+    readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'LICENSE'), 'utf8'),
   ]);
   const errors = validateLicenseMetadata({
     packageJson: JSON.parse(packageSource),
     licenseSource,
   });
-  if (errors.length > 0) throw new Error(errors.join("\n"));
+  if (errors.length > 0) throw new Error(errors.join('\n'));
   console.log(`License metadata is consistent: ${expectedSpdx}.`);
 }
 

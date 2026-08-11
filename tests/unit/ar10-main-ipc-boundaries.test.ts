@@ -48,7 +48,7 @@ describe('AR-10 Main IPC boundaries', () => {
     expect(guard).toContain('projectOperationKind(operation.operation)');
     expect(guard).not.toContain('QUERY_PROJECT_OPERATIONS');
     expect(semantics).toContain('PROJECT_OPERATION_SEMANTICS');
-    expect(semantics).toContain('Record<CoreProjectOperation');
+    expect(semantics).toContain('satisfies Record<ProjectOperationName, CoreOperationKind>');
     expect(guard).toContain('invokeChannels.add(channel)');
     expect(guard).toContain('invokeChannels.clear()');
   });

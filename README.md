@@ -892,5 +892,3 @@ README 只描述当前产品能力；具体工程治理状态以任务索引和 
 ## License
 
 仓库根目录 [`LICENSE`](./LICENSE) 当前采用 **MIT License**。
-
-> 注意：根 `package.json` 当前仍声明 `AGPL-3.0-only`。这是仓库现有许可证元数据不一致，README 以实际 `LICENSE` 文件为准；后续应单独统一该元数据。

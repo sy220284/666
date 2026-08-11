@@ -8,6 +8,7 @@ import { DatabaseFoundationError } from './database/index.js';
 import { DraftServiceError } from './draft.js';
 import { EntityCanonServiceError } from './entity-canon.js';
 import { ImportExportServiceError } from './import-export.js';
+import { NarrativePlanningServiceError } from './narrative-planning.js';
 import { ProjectPlanningError } from './project-planning.js';
 import { ProjectStructureError } from './project-structure.js';
 import { ProjectWorkspaceError } from './project-workspace.js';
@@ -15,6 +16,7 @@ import { RecoveryServiceError } from './recovery.js';
 import { RhythmServiceError } from './rhythm.js';
 import { SceneBeatServiceError } from './scene-beat.js';
 import { SearchToolsServiceError } from './search-tools.js';
+import { StateProposalServiceError } from './state-proposal.js';
 import { ValidationServiceError } from './validation.js';
 import { VersionServiceError } from './version.js';
 
@@ -89,6 +91,25 @@ export function projectOperationError(error: unknown): ErrorCode {
     if (error.code === 'VALIDATION_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
     if (error.code === 'VALIDATION_INVALID') return 'COMMON_INVALID_INPUT_001';
     return 'COMMON_CONFLICT_003';
+  }
+  if (error instanceof NarrativePlanningServiceError) {
+    if (error.code === 'NARRATIVE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'NARRATIVE_INVALID' || error.code === 'NARRATIVE_AUTHOR_REQUIRED') {
+      return 'COMMON_INVALID_INPUT_001';
+    }
+    if (error.code === 'NARRATIVE_CONFLICT') return 'COMMON_CONFLICT_003';
+    return 'COMMON_INTERNAL_999';
+  }
+  if (error instanceof StateProposalServiceError) {
+    if (error.code === 'STATE_PROPOSAL_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (
+      error.code === 'STATE_PROPOSAL_INVALID' ||
+      error.code === 'STATE_PROPOSAL_AUTHOR_REQUIRED'
+    ) {
+      return 'COMMON_INVALID_INPUT_001';
+    }
+    if (error.code === 'STATE_PROPOSAL_CONFLICT') return 'COMMON_CONFLICT_003';
+    return 'COMMON_INTERNAL_999';
   }
   if (error instanceof ContinuityServiceError) {
     if (error.code === 'CONTINUITY_NOT_FOUND') return 'COMMON_NOT_FOUND_002';

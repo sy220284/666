@@ -1,6 +1,6 @@
 # M11-02 统一 AI 审阅底座
 
-> 状态：In Progress
+> 状态：Implemented
 > 里程碑：M11 产品体验与 AI 创作协同
 > 优先级：P0
 > 执行分支：`work`
@@ -169,18 +169,20 @@ pnpm test:e2e
 
 保存到：`docs/test-evidence/M11-02/`
 
+冻结实现：`dcfeffa9a6fd85177d5838e45311247426e4c516`。Quality `31442939579`、Security `31442939335`、Performance `31442939355` 全部通过；Electron E2E 33/33 通过。
+
 ## 回滚策略
 
 本任务无数据库迁移。若出现问题，可回退 ReviewProposal 读模型、适配器和 AI审阅 UI，现有 StateProposal 数据与写入链不需要回滚。
 
 ## 完成条件
 
-- [ ] 建立统一 ReviewProposal / AIReviewCatalog 读模型。
-- [ ] 当前 StateProposal 可完整适配到统一审阅模型。
-- [ ] 用户入口统一为“AI审阅”。
-- [ ] 待确认/已处理/来源变化汇总和筛选可用。
-- [ ] 作者裁决、来源失效、只读保护保持不变。
-- [ ] 无数据库迁移和第二套权威写入路径。
-- [ ] 单元、集成、Coverage、E2E 全部通过。
-- [ ] Schema 2 Evidence 收口并绑定来源 PR。
+- [x] 建立统一 ReviewProposal / AIReviewCatalog 读模型。
+- [x] 当前 StateProposal 可完整适配到统一审阅模型。
+- [x] 用户入口统一为“AI审阅”。
+- [x] 待确认/已处理/来源变化汇总和筛选可用。
+- [x] 作者裁决、来源失效、只读保护保持不变。
+- [x] 无数据库迁移和第二套权威写入路径。
+- [x] 单元、集成、Coverage、E2E 全部通过。
+- [x] Schema 2 Evidence 收口并绑定来源 PR。
 - [ ] 合并后 `main-verification` 与 `task-verification/M11-02` 成功。

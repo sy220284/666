@@ -12,10 +12,16 @@ export function validateSingleWorkState(authorization) {
   if (authorization?.mode !== 'single-work-pr') errors.push('TASK_AUTHORIZATION mode must be single-work-pr');
   if (authorization?.baseBranch !== 'main') errors.push('baseBranch must be main');
   if (authorization?.workBranch !== 'work') errors.push('workBranch must be work');
+  if (authorization?.governanceBranch !== 'governance') {
+    errors.push('governanceBranch must be governance');
+  }
   if (authorization?.allowDirectMainCommits !== false) errors.push('Direct main commits must be disabled');
-  if (authorization?.allowAdditionalBranches !== false) errors.push('Additional branches must be disabled');
+  if (authorization?.allowAdditionalBranches !== false) errors.push('Undeclared branches must be disabled');
   if (authorization?.maxOpenWorkPullRequests !== 1) {
     errors.push('Exactly one open work PR must be allowed');
+  }
+  if (authorization?.maxOpenGovernancePullRequests !== 1) {
+    errors.push('Exactly one open governance PR must be allowed');
   }
   if (authorization?.mainWriteMode !== 'serialized') errors.push('mainWriteMode must be serialized');
   if (authorization?.mergeMethod !== 'squash') errors.push('mergeMethod must be squash');
@@ -24,6 +30,9 @@ export function validateSingleWorkState(authorization) {
   }
   if (authorization?.workSynchronization !== 'verified-reset') {
     errors.push('workSynchronization must be verified-reset');
+  }
+  if (authorization?.governanceSynchronization !== 'verified-reset') {
+    errors.push('governanceSynchronization must be verified-reset');
   }
   return errors;
 }
@@ -36,7 +45,7 @@ async function validate() {
   const authorization = await loadAuthorization();
   const errors = validateSingleWorkState(authorization);
   if (errors.length > 0) throw new Error(errors.join('\n'));
-  console.log('Single work task authorization is valid.');
+  console.log('Task authorization is valid for work and governance integration lanes.');
   return authorization;
 }
 
@@ -48,8 +57,10 @@ async function status() {
         mode: authorization.mode,
         baseBranch: authorization.baseBranch,
         workBranch: authorization.workBranch,
+        governanceBranch: authorization.governanceBranch,
         verificationClosure: authorization.verificationClosure,
         workSynchronization: authorization.workSynchronization,
+        governanceSynchronization: authorization.governanceSynchronization,
       },
       null,
       2,
@@ -65,7 +76,7 @@ async function main() {
     await status();
   } else {
     throw new Error(
-      `${command} is not supported. Update docs/tasks/runtime/<TASK-ID>.json on work and use the single work pull request lifecycle.`,
+      `${command} is not supported. Product tasks use work; repository governance uses governance; both merge only through main PR gates.`,
     );
   }
 }

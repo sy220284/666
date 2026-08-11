@@ -81,6 +81,13 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     'pnpm check:governance',
   ]);
 
+  const reliabilityCommand = manifest.scripts?.['test:reliability'] ?? '';
+  requireTokens(violations, 'package.json#test:reliability', reliabilityCommand, [
+    'pnpm test:prepare',
+    'vitest run tests/reliability',
+    '--no-file-parallelism',
+  ]);
+
   requireTokens(violations, 'eslint.config.mjs', eslintConfig, [
     "'no-unused-vars': ['error', unusedVariablesOptions]",
     "'@typescript-eslint/no-unused-vars': ['error', unusedVariablesOptions]",
@@ -175,6 +182,8 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     'uses: ./.github/workflows/toolchain-export.yml',
     "github.event.pull_request.head.ref == 'work'",
     'ci-risk-policy.mjs toolchain-export',
+    'ci-risk-policy.mjs reliability',
+    'reliability_suite:',
   ]);
   if (
     !Array.isArray(riskMatrix?.routes?.toolchainExport?.any) ||
@@ -185,6 +194,9 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     violations.push(
       'CI_RISK_MATRIX.json: toolchainExport must cover CURRENT_WORKSPACE_TOOLCHAIN authority files',
     );
+  }
+  if (!Array.isArray(riskMatrix?.routes?.reliability?.any)) {
+    violations.push('CI_RISK_MATRIX.json: reliability route is required');
   }
 
   requireTokens(violations, '.editorconfig', editorConfig, [
@@ -208,6 +220,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     fileLengthGate: false,
     reusableToolchainExport: true,
     unifiedRiskRouting: true,
+    reliabilityGate: true,
   };
 }
 
@@ -215,6 +228,6 @@ const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   const result = await inspectCodeQualityPolicy();
   console.log(
-    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, reusable toolchain export enabled, unified risk routing enabled, file length non-blocking.`,
+    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, reusable toolchain export enabled, unified risk routing enabled, Reliability gate enabled, file length non-blocking.`,
   );
 }

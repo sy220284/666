@@ -98,7 +98,7 @@ jobs:
           echo "run=$run" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         if: ${{ steps.route.outputs.run == 'true' }}
-      - uses: actions/setup-node@249970729cb0ef3589644e2896455e5dc5ba9c38 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: ${{ steps.route.outputs.run == 'true' }}
         with:
           node-version: 24.18.1
@@ -143,7 +143,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e289645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24.18.1
       - name: Clean tree before repository secret scan
@@ -225,7 +225,7 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           if [ "${{ steps.route.outputs.run }}" = true ]; then
-            pn`m test:security 2>&1 | tee test-results/ci/application-security.log
+            pnpm test:security 2>&1 | tee test-results/ci/application-security.log
           else
             echo "Application security suite skipped because no runtime or security-authority input changed." |
               tee test-results/ci/application-security.log

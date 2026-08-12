@@ -159,11 +159,33 @@ const TimelineEventConversionDraftSchema = TimelineEventSaveInputSchema.omit({
   authority: true,
   eventId: true,
 });
-const ForeshadowingConversionDraftSchema = ForeshadowingSaveInputSchema.omit({
-  projectId: true,
-  authority: true,
-  foreshadowingId: true,
-});
+const ForeshadowingConversionDraftSchema = z
+  .strictObject(ForeshadowingSaveInputSchema.shape)
+  .omit({
+    projectId: true,
+    authority: true,
+    foreshadowingId: true,
+  })
+  .superRefine((value, context) => {
+    const relationKeys = value.relations.map(
+      (relation) => `${relation.targetForeshadowingId}:${relation.kind}`,
+    );
+    if (new Set(relationKeys).size !== relationKeys.length) {
+      context.addIssue({
+        code: 'custom',
+        path: ['relations'],
+        message: 'Relations must be unique.',
+      });
+    }
+    const chapterKeys = value.chapterLinks.map((link) => `${link.chapterId}:${link.role}`);
+    if (new Set(chapterKeys).size !== chapterKeys.length) {
+      context.addIssue({
+        code: 'custom',
+        path: ['chapterLinks'],
+        message: 'Chapter links must be unique.',
+      });
+    }
+  });
 
 export const IdeaConversionTargetSchema = z.discriminatedUnion('targetType', [
   z.strictObject({

@@ -2,7 +2,13 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
@@ -28,7 +34,7 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
-async function addChapter(page: Awaited<ReturnType<ElectronApplication['firstWindow']>>, title: string) {
+async function addChapter(page: Page, title: string): Promise<void> {
   await page.locator('[data-add-chapter]').first().click();
   const dialog = page.locator('[data-structure-dialog]');
   await expect(dialog).toBeVisible();

@@ -4,6 +4,7 @@ import { ContinuityService } from './continuity.js';
 import { CoordinatedImportExportService } from './coordinated-import-export.js';
 import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
+import { IdeaCapsuleService } from './idea-capsule-service.js';
 import { ProjectContinuationService } from './project-continuation.js';
 import { ProjectPlanningService } from './project-planning.js';
 import { ProjectStructureService } from './project-structure.js';
@@ -40,6 +41,7 @@ export function createUtilityProjectServiceContainer(
     entityCanon: new EntityCanonService(projectWorkspace),
     continuity: new ContinuityService(projectWorkspace),
     storyKnowledge: new StoryKnowledgeProjectionService(projectWorkspace),
+    ideas: new IdeaCapsuleService(projectWorkspace),
     structureOperations: new ReferenceAwareStructureOperationService(projectWorkspace),
     drafts: new DraftService(projectWorkspace),
     candidates,

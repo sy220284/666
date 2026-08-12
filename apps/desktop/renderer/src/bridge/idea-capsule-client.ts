@@ -1,0 +1,51 @@
+import type { CommandResult, CoreIdeaOperation, IdeaOperationData } from '@worldforge/contracts';
+
+import {
+  BridgeRequestCoordinator,
+  type BridgeRequestOptions,
+  type BridgeRequestOutcome,
+} from './request-lifecycle.js';
+
+const coordinator = new BridgeRequestCoordinator();
+
+export function runIdeaCapsuleOperation(
+  operation: CoreIdeaOperation,
+  options: BridgeRequestOptions = {},
+): Promise<BridgeRequestOutcome<IdeaOperationData>> {
+  return coordinator.run(
+    options.requestKey ?? ideaRequestKey(operation),
+    async () =>
+      (await window.worldforgeIdeaCapsule.operate(operation)) as CommandResult<IdeaOperationData>,
+    options,
+  );
+}
+
+export function cancelIdeaCapsuleRequests(): void {
+  coordinator.cancelAll();
+}
+
+function ideaRequestKey(operation: CoreIdeaOperation): string {
+  switch (operation.operation) {
+    case 'idea.list': {
+      const input = operation.input;
+      return [
+        'idea.list',
+        input.projectId,
+        input.status ?? 'all',
+        input.cursor?.updatedAt ?? 'first',
+        input.cursor?.id ?? 'first',
+        input.limit ?? 50,
+      ].join(':');
+    }
+    case 'idea.get':
+      return `idea.get:${operation.input.projectId}:${operation.input.ideaId}`;
+    case 'idea.create':
+      return `idea.create:${operation.input.projectId}:${operation.input.sourceContext.scopeType}:${operation.input.sourceContext.scopeId}`;
+    case 'idea.setStatus':
+      return `idea.setStatus:${operation.input.projectId}:${operation.input.ideaId}`;
+    case 'idea.previewConversion':
+      return `idea.previewConversion:${operation.input.projectId}:${operation.input.ideaId}`;
+    case 'idea.applyConversion':
+      return `idea.applyConversion:${operation.input.projectId}:${operation.input.ideaId}:${operation.input.previewHash}`;
+  }
+}

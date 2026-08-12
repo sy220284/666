@@ -2,6 +2,9 @@ import {
   ChapterCandidateJsonSchema,
   ChapterCandidateOutputSchema,
   ChapterPromptInputSchema,
+  IdeaExploreOutputJsonSchema,
+  IdeaExploreOutputSchema,
+  IdeaExplorePromptInputSchema,
   MergePromptInputSchema,
   ProductionChapterPromptInputSchema,
   ProductionSkeletonPromptInputSchema,
@@ -21,6 +24,8 @@ import {
   StateExtractionPromptInputSchema,
   type ChapterCandidateOutput,
   type ChapterPromptInput,
+  type IdeaExploreOutput,
+  type IdeaExplorePromptInput,
   type MergePromptInput,
   type ProductionChapterPromptInput,
   type ProductionSkeletonPromptInput,
@@ -50,6 +55,7 @@ export const REWRITE_PROMPT_ID = 'worldforge.rewrite' as const;
 export const MERGE_PROMPT_ID = 'worldforge.merge' as const;
 export const VALIDATE_PROMPT_ID = 'worldforge.validate' as const;
 export const STATE_EXTRACT_PROMPT_ID = 'worldforge.state-extract' as const;
+export const IDEA_EXPLORE_PROMPT_ID = 'worldforge.idea-explore' as const;
 
 export const SKELETON_SPIKE_PROMPT_IDENTITY = {
   promptId: SKELETON_SPIKE_PROMPT_ID,
@@ -100,6 +106,11 @@ export const STATE_EXTRACT_PROMPT_IDENTITY = {
   promptId: STATE_EXTRACT_PROMPT_ID,
   version: 2,
   taskType: 'state_extract',
+} as const satisfies PromptIdentity;
+export const IDEA_EXPLORE_PROMPT_IDENTITY = {
+  promptId: IDEA_EXPLORE_PROMPT_ID,
+  version: 1,
+  taskType: 'idea_explore',
 } as const satisfies PromptIdentity;
 
 export const skeletonSpikePrompt = definePrompt<SkeletonPromptInput, SkeletonCandidateOutput>(
@@ -330,6 +341,43 @@ export const stateExtractPrompt = extractionPrompt(
   '你是小说设定整理员。只从给定Final Version提出人物与世界状态、知情变化、时间线事件与依赖、人物关系变化、伏笔进度、计划中的人物成长节点、新人物与世界条目或已存在条目的固定事实建议。每条必须引用正文逻辑块证据，并使用Schema中对应的严格proposalType结构；不得输出previousValue，不得直接修改任何权威状态。',
 );
 
+export const ideaExplorePrompt = definePrompt<IdeaExplorePromptInput, IdeaExploreOutput>(
+  IDEA_EXPLORE_PROMPT_IDENTITY,
+  {
+    inputSchema: IdeaExplorePromptInputSchema,
+    outputSchema: IdeaExploreOutputSchema,
+    supportedModes: ['structured'],
+    build(input): PromptBundle {
+      const validated = IdeaExplorePromptInputSchema.parse(input);
+      return withPromptIdentity(IDEA_EXPLORE_PROMPT_IDENTITY, validated.constraintHash, {
+        system:
+          '你是中文长篇小说灵感编辑。根据作者指令、作品上下文、灵感类型、发散程度和展开深度提出可独立取舍的灵感；不得把建议写入权威设定或正文；只输出符合Schema的灵感卡候选。',
+        messages: [
+          {
+            role: 'user',
+            content: JSON.stringify({
+              projectId: validated.projectId,
+              scopeType: validated.scopeType,
+              scopeId: validated.scopeId,
+              chapterId: validated.chapterId,
+              ideaKind: validated.ideaKind,
+              divergenceLevel: validated.divergenceLevel,
+              depthLevel: validated.depthLevel,
+              authorInstruction: validated.authorInstruction,
+              count: validated.count,
+              context: validated.context,
+            }),
+          },
+        ],
+        structuredOutput: {
+          name: 'idea_explore_v1',
+          schema: IdeaExploreOutputJsonSchema,
+        },
+      });
+    },
+  },
+);
+
 export const promptRegistry = [
   skeletonSpikePrompt,
   chapterSpikePrompt,
@@ -341,6 +389,7 @@ export const promptRegistry = [
   validatePrompt,
   stateExtractPromptV1,
   stateExtractPrompt,
+  ideaExplorePrompt,
 ] as const;
 
 type RegisteredPrompt = (typeof promptRegistry)[number];

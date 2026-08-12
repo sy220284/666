@@ -4,6 +4,16 @@ import type { RendererRouteId, RendererSelectionState } from '../state/ui-state-
 
 export type AuthorNavigationTarget =
   | {
+      readonly type: 'project-brief';
+      readonly projectId: string;
+      readonly briefId: string;
+    }
+  | {
+      readonly type: 'plot-node';
+      readonly projectId: string;
+      readonly plotNodeId: string;
+    }
+  | {
       readonly type: 'draft-block';
       readonly projectId: string;
       readonly chapterId: string;
@@ -70,6 +80,38 @@ export function authorNavigationTargetBelongsToProject(
 export function resolveAuthorNavigationTarget(
   target: AuthorNavigationTarget,
 ): AuthorNavigationResolution {
+  if (target.type === 'project-brief') {
+    return {
+      route: 'planning',
+      selection: {
+        projectId: target.projectId,
+        entityId: null,
+        chapterId: null,
+        logicalBlockId: null,
+        versionId: null,
+        sceneBeatId: null,
+        issueId: null,
+      },
+      filters: { 'navigation.projectBriefId': target.briefId },
+    };
+  }
+
+  if (target.type === 'plot-node') {
+    return {
+      route: 'planning',
+      selection: {
+        projectId: target.projectId,
+        entityId: null,
+        chapterId: null,
+        logicalBlockId: null,
+        versionId: null,
+        sceneBeatId: null,
+        issueId: null,
+      },
+      filters: { 'navigation.plotNodeId': target.plotNodeId },
+    };
+  }
+
   if (target.type === 'entity') {
     return {
       route: 'canon',

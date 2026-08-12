@@ -153,6 +153,83 @@ function assertTransition(current: ForeshadowingStatus, next: ForeshadowingStatu
   }
 }
 
+export function applyForeshadowingSaveInTransaction(
+  connection: DatabaseSync,
+  valid: ForeshadowingSaveInput,
+  now: string,
+  idFactory: () => string,
+): string {
+  assertProject(connection, valid.projectId);
+  validateRevealWindow(
+    connection,
+    valid.projectId,
+    valid.revealFromChapterId,
+    valid.revealByChapterId,
+  );
+  const id = valid.foreshadowingId ?? idFactory();
+  if (valid.foreshadowingId) assertForeshadowing(connection, valid.projectId, id);
+  assertForeshadowingTargets(connection, valid.projectId, id, valid);
+  assertForeshadowingDependencyGraph(connection, valid.projectId, id, valid);
+  if (valid.foreshadowingId) {
+    connection
+      .prepare(
+        `UPDATE foreshadowings
+            SET title = ?, description = ?, reveal_from_chapter_id = ?,
+                reveal_by_chapter_id = ?, updated_at = ?
+          WHERE id = ? AND project_id = ?`,
+      )
+      .run(
+        valid.title.trim(),
+        valid.description.trim(),
+        valid.revealFromChapterId,
+        valid.revealByChapterId,
+        now,
+        id,
+        valid.projectId,
+      );
+  } else {
+    connection
+      .prepare(
+        `INSERT INTO foreshadowings(
+           id, project_id, title, description, status,
+           reveal_from_chapter_id, reveal_by_chapter_id, created_at, updated_at
+         ) VALUES(?, ?, ?, ?, 'planned', ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        valid.projectId,
+        valid.title.trim(),
+        valid.description.trim(),
+        valid.revealFromChapterId,
+        valid.revealByChapterId,
+        now,
+        now,
+      );
+  }
+  connection.prepare('DELETE FROM foreshadowing_chapters WHERE foreshadowing_id = ?').run(id);
+  connection
+    .prepare('DELETE FROM foreshadowing_relations WHERE source_foreshadowing_id = ?')
+    .run(id);
+  const insertChapter = connection.prepare(
+    `INSERT INTO foreshadowing_chapters(
+       project_id, foreshadowing_id, chapter_id, role, created_at
+     ) VALUES(?, ?, ?, ?, ?)`,
+  );
+  for (const link of valid.chapterLinks) {
+    insertChapter.run(valid.projectId, id, link.chapterId, link.role, now);
+  }
+  const insertRelation = connection.prepare(
+    `INSERT INTO foreshadowing_relations(
+       project_id, source_foreshadowing_id, target_foreshadowing_id,
+       relation_kind, created_at
+     ) VALUES(?, ?, ?, ?, ?)`,
+  );
+  for (const relation of valid.relations) {
+    insertRelation.run(valid.projectId, id, relation.targetForeshadowingId, relation.kind, now);
+  }
+  return id;
+}
+
 export class ForeshadowingOperations {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
@@ -168,75 +245,12 @@ export class ForeshadowingOperations {
     const valid = ForeshadowingSaveInputSchema.parse(input);
     authorOnly(valid.authority);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      assertProject(connection, valid.projectId);
-      validateRevealWindow(
+      applyForeshadowingSaveInTransaction(
         connection,
-        valid.projectId,
-        valid.revealFromChapterId,
-        valid.revealByChapterId,
+        valid,
+        this.#clock.now().toISOString(),
+        this.#idFactory,
       );
-      const id = valid.foreshadowingId ?? this.#idFactory();
-      if (valid.foreshadowingId) assertForeshadowing(connection, valid.projectId, id);
-      assertForeshadowingTargets(connection, valid.projectId, id, valid);
-      assertForeshadowingDependencyGraph(connection, valid.projectId, id, valid);
-      const now = this.#clock.now().toISOString();
-      if (valid.foreshadowingId) {
-        connection
-          .prepare(
-            `UPDATE foreshadowings
-                SET title = ?, description = ?, reveal_from_chapter_id = ?,
-                    reveal_by_chapter_id = ?, updated_at = ?
-              WHERE id = ? AND project_id = ?`,
-          )
-          .run(
-            valid.title.trim(),
-            valid.description.trim(),
-            valid.revealFromChapterId,
-            valid.revealByChapterId,
-            now,
-            id,
-            valid.projectId,
-          );
-      } else {
-        connection
-          .prepare(
-            `INSERT INTO foreshadowings(
-               id, project_id, title, description, status,
-               reveal_from_chapter_id, reveal_by_chapter_id, created_at, updated_at
-             ) VALUES(?, ?, ?, ?, 'planned', ?, ?, ?, ?)`,
-          )
-          .run(
-            id,
-            valid.projectId,
-            valid.title.trim(),
-            valid.description.trim(),
-            valid.revealFromChapterId,
-            valid.revealByChapterId,
-            now,
-            now,
-          );
-      }
-      connection.prepare('DELETE FROM foreshadowing_chapters WHERE foreshadowing_id = ?').run(id);
-      connection
-        .prepare('DELETE FROM foreshadowing_relations WHERE source_foreshadowing_id = ?')
-        .run(id);
-      const insertChapter = connection.prepare(
-        `INSERT INTO foreshadowing_chapters(
-           project_id, foreshadowing_id, chapter_id, role, created_at
-         ) VALUES(?, ?, ?, ?, ?)`,
-      );
-      for (const link of valid.chapterLinks) {
-        insertChapter.run(valid.projectId, id, link.chapterId, link.role, now);
-      }
-      const insertRelation = connection.prepare(
-        `INSERT INTO foreshadowing_relations(
-           project_id, source_foreshadowing_id, target_foreshadowing_id,
-           relation_kind, created_at
-         ) VALUES(?, ?, ?, ?, ?)`,
-      );
-      for (const relation of valid.relations) {
-        insertRelation.run(valid.projectId, id, relation.targetForeshadowingId, relation.kind, now);
-      }
       return readNarrativePlanningCatalog(connection, {
         projectId: valid.projectId,
         query: '',

@@ -60,6 +60,8 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['candidate_skeleton_revisions', 'preserve'],
   ['generation_input_sources', 'preserve'],
   ['candidate_source_mappings', 'preserve'],
+  ['idea_cards', 'clone-remap'],
+  ['idea_conversions', 'clone-remap'],
   ['state_proposal_batches', 'clone-remap'],
   ['validation_batches', 'clone-remap'],
   ['validation_issues', 'clone-remap'],
@@ -175,6 +177,33 @@ export function prepareProjectClone(database: DatabaseSync, timestamp: string): 
         WHERE status NOT IN ('queued', 'running')
           AND partial_status IN ('available', 'saved')`,
     );
+  }
+}
+
+export function remapProjectScopedDerivedIdentity(
+  database: DatabaseSync,
+  previousProjectId: string,
+  nextProjectId: string,
+): void {
+  const available = new Set(projectCloneTables(database));
+  if (available.has('generation_runs')) {
+    database
+      .prepare(
+        `UPDATE generation_runs
+            SET scope_id = ?
+          WHERE scope_type = 'project' AND scope_id = ?`,
+      )
+      .run(nextProjectId, previousProjectId);
+  }
+  if (available.has('idea_cards')) {
+    database
+      .prepare(
+        `UPDATE idea_cards
+            SET source_context_json = json_set(source_context_json, '$.scopeId', ?)
+          WHERE json_extract(source_context_json, '$.scopeType') = 'project'
+            AND json_extract(source_context_json, '$.scopeId') = ?`,
+      )
+      .run(nextProjectId, previousProjectId);
   }
 }
 

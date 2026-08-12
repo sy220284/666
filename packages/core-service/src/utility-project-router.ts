@@ -7,6 +7,7 @@ import {
 import { DraftServiceError } from './draft.js';
 import { projectOperationError } from './utility-errors.js';
 import { routeContentProjectOperation } from './utility-project-content-router.js';
+import { routeIdeaOperation } from './utility-project-idea-router.js';
 import { routeNarrativePlanningOperation } from './utility-project-narrative-router.js';
 import { routePrimaryProjectOperation } from './utility-project-primary-router.js';
 import type { UtilityProjectServices } from './utility-project-services.js';
@@ -25,6 +26,7 @@ export async function executeProjectOperation(
       (await routeNarrativePlanningOperation(services, requestId, operation)) ??
       (await routeValidationOperation(services, requestId, operation)) ??
       (await routeSearchRhythmOperation(services, requestId, operation)) ??
+      (await routeIdeaOperation(services, requestId, operation)) ??
       (await routeStructureProjectOperation(services, requestId, operation)) ??
       (await routeContentProjectOperation(services, requestId, operation));
     if (!result) throw new Error(`CORE_PROJECT_OPERATION_UNROUTED:${operation.operation}`);

@@ -12,6 +12,7 @@ import { registerPlanningIpcHandlers } from './planning-ipc-handlers.js';
 import { registerCanonIpcHandlers } from './canon-ipc-handlers.js';
 import { registerStructureIpcHandlers } from './structure-ipc-handlers.js';
 import { registerWritingIpcHandlers } from './writing-ipc-handlers.js';
+import { registerIdeaCapsuleIpcHandlers } from './idea-ipc-handlers.js';
 import { registerTaskIpcHandlers } from './task-ipc-handlers.js';
 
 export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
@@ -36,6 +37,7 @@ export function registerIpcHandlers(options: IpcHandlerOptions): () => void {
   registerCanonIpcHandlers(context);
   registerStructureIpcHandlers(context);
   registerWritingIpcHandlers(context);
+  registerIdeaCapsuleIpcHandlers(context);
   const disposeTaskHandlers = registerTaskIpcHandlers(context);
 
   return () => {

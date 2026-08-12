@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   APP_COMMANDS,
   CANDIDATE_IPC_CHANNELS,
+  IDEA_CAPSULE_IPC_CHANNELS,
   IPC_CHANNELS,
   PROTOCOL_VERSION,
 } from '@worldforge/contracts';
@@ -204,6 +205,7 @@ const productionHandlerChannels = sorted([
   ...Object.values(CANDIDATE_IPC_CHANNELS).filter(
     (channel) => channel !== CANDIDATE_IPC_CHANNELS.createFixtureCandidate,
   ),
+  ...Object.values(IDEA_CAPSULE_IPC_CHANNELS),
 ]);
 const removableHandlerChannels = sorted([
   ...productionHandlerChannels,

@@ -7,6 +7,7 @@ import { ContinuityServiceError } from './continuity.js';
 import { DatabaseFoundationError } from './database/index.js';
 import { DraftServiceError } from './draft.js';
 import { EntityCanonServiceError } from './entity-canon.js';
+import { IdeaCapsuleServiceError } from './idea-capsule-service.js';
 import { ImportExportServiceError } from './import-export.js';
 import { NarrativePlanningServiceError } from './narrative-planning.js';
 import { ProjectPlanningError } from './project-planning.js';
@@ -76,6 +77,12 @@ export function projectOperationError(error: unknown): ErrorCode {
     errorChainIncludes(error, STORY_ANCHOR_SCOPE_MARKERS)
   ) {
     return 'COMMON_INVALID_INPUT_001';
+  }
+  if (error instanceof IdeaCapsuleServiceError) {
+    if (error.code === 'IDEA_NOT_FOUND') return 'COMMON_NOT_FOUND_002';
+    if (error.code === 'IDEA_INVALID') return 'COMMON_INVALID_INPUT_001';
+    if (error.code === 'IDEA_CONFLICT') return 'COMMON_CONFLICT_003';
+    return 'COMMON_INTERNAL_999';
   }
   if (error instanceof StoryKnowledgeProjectionServiceError) {
     if (error.code === 'STORY_KNOWLEDGE_NOT_FOUND') return 'COMMON_NOT_FOUND_002';

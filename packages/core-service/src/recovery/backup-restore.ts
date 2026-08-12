@@ -28,6 +28,7 @@ import {
   prepareProjectClone,
   projectCloneAction,
   projectCloneTables,
+  remapProjectScopedDerivedIdentity,
 } from './project-clone-policy.js';
 
 interface RestoreRequestRecord {
@@ -111,6 +112,20 @@ export function remapProjectIdentity(
       for (const reference of references) {
         if (String(reference.table) !== 'projects' || String(reference.to) !== 'id') continue;
         const column = String(reference.from);
+        if (table === 'generation_runs' && column === 'project_id') {
+          database
+            .prepare(
+              `UPDATE generation_runs
+                  SET project_id = ?,
+                      scope_id = CASE
+                        WHEN scope_type = 'project' AND scope_id = ? THEN ?
+                        ELSE scope_id
+                      END
+                WHERE project_id = ?`,
+            )
+            .run(nextProjectId, previousProjectId, nextProjectId, previousProjectId);
+          continue;
+        }
         database
           .prepare(
             `UPDATE ${quoteIdentifier(table)} SET ${quoteIdentifier(column)} = ? WHERE ${quoteIdentifier(column)} = ?`,
@@ -122,6 +137,7 @@ export function remapProjectIdentity(
       .prepare('UPDATE projects SET id = ?, name = ?, created_at = ?, updated_at = ? WHERE id = ?')
       .run(nextProjectId, nextName, timestamp, timestamp, previousProjectId);
     if (Number(changed.changes) !== 1) throw new Error('PROJECT_ID_REMAP_FAILED');
+    remapProjectScopedDerivedIdentity(database, previousProjectId, nextProjectId);
     finalizeProjectClone(database, nextProjectId);
     if (database.prepare('PRAGMA foreign_key_check').all().length > 0) {
       throw new Error('PROJECT_ID_REMAP_FOREIGN_KEY_FAILED');

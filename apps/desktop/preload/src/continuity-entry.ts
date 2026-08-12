@@ -6,3 +6,4 @@ import './validation-bridge.js';
 import './search-tools-bridge.js';
 import './rhythm-bridge.js';
 import './story-knowledge-bridge.js';
+import './idea-capsule-bridge.js';

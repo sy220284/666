@@ -17,9 +17,19 @@ import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
 import { finalVersion, validationSemanticIdentity } from '../validation/validation-model.js';
 import { completeProseCandidate, completeSkeletonCandidates } from './candidate-persistence.js';
-import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
 import { getModelSupport, upsertModelSupport } from './model-support-repository.js';
+import {
+  resolveIdeaScopeContext,
+  type IdeaScopeContext,
+  type IdeaScopeContextInput,
+} from './idea-context.js';
+import {
+  completeIdeaCards,
+  type IdeaGenerationCompletion,
+  type IdeaGenerationCompletionInput,
+} from './idea-persistence.js';
 import { discardPartial, recordPartial, savePartial } from './partial-result-service.js';
+import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
 import {
   cancel,
   create,
@@ -28,7 +38,7 @@ import {
   type GenerationContinuationContext,
   type GenerationPartialDecision,
   type GenerationProseCandidateInput,
-  type GenerationRunCreateInput,
+  type GenerationRunCreateInput as PersistedGenerationRunCreateInput,
   type GenerationRunIdentity,
   type GenerationRunServiceContext,
   type GenerationRunServiceOptions,
@@ -50,7 +60,6 @@ export { GenerationRunServiceError } from './run-repository.js';
 export type {
   GenerationRunServiceErrorCode,
   GenerationRunServiceOptions,
-  GenerationRunCreateInput,
   GenerationInputSourceInput,
   GenerationRunIdentity,
   GenerationRunStageInput,
@@ -64,6 +73,17 @@ export type {
   GenerationPartialDecision,
   GenerationContinuationContext,
 } from './run-repository.js';
+export type { IdeaScopeContext, IdeaScopeContextInput } from './idea-context.js';
+export type {
+  IdeaGenerationCompletion,
+  IdeaGenerationCompletionInput,
+} from './idea-persistence.js';
+
+export type GenerationRunCreateInput = Omit<
+  PersistedGenerationRunCreateInput,
+  'scopeType' | 'scopeId'
+> &
+  Partial<Pick<PersistedGenerationRunCreateInput, 'scopeType' | 'scopeId'>>;
 
 export interface GenerationRunCreation {
   readonly run: GenerationRun;
@@ -73,18 +93,38 @@ export interface GenerationRunCreation {
 const systemClock: DatabaseClock = { now: () => new Date() };
 const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
 
+function normalizeCreateInput(input: GenerationRunCreateInput): PersistedGenerationRunCreateInput {
+  const scopeType = input.scopeType ?? 'chapter';
+  const scopeId =
+    input.scopeId ??
+    (scopeType === 'chapter' ? input.chapterId : scopeType === 'project' ? input.projectId : null);
+  if (scopeId === null) {
+    throw new GenerationRunServiceError(
+      'GENERATION_BASE_CONFLICT',
+      'A non-chapter GenerationRun requires an explicit scopeId.',
+    );
+  }
+  return { ...input, scopeType, scopeId };
+}
+
 function withValidationSemanticIdentity(
   context: GenerationRunServiceContext,
-  input: GenerationRunCreateInput,
-): GenerationRunCreateInput {
+  input: PersistedGenerationRunCreateInput,
+): PersistedGenerationRunCreateInput {
   if (input.runType !== 'validate') return input;
+  if (input.chapterId === null || input.constraintPackage === null) {
+    throw new GenerationRunServiceError(
+      'GENERATION_BASE_CONFLICT',
+      'Validation GenerationRun requires a chapter scope and ConstraintPackage.',
+    );
+  }
   const sources = input.inputSources ?? [];
   const versionSource =
     sources.find((source) => source.sourceType === 'version' && source.metadata?.final === true) ??
     sources.find(
       (source) =>
         source.sourceType === 'version' &&
-        input.constraintPackage.sourceVersionIds.includes(source.sourceId),
+        input.constraintPackage?.sourceVersionIds.includes(source.sourceId),
     );
   if (!versionSource) {
     throw new GenerationRunServiceError(
@@ -92,9 +132,10 @@ function withValidationSemanticIdentity(
       'Validation GenerationRun requires an authoritative Final Version input source.',
     );
   }
+  const chapterId = input.chapterId;
   const identity = context.workspace.readProject(input.projectId, (database) => {
     const resolved = finalVersion(database, input.projectId, versionSource.sourceId);
-    if (resolved.version.chapterId !== input.chapterId) {
+    if (resolved.version.chapterId !== chapterId) {
       throw new GenerationRunServiceError(
         'GENERATION_BASE_CONFLICT',
         'Validation GenerationRun Final Version input belongs to another chapter.',
@@ -136,8 +177,9 @@ export class GenerationRunService {
 
   async createWithReplay(
     requestId: string,
-    input: GenerationRunCreateInput,
+    rawInput: GenerationRunCreateInput,
   ): Promise<GenerationRunCreation> {
+    const input = normalizeCreateInput(rawInput);
     const fingerprint = generationCreateFingerprint(input);
     const cacheKey = `${input.projectId}:${requestId}`;
     try {
@@ -247,6 +289,17 @@ export class GenerationRunService {
 
   recoverInterrupted(requestId: string, projectId: string): Promise<number> {
     return recoverInterrupted(this.#context, requestId, projectId);
+  }
+
+  resolveIdeaScopeContext(input: IdeaScopeContextInput): IdeaScopeContext {
+    return resolveIdeaScopeContext(this.#context.workspace, input);
+  }
+
+  completeIdeaCards(
+    requestId: string,
+    input: IdeaGenerationCompletionInput,
+  ): Promise<IdeaGenerationCompletion> {
+    return completeIdeaCards(this.#context, requestId, input);
   }
 
   getModelSupport(raw: GenerationModelSupportInput): ModelSupportProfile {

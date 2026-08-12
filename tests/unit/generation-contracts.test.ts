@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  BeatSourceMappingUnitSchema,
   GenerationIntentSchema,
+  GenerationListRunsInputSchema,
   GenerationResultRefSchema,
   GenerationRunSchema,
+  GenerationScopeSchema,
+  GenerationStartInputSchema,
   ModelSupportProfileSchema,
   TaskEventEnvelopeSchema,
   TaskSnapshotSchema,
@@ -96,12 +100,15 @@ describe('M4-04 generation contracts', () => {
   });
 
   it('validates a persisted run without exposing prompt or response bodies', () => {
+    const chapterId = id('14');
     const run = GenerationRunSchema.parse({
       runId: id('10'),
       requestId: id('11'),
       taskId: id('12'),
       projectId: id('13'),
-      chapterId: id('14'),
+      scopeType: 'chapter',
+      scopeId: chapterId,
+      chapterId,
       baseDraftId: id('15'),
       baseDraftRevision: 2,
       runType: 'chapter',
@@ -152,5 +159,120 @@ describe('M4-04 generation contracts', () => {
         ]),
       );
     }
+  });
+
+  it('enforces generic scope ownership and generation start compatibility', () => {
+    const projectId = id('30');
+    const chapterId = id('31');
+    const volumeId = id('32');
+    expect(
+      GenerationScopeSchema.parse({ projectId, scopeType: 'project', scopeId: projectId }),
+    ).toMatchObject({ chapterId: null });
+    expect(
+      GenerationScopeSchema.safeParse({ projectId, scopeType: 'project', scopeId: volumeId })
+        .success,
+    ).toBe(false);
+    expect(
+      GenerationScopeSchema.parse({
+        projectId,
+        scopeType: 'chapter',
+        scopeId: chapterId,
+        chapterId,
+      }),
+    ).toMatchObject({ chapterId });
+    expect(
+      GenerationScopeSchema.safeParse({
+        projectId,
+        scopeType: 'chapter',
+        scopeId: chapterId,
+        chapterId: volumeId,
+      }).success,
+    ).toBe(false);
+    expect(
+      GenerationScopeSchema.parse({ projectId, scopeType: 'volume', scopeId: volumeId }),
+    ).toMatchObject({ scopeType: 'volume' });
+
+    const ideaIntent = {
+      runType: 'idea_explore' as const,
+      ideaKind: 'plot' as const,
+      divergenceLevel: 'different' as const,
+      depthLevel: 'expand' as const,
+      authorInstruction: '探索作品的新方向。',
+    };
+    const base = {
+      projectId,
+      providerId: 'provider',
+      intent: ideaIntent,
+    };
+    expect(GenerationStartInputSchema.parse({ ...base, scopeType: 'project' }).scopeId).toBe(
+      projectId,
+    );
+    expect(
+      GenerationStartInputSchema.parse({ ...base, chapterId, scopeType: 'chapter' }).scopeId,
+    ).toBe(chapterId);
+    expect(GenerationStartInputSchema.safeParse({ ...base, scopeType: 'volume' }).success).toBe(
+      false,
+    );
+    expect(
+      GenerationStartInputSchema.safeParse({
+        ...base,
+        scopeType: 'chapter',
+        scopeId: chapterId,
+        chapterId: volumeId,
+      }).success,
+    ).toBe(false);
+    expect(
+      GenerationStartInputSchema.safeParse({
+        ...base,
+        scopeType: 'project',
+        intent: {
+          runType: 'validate',
+          sourceVersionId: id('33'),
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('keeps list filters paired and beat sources exclusive', () => {
+    const projectId = id('40');
+    const scopeId = id('41');
+    expect(GenerationListRunsInputSchema.parse({ projectId })).toMatchObject({
+      scopeType: null,
+      scopeId: null,
+    });
+    expect(
+      GenerationListRunsInputSchema.safeParse({ projectId, scopeType: 'entity' }).success,
+    ).toBe(false);
+    expect(GenerationListRunsInputSchema.safeParse({ projectId, scopeId }).success).toBe(false);
+    expect(
+      GenerationListRunsInputSchema.parse({ projectId, scopeType: 'entity', scopeId }),
+    ).toMatchObject({ scopeType: 'entity', scopeId });
+
+    const blockId = id('42');
+    const beatId = id('43');
+    expect(
+      BeatSourceMappingUnitSchema.safeParse({
+        sceneBeatId: beatId,
+        sourceCandidateId: null,
+        sourceBlockIds: [],
+        keepCurrentDraft: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      BeatSourceMappingUnitSchema.safeParse({
+        sceneBeatId: beatId,
+        sourceCandidateId: id('44'),
+        sourceBlockIds: [blockId],
+        keepCurrentDraft: true,
+      }).success,
+    ).toBe(false);
+    expect(
+      BeatSourceMappingUnitSchema.safeParse({
+        sceneBeatId: beatId,
+        sourceCandidateId: id('44'),
+        sourceBlockIds: [],
+        keepCurrentDraft: false,
+      }).success,
+    ).toBe(false);
   });
 });

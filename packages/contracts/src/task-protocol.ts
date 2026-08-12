@@ -43,6 +43,10 @@ export const GenerationResultRefSchema = z.discriminatedUnion('resultType', [
     resultType: z.literal('validation_batch'),
     resultId: z.uuid(),
   }),
+  z.strictObject({
+    resultType: z.literal('idea_card'),
+    resultId: z.uuid(),
+  }),
 ]);
 
 export const TaskSnapshotSchema = z.strictObject({

@@ -1,5 +1,6 @@
-import { type DatabaseClock } from '../database/index.js';
-import { type ProjectWorkspaceService } from '../project-workspace.js';
+import { createHash } from 'node:crypto';
+import { type DatabaseSync } from 'node:sqlite';
+
 import {
   type CandidateBlockInput,
   type CandidateDocument,
@@ -17,13 +18,15 @@ import {
   type GenerationRunStage,
   GenerationRunStageSchema,
   type GenerationRunType,
+  type GenerationScopeType,
   type ModelSupportStatus,
   type PromptOutputMode,
   type SkeletonCandidateDocument,
   type SkeletonCandidateOutput,
 } from '@worldforge/contracts';
-import { createHash } from 'node:crypto';
-import { type DatabaseSync } from 'node:sqlite';
+
+import { type DatabaseClock } from '../database/index.js';
+import { type ProjectWorkspaceService } from '../project-workspace.js';
 
 export interface GenerationRunServiceContext {
   readonly workspace: ProjectWorkspaceService;
@@ -58,7 +61,9 @@ export interface GenerationRunServiceOptions {
 
 export interface GenerationRunCreateInput {
   readonly projectId: string;
-  readonly chapterId: string;
+  readonly scopeType: GenerationScopeType;
+  readonly scopeId: string;
+  readonly chapterId: string | null;
   readonly baseDraftId: string | null;
   readonly baseDraftRevision: number | null;
   readonly runType: GenerationRunType;
@@ -68,7 +73,7 @@ export interface GenerationRunCreateInput {
   readonly providerId: string;
   readonly actualModel: string;
   readonly supportStatus: ModelSupportStatus;
-  readonly constraintPackage: ConstraintPackage;
+  readonly constraintPackage: ConstraintPackage | null;
   readonly inputSources?: readonly GenerationInputSourceInput[];
   readonly taskId?: string;
 }
@@ -82,7 +87,9 @@ export interface GenerationInputSourceInput {
     | 'candidate'
     | 'current_draft'
     | 'generation_run'
-    | 'version';
+    | 'version'
+    | 'scope'
+    | 'idea_card';
   readonly sourceId: string;
   readonly sourceOrder: number;
   readonly contentHash?: string | null;
@@ -162,7 +169,9 @@ export interface GenerationRunRow {
   readonly requestId: string;
   readonly taskId: string;
   readonly projectId: string;
-  readonly chapterId: string;
+  readonly scopeType: string;
+  readonly scopeId: string;
+  readonly chapterId: string | null;
   readonly baseDraftId: string | null;
   readonly baseDraftRevision: number | bigint | null;
   readonly runType: string;
@@ -207,6 +216,7 @@ export interface DraftHashRow {
 
 export const runSelect = `SELECT generation.id AS runId, generation.request_id AS requestId,
                           generation.task_id AS taskId, generation.project_id AS projectId,
+                          generation.scope_type AS scopeType, generation.scope_id AS scopeId,
                           generation.chapter_id AS chapterId,
                           generation.base_draft_id AS baseDraftId,
                           generation.base_draft_revision AS baseDraftRevision,
@@ -237,23 +247,23 @@ export function resultRefs(database: DatabaseSync, runId: string): GenerationRes
         ORDER BY created_at, result_type, result_id`,
     )
     .all(runId) as unknown as GenerationResultRefRow[];
-  return rows.map((row) =>
-    row.resultType === 'candidate'
-      ? {
-          resultType: 'candidate' as const,
-          resultId: row.resultId,
-          candidateKind: row.candidateKind,
-        }
-      : row.resultType === 'state_proposal_batch'
-        ? {
-            resultType: 'state_proposal_batch' as const,
-            resultId: row.resultId,
-          }
-        : {
-            resultType: 'validation_batch' as const,
-            resultId: row.resultId,
-          },
-  ) as GenerationResultRef[];
+  const refs: GenerationResultRef[] = [];
+  for (const row of rows) {
+    if (row.resultType === 'candidate') {
+      refs.push({
+        resultType: 'candidate',
+        resultId: row.resultId,
+        candidateKind: row.candidateKind as 'prose' | 'skeleton',
+      });
+    } else if (row.resultType === 'state_proposal_batch') {
+      refs.push({ resultType: 'state_proposal_batch', resultId: row.resultId });
+    } else if (row.resultType === 'validation_batch') {
+      refs.push({ resultType: 'validation_batch', resultId: row.resultId });
+    } else if (row.resultType === 'idea_card') {
+      refs.push({ resultType: 'idea_card', resultId: row.resultId });
+    }
+  }
+  return refs;
 }
 
 export function mapRun(database: DatabaseSync, row: GenerationRunRow): GenerationRun {
@@ -262,6 +272,8 @@ export function mapRun(database: DatabaseSync, row: GenerationRunRow): Generatio
     requestId: row.requestId,
     taskId: row.taskId,
     projectId: row.projectId,
+    scopeType: row.scopeType,
+    scopeId: row.scopeId,
     chapterId: row.chapterId,
     baseDraftId: row.baseDraftId,
     baseDraftRevision: row.baseDraftRevision === null ? null : Number(row.baseDraftRevision),
@@ -331,13 +343,101 @@ export function sha256(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
+function assertGenerationScope(database: DatabaseSync, input: GenerationRunCreateInput): void {
+  let found: unknown;
+  if (input.scopeType === 'project') {
+    found =
+      input.scopeId === input.projectId
+        ? database.prepare('SELECT 1 FROM projects WHERE id = ?').get(input.projectId)
+        : undefined;
+  } else if (input.scopeType === 'volume') {
+    found = database
+      .prepare(
+        `SELECT 1 FROM volumes
+          WHERE id = ? AND project_id = ? AND deleted_at IS NULL`,
+      )
+      .get(input.scopeId, input.projectId);
+  } else if (input.scopeType === 'chapter') {
+    found = database
+      .prepare(
+        `SELECT 1
+           FROM chapters chapter
+           JOIN volumes volume ON volume.id = chapter.volume_id
+          WHERE chapter.id = ? AND volume.project_id = ?
+            AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
+      )
+      .get(input.scopeId, input.projectId);
+    if (input.chapterId !== input.scopeId) found = undefined;
+  } else if (input.scopeType === 'scene') {
+    found = database
+      .prepare(
+        `SELECT 1 FROM scene_beats
+          WHERE id = ? AND project_id = ? AND deleted_at IS NULL`,
+      )
+      .get(input.scopeId, input.projectId);
+  } else if (input.scopeType === 'entity') {
+    found = database
+      .prepare(
+        `SELECT 1 FROM entities
+          WHERE id = ? AND project_id = ? AND status = 'active'`,
+      )
+      .get(input.scopeId, input.projectId);
+  } else {
+    found = database
+      .prepare(
+        `SELECT 1
+           FROM draft_blocks block
+           JOIN drafts draft ON draft.id = block.draft_id
+           JOIN chapters chapter ON chapter.id = draft.chapter_id
+           JOIN volumes volume ON volume.id = chapter.volume_id
+          WHERE block.logical_block_id = ? AND volume.project_id = ?
+            AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
+      )
+      .get(input.scopeId, input.projectId);
+  }
+  if (!found) {
+    throw new GenerationRunServiceError(
+      'GENERATION_BASE_CONFLICT',
+      'The GenerationRun scope is missing, stale, or outside the project.',
+    );
+  }
+  if (input.chapterId !== null && input.scopeType !== 'chapter') {
+    const chapter = database
+      .prepare(
+        `SELECT 1
+           FROM chapters chapter
+           JOIN volumes volume ON volume.id = chapter.volume_id
+          WHERE chapter.id = ? AND volume.project_id = ?
+            AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
+      )
+      .get(input.chapterId, input.projectId);
+    if (!chapter) {
+      throw new GenerationRunServiceError(
+        'GENERATION_BASE_CONFLICT',
+        'The GenerationRun compatibility chapter is outside the project.',
+      );
+    }
+  }
+}
+
 export function create(
   context: GenerationRunServiceContext,
   requestId: string,
   input: GenerationRunCreateInput,
 ): Promise<GenerationRun> {
   const constraints = input.constraintPackage;
-  if (
+  if (input.runType === 'idea_explore') {
+    if (constraints !== null) {
+      return Promise.reject(
+        new GenerationRunServiceError(
+          'GENERATION_BASE_CONFLICT',
+          'Idea exploration uses generic scope context and must not persist a chapter ConstraintPackage.',
+        ),
+      );
+    }
+  } else if (
+    constraints === null ||
+    input.chapterId === null ||
     constraints.projectId !== input.projectId ||
     constraints.chapterId !== input.chapterId ||
     constraints.taskType !== input.runType
@@ -355,21 +455,7 @@ export function create(
       .get(requestId, input.projectId) as GenerationRunRow | undefined;
     if (existing) return mapRun(database, existing);
 
-    const scope = database
-      .prepare(
-        `SELECT 1
-             FROM chapters chapter
-             JOIN volumes volume ON volume.id = chapter.volume_id
-            WHERE chapter.id = ? AND volume.project_id = ?
-              AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
-      )
-      .get(input.chapterId, input.projectId);
-    if (!scope) {
-      throw new GenerationRunServiceError(
-        'GENERATION_BASE_CONFLICT',
-        'The chapter is outside the GenerationRun project.',
-      );
-    }
+    assertGenerationScope(database, input);
     if ((input.baseDraftId === null) !== (input.baseDraftRevision === null)) {
       throw new GenerationRunServiceError(
         'GENERATION_BASE_CONFLICT',
@@ -377,6 +463,12 @@ export function create(
       );
     }
     if (input.baseDraftId !== null) {
+      if (input.chapterId === null) {
+        throw new GenerationRunServiceError(
+          'GENERATION_BASE_CONFLICT',
+          'A GenerationRun Draft baseline requires a chapter scope.',
+        );
+      }
       const base = database
         .prepare(
           `SELECT draft.revision
@@ -397,13 +489,13 @@ export function create(
     database
       .prepare(
         `INSERT INTO generation_runs(
-             id, request_id, task_id, project_id, chapter_id, base_draft_id,
-             base_draft_revision, run_type, prompt_id, prompt_version, output_mode,
-             provider_id, actual_model, support_status, status, stage, retry_count,
-             input_tokens, output_tokens, error_code, retryable, partial_status,
-             created_at, started_at, finished_at
+             id, request_id, task_id, project_id, scope_type, scope_id, chapter_id,
+             base_draft_id, base_draft_revision, run_type, prompt_id, prompt_version,
+             output_mode, provider_id, actual_model, support_status, status, stage,
+             retry_count, input_tokens, output_tokens, error_code, retryable,
+             partial_status, created_at, started_at, finished_at
            ) VALUES(
-             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 'queued', 0,
+             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', 'queued', 0,
              NULL, NULL, NULL, NULL, 'unavailable', ?, NULL, NULL
            )`,
       )
@@ -412,6 +504,8 @@ export function create(
         requestId,
         taskId,
         input.projectId,
+        input.scopeType,
+        input.scopeId,
         input.chapterId,
         input.baseDraftId,
         input.baseDraftRevision,
@@ -424,25 +518,27 @@ export function create(
         input.supportStatus,
         createdAt,
       );
-    database
-      .prepare(
-        `INSERT INTO generation_constraint_packages(
-             run_id, constraint_hash, content_hash, snapshot_source,
-             source_version_ids_json, sources_json, estimated_tokens,
-             trim_log_json, created_at
-           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        runId,
-        constraints.constraintHash,
-        constraints.contentHash,
-        constraints.snapshotSource,
-        JSON.stringify(constraints.sourceVersionIds),
-        JSON.stringify(auditSources(constraints)),
-        constraints.estimatedTokens,
-        JSON.stringify(constraints.trimLog),
-        createdAt,
-      );
+    if (constraints !== null) {
+      database
+        .prepare(
+          `INSERT INTO generation_constraint_packages(
+               run_id, constraint_hash, content_hash, snapshot_source,
+               source_version_ids_json, sources_json, estimated_tokens,
+               trim_log_json, created_at
+             ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          runId,
+          constraints.constraintHash,
+          constraints.contentHash,
+          constraints.snapshotSource,
+          JSON.stringify(constraints.sourceVersionIds),
+          JSON.stringify(auditSources(constraints)),
+          constraints.estimatedTokens,
+          JSON.stringify(constraints.trimLog),
+          createdAt,
+        );
+    }
     const insertInputSource = database.prepare(
       `INSERT INTO generation_input_sources(
            run_id, source_type, source_id, source_order,
@@ -498,9 +594,19 @@ export function list(
         `${runSelect}
             WHERE generation.project_id = ?
               AND (? IS NULL OR generation.chapter_id = ?)
+              AND (? IS NULL OR generation.scope_type = ?)
+              AND (? IS NULL OR generation.scope_id = ?)
             ORDER BY generation.created_at DESC, generation.id DESC`,
       )
-      .all(input.projectId, input.chapterId, input.chapterId) as unknown as GenerationRunRow[];
+      .all(
+        input.projectId,
+        input.chapterId,
+        input.chapterId,
+        input.scopeType,
+        input.scopeType,
+        input.scopeId,
+        input.scopeId,
+      ) as unknown as GenerationRunRow[];
     return GenerationRunListSchema.parse({ runs: rows.map((row) => mapRun(database, row)) });
   });
 }

@@ -36,6 +36,7 @@ import {
   CoreStoryKnowledgeOperationSchema,
   CoreStoryKnowledgeResultSchema,
 } from './story-knowledge.js';
+import { CoreIdeaOperationSchema, CoreIdeaResultSchema } from './idea-capsule.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
 
 export const PROJECT_WORKSPACE_IPC_CHANNELS = {
@@ -336,6 +337,7 @@ export const CoreProjectOperationSchema = z.union([
   CoreSearchToolsOperationSchema,
   CoreRhythmOperationSchema,
   CoreStoryKnowledgeOperationSchema,
+  CoreIdeaOperationSchema,
   CoreDraftOperationSchema,
   CoreCandidateOperationSchema,
   CoreCandidateApplyOperationSchema,
@@ -386,6 +388,7 @@ export const CoreProjectResultSchema = z.union([
   CoreSearchToolsResultSchema,
   CoreRhythmResultSchema,
   CoreStoryKnowledgeResultSchema,
+  CoreIdeaResultSchema,
   CoreDraftResultSchema,
   CoreCandidateResultSchema,
   CoreCandidateApplyResultSchema,

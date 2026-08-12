@@ -6,6 +6,7 @@ import {
   CONTINUITY_COMMANDS,
   DRAFT_COMMANDS,
   ENTITY_CANON_COMMANDS,
+  IDEA_CAPSULE_COMMANDS,
   NARRATIVE_PLANNING_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
@@ -38,6 +39,7 @@ const commandGroups = [
   SEARCH_TOOLS_COMMANDS,
   RHYTHM_COMMANDS,
   STORY_KNOWLEDGE_COMMANDS,
+  IDEA_CAPSULE_COMMANDS,
   DRAFT_COMMANDS,
   CANDIDATE_COMMANDS,
   CANDIDATE_APPLY_COMMANDS,
@@ -67,6 +69,8 @@ describe('M11 Project Operation Semantics', () => {
     expect(projectOperationKind(RHYTHM_COMMANDS.get)).toBe('query');
     expect(projectOperationKind(RHYTHM_COMMANDS.run)).toBe('mutation');
     expect(projectOperationKind(STORY_KNOWLEDGE_COMMANDS.project)).toBe('query');
+    expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.list)).toBe('query');
+    expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.applyConversion)).toBe('mutation');
   });
 
   it('does not default unknown read-like candidate operations to mutation semantics', () => {

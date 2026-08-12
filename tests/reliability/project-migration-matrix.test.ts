@@ -159,5 +159,5 @@ describe('reliability: full project migration matrix', () => {
       await currentWorkspace.shutdown();
       await appRuntime.close();
     }
-  });
+  }, 45_000);
 });

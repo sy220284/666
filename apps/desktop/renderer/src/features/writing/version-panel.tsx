@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 
 import type {
   Chapter,
@@ -39,6 +39,7 @@ export function VersionPanel({
     '历史版本只读不可变；恢复前会自动留档当前稿，再创建新的当前稿。',
   );
   const [pending, setPending] = useState(false);
+  const previewGeneration = useRef(0);
 
   const refresh = useCallback(async (): Promise<void> => {
     const outcome = await bridge.version.list(project.projectId, chapter.id, { mode: 'replace' });
@@ -51,6 +52,7 @@ export function VersionPanel({
 
   useEffect(() => {
     if (!navigationVersionId) return;
+    const generation = ++previewGeneration.current;
     void bridge.version
       .get(
         {
@@ -61,6 +63,7 @@ export function VersionPanel({
         { mode: 'replace' },
       )
       .then((outcome) => {
+        if (generation !== previewGeneration.current) return;
         if (outcome.state === 'success') {
           setSelected(outcome.data);
           setStatus(`正在比较：${outcome.data.title}`);
@@ -73,8 +76,8 @@ export function VersionPanel({
   const create = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     const form = event.currentTarget;
     event.preventDefault();
-    if (readOnly || !(await flush())) {
-      setStatus('自动保存失败，未创建历史版本。');
+    if (pending || readOnly || !(await flush())) {
+      if (!pending) setStatus('自动保存失败，未创建历史版本。');
       return;
     }
     const values = new FormData(form);
@@ -108,10 +111,12 @@ export function VersionPanel({
   };
 
   const preview = async (versionId: string): Promise<void> => {
+    const generation = ++previewGeneration.current;
     const outcome = await bridge.version.get(
       { projectId: project.projectId, chapterId: chapter.id, versionId },
       { mode: 'replace' },
     );
+    if (generation !== previewGeneration.current) return;
     if (outcome.state === 'success') {
       setSelected(outcome.data);
       setStatus(`正在比较：${outcome.data.title}`);
@@ -120,12 +125,14 @@ export function VersionPanel({
   };
 
   const finalize = async (versionId: string): Promise<void> => {
-    if (readOnly) return;
+    if (readOnly || pending) return;
+    setPending(true);
     const outcome = await bridge.version.setFinal({
       projectId: project.projectId,
       chapterId: chapter.id,
       versionId,
     });
+    setPending(false);
     if (outcome.state === 'success') {
       setStatus(`已将“${outcome.data.title}”设为定稿。`);
       await refresh();
@@ -134,8 +141,8 @@ export function VersionPanel({
   };
 
   const restore = async (versionId: string): Promise<void> => {
-    if (readOnly || !(await flush())) {
-      setStatus('自动保存失败，未恢复历史版本。');
+    if (pending || readOnly || !(await flush())) {
+      if (!pending) setStatus('自动保存失败，未恢复历史版本。');
       return;
     }
     setPending(true);
@@ -167,6 +174,19 @@ export function VersionPanel({
       setStatus(`恢复失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
+  const exportVersion = async (versionId: string): Promise<void> => {
+    if (pending) return;
+    setPending(true);
+    const outcome = await bridge.recovery.exportVersion({
+      projectId: project.projectId,
+      versionId,
+    });
+    setPending(false);
+    if (outcome.state === 'success') setStatus('历史版本已导出。');
+    else if (outcome.state === 'failure')
+      setStatus(`导出失败 · ${authorErrorSummary(outcome.error)}`);
+  };
+
   return (
     <section className="version-workbench" data-version-dialog>
       <header className="feature-card__heading">
@@ -176,7 +196,7 @@ export function VersionPanel({
             历史版本不可变；左侧为当前已保存正文，右侧为选中的历史版本。恢复前会自动留档当前稿。
           </p>
         </div>
-        <button data-close-versions type="button" onClick={onClose}>
+        <button data-close-versions type="button" disabled={pending} onClick={onClose}>
           返回正文
         </button>
       </header>
@@ -225,6 +245,7 @@ export function VersionPanel({
                   <button
                     data-version-action="compare"
                     type="button"
+                    disabled={pending}
                     onClick={() => void preview(version.versionId)}
                   >
                     比较
@@ -249,12 +270,7 @@ export function VersionPanel({
                     data-version-action="export"
                     type="button"
                     disabled={pending}
-                    onClick={() =>
-                      void bridge.recovery.exportVersion({
-                        projectId: project.projectId,
-                        versionId: version.versionId,
-                      })
-                    }
+                    onClick={() => void exportVersion(version.versionId)}
                   >
                     导出TXT
                   </button>

@@ -1,7 +1,7 @@
 # WorldForge Quality System V2
 
 > 状态：Active  
-> 生效阶段：Phase 3  
+> 生效阶段：Phase 4  
 > 适用范围：产品代码、测试、数据库、桌面运行时、AI协议、UI体验、构建发布与仓库治理
 
 ## 1. 目标
@@ -65,9 +65,10 @@ scripts/ci-risk-policy.mjs
 - `reliability`
 - `uiAcceptance`
 - `windowsIme`
+- `platformExperience`
 - `governanceMeta`
 
-Quality、Security、Performance和Reliability读取同一个Risk Plan。Windows真实中文输入法验收由变更风险触发，不依赖历史任务marker。
+Quality、Security、Performance、Reliability和Platform Experience读取同一个Risk Plan。Windows真实中文输入法验收由变更风险触发，不依赖历史任务marker。
 
 ## 4. G1：Architecture
 
@@ -209,7 +210,7 @@ tests/performance/phase3-large-project-performance.test.ts
 test-results/performance/phase3-large-project.json
 ```
 
-真实Fixture固定为10卷、500章、每章约3000中文字符（正文合计不少于150万字符）、150实体及当前Canon Fact、200伏笔、50人物弧光和100 Manual Versions。Fixture构造时间不计入指标，测试直接复用Frozen与既有机器预算，不建立第二套阈值。Ready CI run `31545126270` / Artifact `9122181787` 已验证：project reopen 37.57ms / 3000ms；跨章Draft open P95 0.53ms / 800ms；Autosave P95 1.93ms / 150ms；FTS rebuild 472.58ms / 10000ms；FTS query P95 4.44ms / 200ms；Constraint Package P95 5.03ms / 1000ms，六项全部通过并由`performance`永久Context阻断。备份/恢复目前没有Frozen数值阻断预算，继续只做真实趋势与后续预算收敛，不凭空增加毫秒阈值。
+真实Fixture固定为10卷、500章、每章约3000中文字符（正文合计不少于150万字符）、150实体及当前Canon Fact、200伏笔、50人物弧光和100 Manual Versions。Fixture构造时间不计入指标，测试直接复用Frozen与既有机器预算，不建立第二套阈值。Ready CI run `31545126270` / Artifact `9122181787` 已验证：project reopen 37.57ms / 3000ms；跨章Draft open P95 0.53ms / 800ms；Autosave P95 1.93ms / 150ms；FTS rebuild 472.58ms / 10000ms；FTS query P95 4.44ms / 200ms；Constraint Package P95 5.03ms / 1000ms，六项全部通过并由`performance`永久Context阻断。
 
 Phase 3 Memory Leak稳定态机器门已接入现有独立Performance权威。机器真源与Evidence为：
 
@@ -223,6 +224,18 @@ test-results/performance/phase3-memory-leak.json
 ```
 
 探针使用Node `--expose-gc`，每阶段连续3次显式GC；先将有界幂等缓存预热越过1000-entry保留上限，再开始稳定态测量，从而区分正常缓存填充与不可回收增长。Draft场景执行1200次warmup后继续5×250次真实`DraftService.applyPatch`；Project lifecycle执行600次warmup后继续5×100次真实open/close。阻断指标同时覆盖final growth、peak growth、tail spread和positive slope bytes/operation。基于真实CI post-GC样本校准后，预算已切换为`enforced`：Draft三项增长上限均为1 MiB、positive slope上限512 B/op；Project lifecycle三项增长上限均为2 MiB、positive slope上限4096 B/op。Ready Performance run `31555098695`与Main Verification `31555996135`均已通过，失败继续由永久`performance` Context fail-closed阻断。
+
+Phase 3大作品Backup/Restore性能门已接入现有独立Performance权威，机器真源与Evidence为：
+
+```text
+docs/process/LARGE_PROJECT_BACKUP_RESTORE_BUDGET.json
+scripts/large-project-backup-restore-policy.mjs
+tests/unit/large-project-backup-restore-policy.test.ts
+tests/performance/phase3-large-project-backup-restore.test.ts
+test-results/performance/phase3-large-project-backup-restore.json
+```
+
+测试复用10卷、500章、正文不少于150万字符、150实体、200伏笔、50人物弧光与100 Manual Versions的真实大作品Fixture，直接调用正式`RecoveryService`完成5轮命名快照与恢复新副本，并重新打开最后一份恢复副本核对卷、章、实体、伏笔、人物弧与版本数量。首轮真实GitHub Actions样本校准后预算已切换为`enforced`：Backup P95 ≤ 200 ms，Restore P95 ≤ 300 ms；任何预算超限继续由永久`performance` Context fail-closed阻断。
 
 ## 9. G6：Product Experience
 
@@ -258,6 +271,16 @@ tests/unit/accessibility-audit.test.ts
 ```
 
 扫描复用现有Playwright/Electron，无新增第三方无障碍依赖；真实覆盖首页、新建作品Modal与写作工作台。当前高置信规则要求可见交互控件和Dialog具有计算Accessible Name，禁止正`tabindex`、重复DOM id、缺失`img alt`以及`aria-hidden=true`区域包含仍可聚焦元素。Modal场景同时验证`role=dialog`、`aria-modal=true`、打开后焦点进入、连续Tab不逃逸、Escape关闭与焦点回到触发按钮。判定逻辑由Unit覆盖，真实Electron E2E失败直接阻断现有Quality Gate，不建立waiver baseline。
+
+Phase 3三平台作者体验矩阵已落地，机器真源与真实执行入口为：
+
+```text
+docs/process/PLATFORM_EXPERIENCE_MATRIX.json
+tests/e2e/platform-experience.spec.ts
+test-results/platform-experience/{linux,windows,macos}.json
+```
+
+统一Risk Plan在Renderer/Main/Preload/Contracts/E2E等体验风险变化时触发该矩阵；`quality.yml`分别在`ubuntu-24.04`、`windows-latest`和`macos-latest`原生Runner执行同一真实Electron作者主路径，覆盖Renderer Ready、快速创建作品、中文/Unicode正文写入与保存、1280×800无横向溢出、主题往返和正常关闭。Ready Quality run `31574512538`中macOS Artifact `9132633842`、Windows Artifact `9132648030`、Linux Artifact `9132652468`全部成功并绑定最终Head `41f07d7d98f9b4ae69475fb71a9b6a3f01eb9211`；任一平台失败都会阻断`quality / quality`。Linux严格像素Visual Regression、Windows真实Microsoft Pinyin与三平台Package Smoke继续保持独立权威，互不替代。#376合入main后，commit `7a473a7cd3f8c5ef88775b7f5398bff457cb2e1e`已取得`main-verification=success`。
 
 ## 10. G7：Artifact / Release
 
@@ -303,6 +326,7 @@ scripts/governance-self-check.mjs
 
 - Quality最终聚合权威存在；
 - Reliability风险路由与Quality输入存在；
+- 三平台体验矩阵与风险路由权威存在；
 - Security/Performance最终Context存在；
 - Release仍强制UI Acceptance与Release Gate；
 - Main Verification与双集成lane同步链存在；
@@ -380,21 +404,16 @@ pnpm check:docs
 - File Lease release TOCTOU确定性竞态验证；
 - 复用现有Backup/Restore、Provider断流和Core Restart覆盖，避免重复测试。
 
-### Phase 3 — 当前实施
-
-已落地：
+### Phase 3 — 已闭环
 
 - Linux 1280×800 Visual Regression：M8-07四主题稳定基线、双独立全绿Artifact provenance、严格SHA-256/尺寸阻断、actual PNG诊断与Unit判定覆盖。
 - Accessibility自动验证：首页/新建作品Modal/写作工作台高置信扫描、Accessible Name与DOM语义规则、Modal焦点圈/Tab/Escape回焦、Unit判定覆盖与真实Electron E2E阻断。
 - 真实大作品核心交互性能门：10卷/500章/≥150万字符/150实体/200伏笔/50人物弧/100版本真实SQLite Fixture，覆盖reopen、跨章open、Autosave、FTS rebuild/query与AI Constraint Package，并复用现有Performance永久Context阻断。
 - Memory Leak稳定态机器门：先跨越1000-entry有界缓存保留上限再取样，显式GC并覆盖Draft与Project lifecycle稳定态，final/peak/tail growth及positive slope全部由真实CI校准后的`enforced`预算阻断。
+- 大作品Backup/Restore性能门：5轮真实命名快照与恢复，Backup P95 ≤ 200 ms、Restore P95 ≤ 300 ms的`enforced`预算由永久`performance` Context阻断。
+- Windows/macOS/Linux三平台作者体验矩阵：同一真实Electron作者主路径在三平台原生Runner执行并生成独立Evidence，任一平台失败阻断`quality / quality`。
 
-继续推进：
-
-- 大作品备份/恢复趋势与阻断预算收敛；
-- 三平台体验矩阵。
-
-### Phase 4 — Supply Chain
+### Phase 4 — 当前实施（Supply Chain）
 
 - SBOM；
 - SAST；

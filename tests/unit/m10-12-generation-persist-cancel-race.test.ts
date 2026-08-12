@@ -33,6 +33,8 @@ function generationRun(
     requestId: REQUEST_ID,
     taskId: TASK_ID,
     projectId: PROJECT_ID,
+    scopeType: 'chapter',
+    scopeId: CHAPTER_ID,
     chapterId: CHAPTER_ID,
     baseDraftId: null,
     baseDraftRevision: null,

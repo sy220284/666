@@ -5,6 +5,7 @@ import type { Entity, PlotNode, SceneBeat } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../../bridge/use-bridge-resource.js';
 import { authorSceneBeatTypeLabel } from '../../../presentation/author-value-format.js';
+import { interactionLocked } from '../../../runtime/interaction-locks.js';
 import { useDraftBlockPicker } from '../../writing/draft-block-picker.js';
 import { SceneBeatDialog } from './scene-beat-dialog.js';
 
@@ -42,6 +43,7 @@ export function SceneBeatPanel({
   const command = useBridgeCommand(resource.refresh);
   const previewCommand = useBridgeCommand();
   const { pickMultipleBlocks, picker } = useDraftBlockPicker();
+  const blocked = interactionLocked(readOnly, command.pending, previewCommand.pending);
 
   const remove = async (beat: SceneBeat): Promise<void> => {
     if (!window.confirm(`删除场景“${beat.title}”？正文不会变化。`)) return;
@@ -157,7 +159,7 @@ export function SceneBeatPanel({
           <button
             className="quiet-button"
             data-convert-scene-beat
-            disabled={readOnly || previewCommand.pending}
+            disabled={blocked}
             type="button"
             onClick={() =>
               void selectLogicalBlocks().then((logicalBlockIds) => {
@@ -170,7 +172,7 @@ export function SceneBeatPanel({
           <button
             className="primary-button"
             data-create-scene-beat
-            disabled={readOnly}
+            disabled={blocked}
             type="button"
             onClick={() => setEditor({ beat: null, logicalBlockIds: [] })}
           >
@@ -190,12 +192,16 @@ export function SceneBeatPanel({
             </div>
             <p>{beat.goal}</p>
             <div className="inline-actions">
-              <button type="button" onClick={() => setEditor({ beat, logicalBlockIds: [] })}>
+              <button
+                disabled={interactionLocked(command.pending, previewCommand.pending)}
+                type="button"
+                onClick={() => setEditor({ beat, logicalBlockIds: [] })}
+              >
                 编辑
               </button>
               <button
                 aria-label={`上移${beat.title}`}
-                disabled={readOnly || index === 0}
+                disabled={interactionLocked(blocked, index === 0)}
                 type="button"
                 onClick={() => void moveWithinChapter(beat, -1)}
               >
@@ -203,23 +209,26 @@ export function SceneBeatPanel({
               </button>
               <button
                 aria-label={`下移${beat.title}`}
-                disabled={readOnly || index === (resource.data?.beats.length ?? 0) - 1}
+                disabled={interactionLocked(
+                  blocked,
+                  index === (resource.data?.beats.length ?? 0) - 1,
+                )}
                 type="button"
                 onClick={() => void moveWithinChapter(beat, 1)}
               >
                 ↓
               </button>
-              <button disabled={readOnly} type="button" onClick={() => void setBlockLinks(beat)}>
+              <button disabled={blocked} type="button" onClick={() => void setBlockLinks(beat)}>
                 关联正文段落
               </button>
               <button
-                disabled={readOnly}
+                disabled={blocked}
                 type="button"
                 onClick={() => void moveAcrossChapters(beat)}
               >
                 跨章移动
               </button>
-              <button type="button" disabled={readOnly} onClick={() => void remove(beat)}>
+              <button type="button" disabled={blocked} onClick={() => void remove(beat)}>
                 删除
               </button>
             </div>
@@ -237,7 +246,7 @@ export function SceneBeatPanel({
                 <strong>{beat.title}</strong>
                 <button
                   type="button"
-                  disabled={readOnly}
+                  disabled={blocked}
                   onClick={() =>
                     void command.run(() =>
                       bridge.planning.restoreSceneBeat({ projectId, sceneBeatId: beat.id }),

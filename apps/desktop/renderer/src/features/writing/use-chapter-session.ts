@@ -48,6 +48,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
   const sessionGeneration = useRef(0);
   const initialChapterRequested = useRef(false);
   const handledNavigationKey = useRef<string | null>(null);
+  const queuedChapter = useRef<Chapter | null>(null);
 
   const transition = useCallback((action: ChapterSessionAction): void => {
     stateRef.current = reduceChapterSession(stateRef.current, action);
@@ -58,6 +59,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
     () => () => {
       sessionGeneration.current += 1;
       requestGeneration.current += 1;
+      queuedChapter.current = null;
     },
     [],
   );
@@ -66,6 +68,13 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
     async (nextChapter: Chapter): Promise<void> => {
       const session = sessionGeneration.current;
       const isCurrentSession = (): boolean => sessionGeneration.current === session;
+      const drainQueuedChapter = (): void => {
+        const queued = queuedChapter.current;
+        queuedChapter.current = null;
+        if (!queued || !isCurrentSession() || queued.id === input.activeChapter.current?.id) return;
+        void openChapter(queued);
+      };
+
       if (
         stateRef.current.phase === 'loading' &&
         stateRef.current.requestedChapterId === nextChapter.id
@@ -73,6 +82,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
         return;
       const currentDraft = input.activeDraft.current;
       if (input.activeChapter.current?.id === nextChapter.id && currentDraft) {
+        queuedChapter.current = null;
         if (stateRef.current.requestedChapterId) {
           requestGeneration.current += 1;
           if (!isCurrentSession()) return;
@@ -89,12 +99,17 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
           input.mountEditor(currentDraft, nextChapter);
         return;
       }
-      if (chapterOpenIsTemporarilyBlocked(stateRef.current)) return;
+      if (chapterOpenIsTemporarilyBlocked(stateRef.current)) {
+        queuedChapter.current = nextChapter;
+        input.setStatus(`正在完成当前章节切换，随后打开“${nextChapter.title}”。`);
+        return;
+      }
       if (chapterOpenRequiresFlush(stateRef.current)) {
         transition({ type: 'flush' });
         const flushed = await input.flush();
         if (!isCurrentSession()) return;
         if (!flushed) {
+          queuedChapter.current = null;
           requestGeneration.current += 1;
           input.editor.current?.setEditable(!input.readOnly);
           const message = '自动保存失败，已阻止切换章节。';
@@ -127,6 +142,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
               : '正文读取已被更新请求替代。';
         transition({ type: 'fail', message });
         input.setStatus(message, outcome.state === 'failure');
+        drainQueuedChapter();
         return;
       }
       transition({ type: 'switch' });
@@ -139,6 +155,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
         draftId: outcome.data.draftId,
         editorGeneration: input.editorGeneration.current,
       });
+      drainQueuedChapter();
     },
     [input, transition],
   );
@@ -200,6 +217,7 @@ export function useChapterSession(input: UseChapterSessionInput): ChapterSession
   const reset = useCallback((): void => {
     sessionGeneration.current += 1;
     requestGeneration.current += 1;
+    queuedChapter.current = null;
     transition({ type: 'idle', editorGeneration: input.editorGeneration.current });
   }, [input.editorGeneration, transition]);
 

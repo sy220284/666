@@ -12,16 +12,38 @@ export function runIdeaCapsuleOperation(
   operation: CoreIdeaOperation,
   options: BridgeRequestOptions = {},
 ): Promise<BridgeRequestOutcome<IdeaOperationData>> {
+  const effectiveOptions = ideaReadOptions(operation, options);
   return coordinator.run(
-    options.requestKey ?? ideaRequestKey(operation),
+    effectiveOptions.requestKey ?? ideaRequestKey(operation),
     async () =>
       (await window.worldforgeIdeaCapsule.operate(operation)) as CommandResult<IdeaOperationData>,
-    options,
+    effectiveOptions,
   );
 }
 
 export function cancelIdeaCapsuleRequests(): void {
   coordinator.cancelAll();
+}
+
+function ideaReadOptions(
+  operation: CoreIdeaOperation,
+  options: BridgeRequestOptions,
+): BridgeRequestOptions {
+  if (operation.operation === 'idea.list') {
+    return {
+      ...options,
+      mode: 'replace',
+      laneKey: `idea-list:${operation.input.projectId}`,
+    };
+  }
+  if (operation.operation === 'idea.get') {
+    return {
+      ...options,
+      mode: 'replace',
+      laneKey: `idea-detail:${operation.input.projectId}`,
+    };
+  }
+  return options;
 }
 
 function ideaRequestKey(operation: CoreIdeaOperation): string {

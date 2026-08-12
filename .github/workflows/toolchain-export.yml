@@ -1,6 +1,5 @@
 name: Toolchain Export
 
-# Refresh current workspace toolchain snapshot for the latest main lockfile.
 on:
   workflow_call:
     inputs:

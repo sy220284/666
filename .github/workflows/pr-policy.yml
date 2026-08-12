@@ -43,15 +43,22 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24.18.1
+      - name: Install trusted policy dependencies
+        working-directory: trusted
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Validate pull request shape with trusted policy
         working-directory: candidate
         run: node ../trusted/.github/governance/single-work-policy.mjs validate
       - name: Validate candidate automation inventory with trusted policy
         working-directory: candidate
         run: node ../trusted/.github/governance/automation-layout-policy.mjs
+      - name: Validate candidate workflow structure with trusted policy
+        working-directory: candidate
+        run: node ../trusted/scripts/workflow-structure-policy.mjs
       - name: Validate candidate CI policy with trusted policy
         working-directory: candidate
         run: node ../trusted/scripts/ci-policy.mjs

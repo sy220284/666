@@ -326,6 +326,7 @@ jobs:
       - quality
       - release-gate
       - build
+      - release-status-ready
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release

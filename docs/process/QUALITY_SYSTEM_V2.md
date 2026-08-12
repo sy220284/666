@@ -211,6 +211,19 @@ test-results/performance/phase3-large-project.json
 
 真实Fixture固定为10卷、500章、每章约3000中文字符（正文合计不少于150万字符）、150实体及当前Canon Fact、200伏笔、50人物弧光和100 Manual Versions。Fixture构造时间不计入指标，测试直接复用Frozen与既有机器预算，不建立第二套阈值。Ready CI run `31545126270` / Artifact `9122181787` 已验证：project reopen 37.57ms / 3000ms；跨章Draft open P95 0.53ms / 800ms；Autosave P95 1.93ms / 150ms；FTS rebuild 472.58ms / 10000ms；FTS query P95 4.44ms / 200ms；Constraint Package P95 5.03ms / 1000ms，六项全部通过并由`performance`永久Context阻断。备份/恢复目前没有Frozen数值阻断预算，继续只做真实趋势与后续预算收敛，不凭空增加毫秒阈值。
 
+Phase 3 Memory Leak稳定态机器门已接入现有独立Performance权威。机器真源与Evidence为：
+
+```text
+docs/process/MEMORY_LEAK_BUDGET.json
+scripts/memory-leak-policy.mjs
+scripts/memory-leak-probe.mjs
+tests/performance/memory-leak-probe.test.ts
+tests/unit/memory-leak-policy.test.ts
+test-results/performance/phase3-memory-leak.json
+```
+
+探针使用Node `--expose-gc`，每阶段连续3次显式GC；先将有界幂等缓存预热越过1000-entry保留上限，再开始稳定态测量，从而区分正常缓存填充与不可回收增长。Draft场景执行1200次warmup后继续5×250次真实`DraftService.applyPatch`；Project lifecycle执行600次warmup后继续5×100次真实open/close。阻断指标同时覆盖final growth、peak growth、tail spread和positive slope bytes/operation。基于真实CI post-GC样本校准后，预算已切换为`enforced`：Draft三项增长上限均为1 MiB、positive slope上限512 B/op；Project lifecycle三项增长上限均为2 MiB、positive slope上限4096 B/op。Ready Performance run `31555098695`与Main Verification `31555996135`均已通过，失败继续由永久`performance` Context fail-closed阻断。
+
 ## 9. G6：Product Experience
 
 UI验收状态使用Schema 2。
@@ -374,11 +387,11 @@ pnpm check:docs
 - Linux 1280×800 Visual Regression：M8-07四主题稳定基线、双独立全绿Artifact provenance、严格SHA-256/尺寸阻断、actual PNG诊断与Unit判定覆盖。
 - Accessibility自动验证：首页/新建作品Modal/写作工作台高置信扫描、Accessible Name与DOM语义规则、Modal焦点圈/Tab/Escape回焦、Unit判定覆盖与真实Electron E2E阻断。
 - 真实大作品核心交互性能门：10卷/500章/≥150万字符/150实体/200伏笔/50人物弧/100版本真实SQLite Fixture，覆盖reopen、跨章open、Autosave、FTS rebuild/query与AI Constraint Package，并复用现有Performance永久Context阻断。
+- Memory Leak稳定态机器门：先跨越1000-entry有界缓存保留上限再取样，显式GC并覆盖Draft与Project lifecycle稳定态，final/peak/tail growth及positive slope全部由真实CI校准后的`enforced`预算阻断。
 
 继续推进：
 
 - 大作品备份/恢复趋势与阻断预算收敛；
-- Memory Leak；
 - 三平台体验矩阵。
 
 ### Phase 4 — Supply Chain

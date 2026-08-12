@@ -1,4 +1,4 @@
-# Repository-authoritative commands used by M11-05 validation
+# Repository-authoritative commands for M11-05 final validation
 pnpm task:validate
 pnpm check:language
 pnpm check:workspaces
@@ -28,21 +28,18 @@ pnpm test:e2e
 # Playwright 1.62.0
 # Electron 43.2.0
 
-# Exact implementation-side CI records
+# PR #383 implementation revision
+# f34e1c109e28b34d50ff4d7e19537af83c239be9
+# PR Policy Ready run: 31652068681 success
+# Security Ready run: 31652068522 success
+# Performance Ready run: 31652068500 success
+# Quality pre-closure run: 31652068629
+# Release-audit governance/unit/policy/config/effective-Evidence checks passed before the final M11-05 closure check.
+
+# Historical full M11-05 implementation records retained for traceability
 # Quality: 31595253964 @ 17cf4176d98aeafef2596c7c06a122461638cd63
 # Security: 31595253525 success
 # Performance: 31595253596 success
-# Electron E2E: 36 scenarios passed in 15.8m; artifact 9141333338
-
-# Product test results from artifact 9140912992
-# Unit: 214 files / 1076 tests passed
-# Integration: 80 files / 218 tests passed
-# Migration: 29 files / 54 tests passed
-# Coverage execution: 360 files / 1457 tests passed
-# Statements 74.90%; Branches 63.34%; Functions 70.72%; Lines 77.05%
-
-# M11-05 performance results from artifact 9140827533
-# 100 Ideas: list P95 1.642098ms; preview P95 0.340973ms; payload 30796B
-# 1000 Ideas: list P95 1.060113ms; preview P95 0.246752ms; payload 30898B
-# 5000 Ideas: list P95 1.468291ms; preview P95 0.186829ms; payload 30986B
-# Budgets: list/preview P95 <= 80ms; Renderer list payload <= 131072B
+# Electron E2E: 36 scenarios passed; artifact 9141333338
+# Product tests and coverage artifact: 9140912992
+# Reliability artifact: 9140819109

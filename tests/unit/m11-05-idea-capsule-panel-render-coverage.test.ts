@@ -12,45 +12,21 @@ import type { ReactElement } from 'react';
 
 import type { RendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 import { IdeaCapsulePanel } from '../../apps/desktop/renderer/src/features/planning/idea-capsule-panel.js';
+import { installRendererHookDispatcher } from '../testkit/renderer-hook-dispatcher.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
 type Effect = () => void | (() => void);
 
-const hooks = vi.hoisted(() => ({
+const hooks = {
   states: [] as unknown[],
   index: 0,
   effects: [] as Effect[],
-}));
+};
 const ideaClient = vi.hoisted(() => ({
   run: vi.fn(),
   cancel: vi.fn(),
 }));
-
-vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>();
-  return {
-    ...actual,
-    useState(initial: unknown) {
-      const value = hooks.index < hooks.states.length ? hooks.states[hooks.index] : initial;
-      hooks.index += 1;
-      const setter = vi.fn((next: unknown) => {
-        if (typeof next === 'function') {
-          (next as (current: unknown) => unknown)(value);
-        }
-      });
-      return [value, setter];
-    },
-    useMemo(factory: () => unknown) {
-      return factory();
-    },
-    useCallback(callback: unknown) {
-      return callback;
-    },
-    useEffect(effect: Effect) {
-      hooks.effects.push(effect);
-    },
-  };
-});
+let restoreDispatcher: (() => void) | null = null;
 
 vi.mock('../../apps/desktop/renderer/src/bridge/idea-capsule-client.js', () => ({
   runIdeaCapsuleOperation: ideaClient.run,
@@ -136,9 +112,11 @@ const structure = contractInput<ProjectStructure>({
 });
 
 function configureStates(values: readonly unknown[]): void {
+  restoreDispatcher?.();
   hooks.states = [...values];
   hooks.index = 0;
   hooks.effects = [];
+  restoreDispatcher = installRendererHookDispatcher(hooks);
 }
 
 function richStates(overrides: Partial<Record<number, unknown>> = {}): unknown[] {
@@ -196,7 +174,9 @@ function text(node: unknown): string {
 }
 
 function buttons(root: TestElement, label: string): TestElement[] {
-  return descendants(root).filter((element) => element.type === 'button' && text(element) === label);
+  return descendants(root).filter(
+    (element) => element.type === 'button' && text(element) === label,
+  );
 }
 
 async function flush(): Promise<void> {
@@ -313,6 +293,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  restoreDispatcher?.();
+  restoreDispatcher = null;
   vi.unstubAllGlobals();
 });
 
@@ -330,7 +312,9 @@ describe('M11-05 Idea Capsule renderer branch coverage', () => {
     expect(text(root)).toContain('灵感胶囊');
     expect(text(root)).toContain('加载更多');
     expect(text(root)).toContain('确认转换');
-    expect(descendants(root).filter((element) => element.type === 'article')).toHaveLength(ideas.length);
+    expect(descendants(root).filter((element) => element.type === 'article')).toHaveLength(
+      ideas.length,
+    );
 
     for (const element of descendants(root)) {
       const onChange = element.props.onChange;

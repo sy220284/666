@@ -5,6 +5,7 @@ import type { PlotNode } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../../bridge/use-bridge-resource.js';
 import { authorPlotNodeTypeLabel } from '../../../presentation/author-value-format.js';
+import { interactionLocked } from '../../../runtime/interaction-locks.js';
 import { lifecycleStatusLabel, sortedPlotNodes } from '../planning-form-values.js';
 
 export function PlotTree({
@@ -27,7 +28,7 @@ export function PlotTree({
   readonly onStatus: (status: string) => void;
 }) {
   const command = useBridgeCommand();
-  const blocked = readOnly || command.pending;
+  const blocked = interactionLocked(readOnly, command.pending);
   const move = async (
     nodeId: string,
     parentId: string | null,
@@ -75,7 +76,7 @@ export function PlotTree({
             </button>
             <button
               aria-label={`上移${node.title}`}
-              disabled={blocked || siblingIndex <= 0}
+              disabled={interactionLocked(blocked, siblingIndex <= 0)}
               type="button"
               onClick={() => {
                 const previous = siblings[siblingIndex - 1];
@@ -90,7 +91,7 @@ export function PlotTree({
             </button>
             <button
               aria-label={`下移${node.title}`}
-              disabled={blocked || siblingIndex >= siblings.length - 1}
+              disabled={interactionLocked(blocked, siblingIndex >= siblings.length - 1)}
               type="button"
               onClick={() => {
                 const next = siblings[siblingIndex + 1];

@@ -121,7 +121,9 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
         cases.map(([scopeType]) => scopeType),
       );
       expect(contexts.every((context) => context.constraintHash.length === 64)).toBe(true);
-      expect(contexts.every((context) => context.inputSources[0]?.sourceType === 'scope')).toBe(true);
+      expect(contexts.every((context) => context.inputSources[0]?.sourceType === 'scope')).toBe(
+        true,
+      );
 
       const completion = await generation.completeIdeaCards(randomUUID(), {
         projectId: project.projectId,

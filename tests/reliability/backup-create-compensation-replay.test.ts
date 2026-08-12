@@ -48,6 +48,7 @@ describe('reliability: backup creation compensation replay', () => {
   it('repairs a verified final backup left by failed compensation using the same requestId', async ({
     skip,
   }) => {
+    // chmod cannot model a permission-denied cleanup while the process is root.
     skip(process.getuid?.() === 0, 'POSIX permission semantics are unavailable under root.');
     const root = await mkdtemp(path.join(tmpdir(), 'worldforge-backup-compensation-replay-'));
     temporaryDirectories.push(root);

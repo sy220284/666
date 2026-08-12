@@ -112,6 +112,20 @@ export function remapProjectIdentity(
       for (const reference of references) {
         if (String(reference.table) !== 'projects' || String(reference.to) !== 'id') continue;
         const column = String(reference.from);
+        if (table === 'generation_runs' && column === 'project_id') {
+          database
+            .prepare(
+              `UPDATE generation_runs
+                  SET project_id = ?,
+                      scope_id = CASE
+                        WHEN scope_type = 'project' AND scope_id = ? THEN ?
+                        ELSE scope_id
+                      END
+                WHERE project_id = ?`,
+            )
+            .run(nextProjectId, previousProjectId, nextProjectId, previousProjectId);
+          continue;
+        }
         database
           .prepare(
             `UPDATE ${quoteIdentifier(table)} SET ${quoteIdentifier(column)} = ? WHERE ${quoteIdentifier(column)} = ?`,

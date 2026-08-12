@@ -1,17 +1,27 @@
 {
   "schemaVersion": 1,
-  "status": "calibration-required",
+  "status": "enforced",
   "gcPasses": 3,
   "draftSteadyState": {
     "warmupOperations": 1200,
     "batches": 5,
     "operationsPerBatch": 250,
-    "budget": null
+    "budget": {
+      "maxFinalGrowthBytes": 1048576,
+      "maxPeakGrowthBytes": 1048576,
+      "maxTailSpreadBytes": 1048576,
+      "maxPositiveSlopeBytesPerOperation": 512
+    }
   },
   "projectLifecycle": {
     "warmupCycles": 600,
     "batches": 5,
     "cyclesPerBatch": 100,
-    "budget": null
+    "budget": {
+      "maxFinalGrowthBytes": 2097152,
+      "maxPeakGrowthBytes": 2097152,
+      "maxTailSpreadBytes": 2097152,
+      "maxPositiveSlopeBytesPerOperation": 4096
+    }
   }
 }

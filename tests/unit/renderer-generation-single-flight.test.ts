@@ -12,6 +12,14 @@ const requestId = '550e8400-e29b-41d4-a716-446655440003';
 
 const success = <T>(id: string, data: T): CommandResult<T> => ({ ok: true, requestId: id, data });
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
 function generationRun(status: GenerationRun['status']): GenerationRun {
   return {
     runId,
@@ -93,6 +101,23 @@ describe('renderer AI single-flight guard', () => {
       requestId,
       data: { run: { runId, status: 'running' }, taskId },
     });
+  });
+
+  it('coalesces two immediate starts into one preflight and one backend start', async () => {
+    const preflight = deferred<CommandResult<{ readonly runs: readonly GenerationRun[] }>>();
+    const next = generationRun('running');
+    const listRuns = vi.fn(() => preflight.promise);
+    const start = vi.fn(async () => success('new-start', { run: next, taskId }));
+    const adapter = createRendererBridgeAdapter({ generation: generationBridge(listRuns, start) });
+
+    const first = adapter.generation.start(startInput());
+    const second = adapter.generation.start(startInput());
+    expect(listRuns).toHaveBeenCalledTimes(1);
+
+    preflight.resolve(success('list-empty', { runs: [] }));
+    await expect(first).resolves.toMatchObject({ state: 'success', requestId: 'new-start' });
+    await expect(second).resolves.toMatchObject({ state: 'success', requestId: 'new-start' });
+    expect(start).toHaveBeenCalledTimes(1);
   });
 
   it('starts a new run after the previous same-type run is already finished', async () => {

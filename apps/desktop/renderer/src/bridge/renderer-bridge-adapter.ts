@@ -177,13 +177,15 @@ type AdaptedDomain<Domain> = {
 type AdaptedTaskDomain = AdaptedDomain<
   Pick<WorldforgeBridge['task'], 'getSnapshot' | 'cancel' | 'listActive'>
 >;
+type AdaptedGenerationDomain = AdaptedDomain<WorldforgeBridge['generation']>;
+type GenerationStartOutcome = Awaited<ReturnType<AdaptedGenerationDomain['start']>>;
 
 export interface RendererBridgeAdapter {
   readonly lifecycle: WorldforgeBridge['lifecycle'];
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
   readonly providers: AdaptedDomain<WorldforgeBridge['providers']>;
-  readonly generation: AdaptedDomain<WorldforgeBridge['generation']>;
+  readonly generation: AdaptedGenerationDomain;
   readonly project: AdaptedDomain<WorldforgeBridge['project']>;
   readonly recovery: AdaptedDomain<WorldforgeBridge['recovery']>;
   readonly textIo: AdaptedDomain<WorldforgeBridge['textIo']>;
@@ -225,17 +227,16 @@ export function createRendererBridgeAdapter(
         onShutdownPrepare: () => () => undefined,
         acknowledgeShutdown: () => undefined,
       };
+  const generation = guardGenerationDomain(
+    adaptDomain('generation', requireDomain(bridge.generation, 'generation'), coordinator),
+  );
 
   return {
     lifecycle,
     app: adaptDomain('app', requireDomain(bridge.app, 'app'), coordinator),
     settings: adaptDomain('settings', requireDomain(bridge.settings, 'settings'), coordinator),
     providers: adaptDomain('providers', requireDomain(bridge.providers, 'providers'), coordinator),
-    generation: adaptDomain(
-      'generation',
-      requireDomain(bridge.generation, 'generation'),
-      coordinator,
-    ),
+    generation,
     project: adaptDomain('project', requireDomain(bridge.project, 'project'), coordinator),
     recovery: adaptDomain('recovery', requireDomain(bridge.recovery, 'recovery'), coordinator),
     textIo: adaptDomain('textIo', requireDomain(bridge.textIo, 'textIo'), coordinator),
@@ -289,6 +290,64 @@ export function createRendererBridgeAdapter(
     },
     cancelAll: () => coordinator.cancelAll(),
   };
+}
+
+function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGenerationDomain {
+  const starts = new Map<string, Promise<GenerationStartOutcome>>();
+  return new Proxy(generation, {
+    get(target, property, receiver) {
+      if (property !== 'start') return Reflect.get(target, property, receiver);
+      return (...args: Parameters<AdaptedGenerationDomain['start']>) => {
+        const [input] = args;
+        const scopeType = input.scopeType ?? 'chapter';
+        const scopeId =
+          input.scopeId ??
+          (scopeType === 'chapter'
+            ? (input.chapterId ?? null)
+            : scopeType === 'project'
+              ? input.projectId
+              : null);
+        if (!scopeId) return target.start(...args);
+        const key = `${input.projectId}:${scopeType}:${scopeId}:${input.intent.runType}`;
+        const pending = starts.get(key);
+        if (pending) return pending;
+        const operation = (async (): Promise<GenerationStartOutcome> => {
+          const active = await target.listRuns(
+            {
+              projectId: input.projectId,
+              chapterId: input.chapterId ?? null,
+              scopeType,
+              scopeId,
+            },
+            {
+              mode: 'share',
+              requestKey: `generation-active:${key}`,
+            },
+          );
+          if (active.state !== 'success') return active;
+          const existing = active.data.runs.find(
+            (run) =>
+              run.runType === input.intent.runType &&
+              (run.status === 'queued' || run.status === 'running'),
+          );
+          if (existing) {
+            return {
+              state: 'success',
+              generation: active.generation,
+              requestId: existing.requestId,
+              data: { run: existing, taskId: existing.taskId },
+            };
+          }
+          return target.start(...args);
+        })();
+        starts.set(key, operation);
+        void operation.finally(() => {
+          if (starts.get(key) === operation) starts.delete(key);
+        });
+        return operation;
+      };
+    },
+  });
 }
 
 export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {

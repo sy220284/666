@@ -7,6 +7,7 @@ import {
 
 const projectId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 const ideaId = '550e8400-e29b-41d4-a716-446655440000';
+const secondIdeaId = '550e8400-e29b-41d4-a716-446655440001';
 const requestId = '4b71b998-8e45-4f8a-95f4-7a3df95579ca';
 
 function deferred<T>() {
@@ -25,13 +26,13 @@ function listSuccess() {
   };
 }
 
-function getSuccess(title: string) {
+function getSuccess(id: string, title: string) {
   return {
     ok: true as const,
     requestId,
     data: {
       idea: {
-        id: ideaId,
+        id,
         projectId,
         ideaKind: 'plot' as const,
         title,
@@ -56,26 +57,40 @@ afterEach(() => {
 });
 
 describe('M11-05 Idea renderer request ownership', () => {
-  it('shares identical list reads instead of issuing duplicate preload calls', async () => {
-    const pending = deferred<ReturnType<typeof listSuccess>>();
-    const operate = vi.fn(() => pending.promise);
+  it('makes an older list read stale when a newer filter or page request arrives', async () => {
+    const firstReply = deferred<ReturnType<typeof listSuccess>>();
+    const secondReply = deferred<ReturnType<typeof listSuccess>>();
+    const operate = vi
+      .fn()
+      .mockImplementationOnce(() => firstReply.promise)
+      .mockImplementationOnce(() => secondReply.promise);
     vi.stubGlobal('window', { worldforgeIdeaCapsule: { operate } });
-    const operation = {
-      operation: 'idea.list' as const,
-      input: { projectId, status: null, limit: 50, cursor: null },
-    };
 
-    const first = runIdeaCapsuleOperation(operation, { mode: 'share' });
-    const second = runIdeaCapsuleOperation(operation, { mode: 'share' });
+    const first = runIdeaCapsuleOperation(
+      {
+        operation: 'idea.list',
+        input: { projectId, status: null, limit: 50, cursor: null },
+      },
+      { mode: 'share' },
+    );
     await Promise.resolve();
+    const second = runIdeaCapsuleOperation(
+      {
+        operation: 'idea.list',
+        input: { projectId, status: 'favorite', limit: 50, cursor: null },
+      },
+      { mode: 'share' },
+    );
     expect(operate).toHaveBeenCalledTimes(1);
 
-    pending.resolve(listSuccess());
-    await expect(first).resolves.toMatchObject({ state: 'success' });
+    firstReply.resolve(listSuccess());
+    await expect(first).resolves.toMatchObject({ state: 'stale' });
+    await vi.waitFor(() => expect(operate).toHaveBeenCalledTimes(2));
+    secondReply.resolve(listSuccess());
     await expect(second).resolves.toMatchObject({ state: 'success' });
   });
 
-  it('marks the older same-Idea request stale when a newer lane generation wins', async () => {
+  it('makes the older Idea detail stale when the author immediately opens another Idea', async () => {
     const firstReply = deferred<ReturnType<typeof getSuccess>>();
     const secondReply = deferred<ReturnType<typeof getSuccess>>();
     const operate = vi
@@ -83,24 +98,25 @@ describe('M11-05 Idea renderer request ownership', () => {
       .mockImplementationOnce(() => firstReply.promise)
       .mockImplementationOnce(() => secondReply.promise);
     vi.stubGlobal('window', { worldforgeIdeaCapsule: { operate } });
-    const operation = {
-      operation: 'idea.get' as const,
-      input: { projectId, ideaId },
-    };
-    const options = { mode: 'replace' as const, laneKey: `idea-detail:${projectId}:${ideaId}` };
 
-    const first = runIdeaCapsuleOperation(operation, options);
+    const first = runIdeaCapsuleOperation(
+      { operation: 'idea.get', input: { projectId, ideaId } },
+      { mode: 'share' },
+    );
     await Promise.resolve();
-    const second = runIdeaCapsuleOperation(operation, options);
+    const second = runIdeaCapsuleOperation(
+      { operation: 'idea.get', input: { projectId, ideaId: secondIdeaId } },
+      { mode: 'share' },
+    );
     expect(operate).toHaveBeenCalledTimes(1);
 
-    firstReply.resolve(getSuccess('旧结果'));
+    firstReply.resolve(getSuccess(ideaId, '旧结果'));
     await expect(first).resolves.toMatchObject({ state: 'stale' });
     await vi.waitFor(() => expect(operate).toHaveBeenCalledTimes(2));
-    secondReply.resolve(getSuccess('新结果'));
+    secondReply.resolve(getSuccess(secondIdeaId, '新结果'));
     await expect(second).resolves.toMatchObject({
       state: 'success',
-      data: { idea: { title: '新结果' } },
+      data: { idea: { id: secondIdeaId, title: '新结果' } },
     });
   });
 

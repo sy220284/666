@@ -5,6 +5,7 @@ import type { PlotNode } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand } from '../../../bridge/use-bridge-resource.js';
 import { authorPlotNodeTypeLabel } from '../../../presentation/author-value-format.js';
+import { interactionLocked } from '../../../runtime/interaction-locks.js';
 import { lifecycleStatusLabel, sortedPlotNodes } from '../planning-form-values.js';
 
 export function PlotTree({
@@ -27,6 +28,7 @@ export function PlotTree({
   readonly onStatus: (status: string) => void;
 }) {
   const command = useBridgeCommand();
+  const blocked = interactionLocked(readOnly, command.pending);
   const move = async (
     nodeId: string,
     parentId: string | null,
@@ -54,7 +56,7 @@ export function PlotTree({
     return (
       <article
         data-plot-node-id={node.id}
-        draggable={!readOnly}
+        draggable={!blocked}
         key={node.id}
         onDragStart={(event) => event.dataTransfer.setData('text/worldforge-plot-node', node.id)}
       >
@@ -66,15 +68,15 @@ export function PlotTree({
             </span>
           </div>
           <div className="inline-actions">
-            <button type="button" onClick={() => onCreateChild(node.id)}>
+            <button disabled={command.pending} type="button" onClick={() => onCreateChild(node.id)}>
               +子节点
             </button>
-            <button type="button" onClick={() => onEdit(node)}>
+            <button disabled={command.pending} type="button" onClick={() => onEdit(node)}>
               编辑
             </button>
             <button
               aria-label={`上移${node.title}`}
-              disabled={readOnly || siblingIndex <= 0}
+              disabled={interactionLocked(blocked, siblingIndex <= 0)}
               type="button"
               onClick={() => {
                 const previous = siblings[siblingIndex - 1];
@@ -89,7 +91,7 @@ export function PlotTree({
             </button>
             <button
               aria-label={`下移${node.title}`}
-              disabled={readOnly || siblingIndex >= siblings.length - 1}
+              disabled={interactionLocked(blocked, siblingIndex >= siblings.length - 1)}
               type="button"
               onClick={() => {
                 const next = siblings[siblingIndex + 1];
@@ -99,13 +101,13 @@ export function PlotTree({
               ↓
             </button>
             {node.parentId ? (
-              <button type="button" disabled={readOnly} onClick={() => void move(node.id, null)}>
+              <button type="button" disabled={blocked} onClick={() => void move(node.id, null)}>
                 移到根级
               </button>
             ) : null}
             <button
               type="button"
-              disabled={readOnly}
+              disabled={blocked}
               onClick={() => {
                 if (window.confirm(`删除“${node.title}”及其子节点？`)) {
                   void (async () => {
@@ -124,7 +126,7 @@ export function PlotTree({
         <button
           className="outline-drop-target"
           data-outline-drop-child
-          disabled={readOnly}
+          disabled={blocked}
           type="button"
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
@@ -145,7 +147,7 @@ export function PlotTree({
       <button
         className="outline-drop-target"
         data-outline-root-drop
-        disabled={readOnly}
+        disabled={blocked}
         type="button"
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {

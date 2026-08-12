@@ -46,7 +46,7 @@ export function VolumeEditorDialog({
       <form data-structure-form onSubmit={(event) => void submit(event)}>
         <header>
           <h2 data-structure-dialog-title>{volume ? '编辑卷' : '新建卷'}</h2>
-          <button type="button" onClick={onClose}>
+          <button type="button" disabled={command.pending} onClick={onClose}>
             关闭
           </button>
         </header>

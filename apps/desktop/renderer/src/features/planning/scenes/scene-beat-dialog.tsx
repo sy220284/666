@@ -77,7 +77,7 @@ export function SceneBeatDialog({
                 ? `从 ${convertingLogicalBlockIds.length} 个正文段落转换`
                 : '新建场景'}
           </h2>
-          <button type="button" onClick={onClose}>
+          <button type="button" disabled={command.pending} onClick={onClose}>
             关闭
           </button>
         </header>

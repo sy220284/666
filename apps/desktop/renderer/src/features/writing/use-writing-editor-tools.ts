@@ -97,11 +97,25 @@ export function useWritingEditorTools(input: UseWritingEditorToolsInput) {
       const values = matches();
       if (!instance || input.readOnly || input.composing.current || values.length === 0) return;
       const selected = all ? values : [values[input.findIndex] ?? values[0]!];
+      const editable = selected.filter((match) => {
+        const position = instance.state.doc.resolve(match.from);
+        return position.depth < 1 || position.node(1).attrs.locked !== true;
+      });
+      const skipped = selected.length - editable.length;
+      if (editable.length === 0) {
+        input.setStatus('匹配内容位于锁定段落，未执行替换。');
+        return;
+      }
       let transaction = instance.state.tr;
-      for (const match of [...selected].reverse())
+      for (const match of [...editable].reverse())
         transaction = transaction.insertText(input.replaceText, match.from, match.to);
       instance.view.dispatch(transaction);
       input.setFindIndex(0);
+      input.setStatus(
+        skipped > 0
+          ? `已替换 ${editable.length} 处，跳过 ${skipped} 处锁定内容。`
+          : `已替换 ${editable.length} 处。`,
+      );
     },
     [input, matches],
   );

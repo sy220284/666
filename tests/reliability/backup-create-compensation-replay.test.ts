@@ -11,6 +11,7 @@ import { ProjectWorkspaceService } from '../../packages/core-service/src/project
 import { RecoveryService } from '../../packages/core-service/src/recovery.js';
 
 const temporaryDirectories: string[] = [];
+const permissionSensitiveIt = it.runIf(process.getuid?.() !== 0);
 
 class RegistrationFailureWorkspaceService extends ProjectWorkspaceService {
   #lockedBackupDirectory: string | null = null;
@@ -45,7 +46,7 @@ afterEach(async () => {
 });
 
 describe('reliability: backup creation compensation replay', () => {
-  it.runIf(process.getuid?.() !== 0)(
+  permissionSensitiveIt(
     'repairs a verified final backup left by failed compensation using the same requestId',
     async () => {
       const root = await mkdtemp(path.join(tmpdir(), 'worldforge-backup-compensation-replay-'));

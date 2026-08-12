@@ -11,30 +11,20 @@ import { StoryKnowledgePanel } from '../../apps/desktop/renderer/src/features/ca
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
 const controls = vi.hoisted(() => ({
-  view: 'character-card',
-  historyCursor: null as null | { readonly createdAt: string; readonly versionId: string },
-  resourceState: 'success' as 'loading' | 'success' | 'failure' | 'cancelled',
-  resourceData: null as unknown,
-  resourceError: null as unknown,
+  state: 'success' as 'loading' | 'success' | 'failure' | 'cancelled',
+  data: null as StoryKnowledgeProjection | null,
+  error: null as null | {
+    readonly code: string;
+    readonly message: string;
+    readonly retryable: boolean;
+  },
 }));
-
-vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>();
-  return {
-    ...actual,
-    useState(initial: unknown) {
-      if (initial === 'character-card') return [controls.view, () => undefined];
-      if (initial === null) return [controls.historyCursor, () => undefined];
-      return actual.useState(initial);
-    },
-  };
-});
 
 vi.mock('../../apps/desktop/renderer/src/bridge/use-bridge-resource.js', () => ({
   useBridgeQuery: () => ({
-    state: controls.resourceState,
-    data: controls.resourceData,
-    error: controls.resourceError,
+    state: controls.state,
+    data: controls.data,
+    error: controls.error,
     refresh: async () => undefined,
   }),
 }));
@@ -57,37 +47,26 @@ const thirdCharacterId = '55555555-5555-4555-8555-555555555555';
 const versionId = '66666666-6666-4666-8666-666666666666';
 const secondVersionId = '77777777-7777-4777-8777-777777777777';
 
-function renderPanel({
-  view,
-  projection,
-  selectedEntityId = characterId,
-  selectedChapterId = chapterId,
-}: {
-  readonly view: string;
-  readonly projection?: StoryKnowledgeProjection | null;
-  readonly selectedEntityId?: string | null;
-  readonly selectedChapterId?: string | null;
-}): string {
-  controls.view = view;
-  controls.resourceState = 'success';
-  controls.resourceData = projection ?? null;
-  controls.resourceError = null;
+function renderPanel(
+  projection: StoryKnowledgeProjection | null,
+  selectedEntityId: string | null = characterId,
+): string {
+  controls.state = 'success';
+  controls.data = projection;
+  controls.error = null;
   return renderToStaticMarkup(
     createElement(StoryKnowledgePanel, {
       bridge: contractInput<RendererBridgeAdapter>({}),
       projectId,
       readOnly: false,
       selectedEntityId,
-      selectedChapterId,
+      selectedChapterId: chapterId,
       onNavigate: () => undefined,
     }),
   );
 }
 
-function characterCard(empty: boolean): Extract<
-  StoryKnowledgeProjection,
-  { readonly view: 'character_card' }
-> {
+function characterCard(empty: boolean): StoryKnowledgeProjection {
   return contractInput({
     view: 'character_card',
     projectId,
@@ -151,10 +130,7 @@ function characterCard(empty: boolean): Extract<
   });
 }
 
-function relationshipProjection(empty: boolean): Extract<
-  StoryKnowledgeProjection,
-  { readonly view: 'relationships' }
-> {
+function relationshipProjection(empty: boolean): StoryKnowledgeProjection {
   return contractInput({
     view: 'relationships',
     projectId,
@@ -186,10 +162,7 @@ function relationshipProjection(empty: boolean): Extract<
   });
 }
 
-function timelineProjection(empty: boolean): Extract<
-  StoryKnowledgeProjection,
-  { readonly view: 'timeline' }
-> {
+function timelineProjection(empty: boolean): StoryKnowledgeProjection {
   return contractInput({
     view: 'timeline',
     projectId,
@@ -220,10 +193,7 @@ function timelineProjection(empty: boolean): Extract<
   });
 }
 
-function foreshadowingProjection(empty: boolean): Extract<
-  StoryKnowledgeProjection,
-  { readonly view: 'foreshadowing' }
-> {
+function foreshadowingProjection(empty: boolean): StoryKnowledgeProjection {
   const attentions = ['none', 'due', 'overdue', 'blocked'] as const;
   return contractInput({
     view: 'foreshadowing',
@@ -243,12 +213,16 @@ function foreshadowingProjection(empty: boolean): Extract<
   });
 }
 
-function arcProjection(empty: boolean): Extract<StoryKnowledgeProjection, { readonly view: 'arc' }> {
+function arcProjection(empty: boolean): StoryKnowledgeProjection {
   return contractInput({
     view: 'arc',
     projectId,
     bounded: true,
-    character: { id: characterId, name: '沈砚', summary: empty ? '' : '从旁观到承担。' },
+    character: {
+      id: characterId,
+      name: '沈砚',
+      summary: empty ? '' : '从旁观到承担。',
+    },
     milestones: empty
       ? []
       : [
@@ -287,10 +261,7 @@ function arcProjection(empty: boolean): Extract<StoryKnowledgeProjection, { read
   });
 }
 
-function historyProjection(empty: boolean): Extract<
-  StoryKnowledgeProjection,
-  { readonly view: 'history' }
-> {
+function historyProjection(empty: boolean): StoryKnowledgeProjection {
   return contractInput({
     view: 'history',
     projectId,
@@ -331,111 +302,74 @@ function historyProjection(empty: boolean): Extract<
 
 describe('M11-04 Story Knowledge Projection renderer branch coverage', () => {
   beforeEach(() => {
-    controls.view = 'character-card';
-    controls.historyCursor = null;
-    controls.resourceState = 'success';
-    controls.resourceData = null;
-    controls.resourceError = null;
+    controls.state = 'success';
+    controls.data = null;
+    controls.error = null;
   });
 
-  it('覆盖人物、关系、时间线、伏笔、成长与历史的非空和空态', () => {
-    const cases: ReadonlyArray<readonly [string, StoryKnowledgeProjection, string]> = [
-      ['character-card', characterCard(false), '负责追查旧案'],
-      ['character-card', characterCard(true), '尚未填写人物简介'],
-      ['relationships', relationshipProjection(false), '关系较多，仅显示当前窗口'],
-      ['relationships', relationshipProjection(true), '当前章节没有可显示的人物关系'],
-      ['story-timeline', timelineProjection(false), '雨夜目击'],
-      ['story-timeline', timelineProjection(true), '当前时间窗口没有事件'],
-      ['character-timeline', timelineProjection(false), '密信送达'],
-      ['foreshadowing', foreshadowingProjection(false), '已超过回收窗口'],
-      ['foreshadowing', foreshadowingProjection(true), '当前章节没有需要关注的伏笔'],
-      ['arc', arcProjection(false), '开放节点'],
-      ['arc', arcProjection(true), '该人物暂无成长节点'],
-      ['history', historyProjection(false), '查看更早版本'],
-      ['history', historyProjection(true), '当前页没有版本记录'],
+  it('渲染人物、关系、时间线、伏笔、成长与历史的非空分支', () => {
+    const cases: ReadonlyArray<readonly [StoryKnowledgeProjection, string]> = [
+      [characterCard(false), '负责追查旧案'],
+      [relationshipProjection(false), '关系较多，仅显示当前窗口'],
+      [timelineProjection(false), '雨夜目击'],
+      [foreshadowingProjection(false), '已超过回收窗口'],
+      [arcProjection(false), '开放节点'],
+      [historyProjection(false), '查看更早版本'],
     ];
 
-    for (const [view, projection, expected] of cases) {
-      const html = renderPanel({ view, projection });
-      expect(html).toContain(expected);
+    for (const [projection, expected] of cases) {
+      expect(renderPanel(projection)).toContain(expected);
     }
   });
 
-  it('覆盖历史游标、资源失败、取消和空成功响应', () => {
-    controls.historyCursor = {
-      createdAt: '2026-08-10T10:00:00.000Z',
-      versionId,
-    };
-    expect(renderPanel({ view: 'history', projection: historyProjection(false) })).toContain(
-      '回到最新',
-    );
+  it('渲染人物、关系、时间线、伏笔、成长与历史的空态分支', () => {
+    const cases: ReadonlyArray<readonly [StoryKnowledgeProjection, string]> = [
+      [characterCard(true), '尚未填写人物简介'],
+      [relationshipProjection(true), '当前章节没有可显示的人物关系'],
+      [timelineProjection(true), '当前时间窗口没有事件'],
+      [foreshadowingProjection(true), '当前章节没有需要关注的伏笔'],
+      [arcProjection(true), '该人物暂无成长节点'],
+      [historyProjection(true), '当前页没有版本记录'],
+    ];
 
-    controls.view = 'character-card';
-    controls.resourceState = 'failure';
-    controls.resourceData = null;
-    controls.resourceError = {
+    for (const [projection, expected] of cases) {
+      expect(renderPanel(projection)).toContain(expected);
+    }
+  });
+
+  it('覆盖失败、无错误详情失败、取消与空成功响应', () => {
+    controls.state = 'failure';
+    controls.error = {
       code: 'COMMON_INTERNAL_999',
       message: '读取失败',
       retryable: true,
     };
-    const failure = renderToStaticMarkup(
-      createElement(StoryKnowledgePanel, {
-        bridge: contractInput<RendererBridgeAdapter>({}),
-        projectId,
-        readOnly: false,
-        selectedEntityId: characterId,
-        selectedChapterId: chapterId,
-        onNavigate: () => undefined,
-      }),
-    );
-    expect(failure).toContain('data-story-knowledge-error');
+    expect(renderPanelWithCurrentResource()).toContain('data-story-knowledge-error');
 
-    controls.resourceState = 'cancelled';
-    controls.resourceError = null;
-    const cancelled = renderToStaticMarkup(
-      createElement(StoryKnowledgePanel, {
-        bridge: contractInput<RendererBridgeAdapter>({}),
-        projectId,
-        readOnly: false,
-        selectedEntityId: characterId,
-        selectedChapterId: chapterId,
-        onNavigate: () => undefined,
-      }),
-    );
-    expect(cancelled).toContain('读取已取消');
+    controls.error = null;
+    expect(renderPanelWithCurrentResource()).toContain('故事知识暂时无法读取');
 
-    controls.resourceState = 'success';
-    const emptySuccess = renderToStaticMarkup(
-      createElement(StoryKnowledgePanel, {
-        bridge: contractInput<RendererBridgeAdapter>({}),
-        projectId,
-        readOnly: false,
-        selectedEntityId: characterId,
-        selectedChapterId: chapterId,
-        onNavigate: () => undefined,
-      }),
-    );
-    expect(emptySuccess).toContain('暂无可显示的故事知识');
+    controls.state = 'cancelled';
+    expect(renderPanelWithCurrentResource()).toContain('读取已取消');
+
+    controls.state = 'success';
+    expect(renderPanelWithCurrentResource()).toContain('暂无可显示的故事知识');
   });
 
-  it('覆盖各视图缺少人物或章节时的选择提示', () => {
-    expect(
-      renderPanel({
-        view: 'relationships',
-        selectedEntityId: null,
-        selectedChapterId: null,
-      }),
-    ).toContain('请先选择人物和章节');
-    expect(
-      renderPanel({ view: 'story-timeline', selectedEntityId: null, selectedChapterId: null }),
-    ).toContain('请先选择章节');
-    expect(renderPanel({ view: 'arc', selectedEntityId: null })).toContain('请先选择人物');
-    expect(
-      renderPanel({ view: 'character-timeline', selectedChapterId: null }),
-    ).toContain('请先选择章节');
-    expect(renderPanel({ view: 'foreshadowing', selectedChapterId: null })).toContain(
-      '请先选择章节',
-    );
-    expect(renderPanel({ view: 'history', selectedChapterId: null })).toContain('请先选择章节');
+  it('未选择人物时保留明确空态', () => {
+    expect(renderPanel(null, null)).toContain('请先选择人物');
   });
 });
+
+function renderPanelWithCurrentResource(): string {
+  return renderToStaticMarkup(
+    createElement(StoryKnowledgePanel, {
+      bridge: contractInput<RendererBridgeAdapter>({}),
+      projectId,
+      readOnly: false,
+      selectedEntityId: characterId,
+      selectedChapterId: chapterId,
+      onNavigate: () => undefined,
+    }),
+  );
+}

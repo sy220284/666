@@ -54,6 +54,20 @@ export function PlanningWorkbench(props: PlanningWorkbenchProps) {
   });
 
   useEffect(() => {
+    const invalidateExploreOnContextChange = (event: Event): void => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement) || !target.closest('[data-idea-capsule]')) return;
+      const label = target.closest('label')?.textContent?.trim() ?? '';
+      if (label.startsWith('范围') || label.startsWith('章节')) props.bridge.cancelAll();
+    };
+    document.addEventListener('change', invalidateExploreOnContextChange, true);
+    return () => {
+      document.removeEventListener('change', invalidateExploreOnContextChange, true);
+      props.bridge.cancelAll();
+    };
+  }, [props.bridge, props.projectId]);
+
+  useEffect(() => {
     if (!selectedSceneBeatId || !selectedChapterId) {
       setTarget(selectedSceneBeatId ? { status: 'missing' } : { status: 'idle' });
       return;

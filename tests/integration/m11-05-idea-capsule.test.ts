@@ -159,7 +159,10 @@ describe('M11-05 Idea Capsule authoritative lifecycle', () => {
           target,
           previewHash: freshPreview.previewHash,
         }),
-      ).rejects.toThrow('M11_05_INJECTED_CONVERSION_FAILURE');
+      ).rejects.toMatchObject({
+        code: 'DATABASE_WRITE_FAILED',
+        message: 'The database write failed and was rolled back.',
+      });
       expect(
         harness.workspace.readProject(project.projectId, (database) => ({
           plotNodes: Number(

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { ConstraintHashSchema } from './ai-output-protocol.js';
-import { type CommandResult } from './app-runtime-contracts.js';
 import { TimelineEventSaveInputSchema } from './continuity.js';
 import { DraftEntityIdSchema } from './draft.js';
 import { CanonFactSetInputSchema, EntityCreateInputSchema } from './entity-canon.js';
@@ -11,12 +10,8 @@ import { ForeshadowingSaveInputSchema } from './narrative-planning.js';
 import { PlotNodeCreateInputSchema, ProjectBriefUpdateInputSchema } from './project-planning.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION, TaskIdSchema } from './task-protocol.js';
 
-export const IDEA_CAPSULE_IPC_CHANNELS = {
-  operation: 'worldforge:idea-capsule:operation',
-} as const;
-
+export const IDEA_CAPSULE_IPC_CHANNELS = { operation: 'worldforge:idea-capsule:operation' } as const;
 export const IDEA_CAPSULE_BRIDGE_COMMAND = 'ideaCapsule.operation' as const;
-
 export const IDEA_CAPSULE_COMMANDS = {
   list: 'idea.list',
   get: 'idea.get',
@@ -57,7 +52,6 @@ export const IdeaSourceContextSchema = z.strictObject({
   chapterId: DraftEntityIdSchema.nullable(),
   label: z.string().trim().min(1).max(512).optional(),
 });
-
 export const IdeaCardSchema = z.strictObject({
   id: DraftEntityIdSchema,
   projectId: ProjectIdSchema,
@@ -73,7 +67,6 @@ export const IdeaCardSchema = z.strictObject({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
-
 export const IdeaConversionSchema = z.strictObject({
   id: DraftEntityIdSchema,
   projectId: ProjectIdSchema,
@@ -84,7 +77,6 @@ export const IdeaConversionSchema = z.strictObject({
   status: IdeaConversionStatusSchema,
   createdAt: z.iso.datetime(),
 });
-
 export const IdeaDetailSchema = z.strictObject({
   idea: IdeaCardSchema,
   conversion: IdeaConversionSchema.nullable(),
@@ -103,7 +95,6 @@ export const IdeaExplorePromptInputSchema = z.strictObject({
   constraintHash: ConstraintHashSchema,
   count: z.number().int().min(1).max(8).default(4),
 });
-
 export const IdeaExploreOutputItemSchema = z.strictObject({
   title: z.string().trim().min(1).max(512),
   summary: z.string().trim().min(1).max(8_000),
@@ -151,10 +142,7 @@ export const IdeaSetStatusInputSchema = z.strictObject({
 
 const ProjectBriefConversionDraftSchema = ProjectBriefUpdateInputSchema.omit({ projectId: true });
 const PlotNodeConversionDraftSchema = PlotNodeCreateInputSchema.omit({ projectId: true });
-const EntityConversionDraftSchema = EntityCreateInputSchema.omit({
-  projectId: true,
-  authority: true,
-});
+const EntityConversionDraftSchema = EntityCreateInputSchema.omit({ projectId: true, authority: true });
 const CanonFactConversionDraftSchema = CanonFactSetInputSchema.omit({
   projectId: true,
   authority: true,
@@ -173,26 +161,13 @@ const ForeshadowingConversionDraftSchema = ForeshadowingSaveInputSchema.omit({
 });
 
 export const IdeaConversionTargetSchema = z.discriminatedUnion('targetType', [
-  z.strictObject({
-    targetType: z.literal('project_brief'),
-    draft: ProjectBriefConversionDraftSchema,
-  }),
-  z.strictObject({
-    targetType: z.literal('plot_node'),
-    draft: PlotNodeConversionDraftSchema,
-  }),
+  z.strictObject({ targetType: z.literal('project_brief'), draft: ProjectBriefConversionDraftSchema }),
+  z.strictObject({ targetType: z.literal('plot_node'), draft: PlotNodeConversionDraftSchema }),
   z.strictObject({ targetType: z.literal('entity'), draft: EntityConversionDraftSchema }),
   z.strictObject({ targetType: z.literal('canon_fact'), draft: CanonFactConversionDraftSchema }),
-  z.strictObject({
-    targetType: z.literal('timeline_event'),
-    draft: TimelineEventConversionDraftSchema,
-  }),
-  z.strictObject({
-    targetType: z.literal('foreshadowing'),
-    draft: ForeshadowingConversionDraftSchema,
-  }),
+  z.strictObject({ targetType: z.literal('timeline_event'), draft: TimelineEventConversionDraftSchema }),
+  z.strictObject({ targetType: z.literal('foreshadowing'), draft: ForeshadowingConversionDraftSchema }),
 ]);
-
 export const IdeaConversionPreviewInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   ideaId: DraftEntityIdSchema,
@@ -218,10 +193,7 @@ export const CoreIdeaOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.list), input: IdeaListInputSchema }),
   z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.get), input: IdeaGetInputSchema }),
   z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.create), input: IdeaCreateInputSchema }),
-  z.strictObject({
-    operation: z.literal(IDEA_CAPSULE_COMMANDS.setStatus),
-    input: IdeaSetStatusInputSchema,
-  }),
+  z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.setStatus), input: IdeaSetStatusInputSchema }),
   z.strictObject({
     operation: z.literal(IDEA_CAPSULE_COMMANDS.previewConversion),
     input: IdeaConversionPreviewInputSchema,
@@ -236,7 +208,6 @@ const coreSuccess = <Operation extends string, DataSchema extends z.ZodType>(
   operation: Operation,
   data: DataSchema,
 ) => z.strictObject({ ok: z.literal(true), operation: z.literal(operation), data });
-
 export const CoreIdeaResultSchema = z.union([
   coreSuccess(IDEA_CAPSULE_COMMANDS.list, IdeaListSchema),
   coreSuccess(IDEA_CAPSULE_COMMANDS.get, IdeaDetailSchema),
@@ -244,13 +215,8 @@ export const CoreIdeaResultSchema = z.union([
   coreSuccess(IDEA_CAPSULE_COMMANDS.setStatus, IdeaCardSchema),
   coreSuccess(IDEA_CAPSULE_COMMANDS.previewConversion, IdeaConversionPreviewSchema),
   coreSuccess(IDEA_CAPSULE_COMMANDS.applyConversion, IdeaConversionApplyResultSchema),
-  z.strictObject({
-    ok: z.literal(false),
-    operation: z.enum(IDEA_CAPSULE_COMMANDS),
-    errorCode: ErrorCodeSchema,
-  }),
+  z.strictObject({ ok: z.literal(false), operation: z.enum(IDEA_CAPSULE_COMMANDS), errorCode: ErrorCodeSchema }),
 ]);
-
 export const IdeaOperationDataSchema = z.union([
   IdeaListSchema,
   IdeaDetailSchema,
@@ -282,10 +248,6 @@ export const IdeaOperationResultSchema = z.union([
   commandFailureSchema,
 ]);
 
-export interface IdeaCapsuleBridge {
-  operate(operation: CoreIdeaOperation): Promise<CommandResult<IdeaOperationData>>;
-}
-
 export type IdeaKind = z.infer<typeof IdeaKindSchema>;
 export type IdeaDivergenceLevel = z.infer<typeof IdeaDivergenceLevelSchema>;
 export type IdeaDepthLevel = z.infer<typeof IdeaDepthLevelSchema>;
@@ -312,3 +274,8 @@ export type IdeaConversionApplyResult = z.infer<typeof IdeaConversionApplyResult
 export type CoreIdeaOperation = z.infer<typeof CoreIdeaOperationSchema>;
 export type CoreIdeaResult = z.infer<typeof CoreIdeaResultSchema>;
 export type IdeaOperationData = z.infer<typeof IdeaOperationDataSchema>;
+export type IdeaOperationResult = z.infer<typeof IdeaOperationResultSchema>;
+
+export interface IdeaCapsuleBridge {
+  operate(operation: CoreIdeaOperation): Promise<IdeaOperationResult>;
+}

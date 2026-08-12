@@ -79,7 +79,9 @@ async function writeEvidence(scenarios: readonly ScenarioEvidence[]): Promise<vo
         platform,
         arch: process.arch,
         scenarios,
-        passed: scenarios.length === VIEWPORTS.length && scenarios.every((scenario) => scenario.passed),
+        passed:
+          scenarios.length === VIEWPORTS.length &&
+          scenarios.every((scenario) => scenario.passed),
       },
       null,
       2,

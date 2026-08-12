@@ -6,8 +6,9 @@ import {
   type IdeaConversionApplyResult,
   type IdeaConversionPreview,
   type IdeaConversionPreviewInput,
-  type IdeaGetInput,
+  type IdeaCreateInput,
   type IdeaDetail,
+  type IdeaGetInput,
   type IdeaList,
   type IdeaListInput,
   type IdeaSetStatusInput,
@@ -56,17 +57,11 @@ export class SafeIdeaCapsuleService extends IdeaCapsuleService {
     return super.get(raw);
   }
 
-  override create(
-    requestId: string,
-    raw: Parameters<IdeaCapsuleService['create']>[1],
-  ): Promise<IdeaCard> {
+  override create(requestId: string, raw: IdeaCreateInput): Promise<IdeaCard> {
     return super.create(requestId, raw);
   }
 
-  override setStatus(
-    requestId: string,
-    raw: IdeaSetStatusInput,
-  ): Promise<IdeaCard> {
+  override setStatus(requestId: string, raw: IdeaSetStatusInput): Promise<IdeaCard> {
     return super.setStatus(requestId, raw);
   }
 
@@ -131,7 +126,10 @@ export class SafeIdeaCapsuleService extends IdeaCapsuleService {
   }
 
   #rememberPreview(previewHash: string, revision: string): void {
-    if (!this.#previewBriefRevisions.has(previewHash) && this.#previewBriefRevisions.size >= MAX_TRACKED_PREVIEWS) {
+    if (
+      !this.#previewBriefRevisions.has(previewHash) &&
+      this.#previewBriefRevisions.size >= MAX_TRACKED_PREVIEWS
+    ) {
       const oldest = this.#previewBriefRevisions.keys().next().value;
       if (typeof oldest === 'string') this.#previewBriefRevisions.delete(oldest);
     }

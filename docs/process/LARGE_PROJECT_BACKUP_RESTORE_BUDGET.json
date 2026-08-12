@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "status": "enforced",
+  "sampleCount": 5,
+  "calibrationAuthority": "github-actions",
+  "budget": {
+    "maxBackupP95Ms": 200,
+    "maxRestoreP95Ms": 300
+  }
+}

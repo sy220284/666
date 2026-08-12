@@ -27,7 +27,7 @@ async function forceGc(passes) {
   const gc = requireGc();
   for (let index = 0; index < passes; index += 1) {
     gc();
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => globalThis.setImmediate(resolve));
   }
 }
 

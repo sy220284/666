@@ -206,6 +206,15 @@ function shellProps(
   route: AppShellPagesProps['route'],
   active = true,
   callbacks = callbackProps(),
+  recentProjects: AppShellPagesProps['recentProjects'] = contractInput<
+    AppShellPagesProps['recentProjects']
+  >([
+    {
+      projectId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      missingSince: null,
+      lastOpenedAt: '2026-08-12T10:00:00.000Z',
+    },
+  ]),
 ): AppShellPagesProps {
   return contractInput<AppShellPagesProps>({
     bridge: planningBridge(),
@@ -218,13 +227,7 @@ function shellProps(
         }
       : null,
     continuation: null,
-    recentProjects: [
-      {
-        projectId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-        missingSince: null,
-        lastOpenedAt: '2026-08-12T10:00:00.000Z',
-      },
-    ],
+    recentProjects,
     tasks: [{ taskId: '11111111-2222-4333-8444-555555555555' }],
     healthSignals: [],
     capabilities: { project: {} },
@@ -331,7 +334,7 @@ describe('M11-05 planning renderer coverage', () => {
 });
 
 describe('M11-05 AppShell route coverage', () => {
-  it('covers home continuation with active and recent projects', () => {
+  it('covers home continuation with active, recent and unavailable projects', () => {
     const activeCallbacks = callbackProps();
     const active = activeChild(AppShellPages(shellProps('home', true, activeCallbacks)) as TestElement);
     invoke(active, 'onContinue');
@@ -351,15 +354,17 @@ describe('M11-05 AppShell route coverage', () => {
       'ffffffff-ffff-4fff-8fff-ffffffffffff',
     );
 
-    const none = shellProps('home', false, callbackProps());
-    none.recentProjects = contractInput<AppShellPagesProps['recentProjects']>([
+    const unavailable = contractInput<AppShellPagesProps['recentProjects']>([
       {
         projectId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
         missingSince: '2026-08-12T09:00:00.000Z',
         lastOpenedAt: '2026-08-12T10:00:00.000Z',
       },
     ]);
-    invoke(activeChild(AppShellPages(none) as TestElement), 'onContinue');
+    const none = activeChild(
+      AppShellPages(shellProps('home', false, callbackProps(), unavailable)) as TestElement,
+    );
+    invoke(none, 'onContinue');
   });
 
   it('covers settings, planning, canon and recovery route callbacks', () => {

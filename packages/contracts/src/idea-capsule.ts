@@ -10,7 +10,9 @@ import { ForeshadowingSaveInputSchema } from './narrative-planning.js';
 import { PlotNodeCreateInputSchema, ProjectBriefUpdateInputSchema } from './project-planning.js';
 import { ProjectIdSchema, TASK_PROTOCOL_VERSION, TaskIdSchema } from './task-protocol.js';
 
-export const IDEA_CAPSULE_IPC_CHANNELS = { operation: 'worldforge:idea-capsule:operation' } as const;
+export const IDEA_CAPSULE_IPC_CHANNELS = {
+  operation: 'worldforge:idea-capsule:operation',
+} as const;
 export const IDEA_CAPSULE_BRIDGE_COMMAND = 'ideaCapsule.operation' as const;
 export const IDEA_CAPSULE_COMMANDS = {
   list: 'idea.list',
@@ -142,7 +144,10 @@ export const IdeaSetStatusInputSchema = z.strictObject({
 
 const ProjectBriefConversionDraftSchema = ProjectBriefUpdateInputSchema.omit({ projectId: true });
 const PlotNodeConversionDraftSchema = PlotNodeCreateInputSchema.omit({ projectId: true });
-const EntityConversionDraftSchema = EntityCreateInputSchema.omit({ projectId: true, authority: true });
+const EntityConversionDraftSchema = EntityCreateInputSchema.omit({
+  projectId: true,
+  authority: true,
+});
 const CanonFactConversionDraftSchema = CanonFactSetInputSchema.omit({
   projectId: true,
   authority: true,
@@ -161,12 +166,21 @@ const ForeshadowingConversionDraftSchema = ForeshadowingSaveInputSchema.omit({
 });
 
 export const IdeaConversionTargetSchema = z.discriminatedUnion('targetType', [
-  z.strictObject({ targetType: z.literal('project_brief'), draft: ProjectBriefConversionDraftSchema }),
+  z.strictObject({
+    targetType: z.literal('project_brief'),
+    draft: ProjectBriefConversionDraftSchema,
+  }),
   z.strictObject({ targetType: z.literal('plot_node'), draft: PlotNodeConversionDraftSchema }),
   z.strictObject({ targetType: z.literal('entity'), draft: EntityConversionDraftSchema }),
   z.strictObject({ targetType: z.literal('canon_fact'), draft: CanonFactConversionDraftSchema }),
-  z.strictObject({ targetType: z.literal('timeline_event'), draft: TimelineEventConversionDraftSchema }),
-  z.strictObject({ targetType: z.literal('foreshadowing'), draft: ForeshadowingConversionDraftSchema }),
+  z.strictObject({
+    targetType: z.literal('timeline_event'),
+    draft: TimelineEventConversionDraftSchema,
+  }),
+  z.strictObject({
+    targetType: z.literal('foreshadowing'),
+    draft: ForeshadowingConversionDraftSchema,
+  }),
 ]);
 export const IdeaConversionPreviewInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
@@ -192,8 +206,14 @@ export const IdeaConversionApplyResultSchema = z.strictObject({
 export const CoreIdeaOperationSchema = z.discriminatedUnion('operation', [
   z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.list), input: IdeaListInputSchema }),
   z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.get), input: IdeaGetInputSchema }),
-  z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.create), input: IdeaCreateInputSchema }),
-  z.strictObject({ operation: z.literal(IDEA_CAPSULE_COMMANDS.setStatus), input: IdeaSetStatusInputSchema }),
+  z.strictObject({
+    operation: z.literal(IDEA_CAPSULE_COMMANDS.create),
+    input: IdeaCreateInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(IDEA_CAPSULE_COMMANDS.setStatus),
+    input: IdeaSetStatusInputSchema,
+  }),
   z.strictObject({
     operation: z.literal(IDEA_CAPSULE_COMMANDS.previewConversion),
     input: IdeaConversionPreviewInputSchema,
@@ -215,7 +235,11 @@ export const CoreIdeaResultSchema = z.union([
   coreSuccess(IDEA_CAPSULE_COMMANDS.setStatus, IdeaCardSchema),
   coreSuccess(IDEA_CAPSULE_COMMANDS.previewConversion, IdeaConversionPreviewSchema),
   coreSuccess(IDEA_CAPSULE_COMMANDS.applyConversion, IdeaConversionApplyResultSchema),
-  z.strictObject({ ok: z.literal(false), operation: z.enum(IDEA_CAPSULE_COMMANDS), errorCode: ErrorCodeSchema }),
+  z.strictObject({
+    ok: z.literal(false),
+    operation: z.enum(IDEA_CAPSULE_COMMANDS),
+    errorCode: ErrorCodeSchema,
+  }),
 ]);
 export const IdeaOperationDataSchema = z.union([
   IdeaListSchema,
@@ -264,10 +288,7 @@ export type IdeaExploreOutput = z.infer<typeof IdeaExploreOutputSchema>;
 export type IdeaListInput = z.input<typeof IdeaListInputSchema>;
 export type IdeaList = z.infer<typeof IdeaListSchema>;
 export type IdeaGetInput = z.infer<typeof IdeaGetInputSchema>;
-export type IdeaCreateInput = z.infer<typeof IdeaCreateInputSchema>;
-export type IdeaSetStatusInput = z.infer<typeof IdeaSetStatusInputSchema>;
-export type IdeaConversionTarget = z.infer<typeof IdeaConversionTargetSchema>;
-export type IdeaConversionPreviewInput = z.infer<typeof IdeaConversionPreviewInputSchema>;
+export type IdeaCreateInput = z.infer<typeof IeaConversionPreviewInputSchema>;
 export type IdeaConversionPreview = z.infer<typeof IdeaConversionPreviewSchema>;
 export type IdeaConversionApplyInput = z.infer<typeof IdeaConversionApplyInputSchema>;
 export type IdeaConversionApplyResult = z.infer<typeof IdeaConversionApplyResultSchema>;

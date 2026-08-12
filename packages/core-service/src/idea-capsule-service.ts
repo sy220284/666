@@ -44,10 +44,7 @@ import { stableJson } from './stable-json.js';
 const systemClock: DatabaseClock = { now: () => new Date() };
 
 export type IdeaCapsuleServiceErrorCode =
-  | 'IDEA_NOT_FOUND'
-  | 'IDEA_CONFLICT'
-  | 'IDEA_INVALID'
-  | 'IDEA_INVARIANT';
+  'IDEA_NOT_FOUND' | 'IDEA_CONFLICT' | 'IDEA_INVALID' | 'IDEA_INVARIANT';
 
 export class IdeaCapsuleServiceError extends Error {
   readonly code: IdeaCapsuleServiceErrorCode;
@@ -111,9 +108,13 @@ function parseIdea(row: IdeaRow): IdeaCard {
   try {
     sourceContext = JSON.parse(row.sourceContextJson) as unknown;
   } catch (error) {
-    throw new IdeaCapsuleServiceError('IDEA_INVARIANT', 'Persisted Idea source context is invalid.', {
-      cause: error,
-    });
+    throw new IdeaCapsuleServiceError(
+      'IDEA_INVARIANT',
+      'Persisted Idea source context is invalid.',
+      {
+        cause: error,
+      },
+    );
   }
   return IdeaCardSchema.parse({ ...row, sourceContext });
 }
@@ -345,7 +346,11 @@ function applyTarget(
         idFactory,
       );
     case 'plot_node':
-      return applyPlotNodeCreateInTransaction(connection, { projectId, ...target.draft }, idFactory);
+      return applyPlotNodeCreateInTransaction(
+        connection,
+        { projectId, ...target.draft },
+        idFactory,
+      );
     case 'entity':
       return applyEntityCreate(
         connection,
@@ -493,7 +498,9 @@ export class IdeaCapsuleService {
           throw new IdeaCapsuleServiceError('IDEA_CONFLICT', 'Discarded Ideas are terminal.');
         }
         connection
-          .prepare('UPDATE idea_cards SET status = ?, updated_at = ? WHERE id = ? AND project_id = ?')
+          .prepare(
+            'UPDATE idea_cards SET status = ?, updated_at = ? WHERE id = ? AND project_id = ?',
+          )
           .run(input.status, this.#clock.now().toISOString(), input.ideaId, input.projectId);
         return parseIdea(ideaRow(connection, input.projectId, input.ideaId));
       },

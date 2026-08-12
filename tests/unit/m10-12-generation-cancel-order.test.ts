@@ -24,6 +24,8 @@ function run(status: 'queued' | 'running' | 'succeeded' = 'queued') {
     requestId: '00000000-0000-4000-8000-000000000001',
     taskId: TASK_ID,
     projectId: PROJECT_ID,
+    scopeType: 'chapter',
+    scopeId: CHAPTER_ID,
     chapterId: CHAPTER_ID,
     baseDraftId: null,
     baseDraftRevision: null,

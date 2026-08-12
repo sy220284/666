@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { CommandResult, GenerationRun } from '@worldforge/contracts';
+import type { CommandResult, GenerationRun, WorldforgeBridge } from '@worldforge/contracts';
 
 import { createRendererBridgeAdapter } from '../../apps/desktop/renderer/src/bridge/renderer-bridge-adapter.js';
 
@@ -24,8 +24,8 @@ function generationRun(status: GenerationRun['status']): GenerationRun {
     baseDraftId: null,
     baseDraftRevision: null,
     runType: 'validate',
-    promptId: 'semantic_validation',
-    promptVersion: 1,
+    promptId: 'worldforge.validate',
+    promptVersion: 2,
     outputMode: 'structured',
     providerId: 'local-model',
     actualModel: 'writer-model',
@@ -59,19 +59,35 @@ function startInput() {
   };
 }
 
+function generationBridge(
+  listRuns: WorldforgeBridge['generation']['listRuns'],
+  start: WorldforgeBridge['generation']['start'],
+): WorldforgeBridge['generation'] {
+  const unused = async (): Promise<never> => {
+    throw new Error('unused generation test method');
+  };
+  return {
+    start,
+    listRuns,
+    getRun: vi.fn(unused),
+    cancel: vi.fn(unused),
+    savePartial: vi.fn(unused),
+    discardPartial: vi.fn(unused),
+    getModelSupport: vi.fn(unused),
+  };
+}
+
 describe('renderer AI single-flight guard', () => {
   it('reuses the active backend run instead of starting a duplicate after a page remount', async () => {
     const active = generationRun('running');
-    const generation = {
-      listRuns: vi.fn(async () => success('list-active', { runs: [active] })),
-      start: vi.fn(async () => success('new-start', { run: active, taskId })),
-    };
-    const adapter = createRendererBridgeAdapter({ generation } as never);
+    const listRuns = vi.fn(async () => success('list-active', { runs: [active] }));
+    const start = vi.fn(async () => success('new-start', { run: active, taskId }));
+    const adapter = createRendererBridgeAdapter({ generation: generationBridge(listRuns, start) });
 
     const outcome = await adapter.generation.start(startInput());
 
-    expect(generation.listRuns).toHaveBeenCalledTimes(1);
-    expect(generation.start).not.toHaveBeenCalled();
+    expect(listRuns).toHaveBeenCalledTimes(1);
+    expect(start).not.toHaveBeenCalled();
     expect(outcome).toMatchObject({
       state: 'success',
       requestId,
@@ -82,15 +98,13 @@ describe('renderer AI single-flight guard', () => {
   it('starts a new run after the previous same-type run is already finished', async () => {
     const completed = generationRun('succeeded');
     const next = { ...generationRun('running'), runId: '550e8400-e29b-41d4-a716-446655440004' };
-    const generation = {
-      listRuns: vi.fn(async () => success('list-completed', { runs: [completed] })),
-      start: vi.fn(async () => success('new-start', { run: next, taskId: next.taskId })),
-    };
-    const adapter = createRendererBridgeAdapter({ generation } as never);
+    const listRuns = vi.fn(async () => success('list-completed', { runs: [completed] }));
+    const start = vi.fn(async () => success('new-start', { run: next, taskId: next.taskId }));
+    const adapter = createRendererBridgeAdapter({ generation: generationBridge(listRuns, start) });
 
     const outcome = await adapter.generation.start(startInput());
 
-    expect(generation.start).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
     expect(outcome).toMatchObject({ state: 'success', requestId: 'new-start' });
   });
 });

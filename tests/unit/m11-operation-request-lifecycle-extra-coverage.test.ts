@@ -60,9 +60,7 @@ describe('M11-04 generation operation error coverage', () => {
 
     const taskError = instanceWithCode(TaskProtocolError, 'COMMON_CANCELLED_004');
     expect(generationOperationError(taskError)).toBe('COMMON_CANCELLED_004');
-    expect(generationOperationError({ code: 'COMMON_NOT_FOUND_002' })).toBe(
-      'COMMON_NOT_FOUND_002',
-    );
+    expect(generationOperationError({ code: 'COMMON_NOT_FOUND_002' })).toBe('COMMON_NOT_FOUND_002');
     expect(typeof generationOperationError({ code: 'NOT_A_CONTRACT_ERROR' })).toBe('string');
     expect(typeof generationOperationError(null)).toBe('string');
   });

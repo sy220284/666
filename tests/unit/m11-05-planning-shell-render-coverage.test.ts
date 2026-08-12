@@ -250,9 +250,27 @@ function invoke(element: TestElement, name: string, ...args: unknown[]): void {
   if (typeof handler === 'function') handler(...args);
 }
 
+async function flush(): Promise<void> {
+  for (let index = 0; index < 8; index += 1) await Promise.resolve();
+}
+
+function renderPlanningEffects(bridge: RendererBridgeAdapter): void {
+  PlanningWorkbench({
+    bridge,
+    projectId,
+    readOnly: false,
+    disclosureMode: 'beginner',
+    onDisclosureModeChange: vi.fn(),
+    onNavigate: vi.fn(),
+    onClose: vi.fn(),
+    onReturn: vi.fn(),
+  });
+}
+
 afterEach(() => {
   restoreDispatcher?.();
   restoreDispatcher = null;
+  vi.unstubAllGlobals();
 });
 
 describe('M11-05 planning renderer coverage', () => {
@@ -321,6 +339,133 @@ describe('M11-05 planning renderer coverage', () => {
     const idle = renderPlanning({ status: 'idle' }, { status: 'idle' }, {});
     expect(text(idle)).not.toContain('转换后的目标');
     expect(text(idle)).not.toContain('目标场景');
+  });
+
+  it('loads navigation targets and invalidates exploration when its scope changes', async () => {
+    class TestSelectElement {
+      constructor(private readonly label: string | null) {}
+
+      closest(selector: string): { readonly textContent?: string } | null {
+        if (selector === '[data-idea-capsule]') return {};
+        if (selector === 'label' && this.label !== null) return { textContent: this.label };
+        return null;
+      }
+    }
+    let changeListener: ((event: Event) => void) | null = null;
+    const documentStub = {
+      addEventListener: vi.fn(
+        (_name: string, listener: (event: Event) => void) => (changeListener = listener),
+      ),
+      removeEventListener: vi.fn(),
+    };
+    vi.stubGlobal('HTMLSelectElement', TestSelectElement);
+    vi.stubGlobal('document', documentStub);
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, { selected: true, plot: true });
+    const bridge = planningBridge();
+    renderPlanningEffects(bridge);
+    const cleanups = hooks.effects.map((effect) => effect());
+    changeListener?.({ target: {} } as unknown as Event);
+    changeListener?.({ target: new TestSelectElement(null) } as unknown as Event);
+    changeListener?.({ target: new TestSelectElement('其他') } as unknown as Event);
+    changeListener?.({ target: new TestSelectElement('范围选择') } as unknown as Event);
+    changeListener?.({ target: new TestSelectElement('章节选择') } as unknown as Event);
+    await flush();
+
+    expect(bridge.cancelAll).toHaveBeenCalledTimes(2);
+    expect(bridge.planning.listSceneBeats).toHaveBeenCalled();
+    expect(bridge.planning.listPlotNodes).toHaveBeenCalled();
+    for (const cleanup of cleanups) cleanup?.();
+    expect(documentStub.removeEventListener).toHaveBeenCalled();
+    expect(bridge.cancelAll).toHaveBeenCalledTimes(3);
+  });
+
+  it('covers failed, stale, missing and brief navigation outcomes', async () => {
+    const failure = contractInput<{
+      readonly state: 'failure';
+      readonly error: {
+        readonly code: string;
+        readonly message: string;
+        readonly retryable: boolean;
+      };
+    }>({
+      state: 'failure',
+      error: { code: 'PLANNING_FAILED', message: '读取失败', retryable: true },
+    });
+    const stale = contractInput<{ readonly state: 'stale' }>({ state: 'stale' });
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, { selected: true, plot: true });
+    const failedBridge = planningBridge();
+    vi.mocked(failedBridge.planning.listSceneBeats).mockResolvedValue(failure);
+    vi.mocked(failedBridge.planning.listPlotNodes).mockResolvedValue(failure);
+    renderPlanningEffects(failedBridge);
+    hooks.effects[1]?.();
+    hooks.effects[2]?.();
+    await flush();
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, { selected: true, plot: true });
+    const staleBridge = planningBridge();
+    vi.mocked(staleBridge.planning.listSceneBeats).mockResolvedValue(stale);
+    vi.mocked(staleBridge.planning.listPlotNodes).mockResolvedValue(stale);
+    renderPlanningEffects(staleBridge);
+    hooks.effects[1]?.();
+    hooks.effects[2]?.();
+    await flush();
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, { selected: true, plot: true });
+    const missingBridge = planningBridge();
+    vi.mocked(missingBridge.planning.listSceneBeats).mockResolvedValue(
+      contractInput({ state: 'success', data: { beats: [] } }),
+    );
+    vi.mocked(missingBridge.planning.listPlotNodes).mockResolvedValue(
+      contractInput({ state: 'success', data: { nodes: [] } }),
+    );
+    renderPlanningEffects(missingBridge);
+    hooks.effects[1]?.();
+    hooks.effects[2]?.();
+    await flush();
+
+    for (const outcome of [failure, stale] as const) {
+      setPlanningState({ status: 'idle' }, { status: 'idle' }, { brief: true });
+      const briefBridge = planningBridge();
+      vi.mocked(briefBridge.planning.getBrief).mockResolvedValue(outcome);
+      renderPlanningEffects(briefBridge);
+      hooks.effects[1]?.();
+      hooks.effects[2]?.();
+      await flush();
+    }
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, { brief: true });
+    const mismatchedBriefBridge = planningBridge();
+    vi.mocked(mismatchedBriefBridge.planning.getBrief).mockResolvedValue(
+      contractInput({
+        state: 'success',
+        data: { id: plotNodeId, concept: '', readingPromise: '', protagonistGoal: '' },
+      }),
+    );
+    renderPlanningEffects(mismatchedBriefBridge);
+    hooks.effects[1]?.();
+    hooks.effects[2]?.();
+    await flush();
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, { brief: true });
+    const briefBridge = planningBridge();
+    renderPlanningEffects(briefBridge);
+    hooks.effects[1]?.();
+    hooks.effects[2]?.();
+    await flush();
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, {});
+    renderPlanningEffects(planningBridge());
+    hooks.effects[1]?.();
+    hooks.effects[2]?.();
+    await flush();
+
+    setPlanningState({ status: 'idle' }, { status: 'idle' }, {});
+    ui.state.selection = { chapterId: null, sceneBeatId };
+    renderPlanningEffects(planningBridge());
+    hooks.effects[1]?.();
+    await flush();
   });
 });
 

@@ -13,6 +13,7 @@ const authorityFiles = {
   riskPolicy: 'scripts/ci-risk-policy.mjs',
   riskMatrix: 'docs/process/CI_RISK_MATRIX.json',
   platformExperienceMatrix: 'docs/process/PLATFORM_EXPERIENCE_MATRIX.json',
+  supplyChainInventoryPolicy: 'docs/process/SUPPLY_CHAIN_INVENTORY_POLICY.json',
 };
 
 function requireMarkers(errors, label, source, markers) {
@@ -32,7 +33,12 @@ export function validateGovernanceAuthorities(sources) {
     'name: platform-experience-${{ matrix.platform }}',
     'reliability_suite:',
   ]);
-  requireMarkers(errors, 'Security', sources.security ?? '', ['name: security']);
+  requireMarkers(errors, 'Security', sources.security ?? '', [
+    'supply-chain-inventory:',
+    'node scripts/supply-chain-inventory.mjs',
+    'name: supply-chain-inventory',
+    'name: security',
+  ]);
   requireMarkers(errors, 'Performance', sources.performance ?? '', ['name: performance']);
   requireMarkers(errors, 'Release', sources.release ?? '', [
     'node scripts/ui-acceptance-gate.mjs',
@@ -48,6 +54,7 @@ export function validateGovernanceAuthorities(sources) {
     'CI_RISK_MATRIX.json',
     'export function riskPlan',
     "'dependency-audit'",
+    "'supply-chain-inventory'",
     "reliability: 'reliability'",
     "'windows-ime'",
     "'platform-experience'",
@@ -62,6 +69,7 @@ export function validateGovernanceAuthorities(sources) {
   if (matrix && matrix.schemaVersion !== 1) errors.push('Risk matrix must use schemaVersion 1');
   for (const route of [
     'dependencyAudit',
+    'supplyChainInventory',
     'applicationSecurity',
     'performance',
     'reliability',
@@ -101,6 +109,29 @@ export function validateGovernanceAuthorities(sources) {
   if (platformMatrix?.scenario?.spec !== 'tests/e2e/platform-experience.spec.ts') {
     errors.push('Platform experience matrix must bind the canonical Electron experience spec');
   }
+
+  let supplyChainPolicy = null;
+  try {
+    supplyChainPolicy = JSON.parse(sources.supplyChainInventoryPolicy ?? '');
+  } catch {
+    errors.push('Supply-chain inventory policy must be valid JSON');
+  }
+  if (supplyChainPolicy && supplyChainPolicy.schemaVersion !== 1) {
+    errors.push('Supply-chain inventory policy must use schemaVersion 1');
+  }
+  if (supplyChainPolicy && supplyChainPolicy.status !== 'enforced') {
+    errors.push('Supply-chain inventory policy must be enforced');
+  }
+  if (
+    supplyChainPolicy &&
+    (supplyChainPolicy.sbom?.format !== 'cyclonedx' ||
+      supplyChainPolicy.sbom?.specVersion !== '1.7')
+  ) {
+    errors.push('Supply-chain inventory policy must require CycloneDX 1.7');
+  }
+  if (supplyChainPolicy?.licenses?.sourceCommand !== 'pnpm licenses list --json') {
+    errors.push('Supply-chain inventory policy must bind pnpm license inventory');
+  }
   const viewportProfiles = Array.isArray(platformMatrix?.scenario?.viewports)
     ? platformMatrix.scenario.viewports
         .map((viewport) => ({
@@ -125,7 +156,13 @@ export function validateGovernanceAuthorities(sources) {
   }
 
   for (const [label, source] of Object.entries(sources)) {
-    if (label === 'riskMatrix' || label === 'platformExperienceMatrix') continue;
+    if (
+      label === 'riskMatrix' ||
+      label === 'platformExperienceMatrix' ||
+      label === 'supplyChainInventoryPolicy'
+    ) {
+      continue;
+    }
     if (source.includes('pull_request_target:')) {
       errors.push(`${label} unexpectedly uses pull_request_target`);
     }

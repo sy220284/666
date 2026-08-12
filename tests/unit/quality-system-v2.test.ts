@@ -128,19 +128,21 @@ describe('Meta-Governance权威链', () => {
   const sources = {
     quality:
       'name: quality / quality\nquality / release-audit\nquality / package-smoke\nci-risk-policy.mjs reliability\nci-risk-policy.mjs platform-experience\nname: platform-experience-${{ matrix.platform }}\nreliability_suite:',
-    security: 'name: security',
+    security:
+      'supply-chain-inventory:\nnode scripts/supply-chain-inventory.mjs\nname: supply-chain-inventory\nname: security',
     performance: 'name: performance',
     release:
       'node scripts/ui-acceptance-gate.mjs\npnpm release:gate\ntest "$GITHUB_REF_NAME" = main',
     mainVerification:
       'name: main-verification\nname: synchronize-integrations\nmain/work/governance branch inventory',
     riskPolicy:
-      "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' reliability: 'reliability' 'windows-ime' 'platform-experience'",
+      "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' 'supply-chain-inventory' reliability: 'reliability' 'windows-ime' 'platform-experience'",
     riskMatrix: JSON.stringify({
       schemaVersion: 1,
       routes: Object.fromEntries(
         [
           'dependencyAudit',
+          'supplyChainInventory',
           'applicationSecurity',
           'performance',
           'reliability',
@@ -162,6 +164,12 @@ describe('Meta-Governance权威链', () => {
         viewports: platformExperienceViewports,
       },
     }),
+    supplyChainInventoryPolicy: JSON.stringify({
+      schemaVersion: 1,
+      status: 'enforced',
+      sbom: { format: 'cyclonedx', specVersion: '1.7' },
+      licenses: { sourceCommand: 'pnpm licenses list --json' },
+    }),
   };
 
   it('关键权威链全部存在时通过', () => {
@@ -175,6 +183,29 @@ describe('Meta-Governance权威链', () => {
         release: 'pnpm release:gate\ntest "$GITHUB_REF_NAME" = main',
       }),
     ).toContain('Release is missing authority marker: node scripts/ui-acceptance-gate.mjs');
+  });
+
+  it('Security丢失供应链Inventory入口时阻断', () => {
+    expect(
+      validateGovernanceAuthorities({
+        ...sources,
+        security: 'name: security',
+      }),
+    ).toContain('Security is missing authority marker: name: supply-chain-inventory');
+  });
+
+  it('供应链策略退出enforced时阻断', () => {
+    expect(
+      validateGovernanceAuthorities({
+        ...sources,
+        supplyChainInventoryPolicy: JSON.stringify({
+          schemaVersion: 1,
+          status: 'planned',
+          sbom: { format: 'cyclonedx', specVersion: '1.7' },
+          licenses: { sourceCommand: 'pnpm licenses list --json' },
+        }),
+      }),
+    ).toContain('Supply-chain inventory policy must be enforced');
   });
 
   it('三平台矩阵缺平台时阻断', () => {

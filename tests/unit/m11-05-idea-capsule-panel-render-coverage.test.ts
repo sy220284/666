@@ -237,23 +237,29 @@ beforeEach(() => {
       return { state: 'success', data: { projectId, ideas, nextCursor: null } };
     }
     if (operation.operation === 'idea.get') {
+      const index = ideas.findIndex((item) => item.id === selected.id);
+      const targetTypes = [
+        'project_brief',
+        'plot_node',
+        'entity',
+        'canon_fact',
+        'timeline_event',
+        'foreshadowing',
+      ] as const;
       return {
         state: 'success',
         data: {
           idea: selected,
-          conversion:
-            selected.id === ideas[0].id
-              ? {
-                  id: '30000000-0000-4000-8000-000000000001',
-                  projectId,
-                  ideaId: selected.id,
-                  targetType: 'project_brief',
-                  targetId,
-                  previewHash: 'b'.repeat(64),
-                  status: 'target_missing',
-                  createdAt: now,
-                }
-              : null,
+          conversion: {
+            id: `30000000-0000-4000-8000-00000000000${index + 1}`,
+            projectId,
+            ideaId: selected.id,
+            targetType: targetTypes[index] ?? 'project_brief',
+            targetId,
+            previewHash: 'b'.repeat(64),
+            status: index === 0 ? 'target_missing' : index === 1 ? 'target_stale' : 'applied',
+            createdAt: now,
+          },
         },
       };
     }
@@ -424,9 +430,56 @@ describe('M11-05 Idea Capsule renderer branch coverage', () => {
     }) as TestElement;
 
     await invokeAll(buttons(root, '刷新灵感'), 'onClick');
+    await invokeAll(buttons(root, '刷新灵感'), 'onClick');
     await invokeAll(buttons(root, '详情'), 'onClick');
     await invokeAll(buttons(root, '转换'), 'onClick');
 
     expect(ideaClient.run).toHaveBeenCalled();
+  });
+
+  it('covers failed, stale, empty and disposed initialization outcomes', async () => {
+    const failure = contractInput<{
+      readonly state: 'failure';
+      readonly error: {
+        readonly code: string;
+        readonly message: string;
+        readonly retryable: boolean;
+      };
+    }>({
+      state: 'failure',
+      error: { code: 'IDEA_INITIALIZATION_FAILED', message: '初始化失败', retryable: true },
+    });
+    const stale = contractInput<{ readonly state: 'stale' }>({ state: 'stale' });
+    for (const [providerOutcome, structureOutcome, disposeEarly] of [
+      [failure, failure, false],
+      [stale, stale, false],
+      [
+        contractInput({ state: 'success', data: { providers: [] } }),
+        contractInput({ state: 'success', data: { projectId, volumes: [] } }),
+        false,
+      ],
+      [
+        contractInput({ state: 'success', data: { providers } }),
+        contractInput({ state: 'success', data: structure }),
+        true,
+      ],
+    ] as const) {
+      const testBridge = bridge();
+      vi.mocked(testBridge.providers.list).mockResolvedValue(providerOutcome);
+      vi.mocked(testBridge.planning.listStructure).mockResolvedValue(structureOutcome);
+      configureStates(richStates({ 0: [], 4: [], 6: null }));
+      IdeaCapsulePanel({
+        bridge: testBridge,
+        projectId,
+        readOnly: false,
+        onNavigate: vi.fn(),
+      });
+      const cleanup = hooks.effects[0]?.();
+      if (disposeEarly) cleanup?.();
+      await flush();
+      if (!disposeEarly) cleanup?.();
+    }
+
+    expect(ideaClient.cancel).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 # M11-04 Story Knowledge Projection 与基础精修
 
-> 状态：In Progress  
+> 状态：Implemented  
 > 里程碑：M11 产品体验与 AI 创作协同  
 > 优先级：P0  
 > 执行分支：`work`  
@@ -174,14 +174,25 @@ pnpm test:e2e
 
 保存到：`docs/test-evidence/M11-04/`
 
+冻结实现基线：`adb3cf4f2e1de1d15cad00286e937e53b67b4f37`。
+
+- Quality `31557200227`：Static、Unit、Integration、Migration、Coverage、Reliability、Windows native IME 已通过；该 pre-closure Head 的 Release Audit 仅因 M11-04 Schema 2 Evidence 缺失拒绝。
+- Security `31557200176`：成功。
+- Performance `31557200110`：成功；100/300/1000 章查询与 Renderer payload 均低于预算。
+- Schema 2 Evidence：`summary.md`、`commands.txt`、`known-risks.md`、`manifest.json`。
+- Runtime：`IMPLEMENTED`，绑定 PR #364 / `task-verification/M11-04`。
+- 最终有效 `VERIFIED` 由来源 PR 合并提交上的 `main-verification` 与 `task-verification/M11-04` 决定。
+
 ## 回滚策略
 
 整体回滚调用点迁移与 StoryKnowledge Projection；不得通过回滚重新覆盖历史 Prompt 版本、恢复多套 operation semantics 或恢复业务参数解析型 request coordinator。新增 Migration 保持 append-only。
 
 ## 完成条件
 
-- Prompt Version Authority、Project Operation Semantics、Renderer Request Ownership、Atomic Navigation 成为唯一公共机制。
-- Error Mapping 与 M11 新 Surface coverage 约束收敛。
-- Story Knowledge 全部来自权威数据或可重建只读投影，无第二真源。
-- 1000 章性能、请求生命周期、只读与失效目标路径通过专项测试。
-- Contracts → Core → Main → Preload → Renderer → 测试闭环完成。
+- [x] Prompt Version Authority、Project Operation Semantics、Renderer Request Ownership、Atomic Navigation 成为唯一公共机制。
+- [x] Error Mapping 与 M11 新 Surface coverage 约束收敛。
+- [x] Story Knowledge 全部来自权威数据或可重建只读投影，无第二真源。
+- [x] 1000 章性能、请求生命周期、只读与失效目标路径通过专项测试。
+- [x] Contracts → Core → Main → Preload → Renderer → 测试闭环完成。
+- [x] Ready Evidence、Runtime、TASK_INDEX 与 PR #364 绑定进入 Implemented 收口状态。
+- [ ] 合并后 `main-verification` 与 `task-verification/M11-04` 成功。

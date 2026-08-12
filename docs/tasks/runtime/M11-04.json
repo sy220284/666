@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "id": "M11-04",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md",
   "priority": "P0",
@@ -61,7 +61,7 @@
     "pnpm test:e2e"
   ],
   "verificationBinding": {
-    "sourcePr": null,
+    "sourcePr": 364,
     "mainContext": "main-verification",
     "taskContext": "task-verification/M11-04"
   }

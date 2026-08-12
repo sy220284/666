@@ -1,0 +1,47 @@
+# Repository-authoritative commands used by M11-04 validation
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:docs
+pnpm check:governance
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:reliability
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# Workflow-authoritative toolchain
+# Node 24.18.1
+# pnpm 11.21.0
+# Prettier 3.9.6
+# ESLint 10.8.0
+# TypeScript 6.0.3
+# Vitest 4.1.10
+# Playwright 1.62.0
+# Electron 43.2.0
+
+# Exact implementation-side CI records
+# Quality: 31557200227 @ adb3cf4f2e1de1d15cad00286e937e53b67b4f37
+# Security: 31557200176 success
+# Performance: 31557200110 success
+
+# Product test results from artifact 9126471682
+# Unit: 200 files / 1021 tests passed
+# Integration: 77 files / 212 tests passed
+# Migration: 28 files / 53 tests passed
+# Coverage execution: 341 files / 1393 tests passed
+# Statements 74.38%; Branches 62.33%; Functions 69.32%; Lines 76.54%
+
+# M11-04 performance results from artifact 9126415831
+# 100 chapters: chapter_assist P95 2.219501ms; history P95 0.434667ms; payloads 418B / 355B
+# 300 chapters: chapter_assist P95 2.342833ms; history P95 0.434201ms; payloads 419B / 355B
+# 1000 chapters: chapter_assist P95 2.544464ms; history P95 0.415166ms; payloads 420B / 355B
+# Budgets: query P95 <= 80ms; each Renderer projection payload <= 131072B

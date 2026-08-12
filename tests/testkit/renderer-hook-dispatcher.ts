@@ -31,7 +31,8 @@ const clientInternalsKey = [
   '__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_',
   'USERS_THEY_CANNOT_UPGRADE',
 ].join('');
-const clientInternals = rendererReact[clientInternalsKey] as ReactClientInternals;
+const clientInternals =
+  rendererReact[clientInternalsKey] as ReactClientInternals;
 
 export function installRendererHookDispatcher(
   controller: RendererHookController,

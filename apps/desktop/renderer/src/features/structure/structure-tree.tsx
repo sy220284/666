@@ -2,6 +2,7 @@ import type { Chapter, ProjectStructure, Volume } from '@worldforge/contracts';
 
 import type { BridgeRequestError } from '../../bridge/request-lifecycle.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { interactionLocked } from '../../runtime/interaction-locks.js';
 import { chapterMeta, statusLabel } from './structure-formatters.js';
 
 interface StructureTreeProps {
@@ -49,7 +50,7 @@ export function StructureTree({
   onRetry,
   onSplitChapter,
 }: StructureTreeProps) {
-  const blocked = commandPending || previewPending;
+  const blocked = interactionLocked(commandPending, previewPending);
   return (
     <div className="structure-tree" data-structure-tree>
       {loading ? <p>正在读取卷章…</p> : null}
@@ -72,7 +73,7 @@ export function StructureTree({
                 data-add-chapter
                 title="新建章节"
                 type="button"
-                disabled={readOnly || blocked}
+                disabled={interactionLocked(readOnly, blocked)}
                 onClick={() => onCreateChapter(volume)}
               >
                 +章
@@ -81,7 +82,7 @@ export function StructureTree({
                 data-edit-volume
                 title="编辑卷"
                 type="button"
-                disabled={readOnly || blocked}
+                disabled={interactionLocked(readOnly, blocked)}
                 onClick={() => onEditVolume(volume)}
               >
                 编辑
@@ -90,7 +91,7 @@ export function StructureTree({
                 data-move-volume-up
                 title="上移卷"
                 type="button"
-                disabled={readOnly || blocked || volumeIndex === 0}
+                disabled={interactionLocked(readOnly, blocked, volumeIndex === 0)}
                 onClick={() => {
                   const previous = structure.volumes[volumeIndex - 1];
                   if (previous) void onMoveVolumeUp(volume, previous);
@@ -102,7 +103,7 @@ export function StructureTree({
                 data-delete-volume
                 title="删除卷"
                 type="button"
-                disabled={readOnly || blocked}
+                disabled={interactionLocked(readOnly, blocked)}
                 onClick={() => void onRemoveVolume(volume)}
               >
                 删除
@@ -136,7 +137,7 @@ export function StructureTree({
                     data-edit-chapter
                     title="编辑章节"
                     type="button"
-                    disabled={readOnly || blocked}
+                    disabled={interactionLocked(readOnly, blocked)}
                     onClick={() => onEditChapter(volume, chapter)}
                   >
                     编辑
@@ -145,7 +146,7 @@ export function StructureTree({
                     data-split-chapter
                     title="预览并拆分章节"
                     type="button"
-                    disabled={readOnly || blocked}
+                    disabled={interactionLocked(readOnly, blocked)}
                     onClick={() => void onSplitChapter(chapter)}
                   >
                     拆
@@ -154,7 +155,7 @@ export function StructureTree({
                     data-merge-chapter
                     title="预览并合并章节"
                     type="button"
-                    disabled={readOnly || volume.chapters.length < 2 || blocked}
+                    disabled={interactionLocked(readOnly, volume.chapters.length < 2, blocked)}
                     onClick={() => void onMergeChapter(volume, chapter, chapterIndex)}
                   >
                     并
@@ -163,7 +164,7 @@ export function StructureTree({
                     data-move-blocks
                     title="预览并跨章移动正文段落"
                     type="button"
-                    disabled={readOnly || volume.chapters.length < 2 || blocked}
+                    disabled={interactionLocked(readOnly, volume.chapters.length < 2, blocked)}
                     onClick={() => void onMoveBlocks(volume, chapter, chapterIndex)}
                   >
                     移
@@ -172,7 +173,7 @@ export function StructureTree({
                     data-delete-chapter
                     title="删除章节"
                     type="button"
-                    disabled={readOnly || blocked}
+                    disabled={interactionLocked(readOnly, blocked)}
                     onClick={() => void onRemoveChapter(chapter)}
                   >
                     删除

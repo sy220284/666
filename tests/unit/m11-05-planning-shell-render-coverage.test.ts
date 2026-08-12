@@ -341,43 +341,18 @@ describe('M11-05 planning renderer coverage', () => {
     expect(text(idle)).not.toContain('目标场景');
   });
 
-  it('loads navigation targets and invalidates exploration when its scope changes', async () => {
-    class TestSelectElement {
-      constructor(private readonly label: string | null) {}
-
-      closest(selector: string): { readonly textContent?: string } | null {
-        if (selector === '[data-idea-capsule]') return {};
-        if (selector === 'label' && this.label !== null) return { textContent: this.label };
-        return null;
-      }
-    }
-    let changeListener: ((event: Event) => void) | null = null;
-    const documentStub = {
-      addEventListener: vi.fn(
-        (_name: string, listener: (event: Event) => void) => (changeListener = listener),
-      ),
-      removeEventListener: vi.fn(),
-    };
-    vi.stubGlobal('HTMLSelectElement', TestSelectElement);
-    vi.stubGlobal('document', documentStub);
-
+  it('loads navigation targets without globally cancelling planning requests', async () => {
     setPlanningState({ status: 'idle' }, { status: 'idle' }, { selected: true, plot: true });
     const bridge = planningBridge();
     renderPlanningEffects(bridge);
     const cleanups = hooks.effects.map((effect) => effect());
-    changeListener?.({ target: {} } as unknown as Event);
-    changeListener?.({ target: new TestSelectElement(null) } as unknown as Event);
-    changeListener?.({ target: new TestSelectElement('其他') } as unknown as Event);
-    changeListener?.({ target: new TestSelectElement('范围选择') } as unknown as Event);
-    changeListener?.({ target: new TestSelectElement('章节选择') } as unknown as Event);
     await flush();
 
-    expect(bridge.cancelAll).toHaveBeenCalledTimes(2);
+    expect(bridge.cancelAll).not.toHaveBeenCalled();
     expect(bridge.planning.listSceneBeats).toHaveBeenCalled();
     expect(bridge.planning.listPlotNodes).toHaveBeenCalled();
     for (const cleanup of cleanups) cleanup?.();
-    expect(documentStub.removeEventListener).toHaveBeenCalled();
-    expect(bridge.cancelAll).toHaveBeenCalledTimes(3);
+    expect(bridge.cancelAll).not.toHaveBeenCalled();
   });
 
   it('covers failed, stale, missing and brief navigation outcomes', async () => {

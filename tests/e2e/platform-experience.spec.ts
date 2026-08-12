@@ -47,16 +47,13 @@ async function setViewport(
   application: ElectronApplication,
   viewport: ViewportProfile,
 ): Promise<void> {
-  await application.evaluate(
-    ({ BrowserWindow }, targetViewport) => {
-      const window = BrowserWindow.getAllWindows()[0];
-      if (!window) throw new Error('PLATFORM_EXPERIENCE_WINDOW_MISSING');
-      if (window.isMaximized()) window.unmaximize();
-      window.setPosition(0, 0, false);
-      window.setContentSize(targetViewport.width, targetViewport.height, false);
-    },
-    viewport,
-  );
+  await application.evaluate(({ BrowserWindow }, targetViewport) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    if (!window) throw new Error('PLATFORM_EXPERIENCE_WINDOW_MISSING');
+    if (window.isMaximized()) window.unmaximize();
+    window.setPosition(0, 0, false);
+    window.setContentSize(targetViewport.width, targetViewport.height, false);
+  }, viewport);
 }
 
 async function closeGracefully(application: ElectronApplication): Promise<void> {
@@ -80,8 +77,7 @@ async function writeEvidence(scenarios: readonly ScenarioEvidence[]): Promise<vo
         arch: process.arch,
         scenarios,
         passed:
-          scenarios.length === VIEWPORTS.length &&
-          scenarios.every((scenario) => scenario.passed),
+          scenarios.length === VIEWPORTS.length && scenarios.every((scenario) => scenario.passed),
       },
       null,
       2,

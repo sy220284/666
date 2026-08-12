@@ -59,9 +59,12 @@ describe('M11-05 Generation workflow handler authority', () => {
     if (!result.success) {
       expect(result.error.issues).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ path: ['relations'], message: 'Relations must be unique.' }),
           expect.objectContaining({
-            path: ['chapterLinks'],
+            path: ['draft', 'relations'],
+            message: 'Relations must be unique.',
+          }),
+          expect.objectContaining({
+            path: ['draft', 'chapterLinks'],
             message: 'Chapter links must be unique.',
           }),
         ]),

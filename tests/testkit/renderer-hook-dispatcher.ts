@@ -32,7 +32,9 @@ const rendererReact = rendererRequire('react') as RendererReactModule;
 const clientInternals =
   rendererReact.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
 
-export function installRendererHookDispatcher(controller: RendererHookController): () => void {
+export function installRendererHookDispatcher(
+  controller: RendererHookController,
+): () => void {
   const previous = clientInternals.H;
   clientInternals.H = {
     useCallback<T>(callback: T): T {

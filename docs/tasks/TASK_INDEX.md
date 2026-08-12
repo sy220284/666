@@ -152,7 +152,7 @@ Runtime IMPLEMENTED
 | M11-02 | [`统一 AI 审阅底座`](M11/M11-02_UNIFIED_AI_REVIEW_FOUNDATION.md)                      | M11-01 | Implemented |
 | M11-03 | [`AI 自动整理与冲突引擎`](M11/M11-03_AI_AUTOMATION_CONFLICT_ENGINE.md)                | M11-02 | Implemented |
 | M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md)                  | M11-03 | Implemented |
-| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md)                                               | M11-04 | Planned     |
+| M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md)                                               | M11-04 | Implemented |
 | M11-06 | [`AI 创作与长篇记忆增强`](M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md)              | M11-05 | Planned     |
 
 ### M12 作者生产力与长期项目增强

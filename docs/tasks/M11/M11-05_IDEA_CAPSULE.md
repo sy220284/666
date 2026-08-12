@@ -1,6 +1,6 @@
 # M11-05 Generation Generic Scope、Workflow Handler 与灵感胶囊
 
-> 状态：Planned  
+> 状态：Implemented  
 > 里程碑：M11 产品体验与 AI 创作协同  
 > 优先级：P0  
 > 执行分支：`work`  

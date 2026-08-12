@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "id": "M11-05",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M11/M11-05_IDEA_CAPSULE.md",
   "priority": "P0",
@@ -64,5 +64,9 @@
     "pnpm build",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 375,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M11-05"
+  }
 }

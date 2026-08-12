@@ -226,7 +226,7 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
       const { project, chapter, draft } = await createTwoBlockDraft(harness);
       const selectionId = draft.blocks[0]!.logicalBlockId;
       await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
-        database.prepare(`UPDATE drafts SET status = 'archived' WHERE id = ?`).run(draft.id);
+        database.prepare(`UPDATE drafts SET status = 'archived' WHERE id = ?`).run(draft.draftId);
       });
       const generation = new GenerationRunService(harness.workspace);
 

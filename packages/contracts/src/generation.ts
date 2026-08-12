@@ -7,9 +7,15 @@ import {
   PromptOutputModeSchema,
   PromptTaskTypeSchema,
 } from './ai-output-protocol.js';
+import { ProviderConfigIdSchema, ProviderConfigSchema } from './app-data.js';
 import { DraftContentHashValueSchema, DraftEntityIdSchema } from './draft.js';
 import { ErrorCodeSchema } from './error-codes.js';
-import { ProviderConfigIdSchema, ProviderConfigSchema } from './app-data.js';
+import { GenerationScopeTypeSchema } from './generation-scope.js';
+import {
+  IdeaDepthLevelSchema,
+  IdeaDivergenceLevelSchema,
+  IdeaKindSchema,
+} from './idea-capsule.js';
 import {
   GenerationResultRefSchema,
   ProjectIdSchema,
@@ -225,13 +231,23 @@ const generationIntentSchemas = [
     runType: z.literal('state_extract'),
     sourceVersionId: DraftEntityIdSchema,
   }),
+  z.strictObject({
+    runType: z.literal('idea_explore'),
+    ideaKind: IdeaKindSchema,
+    divergenceLevel: IdeaDivergenceLevelSchema,
+    depthLevel: IdeaDepthLevelSchema,
+    authorInstruction: z.string().trim().min(1).max(32_768),
+    count: z.number().int().min(1).max(8).default(4),
+  }),
 ] as const;
 
 export const GenerationIntentSchema = z.discriminatedUnion('runType', generationIntentSchemas);
 
-export const GenerationStartInputSchema = z.strictObject({
+const GenerationStartInputBaseSchema = z.strictObject({
   projectId: ProjectIdSchema,
-  chapterId: DraftEntityIdSchema,
+  scopeType: GenerationScopeTypeSchema.default('chapter'),
+  scopeId: DraftEntityIdSchema.nullable().default(null),
+  chapterId: DraftEntityIdSchema.nullable().default(null),
   baseDraftId: DraftEntityIdSchema.nullable().default(null),
   baseDraftRevision: z.number().int().nonnegative().nullable().default(null),
   providerId: ProviderConfigIdSchema,
@@ -239,12 +255,56 @@ export const GenerationStartInputSchema = z.strictObject({
   intent: GenerationIntentSchema,
 });
 
+export const GenerationStartInputSchema = GenerationStartInputBaseSchema.superRefine(
+  (input, context) => {
+    const scopeId =
+      input.scopeId ??
+      (input.scopeType === 'chapter'
+        ? input.chapterId
+        : input.scopeType === 'project'
+          ? input.projectId
+          : null);
+    if (scopeId === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['scopeId'],
+        message: 'Generation scopeId is required for this scope type.',
+      });
+    }
+    if (input.scopeType === 'chapter' && input.chapterId !== scopeId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['chapterId'],
+        message: 'Chapter generation scope must use the same chapterId and scopeId.',
+      });
+    }
+    if (input.intent.runType !== 'idea_explore' && input.chapterId === null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['chapterId'],
+        message: 'Legacy generation workflows still require a chapterId.',
+      });
+    }
+  },
+).transform((input) => ({
+  ...input,
+  scopeId:
+    input.scopeId ??
+    (input.scopeType === 'chapter'
+      ? (input.chapterId as string)
+      : input.scopeType === 'project'
+        ? input.projectId
+        : input.scopeId),
+}));
+
 export const GenerationRunSchema = z.strictObject({
   runId: TaskIdSchema,
   requestId: TaskIdSchema,
   taskId: TaskIdSchema,
   projectId: ProjectIdSchema,
-  chapterId: DraftEntityIdSchema,
+  scopeType: GenerationScopeTypeSchema,
+  scopeId: DraftEntityIdSchema,
+  chapterId: DraftEntityIdSchema.nullable(),
   baseDraftId: DraftEntityIdSchema.nullable(),
   baseDraftRevision: z.number().int().nonnegative().nullable(),
   runType: GenerationRunTypeSchema,
@@ -276,10 +336,22 @@ export const GenerationGetRunInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   runId: TaskIdSchema,
 });
-export const GenerationListRunsInputSchema = z.strictObject({
-  projectId: ProjectIdSchema,
-  chapterId: DraftEntityIdSchema.nullable().default(null),
-});
+export const GenerationListRunsInputSchema = z
+  .strictObject({
+    projectId: ProjectIdSchema,
+    chapterId: DraftEntityIdSchema.nullable().default(null),
+    scopeType: GenerationScopeTypeSchema.nullable().default(null),
+    scopeId: DraftEntityIdSchema.nullable().default(null),
+  })
+  .superRefine((input, context) => {
+    if ((input.scopeType === null) !== (input.scopeId === null)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['scopeId'],
+        message: 'Generation scopeType and scopeId filters must be provided together.',
+      });
+    }
+  });
 export const GenerationCancelInputSchema = GenerationGetRunInputSchema;
 export const GenerationPartialInputSchema = GenerationGetRunInputSchema;
 export const GenerationModelSupportInputSchema = z.strictObject({
@@ -446,6 +518,7 @@ export type MergeRangeAnchor = z.infer<typeof MergeRangeAnchorSchema>;
 export type MergeSourceMapping = z.infer<typeof MergeSourceMappingSchema>;
 export type GenerationIntent = z.infer<typeof GenerationIntentSchema>;
 export type GenerationStartInput = z.input<typeof GenerationStartInputSchema>;
+export type GenerationStart = z.output<typeof GenerationStartInputSchema>;
 export type GenerationRunType = z.infer<typeof GenerationRunTypeSchema>;
 export type GenerationRunStatus = z.infer<typeof GenerationRunStatusSchema>;
 export type GenerationRunStage = z.infer<typeof GenerationRunStageSchema>;

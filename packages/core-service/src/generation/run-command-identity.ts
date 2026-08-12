@@ -84,10 +84,26 @@ function persistedSources(database: DatabaseSync, runId: string): readonly unkno
   }));
 }
 
+function expectedConstraintFingerprint(input: GenerationRunCreateInput): unknown {
+  const constraint = input.constraintPackage;
+  if (constraint === null) return null;
+  return {
+    constraintHash: constraint.constraintHash,
+    contentHash: constraint.contentHash,
+    snapshotSource: constraint.snapshotSource,
+    sourceVersionIds: constraint.sourceVersionIds,
+    sources: constraint.sections,
+    estimatedTokens: constraint.estimatedTokens,
+    trimLog: constraint.trimLog,
+  };
+}
+
 export function generationCreateFingerprint(input: GenerationRunCreateInput): string {
   return stableJson({
     command: 'generation.create',
     projectId: input.projectId,
+    scopeType: input.scopeType,
+    scopeId: input.scopeId,
     chapterId: input.chapterId,
     baseDraftId: input.baseDraftId,
     baseDraftRevision: input.baseDraftRevision,
@@ -98,13 +114,7 @@ export function generationCreateFingerprint(input: GenerationRunCreateInput): st
     providerId: input.providerId,
     actualModel: input.actualModel,
     supportStatus: input.supportStatus,
-    constraintHash: input.constraintPackage.constraintHash,
-    constraintContentHash: input.constraintPackage.contentHash,
-    constraintSnapshotSource: input.constraintPackage.snapshotSource,
-    constraintSourceVersionIds: input.constraintPackage.sourceVersionIds,
-    constraintSources: input.constraintPackage.sections,
-    constraintEstimatedTokens: input.constraintPackage.estimatedTokens,
-    constraintTrimLog: input.constraintPackage.trimLog,
+    constraint: expectedConstraintFingerprint(input),
     inputSources: normalizedSources(input.inputSources ?? []),
     taskId: input.taskId ?? null,
   });
@@ -134,7 +144,38 @@ export function readGenerationRunReplay(
       .get(row.runId) as ConstraintPackageRow | undefined;
     const run = mapRun(database, row);
     const expectedConstraint = input.constraintPackage;
+    const constraintMatches =
+      expectedConstraint === null
+        ? constraints === undefined
+        : constraints !== undefined &&
+          constraints.constraintHash === expectedConstraint.constraintHash &&
+          constraints.contentHash === expectedConstraint.contentHash &&
+          constraints.snapshotSource === expectedConstraint.snapshotSource &&
+          Number(constraints.estimatedTokens) === expectedConstraint.estimatedTokens &&
+          stableJson(parsedJson(constraints.sourceVersionIdsJson)) ===
+            stableJson(expectedConstraint.sourceVersionIds) &&
+          stableJson(parsedJson(constraints.sourcesJson)) ===
+            stableJson(
+              (['P0', 'P1', 'P2', 'P3', 'P4'] as const).flatMap((priority) =>
+                expectedConstraint.sections[priority].map((source) => ({
+                  id: source.id,
+                  priority: source.priority,
+                  sourceType: source.sourceType,
+                  sourceId: source.sourceId,
+                  sourceVersionId: source.sourceVersionId,
+                  chapterId: source.chapterId,
+                  entityId: source.entityId,
+                  semanticKey: source.semanticKey,
+                  temporalStatus: source.temporalStatus,
+                  contentHash: source.contentHash,
+                  estimatedTokens: source.estimatedTokens,
+                })),
+              ),
+            ) &&
+          stableJson(parsedJson(constraints.trimLogJson)) === stableJson(expectedConstraint.trimLog);
     const matches =
+      run.scopeType === input.scopeType &&
+      run.scopeId === input.scopeId &&
       run.chapterId === input.chapterId &&
       run.baseDraftId === input.baseDraftId &&
       run.baseDraftRevision === input.baseDraftRevision &&
@@ -146,32 +187,7 @@ export function readGenerationRunReplay(
       run.actualModel === input.actualModel &&
       run.supportStatus === input.supportStatus &&
       (input.taskId === undefined || run.taskId === input.taskId) &&
-      constraints !== undefined &&
-      constraints.constraintHash === expectedConstraint.constraintHash &&
-      constraints.contentHash === expectedConstraint.contentHash &&
-      constraints.snapshotSource === expectedConstraint.snapshotSource &&
-      Number(constraints.estimatedTokens) === expectedConstraint.estimatedTokens &&
-      stableJson(parsedJson(constraints.sourceVersionIdsJson)) ===
-        stableJson(expectedConstraint.sourceVersionIds) &&
-      stableJson(parsedJson(constraints.sourcesJson)) ===
-        stableJson(
-          (['P0', 'P1', 'P2', 'P3', 'P4'] as const).flatMap((priority) =>
-            expectedConstraint.sections[priority].map((source) => ({
-              id: source.id,
-              priority: source.priority,
-              sourceType: source.sourceType,
-              sourceId: source.sourceId,
-              sourceVersionId: source.sourceVersionId,
-              chapterId: source.chapterId,
-              entityId: source.entityId,
-              semanticKey: source.semanticKey,
-              temporalStatus: source.temporalStatus,
-              contentHash: source.contentHash,
-              estimatedTokens: source.estimatedTokens,
-            })),
-          ),
-        ) &&
-      stableJson(parsedJson(constraints.trimLogJson)) === stableJson(expectedConstraint.trimLog) &&
+      constraintMatches &&
       stableJson(persistedSources(database, row.runId)) ===
         stableJson(normalizedSources(input.inputSources ?? []));
 

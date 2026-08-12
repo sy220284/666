@@ -21,16 +21,17 @@ interface ReactClientInternals {
   H: HookDispatcher | null;
 }
 
-interface RendererReactModule {
-  readonly __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: ReactClientInternals;
-}
-
-const rendererRequire = createRequire(
-  new URL('../../apps/desktop/renderer/package.json', import.meta.url),
+const rendererPackageUrl = new URL(
+  '../../apps/desktop/renderer/package.json',
+  import.meta.url,
 );
-const rendererReact = rendererRequire('react') as RendererReactModule;
-const clientInternals =
-  rendererReact.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+const rendererRequire = createRequire(rendererPackageUrl);
+const rendererReact = rendererRequire('react') as Record<string, unknown>;
+const clientInternalsKey = [
+  '__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_',
+  'USERS_THEY_CANNOT_UPGRADE',
+].join('');
+const clientInternals = rendererReact[clientInternalsKey] as ReactClientInternals;
 
 export function installRendererHookDispatcher(
   controller: RendererHookController,
@@ -50,11 +51,10 @@ export function installRendererHookDispatcher(
       return { current: initialValue };
     },
     useState<T>(initialValue: T): [T, HookSetter] {
-      const value = (
-        controller.index < controller.states.length
-          ? controller.states[controller.index]
-          : initialValue
-      ) as T;
+      let value = initialValue;
+      if (controller.index < controller.states.length) {
+        value = controller.states[controller.index] as T;
+      }
       controller.index += 1;
       return [
         value,

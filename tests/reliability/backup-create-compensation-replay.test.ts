@@ -159,7 +159,10 @@ describe('reliability: backup creation compensation replay', () => {
           false,
         );
 
-        const replayedByOriginalService = await recovery.createOperationCheckpoint(requestId, input);
+        const replayedByOriginalService = await recovery.createOperationCheckpoint(
+          requestId,
+          input,
+        );
         expect(replayedByOriginalService).toEqual(repaired);
       } finally {
         if (backupDirectory) await chmod(backupDirectory, 0o700).catch(() => undefined);

@@ -85,6 +85,22 @@
         "^scripts/run-electron-e2e\\.mjs$"
       ]
     },
+    "platformExperience": {
+      "any": [
+        "^apps/desktop/renderer/",
+        "^apps/desktop/preload/",
+        "^apps/desktop/main/",
+        "^packages/contracts/",
+        "^tests/e2e/",
+        "^scripts/run-electron-e2e\\.mjs$",
+        "^docs/process/PLATFORM_EXPERIENCE_MATRIX\\.json$",
+        "^docs/process/CI_RISK_MATRIX\\.json$",
+        "^\\.github/workflows/quality\\.yml$",
+        "^\\.github/workflows/release\\.yml$",
+        "^package\\.json$",
+        "^pnpm-lock\\.yaml$"
+      ]
+    },
     "governanceMeta": {
       "any": [
         "^\\.github/",

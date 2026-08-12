@@ -50,9 +50,11 @@ export function installRendererHookDispatcher(
       return { current: initialValue };
     },
     useState<T>(initialValue: T): [T, HookSetter] {
-      const value = (controller.index < controller.states.length
-        ? controller.states[controller.index]
-        : initialValue) as T;
+      const value = (
+        controller.index < controller.states.length
+          ? controller.states[controller.index]
+          : initialValue
+      ) as T;
       controller.index += 1;
       return [
         value,

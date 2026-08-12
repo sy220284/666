@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 2,
+  "id": "M11-04",
+  "status": "IMPLEMENTED",
+  "executionBranch": "work",
+  "source": "docs/tasks/M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md",
+  "priority": "P0",
+  "startedAt": "2026-08-11T19:29:00+08:00",
+  "dependencies": ["M11-03"],
+  "baseline": {
+    "main": "8628d66c1155c5aa2229d16a266f4c70266fefb9",
+    "work": "8628d66c1155c5aa2229d16a266f4c70266fefb9"
+  },
+  "allowedPaths": [
+    "migrations/project/",
+    "packages/contracts/src/",
+    "packages/domain/src/",
+    "packages/core-service/src/",
+    "packages/prompts/src/",
+    "apps/desktop/main/src/",
+    "apps/desktop/preload/src/",
+    "apps/desktop/renderer/src/",
+    "tests/",
+    "docs/ai/",
+    "docs/architecture/",
+    "docs/contracts/",
+    "docs/database/",
+    "docs/decisions/IMPLEMENTATION_DECISIONS.md",
+    "docs/testing/",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/tasks/M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md",
+    "docs/tasks/M11/M11-05_IDEA_CAPSULE.md",
+    "docs/tasks/M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md",
+    "docs/tasks/M12/M12-01_PROJECT_JOURNAL.md",
+    "docs/tasks/M12/M12-02_RESEARCH_LIBRARY_ATTACHMENTS.md",
+    "docs/tasks/M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md",
+    "docs/tasks/M12/M12-04_OPTIONAL_PROJECT_ENCRYPTION.md",
+    "docs/tasks/runtime/M11-04.json",
+    "docs/test-evidence/M11-04/"
+  ],
+  "forbiddenPaths": [
+    "migrations/app/",
+    "docs/test-evidence/M11-01/",
+    "docs/test-evidence/M11-02/",
+    "docs/test-evidence/M11-03/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:language",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:docs",
+    "pnpm check:governance",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:reliability",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e"
+  ],
+  "verificationBinding": {
+    "sourcePr": 364,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M11-04"
+  }
+}

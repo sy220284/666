@@ -8,6 +8,7 @@ import {
   type PrimaryNavigationId,
 } from '../shell/app-shell-model.js';
 import {
+  authorNavigationTargetBelongsToProject,
   resolveAuthorNavigationTarget,
   type AuthorNavigationTarget,
 } from '../shell/navigation-target.js';
@@ -124,8 +125,12 @@ export function useAppShellNavigation({
 
   const navigateToAuthorTarget = useCallback(
     (target: AuthorNavigationTarget): void => {
-      const resolution = resolveAuthorNavigationTarget(target);
       void (async () => {
+        if (!authorNavigationTargetBelongsToProject(activeProjectId, target)) {
+          setMessage('目标不属于当前项目，已阻止跨项目跳转。');
+          return;
+        }
+        const resolution = resolveAuthorNavigationTarget(target);
         if (route !== resolution.route && isWritingRoute(route) && !(await flushWriting())) {
           setMessage('自动保存失败，已阻止离开当前写作会话。');
           return;
@@ -140,18 +145,26 @@ export function useAppShellNavigation({
           focusKey: authorReturnFocusKey(document.activeElement),
         };
         if (target.type === 'entity') setCanonEntities();
-        dispatch({ type: 'select', selection: resolution.selection });
-        for (const [key, value] of Object.entries(resolution.filters)) {
-          dispatch({ type: 'set-filter', key, value });
-        }
         dispatch({
-          type: 'navigate',
+          type: 'apply-navigation',
           route: resolution.route,
+          selection: resolution.selection,
+          filters: resolution.filters,
           returnLocation: sourceLocation,
         });
       })();
     },
-    [dispatch, filters, flushWriting, route, selection, setCanonEntities, setFailure, setMessage],
+    [
+      activeProjectId,
+      dispatch,
+      filters,
+      flushWriting,
+      route,
+      selection,
+      setCanonEntities,
+      setFailure,
+      setMessage,
+    ],
   );
 
   const returnToAuthorSource = useCallback(async (): Promise<void> => {

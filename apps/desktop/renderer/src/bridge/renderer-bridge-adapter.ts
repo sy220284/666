@@ -33,13 +33,14 @@ import type {
   KnowledgeStateSetInput,
   NarrativePlanningCatalog,
   NarrativePlanningListInput,
-  StateProposalBridge,
-  ValidationBridge,
-  SearchToolsBridge,
   RhythmBridge,
+  SearchToolsBridge,
+  StateProposalBridge,
+  StoryKnowledgeBridge,
   TaskStreamUpdate,
   TimelineEventArchiveInput,
   TimelineEventSaveInput,
+  ValidationBridge,
   WorldforgeBridge,
 } from '@worldforge/contracts';
 
@@ -153,6 +154,7 @@ interface AuxiliaryRendererBridges {
   readonly validation?: ValidationBridge;
   readonly searchTools?: SearchToolsBridge;
   readonly rhythm?: RhythmBridge;
+  readonly storyKnowledge?: StoryKnowledgeBridge;
   readonly candidateAction?: CandidateActionBridgePort;
 }
 
@@ -197,6 +199,7 @@ export interface RendererBridgeAdapter {
   readonly validation: AdaptedDomain<ValidationBridge>;
   readonly searchTools: AdaptedDomain<SearchToolsBridge>;
   readonly rhythm: AdaptedDomain<RhythmBridge>;
+  readonly storyKnowledge: AdaptedDomain<StoryKnowledgeBridge>;
   readonly candidateAction: AdaptedDomain<CandidateActionBridgePort>;
   readonly task: AdaptedTaskDomain & {
     readonly subscribe: (
@@ -268,6 +271,11 @@ export function createRendererBridgeAdapter(
       coordinator,
     ),
     rhythm: adaptDomain('rhythm', requireDomain(auxiliary.rhythm, 'rhythm'), coordinator),
+    storyKnowledge: adaptDomain(
+      'storyKnowledge',
+      requireDomain(auxiliary.storyKnowledge, 'storyKnowledge'),
+      coordinator,
+    ),
     candidateAction: adaptDomain(
       'candidateAction',
       requireDomain(auxiliary.candidateAction, 'candidateAction'),
@@ -293,6 +301,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     !window.worldforgeValidation ||
     !window.worldforgeSearchTools ||
     !window.worldforgeRhythm ||
+    !window.worldforgeStoryKnowledge ||
     !window.worldforgeCandidatePreview
   ) {
     throw new Error('The trusted WorldForge preload bridge is unavailable.');
@@ -304,6 +313,7 @@ export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {
     validation: window.worldforgeValidation,
     searchTools: window.worldforgeSearchTools,
     rhythm: window.worldforgeRhythm,
+    storyKnowledge: window.worldforgeStoryKnowledge,
     candidateAction: window.worldforgeCandidatePreview,
   });
 }
@@ -341,8 +351,9 @@ function adaptDomain<Domain extends object>(
               new Error(`The ${domainName}.${property} bridge method is unavailable.`),
             );
           }
+          const derivedRequestKey = requestKey(domainName, property, args);
           return coordinator.run(
-            requestKey(domainName, property, args),
+            options?.requestKey ?? derivedRequestKey,
             () =>
               (method as (...values: unknown[]) => Promise<CommandResult<unknown>>).apply(
                 domain,
@@ -368,11 +379,16 @@ function isBridgeRequestOptions(value: unknown): value is BridgeRequestOptions {
   const keys = Object.keys(value);
   return (
     keys.length > 0 &&
-    keys.every((key) => key === 'mode' || key === 'signal') &&
+    keys.every(
+      (key) => key === 'mode' || key === 'signal' || key === 'requestKey' || key === 'laneKey',
+    ) &&
     (!('mode' in value) ||
       value.mode === 'reject' ||
       value.mode === 'replace' ||
-      value.mode === 'share')
+      value.mode === 'share') &&
+    (!('requestKey' in value) ||
+      (typeof value.requestKey === 'string' && value.requestKey.length > 0)) &&
+    (!('laneKey' in value) || (typeof value.laneKey === 'string' && value.laneKey.length > 0))
   );
 }
 

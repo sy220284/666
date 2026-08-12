@@ -33,8 +33,11 @@ describe('AR-10 Main IPC boundaries', () => {
     );
   });
 
-  it('centralizes trust, schema failure, unexpected exception and query semantics in one guard', async () => {
-    const guard = await readFile(`${mainRoot}/handler-guard.ts`, 'utf8');
+  it('centralizes trust, schema failure, unexpected exception and operation semantics in one guard', async () => {
+    const [guard, semantics] = await Promise.all([
+      readFile(`${mainRoot}/handler-guard.ts`, 'utf8'),
+      readFile(`${mainRoot}/project-operation-semantics.ts`, 'utf8'),
+    ]);
 
     expect(guard).toContain('function trustedSender');
     expect(guard).toContain("'COMMON_INVALID_INPUT_001'");
@@ -42,7 +45,10 @@ describe('AR-10 Main IPC boundaries', () => {
     expect(guard).toContain("'ipc.handler.unexpected'");
     expect(guard).toContain('createDiagnosticId()');
     expect(guard).toContain('coreOperationFailureSemantics');
-    expect(guard).toContain('QUERY_PROJECT_OPERATIONS');
+    expect(guard).toContain('projectOperationKind(operation.operation)');
+    expect(guard).not.toContain('QUERY_PROJECT_OPERATIONS');
+    expect(semantics).toContain('PROJECT_OPERATION_SEMANTICS');
+    expect(semantics).toContain('satisfies Record<ProjectOperationName, CoreOperationKind>');
     expect(guard).toContain('invokeChannels.add(channel)');
     expect(guard).toContain('invokeChannels.clear()');
   });

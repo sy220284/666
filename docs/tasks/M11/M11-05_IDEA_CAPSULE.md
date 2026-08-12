@@ -1,171 +1,175 @@
-# M11-05 灵感胶囊
+# M11-05 Generation Generic Scope、Workflow Handler 与灵感胶囊
 
 > 状态：Planned  
 > 里程碑：M11 产品体验与 AI 创作协同  
-> 优先级：P1  
+> 优先级：P0  
 > 执行分支：`work`  
 > 目标分支：`main`
 
 ## 目标
 
-建立独立于正文建议稿和写作待办的灵感对象、AI 灵感探索任务与受控转换链，使作者可以围绕新书、人物、情节、伏笔、反转、感情线、结局等方向生成、收藏、继续展开，并在明确确认后转换为现有权威规划/设定对象。
-
-## 阶段定位
-
-本任务新增真正独立的“创意素材”领域，同时先完成 GenerationRun 从章节专属作用域向通用作用域的兼容重构，为 M11-06 的卷级/全书级长篇记忆任务提供底座。
-
-## 非目标
-
-- 不把 IdeaCard 塞进 Candidate。
-- 不把 IdeaCard 伪装成 StoryTodo。
-- 不为每种灵感主题新增独立 GenerationRunType。
-- 不创建假章节承载全书/人物/新书灵感任务。
-- 不让 IdeaConversionService 直接复制 Canon/Planning/Continuity SQL。
+一次完成 GenerationRun 通用作用域、Generation Workflow Handler Map 与 Idea Capsule，避免先迁移 scope、后续再拆 workflow 造成第二轮 Generation 数据与生命周期迁移。
 
 ## 依赖
 
 - M11-04 有效 VERIFIED。
+- 必须复用 M11-04 已收口的 Prompt Version Authority、Project Operation Semantics、Renderer Request Ownership 与 Atomic Navigation。
 
-## 真实承接基线
+## 一、GenerationRun Generic Scope
 
-启动时以最新 verified main 为准。重点承接：
+GenerationRun 从章节专属改为通用作用域：
 
-- `generation_runs`、`GenerationIntent`、`PromptTaskType`、ModelSupportProfile。
-- Candidate / Candidate apply 生命周期。
-- StoryTodo。
-- ProjectBrief、PlotNode、SceneBeat。
-- Entity / CanonFact。
-- Foreshadowing / ArcMilestone。
-- M11-03 统一作者裁决与事务 operation 复用原则。
+```text
+scopeType:
+  project
+  volume
+  chapter
+  scene
+  entity
+  selection
 
-## 关联
+scopeId
+chapterId nullable
+```
 
-- 功能ID：`IDEA-001`、`IDEA-AI-001`、`IDEA-CONVERT-001`、`GEN-SCOPE-001`。
-- 验收：生成灵感、收藏/丢弃、继续展开、跨重启保存、转换预览与作者确认。
+要求：
 
-## 必读文档
+1. `generation_runs.chapter_id` 从强绑定章节改为兼容索引；非章节任务不得创建假章节。
+2. 历史 `skeleton/chapter/rewrite/merge/validate/state_extract` 全量迁移后语义保持不变。
+3. scope 必须验证 project ownership、目标存在性和目标类型；跨项目/失效目标 fail-closed。
+4. Clone/Restore/Delete 继续保持 GenerationRun 来源关系和终态语义；活动任务不得被克隆为 running。
+5. Migration append-only，禁止修改历史 Migration。
 
-- `docs/architecture/ARCHITECTURE.md`
-- `docs/ai/PROMPT_AND_EVAL_SPEC.md`
-- `docs/database/DATABASE_SCHEMA.md`
-- `docs/contracts/IPC_CONTRACTS.md`
-- `docs/tasks/TASK_TEMPLATE.md`
-- M4-04、M11-03、M11-04 任务卡
+## 二、Generation Workflow Handler Map
 
-## 主要影响范围
+建立单一 `GenerationWorkflowHandlers`，对 `GenerationRunType` 穷尽映射：
 
-- `migrations/project/`
-- `packages/contracts/`
-- `packages/domain/`
-- `packages/core-service/`
-- `packages/prompts/`
-- `apps/desktop/main/`
-- `apps/desktop/preload/`
-- `apps/desktop/renderer/`
-- `tests/`
-- 数据库、IPC、AI、产品文档
+```text
+skeleton
+chapter
+rewrite
+merge
+validate
+state_extract
+idea_explore
+```
 
-## 职责、状态所有权与依赖方向
+每个 Handler 独立负责：
 
-1. IdeaCard 是独立领域对象，拥有自己的生命周期。
-2. GenerationRun 继续是 AI 任务持久业务生命周期唯一真源。
-3. Candidate 继续只承载可进入 Draft 的正文/骨架建议稿。
-4. IdeaConversion 只负责“读取 Idea → 形成转换预览 → 作者确认 → 调用目标领域内部 operation → 记录转换结果”。
-5. 目标对象写入仍由 Planning/Canon/Continuity/NarrativePlanning 的不变量拥有者负责。
+- source resolution
+- constraint input
+- prompt identity/version
+- output mode
+- output parse
+- domain persist/result refs
 
-## 数据库与 Migration
+统一 Generation Runtime 继续只负责：
 
-### GenerationRun 作用域泛化
+- GenerationRun lifecycle
+- Task lifecycle
+- Provider streaming
+- cancel
+- partial
+- usage
+- terminal state
 
-当前 `generation_runs.chapter_id` 的章节强绑定必须兼容重构为通用 scope：
+强制要求：
 
-- `scope_type`: `project | volume | chapter | scene | entity | selection`。
-- `scope_id` 或等价稳定目标表达。
-- `chapter_id` 允许 nullable，作为章节任务兼容索引。
-- 现有 skeleton/chapter/rewrite/merge/validate/state_extract 历史数据迁移后语义保持不变。
+1. 新增 `GenerationRunType` 而缺少 Handler 时 TypeScript 编译失败。
+2. Router 不再通过持续增长的 `if (runType === ...)` 拥有各工作流细节。
+3. Handler 必须使用 M11-04 Prompt Registry 精确版本；历史 GenerationRun 的 promptId/promptVersion 仍可解析。
+4. Provider 请求、任务取消和 partial 生命周期仍由统一 Runtime 拥有，Handler 不复制状态机。
+5. `validate/state_extract` 的持久化必须继续进入 Validation/StateProposal 权威领域，不建立 Generation 私有真源。
 
-### 新增表
+## 三、Idea Capsule
 
-`idea_cards`：
+新增独立领域对象：
 
-- id / project_id
-- idea_kind
-- title / summary / content_json
-- divergence_level / depth_level
-- source_context_json
-- generation_run_id nullable
-- status: active/favorite/converted/discarded
-- created_at / updated_at
+### IdeaCard
 
-`idea_conversions`：
+至少包含：
 
-- idea_id
-- target_type / target_id
-- conversion metadata
-- created_at
+- id / projectId
+- ideaKind
+- title / summary / content
+- divergenceLevel
+- depthLevel
+- sourceContext
+- generationRunId nullable
+- status: active / favorite / converted / discarded
+- createdAt / updatedAt
 
-### Clone/恢复
+### IdeaConversion
 
-IdeaCard/Conversion 属于项目业务数据，按正确 ID remap/preserve 策略进入 ProjectClonePolicy。GenerationRun 克隆规则必须继续安全终止活动任务并保持来源关系一致。
+记录 Idea 到目标领域对象的转换事实，不复制目标领域权威字段。
 
-## IPC、事件与错误码
+Conversion 固定链路：
 
-新增具名 `idea` 领域：
+```text
+Idea
+↓
+Preview
+↓
+作者确认
+↓
+目标领域 Operation
+↓
+权威对象
+```
 
-- list/get/save/archive/favorite/discard
-- startExplore
-- previewConversion
-- applyConversion
+要求：
 
-AI 启动仍通过 Generation Runtime；不得再建 `idea_runs`。
+1. Preview 阶段零权威写入。
+2. Apply 复用 Planning/Canon/Continuity/NarrativePlanning 已有事务 operation。
+3. 目标领域失败时 Idea 与目标权威数据不得半提交。
+4. IdeaCard 独立于 Candidate 与 StoryTodo；三者不得互相伪装或共享写入真源。
 
-错误至少覆盖：目标不存在、跨项目、Idea 已转换/丢弃、Generation scope 无效、转换目标冲突、作者权限不足、目标领域拒绝。
-
-## UI 闭环
-
-灵感胶囊至少提供：
-
-- 灵感类型：新书/人物/情节/世界设定/伏笔/反转/感情线/结局/自定义。
-- 发散程度：稳妥/差异/脑洞。
-- 展开深度：火花/展开/深挖。
-- 结果卡片：标题、摘要、展开内容、收藏、继续探索、丢弃、转换。
-- 转换前必须展示“将创建/更新什么”，作者确认后才写入权威数据。
-
-## AI 任务设计
+## AI 任务
 
 新增单一：
 
-`runType = idea_explore`
+```text
+runType = idea_explore
+```
 
-其余差异通过 Intent 参数表达：`ideaKind`、`divergenceLevel`、`depthLevel`、上下文 scope、作者指令。
+差异通过 `ideaKind`、`divergenceLevel`、`depthLevel`、generic scope、作者指令表达；禁止增加 `character_idea`、`ending_idea`、`plot_twist_idea` 等 run type。
 
-禁止建立 `character_idea`、`ending_idea`、`plot_twist_idea` 等 run type 枚举膨胀。
+Prompt 必须通过多版本 Registry 注册，并进入 ModelSupportProfile 精确 `(taskType, promptId, promptVersion)` 匹配。
 
-## 安全、隐私与恢复
+## Renderer 生命周期与导航
 
-- 灵感内容保持项目本地数据。
-- Provider 仍只由 Core 调用。
-- 转换前无任何 Canon/Planning 写入。
-- 只读项目可浏览，禁止生成保存与转换。
-- 项目恢复/克隆后 Idea 与转换记录引用必须一致。
+- Idea list/get 等相同只读请求使用 `mode: 'share'`。
+- 同一 Idea/Scope 的 latest-only 请求显式提供 `laneKey`，Coordinator 不解析业务 payload。
+- 项目切换、scope 切换、继续探索后旧结果不得回写。
+- Conversion 成功后跳转目标对象统一使用 `AuthorNavigationTarget + apply-navigation`。
 
-## 性能预算
+## 数据库与恢复
 
-- 灵感列表分页/虚拟化。
-- Generation 网络请求不占用 SQLite 写队列。
-- 大型 Idea content 必须有结构和长度上限。
-- 多次继续探索通过 GenerationRun 来源追踪，不在 Renderer 堆叠无限上下文。
+新增 `idea_cards`、`idea_conversions`；Generation scope 使用追加 Migration 完成兼容重构。
 
-## 实施内容
+- Idea 属于项目业务数据，ClonePolicy 必须定义正确 remap/preserve。
+- GenerationRun 克隆继续终止活动任务并保持来源关系一致。
+- 删除/恢复目标对象后 Conversion 读取必须返回明确 missing/stale，不猜测替代目标。
 
-1. GenerationRun generic scope Migration 与合同重构。
-2. 现有 Generation 全任务兼容回归。
-3. IdeaCard / IdeaConversion Schema、Domain、Core。
-4. `idea_explore` Prompt/Output/ModelSupportProfile。
-5. Main/Preload/Renderer Bridge。
-6. 灵感库与探索 UI。
-7. Conversion preview/apply，复用目标领域 transaction operation。
-8. Clone/Recovery/Delete/Import 边界与完整测试。
+## 错误模型
+
+继续遵守：Service internal error → `projectOperationError()` / `generationOperationError()` → Main error semantics → Renderer 作者可理解展示。
+
+至少覆盖：scope invalid、target missing、cross-project、Idea converted/discarded、conversion conflict、read-only、Provider unsupported、Prompt version unavailable。
+
+## UI
+
+灵感胶囊支持：
+
+- 新书 / 人物 / 情节 / 世界设定 / 伏笔 / 反转 / 感情线 / 结局 / 自定义
+- 发散程度：稳妥 / 差异 / 脑洞
+- 展开深度：火花 / 展开 / 深挖
+- 收藏 / 继续探索 / 丢弃 / 转换
+- 转换前明确展示将创建或更新的目标对象
+
+## Coverage
+
+Idea Capsule、Generation 主入口与 Conversion 新代码不得扩大历史 TSX 豁免。按适用场景覆盖 success、empty、failure、retry、cancel、stale、read-only、project switch、scope/chapter switch、target deleted/archived。
 
 ## 自动化测试
 
@@ -190,21 +194,7 @@ pnpm build
 pnpm test:e2e
 ```
 
-专项覆盖：
-
-- 历史 GenerationRun 迁移兼容。
-- 章节任务、项目级任务、实体级任务 scope 校验。
-- 活动任务取消/重启/克隆。
-- Idea 生命周期与跨项目隔离。
-- Conversion 预览无写入；确认后原子写入目标域。
-- Candidate 与 StoryTodo 行为完全不受 Idea 影响。
-
-## 人工验收
-
-- 可以在没有章节的情况下探索新书/人物灵感。
-- 收藏的灵感重启应用后仍存在。
-- “转换为人物/伏笔/情节节点”前可看清影响范围。
-- 转换冲突失败时 Idea 保持原状态且目标权威数据无半提交。
+专项必须覆盖：历史 GenerationRun 迁移、六类旧任务行为、所有 generic scope、Handler Map 穷尽性、Prompt 精确版本、活动任务 cancel/restart/clone、Idea 生命周期、Conversion preview 零写入、确认原子写入、Candidate/StoryTodo 无回归。
 
 ## Evidence
 
@@ -212,12 +202,13 @@ pnpm test:e2e
 
 ## 回滚策略
 
-整体回滚 Idea 功能和 Generation scope 应用代码；Migration 保持 append-only 向前兼容。回滚不得恢复 `chapter_id NOT NULL` 假设导致已升级项目无法打开。
+整体回滚 Idea 与 Workflow Handler 应用代码；Migration 保持向前兼容。不得恢复 `chapter_id NOT NULL` 假设，也不得把 Handler 再散回多套 Router 生命周期。
 
 ## 完成条件
 
-- IdeaCard 与 Candidate/StoryTodo 职责清晰且无真源重叠。
-- GenerationRun 支持通用 scope，现有六类任务行为完全兼容。
-- IdeaExplore 使用现有 Generation Runtime。
+- GenerationRun generic scope 成为唯一 Generation 作用域模型。
+- `GenerationWorkflowHandlers` 对所有 runType 编译期穷尽。
+- Runtime 与 Handler 职责清晰，无重复 lifecycle。
+- IdeaCard 与 Candidate/StoryTodo 无职责重叠。
 - Conversion 复用目标领域权威 operation。
-- Migration、Clone/Recovery、E2E 与全量回归通过。
+- Migration、Clone/Restore/Delete、Coverage、Performance 与 E2E 全链路通过。

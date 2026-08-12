@@ -1,4 +1,4 @@
-# M11-06 AI 创作与长篇记忆增强
+# M11-06 长篇 AI 底座收口
 
 > 状态：Planned  
 > 里程碑：M11 产品体验与 AI 创作协同  
@@ -8,239 +8,269 @@
 
 ## 目标
 
-在现有 Generation、ConstraintPackage、Validation、SearchTools 与 ProjectSettings 基础上，完成长篇摘要记忆、文风配置与偏离检测、AI 任务路由、生成入口简化和 Ctrl+K 命令面板，使长篇创作在不引入第二套上下文/搜索/Provider 系统的前提下提升可控性和效率。
-
-## 阶段定位
-
-本任务是 M11 产品体验与 AI 创作协同的收口任务，承接 M11-05 通用 Generation scope，并将前序故事知识、AI 审阅、灵感和既有写作能力纳入统一创作工作流。
-
-## 非目标
-
-- 不新增第二套 ContextBuilder、搜索引擎、Provider 系统或 Task Runtime。
-- 不新增平行 `StyleIssue` 系统。
-- 不将摘要视为权威故事事实。
-- 不在定稿事务内调用 Provider 或等待摘要完成。
-- 不把 `skeleton`、`chapter`、`rewrite` 等成熟 Generation 生命周期替换为新任务体系。
-- 不重复存储 GenreRhythmProfile 已拥有的网文章奏指标。
+在 M11-04 的统一基础机制与 M11-05 的 Generation Generic Scope / Workflow Handler 上，完成 StoryDigest、ConstraintPackage 长篇上下文、StyleProfile、AI Task Routing 与 Ctrl+K，并正式吸收原 V1.5 的长篇记忆、卷级连续性和 300万—500万字适配目标，形成长篇 AI 创作的最终统一底座。
 
 ## 依赖
 
 - M11-05 有效 VERIFIED。
+- 必须复用 M11-04 的 Prompt Version Authority、Project Operation Semantics、Renderer Request Ownership、Atomic Navigation。
+- 必须复用 M11-05 的 Generic Scope 与 `GenerationWorkflowHandlers`，不得再建第二套 Generation router/runtime。
 
-## 真实承接基线
+## 原 V1.5 能力归并
 
-启动时以最新 verified main 为准。重点承接：
+本任务正式承接旧规划中的：
 
-- `ConstraintPackageService` / HardenedConstraintPackageService / authority。
-- `GenerationRun`、Generation Studio、`generation-start.ts`。
-- M11-05 通用 Generation scope。
-- `ValidationService` / rule + AI validate。
-- `SearchTools` / FTS / NavigationTarget。
-- `project_settings`。
-- `GenreRhythmProfile`。
-- EndingSnapshot、DerivedInvalidation 与 M11-03 CharacterRelationship / ValidationException。
+- `MEM-001` L0—L5 自动记忆目标。
+- `MEM-002` 热/温/冷记忆管理目标。
+- `MEM-003` 卷级连续性检查点目标。
+- 剧情弧/卷级摘要自动维护。
+- 300万—500万字完整适配。
+- `SEM-001` 语义检索的真实证据触发评估。
 
-## 关联
+实现语义统一调整为现有架构：
 
-- 功能ID：`MEM-001`、`STYLE-001`、`AI-ROUTE-001`、`GEN-UX-001`、`CMD-001`。
-- 验收：1000 章长篇上下文可控、摘要失效可重建、文风配置可解释、任务路由可回退、主生成动作简化、全局命令快速定位。
+1. 不恢复独立 L0—L5 数据表、记忆调度器或第二套 ContextBuilder。
+2. 不物理迁移权威故事数据形成“热表/温表/冷表”。热/温/冷只表示一次上下文请求中的召回优先级与压缩层级。
+3. 当前章节、邻近章节和当前有效 Canon/State/Relationship/Timeline/Validation 等权威事实属于高优先级直接召回层。
+4. Chapter/Volume Digest 属于中层压缩记忆；Project Digest 与更远历史按需召回。
+5. 所有层级仍由 ConstraintPackage 统一裁剪、追踪来源和验证 freshness，不产生第二份故事事实。
+6. 卷级连续性由 Volume Digest + 卷边界处的权威状态/关系/时间线/伏笔/人物弧光共同完成，不新增平行 checkpoint 真源。
 
-## 必读文档
+## 一、StoryDigest
 
-- `docs/architecture/ARCHITECTURE.md`
-- `docs/ai/PROMPT_AND_EVAL_SPEC.md`
-- `docs/ui/SCREEN_SPECIFICATIONS.md`
-- `docs/database/DATABASE_SCHEMA.md`
-- `docs/tasks/TASK_TEMPLATE.md`
-- M4-02、M4-04、M6-04 来源任务文档
-- M11-03、M11-05 任务卡
+建立三级摘要：
 
-## 主要影响范围
+```text
+Chapter Digest
+↓
+Volume Digest
+↓
+Project Digest
+```
 
-- `migrations/project/`
-- `packages/contracts/`
-- `packages/domain/`
-- `packages/core-service/`
-- `packages/prompts/`
-- `apps/desktop/main/`
-- `apps/desktop/preload/`
-- `apps/desktop/renderer/src/features/writing/`
-- `apps/desktop/renderer/src/features/checks/`
-- `apps/desktop/renderer/src/features/settings/`
-- `apps/desktop/renderer/src/shell/`
-- `tests/`
-- AI、数据库、IPC、UI 与测试文档
+每份 Digest 必须绑定：
 
-## 职责、状态所有权与依赖方向
+- scope type / scope id
+- source hash
+- semantic revision
+- generation run
+- freshness/status
+- content
 
-1. ConstraintPackage 继续是生成上下文唯一权威组装器。
-2. StoryDigest 是可重建派生数据，不参与作者事实权威。
-3. StyleProfile/TaskRouting 是项目级 typed settings；配置通过现有 `project_settings` 保存。
-4. GenreRhythmProfile 继续独占爽点密度、章末钩子、黄金三章、更新目标等节奏指标。
-5. 文风偏离统一输出 ValidationIssue。
-6. Ctrl+K 只投影现有 SearchTools 和命令能力，不建立第二个搜索索引。
-7. Provider 配置与凭据仍由现有 Provider/CredentialBroker 管理；TaskRouting 只选择已存在的受信连接。
+规则：
 
-## 数据库与 Migration
+1. StoryDigest 是可重建派生数据，不是 Canon/Continuity 权威事实。
+2. `VersionService.setFinal` 成功后异步触发摘要重建；摘要失败不得回滚定稿。
+3. Chapter 更新后只增量失效受影响的 Volume / Project Digest。
+4. stale Digest 不得静默进入 ConstraintPackage。
+5. ClonePolicy 使用 `regenerate`；恢复/删除 Version 后 freshness 必须正确。
+6. 大型作品不得每次生成扫描全文。
+7. 卷边界生成/刷新 Volume Digest 时必须保存足够的跨卷连续性摘要，但关键事实仍回查权威 Canon/Continuity 数据。
 
-新增单一派生表：`story_digests`。
+## 二、ConstraintPackage 扩展
 
-建议字段：
+`ConstraintPackage` 继续是唯一 AI Context Authority，新增来源：
+
+- CharacterRelationship
+- StoryDigest
+- StyleProfile
+- 有效 ValidationException
+
+继续保留：
+
+- Authority Priority
+- Token Budget
+- Trim Log
+- Source Tracking
+- Freshness
+
+约束：
+
+1. 禁止新增第二套 ContextBuilder。
+2. Digest 只做压缩层；关键权威状态仍按 P0-P4 优先级进入上下文。
+3. 所有来源必须可追溯到稳定 ID / revision / hash。
+4. 超预算裁剪必须可解释并留 trim log。
+5. 记忆冷热分层只能影响召回顺序、压缩粒度与预算，不得改变权威数据的物理归属。
+6. 跨卷生成必须显式验证人物状态、关系、时间线、知情、伏笔与人物弧光的连续性入口。
+
+## 三、StyleProfile
+
+项目级 typed settings：
+
+```text
+baseStyle
+learnedMetrics
+manualInstructions
+sceneOverrides
+source
+updatedAt
+```
+
+可描述句长、段长、对白比例、叙事距离、描写密度、心理描写、动作密度、修辞倾向、词汇倾向、人物声音等。
+
+不得复制 GenreRhythmProfile 已拥有的 hook、goldenThree、excitementDensity、dailyTarget 等网文章奏字段。
+
+### 文风偏离
+
+- 统计型偏离进入现有 Validation rule batch。
+- 语义型偏离进入现有 `validate` AI workflow。
+- `issueType` 使用稳定 `style.*` 命名。
+- 继续复用 Evidence、ignore/mute/false_positive、StoryTodo、ValidationException。
+- 不新增平行 StyleIssue 系统。
+
+## 四、AI Task Routing
+
+Core 统一决定：
+
+```text
+TaskType
+↓
+作者指定 Provider preference
+↓
+ModelSupportProfile
+↓
+Fallback Policy
+↓
+最终 Provider / Model
+```
+
+Renderer 只配置：
+
+- 自动
+- 指定 AI 连接
+
+要求：
+
+1. Routing 只能选择已有受信 Provider/Credential 配置。
+2. 指定模型不可用时按显式 Fallback Policy 处理；不得跨凭据边界猜测选择未知 Provider。
+3. Prompt 选择必须来自多版本 Registry，并与 ModelSupportProfile 精确匹配。
+4. `summarize` 如新增 GenerationRunType，必须同步进入 M11-05 Handler Map 穷尽机制。
+5. Provider 仍只由 Core 调用，Renderer 不接触凭据。
+
+## 五、Generation 主入口
+
+保留成熟内部 runType：`skeleton/chapter/rewrite/merge`，作者主入口收敛为：
+
+- 规划这一章 → skeleton
+- 生成这一章 → chapter
+- 改写选中内容 → rewrite
+
+融合、来源、目标字数、继续生成等高级能力进入二级区域，不删除真实能力。
+
+所有请求继续服从 RendererCommandCoordinator + BridgeRequestCoordinator 两级所有权。
+
+## 六、Ctrl+K
+
+统一复用：
+
+- SearchTools
+- `AuthorNavigationTarget`
+- `apply-navigation`
+- 现有页面命令
+- 现有动作命令
+
+形成：
+
+```text
+搜索 + 导航 + 命令执行
+```
+
+禁止新增第二搜索索引或 `GlobalSearchServiceV2`。搜索正文、历史版本、人物、设定等仍来自现有 SearchTools/FTS。
+
+## 七、300万—500万字规模验收
+
+除现有 100/300/1000 章测试外，增加真实大长篇 corpus：
+
+- 300万字作品。
+- 500万字作品。
+
+至少覆盖：
+
+- 应用启动与项目打开。
+- 章节切换与连续写作。
+- Autosave / Version / Draft Revision。
+- 全项目搜索与 Ctrl+K。
+- StoryKnowledge Projection 的人物、关系和时间线窗口查询。
+- ConstraintPackage 组装与跨卷召回。
+- Chapter / Volume / Project Digest 增量失效和重建。
+- Backup / Restore。
+- 项目切换后的旧请求隔离。
+- Renderer/Core 常驻内存与峰值内存。
+- SQLite 文件增长、索引增长与查询 P50/P95/P99。
+
+验收原则：
+
+1. 不允许因作品规模增加而出现每次生成/导航全书扫描。
+2. 500万字作品必须保持可继续编辑、搜索、定稿、生成、备份和恢复。
+3. 关键路径相对当前性能基线出现明显退化时必须定位到具体查询/序列化/索引/上下文阶段后再优化，禁止无证据预优化。
+
+## 八、语义检索证据门
+
+`SEM-001` 在本任务中只做真实评测，不默认实现向量层。
+
+建立包含别名、同义改写、跨章事件、人物关系、伏笔、历史版本和自然语言描述的检索 Eval，先验证：
+
+```text
+FTS5/SearchTools
++ StoryKnowledgeProjection
++ StoryDigest
+```
+
+能否满足作者定位与 ConstraintPackage 召回。
+
+触发后续本地语义检索任务的条件：
+
+1. 已知目标的关键查询在 Top-20 中持续漏召回；或
+2. 跨章语义改写查询的目标召回率低于验收基线；或
+3. ConstraintPackage 因现有检索能力漏掉明确存在且应进入上下文的关键证据。
+
+只有出现可复现 Evidence 才允许后续任务新增本地 Embedding / Semantic Retrieval；未触发时保持现有 FTS/SearchTools 单索引体系。
+
+## DerivedInvalidation
+
+扩现有失效体系：
+
+- StoryDigest 增加 digest 重算 scope。
+- 章节/卷/项目摘要按受影响范围增量 stale。
+- M11-03 权威语义变化继续触发相关 validation/cache/digest。
+- 禁止新增平行 stale ledger。
+
+## 数据库
+
+新增单一派生表 `story_digests`，建议字段：
 
 - id / project_id
 - scope_type: chapter | volume | project
 - scope_id
 - source_version_id nullable
-- source_hash / semantic_revision
+- source_hash
+- semantic_revision
 - content_json
-- status
+- status/freshness
 - generation_run_id nullable
 - created_at / updated_at
 
-规则：
+StyleProfile 与 TaskRouting 使用 typed `project_settings` key，不新增平行表。
 
-- StoryDigest 进入 ProjectClonePolicy `regenerate`。
-- 摘要可丢弃重建，不得成为 Canon/Continuity 真源。
-- StyleProfile 与 TaskRouting 不新增表，使用 `project_settings` typed key，例如 `ai.styleProfile`、`ai.taskRouting`。
-- 如新增 `summarize` GenerationRunType，必须同步 PromptTaskType、ModelSupportProfile、Migration check、ResultRef/Task 生命周期和历史兼容。
+## IPC、错误与生命周期
 
-## 长篇摘要更新模型
+- Digest 读取/重建通过具名接口或 Generation workflow，不暴露任意 SQL/设置写入。
+- Style/TaskRouting 使用 typed settings service。
+- 错误继续遵守 `projectOperationError()` / `generationOperationError()` 分层。
+- stale digest、无可用模型、摘要失败、文风样本不足必须返回稳定可解释错误。
+- 项目/章节/scope 切换后的旧 Renderer 请求不得写回。
 
-定稿流程固定为：
+## Coverage
 
-```text
-VersionService.setFinal 提交成功
-→ final version 已成立
-→ 异步派生摘要任务
-→ Chapter Digest
-→ 受影响 Volume Digest
-→ Project Digest
-```
-
-摘要失败不能回滚定稿。读取时显示“长篇记忆待更新”，允许重试。
-
-摘要必须绑定 source hash / semantic revision；源内容变化后旧摘要只可作为 stale 数据，不得静默进入新 ConstraintPackage。
-
-## ConstraintPackage 扩展
-
-禁止新增 ContextBuilder。扩现有约束包来源：
-
-- CharacterRelationship。
-- StoryDigest。
-- StyleProfile。
-- 有效 ValidationException。
-
-Token 裁剪继续记录来源、版本、预算与 trim log。摘要只是压缩层；关键权威状态仍按 P0-P4 优先级进入上下文。
-
-## StyleProfile
-
-项目级配置至少支持：
-
-- baseStyle
-- learnedMetrics
-- manualInstructions
-- sceneOverrides
-- source / updatedAt
-
-文风维度可包含：句长、段长、对白比例、叙事距离、描写密度、心理描写、动作密度、修辞倾向、词汇倾向、人物声音。
-
-禁止重复存储：hook、goldenThree、excitementDensity、dailyTarget 等 GenreRhythmProfile 字段。
-
-## 文风偏离检测
-
-- 统计型偏离进入现有 Validation rule batch。
-- 语义型偏离进入现有 `validate` AI batch。
-- `issueType` 使用稳定命名，例如 `style.*`。
-- 继续复用 Evidence、ignore、mute、false_positive、StoryTodo 与 ValidationException。
-
-## AI 任务路由
-
-项目设置记录任务 → Provider preference，例如：
-
-- chapter / rewrite
-- state_extract / validate
-- idea_explore
-- summarize
-
-Core RoutingPolicy 负责：
-
-1. 读取作者明确指定连接。
-2. 校验模型支持档案。
-3. 无可用指定连接时按明确回退策略选择默认连接或拒绝。
-4. 不自动跨凭据边界选择未知 Provider。
-
-Renderer 只展示“自动 / 指定 AI 连接”。
-
-## 生成入口简化
-
-内部生命周期保持：
-
-- `skeleton`
-- `chapter`
-- `rewrite`
-- `merge`
-
-作者主入口收敛为：
-
-- “规划这一章” → `skeleton`
-- “生成这一章” → `chapter`
-- “改写选中内容” → `rewrite`
-
-高级来源、目标字数、融合、继续生成等能力折叠到二级区域，不删除真实能力。
-
-## Ctrl+K 命令面板
-
-只新增 Renderer 命令面板，复用：
-
-- `SearchTools.search()`。
-- `AuthorNavigationTarget`。
-- 现有页面/动作命令。
-
-搜索正文、历史版本、人物设定等结果仍来自现有 FTS/SearchTools。禁止 `GlobalSearchServiceV2` 或第二索引。
-
-## DerivedInvalidation
-
-扩现有失效体系，不新建 stale ledger：
-
-- M11-03 新语义变化触发相关 validation/cache。
-- StoryDigest 增加 `digest` 或等价重算 scope。
-- 章节/卷/项目摘要按受影响范围增量标记 stale。
-
-## IPC、事件与错误码
-
-- 摘要读取/重建可增加具名 digest domain 或现有 generation 辅助接口。
-- Style/TaskRouting 通过 typed project settings service，不暴露通用任意设置写入。
-- Generation routing 决策必须在 Core 完成。
-- stale digest、路由无可用模型、摘要失败、样本文风不足等返回稳定可解释错误。
-
-## 安全、隐私与恢复
-
-- 摘要、StyleProfile 和 routing 都保存在本地项目。
-- 凭据仍只在 OS Credential Store。
-- Provider 请求只由 Core 发起。
-- 克隆项目重新生成摘要；不得复制活动派生任务为 running。
-- 删除/恢复 Version 后摘要 freshness 必须正确。
+Story Knowledge 延伸、Generation 主入口、Style、Routing、Ctrl+K 新代码不得扩大历史 TSX 豁免。按适用场景覆盖 success、empty、failure、retry、cancel、stale、read-only、project/chapter switch、target archived/deleted。
 
 ## 性能预算
 
-- 1000 章项目不允许每次生成扫描全文。
-- Chapter/Volume/Project digest 分层增量重建。
-- ConstraintPackage 组装 P95 与现有预算对比，超过阈值必须提供原因和回归方案。
-- Ctrl+K 使用现有索引，不额外常驻整本书数据于 Renderer。
-- 摘要任务网络/解析不阻塞 SQLite 写队列。
-
-## 实施内容
-
-1. StoryDigest Schema/Migration/Core。
-2. `summarize` Generation task 与通用 scope 接入。
-3. 定稿后异步摘要调度与 stale/retry。
-4. ConstraintPackage 接入 Relationship/Digest/Style/Exception。
-5. typed StyleProfile project setting。
-6. Style deviation Validation。
-7. typed AI task routing 与 Core RoutingPolicy。
-8. Generation Studio 主操作简化。
-9. Ctrl+K Command Palette。
-10. 1000 章长篇性能与恢复/重启专项。
+- 1000 章及 300万/500万字项目不允许每次生成扫描全文。
+- Digest 分层增量重建。
+- ConstraintPackage P95 与现有预算对比并提供退化原因。
+- Ctrl+K 使用现有索引，不常驻整本书数据。
+- Provider/摘要网络请求不得占用 SQLite 写队列。
 
 ## 自动化测试
 
@@ -265,39 +295,43 @@ pnpm build
 pnpm test:e2e
 ```
 
-专项覆盖：
+专项必须覆盖：
 
-- 定稿成功、摘要失败。
-- 摘要 stale / 重建 / 克隆 regenerate。
-- 1000 章增量摘要与 ConstraintPackage 预算。
-- StyleProfile 与 GenreRhythmProfile 字段不重叠。
-- style Validation 的 ignore/mute/exception。
-- Provider routing 明确选择、回退、无可用模型。
-- 生成入口简化后原高级能力仍可达。
-- Ctrl+K 搜索与导航复用现有 SearchTools。
-
-## 人工验收
-
-- 作者看到三个清晰主生成动作，高级能力仍可展开使用。
-- 定稿后摘要失败不会影响正文状态。
-- 长篇记忆过期状态清楚可见且能重建。
-- 文风设置与网文章奏设置职责清晰。
-- Ctrl+K 可快速找到正文、历史版本和设定并准确跳转。
+- 定稿成功/摘要失败。
+- Digest stale/rebuild/clone regenerate。
+- 1000 章及 300万/500万字增量摘要。
+- 跨卷人物状态、关系、时间线、知情、伏笔、人物弧光连续性。
+- ConstraintPackage freshness/trim/冷热召回优先级。
+- StyleProfile 与 GenreRhythmProfile 不重叠。
+- style Validation 例外链。
+- Provider routing 指定/回退/拒绝。
+- Prompt 精确版本。
+- Generation 高级能力仍可达。
+- Ctrl+K SearchTools + Atomic Navigation。
+- 语义检索触发 Eval 与 Evidence 输出。
 
 ## Evidence
 
 保存到：`docs/test-evidence/M11-06/`
 
+除常规 Evidence 外必须保存：
+
+- `longform-3m-*` / `longform-5m-*` 性能与内存结果。
+- 跨卷连续性 fixture 结果。
+- `semantic-retrieval-gate` Eval 结果及是否触发 `SEM-001` 的明确结论。
+
 ## 回滚策略
 
-整体回滚摘要、Style、Routing 和 UI 增强；StoryDigest 作为派生表可安全清空重建。Migration 保持向前兼容，不回改历史 migration；现有 ConstraintPackage、Generation、Validation、SearchTools 必须恢复为可独立运行状态。
+整体回滚 Digest/Style/Routing/Ctrl+K 应用层增强；StoryDigest 可清空重建，Migration 保持 append-only。不得恢复第二套 Context/Search/Provider/Validation、旧式 L0—L5 调度器、冷热物理迁移体系或绕开 M11-05 Handler Map。
 
 ## 完成条件
 
-- 不存在第二套上下文、搜索、Provider 或 Validation 系统。
-- StoryDigest 明确为可重建派生数据并完整接入 stale/clone/recovery。
-- StyleProfile 与 GenreRhythmProfile 无职责重复。
-- 任务路由继续服从现有 Provider/Credential/ModelSupport 边界。
-- 主生成流程明显简化且真实能力无缩水。
-- 1000 章性能、恢复、重启、失败路径通过专项验收。
-- Contracts → Core → Main → Preload → Renderer → 测试闭环完成。
+- StoryDigest 明确为三级、可重建、具备 hash/revision/freshness 的派生数据。
+- 原 `MEM-001/MEM-002/MEM-003` 的长篇记忆目标已由权威事实 + StoryDigest + ConstraintPackage + Freshness 完整承接，无第二套记忆真源。
+- ConstraintPackage 是唯一 AI Context Authority。
+- 跨卷生成具备可验证的连续性召回路径。
+- StyleProfile 与 GenreRhythmProfile 职责无重叠，文风偏离进入现有 Validation。
+- Task Routing 在 Core 完成并服从 Provider/Credential/ModelSupport/Prompt version 边界。
+- Ctrl+K 复用 SearchTools 与原子 Navigation。
+- 1000 章、300万字、500万字性能、恢复、重启、失败路径、Coverage 与 E2E 全部通过。
+- `SEM-001` 是否需要实施由真实 Eval Evidence 明确决定。

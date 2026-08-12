@@ -27,7 +27,7 @@ export function NarrativePlanningPanel({
     () =>
       bridge.narrativePlanning.list(
         { projectId, query, includeResolved, referenceChapterId: chapter || null },
-        { mode: 'replace' },
+        { mode: 'replace', laneKey: `narrative:${projectId}:list` },
       ),
     [bridge, chapter, includeResolved, projectId, query],
   );

@@ -33,6 +33,8 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'CharacterRelationshipSchema',
   'CharacterRelationshipSetCommandSchema',
   'CharacterRelationshipSetInputSchema',
+  'CoreStoryKnowledgeOperationSchema',
+  'CoreStoryKnowledgeResultSchema',
   'EntityCreateProposalDraftSchema',
   'EntityCreateProposalValueSchema',
   'EntityStateProposalValueSchema',
@@ -47,7 +49,13 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'ReviewProposalSchema',
   'ReviewProposalTargetSchema',
   'ReviewProposalTypeSchema',
+  'STORY_KNOWLEDGE_COMMANDS',
+  'STORY_KNOWLEDGE_IPC_CHANNELS',
   'StateProposalTargetSchema',
+  'StoryKnowledgeProjectCommandSchema',
+  'StoryKnowledgeProjectionInputSchema',
+  'StoryKnowledgeProjectionResultSchema',
+  'StoryKnowledgeProjectionSchema',
   'TimelineEventProposalDraftSchema',
   'TimelineEventProposalValueSchema',
   'ValidationExceptionDisableCommandSchema',
@@ -62,7 +70,7 @@ const BASELINE = {
   protocolVersion: 1,
   ipcChannelCount: 97,
   appCommandCount: 96,
-  runtimeExportCount: 874,
+  runtimeExportCount: 882,
   legacySurfaceSha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 
@@ -95,6 +103,7 @@ describe('AR-08 contracts public surface', () => {
     );
     expect(publicContracts.ReviewProposalSchema).toBeDefined();
     expect(publicContracts.AIReviewCatalogSchema).toBeDefined();
+    expect(publicContracts.StoryKnowledgeProjectionSchema).toBeDefined();
   });
 
   it('keeps the source compatibility root wired to the split modules', () => {

@@ -20,7 +20,8 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import { registerIpcInvokeHandler } from './handler-guard.js';
-import { coreOperationFailureSemantics, type CoreOperationKind } from './ipc-error-semantics.js';
+import { coreOperationFailureSemantics } from './ipc-error-semantics.js';
+import { projectOperationKind, type ProjectOperationName } from './project-operation-semantics.js';
 
 export interface ContinuityIpcOptions {
   readonly ipcMain: IpcMain;
@@ -28,11 +29,11 @@ export interface ContinuityIpcOptions {
   readonly rendererUrl: string;
 }
 
-function failure(requestId: string, code: ErrorCode, operationKind: CoreOperationKind) {
+function failure(requestId: string, code: ErrorCode, operation: ProjectOperationName) {
   const semantics = coreOperationFailureSemantics(
     code,
     'The continuity operation could not be completed.',
-    operationKind,
+    projectOperationKind(operation),
   );
   return ContinuityCatalogResultSchema.parse({
     ok: false,
@@ -51,55 +52,46 @@ export function registerContinuityIpc(options: ContinuityIpcOptions): () => void
       channel: CONTINUITY_IPC_CHANNELS.list,
       schema: ContinuityListCommandSchema,
       operation: CONTINUITY_COMMANDS.list,
-      operationKind: 'query',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.setEntityState,
       schema: EntityStateSetCommandSchema,
       operation: CONTINUITY_COMMANDS.setEntityState,
-      operationKind: 'mutation',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.invalidateEntityState,
       schema: EntityStateInvalidateCommandSchema,
       operation: CONTINUITY_COMMANDS.invalidateEntityState,
-      operationKind: 'mutation',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.saveTimelineEvent,
       schema: TimelineEventSaveCommandSchema,
       operation: CONTINUITY_COMMANDS.saveTimelineEvent,
-      operationKind: 'mutation',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.archiveTimelineEvent,
       schema: TimelineEventArchiveCommandSchema,
       operation: CONTINUITY_COMMANDS.archiveTimelineEvent,
-      operationKind: 'mutation',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.setKnowledgeState,
       schema: KnowledgeStateSetCommandSchema,
       operation: CONTINUITY_COMMANDS.setKnowledgeState,
-      operationKind: 'mutation',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.invalidateKnowledgeState,
       schema: KnowledgeStateInvalidateCommandSchema,
       operation: CONTINUITY_COMMANDS.invalidateKnowledgeState,
-      operationKind: 'mutation',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.setCharacterRelationship,
       schema: CharacterRelationshipSetCommandSchema,
       operation: CONTINUITY_COMMANDS.setCharacterRelationship,
-      operationKind: 'mutation',
     },
     {
       channel: CONTINUITY_IPC_CHANNELS.invalidateCharacterRelationship,
       schema: CharacterRelationshipInvalidateCommandSchema,
       operation: CONTINUITY_COMMANDS.invalidateCharacterRelationship,
-      operationKind: 'mutation',
     },
   ] as const;
 
@@ -110,7 +102,7 @@ export function registerContinuityIpc(options: ContinuityIpcOptions): () => void
         return failure(
           parsed.success ? parsed.data.requestId : randomUUID(),
           'COMMON_INVALID_INPUT_001',
-          registration.operationKind,
+          registration.operation,
         );
       }
       const coreOperation = CoreProjectOperationSchema.parse({
@@ -122,7 +114,7 @@ export function registerContinuityIpc(options: ContinuityIpcOptions): () => void
         coreOperation,
       );
       if (!result.ok) {
-        return failure(parsed.data.requestId, result.errorCode, registration.operationKind);
+        return failure(parsed.data.requestId, result.errorCode, registration.operation);
       }
       return ContinuityCatalogResultSchema.parse({
         ok: true,

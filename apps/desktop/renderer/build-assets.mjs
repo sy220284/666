@@ -10,6 +10,7 @@ const styleFiles = [
   'components/02-workspace.css',
   'components/03-dialogs.css',
   'components/04-features.css',
+  'components/04-story-knowledge.css',
   'components/05-writing.css',
   'components/06-review.css',
   'themes.css',

@@ -238,7 +238,9 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
       ).rejects.toMatchObject({ code: 'GENERATION_BASE_CONFLICT' });
       expect(
         harness.workspace.readProject(project.projectId, (database) =>
-          Number(database.prepare('SELECT COUNT(*) AS count FROM generation_runs').get()?.count ?? 0),
+          Number(
+            database.prepare('SELECT COUNT(*) AS count FROM generation_runs').get()?.count ?? 0,
+          ),
         ),
       ).toBe(0);
     } finally {

@@ -7,6 +7,20 @@ import { _electron as electron, expect, test, type ElectronApplication } from '@
 const root = process.cwd();
 const temporaryDirectories: string[] = [];
 
+const VIEWPORTS = [
+  { id: 'mainstream-fhd', tier: 'mainstream', width: 1920, height: 1080 },
+  { id: 'mid-high-qhd', tier: 'mid-high', width: 2560, height: 1440 },
+  { id: 'high-end-4k', tier: 'high-end', width: 3840, height: 2160 },
+] as const;
+
+type ViewportProfile = (typeof VIEWPORTS)[number];
+
+type ScenarioEvidence = {
+  viewport: ViewportProfile;
+  assertions: string[];
+  passed: true;
+};
+
 function platformId(): 'linux' | 'windows' | 'macos' {
   if (process.platform === 'linux') return 'linux';
   if (process.platform === 'win32') return 'windows';
@@ -29,14 +43,17 @@ async function launch(userDataPath: string, createParent: string): Promise<Elect
   });
 }
 
-async function setViewport(application: ElectronApplication): Promise<void> {
-  await application.evaluate(({ BrowserWindow }) => {
+async function setViewport(
+  application: ElectronApplication,
+  viewport: ViewportProfile,
+): Promise<void> {
+  await application.evaluate(({ BrowserWindow }, targetViewport) => {
     const window = BrowserWindow.getAllWindows()[0];
     if (!window) throw new Error('PLATFORM_EXPERIENCE_WINDOW_MISSING');
     if (window.isMaximized()) window.unmaximize();
     window.setPosition(0, 0, false);
-    window.setContentSize(1280, 800, false);
-  });
+    window.setContentSize(targetViewport.width, targetViewport.height, false);
+  }, viewport);
 }
 
 async function closeGracefully(application: ElectronApplication): Promise<void> {
@@ -45,7 +62,7 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
-async function writeEvidence(assertions: readonly string[]): Promise<void> {
+async function writeEvidence(scenarios: readonly ScenarioEvidence[]): Promise<void> {
   const platform = platformId();
   const directory =
     process.env.WORLDFORGE_PLATFORM_EXPERIENCE_EVIDENCE_DIR ??
@@ -55,12 +72,12 @@ async function writeEvidence(assertions: readonly string[]): Promise<void> {
     path.join(directory, `${platform}.json`),
     `${JSON.stringify(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         platform,
         arch: process.arch,
-        viewport: { width: 1280, height: 800 },
-        assertions,
-        passed: true,
+        scenarios,
+        passed:
+          scenarios.length === VIEWPORTS.length && scenarios.every((scenario) => scenario.passed),
       },
       null,
       2,
@@ -69,16 +86,7 @@ async function writeEvidence(assertions: readonly string[]): Promise<void> {
   );
 }
 
-test.afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
-});
-
-test('Phase 3 三平台作者主路径体验矩阵', async () => {
-  test.setTimeout(120_000);
+async function runScenario(viewport: ViewportProfile): Promise<ScenarioEvidence> {
   const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-platform-experience-'));
   temporaryDirectories.push(userDataPath);
   const createParent = path.join(userDataPath, 'works');
@@ -89,14 +97,19 @@ test('Phase 3 三平台作者主路径体验矩阵', async () => {
 
   try {
     const page = await application.firstWindow();
-    await setViewport(application);
+    await setViewport(application, viewport);
+    await page.waitForFunction(
+      (targetViewport) =>
+        window.innerWidth === targetViewport.width && window.innerHeight === targetViewport.height,
+      viewport,
+    );
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     assertions.push('renderer-ready');
 
     await page.locator('[data-create-project]').click();
     const dialog = page.locator('[data-create-project-dialog]');
     await expect(dialog).toBeVisible();
-    await dialog.locator('[data-project-name]').fill('三平台体验·雪夜');
+    await dialog.locator('[data-project-name]').fill(`三平台体验·${viewport.id}`);
     await dialog.locator('[data-confirm-create-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
@@ -116,8 +129,8 @@ test('Phase 3 三平台作者主路径体验矩阵', async () => {
       width: window.innerWidth,
       height: window.innerHeight,
     }));
-    expect(layout.width).toBe(1280);
-    expect(layout.height).toBe(800);
+    expect(layout.width).toBe(viewport.width);
+    expect(layout.height).toBe(viewport.height);
     expect(layout.overflow).toBeLessThanOrEqual(1);
     assertions.push('layout-no-horizontal-overflow');
 
@@ -136,8 +149,24 @@ test('Phase 3 三平台作者主路径体验矩阵', async () => {
     await closeGracefully(application);
     closed = true;
     assertions.push('graceful-close');
-    await writeEvidence(assertions);
+    return { viewport, assertions, passed: true };
   } finally {
     if (!closed) await closeGracefully(application);
   }
+}
+
+test.afterEach(async () => {
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
+  );
+});
+
+test('三平台主流至高端作者体验矩阵', async () => {
+  test.setTimeout(360_000);
+  const scenarios: ScenarioEvidence[] = [];
+  for (const viewport of VIEWPORTS) scenarios.push(await runScenario(viewport));
+  expect(scenarios).toHaveLength(VIEWPORTS.length);
+  await writeEvidence(scenarios);
 });

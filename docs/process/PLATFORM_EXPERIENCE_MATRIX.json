@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "status": "enforced",
   "authority": "github-actions",
-  "description": "Phase 3 cross-platform author experience authority for Windows, macOS and Linux.",
+  "description": "Cross-platform author experience authority for Windows, macOS and Linux using current mainstream through high-end desktop viewports.",
   "platforms": [
     {
       "id": "linux",
@@ -26,10 +26,26 @@
   ],
   "scenario": {
     "spec": "tests/e2e/platform-experience.spec.ts",
-    "viewport": {
-      "width": 1280,
-      "height": 800
-    },
+    "viewports": [
+      {
+        "id": "mainstream-fhd",
+        "tier": "mainstream",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "id": "mid-high-qhd",
+        "tier": "mid-high",
+        "width": 2560,
+        "height": 1440
+      },
+      {
+        "id": "high-end-4k",
+        "tier": "high-end",
+        "width": 3840,
+        "height": 2160
+      }
+    ],
     "requiredAssertions": [
       "renderer-ready",
       "quick-create",
@@ -45,7 +61,7 @@
     "retentionDays": 14
   },
   "boundaries": {
-    "visualRegression": "Linux 1280x800 strict screenshot baseline remains the visual pixel authority.",
+    "visualRegression": "Linux strict screenshot baseline remains a separate pixel authority and is not part of the platform experience viewport matrix.",
     "windowsIme": "Real Microsoft Pinyin composition remains a dedicated Windows native IME gate.",
     "packageSmoke": "Packaged startup remains independent and cannot substitute for the author experience flow."
   }

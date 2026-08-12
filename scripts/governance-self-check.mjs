@@ -83,8 +83,8 @@ export function validateGovernanceAuthorities(sources) {
   } catch {
     errors.push('Platform experience matrix must be valid JSON');
   }
-  if (platformMatrix && platformMatrix.schemaVersion !== 1) {
-    errors.push('Platform experience matrix must use schemaVersion 1');
+  if (platformMatrix && platformMatrix.schemaVersion !== 2) {
+    errors.push('Platform experience matrix must use schemaVersion 2');
   }
   if (platformMatrix && platformMatrix.status !== 'enforced') {
     errors.push('Platform experience matrix must be enforced');
@@ -100,6 +100,28 @@ export function validateGovernanceAuthorities(sources) {
   }
   if (platformMatrix?.scenario?.spec !== 'tests/e2e/platform-experience.spec.ts') {
     errors.push('Platform experience matrix must bind the canonical Electron experience spec');
+  }
+  const viewportProfiles = Array.isArray(platformMatrix?.scenario?.viewports)
+    ? platformMatrix.scenario.viewports
+        .map((viewport) => ({
+          id: viewport?.id,
+          width: viewport?.width,
+          height: viewport?.height,
+        }))
+        .sort((left, right) => Number(left.width) - Number(right.width))
+    : [];
+  const requiredViewportProfiles = [
+    { id: 'mainstream-fhd', width: 1920, height: 1080 },
+    { id: 'mid-high-qhd', width: 2560, height: 1440 },
+    { id: 'high-end-4k', width: 3840, height: 2160 },
+  ];
+  if (
+    platformMatrix &&
+    JSON.stringify(viewportProfiles) !== JSON.stringify(requiredViewportProfiles)
+  ) {
+    errors.push(
+      'Platform experience matrix must require exactly 1920x1080, 2560x1440 and 3840x2160 viewports',
+    );
   }
 
   for (const [label, source] of Object.entries(sources)) {

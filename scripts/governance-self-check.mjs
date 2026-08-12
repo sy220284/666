@@ -92,7 +92,10 @@ export function validateGovernanceAuthorities(sources) {
   const platformIds = Array.isArray(platformMatrix?.platforms)
     ? platformMatrix.platforms.map((item) => item?.id).sort()
     : [];
-  if (platformMatrix && JSON.stringify(platformIds) !== JSON.stringify(['linux', 'macos', 'windows'])) {
+  if (
+    platformMatrix &&
+    JSON.stringify(platformIds) !== JSON.stringify(['linux', 'macos', 'windows'])
+  ) {
     errors.push('Platform experience matrix must require exactly linux, macos and windows');
   }
   if (platformMatrix?.scenario?.spec !== 'tests/e2e/platform-experience.spec.ts') {

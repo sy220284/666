@@ -47,7 +47,7 @@ export function PlotNodeDialog({
       <form className="stacked-form" onSubmit={(event) => void submit(event)}>
         <header>
           <h2>{editor.node ? '编辑大纲节点' : '新建大纲节点'}</h2>
-          <button type="button" onClick={onClose}>
+          <button type="button" disabled={command.pending} onClick={onClose}>
             关闭
           </button>
         </header>

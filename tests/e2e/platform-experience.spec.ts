@@ -111,7 +111,8 @@ test('Phase 3 三平台作者主路径体验矩阵', async () => {
 
     const layout = await page.evaluate(() => ({
       overflow:
-        Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
+        Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) -
+        window.innerWidth,
       width: window.innerWidth,
       height: window.innerHeight,
     }));

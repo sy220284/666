@@ -3,6 +3,7 @@ import type { CandidateService } from './candidate.js';
 import type { ContinuityService } from './continuity.js';
 import type { DraftService } from './draft.js';
 import type { EntityCanonService } from './entity-canon.js';
+import type { IdeaCapsuleService } from './idea-capsule-service.js';
 import type { ImportExportService } from './import-export.js';
 import type { ProjectPlanningService } from './project-planning.js';
 import type { ProjectContinuationService } from './project-continuation.js';
@@ -25,6 +26,7 @@ export interface UtilityProjectServices {
   readonly entityCanon: EntityCanonService;
   readonly continuity: ContinuityService;
   readonly storyKnowledge: StoryKnowledgeProjectionService;
+  readonly ideas: IdeaCapsuleService;
   readonly structureOperations: StructureOperationService;
   readonly drafts: DraftService;
   readonly candidates: CandidateService;

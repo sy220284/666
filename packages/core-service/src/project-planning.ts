@@ -101,9 +101,7 @@ function rules(raw: string): string[] {
     throw new ProjectPlanningError(
       'PLANNING_INVARIANT',
       'Persisted ProjectBrief rules are invalid.',
-      {
-        cause: error,
-      },
+      { cause: error },
     );
   }
 }
@@ -363,6 +361,84 @@ function assertNoCycle(
   }
 }
 
+export function applyProjectBriefUpdateInTransaction(
+  connection: DatabaseSync,
+  valid: ProjectBriefUpdateInput,
+  timestamp: string,
+  idFactory: () => string,
+): string {
+  assertProject(connection, valid.projectId);
+  const current = connection
+    .prepare('SELECT id FROM project_briefs WHERE project_id = ?')
+    .get(valid.projectId) as { readonly id: string } | undefined;
+  const id = current?.id ?? idFactory();
+  connection
+    .prepare(
+      `INSERT INTO project_briefs(
+         id, project_id, concept, reading_promise, protagonist_goal, core_conflict,
+         ending_intent, required_json, forbidden_json, updated_at
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(project_id) DO UPDATE SET
+         concept = excluded.concept,
+         reading_promise = excluded.reading_promise,
+         protagonist_goal = excluded.protagonist_goal,
+         core_conflict = excluded.core_conflict,
+         ending_intent = excluded.ending_intent,
+         required_json = excluded.required_json,
+         forbidden_json = excluded.forbidden_json,
+         updated_at = excluded.updated_at`,
+    )
+    .run(
+      id,
+      valid.projectId,
+      valid.concept,
+      valid.readingPromise,
+      valid.protagonistGoal,
+      valid.coreConflict,
+      valid.endingIntent,
+      JSON.stringify(valid.required),
+      JSON.stringify(valid.forbidden),
+      timestamp,
+    );
+  return id;
+}
+
+export function applyPlotNodeCreateInTransaction(
+  connection: DatabaseSync,
+  valid: PlotNodeCreateInput,
+  idFactory: () => string,
+): string {
+  assertProject(connection, valid.projectId);
+  assertParent(connection, valid.projectId, valid.parentId);
+  assertUniqueTitle(connection, valid.projectId, valid.parentId, valid.title);
+  const plan = orderPlan(
+    orderedSiblings(connection, valid.projectId, valid.parentId),
+    valid.placement ?? { kind: 'end' },
+  );
+  applyRebalance(connection, valid.projectId, valid.parentId, plan.rebalanced);
+  const id = idFactory();
+  connection
+    .prepare(
+      `INSERT INTO plot_nodes(
+         id, project_id, parent_id, node_type, title, goal, core_conflict,
+         expected_result, order_key, status
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      id,
+      valid.projectId,
+      valid.parentId,
+      valid.nodeType,
+      valid.title,
+      valid.goal,
+      valid.coreConflict,
+      valid.expectedResult,
+      plan.orderKey,
+      valid.status,
+    );
+  return id;
+}
+
 export class ProjectPlanningService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
@@ -386,40 +462,12 @@ export class ProjectPlanningService {
   updateBrief(requestId: string, input: ProjectBriefUpdateInput): Promise<ProjectBrief> {
     const valid = ProjectBriefUpdateInputSchema.parse(input);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      assertProject(connection, valid.projectId);
-      const current = connection
-        .prepare('SELECT id FROM project_briefs WHERE project_id = ?')
-        .get(valid.projectId) as { readonly id: string } | undefined;
-      const id = current?.id ?? this.#idFactory();
-      const timestamp = this.#clock.now().toISOString();
-      connection
-        .prepare(
-          `INSERT INTO project_briefs(
-             id, project_id, concept, reading_promise, protagonist_goal, core_conflict,
-             ending_intent, required_json, forbidden_json, updated_at
-           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(project_id) DO UPDATE SET
-             concept = excluded.concept,
-             reading_promise = excluded.reading_promise,
-             protagonist_goal = excluded.protagonist_goal,
-             core_conflict = excluded.core_conflict,
-             ending_intent = excluded.ending_intent,
-             required_json = excluded.required_json,
-             forbidden_json = excluded.forbidden_json,
-             updated_at = excluded.updated_at`,
-        )
-        .run(
-          id,
-          valid.projectId,
-          valid.concept,
-          valid.readingPromise,
-          valid.protagonistGoal,
-          valid.coreConflict,
-          valid.endingIntent,
-          JSON.stringify(valid.required),
-          JSON.stringify(valid.forbidden),
-          timestamp,
-        );
+      applyProjectBriefUpdateInTransaction(
+        connection,
+        valid,
+        this.#clock.now().toISOString(),
+        this.#idFactory,
+      );
       this.#faultInjector?.('after-brief-upsert');
       return readBrief(connection, valid.projectId);
     });
@@ -435,33 +483,7 @@ export class ProjectPlanningService {
   createPlotNode(requestId: string, input: PlotNodeCreateInput): Promise<PlotNodeList> {
     const valid = PlotNodeCreateInputSchema.parse(input);
     return this.#workspace.writeProject(requestId, valid.projectId, (connection) => {
-      assertProject(connection, valid.projectId);
-      assertParent(connection, valid.projectId, valid.parentId);
-      assertUniqueTitle(connection, valid.projectId, valid.parentId, valid.title);
-      const plan = orderPlan(
-        orderedSiblings(connection, valid.projectId, valid.parentId),
-        valid.placement ?? { kind: 'end' },
-      );
-      applyRebalance(connection, valid.projectId, valid.parentId, plan.rebalanced);
-      connection
-        .prepare(
-          `INSERT INTO plot_nodes(
-             id, project_id, parent_id, node_type, title, goal, core_conflict,
-             expected_result, order_key, status
-           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
-          this.#idFactory(),
-          valid.projectId,
-          valid.parentId,
-          valid.nodeType,
-          valid.title,
-          valid.goal,
-          valid.coreConflict,
-          valid.expectedResult,
-          plan.orderKey,
-          valid.status,
-        );
+      applyPlotNodeCreateInTransaction(connection, valid, this.#idFactory);
       this.#faultInjector?.('after-node-write');
       return readPlotNodes(connection, valid.projectId);
     });

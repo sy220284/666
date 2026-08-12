@@ -239,11 +239,11 @@ CREATE TABLE idea_conversions (
   idea_id TEXT NOT NULL,
   target_type TEXT NOT NULL CHECK (
     target_type IN (
-      'project_brief', 'plot_node', 'scene_beat', 'entity', 'canon_fact',
-      'timeline_event', 'character_relationship', 'foreshadowing', 'character_arc'
+      'project_brief', 'plot_node', 'entity', 'canon_fact', 'timeline_event', 'foreshadowing'
     )
   ),
   target_id TEXT NOT NULL,
+  preview_hash TEXT NOT NULL CHECK (length(preview_hash) = 64),
   status TEXT NOT NULL CHECK (status IN ('applied', 'target_missing', 'target_stale')),
   created_at TEXT NOT NULL,
   UNIQUE(idea_id),

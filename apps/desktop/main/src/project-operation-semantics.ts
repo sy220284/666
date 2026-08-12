@@ -4,6 +4,7 @@ import {
   CONTINUITY_COMMANDS,
   DRAFT_COMMANDS,
   ENTITY_CANON_COMMANDS,
+  IDEA_CAPSULE_COMMANDS,
   NARRATIVE_PLANNING_COMMANDS,
   PROJECT_PLANNING_COMMANDS,
   PROJECT_STRUCTURE_COMMANDS,
@@ -130,6 +131,13 @@ export const PROJECT_OPERATION_SEMANTICS = {
   [RHYTHM_COMMANDS.run]: 'mutation',
 
   [STORY_KNOWLEDGE_COMMANDS.project]: 'query',
+
+  [IDEA_CAPSULE_COMMANDS.list]: 'query',
+  [IDEA_CAPSULE_COMMANDS.get]: 'query',
+  [IDEA_CAPSULE_COMMANDS.create]: 'mutation',
+  [IDEA_CAPSULE_COMMANDS.setStatus]: 'mutation',
+  [IDEA_CAPSULE_COMMANDS.previewConversion]: 'query',
+  [IDEA_CAPSULE_COMMANDS.applyConversion]: 'mutation',
 
   [DRAFT_COMMANDS.openDraft]: 'query',
   [DRAFT_COMMANDS.applyPatch]: 'mutation',

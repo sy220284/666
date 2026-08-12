@@ -45,10 +45,11 @@ AGENTS.md
 - [`product/V1.0_TRACEABILITY_MATRIX.md`](product/V1.0_TRACEABILITY_MATRIX.md)：需求、任务、实现和验收追踪。
 - [`roadmap/V1.0_ROADMAP.md`](roadmap/V1.0_ROADMAP.md)：交付与后续演进。
 
-## 4. 任务与自动化
+## 4. 任务、审计与自动化
 
 - [`tasks/TASK_INDEX.md`](tasks/TASK_INDEX.md)：独立任务、吸收关系与静态声明状态。
 - [`tasks/TASK_TEMPLATE.md`](tasks/TASK_TEMPLATE.md)：任务卡通用规则。
+- [`process/USER_PERSPECTIVE_AUDIT_REPORTING.md`](process/USER_PERSPECTIVE_AUDIT_REPORTING.md)：代码、设计、体验、安全、恢复、发布和治理审计的统一用户视角汇报规范。
 - [`process/DEVELOPMENT_AUTOMATION.md`](process/DEVELOPMENT_AUTOMATION.md)：唯一work PR、永久门禁和同步闭环。
 - [`process/RELEASE_QUALIFICATION.md`](process/RELEASE_QUALIFICATION.md)：基于Runtime和提交状态的发布资格。
 - [`process/CODEX_EXECUTION_PLAYBOOK.md`](process/CODEX_EXECUTION_PLAYBOOK.md)：实施、复查与关闭规则。

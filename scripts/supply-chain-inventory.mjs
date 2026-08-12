@@ -184,7 +184,9 @@ export function normalizeLicenseInventory(raw, policy) {
           errors.push(`License package ${entry.name ?? '<unknown>'} has no versions`);
         }
         if (entry.license !== license) {
-          errors.push(`License package ${entry.name ?? '<unknown>'} does not match group ${license}`);
+          errors.push(
+            `License package ${entry.name ?? '<unknown>'} does not match group ${license}`,
+          );
         }
         return {
           name: String(entry.name ?? ''),
@@ -234,7 +236,10 @@ async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
 
-export async function runSupplyChainInventory(repositoryRoot = root, policyPath = defaultPolicyPath) {
+export async function runSupplyChainInventory(
+  repositoryRoot = root,
+  policyPath = defaultPolicyPath,
+) {
   const policy = await loadJson(policyPath);
   const policyErrors = validateSupplyChainPolicy(policy);
   if (policyErrors.length > 0) throw new Error(policyErrors.join('\n'));

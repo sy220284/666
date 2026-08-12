@@ -96,12 +96,15 @@ describe('M4-04 generation contracts', () => {
   });
 
   it('validates a persisted run without exposing prompt or response bodies', () => {
+    const chapterId = id('14');
     const run = GenerationRunSchema.parse({
       runId: id('10'),
       requestId: id('11'),
       taskId: id('12'),
       projectId: id('13'),
-      chapterId: id('14'),
+      scopeType: 'chapter',
+      scopeId: chapterId,
+      chapterId,
       baseDraftId: id('15'),
       baseDraftRevision: 2,
       runType: 'chapter',

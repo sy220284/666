@@ -127,7 +127,7 @@ function stableObject(value) {
 }
 
 export function canonicalSbomDocument(sbom) {
-  const canonical = structuredClone(sbom);
+  const canonical = globalThis.structuredClone(sbom);
   delete canonical.serialNumber;
   if (isRecord(canonical.metadata)) delete canonical.metadata.timestamp;
   if (Array.isArray(canonical.components)) {

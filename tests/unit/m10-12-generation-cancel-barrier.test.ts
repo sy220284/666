@@ -26,6 +26,8 @@ function generationRun(
     requestId: '00000000-0000-4000-8000-000000000011',
     taskId: TASK_ID,
     projectId: PROJECT_ID,
+    scopeType: 'chapter',
+    scopeId: CHAPTER_ID,
     chapterId: CHAPTER_ID,
     baseDraftId: null,
     baseDraftRevision: null,

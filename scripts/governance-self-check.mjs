@@ -12,6 +12,7 @@ const authorityFiles = {
   mainVerification: '.github/workflows/main-verification.yml',
   riskPolicy: 'scripts/ci-risk-policy.mjs',
   riskMatrix: 'docs/process/CI_RISK_MATRIX.json',
+  platformExperienceMatrix: 'docs/process/PLATFORM_EXPERIENCE_MATRIX.json',
 };
 
 function requireMarkers(errors, label, source, markers) {
@@ -27,6 +28,8 @@ export function validateGovernanceAuthorities(sources) {
     'quality / release-audit',
     'quality / package-smoke',
     'ci-risk-policy.mjs reliability',
+    'ci-risk-policy.mjs platform-experience',
+    'name: platform-experience-${{ matrix.platform }}',
     'reliability_suite:',
   ]);
   requireMarkers(errors, 'Security', sources.security ?? '', ['name: security']);
@@ -47,6 +50,7 @@ export function validateGovernanceAuthorities(sources) {
     "'dependency-audit'",
     "reliability: 'reliability'",
     "'windows-ime'",
+    "'platform-experience'",
   ]);
 
   let matrix = null;
@@ -65,6 +69,7 @@ export function validateGovernanceAuthorities(sources) {
     'toolchainExport',
     'uiAcceptance',
     'windowsIme',
+    'platformExperience',
     'governanceMeta',
   ]) {
     if (matrix && !Array.isArray(matrix.routes?.[route]?.any)) {
@@ -72,8 +77,33 @@ export function validateGovernanceAuthorities(sources) {
     }
   }
 
+  let platformMatrix = null;
+  try {
+    platformMatrix = JSON.parse(sources.platformExperienceMatrix ?? '');
+  } catch {
+    errors.push('Platform experience matrix must be valid JSON');
+  }
+  if (platformMatrix && platformMatrix.schemaVersion !== 1) {
+    errors.push('Platform experience matrix must use schemaVersion 1');
+  }
+  if (platformMatrix && platformMatrix.status !== 'enforced') {
+    errors.push('Platform experience matrix must be enforced');
+  }
+  const platformIds = Array.isArray(platformMatrix?.platforms)
+    ? platformMatrix.platforms.map((item) => item?.id).sort()
+    : [];
+  if (
+    platformMatrix &&
+    JSON.stringify(platformIds) !== JSON.stringify(['linux', 'macos', 'windows'])
+  ) {
+    errors.push('Platform experience matrix must require exactly linux, macos and windows');
+  }
+  if (platformMatrix?.scenario?.spec !== 'tests/e2e/platform-experience.spec.ts') {
+    errors.push('Platform experience matrix must bind the canonical Electron experience spec');
+  }
+
   for (const [label, source] of Object.entries(sources)) {
-    if (label === 'riskMatrix') continue;
+    if (label === 'riskMatrix' || label === 'platformExperienceMatrix') continue;
     if (source.includes('pull_request_target:')) {
       errors.push(`${label} unexpectedly uses pull_request_target`);
     }

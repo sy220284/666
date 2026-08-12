@@ -5,6 +5,7 @@ import type { Entity, PlotNode, SceneBeat } from '@worldforge/contracts';
 import type { RendererBridgeAdapter } from '../../../bridge/renderer-bridge-adapter.js';
 import { useBridgeCommand, useBridgeQuery } from '../../../bridge/use-bridge-resource.js';
 import { authorSceneBeatTypeLabel } from '../../../presentation/author-value-format.js';
+import { interactionLocked } from '../../../runtime/interaction-locks.js';
 import { useDraftBlockPicker } from '../../writing/draft-block-picker.js';
 import { SceneBeatDialog } from './scene-beat-dialog.js';
 
@@ -42,7 +43,7 @@ export function SceneBeatPanel({
   const command = useBridgeCommand(resource.refresh);
   const previewCommand = useBridgeCommand();
   const { pickMultipleBlocks, picker } = useDraftBlockPicker();
-  const blocked = readOnly || command.pending || previewCommand.pending;
+  const blocked = interactionLocked(readOnly, command.pending, previewCommand.pending);
 
   const remove = async (beat: SceneBeat): Promise<void> => {
     if (!window.confirm(`删除场景“${beat.title}”？正文不会变化。`)) return;
@@ -192,7 +193,7 @@ export function SceneBeatPanel({
             <p>{beat.goal}</p>
             <div className="inline-actions">
               <button
-                disabled={command.pending || previewCommand.pending}
+                disabled={interactionLocked(command.pending, previewCommand.pending)}
                 type="button"
                 onClick={() => setEditor({ beat, logicalBlockIds: [] })}
               >
@@ -200,7 +201,7 @@ export function SceneBeatPanel({
               </button>
               <button
                 aria-label={`上移${beat.title}`}
-                disabled={blocked || index === 0}
+                disabled={interactionLocked(blocked, index === 0)}
                 type="button"
                 onClick={() => void moveWithinChapter(beat, -1)}
               >
@@ -208,7 +209,10 @@ export function SceneBeatPanel({
               </button>
               <button
                 aria-label={`下移${beat.title}`}
-                disabled={blocked || index === (resource.data?.beats.length ?? 0) - 1}
+                disabled={interactionLocked(
+                  blocked,
+                  index === (resource.data?.beats.length ?? 0) - 1,
+                )}
                 type="button"
                 onClick={() => void moveWithinChapter(beat, 1)}
               >

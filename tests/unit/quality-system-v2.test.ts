@@ -6,7 +6,7 @@ import { validateGovernanceAuthorities } from '../../scripts/governance-self-che
 import { validateLicenseMetadata } from '../../scripts/license-policy.mjs';
 
 describe('统一风险矩阵', () => {
-  it('Renderer变化触发产品、性能、安全、可靠性、UI和Windows IME风险', () => {
+  it('Renderer变化触发产品、性能、安全、可靠性、UI、三平台体验和Windows IME风险', () => {
     expect(riskPlan(['apps/desktop/renderer/src/App.tsx'])).toMatchObject({
       fullSuite: true,
       dependencyAudit: false,
@@ -15,6 +15,7 @@ describe('统一风险矩阵', () => {
       reliability: true,
       uiAcceptance: true,
       windowsIme: true,
+      platformExperience: true,
     });
   });
 
@@ -25,6 +26,15 @@ describe('统一风险矩阵', () => {
       applicationSecurity: false,
       performance: false,
       reliability: false,
+      platformExperience: false,
+      governanceMeta: true,
+    });
+  });
+
+  it('三平台体验机器真源变化必须触发三平台原生Runner验证', () => {
+    expect(riskPlan(['docs/process/PLATFORM_EXPERIENCE_MATRIX.json'])).toMatchObject({
+      fullSuite: false,
+      platformExperience: true,
       governanceMeta: true,
     });
   });
@@ -40,7 +50,7 @@ describe('统一风险矩阵', () => {
     });
   });
 
-  it('依赖元数据变化触发完整质量、供应链、打包和工具链验证', () => {
+  it('依赖元数据变化触发完整质量、供应链、打包、三平台体验和工具链验证', () => {
     expect(riskPlan(['package.json'])).toMatchObject({
       fullSuite: true,
       packageSmoke: true,
@@ -49,6 +59,7 @@ describe('统一风险矩阵', () => {
       applicationSecurity: true,
       performance: true,
       reliability: true,
+      platformExperience: true,
       governanceMeta: true,
     });
   });
@@ -110,7 +121,7 @@ describe('Active文档一致性', () => {
 describe('Meta-Governance权威链', () => {
   const sources = {
     quality:
-      'name: quality / quality\nquality / release-audit\nquality / package-smoke\nci-risk-policy.mjs reliability\nreliability_suite:',
+      'name: quality / quality\nquality / release-audit\nquality / package-smoke\nci-risk-policy.mjs reliability\nci-risk-policy.mjs platform-experience\nname: platform-experience-${{ matrix.platform }}\nreliability_suite:',
     security: 'name: security',
     performance: 'name: performance',
     release:
@@ -118,7 +129,7 @@ describe('Meta-Governance权威链', () => {
     mainVerification:
       'name: main-verification\nname: synchronize-integrations\nmain/work/governance branch inventory',
     riskPolicy:
-      "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' reliability: 'reliability' 'windows-ime'",
+      "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' reliability: 'reliability' 'windows-ime' 'platform-experience'",
     riskMatrix: JSON.stringify({
       schemaVersion: 1,
       routes: Object.fromEntries(
@@ -131,9 +142,16 @@ describe('Meta-Governance权威链', () => {
           'toolchainExport',
           'uiAcceptance',
           'windowsIme',
+          'platformExperience',
           'governanceMeta',
         ].map((route) => [route, { any: [] }]),
       ),
+    }),
+    platformExperienceMatrix: JSON.stringify({
+      schemaVersion: 1,
+      status: 'enforced',
+      platforms: [{ id: 'linux' }, { id: 'windows' }, { id: 'macos' }],
+      scenario: { spec: 'tests/e2e/platform-experience.spec.ts' },
     }),
   };
 
@@ -148,5 +166,19 @@ describe('Meta-Governance权威链', () => {
         release: 'pnpm release:gate\ntest "$GITHUB_REF_NAME" = main',
       }),
     ).toContain('Release is missing authority marker: node scripts/ui-acceptance-gate.mjs');
+  });
+
+  it('三平台矩阵缺平台时阻断', () => {
+    expect(
+      validateGovernanceAuthorities({
+        ...sources,
+        platformExperienceMatrix: JSON.stringify({
+          schemaVersion: 1,
+          status: 'enforced',
+          platforms: [{ id: 'linux' }, { id: 'windows' }],
+          scenario: { spec: 'tests/e2e/platform-experience.spec.ts' },
+        }),
+      }),
+    ).toContain('Platform experience matrix must require exactly linux, macos and windows');
   });
 });

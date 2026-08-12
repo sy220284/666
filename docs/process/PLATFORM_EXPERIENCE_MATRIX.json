@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "status": "enforced",
+  "authority": "github-actions",
+  "description": "Phase 3 cross-platform author experience authority for Windows, macOS and Linux.",
+  "platforms": [
+    {
+      "id": "linux",
+      "runner": "ubuntu-24.04",
+      "display": "xvfb",
+      "required": true
+    },
+    {
+      "id": "windows",
+      "runner": "windows-latest",
+      "display": "native",
+      "required": true,
+      "nativeIme": "risk-gated-separate-job"
+    },
+    {
+      "id": "macos",
+      "runner": "macos-latest",
+      "display": "native",
+      "required": true
+    }
+  ],
+  "scenario": {
+    "spec": "tests/e2e/platform-experience.spec.ts",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "requiredAssertions": [
+      "renderer-ready",
+      "quick-create",
+      "unicode-draft-save",
+      "layout-no-horizontal-overflow",
+      "theme-roundtrip",
+      "graceful-close"
+    ]
+  },
+  "evidence": {
+    "artifactPattern": "platform-experience-{platform}",
+    "resultPattern": "test-results/platform-experience/{platform}.json",
+    "retentionDays": 14
+  },
+  "boundaries": {
+    "visualRegression": "Linux 1280x800 strict screenshot baseline remains the visual pixel authority.",
+    "windowsIme": "Real Microsoft Pinyin composition remains a dedicated Windows native IME gate.",
+    "packageSmoke": "Packaged startup remains independent and cannot substitute for the author experience flow."
+  }
+}

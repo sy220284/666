@@ -21,22 +21,16 @@ interface ReactClientInternals {
   H: HookDispatcher | null;
 }
 
-const rendererPackageUrl = new URL(
-  '../../apps/desktop/renderer/package.json',
-  import.meta.url,
-);
+const rendererPackageUrl = new URL('../../apps/desktop/renderer/package.json', import.meta.url);
 const rendererRequire = createRequire(rendererPackageUrl);
 const rendererReact = rendererRequire('react') as Record<string, unknown>;
 const clientInternalsKey = [
   '__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_',
   'USERS_THEY_CANNOT_UPGRADE',
 ].join('');
-const clientInternals =
-  rendererReact[clientInternalsKey] as ReactClientInternals;
+const clientInternals = rendererReact[clientInternalsKey] as ReactClientInternals;
 
-export function installRendererHookDispatcher(
-  controller: RendererHookController,
-): () => void {
+export function installRendererHookDispatcher(controller: RendererHookController): () => void {
   const previous = clientInternals.H;
   clientInternals.H = {
     useCallback<T>(callback: T): T {

@@ -5,14 +5,17 @@ import { cancelScheduledContinuationSave } from '../../apps/desktop/renderer/src
 describe('writing continuation scheduler', () => {
   it('cancels a pending continuation timer before an explicit save can enter the same lane', () => {
     vi.useFakeTimers();
-    const callback = vi.fn();
-    const timer = { current: setTimeout(callback, 500) };
+    try {
+      const callback = vi.fn();
+      const timer = { current: setTimeout(callback, 500) };
 
-    cancelScheduledContinuationSave(timer);
-    vi.advanceTimersByTime(500);
+      cancelScheduledContinuationSave(timer);
+      vi.advanceTimersByTime(500);
 
-    expect(timer.current).toBeNull();
-    expect(callback).not.toHaveBeenCalled();
-    vi.useRealTimers();
+      expect(timer.current).toBeNull();
+      expect(callback).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

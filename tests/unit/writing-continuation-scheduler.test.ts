@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { cancelScheduledContinuationSave } from '../../apps/desktop/renderer/src/features/writing/use-writing-continuation.js';
+import {
+  cancelScheduledContinuationSave,
+} from '../../apps/desktop/renderer/src/features/writing/use-writing-continuation.js';
 
 describe('writing continuation scheduler', () => {
   it('cancels a pending continuation timer before an explicit save can enter the same lane', () => {

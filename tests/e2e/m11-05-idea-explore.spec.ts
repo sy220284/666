@@ -3,10 +3,18 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
+
+interface ProviderFixture {
+  readonly server: Server;
+  readonly baseUrl: string;
+  readonly streamStarted: Promise<void>;
+  readonly releaseStream: () => void;
+  readonly streamRequestCount: () => number;
+}
 
 async function launch(userDataPath: string, createParent: string): Promise<ElectronApplication> {
   const args: string[] = [];
@@ -29,7 +37,7 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
-async function startProvider(): Promise<{ readonly server: Server; readonly baseUrl: string }> {
+async function startProvider(holdStream = false): Promise<ProviderFixture> {
   const ideas = {
     ideas: [
       {
@@ -54,6 +62,18 @@ async function startProvider(): Promise<{ readonly server: Server; readonly base
       },
     ],
   };
+  let releaseStream = (): void => undefined;
+  const streamGate = holdStream
+    ? new Promise<void>((resolve) => {
+        releaseStream = resolve;
+      })
+    : Promise.resolve();
+  let resolveStreamStarted!: () => void;
+  const streamStarted = new Promise<void>((resolve) => {
+    resolveStreamStarted = resolve;
+  });
+  let streamRequests = 0;
+
   const server = createServer((request, response) => {
     if (request.method === 'GET' && request.url === '/v1/models') {
       response.writeHead(200, { 'content-type': 'application/json' });
@@ -80,22 +100,26 @@ async function startProvider(): Promise<{ readonly server: Server; readonly base
         return;
       }
 
-      response.writeHead(200, {
-        'content-type': 'text/event-stream',
-        'cache-control': 'no-cache',
-        connection: 'keep-alive',
+      streamRequests += 1;
+      resolveStreamStarted();
+      void streamGate.then(() => {
+        response.writeHead(200, {
+          'content-type': 'text/event-stream',
+          'cache-control': 'no-cache',
+          connection: 'keep-alive',
+        });
+        response.write(
+          `data: ${JSON.stringify({ choices: [{ delta: { content: JSON.stringify(ideas) } }] })}\n\n`,
+        );
+        response.write(
+          `data: ${JSON.stringify({
+            choices: [{ delta: {}, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 24, completion_tokens: 96 },
+          })}\n\n`,
+        );
+        response.write('data: [DONE]\n\n');
+        response.end();
       });
-      response.write(
-        `data: ${JSON.stringify({ choices: [{ delta: { content: JSON.stringify(ideas) } }] })}\n\n`,
-      );
-      response.write(
-        `data: ${JSON.stringify({
-          choices: [{ delta: {}, finish_reason: 'stop' }],
-          usage: { prompt_tokens: 24, completion_tokens: 96 },
-        })}\n\n`,
-      );
-      response.write('data: [DONE]\n\n');
-      response.end();
     });
   });
 
@@ -105,13 +129,46 @@ async function startProvider(): Promise<{ readonly server: Server; readonly base
   });
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('MOCK_PROVIDER_ADDRESS_MISSING');
-  return { server, baseUrl: `http://127.0.0.1:${address.port}/v1` };
+  return {
+    server,
+    baseUrl: `http://127.0.0.1:${address.port}/v1`,
+    streamStarted,
+    releaseStream,
+    streamRequestCount: () => streamRequests,
+  };
 }
 
 async function closeServer(server: Server): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
   });
+}
+
+async function configureProvider(page: Page, baseUrl: string): Promise<void> {
+  await page.locator('[data-open-settings]').click();
+  await page.locator('[data-settings-navigation="providers"]').click();
+  await page.locator('details.provider-advanced-settings > summary').click();
+  await page.locator('[data-provider-id]').fill('idea-e2e');
+  await page.locator('[data-provider-name]').fill('灵感E2E模型');
+  await page.locator('[data-provider-model]').fill('writer-model');
+  await page.locator('[data-provider-base-url]').fill(baseUrl);
+  await page.locator('[data-provider-save]').click();
+  await expect(page.locator('[data-provider-card="idea-e2e"]')).toBeVisible();
+}
+
+async function createProject(page: Page, name: string): Promise<void> {
+  await page.locator('.react-brand').click();
+  await page.locator('[data-create-project]').click();
+  await page.locator('[data-project-name]').fill(name);
+  await page.locator('[data-confirm-create-project]').click();
+  await expect(page.locator('[data-writing-workbench]')).toBeVisible();
+}
+
+async function openIdeaPanel(page: Page) {
+  await page.locator('[data-open-planning]').click();
+  const panel = page.locator('[data-idea-capsule]');
+  await expect(panel).toBeVisible();
+  return panel;
 }
 
 test.afterEach(async () => {
@@ -132,26 +189,10 @@ test('作者从界面发起探索后，AI结果会真正进入灵感胶囊', asy
   try {
     const page = await application.firstWindow();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await configureProvider(page, provider.baseUrl);
+    await createProject(page, '灵感完整链路验收');
 
-    await page.locator('[data-open-settings]').click();
-    await page.locator('[data-settings-navigation="providers"]').click();
-    await page.locator('details.provider-advanced-settings > summary').click();
-    await page.locator('[data-provider-id]').fill('idea-e2e');
-    await page.locator('[data-provider-name]').fill('灵感E2E模型');
-    await page.locator('[data-provider-model]').fill('writer-model');
-    await page.locator('[data-provider-base-url]').fill(provider.baseUrl);
-    await page.locator('[data-provider-save]').click();
-    await expect(page.locator('[data-provider-card="idea-e2e"]')).toBeVisible();
-
-    await page.locator('.react-brand').click();
-    await page.locator('[data-create-project]').click();
-    await page.locator('[data-project-name]').fill('灵感完整链路验收');
-    await page.locator('[data-confirm-create-project]').click();
-    await expect(page.locator('[data-writing-workbench]')).toBeVisible();
-
-    await page.locator('[data-open-planning]').click();
-    const panel = page.locator('[data-idea-capsule]');
-    await expect(panel).toBeVisible();
+    const panel = await openIdeaPanel(page);
     await panel.locator('[data-idea-instruction]').fill('给我四个围绕城市记忆异常展开的情节灵感。');
     await panel.locator('[data-explore-ideas]').click();
 
@@ -161,6 +202,46 @@ test('作者从界面发起探索后，AI结果会真正进入灵感胶囊', asy
     await expect(panel.locator('[data-idea-list]')).toContainText('钟楼后的第二个黎明');
     await expect(panel.locator('[data-idea-list] article')).toHaveCount(4);
   } finally {
+    provider.releaseStream();
+    await closeGracefully(application);
+    await closeServer(provider.server);
+  }
+});
+
+test('AI探索运行中离开页面再返回，重复点击不会再次调用模型', async () => {
+  test.setTimeout(90_000);
+  const provider = await startProvider(true);
+  const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-m11-05-remount-'));
+  temporaryDirectories.push(userDataPath);
+  const createParent = path.join(userDataPath, 'works');
+  await mkdir(createParent, { recursive: true });
+  const application = await launch(userDataPath, createParent);
+
+  try {
+    const page = await application.firstWindow();
+    await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await configureProvider(page, provider.baseUrl);
+    await createProject(page, '灵感跨页面重复启动验收');
+
+    let panel = await openIdeaPanel(page);
+    await panel.locator('[data-idea-instruction]').fill('探索一组不会重复启动的城市异象灵感。');
+    await panel.locator('[data-explore-ideas]').click();
+    await provider.streamStarted;
+    expect(provider.streamRequestCount()).toBe(1);
+
+    await page.locator('.react-brand').click();
+    panel = await openIdeaPanel(page);
+    await panel.locator('[data-idea-instruction]').fill('探索一组不会重复启动的城市异象灵感。');
+    await panel.locator('[data-explore-ideas]').click();
+
+    provider.releaseStream();
+    await expect(panel.locator('[data-idea-status]')).toContainText('灵感探索完成', {
+      timeout: 30_000,
+    });
+    expect(provider.streamRequestCount()).toBe(1);
+    await expect(panel.locator('[data-idea-list] article')).toHaveCount(4);
+  } finally {
+    provider.releaseStream();
     await closeGracefully(application);
     await closeServer(provider.server);
   }

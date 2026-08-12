@@ -39,7 +39,7 @@ function ideaRunInput(
 }
 
 describe('M11-05 GenerationRun generic scope ownership', () => {
-  it('accepts every supported scope type with the canonical project-owned target', async () => {
+  it('accepts and resolves every supported scope, then persists generated Ideas', async () => {
     const harness = await createCandidateApplyHarness();
     try {
       const { project, chapter, draft } = await createTwoBlockDraft(harness);
@@ -84,7 +84,16 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
         ['selection', selectionId, chapter.id],
       ] as const;
       const runs = [];
+      const contexts = [];
       for (const [scopeType, scopeId, compatibilityChapterId] of cases) {
+        contexts.push(
+          generation.resolveIdeaScopeContext({
+            projectId: project.projectId,
+            scopeType,
+            scopeId,
+            chapterId: compatibilityChapterId,
+          }),
+        );
         runs.push(
           await generation.create(
             randomUUID(),
@@ -108,6 +117,39 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
           runType: 'idea_explore',
         })),
       );
+      expect(contexts.map((context) => context.sourceContext.scopeType)).toEqual(
+        cases.map(([scopeType]) => scopeType),
+      );
+      expect(contexts.every((context) => context.constraintHash.length === 64)).toBe(true);
+      expect(contexts.every((context) => context.inputSources[0]?.sourceType === 'scope')).toBe(true);
+
+      const completion = await generation.completeIdeaCards(randomUUID(), {
+        projectId: project.projectId,
+        runId: runs[0]!.runId,
+        ideaKind: 'plot',
+        divergenceLevel: 'different',
+        depthLevel: 'expand',
+        sourceContext: contexts[0]!.sourceContext,
+        ideas: [
+          {
+            title: '从作品范围生成的灵感',
+            summary: '验证结构化探索结果会写入 IdeaCard。',
+            content: '这条结果同时保留 GenerationRun 与来源范围。',
+          },
+        ],
+        usage: { inputTokens: 11, outputTokens: 22 },
+      });
+      expect(completion.run).toMatchObject({
+        status: 'succeeded',
+        stage: 'completed',
+        inputTokens: 11,
+        outputTokens: 22,
+      });
+      expect(completion.ideas[0]).toMatchObject({
+        generationRunId: runs[0]!.runId,
+        sourceContext: contexts[0]!.sourceContext,
+        status: 'active',
+      });
       expect(
         generation.list({
           projectId: project.projectId,
@@ -146,6 +188,14 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
       await expect(
         generation.create(randomUUID(), ideaRunInput(foreign.projectId, 'entity', entity.id, null)),
       ).rejects.toMatchObject({ code: 'GENERATION_BASE_CONFLICT' });
+      expect(() =>
+        generation.resolveIdeaScopeContext({
+          projectId: foreign.projectId,
+          scopeType: 'entity',
+          scopeId: entity.id,
+          chapterId: null,
+        }),
+      ).toThrow(expect.objectContaining({ code: 'GENERATION_BASE_CONFLICT' }));
 
       await harness.workspace.close(randomUUID(), foreign.projectId);
       await harness.workspace.open(randomUUID(), { workspacePath: project.workspacePath });
@@ -154,6 +204,63 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
           randomUUID(),
           ideaRunInput(project.projectId, 'scene', randomUUID(), chapter.id),
         ),
+      ).rejects.toMatchObject({ code: 'GENERATION_BASE_CONFLICT' });
+      expect(() =>
+        generation.resolveIdeaScopeContext({
+          projectId: project.projectId,
+          scopeType: 'project',
+          scopeId: project.projectId,
+          chapterId: randomUUID(),
+        }),
+      ).toThrow(expect.objectContaining({ code: 'GENERATION_BASE_CONFLICT' }));
+    } finally {
+      await closeCandidateApplyHarness(harness);
+    }
+  });
+
+  it('rejects invalid Idea completion counts and mismatched source ownership', async () => {
+    const harness = await createCandidateApplyHarness();
+    try {
+      const { project } = await createTwoBlockDraft(harness);
+      const generation = new GenerationRunService(harness.workspace);
+      const context = generation.resolveIdeaScopeContext({
+        projectId: project.projectId,
+        scopeType: 'project',
+        scopeId: project.projectId,
+        chapterId: null,
+      });
+      const run = await generation.create(
+        randomUUID(),
+        ideaRunInput(project.projectId, 'project', project.projectId, null),
+      );
+      const base = {
+        projectId: project.projectId,
+        runId: run.runId,
+        ideaKind: 'plot' as const,
+        divergenceLevel: 'safe' as const,
+        depthLevel: 'spark' as const,
+        sourceContext: context.sourceContext,
+      };
+
+      await expect(
+        generation.completeIdeaCards(randomUUID(), { ...base, ideas: [] }),
+      ).rejects.toMatchObject({ code: 'GENERATION_CANDIDATE_INVALID' });
+      await expect(
+        generation.completeIdeaCards(randomUUID(), {
+          ...base,
+          ideas: Array.from({ length: 9 }, (_, index) => ({
+            title: `过量灵感 ${index + 1}`,
+            summary: '超过单次允许数量。',
+            content: '用于验证上界保护。',
+          })),
+        }),
+      ).rejects.toMatchObject({ code: 'GENERATION_CANDIDATE_INVALID' });
+      await expect(
+        generation.completeIdeaCards(randomUUID(), {
+          ...base,
+          sourceContext: { ...context.sourceContext, scopeType: 'entity', scopeId: randomUUID() },
+          ideas: [{ title: '错误来源', summary: '范围不匹配。', content: '必须拒绝。' }],
+        }),
       ).rejects.toMatchObject({ code: 'GENERATION_BASE_CONFLICT' });
     } finally {
       await closeCandidateApplyHarness(harness);

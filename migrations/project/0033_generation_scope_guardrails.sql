@@ -1,3 +1,4 @@
+-- migration-policy: allow-unscoped-write
 -- M11-05 post-merge remediation: keep legacy chapter workflows chapter-scoped
 -- and make selection scope refer only to the current active Draft.
 

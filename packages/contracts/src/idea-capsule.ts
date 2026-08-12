@@ -99,4 +99,5 @@ export type IdeaSourceContext = z.infer<typeof IdeaSourceContextSchema>;
 export type IdeaCard = z.infer<typeof IdeaCardSchema>;
 export type IdeaConversion = z.infer<typeof IdeaConversionSchema>;
 export type IdeaExplorePromptInput = z.input<typeof IdeaExplorePromptInputSchema>;
+export type IdeaExploreOutputItem = z.infer<typeof IdeaExploreOutputItemSchema>;
 export type IdeaExploreOutput = z.infer<typeof IdeaExploreOutputSchema>;

@@ -46,7 +46,7 @@ describe('M11-04 generation operation error coverage', () => {
     }
   });
 
-  it('映射全部 GenerationSourceResolverError、TaskProtocolError 和通用 code 分支', () => {
+  it('映射 SourceResolver、TaskProtocol 和通用 code 分支', () => {
     const sourceCases = [
       ['GENERATION_SOURCE_NOT_FOUND', 'COMMON_NOT_FOUND_002'],
       ['GENERATION_SOURCE_STALE', 'CANDIDATE_BASE_CONFLICT_002'],
@@ -54,14 +54,12 @@ describe('M11-04 generation operation error coverage', () => {
       ['GENERATION_SOURCE_INVALID', 'COMMON_INVALID_INPUT_001'],
     ] as const;
     for (const [code, expected] of sourceCases) {
-      expect(generationOperationError(instanceWithCode(GenerationSourceResolverError, code))).toBe(
-        expected,
-      );
+      const error = instanceWithCode(GenerationSourceResolverError, code);
+      expect(generationOperationError(error)).toBe(expected);
     }
 
-    expect(
-      generationOperationError(instanceWithCode(TaskProtocolError, 'COMMON_CANCELLED_004')),
-    ).toBe('COMMON_CANCELLED_004');
+    const taskError = instanceWithCode(TaskProtocolError, 'COMMON_CANCELLED_004');
+    expect(generationOperationError(taskError)).toBe('COMMON_CANCELLED_004');
     expect(generationOperationError({ code: 'COMMON_NOT_FOUND_002' })).toBe(
       'COMMON_NOT_FOUND_002',
     );
@@ -92,7 +90,10 @@ describe('M11-04 BridgeRequestCoordinator edge coverage', () => {
       }),
     ).resolves.toMatchObject({
       state: 'failure',
-      error: { code: 'BRIDGE_UNEXPECTED_FAILURE', message: 'Unexpected bridge request failure.' },
+      error: {
+        code: 'BRIDGE_UNEXPECTED_FAILURE',
+        message: 'Unexpected bridge request failure.',
+      },
     });
   });
 
@@ -113,9 +114,15 @@ describe('M11-04 BridgeRequestCoordinator edge coverage', () => {
     });
     await startGate;
     expect(coordinator.isPending('replace-key')).toBe(true);
-    await expect(
-      coordinator.run('replace-key', async () => ({ ok: true as const, requestId: 'duplicate', data: 2 })),
-    ).rejects.toBeInstanceOf(DuplicateBridgeRequestError);
+
+    const duplicate = async () => ({
+      ok: true as const,
+      requestId: 'duplicate',
+      data: 2,
+    });
+    await expect(coordinator.run('replace-key', duplicate)).rejects.toBeInstanceOf(
+      DuplicateBridgeRequestError,
+    );
 
     const replacement = coordinator.run(
       'replace-key',
@@ -124,7 +131,11 @@ describe('M11-04 BridgeRequestCoordinator edge coverage', () => {
     );
     release();
     await expect(first).resolves.toMatchObject({ state: 'stale', generation: 1 });
-    await expect(replacement).resolves.toMatchObject({ state: 'success', generation: 2, data: 2 });
+    await expect(replacement).resolves.toMatchObject({
+      state: 'success',
+      generation: 2,
+      data: 2,
+    });
     expect(coordinator.isPending('replace-key')).toBe(false);
     expect(coordinator.cancel('missing-key')).toBe(false);
   });
@@ -133,13 +144,12 @@ describe('M11-04 BridgeRequestCoordinator edge coverage', () => {
     const coordinator = new BridgeRequestCoordinator();
     const abort = new AbortController();
     abort.abort('screen-changed');
-    await expect(
-      coordinator.run(
-        'pre-aborted',
-        async () => ({ ok: true as const, requestId: 'never-visible', data: 1 }),
-        { signal: abort.signal },
-      ),
-    ).resolves.toEqual({ state: 'stale', generation: 1 });
+    const outcome = coordinator.run(
+      'pre-aborted',
+      async () => ({ ok: true as const, requestId: 'never-visible', data: 1 }),
+      { signal: abort.signal },
+    );
+    await expect(outcome).resolves.toEqual({ state: 'stale', generation: 1 });
   });
 
   it('取消 latest-only lane 时同时清理 in-flight 与 pending 请求', async () => {
@@ -174,36 +184,33 @@ describe('M11-04 BridgeRequestCoordinator edge coverage', () => {
 
   it('覆盖 latest-only failure、cancelled 与 stale outcome 重绑 generation', async () => {
     const failureCoordinator = new BridgeRequestCoordinator();
-    await expect(
-      failureCoordinator.run('failure', async () => failure, {
-        mode: 'replace',
-        laneKey: 'failure-lane',
-      }),
-    ).resolves.toMatchObject({ state: 'failure', generation: 1 });
+    const failed = failureCoordinator.run('failure', async () => failure, {
+      mode: 'replace',
+      laneKey: 'failure-lane',
+    });
+    await expect(failed).resolves.toMatchObject({ state: 'failure', generation: 1 });
 
     const cancelledCoordinator = new BridgeRequestCoordinator();
     const abortError = new Error('cancelled');
     abortError.name = 'AbortError';
-    await expect(
-      cancelledCoordinator.run(
-        'cancelled',
-        async () => {
-          throw abortError;
-        },
-        { mode: 'replace', laneKey: 'cancelled-lane' },
-      ),
-    ).resolves.toMatchObject({ state: 'cancelled', generation: 1 });
+    const cancelled = cancelledCoordinator.run(
+      'cancelled',
+      async () => {
+        throw abortError;
+      },
+      { mode: 'replace', laneKey: 'cancelled-lane' },
+    );
+    await expect(cancelled).resolves.toMatchObject({ state: 'cancelled', generation: 1 });
 
     const staleCoordinator = new BridgeRequestCoordinator();
     const abort = new AbortController();
     abort.abort('already-gone');
-    await expect(
-      staleCoordinator.run(
-        'stale',
-        async () => ({ ok: true as const, requestId: 'stale', data: 1 }),
-        { mode: 'replace', laneKey: 'stale-lane', signal: abort.signal },
-      ),
-    ).resolves.toEqual({ state: 'stale', generation: 1 });
+    const stale = staleCoordinator.run(
+      'stale',
+      async () => ({ ok: true as const, requestId: 'stale', data: 1 }),
+      { mode: 'replace', laneKey: 'stale-lane', signal: abort.signal },
+    );
+    await expect(stale).resolves.toEqual({ state: 'stale', generation: 1 });
   });
 
   it('共享订阅者在订阅前已取消时立即 detach 并取消底层请求', async () => {
@@ -211,16 +218,18 @@ describe('M11-04 BridgeRequestCoordinator edge coverage', () => {
     const abort = new AbortController();
     abort.abort('unmounted');
     let underlyingAborted = false;
-    const outcome = coordinator.run(
-      'pre-aborted-share',
-      async ({ signal }) => {
-        if (signal.aborted) underlyingAborted = true;
-        return new Promise<{ readonly ok: true; readonly requestId: string; readonly data: number }>(
-          () => undefined,
-        );
-      },
-      { mode: 'share', signal: abort.signal },
-    );
+    const operation = async ({ signal }: { readonly signal: AbortSignal }) => {
+      if (signal.aborted) underlyingAborted = true;
+      return new Promise<{
+        readonly ok: true;
+        readonly requestId: string;
+        readonly data: number;
+      }>(() => undefined);
+    };
+    const outcome = coordinator.run('pre-aborted-share', operation, {
+      mode: 'share',
+      signal: abort.signal,
+    });
     await expect(outcome).resolves.toMatchObject({ state: 'stale' });
     await Promise.resolve();
     expect(underlyingAborted).toBe(true);

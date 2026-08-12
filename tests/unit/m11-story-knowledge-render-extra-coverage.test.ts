@@ -124,7 +124,10 @@ function richHistory(): Extract<StoryKnowledgeProjection, { readonly view: 'hist
 
 describe('M11-04 Story Knowledge renderer remaining branches', () => {
   it('覆盖历史候选稿、恢复点和备份异常标签的全部枚举分支', () => {
-    const html = renderToStaticMarkup(createElement(StoryKnowledgeHistoryMetadata, { projection: richHistory() }));
+    const metadata = createElement(StoryKnowledgeHistoryMetadata, {
+      projection: richHistory(),
+    });
+    const html = renderToStaticMarkup(metadata);
     for (const text of [
       '骨架候选稿',
       '完整生成',
@@ -184,9 +187,9 @@ describe('M11-04 Story Knowledge renderer remaining branches', () => {
         },
       ],
       truncatedBefore: false,
-      truncatedAfter: true,
+      truncatedAfter: false,
     });
-    expect(renderProjection(timeline)).toContain('时间线两侧仍有更多事件');
+    expect(renderProjection(timeline)).not.toContain('时间线两侧仍有更多事件');
 
     const foreshadowing = contractInput<StoryKnowledgeProjection>({
       view: 'foreshadowing',
@@ -228,6 +231,26 @@ describe('M11-04 Story Knowledge renderer remaining branches', () => {
     const arcHtml = renderProjection(arc);
     expect(arcHtml).toContain('尚未填写人物简介');
     expect(arcHtml).not.toContain('成长节点较多');
+  });
+
+  it('覆盖非 JSON 值的回退显示分支', () => {
+    const character = contractInput<StoryKnowledgeProjection>({
+      view: 'character_card',
+      projectId,
+      bounded: true,
+      character: { id: characterId, name: '沈砚', summary: '' },
+      facts: [
+        {
+          id: '58000000-0000-4000-8000-000000000001',
+          key: '未定义值',
+          value: undefined,
+          description: '',
+        },
+      ],
+      states: [],
+      relationships: [],
+    });
+    expect(renderProjection(character)).toContain('—');
   });
 
   it('覆盖历史无下一页和丰富元数据在工作台中的渲染', () => {

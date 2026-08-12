@@ -116,7 +116,21 @@ function parseIdea(row: IdeaRow): IdeaCard {
       },
     );
   }
-  return IdeaCardSchema.parse({ ...row, sourceContext });
+  return IdeaCardSchema.parse({
+    id: row.id,
+    projectId: row.projectId,
+    ideaKind: row.ideaKind,
+    title: row.title,
+    summary: row.summary,
+    content: row.content,
+    divergenceLevel: row.divergenceLevel,
+    depthLevel: row.depthLevel,
+    sourceContext,
+    generationRunId: row.generationRunId,
+    status: row.status,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
 }
 
 function ideaRow(connection: DatabaseSync, projectId: string, ideaId: string): IdeaRow {

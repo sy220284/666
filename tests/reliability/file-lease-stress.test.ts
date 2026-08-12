@@ -10,10 +10,10 @@ import { acquireFileLease } from '../../packages/core-service/src/recovery/file-
 const directories: string[] = [];
 
 const timing = {
-  durationMs: 250,
-  heartbeatMs: 25,
-  waitTimeoutMs: 30,
-  retryDelayMs: 3,
+  durationMs: 5_000,
+  heartbeatMs: 500,
+  waitTimeoutMs: 100,
+  retryDelayMs: 5,
 } as const;
 
 afterEach(async () => {

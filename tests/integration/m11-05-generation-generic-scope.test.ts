@@ -135,6 +135,7 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
           summary: '',
         })
       ).entities[0]!;
+      await harness.workspace.close(randomUUID(), project.projectId);
       const foreign = await harness.workspace.create(
         randomUUID(),
         { name: '外部项目', channel: '长篇' },
@@ -145,6 +146,9 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
       await expect(
         generation.create(randomUUID(), ideaRunInput(foreign.projectId, 'entity', entity.id, null)),
       ).rejects.toMatchObject({ code: 'GENERATION_BASE_CONFLICT' });
+
+      await harness.workspace.close(randomUUID(), foreign.projectId);
+      await harness.workspace.open(randomUUID(), { workspacePath: project.workspacePath });
       await expect(
         generation.create(
           randomUUID(),

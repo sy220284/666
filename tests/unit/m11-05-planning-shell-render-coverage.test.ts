@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ReactElement } from 'react';
 
@@ -8,15 +8,16 @@ import {
   type AppShellPagesProps,
 } from '../../apps/desktop/renderer/src/app/app-shell-pages.js';
 import { PlanningWorkbench } from '../../apps/desktop/renderer/src/features/planning/planning-workbench.js';
+import { installRendererHookDispatcher } from '../testkit/renderer-hook-dispatcher.js';
 import { contractInput } from '../testkit/strict-test-doubles.js';
 
 type Effect = () => void | (() => void);
 
-const hooks = vi.hoisted(() => ({
+const hooks = {
   states: [] as unknown[],
   index: 0,
   effects: [] as Effect[],
-}));
+};
 const ui = vi.hoisted(() => ({
   state: {
     selection: { chapterId: null as string | null, sceneBeatId: null as string | null },
@@ -24,24 +25,7 @@ const ui = vi.hoisted(() => ({
     returnLocation: null as unknown,
   },
 }));
-
-vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>();
-  return {
-    ...actual,
-    useState(initial: unknown) {
-      const value = hooks.index < hooks.states.length ? hooks.states[hooks.index] : initial;
-      hooks.index += 1;
-      const setter = vi.fn((next: unknown) => {
-        if (typeof next === 'function') (next as (current: unknown) => unknown)(value);
-      });
-      return [value, setter];
-    },
-    useEffect(effect: Effect) {
-      hooks.effects.push(effect);
-    },
-  };
-});
+let restoreDispatcher: (() => void) | null = null;
 
 vi.mock('../../apps/desktop/renderer/src/state/ui-store.js', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -94,9 +78,11 @@ function setPlanningState(
     readonly returnLocation?: boolean;
   } = {},
 ): void {
+  restoreDispatcher?.();
   hooks.states = [target, planningTarget];
   hooks.index = 0;
   hooks.effects = [];
+  restoreDispatcher = installRendererHookDispatcher(hooks);
   ui.state = {
     selection: {
       chapterId: options.selected ? chapterId : null,
@@ -264,6 +250,11 @@ function invoke(element: TestElement, name: string, ...args: unknown[]): void {
   if (typeof handler === 'function') handler(...args);
 }
 
+afterEach(() => {
+  restoreDispatcher?.();
+  restoreDispatcher = null;
+});
+
 describe('M11-05 planning renderer coverage', () => {
   it('renders ready targets, return source, and populated conversion targets', () => {
     const root = renderPlanning(
@@ -336,7 +327,9 @@ describe('M11-05 planning renderer coverage', () => {
 describe('M11-05 AppShell route coverage', () => {
   it('covers home continuation with active, recent and unavailable projects', () => {
     const activeCallbacks = callbackProps();
-    const active = activeChild(AppShellPages(shellProps('home', true, activeCallbacks)) as TestElement);
+    const active = activeChild(
+      AppShellPages(shellProps('home', true, activeCallbacks)) as TestElement,
+    );
     invoke(active, 'onContinue');
     invoke(active, 'onCloseProject', projectId);
     invoke(active, 'onMoveProject', projectId);
@@ -348,7 +341,9 @@ describe('M11-05 AppShell route coverage', () => {
     expect(activeCallbacks.onTransitionToRoute).toHaveBeenCalled();
 
     const recentCallbacks = callbackProps();
-    const recent = activeChild(AppShellPages(shellProps('project', false, recentCallbacks)) as TestElement);
+    const recent = activeChild(
+      AppShellPages(shellProps('project', false, recentCallbacks)) as TestElement,
+    );
     invoke(recent, 'onContinue');
     expect(recentCallbacks.onOpenRecent).toHaveBeenCalledWith(
       'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -386,7 +381,9 @@ describe('M11-05 AppShell route coverage', () => {
     expect(planningCallbacks.onSaveSettings).toHaveBeenCalledWith({ defaultMode: 'professional' });
 
     const canonCallbacks = callbackProps();
-    const canon = activeChild(AppShellPages(shellProps('canon', true, canonCallbacks)) as TestElement);
+    const canon = activeChild(
+      AppShellPages(shellProps('canon', true, canonCallbacks)) as TestElement,
+    );
     invoke(canon, 'onReturn');
     expect(canonCallbacks.onReturnToAuthorSource).toHaveBeenCalled();
 

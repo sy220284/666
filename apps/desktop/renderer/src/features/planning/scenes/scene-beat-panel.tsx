@@ -217,7 +217,11 @@ export function SceneBeatPanel({
               <button disabled={blocked} type="button" onClick={() => void setBlockLinks(beat)}>
                 关联正文段落
               </button>
-              <button disabled={blocked} type="button" onClick={() => void moveAcrossChapters(beat)}>
+              <button
+                disabled={blocked}
+                type="button"
+                onClick={() => void moveAcrossChapters(beat)}
+              >
                 跨章移动
               </button>
               <button type="button" disabled={blocked} onClick={() => void remove(beat)}>

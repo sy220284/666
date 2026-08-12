@@ -6,6 +6,7 @@ import {
   DraftEntityIdSchema,
   GENERATION_COMMANDS,
   GenerationRequestSchema,
+  IdeaExploreOutputSchema,
   RewriteOutputSchema,
   SemanticValidationOutputSchema,
   SkeletonCandidateBatchOutputSchema,
@@ -19,6 +20,7 @@ import {
 } from '@worldforge/contracts';
 import {
   chapterPrompt,
+  ideaExplorePrompt,
   mergePrompt,
   parseChapterTextCandidate,
   rewritePrompt,
@@ -90,12 +92,6 @@ function workflowMismatch(expected: GenerationRunType, actual: GenerationRunType
   );
 }
 
-function unsupported(runType: string): never {
-  throw Object.assign(new Error(`The ${runType} workflow is not implemented yet.`), {
-    code: 'AI_MODEL_UNSUPPORTED_010',
-  });
-}
-
 function requireDraft(
   baseDraftId: string | null,
   baseDraftRevision: number | null,
@@ -117,6 +113,16 @@ function requireChapter(chapterId: string | null): string {
     );
   }
   return chapterId;
+}
+
+function requireScopeId(scopeId: string | null): string {
+  if (scopeId === null) {
+    throw new GenerationSourceResolverError(
+      'GENERATION_SOURCE_NOT_FOUND',
+      'Generation requires a resolved scope identifier.',
+    );
+  }
+  return scopeId;
 }
 
 function modelSupport(
@@ -189,7 +195,7 @@ function runSettings(
   return {
     projectId: input.projectId,
     scopeType: input.scopeType,
-    scopeId: input.scopeId,
+    scopeId: requireScopeId(input.scopeId),
     chapterId: input.chapterId,
     baseDraftId: input.baseDraftId,
     baseDraftRevision: input.baseDraftRevision,
@@ -731,11 +737,89 @@ async function validateWorkflow({ services, requestId, operation }: GenerationWo
   });
 }
 
-async function ideaExploreWorkflow({ operation }: GenerationWorkflowContext): Promise<never> {
-  if (operation.input.intent.runType !== 'idea_explore') {
-    return workflowMismatch('idea_explore', operation.input.intent.runType);
+async function ideaExploreWorkflow({ services, requestId, operation }: GenerationWorkflowContext) {
+  const input = operation.input;
+  if (input.intent.runType !== 'idea_explore') {
+    return workflowMismatch('idea_explore', input.intent.runType);
   }
-  return unsupported('idea_explore');
+  const intent = input.intent;
+  const scopeId = requireScopeId(input.scopeId);
+  const resolved = services.runs.resolveIdeaScopeContext({
+    projectId: input.projectId,
+    scopeType: input.scopeType,
+    scopeId,
+    chapterId: input.chapterId,
+  });
+  const profile = modelSupport(services, {
+    projectId: input.projectId,
+    providerId: operation.provider.id,
+    model: operation.provider.model,
+    taskType: 'idea_explore',
+    promptId: ideaExplorePrompt.promptId,
+    promptVersion: ideaExplorePrompt.version,
+  });
+  const bundle = ideaExplorePrompt.build({
+    projectId: input.projectId,
+    scopeType: input.scopeType,
+    scopeId,
+    chapterId: input.chapterId,
+    ideaKind: intent.ideaKind,
+    divergenceLevel: intent.divergenceLevel,
+    depthLevel: intent.depthLevel,
+    authorInstruction: intent.authorInstruction,
+    context: resolved.context,
+    constraintHash: resolved.constraintHash,
+    count: intent.count,
+  });
+  const provider = createProviderAdapter(operation.provider, operation.credential);
+  return services.runtime.startStructured({
+    requestId,
+    run: {
+      projectId: input.projectId,
+      scopeType: input.scopeType,
+      scopeId,
+      chapterId: input.chapterId,
+      baseDraftId: null,
+      baseDraftRevision: null,
+      runType: 'idea_explore',
+      promptId: ideaExplorePrompt.promptId,
+      promptVersion: ideaExplorePrompt.version,
+      outputMode: 'structured',
+      providerId: operation.provider.id,
+      actualModel: operation.provider.model,
+      supportStatus: profile.status,
+      constraintPackage: null,
+      inputSources: resolved.inputSources,
+    },
+    provider,
+    requestFor: (runId) =>
+      request(runId, operation.provider.model, bundle, Math.max(2_048, intent.count * 2_048)),
+    partialOnFailure: false,
+    complete: async (runId, raw, usage) => {
+      const output = parseStructured(IdeaExploreOutputSchema, raw);
+      if (output.ideas.length !== intent.count) {
+        throw Object.assign(new Error('The IdeaCard count does not match the request.'), {
+          code: 'AI_OUTPUT_INVALID_008',
+          retryable: false,
+        });
+      }
+      const completed = await services.runs.completeIdeaCards(requestId, {
+        projectId: input.projectId,
+        runId,
+        ideaKind: intent.ideaKind,
+        divergenceLevel: intent.divergenceLevel,
+        depthLevel: intent.depthLevel,
+        sourceContext: resolved.sourceContext,
+        ideas: output.ideas,
+        usage,
+      });
+      return {
+        run: completed.run,
+        candidateIds: [],
+        resultRefs: completed.run.resultRefs,
+      };
+    },
+  });
 }
 
 export const GenerationWorkflowHandlers = {

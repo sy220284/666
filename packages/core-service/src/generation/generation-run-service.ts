@@ -18,6 +18,16 @@ import { type ProjectWorkspaceService } from '../project-workspace.js';
 import { finalVersion, validationSemanticIdentity } from '../validation/validation-model.js';
 import { completeProseCandidate, completeSkeletonCandidates } from './candidate-persistence.js';
 import { getModelSupport, upsertModelSupport } from './model-support-repository.js';
+import {
+  resolveIdeaScopeContext,
+  type IdeaScopeContext,
+  type IdeaScopeContextInput,
+} from './idea-context.js';
+import {
+  completeIdeaCards,
+  type IdeaGenerationCompletion,
+  type IdeaGenerationCompletionInput,
+} from './idea-persistence.js';
 import { discardPartial, recordPartial, savePartial } from './partial-result-service.js';
 import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
 import {
@@ -63,6 +73,11 @@ export type {
   GenerationPartialDecision,
   GenerationContinuationContext,
 } from './run-repository.js';
+export type { IdeaScopeContext, IdeaScopeContextInput } from './idea-context.js';
+export type {
+  IdeaGenerationCompletion,
+  IdeaGenerationCompletionInput,
+} from './idea-persistence.js';
 
 export type GenerationRunCreateInput = Omit<
   PersistedGenerationRunCreateInput,
@@ -274,6 +289,17 @@ export class GenerationRunService {
 
   recoverInterrupted(requestId: string, projectId: string): Promise<number> {
     return recoverInterrupted(this.#context, requestId, projectId);
+  }
+
+  resolveIdeaScopeContext(input: IdeaScopeContextInput): IdeaScopeContext {
+    return resolveIdeaScopeContext(this.#context.workspace, input);
+  }
+
+  completeIdeaCards(
+    requestId: string,
+    input: IdeaGenerationCompletionInput,
+  ): Promise<IdeaGenerationCompletion> {
+    return completeIdeaCards(this.#context, requestId, input);
   }
 
   getModelSupport(raw: GenerationModelSupportInput): ModelSupportProfile {

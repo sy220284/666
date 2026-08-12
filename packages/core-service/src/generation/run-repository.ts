@@ -247,27 +247,23 @@ export function resultRefs(database: DatabaseSync, runId: string): GenerationRes
         ORDER BY created_at, result_type, result_id`,
     )
     .all(runId) as unknown as GenerationResultRefRow[];
-  return rows.flatMap((row) => {
+  const refs: GenerationResultRef[] = [];
+  for (const row of rows) {
     if (row.resultType === 'candidate') {
-      return [
-        {
-          resultType: 'candidate' as const,
-          resultId: row.resultId,
-          candidateKind: row.candidateKind as 'prose' | 'skeleton',
-        },
-      ];
+      refs.push({
+        resultType: 'candidate',
+        resultId: row.resultId,
+        candidateKind: row.candidateKind as 'prose' | 'skeleton',
+      });
+    } else if (row.resultType === 'state_proposal_batch') {
+      refs.push({ resultType: 'state_proposal_batch', resultId: row.resultId });
+    } else if (row.resultType === 'validation_batch') {
+      refs.push({ resultType: 'validation_batch', resultId: row.resultId });
+    } else if (row.resultType === 'idea_card') {
+      refs.push({ resultType: 'idea_card', resultId: row.resultId });
     }
-    if (row.resultType === 'state_proposal_batch') {
-      return [{ resultType: 'state_proposal_batch' as const, resultId: row.resultId }];
-    }
-    if (row.resultType === 'validation_batch') {
-      return [{ resultType: 'validation_batch' as const, resultId: row.resultId }];
-    }
-    if (row.resultType === 'idea_card') {
-      return [{ resultType: 'idea_card' as const, resultId: row.resultId }];
-    }
-    return [];
-  });
+  }
+  return refs;
 }
 
 export function mapRun(database: DatabaseSync, row: GenerationRunRow): GenerationRun {

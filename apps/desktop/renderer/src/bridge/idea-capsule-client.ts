@@ -25,9 +25,9 @@ export function cancelIdeaCapsuleRequests(): void {
 }
 
 function ideaRequestKey(operation: CoreIdeaOperation): string {
-  const input = operation.input;
   switch (operation.operation) {
-    case 'idea.list':
+    case 'idea.list': {
+      const input = operation.input;
       return [
         'idea.list',
         input.projectId,
@@ -36,15 +36,16 @@ function ideaRequestKey(operation: CoreIdeaOperation): string {
         input.cursor?.id ?? 'first',
         input.limit ?? 50,
       ].join(':');
+    }
     case 'idea.get':
-      return `idea.get:${input.projectId}:${input.ideaId}`;
+      return `idea.get:${operation.input.projectId}:${operation.input.ideaId}`;
     case 'idea.create':
-      return `idea.create:${input.projectId}:${input.sourceContext.scopeType}:${input.sourceContext.scopeId}`;
+      return `idea.create:${operation.input.projectId}:${operation.input.sourceContext.scopeType}:${operation.input.sourceContext.scopeId}`;
     case 'idea.setStatus':
-      return `idea.setStatus:${input.projectId}:${input.ideaId}`;
+      return `idea.setStatus:${operation.input.projectId}:${operation.input.ideaId}`;
     case 'idea.previewConversion':
-      return `idea.previewConversion:${input.projectId}:${input.ideaId}`;
+      return `idea.previewConversion:${operation.input.projectId}:${operation.input.ideaId}`;
     case 'idea.applyConversion':
-      return `idea.applyConversion:${input.projectId}:${input.ideaId}:${input.previewHash}`;
+      return `idea.applyConversion:${operation.input.projectId}:${operation.input.ideaId}:${operation.input.previewHash}`;
   }
 }

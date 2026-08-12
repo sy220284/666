@@ -85,6 +85,7 @@ test('Phase 3 三平台作者主路径体验矩阵', async () => {
   await mkdir(createParent, { recursive: true });
   const application = await launch(userDataPath, createParent);
   const assertions: string[] = [];
+  let closed = false;
 
   try {
     const page = await application.firstWindow();
@@ -131,8 +132,11 @@ test('Phase 3 三平台作者主路径体验矩阵', async () => {
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
     assertions.push('theme-roundtrip');
 
-    await writeEvidence([...assertions, 'graceful-close']);
-  } finally {
     await closeGracefully(application);
+    closed = true;
+    assertions.push('graceful-close');
+    await writeEvidence(assertions);
+  } finally {
+    if (!closed) await closeGracefully(application);
   }
 });

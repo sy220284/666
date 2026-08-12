@@ -60,6 +60,7 @@ scripts/ci-risk-policy.mjs
 - `packageSmoke`
 - `toolchainExport`
 - `dependencyAudit`
+- `supplyChainInventory`
 - `applicationSecurity`
 - `performance`
 - `reliability`
@@ -145,6 +146,17 @@ Phase 4增加：
 - SBOM；
 - Dependency/License Inventory；
 - Artifact Provenance。
+
+Phase 4首批SBOM与License Inventory已经闭环，机器真源与执行入口为：
+
+```text
+docs/process/SUPPLY_CHAIN_INVENTORY_POLICY.json
+scripts/supply-chain-inventory.mjs
+tests/unit/supply-chain-inventory-policy.test.ts
+.github/workflows/security.yml
+```
+
+`security.yml`中的`supply-chain-inventory` Job生成CycloneDX 1.7 SBOM、去除Runner本地路径后的许可证清单、稳定摘要和执行日志；生成UUID与timestamp不进入canonical SBOM digest，未知或未授权许可证组按fail-closed阻断。Ready Security run `31589554351`在Head `77627f39b02b9926682f53922d9414e6515f697a`生成Artifact `9138535964`，Artifact digest为`sha256:7f013565e511f7a39d743084c6b5a9197f8fea79937b420d26aa50a3c2e88fd1`。PR #379受控合并为main `14d759fbdf7341f9f8aff97fc208b3449fa4bef3`，Main Verification `31589744551`成功；失败继续由现有`security`永久Context聚合阻断，不新增第五个Required Context。
 
 ## 8. G5：Reliability / Performance
 
@@ -413,12 +425,12 @@ pnpm check:docs
 - 大作品Backup/Restore性能门：5轮真实命名快照与恢复，Backup P95 ≤ 200 ms、Restore P95 ≤ 300 ms的`enforced`预算由永久`performance` Context阻断。
 - Windows/macOS/Linux三平台作者体验矩阵：同一真实Electron作者主路径在三平台原生Runner执行并生成独立Evidence，任一平台失败阻断`quality / quality`。
 
-### Phase 4 — 当前实施（Supply Chain）
+### Phase 4 — 当前实施（Supply Chain；首批已闭环）
 
-- SBOM；
+- SBOM：已闭环；
 - SAST；
 - Artifact Provenance；
-- License Inventory；
+- License Inventory：已闭环；
 - Artifact Lineage；
 - Release Reproducibility验证。
 

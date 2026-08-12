@@ -85,7 +85,9 @@ function parseStructured<Output>(parser: Parser<Output>, raw: string): Output {
 }
 
 function workflowMismatch(expected: GenerationRunType, actual: GenerationRunType): never {
-  throw new TypeError(`Generation workflow handler mismatch: expected ${expected}, received ${actual}.`);
+  throw new TypeError(
+    `Generation workflow handler mismatch: expected ${expected}, received ${actual}.`,
+  );
 }
 
 function unsupported(runType: string): never {
@@ -580,11 +582,7 @@ async function mergeWorkflow({ services, requestId, operation }: GenerationWorkf
   });
 }
 
-async function stateExtractWorkflow({
-  services,
-  requestId,
-  operation,
-}: GenerationWorkflowContext) {
+async function stateExtractWorkflow({ services, requestId, operation }: GenerationWorkflowContext) {
   const input = operation.input;
   if (input.intent.runType !== 'state_extract') {
     return workflowMismatch('state_extract', input.intent.runType);
@@ -659,7 +657,8 @@ async function stateExtractWorkflow({
 
 async function validateWorkflow({ services, requestId, operation }: GenerationWorkflowContext) {
   const input = operation.input;
-  if (input.intent.runType !== 'validate') return workflowMismatch('validate', input.intent.runType);
+  if (input.intent.runType !== 'validate')
+    return workflowMismatch('validate', input.intent.runType);
   const intent = input.intent;
   const chapterId = requireChapter(input.chapterId);
   const provider = createProviderAdapter(operation.provider, operation.credential);

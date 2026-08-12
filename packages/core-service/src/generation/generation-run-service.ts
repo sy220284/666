@@ -82,11 +82,7 @@ function normalizeCreateInput(input: GenerationRunCreateInput): PersistedGenerat
   const scopeType = input.scopeType ?? 'chapter';
   const scopeId =
     input.scopeId ??
-    (scopeType === 'chapter'
-      ? input.chapterId
-      : scopeType === 'project'
-        ? input.projectId
-        : null);
+    (scopeType === 'chapter' ? input.chapterId : scopeType === 'project' ? input.projectId : null);
   if (scopeId === null) {
     throw new GenerationRunServiceError(
       'GENERATION_BASE_CONFLICT',

@@ -263,6 +263,9 @@ export function resultRefs(database: DatabaseSync, runId: string): GenerationRes
     if (row.resultType === 'validation_batch') {
       return [{ resultType: 'validation_batch' as const, resultId: row.resultId }];
     }
+    if (row.resultType === 'idea_card') {
+      return [{ resultType: 'idea_card' as const, resultId: row.resultId }];
+    }
     return [];
   });
 }
@@ -344,10 +347,7 @@ export function sha256(value: string): string {
   return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
-function assertGenerationScope(
-  database: DatabaseSync,
-  input: GenerationRunCreateInput,
-): void {
+function assertGenerationScope(database: DatabaseSync, input: GenerationRunCreateInput): void {
   let found: unknown;
   if (input.scopeType === 'project') {
     found =

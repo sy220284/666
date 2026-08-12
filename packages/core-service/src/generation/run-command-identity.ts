@@ -172,7 +172,8 @@ export function readGenerationRunReplay(
                 })),
               ),
             ) &&
-          stableJson(parsedJson(constraints.trimLogJson)) === stableJson(expectedConstraint.trimLog);
+          stableJson(parsedJson(constraints.trimLogJson)) ===
+            stableJson(expectedConstraint.trimLog);
     const matches =
       run.scopeType === input.scopeType &&
       run.scopeId === input.scopeId &&

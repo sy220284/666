@@ -11,11 +11,7 @@ import { ProviderConfigIdSchema, ProviderConfigSchema } from './app-data.js';
 import { DraftContentHashValueSchema, DraftEntityIdSchema } from './draft.js';
 import { ErrorCodeSchema } from './error-codes.js';
 import { GenerationScopeTypeSchema } from './generation-scope.js';
-import {
-  IdeaDepthLevelSchema,
-  IdeaDivergenceLevelSchema,
-  IdeaKindSchema,
-} from './idea-capsule.js';
+import { IdeaDepthLevelSchema, IdeaDivergenceLevelSchema, IdeaKindSchema } from './idea-capsule.js';
 import {
   GenerationResultRefSchema,
   ProjectIdSchema,
@@ -418,7 +414,11 @@ const failureSchema = z.strictObject({
 });
 const resultSchema = <Schema extends z.ZodType>(schema: Schema) =>
   z.union([
-    z.strictObject({ ok: z.literal(true), requestId: TaskIdSchema, data: schema }),
+    z.strictObject({
+      ok: z.literal(true),
+      requestId: TaskIdSchema,
+      data: schema,
+    }),
     failureSchema,
   ]);
 

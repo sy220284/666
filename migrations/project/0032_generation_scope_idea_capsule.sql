@@ -1,3 +1,4 @@
+-- migration-policy: allow-unscoped-write
 DROP TRIGGER IF EXISTS trg_state_proposal_batch_scope_insert;
 DROP TRIGGER IF EXISTS trg_validation_batch_scope_insert;
 DROP TRIGGER IF EXISTS generation_candidate_ref_requires_owned_candidate;

@@ -5,6 +5,19 @@
     "dependencyAudit": {
       "any": ["^package\\.json$", "^pnpm-lock\\.yaml$", "^pnpm-workspace\\.yaml$"]
     },
+    "supplyChainInventory": {
+      "any": [
+        "(?:^|/)package\\.json$",
+        "^pnpm-lock\\.yaml$",
+        "^pnpm-workspace\\.yaml$",
+        "^scripts/supply-chain-inventory\\.mjs$",
+        "^tests/unit/supply-chain-inventory-policy\\.test\\.ts$",
+        "^docs/process/SUPPLY_CHAIN_INVENTORY_POLICY\\.json$",
+        "^scripts/ci-risk-policy\\.mjs$",
+        "^docs/process/CI_RISK_MATRIX\\.json$",
+        "^\\.github/workflows/security\\.yml$"
+      ]
+    },
     "applicationSecurity": {
       "any": [
         "^(?:apps|packages|migrations)/",
@@ -105,6 +118,8 @@
       "any": [
         "^\\.github/",
         "^scripts/.*(?:policy|gate|acceptance|verification|automerge|release).*\\.mjs$",
+        "^scripts/supply-chain-inventory\\.mjs$",
+        "^tests/unit/supply-chain-inventory-policy\\.test\\.ts$",
         "^docs/process/",
         "^docs/PROJECT_EXECUTION_ENTRY\\.md$",
         "^AGENTS\\.md$",
@@ -127,8 +142,10 @@
       "^scripts/license-policy\\.mjs$",
       "^scripts/documentation-consistency\\.mjs$",
       "^scripts/governance-self-check\\.mjs$",
+      "^scripts/supply-chain-inventory\\.mjs$",
       "^tests/unit/ci-.*\\.test\\.ts$",
       "^tests/unit/quality-system-v2\\.test\\.ts$",
+      "^tests/unit/supply-chain-inventory-policy\\.test\\.ts$",
       "^tests/unit/automated-verification-authority\\.test\\.ts$",
       "^tests/unit/evidence-policy\\.test\\.ts$"
     ]

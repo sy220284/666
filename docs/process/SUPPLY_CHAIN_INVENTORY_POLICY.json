@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "status": "enforced",
+  "description": "Single Phase 4 authority for the repository SBOM and third-party license inventory.",
+  "sbom": {
+    "format": "cyclonedx",
+    "specVersion": "1.7",
+    "componentType": "application",
+    "includeDevelopmentDependencies": true,
+    "output": "test-results/security/supply-chain/worldforge.cdx.json"
+  },
+  "licenses": {
+    "sourceCommand": "pnpm licenses list --json",
+    "includeDevelopmentDependencies": true,
+    "output": "test-results/security/supply-chain/license-inventory.json",
+    "rejectedGroups": ["", "Unknown", "UNLICENSED", "undefined", "null"]
+  },
+  "summaryOutput": "test-results/security/supply-chain/supply-chain-summary.json"
+}

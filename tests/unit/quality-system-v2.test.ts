@@ -5,6 +5,12 @@ import { validateActiveDocumentation } from '../../scripts/documentation-consist
 import { validateGovernanceAuthorities } from '../../scripts/governance-self-check.mjs';
 import { validateLicenseMetadata } from '../../scripts/license-policy.mjs';
 
+const platformExperienceViewports = [
+  { id: 'mainstream-fhd', width: 1920, height: 1080 },
+  { id: 'mid-high-qhd', width: 2560, height: 1440 },
+  { id: 'high-end-4k', width: 3840, height: 2160 },
+];
+
 describe('统一风险矩阵', () => {
   it('Renderer变化触发产品、性能、安全、可靠性、UI、三平台体验和Windows IME风险', () => {
     expect(riskPlan(['apps/desktop/renderer/src/App.tsx'])).toMatchObject({
@@ -148,10 +154,13 @@ describe('Meta-Governance权威链', () => {
       ),
     }),
     platformExperienceMatrix: JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       status: 'enforced',
       platforms: [{ id: 'linux' }, { id: 'windows' }, { id: 'macos' }],
-      scenario: { spec: 'tests/e2e/platform-experience.spec.ts' },
+      scenario: {
+        spec: 'tests/e2e/platform-experience.spec.ts',
+        viewports: platformExperienceViewports,
+      },
     }),
   };
 
@@ -173,12 +182,37 @@ describe('Meta-Governance权威链', () => {
       validateGovernanceAuthorities({
         ...sources,
         platformExperienceMatrix: JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           status: 'enforced',
           platforms: [{ id: 'linux' }, { id: 'windows' }],
-          scenario: { spec: 'tests/e2e/platform-experience.spec.ts' },
+          scenario: {
+            spec: 'tests/e2e/platform-experience.spec.ts',
+            viewports: platformExperienceViewports,
+          },
         }),
       }),
     ).toContain('Platform experience matrix must require exactly linux, macos and windows');
+  });
+
+  it('三平台矩阵重新引入低分辨率时阻断', () => {
+    expect(
+      validateGovernanceAuthorities({
+        ...sources,
+        platformExperienceMatrix: JSON.stringify({
+          schemaVersion: 2,
+          status: 'enforced',
+          platforms: [{ id: 'linux' }, { id: 'windows' }, { id: 'macos' }],
+          scenario: {
+            spec: 'tests/e2e/platform-experience.spec.ts',
+            viewports: [
+              { id: 'legacy-low', width: 1280, height: 800 },
+              ...platformExperienceViewports.slice(1),
+            ],
+          },
+        }),
+      }),
+    ).toContain(
+      'Platform experience matrix must require exactly 1920x1080, 2560x1440 and 3840x2160 viewports',
+    );
   });
 });

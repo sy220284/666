@@ -178,6 +178,7 @@ type AdaptedTaskDomain = AdaptedDomain<
   Pick<WorldforgeBridge['task'], 'getSnapshot' | 'cancel' | 'listActive'>
 >;
 type AdaptedGenerationDomain = AdaptedDomain<WorldforgeBridge['generation']>;
+type GenerationStartOutcome = Awaited<ReturnType<AdaptedGenerationDomain['start']>>;
 
 export interface RendererBridgeAdapter {
   readonly lifecycle: WorldforgeBridge['lifecycle'];
@@ -292,10 +293,11 @@ export function createRendererBridgeAdapter(
 }
 
 function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGenerationDomain {
+  const starts = new Map<string, Promise<GenerationStartOutcome>>();
   return new Proxy(generation, {
     get(target, property, receiver) {
       if (property !== 'start') return Reflect.get(target, property, receiver);
-      return async (...args: Parameters<AdaptedGenerationDomain['start']>) => {
+      return (...args: Parameters<AdaptedGenerationDomain['start']>) => {
         const [input] = args;
         const scopeType = input.scopeType ?? 'chapter';
         const scopeId =
@@ -305,7 +307,11 @@ function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGene
             : scopeType === 'project'
               ? input.projectId
               : null);
-        if (scopeId) {
+        if (!scopeId) return target.start(...args);
+        const key = `${input.projectId}:${scopeType}:${scopeId}:${input.intent.runType}`;
+        const pending = starts.get(key);
+        if (pending) return pending;
+        const operation = (async (): Promise<GenerationStartOutcome> => {
           const active = await target.listRuns(
             {
               projectId: input.projectId,
@@ -314,27 +320,31 @@ function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGene
               scopeId,
             },
             {
-              mode: 'replace',
-              requestKey: `generation-active:${input.projectId}:${scopeType}:${scopeId}:${input.intent.runType}`,
+              mode: 'share',
+              requestKey: `generation-active:${key}`,
             },
           );
-          if (active.state === 'success') {
-            const existing = active.data.runs.find(
-              (run) =>
-                run.runType === input.intent.runType &&
-                (run.status === 'queued' || run.status === 'running'),
-            );
-            if (existing) {
-              return {
-                state: 'success' as const,
-                generation: active.generation,
-                requestId: existing.requestId,
-                data: { run: existing, taskId: existing.taskId },
-              };
-            }
+          if (active.state !== 'success') return active;
+          const existing = active.data.runs.find(
+            (run) =>
+              run.runType === input.intent.runType &&
+              (run.status === 'queued' || run.status === 'running'),
+          );
+          if (existing) {
+            return {
+              state: 'success',
+              generation: active.generation,
+              requestId: existing.requestId,
+              data: { run: existing, taskId: existing.taskId },
+            };
           }
-        }
-        return target.start(...args);
+          return target.start(...args);
+        })();
+        starts.set(key, operation);
+        void operation.finally(() => {
+          if (starts.get(key) === operation) starts.delete(key);
+        });
+        return operation;
       };
     },
   });

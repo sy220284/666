@@ -177,13 +177,14 @@ type AdaptedDomain<Domain> = {
 type AdaptedTaskDomain = AdaptedDomain<
   Pick<WorldforgeBridge['task'], 'getSnapshot' | 'cancel' | 'listActive'>
 >;
+type AdaptedGenerationDomain = AdaptedDomain<WorldforgeBridge['generation']>;
 
 export interface RendererBridgeAdapter {
   readonly lifecycle: WorldforgeBridge['lifecycle'];
   readonly app: AdaptedDomain<WorldforgeBridge['app']>;
   readonly settings: AdaptedDomain<WorldforgeBridge['settings']>;
   readonly providers: AdaptedDomain<WorldforgeBridge['providers']>;
-  readonly generation: AdaptedDomain<WorldforgeBridge['generation']>;
+  readonly generation: AdaptedGenerationDomain;
   readonly project: AdaptedDomain<WorldforgeBridge['project']>;
   readonly recovery: AdaptedDomain<WorldforgeBridge['recovery']>;
   readonly textIo: AdaptedDomain<WorldforgeBridge['textIo']>;
@@ -225,17 +226,16 @@ export function createRendererBridgeAdapter(
         onShutdownPrepare: () => () => undefined,
         acknowledgeShutdown: () => undefined,
       };
+  const generation = guardGenerationDomain(
+    adaptDomain('generation', requireDomain(bridge.generation, 'generation'), coordinator),
+  );
 
   return {
     lifecycle,
     app: adaptDomain('app', requireDomain(bridge.app, 'app'), coordinator),
     settings: adaptDomain('settings', requireDomain(bridge.settings, 'settings'), coordinator),
     providers: adaptDomain('providers', requireDomain(bridge.providers, 'providers'), coordinator),
-    generation: adaptDomain(
-      'generation',
-      requireDomain(bridge.generation, 'generation'),
-      coordinator,
-    ),
+    generation,
     project: adaptDomain('project', requireDomain(bridge.project, 'project'), coordinator),
     recovery: adaptDomain('recovery', requireDomain(bridge.recovery, 'recovery'), coordinator),
     textIo: adaptDomain('textIo', requireDomain(bridge.textIo, 'textIo'), coordinator),
@@ -289,6 +289,55 @@ export function createRendererBridgeAdapter(
     },
     cancelAll: () => coordinator.cancelAll(),
   };
+}
+
+function guardGenerationDomain(generation: AdaptedGenerationDomain): AdaptedGenerationDomain {
+  return new Proxy(generation, {
+    get(target, property, receiver) {
+      if (property !== 'start') return Reflect.get(target, property, receiver);
+      return async (...args: Parameters<AdaptedGenerationDomain['start']>) => {
+        const [input] = args;
+        const scopeType = input.scopeType ?? 'chapter';
+        const scopeId =
+          input.scopeId ??
+          (scopeType === 'chapter'
+            ? (input.chapterId ?? null)
+            : scopeType === 'project'
+              ? input.projectId
+              : null);
+        if (scopeId) {
+          const active = await target.listRuns(
+            {
+              projectId: input.projectId,
+              chapterId: input.chapterId ?? null,
+              scopeType,
+              scopeId,
+            },
+            {
+              mode: 'replace',
+              requestKey: `generation-active:${input.projectId}:${scopeType}:${scopeId}:${input.intent.runType}`,
+            },
+          );
+          if (active.state === 'success') {
+            const existing = active.data.runs.find(
+              (run) =>
+                run.runType === input.intent.runType &&
+                (run.status === 'queued' || run.status === 'running'),
+            );
+            if (existing) {
+              return {
+                state: 'success' as const,
+                generation: active.generation,
+                requestId: existing.requestId,
+                data: { run: existing, taskId: existing.taskId },
+              };
+            }
+          }
+        }
+        return target.start(...args);
+      };
+    },
+  });
 }
 
 export function createWindowRendererBridgeAdapter(): RendererBridgeAdapter {

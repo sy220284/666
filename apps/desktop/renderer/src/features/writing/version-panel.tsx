@@ -8,8 +8,9 @@ import type {
   VersionSummary,
 } from '@worldforge/contracts';
 
-import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { interactionLocked } from '../../runtime/interaction-locks.js';
 import { nullableFormText } from './candidate-selection.js';
 import { ReviewDiffPanel } from './review-diff-panel.js';
 
@@ -76,8 +77,9 @@ export function VersionPanel({
   const create = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     const form = event.currentTarget;
     event.preventDefault();
-    if (pending || readOnly || !(await flush())) {
-      if (!pending) setStatus('自动保存失败，未创建历史版本。');
+    if (interactionLocked(pending, readOnly)) return;
+    if (!(await flush())) {
+      setStatus('自动保存失败，未创建历史版本。');
       return;
     }
     const values = new FormData(form);
@@ -125,7 +127,7 @@ export function VersionPanel({
   };
 
   const finalize = async (versionId: string): Promise<void> => {
-    if (readOnly || pending) return;
+    if (interactionLocked(readOnly, pending)) return;
     setPending(true);
     const outcome = await bridge.version.setFinal({
       projectId: project.projectId,
@@ -141,8 +143,9 @@ export function VersionPanel({
   };
 
   const restore = async (versionId: string): Promise<void> => {
-    if (pending || readOnly || !(await flush())) {
-      if (!pending) setStatus('自动保存失败，未恢复历史版本。');
+    if (interactionLocked(pending, readOnly)) return;
+    if (!(await flush())) {
+      setStatus('自动保存失败，未恢复历史版本。');
       return;
     }
     setPending(true);
@@ -212,7 +215,7 @@ export function VersionPanel({
         <button
           className="primary-button"
           data-confirm-version
-          disabled={readOnly || pending}
+          disabled={interactionLocked(readOnly, pending)}
           type="submit"
         >
           创建历史版本
@@ -253,7 +256,7 @@ export function VersionPanel({
                   <button
                     data-version-action="final"
                     type="button"
-                    disabled={readOnly || version.finalized || pending}
+                    disabled={interactionLocked(readOnly, version.finalized, pending)}
                     onClick={() => void finalize(version.versionId)}
                   >
                     设为定稿
@@ -261,7 +264,7 @@ export function VersionPanel({
                   <button
                     data-version-action="restore"
                     type="button"
-                    disabled={readOnly || pending}
+                    disabled={interactionLocked(readOnly, pending)}
                     onClick={() => void restore(version.versionId)}
                   >
                     恢复为新当前稿

@@ -39,6 +39,13 @@ function continuationLaneKey(projectId: string): string {
   return `project.saveContinuation:${projectId}`;
 }
 
+export function cancelScheduledContinuationSave(
+  timer: MutableRefObject<ReturnType<typeof setTimeout> | null>,
+): void {
+  if (timer.current) clearTimeout(timer.current);
+  timer.current = null;
+}
+
 export function useWritingContinuation(input: UseWritingContinuationInput) {
   const continuationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const continuationScrollCleanup = useRef<(() => void) | null>(null);
@@ -47,6 +54,7 @@ export function useWritingContinuation(input: UseWritingContinuationInput) {
   );
 
   const saveContinuation = useCallback(async (): Promise<boolean> => {
+    cancelScheduledContinuationSave(continuationTimer);
     const instance = input.editor.current;
     const currentDraft = input.activeDraft.current;
     const currentChapter = input.activeChapter.current;
@@ -76,7 +84,7 @@ export function useWritingContinuation(input: UseWritingContinuationInput) {
 
   const scheduleContinuationSave = useCallback((): void => {
     if (input.readOnly) return;
-    if (continuationTimer.current) clearTimeout(continuationTimer.current);
+    cancelScheduledContinuationSave(continuationTimer);
     continuationTimer.current = setTimeout(() => {
       continuationTimer.current = null;
       void saveContinuation();

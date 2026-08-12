@@ -73,7 +73,7 @@ const PROJECT_CLONE_POLICY = new Map<string, ProjectCloneAction>([
   ['backup_policies', 'clone-remap'],
   ['backup_failures', 'drop'],
   ['command_receipts', 'drop'],
-  ['semantic_revision', 'clone-remap'],
+  ['semantic_revision', 'regenerate'],
 ]);
 
 function quoteIdentifier(identifier: string): string {
@@ -133,6 +133,7 @@ export function prepareProjectClone(database: DatabaseSync, timestamp: string): 
   deleteAll(database, available, 'backup_records');
   deleteAll(database, available, 'migration_journal');
   deleteAll(database, available, 'command_receipts');
+  deleteAll(database, available, 'semantic_revision');
 
   for (const table of ['fts_draft_blocks', 'fts_version_blocks', 'fts_entities']) {
     deleteAll(database, available, table);
@@ -175,8 +176,16 @@ export function prepareProjectClone(database: DatabaseSync, timestamp: string): 
           AND partial_status IN ('available', 'saved')`,
     );
   }
+}
 
-  if (available.has('semantic_revision')) {
-    database.exec('UPDATE semantic_revision SET revision = 0');
-  }
+export function finalizeProjectClone(database: DatabaseSync, projectId: string): void {
+  const available = new Set(projectCloneTables(database));
+  if (!available.has('semantic_revision')) return;
+  database
+    .prepare(
+      `INSERT INTO semantic_revision(project_id, revision)
+       VALUES(?, 0)
+       ON CONFLICT(project_id) DO UPDATE SET revision = 0`,
+    )
+    .run(projectId);
 }

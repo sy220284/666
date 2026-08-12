@@ -24,6 +24,7 @@ import {
   settleRecoveryCompensation,
 } from './recovery-compensation.js';
 import {
+  finalizeProjectClone,
   prepareProjectClone,
   projectCloneAction,
   projectCloneTables,
@@ -121,6 +122,7 @@ export function remapProjectIdentity(
       .prepare('UPDATE projects SET id = ?, name = ?, created_at = ?, updated_at = ? WHERE id = ?')
       .run(nextProjectId, nextName, timestamp, timestamp, previousProjectId);
     if (Number(changed.changes) !== 1) throw new Error('PROJECT_ID_REMAP_FAILED');
+    finalizeProjectClone(database, nextProjectId);
     if (database.prepare('PRAGMA foreign_key_check').all().length > 0) {
       throw new Error('PROJECT_ID_REMAP_FOREIGN_KEY_FAILED');
     }

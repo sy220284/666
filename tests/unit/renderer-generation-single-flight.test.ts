@@ -112,7 +112,7 @@ describe('renderer AI single-flight guard', () => {
 
     const first = adapter.generation.start(startInput());
     const second = adapter.generation.start(startInput());
-    expect(listRuns).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(listRuns).toHaveBeenCalledTimes(1));
 
     preflight.resolve(success('list-empty', { runs: [] }));
     await expect(first).resolves.toMatchObject({ state: 'success', requestId: 'new-start' });

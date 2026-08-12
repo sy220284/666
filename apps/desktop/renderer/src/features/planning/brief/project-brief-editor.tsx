@@ -51,7 +51,13 @@ export function ProjectBriefEditor({
           <h2>作品核心</h2>
           <p>明确故事方向、读者期待与不可突破的创作边界。</p>
         </div>
-        <button className="quiet-button" data-skip-brief type="button" onClick={onSkip}>
+        <button
+          className="quiet-button"
+          data-skip-brief
+          disabled={command.pending}
+          type="button"
+          onClick={onSkip}
+        >
           稍后填写
         </button>
       </div>

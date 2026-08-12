@@ -34,6 +34,17 @@ function hash(value: unknown): string {
   return createHash('sha256').update(stableJson(value), 'utf8').digest('hex');
 }
 
+function serializableScopeValue(value: unknown): unknown {
+  if (typeof value === 'bigint') return value.toString();
+  if (Array.isArray(value)) return value.map(serializableScopeValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, serializableScopeValue(nested)]),
+    );
+  }
+  return value;
+}
+
 function scopeRecord(
   database: DatabaseSync,
   input: IdeaScopeContextInput,
@@ -143,13 +154,14 @@ export function resolveIdeaScopeContext(
   const input = { ...raw, scopeType: GenerationScopeTypeSchema.parse(raw.scopeType) };
   return workspace.readProject(input.projectId, (database) => {
     assertCompatibilityChapter(database, input);
-    const record = scopeRecord(database, input);
-    if (!record) {
+    const persistedRecord = scopeRecord(database, input);
+    if (!persistedRecord) {
       throw new GenerationRunServiceError(
         'GENERATION_BASE_CONFLICT',
         'The Idea exploration scope is missing, stale, or outside the project.',
       );
     }
+    const record = serializableScopeValue(persistedRecord) as ScopeRecord;
     const sourceContext = IdeaSourceContextSchema.parse({
       scopeType: input.scopeType,
       scopeId: input.scopeId,

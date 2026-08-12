@@ -151,6 +151,7 @@ export function AppShellPages(props: AppShellPagesProps) {
           readOnly={readOnly}
           disclosureMode={props.disclosureMode}
           onDisclosureModeChange={(mode) => void props.onSaveSettings({ defaultMode: mode })}
+          onNavigate={props.onNavigateToAuthorTarget}
           onClose={() => void props.onTransitionToRoute('writing')}
           onReturn={() => void props.onReturnToAuthorSource()}
         />

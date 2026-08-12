@@ -33,6 +33,8 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'CharacterRelationshipSchema',
   'CharacterRelationshipSetCommandSchema',
   'CharacterRelationshipSetInputSchema',
+  'CoreIdeaOperationSchema',
+  'CoreIdeaResultSchema',
   'CoreStoryKnowledgeOperationSchema',
   'CoreStoryKnowledgeResultSchema',
   'EntityCreateProposalDraftSchema',
@@ -41,6 +43,40 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'EntityStateSemanticKindSchema',
   'ForeshadowingProposalDraftSchema',
   'ForeshadowingProposalValueSchema',
+  'GenerationScopeSchema',
+  'GenerationScopeTypeSchema',
+  'IDEA_CAPSULE_BRIDGE_COMMAND',
+  'IDEA_CAPSULE_COMMANDS',
+  'IDEA_CAPSULE_IPC_CHANNELS',
+  'IdeaCardSchema',
+  'IdeaConversionApplyInputSchema',
+  'IdeaConversionApplyResultSchema',
+  'IdeaConversionPreviewInputSchema',
+  'IdeaConversionPreviewSchema',
+  'IdeaConversionSchema',
+  'IdeaConversionStatusSchema',
+  'IdeaConversionTargetSchema',
+  'IdeaConversionTargetTypeSchema',
+  'IdeaCreateInputSchema',
+  'IdeaDepthLevelSchema',
+  'IdeaDetailSchema',
+  'IdeaDivergenceLevelSchema',
+  'IdeaExploreOutputItemSchema',
+  'IdeaExploreOutputJsonSchema',
+  'IdeaExploreOutputSchema',
+  'IdeaExplorePromptInputSchema',
+  'IdeaGetInputSchema',
+  'IdeaKindSchema',
+  'IdeaListCursorSchema',
+  'IdeaListInputSchema',
+  'IdeaListSchema',
+  'IdeaMutableStatusSchema',
+  'IdeaOperationCommandSchema',
+  'IdeaOperationDataSchema',
+  'IdeaOperationResultSchema',
+  'IdeaSetStatusInputSchema',
+  'IdeaSourceContextSchema',
+  'IdeaStatusSchema',
   'KnowledgeStateProposalDraftSchema',
   'KnowledgeStateProposalValueSchema',
   'ReviewProposalActionabilitySchema',
@@ -70,7 +106,7 @@ const BASELINE = {
   protocolVersion: 1,
   ipcChannelCount: 97,
   appCommandCount: 96,
-  runtimeExportCount: 882,
+  runtimeExportCount: 918,
   legacySurfaceSha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 
@@ -104,6 +140,8 @@ describe('AR-08 contracts public surface', () => {
     expect(publicContracts.ReviewProposalSchema).toBeDefined();
     expect(publicContracts.AIReviewCatalogSchema).toBeDefined();
     expect(publicContracts.StoryKnowledgeProjectionSchema).toBeDefined();
+    expect(publicContracts.IdeaConversionTargetSchema).toBeDefined();
+    expect(publicContracts.GenerationScopeSchema).toBeDefined();
   });
 
   it('keeps the source compatibility root wired to the split modules', () => {

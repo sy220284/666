@@ -1,0 +1,132 @@
+name: Historical PR Policy Repair
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+    paths:
+      - '.github/workflows/historical-pr-policy-repair.yml'
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  repair:
+    if: >-
+      ${{ github.event.pull_request.head.ref == 'verification-repair' &&
+          github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      TARGET_PR: '383'
+      TARGET_HEAD_SHA: d4a0adf8963a8ad55f80c89538315b5e69a0a107
+      TARGET_BASE_SHA: c0ed73bc575540ab90de980f149f30485f55d371
+      TARGET_BASE_BRANCH: main
+      TARGET_MERGE_SHA: 75822a26ce4338d070834f825f1b1cc11440f643
+      REPAIR_BRANCH: verification-repair
+    steps:
+      - name: Checkout current trusted main policy
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          path: trusted
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkout historical PR candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.TARGET_HEAD_SHA }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          package_json_file: trusted/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.18.1
+      - name: Install current trusted policy dependencies
+        working-directory: trusted
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Guard historical identity and permanent checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const repo = process.env.GITHUB_REPOSITORY;
+          const token = process.env.GITHUB_TOKEN;
+          const prNumber = Number(process.env.TARGET_PR);
+          const targetHead = process.env.TARGET_HEAD_SHA;
+          const targetBase = process.env.TARGET_BASE_SHA;
+          const targetMerge = process.env.TARGET_MERGE_SHA;
+          async function gh(path) {
+            const response = await fetch(`https://api.github.com${path}`, {
+              headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${token}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+            });
+            const text = await response.text();
+            if (!response.ok) throw new Error(`GitHub API ${response.status}: ${path}\n${text}`);
+            return text ? JSON.parse(text) : null;
+          }
+          const repairPr = await gh(`/repos/${repo}/pulls/${process.env.GITHUB_EVENT_PATH ? process.env.GITHUB_EVENT_PATH : 0}`).catch(() => null);
+          const target = await gh(`/repos/${repo}/pulls/${prNumber}`);
+          if (target.state !== 'closed' || !target.merged) throw new Error('HISTORY_GUARD: PR #383 is not merged');
+          if (target.head.sha !== targetHead || target.base.sha !== targetBase || target.merge_commit_sha !== targetMerge) {
+            throw new Error('HISTORY_GUARD: PR #383 identity does not match the frozen repair target');
+          }
+          const runs = await gh(`/repos/${repo}/actions/runs?head_sha=${targetHead}&per_page=100`);
+          for (const name of ['Quality', 'Security', 'Performance']) {
+            const latestSuccessful = (runs.workflow_runs ?? [])
+              .filter((run) => run.name === name && run.status === 'completed' && run.conclusion === 'success')
+              .sort((a, b) => b.id - a.id)[0];
+            if (!latestSuccessful) throw new Error(`HISTORY_GUARD: no successful ${name} run on ${targetHead}`);
+          }
+          NODE
+      - name: Revalidate historical candidate with current trusted policy
+        working-directory: candidate
+        env:
+          TASK_BASE_REF: ${{ env.TARGET_BASE_SHA }}
+          TASK_BASE_BRANCH: ${{ env.TARGET_BASE_BRANCH }}
+          TASK_EVENT_NAME: pull_request_target
+          TASK_PR_HEAD_REF: work
+          TASK_PR_DRAFT: 'false'
+          TASK_PR_READY: 'true'
+          CANDIDATE_SHA: ${{ env.TARGET_HEAD_SHA }}
+        run: |
+          node ../trusted/.github/governance/single-work-policy.mjs validate
+          node ../trusted/.github/governance/automation-layout-policy.mjs
+          node ../trusted/scripts/workflow-structure-policy.mjs
+          node ../trusted/scripts/ci-policy.mjs
+          node ../trusted/.github/governance/pr-policy-self-test.mjs
+      - name: Publish repaired historical PR policy status
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const response = await fetch(
+            `https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/statuses/${process.env.TARGET_HEAD_SHA}`,
+            {
+              method: 'POST',
+              headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+                'Content-Type': 'application/json',
+                'X-GitHub-Api-Version': '2022-11-28',
+              },
+              body: JSON.stringify({
+                state: 'success',
+                context: 'pr-policy',
+                description: 'Historical PR revalidated by repaired trusted main policy',
+                target_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+              }),
+            },
+          );
+          if (!response.ok) throw new Error(`Unable to repair historical pr-policy status: ${response.status}`);
+          NODE

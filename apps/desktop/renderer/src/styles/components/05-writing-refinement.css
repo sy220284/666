@@ -245,6 +245,10 @@
     display: none;
   }
 
+  .writing-workbench[data-focus-mode='true'] .draft-statusbar .draft-metrics span:first-child {
+    display: inline;
+  }
+
   @media (max-width: 1180px) {
     .writing-heading {
       align-items: flex-start;

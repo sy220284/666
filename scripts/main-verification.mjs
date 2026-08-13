@@ -65,6 +65,18 @@ export function validateMainVerification({
     );
 }
 
+export function validateTreeIdentity(sourceCommit, mainCommit) {
+  const sourceTree = sourceCommit?.tree?.sha;
+  const mainTree = mainCommit?.tree?.sha;
+  if (!fullSha.test(sourceTree ?? '') || !fullSha.test(mainTree ?? '')) {
+    throw new Error('Main verification requires source and main Git tree SHAs');
+  }
+  if (sourceTree !== mainTree) {
+    throw new Error(`Final main tree differs from verified PR Head tree: ${sourceTree} != ${mainTree}`);
+  }
+  return sourceTree;
+}
+
 export async function waitForSourceReadyChecks({
   requiredChecks,
   loadCheckRuns,
@@ -99,8 +111,8 @@ export function mainVerificationStatusPayload(success, targetUrl) {
     state: success ? 'success' : 'failure',
     context: 'main-verification',
     description: success
-      ? 'Final main SHA passed provenance and static verification'
-      : 'Final main SHA failed provenance, task binding or quality verification',
+      ? 'Final main SHA passed provenance and verified-tree identity'
+      : 'Final main SHA failed provenance, tree identity or task binding',
     target_url: targetUrl,
   };
 }
@@ -169,10 +181,7 @@ async function loadSignals(e, sha) {
       `/repos/${e.owner}/${e.repo}/commits/${sha}/check-runs?per_page=100`,
       'check_runs',
     ),
-    paginatedCollection(
-      e.token,
-      `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`,
-    ),
+    paginatedCollection(e.token, `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`),
   ]);
   return [...checks, ...statuses];
 }
@@ -195,7 +204,11 @@ async function checkMain() {
         ...modeState.pending.map((name) => `${name}:pending`),
       ].join(', ')}`,
     );
-  const pull = await api(e.token, `/repos/${e.owner}/${e.repo}/pulls/${sourcePr}`);
+  const [pull, sourceCommit, mainCommit] = await Promise.all([
+    api(e.token, `/repos/${e.owner}/${e.repo}/pulls/${sourcePr}`),
+    api(e.token, `/repos/${e.owner}/${e.repo}/git/commits/${sourceHeadSha}`),
+    api(e.token, `/repos/${e.owner}/${e.repo}/git/commits/${expectedSha}`),
+  ]);
   validateMainVerification({
     repository: e.repository,
     baseBranch: config.baseBranch,
@@ -208,7 +221,8 @@ async function checkMain() {
     requiredChecks: config.requiredChecks,
     checkRuns,
   });
-  console.log(`Main verification provenance passed for ${expectedSha} from PR #${sourcePr}.`);
+  const tree = validateTreeIdentity(sourceCommit, mainCommit);
+  console.log(`Main verification provenance and tree identity passed for ${expectedSha} from PR #${sourcePr} (${tree}).`);
 }
 
 async function publishCommitStatus(e, sha, payload) {
@@ -240,16 +254,13 @@ async function publishStatus() {
     }
   }
 
-  const success =
-    process.env.VALIDATE_RESULT === 'success' &&
-    process.env.QUALITY_RESULT === 'success' &&
-    taskBindingErrors.length === 0;
+  const success = process.env.VALIDATE_RESULT === 'success' && taskBindingErrors.length === 0;
   await publishCommitStatus(e, sha, mainVerificationStatusPayload(success, targetUrl));
   if (taskId)
     await publishCommitStatus(e, sha, taskVerificationStatusPayload(taskId, success, targetUrl));
   if (!success)
     throw new Error(
-      `Final main verification failed: validate=${process.env.VALIDATE_RESULT}, quality=${process.env.QUALITY_RESULT}, task=${taskBindingErrors.join('; ') || 'none'}`,
+      `Final main verification failed: validate=${process.env.VALIDATE_RESULT}, task=${taskBindingErrors.join('; ') || 'none'}`,
     );
 }
 

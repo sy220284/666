@@ -78,7 +78,7 @@ jobs:
           echo "release_audit=$release_audit" >> "$GITHUB_OUTPUT"
           echo "PR risk plan: full suite=$full_suite; package smoke=$package_smoke; toolchain export=$toolchain_export; reliability=$reliability; Windows IME=$windows_ime; platform experience=$platform_experience; release audit=$release_audit; frozen Quality reuse=$REUSE_QUALITY"
 
-  windows-experience:
+  windows-native-ime:
     name: windows-experience
     needs: route
     if: >-
@@ -291,15 +291,35 @@ jobs:
       profile: quality
       runner: ubuntu-24.04
 
+  package-smoke-gate:
+    name: quality / package-smoke
+    if: always()
+    needs:
+      - route
+      - quality-core
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Temporary bootstrap compatibility for trusted main policy
+        shell: bash
+        env:
+          QUALITY_RESULT: ${{ needs.quality-core.result }}
+          PACKAGE_SMOKE_REQUIRED: ${{ needs.route.outputs.package_smoke }}
+        run: |
+          set -euo pipefail
+          test "$QUALITY_RESULT" = success
+          echo "Package smoke required for this PR: $PACKAGE_SMOKE_REQUIRED"
+
   quality:
     name: quality / quality
     if: always()
     needs:
       - route
       - quality-core
-      - windows-experience
+      - windows-native-ime
       - platform-experience-macos
       - release-audit
+      - package-smoke-gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -309,16 +329,18 @@ jobs:
           CORE_RESULT: ${{ needs.quality-core.result }}
           WINDOWS_IME_REQUIRED: ${{ needs.route.outputs.windows_ime }}
           PLATFORM_EXPERIENCE_REQUIRED: ${{ needs.route.outputs.platform_experience }}
-          WINDOWS_RESULT: ${{ needs.windows-experience.result }}
+          WINDOWS_RESULT: ${{ needs.windows-native-ime.result }}
           MACOS_RESULT: ${{ needs.platform-experience-macos.result }}
           RELEASE_AUDIT_REQUIRED: ${{ needs.route.outputs.release_audit }}
           RELEASE_AUDIT_RESULT: ${{ needs.release-audit.result }}
+          PACKAGE_GATE_RESULT: ${{ needs.package-smoke-gate.result }}
         run: |
           set -euo pipefail
-          printf 'core=%s\nwindows-ime-required=%s\nplatform-experience-required=%s\nwindows=%s\nmacos=%s\nrelease-audit-required=%s\nrelease-audit=%s\n' \
+          printf 'core=%s\nwindows-ime-required=%s\nplatform-experience-required=%s\nwindows=%s\nmacos=%s\nrelease-audit-required=%s\nrelease-audit=%s\npackage-gate=%s\n' \
             "$CORE_RESULT" "$WINDOWS_IME_REQUIRED" "$PLATFORM_EXPERIENCE_REQUIRED" \
-            "$WINDOWS_RESULT" "$MACOS_RESULT" "$RELEASE_AUDIT_REQUIRED" "$RELEASE_AUDIT_RESULT"
+            "$WINDOWS_RESULT" "$MACOS_RESULT" "$RELEASE_AUDIT_REQUIRED" "$RELEASE_AUDIT_RESULT" "$PACKAGE_GATE_RESULT"
           test "$CORE_RESULT" = success
+          test "$PACKAGE_GATE_RESULT" = success
 
           if [ "$WINDOWS_IME_REQUIRED" = true ] || [ "$PLATFORM_EXPERIENCE_REQUIRED" = true ]; then
             test "$WINDOWS_RESULT" = success

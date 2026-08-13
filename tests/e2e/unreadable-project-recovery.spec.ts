@@ -72,8 +72,11 @@ test('browses and exports a Version from a verified checkpoint when project.sqli
     const editor = page.locator('[data-draft-content]');
     await editor.click();
     await page.keyboard.type('物理损坏后仍可从已验证Checkpoint导出。');
+    await page.locator('[data-draft-more-actions] > summary').click();
     await page.locator('[data-save-draft]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存$/u);
+    await page.locator('[data-draft-more-actions] > summary').click();
+    await page.locator('details.writing-more-menu > summary').click();
     await page.locator('[data-create-version]').click();
     await page.locator('[data-version-title]').fill('物理损坏可导出版本');
     await page.locator('[data-version-label]').fill('恢复验证');

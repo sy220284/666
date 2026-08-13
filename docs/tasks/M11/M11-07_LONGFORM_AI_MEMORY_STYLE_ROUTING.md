@@ -47,7 +47,7 @@ M11-06 只负责日常写作界面减法与全中文体验；本任务承接后�
 
 - `docs/tasks/M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md`
 - `docs/tasks/M11/M11-05_IDEA_CAPSULE.md`
-- `docs/tasks/M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md`
+- `docs/tasks/M11/M11-06_DAILY_WRITING_UI_REFINEMENT.md`
 - `docs/ai/PROMPT_AND_EVAL_SPEC.md`
 - `docs/product/AUTHOR_LANGUAGE_GLOSSARY.md`
 - `docs/product/V1.1_AUTHOR_AI_EXPERIENCE_IMPLEMENTATION_PLAN.md`

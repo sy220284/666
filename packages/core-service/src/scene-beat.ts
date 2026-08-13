@@ -40,6 +40,7 @@ import {
 
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -196,17 +197,19 @@ function beatRow(
 }
 
 function linkedBlocks(connection: DatabaseSync, sceneBeatId: string): LinkedBlockRow[] {
-  return connection
-    .prepare(
-      `SELECT block.id AS draftBlockId, block.logical_block_id AS logicalBlockId,
+  return sqliteResult<LinkedBlockRow[]>(
+    connection
+      .prepare(
+        `SELECT block.id AS draftBlockId, block.logical_block_id AS logicalBlockId,
               draft.id AS draftId, draft.chapter_id AS chapterId, block.text
          FROM scene_beat_block_links link
          JOIN draft_blocks block ON block.id = link.draft_block_id
          JOIN drafts draft ON draft.id = block.draft_id
         WHERE link.scene_beat_id = ?
         ORDER BY draft.chapter_id, block.order_key, block.id`,
-    )
-    .all(sceneBeatId) as unknown as LinkedBlockRow[];
+      )
+      .all(sceneBeatId),
+  );
 }
 
 function parseBeat(connection: DatabaseSync, row: BeatRow): SceneBeat {
@@ -239,9 +242,10 @@ function parseBeat(connection: DatabaseSync, row: BeatRow): SceneBeat {
 function readList(connection: DatabaseSync, input: SceneBeatListInput): SceneBeatList {
   assertProject(connection, input.projectId);
   assertChapter(connection, input.projectId, input.chapterId);
-  const rows = connection
-    .prepare(
-      `SELECT id, project_id AS projectId, chapter_id AS chapterId,
+  const rows = sqliteResult<BeatRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, chapter_id AS chapterId,
               plot_node_id AS plotNodeId, title, goal,
               core_conflict AS coreConflict, expected_result AS expectedResult,
               beat_type AS beatType, word_target_percent AS wordTargetPercent,
@@ -252,8 +256,9 @@ function readList(connection: DatabaseSync, input: SceneBeatListInput): SceneBea
          FROM scene_beats
         WHERE project_id = ? AND chapter_id = ?
         ORDER BY deleted_at IS NOT NULL, order_key, id`,
-    )
-    .all(input.projectId, input.chapterId) as unknown as BeatRow[];
+      )
+      .all(input.projectId, input.chapterId),
+  );
   const parsed = rows.map((row) => parseBeat(connection, row));
   return SceneBeatListSchema.parse({
     projectId: input.projectId,
@@ -268,7 +273,12 @@ function orderedSiblings(
   chapterId: string,
   excludedId?: string,
 ): OrderedSibling[] {
-  return (
+  return sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly orderKey: number | bigint;
+    }>
+  >(
     connection
       .prepare(
         `SELECT id, order_key AS orderKey
@@ -277,10 +287,7 @@ function orderedSiblings(
             AND (? IS NULL OR id <> ?)
           ORDER BY order_key, id`,
       )
-      .all(chapterId, excludedId ?? null, excludedId ?? null) as unknown as Array<{
-      readonly id: string;
-      readonly orderKey: number | bigint;
-    }>
+      .all(chapterId, excludedId ?? null, excludedId ?? null),
   ).map((row) => ({ id: text(row.id), orderKey: integer(row.orderKey) }));
 }
 
@@ -381,9 +388,10 @@ function resolveBlocks(
   assertChapter(connection, projectId, chapterId);
   if (logicalBlockIds.length === 0) return [];
   const placeholders = logicalBlockIds.map(() => '?').join(', ');
-  const rows = connection
-    .prepare(
-      `SELECT block.id AS draftBlockId, block.logical_block_id AS logicalBlockId,
+  const rows = sqliteResult<LinkedBlockRow[]>(
+    connection
+      .prepare(
+        `SELECT block.id AS draftBlockId, block.logical_block_id AS logicalBlockId,
               draft.id AS draftId, draft.chapter_id AS chapterId, block.text
          FROM draft_blocks block
          JOIN drafts draft ON draft.id = block.draft_id
@@ -392,8 +400,9 @@ function resolveBlocks(
         WHERE volume.project_id = ? AND chapter.id = ? AND draft.status = 'active'
           AND block.logical_block_id IN (${placeholders})
         ORDER BY block.order_key, block.id`,
-    )
-    .all(projectId, chapterId, ...logicalBlockIds) as unknown as LinkedBlockRow[];
+      )
+      .all(projectId, chapterId, ...logicalBlockIds),
+  );
   if (rows.length !== new Set(logicalBlockIds).size) {
     throw new SceneBeatServiceError(
       'SCENE_BEAT_NOT_FOUND',

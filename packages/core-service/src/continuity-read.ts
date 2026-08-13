@@ -22,6 +22,7 @@ import {
   type StateRow,
 } from './continuity-model.js';
 import { chapterPosition } from './continuity-validation.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 interface RelationshipRow {
   readonly id: string;
@@ -58,26 +59,30 @@ export function parseState(row: StateRow): EntityState {
 }
 
 export function roleIds(connection: DatabaseSync, eventId: string, role: string): string[] {
-  const rows = connection
-    .prepare(
-      `SELECT entity_id AS entityId
+  const rows = sqliteResult<{ readonly entityId: string }[]>(
+    connection
+      .prepare(
+        `SELECT entity_id AS entityId
          FROM timeline_event_entities
         WHERE event_id = ? AND role = ?
         ORDER BY entity_id`,
-    )
-    .all(eventId, role) as unknown as { readonly entityId: string }[];
+      )
+      .all(eventId, role),
+  );
   return rows.map((row) => text(row.entityId));
 }
 
 export function dependencyIds(connection: DatabaseSync, eventId: string): string[] {
-  const rows = connection
-    .prepare(
-      `SELECT dependency_event_id AS dependencyId
+  const rows = sqliteResult<{ readonly dependencyId: string }[]>(
+    connection
+      .prepare(
+        `SELECT dependency_event_id AS dependencyId
          FROM timeline_event_dependencies
         WHERE event_id = ?
         ORDER BY dependency_event_id`,
-    )
-    .all(eventId) as unknown as { readonly dependencyId: string }[];
+      )
+      .all(eventId),
+  );
   return rows.map((row) => text(row.dependencyId));
 }
 
@@ -92,9 +97,10 @@ export function parseEvent(connection: DatabaseSync, row: EventRow): TimelineEve
 }
 
 export function stateRows(connection: DatabaseSync, projectId: string): StateRow[] {
-  return connection
-    .prepare(
-      `SELECT id, project_id AS projectId, entity_id AS entityId, state_key AS stateKey,
+  return sqliteResult<StateRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, entity_id AS entityId, state_key AS stateKey,
               semantic_kind AS semanticKind, value_json AS valueJson,
               valid_from_chapter_id AS validFromChapterId,
               valid_until_chapter_id AS validUntilChapterId, record_status AS recordStatus,
@@ -103,28 +109,32 @@ export function stateRows(connection: DatabaseSync, projectId: string): StateRow
          FROM entity_states
         WHERE project_id = ?
         ORDER BY entity_id, state_key, created_at DESC, id`,
-    )
-    .all(projectId) as unknown as StateRow[];
+      )
+      .all(projectId),
+  );
 }
 
 export function eventRows(connection: DatabaseSync, projectId: string): EventRow[] {
-  return connection
-    .prepare(
-      `SELECT id, project_id AS projectId, title, start_value AS startValue,
+  return sqliteResult<EventRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, title, start_value AS startValue,
               end_value AS endValue, precision, chapter_id AS chapterId,
               location_id AS locationId, description, status, archived_at AS archivedAt,
               created_at AS createdAt, updated_at AS updatedAt
          FROM timeline_events
         WHERE project_id = ?
         ORDER BY status = 'archived', start_value, id`,
-    )
-    .all(projectId) as unknown as EventRow[];
+      )
+      .all(projectId),
+  );
 }
 
 export function knowledgeRows(connection: DatabaseSync, projectId: string): KnowledgeRow[] {
-  return connection
-    .prepare(
-      `SELECT id, project_id AS projectId, information_key AS informationKey,
+  return sqliteResult<KnowledgeRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, information_key AS informationKey,
               character_id AS characterId, knowledge_status AS knowledgeStatus,
               valid_from_chapter_id AS validFromChapterId,
               valid_until_chapter_id AS validUntilChapterId,
@@ -135,14 +145,16 @@ export function knowledgeRows(connection: DatabaseSync, projectId: string): Know
          FROM knowledge_states
         WHERE project_id = ?
         ORDER BY character_id, information_key, created_at DESC, id`,
-    )
-    .all(projectId) as unknown as KnowledgeRow[];
+      )
+      .all(projectId),
+  );
 }
 
 function relationshipRows(connection: DatabaseSync, projectId: string): RelationshipRow[] {
-  return connection
-    .prepare(
-      `SELECT id, project_id AS projectId, from_character_id AS fromCharacterId,
+  return sqliteResult<RelationshipRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, from_character_id AS fromCharacterId,
               to_character_id AS toCharacterId, category, label,
               valid_from_chapter_id AS validFromChapterId,
               valid_until_chapter_id AS validUntilChapterId,
@@ -152,8 +164,9 @@ function relationshipRows(connection: DatabaseSync, projectId: string): Relation
          FROM character_relationships
         WHERE project_id = ?
         ORDER BY from_character_id, to_character_id, category, label, created_at DESC, id`,
-    )
-    .all(projectId) as unknown as RelationshipRow[];
+      )
+      .all(projectId),
+  );
 }
 
 function parseRelationship(row: RelationshipRow): CharacterRelationship {

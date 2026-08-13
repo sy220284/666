@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { VersionBlockRow, VersionRow } from './validation-model.js';
 import { authorityConflictRules } from './authority-conflict-rules.js';
 import type { RuleIssue } from './validation-rule-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export const RULE_VERSION = 'worldforge.rules.v2';
 export const CONFIG_VERSION = 'general-writing.v1';
@@ -109,9 +110,15 @@ export function rules(
       });
     }
   }
-  const missingRequired = database
-    .prepare(
-      `SELECT beat.id, beat.title
+  const missingRequired = sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly title: string;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT beat.id, beat.title
          FROM scene_beats beat
         WHERE beat.project_id = ? AND beat.chapter_id = ?
           AND beat.is_required = 1 AND beat.deleted_at IS NULL
@@ -125,11 +132,9 @@ export function rules(
              WHERE link.scene_beat_id = beat.id
           )
         ORDER BY beat.order_key, beat.id`,
-    )
-    .all(version.projectId, version.chapterId, version.versionId) as unknown as Array<{
-    readonly id: string;
-    readonly title: string;
-  }>;
+      )
+      .all(version.projectId, version.chapterId, version.versionId),
+  );
   for (const beat of missingRequired) {
     issues.push({
       issueType: 'structure.required_scene_beat',

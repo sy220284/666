@@ -27,6 +27,7 @@ import {
 
 import { type DatabaseClock } from '../database/index.js';
 import { type ProjectWorkspaceService } from '../project-workspace.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export interface GenerationRunServiceContext {
   readonly workspace: ProjectWorkspaceService;
@@ -238,15 +239,17 @@ export const runSelect = `SELECT generation.id AS runId, generation.request_id A
                      FROM generation_runs generation`;
 
 export function resultRefs(database: DatabaseSync, runId: string): GenerationResultRef[] {
-  const rows = database
-    .prepare(
-      `SELECT result_type AS resultType, result_id AS resultId,
+  const rows = sqliteResult<GenerationResultRefRow[]>(
+    database
+      .prepare(
+        `SELECT result_type AS resultType, result_id AS resultId,
               candidate_kind AS candidateKind
          FROM generation_result_refs
         WHERE run_id = ?
         ORDER BY created_at, result_type, result_id`,
-    )
-    .all(runId) as unknown as GenerationResultRefRow[];
+      )
+      .all(runId),
+  );
   const refs: GenerationResultRef[] = [];
   for (const row of rows) {
     if (row.resultType === 'candidate') {
@@ -589,24 +592,26 @@ export function list(
 } {
   const input = GenerationListRunsInputSchema.parse(raw);
   return context.workspace.readProject(input.projectId, (database) => {
-    const rows = database
-      .prepare(
-        `${runSelect}
+    const rows = sqliteResult<GenerationRunRow[]>(
+      database
+        .prepare(
+          `${runSelect}
             WHERE generation.project_id = ?
               AND (? IS NULL OR generation.chapter_id = ?)
               AND (? IS NULL OR generation.scope_type = ?)
               AND (? IS NULL OR generation.scope_id = ?)
             ORDER BY generation.created_at DESC, generation.id DESC`,
-      )
-      .all(
-        input.projectId,
-        input.chapterId,
-        input.chapterId,
-        input.scopeType,
-        input.scopeType,
-        input.scopeId,
-        input.scopeId,
-      ) as unknown as GenerationRunRow[];
+        )
+        .all(
+          input.projectId,
+          input.chapterId,
+          input.chapterId,
+          input.scopeType,
+          input.scopeType,
+          input.scopeId,
+          input.scopeId,
+        ),
+    );
     return GenerationRunListSchema.parse({ runs: rows.map((row) => mapRun(database, row)) });
   });
 }
@@ -633,7 +638,7 @@ export function getContinuationContext(
               .prepare(`SELECT text FROM generation_partial_buffers WHERE run_id = ?`)
               .get(run.runId) as PartialBufferRow | undefined
           )?.text ?? '')
-        : (
+        : sqliteResult<Array<{ readonly text: string }>>(
             database
               .prepare(
                 `SELECT block.text
@@ -643,7 +648,7 @@ export function getContinuationContext(
                 AND candidate.completeness = 'partial'
               ORDER BY candidate.created_at DESC, block.order_key, block.id`,
               )
-              .all(run.runId) as unknown as Array<{ readonly text: string }>
+              .all(run.runId),
           )
             .map((row) => row.text)
             .join('\n\n');

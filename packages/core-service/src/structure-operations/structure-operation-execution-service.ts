@@ -32,6 +32,7 @@ import {
   type StructureOperationServiceOptions,
 } from './structure-operation-model.js';
 import { StructureOperationPreviewService } from './structure-operation-preview-service.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export class StructureOperationExecutionService {
   readonly #workspace: ProjectWorkspaceService;
@@ -80,11 +81,13 @@ export class StructureOperationExecutionService {
       );
       this.#faultInjector?.('after-source-persist');
 
-      const siblings = database
-        .prepare(
-          'SELECT id, order_key AS orderKey FROM chapters WHERE volume_id = ? AND deleted_at IS NULL ORDER BY order_key, id',
-        )
-        .all(sourceLocation.volumeId) as unknown as OrderedSibling[];
+      const siblings = sqliteResult<OrderedSibling[]>(
+        database
+          .prepare(
+            'SELECT id, order_key AS orderKey FROM chapters WHERE volume_id = ? AND deleted_at IS NULL ORDER BY order_key, id',
+          )
+          .all(sourceLocation.volumeId),
+      );
       const order = planOrderKey(siblings, {
         kind: 'after',
         siblingId: sourceLocation.chapterId,

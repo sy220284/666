@@ -10,6 +10,7 @@ import {
 
 import type { RuleIssue } from './validation-rule-model.js';
 import type { VersionRow } from './validation-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 interface StateFactRow {
   readonly id: string;
@@ -73,18 +74,22 @@ function issue(
 }
 
 function chapterPositions(database: DatabaseSync, projectId: string): Map<string, ChapterPosition> {
-  const rows = database
-    .prepare(
-      `SELECT chapter.id, volume.order_key AS volumeOrder, chapter.order_key AS chapterOrder
+  const rows = sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly volumeOrder: number | bigint;
+      readonly chapterOrder: number | bigint;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT chapter.id, volume.order_key AS volumeOrder, chapter.order_key AS chapterOrder
          FROM chapters chapter
          JOIN volumes volume ON volume.id = chapter.volume_id
         WHERE volume.project_id = ? AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
-    )
-    .all(projectId) as unknown as Array<{
-    readonly id: string;
-    readonly volumeOrder: number | bigint;
-    readonly chapterOrder: number | bigint;
-  }>;
+      )
+      .all(projectId),
+  );
   return new Map(
     rows.map((row) => [row.id, [Number(row.volumeOrder), Number(row.chapterOrder)] as const]),
   );
@@ -99,9 +104,10 @@ function stateConflictRules(
   version: VersionRow,
   positions: Map<string, ChapterPosition>,
 ): RuleIssue[] {
-  const rows = database
-    .prepare(
-      `SELECT id, entity_id AS entityId,
+  const rows = sqliteResult<StateFactRow[]>(
+    database
+      .prepare(
+        `SELECT id, entity_id AS entityId,
               semantic_kind AS semanticKind, value_json AS valueJson,
               valid_from_chapter_id AS validFromChapterId,
               valid_until_chapter_id AS validUntilChapterId,
@@ -109,8 +115,9 @@ function stateConflictRules(
          FROM entity_states
         WHERE project_id = ? AND record_status <> 'invalid'
         ORDER BY entity_id, state_key, created_at, id`,
-    )
-    .all(version.projectId) as unknown as StateFactRow[];
+      )
+      .all(version.projectId),
+  );
   const issues: RuleIssue[] = [];
   const byEntity = group(rows, (row) => row.entityId);
   for (const [entityId, entityRows] of byEntity) {
@@ -264,23 +271,29 @@ function uniquePossessionIssues(
 }
 
 function timelineConflictRules(database: DatabaseSync, version: VersionRow): RuleIssue[] {
-  const events = database
-    .prepare(
-      `SELECT id, title, start_value AS startValue, end_value AS endValue, precision,
+  const events = sqliteResult<TimelineFactRow[]>(
+    database
+      .prepare(
+        `SELECT id, title, start_value AS startValue, end_value AS endValue, precision,
               location_id AS locationId
          FROM timeline_events WHERE project_id = ? AND status = 'active'`,
-    )
-    .all(version.projectId) as unknown as TimelineFactRow[];
+      )
+      .all(version.projectId),
+  );
   const eventById = new Map(events.map((event) => [event.id, event]));
-  const dependencies = database
-    .prepare(
-      `SELECT event_id AS eventId, dependency_event_id AS dependencyId
+  const dependencies = sqliteResult<
+    Array<{
+      readonly eventId: string;
+      readonly dependencyId: string;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT event_id AS eventId, dependency_event_id AS dependencyId
          FROM timeline_event_dependencies WHERE project_id = ?`,
-    )
-    .all(version.projectId) as unknown as Array<{
-    readonly eventId: string;
-    readonly dependencyId: string;
-  }>;
+      )
+      .all(version.projectId),
+  );
   const issues: RuleIssue[] = [];
   const graph = new Map<string, string[]>();
   for (const relation of dependencies) {
@@ -345,16 +358,20 @@ function timelineLocationConflicts(
   version: VersionRow,
   events: readonly TimelineFactRow[],
 ): RuleIssue[] {
-  const presenceRows = database
-    .prepare(
-      `SELECT event_id AS eventId, entity_id AS entityId
+  const presenceRows = sqliteResult<
+    Array<{
+      readonly eventId: string;
+      readonly entityId: string;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT event_id AS eventId, entity_id AS entityId
          FROM timeline_event_entities
         WHERE project_id = ? AND role IN ('participant', 'witness')`,
-    )
-    .all(version.projectId) as unknown as Array<{
-    readonly eventId: string;
-    readonly entityId: string;
-  }>;
+      )
+      .all(version.projectId),
+  );
   const presence = new Map<string, Set<string>>();
   for (const row of presenceRows) {
     const entityIds = presence.get(row.eventId) ?? new Set<string>();
@@ -394,9 +411,20 @@ function knowledgeConflictRules(
   version: VersionRow,
   positions: Map<string, ChapterPosition>,
 ): RuleIssue[] {
-  const rows = database
-    .prepare(
-      `SELECT knowledge.id, knowledge.character_id AS characterId,
+  const rows = sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly characterId: string;
+      readonly informationKey: string;
+      readonly validFromChapterId: string;
+      readonly sourceVersionId: string;
+      readonly sourceLogicalBlockId: string | null;
+      readonly sourceChapterId: string;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT knowledge.id, knowledge.character_id AS characterId,
               knowledge.information_key AS informationKey,
               knowledge.valid_from_chapter_id AS validFromChapterId,
               knowledge.source_version_id AS sourceVersionId,
@@ -407,16 +435,9 @@ function knowledgeConflictRules(
          JOIN chapters source_chapter ON source_chapter.id = source_version.chapter_id
         WHERE knowledge.project_id = ? AND knowledge.record_status <> 'invalid'
           AND knowledge.knowledge_status <> 'unknown'`,
-    )
-    .all(version.projectId) as unknown as Array<{
-    readonly id: string;
-    readonly characterId: string;
-    readonly informationKey: string;
-    readonly validFromChapterId: string;
-    readonly sourceVersionId: string;
-    readonly sourceLogicalBlockId: string | null;
-    readonly sourceChapterId: string;
-  }>;
+      )
+      .all(version.projectId),
+  );
   return rows
     .filter(
       (row) =>
@@ -443,23 +464,27 @@ function foreshadowingConflictRules(
   version: VersionRow,
   positions: Map<string, ChapterPosition>,
 ): RuleIssue[] {
-  const links = database
-    .prepare(
-      `SELECT foreshadowing.id, foreshadowing.title, foreshadowing.status,
+  const links = sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly title: string;
+      readonly status: string;
+      readonly revealByChapterId: string | null;
+      readonly chapterId: string | null;
+      readonly role: string | null;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT foreshadowing.id, foreshadowing.title, foreshadowing.status,
               foreshadowing.reveal_by_chapter_id AS revealByChapterId,
               link.chapter_id AS chapterId, link.role
          FROM foreshadowings foreshadowing
          LEFT JOIN foreshadowing_chapters link ON link.foreshadowing_id = foreshadowing.id
         WHERE foreshadowing.project_id = ?`,
-    )
-    .all(version.projectId) as unknown as Array<{
-    readonly id: string;
-    readonly title: string;
-    readonly status: string;
-    readonly revealByChapterId: string | null;
-    readonly chapterId: string | null;
-    readonly role: string | null;
-  }>;
+      )
+      .all(version.projectId),
+  );
   const byId = group(links, (row) => row.id);
   const issues: RuleIssue[] = [];
   for (const [id, rows] of byId) {
@@ -504,9 +529,17 @@ function foreshadowingConflictRules(
       );
     }
   }
-  const unmet = database
-    .prepare(
-      `SELECT source.id AS sourceId, source.title AS sourceTitle,
+  const unmet = sqliteResult<
+    Array<{
+      readonly sourceId: string;
+      readonly sourceTitle: string;
+      readonly targetId: string;
+      readonly targetStatus: string;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT source.id AS sourceId, source.title AS sourceTitle,
               target.id AS targetId, target.status AS targetStatus
          FROM foreshadowing_relations relation
          JOIN foreshadowings source ON source.id = relation.source_foreshadowing_id
@@ -514,13 +547,9 @@ function foreshadowingConflictRules(
         WHERE relation.project_id = ? AND relation.relation_kind = 'depends_on'
           AND source.status IN ('planted', 'reinforced', 'partially_revealed', 'revealed')
           AND target.status IN ('planned', 'cancelled')`,
-    )
-    .all(version.projectId) as unknown as Array<{
-    readonly sourceId: string;
-    readonly sourceTitle: string;
-    readonly targetId: string;
-    readonly targetStatus: string;
-  }>;
+      )
+      .all(version.projectId),
+  );
   for (const row of unmet) {
     issues.push(
       issue(version, {

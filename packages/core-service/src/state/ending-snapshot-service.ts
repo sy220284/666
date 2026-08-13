@@ -21,6 +21,7 @@ import {
 } from '@worldforge/contracts';
 import { compareChapterPosition } from '@worldforge/domain';
 import { type DatabaseSync } from 'node:sqlite';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export type ChapterPosition = ReturnType<typeof chapterPosition>;
 
@@ -67,20 +68,24 @@ export function chapterPositions(
   connection: DatabaseSync,
   projectId: string,
 ): ReadonlyMap<string, ChapterPosition> {
-  const rows = connection
-    .prepare(
-      `SELECT c.id AS chapterId, volume.order_key AS volumeOrder,
+  const rows = sqliteResult<
+    {
+      readonly chapterId: string;
+      readonly volumeOrder: number | bigint;
+      readonly chapterOrder: number | bigint;
+    }[]
+  >(
+    connection
+      .prepare(
+        `SELECT c.id AS chapterId, volume.order_key AS volumeOrder,
               c.order_key AS chapterOrder
          FROM chapters c
          JOIN volumes volume ON volume.id = c.volume_id
         WHERE volume.project_id = ?
           AND c.deleted_at IS NULL AND volume.deleted_at IS NULL`,
-    )
-    .all(projectId) as unknown as {
-    readonly chapterId: string;
-    readonly volumeOrder: number | bigint;
-    readonly chapterOrder: number | bigint;
-  }[];
+      )
+      .all(projectId),
+  );
   return new Map(
     rows.map((row) => [
       row.chapterId,
@@ -137,16 +142,18 @@ export function historicalForeshadowings(
   readonly id: string;
   readonly status: HistoricalForeshadowingStatus;
 }> {
-  const rows = connection
-    .prepare(
-      `SELECT f.id, link.chapter_id AS chapterId, link.role
+  const rows = sqliteResult<ForeshadowingEventRow[]>(
+    connection
+      .prepare(
+        `SELECT f.id, link.chapter_id AS chapterId, link.role
          FROM foreshadowings f
          JOIN foreshadowing_chapters link ON link.foreshadowing_id = f.id
         WHERE f.project_id = ?
           AND link.role IN ('plant', 'reinforce', 'partial_reveal', 'reveal')
         ORDER BY f.id, link.chapter_id, link.role`,
-    )
-    .all(projectId) as unknown as ForeshadowingEventRow[];
+      )
+      .all(projectId),
+  );
   const latest = new Map<
     string,
     {
@@ -176,20 +183,24 @@ export function historicalArcMilestones(
   positions: ReadonlyMap<string, ChapterPosition>,
   target: ChapterPosition,
 ) {
-  const rows = connection
-    .prepare(
-      `SELECT id, status, planned_chapter_id AS plannedChapterId,
+  const rows = sqliteResult<
+    {
+      readonly id: string;
+      readonly status: 'hit' | 'skipped';
+      readonly plannedChapterId: string | null;
+      readonly actualChapterId: string | null;
+    }[]
+  >(
+    connection
+      .prepare(
+        `SELECT id, status, planned_chapter_id AS plannedChapterId,
               actual_chapter_id AS actualChapterId
          FROM arc_milestones
         WHERE project_id = ? AND status IN ('hit', 'skipped')
         ORDER BY id`,
-    )
-    .all(projectId) as unknown as {
-    readonly id: string;
-    readonly status: 'hit' | 'skipped';
-    readonly plannedChapterId: string | null;
-    readonly actualChapterId: string | null;
-  }[];
+      )
+      .all(projectId),
+  );
   return rows
     .filter((row) => {
       const effectiveChapterId = row.actualChapterId ?? row.plannedChapterId;
@@ -208,9 +219,20 @@ export function snapshotContent(
 ): EndingSnapshotContent {
   const target = chapterPosition(connection, projectId, chapterId);
   const positions = chapterPositions(connection, projectId);
-  const entityRows = connection
-    .prepare(
-      `SELECT entity_id AS entityId, state_key AS stateKey,
+  const entityRows = sqliteResult<
+    {
+      readonly entityId: string;
+      readonly stateKey: string;
+      readonly semanticKind: string;
+      readonly valueJson: string;
+      readonly sourceVersionId: string;
+      readonly validFromChapterId: string;
+      readonly validUntilChapterId: string | null;
+    }[]
+  >(
+    connection
+      .prepare(
+        `SELECT entity_id AS entityId, state_key AS stateKey,
               semantic_kind AS semanticKind, value_json AS valueJson,
               source_version_id AS sourceVersionId,
               valid_from_chapter_id AS validFromChapterId,
@@ -218,36 +240,45 @@ export function snapshotContent(
          FROM entity_states
         WHERE project_id = ? AND record_status = 'current'
         ORDER BY entity_id, state_key`,
-    )
-    .all(projectId) as unknown as {
-    readonly entityId: string;
-    readonly stateKey: string;
-    readonly semanticKind: string;
-    readonly valueJson: string;
-    readonly sourceVersionId: string;
-    readonly validFromChapterId: string;
-    readonly validUntilChapterId: string | null;
-  }[];
-  const knowledgeRows = connection
-    .prepare(
-      `SELECT character_id AS characterId, information_key AS informationKey,
+      )
+      .all(projectId),
+  );
+  const knowledgeRows = sqliteResult<
+    {
+      readonly characterId: string;
+      readonly informationKey: string;
+      readonly knowledgeStatus: string;
+      readonly validFromChapterId: string;
+      readonly validUntilChapterId: string | null;
+    }[]
+  >(
+    connection
+      .prepare(
+        `SELECT character_id AS characterId, information_key AS informationKey,
               knowledge_status AS knowledgeStatus,
               valid_from_chapter_id AS validFromChapterId,
               valid_until_chapter_id AS validUntilChapterId
          FROM knowledge_states
         WHERE project_id = ? AND record_status = 'current'
         ORDER BY character_id, information_key`,
-    )
-    .all(projectId) as unknown as {
-    readonly characterId: string;
-    readonly informationKey: string;
-    readonly knowledgeStatus: string;
-    readonly validFromChapterId: string;
-    readonly validUntilChapterId: string | null;
-  }[];
-  const relationshipRows = connection
-    .prepare(
-      `SELECT id, from_character_id AS fromCharacterId,
+      )
+      .all(projectId),
+  );
+  const relationshipRows = sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly fromCharacterId: string;
+      readonly toCharacterId: string;
+      readonly category: string;
+      readonly label: string;
+      readonly sourceVersionId: string;
+      readonly validFromChapterId: string;
+      readonly validUntilChapterId: string | null;
+    }>
+  >(
+    connection
+      .prepare(
+        `SELECT id, from_character_id AS fromCharacterId,
               to_character_id AS toCharacterId, category, label,
               source_version_id AS sourceVersionId,
               valid_from_chapter_id AS validFromChapterId,
@@ -255,17 +286,9 @@ export function snapshotContent(
          FROM character_relationships
         WHERE project_id = ? AND record_status = 'current'
         ORDER BY from_character_id, to_character_id, category, label, id`,
-    )
-    .all(projectId) as unknown as Array<{
-    readonly id: string;
-    readonly fromCharacterId: string;
-    readonly toCharacterId: string;
-    readonly category: string;
-    readonly label: string;
-    readonly sourceVersionId: string;
-    readonly validFromChapterId: string;
-    readonly validUntilChapterId: string | null;
-  }>;
+      )
+      .all(projectId),
+  );
   return EndingSnapshotContentSchema.parse({
     entityStates: entityRows
       .filter((row) =>

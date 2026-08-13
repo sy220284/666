@@ -127,6 +127,7 @@ describe('代码质量治理：Renderer 低覆盖界面直接渲染', () => {
     const draft = contractInput<DraftDocument>({
       draftId: '33333333-3333-4333-8333-333333333333',
       revision: 7,
+      blocks: [],
     });
 
     const versionHtml = render(VersionPanel, {

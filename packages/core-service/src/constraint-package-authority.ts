@@ -13,6 +13,7 @@ import {
 import { estimateConstraintTokens, stableSerialize, trimConstraints } from '@worldforge/domain';
 
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 interface AuthorityProjection {
   readonly chapterOrder: ReadonlyMap<string, number>;
@@ -163,24 +164,27 @@ function loadProjection(
     .map((source) => source.sourceId);
 
   return workspace.readProject(input.projectId, (connection) => {
-    const chapterRows = connection
-      .prepare(
-        `SELECT chapter.id
+    const chapterRows = sqliteResult<Record<string, unknown>[]>(
+      connection
+        .prepare(
+          `SELECT chapter.id
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
           WHERE volume.project_id = ? AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
           ORDER BY volume.order_key, chapter.order_key, chapter.id`,
-      )
-      .all(input.projectId) as unknown as Record<string, unknown>[];
+        )
+        .all(input.projectId),
+    );
     const chapterOrder = new Map(
       chapterRows.map((row, index) => [text(row.id, 'chapter.id'), index] as const),
     );
     const targetOrder = chapterOrder.get(input.chapterId);
     if (targetOrder === undefined) throw new Error('CONSTRAINT_AUTHORITY_TARGET_CHAPTER_NOT_FOUND');
 
-    const archivedEntities = connection
-      .prepare(
-        `SELECT DISTINCT entity.id, entity.entity_type AS entityType, entity.name,
+    const archivedEntities = sqliteResult<Record<string, unknown>[]>(
+      connection
+        .prepare(
+          `SELECT DISTINCT entity.id, entity.entity_type AS entityType, entity.name,
                 entity.aliases_json AS aliasesJson, entity.summary
            FROM scene_beat_entities link
            JOIN scene_beats beat ON beat.id = link.scene_beat_id
@@ -188,22 +192,25 @@ function loadProjection(
           WHERE link.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
             AND entity.status = 'archived'
           ORDER BY entity.entity_type, lower(entity.name), entity.id`,
-      )
-      .all(input.projectId, input.chapterId) as unknown as Record<string, unknown>[];
+        )
+        .all(input.projectId, input.chapterId),
+    );
     const archivedEntityIds = archivedEntities.map((row) => text(row.id, 'entity.id'));
     const archivedCanonFacts =
       archivedEntityIds.length === 0
         ? []
-        : (connection
-            .prepare(
-              `SELECT id, entity_id AS entityId, fact_key AS factKey,
+        : sqliteResult<Record<string, unknown>[]>(
+            connection
+              .prepare(
+                `SELECT id, entity_id AS entityId, fact_key AS factKey,
                       value_json AS valueJson, description
                  FROM canon_facts
                 WHERE project_id = ? AND status = 'current'
                   AND entity_id IN (${archivedEntityIds.map(() => '?').join(',')})
                 ORDER BY entity_id, fact_key, id`,
-            )
-            .all(input.projectId, ...archivedEntityIds) as unknown as Record<string, unknown>[]);
+              )
+              .all(input.projectId, ...archivedEntityIds),
+          );
 
     const foreshadowing = new Map<
       string,
@@ -219,10 +226,9 @@ function loadProjection(
         ORDER BY volume.order_key, chapter.order_key, chapter.id`,
     );
     for (const foreshadowingId of foreshadowingIds) {
-      const rows = roleBefore.all(input.projectId, foreshadowingId) as unknown as Record<
-        string,
-        unknown
-      >[];
+      const rows = sqliteResult<Record<string, unknown>[]>(
+        roleBefore.all(input.projectId, foreshadowingId),
+      );
       const eligible = rows.filter((row) => {
         const order = chapterOrder.get(text(row.chapterId, 'foreshadowing.chapterId'));
         return order !== undefined && order <= targetOrder;

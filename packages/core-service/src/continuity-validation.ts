@@ -9,6 +9,7 @@ import {
 } from '@worldforge/domain';
 
 import { ContinuityServiceError, type ChapterPosition } from './continuity-model.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 export function chapterPosition(
   connection: DatabaseSync,
@@ -155,17 +156,21 @@ export function assertNoDependencyCycle(
   eventId: string,
   dependencies: readonly string[],
 ): void {
-  const rows = connection
-    .prepare(
-      `SELECT d.event_id AS eventId, d.dependency_event_id AS dependencyId
+  const rows = sqliteResult<
+    {
+      readonly eventId: string;
+      readonly dependencyId: string;
+    }[]
+  >(
+    connection
+      .prepare(
+        `SELECT d.event_id AS eventId, d.dependency_event_id AS dependencyId
          FROM timeline_event_dependencies d
          JOIN timeline_events e ON e.id = d.event_id
         WHERE d.project_id = ? AND e.status = 'active' AND d.event_id <> ?`,
-    )
-    .all(projectId, eventId) as unknown as {
-    readonly eventId: string;
-    readonly dependencyId: string;
-  }[];
+      )
+      .all(projectId, eventId),
+  );
   const graph = new Map<string, string[]>();
   for (const row of rows) {
     graph.set(row.eventId, [...(graph.get(row.eventId) ?? []), row.dependencyId]);

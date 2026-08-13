@@ -44,6 +44,7 @@ import {
 } from './search-index-model.js';
 import { authoritativeItem, authoritativeLike, ftsHits } from './search-index-query.js';
 import { indexTarget } from './search-index-writer.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export class SearchIndexService {
   readonly #workspace: ProjectWorkspaceService;
@@ -67,14 +68,16 @@ export class SearchIndexService {
   ): Promise<SearchIndexProcessResult> {
     const input = SearchIndexProcessInputSchema.parse(raw);
     return this.#workspace.writeProject(requestId, input.projectId, (connection) => {
-      const rows = connection
-        .prepare(
-          `SELECT id, target_type AS targetType, target_id AS targetId, operation
+      const rows = sqliteResult<QueueRow[]>(
+        connection
+          .prepare(
+            `SELECT id, target_type AS targetType, target_id AS targetId, operation
              FROM search_index_queue
             ORDER BY status = 'failed', created_at, id
             LIMIT ?`,
-        )
-        .all(input.limit) as unknown as QueueRow[];
+          )
+          .all(input.limit),
+      );
       const now = this.#clock.now().toISOString();
       let succeeded = 0;
       let failed = 0;

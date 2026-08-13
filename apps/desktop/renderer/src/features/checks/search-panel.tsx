@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 
 import type {
   ProjectDictionaryEntry,
@@ -42,36 +42,48 @@ export function SearchPanel({
   const [, setRequestStateVersion] = useState(0);
   const [notice, setNotice] = useState('搜索覆盖当前稿、历史版本与人物世界设定。');
   const [reloadToken, setReloadToken] = useState(0);
-  const requests = useRef(new RequestGenerationGroup<SearchPanelRequestLane>());
-  const searchPending = requests.current.isActive('search');
-  const replacePending = requests.current.isActive('replace');
-  const dictionaryReadPending = requests.current.isActive('dictionary-read');
-  const dictionaryMutationPending = requests.current.isActive('dictionary-mutation');
+  const requestGroup = useRef(new RequestGenerationGroup<SearchPanelRequestLane>()).current;
+  const searchPending = requestGroup.isActive('search');
+  const replacePending = requestGroup.isActive('replace');
+  const dictionaryReadPending = requestGroup.isActive('dictionary-read');
+  const dictionaryMutationPending = requestGroup.isActive('dictionary-mutation');
   const dictionaryPending = dictionaryReadPending || dictionaryMutationPending;
-  const indexPending = requests.current.isActive('index');
+  const indexPending = requestGroup.isActive('index');
   const searchToolsPending = searchPending || replacePending || dictionaryPending || indexPending;
 
-  const requestStateChanged = (): void => setRequestStateVersion(nextRequestGeneration);
-  const beginRequest = (lane: SearchPanelRequestLane): number => {
-    const generation = requests.current.begin(lane);
-    requestStateChanged();
-    return generation;
-  };
-  const completeRequest = (lane: SearchPanelRequestLane, generation: number): void => {
-    if (requests.current.complete(lane, generation)) requestStateChanged();
-  };
-  const isCurrentRequest = (lane: SearchPanelRequestLane, generation: number): boolean =>
-    requests.current.isCurrent(lane, generation);
+  const requestStateChanged = useCallback(
+    (): void => setRequestStateVersion(nextRequestGeneration),
+    [],
+  );
+  const beginRequest = useCallback(
+    (lane: SearchPanelRequestLane): number => {
+      const generation = requestGroup.begin(lane);
+      requestStateChanged();
+      return generation;
+    },
+    [requestGroup, requestStateChanged],
+  );
+  const completeRequest = useCallback(
+    (lane: SearchPanelRequestLane, generation: number): void => {
+      if (requestGroup.complete(lane, generation)) requestStateChanged();
+    },
+    [requestGroup, requestStateChanged],
+  );
+  const isCurrentRequest = useCallback(
+    (lane: SearchPanelRequestLane, generation: number): boolean =>
+      requestGroup.isCurrent(lane, generation),
+    [requestGroup],
+  );
 
   useEffect(() => {
-    requests.current.invalidateAll();
+    requestGroup.invalidateAll();
     requestStateChanged();
     setResult(null);
     setPlan(null);
     setIndexState(null);
     setDictionary([]);
-    return () => requests.current.invalidateAll();
-  }, [bridge, projectId]);
+    return () => requestGroup.invalidateAll();
+  }, [bridge, projectId, requestGroup, requestStateChanged]);
 
   useEffect(() => {
     const indexGeneration = beginRequest('index');
@@ -84,11 +96,8 @@ export function SearchPanel({
     ])
       .then(([stateOutcome, dictionaryOutcome]) => {
         if (!active) return;
-        const indexCurrent = requests.current.isCurrent('index', indexGeneration);
-        const dictionaryCurrent = requests.current.isCurrent(
-          'dictionary-read',
-          dictionaryGeneration,
-        );
+        const indexCurrent = requestGroup.isCurrent('index', indexGeneration);
+        const dictionaryCurrent = requestGroup.isCurrent('dictionary-read', dictionaryGeneration);
         const failures: string[] = [];
         if (indexCurrent && stateOutcome.state === 'success') setIndexState(stateOutcome.data);
         else if (indexCurrent && stateOutcome.state === 'failure')
@@ -115,10 +124,10 @@ export function SearchPanel({
       });
     return () => {
       active = false;
-      requests.current.invalidate('index');
-      requests.current.invalidate('dictionary-read');
+      requestGroup.invalidate('index');
+      requestGroup.invalidate('dictionary-read');
     };
-  }, [bridge, projectId, reloadToken]);
+  }, [beginRequest, bridge, completeRequest, projectId, reloadToken, requestGroup]);
 
   const search = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();

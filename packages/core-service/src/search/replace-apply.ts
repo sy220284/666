@@ -20,6 +20,7 @@ import {
   numericValue,
   SearchToolsServiceError,
 } from './search-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export interface ReplaceApplyOperationsOptions {
   readonly workspace: ProjectWorkspaceService;
@@ -91,9 +92,10 @@ export class ReplaceApplyOperations {
               'A target chapter, volume or active Draft changed after the ReplacePlan preview.',
             );
           }
-          const blocks = database
-            .prepare(
-              `SELECT block.id AS recordId, volume.project_id AS projectId,
+          const blocks = sqliteResult<DraftBlockRow[]>(
+            database
+              .prepare(
+                `SELECT block.id AS recordId, volume.project_id AS projectId,
                       chapter.id AS chapterId, draft.id AS draftId,
                       draft.revision AS draftRevision, block.revision AS revision,
                       block.logical_block_id AS logicalBlockId, block.order_key AS orderKey,
@@ -108,8 +110,9 @@ export class ReplaceApplyOperations {
                   AND draft.status = 'active' AND chapter.active_draft_id = draft.id
                   AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
                 ORDER BY block.order_key, block.id`,
-            )
-            .all(draftId, input.projectId) as unknown as DraftBlockRow[];
+              )
+              .all(draftId, input.projectId),
+          );
           const draftRevision = blocks[0] ? numericValue(blocks[0].draftRevision) : -1;
           if (
             blocks.length === 0 ||

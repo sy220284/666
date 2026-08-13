@@ -31,28 +31,28 @@ export function WritingAssistancePanel({
 }: WritingAssistancePanelProps) {
   const [view, setView] = useState<WritingAssistanceView | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
-  const requestGeneration = useRef(new RequestGeneration());
+  const requestTracker = useRef(new RequestGeneration()).current;
 
   const refresh = useCallback(async (): Promise<void> => {
-    const generation = requestGeneration.current.begin();
+    const generation = requestTracker.begin();
     setState('loading');
     try {
       const next = await loadWritingAssistance(bridge, projectId, chapterId);
-      if (!requestGeneration.current.isCurrent(generation)) return;
+      if (!requestTracker.isCurrent(generation)) return;
       setView(next);
       setState('ready');
     } catch {
-      if (!requestGeneration.current.isCurrent(generation)) return;
+      if (!requestTracker.isCurrent(generation)) return;
       setState('failed');
     }
-  }, [bridge, chapterId, projectId]);
+  }, [bridge, chapterId, projectId, requestTracker]);
 
   useEffect(() => {
     void refresh();
     return () => {
-      requestGeneration.current.invalidate();
+      requestTracker.invalidate();
     };
-  }, [refresh]);
+  }, [refresh, requestTracker]);
 
   return (
     <aside className="writing-context writing-assistance feature-card" data-writing-assistance>

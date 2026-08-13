@@ -17,6 +17,7 @@ import {
   text,
   type FtsHit,
 } from './search-index-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export function ftsHits(
   connection: DatabaseSync,
@@ -42,37 +43,36 @@ export function ftsHits(
   for (const sourceType of requestedSources) {
     if (sourceType === 'entity') {
       hits.push(
-        ...(connection
-          .prepare(
-            `SELECT 'entity' AS sourceType, entity_id AS targetId,
+        ...sqliteResult<FtsHit[]>(
+          connection
+            .prepare(
+              `SELECT 'entity' AS sourceType, entity_id AS targetId,
                     NULL AS anchorId, bm25(fts_entities) AS score
                FROM fts_entities
               WHERE fts_entities MATCH ? AND project_id = ?
                 AND (? = 1 OR status = 'active')
               ORDER BY score, entity_id
               LIMIT ?`,
-          )
-          .all(
-            ftsMatch(queryVariants),
-            projectId,
-            includeArchived ? 1 : 0,
-            limit,
-          ) as unknown as FtsHit[]),
+            )
+            .all(ftsMatch(queryVariants), projectId, includeArchived ? 1 : 0, limit),
+        ),
       );
       continue;
     }
     const definition = definitions[sourceType];
     hits.push(
-      ...(connection
-        .prepare(
-          `SELECT '${sourceType}' AS sourceType, ${definition.target} AS targetId,
+      ...sqliteResult<FtsHit[]>(
+        connection
+          .prepare(
+            `SELECT '${sourceType}' AS sourceType, ${definition.target} AS targetId,
                   ${definition.anchor} AS anchorId, bm25(${definition.table}) AS score
              FROM ${definition.table}
             WHERE ${definition.table} MATCH ? AND project_id = ?
             ORDER BY score, ${definition.target}, ${definition.anchor}
             LIMIT ?`,
-        )
-        .all(ftsMatch(queryVariants), projectId, limit) as unknown as FtsHit[]),
+          )
+          .all(ftsMatch(queryVariants), projectId, limit),
+      ),
     );
   }
   return hits
@@ -209,9 +209,10 @@ export function authoritativeLike(
   const hits: FtsHit[] = [];
   if (requestedSources.includes('draft')) {
     hits.push(
-      ...(connection
-        .prepare(
-          `SELECT 'draft' AS sourceType, draft.id AS targetId,
+      ...sqliteResult<FtsHit[]>(
+        connection
+          .prepare(
+            `SELECT 'draft' AS sourceType, draft.id AS targetId,
                   NULL AS anchorId, 0 AS score
              FROM drafts draft
              JOIN chapters chapter ON chapter.id = draft.chapter_id
@@ -221,11 +222,13 @@ export function authoritativeLike(
               AND (${likeClause('chapter.title', queryVariants.length)})
             ORDER BY volume.order_key, chapter.order_key, draft.id
             LIMIT ?`,
-        )
-        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
-      ...(connection
-        .prepare(
-          `SELECT 'draft' AS sourceType, draft.id AS targetId,
+          )
+          .all(projectId, ...queryVariants, limit),
+      ),
+      ...sqliteResult<FtsHit[]>(
+        connection
+          .prepare(
+            `SELECT 'draft' AS sourceType, draft.id AS targetId,
                   block.logical_block_id AS anchorId, 0 AS score
              FROM drafts draft
              JOIN draft_blocks block ON block.draft_id = draft.id
@@ -236,15 +239,17 @@ export function authoritativeLike(
               AND (${likeClause('block.text', queryVariants.length)})
             ORDER BY volume.order_key, chapter.order_key, block.order_key, block.id
             LIMIT ?`,
-        )
-        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
+          )
+          .all(projectId, ...queryVariants, limit),
+      ),
     );
   }
   if (requestedSources.includes('version')) {
     hits.push(
-      ...(connection
-        .prepare(
-          `SELECT 'version' AS sourceType, version.id AS targetId,
+      ...sqliteResult<FtsHit[]>(
+        connection
+          .prepare(
+            `SELECT 'version' AS sourceType, version.id AS targetId,
                   NULL AS anchorId, 0 AS score
              FROM versions version
              JOIN chapters chapter ON chapter.id = version.chapter_id
@@ -254,11 +259,13 @@ export function authoritativeLike(
               AND (${likeClause('chapter.title', queryVariants.length)})
             ORDER BY version.created_at DESC, version.id
             LIMIT ?`,
-        )
-        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
-      ...(connection
-        .prepare(
-          `SELECT 'version' AS sourceType, version.id AS targetId,
+          )
+          .all(projectId, ...queryVariants, limit),
+      ),
+      ...sqliteResult<FtsHit[]>(
+        connection
+          .prepare(
+            `SELECT 'version' AS sourceType, version.id AS targetId,
                   block.logical_block_id AS anchorId, 0 AS score
              FROM versions version
              JOIN version_blocks block ON block.version_id = version.id
@@ -269,15 +276,17 @@ export function authoritativeLike(
               AND (${likeClause('block.text', queryVariants.length)})
             ORDER BY version.created_at DESC, block.order_key, block.logical_block_id
             LIMIT ?`,
-        )
-        .all(projectId, ...queryVariants, limit) as unknown as FtsHit[]),
+          )
+          .all(projectId, ...queryVariants, limit),
+      ),
     );
   }
   if (requestedSources.includes('entity')) {
     hits.push(
-      ...(connection
-        .prepare(
-          `SELECT 'entity' AS sourceType, entity.id AS targetId,
+      ...sqliteResult<FtsHit[]>(
+        connection
+          .prepare(
+            `SELECT 'entity' AS sourceType, entity.id AS targetId,
                   NULL AS anchorId, 0 AS score
              FROM entities entity
             WHERE entity.project_id = ? AND (? = 1 OR entity.status = 'active')
@@ -298,18 +307,19 @@ export function authoritativeLike(
               )
             ORDER BY entity.status = 'archived', lower(entity.name), entity.id
             LIMIT ?`,
-        )
-        .all(
-          projectId,
-          includeArchived ? 1 : 0,
-          ...queryVariants,
-          ...queryVariants,
-          ...queryVariants,
-          ...queryVariants,
-          ...queryVariants,
-          ...queryVariants,
-          limit,
-        ) as unknown as FtsHit[]),
+          )
+          .all(
+            projectId,
+            includeArchived ? 1 : 0,
+            ...queryVariants,
+            ...queryVariants,
+            ...queryVariants,
+            ...queryVariants,
+            ...queryVariants,
+            ...queryVariants,
+            limit,
+          ),
+      ),
     );
   }
   return deduplicateItems(

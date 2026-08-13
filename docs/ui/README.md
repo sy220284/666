@@ -12,6 +12,7 @@
 | [`UI_SYSTEM_THEME_B.md`](UI_SYSTEM_THEME_B.md) | Theme B（水墨印章）完整Token取值与印章动效设计，状态Frozen |
 | [`INFORMATION_ARCHITECTURE.md`](INFORMATION_ARCHITECTURE.md) | 页面地图、一级入口、工作台层级和导航规则 |
 | [`SCREEN_SPECIFICATIONS.md`](SCREEN_SPECIFICATIONS.md) | 首页、规划、写作、候选、检查、导入导出、设置等页面规格 |
+| [`M11-06_DAILY_WRITING_MAINTENANCE.md`](M11-06_DAILY_WRITING_MAINTENANCE.md) | M11-06 日常写作工作台减法、入口层级、作者术语、读屏状态与视觉基线维护附录 |
 | [`INTERACTION_STATES.md`](INTERACTION_STATES.md) | 空、加载、运行、成功、失败、取消、冲突、只读、恢复等状态规范 |
 | [`EDITOR_INTERACTION_SPEC.md`](EDITOR_INTERACTION_SPEC.md) | 编辑、选区、锁定、保存、撤销、划选改写、场景联动和快捷键 |
 | [`CANDIDATE_REVIEW_SPEC.md`](CANDIDATE_REVIEW_SPEC.md) | 候选比较、Diff、局部采用、融合、冲突处理和采用回退 |
@@ -25,6 +26,7 @@
 ```text
 UI_SYSTEM + INFORMATION_ARCHITECTURE
 → SCREEN_SPECIFICATIONS
+→ 当前有效 Maintenance Addendum
 → INTERACTION_STATES
 → EDITOR_INTERACTION_SPEC
 → CANDIDATE_REVIEW_SPEC
@@ -38,10 +40,13 @@ UI_SYSTEM + INFORMATION_ARCHITECTURE
 ```text
 V6.5完整设计方案
 > 本目录UI实施规格
+> 当前有效 Maintenance Addendum（仅覆盖其明确声明的局部范围）
 > 功能清单与P0验收矩阵
 > 当前任务卡
 > 现有组件实现
 ```
+
+`M11-06_DAILY_WRITING_MAINTENANCE.md` 在 M11-06 明确声明的日常写作工作台范围内覆盖冻结 V1.0 文档中的旧描述；其他页面与底层业务语义继续以原规格为准。
 
 ## 统一原则
 
@@ -59,6 +64,7 @@ V6.5完整设计方案
 ## 维护规则
 
 - 新增页面时同步更新`INFORMATION_ARCHITECTURE.md`、`SCREEN_SPECIFICATIONS.md`和验收清单。
+- 对冻结规格进行维护时，可新增具名 Maintenance Addendum，但必须在本索引登记覆盖范围和权威关系，禁止仅改实现不留规格依据。
 - 新增组件Token时同步更新`UI_SYSTEM.md`，禁止在页面内散落未登记的颜色和尺寸。
-- 修改编辑器、候选或高分屏交互时，同步更新对应专项文档和Playwright截图基线。
+- 修改编辑器、候选或高分屏交互时，同步更新对应专项文档或具名维护附录，并同步Playwright截图基线。
 - 页面实际实现与文档冲突时，先明确变更依据，再同步文档和验收，不允许长期漂移。

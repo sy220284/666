@@ -28,7 +28,7 @@ describe('M10-17 startup degraded state', () => {
     expect(startup).toContain("setResourceState('providers', 'degraded')");
     expect(startup).toContain("setResourceState('continuation', 'degraded')");
     expect(startup).toContain("failureFromOutcome('活动任务读取失败'");
-    expect(startup).toContain("failureFromOutcome('AI连接配置读取失败'");
+    expect(startup).toContain("failureFromOutcome('智能连接配置读取失败'");
     expect(startup).toContain("failureFromOutcome('续写状态读取失败'");
 
     expect(runtime).toContain("WorkspaceStartupResourceState = 'loaded' | 'empty' | 'degraded'");

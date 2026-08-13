@@ -157,10 +157,13 @@ if (process.platform === 'linux') {
       const editor = page.locator('[data-draft-content]');
       await editor.click();
       await page.keyboard.insertText('清河落雨，檐下灯火映着未写完的故事。');
-      await page.locator('[data-draft-more-actions] > summary').click();
+      const moreActions = page.locator('[data-draft-more-actions]');
+      await moreActions.locator('summary').click();
       await page.locator('[data-save-draft]').click();
       await expect(page.locator('[data-draft-state]')).toHaveText('已手动保存');
       await expect(page.locator('[data-draft-state]')).not.toContainText('保存序号');
+      await moreActions.locator('summary').click();
+      await expect(moreActions).not.toHaveAttribute('open', '');
       await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
 
       const mismatches: VisualMismatch[] = [];

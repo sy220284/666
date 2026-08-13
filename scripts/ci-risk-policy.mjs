@@ -62,6 +62,7 @@ export function riskPlan(files = [], matrix = loadRiskMatrix()) {
     uiAcceptance: routeEnabled('uiAcceptance'),
     windowsIme: routeEnabled('windowsIme'),
     platformExperience: routeEnabled('platformExperience'),
+    releaseAudit: routeEnabled('releaseAudit'),
     governanceMeta: routeEnabled('governanceMeta'),
   };
 }
@@ -97,6 +98,7 @@ async function main() {
     'ui-acceptance': 'uiAcceptance',
     'windows-ime': 'windowsIme',
     'platform-experience': 'platformExperience',
+    'release-audit': 'releaseAudit',
     'governance-meta': 'governanceMeta',
   };
   const key = keyByMode[mode];

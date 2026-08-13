@@ -35,7 +35,6 @@ interface CandidateReviewDisplayProps {
   readonly pending: boolean;
   readonly preview: CandidatePreview | null;
   readonly previewRequest: MutableRefObject<string | null>;
-  readonly providerId: string;
   readonly providers: readonly ProviderSummary[];
   readonly readOnly: boolean;
   readonly reviewGroups: readonly CandidateReviewGroup[];
@@ -77,7 +76,6 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
     pending,
     preview,
     previewRequest,
-    providerId,
     providers,
     readOnly,
     reviewGroups,
@@ -212,7 +210,7 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
             <button
               data-continue-partial-candidate
               type="button"
-              disabled={pending || readOnly || !providerId}
+              disabled={pending || readOnly}
               onClick={() => void startGeneration(preview.candidate.generationRunId)}
             >
               继续生成

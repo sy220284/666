@@ -42,6 +42,7 @@ interface WritingWorkbenchViewProps {
   readonly metrics: ReturnType<typeof useWritingMetrics>;
   readonly writingStatus: ReturnType<typeof useWritingStatus>;
   readonly navigationVersionId: string | null | undefined;
+  readonly navigationGenerationMode: string | null | undefined;
   readonly editorHost: MutableRefObject<HTMLDivElement | null>;
   readonly editor: MutableRefObject<Editor | null>;
   readonly autosave: MutableRefObject<DraftAutosaveCoordinator | null>;
@@ -83,6 +84,7 @@ export function WritingWorkbenchView({
   metrics,
   writingStatus,
   navigationVersionId,
+  navigationGenerationMode,
   editorHost,
   editor,
   autosave,
@@ -374,6 +376,9 @@ export function WritingWorkbenchView({
                   ? captureRewriteSelectionAnchor(instance, project.projectId, chapter, draft)
                   : Promise.resolve(null);
               }}
+              {...(navigationGenerationMode !== undefined
+                ? { initialGenerationMode: navigationGenerationMode }
+                : {})}
             />
           ) : null}
         </main>

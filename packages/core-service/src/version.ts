@@ -26,6 +26,7 @@ import {
 import { readActiveChapterScope, readActiveDraftScope } from './active-structure.js';
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import type { LongformAiService } from './longform-ai-service.js';
 import { stableJson } from './stable-json.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
@@ -55,6 +56,8 @@ export class VersionServiceError extends Error {
 export interface VersionServiceOptions {
   readonly clock?: DatabaseClock;
   readonly idFactory?: () => string;
+  readonly digests?: Pick<LongformAiService, 'rebuildForChapter'>;
+  readonly onDigestError?: (error: unknown) => void;
 }
 
 interface DraftRow {
@@ -114,6 +117,11 @@ interface PersistVersionInput {
 
 function stable(value: unknown): string {
   return stableJson(value);
+}
+
+function digestRequestId(requestId: string): string {
+  const value = createHash('sha256').update(`story-digest:${requestId}`, 'utf8').digest('hex');
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-5${value.slice(13, 16)}-a${value.slice(17, 20)}-${value.slice(20, 32)}`;
 }
 
 function blockHash(row: BlockRow): string {
@@ -377,11 +385,15 @@ export class VersionService {
   readonly #workspace: ProjectWorkspaceService;
   readonly #clock: DatabaseClock;
   readonly #idFactory: () => string;
+  readonly #digests: Pick<LongformAiService, 'rebuildForChapter'> | undefined;
+  readonly #onDigestError: ((error: unknown) => void) | undefined;
 
   constructor(workspace: ProjectWorkspaceService, options: VersionServiceOptions = {}) {
     this.#workspace = workspace;
     this.#clock = options.clock ?? systemClock;
     this.#idFactory = options.idFactory ?? randomUUID;
+    this.#digests = options.digests;
+    this.#onDigestError = options.onDigestError;
   }
 
   create(requestId: string, raw: VersionCreateInput): Promise<VersionDocument> {
@@ -452,9 +464,9 @@ export class VersionService {
     );
   }
 
-  setFinal(requestId: string, raw: VersionSetFinalInput): Promise<VersionSummary> {
+  async setFinal(requestId: string, raw: VersionSetFinalInput): Promise<VersionSummary> {
     const input = VersionSetFinalInputSchema.parse(raw);
-    return this.#workspace.writeProject(requestId, input.projectId, (database) => {
+    const finalized = await this.#workspace.writeProject(requestId, input.projectId, (database) => {
       assertActiveChapter(database, input.projectId, input.chapterId);
       const existing = this.#summaryFromDatabase(database, input);
       const changed = database
@@ -475,6 +487,18 @@ export class VersionService {
       }
       return VersionSummarySchema.parse({ ...existing, finalized: true });
     });
+    if (this.#digests) {
+      try {
+        await this.#digests.rebuildForChapter(
+          digestRequestId(requestId),
+          input.projectId,
+          input.chapterId,
+        );
+      } catch (error) {
+        this.#onDigestError?.(error);
+      }
+    }
+    return finalized;
   }
 
   restore(requestId: string, raw: VersionRestoreInput): Promise<DraftDocument> {

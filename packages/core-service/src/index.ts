@@ -38,6 +38,7 @@ export * from './task-protocol.js';
 export * from './generation-run.js';
 export * from './generation-runtime.js';
 export * from './generation-source-resolver.js';
+export * from './longform-ai-service.js';
 export * from './validation.js';
 export * from './search-tools.js';
 export * from './rhythm.js';

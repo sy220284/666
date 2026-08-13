@@ -28,6 +28,7 @@ interface WritingWorkbenchProps {
   readonly navigationLogicalBlockId?: string | null;
   readonly navigationVersionId?: string | null;
   readonly navigationQuery?: string | null;
+  readonly navigationGenerationMode?: string | null;
   readonly onNavigate: (target: AuthorNavigationTarget) => void;
   readonly onPanelChange: (panel: WritingPanel) => void;
   readonly onReturn: () => void;

@@ -26,9 +26,7 @@ export function useGenerationSources(
       if (nextProviders) {
         setProviders(nextProviders);
         setProviderId((current) =>
-          nextProviders.some((provider) => provider.id === current)
-            ? current
-            : nextProviders[0]?.id || '',
+          nextProviders.some((provider) => provider.id === current) ? current : '',
         );
       }
       if (result.sceneBeats) {

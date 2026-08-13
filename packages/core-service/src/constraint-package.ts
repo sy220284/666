@@ -5,6 +5,7 @@ import {
   ConstraintPackageBuildInputSchema,
   ConstraintPackageSchema,
   ConstraintSourceSchema,
+  LongformAiSettingsSchema,
   type ConstraintConflict,
   type ConstraintPackage,
   type ConstraintPackageBuildInput,
@@ -68,6 +69,7 @@ interface ChapterRow extends Record<string, unknown> {
   readonly targetWordMin: number | null;
   readonly targetWordMax: number | null;
   readonly previousChapterId: string | null;
+  readonly volumeId: string;
 }
 
 interface BaseContext {
@@ -82,6 +84,8 @@ interface BaseContext {
   readonly arcs: readonly Record<string, unknown>[];
   readonly validationExceptions: readonly Record<string, unknown>[];
   readonly draftBlocks: readonly Record<string, unknown>[];
+  readonly storyDigests: readonly Record<string, unknown>[];
+  readonly activeStyleProfile: Record<string, unknown> | null;
 }
 
 function sha256(value: string): string {
@@ -228,7 +232,7 @@ function loadBaseContext(
   }
   const chapters = connection
     .prepare(
-      `SELECT chapter.id, chapter.title, chapter.status,
+      `SELECT chapter.id, chapter.title, chapter.status, chapter.volume_id AS volumeId,
               chapter.target_word_min AS targetWordMin,
               chapter.target_word_max AS targetWordMax,
               LAG(chapter.id) OVER (
@@ -256,6 +260,7 @@ function loadBaseContext(
     targetWordMin: numberOrNull(rawChapter.targetWordMin, 'chapter.targetWordMin'),
     targetWordMax: numberOrNull(rawChapter.targetWordMax, 'chapter.targetWordMax'),
     previousChapterId: nullableText(rawChapter.previousChapterId, 'chapter.previousChapterId'),
+    volumeId: text(rawChapter.volumeId, 'chapter.volumeId'),
   };
   const brief = connection
     .prepare(
@@ -367,12 +372,47 @@ function loadBaseContext(
         ORDER BY created_at, id`,
     )
     .all(projectId) as unknown as Record<string, unknown>[];
+  const eligibleChapterIds = chapters
+    .slice(0, chapterIndex)
+    .map((row) => text(row.id, 'chapter.id'));
+  const recentChapterIds = eligibleChapterIds.slice(-12);
+  const storyDigests = connection
+    .prepare(
+      `SELECT id, scope_type AS scopeType, scope_id AS scopeId,
+              source_version_ids_json AS sourceVersionIdsJson,
+              semantic_revision AS semanticRevision, content, generated_at AS generatedAt
+         FROM story_digests
+        WHERE project_id = ? AND freshness = 'fresh'
+          AND (
+            (scope_type = 'project' AND scope_id = ?) OR
+            (scope_type = 'volume' AND scope_id = ?)
+            ${recentChapterIds.length > 0 ? `OR (scope_type = 'chapter' AND scope_id IN (${recentChapterIds.map(() => '?').join(',')}))` : ''}
+          )
+        ORDER BY CASE scope_type WHEN 'project' THEN 0 WHEN 'volume' THEN 1 ELSE 2 END,
+                 updated_at, scope_id`,
+    )
+    .all(projectId, projectId, chapter.volumeId, ...recentChapterIds) as unknown as Record<
+    string,
+    unknown
+  >[];
+  const settingsRow = connection
+    .prepare(
+      `SELECT value_json AS valueJson, updated_at AS updatedAt
+         FROM project_settings WHERE setting_key = 'longform.ai'`,
+    )
+    .get() as Record<string, unknown> | undefined;
+  const settings = settingsRow
+    ? LongformAiSettingsSchema.parse({
+        ...(parseJson(settingsRow.valueJson, 'longform.settings') as object),
+        updatedAt: text(settingsRow.updatedAt, 'longform.updatedAt'),
+      })
+    : null;
+  const activeStyleProfile =
+    settings?.styleProfiles.find((profile) => profile.id === settings.activeStyleProfileId) ?? null;
   return {
     project,
     chapter,
-    eligibleChapterIds: chapters
-      .slice(0, chapterIndex + 1)
-      .map((row) => text(row.id, 'chapter.id')),
+    eligibleChapterIds: [...eligibleChapterIds, chapter.id],
     brief: brief ?? null,
     beats,
     linkedEntities,
@@ -381,6 +421,8 @@ function loadBaseContext(
     arcs,
     validationExceptions,
     draftBlocks,
+    storyDigests,
+    activeStyleProfile,
   };
 }
 
@@ -770,6 +812,54 @@ export class ConstraintPackageService {
         label: '作品频道',
         content: channel,
         relevance: 0.8,
+      });
+    }
+    for (const digest of context.storyDigests) {
+      const scopeType = text(digest.scopeType, 'storyDigest.scopeType');
+      const scopeId = text(digest.scopeId, 'storyDigest.scopeId');
+      const sourceType =
+        scopeType === 'chapter'
+          ? 'chapter_digest'
+          : scopeType === 'volume'
+            ? 'volume_digest'
+            : 'project_digest';
+      add({
+        priority: scopeType === 'project' ? 'P4' : 'P3',
+        sourceType,
+        sourceId: text(digest.id, 'storyDigest.id'),
+        chapterId: scopeType === 'chapter' ? scopeId : null,
+        semanticKey: `story-digest:${scopeType}:${scopeId}`,
+        label:
+          scopeType === 'chapter'
+            ? '前文章节摘要'
+            : scopeType === 'volume'
+              ? '当前卷摘要'
+              : '全书摘要',
+        content: {
+          semanticRevision: Number(digest.semanticRevision),
+          generatedAt: text(digest.generatedAt, 'storyDigest.generatedAt'),
+          sourceVersionIds: parseJson(
+            digest.sourceVersionIdsJson,
+            'storyDigest.sourceVersionIdsJson',
+          ),
+          summary: text(digest.content, 'storyDigest.content'),
+        },
+        relevance: scopeType === 'chapter' ? 0.92 : scopeType === 'volume' ? 0.86 : 0.72,
+      });
+    }
+    if (context.activeStyleProfile) {
+      add({
+        priority: 'P3',
+        sourceType: 'style_profile',
+        sourceId: String(context.activeStyleProfile.id),
+        semanticKey: `style-profile:${String(context.activeStyleProfile.id)}`,
+        label: `文风档案 ${String(context.activeStyleProfile.name)}`,
+        content: {
+          instructions: context.activeStyleProfile.instructions,
+          sceneMappings: context.activeStyleProfile.sceneMappings,
+          targetMetrics: context.activeStyleProfile.targetMetrics,
+        },
+        relevance: 0.96,
       });
     }
     const draftPriority: ConstraintPriority = [

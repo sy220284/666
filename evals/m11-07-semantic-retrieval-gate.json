@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "taskId": "M11-07",
+  "decisionRule": {
+    "minimumCriticalCoverage": 1,
+    "minimumFtsRecall": 0.9,
+    "maximumSemanticOnlyCriticalMissRate": 0.1
+  },
+  "scenarios": [
+    {
+      "id": "fts-current-draft-copper-bell",
+      "critical": true,
+      "route": "fts",
+      "query": "铜铃暗号",
+      "expectedNeedle": "铜铃"
+    },
+    {
+      "id": "fts-current-draft-keeper",
+      "critical": true,
+      "route": "fts",
+      "query": "守灯人",
+      "expectedNeedle": "守灯人"
+    },
+    {
+      "id": "structure-chapter-title",
+      "critical": true,
+      "route": "structure",
+      "query": "雨夜旧约",
+      "expectedNeedle": "雨夜旧约"
+    },
+    {
+      "id": "structure-next-chapter-title",
+      "critical": true,
+      "route": "structure",
+      "query": "跨卷回响",
+      "expectedNeedle": "跨卷回响"
+    },
+    {
+      "id": "digest-cross-volume-object",
+      "critical": true,
+      "route": "digest-context",
+      "query": "旧物在多年后再次出现",
+      "expectedNeedle": "铜铃"
+    },
+    {
+      "id": "digest-cross-volume-promise",
+      "critical": true,
+      "route": "digest-context",
+      "query": "人物履行早先约定",
+      "expectedNeedle": "钟楼醒来时再见"
+    },
+    {
+      "id": "digest-source-provenance",
+      "critical": true,
+      "route": "digest-context",
+      "query": "回查摘要来源",
+      "expectedNeedle": "雨夜旧约"
+    },
+    {
+      "id": "fts-noncritical-paraphrase-gap",
+      "critical": false,
+      "route": "semantic-only",
+      "query": "会发声的约定信物",
+      "expectedNeedle": "铜铃"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 # WorldForge V1.0 数据流说明
 
-> 状态：Frozen Baseline with M10-21 Authority Flow Addendum
-> 更新日期：2026-08-09
+> 状态：Frozen Baseline with M11-07 Long-form AI Addendum
+> 更新日期：2026-08-13
 
 ## 1. 编辑与自动保存
 
@@ -106,6 +106,31 @@ ArcMilestone还有作者直接裁决入口：
 ```
 
 两条入口不得各自维护依赖规则。
+
+### 4.1 定稿后的长篇摘要
+
+```text
+version.setFinal
+→ 定稿事务成功提交
+→ best-effort重建章节StoryDigest
+→ 聚合当前卷StoryDigest
+→ 聚合全书StoryDigest
+├─ 成功：fresh + 来源Version列表 + 语义修订
+└─ 失败：定稿保持成功，返回稳定诊断，摘要可稍后重建
+```
+
+旧章定稿变化由数据库Trigger先将章、卷和全书摘要标为`stale`。约束包只读取`fresh`摘要，且只纳入最近12个前文章节、当前卷和全书摘要；生成和导航均不扫描全书正文。
+
+智能任务分配发生在既有Generation入口内：
+
+```text
+生成Intent确定任务类型
+→ 读取项目AiTaskRoute
+→ 校验已配置连接
+→ 校验当前Prompt精确版本的ModelSupportProfile
+→ 首选或按序回退
+→ 继续进入既有GenerationRun与ConstraintPackage流程
+```
 
 ## 5. EndingSnapshot读取
 
@@ -281,6 +306,7 @@ TaskSnapshot（运行内存与事件协议）
 ├─ 重建FTS5
 ├─ 重算字数/统计
 ├─ 重建约束缓存
+├─ 按章节→卷→全书重建StoryDigest
 ├─ SemanticRevision Trigger增量推进权威语义修订
 └─ Validation读取SemanticRevision + 章节内容digest重算校验与节奏建议
 ```

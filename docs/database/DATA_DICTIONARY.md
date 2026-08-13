@@ -1,8 +1,8 @@
 # WorldForge V1.0 数据字典
 
-> 状态：Frozen Baseline with Schema 30 Semantic Addendum
+> 状态：Frozen Baseline with Schema 34 Long-form AI Addendum
 > 字段结构以`DATABASE_SCHEMA.md`为准。
-> 更新日期：2026-08-09
+> 更新日期：2026-08-13
 
 ## 1. 通用字段
 
@@ -238,11 +238,14 @@ author | state_proposal
 | PromptDefinition    | 有稳定promptId和整数version的Prompt定义                                                |
 | ModelSupportProfile | Provider、模型、任务、Prompt版本组合的支持档案                                         |
 | partial Candidate   | 中断或取消后保存的不完整候选，不能直接定稿                                             |
+| StoryDigest         | 可重建的章节、卷或全书摘要；保留来源Version、新鲜度和语义修订，不是权威事实           |
+| StyleProfile        | 保存在类型化项目设置中的文风指令、正文样本、场景映射和统计目标                         |
+| AiTaskRoute         | 按任务登记首选连接、回退顺序和最低模型支持级别的类型化项目设置                         |
 
 GenerationRun类型：
 
 ```text
-skeleton | chapter | rewrite | merge | validate | state_extract
+skeleton | chapter | rewrite | merge | validate | state_extract | idea_explore
 ```
 
 GenerationRun状态：
@@ -252,6 +255,10 @@ queued | running | succeeded | failed | cancelled
 ```
 
 `GenerationRun`是生成业务生命周期的持久权威；`TaskSnapshot`只负责运行态展示与事件恢复。取消必须先持久化GenerationRun终态和可保存partial边界，再中止Provider并等待真实execution completion；Project Close/Move与Core Shutdown不得在执行尚未静默时释放项目数据库。
+
+Schema 34只新增一张派生表`story_digests`，范围固定为`chapter | volume | project`，生成来源固定为`local_extractive_v1`。章节定稿或卷章结构变化会将受影响摘要标为`stale`；重建按章节→卷→全书逐级更新并保留`source_version_ids_json`。文风档案与智能任务分配保存在`project_settings['longform.ai']`，不新增平行文风表、Provider表或凭据字段。约束包仍是唯一智能上下文权威，摘要不能替代人物、设定、连续性和伏笔真源。
+
+当前语义检索证据门由FTS、卷章结构、故事知识窗口和有界摘要上下文共同评测；未触发时不创建向量或Embedding表。
 
 写命令幂等分为三种实际能力：进程生命周期内的有界缓存；`draft_patch_log`、`candidate_apply_records`、`generation_runs`等领域专属持久身份；以及`command_receipts`通用持久回执机制。当前Schema 30明确使用CommandReceipt保护Import提交，不得推导为所有写命令都能跨重启返回首次结果。
 

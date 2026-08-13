@@ -2,7 +2,7 @@
 
 > 状态：Frozen Baseline with M10-21 Command Identity and M11-03 AI Organization Addenda
 > 适用：Electron Main、Preload、Renderer与Core Service  
-> 更新日期：2026-08-11
+> 更新日期：2026-08-13
 
 ## 1. 原则
 
@@ -179,12 +179,18 @@ ai.testProvider
 ai.startGeneration / cancelGeneration / listRuns
 ai.savePartialCandidate
 ai.getModelSupport
+longformAi.getSettings / updateSettings
+longformAi.listDigests / rebuildDigests
+longformAi.evaluateStyle / resolveTaskRoute
 ```
 
 - 凭据只由Main凭据代理解析，Renderer和数据库不接收真实值。
 - Provider错误通过稳定错误码返回。
 - 原始响应总量或单SSE事件超限返回`AI_RESPONSE_TOO_LARGE_014`。
 - 超限、取消、断流或解析失败不能伪装为成功建议稿或设定更新建议。
+- `longformAi.updateSettings`只接受`authority=author`与乐观时间戳，不接收凭据正文。
+- 任务分配只在Renderer传入的已配置连接摘要中选择；Core按当前任务的精确`promptId + promptVersion`读取`ModelSupportProfile`，首选不满足时按登记顺序回退，否则返回稳定拒绝。
+- 摘要重建失败不得回滚已经提交的章节定稿；失败保持可诊断并允许后续重建。
 
 ## 10. 校验、搜索与交付
 
@@ -296,3 +302,4 @@ interface RendererLifecycleBridge {
 - 生命周期关闭握手的来源校验、请求标识、strict Schema、保存失败和超时。
 - Provider响应超限错误码通过IPC后保持稳定且不泄露原始响应。
 - 搜索、替换、词典和索引的请求代次隔离在Renderer单元与Electron端到端中验证。
+- 长篇智能契约覆盖摘要范围/来源/新鲜度、文风设置作者权限与并发冲突、精确Prompt版本模型回退、无可用连接拒绝，以及Renderer永不接收真实凭据。

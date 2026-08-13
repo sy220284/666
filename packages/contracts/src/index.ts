@@ -10,6 +10,7 @@ export * from './provider.js';
 export * from './generation-scope.js';
 export * from './generation.js';
 export * from './idea-capsule.js';
+export * from './longform-ai.js';
 export * from './project-workspace.js';
 export * from './project-structure.js';
 export * from './project-planning.js';

@@ -4,6 +4,7 @@ import { ContinuityService } from './continuity.js';
 import { CoordinatedImportExportService } from './coordinated-import-export.js';
 import { DraftService } from './draft.js';
 import { EntityCanonService } from './entity-canon.js';
+import { LongformAiService } from './longform-ai-service.js';
 import { ProjectContinuationService } from './project-continuation.js';
 import { ProjectPlanningService } from './project-planning.js';
 import { ProjectStructureService } from './project-structure.js';
@@ -30,6 +31,7 @@ export function createUtilityProjectServiceContainer(
 ): UtilityProjectServices {
   const { projectWorkspace, recovery, candidates, checkpointRequestId } = options;
   const searchTools = new SearchToolsService(projectWorkspace, recovery, checkpointRequestId);
+  const longformAi = new LongformAiService(projectWorkspace);
 
   return {
     projectWorkspace,
@@ -42,11 +44,12 @@ export function createUtilityProjectServiceContainer(
     continuity: new ContinuityService(projectWorkspace),
     storyKnowledge: new StoryKnowledgeProjectionService(projectWorkspace),
     ideas: new SafeIdeaCapsuleService(projectWorkspace),
+    longformAi,
     structureOperations: new ReferenceAwareStructureOperationService(projectWorkspace),
     drafts: new DraftService(projectWorkspace),
     candidates,
     candidateApply: new CandidateApplyService(projectWorkspace),
-    versions: new VersionService(projectWorkspace),
+    versions: new VersionService(projectWorkspace, { digests: longformAi }),
     textIo: new CoordinatedImportExportService(projectWorkspace, recovery),
     searchTools,
     rhythm: new RhythmService(projectWorkspace),

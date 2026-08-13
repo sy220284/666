@@ -2,7 +2,7 @@
 
 > 状态：Approved  
 > 目标：使Renderer能够稳定展示错误、判断是否重试，并避免将内部堆栈和敏感路径直接暴露给用户。  
-> 更新日期：2026-07-30
+> 更新日期：2026-08-13
 
 ## 1. 格式
 
@@ -93,6 +93,10 @@ interface WorldForgeError {
 | `AI_RUN_ALREADY_FINISHED_012` | 已结束任务不能再次取消 | 否 |
 | `AI_ENDPOINT_UNSAFE_013` | Provider地址、协议、重定向或DNS解析跨越安全边界 | 否 |
 | `AI_RESPONSE_TOO_LARGE_014` | 原始Provider总响应或单个SSE事件超过资源安全上限 | 否，需缩小输出或检查服务 |
+| `LONGFORM_DIGEST_FAILED_001` | 长篇摘要重建失败；已提交的定稿保持成功 | 是，可稍后重建 |
+| `LONGFORM_STYLE_SAMPLE_INSUFFICIENT_002` | 文风样本不足或不属于当前作品 | 否，需重新选择样本 |
+| `LONGFORM_ROUTE_UNAVAILABLE_003` | 没有满足凭据、模型支持与回退策略的智能连接 | 否，需检查连接或策略 |
+| `LONGFORM_SETTINGS_CONFLICT_004` | 长篇智能设置已被其他保存更新 | 是，重新读取后再保存 |
 
 `AI_OUTPUT_INVALID_008`只表达输出格式或业务内容无效，不得用于网络响应资源超限。`AI_RESPONSE_TOO_LARGE_014`触发后必须取消底层响应读取；Renderer提示作者缩小生成范围、降低输出长度或检查服务异常，不得暗示正文已经写入。
 

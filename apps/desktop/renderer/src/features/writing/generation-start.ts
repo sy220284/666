@@ -3,6 +3,7 @@ import type {
   GenerationIntent,
   GenerationRun,
   MergeSourceMapping,
+  ProviderSummary,
   RewriteSelectionAnchor,
   SceneBeat,
 } from '@worldforge/contracts';
@@ -23,6 +24,7 @@ interface GenerationStartInput {
   readonly commandPrefix: string;
   readonly draft: DraftDocument;
   readonly providerId: string;
+  readonly providers: readonly ProviderSummary[];
   readonly readOnly: boolean;
   readonly flush: () => Promise<boolean>;
   readonly generationMode: GenerationMode;
@@ -48,7 +50,7 @@ interface GenerationStartInput {
 }
 
 export async function startGenerationTask(input: GenerationStartInput): Promise<void> {
-  if (!input.providerId || input.readOnly) return;
+  if (input.readOnly) return;
   const { continuationOfRunId, intentOverride } = input;
   const coordinator = rendererCommandCoordinatorFor(input.setPending);
   const commandKey = `${input.commandPrefix}generation-start`;
@@ -83,12 +85,46 @@ export async function startGenerationTask(input: GenerationStartInput): Promise<
       const intent = await buildGenerationIntent(guardedInput);
       if (!intent || !scope.isCurrent()) return;
       input.setLastIntent(intent);
+      let providerId = input.providerId;
+      if (!providerId) {
+        const route = await input.bridge.longformAi.resolveTaskRoute(
+          {
+            projectId: input.projectId,
+            taskType: intent.runType,
+            candidates: input.providers.map((provider) => ({
+              providerId: provider.id,
+              model: provider.model,
+              credentialConfigured: provider.credentialConfigured,
+            })),
+          },
+          {
+            mode: 'share',
+            requestKey: `${input.commandPrefix}task-route:${intent.runType}`,
+            laneKey: `${input.commandPrefix}task-route`,
+          },
+        );
+        if (!scope.isCurrent()) return;
+        if (route.state !== 'success') {
+          input.setStatus(
+            route.state === 'failure'
+              ? `生成未启动 · ${authorErrorSummary(route.error)}`
+              : '智能任务分配请求已被新请求替代。',
+          );
+          return;
+        }
+        providerId = route.data.providerId;
+        input.setStatus(
+          route.data.selection === 'fallback'
+            ? '首选智能连接不可用，已按回退顺序选择可用连接。'
+            : '已按当前任务选择可用智能连接。',
+        );
+      }
       const outcome = await input.bridge.generation.start({
         projectId: input.projectId,
         chapterId: input.chapterId,
         baseDraftId: guardedInput.draft.draftId,
         baseDraftRevision: guardedInput.draft.revision,
-        providerId: input.providerId,
+        providerId,
         continuationOfRunId,
         intent,
       });

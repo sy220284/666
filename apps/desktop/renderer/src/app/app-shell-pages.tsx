@@ -42,6 +42,7 @@ export interface AppShellPagesProps {
   readonly capabilities: CapabilityMatrix;
   readonly disclosureMode: AppDisclosureMode;
   readonly aiReadiness: AiReadiness;
+  readonly providers: readonly ProviderSummary[];
   readonly settings: AppSettings;
   readonly appearance: AppearancePreferences;
   readonly coreStatus: CoreStatus | null;
@@ -53,6 +54,7 @@ export interface AppShellPagesProps {
   readonly writingPanel: WritingPanel;
   readonly selection: RendererSelectionState;
   readonly navigationQuery: string | null;
+  readonly navigationGenerationMode: string | null;
   readonly onCreateFromOnboarding: (plan: OnboardingProjectPlan) => Promise<boolean>;
   readonly onCloseProject: (projectId: string) => Promise<void>;
   readonly onMoveProject: (projectId: string) => Promise<void>;
@@ -130,6 +132,8 @@ export function AppShellPages(props: AppShellPagesProps) {
           disclosureMode={props.disclosureMode}
           message={props.message}
           pendingKey={props.pendingKey}
+          project={props.activeProject}
+          providers={props.providers}
           settings={props.settings}
           aiReady={props.aiReadiness.status === 'ready'}
           onProvidersChanged={props.onProvidersChanged}
@@ -200,6 +204,7 @@ export function AppShellPages(props: AppShellPagesProps) {
           navigationLogicalBlockId={props.selection.logicalBlockId}
           navigationVersionId={props.selection.versionId}
           navigationQuery={props.navigationQuery}
+          navigationGenerationMode={props.navigationGenerationMode}
           onNavigate={props.onNavigateToAuthorTarget}
           onPanelChange={(panel) =>
             void props.onTransitionToRoute(

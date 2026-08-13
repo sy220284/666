@@ -1,10 +1,10 @@
 # WorldForge V1.0 数据库Schema规格
 
-> 状态：Frozen Baseline with Schema 30 Authority Addendum
+> 状态：Frozen Baseline with Schema 34 Long-form AI Addendum
 > 原则：`app.sqlite`只保存应用级信息；每项目`project.sqlite`是唯一权威数据源。
-> 当前Project Schema：30（`0030_authority_governance.sql`）
+> 当前Project Schema：34（`0034_longform_ai_foundation.sql`）
 > 当前App Schema：3（`0003_provider_options_allowlist.sql`）
-> 更新日期：2026-08-09
+> 更新日期：2026-08-13
 
 ## 1. 全局约束
 
@@ -97,7 +97,7 @@ Project Schema本身仍由顺序Migration定义；“恢复为新项目”额外
 
 `id TEXT PK, name TEXT, channel TEXT, active_style_profile_id TEXT NULL, schema_version INTEGER, created_at TEXT, updated_at TEXT`
 
-`schema_version`必须与已应用的最新Project Migration一致；Schema 30项目值为`30`。
+`schema_version`必须与已应用的最新Project Migration一致；Schema 34项目值为`34`。
 
 #### `command_receipts`（Schema 30）
 
@@ -491,9 +491,9 @@ Schema 31将`state_proposals`泛化为唯一Proposal账本：
 
 Schema 31在既有ValidationIssue账本追加`current_evidence_ids_json`与`conflict_evidence_ids_json`。确定性高风险冲突分别保存权威当前依据和冲突依据，同时保留合并后的`evidence_ids_json`以兼容既有流程；解决、忽略、误报、转修改任务和批注入口不变。`entity_states`同时增加`semantic_kind`，旧数据固定为`custom`且迁移阶段不猜测。
 
-#### `style_profiles`
+#### 长篇文风与任务分配设置（Schema 34）
 
-`id TEXT PK, project_id TEXT FK, name TEXT, source TEXT, channel TEXT, locked INTEGER, parameters_json TEXT, created_at TEXT, updated_at TEXT`
+`project_settings`的`longform.ai`键保存经过严格Schema校验的`StyleProfile[]`、活动文风标识和`AiTaskRoute[]`。StyleProfile只拥有文风指令、样本Version、场景映射与句段统计目标；不复制`genre_rhythm_profiles`的连载节奏字段。AiTaskRoute只保存Provider标识、回退顺序和最低支持级别，不保存凭据。
 
 #### `genre_rhythm_profiles`
 
@@ -613,4 +613,23 @@ M1-09不新增Schema。确认导入复用`volumes`、`chapters`、`drafts`、`dr
 - 新增`command_receipts`与`semantic_revision`，不修改任何历史Migration。
 - `command_receipts`当前承担Import跨Core重启重放；能力必须按命令声明，不能由通用IPC文案扩大解释。
 - `semantic_revision`由数据库Trigger维护，覆盖权威语义实体、关系与失效记录；Validation读取修订号，正文级SceneBeat内容仍使用章节内容digest。
-- Schema 30升级完成后`projects.schema_version=30`；未来Schema只允许追加新Migration。
+- Schema 30升级完成后`projects.schema_version=30`；后续Schema继续只允许追加新Migration。
+
+## Schema 34 长篇智能底座摘要
+
+`0034_longform_ai_foundation.sql`新增唯一派生表：
+
+```text
+story_digests(
+  id, project_id, scope_type, scope_id,
+  source_hash, source_version_ids_json,
+  semantic_revision, freshness, content,
+  generation_source, generated_at, updated_at
+)
+```
+
+- 表为`STRICT`，`(project_id, scope_type, scope_id)`唯一；项目摘要的`scope_id`必须等于项目ID，章/卷范围由Trigger校验真实归属。
+- 章节定稿指针变化使对应章、卷和全书摘要失效；章/卷排序、标题、父卷或删除状态变化使聚合摘要失效。
+- 摘要是可清空重建投影；项目克隆会清空该表，恢复后的副本按需重建。
+- Schema 34不创建向量、Embedding、平行搜索、平行上下文或第二套Provider表。
+- 升级完成后`projects.schema_version=34`。

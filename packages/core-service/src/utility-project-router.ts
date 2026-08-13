@@ -7,6 +7,7 @@ import {
 import { DraftServiceError } from './draft.js';
 import { projectOperationError } from './utility-errors.js';
 import { routeContentProjectOperation } from './utility-project-content-router.js';
+import { routeLongformAiOperation } from './utility-longform-ai-router.js';
 import { routeIdeaOperation } from './utility-project-idea-router.js';
 import { routeNarrativePlanningOperation } from './utility-project-narrative-router.js';
 import { routePrimaryProjectOperation } from './utility-project-primary-router.js';
@@ -25,6 +26,7 @@ export async function executeProjectOperation(
       (await routePrimaryProjectOperation(services, requestId, operation)) ??
       (await routeNarrativePlanningOperation(services, requestId, operation)) ??
       (await routeValidationOperation(services, requestId, operation)) ??
+      (await routeLongformAiOperation(services, requestId, operation)) ??
       (await routeSearchRhythmOperation(services, requestId, operation)) ??
       (await routeIdeaOperation(services, requestId, operation)) ??
       (await routeStructureProjectOperation(services, requestId, operation)) ??

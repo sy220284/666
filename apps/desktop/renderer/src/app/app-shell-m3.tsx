@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   ProjectContinuationSnapshot,
@@ -9,6 +9,7 @@ import type {
 import type { RendererBridgeAdapter } from '../bridge/renderer-bridge-adapter.js';
 import type { CanonSection } from '../features/canon/canon-workbench.js';
 import type { DataToolsSection } from '../features/data-tools/data-tools-workbench.js';
+import { CommandPalette } from '../features/command-palette/command-palette.js';
 import type { WritingPanel } from '../features/writing/writing-workbench.js';
 import { deriveCapabilityMatrix } from '../runtime/capability-matrix.js';
 import { restoreAppShellRoute, type AppDisclosureMode } from '../shell/app-shell-model.js';
@@ -38,12 +39,14 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
   const [recentProjects, setRecentProjects] = useState<readonly RecentProject[]>([]);
   const [onboardingRequest, setOnboardingRequest] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>('正在读取本地工作区…');
   const [failure, setFailure] = useState<FailureView | null>(null);
   const [canonSection, setCanonSection] = useState<CanonSection>('entities');
   const [dataToolsSection, setDataToolsSection] = useState<DataToolsSection>('recovery');
   const helpTrigger = useRef<HTMLButtonElement>(null);
+  const commandPaletteTrigger = useRef<HTMLButtonElement>(null);
   const flushWriting = useCallback(
     async (): Promise<boolean> => applicationController.flushPendingDraft(),
     [applicationController],
@@ -133,6 +136,20 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
     setFailure,
     navigate: navigation.navigate,
   });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.isComposing || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k')
+        return;
+      event.preventDefault();
+      setCommandPaletteOpen((open) => {
+        if (open) window.requestAnimationFrame(() => commandPaletteTrigger.current?.focus());
+        return !open;
+      });
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const writingPanel: WritingPanel =
     route === 'versions' ? 'versions' : route === 'candidates' ? 'candidates' : 'editor';
@@ -229,12 +246,15 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
       foregroundTaskId={navigation.foregroundTaskId}
       navOpen={navigation.navOpen}
       helpOpen={helpOpen}
+      commandPaletteOpen={commandPaletteOpen}
       navToggle={navigation.navToggle}
       settingsTrigger={navigation.settingsTrigger}
       helpTrigger={helpTrigger}
+      commandPaletteTrigger={commandPaletteTrigger}
       mainContent={navigation.mainContent}
       onNavOpenChange={navigation.setNavOpen}
       onHelpOpenChange={setHelpOpen}
+      onCommandPaletteOpenChange={setCommandPaletteOpen}
       onNavigate={navigation.navigate}
       onTransitionToRoute={navigation.transitionToRoute}
       onOpenCanonSection={(section) => {
@@ -262,6 +282,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
         capabilities={capabilities}
         disclosureMode={disclosureMode}
         aiReadiness={settingsController.aiReadiness}
+        providers={settingsController.providers}
         settings={settingsController.settings}
         appearance={settingsController.appearance}
         coreStatus={runtime.coreStatus}
@@ -273,6 +294,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
         writingPanel={writingPanel}
         selection={navigation.selection}
         navigationQuery={navigation.navigationQuery}
+        navigationGenerationMode={navigation.navigationGenerationMode}
         onCreateFromOnboarding={actions.createFromOnboarding}
         onCloseProject={projectController.closeProject}
         onMoveProject={projectController.moveProject}
@@ -300,6 +322,17 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
           setMessage('作品恢复完成，已重新读取作品上下文。');
         }}
         onWritingStatus={setMessage}
+      />
+      <CommandPalette
+        availability={capabilities.navigation}
+        bridge={bridge}
+        open={commandPaletteOpen}
+        projectId={activeProject?.projectId ?? null}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigate={navigation.navigate}
+        onNavigateTarget={navigation.navigateToAuthorTarget}
+        onTransitionToRoute={navigation.transitionToRoute}
+        returnFocusRef={commandPaletteTrigger}
       />
     </AppShellLayout>
   );

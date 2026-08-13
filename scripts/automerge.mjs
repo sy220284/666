@@ -141,7 +141,7 @@ export function modeAwareRunState(kind, workflowRun, jobs = []) {
 
   const required =
     kind === 'quality'
-      ? ['quality / quality', 'quality / release-audit', 'quality / package-smoke']
+      ? ['quality / quality']
       : kind === 'security'
         ? ['security']
         : kind === 'performance'

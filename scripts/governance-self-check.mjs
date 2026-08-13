@@ -27,19 +27,26 @@ export function validateGovernanceAuthorities(sources) {
   requireMarkers(errors, 'Quality', sources.quality ?? '', [
     'name: quality / quality',
     'quality / release-audit',
-    'quality / package-smoke',
     'ci-risk-policy.mjs reliability',
     'ci-risk-policy.mjs platform-experience',
-    'name: platform-experience-${{ matrix.platform }}',
+    'ci-risk-policy.mjs release-audit',
+    'name: windows-experience',
+    'platform-experience-macos',
+    'linux_platform_experience:',
     'reliability_suite:',
   ]);
   requireMarkers(errors, 'Security', sources.security ?? '', [
+    'name: security-route',
     'supply-chain-inventory:',
     'node scripts/supply-chain-inventory.mjs',
-    'name: supply-chain-inventory',
+    'scan-secrets.mjs --base',
+    'scan-secrets.mjs --history',
     'name: security',
   ]);
-  requireMarkers(errors, 'Performance', sources.performance ?? '', ['name: performance']);
+  requireMarkers(errors, 'Performance', sources.performance ?? '', [
+    'name: performance',
+    'Run AI protocol baselines and performance budgets',
+  ]);
   requireMarkers(errors, 'Release', sources.release ?? '', [
     'node scripts/ui-acceptance-gate.mjs',
     'pnpm release:gate',
@@ -48,7 +55,7 @@ export function validateGovernanceAuthorities(sources) {
   requireMarkers(errors, 'Main Verification', sources.mainVerification ?? '', [
     'name: main-verification',
     'name: synchronize-integrations',
-    'main/work/governance branch inventory',
+    'tree identity',
   ]);
   requireMarkers(errors, 'Risk policy', sources.riskPolicy ?? '', [
     'CI_RISK_MATRIX.json',
@@ -58,6 +65,7 @@ export function validateGovernanceAuthorities(sources) {
     "reliability: 'reliability'",
     "'windows-ime'",
     "'platform-experience'",
+    "'release-audit'",
   ]);
 
   let matrix = null;
@@ -78,6 +86,7 @@ export function validateGovernanceAuthorities(sources) {
     'uiAcceptance',
     'windowsIme',
     'platformExperience',
+    'releaseAudit',
     'governanceMeta',
   ]) {
     if (matrix && !Array.isArray(matrix.routes?.[route]?.any)) {

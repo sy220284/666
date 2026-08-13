@@ -350,7 +350,7 @@ function ActiveProjectCard({
           <option value="autonomous">自主创作</option>
           <option value="hybrid">人机协作</option>
           <option disabled={!providerAvailable} value="ai-first">
-            AI优先{providerAvailable ? '' : '（需先配置AI连接）'}
+            智能优先{providerAvailable ? '' : '（需先配置智能连接）'}
           </option>
         </select>
         <small id="creative-path-note">只改变推荐入口和说明，不改变作品数据或可用功能。</small>
@@ -448,7 +448,7 @@ function CreateProjectDialog({
     }
     const creativePath = String(data.get('creativePath') ?? 'autonomous') as CreativePath;
     if (creativePath === 'ai-first' && !providerAvailable) {
-      setError('AI优先需要先配置AI连接；自主创作和人机协作可直接使用。');
+      setError('智能优先需要先配置智能连接；自主创作和人机协作可直接使用。');
       return;
     }
     setError(null);
@@ -676,14 +676,14 @@ function CreateProjectDialog({
                   <option value="autonomous">自主创作</option>
                   <option value="hybrid">人机协作</option>
                   <option disabled={!providerAvailable} value="ai-first">
-                    AI优先
+                    智能优先
                   </option>
                 </select>
               </label>
               <small>
                 {providerAvailable
-                  ? 'AI只在你明确触发后向已配置连接发送必要上下文。'
-                  : '尚未配置AI连接；自主创作完整可用，AI优先暂不可选。'}
+                  ? '智能功能只在你明确触发后向已配置连接发送必要上下文。'
+                  : '尚未配置智能连接；自主创作完整可用，智能优先暂不可选。'}
               </small>
             </fieldset>
           ) : null}

@@ -44,7 +44,7 @@ export function ProviderSettings({
   const [credential, setCredential] = useState('');
   const [removeCredential, setRemoveCredential] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
-  const [message, setMessage] = useState('正在读取本机AI连接…');
+  const [message, setMessage] = useState('正在读取本机智能连接…');
   const [deleteArmed, setDeleteArmed] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderConnectionTestResult | null>(null);
   const commandCoordinator = useRef(new RendererCommandCoordinator()).current;
@@ -143,7 +143,7 @@ export function ProviderSettings({
             setMessage(
               outcome.data.removed
                 ? `已删除“${provider.name}”及其密钥引用。`
-                : '该AI连接已不存在。',
+                : '该智能连接已不存在。',
             );
         } else if (outcome.state === 'failure') {
           setMessage(authorErrorSummary(outcome.error));
@@ -176,7 +176,7 @@ export function ProviderSettings({
 
   const presetHint = activePreset
     ? providerPreset(activePreset).credentialHint
-    : '编辑已有AI连接时，留空密钥即可保持原值。';
+    : '编辑已有智能连接时，留空密钥即可保持原值。';
 
   return (
     <section
@@ -185,7 +185,7 @@ export function ProviderSettings({
       data-settings-section="providers"
     >
       <header>
-        <h2>AI服务与连接</h2>
+        <h2>智能服务与连接</h2>
         <p>选择常用服务后只需确认模型和密钥。连接不可用不会影响写作、搜索、版本、恢复或导出。</p>
       </header>
       <p aria-live="polite" data-provider-status role="status">
@@ -322,12 +322,12 @@ export function ProviderSettings({
               disabled={Boolean(pending)}
               type="submit"
             >
-              {pending === 'save' ? '正在保存…' : '保存AI连接'}
+              {pending === 'save' ? '正在保存…' : '保存智能连接'}
             </button>
           </footer>
         </form>
         <div data-provider-list>
-          {providers.length === 0 ? <p>暂无AI连接。</p> : null}
+          {providers.length === 0 ? <p>暂无智能连接。</p> : null}
           {providers.map((provider) => (
             <article className="feature-card" data-provider-card={provider.id} key={provider.id}>
               <h3>{provider.name}</h3>

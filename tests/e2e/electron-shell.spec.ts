@@ -59,6 +59,21 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
+async function openDetails(page: Page, selector: string): Promise<void> {
+  const details = page.locator(selector);
+  if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
+}
+
+async function openCompletePlanning(page: Page): Promise<void> {
+  await page.locator('[data-open-planning]').click();
+  await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+  const beginner = page.locator('[data-planning-disclosure="beginner"]');
+  if (await beginner.isVisible()) {
+    await page.locator('[data-planning-mode="professional"]').click();
+  }
+  await expect(page.locator('[data-planning-disclosure="professional"]')).toBeVisible();
+}
+
 async function setContentViewport(
   application: ElectronApplication,
   width: number,
@@ -433,6 +448,7 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await expect(page.locator('[data-volume-title="第一卷"]')).toBeVisible();
     await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();
 
+    await openCompletePlanning(page);
     await page.locator('[data-create-volume]').click();
     await expect(page.locator('[data-structure-dialog]')).toBeVisible();
     await page.locator('[data-structure-title]').fill('第二卷');
@@ -471,6 +487,7 @@ test('creates, reopens, moves, and protects a future-schema project through the 
       'data-volume-title',
       '第二卷',
     );
+    await page.locator('[data-close-planning]').click();
 
     await page.locator('[data-close-project]').click();
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'closed');
@@ -544,6 +561,7 @@ test('creates an explicit professional blank project and exposes the first struc
     await expect(page.locator('[data-structure-empty]')).toContainText('专业空白项目');
     await expect(page.locator('[data-volume-id]')).toHaveCount(0);
 
+    await openCompletePlanning(page);
     await page.locator('[data-create-volume]').click();
     await page.locator('[data-structure-title]').fill('正文卷');
     await page.locator('[data-save-structure]').click();
@@ -599,6 +617,8 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
+
+    await page.locator('[data-toggle-draft-find]').click();
     await page.locator('[data-draft-find]').fill('风起');
     await page.locator('[data-draft-find-next]').click();
     await expect(page.locator('[data-draft-find-status]')).toHaveText('1/1');
@@ -606,6 +626,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await page.locator('[data-draft-replace-current]').click();
     await expect(blocks.first()).toHaveText('雨落在旧站台。风又起。');
 
+    await openDetails(page, '[data-draft-tools-menu]');
     await page.waitForTimeout(600);
     await blocks.first().evaluate((element) => {
       const textNode = element.firstChild;
@@ -687,6 +708,7 @@ test('edits, sanitizes, saves, and rebuilds a four-block Draft through the deskt
     await expect(editor).toContainText('纯文本甲');
     await expect(editor).toContainText('纯文本乙');
 
+    await openDetails(page, '[data-draft-more-actions]');
     for (const composition of [
       { keystrokes: 'yu', committed: '雨' },
       { keystrokes: 'tggg', committed: '一' },
@@ -1091,6 +1113,7 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
       return draft.ok ? draft.data.draftId : null;
     });
 
+    await openDetails(page, 'details.writing-more-menu');
     await page.locator('[data-create-version]').click();
     await page.locator('[data-version-title]').fill('首稿');
     await page.locator('[data-version-label]').fill('第一阶段');
@@ -1110,6 +1133,7 @@ test('creates immutable Versions, finalizes one, and restores it as a new Draft'
     await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
+    await openDetails(page, 'details.writing-more-menu');
     await page.locator('[data-open-versions]').click();
     await page.locator('[data-version-action="restore"]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText('已从只读历史版本恢复为新当前稿。');
@@ -1163,6 +1187,7 @@ test('creates a verified recovery point, restores a new project and exports a Ve
     await expect(page.locator('[data-draft-state]')).toHaveText(/^自动保存完成$/u, {
       timeout: 3_000,
     });
+    await openDetails(page, 'details.writing-more-menu');
     await page.locator('[data-create-version]').click();
     await page.locator('[data-version-title]').fill('恢复导出版本');
     await page.locator('[data-confirm-version]').click();

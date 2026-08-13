@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "id": "M11-06",
+  "status": "IMPLEMENTED",
+  "executionBranch": "work",
+  "source": "docs/tasks/M11/M11-06_DAILY_WRITING_UI_REFINEMENT.md",
+  "priority": "P0",
+  "startedAt": "2026-08-13T09:05:00+08:00",
+  "dependencies": ["M11-05"],
+  "baseline": {
+    "main": "c4c69c03e0ca59e57d2bfe31559773b7b2976c4a",
+    "work": "c4c69c03e0ca59e57d2bfe31559773b7b2976c4a"
+  },
+  "allowedPaths": [
+    "apps/desktop/renderer/src/",
+    "apps/desktop/renderer/build-assets.mjs",
+    "tests/unit/",
+    "tests/e2e/",
+    "scripts/check-author-language.mjs",
+    "docs/product/AUTHOR_LANGUAGE_GLOSSARY.md",
+    "docs/ui/README.md",
+    "docs/ui/M11-06_DAILY_WRITING_MAINTENANCE.md",
+    "docs/tasks/TASK_INDEX.md",
+    "docs/tasks/M11/M11-06_DAILY_WRITING_UI_REFINEMENT.md",
+    "docs/tasks/M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md",
+    "docs/tasks/M11/M11-07_LONGFORM_AI_MEMORY_STYLE_ROUTING.md",
+    "docs/tasks/M12/M12-01_PROJECT_JOURNAL.md",
+    "docs/tasks/runtime/M11-06.json",
+    "docs/test-evidence/M11-06/"
+  ],
+  "forbiddenPaths": [
+    "migrations/",
+    "packages/contracts/",
+    "packages/domain/",
+    "packages/core-service/",
+    "packages/prompts/",
+    "apps/desktop/main/",
+    "apps/desktop/preload/",
+    "docs/test-evidence/M11-01/",
+    "docs/test-evidence/M11-02/",
+    "docs/test-evidence/M11-03/",
+    "docs/test-evidence/M11-04/",
+    "docs/test-evidence/M11-05/"
+  ],
+  "verification": [
+    "pnpm task:validate",
+    "pnpm check:language",
+    "pnpm check:workspaces",
+    "pnpm check:boundaries",
+    "pnpm check:docs",
+    "pnpm check:governance",
+    "pnpm format:check",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test:unit",
+    "pnpm test:integration",
+    "pnpm test:migration",
+    "pnpm test:coverage",
+    "pnpm test:security",
+    "pnpm test:reliability",
+    "pnpm test:perf",
+    "pnpm build",
+    "pnpm test:e2e"
+  ],
+  "verificationBinding": {
+    "sourcePr": 387,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M11-06"
+  }
+}

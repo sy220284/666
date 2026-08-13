@@ -207,13 +207,13 @@ function GeneralSettings(props: SettingsPageProps) {
           <option value="autonomous">自主创作</option>
           <option value="hybrid">人机协作</option>
           <option disabled={!props.aiReady} value="ai-first">
-            AI优先{props.aiReady ? '' : '（请先完成连接测试）'}
+            智能优先{props.aiReady ? '' : '（请先完成连接测试）'}
           </option>
         </select>
         <small>
           {props.aiReady
-            ? '当前会话已有AI连接通过真实连接测试；这里只调整推荐入口和说明。'
-            : 'AI未验证不影响自主创作、搜索、备份、导入导出或恢复。'}
+            ? '当前会话已有智能连接通过真实连接测试；这里只调整推荐入口和说明。'
+            : '智能连接尚未验证，不影响自主创作、搜索、备份、导入导出或恢复。'}
         </small>
       </label>
       <footer>

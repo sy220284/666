@@ -79,7 +79,7 @@ const structure = contractInput<ProjectStructure>({
 
 const provider = contractInput<ProviderSummary>({
   id: 'provider-1',
-  name: '本地AI',
+  name: '本地智能模型',
 });
 
 const catalog = contractInput<ValidationCatalog>({
@@ -261,7 +261,7 @@ describe('M11 内容检查工作台交互覆盖', () => {
     await Promise.resolve();
 
     await invoke(buttons(tree, '运行规则检查')[0]!);
-    await invoke(buttons(tree, '运行AI语义检查')[0]!);
+    await invoke(buttons(tree, '运行智能语义检查')[0]!);
     for (const label of [
       '标记已处理',
       '忽略本项',

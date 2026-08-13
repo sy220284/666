@@ -190,10 +190,12 @@ describe('Renderer关键展示与交互边界', () => {
     const header = WritingWorkbenchHeader({
       project: contractInput<ProjectWorkspaceSummary>({ name: '长夜行舟' }),
       chapter: contractInput<Chapter>({ title: '渡口' }),
-      panel: 'editor',
+      panel: 'versions',
       outlineVisible: false,
       contextVisible: true,
       focusMode: false,
+      editorState: '已保存',
+      editorFailure: false,
       setOutlineVisible,
       setContextVisible,
       onPanelChange,
@@ -202,14 +204,14 @@ describe('Renderer关键展示与交互边界', () => {
       toggleFocusMode,
     });
     const headerNodes = elementNodes(header);
-    callback(nodeByText(headerNodes, 'button', '正文'))();
+    callback(nodeByText(headerNodes, 'button', '返回正文'))();
     callback(nodeByText(headerNodes, 'button', '历史版本'))();
-    callback(nodeByText(headerNodes, 'button', '建议稿'))();
-    callback(nodeByText(headerNodes, 'button', '展开目录'))();
-    callback(nodeByText(headerNodes, 'button', '收起写作辅助'))();
+    callback(nodeByText(headerNodes, 'button', '智能助手'))();
+    callback(nodeByText(headerNodes, 'button', '显示目录'))();
+    callback(nodeByText(headerNodes, 'button', '隐藏写作辅助'))();
     callback(nodeByText(headerNodes, 'button', '沉浸写作'))();
-    callback(nodeByText(headerNodes, 'button', '返回项目'), 'onPointerDownCapture')();
-    callback(nodeByText(headerNodes, 'button', '返回项目'))();
+    callback(nodeByText(headerNodes, 'button', '返回'), 'onPointerDownCapture')();
+    callback(nodeByText(headerNodes, 'button', '返回'))();
     expect(onPanelChange.mock.calls.map(([panel]) => panel)).toEqual([
       'editor',
       'versions',

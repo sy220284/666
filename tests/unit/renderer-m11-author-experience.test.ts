@@ -9,7 +9,7 @@ async function rendererSource(relativePath: string): Promise<string> {
   return readFile(path.join(rendererRoot, relativePath), 'utf8');
 }
 
-describe('M11 中文作者体验与 AI 审阅', () => {
+describe('M11 中文作者体验与智能审阅', () => {
   it('规划入口使用作品核心与场景的中文作者语境', async () => {
     const [brief, planningMode] = await Promise.all([
       rendererSource('features/planning/brief/project-brief-editor.tsx'),
@@ -23,14 +23,14 @@ describe('M11 中文作者体验与 AI 审阅', () => {
     expect(planningMode).not.toContain('场景节拍和作品任务书');
   });
 
-  it('AI审阅不要求作者填写JSON或查看百分比可信度', async () => {
+  it('智能审阅不要求作者填写JSON或查看百分比可信度', async () => {
     const [panel, authorEdit, reviewModel] = await Promise.all([
       rendererSource('features/canon/state-proposal-panel.tsx'),
       rendererSource('features/canon/state-proposal-author-edit.ts'),
       rendererSource('features/canon/ai-review-model.ts'),
     ]);
 
-    expect(panel).toContain('<h2>AI审阅与章节状态</h2>');
+    expect(panel).toContain('<h2>智能审阅与章节状态</h2>');
     expect(panel).toContain('修改后接受');
     expect(panel).toContain('data-ai-review-status-filter');
     expect(panel).toContain('data-ai-review-type-filter');

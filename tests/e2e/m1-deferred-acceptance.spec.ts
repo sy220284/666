@@ -119,6 +119,8 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await expect(page.locator('[data-active-project-path]')).toHaveText(workspacePath);
     await capture(page, 'm1-02-project-workspace.png');
 
+    await page.locator('[data-open-planning]').click();
+    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
     await page.locator('[data-create-volume]').click();
     await page.locator('[data-structure-title]').fill('第二卷');
     await page.locator('[data-save-structure]').click();
@@ -141,6 +143,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
       page.locator('[data-volume-title="第二卷"] [data-chapter-title="第二章"]'),
     ).toContainText('写作中 · 2000—3000 字');
     await capture(page, 'm1-03-volume-chapter-trash.png');
+    await page.locator('[data-close-planning]').click();
 
     await page.locator('[data-chapter-title="第一章"] [data-open-chapter]').click();
     const editor = page.locator('[data-draft-content]');
@@ -149,6 +152,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await page.keyboard.type('雨落在旧站台。');
     await page.keyboard.press('Enter');
     await page.keyboard.type('“谁在那里？”');
+    await page.locator('[data-draft-tools-menu] > summary').click();
     await page.locator('[data-set-block-type="dialogue"]').click();
     const dialogueBlock = editor.locator('[data-block-type="dialogue"]');
     await expect(dialogueBlock).toContainText('谁在那里');
@@ -167,10 +171,13 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await expect(editor.locator('[data-block-type="dialogue"]')).toContainText('谁在那里');
     await expect(editor.locator('[data-block-type="separator"]')).toHaveCount(1);
     await expect(editor.locator('[data-block-type="heading"]')).toContainText('第二节');
+    await page.locator('[data-draft-tools-menu] > summary').click();
     await capture(page, 'm1-04-chinese-block-editor.png');
 
+    await page.locator('[data-draft-more-actions] > summary').click();
     await page.locator('[data-save-draft]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
+    await page.locator('[data-draft-more-actions] > summary').click();
     const revision = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
         .worldforge;
@@ -188,6 +195,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     expect(revision).toBeGreaterThan(0);
     await capture(page, 'm1-05-patch-revision.png');
 
+    await page.locator('[data-toggle-draft-find]').click();
     await page.locator('[data-draft-find]').fill('雨');
     await page.locator('[data-draft-find-next]').click();
     await expect(page.locator('[data-draft-find-status]')).toContainText('1');
@@ -195,6 +203,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
     await expect(page.locator('[data-draft-text-count]')).not.toHaveText('0');
     await capture(page, 'm1-06-autosave-stats-find.png');
 
+    await page.locator('details.writing-more-menu > summary').click();
     await page.locator('[data-create-version]').click();
     await page.locator('[data-version-title]').fill('M1验收版本');
     await page.locator('[data-version-label]').fill('阶段定稿');

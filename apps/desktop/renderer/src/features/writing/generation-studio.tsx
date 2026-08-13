@@ -86,7 +86,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
       <header>
         <div>
           <h3>生成任务</h3>
-          <p>进度来自持久化生成记录与任务事件，不使用模拟百分比。</p>
+          <p>进度来自已保存的生成记录与任务状态，不使用模拟百分比。</p>
         </div>
         <span
           className="generation-run-state"
@@ -111,7 +111,7 @@ export function GenerationStudio(props: GenerationStudioProps) {
           </select>
         </label>
         <label>
-          AI连接
+          智能连接
           <select
             data-generation-provider
             value={providerId}
@@ -379,9 +379,9 @@ export function GenerationStudio(props: GenerationStudioProps) {
             <dd>{activeRun.runId}</dd>
           </div>
           <div>
-            <dt>提示词版本</dt>
+            <dt>生成指令版本</dt>
             <dd>
-              {activeRun.promptId} v{activeRun.promptVersion}
+              {activeRun.promptId} · 第 {activeRun.promptVersion} 版
             </dd>
           </div>
           <div>

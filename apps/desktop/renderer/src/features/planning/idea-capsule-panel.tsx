@@ -154,7 +154,7 @@ export function IdeaCapsulePanel({
             : (providerOutcome.data.providers[0]?.id ?? ''),
         );
       } else if (providerOutcome.state === 'failure') {
-        setNotice(`AI连接读取失败：${authorErrorSummary(providerOutcome.error)}`);
+        setNotice(`智能连接读取失败：${authorErrorSummary(providerOutcome.error)}`);
       }
       if (structureOutcome.state === 'success') {
         setStructure(structureOutcome.data);
@@ -465,7 +465,7 @@ export function IdeaCapsulePanel({
           </label>
         ) : null}
         <label>
-          AI连接
+          智能连接
           <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
             <option value="">请选择连接</option>
             {providers.map((provider) => (

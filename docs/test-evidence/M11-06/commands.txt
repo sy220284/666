@@ -1,0 +1,57 @@
+# M11-06 Runtime 权威验证命令
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:docs
+pnpm check:governance
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:reliability
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# 最终实现与永久门禁
+# implementationCommit: 881a3bcb882fe8171362ac7e45d508ee0d78ee40
+# synchronized main: 10b5cc63f7fac13ce82b085e096b3f2c7df6d2be
+# Final anchor Quality: 31696296384 success
+# Final anchor Security: 31696296266 success
+# Final anchor Performance: 31696296254 success
+# Final anchor Linux Electron E2E: passed; artifact 9179997107
+# Final anchor Windows native Pinyin: artifact 9179533275
+# Final anchor Windows platform experience: artifact 9179532934
+# Final anchor macOS platform experience: artifact 9179486152
+
+# M11-06 frozen implementation validation
+# frozen implementation commit: 10560c1e3b5f77c4d58a8f3d1d11672bd3090a97
+# PR Policy: 31693424577 success
+# Quality: 31693426302 success
+# Security: 31693426045 success
+# Performance: 31693426131 success
+# Linux Electron E2E: 37/37 passed; artifact 9178883228
+# Windows native Pinyin: artifact 9178413383
+# Windows platform experience: artifact 9178412967
+# macOS platform experience: artifact 9178352058
+
+# 独立视觉稳定性取证
+# Head A: 545d714cf8ebd6a1c5a226959f9cdeec1ec1f179
+# Quality A: 31690247277; artifact 9177602913
+# Head B: cc30731e15c9580b1881e89fa272415cdc3db222
+# Quality B: 31691822679; artifact 9178220854
+
+# GitHub Actions 权威工具链
+# Node 24.18.1
+# pnpm 11.21.0
+# Prettier 3.9.6
+# ESLint 10.8.0
+# TypeScript 6.0.3
+# Vitest 4.1.10
+# Playwright 1.62.0
+# Electron 43.2.0

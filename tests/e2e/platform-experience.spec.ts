@@ -118,6 +118,7 @@ async function runScenario(viewport: ViewportProfile): Promise<ScenarioEvidence>
     const editor = page.locator('[data-draft-content]');
     await editor.click();
     await page.keyboard.insertText('清河落雨，灯下写到第二章。Emoji：🌙；标点：——“继续”。');
+    await page.locator('[data-draft-more-actions] > summary').click();
     await page.locator('[data-save-draft]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText('已手动保存');
     assertions.push('unicode-draft-save');

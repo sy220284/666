@@ -45,8 +45,9 @@ describe('M10-13 Candidate工作台渲染边界', () => {
     );
 
     expect(markup).toContain('data-candidate-preview-dialog');
-    expect(markup).toContain('AI创作与建议稿工作台');
+    expect(markup).toContain('智能创作与建议稿工作台');
     expect(markup).toContain('保存序号 7');
+    expect(markup).not.toContain('AI创作与建议稿工作台');
     expect(flush).not.toHaveBeenCalled();
     expect(onDraftReplace).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();

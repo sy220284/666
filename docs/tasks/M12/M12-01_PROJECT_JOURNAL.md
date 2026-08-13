@@ -12,7 +12,7 @@
 
 ## 依赖
 
-- M11-06 有效 VERIFIED。
+- M11-07 有效 VERIFIED。
 - 复用 GenerationRun Generic Scope / Workflow Handler、AI Task Routing、Prompt Version Authority、StoryDigest、SearchTools、Atomic Navigation。
 
 ## 数据来源

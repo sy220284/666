@@ -27,13 +27,15 @@ export async function refreshProviderSettings(
       input.setProviders(outcome.data.providers);
       input.onProvidersChanged(outcome.data.providers);
       input.setMessage(
-        outcome.data.providers.length ? 'AI连接已加载。' : '尚未配置AI连接；离线写作功能不受影响。',
+        outcome.data.providers.length
+          ? '智能连接已加载。'
+          : '尚未配置智能连接；离线写作功能不受影响。',
       );
     } else if (outcome.state === 'failure') {
       input.setMessage(authorErrorSummary(outcome.error));
     }
   } catch {
-    if (scope?.isCurrent() ?? true) input.setMessage('AI连接读取未完成，请重试。');
+    if (scope?.isCurrent() ?? true) input.setMessage('智能连接读取未完成，请重试。');
   }
 }
 
@@ -55,12 +57,12 @@ export async function runProviderSettingsCommand(input: ProviderCommandInput): P
     },
   });
   if (result.state === 'rejected') {
-    input.setMessage('已有AI连接操作正在处理，请完成后再试。');
+    input.setMessage('已有智能连接操作正在处理，请完成后再试。');
     return;
   }
   if (!input.coordinator.isLatest(PROVIDER_COMMAND, result.token)) return;
   input.setPending(null);
-  if (result.state === 'failed') input.setMessage('AI连接操作未完成，请重试。');
+  if (result.state === 'failed') input.setMessage('智能连接操作未完成，请重试。');
 }
 
 export function providerScopeLabel(scope: ProviderEndpointScope): string {

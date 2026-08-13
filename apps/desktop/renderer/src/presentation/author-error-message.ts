@@ -65,8 +65,8 @@ const AUTHOR_ERROR_MESSAGES: Readonly<Record<string, AuthorErrorMessage>> = {
     suggestedAction: '请重新启动本地服务，未保存内容不要关闭。',
   },
   PROVIDER_UNAVAILABLE: {
-    title: 'AI连接不可用',
-    message: '当前AI连接未通过连接测试，基础写作功能仍可继续使用。',
+    title: '智能连接不可用',
+    message: '当前智能连接未通过连接测试，基础写作功能仍可继续使用。',
     suggestedAction: '请检查模型服务、地址、模型名称和密钥。',
   },
   DRAFT_REVISION_CONFLICT_001: {
@@ -120,47 +120,47 @@ const AUTHOR_ERROR_MESSAGES: Readonly<Record<string, AuthorErrorMessage>> = {
     suggestedAction: '请改为整体采用，或重新生成可分段建议稿。',
   },
   AI_PROVIDER_NOT_CONFIGURED_001: {
-    title: '尚未配置AI连接',
-    message: '当前没有可用的AI服务配置，离线写作功能仍可继续使用。',
+    title: '尚未配置智能连接',
+    message: '当前没有可用的智能服务配置，离线写作功能仍可继续使用。',
     suggestedAction: '请在设置中选择服务预设并保存。',
   },
   AI_CREDENTIAL_MISSING_002: {
-    title: 'AI服务缺少密钥',
+    title: '智能服务缺少密钥',
     message: '当前服务需要密钥才能连接。',
     suggestedAction: '请补充密钥并重新测试连接。',
   },
   AI_CONNECTION_FAILED_003: {
-    title: '无法连接AI服务',
+    title: '无法连接智能服务',
     message: '模型服务没有响应，离线写作功能仍可继续使用。',
     suggestedAction: '请检查服务是否启动、地址是否正确以及网络是否可用。',
   },
   AI_AUTH_FAILED_004: {
-    title: 'AI服务身份验证失败',
+    title: '智能服务身份验证失败',
     message: '服务拒绝了当前密钥或访问凭据。',
     suggestedAction: '请核对密钥和服务权限后重新测试。',
   },
   AI_RATE_LIMITED_005: {
-    title: 'AI服务暂时繁忙',
+    title: '智能服务暂时繁忙',
     message: '服务限制了当前请求频率，正文与本地数据没有受到影响。',
     suggestedAction: '请稍后重试或检查服务配额。',
   },
   AI_REQUEST_TIMEOUT_006: {
-    title: 'AI请求等待超时',
+    title: '智能请求等待超时',
     message: '服务未在设定时间内完成响应。',
     suggestedAction: '请检查模型运行状态，或在高级设置中延长等待时间。',
   },
   AI_CONTEXT_OVERFLOW_007: {
-    title: '发送给AI的内容过长',
+    title: '发送给智能模型的内容过长',
     message: '当前模型无法一次处理这些上下文，正文没有被修改。',
     suggestedAction: '请缩小生成范围或改用支持更长上下文的模型。',
   },
   AI_OUTPUT_INVALID_008: {
-    title: 'AI返回内容无法使用',
+    title: '智能模型返回内容无法使用',
     message: '服务返回的内容不符合当前操作要求，系统没有写入正文。',
     suggestedAction: '请重试，或更换模型与生成方式。',
   },
   AI_STREAM_INTERRUPTED_009: {
-    title: 'AI输出中途断开',
+    title: '智能输出中途断开',
     message: '已经收到的内容仍可作为未完成建议稿保存。',
     suggestedAction: '可保存现有内容后继续生成，或重新发起任务。',
   },
@@ -171,7 +171,7 @@ const AUTHOR_ERROR_MESSAGES: Readonly<Record<string, AuthorErrorMessage>> = {
   },
   AI_RUN_NOT_FOUND_011: {
     title: '生成任务已经不存在',
-    message: '系统没有找到对应的AI生成任务。',
+    message: '系统没有找到对应的智能生成任务。',
     suggestedAction: '请刷新页面后重新发起生成。',
   },
   AI_RUN_ALREADY_FINISHED_012: {
@@ -180,12 +180,12 @@ const AUTHOR_ERROR_MESSAGES: Readonly<Record<string, AuthorErrorMessage>> = {
     suggestedAction: '请查看已有建议稿或重新生成。',
   },
   AI_ENDPOINT_UNSAFE_013: {
-    title: 'AI服务地址不安全',
+    title: '智能服务地址不安全',
     message: '系统拒绝连接可能暴露本地环境或使用不安全协议的地址。',
     suggestedAction: '本机服务请使用localhost；远程服务请使用HTTPS。',
   },
   AI_RESPONSE_TOO_LARGE_014: {
-    title: 'AI返回内容超过安全上限',
+    title: '智能模型返回内容超过安全上限',
     message: '模型服务返回的数据量过大，系统已经停止接收，正文和本地数据没有被修改。',
     suggestedAction: '请缩小生成范围、降低输出长度，或检查模型服务是否异常。',
   },

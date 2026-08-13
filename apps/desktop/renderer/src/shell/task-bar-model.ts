@@ -27,7 +27,7 @@ const TASK_LABELS: Readonly<Record<string, string>> = {
   'candidate.apply': '采用建议稿',
   'candidate.merge': '融合建议稿',
   'candidate.rewrite': '生成改写建议稿',
-  'state.extract': '生成AI审阅建议',
+  'state.extract': '生成智能审阅建议',
   'validation.run': '运行内容检查',
   'search.rebuild': '重建全文搜索',
   'backup.create': '创建备份',
@@ -38,7 +38,7 @@ const TASK_LABELS: Readonly<Record<string, string>> = {
 const STAGE_LABELS: Readonly<Record<string, string>> = {
   queued: '等待开始',
   preparing: '正在准备',
-  calling_model: '正在调用AI模型',
+  calling_model: '正在调用智能模型',
   streaming: '正在接收内容',
   validating: '正在检查结果',
   persisting: '正在保存',

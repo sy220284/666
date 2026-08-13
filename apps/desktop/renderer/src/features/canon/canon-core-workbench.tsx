@@ -39,7 +39,7 @@ export function CanonWorkbench({
         <div>
           <p className="eyebrow">人物与世界</p>
           <h1>设定与连续性工作台</h1>
-          <p>人物与世界、动态历史、叙事规划、故事知识和待处理 AI 审阅分区保存。</p>
+          <p>人物与世界、动态历史、叙事规划、故事知识和待处理智能审阅分区保存。</p>
         </div>
       </header>
       <nav className="feature-tabs" aria-label="设定工作台分区">
@@ -68,7 +68,7 @@ export function CanonWorkbench({
         />
         <Tab
           current={section === 'proposals'}
-          label="AI审阅"
+          label="智能审阅"
           marker="open-state-proposals"
           onClick={() => onSectionChange('proposals')}
         />

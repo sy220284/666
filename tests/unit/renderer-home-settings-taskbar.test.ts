@@ -162,7 +162,7 @@ describe('生成任务栏模型', () => {
 });
 
 describe('设置分区导航', () => {
-  it('在基础设置之外提供已经接通的AI连接分区', () => {
+  it('在基础设置之外提供已经接通的智能连接分区', () => {
     const items = createSettingsNavigationItems({
       disclosureMode: 'beginner',
       currentSection: 'general',
@@ -175,7 +175,7 @@ describe('设置分区导航', () => {
       'advanced',
     ]);
     expect(items.find((item) => item.id === 'general')?.current).toBe(true);
-    expect(items.find((item) => item.id === 'providers')?.label).toBe('AI连接');
+    expect(items.find((item) => item.id === 'providers')?.label).toBe('智能连接');
   });
 
   it('切换信息显示方式时不改变分区身份和可用状态', () => {

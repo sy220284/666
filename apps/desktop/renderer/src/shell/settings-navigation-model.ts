@@ -76,7 +76,7 @@ const SETTINGS_SECTION_DEFINITIONS = [
   {
     id: 'providers',
     label: authorTerm('provider'),
-    beginnerDescription: '配置本机或外部AI模型服务',
+    beginnerDescription: '配置本机或外部智能模型服务',
     professionalDescription: `${authorTerm('provider')}、服务地址边界、凭据和连接能力测试`,
   },
   {

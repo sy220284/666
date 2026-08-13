@@ -167,7 +167,7 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
             <dd>{selectedRun.runId}</dd>
           </div>
           <div>
-            <dt>AI连接 / 模型</dt>
+            <dt>智能连接 / 模型</dt>
             <dd>
               {providers.find((provider) => provider.id === selectedRun.providerId)?.name ??
                 selectedRun.providerId}{' '}
@@ -175,15 +175,16 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
             </dd>
           </div>
           <div>
-            <dt>提示词版本</dt>
+            <dt>生成指令版本</dt>
             <dd>
-              {selectedRun.promptId} v{selectedRun.promptVersion}
+              {selectedRun.promptId} · 第 {selectedRun.promptVersion} 版
             </dd>
           </div>
           <div>
             <dt>输出方式</dt>
             <dd>
-              {selectedRun.outputMode} · {selectedRun.supportStatus}
+              {generationOutputModeLabel(selectedRun.outputMode)} ·{' '}
+              {generationSupportLabel(selectedRun.supportStatus)}
             </dd>
           </div>
         </dl>
@@ -338,4 +339,24 @@ export function CandidateReviewDisplay(props: CandidateReviewDisplayProps) {
       ) : null}
     </>
   );
+}
+
+function generationOutputModeLabel(mode: string): string {
+  const labels: Readonly<Record<string, string>> = {
+    structured: '结构化结果',
+    text: '文本结果',
+    stream: '逐步生成',
+    streaming: '逐步生成',
+  };
+  return labels[mode] ?? '已记录';
+}
+
+function generationSupportLabel(status: string): string {
+  const labels: Readonly<Record<string, string>> = {
+    supported: '完全支持',
+    partial: '部分支持',
+    degraded: '兼容模式',
+    unsupported: '不支持',
+  };
+  return labels[status] ?? '兼容状态已记录';
 }

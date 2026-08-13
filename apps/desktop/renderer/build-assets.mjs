@@ -12,6 +12,7 @@ const styleFiles = [
   'components/04-features.css',
   'components/04-story-knowledge.css',
   'components/05-writing.css',
+  'components/05-writing-refinement.css',
   'components/06-review.css',
   'themes.css',
 ];

@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 import type { ContinuityBridge, WorldforgeBridge } from '@worldforge/contracts';
 
 import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
@@ -30,6 +36,16 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   const closed = application.waitForEvent('close');
   await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
   await closed;
+}
+
+async function openCompletePlanning(page: Page): Promise<void> {
+  await page.locator('[data-open-planning]').click();
+  await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+  const beginner = page.locator('[data-planning-disclosure="beginner"]');
+  if (await beginner.isVisible()) {
+    await page.locator('[data-planning-mode="professional"]').click();
+  }
+  await expect(page.locator('[data-planning-disclosure="professional"]')).toBeVisible();
 }
 
 test.afterEach(async () => {
@@ -67,8 +83,10 @@ test('previews split and permanent delete, blocks current chapter references, an
     await page.keyboard.press('Enter');
     await page.keyboard.type('拆分后进入新章节。');
     await expect(blocks).toHaveCount(2);
+    await page.locator('[data-draft-more-actions] > summary').click();
     await page.locator('[data-save-draft]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存$/u);
+    await page.locator('[data-draft-more-actions] > summary').click();
 
     const prepared = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
@@ -98,6 +116,9 @@ test('previews split and permanent delete, blocks current chapter references, an
     expect(prepared.blockCount).toBe(2);
     expect(prepared.preview).toMatchObject({ canExecute: true, resultingTargetBlockCount: 1 });
 
+    // Destructive structure operations live in the full planning workspace, not the compact writing outline.
+    await openCompletePlanning(page);
+
     // Exercise the real UI command and verify stale structure reads cannot overwrite its result.
     await page.evaluate(() => {
       window.prompt = () => '拆出章节';
@@ -117,6 +138,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await openCompletePlanning(page);
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 
@@ -208,6 +230,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     await captureAcceptanceScreenshot(page, 'M2-04', 'permanent-delete-checkpoint.png');
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await openCompletePlanning(page);
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-empty]')).toBeVisible();
   } finally {

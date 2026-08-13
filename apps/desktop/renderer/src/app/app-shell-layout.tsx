@@ -214,7 +214,7 @@ function ProjectContext(props: AppShellLayoutProps) {
         {[
           ['continuity', '连续性账本', '当前作品处于恢复保护状态，连续性账本暂不可读取。'],
           ['narrative', '伏笔与弧光', '当前作品处于恢复保护状态，伏笔与弧光暂不可读取。'],
-          ['proposals', 'AI审阅', '当前作品处于恢复保护状态，AI审阅暂不可读取。'],
+          ['proposals', '智能审阅', '当前作品处于恢复保护状态，智能审阅暂不可读取。'],
         ].map(([section, label, title]) => (
           <button
             className="quiet-button"

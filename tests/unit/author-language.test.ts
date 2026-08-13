@@ -26,14 +26,15 @@ describe('正式中文名称', () => {
     expect(authorTerm('draftBlock')).toBe('正文段落');
     expect(authorTerm('version')).toBe('历史版本');
     expect(authorTerm('finalVersion')).toBe('定稿');
-    expect(authorTerm('candidate')).toBe('AI建议稿');
-    expect(authorTerm('provider')).toBe('AI连接');
+    expect(authorTerm('candidate')).toBe('智能建议稿');
+    expect(authorTerm('provider')).toBe('智能连接');
+    expect(authorTerm('generationRun')).toBe('智能生成任务');
     expect(authorTerm('projectBrief')).toBe('作品核心');
     expect(authorTerm('sceneBeat')).toBe('场景');
     expect(authorTerm('canon')).toBe('人物与世界');
-    expect(authorTerm('aiReview')).toBe('AI审阅');
-    expect(authorTerm('stateProposal')).toBe('AI审阅建议');
-    expect(authorTerm('reviewProposal')).toBe('AI审阅建议');
+    expect(authorTerm('aiReview')).toBe('智能审阅');
+    expect(authorTerm('stateProposal')).toBe('智能审阅建议');
+    expect(authorTerm('reviewProposal')).toBe('智能审阅建议');
     expect(authorTerm('validation')).toBe('内容检查');
     expect(authorTerm('storyTodo')).toBe('修改任务');
     expect(authorTerm('beginnerMode')).toBe('简明模式');
@@ -42,7 +43,7 @@ describe('正式中文名称', () => {
 
   it('技术详情保持中文名称在前并保留内部标识', () => {
     expect(technicalTermDetail('candidate', 'CandidateDocument')).toEqual({
-      authorLabel: 'AI建议稿',
+      authorLabel: '智能建议稿',
       internalName: 'CandidateDocument',
     });
   });
@@ -51,7 +52,7 @@ describe('正式中文名称', () => {
     const labels = Object.values(AUTHOR_TERMS);
     expect(labels.every((label) => label.trim().length > 0)).toBe(true);
     const duplicateLabels = labels.filter((label, index) => labels.indexOf(label) !== index);
-    expect([...new Set(duplicateLabels)]).toEqual(['AI审阅建议']);
+    expect([...new Set(duplicateLabels)]).toEqual(['智能审阅建议']);
   });
 });
 

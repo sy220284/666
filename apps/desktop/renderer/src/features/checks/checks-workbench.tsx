@@ -110,7 +110,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
         setProviders(providerOutcome.data.providers);
         setProviderId(providerOutcome.data.providers[0]?.id ?? '');
       } else if (providerOutcome.state === 'failure') {
-        failures.push(`AI连接读取失败：${authorErrorSummary(providerOutcome.error)}`);
+        failures.push(`智能连接读取失败：${authorErrorSummary(providerOutcome.error)}`);
       }
       if (validationOutcome.state === 'success') {
         setCatalog(validationOutcome.data);
@@ -147,7 +147,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
           failureCount = 0;
           setActiveRun(outcome.data);
           setNotice(
-            `AI语义检查 · ${generationStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
+            `智能语义检查 · ${generationStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
           );
           terminal = TERMINAL_RUN_STATUSES.has(outcome.data.status);
           if (terminal) {
@@ -162,15 +162,17 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             setPending(false);
             setActiveRun(null);
             setNotice(
-              `AI语义检查状态连续读取失败：${authorErrorSummary(outcome.error)}。自动重试已停止，请重新运行。`,
+              `智能语义检查状态连续读取失败：${authorErrorSummary(outcome.error)}。自动重试已停止，请重新运行。`,
             );
           } else {
-            setNotice(`AI语义检查状态读取失败：${authorErrorSummary(outcome.error)}，将自动重试。`);
+            setNotice(
+              `智能语义检查状态读取失败：${authorErrorSummary(outcome.error)}，将自动重试。`,
+            );
           }
         } else if (outcome.state === 'cancelled') {
           terminal = true;
           setPending(false);
-          setNotice('AI语义检查状态读取已取消。');
+          setNotice('智能语义检查状态读取已取消。');
         }
       } catch {
         if (!active) return;
@@ -180,9 +182,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
         if (terminal) {
           setPending(false);
           setActiveRun(null);
-          setNotice('AI语义检查状态连续无法读取。自动重试已停止，请重新运行。');
+          setNotice('智能语义检查状态连续无法读取。自动重试已停止，请重新运行。');
         } else {
-          setNotice('AI语义检查状态暂时无法读取，将自动重试。');
+          setNotice('智能语义检查状态暂时无法读取，将自动重试。');
         }
       }
       if (!terminal) schedule(generationPollingDelay(failureCount));
@@ -223,7 +225,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
     });
     if (outcome.state === 'success') {
       setActiveRun(outcome.data.run);
-      setNotice(`AI语义检查已启动 · ${generationStageLabel(outcome.data.run.stage)}`);
+      setNotice(`智能语义检查已启动 · ${generationStageLabel(outcome.data.run.stage)}`);
     } else {
       setPending(false);
       setNotice(outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。');
@@ -336,7 +338,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
       <header className="feature-heading">
         <div>
           <p className="eyebrow">内容检查</p>
-          <h1>规则与AI语义检查</h1>
+          <h1>规则与智能语义检查</h1>
           <p>检查结果保留内容依据；只有作者可以处理、忽略或转为修改任务。</p>
         </div>
       </header>
@@ -362,9 +364,9 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             </select>
           </label>
           <label>
-            AI连接
+            智能连接
             <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
-              <option value="">选择AI连接</option>
+              <option value="">选择智能连接</option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
                   {provider.name}
@@ -387,7 +389,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
             disabled={pending || readOnly || !chapter?.finalVersionId || !providerId}
             onClick={runAi}
           >
-            运行AI语义检查
+            运行智能语义检查
           </button>
         </div>
         <p className="feature-status" role="status">
@@ -411,7 +413,7 @@ export function ChecksWorkbench({ bridge, projectId, readOnly, onNavigate }: Che
                   {issueTypeLabel(issue.issueType)} · {authorStatusLabel(issue.severity)}
                 </h3>
                 <p>
-                  {issue.source === 'rule' ? '确定性规则' : 'AI语义检查'} ·{' '}
+                  {issue.source === 'rule' ? '确定性规则' : '智能语义检查'} ·{' '}
                   {authorStatusLabel(issue.status)} · 原文位置{' '}
                   {issue.anchor.state === 'current' ? '有效' : '已经变化'} · 语义上下文{' '}
                   {batchById.get(issue.batchId)?.semanticFreshness === 'current'
@@ -630,7 +632,7 @@ function exceptionTypeLabel(value: string): string {
 
 function generationStageLabel(stage: string): string {
   if (stage === 'queued') return '等待开始';
-  if (stage === 'calling_model') return '正在调用AI模型';
+  if (stage === 'calling_model') return '正在调用智能模型';
   if (stage === 'streaming') return '正在接收内容';
   if (stage === 'validating') return '正在检查结果';
   if (stage === 'persisting') return '正在保存';

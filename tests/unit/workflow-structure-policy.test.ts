@@ -20,6 +20,7 @@ describe('workflow structure policy', () => {
     expect(workflow.jobs['quality-core'].with.linux_platform_experience).toBe(
       "${{ needs.route.outputs.platform_experience == 'true' }}",
     );
+    expect(workflow.jobs['package-smoke-gate']).toBeUndefined();
     expect(workflow.jobs.quality.name).toBe('quality / quality');
     expect(workflow.jobs.quality.needs).toEqual(
       expect.arrayContaining([

@@ -186,7 +186,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
       return { label: '审阅建议稿', run: () => void navigation.transitionToRoute('candidates') };
     if (globalStatus.id === 'proposal-pending')
       return {
-        label: '打开AI审阅',
+        label: '打开智能审阅',
         run: () => {
           setCanonSection('proposals');
           void navigation.transitionToRoute('canon');
@@ -197,7 +197,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
     if (['validation-open', 'search-failed', 'search-stale'].includes(globalStatus.id))
       return { label: '打开检查', run: () => void navigation.transitionToRoute('checks') };
     if (globalStatus.id === 'ai-readiness')
-      return { label: '检查AI连接', run: () => navigation.navigate('settings') };
+      return { label: '检查智能连接', run: () => navigation.navigate('settings') };
     return undefined;
   }, [failure, globalStatus, navigation, refreshWorkspace]);
 

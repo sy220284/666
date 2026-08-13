@@ -1,6 +1,6 @@
 # M11-06 作者日常写作界面精修
 
-> 状态：In Progress  
+> 状态：Implemented
 > 里程碑：M11 产品体验与智能创作协同  
 > 优先级：P0  
 > 执行分支：`work`  
@@ -228,6 +228,15 @@ pnpm test:e2e
 - 三平台体验结果；
 - 作者语言门禁结果；
 - 已知风险与未纳入本任务的后续界面增强说明。
+
+## 实现收口
+
+- 最终实现提交：`10560c1e3b5f77c4d58a8f3d1d11672bd3090a97`。
+- 来源 PR：#387（`work → main`）。
+- Quality 运行 `31693426302` 成功，Linux Electron 完整流程 37/37 通过，Windows 真拼音与 Windows/macOS/Linux 作者体验通过。
+- Security 运行 `31693426045` 成功；Performance 运行 `31693426131` 成功。
+- 两个独立视觉取证 Head `545d714cf8ebd6a1c5a226959f9cdeec1ec1f179` 与 `cc30731e15c9580b1881e89fa272415cdc3db222` 的四主题 1280×800 截图 SHA-256 逐张一致，新基线及 Artifact provenance 已登记。
+- M11-06、M11-07 与 M12-01—M12-04 的索引编号、任务卡路径和依赖镜像已经统一。
 
 ## 回滚策略
 

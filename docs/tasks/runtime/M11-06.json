@@ -1,14 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M11-06",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M11/M11-06_DAILY_WRITING_UI_REFINEMENT.md",
   "priority": "P0",
   "startedAt": "2026-08-13T09:05:00+08:00",
-  "dependencies": [
-    "M11-05"
-  ],
+  "dependencies": ["M11-05"],
   "baseline": {
     "main": "c4c69c03e0ca59e57d2bfe31559773b7b2976c4a",
     "work": "c4c69c03e0ca59e57d2bfe31559773b7b2976c4a"
@@ -64,5 +62,9 @@
     "pnpm build",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 387,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M11-06"
+  }
 }

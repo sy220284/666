@@ -88,28 +88,30 @@ export function StructureNavigator({
         >
           <div className="feature-card__heading">
             <div>
-              <h2>卷章目录</h2>
+              <h2>{compact ? '目录' : '卷章目录'}</h2>
               {!compact ? <p>生命周期与目标字数由本地服务维护。</p> : null}
             </div>
-            <div className="inline-actions">
-              <button
-                className="quiet-button"
-                data-create-volume
-                disabled={readOnly || operations.command.pending}
-                type="button"
-                onClick={() => setEditor({ kind: 'create-volume' })}
-              >
-                新建卷
-              </button>
-              <button
-                className="quiet-button"
-                data-open-trash
-                type="button"
-                onClick={() => setTrashOpen(true)}
-              >
-                回收站
-              </button>
-            </div>
+            {!compact ? (
+              <div className="inline-actions">
+                <button
+                  className="quiet-button"
+                  data-create-volume
+                  disabled={readOnly || operations.command.pending}
+                  type="button"
+                  onClick={() => setEditor({ kind: 'create-volume' })}
+                >
+                  新建卷
+                </button>
+                <button
+                  className="quiet-button"
+                  data-open-trash
+                  type="button"
+                  onClick={() => setTrashOpen(true)}
+                >
+                  回收站
+                </button>
+              </div>
+            ) : null}
           </div>
           <p className="feature-status" data-structure-state role="status">
             {operations.command.error ? authorErrorSummary(operations.command.error) : ''}
@@ -117,6 +119,7 @@ export function StructureNavigator({
           <StructureTree
             activeSelectedChapterId={activeSelectedChapterId}
             commandPending={operations.command.pending}
+            compact={compact}
             error={resource.error}
             loading={resource.state === 'loading'}
             previewPending={operations.previewCommand.pending}

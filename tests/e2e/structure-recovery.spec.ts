@@ -32,6 +32,16 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
+async function openCompletePlanning(page: import('@playwright/test').Page): Promise<void> {
+  await page.locator('[data-open-planning]').click();
+  await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+  const beginner = page.locator('[data-planning-disclosure="beginner"]');
+  if (await beginner.isVisible()) {
+    await page.locator('[data-planning-mode="professional"]').click();
+  }
+  await expect(page.locator('[data-planning-disclosure="professional"]')).toBeVisible();
+}
+
 test.afterEach(async () => {
   await Promise.all(
     temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true })),
@@ -101,8 +111,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     expect(prepared.preview).toMatchObject({ canExecute: true, resultingTargetBlockCount: 1 });
 
     // Destructive structure operations live in the full planning workspace, not the compact writing outline.
-    await page.locator('[data-open-planning]').click();
-    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+    await openCompletePlanning(page);
 
     // Exercise the real UI command and verify stale structure reads cannot overwrite its result.
     await page.evaluate(() => {
@@ -123,8 +132,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
-    await page.locator('[data-open-planning]').click();
-    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+    await openCompletePlanning(page);
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 
@@ -216,8 +224,7 @@ test('previews split and permanent delete, blocks current chapter references, an
     await captureAcceptanceScreenshot(page, 'M2-04', 'permanent-delete-checkpoint.png');
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
-    await page.locator('[data-open-planning]').click();
-    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+    await openCompletePlanning(page);
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-empty]')).toBeVisible();
   } finally {

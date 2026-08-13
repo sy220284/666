@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -13,6 +14,7 @@ import {
 
 import {
   loadVisualBaselineManifest,
+  readPngDimensions,
   verifyVisualSnapshot,
   type VisualBaselineManifest,
 } from './visual-regression-baseline.js';
@@ -22,6 +24,14 @@ const temporaryDirectories: string[] = [];
 
 type ThemeId = 'theme-a' | 'theme-b';
 type ThemeVariant = 'light' | 'dark';
+
+interface VisualMismatch {
+  readonly snapshotName: string;
+  readonly sha256: string;
+  readonly width: number;
+  readonly height: number;
+  readonly error: string;
+}
 
 async function launch(userDataPath: string, createParent: string): Promise<ElectronApplication> {
   const args: string[] = [];
@@ -73,7 +83,7 @@ async function expectBaseline(
   page: Page,
   manifest: VisualBaselineManifest,
   snapshotName: string,
-): Promise<void> {
+): Promise<VisualMismatch | null> {
   const image = await page.screenshot({
     animations: 'disabled',
     fullPage: false,
@@ -81,13 +91,36 @@ async function expectBaseline(
   });
   try {
     verifyVisualSnapshot(manifest, snapshotName, image);
+    return null;
   } catch (error) {
     const outputRoot = process.env.WORLDFORGE_E2E_OUTPUT_DIR ?? 'test-results/electron';
     const outputDirectory = path.join(outputRoot, 'visual-regression');
     await mkdir(outputDirectory, { recursive: true });
     await writeFile(path.join(outputDirectory, `${snapshotName}.actual.png`), image);
-    throw error;
+    const dimensions = readPngDimensions(image);
+    return {
+      snapshotName,
+      sha256: createHash('sha256').update(image).digest('hex'),
+      width: dimensions.width,
+      height: dimensions.height,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
+}
+
+async function assertNoVisualMismatches(mismatches: readonly VisualMismatch[]): Promise<void> {
+  if (mismatches.length === 0) return;
+  const outputRoot = process.env.WORLDFORGE_E2E_OUTPUT_DIR ?? 'test-results/electron';
+  const outputDirectory = path.join(outputRoot, 'visual-regression');
+  await mkdir(outputDirectory, { recursive: true });
+  await writeFile(
+    path.join(outputDirectory, 'actual-manifest.json'),
+    `${JSON.stringify({ schemaVersion: 1, mismatches }, null, 2)}\n`,
+    'utf8',
+  );
+  throw new Error(
+    `Visual baseline mismatch (${mismatches.length}): ${mismatches.map((item) => item.snapshotName).join(', ')}`,
+  );
 }
 
 test.afterEach(async () => {
@@ -130,13 +163,20 @@ if (process.platform === 'linux') {
       await expect(page.locator('[data-draft-state]')).not.toContainText('保存序号');
       await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
 
-      await expectBaseline(page, manifest, 'theme-a-light-1280x800.png');
+      const mismatches: VisualMismatch[] = [];
+      const collect = async (snapshotName: string): Promise<void> => {
+        const mismatch = await expectBaseline(page, manifest, snapshotName);
+        if (mismatch) mismatches.push(mismatch);
+      };
+
+      await collect('theme-a-light-1280x800.png');
       await applyTheme(page, 'theme-a', 'dark');
-      await expectBaseline(page, manifest, 'theme-a-dark-1280x800.png');
+      await collect('theme-a-dark-1280x800.png');
       await applyTheme(page, 'theme-b', 'light');
-      await expectBaseline(page, manifest, 'theme-b-light-1280x800.png');
+      await collect('theme-b-light-1280x800.png');
       await applyTheme(page, 'theme-b', 'dark');
-      await expectBaseline(page, manifest, 'theme-b-dark-1280x800.png');
+      await collect('theme-b-dark-1280x800.png');
+      await assertNoVisualMismatches(mismatches);
     } finally {
       await closeGracefully(application);
     }

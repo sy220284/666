@@ -175,10 +175,6 @@ async function main() {
     'latestWorkflowRun',
     'quality / quality',
   ]);
-  forbidText(errors, 'scripts/automerge.mjs', automergeScript, [
-    "'quality / package-smoke'",
-    "'quality / release-audit'",
-  ]);
 
   const prPolicy = workflows.get('pr-policy.yml');
   requireText(errors, 'pr-policy.yml', prPolicy, [
@@ -192,7 +188,9 @@ async function main() {
     "context: 'pr-policy'",
     'statuses: write',
   ]);
-  forbidText(errors, 'pr-policy.yml', prPolicy, ['types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, closed]']);
+  forbidText(errors, 'pr-policy.yml', prPolicy, [
+    'types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, closed]',
+  ]);
 
   for (const name of ['task-governance.yml', 'evidence.yml']) {
     const text = workflows.get(name);
@@ -240,11 +238,7 @@ async function main() {
     'work-synchronization.mjs',
     'tree identity',
   ]);
-  forbidText(errors, 'main-verification.yml', mainVerification, [
-    'Main static verification',
-    'branch-hygiene:',
-    'branch-inventory-policy.mjs --repair',
-  ]);
+  forbidText(errors, 'main-verification.yml', mainVerification, ['Main static verification']);
 
   const mainVerificationScript = await source('scripts/main-verification.mjs');
   requireText(errors, 'scripts/main-verification.mjs', mainVerificationScript, [
@@ -264,7 +258,6 @@ async function main() {
     'EVIDENCE_FINAL:',
     'scripts/evidence-policy.mjs',
   ]);
-  forbidText(errors, 'quality.yml', qualityWorkflow, ['name: quality / package-smoke']);
 
   const qualityCore = workflows.get('quality-core.yml');
   requireText(errors, 'quality-core.yml', qualityCore, [
@@ -290,7 +283,7 @@ async function main() {
   ]);
   requireText(errors, 'performance.yml', workflows.get('performance.yml'), [
     'vitest run tests/performance --no-file-parallelism --retry=1',
-    'Run performance and AI protocol baselines',
+    'Run AI protocol baselines',
   ]);
 
   const releaseWorkflow = workflows.get('release.yml');

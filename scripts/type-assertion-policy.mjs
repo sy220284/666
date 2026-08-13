@@ -44,10 +44,16 @@ export async function inspectTypeAssertionPolicy(repositoryRoot = DEFAULT_ROOT) 
     if (count !== allowed) {
       violations.push(`${file}: expected ${allowed} double assertions, found ${count}`);
     }
-    if (file.startsWith('packages/core-service/src/') && /\.all\([^;]*as unknown as/su.test(source)) {
+    if (
+      file.startsWith('packages/core-service/src/') &&
+      /\.all\([^;]*as unknown as/su.test(source)
+    ) {
       violations.push(`${file}: SQLite .all() results must use sqliteResult()`);
     }
-    if (file.startsWith('packages/core-service/src/') && /\.get\([^;]*as unknown as/su.test(source)) {
+    if (
+      file.startsWith('packages/core-service/src/') &&
+      /\.get\([^;]*as unknown as/su.test(source)
+    ) {
       violations.push(`${file}: SQLite .get() results must use sqliteResult()`);
     }
   }

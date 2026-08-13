@@ -1,5 +1,7 @@
 const unavailable = (): never => {
-  throw new Error('Electron runtime API is unavailable in Node product-test coverage. Mock it in the test.');
+  throw new Error(
+    'Electron runtime API is unavailable in Node product-test coverage. Mock it in the test.',
+  );
 };
 
 export const app = { whenReady: unavailable };

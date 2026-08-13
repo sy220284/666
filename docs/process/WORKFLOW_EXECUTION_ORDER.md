@@ -18,7 +18,7 @@
 → Main Verification成功
 → 发布main-verification与task-verification/<TASK-ID>
 → 任务有效状态转为VERIFIED
-→ Integration Branch Synchronization同步来源work，并处理空闲governance
+→ Integration Branch Synchronization同步来源work，并处理governance
 → Branch Inventory确认仅main/work/governance
 → 重新读取真实Refs与提交状态
 ```
@@ -35,12 +35,15 @@
 → Main Verification成功
 → Integration Branch Synchronization同步来源governance
 → 若work空闲且只是落后main，则自动非强制fast-forward到最新main
-→ 若work有开放PR则保留，不覆盖
+→ 若work存在开放PR且已经包含最新已验证main，则保留其Head继续开发
+→ 若work存在开放PR但尚未包含最新已验证main，则同步任务fail-closed，显式执行main → work安全合并后再继续
 → Branch Inventory确认仅main/work/governance
 → 重新读取真实Refs与提交状态
 ```
 
 治理PR无任务marker，不生成产品Runtime或任务Evidence。需要修改产品功能、数据库、IPC、产品数据模型时必须转`work`正式任务。
+
+活动集成lane的主线回灌必须使用普通merge语义保留其独有提交；禁止reset、force push或Squash覆盖活动lane。主线回灌完成后，活动PR必须以新Head重新取得需要的验证结果。
 
 ## 3. 状态边界
 
@@ -51,7 +54,7 @@
 - PR已合并：GitHub已完成Squash，最终main尚需Main Verification。
 - Main Verification成功：最终main、来源PR/Head与Fresh来源门禁一致。
 - `task-verification/<TASK-ID>`成功：产品Schema 2任务可计算为Verified。
-- Integration Branch Synchronization成功：来源lane已回到已验证main；空闲兄弟lane也已同步，或因开放PR被明确保留。
+- Integration Branch Synchronization成功：来源lane已回到已验证main；空闲兄弟lane已同步；活动兄弟lane至少包含当前已验证main。活动兄弟lane若仍落后main，不得以skip伪装成功。
 - Branch Inventory成功：远端固定库存为`main/work/governance`。
 
 产品任务只有完成任务Context、work同步和最终复读后才能声明仓库闭环。治理维护只有完成Main Verification、来源governance同步和最终复读后才能声明治理闭环。
@@ -62,8 +65,9 @@
 - 产品PR精确为`work → main`；治理PR精确为`governance → main`。
 - 每条集成lane最多一个开放PR；两条lane可并行工作。
 - main写入、Controlled Merge与Main Verification始终串行。
-- 一条lane合并后，另一条lane仅在安全时同步：无开放PR且没有独有提交才fast-forward。
-- 另一条lane存在开放PR时跳过同步，禁止覆盖其Head。
+- 一条lane合并后，另一条lane无开放PR且没有独有提交时才允许fast-forward。
+- 另一条lane存在开放PR时不得覆盖其Head；若该lane尚未包含最新已验证main，Integration Branch Synchronization必须fail-closed并要求显式main回灌。
+- 活动lane完成main回灌后允许保留其独有提交，只要求比较结果证明其已经包含当前已验证main。
 - 另一条lane无开放PR但存在独有/分叉提交时fail-closed，必须人工确认来源后再恢复。
 
 ## 5. 任务状态
@@ -88,13 +92,14 @@ PLANNED
 ```text
 停止后续合并/同步
 → 定位真实失败原因
-→ 在对应集成lane修复
+→ 若活动兄弟lane落后main，先以main → lane普通merge完成安全回灌
+→ 在对应集成lane修复其余问题
 → 重跑受影响检查和Fresh永久门禁
-→ 重新执行受控合并/主线验证
+→ 重新执行受控合并/主线验证或同步验证
 → 重新读取main、work、governance真实Refs
 ```
 
-禁止跳过失败检查、缩小必须验证的范围、复用其他Head的成功事实、强制覆盖有开放PR或独有提交的兄弟lane、手工伪造任务或主线成功状态。
+禁止跳过失败检查、缩小必须验证的范围、复用其他Head的成功事实、强制覆盖有开放PR或独有提交的兄弟lane、把“活动PR仍落后main”记录为同步成功、手工伪造任务或主线成功状态。
 
 ## 7. 完成复查
 
@@ -106,6 +111,6 @@ PR Head = 实际修改Head
 main-verification = success
 产品任务需要时 task-verification/<TASK-ID> = success
 来源lane = main
-空闲兄弟lane = main；有开放PR时明确保留
+空闲兄弟lane = main；活动兄弟lane必须包含当前已验证main
 远端分支 = main/work/governance
 ```

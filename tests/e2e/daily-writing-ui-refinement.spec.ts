@@ -83,7 +83,9 @@ test('日常写作默认保持安静并按需展开中文工具', async () => {
     await moreActions.locator('summary').click();
 
     const directoryToggle = page.locator('[data-toggle-writing-outline]');
-    if ((await directoryToggle.getAttribute('aria-pressed')) !== 'true') await directoryToggle.click();
+    if ((await directoryToggle.getAttribute('aria-pressed')) !== 'true') {
+      await directoryToggle.click();
+    }
     await expect(page.locator('.structure-navigator.is-compact')).toBeVisible();
     await expect(page.locator('[data-edit-chapter]')).toHaveCount(0);
     await expect(page.locator('[data-split-chapter]')).toHaveCount(0);
@@ -93,21 +95,32 @@ test('日常写作默认保持安静并按需展开中文工具', async () => {
     await expect(page.locator('[data-add-chapter]')).toBeVisible();
 
     const contextToggle = page.locator('[data-toggle-writing-context]');
-    if ((await contextToggle.getAttribute('aria-pressed')) !== 'true') await contextToggle.click();
+    if ((await contextToggle.getAttribute('aria-pressed')) !== 'true') {
+      await contextToggle.click();
+    }
     await expect(page.locator('[data-writing-assistance]')).toBeVisible();
-    await expect(page.locator('[data-writing-assistance] h3', { hasText: '本章目标' })).toBeVisible();
-    await expect(page.locator('[data-writing-assistance] h3', { hasText: '当前场景' })).toBeVisible();
+    await expect(
+      page.locator('[data-writing-assistance] h3', { hasText: '本章目标' }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-writing-assistance] h3', { hasText: '当前场景' }),
+    ).toBeVisible();
     await expect(page.getByText(/人物状态（\d+）/u)).toBeVisible();
     await expect(page.getByText(/伏笔与修改任务（\d+）/u)).toBeVisible();
 
     await page.getByRole('button', { name: '智能助手', exact: true }).first().click();
     await expect(page.locator('[data-candidate-preview-dialog]')).toBeVisible();
-    await expect(page.getByRole('heading', { name: '智能创作与建议稿工作台' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '智能创作与建议稿工作台' }),
+    ).toBeVisible();
     await expect(page.getByText('AI创作与建议稿工作台')).toHaveCount(0);
     await page.getByRole('button', { name: '返回正文', exact: true }).click();
 
     await page.locator('[data-toggle-focus-mode]').click();
-    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute('data-focus-mode', 'true');
+    await expect(page.locator('[data-writing-workbench]')).toHaveAttribute(
+      'data-focus-mode',
+      'true',
+    );
     await expect(page.locator('[data-draft-editor-controls]')).toBeHidden();
     await expect(page.locator('.structure-navigator')).toHaveCount(0);
     await expect(page.locator('[data-writing-assistance]')).toHaveCount(0);

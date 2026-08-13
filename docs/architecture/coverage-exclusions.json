@@ -1,0 +1,317 @@
+{
+  "schemaVersion": 1,
+  "policy": "explicit-exclusions-with-substitute-tests",
+  "exclusions": [
+    {
+      "path": "apps/desktop/main/src/apply-fuses.ts",
+      "category": "process-boundary",
+      "reason": "Electron Fuse 只在打包/主进程环境执行，普通 Node coverage 无法表达真实 fuse 状态。",
+      "substituteTests": ["tests/unit/electron-main-bootstrap-coverage.test.ts"],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/main/src/core-supervisor.ts",
+      "category": "process-boundary",
+      "reason": "Electron 子进程生命周期需要真实进程与故障注入验证，V8 单进程覆盖会扭曲退出与重启语义。",
+      "substituteTests": [
+        "tests/security/core-supervisor.test.ts",
+        "tests/unit/core-recovery-supervisor-branch-coverage.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/main/src/electron-main.ts",
+      "category": "process-boundary",
+      "reason": "Electron 主进程引导依赖 BrowserWindow 与 OS 生命周期，使用 bootstrap 单测和真实 Electron E2E。",
+      "substituteTests": [
+        "tests/unit/electron-main-bootstrap-coverage.test.ts",
+        "tests/e2e/electron-shell.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/main/src/generation-ipc.ts",
+      "category": "process-boundary",
+      "reason": "IPC 入口必须通过真实 sender、协议封装与 Core 边界测试验证。",
+      "substituteTests": [
+        "tests/security/generation-ipc.test.ts",
+        "tests/integration/preload-ipc-core.integration.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/main/src/ipc-handlers.ts",
+      "category": "process-boundary",
+      "reason": "主进程 IPC handler 依赖 Electron sender 生命周期，采用专项 handler 与安全边界测试。",
+      "substituteTests": [
+        "tests/unit/ipc-handlers-branch-coverage.test.ts",
+        "tests/security/ipc-task-contracts.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/preload/src/entry.ts",
+      "category": "process-boundary",
+      "reason": "Preload contextBridge 仅在 Electron 隔离上下文有权威语义。",
+      "substituteTests": [
+        "tests/unit/preload-bridge-coverage.test.ts",
+        "tests/integration/preload-ipc-core.integration.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/app/renderer-error-boundary.tsx",
+      "category": "process-boundary",
+      "reason": "顶层错误边界需要真实 DOM/Renderer 错误传播路径验证。",
+      "substituteTests": [
+        "tests/unit/renderer-runtime-dom-boundaries.test.ts",
+        "tests/e2e/electron-shell.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts",
+      "category": "process-boundary",
+      "reason": "Bridge adapter 通过协议/安全边界专项测试验证取消、失败与通道隔离。",
+      "substituteTests": [
+        "tests/unit/renderer-shell-bridge-adapter.test.ts",
+        "tests/security/renderer-bridge-boundary.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/bridge/use-bridge-resource.ts",
+      "category": "process-boundary",
+      "reason": "Hook 生命周期由请求代次与资源快照专项测试验证，Node coverage 不运行 React DOM effect。",
+      "substituteTests": [
+        "tests/unit/m10-13-bridge-resource-context.test.ts",
+        "tests/unit/m11-bridge-request-lanes.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "packages/core-service/src/candidate-diff-worker.ts",
+      "category": "process-boundary",
+      "reason": "Worker 线程边界由差异策略与候选回归测试覆盖，单线程 V8 统计不代表 Worker 生命周期。",
+      "substituteTests": [
+        "tests/performance/candidate-preview-diff-strategy.test.ts",
+        "tests/unit/writing-candidate-regressions.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "packages/core-service/src/utility-generation-router.ts",
+      "category": "process-boundary",
+      "reason": "Utility router 由控制上下文与入口专项测试验证。",
+      "substituteTests": [
+        "tests/unit/core-utility-router-coverage.test.ts",
+        "tests/unit/core-utility-entry-coverage.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "packages/core-service/src/utility-search-rhythm-router.ts",
+      "category": "process-boundary",
+      "reason": "搜索/节奏 Utility 路由由专项路由与 IPC 安全测试验证。",
+      "substituteTests": [
+        "tests/unit/core-utility-router-coverage.test.ts",
+        "tests/security/search-rhythm-ipc.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "packages/core-service/src/utility-validation-router.ts",
+      "category": "process-boundary",
+      "reason": "校验 Utility 路由由专项路由与 IPC 安全测试验证。",
+      "substituteTests": [
+        "tests/unit/core-utility-router-coverage.test.ts",
+        "tests/security/validation-ipc.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/app/use-app-settings-persistence.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "App Shell Hook 依赖 DOM 导航与持久化副作用，使用状态边界测试和 Electron Shell E2E。",
+      "substituteTests": [
+        "tests/unit/renderer-runtime-dom-boundaries.test.ts",
+        "tests/e2e/electron-shell.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/app/use-app-shell-actions.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "App Shell Hook 依赖 DOM 导航与持久化副作用，使用状态边界测试和 Electron Shell E2E。",
+      "substituteTests": [
+        "tests/unit/renderer-runtime-dom-boundaries.test.ts",
+        "tests/e2e/electron-shell.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/app/use-app-shell-navigation.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "App Shell Hook 依赖 DOM 导航与持久化副作用，使用状态边界测试和 Electron Shell E2E。",
+      "substituteTests": [
+        "tests/unit/renderer-runtime-dom-boundaries.test.ts",
+        "tests/e2e/electron-shell.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/app/use-project-session-controller.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "作品/工作区 Hook 跨越启动、关闭与 Core 生命周期，使用纯状态单测和真实桌面流程替代。",
+      "substituteTests": [
+        "tests/unit/renderer-startup-compatibility.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/app/use-workspace-runtime.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "作品/工作区 Hook 跨越启动、关闭与 Core 生命周期，使用纯状态单测和真实桌面流程替代。",
+      "substituteTests": [
+        "tests/unit/renderer-startup-compatibility.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/app/use-workspace-startup.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "作品/工作区 Hook 跨越启动、关闭与 Core 生命周期，使用纯状态单测和真实桌面流程替代。",
+      "substituteTests": [
+        "tests/unit/renderer-startup-compatibility.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/editor-selection.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "编辑器选区依赖真实 contenteditable/Selection 生命周期。",
+      "substituteTests": [
+        "tests/unit/autosave-writing-tools.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/paste-sanitizer.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "粘贴净化依赖 Clipboard/DOM 输入路径，以工具单测和桌面高强度写作验收。",
+      "substituteTests": [
+        "tests/unit/writing-tools.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/review-diff-panel.tsx",
+      "category": "renderer-dom-lifecycle",
+      "reason": "Diff 面板包含 DOM 渲染与大文本性能路径，由预览 E2E 与性能测试共同验证。",
+      "substituteTests": [
+        "tests/performance/m8-author-review-diff-performance.test.ts",
+        "tests/e2e/candidate-preview.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-chapter-session.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "写作会话 Hook 属于高风险 DOM/异步生命周期，采用纯状态/保存契约测试与真实高强度写作 E2E。",
+      "substituteTests": [
+        "tests/unit/writing-session-architecture.test.ts",
+        "tests/unit/writing-save-context-contract.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-draft-autosave.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "写作会话 Hook 属于高风险 DOM/异步生命周期，采用纯状态/保存契约测试与真实高强度写作 E2E。",
+      "substituteTests": [
+        "tests/unit/writing-session-architecture.test.ts",
+        "tests/unit/writing-save-context-contract.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-editor-lifecycle.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "写作会话 Hook 属于高风险 DOM/异步生命周期，采用纯状态/保存契约测试与真实高强度写作 E2E。",
+      "substituteTests": [
+        "tests/unit/writing-session-architecture.test.ts",
+        "tests/unit/writing-save-context-contract.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-generation-sources.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "生成来源 Hook 的权威行为由生成启动、订阅与请求代次专项测试验证。",
+      "substituteTests": [
+        "tests/unit/writing-generation-start.test.ts",
+        "tests/unit/writing-generation-subscription.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-writing-continuation.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "续写位置 Hook 依赖 DOM 滚动/焦点，使用请求协调单测与竞态 E2E。",
+      "substituteTests": [
+        "tests/unit/renderer-continuation-request-coordination.test.ts",
+        "tests/e2e/continuation-panel-race.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-writing-editor-tools.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "编辑工具 Hook 通过纯工具行为与自动保存联动测试验证。",
+      "substituteTests": [
+        "tests/unit/autosave-writing-tools.test.ts",
+        "tests/unit/writing-tools.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-writing-metrics.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "写作指标 Hook 依赖编辑器 DOM 变更，使用计算工具单测与性能预算验证。",
+      "substituteTests": [
+        "tests/performance/writing-tools-performance.test.ts",
+        "tests/unit/writing-tools.test.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-writing-session-controller.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "写作会话 Hook 属于高风险 DOM/异步生命周期，采用纯状态/保存契约测试与真实高强度写作 E2E。",
+      "substituteTests": [
+        "tests/unit/writing-session-architecture.test.ts",
+        "tests/unit/writing-save-context-contract.test.ts",
+        "tests/e2e/high-intensity-writing.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    },
+    {
+      "path": "apps/desktop/renderer/src/features/writing/use-writing-status.ts",
+      "category": "renderer-dom-lifecycle",
+      "reason": "写作状态 Hook 由反馈状态单测与每日写作 UI 验收验证。",
+      "substituteTests": [
+        "tests/unit/renderer-draft-continuation-feedback.test.ts",
+        "tests/e2e/daily-writing-ui-refinement.spec.ts"
+      ],
+      "exitCondition": "当该模块可在不模拟错误进程/DOM 生命周期的可重复测试环境中执行，并能保持真实语义时移出排除表。"
+    }
+  ]
+}

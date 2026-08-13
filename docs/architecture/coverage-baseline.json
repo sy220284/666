@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "policy": "dual-track",
-  "measuredAt": "2026-08-08T23:37:20+08:00",
-  "sourceHead": "7c5be0404c57f291802eeee675865f50ed4e9d3c",
+  "measuredAt": "2026-08-13T11:40:47.000Z",
+  "sourceHead": "881a3bcb882fe8171362ac7e45d508ee0d78ee40",
   "core": {
     "pattern": "**/*.ts",
     "thresholdPercent": {
@@ -16,28 +16,28 @@
     "pattern": "apps/desktop/renderer/src/**/*.tsx",
     "metrics": {
       "statements": {
-        "covered": 197,
-        "total": 2785,
-        "maxUncovered": 2588,
-        "percent": 7.07
+        "covered": 923,
+        "total": 3366,
+        "maxUncovered": 2443,
+        "percent": 27.42
       },
       "branches": {
-        "covered": 141,
-        "total": 2422,
-        "maxUncovered": 2281,
-        "percent": 5.82
+        "covered": 801,
+        "total": 3050,
+        "maxUncovered": 2249,
+        "percent": 26.26
       },
       "functions": {
-        "covered": 70,
-        "total": 1004,
-        "maxUncovered": 934,
-        "percent": 6.97
+        "covered": 287,
+        "total": 1175,
+        "maxUncovered": 888,
+        "percent": 24.43
       },
       "lines": {
-        "covered": 180,
-        "total": 2489,
-        "maxUncovered": 2309,
-        "percent": 7.23
+        "covered": 860,
+        "total": 3013,
+        "maxUncovered": 2153,
+        "percent": 28.54
       }
     }
   }

@@ -76,6 +76,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     'node scripts/ci-policy.mjs',
     'node scripts/check-coverage-policy.mjs',
     'node scripts/code-quality-policy.mjs',
+    'node scripts/type-assertion-policy.mjs',
     'pnpm check:license',
     'pnpm check:docs',
     'pnpm check:governance',
@@ -96,6 +97,9 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     "'@typescript-eslint/no-floating-promises': 'error'",
     "'@typescript-eslint/no-misused-promises'",
     "'@typescript-eslint/switch-exhaustiveness-check': 'error'",
+    "import reactHooks from 'eslint-plugin-react-hooks'",
+    "'react-hooks/rules-of-hooks': 'error'",
+    "'react-hooks/exhaustive-deps': 'error'",
   ]);
 
   requireTokens(violations, 'vitest.coverage.config.ts', coverageConfig, [
@@ -106,6 +110,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     "'tests/migration/**/*.test.{ts,tsx}'",
     "'tests/security/**/*.test.{ts,tsx}'",
     "readFileSync(source('./docs/architecture/coverage-baseline.json'), 'utf8')",
+    "readFileSync(source('./docs/architecture/coverage-exclusions.json'), 'utf8')",
     '[coverageBaseline.core.pattern]: coverageBaseline.core.thresholdPercent',
     '[coverageBaseline.rendererTsx.pattern]: rendererTsxThresholds',
   ]);
@@ -146,6 +151,11 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     if (typeof toolchainAuthority?.[field] !== 'string' || !toolchainAuthority[field]) {
       violations.push(`CURRENT_WORKSPACE_TOOLCHAIN.json: missing ${field}`);
     }
+  }
+  if (!toolchainAuthority?.profiles?.quality?.packages?.includes('eslint-plugin-react-hooks')) {
+    violations.push(
+      'CURRENT_WORKSPACE_TOOLCHAIN.json: quality profile must include eslint-plugin-react-hooks',
+    );
   }
   if (!toolchainAuthority?.profiles?.formatter || !toolchainAuthority?.profiles?.quality) {
     violations.push(

@@ -80,7 +80,11 @@ BEGIN
    WHERE project_id IN (
      SELECT project_id FROM volumes WHERE id IN (OLD.volume_id, NEW.volume_id)
    )
-     AND scope_type IN ('volume', 'project');
+     AND (
+       (scope_type = 'chapter' AND scope_id = NEW.id) OR
+       (scope_type = 'volume' AND scope_id IN (OLD.volume_id, NEW.volume_id)) OR
+       scope_type = 'project'
+     );
 END;
 
 CREATE TRIGGER trg_story_digest_volume_structure_invalidate
@@ -88,7 +92,23 @@ AFTER UPDATE OF order_key, title, deleted_at ON volumes
 BEGIN
   UPDATE story_digests
      SET freshness = 'stale', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-   WHERE project_id = NEW.project_id AND scope_type = 'project';
+   WHERE project_id = NEW.project_id
+     AND (
+       (scope_type = 'chapter' AND scope_id IN (
+         SELECT id FROM chapters WHERE volume_id = NEW.id
+       )) OR
+       (scope_type = 'volume' AND scope_id = NEW.id) OR
+       scope_type = 'project'
+     );
+END;
+
+CREATE TRIGGER trg_story_digest_project_name_invalidate
+AFTER UPDATE OF name ON projects
+WHEN OLD.name IS NOT NEW.name
+BEGIN
+  UPDATE story_digests
+     SET freshness = 'stale', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+   WHERE project_id = NEW.id AND scope_type = 'project';
 END;
 
 UPDATE projects SET schema_version = 34;

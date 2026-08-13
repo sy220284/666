@@ -114,6 +114,112 @@ describe('M11-07 Ctrl+K command palette', () => {
     expect(source).not.toContain('new SearchIndex');
   });
 
+  it('ignores a superseded search result after its request is aborted', async () => {
+    const projectId = '5a198db8-5a43-45ea-b777-7dfb63742bb7';
+    const chapterId = '481b7b8f-c7b4-4a87-88b6-1d27721a3bb8';
+    type SearchOutcome = Awaited<ReturnType<RendererBridgeAdapter['searchTools']['search']>>;
+    let resolveOld!: (outcome: SearchOutcome) => void;
+    let resolveNew!: (outcome: SearchOutcome) => void;
+    const search = vi.fn(
+      (input: { readonly query: string }) =>
+        new Promise<SearchOutcome>((resolve) => {
+          if (input.query === '旧查询') resolveOld = resolve;
+          else resolveNew = resolve;
+        }),
+    );
+    vi.stubGlobal('window', {
+      requestAnimationFrame: (callback: () => void) => {
+        callback();
+        return 1;
+      },
+      setTimeout: (callback: () => void) => {
+        callback();
+        return 1;
+      },
+      clearTimeout: vi.fn(),
+    });
+    vi.stubGlobal('document', { activeElement: null });
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const bridge = contractInput<RendererBridgeAdapter>({
+      planning: {
+        listStructure: vi.fn(async () => success({ projectId, volumes: [] })),
+      },
+      narrativePlanning: {
+        list: vi.fn(async () => success({ projectId, foreshadowings: [], characterArcs: [] })),
+      },
+      searchTools: { search },
+    });
+    let renderer!: TestRenderer;
+    await act(async () => {
+      renderer = createRenderer(
+        createElement(CommandPalette, {
+          availability: {
+            home: true,
+            planning: true,
+            writing: true,
+            canon: false,
+            checks: true,
+            settings: true,
+          },
+          bridge,
+          open: true,
+          projectId,
+          onClose: vi.fn(),
+          onNavigate: vi.fn(),
+          onNavigateTarget: vi.fn(),
+          onTransitionToRoute: vi.fn(async () => true),
+          returnFocusRef: { current: null },
+        }),
+      );
+      await flushPromises();
+    });
+    const input = renderer.root.findAllByType('input')[0]!;
+    await act(async () => {
+      (input.props.onChange as (event: { target: { value: string } }) => void)({
+        target: { value: '旧查询' },
+      });
+      await flushPromises();
+    });
+    await act(async () => {
+      (input.props.onChange as (event: { target: { value: string } }) => void)({
+        target: { value: '新查询' },
+      });
+      await flushPromises();
+    });
+    await act(async () => {
+      resolveNew(
+        success({
+          projectId,
+          query: '新查询',
+          normalizedQuery: '新查询',
+          strategy: 'fts' as const,
+          indexStatus: 'ready' as const,
+          items: [searchDraftResult('新结果', chapterId)],
+        }),
+      );
+      await flushPromises();
+    });
+    await act(async () => {
+      resolveOld(
+        success({
+          projectId,
+          query: '旧查询',
+          normalizedQuery: '旧查询',
+          strategy: 'fts' as const,
+          indexStatus: 'ready' as const,
+          items: [searchDraftResult('旧结果', chapterId)],
+        }),
+      );
+      await flushPromises();
+    });
+    expect(textContent(renderer.root)).toContain('新结果');
+    expect(textContent(renderer.root)).not.toContain('旧结果');
+    expect(search.mock.calls[0]![1]!.signal?.aborted).toBe(true);
+
+    await act(async () => renderer.unmount());
+    vi.unstubAllGlobals();
+  });
+
   it('regenerates derived digests when cloning a project', () => {
     expect(projectCloneAction('story_digests')).toBe('regenerate');
   });
@@ -675,6 +781,18 @@ function success<T>(data: T) {
     generation: 1,
     requestId: '1297f55c-68b9-4a09-bf74-c3ba6cb4a2af',
     data,
+  };
+}
+
+function searchDraftResult(title: string, chapterId: string) {
+  return {
+    sourceType: 'draft' as const,
+    targetId: '5107e242-40a8-452a-9904-227678e5e3df',
+    anchorId: 'b82f7a0f-963e-45ca-8505-cdd014b73691',
+    chapterId,
+    title,
+    excerpt: `${title}正文`,
+    score: 1,
   };
 }
 

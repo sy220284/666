@@ -135,13 +135,25 @@ export function LongformAiSettingsPanel({
       { projectId: project.projectId, scopeType: 'project', scopeId: project.projectId },
       { mode: 'reject', requestKey: `longform-rebuild:${project.projectId}` },
     );
-    setPending(null);
     if (outcome.state === 'success') {
-      setDigests(outcome.data.rebuilt);
-      setMessage(
-        `长篇记忆已更新，共整理 ${outcome.data.rebuilt.length} 项；${outcome.data.skippedUnfinalizedChapters} 章尚未定稿，未纳入记忆。`,
+      const digestOutcome = await bridge.longformAi.listDigests(
+        { projectId: project.projectId, limit: 500 },
+        {
+          mode: 'replace',
+          laneKey: `longform-digests:${project.projectId}`,
+        },
       );
+      setPending(null);
+      if (digestOutcome.state === 'success') {
+        setDigests(digestOutcome.data.digests);
+        setMessage(
+          `长篇记忆已更新，共整理 ${outcome.data.rebuilt.length} 项；${outcome.data.skippedUnfinalizedChapters} 章尚未定稿，未纳入记忆。`,
+        );
+      } else if (digestOutcome.state === 'failure') {
+        setMessage(`长篇记忆已更新，但列表刷新失败 · ${authorErrorSummary(digestOutcome.error)}`);
+      }
     } else if (outcome.state === 'failure') {
+      setPending(null);
       setMessage(`长篇记忆重建失败 · ${authorErrorSummary(outcome.error)}`);
     }
   };

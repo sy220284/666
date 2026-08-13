@@ -181,12 +181,13 @@ describe('M11-07 long-form author settings interactions', () => {
         deviations: [],
       }),
     );
+    const listDigests = vi.fn(async () =>
+      success({ projectId: project.projectId, digests: digestSet }),
+    );
     const bridge = contractInput<RendererBridgeAdapter>({
       longformAi: {
         getSettings: vi.fn(async () => success(settings)),
-        listDigests: vi.fn(async () =>
-          success({ projectId: project.projectId, digests: digestSet }),
-        ),
+        listDigests,
         rebuildDigests,
         updateSettings,
         evaluateStyle,
@@ -209,6 +210,8 @@ describe('M11-07 long-form author settings interactions', () => {
 
     await click(renderer, '根据定稿重建');
     expect(rebuildDigests).toHaveBeenCalledOnce();
+    expect(listDigests).toHaveBeenCalledTimes(2);
+    expect(textContent(renderer.root)).toContain('有 1 项等待更新');
 
     await click(renderer, '使用“克制叙事”预设');
     await click(renderer, '从已定稿正文学习');

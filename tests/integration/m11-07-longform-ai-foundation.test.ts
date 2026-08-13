@@ -180,6 +180,87 @@ describe('M11-07 long-form digest, style and routing foundation', () => {
           freshness: 'fresh',
         }).digests,
       ).toHaveLength(1);
+
+      const digestHash = (scopeType: 'chapter' | 'volume' | 'project', scopeId: string): string =>
+        harness.longform
+          .listDigests({ projectId: project.projectId, scopeType, scopeId })
+          .digests.at(0)!.sourceHash;
+      const initialChapterHash = digestHash('chapter', firstChapter.id);
+      const initialVolumeHash = digestHash('volume', firstVolume.id);
+      const initialProjectHash = digestHash('project', project.projectId);
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        database
+          .prepare('UPDATE chapters SET title = ? WHERE id = ?')
+          .run('雨夜铜铃', firstChapter.id);
+      });
+      expect(
+        harness.longform
+          .listDigests({ projectId: project.projectId, freshness: 'stale' })
+          .digests.map((digest) => `${digest.scopeType}:${digest.scopeId}`),
+      ).toEqual(
+        expect.arrayContaining([
+          `chapter:${firstChapter.id}`,
+          `volume:${firstVolume.id}`,
+          `project:${project.projectId}`,
+        ]),
+      );
+      await harness.longform.rebuild(randomUUID(), {
+        projectId: project.projectId,
+        scopeType: 'project',
+        scopeId: project.projectId,
+      });
+      expect(digestHash('chapter', firstChapter.id)).not.toBe(initialChapterHash);
+      expect(digestHash('volume', firstVolume.id)).not.toBe(initialVolumeHash);
+      expect(digestHash('project', project.projectId)).not.toBe(initialProjectHash);
+
+      const renamedChapterHash = digestHash('chapter', firstChapter.id);
+      const renamedVolumeHash = digestHash('volume', firstVolume.id);
+      const renamedProjectHash = digestHash('project', project.projectId);
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        database.prepare('UPDATE volumes SET title = ? WHERE id = ?').run('铜铃卷', firstVolume.id);
+      });
+      expect(
+        harness.longform
+          .listDigests({ projectId: project.projectId, freshness: 'stale' })
+          .digests.map((digest) => `${digest.scopeType}:${digest.scopeId}`),
+      ).toEqual(
+        expect.arrayContaining([
+          `chapter:${firstChapter.id}`,
+          `volume:${firstVolume.id}`,
+          `project:${project.projectId}`,
+        ]),
+      );
+      await harness.longform.rebuild(randomUUID(), {
+        projectId: project.projectId,
+        scopeType: 'project',
+        scopeId: project.projectId,
+      });
+      expect(digestHash('chapter', firstChapter.id)).not.toBe(renamedChapterHash);
+      expect(digestHash('volume', firstVolume.id)).not.toBe(renamedVolumeHash);
+      expect(digestHash('project', project.projectId)).not.toBe(renamedProjectHash);
+
+      const titledChapterHash = digestHash('chapter', firstChapter.id);
+      const titledVolumeHash = digestHash('volume', firstVolume.id);
+      const titledProjectHash = digestHash('project', project.projectId);
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        database
+          .prepare('UPDATE projects SET name = ? WHERE id = ?')
+          .run('铜铃长夜', project.projectId);
+      });
+      expect(
+        harness.longform
+          .listDigests({ projectId: project.projectId, freshness: 'stale' })
+          .digests.map((digest) => `${digest.scopeType}:${digest.scopeId}`),
+      ).toEqual([`project:${project.projectId}`]);
+      await harness.longform.rebuild(randomUUID(), {
+        projectId: project.projectId,
+        scopeType: 'project',
+        scopeId: project.projectId,
+      });
+      expect(digestHash('chapter', firstChapter.id)).toBe(titledChapterHash);
+      expect(digestHash('volume', firstVolume.id)).toBe(titledVolumeHash);
+      expect(digestHash('project', project.projectId)).not.toBe(titledProjectHash);
+
       expect(harness.longform.getSettings(project.projectId)).toMatchObject({
         activeStyleProfileId: null,
         styleProfiles: [],

@@ -144,6 +144,7 @@ export function CommandPalette({
           },
         )
         .then((outcome) => {
+          if (controller.signal.aborted) return;
           if (outcome.state === 'success') {
             setSearchItems(
               searchItemsFromResults(projectId, normalized, outcome.data.items).filter((item) =>

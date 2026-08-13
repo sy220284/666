@@ -76,12 +76,19 @@ describe('M11-07 long-form AI foundation migration', () => {
       expect(triggers.map((trigger) => trigger.name)).toEqual([
         'trg_story_digest_chapter_structure_invalidate',
         'trg_story_digest_finalize_invalidate',
+        'trg_story_digest_project_name_invalidate',
         'trg_story_digest_scope_insert',
         'trg_story_digest_scope_update',
         'trg_story_digest_volume_structure_invalidate',
       ]);
       expect(triggers.find((trigger) => trigger.name.includes('finalize'))?.sql).toContain(
         "freshness = 'stale'",
+      );
+      expect(triggers.find((trigger) => trigger.name.includes('chapter_structure'))?.sql).toContain(
+        "scope_type = 'chapter'",
+      );
+      expect(triggers.find((trigger) => trigger.name.includes('volume_structure'))?.sql).toContain(
+        "scope_type = 'volume'",
       );
       expect(() =>
         database

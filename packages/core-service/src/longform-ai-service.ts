@@ -590,7 +590,15 @@ export class LongformAiService {
       projectId,
       scopeType: 'chapter',
       scopeId: chapterId,
-      sourceHash: sha256(stableSerialize({ versionId: row.finalVersionId, hash: row.contentHash })),
+      sourceHash: sha256(
+        stableSerialize({
+          versionId: row.finalVersionId,
+          hash: row.contentHash,
+          chapterTitle: row.chapterTitle,
+          volumeTitle: row.volumeTitle,
+          wordCount: Number(row.wordCount ?? 0),
+        }),
+      ),
       sourceVersionIds: [row.finalVersionId],
       content,
       now,
@@ -669,7 +677,10 @@ export class LongformAiService {
       scopeType: 'volume',
       scopeId: volumeId,
       sourceHash: sha256(
-        stableSerialize(mapped.map((item) => ({ id: item.scopeId, hash: item.sourceHash }))),
+        stableSerialize({
+          volumeTitle: String(volume.title),
+          chapters: mapped.map((item) => ({ id: item.scopeId, hash: item.sourceHash })),
+        }),
       ),
       sourceVersionIds,
       content,
@@ -729,7 +740,10 @@ export class LongformAiService {
       scopeType: 'project',
       scopeId: projectId,
       sourceHash: sha256(
-        stableSerialize(mapped.map((item) => ({ id: item.scopeId, hash: item.sourceHash }))),
+        stableSerialize({
+          projectName: String(project.name),
+          volumes: mapped.map((item) => ({ id: item.scopeId, hash: item.sourceHash })),
+        }),
       ),
       sourceVersionIds: mapped.flatMap((item) => item.sourceVersionIds),
       content: [

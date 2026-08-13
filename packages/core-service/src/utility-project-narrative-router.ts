@@ -21,6 +21,7 @@ export async function routeNarrativePlanningOperation(
 ): Promise<CoreProjectResult | null> {
   const narrativePlanning = new NarrativePlanningService(services.projectWorkspace);
   const stateProposal = new StateProposalService(services.projectWorkspace);
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- this router intentionally handles only narrative operations
   switch (operation.operation) {
     case NARRATIVE_PLANNING_COMMANDS.list:
       return success(operation.operation, narrativePlanning.list(operation.input));

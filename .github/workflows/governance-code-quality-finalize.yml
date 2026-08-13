@@ -237,7 +237,7 @@ jobs:
             let next = replaceExact(
               source,
               '  const requestGeneration = useRef(new RequestGeneration());',
-              '  const requestGeneration = useRef(new RequestGeneration());\n  const requestTracker = requestGeneration.current;',
+              '  const requestTracker = useRef(new RequestGeneration()).current;',
               'writing assistance stable request tracker',
             ).replaceAll('requestGeneration.current', 'requestTracker');
             next = replaceExact(
@@ -264,8 +264,8 @@ jobs:
             );
             next = replaceExact(
               next,
-              '      scheduleContinuationSave,\n      setStatus,',
-              '      scheduleContinuationSave,\n      setSelectedLocked,\n      setStatus,',
+              '      saveContinuation,\n      scheduleContinuationSave,\n      setStatus,\n    ],',
+              '      saveContinuation,\n      scheduleContinuationSave,\n      setSelectedLocked,\n      setStatus,\n    ],',
               'writing core lock dependency',
             );
             return next;

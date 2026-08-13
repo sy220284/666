@@ -24,7 +24,7 @@ jobs:
           cache: pnpm
       - name: Resolve updated quality toolchain
         run: pnpm install --no-frozen-lockfile --ignore-scripts
-      - name: Migrate SQLite result boundaries and coverage registry
+      - name: Migrate SQLite result boundaries and finalize renderer lifecycle fixes
         shell: bash
         run: |
           cat > .tmp-code-quality-finalize.mjs <<'NODE'
@@ -49,6 +49,16 @@ jobs:
             };
             visit(node);
             return found;
+          };
+          const replaceExact = (source, from, to, label) => {
+            if (!source.includes(from)) throw new Error(`Expected source fragment not found: ${label}`);
+            return source.replace(from, to);
+          };
+          const editFile = (file, transform) => {
+            const original = fs.readFileSync(file, 'utf8');
+            const updated = transform(original);
+            if (updated === original) throw new Error(`Expected code-quality edit did not change ${file}`);
+            fs.writeFileSync(file, updated);
           };
 
           let changedFiles = 0;
@@ -132,9 +142,153 @@ jobs:
             .replace("    expect(eslintConfig).toContain('projectService: true');", "    expect(eslintConfig).toContain('projectService: true');\n    expect(eslintConfig).toContain(\"'react-hooks/rules-of-hooks': 'error'\");\n    expect(eslintConfig).toContain(\"'react-hooks/exhaustive-deps': 'error'\");")
             .replace("    expect(quality).toContain(\"github.event.pull_request.head.ref == 'work'\");", "    expect(quality).toContain(\"github.event.pull_request.head.ref == 'work'\");\n    expect(quality).toContain(\"github.event.pull_request.head.ref == 'governance'\");");
           fs.writeFileSync(governanceTestPath, governanceTest);
-          console.log(`SQLite codemod applied: ${changedFiles} files, ${replacements} assertions`);
+
+          editFile('apps/desktop/renderer/src/features/canon/canon-workbench.tsx', (source) => {
+            let next = replaceExact(
+              source,
+              '  const bridge = props.bridge;\n',
+              '  const bridge = props.bridge;\n  const section = props.section;\n  const onSectionChange = props.onSectionChange;\n',
+              'canon-workbench stable prop aliases',
+            );
+            next = replaceExact(
+              next,
+              "    if (selectedForeshadowingId && props.section !== 'narrative') {\n      props.onSectionChange('narrative');\n    }\n  }, [props.onSectionChange, props.section, selectedForeshadowingId]);",
+              "    if (selectedForeshadowingId && section !== 'narrative') {\n      onSectionChange('narrative');\n    }\n  }, [onSectionChange, section, selectedForeshadowingId]);",
+              'canon-workbench effect dependencies',
+            );
+            return next;
+          });
+
+          editFile('apps/desktop/renderer/src/features/canon/state-proposal-panel.tsx', (source) => {
+            let next = replaceExact(
+              source,
+              "  const resource = useBridgeQuery(`ai-review:${projectId}:${chapterId}`, load);\n  const command = useBridgeCommand(resource.refresh);",
+              "  const resource = useBridgeQuery(`ai-review:${projectId}:${chapterId}`, load);\n  const refreshResource = resource.refresh;\n  const command = useBridgeCommand(refreshResource);",
+              'state proposal stable refresh callback',
+            );
+            next = replaceExact(next, '          void resource.refresh();', '          void refreshResource();', 'state proposal polling refresh');
+            next = replaceExact(
+              next,
+              '  }, [activeRunId, bridge, projectId, resource.refresh]);',
+              '  }, [activeRunId, bridge, projectId, refreshResource]);',
+              'state proposal polling dependencies',
+            );
+            return next;
+          });
+
+          editFile('apps/desktop/renderer/src/features/checks/search-panel.tsx', (source) => {
+            let next = replaceExact(
+              source,
+              "import { useEffect, useRef, useState, type FormEvent } from 'react';",
+              "import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';",
+              'search panel useCallback import',
+            );
+            next = replaceExact(
+              next,
+              '  const requests = useRef(new RequestGenerationGroup<SearchPanelRequestLane>());',
+              '  const requestGroup = useRef(new RequestGenerationGroup<SearchPanelRequestLane>()).current;',
+              'search panel stable request group',
+            ).replaceAll('requests.current', 'requestGroup');
+            next = replaceExact(
+              next,
+              `  const requestStateChanged = (): void => setRequestStateVersion(nextRequestGeneration);\n  const beginRequest = (lane: SearchPanelRequestLane): number => {\n    const generation = requestGroup.begin(lane);\n    requestStateChanged();\n    return generation;\n  };\n  const completeRequest = (lane: SearchPanelRequestLane, generation: number): void => {\n    if (requestGroup.complete(lane, generation)) requestStateChanged();\n  };\n  const isCurrentRequest = (lane: SearchPanelRequestLane, generation: number): boolean =>\n    requestGroup.isCurrent(lane, generation);`,
+              `  const requestStateChanged = useCallback(\n    (): void => setRequestStateVersion(nextRequestGeneration),\n    [],\n  );\n  const beginRequest = useCallback(\n    (lane: SearchPanelRequestLane): number => {\n      const generation = requestGroup.begin(lane);\n      requestStateChanged();\n      return generation;\n    },\n    [requestGroup, requestStateChanged],\n  );\n  const completeRequest = useCallback(\n    (lane: SearchPanelRequestLane, generation: number): void => {\n      if (requestGroup.complete(lane, generation)) requestStateChanged();\n    },\n    [requestGroup, requestStateChanged],\n  );\n  const isCurrentRequest = useCallback(\n    (lane: SearchPanelRequestLane, generation: number): boolean =>\n      requestGroup.isCurrent(lane, generation),\n    [requestGroup],\n  );`,
+              'search panel request callbacks',
+            );
+            next = replaceExact(
+              next,
+              '  }, [bridge, projectId]);',
+              '  }, [bridge, projectId, requestGroup, requestStateChanged]);',
+              'search panel reset dependencies',
+            );
+            next = replaceExact(
+              next,
+              '  }, [bridge, projectId, reloadToken]);',
+              '  }, [beginRequest, bridge, completeRequest, projectId, reloadToken, requestGroup]);',
+              'search panel load dependencies',
+            );
+            return next;
+          });
+
+          editFile('apps/desktop/renderer/src/features/planning/idea-capsule-panel.tsx', (source) => {
+            let next = replaceExact(
+              source,
+              "  const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);\n  const [pendingAction, setPendingAction] = useState<string | null>(null);",
+              "  const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);\n  const activeRunId = activeRun?.runId ?? null;\n  const [pendingAction, setPendingAction] = useState<string | null>(null);",
+              'idea capsule stable active run id',
+            );
+            next = replaceExact(next, '    if (!activeRun) return;', '    if (!activeRunId) return;', 'idea capsule active run guard');
+            next = replaceExact(
+              next,
+              '      const outcome = await bridge.generation.getRun(projectId, activeRun.runId, { mode: \'share\' });',
+              '      const outcome = await bridge.generation.getRun(projectId, activeRunId, { mode: \'share\' });',
+              'idea capsule polling run id',
+            );
+            next = replaceExact(
+              next,
+              '  }, [activeRun?.runId, bridge, loadIdeas, projectId]);',
+              '  }, [activeRunId, bridge, loadIdeas, projectId]);',
+              'idea capsule polling dependencies',
+            );
+            return next;
+          });
+
+          editFile('apps/desktop/renderer/src/features/writing/writing-assistance-panel.tsx', (source) => {
+            let next = replaceExact(
+              source,
+              '  const requestGeneration = useRef(new RequestGeneration());',
+              '  const requestGeneration = useRef(new RequestGeneration());\n  const requestTracker = requestGeneration.current;',
+              'writing assistance stable request tracker',
+            ).replaceAll('requestGeneration.current', 'requestTracker');
+            next = replaceExact(
+              next,
+              '  }, [bridge, chapterId, projectId]);',
+              '  }, [bridge, chapterId, projectId, requestTracker]);',
+              'writing assistance refresh dependencies',
+            );
+            next = replaceExact(
+              next,
+              '  }, [refresh]);',
+              '  }, [refresh, requestTracker]);',
+              'writing assistance cleanup dependencies',
+            );
+            return next;
+          });
+
+          editFile('apps/desktop/renderer/src/features/writing/writing-core-workbench.tsx', (source) => {
+            let next = replaceExact(
+              source,
+              '      chapter,\n      clearStatistics,',
+              '      chapter,\n      clearStatistics,\n      continuationScrollCleanup,\n      continuationTimer,',
+              'writing core continuation dependencies',
+            );
+            next = replaceExact(
+              next,
+              '      scheduleContinuationSave,\n      setStatus,',
+              '      scheduleContinuationSave,\n      setSelectedLocked,\n      setStatus,',
+              'writing core lock dependency',
+            );
+            return next;
+          });
+
+          for (const file of [
+            'packages/core-service/src/utility-control-lifecycle.ts',
+            'packages/core-service/src/utility-control-operations.ts',
+            'packages/core-service/src/utility-project-content-router.ts',
+            'packages/core-service/src/utility-project-narrative-router.ts',
+            'packages/core-service/src/utility-project-primary-router.ts',
+            'packages/core-service/src/utility-project-structure-router.ts',
+            'packages/core-service/src/utility-search-rhythm-router.ts',
+            'packages/core-service/src/utility-validation-router.ts',
+          ]) {
+            editFile(file, (source) => {
+              const next = source.replace(/^\s*\/\/ eslint-disable-next-line @typescript-eslint\/switch-exhaustiveness-check --[^\n]*\n/mu, '');
+              return next;
+            });
+          }
           NODE
           node ./.tmp-code-quality-finalize.mjs
+          rm .tmp-code-quality-finalize.mjs
       - name: Format changed source
         shell: bash
         run: |
@@ -168,5 +322,5 @@ jobs:
           git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m '治理：收口SQLite类型边界并更新Hooks工具链'
+          git commit -m '治理：收口SQLite类型边界并修复Hooks生命周期'
           git push origin HEAD:governance

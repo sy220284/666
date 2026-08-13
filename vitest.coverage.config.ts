@@ -97,6 +97,7 @@ export default defineConfig({
       'tests/unit/**/*.test.{ts,tsx}',
       'tests/integration/**/*.test.{ts,tsx}',
       'tests/migration/**/*.test.{ts,tsx}',
+      'tests/security/**/*.test.{ts,tsx}',
     ],
     coverage: {
       enabled: true,

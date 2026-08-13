@@ -66,7 +66,10 @@ describe('CI分层与任务命令清理', () => {
   it('产品测试与覆盖率一次执行，不再生成结果转发任务', async () => {
     const source = await readFile(repositoryFile('.github/workflows/quality-core.yml'), 'utf8');
     const workflow = parseYaml(source) as {
-      jobs: Record<string, { needs?: string | string[]; steps?: Array<{ name?: string; run?: string }> }>;
+      jobs: Record<
+        string,
+        { needs?: string | string[]; steps?: Array<{ name?: string; run?: string }> }
+      >;
     };
     expect(workflow.jobs['product-tests']).toBeDefined();
     expect(workflow.jobs.tests).toBeUndefined();
@@ -78,7 +81,9 @@ describe('CI分层与任务命令清理', () => {
       .join('\n');
     expect(productCommands.match(/pnpm install/gu)).toHaveLength(1);
     expect(productCommands.match(/pnpm test:prepare/gu)).toHaveLength(1);
-    expect(productCommands.match(/vitest run --config vitest\.coverage\.config\.ts/gu)).toHaveLength(1);
+    expect(
+      productCommands.match(/vitest run --config vitest\.coverage\.config\.ts/gu),
+    ).toHaveLength(1);
     expect(productCommands).not.toContain('vitest run tests/unit');
     expect(productCommands).not.toContain('vitest run tests/integration');
     expect(productCommands).not.toContain('vitest run tests/migration');

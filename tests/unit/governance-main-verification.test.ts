@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateMainVerification, validateTreeIdentity } from '../../scripts/main-verification.mjs';
+import {
+  validateMainVerification,
+  validateTreeIdentity,
+} from '../../scripts/main-verification.mjs';
 
 const expectedSha = 'a'.repeat(40);
 const sourceHeadSha = 'b'.repeat(40);
@@ -58,10 +61,7 @@ describe('governance main verification provenance', () => {
 
   it('rejects a final main tree that differs from the verified PR Head', () => {
     expect(() =>
-      validateTreeIdentity(
-        { tree: { sha: 'c'.repeat(40) } },
-        { tree: { sha: 'd'.repeat(40) } },
-      ),
+      validateTreeIdentity({ tree: { sha: 'c'.repeat(40) } }, { tree: { sha: 'd'.repeat(40) } }),
     ).toThrow('Final main tree differs from verified PR Head tree');
   });
 });

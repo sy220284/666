@@ -128,13 +128,16 @@ export function validateWorkflowStructure(file, source) {
     if (typeof job.uses === 'string' && !job.uses.startsWith('./')) {
       errors.push(`${file}: reusable workflow ${job.uses} must be repository-local`);
     }
-    for (const step of Array.isArray(job.steps) ? job.steps : []) validateAction(errors, file, step);
+    for (const step of Array.isArray(job.steps) ? job.steps : [])
+      validateAction(errors, file, step);
   }
 
   if (file === 'pr-policy.yml') {
     const types = workflow.on?.pull_request_target?.types ?? [];
     if (Array.isArray(types) && types.includes('closed')) {
-      errors.push('pr-policy.yml: merged/closed events must not rewrite the pre-merge pr-policy status');
+      errors.push(
+        'pr-policy.yml: merged/closed events must not rewrite the pre-merge pr-policy status',
+      );
     }
   }
 
@@ -152,15 +155,21 @@ export function validateWorkflowStructure(file, source) {
       errors.push('quality.yml: quality-core.with.performance_eval must be false');
     }
     if (qualityCore?.with?.package_smoke !== "${{ needs.route.outputs.package_smoke == 'true' }}") {
-      errors.push('quality.yml: quality-core.with.package_smoke must be controlled by the route output');
+      errors.push(
+        'quality.yml: quality-core.with.package_smoke must be controlled by the route output',
+      );
     }
-    if (qualityCore?.with?.reliability_suite !== "${{ needs.route.outputs.reliability == 'true' }}") {
+    if (
+      qualityCore?.with?.reliability_suite !== "${{ needs.route.outputs.reliability == 'true' }}"
+    ) {
       errors.push(
         'quality.yml: quality-core.with.reliability_suite must be controlled by the route output',
       );
     }
     if (qualityCore?.with?.full_suite !== "${{ needs.route.outputs.full_suite == 'true' }}") {
-      errors.push('quality.yml: quality-core.with.full_suite must be controlled by the route output');
+      errors.push(
+        'quality.yml: quality-core.with.full_suite must be controlled by the route output',
+      );
     }
     if (
       qualityCore?.with?.linux_platform_experience !==
@@ -203,7 +212,9 @@ export function validateWorkflowStructure(file, source) {
       errors.push('quality.yml: macOS platform experience must depend on the risk route');
     }
     if (!String(macos?.if ?? '').includes("needs.route.outputs.platform_experience == 'true'")) {
-      errors.push('quality.yml: macOS platform experience must be enabled by the unified risk route');
+      errors.push(
+        'quality.yml: macOS platform experience must be enabled by the unified risk route',
+      );
     }
 
     const releaseAudit = workflow.jobs['release-audit'];
@@ -212,7 +223,9 @@ export function validateWorkflowStructure(file, source) {
       !releaseAuditCondition.includes(fullValidationDraftMarker) ||
       !releaseAuditCondition.includes("needs.route.outputs.release_audit == 'true'")
     ) {
-      errors.push('quality.yml: release-audit must be risk-routed and honor the exact Draft marker');
+      errors.push(
+        'quality.yml: release-audit must be risk-routed and honor the exact Draft marker',
+      );
     }
     const evidenceScan = releaseAudit?.steps?.find(
       (step) => step?.name === 'Scan effective Verified Evidence',
@@ -225,7 +238,9 @@ export function validateWorkflowStructure(file, source) {
 
     const packageGate = workflow.jobs['package-smoke-gate'];
     if (packageGate && !hasEveryNeed(packageGate, ['route', 'quality-core'])) {
-      errors.push('quality.yml: temporary package-smoke compatibility gate has invalid dependencies');
+      errors.push(
+        'quality.yml: temporary package-smoke compatibility gate has invalid dependencies',
+      );
     }
 
     const quality = workflow.jobs.quality;
@@ -254,7 +269,9 @@ export function validateWorkflowStructure(file, source) {
     }
     const linuxInput = workflow.on?.workflow_call?.inputs?.linux_platform_experience;
     if (linuxInput?.type !== 'boolean' || linuxInput?.default !== false) {
-      errors.push('quality-core.yml: linux_platform_experience must be a boolean defaulting to false');
+      errors.push(
+        'quality-core.yml: linux_platform_experience must be a boolean defaulting to false',
+      );
     }
     const reliability = workflow.jobs['reliability-tests'];
     if (!String(reliability?.if ?? '').includes('inputs.reliability_suite')) {
@@ -267,7 +284,9 @@ export function validateWorkflowStructure(file, source) {
       errors.push('quality-core.yml: reliability-tests must run pnpm test:reliability');
     }
     const product = workflow.jobs['product-tests'];
-    const productRun = product?.steps?.find((step) => step?.name === 'Run product tests with coverage');
+    const productRun = product?.steps?.find(
+      (step) => step?.name === 'Run product tests with coverage',
+    );
     if (!String(productRun?.run ?? '').includes('vitest.coverage.config.ts')) {
       errors.push('quality-core.yml: product tests must produce coverage in the same execution');
     }
@@ -276,7 +295,9 @@ export function validateWorkflowStructure(file, source) {
         errors.push(`quality-core.yml: retired result-forwarding job ${retired} must not exist`);
       }
     }
-    if (!hasEveryNeed(workflow.jobs.quality, ['product-tests', 'reliability-tests', 'desktop-e2e'])) {
+    if (
+      !hasEveryNeed(workflow.jobs.quality, ['product-tests', 'reliability-tests', 'desktop-e2e'])
+    ) {
       errors.push('quality-core.yml: aggregate quality must depend on actual validation jobs');
     }
   }
@@ -296,7 +317,9 @@ export function validateWorkflowStructure(file, source) {
   if (file === 'repository-governance.yml') {
     const push = workflow.on?.push;
     if (!Array.isArray(push?.paths) || push.paths.length === 0) {
-      errors.push('repository-governance.yml: main push validation must be scoped to ruleset authority paths');
+      errors.push(
+        'repository-governance.yml: main push validation must be scoped to ruleset authority paths',
+      );
     }
   }
 
@@ -331,16 +354,26 @@ export function validateWorkflowStructure(file, source) {
   }
 
   if (file === 'security.yml') {
-    const required = ['route', 'dependency-audit', 'supply-chain-inventory', 'secret-scan', 'application-security'];
+    const required = [
+      'route',
+      'dependency-audit',
+      'supply-chain-inventory',
+      'secret-scan',
+      'application-security',
+    ];
     const needs = workflow.jobs.security?.needs;
     if (!Array.isArray(needs) || required.some((name) => !needs.includes(name))) {
-      errors.push('security.yml: aggregate security job must need route and every security sub-job');
+      errors.push(
+        'security.yml: aggregate security job must need route and every security sub-job',
+      );
     }
     if (!source.includes('scan-secrets.mjs --base')) {
       errors.push('security.yml: pull requests must use incremental secret history scanning');
     }
     if (!source.includes('scan-secrets.mjs --history')) {
-      errors.push('security.yml: scheduled/manual security must retain full-history secret scanning');
+      errors.push(
+        'security.yml: scheduled/manual security must retain full-history secret scanning',
+      );
     }
     if (!source.includes(fullValidationDraftMarker)) {
       errors.push('security.yml: full validation must use the exact HTML marker');
@@ -351,7 +384,8 @@ export function validateWorkflowStructure(file, source) {
     if (!source.includes(fullValidationDraftMarker)) {
       errors.push('performance.yml: full validation must use the exact HTML marker');
     }
-    const matches = source.match(/vitest run tests\/performance --no-file-parallelism --retry=1/gu) ?? [];
+    const matches =
+      source.match(/vitest run tests\/performance --no-file-parallelism --retry=1/gu) ?? [];
     if (matches.length !== 1) {
       errors.push('performance.yml: performance and AI baseline suite must execute exactly once');
     }

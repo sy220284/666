@@ -136,14 +136,18 @@ describe('Security与Performance风险路由', () => {
 
 describe('重型桌面验证精确路由', () => {
   it('普通规划页面不再触发Windows真实拼音和三平台体验', () => {
-    expect(riskPlan(['apps/desktop/renderer/src/features/planning/idea-capsule-panel.tsx'])).toMatchObject({
+    expect(
+      riskPlan(['apps/desktop/renderer/src/features/planning/idea-capsule-panel.tsx']),
+    ).toMatchObject({
       windowsIme: false,
       platformExperience: false,
     });
   });
 
   it('正文编辑器变化继续触发Windows真实拼音和三平台体验', () => {
-    expect(riskPlan(['apps/desktop/renderer/src/features/writing/writing-workbench-view.tsx'])).toMatchObject({
+    expect(
+      riskPlan(['apps/desktop/renderer/src/features/writing/writing-workbench-view.tsx']),
+    ).toMatchObject({
       windowsIme: true,
       platformExperience: true,
     });

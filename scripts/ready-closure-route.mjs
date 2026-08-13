@@ -136,9 +136,10 @@ async function closureCandidate({ pullBody, headSha, repositoryRoot = root }) {
   let manifest;
   try {
     [runtime, manifest] = await Promise.all([
-      readFile(path.join(repositoryRoot, 'docs', 'tasks', 'runtime', `${taskId}.json`), 'utf8').then(
-        JSON.parse,
-      ),
+      readFile(
+        path.join(repositoryRoot, 'docs', 'tasks', 'runtime', `${taskId}.json`),
+        'utf8',
+      ).then(JSON.parse),
       readFile(
         path.join(repositoryRoot, 'docs', 'test-evidence', taskId, 'manifest.json'),
         'utf8',

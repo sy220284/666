@@ -72,7 +72,9 @@ export function validateTreeIdentity(sourceCommit, mainCommit) {
     throw new Error('Main verification requires source and main Git tree SHAs');
   }
   if (sourceTree !== mainTree) {
-    throw new Error(`Final main tree differs from verified PR Head tree: ${sourceTree} != ${mainTree}`);
+    throw new Error(
+      `Final main tree differs from verified PR Head tree: ${sourceTree} != ${mainTree}`,
+    );
   }
   return sourceTree;
 }
@@ -181,7 +183,10 @@ async function loadSignals(e, sha) {
       `/repos/${e.owner}/${e.repo}/commits/${sha}/check-runs?per_page=100`,
       'check_runs',
     ),
-    paginatedCollection(e.token, `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`),
+    paginatedCollection(
+      e.token,
+      `/repos/${e.owner}/${e.repo}/commits/${sha}/statuses?per_page=100`,
+    ),
   ]);
   return [...checks, ...statuses];
 }
@@ -222,7 +227,9 @@ async function checkMain() {
     checkRuns,
   });
   const tree = validateTreeIdentity(sourceCommit, mainCommit);
-  console.log(`Main verification provenance and tree identity passed for ${expectedSha} from PR #${sourcePr} (${tree}).`);
+  console.log(
+    `Main verification provenance and tree identity passed for ${expectedSha} from PR #${sourcePr} (${tree}).`,
+  );
 }
 
 async function publishCommitStatus(e, sha, payload) {

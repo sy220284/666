@@ -208,7 +208,8 @@ describe('Meta-Governance权威链', () => {
     expect(
       validateGovernanceAuthorities({
         ...sources,
-        security: 'name: security-route\nscan-secrets.mjs --base\nscan-secrets.mjs --history\nname: security',
+        security:
+          'name: security-route\nscan-secrets.mjs --base\nscan-secrets.mjs --history\nname: security',
       }),
     ).toContain('Security is missing authority marker: supply-chain-inventory:');
   });

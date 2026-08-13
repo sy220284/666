@@ -24,12 +24,12 @@ export function resolveAiReadiness(
     return {
       status: 'not-configured',
       providerId: null,
-      message: '尚未配置AI服务；自主写作和全部离线功能保持可用。',
+      message: '尚未配置智能服务；自主写作和全部离线功能保持可用。',
     };
   }
   return {
     status: 'not-verified',
     providerId: null,
-    message: '已有AI配置，但本次会话尚未完成真实连接测试。',
+    message: '已有智能配置，但本次会话尚未完成真实连接测试。',
   };
 }

@@ -120,9 +120,7 @@ function project(
   };
 }
 
-function continuation(
-  status: ProjectContinuationSnapshot['status'],
-): ProjectContinuationSnapshot {
+function continuation(status: ProjectContinuationSnapshot['status']): ProjectContinuationSnapshot {
   const common = {
     projectId,
     chapterId,

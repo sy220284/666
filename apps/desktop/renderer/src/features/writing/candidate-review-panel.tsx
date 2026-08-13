@@ -107,7 +107,7 @@ export function CandidateReviewPanel({
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
   const [selectedRun, setSelectedRun] = useState<GenerationRun | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [generationStatus, setGenerationStatus] = useState('选择AI连接后可生成建议稿。');
+  const [generationStatus, setGenerationStatus] = useState('选择智能连接后可生成建议稿。');
   const [skeletonEndingHook, setSkeletonEndingHook] = useState('');
   const [skeletonTendency, setSkeletonTendency] = useState('');
   const [lastGenerationIntent, setLastGenerationIntent] = useState<GenerationIntent | null>(null);
@@ -175,7 +175,7 @@ export function CandidateReviewPanel({
     setActiveTaskId(null);
     setLastGenerationIntent(null);
     setStatus('正在读取当前章节建议稿…');
-    setGenerationStatus('选择AI连接后可生成建议稿。');
+    setGenerationStatus('选择智能连接后可生成建议稿。');
     void refreshList(() => active).then((items) => {
       if (!active) return;
       const first = items[0];
@@ -325,7 +325,7 @@ export function CandidateReviewPanel({
     <section className="candidate-workbench" data-candidate-preview-dialog>
       <header className="feature-card__heading">
         <div>
-          <h2>AI创作与建议稿工作台</h2>
+          <h2>智能创作与建议稿工作台</h2>
           <p>生成只读取已保存的权威数据；骨架与正文候选使用独立的审阅、采用规则。</p>
         </div>
       </header>

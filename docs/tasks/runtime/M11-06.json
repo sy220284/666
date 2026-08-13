@@ -3,7 +3,7 @@
   "id": "M11-06",
   "status": "IN_PROGRESS",
   "executionBranch": "work",
-  "source": "docs/tasks/M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md",
+  "source": "docs/tasks/M11/M11-06_DAILY_WRITING_UI_REFINEMENT.md",
   "priority": "P0",
   "startedAt": "2026-08-13T09:05:00+08:00",
   "dependencies": [
@@ -26,7 +26,7 @@
     "scripts/check-author-language.mjs",
     "docs/product/AUTHOR_LANGUAGE_GLOSSARY.md",
     "docs/tasks/TASK_INDEX.md",
-    "docs/tasks/M11/M11-06_LONGFORM_AI_MEMORY_STYLE_ROUTING.md",
+    "docs/tasks/M11/M11-06_DAILY_WRITING_UI_REFINEMENT.md",
     "docs/tasks/M11/M11-07_LONGFORM_AI_MEMORY_STYLE_ROUTING.md",
     "docs/tasks/M12/M12-01_PROJECT_JOURNAL.md",
     "docs/tasks/runtime/M11-06.json",

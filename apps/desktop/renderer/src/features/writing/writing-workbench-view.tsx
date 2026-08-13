@@ -117,6 +117,7 @@ export function WritingWorkbenchView({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (panel !== 'editor') return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault();
         setFindOpen(true);
@@ -126,7 +127,7 @@ export function WritingWorkbenchView({
     };
     globalThis.addEventListener('keydown', onKeyDown);
     return () => globalThis.removeEventListener('keydown', onKeyDown);
-  }, [findOpen]);
+  }, [findOpen, panel]);
 
   return (
     <section

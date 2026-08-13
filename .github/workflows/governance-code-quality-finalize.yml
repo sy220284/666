@@ -27,7 +27,7 @@ jobs:
       - name: Migrate SQLite result boundaries and coverage registry
         shell: bash
         run: |
-          cat > /tmp/code-quality-finalize.mjs <<'NODE'
+          cat > .tmp-code-quality-finalize.mjs <<'NODE'
           import fs from 'node:fs';
           import path from 'node:path';
           import ts from 'typescript';
@@ -122,7 +122,7 @@ jobs:
           fs.writeFileSync(governanceTestPath, governanceTest);
           console.log(`SQLite codemod applied: ${changedFiles} files, ${replacements} assertions`);
           NODE
-          node /tmp/code-quality-finalize.mjs
+          node ./.tmp-code-quality-finalize.mjs
       - name: Format changed source
         shell: bash
         run: |
@@ -148,6 +148,7 @@ jobs:
       - name: Commit finalized governance result
         shell: bash
         run: |
+          rm -f .tmp-code-quality-finalize.mjs
           rm .github/workflows/governance-code-quality-finalize.yml
           git add -A
           git diff --cached --check

@@ -64,6 +64,16 @@ async function openDetails(page: Page, selector: string): Promise<void> {
   if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
 }
 
+async function openCompletePlanning(page: Page): Promise<void> {
+  await page.locator('[data-open-planning]').click();
+  await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+  const beginner = page.locator('[data-planning-disclosure="beginner"]');
+  if (await beginner.isVisible()) {
+    await page.locator('[data-planning-mode="professional"]').click();
+  }
+  await expect(page.locator('[data-planning-disclosure="professional"]')).toBeVisible();
+}
+
 async function setContentViewport(
   application: ElectronApplication,
   width: number,
@@ -438,8 +448,7 @@ test('creates, reopens, moves, and protects a future-schema project through the 
     await expect(page.locator('[data-volume-title="第一卷"]')).toBeVisible();
     await expect(page.locator('[data-chapter-title="第一章"]')).toBeVisible();
 
-    await page.locator('[data-open-planning]').click();
-    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+    await openCompletePlanning(page);
     await page.locator('[data-create-volume]').click();
     await expect(page.locator('[data-structure-dialog]')).toBeVisible();
     await page.locator('[data-structure-title]').fill('第二卷');
@@ -552,8 +561,7 @@ test('creates an explicit professional blank project and exposes the first struc
     await expect(page.locator('[data-structure-empty]')).toContainText('专业空白项目');
     await expect(page.locator('[data-volume-id]')).toHaveCount(0);
 
-    await page.locator('[data-open-planning]').click();
-    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+    await openCompletePlanning(page);
     await page.locator('[data-create-volume]').click();
     await page.locator('[data-structure-title]').fill('正文卷');
     await page.locator('[data-save-structure]').click();

@@ -110,9 +110,8 @@ describe('renderer AI single-flight guard', () => {
   });
 
   it('coalesces two immediate semantically identical starts into one backend start', async () => {
-    const pending = deferred<
-      CommandResult<{ readonly run: GenerationRun; readonly taskId: string }>
-    >();
+    const pending =
+      deferred<CommandResult<{ readonly run: GenerationRun; readonly taskId: string }>>();
     const next = generationRun('running');
     const start = vi.fn(() => pending.promise);
     const adapter = createRendererBridgeAdapter({ generation: generationBridge(start) });
@@ -136,12 +135,8 @@ describe('renderer AI single-flight guard', () => {
     });
     const start = vi
       .fn()
-      .mockResolvedValueOnce(
-        success('first-start', { run: firstRun, taskId: firstRun.taskId }),
-      )
-      .mockResolvedValueOnce(
-        success('second-start', { run: secondRun, taskId: secondRun.taskId }),
-      );
+      .mockResolvedValueOnce(success('first-start', { run: firstRun, taskId: firstRun.taskId }))
+      .mockResolvedValueOnce(success('second-start', { run: secondRun, taskId: secondRun.taskId }));
     const getRun = vi.fn(async () => success('get-active', firstRun));
     const adapter = createRendererBridgeAdapter({ generation: generationBridge(start, getRun) });
 
@@ -169,12 +164,8 @@ describe('renderer AI single-flight guard', () => {
     });
     const start = vi
       .fn()
-      .mockResolvedValueOnce(
-        success('first-start', { run: active, taskId: active.taskId }),
-      )
-      .mockResolvedValueOnce(
-        success('second-start', { run: next, taskId: next.taskId }),
-      );
+      .mockResolvedValueOnce(success('first-start', { run: active, taskId: active.taskId }))
+      .mockResolvedValueOnce(success('second-start', { run: next, taskId: next.taskId }));
     const getRun = vi.fn(async () => success('get-completed', completed));
     const adapter = createRendererBridgeAdapter({ generation: generationBridge(start, getRun) });
 

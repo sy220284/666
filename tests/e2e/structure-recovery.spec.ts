@@ -67,8 +67,10 @@ test('previews split and permanent delete, blocks current chapter references, an
     await page.keyboard.press('Enter');
     await page.keyboard.type('拆分后进入新章节。');
     await expect(blocks).toHaveCount(2);
+    await page.locator('[data-draft-more-actions] > summary').click();
     await page.locator('[data-save-draft]').click();
     await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存$/u);
+    await page.locator('[data-draft-more-actions] > summary').click();
 
     const prepared = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })
@@ -98,6 +100,10 @@ test('previews split and permanent delete, blocks current chapter references, an
     expect(prepared.blockCount).toBe(2);
     expect(prepared.preview).toMatchObject({ canExecute: true, resultingTargetBlockCount: 1 });
 
+    // Destructive structure operations live in the full planning workspace, not the compact writing outline.
+    await page.locator('[data-open-planning]').click();
+    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
+
     // Exercise the real UI command and verify stale structure reads cannot overwrite its result.
     await page.evaluate(() => {
       window.prompt = () => '拆出章节';
@@ -117,6 +123,8 @@ test('previews split and permanent delete, blocks current chapter references, an
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
     await expect(page.locator('body')).toHaveAttribute('data-project-state', 'open');
+    await page.locator('[data-open-planning]').click();
+    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
     await expect(page.locator('.chapter-node')).toHaveCount(2);
     await expect(page.locator('.chapter-node')).toContainText(['第一章', '拆出章节']);
 
@@ -208,6 +216,8 @@ test('previews split and permanent delete, blocks current chapter references, an
     await captureAcceptanceScreenshot(page, 'M2-04', 'permanent-delete-checkpoint.png');
     await page.reload();
     await page.waitForFunction(() => document.body.dataset.rendererReady === 'true');
+    await page.locator('[data-open-planning]').click();
+    await expect(page.locator('[data-planning-dialog]')).toBeVisible();
     await page.locator('[data-open-trash]').click();
     await expect(page.locator('[data-trash-empty]')).toBeVisible();
   } finally {

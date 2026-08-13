@@ -108,7 +108,7 @@ export function buildGlobalStatus({
   const degradedResources = (
     [
       ['tasks', '任务状态'],
-      ['providers', 'AI连接'],
+      ['providers', '智能连接'],
       ['continuation', '续写位置'],
     ] as const
   )
@@ -153,7 +153,7 @@ export function buildGlobalStatus({
     arbitrator.publish({
       id: 'candidate-pending',
       priority: 'P2',
-      message: `当前章节有${workspaceAttention.pendingCandidateCount}份建议稿待作者审阅。`,
+      message: `当前章节有${workspaceAttention.pendingCandidateCount}份智能建议稿待作者审阅。`,
       persistence: 'sticky',
       createdAt: 59,
     });
@@ -162,7 +162,7 @@ export function buildGlobalStatus({
     arbitrator.publish({
       id: 'proposal-pending',
       priority: 'P2',
-      message: `AI审阅有${workspaceAttention.pendingProposalCount}条建议等待作者处理；尚未写入人物与世界。`,
+      message: `智能审阅有${workspaceAttention.pendingProposalCount}条建议等待作者处理；尚未写入人物与世界。`,
       persistence: 'sticky',
       createdAt: 58,
     });

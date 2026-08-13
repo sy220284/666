@@ -91,27 +91,51 @@
     },
     "windowsIme": {
       "any": [
-        "^apps/desktop/renderer/",
+        "^apps/desktop/renderer/src/features/writing/",
+        "^apps/desktop/renderer/src/bridge/",
         "^apps/desktop/preload/",
+        "^packages/editor-core/",
         "^tests/e2e/playwright\\.windows-ime\\.config\\.ts$",
+        "^tests/e2e/m8-07-windows-ime(?:-native)?\\.(?:ts|ps1)$",
         "^tests/e2e/.*ime.*\\.(?:ts|tsx)$",
         "^scripts/run-electron-e2e\\.mjs$"
       ]
     },
     "platformExperience": {
       "any": [
-        "^apps/desktop/renderer/",
-        "^apps/desktop/preload/",
         "^apps/desktop/main/",
+        "^apps/desktop/preload/",
+        "^apps/desktop/renderer/src/(?:app|shell|presentation)/",
+        "^apps/desktop/renderer/src/features/(?:home|writing|settings)/",
+        "^apps/desktop/renderer/src/(?:react-entry\\.tsx|index\\.html)$",
+        "^apps/desktop/renderer/src/.*\\.css$",
         "^packages/contracts/",
-        "^tests/e2e/",
+        "^tests/e2e/platform-experience\\.spec\\.ts$",
         "^scripts/run-electron-e2e\\.mjs$",
         "^docs/process/PLATFORM_EXPERIENCE_MATRIX\\.json$",
         "^docs/process/CI_RISK_MATRIX\\.json$",
         "^\\.github/workflows/quality\\.yml$",
+        "^\\.github/workflows/quality-core\\.yml$",
         "^\\.github/workflows/release\\.yml$",
         "^package\\.json$",
         "^pnpm-lock\\.yaml$"
+      ]
+    },
+    "releaseAudit": {
+      "any": [
+        "^\\.github/",
+        "^scripts/.*(?:policy|gate|acceptance|verification|automerge|release).*\\.mjs$",
+        "^scripts/supply-chain-inventory\\.mjs$",
+        "^tests/unit/(?:ci-|quality-system-v2|automated-verification-authority|evidence-policy|ui-acceptance-gate).*\\.test\\.ts$",
+        "^docs/process/",
+        "^docs/tasks/",
+        "^docs/test-evidence/",
+        "^docs/PROJECT_EXECUTION_ENTRY\\.md$",
+        "^AGENTS\\.md$",
+        "^agent\\.md$",
+        "^package\\.json$",
+        "^pnpm-lock\\.yaml$",
+        "^LICENSE$"
       ]
     },
     "governanceMeta": {

@@ -176,7 +176,7 @@ test('completes the M1-01 through M1-08 evidence-backed UI acceptance chain', as
 
     await page.locator('[data-draft-more-actions] > summary').click();
     await page.locator('[data-save-draft]').click();
-    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存$/u);
+    await expect(page.locator('[data-draft-state]')).toHaveText(/^已手动保存 · 保存序号 \d+$/u);
     await page.locator('[data-draft-more-actions] > summary').click();
     const revision = await page.evaluate(async () => {
       const bridge = (globalThis as unknown as { readonly worldforge: WorldforgeBridge })

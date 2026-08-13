@@ -2,12 +2,20 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+} from '@playwright/test';
 
 const temporaryDirectories: string[] = [];
 const root = process.cwd();
 
-async function launch(userDataPath: string, createParent: string): Promise<ElectronApplication> {
+async function launch(
+  userDataPath: string,
+  createParent: string,
+): Promise<ElectronApplication> {
   const args: string[] = [];
   if (process.getuid?.() === 0) args.push('--no-sandbox');
   args.push(path.join(root, 'apps/desktop/main'));
@@ -52,8 +60,12 @@ test('日常写作默认保持安静并按需展开中文工具', async () => {
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
     await expect(page.locator('[data-writing-save-state]')).toBeVisible();
-    await expect(page.getByRole('button', { name: '智能助手', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '沉浸写作', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '智能助手', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '沉浸写作', exact: true }),
+    ).toBeVisible();
     await expect(page.locator('[data-draft-editor-controls]')).toBeVisible();
     await expect(page.locator('[data-draft-text-count]')).toBeVisible();
     await expect(page.locator('[data-draft-state]')).toBeVisible();
@@ -78,8 +90,12 @@ test('日常写作默认保持安静并按需展开中文工具', async () => {
     const moreActions = page.locator('[data-draft-more-actions]');
     await expect(page.locator('[data-save-draft]')).toBeHidden();
     await moreActions.locator('summary').click();
-    await expect(page.getByRole('button', { name: '立即保存', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '复制正文', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '立即保存', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '复制正文', exact: true }),
+    ).toBeVisible();
     await moreActions.locator('summary').click();
 
     const directoryToggle = page.locator('[data-toggle-writing-outline]');
@@ -126,7 +142,9 @@ test('日常写作默认保持安静并按需展开中文工具', async () => {
     await expect(page.locator('[data-writing-assistance]')).toHaveCount(0);
     await expect(page.locator('[data-draft-text-count]')).toBeVisible();
     await expect(page.locator('[data-draft-state]')).toBeVisible();
-    await expect(page.getByRole('button', { name: '退出沉浸', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '退出沉浸', exact: true }),
+    ).toBeVisible();
   } finally {
     await closeGracefully(application);
   }

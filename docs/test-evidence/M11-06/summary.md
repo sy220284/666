@@ -2,7 +2,8 @@
 
 - 任务：`M11-06` 作者日常写作界面精修
 - 来源 PR：`#387`（`work → main`）
-- 最终实现提交：`10560c1e3b5f77c4d58a8f3d1d11672bd3090a97`
+- 最终实现提交：`881a3bcb882fe8171362ac7e45d508ee0d78ee40`
+- 同步主线：`main@10b5cc63f7fac13ce82b085e096b3f2c7df6d2be`，三方合并无冲突
 
 ## 实现范围
 
@@ -12,7 +13,15 @@
 4. Theme A/B 深浅色完整视口背景、原生滚动条配色与根元素 `color-scheme` 已同步，暗色主题不再出现底部白缝或白色滚动条。
 5. M11-06 调整为日常写作界面精修；原长篇智能底座顺延为 M11-07，M12 任务依赖镜像同步纠正。
 
-## 权威验证
+## 最终锚点权威验证
+
+- Quality 运行 `31696296384`：成功；静态检查、产品测试、可靠性、Release Audit、Windows/macOS/Linux 作者体验与 Linux Electron 完整流程均实际执行并通过。
+- Linux Electron 完整流程通过；桌面证据 Artifact `9179997107`，Digest `sha256:bdd043dba94060c7e14990f7ed0e2d0bd017ab21a3d04e4cba1caabaab64f004`。
+- Windows 真拼音证据 Artifact `9179533275`；Windows 平台体验 Artifact `9179532934`；macOS 平台体验 Artifact `9179486152`。
+- Security 运行 `31696296266`：成功。
+- Performance 运行 `31696296254`：成功。
+
+## M11-06 实现冻结验证
 
 - PR Policy 运行 `31693424577`：成功。
 - Quality 运行 `31693426302`：成功；静态检查、产品测试、可靠性、Release Audit、Windows/macOS/Linux 作者体验与 Linux Electron 完整流程均通过。

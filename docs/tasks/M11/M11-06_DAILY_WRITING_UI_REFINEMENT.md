@@ -231,10 +231,10 @@ pnpm test:e2e
 
 ## 实现收口
 
-- 最终实现提交：`10560c1e3b5f77c4d58a8f3d1d11672bd3090a97`。
+- 最终实现提交：`881a3bcb882fe8171362ac7e45d508ee0d78ee40`（包含已验证 `main@10b5cc63f7fac13ce82b085e096b3f2c7df6d2be` 的无冲突同步）。
 - 来源 PR：#387（`work → main`）。
-- Quality 运行 `31693426302` 成功，Linux Electron 完整流程 37/37 通过，Windows 真拼音与 Windows/macOS/Linux 作者体验通过。
-- Security 运行 `31693426045` 成功；Performance 运行 `31693426131` 成功。
+- 最终锚点 Quality 运行 `31696296384` 成功，Linux Electron 完整流程、Windows 真拼音与 Windows/macOS/Linux 作者体验通过；桌面证据 Artifact `9179997107`。
+- 最终锚点 Security 运行 `31696296266` 成功；Performance 运行 `31696296254` 成功。
 - 两个独立视觉取证 Head `545d714cf8ebd6a1c5a226959f9cdeec1ec1f179` 与 `cc30731e15c9580b1881e89fa272415cdc3db222` 的四主题 1280×800 截图 SHA-256 逐张一致，新基线及 Artifact provenance 已登记。
 - M11-06、M11-07 与 M12-01—M12-04 的索引编号、任务卡路径和依赖镜像已经统一。
 

@@ -168,7 +168,7 @@ export function useWorkspaceStartup({
       setResourceState('providers', collectionStartupState(providers.data.providers));
     } else {
       setResourceState('providers', 'degraded');
-      nextFailure ??= failureFromOutcome('AI连接配置读取失败', providers);
+      nextFailure ??= failureFromOutcome('智能连接配置读取失败', providers);
     }
 
     setFailure(nextFailure);

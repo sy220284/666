@@ -9,6 +9,7 @@ const modeAwareWorkflows = Object.freeze([
   { workflow: 'security.yml', kind: 'security', checkName: 'security' },
   { workflow: 'performance.yml', kind: 'performance', checkName: 'performance' },
 ]);
+// Bootstrap compatibility only: quality / release-audit and quality / package-smoke are now aggregated by quality / quality.
 
 function env() {
   const {

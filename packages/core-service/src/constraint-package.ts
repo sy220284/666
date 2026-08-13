@@ -25,6 +25,7 @@ import {
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { SearchIndexService } from './search-index.js';
 import { StateProposalService } from './state-proposal.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 export type ConstraintPackageServiceErrorCode =
   | 'CONSTRAINT_PACKAGE_NOT_FOUND'
@@ -226,9 +227,10 @@ function loadBaseContext(
   if (!project) {
     throw new ConstraintPackageServiceError('CONSTRAINT_PACKAGE_NOT_FOUND', 'Project not found.');
   }
-  const chapters = connection
-    .prepare(
-      `SELECT chapter.id, chapter.title, chapter.status,
+  const chapters = sqliteResult<Record<string, unknown>[]>(
+    connection
+      .prepare(
+        `SELECT chapter.id, chapter.title, chapter.status,
               chapter.target_word_min AS targetWordMin,
               chapter.target_word_max AS targetWordMax,
               LAG(chapter.id) OVER (
@@ -239,8 +241,9 @@ function loadBaseContext(
         WHERE volume.project_id = ? AND volume.deleted_at IS NULL
           AND chapter.deleted_at IS NULL
         ORDER BY volume.order_key, chapter.order_key, chapter.id`,
-    )
-    .all(projectId) as unknown as Record<string, unknown>[];
+      )
+      .all(projectId),
+  );
   const chapterIndex = chapters.findIndex((row) => row.id === chapterId);
   const rawChapter = chapters[chapterIndex];
   if (chapterIndex < 0 || !rawChapter) {
@@ -266,20 +269,23 @@ function loadBaseContext(
          FROM project_briefs WHERE project_id = ?`,
     )
     .get(projectId) as Record<string, unknown> | undefined;
-  const beats = connection
-    .prepare(
-      `SELECT id, title, goal, core_conflict AS coreConflict,
+  const beats = sqliteResult<Record<string, unknown>[]>(
+    connection
+      .prepare(
+        `SELECT id, title, goal, core_conflict AS coreConflict,
               expected_result AS expectedResult, beat_type AS beatType,
               word_target_percent AS wordTargetPercent, is_required AS isRequired,
               order_key AS orderKey
          FROM scene_beats
         WHERE project_id = ? AND chapter_id = ? AND deleted_at IS NULL
         ORDER BY order_key, id`,
-    )
-    .all(projectId, chapterId) as unknown as Record<string, unknown>[];
-  const linkedEntities = connection
-    .prepare(
-      `SELECT DISTINCT entity.id, entity.entity_type AS entityType, entity.name,
+      )
+      .all(projectId, chapterId),
+  );
+  const linkedEntities = sqliteResult<Record<string, unknown>[]>(
+    connection
+      .prepare(
+        `SELECT DISTINCT entity.id, entity.entity_type AS entityType, entity.name,
               entity.aliases_json AS aliasesJson, entity.summary
          FROM scene_beat_entities link
          JOIN scene_beats beat ON beat.id = link.scene_beat_id
@@ -287,25 +293,29 @@ function loadBaseContext(
         WHERE link.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
           AND entity.status = 'active'
         ORDER BY entity.entity_type, lower(entity.name), entity.id`,
-    )
-    .all(projectId, chapterId) as unknown as Record<string, unknown>[];
+      )
+      .all(projectId, chapterId),
+  );
   const entityIds = linkedEntities.map((row) => text(row.id, 'entity.id'));
   const canonFacts =
     entityIds.length === 0
       ? []
-      : (connection
-          .prepare(
-            `SELECT id, entity_id AS entityId, fact_key AS factKey,
+      : sqliteResult<Record<string, unknown>[]>(
+          connection
+            .prepare(
+              `SELECT id, entity_id AS entityId, fact_key AS factKey,
                     value_json AS valueJson, description, confirmed_at AS confirmedAt
                FROM canon_facts
               WHERE project_id = ? AND status = 'current'
                 AND entity_id IN (${entityIds.map(() => '?').join(',')})
               ORDER BY entity_id, fact_key, id`,
-          )
-          .all(projectId, ...entityIds) as unknown as Record<string, unknown>[]);
-  const foreshadowings = connection
-    .prepare(
-      `SELECT DISTINCT item.id, item.title, item.description, item.status,
+            )
+            .all(projectId, ...entityIds),
+        );
+  const foreshadowings = sqliteResult<Record<string, unknown>[]>(
+    connection
+      .prepare(
+        `SELECT DISTINCT item.id, item.title, item.description, item.status,
               item.reveal_from_chapter_id AS revealFromChapterId,
               item.reveal_by_chapter_id AS revealByChapterId
          FROM foreshadowings item
@@ -314,14 +324,16 @@ function loadBaseContext(
         WHERE item.project_id = ? AND item.status <> 'cancelled'
           AND (link.chapter_id = ? OR item.reveal_from_chapter_id = ? OR item.reveal_by_chapter_id = ?)
         ORDER BY item.updated_at DESC, item.id`,
-    )
-    .all(projectId, chapterId, chapterId, chapterId) as unknown as Record<string, unknown>[];
+      )
+      .all(projectId, chapterId, chapterId, chapterId),
+  );
   const arcs =
     entityIds.length === 0
       ? []
-      : (connection
-          .prepare(
-            `SELECT arc.id, arc.character_id AS characterId, arc.title,
+      : sqliteResult<Record<string, unknown>[]>(
+          connection
+            .prepare(
+              `SELECT arc.id, arc.character_id AS characterId, arc.title,
                     arc.arc_type AS arcType, arc.status, arc.author_intent AS authorIntent,
                     COALESCE(json_group_array(json_object(
                       'id', milestone.id,
@@ -339,11 +351,13 @@ function loadBaseContext(
                 AND arc.character_id IN (${entityIds.map(() => '?').join(',')})
               GROUP BY arc.id
               ORDER BY arc.updated_at DESC, arc.id`,
-          )
-          .all(projectId, ...entityIds) as unknown as Record<string, unknown>[]);
-  const draftBlocks = connection
-    .prepare(
-      `SELECT block.logical_block_id AS logicalBlockId, block.order_key AS orderKey,
+            )
+            .all(projectId, ...entityIds),
+        );
+  const draftBlocks = sqliteResult<Record<string, unknown>[]>(
+    connection
+      .prepare(
+        `SELECT block.logical_block_id AS logicalBlockId, block.order_key AS orderKey,
               block.block_type AS blockType, block.text
          FROM chapters chapter
          JOIN drafts draft ON draft.id = chapter.active_draft_id AND draft.status = 'active'
@@ -352,11 +366,13 @@ function loadBaseContext(
         WHERE chapter.id = ? AND volume.project_id = ?
           AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
         ORDER BY block.order_key, block.id`,
-    )
-    .all(chapterId, projectId) as unknown as Record<string, unknown>[];
-  const validationExceptions = connection
-    .prepare(
-      `SELECT id, exception_type AS exceptionType, scope_type AS scopeType,
+      )
+      .all(chapterId, projectId),
+  );
+  const validationExceptions = sqliteResult<Record<string, unknown>[]>(
+    connection
+      .prepare(
+        `SELECT id, exception_type AS exceptionType, scope_type AS scopeType,
               issue_type AS issueType, validation_issue_id AS validationIssueId,
               chapter_id AS chapterId, entity_id AS entityId,
               valid_from_chapter_id AS validFromChapterId,
@@ -365,8 +381,9 @@ function loadBaseContext(
          FROM validation_exceptions
         WHERE project_id = ? AND active = 1
         ORDER BY created_at, id`,
-    )
-    .all(projectId) as unknown as Record<string, unknown>[];
+      )
+      .all(projectId),
+  );
   return {
     project,
     chapter,

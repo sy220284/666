@@ -25,6 +25,7 @@ import {
   validateRevealWindow,
   NarrativePlanningServiceError,
 } from './narrative-planning-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 function assertForeshadowingTargets(
   connection: DatabaseSync,
@@ -64,17 +65,21 @@ function assertForeshadowingDependencyGraph(
   sourceId: string,
   input: ForeshadowingSaveInput,
 ): void {
-  const rows = connection
-    .prepare(
-      `SELECT source_foreshadowing_id AS sourceId, target_foreshadowing_id AS targetId
+  const rows = sqliteResult<
+    {
+      readonly sourceId: string;
+      readonly targetId: string;
+    }[]
+  >(
+    connection
+      .prepare(
+        `SELECT source_foreshadowing_id AS sourceId, target_foreshadowing_id AS targetId
          FROM foreshadowing_relations
         WHERE project_id = ? AND relation_kind = 'depends_on'
           AND source_foreshadowing_id <> ?`,
-    )
-    .all(projectId, sourceId) as unknown as {
-    readonly sourceId: string;
-    readonly targetId: string;
-  }[];
+      )
+      .all(projectId, sourceId),
+  );
   const graph = new Map<string, string[]>();
   for (const row of rows) {
     graph.set(row.sourceId, [...(graph.get(row.sourceId) ?? []), row.targetId]);

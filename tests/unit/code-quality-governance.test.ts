@@ -40,6 +40,8 @@ describe('code quality governance', () => {
     );
     expect(eslintConfig).toContain("'@typescript-eslint/no-floating-promises': 'error'");
     expect(eslintConfig).toContain('projectService: true');
+    expect(eslintConfig).toContain("'react-hooks/rules-of-hooks': 'error'");
+    expect(eslintConfig).toContain("'react-hooks/exhaustive-deps': 'error'");
   });
 
   it('includes Renderer TSX and TSX tests in coverage discovery', async () => {
@@ -53,6 +55,8 @@ describe('code quality governance', () => {
   it('keeps core coverage at 75 percent and freezes Renderer TSX uncovered counts', async () => {
     await expect(inspectCoveragePolicy()).resolves.toEqual({
       policy: 'dual-track',
+      sourceHead: '881a3bcb882fe8171362ac7e45d508ee0d78ee40',
+      exclusionCount: 31,
       coreThresholdPercent: {
         statements: 75,
         branches: 75,
@@ -60,10 +64,10 @@ describe('code quality governance', () => {
         lines: 75,
       },
       rendererTsxMaxUncovered: {
-        statements: 2588,
-        branches: 2281,
-        functions: 934,
-        lines: 2309,
+        statements: 2443,
+        branches: 2249,
+        functions: 888,
+        lines: 2153,
       },
     });
 
@@ -121,6 +125,7 @@ describe('code quality governance', () => {
     expect(workflow).not.toContain('.github/toolchain-export');
     expect(quality).toContain('uses: ./.github/workflows/toolchain-export.yml');
     expect(quality).toContain("github.event.pull_request.head.ref == 'work'");
+    expect(quality).toContain("github.event.pull_request.head.ref == 'governance'");
     expect(quality).toContain('ci-risk-policy.mjs toolchain-export');
     expect(riskMatrix.routes.toolchainExport.any).toContain(
       '^docs/process/CURRENT_WORKSPACE_TOOLCHAIN\\.(?:json|md)$',

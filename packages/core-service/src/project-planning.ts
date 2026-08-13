@@ -31,6 +31,7 @@ import {
 
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -155,16 +156,18 @@ function readBrief(connection: DatabaseSync, projectId: string): ProjectBrief {
 
 function readPlotNodes(connection: DatabaseSync, projectId: string): PlotNodeList {
   assertProject(connection, projectId);
-  const rows = connection
-    .prepare(
-      `SELECT id, project_id AS projectId, parent_id AS parentId, node_type AS nodeType,
+  const rows = sqliteResult<PlotNodeRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, parent_id AS parentId, node_type AS nodeType,
               title, goal, core_conflict AS coreConflict, expected_result AS expectedResult,
               order_key AS orderKey, status
          FROM plot_nodes
         WHERE project_id = ?
         ORDER BY parent_id IS NOT NULL, parent_id, order_key, id`,
-    )
-    .all(projectId) as unknown as PlotNodeRow[];
+      )
+      .all(projectId),
+  );
   return PlotNodeListSchema.parse({
     projectId,
     nodes: rows.map((row) =>
@@ -208,7 +211,12 @@ function orderedSiblings(
   parentId: string | null,
   excludedId?: string,
 ): OrderedSibling[] {
-  return (
+  return sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly orderKey: number | bigint;
+    }>
+  >(
     connection
       .prepare(
         `SELECT id, order_key AS orderKey
@@ -218,16 +226,7 @@ function orderedSiblings(
             AND (? IS NULL OR id <> ?)
           ORDER BY order_key, id`,
       )
-      .all(
-        projectId,
-        parentId,
-        parentId,
-        excludedId ?? null,
-        excludedId ?? null,
-      ) as unknown as Array<{
-      readonly id: string;
-      readonly orderKey: number | bigint;
-    }>
+      .all(projectId, parentId, parentId, excludedId ?? null, excludedId ?? null),
   ).map((row) => ({ id: text(row.id), orderKey: integer(row.orderKey) }));
 }
 

@@ -60,7 +60,13 @@ function restoreRequestRecord(raw: unknown): RestoreRequestRecord | null {
   ) {
     return null;
   }
-  return value as unknown as RestoreRequestRecord;
+  return {
+    schemaVersion: 1,
+    requestId: value.requestId,
+    sourceProjectId: value.sourceProjectId,
+    backupId: value.backupId,
+    restoredProjectId: value.restoredProjectId,
+  };
 }
 
 function restoreOperationJournal(raw: unknown): RestoreOperationJournal | null {
@@ -76,7 +82,14 @@ function restoreOperationJournal(raw: unknown): RestoreOperationJournal | null {
   ) {
     return null;
   }
-  return value as unknown as RestoreOperationJournal;
+  return {
+    schemaVersion: 1,
+    requestId: value.requestId,
+    sourceProjectId: value.sourceProjectId,
+    backupId: value.backupId,
+    targetParentDirectory: value.targetParentDirectory,
+    targetPath: value.targetPath,
+  };
 }
 
 function isAlreadyExists(error: unknown): boolean {

@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { compareChapterPosition } from '@worldforge/domain';
 
 import { chapterPosition } from '../continuity-validation.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 interface ExceptionCandidate {
   readonly issueType: string;
@@ -28,9 +29,10 @@ export function isValidationExceptionActive(
   chapterId: string,
   candidate: ExceptionCandidate,
 ): boolean {
-  const rows = database
-    .prepare(
-      `SELECT exception.scope_type AS scopeType,
+  const rows = sqliteResult<ExceptionRow[]>(
+    database
+      .prepare(
+        `SELECT exception.scope_type AS scopeType,
               exception.validation_issue_id AS validationIssueId,
               exception.chapter_id AS chapterId, exception.entity_id AS entityId,
               exception.valid_from_chapter_id AS validFromChapterId,
@@ -41,8 +43,9 @@ export function isValidationExceptionActive(
          LEFT JOIN validation_issues original ON original.id = exception.validation_issue_id
         WHERE exception.project_id = ? AND exception.active = 1
           AND exception.issue_type = ?`,
-    )
-    .all(projectId, candidate.issueType) as unknown as ExceptionRow[];
+      )
+      .all(projectId, candidate.issueType),
+  );
   const evidenceKey = normalizedSet(candidate.evidenceIds);
   return rows.some((row) => {
     switch (row.scopeType) {

@@ -16,6 +16,7 @@ import {
   normalizeSearchTerm,
   type SearchIndexServiceOptions,
 } from './search-index.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const SOURCE_ORDER = ['draft', 'version', 'entity'] as const satisfies readonly SearchSourceType[];
 
@@ -53,29 +54,33 @@ function titleRows(
   sourceType: 'draft' | 'version',
 ): TitleRow[] {
   if (sourceType === 'draft') {
-    return connection
-      .prepare(
-        `SELECT draft.id AS targetId, chapter.id AS chapterId, chapter.title
+    return sqliteResult<TitleRow[]>(
+      connection
+        .prepare(
+          `SELECT draft.id AS targetId, chapter.id AS chapterId, chapter.title
            FROM drafts draft
            JOIN chapters chapter ON chapter.id = draft.chapter_id
            JOIN volumes volume ON volume.id = chapter.volume_id
           WHERE volume.project_id = ? AND draft.status = 'active'
             AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
           ORDER BY volume.order_key, chapter.order_key, draft.id`,
-      )
-      .all(projectId) as unknown as TitleRow[];
+        )
+        .all(projectId),
+    );
   }
-  return connection
-    .prepare(
-      `SELECT version.id AS targetId, chapter.id AS chapterId, chapter.title
+  return sqliteResult<TitleRow[]>(
+    connection
+      .prepare(
+        `SELECT version.id AS targetId, chapter.id AS chapterId, chapter.title
          FROM versions version
          JOIN chapters chapter ON chapter.id = version.chapter_id
          JOIN volumes volume ON volume.id = chapter.volume_id
         WHERE volume.project_id = ? AND chapter.deleted_at IS NULL
           AND volume.deleted_at IS NULL
         ORDER BY version.created_at DESC, version.id`,
-    )
-    .all(projectId) as unknown as TitleRow[];
+      )
+      .all(projectId),
+  );
 }
 
 function dictionaryAction(connection: DatabaseSync, originalQuery: string): string | null {

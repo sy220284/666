@@ -89,6 +89,7 @@ export function IdeaCapsulePanel({
   const [instruction, setInstruction] = useState('');
   const [count, setCount] = useState(4);
   const [activeRun, setActiveRun] = useState<GenerationRun | null>(null);
+  const activeRunId = activeRun?.runId ?? null;
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [notice, setNotice] = useState('灵感仅在确认转换后写入规划或设定。');
   const [preview, setPreview] = useState<IdeaConversionPreview | null>(null);
@@ -178,11 +179,11 @@ export function IdeaCapsulePanel({
   }, [loadIdeas]);
 
   useEffect(() => {
-    if (!activeRun) return;
+    if (!activeRunId) return;
     let active = true;
     let timer: number | null = null;
     const poll = async (): Promise<void> => {
-      const outcome = await bridge.generation.getRun(projectId, activeRun.runId, { mode: 'share' });
+      const outcome = await bridge.generation.getRun(projectId, activeRunId, { mode: 'share' });
       if (!active) return;
       if (outcome.state === 'failure') {
         setNotice(`探索状态读取失败：${authorErrorSummary(outcome.error)}`);
@@ -213,7 +214,7 @@ export function IdeaCapsulePanel({
       active = false;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [activeRun?.runId, bridge, loadIdeas, projectId]);
+  }, [activeRunId, bridge, loadIdeas, projectId]);
 
   const startExplore = async (sourceIdea?: IdeaCard): Promise<void> => {
     if (readOnly || !providerId) return;

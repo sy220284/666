@@ -27,6 +27,7 @@ import {
   type ExportVersionRow,
   type ImportExportServiceOptions,
 } from './import-export-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export class ExportVersionService {
   readonly #workspace: ProjectWorkspaceService;
@@ -44,9 +45,10 @@ export class ExportVersionService {
   listExportVersions(projectId: string): ExportVersionCatalog {
     this.#workspace.assertActiveProject(projectId);
     return this.#workspace.readProject(projectId, (database) => {
-      const rows = database
-        .prepare(
-          `SELECT v.id AS versionId, vo.id AS volumeId, vo.title AS volumeTitle,
+      const rows = sqliteResult<ExportVersionRow[]>(
+        database
+          .prepare(
+            `SELECT v.id AS versionId, vo.id AS volumeId, vo.title AS volumeTitle,
                   c.id AS chapterId, c.title AS chapterTitle, v.title AS versionTitle,
                   v.word_count AS wordCount, v.created_at AS createdAt,
                   CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized,
@@ -56,8 +58,9 @@ export class ExportVersionService {
              JOIN volumes vo ON vo.id = c.volume_id
             WHERE vo.project_id = ? AND vo.deleted_at IS NULL AND c.deleted_at IS NULL
             ORDER BY vo.order_key, c.order_key, v.created_at DESC, v.id DESC`,
-        )
-        .all(projectId) as unknown as ExportVersionRow[];
+          )
+          .all(projectId),
+      );
       return ExportVersionCatalogSchema.parse({
         projectId,
         versions: rows.map((row) => ({
@@ -100,9 +103,10 @@ export class ExportVersionService {
       if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
     }
     const versions = this.#workspace.readProject(input.projectId, (database) => {
-      const rows = database
-        .prepare(
-          `SELECT v.id AS versionId, vo.id AS volumeId, vo.title AS volumeTitle,
+      const rows = sqliteResult<ExportVersionRow[]>(
+        database
+          .prepare(
+            `SELECT v.id AS versionId, vo.id AS volumeId, vo.title AS volumeTitle,
                   c.id AS chapterId, c.title AS chapterTitle, v.title AS versionTitle,
                   v.word_count AS wordCount, v.created_at AS createdAt,
                   CASE WHEN c.final_version_id = v.id THEN 1 ELSE 0 END AS finalized,
@@ -112,8 +116,9 @@ export class ExportVersionService {
              JOIN volumes vo ON vo.id = c.volume_id
             WHERE vo.project_id = ? AND v.id IN (${input.versionIds.map(() => '?').join(',')})
             ORDER BY vo.order_key, c.order_key, v.created_at, v.id`,
-        )
-        .all(input.projectId, ...input.versionIds) as unknown as ExportVersionRow[];
+          )
+          .all(input.projectId, ...input.versionIds),
+      );
       if (rows.length !== input.versionIds.length) {
         throw new ImportExportServiceError(
           'EXPORT_VERSION_REQUIRED',
@@ -122,12 +127,14 @@ export class ExportVersionService {
       }
       return rows.map((row) => ({
         chapterTitle: row.chapterTitle,
-        blocks: database
-          .prepare(
-            `SELECT block_type AS blockType, text, order_key AS orderKey
+        blocks: sqliteResult<ExportBlockRow[]>(
+          database
+            .prepare(
+              `SELECT block_type AS blockType, text, order_key AS orderKey
                FROM version_blocks WHERE version_id = ? ORDER BY order_key`,
-          )
-          .all(row.versionId) as unknown as ExportBlockRow[],
+            )
+            .all(row.versionId),
+        ),
       }));
     });
     const content = renderExportContent(input.format, versions);

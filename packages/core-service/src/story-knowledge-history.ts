@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { StoryKnowledgeProjectionInput } from '@worldforge/contracts';
 
 import { StoryKnowledgeProjectionServiceError } from './story-knowledge-projection.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 type HistoryInput = Extract<StoryKnowledgeProjectionInput, { readonly view: 'history' }>;
 
@@ -66,9 +67,10 @@ export function projectHistory(connection: DatabaseSync, input: HistoryInput) {
     );
   }
 
-  const rows = connection
-    .prepare(
-      `SELECT version.id AS versionId, version.chapter_id AS chapterId,
+  const rows = sqliteResult<HistoryVersionRow[]>(
+    connection
+      .prepare(
+        `SELECT version.id AS versionId, version.chapter_id AS chapterId,
               version.title, version.description, version.version_type AS versionType,
               version.word_count AS wordCount, version.created_at AS createdAt,
               CASE WHEN chapter.final_version_id = version.id THEN 1 ELSE 0 END AS finalized
@@ -83,16 +85,17 @@ export function projectHistory(connection: DatabaseSync, input: HistoryInput) {
           )
         ORDER BY version.created_at DESC, version.id DESC
         LIMIT ?`,
-    )
-    .all(
-      input.projectId,
-      input.chapterId,
-      input.beforeCreatedAt,
-      input.beforeCreatedAt,
-      input.beforeCreatedAt,
-      input.beforeVersionId,
-      input.limit + 1,
-    ) as unknown as HistoryVersionRow[];
+      )
+      .all(
+        input.projectId,
+        input.chapterId,
+        input.beforeCreatedAt,
+        input.beforeCreatedAt,
+        input.beforeCreatedAt,
+        input.beforeVersionId,
+        input.limit + 1,
+      ),
+  );
   const items = rows.slice(0, input.limit).map((row) => ({
     ...row,
     wordCount: Number(row.wordCount),
@@ -100,9 +103,10 @@ export function projectHistory(connection: DatabaseSync, input: HistoryInput) {
   }));
   const cursor = rows.length > input.limit ? (items.at(-1) ?? null) : null;
 
-  const candidateRows = connection
-    .prepare(
-      `SELECT candidate.id AS candidateId, candidate.title,
+  const candidateRows = sqliteResult<HistoryCandidateRow[]>(
+    connection
+      .prepare(
+        `SELECT candidate.id AS candidateId, candidate.title,
               candidate.candidate_type AS candidateType, candidate.completeness,
               candidate.status, candidate.generation_run_id AS generationRunId,
               candidate.source_version_id AS sourceVersionId,
@@ -114,13 +118,15 @@ export function projectHistory(connection: DatabaseSync, input: HistoryInput) {
           AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
         ORDER BY candidate.created_at DESC, candidate.id DESC
         LIMIT ?`,
-    )
-    .all(input.chapterId, input.projectId, input.limit + 1) as unknown as HistoryCandidateRow[];
+      )
+      .all(input.chapterId, input.projectId, input.limit + 1),
+  );
   const candidates = candidateRows.slice(0, input.limit);
 
-  const checkpointRows = connection
-    .prepare(
-      `SELECT id AS backupId, project_id AS projectId, operation,
+  const checkpointRows = sqliteResult<HistoryCheckpointRow[]>(
+    connection
+      .prepare(
+        `SELECT id AS backupId, project_id AS projectId, operation,
               backup_file_name AS backupFileName, size_bytes AS sizeBytes, sha256,
               created_at AS createdAt, verified_at AS verifiedAt, backup_track AS track,
               display_name AS displayName, note, author_protected AS authorProtected,
@@ -129,8 +135,9 @@ export function projectHistory(connection: DatabaseSync, input: HistoryInput) {
         WHERE project_id = ?
         ORDER BY created_at DESC, id DESC
         LIMIT ?`,
-    )
-    .all(input.projectId, input.limit + 1) as unknown as HistoryCheckpointRow[];
+      )
+      .all(input.projectId, input.limit + 1),
+  );
   const checkpoints = checkpointRows.slice(0, input.limit).map((row) => ({
     ...row,
     sizeBytes: Number(row.sizeBytes),
@@ -140,17 +147,19 @@ export function projectHistory(connection: DatabaseSync, input: HistoryInput) {
     protectionReasons: [],
   }));
 
-  const backupFailureRows = connection
-    .prepare(
-      `SELECT id AS failureId, project_id AS projectId, operation,
+  const backupFailureRows = sqliteResult<HistoryBackupFailureRow[]>(
+    connection
+      .prepare(
+        `SELECT id AS failureId, project_id AS projectId, operation,
               backup_track AS track, error_code AS errorCode,
               occurred_at AS occurredAt, resolved_at AS resolvedAt
          FROM backup_failures
         WHERE project_id = ?
         ORDER BY occurred_at DESC, id DESC
         LIMIT ?`,
-    )
-    .all(input.projectId, input.limit + 1) as unknown as HistoryBackupFailureRow[];
+      )
+      .all(input.projectId, input.limit + 1),
+  );
   const backupFailures = backupFailureRows.slice(0, input.limit);
 
   return {

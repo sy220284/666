@@ -36,6 +36,8 @@ type ForeshadowingNavigationState =
 
 export function CanonWorkbench(props: CanonWorkbenchProps) {
   const bridge = props.bridge;
+  const section = props.section;
+  const onSectionChange = props.onSectionChange;
   const selectedForeshadowingId = useRendererUiStore(
     (state) => state.filters['navigation.foreshadowingId'] ?? null,
   );
@@ -49,10 +51,10 @@ export function CanonWorkbench(props: CanonWorkbenchProps) {
   const health = useBridgeQuery(`canon-health:${props.projectId}`, loadHealth);
 
   useEffect(() => {
-    if (selectedForeshadowingId && props.section !== 'narrative') {
-      props.onSectionChange('narrative');
+    if (selectedForeshadowingId && section !== 'narrative') {
+      onSectionChange('narrative');
     }
-  }, [props.onSectionChange, props.section, selectedForeshadowingId]);
+  }, [onSectionChange, section, selectedForeshadowingId]);
 
   useEffect(() => {
     if (!selectedForeshadowingId) {

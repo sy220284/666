@@ -8,6 +8,7 @@ import type { DatabaseClock } from '../database/index.js';
 import type { ProjectWorkspaceService } from '../project-workspace.js';
 import { readReplacePlan } from './replace-plan-repository.js';
 import { type DraftBlockRow, findOccurrences, SearchToolsServiceError } from './search-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export interface ReplacePreviewOperationsOptions {
   readonly workspace: ProjectWorkspaceService;
@@ -36,9 +37,10 @@ export class ReplacePreviewOperations {
     }
 
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
-      const blocks = database
-        .prepare(
-          `SELECT block.id AS recordId, volume.project_id AS projectId,
+      const blocks = sqliteResult<DraftBlockRow[]>(
+        database
+          .prepare(
+            `SELECT block.id AS recordId, volume.project_id AS projectId,
                   chapter.id AS chapterId, draft.id AS draftId, draft.revision,
                   block.logical_block_id AS logicalBlockId, block.order_key AS orderKey,
                   block.block_type AS blockType, block.text,
@@ -52,8 +54,9 @@ export class ReplacePreviewOperations {
               AND chapter.active_draft_id = draft.id
               AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
             ORDER BY volume.order_key, chapter.order_key, block.order_key, block.id`,
-        )
-        .all(input.projectId) as unknown as DraftBlockRow[];
+          )
+          .all(input.projectId),
+      );
       const found = blocks.flatMap((block) =>
         findOccurrences(block.text, input.query, input.matchCase).map(([start, end]) => ({
           block,

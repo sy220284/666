@@ -33,6 +33,7 @@ import {
   type StateProposalServiceContext,
   StateProposalServiceError,
 } from './state-row-mappers.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export type ProposalDraft = StateProposalGenerateInput['proposals'][number];
 
@@ -187,43 +188,51 @@ const proposalSelect = `
     JOIN chapters chapter ON chapter.id = proposal.chapter_id`;
 
 export function catalog(connection: DatabaseSync, projectId: string): StateProposalCatalog {
-  const batches = connection
-    .prepare(
-      `SELECT id AS batchId, project_id AS projectId, chapter_id AS chapterId,
+  const batches = sqliteResult<ProposalBatchRow[]>(
+    connection
+      .prepare(
+        `SELECT id AS batchId, project_id AS projectId, chapter_id AS chapterId,
               source_version_id AS sourceVersionId, generation_run_id AS generationRunId,
               source, proposal_count AS proposalCount, status, created_at AS createdAt
          FROM state_proposal_batches
         WHERE project_id = ?
         ORDER BY created_at DESC, id DESC`,
-    )
-    .all(projectId) as unknown as ProposalBatchRow[];
-  const proposals = connection
-    .prepare(
-      `${proposalSelect}
+      )
+      .all(projectId),
+  );
+  const proposals = sqliteResult<ProposalRow[]>(
+    connection
+      .prepare(
+        `${proposalSelect}
         WHERE proposal.project_id = ?
         ORDER BY proposal.status = 'pending' DESC, proposal.created_at DESC, proposal.id`,
-    )
-    .all(projectId) as unknown as ProposalRow[];
-  const snapshots = connection
-    .prepare(
-      `SELECT id, project_id AS projectId, chapter_id AS chapterId,
+      )
+      .all(projectId),
+  );
+  const snapshots = sqliteResult<SnapshotRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, chapter_id AS chapterId,
               source_version_id AS sourceVersionId, status,
               content_json AS contentJson, stale_reasons_json AS staleReasonsJson,
               created_at AS createdAt, stale_at AS staleAt
          FROM ending_snapshots WHERE project_id = ?
         ORDER BY chapter_id, created_at DESC, id`,
-    )
-    .all(projectId) as unknown as SnapshotRow[];
-  const invalidations = connection
-    .prepare(
-      `SELECT id, project_id AS projectId, source_chapter_id AS sourceChapterId,
+      )
+      .all(projectId),
+  );
+  const invalidations = sqliteResult<InvalidationRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, source_chapter_id AS sourceChapterId,
               source_version_id AS sourceVersionId,
               target_chapter_id AS targetChapterId, scope, change_type AS changeType,
               created_at AS createdAt
          FROM derived_invalidations WHERE project_id = ?
         ORDER BY created_at DESC, id`,
-    )
-    .all(projectId) as unknown as InvalidationRow[];
+      )
+      .all(projectId),
+  );
   return StateProposalCatalogSchema.parse({
     projectId,
     batches: batches.map(mapBatch),

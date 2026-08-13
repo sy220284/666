@@ -27,6 +27,7 @@ import { readActiveChapterScope, readActiveDraftScope } from './active-structure
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { stableJson } from './stable-json.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -260,14 +261,16 @@ function assertSourceCandidate(database: ProjectDatabase, input: ParsedVersionCr
 }
 
 function readDraftBlocksForVersion(database: ProjectDatabase, draftId: string): VersionBlock[] {
-  const rows = database
-    .prepare(
-      `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
+  const rows = sqliteResult<BlockRow[]>(
+    database
+      .prepare(
+        `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
               block_type AS blockType, text, attributes_json AS attributesJson,
               source, locked, content_hash AS contentHash
          FROM draft_blocks WHERE draft_id = ? ORDER BY order_key`,
-    )
-    .all(draftId) as unknown as BlockRow[];
+      )
+      .all(draftId),
+  );
   if (rows.length === 0) {
     throw new VersionServiceError('VERSION_DRAFT_NOT_FOUND', 'The Draft contains no blocks.');
   }
@@ -362,14 +365,16 @@ function readVersionDocument(database: ProjectDatabase, input: VersionGetInput):
     .prepare(versionSelect('v.id = ? AND v.chapter_id = ? AND p.id = ?'))
     .get(input.versionId, input.chapterId, input.projectId) as VersionRow | undefined;
   if (!row) throw new VersionServiceError('VERSION_NOT_FOUND', 'The Version was not found.');
-  const blocks = database
-    .prepare(
-      `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
+  const blocks = sqliteResult<BlockRow[]>(
+    database
+      .prepare(
+        `SELECT logical_block_id AS logicalBlockId, order_key AS orderKey,
               block_type AS blockType, text, attributes_json AS attributesJson,
               source, locked, content_hash AS contentHash
          FROM version_blocks WHERE version_id = ? ORDER BY order_key`,
-    )
-    .all(input.versionId) as unknown as BlockRow[];
+      )
+      .all(input.versionId),
+  );
   return VersionDocumentSchema.parse({ ...mapVersion(row), blocks: blocks.map(mapBlock) });
 }
 
@@ -430,14 +435,16 @@ export class VersionService {
           'The active chapter was not found.',
         );
       }
-      const rows = database
-        .prepare(
-          `${versionSelect(
-            'v.chapter_id = ? AND p.id = ? AND c.deleted_at IS NULL AND vo.deleted_at IS NULL',
-          )}
+      const rows = sqliteResult<VersionRow[]>(
+        database
+          .prepare(
+            `${versionSelect(
+              'v.chapter_id = ? AND p.id = ? AND c.deleted_at IS NULL AND vo.deleted_at IS NULL',
+            )}
            ORDER BY v.created_at DESC, v.id DESC`,
-        )
-        .all(input.chapterId, input.projectId) as unknown as VersionRow[];
+          )
+          .all(input.chapterId, input.projectId),
+      );
       return VersionListSchema.parse({
         versions: rows.map(mapVersion),
         finalVersionId: chapter.finalVersionId,

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { sqliteResult } from './database/sqlite-result.js';
 
 export interface EntityReferenceBlocker {
   readonly source: string;
@@ -43,9 +44,9 @@ export function entityReferenceBlockers(
   const blockers: EntityReferenceBlocker[] = [];
 
   for (const table of tables) {
-    const rows = database
-      .prepare(`PRAGMA foreign_key_list(${safeIdentifier(table)})`)
-      .all() as unknown as ForeignKeyRow[];
+    const rows = sqliteResult<ForeignKeyRow[]>(
+      database.prepare(`PRAGMA foreign_key_list(${safeIdentifier(table)})`).all(),
+    );
     const groups = new Map<number, ForeignKeyRow[]>();
     for (const row of rows) {
       if (row.table !== 'entities') continue;

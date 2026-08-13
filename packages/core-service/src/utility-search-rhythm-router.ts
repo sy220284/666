@@ -16,7 +16,6 @@ export async function routeSearchRhythmOperation(
   requestId: string,
   operation: CoreProjectOperation,
 ): Promise<CoreProjectResult | null> {
-  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- This partial router returns null so unmatched operations can be delegated.
   switch (operation.operation) {
     case SEARCH_TOOLS_COMMANDS.search:
       return success(operation.operation, services.searchTools.search(operation.input));

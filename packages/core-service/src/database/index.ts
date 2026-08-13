@@ -1,3 +1,4 @@
+export { sqliteResult } from './sqlite-result.js';
 export { AppDatabase, ManagedDatabase, ProjectDatabase } from './database.js';
 export {
   defineMigration,

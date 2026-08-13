@@ -39,6 +39,7 @@ import {
 import type { DatabaseClock } from './database/index.js';
 import { entityReferenceBlockerMessage, entityReferenceBlockers } from './entity-delete-policy.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -186,17 +187,19 @@ function parseFact(row: FactRow): CanonFact {
 }
 
 function factsFor(connection: DatabaseSync, entityId: string): CanonFact[] {
-  const rows = connection
-    .prepare(
-      `SELECT id, project_id AS projectId, entity_id AS entityId, fact_key AS factKey,
+  const rows = sqliteResult<FactRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, entity_id AS entityId, fact_key AS factKey,
               value_json AS valueJson, description, source_type AS sourceType,
               source_id AS sourceId, status, confirmed_at AS confirmedAt,
               superseded_at AS supersededAt, created_at AS createdAt
          FROM canon_facts
         WHERE entity_id = ?
         ORDER BY fact_key, status = 'current' DESC, confirmed_at DESC, id`,
-    )
-    .all(entityId) as unknown as FactRow[];
+      )
+      .all(entityId),
+  );
   return rows.map(parseFact);
 }
 
@@ -226,16 +229,18 @@ function parseEntity(connection: DatabaseSync, row: EntityRow): Entity {
 
 function readCatalog(connection: DatabaseSync, input: EntityListInput): EntityCatalog {
   assertProject(connection, input.projectId);
-  const rows = connection
-    .prepare(
-      `SELECT id, project_id AS projectId, entity_type AS entityType, name,
+  const rows = sqliteResult<EntityRow[]>(
+    connection
+      .prepare(
+        `SELECT id, project_id AS projectId, entity_type AS entityType, name,
               aliases_json AS aliasesJson, summary, status,
               archived_at AS archivedAt, created_at AS createdAt, updated_at AS updatedAt
          FROM entities
         WHERE project_id = ? AND (? = 1 OR status = 'active')
         ORDER BY status = 'archived', entity_type, lower(name), id`,
-    )
-    .all(input.projectId, input.includeArchived ? 1 : 0) as unknown as EntityRow[];
+      )
+      .all(input.projectId, input.includeArchived ? 1 : 0),
+  );
   return EntityCatalogSchema.parse({
     projectId: input.projectId,
     entities: rows.map((row) => parseEntity(connection, row)),

@@ -12,6 +12,7 @@ import {
   DerivedInvalidationResultSchema,
 } from '@worldforge/contracts';
 import { type DatabaseSync } from 'node:sqlite';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export interface DerivedInvalidationRecordInput {
   readonly projectId: string;
@@ -38,9 +39,14 @@ function affectedChapterIds(
   projectId: string,
   sourceChapterId: string,
 ): readonly string[] {
-  const rows = connection
-    .prepare(
-      `SELECT target_chapter.id AS chapterId
+  const rows = sqliteResult<
+    Array<{
+      readonly chapterId: string;
+    }>
+  >(
+    connection
+      .prepare(
+        `SELECT target_chapter.id AS chapterId
          FROM chapters source_chapter
          JOIN volumes source_volume ON source_volume.id = source_chapter.volume_id
          JOIN volumes target_volume ON target_volume.project_id = source_volume.project_id
@@ -59,10 +65,9 @@ function affectedChapterIds(
             )
           )
         ORDER BY target_volume.order_key, target_chapter.order_key, target_chapter.id`,
-    )
-    .all(sourceChapterId, projectId) as unknown as Array<{
-    readonly chapterId: string;
-  }>;
+      )
+      .all(sourceChapterId, projectId),
+  );
   return rows.map((row) => row.chapterId);
 }
 

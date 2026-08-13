@@ -35,6 +35,7 @@ import {
 } from './candidate-integrity.js';
 import { draftContentHash } from './draft.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -239,34 +240,38 @@ function readSummary(
 }
 
 function readBlocks(database: DatabaseSync, candidateId: string): CandidateBlock[] {
-  const sourceRows = database
-    .prepare(
-      `SELECT cbs.candidate_block_id AS candidateBlockId,
+  const sourceRows = sqliteResult<CandidateSourceRow[]>(
+    database
+      .prepare(
+        `SELECT cbs.candidate_block_id AS candidateBlockId,
               cbs.source_logical_block_id AS sourceLogicalBlockId,
               cbs.source_order AS sourceOrder
          FROM candidate_block_sources cbs
          JOIN candidate_blocks cb ON cb.id = cbs.candidate_block_id
         WHERE cb.candidate_id = ?
         ORDER BY cbs.candidate_block_id, cbs.source_order`,
-    )
-    .all(candidateId) as unknown as CandidateSourceRow[];
+      )
+      .all(candidateId),
+  );
   const sources = new Map<string, string[]>();
   for (const row of sourceRows) {
     const values = sources.get(row.candidateBlockId) ?? [];
     values.push(row.sourceLogicalBlockId);
     sources.set(row.candidateBlockId, values);
   }
-  const rows = database
-    .prepare(
-      `SELECT id AS candidateBlockId, logical_block_id AS logicalBlockId,
+  const rows = sqliteResult<CandidateBlockRow[]>(
+    database
+      .prepare(
+        `SELECT id AS candidateBlockId, logical_block_id AS logicalBlockId,
               order_key AS orderKey, block_type AS blockType, text,
               attributes_json AS attributesJson, beat_id AS beatId,
               source_block_hash AS sourceBlockHash, content_hash AS contentHash
          FROM candidate_blocks
         WHERE candidate_id = ?
         ORDER BY order_key, id`,
-    )
-    .all(candidateId) as unknown as CandidateBlockRow[];
+      )
+      .all(candidateId),
+  );
   return rows.map((row) => mapBlock(row, sources.get(row.candidateBlockId) ?? []));
 }
 
@@ -346,13 +351,13 @@ export class CandidateService {
       );
 
       const draftHashes = new Map(
-        (
+        sqliteResult<DraftHashRow[]>(
           database
             .prepare(
               `SELECT logical_block_id AS logicalBlockId, content_hash AS contentHash
                  FROM draft_blocks WHERE draft_id = ?`,
             )
-            .all(input.draftId) as unknown as DraftHashRow[]
+            .all(input.draftId),
         ).map((row) => [row.logicalBlockId, row.contentHash]),
       );
       const logicalIds = new Set<string>();
@@ -499,9 +504,11 @@ export class CandidateService {
             `${summaryQuery('p.id = ?')}
              ORDER BY ca.created_at DESC, ca.id DESC`,
           );
-      const rows = (input.chapterId
-        ? statement.all(input.chapterId, input.projectId)
-        : statement.all(input.projectId)) as unknown as CandidateSummaryRow[];
+      const rows = sqliteResult<CandidateSummaryRow[]>(
+        input.chapterId
+          ? statement.all(input.chapterId, input.projectId)
+          : statement.all(input.projectId),
+      );
       return CandidateListSchema.parse({ candidates: rows.map(mapSummary) });
     });
   }

@@ -23,8 +23,6 @@ export function dispatchUtilityOperation(
   message: CoreControlMessage,
 ): boolean {
   const { options, state } = context;
-
-  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- Operation routing returns false so lifecycle messages can be delegated.
   switch (message.type) {
     case 'core.app-data.command': {
       const { requestId, operation } = message;

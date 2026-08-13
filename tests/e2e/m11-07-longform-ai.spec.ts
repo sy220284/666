@@ -50,19 +50,27 @@ test('长篇作者可用命令面板进入生成，并管理记忆、文风和�
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
 
+    const topBarCenters = await page.locator('.react-top-bar > *').evaluateAll((elements) =>
+      elements
+        .map((element) => element.getBoundingClientRect())
+        .filter((bounds) => bounds.width > 0 && bounds.height > 0)
+        .map((bounds) => bounds.top + bounds.height / 2),
+    );
+    expect(Math.max(...topBarCenters) - Math.min(...topBarCenters)).toBeLessThanOrEqual(1);
+
     const shortcut = process.platform === 'darwin' ? 'Meta+k' : 'Control+k';
     await page.keyboard.press(shortcut);
     const palette = page.locator('[data-command-palette]');
     await expect(palette).toBeVisible();
-    await expect(palette.getByRole('button', { name: /规划这一章/u })).toBeVisible();
-    await expect(palette.getByRole('button', { name: /生成这一章/u })).toBeVisible();
-    await expect(palette.getByRole('button', { name: /改写选中内容/u })).toBeVisible();
+    await expect(palette.getByRole('option', { name: /规划这一章/u })).toBeVisible();
+    await expect(palette.getByRole('option', { name: /生成这一章/u })).toBeVisible();
+    await expect(palette.getByRole('option', { name: /改写选中内容/u })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(palette).toHaveCount(0);
     await expect(page.locator('[data-open-command-palette]')).toBeFocused();
 
     await page.keyboard.press(shortcut);
-    await palette.getByRole('button', { name: /生成这一章/u }).click();
+    await palette.getByRole('option', { name: /生成这一章/u }).click();
     const studio = page.locator('[data-generation-studio]');
     await expect(studio).toBeVisible();
     await expect(

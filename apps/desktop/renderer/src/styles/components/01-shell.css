@@ -73,6 +73,14 @@
     padding: 0;
   }
 
+  .react-nav-toggle {
+    display: none;
+  }
+
+  body[data-layout-mode='compact'] .react-nav-toggle {
+    display: inline-grid;
+  }
+
   .quiet-button {
     padding: 0 calc(11px * var(--ui-scale));
     color: var(--color-text-secondary);

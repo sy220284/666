@@ -27,7 +27,6 @@ jobs:
       TARGET_BASE_SHA: c0ed73bc575540ab90de980f149f30485f55d371
       TARGET_BASE_BRANCH: main
       TARGET_MERGE_SHA: 75822a26ce4338d070834f825f1b1cc11440f643
-      REPAIR_BRANCH: verification-repair
     steps:
       - name: Checkout current trusted main policy
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -75,7 +74,6 @@ jobs:
             if (!response.ok) throw new Error(`GitHub API ${response.status}: ${path}\n${text}`);
             return text ? JSON.parse(text) : null;
           }
-          const repairPr = await gh(`/repos/${repo}/pulls/${process.env.GITHUB_EVENT_PATH ? process.env.GITHUB_EVENT_PATH : 0}`).catch(() => null);
           const target = await gh(`/repos/${repo}/pulls/${prNumber}`);
           if (target.state !== 'closed' || !target.merged) throw new Error('HISTORY_GUARD: PR #383 is not merged');
           if (target.head.sha !== targetHead || target.base.sha !== targetBase || target.merge_commit_sha !== targetMerge) {
@@ -92,6 +90,7 @@ jobs:
       - name: Revalidate historical candidate with current trusted policy
         working-directory: candidate
         env:
+          GITHUB_EVENT_PATH: /tmp/pr-383-event.json
           TASK_BASE_REF: ${{ env.TARGET_BASE_SHA }}
           TASK_BASE_BRANCH: ${{ env.TARGET_BASE_BRANCH }}
           TASK_EVENT_NAME: pull_request_target
@@ -99,7 +98,21 @@ jobs:
           TASK_PR_DRAFT: 'false'
           TASK_PR_READY: 'true'
           CANDIDATE_SHA: ${{ env.TARGET_HEAD_SHA }}
+        shell: bash
         run: |
+          set -euo pipefail
+          cat > "$GITHUB_EVENT_PATH" <<'JSON'
+          {
+            "pull_request": {
+              "number": 383,
+              "head": {
+                "ref": "work",
+                "repo": { "full_name": "sy220284/666" }
+              },
+              "base": { "ref": "main" }
+            }
+          }
+          JSON
           node ../trusted/.github/governance/single-work-policy.mjs validate
           node ../trusted/.github/governance/automation-layout-policy.mjs
           node ../trusted/scripts/workflow-structure-policy.mjs

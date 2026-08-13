@@ -291,25 +291,6 @@ jobs:
       profile: quality
       runner: ubuntu-24.04
 
-  package-smoke-gate:
-    name: quality / package-smoke
-    if: always()
-    needs:
-      - route
-      - quality-core
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Temporary bootstrap compatibility for trusted main policy
-        shell: bash
-        env:
-          QUALITY_RESULT: ${{ needs.quality-core.result }}
-          PACKAGE_SMOKE_REQUIRED: ${{ needs.route.outputs.package_smoke }}
-        run: |
-          set -euo pipefail
-          test "$QUALITY_RESULT" = success
-          echo "Package smoke required for this PR: $PACKAGE_SMOKE_REQUIRED"
-
   quality:
     name: quality / quality
     if: always()
@@ -319,7 +300,6 @@ jobs:
       - windows-native-ime
       - platform-experience-macos
       - release-audit
-      - package-smoke-gate
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -333,14 +313,12 @@ jobs:
           MACOS_RESULT: ${{ needs.platform-experience-macos.result }}
           RELEASE_AUDIT_REQUIRED: ${{ needs.route.outputs.release_audit }}
           RELEASE_AUDIT_RESULT: ${{ needs.release-audit.result }}
-          PACKAGE_GATE_RESULT: ${{ needs.package-smoke-gate.result }}
         run: |
           set -euo pipefail
-          printf 'core=%s\nwindows-ime-required=%s\nplatform-experience-required=%s\nwindows=%s\nmacos=%s\nrelease-audit-required=%s\nrelease-audit=%s\npackage-gate=%s\n' \
+          printf 'core=%s\nwindows-ime-required=%s\nplatform-experience-required=%s\nwindows=%s\nmacos=%s\nrelease-audit-required=%s\nrelease-audit=%s\n' \
             "$CORE_RESULT" "$WINDOWS_IME_REQUIRED" "$PLATFORM_EXPERIENCE_REQUIRED" \
-            "$WINDOWS_RESULT" "$MACOS_RESULT" "$RELEASE_AUDIT_REQUIRED" "$RELEASE_AUDIT_RESULT" "$PACKAGE_GATE_RESULT"
+            "$WINDOWS_RESULT" "$MACOS_RESULT" "$RELEASE_AUDIT_REQUIRED" "$RELEASE_AUDIT_RESULT"
           test "$CORE_RESULT" = success
-          test "$PACKAGE_GATE_RESULT" = success
 
           if [ "$WINDOWS_IME_REQUIRED" = true ] || [ "$PLATFORM_EXPERIENCE_REQUIRED" = true ]; then
             test "$WINDOWS_RESULT" = success

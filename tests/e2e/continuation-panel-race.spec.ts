@@ -94,11 +94,9 @@ test('persists the final editor panel after a rapid versions round trip and rest
       .poll(() => continuationPanel(path.join(workspace, 'project.sqlite')), { timeout: 5_000 })
       .toBe('editor');
 
+    await page.locator('.writing-more-menu > summary').click();
     await page.locator('[data-open-versions]').click();
-    const editorPanelButton = page
-      .locator('.feature-heading__actions')
-      .getByRole('button', { name: '正文', exact: true });
-    await editorPanelButton.click();
+    await page.getByRole('button', { name: '返回正文', exact: true }).click();
 
     await expect
       .poll(() => continuationPanel(path.join(workspace, 'project.sqlite')), { timeout: 5_000 })
@@ -122,10 +120,8 @@ test('persists the final editor panel after a rapid versions round trip and rest
       timeout: 20_000,
     });
     await expect(page.locator('[data-draft-workspace]')).toBeVisible({ timeout: 20_000 });
-    const restoredEditorPanelButton = page
-      .locator('.feature-heading__actions')
-      .getByRole('button', { name: '正文', exact: true });
-    await expect(restoredEditorPanelButton).toHaveClass(/is-active/u);
+    await expect(page.locator('[data-writing-save-state]')).toBeVisible();
+    await expect(page.locator('[data-draft-editor-controls]')).toBeVisible();
   } finally {
     await closeGracefully(reopened);
   }

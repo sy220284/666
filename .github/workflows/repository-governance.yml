@@ -2,7 +2,7 @@ name: Repository Governance
 
 on:
   push:
-    branches: [main, governance]
+    branches: [main]
     paths:
       - '.github/governance/main-protection.json'
       - '.github/governance/required-checks.json'
@@ -16,62 +16,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: repository-governance-${{ github.ref }}
+  group: repository-governance
   cancel-in-progress: true
 
 jobs:
-  autoformat-governance:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/governance' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: governance
-          persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24.18.1
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Format only the files identified by the diagnostic run
-        run: >-
-          pnpm exec prettier --write
-          scripts/main-verification.mjs
-          scripts/ready-closure-route.mjs
-          scripts/workflow-structure-policy.mjs
-          tests/unit/ci-draft-routing.test.ts
-          tests/unit/ci-efficiency.test.ts
-          tests/unit/governance-main-verification.test.ts
-          tests/unit/quality-system-v2.test.ts
-      - name: Commit exact Prettier output back to governance
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo "No formatting changes remain."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            scripts/main-verification.mjs \
-            scripts/ready-closure-route.mjs \
-            scripts/workflow-structure-policy.mjs \
-            tests/unit/ci-draft-routing.test.ts \
-            tests/unit/ci-efficiency.test.ts \
-            tests/unit/governance-main-verification.test.ts \
-            tests/unit/quality-system-v2.test.ts
-          git commit -m "治理：应用仓库 Prettier 格式"
-          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:governance
-
   repository-governance:
-    if: ${{ github.ref != 'refs/heads/governance' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:

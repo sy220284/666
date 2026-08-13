@@ -1,23 +1,23 @@
 {
   "schemaVersion": 2,
   "taskId": "M11-05",
-  "implementationCommit": "17cf4176d98aeafef2596c7c06a122461638cd63",
-  "generatedAt": "2026-08-12T20:30:52+08:00",
+  "implementationCommit": "f34e1c109e28b34d50ff4d7e19537af83c239be9",
+  "generatedAt": "2026-08-13T07:52:00+08:00",
   "files": [
     {
       "path": "summary.md",
-      "bytes": 5293,
-      "sha256": "6a69259e7b1ce3bbc43fba4c88944e7ae444f39cf722c4d6c081070033aa58a4"
+      "bytes": 3135,
+      "sha256": "962aa27620ed827b8e971912d868421605fbf665ab90d2eec639a6d1c96ea20c"
     },
     {
       "path": "commands.txt",
-      "bytes": 1431,
-      "sha256": "71dcadf11562430a185dc470952e341875fb593854d7534405ba6c935e20b140"
+      "bytes": 1272,
+      "sha256": "1e64b43c49e4194752a5f0135de125685cdcb2d23b6d7944752b2ea759dda9d7"
     },
     {
       "path": "known-risks.md",
-      "bytes": 1611,
-      "sha256": "784495e0e5fa6881fecaffdaf43d216637751db78894cdaf317dc1d9a6d348e6"
+      "bytes": 1654,
+      "sha256": "669d757681cb5847e85afd3bdc64568014f5f40e700c3c151422fd7a396de796"
     }
   ]
 }

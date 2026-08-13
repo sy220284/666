@@ -7,4 +7,4 @@
 5. Electron E2E, Windows native IME and three-platform experience tests are materially slower than unit/integration suites and can experience hosted-runner variance. Merge authority remains the permanent CI gate rather than local timing observations.
 6. Actions artifacts have retention windows. The committed Schema 2 manifest preserves integrity metadata, while workflow artifacts remain auxiliary diagnostics rather than the sole durable proof.
 7. M11-06 may add project/volume summary workloads to generic scope, but it must reuse GenerationRun, Workflow Handler, Prompt Registry and ConstraintPackage authorities rather than introduce a parallel task runtime.
-8. `IMPLEMENTED` is a static closure state. Effective `VERIFIED` remains bound to PR #375's eventual merge commit and its task verification context.
+8. `IMPLEMENTED` is a static closure state. Effective `VERIFIED` is rebound to PR #383 and remains dependent on the merge commit's `main-verification` and `task-verification/M11-05` contexts.

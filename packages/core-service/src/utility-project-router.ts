@@ -30,7 +30,7 @@ export async function executeProjectOperation(
       (await routeStructureProjectOperation(services, requestId, operation)) ??
       (await routeContentProjectOperation(services, requestId, operation));
     if (!result) throw new Error(`CORE_PROJECT_OPERATION_UNROUTED:${operation.operation}`);
-    return result;
+    return CoreProjectResultSchema.parse(result);
   } catch (error) {
     return CoreProjectResultSchema.parse({
       ok: false,

@@ -203,6 +203,14 @@ export class GenerationRunService {
         replayed = true;
         return persisted;
       }
+      if (input.runType === 'idea_explore') {
+        resolveIdeaScopeContext(this.#context.workspace, {
+          projectId: input.projectId,
+          scopeType: input.scopeType,
+          scopeId: input.scopeId,
+          chapterId: input.chapterId,
+        });
+      }
       return create(this.#context, requestId, withValidationSemanticIdentity(this.#context, input));
     });
     const run = await this.#creates.remember(cacheKey, fingerprint, operation);

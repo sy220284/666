@@ -1,66 +1,37 @@
 # M11-05 Evidence Summary
 
 - Task: `M11-05`
-- Source PR: `#375` (`work → main`)
-- Baseline: `c8793765083a6058eb490847b367b3e43bb46936`
-- Pre-closure implementation revision: `17cf4176d98aeafef2596c7c06a122461638cd63`
+- Source PR: `#383` (`work → main`)
+- Current main baseline: `c0ed73bc575540ab90de980f149f30485f55d371`
+- Final implementation commit: `f34e1c109e28b34d50ff4d7e19537af83c239be9`
 
-## Implemented scope
+## Closure scope
 
-1. GenerationRun uses one generic `project / volume / chapter / scene / entity / selection` scope model without fake chapters; legacy chapter tasks retain compatibility semantics.
-2. Scope resolution validates target existence, target type and project ownership fail-closed across Generation start, retry, clone and restore paths.
-3. The exhaustive `GenerationWorkflowHandlers` catalog owns source, constraint, prompt, parse and result persistence behavior for all seven run types while the existing Generation Runtime remains the single lifecycle authority.
-4. `worldforge.idea-explore@1` is registered through the existing Prompt Registry and ModelSupport identity chain.
-5. IdeaCard is an independent domain model with AI and manual creation, bounded list/detail reads, favorite, continue-exploration, discard and conversion lifecycle operations.
-6. IdeaConversion Preview performs no authoritative write; Apply requires the exact preview hash and atomically commits the target operation, conversion audit and Idea terminal state.
-7. Conversion target reads report `applied / target_missing / target_stale` from authoritative target data rather than copying a second target snapshot.
-8. Clone/Restore remaps Idea, Conversion, Generation project scope and source-context identities while preserving terminal/cancel semantics and foreign-key integrity.
-9. Main, Preload and Renderer use one trusted, strict-schema Idea IPC surface; Renderer gains no direct Node, SQLite, filesystem or credential capability.
-10. The existing Planning workbench hosts Idea Capsule, shares read requests, invalidates latest-only lanes on project/scope/chapter switches, and reuses atomic author navigation after conversion.
+PR #383 refreshes the M11-05 implementation after the repository-wide review while preserving the original Idea Capsule architecture and data model.
 
-## Pre-closure validation record
+1. `idea_explore` now resolves and validates its real project/volume/chapter/scene/entity/selection scope before a GenerationRun is persisted, so a selection that exists only in an archived Draft is rejected without leaving a run record.
+2. Project operation routing now parses successful routed results through `CoreProjectResultSchema`, so malformed success envelopes fail closed into the established internal-error contract.
+3. PR Policy now installs trusted policy dependencies and validates candidate workflow structure in addition to the existing trusted policy checks.
+4. Release publishing now depends on `release-status-ready`, and the CI policy inventory covers the current engineering-validation, full-work-validation, release and toolchain-export workflows.
+5. Regression coverage adds the archived-Draft selection case, the strict CoreProjectResult success-envelope contract, and a root-runner guard for the POSIX permission compensation test.
 
-Quality run `31595253964` on `17cf4176d98aeafef2596c7c06a122461638cd63` proves the implementation-side Static Checks, Product Tests, Coverage, Reliability, Electron E2E, Windows native IME and macOS/Linux/Windows platform-experience gates. Its Release Audit rejected the pre-closure revision because M11-05 Schema 2 Evidence did not yet exist; this package supplies that governance input.
+## Validation record for the implementation commit
 
-- Security run `31595253525`: success.
-- Performance run `31595253596`: success.
-- Electron E2E: 36 scenarios passed in 15.8 minutes.
-- Electron E2E artifact `9141333338`, SHA256 `3ca28e171d60c439f80e27b434d66be67467a1cf33eff00a8e2cda85817d6e32`.
-- Product tests and coverage artifact `9140912992`, SHA256 `f9f7970305fa7ad39c02baab9703d0de17b87efe115815146f5db62d0c1552d6`.
-- Reliability artifact `9140819109`, SHA256 `079a65c64fcf354866da06ee5fc39c909fdd89aa7302333344f3d7c890b03184`.
-- Windows native IME artifact `9140842702`, SHA256 `786ba1f0ce7d2eb5fe473f6f3164a68dcf3eccf22e9bb133a894e9a165d6352a`.
-- macOS platform artifact `9140824965`, SHA256 `f0c2d15fcccafbde1f69aa2c04ce3ebfd190d22002a7dbadaf30cb4e08e58c8f`.
-- Linux platform artifact `9140836258`, SHA256 `078b3c829f930f7f43b3029aa92dc3b90f6da5a65d5392f7e063d2365c29c7f2`.
-- Windows platform artifact `9140848908`, SHA256 `a61a272ee4362958c82b0726ed4a800d16a6aac7edd67497231b3f45e6ace843`.
-- Performance artifact `9140827533`, SHA256 `ea47c09e13671c3ef0ffbc6a30a47ba70721d3c91c072b82ad23ae5c22130936`.
-- Security diagnostics artifact `9140753409`, SHA256 `c7394ba3a1ee77d36369f3b50c9242580f6939e0c3d6297af5fa07775a0bf372`.
+- PR Policy run `31652068681`: success on Ready PR #383.
+- Security run `31652068522`: success.
+- Performance run `31652068500`: success.
+- Quality run `31652068629` reached the final Evidence check with governance unit tests, CI policy validation, release configuration validation and the effective 72-package Evidence scan already successful. Its release-audit rejection was the expected signal that the current M11-05 Runtime/Evidence closure had not yet been attached to PR #383.
+- The earlier M11-05 closure for PR #375 remains historical evidence for the full Idea Capsule implementation; PR #383 adds the narrow post-review corrections above and rebinds current task verification to the new source PR.
 
-### Product test totals
+The authoritative final acceptance is the permanent PR Policy, Quality, Security and Performance gate set on the closure head produced after this implementation commit.
 
-- Unit: 214 files / 1076 tests passed.
-- Integration: 80 files / 218 tests passed.
-- Migration: 29 files / 54 tests passed.
-- Coverage execution: 360 files / 1457 tests passed.
-- Coverage: statements 74.90%, branches 63.34%, functions 70.72%, lines 77.05%.
+## Data and user-impact conclusions
 
-### M11-05 performance budgets
-
-| Ideas |            List P95 | Conversion Preview P95 |   Renderer payload |
-| ----- | ------------------: | ---------------------: | -----------------: |
-| 100   | 1.642098 ms / 80 ms |    0.340973 ms / 80 ms | 30,796 B / 128 KiB |
-| 1000  | 1.060113 ms / 80 ms |    0.246752 ms / 80 ms | 30,898 B / 128 KiB |
-| 5000  | 1.468291 ms / 80 ms |    0.186829 ms / 80 ms | 30,986 B / 128 KiB |
-
-All measured values remain below their declared budgets, including the 5000-Idea fixture.
-
-## Data and security conclusions
-
-- IdeaCard and IdeaConversion remain separate from Candidate and StoryTodo; conversion targets stay authoritative in their existing domains.
-- Generic scope is validated against real project objects and rejects missing, mismatched and cross-project identities.
-- Preview hash validation and one SQLite write transaction prevent stale-preview and partial-apply states.
-- Recovery remains fail-closed for table policy and identity remap; migration and restored-copy tests prove project isolation and foreign-key integrity.
-- Trusted sender validation and strict Contracts block Renderer authority injection before Core operations.
+- Invalid or stale Idea selection scope is rejected before generation persistence, preventing ghost AI runs against archived author material.
+- Routed project operations cannot return a malformed success payload to the caller; the boundary enforces the public result contract before returning.
+- Release publishing cannot advance before the repository declares the release candidate ready.
+- Trusted PR policy execution validates the workflow structure it relies on, reducing the chance that a candidate changes CI shape without detection.
 
 ## Governance state
 
-This package records M11-05 as `IMPLEMENTED` and binds Runtime verification to PR `#375`. Effective `VERIFIED` still requires the controlled merge result plus successful `main-verification` and `task-verification/M11-05` on the source PR merge commit.
+M11-05 remains statically `IMPLEMENTED`. Runtime verification is rebound to source PR `#383`; effective `VERIFIED` is derived only after the controlled squash merge and successful `main-verification` plus `task-verification/M11-05` on the merge commit.

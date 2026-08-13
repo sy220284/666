@@ -6,16 +6,20 @@ const root = process.cwd();
 const requiredFiles = [
   '.github/workflows/automerge.yml',
   '.github/workflows/branch-hygiene.yml',
+  '.github/workflows/engineering-validation.yml',
   '.github/workflows/evidence.yml',
+  '.github/workflows/full-work-validation.yml',
   '.github/workflows/main-verification.yml',
   '.github/workflows/performance.yml',
   '.github/workflows/post-merge-verification.yml',
   '.github/workflows/pr-policy.yml',
   '.github/workflows/quality-core.yml',
   '.github/workflows/quality.yml',
+  '.github/workflows/release.yml',
   '.github/workflows/repository-governance.yml',
   '.github/workflows/security.yml',
   '.github/workflows/task-governance.yml',
+  '.github/workflows/toolchain-export.yml',
   '.github/workflows/work-synchronization.yml',
   '.github/governance/branch-inventory-policy.mjs',
   '.github/governance/required-checks.json',
@@ -129,16 +133,20 @@ async function main() {
   const names = [
     'automerge.yml',
     'branch-hygiene.yml',
+    'engineering-validation.yml',
     'evidence.yml',
+    'full-work-validation.yml',
     'main-verification.yml',
     'performance.yml',
     'post-merge-verification.yml',
     'pr-policy.yml',
     'quality-core.yml',
     'quality.yml',
+    'release.yml',
     'repository-governance.yml',
     'security.yml',
     'task-governance.yml',
+    'toolchain-export.yml',
     'work-synchronization.yml',
   ];
   const workflows = new Map();
@@ -174,7 +182,9 @@ async function main() {
     'pull_request_target:',
     'path: trusted',
     'path: candidate',
+    'pnpm install --frozen-lockfile --ignore-scripts',
     '../trusted/.github/governance/single-work-policy.mjs validate',
+    '../trusted/scripts/workflow-structure-policy.mjs',
     '../trusted/scripts/ci-policy.mjs',
     "context: 'pr-policy'",
     'statuses: write',
@@ -256,6 +266,17 @@ async function main() {
     'vitest run tests/performance --no-file-parallelism --retry=1',
     'Run AI protocol baselines',
   ]);
+
+  const releaseWorkflow = workflows.get('release.yml');
+  const publishStart = releaseWorkflow.indexOf('\n  publish:');
+  const finalStart = releaseWorkflow.indexOf('\n  release-status-final:');
+  if (
+    publishStart === -1 ||
+    finalStart === -1 ||
+    !releaseWorkflow.slice(publishStart, finalStart).includes('- release-status-ready')
+  ) {
+    errors.push('release.yml: publish must wait for release-status-ready before publishing');
+  }
 
   if (errors.length > 0) throw new Error(errors.join('\n'));
   console.log('CI policy is valid for the automated engineering-gate model.');

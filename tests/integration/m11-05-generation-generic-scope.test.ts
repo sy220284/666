@@ -220,6 +220,34 @@ describe('M11-05 GenerationRun generic scope ownership', () => {
     }
   });
 
+  it('rejects a selection that survives only in an inactive Draft before persistence', async () => {
+    const harness = await createCandidateApplyHarness();
+    try {
+      const { project, chapter, draft } = await createTwoBlockDraft(harness);
+      const selectionId = draft.blocks[0]!.logicalBlockId;
+      await harness.workspace.writeProject(randomUUID(), project.projectId, (database) => {
+        database.prepare(`UPDATE drafts SET status = 'archived' WHERE id = ?`).run(draft.draftId);
+      });
+      const generation = new GenerationRunService(harness.workspace);
+
+      await expect(
+        generation.create(
+          randomUUID(),
+          ideaRunInput(project.projectId, 'selection', selectionId, chapter.id),
+        ),
+      ).rejects.toMatchObject({ code: 'GENERATION_BASE_CONFLICT' });
+      expect(
+        harness.workspace.readProject(project.projectId, (database) =>
+          Number(
+            database.prepare('SELECT COUNT(*) AS count FROM generation_runs').get()?.count ?? 0,
+          ),
+        ),
+      ).toBe(0);
+    } finally {
+      await closeCandidateApplyHarness(harness);
+    }
+  });
+
   it('rejects invalid Idea completion counts and mismatched source ownership', async () => {
     const harness = await createCandidateApplyHarness();
     try {

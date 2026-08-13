@@ -51,7 +51,7 @@ export function synchronizationDecision({
   if (openPulls > 0) {
     return isSourceBranch
       ? { action: 'blocked', reason: `new-${branchName}-pull-request-open` }
-      : { action: 'skip', reason: `active-${branchName}-pull-request-open` };
+      : { action: 'blocked', reason: `active-${branchName}-requires-main-sync` };
   }
   if (branchSha === null) return { action: 'create', reason: `${branchName}-missing` };
   if (!fullSha.test(branchSha ?? '')) {
@@ -353,7 +353,7 @@ function selfTest() {
       isSourceBranch: false,
       comparison: { ahead_by: 1, behind_by: 0 },
     }),
-    { action: 'skip', reason: 'active-work-pull-request-open' },
+    { action: 'blocked', reason: 'active-work-requires-main-sync' },
   );
   assert.equal(
     synchronizationDecision({

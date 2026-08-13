@@ -169,8 +169,12 @@ describe('renderer AI single-flight guard', () => {
     });
     const start = vi
       .fn()
-      .mockResolvedValueOnce(success('first-start', { run: active, taskId: active.taskId }))
-      .mockResolvedValueOnce(success('second-start', { run: next, taskId: next.taskId }));
+      .mockResolvedValueOnce(
+        success('first-start', { run: active, taskId: active.taskId }),
+      )
+      .mockResolvedValueOnce(
+        success('second-start', { run: next, taskId: next.taskId }),
+      );
     const getRun = vi.fn(async () => success('get-completed', completed));
     const adapter = createRendererBridgeAdapter({ generation: generationBridge(start, getRun) });
 

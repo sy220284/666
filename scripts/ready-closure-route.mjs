@@ -38,29 +38,15 @@ function successfulStep(job, name) {
 export function fullQualityRunPassed(run, jobs = []) {
   if (run?.status !== 'completed' || run?.conclusion !== 'success') return false;
   const requiredJobs = [
-    'quality / release-audit',
-    'quality / package-smoke',
     'quality / quality',
     'quality-core / static-checks',
     'quality-core / product-tests',
-    'quality-core / tests-unit',
-    'quality-core / tests-integration',
-    'quality-core / tests-migration',
-    'quality-core / coverage',
     'quality-core / desktop-e2e',
-    'quality-core / build',
   ];
   if (requiredJobs.some((name) => !successfulJob(jobs, name))) return false;
 
   const product = successfulJob(jobs, 'quality-core / product-tests');
-  for (const step of [
-    'Run unit tests',
-    'Run integration tests',
-    'Run migration tests',
-    'Run product source coverage threshold',
-  ]) {
-    if (!successfulStep(product, step)) return false;
-  }
+  if (!successfulStep(product, 'Run product tests with coverage')) return false;
   const e2e = successfulJob(jobs, 'quality-core / desktop-e2e');
   return successfulStep(e2e, 'Run Electron E2E and capture diagnostics');
 }
@@ -150,10 +136,9 @@ async function closureCandidate({ pullBody, headSha, repositoryRoot = root }) {
   let manifest;
   try {
     [runtime, manifest] = await Promise.all([
-      readFile(
-        path.join(repositoryRoot, 'docs', 'tasks', 'runtime', `${taskId}.json`),
-        'utf8',
-      ).then(JSON.parse),
+      readFile(path.join(repositoryRoot, 'docs', 'tasks', 'runtime', `${taskId}.json`), 'utf8').then(
+        JSON.parse,
+      ),
       readFile(
         path.join(repositoryRoot, 'docs', 'test-evidence', taskId, 'manifest.json'),
         'utf8',

@@ -13,6 +13,7 @@ interface StructureTreeProps {
   readonly previewPending: boolean;
   readonly readOnly: boolean;
   readonly structure: ProjectStructure | null;
+  readonly compact?: boolean;
   readonly onCreateChapter: (volume: Volume) => void;
   readonly onEditChapter: (volume: Volume, chapter: Chapter) => void;
   readonly onEditVolume: (volume: Volume) => void;
@@ -38,6 +39,7 @@ export function StructureTree({
   previewPending,
   readOnly,
   structure,
+  compact = false,
   onCreateChapter,
   onEditChapter,
   onEditVolume,
@@ -52,7 +54,7 @@ export function StructureTree({
 }: StructureTreeProps) {
   const blocked = interactionLocked(commandPending, previewPending);
   return (
-    <div className="structure-tree" data-structure-tree>
+    <div className="structure-tree" data-structure-tree data-compact={compact ? 'true' : 'false'}>
       {loading ? <p>正在读取卷章…</p> : null}
       {error ? <InlineError error={error} onRetry={onRetry} /> : null}
       {structure?.volumes.length === 0 ? (
@@ -67,7 +69,7 @@ export function StructureTree({
         >
           <div className="structure-row">
             <strong>{volume.title}</strong>
-            <span>{statusLabel(volume.status)}</span>
+            {!compact ? <span>{statusLabel(volume.status)}</span> : null}
             <div className="inline-actions">
               <button
                 data-add-chapter
@@ -76,38 +78,42 @@ export function StructureTree({
                 disabled={interactionLocked(readOnly, blocked)}
                 onClick={() => onCreateChapter(volume)}
               >
-                +章
+                {compact ? '新章' : '+章'}
               </button>
-              <button
-                data-edit-volume
-                title="编辑卷"
-                type="button"
-                disabled={interactionLocked(readOnly, blocked)}
-                onClick={() => onEditVolume(volume)}
-              >
-                编辑
-              </button>
-              <button
-                data-move-volume-up
-                title="上移卷"
-                type="button"
-                disabled={interactionLocked(readOnly, blocked, volumeIndex === 0)}
-                onClick={() => {
-                  const previous = structure.volumes[volumeIndex - 1];
-                  if (previous) void onMoveVolumeUp(volume, previous);
-                }}
-              >
-                ↑
-              </button>
-              <button
-                data-delete-volume
-                title="删除卷"
-                type="button"
-                disabled={interactionLocked(readOnly, blocked)}
-                onClick={() => void onRemoveVolume(volume)}
-              >
-                删除
-              </button>
+              {!compact ? (
+                <>
+                  <button
+                    data-edit-volume
+                    title="编辑卷"
+                    type="button"
+                    disabled={interactionLocked(readOnly, blocked)}
+                    onClick={() => onEditVolume(volume)}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    data-move-volume-up
+                    title="上移卷"
+                    type="button"
+                    disabled={interactionLocked(readOnly, blocked, volumeIndex === 0)}
+                    onClick={() => {
+                      const previous = structure.volumes[volumeIndex - 1];
+                      if (previous) void onMoveVolumeUp(volume, previous);
+                    }}
+                  >
+                    上移
+                  </button>
+                  <button
+                    data-delete-volume
+                    title="删除卷"
+                    type="button"
+                    disabled={interactionLocked(readOnly, blocked)}
+                    onClick={() => void onRemoveVolume(volume)}
+                  >
+                    删除
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
           <div className="structure-chapters">
@@ -132,53 +138,55 @@ export function StructureTree({
                   <strong>{chapter.title}</strong>
                   <span>{chapterMeta(chapter)}</span>
                 </button>
-                <div className="inline-actions">
-                  <button
-                    data-edit-chapter
-                    title="编辑章节"
-                    type="button"
-                    disabled={interactionLocked(readOnly, blocked)}
-                    onClick={() => onEditChapter(volume, chapter)}
-                  >
-                    编辑
-                  </button>
-                  <button
-                    data-split-chapter
-                    title="预览并拆分章节"
-                    type="button"
-                    disabled={interactionLocked(readOnly, blocked)}
-                    onClick={() => void onSplitChapter(chapter)}
-                  >
-                    拆
-                  </button>
-                  <button
-                    data-merge-chapter
-                    title="预览并合并章节"
-                    type="button"
-                    disabled={interactionLocked(readOnly, volume.chapters.length < 2, blocked)}
-                    onClick={() => void onMergeChapter(volume, chapter, chapterIndex)}
-                  >
-                    并
-                  </button>
-                  <button
-                    data-move-blocks
-                    title="预览并跨章移动正文段落"
-                    type="button"
-                    disabled={interactionLocked(readOnly, volume.chapters.length < 2, blocked)}
-                    onClick={() => void onMoveBlocks(volume, chapter, chapterIndex)}
-                  >
-                    移
-                  </button>
-                  <button
-                    data-delete-chapter
-                    title="删除章节"
-                    type="button"
-                    disabled={interactionLocked(readOnly, blocked)}
-                    onClick={() => void onRemoveChapter(chapter)}
-                  >
-                    删除
-                  </button>
-                </div>
+                {!compact ? (
+                  <div className="inline-actions">
+                    <button
+                      data-edit-chapter
+                      title="编辑章节"
+                      type="button"
+                      disabled={interactionLocked(readOnly, blocked)}
+                      onClick={() => onEditChapter(volume, chapter)}
+                    >
+                      编辑
+                    </button>
+                    <button
+                      data-split-chapter
+                      title="预览并拆分章节"
+                      type="button"
+                      disabled={interactionLocked(readOnly, blocked)}
+                      onClick={() => void onSplitChapter(chapter)}
+                    >
+                      拆分
+                    </button>
+                    <button
+                      data-merge-chapter
+                      title="预览并合并章节"
+                      type="button"
+                      disabled={interactionLocked(readOnly, volume.chapters.length < 2, blocked)}
+                      onClick={() => void onMergeChapter(volume, chapter, chapterIndex)}
+                    >
+                      合并
+                    </button>
+                    <button
+                      data-move-blocks
+                      title="预览并跨章移动正文段落"
+                      type="button"
+                      disabled={interactionLocked(readOnly, volume.chapters.length < 2, blocked)}
+                      onClick={() => void onMoveBlocks(volume, chapter, chapterIndex)}
+                    >
+                      移动
+                    </button>
+                    <button
+                      data-delete-chapter
+                      title="删除章节"
+                      type="button"
+                      disabled={interactionLocked(readOnly, blocked)}
+                      onClick={() => void onRemoveChapter(chapter)}
+                    >
+                      删除
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

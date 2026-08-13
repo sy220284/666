@@ -17,6 +17,7 @@ interface WritingAssistancePanelProps {
   readonly savedRevision: number | null;
   readonly readOnly: boolean;
   readonly onNavigate: (target: AuthorNavigationTarget) => void;
+  readonly onOpenAssistant: () => void;
 }
 
 export function WritingAssistancePanel({
@@ -26,6 +27,7 @@ export function WritingAssistancePanel({
   savedRevision,
   readOnly,
   onNavigate,
+  onOpenAssistant,
 }: WritingAssistancePanelProps) {
   const [view, setView] = useState<WritingAssistanceView | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
@@ -59,9 +61,14 @@ export function WritingAssistancePanel({
           <h2>本章写作辅助</h2>
           <p>{view?.chapterTitle ?? '正在读取章节信息'}</p>
         </div>
-        <button type="button" disabled={state === 'loading'} onClick={() => void refresh()}>
-          刷新
-        </button>
+        <div className="inline-actions">
+          <button type="button" onClick={onOpenAssistant}>
+            智能助手
+          </button>
+          <button type="button" disabled={state === 'loading'} onClick={() => void refresh()}>
+            刷新
+          </button>
+        </div>
       </header>
 
       <p className="feature-status" role="status" data-writing-assistance-status>
@@ -93,7 +100,7 @@ export function WritingAssistancePanel({
           </section>
 
           <section>
-            <h3>场景</h3>
+            <h3>当前场景</h3>
             {view.sceneBeats.length ? (
               <ol className="compact-list">
                 {view.sceneBeats.map((beat) => (
@@ -117,7 +124,7 @@ export function WritingAssistancePanel({
                         })
                       }
                     >
-                      前往场景
+                      查看场景
                     </button>
                   </li>
                 ))}
@@ -127,8 +134,8 @@ export function WritingAssistancePanel({
             )}
           </section>
 
-          <section>
-            <h3>相关人物状态</h3>
+          <details className="writing-assistance__disclosure">
+            <summary>人物状态（{view.characters.length}）</summary>
             {view.characters.length ? (
               <div className="writing-assistance__cards">
                 {view.characters.map((character) => (
@@ -154,10 +161,10 @@ export function WritingAssistancePanel({
             ) : (
               <p>场景尚未关联人物。</p>
             )}
-          </section>
+          </details>
 
-          <section>
-            <h3>伏笔与修改任务</h3>
+          <details className="writing-assistance__disclosure">
+            <summary>伏笔与修改任务（{view.foreshadowings.length + view.todos.length}）</summary>
             {view.foreshadowings.map((item) => (
               <article className="writing-assistance__item" key={item.id}>
                 <strong>{item.title}</strong>
@@ -179,7 +186,7 @@ export function WritingAssistancePanel({
                     })
                   }
                 >
-                  前往伏笔
+                  查看伏笔
                 </button>
               </article>
             ))}
@@ -200,15 +207,15 @@ export function WritingAssistancePanel({
                     })
                   }
                 >
-                  前往任务位置
+                  查看任务位置
                 </button>
               </article>
             ))}
             {!view.foreshadowings.length && !view.todos.length ? <p>当前没有待处理事项。</p> : null}
-          </section>
+          </details>
 
-          <section>
-            <h3>上一章结尾</h3>
+          <details className="writing-assistance__disclosure">
+            <summary>上一章结尾</summary>
             {view.previousEnding?.text ? (
               <>
                 <p>
@@ -220,10 +227,10 @@ export function WritingAssistancePanel({
             ) : (
               <p>没有可用的上一章内容。</p>
             )}
-          </section>
+          </details>
 
           {view.warnings.length ? (
-            <details>
+            <details className="writing-assistance__disclosure">
               <summary>部分信息暂不可用</summary>
               <ul>
                 {view.warnings.map((warning) => (

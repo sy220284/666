@@ -96,6 +96,18 @@ jobs:
             throw new Error(`SQLite codemod mismatch: files=${changedFiles}, replacements=${replacements}; expected 41/139`);
           }
 
+          const recoveryPath = 'packages/core-service/src/recovery/backup-restore.ts';
+          let recovery = fs.readFileSync(recoveryPath, 'utf8');
+          const requestCast = '  return value as unknown as RestoreRequestRecord;';
+          const journalCast = '  return value as unknown as RestoreOperationJournal;';
+          if (!recovery.includes(requestCast) || !recovery.includes(journalCast)) {
+            throw new Error('Recovery record double assertions not found');
+          }
+          recovery = recovery
+            .replace(requestCast, `  return {\n    schemaVersion: 1,\n    requestId: value.requestId,\n    sourceProjectId: value.sourceProjectId,\n    backupId: value.backupId,\n    restoredProjectId: value.restoredProjectId,\n  };`)
+            .replace(journalCast, `  return {\n    schemaVersion: 1,\n    requestId: value.requestId,\n    sourceProjectId: value.sourceProjectId,\n    backupId: value.backupId,\n    targetParentDirectory: value.targetParentDirectory,\n    targetPath: value.targetPath,\n  };`);
+          fs.writeFileSync(recoveryPath, recovery);
+
           const coveragePath = 'vitest.coverage.config.ts';
           let coverage = fs.readFileSync(coveragePath, 'utf8');
           const exclusionBlocks = /const processBoundaryCoverageExcludes = \[[\s\S]*?\] as const;\n\nconst rendererDomLifecycleCoverageExcludes = \[[\s\S]*?\] as const;/u;

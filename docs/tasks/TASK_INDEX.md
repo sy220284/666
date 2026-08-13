@@ -154,7 +154,7 @@ Runtime IMPLEMENTED
 | M11-04 | [`可视化故事知识工作台`](M11/M11-04_STORY_KNOWLEDGE_VISUALIZATION.md)              | M11-03 | Implemented |
 | M11-05 | [`灵感胶囊`](M11/M11-05_IDEA_CAPSULE.md)                                           | M11-04 | Implemented |
 | M11-06 | [`作者日常写作界面精修`](M11/M11-06_DAILY_WRITING_UI_REFINEMENT.md)                | M11-05 | Implemented |
-| M11-07 | [`长篇智能底座收口`](M11/M11-07_LONGFORM_AI_MEMORY_STYLE_ROUTING.md)               | M11-06 | Planned     |
+| M11-07 | [`长篇智能底座收口`](M11/M11-07_LONGFORM_AI_MEMORY_STYLE_ROUTING.md)               | M11-06 | In Progress |
 
 ### M12 作者生产力与长期项目增强
 

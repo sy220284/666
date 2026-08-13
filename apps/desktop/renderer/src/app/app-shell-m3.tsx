@@ -139,8 +139,14 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.isComposing || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k')
+      if (event.isComposing) return;
+      if (event.key === 'Escape' && commandPaletteOpen) {
+        event.preventDefault();
+        setCommandPaletteOpen(false);
+        window.requestAnimationFrame(() => commandPaletteTrigger.current?.focus());
         return;
+      }
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
       event.preventDefault();
       setCommandPaletteOpen((open) => {
         if (open) window.requestAnimationFrame(() => commandPaletteTrigger.current?.focus());
@@ -149,7 +155,7 @@ export function AppShell({ applicationController, bridge }: AppShellProps) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [commandPaletteOpen]);
 
   const writingPanel: WritingPanel =
     route === 'versions' ? 'versions' : route === 'candidates' ? 'candidates' : 'editor';

@@ -65,6 +65,7 @@ test('长篇作者可用命令面板进入生成，并管理记忆、文风和�
     await expect(palette.getByRole('option', { name: /规划这一章/u })).toBeVisible();
     await expect(palette.getByRole('option', { name: /生成这一章/u })).toBeVisible();
     await expect(palette.getByRole('option', { name: /改写选中内容/u })).toBeVisible();
+    await expect(palette.getByRole('searchbox')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(palette).toHaveCount(0);
     await expect(page.locator('[data-open-command-palette]')).toBeFocused();

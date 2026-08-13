@@ -24,6 +24,7 @@ jobs:
       dependency_audit: ${{ steps.route.outputs.dependency_audit }}
       supply_chain_inventory: ${{ steps.route.outputs.supply_chain_inventory }}
       application_security: ${{ steps.route.outputs.application_security }}
+      application_via_quality: ${{ steps.route.outputs.application_via_quality }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -42,6 +43,7 @@ jobs:
           dependency_audit=false
           supply_chain_inventory=false
           application_security=false
+          application_via_quality=false
           if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
             dependency_audit=true
             supply_chain_inventory=true
@@ -50,18 +52,26 @@ jobs:
             echo "Heavy security checks are deferred until Ready or the exact full-validation-draft marker."
           else
             changed_files="$(git diff --name-only "$BASE_SHA" HEAD)"
+            full_suite="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs full-suite)"
             if [ -z "$changed_files" ]; then
               application_security=true
             else
               dependency_audit="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs dependency-audit)"
               supply_chain_inventory="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs supply-chain-inventory)"
-              application_security="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs application-security)"
+              application_risk="$(printf '%s\n' "$changed_files" | node scripts/ci-risk-policy.mjs application-security)"
+              if [ "$application_risk" = true ] && [ "$full_suite" = true ]; then
+                application_via_quality=true
+                echo "Application security tests are covered once by the required Quality product+coverage suite."
+              elif [ "$application_risk" = true ]; then
+                application_security=true
+              fi
             fi
           fi
           echo "dependency_audit=$dependency_audit" >> "$GITHUB_OUTPUT"
           echo "supply_chain_inventory=$supply_chain_inventory" >> "$GITHUB_OUTPUT"
           echo "application_security=$application_security" >> "$GITHUB_OUTPUT"
-          echo "Security risk plan: dependency=$dependency_audit; supply-chain=$supply_chain_inventory; application=$application_security"
+          echo "application_via_quality=$application_via_quality" >> "$GITHUB_OUTPUT"
+          echo "Security risk plan: dependency=$dependency_audit; supply-chain=$supply_chain_inventory; application-job=$application_security; application-via-quality=$application_via_quality"
 
   dependency-audit:
     needs: route
@@ -223,6 +233,7 @@ jobs:
       DEPENDENCY_REQUIRED: ${{ needs.route.outputs.dependency_audit }}
       INVENTORY_REQUIRED: ${{ needs.route.outputs.supply_chain_inventory }}
       APPLICATION_REQUIRED: ${{ needs.route.outputs.application_security }}
+      APPLICATION_VIA_QUALITY: ${{ needs.route.outputs.application_via_quality }}
       AUDIT_RESULT: ${{ needs.dependency-audit.result }}
       INVENTORY_RESULT: ${{ needs.supply-chain-inventory.result }}
       SECRET_RESULT: ${{ needs.secret-scan.result }}
@@ -232,9 +243,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'route=%s\ndependency-required=%s\naudit=%s\ninventory-required=%s\ninventory=%s\nscan=%s\napplication-required=%s\napplication=%s\n' \
+          printf 'route=%s\ndependency-required=%s\naudit=%s\ninventory-required=%s\ninventory=%s\nscan=%s\napplication-required=%s\napplication-via-quality=%s\napplication=%s\n' \
             "$ROUTE_RESULT" "$DEPENDENCY_REQUIRED" "$AUDIT_RESULT" "$INVENTORY_REQUIRED" "$INVENTORY_RESULT" \
-            "$SECRET_RESULT" "$APPLICATION_REQUIRED" "$APP_RESULT"
+            "$SECRET_RESULT" "$APPLICATION_REQUIRED" "$APPLICATION_VIA_QUALITY" "$APP_RESULT"
           test "$ROUTE_RESULT" = success
           test "$SECRET_RESULT" = success
 
@@ -261,3 +272,6 @@ jobs:
           require_optional_job "$DEPENDENCY_REQUIRED" "$AUDIT_RESULT" dependency-audit
           require_optional_job "$INVENTORY_REQUIRED" "$INVENTORY_RESULT" supply-chain-inventory
           require_optional_job "$APPLICATION_REQUIRED" "$APP_RESULT" application-security
+          if [ "$APPLICATION_VIA_QUALITY" = true ]; then
+            echo "Application security suite is executed once inside the required Quality product coverage run."
+          fi

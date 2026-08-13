@@ -14,12 +14,7 @@
     "work": "c4c69c03e0ca59e57d2bfe31559773b7b2976c4a"
   },
   "allowedPaths": [
-    "apps/desktop/renderer/src/features/writing/",
-    "apps/desktop/renderer/src/features/structure/",
-    "apps/desktop/renderer/src/app/",
-    "apps/desktop/renderer/src/presentation/",
-    "apps/desktop/renderer/src/styles/",
-    "apps/desktop/renderer/src/index.html",
+    "apps/desktop/renderer/src/",
     "apps/desktop/renderer/build-assets.mjs",
     "tests/unit/",
     "tests/e2e/",

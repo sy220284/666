@@ -55,9 +55,6 @@ const processBoundaryCoverageExcludes = [
   'packages/core-service/src/utility-validation-router.ts',
 ] as const;
 
-// These files bind React or browser DOM lifecycle APIs that the repository's Node coverage
-// environment cannot execute faithfully. Each exclusion requires alternative unit/source-invariant
-// coverage plus Electron E2E evidence and has an explicit sunset condition in M9-03 evidence.
 const rendererDomLifecycleCoverageExcludes = [
   'apps/desktop/renderer/src/app/use-app-settings-persistence.ts',
   'apps/desktop/renderer/src/app/use-app-shell-actions.ts',
@@ -99,7 +96,6 @@ export default defineConfig({
       'tests/unit/**/*.test.{ts,tsx}',
       'tests/integration/**/*.test.{ts,tsx}',
       'tests/migration/**/*.test.{ts,tsx}',
-      'tests/security/**/*.test.{ts,tsx}',
     ],
     coverage: {
       enabled: true,

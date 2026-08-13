@@ -12,8 +12,10 @@ const platformExperienceViewports = [
 ];
 
 describe('统一风险矩阵', () => {
-  it('Renderer变化触发产品、性能、安全、可靠性、UI、三平台体验和Windows IME风险', () => {
-    expect(riskPlan(['apps/desktop/renderer/src/App.tsx'])).toMatchObject({
+  it('正文编辑器变化触发产品、性能、安全、可靠性、UI、三平台体验和Windows IME风险', () => {
+    expect(
+      riskPlan(['apps/desktop/renderer/src/features/writing/writing-workbench-view.tsx']),
+    ).toMatchObject({
       fullSuite: true,
       dependencyAudit: false,
       applicationSecurity: true,
@@ -25,7 +27,21 @@ describe('统一风险矩阵', () => {
     });
   });
 
-  it('治理文档维护保持轻量但进入Meta-Governance', () => {
+  it('普通规划页面仍跑产品质量但不启动Windows IME和三平台体验', () => {
+    expect(
+      riskPlan(['apps/desktop/renderer/src/features/planning/idea-capsule-panel.tsx']),
+    ).toMatchObject({
+      fullSuite: true,
+      applicationSecurity: true,
+      performance: true,
+      reliability: true,
+      uiAcceptance: true,
+      windowsIme: false,
+      platformExperience: false,
+    });
+  });
+
+  it('治理文档维护保持轻量但进入Meta-Governance与Release Audit', () => {
     expect(riskPlan(['docs/process/CI_WORKFLOW_ARCHITECTURE.md'])).toMatchObject({
       fullSuite: false,
       dependencyAudit: false,
@@ -33,6 +49,7 @@ describe('统一风险矩阵', () => {
       performance: false,
       reliability: false,
       platformExperience: false,
+      releaseAudit: true,
       governanceMeta: true,
     });
   });
@@ -41,6 +58,7 @@ describe('统一风险矩阵', () => {
     expect(riskPlan(['docs/process/PLATFORM_EXPERIENCE_MATRIX.json'])).toMatchObject({
       fullSuite: false,
       platformExperience: true,
+      releaseAudit: true,
       governanceMeta: true,
     });
   });
@@ -66,6 +84,7 @@ describe('统一风险矩阵', () => {
       performance: true,
       reliability: true,
       platformExperience: true,
+      releaseAudit: true,
       governanceMeta: true,
     });
   });
@@ -127,16 +146,15 @@ describe('Active文档一致性', () => {
 describe('Meta-Governance权威链', () => {
   const sources = {
     quality:
-      'name: quality / quality\nquality / release-audit\nquality / package-smoke\nci-risk-policy.mjs reliability\nci-risk-policy.mjs platform-experience\nname: platform-experience-${{ matrix.platform }}\nreliability_suite:',
+      'name: quality / quality\nquality / release-audit\nci-risk-policy.mjs reliability\nci-risk-policy.mjs platform-experience\nci-risk-policy.mjs release-audit\nname: windows-experience\nplatform-experience-macos\nlinux_platform_experience:\nreliability_suite:',
     security:
-      'supply-chain-inventory:\nnode scripts/supply-chain-inventory.mjs\nname: supply-chain-inventory\nname: security',
-    performance: 'name: performance',
+      'name: security-route\nsupply-chain-inventory:\nnode scripts/supply-chain-inventory.mjs\nscan-secrets.mjs --base\nscan-secrets.mjs --history\nname: security',
+    performance: 'name: performance\nRun AI protocol baselines and performance budgets',
     release:
       'node scripts/ui-acceptance-gate.mjs\npnpm release:gate\ntest "$GITHUB_REF_NAME" = main',
-    mainVerification:
-      'name: main-verification\nname: synchronize-integrations\nmain/work/governance branch inventory',
+    mainVerification: 'name: main-verification\nname: synchronize-integrations\ntree identity',
     riskPolicy:
-      "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' 'supply-chain-inventory' reliability: 'reliability' 'windows-ime' 'platform-experience'",
+      "CI_RISK_MATRIX.json export function riskPlan 'dependency-audit' 'supply-chain-inventory' reliability: 'reliability' 'windows-ime' 'platform-experience' 'release-audit'",
     riskMatrix: JSON.stringify({
       schemaVersion: 1,
       routes: Object.fromEntries(
@@ -151,6 +169,7 @@ describe('Meta-Governance权威链', () => {
           'uiAcceptance',
           'windowsIme',
           'platformExperience',
+          'releaseAudit',
           'governanceMeta',
         ].map((route) => [route, { any: [] }]),
       ),
@@ -189,9 +208,9 @@ describe('Meta-Governance权威链', () => {
     expect(
       validateGovernanceAuthorities({
         ...sources,
-        security: 'name: security',
+        security: 'name: security-route\nscan-secrets.mjs --base\nscan-secrets.mjs --history\nname: security',
       }),
-    ).toContain('Security is missing authority marker: name: supply-chain-inventory');
+    ).toContain('Security is missing authority marker: supply-chain-inventory:');
   });
 
   it('供应链策略退出enforced时阻断', () => {

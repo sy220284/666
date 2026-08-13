@@ -66,6 +66,9 @@ async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): 
   await expect(page.locator('[data-settings-status]')).toHaveText('显示设置已保存到应用数据库。');
   await expect(page.locator('body')).toHaveAttribute('data-theme', themeId);
   await expect(page.locator('body')).toHaveAttribute('data-visual-theme-variant', variant);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
+    variant,
+  );
   await page.locator('[data-close-settings]').click();
   await expect(page.locator('[data-writing-workbench]')).toBeVisible();
   await expect(page.locator('.structure-chapter-title strong')).toBeVisible();
@@ -185,6 +188,9 @@ test('M8-07中文作者体验视觉与1280×800布局矩阵', async () => {
     await page.locator('[data-confirm-create-project]').click();
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
     await expect(page.locator('body')).toHaveAttribute('data-author-mode', 'beginner');
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
+      'light',
+    );
 
     const editor = page.locator('[data-draft-content]');
     await editor.click();

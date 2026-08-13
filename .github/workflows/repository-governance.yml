@@ -3,6 +3,11 @@ name: Repository Governance
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/governance/main-protection.json'
+      - '.github/governance/required-checks.json'
+      - '.github/workflows/repository-governance.yml'
+      - 'scripts/ruleset-policy.mjs'
   schedule:
     - cron: '30 2 * * 1'
   workflow_dispatch:

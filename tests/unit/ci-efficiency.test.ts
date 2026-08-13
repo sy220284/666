@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { baseGateAction } from '../../.github/governance/automerge-base-gate.mjs';
 import { waitForSynchronizedIntegrationRef } from '../../.github/governance/work-synchronization.mjs';
 import { evidenceEntryDecision } from '../../scripts/evidence-policy-entry.mjs';
-import { securityPerformanceRoute } from '../../scripts/ci-risk-policy.mjs';
+import { riskPlan, securityPerformanceRoute } from '../../scripts/ci-risk-policy.mjs';
 import { fullQualityRunPassed, taskIdFromPullBody } from '../../scripts/ready-closure-route.mjs';
 
 describe('自动化恢复效率', () => {
@@ -134,6 +134,32 @@ describe('Security与Performance风险路由', () => {
   });
 });
 
+describe('重型桌面验证精确路由', () => {
+  it('普通规划页面不再触发Windows真实拼音和三平台体验', () => {
+    expect(
+      riskPlan(['apps/desktop/renderer/src/features/planning/idea-capsule-panel.tsx']),
+    ).toMatchObject({
+      windowsIme: false,
+      platformExperience: false,
+    });
+  });
+
+  it('正文编辑器变化继续触发Windows真实拼音和三平台体验', () => {
+    expect(
+      riskPlan(['apps/desktop/renderer/src/features/writing/writing-workbench-view.tsx']),
+    ).toMatchObject({
+      windowsIme: true,
+      platformExperience: true,
+    });
+  });
+
+  it('治理和Evidence变化触发release audit，纯产品实现不触发', () => {
+    expect(riskPlan(['.github/workflows/quality.yml']).releaseAudit).toBe(true);
+    expect(riskPlan(['docs/test-evidence/M11-05/summary.md']).releaseAudit).toBe(true);
+    expect(riskPlan(['packages/core-service/src/core.ts']).releaseAudit).toBe(false);
+  });
+});
+
 describe('Evidence收口复用完整Quality', () => {
   const completeRun = {
     id: 100,
@@ -141,8 +167,6 @@ describe('Evidence收口复用完整Quality', () => {
     conclusion: 'success',
   };
   const jobs = [
-    { name: 'quality / release-audit', status: 'completed', conclusion: 'success' },
-    { name: 'quality / package-smoke', status: 'completed', conclusion: 'success' },
     { name: 'quality / quality', status: 'completed', conclusion: 'success' },
     { name: 'quality-core / static-checks', status: 'completed', conclusion: 'success' },
     {
@@ -150,20 +174,13 @@ describe('Evidence收口复用完整Quality', () => {
       status: 'completed',
       conclusion: 'success',
       steps: [
-        { name: 'Run unit tests', status: 'completed', conclusion: 'success' },
-        { name: 'Run integration tests', status: 'completed', conclusion: 'success' },
-        { name: 'Run migration tests', status: 'completed', conclusion: 'success' },
         {
-          name: 'Run product source coverage threshold',
+          name: 'Run product tests with coverage',
           status: 'completed',
           conclusion: 'success',
         },
       ],
     },
-    { name: 'quality-core / tests-unit', status: 'completed', conclusion: 'success' },
-    { name: 'quality-core / tests-integration', status: 'completed', conclusion: 'success' },
-    { name: 'quality-core / tests-migration', status: 'completed', conclusion: 'success' },
-    { name: 'quality-core / coverage', status: 'completed', conclusion: 'success' },
     {
       name: 'quality-core / desktop-e2e',
       status: 'completed',
@@ -176,10 +193,9 @@ describe('Evidence收口复用完整Quality', () => {
         },
       ],
     },
-    { name: 'quality-core / build', status: 'completed', conclusion: 'success' },
   ];
 
-  it('只复用真正执行过产品测试和Electron E2E的完整Quality', () => {
+  it('只复用真正执行过产品测试、覆盖率和Electron E2E的完整Quality', () => {
     expect(fullQualityRunPassed(completeRun, jobs)).toBe(true);
     const missingE2e = jobs.map((job) =>
       job.name === 'quality-core / desktop-e2e'

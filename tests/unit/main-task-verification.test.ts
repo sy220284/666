@@ -12,7 +12,7 @@ describe('主分支验证状态发布', () => {
     expect(mainVerificationStatusPayload(true, 'https://example.test')).toEqual({
       state: 'success',
       context: 'main-verification',
-      description: 'Final main SHA passed provenance and static verification',
+      description: 'Final main SHA passed provenance and verified-tree identity',
       target_url: 'https://example.test',
     });
     expect(mainVerificationStatusPayload(false, 'https://example.test').state).toBe('failure');

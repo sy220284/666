@@ -63,34 +63,33 @@ describe('CI分层与任务命令清理', () => {
     );
   });
 
-  it('完整验证阶段合并产品测试准备并复用兼容门禁', async () => {
+  it('产品测试与覆盖率一次执行，不再生成结果转发任务', async () => {
     const source = await readFile(repositoryFile('.github/workflows/quality-core.yml'), 'utf8');
     const workflow = parseYaml(source) as {
-      jobs: Record<string, { needs?: string; steps?: Array<{ name?: string; run?: string }> }>;
+      jobs: Record<
+        string,
+        { needs?: string | string[]; steps?: Array<{ name?: string; run?: string }> }
+      >;
     };
     expect(workflow.jobs['product-tests']).toBeDefined();
-    expect(workflow.jobs.tests.needs).toBe('product-tests');
-    expect(workflow.jobs.coverage.needs).toBe('product-tests');
-    expect(workflow.jobs.build.needs).toBe('desktop-e2e');
+    expect(workflow.jobs.tests).toBeUndefined();
+    expect(workflow.jobs.coverage).toBeUndefined();
+    expect(workflow.jobs.build).toBeUndefined();
 
     const productCommands = (workflow.jobs['product-tests'].steps ?? [])
       .map((step) => step.run ?? '')
       .join('\n');
     expect(productCommands.match(/pnpm install/gu)).toHaveLength(1);
     expect(productCommands.match(/pnpm test:prepare/gu)).toHaveLength(1);
-    expect(productCommands).toContain('vitest run tests/unit');
-    expect(productCommands).toContain('vitest run tests/integration');
-    expect(productCommands).toContain('vitest run tests/migration');
-    expect(productCommands).toContain('vitest run --config vitest.coverage.config.ts');
-
-    const buildCommands = (workflow.jobs.build.steps ?? [])
-      .map((step) => step.run ?? '')
-      .join('\n');
-    expect(buildCommands).not.toContain('pnpm install');
-    expect(buildCommands).not.toContain('pnpm build');
+    expect(
+      productCommands.match(/vitest run --config vitest\.coverage\.config\.ts/gu),
+    ).toHaveLength(1);
+    expect(productCommands).not.toContain('vitest run tests/unit');
+    expect(productCommands).not.toContain('vitest run tests/integration');
+    expect(productCommands).not.toContain('vitest run tests/migration');
   });
 
-  it('性能预算与AI评估共用一次依赖准备', async () => {
+  it('性能预算与AI评估在同一套performance测试中只执行一次', async () => {
     const source = await readFile(repositoryFile('.github/workflows/performance.yml'), 'utf8');
     const workflow = parseYaml(source) as {
       jobs: Record<string, { steps?: Array<{ name?: string; run?: string }> }>;
@@ -101,8 +100,14 @@ describe('CI分层与任务命令清理', () => {
       .join('\n');
     expect(commands.match(/pnpm install/gu)).toHaveLength(1);
     expect(commands.match(/pnpm test:prepare/gu)).toHaveLength(1);
-    expect(commands).toContain('tests/performance --no-file-parallelism');
-    expect(commands).toContain('ai-output-protocol.test.ts');
-    expect(commands).toContain('ai-eval-baseline.test.ts');
+    expect(commands.match(/tests\/performance --no-file-parallelism/gu)).toHaveLength(1);
+    expect(commands).not.toContain('ai-output-protocol.test.ts');
+    expect(commands).not.toContain('ai-eval-baseline.test.ts');
+  });
+
+  it('Ready PR密钥扫描使用增量diff，定时审计保留全历史', async () => {
+    const security = await readFile(repositoryFile('.github/workflows/security.yml'), 'utf8');
+    expect(security).toContain('scan-secrets.mjs --base "$BASE_SHA"');
+    expect(security).toContain('scan-secrets.mjs --history');
   });
 });

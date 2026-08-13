@@ -55,9 +55,6 @@ const processBoundaryCoverageExcludes = [
   'packages/core-service/src/utility-validation-router.ts',
 ] as const;
 
-// These files bind React or browser DOM lifecycle APIs that the repository's Node coverage
-// environment cannot execute faithfully. Each exclusion requires alternative unit/source-invariant
-// coverage plus Electron E2E evidence and has an explicit sunset condition in M9-03 evidence.
 const rendererDomLifecycleCoverageExcludes = [
   'apps/desktop/renderer/src/app/use-app-settings-persistence.ts',
   'apps/desktop/renderer/src/app/use-app-shell-actions.ts',
@@ -82,6 +79,7 @@ const rendererDomLifecycleCoverageExcludes = [
 export default defineConfig({
   resolve: {
     alias: {
+      electron: source('./tests/setup/electron-runtime-stub.ts'),
       '@worldforge/contracts': source('./packages/contracts/src/public-index.ts'),
       '@worldforge/core-service': source('./packages/core-service/src/index.ts'),
       '@worldforge/domain': source('./packages/domain/src/index.ts'),

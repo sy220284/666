@@ -48,16 +48,24 @@ export function synchronizationDecision({
   if (!Number.isSafeInteger(openPulls) || openPulls < 0) {
     return { action: 'blocked', reason: `invalid-${branchName}-open-pull-count` };
   }
-  if (openPulls > 0) {
-    return isSourceBranch
-      ? { action: 'blocked', reason: `new-${branchName}-pull-request-open` }
-      : { action: 'skip', reason: `active-${branchName}-pull-request-open` };
+  if (openPulls > 0 && isSourceBranch) {
+    return { action: 'blocked', reason: `new-${branchName}-pull-request-open` };
   }
   if (branchSha === null) return { action: 'create', reason: `${branchName}-missing` };
   if (!fullSha.test(branchSha ?? '')) {
     return { action: 'blocked', reason: `invalid-${branchName}-sha` };
   }
   if (branchSha === mainSha) return { action: 'keep', reason: 'already-synchronized' };
+
+  if (openPulls > 0) {
+    if (!validComparison(comparison)) {
+      return { action: 'blocked', reason: `invalid-${branchName}-main-comparison` };
+    }
+    if (comparison.ahead_by === 0) {
+      return { action: 'keep', reason: `active-${branchName}-contains-verified-main` };
+    }
+    return { action: 'blocked', reason: `active-${branchName}-requires-main-sync` };
+  }
 
   if (isSourceBranch) {
     if (!fullSha.test(sourceHeadSha ?? '')) {
@@ -200,6 +208,15 @@ async function synchronizeBranch({
     throw new Error(`Branch synchronization blocked for ${branchName}: ${decision.reason}`);
   }
   if (decision.action === 'skip') {
+    return {
+      branchName,
+      isSourceBranch,
+      initialBranchSha: branchSha,
+      finalBranchSha: branchSha,
+      decision,
+    };
+  }
+  if (decision.action === 'keep' && branchSha !== mainSha) {
     return {
       branchName,
       isSourceBranch,
@@ -353,7 +370,19 @@ function selfTest() {
       isSourceBranch: false,
       comparison: { ahead_by: 1, behind_by: 0 },
     }),
-    { action: 'skip', reason: 'active-work-pull-request-open' },
+    { action: 'blocked', reason: 'active-work-requires-main-sync' },
+  );
+  assert.deepEqual(
+    synchronizationDecision({
+      mainSha: a,
+      branchSha: b,
+      sourceHeadSha: 'c'.repeat(40),
+      openPulls: 1,
+      branchName: 'work',
+      isSourceBranch: false,
+      comparison: { ahead_by: 0, behind_by: 2 },
+    }),
+    { action: 'keep', reason: 'active-work-contains-verified-main' },
   );
   assert.equal(
     synchronizationDecision({

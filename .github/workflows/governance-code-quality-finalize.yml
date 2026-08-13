@@ -271,6 +271,15 @@ jobs:
             return next;
           });
 
+          editFile('tests/unit/code-quality-renderer-zero-coverage.test.ts', (source) =>
+            replaceExact(
+              source,
+              "      revision: 7,\n    });",
+              "      revision: 7,\n      blocks: [],\n    });",
+              'version panel direct-render draft fixture',
+            ),
+          );
+
           for (const file of [
             'packages/core-service/src/utility-control-lifecycle.ts',
             'packages/core-service/src/utility-control-operations.ts',

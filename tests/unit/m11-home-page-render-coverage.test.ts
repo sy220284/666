@@ -157,9 +157,7 @@ function recent(
 }
 
 function renderHome(overrides: Partial<HomePageProps> = {}): string {
-  return renderToStaticMarkup(
-    createElement(HomePage, { ...baseProps, ...overrides }),
-  );
+  return renderToStaticMarkup(createElement(HomePage, { ...baseProps, ...overrides }));
 }
 
 describe('M11 首页真实状态渲染覆盖', () => {

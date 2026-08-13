@@ -32,13 +32,13 @@ function renderPanel(readOnly: boolean): string {
   );
 }
 
-describe('M11 AI审阅工作台服务端渲染覆盖', () => {
+describe('M11 智能审阅工作台服务端渲染覆盖', () => {
   it('渲染统一审阅入口、筛选和加载态', () => {
     const html = renderPanel(false);
 
     expect(html).toContain('data-ai-review-dialog');
-    expect(html).toContain('AI审阅与章节状态');
-    expect(html).toContain('AI负责整理和提出建议');
+    expect(html).toContain('智能审阅与章节状态');
+    expect(html).toContain('智能分析负责整理和提出建议');
     expect(html).toContain('data-ai-review-status-filter');
     expect(html).toContain('data-ai-review-type-filter');
     expect(html).toContain('待确认');
@@ -52,10 +52,10 @@ describe('M11 AI审阅工作台服务端渲染覆盖', () => {
   it('只读模式继续阻止主动分析并保留审阅筛选', () => {
     const html = renderPanel(true);
 
-    expect(html).toContain('AI审阅与章节状态');
+    expect(html).toContain('智能审阅与章节状态');
     expect(html).toContain('data-ai-review-status-filter');
     expect(html).toContain('data-ai-review-type-filter');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>分析定稿<\/button>/u);
-    expect(html).toContain('当前筛选条件下没有AI审阅建议');
+    expect(html).toContain('当前没有智能审阅建议');
   });
 });

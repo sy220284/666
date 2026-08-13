@@ -87,7 +87,7 @@ describe('集成分支安全同步决策', () => {
     ).toEqual({ action: 'fast-forward', reason: 'idle-branch-behind-verified-main' });
   });
 
-  it('另一条lane存在开放PR时保留其工作并跳过同步', () => {
+  it('另一条lane存在开放PR时禁止静默跳过并要求显式同步main', () => {
     expect(
       synchronizationDecision({
         mainSha: sha('a'),
@@ -98,7 +98,7 @@ describe('集成分支安全同步决策', () => {
         isSourceBranch: false,
         comparison: { ahead_by: 1, behind_by: 0 },
       }),
-    ).toEqual({ action: 'skip', reason: 'active-work-pull-request-open' });
+    ).toEqual({ action: 'blocked', reason: 'active-work-requires-main-sync' });
   });
 
   it('另一条lane含独有提交时拒绝强制覆盖', () => {

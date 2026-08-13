@@ -16,7 +16,7 @@ export async function routeLongformAiOperation(
   requestId: string,
   operation: CoreProjectOperation,
 ): Promise<CoreProjectResult | null> {
-  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- partial router
+  /* eslint-disable @typescript-eslint/switch-exhaustiveness-check -- this router intentionally handles only long-form operations */
   switch (operation.operation) {
     case LONGFORM_AI_COMMANDS.getSettings:
       return success(
@@ -42,4 +42,5 @@ export async function routeLongformAiOperation(
     default:
       return null;
   }
+  /* eslint-enable @typescript-eslint/switch-exhaustiveness-check */
 }

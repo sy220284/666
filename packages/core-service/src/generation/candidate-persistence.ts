@@ -33,6 +33,7 @@ import {
 } from '@worldforge/contracts';
 import { normalizeDraftBlockSemantic } from '@worldforge/domain';
 import { type DatabaseSync } from 'node:sqlite';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export function verifyDraftBase(database: DatabaseSync, run: GenerationRun): DraftBaseRow {
   if (!run.baseDraftId || run.baseDraftRevision === null) {
@@ -98,13 +99,13 @@ export function insertProseCandidate(
     }
   }
   const draftHashes = new Map(
-    (
+    sqliteResult<DraftHashRow[]>(
       database
         .prepare(
           `SELECT logical_block_id AS logicalBlockId, content_hash AS contentHash
              FROM draft_blocks WHERE draft_id = ?`,
         )
-        .all(run.baseDraftId) as unknown as DraftHashRow[]
+        .all(run.baseDraftId),
     ).map((row) => [row.logicalBlockId, row.contentHash]),
   );
   const logicalIds = new Set<string>();

@@ -31,6 +31,7 @@ import { candidateBlockContentHash, candidateDocumentContentHash } from './candi
 import { collectLockGuardViolations } from './draft-lock-guard.js';
 import { draftContentHash, DraftServiceError } from './draft.js';
 import { stableJson } from './stable-json.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 export type CandidateApplyServiceErrorCode =
   | 'CANDIDATE_APPLY_NOT_FOUND'
@@ -201,16 +202,18 @@ export function activeDraft(
 }
 
 export function readDraftBlocks(database: DatabaseSync, draftId: string): MutableDraftBlock[] {
-  const rows = database
-    .prepare(
-      `SELECT id AS recordId, logical_block_id AS logicalBlockId, order_key AS orderKey,
+  const rows = sqliteResult<DraftBlockRow[]>(
+    database
+      .prepare(
+        `SELECT id AS recordId, logical_block_id AS logicalBlockId, order_key AS orderKey,
               block_type AS blockType, text, attributes_json AS attributesJson,
               source, locked, content_hash AS contentHash, revision
          FROM draft_blocks
         WHERE draft_id = ?
         ORDER BY order_key, id`,
-    )
-    .all(draftId) as unknown as DraftBlockRow[];
+      )
+      .all(draftId),
+  );
   return rows.map((row, index) => {
     const attributes = parseAttributes(row.attributesJson);
     let normalized: ReturnType<typeof normalizeDraftBlockSemantic>;
@@ -301,9 +304,10 @@ export function readCandidateDocument(
       'Skeleton Candidates cannot enter prose preview, diff or apply.',
     );
   }
-  const sourceRows = database
-    .prepare(
-      `SELECT candidate_block_id AS candidateBlockId,
+  const sourceRows = sqliteResult<SourceRow[]>(
+    database
+      .prepare(
+        `SELECT candidate_block_id AS candidateBlockId,
               source_logical_block_id AS sourceLogicalBlockId,
               source_order AS sourceOrder
          FROM candidate_block_sources
@@ -311,15 +315,16 @@ export function readCandidateDocument(
           SELECT id FROM candidate_blocks WHERE candidate_id = ?
         )
         ORDER BY candidate_block_id, source_order`,
-    )
-    .all(input.candidateId) as unknown as SourceRow[];
+      )
+      .all(input.candidateId),
+  );
   const sources = new Map<string, string[]>();
   for (const source of sourceRows) {
     const list = sources.get(source.candidateBlockId) ?? [];
     list.push(source.sourceLogicalBlockId);
     sources.set(source.candidateBlockId, list);
   }
-  const blocks = (
+  const blocks = sqliteResult<CandidateBlockRow[]>(
     database
       .prepare(
         `SELECT id AS candidateBlockId, logical_block_id AS logicalBlockId,
@@ -330,7 +335,7 @@ export function readCandidateDocument(
           WHERE candidate_id = ?
           ORDER BY order_key, id`,
       )
-      .all(input.candidateId) as unknown as CandidateBlockRow[]
+      .all(input.candidateId),
   ).map((block) => ({
     candidateBlockId: block.candidateBlockId,
     logicalBlockId: block.logicalBlockId,

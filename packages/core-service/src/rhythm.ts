@@ -12,6 +12,7 @@ import {
 import type { DatabaseClock } from './database/index.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { DEFAULT_RHYTHM_PROFILE, ensureRhythmProfile } from './writing-metrics.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -102,7 +103,13 @@ function dayKey(date: Date, timeZone: string): string {
 
 function dashboard(database: DatabaseSync, projectId: string, now: Date): RhythmDashboard {
   const activeProfile = profile(database, projectId);
-  const days = (
+  const days = sqliteResult<
+    Array<{
+      readonly day: string;
+      readonly manualNetCharacters: number | bigint;
+      readonly effectiveSeconds: number | bigint;
+    }>
+  >(
     database
       .prepare(
         `SELECT day_key AS day,
@@ -111,11 +118,7 @@ function dashboard(database: DatabaseSync, projectId: string, now: Date): Rhythm
            FROM writing_sessions WHERE project_id = ?
           GROUP BY day_key ORDER BY day_key DESC LIMIT 366`,
       )
-      .all(projectId) as unknown as Array<{
-      readonly day: string;
-      readonly manualNetCharacters: number | bigint;
-      readonly effectiveSeconds: number | bigint;
-    }>
+      .all(projectId),
   ).map((row) => ({
     day: row.day,
     manualNetCharacters: Number(row.manualNetCharacters),
@@ -127,30 +130,34 @@ function dashboard(database: DatabaseSync, projectId: string, now: Date): Rhythm
     manualNetCharacters: 0,
     effectiveSeconds: 0,
   };
-  const chapterRows = database
-    .prepare(
-      `SELECT chapter.id AS chapterId, chapter.title,
+  const chapterRows = sqliteResult<
+    Array<{
+      readonly chapterId: string;
+      readonly title: string;
+      readonly activeDraftId: string | null;
+    }>
+  >(
+    database
+      .prepare(
+        `SELECT chapter.id AS chapterId, chapter.title,
               chapter.active_draft_id AS activeDraftId
          FROM chapters chapter
          JOIN volumes volume ON volume.id = chapter.volume_id
         WHERE volume.project_id = ?
           AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL
         ORDER BY volume.order_key, chapter.order_key, chapter.id`,
-    )
-    .all(projectId) as unknown as Array<{
-    readonly chapterId: string;
-    readonly title: string;
-    readonly activeDraftId: string | null;
-  }>;
+      )
+      .all(projectId),
+  );
   const chapters = chapterRows.map((chapter, index) => {
     const texts = chapter.activeDraftId
-      ? (
+      ? sqliteResult<Array<{ readonly text: string }>>(
           database
             .prepare(
               `SELECT text FROM draft_blocks WHERE draft_id = ?
                 ORDER BY order_key, id`,
             )
-            .all(chapter.activeDraftId) as unknown as Array<{ readonly text: string }>
+            .all(chapter.activeDraftId),
         ).map((row) => row.text)
       : [];
     const characterCount = texts.reduce((total, text) => total + Array.from(text).length, 0);

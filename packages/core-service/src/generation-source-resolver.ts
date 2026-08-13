@@ -19,6 +19,7 @@ import type {
   GenerationInputSourceInput,
 } from './generation-run.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 export type GenerationSourceResolverErrorCode =
   | 'GENERATION_SOURCE_NOT_FOUND'
@@ -137,16 +138,18 @@ function draftSnapshot(
       'The active Draft was not found.',
     );
   }
-  const rows = database
-    .prepare(
-      `SELECT logical_block_id AS logicalBlockId, block_type AS blockType, text,
+  const rows = sqliteResult<DraftBlockRow[]>(
+    database
+      .prepare(
+        `SELECT logical_block_id AS logicalBlockId, block_type AS blockType, text,
               attributes_json AS attributesJson, content_hash AS contentHash,
               locked, order_key AS orderKey
          FROM draft_blocks
         WHERE draft_id = ?
         ORDER BY order_key, id`,
-    )
-    .all(draft.draftId) as unknown as DraftBlockRow[];
+      )
+      .all(draft.draftId),
+  );
   return {
     draftId: draft.draftId,
     revision: Number(draft.revision),
@@ -186,16 +189,18 @@ function sceneBeats(
 ): SceneBeatRow[] {
   if (ids.length === 0) return [];
   const placeholders = ids.map(() => '?').join(', ');
-  const rows = database
-    .prepare(
-      `SELECT id, title, goal, core_conflict AS coreConflict,
+  const rows = sqliteResult<SceneBeatRow[]>(
+    database
+      .prepare(
+        `SELECT id, title, goal, core_conflict AS coreConflict,
               expected_result AS expectedResult, order_key AS orderKey
          FROM scene_beats
         WHERE project_id = ? AND chapter_id = ? AND deleted_at IS NULL
           AND id IN (${placeholders})
         ORDER BY order_key, id`,
-    )
-    .all(projectId, chapterId, ...ids) as unknown as SceneBeatRow[];
+      )
+      .all(projectId, chapterId, ...ids),
+  );
   if (rows.length !== new Set(ids).size) {
     throw new GenerationSourceResolverError(
       'GENERATION_SOURCE_NOT_FOUND',
@@ -710,17 +715,21 @@ export class GenerationSourceResolver {
             );
           }
           if (unit.keepCurrentDraft) {
-            const linked = database
-              .prepare(
-                `SELECT block.logical_block_id AS logicalBlockId
+            const linked = sqliteResult<
+              Array<{
+                readonly logicalBlockId: string;
+              }>
+            >(
+              database
+                .prepare(
+                  `SELECT block.logical_block_id AS logicalBlockId
                    FROM scene_beat_block_links link
                    JOIN draft_blocks block ON block.id = link.draft_block_id
                   WHERE link.scene_beat_id = ? AND block.draft_id = ?
                   ORDER BY block.order_key, block.id`,
-              )
-              .all(unit.sceneBeatId, draft.draftId) as unknown as Array<{
-              readonly logicalBlockId: string;
-            }>;
+                )
+                .all(unit.sceneBeatId, draft.draftId),
+            );
             appendDraftSource(
               unit.sceneBeatId,
               index,
@@ -798,19 +807,23 @@ export class GenerationSourceResolver {
           'Only the chapter current Final Version can be used for this operation.',
         );
       }
-      const blocks = database
-        .prepare(
-          `SELECT logical_block_id AS logicalBlockId, text AS content,
+      const blocks = sqliteResult<
+        Array<{
+          readonly logicalBlockId: string;
+          readonly content: string;
+          readonly contentHash: string;
+        }>
+      >(
+        database
+          .prepare(
+            `SELECT logical_block_id AS logicalBlockId, text AS content,
                   content_hash AS contentHash
              FROM version_blocks
             WHERE version_id = ?
             ORDER BY order_key, id`,
-        )
-        .all(sourceVersionId) as unknown as Array<{
-        readonly logicalBlockId: string;
-        readonly content: string;
-        readonly contentHash: string;
-      }>;
+          )
+          .all(sourceVersionId),
+      );
       if (
         blocks.length === 0 ||
         blocks.some((block) => !/^[0-9a-f]{64}$/u.test(block.contentHash))

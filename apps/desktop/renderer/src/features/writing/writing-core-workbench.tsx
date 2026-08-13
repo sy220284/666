@@ -168,6 +168,8 @@ export function WritingWorkbench({
       bridge,
       chapter,
       clearStatistics,
+      continuationScrollCleanup,
+      continuationTimer,
       disclosureMode,
       draft,
       findIndex,
@@ -186,6 +188,7 @@ export function WritingWorkbench({
       replaceText,
       saveContinuation,
       scheduleContinuationSave,
+      setSelectedLocked,
       setStatus,
     ],
   );

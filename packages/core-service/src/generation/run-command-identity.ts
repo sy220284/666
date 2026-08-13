@@ -11,6 +11,7 @@ import {
   mapRun,
   runSelect,
 } from './run-repository.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
 
@@ -65,16 +66,18 @@ function normalizedSources(sources: readonly GenerationInputSourceInput[]): read
 }
 
 function persistedSources(database: DatabaseSync, runId: string): readonly unknown[] {
-  const rows = database
-    .prepare(
-      `SELECT source_type AS sourceType, source_id AS sourceId,
+  const rows = sqliteResult<InputSourceRow[]>(
+    database
+      .prepare(
+        `SELECT source_type AS sourceType, source_id AS sourceId,
               source_order AS sourceOrder, content_hash AS contentHash,
               metadata_json AS metadataJson
          FROM generation_input_sources
         WHERE run_id = ?
         ORDER BY source_order, source_type, source_id`,
-    )
-    .all(runId) as unknown as InputSourceRow[];
+      )
+      .all(runId),
+  );
   return rows.map((row) => ({
     sourceType: row.sourceType,
     sourceId: row.sourceId,

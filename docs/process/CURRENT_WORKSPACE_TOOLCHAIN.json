@@ -9,57 +9,26 @@
   "bundledPnpmVersion": "11.21.0",
   "profiles": {
     "formatter": {
-      "packages": [
-        "prettier"
-      ],
+      "packages": ["prettier"],
       "commands": [
-        [
-          "pnpm",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "prettier",
-          [
-            "--version"
-          ]
-        ]
+        ["pnpm", ["--version"]],
+        ["prettier", ["--version"]]
       ]
     },
     "quality": {
       "packages": [
         "@eslint/js",
         "eslint",
+        "eslint-plugin-react-hooks",
         "prettier",
         "typescript",
         "typescript-eslint"
       ],
       "commands": [
-        [
-          "pnpm",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "prettier",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "eslint",
-          [
-            "--version"
-          ]
-        ],
-        [
-          "tsc",
-          [
-            "--version"
-          ]
-        ]
+        ["pnpm", ["--version"]],
+        ["prettier", ["--version"]],
+        ["eslint", ["--version"]],
+        ["tsc", ["--version"]]
       ]
     }
   },

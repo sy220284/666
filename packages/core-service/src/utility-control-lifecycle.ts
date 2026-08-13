@@ -12,8 +12,6 @@ export function dispatchUtilityLifecycle(
   ports: UtilityParentMessage['ports'],
 ): void {
   const { options, state } = context;
-
-  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- Lifecycle routing intentionally receives the full union after operation messages were delegated.
   switch (message.type) {
     case 'core.ping':
       context.send({

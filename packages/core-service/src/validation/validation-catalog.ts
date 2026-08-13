@@ -18,6 +18,7 @@ import {
   type VersionRow,
 } from './validation-model.js';
 import { CONFIG_VERSION, RULE_CONFIG, RULE_VERSION } from './validation-rules.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
 
@@ -26,9 +27,10 @@ type CatalogBatchRow = BatchRow & {
 };
 
 export function batchRows(database: DatabaseSync, projectId: string): CatalogBatchRow[] {
-  return database
-    .prepare(
-      `SELECT batch.id AS batchId, batch.project_id AS projectId,
+  return sqliteResult<CatalogBatchRow[]>(
+    database
+      .prepare(
+        `SELECT batch.id AS batchId, batch.project_id AS projectId,
               batch.chapter_id AS chapterId, batch.source_version_id AS sourceVersionId,
               batch.generation_run_id AS generationRunId, batch.source,
               batch.rule_version AS ruleVersion, batch.config_version AS configVersion,
@@ -56,14 +58,16 @@ export function batchRows(database: DatabaseSync, projectId: string): CatalogBat
            ON constraint_package.run_id = batch.generation_run_id
         WHERE batch.project_id = ?
         ORDER BY batch.created_at DESC, batch.id DESC`,
-    )
-    .all(projectId) as unknown as CatalogBatchRow[];
+      )
+      .all(projectId),
+  );
 }
 
 export function issueRows(database: DatabaseSync, projectId: string): IssueRow[] {
-  return database
-    .prepare(
-      `SELECT issue.id AS issueId, issue.batch_id AS batchId,
+  return sqliteResult<IssueRow[]>(
+    database
+      .prepare(
+        `SELECT issue.id AS issueId, issue.batch_id AS batchId,
               issue.project_id AS projectId, issue.chapter_id AS chapterId,
               issue.source_version_id AS sourceVersionId,
               issue.logical_block_id AS logicalBlockId,
@@ -85,8 +89,9 @@ export function issueRows(database: DatabaseSync, projectId: string): IssueRow[]
           AND block.logical_block_id = issue.logical_block_id
         WHERE issue.project_id = ?
         ORDER BY issue.status = 'open' DESC, issue.created_at DESC, issue.id`,
-    )
-    .all(projectId) as unknown as IssueRow[];
+      )
+      .all(projectId),
+  );
 }
 
 function sourceForBatch(
@@ -94,15 +99,17 @@ function sourceForBatch(
   row: CatalogBatchRow,
 ): { readonly version: VersionRow; readonly blocks: readonly VersionBlockRow[] } | null {
   if (!row.sourceContentHash) return null;
-  const blocks = database
-    .prepare(
-      `SELECT logical_block_id AS logicalBlockId, block_type AS blockType, text,
+  const blocks = sqliteResult<VersionBlockRow[]>(
+    database
+      .prepare(
+        `SELECT logical_block_id AS logicalBlockId, block_type AS blockType, text,
               content_hash AS contentHash, locked, order_key AS orderKey
          FROM version_blocks
         WHERE version_id = ?
         ORDER BY order_key, logical_block_id`,
-    )
-    .all(row.sourceVersionId) as unknown as VersionBlockRow[];
+      )
+      .all(row.sourceVersionId),
+  );
   if (blocks.length === 0) return null;
   return {
     version: {
@@ -250,31 +257,36 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
     invalidationByChapter: new Map(),
     sceneBeatBySource: new Map(),
   };
-  const todos = database
-    .prepare(
-      `SELECT id AS todoId, project_id AS projectId, chapter_id AS chapterId,
+  const todos = sqliteResult<TodoRow[]>(
+    database
+      .prepare(
+        `SELECT id AS todoId, project_id AS projectId, chapter_id AS chapterId,
               scene_beat_id AS sceneBeatId, logical_block_id AS logicalBlockId,
               validation_issue_id AS validationIssueId, title, status,
               created_at AS createdAt, updated_at AS updatedAt,
               completed_at AS completedAt
          FROM story_todos WHERE project_id = ?
         ORDER BY status = 'open' DESC, updated_at DESC, id`,
-    )
-    .all(projectId) as unknown as TodoRow[];
-  const comments = database
-    .prepare(
-      `SELECT id AS commentId, project_id AS projectId, chapter_id AS chapterId,
+      )
+      .all(projectId),
+  );
+  const comments = sqliteResult<CommentRow[]>(
+    database
+      .prepare(
+        `SELECT id AS commentId, project_id AS projectId, chapter_id AS chapterId,
               source_version_id AS sourceVersionId, logical_block_id AS logicalBlockId,
               validation_issue_id AS validationIssueId, body, status,
               created_at AS createdAt, updated_at AS updatedAt,
               resolved_at AS resolvedAt
          FROM story_comments WHERE project_id = ?
         ORDER BY status = 'open' DESC, updated_at DESC, id`,
-    )
-    .all(projectId) as unknown as CommentRow[];
-  const exceptions = database
-    .prepare(
-      `SELECT id AS exceptionId, project_id AS projectId,
+      )
+      .all(projectId),
+  );
+  const exceptions = sqliteResult<Array<Readonly<Record<string, unknown>>>>(
+    database
+      .prepare(
+        `SELECT id AS exceptionId, project_id AS projectId,
               exception_type AS exceptionType, scope_type AS scopeType,
               issue_type AS issueType, validation_issue_id AS validationIssueId,
               chapter_id AS chapterId, entity_id AS entityId,
@@ -284,8 +296,9 @@ export function catalog(database: DatabaseSync, projectId: string): ValidationCa
               created_at AS createdAt, updated_at AS updatedAt
          FROM validation_exceptions WHERE project_id = ?
         ORDER BY active DESC, updated_at DESC, id`,
-    )
-    .all(projectId) as unknown as Array<Readonly<Record<string, unknown>>>;
+      )
+      .all(projectId),
+  );
   return ValidationCatalogSchema.parse({
     projectId,
     batches: batches.map((row) => ({

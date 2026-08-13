@@ -24,6 +24,7 @@ import {
   unique,
   NarrativePlanningServiceError,
 } from './narrative-planning-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 function assertMilestoneTargets(
   connection: DatabaseSync,
@@ -69,16 +70,20 @@ function assertMilestoneDependencyGraph(
   milestoneId: string,
   dependencies: readonly string[],
 ): void {
-  const rows = connection
-    .prepare(
-      `SELECT milestone_id AS milestoneId, dependency_milestone_id AS dependencyId
+  const rows = sqliteResult<
+    {
+      readonly milestoneId: string;
+      readonly dependencyId: string;
+    }[]
+  >(
+    connection
+      .prepare(
+        `SELECT milestone_id AS milestoneId, dependency_milestone_id AS dependencyId
          FROM arc_milestone_dependencies
         WHERE project_id = ? AND milestone_id <> ?`,
-    )
-    .all(projectId, milestoneId) as unknown as {
-    readonly milestoneId: string;
-    readonly dependencyId: string;
-  }[];
+      )
+      .all(projectId, milestoneId),
+  );
   const graph = new Map<string, string[]>();
   for (const row of rows) {
     graph.set(row.milestoneId, [...(graph.get(row.milestoneId) ?? []), row.dependencyId]);

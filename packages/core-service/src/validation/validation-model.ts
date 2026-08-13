@@ -5,6 +5,7 @@ import type { SemanticValidationOutput } from '@worldforge/contracts';
 
 import { isActiveChapter } from '../active-structure.js';
 import type { DatabaseClock } from '../database/index.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -176,15 +177,17 @@ export function finalVersion(
       'Validation requires the chapter current Final Version.',
     );
   }
-  const blocks = database
-    .prepare(
-      `SELECT logical_block_id AS logicalBlockId, block_type AS blockType, text,
+  const blocks = sqliteResult<VersionBlockRow[]>(
+    database
+      .prepare(
+        `SELECT logical_block_id AS logicalBlockId, block_type AS blockType, text,
               content_hash AS contentHash, locked, order_key AS orderKey
          FROM version_blocks
         WHERE version_id = ?
         ORDER BY order_key, logical_block_id`,
-    )
-    .all(version.versionId) as unknown as VersionBlockRow[];
+      )
+      .all(version.versionId),
+  );
   if (blocks.length === 0) {
     throw new ValidationServiceError(
       'VALIDATION_INVALID',
@@ -227,9 +230,10 @@ export function sceneBeatValidationDigest(
   chapterId: string,
   sourceVersionId: string,
 ): string {
-  const beats = database
-    .prepare(
-      `SELECT id, plot_node_id AS plotNodeId, title, goal,
+  const beats = sqliteResult<Array<Readonly<Record<string, unknown>>>>(
+    database
+      .prepare(
+        `SELECT id, plot_node_id AS plotNodeId, title, goal,
               core_conflict AS coreConflict, expected_result AS expectedResult,
               beat_type AS beatType, word_target_percent AS wordTargetPercent,
               is_required AS isRequired, order_key AS orderKey,
@@ -238,20 +242,24 @@ export function sceneBeatValidationDigest(
          FROM scene_beats
         WHERE project_id = ? AND chapter_id = ? AND deleted_at IS NULL
         ORDER BY order_key, id`,
-    )
-    .all(projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
-  const entities = database
-    .prepare(
-      `SELECT relation.scene_beat_id AS sceneBeatId, relation.entity_id AS entityId, relation.role
+      )
+      .all(projectId, chapterId),
+  );
+  const entities = sqliteResult<Array<Readonly<Record<string, unknown>>>>(
+    database
+      .prepare(
+        `SELECT relation.scene_beat_id AS sceneBeatId, relation.entity_id AS entityId, relation.role
          FROM scene_beat_entities relation
          JOIN scene_beats beat ON beat.id = relation.scene_beat_id
         WHERE relation.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
         ORDER BY relation.scene_beat_id, relation.role, relation.entity_id`,
-    )
-    .all(projectId, chapterId) as unknown as Array<Readonly<Record<string, unknown>>>;
-  const blockMapping = database
-    .prepare(
-      `SELECT beat.id AS sceneBeatId, draft_block.logical_block_id AS logicalBlockId,
+      )
+      .all(projectId, chapterId),
+  );
+  const blockMapping = sqliteResult<Array<Readonly<Record<string, unknown>>>>(
+    database
+      .prepare(
+        `SELECT beat.id AS sceneBeatId, draft_block.logical_block_id AS logicalBlockId,
               version_block.content_hash AS blockHash
          FROM scene_beats beat
          JOIN scene_beat_block_links link ON link.scene_beat_id = beat.id
@@ -261,10 +269,9 @@ export function sceneBeatValidationDigest(
           AND version_block.logical_block_id = draft_block.logical_block_id
         WHERE beat.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
         ORDER BY beat.order_key, beat.id, draft_block.logical_block_id`,
-    )
-    .all(sourceVersionId, projectId, chapterId) as unknown as Array<
-    Readonly<Record<string, unknown>>
-  >;
+      )
+      .all(sourceVersionId, projectId, chapterId),
+  );
   return hash(stableJson({ beats, entities, blockMapping }));
 }
 

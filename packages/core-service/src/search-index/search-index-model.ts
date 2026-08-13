@@ -10,6 +10,7 @@ import {
 } from '@worldforge/contracts';
 
 import type { DatabaseClock } from '../database/index.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export const systemClock: DatabaseClock = { now: () => new Date() };
 export const sourceTypes = [
@@ -300,13 +301,15 @@ export function dictionaryMatch(
 }
 
 export function listDictionaryRows(connection: DatabaseSync): DictionaryRow[] {
-  return connection
-    .prepare(
-      `SELECT term, normalized_term AS normalizedTerm, category, action,
+  return sqliteResult<DictionaryRow[]>(
+    connection
+      .prepare(
+        `SELECT term, normalized_term AS normalizedTerm, category, action,
               replacement_term AS replacementTerm, notes,
               created_at AS createdAt, updated_at AS updatedAt
          FROM project_dictionary
         ORDER BY category, normalized_term, term`,
-    )
-    .all() as unknown as DictionaryRow[];
+      )
+      .all(),
+  );
 }

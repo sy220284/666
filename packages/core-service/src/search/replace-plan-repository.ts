@@ -8,19 +8,22 @@ import {
   numericValue,
   SearchToolsServiceError,
 } from './search-model.js';
+import { sqliteResult } from '../database/sqlite-result.js';
 
 export function mapReplacePlan(database: DatabaseSync, row: PlanRow): ReplacePlan {
-  const items = database
-    .prepare(
-      `SELECT id AS planItemId, project_id AS projectId, chapter_id AS chapterId,
+  const items = sqliteResult<ItemRow[]>(
+    database
+      .prepare(
+        `SELECT id AS planItemId, project_id AS projectId, chapter_id AS chapterId,
               draft_id AS draftId, logical_block_id AS logicalBlockId,
               base_revision AS baseRevision, expected_block_hash AS expectedBlockHash,
               matched_text AS matchedText, match_start AS matchStart,
               match_end AS matchEnd, replacement, locked
          FROM replace_plan_items WHERE plan_id = ?
         ORDER BY chapter_id, draft_id, logical_block_id, match_start`,
-    )
-    .all(row.planId) as unknown as ItemRow[];
+      )
+      .all(row.planId),
+  );
 
   return ReplacePlanSchema.parse({
     ...row,

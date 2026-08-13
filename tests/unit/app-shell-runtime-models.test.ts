@@ -281,15 +281,20 @@ describe('AppShell pure runtime models', () => {
   });
 
   it('registers lifecycle-only hooks while keeping pure AppShell models in coverage', async () => {
-    const [config, baselineSource] = await Promise.all([
+    const [config, baselineSource, exclusionsSource] = await Promise.all([
       readFile('vitest.coverage.config.ts', 'utf8'),
       readFile('docs/architecture/coverage-baseline.json', 'utf8'),
+      readFile('docs/architecture/coverage-exclusions.json', 'utf8'),
     ]);
     const baseline = JSON.parse(baselineSource) as {
       core: {
         thresholdPercent: Record<'statements' | 'branches' | 'functions' | 'lines', number>;
       };
     };
+    const exclusions = JSON.parse(exclusionsSource) as {
+      exclusions: Array<{ path: string }>;
+    };
+    const excludedPaths = exclusions.exclusions.map((entry) => entry.path);
 
     for (const file of [
       'use-app-settings-persistence.ts',
@@ -299,10 +304,14 @@ describe('AppShell pure runtime models', () => {
       'use-workspace-runtime.ts',
       'use-workspace-startup.ts',
     ]) {
-      expect(config).toContain(`apps/desktop/renderer/src/app/${file}`);
+      expect(excludedPaths).toContain(`apps/desktop/renderer/src/app/${file}`);
     }
-    expect(config).not.toContain('apps/desktop/renderer/src/app/app-shell-helpers.ts');
-    expect(config).not.toContain('apps/desktop/renderer/src/app/app-shell-status.ts');
+    expect(excludedPaths).not.toContain('apps/desktop/renderer/src/app/app-shell-helpers.ts');
+    expect(excludedPaths).not.toContain('apps/desktop/renderer/src/app/app-shell-status.ts');
+    expect(config).toContain('registeredCoverageExcludes');
+    expect(config).toContain(
+      "readFileSync(source('./docs/architecture/coverage-exclusions.json'), 'utf8')",
+    );
     expect(config).toContain('thresholds:');
     expect(config).toContain(
       '[coverageBaseline.core.pattern]: coverageBaseline.core.thresholdPercent',

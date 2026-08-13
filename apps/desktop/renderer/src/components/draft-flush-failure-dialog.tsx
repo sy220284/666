@@ -3,6 +3,52 @@ import { useEffect, useState } from 'react';
 import { DRAFT_FLUSH_FAILED_EVENT, flushRegisteredDraft } from '../runtime/draft-flush-registry.js';
 import { useRendererUiStore } from '../state/ui-store.js';
 
+export function DraftFlushFailureDialogView({
+  notice,
+  retrying,
+  onRetry,
+  onReturn,
+  onOpenRecovery,
+  onCancel,
+}: {
+  readonly notice: string;
+  readonly retrying: boolean;
+  readonly onRetry: () => void;
+  readonly onReturn: () => void;
+  readonly onOpenRecovery: () => void;
+  readonly onCancel: () => void;
+}) {
+  return (
+    <div className="react-dialog-backdrop" data-draft-flush-failure-dialog>
+      <section
+        aria-describedby="draft-flush-failure-description"
+        aria-labelledby="draft-flush-failure-title"
+        aria-modal="true"
+        className="react-dialog"
+        role="dialog"
+      >
+        <h2 id="draft-flush-failure-title">正文尚未安全保存</h2>
+        <p id="draft-flush-failure-description">{notice}</p>
+        <p>程序不会自动丢弃当前窗口中的修改，也不会继续切换页面、关闭作品或退出。</p>
+        <div className="inline-actions">
+          <button disabled={retrying} type="button" onClick={onRetry}>
+            {retrying ? '正在重试…' : '重试保存'}
+          </button>
+          <button type="button" onClick={onReturn}>
+            返回正文检查
+          </button>
+          <button disabled={retrying} type="button" onClick={onOpenRecovery}>
+            打开恢复中心
+          </button>
+          <button className="quiet-button" type="button" onClick={onCancel}>
+            取消操作
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function DraftFlushFailureDialog() {
   const dispatch = useRendererUiStore((state) => state.dispatch);
   const [open, setOpen] = useState(false);
@@ -46,32 +92,13 @@ export function DraftFlushFailureDialog() {
   };
 
   return (
-    <div className="react-dialog-backdrop" data-draft-flush-failure-dialog>
-      <section
-        aria-describedby="draft-flush-failure-description"
-        aria-labelledby="draft-flush-failure-title"
-        aria-modal="true"
-        className="react-dialog"
-        role="dialog"
-      >
-        <h2 id="draft-flush-failure-title">正文尚未安全保存</h2>
-        <p id="draft-flush-failure-description">{notice}</p>
-        <p>程序不会自动丢弃当前窗口中的修改，也不会继续切换页面、关闭作品或退出。</p>
-        <div className="inline-actions">
-          <button disabled={retrying} type="button" onClick={() => void retry()}>
-            {retrying ? '正在重试…' : '重试保存'}
-          </button>
-          <button type="button" onClick={() => setOpen(false)}>
-            返回正文检查
-          </button>
-          <button disabled={retrying} type="button" onClick={() => void openRecovery()}>
-            打开恢复中心
-          </button>
-          <button className="quiet-button" type="button" onClick={() => setOpen(false)}>
-            取消操作
-          </button>
-        </div>
-      </section>
-    </div>
+    <DraftFlushFailureDialogView
+      notice={notice}
+      retrying={retrying}
+      onRetry={() => void retry()}
+      onReturn={() => setOpen(false)}
+      onOpenRecovery={() => void openRecovery()}
+      onCancel={() => setOpen(false)}
+    />
   );
 }

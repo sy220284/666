@@ -36,6 +36,7 @@ import {
 } from '@worldforge/prompts';
 
 import type { DatabaseClock } from './database/index.js';
+import { sqliteResult } from './database/sqlite-result.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
 const SETTINGS_KEY = 'longform.ai';
@@ -189,15 +190,16 @@ function styleMetrics(paragraphs: readonly { text: string; blockType: string }[]
 }
 
 function versionBlocks(database: DatabaseSync, versionId: string) {
-  return database
-    .prepare(
-      `SELECT text, block_type AS blockType
+  return sqliteResult<Record<string, unknown>[]>(
+    database
+      .prepare(
+        `SELECT text, block_type AS blockType
          FROM version_blocks
         WHERE version_id = ?
         ORDER BY order_key, logical_block_id`,
-    )
-    .all(versionId)
-    .map((row) => ({ text: String(row.text), blockType: String(row.blockType) }));
+      )
+      .all(versionId),
+  ).map((row) => ({ text: String(row.text), blockType: String(row.blockType) }));
 }
 
 function supportRank(status: 'verified' | 'limited' | 'unverified'): number {
@@ -309,14 +311,16 @@ export class LongformAiService {
         parameters.push(input.freshness);
       }
       parameters.push(input.limit);
-      const rows = database
-        .prepare(
-          `${digestSelect(clauses.join(' AND '))}
+      const rows = sqliteResult<DigestRow[]>(
+        database
+          .prepare(
+            `${digestSelect(clauses.join(' AND '))}
            ORDER BY CASE scope_type WHEN 'chapter' THEN 0 WHEN 'volume' THEN 1 ELSE 2 END,
                     updated_at DESC, scope_id
            LIMIT ?`,
-        )
-        .all(...parameters) as unknown as DigestRow[];
+          )
+          .all(...parameters),
+      );
       return StoryDigestListSchema.parse({
         projectId: input.projectId,
         digests: rows.map(digestFromRow),
@@ -612,9 +616,10 @@ export class LongformAiService {
     if (!volume) {
       throw new LongformAiServiceError('LONGFORM_SCOPE_NOT_FOUND', 'Volume scope not found.');
     }
-    const chapters = database
-      .prepare(
-        `SELECT chapter.id, chapter.final_version_id AS finalVersionId,
+    const chapters = sqliteResult<Record<string, unknown>[]>(
+      database
+        .prepare(
+          `SELECT chapter.id, chapter.final_version_id AS finalVersionId,
                 digest.freshness AS digestFreshness
            FROM chapters chapter
            LEFT JOIN story_digests digest
@@ -622,8 +627,9 @@ export class LongformAiService {
             AND digest.scope_id = chapter.id
           WHERE chapter.volume_id = ? AND chapter.deleted_at IS NULL
           ORDER BY chapter.order_key, chapter.id`,
-      )
-      .all(projectId, volumeId);
+        )
+        .all(projectId, volumeId),
+    );
     for (const chapter of chapters) {
       if (!chapter.finalVersionId) {
         state.skippedUnfinalizedChapters += 1;
@@ -633,20 +639,22 @@ export class LongformAiService {
         this.#rebuildChapter(database, projectId, String(chapter.id), now, state);
       }
     }
-    const chapterDigests = database
-      .prepare(
-        `${digestSelect(
-          `project_id = ? AND scope_type = 'chapter' AND freshness = 'fresh'
+    const chapterDigests = sqliteResult<DigestRow[]>(
+      database
+        .prepare(
+          `${digestSelect(
+            `project_id = ? AND scope_type = 'chapter' AND freshness = 'fresh'
            AND scope_id IN (
              SELECT id FROM chapters
               WHERE volume_id = ? AND deleted_at IS NULL AND final_version_id IS NOT NULL
            )`,
-        )}
+          )}
          ORDER BY (
            SELECT chapter.order_key FROM chapters chapter WHERE chapter.id = story_digests.scope_id
          ), scope_id`,
-      )
-      .all(projectId, volumeId) as unknown as DigestRow[];
+        )
+        .all(projectId, volumeId),
+    );
     const mapped = chapterDigests.map(digestFromRow);
     const sourceVersionIds = mapped.flatMap((digest) => digest.sourceVersionIds);
     const content = [
@@ -682,35 +690,39 @@ export class LongformAiService {
     if (!project) {
       throw new LongformAiServiceError('LONGFORM_SCOPE_NOT_FOUND', 'Project scope not found.');
     }
-    const volumes = database
-      .prepare(
-        `SELECT volume.id, digest.freshness AS digestFreshness
+    const volumes = sqliteResult<Record<string, unknown>[]>(
+      database
+        .prepare(
+          `SELECT volume.id, digest.freshness AS digestFreshness
            FROM volumes volume
            LEFT JOIN story_digests digest
              ON digest.project_id = volume.project_id AND digest.scope_type = 'volume'
             AND digest.scope_id = volume.id
           WHERE volume.project_id = ? AND volume.deleted_at IS NULL
           ORDER BY volume.order_key, volume.id`,
-      )
-      .all(projectId);
+        )
+        .all(projectId),
+    );
     for (const volume of volumes) {
       if (forceChildren || volume.digestFreshness !== 'fresh') {
         this.#rebuildVolume(database, projectId, String(volume.id), now, state, forceChildren);
       }
     }
-    const volumeDigests = database
-      .prepare(
-        `${digestSelect(
-          `project_id = ? AND scope_type = 'volume' AND freshness = 'fresh'
+    const volumeDigests = sqliteResult<DigestRow[]>(
+      database
+        .prepare(
+          `${digestSelect(
+            `project_id = ? AND scope_type = 'volume' AND freshness = 'fresh'
            AND scope_id IN (
              SELECT id FROM volumes WHERE project_id = ? AND deleted_at IS NULL
            )`,
-        )}
+          )}
          ORDER BY (
            SELECT volume.order_key FROM volumes volume WHERE volume.id = story_digests.scope_id
          ), scope_id`,
-      )
-      .all(projectId, projectId) as unknown as DigestRow[];
+        )
+        .all(projectId, projectId),
+    );
     const mapped = volumeDigests.map(digestFromRow);
     const digest = this.#upsertDigest(database, {
       projectId,

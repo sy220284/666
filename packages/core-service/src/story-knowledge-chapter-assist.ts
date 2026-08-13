@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 
 import type { StoryKnowledgeProjectionInput } from '@worldforge/contracts';
+import { sqliteResult } from './database/sqlite-result.js';
 
 type ChapterAssistInput = Extract<
   StoryKnowledgeProjectionInput,
@@ -47,24 +48,34 @@ function parseJson(value: string): unknown {
 }
 
 function chapterTitle(connection: DatabaseSync, projectId: string, chapterId: string): string {
-  const row = connection
-    .prepare(
-      `SELECT chapter.title
+  const row = sqliteResult<{ readonly title: string } | undefined>(
+    connection
+      .prepare(
+        `SELECT chapter.title
          FROM chapters chapter
          JOIN volumes volume ON volume.id = chapter.volume_id
         WHERE chapter.id = ? AND volume.project_id = ?
           AND chapter.deleted_at IS NULL AND volume.deleted_at IS NULL`,
-    )
-    .get(chapterId, projectId) as unknown as { readonly title: string } | undefined;
+      )
+      .get(chapterId, projectId),
+  );
   if (!row) throw new Error('STORY_KNOWLEDGE_CHAPTER_MISSING');
   return row.title;
 }
 
 function previousChapter(connection: DatabaseSync, projectId: string, chapterId: string) {
   return (
-    (connection
-      .prepare(
-        `WITH anchor AS (
+    sqliteResult<
+      | {
+          readonly chapterId: string;
+          readonly chapterTitle: string;
+          readonly finalVersionId: string | null;
+        }
+      | undefined
+    >(
+      connection
+        .prepare(
+          `WITH anchor AS (
            SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
              FROM chapters chapter
              JOIN volumes volume ON volume.id = chapter.volume_id
@@ -84,22 +95,26 @@ function previousChapter(connection: DatabaseSync, projectId: string, chapterId:
             )
           ORDER BY volume.order_key DESC, chapter.order_key DESC, chapter.id DESC
           LIMIT 1`,
-      )
-      .get(chapterId, projectId, projectId) as unknown as
-      | {
-          readonly chapterId: string;
-          readonly chapterTitle: string;
-          readonly finalVersionId: string | null;
-        }
-      | undefined) ?? null
+        )
+        .get(chapterId, projectId, projectId),
+    ) ?? null
   );
 }
 
 function chapterGoal(connection: DatabaseSync, projectId: string, chapterId: string) {
   return (
-    (connection
-      .prepare(
-        `SELECT node.title, node.goal, node.core_conflict AS coreConflict,
+    sqliteResult<
+      | {
+          readonly title: string;
+          readonly goal: string;
+          readonly coreConflict: string;
+          readonly expectedResult: string;
+        }
+      | undefined
+    >(
+      connection
+        .prepare(
+          `SELECT node.title, node.goal, node.core_conflict AS coreConflict,
                 node.expected_result AS expectedResult
            FROM scene_beats beat
            JOIN plot_nodes node
@@ -107,35 +122,33 @@ function chapterGoal(connection: DatabaseSync, projectId: string, chapterId: str
           WHERE beat.project_id = ? AND beat.chapter_id = ? AND beat.deleted_at IS NULL
           ORDER BY beat.order_key, beat.id, node.order_key, node.id
           LIMIT 1`,
-      )
-      .get(projectId, chapterId) as unknown as
-      | {
-          readonly title: string;
-          readonly goal: string;
-          readonly coreConflict: string;
-          readonly expectedResult: string;
-        }
-      | undefined) ?? null
+        )
+        .get(projectId, chapterId),
+    ) ?? null
   );
 }
 
 function sceneBeats(connection: DatabaseSync, projectId: string, chapterId: string, limit: number) {
-  const rows = connection
-    .prepare(
-      `SELECT id, title, goal, is_required AS required,
+  const rows = sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly title: string;
+      readonly goal: string;
+      readonly required: number | bigint;
+      readonly wordTargetPercent: number | bigint;
+    }>
+  >(
+    connection
+      .prepare(
+        `SELECT id, title, goal, is_required AS required,
               word_target_percent AS wordTargetPercent
          FROM scene_beats
         WHERE project_id = ? AND chapter_id = ? AND deleted_at IS NULL
         ORDER BY order_key, id
         LIMIT ?`,
-    )
-    .all(projectId, chapterId, limit) as unknown as Array<{
-    readonly id: string;
-    readonly title: string;
-    readonly goal: string;
-    readonly required: number | bigint;
-    readonly wordTargetPercent: number | bigint;
-  }>;
+      )
+      .all(projectId, chapterId, limit),
+  );
   return rows.map((row) => ({
     ...row,
     required: Number(row.required) === 1,
@@ -149,9 +162,10 @@ function chapterCharacterRows(
   chapterId: string,
   limit: number,
 ): EntityRow[] {
-  return connection
-    .prepare(
-      `SELECT DISTINCT entity.id, entity.name, entity.summary
+  return sqliteResult<EntityRow[]>(
+    connection
+      .prepare(
+        `SELECT DISTINCT entity.id, entity.name, entity.summary
          FROM scene_beat_entities link
          JOIN scene_beats beat
            ON beat.id = link.scene_beat_id AND beat.project_id = link.project_id
@@ -161,8 +175,9 @@ function chapterCharacterRows(
           AND entity.entity_type = 'character' AND entity.status = 'active'
         ORDER BY entity.name, entity.id
         LIMIT ?`,
-    )
-    .all(projectId, chapterId, limit) as unknown as EntityRow[];
+      )
+      .all(projectId, chapterId, limit),
+  );
 }
 
 function characterStates(
@@ -172,9 +187,15 @@ function characterStates(
   characterId: string,
   limit: number,
 ) {
-  const rows = connection
-    .prepare(
-      `WITH anchor AS (
+  const rows = sqliteResult<
+    Array<{
+      readonly key: string;
+      readonly valueJson: string;
+    }>
+  >(
+    connection
+      .prepare(
+        `WITH anchor AS (
          SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
@@ -212,11 +233,9 @@ function characterStates(
         WHERE rank = 1
         ORDER BY key
         LIMIT ?`,
-    )
-    .all(chapterId, projectId, projectId, characterId, limit) as unknown as Array<{
-    readonly key: string;
-    readonly valueJson: string;
-  }>;
+      )
+      .all(chapterId, projectId, projectId, characterId, limit),
+  );
   return rows.map((row) => ({ key: row.key, value: parseJson(row.valueJson) }));
 }
 
@@ -227,9 +246,15 @@ function characterKnowledge(
   characterId: string,
   limit: number,
 ) {
-  return connection
-    .prepare(
-      `WITH anchor AS (
+  return sqliteResult<
+    Array<{
+      readonly information: string;
+      readonly status: 'knows' | 'believes' | 'suspects' | 'misunderstands' | 'unknown';
+    }>
+  >(
+    connection
+      .prepare(
+        `WITH anchor AS (
          SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
@@ -267,11 +292,9 @@ function characterKnowledge(
         WHERE rank = 1
         ORDER BY information
         LIMIT ?`,
-    )
-    .all(chapterId, projectId, projectId, characterId, limit) as unknown as Array<{
-    readonly information: string;
-    readonly status: 'knows' | 'believes' | 'suspects' | 'misunderstands' | 'unknown';
-  }>;
+      )
+      .all(chapterId, projectId, projectId, characterId, limit),
+  );
 }
 
 function chapterCharacters(
@@ -299,9 +322,22 @@ function chapterRelationships(
   chapterId: string,
   limit: number,
 ) {
-  return connection
-    .prepare(
-      `WITH anchor AS (
+  return sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly fromCharacterId: string;
+      readonly fromCharacterName: string;
+      readonly toCharacterId: string;
+      readonly toCharacterName: string;
+      readonly category: string;
+      readonly label: string;
+      readonly validFromChapterId: string;
+      readonly validUntilChapterId: string | null;
+    }>
+  >(
+    connection
+      .prepare(
+        `WITH anchor AS (
          SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
@@ -357,18 +393,9 @@ function chapterRelationships(
         ORDER BY relationship.category, relationship.label,
                  source.name, target.name, relationship.id
         LIMIT ?`,
-    )
-    .all(chapterId, projectId, projectId, chapterId, projectId, limit) as unknown as Array<{
-    readonly id: string;
-    readonly fromCharacterId: string;
-    readonly fromCharacterName: string;
-    readonly toCharacterId: string;
-    readonly toCharacterName: string;
-    readonly category: string;
-    readonly label: string;
-    readonly validFromChapterId: string;
-    readonly validUntilChapterId: string | null;
-  }>;
+      )
+      .all(chapterId, projectId, projectId, chapterId, projectId, limit),
+  );
 }
 
 function timelineSide(
@@ -379,9 +406,10 @@ function timelineSide(
   limit: number,
 ): TimelineRow[] {
   const before = direction === 'before';
-  return connection
-    .prepare(
-      `WITH anchor AS (
+  return sqliteResult<TimelineRow[]>(
+    connection
+      .prepare(
+        `WITH anchor AS (
          SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
@@ -406,8 +434,9 @@ function timelineSide(
                  chapter.order_key ${before ? 'DESC' : 'ASC'},
                  event.start_value ${before ? 'DESC' : 'ASC'}, event.id ${before ? 'DESC' : 'ASC'}
         LIMIT ?`,
-    )
-    .all(chapterId, projectId, projectId, limit) as unknown as TimelineRow[];
+      )
+      .all(chapterId, projectId, projectId, limit),
+  );
 }
 
 function chapterTimeline(
@@ -428,9 +457,10 @@ function foreshadowingRows(
   chapterId: string,
   limit: number,
 ): { readonly items: ForeshadowingRow[]; readonly truncated: boolean } {
-  const rows = connection
-    .prepare(
-      `WITH anchor AS (
+  const rows = sqliteResult<ForeshadowingRow[]>(
+    connection
+      .prepare(
+        `WITH anchor AS (
          SELECT chapter.order_key AS chapterOrder, volume.order_key AS volumeOrder
            FROM chapters chapter
            JOIN volumes volume ON volume.id = chapter.volume_id
@@ -488,16 +518,9 @@ function foreshadowingRows(
                  COALESCE(reveal_from_volume.order_key, 2147483647),
                  COALESCE(reveal_from.order_key, 2147483647), item.updated_at DESC, item.id
         LIMIT ?`,
-    )
-    .all(
-      chapterId,
-      projectId,
-      projectId,
-      chapterId,
-      chapterId,
-      chapterId,
-      limit + 1,
-    ) as unknown as ForeshadowingRow[];
+      )
+      .all(chapterId, projectId, projectId, chapterId, chapterId, chapterId, limit + 1),
+  );
   return { items: rows.slice(0, limit), truncated: rows.length > limit };
 }
 
@@ -507,9 +530,22 @@ function chapterMilestones(
   chapterId: string,
   limit: number,
 ) {
-  const rows = connection
-    .prepare(
-      `WITH chapter_characters AS (
+  const rows = sqliteResult<
+    Array<{
+      readonly id: string;
+      readonly arcId: string;
+      readonly arcTitle: string;
+      readonly title: string;
+      readonly description: string;
+      readonly status: string;
+      readonly plannedChapterId: string | null;
+      readonly actualChapterId: string | null;
+      readonly sortIndex: number | bigint;
+    }>
+  >(
+    connection
+      .prepare(
+        `WITH chapter_characters AS (
          SELECT DISTINCT link.entity_id AS entityId
            FROM scene_beat_entities link
            JOIN scene_beats beat
@@ -532,18 +568,9 @@ function chapterMilestones(
           AND arc.character_id IN (SELECT entityId FROM chapter_characters)
         ORDER BY arc.updated_at DESC, arc.id, milestone.sort_index, milestone.id
         LIMIT ?`,
-    )
-    .all(projectId, chapterId, projectId, limit) as unknown as Array<{
-    readonly id: string;
-    readonly arcId: string;
-    readonly arcTitle: string;
-    readonly title: string;
-    readonly description: string;
-    readonly status: string;
-    readonly plannedChapterId: string | null;
-    readonly actualChapterId: string | null;
-    readonly sortIndex: number | bigint;
-  }>;
+      )
+      .all(projectId, chapterId, projectId, limit),
+  );
   return rows.map((row) => ({ ...row, sortIndex: Number(row.sortIndex) }));
 }
 

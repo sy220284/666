@@ -40,6 +40,7 @@ import {
 } from './project-planning.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { stableJson } from './stable-json.js';
+import { sqliteResult } from './database/sqlite-result.js';
 
 const systemClock: DatabaseClock = { now: () => new Date() };
 
@@ -421,9 +422,10 @@ export class IdeaCapsuleService {
     return this.#workspace.readProject(input.projectId, (connection) => {
       const cursorAt = input.cursor?.updatedAt ?? null;
       const cursorId = input.cursor?.id ?? null;
-      const rows = connection
-        .prepare(
-          `${ideaSelect}
+      const rows = sqliteResult<IdeaRow[]>(
+        connection
+          .prepare(
+            `${ideaSelect}
             WHERE project_id = ?
               AND (? IS NULL OR status = ?)
               AND (
@@ -433,17 +435,18 @@ export class IdeaCapsuleService {
               )
             ORDER BY updated_at DESC, id DESC
             LIMIT ?`,
-        )
-        .all(
-          input.projectId,
-          input.status,
-          input.status,
-          cursorAt,
-          cursorAt,
-          cursorAt,
-          cursorId,
-          input.limit + 1,
-        ) as unknown as IdeaRow[];
+          )
+          .all(
+            input.projectId,
+            input.status,
+            input.status,
+            cursorAt,
+            cursorAt,
+            cursorAt,
+            cursorId,
+            input.limit + 1,
+          ),
+      );
       const page = rows.slice(0, input.limit);
       const last = page.at(-1);
       return IdeaListSchema.parse({

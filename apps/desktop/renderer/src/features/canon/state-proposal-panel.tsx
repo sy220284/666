@@ -87,7 +87,8 @@ export function StateProposalPanel({
     };
   }, [bridge, chapterId, projectId]);
   const resource = useBridgeQuery(`ai-review:${projectId}:${chapterId}`, load);
-  const command = useBridgeCommand(resource.refresh);
+  const refreshResource = resource.refresh;
+  const command = useBridgeCommand(refreshResource);
   const catalog = resource.data?.catalog ?? null;
   const reviewCatalog = catalog ? stateProposalCatalogToAIReviewCatalog(catalog) : null;
   const visibleProposals = reviewCatalog
@@ -134,7 +135,7 @@ export function StateProposalPanel({
         );
         if (['succeeded', 'failed', 'cancelled'].includes(outcome.data.status)) {
           setPendingExtraction(false);
-          void resource.refresh();
+          void refreshResource();
           return false;
         }
         return true;
@@ -144,7 +145,7 @@ export function StateProposalPanel({
         return true;
       },
     });
-  }, [activeRunId, bridge, projectId, resource.refresh]);
+  }, [activeRunId, bridge, projectId, refreshResource]);
 
   const extractWithProvider = async (): Promise<void> => {
     if (!chapter?.finalVersionId || !providerId || readOnly) return;

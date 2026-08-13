@@ -39,42 +39,22 @@ const rendererTsxThresholds = {
   lines: -coverageBaseline.rendererTsx.metrics.lines.maxUncovered,
 };
 
-const processBoundaryCoverageExcludes = [
-  'apps/desktop/main/src/apply-fuses.ts',
-  'apps/desktop/main/src/core-supervisor.ts',
-  'apps/desktop/main/src/electron-main.ts',
-  'apps/desktop/main/src/generation-ipc.ts',
-  'apps/desktop/main/src/ipc-handlers.ts',
-  'apps/desktop/preload/src/entry.ts',
-  'apps/desktop/renderer/src/app/renderer-error-boundary.tsx',
-  'apps/desktop/renderer/src/bridge/renderer-bridge-adapter.ts',
-  'apps/desktop/renderer/src/bridge/use-bridge-resource.ts',
-  'packages/core-service/src/candidate-diff-worker.ts',
-  'packages/core-service/src/utility-generation-router.ts',
-  'packages/core-service/src/utility-search-rhythm-router.ts',
-  'packages/core-service/src/utility-validation-router.ts',
-] as const;
+interface CoverageExclusionRegistry {
+  schemaVersion: number;
+  policy: 'explicit-exclusions-with-substitute-tests';
+  exclusions: readonly {
+    path: string;
+    category: 'process-boundary' | 'renderer-dom-lifecycle';
+    reason: string;
+    substituteTests: readonly string[];
+    exitCondition: string;
+  }[];
+}
 
-const rendererDomLifecycleCoverageExcludes = [
-  'apps/desktop/renderer/src/app/use-app-settings-persistence.ts',
-  'apps/desktop/renderer/src/app/use-app-shell-actions.ts',
-  'apps/desktop/renderer/src/app/use-app-shell-navigation.ts',
-  'apps/desktop/renderer/src/app/use-project-session-controller.ts',
-  'apps/desktop/renderer/src/app/use-workspace-runtime.ts',
-  'apps/desktop/renderer/src/app/use-workspace-startup.ts',
-  'apps/desktop/renderer/src/features/writing/editor-selection.ts',
-  'apps/desktop/renderer/src/features/writing/paste-sanitizer.ts',
-  'apps/desktop/renderer/src/features/writing/review-diff-panel.tsx',
-  'apps/desktop/renderer/src/features/writing/use-chapter-session.ts',
-  'apps/desktop/renderer/src/features/writing/use-draft-autosave.ts',
-  'apps/desktop/renderer/src/features/writing/use-editor-lifecycle.ts',
-  'apps/desktop/renderer/src/features/writing/use-generation-sources.ts',
-  'apps/desktop/renderer/src/features/writing/use-writing-continuation.ts',
-  'apps/desktop/renderer/src/features/writing/use-writing-editor-tools.ts',
-  'apps/desktop/renderer/src/features/writing/use-writing-metrics.ts',
-  'apps/desktop/renderer/src/features/writing/use-writing-session-controller.ts',
-  'apps/desktop/renderer/src/features/writing/use-writing-status.ts',
-] as const;
+const coverageExclusions = JSON.parse(
+  readFileSync(source('./docs/architecture/coverage-exclusions.json'), 'utf8'),
+) as CoverageExclusionRegistry;
+const registeredCoverageExcludes = coverageExclusions.exclusions.map((entry) => entry.path);
 
 export default defineConfig({
   resolve: {
@@ -114,13 +94,7 @@ export default defineConfig({
         'packages/editor-core/src/**/*.ts',
         'packages/prompts/src/**/*.ts',
       ],
-      exclude: [
-        '**/*.d.ts',
-        '**/dist/**',
-        '**/node_modules/**',
-        ...processBoundaryCoverageExcludes,
-        ...rendererDomLifecycleCoverageExcludes,
-      ],
+      exclude: ['**/*.d.ts', '**/dist/**', '**/node_modules/**', ...registeredCoverageExcludes],
       thresholds: {
         [coverageBaseline.core.pattern]: coverageBaseline.core.thresholdPercent,
         [coverageBaseline.rendererTsx.pattern]: rendererTsxThresholds,

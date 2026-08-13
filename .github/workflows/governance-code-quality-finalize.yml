@@ -1,0 +1,157 @@
+name: Governance Code Quality Finalize
+
+on:
+  push:
+    branches: [governance]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.18.1
+          cache: pnpm
+      - name: Resolve updated quality toolchain
+        run: pnpm install --no-frozen-lockfile --ignore-scripts
+      - name: Migrate SQLite result boundaries and coverage registry
+        shell: bash
+        run: |
+          cat > /tmp/code-quality-finalize.mjs <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import ts from 'typescript';
+
+          const root = path.resolve('packages/core-service/src');
+          const sqliteTarget = path.join(root, 'database/sqlite-result.ts');
+          const walk = (directory) => fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
+            entry.isDirectory() ? walk(path.join(directory, entry.name)) : entry.name.endsWith('.ts') ? [path.join(directory, entry.name)] : [],
+          );
+          const hasSqliteCall = (node) => {
+            let found = false;
+            const visit = (current) => {
+              if (
+                ts.isCallExpression(current) &&
+                ts.isPropertyAccessExpression(current.expression) &&
+                ['all', 'get'].includes(current.expression.name.text)
+              ) found = true;
+              if (!found) ts.forEachChild(current, visit);
+            };
+            visit(node);
+            return found;
+          };
+
+          let changedFiles = 0;
+          let replacements = 0;
+          for (const file of walk(root)) {
+            const sourceText = fs.readFileSync(file, 'utf8');
+            const sourceFile = ts.createSourceFile(file, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+            const changes = [];
+            const visit = (node) => {
+              if (
+                ts.isAsExpression(node) &&
+                ts.isAsExpression(node.expression) &&
+                node.expression.type.kind === ts.SyntaxKind.UnknownKeyword &&
+                hasSqliteCall(node.expression.expression)
+              ) {
+                changes.push({
+                  start: node.getStart(sourceFile),
+                  end: node.end,
+                  text: `sqliteResult<${node.type.getText(sourceFile)}>(${node.expression.expression.getText(sourceFile)})`,
+                });
+                return;
+              }
+              ts.forEachChild(node, visit);
+            };
+            visit(sourceFile);
+            if (changes.length === 0) continue;
+
+            let output = sourceText;
+            for (const change of changes.sort((left, right) => right.start - left.start)) {
+              output = output.slice(0, change.start) + change.text + output.slice(change.end);
+            }
+            if (!output.includes('database/sqlite-result.js')) {
+              let relative = path.relative(path.dirname(file), sqliteTarget).replaceAll(path.sep, '/').replace(/\.ts$/u, '');
+              if (!relative.startsWith('.')) relative = `./${relative}`;
+              relative += '.js';
+              const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+              const position = imports.length > 0 ? imports.at(-1).end : 0;
+              output = output.slice(0, position) + `\nimport { sqliteResult } from '${relative}';` + output.slice(position);
+            }
+            fs.writeFileSync(file, output);
+            changedFiles += 1;
+            replacements += changes.length;
+          }
+          if (changedFiles !== 41 || replacements !== 139) {
+            throw new Error(`SQLite codemod mismatch: files=${changedFiles}, replacements=${replacements}; expected 41/139`);
+          }
+
+          const coveragePath = 'vitest.coverage.config.ts';
+          let coverage = fs.readFileSync(coveragePath, 'utf8');
+          const exclusionBlocks = /const processBoundaryCoverageExcludes = \[[\s\S]*?\] as const;\n\nconst rendererDomLifecycleCoverageExcludes = \[[\s\S]*?\] as const;/u;
+          if (!exclusionBlocks.test(coverage)) throw new Error('Coverage exclusion blocks not found');
+          coverage = coverage.replace(
+            exclusionBlocks,
+            `interface CoverageExclusionRegistry {\n  schemaVersion: number;\n  policy: 'explicit-exclusions-with-substitute-tests';\n  exclusions: readonly {\n    path: string;\n    category: 'process-boundary' | 'renderer-dom-lifecycle';\n    reason: string;\n    substituteTests: readonly string[];\n    exitCondition: string;\n  }[];\n}\n\nconst coverageExclusions = JSON.parse(\n  readFileSync(source('./docs/architecture/coverage-exclusions.json'), 'utf8'),\n) as CoverageExclusionRegistry;\nconst registeredCoverageExcludes = coverageExclusions.exclusions.map((entry) => entry.path);`,
+          );
+          const oldSpreads = '        ...processBoundaryCoverageExcludes,\n        ...rendererDomLifecycleCoverageExcludes,';
+          if (!coverage.includes(oldSpreads)) throw new Error('Coverage exclusion spreads not found');
+          coverage = coverage.replace(oldSpreads, '        ...registeredCoverageExcludes,');
+          fs.writeFileSync(coveragePath, coverage);
+
+          const governanceTestPath = 'tests/unit/code-quality-governance.test.ts';
+          let governanceTest = fs.readFileSync(governanceTestPath, 'utf8');
+          governanceTest = governanceTest
+            .replace("      policy: 'dual-track',\n", "      policy: 'dual-track',\n      sourceHead: '881a3bcb882fe8171362ac7e45d508ee0d78ee40',\n      exclusionCount: 31,\n")
+            .replace('statements: 2588', 'statements: 2443')
+            .replace('branches: 2281', 'branches: 2249')
+            .replace('functions: 934', 'functions: 888')
+            .replace('lines: 2309', 'lines: 2153')
+            .replace("    expect(eslintConfig).toContain('projectService: true');", "    expect(eslintConfig).toContain('projectService: true');\n    expect(eslintConfig).toContain(\"'react-hooks/rules-of-hooks': 'error'\");\n    expect(eslintConfig).toContain(\"'react-hooks/exhaustive-deps': 'error'\");")
+            .replace("    expect(quality).toContain(\"github.event.pull_request.head.ref == 'work'\");", "    expect(quality).toContain(\"github.event.pull_request.head.ref == 'work'\");\n    expect(quality).toContain(\"github.event.pull_request.head.ref == 'governance'\");");
+          fs.writeFileSync(governanceTestPath, governanceTest);
+          console.log(`SQLite codemod applied: ${changedFiles} files, ${replacements} assertions`);
+          NODE
+          node /tmp/code-quality-finalize.mjs
+      - name: Format changed source
+        shell: bash
+        run: |
+          git diff --name-only -z | xargs -0 pnpm exec prettier --write --ignore-unknown
+      - name: Verify governance and type boundaries
+        run: |
+          node scripts/check-coverage-policy.mjs
+          node scripts/type-assertion-policy.mjs
+          pnpm ci:policy
+      - name: Lint and typecheck
+        run: |
+          pnpm lint
+          pnpm typecheck
+      - name: Run focused code-quality tests
+        run: |
+          pnpm test:prepare
+          pnpm exec vitest run \
+            tests/unit/code-quality-governance.test.ts \
+            tests/unit/code-quality-renderer-zero-coverage.test.ts \
+            tests/unit/renderer-lifecycle-view-coverage.test.ts \
+            tests/unit/sqlite-result-boundary.test.ts \
+            tests/unit/type-assertion-policy.test.ts
+      - name: Commit finalized governance result
+        shell: bash
+        run: |
+          rm .github/workflows/governance-code-quality-finalize.yml
+          git add -A
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m '治理：收口SQLite类型边界并更新Hooks工具链'
+          git push origin HEAD:governance

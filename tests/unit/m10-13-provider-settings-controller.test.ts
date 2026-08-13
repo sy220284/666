@@ -54,8 +54,8 @@ describe('M10-13 Provider settings controller', () => {
     expect(setProviders).toHaveBeenNthCalledWith(1, [provider]);
     expect(setProviders).toHaveBeenNthCalledWith(2, []);
     expect(onProvidersChanged).toHaveBeenCalledTimes(2);
-    expect(setMessage).toHaveBeenNthCalledWith(1, 'AI连接已加载。');
-    expect(setMessage).toHaveBeenNthCalledWith(2, '尚未配置AI连接；离线写作功能不受影响。');
+    expect(setMessage).toHaveBeenNthCalledWith(1, '智能连接已加载。');
+    expect(setMessage).toHaveBeenNthCalledWith(2, '尚未配置智能连接；离线写作功能不受影响。');
   });
 
   it('reports bridge failures while ignoring stale or replaced refreshes', async () => {
@@ -106,7 +106,7 @@ describe('M10-13 Provider settings controller', () => {
       onProvidersChanged: vi.fn(),
       setMessage,
     });
-    expect(setMessage).toHaveBeenLastCalledWith('AI连接读取未完成，请重试。');
+    expect(setMessage).toHaveBeenLastCalledWith('智能连接读取未完成，请重试。');
   });
 
   it('owns pending state and rejects a second provider command', async () => {
@@ -130,7 +130,7 @@ describe('M10-13 Provider settings controller', () => {
       setMessage,
       operation: async () => undefined,
     });
-    expect(setMessage).toHaveBeenCalledWith('已有AI连接操作正在处理，请完成后再试。');
+    expect(setMessage).toHaveBeenCalledWith('已有智能连接操作正在处理，请完成后再试。');
 
     gate.resolve();
     await first;
@@ -149,7 +149,7 @@ describe('M10-13 Provider settings controller', () => {
     });
 
     expect(setPending.mock.calls).toEqual([['test:provider-a'], [null]]);
-    expect(setMessage).toHaveBeenCalledWith('AI连接操作未完成，请重试。');
+    expect(setMessage).toHaveBeenCalledWith('智能连接操作未完成，请重试。');
   });
 
   it('labels every provider endpoint scope', () => {

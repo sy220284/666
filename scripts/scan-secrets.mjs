@@ -132,22 +132,8 @@ async function scanTrackedFiles() {
   return findings;
 }
 
-async function scanHistory() {
-  const child = spawn(
-    'git',
-    [
-      'log',
-      '--all',
-      '--format=commit:%H',
-      '--no-ext-diff',
-      '--no-renames',
-      '--unified=0',
-      '--no-color',
-      '--diff-filter=AM',
-      '-p',
-    ],
-    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] },
-  );
+async function gitPatch(argumentsList) {
+  const child = spawn('git', argumentsList, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
   const lines = [];
   const stderr = [];
   child.stderr.setEncoding('utf8');
@@ -159,11 +145,40 @@ async function scanHistory() {
     child.once('close', resolve);
   });
   if (exitCode !== 0) {
-    throw new Error(`Git history scan failed with exit ${exitCode}: ${stderr.join('').trim()}`);
+    throw new Error(`Git secret scan failed with exit ${exitCode}: ${stderr.join('').trim()}`);
   }
-  return scanGitPatchLines(lines).map(
+  return scanGitPatchLines(lines);
+}
+
+async function scanHistory() {
+  const findings = await gitPatch([
+    'log',
+    '--all',
+    '--format=commit:%H',
+    '--no-ext-diff',
+    '--no-renames',
+    '--unified=0',
+    '--no-color',
+    '--diff-filter=AM',
+    '-p',
+  ]);
+  return findings.map(
     (finding) => `${finding.commit}:${finding.file}:${finding.line}: ${finding.label}`,
   );
+}
+
+async function scanDiff(baseRef) {
+  if (!/^[0-9a-f]{7,40}$/iu.test(baseRef ?? '')) throw new Error('Secret scan base ref is invalid');
+  const findings = await gitPatch([
+    'diff',
+    '--no-ext-diff',
+    '--no-renames',
+    '--unified=0',
+    '--no-color',
+    '--diff-filter=AM',
+    `${baseRef}...HEAD`,
+  ]);
+  return findings.map((finding) => `${finding.file}:${finding.line}: ${finding.label}`);
 }
 
 async function loadAllowlist() {
@@ -191,8 +206,14 @@ async function loadAllowlist() {
 
 async function main() {
   const historyEnabled = process.argv.includes('--history');
+  const baseIndex = process.argv.indexOf('--base');
+  const baseRef = baseIndex >= 0 ? process.argv[baseIndex + 1] : null;
+  if (historyEnabled && baseRef) throw new Error('Use either --history or --base, not both');
+
   const findings = await scanTrackedFiles();
   if (historyEnabled) findings.push(...(await scanHistory()));
+  else if (baseRef) findings.push(...(await scanDiff(baseRef)));
+
   const uniqueFindings = [...new Set(findings)].sort();
   const allowlist = await loadAllowlist();
   const unapproved = uniqueFindings.filter((finding) => !allowlist.has(finding));
@@ -204,11 +225,15 @@ async function main() {
     }
   }
   const approvedCount = uniqueFindings.length - unapproved.length;
-  console.log(
-    historyEnabled
-      ? `Tracked-file and Git-history secret scan passed (${approvedCount} reviewed synthetic findings).`
-      : 'Tracked-file secret scan passed.',
-  );
+  if (historyEnabled) {
+    console.log(
+      `Tracked-file and Git-history secret scan passed (${approvedCount} reviewed synthetic findings).`,
+    );
+  } else if (baseRef) {
+    console.log(`Tracked-file and PR-diff secret scan passed from ${baseRef}.`);
+  } else {
+    console.log('Tracked-file secret scan passed.');
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

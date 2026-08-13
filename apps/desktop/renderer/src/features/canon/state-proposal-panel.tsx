@@ -130,7 +130,7 @@ export function StateProposalPanel({
         if (outcome.state !== 'success') return true;
         setActiveRun(outcome.data);
         setNotice(
-          `AI分析 · ${stateExtractionStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
+          `智能分析 · ${stateExtractionStageLabel(outcome.data.stage)} · ${authorStatusLabel(outcome.data.status)}`,
         );
         if (['succeeded', 'failed', 'cancelled'].includes(outcome.data.status)) {
           setPendingExtraction(false);
@@ -140,7 +140,7 @@ export function StateProposalPanel({
         return true;
       },
       onError: () => {
-        setNotice('AI分析进度读取失败，正在重试。');
+        setNotice('智能分析进度读取失败，正在重试。');
         return true;
       },
     });
@@ -160,7 +160,7 @@ export function StateProposalPanel({
     });
     if (outcome.state === 'success') {
       setActiveRun(outcome.data.run);
-      setNotice(`AI分析已启动 · ${stateExtractionStageLabel(outcome.data.run.stage)}`);
+      setNotice(`智能分析已启动 · ${stateExtractionStageLabel(outcome.data.run.stage)}`);
     } else {
       setPendingExtraction(false);
       setNotice(outcome.state === 'failure' ? authorErrorSummary(outcome.error) : '请求已取消。');
@@ -210,8 +210,8 @@ export function StateProposalPanel({
     <section className="feature-card" data-ai-review-dialog data-state-proposal-dialog>
       <div className="feature-card__heading">
         <div>
-          <h2>AI审阅与章节状态</h2>
-          <p>AI负责整理和提出建议，只有作者确认后才会更新人物与世界。</p>
+          <h2>智能审阅与章节状态</h2>
+          <p>智能分析负责整理和提出建议，只有作者确认后才会更新人物与世界。</p>
         </div>
         <button
           data-refresh-state-proposals
@@ -239,9 +239,9 @@ export function StateProposalPanel({
           </select>
         </label>
         <label>
-          AI连接
+          智能连接
           <select value={providerId} onChange={(event) => setProviderId(event.target.value)}>
-            <option value="">选择AI连接</option>
+            <option value="">选择智能连接</option>
             {providers.map((provider) => (
               <option key={provider.id} value={provider.id}>
                 {provider.name}
@@ -300,7 +300,7 @@ export function StateProposalPanel({
             : notice
               ? notice
               : resource.state === 'success'
-                ? 'AI审阅已同步。'
+                ? '智能审阅已同步。'
                 : '读取中…'}
       </p>
       <div className="ledger-list" data-state-proposal-batches>
@@ -313,16 +313,16 @@ export function StateProposalPanel({
             <details>
               <summary>技术详情</summary>
               <p>来源版本标识：{batch.sourceVersionId}</p>
-              {batch.generationRunId ? <p>AI任务标识：{batch.generationRunId}</p> : null}
+              {batch.generationRunId ? <p>智能任务标识：{batch.generationRunId}</p> : null}
             </details>
           </article>
         ))}
       </div>
       <div data-ai-review-list data-state-proposal-list>
         {reviewCatalog?.summary.total === 0 ? (
-          <p>当前没有AI审阅建议。</p>
+          <p>当前没有智能审阅建议。</p>
         ) : visibleProposals.length === 0 ? (
-          <p>当前筛选条件下没有AI审阅建议。</p>
+          <p>当前筛选条件下没有智能审阅建议。</p>
         ) : (
           visibleProposals.map((review) => {
             const proposal = proposalById.get(review.id);
@@ -345,7 +345,7 @@ export function StateProposalPanel({
                   <p>来源定稿仍然有效 · 可以接受、修改后接受或忽略</p>
                 )}
                 <p>当前记录：{authorJsonValue(review.currentValue)}</p>
-                <p>AI建议：{authorJsonValue(review.proposedValue)}</p>
+                <p>智能建议：{authorJsonValue(review.proposedValue)}</p>
                 <details>
                   <summary>技术详情</summary>
                   <p>原始已确认值</p>
@@ -425,7 +425,7 @@ function SnapshotSummary({ snapshot }: { readonly snapshot: EndingSnapshotReadRe
 function stateExtractionStageLabel(stage: string): string {
   const labels: Readonly<Record<string, string>> = {
     queued: '等待开始',
-    calling_model: '正在调用AI模型',
+    calling_model: '正在调用智能模型',
     streaming: '正在接收内容',
     validating: '正在检查结果',
     persisting: '正在保存',
@@ -438,7 +438,7 @@ function stateProposalSourceLabel(source: string): string {
   const labels: Readonly<Record<string, string>> = {
     rule: '系统规则',
     provider_stub: '测试分析',
-    provider: 'AI分析',
+    provider: '智能分析',
   };
   return labels[source] ?? '未知来源';
 }

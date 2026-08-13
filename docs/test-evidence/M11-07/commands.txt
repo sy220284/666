@@ -1,0 +1,36 @@
+# M11-07 Runtime 权威验证命令
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:docs
+pnpm check:governance
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:reliability
+pnpm test:perf
+pnpm test:eval
+pnpm build
+pnpm test:e2e
+
+# 实现冻结
+# implementationCommit: 946a6e83528b9d87929dc8bbcd914f04964b2102
+# Draft Quality: 31712752030
+# Draft Security: 31712751898 success
+# Draft Performance: 31712751896 success
+
+# 本地工具链
+# Node 24.14.0（CI 权威 Node 24.18.1）
+# pnpm 11.21.0
+# Prettier 3.9.6
+# ESLint 10.8.0
+# TypeScript 6.0.3
+# Vitest 4.1.10
+# Playwright 1.62.0
+# Electron 43.2.0

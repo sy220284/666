@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 import type { ContinuityBridge, WorldforgeBridge } from '@worldforge/contracts';
 
 import { captureAcceptanceScreenshot } from './acceptance-screenshot.js';
@@ -32,7 +38,7 @@ async function closeGracefully(application: ElectronApplication): Promise<void> 
   await closed;
 }
 
-async function openCompletePlanning(page: import('@playwright/test').Page): Promise<void> {
+async function openCompletePlanning(page: Page): Promise<void> {
   await page.locator('[data-open-planning]').click();
   await expect(page.locator('[data-planning-dialog]')).toBeVisible();
   const beginner = page.locator('[data-planning-disclosure="beginner"]');

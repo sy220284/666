@@ -110,6 +110,21 @@ export function scanGitPatchLines(lines) {
   return findings;
 }
 
+export function prCommitRangeArguments(baseRef) {
+  if (!/^[0-9a-f]{7,40}$/iu.test(baseRef ?? '')) throw new Error('Secret scan base ref is invalid');
+  return [
+    'log',
+    `${baseRef}..HEAD`,
+    '--format=commit:%H',
+    '--no-ext-diff',
+    '--no-renames',
+    '--unified=0',
+    '--no-color',
+    '--diff-filter=AM',
+    '-p',
+  ];
+}
+
 async function trackedFileSource(file) {
   const filePath = path.join(root, file);
   const metadata = await lstat(filePath);
@@ -167,17 +182,8 @@ async function scanHistory() {
   );
 }
 
-async function scanDiff(baseRef) {
-  if (!/^[0-9a-f]{7,40}$/iu.test(baseRef ?? '')) throw new Error('Secret scan base ref is invalid');
-  const findings = await gitPatch([
-    'diff',
-    '--no-ext-diff',
-    '--no-renames',
-    '--unified=0',
-    '--no-color',
-    '--diff-filter=AM',
-    `${baseRef}...HEAD`,
-  ]);
+async function scanCommitRange(baseRef) {
+  const findings = await gitPatch(prCommitRangeArguments(baseRef));
   return findings.map((finding) => `${finding.file}:${finding.line}: ${finding.label}`);
 }
 
@@ -212,7 +218,7 @@ async function main() {
 
   const findings = await scanTrackedFiles();
   if (historyEnabled) findings.push(...(await scanHistory()));
-  else if (baseRef) findings.push(...(await scanDiff(baseRef)));
+  else if (baseRef) findings.push(...(await scanCommitRange(baseRef)));
 
   const uniqueFindings = [...new Set(findings)].sort();
   const allowlist = await loadAllowlist();
@@ -230,7 +236,7 @@ async function main() {
       `Tracked-file and Git-history secret scan passed (${approvedCount} reviewed synthetic findings).`,
     );
   } else if (baseRef) {
-    console.log(`Tracked-file and PR-diff secret scan passed from ${baseRef}.`);
+    console.log(`Tracked-file and PR-commit-history secret scan passed from ${baseRef}.`);
   } else {
     console.log('Tracked-file secret scan passed.');
   }

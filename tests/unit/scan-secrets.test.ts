@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { scanGitPatchLines, scanSecretLine, scanSecretText } from '../../scripts/scan-secrets.mjs';
+import {
+  prCommitRangeArguments,
+  scanGitPatchLines,
+  scanSecretLine,
+  scanSecretText,
+} from '../../scripts/scan-secrets.mjs';
 
 describe('secret scanner', () => {
   it('detects provider tokens without exposing their values', () => {
@@ -47,5 +52,33 @@ describe('secret scanner', () => {
     expect(findings).toEqual([
       { commit: 'abc123', file: 'config.ts', line: 11, label: 'Google API key' },
     ]);
+  });
+
+  it('scans every PR commit so a secret added and later removed is still detected', () => {
+    const key = `AIza${'C3d4_-'.repeat(6).slice(0, 35)}`;
+    const findings = scanGitPatchLines([
+      'commit:add-secret',
+      'diff --git a/config.ts b/config.ts',
+      '+++ b/config.ts',
+      '@@ -0,0 +1,1 @@',
+      `+const key = "${key}";`,
+      'commit:remove-secret',
+      'diff --git a/config.ts b/config.ts',
+      '+++ b/config.ts',
+      '@@ -1,1 +0,0 @@',
+      `-const key = "${key}";`,
+    ]);
+
+    expect(findings).toEqual([
+      { commit: 'add-secret', file: 'config.ts', line: 1, label: 'Google API key' },
+    ]);
+  });
+
+  it('uses a commit-history range rather than a final net diff for Ready PR scans', () => {
+    const args = prCommitRangeArguments('abcdef0');
+    expect(args.slice(0, 2)).toEqual(['log', 'abcdef0..HEAD']);
+    expect(args).toContain('--format=commit:%H');
+    expect(args).toContain('-p');
+    expect(args).not.toContain('diff');
   });
 });

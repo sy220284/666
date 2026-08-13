@@ -10,6 +10,7 @@ import type {
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
+import { rendererCommandCoordinatorFor } from '../../runtime/command-coordinator.js';
 import { interactionLocked } from '../../runtime/interaction-locks.js';
 import { nullableFormText } from './candidate-selection.js';
 import { ReviewDiffPanel } from './review-diff-panel.js';
@@ -41,6 +42,8 @@ export function VersionPanel({
   );
   const [pending, setPending] = useState(false);
   const previewGeneration = useRef(0);
+  const versionCommands = rendererCommandCoordinatorFor(setPending);
+  const operationKey = `version:${project.projectId}:${chapter.id}:operation`;
 
   const refresh = useCallback(async (): Promise<void> => {
     const outcome = await bridge.version.list(project.projectId, chapter.id, { mode: 'replace' });
@@ -48,6 +51,19 @@ export function VersionPanel({
     else if (outcome.state === 'failure')
       setStatus(`版本读取失败 · ${authorErrorSummary(outcome.error)}`);
   }, [bridge, chapter.id, project.projectId]);
+
+  const runVersionOperation = async (operation: () => Promise<void>): Promise<void> => {
+    const outcome = await versionCommands.run({
+      key: operationKey,
+      policy: 'reject',
+      operation: async () => operation(),
+    });
+    if (outcome.state === 'rejected') {
+      setStatus('已有历史版本操作正在处理中，请完成后再试。');
+    } else if (outcome.state === 'failed') {
+      setStatus('历史版本操作遇到异常，请重新读取当前状态后重试。');
+    }
+  };
 
   useEffect(() => void refresh(), [refresh]);
 
@@ -78,38 +94,40 @@ export function VersionPanel({
     const form = event.currentTarget;
     event.preventDefault();
     if (interactionLocked(pending, readOnly)) return;
-    if (!(await flush())) {
-      setStatus('自动保存失败，未创建历史版本。');
-      return;
-    }
     const values = new FormData(form);
     const title = String(values.get('title') ?? '').trim();
     if (!title) return;
-    setPending(true);
-    const outcome = await bridge.version.create({
-      projectId: project.projectId,
-      chapterId: chapter.id,
-      draftId: draft.draftId,
-      baseRevision: draft.revision,
-      versionType: 'manual',
-      parentVersionId: null,
-      sourceCandidateId: null,
-      title,
-      label: nullableFormText(values.get('label')),
-      description: String(values.get('description') ?? ''),
+    const label = nullableFormText(values.get('label'));
+    const description = String(values.get('description') ?? '');
+    await runVersionOperation(async () => {
+      if (!(await flush())) {
+        setStatus('自动保存失败，未创建历史版本。');
+        return;
+      }
+      const outcome = await bridge.version.create({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        draftId: draft.draftId,
+        baseRevision: draft.revision,
+        versionType: 'manual',
+        parentVersionId: null,
+        sourceCandidateId: null,
+        title,
+        label,
+        description,
+      });
+      if (outcome.state !== 'success') {
+        setStatus(
+          outcome.state === 'failure'
+            ? `创建失败 · ${authorErrorSummary(outcome.error)}`
+            : '创建已取消。',
+        );
+        return;
+      }
+      form.reset();
+      setStatus(`历史版本“${outcome.data.title}”已创建，内容不可修改。`);
+      await refresh();
     });
-    setPending(false);
-    if (outcome.state !== 'success') {
-      setStatus(
-        outcome.state === 'failure'
-          ? `创建失败 · ${authorErrorSummary(outcome.error)}`
-          : '创建已取消。',
-      );
-      return;
-    }
-    form.reset();
-    setStatus(`历史版本“${outcome.data.title}”已创建，内容不可修改。`);
-    await refresh();
   };
 
   const preview = async (versionId: string): Promise<void> => {
@@ -128,66 +146,67 @@ export function VersionPanel({
 
   const finalize = async (versionId: string): Promise<void> => {
     if (interactionLocked(readOnly, pending)) return;
-    setPending(true);
-    const outcome = await bridge.version.setFinal({
-      projectId: project.projectId,
-      chapterId: chapter.id,
-      versionId,
+    await runVersionOperation(async () => {
+      const outcome = await bridge.version.setFinal({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        versionId,
+      });
+      if (outcome.state === 'success') {
+        setStatus(`已将“${outcome.data.title}”设为定稿。`);
+        await refresh();
+      } else if (outcome.state === 'failure') {
+        setStatus(`定稿失败 · ${authorErrorSummary(outcome.error)}`);
+      }
     });
-    setPending(false);
-    if (outcome.state === 'success') {
-      setStatus(`已将“${outcome.data.title}”设为定稿。`);
-      await refresh();
-    } else if (outcome.state === 'failure')
-      setStatus(`定稿失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   const restore = async (versionId: string): Promise<void> => {
     if (interactionLocked(pending, readOnly)) return;
-    if (!(await flush())) {
-      setStatus('自动保存失败，未恢复历史版本。');
-      return;
-    }
-    setPending(true);
-    const current = await bridge.draft.open(
-      { projectId: project.projectId, chapterId: chapter.id },
-      { mode: 'replace' },
-    );
-    if (current.state !== 'success') {
-      setPending(false);
-      setStatus(
-        current.state === 'failure'
-          ? `当前稿确认失败 · ${authorErrorSummary(current.error)}`
-          : '当前稿确认已取消。',
+    await runVersionOperation(async () => {
+      if (!(await flush())) {
+        setStatus('自动保存失败，未恢复历史版本。');
+        return;
+      }
+      const current = await bridge.draft.open(
+        { projectId: project.projectId, chapterId: chapter.id },
+        { mode: 'replace' },
       );
-      return;
-    }
-    const outcome = await bridge.version.restore({
-      projectId: project.projectId,
-      chapterId: chapter.id,
-      versionId,
-      expectedDraftId: current.data.draftId,
-      expectedRevision: current.data.revision,
+      if (current.state !== 'success') {
+        setStatus(
+          current.state === 'failure'
+            ? `当前稿确认失败 · ${authorErrorSummary(current.error)}`
+            : '当前稿确认已取消。',
+        );
+        return;
+      }
+      const outcome = await bridge.version.restore({
+        projectId: project.projectId,
+        chapterId: chapter.id,
+        versionId,
+        expectedDraftId: current.data.draftId,
+        expectedRevision: current.data.revision,
+      });
+      if (outcome.state === 'success') {
+        onDraftReplace(outcome.data, '已自动留档恢复前当前稿，并从只读历史版本创建新当前稿。');
+        setStatus('恢复成功；恢复前当前稿已自动保存为可读取的历史版本。');
+      } else if (outcome.state === 'failure') {
+        setStatus(`恢复失败 · ${authorErrorSummary(outcome.error)}`);
+      }
     });
-    setPending(false);
-    if (outcome.state === 'success') {
-      onDraftReplace(outcome.data, '已自动留档恢复前当前稿，并从只读历史版本创建新当前稿。');
-      setStatus('恢复成功；恢复前当前稿已自动保存为可读取的历史版本。');
-    } else if (outcome.state === 'failure')
-      setStatus(`恢复失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   const exportVersion = async (versionId: string): Promise<void> => {
     if (pending) return;
-    setPending(true);
-    const outcome = await bridge.recovery.exportVersion({
-      projectId: project.projectId,
-      versionId,
+    await runVersionOperation(async () => {
+      const outcome = await bridge.recovery.exportVersion({
+        projectId: project.projectId,
+        versionId,
+      });
+      if (outcome.state === 'success') setStatus('历史版本已导出。');
+      else if (outcome.state === 'failure')
+        setStatus(`导出失败 · ${authorErrorSummary(outcome.error)}`);
     });
-    setPending(false);
-    if (outcome.state === 'success') setStatus('历史版本已导出。');
-    else if (outcome.state === 'failure')
-      setStatus(`导出失败 · ${authorErrorSummary(outcome.error)}`);
   };
 
   return (

@@ -20,7 +20,10 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function generationRun(status: GenerationRun['status']): GenerationRun {
+function generationRun(
+  status: GenerationRun['status'],
+  overrides: Partial<GenerationRun> = {},
+): GenerationRun {
   return {
     runId,
     requestId,
@@ -50,10 +53,11 @@ function generationRun(status: GenerationRun['status']): GenerationRun {
     createdAt: '2026-08-12T09:00:00.000Z',
     startedAt: '2026-08-12T09:00:01.000Z',
     finishedAt: status === 'running' ? null : '2026-08-12T09:00:02.000Z',
+    ...overrides,
   };
 }
 
-function startInput() {
+function startInput(sourceVersionId = runId) {
   return {
     projectId,
     scopeType: 'chapter' as const,
@@ -63,21 +67,21 @@ function startInput() {
     baseDraftRevision: null,
     providerId: 'local-model',
     continuationOfRunId: null,
-    intent: { runType: 'validate' as const, sourceVersionId: runId },
+    intent: { runType: 'validate' as const, sourceVersionId },
   };
 }
 
 function generationBridge(
-  listRuns: WorldforgeBridge['generation']['listRuns'],
   start: WorldforgeBridge['generation']['start'],
+  getRun?: WorldforgeBridge['generation']['getRun'],
 ): WorldforgeBridge['generation'] {
   const unused = async (): Promise<never> => {
     throw new Error('unused generation test method');
   };
   return {
     start,
-    listRuns,
-    getRun: vi.fn(unused),
+    getRun: getRun ?? vi.fn(unused),
+    listRuns: vi.fn(unused),
     cancel: vi.fn(unused),
     savePartial: vi.fn(unused),
     discardPartial: vi.fn(unused),
@@ -86,50 +90,90 @@ function generationBridge(
 }
 
 describe('renderer AI single-flight guard', () => {
-  it('reuses the active backend run instead of starting a duplicate after a page remount', async () => {
+  it('reuses the same known active run after the feature panel remounts', async () => {
     const active = generationRun('running');
-    const listRuns = vi.fn(async () => success('list-active', { runs: [active] }));
     const start = vi.fn(async () => success('new-start', { run: active, taskId }));
-    const adapter = createRendererBridgeAdapter({ generation: generationBridge(listRuns, start) });
+    const getRun = vi.fn(async () => success('get-active', active));
+    const adapter = createRendererBridgeAdapter({ generation: generationBridge(start, getRun) });
 
-    const outcome = await adapter.generation.start(startInput());
+    const first = await adapter.generation.start(startInput());
+    const second = await adapter.generation.start(startInput());
 
-    expect(listRuns).toHaveBeenCalledTimes(1);
-    expect(start).not.toHaveBeenCalled();
-    expect(outcome).toMatchObject({
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(getRun).toHaveBeenCalledTimes(1);
+    expect(first).toMatchObject({ state: 'success', requestId: 'new-start' });
+    expect(second).toMatchObject({
       state: 'success',
       requestId,
       data: { run: { runId, status: 'running' }, taskId },
     });
   });
 
-  it('coalesces two immediate starts into one preflight and one backend start', async () => {
-    const preflight = deferred<CommandResult<{ readonly runs: readonly GenerationRun[] }>>();
+  it('coalesces two immediate semantically identical starts into one backend start', async () => {
+    const pending =
+      deferred<CommandResult<{ readonly run: GenerationRun; readonly taskId: string }>>();
     const next = generationRun('running');
-    const listRuns = vi.fn(() => preflight.promise);
-    const start = vi.fn(async () => success('new-start', { run: next, taskId }));
-    const adapter = createRendererBridgeAdapter({ generation: generationBridge(listRuns, start) });
+    const start = vi.fn(() => pending.promise);
+    const adapter = createRendererBridgeAdapter({ generation: generationBridge(start) });
 
     const first = adapter.generation.start(startInput());
     const second = adapter.generation.start(startInput());
-    await vi.waitFor(() => expect(listRuns).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(start).toHaveBeenCalledTimes(1));
 
-    preflight.resolve(success('list-empty', { runs: [] }));
+    pending.resolve(success('new-start', { run: next, taskId }));
     await expect(first).resolves.toMatchObject({ state: 'success', requestId: 'new-start' });
     await expect(second).resolves.toMatchObject({ state: 'success', requestId: 'new-start' });
     expect(start).toHaveBeenCalledTimes(1);
   });
 
-  it('starts a new run after the previous same-type run is already finished', async () => {
-    const completed = generationRun('succeeded');
-    const next = { ...generationRun('running'), runId: '550e8400-e29b-41d4-a716-446655440004' };
-    const listRuns = vi.fn(async () => success('list-completed', { runs: [completed] }));
-    const start = vi.fn(async () => success('new-start', { run: next, taskId: next.taskId }));
-    const adapter = createRendererBridgeAdapter({ generation: generationBridge(listRuns, start) });
+  it('does not reuse an active same-type run when the generation intent differs', async () => {
+    const firstRun = generationRun('running');
+    const secondRun = generationRun('running', {
+      runId: '550e8400-e29b-41d4-a716-446655440004',
+      requestId: '550e8400-e29b-41d4-a716-446655440005',
+      taskId: '550e8400-e29b-41d4-a716-446655440006',
+    });
+    const start = vi
+      .fn()
+      .mockResolvedValueOnce(success('first-start', { run: firstRun, taskId: firstRun.taskId }))
+      .mockResolvedValueOnce(success('second-start', { run: secondRun, taskId: secondRun.taskId }));
+    const getRun = vi.fn(async () => success('get-active', firstRun));
+    const adapter = createRendererBridgeAdapter({ generation: generationBridge(start, getRun) });
 
+    await adapter.generation.start(startInput(runId));
+    const outcome = await adapter.generation.start(
+      startInput('550e8400-e29b-41d4-a716-446655440099'),
+    );
+
+    expect(getRun).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(outcome).toMatchObject({
+      state: 'success',
+      requestId: 'second-start',
+      data: { run: { runId: secondRun.runId } },
+    });
+  });
+
+  it('starts a new run after the known semantically identical run is already finished', async () => {
+    const active = generationRun('running');
+    const completed = generationRun('succeeded');
+    const next = generationRun('running', {
+      runId: '550e8400-e29b-41d4-a716-446655440004',
+      requestId: '550e8400-e29b-41d4-a716-446655440005',
+      taskId: '550e8400-e29b-41d4-a716-446655440006',
+    });
+    const start = vi
+      .fn()
+      .mockResolvedValueOnce(success('first-start', { run: active, taskId: active.taskId }))
+      .mockResolvedValueOnce(success('second-start', { run: next, taskId: next.taskId }));
+    const getRun = vi.fn(async () => success('get-completed', completed));
+    const adapter = createRendererBridgeAdapter({ generation: generationBridge(start, getRun) });
+
+    await adapter.generation.start(startInput());
     const outcome = await adapter.generation.start(startInput());
 
-    expect(start).toHaveBeenCalledTimes(1);
-    expect(outcome).toMatchObject({ state: 'success', requestId: 'new-start' });
+    expect(getRun).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(outcome).toMatchObject({ state: 'success', requestId: 'second-start' });
   });
 });

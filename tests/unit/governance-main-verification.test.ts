@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateMainVerification } from '../../scripts/main-verification.mjs';
+import {
+  validateMainVerification,
+  validateTreeIdentity,
+} from '../../scripts/main-verification.mjs';
 
 const expectedSha = 'a'.repeat(40);
 const sourceHeadSha = 'b'.repeat(40);
@@ -49,5 +52,16 @@ describe('governance main verification provenance', () => {
 
   it('rejects undeclared source branches', () => {
     expect(validate('governance/task')).toThrow('must originate from work or governance');
+  });
+
+  it('accepts identical verified PR and final main Git trees', () => {
+    const tree = 'c'.repeat(40);
+    expect(validateTreeIdentity({ tree: { sha: tree } }, { tree: { sha: tree } })).toBe(tree);
+  });
+
+  it('rejects a final main tree that differs from the verified PR Head', () => {
+    expect(() =>
+      validateTreeIdentity({ tree: { sha: 'c'.repeat(40) } }, { tree: { sha: 'd'.repeat(40) } }),
+    ).toThrow('Final main tree differs from verified PR Head tree');
   });
 });

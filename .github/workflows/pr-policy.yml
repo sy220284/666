@@ -3,7 +3,7 @@ name: PR Policy
 on:
   pull_request_target:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, closed]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -16,7 +16,6 @@ concurrency:
 
 jobs:
   pr-policy:
-    if: ${{ github.event.action != 'closed' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:

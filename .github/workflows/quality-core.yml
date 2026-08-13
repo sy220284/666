@@ -14,12 +14,12 @@ on:
         type: boolean
         default: false
       full_suite:
-        description: Run product tests, Electron E2E and build for code-bearing Ready PRs
+        description: Run product tests and Electron E2E for code-bearing Ready PRs
         required: false
         type: boolean
         default: true
       package_smoke:
-        description: Run the Linux package smoke job
+        description: Run cross-platform packaged startup smoke
         required: false
         type: boolean
         default: true
@@ -35,6 +35,11 @@ on:
         default: false
       performance_eval:
         description: Run performance baselines inside the reusable release gate
+        required: false
+        type: boolean
+        default: false
+      linux_platform_experience:
+        description: Reuse the Linux Electron build for platform experience validation
         required: false
         type: boolean
         default: false
@@ -101,9 +106,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - name: Skip product tests for documentation-only Ready PR
+      - name: Skip product tests for lightweight Ready PR
         if: ${{ inputs.full_suite == false }}
-        run: echo "Product tests are not required because only Markdown or docs/ files changed."
+        run: echo "Product tests are not required for this lightweight change."
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         if: ${{ inputs.full_suite }}
         with:
@@ -123,31 +128,13 @@ jobs:
         if: ${{ inputs.full_suite }}
       - run: pnpm test:prepare
         if: ${{ inputs.full_suite }}
-      - name: Run unit tests
+      - name: Run product tests with coverage
         if: ${{ inputs.full_suite }}
         shell: bash
         run: |
           mkdir -p test-results/ci
           set -o pipefail
-          pnpm exec vitest run tests/unit 2>&1 | tee test-results/ci/unit.log
-      - name: Run integration tests
-        if: ${{ inputs.full_suite }}
-        shell: bash
-        run: |
-          set -o pipefail
-          pnpm exec vitest run tests/integration 2>&1 | tee test-results/ci/integration.log
-      - name: Run migration tests
-        if: ${{ inputs.full_suite }}
-        shell: bash
-        run: |
-          set -o pipefail
-          pnpm exec vitest run tests/migration 2>&1 | tee test-results/ci/migration.log
-      - name: Run product source coverage threshold
-        if: ${{ inputs.full_suite }}
-        shell: bash
-        run: |
-          set -o pipefail
-          pnpm exec vitest run --config vitest.coverage.config.ts 2>&1 | tee test-results/ci/coverage.log
+          pnpm exec vitest run --config vitest.coverage.config.ts 2>&1 | tee test-results/ci/product-tests.log
       - name: Assert clean working tree after product tests
         if: ${{ always() && inputs.full_suite }}
         run: node .github/governance/assert-clean-tree.mjs
@@ -157,68 +144,13 @@ jobs:
         with:
           name: product-tests-and-coverage
           path: |
-            test-results/ci/unit.log
-            test-results/ci/integration.log
-            test-results/ci/migration.log
-            test-results/ci/coverage.log
+            test-results/ci/product-tests.log
             test-results/unit/
             test-results/integration/
             test-results/migration/
             coverage/
           if-no-files-found: warn
           retention-days: 7
-
-  tests:
-    name: tests-${{ matrix.suite }}
-    if: ${{ always() && inputs.draft_mode == false }}
-    needs: product-tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        suite: [unit, integration, migration]
-    steps:
-      - name: Enforce consolidated product test result
-        shell: bash
-        env:
-          FULL_SUITE: ${{ inputs.full_suite }}
-          PRODUCT_TEST_RESULT: ${{ needs.product-tests.result }}
-        run: |
-          set -euo pipefail
-          echo "${{ matrix.suite }} is covered by the consolidated product-tests job."
-          if [ "$FULL_SUITE" = true ]; then
-            test "$PRODUCT_TEST_RESULT" = success
-          else
-            case "$PRODUCT_TEST_RESULT" in
-              success|skipped) ;;
-              *) exit 1 ;;
-            esac
-          fi
-
-  coverage:
-    name: coverage
-    if: ${{ always() && inputs.draft_mode == false }}
-    needs: product-tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Enforce consolidated coverage result
-        shell: bash
-        env:
-          FULL_SUITE: ${{ inputs.full_suite }}
-          PRODUCT_TEST_RESULT: ${{ needs.product-tests.result }}
-        run: |
-          set -euo pipefail
-          echo "Coverage is produced by the consolidated product-tests job."
-          if [ "$FULL_SUITE" = true ]; then
-            test "$PRODUCT_TEST_RESULT" = success
-          else
-            case "$PRODUCT_TEST_RESULT" in
-              success|skipped) ;;
-              *) exit 1 ;;
-            esac
-          fi
 
   reliability-tests:
     name: reliability-tests
@@ -328,7 +260,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: release-performance-eval-diagnostics
+          name: release-performance-diagnostics
           path: |
             test-results/ci/performance-eval.log
             test-results/performance/
@@ -339,30 +271,30 @@ jobs:
     name: desktop-e2e
     if: ${{ inputs.draft_mode == false }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
-      - name: Skip Electron E2E for documentation-only Ready PR
-        if: ${{ inputs.full_suite == false }}
-        run: echo "Electron E2E is not required because only Markdown or docs/ files changed."
+      - name: Skip Linux desktop validation for lightweight Ready PR
+        if: ${{ inputs.full_suite == false && inputs.linux_platform_experience == false }}
+        run: echo "Linux Electron validation is not required for this lightweight change."
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        if: ${{ inputs.full_suite }}
+        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-        if: ${{ inputs.full_suite }}
+        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        if: ${{ inputs.full_suite }}
+        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         with:
           node-version: 24.18.1
           cache: pnpm
-      - name: Assert clean working tree before desktop E2E
-        if: ${{ inputs.full_suite }}
+      - name: Assert clean working tree before desktop validation
+        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         run: node .github/governance/assert-clean-tree.mjs
       - run: pnpm install --frozen-lockfile --prefer-offline
-        if: ${{ inputs.full_suite }}
+        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
       - name: Install Electron display dependencies
-        if: ${{ inputs.full_suite }}
+        if: ${{ inputs.full_suite || inputs.linux_platform_experience }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk xvfb
@@ -377,11 +309,16 @@ jobs:
           mkdir -p test-results/ci
           set -o pipefail
           pnpm test:e2e 2>&1 | tee test-results/ci/desktop-e2e.log
-      - name: Assert clean working tree after desktop E2E
-        if: ${{ always() && inputs.full_suite }}
+      - name: Run Linux platform author experience on the existing build
+        if: ${{ inputs.linux_platform_experience }}
+        env:
+          WORLDFORGE_PLATFORM_EXPERIENCE_EVIDENCE_DIR: ${{ github.workspace }}/test-results/platform-experience
+        run: node scripts/run-electron-e2e.mjs tests/e2e/platform-experience.spec.ts
+      - name: Assert clean working tree after desktop validation
+        if: ${{ always() && (inputs.full_suite || inputs.linux_platform_experience) }}
         run: node .github/governance/assert-clean-tree.mjs
-      - name: Upload Electron and display evidence
-        if: ${{ always() && inputs.full_suite }}
+      - name: Upload Electron and Linux platform evidence
+        if: ${{ always() && (inputs.full_suite || inputs.linux_platform_experience) }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: desktop-e2e-evidence
@@ -389,32 +326,9 @@ jobs:
             test-results/ci/desktop-e2e.log
             test-results/electron/
             test-results/display-matrix/
+            test-results/platform-experience/
           if-no-files-found: warn
           retention-days: 7
-
-  build:
-    name: build
-    if: ${{ always() && inputs.draft_mode == false }}
-    needs: desktop-e2e
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Enforce build performed by Electron E2E
-        shell: bash
-        env:
-          FULL_SUITE: ${{ inputs.full_suite }}
-          E2E_RESULT: ${{ needs.desktop-e2e.result }}
-        run: |
-          set -euo pipefail
-          echo "The Electron E2E command performs the full workspace build."
-          if [ "$FULL_SUITE" = true ]; then
-            test "$E2E_RESULT" = success
-          else
-            case "$E2E_RESULT" in
-              success|skipped) ;;
-              *) exit 1 ;;
-            esac
-          fi
 
   package-smoke:
     name: package-smoke-${{ matrix.platform }}
@@ -500,13 +414,11 @@ jobs:
     if: always()
     needs:
       - static-checks
-      - tests
-      - coverage
+      - product-tests
       - reliability-tests
       - security-tests
       - performance-eval
       - desktop-e2e
-      - build
       - package-smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -517,26 +429,24 @@ jobs:
       SECURITY_REQUIRED: ${{ inputs.security_suite }}
       PERFORMANCE_REQUIRED: ${{ inputs.performance_eval }}
       STATIC_RESULT: ${{ needs.static-checks.result }}
-      TEST_RESULT: ${{ needs.tests.result }}
-      COVERAGE_RESULT: ${{ needs.coverage.result }}
+      PRODUCT_RESULT: ${{ needs.product-tests.result }}
       RELIABILITY_RESULT: ${{ needs.reliability-tests.result }}
       SECURITY_RESULT: ${{ needs.security-tests.result }}
       PERFORMANCE_RESULT: ${{ needs.performance-eval.result }}
       E2E_RESULT: ${{ needs.desktop-e2e.result }}
-      BUILD_RESULT: ${{ needs.build.result }}
       PACKAGE_RESULT: ${{ needs.package-smoke.result }}
     steps:
       - name: Enforce aggregate quality result
         shell: bash
         run: |
           set -euo pipefail
-          printf 'draft=%s\nstatic=%s\ntests=%s\ncoverage=%s\nreliability=%s\nsecurity=%s\nperformance=%s\ne2e=%s\nbuild=%s\npackage=%s\n' \
-            "$DRAFT_MODE" "$STATIC_RESULT" "$TEST_RESULT" "$COVERAGE_RESULT" "$RELIABILITY_RESULT" \
-            "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"
+          printf 'draft=%s\nstatic=%s\nproduct=%s\nreliability=%s\nsecurity=%s\nperformance=%s\ne2e=%s\npackage=%s\n' \
+            "$DRAFT_MODE" "$STATIC_RESULT" "$PRODUCT_RESULT" "$RELIABILITY_RESULT" \
+            "$SECURITY_RESULT" "$PERFORMANCE_RESULT" "$E2E_RESULT" "$PACKAGE_RESULT"
           test "$STATIC_RESULT" = success
           if [ "$DRAFT_MODE" = true ]; then
-            for result in "$TEST_RESULT" "$COVERAGE_RESULT" "$RELIABILITY_RESULT" "$SECURITY_RESULT" \
-              "$PERFORMANCE_RESULT" "$E2E_RESULT" "$BUILD_RESULT" "$PACKAGE_RESULT"; do
+            for result in "$PRODUCT_RESULT" "$RELIABILITY_RESULT" "$SECURITY_RESULT" \
+              "$PERFORMANCE_RESULT" "$E2E_RESULT" "$PACKAGE_RESULT"; do
               case "$result" in
                 success|skipped) ;;
                 *) exit 1 ;;
@@ -545,9 +455,8 @@ jobs:
             exit 0
           fi
 
-          for result in "$TEST_RESULT" "$COVERAGE_RESULT" "$E2E_RESULT" "$BUILD_RESULT"; do
-            test "$result" = success
-          done
+          test "$PRODUCT_RESULT" = success
+          test "$E2E_RESULT" = success
 
           require_optional_job() {
             required="$1"

@@ -173,8 +173,7 @@ async function main() {
   requireText(errors, 'scripts/automerge.mjs', automergeScript, [
     'modeAwareChecksState',
     'latestWorkflowRun',
-    'quality / release-audit',
-    'quality / package-smoke',
+    'quality / quality',
   ]);
 
   const prPolicy = workflows.get('pr-policy.yml');
@@ -189,6 +188,9 @@ async function main() {
     "context: 'pr-policy'",
     'statuses: write',
   ]);
+  forbidText(errors, 'pr-policy.yml', prPolicy, [
+    'types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, closed]',
+  ]);
 
   for (const name of ['task-governance.yml', 'evidence.yml']) {
     const text = workflows.get(name);
@@ -200,6 +202,7 @@ async function main() {
   requireText(errors, 'repository-governance.yml', repositoryGovernance, [
     'push:',
     'branches: [main]',
+    'paths:',
     'ruleset-policy.mjs apply',
     'REPO_ADMIN_TOKEN',
   ]);
@@ -233,32 +236,48 @@ async function main() {
     'name: synchronize-integrations',
     'INTEGRATION_SYNCHRONIZATION_OUTPUT:',
     'work-synchronization.mjs',
-    'branch-hygiene:',
-    'branch-inventory-policy.mjs --repair',
+    'tree identity',
   ]);
+  forbidText(errors, 'main-verification.yml', mainVerification, ['Main static verification']);
 
   const mainVerificationScript = await source('scripts/main-verification.mjs');
   requireText(errors, 'scripts/main-verification.mjs', mainVerificationScript, [
     'task-verification/',
     'validateTaskVerificationBinding',
     'modeAwareChecksState',
+    'validateTreeIdentity',
+    '/git/commits/',
   ]);
 
   const qualityWorkflow = workflows.get('quality.yml');
   requireText(errors, 'quality.yml', qualityWorkflow, [
     'name: quality / release-audit',
+    'ci-risk-policy.mjs release-audit',
+    'linux_platform_experience:',
+    'name: windows-experience',
     'EVIDENCE_FINAL:',
     'scripts/evidence-policy.mjs',
   ]);
 
-  requireText(errors, 'quality-core.yml', workflows.get('quality-core.yml'), [
+  const qualityCore = workflows.get('quality-core.yml');
+  requireText(errors, 'quality-core.yml', qualityCore, [
     'static-checks:',
     'product-tests:',
+    'Run product tests with coverage',
     'desktop-e2e:',
+    'linux_platform_experience:',
     'quality:',
   ]);
+  forbidText(errors, 'quality-core.yml', qualityCore, [
+    'tests-${{ matrix.suite }}',
+    'Enforce consolidated coverage result',
+    'Enforce build performed by Electron E2E',
+  ]);
+
   requireText(errors, 'security.yml', workflows.get('security.yml'), [
-    'scan-secrets.mjs',
+    'name: security-route',
+    'scan-secrets.mjs --base',
+    'scan-secrets.mjs --history',
     'pnpm test:security',
     'name: security',
   ]);
@@ -287,6 +306,7 @@ const governanceExactFiles = new Set([
   'AGENTS.md',
   'agent.md',
   'package.json',
+  'vitest.coverage.config.ts',
   'docs/PROJECT_EXECUTION_ENTRY.md',
 ]);
 

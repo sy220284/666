@@ -99,6 +99,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
   ]);
 
   requireTokens(violations, 'vitest.coverage.config.ts', coverageConfig, [
+    "electron: source('./tests/setup/electron-runtime-stub.ts')",
     "'apps/desktop/renderer/src/**/*.{ts,tsx}'",
     "'tests/unit/**/*.test.{ts,tsx}'",
     "'tests/integration/**/*.test.{ts,tsx}'",
@@ -217,6 +218,7 @@ export async function inspectCodeQualityPolicy(repositoryRoot = DEFAULT_ROOT) {
     typeAwareLint: true,
     rendererTsxCoverage: true,
     dualTrackCoverage: true,
+    securityCoverageOnce: true,
     fileLengthGate: false,
     reusableToolchainExport: true,
     unifiedRiskRouting: true,
@@ -228,6 +230,6 @@ const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   const result = await inspectCodeQualityPolicy();
   console.log(
-    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, reusable toolchain export enabled, unified risk routing enabled, Reliability gate enabled, file length non-blocking.`,
+    `Code quality policy passed: ${result.formatCommands} format commands, typed lint enabled, dual-track Renderer TSX coverage enabled, Security tests included once in product coverage, reusable toolchain export enabled, unified risk routing enabled, Reliability gate enabled, file length non-blocking.`,
   );
 }

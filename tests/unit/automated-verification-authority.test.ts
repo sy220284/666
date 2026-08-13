@@ -26,19 +26,17 @@ describe('自动合并验证轮次', () => {
     expect(latestWorkflowRun([oldDraft, readyRun])).toBe(readyRun);
   });
 
-  it('Quality最新轮次必须同时完成工程聚合、Release Audit与package gate', () => {
+  it('Quality最新轮次只认最终quality / quality权威结果', () => {
     const workflowRun = { status: 'completed', conclusion: 'success' };
     expect(
       modeAwareRunState('quality', workflowRun, [
         { name: 'quality / quality', status: 'completed', conclusion: 'success' },
-        { name: 'quality / release-audit', status: 'completed', conclusion: 'success' },
-        { name: 'quality / package-smoke', status: 'completed', conclusion: 'success' },
       ]).ready,
     ).toBe(true);
     expect(
       modeAwareRunState('quality', workflowRun, [
-        { name: 'quality / quality', status: 'completed', conclusion: 'success' },
-        { name: 'quality / release-audit', status: 'in_progress', conclusion: null },
+        { name: 'quality / quality', status: 'in_progress', conclusion: null },
+        { name: 'quality / release-audit', status: 'completed', conclusion: 'success' },
         { name: 'quality / package-smoke', status: 'completed', conclusion: 'success' },
       ]).ready,
     ).toBe(false);

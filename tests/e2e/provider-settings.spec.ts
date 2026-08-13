@@ -47,7 +47,7 @@ test('configures a local keyless Provider and keeps offline writing healthy afte
     await expect(page.locator('[data-provider-card="local-e2e"]')).toBeVisible();
     await expect(page.locator('[data-provider-status]')).toContainText('已保存');
     await page.locator('[data-provider-test="local-e2e"]').click();
-    await expect(page.locator('[data-provider-status]')).toContainText('无法连接AI服务');
+    await expect(page.locator('[data-provider-status]')).toContainText('无法连接智能服务');
     const core = await page.evaluate(async () => globalThis.worldforge.app.getCoreStatus());
     expect(core).toMatchObject({ ok: true, data: { status: 'healthy' } });
     await expect(page.locator('[data-provider-card="local-e2e"]')).toBeVisible();

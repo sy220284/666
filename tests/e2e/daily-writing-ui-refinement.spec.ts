@@ -52,7 +52,9 @@ test('日常写作默认保持安静并按需展开中文工具', async () => {
     await expect(page.locator('[data-writing-workbench]')).toBeVisible();
     await expect(page.locator('[data-draft-workspace]')).toBeVisible();
     await expect(page.locator('[data-writing-save-state]')).toBeVisible();
-    await expect(page.getByRole('button', { name: '智能助手', exact: true })).toBeVisible();
+    await expect(page.locator('[data-writing-save-state]')).not.toHaveAttribute('role', 'status');
+    await expect(page.locator('[data-draft-state]')).toHaveAttribute('role', 'status');
+    await expect(page.locator('[data-open-candidate-preview]')).toBeVisible();
     await expect(page.getByRole('button', { name: '沉浸写作', exact: true })).toBeVisible();
     await expect(page.locator('[data-draft-editor-controls]')).toBeVisible();
     await expect(page.locator('[data-draft-text-count]')).toBeVisible();
@@ -108,7 +110,7 @@ test('日常写作默认保持安静并按需展开中文工具', async () => {
     await expect(page.getByText(/人物状态（\d+）/u)).toBeVisible();
     await expect(page.getByText(/伏笔与修改任务（\d+）/u)).toBeVisible();
 
-    await page.getByRole('button', { name: '智能助手', exact: true }).first().click();
+    await page.locator('[data-open-candidate-preview]').click();
     await expect(page.locator('[data-candidate-preview-dialog]')).toBeVisible();
     await expect(page.getByRole('heading', { name: '智能创作与建议稿工作台' })).toBeVisible();
     await expect(page.getByText('AI创作与建议稿工作台')).toHaveCount(0);

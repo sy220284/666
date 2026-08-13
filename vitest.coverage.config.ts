@@ -79,6 +79,7 @@ const rendererDomLifecycleCoverageExcludes = [
 export default defineConfig({
   resolve: {
     alias: {
+      electron: source('./tests/setup/electron-runtime-stub.ts'),
       '@worldforge/contracts': source('./packages/contracts/src/public-index.ts'),
       '@worldforge/core-service': source('./packages/core-service/src/index.ts'),
       '@worldforge/domain': source('./packages/domain/src/index.ts'),

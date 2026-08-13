@@ -37,8 +37,8 @@ const helpByRoute: Partial<Record<RendererRouteId, HelpEntry>> = {
     tip: 'locked-blocks',
   },
   candidates: {
-    title: 'AI建议稿审阅',
-    beginnerBody: 'AI结果先成为建议稿，只有你确认采用后才会改变当前稿。',
+    title: '智能建议稿审阅',
+    beginnerBody: '智能生成结果先成为建议稿，只有你确认采用后才会改变当前稿。',
     professionalBody: `建议稿与当前稿保持隔离；采用前检查内容差异、${authorTerm('revision')}、内容校验值和锁定范围。`,
     boundary: '采用前可预览差异；采用后仍可整体撤销。',
     tip: 'candidate-safety',

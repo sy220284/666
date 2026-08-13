@@ -139,6 +139,8 @@ jobs:
         shell: bash
         run: |
           git diff --name-only -z | xargs -0 pnpm exec prettier --write --ignore-unknown
+      - name: Remove one-shot workflow before permanent policy checks
+        run: rm .github/workflows/governance-code-quality-finalize.yml
       - name: Verify governance and type boundaries
         run: |
           node scripts/check-coverage-policy.mjs
@@ -161,7 +163,7 @@ jobs:
         shell: bash
         run: |
           rm -f .tmp-code-quality-finalize.mjs
-          rm .github/workflows/governance-code-quality-finalize.yml
+          rm -f .github/workflows/governance-code-quality-finalize.yml
           git add -A
           git diff --cached --check
           git config user.name 'github-actions[bot]'

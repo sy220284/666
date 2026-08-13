@@ -20,6 +20,7 @@ import {
 } from './visual-regression-baseline.js';
 
 const root = process.cwd();
+const visualWorkspaceRoot = path.join(root, 'test-results', 'visual-regression-fixture');
 const temporaryDirectories: string[] = [];
 
 type ThemeId = 'theme-a' | 'theme-b';
@@ -64,6 +65,18 @@ async function setViewport(application: ElectronApplication): Promise<void> {
   });
 }
 
+async function stabilizeSnapshot(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document.querySelectorAll<HTMLElement>('*').forEach((element) => {
+      if (element.scrollTop !== 0) element.scrollTop = 0;
+      if (element.scrollLeft !== 0) element.scrollLeft = 0;
+    });
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.waitForTimeout(50);
+}
+
 async function applyTheme(page: Page, themeId: ThemeId, variant: ThemeVariant): Promise<void> {
   await page.locator('[data-open-settings]').click();
   await expect(page.locator('[data-settings-dialog]')).toBeVisible();
@@ -84,6 +97,7 @@ async function expectBaseline(
   manifest: VisualBaselineManifest,
   snapshotName: string,
 ): Promise<VisualMismatch | null> {
+  await stabilizeSnapshot(page);
   const image = await page.screenshot({
     animations: 'disabled',
     fullPage: false,
@@ -129,6 +143,7 @@ test.afterEach(async () => {
       .splice(0)
       .map((directory) => rm(directory, { recursive: true, force: true })),
   );
+  await rm(visualWorkspaceRoot, { recursive: true, force: true });
 });
 
 if (process.platform === 'linux') {
@@ -139,7 +154,8 @@ if (process.platform === 'linux') {
 
     const userDataPath = await mkdtemp(path.join(tmpdir(), 'worldforge-visual-regression-'));
     temporaryDirectories.push(userDataPath);
-    const createParent = path.join(userDataPath, 'works');
+    await rm(visualWorkspaceRoot, { recursive: true, force: true });
+    const createParent = path.join(visualWorkspaceRoot, 'works');
     await mkdir(createParent, { recursive: true });
     const application = await launch(userDataPath, createParent);
 

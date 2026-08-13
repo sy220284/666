@@ -54,8 +54,6 @@ export function WritingWorkbenchHeader({
           <p
             className={editorFailure ? 'writing-save-state is-error' : 'writing-save-state'}
             data-writing-save-state
-            role="status"
-            aria-live="polite"
           >
             {editorState}
           </p>

@@ -134,7 +134,8 @@ function parseTags(value: string): string[] {
 }
 
 function noteFromRow(row: NoteRow): ResearchNote {
-  return ResearchNoteSchema.parse({ ...row, tags: parseTags(row.tagsJson) });
+  const { tagsJson, ...note } = row;
+  return ResearchNoteSchema.parse({ ...note, tags: parseTags(tagsJson) });
 }
 
 function mediaType(fileName: string): string {
@@ -472,7 +473,10 @@ export class ResearchService {
     try {
       const opened = await sourceHandle.stat();
       const after = await lstat(sourcePath);
-      if (!sameOpenedFile(before, opened, after) || opened.size > MAX_RESEARCH_ATTACHMENT_BYTES) {
+      if (
+        !sameOpenedFile(before, opened, after) ||
+        opened.size > MAX_RESEARCH_ATTACHMENT_BYTES
+      ) {
         throw new ResearchServiceError(
           'RESEARCH_INVALID',
           'Attachment changed while it was being opened.',

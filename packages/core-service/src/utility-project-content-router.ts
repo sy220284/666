@@ -109,11 +109,18 @@ export async function routeContentProjectOperation(
         operation.operation,
         await services.research.setNoteStatus(requestId, operation.input),
       );
+    case RESEARCH_COMMANDS.deleteNote:
+      return success(
+        operation.operation,
+        await services.research.deleteNote(requestId, operation.input),
+      );
     case RESEARCH_COMMANDS.importAttachment:
       return success(
         operation.operation,
         await services.research.importAttachment(requestId, operation.input, operation.sourcePath),
       );
+    case RESEARCH_COMMANDS.previewAttachment:
+      return success(operation.operation, await services.research.previewAttachment(operation.input));
     case RESEARCH_COMMANDS.deleteAttachment:
       return success(
         operation.operation,

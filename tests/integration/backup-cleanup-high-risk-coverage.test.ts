@@ -160,9 +160,7 @@ describe('backup cleanup high-risk coverage', () => {
         reason: 'major-over-limit',
       });
 
-      await rm(
-        path.join(harness.backupRoot, harness.project.projectId, `${first.backupId}.json`),
-      );
+      await rm(path.join(harness.backupRoot, harness.project.projectId, `${first.backupId}.json`));
       await expect(
         harness.recovery.applyCleanup(randomUUID(), {
           projectId: harness.project.projectId,

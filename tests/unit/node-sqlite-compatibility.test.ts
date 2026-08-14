@@ -62,7 +62,7 @@ describe('node:sqlite compatibility contract', () => {
     db.exec("CREATE VIRTUAL TABLE trigram_probe USING fts5(value, tokenize='trigram');");
     db.prepare('INSERT INTO trigram_probe(value) VALUES(?)').run('汴京夜雨');
     const matches = db
-      .prepare("SELECT value FROM trigram_probe WHERE trigram_probe MATCH '京夜'")
+      .prepare("SELECT value FROM trigram_probe WHERE trigram_probe MATCH '京夜雨'")
       .all();
     expect(matches).toEqual([{ value: '汴京夜雨' }]);
   });

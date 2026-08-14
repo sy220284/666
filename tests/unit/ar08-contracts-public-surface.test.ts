@@ -39,6 +39,7 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'CharacterRelationshipSetCommandSchema',
   'CharacterRelationshipSetInputSchema',
   'CoreIdeaOperationSchema',
+  'CoreIdeaResultSchema',
   'CoreLongformAiOperationSchema',
   'CoreLongformAiResultSchema',
   'CoreResearchOperationSchema',

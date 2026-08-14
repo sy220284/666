@@ -2,7 +2,7 @@
 
 > 状态：Active  
 > 基线：WorldForge V6.5  
-> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03、M10-01—M10-22、M11-01—M11-07及M12-01—M12-04，共78张独立任务卡。
+> 独立任务体系：M0—M3、M4-01—M4-04、M8-02、M8-04—M8-09、M9-00—M9-03、M10-01—M10-22、M11-01—M11-07及M12-01—M12-03，共77张独立任务卡。
 > M9-04—M9-14为被M9-03吸收的冻结工作包别名，不参与独立任务解析。
 
 ## 1. 状态读取规则
@@ -161,9 +161,8 @@ Runtime IMPLEMENTED
 | ID     | 任务卡                                                                            | 依赖   | 状态    |
 | ------ | --------------------------------------------------------------------------------- | ------ | ------- |
 | M12-01 | [`创作日志与长期项目复盘`](M12/M12-01_PROJECT_JOURNAL.md)                         | M11-07 | Planned |
-| M12-02 | [`研究资料库与本地附件`](M12/M12-02_RESEARCH_LIBRARY_ATTACHMENTS.md)              | M11-07 | Planned |
-| M12-03 | [`作者效率、命令与个性化增强`](M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md) | M11-07 | Planned |
-| M12-04 | [`可选本地项目数据库加密`](M12/M12-04_OPTIONAL_PROJECT_ENCRYPTION.md)             | M12-02 | Planned |
+| M12-02 | [`项目资产生命周期与研究资料库`](M12/M12-02_RESEARCH_LIBRARY_ATTACHMENTS.md)      | M11-07 | Planned |
+| M12-03 | [`作者效率与专业写作增强`](M12/M12-03_AUTHOR_PRODUCTIVITY_PERSONALIZATION.md)     | M11-07 | Planned |
 
 ## 3. 被吸收的需求来源
 

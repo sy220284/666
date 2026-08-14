@@ -1,40 +1,40 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import { ErrorCodeSchema } from './error-codes.js';
-import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from './task-protocol.js';
+import { ErrorCodeSchema } from "./error-codes.js";
+import { ProjectIdSchema, TASK_PROTOCOL_VERSION } from "./task-protocol.js";
 
 export const RESEARCH_IPC_CHANNELS = {
-  list: 'worldforge:research:list',
-  createNote: 'worldforge:research:create-note',
-  updateNote: 'worldforge:research:update-note',
-  setNoteStatus: 'worldforge:research:set-note-status',
-  importAttachment: 'worldforge:research:import-attachment',
-  deleteAttachment: 'worldforge:research:delete-attachment',
-  addLink: 'worldforge:research:add-link',
-  removeLink: 'worldforge:research:remove-link',
+  list: "worldforge:research:list",
+  createNote: "worldforge:research:create-note",
+  updateNote: "worldforge:research:update-note",
+  setNoteStatus: "worldforge:research:set-note-status",
+  importAttachment: "worldforge:research:import-attachment",
+  deleteAttachment: "worldforge:research:delete-attachment",
+  addLink: "worldforge:research:add-link",
+  removeLink: "worldforge:research:remove-link",
 } as const;
 
 export const RESEARCH_COMMANDS = {
-  list: 'research.list',
-  createNote: 'research.createNote',
-  updateNote: 'research.updateNote',
-  setNoteStatus: 'research.setNoteStatus',
-  importAttachment: 'research.importAttachment',
-  deleteAttachment: 'research.deleteAttachment',
-  addLink: 'research.addLink',
-  removeLink: 'research.removeLink',
+  list: "research.list",
+  createNote: "research.createNote",
+  updateNote: "research.updateNote",
+  setNoteStatus: "research.setNoteStatus",
+  importAttachment: "research.importAttachment",
+  deleteAttachment: "research.deleteAttachment",
+  addLink: "research.addLink",
+  removeLink: "research.removeLink",
 } as const;
 
-export const ResearchNoteStatusSchema = z.enum(['active', 'archived']);
-export const ResearchSourceTypeSchema = z.enum(['note', 'attachment']);
+export const ResearchNoteStatusSchema = z.enum(["active", "archived"]);
+export const ResearchSourceTypeSchema = z.enum(["note", "attachment"]);
 export const ResearchTargetTypeSchema = z.enum([
-  'chapter',
-  'entity',
-  'relationship',
-  'timeline',
-  'foreshadowing',
-  'arc',
-  'idea',
+  "chapter",
+  "entity",
+  "relationship",
+  "timeline",
+  "foreshadowing",
+  "arc",
+  "idea",
 ]);
 export const ResearchTagSchema = z.string().trim().min(1).max(80);
 export const ResearchTagsSchema = z.array(ResearchTagSchema).max(50);
@@ -90,7 +90,7 @@ export const ResearchListInputSchema = z.strictObject({
 export const ResearchNoteCreateInputSchema = z.strictObject({
   projectId: ProjectIdSchema,
   title: z.string().trim().min(1).max(240),
-  body: z.string().max(500_000).default(''),
+  body: z.string().max(500_000).default(""),
   sourceUri: z.string().trim().max(4_096).nullable().default(null),
   tags: ResearchTagsSchema.default([]),
 });
@@ -139,7 +139,9 @@ export const ResearchReferenceSchema = z.strictObject({
   sourceType: ResearchSourceTypeSchema,
   sourceId: z.uuid(),
 });
-export const ResearchReferencesSchema = z.array(ResearchReferenceSchema).max(20);
+export const ResearchReferencesSchema = z
+  .array(ResearchReferenceSchema)
+  .max(20);
 
 const commandEnvelope = {
   protocolVersion: z.literal(TASK_PROTOCOL_VERSION),
@@ -209,14 +211,16 @@ export const ResearchCatalogResultSchema = z.union([
   researchFailureSchema,
 ]);
 
-const coreSuccess = (operation: (typeof RESEARCH_COMMANDS)[keyof typeof RESEARCH_COMMANDS]) =>
+const coreSuccess = (
+  operation: (typeof RESEARCH_COMMANDS)[keyof typeof RESEARCH_COMMANDS],
+) =>
   z.strictObject({
     ok: z.literal(true),
     operation: z.literal(operation),
     data: ResearchCatalogSchema,
   });
 
-export const CoreResearchOperationSchema = z.discriminatedUnion('operation', [
+export const CoreResearchOperationSchema = z.discriminatedUnion("operation", [
   z.strictObject({
     operation: z.literal(RESEARCH_COMMANDS.list),
     input: ResearchListInputSchema,
@@ -272,17 +276,27 @@ export type ResearchCatalogResult = z.infer<typeof ResearchCatalogResultSchema>;
 
 export interface ResearchBridge {
   readonly list: (input: ResearchListInput) => Promise<ResearchCatalogResult>;
-  readonly createNote: (input: ResearchNoteCreateInput) => Promise<ResearchCatalogResult>;
-  readonly updateNote: (input: ResearchNoteUpdateInput) => Promise<ResearchCatalogResult>;
-  readonly setNoteStatus: (input: ResearchNoteStatusInput) => Promise<ResearchCatalogResult>;
+  readonly createNote: (
+    input: ResearchNoteCreateInput,
+  ) => Promise<ResearchCatalogResult>;
+  readonly updateNote: (
+    input: ResearchNoteUpdateInput,
+  ) => Promise<ResearchCatalogResult>;
+  readonly setNoteStatus: (
+    input: ResearchNoteStatusInput,
+  ) => Promise<ResearchCatalogResult>;
   readonly importAttachment: (
     input: ResearchAttachmentImportInput,
   ) => Promise<ResearchCatalogResult>;
   readonly deleteAttachment: (
     input: ResearchAttachmentDeleteInput,
   ) => Promise<ResearchCatalogResult>;
-  readonly addLink: (input: ResearchLinkAddInput) => Promise<ResearchCatalogResult>;
-  readonly removeLink: (input: ResearchLinkRemoveInput) => Promise<ResearchCatalogResult>;
+  readonly addLink: (
+    input: ResearchLinkAddInput,
+  ) => Promise<ResearchCatalogResult>;
+  readonly removeLink: (
+    input: ResearchLinkRemoveInput,
+  ) => Promise<ResearchCatalogResult>;
 }
 
 export type ResearchNoteStatus = z.infer<typeof ResearchNoteStatusSchema>;
@@ -293,15 +307,25 @@ export type ResearchAttachment = z.infer<typeof ResearchAttachmentSchema>;
 export type ResearchLink = z.infer<typeof ResearchLinkSchema>;
 export type ResearchCatalog = z.infer<typeof ResearchCatalogSchema>;
 export type ResearchListInput = z.input<typeof ResearchListInputSchema>;
-export type ResearchNoteCreateInput = z.input<typeof ResearchNoteCreateInputSchema>;
-export type ResearchNoteUpdateInput = z.infer<typeof ResearchNoteUpdateInputSchema>;
-export type ResearchNoteStatusInput = z.infer<typeof ResearchNoteStatusInputSchema>;
-export type ResearchAttachmentImportInput = z.input<typeof ResearchAttachmentImportInputSchema>;
+export type ResearchNoteCreateInput = z.input<
+  typeof ResearchNoteCreateInputSchema
+>;
+export type ResearchNoteUpdateInput = z.infer<
+  typeof ResearchNoteUpdateInputSchema
+>;
+export type ResearchNoteStatusInput = z.infer<
+  typeof ResearchNoteStatusInputSchema
+>;
+export type ResearchAttachmentImportInput = z.input<
+  typeof ResearchAttachmentImportInputSchema
+>;
 export type ResearchAttachmentDeleteInput = z.infer<
   typeof ResearchAttachmentDeleteInputSchema
 >;
 export type ResearchLinkAddInput = z.infer<typeof ResearchLinkAddInputSchema>;
-export type ResearchLinkRemoveInput = z.infer<typeof ResearchLinkRemoveInputSchema>;
+export type ResearchLinkRemoveInput = z.infer<
+  typeof ResearchLinkRemoveInputSchema
+>;
 export type ResearchReference = z.infer<typeof ResearchReferenceSchema>;
 export type CoreResearchOperation = z.infer<typeof CoreResearchOperationSchema>;
 export type CoreResearchResult = z.infer<typeof CoreResearchResultSchema>;

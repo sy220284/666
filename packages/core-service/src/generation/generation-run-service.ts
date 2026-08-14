@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from "node:crypto";
 
 import {
   type ErrorCode,
@@ -8,37 +8,53 @@ import {
   type GenerationRun,
   type ModelSupportProfile,
   type ResearchReference,
-} from '@worldforge/contracts';
+} from "@worldforge/contracts";
 
 import {
   BoundedIdempotentPromiseCache,
   IdempotentRequestConflictError,
-} from '../bounded-idempotent-promise-cache.js';
-import { type DatabaseClock } from '../database/index.js';
-import { type ProjectWorkspaceService } from '../project-workspace.js';
-import { stableJson } from '../stable-json.js';
-import { finalVersion, validationSemanticIdentity } from '../validation/validation-model.js';
-import { completeProseCandidate, completeSkeletonCandidates } from './candidate-persistence.js';
-import { getModelSupport, upsertModelSupport } from './model-support-repository.js';
+} from "../bounded-idempotent-promise-cache.js";
+import { type DatabaseClock } from "../database/index.js";
+import { type ProjectWorkspaceService } from "../project-workspace.js";
+import { stableJson } from "../stable-json.js";
+import {
+  finalVersion,
+  validationSemanticIdentity,
+} from "../validation/validation-model.js";
+import {
+  completeProseCandidate,
+  completeSkeletonCandidates,
+} from "./candidate-persistence.js";
+import {
+  getModelSupport,
+  upsertModelSupport,
+} from "./model-support-repository.js";
 import {
   resolveIdeaScopeContext,
   type IdeaScopeContext,
   type IdeaScopeContextInput,
-} from './idea-context.js';
+} from "./idea-context.js";
 import {
   completeIdeaCards,
   type IdeaGenerationCompletion,
   type IdeaGenerationCompletionInput,
-} from './idea-persistence.js';
-import { discardPartial, recordPartial, savePartial } from './partial-result-service.js';
+} from "./idea-persistence.js";
+import {
+  discardPartial,
+  recordPartial,
+  savePartial,
+} from "./partial-result-service.js";
 import {
   persistPreparedResearchReferenceSnapshots,
   persistedResearchSelectionHash,
   researchReferenceMessage,
   researchReferenceSelectionHash,
   snapshotResearchReferences,
-} from './research-reference-context.js';
-import { generationCreateFingerprint, readGenerationRunReplay } from './run-command-identity.js';
+} from "./research-reference-context.js";
+import {
+  generationCreateFingerprint,
+  readGenerationRunReplay,
+} from "./run-command-identity.js";
 import {
   cancel,
   create,
@@ -63,9 +79,9 @@ import {
   recoverInterrupted,
   updateUsage,
   GenerationRunServiceError,
-} from './run-repository.js';
+} from "./run-repository.js";
 
-export { GenerationRunServiceError } from './run-repository.js';
+export { GenerationRunServiceError } from "./run-repository.js";
 export type {
   GenerationRunServiceErrorCode,
   GenerationRunServiceOptions,
@@ -81,18 +97,21 @@ export type {
   GenerationSkeletonCompletion,
   GenerationPartialDecision,
   GenerationContinuationContext,
-} from './run-repository.js';
-export type { IdeaScopeContext, IdeaScopeContextInput } from './idea-context.js';
+} from "./run-repository.js";
+export type {
+  IdeaScopeContext,
+  IdeaScopeContextInput,
+} from "./idea-context.js";
 export type {
   IdeaGenerationCompletion,
   IdeaGenerationCompletionInput,
-} from './idea-persistence.js';
+} from "./idea-persistence.js";
 
 export type GenerationRunCreateInput = Omit<
   PersistedGenerationRunCreateInput,
-  'scopeType' | 'scopeId'
+  "scopeType" | "scopeId"
 > &
-  Partial<Pick<PersistedGenerationRunCreateInput, 'scopeType' | 'scopeId'>> & {
+  Partial<Pick<PersistedGenerationRunCreateInput, "scopeType" | "scopeId">> & {
     readonly researchReferences?: readonly ResearchReference[];
   };
 
@@ -102,22 +121,25 @@ export interface GenerationRunCreation {
 }
 
 const systemClock: DatabaseClock = { now: () => new Date() };
-const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY = '__worldforgeValidationSemanticIdentityV1';
+const VALIDATION_SEMANTIC_IDENTITY_METADATA_KEY =
+  "__worldforgeValidationSemanticIdentityV1";
 
-function normalizeCreateInput(input: GenerationRunCreateInput): PersistedGenerationRunCreateInput {
+function normalizeCreateInput(
+  input: GenerationRunCreateInput,
+): PersistedGenerationRunCreateInput {
   const { researchReferences: _researchReferences, ...persistedInput } = input;
-  const scopeType = persistedInput.scopeType ?? 'chapter';
+  const scopeType = persistedInput.scopeType ?? "chapter";
   const scopeId =
     persistedInput.scopeId ??
-    (scopeType === 'chapter'
+    (scopeType === "chapter"
       ? persistedInput.chapterId
-      : scopeType === 'project'
+      : scopeType === "project"
         ? persistedInput.projectId
         : null);
   if (scopeId === null) {
     throw new GenerationRunServiceError(
-      'GENERATION_BASE_CONFLICT',
-      'A non-chapter GenerationRun requires an explicit scopeId.',
+      "GENERATION_BASE_CONFLICT",
+      "A non-chapter GenerationRun requires an explicit scopeId.",
     );
   }
   return { ...persistedInput, scopeType, scopeId };
@@ -127,38 +149,48 @@ function withValidationSemanticIdentity(
   context: GenerationRunServiceContext,
   input: PersistedGenerationRunCreateInput,
 ): PersistedGenerationRunCreateInput {
-  if (input.runType !== 'validate') return input;
+  if (input.runType !== "validate") return input;
   if (input.chapterId === null || input.constraintPackage === null) {
     throw new GenerationRunServiceError(
-      'GENERATION_BASE_CONFLICT',
-      'Validation GenerationRun requires a chapter scope and ConstraintPackage.',
+      "GENERATION_BASE_CONFLICT",
+      "Validation GenerationRun requires a chapter scope and ConstraintPackage.",
     );
   }
   const sources = input.inputSources ?? [];
   const versionSource =
-    sources.find((source) => source.sourceType === 'version' && source.metadata?.final === true) ??
     sources.find(
       (source) =>
-        source.sourceType === 'version' &&
+        source.sourceType === "version" && source.metadata?.final === true,
+    ) ??
+    sources.find(
+      (source) =>
+        source.sourceType === "version" &&
         input.constraintPackage?.sourceVersionIds.includes(source.sourceId),
     );
   if (!versionSource) {
     throw new GenerationRunServiceError(
-      'GENERATION_BASE_CONFLICT',
-      'Validation GenerationRun requires an authoritative Final Version input source.',
+      "GENERATION_BASE_CONFLICT",
+      "Validation GenerationRun requires an authoritative Final Version input source.",
     );
   }
   const chapterId = input.chapterId;
-  const identity = context.workspace.readProject(input.projectId, (database) => {
-    const resolved = finalVersion(database, input.projectId, versionSource.sourceId);
-    if (resolved.version.chapterId !== chapterId) {
-      throw new GenerationRunServiceError(
-        'GENERATION_BASE_CONFLICT',
-        'Validation GenerationRun Final Version input belongs to another chapter.',
+  const identity = context.workspace.readProject(
+    input.projectId,
+    (database) => {
+      const resolved = finalVersion(
+        database,
+        input.projectId,
+        versionSource.sourceId,
       );
-    }
-    return validationSemanticIdentity(database, resolved);
-  });
+      if (resolved.version.chapterId !== chapterId) {
+        throw new GenerationRunServiceError(
+          "GENERATION_BASE_CONFLICT",
+          "Validation GenerationRun Final Version input belongs to another chapter.",
+        );
+      }
+      return validationSemanticIdentity(database, resolved);
+    },
+  );
   return {
     ...input,
     inputSources: sources.map((source) =>
@@ -189,7 +221,10 @@ export class GenerationRunService {
   readonly #context: GenerationRunServiceContext;
   readonly #creates = new BoundedIdempotentPromiseCache();
 
-  constructor(workspace: ProjectWorkspaceService, options: GenerationRunServiceOptions = {}) {
+  constructor(
+    workspace: ProjectWorkspaceService,
+    options: GenerationRunServiceOptions = {},
+  ) {
     this.#context = {
       workspace,
       clock: options.clock ?? systemClock,
@@ -197,7 +232,10 @@ export class GenerationRunService {
     };
   }
 
-  async create(requestId: string, input: GenerationRunCreateInput): Promise<GenerationRun> {
+  async create(
+    requestId: string,
+    input: GenerationRunCreateInput,
+  ): Promise<GenerationRun> {
     return (await this.createWithReplay(requestId, input)).run;
   }
 
@@ -215,8 +253,8 @@ export class GenerationRunService {
     } catch (error) {
       if (error instanceof IdempotentRequestConflictError) {
         throw new GenerationRunServiceError(
-          'GENERATION_RESULT_CONFLICT',
-          'The requestId was already used for a different GenerationRun command.',
+          "GENERATION_RESULT_CONFLICT",
+          "The requestId was already used for a different GenerationRun command.",
           { cause: error },
         );
       }
@@ -225,23 +263,41 @@ export class GenerationRunService {
 
     let replayed = false;
     const operation = Promise.resolve().then(async () => {
-      const persisted = readGenerationRunReplay(this.#context.workspace, requestId, input);
-      const expectedSelectionHash = researchReferenceSelectionHash(researchReferences);
+      const persisted = readGenerationRunReplay(
+        this.#context.workspace,
+        requestId,
+        input,
+      );
+      const expectedSelectionHash =
+        researchReferenceSelectionHash(researchReferences);
       if (persisted) {
         const persistedSelectionHash = this.#context.workspace.readProject(
           input.projectId,
           (database) =>
-            persistedResearchSelectionHash(database, input.projectId, persisted.runId),
+            persistedResearchSelectionHash(
+              database,
+              input.projectId,
+              persisted.runId,
+            ),
         );
-        if (persistedSelectionHash !== null && persistedSelectionHash !== expectedSelectionHash) {
+        if (
+          persistedSelectionHash !== null &&
+          persistedSelectionHash !== expectedSelectionHash
+        ) {
           throw new GenerationRunServiceError(
-            'GENERATION_RESULT_CONFLICT',
-            'The requestId was already used with a different research reference selection.',
+            "GENERATION_RESULT_CONFLICT",
+            "The requestId was already used with a different research reference selection.",
           );
         }
         if (persistedSelectionHash === null) {
-          const snapshots = this.#context.workspace.readProject(input.projectId, (database) =>
-            snapshotResearchReferences(database, input.projectId, researchReferences),
+          const snapshots = this.#context.workspace.readProject(
+            input.projectId,
+            (database) =>
+              snapshotResearchReferences(
+                database,
+                input.projectId,
+                researchReferences,
+              ),
           );
           await this.#context.workspace.writeProject(
             this.#context.idFactory(),
@@ -261,7 +317,7 @@ export class GenerationRunService {
         replayed = true;
         return persisted;
       }
-      if (input.runType === 'idea_explore') {
+      if (input.runType === "idea_explore") {
         resolveIdeaScopeContext(this.#context.workspace, {
           projectId: input.projectId,
           scopeType: input.scopeType,
@@ -269,8 +325,14 @@ export class GenerationRunService {
           chapterId: input.chapterId,
         });
       }
-      const snapshots = this.#context.workspace.readProject(input.projectId, (database) =>
-        snapshotResearchReferences(database, input.projectId, researchReferences),
+      const snapshots = this.#context.workspace.readProject(
+        input.projectId,
+        (database) =>
+          snapshotResearchReferences(
+            database,
+            input.projectId,
+            researchReferences,
+          ),
       );
       const run = await create(
         this.#context,
@@ -301,11 +363,15 @@ export class GenerationRunService {
     return get(this.#context, raw);
   }
 
-  list(raw: GenerationListRunsInput): { readonly runs: readonly GenerationRun[] } {
+  list(raw: GenerationListRunsInput): {
+    readonly runs: readonly GenerationRun[];
+  } {
     return list(this.#context, raw);
   }
 
-  getContinuationContext(input: GenerationRunIdentity): GenerationContinuationContext {
+  getContinuationContext(
+    input: GenerationRunIdentity,
+  ): GenerationContinuationContext {
     return getContinuationContext(this.#context, input);
   }
 
@@ -315,11 +381,17 @@ export class GenerationRunService {
     );
   }
 
-  markRunning(requestId: string, input: GenerationRunIdentity): Promise<GenerationRun> {
+  markRunning(
+    requestId: string,
+    input: GenerationRunIdentity,
+  ): Promise<GenerationRun> {
     return markRunning(this.#context, requestId, input);
   }
 
-  markStage(requestId: string, input: GenerationRunStageInput): Promise<GenerationRun> {
+  markStage(
+    requestId: string,
+    input: GenerationRunStageInput,
+  ): Promise<GenerationRun> {
     return markStage(this.#context, requestId, input);
   }
 
@@ -370,7 +442,10 @@ export class GenerationRunService {
     return completeSkeletonCandidates(this.#context, requestId, input);
   }
 
-  savePartial(requestId: string, input: GenerationRunIdentity): Promise<GenerationPartialDecision> {
+  savePartial(
+    requestId: string,
+    input: GenerationRunIdentity,
+  ): Promise<GenerationPartialDecision> {
     return savePartial(this.#context, requestId, input);
   }
 

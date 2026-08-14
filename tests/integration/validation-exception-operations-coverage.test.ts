@@ -27,7 +27,7 @@ async function seedIssue(
       .run(
         batchId,
         seeded.project.projectId,
-        seeded.chapter2.id,
+        seeded.chapter1.id,
         seeded.version.versionId,
         'a'.repeat(64),
         now,
@@ -47,7 +47,7 @@ async function seedIssue(
         issueId,
         batchId,
         seeded.project.projectId,
-        seeded.chapter2.id,
+        seeded.chapter1.id,
         seeded.version.versionId,
         now,
         now,
@@ -80,7 +80,7 @@ describe('validation exception operations coverage', () => {
       expect(catalog.exceptions.find((item) => item.scopeType === 'issue')).toMatchObject({
         scopeType: 'issue',
         validationIssueId: issueId,
-        chapterId: seeded.chapter2.id,
+        chapterId: seeded.chapter1.id,
         active: true,
       });
       expect(catalog.issues.find((issue) => issue.issueId === issueId)?.status).toBe('ignored');
@@ -91,7 +91,7 @@ describe('validation exception operations coverage', () => {
       });
       expect(catalog.exceptions.find((item) => item.scopeType === 'chapter')).toMatchObject({
         scopeType: 'chapter',
-        chapterId: seeded.chapter2.id,
+        chapterId: seeded.chapter1.id,
       });
 
       catalog = await harness.validation.rememberException(randomUUID(), {

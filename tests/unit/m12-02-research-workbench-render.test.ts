@@ -97,10 +97,9 @@ function textContent(instance: TestInstance): string {
     .join('');
 }
 
-function byText(root: TestInstance, text: string): TestInstance {
-  const matches = root.findAll((node) => textContent(node) === text);
-  const match = matches.find((node) => typeof node.type === 'string');
-  if (!match) throw new Error(`Missing rendered node: ${text}`);
+function buttonByText(root: TestInstance, text: string): TestInstance {
+  const match = root.findAll((node) => node.type === 'button' && textContent(node) === text)[0];
+  if (!match) throw new Error(`Missing button: ${text}`);
   return match;
 }
 
@@ -183,26 +182,26 @@ describe('M12-02 research workbench render and interaction coverage', () => {
     expect(research.list).toHaveBeenCalled();
 
     await act(async () => {
-      invoke(byText(renderer.root, '保存笔记'), 'onClick');
+      invoke(buttonByText(renderer.root, '保存笔记'), 'onClick');
       await flushPromises();
     });
     expect(research.updateNote).toHaveBeenCalled();
     expect(textContent(renderer.root)).toContain('研究笔记已保存。');
 
     await act(async () => {
-      invoke(byText(renderer.root, '归档'), 'onClick');
+      invoke(buttonByText(renderer.root, '归档'), 'onClick');
       await flushPromises();
     });
     expect(research.setNoteStatus).toHaveBeenCalled();
 
     await act(async () => {
-      invoke(byText(renderer.root, '加入本地附件'), 'onClick');
+      invoke(buttonByText(renderer.root, '加入本地附件'), 'onClick');
       await flushPromises();
     });
     expect(research.importAttachment).toHaveBeenCalled();
 
     await act(async () => {
-      invoke(byText(renderer.root, '安全预览'), 'onClick');
+      invoke(buttonByText(renderer.root, '安全预览'), 'onClick');
       await flushPromises();
     });
     expect(research.previewAttachment).toHaveBeenCalled();
@@ -223,7 +222,7 @@ describe('M12-02 research workbench render and interaction coverage', () => {
       });
     });
     await act(async () => {
-      invoke(byText(renderer.root, '建立关联'), 'onClick');
+      invoke(buttonByText(renderer.root, '建立关联'), 'onClick');
       await flushPromises();
     });
     expect(research.addLink).toHaveBeenCalled();
@@ -248,13 +247,13 @@ describe('M12-02 research workbench render and interaction coverage', () => {
     }
 
     await act(async () => {
-      invoke(byText(renderer.root, '删除附件'), 'onClick');
+      invoke(buttonByText(renderer.root, '删除附件'), 'onClick');
       await flushPromises();
     });
     expect(research.deleteAttachment).toHaveBeenCalled();
 
     await act(async () => {
-      invoke(byText(renderer.root, '新建笔记'), 'onClick');
+      invoke(buttonByText(renderer.root, '新建笔记'), 'onClick');
       await flushPromises();
     });
     expect(research.createNote).toHaveBeenCalled();
@@ -270,7 +269,7 @@ describe('M12-02 research workbench render and interaction coverage', () => {
       expect(research.deleteNote).toHaveBeenCalled();
     }
 
-    await act(async () => invoke(byText(renderer.root, '返回写作'), 'onClick'));
+    await act(async () => invoke(buttonByText(renderer.root, '返回写作'), 'onClick'));
     expect(onClose).toHaveBeenCalledOnce();
     await act(async () => renderer.unmount());
   });
@@ -299,10 +298,10 @@ describe('M12-02 research workbench render and interaction coverage', () => {
       await flushPromises();
     });
 
-    expect(byText(renderer.root, '新建笔记').props.disabled).toBe(true);
-    expect(byText(renderer.root, '保存笔记').props.disabled).toBe(true);
-    expect(byText(renderer.root, '归档').props.disabled).toBe(true);
-    expect(byText(renderer.root, '加入本地附件').props.disabled).toBe(true);
+    expect(buttonByText(renderer.root, '新建笔记').props.disabled).toBe(true);
+    expect(buttonByText(renderer.root, '保存笔记').props.disabled).toBe(true);
+    expect(buttonByText(renderer.root, '归档').props.disabled).toBe(true);
+    expect(buttonByText(renderer.root, '加入本地附件').props.disabled).toBe(true);
     await act(async () => renderer.unmount());
   });
 });

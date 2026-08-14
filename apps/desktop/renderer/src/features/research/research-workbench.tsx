@@ -4,7 +4,6 @@ import type {
   ResearchAttachment,
   ResearchCatalog,
   ResearchLink,
-  ResearchNote,
   ResearchReference,
   ResearchTargetType,
 } from '@worldforge/contracts';

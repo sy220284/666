@@ -290,11 +290,7 @@ export function createRendererBridgeAdapter(
       requireDomain(auxiliary.longformAi, 'longformAi'),
       coordinator,
     ),
-    research: adaptDomain(
-      'research',
-      requireDomain(auxiliary.research, 'research'),
-      coordinator,
-    ),
+    research: adaptDomain('research', requireDomain(auxiliary.research, 'research'), coordinator),
     candidateAction: adaptDomain(
       'candidateAction',
       requireDomain(auxiliary.candidateAction, 'candidateAction'),

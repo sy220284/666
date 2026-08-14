@@ -8,8 +8,9 @@ const root = process.cwd();
 const temporaryDirectories: string[] = [];
 
 const VIEWPORTS = [
-  { id: 'mainstream-fhd', tier: 'mainstream', width: 1920, height: 1080 },
-  { id: 'mid-high-qhd', tier: 'mid-high', width: 2560, height: 1440 },
+  { id: 'baseline-qhd', tier: 'supported-minimum', width: 2560, height: 1440 },
+  { id: 'laptop-qhd-plus', tier: 'mid-high-16-10', width: 2560, height: 1600 },
+  { id: 'ultrawide-uwqhd', tier: 'mid-high-ultrawide', width: 3440, height: 1440 },
   { id: 'high-end-4k', tier: 'high-end', width: 3840, height: 2160 },
 ] as const;
 
@@ -165,7 +166,7 @@ test.afterEach(async () => {
 });
 
 test('三平台主流至高端作者体验矩阵', async () => {
-  test.setTimeout(360_000);
+  test.setTimeout(480_000);
   const scenarios: ScenarioEvidence[] = [];
   for (const viewport of VIEWPORTS) scenarios.push(await runScenario(viewport));
   expect(scenarios).toHaveLength(VIEWPORTS.length);

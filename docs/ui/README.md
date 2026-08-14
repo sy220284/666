@@ -13,11 +13,12 @@
 | [`INFORMATION_ARCHITECTURE.md`](INFORMATION_ARCHITECTURE.md) | 页面地图、一级入口、工作台层级和导航规则 |
 | [`SCREEN_SPECIFICATIONS.md`](SCREEN_SPECIFICATIONS.md) | 首页、规划、写作、候选、检查、导入导出、设置等页面规格 |
 | [`M11-06_DAILY_WRITING_MAINTENANCE.md`](M11-06_DAILY_WRITING_MAINTENANCE.md) | M11-06 日常写作工作台减法、入口层级、作者术语、读屏状态与视觉基线维护附录 |
+| [`DISPLAY_SUPPORT_MAINTENANCE.md`](DISPLAY_SUPPORT_MAINTENANCE.md) | 现行 QHD/QHD+/UWQHD/4K 正式显示支持、DPI、窗口与视觉基线维护权威 |
 | [`INTERACTION_STATES.md`](INTERACTION_STATES.md) | 空、加载、运行、成功、失败、取消、冲突、只读、恢复等状态规范 |
 | [`EDITOR_INTERACTION_SPEC.md`](EDITOR_INTERACTION_SPEC.md) | 编辑、选区、锁定、保存、撤销、划选改写、场景联动和快捷键 |
 | [`CANDIDATE_REVIEW_SPEC.md`](CANDIDATE_REVIEW_SPEC.md) | 候选比较、Diff、局部采用、融合、冲突处理和采用回退 |
 | [`ONBOARDING_SPEC.md`](ONBOARDING_SPEC.md) | 新建向导、新手轻量脚手架、模式切换和上下文帮助 |
-| [`RESPONSIVE_AND_DPI.md`](RESPONSIVE_AND_DPI.md) | 1280×800、2K、21:9曲面/超宽屏、混合DPI和窗口恢复 |
+| [`RESPONSIVE_AND_DPI.md`](RESPONSIVE_AND_DPI.md) | CSS/DIP响应断点、QHD/高分屏、21:9曲面/超宽屏、混合DPI和窗口恢复 |
 | [`ACCESSIBILITY.md`](ACCESSIBILITY.md) | 键盘、焦点、对比度、语义、中文输入法、减少动效和读屏规则 |
 | [`UI_ACCEPTANCE_CHECKLIST.md`](UI_ACCEPTANCE_CHECKLIST.md) | UI实现、视觉、交互、高分屏、无障碍和业务闭环验收清单 |
 
@@ -46,7 +47,7 @@ V6.5完整设计方案
 > 现有组件实现
 ```
 
-`M11-06_DAILY_WRITING_MAINTENANCE.md` 在 M11-06 明确声明的日常写作工作台范围内覆盖冻结 V1.0 文档中的旧描述；其他页面与底层业务语义继续以原规格为准。
+`M11-06_DAILY_WRITING_MAINTENANCE.md` 在 M11-06 明确声明的日常写作工作台范围内覆盖冻结 V1.0 文档中的旧描述；`DISPLAY_SUPPORT_MAINTENANCE.md` 覆盖所有现行文档中的低分辨率硬件支持条款，历史 Evidence 仅保留为历史事实；其他页面与底层业务语义继续以原规格为准。
 
 ## 统一原则
 
@@ -58,7 +59,7 @@ V6.5完整设计方案
 6. 卡片只用于候选、冲突、风险、恢复和需要独立决策的内容。
 7. 普通设置、表单和信息列表优先使用分组、分隔线和轻量容器。
 8. 所有异步状态展示真实程序阶段，不显示伪造倒计时。
-9. 1280×800保证核心流程，2K为完整体验基线，21:9控制正文行宽和操作距离。
+9. QHD（2560×1440）为正式最低显示与严格视觉基线，QHD+、UWQHD、4K进入正式体验矩阵；窄 CSS/DIP 视口仅作为高 DPI 与窗口缩放降级路径。
 10. 所有界面必须覆盖空、加载、失败、取消、冲突、只读和恢复路径。
 
 ## 维护规则

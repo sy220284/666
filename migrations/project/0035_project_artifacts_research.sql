@@ -61,14 +61,20 @@ CREATE TABLE generation_research_refs (
   project_id TEXT NOT NULL,
   source_type TEXT NOT NULL CHECK(source_type IN ('note', 'attachment')),
   source_id TEXT NOT NULL,
+  source_order INTEGER NOT NULL CHECK(source_order >= 0 AND source_order < 20),
+  content_hash TEXT NOT NULL CHECK(length(content_hash) = 64 AND content_hash GLOB '[0-9a-f]*'),
+  snapshot_text TEXT NOT NULL CHECK(length(snapshot_text) <= 16000),
+  included_chars INTEGER NOT NULL CHECK(included_chars >= 0 AND included_chars <= 16000),
+  trimmed INTEGER NOT NULL CHECK(trimmed IN (0, 1)),
   added_at TEXT NOT NULL,
   PRIMARY KEY(generation_run_id, source_type, source_id),
+  UNIQUE(generation_run_id, source_order),
   FOREIGN KEY(generation_run_id) REFERENCES generation_runs(id) ON DELETE CASCADE,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 ) STRICT;
 
 CREATE INDEX idx_generation_research_refs_project
-ON generation_research_refs(project_id, generation_run_id);
+ON generation_research_refs(project_id, generation_run_id, source_order);
 
 CREATE VIRTUAL TABLE fts_research_notes USING fts5(
   project_id UNINDEXED,

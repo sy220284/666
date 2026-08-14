@@ -26,11 +26,11 @@ jobs:
       - name: Download immutable stable visual source artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
-          artifact-ids: 9234964206
+          artifact-ids: 9226678057
           path: /tmp/m12-02-stable-visual-source
           github-token: ${{ github.token }}
           repository: sy220284/666
-          run-id: 31841828379
+          run-id: 31818830760
       - name: Apply independently witnessed stable visual baselines
         shell: bash
         run: |
@@ -85,16 +85,16 @@ jobs:
             "schemaVersion": 1,
             "platform": "linux",
             "source": {
-              "verifiedHead": "76990f503f8d0a5194e08e5c43dcd2f23e3cd1dd",
-              "qualityRunId": 31841828379,
-              "artifactId": 9234964206,
-              "artifactDigest": "sha256:4adab323c3f83d6d7e02f3e6fdf67fddb7de2b7825b162fdcd5b35c046a530bc"
-            },
-            "stabilityWitness": {
               "verifiedHead": "d2a6abe07d032db7260300924d14dc5c804ea46a",
               "qualityRunId": 31818830760,
               "artifactId": 9226678057,
               "artifactDigest": "sha256:ca6454b6dd00b126eda4d07417e6edef0249147f5a6c6d337e4a42902064078b"
+            },
+            "stabilityWitness": {
+              "verifiedHead": "76990f503f8d0a5194e08e5c43dcd2f23e3cd1dd",
+              "qualityRunId": 31841828379,
+              "artifactId": 9234964206,
+              "artifactDigest": "sha256:4adab323c3f83d6d7e02f3e6fdf67fddb7de2b7825b162fdcd5b35c046a530bc"
             },
             "baselines": [
               {

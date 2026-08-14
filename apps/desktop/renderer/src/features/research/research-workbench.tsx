@@ -34,17 +34,28 @@ const TARGET_OPTIONS: readonly [ResearchTargetType, string][] = [
 ];
 
 function splitTags(value: string): string[] {
-  return [...new Set(value.split(/[，,、\s]+/u).map((tag) => tag.trim()).filter(Boolean))].slice(0, 50);
+  return [
+    ...new Set(
+      value
+        .split(/[，,、\s]+/u)
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 50);
 }
 
 function attachmentLabel(attachment: ResearchAttachment): string {
-  const size = attachment.sizeBytes < 1024 * 1024
-    ? `${Math.max(1, Math.round(attachment.sizeBytes / 1024))} KB`
-    : `${(attachment.sizeBytes / 1024 / 1024).toFixed(1)} MB`;
+  const size =
+    attachment.sizeBytes < 1024 * 1024
+      ? `${Math.max(1, Math.round(attachment.sizeBytes / 1024))} KB`
+      : `${(attachment.sizeBytes / 1024 / 1024).toFixed(1)} MB`;
   return `${attachment.displayName} · ${size} · ${attachment.mediaType}`;
 }
 
-function linkNavigation(projectId: string, link: ResearchLink): AuthorNavigationTarget | null {
+function linkNavigation(
+  projectId: string,
+  link: ResearchLink,
+): AuthorNavigationTarget | null {
   if (link.targetType === 'chapter') {
     return {
       type: 'draft-block',
@@ -89,19 +100,27 @@ export function ResearchWorkbench({
   const [targetType, setTargetType] = useState<ResearchTargetType>('chapter');
   const [targetId, setTargetId] = useState('');
   const [pending, setPending] = useState<string | null>(null);
-  const [notice, setNotice] = useState('研究资料不会自动写入人物与世界，也不会自动进入智能上下文。');
-  const [selectedReferenceIds, setSelectedReferenceIds] = useState<ReadonlySet<string>>(new Set());
+  const [notice, setNotice] = useState(
+    '研究资料不会自动写入人物与世界，也不会自动进入智能上下文。',
+  );
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
 
   const selected = useMemo(
     () => catalog?.notes.find((note) => note.id === selectedNoteId) ?? null,
     [catalog?.notes, selectedNoteId],
   );
   const selectedAttachments = useMemo(
-    () => catalog?.attachments.filter((attachment) => attachment.noteId === selectedNoteId) ?? [],
+    () =>
+      catalog?.attachments.filter((attachment) => attachment.noteId === selectedNoteId) ?? [],
     [catalog?.attachments, selectedNoteId],
   );
   const selectedLinks = useMemo(
-    () => catalog?.links.filter((link) => link.sourceType === 'note' && link.sourceId === selectedNoteId) ?? [],
+    () =>
+      catalog?.links.filter(
+        (link) => link.sourceType === 'note' && link.sourceId === selectedNoteId,
+      ) ?? [],
     [catalog?.links, selectedNoteId],
   );
 
@@ -112,10 +131,15 @@ export function ResearchWorkbench({
         includeArchived: showArchived,
         ...(query.trim() ? { query: query.trim() } : {}),
       },
-      { mode: 'share', requestKey: `research.list:${projectId}:${showArchived}:${query.trim()}` },
+      {
+        mode: 'share',
+        requestKey: `research.list:${projectId}:${showArchived}:${query.trim()}`,
+      },
     );
     if (outcome.state !== 'success') {
-      if (outcome.state === 'failure') setNotice(`研究资料读取失败：${authorErrorSummary(outcome.error)}`);
+      if (outcome.state === 'failure') {
+        setNotice(`研究资料读取失败：${authorErrorSummary(outcome.error)}`);
+      }
       return;
     }
     setCatalog(outcome.data);
@@ -147,8 +171,9 @@ export function ResearchWorkbench({
   const applyCatalog = (next: ResearchCatalog, preferredId?: string): void => {
     setCatalog(next);
     if (preferredId) onSelectNote(preferredId);
-    else if (selectedNoteId && next.notes.some((note) => note.id === selectedNoteId)) onSelectNote(selectedNoteId);
-    else onSelectNote(next.notes[0]?.id ?? null);
+    else if (selectedNoteId && next.notes.some((note) => note.id === selectedNoteId)) {
+      onSelectNote(selectedNoteId);
+    } else onSelectNote(next.notes[0]?.id ?? null);
   };
 
   const createNote = async (): Promise<void> => {
@@ -166,7 +191,9 @@ export function ResearchWorkbench({
     );
     setPending(null);
     if (outcome.state === 'success') {
-      const created = outcome.data.notes.find((note) => note.title === '未命名研究笔记') ?? outcome.data.notes[0];
+      const created =
+        outcome.data.notes.find((note) => note.title === '未命名研究笔记') ??
+        outcome.data.notes[0];
       applyCatalog(outcome.data, created?.id);
       setNotice('研究笔记已创建。');
     } else if (outcome.state === 'failure') {
@@ -213,7 +240,9 @@ export function ResearchWorkbench({
     setPending(null);
     if (outcome.state === 'success') {
       applyCatalog(outcome.data, selected.id);
-      setNotice(selected.status === 'active' ? '研究笔记已归档。' : '研究笔记已恢复。');
+      setNotice(
+        selected.status === 'active' ? '研究笔记已归档。' : '研究笔记已恢复。',
+      );
     } else if (outcome.state === 'failure') {
       setNotice(`状态更新失败：${authorErrorSummary(outcome.error)}`);
     }
@@ -231,7 +260,11 @@ export function ResearchWorkbench({
       applyCatalog(outcome.data, selected.id);
       setNotice('附件已复制到当前作品的受管资料目录。');
     } else if (outcome.state === 'failure') {
-      setNotice(outcome.error.code === 'COMMON_CANCELLED_004' ? '已取消选择附件。' : `附件导入失败：${authorErrorSummary(outcome.error)}`);
+      setNotice(
+        outcome.error.code === 'COMMON_CANCELLED_004'
+          ? '已取消选择附件。'
+          : `附件导入失败：${authorErrorSummary(outcome.error)}`,
+      );
     }
   };
 
@@ -267,7 +300,10 @@ export function ResearchWorkbench({
         targetType,
         targetId: targetId.trim(),
       },
-      { mode: 'reject', requestKey: `research.link:${selected.id}:${targetType}:${targetId.trim()}` },
+      {
+        mode: 'reject',
+        requestKey: `research.link:${selected.id}:${targetType}:${targetId.trim()}`,
+      },
     );
     setPending(null);
     if (outcome.state === 'success') {
@@ -288,7 +324,9 @@ export function ResearchWorkbench({
     );
     setPending(null);
     if (outcome.state === 'success') applyCatalog(outcome.data, selected?.id);
-    else if (outcome.state === 'failure') setNotice(`移除关联失败：${authorErrorSummary(outcome.error)}`);
+    else if (outcome.state === 'failure') {
+      setNotice(`移除关联失败：${authorErrorSummary(outcome.error)}`);
+    }
   };
 
   const toggleReference = (id: string): void => {
@@ -309,23 +347,40 @@ export function ResearchWorkbench({
           <p>笔记与附件只作为作者资料；只有你明确勾选后，才允许进入一次智能生成请求。</p>
         </div>
         <div className="button-row">
-          <button type="button" className="button secondary" onClick={onClose}>返回写作</button>
-          <button type="button" className="button primary" disabled={readOnly || pending !== null} onClick={() => void createNote()}>
+          <button type="button" className="button secondary" onClick={onClose}>
+            返回写作
+          </button>
+          <button
+            type="button"
+            className="button primary"
+            disabled={readOnly || pending !== null}
+            onClick={() => void createNote()}
+          >
             新建笔记
           </button>
         </div>
       </header>
 
-      <p className="status-line" role="status">{readOnly ? `只读作品 · ${notice}` : notice}</p>
+      <p className="status-line" role="status">
+        {readOnly ? `只读作品 · ${notice}` : notice}
+      </p>
 
       <section className="workspace-grid research-workbench__grid">
         <aside className="panel research-workbench__list" aria-label="研究笔记列表">
           <label className="field">
             <span>搜索资料</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="标题、正文、标签或来源" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="标题、正文、标签或来源"
+            />
           </label>
           <label className="inline-control">
-            <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(event) => setShowArchived(event.target.checked)}
+            />
             显示已归档
           </label>
           <div className="stack-list">
@@ -337,10 +392,15 @@ export function ResearchWorkbench({
                 onClick={() => onSelectNote(note.id)}
               >
                 <strong>{note.title}</strong>
-                <span>{note.tags.length ? note.tags.join(' · ') : '无标签'}{note.status === 'archived' ? ' · 已归档' : ''}</span>
+                <span>
+                  {note.tags.length ? note.tags.join(' · ') : '无标签'}
+                  {note.status === 'archived' ? ' · 已归档' : ''}
+                </span>
               </button>
             ))}
-            {catalog && catalog.notes.length === 0 ? <p className="empty-copy">还没有符合条件的研究笔记。</p> : null}
+            {catalog && catalog.notes.length === 0 ? (
+              <p className="empty-copy">还没有符合条件的研究笔记。</p>
+            ) : null}
           </div>
         </aside>
 
@@ -348,28 +408,57 @@ export function ResearchWorkbench({
           {selected ? (
             <>
               <div className="button-row button-row--end">
-                <button type="button" className="button secondary" disabled={readOnly || pending !== null} onClick={() => void toggleArchived()}>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={readOnly || pending !== null}
+                  onClick={() => void toggleArchived()}
+                >
                   {selected.status === 'active' ? '归档' : '恢复'}
                 </button>
-                <button type="button" className="button primary" disabled={readOnly || pending !== null || !title.trim()} onClick={() => void saveNote()}>
+                <button
+                  type="button"
+                  className="button primary"
+                  disabled={readOnly || pending !== null || !title.trim()}
+                  onClick={() => void saveNote()}
+                >
                   保存笔记
                 </button>
               </div>
               <label className="field">
                 <span>标题</span>
-                <input value={title} disabled={readOnly} onChange={(event) => setTitle(event.target.value)} />
+                <input
+                  value={title}
+                  disabled={readOnly}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
               </label>
               <label className="field">
                 <span>标签</span>
-                <input value={tagsText} disabled={readOnly} onChange={(event) => setTagsText(event.target.value)} placeholder="历史，地理，服饰" />
+                <input
+                  value={tagsText}
+                  disabled={readOnly}
+                  onChange={(event) => setTagsText(event.target.value)}
+                  placeholder="历史，地理，服饰"
+                />
               </label>
               <label className="field">
                 <span>来源</span>
-                <input value={sourceUri} disabled={readOnly} onChange={(event) => setSourceUri(event.target.value)} placeholder="网址、书名、档案号或自己的来源说明" />
+                <input
+                  value={sourceUri}
+                  disabled={readOnly}
+                  onChange={(event) => setSourceUri(event.target.value)}
+                  placeholder="网址、书名、档案号或自己的来源说明"
+                />
               </label>
               <label className="field field--grow">
                 <span>笔记正文</span>
-                <textarea value={body} disabled={readOnly} onChange={(event) => setBody(event.target.value)} rows={16} />
+                <textarea
+                  value={body}
+                  disabled={readOnly}
+                  onChange={(event) => setBody(event.target.value)}
+                  rows={16}
+                />
               </label>
             </>
           ) : (
@@ -382,7 +471,12 @@ export function ResearchWorkbench({
           {selected ? (
             <>
               <div className="button-row">
-                <button type="button" className="button secondary" disabled={readOnly || pending !== null} onClick={() => void importAttachment()}>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={readOnly || pending !== null}
+                  onClick={() => void importAttachment()}
+                >
                   加入本地附件
                 </button>
               </div>
@@ -398,31 +492,71 @@ export function ResearchWorkbench({
                       本次智能参考
                     </label>
                     <strong>{attachmentLabel(attachment)}</strong>
-                    <span>SHA-256 {attachment.contentHash.slice(0, 12)}… · 受管本地副本</span>
-                    <button type="button" className="text-button danger" disabled={readOnly || pending !== null} onClick={() => void deleteAttachment(attachment.id)}>删除附件</button>
+                    <span>
+                      SHA-256 {attachment.contentHash.slice(0, 12)}… · 受管本地副本
+                    </span>
+                    <button
+                      type="button"
+                      className="text-button danger"
+                      disabled={readOnly || pending !== null}
+                      onClick={() => void deleteAttachment(attachment.id)}
+                    >
+                      删除附件
+                    </button>
                   </div>
                 ))}
-                {selectedAttachments.length === 0 ? <p className="empty-copy">暂无附件。</p> : null}
+                {selectedAttachments.length === 0 ? (
+                  <p className="empty-copy">暂无附件。</p>
+                ) : null}
               </div>
 
               <label className="inline-control research-reference-note">
-                <input type="checkbox" checked={selectedReferenceIds.has(selected.id)} onChange={() => toggleReference(selected.id)} />
+                <input
+                  type="checkbox"
+                  checked={selectedReferenceIds.has(selected.id)}
+                  onChange={() => toggleReference(selected.id)}
+                />
                 将当前笔记列入本次智能参考
               </label>
-              <p className="muted-copy">已选择 {selectedReferenceIds.size}/20 项。选择只在当前界面会话保留，生成时仍由 Core 重新校验项目归属。</p>
+              <p className="muted-copy">
+                已选择 {selectedReferenceIds.size}/20 项。选择只在当前界面会话保留，生成时仍由
+                Core 重新校验项目归属。
+              </p>
 
               <div className="research-link-form">
                 <label className="field">
                   <span>关联类型</span>
-                  <select value={targetType} disabled={readOnly} onChange={(event) => setTargetType(event.target.value as ResearchTargetType)}>
-                    {TARGET_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  <select
+                    value={targetType}
+                    disabled={readOnly}
+                    onChange={(event) =>
+                      setTargetType(event.target.value as ResearchTargetType)
+                    }
+                  >
+                    {TARGET_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label className="field">
                   <span>目标 ID</span>
-                  <input value={targetId} disabled={readOnly} onChange={(event) => setTargetId(event.target.value)} placeholder="粘贴当前作品内对象 ID" />
+                  <input
+                    value={targetId}
+                    disabled={readOnly}
+                    onChange={(event) => setTargetId(event.target.value)}
+                    placeholder="粘贴当前作品内对象 ID"
+                  />
                 </label>
-                <button type="button" className="button secondary" disabled={readOnly || pending !== null || !targetId.trim()} onClick={() => void addLink()}>建立关联</button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={readOnly || pending !== null || !targetId.trim()}
+                  onClick={() => void addLink()}
+                >
+                  建立关联
+                </button>
               </div>
 
               <div className="stack-list compact-list">
@@ -430,11 +564,29 @@ export function ResearchWorkbench({
                   const navigation = linkNavigation(projectId, link);
                   return (
                     <div key={link.id} className="list-card list-card--static">
-                      <strong>{TARGET_OPTIONS.find(([type]) => type === link.targetType)?.[1] ?? link.targetType}</strong>
+                      <strong>
+                        {TARGET_OPTIONS.find(([type]) => type === link.targetType)?.[1] ??
+                          link.targetType}
+                      </strong>
                       <span>{link.targetId}</span>
                       <div className="button-row">
-                        {navigation ? <button type="button" className="text-button" onClick={() => onNavigate(navigation)}>打开</button> : null}
-                        <button type="button" className="text-button danger" disabled={readOnly || pending !== null} onClick={() => void removeLink(link.id)}>移除</button>
+                        {navigation ? (
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => onNavigate(navigation)}
+                          >
+                            打开
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="text-button danger"
+                          disabled={readOnly || pending !== null}
+                          onClick={() => void removeLink(link.id)}
+                        >
+                          移除
+                        </button>
                       </div>
                     </div>
                   );

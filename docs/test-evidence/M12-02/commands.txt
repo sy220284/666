@@ -1,0 +1,45 @@
+# M12-02 Runtime 权威验证命令
+
+pnpm task:validate
+pnpm check:language
+pnpm check:workspaces
+pnpm check:boundaries
+pnpm check:docs
+pnpm check:governance
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:integration
+pnpm test:migration
+pnpm test:coverage
+pnpm test:security
+pnpm test:reliability
+pnpm test:perf
+pnpm build
+pnpm test:e2e
+
+# 实现冻结
+# implementationCommit: 46d160ee7af018acac46bd4fb4cc05ea193a6134
+# Ready Quality: 31811263178, attempt 2
+# - static-checks: success
+# - product-tests: success
+# - reliability-tests: success
+# - desktop-e2e + Linux platform experience: success
+# - macOS platform experience: success
+# - Windows platform experience + native Pinyin: success
+# - release-audit: pending this closure Evidence commit
+# Ready Security: 31811263019 success
+# Ready Performance: 31811262994 success
+# Product artifact: 9223289430 (sha256:e1761a668f6e78e7a39b35f8ae4d600433c4025d8e8f205320f889d2840eb588)
+# Product: 397/397 test files, 1583/1583 tests, coverage gate success
+
+# 锁定工具链
+# Node 24.18.1
+# pnpm 11.21.0
+# Prettier 3.9.6
+# ESLint 10.8.0
+# TypeScript 6.0.3
+# Vitest 4.1.10
+# Playwright 1.62.0
+# Electron 43.2.0

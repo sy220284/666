@@ -1,11 +1,12 @@
 {
   "schemaVersion": 2,
   "id": "M12-02",
-  "status": "IN_PROGRESS",
+  "status": "IMPLEMENTED",
   "executionBranch": "work",
   "source": "docs/tasks/M12/M12-02_RESEARCH_LIBRARY_ATTACHMENTS.md",
   "priority": "P1",
   "startedAt": "2026-08-14T11:52:00+08:00",
+  "implementedAt": "2026-08-14T23:14:19+08:00",
   "dependencies": ["M11-07"],
   "baseline": {
     "main": "4f19aeff1f3dd7f217c5fb7392cb5fb8eb8fadfb",
@@ -59,5 +60,9 @@
     "pnpm build",
     "pnpm test:e2e"
   ],
-  "verificationBinding": null
+  "verificationBinding": {
+    "sourcePr": 399,
+    "mainContext": "main-verification",
+    "taskContext": "task-verification/M12-02"
+  }
 }

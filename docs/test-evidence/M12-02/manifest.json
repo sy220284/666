@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "taskId": "M12-02",
+  "implementationCommit": "46d160ee7af018acac46bd4fb4cc05ea193a6134",
+  "generatedAt": "2026-08-14T23:14:19+08:00",
+  "files": [
+    {
+      "path": "summary.md",
+      "bytes": 1175,
+      "sha256": "9a5cb6855be6f3611df2df7a08fa14b96ffb978dc48b5c7f5591cf7565f973c1"
+    },
+    {
+      "path": "commands.txt",
+      "bytes": 1178,
+      "sha256": "d3ebe7163ed74a33d0787399f3dcb69c7498712a4a87a82aee5b995d5b28d899"
+    },
+    {
+      "path": "known-risks.md",
+      "bytes": 1157,
+      "sha256": "e739eea01693b8b8fa131044249f668eaa51da774b43f4b94478ca0fba237165"
+    },
+    {
+      "path": "project-artifact-set.md",
+      "bytes": 934,
+      "sha256": "4e63ce2a193b697e7737f6bad2479c5df4ead88f175e07e70152ce20a0e9994c"
+    },
+    {
+      "path": "artifact-lifecycle.md",
+      "bytes": 951,
+      "sha256": "eb9f0ec873b7c3be73070e0a50f77b0310dd554b8c092a3afc5186bdfeb2ea32"
+    },
+    {
+      "path": "artifact-failure-cases.md",
+      "bytes": 678,
+      "sha256": "bb0c97274ad25b64df71fd445c7634f0f0421823252386110345bdc04ab89ee0"
+    },
+    {
+      "path": "search-ai-boundaries.md",
+      "bytes": 1071,
+      "sha256": "73eaf4f6febcb446bbf40483006299e3627676b1b76bea99a7424c3299da147b"
+    },
+    {
+      "path": "visual-baseline.md",
+      "bytes": 961,
+      "sha256": "b0d78ed2337f37515c7254bf64de7808e4fd0cf8464bb4db9232dde3efe973c2"
+    }
+  ]
+}

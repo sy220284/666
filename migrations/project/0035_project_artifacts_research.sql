@@ -56,6 +56,18 @@ CREATE TABLE research_links (
 CREATE INDEX idx_research_links_target
 ON research_links(project_id, target_type, target_id, source_type, source_id);
 
+CREATE TABLE generation_research_ref_sets (
+  generation_run_id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  selection_hash TEXT NOT NULL CHECK(length(selection_hash) = 64 AND selection_hash GLOB '[0-9a-f]*'),
+  added_at TEXT NOT NULL,
+  FOREIGN KEY(generation_run_id) REFERENCES generation_runs(id) ON DELETE CASCADE,
+  FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+) STRICT;
+
+CREATE INDEX idx_generation_research_ref_sets_project
+ON generation_research_ref_sets(project_id, generation_run_id);
+
 CREATE TABLE generation_research_refs (
   generation_run_id TEXT NOT NULL,
   project_id TEXT NOT NULL,
@@ -69,7 +81,7 @@ CREATE TABLE generation_research_refs (
   added_at TEXT NOT NULL,
   PRIMARY KEY(generation_run_id, source_type, source_id),
   UNIQUE(generation_run_id, source_order),
-  FOREIGN KEY(generation_run_id) REFERENCES generation_runs(id) ON DELETE CASCADE,
+  FOREIGN KEY(generation_run_id) REFERENCES generation_research_ref_sets(generation_run_id) ON DELETE CASCADE,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 ) STRICT;
 

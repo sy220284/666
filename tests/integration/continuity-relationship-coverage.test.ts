@@ -28,6 +28,11 @@ async function finalVersionForChapter(
     baseRevision: draft.revision,
     title,
   });
+  await harness.versions.setFinal(randomUUID(), {
+    projectId,
+    chapterId,
+    versionId: version.versionId,
+  });
   return version.versionId;
 }
 
@@ -40,6 +45,11 @@ describe('character relationship history coverage', () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
+      await harness.versions.setFinal(randomUUID(), {
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        versionId: seeded.version.versionId,
+      });
       const version2 = await finalVersionForChapter(
         harness,
         seeded.project.projectId,
@@ -175,6 +185,11 @@ describe('character relationship history coverage', () => {
     const harness = await createContinuityHarness();
     try {
       const seeded = await seedContinuity(harness);
+      await harness.versions.setFinal(randomUUID(), {
+        projectId: seeded.project.projectId,
+        chapterId: seeded.chapter1.id,
+        versionId: seeded.version.versionId,
+      });
       const catalog = await harness.canon.create(randomUUID(), {
         projectId: seeded.project.projectId,
         authority: 'author',

@@ -28,10 +28,94 @@ jobs:
           node-version: 24.18.1
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Apply exact closure-test corrections
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const file = 'tests/reliability/m12-02-artifact-recovery.test.ts';
+          let source = readFileSync(file, 'utf8');
+          const oldManifest = `      ) as { artifacts: Array<{ managedRelativePath: string; sha256: string; sizeBytes: number }> };
+          expect(manifest.artifacts).toHaveLength(10);
+          expect(manifest.artifacts.some((item) => item.sizeBytes === 8 * 1024 * 1024)).toBe(true);`;
+          const newManifest = `      ) as { files: Array<{ relativePath: string; sha256: string; sizeBytes: number }> };
+          expect(manifest.files).toHaveLength(10);
+          expect(manifest.files.some((item) => item.sizeBytes === 8 * 1024 * 1024)).toBe(true);`;
+          if (!source.includes(oldManifest)) throw new Error('Expected artifact manifest assertion block was not found.');
+          source = source.replace(oldManifest, newManifest);
+
+          const oldUnsafe = `  it('fails backup creation when managed artifact metadata escapes the project path boundary', async () => {
+            const value = await harness();
+            try {
+              await value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {
+                database
+                  .prepare(
+                    'UPDATE research_attachments SET managed_relative_path = ? WHERE id = ? AND project_id = ?',
+                  )
+                  .run('../escape.txt', value.attachment.id, value.project.projectId);
+              });
+
+              await expect(
+                value.recovery.createOperationCheckpoint(randomUUID(), {
+                  projectId: value.project.projectId,
+                  operation: 'replace',
+                }),
+              ).rejects.toMatchObject({ code: 'BACKUP_VERIFY_FAILED' });
+            } finally {
+              await value.workspace.shutdown();
+              await value.runtime.close();
+            }
+          });`;
+          const newUnsafe = `  it('rejects unsafe managed paths at both database and restore-manifest boundaries', async () => {
+            const value = await harness();
+            try {
+              await expect(
+                value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {
+                  database
+                    .prepare(
+                      'UPDATE research_attachments SET managed_relative_path = ? WHERE id = ? AND project_id = ?',
+                    )
+                    .run('../escape.txt', value.attachment.id, value.project.projectId);
+                }),
+              ).rejects.toMatchObject({ code: 'DATABASE_WRITE_FAILED' });
+
+              const checkpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {
+                projectId: value.project.projectId,
+                operation: 'replace',
+              });
+              const manifestPath = path.join(
+                value.backupRoot,
+                value.project.projectId,
+                \`\${checkpoint.backupId}.artifacts.json\`,
+              );
+              const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+                files: Array<Record<string, unknown>>;
+              };
+              manifest.files[0]!.relativePath = '../escape.txt';
+              await writeFile(manifestPath, \`\${JSON.stringify(manifest, null, 2)}\\n\`, 'utf8');
+
+              await expect(
+                value.recovery.restoreCheckpoint(
+                  randomUUID(),
+                  { projectId: value.project.projectId, backupId: checkpoint.backupId },
+                  value.restoreParent,
+                ),
+              ).rejects.toMatchObject({ code: 'RESTORE_SOURCE_INVALID' });
+              expect(await readdir(value.restoreParent)).toEqual([]);
+            } finally {
+              await value.workspace.shutdown();
+              await value.runtime.close();
+            }
+          });`;
+          if (!source.includes(oldUnsafe)) throw new Error('Expected unsafe-path test block was not found.');
+          source = source.replace(oldUnsafe, newUnsafe);
+          writeFileSync(file, source, 'utf8');
+          NODE
       - name: Format every changed PR text file with locked Prettier
         shell: bash
         run: |
           mapfile -t files < <(git diff --name-only origin/main...HEAD | grep -E '\.(ts|tsx|js|mjs|cjs|json|md|yml|yaml)$' || true)
+          files+=(tests/reliability/m12-02-artifact-recovery.test.ts)
+          mapfile -t files < <(printf '%s\n' "${files[@]}" | sort -u)
           if (( ${#files[@]} > 0 )); then
             pnpm exec prettier --write "${files[@]}"
             pnpm exec prettier --check "${files[@]}"
@@ -66,14 +150,13 @@ jobs:
           tests/integration/m12-02-generation-research-reference.test.ts
           tests/integration/m12-02-artifact-move.test.ts
           tests/reliability/m12-02-artifact-recovery.test.ts
-      - name: Commit locked formatting only
+      - name: Commit verified closure fixes and locked formatting
         shell: bash
         run: |
           if [[ -n "$(git status --porcelain)" ]]; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add -u
-            git add tests/integration/m12-02-generation-research-reference.test.ts tests/integration/m12-02-artifact-move.test.ts
-            git commit -m 'format(M12-02): apply locked Prettier output'
+            git commit -m 'test(M12-02): verify artifact path and manifest boundaries'
             git push origin HEAD:work
           fi

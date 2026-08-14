@@ -7,6 +7,8 @@ import { pipeline } from 'node:stream/promises';
 import {
   ResearchAttachmentDeleteInputSchema,
   ResearchAttachmentImportInputSchema,
+  ResearchAttachmentPreviewInputSchema,
+  ResearchAttachmentPreviewSchema,
   ResearchAttachmentSchema,
   ResearchCatalogSchema,
   ResearchLinkAddInputSchema,
@@ -14,17 +16,21 @@ import {
   ResearchLinkSchema,
   ResearchListInputSchema,
   ResearchNoteCreateInputSchema,
+  ResearchNoteDeleteInputSchema,
   ResearchNoteSchema,
   ResearchNoteStatusInputSchema,
   ResearchNoteUpdateInputSchema,
   type ResearchAttachmentDeleteInput,
   type ResearchAttachmentImportInput,
+  type ResearchAttachmentPreview,
+  type ResearchAttachmentPreviewInput,
   type ResearchCatalog,
   type ResearchLinkAddInput,
   type ResearchLinkRemoveInput,
   type ResearchListInput,
   type ResearchNote,
   type ResearchNoteCreateInput,
+  type ResearchNoteDeleteInput,
   type ResearchNoteStatusInput,
   type ResearchNoteUpdateInput,
   type ResearchSourceType,
@@ -35,8 +41,24 @@ import type { DatabaseClock } from './database/index.js';
 import { sqliteResult } from './database/sqlite-result.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 
-const MAX_ATTACHMENT_BYTES = 268_435_456;
+export const MAX_RESEARCH_ATTACHMENT_BYTES = 268_435_456;
+export const MAX_RESEARCH_PROJECT_ATTACHMENT_BYTES = 2_147_483_648;
+export const MAX_RESEARCH_PREVIEW_BYTES = 262_144;
 const MANAGED_RESEARCH_DIRECTORY = 'artifacts/research';
+const PREVIEW_MEDIA_TYPES = new Set(['text/plain', 'text/markdown', 'application/json']);
+const ATTACHMENT_MEDIA_TYPES: Readonly<Record<string, string>> = {
+  '.pdf': 'application/pdf',
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.markdown': 'text/markdown',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
 const systemClock: DatabaseClock = { now: () => new Date() };
 type ProjectDatabase = Parameters<Parameters<ProjectWorkspaceService['readProject']>[1]>[0];
 
@@ -63,17 +85,22 @@ interface NoteRow {
   readonly projectId: string;
   readonly title: string;
   readonly body: string;
+  readonly sourceType: string | null;
+  readonly sourceLabel: string | null;
   readonly sourceUri: string | null;
   readonly tagsJson: string;
   readonly status: string;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly archivedAt: string | null;
 }
 
 interface FtsNoteRow {
   readonly id: string;
   readonly title: string;
   readonly body: string;
+  readonly sourceType: string | null;
+  readonly sourceLabel: string | null;
   readonly sourceUri: string | null;
   readonly tagsJson: string;
   readonly status: string;
@@ -81,6 +108,17 @@ interface FtsNoteRow {
 
 interface AttachmentPathRow {
   readonly managedRelativePath: string;
+}
+
+interface AttachmentPreviewRow extends AttachmentPathRow {
+  readonly displayName: string;
+  readonly mediaType: string;
+  readonly sizeBytes: number | bigint;
+  readonly contentHash: string;
+}
+
+interface AttachmentTotalRow {
+  readonly totalBytes: number | bigint;
 }
 
 function parseTags(value: string): string[] {
@@ -101,27 +139,22 @@ function noteFromRow(row: NoteRow): ResearchNote {
 
 function mediaType(fileName: string): string {
   const extension = path.extname(fileName).toLocaleLowerCase('en-US');
-  return (
-    (
-      {
-        '.pdf': 'application/pdf',
-        '.txt': 'text/plain',
-        '.md': 'text/markdown',
-        '.json': 'application/json',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.webp': 'image/webp',
-        '.gif': 'image/gif',
-        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      } as Readonly<Record<string, string>>
-    )[extension] ?? 'application/octet-stream'
-  );
+  const resolved = ATTACHMENT_MEDIA_TYPES[extension];
+  if (!resolved) {
+    throw new ResearchServiceError(
+      'RESEARCH_INVALID',
+      'Attachment type is not in the managed research allowlist.',
+    );
+  }
+  return resolved;
 }
 
 function safeExtension(fileName: string): string {
   const extension = path.extname(fileName).toLocaleLowerCase('en-US');
-  return /^\.[a-z0-9]{1,16}$/u.test(extension) ? extension : '';
+  if (!ATTACHMENT_MEDIA_TYPES[extension]) {
+    throw new ResearchServiceError('RESEARCH_INVALID', 'Attachment extension is not allowed.');
+  }
+  return extension;
 }
 
 function isMissing(error: unknown): boolean {
@@ -196,11 +229,13 @@ function targetExists(
   const queries: Record<ResearchTargetType, string> = {
     chapter:
       'SELECT 1 FROM chapters c JOIN volumes v ON v.id = c.volume_id WHERE c.id = ? AND v.project_id = ? AND c.deleted_at IS NULL AND v.deleted_at IS NULL',
+    volume: 'SELECT 1 FROM volumes WHERE id = ? AND project_id = ? AND deleted_at IS NULL',
     entity: 'SELECT 1 FROM entities WHERE id = ? AND project_id = ?',
     relationship: 'SELECT 1 FROM character_relationships WHERE id = ? AND project_id = ?',
     timeline: 'SELECT 1 FROM timeline_events WHERE id = ? AND project_id = ?',
     foreshadowing: 'SELECT 1 FROM foreshadowings WHERE id = ? AND project_id = ?',
     arc: 'SELECT 1 FROM character_arcs WHERE id = ? AND project_id = ?',
+    milestone: 'SELECT 1 FROM arc_milestones WHERE id = ? AND project_id = ?',
     idea: 'SELECT 1 FROM idea_cards WHERE id = ? AND project_id = ?',
   };
   return database.prepare(queries[targetType]).get(targetId, projectId) !== undefined;
@@ -211,16 +246,18 @@ function refreshResearchFts(database: ProjectDatabase, projectId: string, noteId
   const row = sqliteResult<FtsNoteRow | undefined>(
     database
       .prepare(
-        `SELECT id, title, body, source_uri AS sourceUri, tags_json AS tagsJson, status
-         FROM research_notes WHERE id = ? AND project_id = ?`,
+        `SELECT id, title, body, source_type AS sourceType, source_label AS sourceLabel,
+                source_uri AS sourceUri, tags_json AS tagsJson, status
+           FROM research_notes WHERE id = ? AND project_id = ?`,
       )
       .get(noteId, projectId),
   );
   if (!row) return;
   database
     .prepare(
-      `INSERT INTO fts_research_notes(project_id, note_id, status, title, body, tags, source_uri)
-       VALUES(?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO fts_research_notes(
+         project_id, note_id, status, title, body, tags, source_type, source_label, source_uri
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       projectId,
@@ -229,6 +266,8 @@ function refreshResearchFts(database: ProjectDatabase, projectId: string, noteId
       row.title,
       row.body,
       parseTags(row.tagsJson).join(' '),
+      row.sourceType ?? '',
+      row.sourceLabel ?? '',
       row.sourceUri ?? '',
     );
 }
@@ -259,14 +298,17 @@ export class ResearchService {
       database
         .prepare(
           `INSERT INTO research_notes(
-             id, project_id, title, body, source_uri, tags_json, status, created_at, updated_at
-           ) VALUES(?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+             id, project_id, title, body, source_type, source_label, source_uri, tags_json,
+             status, created_at, updated_at, archived_at
+           ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, NULL)`,
         )
         .run(
           noteId,
           input.projectId,
           input.title,
           input.body,
+          input.sourceType,
+          input.sourceLabel,
           input.sourceUri,
           JSON.stringify(input.tags),
           now,
@@ -287,12 +329,15 @@ export class ResearchService {
       const changed = database
         .prepare(
           `UPDATE research_notes
-              SET title = ?, body = ?, source_uri = ?, tags_json = ?, updated_at = ?
+              SET title = ?, body = ?, source_type = ?, source_label = ?, source_uri = ?,
+                  tags_json = ?, updated_at = ?
             WHERE id = ? AND project_id = ? AND updated_at = ?`,
         )
         .run(
           input.title,
           input.body,
+          input.sourceType,
+          input.sourceLabel,
           input.sourceUri,
           JSON.stringify(input.tags),
           now,
@@ -317,14 +362,54 @@ export class ResearchService {
     return this.#workspace.writeProject(requestId, input.projectId, (database) => {
       const changed = database
         .prepare(
-          `UPDATE research_notes SET status = ?, updated_at = ?
+          `UPDATE research_notes
+              SET status = ?, updated_at = ?, archived_at = ?
             WHERE id = ? AND project_id = ? AND updated_at = ?`,
         )
-        .run(input.status, now, input.noteId, input.projectId, input.expectedUpdatedAt);
+        .run(
+          input.status,
+          now,
+          input.status === 'archived' ? now : null,
+          input.noteId,
+          input.projectId,
+          input.expectedUpdatedAt,
+        );
       if (Number(changed.changes) !== 1) {
         this.#throwWriteConflict(database, input.projectId, input.noteId);
       }
       refreshResearchFts(database, input.projectId, input.noteId);
+      return this.#catalog(database, {
+        projectId: input.projectId,
+        includeArchived: true,
+      });
+    });
+  }
+
+  deleteNote(requestId: string, raw: ResearchNoteDeleteInput): Promise<ResearchCatalog> {
+    const input = ResearchNoteDeleteInputSchema.parse(raw);
+    return this.#workspace.writeProject(requestId, input.projectId, (database) => {
+      const current = database
+        .prepare('SELECT updated_at AS updatedAt FROM research_notes WHERE id = ? AND project_id = ?')
+        .get(input.noteId, input.projectId) as { updatedAt?: string } | undefined;
+      if (!current) {
+        throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Research note not found.');
+      }
+      if (current.updatedAt !== input.expectedUpdatedAt) {
+        throw new ResearchServiceError('RESEARCH_CONFLICT', 'Research note changed before deletion.');
+      }
+      database
+        .prepare(
+          `DELETE FROM research_links
+            WHERE project_id = ? AND source_type = 'note' AND source_id = ?`,
+        )
+        .run(input.projectId, input.noteId);
+      database.prepare('DELETE FROM fts_research_notes WHERE note_id = ?').run(input.noteId);
+      const deleted = database
+        .prepare('DELETE FROM research_notes WHERE id = ? AND project_id = ? AND updated_at = ?')
+        .run(input.noteId, input.projectId, input.expectedUpdatedAt);
+      if (Number(deleted.changes) !== 1) {
+        throw new ResearchServiceError('RESEARCH_CONFLICT', 'Research note changed before deletion.');
+      }
       return this.#catalog(database, {
         projectId: input.projectId,
         includeArchived: true,
@@ -344,12 +429,18 @@ export class ResearchService {
         'Attachment source path must be absolute.',
       );
     }
+    const resolvedMediaType = mediaType(sourcePath);
+    const extension = safeExtension(sourcePath);
     const before = await lstat(sourcePath).catch((error: unknown) => {
       throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment cannot be read.', {
         cause: error,
       });
     });
-    if (!before.isFile() || before.isSymbolicLink() || before.size > MAX_ATTACHMENT_BYTES) {
+    if (
+      !before.isFile() ||
+      before.isSymbolicLink() ||
+      before.size > MAX_RESEARCH_ATTACHMENT_BYTES
+    ) {
       throw new ResearchServiceError(
         'RESEARCH_INVALID',
         'Attachment must be a regular file no larger than 256 MiB.',
@@ -365,7 +456,7 @@ export class ResearchService {
       });
     });
     const attachmentId = this.#idFactory();
-    const relativePath = `${MANAGED_RESEARCH_DIRECTORY}/${attachmentId}${safeExtension(sourcePath)}`;
+    const relativePath = `${MANAGED_RESEARCH_DIRECTORY}/${attachmentId}${extension}`;
     const targetPath = await this.#workspace.resolveProjectPath(input.projectId, relativePath);
     await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
     const partialPath = `${targetPath}.partial-${this.#idFactory()}`;
@@ -373,7 +464,10 @@ export class ResearchService {
     try {
       const opened = await sourceHandle.stat();
       const after = await lstat(sourcePath);
-      if (!sameOpenedFile(before, opened, after) || opened.size > MAX_ATTACHMENT_BYTES) {
+      if (
+        !sameOpenedFile(before, opened, after) ||
+        opened.size > MAX_RESEARCH_ATTACHMENT_BYTES
+      ) {
         throw new ResearchServiceError(
           'RESEARCH_INVALID',
           'Attachment changed while it was being opened.',
@@ -384,7 +478,11 @@ export class ResearchService {
         createWriteStream(partialPath, { flags: 'wx', mode: 0o600 }),
       );
       const copied = await stat(partialPath);
-      if (!copied.isFile() || copied.size !== opened.size || copied.size > MAX_ATTACHMENT_BYTES) {
+      if (
+        !copied.isFile() ||
+        copied.size !== opened.size ||
+        copied.size > MAX_RESEARCH_ATTACHMENT_BYTES
+      ) {
         throw new ResearchServiceError(
           'RESEARCH_ATTACHMENT_FAILED',
           'Attachment copy was incomplete.',
@@ -396,6 +494,29 @@ export class ResearchService {
       const now = this.#clock.now().toISOString();
       const displayName = path.basename(sourcePath).slice(0, 240) || '资料附件';
       return await this.#workspace.writeProject(requestId, input.projectId, (database) => {
+        const duplicate = database
+          .prepare('SELECT id FROM research_attachments WHERE project_id = ? AND content_hash = ?')
+          .get(input.projectId, contentHash);
+        if (duplicate) {
+          throw new ResearchServiceError(
+            'RESEARCH_CONFLICT',
+            'The same attachment content is already managed by this project.',
+          );
+        }
+        const totalRow = sqliteResult<AttachmentTotalRow>(
+          database
+            .prepare(
+              'SELECT COALESCE(SUM(size_bytes), 0) AS totalBytes FROM research_attachments WHERE project_id = ?',
+            )
+            .get(input.projectId),
+        );
+        const totalBytes = Number(totalRow.totalBytes);
+        if (totalBytes + copied.size > MAX_RESEARCH_PROJECT_ATTACHMENT_BYTES) {
+          throw new ResearchServiceError(
+            'RESEARCH_INVALID',
+            'Project research attachments exceed the 2 GiB managed-storage limit.',
+          );
+        }
         database
           .prepare(
             `INSERT INTO research_attachments(
@@ -408,7 +529,7 @@ export class ResearchService {
             input.projectId,
             input.noteId,
             displayName,
-            mediaType(sourcePath),
+            resolvedMediaType,
             copied.size,
             contentHash,
             relativePath,
@@ -428,6 +549,89 @@ export class ResearchService {
     } finally {
       await sourceHandle.close();
       await rm(partialPath, { force: true });
+    }
+  }
+
+  async previewAttachment(raw: ResearchAttachmentPreviewInput): Promise<ResearchAttachmentPreview> {
+    const input = ResearchAttachmentPreviewInputSchema.parse(raw);
+    const attachment = this.#workspace.readProject(input.projectId, (database) =>
+      sqliteResult<AttachmentPreviewRow | undefined>(
+        database
+          .prepare(
+            `SELECT display_name AS displayName, media_type AS mediaType, size_bytes AS sizeBytes,
+                    content_hash AS contentHash, managed_relative_path AS managedRelativePath
+               FROM research_attachments WHERE id = ? AND project_id = ?`,
+          )
+          .get(input.attachmentId, input.projectId),
+      ),
+    );
+    if (!attachment) {
+      throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Attachment not found.');
+    }
+    if (!PREVIEW_MEDIA_TYPES.has(attachment.mediaType)) {
+      throw new ResearchServiceError(
+        'RESEARCH_INVALID',
+        'This attachment type is stored safely but is not eligible for inline preview.',
+      );
+    }
+    const targetPath = await this.#workspace.resolveProjectPath(
+      input.projectId,
+      attachment.managedRelativePath,
+    );
+    const before = await lstat(targetPath).catch((error: unknown) => {
+      throw new ResearchServiceError(
+        'RESEARCH_ATTACHMENT_FAILED',
+        'Managed attachment is missing.',
+        { cause: error },
+      );
+    });
+    if (
+      !before.isFile() ||
+      before.isSymbolicLink() ||
+      before.size !== Number(attachment.sizeBytes) ||
+      before.size > MAX_RESEARCH_ATTACHMENT_BYTES
+    ) {
+      throw new ResearchServiceError(
+        'RESEARCH_ATTACHMENT_FAILED',
+        'Managed attachment metadata no longer matches the stored file.',
+      );
+    }
+    const actualHash = await hashFile(targetPath);
+    if (actualHash !== attachment.contentHash) {
+      throw new ResearchServiceError(
+        'RESEARCH_ATTACHMENT_FAILED',
+        'Managed attachment hash verification failed.',
+      );
+    }
+    const handle = await open(targetPath, 'r');
+    try {
+      const readSize = Math.min(before.size, MAX_RESEARCH_PREVIEW_BYTES + 1);
+      const buffer = Buffer.alloc(readSize);
+      const { bytesRead } = await handle.read(buffer, 0, readSize, 0);
+      const truncated = before.size > MAX_RESEARCH_PREVIEW_BYTES;
+      let text: string;
+      try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(
+          buffer.subarray(0, Math.min(bytesRead, MAX_RESEARCH_PREVIEW_BYTES)),
+        );
+      } catch (error) {
+        throw new ResearchServiceError(
+          'RESEARCH_INVALID',
+          'Inline preview requires valid UTF-8 text.',
+          { cause: error },
+        );
+      }
+      return ResearchAttachmentPreviewSchema.parse({
+        projectId: input.projectId,
+        attachmentId: input.attachmentId,
+        displayName: attachment.displayName,
+        mediaType: attachment.mediaType,
+        contentHash: attachment.contentHash,
+        text,
+        truncated,
+      });
+    } finally {
+      await handle.close();
     }
   }
 
@@ -635,8 +839,10 @@ export class ResearchService {
     const query = input.query ? normalizeQuery(input.query) : '';
     const noteSql = query
       ? query.length >= 3
-        ? `SELECT n.id, n.project_id AS projectId, n.title, n.body, n.source_uri AS sourceUri,
-                  n.tags_json AS tagsJson, n.status, n.created_at AS createdAt, n.updated_at AS updatedAt
+        ? `SELECT n.id, n.project_id AS projectId, n.title, n.body,
+                  n.source_type AS sourceType, n.source_label AS sourceLabel,
+                  n.source_uri AS sourceUri, n.tags_json AS tagsJson, n.status,
+                  n.created_at AS createdAt, n.updated_at AS updatedAt, n.archived_at AS archivedAt
              FROM fts_research_notes
              JOIN research_notes n
                ON n.id = fts_research_notes.note_id
@@ -645,8 +851,9 @@ export class ResearchService {
               AND fts_research_notes MATCH ?
               ${input.includeArchived ? '' : "AND n.status = 'active'"}
             ORDER BY n.status = 'archived', n.updated_at DESC, n.id`
-        : `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
-                  tags_json AS tagsJson, status, created_at AS createdAt, updated_at AS updatedAt
+        : `SELECT id, project_id AS projectId, title, body, source_type AS sourceType,
+                  source_label AS sourceLabel, source_uri AS sourceUri, tags_json AS tagsJson,
+                  status, created_at AS createdAt, updated_at AS updatedAt, archived_at AS archivedAt
              FROM research_notes
             WHERE project_id = ?
               ${input.includeArchived ? '' : "AND status = 'active'"}
@@ -654,11 +861,14 @@ export class ResearchService {
                 instr(lower(title), ?) > 0 OR
                 instr(lower(body), ?) > 0 OR
                 instr(lower(tags_json), ?) > 0 OR
+                instr(lower(COALESCE(source_type, '')), ?) > 0 OR
+                instr(lower(COALESCE(source_label, '')), ?) > 0 OR
                 instr(lower(COALESCE(source_uri, '')), ?) > 0
               )
             ORDER BY status = 'archived', updated_at DESC, id`
-      : `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
-                tags_json AS tagsJson, status, created_at AS createdAt, updated_at AS updatedAt
+      : `SELECT id, project_id AS projectId, title, body, source_type AS sourceType,
+                source_label AS sourceLabel, source_uri AS sourceUri, tags_json AS tagsJson,
+                status, created_at AS createdAt, updated_at AS updatedAt, archived_at AS archivedAt
            FROM research_notes
           WHERE project_id = ?
             ${input.includeArchived ? '' : "AND status = 'active'"}
@@ -666,13 +876,14 @@ export class ResearchService {
     const noteParameters = query
       ? query.length >= 3
         ? [input.projectId, ftsPhrase(query)]
-        : [input.projectId, query, query, query, query]
+        : [input.projectId, query, query, query, query, query, query]
       : [input.projectId];
-    const notes = sqliteResult<NoteRow[]>(database.prepare(noteSql).all(...noteParameters))
+    let notes = sqliteResult<NoteRow[]>(database.prepare(noteSql).all(...noteParameters))
       .map(noteFromRow)
-      .filter((note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)));
+      .filter((note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)))
+      .filter((note) => input.noteSourceType === undefined || note.sourceType === input.noteSourceType);
     const noteIds = new Set(notes.map((note) => note.id));
-    const attachments = sqliteResult<Record<string, unknown>[]>(
+    let attachments = sqliteResult<Record<string, unknown>[]>(
       database
         .prepare(
           `SELECT id, project_id AS projectId, note_id AS noteId, display_name AS displayName,
@@ -690,8 +901,8 @@ export class ResearchService {
         }),
       )
       .filter((attachment) => attachment.noteId === null || noteIds.has(attachment.noteId));
-    const sourceIds = new Set([...noteIds, ...attachments.map((attachment) => attachment.id)]);
-    const links = sqliteResult<Record<string, unknown>[]>(
+    let sourceIds = new Set([...noteIds, ...attachments.map((attachment) => attachment.id)]);
+    let links = sqliteResult<Record<string, unknown>[]>(
       database
         .prepare(
           `SELECT id, project_id AS projectId, source_type AS sourceType, source_id AS sourceId,
@@ -703,6 +914,22 @@ export class ResearchService {
     )
       .map((row) => ResearchLinkSchema.parse(row))
       .filter((link) => sourceIds.has(link.sourceId));
+
+    if (input.targetType !== undefined || input.targetId !== undefined) {
+      links = links.filter(
+        (link) =>
+          (input.targetType === undefined || link.targetType === input.targetType) &&
+          (input.targetId === undefined || link.targetId === input.targetId),
+      );
+      const linkedSources = new Set(links.map((link) => `${link.sourceType}:${link.sourceId}`));
+      notes = notes.filter((note) => linkedSources.has(`note:${note.id}`));
+      attachments = attachments.filter((attachment) =>
+        linkedSources.has(`attachment:${attachment.id}`),
+      );
+      sourceIds = new Set([...notes.map((note) => note.id), ...attachments.map((item) => item.id)]);
+      links = links.filter((link) => sourceIds.has(link.sourceId));
+    }
+
     return ResearchCatalogSchema.parse({
       projectId: input.projectId,
       notes,

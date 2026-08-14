@@ -55,7 +55,7 @@ describe('code quality governance', () => {
   it('keeps core coverage at 75 percent and freezes Renderer TSX uncovered counts', async () => {
     await expect(inspectCoveragePolicy()).resolves.toEqual({
       policy: 'dual-track',
-      sourceHead: '881a3bcb882fe8171362ac7e45d508ee0d78ee40',
+      sourceHead: '1016d0bf7dbf63b875546cfb1f21729ce781aa0c',
       exclusionCount: 31,
       coreThresholdPercent: {
         statements: 75,
@@ -64,10 +64,10 @@ describe('code quality governance', () => {
         lines: 75,
       },
       rendererTsxMaxUncovered: {
-        statements: 2443,
-        branches: 2249,
-        functions: 888,
-        lines: 2153,
+        statements: 2341,
+        branches: 2151,
+        functions: 858,
+        lines: 2053,
       },
     });
 

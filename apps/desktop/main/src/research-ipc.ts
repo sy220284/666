@@ -6,11 +6,14 @@ import {
   RESEARCH_COMMANDS,
   RESEARCH_IPC_CHANNELS,
   ResearchAddLinkCommandSchema,
+  ResearchAttachmentPreviewResultSchema,
   ResearchCatalogResultSchema,
   ResearchCreateNoteCommandSchema,
   ResearchDeleteAttachmentCommandSchema,
+  ResearchDeleteNoteCommandSchema,
   ResearchImportAttachmentCommandSchema,
   ResearchListCommandSchema,
+  ResearchPreviewAttachmentCommandSchema,
   ResearchRemoveLinkCommandSchema,
   ResearchSetNoteStatusCommandSchema,
   ResearchUpdateNoteCommandSchema,
@@ -64,7 +67,6 @@ async function chooseAttachmentFile(event: IpcMainInvokeEvent): Promise<string |
           'gif',
         ],
       },
-      { name: '全部文件', extensions: ['*'] },
     ],
   });
   return selection.canceled ? null : (selection.filePaths[0] ?? null);
@@ -94,6 +96,12 @@ const registrations = [
     command: RESEARCH_COMMANDS.setNoteStatus,
     commandSchema: ResearchSetNoteStatusCommandSchema,
     fallback: '研究笔记状态更新失败。',
+  },
+  {
+    channel: RESEARCH_IPC_CHANNELS.deleteNote,
+    command: RESEARCH_COMMANDS.deleteNote,
+    commandSchema: ResearchDeleteNoteCommandSchema,
+    fallback: '研究笔记删除失败。',
   },
   {
     channel: RESEARCH_IPC_CHANNELS.deleteAttachment,
@@ -166,6 +174,46 @@ export function registerResearchIpc(options: ResearchIpcOptions): () => void {
       invoke(options, event, raw, registration),
     );
   }
+
+  registerIpcInvokeHandler(
+    options.ipcMain,
+    RESEARCH_IPC_CHANNELS.previewAttachment,
+    async (event, raw) => {
+      const parsed = ResearchPreviewAttachmentCommandSchema.safeParse(raw);
+      if (!parsed.success || !trustedSender(event, options.rendererUrl)) {
+        return ResearchAttachmentPreviewResultSchema.parse({
+          ok: false,
+          requestId: parsed.success ? parsed.data.requestId : randomUUID(),
+          error: {
+            code: 'COMMON_INVALID_INPUT_001',
+            message: '研究附件预览失败。',
+            retryable: false,
+          },
+        });
+      }
+      const operation = CoreProjectOperationSchema.parse({
+        operation: RESEARCH_COMMANDS.previewAttachment,
+        input: parsed.data.payload,
+      });
+      const result = await options.supervisor.invokeProjectOperation(parsed.data.requestId, operation);
+      if (!result.ok) {
+        const code: ErrorCode = result.errorCode;
+        return ResearchAttachmentPreviewResultSchema.parse({
+          ok: false,
+          requestId: parsed.data.requestId,
+          error: {
+            code,
+            ...coreOperationFailureSemantics(code, '研究附件预览失败。', 'query'),
+          },
+        });
+      }
+      return ResearchAttachmentPreviewResultSchema.parse({
+        ok: true,
+        requestId: parsed.data.requestId,
+        data: result.data,
+      });
+    },
+  );
 
   registerIpcInvokeHandler(
     options.ipcMain,

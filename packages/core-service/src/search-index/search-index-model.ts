@@ -17,6 +17,7 @@ export const sourceTypes = [
   'draft',
   'version',
   'entity',
+  'research',
 ] as const satisfies readonly SearchSourceType[];
 
 export type SearchIndexServiceErrorCode =

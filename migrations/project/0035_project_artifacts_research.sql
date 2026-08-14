@@ -64,6 +64,22 @@ BEGIN
   DELETE FROM research_links WHERE target_type = 'chapter' AND target_id = OLD.id;
 END;
 
+CREATE TRIGGER cleanup_research_links_on_chapter_soft_delete
+AFTER UPDATE OF deleted_at ON chapters
+WHEN OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL
+BEGIN
+  DELETE FROM research_links WHERE target_type = 'chapter' AND target_id = NEW.id;
+END;
+
+CREATE TRIGGER cleanup_research_links_on_volume_soft_delete
+AFTER UPDATE OF deleted_at ON volumes
+WHEN OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL
+BEGIN
+  DELETE FROM research_links
+   WHERE target_type = 'chapter'
+     AND target_id IN (SELECT id FROM chapters WHERE volume_id = NEW.id);
+END;
+
 CREATE TRIGGER cleanup_research_links_on_entity_delete
 AFTER DELETE ON entities
 BEGIN

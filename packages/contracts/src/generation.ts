@@ -12,6 +12,7 @@ import { DraftContentHashValueSchema, DraftEntityIdSchema } from './draft.js';
 import { ErrorCodeSchema } from './error-codes.js';
 import { GenerationScopeTypeSchema } from './generation-scope.js';
 import { IdeaDepthLevelSchema, IdeaDivergenceLevelSchema, IdeaKindSchema } from './idea-capsule.js';
+import { ResearchReferencesSchema } from './research.js';
 import {
   GenerationResultRefSchema,
   ProjectIdSchema,
@@ -248,6 +249,7 @@ const GenerationStartInputBaseSchema = z.strictObject({
   baseDraftRevision: z.number().int().nonnegative().nullable().default(null),
   providerId: ProviderConfigIdSchema,
   continuationOfRunId: TaskIdSchema.nullable().default(null),
+  researchReferences: ResearchReferencesSchema.default([]),
   intent: GenerationIntentSchema,
 });
 

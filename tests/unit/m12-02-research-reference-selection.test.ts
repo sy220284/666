@@ -33,7 +33,11 @@ describe('M12-02 renderer research reference selection', () => {
     const reordered = listResearchReferenceSelection(projectId);
     expect(reordered).toHaveLength(20);
     expect(reordered.at(-1)).toEqual(note(10));
-    expect(reordered.filter((reference) => researchReferenceKey(reference) === researchReferenceKey(note(10)))).toHaveLength(1);
+    expect(
+      reordered.filter(
+        (reference) => researchReferenceKey(reference) === researchReferenceKey(note(10)),
+      ),
+    ).toHaveLength(1);
 
     expect(removeResearchReferenceSelection(projectId, note(10))).not.toContainEqual(note(10));
     expect(consumeResearchReferenceSelection(projectId, [])).toEqual(

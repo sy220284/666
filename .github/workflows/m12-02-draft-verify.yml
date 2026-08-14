@@ -23,20 +23,19 @@ jobs:
         with:
           ref: work
           fetch-depth: 0
+      - name: Download immutable visual witness artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          artifact-ids: 9220558006
+          path: /tmp/m12-02-visual-witness
+          github-token: ${{ github.token }}
+          repository: sy220284/666
+          run-id: 31803014918
       - name: Apply byte-stable visual witness artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           witness=/tmp/m12-02-visual-witness
-          rm -rf "$witness" /tmp/m12-02-visual-witness.zip
-          mkdir -p "$witness"
-          gh api \
-            -H 'Accept: application/vnd.github+json' \
-            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/9220558006/zip" \
-            > /tmp/m12-02-visual-witness.zip
-          unzip -q /tmp/m12-02-visual-witness.zip -d "$witness"
 
           apply_baseline() {
             local snapshot="$1"
@@ -58,13 +57,12 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import struct
-          expected = {
-              'theme-a-light-1280x800.png': '49a78490e24ecd98d734c4a1263e08d7ea47e0fe992417e3f759f8fbd71491e7',
-              'theme-a-dark-1280x800.png': '2de849bccc172050f450eee3f45f9cd2202d401eaa7a91acbc4ab6ee09c4c544',
-              'theme-b-light-1280x800.png': '2d5dbddc39d1b44d8e8945bb9b55e9b98ad727e10a193c61688962e8be0af6bc',
-              'theme-b-dark-1280x800.png': '790ff5da93ae555c0a9313721f35483fec2107cd52cf7b98b6b1d47299232e89',
-          }
-          for name in expected:
+          for name in (
+              'theme-a-light-1280x800.png',
+              'theme-a-dark-1280x800.png',
+              'theme-b-light-1280x800.png',
+              'theme-b-dark-1280x800.png',
+          ):
               data = (Path('tests/e2e/visual-baselines') / name).read_bytes()
               if data[:8] != b'\x89PNG\r\n\x1a\n':
                   raise SystemExit(f'{name}: invalid PNG signature')
@@ -120,7 +118,6 @@ jobs:
 
           sha256sum tests/e2e/visual-baselines/*.png
           git diff --check
-          git rm .github/workflows/m12-02-draft-verify.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tests/e2e/visual-baselines

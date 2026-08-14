@@ -124,7 +124,9 @@ describe('backup cleanup high-risk coverage', () => {
         authority: 'author',
         planHash: preview.planHash,
       });
-      expect(result.deletedBackupIds).toEqual(expect.arrayContaining([first.backupId, second.backupId]));
+      expect(result.deletedBackupIds).toEqual(
+        expect.arrayContaining([first.backupId, second.backupId]),
+      );
       expect(result.remainingBytes).toBe(70 * 1024 * 1024);
     } finally {
       await harness.workspace.shutdown();
@@ -158,7 +160,9 @@ describe('backup cleanup high-risk coverage', () => {
         reason: 'major-over-limit',
       });
 
-      await rm(path.join(harness.backupRoot, harness.project.projectId, `${first.backupId}.json`));
+      await rm(
+        path.join(harness.backupRoot, harness.project.projectId, `${first.backupId}.json`),
+      );
       await expect(
         harness.recovery.applyCleanup(randomUUID(), {
           projectId: harness.project.projectId,

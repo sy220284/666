@@ -39,9 +39,10 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'CharacterRelationshipSetCommandSchema',
   'CharacterRelationshipSetInputSchema',
   'CoreIdeaOperationSchema',
-  'CoreIdeaResultSchema',
   'CoreLongformAiOperationSchema',
   'CoreLongformAiResultSchema',
+  'CoreResearchOperationSchema',
+  'CoreResearchResultSchema',
   'CoreStoryKnowledgeOperationSchema',
   'CoreStoryKnowledgeResultSchema',
   'EntityCreateProposalDraftSchema',
@@ -97,6 +98,43 @@ const APPROVED_RUNTIME_EXPORT_ADDITIONS = [
   'LongformAiSettingsSchema',
   'LongformAiSettingsUpdateInputSchema',
   'LongformAiUpdateSettingsCommandSchema',
+  'RESEARCH_COMMANDS',
+  'RESEARCH_IPC_CHANNELS',
+  'ResearchAddLinkCommandSchema',
+  'ResearchAttachmentDeleteInputSchema',
+  'ResearchAttachmentImportInputSchema',
+  'ResearchAttachmentPreviewInputSchema',
+  'ResearchAttachmentPreviewResultSchema',
+  'ResearchAttachmentPreviewSchema',
+  'ResearchAttachmentSchema',
+  'ResearchCatalogResultSchema',
+  'ResearchCatalogSchema',
+  'ResearchCreateNoteCommandSchema',
+  'ResearchDeleteAttachmentCommandSchema',
+  'ResearchDeleteNoteCommandSchema',
+  'ResearchImportAttachmentCommandSchema',
+  'ResearchLinkAddInputSchema',
+  'ResearchLinkRemoveInputSchema',
+  'ResearchLinkSchema',
+  'ResearchListCommandSchema',
+  'ResearchListInputSchema',
+  'ResearchNoteCreateInputSchema',
+  'ResearchNoteDeleteInputSchema',
+  'ResearchNoteSchema',
+  'ResearchNoteSourceTypeSchema',
+  'ResearchNoteStatusInputSchema',
+  'ResearchNoteStatusSchema',
+  'ResearchNoteUpdateInputSchema',
+  'ResearchPreviewAttachmentCommandSchema',
+  'ResearchReferenceSchema',
+  'ResearchReferencesSchema',
+  'ResearchRemoveLinkCommandSchema',
+  'ResearchSetNoteStatusCommandSchema',
+  'ResearchSourceTypeSchema',
+  'ResearchTagSchema',
+  'ResearchTagsSchema',
+  'ResearchTargetTypeSchema',
+  'ResearchUpdateNoteCommandSchema',
   'ReviewProposalActionabilitySchema',
   'ReviewProposalConfidenceSchema',
   'ReviewProposalFreshnessSchema',
@@ -140,7 +178,7 @@ const BASELINE = {
   protocolVersion: 1,
   ipcChannelCount: 97,
   appCommandCount: 96,
-  runtimeExportCount: 952,
+  runtimeExportCount: 991,
   legacySurfaceSha256: 'a841f0657b53bc59b45109093c89621e0b131c8a81ab7d4824942f608e7a5590',
 } as const;
 
@@ -176,6 +214,8 @@ describe('AR-08 contracts public surface', () => {
     expect(publicContracts.StoryKnowledgeProjectionSchema).toBeDefined();
     expect(publicContracts.IdeaConversionTargetSchema).toBeDefined();
     expect(publicContracts.GenerationScopeSchema).toBeDefined();
+    expect(publicContracts.ResearchCatalogSchema).toBeDefined();
+    expect(publicContracts.CoreResearchOperationSchema).toBeDefined();
   });
 
   it('keeps the source compatibility root wired to the split modules', () => {

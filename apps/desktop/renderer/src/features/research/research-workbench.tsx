@@ -5,10 +5,17 @@ import type {
   ResearchCatalog,
   ResearchLink,
   ResearchNote,
+  ResearchReference,
   ResearchTargetType,
 } from '@worldforge/contracts';
 
 import type { RendererBridgeAdapter } from '../../bridge/renderer-bridge-adapter.js';
+import {
+  listResearchReferenceSelection,
+  removeResearchReferenceSelection,
+  researchReferenceKey,
+  setResearchReferenceSelected,
+} from '../../bridge/research-reference-selection.js';
 import { authorErrorSummary } from '../../presentation/author-error-message.js';
 import type { AuthorNavigationTarget } from '../../shell/navigation-target.js';
 
@@ -77,6 +84,10 @@ function linkNavigation(projectId: string, link: ResearchLink): AuthorNavigation
   return null;
 }
 
+function selectedReferenceKeys(projectId: string): ReadonlySet<string> {
+  return new Set(listResearchReferenceSelection(projectId).map(researchReferenceKey));
+}
+
 export function ResearchWorkbench({
   bridge,
   projectId,
@@ -100,7 +111,9 @@ export function ResearchWorkbench({
   const [notice, setNotice] = useState(
     '研究资料不会自动写入人物与世界，也不会自动进入智能上下文。',
   );
-  const [selectedReferenceIds, setSelectedReferenceIds] = useState<ReadonlySet<string>>(new Set());
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<ReadonlySet<string>>(() =>
+    selectedReferenceKeys(projectId),
+  );
 
   const selected = useMemo(
     () => catalog?.notes.find((note) => note.id === selectedNoteId) ?? null,
@@ -147,6 +160,10 @@ export function ResearchWorkbench({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setSelectedReferenceIds(selectedReferenceKeys(projectId));
+  }, [projectId]);
 
   useEffect(() => {
     if (!selected) {
@@ -272,11 +289,11 @@ export function ResearchWorkbench({
     setPending(null);
     if (outcome.state === 'success') {
       applyCatalog(outcome.data, selected?.id);
-      setSelectedReferenceIds((current) => {
-        const next = new Set(current);
-        next.delete(attachmentId);
-        return next;
+      removeResearchReferenceSelection(projectId, {
+        sourceType: 'attachment',
+        sourceId: attachmentId,
       });
+      setSelectedReferenceIds(selectedReferenceKeys(projectId));
       setNotice('附件已从作品资料库移除。');
     } else if (outcome.state === 'failure') {
       setNotice(`附件删除失败：${authorErrorSummary(outcome.error)}`);
@@ -323,13 +340,14 @@ export function ResearchWorkbench({
     }
   };
 
-  const toggleReference = (id: string): void => {
-    setSelectedReferenceIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else if (next.size < 20) next.add(id);
-      return next;
-    });
+  const toggleReference = (reference: ResearchReference): void => {
+    const key = researchReferenceKey(reference);
+    const next = setResearchReferenceSelected(
+      projectId,
+      reference,
+      !selectedReferenceIds.has(key),
+    );
+    setSelectedReferenceIds(new Set(next.map(researchReferenceKey)));
   };
 
   return (
@@ -475,41 +493,51 @@ export function ResearchWorkbench({
                 </button>
               </div>
               <div className="stack-list compact-list">
-                {selectedAttachments.map((attachment) => (
-                  <div key={attachment.id} className="list-card list-card--static">
-                    <label className="inline-control">
-                      <input
-                        type="checkbox"
-                        checked={selectedReferenceIds.has(attachment.id)}
-                        onChange={() => toggleReference(attachment.id)}
-                      />
-                      本次智能参考
-                    </label>
-                    <strong>{attachmentLabel(attachment)}</strong>
-                    <span>SHA-256 {attachment.contentHash.slice(0, 12)}… · 受管本地副本</span>
-                    <button
-                      type="button"
-                      className="text-button danger"
-                      disabled={readOnly || pending !== null}
-                      onClick={() => void deleteAttachment(attachment.id)}
-                    >
-                      删除附件
-                    </button>
-                  </div>
-                ))}
+                {selectedAttachments.map((attachment) => {
+                  const reference: ResearchReference = {
+                    sourceType: 'attachment',
+                    sourceId: attachment.id,
+                  };
+                  return (
+                    <div key={attachment.id} className="list-card list-card--static">
+                      <label className="inline-control">
+                        <input
+                          type="checkbox"
+                          checked={selectedReferenceIds.has(researchReferenceKey(reference))}
+                          onChange={() => toggleReference(reference)}
+                        />
+                        本次智能参考
+                      </label>
+                      <strong>{attachmentLabel(attachment)}</strong>
+                      <span>SHA-256 {attachment.contentHash.slice(0, 12)}… · 受管本地副本</span>
+                      <button
+                        type="button"
+                        className="text-button danger"
+                        disabled={readOnly || pending !== null}
+                        onClick={() => void deleteAttachment(attachment.id)}
+                      >
+                        删除附件
+                      </button>
+                    </div>
+                  );
+                })}
                 {selectedAttachments.length === 0 ? <p className="empty-copy">暂无附件。</p> : null}
               </div>
 
               <label className="inline-control research-reference-note">
                 <input
                   type="checkbox"
-                  checked={selectedReferenceIds.has(selected.id)}
-                  onChange={() => toggleReference(selected.id)}
+                  checked={selectedReferenceIds.has(
+                    researchReferenceKey({ sourceType: 'note', sourceId: selected.id }),
+                  )}
+                  onChange={() =>
+                    toggleReference({ sourceType: 'note', sourceId: selected.id })
+                  }
                 />
                 将当前笔记列入本次智能参考
               </label>
               <p className="muted-copy">
-                已选择 {selectedReferenceIds.size}/20 项。选择只在当前界面会话保留，生成时仍由 Core
+                已选择 {selectedReferenceIds.size}/20 项。选择只在当前界面会话保留，生成时仍由本地服务
                 重新校验项目归属。
               </p>
 

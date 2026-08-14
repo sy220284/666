@@ -181,3 +181,5 @@ CREATE VIRTUAL TABLE fts_research_notes USING fts5(
   source_uri,
   tokenize = 'trigram'
 );
+
+UPDATE projects SET schema_version = 35;

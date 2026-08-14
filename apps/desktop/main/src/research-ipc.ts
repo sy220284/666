@@ -16,7 +16,12 @@ import {
   ResearchUpdateNoteCommandSchema,
   type ErrorCode,
 } from '@worldforge/contracts';
-import { BrowserWindow, dialog, type IpcMain, type IpcMainInvokeEvent } from 'electron';
+import {
+  BrowserWindow,
+  dialog,
+  type IpcMain,
+  type IpcMainInvokeEvent,
+} from 'electron';
 
 import type { CoreSupervisor } from './core-supervisor.js';
 import { registerIpcInvokeHandler } from './handler-guard.js';

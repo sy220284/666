@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { copyFile, lstat, mkdir, rename, rm, stat } from 'node:fs/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { lstat, mkdir, open, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 
 import {
   ResearchAttachmentDeleteInputSchema,
@@ -136,6 +137,30 @@ async function hashFile(filePath: string): Promise<string> {
 
 function normalizeQuery(value: string): string {
   return value.normalize('NFKC').trim().toLocaleLowerCase('zh-CN');
+}
+
+function ftsPhrase(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function sameOpenedFile(
+  before: Awaited<ReturnType<typeof lstat>>,
+  opened: Awaited<ReturnType<Awaited<ReturnType<typeof open>>['stat']>>,
+  after: Awaited<ReturnType<typeof lstat>>,
+): boolean {
+  return (
+    before.isFile() &&
+    !before.isSymbolicLink() &&
+    opened.isFile() &&
+    after.isFile() &&
+    !after.isSymbolicLink() &&
+    before.dev === opened.dev &&
+    before.ino === opened.ino &&
+    after.dev === opened.dev &&
+    after.ino === opened.ino &&
+    before.size === opened.size &&
+    after.size === opened.size
+  );
 }
 
 function sourceExists(
@@ -309,12 +334,12 @@ export class ResearchService {
         'Attachment source path must be absolute.',
       );
     }
-    const details = await lstat(sourcePath).catch((error: unknown) => {
+    const before = await lstat(sourcePath).catch((error: unknown) => {
       throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment cannot be read.', {
         cause: error,
       });
     });
-    if (!details.isFile() || details.isSymbolicLink() || details.size > MAX_ATTACHMENT_BYTES) {
+    if (!before.isFile() || before.isSymbolicLink() || before.size > MAX_ATTACHMENT_BYTES) {
       throw new ResearchServiceError(
         'RESEARCH_INVALID',
         'Attachment must be a regular file no larger than 256 MiB.',
@@ -324,6 +349,11 @@ export class ResearchService {
       throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Research note not found.');
     }
 
+    const sourceHandle = await open(sourcePath, 'r').catch((error: unknown) => {
+      throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment cannot be opened.', {
+        cause: error,
+      });
+    });
     const attachmentId = this.#idFactory();
     const relativePath = `${MANAGED_RESEARCH_DIRECTORY}/${attachmentId}${safeExtension(sourcePath)}`;
     const targetPath = await this.#workspace.resolveProjectPath(input.projectId, relativePath);
@@ -331,9 +361,23 @@ export class ResearchService {
     const partialPath = `${targetPath}.partial-${this.#idFactory()}`;
     let targetCreated = false;
     try {
-      await copyFile(sourcePath, partialPath);
+      const opened = await sourceHandle.stat();
+      const after = await lstat(sourcePath);
+      if (
+        !sameOpenedFile(before, opened, after) ||
+        opened.size > MAX_ATTACHMENT_BYTES
+      ) {
+        throw new ResearchServiceError(
+          'RESEARCH_INVALID',
+          'Attachment changed while it was being opened.',
+        );
+      }
+      await pipeline(
+        sourceHandle.createReadStream({ autoClose: false }),
+        createWriteStream(partialPath, { flags: 'wx', mode: 0o600 }),
+      );
       const copied = await stat(partialPath);
-      if (!copied.isFile() || copied.size !== details.size || copied.size > MAX_ATTACHMENT_BYTES) {
+      if (!copied.isFile() || copied.size !== opened.size || copied.size > MAX_ATTACHMENT_BYTES) {
         throw new ResearchServiceError(
           'RESEARCH_ATTACHMENT_FAILED',
           'Attachment copy was incomplete.',
@@ -375,6 +419,7 @@ export class ResearchService {
         cause: error,
       });
     } finally {
+      await sourceHandle.close();
       await rm(partialPath, { force: true });
     }
   }
@@ -403,6 +448,7 @@ export class ResearchService {
     );
     const stagedPath = `${targetPath}.deleting-${this.#idFactory()}`;
     let staged = false;
+    let databaseCommitted = false;
     try {
       try {
         await rename(targetPath, stagedPath);
@@ -432,10 +478,23 @@ export class ResearchService {
           includeArchived: true,
         });
       });
-      if (staged) await rm(stagedPath, { force: true });
+      databaseCommitted = true;
+      if (staged) {
+        try {
+          await rm(stagedPath, { force: true });
+        } catch (error) {
+          throw new ResearchServiceError(
+            'RESEARCH_ATTACHMENT_FAILED',
+            'Attachment metadata was removed, but staged file cleanup must be retried.',
+            { cause: error },
+          );
+        }
+      }
       return catalog;
     } catch (error) {
-      if (staged) await rename(stagedPath, targetPath).catch(() => undefined);
+      if (staged && !databaseCommitted) {
+        await rename(stagedPath, targetPath).catch(() => undefined);
+      }
       throw error;
     }
   }
@@ -510,26 +569,45 @@ export class ResearchService {
 
   #catalog(database: ProjectDatabase, raw: ResearchListInput): ResearchCatalog {
     const input = ResearchListInputSchema.parse(raw);
-    const notes = sqliteResult<NoteRow[]>(
-      database
-        .prepare(
-          `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
+    const query = input.query ? normalizeQuery(input.query) : '';
+    const noteSql = query
+      ? query.length >= 3
+        ? `SELECT n.id, n.project_id AS projectId, n.title, n.body, n.source_uri AS sourceUri,
+                  n.tags_json AS tagsJson, n.status, n.created_at AS createdAt, n.updated_at AS updatedAt
+             FROM fts_research_notes
+             JOIN research_notes n
+               ON n.id = fts_research_notes.note_id
+              AND n.project_id = fts_research_notes.project_id
+            WHERE n.project_id = ?
+              AND fts_research_notes MATCH ?
+              ${input.includeArchived ? '' : "AND n.status = 'active'"}
+            ORDER BY n.status = 'archived', n.updated_at DESC, n.id`
+        : `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
                   tags_json AS tagsJson, status, created_at AS createdAt, updated_at AS updatedAt
-             FROM research_notes WHERE project_id = ?
-            ORDER BY status = 'archived', updated_at DESC, id`,
-        )
-        .all(input.projectId),
-    )
+             FROM research_notes
+            WHERE project_id = ?
+              ${input.includeArchived ? '' : "AND status = 'active'"}
+              AND (
+                instr(lower(title), ?) > 0 OR
+                instr(lower(body), ?) > 0 OR
+                instr(lower(tags_json), ?) > 0 OR
+                instr(lower(COALESCE(source_uri, '')), ?) > 0
+              )
+            ORDER BY status = 'archived', updated_at DESC, id`
+      : `SELECT id, project_id AS projectId, title, body, source_uri AS sourceUri,
+                tags_json AS tagsJson, status, created_at AS createdAt, updated_at AS updatedAt
+           FROM research_notes
+          WHERE project_id = ?
+            ${input.includeArchived ? '' : "AND status = 'active'"}
+          ORDER BY status = 'archived', updated_at DESC, id`;
+    const noteParameters = query
+      ? query.length >= 3
+        ? [input.projectId, ftsPhrase(query)]
+        : [input.projectId, query, query, query, query]
+      : [input.projectId];
+    const notes = sqliteResult<NoteRow[]>(database.prepare(noteSql).all(...noteParameters))
       .map(noteFromRow)
-      .filter((note) => input.includeArchived || note.status === 'active')
-      .filter((note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)))
-      .filter((note) => {
-        if (!input.query) return true;
-        const query = normalizeQuery(input.query);
-        return normalizeQuery(
-          `${note.title}\n${note.body}\n${note.tags.join(' ')}\n${note.sourceUri ?? ''}`,
-        ).includes(query);
-      });
+      .filter((note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)));
     const noteIds = new Set(notes.map((note) => note.id));
     const attachments = sqliteResult<Record<string, unknown>[]>(
       database

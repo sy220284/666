@@ -71,10 +71,21 @@ interface NoteRow {
   readonly updatedAt: string;
 }
 
+interface FtsNoteRow {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  readonly sourceUri: string | null;
+  readonly tagsJson: string;
+  readonly status: string;
+}
+
 function parseTags(value: string): string[] {
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === 'string')) return parsed;
+    if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === 'string')) {
+      return parsed;
+    }
   } catch {
     // handled below
   }
@@ -130,7 +141,12 @@ function sourceExists(
   sourceId: string,
 ): boolean {
   const table = sourceType === 'note' ? 'research_notes' : 'research_attachments';
-  return database.prepare(`SELECT 1 FROM ${table} WHERE id = ? AND project_id = ?`).get(sourceId, projectId) !== undefined;
+  return (
+    database.prepare(`SELECT 1 FROM ${table} WHERE id = ? AND project_id = ?`).get(
+      sourceId,
+      projectId,
+    ) !== undefined
+  );
 }
 
 function targetExists(
@@ -152,23 +168,33 @@ function targetExists(
   return database.prepare(queries[targetType]).get(targetId, projectId) !== undefined;
 }
 
-function refreshResearchFts(database: ProjectDatabase, projectId: string, noteId: string): void {
+function refreshResearchFts(
+  database: ProjectDatabase,
+  projectId: string,
+  noteId: string,
+): void {
   database.prepare('DELETE FROM fts_research_notes WHERE note_id = ?').run(noteId);
   const row = database
     .prepare(
       `SELECT id, title, body, source_uri AS sourceUri, tags_json AS tagsJson, status
          FROM research_notes WHERE id = ? AND project_id = ?`,
     )
-    .get(noteId, projectId) as
-    | { id: string; title: string; body: string; sourceUri: string | null; tagsJson: string; status: string }
-    | undefined;
+    .get(noteId, projectId) as FtsNoteRow | undefined;
   if (!row) return;
   database
     .prepare(
       `INSERT INTO fts_research_notes(project_id, note_id, status, title, body, tags, source_uri)
        VALUES(?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(projectId, row.id, row.status, row.title, row.body, parseTags(row.tagsJson).join(' '), row.sourceUri ?? '');
+    .run(
+      projectId,
+      row.id,
+      row.status,
+      row.title,
+      row.body,
+      parseTags(row.tagsJson).join(' '),
+      row.sourceUri ?? '',
+    );
 }
 
 export class ResearchService {
@@ -184,7 +210,9 @@ export class ResearchService {
 
   list(raw: ResearchListInput): ResearchCatalog {
     const input = ResearchListInputSchema.parse(raw);
-    return this.#workspace.readProject(input.projectId, (database) => this.#catalog(database, input));
+    return this.#workspace.readProject(input.projectId, (database) =>
+      this.#catalog(database, input),
+    );
   }
 
   createNote(requestId: string, raw: ResearchNoteCreateInput): Promise<ResearchCatalog> {
@@ -198,7 +226,16 @@ export class ResearchService {
              id, project_id, title, body, source_uri, tags_json, status, created_at, updated_at
            ) VALUES(?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
         )
-        .run(noteId, input.projectId, input.title, input.body, input.sourceUri, JSON.stringify(input.tags), now, now);
+        .run(
+          noteId,
+          input.projectId,
+          input.title,
+          input.body,
+          input.sourceUri,
+          JSON.stringify(input.tags),
+          now,
+          now,
+        );
       refreshResearchFts(database, input.projectId, noteId);
       return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
     });
@@ -224,7 +261,9 @@ export class ResearchService {
           input.projectId,
           input.expectedUpdatedAt,
         );
-      if (Number(changed.changes) !== 1) this.#throwWriteConflict(database, input.projectId, input.noteId);
+      if (Number(changed.changes) !== 1) {
+        this.#throwWriteConflict(database, input.projectId, input.noteId);
+      }
       refreshResearchFts(database, input.projectId, input.noteId);
       return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
     });
@@ -240,7 +279,9 @@ export class ResearchService {
             WHERE id = ? AND project_id = ? AND updated_at = ?`,
         )
         .run(input.status, now, input.noteId, input.projectId, input.expectedUpdatedAt);
-      if (Number(changed.changes) !== 1) this.#throwWriteConflict(database, input.projectId, input.noteId);
+      if (Number(changed.changes) !== 1) {
+        this.#throwWriteConflict(database, input.projectId, input.noteId);
+      }
       refreshResearchFts(database, input.projectId, input.noteId);
       return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
     });
@@ -253,13 +294,21 @@ export class ResearchService {
   ): Promise<ResearchCatalog> {
     const input = ResearchAttachmentImportInputSchema.parse(raw);
     if (!path.isAbsolute(sourcePath)) {
-      throw new ResearchServiceError('RESEARCH_INVALID', 'Attachment source path must be absolute.');
+      throw new ResearchServiceError(
+        'RESEARCH_INVALID',
+        'Attachment source path must be absolute.',
+      );
     }
     const details = await lstat(sourcePath).catch((error: unknown) => {
-      throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment cannot be read.', { cause: error });
+      throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment cannot be read.', {
+        cause: error,
+      });
     });
     if (!details.isFile() || details.isSymbolicLink() || details.size > MAX_ATTACHMENT_BYTES) {
-      throw new ResearchServiceError('RESEARCH_INVALID', 'Attachment must be a regular file no larger than 256 MiB.');
+      throw new ResearchServiceError(
+        'RESEARCH_INVALID',
+        'Attachment must be a regular file no larger than 256 MiB.',
+      );
     }
     if (input.noteId && !this.#noteExists(input.projectId, input.noteId)) {
       throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Research note not found.');
@@ -275,7 +324,10 @@ export class ResearchService {
       await copyFile(sourcePath, partialPath);
       const copied = await stat(partialPath);
       if (!copied.isFile() || copied.size !== details.size || copied.size > MAX_ATTACHMENT_BYTES) {
-        throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment copy was incomplete.');
+        throw new ResearchServiceError(
+          'RESEARCH_ATTACHMENT_FAILED',
+          'Attachment copy was incomplete.',
+        );
       }
       const contentHash = await hashFile(partialPath);
       await rename(partialPath, targetPath);
@@ -306,7 +358,11 @@ export class ResearchService {
     } catch (error) {
       if (targetCreated) await rm(targetPath, { force: true });
       if (error instanceof ResearchServiceError) throw error;
-      throw new ResearchServiceError('RESEARCH_ATTACHMENT_FAILED', 'Attachment import failed.', { cause: error });
+      throw new ResearchServiceError(
+        'RESEARCH_ATTACHMENT_FAILED',
+        'Attachment import failed.',
+        { cause: error },
+      );
     } finally {
       await rm(partialPath, { force: true });
     }
@@ -317,16 +373,23 @@ export class ResearchService {
     raw: ResearchAttachmentDeleteInput,
   ): Promise<ResearchCatalog> {
     const input = ResearchAttachmentDeleteInputSchema.parse(raw);
-    const attachment = this.#workspace.readProject(input.projectId, (database) =>
-      database
-        .prepare(
-          `SELECT managed_relative_path AS managedRelativePath
-             FROM research_attachments WHERE id = ? AND project_id = ?`,
-        )
-        .get(input.attachmentId, input.projectId) as { managedRelativePath: string } | undefined,
+    const attachment = this.#workspace.readProject(
+      input.projectId,
+      (database) =>
+        database
+          .prepare(
+            `SELECT managed_relative_path AS managedRelativePath
+               FROM research_attachments WHERE id = ? AND project_id = ?`,
+          )
+          .get(input.attachmentId, input.projectId) as { managedRelativePath: string } | undefined,
     );
-    if (!attachment) throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Attachment not found.');
-    const targetPath = await this.#workspace.resolveProjectPath(input.projectId, attachment.managedRelativePath);
+    if (!attachment) {
+      throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Attachment not found.');
+    }
+    const targetPath = await this.#workspace.resolveProjectPath(
+      input.projectId,
+      attachment.managedRelativePath,
+    );
     const stagedPath = `${targetPath}.deleting-${this.#idFactory()}`;
     let staged = false;
     try {
@@ -337,21 +400,28 @@ export class ResearchService {
         const missing = error instanceof Error && 'code' in error && error.code === 'ENOENT';
         if (!missing) throw error;
       }
-      const catalog = await this.#workspace.writeProject(requestId, input.projectId, (database) => {
-        database
-          .prepare(
-            `DELETE FROM research_links
-              WHERE project_id = ? AND source_type = 'attachment' AND source_id = ?`,
-          )
-          .run(input.projectId, input.attachmentId);
-        const deleted = database
-          .prepare('DELETE FROM research_attachments WHERE id = ? AND project_id = ?')
-          .run(input.attachmentId, input.projectId);
-        if (Number(deleted.changes) !== 1) {
-          throw new ResearchServiceError('RESEARCH_CONFLICT', 'Attachment changed before deletion.');
-        }
-        return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
-      });
+      const catalog = await this.#workspace.writeProject(
+        requestId,
+        input.projectId,
+        (database) => {
+          database
+            .prepare(
+              `DELETE FROM research_links
+                WHERE project_id = ? AND source_type = 'attachment' AND source_id = ?`,
+            )
+            .run(input.projectId, input.attachmentId);
+          const deleted = database
+            .prepare('DELETE FROM research_attachments WHERE id = ? AND project_id = ?')
+            .run(input.attachmentId, input.projectId);
+          if (Number(deleted.changes) !== 1) {
+            throw new ResearchServiceError(
+              'RESEARCH_CONFLICT',
+              'Attachment changed before deletion.',
+            );
+          }
+          return this.#catalog(database, { projectId: input.projectId, includeArchived: true });
+        },
+      );
       if (staged) await rm(stagedPath, { force: true });
       return catalog;
     } catch (error) {
@@ -406,8 +476,9 @@ export class ResearchService {
     return this.#workspace.readProject(
       projectId,
       (database) =>
-        database.prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?').get(noteId, projectId) !==
-        undefined,
+        database
+          .prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?')
+          .get(noteId, projectId) !== undefined,
     );
   }
 
@@ -433,11 +504,15 @@ export class ResearchService {
       .all(input.projectId) as unknown as NoteRow[])
       .map(noteFromRow)
       .filter((note) => input.includeArchived || note.status === 'active')
-      .filter((note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)))
+      .filter(
+        (note) => !input.tags?.length || input.tags.every((tag) => note.tags.includes(tag)),
+      )
       .filter((note) => {
         if (!input.query) return true;
         const query = normalizeQuery(input.query);
-        return normalizeQuery(`${note.title}\n${note.body}\n${note.tags.join(' ')}\n${note.sourceUri ?? ''}`).includes(query);
+        return normalizeQuery(
+          `${note.title}\n${note.body}\n${note.tags.join(' ')}\n${note.sourceUri ?? ''}`,
+        ).includes(query);
       });
     const noteIds = new Set(notes.map((note) => note.id));
     const attachments = (database
@@ -449,7 +524,9 @@ export class ResearchService {
           ORDER BY created_at DESC, id`,
       )
       .all(input.projectId) as unknown as Record<string, unknown>[])
-      .map((row) => ResearchAttachmentSchema.parse({ ...row, sizeBytes: Number(row.sizeBytes) }))
+      .map((row) =>
+        ResearchAttachmentSchema.parse({ ...row, sizeBytes: Number(row.sizeBytes) }),
+      )
       .filter((attachment) => attachment.noteId === null || noteIds.has(attachment.noteId));
     const sourceIds = new Set([...noteIds, ...attachments.map((attachment) => attachment.id)]);
     const links = (database

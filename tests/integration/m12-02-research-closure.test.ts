@@ -257,12 +257,15 @@ describe('M12-02 research closure', () => {
       });
       expect(filtered.notes.map((item) => item.id)).toEqual([note.id]);
 
+      await value.workspace.close(randomUUID(), value.project.projectId);
       const foreign = await value.workspace.create(
         randomUUID(),
         { name: '外部作品', channel: '长篇' },
         value.parent,
       );
       const foreignVolume = value.structure.list(foreign.projectId).volumes[0]!;
+      await value.workspace.close(randomUUID(), foreign.projectId);
+      await value.workspace.open(randomUUID(), { workspacePath: value.project.workspacePath });
       await expect(
         value.research.addLink(randomUUID(), {
           projectId: value.project.projectId,

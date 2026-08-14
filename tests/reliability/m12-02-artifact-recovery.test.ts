@@ -135,11 +135,14 @@ describe('M12-02 managed artifact recovery', () => {
       );
       expect(await readFile(restoredArtifact, 'utf8')).toBe('必须与数据库一起恢复的附件');
 
-      const restoredDatabase = new DatabaseSync(path.join(restored.workspacePath, 'project.sqlite'), {
-        readOnly: true,
-        allowExtension: false,
-        readBigInts: true,
-      });
+      const restoredDatabase = new DatabaseSync(
+        path.join(restored.workspacePath, 'project.sqlite'),
+        {
+          readOnly: true,
+          allowExtension: false,
+          readBigInts: true,
+        },
+      );
       try {
         const restoredNote = restoredDatabase
           .prepare('SELECT id, project_id AS projectId FROM research_notes WHERE id = ?')
@@ -220,9 +223,9 @@ describe('M12-02 managed artifact recovery', () => {
           ),
           'utf8',
         ),
-      ) as { artifacts: Array<{ managedRelativePath: string; sha256: string; sizeBytes: number }> };
-      expect(manifest.artifacts).toHaveLength(10);
-      expect(manifest.artifacts.some((item) => item.sizeBytes === 8 * 1024 * 1024)).toBe(true);
+      ) as { files: Array<{ relativePath: string; sha256: string; sizeBytes: number }> };
+      expect(manifest.files).toHaveLength(10);
+      expect(manifest.files.some((item) => item.sizeBytes === 8 * 1024 * 1024)).toBe(true);
 
       const restored = await value.recovery.restoreCheckpoint(
         randomUUID(),
@@ -301,29 +304,47 @@ describe('M12-02 managed artifact recovery', () => {
     }
   });
 
-  it('fails backup creation when managed artifact metadata escapes the project path boundary', async () => {
+  it('rejects unsafe managed paths at both database and restore-manifest boundaries', async () => {
     const value = await harness();
     try {
-      await value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {
-        database
-          .prepare(
-            'UPDATE research_attachments SET managed_relative_path = ? WHERE id = ? AND project_id = ?',
-          )
-          .run('../escape.txt', value.attachment.id, value.project.projectId);
+      await expect(
+        value.workspace.writeProject(randomUUID(), value.project.projectId, (database) => {
+          database
+            .prepare(
+              'UPDATE research_attachments SET managed_relative_path = ? WHERE id = ? AND project_id = ?',
+            )
+            .run('../escape.txt', value.attachment.id, value.project.projectId);
+        }),
+      ).rejects.toMatchObject({ code: 'DATABASE_WRITE_FAILED' });
+
+      const checkpoint = await value.recovery.createOperationCheckpoint(randomUUID(), {
+        projectId: value.project.projectId,
+        operation: 'replace',
       });
+      const manifestPath = path.join(
+        value.backupRoot,
+        value.project.projectId,
+        `${checkpoint.backupId}.artifacts.json`,
+      );
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+        files: Array<Record<string, unknown>>;
+      };
+      manifest.files[0]!.relativePath = '../escape.txt';
+      await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
       await expect(
-        value.recovery.createOperationCheckpoint(randomUUID(), {
-          projectId: value.project.projectId,
-          operation: 'replace',
-        }),
+        value.recovery.restoreCheckpoint(
+          randomUUID(),
+          { projectId: value.project.projectId, backupId: checkpoint.backupId },
+          value.restoreParent,
+        ),
       ).rejects.toMatchObject({ code: 'BACKUP_VERIFY_FAILED' });
+      expect(await readdir(value.restoreParent)).toEqual([]);
     } finally {
       await value.workspace.shutdown();
       await value.runtime.close();
     }
   });
-
   it('removes managed artifact bundles as part of backup cleanup completion', async () => {
     const value = await harness();
     try {

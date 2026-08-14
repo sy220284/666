@@ -108,7 +108,9 @@ function request(runId: string) {
   });
 }
 
-function capturingProvider(capture: (messages: readonly string[]) => void): GenerationRuntimeProvider {
+function capturingProvider(
+  capture: (messages: readonly string[]) => void,
+): GenerationRuntimeProvider {
   return {
     async *generate(providerRequest) {
       capture(providerRequest.messages.map((message) => message.content));

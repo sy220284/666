@@ -81,7 +81,7 @@ jobs:
             '          { projectId: value.project.projectId, backupId: checkpoint.backupId },',
             '          value.restoreParent,',
             '        ),',
-            "      ).rejects.toMatchObject({ code: 'RESTORE_SOURCE_INVALID' });",
+            "      ).rejects.toMatchObject({ code: 'BACKUP_VERIFY_FAILED' });",
             '      expect(await readdir(value.restoreParent)).toEqual([]);',
             '    } finally {',
             '      await value.workspace.shutdown();',

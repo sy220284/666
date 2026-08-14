@@ -124,7 +124,8 @@ function indexResearch(connection: DatabaseSync, projectId: string, noteId: stri
   deleteTarget(connection, { targetType: 'research', targetId: noteId, operation: 'delete' });
   const row = connection
     .prepare(
-      `SELECT id, status, title, body, tags_json AS tagsJson, source_uri AS sourceUri
+      `SELECT id, status, title, body, tags_json AS tagsJson, source_type AS sourceType,
+              source_label AS sourceLabel, source_uri AS sourceUri
          FROM research_notes WHERE id = ? AND project_id = ?`,
     )
     .get(noteId, projectId);
@@ -132,8 +133,8 @@ function indexResearch(connection: DatabaseSync, projectId: string, noteId: stri
   connection
     .prepare(
       `INSERT INTO fts_research_notes(
-         project_id, note_id, status, title, body, tags, source_uri
-       ) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+         project_id, note_id, status, title, body, tags, source_type, source_label, source_uri
+       ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       projectId,
@@ -142,6 +143,8 @@ function indexResearch(connection: DatabaseSync, projectId: string, noteId: stri
       text(row.title, 'researchTitle'),
       text(row.body, 'researchBody'),
       parseStringArrayJson(row.tagsJson, 'researchTags').join(' '),
+      row.sourceType === null ? '' : text(row.sourceType, 'researchSourceType'),
+      row.sourceLabel === null ? '' : text(row.sourceLabel, 'researchSourceLabel'),
       row.sourceUri === null ? '' : text(row.sourceUri, 'researchSourceUri'),
     );
 }

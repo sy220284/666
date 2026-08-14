@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream, type Stats } from 'node:fs';
-import { lstat, mkdir, open, rename, rm, stat } from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
@@ -122,6 +122,20 @@ function mediaType(fileName: string): string {
 function safeExtension(fileName: string): string {
   const extension = path.extname(fileName).toLocaleLowerCase('en-US');
   return /^\.[a-z0-9]{1,16}$/u.test(extension) ? extension : '';
+}
+
+function isMissing(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await lstat(filePath);
+    return true;
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
 }
 
 async function hashFile(filePath: string): Promise<string> {
@@ -433,13 +447,16 @@ export class ResearchService {
       ),
     );
     if (!attachment) {
+      if (await this.#completeDetachedAttachmentDelete(input.projectId, input.attachmentId)) {
+        return this.list({ projectId: input.projectId, includeArchived: true });
+      }
       throw new ResearchServiceError('RESEARCH_NOT_FOUND', 'Attachment not found.');
     }
     const targetPath = await this.#workspace.resolveProjectPath(
       input.projectId,
       attachment.managedRelativePath,
     );
-    const stagedPath = `${targetPath}.deleting-${this.#idFactory()}`;
+    const stagedPath = `${targetPath}.deleting-${input.attachmentId}`;
     let staged = false;
     let databaseCommitted = false;
     try {
@@ -447,8 +464,15 @@ export class ResearchService {
         await rename(targetPath, stagedPath);
         staged = true;
       } catch (error) {
-        const missing = error instanceof Error && 'code' in error && error.code === 'ENOENT';
-        if (!missing) throw error;
+        if (!isMissing(error)) throw error;
+        if (!(await fileExists(stagedPath))) {
+          throw new ResearchServiceError(
+            'RESEARCH_ATTACHMENT_FAILED',
+            'Attachment metadata points to a missing managed file.',
+            { cause: error },
+          );
+        }
+        staged = true;
       }
       const catalog = await this.#workspace.writeProject(requestId, input.projectId, (database) => {
         database
@@ -472,21 +496,27 @@ export class ResearchService {
         });
       });
       databaseCommitted = true;
-      if (staged) {
-        try {
-          await rm(stagedPath, { force: true });
-        } catch (error) {
-          throw new ResearchServiceError(
-            'RESEARCH_ATTACHMENT_FAILED',
-            'Attachment metadata was removed, but isolated staged-file cleanup failed.',
-            { cause: error },
-          );
-        }
+      try {
+        await rm(stagedPath, { force: true });
+      } catch (error) {
+        throw new ResearchServiceError(
+          'RESEARCH_ATTACHMENT_FAILED',
+          'Attachment metadata was removed, but staged-file cleanup did not finish.',
+          { cause: error },
+        );
       }
       return catalog;
     } catch (error) {
       if (staged && !databaseCommitted) {
-        await rename(stagedPath, targetPath).catch(() => undefined);
+        try {
+          await rename(stagedPath, targetPath);
+        } catch (compensationError) {
+          throw new ResearchServiceError(
+            'RESEARCH_ATTACHMENT_FAILED',
+            'Attachment deletion failed and its filesystem rollback also failed.',
+            { cause: new AggregateError([error, compensationError]) },
+          );
+        }
       }
       throw error;
     }
@@ -548,6 +578,43 @@ export class ResearchService {
           .prepare('SELECT 1 FROM research_notes WHERE id = ? AND project_id = ?')
           .get(noteId, projectId) !== undefined,
     );
+  }
+
+  async #completeDetachedAttachmentDelete(
+    projectId: string,
+    attachmentId: string,
+  ): Promise<boolean> {
+    const directory = await this.#workspace.resolveProjectPath(projectId, MANAGED_RESEARCH_DIRECTORY);
+    let names: string[];
+    try {
+      names = await readdir(directory);
+    } catch (error) {
+      if (isMissing(error)) return false;
+      throw new ResearchServiceError(
+        'RESEARCH_ATTACHMENT_FAILED',
+        'Pending attachment deletion could not be inspected.',
+        { cause: error },
+      );
+    }
+    const suffix = `.deleting-${attachmentId}`;
+    const matches = names.filter((name) => name.endsWith(suffix));
+    if (matches.length === 0) return false;
+    if (matches.length > 1) {
+      throw new ResearchServiceError(
+        'RESEARCH_CONFLICT',
+        'Multiple staged files exist for the same attachment deletion.',
+      );
+    }
+    try {
+      await rm(path.join(directory, matches[0]!), { force: true });
+      return true;
+    } catch (error) {
+      throw new ResearchServiceError(
+        'RESEARCH_ATTACHMENT_FAILED',
+        'Pending attachment deletion could not be completed.',
+        { cause: error },
+      );
+    }
   }
 
   #throwWriteConflict(database: ProjectDatabase, projectId: string, noteId: string): never {

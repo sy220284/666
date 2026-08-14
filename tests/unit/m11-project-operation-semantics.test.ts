@@ -13,6 +13,7 @@ import {
   PROJECT_STRUCTURE_COMMANDS,
   PROJECT_WORKSPACE_COMMANDS,
   RECOVERY_COMMANDS,
+  RESEARCH_COMMANDS,
   RHYTHM_COMMANDS,
   SCENE_BEAT_COMMANDS,
   SEARCH_TOOLS_COMMANDS,
@@ -42,6 +43,7 @@ const commandGroups = [
   STORY_KNOWLEDGE_COMMANDS,
   IDEA_CAPSULE_COMMANDS,
   LONGFORM_AI_COMMANDS,
+  RESEARCH_COMMANDS,
   DRAFT_COMMANDS,
   CANDIDATE_COMMANDS,
   CANDIDATE_APPLY_COMMANDS,
@@ -73,6 +75,8 @@ describe('M11 Project Operation Semantics', () => {
     expect(projectOperationKind(STORY_KNOWLEDGE_COMMANDS.project)).toBe('query');
     expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.list)).toBe('query');
     expect(projectOperationKind(IDEA_CAPSULE_COMMANDS.applyConversion)).toBe('mutation');
+    expect(projectOperationKind(RESEARCH_COMMANDS.list)).toBe('query');
+    expect(projectOperationKind(RESEARCH_COMMANDS.createNote)).toBe('mutation');
   });
 
   it('does not default unknown read-like candidate operations to mutation semantics', () => {

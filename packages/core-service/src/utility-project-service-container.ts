@@ -11,6 +11,7 @@ import { ProjectStructureService } from './project-structure.js';
 import type { ProjectWorkspaceService } from './project-workspace.js';
 import { ReferenceAwareStructureOperationService } from './reference-aware-structure-operations.js';
 import type { RecoveryService } from './recovery.js';
+import { ResearchService } from './research-service.js';
 import { RhythmService } from './rhythm.js';
 import { SafeIdeaCapsuleService } from './safe-idea-capsule-service.js';
 import { SceneBeatService } from './scene-beat.js';
@@ -45,6 +46,7 @@ export function createUtilityProjectServiceContainer(
     storyKnowledge: new StoryKnowledgeProjectionService(projectWorkspace),
     ideas: new SafeIdeaCapsuleService(projectWorkspace),
     longformAi,
+    research: new ResearchService(projectWorkspace),
     structureOperations: new ReferenceAwareStructureOperationService(projectWorkspace),
     drafts: new DraftService(projectWorkspace),
     candidates,

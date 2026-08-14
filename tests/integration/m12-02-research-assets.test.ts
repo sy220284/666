@@ -87,18 +87,22 @@ describe('M12-02 research assets', () => {
       expect(new Set(duplicateIds).size).toBe(2);
 
       expect(
-        value.research.list({
-          projectId: value.project.projectId,
-          includeArchived: false,
-          query: '古道驿',
-        }).notes.map((note) => note.id),
+        value.research
+          .list({
+            projectId: value.project.projectId,
+            includeArchived: false,
+            query: '古道驿',
+          })
+          .notes.map((note) => note.id),
       ).toEqual([firstNote!.id]);
       expect(
-        value.research.list({
-          projectId: value.project.projectId,
-          includeArchived: false,
-          query: '古',
-        }).notes.map((note) => note.id),
+        value.research
+          .list({
+            projectId: value.project.projectId,
+            includeArchived: false,
+            query: '古',
+          })
+          .notes.map((note) => note.id),
       ).toEqual([firstNote!.id]);
 
       await expect(

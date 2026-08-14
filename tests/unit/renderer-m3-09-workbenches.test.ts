@@ -68,6 +68,7 @@ describe('M3 final React business workbenches', () => {
           project: vi.fn(async () => success('story-knowledge', {})),
         },
         longformAi: {},
+        research: {},
         candidateAction: {},
       }),
     );

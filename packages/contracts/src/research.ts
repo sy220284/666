@@ -206,21 +206,46 @@ export const ResearchCatalogResultSchema = z.union([
 ]);
 
 const coreSuccess = (operation: (typeof RESEARCH_COMMANDS)[keyof typeof RESEARCH_COMMANDS]) =>
-  z.strictObject({ ok: z.literal(true), operation: z.literal(operation), data: ResearchCatalogSchema });
+  z.strictObject({
+    ok: z.literal(true),
+    operation: z.literal(operation),
+    data: ResearchCatalogSchema,
+  });
 
 export const CoreResearchOperationSchema = z.discriminatedUnion('operation', [
-  z.strictObject({ operation: z.literal(RESEARCH_COMMANDS.list), input: ResearchListInputSchema }),
-  z.strictObject({ operation: z.literal(RESEARCH_COMMANDS.createNote), input: ResearchNoteCreateInputSchema }),
-  z.strictObject({ operation: z.literal(RESEARCH_COMMANDS.updateNote), input: ResearchNoteUpdateInputSchema }),
-  z.strictObject({ operation: z.literal(RESEARCH_COMMANDS.setNoteStatus), input: ResearchNoteStatusInputSchema }),
+  z.strictObject({
+    operation: z.literal(RESEARCH_COMMANDS.list),
+    input: ResearchListInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(RESEARCH_COMMANDS.createNote),
+    input: ResearchNoteCreateInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(RESEARCH_COMMANDS.updateNote),
+    input: ResearchNoteUpdateInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(RESEARCH_COMMANDS.setNoteStatus),
+    input: ResearchNoteStatusInputSchema,
+  }),
   z.strictObject({
     operation: z.literal(RESEARCH_COMMANDS.importAttachment),
     input: ResearchAttachmentImportInputSchema,
     sourcePath: z.string().min(1).max(32_768),
   }),
-  z.strictObject({ operation: z.literal(RESEARCH_COMMANDS.deleteAttachment), input: ResearchAttachmentDeleteInputSchema }),
-  z.strictObject({ operation: z.literal(RESEARCH_COMMANDS.addLink), input: ResearchLinkAddInputSchema }),
-  z.strictObject({ operation: z.literal(RESEARCH_COMMANDS.removeLink), input: ResearchLinkRemoveInputSchema }),
+  z.strictObject({
+    operation: z.literal(RESEARCH_COMMANDS.deleteAttachment),
+    input: ResearchAttachmentDeleteInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(RESEARCH_COMMANDS.addLink),
+    input: ResearchLinkAddInputSchema,
+  }),
+  z.strictObject({
+    operation: z.literal(RESEARCH_COMMANDS.removeLink),
+    input: ResearchLinkRemoveInputSchema,
+  }),
 ]);
 
 export const CoreResearchResultSchema = z.union([
@@ -246,8 +271,12 @@ export interface ResearchBridge {
   readonly createNote: (input: ResearchNoteCreateInput) => Promise<ResearchCatalogResult>;
   readonly updateNote: (input: ResearchNoteUpdateInput) => Promise<ResearchCatalogResult>;
   readonly setNoteStatus: (input: ResearchNoteStatusInput) => Promise<ResearchCatalogResult>;
-  readonly importAttachment: (input: ResearchAttachmentImportInput) => Promise<ResearchCatalogResult>;
-  readonly deleteAttachment: (input: ResearchAttachmentDeleteInput) => Promise<ResearchCatalogResult>;
+  readonly importAttachment: (
+    input: ResearchAttachmentImportInput,
+  ) => Promise<ResearchCatalogResult>;
+  readonly deleteAttachment: (
+    input: ResearchAttachmentDeleteInput,
+  ) => Promise<ResearchCatalogResult>;
   readonly addLink: (input: ResearchLinkAddInput) => Promise<ResearchCatalogResult>;
   readonly removeLink: (input: ResearchLinkRemoveInput) => Promise<ResearchCatalogResult>;
 }
@@ -264,7 +293,9 @@ export type ResearchNoteCreateInput = z.input<typeof ResearchNoteCreateInputSche
 export type ResearchNoteUpdateInput = z.infer<typeof ResearchNoteUpdateInputSchema>;
 export type ResearchNoteStatusInput = z.infer<typeof ResearchNoteStatusInputSchema>;
 export type ResearchAttachmentImportInput = z.input<typeof ResearchAttachmentImportInputSchema>;
-export type ResearchAttachmentDeleteInput = z.infer<typeof ResearchAttachmentDeleteInputSchema>;
+export type ResearchAttachmentDeleteInput = z.infer<
+  typeof ResearchAttachmentDeleteInputSchema
+>;
 export type ResearchLinkAddInput = z.infer<typeof ResearchLinkAddInputSchema>;
 export type ResearchLinkRemoveInput = z.infer<typeof ResearchLinkRemoveInputSchema>;
 export type ResearchReference = z.infer<typeof ResearchReferenceSchema>;
